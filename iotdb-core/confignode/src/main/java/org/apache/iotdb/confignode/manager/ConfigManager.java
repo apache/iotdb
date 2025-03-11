@@ -2683,14 +2683,16 @@ public class ConfigManager implements IManager {
               req.getDatabase(),
               req.getTableName(),
               ReadWriteIOUtils.readString(req.updateInfo),
-              false);
+              false,
+              null);
         case COMMENT_COLUMN:
           return clusterSchemaManager.setTableColumnComment(
               req.getDatabase(),
               req.getTableName(),
               ReadWriteIOUtils.readString(req.updateInfo),
               ReadWriteIOUtils.readString(req.updateInfo),
-              false);
+              false,
+              null);
         default:
           throw new IllegalArgumentException();
       }
@@ -2703,7 +2705,7 @@ public class ConfigManager implements IManager {
   public TDeleteTableDeviceResp deleteDevice(final TDeleteTableDeviceReq req) {
     final TSStatus status = confirmLeader();
     return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
-        ? procedureManager.deleteDevices(req, false)
+        ? procedureManager.deleteDevices(req, false, null)
         : new TDeleteTableDeviceResp(status);
   }
 

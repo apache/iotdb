@@ -263,7 +263,8 @@ public class DeleteTimeSeriesProcedure
                 new TDeleteDataForDeleteSchemaReq(
                         new ArrayList<>(consensusGroupIdList),
                         preparePatternTreeBytesData(patternTree))
-                    .setIsGeneratedByPipe(isGeneratedByPipe)));
+                    .setIsGeneratedByPipe(isGeneratedByPipe)
+                    .setOriginClusterId(originClusterId)));
     deleteDataTask.execute();
   }
 
@@ -276,7 +277,8 @@ public class DeleteTimeSeriesProcedure
             CnToDnAsyncRequestType.DELETE_TIMESERIES,
             ((dataNodeLocation, consensusGroupIdList) ->
                 new TDeleteTimeSeriesReq(consensusGroupIdList, patternTreeBytes)
-                    .setIsGeneratedByPipe(isGeneratedByPipe)));
+                    .setIsGeneratedByPipe(isGeneratedByPipe)
+                    .setOriginCluster(originClusterId)));
     deleteTimeSeriesTask.execute();
   }
 

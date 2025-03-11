@@ -80,7 +80,7 @@ public class PermissionManager {
         tsStatus =
             configManager
                 .getProcedureManager()
-                .operateAuthPlan(authorPlan, allDataNodes, isGeneratedByPipe);
+                .operateAuthPlan(authorPlan, allDataNodes, isGeneratedByPipe, originClusterIds);
       }
       return tsStatus;
     } catch (final ConsensusException e) {

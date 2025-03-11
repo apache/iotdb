@@ -1326,14 +1326,15 @@ public class ClusterSchemaManager {
       final String tableName,
       final String oldName,
       final String newName,
-      final boolean isGeneratedByPipe) {
+      final boolean isGeneratedByPipe,
+      final String originClusterId) {
     final RenameTableColumnPlan renameTableColumnPlan =
         new RenameTableColumnPlan(database, tableName, oldName, newName);
     try {
       return getConsensusManager()
           .write(
               isGeneratedByPipe
-                  ? new PipeEnrichedPlan(renameTableColumnPlan)
+                  ? new PipeEnrichedPlan(renameTableColumnPlan, originClusterId)
                   : renameTableColumnPlan);
     } catch (final ConsensusException e) {
       LOGGER.warn(e.getMessage(), e);
@@ -1345,14 +1346,15 @@ public class ClusterSchemaManager {
       final String database,
       final String tableName,
       final Map<String, String> properties,
-      final boolean isGeneratedByPipe) {
+      final boolean isGeneratedByPipe,
+      final String originClusterId) {
     final SetTablePropertiesPlan setTablePropertiesPlan =
         new SetTablePropertiesPlan(database, tableName, properties);
     try {
       return getConsensusManager()
           .write(
               isGeneratedByPipe
-                  ? new PipeEnrichedPlan(setTablePropertiesPlan)
+                  ? new PipeEnrichedPlan(setTablePropertiesPlan, originClusterId)
                   : setTablePropertiesPlan);
     } catch (final ConsensusException e) {
       LOGGER.warn(e.getMessage(), e);
@@ -1364,13 +1366,16 @@ public class ClusterSchemaManager {
       final String database,
       final String tableName,
       final String comment,
-      final boolean isGeneratedByPipe) {
+      final boolean isGeneratedByPipe,
+      final String originClusterId) {
     final SetTableCommentPlan setTableCommentPlan =
         new SetTableCommentPlan(database, tableName, comment);
     try {
       return getConsensusManager()
           .write(
-              isGeneratedByPipe ? new PipeEnrichedPlan(setTableCommentPlan) : setTableCommentPlan);
+              isGeneratedByPipe
+                  ? new PipeEnrichedPlan(setTableCommentPlan, originClusterId)
+                  : setTableCommentPlan);
     } catch (final ConsensusException e) {
       LOGGER.warn(e.getMessage(), e);
       return RpcUtils.getStatus(TSStatusCode.INTERNAL_SERVER_ERROR, e.getMessage());
@@ -1382,14 +1387,15 @@ public class ClusterSchemaManager {
       final String tableName,
       final String columnName,
       final String comment,
-      final boolean isGeneratedByPipe) {
+      final boolean isGeneratedByPipe,
+      final String originClusterId) {
     final SetTableColumnCommentPlan setTableColumnCommentPlan =
         new SetTableColumnCommentPlan(database, tableName, columnName, comment);
     try {
       return getConsensusManager()
           .write(
               isGeneratedByPipe
-                  ? new PipeEnrichedPlan(setTableColumnCommentPlan)
+                  ? new PipeEnrichedPlan(setTableColumnCommentPlan, originClusterId)
                   : setTableColumnCommentPlan);
     } catch (final ConsensusException e) {
       LOGGER.warn(e.getMessage(), e);

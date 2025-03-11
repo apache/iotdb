@@ -66,6 +66,15 @@ public class DropTableProcedure extends AbstractAlterOrDropTableProcedure<DropTa
     super(database, tableName, queryId, isGeneratedByPipe);
   }
 
+  public DropTableProcedure(
+      final String database,
+      final String tableName,
+      final String queryId,
+      final boolean isGeneratedByPipe,
+      final String originClusterId) {
+    super(database, tableName, queryId, isGeneratedByPipe, originClusterId);
+  }
+
   // Not used
   @Override
   protected String getActionMessage() {
@@ -190,7 +199,8 @@ public class DropTableProcedure extends AbstractAlterOrDropTableProcedure<DropTa
     final TSStatus status =
         SchemaUtils.executeInConsensusLayer(
             isGeneratedByPipe
-                ? new PipeEnrichedPlan(new CommitDeleteTablePlan(database, tableName))
+                ? new PipeEnrichedPlan(
+                    new CommitDeleteTablePlan(database, tableName), originClusterId)
                 : new CommitDeleteTablePlan(database, tableName),
             env,
             LOGGER);

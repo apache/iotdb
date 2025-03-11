@@ -81,8 +81,8 @@ public class ConfigRegionListeningQueueTest {
                 false,
                 new ArrayList<>()));
 
-    PipeConfigNodeAgent.runtime().listener().tryListenToPlan(plan1, false);
-    PipeConfigNodeAgent.runtime().listener().tryListenToPlan(plan2, false);
+    PipeConfigNodeAgent.runtime().listener().tryListenToPlan(plan1, false, null);
+    PipeConfigNodeAgent.runtime().listener().tryListenToPlan(plan2, false, null);
 
     // tryListenToSnapshots() cannot be tested here since we cannot operate the reference count of
     // the original or deserialized events

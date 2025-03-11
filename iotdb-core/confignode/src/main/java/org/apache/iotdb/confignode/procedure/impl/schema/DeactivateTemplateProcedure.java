@@ -261,7 +261,8 @@ public class DeactivateTemplateProcedure
             CnToDnAsyncRequestType.DEACTIVATE_TEMPLATE,
             ((dataNodeLocation, consensusGroupIdList) ->
                 new TDeactivateTemplateReq(consensusGroupIdList, dataNodeRequest)
-                    .setIsGeneratedByPipe(isGeneratedByPipe)));
+                    .setIsGeneratedByPipe(isGeneratedByPipe)
+                    .setOriginClusterId(originClusterId)));
     deleteTimeSeriesTask.execute();
   }
 
@@ -273,7 +274,8 @@ public class DeactivateTemplateProcedure
               .getConsensusManager()
               .write(
                   isGeneratedByPipe
-                      ? new PipeEnrichedPlan(new PipeDeactivateTemplatePlan(templateSetInfo))
+                      ? new PipeEnrichedPlan(
+                          new PipeDeactivateTemplatePlan(templateSetInfo), originClusterId)
                       : new PipeDeactivateTemplatePlan(templateSetInfo));
     } catch (ConsensusException e) {
       LOGGER.warn(CONSENSUS_WRITE_ERROR, e);
@@ -431,13 +433,20 @@ public class DeactivateTemplateProcedure
         && Objects.equals(getCycles(), that.getCycles())
         && Objects.equals(isGeneratedByPipe, that.isGeneratedByPipe)
         && Objects.equals(queryId, that.queryId)
-        && Objects.equals(templateSetInfo, that.templateSetInfo);
+        && Objects.equals(templateSetInfo, that.templateSetInfo)
+        && Objects.equals(originClusterId, that.originClusterId);
   }
 
   @Override
   public int hashCode() {
     return Objects.hash(
-        getProcId(), getCurrentState(), getCycles(), isGeneratedByPipe, queryId, templateSetInfo);
+        getProcId(),
+        getCurrentState(),
+        getCycles(),
+        isGeneratedByPipe,
+        queryId,
+        templateSetInfo,
+        originClusterId);
   }
 
   private class DeactivateTemplateRegionTaskExecutor<Q>

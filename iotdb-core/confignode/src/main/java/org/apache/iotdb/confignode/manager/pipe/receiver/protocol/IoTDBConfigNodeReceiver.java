@@ -659,7 +659,8 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
                     ((SetTablePropertiesPlan) plan).getTableName(),
                     queryId,
                     ((SetTablePropertiesPlan) plan).getProperties(),
-                    true));
+                    true,
+                    clusterIdFromHandshakeRequest));
       case CommitDeleteColumn:
         return configManager
             .getProcedureManager()
@@ -674,7 +675,8 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
                     ((CommitDeleteColumnPlan) plan).getTableName(),
                     queryId,
                     ((CommitDeleteColumnPlan) plan).getColumnName(),
-                    true));
+                    true,
+                    clusterIdFromHandshakeRequest));
       case RenameTableColumn:
         return configManager
             .getProcedureManager()
@@ -690,7 +692,8 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
                     queryId,
                     ((RenameTableColumnPlan) plan).getOldName(),
                     ((RenameTableColumnPlan) plan).getNewName(),
-                    true));
+                    true,
+                    clusterIdFromHandshakeRequest));
       case CommitDeleteTable:
         return configManager
             .getProcedureManager()
@@ -704,7 +707,8 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
                     ((CommitDeleteTablePlan) plan).getDatabase(),
                     ((CommitDeleteTablePlan) plan).getTableName(),
                     queryId,
-                    true));
+                    true,
+                    clusterIdFromHandshakeRequest));
       case SetTableComment:
         return configManager
             .getClusterSchemaManager()
@@ -712,7 +716,8 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
                 ((SetTableCommentPlan) plan).getDatabase(),
                 ((SetTableCommentPlan) plan).getTableName(),
                 ((SetTableCommentPlan) plan).getComment(),
-                true);
+                true,
+                clusterIdFromHandshakeRequest);
       case SetTableColumnComment:
         return configManager
             .getClusterSchemaManager()
@@ -721,7 +726,8 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
                 ((SetTableColumnCommentPlan) plan).getTableName(),
                 ((SetTableColumnCommentPlan) plan).getColumnName(),
                 ((SetTableColumnCommentPlan) plan).getComment(),
-                true);
+                true,
+                clusterIdFromHandshakeRequest);
       case PipeDeleteDevices:
         return configManager
             .getProcedureManager()
@@ -733,7 +739,8 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
                     ByteBuffer.wrap(((PipeDeleteDevicesPlan) plan).getPatternBytes()),
                     ByteBuffer.wrap(((PipeDeleteDevicesPlan) plan).getFilterBytes()),
                     ByteBuffer.wrap(((PipeDeleteDevicesPlan) plan).getModBytes())),
-                true)
+                true,
+                clusterIdFromHandshakeRequest)
             .getStatus();
       case CreateUser:
       case CreateUserWithRawPassword:

@@ -104,7 +104,8 @@ public class DropTriggerProcedure extends AbstractNodeProcedure<DropTriggerState
               .getConsensusManager()
               .write(
                   isGeneratedByPipe
-                      ? new PipeEnrichedPlan(new DeleteTriggerInTablePlan(triggerName))
+                      ? new PipeEnrichedPlan(
+                          new DeleteTriggerInTablePlan(triggerName), originClusterId)
                       : new DeleteTriggerInTablePlan(triggerName));
           setNextState(DropTriggerState.CONFIG_NODE_DROPPED);
           break;
@@ -187,7 +188,8 @@ public class DropTriggerProcedure extends AbstractNodeProcedure<DropTriggerState
           && thatProc.getCurrentState().equals(this.getCurrentState())
           && thatProc.getCycles() == this.getCycles()
           && thatProc.isGeneratedByPipe == this.isGeneratedByPipe
-          && (thatProc.triggerName).equals(this.triggerName);
+          && (thatProc.triggerName).equals(this.triggerName)
+          && Objects.equals(thatProc.originClusterId, this.originClusterId);
     }
     return false;
   }
@@ -195,6 +197,11 @@ public class DropTriggerProcedure extends AbstractNodeProcedure<DropTriggerState
   @Override
   public int hashCode() {
     return Objects.hash(
-        getProcId(), getCurrentState(), getCycles(), isGeneratedByPipe, triggerName);
+        getProcId(),
+        getCurrentState(),
+        getCycles(),
+        isGeneratedByPipe,
+        triggerName,
+        originClusterId);
   }
 }

@@ -180,7 +180,8 @@ public class CreateTableProcedure
     final TSStatus status =
         SchemaUtils.executeInConsensusLayer(
             isGeneratedByPipe
-                ? new PipeEnrichedPlan(new CommitCreateTablePlan(database, table.getTableName()))
+                ? new PipeEnrichedPlan(
+                    new CommitCreateTablePlan(database, table.getTableName()), originClusterId)
                 : new CommitCreateTablePlan(database, table.getTableName()),
             env,
             LOGGER);

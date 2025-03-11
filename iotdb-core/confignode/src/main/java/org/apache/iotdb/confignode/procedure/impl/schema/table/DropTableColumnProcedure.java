@@ -75,6 +75,17 @@ public class DropTableColumnProcedure
     this.columnName = columnName;
   }
 
+  public DropTableColumnProcedure(
+      final String database,
+      final String tableName,
+      final String queryId,
+      final String columnName,
+      final boolean isGeneratedByPipe,
+      final String originClusterId) {
+    super(database, tableName, queryId, isGeneratedByPipe, originClusterId);
+    this.columnName = columnName;
+  }
+
   @Override
   protected String getActionMessage() {
     return "drop table column";
@@ -202,7 +213,8 @@ public class DropTableColumnProcedure
     final TSStatus status =
         SchemaUtils.executeInConsensusLayer(
             isGeneratedByPipe
-                ? new PipeEnrichedPlan(new CommitDeleteColumnPlan(database, tableName, columnName))
+                ? new PipeEnrichedPlan(
+                    new CommitDeleteColumnPlan(database, tableName, columnName), originClusterId)
                 : new CommitDeleteColumnPlan(database, tableName, columnName),
             env,
             LOGGER);

@@ -1703,10 +1703,13 @@ public class ProcedureManager {
   }
 
   public TSStatus operateAuthPlan(
-      AuthorPlan authorPlan, List<TDataNodeConfiguration> dns, boolean isGeneratedByPipe) {
+      AuthorPlan authorPlan,
+      List<TDataNodeConfiguration> dns,
+      boolean isGeneratedByPipe,
+      String originClusterId) {
     try {
       AuthOperationProcedure procedure =
-          new AuthOperationProcedure(authorPlan, dns, isGeneratedByPipe);
+          new AuthOperationProcedure(authorPlan, dns, isGeneratedByPipe, originClusterId);
       executor.submitProcedure(procedure);
       return waitingProcedureFinished(procedure);
     } catch (Exception e) {
@@ -1887,7 +1890,9 @@ public class ProcedureManager {
   }
 
   public TDeleteTableDeviceResp deleteDevices(
-      final TDeleteTableDeviceReq req, final boolean isGeneratedByPipe) {
+      final TDeleteTableDeviceReq req,
+      final boolean isGeneratedByPipe,
+      final String originClusterId) {
     long procedureId;
     DeleteDevicesProcedure procedure = null;
     synchronized (this) {
@@ -1915,7 +1920,8 @@ public class ProcedureManager {
                 req.getPatternInfo(),
                 req.getFilterInfo(),
                 req.getModInfo(),
-                isGeneratedByPipe);
+                isGeneratedByPipe,
+                originClusterId);
         this.executor.submitProcedure(procedure);
       }
     }

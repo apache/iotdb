@@ -70,6 +70,17 @@ public class SetTablePropertiesProcedure
     this.updatedProperties = properties;
   }
 
+  public SetTablePropertiesProcedure(
+      final String database,
+      final String tableName,
+      final String queryId,
+      final Map<String, String> properties,
+      final boolean isGeneratedByPipe,
+      final String originClusterId) {
+    super(database, tableName, queryId, isGeneratedByPipe, originClusterId);
+    this.updatedProperties = properties;
+  }
+
   @Override
   protected Flow executeFromState(
       final ConfigNodeProcedureEnv env, final SetTablePropertiesState state)
@@ -145,7 +156,8 @@ public class SetTablePropertiesProcedure
     final TSStatus status =
         env.getConfigManager()
             .getClusterSchemaManager()
-            .setTableProperties(database, tableName, updatedProperties, isGeneratedByPipe);
+            .setTableProperties(
+                database, tableName, updatedProperties, isGeneratedByPipe, originClusterId);
     if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       setFailure(new ProcedureException(new IoTDBException(status.getMessage(), status.getCode())));
     } else {
@@ -193,7 +205,8 @@ public class SetTablePropertiesProcedure
     final TSStatus status =
         env.getConfigManager()
             .getClusterSchemaManager()
-            .setTableProperties(database, tableName, originalProperties, isGeneratedByPipe);
+            .setTableProperties(
+                database, tableName, originalProperties, isGeneratedByPipe, originClusterId);
     if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       setFailure(new ProcedureException(new IoTDBException(status.getMessage(), status.getCode())));
     }

@@ -79,9 +79,8 @@ public class DeleteDatabaseProcedure
       final TDatabaseSchema deleteDatabaseSchema,
       final boolean isGeneratedByPipe,
       final String originClusterId) {
-    super(isGeneratedByPipe);
+    super(isGeneratedByPipe, originClusterId);
     this.deleteDatabaseSchema = deleteDatabaseSchema;
-    this.originClusterId = originClusterId;
   }
 
   public TDatabaseSchema getDeleteDatabaseSchema() {

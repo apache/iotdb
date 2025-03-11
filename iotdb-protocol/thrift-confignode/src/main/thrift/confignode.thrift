@@ -161,6 +161,7 @@ struct TSetDataNodeStatusReq {
 struct TDeleteDatabaseReq {
   1: required string prefixPath
   2: optional bool isGeneratedByPipe
+  3: optional string originClusterId
 }
 
 struct TDeleteDatabasesReq {
@@ -541,6 +542,7 @@ struct TCreateTriggerReq {
   10: optional binary jarFile
   11: optional string jarMD5
   12: optional bool isGeneratedByPipe
+  13: optional string originClusterId
 }
 
 struct TDropTriggerReq {
@@ -881,6 +883,7 @@ struct TAlterLogicalViewReq {
   1: required string queryId
   2: required binary viewBinary
   3: optional bool isGeneratedByPipe
+  4: optional string originClusterId
 }
 
 // Subscription topic
