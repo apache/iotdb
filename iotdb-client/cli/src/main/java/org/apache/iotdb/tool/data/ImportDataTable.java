@@ -135,6 +135,11 @@ public class ImportDataTable extends AbstractImportData {
         } catch (Exception e) {
         }
       }
+      try {
+        session.close();
+      } catch (IoTDBConnectionException ex) {
+        // do nothing
+      }
     }
     if (Constants.TSFILE_SUFFIXS.equalsIgnoreCase(fileType)) {
       ImportTsFileScanTool.setSourceFullPath(targetPath);
@@ -179,6 +184,12 @@ public class ImportDataTable extends AbstractImportData {
       processSuccessFile();
     } catch (IOException e) {
       ioTPrinter.println("SQL file read exception because: " + e.getMessage());
+    } finally {
+      try {
+        session.close();
+      } catch (IoTDBConnectionException ex) {
+        // do nothing
+      }
     }
     if (!failedRecords.isEmpty()) {
       FileWriter writer = null;
@@ -204,8 +215,8 @@ public class ImportDataTable extends AbstractImportData {
 
   protected void importFromTsFile(File file) {
     final String sql = "load '" + file + "'";
-    try {
-      sessionPool.getSession().executeNonQueryStatement(sql);
+    try (ITableSession session = sessionPool.getSession()) {
+      session.executeNonQueryStatement(sql);
       processSuccessFile(file.getPath());
     } catch (final Exception e) {
       processFailFile(file.getPath(), e);
@@ -328,8 +339,8 @@ public class ImportDataTable extends AbstractImportData {
   }
 
   private static void writeAndEmptyDataSet(Tablet tablet, int retryTime) {
-    try {
-      sessionPool.getSession().insert(tablet);
+    try (ITableSession session = sessionPool.getSession()) {
+      session.insert(tablet);
     } catch (IoTDBConnectionException e) {
       if (retryTime > 0) {
         writeAndEmptyDataSet(tablet, --retryTime);
