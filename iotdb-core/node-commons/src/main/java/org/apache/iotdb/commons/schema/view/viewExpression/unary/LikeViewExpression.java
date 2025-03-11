@@ -28,6 +28,7 @@ import org.apache.tsfile.utils.ReadWriteIOUtils;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.nio.BufferUnderflowException;
 import java.nio.ByteBuffer;
 import java.util.Optional;
 
@@ -56,24 +57,38 @@ public class LikeViewExpression extends UnaryViewExpression {
   public LikeViewExpression(ByteBuffer byteBuffer) {
     super(ViewExpression.deserialize(byteBuffer));
     pattern = ReadWriteIOUtils.readString(byteBuffer);
-    if (ReadWriteIOUtils.readBool(byteBuffer)) {
-      escape = Optional.of(ReadWriteIOUtils.readString(byteBuffer).charAt(0));
-    } else {
-      escape = Optional.empty();
-    }
     isNot = ReadWriteIOUtils.readBool(byteBuffer);
+    Optional<Character> tempEscape;
+    try{
+        if (ReadWriteIOUtils.readBool(byteBuffer)) {
+            tempEscape = Optional.of(ReadWriteIOUtils.readString(byteBuffer).charAt(0));
+        } else {
+            tempEscape = Optional.empty();
+        }
+    }
+    catch (BufferUnderflowException e){
+        tempEscape = Optional.empty();
+    }
+    escape = tempEscape;
   }
 
   public LikeViewExpression(InputStream inputStream) {
     super(ViewExpression.deserialize(inputStream));
     try {
       pattern = ReadWriteIOUtils.readString(inputStream);
-      if (ReadWriteIOUtils.readBool(inputStream)) {
-        escape = Optional.of(ReadWriteIOUtils.readString(inputStream).charAt(0));
-      } else {
-        escape = Optional.empty();
-      }
       isNot = ReadWriteIOUtils.readBool(inputStream);
+      Optional<Character> tempEscape;
+      try{
+        if (ReadWriteIOUtils.readBool(inputStream)) {
+          tempEscape = Optional.of(ReadWriteIOUtils.readString(inputStream).charAt(0));
+        } else {
+          tempEscape = Optional.empty();
+        }
+      }
+      catch (IOException e){
+        tempEscape = Optional.empty();
+      }
+      escape = tempEscape;
     } catch (IOException e) {
       throw new RuntimeException(e);
     }
@@ -113,22 +128,22 @@ public class LikeViewExpression extends UnaryViewExpression {
   protected void serialize(ByteBuffer byteBuffer) {
     super.serialize(byteBuffer);
     ReadWriteIOUtils.write(pattern, byteBuffer);
+    ReadWriteIOUtils.write(isNot, byteBuffer);
     ReadWriteIOUtils.write(escape.isPresent(), byteBuffer);
     if (escape.isPresent()) {
       ReadWriteIOUtils.write(escape.get().toString(), byteBuffer);
     }
-    ReadWriteIOUtils.write(isNot, byteBuffer);
   }
 
   @Override
   protected void serialize(OutputStream stream) throws IOException {
     super.serialize(stream);
     ReadWriteIOUtils.write(pattern, stream);
+    ReadWriteIOUtils.write(isNot, stream);
     ReadWriteIOUtils.write(escape.isPresent(), stream);
     if (escape.isPresent()) {
       ReadWriteIOUtils.write(escape.get().toString(), stream);
     }
-    ReadWriteIOUtils.write(isNot, stream);
   }
 
   // endregion
