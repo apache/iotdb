@@ -148,7 +148,6 @@ public class PartitionRecognizer {
       currentIndex = endPartitionIndex;
       return PartitionState.iteratingState(slice);
     } else {
-      currentIndex = endPartitionIndex;
       endPartitionIndex = findNextDifferentRowIndex();
       Slice slice = getSlice(currentIndex, endPartitionIndex);
       currentIndex = endPartitionIndex;
@@ -177,13 +176,17 @@ public class PartitionRecognizer {
       if (partitionComparator.compare(partitionKey, compareKey) != 0) {
         partitionKey = compareKey;
         System.out.println(
-            "====== PartitionRecognizer find next different row index: " + compareKey.rowIndex);
+            Thread.currentThread().getId()
+                + " ====== PartitionRecognizer find next different row index in loop: "
+                + compareKey.rowIndex);
         return compareKey.rowIndex;
       }
       compareKey.rowIndex++;
     }
     System.out.println(
-        "====== PartitionRecognizer find next different row index: " + compareKey.rowIndex);
+        Thread.currentThread().getId()
+            + " ====== PartitionRecognizer find next different row index out of loop: "
+            + compareKey.rowIndex);
     return compareKey.rowIndex;
   }
 
