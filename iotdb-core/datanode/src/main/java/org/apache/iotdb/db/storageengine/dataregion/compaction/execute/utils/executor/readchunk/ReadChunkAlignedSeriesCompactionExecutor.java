@@ -273,6 +273,7 @@ public class ReadChunkAlignedSeriesCompactionExecutor {
 
     if (chunkMetadata.getNewType() != null) {
       chunkMetadata.setTsDataType(chunkMetadata.getNewType());
+
       Statistics<?> statistics = Statistics.getStatsByType(chunkMetadata.getNewType());
       statistics.mergeStatistics(chunk.getChunkStatistic());
       chunkMetadata.setStatistics(statistics);
