@@ -83,10 +83,8 @@ public class ImportDataTable extends AbstractImportData {
     }
     // checkDataBase
     SessionDataSet sessionDataSet = null;
-    ITableSession session = null;
-    try {
+    try (ITableSession session = sessionPool.getSession()) {
       List<String> databases = new ArrayList<>();
-      session = sessionPool.getSession();
       sessionDataSet = session.executeQueryStatement("show databases");
       while (sessionDataSet.hasNext()) {
         RowRecord rowRecord = sessionDataSet.next();
@@ -135,11 +133,6 @@ public class ImportDataTable extends AbstractImportData {
         } catch (Exception e) {
         }
       }
-      try {
-        session.close();
-      } catch (IoTDBConnectionException ex) {
-        // do nothing
-      }
     }
     if (Constants.TSFILE_SUFFIXS.equalsIgnoreCase(fileType)) {
       ImportTsFileScanTool.setSourceFullPath(targetPath);
@@ -169,13 +162,11 @@ public class ImportDataTable extends AbstractImportData {
     } else {
       failedFilePath = failedFileDirectory + file.getName() + ".failed";
     }
-    ITableSession session = null;
     try (BufferedReader br = new BufferedReader(new FileReader(file.getAbsolutePath()))) {
       String sql;
       while ((sql = br.readLine()) != null) {
-        try {
+        try (ITableSession session = sessionPool.getSession()) {
           sql = sql.replace(";", "");
-          session = sessionPool.getSession();
           session.executeNonQueryStatement(sql);
         } catch (IoTDBConnectionException | StatementExecutionException e) {
           failedRecords.add(Collections.singletonList(sql));
@@ -184,12 +175,6 @@ public class ImportDataTable extends AbstractImportData {
       processSuccessFile();
     } catch (IOException e) {
       ioTPrinter.println("SQL file read exception because: " + e.getMessage());
-    } finally {
-      try {
-        session.close();
-      } catch (IoTDBConnectionException ex) {
-        // do nothing
-      }
     }
     if (!failedRecords.isEmpty()) {
       FileWriter writer = null;
