@@ -57,7 +57,6 @@ public class LikeViewExpression extends UnaryViewExpression {
   public LikeViewExpression(ByteBuffer byteBuffer) {
     super(ViewExpression.deserialize(byteBuffer));
     pattern = ReadWriteIOUtils.readString(byteBuffer);
-    // 先读一个byte
     byte judge = ReadWriteIOUtils.readByte(byteBuffer);
     switch (judge){
       case -1:
