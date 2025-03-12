@@ -20,8 +20,10 @@
 package org.apache.iotdb.db.storageengine.buffer;
 
 import org.apache.iotdb.commons.exception.IoTDBIORuntimeException;
+import org.apache.iotdb.commons.memory.IMemoryBlock;
+import org.apache.iotdb.commons.memory.MemoryBlockType;
 import org.apache.iotdb.commons.utils.TestOnly;
-import org.apache.iotdb.db.conf.IoTDBConfig;
+import org.apache.iotdb.db.conf.DataNodeMemoryConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.storageengine.dataregion.read.control.FileReaderManager;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileID;
@@ -47,21 +49,30 @@ public class BloomFilterCache {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(BloomFilterCache.class);
   private static final Logger DEBUG_LOGGER = LoggerFactory.getLogger("QUERY_DEBUG");
-  private static final IoTDBConfig CONFIG = IoTDBDescriptor.getInstance().getConfig();
-  private static final long MEMORY_THRESHOLD_IN_BLOOM_FILTER_CACHE =
-      CONFIG.getAllocateMemoryForBloomFilterCache();
-  private static final boolean CACHE_ENABLE = CONFIG.isMetaDataCacheEnable();
+  private static final DataNodeMemoryConfig MEMORY_CONFIG =
+      IoTDBDescriptor.getInstance().getMemoryConfig();
+  private static final IMemoryBlock CACHE_MEMORY_BLOCK;
+  private static final boolean CACHE_ENABLE = MEMORY_CONFIG.isMetaDataCacheEnable();
   private final AtomicLong entryAverageSize = new AtomicLong(0);
 
   private final Cache<BloomFilterCacheKey, BloomFilter> lruCache;
 
+  static {
+    CACHE_MEMORY_BLOCK =
+        MEMORY_CONFIG
+            .getBloomFilterCacheMemoryManager()
+            .exactAllocate("BloomFilterCache", MemoryBlockType.STATIC);
+    // TODO @spricoder: find a way to get the size of the BloomFilterCache
+    CACHE_MEMORY_BLOCK.allocate(CACHE_MEMORY_BLOCK.getTotalMemorySizeInBytes());
+  }
+
   private BloomFilterCache() {
     if (CACHE_ENABLE) {
-      LOGGER.info("BloomFilterCache size = {}", MEMORY_THRESHOLD_IN_BLOOM_FILTER_CACHE);
+      LOGGER.info("BloomFilterCache size = {}", CACHE_MEMORY_BLOCK.getTotalMemorySizeInBytes());
     }
     lruCache =
         Caffeine.newBuilder()
-            .maximumWeight(MEMORY_THRESHOLD_IN_BLOOM_FILTER_CACHE)
+            .maximumWeight(CACHE_MEMORY_BLOCK.getTotalMemorySizeInBytes())
             .weigher(
                 (Weigher<BloomFilterCacheKey, BloomFilter>)
                     (key, bloomFilter) ->
@@ -120,7 +131,7 @@ public class BloomFilterCache {
   }
 
   public long getMaxMemory() {
-    return MEMORY_THRESHOLD_IN_BLOOM_FILTER_CACHE;
+    return CACHE_MEMORY_BLOCK.getTotalMemorySizeInBytes();
   }
 
   public double getAverageLoadPenalty() {

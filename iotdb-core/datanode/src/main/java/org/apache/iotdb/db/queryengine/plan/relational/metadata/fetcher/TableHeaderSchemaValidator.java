@@ -56,6 +56,8 @@ import org.apache.tsfile.read.common.type.TypeFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import javax.annotation.Nullable;
+
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
@@ -295,37 +297,49 @@ public class TableHeaderSchemaValidator {
         throw new ColumnCreationFailException(
             "Cannot create column " + columnSchema.getName() + " datatype is not provided");
       }
-      tsTable.addColumnSchema(generateColumnSchema(category, columnName, dataType));
+      tsTable.addColumnSchema(generateColumnSchema(category, columnName, dataType, null));
     }
   }
 
   public static TsTableColumnSchema generateColumnSchema(
-      final TsTableColumnCategory category, final String columnName, final TSDataType dataType) {
+      final TsTableColumnCategory category,
+      final String columnName,
+      final TSDataType dataType,
+      final @Nullable String comment) {
+    final TsTableColumnSchema schema;
     switch (category) {
       case TAG:
         if (!TSDataType.STRING.equals(dataType)) {
           throw new SemanticException(
               "DataType of TAG Column should only be STRING, current is " + dataType);
         }
-        return new TagColumnSchema(columnName, dataType);
+        schema = new TagColumnSchema(columnName, dataType);
+        break;
       case ATTRIBUTE:
         if (!TSDataType.STRING.equals(dataType)) {
           throw new SemanticException(
               "DataType of ATTRIBUTE Column should only be STRING, current is " + dataType);
         }
-        return new AttributeColumnSchema(columnName, dataType);
+        schema = new AttributeColumnSchema(columnName, dataType);
+        break;
       case TIME:
         throw new SemanticException(
             "Create table or add column statement shall not specify column category TIME");
       case FIELD:
-        return new FieldColumnSchema(
-            columnName,
-            dataType,
-            getDefaultEncoding(dataType),
-            TSFileDescriptor.getInstance().getConfig().getCompressor());
+        schema =
+            new FieldColumnSchema(
+                columnName,
+                dataType,
+                getDefaultEncoding(dataType),
+                TSFileDescriptor.getInstance().getConfig().getCompressor());
+        break;
       default:
         throw new IllegalArgumentException();
     }
+    if (Objects.nonNull(comment)) {
+      schema.getProps().put(TsTable.COMMENT_KEY, comment);
+    }
+    return schema;
   }
 
   private void autoCreateColumn(

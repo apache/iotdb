@@ -254,11 +254,20 @@ public class IoTDBRelationalDatabaseMetadata extends IoTDBAbstractDatabaseMetada
         if (i == 0) {
           valueInRow.add(schemaPattern);
         } else if (i == 1) {
-          valueInRow.add(rs.getString(2));
+          // valueInRow.add(rs.getString(2));
+          valueInRow.add(rs.getString("table_name"));
         } else if (i == 2) {
           valueInRow.add("TABLE");
         } else if (i == 3) {
-          valueInRow.add("TTL(ms): " + rs.getString(3));
+          // String tgtString = "";
+          // String ttl = rs.getString("ttl(ms)");
+          // tgtString += "TTL(ms): " + ttl;
+          String comment = rs.getString("comment");
+          if (comment != null && !comment.isEmpty()) {
+            valueInRow.add(comment);
+          } else {
+            valueInRow.add("");
+          }
         } else if (i == 4) {
           valueInRow.add(getTypePrecision(fields[i].getSqlType()));
         } else if (i == 5) {
@@ -360,8 +369,8 @@ public class IoTDBRelationalDatabaseMetadata extends IoTDBAbstractDatabaseMetada
     // Extract Metadata
     int count = 1;
     while (rs.next()) {
-      String columnName = rs.getString(3);
-      String type = rs.getString(4);
+      String columnName = rs.getString("column_name"); // 3
+      String type = rs.getString("datatype"); // 4
       List<Object> valueInRow = new ArrayList<>();
       for (int i = 0; i < fields.length; i++) {
         if (i == 0) {
@@ -391,7 +400,13 @@ public class IoTDBRelationalDatabaseMetadata extends IoTDBAbstractDatabaseMetada
         } else if (i == 8) {
           valueInRow.add(getTypeScale(fields[i].getSqlType()));
         } else if (i == 9) {
-          valueInRow.add("");
+          String comment = rs.getString("comment");
+          if (comment != null && !comment.isEmpty()) {
+            valueInRow.add(comment);
+          } else {
+            valueInRow.add("");
+          }
+          // valueInRow.add(rs.getString("comment"));
         } else if (i == 10) {
           valueInRow.add("");
         } else {

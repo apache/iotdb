@@ -77,8 +77,8 @@ public class PipeConsensusSyncLagManager {
 
   public void addConsensusPipeConnector(
       ConsensusPipeName consensusPipeName, ConsensusPipeConnector consensusPipeConnector) {
+    lock.lock();
     try {
-      lock.lock();
       consensusPipe2ConnectorMap.put(consensusPipeName, consensusPipeConnector);
     } finally {
       lock.unlock();
@@ -86,8 +86,8 @@ public class PipeConsensusSyncLagManager {
   }
 
   public void removeConsensusPipeConnector(ConsensusPipeName consensusPipeName) {
+    lock.lock();
     try {
-      lock.lock();
       consensusPipe2ConnectorMap.remove(consensusPipeName);
     } finally {
       lock.unlock();
@@ -100,8 +100,8 @@ public class PipeConsensusSyncLagManager {
    * has left to synchronize.
    */
   public long calculateSyncLag() {
+    lock.lock();
     try {
-      lock.lock();
       // if there isn't a consensus pipe task, the syncLag is 0
       if (consensusPipe2ConnectorMap.isEmpty()) {
         return 0;

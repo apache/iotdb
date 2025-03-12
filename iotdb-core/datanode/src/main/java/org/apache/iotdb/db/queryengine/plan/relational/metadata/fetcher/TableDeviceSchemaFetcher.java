@@ -113,7 +113,8 @@ public class TableDeviceSchemaFetcher {
                   .getSessionInfoOfTableModel(SessionManager.getInstance().getCurrSession()),
               "Fetch Device for insert",
               LocalExecutionPlanner.getInstance().metadata,
-              context.getTimeOut(),
+              // Never timeout for insert
+              Long.MAX_VALUE,
               false);
 
       if (executionResult.status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
@@ -396,7 +397,8 @@ public class TableDeviceSchemaFetcher {
                   "fetch device for query %s : %s",
                   mppQueryContext.getQueryId(), mppQueryContext.getSql()),
               LocalExecutionPlanner.getInstance().metadata,
-              mppQueryContext.getTimeOut(),
+              mppQueryContext.getTimeOut()
+                  - (System.currentTimeMillis() - mppQueryContext.getStartTime()),
               false);
 
       if (executionResult.status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
