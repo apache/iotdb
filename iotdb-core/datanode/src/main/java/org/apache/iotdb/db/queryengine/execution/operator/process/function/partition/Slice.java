@@ -26,7 +26,6 @@ import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.DateUtils;
-import org.apache.tsfile.utils.RamUsageEstimator;
 
 import java.time.LocalDate;
 import java.util.Arrays;
@@ -39,14 +38,11 @@ import java.util.stream.Collectors;
 
 /** Parts of partition. */
 public class Slice {
-  private static final long INSTANCE_SIZE = RamUsageEstimator.shallowSizeOfInstance(Slice.class);
   private final Column[] requiredColumns;
   private final Column[] passThroughColumns;
   private final List<Type> dataTypes;
   private final long size;
   private final long estimatedSize;
-
-  private final String slice_id;
 
   public Slice(
       int startIndex,
@@ -71,8 +67,6 @@ public class Slice {
     channels.addAll(passThroughChannels);
     this.estimatedSize =
         channels.stream().map(i -> columns[i].getRetainedSizeInBytes()).reduce(0L, Long::sum);
-
-    this.slice_id = "slice_" + startIndex + "_" + endIndex + "_" + columns[0];
   }
 
   public long getSize() {
@@ -86,7 +80,6 @@ public class Slice {
   }
 
   public Iterator<Record> getRequiredRecordIterator() {
-    System.out.println("====== Slice getRequiredRecordIterator: " + slice_id + " ======= ");
     return new Iterator<Record>() {
       private int curIndex = 0;
 
