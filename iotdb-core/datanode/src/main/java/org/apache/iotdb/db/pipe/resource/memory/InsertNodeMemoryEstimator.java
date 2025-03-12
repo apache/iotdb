@@ -588,7 +588,9 @@ public class InsertNodeMemoryEstimator {
     // Directly calculate if measurementSchemas are absent
     if (Objects.isNull(measurementSchemas)) {
       return RamUsageEstimator.shallowSizeOf(columns)
-          + Arrays.stream(columns).mapToLong(RamUsageEstimator::sizeOfObject).reduce(0L, Long::sum);
+          + Arrays.stream(columns)
+              .mapToLong(InsertNodeMemoryEstimator::getNumBytesUnknownObject)
+              .reduce(0L, Long::sum);
     }
     long size =
         RamUsageEstimator.alignObjectSize(
@@ -629,13 +631,7 @@ public class InsertNodeMemoryEstimator {
         case TEXT:
         case BLOB:
           {
-            final Binary[] values = (Binary[]) columns[i];
-            size +=
-                RamUsageEstimator.alignObjectSize(
-                    NUM_BYTES_ARRAY_HEADER + NUM_BYTES_OBJECT_REF * values.length);
-            for (Binary value : values) {
-              size += sizeOfBinary(value);
-            }
+            size += getBinarySize((Binary[]) columns[i]);
             break;
           }
       }
@@ -643,12 +639,27 @@ public class InsertNodeMemoryEstimator {
     return size;
   }
 
+  private static long getNumBytesUnknownObject(final Object obj) {
+    return obj instanceof Binary[]
+        ? getBinarySize((Binary[]) obj)
+        : RamUsageEstimator.sizeOfObject(obj);
+  }
+
+  private static long getBinarySize(final Binary[] binaries) {
+    return RamUsageEstimator.shallowSizeOf(binaries)
+        + Arrays.stream(binaries)
+            .mapToLong(InsertNodeMemoryEstimator::sizeOfBinary)
+            .reduce(0L, Long::sum);
+  }
+
   public static long sizeOfValues(
       final Object[] values, final MeasurementSchema[] measurementSchemas) {
     // Directly calculate if measurementSchemas are absent
     if (Objects.isNull(measurementSchemas)) {
       return RamUsageEstimator.shallowSizeOf(values)
-          + Arrays.stream(values).mapToLong(RamUsageEstimator::sizeOfObject).reduce(0L, Long::sum);
+          + Arrays.stream(values)
+              .mapToLong(InsertNodeMemoryEstimator::getNumBytesUnknownObject)
+              .reduce(0L, Long::sum);
     }
     long size =
         RamUsageEstimator.alignObjectSize(
