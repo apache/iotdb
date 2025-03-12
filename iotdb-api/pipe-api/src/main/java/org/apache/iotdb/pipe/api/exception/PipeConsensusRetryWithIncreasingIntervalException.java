@@ -19,9 +19,9 @@
 
 package org.apache.iotdb.pipe.api.exception;
 
-public class PipeReadOnlyException extends PipeException {
+public class PipeConsensusRetryWithIncreasingIntervalException extends PipeException {
 
-  public PipeReadOnlyException(String message) {
+  public PipeConsensusRetryWithIncreasingIntervalException(String message) {
     super(message);
   }
 }

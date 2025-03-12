@@ -20,6 +20,7 @@
 package org.apache.iotdb.consensus.iot.client;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.consensus.common.Utils;
 import org.apache.iotdb.consensus.iot.logdispatcher.Batch;
 import org.apache.iotdb.consensus.iot.logdispatcher.LogDispatcher.LogDispatcherThread;
 import org.apache.iotdb.consensus.iot.logdispatcher.LogDispatcherThreadMetrics;
@@ -58,10 +59,10 @@ public class DispatchLogHandler implements AsyncMethodCallback<TSyncLogEntriesRe
 
   @Override
   public void onComplete(TSyncLogEntriesRes response) {
-    if (response.getStatuses().stream().anyMatch(status -> needRetry(status.getCode()))) {
+    if (response.getStatuses().stream().anyMatch(status -> Utils.needRetry(status.getCode()))) {
       List<String> retryStatusMessages =
           response.getStatuses().stream()
-              .filter(status -> needRetry(status.getCode()))
+              .filter(status -> Utils.needRetry(status.getCode()))
               .map(TSStatus::getMessage)
               .collect(Collectors.toList());
 
@@ -90,12 +91,6 @@ public class DispatchLogHandler implements AsyncMethodCallback<TSyncLogEntriesRe
       completeBatch(batch);
     }
     logDispatcherThreadMetrics.recordSyncLogTimePerRequest(System.nanoTime() - createTime);
-  }
-
-  public static boolean needRetry(int statusCode) {
-    return statusCode == TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode()
-        || statusCode == TSStatusCode.SYSTEM_READ_ONLY.getStatusCode()
-        || statusCode == TSStatusCode.WRITE_PROCESS_REJECT.getStatusCode();
   }
 
   @Override
