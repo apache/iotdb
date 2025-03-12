@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.queryengine.execution.fragment;
 
-import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.ThreadName;
 import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
@@ -52,7 +51,6 @@ import org.slf4j.LoggerFactory;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.ScheduledExecutorService;
@@ -391,23 +389,7 @@ public class FragmentInstanceManager {
 
   private FragmentInstanceInfo createFailedInstanceInfo(FragmentInstanceId instanceId) {
     FragmentInstanceContext context = instanceContext.get(instanceId);
-    Optional<TSStatus> errorCode = context.getErrorCode();
-    return errorCode
-        .map(
-            tsStatus ->
-                new FragmentInstanceInfo(
-                    FragmentInstanceState.FAILED,
-                    context.getEndTime(),
-                    context.getFailedCause(),
-                    context.getFailureInfoList(),
-                    tsStatus))
-        .orElseGet(
-            () ->
-                new FragmentInstanceInfo(
-                    FragmentInstanceState.FAILED,
-                    context.getEndTime(),
-                    context.getFailedCause(),
-                    context.getFailureInfoList()));
+    return context.getInstanceInfo();
   }
 
   private void removeOldInstances() {

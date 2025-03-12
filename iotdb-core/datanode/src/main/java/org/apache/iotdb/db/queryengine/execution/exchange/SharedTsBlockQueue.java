@@ -82,6 +82,8 @@ public class SharedTsBlockQueue {
   private long maxBytesCanReserve =
       IoTDBDescriptor.getInstance().getMemoryConfig().getMaxBytesPerFragmentInstance();
 
+  private Throwable abortedCause = null;
+
   // used for SharedTsBlockQueue listener
   private final ExecutorService executorService;
 
@@ -179,6 +181,9 @@ public class SharedTsBlockQueue {
   public TsBlock remove() {
     if (closed) {
       // try throw underlying exception instead of "Source handle is aborted."
+      if (abortedCause != null) {
+        throw new IllegalStateException(abortedCause);
+      }
       try {
         blocked.get();
       } catch (InterruptedException e) {
@@ -342,6 +347,7 @@ public class SharedTsBlockQueue {
     if (closed) {
       return;
     }
+    abortedCause = t;
     closed = true;
     if (!blocked.isDone()) {
       blocked.setException(t);

@@ -117,23 +117,7 @@ public class FragmentInstanceExecution {
   }
 
   public FragmentInstanceInfo getInstanceInfo() {
-    return context
-        .getErrorCode()
-        .map(
-            s ->
-                new FragmentInstanceInfo(
-                    stateMachine.getState(),
-                    context.getEndTime(),
-                    context.getFailedCause(),
-                    context.getFailureInfoList(),
-                    s))
-        .orElseGet(
-            () ->
-                new FragmentInstanceInfo(
-                    stateMachine.getState(),
-                    context.getEndTime(),
-                    context.getFailedCause(),
-                    context.getFailureInfoList()));
+    return context.getInstanceInfo();
   }
 
   public long getStartTime() {
