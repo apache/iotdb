@@ -18,8 +18,6 @@
  */
 package org.apache.iotdb.consensus.common;
 
-import org.apache.iotdb.rpc.TSStatusCode;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -38,12 +36,6 @@ public class Utils {
   private static final Logger logger = LoggerFactory.getLogger(Utils.class);
 
   private Utils() {}
-
-  public static boolean needRetry(int statusCode) {
-    return statusCode == TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode()
-        || statusCode == TSStatusCode.SYSTEM_READ_ONLY.getStatusCode()
-        || statusCode == TSStatusCode.WRITE_PROCESS_REJECT.getStatusCode();
-  }
 
   public static List<File> listAllRegularFilesRecursively(File rootDir) {
     List<File> allFiles = new ArrayList<>();

@@ -20,7 +20,7 @@
 package org.apache.iotdb.consensus.iot.client;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
-import org.apache.iotdb.consensus.common.Utils;
+import org.apache.iotdb.commons.utils.RetryUtils;
 import org.apache.iotdb.consensus.iot.logdispatcher.Batch;
 import org.apache.iotdb.consensus.iot.logdispatcher.LogDispatcher.LogDispatcherThread;
 import org.apache.iotdb.consensus.iot.logdispatcher.LogDispatcherThreadMetrics;
@@ -59,10 +59,11 @@ public class DispatchLogHandler implements AsyncMethodCallback<TSyncLogEntriesRe
 
   @Override
   public void onComplete(TSyncLogEntriesRes response) {
-    if (response.getStatuses().stream().anyMatch(status -> Utils.needRetry(status.getCode()))) {
+    if (response.getStatuses().stream()
+        .anyMatch(status -> RetryUtils.needRetryForConsensus(status.getCode()))) {
       List<String> retryStatusMessages =
           response.getStatuses().stream()
-              .filter(status -> Utils.needRetry(status.getCode()))
+              .filter(status -> RetryUtils.needRetryForConsensus(status.getCode()))
               .map(TSStatus::getMessage)
               .collect(Collectors.toList());
 

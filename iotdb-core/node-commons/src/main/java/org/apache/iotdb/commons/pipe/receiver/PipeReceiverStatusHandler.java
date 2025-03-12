@@ -23,6 +23,7 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeConnectorCriticalException;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeConnectorRetryTimesConfigurableException;
 import org.apache.iotdb.commons.pipe.agent.task.subtask.PipeSubtask;
+import org.apache.iotdb.commons.utils.RetryUtils;
 import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.pipe.api.exception.PipeConsensusRetryWithIncreasingIntervalException;
 import org.apache.iotdb.pipe.api.exception.PipeException;
@@ -91,18 +92,17 @@ public class PipeReceiverStatusHandler {
    */
   public void handle(
       final TSStatus status, final String exceptionMessage, final String recordMessage) {
+
+    if (RetryUtils.needRetryForConsensus(status.getCode())) {
+      LOGGER.info("IoTConsensusV2: will retry with increasing interval. status: {}", status);
+      throw new PipeConsensusRetryWithIncreasingIntervalException(exceptionMessage);
+    }
+
     switch (status.getCode()) {
       case 200: // SUCCESS_STATUS
       case 400: // REDIRECTION_RECOMMEND
         {
           return;
-        }
-      case 305: // INTERNAL_SERVER_ERROR
-      case 600: // SYSTEM_READ_ONLY
-      case 606: // WRITE_PROCESS_REJECT
-        {
-          LOGGER.debug("IoTConsensusV2: will retry with increasing interval. status: {}", status);
-          throw new PipeConsensusRetryWithIncreasingIntervalException(exceptionMessage);
         }
 
       case 1809: // PIPE_RECEIVER_IDEMPOTENT_CONFLICT_EXCEPTION
