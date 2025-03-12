@@ -66,8 +66,6 @@ public class DataNodeTableCache implements ITableCache {
   private final Semaphore fetchTableSemaphore =
       new Semaphore(
           IoTDBDescriptor.getInstance().getConfig().getDataNodeTableCacheSemaphorePermitNum());
-  private final boolean isDetailedLogEnabled =
-      IoTDBDescriptor.getInstance().getConfig().isDataNodeTableCacheDetailedLogEnabled();
 
   private DataNodeTableCache() {
     // Do nothing
@@ -180,12 +178,14 @@ public class DataNodeTableCache implements ITableCache {
           databaseTableMap
               .computeIfAbsent(database, k -> new ConcurrentHashMap<>())
               .put(tableName, newTable);
-      if (LOGGER.isInfoEnabled()) {
-        LOGGER.info(
-            "Commit-update table {}.{} successfully. {}",
+      if (LOGGER.isDebugEnabled()) {
+        LOGGER.debug(
+            "Commit-update table {}.{} successfully, {}",
             database,
             tableName,
             compareTable(oldTable, newTable));
+      } else if (LOGGER.isInfoEnabled()) {
+        LOGGER.info("Commit-update table {}.{} successfully", database, tableName);
       }
       removeTableFromPreUpdateMap(database, tableName);
       version.incrementAndGet();
@@ -351,15 +351,19 @@ public class DataNodeTableCache implements ITableCache {
                       return;
                     }
                     isUpdated.set(true);
-                    LOGGER.info(
-                        "Update table {}.{} by table fetch. {}",
-                        database,
-                        tableName,
-                        compareTable(
-                            existingPair.getLeft(),
-                            databaseTableMap
-                                .computeIfAbsent(database, k -> new ConcurrentHashMap<>())
-                                .get(tableName)));
+                    if (LOGGER.isDebugEnabled()) {
+                      LOGGER.debug(
+                          "Update table {}.{} by table fetch, {}",
+                          database,
+                          tableName,
+                          compareTable(
+                              existingPair.getLeft(),
+                              databaseTableMap
+                                  .computeIfAbsent(database, k -> new ConcurrentHashMap<>())
+                                  .get(tableName)));
+                    } else if (LOGGER.isInfoEnabled()) {
+                      LOGGER.info("Update table {}.{} by table fetch.", database, tableName);
+                    }
                     existingPair.setLeft(null);
                     if (Objects.nonNull(tsTable)) {
                       databaseTableMap
@@ -380,9 +384,6 @@ public class DataNodeTableCache implements ITableCache {
   }
 
   private String compareTable(final TsTable oldTable, final TsTable newTable) {
-    if (!isDetailedLogEnabled) {
-      return "";
-    }
     if (Objects.isNull(oldTable)) {
       return "Added table: " + newTable;
     }
