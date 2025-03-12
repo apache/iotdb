@@ -126,6 +126,7 @@ public class TimePartitionManager {
           return;
         }
         timePartitionInfoMemoryBlock.release(timePartitionInfo.memSize);
+        timePartitionInfoMemoryBlock.forceAllocateWithoutLimitation(Long.BYTES);
         DataRegion dataRegion =
             StorageEngine.getInstance().getDataRegion(timePartitionInfo.dataRegionId);
         if (dataRegion != null) {
