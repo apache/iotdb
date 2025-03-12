@@ -39,6 +39,7 @@ import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.regex.Pattern;
 
+import static org.apache.iotdb.commons.conf.IoTDBConstant.KB;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.MB;
 
 public class CommonConfig {
@@ -203,7 +204,8 @@ public class CommonConfig {
 
   private boolean pipeFileReceiverFsyncEnabled = true;
 
-  private int pipeRealTimeQueuePollHistoryThreshold = 1;
+  private int pipeRealTimeQueuePollTsFileThreshold = 10;
+  private int pipeRealTimeQueuePollHistoricalTsFileThreshold = 3;
 
   /** The maximum number of threads that can be used to execute subtasks in PipeSubtaskExecutor. */
   private int pipeSubtaskExecutorMaxThreadNum =
@@ -233,6 +235,7 @@ public class CommonConfig {
   private long pipeConnectorRetryIntervalMs = 1000L;
   private boolean pipeConnectorRPCThriftCompressionEnabled = false;
 
+  private long pipeAsyncConnectorMaxRetryExecutionTimeMsPerCall = 500;
   private int pipeAsyncConnectorSelectorNumber =
       Math.max(4, Runtime.getRuntime().availableProcessors() / 2);
   private int pipeAsyncConnectorMaxClientNumber =
@@ -257,12 +260,13 @@ public class CommonConfig {
   private long pipeReceiverLoginPeriodicVerificationIntervalMs = 300000;
 
   private int pipeMaxAllowedHistoricalTsFilePerDataRegion = 100;
-  private int pipeMaxAllowedPendingTsFileEpochPerDataRegion = 10;
+  private int pipeMaxAllowedPendingTsFileEpochPerDataRegion = 5;
   private int pipeMaxAllowedPinnedMemTableCount = 10; // per data region
   private long pipeMaxAllowedLinkedTsFileCount = 300;
   private float pipeMaxAllowedLinkedDeletedTsFileDiskUsagePercentage = 0.1F;
   private long pipeStuckRestartIntervalSeconds = 120;
   private long pipeStuckRestartMinIntervalMs = 5 * 60 * 1000L; // 5 minutes
+  private boolean pipeEpochKeepTsFileAfterStuckRestartEnabled = false;
   private long pipeStorageEngineFlushTimeIntervalMs = Long.MAX_VALUE;
 
   private int pipeMetaReportMaxLogNumPerRound = 10;
@@ -309,6 +313,9 @@ public class CommonConfig {
   private long subscriptionReadTabletBufferSize = 8 * MB;
   private long subscriptionTsFileDeduplicationWindowSeconds = 120; // 120s
   private volatile long subscriptionCheckMemoryEnoughIntervalMs = 10L;
+  private long subscriptionEstimatedInsertNodeTabletInsertionEventSize = 64 * KB;
+  private long subscriptionEstimatedRawTabletInsertionEventSize = 16 * KB;
+  private long subscriptionMaxAllowedEventCountInTabletBatch = 100;
 
   private boolean subscriptionPrefetchEnabled = false;
   private float subscriptionPrefetchMemoryThreshold = 0.5F;
@@ -853,6 +860,16 @@ public class CommonConfig {
     return pipeConnectorRPCThriftCompressionEnabled;
   }
 
+  public void setPipeAsyncConnectorMaxRetryExecutionTimeMsPerCall(
+      long pipeAsyncConnectorMaxRetryExecutionTimeMsPerCall) {
+    this.pipeAsyncConnectorMaxRetryExecutionTimeMsPerCall =
+        pipeAsyncConnectorMaxRetryExecutionTimeMsPerCall;
+  }
+
+  public long getPipeAsyncConnectorMaxRetryExecutionTimeMsPerCall() {
+    return pipeAsyncConnectorMaxRetryExecutionTimeMsPerCall;
+  }
+
   public int getPipeAsyncConnectorSelectorNumber() {
     return pipeAsyncConnectorSelectorNumber;
   }
@@ -986,12 +1003,22 @@ public class CommonConfig {
     this.pipeSubtaskExecutorForcedRestartIntervalMs = pipeSubtaskExecutorForcedRestartIntervalMs;
   }
 
-  public int getPipeRealTimeQueuePollHistoryThreshold() {
-    return pipeRealTimeQueuePollHistoryThreshold;
+  public int getPipeRealTimeQueuePollTsFileThreshold() {
+    return pipeRealTimeQueuePollTsFileThreshold;
   }
 
-  public void setPipeRealTimeQueuePollHistoryThreshold(int pipeRealTimeQueuePollHistoryThreshold) {
-    this.pipeRealTimeQueuePollHistoryThreshold = pipeRealTimeQueuePollHistoryThreshold;
+  public void setPipeRealTimeQueuePollTsFileThreshold(int pipeRealTimeQueuePollTsFileThreshold) {
+    this.pipeRealTimeQueuePollTsFileThreshold = pipeRealTimeQueuePollTsFileThreshold;
+  }
+
+  public int getPipeRealTimeQueuePollHistoricalTsFileThreshold() {
+    return pipeRealTimeQueuePollHistoricalTsFileThreshold;
+  }
+
+  public void setPipeRealTimeQueuePollHistoricalTsFileThreshold(
+      int pipeRealTimeQueuePollHistoricalTsFileThreshold) {
+    this.pipeRealTimeQueuePollHistoricalTsFileThreshold =
+        pipeRealTimeQueuePollHistoricalTsFileThreshold;
   }
 
   public void setPipeAirGapReceiverEnabled(boolean pipeAirGapReceiverEnabled) {
@@ -1073,6 +1100,10 @@ public class CommonConfig {
     return pipeStuckRestartMinIntervalMs;
   }
 
+  public boolean isPipeEpochKeepTsFileAfterStuckRestartEnabled() {
+    return pipeEpochKeepTsFileAfterStuckRestartEnabled;
+  }
+
   public long getPipeStorageEngineFlushTimeIntervalMs() {
     return pipeStorageEngineFlushTimeIntervalMs;
   }
@@ -1083,6 +1114,11 @@ public class CommonConfig {
 
   public void setPipeStuckRestartMinIntervalMs(long pipeStuckRestartMinIntervalMs) {
     this.pipeStuckRestartMinIntervalMs = pipeStuckRestartMinIntervalMs;
+  }
+
+  public void setPipeEpochKeepTsFileAfterStuckRestartEnabled(
+      boolean pipeEpochKeepTsFileAfterStuckRestartEnabled) {
+    this.pipeEpochKeepTsFileAfterStuckRestartEnabled = pipeEpochKeepTsFileAfterStuckRestartEnabled;
   }
 
   public void setPipeStorageEngineFlushTimeIntervalMs(long pipeStorageEngineFlushTimeIntervalMs) {
@@ -1440,6 +1476,36 @@ public class CommonConfig {
   public void setSubscriptionCheckMemoryEnoughIntervalMs(
       long subscriptionCheckMemoryEnoughIntervalMs) {
     this.subscriptionCheckMemoryEnoughIntervalMs = subscriptionCheckMemoryEnoughIntervalMs;
+  }
+
+  public long getSubscriptionEstimatedInsertNodeTabletInsertionEventSize() {
+    return subscriptionEstimatedInsertNodeTabletInsertionEventSize;
+  }
+
+  public void setSubscriptionEstimatedInsertNodeTabletInsertionEventSize(
+      final long subscriptionEstimatedInsertNodeTabletInsertionEventSize) {
+    this.subscriptionEstimatedInsertNodeTabletInsertionEventSize =
+        subscriptionEstimatedInsertNodeTabletInsertionEventSize;
+  }
+
+  public long getSubscriptionEstimatedRawTabletInsertionEventSize() {
+    return subscriptionEstimatedRawTabletInsertionEventSize;
+  }
+
+  public void setSubscriptionEstimatedRawTabletInsertionEventSize(
+      final long subscriptionEstimatedRawTabletInsertionEventSize) {
+    this.subscriptionEstimatedRawTabletInsertionEventSize =
+        subscriptionEstimatedRawTabletInsertionEventSize;
+  }
+
+  public long getSubscriptionMaxAllowedEventCountInTabletBatch() {
+    return subscriptionMaxAllowedEventCountInTabletBatch;
+  }
+
+  public void setSubscriptionMaxAllowedEventCountInTabletBatch(
+      final long subscriptionMaxAllowedEventCountInTabletBatch) {
+    this.subscriptionMaxAllowedEventCountInTabletBatch =
+        subscriptionMaxAllowedEventCountInTabletBatch;
   }
 
   public boolean getSubscriptionPrefetchEnabled() {

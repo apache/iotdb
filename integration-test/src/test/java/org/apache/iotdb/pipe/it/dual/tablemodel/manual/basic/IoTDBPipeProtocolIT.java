@@ -217,6 +217,7 @@ public class IoTDBPipeProtocolIT extends AbstractPipeTableModelDualManualIT {
       extractorAttributes.put("mode.streaming", "true");
       extractorAttributes.put("mode.snapshot", "false");
       extractorAttributes.put("mode.strict", "true");
+      extractorAttributes.put("user", "root");
 
       connectorAttributes.put("connector", "iotdb-thrift-connector");
       connectorAttributes.put("connector.batch.enable", "false");
@@ -261,6 +262,7 @@ public class IoTDBPipeProtocolIT extends AbstractPipeTableModelDualManualIT {
       extractorAttributes.put("mode.streaming", "true");
       extractorAttributes.put("mode.snapshot", "false");
       extractorAttributes.put("mode.strict", "true");
+      extractorAttributes.put("user", "root");
 
       connectorAttributes.put("connector", "iotdb-thrift-connector");
       connectorAttributes.put("connector.batch.enable", "false");
@@ -313,6 +315,7 @@ public class IoTDBPipeProtocolIT extends AbstractPipeTableModelDualManualIT {
       extractorAttributes.put("mode.streaming", "true");
       extractorAttributes.put("mode.snapshot", "false");
       extractorAttributes.put("mode.strict", "true");
+      extractorAttributes.put("user", "root");
 
       connectorAttributes.put("connector", "iotdb-thrift-connector");
       connectorAttributes.put("connector.batch.enable", "false");
@@ -440,6 +443,7 @@ public class IoTDBPipeProtocolIT extends AbstractPipeTableModelDualManualIT {
       extractorAttributes.put("inclusion", "data.insert");
       extractorAttributes.put("mode.snapshot", "false");
       extractorAttributes.put("mode.strict", "true");
+      extractorAttributes.put("user", "root");
 
       // Test forced-log mode, in open releases this might be "file"
       extractorAttributes.put("realtime.mode", "forced-log");

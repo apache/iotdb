@@ -42,7 +42,7 @@ public class PipeConfigRegionWritePlanEvent extends PipeWritePlanEvent {
 
   public PipeConfigRegionWritePlanEvent(
       final ConfigPhysicalPlan configPhysicalPlan, final boolean isGeneratedByPipe) {
-    this(configPhysicalPlan, null, 0, null, null, null, isGeneratedByPipe);
+    this(configPhysicalPlan, null, 0, null, null, null, null, true, isGeneratedByPipe);
   }
 
   public PipeConfigRegionWritePlanEvent(
@@ -52,8 +52,18 @@ public class PipeConfigRegionWritePlanEvent extends PipeWritePlanEvent {
       final PipeTaskMeta pipeTaskMeta,
       final TreePattern treePattern,
       final TablePattern tablePattern,
+      final String userName,
+      final boolean skipIfNoPrivileges,
       final boolean isGeneratedByPipe) {
-    super(pipeName, creationTime, pipeTaskMeta, treePattern, tablePattern, isGeneratedByPipe);
+    super(
+        pipeName,
+        creationTime,
+        pipeTaskMeta,
+        treePattern,
+        tablePattern,
+        userName,
+        skipIfNoPrivileges,
+        isGeneratedByPipe);
     this.configPhysicalPlan = configPhysicalPlan;
   }
 
@@ -68,10 +78,20 @@ public class PipeConfigRegionWritePlanEvent extends PipeWritePlanEvent {
       final PipeTaskMeta pipeTaskMeta,
       final TreePattern treePattern,
       final TablePattern tablePattern,
+      final String userName,
+      final boolean skipIfNoPrivileges,
       final long startTime,
       final long endTime) {
     return new PipeConfigRegionWritePlanEvent(
-        configPhysicalPlan, pipeName, creationTime, pipeTaskMeta, treePattern, tablePattern, false);
+        configPhysicalPlan,
+        pipeName,
+        creationTime,
+        pipeTaskMeta,
+        treePattern,
+        tablePattern,
+        userName,
+        skipIfNoPrivileges,
+        false);
   }
 
   @Override

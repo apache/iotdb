@@ -25,7 +25,7 @@ import org.apache.iotdb.commons.consensus.index.impl.MinimumProgressIndex;
 import org.apache.iotdb.commons.consensus.index.impl.SimpleProgressIndex;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.pipe.consensus.ProgressIndexDataNodeManager;
+import org.apache.iotdb.db.pipe.consensus.ReplicateProgressDataNodeManager;
 import org.apache.iotdb.db.pipe.consensus.deletion.DeletionResource;
 import org.apache.iotdb.db.pipe.consensus.deletion.DeletionResourceManager;
 import org.apache.iotdb.db.utils.MmapUtil;
@@ -58,11 +58,12 @@ import java.util.concurrent.locks.ReentrantLock;
 public class PageCacheDeletionBuffer implements DeletionBuffer {
   private static final Logger LOGGER = LoggerFactory.getLogger(PageCacheDeletionBuffer.class);
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
-  // Buffer config keep consistent with WAL.
-  private static final int ONE_THIRD_WAL_BUFFER_SIZE = config.getWalBufferSize() / 3;
   private static final double FSYNC_BUFFER_RATIO = 0.95;
   private static final int QUEUE_CAPACITY = config.getDeletionAheadLogBufferQueueCapacity();
   private static final long MAX_WAIT_CLOSE_TIME_IN_MS = 10000;
+
+  // Buffer config keep consistent with WAL.
+  public static final int DAL_BUFFER_SIZE = config.getWalBufferSize() / 3;
 
   // DeletionResources received from storage engine, which is waiting to be persisted.
   private final BlockingQueue<DeletionResource> deletionResources =
@@ -152,7 +153,7 @@ public class PageCacheDeletionBuffer implements DeletionBuffer {
 
   private void allocateBuffers() {
     try {
-      serializeBuffer = ByteBuffer.allocate(ONE_THIRD_WAL_BUFFER_SIZE);
+      serializeBuffer = ByteBuffer.allocateDirect(DAL_BUFFER_SIZE);
     } catch (OutOfMemoryError e) {
       LOGGER.error(
           "Fail to allocate deletionBuffer-group-{}'s buffer because out of memory.",
@@ -222,7 +223,8 @@ public class PageCacheDeletionBuffer implements DeletionBuffer {
     try {
       // PipeConsensus ensures that deleteDataNodes use recoverProgressIndex.
       ProgressIndex curProgressIndex =
-          ProgressIndexDataNodeManager.extractLocalSimpleProgressIndex(maxProgressIndexInLastFile);
+          ReplicateProgressDataNodeManager.extractLocalSimpleProgressIndex(
+              maxProgressIndexInLastFile);
       if (!(curProgressIndex instanceof SimpleProgressIndex)) {
         throw new IOException("Invalid deletion progress index: " + curProgressIndex);
       }
@@ -333,7 +335,7 @@ public class PageCacheDeletionBuffer implements DeletionBuffer {
 
       // For further deletion, we use non-blocking poll() method to persist existing deletion of
       // current batch in time.
-      while (totalSize.get() < ONE_THIRD_WAL_BUFFER_SIZE * FSYNC_BUFFER_RATIO) {
+      while (totalSize.get() < DAL_BUFFER_SIZE * FSYNC_BUFFER_RATIO) {
         DeletionResource deletionResource = null;
         try {
           // Timeout config keep consistent with WAL async mode.

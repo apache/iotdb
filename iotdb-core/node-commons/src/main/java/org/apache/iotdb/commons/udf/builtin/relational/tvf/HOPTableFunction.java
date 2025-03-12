@@ -48,7 +48,7 @@ public class HOPTableFunction implements TableFunction {
   private static final String TIMECOL_PARAMETER_NAME = "TIMECOL";
   private static final String SLIDE_PARAMETER_NAME = "SLIDE";
   private static final String SIZE_PARAMETER_NAME = "SIZE";
-  private static final String START_PARAMETER_NAME = "START";
+  private static final String ORIGIN_PARAMETER_NAME = "ORIGIN";
 
   @Override
   public List<ParameterSpecification> getArgumentsSpecifications() {
@@ -61,11 +61,12 @@ public class HOPTableFunction implements TableFunction {
         ScalarParameterSpecification.builder()
             .name(TIMECOL_PARAMETER_NAME)
             .type(Type.STRING)
+            .defaultValue("time")
             .build(),
         ScalarParameterSpecification.builder().name(SLIDE_PARAMETER_NAME).type(Type.INT64).build(),
         ScalarParameterSpecification.builder().name(SIZE_PARAMETER_NAME).type(Type.INT64).build(),
         ScalarParameterSpecification.builder()
-            .name(START_PARAMETER_NAME)
+            .name(ORIGIN_PARAMETER_NAME)
             .type(Type.TIMESTAMP)
             .defaultValue(0L)
             .build());
@@ -111,7 +112,7 @@ public class HOPTableFunction implements TableFunction {
       @Override
       public TableFunctionDataProcessor getDataProcessor() {
         return new HOPDataProcessor(
-            (Long) ((ScalarArgument) arguments.get(START_PARAMETER_NAME)).getValue(),
+            (Long) ((ScalarArgument) arguments.get(ORIGIN_PARAMETER_NAME)).getValue(),
             (Long) ((ScalarArgument) arguments.get(SLIDE_PARAMETER_NAME)).getValue(),
             (Long) ((ScalarArgument) arguments.get(SIZE_PARAMETER_NAME)).getValue());
       }

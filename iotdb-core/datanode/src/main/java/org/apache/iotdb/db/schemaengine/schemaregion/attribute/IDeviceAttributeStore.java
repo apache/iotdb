@@ -26,6 +26,10 @@ import java.io.IOException;
 import java.util.List;
 import java.util.Map;
 
+/**
+ * The storage of table device attributes. Note that we pass in the table name only for the metrics
+ * and that does not appear in the real storage.
+ */
 public interface IDeviceAttributeStore {
 
   void clear();
@@ -34,15 +38,19 @@ public interface IDeviceAttributeStore {
 
   void loadFromSnapshot(final File snapshotDir) throws IOException;
 
-  int createAttribute(final List<String> nameList, final Object[] valueList);
+  int createAttribute(
+      final List<String> nameList, final Object[] valueList, final String tableName);
 
   // Returns the actually updated map
   Map<String, Binary> alterAttribute(
-      final int pointer, final List<String> nameList, final Object[] valueList);
+      final int pointer,
+      final List<String> nameList,
+      final Object[] valueList,
+      final String tableName);
 
-  void removeAttribute(final int pointer);
+  void removeAttribute(final int pointer, final String tableName);
 
-  void removeAttribute(final int pointer, final String attributeName);
+  void removeAttribute(final int pointer, final String attributeName, final String tableName);
 
   Map<String, Binary> getAttributes(final int pointer);
 

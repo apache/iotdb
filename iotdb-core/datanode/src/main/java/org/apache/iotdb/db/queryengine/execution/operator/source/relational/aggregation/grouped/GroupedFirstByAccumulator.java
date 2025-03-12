@@ -628,7 +628,7 @@ public class GroupedFirstByAccumulator implements GroupedAccumulator {
         xNulls.set(groupId, true);
       } else {
         xNulls.set(groupId, false);
-        xIntValues.set(groupId, xColumn.getInt(xIdx));
+        xBinaryValues.set(groupId, xColumn.getBinary(xIdx));
       }
     }
   }

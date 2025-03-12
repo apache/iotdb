@@ -22,19 +22,23 @@ package org.apache.iotdb.db.queryengine.execution.operator.process.function;
 import org.apache.iotdb.commons.udf.utils.UDFDataTypeTransformer;
 import org.apache.iotdb.db.queryengine.execution.operator.process.function.partition.PartitionState;
 import org.apache.iotdb.db.queryengine.execution.operator.process.function.partition.Slice;
+import org.apache.iotdb.db.utils.datastructure.SortKey;
 import org.apache.iotdb.udf.api.type.Type;
 
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.block.TsBlock;
 
-import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
-import java.util.Objects;
+import java.util.stream.Collectors;
+
+import static org.apache.iotdb.db.queryengine.execution.operator.process.join.merge.MergeSortComparator.getComparatorForTable;
+import static org.apache.iotdb.db.queryengine.plan.relational.planner.SortOrder.ASC_NULLS_FIRST;
 
 public class PartitionRecognizer {
 
-  private final List<Integer> partitionChannels;
-  private final List<Object> partitionValues;
+  private SortKey partitionKey;
+  private final Comparator<SortKey> partitionComparator;
   private final List<Integer> requiredChannels;
   private final List<Integer> passThroughChannels;
   private final List<Type> inputDataTypes;
@@ -48,10 +52,16 @@ public class PartitionRecognizer {
       List<Integer> requiredChannels,
       List<Integer> passThroughChannels,
       List<TSDataType> inputDataTypes) {
-    this.partitionChannels = partitionChannels;
-    this.partitionValues = new ArrayList<>(partitionChannels.size());
-    for (int i = 0; i < partitionChannels.size(); i++) {
-      partitionValues.add(null);
+    this.partitionKey = null;
+    if (partitionChannels.isEmpty()) {
+      // always return 0
+      this.partitionComparator = (o1, o2) -> 0;
+    } else {
+      this.partitionComparator =
+          getComparatorForTable(
+              partitionChannels.stream().map(i -> ASC_NULLS_FIRST).collect(Collectors.toList()),
+              partitionChannels,
+              partitionChannels.stream().map(inputDataTypes::get).collect(Collectors.toList()));
     }
     this.requiredChannels = requiredChannels;
     this.passThroughChannels = passThroughChannels;
@@ -82,11 +92,9 @@ public class PartitionRecognizer {
       case INIT:
         state = handleInitState();
         break;
-      case NEW_PARTITION:
-        state = handleNewPartitionState();
-        break;
       case ITERATING:
-        state = handleIteratingState();
+      case NEW_PARTITION:
+        state = handleIteratingOrNewPartitionState();
         break;
       case NEED_MORE_DATA:
         state = handleNeedMoreDataState();
@@ -97,6 +105,7 @@ public class PartitionRecognizer {
     }
     if (PartitionState.NEED_MORE_DATA_STATE.equals(state)) {
       currentIndex = 0;
+      currentTsBlock = null;
     }
   }
 
@@ -104,21 +113,12 @@ public class PartitionRecognizer {
     if (currentTsBlock == null || currentTsBlock.isEmpty()) {
       return PartitionState.INIT_STATE;
     }
+    // init the partition Key as the first row
+    partitionKey = new SortKey(currentTsBlock, currentIndex);
     int endPartitionIndex = findNextDifferentRowIndex();
     Slice slice = getSlice(currentIndex, endPartitionIndex);
     currentIndex = endPartitionIndex;
     return PartitionState.newPartitionState(slice);
-  }
-
-  private PartitionState handleNewPartitionState() {
-    if (currentIndex >= currentTsBlock.getPositionCount()) {
-      return PartitionState.NEED_MORE_DATA_STATE;
-    } else {
-      int endPartitionIndex = findNextDifferentRowIndex();
-      Slice slice = getSlice(currentIndex, endPartitionIndex);
-      currentIndex = endPartitionIndex;
-      return PartitionState.newPartitionState(slice);
-    }
   }
 
   private PartitionState handleNeedMoreDataState() {
@@ -133,7 +133,6 @@ public class PartitionRecognizer {
       currentIndex = endPartitionIndex;
       return PartitionState.iteratingState(slice);
     } else {
-      currentIndex = endPartitionIndex;
       endPartitionIndex = findNextDifferentRowIndex();
       Slice slice = getSlice(currentIndex, endPartitionIndex);
       currentIndex = endPartitionIndex;
@@ -141,7 +140,7 @@ public class PartitionRecognizer {
     }
   }
 
-  private PartitionState handleIteratingState() {
+  private PartitionState handleIteratingOrNewPartitionState() {
     if (currentIndex >= currentTsBlock.getPositionCount()) {
       return PartitionState.NEED_MORE_DATA_STATE;
     } else {
@@ -157,22 +156,15 @@ public class PartitionRecognizer {
    * all rows have the same partition values, return the position count of the current TsBlock.
    */
   private int findNextDifferentRowIndex() {
-    int i = currentIndex;
-    while (i < currentTsBlock.getPositionCount()) {
-      for (int j = 0; j < partitionChannels.size(); j++) {
-        if (!Objects.equals(
-            partitionValues.get(j),
-            currentTsBlock.getColumn(partitionChannels.get(j)).getObject(i))) {
-          // update partition values
-          for (int k = 0; k < partitionChannels.size(); k++) {
-            partitionValues.set(k, currentTsBlock.getColumn(partitionChannels.get(k)).getObject(i));
-          }
-          return i;
-        }
+    SortKey compareKey = new SortKey(currentTsBlock, currentIndex);
+    while (compareKey.rowIndex < currentTsBlock.getPositionCount()) {
+      if (partitionComparator.compare(partitionKey, compareKey) != 0) {
+        partitionKey = compareKey;
+        return compareKey.rowIndex;
       }
-      i++;
+      compareKey.rowIndex++;
     }
-    return i;
+    return compareKey.rowIndex;
   }
 
   private Slice getSlice(int startPartitionIndex, int endPartitionIndex) {

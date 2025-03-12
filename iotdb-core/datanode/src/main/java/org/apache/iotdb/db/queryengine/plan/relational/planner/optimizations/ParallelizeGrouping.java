@@ -31,9 +31,9 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationN
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationTableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.CorrelatedJoinNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.DeviceTableScanNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.GroupNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.JoinNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.SemiJoinNode;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.node.SortBasedGroupNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.SortNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.StreamSortNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TableFunctionProcessorNode;
@@ -52,26 +52,26 @@ import static org.apache.iotdb.db.queryengine.plan.relational.planner.optimizati
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.ParallelizeGrouping.CanParalleled.UNABLE;
 
 /**
- * This rule is used to determine whether the SortBasedGroupNode can be parallelized during Logical
+ * This rule is used to determine whether the GroupNode can be parallelized during Logical
  *
  * <p>Optimization phase: Logical plan planning.
  *
- * <p>The SortBasedGroupNode can be parallelized if the following conditions are met:
+ * <p>The GroupNode can be parallelized if the following conditions are met:
  *
  * <ul>
  *   SortingKey is empty and the result child node has been pre-grouped. In the other world, the
  *   PartitionKey matches the lasted offspring that guarantees the data is grouped by PartitionKey.
  *   For example:
- *   <li>SortBasedGroupNode[tag1,tag2] -> SortNode[sort=tag1]
- *   <li>SortBasedGroupNode[tag1,tag2] -> TopKNode[sort=tag1,tag2]
- *   <li>SortBasedGroupNode[tag1,tag2] -> AggregationNode[group=tag1]
- *   <li>SortBasedGroupNode[tag1,tag2] -> TableFunctionNode[partition=tag1]
+ *   <li>GroupNode[tag1,tag2] -> SortNode[sort=tag1]
+ *   <li>GroupNode[tag1,tag2] -> TopKNode[sort=tag1,tag2]
+ *   <li>GroupNode[tag1,tag2] -> AggregationNode[group=tag1]
+ *   <li>GroupNode[tag1,tag2] -> TableFunctionNode[partition=tag1]
  * </ul>
  *
  * <ul>
  *   SortingKey is time column and the lasted offspring that guarantees the data is grouped by
  *   PartitionKey is TableDeviceScanNode. For example:
- *   <li>SortBasedGroupNode[device_id,time] -> ... -> TableDeviceScanNode
+ *   <li>GroupNode[device_id,time] -> ... -> TableDeviceScanNode
  * </ul>
  */
 public class ParallelizeGrouping implements PlanOptimizer {
@@ -140,10 +140,10 @@ public class ParallelizeGrouping implements PlanOptimizer {
     }
 
     @Override
-    public PlanNode visitSortBasedGroup(SortBasedGroupNode node, Context context) {
+    public PlanNode visitGroup(GroupNode node, Context context) {
       checkPrefixMatch(context, node.getOrderingScheme().getOrderBy());
       Context newContext = new Context(node.getOrderingScheme(), node.getPartitionKeyCount());
-      SortBasedGroupNode newNode = (SortBasedGroupNode) node.clone();
+      GroupNode newNode = (GroupNode) node.clone();
       newNode.addChild(node.getChild().accept(this, newContext));
       if (newContext.canParalleled.equals(ENABLE)) {
         newNode.setEnableParalleled(true);

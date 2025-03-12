@@ -19,8 +19,6 @@
 
 package org.apache.iotdb.commons.udf.builtin.relational;
 
-import org.apache.iotdb.commons.udf.builtin.relational.tvf.HOPTableFunction;
-import org.apache.iotdb.commons.udf.builtin.relational.tvf.RepeatExample;
 import org.apache.iotdb.udf.api.relational.TableFunction;
 
 import java.util.Arrays;
@@ -29,8 +27,6 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 public enum TableBuiltinTableFunction {
-  HOP("hop"),
-  REPEAT("repeat"),
   ;
 
   private final String functionName;
@@ -59,10 +55,6 @@ public enum TableBuiltinTableFunction {
 
   public static TableFunction getBuiltinTableFunction(String functionName) {
     switch (functionName.toLowerCase()) {
-      case "hop":
-        return new HOPTableFunction();
-      case "repeat":
-        return new RepeatExample();
       default:
         throw new UnsupportedOperationException("Unsupported table function: " + functionName);
     }

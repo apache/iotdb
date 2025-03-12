@@ -46,9 +46,9 @@ public class SubscriptionPipeTsFileBatchEvents implements SubscriptionPipeEvents
   }
 
   @Override
-  public void cleanUp() {
+  public void cleanUp(final boolean force) {
     if (referenceCount.decrementAndGet() == 0) {
-      batch.cleanUp();
+      batch.cleanUp(force);
     }
   }
 

@@ -400,6 +400,12 @@ public class TableModelUtils {
     return true;
   }
 
+  public static void assertCountDataAlwaysOnEnv(
+      final String database, final String table, final int count, final BaseEnv baseEnv) {
+    TestUtils.assertDataAlwaysOnEnv(
+        baseEnv, getQueryCountSql(table), "_col0,", Collections.singleton(count + ","), database);
+  }
+
   public static void assertCountData(
       final String database, final String table, final int count, final BaseEnv baseEnv) {
     TestUtils.assertDataEventuallyOnEnv(

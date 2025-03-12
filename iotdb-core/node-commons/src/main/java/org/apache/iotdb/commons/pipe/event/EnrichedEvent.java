@@ -61,6 +61,8 @@ public abstract class EnrichedEvent implements Event {
   protected CommitterKey committerKey;
   public static final long NO_COMMIT_ID = -1;
   protected long commitId = NO_COMMIT_ID;
+  // Used in IoTConsensusV2
+  protected long replicateIndexForIoTV2 = NO_COMMIT_ID;
   protected int rebootTimes = 0;
 
   protected final TreePattern treePattern;
@@ -74,6 +76,8 @@ public abstract class EnrichedEvent implements Event {
 
   protected volatile boolean shouldReportOnCommit = true;
   protected List<Supplier<Void>> onCommittedHooks = new ArrayList<>();
+  protected String userName;
+  protected boolean skipIfNoPrivileges;
 
   protected EnrichedEvent(
       final String pipeName,
@@ -81,6 +85,8 @@ public abstract class EnrichedEvent implements Event {
       final PipeTaskMeta pipeTaskMeta,
       final TreePattern treePattern,
       final TablePattern tablePattern,
+      final String userName,
+      final boolean skipIfNoPrivileges,
       final long startTime,
       final long endTime) {
     referenceCount = new AtomicInteger(0);
@@ -91,6 +97,8 @@ public abstract class EnrichedEvent implements Event {
     this.pipeTaskMeta = pipeTaskMeta;
     this.treePattern = treePattern;
     this.tablePattern = tablePattern;
+    this.userName = userName;
+    this.skipIfNoPrivileges = skipIfNoPrivileges;
     this.startTime = startTime;
     this.endTime = endTime;
 
@@ -338,6 +346,14 @@ public abstract class EnrichedEvent implements Event {
     return tablePattern;
   }
 
+  public String getUserName() {
+    return userName;
+  }
+
+  public boolean isSkipIfNoPrivileges() {
+    return skipIfNoPrivileges;
+  }
+
   public final long getStartTime() {
     return startTime;
   }
@@ -376,6 +392,8 @@ public abstract class EnrichedEvent implements Event {
       final PipeTaskMeta pipeTaskMeta,
       final TreePattern treePattern,
       final TablePattern tablePattern,
+      final String userName,
+      final boolean skipIfNoPrivileges,
       final long startTime,
       final long endTime);
 
@@ -388,6 +406,10 @@ public abstract class EnrichedEvent implements Event {
   /** Whether the {@link EnrichedEvent} need to be committed in order. */
   public boolean needToCommit() {
     return true;
+  }
+
+  public void throwIfNoPrivilege() throws Exception {
+    // Do nothing by default
   }
 
   public abstract boolean mayEventTimeOverlappedWithTimeRange();
@@ -413,6 +435,14 @@ public abstract class EnrichedEvent implements Event {
 
   public long getCommitId() {
     return commitId;
+  }
+
+  public long getReplicateIndexForIoTV2() {
+    return replicateIndexForIoTV2;
+  }
+
+  public void setReplicateIndexForIoTV2(long replicateIndexForIoTV2) {
+    this.replicateIndexForIoTV2 = replicateIndexForIoTV2;
   }
 
   public void onCommitted() {
@@ -441,7 +471,8 @@ public abstract class EnrichedEvent implements Event {
     final EnrichedEvent otherEvent = (EnrichedEvent) o;
     return Objects.equals(committerKey, otherEvent.committerKey)
         && commitId == otherEvent.commitId
-        && rebootTimes == otherEvent.rebootTimes;
+        && rebootTimes == otherEvent.rebootTimes
+        && replicateIndexForIoTV2 == otherEvent.replicateIndexForIoTV2;
   }
 
   @Override
@@ -459,6 +490,8 @@ public abstract class EnrichedEvent implements Event {
         + committerKey
         + "', commitId="
         + commitId
+        + "', replicateIndexForIoTV2="
+        + replicateIndexForIoTV2
         + ", treePattern='"
         + treePattern
         + "', tablePattern='"
@@ -473,6 +506,10 @@ public abstract class EnrichedEvent implements Event {
         + isTimeParsed
         + ", shouldReportOnCommit="
         + shouldReportOnCommit
+        + ", userName="
+        + userName
+        + ", skipIfNoPrivileges="
+        + skipIfNoPrivileges
         + '}';
   }
 
@@ -488,6 +525,8 @@ public abstract class EnrichedEvent implements Event {
         + committerKey
         + "', commitId="
         + commitId
+        + "', replicateIndexForIoTV2="
+        + replicateIndexForIoTV2
         + ", treePattern='"
         + treePattern
         + "', tablePattern='"
@@ -502,6 +541,10 @@ public abstract class EnrichedEvent implements Event {
         + isTimeParsed
         + ", shouldReportOnCommit="
         + shouldReportOnCommit
+        + ", userName="
+        + userName
+        + ", skipIfNoPrivileges="
+        + skipIfNoPrivileges
         + '}';
   }
 }

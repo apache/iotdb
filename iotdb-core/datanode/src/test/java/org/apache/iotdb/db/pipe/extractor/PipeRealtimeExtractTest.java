@@ -25,6 +25,7 @@ import org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant;
 import org.apache.iotdb.commons.pipe.config.plugin.configuraion.PipeTaskRuntimeConfiguration;
 import org.apache.iotdb.commons.pipe.config.plugin.env.PipeTaskExtractorRuntimeEnvironment;
 import org.apache.iotdb.commons.utils.FileUtils;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.pipe.extractor.dataregion.realtime.PipeRealtimeDataRegionExtractor;
 import org.apache.iotdb.db.pipe.extractor.dataregion.realtime.PipeRealtimeDataRegionHybridExtractor;
 import org.apache.iotdb.db.pipe.extractor.dataregion.realtime.PipeRealtimeDataRegionLogExtractor;
@@ -80,9 +81,12 @@ public class PipeRealtimeExtractTest {
 
   private ExecutorService writeService;
   private ExecutorService listenerService;
+  private int dataNodeId;
 
   @Before
   public void setUp() throws IOException {
+    dataNodeId = IoTDBDescriptor.getInstance().getConfig().getDataNodeId();
+    IoTDBDescriptor.getInstance().getConfig().setDataNodeId(0);
     writeService = Executors.newFixedThreadPool(2);
     listenerService = Executors.newFixedThreadPool(4);
     tmpDir = new File(Files.createTempDirectory("pipeRealtimeExtractor").toString());
@@ -97,6 +101,7 @@ public class PipeRealtimeExtractTest {
 
   @After
   public void tearDown() {
+    IoTDBDescriptor.getInstance().getConfig().setDataNodeId(dataNodeId);
     writeService.shutdownNow();
     listenerService.shutdownNow();
     FileUtils.deleteFileOrDirectory(tmpDir);

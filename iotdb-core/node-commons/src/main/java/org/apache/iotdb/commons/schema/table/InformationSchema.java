@@ -100,6 +100,9 @@ public class InformationSchema {
     tableTable.addColumnSchema(
         new AttributeColumnSchema(
             ColumnHeaderConstant.STATUS.toLowerCase(Locale.ENGLISH), TSDataType.STRING));
+    tableTable.addColumnSchema(
+        new AttributeColumnSchema(
+            ColumnHeaderConstant.COMMENT.toLowerCase(Locale.ENGLISH), TSDataType.STRING));
     tableTable.removeColumnSchema(TsTable.TIME_COLUMN_NAME);
     schemaTables.put(TABLES, tableTable);
 
@@ -120,6 +123,9 @@ public class InformationSchema {
     columnTable.addColumnSchema(
         new AttributeColumnSchema(
             ColumnHeaderConstant.STATUS.toLowerCase(Locale.ENGLISH), TSDataType.STRING));
+    columnTable.addColumnSchema(
+        new AttributeColumnSchema(
+            ColumnHeaderConstant.COMMENT.toLowerCase(Locale.ENGLISH), TSDataType.STRING));
     columnTable.removeColumnSchema(TsTable.TIME_COLUMN_NAME);
     schemaTables.put(COLUMNS, columnTable);
 

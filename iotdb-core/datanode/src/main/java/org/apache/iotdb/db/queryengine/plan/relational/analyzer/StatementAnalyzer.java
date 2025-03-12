@@ -31,8 +31,6 @@ import org.apache.iotdb.db.queryengine.execution.warnings.WarningCollector;
 import org.apache.iotdb.db.queryengine.plan.analyze.AnalyzeUtils;
 import org.apache.iotdb.db.queryengine.plan.analyze.QueryType;
 import org.apache.iotdb.db.queryengine.plan.analyze.load.LoadTsFileAnalyzer;
-import org.apache.iotdb.db.queryengine.plan.analyze.load.LoadTsFileToTableModelAnalyzer;
-import org.apache.iotdb.db.queryengine.plan.analyze.load.LoadTsFileToTreeModelAnalyzer;
 import org.apache.iotdb.db.queryengine.plan.analyze.schema.SchemaValidator;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.tablefunction.ArgumentAnalysis;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.tablefunction.ArgumentsAnalysis;
@@ -156,7 +154,6 @@ import org.apache.iotdb.db.queryengine.plan.statement.component.FillPolicy;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertBaseStatement;
 import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
 import org.apache.iotdb.db.schemaengine.table.InformationSchemaUtils;
-import org.apache.iotdb.db.storageengine.load.config.LoadTsFileConfigurator;
 import org.apache.iotdb.db.storageengine.load.metrics.LoadTsFileCostMetricsSet;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -217,7 +214,6 @@ import static java.util.Objects.requireNonNull;
 import static org.apache.iotdb.commons.schema.table.TsTable.TABLE_ALLOWED_PROPERTIES;
 import static org.apache.iotdb.commons.udf.builtin.relational.TableBuiltinScalarFunction.DATE_BIN;
 import static org.apache.iotdb.db.queryengine.execution.warnings.StandardWarningCode.REDUNDANT_ORDER_BY;
-import static org.apache.iotdb.db.queryengine.plan.execution.config.TableConfigTaskVisitor.DATABASE_NOT_SPECIFIED;
 import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.AggregationAnalyzer.verifyOrderByAggregations;
 import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.AggregationAnalyzer.verifySourceAggregations;
 import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.CanonicalizationAware.canonicalizationAwareKey;
@@ -617,7 +613,8 @@ public class StatementAnalyzer {
       queryContext.setQueryType(QueryType.WRITE);
 
       final long startTime = System.nanoTime();
-      try (final LoadTsFileAnalyzer loadTsFileAnalyzer = getAnalyzer(node)) {
+      try (final LoadTsFileAnalyzer loadTsFileAnalyzer =
+          new LoadTsFileAnalyzer(node, node.isGeneratedByPipe(), queryContext)) {
         loadTsFileAnalyzer.analyzeFileByFile(analysis);
       } catch (final Exception e) {
         final String exceptionMessage =
@@ -632,26 +629,6 @@ public class StatementAnalyzer {
       }
 
       return createAndAssignScope(node, scope);
-    }
-
-    private LoadTsFileAnalyzer getAnalyzer(final LoadTsFile loadTsFile) {
-      if (Objects.equals(loadTsFile.getModel(), LoadTsFileConfigurator.MODEL_TABLE_VALUE)) {
-        // Load to table-model
-        if (Objects.isNull(loadTsFile.getDatabase())) {
-          // If database is not specified, use the database from current session.
-          // If still not specified, throw an exception.
-          if (!queryContext.getDatabaseName().isPresent()) {
-            throw new SemanticException(DATABASE_NOT_SPECIFIED);
-          }
-          loadTsFile.setDatabase(queryContext.getDatabaseName().get());
-        }
-        return new LoadTsFileToTableModelAnalyzer(
-            loadTsFile, loadTsFile.isGeneratedByPipe(), metadata, queryContext);
-      } else {
-        // Load to tree-model
-        return new LoadTsFileToTreeModelAnalyzer(
-            loadTsFile, loadTsFile.isGeneratedByPipe(), queryContext);
-      }
     }
 
     @Override
@@ -3147,10 +3124,6 @@ public class StatementAnalyzer {
       // At most one table argument can be passed to a table function now
       if (argumentsAnalysis.getTableArgumentAnalyses().size() > 1) {
         throw new SemanticException("At most one table argument can be passed to a table function");
-      }
-      // Copartition is not supported now
-      if (!node.getCopartitioning().isEmpty()) {
-        throw new SemanticException("Copartitioning is not supported now.");
       }
 
       // validate the required input columns

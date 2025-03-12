@@ -28,17 +28,12 @@ import static java.util.Objects.requireNonNull;
 public class TableFunctionInvocation extends Relation {
   private final QualifiedName name;
   private final List<TableFunctionArgument> arguments;
-  private final List<List<QualifiedName>> copartitioning;
 
   public TableFunctionInvocation(
-      NodeLocation location,
-      QualifiedName name,
-      List<TableFunctionArgument> arguments,
-      List<List<QualifiedName>> copartitioning) {
+      NodeLocation location, QualifiedName name, List<TableFunctionArgument> arguments) {
     super(location);
     this.name = requireNonNull(name, "name is null");
     this.arguments = requireNonNull(arguments, "arguments is null");
-    this.copartitioning = requireNonNull(copartitioning, "copartitioning is null");
   }
 
   public QualifiedName getName() {
@@ -47,10 +42,6 @@ public class TableFunctionInvocation extends Relation {
 
   public List<TableFunctionArgument> getArguments() {
     return arguments;
-  }
-
-  public List<List<QualifiedName>> getCopartitioning() {
-    return copartitioning;
   }
 
   @Override
@@ -73,36 +64,20 @@ public class TableFunctionInvocation extends Relation {
     }
 
     TableFunctionInvocation that = (TableFunctionInvocation) o;
-    return Objects.equals(name, that.name)
-        && Objects.equals(arguments, that.arguments)
-        && Objects.equals(copartitioning, that.copartitioning);
+    return Objects.equals(name, that.name) && Objects.equals(arguments, that.arguments);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(name, arguments, copartitioning);
+    return Objects.hash(name, arguments);
   }
 
   @Override
   public String toString() {
-    StringBuilder builder = new StringBuilder();
-    builder.append(name).append("(");
-    builder.append(
-        arguments.stream().map(TableFunctionArgument::toString).collect(Collectors.joining(", ")));
-    if (!copartitioning.isEmpty()) {
-      builder.append(" COPARTITION");
-      builder.append(
-          copartitioning.stream()
-              .map(
-                  list ->
-                      list.stream()
-                          .map(QualifiedName::toString)
-                          .collect(Collectors.joining(", ", "(", ")")))
-              .collect(Collectors.joining(", ")));
-    }
-    builder.append(")");
-
-    return builder.toString();
+    return name
+        + "("
+        + arguments.stream().map(TableFunctionArgument::toString).collect(Collectors.joining(", "))
+        + ")";
   }
 
   @Override
@@ -112,6 +87,6 @@ public class TableFunctionInvocation extends Relation {
     }
 
     TableFunctionInvocation other = (TableFunctionInvocation) o;
-    return Objects.equals(name, other.name) && Objects.equals(copartitioning, other.copartitioning);
+    return Objects.equals(name, other.name);
   }
 }

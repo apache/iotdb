@@ -185,6 +185,19 @@ public class IoTDBUserDefinedTableFunctionIT {
         expectedHeader,
         retArray,
         DATABASE_NAME);
+    expectedHeader = new String[] {"device_id", "sum"};
+    retArray =
+        new String[] {
+          "d0,9.0,", "d1,12.0,",
+        };
+    tableResultSetEqualTest(
+        "select device_id, sum(s1) as sum from "
+            + "TABLE(REPEAT(TABLE(select * from vehicle where time>1), 3)) "
+            + "GROUP BY device_id "
+            + "ORDER BY device_id",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
   }
 
   @Test

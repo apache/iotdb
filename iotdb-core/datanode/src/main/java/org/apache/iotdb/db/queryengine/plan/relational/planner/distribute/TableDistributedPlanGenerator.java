@@ -32,6 +32,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.WritePlanNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.SingleChildProcessNode;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Analysis;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.AlignedDeviceEntry;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.ColumnSchema;
@@ -43,6 +44,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.SymbolAllocator;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationTableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationTreeDeviceViewScanNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AssignUniqueId;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.CollectNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.DeviceTableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.EnforceSingleRowNode;
@@ -50,6 +52,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ExplainAnaly
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.FillNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.FilterNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.GapFillNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.GroupNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.InformationSchemaTableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.JoinNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.LimitNode;
@@ -59,7 +62,6 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.node.OffsetNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.OutputNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ProjectNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.SemiJoinNode;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.node.SortBasedGroupNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.SortNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.StreamSortNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TableFunctionProcessorNode;
@@ -189,58 +191,24 @@ public class TableDistributedPlanGenerator
     if (!(node instanceof ValueFillNode)) {
       context.clearExpectedOrderingScheme();
     }
-    boolean parallel =
-        (node.getChild() instanceof SortBasedGroupNode)
-            && ((SortBasedGroupNode) node.getChild()).isEnableParalleled();
-    List<PlanNode> childrenNodes = node.getChild().accept(this, context);
-    OrderingScheme childOrdering = nodeOrderingMap.get(childrenNodes.get(0).getPlanNodeId());
-    if (childOrdering != null) {
-      nodeOrderingMap.put(node.getPlanNodeId(), childOrdering);
-    }
-    if (!parallel) {
-      node.setChild(mergeChildrenViaCollectOrMergeSort(childOrdering, childrenNodes));
-      return Collections.singletonList(node);
-    } else {
-      return splitForEachChild(node, childrenNodes);
-    }
+    return dealWithPlainSingleChildNode(node, context);
   }
 
   @Override
   public List<PlanNode> visitGapFill(GapFillNode node, PlanContext context) {
     context.clearExpectedOrderingScheme();
-    List<PlanNode> childrenNodes = node.getChild().accept(this, context);
-    OrderingScheme childOrdering = nodeOrderingMap.get(childrenNodes.get(0).getPlanNodeId());
-    if (childOrdering != null) {
-      nodeOrderingMap.put(node.getPlanNodeId(), childOrdering);
-    }
-
-    node.setChild(mergeChildrenViaCollectOrMergeSort(childOrdering, childrenNodes));
-    return Collections.singletonList(node);
+    return dealWithPlainSingleChildNode(node, context);
   }
 
   @Override
   public List<PlanNode> visitLimit(LimitNode node, PlanContext context) {
-    List<PlanNode> childrenNodes = node.getChild().accept(this, context);
-    OrderingScheme childOrdering = nodeOrderingMap.get(childrenNodes.get(0).getPlanNodeId());
-    if (childOrdering != null) {
-      nodeOrderingMap.put(node.getPlanNodeId(), childOrdering);
-    }
-
     // push down LimitNode in distributed plan optimize rule
-    node.setChild(mergeChildrenViaCollectOrMergeSort(childOrdering, childrenNodes));
-    return Collections.singletonList(node);
+    return dealWithPlainSingleChildNode(node, context);
   }
 
   @Override
   public List<PlanNode> visitOffset(OffsetNode node, PlanContext context) {
-    List<PlanNode> childrenNodes = node.getChild().accept(this, context);
-    OrderingScheme childOrdering = nodeOrderingMap.get(childrenNodes.get(0).getPlanNodeId());
-    if (childOrdering != null) {
-      nodeOrderingMap.put(node.getPlanNodeId(), childOrdering);
-    }
-
-    node.setChild(mergeChildrenViaCollectOrMergeSort(childOrdering, childrenNodes));
-    return Collections.singletonList(node);
+    return dealWithPlainSingleChildNode(node, context);
   }
 
   @Override
@@ -315,7 +283,7 @@ public class TableDistributedPlanGenerator
   }
 
   @Override
-  public List<PlanNode> visitSortBasedGroup(SortBasedGroupNode node, PlanContext context) {
+  public List<PlanNode> visitGroup(GroupNode node, PlanContext context) {
     boolean pushDown = context.isPushDownGrouping();
     try {
       context.setPushDownGrouping(node.isEnableParalleled());
@@ -933,18 +901,21 @@ public class TableDistributedPlanGenerator
 
   @Override
   public List<PlanNode> visitEnforceSingleRow(EnforceSingleRowNode node, PlanContext context) {
-    List<PlanNode> childrenNodes = node.getChild().accept(this, context);
-    OrderingScheme childOrdering = nodeOrderingMap.get(childrenNodes.get(0).getPlanNodeId());
-    if (childOrdering != null) {
-      nodeOrderingMap.put(node.getPlanNodeId(), childOrdering);
-    }
+    return dealWithPlainSingleChildNode(node, context);
+  }
 
-    node.setChild(mergeChildrenViaCollectOrMergeSort(childOrdering, childrenNodes));
-    return Collections.singletonList(node);
+  @Override
+  public List<PlanNode> visitAssignUniqueId(AssignUniqueId node, PlanContext context) {
+    return dealWithPlainSingleChildNode(node, context);
   }
 
   @Override
   public List<PlanNode> visitMarkDistinct(MarkDistinctNode node, PlanContext context) {
+    return dealWithPlainSingleChildNode(node, context);
+  }
+
+  private List<PlanNode> dealWithPlainSingleChildNode(
+      SingleChildProcessNode node, PlanContext context) {
     List<PlanNode> childrenNodes = node.getChild().accept(this, context);
     OrderingScheme childOrdering = nodeOrderingMap.get(childrenNodes.get(0).getPlanNodeId());
     if (childOrdering != null) {
@@ -978,8 +949,8 @@ public class TableDistributedPlanGenerator
       context.setPushDownGrouping(node.isRowSemantic());
       boolean canSplitPushDown =
           node.isRowSemantic()
-              || (node.getChild() instanceof SortBasedGroupNode)
-                  && ((SortBasedGroupNode) node.getChild()).isEnableParalleled();
+              || (node.getChild() instanceof GroupNode)
+                  && ((GroupNode) node.getChild()).isEnableParalleled();
       List<PlanNode> childrenNodes = node.getChild().accept(this, context);
       if (childrenNodes.size() == 1) {
         node.setChild(childrenNodes.get(0));
@@ -1081,7 +1052,8 @@ public class TableDistributedPlanGenerator
 
   private PlanNode mergeChildrenViaCollectOrMergeSort(
       final OrderingScheme childOrdering, final List<PlanNode> childrenNodes) {
-    checkArgument(!childrenNodes.isEmpty(), "childrenNodes should not be empty");
+    checkArgument(childrenNodes != null, "childrenNodes should not be null.");
+    checkArgument(!childrenNodes.isEmpty(), "childrenNodes should not be empty.");
 
     if (childrenNodes.size() == 1) {
       return childrenNodes.get(0);

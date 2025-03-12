@@ -83,6 +83,7 @@
         "jakarta.ws.rs:jakarta.ws.rs-api",
         "jakarta.xml.bind:jakarta.xml.bind-api",
         "net.java.dev.jna:jna",
+        "net.java.dev.jna:jna-platform",
         "net.minidev:accessors-smart",
         "net.minidev:json-smart",
         "org.antlr:antlr4-runtime",

@@ -183,12 +183,15 @@ public abstract class StateMachineProcedure<Env, TState> extends Procedure<Env> 
     if (Flow.HAS_MORE_STATE == stateFlow) {
       if (nextState == NO_NEXT_STATE) {
         LOG.error(
-            "StateMachineProcedure pid={} not set next state, but return HAS_MORE_STATE",
-            getProcId());
+            "StateMachineProcedure pid={} not set next state, but return HAS_MORE_STATE. It is likely that there is some problem with the code. Please check the code. This procedure is about to be terminated: {}",
+            getProcId(),
+            this);
+        stateFlow = Flow.NO_MORE_STATE;
       } else {
         stateToBeAdded = nextState;
       }
-    } else {
+    }
+    if (Flow.NO_MORE_STATE == stateFlow) {
       if (nextState != NO_NEXT_STATE) {
         LOG.warn(
             "StateMachineProcedure pid={} set next state to {}, but return NO_MORE_STATE",

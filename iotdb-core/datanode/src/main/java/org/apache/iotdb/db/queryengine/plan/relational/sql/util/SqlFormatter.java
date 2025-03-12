@@ -69,7 +69,9 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.RenameTable;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Row;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Select;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SelectItem;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SetColumnComment;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SetProperties;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SetTableComment;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowClusterId;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowCurrentDatabase;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowCurrentSqlDialect;
@@ -657,7 +659,13 @@ public final class SqlFormatter {
       builder.append(columnList);
       builder.append("\n").append(")");
 
+      node.getCharsetName().ifPresent(charset -> builder.append(" CHARSET ").append(charset));
+
       builder.append(formatPropertiesMultiLine(node.getProperties()));
+
+      if (Objects.nonNull(node.getComment())) {
+        builder.append(" COMMENT '").append(node.getComment()).append("'");
+      }
 
       return null;
     }
@@ -702,6 +710,10 @@ public final class SqlFormatter {
       column
           .getCharsetName()
           .ifPresent(charset -> stringBuilder.append(" CHARSET ").append(charset));
+
+      if (Objects.nonNull(column.getComment())) {
+        stringBuilder.append(" COMMENT '").append(column.getComment()).append("'");
+      }
       return stringBuilder.toString();
     }
 
@@ -772,7 +784,7 @@ public final class SqlFormatter {
         builder.append("IF EXISTS ");
       }
 
-      builder.append(formatName(node.getTable())).append(" RENAME COLUMN ");
+      builder.append(formatName(node.getTable())).append("RENAME COLUMN ");
       if (node.columnIfExists()) {
         builder.append("IF EXISTS ");
       }
@@ -792,9 +804,9 @@ public final class SqlFormatter {
         builder.append("IF EXISTS ");
       }
 
-      builder.append(formatName(node.getTable())).append(" DROP COLUMN ");
+      builder.append(formatName(node.getTable())).append("DROP COLUMN ");
       if (node.columnIfExists()) {
-        builder.append("IF NOT EXISTS ");
+        builder.append("IF EXISTS ");
       }
 
       builder.append(formatName(node.getField()));
@@ -809,13 +821,35 @@ public final class SqlFormatter {
         builder.append("IF EXISTS ");
       }
 
-      builder.append(formatName(node.getTableName())).append(" ADD COLUMN ");
+      builder.append(formatName(node.getTableName())).append("ADD COLUMN ");
       if (node.columnIfNotExists()) {
         builder.append("IF NOT EXISTS ");
       }
 
       builder.append(formatColumnDefinition(node.getColumn()));
 
+      return null;
+    }
+
+    @Override
+    protected Void visitSetTableComment(final SetTableComment node, final Integer indent) {
+      builder
+          .append("COMMENT ON TABLE ")
+          .append(formatName(node.getTableName()))
+          .append(" IS ")
+          .append(node.getComment());
+      return null;
+    }
+
+    @Override
+    protected Void visitSetColumnComment(final SetColumnComment node, final Integer indent) {
+      builder
+          .append("COMMENT ON COLUMN ")
+          .append(formatName(node.getTable()))
+          .append(".")
+          .append(formatName(node.getField()))
+          .append(" IS ")
+          .append(node.getComment());
       return null;
     }
 
@@ -1459,18 +1493,6 @@ public final class SqlFormatter {
     private void appendTableFunctionInvocation(TableFunctionInvocation node, Integer indent) {
       builder.append(formatName(node.getName())).append("(\n");
       appendTableFunctionArguments(node.getArguments(), indent + 1);
-      if (!node.getCopartitioning().isEmpty()) {
-        builder.append("\n");
-        append(indent + 1, "COPARTITION ");
-        builder.append(
-            node.getCopartitioning().stream()
-                .map(
-                    tableList ->
-                        tableList.stream()
-                            .map(SqlFormatter::formatName)
-                            .collect(joining(", ", "(", ")")))
-                .collect(joining(", ")));
-      }
       builder.append(")");
     }
 

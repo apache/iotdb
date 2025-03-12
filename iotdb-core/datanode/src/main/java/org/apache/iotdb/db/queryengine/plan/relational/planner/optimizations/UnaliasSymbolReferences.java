@@ -32,12 +32,14 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.SymbolAllocator;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.ir.DeterminismEvaluator;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ApplyNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AssignUniqueId;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.CorrelatedJoinNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.DeviceTableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.EnforceSingleRowNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ExplainAnalyzeNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.FilterNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.GapFillNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.GroupNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.InformationSchemaTableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.JoinNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.LimitNode;
@@ -48,7 +50,6 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.node.OutputNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.PreviousFillNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ProjectNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.SemiJoinNode;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.node.SortBasedGroupNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.SortNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TableFunctionNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TableFunctionProcessorNode;
@@ -425,7 +426,7 @@ public class UnaliasSymbolReferences implements PlanOptimizer {
     }
 
     @Override
-    public PlanAndMappings visitSortBasedGroup(SortBasedGroupNode node, UnaliasContext context) {
+    public PlanAndMappings visitGroup(GroupNode node, UnaliasContext context) {
       PlanAndMappings rewrittenSource = node.getChild().accept(this, context);
       Map<Symbol, Symbol> mapping = new HashMap<>(rewrittenSource.getMappings());
       SymbolMapper mapper = symbolMapper(mapping);
@@ -433,7 +434,7 @@ public class UnaliasSymbolReferences implements PlanOptimizer {
       OrderingScheme newOrderingScheme = mapper.map(node.getOrderingScheme());
 
       return new PlanAndMappings(
-          new SortBasedGroupNode(
+          new GroupNode(
               node.getPlanNodeId(),
               rewrittenSource.getRoot(),
               newOrderingScheme,
@@ -807,6 +808,18 @@ public class UnaliasSymbolReferences implements PlanOptimizer {
     }
 
     @Override
+    public PlanAndMappings visitAssignUniqueId(AssignUniqueId node, UnaliasContext context) {
+      PlanAndMappings rewrittenSource = node.getChild().accept(this, context);
+      Map<Symbol, Symbol> mapping = new HashMap<>(rewrittenSource.getMappings());
+      SymbolMapper mapper = symbolMapper(mapping);
+
+      Symbol newUnique = mapper.map(node.getIdColumn());
+
+      return new PlanAndMappings(
+          new AssignUniqueId(node.getPlanNodeId(), rewrittenSource.getRoot(), newUnique), mapping);
+    }
+
+    @Override
     public PlanAndMappings visitTableFunction(TableFunctionNode node, UnaliasContext context) {
       Map<Symbol, Symbol> mapping = new HashMap<>(context.getCorrelationMapping());
       SymbolMapper mapper = symbolMapper(mapping);
@@ -870,7 +883,7 @@ public class UnaliasSymbolReferences implements PlanOptimizer {
                 Optional.empty(),
                 ImmutableList.of(),
                 Optional.empty(),
-                false,
+                node.isRowSemantic(),
                 node.getArguments()),
             mapping);
       }
