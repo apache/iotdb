@@ -322,23 +322,6 @@ public class FragmentInstanceContext extends QueryContext {
         .collect(Collectors.toList());
   }
 
-  public Optional<TSStatus> getErrorCode() {
-    return stateMachine.getFailureCauses().stream()
-        .filter(e -> e instanceof IoTDBException || e instanceof IoTDBRuntimeException)
-        .findFirst()
-        .flatMap(
-            t -> {
-              TSStatus status;
-              if (t instanceof IoTDBException) {
-                status = new TSStatus(((IoTDBException) t).getErrorCode());
-              } else {
-                status = new TSStatus(((IoTDBRuntimeException) t).getErrorCode());
-              }
-              status.setMessage(t.getMessage());
-              return Optional.of(status);
-            });
-  }
-
   public void finished() {
     stateMachine.finished();
   }
@@ -395,6 +378,8 @@ public class FragmentInstanceContext extends QueryContext {
       } else if (failure instanceof IoTDBRuntimeException) {
         status = new TSStatus(((IoTDBRuntimeException) failure).getErrorCode());
         status.setMessage(failure.getMessage());
+      } else {
+        LOGGER.warn("[Unknown exception]: ", failure);
       }
     }
 
