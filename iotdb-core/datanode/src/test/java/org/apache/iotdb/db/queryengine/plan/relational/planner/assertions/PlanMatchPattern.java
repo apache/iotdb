@@ -22,6 +22,7 @@ package org.apache.iotdb.db.queryengine.plan.relational.planner.assertions;
 import org.apache.iotdb.db.queryengine.common.SessionInfo;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.DataOrganizationSpecification;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.SortOrder;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.Symbol;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.GroupReference;
@@ -45,6 +46,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ProjectNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.SemiJoinNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.SortNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.StreamSortNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TableFunctionProcessorNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TreeAlignedDeviceViewScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TreeDeviceViewScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TreeNonAlignedDeviceViewScanNode;
@@ -70,6 +72,7 @@ import java.util.function.Predicate;
 import static com.google.common.base.MoreObjects.toStringHelper;
 import static com.google.common.base.Preconditions.checkState;
 import static com.google.common.collect.ImmutableList.toImmutableList;
+import static com.google.common.collect.ImmutableMap.toImmutableMap;
 import static java.util.Collections.nCopies;
 import static java.util.Objects.requireNonNull;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.SortOrder.ASC_NULLS_FIRST;
@@ -212,6 +215,23 @@ public final class PlanMatchPattern {
       String expectedTableName, Map<String, String> columnReferences) {
     PlanMatchPattern result = tableScan(expectedTableName);
     return result.addColumnReferences(expectedTableName, columnReferences);
+  }
+
+  public static PlanMatchPattern tableFunctionProcessor(
+      Consumer<TableFunctionProcessorMatcher.Builder> handler, PlanMatchPattern... source) {
+    TableFunctionProcessorMatcher.Builder builder = new TableFunctionProcessorMatcher.Builder();
+    handler.accept(builder);
+    return node(TableFunctionProcessorNode.class, source).with(builder.build());
+  }
+
+  public static ExpectedValueProvider<DataOrganizationSpecification> specification(
+      List<String> partitionBy, List<String> orderBy, Map<String, SortOrder> orderings) {
+    return new SpecificationProvider(
+        partitionBy.stream().map(SymbolAlias::new).collect(toImmutableList()),
+        orderBy.stream().map(SymbolAlias::new).collect(toImmutableList()),
+        orderings.entrySet().stream()
+            .collect(
+                toImmutableMap(entry -> new SymbolAlias(entry.getKey()), Map.Entry::getValue)));
   }
 
   public static PlanMatchPattern strictTableScan(

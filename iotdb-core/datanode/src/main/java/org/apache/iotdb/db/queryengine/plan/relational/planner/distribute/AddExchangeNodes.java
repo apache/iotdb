@@ -28,12 +28,14 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.WritePlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.read.TableDeviceSourceNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ExchangeNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ExplainAnalyzeNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TableFunctionProcessorNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.TableDeviceFetchNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.TableDeviceQueryCountNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.TableDeviceQueryScanNode;
 
 import static org.apache.iotdb.db.queryengine.plan.planner.distribution.NodeDistributionType.DIFFERENT_FROM_ALL_CHILDREN;
+import static org.apache.iotdb.db.queryengine.plan.planner.distribution.NodeDistributionType.NO_CHILD;
 import static org.apache.iotdb.db.queryengine.plan.planner.distribution.NodeDistributionType.SAME_WITH_ALL_CHILDREN;
 import static org.apache.iotdb.db.queryengine.plan.planner.distribution.NodeDistributionType.SAME_WITH_SOME_CHILD;
 
@@ -135,6 +137,18 @@ public class AddExchangeNodes
         new NodeDistribution(DIFFERENT_FROM_ALL_CHILDREN, DataPartition.NOT_ASSIGNED));
     context.hasExchangeNode = true;
     return newNode;
+  }
+
+  @Override
+  public PlanNode visitTableFunctionProcessor(
+      TableFunctionProcessorNode node, TableDistributedPlanGenerator.PlanContext context) {
+    if (node.getChildren().isEmpty()) {
+      context.nodeDistributionMap.put(
+          node.getPlanNodeId(), new NodeDistribution(NO_CHILD, DataPartition.NOT_ASSIGNED));
+      return node;
+    } else {
+      return visitPlan(node, context);
+    }
   }
 
   private PlanNode processTableDeviceSourceNode(
