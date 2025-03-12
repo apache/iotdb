@@ -191,7 +191,7 @@ public class OpcDaServerHandle implements Closeable {
       if (!serverHandleMap.containsKey(itemId)) {
         addItem(itemId, schemas.get(i).getType());
       }
-      for (int j = tablet.getMaxRowNumber() - 1; j >= 0; --j) {
+      for (int j = tablet.getRowSize() - 1; j >= 0; --j) {
         if (Objects.isNull(tablet.bitMaps)
             || Objects.isNull(tablet.bitMaps[i])
             || !tablet.bitMaps[i].isMarked(j)) {
