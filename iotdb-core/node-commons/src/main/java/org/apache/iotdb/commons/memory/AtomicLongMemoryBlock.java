@@ -53,6 +53,9 @@ public class AtomicLongMemoryBlock extends IMemoryBlock {
 
   @Override
   public long forceAllocateWithoutLimitation(long sizeInByte) {
+    if (name.equals("TimePartitionInfoMemoryBlock")) {
+      LOGGER.error("TimePartitionInfoMemoryBlock forceAllocateWithoutLimitation {}", sizeInByte);
+    }
     return usedMemoryInBytes.addAndGet(sizeInByte);
   }
 
@@ -101,6 +104,9 @@ public class AtomicLongMemoryBlock extends IMemoryBlock {
 
   @Override
   public long release(long sizeInByte) {
+    if (name.equals("TimePartitionInfoMemoryBlock")) {
+      LOGGER.error("TimePartitionInfoMemoryBlock release {}", sizeInByte);
+    }
     return usedMemoryInBytes.updateAndGet(
         memCost -> {
           if (sizeInByte > memCost) {
@@ -115,6 +121,9 @@ public class AtomicLongMemoryBlock extends IMemoryBlock {
 
   @Override
   public void setUsedMemoryInBytes(long usedMemoryInBytes) {
+    if (name.equals("TimePartitionInfoMemoryBlock")) {
+      LOGGER.error("TimePartitionInfoMemoryBlock setUsedMemoryInBytes {}", usedMemoryInBytes);
+    }
     this.usedMemoryInBytes.set(usedMemoryInBytes);
   }
 
