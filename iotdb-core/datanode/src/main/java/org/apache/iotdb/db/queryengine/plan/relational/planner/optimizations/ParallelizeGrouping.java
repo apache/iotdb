@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations;
 
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanGraphPrinter;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Analysis;
@@ -80,14 +79,7 @@ public class ParallelizeGrouping implements PlanOptimizer {
     if (!(context.getAnalysis().isQuery())) {
       return plan;
     }
-    // TODO: remove println
-    System.out.println("before optimize ParallelizeGrouping ==========================");
-    PlanGraphPrinter.print(plan);
-    PlanNode res = plan.accept(new Rewriter(context.getAnalysis()), new Context(null, 0));
-    System.out.println("after optimize ParallelizeGrouping ==========================");
-    PlanGraphPrinter.print(res);
-    return res;
-    //        return plan.accept(new Rewriter(context.getAnalysis()), new Context());
+    return plan.accept(new Rewriter(context.getAnalysis()), new Context());
   }
 
   private static class Rewriter extends PlanVisitor<PlanNode, Context> {
