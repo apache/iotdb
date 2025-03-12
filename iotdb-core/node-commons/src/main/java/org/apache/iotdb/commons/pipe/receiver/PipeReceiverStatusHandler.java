@@ -25,6 +25,7 @@ import org.apache.iotdb.commons.exception.pipe.PipeRuntimeConnectorRetryTimesCon
 import org.apache.iotdb.commons.pipe.agent.task.subtask.PipeSubtask;
 import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.pipe.api.exception.PipeException;
+import org.apache.iotdb.pipe.api.exception.PipeReadOnlyException;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.slf4j.Logger;
@@ -95,6 +96,12 @@ public class PipeReceiverStatusHandler {
       case 400: // REDIRECTION_RECOMMEND
         {
           return;
+        }
+
+      case 600: // SYSTEM_READ_ONLY
+        {
+          LOGGER.debug("System read-only: will retry with increasing interval. status: {}", status);
+          throw new PipeReadOnlyException(exceptionMessage);
         }
 
       case 1809: // PIPE_RECEIVER_IDEMPOTENT_CONFLICT_EXCEPTION

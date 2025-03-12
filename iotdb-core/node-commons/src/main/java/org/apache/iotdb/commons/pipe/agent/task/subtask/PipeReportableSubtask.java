@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.exception.pipe.PipeRuntimeConnectorRetryTimesCon
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeCriticalException;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeException;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
+import org.apache.iotdb.pipe.api.exception.PipeReadOnlyException;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -151,7 +152,12 @@ public abstract class PipeReportableSubtask extends PipeSubtask {
         throwable.getMessage(),
         throwable);
     try {
-      Thread.sleep(Math.min(1000L * retryCount.get(), 10000));
+      long sleepInterval = Math.min(1000L * retryCount.get(), 10000);
+      // if receiver is read-only, connector will retry will power-increasing interval
+      if (throwable instanceof PipeReadOnlyException) {
+        sleepInterval = Math.min(1000L * retryCount.get() * retryCount.get(), 1000L * 120);
+      }
+      Thread.sleep(sleepInterval);
     } catch (final InterruptedException e) {
       LOGGER.warn(
           "Interrupted when retrying to execute subtask {} (creation time: {}, simple class: {})",
