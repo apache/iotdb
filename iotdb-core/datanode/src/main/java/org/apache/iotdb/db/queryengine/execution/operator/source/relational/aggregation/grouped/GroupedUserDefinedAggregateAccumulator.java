@@ -88,10 +88,6 @@ public class GroupedUserDefinedAggregateAccumulator implements GroupedAccumulato
       int groupId = groupIds[selectedPositions[index]];
       index++;
       State state = getOrCreateState(groupId);
-      if (state == null) {
-        state = aggregateFunction.createState();
-        stateArray.set(groupId, state);
-      }
       aggregateFunction.addInput(state, iterator.next());
     }
   }
