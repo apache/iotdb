@@ -57,38 +57,56 @@ public class LikeViewExpression extends UnaryViewExpression {
   public LikeViewExpression(ByteBuffer byteBuffer) {
     super(ViewExpression.deserialize(byteBuffer));
     pattern = ReadWriteIOUtils.readString(byteBuffer);
-    isNot = ReadWriteIOUtils.readBool(byteBuffer);
-    Optional<Character> tempEscape;
-    try{
+    // 先读一个byte
+    byte judge = ReadWriteIOUtils.readByte(byteBuffer);
+    switch (judge){
+      case -1:
+      case 0:
+        isNot = false;
+        escape = Optional.empty();
+        break;
+      case 1:
+        isNot = true;
+        escape = Optional.empty();
+        break;
+      case 2:
         if (ReadWriteIOUtils.readBool(byteBuffer)) {
-            tempEscape = Optional.of(ReadWriteIOUtils.readString(byteBuffer).charAt(0));
+          escape = Optional.of(ReadWriteIOUtils.readString(byteBuffer).charAt(0));
         } else {
-            tempEscape = Optional.empty();
+          escape = Optional.empty();
         }
+        isNot = ReadWriteIOUtils.readBool(byteBuffer);
+      default:
+        throw new IllegalStateException("Unexpected value in LikeViewExpression: " + judge);
     }
-    catch (BufferUnderflowException e){
-        tempEscape = Optional.empty();
-    }
-    escape = tempEscape;
   }
 
   public LikeViewExpression(InputStream inputStream) {
     super(ViewExpression.deserialize(inputStream));
     try {
       pattern = ReadWriteIOUtils.readString(inputStream);
-      isNot = ReadWriteIOUtils.readBool(inputStream);
-      Optional<Character> tempEscape;
-      try{
-        if (ReadWriteIOUtils.readBool(inputStream)) {
-          tempEscape = Optional.of(ReadWriteIOUtils.readString(inputStream).charAt(0));
-        } else {
-          tempEscape = Optional.empty();
-        }
+      byte judge = ReadWriteIOUtils.readByte(inputStream);
+      switch (judge){
+        case -1:
+        case 0:
+          escape = Optional.empty();
+          isNot = false;
+          break;
+        case 1:
+          escape = Optional.empty();
+          isNot = true;
+          break;
+        case 2:
+          if (ReadWriteIOUtils.readBool(inputStream)) {
+              escape = Optional.of(ReadWriteIOUtils.readString(inputStream).charAt(0));
+          } else {
+              escape = Optional.empty();
+          }
+          isNot = ReadWriteIOUtils.readBool(inputStream);
+          break;
+        default:
+          throw new IllegalStateException("Unexpected value in LikeViewExpression: " + judge);
       }
-      catch (IOException e){
-        tempEscape = Optional.empty();
-      }
-      escape = tempEscape;
     } catch (IOException e) {
       throw new RuntimeException(e);
     }
@@ -128,22 +146,24 @@ public class LikeViewExpression extends UnaryViewExpression {
   protected void serialize(ByteBuffer byteBuffer) {
     super.serialize(byteBuffer);
     ReadWriteIOUtils.write(pattern, byteBuffer);
-    ReadWriteIOUtils.write(isNot, byteBuffer);
+    ReadWriteIOUtils.write(2, byteBuffer);
     ReadWriteIOUtils.write(escape.isPresent(), byteBuffer);
     if (escape.isPresent()) {
       ReadWriteIOUtils.write(escape.get().toString(), byteBuffer);
     }
+    ReadWriteIOUtils.write(isNot, byteBuffer);
   }
 
   @Override
   protected void serialize(OutputStream stream) throws IOException {
     super.serialize(stream);
     ReadWriteIOUtils.write(pattern, stream);
-    ReadWriteIOUtils.write(isNot, stream);
+    ReadWriteIOUtils.write(2, stream);
     ReadWriteIOUtils.write(escape.isPresent(), stream);
     if (escape.isPresent()) {
       ReadWriteIOUtils.write(escape.get().toString(), stream);
     }
+    ReadWriteIOUtils.write(isNot, stream);
   }
 
   // endregion
