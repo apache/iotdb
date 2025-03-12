@@ -234,7 +234,7 @@ public class FileTimeIndex implements ITimeIndex {
 
   @Override
   public boolean isDeviceAlive(IDeviceID device, long ttl) {
-    return endTime >= CommonDateTimeUtils.currentTime() - ttl;
+    return ttl == Long.MAX_VALUE || endTime >= CommonDateTimeUtils.currentTime() - ttl;
   }
 
   @Override
