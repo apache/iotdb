@@ -185,7 +185,7 @@ public class DataNodeTableCache implements ITableCache {
             tableName,
             compareTable(oldTable, newTable));
       } else if (LOGGER.isInfoEnabled()) {
-        LOGGER.info("Commit-update table {}.{} successfully", database, tableName);
+        LOGGER.info("Commit-update table {}.{} successfully.", database, tableName);
       }
       removeTableFromPreUpdateMap(database, tableName);
       version.incrementAndGet();
