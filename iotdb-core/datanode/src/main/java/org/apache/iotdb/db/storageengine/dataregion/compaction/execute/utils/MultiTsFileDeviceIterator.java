@@ -214,7 +214,10 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
     ttlForCurrentDevice =
         DataNodeTTLCache.getInstance()
             .getTTL(((PlainDeviceID) currentDevice.getLeft()).toStringID());
-    timeLowerBoundForCurrentDevice = CommonDateTimeUtils.currentTime() - ttlForCurrentDevice;
+    timeLowerBoundForCurrentDevice =
+        ttlForCurrentDevice == Long.MAX_VALUE
+            ? Long.MIN_VALUE
+            : CommonDateTimeUtils.currentTime() - ttlForCurrentDevice;
     return currentDevice;
   }
 
