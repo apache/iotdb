@@ -1058,6 +1058,11 @@ public class IoTDBDescriptor {
             properties.getProperty(
                 "datanode_table_cache_semaphore_permit_num",
                 String.valueOf(conf.getDataNodeTableCacheSemaphorePermitNum()))));
+    conf.setDataNodeTableCacheDetailedLogEnabled(
+        Boolean.parseBoolean(
+            properties.getProperty(
+                "datanode_table_cache_detailed_log_enabled",
+                String.valueOf(conf.isDataNodeTableCacheDetailedLogEnabled()))));
 
     conf.setGeneralRegionAttributeSecurityServiceIntervalSeconds(
         Long.parseLong(

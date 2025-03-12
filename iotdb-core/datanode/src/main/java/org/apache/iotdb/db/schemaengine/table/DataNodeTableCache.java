@@ -66,6 +66,8 @@ public class DataNodeTableCache implements ITableCache {
   private final Semaphore fetchTableSemaphore =
       new Semaphore(
           IoTDBDescriptor.getInstance().getConfig().getDataNodeTableCacheSemaphorePermitNum());
+  private final boolean isDetailedLogEnabled =
+      IoTDBDescriptor.getInstance().getConfig().isDataNodeTableCacheDetailedLogEnabled();
 
   private DataNodeTableCache() {
     // Do nothing
@@ -180,7 +182,7 @@ public class DataNodeTableCache implements ITableCache {
               .put(tableName, newTable);
       if (LOGGER.isInfoEnabled()) {
         LOGGER.info(
-            "Commit-update table {}.{} successfully, {}",
+            "Commit-update table {}.{} successfully. {}",
             database,
             tableName,
             compareTable(oldTable, newTable));
@@ -350,7 +352,7 @@ public class DataNodeTableCache implements ITableCache {
                     }
                     isUpdated.set(true);
                     LOGGER.info(
-                        "Update table {}.{} by table fetch, {}",
+                        "Update table {}.{} by table fetch. {}",
                         database,
                         tableName,
                         compareTable(
@@ -378,6 +380,9 @@ public class DataNodeTableCache implements ITableCache {
   }
 
   private String compareTable(final TsTable oldTable, final TsTable newTable) {
+    if (!isDetailedLogEnabled) {
+      return "";
+    }
     if (Objects.isNull(oldTable)) {
       return "Added table: " + newTable;
     }

@@ -964,6 +964,7 @@ public class IoTDBConfig {
   private String dataNodeSchemaCacheEvictionPolicy = "FIFO";
 
   private int dataNodeTableCacheSemaphorePermitNum = 5;
+  private boolean dataNodeTableCacheDetailedLogEnabled = false;
 
   /** GRASS Service */
   private long generalRegionAttributeSecurityServiceIntervalSeconds = 30L;
@@ -3200,6 +3201,15 @@ public class IoTDBConfig {
 
   public void setDataNodeTableCacheSemaphorePermitNum(int dataNodeTableCacheSemaphorePermitNum) {
     this.dataNodeTableCacheSemaphorePermitNum = dataNodeTableCacheSemaphorePermitNum;
+  }
+
+  public boolean isDataNodeTableCacheDetailedLogEnabled() {
+    return dataNodeTableCacheDetailedLogEnabled;
+  }
+
+  public void setDataNodeTableCacheDetailedLogEnabled(
+      boolean dataNodeTableCacheDetailedLogEnabled) {
+    this.dataNodeTableCacheDetailedLogEnabled = dataNodeTableCacheDetailedLogEnabled;
   }
 
   public long getGeneralRegionAttributeSecurityServiceIntervalSeconds() {

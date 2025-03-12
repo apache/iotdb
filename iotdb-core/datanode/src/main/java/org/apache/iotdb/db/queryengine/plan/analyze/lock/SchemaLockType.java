@@ -48,17 +48,4 @@ public enum SchemaLockType {
    * </ol>
    */
   VALIDATE_VS_DELETION,
-
-  /**
-   * This lock is used for guarantee no timeseries (tree model) under path representing table (table
-   * model).
-   *
-   * <ol>
-   *   <li>Take read lock before creating timeseries (tree model).
-   *   <li>Release read lock after finishing creating timeseries (tree model).
-   *   <li>Take write lock before pre-create table (table model).
-   *   <li>Release write lock after finishing pre-create table (table model).
-   * </ol>
-   */
-  TIMESERIES_VS_TABLE,
 }
