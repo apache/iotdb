@@ -680,4 +680,17 @@ public abstract class AstVisitor<R, C> {
   protected R visitSetSqlDialect(SetSqlDialect node, C context) {
     return visitStatement(node, context);
   }
+
+  public R visitTableArgument(TableFunctionTableArgument tableFunctionTableArgument, C context) {
+    return visitNode(tableFunctionTableArgument, context);
+  }
+
+  public R visitTableFunctionArgument(TableFunctionArgument tableFunctionArgument, C context) {
+    return visitNode(tableFunctionArgument, context);
+  }
+
+  public R visitTableFunctionInvocation(
+      TableFunctionInvocation tableFunctionInvocation, C context) {
+    return visitNode(tableFunctionInvocation, context);
+  }
 }
