@@ -246,7 +246,7 @@ createTableViewStatement
 
 viewColumnDefinition
     : identifier (type)? (columnCategory=(TAG | TIME | FIELD))? comment?
-    | identifier (type)? columnCategory=FIELD FROM original_measurement=identifier comment?
+    | identifier (type)? (columnCategory=FIELD)? FROM original_measurement=identifier comment?
     ;
 
 // IoTDB Objects

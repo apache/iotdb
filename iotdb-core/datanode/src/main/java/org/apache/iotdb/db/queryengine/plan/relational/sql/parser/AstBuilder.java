@@ -194,6 +194,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Update;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.UpdateAssignment;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Use;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Values;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ViewFieldDefinition;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.WhenClause;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.With;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.WithQuery;
@@ -516,13 +517,25 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
 
   @Override
   public Node visitViewColumnDefinition(final RelationalSqlParser.ViewColumnDefinitionContext ctx) {
-    return new ColumnDefinition(
-        getLocation(ctx),
-        lowerIdentifier((Identifier) visit(ctx.identifier().get(0))),
-        Objects.nonNull(ctx.type()) ? (DataType) visit(ctx.type()) : null,
-        getColumnCategory(ctx.columnCategory),
-        null,
-        ctx.comment() == null ? null : ((StringLiteral) visit(ctx.comment().string())).getValue());
+    return Objects.nonNull(ctx.FROM())
+        ? new ViewFieldDefinition(
+            getLocation(ctx),
+            lowerIdentifier((Identifier) visit(ctx.identifier().get(0))),
+            Objects.nonNull(ctx.type()) ? (DataType) visit(ctx.type()) : null,
+            null,
+            ctx.comment() == null
+                ? null
+                : ((StringLiteral) visit(ctx.comment().string())).getValue(),
+            lowerIdentifier((Identifier) visit(ctx.original_measurement)))
+        : new ColumnDefinition(
+            getLocation(ctx),
+            lowerIdentifier((Identifier) visit(ctx.identifier().get(0))),
+            Objects.nonNull(ctx.type()) ? (DataType) visit(ctx.type()) : null,
+            getColumnCategory(ctx.columnCategory),
+            null,
+            ctx.comment() == null
+                ? null
+                : ((StringLiteral) visit(ctx.comment().string())).getValue());
   }
 
   private PartialPath parsePrefixPath(final RelationalSqlParser.PrefixPathContext ctx) {
