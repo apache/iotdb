@@ -27,6 +27,7 @@ import org.apache.iotdb.confignode.consensus.request.write.auth.AuthorRelational
 import org.apache.iotdb.confignode.consensus.request.write.database.DatabaseSchemaPlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.DeleteDatabasePlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeCreateTablePlan;
+import org.apache.iotdb.confignode.consensus.request.write.table.AbstractTablePlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.AddTableColumnPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.CommitDeleteColumnPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.CommitDeleteTablePlan;
@@ -77,10 +78,9 @@ public class PipeConfigPhysicalPlanTablePatternParseVisitor
   @Override
   public Optional<ConfigPhysicalPlan> visitPipeCreateTable(
       final PipeCreateTablePlan pipeCreateTablePlan, final TablePattern pattern) {
-    return matchDatabaseAndTableName(
-            pipeCreateTablePlan.getDatabase(),
-            pipeCreateTablePlan.getTable().getTableName(),
-            pattern)
+    return pattern.matchesDatabase(
+                PathUtils.unQualifyDatabaseName(pipeCreateTablePlan.getDatabase()))
+            && pattern.matchesTable(pipeCreateTablePlan.getTable().getTableName())
         ? Optional.of(pipeCreateTablePlan)
         : Optional.empty();
   }
@@ -88,72 +88,51 @@ public class PipeConfigPhysicalPlanTablePatternParseVisitor
   @Override
   public Optional<ConfigPhysicalPlan> visitAddTableColumn(
       final AddTableColumnPlan addTableColumnPlan, final TablePattern pattern) {
-    return matchDatabaseAndTableName(
-            addTableColumnPlan.getDatabase(), addTableColumnPlan.getTableName(), pattern)
-        ? Optional.of(addTableColumnPlan)
-        : Optional.empty();
+    return visitAbstractTablePlan(addTableColumnPlan, pattern);
   }
 
   @Override
   public Optional<ConfigPhysicalPlan> visitSetTableProperties(
       final SetTablePropertiesPlan setTablePropertiesPlan, final TablePattern pattern) {
-    return matchDatabaseAndTableName(
-            setTablePropertiesPlan.getDatabase(), setTablePropertiesPlan.getTableName(), pattern)
-        ? Optional.of(setTablePropertiesPlan)
-        : Optional.empty();
+    return visitAbstractTablePlan(setTablePropertiesPlan, pattern);
   }
 
   @Override
   public Optional<ConfigPhysicalPlan> visitCommitDeleteColumn(
       final CommitDeleteColumnPlan commitDeleteColumnPlan, final TablePattern pattern) {
-    return matchDatabaseAndTableName(
-            commitDeleteColumnPlan.getDatabase(), commitDeleteColumnPlan.getTableName(), pattern)
-        ? Optional.of(commitDeleteColumnPlan)
-        : Optional.empty();
+    return visitAbstractTablePlan(commitDeleteColumnPlan, pattern);
   }
 
   @Override
   public Optional<ConfigPhysicalPlan> visitRenameTableColumn(
       final RenameTableColumnPlan renameTableColumnPlan, final TablePattern pattern) {
-    return matchDatabaseAndTableName(
-            renameTableColumnPlan.getDatabase(), renameTableColumnPlan.getTableName(), pattern)
-        ? Optional.of(renameTableColumnPlan)
-        : Optional.empty();
+    return visitAbstractTablePlan(renameTableColumnPlan, pattern);
   }
 
   @Override
   public Optional<ConfigPhysicalPlan> visitCommitDeleteTable(
       final CommitDeleteTablePlan commitDeleteTablePlan, final TablePattern pattern) {
-    return matchDatabaseAndTableName(
-            commitDeleteTablePlan.getDatabase(), commitDeleteTablePlan.getTableName(), pattern)
-        ? Optional.of(commitDeleteTablePlan)
-        : Optional.empty();
+    return visitAbstractTablePlan(commitDeleteTablePlan, pattern);
   }
 
   @Override
   public Optional<ConfigPhysicalPlan> visitSetTableComment(
       final SetTableCommentPlan setTableCommentPlan, final TablePattern pattern) {
-    return matchDatabaseAndTableName(
-            setTableCommentPlan.getDatabase(), setTableCommentPlan.getTableName(), pattern)
-        ? Optional.of(setTableCommentPlan)
-        : Optional.empty();
+    return visitAbstractTablePlan(setTableCommentPlan, pattern);
   }
 
   @Override
   public Optional<ConfigPhysicalPlan> visitSetTableColumnComment(
       final SetTableColumnCommentPlan setTableColumnCommentPlan, final TablePattern pattern) {
-    return matchDatabaseAndTableName(
-            setTableColumnCommentPlan.getDatabase(),
-            setTableColumnCommentPlan.getTableName(),
-            pattern)
-        ? Optional.of(setTableColumnCommentPlan)
-        : Optional.empty();
+    return visitAbstractTablePlan(setTableColumnCommentPlan, pattern);
   }
 
-  private boolean matchDatabaseAndTableName(
-      final String database, final String tableName, final TablePattern pattern) {
-    return pattern.matchesDatabase(PathUtils.unQualifyDatabaseName(database))
-        && pattern.matchesTable(tableName);
+  private Optional<ConfigPhysicalPlan> visitAbstractTablePlan(
+      final AbstractTablePlan plan, final TablePattern pattern) {
+    return pattern.matchesDatabase(PathUtils.unQualifyDatabaseName(plan.getDatabase()))
+            && pattern.matchesTable(plan.getTableName())
+        ? Optional.of(plan)
+        : Optional.empty();
   }
 
   @Override
