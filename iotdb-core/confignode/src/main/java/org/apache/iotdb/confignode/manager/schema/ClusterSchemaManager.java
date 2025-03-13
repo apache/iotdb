@@ -80,7 +80,6 @@ import org.apache.iotdb.confignode.consensus.response.template.AllTemplateSetInf
 import org.apache.iotdb.confignode.consensus.response.template.TemplateInfoResp;
 import org.apache.iotdb.confignode.consensus.response.template.TemplateSetInfoResp;
 import org.apache.iotdb.confignode.exception.DatabaseNotExistsException;
-import org.apache.iotdb.confignode.manager.ConfigManager;
 import org.apache.iotdb.confignode.manager.IManager;
 import org.apache.iotdb.confignode.manager.consensus.ConsensusManager;
 import org.apache.iotdb.confignode.manager.node.NodeManager;
@@ -134,7 +133,7 @@ public class ClusterSchemaManager {
   private static final int SCHEMA_REGION_PER_DATA_NODE = CONF.getSchemaRegionPerDataNode();
   private static final int DATA_REGION_PER_DATA_NODE = CONF.getDataRegionPerDataNode();
 
-  private final ConfigManager configManager;
+  private final IManager configManager;
   private final ClusterSchemaInfo clusterSchemaInfo;
   private final ClusterSchemaQuotaStatistics schemaQuotaStatistics;
   private final ReentrantLock createDatabaseLock = new ReentrantLock();
