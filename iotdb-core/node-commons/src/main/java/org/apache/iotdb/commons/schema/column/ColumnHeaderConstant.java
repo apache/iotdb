@@ -205,6 +205,7 @@ public class ColumnHeaderConstant {
   public static final String ELAPSED_TIME_TABLE_MODEL = "elapsed_time";
 
   public static final String TABLE_NAME_TABLE_MODEL = "table_name";
+  public static final String TABLE_TYPE_TABLE_MODEL = "table_type";
   public static final String COLUMN_NAME_TABLE_MODEL = "column_name";
 
   public static final String SCHEMA_REPLICATION_FACTOR_TABLE_MODEL = "schema_replication_factor";
@@ -269,6 +270,7 @@ public class ColumnHeaderConstant {
   public static final String TABLE_NAME = "TableName";
   public static final String PRIVILEGES = "Privileges";
   public static final String COMMENT = "Comment";
+  public static final String TABLE_TYPE = "TableType";
 
   public static final String GRANT_OPTION = "GrantOption";
 
