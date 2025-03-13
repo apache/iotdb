@@ -28,7 +28,6 @@ import org.apache.tsfile.utils.ReadWriteIOUtils;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
-import java.nio.BufferUnderflowException;
 import java.nio.ByteBuffer;
 import java.util.Optional;
 
@@ -58,7 +57,7 @@ public class LikeViewExpression extends UnaryViewExpression {
     super(ViewExpression.deserialize(byteBuffer));
     pattern = ReadWriteIOUtils.readString(byteBuffer);
     byte judge = ReadWriteIOUtils.readByte(byteBuffer);
-    switch (judge){
+    switch (judge) {
       case -1:
       case 0:
         isNot = false;
@@ -85,7 +84,7 @@ public class LikeViewExpression extends UnaryViewExpression {
     try {
       pattern = ReadWriteIOUtils.readString(inputStream);
       byte judge = ReadWriteIOUtils.readByte(inputStream);
-      switch (judge){
+      switch (judge) {
         case -1:
         case 0:
           escape = Optional.empty();
@@ -97,9 +96,9 @@ public class LikeViewExpression extends UnaryViewExpression {
           break;
         case 2:
           if (ReadWriteIOUtils.readBool(inputStream)) {
-              escape = Optional.of(ReadWriteIOUtils.readString(inputStream).charAt(0));
+            escape = Optional.of(ReadWriteIOUtils.readString(inputStream).charAt(0));
           } else {
-              escape = Optional.empty();
+            escape = Optional.empty();
           }
           isNot = ReadWriteIOUtils.readBool(inputStream);
           break;
