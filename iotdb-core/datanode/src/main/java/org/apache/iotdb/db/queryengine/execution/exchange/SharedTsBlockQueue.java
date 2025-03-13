@@ -37,6 +37,7 @@ import org.slf4j.LoggerFactory;
 import javax.annotation.concurrent.NotThreadSafe;
 
 import java.util.LinkedList;
+import java.util.Optional;
 import java.util.Queue;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
@@ -82,7 +83,7 @@ public class SharedTsBlockQueue {
   private long maxBytesCanReserve =
       IoTDBDescriptor.getInstance().getMemoryConfig().getMaxBytesPerFragmentInstance();
 
-  private Throwable abortedCause = null;
+  private volatile Throwable abortedCause = null;
 
   // used for SharedTsBlockQueue listener
   private final ExecutorService executorService;
@@ -369,5 +370,9 @@ public class SharedTsBlockQueue {
               bufferRetainedSizeInBytes);
       bufferRetainedSizeInBytes = 0;
     }
+  }
+
+  public Optional<Throwable> getAbortedCause() {
+    return Optional.ofNullable(abortedCause);
   }
 }

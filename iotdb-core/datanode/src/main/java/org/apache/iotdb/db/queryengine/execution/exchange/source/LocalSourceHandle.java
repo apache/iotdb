@@ -36,6 +36,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.nio.ByteBuffer;
+import java.util.Optional;
 import java.util.concurrent.ExecutionException;
 
 import static com.google.common.util.concurrent.Futures.nonCancellationPropagating;
@@ -253,6 +254,10 @@ public class LocalSourceHandle implements ISourceHandle {
 
   private void checkState() {
     if (aborted) {
+      Optional<Throwable> abortedCause = queue.getAbortedCause();
+      if (abortedCause.isPresent()) {
+        throw new IllegalStateException(abortedCause.get());
+      }
       if (queue.isBlocked().isDone()) {
         // try throw underlying exception instead of "Source handle is aborted."
         try {

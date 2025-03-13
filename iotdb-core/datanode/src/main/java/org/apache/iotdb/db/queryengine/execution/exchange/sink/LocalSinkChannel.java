@@ -32,6 +32,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.Optional;
+import java.util.concurrent.ExecutionException;
 
 import static com.google.common.util.concurrent.Futures.immediateVoidFuture;
 import static com.google.common.util.concurrent.Futures.nonCancellationPropagating;
@@ -233,7 +234,24 @@ public class LocalSinkChannel implements ISinkChannel {
 
   private void checkState() {
     if (aborted) {
+      Optional<Throwable> abortedCause = queue.getAbortedCause();
+      if (abortedCause.isPresent()) {
+        throw new IllegalStateException(abortedCause.get());
+      }
+      if (queue.isBlocked().isDone()) {
+        // try throw underlying exception
+        try {
+          queue.isBlocked().get();
+        } catch (InterruptedException e) {
+          Thread.currentThread().interrupt();
+          throw new IllegalStateException(e);
+        } catch (ExecutionException e) {
+          throw new IllegalStateException(e.getCause() == null ? e : e.getCause());
+        }
+      }
       throw new IllegalStateException("LocalSinkChannel is aborted.");
+    } else if (closed) {
+      throw new IllegalStateException("LocalSinkChannel is closed.");
     }
   }
 
