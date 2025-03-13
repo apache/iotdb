@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.analyzer;
 
+import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
+import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.commons.partition.DataPartition;
 import org.apache.iotdb.commons.partition.DataPartitionQueryParam;
 import org.apache.iotdb.commons.partition.SchemaNodeManagementPartition;
@@ -46,6 +48,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.type.TypeManager;
 import org.apache.iotdb.db.queryengine.plan.relational.type.TypeNotFoundException;
 import org.apache.iotdb.db.queryengine.plan.relational.type.TypeSignature;
 import org.apache.iotdb.mpp.rpc.thrift.TRegionRouteReq;
+import org.apache.iotdb.udf.api.relational.TableFunction;
 
 import com.google.common.collect.ImmutableList;
 import org.apache.tsfile.common.conf.TSFileConfig;
@@ -375,6 +378,11 @@ public class TSBSMetadata implements Metadata {
     return DATA_PARTITION;
   }
 
+  @Override
+  public TableFunction getTableFunction(String functionName) {
+    return null;
+  }
+
   private static final DataPartition DATA_PARTITION =
       MockTSBSDataPartition.constructDataPartition();
 
@@ -429,6 +437,11 @@ public class TSBSMetadata implements Metadata {
       @Override
       public boolean updateRegionCache(TRegionRouteReq req) {
         return false;
+      }
+
+      @Override
+      public TRegionReplicaSet getRegionReplicaSet(TConsensusGroupId id) {
+        return null;
       }
 
       @Override

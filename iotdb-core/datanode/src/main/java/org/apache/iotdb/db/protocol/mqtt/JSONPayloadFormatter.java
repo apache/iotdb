@@ -80,7 +80,7 @@ public class JSONPayloadFormatter implements PayloadFormatter {
   }
 
   private List<Message> formatJson(JsonObject jsonObject) {
-    Message message = new Message();
+    TreeMessage message = new TreeMessage();
     message.setDevice(jsonObject.get(JSON_KEY_DEVICE).getAsString());
     message.setTimestamp(jsonObject.get(JSON_KEY_TIMESTAMP).getAsLong());
     message.setMeasurements(
@@ -106,7 +106,7 @@ public class JSONPayloadFormatter implements PayloadFormatter {
 
     List<Message> ret = new ArrayList<>(timestamps.size());
     for (int i = 0; i < timestamps.size(); i++) {
-      Message message = new Message();
+      TreeMessage message = new TreeMessage();
       message.setDevice(device);
       message.setTimestamp(timestamps.get(i));
       message.setMeasurements(measurements);
@@ -119,5 +119,10 @@ public class JSONPayloadFormatter implements PayloadFormatter {
   @Override
   public String getName() {
     return "json";
+  }
+
+  @Override
+  public String getType() {
+    return PayloadFormatter.TREE_TYPE;
   }
 }

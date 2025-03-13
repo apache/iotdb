@@ -57,6 +57,9 @@ import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.LockSupport;
 import java.util.stream.Collectors;
 
+import static org.apache.iotdb.db.it.utils.TestUtils.assertTableNonQueryTestFail;
+import static org.apache.iotdb.db.it.utils.TestUtils.assertTableTestFail;
+import static org.apache.iotdb.db.it.utils.TestUtils.createUser;
 import static org.apache.iotdb.subscription.it.IoTDBSubscriptionITConstant.AWAIT;
 import static org.junit.Assert.fail;
 
@@ -620,5 +623,39 @@ public class IoTDBSubscriptionBasicIT extends AbstractSubscriptionLocalIT {
       e.printStackTrace();
       fail(e.getMessage());
     }
+  }
+
+  @Test
+  public void testTablePermission() {
+    createUser(EnvFactory.getEnv(), "test", "test123");
+
+    assertTableNonQueryTestFail(
+        EnvFactory.getEnv(),
+        "create topic topic1",
+        "803: Access Denied: No permissions for this operation, only root user is allowed",
+        "test",
+        "test123",
+        null);
+    assertTableTestFail(
+        EnvFactory.getEnv(),
+        "show topics",
+        "803: Access Denied: No permissions for this operation, only root user is allowed",
+        "test",
+        "test123",
+        null);
+    assertTableTestFail(
+        EnvFactory.getEnv(),
+        "show subscriptions",
+        "803: Access Denied: No permissions for this operation, only root user is allowed",
+        "test",
+        "test123",
+        null);
+    assertTableNonQueryTestFail(
+        EnvFactory.getEnv(),
+        "drop topic topic1",
+        "803: Access Denied: No permissions for this operation, only root user is allowed",
+        "test",
+        "test123",
+        null);
   }
 }

@@ -40,9 +40,17 @@ public interface IAuthorizer extends SnapshotProcessor {
    * @param username The username of the user.
    * @param password The password of the user.
    * @return True if such user exists and the given password is correct, else return false.
-   * @throws AuthException if exception raised when searching for the user.
    */
   boolean login(String username, String password) throws AuthException;
+
+  /**
+   * Login for a user in pipe.
+   *
+   * @param username The username of the user.
+   * @param password The password of the user.
+   * @return The hashed password
+   */
+  String login4Pipe(String username, String password);
 
   /**
    * Create a user with given username and password. New users will only be granted no privileges.
@@ -81,6 +89,8 @@ public interface IAuthorizer extends SnapshotProcessor {
    */
   void revokePrivilegeFromUser(String userName, PrivilegeUnion union) throws AuthException;
 
+  void revokeAllPrivilegeFromUser(String userName) throws AuthException;
+
   /**
    * Create a role.
    *
@@ -114,6 +124,8 @@ public interface IAuthorizer extends SnapshotProcessor {
    * @throws AuthException If the role does not exist or the privilege or the seriesPath is illegal
    */
   void revokePrivilegeFromRole(String roleName, PrivilegeUnion union) throws AuthException;
+
+  void revokeAllPrivilegeFromRole(String roleName) throws AuthException;
 
   /**
    * Grant a role to a user.

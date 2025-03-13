@@ -164,7 +164,7 @@ public class TableSchema {
                 columnName,
                 InternalTypeManager.fromTSDataType(dataType),
                 false,
-                TsTableColumnCategory.fromTsFileColumnType(columnType)));
+                TsTableColumnCategory.fromTsFileColumnCategory(columnType)));
       }
       return new TableSchema(tableName, columns);
     } catch (final Exception e) {

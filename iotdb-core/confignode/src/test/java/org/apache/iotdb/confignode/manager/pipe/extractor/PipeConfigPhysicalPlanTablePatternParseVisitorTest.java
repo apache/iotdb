@@ -19,10 +19,12 @@
 
 package org.apache.iotdb.confignode.manager.pipe.extractor;
 
+import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.TablePattern;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
+import org.apache.iotdb.confignode.consensus.request.write.auth.AuthorRelationalPlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.DatabaseSchemaPlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.DeleteDatabasePlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeCreateTablePlan;
@@ -30,6 +32,8 @@ import org.apache.iotdb.confignode.consensus.request.write.table.AddTableColumnP
 import org.apache.iotdb.confignode.consensus.request.write.table.CommitDeleteColumnPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.CommitDeleteTablePlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.RenameTableColumnPlan;
+import org.apache.iotdb.confignode.consensus.request.write.table.SetTableColumnCommentPlan;
+import org.apache.iotdb.confignode.consensus.request.write.table.SetTableCommentPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.SetTablePropertiesPlan;
 import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
 
@@ -110,6 +114,45 @@ public class PipeConfigPhysicalPlanTablePatternParseVisitorTest {
         new CommitDeleteTablePlan("db1", "ab"),
         new CommitDeleteTablePlan("db1", "ac"),
         new CommitDeleteTablePlan("da", "ac"));
+  }
+
+  @Test
+  public void testSetTableComment() {
+    testInput(
+        new SetTableCommentPlan("db1", "ab", "a"),
+        new SetTableCommentPlan("db1", "ac", "a"),
+        new SetTableCommentPlan("da", "ac", "a"));
+  }
+
+  @Test
+  public void testSetTableColumnComment() {
+    testInput(
+        new SetTableColumnCommentPlan("db1", "ab", "a", "a"),
+        new SetTableColumnCommentPlan("db1", "ac", "a", "a"),
+        new SetTableColumnCommentPlan("da", "ac", "a", "a"));
+  }
+
+  @Test
+  public void testAuth() {
+    testInput(
+        new AuthorRelationalPlan(
+            ConfigPhysicalPlanType.RGrantRoleAll, "", "role", "", "", -1, false),
+        new AuthorRelationalPlan(
+            ConfigPhysicalPlanType.RGrantUserDBPriv,
+            "user",
+            "",
+            "da",
+            "",
+            PrivilegeType.SELECT.ordinal(),
+            false),
+        new AuthorRelationalPlan(
+            ConfigPhysicalPlanType.RGrantUserTBPriv,
+            "user",
+            "",
+            "db1",
+            "ac",
+            PrivilegeType.DROP.ordinal(),
+            false));
   }
 
   private void testInput(

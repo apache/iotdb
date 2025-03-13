@@ -20,11 +20,14 @@
 package org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache;
 
 import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.memory.IMemoryBlock;
+import org.apache.iotdb.commons.memory.MemoryBlockType;
 import org.apache.iotdb.commons.path.ExtendedPartialPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternUtil;
 import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.commons.utils.PathUtils;
+import org.apache.iotdb.db.conf.DataNodeMemoryConfig;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.queryengine.common.schematree.DeviceSchemaInfo;
@@ -84,6 +87,8 @@ import static org.apache.iotdb.commons.conf.IoTDBConstant.ONE_LEVEL_PATH_WILDCAR
 public class TableDeviceSchemaCache {
 
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
+  private static final DataNodeMemoryConfig memoryConfig =
+      IoTDBDescriptor.getInstance().getMemoryConfig();
   private static final Logger logger = LoggerFactory.getLogger(TableDeviceSchemaCache.class);
 
   /**
@@ -100,17 +105,23 @@ public class TableDeviceSchemaCache {
 
   private final ReentrantReadWriteLock readWriteLock = new ReentrantReadWriteLock(false);
 
+  private final IMemoryBlock memoryBlock;
+
   private TableDeviceSchemaCache() {
+    memoryBlock =
+        memoryConfig
+            .getSchemaCacheMemoryManager()
+            .exactAllocate("TableDeviceSchemaCache", MemoryBlockType.STATIC);
     dualKeyCache =
         new DualKeyCacheBuilder<TableId, IDeviceID, TableDeviceCacheEntry>()
             .cacheEvictionPolicy(
                 DualKeyCachePolicy.valueOf(config.getDataNodeSchemaCacheEvictionPolicy()))
-            .memoryCapacity(config.getAllocateMemoryForSchemaCache())
+            .memoryCapacity(memoryBlock.getTotalMemorySizeInBytes())
             .firstKeySizeComputer(TableId::estimateSize)
             .secondKeySizeComputer(deviceID -> (int) deviceID.ramBytesUsed())
             .valueSizeComputer(TableDeviceCacheEntry::estimateSize)
             .build();
-
+    memoryBlock.allocate(memoryBlock.getTotalMemorySizeInBytes());
     MetricService.getInstance().addMetricSet(new TableDeviceSchemaCacheMetrics(this));
   }
 
@@ -509,6 +520,18 @@ public class TableDeviceSchemaCache {
     return dualKeyCache.stats().requestCount();
   }
 
+  long getMemoryUsage() {
+    return dualKeyCache.stats().memoryUsage();
+  }
+
+  long capacity() {
+    return dualKeyCache.stats().capacity();
+  }
+
+  long entriesCount() {
+    return dualKeyCache.stats().entriesCount();
+  }
+
   void invalidateLastCache(final @Nonnull String database) {
     readWriteLock.writeLock().lock();
 
@@ -632,8 +655,8 @@ public class TableDeviceSchemaCache {
       DataNodeTableCache.getInstance().invalid(database, tableName, columnName);
       final ToIntFunction<TableDeviceCacheEntry> updateFunction =
           isAttributeColumn
-              ? entry -> entry.invalidateAttributeColumn(columnName)
-              : entry -> entry.invalidateLastCache(columnName, true);
+              ? entry -> -entry.invalidateAttributeColumn(columnName)
+              : entry -> -entry.invalidateLastCache(columnName, true);
       dualKeyCache.update(new TableId(null, tableName), deviceID -> true, updateFunction);
     } finally {
       readWriteLock.writeLock().unlock();
@@ -669,6 +692,11 @@ public class TableDeviceSchemaCache {
   }
 
   public void invalidateAll() {
-    dualKeyCache.invalidateAll();
+    readWriteLock.writeLock().lock();
+    try {
+      dualKeyCache.invalidateAll();
+    } finally {
+      readWriteLock.writeLock().unlock();
+    }
   }
 }

@@ -90,7 +90,6 @@ import java.util.Optional;
 import static java.util.Objects.requireNonNull;
 import static org.apache.iotdb.db.queryengine.metric.QueryPlanCostMetricSet.LOGICAL_PLANNER;
 import static org.apache.iotdb.db.queryengine.metric.QueryPlanCostMetricSet.LOGICAL_PLAN_OPTIMIZE;
-import static org.apache.iotdb.db.queryengine.metric.QueryPlanCostMetricSet.TABLE_TYPE;
 import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CountDevice.COUNT_DEVICE_HEADER_STRING;
 import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowDevice.getDeviceColumnHeaderList;
 import static org.apache.iotdb.db.queryengine.plan.relational.type.InternalTypeManager.getTSDataType;
@@ -143,7 +142,7 @@ public class TableLogicalPlanner {
     if (analysis.isQuery()) {
       long logicalPlanCostTime = System.nanoTime() - startTime;
       QueryPlanCostMetricSet.getInstance()
-          .recordPlanCost(TABLE_TYPE, LOGICAL_PLANNER, logicalPlanCostTime);
+          .recordTablePlanCost(LOGICAL_PLANNER, logicalPlanCostTime);
       queryContext.setLogicalPlanCost(logicalPlanCostTime);
 
       startTime = System.nanoTime();
@@ -168,7 +167,7 @@ public class TableLogicalPlanner {
               - queryContext.getFetchSchemaCost();
       queryContext.setLogicalOptimizationCost(logicalOptimizationCost);
       QueryPlanCostMetricSet.getInstance()
-          .recordPlanCost(TABLE_TYPE, LOGICAL_PLAN_OPTIMIZE, logicalOptimizationCost);
+          .recordTablePlanCost(LOGICAL_PLAN_OPTIMIZE, logicalOptimizationCost);
     }
 
     return new LogicalQueryPlan(queryContext, planNode);
@@ -177,14 +176,15 @@ public class TableLogicalPlanner {
   private PlanNode planStatement(final Analysis analysis, Statement statement) {
     // Schema statements are handled here
     if (statement instanceof PipeEnriched) {
-      statement = ((PipeEnriched) statement).getInnerStatement();
-      if (statement instanceof CreateOrUpdateDevice) {
+      Statement innerStatement = ((PipeEnriched) statement).getInnerStatement();
+      if (innerStatement instanceof CreateOrUpdateDevice) {
         return new PipeEnrichedWritePlanNode(
-            (WritePlanNode) planCreateOrUpdateDevice((CreateOrUpdateDevice) statement, analysis));
+            (WritePlanNode)
+                planCreateOrUpdateDevice((CreateOrUpdateDevice) innerStatement, analysis));
       }
-      if (statement instanceof Update) {
+      if (innerStatement instanceof Update) {
         return new PipeEnrichedWritePlanNode(
-            (WritePlanNode) planUpdate((Update) statement, analysis));
+            (WritePlanNode) planUpdate((Update) innerStatement, analysis));
       }
     }
     if (statement instanceof CreateOrUpdateDevice) {

@@ -41,8 +41,8 @@ import java.util.stream.Collectors;
 import static org.apache.iotdb.commons.pipe.datastructure.options.PipeInclusionOptions.getExclusionString;
 import static org.apache.iotdb.commons.pipe.datastructure.options.PipeInclusionOptions.getInclusionString;
 import static org.apache.iotdb.commons.pipe.datastructure.options.PipeInclusionOptions.parseOptions;
-import static org.apache.iotdb.commons.pipe.datastructure.options.PipeInclusionOptions.tableOnlySyncPrefix;
-import static org.apache.iotdb.commons.pipe.datastructure.options.PipeInclusionOptions.treeOnlySyncPrefix;
+import static org.apache.iotdb.commons.pipe.datastructure.options.PipeInclusionOptions.tableOnlySyncPrefixes;
+import static org.apache.iotdb.commons.pipe.datastructure.options.PipeInclusionOptions.treeOnlySyncPrefixes;
 
 /**
  * {@link ConfigRegionListeningFilter} is to classify the {@link ConfigPhysicalPlan}s to help {@link
@@ -108,7 +108,11 @@ public class ConfigRegionListeningFilter {
                   ConfigPhysicalPlanType.AddTableColumn)));
       OPTION_PLAN_MAP.put(
           new PartialPath("schema.table.alter"),
-          Collections.singletonList(ConfigPhysicalPlanType.SetTableProperties));
+          Collections.unmodifiableList(
+              Arrays.asList(
+                  ConfigPhysicalPlanType.SetTableProperties,
+                  ConfigPhysicalPlanType.SetTableComment,
+                  ConfigPhysicalPlanType.SetTableColumnComment)));
       OPTION_PLAN_MAP.put(
           new PartialPath("schema.table.drop"),
           Collections.unmodifiableList(
@@ -122,16 +126,45 @@ public class ConfigRegionListeningFilter {
 
       OPTION_PLAN_MAP.put(
           new PartialPath("auth.role.create"),
-          Collections.singletonList(ConfigPhysicalPlanType.CreateRole));
+          Collections.unmodifiableList(
+              Arrays.asList(
+                  ConfigPhysicalPlanType.CreateRole, ConfigPhysicalPlanType.RCreateRole)));
       OPTION_PLAN_MAP.put(
           new PartialPath("auth.role.drop"),
-          Collections.singletonList(ConfigPhysicalPlanType.DropRole));
+          Collections.unmodifiableList(
+              Arrays.asList(ConfigPhysicalPlanType.DropRole, ConfigPhysicalPlanType.RDropRole)));
+
+      // Both
       OPTION_PLAN_MAP.put(
           new PartialPath("auth.role.grant"),
-          Collections.singletonList(ConfigPhysicalPlanType.GrantRole));
+          Collections.unmodifiableList(
+              Arrays.asList(
+                  ConfigPhysicalPlanType.GrantRole,
+                  ConfigPhysicalPlanType.RGrantRoleAll,
+                  ConfigPhysicalPlanType.RGrantRoleSysPri)));
       OPTION_PLAN_MAP.put(
           new PartialPath("auth.role.revoke"),
-          Collections.singletonList(ConfigPhysicalPlanType.RevokeRole));
+          Collections.unmodifiableList(
+              Arrays.asList(
+                  ConfigPhysicalPlanType.RevokeRole,
+                  ConfigPhysicalPlanType.RRevokeRoleAll,
+                  ConfigPhysicalPlanType.RRevokeRoleSysPri)));
+
+      // Table
+      OPTION_PLAN_MAP.put(
+          new PartialPath("auth.role.grant.table"),
+          Collections.unmodifiableList(
+              Arrays.asList(
+                  ConfigPhysicalPlanType.RGrantRoleAny,
+                  ConfigPhysicalPlanType.RGrantRoleDBPriv,
+                  ConfigPhysicalPlanType.RGrantRoleTBPriv)));
+      OPTION_PLAN_MAP.put(
+          new PartialPath("auth.role.revoke.table"),
+          Collections.unmodifiableList(
+              Arrays.asList(
+                  ConfigPhysicalPlanType.RRevokeRoleAny,
+                  ConfigPhysicalPlanType.RRevokeRoleDBPriv,
+                  ConfigPhysicalPlanType.RRevokeRoleTBPriv)));
 
       OPTION_PLAN_MAP.put(
           new PartialPath("auth.user.create"),
@@ -141,20 +174,49 @@ public class ConfigRegionListeningFilter {
                   ConfigPhysicalPlanType.CreateUserWithRawPassword)));
       OPTION_PLAN_MAP.put(
           new PartialPath("auth.user.alter"),
-          Collections.singletonList(ConfigPhysicalPlanType.UpdateUser));
+          Collections.unmodifiableList(
+              Arrays.asList(
+                  ConfigPhysicalPlanType.UpdateUser, ConfigPhysicalPlanType.RUpdateUser)));
       OPTION_PLAN_MAP.put(
           new PartialPath("auth.user.drop"),
-          Collections.singletonList(ConfigPhysicalPlanType.DropUser));
+          Collections.unmodifiableList(
+              Arrays.asList(ConfigPhysicalPlanType.DropUser, ConfigPhysicalPlanType.RUpdateUser)));
+
+      // Both
       OPTION_PLAN_MAP.put(
           new PartialPath("auth.user.grant"),
           Collections.unmodifiableList(
               Arrays.asList(
-                  ConfigPhysicalPlanType.GrantUser, ConfigPhysicalPlanType.GrantRoleToUser)));
+                  ConfigPhysicalPlanType.GrantUser,
+                  ConfigPhysicalPlanType.GrantRoleToUser,
+                  ConfigPhysicalPlanType.RGrantUserRole,
+                  ConfigPhysicalPlanType.RGrantUserAll,
+                  ConfigPhysicalPlanType.RGrantUserSysPri)));
       OPTION_PLAN_MAP.put(
           new PartialPath("auth.user.revoke"),
           Collections.unmodifiableList(
               Arrays.asList(
-                  ConfigPhysicalPlanType.RevokeUser, ConfigPhysicalPlanType.RevokeRoleFromUser)));
+                  ConfigPhysicalPlanType.RevokeUser,
+                  ConfigPhysicalPlanType.RevokeRoleFromUser,
+                  ConfigPhysicalPlanType.RRevokeUserRole,
+                  ConfigPhysicalPlanType.RGrantUserAll,
+                  ConfigPhysicalPlanType.RGrantUserSysPri)));
+
+      // Table
+      OPTION_PLAN_MAP.put(
+          new PartialPath("auth.user.grant.table"),
+          Collections.unmodifiableList(
+              Arrays.asList(
+                  ConfigPhysicalPlanType.RGrantUserAny,
+                  ConfigPhysicalPlanType.RGrantUserDBPriv,
+                  ConfigPhysicalPlanType.RGrantUserTBPriv)));
+      OPTION_PLAN_MAP.put(
+          new PartialPath("auth.user.revoke.table"),
+          Collections.unmodifiableList(
+              Arrays.asList(
+                  ConfigPhysicalPlanType.RRevokeUserAny,
+                  ConfigPhysicalPlanType.RRevokeUserDBPriv,
+                  ConfigPhysicalPlanType.RRevokeUserTBPriv)));
     } catch (final IllegalPathException ignore) {
       // There won't be any exceptions here
     }
@@ -185,11 +247,11 @@ public class ConfigRegionListeningFilter {
     exclusionOptions.forEach(exclusion -> planTypes.removeAll(getOptionsByPrefix(exclusion)));
 
     if (!TreePattern.isTreeModelDataAllowToBeCaptured(parameters)) {
-      planTypes.removeAll(getOptionsByPrefix(treeOnlySyncPrefix));
+      treeOnlySyncPrefixes.forEach(prefix -> planTypes.removeAll(getOptionsByPrefix(prefix)));
     }
 
     if (!TablePattern.isTableModelDataAllowToBeCaptured(parameters)) {
-      planTypes.removeAll(getOptionsByPrefix(tableOnlySyncPrefix));
+      tableOnlySyncPrefixes.forEach(prefix -> planTypes.removeAll(getOptionsByPrefix(prefix)));
     }
 
     return planTypes;
@@ -197,7 +259,7 @@ public class ConfigRegionListeningFilter {
 
   private static Set<ConfigPhysicalPlanType> getOptionsByPrefix(final PartialPath prefix) {
     return OPTION_PLAN_MAP.keySet().stream()
-        .filter(path -> path.overlapWithFullPathPrefix(prefix))
+        .filter(path -> path.matchPrefixPath(prefix))
         .map(OPTION_PLAN_MAP::get)
         .flatMap(Collection::stream)
         .collect(Collectors.toSet());

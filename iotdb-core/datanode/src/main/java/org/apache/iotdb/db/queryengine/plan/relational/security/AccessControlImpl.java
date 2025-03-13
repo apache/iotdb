@@ -19,15 +19,14 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.security;
 
-import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.auth.entity.PrivilegeType;
-import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.commons.exception.auth.AccessDeniedException;
 import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.QualifiedObjectName;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.RelationalAuthorStatement;
 import org.apache.iotdb.db.queryengine.plan.relational.type.AuthorRType;
-import org.apache.iotdb.rpc.TSStatusCode;
+
+import java.util.Objects;
 
 import static org.apache.iotdb.db.auth.AuthorityChecker.ONLY_ADMIN_ALLOWED;
 
@@ -85,6 +84,20 @@ public class AccessControlImpl implements AccessControl {
   }
 
   @Override
+  public void checkCanSelectFromDatabase4Pipe(final String userName, final String databaseName) {
+    if (Objects.isNull(userName)) {
+      throw new AccessDeniedException("User not exists");
+    }
+    authChecker.checkDatabasePrivilege(userName, databaseName, TableModelPrivilege.SELECT);
+  }
+
+  @Override
+  public boolean checkCanSelectFromTable4Pipe(
+      final String userName, final QualifiedObjectName tableName) {
+    return Objects.nonNull(userName) && authChecker.checkTablePrivilege4Pipe(userName, tableName);
+  }
+
+  @Override
   public void checkCanDeleteFromTable(String userName, QualifiedObjectName tableName) {
     authChecker.checkTablePrivilege(userName, tableName, TableModelPrivilege.DELETE);
   }
@@ -95,23 +108,14 @@ public class AccessControlImpl implements AccessControl {
   }
 
   @Override
-  public void checkUserHasMaintainPrivilege(String userName) {
-    authChecker.checkGlobalPrivilege(userName, TableModelPrivilege.MAINTAIN);
-  }
-
-  @Override
   public void checkUserCanRunRelationalAuthorStatement(
       String userName, RelationalAuthorStatement statement) {
     AuthorRType type = statement.getAuthorType();
-    TSStatus status;
     switch (type) {
       case CREATE_USER:
         // admin cannot be created.
         if (AuthorityChecker.SUPER_USER.equals(statement.getUserName())) {
-          status =
-              AuthorityChecker.getTSStatus(
-                  false, "Cannot create user has same name with admin user");
-          throw new RuntimeException(new IoTDBException(status.getMessage(), status.getCode()));
+          throw new AccessDeniedException("Cannot create user has same name with admin user");
         }
         if (AuthorityChecker.SUPER_USER.equals(userName)) {
           return;
@@ -121,8 +125,7 @@ public class AccessControlImpl implements AccessControl {
       case DROP_USER:
         if (AuthorityChecker.SUPER_USER.equals(statement.getUserName())
             || statement.getUserName().equals(userName)) {
-          status = AuthorityChecker.getTSStatus(false, "Cannot drop admin user or yourself");
-          throw new RuntimeException(new IoTDBException(status.getMessage(), status.getCode()));
+          throw new AccessDeniedException("Cannot drop admin user or yourself");
         }
         if (AuthorityChecker.SUPER_USER.equals(userName)) {
           return;
@@ -145,10 +148,7 @@ public class AccessControlImpl implements AccessControl {
         return;
       case CREATE_ROLE:
         if (AuthorityChecker.SUPER_USER.equals(statement.getRoleName())) {
-          throw new RuntimeException(
-              new IoTDBException(
-                  "Cannot create role has same name with admin user",
-                  TSStatusCode.NO_PERMISSION.getStatusCode()));
+          throw new AccessDeniedException("Cannot create role has same name with admin user");
         }
         if (AuthorityChecker.SUPER_USER.equals(userName)) {
           return;
@@ -158,9 +158,7 @@ public class AccessControlImpl implements AccessControl {
 
       case DROP_ROLE:
         if (AuthorityChecker.SUPER_USER.equals(statement.getUserName())) {
-          throw new RuntimeException(
-              new IoTDBException(
-                  "Cannot drop role with admin name", TSStatusCode.NO_PERMISSION.getStatusCode()));
+          throw new AccessDeniedException("Cannot drop role with admin name");
         }
         if (AuthorityChecker.SUPER_USER.equals(userName)) {
           return;
@@ -170,9 +168,7 @@ public class AccessControlImpl implements AccessControl {
 
       case GRANT_USER_ROLE:
         if (AuthorityChecker.SUPER_USER.equals(statement.getUserName())) {
-          throw new RuntimeException(
-              new IoTDBException(
-                  "Cannot grant role to admin", TSStatusCode.NO_PERMISSION.getStatusCode()));
+          throw new AccessDeniedException("Cannot grant role to admin");
         }
         if (AuthorityChecker.SUPER_USER.equals(userName)) {
           return;
@@ -182,9 +178,7 @@ public class AccessControlImpl implements AccessControl {
 
       case REVOKE_USER_ROLE:
         if (AuthorityChecker.SUPER_USER.equals(statement.getUserName())) {
-          throw new RuntimeException(
-              new IoTDBException(
-                  "Cannot revoke role from admin", TSStatusCode.NO_PERMISSION.getStatusCode()));
+          throw new AccessDeniedException("Cannot revoke role from admin");
         }
         if (AuthorityChecker.SUPER_USER.equals(userName)) {
           return;
@@ -193,6 +187,11 @@ public class AccessControlImpl implements AccessControl {
         return;
       case LIST_ROLE:
         if (AuthorityChecker.SUPER_USER.equals(userName)) {
+          return;
+        }
+
+        // user can list his roles.
+        if (statement.getUserName() != null && statement.getUserName().equals(userName)) {
           return;
         }
         authChecker.checkGlobalPrivilege(userName, TableModelPrivilege.MANAGE_ROLE);
@@ -211,10 +210,7 @@ public class AccessControlImpl implements AccessControl {
       case REVOKE_ROLE_ANY:
       case REVOKE_USER_ANY:
         if (AuthorityChecker.SUPER_USER.equals(statement.getUserName())) {
-          throw new RuntimeException(
-              new IoTDBException(
-                  "Cannot grant/revoke privileges to/from admin",
-                  TSStatusCode.NO_PERMISSION.getStatusCode()));
+          throw new AccessDeniedException("Cannot grant/revoke privileges of admin user");
         }
         if (AuthorityChecker.SUPER_USER.equals(userName)) {
           return;
@@ -229,10 +225,7 @@ public class AccessControlImpl implements AccessControl {
       case GRANT_USER_ALL:
       case REVOKE_USER_ALL:
         if (AuthorityChecker.SUPER_USER.equals(statement.getUserName())) {
-          throw new RuntimeException(
-              new IoTDBException(
-                  "Cannot grant/revoke all privileges to/from admin",
-                  TSStatusCode.NO_PERMISSION.getStatusCode()));
+          throw new AccessDeniedException("Cannot grant/revoke all privileges of admin user");
         }
         if (AuthorityChecker.SUPER_USER.equals(userName)) {
           return;
@@ -251,10 +244,7 @@ public class AccessControlImpl implements AccessControl {
       case REVOKE_USER_DB:
       case REVOKE_ROLE_DB:
         if (AuthorityChecker.SUPER_USER.equals(statement.getUserName())) {
-          throw new RuntimeException(
-              new IoTDBException(
-                  "Cannot grant/revoke privileges of admin user",
-                  TSStatusCode.NO_PERMISSION.getStatusCode()));
+          throw new AccessDeniedException("Cannot grant/revoke privileges of admin user");
         }
         if (AuthorityChecker.SUPER_USER.equals(userName)) {
           return;
@@ -271,10 +261,7 @@ public class AccessControlImpl implements AccessControl {
       case REVOKE_USER_TB:
       case REVOKE_ROLE_TB:
         if (AuthorityChecker.SUPER_USER.equals(statement.getUserName())) {
-          throw new RuntimeException(
-              new IoTDBException(
-                  "Cannot grant/revoke privileges of admin user",
-                  TSStatusCode.NO_PERMISSION.getStatusCode()));
+          throw new AccessDeniedException("Cannot grant/revoke privileges of admin user");
         }
         if (AuthorityChecker.SUPER_USER.equals(userName)) {
           return;
@@ -292,10 +279,7 @@ public class AccessControlImpl implements AccessControl {
       case REVOKE_USER_SYS:
       case REVOKE_ROLE_SYS:
         if (AuthorityChecker.SUPER_USER.equals(statement.getUserName())) {
-          throw new RuntimeException(
-              new IoTDBException(
-                  "Cannot grant/revoke privileges of admin user",
-                  TSStatusCode.NO_PERMISSION.getStatusCode()));
+          throw new AccessDeniedException("Cannot grant/revoke privileges of admin user");
         }
         if (AuthorityChecker.SUPER_USER.equals(userName)) {
           return;
@@ -304,6 +288,7 @@ public class AccessControlImpl implements AccessControl {
           authChecker.checkGlobalPrivilegeGrantOption(
               userName, TableModelPrivilege.getTableModelType(privilegeType));
         }
+        break;
       default:
         break;
     }

@@ -42,6 +42,7 @@ import java.io.IOException;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 
 public abstract class BasicAuthorizer implements IAuthorizer, IService {
@@ -114,6 +115,17 @@ public abstract class BasicAuthorizer implements IAuthorizer, IService {
   }
 
   @Override
+  public String login4Pipe(final String username, final String password) {
+    final User user = userManager.getEntity(username);
+    return (user != null
+                && password != null
+                && AuthUtils.validatePassword(password, user.getPassword())
+            || Objects.isNull(password))
+        ? user.getPassword()
+        : null;
+  }
+
+  @Override
   public void createUser(String username, String password) throws AuthException {
     if (!userManager.createUser(username, password, true, true)) {
       throw new AuthException(
@@ -156,6 +168,17 @@ public abstract class BasicAuthorizer implements IAuthorizer, IService {
   public void revokePrivilegeFromUser(String username, PrivilegeUnion union) throws AuthException {
     checkAdmin(username, "Invalid operation, administrator must have all privileges");
     userManager.revokePrivilegeFromEntity(username, union);
+  }
+
+  @Override
+  public void revokeAllPrivilegeFromUser(String userName) throws AuthException {
+    checkAdmin(userName, "Invalid operation, administrator cannot revoke privileges");
+    User user = userManager.getEntity(userName);
+    if (user == null) {
+      throw new AuthException(
+          TSStatusCode.USER_NOT_EXIST, String.format("User %s does not exist", userName));
+    }
+    user.revokeAllRelationalPrivileges();
   }
 
   @Override
@@ -202,6 +225,16 @@ public abstract class BasicAuthorizer implements IAuthorizer, IService {
   }
 
   @Override
+  public void revokeAllPrivilegeFromRole(String roleName) throws AuthException {
+    Role role = roleManager.getEntity(roleName);
+    if (role == null) {
+      throw new AuthException(
+          TSStatusCode.ROLE_NOT_EXIST, String.format("Role %s does not exist", roleName));
+    }
+    role.revokeAllRelationalPrivileges();
+  }
+
+  @Override
   public void grantRoleToUser(String roleName, String userName) throws AuthException {
     checkAdmin(userName, "Invalid operation, cannot grant role to administrator");
     Role role = roleManager.getEntity(roleName);
@@ -210,17 +243,11 @@ public abstract class BasicAuthorizer implements IAuthorizer, IService {
           TSStatusCode.ROLE_NOT_EXIST, String.format(NO_SUCH_ROLE_EXCEPTION, roleName));
     }
     // the role may be deleted before it ts granted to the user, so a double check is necessary.
-    boolean success = userManager.grantRoleToUser(roleName, userName);
-    if (success) {
-      role = roleManager.getEntity(roleName);
-      if (role == null) {
-        throw new AuthException(
-            TSStatusCode.ROLE_NOT_EXIST, String.format(NO_SUCH_ROLE_EXCEPTION, roleName));
-      }
-    } else {
+    userManager.grantRoleToUser(roleName, userName);
+    role = roleManager.getEntity(roleName);
+    if (role == null) {
       throw new AuthException(
-          TSStatusCode.USER_ALREADY_HAS_ROLE,
-          String.format("User %s already has role %s", userName, roleName));
+          TSStatusCode.ROLE_NOT_EXIST, String.format(NO_SUCH_ROLE_EXCEPTION, roleName));
     }
   }
 
@@ -236,11 +263,7 @@ public abstract class BasicAuthorizer implements IAuthorizer, IService {
       throw new AuthException(
           TSStatusCode.ROLE_NOT_EXIST, String.format(NO_SUCH_ROLE_EXCEPTION, roleName));
     }
-    if (!userManager.revokeRoleFromUser(roleName, userName)) {
-      throw new AuthException(
-          TSStatusCode.USER_NOT_HAS_ROLE,
-          String.format("User %s does not have role %s", userName, roleName));
-    }
+    userManager.revokeRoleFromUser(roleName, userName);
   }
 
   @Override
@@ -303,6 +326,9 @@ public abstract class BasicAuthorizer implements IAuthorizer, IService {
       case RELATIONAL:
         // check any scope privilege
         if (union.isForAny()) {
+          if (union.getPrivilegeType() == null) {
+            return role.checkAnyVisible();
+          }
           if (union.isGrantOption()) {
             return role.checkAnyScopePrivilegeGrantOption(union.getPrivilegeType());
           }

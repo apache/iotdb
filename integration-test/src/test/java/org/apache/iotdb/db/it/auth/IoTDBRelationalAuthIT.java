@@ -26,6 +26,7 @@ import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.TableClusterIT;
 import org.apache.iotdb.itbase.category.TableLocalStandaloneIT;
 import org.apache.iotdb.itbase.env.BaseEnv;
+import org.apache.iotdb.jdbc.IoTDBSQLException;
 
 import org.junit.After;
 import org.junit.Assert;
@@ -74,6 +75,12 @@ public class IoTDBRelationalAuthIT {
           () -> {
             adminStmt.execute("GRANT read_data on database db1 to user testuser");
           });
+      // No Maintain privilege in table model.
+      Assert.assertThrows(
+          SQLException.class,
+          () -> {
+            adminStmt.execute("GRANT MAINTAIN to user testuser");
+          });
 
       adminStmt.execute("GRANT MANAGE_ROLE TO USER testuser");
       adminStmt.execute("GRANT SELECT ON ANY TO USER testuser");
@@ -106,6 +113,12 @@ public class IoTDBRelationalAuthIT {
                   ",testdb.tb,INSERT,true,",
                   ",testdb.tb,DROP,true,"));
       TestUtils.assertResultSetEqual(rs, "Role,Scope,Privileges,GrantOption,", ans);
+      adminStmt.execute("create role testrole");
+      adminStmt.execute("GRANT ROLE testrole to testuser");
+      rs = adminStmt.executeQuery("LIST USER OF ROLE testrole");
+      TestUtils.assertResultSetEqual(rs, "User,", Collections.singleton("testuser,"));
+      rs = adminStmt.executeQuery("LIST ROLE OF USER testuser");
+      TestUtils.assertResultSetEqual(rs, "Role,", Collections.singleton("testrole,"));
     }
   }
 
@@ -148,7 +161,6 @@ public class IoTDBRelationalAuthIT {
       // admin can do all things below.
       adminStmt.execute("GRANT MANAGE_USER to user testuser2 with grant option");
       adminStmt.execute("GRANT MANAGE_ROLE to user testuser");
-      adminStmt.execute("GRANT MAINTAIN to ROLE testrole with grant option");
 
       adminStmt.execute("use testdb");
       adminStmt.execute("GRANT SELECT ON TABLE TB to user testuser");
@@ -173,7 +185,6 @@ public class IoTDBRelationalAuthIT {
       // testdb.* insert
       // any alter
       // manage_role
-      // MAINTAIN with grant option
 
       // cannot create user
       Assert.assertThrows(
@@ -204,7 +215,6 @@ public class IoTDBRelationalAuthIT {
           () -> {
             userStmt.execute("GRANT manage_role to role testrole2");
           });
-      userStmt.execute("GRANT MAINTAIN to ROLE testrole2");
 
       // can list itself privileges and the all roles privileges
       ResultSet rs = userStmt.executeQuery("List privileges of user testuser");
@@ -215,16 +225,14 @@ public class IoTDBRelationalAuthIT {
                   ",*.*,ALTER,false,",
                   ",testdb.*,INSERT,false,",
                   ",testdb.tb,SELECT,false,",
-                  ",testdb.tb,INSERT,false,",
-                  "testrole2,,MAINTAIN,false,",
-                  "testrole,,MAINTAIN,true,"));
+                  ",testdb.tb,INSERT,false,"));
       TestUtils.assertResultSetEqual(rs, "Role,Scope,Privileges,GrantOption,", ans);
       rs = userStmt.executeQuery("List privileges of role testrole");
-      ans = new HashSet<>(Collections.singletonList("testrole,,MAINTAIN,true,"));
-      TestUtils.assertResultSetEqual(rs, "Role,Scope,Privileges,GrantOption,", ans);
+      TestUtils.assertResultSetEqual(
+          rs, "Role,Scope,Privileges,GrantOption,", Collections.emptySet());
       rs = userStmt.executeQuery("List privileges of role testrole2");
-      ans = new HashSet<>(Collections.singletonList("testrole2,,MAINTAIN,false,"));
-      TestUtils.assertResultSetEqual(rs, "Role,Scope,Privileges,GrantOption,", ans);
+      TestUtils.assertResultSetEqual(
+          rs, "Role,Scope,Privileges,GrantOption,", Collections.emptySet());
       // testdb.TB's privilege is not grant option.
       Assert.assertThrows(
           SQLException.class,
@@ -287,6 +295,168 @@ public class IoTDBRelationalAuthIT {
 
   @Test
   public void checkGrantRevokeAllPrivileges() throws SQLException {
+    // In this IT:
+    // grant
+    // 1. grant all on table tb1 with grant option
+    // 2. grant all on database testdb
+    // 3. grant all on any
+    // revoke
+    // 1. revoke grant option for all on table tb1
+    // 2. revoke all on table tb1
+    // 3. revoke all on database testdb
+    // 4. revoke all on any
+    // grant and revoke
+    // 1. grant all on user/role
+    // 2. revoke all on any
+    // 3. revoke all on user/role
+
+    for (boolean isUser : new boolean[] {true, false}) {
+      try (Connection adminCon = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+          Statement adminStmt = adminCon.createStatement()) {
+        adminStmt.execute("create database testdb");
+        adminStmt.execute(isUser ? "create user test 'password'" : "create role test");
+        adminStmt.execute("use testdb");
+
+        // 1. grant all on table tb1 with grant option
+        adminStmt.execute(
+            "grant all on table tb1 to "
+                + (isUser ? "user test" : "role test")
+                + " with grant option");
+        Set<String> listPrivilegeResult = new HashSet<>();
+        for (PrivilegeType privilegeType : PrivilegeType.values()) {
+          if (privilegeType.isRelationalPrivilege()) {
+            listPrivilegeResult.add(
+                (isUser ? "," : "test,") + "testdb.tb1," + privilegeType + ",true,");
+          }
+        }
+        ResultSet resultSet =
+            adminStmt.executeQuery("List privileges of " + (isUser ? "user test" : "role test"));
+        TestUtils.assertResultSetEqual(
+            resultSet, "Role,Scope,Privileges,GrantOption,", listPrivilegeResult);
+
+        // 2. grant all on database testdb
+        adminStmt.execute(
+            "grant all on database testdb to " + (isUser ? "user test" : "role test"));
+        for (PrivilegeType privilegeType : PrivilegeType.values()) {
+          if (privilegeType.isRelationalPrivilege()) {
+            listPrivilegeResult.add(
+                (isUser ? "," : "test,") + "testdb.*," + privilegeType + ",false,");
+          }
+        }
+        resultSet =
+            adminStmt.executeQuery("List privileges of " + (isUser ? "user test" : "role test"));
+        TestUtils.assertResultSetEqual(
+            resultSet, "Role,Scope,Privileges,GrantOption,", listPrivilegeResult);
+
+        // 3. grant all on any
+        adminStmt.execute("grant all on any to " + (isUser ? "user test" : "role test"));
+        for (PrivilegeType privilegeType : PrivilegeType.values()) {
+          if (privilegeType.isRelationalPrivilege()) {
+            listPrivilegeResult.add((isUser ? "," : "test,") + "*.*," + privilegeType + ",false,");
+          }
+        }
+        resultSet =
+            adminStmt.executeQuery("List privileges of " + (isUser ? "user test" : "role test"));
+        TestUtils.assertResultSetEqual(
+            resultSet, "Role,Scope,Privileges,GrantOption,", listPrivilegeResult);
+
+        // 1. revoke grant option for all on table tb1
+        adminStmt.execute(
+            "revoke grant option for all on table tb1 from "
+                + (isUser ? "user test" : "role test"));
+        for (PrivilegeType privilegeType : PrivilegeType.values()) {
+          if (privilegeType.isRelationalPrivilege()) {
+            listPrivilegeResult.remove(
+                (isUser ? "," : "test,") + "testdb.tb1," + privilegeType + ",true,");
+            listPrivilegeResult.add(
+                (isUser ? "," : "test,") + "testdb.tb1," + privilegeType + ",false,");
+          }
+        }
+        resultSet =
+            adminStmt.executeQuery("List privileges of " + (isUser ? "user test" : "role test"));
+        TestUtils.assertResultSetEqual(
+            resultSet, "Role,Scope,Privileges,GrantOption,", listPrivilegeResult);
+
+        // 2. revoke all on table tb1
+        adminStmt.execute("revoke all on table tb1 from " + (isUser ? "user test" : "role test"));
+        for (PrivilegeType privilegeType : PrivilegeType.values()) {
+          if (privilegeType.isRelationalPrivilege()) {
+            listPrivilegeResult.remove(
+                (isUser ? "," : "test,") + "testdb.tb1," + privilegeType + ",false,");
+          }
+        }
+        resultSet =
+            adminStmt.executeQuery("List privileges of " + (isUser ? "user test" : "role test"));
+        TestUtils.assertResultSetEqual(
+            resultSet, "Role,Scope,Privileges,GrantOption,", listPrivilegeResult);
+
+        // 3. revoke all on database testdb
+        adminStmt.execute(
+            "revoke all on database testdb from " + (isUser ? "user test" : "role test"));
+        for (PrivilegeType privilegeType : PrivilegeType.values()) {
+          if (privilegeType.isRelationalPrivilege()) {
+            listPrivilegeResult.remove(
+                (isUser ? "," : "test,") + "testdb.*," + privilegeType + ",false,");
+          }
+        }
+        resultSet =
+            adminStmt.executeQuery("List privileges of " + (isUser ? "user test" : "role test"));
+        TestUtils.assertResultSetEqual(
+            resultSet, "Role,Scope,Privileges,GrantOption,", listPrivilegeResult);
+
+        // 4. revoke all on any
+        adminStmt.execute("revoke all on any from " + (isUser ? "user test" : "role test"));
+        for (PrivilegeType privilegeType : PrivilegeType.values()) {
+          if (privilegeType.isRelationalPrivilege()) {
+            listPrivilegeResult.remove(
+                (isUser ? "," : "test,") + "*.*," + privilegeType + ",false,");
+          }
+        }
+        Assert.assertTrue(listPrivilegeResult.isEmpty());
+        resultSet =
+            adminStmt.executeQuery("List privileges of " + (isUser ? "user test" : "role test"));
+        TestUtils.assertResultSetEqual(
+            resultSet, "Role,Scope,Privileges,GrantOption,", listPrivilegeResult);
+
+        // 1. grant all on user/role
+        adminStmt.execute("grant all to " + (isUser ? "user test" : "role test"));
+        for (PrivilegeType privilegeType : PrivilegeType.values()) {
+          if (privilegeType.isRelationalPrivilege()) {
+            listPrivilegeResult.add((isUser ? "," : "test,") + "*.*," + privilegeType + ",false,");
+          } else if (privilegeType.forRelationalSys()) {
+            listPrivilegeResult.add((isUser ? "," : "test,") + "," + privilegeType + ",false,");
+          }
+        }
+        resultSet =
+            adminStmt.executeQuery("List privileges of " + (isUser ? "user test" : "role test"));
+        TestUtils.assertResultSetEqual(
+            resultSet, "Role,Scope,Privileges,GrantOption,", listPrivilegeResult);
+
+        // 2. revoke all on any
+        adminStmt.execute("revoke all on any from " + (isUser ? "user test" : "role test"));
+        for (PrivilegeType privilegeType : PrivilegeType.values()) {
+          if (privilegeType.isRelationalPrivilege()) {
+            listPrivilegeResult.remove(
+                (isUser ? "," : "test,") + "*.*," + privilegeType + ",false,");
+          }
+        }
+        resultSet =
+            adminStmt.executeQuery("List privileges of " + (isUser ? "user test" : "role test"));
+        TestUtils.assertResultSetEqual(
+            resultSet, "Role,Scope,Privileges,GrantOption,", listPrivilegeResult);
+
+        // 3. revoke all on user/role
+        adminStmt.execute("revoke all from " + (isUser ? "user test" : "role test"));
+        listPrivilegeResult.clear();
+        resultSet =
+            adminStmt.executeQuery("List privileges of " + (isUser ? "user test" : "role test"));
+        TestUtils.assertResultSetEqual(
+            resultSet, "Role,Scope,Privileges,GrantOption,", listPrivilegeResult);
+        adminStmt.execute("drop database testdb");
+        adminStmt.execute(isUser ? "drop user test" : "drop role test");
+      }
+    }
+
     try (Connection adminCon = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
         Statement adminStmt = adminCon.createStatement()) {
       adminStmt.execute("create user test 'password'");
@@ -345,6 +515,61 @@ public class IoTDBRelationalAuthIT {
       ResultSet resultSet = adminStmt.executeQuery("List privileges of user test");
       TestUtils.assertResultSetEqual(
           resultSet, "Role,Scope,Privileges,GrantOption,", Collections.emptySet());
+      adminStmt.execute("GRANT ALL ON db1.test TO USER test");
+      adminStmt.execute("GRANT ALL ON DATABASE db2 TO USER test with grant option");
+      resultSet = adminStmt.executeQuery("List privileges of user test");
+      Set<String> resultSetALL = new HashSet<>();
+      for (PrivilegeType privilegeType : PrivilegeType.values()) {
+        if (privilegeType.isRelationalPrivilege()) {
+          resultSetALL.add(",db2.*," + privilegeType + ",true,");
+          resultSetALL.add(",db1.test," + privilegeType + ",false,");
+        }
+      }
+      TestUtils.assertResultSetEqual(resultSet, "Role,Scope,Privileges,GrantOption,", resultSetALL);
+      adminStmt.execute("REVOKE ALL FROM USER test");
+      resultSet = adminStmt.executeQuery("List privileges of user test");
+      TestUtils.assertResultSetEqual(
+          resultSet, "Role,Scope,Privileges,GrantOption,", Collections.emptySet());
+    }
+  }
+
+  @Test
+  public void testCreateUserAndRole() throws SQLException {
+    try (Connection adminCon = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        Statement adminStmt = adminCon.createStatement()) {
+      // normal case
+      adminStmt.execute("create user testuser 'password'");
+      // username abnormal
+      adminStmt.execute("create user \"!@#$%^*()_+-=1\" 'password'");
+
+      // username and password abnormal
+      adminStmt.execute("create user \"!@#$%^*()_+-=2\" '!@#$%^*()_+-='");
+
+      // rolename abnormal
+      adminStmt.execute("create role \"!@#$%^*()_+-=3\" ");
+
+      ResultSet resultSet = adminStmt.executeQuery("List user");
+      Set<String> resultSetList = new HashSet<>();
+      resultSetList.add("root,");
+      resultSetList.add("testuser,");
+      resultSetList.add("!@#$%^*()_+-=1,");
+      resultSetList.add("!@#$%^*()_+-=2,");
+      TestUtils.assertResultSetEqual(resultSet, "User,", resultSetList);
+      resultSet = adminStmt.executeQuery("List role");
+      TestUtils.assertResultSetEqual(resultSet, "Role,", Collections.singleton("!@#$%^*()_+-=3,"));
+      adminStmt.execute("GRANT role \"!@#$%^*()_+-=3\" to  \"!@#$%^*()_+-=1\"");
+      adminStmt.execute("ALTER user \"!@#$%^*()_+-=1\" set password '!@#$%^*()_+-=\'");
+    }
+
+    try (Connection userCon =
+            EnvFactory.getEnv()
+                .getConnection("!@#$%^*()_+-=1", "!@#$%^*()_+-=", BaseEnv.TABLE_SQL_DIALECT);
+        Statement userConStatement = userCon.createStatement()) {
+      // List his role.
+      ResultSet set = userConStatement.executeQuery("List role of user \"!@#$%^*()_+-=1\"");
+      TestUtils.assertResultSetEqual(set, "Role,", Collections.singleton("!@#$%^*()_+-=3,"));
+    } catch (IoTDBSQLException e) {
+      Assert.fail();
     }
   }
 }

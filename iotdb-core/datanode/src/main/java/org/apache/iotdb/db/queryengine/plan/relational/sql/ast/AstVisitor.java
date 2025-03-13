@@ -377,6 +377,10 @@ public abstract class AstVisitor<R, C> {
     return visitStatement(node, context);
   }
 
+  protected R visitRemoveConfigNode(RemoveConfigNode node, C context) {
+    return visitStatement(node, context);
+  }
+
   protected R visitDescribeTable(DescribeTable node, C context) {
     return visitStatement(node, context);
   }
@@ -394,6 +398,14 @@ public abstract class AstVisitor<R, C> {
   }
 
   protected R visitAddColumn(AddColumn node, C context) {
+    return visitStatement(node, context);
+  }
+
+  protected R visitSetTableComment(SetTableComment node, C context) {
+    return visitStatement(node, context);
+  }
+
+  protected R visitSetColumnComment(SetColumnComment node, C context) {
     return visitStatement(node, context);
   }
 
@@ -633,6 +645,10 @@ public abstract class AstVisitor<R, C> {
     return visitStatement(node, context);
   }
 
+  protected R visitShowQueriesStatement(ShowQueriesStatement node, C context) {
+    return visitShowStatement(node, context);
+  }
+
   protected R visitCountStatement(CountStatement node, C context) {
     return visitStatement(node, context);
   }
@@ -659,5 +675,22 @@ public abstract class AstVisitor<R, C> {
 
   protected R visitRemoveRegion(RemoveRegion node, C context) {
     return visitStatement(node, context);
+  }
+
+  protected R visitSetSqlDialect(SetSqlDialect node, C context) {
+    return visitStatement(node, context);
+  }
+
+  public R visitTableArgument(TableFunctionTableArgument tableFunctionTableArgument, C context) {
+    return visitNode(tableFunctionTableArgument, context);
+  }
+
+  public R visitTableFunctionArgument(TableFunctionArgument tableFunctionArgument, C context) {
+    return visitNode(tableFunctionArgument, context);
+  }
+
+  public R visitTableFunctionInvocation(
+      TableFunctionInvocation tableFunctionInvocation, C context) {
+    return visitNode(tableFunctionInvocation, context);
   }
 }

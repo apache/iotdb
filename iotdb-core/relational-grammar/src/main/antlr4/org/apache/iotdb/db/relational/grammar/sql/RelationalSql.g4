@@ -55,6 +55,7 @@ statement
     | showTableStatement
     | descTableStatement
     | alterTableStatement
+    | commentStatement
 
     // Index Statement
     | createIndexStatement
@@ -112,6 +113,7 @@ statement
     | extendRegionStatement
     | removeRegionStatement
     | removeDataNodeStatement
+    | removeConfigNodeStatement
 
     // Admin Statement
     | showVariablesStatement
@@ -126,6 +128,7 @@ statement
     | loadConfigurationStatement
     | setConfigurationStatement
     | showCurrentSqlDialectStatement
+    | setSqlDialectStatement
     | showCurrentUserStatement
     | showCurrentDatabaseStatement
     | showCurrentTimestampStatement
@@ -177,6 +180,7 @@ createTableStatement
     : CREATE TABLE (IF NOT EXISTS)? qualifiedName
         '(' (columnDefinition (',' columnDefinition)*)? ')'
         charsetDesc?
+        comment?
         (WITH properties)?
      ;
 
@@ -185,14 +189,18 @@ charsetDesc
     ;
 
 columnDefinition
-    : identifier columnCategory=(TAG | ATTRIBUTE | TIME) charsetName?
-    | identifier type (columnCategory=(TAG | ATTRIBUTE | TIME | FIELD))? charsetName?
+    : identifier columnCategory=(TAG | ATTRIBUTE | TIME) charsetName? comment?
+    | identifier type (columnCategory=(TAG | ATTRIBUTE | TIME | FIELD))? charsetName? comment?
     ;
 
 charsetName
     : CHAR SET identifier
     | CHARSET identifier
     | CHARACTER SET identifier
+    ;
+
+comment
+    : COMMENT string
     ;
 
 dropTableStatement
@@ -217,7 +225,10 @@ alterTableStatement
     | ALTER TABLE (IF EXISTS)? tableName=qualifiedName SET PROPERTIES propertyAssignments                #setTableProperties
     ;
 
-
+commentStatement
+    : COMMENT ON TABLE qualifiedName IS (string | NULL) #commentTable
+    | COMMENT ON COLUMN qualifiedName '.' column=identifier IS (string | NULL) #commentColumn
+    ;
 
 // ------------------------------------------- Index Statement ---------------------------------------------------------
 createIndexStatement
@@ -495,7 +506,11 @@ removeRegionStatement
     ;
 
 removeDataNodeStatement
-    : REMOVE DATANODE dataNodeId=INTEGER_VALUE (',' dataNodeId=INTEGER_VALUE)*
+    : REMOVE DATANODE dataNodeId=INTEGER_VALUE
+    ;
+
+removeConfigNodeStatement
+    : REMOVE CONFIGNODE configNodeId=INTEGER_VALUE
     ;
 
 // ------------------------------------------- Admin Statement ---------------------------------------------------------
@@ -562,6 +577,10 @@ showCurrentSqlDialectStatement
     : SHOW CURRENT_SQL_DIALECT
     ;
 
+setSqlDialectStatement
+    : SET SQL_DIALECT EQ (TABLE | TREE)
+    ;
+
 showCurrentUserStatement
     : SHOW CURRENT_USER
     ;
@@ -594,7 +613,7 @@ dropRoleStatement
     ;
 
 alterUserStatement
-    : ALTER USER userName=identifier SET PASSWORD password=identifier
+    : ALTER USER userName=identifier SET PASSWORD password=string
     ;
 
 grantUserRoleStatement
@@ -619,11 +638,11 @@ listRolePrivilegeStatement
     ;
 
 listUserStatement
-    : LIST USER
+    : LIST USER (OF ROLE roleName=identifier)?
     ;
 
 listRoleStatement
-    : LIST ROLE
+    : LIST ROLE (OF USER userName=identifier)?
     ;
 
 
@@ -634,7 +653,7 @@ revokeStatement
 privilegeObjectScope
     : systemPrivileges
     | objectPrivileges ON objectType objectName=identifier
-    | objectPrivileges ON objectScope
+    | objectPrivileges ON (TABLE)? objectScope
     | objectPrivileges ON ANY
     | ALL
     ;
@@ -645,6 +664,7 @@ systemPrivileges
 
 objectPrivileges
     : objectPrivilege (',' objectPrivilege)*
+    | ALL
     ;
 
 objectScope
@@ -653,7 +673,6 @@ objectScope
 systemPrivilege
     : MANAGE_USER
     | MANAGE_ROLE
-    | MAINTAIN
     ;
 
 objectPrivilege
@@ -867,6 +886,35 @@ relationPrimary
     : qualifiedName                                                   #tableName
     | '(' query ')'                                                   #subqueryRelation
     | '(' relation ')'                                                #parenthesizedRelation
+    | TABLE '(' tableFunctionCall ')'                                 #tableFunctionInvocation
+    ;
+
+tableFunctionCall
+    : qualifiedName '(' (tableFunctionArgument (',' tableFunctionArgument)*)?')'
+    ;
+
+tableFunctionArgument
+    : (identifier '=>')? (tableArgument | scalarArgument) // descriptor before expression to avoid parsing descriptor as a function call
+    ;
+
+tableArgument
+    : tableArgumentRelation
+        (PARTITION BY ('(' (expression (',' expression)*)? ')' | expression))?
+        (ORDER BY ('(' sortItem (',' sortItem)* ')' | sortItem))?
+    ;
+
+tableArgumentRelation
+    : TABLE '(' qualifiedName ')' (AS? identifier columnAliases?)?  #tableArgumentTable
+    | TABLE '(' query ')' (AS? identifier columnAliases?)?          #tableArgumentQuery
+    ;
+
+scalarArgument
+    : expression
+    | timeDuration
+    ;
+
+copartitionTables
+    : '(' qualifiedName ',' qualifiedName (',' qualifiedName)* ')'
     ;
 
 expression
@@ -1074,7 +1122,7 @@ nonReserved
     // IMPORTANT: this rule must only contain tokens. Nested rules are not supported. See SqlParser.exitNonReserved
     : ABSENT | ADD | ADMIN | AFTER | ALL | ANALYZE | ANY | ARRAY | ASC | AT | ATTRIBUTE | AUTHORIZATION
     | BEGIN | BERNOULLI | BOTH
-    | CACHE | CALL | CALLED | CASCADE | CATALOG | CATALOGS | CHAR | CHARACTER | CHARSET | CLEAR | CLUSTER | CLUSTERID | COLUMN | COLUMNS | COMMENT | COMMIT | COMMITTED | CONDITION | CONDITIONAL | CONFIGNODES | CONFIGURATION | CONNECTOR | CONSTANT | COPARTITION | COUNT | CURRENT
+    | CACHE | CALL | CALLED | CASCADE | CATALOG | CATALOGS | CHAR | CHARACTER | CHARSET | CLEAR | CLUSTER | CLUSTERID | COLUMN | COLUMNS | COMMENT | COMMIT | COMMITTED | CONDITION | CONDITIONAL | CONFIGNODES | CONFIGNODE | CONFIGURATION | CONNECTOR | CONSTANT | COPARTITION | COUNT | CURRENT
     | DATA | DATABASE | DATABASES | DATANODE | DATANODES | DATE | DAY | DECLARE | DEFAULT | DEFINE | DEFINER | DENY | DESC | DESCRIPTOR | DETAILS| DETERMINISTIC | DEVICES | DISTRIBUTED | DO | DOUBLE
     | ELSEIF | EMPTY | ENCODING | ERROR | EXCLUDING | EXPLAIN | EXTRACTOR
     | FETCH | FIELD | FILTER | FINAL | FIRST | FLUSH | FOLLOWING | FORMAT | FUNCTION | FUNCTIONS
@@ -1084,12 +1132,12 @@ nonReserved
     | JSON
     | KEEP | KEY | KEYS | KILL
     | LANGUAGE | LAST | LATERAL | LEADING | LEAVE | LEVEL | LIMIT | LINEAR | LOAD | LOCAL | LOGICAL | LOOP
-    | MAP | MATCH | MATCHED | MATCHES | MATCH_RECOGNIZE | MATERIALIZED | MEASURES | METHOD | MERGE | MICROSECOND | MIGRATE | MILLISECOND | MINUTE | MODIFY | MONTH
+    | MANAGE_ROLE | MANAGE_USER | MAP | MATCH | MATCHED | MATCHES | MATCH_RECOGNIZE | MATERIALIZED | MEASURES | METHOD | MERGE | MICROSECOND | MIGRATE | MILLISECOND | MINUTE | MODIFY | MONTH
     | NANOSECOND | NESTED | NEXT | NFC | NFD | NFKC | NFKD | NO | NODEID | NONE | NULLIF | NULLS
     | OBJECT | OF | OFFSET | OMIT | ONE | ONLY | OPTION | ORDINALITY | OUTPUT | OVER | OVERFLOW
     | PARTITION | PARTITIONS | PASSING | PAST | PATH | PATTERN | PER | PERIOD | PERMUTE | PIPE | PIPEPLUGIN | PIPEPLUGINS | PIPES | PLAN | POSITION | PRECEDING | PRECISION | PRIVILEGES | PREVIOUS | PROCESSLIST | PROCESSOR | PROPERTIES | PRUNE
     | QUERIES | QUERY | QUOTES
-    | RANGE | READ | READONLY | REFRESH | REGION | REGIONID | REGIONS | REMOVE | RENAME | REPAIR | REPEAT  | REPEATABLE | REPLACE | RESET | RESPECT | RESTRICT | RETURN | RETURNING | RETURNS | REVOKE | ROLE | ROLES | ROLLBACK | ROW | ROWS | RUNNING
+    | RANGE | READ | READONLY | RECONSTRUCT | REFRESH | REGION | REGIONID | REGIONS | REMOVE | RENAME | REPAIR | REPEAT  | REPEATABLE | REPLACE | RESET | RESPECT | RESTRICT | RETURN | RETURNING | RETURNS | REVOKE | ROLE | ROLES | ROLLBACK | ROW | ROWS | RUNNING
     | SERIESSLOTID | SCALAR | SCHEMA | SCHEMAS | SECOND | SECURITY | SEEK | SERIALIZABLE | SESSION | SET | SETS
     | SHOW | SINK | SOME | SOURCE | START | STATS | STOP | SUBSCRIPTIONS | SUBSET | SUBSTRING | SYSTEM
     | TABLES | TABLESAMPLE | TAG | TEXT | TEXT_STRING | TIES | TIME | TIMEPARTITION | TIMESERIES | TIMESLOTID | TIMESTAMP | TO | TOPIC | TOPICS | TRAILING | TRANSACTION | TRUNCATE | TRY_CAST | TYPE
@@ -1144,6 +1192,7 @@ COMMITTED: 'COMMITTED';
 CONDITION: 'CONDITION';
 CONDITIONAL: 'CONDITIONAL';
 CONFIGNODES: 'CONFIGNODES';
+CONFIGNODE: 'CONFIGNODE';
 CONFIGURATION: 'CONFIGURATION';
 CONNECTOR: 'CONNECTOR';
 CONSTANT: 'CONSTANT';
@@ -1281,7 +1330,6 @@ LOCALTIME: 'LOCALTIME';
 LOCALTIMESTAMP: 'LOCALTIMESTAMP';
 LOGICAL: 'LOGICAL';
 LOOP: 'LOOP';
-MAINTAIN: 'MAINTAIN';
 MANAGE_ROLE: 'MANAGE_ROLE';
 MANAGE_USER: 'MANAGE_USER';
 MAP: 'MAP';
@@ -1362,6 +1410,7 @@ QUOTES: 'QUOTES';
 RANGE: 'RANGE';
 READ: 'READ';
 READONLY: 'READONLY';
+RECONSTRUCT: 'RECONSTRUCT';
 RECURSIVE: 'RECURSIVE';
 REFRESH: 'REFRESH';
 REGION: 'REGION';
@@ -1405,6 +1454,7 @@ SINK: 'SINK';
 SKIP_TOKEN: 'SKIP';
 SOME: 'SOME';
 SOURCE: 'SOURCE';
+SQL_DIALECT: 'SQL_DIALECT';
 START: 'START';
 STATS: 'STATS';
 STOP: 'STOP';
@@ -1432,6 +1482,7 @@ TOPIC: 'TOPIC';
 TOPICS: 'TOPICS';
 TRAILING: 'TRAILING';
 TRANSACTION: 'TRANSACTION';
+TREE: 'TREE';
 TRIM: 'TRIM';
 TRUE: 'TRUE';
 TRUNCATE: 'TRUNCATE';

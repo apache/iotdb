@@ -35,12 +35,16 @@ import org.apache.iotdb.commons.pipe.datastructure.pattern.TablePattern;
 import org.apache.iotdb.commons.pipe.receiver.IoTDBFileReceiver;
 import org.apache.iotdb.commons.pipe.receiver.PipeReceiverStatusHandler;
 import org.apache.iotdb.commons.schema.column.ColumnHeaderConstant;
+import org.apache.iotdb.commons.schema.table.TsTable;
+import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
 import org.apache.iotdb.commons.schema.ttl.TTLCache;
+import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.commons.utils.StatusUtils;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
 import org.apache.iotdb.confignode.consensus.request.write.auth.AuthorPlan;
+import org.apache.iotdb.confignode.consensus.request.write.auth.AuthorRelationalPlan;
 import org.apache.iotdb.confignode.consensus.request.write.auth.AuthorTreePlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.DatabaseSchemaPlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.DeleteDatabasePlan;
@@ -56,6 +60,8 @@ import org.apache.iotdb.confignode.consensus.request.write.table.AddTableColumnP
 import org.apache.iotdb.confignode.consensus.request.write.table.CommitDeleteColumnPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.CommitDeleteTablePlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.RenameTableColumnPlan;
+import org.apache.iotdb.confignode.consensus.request.write.table.SetTableColumnCommentPlan;
+import org.apache.iotdb.confignode.consensus.request.write.table.SetTableCommentPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.SetTablePropertiesPlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.CommitSetSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.ExtendSchemaTemplatePlan;
@@ -68,12 +74,12 @@ import org.apache.iotdb.confignode.manager.pipe.connector.payload.PipeTransferCo
 import org.apache.iotdb.confignode.manager.pipe.connector.payload.PipeTransferConfigSnapshotSealReq;
 import org.apache.iotdb.confignode.manager.pipe.event.PipeConfigRegionSnapshotEvent;
 import org.apache.iotdb.confignode.manager.pipe.extractor.IoTDBConfigRegionExtractor;
-import org.apache.iotdb.confignode.manager.pipe.metric.PipeConfigNodeReceiverMetrics;
+import org.apache.iotdb.confignode.manager.pipe.metric.receiver.PipeConfigNodeReceiverMetrics;
 import org.apache.iotdb.confignode.manager.pipe.receiver.visitor.PipeConfigPhysicalPlanExceptionVisitor;
 import org.apache.iotdb.confignode.manager.pipe.receiver.visitor.PipeConfigPhysicalPlanTSStatusVisitor;
 import org.apache.iotdb.confignode.persistence.schema.CNPhysicalPlanGenerator;
 import org.apache.iotdb.confignode.persistence.schema.CNSnapshotFileType;
-import org.apache.iotdb.confignode.persistence.schema.ConfignodeSnapshotParser;
+import org.apache.iotdb.confignode.persistence.schema.ConfigNodeSnapshotParser;
 import org.apache.iotdb.confignode.procedure.impl.schema.table.AddTableColumnProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.table.CreateTableProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.table.DropTableColumnProcedure;
@@ -109,6 +115,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -317,6 +324,69 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
         return configManager
             .checkUserPrivileges(username, new PrivilegeUnion(PrivilegeType.USE_TRIGGER))
             .getStatus();
+      case PipeCreateTable:
+        return configManager
+            .checkUserPrivileges(
+                username,
+                new PrivilegeUnion(
+                    ((PipeCreateTablePlan) plan).getDatabase(),
+                    ((PipeCreateTablePlan) plan).getTable().getTableName(),
+                    PrivilegeType.CREATE))
+            .getStatus();
+      case AddTableColumn:
+        return configManager
+            .checkUserPrivileges(
+                username,
+                new PrivilegeUnion(
+                    ((AddTableColumnPlan) plan).getDatabase(),
+                    ((AddTableColumnPlan) plan).getTableName(),
+                    PrivilegeType.ALTER))
+            .getStatus();
+      case SetTableProperties:
+        return configManager
+            .checkUserPrivileges(
+                username,
+                new PrivilegeUnion(
+                    ((SetTablePropertiesPlan) plan).getDatabase(),
+                    ((SetTablePropertiesPlan) plan).getTableName(),
+                    PrivilegeType.ALTER))
+            .getStatus();
+      case CommitDeleteColumn:
+        return configManager
+            .checkUserPrivileges(
+                username,
+                new PrivilegeUnion(
+                    ((CommitDeleteColumnPlan) plan).getDatabase(),
+                    ((CommitDeleteColumnPlan) plan).getTableName(),
+                    PrivilegeType.ALTER))
+            .getStatus();
+      case SetTableComment:
+        return configManager
+            .checkUserPrivileges(
+                username,
+                new PrivilegeUnion(
+                    ((SetTableCommentPlan) plan).getDatabase(),
+                    ((SetTableCommentPlan) plan).getTableName(),
+                    PrivilegeType.ALTER))
+            .getStatus();
+      case SetTableColumnComment:
+        return configManager
+            .checkUserPrivileges(
+                username,
+                new PrivilegeUnion(
+                    ((SetTableColumnCommentPlan) plan).getDatabase(),
+                    ((SetTableColumnCommentPlan) plan).getTableName(),
+                    PrivilegeType.ALTER))
+            .getStatus();
+      case CommitDeleteTable:
+        return configManager
+            .checkUserPrivileges(
+                username,
+                new PrivilegeUnion(
+                    ((CommitDeleteTablePlan) plan).getDatabase(),
+                    ((CommitDeleteTablePlan) plan).getTableName(),
+                    PrivilegeType.DROP))
+            .getStatus();
       case GrantRole:
       case GrantUser:
       case RevokeUser:
@@ -338,22 +408,122 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
           }
         }
         return StatusUtils.OK;
+      case RGrantUserAny:
+      case RGrantRoleAny:
+      case RRevokeUserAny:
+      case RRevokeRoleAny:
+        for (final int permission : ((AuthorRelationalPlan) plan).getPermissions()) {
+          final TSStatus status =
+              configManager
+                  .checkUserPrivileges(
+                      username, new PrivilegeUnion(PrivilegeType.values()[permission], true, true))
+                  .getStatus();
+          if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+            return status;
+          }
+        }
+        return StatusUtils.OK;
+      case RGrantUserAll:
+      case RGrantRoleAll:
+      case RRevokeUserAll:
+      case RRevokeRoleAll:
+        for (PrivilegeType privilegeType : PrivilegeType.values()) {
+          final TSStatus status;
+          if (privilegeType.isRelationalPrivilege()) {
+            status =
+                configManager
+                    .checkUserPrivileges(username, new PrivilegeUnion(privilegeType, true, true))
+                    .getStatus();
+          } else if (privilegeType.forRelationalSys()) {
+            status =
+                configManager
+                    .checkUserPrivileges(username, new PrivilegeUnion(privilegeType, true))
+                    .getStatus();
+          } else {
+            continue;
+          }
+          if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+            return status;
+          }
+        }
+        return StatusUtils.OK;
+      case RGrantUserDBPriv:
+      case RGrantRoleDBPriv:
+      case RRevokeUserDBPriv:
+      case RRevokeRoleDBPriv:
+        for (final int permission : ((AuthorRelationalPlan) plan).getPermissions()) {
+          final TSStatus status =
+              configManager
+                  .checkUserPrivileges(
+                      username,
+                      new PrivilegeUnion(
+                          ((AuthorRelationalPlan) plan).getDatabaseName(),
+                          PrivilegeType.values()[permission],
+                          true))
+                  .getStatus();
+          if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+            return status;
+          }
+        }
+        return StatusUtils.OK;
+      case RGrantUserTBPriv:
+      case RGrantRoleTBPriv:
+      case RRevokeUserTBPriv:
+      case RRevokeRoleTBPriv:
+        for (final int permission : ((AuthorRelationalPlan) plan).getPermissions()) {
+          final TSStatus status =
+              configManager
+                  .checkUserPrivileges(
+                      username,
+                      new PrivilegeUnion(
+                          ((AuthorRelationalPlan) plan).getDatabaseName(),
+                          ((AuthorRelationalPlan) plan).getTableName(),
+                          PrivilegeType.values()[permission],
+                          true))
+                  .getStatus();
+          if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+            return status;
+          }
+        }
+        return StatusUtils.OK;
+      case RGrantUserSysPri:
+      case RGrantRoleSysPri:
+      case RRevokeUserSysPri:
+      case RRevokeRoleSysPri:
+        for (final int permission : ((AuthorRelationalPlan) plan).getPermissions()) {
+          final TSStatus status =
+              configManager
+                  .checkUserPrivileges(
+                      username, new PrivilegeUnion(PrivilegeType.values()[permission], true))
+                  .getStatus();
+          if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+            return status;
+          }
+        }
+        return StatusUtils.OK;
       case UpdateUser:
+      case RUpdateUser:
         return ((AuthorPlan) plan).getUserName().equals(username)
             ? StatusUtils.OK
             : configManager
                 .checkUserPrivileges(username, new PrivilegeUnion(PrivilegeType.MANAGE_USER))
                 .getStatus();
       case CreateUser:
+      case RCreateUser:
       case CreateUserWithRawPassword:
       case DropUser:
+      case RDropUser:
         return configManager
             .checkUserPrivileges(username, new PrivilegeUnion(PrivilegeType.MANAGE_USER))
             .getStatus();
       case CreateRole:
+      case RCreateRole:
       case DropRole:
+      case RDropRole:
       case GrantRoleToUser:
+      case RGrantUserRole:
       case RevokeRoleFromUser:
+      case RRevokeUserRole:
         return configManager
             .checkUserPrivileges(username, new PrivilegeUnion(PrivilegeType.MANAGE_ROLE))
             .getStatus();
@@ -392,7 +562,9 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
         return configManager.deleteDatabases(
             new TDeleteDatabasesReq(
                     Collections.singletonList(((DeleteDatabasePlan) plan).getName()))
-                .setIsGeneratedByPipe(true));
+                .setIsGeneratedByPipe(true)
+                .setIsTableModel(
+                    PathUtils.isTableModelDatabase(((DeleteDatabasePlan) plan).getName())));
       case ExtendSchemaTemplate:
         return configManager
             .getClusterSchemaManager()
@@ -438,32 +610,7 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
             ? configManager.getTTLManager().unsetTTL((SetTTLPlan) plan, true)
             : configManager.getTTLManager().setTTL((SetTTLPlan) plan, true);
       case PipeCreateTable:
-        TSStatus result =
-            configManager
-                .getProcedureManager()
-                .executeWithoutDuplicate(
-                    ((PipeCreateTablePlan) plan).getDatabase(),
-                    ((PipeCreateTablePlan) plan).getTable(),
-                    ((PipeCreateTablePlan) plan).getTable().getTableName(),
-                    queryId,
-                    ProcedureType.CREATE_TABLE_PROCEDURE,
-                    new CreateTableProcedure(
-                        ((PipeCreateTablePlan) plan).getDatabase(),
-                        ((PipeCreateTablePlan) plan).getTable(),
-                        true));
-        if (result.getCode() == TSStatusCode.TABLE_ALREADY_EXISTS.getStatusCode()) {
-          // If the table already exists, we shall add the sender table's columns to the
-          // receiver's table, inner procedure guaranteeing that the columns existing at the
-          // receiver table will be trimmed
-          result =
-              executePlan(
-                  new AddTableColumnPlan(
-                      ((PipeCreateTablePlan) plan).getDatabase(),
-                      ((PipeCreateTablePlan) plan).getTable().getTableName(),
-                      ((PipeCreateTablePlan) plan).getTable().getColumnList(),
-                      false));
-        }
-        return result;
+        return executeIdempotentCreateTable((PipeCreateTablePlan) plan, queryId);
       case AddTableColumn:
         return configManager
             .getProcedureManager()
@@ -539,6 +686,23 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
                     ((CommitDeleteTablePlan) plan).getTableName(),
                     queryId,
                     true));
+      case SetTableComment:
+        return configManager
+            .getClusterSchemaManager()
+            .setTableComment(
+                ((SetTableCommentPlan) plan).getDatabase(),
+                ((SetTableCommentPlan) plan).getTableName(),
+                ((SetTableCommentPlan) plan).getComment(),
+                true);
+      case SetTableColumnComment:
+        return configManager
+            .getClusterSchemaManager()
+            .setTableColumnComment(
+                ((SetTableColumnCommentPlan) plan).getDatabase(),
+                ((SetTableColumnCommentPlan) plan).getTableName(),
+                ((SetTableColumnCommentPlan) plan).getColumnName(),
+                ((SetTableColumnCommentPlan) plan).getComment(),
+                true);
       case PipeDeleteDevices:
         return configManager
             .getProcedureManager()
@@ -552,6 +716,9 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
                     ByteBuffer.wrap(((PipeDeleteDevicesPlan) plan).getModBytes())),
                 true)
             .getStatus();
+      case CreateUser:
+      case CreateUserWithRawPassword:
+      case CreateRole:
       case DropUser:
       case DropRole:
       case GrantRole:
@@ -561,14 +728,88 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
       case RevokeRole:
       case RevokeRoleFromUser:
       case UpdateUser:
+      case RCreateUser:
+      case RCreateRole:
+      case RDropUser:
+      case RDropRole:
+      case RGrantRoleAll:
+      case RGrantUserAll:
+      case RRevokeRoleAll:
+      case RRevokeUserAll:
+      case RGrantRoleAny:
+      case RGrantUserAny:
+      case RRevokeUserAny:
+      case RRevokeRoleAny:
+      case RGrantRoleDBPriv:
+      case RGrantUserDBPriv:
+      case RRevokeRoleDBPriv:
+      case RRevokeUserDBPriv:
+      case RGrantRoleTBPriv:
+      case RGrantUserTBPriv:
+      case RRevokeRoleTBPriv:
+      case RRevokeUserTBPriv:
+      case RGrantRoleSysPri:
+      case RGrantUserSysPri:
+      case RRevokeRoleSysPri:
+      case RRevokeUserSysPri:
+      case RGrantUserRole:
+      case RRevokeUserRole:
         return configManager.getPermissionManager().operatePermission((AuthorPlan) plan, true);
       case CreateSchemaTemplate:
-      case CreateUser:
-      case CreateRole:
-      case CreateUserWithRawPassword:
       default:
         return configManager.getConsensusManager().write(new PipeEnrichedPlan(plan));
     }
+  }
+
+  private TSStatus executeIdempotentCreateTable(
+      final PipeCreateTablePlan plan, final String queryId) throws ConsensusException {
+    final String database = plan.getDatabase();
+    final TsTable table = plan.getTable();
+    TSStatus result =
+        configManager
+            .getProcedureManager()
+            .executeWithoutDuplicate(
+                database,
+                table,
+                table.getTableName(),
+                queryId,
+                ProcedureType.CREATE_TABLE_PROCEDURE,
+                new CreateTableProcedure(database, table, true));
+    if (result.getCode() == TSStatusCode.TABLE_ALREADY_EXISTS.getStatusCode()) {
+      // If the table already exists, we shall add the sender table's columns to the
+      // receiver's table, inner procedure guaranteeing that the columns existing at the
+      // receiver table will be trimmed
+      result =
+          executePlan(
+              new AddTableColumnPlan(database, table.getTableName(), table.getColumnList(), false));
+      if (result.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()
+          && result.getCode() != TSStatusCode.COLUMN_ALREADY_EXISTS.getStatusCode()) {
+        return result;
+      }
+      // Add comments
+      final Optional<String> tableComment = table.getPropValue(TsTable.COMMENT_KEY);
+      if (tableComment.isPresent()) {
+        result =
+            executePlan(
+                new SetTableCommentPlan(database, table.getTableName(), tableComment.get()));
+      }
+      if (result.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        return result;
+      }
+      for (final TsTableColumnSchema schema : table.getColumnList()) {
+        final String columnComment = schema.getProps().get(TsTable.COMMENT_KEY);
+        if (Objects.nonNull(columnComment)) {
+          result =
+              executePlan(
+                  new SetTableColumnCommentPlan(
+                      database, table.getTableName(), schema.getColumnName(), columnComment));
+        }
+        if (result.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+          return result;
+        }
+      }
+    }
+    return result;
   }
 
   /** Used to construct pipe related procedures */
@@ -617,7 +858,7 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
       throws IOException {
     final Map<String, String> parameters = req.getParameters();
     final CNPhysicalPlanGenerator generator =
-        ConfignodeSnapshotParser.translate2PhysicalPlan(
+        ConfigNodeSnapshotParser.translate2PhysicalPlan(
             Paths.get(fileAbsolutePaths.get(0)),
             fileAbsolutePaths.size() > 1 ? Paths.get(fileAbsolutePaths.get(1)) : null,
             CNSnapshotFileType.deserialize(

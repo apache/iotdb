@@ -40,7 +40,6 @@ import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.BeforeClass;
-import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -61,7 +60,7 @@ import java.util.Map;
 import java.util.stream.Collectors;
 
 import static org.apache.iotdb.db.it.utils.TestUtils.assertTableNonQueryTestFail;
-import static org.apache.iotdb.db.it.utils.TestUtils.resultSetEqualTest;
+import static org.apache.iotdb.db.it.utils.TestUtils.tableResultSetEqualTest;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
@@ -348,7 +347,7 @@ public class IoTDBInsertTableIT {
     }
   }
 
-  @Ignore // aggregation
+  // aggregation
   @Test
   public void testInsertWithoutTime() {
     try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
@@ -370,9 +369,10 @@ public class IoTDBInsertTableIT {
       fail(e.getMessage());
     }
 
-    String expectedHeader = "count(s1),count(s2),count(s3),";
+    String[] expectedHeader = new String[] {"_col0", "_col1", "_col2"};
     String[] retArray = new String[] {"4,4,4,"};
-    resultSetEqualTest("select count(s1), count(s2), count(s3) from sg9", expectedHeader, retArray);
+    tableResultSetEqualTest(
+        "select count(s1), count(s2), count(s3) from sg9", expectedHeader, retArray, "test");
   }
 
   @Test
@@ -399,7 +399,7 @@ public class IoTDBInsertTableIT {
         "test");
   }
 
-  @Ignore // aggregation
+  // aggregation
   @Test
   public void testInsertMultiRow2() throws SQLException {
     try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT)) {
@@ -486,6 +486,17 @@ public class IoTDBInsertTableIT {
         st1.execute("use \"test\"");
         st1.execute(
             "insert into wf16(tag1, time, status) values('wt01', 1618283005586000, true), ('wt01', 1618283005586001, false)");
+        fail();
+      } catch (SQLException e) {
+        assertTrue(e.getMessage().contains("Current system timestamp precision is ms"));
+      }
+    }
+    try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        Statement st1 = connection.createStatement()) {
+      try {
+        st1.execute("use \"test\"");
+        st1.execute(
+            "insert into wf16(tag1, time, status) values('wt01', -1618283005586000, true), ('wt01', -1618283005586001, false)");
         fail();
       } catch (SQLException e) {
         assertTrue(e.getMessage().contains("Current system timestamp precision is ms"));
@@ -866,24 +877,35 @@ public class IoTDBInsertTableIT {
   }
 
   @Test
-  public void testInsertSingleColumn() throws SQLException {
+  public void testInsertSingleColumn() throws SQLException, InterruptedException {
     try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
         Statement st1 = connection.createStatement()) {
       st1.execute("use \"test\"");
       st1.execute(
           "create table if not exists sg21 (tag1 string tag, ss1 string attribute, ss2 int32 field)");
       // only tag
-      st1.execute("insert into sg21(tag1) values('1')");
+      try {
+        st1.execute("insert into sg21(tag1) values('1')");
+      } catch (SQLException e) {
+        assertEquals("507: No Field column present, please check the request", e.getMessage());
+      }
       // only time
       try {
         st1.execute("insert into sg21(time) values(1)");
       } catch (SQLException e) {
         assertEquals(
-            "305: [INTERNAL_SERVER_ERROR(305)] Exception occurred: \"insert into sg21(time) values(1)\". executeStatement failed. No column other than Time present, please check the request",
-            e.getMessage());
+            "507: No column other than Time present, please check the request", e.getMessage());
       }
+      // sleep a while to avoid the same timestamp between two insertions
+      Thread.sleep(10);
       // only attribute
-      st1.execute("insert into sg21(ss1) values('1')");
+      try {
+        st1.execute("insert into sg21(ss1) values('1')");
+      } catch (SQLException e) {
+        assertEquals("507: No Field column present, please check the request", e.getMessage());
+      }
+      // sleep a while to avoid the same timestamp between two insertions
+      Thread.sleep(10);
       // only field
       st1.execute("insert into sg21(ss2) values(1)");
 
@@ -891,9 +913,9 @@ public class IoTDBInsertTableIT {
       assertTrue(rs1.next());
       // from "insert into sg21(ss2) values(1)"
       assertEquals(null, rs1.getString("tag1"));
-      assertTrue(rs1.next());
+      assertFalse(rs1.next());
       // from "insert into sg21(tag1) values('1')"
-      assertEquals("1", rs1.getString("tag1"));
+      assertEquals(null, rs1.getString("tag1"));
       assertFalse(rs1.next());
 
       rs1 = st1.executeQuery("select time, ss1, ss2 from sg21 order by time");
@@ -901,15 +923,8 @@ public class IoTDBInsertTableIT {
       rs1.getString("ss1");
       assertTrue(rs1.wasNull());
       rs1.getInt("ss2");
-      assertTrue(rs1.wasNull());
-
-      assertTrue(rs1.next());
-      assertEquals("1", rs1.getString("ss1"));
-      rs1.getInt("ss2");
-      assertTrue(rs1.wasNull());
-      assertTrue(rs1.next());
-      assertEquals("1", rs1.getString("ss1"));
       assertEquals(1, rs1.getInt("ss2"));
+
       assertFalse(rs1.next());
     }
   }

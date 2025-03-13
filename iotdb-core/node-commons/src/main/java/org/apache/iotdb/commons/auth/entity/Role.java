@@ -365,6 +365,14 @@ public class Role {
     anyScopePrivilegeGrantOptSet.remove(priv);
   }
 
+  public void revokeAllRelationalPrivileges() {
+    objectPrivilegeMap = new HashMap<>();
+    sysPrivilegeSet.removeIf(PrivilegeType::forRelationalSys);
+    sysPriGrantOpt.removeIf(PrivilegeType::forRelationalSys);
+    anyScopePrivilegeSet = new HashSet<>();
+    anyScopePrivilegeGrantOptSet = new HashSet<>();
+  }
+
   public void grantDBPrivilege(String dbName, PrivilegeType priv, boolean grantOption) {
     DatabasePrivilege databasePrivilege = getObjectPrivilege(dbName);
     databasePrivilege.grantDBPrivilege(priv);
@@ -512,6 +520,10 @@ public class Role {
 
   public boolean checkSysPriGrantOpt(PrivilegeType priv) {
     return sysPrivilegeSet.contains(priv) && sysPriGrantOpt.contains(priv);
+  }
+
+  public boolean checkAnyVisible() {
+    return !anyScopePrivilegeSet.isEmpty();
   }
 
   public boolean checkDBVisible(String database) {

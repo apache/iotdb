@@ -76,6 +76,7 @@ public class LoadTableStatementDataTypeConvertExecutionVisitor
               Long.MIN_VALUE,
               Long.MAX_VALUE,
               null,
+              "root",
               null)) {
         for (final TabletInsertionEvent tabletInsertionEvent : parser.toTabletInsertionEvents()) {
           if (!(tabletInsertionEvent instanceof PipeRawTabletInsertionEvent)) {
@@ -123,6 +124,10 @@ public class LoadTableStatementDataTypeConvertExecutionVisitor
               || result.getCode() == TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode()
               || result.getCode()
                   == TSStatusCode.LOAD_IDEMPOTENT_CONFLICT_EXCEPTION.getStatusCode())) {
+            LOGGER.warn(
+                "Failed to convert data type for LoadTsFileStatement: {}, status code is {}.",
+                loadTsFileStatement,
+                result.getCode());
             return Optional.empty();
           }
         }

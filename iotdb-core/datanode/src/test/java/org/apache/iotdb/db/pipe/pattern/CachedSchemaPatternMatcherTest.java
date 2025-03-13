@@ -23,8 +23,8 @@ import org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant;
 import org.apache.iotdb.commons.pipe.config.plugin.configuraion.PipeTaskRuntimeConfiguration;
 import org.apache.iotdb.commons.pipe.config.plugin.env.PipeTaskExtractorRuntimeEnvironment;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.PrefixTreePattern;
-import org.apache.iotdb.commons.pipe.datastructure.pattern.TreePattern;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.pipe.event.realtime.PipeRealtimeEvent;
 import org.apache.iotdb.db.pipe.extractor.dataregion.realtime.PipeRealtimeDataRegionExtractor;
 import org.apache.iotdb.db.pipe.extractor.dataregion.realtime.epoch.TsFileEpoch;
@@ -56,11 +56,10 @@ public class CachedSchemaPatternMatcherTest {
   private static class MockedPipeRealtimeEvent extends PipeRealtimeEvent {
 
     public MockedPipeRealtimeEvent(
-        EnrichedEvent event,
-        TsFileEpoch tsFileEpoch,
-        Map<IDeviceID, String[]> device2Measurements,
-        TreePattern pattern) {
-      super(event, tsFileEpoch, device2Measurements, pattern, null);
+        final EnrichedEvent event,
+        final TsFileEpoch tsFileEpoch,
+        final Map<IDeviceID, String[]> device2Measurements) {
+      super(event, tsFileEpoch, device2Measurements);
     }
 
     @Override
@@ -77,9 +76,12 @@ public class CachedSchemaPatternMatcherTest {
   private CachedSchemaPatternMatcher matcher;
   private ExecutorService executorService;
   private List<PipeRealtimeDataRegionExtractor> extractors;
+  private int dataNodeId;
 
   @Before
   public void setUp() {
+    dataNodeId = IoTDBDescriptor.getInstance().getConfig().getDataNodeId();
+    IoTDBDescriptor.getInstance().getConfig().setDataNodeId(0);
     matcher = new CachedSchemaPatternMatcher();
     executorService = Executors.newSingleThreadExecutor();
     extractors = new ArrayList<>();
@@ -88,11 +90,13 @@ public class CachedSchemaPatternMatcherTest {
   @After
   public void tearDown() {
     executorService.shutdownNow();
+    IoTDBDescriptor.getInstance().getConfig().setDataNodeId(dataNodeId);
   }
 
   @Test
   public void testCachedMatcher() throws Exception {
-    PipeRealtimeDataRegionExtractor dataRegionExtractor = new PipeRealtimeDataRegionFakeExtractor();
+    final PipeRealtimeDataRegionExtractor dataRegionExtractor =
+        new PipeRealtimeDataRegionFakeExtractor();
     dataRegionExtractor.customize(
         new PipeParameters(
             new HashMap<String, String>() {
@@ -103,10 +107,11 @@ public class CachedSchemaPatternMatcherTest {
         new PipeTaskRuntimeConfiguration(new PipeTaskExtractorRuntimeEnvironment("1", 1, 1, null)));
     extractors.add(dataRegionExtractor);
 
-    int deviceExtractorNum = 10;
-    int seriesExtractorNum = 10;
+    final int deviceExtractorNum = 10;
+    final int seriesExtractorNum = 10;
     for (int i = 0; i < deviceExtractorNum; i++) {
-      PipeRealtimeDataRegionExtractor deviceExtractor = new PipeRealtimeDataRegionFakeExtractor();
+      final PipeRealtimeDataRegionExtractor deviceExtractor =
+          new PipeRealtimeDataRegionFakeExtractor();
       int finalI1 = i;
       deviceExtractor.customize(
           new PipeParameters(
@@ -119,7 +124,8 @@ public class CachedSchemaPatternMatcherTest {
               new PipeTaskExtractorRuntimeEnvironment("1", 1, 1, null)));
       extractors.add(deviceExtractor);
       for (int j = 0; j < seriesExtractorNum; j++) {
-        PipeRealtimeDataRegionExtractor seriesExtractor = new PipeRealtimeDataRegionFakeExtractor();
+        final PipeRealtimeDataRegionExtractor seriesExtractor =
+            new PipeRealtimeDataRegionFakeExtractor();
         int finalI = i;
         int finalJ = j;
         seriesExtractor.customize(
@@ -137,34 +143,33 @@ public class CachedSchemaPatternMatcherTest {
       }
     }
 
-    Future<?> future =
+    final Future<?> future =
         executorService.submit(() -> extractors.forEach(extractor -> matcher.register(extractor)));
 
-    int epochNum = 10000;
-    int deviceNum = 1000;
-    int seriesNum = 100;
-    Map<IDeviceID, String[]> deviceMap =
+    final int epochNum = 10000;
+    final int deviceNum = 1000;
+    final int seriesNum = 100;
+    final Map<IDeviceID, String[]> deviceMap =
         IntStream.range(0, deviceNum)
             .mapToObj(String::valueOf)
             .collect(
                 Collectors.toMap(s -> new StringArrayDeviceID("root.db" + s), s -> new String[0]));
-    String[] measurements =
+    final String[] measurements =
         IntStream.range(0, seriesNum).mapToObj(num -> "s" + num).toArray(String[]::new);
     long totalTime = 0;
     for (int i = 0; i < epochNum; i++) {
       for (int j = 0; j < deviceNum; j++) {
-        MockedPipeRealtimeEvent event =
+        final MockedPipeRealtimeEvent event =
             new MockedPipeRealtimeEvent(
                 null,
                 null,
-                Collections.singletonMap(new StringArrayDeviceID("root.db" + i), measurements),
-                null);
-        long startTime = System.currentTimeMillis();
+                Collections.singletonMap(new StringArrayDeviceID("root.db" + i), measurements));
+        final long startTime = System.currentTimeMillis();
         matcher.match(event).forEach(extractor -> extractor.extract(event));
         totalTime += (System.currentTimeMillis() - startTime);
       }
-      MockedPipeRealtimeEvent event = new MockedPipeRealtimeEvent(null, null, deviceMap, null);
-      long startTime = System.currentTimeMillis();
+      final MockedPipeRealtimeEvent event = new MockedPipeRealtimeEvent(null, null, deviceMap);
+      final long startTime = System.currentTimeMillis();
       matcher.match(event).forEach(extractor -> extractor.extract(event));
       totalTime += (System.currentTimeMillis() - startTime);
     }
@@ -189,7 +194,7 @@ public class CachedSchemaPatternMatcherTest {
     }
 
     @Override
-    protected void doExtract(PipeRealtimeEvent event) {
+    protected void doExtract(final PipeRealtimeEvent event) {
       final boolean[] match = {false};
       event
           .getSchemaInfo()

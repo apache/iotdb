@@ -119,6 +119,7 @@ enum TRegionMaintainTaskStatus {
 struct TFlushReq {
    1: optional string isSeq
    2: optional list<string> storageGroups
+   3: optional list<string> regionIds
 }
 
 struct TSettleReq {

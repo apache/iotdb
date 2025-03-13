@@ -25,7 +25,6 @@ import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.IoTDBTreePattern;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanVisitor;
-import org.apache.iotdb.confignode.consensus.request.write.auth.AuthorPlan;
 import org.apache.iotdb.confignode.consensus.request.write.auth.AuthorTreePlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.DatabaseSchemaPlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.DeleteDatabasePlan;
@@ -166,52 +165,51 @@ public class PipeConfigPhysicalPlanTreePatternParseVisitor
 
   @Override
   public Optional<ConfigPhysicalPlan> visitGrantUser(
-      final AuthorPlan grantUserPlan, final IoTDBTreePattern pattern) {
+      final AuthorTreePlan grantUserPlan, final IoTDBTreePattern pattern) {
     return visitTreeAuthorPlan(grantUserPlan, pattern);
   }
 
   @Override
   public Optional<ConfigPhysicalPlan> visitRevokeUser(
-      final AuthorPlan revokeUserPlan, final IoTDBTreePattern pattern) {
+      final AuthorTreePlan revokeUserPlan, final IoTDBTreePattern pattern) {
     return visitTreeAuthorPlan(revokeUserPlan, pattern);
   }
 
   @Override
   public Optional<ConfigPhysicalPlan> visitGrantRole(
-      final AuthorPlan revokeUserPlan, final IoTDBTreePattern pattern) {
+      final AuthorTreePlan revokeUserPlan, final IoTDBTreePattern pattern) {
     return visitTreeAuthorPlan(revokeUserPlan, pattern);
   }
 
   @Override
   public Optional<ConfigPhysicalPlan> visitRevokeRole(
-      final AuthorPlan revokeUserPlan, final IoTDBTreePattern pattern) {
+      final AuthorTreePlan revokeUserPlan, final IoTDBTreePattern pattern) {
     return visitTreeAuthorPlan(revokeUserPlan, pattern);
   }
 
   private Optional<ConfigPhysicalPlan> visitTreeAuthorPlan(
-      final AuthorPlan pathRelatedAuthorPlan, final IoTDBTreePattern pattern) {
-    AuthorTreePlan plan = (AuthorTreePlan) pathRelatedAuthorPlan;
+      final AuthorTreePlan pathRelatedAuthorTreePlan, final IoTDBTreePattern pattern) {
     final List<PartialPath> intersectedPaths =
-        plan.getNodeNameList().stream()
+        pathRelatedAuthorTreePlan.getNodeNameList().stream()
             .map(pattern::getIntersection)
             .flatMap(Collection::stream)
             .collect(Collectors.toList());
     final Set<Integer> permissions =
         !intersectedPaths.isEmpty()
-            ? plan.getPermissions()
-            : plan.getPermissions().stream()
+            ? pathRelatedAuthorTreePlan.getPermissions()
+            : pathRelatedAuthorTreePlan.getPermissions().stream()
                 .filter(permission -> !PrivilegeType.values()[permission].isPathPrivilege())
                 .collect(Collectors.toSet());
     return !permissions.isEmpty()
         ? Optional.of(
             new AuthorTreePlan(
-                plan.getAuthorType(),
-                plan.getUserName(),
-                plan.getRoleName(),
-                plan.getPassword(),
-                plan.getNewPassword(),
+                pathRelatedAuthorTreePlan.getAuthorType(),
+                pathRelatedAuthorTreePlan.getUserName(),
+                pathRelatedAuthorTreePlan.getRoleName(),
+                pathRelatedAuthorTreePlan.getPassword(),
+                pathRelatedAuthorTreePlan.getNewPassword(),
                 permissions,
-                plan.getGrantOpt(),
+                pathRelatedAuthorTreePlan.getGrantOpt(),
                 intersectedPaths))
         : Optional.empty();
   }
@@ -242,7 +240,7 @@ public class PipeConfigPhysicalPlanTreePatternParseVisitor
           pattern.getIntersection(
               PathPatternTree.deserialize(pipeDeleteLogicalViewPlan.getPatternTreeBytes()));
       return !intersectedTree.isEmpty()
-          ? Optional.of(new PipeDeleteTimeSeriesPlan(intersectedTree.serialize()))
+          ? Optional.of(new PipeDeleteLogicalViewPlan(intersectedTree.serialize()))
           : Optional.empty();
     } catch (final IOException e) {
       LOGGER.warn(

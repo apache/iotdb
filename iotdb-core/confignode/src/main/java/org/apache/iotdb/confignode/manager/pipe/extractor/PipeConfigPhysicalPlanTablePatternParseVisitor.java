@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.pipe.datastructure.pattern.TablePattern;
 import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanVisitor;
+import org.apache.iotdb.confignode.consensus.request.write.auth.AuthorRelationalPlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.DatabaseSchemaPlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.DeleteDatabasePlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeCreateTablePlan;
@@ -30,6 +31,8 @@ import org.apache.iotdb.confignode.consensus.request.write.table.AddTableColumnP
 import org.apache.iotdb.confignode.consensus.request.write.table.CommitDeleteColumnPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.CommitDeleteTablePlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.RenameTableColumnPlan;
+import org.apache.iotdb.confignode.consensus.request.write.table.SetTableColumnCommentPlan;
+import org.apache.iotdb.confignode.consensus.request.write.table.SetTableCommentPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.SetTablePropertiesPlan;
 
 import java.util.Optional;
@@ -127,9 +130,90 @@ public class PipeConfigPhysicalPlanTablePatternParseVisitor
         : Optional.empty();
   }
 
+  @Override
+  public Optional<ConfigPhysicalPlan> visitSetTableComment(
+      final SetTableCommentPlan setTableCommentPlan, final TablePattern pattern) {
+    return matchDatabaseAndTableName(
+            setTableCommentPlan.getDatabase(), setTableCommentPlan.getTableName(), pattern)
+        ? Optional.of(setTableCommentPlan)
+        : Optional.empty();
+  }
+
+  @Override
+  public Optional<ConfigPhysicalPlan> visitSetTableColumnComment(
+      final SetTableColumnCommentPlan setTableColumnCommentPlan, final TablePattern pattern) {
+    return matchDatabaseAndTableName(
+            setTableColumnCommentPlan.getDatabase(),
+            setTableColumnCommentPlan.getTableName(),
+            pattern)
+        ? Optional.of(setTableColumnCommentPlan)
+        : Optional.empty();
+  }
+
   private boolean matchDatabaseAndTableName(
       final String database, final String tableName, final TablePattern pattern) {
     return pattern.matchesDatabase(PathUtils.unQualifyDatabaseName(database))
         && pattern.matchesTable(tableName);
+  }
+
+  @Override
+  public Optional<ConfigPhysicalPlan> visitRGrantUserDB(
+      final AuthorRelationalPlan plan, final TablePattern pattern) {
+    return visitAuthorDBPlan(plan, pattern);
+  }
+
+  @Override
+  public Optional<ConfigPhysicalPlan> visitRGrantRoleDB(
+      final AuthorRelationalPlan plan, final TablePattern pattern) {
+    return visitAuthorDBPlan(plan, pattern);
+  }
+
+  @Override
+  public Optional<ConfigPhysicalPlan> visitRRevokeUserDBPrivilege(
+      final AuthorRelationalPlan plan, final TablePattern pattern) {
+    return visitAuthorDBPlan(plan, pattern);
+  }
+
+  @Override
+  public Optional<ConfigPhysicalPlan> visitRRevokeRoleDBPrivilege(
+      final AuthorRelationalPlan plan, final TablePattern pattern) {
+    return visitAuthorDBPlan(plan, pattern);
+  }
+
+  private Optional<ConfigPhysicalPlan> visitAuthorDBPlan(
+      final AuthorRelationalPlan plan, final TablePattern pattern) {
+    return pattern.matchesDatabase(plan.getDatabaseName()) ? Optional.of(plan) : Optional.empty();
+  }
+
+  @Override
+  public Optional<ConfigPhysicalPlan> visitRGrantUserTB(
+      final AuthorRelationalPlan plan, final TablePattern pattern) {
+    return visitAuthorTBPlan(plan, pattern);
+  }
+
+  @Override
+  public Optional<ConfigPhysicalPlan> visitRGrantRoleTB(
+      final AuthorRelationalPlan plan, final TablePattern pattern) {
+    return visitAuthorTBPlan(plan, pattern);
+  }
+
+  @Override
+  public Optional<ConfigPhysicalPlan> visitRRevokeUserTBPrivilege(
+      final AuthorRelationalPlan plan, final TablePattern pattern) {
+    return visitAuthorTBPlan(plan, pattern);
+  }
+
+  @Override
+  public Optional<ConfigPhysicalPlan> visitRRevokeRoleTBPrivilege(
+      final AuthorRelationalPlan plan, final TablePattern pattern) {
+    return visitAuthorTBPlan(plan, pattern);
+  }
+
+  private Optional<ConfigPhysicalPlan> visitAuthorTBPlan(
+      final AuthorRelationalPlan plan, final TablePattern pattern) {
+    return pattern.matchesDatabase(plan.getDatabaseName())
+            && pattern.matchesTable(plan.getTableName())
+        ? Optional.of(plan)
+        : Optional.empty();
   }
 }

@@ -78,13 +78,17 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.MigrateRegion;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.PipeStatement;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ReconstructRegion;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.RelationalAuthorStatement;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.RemoveConfigNode;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.RemoveDataNode;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.RemoveRegion;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.RenameColumn;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.RenameTable;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SetColumnComment;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SetConfiguration;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SetProperties;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SetSqlDialect;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SetSystemStatus;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SetTableComment;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowAINodes;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowCluster;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowClusterId;
@@ -178,8 +182,9 @@ public class Coordinator {
     this.executor = getQueryExecutor();
     this.writeOperationExecutor = getWriteExecutor();
     this.scheduledExecutor = getScheduledExecutor();
+    this.accessControl = new AccessControlImpl(new ITableAuthCheckerImpl());
     this.statementRewrite =
-        new StatementRewriteFactory(LocalExecutionPlanner.getInstance().metadata)
+        new StatementRewriteFactory(LocalExecutionPlanner.getInstance().metadata, accessControl)
             .getStatementRewrite();
     this.logicalPlanOptimizers =
         new LogicalOptimizeFactory(
@@ -191,7 +196,6 @@ public class Coordinator {
                 new PlannerContext(
                     LocalExecutionPlanner.getInstance().metadata, new InternalTypeManager()))
             .getPlanOptimizers();
-    this.accessControl = new AccessControlImpl(new ITableAuthCheckerImpl());
     this.dataNodeLocationSupplier = DataNodeLocationSupplierFactory.getSupplier();
   }
 
@@ -406,6 +410,8 @@ public class Coordinator {
         || statement instanceof SetProperties
         || statement instanceof DropColumn
         || statement instanceof DropTable
+        || statement instanceof SetTableComment
+        || statement instanceof SetColumnComment
         || statement instanceof DeleteDevice
         || statement instanceof RenameColumn
         || statement instanceof RenameTable
@@ -423,8 +429,10 @@ public class Coordinator {
         || statement instanceof StopRepairData
         || statement instanceof PipeStatement
         || statement instanceof RemoveDataNode
+        || statement instanceof RemoveConfigNode
         || statement instanceof SubscriptionStatement
         || statement instanceof ShowCurrentSqlDialect
+        || statement instanceof SetSqlDialect
         || statement instanceof ShowCurrentUser
         || statement instanceof ShowCurrentDatabase
         || statement instanceof ShowVersion

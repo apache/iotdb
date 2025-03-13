@@ -1182,6 +1182,9 @@ public class AnalyzerTest {
               new String[] {StatementTestUtils.tableName(), ((Binary[]) columns[0])[i].toString()}),
           insertTabletNode.getDeviceID(i));
     }
+
+    // attr column should be removed
+    columns = new Object[] {columns[0], columns[2]};
     assertArrayEquals(columns, insertTabletNode.getColumns());
     assertArrayEquals(StatementTestUtils.genTimestamps(), insertTabletNode.getTimes());
 
@@ -1224,12 +1227,14 @@ public class AnalyzerTest {
         (RelationalInsertRowNode) logicalQueryPlan.getRootNode();
 
     assertEquals(insertNode.getTableName(), StatementTestUtils.tableName());
-    final Object[] columns = StatementTestUtils.genValues(0);
+    Object[] columns = StatementTestUtils.genValues(0);
     assertEquals(
         Factory.DEFAULT_FACTORY.create(
             new String[] {StatementTestUtils.tableName(), columns[0].toString()}),
         insertNode.getDeviceID());
 
+    // attr column should be removed
+    columns = new Object[] {columns[0], columns[2]};
     assertArrayEquals(columns, insertNode.getValues());
     assertEquals(StatementTestUtils.genTimestamps()[0], insertNode.getTime());
 
@@ -1266,7 +1271,7 @@ public class AnalyzerTest {
               statementAnalyzerFactory,
               Collections.emptyList(),
               Collections.emptyMap(),
-              new StatementRewriteFactory(metadata).getStatementRewrite(),
+              new StatementRewriteFactory(metadata, nopAccessControl).getStatementRewrite(),
               NOOP);
       return analyzer.analyze(statement);
     } catch (final Exception e) {
@@ -1291,7 +1296,7 @@ public class AnalyzerTest {
             statementAnalyzerFactory,
             Collections.emptyList(),
             Collections.emptyMap(),
-            new StatementRewriteFactory(metadata).getStatementRewrite(),
+            new StatementRewriteFactory(metadata, nopAccessControl).getStatementRewrite(),
             NOOP);
     return analyzer.analyze(statement);
   }

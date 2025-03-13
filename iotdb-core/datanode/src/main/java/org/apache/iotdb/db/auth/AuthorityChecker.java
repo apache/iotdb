@@ -34,6 +34,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TPathPrivilege;
 import org.apache.iotdb.confignode.rpc.thrift.TRoleResp;
 import org.apache.iotdb.confignode.rpc.thrift.TTablePrivilege;
 import org.apache.iotdb.confignode.rpc.thrift.TUserResp;
+import org.apache.iotdb.db.pipe.extractor.dataregion.realtime.listener.PipeInsertionDataNodeListener;
 import org.apache.iotdb.db.protocol.session.IClientSession;
 import org.apache.iotdb.db.queryengine.common.header.DatasetHeader;
 import org.apache.iotdb.db.queryengine.plan.execution.config.ConfigTaskResult;
@@ -90,6 +91,7 @@ public class AuthorityChecker {
   }
 
   public static boolean invalidateCache(String username, String roleName) {
+    PipeInsertionDataNodeListener.getInstance().invalidateAllCache();
     return authorityFetcher.get().getAuthorCache().invalidateCache(username, roleName);
   }
 
@@ -319,6 +321,15 @@ public class AuthorityChecker {
 
   public static boolean checkRole(String username, String roleName) {
     return authorityFetcher.get().checkRole(username, roleName);
+  }
+
+  public static TSStatus checkSuperUserOrMaintain(String userName) {
+    if (AuthorityChecker.SUPER_USER.equals(userName)) {
+      return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+    }
+    return AuthorityChecker.getTSStatus(
+        AuthorityChecker.checkSystemPermission(userName, PrivilegeType.MAINTAIN),
+        PrivilegeType.MAINTAIN);
   }
 
   public static void buildTSBlock(

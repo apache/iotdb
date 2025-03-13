@@ -68,7 +68,7 @@ public class ShuffleSinkHandle implements ISinkHandle {
 
   /** max bytes this ShuffleSinkHandle can reserve. */
   private long maxBytesCanReserve =
-      IoTDBDescriptor.getInstance().getConfig().getMaxBytesPerFragmentInstance();
+      IoTDBDescriptor.getInstance().getMemoryConfig().getMaxBytesPerFragmentInstance();
 
   private static final long INSTANCE_SIZE =
       RamUsageEstimator.shallowSizeOfInstance(ShuffleSinkHandle.class)
