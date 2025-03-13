@@ -130,8 +130,4 @@ public abstract class AbstractDriverThread extends Thread implements Closeable {
   public void close() throws IOException {
     closed = true;
   }
-
-  private Throwable getAbortCause(final Throwable rootCause, String fullId) {
-    return;
-  }
 }
