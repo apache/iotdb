@@ -23,7 +23,6 @@ import org.apache.iotdb.commons.exception.runtime.ThriftSerDeException;
 import org.apache.iotdb.confignode.procedure.Procedure;
 import org.apache.iotdb.confignode.procedure.impl.cq.CreateCQProcedure;
 import org.apache.iotdb.confignode.procedure.impl.model.CreateModelProcedure;
-import org.apache.iotdb.confignode.procedure.impl.model.CreateTrainingProcedure;
 import org.apache.iotdb.confignode.procedure.impl.model.DropModelProcedure;
 import org.apache.iotdb.confignode.procedure.impl.node.AddConfigNodeProcedure;
 import org.apache.iotdb.confignode.procedure.impl.node.RemoveAINodeProcedure;
@@ -225,9 +224,6 @@ public class ProcedureFactory implements IProcedureFactory {
         break;
       case CREATE_MODEL_PROCEDURE:
         procedure = new CreateModelProcedure();
-        break;
-      case CREATE_TRAINING_PROCEDURE:
-        procedure = new CreateTrainingProcedure();
         break;
       case DROP_MODEL_PROCEDURE:
         procedure = new DropModelProcedure();
@@ -463,8 +459,6 @@ public class ProcedureFactory implements IProcedureFactory {
       return ProcedureType.NEVER_FINISH_PROCEDURE;
     } else if (procedure instanceof AddNeverFinishSubProcedureProcedure) {
       return ProcedureType.ADD_NEVER_FINISH_SUB_PROCEDURE_PROCEDURE;
-    } else if (procedure instanceof CreateTrainingProcedure) {
-      return ProcedureType.CREATE_TRAINING_PROCEDURE;
     }
     throw new UnsupportedOperationException(
         "Procedure type " + procedure.getClass() + " is not supported");

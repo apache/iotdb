@@ -574,6 +574,10 @@ PASSWORD
     : P A S S W O R D
     ;
 
+PATH
+    : P A T H
+    ;
+
 PATHS
     : P A T H S
     ;

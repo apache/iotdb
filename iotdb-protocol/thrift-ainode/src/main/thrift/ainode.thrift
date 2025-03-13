@@ -81,11 +81,12 @@ struct ITableSchema {
 }
 
 struct TTrainingReq {
-  1: required string modelId
-  2: required byte modelType
-  3: optional list<ITableSchema> targetTables;
-  4: optional map<string, string> parameters;
-  5: optional string existingModelId
+  1: required string dbType
+  2: required string modelId
+  3: required string modelType
+  4: optional list<ITableSchema> targetTables;
+  5: optional map<string, string> parameters;
+  6: optional string existingModelId
 }
 
 service IAINodeRPCService {

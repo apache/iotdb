@@ -19,28 +19,28 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
 
-import org.apache.iotdb.db.queryengine.plan.relational.type.ModelType;
-
 import java.util.List;
 import java.util.Map;
 
 public class CreateTraining extends Statement {
 
-  String modelId;
-  String curDatabase;
-  ModelType modelType;
+  private final String modelId;
+  private String curDatabase;
+  private final String modelType;
+  private final boolean isTableModel;
 
-  Map<String, String> parameters;
-  String existingModelId = null;
+  private Map<String, String> parameters;
+  private String existingModelId = null;
 
-  List<Table> targetTables;
-  List<String> targetDbs;
-  boolean useAllData = false;
+  private List<Table> targetTables;
+  private List<String> targetDbs;
+  private boolean useAllData = false;
 
-  public CreateTraining(String modelId, ModelType modelType) {
+  public CreateTraining(String modelId, String modelType, boolean isTableModel) {
     super(null);
     this.modelId = modelId;
     this.modelType = modelType;
+    this.isTableModel = isTableModel;
   }
 
   @Override
@@ -88,7 +88,7 @@ public class CreateTraining extends Statement {
     return modelId;
   }
 
-  public ModelType getModelType() {
+  public String getModelType() {
     return modelType;
   }
 
@@ -98,6 +98,10 @@ public class CreateTraining extends Statement {
 
   public String getExistingModelId() {
     return existingModelId;
+  }
+
+  public boolean isTableModel() {
+    return isTableModel;
   }
 
   public boolean isUseAllData() {

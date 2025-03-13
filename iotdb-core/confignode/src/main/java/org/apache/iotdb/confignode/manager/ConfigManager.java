@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.confignode.manager;
 
+import org.apache.iotdb.ainode.rpc.thrift.ITableSchema;
+import org.apache.iotdb.ainode.rpc.thrift.TTrainingReq;
 import org.apache.iotdb.common.rpc.thrift.TAINodeConfiguration;
 import org.apache.iotdb.common.rpc.thrift.TAINodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
@@ -37,6 +39,9 @@ import org.apache.iotdb.common.rpc.thrift.TShowConfigurationResp;
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.auth.AuthException;
 import org.apache.iotdb.commons.auth.entity.PrivilegeUnion;
+import org.apache.iotdb.commons.client.ainode.AINodeClient;
+import org.apache.iotdb.commons.client.ainode.AINodeClientManager;
+import org.apache.iotdb.commons.client.ainode.AINodeInfo;
 import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.commons.cluster.NodeType;
 import org.apache.iotdb.commons.conf.CommonConfig;
@@ -46,6 +51,7 @@ import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.conf.TrimProperties;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.commons.model.ModelStatus;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.path.PathPatternUtil;
@@ -83,6 +89,7 @@ import org.apache.iotdb.confignode.consensus.request.write.database.SetSchemaRep
 import org.apache.iotdb.confignode.consensus.request.write.database.SetTTLPlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.SetTimePartitionIntervalPlan;
 import org.apache.iotdb.confignode.consensus.request.write.datanode.RemoveDataNodePlan;
+import org.apache.iotdb.confignode.consensus.request.write.model.CreateModelPlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.CreateSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.response.ainode.AINodeRegisterResp;
 import org.apache.iotdb.confignode.consensus.response.auth.PermissionInfoResp;
@@ -234,6 +241,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TSpaceQuotaResp;
 import org.apache.iotdb.confignode.rpc.thrift.TStartPipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TStopPipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TSubscribeReq;
+import org.apache.iotdb.confignode.rpc.thrift.TTableInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TThrottleQuotaResp;
 import org.apache.iotdb.confignode.rpc.thrift.TTimeSlotList;
 import org.apache.iotdb.confignode.rpc.thrift.TUnsetSchemaTemplateReq;
@@ -2579,15 +2587,92 @@ public class ConfigManager implements IManager {
         : status;
   }
 
+  private List<ITableSchema> fetchSchemaForTreeModel(TCreateTrainingReq req) {
+    List<ITableSchema> tableSchemaList = new ArrayList<>();
+    if (req.useAllData) {
+      tableSchemaList.add(new ITableSchema("root.**", ""));
+      return tableSchemaList;
+    }
+    for (String fullPath : req.targetDbs) {
+      tableSchemaList.add(new ITableSchema(fullPath, ""));
+    }
+    return tableSchemaList;
+  }
+
+  private List<ITableSchema> fetchSchemaForTableModel(TCreateTrainingReq req) {
+    List<ITableSchema> tableSchemaList = new ArrayList<>();
+    if (req.useAllData || !req.targetDbs.isEmpty()) {
+      List<String> databaseNameList = new ArrayList<>();
+      if (req.useAllData) {
+        TShowDatabaseResp resp = showDatabase(new TGetDatabaseReq());
+        databaseNameList.addAll(resp.getDatabaseInfoMap().keySet());
+      } else {
+        databaseNameList.addAll(req.targetDbs);
+      }
+
+      for (String database : databaseNameList) {
+        TShowTableResp resp = showTables(database, false);
+        for (TTableInfo tableInfo : resp.getTableInfoList()) {
+          tableSchemaList.add(new ITableSchema(database, tableInfo.getTableName()));
+        }
+      }
+    }
+    for (String tableName : req.targetTables) {
+      tableSchemaList.add(new ITableSchema(req.curDatabase, tableName));
+    }
+    return tableSchemaList;
+  }
+
   public TSStatus createTraining(TCreateTrainingReq req) {
     TSStatus status = confirmLeader();
     if (nodeManager.getRegisteredAINodes().isEmpty()) {
       return new TSStatus(TSStatusCode.NO_REGISTERED_AI_NODE_ERROR.getStatusCode())
           .setMessage("There is no available AINode! Try to start one.");
     }
-    return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
-        ? procedureManager.createTraining(req)
-        : status;
+
+    TTrainingReq trainingReq = new TTrainingReq();
+    trainingReq.setModelId(req.getModelId());
+    trainingReq.setModelType("timer_xl");
+    if (req.existingModelId != null) {
+      trainingReq.setExistingModelId(req.getExistingModelId());
+    }
+    if (!req.parameters.isEmpty()) {
+      trainingReq.setParameters(req.getParameters());
+    }
+
+    try {
+      status = getConsensusManager().write(new CreateModelPlan(req.getModelId()));
+      if (status.code != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        throw new MetadataException("Can't init model " + req.getModelId());
+      }
+
+      List<ITableSchema> schemaList;
+      if (req.isTableModel) {
+        schemaList = fetchSchemaForTableModel(req);
+        trainingReq.setDbType("iotdb.table");
+      } else {
+        schemaList = fetchSchemaForTreeModel(req);
+        trainingReq.setDbType("iotdb.tree");
+      }
+      updateModelInfo(new TUpdateModelInfoReq(req.modelId, ModelStatus.TRAINING.ordinal()));
+      trainingReq.setTargetTables(schemaList);
+
+      try (AINodeClient client =
+          AINodeClientManager.getInstance().borrowClient(AINodeInfo.endPoint)) {
+        status = client.createTrainingTask(trainingReq);
+        if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+          throw new IllegalArgumentException(status.message);
+        }
+      }
+    } catch (final Exception e) {
+      status.setMessage(e.getMessage());
+      try {
+        updateModelInfo(new TUpdateModelInfoReq(req.modelId, ModelStatus.UNAVAILABLE.ordinal()));
+      } catch (Exception e2) {
+        LOGGER.error(e2.getMessage());
+      }
+    }
+    return status;
   }
 
   @Override

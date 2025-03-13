@@ -1046,12 +1046,14 @@ struct TUpdateModelInfoReq {
 
 struct TCreateTrainingReq {
     1: required string modelId
-    2: required string curDatabase
-    3: optional list<string> targetTables
-    4: optional list<string> targetDbs
-    5: optional bool useAllData
-    6: optional map<string, string> parameters
-    7: optional string existingModelId
+    2: required string modelType
+    3: required bool isTableModel
+    4: optional string curDatabase
+    5: optional list<string> targetTables
+    6: optional list<string> targetDbs
+    7: optional bool useAllData
+    8: optional map<string, string> parameters
+    9: optional string existingModelId
 }
 
 // ====================================================

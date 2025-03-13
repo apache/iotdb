@@ -151,7 +151,6 @@ statement
     // AI
     | createModelStatement
     | showModelsStatement
-    | callInferenceStatement
 
     // View, Trigger, pipe, CQ, Quota are not supported yet
     ;
@@ -710,17 +709,12 @@ revokeGrantOpt
 // ------------------------------------------- AI ---------------------------------------------------------
 
 createModelStatement
-    : CREATE MODEL modelType modelId=identifier (WITH HYPERPARAMETERS '(' hparamPair (',' hparamPair)* ')')? (FROM MODEL existingModelId=identifier)? ON DATASET '(' trainingData ')'
+    : CREATE MODEL modelType=identifier modelId=identifier (WITH HYPERPARAMETERS '(' hparamPair (',' hparamPair)* ')')? (FROM MODEL existingModelId=identifier)? ON DATASET '(' trainingData ')'
     ;
 
 trainingData
     : ALL
     | dataElement(',' dataElement)*
-    ;
-
-modelType
-    : TIMER
-    | TIMER_XL
     ;
 
 dataElement
@@ -747,10 +741,6 @@ hparamPair
 showModelsStatement
     : SHOW MODELS
     | SHOW MODELS modelId=identifier
-    ;
-
-callInferenceStatement
-    : CALL INFERENCE '(' modelId=identifier COMMA inputSql=string (COMMA hparamPair)* ')'
     ;
 
 // ------------------------------------------- Query Statement ---------------------------------------------------------

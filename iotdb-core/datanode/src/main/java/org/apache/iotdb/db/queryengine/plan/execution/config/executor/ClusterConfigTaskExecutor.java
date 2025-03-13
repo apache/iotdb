@@ -3146,17 +3146,22 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
     try (final ConfigNodeClient client =
         CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
       final TCreateTrainingReq req =
-          new TCreateTrainingReq(createTraining.getModelId(), createTraining.getCurDatabase());
+          new TCreateTrainingReq(
+              createTraining.getModelId(),
+              createTraining.getModelType(),
+              createTraining.isTableModel());
+      req.setCurDatabase(createTraining.getCurDatabase());
       req.setParameters(createTraining.getParameters());
       req.setTargetDbs(createTraining.getTargetDbs());
       req.setUseAllData(createTraining.isUseAllData());
       req.setExistingModelId(createTraining.getExistingModelId());
-      req.setTargetTables(
-          createTraining.getTargetTables().stream()
-              .map(table -> table.getName().toString())
-              .collect(Collectors.toList()));
+      if (createTraining.getTargetTables() != null) {
+        req.setTargetTables(
+            createTraining.getTargetTables().stream()
+                .map(table -> table.getName().toString())
+                .collect(Collectors.toList()));
+      }
       final TSStatus executionStatus = client.createTraining(req);
-      future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
       if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != executionStatus.getCode()) {
         future.setException(new IoTDBException(executionStatus.message, executionStatus.code));
       } else {

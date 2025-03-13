@@ -197,7 +197,6 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.With;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.WithQuery;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.util.AstUtil;
 import org.apache.iotdb.db.queryengine.plan.relational.type.AuthorRType;
-import org.apache.iotdb.db.queryengine.plan.relational.type.ModelType;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementType;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowsStatement;
@@ -2781,13 +2780,22 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
   }
 
   // ***************** AI *****************
+  public static void validateModelName(String modelName) {
+    if (modelName.length() < 2 || modelName.length() > 64) {
+      throw new SemanticException("Model name should be 2-64 characters");
+    } else if (modelName.startsWith("_")) {
+      throw new SemanticException("Model name should not start with '_'");
+    } else if (!modelName.matches("^[-\\w]*$")) {
+      throw new SemanticException("ModelName can only contain letters, numbers, and underscores");
+    }
+  }
+
   @Override
   public Node visitCreateModelStatement(RelationalSqlParser.CreateModelStatementContext ctx) {
     String modelId = ctx.modelId.getText();
-    if (ctx.modelType().TIMER_XL() == null) {
-      throw new IllegalArgumentException("Currently we only support Timer_XL for model training");
-    }
-    CreateTraining createTraining = new CreateTraining(modelId, ModelType.TIMER_XL);
+    validateModelName(modelId);
+    String modelType = ctx.modelType.getText();
+    CreateTraining createTraining = new CreateTraining(modelId, modelType, true);
     if (ctx.HYPERPARAMETERS() != null) {
       Map<String, String> parameters = new HashMap<>();
       for (RelationalSqlParser.HparamPairContext hparamPairContext : ctx.hparamPair()) {

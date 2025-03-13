@@ -31,6 +31,9 @@ public class CreateTrainingTask implements IConfigTask {
   private final CreateTraining createTraining;
 
   public CreateTrainingTask(CreateTraining createTraining) {
+    if (!createTraining.getModelType().equalsIgnoreCase("timer_xl")) {
+      throw new UnsupportedOperationException("Only TimerXL model is supported now.");
+    }
     this.createTraining = createTraining;
   }
 

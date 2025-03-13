@@ -61,7 +61,6 @@ import org.apache.iotdb.confignode.procedure.env.RegionMaintainHandler;
 import org.apache.iotdb.confignode.procedure.env.RemoveDataNodeHandler;
 import org.apache.iotdb.confignode.procedure.impl.cq.CreateCQProcedure;
 import org.apache.iotdb.confignode.procedure.impl.model.CreateModelProcedure;
-import org.apache.iotdb.confignode.procedure.impl.model.CreateTrainingProcedure;
 import org.apache.iotdb.confignode.procedure.impl.model.DropModelProcedure;
 import org.apache.iotdb.confignode.procedure.impl.node.AddConfigNodeProcedure;
 import org.apache.iotdb.confignode.procedure.impl.node.RemoveAINodeProcedure;
@@ -128,7 +127,6 @@ import org.apache.iotdb.confignode.rpc.thrift.TCreateCQReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateConsumerReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreatePipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateTopicReq;
-import org.apache.iotdb.confignode.rpc.thrift.TCreateTrainingReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
 import org.apache.iotdb.confignode.rpc.thrift.TDeleteLogicalViewReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDeleteTableDeviceReq;
@@ -160,7 +158,6 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -1282,21 +1279,6 @@ public class ProcedureManager {
 
   public TSStatus createModel(String modelName, String uri) {
     long procedureId = executor.submitProcedure(new CreateModelProcedure(modelName, uri));
-    LOGGER.info("CreateModelProcedure was submitted, procedureId: {}.", procedureId);
-    return RpcUtils.SUCCESS_STATUS;
-  }
-
-  public TSStatus createTraining(TCreateTrainingReq req) {
-    long procedureId =
-        executor.submitProcedure(
-            new CreateTrainingProcedure(
-                req.modelId,
-                req.existingModelId,
-                req.curDatabase,
-                req.isSetTargetTables() ? req.getTargetTables() : Collections.emptyList(),
-                req.isSetTargetDbs() ? req.targetDbs : Collections.emptyList(),
-                req.isSetParameters() ? req.getParameters() : Collections.emptyMap(),
-                req.useAllData));
     LOGGER.info("CreateModelProcedure was submitted, procedureId: {}.", procedureId);
     return RpcUtils.SUCCESS_STATUS;
   }
