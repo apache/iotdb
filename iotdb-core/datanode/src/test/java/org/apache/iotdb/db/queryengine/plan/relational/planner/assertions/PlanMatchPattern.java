@@ -594,10 +594,6 @@ public final class PlanMatchPattern {
         .withExactAssignments(assignments.values());
   }
 
-  public static PlanMatchPattern exchange(PlanMatchPattern... sources) {
-    return node(ExchangeNode.class, sources);
-  }
-
   public static ExpectedValueProvider<JoinNode.EquiJoinClause> equiJoinClause(
       String left, String right) {
     return new EquiJoinClauseProvider(new SymbolAlias(left), new SymbolAlias(right));
