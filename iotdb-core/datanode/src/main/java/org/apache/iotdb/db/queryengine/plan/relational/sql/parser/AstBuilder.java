@@ -514,6 +514,17 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
         Objects.nonNull(ctx.RESTRICT()));
   }
 
+  @Override
+  public Node visitViewColumnDefinition(final RelationalSqlParser.ViewColumnDefinitionContext ctx) {
+    return new ColumnDefinition(
+        getLocation(ctx),
+        lowerIdentifier((Identifier) visit(ctx.identifier().get(0))),
+        Objects.nonNull(ctx.type()) ? (DataType) visit(ctx.type()) : null,
+        getColumnCategory(ctx.columnCategory),
+        null,
+        ctx.comment() == null ? null : ((StringLiteral) visit(ctx.comment().string())).getValue());
+  }
+
   private PartialPath parsePrefixPath(final RelationalSqlParser.PrefixPathContext ctx) {
     final List<RelationalSqlParser.NodeNameContext> nodeNames = ctx.nodeName();
     final String[] path = new String[nodeNames.size() + 1];

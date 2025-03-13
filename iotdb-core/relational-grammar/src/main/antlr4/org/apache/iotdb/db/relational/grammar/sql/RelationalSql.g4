@@ -230,6 +230,7 @@ alterTableStatement
 
 commentStatement
     : COMMENT ON TABLE qualifiedName IS (string | NULL) #commentTable
+    | COMMENT ON VIEW qualifiedName IS (string | NULL) #commentView
     | COMMENT ON COLUMN qualifiedName '.' column=identifier IS (string | NULL) #commentColumn
     ;
 
@@ -244,10 +245,10 @@ createTableViewStatement
     ;
 
 viewColumnDefinition
-  : identifier (type)? TAG comment?
-  | identifier (type)? TIME comment?
-  | identifier (type)? FIELD (FROM original_measurement=identifier)? comment?
-  ;
+    : identifier columnCategory=(TAG | TIME | FIELD) comment?
+    | identifier (type)? (columnCategory=(TAG | TIME | FIELD))? comment?
+    | identifier (type)? columnCategory=FIELD FROM original_measurement=identifier comment?
+    ;
 
 // IoTDB Objects
 
