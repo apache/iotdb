@@ -1583,19 +1583,11 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
 
   @Override
   public TSStatus updateTable(final TUpdateTableReq req) {
-    final String database;
-    final int size;
     switch (TsTableInternalRPCType.getType(req.type)) {
       case PRE_UPDATE_TABLE:
-        DataNodeSchemaLockManager.getInstance().takeWriteLock(SchemaLockType.TIMESERIES_VS_TABLE);
-        try {
-          Pair<String, TsTable> pair =
-              TsTableInternalRPCUtil.deserializeSingleTsTableWithDatabase(req.getTableInfo());
-          DataNodeTableCache.getInstance().preUpdateTable(pair.left, pair.right);
-        } finally {
-          DataNodeSchemaLockManager.getInstance()
-              .releaseWriteLock(SchemaLockType.TIMESERIES_VS_TABLE);
-        }
+        Pair<String, TsTable> pair =
+            TsTableInternalRPCUtil.deserializeSingleTsTableWithDatabase(req.getTableInfo());
+        DataNodeTableCache.getInstance().preUpdateTable(pair.left, pair.right);
         break;
       case ROLLBACK_UPDATE_TABLE:
         DataNodeTableCache.getInstance()
@@ -2271,23 +2263,24 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
   }
 
   @Override
-  public TSStatus updateTemplate(TUpdateTemplateReq req) {
+  public TSStatus updateTemplate(final TUpdateTemplateReq req) {
     switch (TemplateInternalRPCUpdateType.getType(req.type)) {
-      case ADD_TEMPLATE_SET_INFO:
-        DataNodeSchemaLockManager.getInstance()
-            .takeWriteLock(SchemaLockType.TIMESERIES_VS_TEMPLATE);
-        try {
-          ClusterTemplateManager.getInstance().addTemplateSetInfo(req.getTemplateInfo());
-        } finally {
-          DataNodeSchemaLockManager.getInstance()
-              .releaseWriteLock(SchemaLockType.TIMESERIES_VS_TEMPLATE);
-        }
+        // Reserved for rolling upgrade
+      case ROLLBACK_INVALIDATE_TEMPLATE_SET_INFO:
+        ClusterTemplateManager.getInstance().addTemplateSetInfo(req.getTemplateInfo());
         break;
       case INVALIDATE_TEMPLATE_SET_INFO:
         ClusterTemplateManager.getInstance().invalidateTemplateSetInfo(req.getTemplateInfo());
         break;
       case ADD_TEMPLATE_PRE_SET_INFO:
-        ClusterTemplateManager.getInstance().addTemplatePreSetInfo(req.getTemplateInfo());
+        DataNodeSchemaLockManager.getInstance()
+            .takeWriteLock(SchemaLockType.TIMESERIES_VS_TEMPLATE);
+        try {
+          ClusterTemplateManager.getInstance().addTemplatePreSetInfo(req.getTemplateInfo());
+        } finally {
+          DataNodeSchemaLockManager.getInstance()
+              .releaseWriteLock(SchemaLockType.TIMESERIES_VS_TEMPLATE);
+        }
         break;
       case COMMIT_TEMPLATE_SET_INFO:
         ClusterTemplateManager.getInstance().commitTemplatePreSetInfo(req.getTemplateInfo());
