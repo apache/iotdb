@@ -35,6 +35,7 @@ import java.util.function.Consumer;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanAssert.assertPlan;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.aggregation;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.aggregationFunction;
+import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.any;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.anyTree;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.collect;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.exchange;
@@ -91,17 +92,20 @@ public class TableFunctionTest {
      *   └──OutputNode
      *         └──TableFunctionProcessor
      *               └──CollectNode
-     *                   ├──ExchangeNode: [SourceAddress:192.0.12.1/test_query.2.0/31]
-     *                   ├──TableScanNode
-     *                   └──ExchangeNode: [SourceAddress:192.0.10.1/test_query.3.0/32]
+     *                   ├──ExchangeNode
+     *                   ├──ExchangeNode
+     *                   └──ExchangeNode
+     *
+     *   └──ExchangeNode
+     *         └──TableScan
      */
+
     assertPlan(
         planTester.getFragmentPlan(0),
-        anyTree(
-            tableFunctionProcessor(
-                tableFunctionMatcher, collect(exchange(), tableScan, exchange()))));
-    assertPlan(planTester.getFragmentPlan(1), tableScan);
-    assertPlan(planTester.getFragmentPlan(2), tableScan);
+        anyTree(tableFunctionProcessor(tableFunctionMatcher, collect(any(exchange())))));
+    for (int i = 1; i <= 3; i++) {
+      assertPlan(planTester.getFragmentPlan(i), tableScan);
+    }
   }
 
   @Test
@@ -139,17 +143,19 @@ public class TableFunctionTest {
      *   └──OutputNode
      *        └──TableFunctionProcessor
      *               └──CollectNode
-     *                   ├──ExchangeNode: [SourceAddress:192.0.12.1/test_query.2.0/31]
-     *                   ├──TableScanNode
-     *                   └──ExchangeNode: [SourceAddress:192.0.10.1/test_query.3.0/32]
+     *                   ├──ExchangeNode
+     *                   ├──ExchangeNode
+     *                   └──ExchangeNode
+     *
+     *   └──ExchangeNode
+     *         └──TableScan
      */
     assertPlan(
         planTester.getFragmentPlan(0),
-        anyTree(
-            tableFunctionProcessor(
-                tableFunctionMatcher, collect(exchange(), tableScan, exchange()))));
-    assertPlan(planTester.getFragmentPlan(1), tableScan);
-    assertPlan(planTester.getFragmentPlan(2), tableScan);
+        anyTree(tableFunctionProcessor(tableFunctionMatcher, collect(any(exchange())))));
+    for (int i = 1; i <= 3; i++) {
+      assertPlan(planTester.getFragmentPlan(i), tableScan);
+    }
   }
 
   @Test
@@ -191,17 +197,19 @@ public class TableFunctionTest {
      *   └──OutputNode
      *        └──TableFunctionProcessor
      *               └──CollectNode
-     *                   ├──ExchangeNode: [SourceAddress:192.0.12.1/test_query.2.0/31]
-     *                   ├──TableScanNode
-     *                   └──ExchangeNode: [SourceAddress:192.0.10.1/test_query.3.0/32]
+     *                   ├──ExchangeNode
+     *                   ├──ExchangeNode
+     *                   └──ExchangeNode
+     *
+     *   └──ExchangeNode
+     *         └──TableScan
      */
     assertPlan(
         planTester.getFragmentPlan(0),
-        anyTree(
-            tableFunctionProcessor(
-                tableFunctionMatcher, mergeSort(exchange(), tableScan, exchange()))));
-    assertPlan(planTester.getFragmentPlan(1), tableScan);
-    assertPlan(planTester.getFragmentPlan(2), tableScan);
+        anyTree(tableFunctionProcessor(tableFunctionMatcher, mergeSort(any(exchange())))));
+    for (int i = 1; i <= 3; i++) {
+      assertPlan(planTester.getFragmentPlan(i), tableScan);
+    }
   }
 
   @Test
