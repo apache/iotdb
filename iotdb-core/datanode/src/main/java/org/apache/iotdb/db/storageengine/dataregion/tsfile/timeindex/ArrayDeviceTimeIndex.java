@@ -423,7 +423,8 @@ public class ArrayDeviceTimeIndex implements ITimeIndex {
 
   @Override
   public boolean isDeviceAlive(IDeviceID device, long ttl) {
-    return endTimes[deviceToIndex.get(device)] >= CommonDateTimeUtils.currentTime() - ttl;
+    return ttl == Long.MAX_VALUE
+        || endTimes[deviceToIndex.get(device)] >= CommonDateTimeUtils.currentTime() - ttl;
   }
 
   @Override
