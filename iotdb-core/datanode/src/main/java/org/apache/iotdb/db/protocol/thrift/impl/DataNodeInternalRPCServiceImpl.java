@@ -1975,7 +1975,6 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
   @Override
   public TSStatus updateTemplate(final TUpdateTemplateReq req) {
     switch (TemplateInternalRPCUpdateType.getType(req.type)) {
-        // Reserved for rolling upgrade
       case ROLLBACK_INVALIDATE_TEMPLATE_SET_INFO:
         ClusterTemplateManager.getInstance().addTemplateSetInfo(req.getTemplateInfo());
         break;
