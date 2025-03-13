@@ -32,6 +32,7 @@ import org.apache.tsfile.read.TimeValuePair;
 import org.apache.tsfile.read.TsFileSequenceReader;
 import org.apache.tsfile.read.common.block.TsBlock;
 import org.apache.tsfile.utils.TsPrimitiveType;
+import org.bouncycastle.pqc.jcajce.provider.NTRU;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -136,6 +137,7 @@ public abstract class AbstractCrossCompactionWriter extends AbstractCompactionWr
     isDeviceExistedInTargetFiles[fileIndex] = true;
     isEmptyFile[fileIndex] = false;
     lastTime[subTaskId] = timestamp;
+    lastTimeSet[subTaskId] = true;
   }
 
   /** Write data in batch, only used for aligned device. */
@@ -206,7 +208,11 @@ public abstract class AbstractCrossCompactionWriter extends AbstractCompactionWr
     while (fileIndex < seqTsFileResources.size()) {
       if (seqTsFileResources.get(fileIndex).getTimeIndexType() == 1) {
         // the timeIndexType of resource is deviceTimeIndex
-        currentDeviceEndTime[fileIndex] = seqTsFileResources.get(fileIndex).getEndTime(deviceId);
+        int finalFileIndex = fileIndex;
+        seqTsFileResources
+            .get(fileIndex)
+            .getEndTime(deviceId)
+            .ifPresent(endTime -> currentDeviceEndTime[finalFileIndex] = endTime);
       } else {
         long endTime = Long.MIN_VALUE;
         // Fast compaction get reader from cache map, while read point compaction get reader from

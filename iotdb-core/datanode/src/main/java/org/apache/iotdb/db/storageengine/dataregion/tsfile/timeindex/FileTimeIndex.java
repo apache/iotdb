@@ -40,6 +40,7 @@ import java.io.OutputStream;
 import java.nio.ByteBuffer;
 import java.nio.file.NoSuchFileException;
 import java.util.Collections;
+import java.util.Optional;
 import java.util.Set;
 
 public class FileTimeIndex implements ITimeIndex {
@@ -186,8 +187,8 @@ public class FileTimeIndex implements ITimeIndex {
   }
 
   @Override
-  public long getStartTime(IDeviceID deviceId) {
-    return startTime;
+  public Optional<Long> getStartTime(IDeviceID deviceId) {
+    return Optional.of(startTime);
   }
 
   @Override
@@ -196,8 +197,8 @@ public class FileTimeIndex implements ITimeIndex {
   }
 
   @Override
-  public long getEndTime(IDeviceID deviceId) {
-    return endTime;
+  public Optional<Long> getEndTime(IDeviceID deviceId) {
+    return Optional.of(endTime);
   }
 
   @Override

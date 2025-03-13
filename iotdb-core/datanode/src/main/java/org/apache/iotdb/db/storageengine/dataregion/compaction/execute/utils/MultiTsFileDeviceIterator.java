@@ -55,6 +55,7 @@ import java.util.LinkedHashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.TreeMap;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
@@ -421,7 +422,8 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
     }
     IDeviceID device = currentDevice.getLeft();
     Deletion ttlDeletion = null;
-    if (tsFileResource.getStartTime(device) < timeLowerBoundForCurrentDevice) {
+    Optional<Long> startTime = tsFileResource.getStartTime(device);
+    if (startTime.isPresent() && startTime.get() < timeLowerBoundForCurrentDevice) {
       ttlDeletion =
           new Deletion(
               CompactionPathUtils.getPath(device, IoTDBConstant.ONE_LEVEL_PATH_WILDCARD),
@@ -644,7 +646,8 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
         Map<String, List<ChunkMetadata>> chunkMetadataListMap = chunkMetadataCacheMap.get(reader);
 
         Deletion ttlDeletion = null;
-        if (resource.getStartTime(device) < timeLowerBoundForCurrentDevice) {
+        Optional<Long> startTime = resource.getStartTime(device);
+        if (startTime.isPresent() && startTime.get() < timeLowerBoundForCurrentDevice) {
           ttlDeletion =
               new Deletion(
                   CompactionPathUtils.getPath(device, IoTDBConstant.ONE_LEVEL_PATH_WILDCARD),

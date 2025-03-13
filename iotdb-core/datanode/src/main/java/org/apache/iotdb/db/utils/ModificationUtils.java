@@ -29,6 +29,7 @@ import org.apache.iotdb.db.storageengine.dataregion.memtable.IMemTable;
 import org.apache.iotdb.db.storageengine.dataregion.modification.Deletion;
 import org.apache.iotdb.db.storageengine.dataregion.modification.Modification;
 
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.ITimeIndex;
 import org.apache.tsfile.file.metadata.AlignedChunkMetadata;
 import org.apache.tsfile.file.metadata.IChunkMetadata;
 import org.apache.tsfile.file.metadata.IDeviceID;
@@ -38,6 +39,7 @@ import org.apache.tsfile.utils.Pair;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
+import java.util.Optional;
 
 public class ModificationUtils {
 
@@ -293,5 +295,20 @@ public class ModificationUtils {
       }
     }
     return modifications;
+  }
+
+
+  public static boolean isDeviceDeletedByMods(
+      Collection<Modification> currentModifications, ITimeIndex currentTimeIndex, IDeviceID device)
+      throws IllegalPathException {
+    if (currentTimeIndex == null) {
+      return false;
+    }
+    Optional<Long> startTime = currentTimeIndex.getStartTime(device);
+    Optional<Long> endTime = currentTimeIndex.getEndTime(device);
+    if (startTime.isPresent() && endTime.isPresent()) {
+      return isDeviceDeletedByMods(currentModifications, device, startTime.get(), endTime.get());
+    }
+    return false;
   }
 }

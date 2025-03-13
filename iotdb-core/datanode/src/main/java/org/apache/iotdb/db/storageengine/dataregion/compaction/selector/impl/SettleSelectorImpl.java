@@ -55,6 +55,7 @@ import java.util.Set;
 import static org.apache.iotdb.db.storageengine.dataregion.compaction.selector.impl.SettleSelectorImpl.DirtyStatus.NOT_SATISFIED;
 import static org.apache.iotdb.db.storageengine.dataregion.compaction.selector.impl.SettleSelectorImpl.DirtyStatus.PARTIALLY_DIRTY;
 
+@SuppressWarnings("OptionalGetWithoutIsPresent") // iterating the index, must present
 public class SettleSelectorImpl implements ISettleSelector {
   private static final Logger LOGGER =
       LoggerFactory.getLogger(IoTDBConstant.COMPACTION_LOGGER_NAME);
@@ -215,13 +216,15 @@ public class SettleSelectorImpl implements ISettleSelector {
       // TODO: remove deviceId conversion
       long deviceTTL = DataNodeTTLCache.getInstance().getTTL(((PlainDeviceID) device).toStringID());
       boolean hasSetTTL = deviceTTL != Long.MAX_VALUE;
+
+      long endTime = timeIndex.getEndTime(device).get();
       boolean isDeleted =
           !timeIndex.isDeviceAlive(device, deviceTTL)
               || isDeviceDeletedByMods(
                   modifications,
                   device,
-                  timeIndex.getStartTime(device),
-                  timeIndex.getEndTime(device));
+                  timeIndex.getStartTime(device).get(),
+                  endTime);
 
       if (hasSetTTL) {
         if (!isDeleted) {
@@ -229,10 +232,18 @@ public class SettleSelectorImpl implements ISettleSelector {
           // being selected.
           return new FileDirtyInfo(DirtyStatus.NOT_SATISFIED);
         }
-        long outdatedTimeDiff = currentTime - timeIndex.getEndTime(device);
-        hasExpiredTooLong =
-            hasExpiredTooLong
-                || outdatedTimeDiff > Math.min(config.getMaxExpiredTime(), 3 * deviceTTL);
+
+        if (currentTime > endTime) {
+          long outdatedTimeDiff = currentTime - endTime;
+          if (endTime < 0 && outdatedTimeDiff < currentTime) {
+            // overflow, like 100 - Long.MIN
+            outdatedTimeDiff = Long.MAX_VALUE;
+          }
+          long ttlThreshold = 3 * deviceTTL > deviceTTL ? deviceTTL : Long.MAX_VALUE;
+          hasExpiredTooLong =
+              hasExpiredTooLong
+                  || outdatedTimeDiff > Math.min(config.getMaxExpiredTime(), ttlThreshold);
+        } // else hasExpiredTooLong unchanged
       }
 
       if (isDeleted) {

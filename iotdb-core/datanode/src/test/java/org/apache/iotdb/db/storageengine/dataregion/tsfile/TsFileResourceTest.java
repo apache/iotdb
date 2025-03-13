@@ -37,6 +37,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.stream.IntStream;
 
+@SuppressWarnings("OptionalGetWithoutIsPresent")
 public class TsFileResourceTest {
   private final File file =
       new File(
@@ -89,9 +90,9 @@ public class TsFileResourceTest {
     Assert.assertEquals(ITimeIndex.FILE_TIME_INDEX_TYPE, tsFileResource.getTimeIndexType());
     Assert.assertEquals(deviceToIndex.keySet(), tsFileResource.getDevices());
     for (int i = 0; i < DEVICE_NUM; i++) {
-      Assert.assertEquals(tsFileResource.getStartTime(new PlainDeviceID("root.sg1.d" + i)), 0);
-      Assert.assertEquals(
-          tsFileResource.getEndTime(new PlainDeviceID("root.sg1.d" + i)), DEVICE_NUM);
+      Assert.assertEquals(0, (long) tsFileResource.getStartTime(new PlainDeviceID("root.sg1.d" + i)).get());
+      Assert.assertEquals(DEVICE_NUM,
+          (long) tsFileResource.getEndTime(new PlainDeviceID("root.sg1.d" + i)).get());
     }
   }
 }

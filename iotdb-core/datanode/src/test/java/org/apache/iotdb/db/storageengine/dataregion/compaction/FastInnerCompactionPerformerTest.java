@@ -75,6 +75,7 @@ import java.util.Map;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.PATH_SEPARATOR;
 import static org.junit.Assert.assertEquals;
 
+@SuppressWarnings("OptionalGetWithoutIsPresent")
 public class FastInnerCompactionPerformerTest extends AbstractCompactionTest {
 
   private boolean enableUnseqSpaceCompaction =
@@ -244,35 +245,35 @@ public class FastInnerCompactionPerformerTest extends AbstractCompactionTest {
 
     assertEquals(
         0,
-        targetResources
+        (long) targetResources
             .get(0)
-            .getStartTime(new PlainDeviceID(COMPACTION_TEST_SG + PATH_SEPARATOR + "d0")));
+            .getStartTime(new PlainDeviceID(COMPACTION_TEST_SG + PATH_SEPARATOR + "d0")).get());
     assertEquals(
         0,
-        targetResources
+        (long) targetResources
             .get(0)
-            .getStartTime(new PlainDeviceID(COMPACTION_TEST_SG + PATH_SEPARATOR + "d1")));
+            .getStartTime(new PlainDeviceID(COMPACTION_TEST_SG + PATH_SEPARATOR + "d1")).get());
     assertEquals(
         250,
-        targetResources
+        (long) targetResources
             .get(0)
-            .getStartTime(new PlainDeviceID(COMPACTION_TEST_SG + PATH_SEPARATOR + "d2")));
+            .getStartTime(new PlainDeviceID(COMPACTION_TEST_SG + PATH_SEPARATOR + "d2")).get());
     assertEquals(
         600,
-        targetResources
+        (long) targetResources
             .get(0)
-            .getStartTime(new PlainDeviceID(COMPACTION_TEST_SG + PATH_SEPARATOR + "d3")));
+            .getStartTime(new PlainDeviceID(COMPACTION_TEST_SG + PATH_SEPARATOR + "d3")).get());
     assertEquals(
         600,
-        targetResources
+        (long) targetResources
             .get(0)
-            .getStartTime(new PlainDeviceID(COMPACTION_TEST_SG + PATH_SEPARATOR + "d4")));
+            .getStartTime(new PlainDeviceID(COMPACTION_TEST_SG + PATH_SEPARATOR + "d4")).get());
     for (int i = 0; i < 5; i++) {
       assertEquals(
           749,
-          targetResources
+          (long) targetResources
               .get(0)
-              .getEndTime(new PlainDeviceID(COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + i)));
+              .getEndTime(new PlainDeviceID(COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + i)).get());
     }
 
     for (int i = 0; i < 5; i++) {
@@ -397,35 +398,35 @@ public class FastInnerCompactionPerformerTest extends AbstractCompactionTest {
 
     assertEquals(
         0,
-        targetResources
+        (long) targetResources
             .get(0)
-            .getStartTime(new PlainDeviceID(COMPACTION_TEST_SG + PATH_SEPARATOR + "d0")));
+            .getStartTime(new PlainDeviceID(COMPACTION_TEST_SG + PATH_SEPARATOR + "d0")).get());
     assertEquals(
         0,
-        targetResources
+        (long) targetResources
             .get(0)
-            .getStartTime(new PlainDeviceID(COMPACTION_TEST_SG + PATH_SEPARATOR + "d1")));
+            .getStartTime(new PlainDeviceID(COMPACTION_TEST_SG + PATH_SEPARATOR + "d1")).get());
     assertEquals(
         250,
-        targetResources
+        (long) targetResources
             .get(0)
-            .getStartTime(new PlainDeviceID(COMPACTION_TEST_SG + PATH_SEPARATOR + "d2")));
+            .getStartTime(new PlainDeviceID(COMPACTION_TEST_SG + PATH_SEPARATOR + "d2")).get());
     assertEquals(
         600,
-        targetResources
+        (long) targetResources
             .get(0)
-            .getStartTime(new PlainDeviceID(COMPACTION_TEST_SG + PATH_SEPARATOR + "d3")));
+            .getStartTime(new PlainDeviceID(COMPACTION_TEST_SG + PATH_SEPARATOR + "d3")).get());
     assertEquals(
         600,
-        targetResources
+        (long) targetResources
             .get(0)
-            .getStartTime(new PlainDeviceID(COMPACTION_TEST_SG + PATH_SEPARATOR + "d4")));
+            .getStartTime(new PlainDeviceID(COMPACTION_TEST_SG + PATH_SEPARATOR + "d4")).get());
     for (int i = 0; i < 5; i++) {
       assertEquals(
           749,
-          targetResources
+          (long) targetResources
               .get(0)
-              .getEndTime(new PlainDeviceID(COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + i)));
+              .getEndTime(new PlainDeviceID(COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + i)).get());
     }
 
     for (int i = 0; i < 5; i++) {
