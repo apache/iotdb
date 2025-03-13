@@ -242,7 +242,7 @@ public class PipeMemoryManager {
       }
 
       try {
-        tryShrink4Allocate(sizeInBytes);
+        tryShrinkUntilFreeMemorySatisfy(sizeInBytes);
         this.wait(MEMORY_ALLOCATE_RETRY_INTERVAL_IN_MS);
       } catch (InterruptedException e) {
         Thread.currentThread().interrupt();
@@ -312,7 +312,7 @@ public class PipeMemoryManager {
       }
 
       try {
-        tryShrink4Allocate(sizeInBytes);
+        tryShrinkUntilFreeMemorySatisfy(sizeInBytes);
         this.wait(MEMORY_ALLOCATE_RETRY_INTERVAL_IN_MS);
       } catch (InterruptedException e) {
         Thread.currentThread().interrupt();
@@ -354,21 +354,22 @@ public class PipeMemoryManager {
       return registerMemoryBlock(0);
     }
 
-    if (sizeInBytes + usedMemorySizeInBytes > TOTAL_MEMORY_SIZE_IN_BYTES) {
+    if (sizeInBytes > TOTAL_MEMORY_SIZE_IN_BYTES * usedThreshold) {
       return null;
     }
 
-    if ((float) (usedMemorySizeInBytes + sizeInBytes) / TOTAL_MEMORY_SIZE_IN_BYTES
-        < usedThreshold) {
+    if ((float) (usedMemorySizeInBytes + sizeInBytes)
+        <= TOTAL_MEMORY_SIZE_IN_BYTES * usedThreshold) {
       return forceAllocate(sizeInBytes);
     } else {
-      final long memoryToShrink =
-          Math.max(
-              usedMemorySizeInBytes
+      final long memoryToAllocate =
+          Math.min(
+              1
+                  + usedMemorySizeInBytes
                   + sizeInBytes
                   - (long) (TOTAL_MEMORY_SIZE_IN_BYTES * usedThreshold),
               sizeInBytes);
-      if (tryShrink4Allocate(memoryToShrink)) {
+      if (tryShrinkUntilFreeMemorySatisfy(memoryToAllocate)) {
         return forceAllocate(sizeInBytes);
       }
     }
@@ -410,7 +411,7 @@ public class PipeMemoryManager {
               MEMORY_ALLOCATE_MIN_SIZE_IN_BYTES);
     }
 
-    if (tryShrink4Allocate(sizeToAllocateInBytes)) {
+    if (tryShrinkUntilFreeMemorySatisfy(sizeToAllocateInBytes)) {
       LOGGER.info(
           "tryAllocate: allocated memory, "
               + "total memory size {} bytes, used memory size {} bytes, "
@@ -483,7 +484,7 @@ public class PipeMemoryManager {
     return returnedMemoryBlock;
   }
 
-  private boolean tryShrink4Allocate(long sizeInBytes) {
+  private boolean tryShrinkUntilFreeMemorySatisfy(long sizeInBytes) {
     final List<PipeMemoryBlock> shuffledBlocks = new ArrayList<>(allocatedBlocks);
     Collections.shuffle(shuffledBlocks);
 
