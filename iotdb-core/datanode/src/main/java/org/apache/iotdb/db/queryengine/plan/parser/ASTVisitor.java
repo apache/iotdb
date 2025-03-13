@@ -4527,6 +4527,9 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
                 "Window Function(e.g. HEAD, TAIL, COUNT) should be set in value when key is 'WINDOW' in CALL INFERENCE");
           }
           parseWindowFunctionInInference(valueContext.windowFunction(), statement);
+        } else if (paramKey.equalsIgnoreCase("GENERATETIME")) {
+          statement.setGenerateTime(
+              Boolean.parseBoolean(parseAttributeValue(valueContext.attributeValue())));
         } else {
           statement.addInferenceAttribute(
               paramKey, parseAttributeValue(valueContext.attributeValue()));
