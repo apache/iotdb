@@ -28,7 +28,7 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 
-abstract class AbstractTablePlan extends ConfigPhysicalPlan {
+public abstract class AbstractTablePlan extends ConfigPhysicalPlan {
 
   private String database;
 
