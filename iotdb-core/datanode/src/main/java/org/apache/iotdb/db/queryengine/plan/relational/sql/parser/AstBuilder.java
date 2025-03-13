@@ -59,6 +59,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateIndex;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreatePipe;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreatePipePlugin;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateTable;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateTableView;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateTopic;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CurrentDatabase;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CurrentTime;
@@ -258,6 +259,7 @@ import static org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory
 import static org.apache.iotdb.commons.udf.builtin.relational.TableBuiltinScalarFunction.DATE_BIN;
 import static org.apache.iotdb.db.queryengine.plan.execution.config.TableConfigTaskVisitor.DATABASE_NOT_SPECIFIED;
 import static org.apache.iotdb.db.queryengine.plan.parser.ASTVisitor.parseDateTimeFormat;
+import static org.apache.iotdb.db.queryengine.plan.parser.ASTVisitor.parseNodeString;
 import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.GroupingSets.Type.CUBE;
 import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.GroupingSets.Type.EXPLICIT;
 import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.GroupingSets.Type.ROLLUP;
@@ -491,6 +493,35 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
         false,
         false,
         Objects.nonNull(ctx.string()) ? ((StringLiteral) visit(ctx.string())).getValue() : null);
+  }
+
+  @Override
+  public Node visitCreateTableViewStatement(
+      final RelationalSqlParser.CreateTableViewStatementContext ctx) {
+    List<Property> properties = ImmutableList.of();
+    if (ctx.properties() != null) {
+      properties = visit(ctx.properties().propertyAssignments().property(), Property.class);
+    }
+    return new CreateTableView(
+        getLocation(ctx),
+        getQualifiedName(ctx.qualifiedName()),
+        visit(ctx.viewColumnDefinition(), ColumnDefinition.class),
+        null,
+        ctx.comment() == null ? null : ((StringLiteral) visit(ctx.comment().string())).getValue(),
+        properties,
+        parsePrefixPath(ctx.prefixPath()),
+        Objects.nonNull(ctx.REPLACE()),
+        Objects.nonNull(ctx.RESTRICT()));
+  }
+
+  private PartialPath parsePrefixPath(final RelationalSqlParser.PrefixPathContext ctx) {
+    final List<RelationalSqlParser.NodeNameContext> nodeNames = ctx.nodeName();
+    final String[] path = new String[nodeNames.size() + 1];
+    path[0] = ctx.ROOT().getText();
+    for (int i = 0; i < nodeNames.size(); i++) {
+      path[i + 1] = parseNodeString(nodeNames.get(i).getText());
+    }
+    return new PartialPath(path);
   }
 
   @Override

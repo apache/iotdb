@@ -37,14 +37,13 @@ public class CreateTableView extends CreateTable {
       final NodeLocation location,
       final QualifiedName name,
       final List<ColumnDefinition> elements,
-      final boolean ifNotExists,
       final @Nullable String charsetName,
       final @Nullable String comment,
       final List<Property> properties,
       final PartialPath prefixPath,
       final boolean replace,
       final boolean restrict) {
-    super(location, name, elements, ifNotExists, charsetName, comment, properties);
+    super(location, name, elements, false, charsetName, comment, properties);
     this.prefixPath = prefixPath;
     this.replace = replace;
     this.restrict = restrict;
