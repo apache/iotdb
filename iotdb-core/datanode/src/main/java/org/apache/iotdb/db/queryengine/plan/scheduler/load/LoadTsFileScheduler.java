@@ -422,6 +422,10 @@ public class LoadTsFileScheduler implements IScheduler {
       LOGGER.warn("Interrupt or Execution error.", e);
       stateMachine.transitionToFailed(e);
       return false;
+    } catch (Exception e) {
+      LOGGER.warn("Exception occurred during second phase of loading TsFile {}.", tsFile, e);
+      stateMachine.transitionToFailed(e);
+      return false;
     }
     return true;
   }
