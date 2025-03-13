@@ -75,10 +75,8 @@ public class TsFileInsertionEventParserProvider {
           tsFile, tablePattern, startTime, endTime, pipeTaskMeta, userName, sourceEvent);
     }
 
-    if (startTime != Long.MIN_VALUE
-        || endTime != Long.MAX_VALUE
-        || treePattern instanceof IoTDBTreePattern
-            && !((IoTDBTreePattern) treePattern).mayMatchMultipleTimeSeriesInOneDevice()) {
+    if (treePattern instanceof IoTDBTreePattern
+        && !((IoTDBTreePattern) treePattern).mayMatchMultipleTimeSeriesInOneDevice()) {
       // 1. If time filter exists, use query here because the scan container may filter it
       // row by row in single page chunk.
       // 2. If the pattern matches only one time series in one device, use query container here
