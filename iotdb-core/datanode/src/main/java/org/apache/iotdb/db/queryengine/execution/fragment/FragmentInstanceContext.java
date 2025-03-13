@@ -66,6 +66,7 @@ import java.util.stream.Collectors;
 
 import static org.apache.iotdb.db.queryengine.metric.DriverSchedulerMetricSet.BLOCK_QUEUED_TIME;
 import static org.apache.iotdb.db.queryengine.metric.DriverSchedulerMetricSet.READY_QUEUED_TIME;
+import static org.apache.iotdb.db.utils.ErrorHandlingUtils.getRootCause;
 
 public class FragmentInstanceContext extends QueryContext {
 
@@ -367,7 +368,8 @@ public class FragmentInstanceContext extends QueryContext {
     List<FragmentInstanceFailureInfo> failureInfoList = new ArrayList<>();
     TSStatus status = null;
 
-    for (Throwable failure : failures) {
+    for (Throwable t : failures) {
+      Throwable failure = getRootCause(t);
       if (failureCause.isEmpty()) {
         failureCause = failure.getMessage();
       }
