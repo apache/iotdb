@@ -60,6 +60,7 @@ import org.apache.iotdb.confignode.consensus.request.write.table.AddTableColumnP
 import org.apache.iotdb.confignode.consensus.request.write.table.CommitDeleteColumnPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.CommitDeleteTablePlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.RenameTableColumnPlan;
+import org.apache.iotdb.confignode.consensus.request.write.table.RenameTablePlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.SetTableColumnCommentPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.SetTableCommentPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.SetTablePropertiesPlan;
@@ -376,6 +377,15 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
                 new PrivilegeUnion(
                     ((SetTableColumnCommentPlan) plan).getDatabase(),
                     ((SetTableColumnCommentPlan) plan).getTableName(),
+                    PrivilegeType.ALTER))
+            .getStatus();
+      case RenameTable:
+        return configManager
+            .checkUserPrivileges(
+                username,
+                new PrivilegeUnion(
+                    ((RenameTablePlan) plan).getDatabase(),
+                    ((RenameTablePlan) plan).getTableName(),
                     PrivilegeType.ALTER))
             .getStatus();
       case CommitDeleteTable:
