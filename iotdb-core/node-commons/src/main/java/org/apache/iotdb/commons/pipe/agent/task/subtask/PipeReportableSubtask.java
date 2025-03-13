@@ -153,9 +153,11 @@ public abstract class PipeReportableSubtask extends PipeSubtask {
         throwable);
     try {
       long sleepInterval = Math.min(1000L * retryCount.get(), 10000);
-      // if receiver is read-only, connector will retry will power-increasing interval
+      // if receiver is read-only/internal-error/write-reject, connector will retry will
+      // power-increasing interval
       if (throwable instanceof PipeConsensusRetryWithIncreasingIntervalException) {
-        sleepInterval = Math.min(1000L * retryCount.get() * retryCount.get(), 1000L * 120);
+        sleepInterval =
+            Math.min(Math.max(1000L * retryCount.get() * retryCount.get(), 0), 1000L * 20);
       }
       Thread.sleep(sleepInterval);
     } catch (final InterruptedException e) {
