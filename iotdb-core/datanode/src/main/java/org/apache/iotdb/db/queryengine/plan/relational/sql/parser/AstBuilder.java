@@ -486,6 +486,15 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
   }
 
   @Override
+  public Node visitCommentView(final RelationalSqlParser.CommentViewContext ctx) {
+    return new SetTableComment(
+        getLocation(ctx),
+        getQualifiedName(ctx.qualifiedName()),
+        false,
+        Objects.nonNull(ctx.string()) ? ((StringLiteral) visit(ctx.string())).getValue() : null);
+  }
+
+  @Override
   public Node visitCommentColumn(final RelationalSqlParser.CommentColumnContext ctx) {
     return new SetColumnComment(
         getLocation(ctx),
