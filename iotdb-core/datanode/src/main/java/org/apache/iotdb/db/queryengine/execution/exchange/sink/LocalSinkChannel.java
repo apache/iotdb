@@ -232,7 +232,8 @@ public class LocalSinkChannel implements ISinkChannel {
     return queue;
   }
 
-  private void checkState() {
+  @Override
+  public void checkState() {
     if (aborted) {
       Optional<Throwable> abortedCause = queue.getAbortedCause();
       if (abortedCause.isPresent()) {
@@ -249,9 +250,7 @@ public class LocalSinkChannel implements ISinkChannel {
           throw new IllegalStateException(e.getCause() == null ? e : e.getCause());
         }
       }
-      throw new IllegalStateException("LocalSinkChannel is aborted.");
-    } else if (closed) {
-      throw new IllegalStateException("LocalSinkChannel is closed.");
+      throw new IllegalStateException("LocalSinkChannel is ABORTED.");
     }
   }
 

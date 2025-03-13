@@ -52,6 +52,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.time.ZoneId;
+import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -67,6 +68,7 @@ import java.util.stream.Collectors;
 import static org.apache.iotdb.db.queryengine.metric.DriverSchedulerMetricSet.BLOCK_QUEUED_TIME;
 import static org.apache.iotdb.db.queryengine.metric.DriverSchedulerMetricSet.READY_QUEUED_TIME;
 import static org.apache.iotdb.db.utils.ErrorHandlingUtils.getRootCause;
+import static org.apache.iotdb.rpc.TSStatusCode.DATE_OUT_OF_RANGE;
 
 public class FragmentInstanceContext extends QueryContext {
 
@@ -379,6 +381,9 @@ public class FragmentInstanceContext extends QueryContext {
         status.setMessage(failure.getMessage());
       } else if (failure instanceof IoTDBRuntimeException) {
         status = new TSStatus(((IoTDBRuntimeException) failure).getErrorCode());
+        status.setMessage(failure.getMessage());
+      } else if (failure instanceof DateTimeParseException) {
+        status = new TSStatus(DATE_OUT_OF_RANGE.getStatusCode());
         status.setMessage(failure.getMessage());
       } else {
         LOGGER.warn("[Unknown exception]: ", failure);
