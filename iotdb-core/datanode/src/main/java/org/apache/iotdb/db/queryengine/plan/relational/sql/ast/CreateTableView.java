@@ -26,6 +26,8 @@ import javax.annotation.Nullable;
 import java.util.List;
 import java.util.Objects;
 
+import static com.google.common.base.MoreObjects.toStringHelper;
+
 public class CreateTableView extends CreateTable {
   private final PartialPath prefixPath;
   private final boolean replace;
@@ -61,6 +63,11 @@ public class CreateTableView extends CreateTable {
   }
 
   @Override
+  public <R, C> R accept(final AstVisitor<R, C> visitor, final C context) {
+    return visitor.visitCreateTableView(this, context);
+  }
+
+  @Override
   public boolean equals(final Object o) {
     return super.equals(o)
         && Objects.equals(prefixPath, ((CreateTableView) o).prefixPath)
@@ -71,5 +78,19 @@ public class CreateTableView extends CreateTable {
   @Override
   public int hashCode() {
     return Objects.hash(super.hashCode(), prefixPath, replace, restrict);
+  }
+
+  @Override
+  public String toString() {
+    return toStringHelper(this)
+        .add("name", getName())
+        .add("elements", getElements())
+        .add("ifNotExists", isIfNotExists())
+        .add("charsetName", getCharsetName())
+        .add("properties", getProperties())
+        .add("prefixPath", prefixPath)
+        .add("replace", replace)
+        .add("restrict", restrict)
+        .toString();
   }
 }

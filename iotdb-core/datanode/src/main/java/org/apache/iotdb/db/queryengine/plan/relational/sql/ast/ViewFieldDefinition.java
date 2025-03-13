@@ -44,6 +44,10 @@ public class ViewFieldDefinition extends ColumnDefinition {
     return from;
   }
 
+  public <R, C> R accept(final AstVisitor<R, C> visitor, C context) {
+    return visitor.visitViewFieldDefinition(this, context);
+  }
+
   @Override
   public boolean equals(final Object o) {
     return super.equals(o) && Objects.equals(from, ((ViewFieldDefinition) o).from);
