@@ -1175,6 +1175,7 @@ struct TTableInfo {
    2: required string TTL
    3: optional i32 state
    4: optional string comment
+   5: optional i32 type
 }
 
 struct TConstructTreeDeviceViewReq {
