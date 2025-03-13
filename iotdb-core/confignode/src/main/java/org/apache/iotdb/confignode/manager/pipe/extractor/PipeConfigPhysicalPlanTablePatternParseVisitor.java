@@ -27,6 +27,7 @@ import org.apache.iotdb.confignode.consensus.request.write.auth.AuthorRelational
 import org.apache.iotdb.confignode.consensus.request.write.database.DatabaseSchemaPlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.DeleteDatabasePlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeCreateTablePlan;
+import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeDeleteDevicesPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.AbstractTablePlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.AddTableColumnPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.CommitDeleteColumnPlan;
@@ -113,6 +114,12 @@ public class PipeConfigPhysicalPlanTablePatternParseVisitor
   public Optional<ConfigPhysicalPlan> visitCommitDeleteTable(
       final CommitDeleteTablePlan commitDeleteTablePlan, final TablePattern pattern) {
     return visitAbstractTablePlan(commitDeleteTablePlan, pattern);
+  }
+
+  @Override
+  public Optional<ConfigPhysicalPlan> visitPipeDeleteDevices(
+      final PipeDeleteDevicesPlan pipeDeleteDevicesPlan, final TablePattern pattern) {
+    return visitAbstractTablePlan(pipeDeleteDevicesPlan, pattern);
   }
 
   @Override
