@@ -332,13 +332,13 @@ public class PipeMemoryManager {
   }
 
   /**
-   * Allocate a {@link PipeMemoryBlock} for pipe only if memory already used is less than the
-   * specified threshold.
+   * Allocate a {@link PipeMemoryBlock} for pipe only if memory used after allocation is less than
+   * the specified threshold.
    *
    * @param sizeInBytes size of memory needed to allocate
    * @param usedThreshold proportion of memory used, ranged from 0.0 to 1.0
-   * @return {@code null} if the proportion of memory already used exceeds {@code usedThreshold}.
-   *     Will return a memory block otherwise.
+   * @return {@code null} if the proportion of memory used after allocation exceeds {@code
+   *     usedThreshold}. Will return a memory block otherwise.
    */
   public synchronized PipeMemoryBlock forceAllocateIfSufficient(
       long sizeInBytes, float usedThreshold) {
@@ -354,13 +354,19 @@ public class PipeMemoryManager {
       return registerMemoryBlock(0);
     }
 
-    if (TOTAL_MEMORY_SIZE_IN_BYTES - usedMemorySizeInBytes >= sizeInBytes
-        && (float) usedMemorySizeInBytes / TOTAL_MEMORY_SIZE_IN_BYTES < usedThreshold) {
+    if (sizeInBytes + usedMemorySizeInBytes > TOTAL_MEMORY_SIZE_IN_BYTES) {
+      return null;
+    }
+
+    if ((float) (usedMemorySizeInBytes + sizeInBytes) / TOTAL_MEMORY_SIZE_IN_BYTES
+        < usedThreshold) {
       return forceAllocate(sizeInBytes);
     } else {
-      long memoryToShrink =
+      final long memoryToShrink =
           Math.max(
-              usedMemorySizeInBytes - (long) (TOTAL_MEMORY_SIZE_IN_BYTES * usedThreshold),
+              usedMemorySizeInBytes
+                  + sizeInBytes
+                  - (long) (TOTAL_MEMORY_SIZE_IN_BYTES * usedThreshold),
               sizeInBytes);
       if (tryShrink4Allocate(memoryToShrink)) {
         return forceAllocate(sizeInBytes);
