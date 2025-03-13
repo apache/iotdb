@@ -1153,7 +1153,7 @@ public class ExpressionAnalyzer {
 
     @Override
     protected Type visitColumns(Columns node, StackableAstVisitorContext<Context> context) {
-      throw new IllegalStateException("Columns shouldn't appear in Expression Analyze");
+      throw new SemanticException("Columns only support to be used in SELECT and WHERE clause");
     }
 
     private Type getOperator(

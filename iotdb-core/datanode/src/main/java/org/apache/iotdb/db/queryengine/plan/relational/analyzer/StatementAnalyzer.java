@@ -1223,7 +1223,7 @@ public class StatementAnalyzer {
           for (Field field : fields) {
             String columnName = field.getName().orElse(null);
             if (columnName == null) {
-              throw new IllegalStateException("Unknown ColumnName: " + field);
+              throw new SemanticException("Unknown ColumnName: " + field);
             }
             matchedColumns.add(new Identifier(columnName));
             outputColumnNames.add(alias == null ? columnName : alias.getValue());
@@ -2454,14 +2454,15 @@ public class StatementAnalyzer {
                 field = originColumn;
               }
 
+              boolean aliased = column.getAlias().isPresent();
               Field newField =
                   Field.newUnqualified(
-                      field,
+                      aliased ? originColumn : field,
                       analysis.getType(expression),
                       TsTableColumnCategory.FIELD,
                       originTable,
                       originColumn,
-                      column.getAlias().isPresent());
+                      aliased);
               // outputExpressions to look up the type
               if (originTable.isPresent()) {
                 analysis.addSourceColumns(

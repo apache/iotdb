@@ -190,6 +190,16 @@ public class IoTDBColumnsMatchTableIT {
         expectedHeader,
         retArray,
         DATABASE_NAME);
+
+    expectedHeader =
+        new String[] {
+          "test", "test", "test", "test", "_col4_time", "_col5_device_id", "_col6_s1", "_col7_s2"
+        };
+    tableResultSetEqualTest(
+        "SELECT last(COLUMNS(*)) as test, last_by(time,COLUMNS(*)) FROM table1",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
   }
 
   // used with all supported Expressions
@@ -321,5 +331,24 @@ public class IoTDBColumnsMatchTableIT {
     // case 4: invalid input of regex
     tableAssertTestFail(
         "SELECT * FROM table1 WHERE COLUMNS('*b') > 1", "701: Invalid regex '*b'", DATABASE_NAME);
+  }
+
+  @Test
+  public void otherExceptionTest() {
+    // cannot be used in HAVING clause
+    tableAssertTestFail(
+        "SELECT device_id, count(s1) FROM table1 HAVING COLUMNS('device_id') > 1",
+        "701: Columns only support to be used in SELECT and WHERE clause",
+        DATABASE_NAME);
+
+    // cannot be used for columns without name
+    tableAssertTestFail(
+        "SELECT COLUMNS(*) FROM (SELECT s1,s1+1 from table1)",
+        "701: Unknown ColumnName",
+        DATABASE_NAME);
+    tableAssertTestFail(
+        "SELECT COLUMNS('s1') FROM (SELECT s1,s1+1 from table1)",
+        "701: Unknown ColumnName",
+        DATABASE_NAME);
   }
 }
