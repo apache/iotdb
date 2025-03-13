@@ -115,14 +115,14 @@ public class DispatchLogHandler implements AsyncMethodCallback<TSyncLogEntriesRe
   }
 
   private void sleepCorrespondingTimeAndRetryAsynchronous() {
-    long sleepTime =
-        Math.min(
-            Math.max(
-                (long)
-                    (thread.getConfig().getReplication().getBasicRetryWaitTimeMs()
-                        * Math.pow(2, retryCount)),
-                0),
-            thread.getConfig().getReplication().getMaxRetryWaitTimeMs());
+    long sleepTime = thread.getConfig().getReplication().getMaxRetryWaitTimeMs();
+    if (retryCount < 63
+        && thread.getConfig().getReplication().getBasicRetryWaitTimeMs()
+            < sleepTime / (1L << retryCount)) {
+      sleepTime =
+          thread.getConfig().getReplication().getBasicRetryWaitTimeMs() * (1L << retryCount);
+    }
+
     thread
         .getImpl()
         .getBackgroundTaskService()
