@@ -204,12 +204,12 @@ public class AINodeBasicIT {
 
       try (ResultSet resultSet = statement.executeQuery(sql2)) {
         ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
-        checkHeader(resultSetMetaData, "Time,output0,output1,output2");
+        checkHeader(resultSetMetaData, "output0,output1,output2");
         int count = 0;
         while (resultSet.next()) {
-          float s2 = resultSet.getFloat(2);
-          float s0 = resultSet.getFloat(3);
-          float s1 = resultSet.getFloat(4);
+          float s2 = resultSet.getFloat(1);
+          float s0 = resultSet.getFloat(2);
+          float s1 = resultSet.getFloat(3);
 
           assertEquals(s0, count + 1.0, 0.0001);
           assertEquals(s1, count + 2.0, 0.0001);
