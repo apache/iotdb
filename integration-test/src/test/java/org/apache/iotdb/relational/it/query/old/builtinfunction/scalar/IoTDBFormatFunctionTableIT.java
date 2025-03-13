@@ -211,7 +211,7 @@ public class IoTDBFormatFunctionTableIT {
 
     tableAssertTestFail(
         "SELECT FORMAT('%s') FROM string_table",
-        "701: Scalar function format must have at least two arguments, and first argument must be char type.",
+        "701: Scalar function format must have at least two arguments, and first argument pattern must be TEXT or STRING type.",
         DATABASE_NAME);
   }
 }
