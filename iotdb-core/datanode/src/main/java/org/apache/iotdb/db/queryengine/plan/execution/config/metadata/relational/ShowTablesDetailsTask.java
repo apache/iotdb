@@ -22,6 +22,7 @@ package org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relationa
 import org.apache.iotdb.commons.schema.column.ColumnHeader;
 import org.apache.iotdb.commons.schema.column.ColumnHeaderConstant;
 import org.apache.iotdb.commons.schema.table.TableNodeStatus;
+import org.apache.iotdb.commons.schema.table.TableType;
 import org.apache.iotdb.confignode.rpc.thrift.TTableInfo;
 import org.apache.iotdb.db.queryengine.common.header.DatasetHeader;
 import org.apache.iotdb.db.queryengine.common.header.DatasetHeaderFactory;
@@ -91,6 +92,14 @@ public class ShowTablesDetailsTask implements IConfigTask {
                   .writeBinary(
                       new Binary(
                           tableInfo.isSetComment() ? tableInfo.getComment() : "",
+                          TSFileConfig.STRING_CHARSET));
+              builder
+                  .getColumnBuilder(4)
+                  .writeBinary(
+                      new Binary(
+                          tableInfo.isSetType()
+                              ? TableType.values()[tableInfo.getType()].getName()
+                              : TableType.BASE_TABLE.getName(),
                           TSFileConfig.STRING_CHARSET));
 
               builder.declarePosition();
