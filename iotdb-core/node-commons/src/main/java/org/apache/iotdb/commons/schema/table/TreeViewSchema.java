@@ -28,9 +28,14 @@ import org.apache.iotdb.rpc.TSStatusCode;
 public class TreeViewSchema {
   public static final String ORIGINAL_NAME = "__original_name";
   public static final String TREE_PATH_PATTERN = "__tree_path_pattern";
+  public static final String RESTRICT = "__restrict";
 
   public static boolean isTreeViewTable(final TsTable table) {
     return table.getPropValue(TREE_PATH_PATTERN).isPresent();
+  }
+
+  public static boolean isRestrict(final TsTable table) {
+    return table.getPropValue(RESTRICT).isPresent();
   }
 
   public static TSStatus setPathPattern(final TsTable table, final PartialPath pathPattern) {
