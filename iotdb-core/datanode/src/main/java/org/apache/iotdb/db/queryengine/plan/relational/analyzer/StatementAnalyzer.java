@@ -1207,7 +1207,6 @@ public class StatementAnalyzer {
           return expandedExpressions;
         }
 
-        context.getRelationType().getVisibleFields();
         List<Field> requestedFields = (List<Field>) context.getRelationType().getVisibleFields();
         List<Field> fields = filterInaccessibleFields(requestedFields);
         if (fields.isEmpty()) {
