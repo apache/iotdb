@@ -1383,6 +1383,7 @@ public class LogicalPlanBuilder {
             context.getQueryId().genPlanNodeId(),
             root,
             analysis.getModelInferenceDescriptor(),
+            !analysis.getRespDatasetHeader().isIgnoreTimestamp(),
             analysis.getOutputExpressions().stream()
                 .map(expressionStringPair -> expressionStringPair.left.getExpressionString())
                 .collect(Collectors.toList()));
