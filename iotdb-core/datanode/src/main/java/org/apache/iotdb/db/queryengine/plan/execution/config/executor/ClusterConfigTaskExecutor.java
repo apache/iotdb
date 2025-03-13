@@ -298,6 +298,7 @@ import org.apache.iotdb.trigger.api.enums.FailureStrategy;
 import org.apache.iotdb.udf.api.relational.AggregateFunction;
 import org.apache.iotdb.udf.api.relational.ScalarFunction;
 import org.apache.iotdb.udf.api.relational.TableFunction;
+import org.apache.iotdb.udf.api.relational.table.specification.ParameterSpecification;
 
 import com.google.common.util.concurrent.SettableFuture;
 import org.apache.commons.codec.digest.DigestUtils;
@@ -615,6 +616,23 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
             functionType = FunctionType.AGGREGATE;
           } else if (o instanceof TableFunction) {
             functionType = FunctionType.TABLE;
+            // check there is no duplicate argument specification for name
+            TableFunction tableFunction = (TableFunction) o;
+            Set<String> argNames = new HashSet<>();
+            for (ParameterSpecification specification :
+                tableFunction.getArgumentsSpecifications()) {
+              if (!argNames.add(specification.getName())) {
+                future.setException(
+                    new IoTDBException(
+                        "Failed to create function '"
+                            + udfName
+                            + "', because there is duplicate argument name '"
+                            + specification.getName()
+                            + "'.",
+                        TSStatusCode.UDF_LOAD_CLASS_ERROR.getStatusCode()));
+                return future;
+              }
+            }
           }
         }
         tCreateFunctionReq.setFunctionType(functionType);

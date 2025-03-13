@@ -1481,12 +1481,15 @@ public abstract class AlignedTVList extends TVList {
     if (largestBinaryChunkSize == 0) {
       return largestPrimitivePointSize;
     }
-    int avgPointSizeOfLargestBinaryColumn =
-        (int) largestBinaryChunkSize / getColumnValueCnt(largestBinaryColumnIndex);
+    int columnValueCnt = getColumnValueCnt(largestBinaryColumnIndex);
+    if (columnValueCnt == 0) {
+      return largestPrimitivePointSize;
+    }
+    int avgPointSizeOfLargestBinaryColumn = (int) largestBinaryChunkSize / columnValueCnt;
     return Math.max(avgPointSizeOfLargestBinaryColumn, largestPrimitivePointSize);
   }
 
-  public int getColumnValueCnt(int columnIndex) {
+  private int getColumnValueCnt(int columnIndex) {
     int pointNum = 0;
     if (bitMaps == null || bitMaps.get(columnIndex) == null) {
       pointNum = rowCount;
