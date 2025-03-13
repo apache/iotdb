@@ -354,25 +354,11 @@ public class PipeMemoryManager {
       return registerMemoryBlock(0);
     }
 
-    if (sizeInBytes > TOTAL_MEMORY_SIZE_IN_BYTES * usedThreshold) {
-      return null;
-    }
-
     if ((float) (usedMemorySizeInBytes + sizeInBytes)
         <= TOTAL_MEMORY_SIZE_IN_BYTES * usedThreshold) {
       return forceAllocate(sizeInBytes);
-    } else {
-      final long memoryToAllocate =
-          Math.min(
-              1
-                  + usedMemorySizeInBytes
-                  + sizeInBytes
-                  - (long) (TOTAL_MEMORY_SIZE_IN_BYTES * usedThreshold),
-              sizeInBytes);
-      if (tryShrinkUntilFreeMemorySatisfy(memoryToAllocate)) {
-        return forceAllocate(sizeInBytes);
-      }
     }
+
     return null;
   }
 
