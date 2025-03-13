@@ -28,6 +28,8 @@ import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
+import org.apache.iotdb.commons.schema.table.TableType;
+import org.apache.iotdb.commons.schema.table.TreeViewSchema;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.TsTableInternalRPCUtil;
 import org.apache.iotdb.commons.snapshot.SnapshotProcessor;
@@ -1272,6 +1274,10 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
                         pair.getLeft()
                             .getPropValue(TsTable.COMMENT_KEY)
                             .ifPresent(info::setComment);
+                        info.setType(
+                            TreeViewSchema.isTreeViewTable(pair.getLeft())
+                                ? TableType.TREE_TO_TABLE_VIEW.ordinal()
+                                : TableType.BASE_TABLE.ordinal());
                         return info;
                       })
                   .collect(Collectors.toList())
@@ -1316,6 +1322,10 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
                                     pair.getLeft()
                                         .getPropValue(TsTable.COMMENT_KEY)
                                         .ifPresent(info::setComment);
+                                    info.setType(
+                                        TreeViewSchema.isTreeViewTable(pair.getLeft())
+                                            ? TableType.TREE_TO_TABLE_VIEW.ordinal()
+                                            : TableType.BASE_TABLE.ordinal());
                                     return info;
                                   })
                               .collect(Collectors.toList()))));
