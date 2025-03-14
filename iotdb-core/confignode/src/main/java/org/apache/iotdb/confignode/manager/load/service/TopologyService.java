@@ -57,6 +57,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -81,6 +82,7 @@ public class TopologyService implements Runnable, IClusterStatusSubscriber {
 
   /* (fromDataNodeId, toDataNodeId) -> heartbeat history */
   private final Map<Pair<Integer, Integer>, List<AbstractHeartbeatSample>> heartbeats;
+  private final List<Integer> startingDataNodes = new CopyOnWriteArrayList<>();
 
   private final IFailureDetector failureDetector;
   private static final ConfigNodeConfig CONF = ConfigNodeDescriptor.getInstance().getConf();
@@ -154,6 +156,9 @@ public class TopologyService implements Runnable, IClusterStatusSubscriber {
     for (final TDataNodeConfiguration dataNodeConf :
         configManager.getNodeManager().getRegisteredDataNodes()) {
       final TDataNodeLocation location = dataNodeConf.getLocation();
+      if (startingDataNodes.contains(location.getDataNodeId())) {
+        continue; // we shall wait for internal endpoint to be ready
+      }
       dataNodeLocations.add(location);
       dataNodeIds.add(location.getDataNodeId());
     }
@@ -207,7 +212,6 @@ public class TopologyService implements Runnable, IClusterStatusSubscriber {
     }
 
     // 4. use failure detector to identify potential network partitions
-    boolean partitionDetected = false;
     final Map<Integer, Set<Integer>> latestTopology =
         dataNodeLocations.stream()
             .collect(Collectors.toMap(TDataNodeLocation::getDataNodeId, k -> new HashSet<>()));
@@ -218,16 +222,13 @@ public class TopologyService implements Runnable, IClusterStatusSubscriber {
       if (!entry.getValue().isEmpty()
           && !failureDetector.isAvailable(entry.getKey(), entry.getValue())) {
         LOGGER.debug("Connection from DataNode {} to DataNode {} is broken", fromId, toId);
-        partitionDetected = true;
       } else {
         latestTopology.get(fromId).add(toId);
       }
     }
 
     // 5. notify the listeners on topology change
-    if (partitionDetected) {
-      topologyChangeListener.accept(latestTopology);
-    }
+    topologyChangeListener.accept(latestTopology);
   }
 
   /** We only listen to datanode remove / restart / register events */
@@ -241,23 +242,19 @@ public class TopologyService implements Runnable, IClusterStatusSubscriber {
         changes.entrySet()) {
       final Integer nodeId = entry.getKey();
       final Pair<NodeStatistics, NodeStatistics> changeEvent = entry.getValue();
-      if (datanodeIds.contains(nodeId)) {
-        final boolean changeFromRunningToUnknown =
-            NodeStatus.Running.equals(changeEvent.getLeft().getStatus())
-                && NodeStatus.Running.equals(changeEvent.getRight().getStatus());
-        if (!changeFromRunningToUnknown) {
-          // datanode status change to live (register, restart, recover), trigger probing
-          // immediately
-          LOGGER.info(
-              "[Topology] DataNode {} status changed to {}, trigger probing now",
-              nodeId,
-              changeEvent.getRight());
-          awaitForSignal.signal();
-        }
+      if (!datanodeIds.contains(nodeId)) {
+        continue;
+      }
+      if (changeEvent.getLeft() == null) {
+        // if a new datanode registered, DO NOT trigger probing immediately
+        startingDataNodes.add(nodeId);
+        continue;
+      } else {
+        startingDataNodes.remove(nodeId);
       }
 
       if (changeEvent.getRight() == null) {
-        // node removal, do clean up if necessary
+        // datanode removed from cluster, clean up probing history
         final Set<Pair<Integer, Integer>> toRemove =
             heartbeats.keySet().stream()
                 .filter(
@@ -266,6 +263,12 @@ public class TopologyService implements Runnable, IClusterStatusSubscriber {
                             || Objects.equals(pair.getRight(), nodeId))
                 .collect(Collectors.toSet());
         toRemove.forEach(heartbeats::remove);
+      } else {
+        // we only trigger probing immediately if node comes around from UNKNOWN to RUNNING
+        if (NodeStatus.Unknown.equals(changeEvent.getLeft().getStatus())
+            && NodeStatus.Running.equals(changeEvent.getRight().getStatus())) {
+          awaitForSignal.signal();
+        }
       }
     }
   }

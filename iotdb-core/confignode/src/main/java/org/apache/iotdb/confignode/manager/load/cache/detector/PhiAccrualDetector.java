@@ -78,12 +78,12 @@ public class PhiAccrualDetector implements IFailureDetector {
       return fallbackDuringColdStart.isAvailable(Id, historyCopy);
     }
     final PhiAccrual phiAccrual = create(historyCopy);
-    final Boolean isAvailable = phiAccrual.phi() < (double) this.threshold;
+    final boolean isAvailable = phiAccrual.phi() < (double) this.threshold;
 
     final Boolean previousAvailability = availibilityCache.getIfPresent(Id);
     availibilityCache.put(Id, isAvailable);
 
-    if (!isAvailable.equals(previousAvailability)) {
+    if (Boolean.TRUE.equals(previousAvailability) && !isAvailable) {
       // log the status change and dump the heartbeat history for analysis use
       final StringBuilder builder = new StringBuilder();
       builder.append("[");

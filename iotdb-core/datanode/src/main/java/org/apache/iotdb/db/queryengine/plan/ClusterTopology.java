@@ -139,7 +139,7 @@ public class ClusterTopology {
     } else {
       this.isPartitioned = latestTopology.get(myself).size() != latestTopology.keySet().size();
     }
-    if (isPartitioned) {
+    if (isPartitioned && LOGGER.isDebugEnabled()) {
       final Set<Integer> allDataLocations = new HashSet<>(latestTopology.keySet());
       allDataLocations.removeAll(latestTopology.get(myself));
       final String partitioned =
@@ -147,7 +147,7 @@ public class ClusterTopology {
               .collect(
                   StringBuilder::new, (sb, id) -> sb.append(",").append(id), StringBuilder::append)
               .toString();
-      LOGGER.info("This DataNode {} is partitioned with [{}]", myself, partitioned);
+      LOGGER.debug("This DataNode {} is partitioned with [{}]", myself, partitioned);
     }
   }
 
