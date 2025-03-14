@@ -23,6 +23,10 @@ import org.apache.iotdb.commons.schema.table.TableNodeStatus;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
 
+import java.io.DataOutputStream;
+import java.io.IOException;
+import java.nio.ByteBuffer;
+
 public class PreCreateTableViewPlan extends PreCreateTablePlan {
   private TableNodeStatus status;
 
@@ -38,5 +42,17 @@ public class PreCreateTableViewPlan extends PreCreateTablePlan {
 
   public TableNodeStatus getStatus() {
     return status;
+  }
+
+  @Override
+  protected void serializeImpl(final DataOutputStream stream) throws IOException {
+    super.serializeImpl(stream);
+    status.serialize(stream);
+  }
+
+  @Override
+  protected void deserializeImpl(final ByteBuffer buffer) throws IOException {
+    super.deserializeImpl(buffer);
+    status = TableNodeStatus.deserialize(buffer);
   }
 }
