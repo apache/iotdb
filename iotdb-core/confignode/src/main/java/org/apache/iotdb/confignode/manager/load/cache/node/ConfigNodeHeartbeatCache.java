@@ -55,23 +55,23 @@ public class ConfigNodeHeartbeatCache extends BaseNodeCache {
     }
 
     NodeHeartbeatSample lastSample;
+    // Update Node status
+    NodeStatus status;
+    long currentNanoTime = System.nanoTime();
     final List<AbstractHeartbeatSample> heartbeatHistory;
     synchronized (slidingWindow) {
       lastSample = (NodeHeartbeatSample) getLastSample();
       heartbeatHistory = Collections.unmodifiableList(slidingWindow);
-    }
 
-    // Update Node status
-    NodeStatus status;
-    long currentNanoTime = System.nanoTime();
-    if (lastSample == null) {
-      /* First heartbeat not received from this ConfigNode, status is UNKNOWN */
-      status = NodeStatus.Unknown;
-    } else if (!failureDetector.isAvailable(heartbeatHistory)) {
-      /* Failure detector decides that this ConfigNode is UNKNOWN */
-      status = NodeStatus.Unknown;
-    } else {
-      status = lastSample.getStatus();
+      if (lastSample == null) {
+        /* First heartbeat not received from this ConfigNode, status is UNKNOWN */
+        status = NodeStatus.Unknown;
+      } else if (!failureDetector.isAvailable(heartbeatHistory)) {
+        /* Failure detector decides that this ConfigNode is UNKNOWN */
+        status = NodeStatus.Unknown;
+      } else {
+        status = lastSample.getStatus();
+      }
     }
 
     /* Update loadScore */

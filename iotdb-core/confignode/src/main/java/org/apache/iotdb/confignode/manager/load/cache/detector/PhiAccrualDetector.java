@@ -71,7 +71,7 @@ public class PhiAccrualDetector implements IFailureDetector {
     }
     final PhiAccrual phiAccrual = create(history);
     final boolean isAvailable = phiAccrual.phi() < (double) this.threshold;
-    if (!isAvailable) {
+    if (!isAvailable && LOGGER.isDebugEnabled()) {
       // log the status change and dump the heartbeat history for analysis use
       final StringBuilder builder = new StringBuilder();
       builder.append("[");
@@ -81,7 +81,7 @@ public class PhiAccrualDetector implements IFailureDetector {
       }
       builder.append(phiAccrual.timeElapsedSinceLastHeartbeat / 1000_000);
       builder.append("]");
-      LOGGER.info(String.format("Node Down, heartbeat history (ms): %s", builder));
+      LOGGER.debug(String.format("Node Down, heartbeat history (ms): %s", builder));
     }
 
     return isAvailable;

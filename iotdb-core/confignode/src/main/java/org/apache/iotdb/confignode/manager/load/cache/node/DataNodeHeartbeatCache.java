@@ -53,29 +53,28 @@ public class DataNodeHeartbeatCache extends BaseNodeCache {
 
     NodeHeartbeatSample lastSample;
     final List<AbstractHeartbeatSample> heartbeatHistory;
-    synchronized (slidingWindow) {
-      lastSample = (NodeHeartbeatSample) getLastSample();
-      heartbeatHistory = Collections.unmodifiableList(slidingWindow);
-    }
-
-    /* Update load sample */
-    if (lastSample != null && lastSample.isSetLoadSample()) {
-      latestLoadSample.set(lastSample.getLoadSample());
-    }
-
     /* Update Node status */
     NodeStatus status;
     String statusReason = null;
     long currentNanoTime = System.nanoTime();
-    if (lastSample == null) {
-      /* First heartbeat not received from this DataNode, status is UNKNOWN */
-      status = NodeStatus.Unknown;
-    } else if (!failureDetector.isAvailable(heartbeatHistory)) {
-      /* Failure detector decides that this DataNode is UNKNOWN */
-      status = NodeStatus.Unknown;
-    } else {
-      status = lastSample.getStatus();
-      statusReason = lastSample.getStatusReason();
+    synchronized (slidingWindow) {
+      lastSample = (NodeHeartbeatSample) getLastSample();
+      heartbeatHistory = Collections.unmodifiableList(slidingWindow);
+      /* Update load sample */
+      if (lastSample != null && lastSample.isSetLoadSample()) {
+        latestLoadSample.set(lastSample.getLoadSample());
+      }
+
+      if (lastSample == null) {
+        /* First heartbeat not received from this DataNode, status is UNKNOWN */
+        status = NodeStatus.Unknown;
+      } else if (!failureDetector.isAvailable(heartbeatHistory)) {
+        /* Failure detector decides that this DataNode is UNKNOWN */
+        status = NodeStatus.Unknown;
+      } else {
+        status = lastSample.getStatus();
+        statusReason = lastSample.getStatusReason();
+      }
     }
 
     /* Update loadScore */
