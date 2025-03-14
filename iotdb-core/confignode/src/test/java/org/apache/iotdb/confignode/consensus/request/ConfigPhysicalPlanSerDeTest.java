@@ -48,6 +48,7 @@ import org.apache.iotdb.commons.pipe.agent.task.meta.PipeMeta;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeRuntimeMeta;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeStaticMeta;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
+import org.apache.iotdb.commons.schema.table.TableNodeStatus;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.column.AttributeColumnSchema;
 import org.apache.iotdb.commons.schema.table.column.FieldColumnSchema;
@@ -133,9 +134,11 @@ import org.apache.iotdb.confignode.consensus.request.write.table.CommitCreateTab
 import org.apache.iotdb.confignode.consensus.request.write.table.CommitDeleteColumnPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.CommitDeleteTablePlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.PreCreateTablePlan;
+import org.apache.iotdb.confignode.consensus.request.write.table.PreCreateTableViewPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.PreDeleteColumnPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.PreDeleteTablePlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.RenameTableColumnPlan;
+import org.apache.iotdb.confignode.consensus.request.write.table.RenameTablePlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.RollbackCreateTablePlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.SetTableColumnCommentPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.SetTableCommentPlan;
@@ -1219,6 +1222,31 @@ public class ConfigPhysicalPlanSerDeTest {
   }
 
   @Test
+  public void preCreateTableViewPlanTest() throws IOException {
+    final TsTable table = new TsTable("table1");
+    table.addColumnSchema(new TagColumnSchema("Id", TSDataType.STRING));
+    table.addColumnSchema(
+        new FieldColumnSchema(
+            "Measurement", TSDataType.DOUBLE, TSEncoding.GORILLA, CompressionType.SNAPPY));
+    final PreCreateTableViewPlan preCreateTableViewPlan0 =
+        new PreCreateTableViewPlan("database1", table, TableNodeStatus.PRE_CREATE);
+    final PreCreateTableViewPlan preCreateTablePlan1 =
+        (PreCreateTableViewPlan)
+            ConfigPhysicalPlan.Factory.create(preCreateTableViewPlan0.serializeToByteBuffer());
+
+    Assert.assertEquals(preCreateTableViewPlan0.getDatabase(), preCreateTablePlan1.getDatabase());
+    Assert.assertEquals(
+        preCreateTableViewPlan0.getTable().getTableName(),
+        preCreateTablePlan1.getTable().getTableName());
+    Assert.assertEquals(
+        preCreateTableViewPlan0.getTable().getColumnNum(),
+        preCreateTablePlan1.getTable().getColumnNum());
+    Assert.assertEquals(
+        preCreateTableViewPlan0.getTable().getIdNums(), preCreateTablePlan1.getTable().getIdNums());
+    Assert.assertEquals(preCreateTableViewPlan0.getStatus(), preCreateTablePlan1.getStatus());
+  }
+
+  @Test
   public void RollbackCreateTablePlanTest() throws IOException {
     final RollbackCreateTablePlan rollbackCreateTablePlan0 =
         new RollbackCreateTablePlan("database1", "table1");
@@ -1337,6 +1365,18 @@ public class ConfigPhysicalPlanSerDeTest {
         setTableColumnCommentPlan.getTableName(), setTableColumnCommentPlan1.getTableName());
     Assert.assertEquals(
         setTableColumnCommentPlan.getColumnName(), setTableColumnCommentPlan1.getColumnName());
+  }
+
+  @Test
+  public void RenameTablePlanTest() throws IOException {
+    final RenameTablePlan renameTablePlan =
+        new RenameTablePlan("database1", "table1", "measurement");
+    final RenameTablePlan renameTablePlan1 =
+        (RenameTablePlan)
+            ConfigPhysicalPlan.Factory.create(renameTablePlan.serializeToByteBuffer());
+    Assert.assertEquals(renameTablePlan.getDatabase(), renameTablePlan1.getDatabase());
+    Assert.assertEquals(renameTablePlan.getTableName(), renameTablePlan1.getTableName());
+    Assert.assertEquals(renameTablePlan.getNewName(), renameTablePlan1.getNewName());
   }
 
   @Test

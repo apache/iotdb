@@ -27,9 +27,11 @@ import org.apache.iotdb.commons.pipe.agent.plugin.builtin.BuiltinPipePlugin;
 import org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant;
 import org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant;
 import org.apache.iotdb.commons.pipe.config.constant.SystemConstant;
+import org.apache.iotdb.commons.schema.table.TreeViewSchema;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.column.TimeColumnSchema;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
+import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
 import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.exception.sql.SemanticException;
@@ -64,6 +66,7 @@ import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.ClearCacheTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.CreateDBTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.CreateTableTask;
+import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.CreateTableViewTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.DeleteDeviceTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.DescribeTableDetailsTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.DescribeTableTask;
@@ -117,6 +120,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateFunction;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreatePipe;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreatePipePlugin;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateTable;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateTableView;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateTopic;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DataType;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DatabaseStatement;
@@ -177,6 +181,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.StartRepairData;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.StopPipe;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.StopRepairData;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Use;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ViewFieldDefinition;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.rewrite.StatementRewrite;
 import org.apache.iotdb.db.queryengine.plan.relational.type.TypeNotFoundException;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.DatabaseSchemaStatement;
@@ -444,6 +449,29 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
 
   @Override
   protected IConfigTask visitCreateTable(final CreateTable node, final MPPQueryContext context) {
+    final Pair<String, TsTable> databaseTablePair = parseTable4CreateTableOrView(node, context);
+    return new CreateTableTask(
+        databaseTablePair.getRight(), databaseTablePair.getLeft(), node.isIfNotExists());
+  }
+
+  @Override
+  protected IConfigTask visitCreateTableView(
+      final CreateTableView node, final MPPQueryContext context) {
+    final Pair<String, TsTable> databaseTablePair = parseTable4CreateTableOrView(node, context);
+    final TsTable table = databaseTablePair.getRight();
+    final String msg = TreeViewSchema.setPathPattern(table, node.getPrefixPath());
+    if (Objects.nonNull(msg)) {
+      throw new SemanticException(msg);
+    }
+    if (node.isRestrict()) {
+      TreeViewSchema.setRestrict(table);
+    }
+    return new CreateTableViewTask(
+        databaseTablePair.getRight(), databaseTablePair.getLeft(), node.isReplace());
+  }
+
+  private Pair<String, TsTable> parseTable4CreateTableOrView(
+      final CreateTable node, final MPPQueryContext context) {
     context.setQueryType(QueryType.WRITE);
     final Pair<String, String> databaseTablePair = splitQualifiedName(node.getName(), true);
     final String database = databaseTablePair.getLeft();
@@ -480,10 +508,18 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
         throw new SemanticException(
             String.format("Columns in table shall not share the same name %s.", columnName));
       }
-      table.addColumnSchema(
-          TableHeaderSchemaValidator.generateColumnSchema(category, columnName, dataType, comment));
+      final TsTableColumnSchema schema =
+          TableHeaderSchemaValidator.generateColumnSchema(category, columnName, dataType, comment);
+      table.addColumnSchema(schema);
+      if (columnDefinition instanceof ViewFieldDefinition) {
+        schema
+            .getProps()
+            .put(
+                TreeViewSchema.ORIGINAL_NAME,
+                ((ViewFieldDefinition) columnDefinition).getFrom().getValue());
+      }
     }
-    return new CreateTableTask(table, database, node.isIfNotExists());
+    return new Pair<>(database, table);
   }
 
   private boolean checkTimeColumnIdempotent(
@@ -529,8 +565,8 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
     return new AlterTableRenameTableTask(
         database,
         tableName,
-        node.getTarget().getValue(),
         context.getQueryId().getId(),
+        node.getTarget().getValue(),
         node.tableIfExists());
   }
 

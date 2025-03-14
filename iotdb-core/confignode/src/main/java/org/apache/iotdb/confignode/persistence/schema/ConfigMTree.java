@@ -32,6 +32,7 @@ import org.apache.iotdb.commons.schema.node.role.IDatabaseMNode;
 import org.apache.iotdb.commons.schema.node.utils.IMNodeFactory;
 import org.apache.iotdb.commons.schema.node.utils.IMNodeIterator;
 import org.apache.iotdb.commons.schema.table.TableNodeStatus;
+import org.apache.iotdb.commons.schema.table.TreeViewSchema;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
@@ -671,6 +672,26 @@ public class ConfigMTree {
     }
   }
 
+  public void preCreateTableView(
+      final PartialPath database, final TsTable table, final TableNodeStatus status)
+      throws MetadataException {
+    final IConfigMNode databaseNode = getDatabaseNodeByDatabasePath(database).getAsMNode();
+    final IConfigMNode node = databaseNode.getChild(table.getTableName());
+    if (Objects.nonNull(node)) {
+      if (!TreeViewSchema.isTreeViewTable(((ConfigTableNode) node).getTable())) {
+        throw new TableAlreadyExistsException(
+            database.getFullPath().substring(ROOT.length() + 1), table.getTableName());
+      }
+      databaseNode.deleteChild(table.getTableName());
+    }
+    final ConfigTableNode tableNode =
+        (ConfigTableNode)
+            databaseNode.addChild(
+                table.getTableName(), new ConfigTableNode(databaseNode, table.getTableName()));
+    tableNode.setTable(table);
+    tableNode.setStatus(status);
+  }
+
   public void rollbackCreateTable(final PartialPath database, final String tableName)
       throws MetadataException {
     final IConfigMNode databaseNode = getDatabaseNodeByDatabasePath(database).getAsMNode();
@@ -699,6 +720,12 @@ public class ConfigMTree {
           database.getFullPath().substring(ROOT.length() + 1), tableName);
     }
     final ConfigTableNode tableNode = (ConfigTableNode) databaseNode.getChild(tableName);
+    if (TreeViewSchema.isTreeViewTable(tableNode.getTable())) {
+      throw new MetadataException(
+          String.format(
+              "Table '%s.%s' is a tree view table, does not support drop", database, tableName),
+          TSStatusCode.SEMANTIC_ERROR.getStatusCode());
+    }
     if (tableNode.getStatus().equals(TableNodeStatus.PRE_CREATE)) {
       throw new IllegalStateException();
     }
@@ -852,15 +879,6 @@ public class ConfigMTree {
     columnSchemaList.forEach(o -> table.removeColumnSchema(o.getColumnName()));
   }
 
-  public void renameTableColumn(
-      final PartialPath database,
-      final String tableName,
-      final String oldName,
-      final String newName)
-      throws MetadataException {
-    getTable(database, tableName).renameColumnSchema(oldName, newName);
-  }
-
   public void setTableProperties(
       final PartialPath database, final String tableName, final Map<String, String> tableProperties)
       throws MetadataException {
@@ -890,6 +908,13 @@ public class ConfigMTree {
       final PartialPath database, final String tableName, final String columnName)
       throws MetadataException, SemanticException {
     final ConfigTableNode node = getTableNode(database, tableName);
+    if (TreeViewSchema.isTreeViewTable(node.getTable())) {
+      throw new MetadataException(
+          String.format(
+              "Table '%s.%s' is a tree view table, does not support alter", database, tableName),
+          TSStatusCode.SEMANTIC_ERROR.getStatusCode());
+    }
+
     final TsTableColumnSchema columnSchema = node.getTable().getColumnSchema(columnName);
     if (Objects.isNull(columnSchema)) {
       throw new ColumnNotExistsException(
@@ -937,14 +962,14 @@ public class ConfigMTree {
     return getTableNode(database, tableName).getTable();
   }
 
-  public Optional<TsTable> getTableIfExists(final PartialPath database, final String tableName)
-      throws MetadataException {
+  public Optional<Pair<TsTable, TableNodeStatus>> getTableAndStatusIfExists(
+      final PartialPath database, final String tableName) throws MetadataException {
     final IConfigMNode databaseNode = getDatabaseNodeByDatabasePath(database).getAsMNode();
     if (!databaseNode.hasChild(tableName)) {
       return Optional.empty();
     }
     final ConfigTableNode tableNode = (ConfigTableNode) databaseNode.getChild(tableName);
-    return Optional.of(tableNode.getTable());
+    return Optional.of(new Pair<>(tableNode.getTable(), tableNode.getStatus()));
   }
 
   private ConfigTableNode getTableNode(final PartialPath database, final String tableName)

@@ -28,11 +28,11 @@ import com.google.common.util.concurrent.ListenableFuture;
 
 public class CreateTableTask implements IConfigTask {
 
-  private final TsTable table;
+  protected final TsTable table;
 
-  private final String database;
+  protected final String database;
 
-  private final boolean ifNotExists;
+  protected final boolean ifNotExists;
 
   public CreateTableTask(final TsTable table, final String database, final boolean ifNotExists) {
     this.table = table;

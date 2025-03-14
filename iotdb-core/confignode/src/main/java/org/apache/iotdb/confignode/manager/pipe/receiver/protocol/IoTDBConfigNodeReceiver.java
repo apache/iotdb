@@ -60,6 +60,7 @@ import org.apache.iotdb.confignode.consensus.request.write.table.AddTableColumnP
 import org.apache.iotdb.confignode.consensus.request.write.table.CommitDeleteColumnPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.CommitDeleteTablePlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.RenameTableColumnPlan;
+import org.apache.iotdb.confignode.consensus.request.write.table.RenameTablePlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.SetTableColumnCommentPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.SetTableCommentPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.SetTablePropertiesPlan;
@@ -85,6 +86,7 @@ import org.apache.iotdb.confignode.procedure.impl.schema.table.CreateTableProced
 import org.apache.iotdb.confignode.procedure.impl.schema.table.DropTableColumnProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.table.DropTableProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.table.RenameTableColumnProcedure;
+import org.apache.iotdb.confignode.procedure.impl.schema.table.RenameTableProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.table.SetTablePropertiesProcedure;
 import org.apache.iotdb.confignode.procedure.store.ProcedureType;
 import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
@@ -376,6 +378,15 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
                 new PrivilegeUnion(
                     ((SetTableColumnCommentPlan) plan).getDatabase(),
                     ((SetTableColumnCommentPlan) plan).getTableName(),
+                    PrivilegeType.ALTER))
+            .getStatus();
+      case RenameTable:
+        return configManager
+            .checkUserPrivileges(
+                username,
+                new PrivilegeUnion(
+                    ((RenameTablePlan) plan).getDatabase(),
+                    ((RenameTablePlan) plan).getTableName(),
                     PrivilegeType.ALTER))
             .getStatus();
       case CommitDeleteTable:
@@ -716,6 +727,21 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
                     ByteBuffer.wrap(((PipeDeleteDevicesPlan) plan).getModBytes())),
                 true)
             .getStatus();
+      case RenameTable:
+        configManager
+            .getProcedureManager()
+            .executeWithoutDuplicate(
+                ((RenameTablePlan) plan).getDatabase(),
+                null,
+                ((RenameTablePlan) plan).getTableName(),
+                queryId,
+                ProcedureType.RENAME_TABLE_PROCEDURE,
+                new RenameTableProcedure(
+                    ((RenameTablePlan) plan).getDatabase(),
+                    ((RenameTablePlan) plan).getTableName(),
+                    queryId,
+                    ((RenameTablePlan) plan).getNewName(),
+                    true));
       case CreateUser:
       case CreateUserWithRawPassword:
       case CreateRole:

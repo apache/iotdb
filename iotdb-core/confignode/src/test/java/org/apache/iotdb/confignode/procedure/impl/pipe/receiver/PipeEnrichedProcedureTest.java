@@ -43,10 +43,12 @@ import org.apache.iotdb.confignode.procedure.impl.schema.SetTemplateProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.UnsetTemplateProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.table.AddTableColumnProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.table.CreateTableProcedure;
+import org.apache.iotdb.confignode.procedure.impl.schema.table.CreateTableViewProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.table.DeleteDevicesProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.table.DropTableColumnProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.table.DropTableProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.table.RenameTableColumnProcedure;
+import org.apache.iotdb.confignode.procedure.impl.schema.table.RenameTableProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.table.SetTablePropertiesProcedure;
 import org.apache.iotdb.confignode.procedure.impl.sync.AuthOperationProcedure;
 import org.apache.iotdb.confignode.procedure.impl.trigger.CreateTriggerProcedure;
@@ -555,5 +557,61 @@ public class PipeEnrichedProcedureTest {
     deserializedProcedure.deserialize(byteBuffer);
 
     Assert.assertEquals(deleteDevicesProcedure, deserializedProcedure);
+  }
+
+  @Test
+  public void RenameTableProcedureTest() throws IOException {
+    final RenameTableProcedure renameTableProcedure =
+        new RenameTableProcedure("database1", "table1", "0", "newName", true);
+
+    final ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+    final DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream);
+    renameTableProcedure.serialize(dataOutputStream);
+
+    final ByteBuffer byteBuffer = ByteBuffer.wrap(byteArrayOutputStream.toByteArray());
+
+    Assert.assertEquals(
+        ProcedureType.PIPE_ENRICHED_RENAME_TABLE_PROCEDURE.getTypeCode(), byteBuffer.getShort());
+
+    final RenameTableProcedure deserializedProcedure = new RenameTableProcedure(true);
+    deserializedProcedure.deserialize(byteBuffer);
+
+    Assert.assertEquals(renameTableProcedure, deserializedProcedure);
+  }
+
+  @Test
+  public void CreateTableViewProcedureTest() throws IOException {
+    final TsTable table = new TsTable("table1");
+    table.addColumnSchema(new TagColumnSchema("Id", TSDataType.STRING));
+    table.addColumnSchema(
+        new FieldColumnSchema(
+            "Measurement", TSDataType.DOUBLE, TSEncoding.GORILLA, CompressionType.SNAPPY));
+    final CreateTableViewProcedure createTableViewProcedure =
+        new CreateTableViewProcedure("database1", table, false, true);
+
+    final ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+    final DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream);
+    createTableViewProcedure.serialize(dataOutputStream);
+
+    final ByteBuffer byteBuffer = ByteBuffer.wrap(byteArrayOutputStream.toByteArray());
+
+    Assert.assertEquals(
+        ProcedureType.PIPE_ENRICHED_CREATE_TABLE_VIEW_PROCEDURE.getTypeCode(),
+        byteBuffer.getShort());
+
+    final CreateTableViewProcedure deserializedProcedure = new CreateTableViewProcedure(false);
+    deserializedProcedure.deserialize(byteBuffer);
+
+    Assert.assertEquals(
+        createTableViewProcedure.getDatabase(), deserializedProcedure.getDatabase());
+    Assert.assertEquals(
+        createTableViewProcedure.getTable().getTableName(),
+        deserializedProcedure.getTable().getTableName());
+    Assert.assertEquals(
+        createTableViewProcedure.getTable().getColumnNum(),
+        deserializedProcedure.getTable().getColumnNum());
+    Assert.assertEquals(
+        createTableViewProcedure.getTable().getIdNums(),
+        deserializedProcedure.getTable().getIdNums());
   }
 }

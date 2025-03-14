@@ -1113,7 +1113,7 @@ enum TTestOperation {
 }
 
 // ====================================================
-// Table
+// Table Or View
 // ====================================================
 
 struct TAlterOrDropTableReq {
@@ -1175,6 +1175,20 @@ struct TTableInfo {
    2: required string TTL
    3: optional i32 state
    4: optional string comment
+   5: optional i32 type
+}
+
+struct TConstructTreeDeviceViewReq {
+    1: required string database
+    2: required string tableName
+    3: required string pathPattern
+    4: required binary columnInfo
+    5: optional string TTL
+}
+
+struct TCreateTableViewReq {
+    1: required binary tableInfo
+    2: required bool replace
 }
 
 service IConfigNodeRPCService {
@@ -1921,7 +1935,7 @@ service IConfigNodeRPCService {
   TThrottleQuotaResp getThrottleQuota()
 
   // ======================================================
-  // Table
+  // Table Or View
   // ======================================================
 
   common.TSStatus createTable(binary tableInfo)
@@ -1939,5 +1953,10 @@ service IConfigNodeRPCService {
   TFetchTableResp fetchTables(map<string, set<string>> fetchTableMap)
 
   TDeleteTableDeviceResp deleteDevice(TDeleteTableDeviceReq req)
+
+  // Tree view, used now for IT
+  common.TSStatus constructTreeView(TConstructTreeDeviceViewReq req)
+
+  common.TSStatus createTableView(TCreateTableViewReq req)
 }
 

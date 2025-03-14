@@ -57,6 +57,9 @@ statement
     | alterTableStatement
     | commentStatement
 
+    // Table View Statement
+    | createTableViewStatement
+
     // Index Statement
     | createIndexStatement
     | dropIndexStatement
@@ -227,7 +230,43 @@ alterTableStatement
 
 commentStatement
     : COMMENT ON TABLE qualifiedName IS (string | NULL) #commentTable
+    | COMMENT ON VIEW qualifiedName IS (string | NULL) #commentView
     | COMMENT ON COLUMN qualifiedName '.' column=identifier IS (string | NULL) #commentColumn
+    ;
+
+// ------------------------------------------- Table View Statement ---------------------------------------------------------
+createTableViewStatement
+    : CREATE (OR REPLACE)? TABLE VIEW qualifiedName
+    '(' (viewColumnDefinition (',' viewColumnDefinition)*) ')'
+    AS prefixPath
+    comment?
+    (WITH properties)?
+    (RESTRICT)?
+    ;
+
+viewColumnDefinition
+    : identifier (type)? (columnCategory=(TAG | TIME | FIELD))? comment?
+    | identifier (type)? (columnCategory=FIELD)? FROM original_measurement=identifier comment?
+    ;
+
+// IoTDB Objects
+
+prefixPath
+    : ROOT ('.' nodeName)*
+    ;
+
+nodeName
+    : wildcard
+    | nodeNameWithoutWildcard
+    ;
+
+nodeNameWithoutWildcard
+    : identifier
+    ;
+
+wildcard
+    : '*'
+    | '**'
     ;
 
 // ------------------------------------------- Index Statement ---------------------------------------------------------
@@ -1435,6 +1474,7 @@ ROLE: 'ROLE';
 ROLES: 'ROLES';
 ROLLBACK: 'ROLLBACK';
 ROLLUP: 'ROLLUP';
+ROOT: 'ROOT';
 ROW: 'ROW';
 ROWS: 'ROWS';
 RUNNING: 'RUNNING';

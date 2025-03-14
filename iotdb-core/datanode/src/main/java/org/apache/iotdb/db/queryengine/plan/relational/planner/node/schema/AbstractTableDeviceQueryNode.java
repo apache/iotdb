@@ -169,6 +169,7 @@ public abstract class AbstractTableDeviceQueryNode extends TableDeviceSourceNode
     }
 
     final long limit = isScan ? ReadWriteIOUtils.readLong(buffer) : 0;
+    final boolean needAligned = isScan ? ReadWriteIOUtils.readBool(buffer) : false;
 
     final PlanNodeId planNodeId = PlanNodeId.deserialize(buffer);
     return isScan
@@ -180,7 +181,8 @@ public abstract class AbstractTableDeviceQueryNode extends TableDeviceSourceNode
             idFuzzyFilter,
             columnHeaderList,
             senderLocation,
-            limit)
+            limit,
+            needAligned)
         : new TableDeviceQueryCountNode(
             planNodeId,
             database,

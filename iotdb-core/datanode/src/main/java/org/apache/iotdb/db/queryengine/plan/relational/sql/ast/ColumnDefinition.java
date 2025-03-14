@@ -33,7 +33,7 @@ import java.util.Optional;
 import static com.google.common.base.MoreObjects.toStringHelper;
 import static java.util.Objects.requireNonNull;
 
-public final class ColumnDefinition extends Node {
+public class ColumnDefinition extends Node {
 
   private final Identifier name;
   private final DataType type;
@@ -60,7 +60,7 @@ public final class ColumnDefinition extends Node {
         type = new GenericDataType(new Identifier("timestamp"), new ArrayList<>());
       }
     }
-    this.type = requireNonNull(type, "type is null");
+    this.type = type;
     this.charsetName = charsetName;
     this.comment = comment;
   }

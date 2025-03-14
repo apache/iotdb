@@ -123,9 +123,11 @@ import org.apache.iotdb.confignode.consensus.request.write.table.CommitCreateTab
 import org.apache.iotdb.confignode.consensus.request.write.table.CommitDeleteColumnPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.CommitDeleteTablePlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.PreCreateTablePlan;
+import org.apache.iotdb.confignode.consensus.request.write.table.PreCreateTableViewPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.PreDeleteColumnPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.PreDeleteTablePlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.RenameTableColumnPlan;
+import org.apache.iotdb.confignode.consensus.request.write.table.RenameTablePlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.RollbackCreateTablePlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.SetTableColumnCommentPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.SetTableCommentPlan;
@@ -562,6 +564,8 @@ public class ConfigPlanExecutor {
         return clusterSchemaInfo.extendSchemaTemplate((ExtendSchemaTemplatePlan) physicalPlan);
       case PreCreateTable:
         return clusterSchemaInfo.preCreateTable((PreCreateTablePlan) physicalPlan);
+      case PreCreateTableView:
+        return clusterSchemaInfo.preCreateTableView((PreCreateTableViewPlan) physicalPlan);
       case RollbackCreateTable:
         return clusterSchemaInfo.rollbackCreateTable((RollbackCreateTablePlan) physicalPlan);
       case CommitCreateTable:
@@ -584,6 +588,8 @@ public class ConfigPlanExecutor {
         return clusterSchemaInfo.setTableComment((SetTableCommentPlan) physicalPlan);
       case SetTableColumnComment:
         return clusterSchemaInfo.setTableColumnComment((SetTableColumnCommentPlan) physicalPlan);
+      case RenameTable:
+        return clusterSchemaInfo.renameTable((RenameTablePlan) physicalPlan);
       case CreatePipeV2:
         return pipeInfo.createPipe((CreatePipePlanV2) physicalPlan);
       case SetPipeStatusV2:

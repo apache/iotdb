@@ -113,8 +113,9 @@ public class SchemaSourceFactory {
       final String tableName,
       final List<List<SchemaFilter>> idDeterminedFilterList,
       final List<ColumnHeader> columnHeaderList,
-      final DevicePredicateFilter filter) {
+      final DevicePredicateFilter filter,
+      final boolean needAligned) {
     return new TableDeviceQuerySource(
-        database, tableName, idDeterminedFilterList, columnHeaderList, filter);
+        database, tableName, idDeterminedFilterList, columnHeaderList, filter, needAligned);
   }
 }

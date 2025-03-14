@@ -81,6 +81,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TCreateFunctionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateModelReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreatePipePluginReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreatePipeReq;
+import org.apache.iotdb.confignode.rpc.thrift.TCreateTableViewReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateTopicReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateTriggerReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRemoveReq;
@@ -3341,11 +3342,12 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
       final Use useDB, final IClientSession clientSession) {
     final SettableFuture<ConfigTaskResult> future = SettableFuture.create();
 
-    if (InformationSchemaUtils.mayUseDB(useDB.getDatabaseId().getValue(), clientSession, future)) {
+    final String database = useDB.getDatabaseId().getValue();
+    if (InformationSchemaUtils.mayUseDB(database, clientSession, future)) {
       return future;
     }
     // Construct request using statement
-    final List<String> databasePathPattern = Arrays.asList(ROOT, useDB.getDatabaseId().getValue());
+    final List<String> databasePathPattern = Arrays.asList(ROOT, database);
     try (final ConfigNodeClient client =
         CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
       // Send request to some API server
@@ -3353,13 +3355,13 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
           new TGetDatabaseReq(databasePathPattern, ALL_MATCH_SCOPE.serialize())
               .setIsTableModel(true);
       final TShowDatabaseResp resp = client.showDatabase(req);
-      if (!resp.getDatabaseInfoMap().isEmpty()) {
-        clientSession.setDatabaseName(useDB.getDatabaseId().getValue());
+      if (resp.getDatabaseInfoMap().containsKey(database)) {
+        clientSession.setDatabaseName(database);
         future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
       } else {
         future.setException(
             new IoTDBException(
-                String.format("Unknown database %s", useDB.getDatabaseId().getValue()),
+                String.format("Unknown database %s", database),
                 TSStatusCode.DATABASE_NOT_EXIST.getStatusCode()));
       }
     } catch (final IOException | ClientManagerException | TException e) {
@@ -3961,6 +3963,47 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
             new IoTDBException(
                 getTableErrorMessage(resp.getStatus(), deleteDevice.getDatabase()),
                 resp.getStatus().getCode()));
+      }
+    } catch (final ClientManagerException | TException e) {
+      future.setException(e);
+    }
+    return future;
+  }
+
+  @Override
+  public SettableFuture<ConfigTaskResult> createTableView(
+      final TsTable table, final String database, final boolean replace) {
+    final SettableFuture<ConfigTaskResult> future = SettableFuture.create();
+    try (final ConfigNodeClient configNodeClient =
+        CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
+
+      TSStatus tsStatus;
+      do {
+        try {
+          tsStatus =
+              configNodeClient.createTableView(
+                  new TCreateTableViewReq(
+                      ByteBuffer.wrap(
+                          TsTableInternalRPCUtil.serializeSingleTsTableWithDatabase(
+                              database, table)),
+                      replace));
+        } catch (final TTransportException e) {
+          if (e.getType() == TTransportException.TIMED_OUT
+              || e.getCause() instanceof SocketTimeoutException) {
+            // Time out mainly caused by slow execution, just wait
+            tsStatus = RpcUtils.getStatus(TSStatusCode.OVERLAP_WITH_EXISTING_TASK);
+          } else {
+            throw e;
+          }
+        }
+        // Keep waiting until task ends
+      } while (TSStatusCode.OVERLAP_WITH_EXISTING_TASK.getStatusCode() == tsStatus.getCode());
+
+      if (TSStatusCode.SUCCESS_STATUS.getStatusCode() == tsStatus.getCode()) {
+        future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
+      } else {
+        future.setException(
+            new IoTDBException(getTableErrorMessage(tsStatus, database), tsStatus.getCode()));
       }
     } catch (final ClientManagerException | TException e) {
       future.setException(e);
