@@ -65,6 +65,7 @@ import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.ClearCacheTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.CreateDBTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.CreateTableTask;
+import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.CreateTableViewTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.DeleteDeviceTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.DescribeTableDetailsTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.DescribeTableTask;
@@ -463,7 +464,8 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
     if (node.isRestrict()) {
       TreeViewSchema.setRestrict(table);
     }
-    return null;
+    return new CreateTableViewTask(
+        databaseTablePair.getRight(), databaseTablePair.getLeft(), node.isReplace());
   }
 
   private Pair<String, TsTable> parseTable4CreateTableOrView(
