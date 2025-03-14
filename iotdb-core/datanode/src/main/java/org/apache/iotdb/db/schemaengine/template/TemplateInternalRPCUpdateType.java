@@ -26,7 +26,6 @@ import java.io.OutputStream;
 import java.nio.ByteBuffer;
 
 public enum TemplateInternalRPCUpdateType {
-  // Deprecated
   ROLLBACK_INVALIDATE_TEMPLATE_SET_INFO((byte) 0),
   INVALIDATE_TEMPLATE_SET_INFO((byte) 1),
   ADD_TEMPLATE_PRE_SET_INFO((byte) 2),
