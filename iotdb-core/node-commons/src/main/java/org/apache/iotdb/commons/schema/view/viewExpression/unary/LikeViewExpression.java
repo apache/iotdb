@@ -60,12 +60,12 @@ public class LikeViewExpression extends UnaryViewExpression {
     switch (judge) {
       case -1:
       case 0:
-        isNot = false;
         escape = Optional.empty();
+        isNot = false;
         break;
       case 1:
-        isNot = true;
         escape = Optional.empty();
+        isNot = true;
         break;
       case 2:
         if (ReadWriteIOUtils.readBool(byteBuffer)) {
@@ -74,6 +74,7 @@ public class LikeViewExpression extends UnaryViewExpression {
           escape = Optional.empty();
         }
         isNot = ReadWriteIOUtils.readBool(byteBuffer);
+        break;
       default:
         throw new IllegalStateException("Unexpected value in LikeViewExpression: " + judge);
     }
@@ -141,10 +142,10 @@ public class LikeViewExpression extends UnaryViewExpression {
   }
 
   @Override
-  protected void serialize(ByteBuffer byteBuffer) {
+  public void serialize(ByteBuffer byteBuffer) {
     super.serialize(byteBuffer);
     ReadWriteIOUtils.write(pattern, byteBuffer);
-    ReadWriteIOUtils.write(2, byteBuffer);
+    ReadWriteIOUtils.write((byte) 2, byteBuffer);
     ReadWriteIOUtils.write(escape.isPresent(), byteBuffer);
     if (escape.isPresent()) {
       ReadWriteIOUtils.write(escape.get().toString(), byteBuffer);
@@ -153,10 +154,10 @@ public class LikeViewExpression extends UnaryViewExpression {
   }
 
   @Override
-  protected void serialize(OutputStream stream) throws IOException {
+  public void serialize(OutputStream stream) throws IOException {
     super.serialize(stream);
     ReadWriteIOUtils.write(pattern, stream);
-    ReadWriteIOUtils.write(2, stream);
+    ReadWriteIOUtils.write((byte) 2, stream);
     ReadWriteIOUtils.write(escape.isPresent(), stream);
     if (escape.isPresent()) {
       ReadWriteIOUtils.write(escape.get().toString(), stream);
@@ -176,5 +177,20 @@ public class LikeViewExpression extends UnaryViewExpression {
 
   public boolean isNot() {
     return isNot;
+  }
+
+  @Override
+  public boolean equals(Object obj) {
+    if (this == obj) {
+      return true;
+    }
+    if (obj == null || getClass() != obj.getClass()) {
+      return false;
+    }
+    final LikeViewExpression target = (LikeViewExpression) obj;
+    return expression.equals(target.expression)
+        && pattern.equals(target.pattern)
+        && escape.equals(target.escape)
+        && isNot == target.isNot;
   }
 }
