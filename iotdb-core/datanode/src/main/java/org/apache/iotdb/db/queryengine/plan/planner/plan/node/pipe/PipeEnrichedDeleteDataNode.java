@@ -195,7 +195,7 @@ public class PipeEnrichedDeleteDataNode extends AbstractDeleteDataNode {
             plan ->
                 plan instanceof PipeEnrichedDeleteDataNode
                     ? plan
-                    : new PipeEnrichedDeleteDataNode((DeleteDataNode) plan))
+                    : new PipeEnrichedDeleteDataNode((DeleteDataNode) plan, originClusterId))
         .collect(Collectors.toList());
   }
 

@@ -103,6 +103,11 @@ public class PipeEnrichedWritePlanNode extends WritePlanNode {
   }
 
   @Override
+  public void setOriginClusterId(final String originClusterId) {
+    writePlanNode.setOriginClusterId(originClusterId);
+  }
+
+  @Override
   public PlanNodeId getPlanNodeId() {
     return writePlanNode.getPlanNodeId();
   }
@@ -198,7 +203,7 @@ public class PipeEnrichedWritePlanNode extends WritePlanNode {
             plan ->
                 plan instanceof PipeEnrichedWritePlanNode
                     ? plan
-                    : new PipeEnrichedWritePlanNode(plan))
+                    : new PipeEnrichedWritePlanNode(plan, originClusterId))
         .collect(Collectors.toList());
   }
 }

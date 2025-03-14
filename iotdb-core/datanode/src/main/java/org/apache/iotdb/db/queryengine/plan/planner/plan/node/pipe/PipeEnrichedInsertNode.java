@@ -67,7 +67,6 @@ public class PipeEnrichedInsertNode extends InsertNode {
     super(insertNode.getPlanNodeId());
     this.insertNode = insertNode;
     this.originClusterId = originClusterId;
-    insertNode.setOriginClusterId(originClusterId);
   }
 
   public InsertNode getInsertNode() {
@@ -152,7 +151,7 @@ public class PipeEnrichedInsertNode extends InsertNode {
             plan ->
                 plan instanceof PipeEnrichedInsertNode
                     ? plan
-                    : new PipeEnrichedInsertNode((InsertNode) plan))
+                    : new PipeEnrichedInsertNode((InsertNode) plan, originClusterId))
         .collect(Collectors.toList());
   }
 

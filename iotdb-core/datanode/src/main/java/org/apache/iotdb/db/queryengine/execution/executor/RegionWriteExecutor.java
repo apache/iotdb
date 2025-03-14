@@ -1033,6 +1033,7 @@ public class RegionWriteExecutor {
     @Override
     public RegionExecutionResult visitPipeEnrichedWritePlanNode(
         final PipeEnrichedWritePlanNode node, final WritePlanNodeExecutionContext context) {
+      node.setOriginClusterId(node.getOriginClusterId());
       return node.getWritePlanNode().accept(pipeExecutionVisitor, context);
     }
   }

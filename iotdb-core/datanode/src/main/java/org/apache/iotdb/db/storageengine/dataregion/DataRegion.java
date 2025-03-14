@@ -1419,7 +1419,7 @@ public class DataRegion implements IDataRegionForQuery {
               if (insertRowNode.isGeneratedByRemoteConsensusLeader()) {
                 v.markAsGeneratedByRemoteConsensusLeader();
               }
-              v.setOriginClusterId(insertRowsNode.getOriginClusterId());
+              v.setOriginClusterId(insertRowNode.getOriginClusterId());
             }
             if (v.isAligned() != insertRowNode.isAligned()) {
               v.setMixingAlignment(true);
@@ -3428,6 +3428,7 @@ public class DataRegion implements IDataRegionForQuery {
                 if (insertRowNode.isGeneratedByRemoteConsensusLeader()) {
                   v.markAsGeneratedByRemoteConsensusLeader();
                 }
+                v.setOriginClusterId(insertRowNode.getOriginClusterId());
               }
               v.addOneInsertRowNode(insertRowNode, finalI);
               v.updateProgressIndex(insertRowNode.getProgressIndex());
