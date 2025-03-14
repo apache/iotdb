@@ -221,10 +221,7 @@ public class SettleSelectorImpl implements ISettleSelector {
       boolean isDeleted =
           !timeIndex.isDeviceAlive(device, deviceTTL)
               || isDeviceDeletedByMods(
-                  modifications,
-                  device,
-                  timeIndex.getStartTime(device).get(),
-                  endTime);
+                  modifications, device, timeIndex.getStartTime(device).get(), endTime);
 
       if (hasSetTTL) {
         if (!isDeleted) {

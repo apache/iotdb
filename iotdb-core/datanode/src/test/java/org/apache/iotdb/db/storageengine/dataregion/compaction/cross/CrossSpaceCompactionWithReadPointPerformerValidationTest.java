@@ -2051,7 +2051,8 @@ public class CrossSpaceCompactionWithReadPointPerformerValidationTest
     unclosedUnSeqResource.setStatusForTest(TsFileResourceStatus.UNCLOSED);
     TsFileResource lastUnSeqResource = unseqResources.get(1);
     for (IDeviceID deviceID : lastUnSeqResource.getDevices()) {
-      unclosedUnSeqResource.updateStartTime(deviceID, lastUnSeqResource.getStartTime(deviceID).get());
+      unclosedUnSeqResource.updateStartTime(
+          deviceID, lastUnSeqResource.getStartTime(deviceID).get());
       unclosedUnSeqResource.updateEndTime(deviceID, lastUnSeqResource.getEndTime(deviceID).get());
     }
     unseqResources.remove(1);

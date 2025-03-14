@@ -127,15 +127,25 @@ public class RepairDataFileScanUtil {
             deviceInFileIterator.getFirstMeasurementNodeOfCurrentDevice();
         TimeRange deviceTimeRangeInResource =
             checkTsFileResource
-                ? new TimeRange(timeIndex.getStartTime(deviceInFile).get(), timeIndex.getEndTime(deviceInFile).get())
+                ? new TimeRange(
+                    timeIndex.getStartTime(deviceInFile).get(),
+                    timeIndex.getEndTime(deviceInFile).get())
                 : null;
         boolean isAligned = deviceIsAlignedPair.getRight();
         if (isAligned) {
           checkAlignedDeviceSeries(
-              reader, deviceInFile, metadataIndexNode, deviceTimeRangeInResource, checkTsFileResource);
+              reader,
+              deviceInFile,
+              metadataIndexNode,
+              deviceTimeRangeInResource,
+              checkTsFileResource);
         } else {
           checkNonAlignedDeviceSeries(
-              reader, deviceInFile, metadataIndexNode, deviceTimeRangeInResource, checkTsFileResource);
+              reader,
+              deviceInFile,
+              metadataIndexNode,
+              deviceTimeRangeInResource,
+              checkTsFileResource);
         }
       }
       if (!deviceIdsInTimeIndex.isEmpty()) {

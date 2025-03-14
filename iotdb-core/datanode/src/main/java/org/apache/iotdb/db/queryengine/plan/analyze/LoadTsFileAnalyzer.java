@@ -841,9 +841,7 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
 
     public boolean isDeviceDeletedByMods(IDeviceID device) throws IllegalPathException {
       return ModificationUtils.isDeviceDeletedByMods(
-          currentModifications,
-          currentTimeIndex,
-          device);
+          currentModifications, currentTimeIndex, device);
     }
 
     public boolean isTimeseriesDeletedByMods(

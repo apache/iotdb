@@ -28,8 +28,8 @@ import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.impl.Set
 import org.apache.iotdb.db.storageengine.dataregion.memtable.IMemTable;
 import org.apache.iotdb.db.storageengine.dataregion.modification.Deletion;
 import org.apache.iotdb.db.storageengine.dataregion.modification.Modification;
-
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.ITimeIndex;
+
 import org.apache.tsfile.file.metadata.AlignedChunkMetadata;
 import org.apache.tsfile.file.metadata.IChunkMetadata;
 import org.apache.tsfile.file.metadata.IDeviceID;
@@ -296,7 +296,6 @@ public class ModificationUtils {
     }
     return modifications;
   }
-
 
   public static boolean isDeviceDeletedByMods(
       Collection<Modification> currentModifications, ITimeIndex currentTimeIndex, IDeviceID device)

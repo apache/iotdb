@@ -32,7 +32,6 @@ import org.apache.tsfile.read.TimeValuePair;
 import org.apache.tsfile.read.TsFileSequenceReader;
 import org.apache.tsfile.read.common.block.TsBlock;
 import org.apache.tsfile.utils.TsPrimitiveType;
-import org.bouncycastle.pqc.jcajce.provider.NTRU;
 
 import java.io.IOException;
 import java.util.ArrayList;

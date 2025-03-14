@@ -77,7 +77,8 @@ public class LoadSingleTsFileNode extends WritePlanNode {
 
   @SuppressWarnings("OptionalGetWithoutIsPresent")
   public boolean needDecodeTsFile(
-      Function<List<Pair<IDeviceID, TTimePartitionSlot>>, List<TRegionReplicaSet>> partitionFetcher) {
+      Function<List<Pair<IDeviceID, TTimePartitionSlot>>, List<TRegionReplicaSet>>
+          partitionFetcher) {
     List<Pair<IDeviceID, TTimePartitionSlot>> slotList = new ArrayList<>();
     resource
         .getDevices()
