@@ -40,7 +40,7 @@ import java.util.stream.Collectors;
 public class Slice {
   private final Column[] requiredColumns;
   private final Column[] passThroughColumns;
-  private final List<Type> dataTypes;
+  private final List<Type> requiredDataTypes;
   private final long size;
   private final long estimatedSize;
 
@@ -58,9 +58,9 @@ public class Slice {
             .collect(Collectors.toList());
     this.requiredColumns =
         requiredChannels.stream().map(partitionColumns::get).toArray(Column[]::new);
+    this.requiredDataTypes = requiredChannels.stream().map(dataTypes::get).collect(Collectors.toList());
     this.passThroughColumns =
         passThroughChannels.stream().map(partitionColumns::get).toArray(Column[]::new);
-    this.dataTypes = dataTypes;
 
     Set<Integer> channels = new HashSet<>();
     channels.addAll(requiredChannels);
@@ -94,7 +94,7 @@ public class Slice {
           throw new NoSuchElementException();
         }
         final int idx = curIndex++;
-        return getRecord(idx, requiredColumns);
+        return getRecord(idx, requiredColumns, requiredDataTypes);
       }
     };
   }
@@ -103,7 +103,7 @@ public class Slice {
     return estimatedSize;
   }
 
-  private Record getRecord(int offset, Column[] originalColumns) {
+  private Record getRecord(int offset, Column[] originalColumns, List<Type> dataTypes) {
     return new RecordImpl(offset, originalColumns, dataTypes);
   }
 
