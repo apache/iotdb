@@ -21,6 +21,7 @@ package org.apache.iotdb.confignode.procedure.impl.schema.table;
 
 import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.commons.schema.table.TreeViewSchema;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.confignode.exception.DatabaseNotExistsException;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
@@ -35,12 +36,14 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Objects;
+import java.util.Optional;
 
 import static org.apache.iotdb.rpc.TSStatusCode.TABLE_ALREADY_EXISTS;
 
 public class CreateTableViewProcedure extends CreateTableProcedure {
 
   private boolean replace;
+  private TsTable oldView;
 
   public CreateTableViewProcedure(final boolean isGeneratedByPipe) {
     super(isGeneratedByPipe);
@@ -62,15 +65,21 @@ public class CreateTableViewProcedure extends CreateTableProcedure {
       return;
     }
     try {
-      if (env.getConfigManager()
-          .getClusterSchemaManager()
-          .getTableIfExists(database, table.getTableName())
-          .isPresent()) {
-        setFailure(
-            new ProcedureException(
-                new IoTDBException(
-                    String.format("Table '%s.%s' already exists.", database, table.getTableName()),
-                    TABLE_ALREADY_EXISTS.getStatusCode())));
+      final Optional<TsTable> oldTable =
+          env.getConfigManager()
+              .getClusterSchemaManager()
+              .getTableIfExists(database, table.getTableName());
+      if (oldTable.isPresent()) {
+        if (!TreeViewSchema.isTreeViewTable(table)) {
+          setFailure(
+              new ProcedureException(
+                  new IoTDBException(
+                      String.format(
+                          "Table '%s.%s' already exists.", database, table.getTableName()),
+                      TABLE_ALREADY_EXISTS.getStatusCode())));
+        } else {
+          oldView = oldTable.get();
+        }
       } else {
         final TDatabaseSchema schema =
             env.getConfigManager().getClusterSchemaManager().getDatabaseSchemaByName(database);
