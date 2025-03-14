@@ -117,6 +117,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TCreateModelReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreatePipePluginReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreatePipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateSchemaTemplateReq;
+import org.apache.iotdb.confignode.rpc.thrift.TCreateTableViewReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateTopicReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateTriggerReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeConfigurationResp;
@@ -1393,5 +1394,10 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
         path,
         TsTableColumnSchemaUtil.deserializeColumnSchemaList(req.bufferForColumnInfo()),
         req.isSetTTL() ? req.getTTL() : IoTDBConstant.TTL_INFINITE);
+  }
+
+  @Override
+  public TSStatus createTableView(final TCreateTableViewReq req) {
+    return configManager.createTableView(req);
   }
 }

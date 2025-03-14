@@ -76,6 +76,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TCreateModelReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreatePipePluginReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreatePipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateSchemaTemplateReq;
+import org.apache.iotdb.confignode.rpc.thrift.TCreateTableViewReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateTopicReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateTriggerReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRegisterReq;
@@ -869,6 +870,8 @@ public interface IManager {
       final String ttl);
 
   TSStatus createTable(final ByteBuffer tableInfo);
+
+  TSStatus createTableView(final TCreateTableViewReq req);
 
   TSStatus alterOrDropTable(final TAlterOrDropTableReq req);
 

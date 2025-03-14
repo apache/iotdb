@@ -291,7 +291,7 @@ public class CreateTableProcedure
     if (this == o) {
       return true;
     }
-    if (!(o instanceof CreateTableProcedure)) {
+    if (o == null || getClass() != o.getClass()) {
       return false;
     }
     final CreateTableProcedure that = (CreateTableProcedure) o;

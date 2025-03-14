@@ -94,6 +94,7 @@ import org.apache.iotdb.confignode.procedure.impl.schema.UnsetTemplateProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.table.AbstractAlterOrDropTableProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.table.AddTableColumnProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.table.CreateTableProcedure;
+import org.apache.iotdb.confignode.procedure.impl.schema.table.CreateTableViewProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.table.DeleteDevicesProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.table.DropTableColumnProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.table.DropTableProcedure;
@@ -1782,6 +1783,17 @@ public class ProcedureManager {
         new CreateTableProcedure(database, table, false));
   }
 
+  public TSStatus createTableView(
+      final String database, final TsTable table, final boolean replace) {
+    return executeWithoutDuplicate(
+        database,
+        table,
+        table.getTableName(),
+        null,
+        ProcedureType.CREATE_TABLE_VIEW_PROCEDURE,
+        new CreateTableViewProcedure(database, table, replace, false));
+  }
+
   public TSStatus alterTableAddColumn(final TAlterOrDropTableReq req) {
     return executeWithoutDuplicate(
         req.database,
@@ -1954,6 +1966,7 @@ public class ProcedureManager {
       // may record fake values
       switch (type) {
         case CREATE_TABLE_PROCEDURE:
+        case CREATE_TABLE_VIEW_PROCEDURE:
           final CreateTableProcedure createTableProcedure = (CreateTableProcedure) procedure;
           if (type == thisType && Objects.equals(table, createTableProcedure.getTable())) {
             return new Pair<>(procedure.getProcId(), false);
