@@ -24,7 +24,6 @@ import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.Com
 import org.apache.iotdb.db.storageengine.dataregion.compaction.io.CompactionTsFileWriter;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.constant.CompactionType;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
-import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.FileTimeIndex;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.ITimeIndex;
 import org.apache.iotdb.db.storageengine.rescon.memory.SystemInfo;
 
@@ -213,7 +212,7 @@ public abstract class AbstractCrossCompactionWriter extends AbstractCompactionWr
     int fileIndex = 0;
     while (fileIndex < seqTsFileResources.size()) {
       ITimeIndex timeIndex = seqTsFileResources.get(fileIndex).getTimeIndex();
-      if (!(timeIndex instanceof FileTimeIndex)) {
+      if (timeIndex.getTimeIndexType() != ITimeIndex.FILE_TIME_INDEX_TYPE) {
         // the timeIndexType of resource is deviceTimeIndex
         Optional<Long> endTime = timeIndex.getEndTime(deviceId);
         currentDeviceEndTime[fileIndex] = endTime.orElse(Long.MIN_VALUE);
