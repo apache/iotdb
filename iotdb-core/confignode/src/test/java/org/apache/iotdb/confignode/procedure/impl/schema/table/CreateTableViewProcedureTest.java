@@ -37,7 +37,7 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 
-public class CreateTableProcedureTest {
+public class CreateTableViewProcedureTest {
   @Test
   public void serializeDeserializeTest() throws IllegalPathException, IOException {
     final TsTable table = new TsTable("table1");
@@ -46,8 +46,8 @@ public class CreateTableProcedureTest {
     table.addColumnSchema(
         new FieldColumnSchema(
             "Measurement", TSDataType.DOUBLE, TSEncoding.GORILLA, CompressionType.SNAPPY));
-    final CreateTableProcedure createTableProcedure =
-        new CreateTableProcedure("database1", table, false);
+    final CreateTableViewProcedure createTableProcedure =
+        new CreateTableViewProcedure("database1", table, false, false);
 
     final ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
     final DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream);
@@ -55,9 +55,10 @@ public class CreateTableProcedureTest {
 
     final ByteBuffer byteBuffer = ByteBuffer.wrap(byteArrayOutputStream.toByteArray());
 
-    Assert.assertEquals(ProcedureType.CREATE_TABLE_PROCEDURE.getTypeCode(), byteBuffer.getShort());
+    Assert.assertEquals(
+        ProcedureType.CREATE_TABLE_VIEW_PROCEDURE.getTypeCode(), byteBuffer.getShort());
 
-    final CreateTableProcedure deserializedProcedure = new CreateTableProcedure(false);
+    final CreateTableViewProcedure deserializedProcedure = new CreateTableViewProcedure(false);
     deserializedProcedure.deserialize(byteBuffer);
 
     Assert.assertEquals(createTableProcedure, deserializedProcedure);

@@ -293,6 +293,9 @@ public class ProcedureFactory implements IProcedureFactory {
       case PIPE_ENRICHED_RENAME_TABLE_PROCEDURE:
         procedure = new RenameTableProcedure(true);
         break;
+      case PIPE_ENRICHED_CREATE_TABLE_VIEW_PROCEDURE:
+        procedure = new CreateTableViewProcedure(true);
+        break;
       case REMOVE_AI_NODE_PROCEDURE:
         procedure = new RemoveAINodeProcedure();
         break;

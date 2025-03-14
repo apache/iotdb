@@ -43,6 +43,7 @@ import org.apache.iotdb.confignode.procedure.impl.schema.SetTemplateProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.UnsetTemplateProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.table.AddTableColumnProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.table.CreateTableProcedure;
+import org.apache.iotdb.confignode.procedure.impl.schema.table.CreateTableViewProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.table.DeleteDevicesProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.table.DropTableColumnProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.table.DropTableProcedure;
@@ -559,7 +560,7 @@ public class PipeEnrichedProcedureTest {
   }
 
   @Test
-  public void serializeDeserializeTest() throws IllegalPathException, IOException {
+  public void RenameTableProcedureTest() throws IOException {
     final RenameTableProcedure renameTableProcedure =
         new RenameTableProcedure("database1", "table1", "0", "newName", true);
 
@@ -576,5 +577,31 @@ public class PipeEnrichedProcedureTest {
     deserializedProcedure.deserialize(byteBuffer);
 
     Assert.assertEquals(renameTableProcedure, deserializedProcedure);
+  }
+
+  @Test
+  public void CreateTableViewProcedureTest() throws IOException {
+    final TsTable table = new TsTable("table1");
+    table.addColumnSchema(new TagColumnSchema("Id", TSDataType.STRING));
+    table.addColumnSchema(new AttributeColumnSchema("Attr", TSDataType.STRING));
+    table.addColumnSchema(
+        new FieldColumnSchema(
+            "Measurement", TSDataType.DOUBLE, TSEncoding.GORILLA, CompressionType.SNAPPY));
+    final CreateTableViewProcedure createTableProcedure =
+        new CreateTableViewProcedure("database1", table, false, true);
+
+    final ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+    final DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream);
+    createTableProcedure.serialize(dataOutputStream);
+
+    final ByteBuffer byteBuffer = ByteBuffer.wrap(byteArrayOutputStream.toByteArray());
+
+    Assert.assertEquals(
+        ProcedureType.CREATE_TABLE_VIEW_PROCEDURE.getTypeCode(), byteBuffer.getShort());
+
+    final CreateTableViewProcedure deserializedProcedure = new CreateTableViewProcedure(false);
+    deserializedProcedure.deserialize(byteBuffer);
+
+    Assert.assertEquals(createTableProcedure, deserializedProcedure);
   }
 }
