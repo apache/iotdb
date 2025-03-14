@@ -19,8 +19,6 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.analyzer;
 
-import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
-import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.commons.partition.DataPartition;
 import org.apache.iotdb.commons.partition.DataPartitionQueryParam;
 import org.apache.iotdb.commons.partition.SchemaNodeManagementPartition;
@@ -437,11 +435,6 @@ public class TSBSMetadata implements Metadata {
       @Override
       public boolean updateRegionCache(TRegionRouteReq req) {
         return false;
-      }
-
-      @Override
-      public TRegionReplicaSet getRegionReplicaSet(TConsensusGroupId id) {
-        return null;
       }
 
       @Override
