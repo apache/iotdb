@@ -96,6 +96,14 @@ public class CreateTableViewProcedure extends CreateTableProcedure {
   }
 
   @Override
+  protected void rollbackCreate(final ConfigNodeProcedureEnv env) {
+    if (Objects.isNull(oldView)) {
+      super.rollbackCreate(env);
+      return;
+    }
+  }
+
+  @Override
   public void serialize(final DataOutputStream stream) throws IOException {
     stream.writeShort(
         isGeneratedByPipe
@@ -103,21 +111,32 @@ public class CreateTableViewProcedure extends CreateTableProcedure {
             : ProcedureType.CREATE_TABLE_VIEW_PROCEDURE.getTypeCode());
     serializeAttributes(stream);
     ReadWriteIOUtils.write(replace, stream);
+
+    ReadWriteIOUtils.write(Objects.nonNull(oldView), stream);
+    if (Objects.nonNull(oldView)) {
+      oldView.serialize(stream);
+    }
   }
 
   @Override
   public void deserialize(final ByteBuffer byteBuffer) {
     super.deserialize(byteBuffer);
     replace = ReadWriteIOUtils.readBool(byteBuffer);
+
+    if (ReadWriteIOUtils.readBool(byteBuffer)) {
+      this.oldView = TsTable.deserialize(byteBuffer);
+    }
   }
 
   @Override
   public boolean equals(final Object o) {
-    return super.equals(o) && replace == ((CreateTableViewProcedure) o).replace;
+    return super.equals(o)
+        && replace == ((CreateTableViewProcedure) o).replace
+        && Objects.equals(oldView, ((CreateTableViewProcedure) o).oldView);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(super.hashCode(), replace);
+    return Objects.hash(super.hashCode(), replace, oldView);
   }
 }

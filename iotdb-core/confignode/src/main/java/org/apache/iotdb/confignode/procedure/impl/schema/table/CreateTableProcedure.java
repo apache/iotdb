@@ -220,7 +220,7 @@ public class CreateTableProcedure
     }
   }
 
-  private void rollbackCreate(final ConfigNodeProcedureEnv env) {
+  protected void rollbackCreate(final ConfigNodeProcedureEnv env) {
     final TSStatus status =
         SchemaUtils.executeInConsensusLayer(
             new RollbackCreateTablePlan(database, table.getTableName()), env, LOGGER);
