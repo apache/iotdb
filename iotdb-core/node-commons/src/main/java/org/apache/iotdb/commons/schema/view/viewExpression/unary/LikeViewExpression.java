@@ -56,6 +56,10 @@ public class LikeViewExpression extends UnaryViewExpression {
   public LikeViewExpression(ByteBuffer byteBuffer) {
     super(ViewExpression.deserialize(byteBuffer));
     pattern = ReadWriteIOUtils.readString(byteBuffer);
+    // Read the flag to determine whether the current code is 1.3.x or 2.0.x.
+    // If it is 1.3.x, we expect to read a boolean value, assign it to isNot, and set escape to
+    // empty.
+    // If it is 2.0.x, we expect to read a byte value containing 2, and then read escape and isNot.
     byte judge = ReadWriteIOUtils.readByte(byteBuffer);
     switch (judge) {
       case -1:
@@ -84,6 +88,11 @@ public class LikeViewExpression extends UnaryViewExpression {
     super(ViewExpression.deserialize(inputStream));
     try {
       pattern = ReadWriteIOUtils.readString(inputStream);
+      // Read the flag to determine whether the current code is 1.3.x or 2.0.x.
+      // If it is 1.3.x, we expect to read a boolean value, assign it to isNot, and set escape to
+      // empty.
+      // If it is 2.0.x, we expect to read a byte value containing 2, and then read escape and
+      // isNot.
       byte judge = ReadWriteIOUtils.readByte(inputStream);
       switch (judge) {
         case -1:
@@ -145,6 +154,7 @@ public class LikeViewExpression extends UnaryViewExpression {
   public void serialize(ByteBuffer byteBuffer) {
     super.serialize(byteBuffer);
     ReadWriteIOUtils.write(pattern, byteBuffer);
+    // This flag is added to be compatible with versions 1.3.x and 2.0.x
     ReadWriteIOUtils.write((byte) 2, byteBuffer);
     ReadWriteIOUtils.write(escape.isPresent(), byteBuffer);
     if (escape.isPresent()) {
@@ -157,6 +167,7 @@ public class LikeViewExpression extends UnaryViewExpression {
   public void serialize(OutputStream stream) throws IOException {
     super.serialize(stream);
     ReadWriteIOUtils.write(pattern, stream);
+    // This flag is added to be compatible with versions 1.3.x and 2.0.x
     ReadWriteIOUtils.write((byte) 2, stream);
     ReadWriteIOUtils.write(escape.isPresent(), stream);
     if (escape.isPresent()) {
