@@ -28,6 +28,7 @@ import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
+import org.apache.iotdb.commons.schema.table.TableNodeStatus;
 import org.apache.iotdb.commons.schema.table.TableType;
 import org.apache.iotdb.commons.schema.table.TreeViewSchema;
 import org.apache.iotdb.commons.schema.table.TsTable;
@@ -1441,11 +1442,12 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
     }
   }
 
-  public Optional<TsTable> getTsTableIfExists(final String database, final String tableName)
-      throws MetadataException {
+  public Optional<Pair<TsTable, TableNodeStatus>> getTsTableIfExists(
+      final String database, final String tableName) throws MetadataException {
     databaseReadWriteLock.readLock().lock();
     try {
-      return tableModelMTree.getTableIfExists(getQualifiedDatabasePartialPath(database), tableName);
+      return tableModelMTree.getTableAndStatusIfExists(
+          getQualifiedDatabasePartialPath(database), tableName);
     } finally {
       databaseReadWriteLock.readLock().unlock();
     }

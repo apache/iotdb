@@ -942,14 +942,14 @@ public class ConfigMTree {
     return getTableNode(database, tableName).getTable();
   }
 
-  public Optional<TsTable> getTableIfExists(final PartialPath database, final String tableName)
-      throws MetadataException {
+  public Optional<Pair<TsTable, TableNodeStatus>> getTableAndStatusIfExists(
+      final PartialPath database, final String tableName) throws MetadataException {
     final IConfigMNode databaseNode = getDatabaseNodeByDatabasePath(database).getAsMNode();
     if (!databaseNode.hasChild(tableName)) {
       return Optional.empty();
     }
     final ConfigTableNode tableNode = (ConfigTableNode) databaseNode.getChild(tableName);
-    return Optional.of(tableNode.getTable());
+    return Optional.of(new Pair<>(tableNode.getTable(), tableNode.getStatus()));
   }
 
   private ConfigTableNode getTableNode(final PartialPath database, final String tableName)

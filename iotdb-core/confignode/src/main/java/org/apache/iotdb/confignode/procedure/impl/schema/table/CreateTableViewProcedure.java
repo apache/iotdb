@@ -22,9 +22,10 @@ package org.apache.iotdb.confignode.procedure.impl.schema.table;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.commons.schema.table.TableNodeStatus;
 import org.apache.iotdb.commons.schema.table.TreeViewSchema;
 import org.apache.iotdb.commons.schema.table.TsTable;
-import org.apache.iotdb.confignode.consensus.request.write.table.PreCreateTablePlan;
+import org.apache.iotdb.confignode.consensus.request.write.table.PreCreateTableViewPlan;
 import org.apache.iotdb.confignode.exception.DatabaseNotExistsException;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
@@ -34,6 +35,7 @@ import org.apache.iotdb.confignode.procedure.store.ProcedureType;
 import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
 import org.apache.iotdb.rpc.TSStatusCode;
 
+import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -50,6 +52,7 @@ public class CreateTableViewProcedure extends CreateTableProcedure {
   private static final Logger LOGGER = LoggerFactory.getLogger(CreateTableViewProcedure.class);
   private boolean replace;
   private TsTable oldView;
+  private TableNodeStatus oldStatus;
 
   public CreateTableViewProcedure(final boolean isGeneratedByPipe) {
     super(isGeneratedByPipe);
@@ -71,11 +74,11 @@ public class CreateTableViewProcedure extends CreateTableProcedure {
       return;
     }
     try {
-      final Optional<TsTable> oldTable =
+      final Optional<Pair<TsTable, TableNodeStatus>> oldTableAndStatus =
           env.getConfigManager()
               .getClusterSchemaManager()
-              .getTableIfExists(database, table.getTableName());
-      if (oldTable.isPresent()) {
+              .getTableAndStatusIfExists(database, table.getTableName());
+      if (oldTableAndStatus.isPresent()) {
         if (!TreeViewSchema.isTreeViewTable(table)) {
           setFailure(
               new ProcedureException(
@@ -84,7 +87,8 @@ public class CreateTableViewProcedure extends CreateTableProcedure {
                           "Table '%s.%s' already exists.", database, table.getTableName()),
                       TABLE_ALREADY_EXISTS.getStatusCode())));
         } else {
-          oldView = oldTable.get();
+          oldView = oldTableAndStatus.get().getLeft();
+          oldStatus = oldTableAndStatus.get().getRight();
         }
       } else {
         final TDatabaseSchema schema =
@@ -108,7 +112,8 @@ public class CreateTableViewProcedure extends CreateTableProcedure {
       return;
     }
     final TSStatus status =
-        SchemaUtils.executeInConsensusLayer(new PreCreateTablePlan(database, oldView), env, LOGGER);
+        SchemaUtils.executeInConsensusLayer(
+            new PreCreateTableViewPlan(database, oldView, oldStatus), env, LOGGER);
     if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       LOGGER.warn("Failed to rollback table creation {}.{}", database, table.getTableName());
       setFailure(new ProcedureException(new IoTDBException(status.getMessage(), status.getCode())));
@@ -128,6 +133,11 @@ public class CreateTableViewProcedure extends CreateTableProcedure {
     if (Objects.nonNull(oldView)) {
       oldView.serialize(stream);
     }
+
+    ReadWriteIOUtils.write(Objects.nonNull(oldStatus), stream);
+    if (Objects.nonNull(oldStatus)) {
+      oldStatus.serialize(stream);
+    }
   }
 
   @Override
@@ -138,17 +148,22 @@ public class CreateTableViewProcedure extends CreateTableProcedure {
     if (ReadWriteIOUtils.readBool(byteBuffer)) {
       this.oldView = TsTable.deserialize(byteBuffer);
     }
+
+    if (ReadWriteIOUtils.readBool(byteBuffer)) {
+      this.oldStatus = TableNodeStatus.deserialize(byteBuffer);
+    }
   }
 
   @Override
   public boolean equals(final Object o) {
     return super.equals(o)
         && replace == ((CreateTableViewProcedure) o).replace
-        && Objects.equals(oldView, ((CreateTableViewProcedure) o).oldView);
+        && Objects.equals(oldView, ((CreateTableViewProcedure) o).oldView)
+        && Objects.equals(oldStatus, ((CreateTableViewProcedure) o).oldStatus);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(super.hashCode(), replace, oldView);
+    return Objects.hash(super.hashCode(), replace, oldView, oldStatus);
   }
 }

@@ -19,15 +19,24 @@
 
 package org.apache.iotdb.confignode.consensus.request.write.table;
 
+import org.apache.iotdb.commons.schema.table.TableNodeStatus;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
 
 public class PreCreateTableViewPlan extends PreCreateTablePlan {
+  private TableNodeStatus status;
+
   public PreCreateTableViewPlan() {
     super(ConfigPhysicalPlanType.PreCreateTableView);
   }
 
-  public PreCreateTableViewPlan(final String database, final TsTable table) {
+  public PreCreateTableViewPlan(
+      final String database, final TsTable table, final TableNodeStatus status) {
     super(ConfigPhysicalPlanType.PreCreateTableView, database, table);
+    this.status = status;
+  }
+
+  public TableNodeStatus getStatus() {
+    return status;
   }
 }

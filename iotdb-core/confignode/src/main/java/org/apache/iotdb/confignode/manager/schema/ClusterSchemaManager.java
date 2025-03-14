@@ -27,6 +27,7 @@ import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.schema.SchemaConstant;
+import org.apache.iotdb.commons.schema.table.TableNodeStatus;
 import org.apache.iotdb.commons.schema.table.TreeViewSchema;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.TsTableInternalRPCUtil;
@@ -1287,6 +1288,11 @@ public class ClusterSchemaManager {
 
   public Optional<TsTable> getTableIfExists(final String database, final String tableName)
       throws MetadataException {
+    return clusterSchemaInfo.getTsTableIfExists(database, tableName).map(Pair::getLeft);
+  }
+
+  public Optional<Pair<TsTable, TableNodeStatus>> getTableAndStatusIfExists(
+      final String database, final String tableName) throws MetadataException {
     return clusterSchemaInfo.getTsTableIfExists(database, tableName);
   }
 
