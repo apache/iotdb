@@ -3969,6 +3969,12 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
     return future;
   }
 
+  @Override
+  public SettableFuture<ConfigTaskResult> createTableView(
+      final TsTable table, final String database, final boolean replace) {
+    return null;
+  }
+
   private TSStatus sendAlterReq2ConfigNode(
       final String database,
       final String tableName,

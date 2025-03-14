@@ -20,10 +20,20 @@
 package org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational;
 
 import org.apache.iotdb.commons.schema.table.TsTable;
+import org.apache.iotdb.db.queryengine.plan.execution.config.ConfigTaskResult;
+import org.apache.iotdb.db.queryengine.plan.execution.config.executor.IConfigTaskExecutor;
+
+import com.google.common.util.concurrent.ListenableFuture;
 
 public class CreateTableViewTask extends CreateTableTask {
 
   public CreateTableViewTask(final TsTable table, final String database, final boolean replace) {
     super(table, database, replace);
+  }
+
+  @Override
+  public ListenableFuture<ConfigTaskResult> execute(final IConfigTaskExecutor configTaskExecutor)
+      throws InterruptedException {
+    return configTaskExecutor.createTableView(table, database, ifNotExists);
   }
 }

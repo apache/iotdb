@@ -388,6 +388,9 @@ public interface IConfigTaskExecutor {
   SettableFuture<ConfigTaskResult> deleteDevice(
       final DeleteDevice deleteDevice, final String queryId, final SessionInfo sessionInfo);
 
+  SettableFuture<ConfigTaskResult> createTableView(
+      final TsTable table, final String database, final boolean replace);
+
   SettableFuture<ConfigTaskResult> showVersion();
 
   SettableFuture<ConfigTaskResult> showCurrentSqlDialect(String sqlDialect);
