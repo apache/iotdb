@@ -1935,7 +1935,7 @@ service IConfigNodeRPCService {
   TThrottleQuotaResp getThrottleQuota()
 
   // ======================================================
-  // Table
+  // Table Or View
   // ======================================================
 
   common.TSStatus createTable(binary tableInfo)
@@ -1956,5 +1956,7 @@ service IConfigNodeRPCService {
 
   // Tree view, used now for IT
   common.TSStatus constructTreeView(TConstructTreeDeviceViewReq req)
+
+  common.TSStatus createTableView(TCreateTableViewReq req)
 }
 

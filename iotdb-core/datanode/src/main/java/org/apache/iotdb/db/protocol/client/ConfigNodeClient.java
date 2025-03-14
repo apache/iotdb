@@ -73,6 +73,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TCreateModelReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreatePipePluginReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreatePipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateSchemaTemplateReq;
+import org.apache.iotdb.confignode.rpc.thrift.TCreateTableViewReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateTopicReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateTriggerReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeConfigurationResp;
@@ -1378,6 +1379,12 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
   public TSStatus constructTreeView(final TConstructTreeDeviceViewReq req) throws TException {
     return executeRemoteCallWithRetry(
         () -> client.constructTreeView(req), status -> !updateConfigNodeLeader(status));
+  }
+
+  @Override
+  public TSStatus createTableView(TCreateTableViewReq req) throws TException {
+    return executeRemoteCallWithRetry(
+        () -> client.createTableView(req), status -> !updateConfigNodeLeader(status));
   }
 
   public static class Factory extends ThriftClientFactory<ConfigRegionId, ConfigNodeClient> {
