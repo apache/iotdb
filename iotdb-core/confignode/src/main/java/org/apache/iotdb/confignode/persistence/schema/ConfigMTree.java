@@ -672,6 +672,26 @@ public class ConfigMTree {
     }
   }
 
+  public void preCreateTableView(
+      final PartialPath database, final TsTable table, final TableNodeStatus status)
+      throws MetadataException {
+    final IConfigMNode databaseNode = getDatabaseNodeByDatabasePath(database).getAsMNode();
+    final IConfigMNode node = databaseNode.getChild(table.getTableName());
+    if (Objects.nonNull(node)) {
+      if (!TreeViewSchema.isTreeViewTable(((ConfigTableNode) node).getTable())) {
+        throw new TableAlreadyExistsException(
+            database.getFullPath().substring(ROOT.length() + 1), table.getTableName());
+      }
+      databaseNode.deleteChild(table.getTableName());
+    }
+    final ConfigTableNode tableNode =
+        (ConfigTableNode)
+            databaseNode.addChild(
+                table.getTableName(), new ConfigTableNode(databaseNode, table.getTableName()));
+    tableNode.setTable(table);
+    tableNode.setStatus(status);
+  }
+
   public void rollbackCreateTable(final PartialPath database, final String tableName)
       throws MetadataException {
     final IConfigMNode databaseNode = getDatabaseNodeByDatabasePath(database).getAsMNode();
