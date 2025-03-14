@@ -294,7 +294,7 @@ public class ImportData extends AbstractDataTool {
     }
     try {
       isRemoteLoad = !NodeUrlUtils.containsLocalAddress(Collections.singletonList(host));
-      if (!sqlDialectTree && isRemoteLoad) {
+      if (!sqlDialectTree && isRemoteLoad && Constants.TSFILE_SUFFIXS.equalsIgnoreCase(fileType)) {
         ioTPrinter.println(
             "host: " + host + " is remote load,only local load is supported in table model");
       }
