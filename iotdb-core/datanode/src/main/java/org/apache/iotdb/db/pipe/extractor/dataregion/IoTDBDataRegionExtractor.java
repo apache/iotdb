@@ -144,13 +144,13 @@ public class IoTDBDataRegionExtractor extends IoTDBExtractor {
   public void validate(final PipeParameterValidator validator) throws Exception {
     super.validate(validator);
 
-    // Validate whether the pipe needs to extract table model data or tree model data
     final boolean isTreeDialect =
         validator
             .getParameters()
             .getStringOrDefault(
                 SystemConstant.SQL_DIALECT_KEY, SystemConstant.SQL_DIALECT_TREE_VALUE)
             .equals(SystemConstant.SQL_DIALECT_TREE_VALUE);
+    // Validate whether the pipe needs to extract table model data or tree model data
     final boolean isCaptureTree =
         validator
             .getParameters()

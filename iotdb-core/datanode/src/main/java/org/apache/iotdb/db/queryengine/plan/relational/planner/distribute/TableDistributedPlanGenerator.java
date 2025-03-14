@@ -65,6 +65,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ProjectNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.SemiJoinNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.SortNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.StreamSortNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TableFunctionProcessorNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TopKNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TreeAlignedDeviceViewScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TreeDeviceViewScanNode;
@@ -103,7 +104,6 @@ import java.util.stream.IntStream;
 import static com.google.common.collect.ImmutableList.toImmutableList;
 import static org.apache.iotdb.commons.partition.DataPartition.NOT_ASSIGNED;
 import static org.apache.iotdb.commons.udf.builtin.relational.TableBuiltinScalarFunction.DATE_BIN;
-import static org.apache.iotdb.db.queryengine.plan.planner.TableOperatorGenerator.createTreeDeviceIdColumnValueExtractor;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.SymbolAllocator.GROUP_KEY_SUFFIX;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.SymbolAllocator.SEPARATOR;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationNode.Step.SINGLE;
@@ -836,6 +836,24 @@ public class TableDistributedPlanGenerator
     }
 
     node.setChild(mergeChildrenViaCollectOrMergeSort(childOrdering, childrenNodes));
+    return Collections.singletonList(node);
+  }
+
+  @Override
+  public List<PlanNode> visitTableFunctionProcessor(
+      TableFunctionProcessorNode node, PlanContext context) {
+    if (node.getChildren().isEmpty()) {
+      return Collections.singletonList(node);
+    }
+    List<PlanNode> childrenNodes = node.getChild().accept(this, context);
+    if (childrenNodes.size() == 1) {
+      node.setChild(childrenNodes.get(0));
+    } else {
+      CollectNode collectNode =
+          new CollectNode(queryId.genPlanNodeId(), node.getChildren().get(0).getOutputSymbols());
+      childrenNodes.forEach(collectNode::addChild);
+      node.setChild(collectNode);
+    }
     return Collections.singletonList(node);
   }
 

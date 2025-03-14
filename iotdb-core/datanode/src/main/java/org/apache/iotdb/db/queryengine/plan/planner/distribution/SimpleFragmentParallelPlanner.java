@@ -148,19 +148,19 @@ public class SimpleFragmentParallelPlanner implements IFragmentParallelPlaner {
             fragment.getId().genFragmentInstanceId(),
             globalTimePredicate == null ? null : new TreeModelTimePredicate(globalTimePredicate),
             queryContext.getQueryType(),
-            queryContext.getTimeOut(),
+            queryContext.getTimeOut() - (System.currentTimeMillis() - queryContext.getStartTime()),
             queryContext.getSession(),
             queryContext.isExplainAnalyze(),
             fragment.isRoot());
 
     // Get the target region for origin PlanFragment, then its instance will be distributed one
     // of them.
-    TRegionReplicaSet regionReplicaSet = fragment.getTargetRegion();
+    TRegionReplicaSet regionReplicaSet = fragment.getTargetRegionForTreeModel();
     if (regionReplicaSet != null
         && !CollectionUtils.isEmpty(regionReplicaSet.getDataNodeLocations())) {
       regionReplicaSet = topology.getReachableSet(regionReplicaSet);
       if (regionReplicaSet.getDataNodeLocations().isEmpty()) {
-        throw new ReplicaSetUnreachableException(fragment.getTargetRegion());
+        throw new ReplicaSetUnreachableException(fragment.getTargetRegionForTreeModel());
       }
     }
 

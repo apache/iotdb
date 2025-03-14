@@ -40,25 +40,15 @@ public final class ColumnDefinition extends Node {
   private final TsTableColumnCategory columnCategory;
 
   @Nullable private final String charsetName;
-
-  public ColumnDefinition(
-      final Identifier name,
-      final DataType type,
-      final TsTableColumnCategory columnCategory,
-      final @Nullable String charsetName) {
-    super(null);
-    this.name = requireNonNull(name, "name is null");
-    this.type = requireNonNull(type, "type is null");
-    this.columnCategory = requireNonNull(columnCategory, "columnCategory is null");
-    this.charsetName = charsetName;
-  }
+  @Nullable private final String comment;
 
   public ColumnDefinition(
       final NodeLocation location,
       final Identifier name,
       DataType type,
       final TsTableColumnCategory columnCategory,
-      final @Nullable String charsetName) {
+      final @Nullable String charsetName,
+      final @Nullable String comment) {
     super(requireNonNull(location, "location is null"));
     this.name = requireNonNull(name, "name is null");
     this.columnCategory = requireNonNull(columnCategory, "columnCategory is null");
@@ -72,6 +62,7 @@ public final class ColumnDefinition extends Node {
     }
     this.type = requireNonNull(type, "type is null");
     this.charsetName = charsetName;
+    this.comment = comment;
   }
 
   public Identifier getName() {
@@ -88,6 +79,10 @@ public final class ColumnDefinition extends Node {
 
   public Optional<String> getCharsetName() {
     return Optional.ofNullable(charsetName);
+  }
+
+  public @Nullable String getComment() {
+    return comment;
   }
 
   @Override
@@ -112,12 +107,13 @@ public final class ColumnDefinition extends Node {
     return Objects.equals(name, that.name)
         && Objects.equals(type, that.type)
         && columnCategory == that.columnCategory
-        && Objects.equals(charsetName, that.charsetName);
+        && Objects.equals(charsetName, that.charsetName)
+        && Objects.equals(comment, that.comment);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(name, type, columnCategory, charsetName);
+    return Objects.hash(name, type, columnCategory, charsetName, comment);
   }
 
   @Override
@@ -127,6 +123,7 @@ public final class ColumnDefinition extends Node {
         .add("type", type)
         .add("columnCategory", columnCategory)
         .add("charsetName", charsetName)
+        .add("comment", comment)
         .toString();
   }
 }

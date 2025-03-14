@@ -44,6 +44,7 @@ import static org.apache.iotdb.commons.schema.column.ColumnHeaderConstant.descri
 import static org.apache.iotdb.commons.schema.column.ColumnHeaderConstant.describeTableDetailsColumnHeaders;
 import static org.apache.iotdb.commons.schema.column.ColumnHeaderConstant.showDBColumnHeaders;
 import static org.apache.iotdb.commons.schema.column.ColumnHeaderConstant.showTablesColumnHeaders;
+import static org.apache.iotdb.commons.schema.column.ColumnHeaderConstant.showTablesDetailsColumnHeaders;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.fail;
@@ -96,7 +97,7 @@ public class IoTDBTableIT {
       // "FIELD" can be omitted when type is specified
       // "STRING" can be omitted when tag/attribute is specified
       statement.execute(
-          "create table test1.table1(region_id STRING TAG, plant_id STRING TAG, device_id TAG, model STRING ATTRIBUTE, temperature FLOAT FIELD, humidity DOUBLE) with (TTL='INF')");
+          "create table test1.table1(region_id STRING TAG, plant_id STRING TAG, device_id TAG, model STRING ATTRIBUTE, temperature FLOAT FIELD, humidity DOUBLE) comment 'test' with (TTL='INF')");
 
       try {
         statement.execute(
@@ -108,23 +109,27 @@ public class IoTDBTableIT {
 
       String[] tableNames = new String[] {"table1"};
       String[] ttls = new String[] {"INF"};
+      String[] statuses = new String[] {"USING"};
+      String[] comments = new String[] {"test"};
 
       statement.execute("use test2");
 
       // show tables by specifying another database
       // Check duplicate create table won't affect table state
       // using SHOW tables in
-      try (final ResultSet resultSet = statement.executeQuery("SHOW tables in test1")) {
+      try (final ResultSet resultSet = statement.executeQuery("SHOW tables details in test1")) {
         int cnt = 0;
         ResultSetMetaData metaData = resultSet.getMetaData();
-        assertEquals(showTablesColumnHeaders.size(), metaData.getColumnCount());
-        for (int i = 0; i < showTablesColumnHeaders.size(); i++) {
+        assertEquals(showTablesDetailsColumnHeaders.size(), metaData.getColumnCount());
+        for (int i = 0; i < showTablesDetailsColumnHeaders.size(); i++) {
           assertEquals(
-              showTablesColumnHeaders.get(i).getColumnName(), metaData.getColumnName(i + 1));
+              showTablesDetailsColumnHeaders.get(i).getColumnName(), metaData.getColumnName(i + 1));
         }
         while (resultSet.next()) {
           assertEquals(tableNames[cnt], resultSet.getString(1));
           assertEquals(ttls[cnt], resultSet.getString(2));
+          assertEquals(statuses[cnt], resultSet.getString(3));
+          assertEquals(comments[cnt], resultSet.getString(4));
           cnt++;
         }
         assertEquals(tableNames.length, cnt);
@@ -151,18 +156,21 @@ public class IoTDBTableIT {
         assertEquals("701: Table property 'nonsupport' is currently not allowed.", e.getMessage());
       }
 
+      statement.execute("comment on table test1.table1 is 'new_test'");
+      comments = new String[] {"new_test"};
       // using SHOW tables from
-      try (final ResultSet resultSet = statement.executeQuery("SHOW tables from test1")) {
+      try (final ResultSet resultSet = statement.executeQuery("SHOW tables details from test1")) {
         int cnt = 0;
         final ResultSetMetaData metaData = resultSet.getMetaData();
-        assertEquals(showTablesColumnHeaders.size(), metaData.getColumnCount());
-        for (int i = 0; i < showTablesColumnHeaders.size(); i++) {
+        assertEquals(showTablesDetailsColumnHeaders.size(), metaData.getColumnCount());
+        for (int i = 0; i < showTablesDetailsColumnHeaders.size(); i++) {
           assertEquals(
-              showTablesColumnHeaders.get(i).getColumnName(), metaData.getColumnName(i + 1));
+              showTablesDetailsColumnHeaders.get(i).getColumnName(), metaData.getColumnName(i + 1));
         }
         while (resultSet.next()) {
           assertEquals(tableNames[cnt], resultSet.getString(1));
           assertEquals(ttls[cnt], resultSet.getString(2));
+          assertEquals(comments[cnt], resultSet.getString(4));
           cnt++;
         }
         assertEquals(tableNames.length, cnt);
@@ -260,7 +268,7 @@ public class IoTDBTableIT {
       statement.execute(
           "create table table2(region_id STRING TAG, plant_id STRING TAG, color STRING ATTRIBUTE, temperature FLOAT FIELD) with (TTL=6600000)");
 
-      statement.execute("alter table table2 add column speed DOUBLE FIELD");
+      statement.execute("alter table table2 add column speed DOUBLE FIELD COMMENT 'fast'");
 
       try {
         statement.execute("alter table table2 add column speed DOUBLE FIELD");
@@ -395,10 +403,16 @@ public class IoTDBTableIT {
       // Test drop column
       statement.execute("alter table table2 drop column color");
 
+      // Test comment
+      statement.execute("COMMENT ON COLUMN table2.region_id IS '重庆'");
+      statement.execute("COMMENT ON COLUMN table2.region_id IS NULL");
+      statement.execute("COMMENT ON COLUMN test2.table2.time IS 'recent'");
+
       columnNames = new String[] {"time", "region_id", "plant_id", "temperature", "speed"};
       dataTypes = new String[] {"TIMESTAMP", "STRING", "STRING", "FLOAT", "DOUBLE"};
       categories = new String[] {"TIME", "TAG", "TAG", "FIELD", "FIELD"};
-      final String[] statuses = new String[] {"USING", "USING", "USING", "USING", "USING"};
+      statuses = new String[] {"USING", "USING", "USING", "USING", "USING"};
+      comments = new String[] {"recent", "", "", "", "fast"};
       try (final ResultSet resultSet = statement.executeQuery("describe table2 details")) {
         int cnt = 0;
         ResultSetMetaData metaData = resultSet.getMetaData();
@@ -413,6 +427,7 @@ public class IoTDBTableIT {
           assertEquals(dataTypes[cnt], resultSet.getString(2));
           assertEquals(categories[cnt], resultSet.getString(3));
           assertEquals(statuses[cnt], resultSet.getString(4));
+          assertEquals(comments[cnt], resultSet.getString(5));
           cnt++;
         }
         assertEquals(columnNames.length, cnt);

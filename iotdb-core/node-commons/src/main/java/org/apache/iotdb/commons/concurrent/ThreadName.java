@@ -150,6 +150,7 @@ public enum ThreadName {
   SUBSCRIPTION_RUNTIME_META_SYNCER("Subscription-Runtime-Meta-Syncer"),
   WINDOW_EVALUATION_SERVICE("WindowEvaluationTaskPoolManager"),
   STATEFUL_TRIGGER_INFORMATION_UPDATER("Stateful-Trigger-Information-Updater"),
+  MEMORY_PERIODICAL_JOB_EXECUTOR("Memory-Periodical-Job-Executor"),
   // -------------------------- JVM --------------------------
   // NOTICE: The thread name of jvm cannot be edited here!
   // We list the thread name here just for distinguishing what module the thread belongs to.

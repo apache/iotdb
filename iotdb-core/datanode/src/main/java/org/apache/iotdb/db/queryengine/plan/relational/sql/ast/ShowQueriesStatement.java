@@ -15,20 +15,26 @@
  * KIND, either express or implied.  See the License for the
  * specific language governing permissions and limitations
  * under the License.
- *
  */
 
-package org.apache.iotdb.db.exception.metadata.template;
+package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
 
-import org.apache.iotdb.commons.exception.MetadataException;
-import org.apache.iotdb.rpc.TSStatusCode;
+import java.util.Optional;
 
-public class NoTemplateOnMNodeException extends MetadataException {
+public class ShowQueriesStatement extends ShowStatement {
 
-  public NoTemplateOnMNodeException(String path) {
-    super(
-        String.format("NO template on %s", path),
-        TSStatusCode.TEMPLATE_NOT_SET.getStatusCode(),
-        true);
+  public ShowQueriesStatement(
+      NodeLocation location,
+      String tableName,
+      Optional<Expression> where,
+      Optional<OrderBy> orderBy,
+      Optional<Offset> offset,
+      Optional<Node> limit) {
+    super(location, tableName, where, orderBy, offset, limit);
+  }
+
+  @Override
+  public <R, C> R accept(AstVisitor<R, C> visitor, C context) {
+    return visitor.visitShowQueriesStatement(this, context);
   }
 }

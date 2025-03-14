@@ -53,7 +53,7 @@ public class IoTDBGreatestLeastTableIT {
         "INSERT INTO string_table(time, device_id, string1, string2, text1, text2) VALUES(10, 'd1', 'aaa', 'bbb', 'aaa', 'bbb')",
         "INSERT INTO boolean_table(time, device_id, bool1, bool2) VALUES(10, 'd1', true, false)",
         "INSERT INTO mix_type_table(time, device_id, s1, s2, s3, s4, s5, s6, s7) VALUES(10, 'd1', 1, 1, 1.0, 1.0, true, 'a', 'a')",
-        "INSERT INTO null_table(time, device_id) VALUES(10, 'd1')",
+        "INSERT INTO null_table(time, device_id, string1, string2) VALUES(10, 'd1', null, null)",
         "INSERT INTO any_null_table(time, device_id, string2, int2, double2, timestamp2) VALUES(10, 'd1', 'test', 10, 10.0, 10)",
       };
 

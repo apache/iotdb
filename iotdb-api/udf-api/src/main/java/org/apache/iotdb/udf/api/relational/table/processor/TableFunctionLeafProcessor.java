@@ -17,36 +17,26 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.utils.datastructure;
+package org.apache.iotdb.udf.api.relational.table.processor;
 
-public class PageColumnAccessInfo {
-  // time -> (selectedTVList, selectedIndex)
-  private final int[][] indices;
-  private int count;
+import org.apache.tsfile.block.column.ColumnBuilder;
 
-  public PageColumnAccessInfo(int maxNumberOfPointsInPage) {
-    this.indices = new int[maxNumberOfPointsInPage][];
-    for (int i = 0; i < maxNumberOfPointsInPage; i++) {
-      indices[i] = new int[2];
-    }
-    this.count = 0;
+import java.util.List;
+
+public interface TableFunctionLeafProcessor {
+
+  default void beforeStart() {
+    // do nothing
   }
 
-  public int[] get(int index) {
-    return indices[index];
-  }
+  /**
+   * This method processes a portion of data. It is called multiple times until the processor is
+   * fully processed.
+   *
+   * @param columnBuilders a list of {@link ColumnBuilder} for each column in the output table.
+   */
+  void process(List<ColumnBuilder> columnBuilders);
 
-  public void add(int[] columnAccess) {
-    indices[count][0] = columnAccess[0];
-    indices[count][1] = columnAccess[1];
-    count++;
-  }
-
-  public int count() {
-    return count;
-  }
-
-  public void reset() {
-    count = 0;
-  }
+  /** This method is called to determine if the processor has finished processing all data. */
+  boolean isFinish();
 }
