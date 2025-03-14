@@ -46,6 +46,7 @@ public class DispatchLogHandler implements AsyncMethodCallback<TSyncLogEntriesRe
   private final long createTime;
   private final LogDispatcherThreadMetrics logDispatcherThreadMetrics;
   private int retryCount;
+  private long retryInterval;
 
   public DispatchLogHandler(
       LogDispatcherThread thread,
@@ -55,6 +56,7 @@ public class DispatchLogHandler implements AsyncMethodCallback<TSyncLogEntriesRe
     this.logDispatcherThreadMetrics = logDispatcherThreadMetrics;
     this.batch = batch;
     this.createTime = System.nanoTime();
+    this.retryInterval = thread.getConfig().getReplication().getBasicRetryWaitTimeMs();
   }
 
   @Override
@@ -115,12 +117,9 @@ public class DispatchLogHandler implements AsyncMethodCallback<TSyncLogEntriesRe
   }
 
   private void sleepCorrespondingTimeAndRetryAsynchronous() {
-    long sleepTime = thread.getConfig().getReplication().getMaxRetryWaitTimeMs();
-    if (retryCount < 63
-        && thread.getConfig().getReplication().getBasicRetryWaitTimeMs()
-            < sleepTime / (1L << retryCount)) {
-      sleepTime =
-          thread.getConfig().getReplication().getBasicRetryWaitTimeMs() * (1L << retryCount);
+    if (retryInterval != thread.getConfig().getReplication().getMaxRetryWaitTimeMs()) {
+      retryInterval =
+          Math.min(retryInterval * 2, thread.getConfig().getReplication().getMaxRetryWaitTimeMs());
     }
 
     thread
@@ -139,7 +138,7 @@ public class DispatchLogHandler implements AsyncMethodCallback<TSyncLogEntriesRe
                 thread.sendBatchAsync(batch, this);
               }
             },
-            sleepTime,
+            retryInterval,
             TimeUnit.MILLISECONDS);
   }
 
