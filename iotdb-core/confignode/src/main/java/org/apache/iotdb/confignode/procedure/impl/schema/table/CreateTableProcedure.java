@@ -138,7 +138,7 @@ public class CreateTableProcedure
     }
   }
 
-  private void preCreateTable(final ConfigNodeProcedureEnv env) {
+  protected void preCreateTable(final ConfigNodeProcedureEnv env) {
     final TSStatus status =
         SchemaUtils.executeInConsensusLayer(new PreCreateTablePlan(database, table), env, LOGGER);
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {

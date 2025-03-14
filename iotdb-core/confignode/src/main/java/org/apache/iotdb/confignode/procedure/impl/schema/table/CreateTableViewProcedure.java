@@ -106,6 +106,18 @@ public class CreateTableViewProcedure extends CreateTableProcedure {
   }
 
   @Override
+  protected void preCreateTable(final ConfigNodeProcedureEnv env) {
+    final TSStatus status =
+        SchemaUtils.executeInConsensusLayer(
+            new PreCreateTableViewPlan(database, table, TableNodeStatus.PRE_CREATE), env, LOGGER);
+    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      setNextState(CreateTableState.PRE_RELEASE);
+    } else {
+      setFailure(new ProcedureException(new IoTDBException(status.getMessage(), status.getCode())));
+    }
+  }
+
+  @Override
   protected void rollbackCreate(final ConfigNodeProcedureEnv env) {
     if (Objects.isNull(oldView)) {
       super.rollbackCreate(env);
