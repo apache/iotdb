@@ -677,7 +677,7 @@ public class AggregationTest {
   public void deviceWithNumerousRegionTest() {
     PlanTester planTester = new PlanTester();
     LogicalQueryPlan logicalQueryPlan =
-        planTester.createPlan("SELECT count(s1) FROM table1 where tag2='B2'");
+        planTester.createPlan("SELECT count(s1+1) FROM table1 where tag2='B2'");
     // complete push-down when do logical optimize
     assertPlan(
         logicalQueryPlan,
@@ -753,5 +753,17 @@ public class AggregationTest {
                             ImmutableList.of("tag1", "tag2", "tag3", "count_0"),
                             ImmutableSet.of("tag1", "tag2", "tag3", "s1")),
                         exchange())))));
+  }
+
+  @Test
+  public void countConstantTest() {
+    // select count(1) from table
+    // select count(2) from table
+    // select count('a') from table
+
+    // select count(pi()) from table
+    // select count(e()) from table
+
+    // select count(cast('a' as 'a')) from table
   }
 }

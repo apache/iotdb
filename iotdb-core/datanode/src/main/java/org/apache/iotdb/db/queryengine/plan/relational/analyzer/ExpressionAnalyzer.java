@@ -801,7 +801,7 @@ public class ExpressionAnalyzer {
       ResolvedFunction resolvedFunction =
           new ResolvedFunction(
               new BoundSignature(functionName.toLowerCase(Locale.ENGLISH), type, argumentTypes),
-              new FunctionId("noop"),
+              FunctionId.NOOP_FUNCTION_ID,
               isAggregation ? FunctionKind.AGGREGATE : FunctionKind.SCALAR,
               true,
               isAggregation

@@ -256,6 +256,12 @@ public final class IrUtils {
     return combineConjuncts(conjuncts);
   }
 
+  /**
+   * Returns whether expression is effectively literal. An effectively literal expression is a
+   * simple constant value, or null, in either {@link Literal} form, or other form returned by
+   * LiteralEncoder. In particular, other constant expressions like a deterministic function call
+   * with constant arguments are not considered effectively literal.
+   */
   public static boolean isEffectivelyLiteral(
       Expression expression, PlannerContext plannerContext, SessionInfo session) {
     if (expression instanceof Literal) {
@@ -266,6 +272,7 @@ public final class IrUtils {
           // a Cast(Literal(...)) can fail, so this requires verification
           && constantExpressionEvaluatesSuccessfully(plannerContext, session, expression);
     }
+
     if (expression instanceof FunctionCall) {
       String functionName = ((FunctionCall) expression).getName().getSuffix();
       if (functionName.equals("pi") || functionName.equals("e")) {
