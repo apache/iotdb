@@ -105,7 +105,6 @@ public abstract class AbstractCompactionWriter implements AutoCloseable {
 
   public void startMeasurement(String measurement, IChunkWriter chunkWriter, int subTaskId) {
     lastCheckIndex = 0;
-    lastTime[subTaskId] = Long.MIN_VALUE;
     lastTimeSet[subTaskId] = false;
     chunkWriters[subTaskId] = chunkWriter;
     measurementId[subTaskId] = measurement;
