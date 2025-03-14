@@ -30,6 +30,8 @@ import org.apache.tsfile.encoding.encoder.Encoder;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.enums.CompressionType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
+import org.apache.tsfile.utils.Accountable;
+import org.apache.tsfile.utils.RamUsageEstimator;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.apache.tsfile.write.schema.MeasurementSchemaType;
@@ -44,8 +46,9 @@ import java.util.List;
 import java.util.Map;
 
 public class LogicalViewSchema
-    implements IMeasurementSchema, Comparable<LogicalViewSchema>, Serializable {
-
+    implements IMeasurementSchema, Comparable<LogicalViewSchema>, Serializable, Accountable {
+  private static final long INSTANCE_SIZE =
+      RamUsageEstimator.shallowSizeOfInstance(LogicalViewSchema.class);
   private String measurementName;
 
   private ViewExpression expression;
@@ -253,5 +256,11 @@ public class LogicalViewSchema
       }
     }
     return null;
+  }
+
+  @Override
+  public long ramBytesUsed() {
+    // Roughly estimate the expression size
+    return INSTANCE_SIZE + RamUsageEstimator.sizeOf(measurementName) + 256;
   }
 }

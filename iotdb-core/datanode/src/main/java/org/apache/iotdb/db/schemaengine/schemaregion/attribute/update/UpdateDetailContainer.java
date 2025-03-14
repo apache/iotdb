@@ -52,7 +52,7 @@ import java.util.concurrent.atomic.AtomicLong;
 public class UpdateDetailContainer implements UpdateContainer {
 
   static final long MAP_SIZE = RamUsageEstimator.shallowSizeOfInstance(ConcurrentHashMap.class);
-  static final long LIST_SIZE = RamUsageEstimator.shallowSizeOfInstance(ArrayList.class);
+  public static final long LIST_SIZE = RamUsageEstimator.shallowSizeOfInstance(ArrayList.class);
   static final long INSTANCE_SIZE =
       RamUsageEstimator.shallowSizeOfInstance(UpdateClearContainer.class) + MAP_SIZE;
 
