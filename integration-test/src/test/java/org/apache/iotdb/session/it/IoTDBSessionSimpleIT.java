@@ -1899,6 +1899,7 @@ public class IoTDBSessionSimpleIT {
       e.printStackTrace();
     }
   }
+
   @Test
   @Category({LocalStandaloneIT.class, ClusterIT.class})
   public void insertMinMaxTimeTest() throws IoTDBConnectionException, StatementExecutionException {
@@ -1956,8 +1957,7 @@ public class IoTDBSessionSimpleIT {
 
   @Test
   @Category({LocalStandaloneIT.class, ClusterIT.class})
-  public void loadMinMaxTimeNonAlignedTest()
-      throws Exception {
+  public void loadMinMaxTimeNonAlignedTest() throws Exception {
     File file = new File("target", "test.tsfile");
     try (TsFileWriter writer = new TsFileWriter(file)) {
       IDeviceID deviceID = new PlainDeviceID("root.testLoadMinMax.d1");
@@ -2006,13 +2006,13 @@ public class IoTDBSessionSimpleIT {
 
   @Test
   @Category({LocalStandaloneIT.class, ClusterIT.class})
-  public void loadMinMaxTimeAlignedTest()
-      throws Exception {
+  public void loadMinMaxTimeAlignedTest() throws Exception {
     File file = new File("target", "test.tsfile");
     try (TsFileWriter writer = new TsFileWriter(file)) {
       IDeviceID deviceID = new PlainDeviceID("root.testLoadMinMaxAligned.d1");
       writer.registerAlignedTimeseries(
-          new Path(deviceID), Collections.singletonList(new MeasurementSchema("s1", TSDataType.INT32)));
+          new Path(deviceID),
+          Collections.singletonList(new MeasurementSchema("s1", TSDataType.INT32)));
       TSRecord record = new TSRecord(Long.MIN_VALUE, deviceID);
       record.addTuple(new IntDataPoint("s1", 1));
       writer.writeAligned(record);
