@@ -596,7 +596,8 @@ public class PipeEnrichedProcedureTest {
     final ByteBuffer byteBuffer = ByteBuffer.wrap(byteArrayOutputStream.toByteArray());
 
     Assert.assertEquals(
-        ProcedureType.CREATE_TABLE_VIEW_PROCEDURE.getTypeCode(), byteBuffer.getShort());
+        ProcedureType.PIPE_ENRICHED_CREATE_TABLE_VIEW_PROCEDURE.getTypeCode(),
+        byteBuffer.getShort());
 
     final CreateTableViewProcedure deserializedProcedure = new CreateTableViewProcedure(false);
     deserializedProcedure.deserialize(byteBuffer);
