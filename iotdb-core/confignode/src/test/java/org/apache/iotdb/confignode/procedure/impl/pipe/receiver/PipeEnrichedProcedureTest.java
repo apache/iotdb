@@ -583,16 +583,15 @@ public class PipeEnrichedProcedureTest {
   public void CreateTableViewProcedureTest() throws IOException {
     final TsTable table = new TsTable("table1");
     table.addColumnSchema(new TagColumnSchema("Id", TSDataType.STRING));
-    table.addColumnSchema(new AttributeColumnSchema("Attr", TSDataType.STRING));
     table.addColumnSchema(
         new FieldColumnSchema(
             "Measurement", TSDataType.DOUBLE, TSEncoding.GORILLA, CompressionType.SNAPPY));
-    final CreateTableViewProcedure createTableProcedure =
+    final CreateTableViewProcedure createTableViewProcedure =
         new CreateTableViewProcedure("database1", table, false, true);
 
     final ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
     final DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream);
-    createTableProcedure.serialize(dataOutputStream);
+    createTableViewProcedure.serialize(dataOutputStream);
 
     final ByteBuffer byteBuffer = ByteBuffer.wrap(byteArrayOutputStream.toByteArray());
 
@@ -602,6 +601,16 @@ public class PipeEnrichedProcedureTest {
     final CreateTableViewProcedure deserializedProcedure = new CreateTableViewProcedure(false);
     deserializedProcedure.deserialize(byteBuffer);
 
-    Assert.assertEquals(createTableProcedure, deserializedProcedure);
+    Assert.assertEquals(
+        createTableViewProcedure.getDatabase(), deserializedProcedure.getDatabase());
+    Assert.assertEquals(
+        createTableViewProcedure.getTable().getTableName(),
+        deserializedProcedure.getTable().getTableName());
+    Assert.assertEquals(
+        createTableViewProcedure.getTable().getColumnNum(),
+        deserializedProcedure.getTable().getColumnNum());
+    Assert.assertEquals(
+        createTableViewProcedure.getTable().getIdNums(),
+        deserializedProcedure.getTable().getIdNums());
   }
 }

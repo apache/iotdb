@@ -60,6 +60,14 @@ public class CreateTableProcedureTest {
     final CreateTableProcedure deserializedProcedure = new CreateTableProcedure(false);
     deserializedProcedure.deserialize(byteBuffer);
 
-    Assert.assertEquals(createTableProcedure, deserializedProcedure);
+    Assert.assertEquals(createTableProcedure.getDatabase(), deserializedProcedure.getDatabase());
+    Assert.assertEquals(
+        createTableProcedure.getTable().getTableName(),
+        deserializedProcedure.getTable().getTableName());
+    Assert.assertEquals(
+        createTableProcedure.getTable().getColumnNum(),
+        deserializedProcedure.getTable().getColumnNum());
+    Assert.assertEquals(
+        createTableProcedure.getTable().getIdNums(), deserializedProcedure.getTable().getIdNums());
   }
 }

@@ -299,11 +299,13 @@ public class CreateTableProcedure
       return false;
     }
     final CreateTableProcedure that = (CreateTableProcedure) o;
-    return Objects.equals(database, that.database) && Objects.equals(table, that.table);
+    return Objects.equals(database, that.database)
+        && Objects.equals(table, that.table)
+        && isGeneratedByPipe == that.isGeneratedByPipe;
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(database, table);
+    return Objects.hash(database, table, isGeneratedByPipe);
   }
 }
