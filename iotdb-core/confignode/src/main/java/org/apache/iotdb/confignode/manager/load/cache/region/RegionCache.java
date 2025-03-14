@@ -44,20 +44,20 @@ public class RegionCache extends AbstractLoadCache {
     synchronized (slidingWindow) {
       lastSample = (RegionHeartbeatSample) getLastSample();
       history = Collections.unmodifiableList(slidingWindow);
-    }
 
-    RegionStatus status;
-    long currentNanoTime = System.nanoTime();
-    if (lastSample == null) {
-      /* First heartbeat not received from this region, status is UNKNOWN */
-      status = RegionStatus.Unknown;
-    } else if (!failureDetector.isAvailable(history)) {
-      /* Failure detector decides that this region is UNKNOWN */
-      status = RegionStatus.Unknown;
-    } else {
-      status = lastSample.getStatus();
+      RegionStatus status;
+      long currentNanoTime = System.nanoTime();
+      if (lastSample == null) {
+        /* First heartbeat not received from this region, status is UNKNOWN */
+        status = RegionStatus.Unknown;
+      } else if (!failureDetector.isAvailable(history)) {
+        /* Failure detector decides that this region is UNKNOWN */
+        status = RegionStatus.Unknown;
+      } else {
+        status = lastSample.getStatus();
+      }
+      this.currentStatistics.set(new RegionStatistics(currentNanoTime, status));
     }
-    this.currentStatistics.set(new RegionStatistics(currentNanoTime, status));
   }
 
   public RegionStatistics getCurrentStatistics() {
