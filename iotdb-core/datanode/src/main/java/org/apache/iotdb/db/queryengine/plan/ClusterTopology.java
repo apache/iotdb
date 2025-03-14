@@ -127,6 +127,9 @@ public class ClusterTopology {
 
   public void updateTopology(
       final Map<Integer, TDataNodeLocation> dataNodes, Map<Integer, Set<Integer>> latestTopology) {
+    if (!latestTopology.equals(topologyMap)) {
+      LOGGER.info("[Topology] latest view from config-node: {}", latestTopology);
+    }
     this.dataNodes = dataNodes;
     this.topologyMap = latestTopology;
     if (latestTopology.get(myself) == null) {
@@ -136,7 +139,6 @@ public class ClusterTopology {
     } else {
       this.isPartitioned = latestTopology.get(myself).size() != latestTopology.keySet().size();
     }
-    LOGGER.info("[Topology] latest view from config-node: {}", latestTopology);
     if (isPartitioned) {
       final Set<Integer> allDataLocations = new HashSet<>(latestTopology.keySet());
       allDataLocations.removeAll(latestTopology.get(myself));

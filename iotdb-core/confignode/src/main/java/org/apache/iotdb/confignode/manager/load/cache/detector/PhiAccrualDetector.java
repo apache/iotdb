@@ -24,6 +24,8 @@ import org.apache.iotdb.confignode.manager.load.cache.IFailureDetector;
 import org.apache.iotdb.confignode.manager.load.cache.node.NodeHeartbeatSample;
 import org.apache.iotdb.confignode.manager.load.cache.region.RegionHeartbeatSample;
 
+import com.google.common.cache.Cache;
+import com.google.common.cache.CacheBuilder;
 import org.apache.commons.math3.stat.descriptive.DescriptiveStatistics;
 import org.apache.tsfile.utils.Preconditions;
 import org.slf4j.Logger;
@@ -31,6 +33,7 @@ import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 
 /**
  * The Phi Failure Detector, proposed by Hayashibara, Naohiro, et al. "The/spl phi/accrual failure
@@ -49,6 +52,7 @@ public class PhiAccrualDetector implements IFailureDetector {
   private final long minHeartbeatStdNs;
   private final int codeStartSampleCount;
   private final IFailureDetector fallbackDuringColdStart;
+  private final Cache<Object, Boolean> availibilityCache;
 
   public PhiAccrualDetector(
       long threshold,
@@ -61,17 +65,25 @@ public class PhiAccrualDetector implements IFailureDetector {
     this.minHeartbeatStdNs = minHeartbeatStdNs;
     this.codeStartSampleCount = minimalSampleCount;
     this.fallbackDuringColdStart = fallbackDuringColdStart;
+    this.availibilityCache =
+        CacheBuilder.newBuilder().expireAfterAccess(5, TimeUnit.MINUTES).build();
   }
 
   @Override
-  public boolean isAvailable(List<AbstractHeartbeatSample> history) {
+  public boolean isAvailable(Object Id, List<AbstractHeartbeatSample> history) {
+    /* We are copying this history to avoid concurrent modification. */
+    final List<AbstractHeartbeatSample> historyCopy = new ArrayList<>(history);
     if (history.size() < codeStartSampleCount) {
       /* We haven't received enough heartbeat replies.*/
-      return fallbackDuringColdStart.isAvailable(history);
+      return fallbackDuringColdStart.isAvailable(Id, historyCopy);
     }
-    final PhiAccrual phiAccrual = create(history);
-    final boolean isAvailable = phiAccrual.phi() < (double) this.threshold;
-    if (!isAvailable) {
+    final PhiAccrual phiAccrual = create(historyCopy);
+    final Boolean isAvailable = phiAccrual.phi() < (double) this.threshold;
+
+    final Boolean previousAvailability = availibilityCache.getIfPresent(Id);
+    availibilityCache.put(Id, isAvailable);
+
+    if (!isAvailable.equals(previousAvailability)) {
       // log the status change and dump the heartbeat history for analysis use
       final StringBuilder builder = new StringBuilder();
       builder.append("[");

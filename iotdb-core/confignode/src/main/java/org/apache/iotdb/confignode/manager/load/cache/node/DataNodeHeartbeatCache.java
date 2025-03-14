@@ -70,7 +70,7 @@ public class DataNodeHeartbeatCache extends BaseNodeCache {
     if (lastSample == null) {
       /* First heartbeat not received from this DataNode, status is UNKNOWN */
       status = NodeStatus.Unknown;
-    } else if (!failureDetector.isAvailable(heartbeatHistory)) {
+    } else if (!failureDetector.isAvailable(nodeId, heartbeatHistory)) {
       /* Failure detector decides that this DataNode is UNKNOWN */
       status = NodeStatus.Unknown;
     } else {

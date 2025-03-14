@@ -51,7 +51,7 @@ public class RegionCache extends AbstractLoadCache {
     if (lastSample == null) {
       /* First heartbeat not received from this region, status is UNKNOWN */
       status = RegionStatus.Unknown;
-    } else if (!failureDetector.isAvailable(history)) {
+    } else if (!failureDetector.isAvailable(this, history)) {
       /* Failure detector decides that this region is UNKNOWN */
       status = RegionStatus.Unknown;
     } else {

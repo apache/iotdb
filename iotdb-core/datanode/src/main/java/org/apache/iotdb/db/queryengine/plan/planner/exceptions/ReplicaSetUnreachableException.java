@@ -21,6 +21,11 @@ package org.apache.iotdb.db.queryengine.plan.planner.exceptions;
 
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 
+/**
+ * When ALL DataNodeLocations in a QUERY-typed {@link
+ * org.apache.iotdb.db.queryengine.plan.planner.plan.FragmentInstance} are unreachable, possibly due
+ * to network partition issues, this exception will be thrown and this query will fail.
+ */
 public class ReplicaSetUnreachableException extends RuntimeException {
   public ReplicaSetUnreachableException(TRegionReplicaSet replicaSet) {
     super(replicaSet.toString());

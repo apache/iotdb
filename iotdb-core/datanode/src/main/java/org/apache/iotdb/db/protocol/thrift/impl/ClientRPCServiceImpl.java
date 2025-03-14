@@ -434,8 +434,10 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
     } catch (RootFIPlacementException | ReplicaSetUnreachableException e) {
       finished = true;
       t = e;
-      return RpcUtils.getTSExecuteStatementResp(
-          RpcUtils.getStatus(TSStatusCode.PLAN_FAILED_NETWORK_PARTITION, e.getMessage()));
+      final TSStatus status =
+          RpcUtils.getStatus(TSStatusCode.PLAN_FAILED_NETWORK_PARTITION, e.getMessage());
+      status.setNeedRetry(true);
+      return RpcUtils.getTSExecuteStatementResp(status);
     } catch (Exception e) {
       finished = true;
       t = e;

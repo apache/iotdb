@@ -21,14 +21,12 @@ package org.apache.iotdb.confignode.manager.load.service;
 
 import org.apache.iotdb.common.rpc.thrift.TDataNodeConfiguration;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
-import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TNodeLocations;
 import org.apache.iotdb.common.rpc.thrift.TTestConnectionResp;
 import org.apache.iotdb.common.rpc.thrift.TTestConnectionResult;
 import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.ThreadName;
-import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
 import org.apache.iotdb.confignode.client.async.CnToDnAsyncRequestType;
 import org.apache.iotdb.confignode.client.async.CnToDnInternalServiceAsyncRequestManager;
 import org.apache.iotdb.confignode.client.async.handlers.DataNodeAsyncRequestContext;
@@ -40,7 +38,11 @@ import org.apache.iotdb.confignode.manager.load.cache.IFailureDetector;
 import org.apache.iotdb.confignode.manager.load.cache.detector.FixedDetector;
 import org.apache.iotdb.confignode.manager.load.cache.detector.PhiAccrualDetector;
 import org.apache.iotdb.confignode.manager.load.cache.node.NodeHeartbeatSample;
+import org.apache.iotdb.confignode.manager.load.cache.node.NodeStatistics;
+import org.apache.iotdb.confignode.manager.load.subscriber.IClusterStatusSubscriber;
+import org.apache.iotdb.confignode.manager.load.subscriber.NodeStatisticsChangeEvent;
 
+import org.apache.ratis.util.AwaitForSignal;
 import org.apache.tsfile.utils.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -49,27 +51,33 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.ScheduledFuture;
+import java.util.concurrent.ExecutorService;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
-public class TopologyService {
+public class TopologyService implements Runnable, IClusterStatusSubscriber {
   private static final Logger LOGGER = LoggerFactory.getLogger(TopologyService.class);
   private static final long PROBING_INTERVAL_MS = 5_000L;
   private static final long PROBING_TIMEOUT_MS = 1_000L;
-  private final ScheduledExecutorService topologyExecutor =
-      IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor(
-          ThreadName.CONFIG_NODE_TOPOLOGY_SERVICE.getName());
+  private static final int SAMPLING_WINDOW_SIZE = 100;
 
+  private final ExecutorService topologyThread =
+      IoTDBThreadPoolFactory.newSingleThreadExecutor(
+          ThreadName.CONFIG_NODE_TOPOLOGY_SERVICE.getName());
   private final Consumer<Map<Integer, Set<Integer>>> topologyChangeListener;
+
+  private final AwaitForSignal awaitForSignal;
   private final IManager configManager;
-  private ScheduledFuture<?> future;
+
+  private final AtomicBoolean shouldRun;
 
   /* (fromDataNodeId, toDataNodeId) -> heartbeat history */
   private final Map<Pair<Integer, Integer>, List<AbstractHeartbeatSample>> heartbeats;
@@ -82,6 +90,8 @@ public class TopologyService {
     this.configManager = configManager;
     this.topologyChangeListener = topologyChangeListener;
     this.heartbeats = new HashMap<>();
+    this.shouldRun = new AtomicBoolean(false);
+    this.awaitForSignal = new AwaitForSignal(this.getClass().getSimpleName());
 
     // here we use the same failure
     switch (CONF.getFailureDetector()) {
@@ -91,7 +101,7 @@ public class TopologyService {
                 CONF.getFailureDetectorPhiThreshold(),
                 CONF.getFailureDetectorPhiAcceptablePauseInMs() * 1000_000L,
                 CONF.getHeartbeatIntervalInMs() * 200_000L,
-                60,
+                IFailureDetector.PHI_COLD_START_THRESHOLD,
                 new FixedDetector(CONF.getFailureDetectorFixedThresholdInMs() * 1000_000L));
         break;
       case IFailureDetector.FIXED_DETECTOR:
@@ -101,30 +111,51 @@ public class TopologyService {
     }
   }
 
-  public void startTopologyService() {
-    future =
-        ScheduledExecutorUtil.safelyScheduleWithFixedDelay(
-            topologyExecutor, this::topologyProbing, 0, PROBING_INTERVAL_MS, TimeUnit.MILLISECONDS);
+  public synchronized void startTopologyService() {
+    shouldRun.set(true);
+    topologyThread.submit(this);
     LOGGER.info("Topology Probing has started successfully");
   }
 
-  public void stopTopologyService() {
-    future.cancel(true);
-    future = null;
+  public synchronized void stopTopologyService() {
+    shouldRun.set(false);
+    topologyThread.shutdown();
+    try {
+      topologyThread.awaitTermination(PROBING_INTERVAL_MS, TimeUnit.MILLISECONDS);
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
+    }
     LOGGER.info("Topology Probing has stopped successfully");
+  }
+
+  /**
+   * Schedule the {@link #topologyProbing} task either: 1. every PROBING_INTERVAL_MS interval. 2.
+   * Manually triggered by outside events (node restart / register, etc.).
+   */
+  private void mayWait() {
+    try {
+      this.awaitForSignal.await(PROBING_INTERVAL_MS, TimeUnit.MILLISECONDS);
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
+    }
+  }
+
+  @Override
+  public void run() {
+    for (; shouldRun.get(); mayWait()) {
+      topologyProbing();
+    }
   }
 
   private void topologyProbing() {
     // 1. get the latest datanode list
     final List<TDataNodeLocation> dataNodeLocations = new ArrayList<>();
     final Set<Integer> dataNodeIds = new HashSet<>();
-    final Map<TEndPoint, Integer> endPoint2IdMap = new HashMap<>();
     for (final TDataNodeConfiguration dataNodeConf :
         configManager.getNodeManager().getRegisteredDataNodes()) {
       final TDataNodeLocation location = dataNodeConf.getLocation();
       dataNodeLocations.add(location);
       dataNodeIds.add(location.getDataNodeId());
-      endPoint2IdMap.put(location.getInternalEndPoint(), location.getDataNodeId());
     }
 
     // 2. send the verify connection RPC to all datanode
@@ -159,17 +190,19 @@ public class TopologyService {
           Optional.ofNullable(result.getSender().getDataNodeLocation())
               .map(TDataNodeLocation::getDataNodeId)
               .orElse(-1);
-      final int toDataNodeId =
-          Optional.ofNullable(endPoint2IdMap.get(result.getServiceProvider().getEndPoint()))
-              .orElse(-1);
+      final int toDataNodeId = result.getServiceProvider().getNodeId();
       if (result.isSuccess()
           && dataNodeIds.contains(fromDataNodeId)
           && dataNodeIds.contains(toDataNodeId)) {
         // testAllDataNodeConnectionWithTimeout ensures the heartbeats are Dn-Dn internally. Here we
         // just double-check.
-        heartbeats
-            .computeIfAbsent(new Pair<>(fromDataNodeId, toDataNodeId), p -> new ArrayList<>())
-            .add(new NodeHeartbeatSample(NodeStatus.Running));
+        final List<AbstractHeartbeatSample> heartbeatHistory =
+            heartbeats.computeIfAbsent(
+                new Pair<>(fromDataNodeId, toDataNodeId), p -> new LinkedList<>());
+        heartbeatHistory.add(new NodeHeartbeatSample(NodeStatus.Running));
+        if (heartbeatHistory.size() > SAMPLING_WINDOW_SIZE) {
+          heartbeatHistory.remove(0);
+        }
       }
     }
 
@@ -182,8 +215,9 @@ public class TopologyService {
         heartbeats.entrySet()) {
       final int fromId = entry.getKey().getLeft();
       final int toId = entry.getKey().getRight();
-      if (!entry.getValue().isEmpty() && !failureDetector.isAvailable(entry.getValue())) {
-        LOGGER.info("Connection from DataNode {} to DataNode {} is broken", fromId, toId);
+      if (!entry.getValue().isEmpty()
+          && !failureDetector.isAvailable(entry.getKey(), entry.getValue())) {
+        LOGGER.debug("Connection from DataNode {} to DataNode {} is broken", fromId, toId);
         partitionDetected = true;
       } else {
         latestTopology.get(fromId).add(toId);
@@ -193,6 +227,46 @@ public class TopologyService {
     // 5. notify the listeners on topology change
     if (partitionDetected) {
       topologyChangeListener.accept(latestTopology);
+    }
+  }
+
+  /** We only listen to datanode remove / restart / register events */
+  @Override
+  public void onNodeStatisticsChanged(NodeStatisticsChangeEvent event) {
+    final Set<Integer> datanodeIds =
+        configManager.getNodeManager().getRegisteredDataNodeLocations().keySet();
+    final Map<Integer, Pair<NodeStatistics, NodeStatistics>> changes =
+        event.getDifferentNodeStatisticsMap();
+    for (final Map.Entry<Integer, Pair<NodeStatistics, NodeStatistics>> entry :
+        changes.entrySet()) {
+      final Integer nodeId = entry.getKey();
+      final Pair<NodeStatistics, NodeStatistics> changeEvent = entry.getValue();
+      if (datanodeIds.contains(nodeId)) {
+        final boolean changeFromRunningToUnknown =
+            NodeStatus.Running.equals(changeEvent.getLeft().getStatus())
+                && NodeStatus.Running.equals(changeEvent.getRight().getStatus());
+        if (!changeFromRunningToUnknown) {
+          // datanode status change to live (register, restart, recover), trigger probing
+          // immediately
+          LOGGER.info(
+              "[Topology] DataNode {} status changed to {}, trigger probing now",
+              nodeId,
+              changeEvent.getRight());
+          awaitForSignal.signal();
+        }
+      }
+
+      if (changeEvent.getRight() == null) {
+        // node removal, do clean up if necessary
+        final Set<Pair<Integer, Integer>> toRemove =
+            heartbeats.keySet().stream()
+                .filter(
+                    pair ->
+                        Objects.equals(pair.getLeft(), nodeId)
+                            || Objects.equals(pair.getRight(), nodeId))
+                .collect(Collectors.toSet());
+        toRemove.forEach(heartbeats::remove);
+      }
     }
   }
 }

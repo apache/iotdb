@@ -98,7 +98,7 @@ public class LoadCache {
   // Map<DataNodeId, confirmedConfigNodes>
   private final Map<Integer, Set<TEndPoint>> confirmedConfigNodeMap;
   private Map<Integer, Set<Integer>> topologyGraph;
-  private final AtomicBoolean topologyChanged;
+  private final AtomicBoolean topologyUpdated;
 
   public LoadCache() {
     this.nodeCacheMap = new ConcurrentHashMap<>();
@@ -108,7 +108,7 @@ public class LoadCache {
     this.consensusGroupCacheMap = new ConcurrentHashMap<>();
     this.confirmedConfigNodeMap = new ConcurrentHashMap<>();
     this.topologyGraph = new HashMap<>();
-    this.topologyChanged = new AtomicBoolean(false);
+    this.topologyUpdated = new AtomicBoolean(false);
   }
 
   public void initHeartbeatCache(final IManager configManager) {
@@ -779,14 +779,14 @@ public class LoadCache {
   public void updateTopology(Map<Integer, Set<Integer>> latestTopology) {
     if (!latestTopology.equals(topologyGraph)) {
       LOGGER.info("[Topology Service] Cluster topology changed, latest: {}", latestTopology);
-      topologyGraph = latestTopology;
-      topologyChanged.set(true);
     }
+    topologyGraph = latestTopology;
+    topologyUpdated.set(true);
   }
 
   @Nullable
   public Map<Integer, Set<Integer>> getTopology() {
-    if (topologyChanged.compareAndSet(true, false)) {
+    if (topologyUpdated.compareAndSet(true, false)) {
       return Collections.unmodifiableMap(topologyGraph);
     }
     return null;

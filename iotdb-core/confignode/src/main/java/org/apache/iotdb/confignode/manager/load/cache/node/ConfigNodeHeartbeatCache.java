@@ -67,7 +67,7 @@ public class ConfigNodeHeartbeatCache extends BaseNodeCache {
     if (lastSample == null) {
       /* First heartbeat not received from this ConfigNode, status is UNKNOWN */
       status = NodeStatus.Unknown;
-    } else if (!failureDetector.isAvailable(heartbeatHistory)) {
+    } else if (!failureDetector.isAvailable(nodeId, heartbeatHistory)) {
       /* Failure detector decides that this ConfigNode is UNKNOWN */
       status = NodeStatus.Unknown;
     } else {

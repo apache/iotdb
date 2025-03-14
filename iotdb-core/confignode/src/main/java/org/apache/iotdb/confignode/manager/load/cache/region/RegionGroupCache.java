@@ -36,7 +36,6 @@ import java.util.concurrent.atomic.AtomicReference;
  * from all Regions it contains.
  */
 public class RegionGroupCache {
-
   private final String database;
   // Map<DataNodeId(where a RegionReplica resides in), RegionCache>
   private final Map<Integer, RegionCache> regionCacheMap;
