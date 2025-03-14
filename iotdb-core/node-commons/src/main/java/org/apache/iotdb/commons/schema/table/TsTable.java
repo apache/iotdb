@@ -159,10 +159,7 @@ public class TsTable {
       // Ensures idempotency
       if (columnSchemaMap.containsKey(oldName)) {
         final TsTableColumnSchema schema = columnSchemaMap.remove(oldName);
-        Map<String, String> oldProps = schema.getProps();
-        if (Objects.isNull(oldProps)) {
-          oldProps = new HashMap<>();
-        }
+        final Map<String, String> oldProps = schema.getProps();
         oldProps.computeIfAbsent(TreeViewSchema.ORIGINAL_NAME, k -> schema.getColumnName());
         switch (schema.getColumnCategory()) {
           case TAG:
