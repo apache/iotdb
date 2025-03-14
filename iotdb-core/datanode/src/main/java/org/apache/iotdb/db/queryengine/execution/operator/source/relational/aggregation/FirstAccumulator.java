@@ -207,20 +207,23 @@ public class FirstAccumulator implements TableAccumulator {
     switch (seriesDataType) {
       case INT32:
       case DATE:
-        updateIntFirstValue((int) statistics[0].getFirstValue(), statistics[0].getStartTime());
+        updateIntFirstValue(
+            ((Number) statistics[0].getFirstValue()).intValue(), statistics[0].getStartTime());
         break;
       case INT64:
-        updateLongFirstValue((long) statistics[0].getFirstValue(), statistics[0].getStartTime());
+        updateLongFirstValue(
+            ((Number) statistics[0].getFirstValue()).longValue(), statistics[0].getStartTime());
         break;
       case TIMESTAMP:
         updateLongFirstValue(statistics[0].getStartTime(), statistics[0].getStartTime());
         break;
       case FLOAT:
-        updateFloatFirstValue((float) statistics[0].getFirstValue(), statistics[0].getStartTime());
+        updateFloatFirstValue(
+            ((Number) statistics[0].getFirstValue()).floatValue(), statistics[0].getStartTime());
         break;
       case DOUBLE:
         updateDoubleFirstValue(
-            (double) statistics[0].getFirstValue(), statistics[0].getStartTime());
+            ((Number) statistics[0].getFirstValue()).doubleValue(), statistics[0].getStartTime());
         break;
       case TEXT:
       case BLOB:

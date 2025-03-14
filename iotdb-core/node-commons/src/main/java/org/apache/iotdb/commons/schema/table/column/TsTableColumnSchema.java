@@ -87,6 +87,8 @@ public abstract class TsTableColumnSchema {
     this.dataType = dataType;
   }
 
+  public abstract TsTableColumnSchema copy();
+
   @Override
   public String toString() {
     return toStringHelper(this)
