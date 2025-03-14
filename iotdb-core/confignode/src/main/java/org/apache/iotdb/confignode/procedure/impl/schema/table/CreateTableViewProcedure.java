@@ -19,18 +19,24 @@
 
 package org.apache.iotdb.confignode.procedure.impl.schema.table;
 
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.schema.table.TreeViewSchema;
 import org.apache.iotdb.commons.schema.table.TsTable;
+import org.apache.iotdb.confignode.consensus.request.write.table.PreCreateTablePlan;
 import org.apache.iotdb.confignode.exception.DatabaseNotExistsException;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
+import org.apache.iotdb.confignode.procedure.impl.schema.SchemaUtils;
 import org.apache.iotdb.confignode.procedure.state.schema.CreateTableState;
 import org.apache.iotdb.confignode.procedure.store.ProcedureType;
 import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
+import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.tsfile.utils.ReadWriteIOUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
@@ -41,7 +47,7 @@ import java.util.Optional;
 import static org.apache.iotdb.rpc.TSStatusCode.TABLE_ALREADY_EXISTS;
 
 public class CreateTableViewProcedure extends CreateTableProcedure {
-
+  private static final Logger LOGGER = LoggerFactory.getLogger(CreateTableViewProcedure.class);
   private boolean replace;
   private TsTable oldView;
 
@@ -100,6 +106,12 @@ public class CreateTableViewProcedure extends CreateTableProcedure {
     if (Objects.isNull(oldView)) {
       super.rollbackCreate(env);
       return;
+    }
+    final TSStatus status =
+        SchemaUtils.executeInConsensusLayer(new PreCreateTablePlan(database, oldView), env, LOGGER);
+    if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      LOGGER.warn("Failed to rollback table creation {}.{}", database, table.getTableName());
+      setFailure(new ProcedureException(new IoTDBException(status.getMessage(), status.getCode())));
     }
   }
 
