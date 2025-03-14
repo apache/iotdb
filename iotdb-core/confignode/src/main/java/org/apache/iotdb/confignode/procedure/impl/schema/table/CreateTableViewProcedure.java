@@ -19,8 +19,15 @@
 
 package org.apache.iotdb.confignode.procedure.impl.schema.table;
 
+import org.apache.iotdb.commons.exception.IoTDBException;
+import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.schema.table.TsTable;
+import org.apache.iotdb.confignode.exception.DatabaseNotExistsException;
+import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
+import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
+import org.apache.iotdb.confignode.procedure.state.schema.CreateTableState;
 import org.apache.iotdb.confignode.procedure.store.ProcedureType;
+import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
 
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 
@@ -28,6 +35,8 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Objects;
+
+import static org.apache.iotdb.rpc.TSStatusCode.TABLE_ALREADY_EXISTS;
 
 public class CreateTableViewProcedure extends CreateTableProcedure {
 
@@ -44,6 +53,37 @@ public class CreateTableViewProcedure extends CreateTableProcedure {
       final boolean isGeneratedByPipe) {
     super(database, table, isGeneratedByPipe);
     this.replace = replace;
+  }
+
+  @Override
+  protected void checkTableExistence(final ConfigNodeProcedureEnv env) {
+    if (!replace) {
+      super.checkTableExistence(env);
+      return;
+    }
+    try {
+      if (env.getConfigManager()
+          .getClusterSchemaManager()
+          .getTableIfExists(database, table.getTableName())
+          .isPresent()) {
+        setFailure(
+            new ProcedureException(
+                new IoTDBException(
+                    String.format("Table '%s.%s' already exists.", database, table.getTableName()),
+                    TABLE_ALREADY_EXISTS.getStatusCode())));
+      } else {
+        final TDatabaseSchema schema =
+            env.getConfigManager().getClusterSchemaManager().getDatabaseSchemaByName(database);
+        if (!table.getPropValue(TsTable.TTL_PROPERTY).isPresent()
+            && schema.isSetTTL()
+            && schema.getTTL() != Long.MAX_VALUE) {
+          table.addProp(TsTable.TTL_PROPERTY, String.valueOf(schema.getTTL()));
+        }
+        setNextState(CreateTableState.PRE_CREATE);
+      }
+    } catch (final MetadataException | DatabaseNotExistsException e) {
+      setFailure(new ProcedureException(e));
+    }
   }
 
   @Override

@@ -56,9 +56,9 @@ public class CreateTableProcedure
 
   private static final Logger LOGGER = LoggerFactory.getLogger(CreateTableProcedure.class);
 
-  private String database;
+  protected String database;
 
-  private TsTable table;
+  protected TsTable table;
 
   public CreateTableProcedure(final boolean isGeneratedByPipe) {
     super(isGeneratedByPipe);
@@ -112,7 +112,7 @@ public class CreateTableProcedure
     }
   }
 
-  private void checkTableExistence(final ConfigNodeProcedureEnv env) {
+  protected void checkTableExistence(final ConfigNodeProcedureEnv env) {
     try {
       if (env.getConfigManager()
           .getClusterSchemaManager()
