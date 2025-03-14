@@ -53,6 +53,7 @@ import org.apache.iotdb.confignode.procedure.impl.schema.SetTemplateProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.UnsetTemplateProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.table.AddTableColumnProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.table.CreateTableProcedure;
+import org.apache.iotdb.confignode.procedure.impl.schema.table.CreateTableViewProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.table.DeleteDevicesProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.table.DropTableColumnProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.table.DropTableProcedure;
@@ -198,6 +199,9 @@ public class ProcedureFactory implements IProcedureFactory {
         break;
       case CREATE_TABLE_PROCEDURE:
         procedure = new CreateTableProcedure(false);
+        break;
+      case CREATE_TABLE_VIEW_PROCEDURE:
+        procedure = new CreateTableViewProcedure(false);
         break;
       case ADD_TABLE_COLUMN_PROCEDURE:
         procedure = new AddTableColumnProcedure(false);
@@ -394,6 +398,8 @@ public class ProcedureFactory implements IProcedureFactory {
       return ProcedureType.DEACTIVATE_TEMPLATE_PROCEDURE;
     } else if (procedure instanceof UnsetTemplateProcedure) {
       return ProcedureType.UNSET_TEMPLATE_PROCEDURE;
+    } else if (procedure instanceof CreateTableViewProcedure) {
+      return ProcedureType.CREATE_TABLE_VIEW_PROCEDURE;
     } else if (procedure instanceof CreateTableProcedure) {
       return ProcedureType.CREATE_TABLE_PROCEDURE;
     } else if (procedure instanceof AddTableColumnProcedure) {

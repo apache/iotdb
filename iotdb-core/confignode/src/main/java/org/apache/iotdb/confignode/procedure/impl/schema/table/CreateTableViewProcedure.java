@@ -20,7 +20,13 @@
 package org.apache.iotdb.confignode.procedure.impl.schema.table;
 
 import org.apache.iotdb.commons.schema.table.TsTable;
+import org.apache.iotdb.confignode.procedure.store.ProcedureType;
 
+import org.apache.tsfile.utils.ReadWriteIOUtils;
+
+import java.io.DataOutputStream;
+import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.util.Objects;
 
 public class CreateTableViewProcedure extends CreateTableProcedure {
@@ -38,6 +44,22 @@ public class CreateTableViewProcedure extends CreateTableProcedure {
       final boolean isGeneratedByPipe) {
     super(database, table, isGeneratedByPipe);
     this.replace = replace;
+  }
+
+  @Override
+  public void serialize(final DataOutputStream stream) throws IOException {
+    stream.writeShort(
+        isGeneratedByPipe
+            ? ProcedureType.PIPE_ENRICHED_CREATE_TABLE_VIEW_PROCEDURE.getTypeCode()
+            : ProcedureType.CREATE_TABLE_VIEW_PROCEDURE.getTypeCode());
+    serializeAttributes(stream);
+    ReadWriteIOUtils.write(replace, stream);
+  }
+
+  @Override
+  public void deserialize(final ByteBuffer byteBuffer) {
+    super.deserialize(byteBuffer);
+    replace = ReadWriteIOUtils.readBool(byteBuffer);
   }
 
   @Override
