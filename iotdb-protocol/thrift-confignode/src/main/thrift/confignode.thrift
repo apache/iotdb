@@ -1113,7 +1113,7 @@ enum TTestOperation {
 }
 
 // ====================================================
-// Table
+// Table Or View
 // ====================================================
 
 struct TAlterOrDropTableReq {
@@ -1184,6 +1184,11 @@ struct TConstructTreeDeviceViewReq {
     3: required string pathPattern
     4: required binary columnInfo
     5: optional string TTL
+}
+
+struct TCreateTableViewReq {
+    1: required binary tableInfo
+    2: required bool replace
 }
 
 service IConfigNodeRPCService {
