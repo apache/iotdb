@@ -2017,6 +2017,15 @@ public class IoTDBDescriptor {
         BinaryAllocator.getInstance().close(true);
       }
 
+      commonDescriptor
+          .getConfig()
+          .setTimestampPrecisionCheckEnabled(
+              Boolean.parseBoolean(
+                  properties.getProperty(
+                      "timestamp_precision_check_enabled",
+                      ConfigurationFileUtils.getConfigurationDefaultValue(
+                          "timestamp_precision_check_enabled"))));
+
       // update query_sample_throughput_bytes_per_sec
       loadQuerySampleThroughput(properties);
       // update trusted_uri_pattern

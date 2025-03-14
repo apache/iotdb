@@ -66,6 +66,7 @@ import java.util.concurrent.ExecutionException;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.PATH_SEPARATOR;
 import static org.junit.Assert.assertEquals;
 
+@SuppressWarnings("OptionalGetWithoutIsPresent")
 public class ReadPointCompactionPerformerTest extends AbstractCompactionTest {
   private final String oldThreadName = Thread.currentThread().getName();
 
@@ -228,35 +229,47 @@ public class ReadPointCompactionPerformerTest extends AbstractCompactionTest {
         targetResources, CompactionTaskType.INNER_SEQ, COMPACTION_TEST_SG);
     assertEquals(
         0,
-        targetResources
-            .get(0)
-            .getStartTime(new PlainDeviceID(COMPACTION_TEST_SG + PATH_SEPARATOR + "d0")));
+        (long)
+            targetResources
+                .get(0)
+                .getStartTime(new PlainDeviceID(COMPACTION_TEST_SG + PATH_SEPARATOR + "d0"))
+                .get());
     assertEquals(
         0,
-        targetResources
-            .get(0)
-            .getStartTime(new PlainDeviceID(COMPACTION_TEST_SG + PATH_SEPARATOR + "d1")));
+        (long)
+            targetResources
+                .get(0)
+                .getStartTime(new PlainDeviceID(COMPACTION_TEST_SG + PATH_SEPARATOR + "d1"))
+                .get());
     assertEquals(
         250,
-        targetResources
-            .get(0)
-            .getStartTime(new PlainDeviceID(COMPACTION_TEST_SG + PATH_SEPARATOR + "d2")));
+        (long)
+            targetResources
+                .get(0)
+                .getStartTime(new PlainDeviceID(COMPACTION_TEST_SG + PATH_SEPARATOR + "d2"))
+                .get());
     assertEquals(
         600,
-        targetResources
-            .get(0)
-            .getStartTime(new PlainDeviceID(COMPACTION_TEST_SG + PATH_SEPARATOR + "d3")));
+        (long)
+            targetResources
+                .get(0)
+                .getStartTime(new PlainDeviceID(COMPACTION_TEST_SG + PATH_SEPARATOR + "d3"))
+                .get());
     assertEquals(
         600,
-        targetResources
-            .get(0)
-            .getStartTime(new PlainDeviceID(COMPACTION_TEST_SG + PATH_SEPARATOR + "d4")));
+        (long)
+            targetResources
+                .get(0)
+                .getStartTime(new PlainDeviceID(COMPACTION_TEST_SG + PATH_SEPARATOR + "d4"))
+                .get());
     for (int i = 0; i < 5; i++) {
       assertEquals(
           749,
-          targetResources
-              .get(0)
-              .getEndTime(new PlainDeviceID(COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + i)));
+          (long)
+              targetResources
+                  .get(0)
+                  .getEndTime(new PlainDeviceID(COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + i))
+                  .get());
     }
 
     for (int i = 0; i < 5; i++) {
@@ -378,35 +391,47 @@ public class ReadPointCompactionPerformerTest extends AbstractCompactionTest {
         targetResources, CompactionTaskType.INNER_SEQ, COMPACTION_TEST_SG);
     assertEquals(
         0,
-        targetResources
-            .get(0)
-            .getStartTime(new PlainDeviceID(COMPACTION_TEST_SG + PATH_SEPARATOR + "d0")));
+        (long)
+            targetResources
+                .get(0)
+                .getStartTime(new PlainDeviceID(COMPACTION_TEST_SG + PATH_SEPARATOR + "d0"))
+                .get());
     assertEquals(
         0,
-        targetResources
-            .get(0)
-            .getStartTime(new PlainDeviceID(COMPACTION_TEST_SG + PATH_SEPARATOR + "d1")));
+        (long)
+            targetResources
+                .get(0)
+                .getStartTime(new PlainDeviceID(COMPACTION_TEST_SG + PATH_SEPARATOR + "d1"))
+                .get());
     assertEquals(
         250,
-        targetResources
-            .get(0)
-            .getStartTime(new PlainDeviceID(COMPACTION_TEST_SG + PATH_SEPARATOR + "d2")));
+        (long)
+            targetResources
+                .get(0)
+                .getStartTime(new PlainDeviceID(COMPACTION_TEST_SG + PATH_SEPARATOR + "d2"))
+                .get());
     assertEquals(
         600,
-        targetResources
-            .get(0)
-            .getStartTime(new PlainDeviceID(COMPACTION_TEST_SG + PATH_SEPARATOR + "d3")));
+        (long)
+            targetResources
+                .get(0)
+                .getStartTime(new PlainDeviceID(COMPACTION_TEST_SG + PATH_SEPARATOR + "d3"))
+                .get());
     assertEquals(
         600,
-        targetResources
-            .get(0)
-            .getStartTime(new PlainDeviceID(COMPACTION_TEST_SG + PATH_SEPARATOR + "d4")));
+        (long)
+            targetResources
+                .get(0)
+                .getStartTime(new PlainDeviceID(COMPACTION_TEST_SG + PATH_SEPARATOR + "d4"))
+                .get());
     for (int i = 0; i < 5; i++) {
       assertEquals(
           749,
-          targetResources
-              .get(0)
-              .getEndTime(new PlainDeviceID(COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + i)));
+          (long)
+              targetResources
+                  .get(0)
+                  .getEndTime(new PlainDeviceID(COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + i))
+                  .get());
     }
 
     for (int i = 0; i < 5; i++) {

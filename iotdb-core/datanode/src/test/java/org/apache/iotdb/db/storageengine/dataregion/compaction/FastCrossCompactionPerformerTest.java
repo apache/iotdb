@@ -38,6 +38,7 @@ import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.Compacti
 import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.CompactionWorker;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.comparator.DefaultCompactionTaskComparatorImpl;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.utils.CompactionFileGeneratorUtils;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.utils.CompactionTestFileWriter;
 import org.apache.iotdb.db.storageengine.dataregion.read.control.FileReaderManager;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.utils.TsFileResourceUtils;
@@ -51,7 +52,10 @@ import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.exception.write.WriteProcessException;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.file.metadata.PlainDeviceID;
+import org.apache.tsfile.file.metadata.enums.CompressionType;
+import org.apache.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.tsfile.read.common.IBatchDataIterator;
+import org.apache.tsfile.read.common.TimeRange;
 import org.apache.tsfile.read.common.block.TsBlock;
 import org.apache.tsfile.utils.TsFileGeneratorUtils;
 import org.apache.tsfile.utils.TsPrimitiveType;
@@ -65,6 +69,7 @@ import org.junit.Test;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
@@ -4388,6 +4393,73 @@ public class FastCrossCompactionPerformerTest extends AbstractCompactionTest {
       SystemInfo.getInstance()
           .setTotalFileLimitForCompactionTask(oldMaxCrossCompactionCandidateFileNum);
     }
+  }
+
+  @Test
+  public void testCompactionWithMinTimestamp() throws IOException {
+    TsFileResource seqResource1 = createEmptyFileAndResource(true);
+    try (CompactionTestFileWriter writer = new CompactionTestFileWriter(seqResource1)) {
+      writer.startChunkGroup("d2");
+      writer.generateSimpleNonAlignedSeriesToCurrentDevice(
+          "s1",
+          new TimeRange[] {new TimeRange(Long.MIN_VALUE, Long.MIN_VALUE)},
+          TSEncoding.PLAIN,
+          CompressionType.LZ4);
+      writer.endChunkGroup();
+      writer.endFile();
+    }
+    TsFileResource seqResource2 = createEmptyFileAndResource(true);
+    try (CompactionTestFileWriter writer = new CompactionTestFileWriter(seqResource2)) {
+      writer.startChunkGroup("d1");
+      writer.generateSimpleAlignedSeriesToCurrentDevice(
+          Arrays.asList("s1", "s2"),
+          new TimeRange[] {new TimeRange(Long.MIN_VALUE, Long.MIN_VALUE)},
+          TSEncoding.PLAIN,
+          CompressionType.LZ4);
+      writer.endChunkGroup();
+      writer.endFile();
+    }
+    TsFileResource unseqResource1 = createEmptyFileAndResource(true);
+    try (CompactionTestFileWriter writer = new CompactionTestFileWriter(unseqResource1)) {
+      writer.startChunkGroup("d1");
+      writer.generateSimpleAlignedSeriesToCurrentDevice(
+          Arrays.asList("s1", "s2"),
+          new TimeRange[] {new TimeRange(Long.MIN_VALUE, Long.MIN_VALUE)},
+          TSEncoding.PLAIN,
+          CompressionType.LZ4);
+      writer.endChunkGroup();
+      writer.startChunkGroup("d2");
+      writer.generateSimpleNonAlignedSeriesToCurrentDevice(
+          "s1",
+          new TimeRange[] {new TimeRange(Long.MIN_VALUE, Long.MIN_VALUE)},
+          TSEncoding.PLAIN,
+          CompressionType.LZ4);
+      writer.endChunkGroup();
+      writer.endFile();
+    }
+    seqResources.add(seqResource1);
+    seqResources.add(seqResource2);
+    unseqResources.add(unseqResource1);
+    CrossSpaceCompactionTask task =
+        new CrossSpaceCompactionTask(
+            0,
+            tsFileManager,
+            seqResources,
+            unseqResources,
+            new FastCompactionPerformer(true),
+            1000,
+            0);
+    Assert.assertTrue(task.start());
+    TsFileResource target1 = tsFileManager.getTsFileList(true).get(0);
+    TsFileResource target2 = tsFileManager.getTsFileList(true).get(1);
+    Assert.assertEquals(1, target1.getDevices().size());
+    Assert.assertEquals(1, target2.getDevices().size());
+    Assert.assertEquals(
+        Long.MIN_VALUE,
+        target1.getStartTime(new PlainDeviceID("root.testsg.d2")).get().longValue());
+    Assert.assertEquals(
+        Long.MIN_VALUE,
+        target2.getStartTime(new PlainDeviceID("root.testsg.d1")).get().longValue());
   }
 
   private void validateSeqFiles() {

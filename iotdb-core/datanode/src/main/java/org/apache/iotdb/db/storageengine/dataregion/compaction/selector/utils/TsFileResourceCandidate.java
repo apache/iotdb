@@ -33,6 +33,7 @@ import java.io.IOException;
 import java.util.Iterator;
 import java.util.Set;
 
+@SuppressWarnings("OptionalGetWithoutIsPresent")
 public class TsFileResourceCandidate {
   @SuppressWarnings("squid:S1104")
   public TsFileResource resource;
@@ -85,8 +86,8 @@ public class TsFileResourceCandidate {
       } else {
         deviceTimeIndex = new DeviceTimeIndex();
         for (IDeviceID device : ((DeviceTimeIndex) timeIndex).getDevices()) {
-          deviceTimeIndex.updateStartTime(device, timeIndex.getStartTime(device));
-          deviceTimeIndex.updateEndTime(device, timeIndex.getEndTime(device));
+          deviceTimeIndex.updateStartTime(device, timeIndex.getStartTime(device).get());
+          deviceTimeIndex.updateEndTime(device, timeIndex.getEndTime(device).get());
         }
       }
     } else {
@@ -129,7 +130,9 @@ public class TsFileResourceCandidate {
       public DeviceInfo next() {
         IDeviceID deviceId = deviceIterator.next();
         return new DeviceInfo(
-            deviceId, deviceTimeIndex.getStartTime(deviceId), deviceTimeIndex.getEndTime(deviceId));
+            deviceId,
+            deviceTimeIndex.getStartTime(deviceId).get(),
+            deviceTimeIndex.getEndTime(deviceId).get());
       }
     };
   }
@@ -142,7 +145,9 @@ public class TsFileResourceCandidate {
   public DeviceInfo getDeviceInfoById(IDeviceID deviceId) throws IOException {
     prepareDeviceInfos();
     return new DeviceInfo(
-        deviceId, deviceTimeIndex.getStartTime(deviceId), deviceTimeIndex.getEndTime(deviceId));
+        deviceId,
+        deviceTimeIndex.getStartTime(deviceId).get(),
+        deviceTimeIndex.getEndTime(deviceId).get());
   }
 
   public boolean containsDevice(IDeviceID deviceId) throws IOException {

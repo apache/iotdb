@@ -62,6 +62,7 @@ public class AlignedSeriesCompactionExecutor {
   private final List<IMeasurementSchema> schemaList;
   private long remainingPointInChunkWriter = 0L;
   private final CompactionTaskSummary summary;
+  private boolean lastWriteTimestampSet = false;
   private long lastWriteTimestamp = Long.MIN_VALUE;
 
   private final long chunkSizeThreshold =
@@ -211,11 +212,12 @@ public class AlignedSeriesCompactionExecutor {
   }
 
   private void checkAndUpdatePreviousTimestamp(long currentWritingTimestamp) {
-    if (currentWritingTimestamp <= lastWriteTimestamp) {
+    if (lastWriteTimestampSet && currentWritingTimestamp <= lastWriteTimestamp) {
       throw new CompactionLastTimeCheckFailedException(
           ((PlainDeviceID) device).toStringID(), currentWritingTimestamp, lastWriteTimestamp);
     } else {
       lastWriteTimestamp = currentWritingTimestamp;
+      lastWriteTimestampSet = true;
     }
   }
 }

@@ -24,7 +24,6 @@ import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.utils.DateTimeUtils;
 
 import org.apache.tsfile.file.metadata.IDeviceID;
-import org.apache.tsfile.file.metadata.PlainDeviceID;
 import org.apache.tsfile.fileSystem.FSFactoryProducer;
 
 import java.io.File;
@@ -77,13 +76,15 @@ public class TsFileResourcePrinter {
         resource.getMinPlanIndex(), resource.getMaxPlanIndex());
 
     for (IDeviceID device : resource.getDevices()) {
+      // iterating the index, must present
+      //noinspection OptionalGetWithoutIsPresent
       System.out.printf(
           "device %s, start time %d (%s), end time %d (%s)%n",
-          ((PlainDeviceID) device).toStringID(),
-          resource.getStartTime(device),
-          DateTimeUtils.convertLongToDate(resource.getStartTime(device)),
-          resource.getEndTime(device),
-          DateTimeUtils.convertLongToDate(resource.getEndTime(device)));
+          device,
+          resource.getStartTime(device).get(),
+          DateTimeUtils.convertLongToDate(resource.getStartTime(device).get()),
+          resource.getEndTime(device).get(),
+          DateTimeUtils.convertLongToDate(resource.getEndTime(device).get()));
     }
     System.out.println();
   }

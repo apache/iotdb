@@ -44,6 +44,7 @@ import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -312,9 +313,10 @@ public class DeviceTimeIndex implements ITimeIndex {
 
   @Override
   public void updateStartTime(IDeviceID deviceId, long time) {
-    long startTime = getStartTime(deviceId);
+    int index = getDeviceIndex(deviceId);
+    @SuppressWarnings("OptionalGetWithoutIsPresent") // must present after getDeviceIndex
+    long startTime = getStartTime(deviceId).get();
     if (time < startTime) {
-      int index = getDeviceIndex(deviceId);
       startTimes[index] = time;
     }
     minStartTime = Math.min(minStartTime, time);
@@ -322,9 +324,10 @@ public class DeviceTimeIndex implements ITimeIndex {
 
   @Override
   public void updateEndTime(IDeviceID deviceId, long time) {
-    long endTime = getEndTime(deviceId);
+    int index = getDeviceIndex(deviceId);
+    @SuppressWarnings("OptionalGetWithoutIsPresent") // must present after getDeviceIndex
+    long endTime = getEndTime(deviceId).get();
     if (time > endTime) {
-      int index = getDeviceIndex(deviceId);
       endTimes[index] = time;
     }
     maxEndTime = Math.max(maxEndTime, time);
@@ -345,19 +348,19 @@ public class DeviceTimeIndex implements ITimeIndex {
   }
 
   @Override
-  public long getStartTime(IDeviceID deviceId) {
+  public Optional<Long> getStartTime(IDeviceID deviceId) {
     if (!deviceToIndex.containsKey(deviceId)) {
-      return Long.MAX_VALUE;
+      return Optional.empty();
     }
-    return startTimes[deviceToIndex.get(deviceId)];
+    return Optional.of(startTimes[deviceToIndex.get(deviceId)]);
   }
 
   @Override
-  public long getEndTime(IDeviceID deviceId) {
+  public Optional<Long> getEndTime(IDeviceID deviceId) {
     if (!deviceToIndex.containsKey(deviceId)) {
-      return Long.MIN_VALUE;
+      return Optional.empty();
     }
-    return endTimes[deviceToIndex.get(deviceId)];
+    return Optional.of(endTimes[deviceToIndex.get(deviceId)]);
   }
 
   @Override
@@ -394,7 +397,8 @@ public class DeviceTimeIndex implements ITimeIndex {
 
   @Override
   public boolean isDeviceAlive(IDeviceID device, long ttl) {
-    return endTimes[deviceToIndex.get(device)] >= CommonDateTimeUtils.currentTime() - ttl;
+    return ttl == Long.MAX_VALUE
+        || endTimes[deviceToIndex.get(device)] >= CommonDateTimeUtils.currentTime() - ttl;
   }
 
   @Override

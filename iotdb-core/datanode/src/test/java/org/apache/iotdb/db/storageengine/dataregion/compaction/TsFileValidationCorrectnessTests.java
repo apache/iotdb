@@ -27,6 +27,7 @@ import org.apache.iotdb.db.utils.constant.TestConstant;
 
 import org.apache.commons.io.FileUtils;
 import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.file.metadata.PlainDeviceID;
 import org.apache.tsfile.file.metadata.enums.CompressionType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
@@ -165,8 +166,9 @@ public class TsFileValidationCorrectnessTests {
   public void testAlignedTimestampTimeChunkOffsetEqualsMetadata() throws IOException {
     String path = dir + File.separator + "test6.tsfile";
     TsFileResource tsFileResource = new TsFileResource(new File(path));
+    IDeviceID deviceID;
     try (CompactionTestFileWriter writer = new CompactionTestFileWriter(tsFileResource)) {
-      writer.startChunkGroup("d1");
+      deviceID = writer.startChunkGroup("d1");
       VectorMeasurementSchema vectorMeasurementSchema =
           new VectorMeasurementSchema(
               "d1", new String[] {"s1"}, new TSDataType[] {TSDataType.INT32});
@@ -182,8 +184,8 @@ public class TsFileValidationCorrectnessTests {
       writer.endChunkGroup();
       writer.endFile();
     }
-    tsFileResource.updateStartTime(new PlainDeviceID("d1"), 1);
-    tsFileResource.updateEndTime(new PlainDeviceID("d1"), 3);
+    tsFileResource.updateStartTime(deviceID, 1);
+    tsFileResource.updateEndTime(deviceID, 3);
     tsFileResource.serialize();
     boolean success = TsFileValidator.getInstance().validateTsFile(tsFileResource);
     Assert.assertTrue(success);
@@ -272,8 +274,9 @@ public class TsFileValidationCorrectnessTests {
   public void testNonAlignedTimestampTimeChunkOffsetEqualsMetadata() throws IOException {
     String path = dir + File.separator + "test11.tsfile";
     TsFileResource tsFileResource = new TsFileResource(new File(path));
+    IDeviceID deviceID;
     try (CompactionTestFileWriter writer = new CompactionTestFileWriter(tsFileResource)) {
-      writer.startChunkGroup("d1");
+      deviceID = writer.startChunkGroup("d1");
       VectorMeasurementSchema vectorMeasurementSchema =
           new VectorMeasurementSchema(
               "d1", new String[] {"s1"}, new TSDataType[] {TSDataType.INT32});
@@ -289,8 +292,8 @@ public class TsFileValidationCorrectnessTests {
       writer.endChunkGroup();
       writer.endFile();
     }
-    tsFileResource.updateStartTime(new PlainDeviceID("d1"), 1);
-    tsFileResource.updateEndTime(new PlainDeviceID("d1"), 3);
+    tsFileResource.updateStartTime(deviceID, 1);
+    tsFileResource.updateEndTime(deviceID, 3);
     tsFileResource.serialize();
     boolean success = TsFileValidator.getInstance().validateTsFile(tsFileResource);
     Assert.assertTrue(success);
