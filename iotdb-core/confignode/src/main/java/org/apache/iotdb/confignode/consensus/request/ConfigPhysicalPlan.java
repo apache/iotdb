@@ -105,6 +105,7 @@ import org.apache.iotdb.confignode.consensus.request.write.table.CommitCreateTab
 import org.apache.iotdb.confignode.consensus.request.write.table.CommitDeleteColumnPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.CommitDeleteTablePlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.PreCreateTablePlan;
+import org.apache.iotdb.confignode.consensus.request.write.table.PreCreateTableViewPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.PreDeleteColumnPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.PreDeleteTablePlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.RenameTableColumnPlan;
@@ -382,6 +383,9 @@ public abstract class ConfigPhysicalPlan implements IConsensusRequest {
           break;
         case PreCreateTable:
           plan = new PreCreateTablePlan(configPhysicalPlanType);
+          break;
+        case PreCreateTableView:
+          plan = new PreCreateTableViewPlan();
           break;
         case RollbackCreateTable:
           plan = new RollbackCreateTablePlan();
