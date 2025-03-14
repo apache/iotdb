@@ -84,7 +84,9 @@ public class WALInsertNodeCache {
                     * PIPE_CONFIG.getPipeMaxAllowedPinnedMemTableCount()
                     * CONFIG.getWalFileSizeThresholdInByte()
                     / CONFIG.getDataRegionNum(),
-                0.5 * MEMORY_CONFIG.getPipeMemoryManager().getTotalMemorySizeInBytes() / CONFIG.getDataRegionNum());
+                0.5
+                    * MEMORY_CONFIG.getPipeMemoryManager().getTotalMemorySizeInBytes()
+                    / CONFIG.getDataRegionNum());
     allocatedMemoryBlock =
         PipeDataNodeResourceManager.memory()
             .tryAllocate(requestedAllocateSize)
