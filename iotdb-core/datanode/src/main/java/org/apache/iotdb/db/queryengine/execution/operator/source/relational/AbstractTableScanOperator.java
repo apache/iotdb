@@ -32,8 +32,6 @@ import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
 import org.apache.iotdb.db.storageengine.dataregion.read.IQueryDataSource;
 import org.apache.iotdb.db.storageengine.dataregion.read.QueryDataSource;
 
-import org.apache.tsfile.block.column.Column;
-import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.common.conf.TSFileDescriptor;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.block.TsBlock;
@@ -200,42 +198,14 @@ public abstract class AbstractTableScanOperator extends AbstractSeriesScanOperat
   }
 
   private void constructResultTsBlock() {
-    int positionCount = measurementDataBlock.getPositionCount();
     DeviceEntry currentDeviceEntry = deviceEntries.get(currentDeviceIndex);
-    Column[] valueColumns = new Column[columnsIndexArray.length];
-    for (int i = 0; i < columnsIndexArray.length; i++) {
-      switch (columnSchemas.get(i).getColumnCategory()) {
-        case TAG:
-          String idColumnValue = getNthIdColumnValue(currentDeviceEntry, columnsIndexArray[i]);
-
-          valueColumns[i] =
-              getIdOrAttributeValueColumn(
-                  idColumnValue == null
-                      ? null
-                      : new Binary(idColumnValue, TSFileConfig.STRING_CHARSET),
-                  positionCount);
-          break;
-        case ATTRIBUTE:
-          Binary attributeColumnValue =
-              currentDeviceEntry.getAttributeColumnValues().get(columnsIndexArray[i]);
-          valueColumns[i] = getIdOrAttributeValueColumn(attributeColumnValue, positionCount);
-          break;
-        case FIELD:
-          valueColumns[i] = measurementDataBlock.getColumn(columnsIndexArray[i]);
-          break;
-        case TIME:
-          valueColumns[i] = measurementDataBlock.getTimeColumn();
-          break;
-        default:
-          throw new IllegalArgumentException(
-              "Unexpected column category: " + columnSchemas.get(i).getColumnCategory());
-      }
-    }
     this.resultTsBlock =
-        new TsBlock(
-            positionCount,
-            new RunLengthEncodedColumn(TIME_COLUMN_TEMPLATE, positionCount),
-            valueColumns);
+        MeasurementToTableViewAdaptorUtils.toTableBlock(
+            measurementDataBlock,
+            columnsIndexArray,
+            columnSchemas,
+            deviceEntries.get(currentDeviceIndex),
+            idColumnIndex -> getNthIdColumnValue(currentDeviceEntry, idColumnIndex));
   }
 
   abstract String getNthIdColumnValue(DeviceEntry deviceEntry, int idColumnIndex);
