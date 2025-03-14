@@ -222,7 +222,7 @@ public class UnsealedTsFileRecoverPerformerTest {
     assertEquals(1, ((long) tsFileResource.getStartTime(DEVICE1_NAME).get()));
     assertEquals(2, ((long) tsFileResource.getEndTime(DEVICE1_NAME).get()));
     assertEquals(3, ((long) tsFileResource.getStartTime(DEVICE2_NAME).get()));
-    assertEquals(4, ((long) tsFileResource.getEndTime(DEVICE2_NAME).get()));
+    assertEquals(3, ((long) tsFileResource.getEndTime(DEVICE2_NAME).get()));
     // check file existence
     assertTrue(file.exists());
     assertTrue(new File(FILE_NAME.concat(TsFileResource.RESOURCE_SUFFIX)).exists());

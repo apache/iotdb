@@ -322,9 +322,9 @@ public class WALRecoverManagerTest {
     reader.close();
     // check .resource file in memory
     assertEquals(1, (long) tsFileWithWALResource.getStartTime(DEVICE1_NAME).get());
-    assertEquals(2, (long) tsFileWithWALResource.getStartTime(DEVICE1_NAME).get());
+    assertEquals(2, (long) tsFileWithWALResource.getEndTime(DEVICE1_NAME).get());
     assertEquals(3, (long) tsFileWithWALResource.getStartTime(DEVICE2_NAME).get());
-    assertEquals(15, (long) tsFileWithWALResource.getStartTime(DEVICE2_NAME).get());
+    assertEquals(15, (long) tsFileWithWALResource.getEndTime(DEVICE2_NAME).get());
     // check file existence
     assertTrue(new File(FILE_WITH_WAL_NAME).exists());
     assertTrue(new File(FILE_WITH_WAL_NAME.concat(TsFileResource.RESOURCE_SUFFIX)).exists());
