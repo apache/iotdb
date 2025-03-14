@@ -2674,10 +2674,7 @@ public class ConfigManager implements IManager {
     }
 
     final TsTable table = new TsTable(tableName);
-    status = TreeViewSchema.setPathPattern(table, pathPattern);
-    if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != status.getCode()) {
-      return status;
-    }
+    TreeViewSchema.setPathPattern(table, pathPattern);
 
     if (Objects.nonNull(ttl)) {
       table.addProp(TsTable.TTL_PROPERTY, ttl);

@@ -19,11 +19,8 @@
 
 package org.apache.iotdb.commons.schema.table;
 
-import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternUtil;
-import org.apache.iotdb.commons.utils.StatusUtils;
-import org.apache.iotdb.rpc.TSStatusCode;
 
 public class TreeViewSchema {
   public static final String ORIGINAL_NAME = "__original_name";
@@ -38,20 +35,22 @@ public class TreeViewSchema {
     return table.getPropValue(RESTRICT).isPresent();
   }
 
-  public static TSStatus setPathPattern(final TsTable table, final PartialPath pathPattern) {
+  public static void setRestrict(final TsTable table) {
+    table.addProp(RESTRICT, "");
+  }
+
+  public static String setPathPattern(final TsTable table, final PartialPath pathPattern) {
     final String[] nodes = pathPattern.getNodes();
     if (!PathPatternUtil.isMultiLevelMatchWildcard(nodes[nodes.length - 1])) {
-      return new TSStatus(TSStatusCode.ILLEGAL_PATH.getStatusCode())
-          .setMessage("The last node must be '**'");
+      return "The last node must be '**'";
     }
     for (int i = nodes.length - 2; i >= 0; --i) {
       if (PathPatternUtil.hasWildcard(nodes[i])) {
-        return new TSStatus(TSStatusCode.ILLEGAL_PATH.getStatusCode())
-            .setMessage("The wildCard is not permitted to set before the last node");
+        return "The wildCard is not permitted to set before the last node";
       }
     }
     table.addProp(TREE_PATH_PATTERN, pathPattern.toString());
-    return StatusUtils.OK;
+    return null;
   }
 
   private TreeViewSchema() {

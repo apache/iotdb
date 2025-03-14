@@ -27,6 +27,7 @@ import org.apache.iotdb.commons.pipe.agent.plugin.builtin.BuiltinPipePlugin;
 import org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant;
 import org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant;
 import org.apache.iotdb.commons.pipe.config.constant.SystemConstant;
+import org.apache.iotdb.commons.schema.table.TreeViewSchema;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.column.TimeColumnSchema;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
@@ -117,6 +118,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateFunction;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreatePipe;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreatePipePlugin;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateTable;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateTableView;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateTopic;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DataType;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DatabaseStatement;
@@ -484,6 +486,65 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
           TableHeaderSchemaValidator.generateColumnSchema(category, columnName, dataType, comment));
     }
     return new CreateTableTask(table, database, node.isIfNotExists());
+  }
+
+  @Override
+  protected IConfigTask visitCreateTableView(
+      final CreateTableView node, final MPPQueryContext context) {
+    final Pair<String, TsTable> databaseTablePair = parseTable4CreateTableOrView(node, context);
+    final TsTable table = databaseTablePair.getRight();
+    final String msg = TreeViewSchema.setPathPattern(table, node.getPrefixPath());
+    if (Objects.nonNull(msg)) {
+      throw new SemanticException(msg);
+    }
+    if (node.isRestrict()) {
+      TreeViewSchema.setRestrict(table);
+    }
+    return null;
+  }
+
+  private Pair<String, TsTable> parseTable4CreateTableOrView(
+      final CreateTable node, final MPPQueryContext context) {
+    context.setQueryType(QueryType.WRITE);
+    final Pair<String, String> databaseTablePair = splitQualifiedName(node.getName(), true);
+    final String database = databaseTablePair.getLeft();
+    final String tableName = databaseTablePair.getRight();
+
+    accessControl.checkCanCreateTable(
+        context.getSession().getUserName(), new QualifiedObjectName(database, tableName));
+
+    final TsTable table = new TsTable(tableName);
+
+    table.setProps(convertPropertiesToMap(node.getProperties(), false));
+    if (Objects.nonNull(node.getComment())) {
+      table.addProp(TsTable.COMMENT_KEY, node.getComment());
+    }
+
+    // TODO: Place the check at statement analyzer
+    boolean hasTimeColumn = false;
+    for (final ColumnDefinition columnDefinition : node.getElements()) {
+      final TsTableColumnCategory category = columnDefinition.getColumnCategory();
+      final String columnName = columnDefinition.getName().getValue();
+      final TSDataType dataType = getDataType(columnDefinition.getType());
+      final String comment = columnDefinition.getComment();
+      if (checkTimeColumnIdempotent(
+              category,
+              columnName,
+              dataType,
+              comment,
+              (TimeColumnSchema) table.getColumnSchema(TIME_COLUMN_NAME))
+          && !hasTimeColumn) {
+        hasTimeColumn = true;
+        continue;
+      }
+      if (table.getColumnSchema(columnName) != null) {
+        throw new SemanticException(
+            String.format("Columns in table shall not share the same name %s.", columnName));
+      }
+      table.addColumnSchema(
+          TableHeaderSchemaValidator.generateColumnSchema(category, columnName, dataType, comment));
+    }
+    return new Pair<>(database, table);
   }
 
   private boolean checkTimeColumnIdempotent(
