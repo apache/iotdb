@@ -42,7 +42,9 @@ import java.util.stream.Collectors;
 public class HybridProgressIndex extends ProgressIndex {
 
   private static final long INSTANCE_SIZE =
-      RamUsageEstimator.shallowSizeOfInstance(HybridProgressIndex.class) + ProgressIndex.LOCK_SIZE;
+      RamUsageEstimator.shallowSizeOfInstance(HybridProgressIndex.class)
+          + RamUsageEstimator.shallowSizeOfInstance(HashMap.class)
+          + ProgressIndex.LOCK_SIZE;
   private static final long ENTRY_SIZE =
       RamUsageEstimator.HASHTABLE_RAM_BYTES_PER_ENTRY
           + RamUsageEstimator.alignObjectSize(Short.BYTES);
