@@ -446,46 +446,9 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
 
   @Override
   protected IConfigTask visitCreateTable(final CreateTable node, final MPPQueryContext context) {
-    context.setQueryType(QueryType.WRITE);
-    final Pair<String, String> databaseTablePair = splitQualifiedName(node.getName(), true);
-    final String database = databaseTablePair.getLeft();
-    final String tableName = databaseTablePair.getRight();
-
-    accessControl.checkCanCreateTable(
-        context.getSession().getUserName(), new QualifiedObjectName(database, tableName));
-
-    final TsTable table = new TsTable(tableName);
-
-    table.setProps(convertPropertiesToMap(node.getProperties(), false));
-    if (Objects.nonNull(node.getComment())) {
-      table.addProp(TsTable.COMMENT_KEY, node.getComment());
-    }
-
-    // TODO: Place the check at statement analyzer
-    boolean hasTimeColumn = false;
-    for (final ColumnDefinition columnDefinition : node.getElements()) {
-      final TsTableColumnCategory category = columnDefinition.getColumnCategory();
-      final String columnName = columnDefinition.getName().getValue();
-      final TSDataType dataType = getDataType(columnDefinition.getType());
-      final String comment = columnDefinition.getComment();
-      if (checkTimeColumnIdempotent(
-              category,
-              columnName,
-              dataType,
-              comment,
-              (TimeColumnSchema) table.getColumnSchema(TIME_COLUMN_NAME))
-          && !hasTimeColumn) {
-        hasTimeColumn = true;
-        continue;
-      }
-      if (table.getColumnSchema(columnName) != null) {
-        throw new SemanticException(
-            String.format("Columns in table shall not share the same name %s.", columnName));
-      }
-      table.addColumnSchema(
-          TableHeaderSchemaValidator.generateColumnSchema(category, columnName, dataType, comment));
-    }
-    return new CreateTableTask(table, database, node.isIfNotExists());
+    final Pair<String, TsTable> databaseTablePair = parseTable4CreateTableOrView(node, context);
+    return new CreateTableTask(
+        databaseTablePair.getRight(), databaseTablePair.getLeft(), node.isIfNotExists());
   }
 
   @Override
