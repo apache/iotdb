@@ -1011,12 +1011,10 @@ public class TableDistributedPlanGenerator
       } else {
         orderingRules.add(
             deviceEntry ->
-                deviceEntry.getAttributeColumnValues().get(idx) == null
+                deviceEntry.getAttributeColumnValues()[idx] == null
                     ? null
-                    : deviceEntry
-                        .getAttributeColumnValues()
-                        .get(idx)
-                        .getStringValue(TSFileConfig.STRING_CHARSET));
+                    : deviceEntry.getAttributeColumnValues()[idx].getStringValue(
+                        TSFileConfig.STRING_CHARSET));
       }
     }
     Comparator<DeviceEntry> comparator = null;

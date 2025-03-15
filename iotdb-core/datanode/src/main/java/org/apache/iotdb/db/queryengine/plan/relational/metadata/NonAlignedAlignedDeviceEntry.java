@@ -22,12 +22,11 @@ package org.apache.iotdb.db.queryengine.plan.relational.metadata;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.utils.Binary;
 
-import java.util.List;
 import java.util.Objects;
 
 public class NonAlignedAlignedDeviceEntry extends DeviceEntry {
 
-  public NonAlignedAlignedDeviceEntry(IDeviceID deviceID, List<Binary> attributeColumnValues) {
+  public NonAlignedAlignedDeviceEntry(IDeviceID deviceID, Binary[] attributeColumnValues) {
     super(deviceID, attributeColumnValues);
   }
 

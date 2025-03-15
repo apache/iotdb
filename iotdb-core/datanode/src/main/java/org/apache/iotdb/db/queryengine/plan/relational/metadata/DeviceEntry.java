@@ -31,8 +31,7 @@ import org.apache.tsfile.utils.RamUsageEstimator;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.util.ArrayList;
-import java.util.List;
+import java.util.Arrays;
 import java.util.Objects;
 
 import static org.apache.tsfile.utils.ReadWriteIOUtils.readBytes;
@@ -51,9 +50,9 @@ public abstract class DeviceEntry implements Accountable {
       RamUsageEstimator.shallowSizeOfInstance(DeviceEntry.class);
 
   protected final IDeviceID deviceID;
-  protected final List<Binary> attributeColumnValues;
+  protected final Binary[] attributeColumnValues;
 
-  public DeviceEntry(final IDeviceID deviceID, final List<Binary> attributeColumnValues) {
+  public DeviceEntry(final IDeviceID deviceID, final Binary[] attributeColumnValues) {
     this.deviceID = deviceID;
     this.attributeColumnValues = attributeColumnValues;
   }
@@ -68,13 +67,13 @@ public abstract class DeviceEntry implements Accountable {
     return segmentIndex < deviceID.segmentNum() ? deviceID.segment(segmentIndex) : null;
   }
 
-  public List<Binary> getAttributeColumnValues() {
+  public Binary[] getAttributeColumnValues() {
     return attributeColumnValues;
   }
 
   public void serialize(final ByteBuffer byteBuffer) {
     deviceID.serialize(byteBuffer);
-    write(attributeColumnValues.size(), byteBuffer);
+    write(attributeColumnValues.length, byteBuffer);
     for (final Binary value : attributeColumnValues) {
       serializeBinary(byteBuffer, value);
     }
@@ -87,7 +86,7 @@ public abstract class DeviceEntry implements Accountable {
 
   public void serialize(final DataOutputStream stream) throws IOException {
     deviceID.serialize(stream);
-    write(attributeColumnValues.size(), stream);
+    write(attributeColumnValues.length, stream);
     for (final Binary value : attributeColumnValues) {
       serializeBinary(stream, value);
     }
@@ -101,9 +100,9 @@ public abstract class DeviceEntry implements Accountable {
   public static DeviceEntry deserialize(final ByteBuffer byteBuffer) {
     final IDeviceID iDeviceID = StringArrayDeviceID.deserialize(byteBuffer);
     int size = readInt(byteBuffer);
-    final List<Binary> attributeColumnValues = new ArrayList<>(size);
+    final Binary[] attributeColumnValues = new Binary[size];
     while (size-- > 0) {
-      attributeColumnValues.add(deserializeBinary(byteBuffer));
+      attributeColumnValues[attributeColumnValues.length - size] = deserializeBinary(byteBuffer);
     }
     return constructDeviceEntry(iDeviceID, attributeColumnValues, readInt(byteBuffer));
   }
@@ -140,7 +139,7 @@ public abstract class DeviceEntry implements Accountable {
   }
 
   private static DeviceEntry constructDeviceEntry(
-      IDeviceID deviceID, List<Binary> attributeColumnValues, int ordinal) {
+      IDeviceID deviceID, Binary[] attributeColumnValues, int ordinal) {
     switch (DeviceEntryType.values()[ordinal]) {
       case ALIGNED:
         return new AlignedDeviceEntry(deviceID, attributeColumnValues);
@@ -156,7 +155,7 @@ public abstract class DeviceEntry implements Accountable {
   public long ramBytesUsed() {
     return INSTANCE_SIZE
         + deviceID.ramBytesUsed()
-        + RamUsageEstimator.sizeOfCollection(attributeColumnValues);
+        + RamUsageEstimator.sizeOf(attributeColumnValues);
   }
 
   @Override
@@ -169,7 +168,7 @@ public abstract class DeviceEntry implements Accountable {
     }
     final DeviceEntry that = (DeviceEntry) obj;
     return Objects.equals(deviceID, that.deviceID)
-        && Objects.equals(attributeColumnValues, that.attributeColumnValues);
+        && Arrays.equals(attributeColumnValues, that.attributeColumnValues);
   }
 
   @Override
