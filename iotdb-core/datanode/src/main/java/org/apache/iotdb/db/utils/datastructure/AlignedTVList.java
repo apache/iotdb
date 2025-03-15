@@ -1471,6 +1471,10 @@ public abstract class AlignedTVList extends TVList {
       return selectedIndices;
     }
 
+    public int getSelectedIndex(int column) {
+      return selectedIndices[column];
+    }
+
     public AlignedTVList getAlignedTVList() {
       return outer;
     }

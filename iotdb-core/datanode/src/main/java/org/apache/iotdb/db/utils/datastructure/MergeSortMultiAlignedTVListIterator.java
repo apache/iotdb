@@ -26,15 +26,17 @@ import org.apache.tsfile.utils.BitMap;
 import org.apache.tsfile.utils.Pair;
 
 import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.List;
 import java.util.PriorityQueue;
+import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
 import static org.apache.iotdb.db.utils.ModificationUtils.isPointDeleted;
 
 public class MergeSortMultiAlignedTVListIterator extends MultiAlignedTVListIterator {
-  private final List<Integer> probeIterators;
+  private final Set<Integer> probeIterators;
   private final int[] iteratorIndices;
   private final int[] rowIndices;
 
@@ -60,7 +62,7 @@ public class MergeSortMultiAlignedTVListIterator extends MultiAlignedTVListItera
         floatPrecision,
         encodingList);
     this.probeIterators =
-        IntStream.range(0, alignedTvListIterators.size()).boxed().collect(Collectors.toList());
+        IntStream.range(0, alignedTvListIterators.size()).boxed().collect(Collectors.toSet());
     this.bitMap = new BitMap(tsDataTypeList.size());
     this.iteratorIndices = new int[tsDataTypeList.size()];
     this.rowIndices = new int[tsDataTypeList.size()];
@@ -84,23 +86,23 @@ public class MergeSortMultiAlignedTVListIterator extends MultiAlignedTVListItera
     while (!minHeap.isEmpty() && !hasNext) {
       bitMap.reset();
       Pair<Long, Integer> top = minHeap.poll();
-      long time = top.left;
+      currentTime = top.left;
       probeIterators.add(top.right);
 
       for (int columnIndex = 0; columnIndex < tsDataTypeList.size(); columnIndex++) {
         iteratorIndices[columnIndex] = top.right;
-        rowIndices[columnIndex] = alignedTvListIterators.get(top.right).getIndex();
+        rowIndices[columnIndex] =
+            alignedTvListIterators.get(top.right).getSelectedIndex(columnIndex);
         if (alignedTvListIterators
             .get(top.right)
             .isNullValue(rowIndices[columnIndex], columnIndex)) {
           bitMap.mark(columnIndex);
         }
       }
-      currentTime = alignedTvListIterators.get(top.right).currentTime();
       hasNext = true;
 
       // duplicated timestamps
-      while (!minHeap.isEmpty() && minHeap.peek().left == time) {
+      while (!minHeap.isEmpty() && minHeap.peek().left == currentTime) {
         Pair<Long, Integer> element = minHeap.poll();
         probeIterators.add(element.right);
 
@@ -110,7 +112,8 @@ public class MergeSortMultiAlignedTVListIterator extends MultiAlignedTVListItera
               .get(iteratorIndices[columnIndex])
               .isNullValue(rowIndices[columnIndex], columnIndex)) {
             iteratorIndices[columnIndex] = element.right;
-            rowIndices[columnIndex] = alignedTvListIterators.get(element.right).getIndex();
+            rowIndices[columnIndex] =
+                alignedTvListIterators.get(element.right).getSelectedIndex(columnIndex);
             if (!alignedTvListIterators
                 .get(element.right)
                 .isNullValue(rowIndices[columnIndex], columnIndex)) {
@@ -132,8 +135,16 @@ public class MergeSortMultiAlignedTVListIterator extends MultiAlignedTVListItera
         }
       }
       if (bitMap.isAllMarked()) {
-        for (int index : probeIterators) {
-          alignedTvListIterators.get(index).next();
+        Iterator<Integer> it = probeIterators.iterator();
+        while (it.hasNext()) {
+          int idx = it.next();
+          AlignedTVList.AlignedTVListIterator iterator = alignedTvListIterators.get(idx);
+          iterator.next();
+          if (iterator.hasNextTimeValuePair()) {
+            minHeap.add(new Pair<>(iterator.currentTime(), idx));
+          } else {
+            it.remove();
+          }
         }
         hasNext = false;
       }
