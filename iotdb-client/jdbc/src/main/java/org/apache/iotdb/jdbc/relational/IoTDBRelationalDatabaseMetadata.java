@@ -396,7 +396,8 @@ public class IoTDBRelationalDatabaseMetadata extends IoTDBAbstractDatabaseMetada
             valueInRow.add(ResultSetMetaData.columnNoNulls);
           }
         } else if (i == 7) {
-          valueInRow.add(getTypePrecision(fields[i].getSqlType()));
+          // valueInRow.add(getTypePrecision(fields[i].getSqlType()));
+          valueInRow.add(0);
         } else if (i == 8) {
           valueInRow.add(getTypeScale(fields[i].getSqlType()));
         } else if (i == 9) {
@@ -550,5 +551,10 @@ public class IoTDBRelationalDatabaseMetadata extends IoTDBAbstractDatabaseMetada
   @Override
   public String getIdentifierQuoteString() throws SQLException {
     return "\"";
+  }
+
+  @Override
+  public String getSchemaTerm() throws SQLException {
+    return "database";
   }
 }
