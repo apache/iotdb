@@ -26,13 +26,13 @@ public interface IClusterStatusSubscriber {
 
   @Subscribe
   @AllowConcurrentEvents
-  void onNodeStatisticsChanged(NodeStatisticsChangeEvent event);
+  default void onNodeStatisticsChanged(NodeStatisticsChangeEvent event) {}
 
   @Subscribe
   @AllowConcurrentEvents
-  void onRegionGroupStatisticsChanged(RegionGroupStatisticsChangeEvent event);
+  default void onRegionGroupStatisticsChanged(RegionGroupStatisticsChangeEvent event) {}
 
   @Subscribe
   @AllowConcurrentEvents
-  void onConsensusGroupStatisticsChanged(ConsensusGroupStatisticsChangeEvent event);
+  default void onConsensusGroupStatisticsChanged(ConsensusGroupStatisticsChangeEvent event) {}
 }

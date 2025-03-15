@@ -44,6 +44,7 @@ import org.apache.iotdb.confignode.manager.load.cache.region.RegionHeartbeatSamp
 import org.apache.iotdb.confignode.manager.load.service.EventService;
 import org.apache.iotdb.confignode.manager.load.service.HeartbeatService;
 import org.apache.iotdb.confignode.manager.load.service.StatisticsService;
+import org.apache.iotdb.confignode.manager.load.service.TopologyService;
 import org.apache.iotdb.confignode.manager.partition.RegionGroupStatus;
 import org.apache.iotdb.confignode.rpc.thrift.TTimeSlotList;
 
@@ -72,6 +73,7 @@ public class LoadManager {
   protected HeartbeatService heartbeatService;
   private final StatisticsService statisticsService;
   private final EventService eventService;
+  private final TopologyService topologyService;
 
   public LoadManager(IManager configManager) {
     this.configManager = configManager;
@@ -83,7 +85,11 @@ public class LoadManager {
     this.loadCache = new LoadCache();
     setHeartbeatService(configManager, loadCache);
     this.statisticsService = new StatisticsService(loadCache);
-    this.eventService = new EventService(configManager, loadCache, routeBalancer);
+    this.topologyService = new TopologyService(configManager, loadCache::updateTopology);
+    this.eventService = new EventService(loadCache);
+    this.eventService.register(configManager.getPipeManager().getPipeRuntimeCoordinator());
+    this.eventService.register(routeBalancer);
+    this.eventService.register(topologyService);
   }
 
   protected void setHeartbeatService(IManager configManager, LoadCache loadCache) {
@@ -146,6 +152,7 @@ public class LoadManager {
     statisticsService.startLoadStatisticsService();
     eventService.startEventService();
     partitionBalancer.setupPartitionBalancer();
+    topologyService.startTopologyService();
   }
 
   public void stopLoadServices() {
@@ -155,6 +162,7 @@ public class LoadManager {
     loadCache.clearHeartbeatCache();
     partitionBalancer.clearPartitionBalancer();
     routeBalancer.clearRegionPriority();
+    topologyService.stopTopologyService();
   }
 
   public void clearDataPartitionPolicyTable(String database) {

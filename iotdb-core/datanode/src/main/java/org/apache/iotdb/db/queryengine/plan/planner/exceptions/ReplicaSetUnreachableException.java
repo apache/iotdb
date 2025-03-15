@@ -17,26 +17,17 @@
  * under the License.
  */
 
-package org.apache.iotdb.confignode.manager.load.cache;
+package org.apache.iotdb.db.queryengine.plan.planner.exceptions;
 
-import java.util.List;
+import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 
 /**
- * IFailureDetector is the judge for node status (UNKNOWN). {@link #isAvailable will be called each
- * fixed interval updating the node status}
+ * When ALL DataNodeLocations in a QUERY-typed {@link
+ * org.apache.iotdb.db.queryengine.plan.planner.plan.FragmentInstance} are unreachable, possibly due
+ * to network partition issues, this exception will be thrown and this query will fail.
  */
-public interface IFailureDetector {
-  String FIXED_DETECTOR = "fixed";
-  String PHI_ACCRUAL_DETECTOR = "phi_accrual";
-
-  int PHI_COLD_START_THRESHOLD = 60;
-
-  /**
-   * Given the heartbeat history, decide whether this endpoint is still available
-   *
-   * @param Id the unique identifier of the history owner
-   * @param history heartbeat history
-   * @return false if the endpoint is under failure
-   */
-  boolean isAvailable(Object Id, List<AbstractHeartbeatSample> history);
+public class ReplicaSetUnreachableException extends RuntimeException {
+  public ReplicaSetUnreachableException(TRegionReplicaSet replicaSet) {
+    super(replicaSet.toString());
+  }
 }

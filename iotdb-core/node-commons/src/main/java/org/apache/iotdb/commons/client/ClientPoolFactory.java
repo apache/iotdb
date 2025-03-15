@@ -131,6 +131,7 @@ public class ClientPoolFactory {
                       .setConnectionTimeoutMs(conf.getDnConnectionTimeoutInMS())
                       .setRpcThriftCompressionEnabled(conf.isRpcThriftCompressionEnabled())
                       .setSelectorNumOfAsyncClientManager(conf.getSelectorNumOfClientManager())
+                      .setPrintLogWhenEncounterException(false)
                       .build(),
                   ThreadName.ASYNC_DATANODE_CLIENT_POOL.getName()),
               new ClientPoolProperty.Builder<AsyncDataNodeInternalServiceClient>()
