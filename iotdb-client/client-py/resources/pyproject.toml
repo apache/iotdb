@@ -42,7 +42,7 @@ dependencies = [
     "thrift>=0.14.1",
     "pandas>=1.0.0",
     "numpy>=1.0.0",
-    "sqlalchemy<1.5,>=1.4",
+    "sqlalchemy>=1.4",
     "sqlalchemy-utils>=0.37.8"
 ]
 

@@ -1035,6 +1035,27 @@ struct TGetModelInfoResp {
   3: optional common.TEndPoint aiNodeAddress
 }
 
+struct TUpdateModelInfoReq {
+    1: required string modelId
+    2: required i32 modelStatus
+    3: optional string attributes
+    4: optional list<i32> aiNodeIds
+    5: optional i32 inputLength
+    6: optional i32 outputLength
+}
+
+struct TCreateTrainingReq {
+    1: required string modelId
+    2: required string modelType
+    3: required bool isTableModel
+    4: optional string curDatabase
+    5: optional list<string> targetTables
+    6: optional list<string> targetDbs
+    7: optional bool useAllData
+    8: optional map<string, string> parameters
+    9: optional string existingModelId
+}
+
 // ====================================================
 // Quota
 // ====================================================
@@ -1898,6 +1919,10 @@ service IConfigNodeRPCService {
    * Return the model info by model_id
    */
   TGetModelInfoResp getModelInfo(TGetModelInfoReq req)
+
+  common.TSStatus updateModelInfo(TUpdateModelInfoReq req)
+
+  common.TSStatus createTraining(TCreateTrainingReq req)
 
   // ======================================================
   // Quota
