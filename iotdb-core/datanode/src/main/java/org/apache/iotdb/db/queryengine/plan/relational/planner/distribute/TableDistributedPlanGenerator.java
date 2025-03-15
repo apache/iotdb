@@ -724,28 +724,30 @@ public class TableDistributedPlanGenerator
             ? ((AggregationTreeDeviceViewScanNode) node).getTreeDBName()
             : node.getQualifiedObjectName().getDatabaseName();
     DataPartition dataPartition = analysis.getDataPartition();
-    if (dataPartition == null || !dataPartition.getDataPartitionMap().containsKey(dbName)) {
+    boolean needSplit = false;
+    List<List<TRegionReplicaSet>> regionReplicaSetsList = new ArrayList<>();
+    if (dataPartition == null) {
+      // do nothing
+    } else if (!dataPartition.getDataPartitionMap().containsKey(dbName)) {
       throw new SemanticException(
           String.format("Given queried database: %s is not exist!", dbName));
-    }
-
-    Map<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TRegionReplicaSet>>> seriesSlotMap =
-        dataPartition.getDataPartitionMap().get(dbName);
-    Map<Integer, List<TRegionReplicaSet>> cachedSeriesSlotWithRegions = new HashMap<>();
-    List<List<TRegionReplicaSet>> regionReplicaSetsList = new ArrayList<>();
-    boolean needSplit = false;
-    for (DeviceEntry deviceEntry : node.getDeviceEntries()) {
-      List<TRegionReplicaSet> regionReplicaSets =
-          getReplicaSetWithTimeFilter(
-              dataPartition,
-              seriesSlotMap,
-              deviceEntry.getDeviceID(),
-              node.getTimeFilter(),
-              cachedSeriesSlotWithRegions);
-      if (regionReplicaSets.size() > 1) {
-        needSplit = true;
+    } else {
+      Map<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TRegionReplicaSet>>> seriesSlotMap =
+          dataPartition.getDataPartitionMap().get(dbName);
+      Map<Integer, List<TRegionReplicaSet>> cachedSeriesSlotWithRegions = new HashMap<>();
+      for (DeviceEntry deviceEntry : node.getDeviceEntries()) {
+        List<TRegionReplicaSet> regionReplicaSets =
+            getReplicaSetWithTimeFilter(
+                dataPartition,
+                seriesSlotMap,
+                deviceEntry.getDeviceID(),
+                node.getTimeFilter(),
+                cachedSeriesSlotWithRegions);
+        if (regionReplicaSets.size() > 1) {
+          needSplit = true;
+        }
+        regionReplicaSetsList.add(regionReplicaSets);
       }
-      regionReplicaSetsList.add(regionReplicaSets);
     }
 
     if (regionReplicaSetsList.isEmpty()) {
