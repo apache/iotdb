@@ -1367,16 +1367,12 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
         throw new UnsupportedOperationException("data should not be set for model training");
       }
 
-      if (ctx.trainingData().ALL() != null) {
-        createTrainingStatement.setUseAllData(true);
-      } else {
-        List<PartialPath> targetPath = new ArrayList<>();
-        for (IoTDBSqlParser.DataElementContext dataElementContext :
-            ctx.trainingData().dataElement()) {
-          targetPath.add(parsePrefixPath(dataElementContext.pathPatternElement().prefixPath()));
-        }
-        createTrainingStatement.setTargetPathPatterns(targetPath);
+      List<PartialPath> targetPath = new ArrayList<>();
+      for (IoTDBSqlParser.DataElementContext dataElementContext :
+          ctx.trainingData().dataElement()) {
+        targetPath.add(parsePrefixPath(dataElementContext.pathPatternElement().prefixPath()));
       }
+      createTrainingStatement.setTargetPathPatterns(targetPath);
       return createTrainingStatement;
     }
     String modelName = ctx.modelName.getText();

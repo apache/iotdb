@@ -698,8 +698,7 @@ createModel
     ;
 
 trainingData
-    : ALL
-    | dataElement(COMMA dataElement)*
+    : dataElement(COMMA dataElement)*
     ;
 
 dataElement

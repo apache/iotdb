@@ -33,7 +33,6 @@ public class CreateTrainingStatement extends Statement implements IConfigStateme
   String modelId;
   String modelType;
 
-  boolean useAllData = false;
   Map<String, String> parameters;
   String existingModelId = null;
 
@@ -46,10 +45,6 @@ public class CreateTrainingStatement extends Statement implements IConfigStateme
 
   public void setTargetPathPatterns(List<PartialPath> targetPathPatterns) {
     this.targetPathPatterns = targetPathPatterns;
-  }
-
-  public boolean isUseAllData() {
-    return useAllData;
   }
 
   public Map<String, String> getParameters() {
@@ -86,10 +81,6 @@ public class CreateTrainingStatement extends Statement implements IConfigStateme
 
   public void setParameters(Map<String, String> parameters) {
     this.parameters = parameters;
-  }
-
-  public void setUseAllData(boolean useAllData) {
-    this.useAllData = useAllData;
   }
 
   @Override
