@@ -27,8 +27,9 @@ import org.apache.tsfile.utils.ReadWriteIOUtils;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.Objects;
 
-abstract class AbstractTablePlan extends ConfigPhysicalPlan {
+public abstract class AbstractTablePlan extends ConfigPhysicalPlan {
 
   private String database;
 
@@ -51,6 +52,18 @@ abstract class AbstractTablePlan extends ConfigPhysicalPlan {
 
   public String getTableName() {
     return tableName;
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) {
+      return true;
+    }
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
+    final AbstractTablePlan that = (AbstractTablePlan) o;
+    return Objects.equals(database, that.database) && Objects.equals(tableName, that.tableName);
   }
 
   @Override

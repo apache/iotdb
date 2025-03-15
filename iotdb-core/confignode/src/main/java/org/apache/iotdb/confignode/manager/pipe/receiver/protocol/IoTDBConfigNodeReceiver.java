@@ -56,6 +56,7 @@ import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeDele
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeDeleteTimeSeriesPlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeEnrichedPlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeUnsetSchemaTemplatePlan;
+import org.apache.iotdb.confignode.consensus.request.write.table.AbstractTablePlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.AddTableColumnPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.CommitDeleteColumnPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.CommitDeleteTablePlan;
@@ -334,48 +335,16 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
                     PrivilegeType.CREATE))
             .getStatus();
       case AddTableColumn:
-        return configManager
-            .checkUserPrivileges(
-                username,
-                new PrivilegeUnion(
-                    ((AddTableColumnPlan) plan).getDatabase(),
-                    ((AddTableColumnPlan) plan).getTableName(),
-                    PrivilegeType.ALTER))
-            .getStatus();
       case SetTableProperties:
-        return configManager
-            .checkUserPrivileges(
-                username,
-                new PrivilegeUnion(
-                    ((SetTablePropertiesPlan) plan).getDatabase(),
-                    ((SetTablePropertiesPlan) plan).getTableName(),
-                    PrivilegeType.ALTER))
-            .getStatus();
       case CommitDeleteColumn:
-        return configManager
-            .checkUserPrivileges(
-                username,
-                new PrivilegeUnion(
-                    ((CommitDeleteColumnPlan) plan).getDatabase(),
-                    ((CommitDeleteColumnPlan) plan).getTableName(),
-                    PrivilegeType.ALTER))
-            .getStatus();
       case SetTableComment:
-        return configManager
-            .checkUserPrivileges(
-                username,
-                new PrivilegeUnion(
-                    ((SetTableCommentPlan) plan).getDatabase(),
-                    ((SetTableCommentPlan) plan).getTableName(),
-                    PrivilegeType.ALTER))
-            .getStatus();
       case SetTableColumnComment:
         return configManager
             .checkUserPrivileges(
                 username,
                 new PrivilegeUnion(
-                    ((SetTableColumnCommentPlan) plan).getDatabase(),
-                    ((SetTableColumnCommentPlan) plan).getTableName(),
+                    ((AbstractTablePlan) plan).getDatabase(),
+                    ((AbstractTablePlan) plan).getTableName(),
                     PrivilegeType.ALTER))
             .getStatus();
       case CommitDeleteTable:

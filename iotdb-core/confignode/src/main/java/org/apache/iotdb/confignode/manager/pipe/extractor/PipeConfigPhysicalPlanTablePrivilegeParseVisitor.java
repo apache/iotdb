@@ -27,10 +27,14 @@ import org.apache.iotdb.confignode.consensus.request.write.auth.AuthorRelational
 import org.apache.iotdb.confignode.consensus.request.write.database.DatabaseSchemaPlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.DeleteDatabasePlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeCreateTablePlan;
+import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeDeleteDevicesPlan;
+import org.apache.iotdb.confignode.consensus.request.write.table.AbstractTablePlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.AddTableColumnPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.CommitDeleteColumnPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.CommitDeleteTablePlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.RenameTableColumnPlan;
+import org.apache.iotdb.confignode.consensus.request.write.table.SetTableColumnCommentPlan;
+import org.apache.iotdb.confignode.consensus.request.write.table.SetTableCommentPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.SetTablePropertiesPlan;
 import org.apache.iotdb.confignode.service.ConfigNode;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -90,10 +94,18 @@ public class PipeConfigPhysicalPlanTablePrivilegeParseVisitor
   @Override
   public Optional<ConfigPhysicalPlan> visitPipeCreateTable(
       final PipeCreateTablePlan pipeCreateTablePlan, final String userName) {
-    return matchDatabaseAndTableName(
-            pipeCreateTablePlan.getDatabase(),
-            pipeCreateTablePlan.getTable().getTableName(),
-            userName)
+    return ConfigNode.getInstance()
+                .getConfigManager()
+                .getPermissionManager()
+                .checkUserPrivileges(
+                    userName,
+                    new PrivilegeUnion(
+                        pipeCreateTablePlan.getDatabase(),
+                        pipeCreateTablePlan.getTable().getTableName(),
+                        null))
+                .getStatus()
+                .getCode()
+            == TSStatusCode.SUCCESS_STATUS.getStatusCode()
         ? Optional.of(pipeCreateTablePlan)
         : Optional.empty();
   }
@@ -101,57 +113,63 @@ public class PipeConfigPhysicalPlanTablePrivilegeParseVisitor
   @Override
   public Optional<ConfigPhysicalPlan> visitAddTableColumn(
       final AddTableColumnPlan addTableColumnPlan, final String userName) {
-    return matchDatabaseAndTableName(
-            addTableColumnPlan.getDatabase(), addTableColumnPlan.getTableName(), userName)
-        ? Optional.of(addTableColumnPlan)
-        : Optional.empty();
+    return visitAbstractTablePlan(addTableColumnPlan, userName);
   }
 
   @Override
   public Optional<ConfigPhysicalPlan> visitSetTableProperties(
       final SetTablePropertiesPlan setTablePropertiesPlan, final String userName) {
-    return matchDatabaseAndTableName(
-            setTablePropertiesPlan.getDatabase(), setTablePropertiesPlan.getTableName(), userName)
-        ? Optional.of(setTablePropertiesPlan)
-        : Optional.empty();
+    return visitAbstractTablePlan(setTablePropertiesPlan, userName);
   }
 
   @Override
   public Optional<ConfigPhysicalPlan> visitCommitDeleteColumn(
       final CommitDeleteColumnPlan commitDeleteColumnPlan, final String userName) {
-    return matchDatabaseAndTableName(
-            commitDeleteColumnPlan.getDatabase(), commitDeleteColumnPlan.getTableName(), userName)
-        ? Optional.of(commitDeleteColumnPlan)
-        : Optional.empty();
+    return visitAbstractTablePlan(commitDeleteColumnPlan, userName);
   }
 
   @Override
   public Optional<ConfigPhysicalPlan> visitRenameTableColumn(
       final RenameTableColumnPlan renameTableColumnPlan, final String userName) {
-    return matchDatabaseAndTableName(
-            renameTableColumnPlan.getDatabase(), renameTableColumnPlan.getTableName(), userName)
-        ? Optional.of(renameTableColumnPlan)
-        : Optional.empty();
+    return visitAbstractTablePlan(renameTableColumnPlan, userName);
   }
 
   @Override
   public Optional<ConfigPhysicalPlan> visitCommitDeleteTable(
       final CommitDeleteTablePlan commitDeleteTablePlan, final String userName) {
-    return matchDatabaseAndTableName(
-            commitDeleteTablePlan.getDatabase(), commitDeleteTablePlan.getTableName(), userName)
-        ? Optional.of(commitDeleteTablePlan)
-        : Optional.empty();
+    return visitAbstractTablePlan(commitDeleteTablePlan, userName);
   }
 
-  private boolean matchDatabaseAndTableName(
-      final String database, final String tableName, final String userName) {
+  @Override
+  public Optional<ConfigPhysicalPlan> visitPipeDeleteDevices(
+      final PipeDeleteDevicesPlan pipeDeleteDevicesPlan, final String userName) {
+    return visitAbstractTablePlan(pipeDeleteDevicesPlan, userName);
+  }
+
+  @Override
+  public Optional<ConfigPhysicalPlan> visitSetTableComment(
+      final SetTableCommentPlan setTableCommentPlan, final String userName) {
+    return visitAbstractTablePlan(setTableCommentPlan, userName);
+  }
+
+  @Override
+  public Optional<ConfigPhysicalPlan> visitSetTableColumnComment(
+      final SetTableColumnCommentPlan setTableColumnCommentPlan, final String userName) {
+    return visitAbstractTablePlan(setTableColumnCommentPlan, userName);
+  }
+
+  private Optional<ConfigPhysicalPlan> visitAbstractTablePlan(
+      final AbstractTablePlan plan, final String userName) {
     return ConfigNode.getInstance()
-            .getConfigManager()
-            .getPermissionManager()
-            .checkUserPrivileges(userName, new PrivilegeUnion(database, tableName, null))
-            .getStatus()
-            .getCode()
-        == TSStatusCode.SUCCESS_STATUS.getStatusCode();
+                .getConfigManager()
+                .getPermissionManager()
+                .checkUserPrivileges(
+                    userName, new PrivilegeUnion(plan.getDatabase(), plan.getTableName(), null))
+                .getStatus()
+                .getCode()
+            == TSStatusCode.SUCCESS_STATUS.getStatusCode()
+        ? Optional.of(plan)
+        : Optional.empty();
   }
 
   @Override
