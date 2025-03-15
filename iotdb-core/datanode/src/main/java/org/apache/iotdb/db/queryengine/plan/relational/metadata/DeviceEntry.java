@@ -173,6 +173,6 @@ public abstract class DeviceEntry implements Accountable {
 
   @Override
   public int hashCode() {
-    return Objects.hash(deviceID, attributeColumnValues);
+    return Objects.hash(deviceID, Arrays.hashCode(attributeColumnValues));
   }
 }
