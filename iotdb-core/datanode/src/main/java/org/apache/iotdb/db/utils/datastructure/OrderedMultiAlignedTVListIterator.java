@@ -64,16 +64,17 @@ public class OrderedMultiAlignedTVListIterator extends MultiAlignedTVListIterato
   @Override
   protected void prepareNext() {
     hasNext = false;
-    while (iteratorIndex < alignedTvListIterators.size() - 1
-        && !alignedTvListIterators.get(iteratorIndex).hasNextTimeValuePair()) {
-      iteratorIndex++;
-    }
 
-    AlignedTVList.AlignedTVListIterator iterator = alignedTvListIterators.get(iteratorIndex);
-    while (iterator.hasNextTimeValuePair() && !hasNext) {
+    while (iteratorIndex < alignedTvListIterators.size() && !hasNext) {
+      AlignedTVList.AlignedTVListIterator iterator = alignedTvListIterators.get(iteratorIndex);
+      if (!iterator.hasNextTimeValuePair()) {
+        iteratorIndex++;
+        continue;
+      }
+
       bitMap.reset();
       rowIndices = iterator.getSelectedIndices();
-      currentTime = alignedTvListIterators.get(iteratorIndex).currentTime();
+      currentTime = iterator.currentTime();
       hasNext = true;
 
       // check valueColumnsDeletionList

@@ -383,20 +383,12 @@ public class AlignedReadOnlyMemChunk extends ReadOnlyMemChunk {
     return floatPrecision;
   }
 
-  public List<Integer> getColumnIndexList() {
-    return columnIndexList;
-  }
-
   public List<TimeRange> getTimeColumnDeletion() {
     return timeColumnDeletion;
   }
 
   public List<List<TimeRange>> getValueColumnsDeletionList() {
     return valueColumnsDeletionList;
-  }
-
-  public List<TSEncoding> getEncodingList() {
-    return encodingList;
   }
 
   public List<TSDataType> getDataTypes() {

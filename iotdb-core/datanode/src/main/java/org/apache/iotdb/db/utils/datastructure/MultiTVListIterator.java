@@ -48,10 +48,6 @@ public abstract class MultiTVListIterator implements MemPointIterator {
   protected final int MAX_NUMBER_OF_POINTS_IN_PAGE =
       TSFileDescriptor.getInstance().getConfig().getMaxNumberOfPointsInPage();
 
-  protected MultiTVListIterator() {
-    this.tsBlocks = new ArrayList<>();
-  }
-
   protected MultiTVListIterator(
       TSDataType tsDataType,
       List<TVList> tvLists,
