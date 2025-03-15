@@ -125,7 +125,7 @@ public class TimePartitionManager {
         if (timePartitionInfo == null) {
           return;
         }
-        timePartitionInfoMemoryBlock.release(timePartitionInfo.memSize + Long.BYTES);
+        timePartitionInfoMemoryBlock.release(timePartitionInfo.memSize);
         DataRegion dataRegion =
             StorageEngine.getInstance().getDataRegion(timePartitionInfo.dataRegionId);
         if (dataRegion != null) {
@@ -151,7 +151,7 @@ public class TimePartitionManager {
       if (timePartitionInfoMapForRegion != null) {
         for (TimePartitionInfo timePartitionInfo : timePartitionInfoMapForRegion.values()) {
           if (timePartitionInfo != null) {
-            timePartitionInfoMemoryBlock.release(timePartitionInfo.memSize + Long.BYTES);
+            timePartitionInfoMemoryBlock.release(timePartitionInfo.memSize);
           }
         }
       }

@@ -19,8 +19,6 @@
 
 package org.apache.iotdb.commons.memory;
 
-import org.apache.iotdb.commons.utils.TestOnly;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -88,7 +86,6 @@ public abstract class IMemoryBlock implements AutoCloseable {
    *
    * @param usedMemoryInBytes the memory usage in byte to be set
    */
-  @TestOnly
   public abstract void setUsedMemoryInBytes(final long usedMemoryInBytes);
 
   /** Get the memory usage in byte of this memory block */

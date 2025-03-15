@@ -89,19 +89,7 @@ public class TreeViewTest {
     // distributionPlan test
     assertPlan(
         planTester.getFragmentPlan(0),
-        output(
-            project(
-                mergeSort(
-                    exchange(),
-                    exchange(),
-                    treeAlignedDeviceViewTableScan(
-                        DEFAULT_TREE_DEVICE_VIEW_TABLE_FULL_NAME,
-                        ImmutableList.of("tag1", "s1"),
-                        ImmutableSet.of("tag1", "s1")),
-                    treeNonAlignedDeviceViewTableScan(
-                        DEFAULT_TREE_DEVICE_VIEW_TABLE_FULL_NAME,
-                        ImmutableList.of("tag1", "s1"),
-                        ImmutableSet.of("tag1", "s1"))))));
+        output(project(mergeSort(exchange(), exchange(), exchange(), exchange()))));
 
     assertPlan(
         planTester.getFragmentPlan(1),
@@ -109,9 +97,20 @@ public class TreeViewTest {
             DEFAULT_TREE_DEVICE_VIEW_TABLE_FULL_NAME,
             ImmutableList.of("tag1", "s1"),
             ImmutableSet.of("tag1", "s1")));
-
     assertPlan(
         planTester.getFragmentPlan(2),
+        treeNonAlignedDeviceViewTableScan(
+            DEFAULT_TREE_DEVICE_VIEW_TABLE_FULL_NAME,
+            ImmutableList.of("tag1", "s1"),
+            ImmutableSet.of("tag1", "s1")));
+    assertPlan(
+        planTester.getFragmentPlan(3),
+        treeAlignedDeviceViewTableScan(
+            DEFAULT_TREE_DEVICE_VIEW_TABLE_FULL_NAME,
+            ImmutableList.of("tag1", "s1"),
+            ImmutableSet.of("tag1", "s1")));
+    assertPlan(
+        planTester.getFragmentPlan(4),
         treeNonAlignedDeviceViewTableScan(
             DEFAULT_TREE_DEVICE_VIEW_TABLE_FULL_NAME,
             ImmutableList.of("tag1", "s1"),
@@ -166,33 +165,22 @@ public class TreeViewTest {
             aggregation(
                 ImmutableMap.of("count", aggregationFunction("count", ImmutableList.of("count_1"))),
                 FINAL,
-                mergeSort(
-                    exchange(),
-                    aggregation(
-                        ImmutableMap.of(
-                            "count_1", aggregationFunction("count", ImmutableList.of("count_0"))),
-                        INTERMEDIATE,
-                        aggregationTreeDeviceViewTableScan(
-                            singleGroupingSet("tag1"),
-                            ImmutableList.of("tag1"),
-                            Optional.empty(),
-                            PARTIAL,
-                            DEFAULT_TREE_DEVICE_VIEW_TABLE_FULL_NAME,
-                            ImmutableList.of("tag1", "count_0"),
-                            ImmutableSet.of("tag1", "s1")))))));
+                mergeSort(exchange(), exchange()))));
 
-    assertPlan(
-        planTester.getFragmentPlan(1),
-        aggregation(
-            ImmutableMap.of("count_1", aggregationFunction("count", ImmutableList.of("count_0"))),
-            INTERMEDIATE,
-            aggregationTreeDeviceViewTableScan(
-                singleGroupingSet("tag1"),
-                ImmutableList.of("tag1"),
-                Optional.empty(),
-                PARTIAL,
-                DEFAULT_TREE_DEVICE_VIEW_TABLE_FULL_NAME,
-                ImmutableList.of("tag1", "count_0"),
-                ImmutableSet.of("tag1", "s1"))));
+    for (int i = 1; i <= 2; i++) {
+      assertPlan(
+          planTester.getFragmentPlan(i),
+          aggregation(
+              ImmutableMap.of("count_1", aggregationFunction("count", ImmutableList.of("count_0"))),
+              INTERMEDIATE,
+              aggregationTreeDeviceViewTableScan(
+                  singleGroupingSet("tag1"),
+                  ImmutableList.of("tag1"),
+                  Optional.empty(),
+                  PARTIAL,
+                  DEFAULT_TREE_DEVICE_VIEW_TABLE_FULL_NAME,
+                  ImmutableList.of("tag1", "count_0"),
+                  ImmutableSet.of("tag1", "s1"))));
+    }
   }
 }
