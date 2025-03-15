@@ -45,7 +45,7 @@ public class Trim extends Expression {
     super(null);
     this.specification = requireNonNull(specification, "specification is null");
     this.trimSource = requireNonNull(trimSource, "trimSource is null");
-    this.trimCharacter = requireNonNull(trimCharacter, "trimCharacter is null");
+    this.trimCharacter = trimCharacter;
   }
 
   public Trim(NodeLocation location, Specification specification, Expression trimSource) {

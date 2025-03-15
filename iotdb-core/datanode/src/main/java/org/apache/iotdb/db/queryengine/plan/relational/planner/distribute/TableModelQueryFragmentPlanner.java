@@ -30,6 +30,7 @@ import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.PlanFragmentId;
 import org.apache.iotdb.db.queryengine.execution.exchange.sink.DownStreamChannelLocation;
 import org.apache.iotdb.db.queryengine.plan.analyze.QueryType;
+import org.apache.iotdb.db.queryengine.plan.planner.distribution.NodeDistribution;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.FragmentInstance;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.PlanFragment;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.SubPlan;
@@ -74,10 +75,17 @@ public class TableModelQueryFragmentPlanner {
   // Record FragmentInstances dispatched to same DataNode
   private final Map<TDataNodeLocation, List<FragmentInstance>> dataNodeFIMap = new HashMap<>();
 
-  TableModelQueryFragmentPlanner(SubPlan subPlan, Analysis analysis, MPPQueryContext queryContext) {
+  private final Map<PlanNodeId, NodeDistribution> nodeDistributionMap;
+
+  TableModelQueryFragmentPlanner(
+      SubPlan subPlan,
+      Analysis analysis,
+      MPPQueryContext queryContext,
+      final Map<PlanNodeId, NodeDistribution> nodeDistributionMap) {
     this.subPlan = subPlan;
     this.analysis = analysis;
     this.queryContext = queryContext;
+    this.nodeDistributionMap = nodeDistributionMap;
   }
 
   public List<FragmentInstance> plan() {
@@ -89,7 +97,7 @@ public class TableModelQueryFragmentPlanner {
   private void prepare() {
     for (PlanFragment fragment : subPlan.getPlanFragmentList()) {
       recordPlanNodeRelation(fragment.getPlanNodeTree(), fragment.getId());
-      produceFragmentInstance(fragment);
+      produceFragmentInstance(fragment, nodeDistributionMap);
     }
 
     fragmentInstanceList.forEach(
@@ -101,20 +109,21 @@ public class TableModelQueryFragmentPlanner {
     root.getChildren().forEach(child -> recordPlanNodeRelation(child, planFragmentId));
   }
 
-  private void produceFragmentInstance(PlanFragment fragment) {
+  private void produceFragmentInstance(
+      PlanFragment fragment, final Map<PlanNodeId, NodeDistribution> nodeDistributionMap) {
     FragmentInstance fragmentInstance =
         new FragmentInstance(
             fragment,
             fragment.getId().genFragmentInstanceId(),
             QueryType.READ,
-            queryContext.getTimeOut(),
+            queryContext.getTimeOut() - (System.currentTimeMillis() - queryContext.getStartTime()),
             queryContext.getSession(),
             queryContext.isExplainAnalyze(),
             fragment.isRoot());
 
     // Get the target region for origin PlanFragment, then its instance will be distributed one
     // of them.
-    TRegionReplicaSet regionReplicaSet = fragment.getTargetRegion();
+    TRegionReplicaSet regionReplicaSet = fragment.getTargetRegionForTableModel(nodeDistributionMap);
 
     // Set ExecutorType and target host for the instance,
     // We need to store all the replica host in case of the scenario that the instance need to be

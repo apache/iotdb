@@ -121,6 +121,10 @@ public class AuthorInfo implements SnapshotProcessor {
     return result;
   }
 
+  public String login4Pipe(final String username, final String password) {
+    return authorizer.login4Pipe(username, password);
+  }
+
   public TPermissionInfoResp checkUserPrivileges(String username, PrivilegeUnion union) {
     boolean status;
     TPermissionInfoResp result = new TPermissionInfoResp();

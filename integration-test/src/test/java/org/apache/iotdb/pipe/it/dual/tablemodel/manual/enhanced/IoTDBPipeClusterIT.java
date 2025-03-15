@@ -123,6 +123,7 @@ public class IoTDBPipeClusterIT extends AbstractPipeTableModelDualManualIT {
 
       extractorAttributes.put("extractor", "iotdb-extractor");
       extractorAttributes.put("capture.table", "true");
+      extractorAttributes.put("user", "root");
 
       processorAttributes.put("processor", "do-nothing-processor");
 
@@ -198,6 +199,7 @@ public class IoTDBPipeClusterIT extends AbstractPipeTableModelDualManualIT {
       extractorAttributes.put("start-time", "0");
       extractorAttributes.put("end-time", "199");
       extractorAttributes.put("mode.streaming", realtimeMode);
+      extractorAttributes.put("user", "root");
 
       processorAttributes.put("processor", "do-nothing-processor");
 
@@ -281,6 +283,7 @@ public class IoTDBPipeClusterIT extends AbstractPipeTableModelDualManualIT {
           extractorAttributes.put("table-name", "test");
           extractorAttributes.put("start-time", "0");
           extractorAttributes.put("end-time", "300");
+          extractorAttributes.put("user", "root");
 
           connectorAttributes.put("connector", "iotdb-thrift-connector");
           connectorAttributes.put("connector.batch.enable", "false");
@@ -373,6 +376,7 @@ public class IoTDBPipeClusterIT extends AbstractPipeTableModelDualManualIT {
           extractorAttributes.put("table-name", "test1");
           extractorAttributes.put("start-time", "0");
           extractorAttributes.put("end-time", "300");
+          extractorAttributes.put("user", "root");
 
           connectorAttributes.put("connector", "iotdb-thrift-connector");
           connectorAttributes.put("connector.batch.enable", "false");
@@ -441,6 +445,7 @@ public class IoTDBPipeClusterIT extends AbstractPipeTableModelDualManualIT {
       extractorAttributes.put("database-name", "test");
       extractorAttributes.put("capture.table", "true");
       extractorAttributes.put("table-name", "test");
+      extractorAttributes.put("user", "root");
 
       connectorAttributes.put("connector", "iotdb-thrift-connector");
       connectorAttributes.put("connector.batch.enable", "false");
@@ -501,6 +506,7 @@ public class IoTDBPipeClusterIT extends AbstractPipeTableModelDualManualIT {
       extractorAttributes.put("database-name", "test1");
       extractorAttributes.put("capture.table", "true");
       extractorAttributes.put("table-name", "test1");
+      extractorAttributes.put("user", "root");
 
       connectorAttributes.put("connector", "iotdb-thrift-connector");
       connectorAttributes.put("connector.batch.enable", "false");
@@ -545,6 +551,7 @@ public class IoTDBPipeClusterIT extends AbstractPipeTableModelDualManualIT {
       extractorAttributes.put("database-name", "test1");
       extractorAttributes.put("capture.table", "true");
       extractorAttributes.put("table-name", "test1");
+      extractorAttributes.put("user", "root");
 
       connectorAttributes.put("connector", "iotdb-thrift-connector");
       connectorAttributes.put("connector.batch.enable", "false");
@@ -617,6 +624,7 @@ public class IoTDBPipeClusterIT extends AbstractPipeTableModelDualManualIT {
       extractorAttributes.put("database-name", "test");
       extractorAttributes.put("capture.table", "true");
       extractorAttributes.put("table-name", "test");
+      extractorAttributes.put("user", "root");
 
       connectorAttributes.put("connector", "iotdb-thrift-connector");
       connectorAttributes.put("connector.batch.enable", "false");
@@ -699,6 +707,7 @@ public class IoTDBPipeClusterIT extends AbstractPipeTableModelDualManualIT {
       extractorAttributes.put("database-name", "test");
       extractorAttributes.put("capture.table", "true");
       extractorAttributes.put("table-name", "test");
+      extractorAttributes.put("user", "root");
 
       connectorAttributes.put("connector", "iotdb-thrift-connector");
       connectorAttributes.put("connector.batch.enable", "false");
@@ -769,6 +778,7 @@ public class IoTDBPipeClusterIT extends AbstractPipeTableModelDualManualIT {
       extractorAttributes.put("database-name", "test");
       extractorAttributes.put("capture.table", "true");
       extractorAttributes.put("table-name", "test");
+      extractorAttributes.put("user", "root");
 
       connectorAttributes.put("connector", "iotdb-thrift-connector");
       connectorAttributes.put("connector.batch.enable", "false");
@@ -820,6 +830,7 @@ public class IoTDBPipeClusterIT extends AbstractPipeTableModelDualManualIT {
     extractorAttributes.put("database-name", "test");
     extractorAttributes.put("capture.table", "true");
     extractorAttributes.put("table-name", "test");
+    extractorAttributes.put("user", "root");
 
     connectorAttributes.put("connector", "iotdb-thrift-connector");
     connectorAttributes.put("connector.batch.enable", "false");
@@ -926,6 +937,7 @@ public class IoTDBPipeClusterIT extends AbstractPipeTableModelDualManualIT {
     extractorAttributes.put("database-name", "test");
     extractorAttributes.put("capture.table", "true");
     extractorAttributes.put("table-name", "test");
+    extractorAttributes.put("user", "root");
 
     connectorAttributes.put("connector", "iotdb-thrift-connector");
     connectorAttributes.put("connector.batch.enable", "false");
@@ -1006,6 +1018,7 @@ public class IoTDBPipeClusterIT extends AbstractPipeTableModelDualManualIT {
       extractorAttributes.put("database-name", "test");
       extractorAttributes.put("capture.table", "true");
       extractorAttributes.put("table-name", "test");
+      extractorAttributes.put("user", "root");
 
       processorAttributes.put("processor", "do-nothing-processor");
 

@@ -90,6 +90,7 @@ public class IoTDBPipeDataSinkIT extends AbstractPipeTableModelDualManualIT {
       extractorAttributes.put("extractor.realtime.mode", "log");
       extractorAttributes.put("capture.table", "true");
       extractorAttributes.put("capture.tree", "true");
+      extractorAttributes.put("user", "root");
 
       connectorAttributes.put("connector", "iotdb-thrift-connector");
       connectorAttributes.put("connector.batch.enable", "true");
@@ -171,6 +172,7 @@ public class IoTDBPipeDataSinkIT extends AbstractPipeTableModelDualManualIT {
 
       extractorAttributes.put("capture.table", "true");
       extractorAttributes.put("capture.tree", "true");
+      extractorAttributes.put("user", "root");
 
       connectorAttributes.put("connector", "iotdb-thrift-connector");
       connectorAttributes.put("connector.batch.enable", "true");
@@ -261,11 +263,13 @@ public class IoTDBPipeDataSinkIT extends AbstractPipeTableModelDualManualIT {
       extractorAttributes.put("forwarding-pipe-requests", "false");
       extractorAttributes.put("extractor.database-name", "test.*");
       extractorAttributes.put("extractor.table-name", "test.*");
+      extractorAttributes.put("user", "root");
 
       processorAttributes.put("processor", "rename-database-processor");
       processorAttributes.put("processor.new-db-name", "Test1");
 
       connectorAttributes.put("connector", "write-back-sink");
+      connectorAttributes.put("user", "root");
 
       final TSStatus status =
           client.createPipe(
@@ -377,6 +381,7 @@ public class IoTDBPipeDataSinkIT extends AbstractPipeTableModelDualManualIT {
       extractorAttributes.put("capture.tree", "true");
       extractorAttributes.put("extractor.database-name", "test.*");
       extractorAttributes.put("extractor.table-name", "test.*");
+      extractorAttributes.put("user", "root");
 
       connectorAttributes.put("connector", "iotdb-thrift-connector");
       connectorAttributes.put("connector.ip", receiverIp);
@@ -734,6 +739,7 @@ public class IoTDBPipeDataSinkIT extends AbstractPipeTableModelDualManualIT {
       extractorAttributes.put("extractor.realtime.mode", "batch");
       extractorAttributes.put("capture.table", "true");
       extractorAttributes.put("capture.tree", "true");
+      extractorAttributes.put("user", "root");
 
       connectorAttributes.put("sink", "iotdb-thrift-sink");
       connectorAttributes.put("sink.batch.enable", "false");

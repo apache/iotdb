@@ -126,45 +126,26 @@ public class UncorrelatedSubqueryTest {
                     filterPredicate,
                     join(
                         JoinNode.JoinType.INNER,
-                        builder ->
-                            builder
-                                .left(collect(exchange(), tableScan, exchange()))
-                                .right(
-                                    aggregation(
-                                        singleGroupingSet(),
-                                        ImmutableMap.of(
-                                            Optional.of("max"),
-                                            aggregationFunction("max", ImmutableList.of("max_10"))),
-                                        Collections.emptyList(),
-                                        Optional.empty(),
-                                        FINAL,
-                                        collect(
-                                            exchange(),
-                                            aggregation(
-                                                singleGroupingSet(),
-                                                ImmutableMap.of(
-                                                    Optional.of("max_10"),
-                                                    aggregationFunction(
-                                                        "max", ImmutableList.of("max_9"))),
-                                                Collections.emptyList(),
-                                                Optional.empty(),
-                                                INTERMEDIATE,
-                                                aggregationTableScan(
-                                                    singleGroupingSet(),
-                                                    Collections.emptyList(),
-                                                    Optional.empty(),
-                                                    PARTIAL,
-                                                    "testdb.table1",
-                                                    ImmutableList.of("max_9"),
-                                                    ImmutableSet.of("s1_6"))),
-                                            exchange()))))))));
+                        builder -> builder.left(exchange()).right(exchange()))))));
 
-    assertPlan(planTester.getFragmentPlan(1), tableScan);
-
+    assertPlan(planTester.getFragmentPlan(1), collect(exchange(), exchange(), exchange()));
     assertPlan(planTester.getFragmentPlan(2), tableScan);
+    assertPlan(planTester.getFragmentPlan(3), tableScan);
+    assertPlan(planTester.getFragmentPlan(4), tableScan);
 
     assertPlan(
-        planTester.getFragmentPlan(3),
+        planTester.getFragmentPlan(5),
+        aggregation(
+            singleGroupingSet(),
+            ImmutableMap.of(
+                Optional.of("max"), aggregationFunction("max", ImmutableList.of("max_10"))),
+            Collections.emptyList(),
+            Optional.empty(),
+            FINAL,
+            collect(exchange(), exchange(), exchange())));
+
+    assertPlan(
+        planTester.getFragmentPlan(6),
         aggregation(
             singleGroupingSet(),
             ImmutableMap.of(
@@ -182,7 +163,25 @@ public class UncorrelatedSubqueryTest {
                 ImmutableSet.of("s1_6"))));
 
     assertPlan(
-        planTester.getFragmentPlan(4),
+        planTester.getFragmentPlan(7),
+        aggregation(
+            singleGroupingSet(),
+            ImmutableMap.of(
+                Optional.of("max_10"), aggregationFunction("max", ImmutableList.of("max_9"))),
+            Collections.emptyList(),
+            Optional.empty(),
+            INTERMEDIATE,
+            aggregationTableScan(
+                singleGroupingSet(),
+                Collections.emptyList(),
+                Optional.empty(),
+                PARTIAL,
+                "testdb.table1",
+                ImmutableList.of("max_9"),
+                ImmutableSet.of("s1_6"))));
+
+    assertPlan(
+        planTester.getFragmentPlan(8),
         aggregation(
             singleGroupingSet(),
             ImmutableMap.of(
@@ -272,22 +271,17 @@ public class UncorrelatedSubqueryTest {
         planTester.getFragmentPlan(0),
         output(
             project(
-                filter(
-                    filterPredicate,
-                    semiJoin(
-                        "s1",
-                        "s1_6",
-                        "expr",
-                        mergeSort(exchange(), sort(tableScan1), exchange()),
-                        mergeSort(exchange(), sort(tableScan2), exchange()))))));
+                filter(filterPredicate, semiJoin("s1", "s1_6", "expr", exchange(), exchange())))));
 
-    assertPlan(planTester.getFragmentPlan(1), sort(tableScan1));
+    assertPlan(planTester.getFragmentPlan(1), mergeSort(exchange(), exchange(), exchange()));
 
     assertPlan(planTester.getFragmentPlan(2), sort(tableScan1));
 
     assertPlan(planTester.getFragmentPlan(3), sort(tableScan2));
 
     assertPlan(planTester.getFragmentPlan(4), sort(tableScan2));
+
+    assertPlan(planTester.getFragmentPlan(5), mergeSort(exchange(), exchange(), exchange()));
   }
 
   @Test
@@ -383,53 +377,33 @@ public class UncorrelatedSubqueryTest {
         planTester.getFragmentPlan(0),
         output(
             project(
-                anyTree(
+                filter(
                     join(
                         JoinNode.JoinType.INNER,
-                        builder ->
-                            builder
-                                .left(collect(exchange(), tableScan1, exchange()))
-                                .right(
-                                    aggregation(
-                                        singleGroupingSet(),
-                                        ImmutableMap.of(
-                                            Optional.of("min"),
-                                            aggregationFunction("min", ImmutableList.of("min_9")),
-                                            Optional.of("count_all"),
-                                            aggregationFunction(
-                                                "count_all", ImmutableList.of("count_all_10")),
-                                            Optional.of("count_non_null"),
-                                            aggregationFunction(
-                                                "count", ImmutableList.of("count"))),
-                                        Collections.emptyList(),
-                                        Optional.empty(),
-                                        FINAL,
-                                        collect(
-                                            exchange(),
-                                            aggregation(
-                                                singleGroupingSet(),
-                                                ImmutableMap.of(
-                                                    Optional.of("min_9"),
-                                                    aggregationFunction(
-                                                        "min", ImmutableList.of("s1_6")),
-                                                    Optional.of("count_all_10"),
-                                                    aggregationFunction(
-                                                        "count_all", ImmutableList.of("s1_6")),
-                                                    Optional.of("count"),
-                                                    aggregationFunction(
-                                                        "count", ImmutableList.of("s1_6"))),
-                                                Collections.emptyList(),
-                                                Optional.empty(),
-                                                PARTIAL,
-                                                tableScan3),
-                                            exchange()))))))));
+                        builder -> builder.left(exchange()).right(exchange()))))));
 
-    assertPlan(planTester.getFragmentPlan(1), tableScan1);
-
+    assertPlan(planTester.getFragmentPlan(1), collect(exchange(), exchange(), exchange()));
     assertPlan(planTester.getFragmentPlan(2), tableScan1);
+    assertPlan(planTester.getFragmentPlan(3), tableScan1);
+    assertPlan(planTester.getFragmentPlan(4), tableScan1);
 
     assertPlan(
-        planTester.getFragmentPlan(3),
+        planTester.getFragmentPlan(5),
+        aggregation(
+            singleGroupingSet(),
+            ImmutableMap.of(
+                Optional.of("min"),
+                aggregationFunction("min", ImmutableList.of("min_9")),
+                Optional.of("count_all"),
+                aggregationFunction("count_all", ImmutableList.of("count_all_10")),
+                Optional.of("count_non_null"),
+                aggregationFunction("count", ImmutableList.of("count"))),
+            Collections.emptyList(),
+            Optional.empty(),
+            FINAL,
+            collect(exchange(), exchange(), exchange())));
+    assertPlan(
+        planTester.getFragmentPlan(6),
         aggregation(
             singleGroupingSet(),
             ImmutableMap.of(
@@ -443,9 +417,23 @@ public class UncorrelatedSubqueryTest {
             Optional.empty(),
             PARTIAL,
             tableScan3));
-
     assertPlan(
-        planTester.getFragmentPlan(4),
+        planTester.getFragmentPlan(7),
+        aggregation(
+            singleGroupingSet(),
+            ImmutableMap.of(
+                Optional.of("min_9"),
+                aggregationFunction("min", ImmutableList.of("s1_6")),
+                Optional.of("count_all_10"),
+                aggregationFunction("count_all", ImmutableList.of("s1_6")),
+                Optional.of("count"),
+                aggregationFunction("count", ImmutableList.of("s1_6"))),
+            Collections.emptyList(),
+            Optional.empty(),
+            PARTIAL,
+            tableScan3));
+    assertPlan(
+        planTester.getFragmentPlan(8),
         aggregation(
             singleGroupingSet(),
             ImmutableMap.of(
