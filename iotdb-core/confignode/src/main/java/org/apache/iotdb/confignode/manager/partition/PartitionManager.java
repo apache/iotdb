@@ -110,10 +110,12 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.Queue;
 import java.util.Set;
+import java.util.StringJoiner;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Future;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
@@ -311,14 +313,19 @@ public class PartitionManager {
       final AtomicInteger unassignedSlotNum = new AtomicInteger();
       final Map<String, List<TSeriesPartitionSlot>> unassignedSchemaPartitionSlotsMap =
           partitionInfo.filterUnassignedSchemaPartitionSlots(req.getPartitionSlotsMap());
+      StringJoiner errDatabases = new StringJoiner(", ", "[", "]");
       unassignedSchemaPartitionSlotsMap.forEach(
-          (database, unassignedSchemaPartitionSlots) ->
-              unassignedSlotNum.addAndGet(unassignedSchemaPartitionSlots.size()));
+          (database, unassignedSchemaPartitionSlots) -> {
+            if (!unassignedSchemaPartitionSlots.isEmpty()) {
+              errDatabases.add(database);
+              unassignedSlotNum.addAndGet(unassignedSchemaPartitionSlots.size());
+            }
+          });
 
       final String errMsg =
           String.format(
-              "Lacked %d/%d SchemaPartition allocation result in the response of getOrCreateSchemaPartition method",
-              unassignedSlotNum.get(), totalSlotNum.get());
+              "Lacked %d/%d SchemaPartition allocation result when get or create schema partitions for databases: %s",
+              unassignedSlotNum.get(), totalSlotNum.get(), errDatabases);
       LOGGER.error(errMsg);
       resp.setStatus(
           new TSStatus(TSStatusCode.LACK_PARTITION_ALLOCATION.getStatusCode()).setMessage(errMsg));
@@ -446,16 +453,26 @@ public class PartitionManager {
       AtomicInteger unassignedSlotNum = new AtomicInteger();
       Map<String, Map<TSeriesPartitionSlot, TTimeSlotList>> unassignedDataPartitionSlotsMap =
           partitionInfo.filterUnassignedDataPartitionSlots(req.getPartitionSlotsMap());
+      StringJoiner errDatabases = new StringJoiner(", ", "[", "]");
       unassignedDataPartitionSlotsMap.forEach(
-          (database, unassignedDataPartitionSlots) ->
-              unassignedDataPartitionSlots.forEach(
-                  (seriesPartitionSlot, timeSlotList) ->
-                      unassignedSlotNum.addAndGet(timeSlotList.getTimePartitionSlots().size())));
+          (database, unassignedDataPartitionSlots) -> {
+            AtomicBoolean hasUnassignedSlot = new AtomicBoolean(false);
+            unassignedDataPartitionSlots.forEach(
+                (seriesPartitionSlot, timeSlotList) -> {
+                  if (!timeSlotList.getTimePartitionSlots().isEmpty()) {
+                    hasUnassignedSlot.set(true);
+                    unassignedSlotNum.addAndGet(timeSlotList.getTimePartitionSlots().size());
+                  }
+                });
+            if (hasUnassignedSlot.get()) {
+              errDatabases.add(database);
+            }
+          });
 
       String errMsg =
           String.format(
-              "Lacked %d/%d DataPartition allocation result in the response of getOrCreateDataPartition method",
-              unassignedSlotNum.get(), totalSlotNum.get());
+              "Lacked %d/%d DataPartition allocation result when get or create data partitions for databases: %s",
+              unassignedSlotNum.get(), totalSlotNum.get(), errDatabases);
       LOGGER.error(errMsg);
       resp.setStatus(
           new TSStatus(TSStatusCode.LACK_PARTITION_ALLOCATION.getStatusCode()).setMessage(errMsg));
