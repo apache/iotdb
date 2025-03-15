@@ -340,8 +340,7 @@ public class TableDeviceSchemaFetcher {
 
     final DeviceEntry deviceEntry =
         new AlignedDeviceEntry(
-            deviceID,
-            attributeColumns.stream().map(attributeMap::get).collect(Collectors.toList()));
+            deviceID, attributeColumns.stream().map(attributeMap::get).toArray(Binary[]::new));
     // TODO table metadata: process cases that selected attr columns different from those used for
     // predicate
     if (check.test(deviceEntry)) {
@@ -432,7 +431,7 @@ public class TableDeviceSchemaFetcher {
           final DeviceEntry deviceEntry =
               new AlignedDeviceEntry(
                   deviceID,
-                  attributeColumns.stream().map(attributeMap::get).collect(Collectors.toList()));
+                  attributeColumns.stream().map(attributeMap::get).toArray(Binary[]::new));
           mppQueryContext.reserveMemoryForFrontEnd(deviceEntry.ramBytesUsed());
           deviceEntryList.add(deviceEntry);
           // Only cache those exact device query
