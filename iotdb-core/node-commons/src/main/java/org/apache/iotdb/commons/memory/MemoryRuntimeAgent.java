@@ -74,7 +74,7 @@ public class MemoryRuntimeAgent implements IService {
   }
 
   private void updateMemoryAllocate() {
-    MemoryConfig.global().updateAllocate();
+    MemoryConfig.global().getMemoryManager("OnHeap").updateAllocate();
   }
 
   private void adaptTotalMemory() {
