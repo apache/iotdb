@@ -270,6 +270,9 @@ public class ShuffleSinkHandle implements ISinkHandle {
 
   private void checkState() {
     if (aborted) {
+      for (ISinkChannel channel : downStreamChannelList) {
+        channel.checkState();
+      }
       throw new IllegalStateException("ShuffleSinkHandle is aborted.");
     }
   }

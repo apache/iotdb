@@ -17,18 +17,11 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.queryengine.execution.exchange.sink;
+package org.apache.iotdb.pipe.api.exception;
 
-public interface ISinkChannel extends ISink {
+public class PipeConsensusRetryWithIncreasingIntervalException extends PipeException {
 
-  /** Open the channel, should only be called once on each ISinkChannel. */
-  void open();
-
-  /** Return true if current channel has no more data. */
-  boolean isNoMoreTsBlocks();
-
-  /** Return the number of TsBlocks the channel has in buffer. */
-  int getNumOfBufferedTsBlocks();
-
-  void checkState();
+  public PipeConsensusRetryWithIncreasingIntervalException(String message) {
+    super(message);
+  }
 }
