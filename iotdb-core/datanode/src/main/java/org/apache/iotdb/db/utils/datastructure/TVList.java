@@ -644,7 +644,6 @@ public abstract class TVList implements WALEntryValue {
   public class TVListIterator implements IPointReader {
     protected int index;
     protected int rows;
-    protected long currentTime;
     protected boolean probeNext;
     protected List<TsBlock> tsBlocks;
 
@@ -655,7 +654,6 @@ public abstract class TVList implements WALEntryValue {
       this.deletionList = deletionList;
       this.index = 0;
       this.rows = rowCount;
-      this.currentTime = index < rows ? getTime(index) : Long.MIN_VALUE;
       this.probeNext = false;
       this.tsBlocks = new ArrayList<>();
     }
@@ -666,11 +664,10 @@ public abstract class TVList implements WALEntryValue {
           && (isNullValue(getValueIndex(index))
               || isPointDeleted(getTime(index), deletionList, deleteCursor))) {
         index++;
-        currentTime = index < rows ? getTime(index) : Long.MIN_VALUE;
       }
 
       // skip duplicated timestamp
-      while (index + 1 < rows && getTime(index + 1) == currentTime) {
+      while (index + 1 < rows && getTime(index + 1) == getTime(index)) {
         index++;
       }
       probeNext = true;
@@ -714,7 +711,6 @@ public abstract class TVList implements WALEntryValue {
 
     public void next() {
       index++;
-      currentTime = index < rows ? getTime(index) : Long.MIN_VALUE;
       probeNext = false;
     }
 
@@ -726,7 +722,7 @@ public abstract class TVList implements WALEntryValue {
       if (!hasCurrent()) {
         return Long.MIN_VALUE;
       }
-      return currentTime;
+      return getTime(index);
     }
 
     public int getIndex() {
@@ -735,13 +731,11 @@ public abstract class TVList implements WALEntryValue {
 
     public void setIndex(int index) {
       this.index = index;
-      this.currentTime = index < rows ? getTime(index) : Long.MIN_VALUE;
       this.probeNext = false;
     }
 
     public void reset() {
       index = 0;
-      currentTime = index < rows ? getTime(index) : Long.MIN_VALUE;
       probeNext = false;
     }
 
