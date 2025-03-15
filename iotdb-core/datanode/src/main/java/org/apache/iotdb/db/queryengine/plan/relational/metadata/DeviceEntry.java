@@ -102,7 +102,8 @@ public abstract class DeviceEntry implements Accountable {
     int size = readInt(byteBuffer);
     final Binary[] attributeColumnValues = new Binary[size];
     while (size-- > 0) {
-      attributeColumnValues[attributeColumnValues.length - size] = deserializeBinary(byteBuffer);
+      attributeColumnValues[attributeColumnValues.length - size - 1] =
+          deserializeBinary(byteBuffer);
     }
     return constructDeviceEntry(iDeviceID, attributeColumnValues, readInt(byteBuffer));
   }
