@@ -49,7 +49,7 @@ public class MemoryManager {
   /** The initial allocate memory size in byte of memory manager */
   private volatile long initialAllocatedMemorySizeInBytes;
 
-  /** The initial allocate memory size in byte of memory manager */
+  /** The before allocate memory size in byte of memory manager */
   private volatile Long beforeAllocatedMemorySizeInBytes;
 
   /** The total memory size in byte of memory manager */
@@ -379,15 +379,21 @@ public class MemoryManager {
    *
    * @param ratio the ratio of new total memory size to old total memory size
    */
-  private synchronized void reAllocateMemoryAccordingToRatio(double ratio) {
-    // first increase the total memory size of this memory manager
-    this.beforeAllocatedMemorySizeInBytes = this.totalMemorySizeInBytes;
-    this.totalMemorySizeInBytes *= ratio;
-    // then re-allocate memory for all memory blocks
+  public synchronized void reAllocateMemoryAccordingToRatio(double ratio) {
+    // Update initial allocated memory size by ratio
+    long beforeInitialAllocatedMemorySizeInBytes = this.initialAllocatedMemorySizeInBytes;
+    this.initialAllocatedMemorySizeInBytes *= ratio;
+    // Update total memory size by actual size
+    long beforeTotalMemorySizeInBytes = this.totalMemorySizeInBytes;
+    this.totalMemorySizeInBytes +=
+        (this.initialAllocatedMemorySizeInBytes - beforeInitialAllocatedMemorySizeInBytes);
+    // Get actual ratio of memory reallocate
+    double actualRatio = (double) this.totalMemorySizeInBytes / beforeTotalMemorySizeInBytes;
+    // Re-allocate memory for all memory blocks
     for (IMemoryBlock block : allocatedMemoryBlocks.values()) {
-      this.allocatedMemorySizeInBytes += block.resizeByRatio(ratio);
+      this.allocatedMemorySizeInBytes += block.resizeByRatio(actualRatio);
     }
-    // finally re-allocate memory for all child memory managers
+    // Re-allocate memory for all child memory managers
     for (Map.Entry<String, MemoryManager> entry : children.entrySet()) {
       entry.getValue().reAllocateMemoryAccordingToRatio(ratio);
     }
@@ -483,13 +489,6 @@ public class MemoryManager {
 
   public void setTotalMemorySizeInBytes(long totalMemorySizeInBytes) {
     this.totalMemorySizeInBytes = totalMemorySizeInBytes;
-  }
-
-  public void setInitialAllocatedMemorySizeInBytesWithReload(
-      long initialAllocatedMemorySizeInBytes) {
-    this.initialAllocatedMemorySizeInBytes = initialAllocatedMemorySizeInBytes;
-    reAllocateMemoryAccordingToRatio(
-        (double) this.initialAllocatedMemorySizeInBytes / this.beforeAllocatedMemorySizeInBytes);
   }
 
   public synchronized void expandTotalMemorySizeInBytes(long totalMemorySizeInBytes) {

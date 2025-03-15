@@ -39,7 +39,6 @@ public class MemoryRuntimeAgent implements IService {
   private static final boolean ENABLE_MEMORY_ADAPT = CONFIG.isEnableMemoryAdapt();
   private static final long MEMORY_CHECK_INTERVAL_IN_S = CONFIG.getMemoryCheckIntervalInS();
 
-  private static final double ratio = 0.05;
   private static final AtomicBoolean isShutdown = new AtomicBoolean(false);
 
   private static final MemoryPeriodicalJobExecutor memoryPeriodicalJobExecutor =
@@ -83,10 +82,9 @@ public class MemoryRuntimeAgent implements IService {
     MemoryManager memoryManager = MemoryConfig.global().getMemoryManager("OnHeap");
     if (memoryManager != null) {
       long originMemorySize = memoryManager.getInitialAllocatedMemorySizeInBytes();
-      if (totalMemory >= (1 + ratio) * originMemorySize
-          || totalMemory <= (1 - ratio) * originMemorySize) {
+      if (originMemorySize != totalMemory) {
         LOGGER.info("Total memory size changed from {} to {}", originMemorySize, totalMemory);
-        memoryManager.setInitialAllocatedMemorySizeInBytesWithReload(totalMemory);
+        memoryManager.reAllocateMemoryAccordingToRatio((double) totalMemory / originMemorySize);
       }
     }
   }

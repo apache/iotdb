@@ -2605,11 +2605,12 @@ public class IoTDBDescriptor {
     // first we need to release the memory allocated for consensus
     MemoryManager storageEngineMemoryManager = memoryConfig.getStorageEngineMemoryManager();
     MemoryManager consensusMemoryManager = memoryConfig.getConsensusMemoryManager();
+    long originSize = storageEngineMemoryManager.getInitialAllocatedMemorySizeInBytes();
     long newSize =
-        storageEngineMemoryManager.getTotalMemorySizeInBytes()
-            + consensusMemoryManager.getTotalMemorySizeInBytes();
-    consensusMemoryManager.setTotalMemorySizeInBytes(0);
-    storageEngineMemoryManager.setInitialAllocatedMemorySizeInBytesWithReload(newSize);
+        storageEngineMemoryManager.getInitialAllocatedMemorySizeInBytes()
+            + consensusMemoryManager.getInitialAllocatedMemorySizeInBytes();
+    storageEngineMemoryManager.reAllocateMemoryAccordingToRatio((double) newSize / originSize);
+    consensusMemoryManager.reAllocateMemoryAccordingToRatio(0);
     SystemInfo.getInstance().loadWriteMemory();
   }
 
