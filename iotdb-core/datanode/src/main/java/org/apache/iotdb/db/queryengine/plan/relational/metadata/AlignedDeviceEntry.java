@@ -22,7 +22,7 @@ package org.apache.iotdb.db.queryengine.plan.relational.metadata;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.utils.Binary;
 
-import java.util.Objects;
+import java.util.Arrays;
 
 public class AlignedDeviceEntry extends DeviceEntry {
 
@@ -36,20 +36,7 @@ public class AlignedDeviceEntry extends DeviceEntry {
         + "deviceID="
         + deviceID
         + ", attributeColumnValues="
-        + attributeColumnValues
+        + Arrays.toString(attributeColumnValues)
         + '}';
-  }
-
-  @Override
-  public boolean equals(final Object obj) {
-    if (this == obj) {
-      return true;
-    }
-    if (obj == null || getClass() != obj.getClass()) {
-      return false;
-    }
-    final AlignedDeviceEntry that = (AlignedDeviceEntry) obj;
-    return Objects.equals(deviceID, that.deviceID)
-        && Objects.equals(attributeColumnValues, that.attributeColumnValues);
   }
 }
