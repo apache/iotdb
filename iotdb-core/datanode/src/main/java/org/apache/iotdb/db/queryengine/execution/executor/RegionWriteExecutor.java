@@ -88,6 +88,7 @@ import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 public class RegionWriteExecutor {
@@ -147,9 +148,9 @@ public class RegionWriteExecutor {
   }
 
   @SuppressWarnings("squid:S1181")
-  public RegionExecutionResult execute(ConsensusGroupId groupId, PlanNode planNode) {
+  public RegionExecutionResult execute(final ConsensusGroupId groupId, final PlanNode planNode) {
     try {
-      ReentrantReadWriteLock lock = regionManager.getRegionLock(groupId);
+      final ReentrantReadWriteLock lock = regionManager.getRegionLock(groupId);
       if (lock == null) {
         return RegionExecutionResult.create(
             false,
@@ -157,7 +158,18 @@ public class RegionWriteExecutor {
             RpcUtils.getStatus(TSStatusCode.NO_AVAILABLE_REGION_GROUP));
       }
       return planNode.accept(executionVisitor, new WritePlanNodeExecutionContext(groupId, lock));
-    } catch (Throwable e) {
+    } catch (final Throwable e) {
+      // Detect problems caused by removed region
+      if (Objects.isNull(regionManager.getRegionLock(groupId))) {
+        final String errorMsg =
+            "Exception "
+                + e.getClass().getSimpleName()
+                + " encountered during region removal, will retry. Message: "
+                + e.getMessage();
+        LOGGER.info(errorMsg);
+        return RegionExecutionResult.create(
+            false, errorMsg, RpcUtils.getStatus(TSStatusCode.NO_AVAILABLE_REGION_GROUP));
+      }
       LOGGER.warn(e.getMessage(), e);
       return RegionExecutionResult.create(
           false,

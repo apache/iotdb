@@ -56,10 +56,8 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.net.SocketTimeoutException;
 import java.nio.ByteBuffer;
-import java.util.ArrayList;
-import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
@@ -110,7 +108,7 @@ public class LoadTsFileDispatcherImpl implements IFragInstanceDispatcher {
           for (FragmentInstance instance : instances) {
             try (SetThreadName threadName =
                 new SetThreadName(
-                    LoadTsFileScheduler.class.getName() + instance.getId().getFullId())) {
+                    "load-dispatcher" + "-" + instance.getId().getFullId() + "-" + uuid)) {
               dispatchOneInstance(instance);
             } catch (FragmentInstanceDispatchException e) {
               return new FragInstanceDispatchResult(e.getFailureStatus());
@@ -226,24 +224,25 @@ public class LoadTsFileDispatcherImpl implements IFragInstanceDispatcher {
 
   public Future<FragInstanceDispatchResult> dispatchCommand(
       TLoadCommandReq loadCommandReq, Set<TRegionReplicaSet> replicaSets) {
-    Map<TEndPoint, List<Integer>> endPoint2RegionIdsMap = new HashMap<>();
+    Set<TEndPoint> allEndPoint = new HashSet<>();
     for (TRegionReplicaSet replicaSet : replicaSets) {
       for (TDataNodeLocation dataNodeLocation : replicaSet.getDataNodeLocations()) {
-        endPoint2RegionIdsMap
-            .computeIfAbsent(dataNodeLocation.getInternalEndPoint(), o -> new ArrayList<>())
-            .add(replicaSet.getRegionId().getId());
+        allEndPoint.add(dataNodeLocation.getInternalEndPoint());
       }
     }
 
-    for (final Map.Entry<TEndPoint, List<Integer>> entry : endPoint2RegionIdsMap.entrySet()) {
-      try (final SetThreadName threadName =
+    for (TEndPoint endPoint : allEndPoint) {
+      try (SetThreadName threadName =
           new SetThreadName(
-              LoadTsFileScheduler.class.getName() + "-" + loadCommandReq.commandType)) {
-        loadCommandReq.setRegionIds(entry.getValue());
-        if (isDispatchedToLocal(entry.getKey())) {
+              "load-dispatcher"
+                  + "-"
+                  + LoadTsFileScheduler.LoadCommand.values()[loadCommandReq.commandType]
+                  + "-"
+                  + loadCommandReq.uuid)) {
+        if (isDispatchedToLocal(endPoint)) {
           dispatchLocally(loadCommandReq);
         } else {
-          dispatchRemote(loadCommandReq, entry.getKey());
+          dispatchRemote(loadCommandReq, endPoint);
         }
       } catch (FragmentInstanceDispatchException e) {
         LOGGER.warn("Cannot dispatch LoadCommand for load operation {}", loadCommandReq, e);

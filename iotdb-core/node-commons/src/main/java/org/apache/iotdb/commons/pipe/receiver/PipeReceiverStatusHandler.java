@@ -23,7 +23,9 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeConnectorCriticalException;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeConnectorRetryTimesConfigurableException;
 import org.apache.iotdb.commons.pipe.agent.task.subtask.PipeSubtask;
+import org.apache.iotdb.commons.utils.RetryUtils;
 import org.apache.iotdb.pipe.api.event.Event;
+import org.apache.iotdb.pipe.api.exception.PipeConsensusRetryWithIncreasingIntervalException;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 import org.apache.iotdb.rpc.TSStatusCode;
 
@@ -90,6 +92,12 @@ public class PipeReceiverStatusHandler {
    */
   public void handle(
       final TSStatus status, final String exceptionMessage, final String recordMessage) {
+
+    if (RetryUtils.needRetryForConsensus(status.getCode())) {
+      LOGGER.info("IoTConsensusV2: will retry with increasing interval. status: {}", status);
+      throw new PipeConsensusRetryWithIncreasingIntervalException(exceptionMessage);
+    }
+
     switch (status.getCode()) {
       case 200: // SUCCESS_STATUS
       case 400: // REDIRECTION_RECOMMEND

@@ -69,12 +69,15 @@ public class UnsetTemplateProcedure
   private transient ByteBuffer addTemplateSetInfo;
   private transient ByteBuffer invalidateTemplateSetInfo;
 
-  public UnsetTemplateProcedure(boolean isGeneratedByPipe) {
+  public UnsetTemplateProcedure(final boolean isGeneratedByPipe) {
     super(isGeneratedByPipe);
   }
 
   public UnsetTemplateProcedure(
-      String queryId, Template template, PartialPath path, boolean isGeneratedByPipe) {
+      final String queryId,
+      final Template template,
+      final PartialPath path,
+      final boolean isGeneratedByPipe) {
     super(isGeneratedByPipe);
     this.queryId = queryId;
     this.template = template;
@@ -94,9 +97,9 @@ public class UnsetTemplateProcedure
   }
 
   @Override
-  protected Flow executeFromState(ConfigNodeProcedureEnv env, UnsetTemplateState state)
+  protected Flow executeFromState(final ConfigNodeProcedureEnv env, final UnsetTemplateState state)
       throws ProcedureSuspendedException, ProcedureYieldException, InterruptedException {
-    long startTime = System.currentTimeMillis();
+    final long startTime = System.currentTimeMillis();
     try {
       switch (state) {
         case CONSTRUCT_BLACK_LIST:
@@ -139,8 +142,8 @@ public class UnsetTemplateProcedure
     }
   }
 
-  private void constructBlackList(ConfigNodeProcedureEnv env) {
-    TSStatus status =
+  private void constructBlackList(final ConfigNodeProcedureEnv env) {
+    final TSStatus status =
         env.getConfigManager()
             .getClusterSchemaManager()
             .preUnsetSchemaTemplate(template.getId(), path);
@@ -151,30 +154,33 @@ public class UnsetTemplateProcedure
     }
   }
 
-  private void invalidateCache(ConfigNodeProcedureEnv env) {
+  private void invalidateCache(final ConfigNodeProcedureEnv env) {
     try {
+      // Cannot roll back after cache invalidation
+      // Because we do not know whether there are time series successfully created
+      alreadyRollback = true;
       executeInvalidateCache(env);
       setNextState(UnsetTemplateState.CHECK_DATANODE_TEMPLATE_ACTIVATION);
-    } catch (ProcedureException e) {
+    } catch (final ProcedureException e) {
       setFailure(e);
     }
   }
 
-  private void executeInvalidateCache(ConfigNodeProcedureEnv env) throws ProcedureException {
-    Map<Integer, TDataNodeLocation> dataNodeLocationMap =
+  private void executeInvalidateCache(final ConfigNodeProcedureEnv env) throws ProcedureException {
+    final Map<Integer, TDataNodeLocation> dataNodeLocationMap =
         env.getConfigManager().getNodeManager().getRegisteredDataNodeLocations();
-    TUpdateTemplateReq invalidateTemplateSetInfoReq = new TUpdateTemplateReq();
+    final TUpdateTemplateReq invalidateTemplateSetInfoReq = new TUpdateTemplateReq();
     invalidateTemplateSetInfoReq.setType(
         TemplateInternalRPCUpdateType.INVALIDATE_TEMPLATE_SET_INFO.toByte());
     invalidateTemplateSetInfoReq.setTemplateInfo(getInvalidateTemplateSetInfo());
-    DataNodeAsyncRequestContext<TUpdateTemplateReq, TSStatus> clientHandler =
+    final DataNodeAsyncRequestContext<TUpdateTemplateReq, TSStatus> clientHandler =
         new DataNodeAsyncRequestContext<>(
             CnToDnAsyncRequestType.UPDATE_TEMPLATE,
             invalidateTemplateSetInfoReq,
             dataNodeLocationMap);
     CnToDnInternalServiceAsyncRequestManager.getInstance().sendAsyncRequestWithRetry(clientHandler);
-    Map<Integer, TSStatus> statusMap = clientHandler.getResponseMap();
-    for (TSStatus status : statusMap.values()) {
+    final Map<Integer, TSStatus> statusMap = clientHandler.getResponseMap();
+    for (final TSStatus status : statusMap.values()) {
       // all dataNodes must clear the related template cache
       if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         LOGGER.error(
@@ -186,14 +192,14 @@ public class UnsetTemplateProcedure
     }
   }
 
-  private boolean checkDataNodeTemplateActivation(ConfigNodeProcedureEnv env) {
-    PathPatternTree patternTree = new PathPatternTree();
+  private boolean checkDataNodeTemplateActivation(final ConfigNodeProcedureEnv env) {
+    final PathPatternTree patternTree = new PathPatternTree();
     patternTree.appendPathPattern(path);
     patternTree.appendPathPattern(path.concatAsMeasurementPath(MULTI_LEVEL_PATH_WILDCARD));
     try {
       return SchemaUtils.checkDataNodeTemplateActivation(
           env.getConfigManager(), patternTree, template);
-    } catch (MetadataException e) {
+    } catch (final MetadataException e) {
       setFailure(
           new ProcedureException(
               new MetadataException(
@@ -204,52 +210,45 @@ public class UnsetTemplateProcedure
     }
   }
 
-  private void unsetTemplate(ConfigNodeProcedureEnv env) {
-    TSStatus status =
+  private void unsetTemplate(final ConfigNodeProcedureEnv env) {
+    final TSStatus status =
         env.getConfigManager()
             .getClusterSchemaManager()
-            .unsetSchemaTemplateInBlackList(
-                template.getId(), path, isGeneratedByPipe, originClusterId);
-    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      setNextState(UnsetTemplateState.CLEAN_DATANODE_TEMPLATE_CACHE);
-    } else {
+            .unsetSchemaTemplateInBlackList(template.getId(), path, isGeneratedByPipe,originClusterId);
+    if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       setFailure(new ProcedureException(new IoTDBException(status.getMessage(), status.getCode())));
     }
   }
 
   @Override
-  protected void rollbackState(ConfigNodeProcedureEnv env, UnsetTemplateState unsetTemplateState)
+  protected void rollbackState(
+      final ConfigNodeProcedureEnv env, final UnsetTemplateState unsetTemplateState)
       throws IOException, InterruptedException, ProcedureException {
     if (alreadyRollback) {
       return;
     }
     alreadyRollback = true;
     ProcedureException rollbackException;
-    try {
-      executeRollbackInvalidateCache(env);
-      TSStatus status =
-          env.getConfigManager()
-              .getClusterSchemaManager()
-              .rollbackPreUnsetSchemaTemplate(template.getId(), path);
-      if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-        return;
-      } else {
-        LOGGER.error(
-            "Failed to rollback pre unset template operation of template {} set on {}",
-            template.getName(),
-            path);
-        rollbackException =
-            new ProcedureException(
-                new MetadataException(
-                    "Rollback template pre unset failed because of" + status.getMessage()));
-      }
-    } catch (ProcedureException e) {
-      rollbackException = e;
+    final TSStatus status =
+        env.getConfigManager()
+            .getClusterSchemaManager()
+            .rollbackPreUnsetSchemaTemplate(template.getId(), path);
+    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      return;
+    } else {
+      LOGGER.error(
+          "Failed to rollback pre unset template operation of template {} set on {}",
+          template.getName(),
+          path);
+      rollbackException =
+          new ProcedureException(
+              new MetadataException(
+                  "Rollback template pre unset failed because of" + status.getMessage()));
     }
     try {
       executeInvalidateCache(env);
       setFailure(rollbackException);
-    } catch (ProcedureException exception) {
+    } catch (final ProcedureException exception) {
       setFailure(
           new ProcedureException(
               new MetadataException(
@@ -257,43 +256,18 @@ public class UnsetTemplateProcedure
     }
   }
 
-  private void executeRollbackInvalidateCache(ConfigNodeProcedureEnv env)
-      throws ProcedureException {
-    Map<Integer, TDataNodeLocation> dataNodeLocationMap =
-        env.getConfigManager().getNodeManager().getRegisteredDataNodeLocations();
-    TUpdateTemplateReq rollbackTemplateSetInfoReq = new TUpdateTemplateReq();
-    rollbackTemplateSetInfoReq.setType(
-        TemplateInternalRPCUpdateType.ADD_TEMPLATE_SET_INFO.toByte());
-    rollbackTemplateSetInfoReq.setTemplateInfo(getAddTemplateSetInfo());
-    DataNodeAsyncRequestContext<TUpdateTemplateReq, TSStatus> clientHandler =
-        new DataNodeAsyncRequestContext<>(
-            CnToDnAsyncRequestType.UPDATE_TEMPLATE,
-            rollbackTemplateSetInfoReq,
-            dataNodeLocationMap);
-    CnToDnInternalServiceAsyncRequestManager.getInstance().sendAsyncRequestWithRetry(clientHandler);
-    Map<Integer, TSStatus> statusMap = clientHandler.getResponseMap();
-    for (TSStatus status : statusMap.values()) {
-      // all dataNodes must clear the related template cache
-      if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-        LOGGER.error(
-            "Failed to rollback template cache of template {} set on {}", template.getName(), path);
-        throw new ProcedureException(new MetadataException("Rollback template cache failed"));
-      }
-    }
-  }
-
   @Override
-  protected boolean isRollbackSupported(UnsetTemplateState unsetTemplateState) {
+  protected boolean isRollbackSupported(final UnsetTemplateState unsetTemplateState) {
     return true;
   }
 
   @Override
-  protected UnsetTemplateState getState(int stateId) {
+  protected UnsetTemplateState getState(final int stateId) {
     return UnsetTemplateState.values()[stateId];
   }
 
   @Override
-  protected int getStateId(UnsetTemplateState unsetTemplateState) {
+  protected int getStateId(final UnsetTemplateState unsetTemplateState) {
     return unsetTemplateState.ordinal();
   }
 
@@ -322,17 +296,6 @@ public class UnsetTemplateProcedure
     return path;
   }
 
-  private ByteBuffer getAddTemplateSetInfo() {
-    if (this.addTemplateSetInfo == null) {
-      this.addTemplateSetInfo =
-          ByteBuffer.wrap(
-              TemplateInternalRPCUtil.generateAddTemplateSetInfoBytes(
-                  template, path.getFullPath()));
-    }
-
-    return addTemplateSetInfo;
-  }
-
   private ByteBuffer getInvalidateTemplateSetInfo() {
     if (this.invalidateTemplateSetInfo == null) {
       this.invalidateTemplateSetInfo =
@@ -344,7 +307,7 @@ public class UnsetTemplateProcedure
   }
 
   @Override
-  public void serialize(DataOutputStream stream) throws IOException {
+  public void serialize(final DataOutputStream stream) throws IOException {
     stream.writeShort(
         isGeneratedByPipe
             ? ProcedureType.PIPE_ENRICHED_UNSET_TEMPLATE_PROCEDURE.getTypeCode()
@@ -357,7 +320,7 @@ public class UnsetTemplateProcedure
   }
 
   @Override
-  public void deserialize(ByteBuffer byteBuffer) {
+  public void deserialize(final ByteBuffer byteBuffer) {
     super.deserialize(byteBuffer);
     queryId = ReadWriteIOUtils.readString(byteBuffer);
     template = new Template();
@@ -367,10 +330,14 @@ public class UnsetTemplateProcedure
   }
 
   @Override
-  public boolean equals(Object o) {
-    if (this == o) return true;
-    if (o == null || getClass() != o.getClass()) return false;
-    UnsetTemplateProcedure that = (UnsetTemplateProcedure) o;
+  public boolean equals(final Object o) {
+    if (this == o) {
+      return true;
+    }
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
+    final UnsetTemplateProcedure that = (UnsetTemplateProcedure) o;
     return Objects.equals(getProcId(), that.getProcId())
         && Objects.equals(getCurrentState(), that.getCurrentState())
         && Objects.equals(getCycles(), that.getCycles())
