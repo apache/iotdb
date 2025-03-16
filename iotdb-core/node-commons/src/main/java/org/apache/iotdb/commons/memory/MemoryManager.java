@@ -52,9 +52,6 @@ public class MemoryManager {
   /** The total memory size in byte of memory manager */
   private volatile long totalMemorySizeInBytes;
 
-  /** The static allocated memory size */
-  private volatile long staticAllocatedMemorySizeInBytes = 0L;
-
   /** The allocated memory size */
   private volatile long allocatedMemorySizeInBytes = 0L;
 
