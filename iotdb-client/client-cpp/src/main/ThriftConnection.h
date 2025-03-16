@@ -16,7 +16,9 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-#pragma once
+#ifndef IOTDB_THRIFTCONNECTION_H
+#define IOTDB_THRIFTCONNECTION_H
+
 #include <memory>
 #include <thrift/transport/TSocket.h>
 #include <thrift/transport/TBufferTransports.h>
@@ -25,8 +27,13 @@
 #include "Session.h"
 
 class ThriftConnection {
+public:
+    const static int THRIFT_DEFAULT_BUFFER_SIZE = 4096;
+    const static int THRIFT_MAX_FRAME_SIZE = 1048576;
+    const static int CONNECTION_TIMEOUT_IN_MS = 1000;
 private:
     TEndPoint endPoint;
+
     int thriftDefaultBufferSize;
     int thriftMaxFrameSize;
     int connectionTimeoutInMs;
@@ -58,19 +65,21 @@ private:
 
 public:
     ThriftConnection(const TEndPoint& endPoint,
-                    int thriftDefaultBufferSize = 4096,
-                    int thriftMaxFrameSize = 1048576,
-                    int connectionTimeoutInMs = 0)
+                    int thriftDefaultBufferSize = THRIFT_DEFAULT_BUFFER_SIZE,
+                    int thriftMaxFrameSize = THRIFT_MAX_FRAME_SIZE,
+                    int connectionTimeoutInMs = CONNECTION_TIMEOUT_IN_MS)
         : endPoint(endPoint),
           thriftDefaultBufferSize(thriftDefaultBufferSize),
           thriftMaxFrameSize(thriftMaxFrameSize),
           connectionTimeoutInMs(connectionTimeoutInMs) {}
 
+    ~ThriftConnection() {}
+
     void init(const std::string& username,
              const std::string& password,
-             bool enableRPCCompression,
-             const std::string& zoneId,
-             const std::string& version) {
+             bool enableRPCCompression = false,
+             const std::string& zoneId = std::string(),
+             const std::string& version = "V_1_0") {
         std::shared_ptr<TSocket> socket(new TSocket(endPoint.ip, endPoint.port));
         socket->setConnTimeout(connectionTimeoutInMs);
         transport = std::make_shared<TFramedTransport>(socket);
@@ -102,7 +111,7 @@ public:
         TSOpenSessionReq openReq;
         openReq.__set_username(username);
         openReq.__set_password(password);
-        openReq.__set_zoneId(zoneId);
+        openReq.__set_zoneId(this->zoneId);
         openReq.__set_configuration(configuration);
 
         try {
@@ -110,8 +119,8 @@ public:
             client->openSession(openResp, openReq);
             RpcUtils::verifySuccess(openResp.status);
             if (Session::protocolVersion != openResp.serverProtocolVersion) {
-                if (openResp.serverProtocolVersion == 0) {// less than 0.10
-                    throw logic_error(string("Protocol not supported, Client version is ") + to_string(Session::protocolVersion) +
+                if (openResp.serverProtocolVersion == 0) {
+                    throw IoTDBException(string("Protocol not supported, Client version is ") + to_string(Session::protocolVersion) +
                                       ", but Server version is " + to_string(openResp.serverProtocolVersion));
                 }
             }
@@ -147,7 +156,7 @@ public:
             throw IoTDBConnectionException(e.what());
         } catch (const IoTDBException &e) {
             log_debug(e.what());
-            throw;
+            throw IoTDBConnectionException(e.what());;
         }  catch (const exception &e) {
             throw IoTDBException(e.what());
         }
@@ -170,7 +179,7 @@ public:
             throw IoTDBConnectionException(e.what());
         } catch (const exception &e) {
             log_debug(e.what());
-            throw logic_error(std::string("Session::close() client->closeSession() error, maybe remote server is down. ") + e.what() + "\n");
+            throw IoTDBConnectionException(e.what());
         }
 
         try {
@@ -180,7 +189,9 @@ public:
         }
         catch (const exception &e) {
             log_debug(e.what());
-            throw logic_error(std::string("Session::close() transport->close() error. ") + e.what() + "\n");
+            throw IoTDBConnectionException(e.what());
         }
     }
 };
+
+#endif

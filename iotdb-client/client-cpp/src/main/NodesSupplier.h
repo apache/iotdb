@@ -16,7 +16,9 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-#pragma once
+#ifndef IOTDB_NODES_SUPPLIER_H
+#define IOTDB_NODES_SUPPLIER_H
+
 #include <vector>
 #include <atomic>
 #include <mutex>
@@ -27,29 +29,67 @@
 #include <algorithm>
 
 #include "Session.h"
+#include "ThriftConnection.h"
 
 class TEndPoint;
 
 class NodesSupplier {
 public:
+    const std::string SHOW_DATA_NODES_COMMAND = "SHOW DATANODES";
+    const std::string STATUS_COLUMN_NAME = "Status";
+    const std::string IP_COLUMN_NAME = "RpcAddress";
+    const std::string PORT_COLUMN_NAME = "RpcPort";
+    const std::string REMOVING_STATUS = "Removing";
+    const static int64_t TIMEOUT_IN_MS = 6000;
+    const int FETCH_SIZE = 10000;
+    const static int THRIFT_DEFAULT_BUFFER_SIZE = 4096;
+    const static int THRIFT_MAX_FRAME_SIZE = 1048576;
+    const static int CONNECTION_TIMEOUT_IN_MS = 1000;
+    std::shared_ptr<ThriftConnection> client;
+
+    std::string userName;
+    std::string password;
+    int32_t thriftDefaultBufferSize;
+    int32_t thriftMaxFrameSize;
+    int32_t connectionTimeoutInMs;
+    bool useSSL;
+    bool enableRPCCompression;
+    std::string version;
+    std::string zoneId;
+
     using NodeSelectionPolicy = std::function<TEndPoint(const std::vector<TEndPoint>&)>;
     
-    static std::shared_ptr<NodesSupplier> create(
-        std::vector<TEndPoint> endpoints,
-        std::chrono::seconds refreshInterval = std::chrono::seconds(5),
+    static std::shared_ptr<NodesSupplier> create(std::vector<TEndPoint> endpoints,
+        std::string userName, std::string password, std::string zoneId = "",
+        int32_t thriftDefaultBufferSize = ThriftConnection::THRIFT_DEFAULT_BUFFER_SIZE,
+        int32_t thriftMaxFrameSize = ThriftConnection::THRIFT_MAX_FRAME_SIZE,
+        int32_t connectionTimeoutInMs = ThriftConnection::CONNECTION_TIMEOUT_IN_MS,
+        bool useSSL = false, bool enableRPCCompression = false,
+        std::string version = "V_1_0",
+        std::chrono::milliseconds refreshInterval = std::chrono::milliseconds(TIMEOUT_IN_MS),
         NodeSelectionPolicy policy = roundRobinPolicy) {
-        auto supplier = std::make_shared<NodesSupplier>(std::move(endpoints), std::move(policy));
+        if (endpoints.empty()) {
+            return nullptr;
+        }
+        auto supplier = std::make_shared<NodesSupplier>(userName, password, zoneId, thriftDefaultBufferSize,
+            thriftMaxFrameSize, connectionTimeoutInMs, useSSL, enableRPCCompression, version, std::move(endpoints), std::move(policy));
         supplier->startBackgroundRefresh(refreshInterval);
         return supplier;
     }
 
-    NodesSupplier(std::vector<TEndPoint> endpoints, NodeSelectionPolicy policy)
-        : endpoints(std::move(endpoints)), selectionPolicy(std::move(policy)) 
-    {
+    NodesSupplier(std::string userName, std::string password, std::string zoneId, int32_t thriftDefaultBufferSize,
+        int32_t thriftMaxFrameSize, int32_t connectionTimeoutInMs, bool useSSL, bool enableRPCCompression,
+        std::string version, std::vector<TEndPoint> endpoints, NodeSelectionPolicy policy) : userName(userName),
+            password(password), zoneId(zoneId),
+            thriftDefaultBufferSize(thriftDefaultBufferSize),
+            thriftMaxFrameSize(thriftMaxFrameSize), connectionTimeoutInMs(connectionTimeoutInMs),
+            useSSL(useSSL), enableRPCCompression(enableRPCCompression),
+            version(version), endpoints(std::move(endpoints)),
+            selectionPolicy(std::move(policy)){
         deduplicateEndpoints();
     }
 
-    std::vector<TEndPoint> getCurrentEndpoints() const {
+    std::vector<TEndPoint> getCurrentEndpoints() {
         std::lock_guard<std::mutex> lock(mutex);
         return endpoints;
     }
@@ -64,43 +104,85 @@ public:
     }
 
 private:
-    mutable std::mutex mutex;
+    std::mutex mutex;
     std::vector<TEndPoint> endpoints;
     NodeSelectionPolicy selectionPolicy;
     
-    std::atomic_bool isRunning{false};
+    std::atomic<bool> isRunning{false};
     std::thread refreshThread;
     std::condition_variable refreshCondition;
 
     std::shared_ptr<IClientRPCServiceIf> rpcClient;
 
     void deduplicateEndpoints() {
-        std::sort(endpoints.begin(), endpoints.end());
-        endpoints.erase(std::unique(endpoints.begin(), endpoints.end()), endpoints.end());
+        std::vector<TEndPoint> uniqueEndpoints;
+        uniqueEndpoints.reserve(endpoints.size());
+        for (const auto& endpoint : endpoints) {
+            if (std::find(uniqueEndpoints.begin(), uniqueEndpoints.end(), endpoint) == uniqueEndpoints.end()) {
+                uniqueEndpoints.push_back(endpoint);
+            }
+        }
+        endpoints = std::move(uniqueEndpoints);
     }
 
-    void startBackgroundRefresh(std::chrono::seconds interval) {
+    void startBackgroundRefresh(std::chrono::milliseconds interval) {
         isRunning = true;
         refreshThread = std::thread([this, interval] {
             while (isRunning) {
                 refreshEndpointList();
-                
-                std::unique_lock<std::mutex> lock(mutex);
-                refreshCondition.wait_for(lock, interval, [this] { 
-                    return !isRunning.load(); 
+                std::unique_lock<std::mutex> cvLock(this->mutex);
+                refreshCondition.wait_for(cvLock, interval, [this]() {
+                    return !isRunning.load();
                 });
             }
         });
     }
 
     std::vector<TEndPoint> fetchLatestEndpoints() {
-        // 实际实现需要连接服务端获取
-        return std::vector<TEndPoint>();
+        if (client == nullptr) {
+            client = std::make_shared<ThriftConnection>(roundRobinPolicy(endpoints));
+            client->init(userName, password, enableRPCCompression, zoneId, version);
+        }
+        unique_ptr<SessionDataSet> sessionDataSet = client->executeQueryStatement(SHOW_DATA_NODES_COMMAND);
+        uint32_t columnAddrIdx = -1, columnPortIdx = -1, columnStatusIdx = -1;
+        auto columnNames = sessionDataSet->getColumnNames();
+        for (uint32_t i = 0; i < columnNames.size(); i++) {
+            if (columnNames[i] == IP_COLUMN_NAME) {
+                columnAddrIdx = i;
+            } else if (columnNames[i] == PORT_COLUMN_NAME) {
+                columnPortIdx = i;
+            } else if (columnNames[i] == STATUS_COLUMN_NAME) {
+                columnStatusIdx = i;
+            }
+        }
+        std::vector<TEndPoint> ret;
+        try {
+            while (sessionDataSet->hasNext()) {
+                RowRecord* record = sessionDataSet->next();
+                std::string ip = record->fields.at(columnAddrIdx).stringV;
+                int32_t port = record->fields.at(columnPortIdx).intV;
+                if (ip == "0.0.0.0" || REMOVING_STATUS == record->fields.at(columnStatusIdx).stringV) {
+                    std::cout << ip << ":" << port << std::endl;
+                    continue;
+                }
+                TEndPoint endpoint;
+                endpoint.ip = ip;
+                endpoint.port = port;
+                ret.emplace_back(endpoint);
+            }
+        }
+        catch (exception& e) {
+            client.reset();
+            throw IoTDBException(std::string("NodesSupplier::fetchLatestEndpoints") + e.what());
+        }
+        return ret;
     }
 
     void refreshEndpointList() {
         auto newEndpoints = fetchLatestEndpoints();
-        
+        if (newEndpoints.empty()) {
+            return;
+        }
         std::lock_guard<std::mutex> lock(mutex);
         endpoints.swap(newEndpoints);
         deduplicateEndpoints();
@@ -118,8 +200,10 @@ private:
     static TEndPoint roundRobinPolicy(const std::vector<TEndPoint>& nodes) {
         static std::atomic_uint roundRobinIndex{0};
         if (nodes.empty()) {
-            throw std::runtime_error("No available nodes");
+            throw IoTDBException("No available nodes");
         }
         return nodes[roundRobinIndex++ % nodes.size()];
     }
 };
+
+#endif
