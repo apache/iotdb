@@ -179,6 +179,8 @@ public class SeriesScanCostMetricSet implements IMetricSet {
       DoNothingMetricManager.DO_NOTHING_HISTOGRAM;
   private Counter loadTimeSeriesMetadataActualIOSizeCounter =
       DoNothingMetricManager.DO_NOTHING_COUNTER;
+  private Timer loadTimeSeriesMetadataFromCacheTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
+  private Timer loadTimeSeriesMetadataFromDiskTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
 
   public void recordNonAlignedTimeSeriesMetadataCount(long c1, long c2, long c3, long c4) {
     loadTimeSeriesMetadataDiskSeqHistogram.update(c1);
@@ -211,10 +213,14 @@ public class SeriesScanCostMetricSet implements IMetricSet {
   public void recordTimeSeriesMetadataMetrics(
       long loadTimeSeriesMetadataFromCacheCount,
       long loadTimeSeriesMetadataFromDiskCount,
-      long loadTimeSeriesMetadataActualIOSize) {
+      long loadTimeSeriesMetadataActualIOSize,
+      long loadTimeSeriesMetadataFromCacheTime,
+      long loadTimeSeriesMetadataFromDiskTime) {
     loadTimeSeriesMetadataFromCacheCountHistogram.update(loadTimeSeriesMetadataFromCacheCount);
     loadTimeSeriesMetadataFromDiskCountHistogram.update(loadTimeSeriesMetadataFromDiskCount);
     loadTimeSeriesMetadataActualIOSizeCounter.inc(loadTimeSeriesMetadataActualIOSize);
+    loadTimeSeriesMetadataFromCacheTimer.updateNanos(loadTimeSeriesMetadataFromCacheTime);
+    loadTimeSeriesMetadataFromDiskTimer.updateNanos(loadTimeSeriesMetadataFromDiskTime);
   }
 
   private void bindTimeseriesMetadata(AbstractMetricService metricService) {
@@ -408,12 +414,30 @@ public class SeriesScanCostMetricSet implements IMetricSet {
             MetricLevel.IMPORTANT,
             Tag.TYPE.toString(),
             TIMESERIES_METADATA);
+    loadTimeSeriesMetadataFromCacheTimer =
+        metricService.getOrCreateTimer(
+            Metric.METRIC_QUERY_CACHE.toString(),
+            MetricLevel.IMPORTANT,
+            Tag.TYPE.toString(),
+            TIMESERIES_METADATA,
+            Tag.FROM.toString(),
+            CACHE);
+    loadTimeSeriesMetadataFromDiskTimer =
+        metricService.getOrCreateTimer(
+            Metric.METRIC_QUERY_CACHE.toString(),
+            MetricLevel.IMPORTANT,
+            Tag.TYPE.toString(),
+            TIMESERIES_METADATA,
+            Tag.FROM.toString(),
+            DISK);
   }
 
   private void unbindTimeSeriesMetadataCache(AbstractMetricService metricService) {
     loadTimeSeriesMetadataFromCacheCountHistogram = DoNothingMetricManager.DO_NOTHING_HISTOGRAM;
     loadTimeSeriesMetadataFromDiskCountHistogram = DoNothingMetricManager.DO_NOTHING_HISTOGRAM;
     loadTimeSeriesMetadataActualIOSizeCounter = DoNothingMetricManager.DO_NOTHING_COUNTER;
+    loadTimeSeriesMetadataFromCacheTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
+    loadTimeSeriesMetadataFromDiskTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
 
     metricService.remove(
         MetricType.HISTOGRAM,
@@ -434,6 +458,20 @@ public class SeriesScanCostMetricSet implements IMetricSet {
         Metric.QUERY_DISK_READ.toString(),
         Tag.TYPE.toString(),
         TIMESERIES_METADATA);
+    metricService.remove(
+        MetricType.TIMER,
+        Metric.METRIC_QUERY_CACHE.toString(),
+        Tag.TYPE.toString(),
+        TIMESERIES_METADATA,
+        Tag.FROM.toString(),
+        CACHE);
+    metricService.remove(
+        MetricType.TIMER,
+        Metric.METRIC_QUERY_CACHE.toString(),
+        Tag.TYPE.toString(),
+        TIMESERIES_METADATA,
+        Tag.FROM.toString(),
+        DISK);
   }
 
   private void unbindTimeseriesMetadata(AbstractMetricService metricService) {
