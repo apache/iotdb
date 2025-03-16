@@ -43,6 +43,7 @@ public class MemoryManager {
   private static final long MEMORY_ALLOCATE_MIN_SIZE_IN_BYTES = 32;
 
   private static final boolean SHRINK_ALL = true;
+  private static final double threshold = 0.1;
 
   /** The name of memory manager */
   private final String name;
@@ -532,90 +533,68 @@ public class MemoryManager {
     }
   }
 
-  public synchronized void reAllocateDynamicMemoryAccordingToRatio(double ratio) {
-    // Update total memory size by actual size
-    long beforeTotalMemorySizeInBytes = this.totalMemorySizeInBytes;
-    this.totalMemorySizeInBytes *= ratio;
-    double actualRatio =
-        (double) (this.totalMemorySizeInBytes - this.staticAllocatedMemorySizeInBytes)
-            / (beforeTotalMemorySizeInBytes - staticAllocatedMemorySizeInBytes);
-    // Re-allocate memory for dynamic memory blocks
-    for (IMemoryBlock block : allocatedMemoryBlocks.values()) {
-      if (block.getMemoryBlockType() == MemoryBlockType.STATIC) {
-        continue;
-      }
-      long resizeSize = block.resizeByRatio(actualRatio);
-      this.allocatedMemorySizeInBytes += resizeSize;
-    }
-    // Re-allocate memory for all child memory managers
-    for (Map.Entry<String, MemoryManager> entry : children.entrySet()) {
-      entry.getValue().reAllocateDynamicMemoryAccordingToRatio(actualRatio);
-    }
-    if (updateCallback.get() != null) {
-      try {
-        updateCallback.get().accept(beforeTotalMemorySizeInBytes, totalMemorySizeInBytes);
-      } catch (Exception e) {
-        LOGGER.warn("Failed to execute the update callback.", e);
-      }
-    }
-  }
-
   // endregion
 
   // region auto adapt memory
 
-  /**
-   * Get the dynamic used memory ratio of this memory manager
-   *
-   * @return the dynamic used memory ratio
-   */
-  public double getDynamicUsedMemoryRatio() {
+  /** Get the dynamic used memory ratio of this memory manager */
+  public synchronized double getDynamicUsedMemoryRatio() {
     return (double) (getUsedMemorySizeInBytes() - getStaticUsedMemorySizeInBytes())
         / (totalMemorySizeInBytes - getStaticAllocatedMemorySizeInBytes());
   }
 
-  /**
-   * Whether this memory manager is available to shrink
-   *
-   * @return true if available to shrink, otherwise false
-   */
-  public boolean isAvailableToShrink() {
+  /** Get static used memory size in bytes of memory manager */
+  public synchronized long getStaticUsedMemorySizeInBytes() {
+    long memorySize = 0;
+    for (IMemoryBlock memoryBlock : allocatedMemoryBlocks.values()) {
+      if (memoryBlock.getMemoryBlockType() == MemoryBlockType.STATIC) {
+        memorySize += memoryBlock.getUsedMemoryInBytes();
+      }
+    }
+    for (MemoryManager child : children.values()) {
+      memorySize += child.getStaticUsedMemorySizeInBytes();
+    }
+    return memorySize;
+  }
+
+  /** Whether this memory manager is available to shrink */
+  public synchronized boolean isAvailableToShrink() {
     if (!SHRINK_ALL) {
       return initialAllocatedMemorySizeInBytes - totalMemorySizeInBytes
-              < initialAllocatedMemorySizeInBytes / 10
+              < initialAllocatedMemorySizeInBytes * threshold
           && totalMemorySizeInBytes > allocatedMemorySizeInBytes;
     } else {
       return initialAllocatedMemorySizeInBytes - totalMemorySizeInBytes
-              < initialAllocatedMemorySizeInBytes / 10
+              < initialAllocatedMemorySizeInBytes * threshold
           && (totalMemorySizeInBytes - getStaticAllocatedMemorySizeInBytes())
               > (getUsedMemorySizeInBytes() - getStaticAllocatedMemorySizeInBytes());
     }
   }
 
-  /**
-   * Try to shrink this memory manager
-   *
-   * @return actual shrink size
-   */
+  /** Try to shrink this memory manager */
   public synchronized long shrink() {
     if (!SHRINK_ALL) {
       long shrinkSize =
-          Math.max(
-              0,
-              Math.min(
-                  getAvailableMemorySizeInBytes() / 10,
-                  totalMemorySizeInBytes - initialAllocatedMemorySizeInBytes * 9 / 10));
+          (long)
+              Math.max(
+                  0,
+                  Math.min(
+                      getAvailableMemorySizeInBytes() * threshold,
+                      totalMemorySizeInBytes
+                          - initialAllocatedMemorySizeInBytes * (1 - threshold)));
       totalMemorySizeInBytes -= shrinkSize;
       return shrinkSize;
     } else {
       if (getAvailableMemorySizeInBytes() != 0) {
         // first we try to use the available memory
         long shrinkSize =
-            Math.max(
-                0,
-                Math.min(
-                    getAvailableMemorySizeInBytes() / 10,
-                    totalMemorySizeInBytes - initialAllocatedMemorySizeInBytes * 9 / 10));
+            (long)
+                Math.max(
+                    0,
+                    Math.min(
+                        getAvailableMemorySizeInBytes() * threshold,
+                        totalMemorySizeInBytes
+                            - initialAllocatedMemorySizeInBytes * (1 - threshold)));
         totalMemorySizeInBytes -= shrinkSize;
         return shrinkSize;
       } else {
@@ -653,7 +632,7 @@ public class MemoryManager {
           return targetMemoryManager.shrink();
         } else if (targetMemoryBlock != null) {
           // if targetMemoryBlock is not null, we shrink the targetMemoryBlock
-          long shrinkSize = targetMemoryBlock.resizeByRatio(0.9);
+          long shrinkSize = targetMemoryBlock.resizeByRatio(1 - threshold);
           long beforeTotalMemorySizeInBytes = totalMemorySizeInBytes;
           totalMemorySizeInBytes -= shrinkSize;
           allocatedMemorySizeInBytes -= shrinkSize;
@@ -678,7 +657,7 @@ public class MemoryManager {
    *
    * @return true if available to expand, otherwise false
    */
-  public boolean isAvailableToExpand() {
+  public synchronized boolean isAvailableToExpand() {
     for (MemoryManager memoryManager : children.values()) {
       if (memoryManager.isAvailableToExpand()) {
         return true;
@@ -692,31 +671,48 @@ public class MemoryManager {
     return false;
   }
 
+  public synchronized void expand(double ratio) {
+    // Update total memory size by actual size
+    long beforeTotalMemorySizeInBytes = this.totalMemorySizeInBytes;
+    this.totalMemorySizeInBytes *= ratio;
+    double actualRatio =
+        (double) (this.totalMemorySizeInBytes - this.staticAllocatedMemorySizeInBytes)
+            / (beforeTotalMemorySizeInBytes - staticAllocatedMemorySizeInBytes);
+    // Re-allocate memory for dynamic memory blocks
+    for (IMemoryBlock block : allocatedMemoryBlocks.values()) {
+      if (block.getMemoryBlockType() == MemoryBlockType.STATIC) {
+        continue;
+      }
+      long resizeSize = block.resizeByRatio(actualRatio);
+      this.allocatedMemorySizeInBytes += resizeSize;
+    }
+    // Re-allocate memory for all child memory managers
+    for (Map.Entry<String, MemoryManager> entry : children.entrySet()) {
+      entry.getValue().expand(actualRatio);
+    }
+    if (updateCallback.get() != null) {
+      try {
+        updateCallback.get().accept(beforeTotalMemorySizeInBytes, totalMemorySizeInBytes);
+      } catch (Exception e) {
+        LOGGER.warn("Failed to execute the update callback.", e);
+      }
+    }
+  }
+
+  /** Set update callback */
   public MemoryManager setUpdateCallback(final BiConsumer<Long, Long> updateCallback) {
     this.updateCallback.set(updateCallback);
     return this;
   }
 
-  public double getScore() {
+  /** Get the score of this memory manager */
+  public synchronized double getScore() {
     return (double) (getUsedMemorySizeInBytes() - getStaticUsedMemorySizeInBytes())
         / (totalMemorySizeInBytes - getStaticAllocatedMemorySizeInBytes());
   }
 
-  public long getStaticUsedMemorySizeInBytes() {
-    long memorySize = 0;
-    for (IMemoryBlock memoryBlock : allocatedMemoryBlocks.values()) {
-      if (memoryBlock.getMemoryBlockType() == MemoryBlockType.STATIC) {
-        memorySize += memoryBlock.getUsedMemoryInBytes();
-      }
-    }
-    for (MemoryManager child : children.values()) {
-      memorySize += child.getStaticUsedMemorySizeInBytes();
-    }
-    return memorySize;
-  }
-
   /** Get static allocated memory size in bytes of memory manager */
-  public long getStaticAllocatedMemorySizeInBytes() {
+  public synchronized long getStaticAllocatedMemorySizeInBytes() {
     long memorySize = staticAllocatedMemorySizeInBytes;
     for (MemoryManager child : children.values()) {
       memorySize += child.getStaticAllocatedMemorySizeInBytes();
@@ -752,7 +748,7 @@ public class MemoryManager {
         double ratio =
             (double) (transferSize + beforeTotalMemorySizeInBytes) / beforeTotalMemorySizeInBytes;
         // we need to update all memory to each part
-        highestMemoryManager.reAllocateDynamicMemoryAccordingToRatio(ratio);
+        highestMemoryManager.expand(ratio);
         LOGGER.info(
             "Transfer Memory Size {} from {} to {}",
             transferSize,
