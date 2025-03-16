@@ -468,10 +468,6 @@ public class MemoryManager {
     return initialAllocatedMemorySizeInBytes;
   }
 
-  public void setTotalMemorySizeInBytes(long totalMemorySizeInBytes) {
-    this.totalMemorySizeInBytes = totalMemorySizeInBytes;
-  }
-
   /** Get available memory size in bytes of memory manager */
   public long getAvailableMemorySizeInBytes() {
     return totalMemorySizeInBytes - allocatedMemorySizeInBytes;
@@ -490,6 +486,10 @@ public class MemoryManager {
       memorySize += child.getUsedMemorySizeInBytes();
     }
     return memorySize;
+  }
+
+  public void setTotalMemorySizeInBytes(long totalMemorySizeInBytes) {
+    this.totalMemorySizeInBytes = totalMemorySizeInBytes;
   }
 
   // endregion
