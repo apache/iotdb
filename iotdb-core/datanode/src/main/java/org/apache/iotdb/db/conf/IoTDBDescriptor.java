@@ -2609,8 +2609,9 @@ public class IoTDBDescriptor {
     long newSize =
         storageEngineMemoryManager.getInitialAllocatedMemorySizeInBytes()
             + consensusMemoryManager.getInitialAllocatedMemorySizeInBytes();
-    storageEngineMemoryManager.reAllocateMemoryAccordingToRatio((double) newSize / originSize);
-    consensusMemoryManager.reAllocateMemoryAccordingToRatio(0);
+    storageEngineMemoryManager.reAllocateInitialMemoryAccordingToRatio(
+        (double) newSize / originSize);
+    consensusMemoryManager.reAllocateInitialMemoryAccordingToRatio(0);
     SystemInfo.getInstance().loadWriteMemory();
   }
 

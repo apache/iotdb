@@ -49,9 +49,6 @@ public class MemoryManager {
   /** The initial allocate memory size in byte of memory manager */
   private volatile long initialAllocatedMemorySizeInBytes;
 
-  /** The before allocate memory size in byte of memory manager */
-  private volatile Long beforeAllocatedMemorySizeInBytes;
-
   /** The total memory size in byte of memory manager */
   private volatile long totalMemorySizeInBytes;
 
@@ -75,7 +72,6 @@ public class MemoryManager {
     this.name = "Test";
     this.parentMemoryManager = null;
     this.initialAllocatedMemorySizeInBytes = totalMemorySizeInBytes;
-    this.beforeAllocatedMemorySizeInBytes = totalMemorySizeInBytes;
     this.totalMemorySizeInBytes = totalMemorySizeInBytes;
     this.enabled = false;
   }
@@ -84,7 +80,6 @@ public class MemoryManager {
     this.name = name;
     this.parentMemoryManager = parentMemoryManager;
     this.initialAllocatedMemorySizeInBytes = totalMemorySizeInBytes;
-    this.beforeAllocatedMemorySizeInBytes = totalMemorySizeInBytes;
     this.totalMemorySizeInBytes = totalMemorySizeInBytes;
     this.enabled = false;
   }
@@ -97,7 +92,6 @@ public class MemoryManager {
     this.name = name;
     this.parentMemoryManager = parentMemoryManager;
     this.initialAllocatedMemorySizeInBytes = totalMemorySizeInBytes;
-    this.beforeAllocatedMemorySizeInBytes = totalMemorySizeInBytes;
     this.totalMemorySizeInBytes = totalMemorySizeInBytes;
     this.enabled = enabled;
   }
@@ -273,9 +267,6 @@ public class MemoryManager {
             }
             return block;
           } else {
-            if (type.equals(MemoryBlockType.STATIC)) {
-              staticAllocatedMemorySizeInBytes += sizeInBytes;
-            }
             allocatedMemorySizeInBytes += sizeInBytes;
             return new AtomicLongMemoryBlock(name, this, sizeInBytes, type);
           }
@@ -372,31 +363,6 @@ public class MemoryManager {
   public synchronized MemoryManager getOrCreateMemoryManager(
       String name, long totalMemorySizeInBytes) {
     return getOrCreateMemoryManager(name, totalMemorySizeInBytes, false);
-  }
-
-  /**
-   * Re-allocate memory according to ratio
-   *
-   * @param ratio the ratio of new total memory size to old total memory size
-   */
-  public synchronized void reAllocateMemoryAccordingToRatio(double ratio) {
-    // Update initial allocated memory size by ratio
-    long beforeInitialAllocatedMemorySizeInBytes = this.initialAllocatedMemorySizeInBytes;
-    this.initialAllocatedMemorySizeInBytes *= ratio;
-    // Update total memory size by actual size
-    long beforeTotalMemorySizeInBytes = this.totalMemorySizeInBytes;
-    this.totalMemorySizeInBytes +=
-        (this.initialAllocatedMemorySizeInBytes - beforeInitialAllocatedMemorySizeInBytes);
-    // Get actual ratio of re-allocate memory size
-    double actualRatio = (double) this.totalMemorySizeInBytes / beforeTotalMemorySizeInBytes;
-    // Re-allocate memory for all memory blocks
-    for (IMemoryBlock block : allocatedMemoryBlocks.values()) {
-      this.allocatedMemorySizeInBytes += block.resizeByRatio(actualRatio);
-    }
-    // Re-allocate memory for all child memory managers
-    for (Map.Entry<String, MemoryManager> entry : children.entrySet()) {
-      entry.getValue().reAllocateMemoryAccordingToRatio(ratio);
-    }
   }
 
   /**
@@ -515,18 +481,51 @@ public class MemoryManager {
     return memorySize;
   }
 
-  /** Get static allocated memory size in bytes of memory manager */
-  public long getStaticAllocatedMemorySizeInBytes() {
-    long memorySize = staticAllocatedMemorySizeInBytes;
-    for (MemoryManager child : children.values()) {
-      memorySize += child.getStaticAllocatedMemorySizeInBytes();
-    }
-    return memorySize;
-  }
-
   /** Get used memory ratio */
   public double getUsedMemoryRatio() {
     return (double) getUsedMemorySizeInBytes() / totalMemorySizeInBytes;
+  }
+
+  // endregion
+
+  // region transfer memory
+
+  /**
+   * Re-allocate memory according to ratio
+   *
+   * @param ratio the ratio of new total memory size to old total memory size
+   */
+  public synchronized void reAllocateInitialMemoryAccordingToRatio(double ratio) {
+    // Update initial allocated memory size by ratio
+    long beforeInitialAllocatedMemorySizeInBytes = this.initialAllocatedMemorySizeInBytes;
+    this.initialAllocatedMemorySizeInBytes *= ratio;
+    // Update total memory size by actual size
+    long beforeTotalMemorySizeInBytes = this.totalMemorySizeInBytes;
+    this.totalMemorySizeInBytes +=
+        (this.initialAllocatedMemorySizeInBytes - beforeInitialAllocatedMemorySizeInBytes);
+    // Get actual ratio of re-allocate memory size
+    double actualRatio = (double) this.totalMemorySizeInBytes / beforeTotalMemorySizeInBytes;
+    // Re-allocate memory for all memory blocks
+    for (IMemoryBlock block : allocatedMemoryBlocks.values()) {
+      this.allocatedMemorySizeInBytes += block.resizeByRatio(actualRatio);
+    }
+    // Re-allocate memory for all child memory managers
+    for (Map.Entry<String, MemoryManager> entry : children.entrySet()) {
+      entry.getValue().reAllocateInitialMemoryAccordingToRatio(ratio);
+    }
+  }
+
+  public synchronized void reAllocateTotalMemoryAccordingToRatio(double ratio) {
+    // Update total memory size by actual size
+    this.totalMemorySizeInBytes *= ratio;
+    // Re-allocate memory for all memory blocks
+    for (IMemoryBlock block : allocatedMemoryBlocks.values()) {
+      this.allocatedMemorySizeInBytes += block.resizeByRatio(ratio);
+    }
+    // Re-allocate memory for all child memory managers
+    for (Map.Entry<String, MemoryManager> entry : children.entrySet()) {
+      entry.getValue().reAllocateTotalMemoryAccordingToRatio(ratio);
+    }
   }
 
   // endregion
@@ -585,51 +584,42 @@ public class MemoryManager {
 
   /** Try to update allocation */
   public synchronized void updateAllocate() {
-    if (children.isEmpty()) {
-      long staticAllocatedMemorySizeInBytes = getStaticAllocatedMemorySizeInBytes();
-      double ratio =
-          (double) (this.totalMemorySizeInBytes - staticAllocatedMemorySizeInBytes)
-              / (this.beforeAllocatedMemorySizeInBytes - staticAllocatedMemorySizeInBytes);
-      this.beforeAllocatedMemorySizeInBytes = this.totalMemorySizeInBytes;
-      for (IMemoryBlock memoryBlock : allocatedMemoryBlocks.values()) {
-        if (!memoryBlock.getMemoryBlockType().equals(MemoryBlockType.STATIC)) {
-          this.allocatedMemorySizeInBytes += memoryBlock.resizeByRatio(ratio);
-        }
-      }
-    } else {
-      // Try to find memory manager with highest and lowest memory usage
-      MemoryManager highestMemoryManager = null;
-      MemoryManager lowestMemoryManager = null;
-      for (MemoryManager child : children.values()) {
-        if (highestMemoryManager == null) {
+    // Try to find memory manager with highest and lowest memory usage
+    MemoryManager highestMemoryManager = null;
+    MemoryManager lowestMemoryManager = null;
+    for (MemoryManager child : children.values()) {
+      if (highestMemoryManager == null) {
+        highestMemoryManager = child;
+        lowestMemoryManager = child;
+      } else {
+        if (highestMemoryManager.isAvailableToExpand()
+            && child.getScore() > highestMemoryManager.getScore()) {
           highestMemoryManager = child;
+        }
+        if (lowestMemoryManager.isAvailableToShrink()
+            && child.getScore() < lowestMemoryManager.getScore()) {
           lowestMemoryManager = child;
-        } else {
-          if (highestMemoryManager.isAvailableToExpand()
-              && child.getScore() > highestMemoryManager.getScore()) {
-            highestMemoryManager = child;
-          }
-          if (lowestMemoryManager.isAvailableToShrink()
-              && child.getScore() < lowestMemoryManager.getScore()) {
-            lowestMemoryManager = child;
-          }
         }
       }
-      if (highestMemoryManager != null && !highestMemoryManager.equals(lowestMemoryManager)) {
-        // transfer memory from the lowest memory manager to the highest memory manager
-        long transferSize = lowestMemoryManager.shrink();
-        if (transferSize != 0) {
-          highestMemoryManager.expandTotalMemorySizeInBytes(transferSize);
-          LOGGER.info(
-              "Transfer Memory Size {} from {} to {}",
-              transferSize,
-              lowestMemoryManager,
-              highestMemoryManager);
-        }
+    }
+    if (highestMemoryManager != null && !highestMemoryManager.equals(lowestMemoryManager)) {
+      // transfer memory from the lowest memory manager to the highest memory manager
+      long transferSize = lowestMemoryManager.shrink();
+      if (transferSize != 0) {
+        long beforeTotalMemorySizeInBytes = highestMemoryManager.getTotalMemorySizeInBytes();
+        double ratio =
+            (double) (transferSize + beforeTotalMemorySizeInBytes) / beforeTotalMemorySizeInBytes;
+        // we need to update all memory to each part
+        highestMemoryManager.reAllocateTotalMemoryAccordingToRatio(ratio);
+        LOGGER.info(
+            "Transfer Memory Size {} from {} to {}",
+            transferSize,
+            lowestMemoryManager,
+            highestMemoryManager);
       }
-      for (MemoryManager memoryManager : children.values()) {
-        memoryManager.updateAllocate();
-      }
+    }
+    for (MemoryManager memoryManager : children.values()) {
+      memoryManager.updateAllocate();
     }
   }
 
