@@ -67,6 +67,12 @@ public class PipeEnrichedNonWritePlanNode extends PlanNode {
     this.nonWritePlanNode = nonWritePlanNode;
   }
 
+  public PipeEnrichedNonWritePlanNode(PlanNode nonWritePlanNode, String originClusterId) {
+    super(nonWritePlanNode.getPlanNodeId());
+    this.nonWritePlanNode = nonWritePlanNode;
+    this.originClusterId = originClusterId;
+  }
+
   public PlanNode getNonWritePlanNode() {
     return nonWritePlanNode;
   }

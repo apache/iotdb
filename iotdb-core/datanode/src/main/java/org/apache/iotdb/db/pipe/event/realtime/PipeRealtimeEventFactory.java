@@ -125,7 +125,7 @@ public class PipeRealtimeEventFactory {
   public static PipeRealtimeEvent createRealtimeEvent(
       final String dataRegionId, final AbstractDeleteDataNode node) {
     PipeDeleteDataNodeEvent deleteDataNodeEvent =
-        new PipeDeleteDataNodeEvent(node, node.isGeneratedByPipe());
+        new PipeDeleteDataNodeEvent(node, node.isGeneratedByPipe(), node.getOriginClusterId());
 
     // if using IoTV2, assign a replicateIndex for this event
     if (DataRegionConsensusImpl.getInstance() instanceof PipeConsensus

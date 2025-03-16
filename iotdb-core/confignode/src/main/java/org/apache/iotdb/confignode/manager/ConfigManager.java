@@ -2356,7 +2356,7 @@ public class ConfigManager implements IManager {
                     : new TPipeTransferReq(req.version, req.type, req.body));
     return new TPipeConfigTransferResp(result.status)
         .setBody(result.body)
-        .setClusterId(result.clusterId);
+        .setCluster(result.clusterId);
   }
 
   @Override

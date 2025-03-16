@@ -54,7 +54,14 @@ public class PipeDeleteDataNodeEvent extends EnrichedEvent implements Serializab
 
   public PipeDeleteDataNodeEvent(
       final AbstractDeleteDataNode deleteDataNode, final boolean isGeneratedByPipe) {
-    this(deleteDataNode, null, 0, null, null, null, null, true, isGeneratedByPipe);
+    this(deleteDataNode, null, 0, null, null, null, null, true, isGeneratedByPipe, null);
+  }
+
+  public PipeDeleteDataNodeEvent(
+      final AbstractDeleteDataNode deleteDataNode,
+      final boolean isGeneratedByPipe,
+      final String originClusterId) {
+    this(deleteDataNode, null, 0, null, null, null, null, true, isGeneratedByPipe, originClusterId);
   }
 
   public PipeDeleteDataNodeEvent(
@@ -66,7 +73,8 @@ public class PipeDeleteDataNodeEvent extends EnrichedEvent implements Serializab
       final TablePattern tablePattern,
       final String userName,
       final boolean skipIfNoPrivileges,
-      final boolean isGeneratedByPipe) {
+      final boolean isGeneratedByPipe,
+      final String originClusterId) {
     super(
         pipeName,
         creationTime,
@@ -79,6 +87,7 @@ public class PipeDeleteDataNodeEvent extends EnrichedEvent implements Serializab
         Long.MAX_VALUE);
     this.isGeneratedByPipe = isGeneratedByPipe;
     this.deleteDataNode = deleteDataNode;
+    this.originClusterId = originClusterId;
     Optional.ofNullable(deleteDataNode)
         .ifPresent(node -> this.progressIndex = deleteDataNode.getProgressIndex());
   }
@@ -138,7 +147,8 @@ public class PipeDeleteDataNodeEvent extends EnrichedEvent implements Serializab
         tablePattern,
         userName,
         skipIfNoPrivileges,
-        isGeneratedByPipe);
+        isGeneratedByPipe,
+        originClusterId);
   }
 
   @Override

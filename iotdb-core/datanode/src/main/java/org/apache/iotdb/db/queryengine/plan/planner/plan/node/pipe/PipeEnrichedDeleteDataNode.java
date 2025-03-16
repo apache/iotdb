@@ -218,6 +218,6 @@ public class PipeEnrichedDeleteDataNode extends AbstractDeleteDataNode {
                     (SearchNode) ((PipeEnrichedDeleteDataNode) searchNode).getDeleteDataNode())
             .collect(Collectors.toList());
     return new PipeEnrichedDeleteDataNode(
-        (DeleteDataNode) deleteDataNode.merge(unrichedDeleteDataNodes));
+        (DeleteDataNode) deleteDataNode.merge(unrichedDeleteDataNodes), originClusterId);
   }
 }

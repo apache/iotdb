@@ -214,7 +214,8 @@ public class UnsetTemplateProcedure
     final TSStatus status =
         env.getConfigManager()
             .getClusterSchemaManager()
-            .unsetSchemaTemplateInBlackList(template.getId(), path, isGeneratedByPipe,originClusterId);
+            .unsetSchemaTemplateInBlackList(
+                template.getId(), path, isGeneratedByPipe, originClusterId);
     if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       setFailure(new ProcedureException(new IoTDBException(status.getMessage(), status.getCode())));
     }

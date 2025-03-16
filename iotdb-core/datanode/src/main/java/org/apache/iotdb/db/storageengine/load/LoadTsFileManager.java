@@ -273,7 +273,8 @@ public class LoadTsFileManager {
     return FOLDER_MANAGER.get().getNextFolder();
   }
 
-  public boolean loadAll(String uuid, boolean isGeneratedByPipe, ProgressIndex progressIndex)
+  public boolean loadAll(
+      String uuid, boolean isGeneratedByPipe, String originClusterId, ProgressIndex progressIndex)
       throws IOException, LoadFileException {
     if (!uuid2WriterManager.containsKey(uuid)) {
       return false;
@@ -282,7 +283,7 @@ public class LoadTsFileManager {
     final Optional<CleanupTask> cleanupTask = Optional.of(uuid2CleanupTask.get(uuid));
     cleanupTask.ifPresent(CleanupTask::markLoadTaskRunning);
     try {
-      uuid2WriterManager.get(uuid).loadAll(isGeneratedByPipe, progressIndex);
+      uuid2WriterManager.get(uuid).loadAll(isGeneratedByPipe, originClusterId, progressIndex);
     } finally {
       cleanupTask.ifPresent(CleanupTask::markLoadTaskNotRunning);
     }
@@ -497,7 +498,8 @@ public class LoadTsFileManager {
       }
     }
 
-    private void loadAll(boolean isGeneratedByPipe, ProgressIndex progressIndex)
+    private void loadAll(
+        boolean isGeneratedByPipe, String originClusterId, ProgressIndex progressIndex)
         throws IOException, LoadFileException {
       if (isClosed) {
         throw new IOException(String.format(MESSAGE_WRITER_MANAGER_HAS_BEEN_CLOSED, taskDir));
@@ -517,7 +519,7 @@ public class LoadTsFileManager {
         final DataRegion dataRegion = entry.getKey().getDataRegion();
         final TsFileResource tsFileResource = dataPartition2Resource.get(entry.getKey());
         endTsFileResource(writer, tsFileResource, progressIndex);
-        dataRegion.loadNewTsFile(tsFileResource, true, isGeneratedByPipe, null);
+        dataRegion.loadNewTsFile(tsFileResource, true, isGeneratedByPipe, originClusterId);
 
         // Metrics
         dataRegion

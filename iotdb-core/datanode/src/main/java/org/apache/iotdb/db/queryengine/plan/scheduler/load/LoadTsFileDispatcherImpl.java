@@ -279,6 +279,7 @@ public class LoadTsFileDispatcherImpl implements IFragInstanceDispatcher {
                 LoadTsFileScheduler.LoadCommand.values()[loadCommandReq.commandType],
                 loadCommandReq.uuid,
                 loadCommandReq.isSetIsGeneratedByPipe() && loadCommandReq.isGeneratedByPipe,
+                loadCommandReq.getOriginClusterId(),
                 progressIndex);
     if (!RpcUtils.SUCCESS_STATUS.equals(resultStatus)) {
       throw new FragmentInstanceDispatchException(resultStatus);
