@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.conf.ConfigurationFileUtils;
 import org.apache.iotdb.commons.conf.TrimProperties;
 import org.apache.iotdb.commons.memory.MemoryConfig;
 import org.apache.iotdb.commons.memory.MemoryManager;
+import org.apache.iotdb.db.storageengine.rescon.memory.SystemInfo;
 import org.apache.iotdb.db.utils.MemUtils;
 
 import org.slf4j.Logger;
@@ -192,7 +193,13 @@ public class DataNodeMemoryConfig {
         MemoryConfig.global()
             .getOrCreateMemoryManager("OnHeap", Runtime.getRuntime().totalMemory());
     storageEngineMemoryManager =
-        onHeapMemoryManager.getOrCreateMemoryManager("StorageEngine", storageEngineMemorySize);
+        onHeapMemoryManager
+            .getOrCreateMemoryManager("StorageEngine", storageEngineMemorySize)
+            .setUpdateCallback(
+                (before, after) -> {
+                  LOGGER.info("StorageEngine memory size changed from {} to {}", before, after);
+                  SystemInfo.getInstance().loadWriteMemory();
+                });
     queryEngineMemoryManager =
         onHeapMemoryManager.getOrCreateMemoryManager("QueryEngine", queryEngineMemorySize);
     schemaEngineMemoryManager =

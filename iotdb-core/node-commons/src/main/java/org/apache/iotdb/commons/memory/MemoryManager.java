@@ -26,6 +26,8 @@ import org.slf4j.LoggerFactory;
 
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.BiConsumer;
 import java.util.function.LongUnaryOperator;
 
 public class MemoryManager {
@@ -68,6 +70,8 @@ public class MemoryManager {
 
   /** The allocated memory blocks of this memory manager */
   private final Map<String, IMemoryBlock> allocatedMemoryBlocks = new ConcurrentHashMap<>();
+
+  protected final AtomicReference<BiConsumer<Long, Long>> updateCallback = new AtomicReference<>();
 
   @TestOnly
   public MemoryManager(long totalMemorySizeInBytes) {
@@ -519,6 +523,13 @@ public class MemoryManager {
     for (Map.Entry<String, MemoryManager> entry : children.entrySet()) {
       entry.getValue().reAllocateInitialMemoryAccordingToRatio(ratio);
     }
+    if (updateCallback.get() != null) {
+      try {
+        updateCallback.get().accept(beforeTotalMemorySizeInBytes, totalMemorySizeInBytes);
+      } catch (Exception e) {
+        LOGGER.warn("Failed to execute the update callback.", e);
+      }
+    }
   }
 
   public synchronized void reAllocateDynamicMemoryAccordingToRatio(double ratio) {
@@ -539,6 +550,13 @@ public class MemoryManager {
     // Re-allocate memory for all child memory managers
     for (Map.Entry<String, MemoryManager> entry : children.entrySet()) {
       entry.getValue().reAllocateDynamicMemoryAccordingToRatio(actualRatio);
+    }
+    if (updateCallback.get() != null) {
+      try {
+        updateCallback.get().accept(beforeTotalMemorySizeInBytes, totalMemorySizeInBytes);
+      } catch (Exception e) {
+        LOGGER.warn("Failed to execute the update callback.", e);
+      }
     }
   }
 
@@ -636,8 +654,16 @@ public class MemoryManager {
         } else if (targetMemoryBlock != null) {
           // if targetMemoryBlock is not null, we shrink the targetMemoryBlock
           long shrinkSize = targetMemoryBlock.resizeByRatio(0.9);
-          targetMemoryBlock.getMemoryManager().totalMemorySizeInBytes -= shrinkSize;
-          targetMemoryBlock.getMemoryManager().allocatedMemorySizeInBytes -= shrinkSize;
+          long beforeTotalMemorySizeInBytes = totalMemorySizeInBytes;
+          totalMemorySizeInBytes -= shrinkSize;
+          allocatedMemorySizeInBytes -= shrinkSize;
+          if (updateCallback.get() != null) {
+            try {
+              updateCallback.get().accept(beforeTotalMemorySizeInBytes, totalMemorySizeInBytes);
+            } catch (Exception e) {
+              LOGGER.warn("Failed to execute the update callback.", e);
+            }
+          }
           return shrinkSize;
         } else {
           return 0;
@@ -664,6 +690,11 @@ public class MemoryManager {
       }
     }
     return false;
+  }
+
+  public MemoryManager setUpdateCallback(final BiConsumer<Long, Long> updateCallback) {
+    this.updateCallback.set(updateCallback);
+    return this;
   }
 
   public double getScore() {

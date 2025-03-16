@@ -48,7 +48,6 @@ import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.constant
 import org.apache.iotdb.db.storageengine.dataregion.wal.WALManager;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALMode;
 import org.apache.iotdb.db.storageengine.rescon.disk.TierManager;
-import org.apache.iotdb.db.storageengine.rescon.memory.SystemInfo;
 import org.apache.iotdb.db.utils.DateTimeUtils;
 import org.apache.iotdb.db.utils.datastructure.TVListSortAlgorithm;
 import org.apache.iotdb.external.api.IPropertiesLoader;
@@ -2612,7 +2611,6 @@ public class IoTDBDescriptor {
     storageEngineMemoryManager.reAllocateInitialMemoryAccordingToRatio(
         (double) newSize / originSize);
     consensusMemoryManager.reAllocateInitialMemoryAccordingToRatio(0);
-    SystemInfo.getInstance().loadWriteMemory();
   }
 
   private static class IoTDBDescriptorHolder {

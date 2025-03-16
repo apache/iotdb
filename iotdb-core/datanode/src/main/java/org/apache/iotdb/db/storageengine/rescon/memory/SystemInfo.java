@@ -351,6 +351,7 @@ public class SystemInfo {
   }
 
   public void loadWriteMemory() {
+    // TODO: load memory size for memtable from config
     memorySizeForMemtable = memoryConfig.getMemtableMemoryManager().getTotalMemorySizeInBytes();
     FLUSH_THRESHOLD = memorySizeForMemtable * config.getFlushProportion();
     REJECT_THRESHOLD = memorySizeForMemtable * memoryConfig.getRejectProportion();
