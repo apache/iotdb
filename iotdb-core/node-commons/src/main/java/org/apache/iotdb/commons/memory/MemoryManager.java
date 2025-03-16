@@ -734,7 +734,7 @@ public class MemoryManager {
   }
 
   /** Try to update allocation */
-  public synchronized void updateAllocate() {
+  public synchronized void transfer() {
     // Try to find memory manager with highest and lowest memory usage
     MemoryManager highestMemoryManager = null;
     MemoryManager lowestMemoryManager = null;
@@ -770,7 +770,7 @@ public class MemoryManager {
       }
     }
     for (MemoryManager memoryManager : children.values()) {
-      memoryManager.updateAllocate();
+      memoryManager.transfer();
     }
   }
 

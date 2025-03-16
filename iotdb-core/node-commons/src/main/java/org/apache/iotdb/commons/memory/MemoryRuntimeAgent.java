@@ -57,9 +57,7 @@ public class MemoryRuntimeAgent implements IService {
           "Enable automatic memory transfer with an interval of {} s", MEMORY_CHECK_INTERVAL_IN_S);
       MemoryRuntimeAgent.getInstance()
           .registerPeriodicalJob(
-              "GlobalMemoryManager#updateAllocate()",
-              this::updateMemoryAllocate,
-              MEMORY_CHECK_INTERVAL_IN_S);
+              "GlobalMemoryManager#transfer()", this::transferMemory, MEMORY_CHECK_INTERVAL_IN_S);
     }
     // Try to adapt total memory size according to the JVM total memory size
     if (ENABLE_MEMORY_ADAPT) {
@@ -75,8 +73,8 @@ public class MemoryRuntimeAgent implements IService {
     isShutdown.set(false);
   }
 
-  private void updateMemoryAllocate() {
-    MemoryConfig.global().getMemoryManager("OnHeap").updateAllocate();
+  private void transferMemory() {
+    MemoryConfig.global().getMemoryManager("OnHeap").transfer();
   }
 
   private void adaptTotalMemory() {
