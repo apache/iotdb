@@ -416,7 +416,7 @@ public class SeriesScanCostMetricSet implements IMetricSet {
             TIMESERIES_METADATA);
     loadTimeSeriesMetadataFromCacheTimer =
         metricService.getOrCreateTimer(
-            Metric.METRIC_QUERY_CACHE.toString(),
+            Metric.METRIC_QUERY_CACHE_TIMER.toString(),
             MetricLevel.IMPORTANT,
             Tag.TYPE.toString(),
             TIMESERIES_METADATA,
@@ -424,7 +424,7 @@ public class SeriesScanCostMetricSet implements IMetricSet {
             CACHE);
     loadTimeSeriesMetadataFromDiskTimer =
         metricService.getOrCreateTimer(
-            Metric.METRIC_QUERY_CACHE.toString(),
+            Metric.METRIC_QUERY_CACHE_TIMER.toString(),
             MetricLevel.IMPORTANT,
             Tag.TYPE.toString(),
             TIMESERIES_METADATA,
@@ -460,14 +460,14 @@ public class SeriesScanCostMetricSet implements IMetricSet {
         TIMESERIES_METADATA);
     metricService.remove(
         MetricType.TIMER,
-        Metric.METRIC_QUERY_CACHE.toString(),
+        Metric.METRIC_QUERY_CACHE_TIMER.toString(),
         Tag.TYPE.toString(),
         TIMESERIES_METADATA,
         Tag.FROM.toString(),
         CACHE);
     metricService.remove(
         MetricType.TIMER,
-        Metric.METRIC_QUERY_CACHE.toString(),
+        Metric.METRIC_QUERY_CACHE_TIMER.toString(),
         Tag.TYPE.toString(),
         TIMESERIES_METADATA,
         Tag.FROM.toString(),
