@@ -103,6 +103,7 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentLinkedDeque;
 import java.util.concurrent.CopyOnWriteArrayList;
@@ -319,6 +320,13 @@ public class TsFileProcessor {
     if (!insertRowNode.isGeneratedByPipe()) {
       workMemTable.markAsNotGeneratedByPipe();
     }
+    if ("Not Set".equals(workMemTable.getCurrentOriginClusterId())) {
+      workMemTable.setCurrentOriginClusterId(insertRowNode.getOriginClusterId());
+    } else if (!Objects.equals(
+        insertRowNode.getOriginClusterId(), workMemTable.getCurrentOriginClusterId())) {
+      workMemTable.markAsNotFromTheSameCluster();
+    }
+
     PipeInsertionDataNodeListener.getInstance()
         .listenToInsertNode(
             dataRegionInfo.getDataRegion().getDataRegionId(),
@@ -409,6 +417,12 @@ public class TsFileProcessor {
     PipeDataNodeAgent.runtime().assignSimpleProgressIndexIfNeeded(insertRowsNode);
     if (!insertRowsNode.isGeneratedByPipe()) {
       workMemTable.markAsNotGeneratedByPipe();
+    }
+    if ("Not Set".equals(workMemTable.getCurrentOriginClusterId())) {
+      workMemTable.setCurrentOriginClusterId(insertRowsNode.getOriginClusterId());
+    } else if (!Objects.equals(
+        insertRowsNode.getOriginClusterId(), workMemTable.getCurrentOriginClusterId())) {
+      workMemTable.markAsNotFromTheSameCluster();
     }
     PipeInsertionDataNodeListener.getInstance()
         .listenToInsertNode(
@@ -577,6 +591,13 @@ public class TsFileProcessor {
     if (!insertTabletNode.isGeneratedByPipe()) {
       workMemTable.markAsNotGeneratedByPipe();
     }
+    if ("Not Set".equals(workMemTable.getCurrentOriginClusterId())) {
+      workMemTable.setCurrentOriginClusterId(insertTabletNode.getOriginClusterId());
+    } else if (!Objects.equals(
+        insertTabletNode.getOriginClusterId(), workMemTable.getCurrentOriginClusterId())) {
+      workMemTable.markAsNotFromTheSameCluster();
+    }
+
     PipeInsertionDataNodeListener.getInstance()
         .listenToInsertNode(
             dataRegionInfo.getDataRegion().getDataRegionId(),
@@ -1292,7 +1313,9 @@ public class TsFileProcessor {
                 tsFileResource,
                 false,
                 tmpMemTable.isTotallyGeneratedByPipe(),
-                null);
+                tmpMemTable.isTotallyFromTheSameCluster()
+                    ? tmpMemTable.getCurrentOriginClusterId()
+                    : null);
 
         // When invoke closing TsFile after insert data to memTable, we shouldn't flush until invoke
         // flushing memTable in System module.

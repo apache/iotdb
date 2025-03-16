@@ -190,9 +190,7 @@ public class TableModelPlanner implements IPlanner {
               syncInternalServiceClientManager,
               ClusterPartitionFetcher.getInstance(),
               isPipeEnrichedTsFileLoad,
-                 isPipeEnrichedTsFileLoad
-                  ? ((PipeEnriched) statement).getOriginClusterId()
-                  : null);
+              isPipeEnrichedTsFileLoad ? ((PipeEnriched) statement).getOriginClusterId() : null);
     } else {
       scheduler =
           new ClusterScheduler(

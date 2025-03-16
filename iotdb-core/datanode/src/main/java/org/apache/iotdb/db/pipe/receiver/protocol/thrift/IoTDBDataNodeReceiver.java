@@ -1020,7 +1020,9 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
       final TSStatus result =
           Coordinator.getInstance()
               .executeForTableModel(
-                  shouldMarkAsPipeRequest.get() ? new PipeEnriched(statement,clusterIdFromHandshakeRequest) : statement,
+                  shouldMarkAsPipeRequest.get()
+                      ? new PipeEnriched(statement, clusterIdFromHandshakeRequest)
+                      : statement,
                   relationalSqlParser,
                   SESSION_MANAGER.getCurrSession(),
                   SESSION_MANAGER.requestQueryId(),

@@ -30,7 +30,7 @@ public class PipeEnriched extends Statement {
 
   private final String originClusterId;
 
-  public PipeEnriched(final @NotNull Statement innerstatement,final  String originCluster) {
+  public PipeEnriched(final @NotNull Statement innerstatement, final String originCluster) {
     super(innerstatement.getLocation().isPresent() ? innerstatement.getLocation().get() : null);
     this.innerStatement = innerstatement;
     this.originClusterId = originCluster;
@@ -75,5 +75,4 @@ public class PipeEnriched extends Statement {
   public String getOriginClusterId() {
     return originClusterId;
   }
-
 }

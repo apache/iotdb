@@ -124,6 +124,10 @@ public abstract class AbstractMemTable implements IMemTable {
 
   private final AtomicBoolean isTotallyGeneratedByPipe = new AtomicBoolean(true);
 
+  private final AtomicBoolean isToTallyFromTheSameCluster = new AtomicBoolean(true);
+
+  private String currentOriginClusterId = "Not Set";
+
   protected AbstractMemTable() {
     this.database = null;
     this.dataRegionId = null;
@@ -1022,5 +1026,23 @@ public abstract class AbstractMemTable implements IMemTable {
   @Override
   public boolean isTotallyGeneratedByPipe() {
     return this.isTotallyGeneratedByPipe.get();
+  }
+
+  @Override
+  public void markAsNotFromTheSameCluster() {
+    this.isToTallyFromTheSameCluster.set(false);
+  }
+
+  @Override
+  public boolean isTotallyFromTheSameCluster() {
+    return this.isToTallyFromTheSameCluster.get();
+  }
+
+  public String getCurrentOriginClusterId() {
+    return currentOriginClusterId;
+  }
+
+  public void setCurrentOriginClusterId(String currentOriginClusterId) {
+    this.currentOriginClusterId = currentOriginClusterId;
   }
 }
