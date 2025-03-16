@@ -40,6 +40,8 @@ public class MemoryManager {
   /** The min memory size to allocate */
   private static final long MEMORY_ALLOCATE_MIN_SIZE_IN_BYTES = 32;
 
+  private static final boolean SHRINK_ALL = true;
+
   /** The name of memory manager */
   private final String name;
 
@@ -466,10 +468,6 @@ public class MemoryManager {
     this.totalMemorySizeInBytes = totalMemorySizeInBytes;
   }
 
-  public synchronized void expandTotalMemorySizeInBytes(long totalMemorySizeInBytes) {
-    this.totalMemorySizeInBytes += totalMemorySizeInBytes;
-  }
-
   /** Get available memory size in bytes of memory manager */
   public long getAvailableMemorySizeInBytes() {
     return totalMemorySizeInBytes - allocatedMemorySizeInBytes;
@@ -547,15 +545,33 @@ public class MemoryManager {
   // endregion
 
   // region auto adapt memory
+
+  /**
+   * Get the dynamic used memory ratio of this memory manager
+   *
+   * @return the dynamic used memory ratio
+   */
+  public double getDynamicUsedMemoryRatio() {
+    return (double) (getUsedMemorySizeInBytes() - getStaticUsedMemorySizeInBytes())
+        / (totalMemorySizeInBytes - getStaticAllocatedMemorySizeInBytes());
+  }
+
   /**
    * Whether this memory manager is available to shrink
    *
    * @return true if available to shrink, otherwise false
    */
   public boolean isAvailableToShrink() {
-    return initialAllocatedMemorySizeInBytes - totalMemorySizeInBytes
-            < initialAllocatedMemorySizeInBytes / 10
-        && totalMemorySizeInBytes > allocatedMemorySizeInBytes;
+    if (!SHRINK_ALL) {
+      return initialAllocatedMemorySizeInBytes - totalMemorySizeInBytes
+              < initialAllocatedMemorySizeInBytes / 10
+          && totalMemorySizeInBytes > allocatedMemorySizeInBytes;
+    } else {
+      return initialAllocatedMemorySizeInBytes - totalMemorySizeInBytes
+              < initialAllocatedMemorySizeInBytes / 10
+          && (totalMemorySizeInBytes - getStaticAllocatedMemorySizeInBytes())
+              > (getUsedMemorySizeInBytes() - getStaticAllocatedMemorySizeInBytes());
+    }
   }
 
   /**
@@ -564,14 +580,70 @@ public class MemoryManager {
    * @return actual shrink size
    */
   public synchronized long shrink() {
-    long shrinkSize =
-        Math.max(
-            0,
-            Math.min(
-                getAvailableMemorySizeInBytes() / 10,
-                totalMemorySizeInBytes - initialAllocatedMemorySizeInBytes * 9 / 10));
-    totalMemorySizeInBytes -= shrinkSize;
-    return shrinkSize;
+    if (!SHRINK_ALL) {
+      long shrinkSize =
+          Math.max(
+              0,
+              Math.min(
+                  getAvailableMemorySizeInBytes() / 10,
+                  totalMemorySizeInBytes - initialAllocatedMemorySizeInBytes * 9 / 10));
+      totalMemorySizeInBytes -= shrinkSize;
+      return shrinkSize;
+    } else {
+      if (getAvailableMemorySizeInBytes() != 0) {
+        // first we try to use the available memory
+        long shrinkSize =
+            Math.max(
+                0,
+                Math.min(
+                    getAvailableMemorySizeInBytes() / 10,
+                    totalMemorySizeInBytes - initialAllocatedMemorySizeInBytes * 9 / 10));
+        totalMemorySizeInBytes -= shrinkSize;
+        return shrinkSize;
+      } else {
+        double minRatio = 1.0;
+        IMemoryBlock targetMemoryBlock = null;
+        MemoryManager targetMemoryManager = null;
+        // try to find min used ratio memory block
+        for (IMemoryBlock memoryBlock : allocatedMemoryBlocks.values()) {
+          if (memoryBlock.getMemoryBlockType() == MemoryBlockType.STATIC) {
+            continue;
+          }
+          if (targetMemoryBlock == null) {
+            targetMemoryBlock = memoryBlock;
+            minRatio = memoryBlock.getUsedRatio();
+          } else {
+            double ratio = memoryBlock.getUsedRatio();
+            if (ratio < minRatio) {
+              targetMemoryBlock = memoryBlock;
+              minRatio = ratio;
+            }
+          }
+        }
+        // try to find min memory used ratio memory manager
+        for (MemoryManager child : children.values()) {
+          if (child.isAvailableToShrink()) {
+            double ratio = child.getDynamicUsedMemoryRatio();
+            if (ratio < minRatio) {
+              targetMemoryManager = child;
+              minRatio = ratio;
+            }
+          }
+        }
+        if (targetMemoryManager != null) {
+          // if targetMemoryManager is not null, we shrink the targetMemoryManager
+          return targetMemoryManager.shrink();
+        } else if (targetMemoryBlock != null) {
+          // if targetMemoryBlock is not null, we shrink the targetMemoryBlock
+          long shrinkSize = targetMemoryBlock.resizeByRatio(0.9);
+          targetMemoryBlock.getMemoryManager().totalMemorySizeInBytes -= shrinkSize;
+          targetMemoryBlock.getMemoryManager().allocatedMemorySizeInBytes -= shrinkSize;
+          return shrinkSize;
+        } else {
+          return 0;
+        }
+      }
+    }
   }
 
   /**

@@ -128,6 +128,11 @@ public class AtomicLongMemoryBlock extends IMemoryBlock {
   }
 
   @Override
+  public double getUsedRatio() {
+    return (double) usedMemoryInBytes.get() / totalMemorySizeInBytes;
+  }
+
+  @Override
   public String toString() {
     return "IoTDBMemoryBlock{"
         + "name="

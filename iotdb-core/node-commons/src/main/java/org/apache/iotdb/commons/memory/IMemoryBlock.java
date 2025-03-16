@@ -99,6 +99,8 @@ public abstract class IMemoryBlock implements AutoCloseable {
   /** Get the free memory in byte of this memory block */
   public abstract long getFreeMemoryInBytes();
 
+  public abstract double getUsedRatio();
+
   /** Get the name of memory block */
   public String getName() {
     return name;
@@ -145,6 +147,11 @@ public abstract class IMemoryBlock implements AutoCloseable {
   /** Get the type of this memory block */
   public MemoryBlockType getMemoryBlockType() {
     return memoryBlockType;
+  }
+
+  /** Get the memory manager that manages this memory block */
+  public MemoryManager getMemoryManager() {
+    return memoryManager;
   }
 
   public void print(int indent) {
