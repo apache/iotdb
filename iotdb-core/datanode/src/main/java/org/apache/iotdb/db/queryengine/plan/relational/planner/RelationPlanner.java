@@ -767,20 +767,20 @@ public class RelationPlanner extends AstVisitor<RelationPlan, Void> {
       return relationPlan;
     } else if (relationPlan.getRoot() instanceof InsertNode) {
       return new RelationPlan(
-          new PipeEnrichedInsertNode((InsertNode) relationPlan.getRoot()),
+          new PipeEnrichedInsertNode((InsertNode) relationPlan.getRoot(),node.getOriginClusterId()),
           analysis.getRootScope(),
           Collections.emptyList(),
           outerContext);
     } else if (relationPlan.getRoot() instanceof RelationalDeleteDataNode) {
       return new RelationPlan(
-          new PipeEnrichedDeleteDataNode((RelationalDeleteDataNode) relationPlan.getRoot()),
+          new PipeEnrichedDeleteDataNode((RelationalDeleteDataNode) relationPlan.getRoot(),node.getOriginClusterId()),
           analysis.getRootScope(),
           Collections.emptyList(),
           outerContext);
     }
 
     return new RelationPlan(
-        new PipeEnrichedWritePlanNode((WritePlanNode) relationPlan.getRoot()),
+        new PipeEnrichedWritePlanNode((WritePlanNode) relationPlan.getRoot(),node.getOriginClusterId()),
         analysis.getRootScope(),
         Collections.emptyList(),
         outerContext);

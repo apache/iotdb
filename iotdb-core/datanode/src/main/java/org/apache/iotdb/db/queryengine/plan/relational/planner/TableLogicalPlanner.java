@@ -175,7 +175,7 @@ public class TableLogicalPlanner {
       if (innerStatement instanceof CreateOrUpdateDevice) {
         return new PipeEnrichedWritePlanNode(
             (WritePlanNode)
-                planCreateOrUpdateDevice((CreateOrUpdateDevice) innerStatement, analysis));
+                planCreateOrUpdateDevice((CreateOrUpdateDevice) innerStatement, analysis),((PipeEnriched)statement).getOriginClusterId());
       }
       if (innerStatement instanceof Update) {
         return new PipeEnrichedWritePlanNode(

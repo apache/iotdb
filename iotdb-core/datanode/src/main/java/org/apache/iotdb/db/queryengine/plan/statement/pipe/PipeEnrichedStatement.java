@@ -92,7 +92,7 @@ public class PipeEnrichedStatement extends Statement {
   public org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Statement toRelationalStatement(
       final MPPQueryContext context) {
     final PipeEnriched pipeEnriched =
-        new PipeEnriched(innerStatement.toRelationalStatement(context));
+        new PipeEnriched(innerStatement.toRelationalStatement(context),originClusterId);
     if (pipeEnriched.getInnerStatement() instanceof InsertRows) {
       ((InsertRows) pipeEnriched.getInnerStatement()).setAllowCreateTable(true);
     }
