@@ -241,7 +241,7 @@ public class TimeSeriesMetadataCache {
         queryContext
             .getQueryStatistics()
             .getLoadTimeSeriesMetadataFromCacheTime()
-            .getAndAdd(System.nanoTime() - startTime);
+            .getAndAdd(System.nanoTime() - startTime - loadBloomFilterTime);
       } else {
         queryContext
             .getQueryStatistics()
@@ -250,7 +250,7 @@ public class TimeSeriesMetadataCache {
         queryContext
             .getQueryStatistics()
             .getLoadTimeSeriesMetadataFromDiskTime()
-            .getAndAdd(System.nanoTime() - startTime);
+            .getAndAdd(System.nanoTime() - startTime - loadBloomFilterTime);
       }
     }
   }
