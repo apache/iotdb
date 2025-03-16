@@ -387,7 +387,7 @@ public class MemoryManager {
     long beforeTotalMemorySizeInBytes = this.totalMemorySizeInBytes;
     this.totalMemorySizeInBytes +=
         (this.initialAllocatedMemorySizeInBytes - beforeInitialAllocatedMemorySizeInBytes);
-    // Get actual ratio of memory reallocate
+    // Get actual ratio of re-allocate memory size
     double actualRatio = (double) this.totalMemorySizeInBytes / beforeTotalMemorySizeInBytes;
     // Re-allocate memory for all memory blocks
     for (IMemoryBlock block : allocatedMemoryBlocks.values()) {

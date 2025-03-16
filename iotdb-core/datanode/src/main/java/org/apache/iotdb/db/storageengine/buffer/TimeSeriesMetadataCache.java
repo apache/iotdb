@@ -35,6 +35,7 @@ import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileID;
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
 import com.github.benmanes.caffeine.cache.Weigher;
+import com.google.common.util.concurrent.AtomicDouble;
 import org.apache.tsfile.common.constant.TsFileConstant;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.file.metadata.TimeseriesMetadata;
@@ -71,6 +72,7 @@ public class TimeSeriesMetadataCache {
   private static final DataNodeMemoryConfig memoryConfig =
       IoTDBDescriptor.getInstance().getMemoryConfig();
   private static final IMemoryBlock CACHE_MEMORY_BLOCK;
+  private static final AtomicDouble memoryUsageCheatFactor = new AtomicDouble(1);
   private static final boolean CACHE_ENABLE = memoryConfig.isMetaDataCacheEnable();
 
   private static final SeriesScanCostMetricSet SERIES_SCAN_COST_METRIC_SET =
@@ -88,7 +90,16 @@ public class TimeSeriesMetadataCache {
     CACHE_MEMORY_BLOCK =
         memoryConfig
             .getTimeSeriesMetaDataCacheMemoryManager()
-            .exactAllocate("TimeSeriesMetadataCache", MemoryBlockType.STATIC);
+            .exactAllocate("TimeSeriesMetadataCache", MemoryBlockType.STATIC)
+            .setUpdateCallback(
+                (oldMemory, newMemory) -> {
+                  memoryUsageCheatFactor.updateAndGet(
+                      factor -> factor / ((double) newMemory / oldMemory));
+                  logger.info(
+                      "[MemoryUsageCheatFactor]TimeSeriesMetadataCache has updated from {} to {}.",
+                      oldMemory,
+                      newMemory);
+                });
     // TODO @spricoder find a better way to get the size of cache
     CACHE_MEMORY_BLOCK.allocate(CACHE_MEMORY_BLOCK.getTotalMemorySizeInBytes());
   }
@@ -104,7 +115,9 @@ public class TimeSeriesMetadataCache {
             .weigher(
                 (Weigher<TimeSeriesMetadataCacheKey, TimeseriesMetadata>)
                     (key, value) ->
-                        (int) (key.getRetainedSizeInBytes() + value.getRetainedSizeInBytes()))
+                        (int)
+                            ((key.getRetainedSizeInBytes() + value.getRetainedSizeInBytes())
+                                * memoryUsageCheatFactor.get()))
             .recordStats()
             .build();
     // add metrics

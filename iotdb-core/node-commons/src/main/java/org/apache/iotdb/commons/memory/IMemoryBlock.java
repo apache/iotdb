@@ -22,6 +22,9 @@ package org.apache.iotdb.commons.memory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.BiConsumer;
+
 public abstract class IMemoryBlock implements AutoCloseable {
   private static final Logger LOGGER = LoggerFactory.getLogger(IMemoryBlock.class);
 
@@ -39,6 +42,8 @@ public abstract class IMemoryBlock implements AutoCloseable {
 
   /** The total memory size in byte of this memory block */
   protected long totalMemorySizeInBytes;
+
+  protected final AtomicReference<BiConsumer<Long, Long>> updateCallback = new AtomicReference<>();
 
   /**
    * Forcibly allocate memory without the limit of totalMemorySizeInBytes
@@ -107,14 +112,19 @@ public abstract class IMemoryBlock implements AutoCloseable {
   public long resizeByRatio(double ratio) {
     long before = this.totalMemorySizeInBytes;
     this.totalMemorySizeInBytes = (long) (before * ratio);
-    if (name.equals("WalBufferQueue")) {
-      LOGGER.error(
-          "WalBufferQueue Resized from {} to {}, {}",
-          before,
-          this.totalMemorySizeInBytes,
-          memoryManager);
+    if (updateCallback.get() != null) {
+      try {
+        updateCallback.get().accept(before, totalMemorySizeInBytes);
+      } catch (Exception e) {
+        LOGGER.warn("Failed to execute the update callback.", e);
+      }
     }
     return this.totalMemorySizeInBytes - before;
+  }
+
+  public IMemoryBlock setUpdateCallback(final BiConsumer<Long, Long> updateCallback) {
+    this.updateCallback.set(updateCallback);
+    return this;
   }
 
   /** Get the maximum memory size in byte of this memory block */

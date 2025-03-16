@@ -51,6 +51,7 @@ public class MemoryRuntimeAgent implements IService {
   public void start() throws StartupException {
     memoryPeriodicalJobExecutor.start();
 
+    // Try to transfer memory between memory modules periodically
     if (ENABLE_MEMORY_TRANSFER) {
       LOGGER.info(
           "Enable automatic memory transfer with an interval of {} s", MEMORY_CHECK_INTERVAL_IN_S);
@@ -60,6 +61,7 @@ public class MemoryRuntimeAgent implements IService {
               this::updateMemoryAllocate,
               MEMORY_CHECK_INTERVAL_IN_S);
     }
+    // Try to adapt total memory size according to the JVM total memory size
     if (ENABLE_MEMORY_ADAPT) {
       LOGGER.info(
           "Enable automatic memory adapt with an interval of {} s", MEMORY_CHECK_INTERVAL_IN_S);
