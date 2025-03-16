@@ -176,6 +176,14 @@
                                     <destinationFile>${project.build.directory}/build/main/generated-sources-cpp/TableSessionBuilder.h</destinationFile>
                                 </fileSet>
                                 <fileSet>
+                                    <sourceFile>${project.basedir}/src/main/NodesSupplier.h</sourceFile>
+                                    <destinationFile>${project.build.directory}/build/main/generated-sources-cpp/NodesSupplier.h</destinationFile>
+                                </fileSet>
+                                <fileSet>
+                                    <sourceFile>${project.basedir}/src/main/ThriftConnection.h</sourceFile>
+                                    <destinationFile>${project.build.directory}/build/main/generated-sources-cpp/ThriftConnection.h</destinationFile>
+                                </fileSet>
+                                <fileSet>
                                     <sourceFile>${project.basedir}/src/main/AbstractSessionBuilder.h</sourceFile>
                                     <destinationFile>${project.build.directory}/build/main/generated-sources-cpp/AbstractSessionBuilder.h</destinationFile>
                                 </fileSet>

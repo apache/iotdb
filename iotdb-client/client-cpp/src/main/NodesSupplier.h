@@ -40,7 +40,7 @@ public:
     const std::string IP_COLUMN_NAME = "RpcAddress";
     const std::string PORT_COLUMN_NAME = "RpcPort";
     const std::string REMOVING_STATUS = "Removing";
-    const static int64_t TIMEOUT_IN_MS = 6000;
+    const static int64_t TIMEOUT_IN_MS = 60000;
     const int FETCH_SIZE = 10000;
     const static int THRIFT_DEFAULT_BUFFER_SIZE = 4096;
     const static int THRIFT_MAX_FRAME_SIZE = 1048576;
