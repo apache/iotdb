@@ -52,6 +52,9 @@ public class MemoryManager {
   /** The total memory size in byte of memory manager */
   private volatile long totalMemorySizeInBytes;
 
+  /** The static allocated memory size in byte of memory manager */
+  private volatile long staticAllocatedMemorySizeInBytes = 0L;
+
   /** The allocated memory size */
   private volatile long allocatedMemorySizeInBytes = 0L;
 
@@ -264,6 +267,9 @@ public class MemoryManager {
             }
             return block;
           } else {
+            if (type.equals(MemoryBlockType.STATIC)) {
+              staticAllocatedMemorySizeInBytes += sizeInBytes;
+            }
             allocatedMemorySizeInBytes += sizeInBytes;
             return new AtomicLongMemoryBlock(name, this, sizeInBytes, type);
           }
@@ -294,6 +300,9 @@ public class MemoryManager {
     }
 
     block.markAsReleased();
+    if (block.getMemoryBlockType() == MemoryBlockType.STATIC) {
+      staticAllocatedMemorySizeInBytes -= block.getTotalMemorySizeInBytes();
+    }
     allocatedMemorySizeInBytes -= block.getTotalMemorySizeInBytes();
     allocatedMemoryBlocks.remove(block.getName());
     try {
@@ -418,6 +427,9 @@ public class MemoryManager {
       }
 
       block.markAsReleased();
+      if (block.getMemoryBlockType() == MemoryBlockType.STATIC) {
+        staticAllocatedMemorySizeInBytes -= block.getTotalMemorySizeInBytes();
+      }
       allocatedMemorySizeInBytes -= block.getTotalMemorySizeInBytes();
 
       try {
@@ -478,11 +490,6 @@ public class MemoryManager {
     return memorySize;
   }
 
-  /** Get used memory ratio */
-  public double getUsedMemoryRatio() {
-    return (double) getUsedMemorySizeInBytes() / totalMemorySizeInBytes;
-  }
-
   // endregion
 
   // region transfer memory
@@ -504,7 +511,11 @@ public class MemoryManager {
     double actualRatio = (double) this.totalMemorySizeInBytes / beforeTotalMemorySizeInBytes;
     // Re-allocate memory for all memory blocks
     for (IMemoryBlock block : allocatedMemoryBlocks.values()) {
-      this.allocatedMemorySizeInBytes += block.resizeByRatio(actualRatio);
+      long resizeSize = block.resizeByRatio(actualRatio);
+      if (block.getMemoryBlockType() == MemoryBlockType.STATIC) {
+        this.staticAllocatedMemorySizeInBytes += resizeSize;
+      }
+      this.allocatedMemorySizeInBytes += resizeSize;
     }
     // Re-allocate memory for all child memory managers
     for (Map.Entry<String, MemoryManager> entry : children.entrySet()) {
@@ -512,16 +523,24 @@ public class MemoryManager {
     }
   }
 
-  public synchronized void reAllocateTotalMemoryAccordingToRatio(double ratio) {
+  public synchronized void reAllocateDynamicMemoryAccordingToRatio(double ratio) {
     // Update total memory size by actual size
+    long beforeTotalMemorySizeInBytes = this.totalMemorySizeInBytes;
     this.totalMemorySizeInBytes *= ratio;
-    // Re-allocate memory for all memory blocks
+    double actualRatio =
+        (double) (this.totalMemorySizeInBytes - this.staticAllocatedMemorySizeInBytes)
+            / (beforeTotalMemorySizeInBytes - staticAllocatedMemorySizeInBytes);
+    // Re-allocate memory for dynamic memory blocks
     for (IMemoryBlock block : allocatedMemoryBlocks.values()) {
-      this.allocatedMemorySizeInBytes += block.resizeByRatio(ratio);
+      if (block.getMemoryBlockType() == MemoryBlockType.STATIC) {
+        continue;
+      }
+      long resizeSize = block.resizeByRatio(actualRatio);
+      this.allocatedMemorySizeInBytes += resizeSize;
     }
     // Re-allocate memory for all child memory managers
     for (Map.Entry<String, MemoryManager> entry : children.entrySet()) {
-      entry.getValue().reAllocateTotalMemoryAccordingToRatio(ratio);
+      entry.getValue().reAllocateDynamicMemoryAccordingToRatio(actualRatio);
     }
   }
 
@@ -576,7 +595,30 @@ public class MemoryManager {
   }
 
   public double getScore() {
-    return getUsedMemoryRatio();
+    return (double) (getUsedMemorySizeInBytes() - getStaticUsedMemorySizeInBytes())
+        / (totalMemorySizeInBytes - getStaticAllocatedMemorySizeInBytes());
+  }
+
+  public long getStaticUsedMemorySizeInBytes() {
+    long memorySize = 0;
+    for (IMemoryBlock memoryBlock : allocatedMemoryBlocks.values()) {
+      if (memoryBlock.getMemoryBlockType() == MemoryBlockType.STATIC) {
+        memorySize += memoryBlock.getUsedMemoryInBytes();
+      }
+    }
+    for (MemoryManager child : children.values()) {
+      memorySize += child.getStaticUsedMemorySizeInBytes();
+    }
+    return memorySize;
+  }
+
+  /** Get static allocated memory size in bytes of memory manager */
+  public long getStaticAllocatedMemorySizeInBytes() {
+    long memorySize = staticAllocatedMemorySizeInBytes;
+    for (MemoryManager child : children.values()) {
+      memorySize += child.getStaticAllocatedMemorySizeInBytes();
+    }
+    return memorySize;
   }
 
   /** Try to update allocation */
@@ -607,7 +649,7 @@ public class MemoryManager {
         double ratio =
             (double) (transferSize + beforeTotalMemorySizeInBytes) / beforeTotalMemorySizeInBytes;
         // we need to update all memory to each part
-        highestMemoryManager.reAllocateTotalMemoryAccordingToRatio(ratio);
+        highestMemoryManager.reAllocateDynamicMemoryAccordingToRatio(ratio);
         LOGGER.info(
             "Transfer Memory Size {} from {} to {}",
             transferSize,
