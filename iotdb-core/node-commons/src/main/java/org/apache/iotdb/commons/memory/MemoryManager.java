@@ -635,7 +635,7 @@ public class MemoryManager {
           return targetMemoryManager.shrink();
         } else if (targetMemoryBlock != null) {
           // if targetMemoryBlock is not null, we shrink the targetMemoryBlock
-          long shrinkSize = targetMemoryBlock.resizeByRatio(1 - memory_update_threshold);
+          long shrinkSize = -targetMemoryBlock.resizeByRatio(1 - memory_update_threshold);
           long beforeTotalMemorySizeInBytes = totalMemorySizeInBytes;
           totalMemorySizeInBytes -= shrinkSize;
           allocatedMemorySizeInBytes -= shrinkSize;
