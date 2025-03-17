@@ -1122,6 +1122,7 @@ struct TAlterOrDropTableReq {
     3: required string queryId
     4: required byte operationType
     5: required binary updateInfo
+    6: optional bool isView
 }
 
 struct TDeleteTableDeviceReq {
