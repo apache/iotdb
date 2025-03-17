@@ -305,7 +305,8 @@ public class TableDeviceSchemaFetcher {
       statement.setIdFuzzyPredicate(compactedIdFuzzyPredicate);
       statement.setPartitionKeyList(fetchPaths);
       // Return only the required attributes for non-schema queries
-      if (!isDirectDeviceQuery) {
+      // if there is no need to put to cache
+      if (!isDirectDeviceQuery && Objects.isNull(fetchPaths)) {
         statement.setAttributeColumns(attributeColumns);
       }
       return true;
