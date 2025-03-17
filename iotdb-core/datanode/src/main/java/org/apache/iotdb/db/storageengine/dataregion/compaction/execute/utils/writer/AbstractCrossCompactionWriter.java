@@ -227,7 +227,7 @@ public abstract class AbstractCrossCompactionWriter extends AbstractCompactionWr
         for (Map.Entry<String, TimeseriesMetadata> entry : deviceMetadataMap.entrySet()) {
           long tmpStartTime = entry.getValue().getStatistics().getStartTime();
           long tmpEndTime = entry.getValue().getStatistics().getEndTime();
-          if (tmpEndTime >= tmpStartTime && endTime < tmpEndTime) {
+          if (tmpEndTime >= tmpStartTime && endTime <= tmpEndTime) {
             endTime = tmpEndTime;
             isDeviceExist = true;
           }
