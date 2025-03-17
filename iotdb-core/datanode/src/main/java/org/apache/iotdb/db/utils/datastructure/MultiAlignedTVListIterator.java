@@ -71,6 +71,7 @@ public abstract class MultiAlignedTVListIterator implements MemPointIterator {
               tsDataTypeList,
               columnIndexList,
               timeColumnDeletion,
+              null,
               floatPrecision,
               encodingList,
               ignoreAllNullRows));
