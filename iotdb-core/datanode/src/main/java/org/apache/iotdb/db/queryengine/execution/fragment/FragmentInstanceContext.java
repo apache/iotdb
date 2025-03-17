@@ -22,6 +22,7 @@ package org.apache.iotdb.db.queryengine.execution.fragment;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.commons.exception.IoTDBRuntimeException;
+import org.apache.iotdb.commons.path.AlignedFullPath;
 import org.apache.iotdb.commons.path.IFullPath;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
@@ -450,24 +451,39 @@ public class FragmentInstanceContext extends QueryContext {
 
   public void initQueryDataSource(List<IFullPath> sourcePaths) throws QueryProcessException {
     long startTime = System.nanoTime();
-    if (sourcePaths == null) {
+    if (sourcePaths == null || sourcePaths.isEmpty()) {
       return;
     }
+
+    IDeviceID singleDeviceId = null;
+    if (sourcePaths.size() == 1) {
+      singleDeviceId = sourcePaths.get(0).getDeviceId();
+    } else {
+      Set<IDeviceID> selectedDeviceIdSet = new HashSet<>();
+      for (IFullPath sourcePath : sourcePaths) {
+        if (sourcePath instanceof AlignedFullPath) {
+          singleDeviceId = null;
+          break;
+        } else {
+          singleDeviceId = sourcePath.getDeviceId();
+          selectedDeviceIdSet.add(singleDeviceId);
+          if (selectedDeviceIdSet.size() > 1) {
+            singleDeviceId = null;
+            break;
+          }
+        }
+      }
+    }
+
     dataRegion.readLock();
     try {
-      List<IFullPath> pathList = new ArrayList<>();
-      Set<IDeviceID> selectedDeviceIdSet = new HashSet<>();
-      for (IFullPath path : sourcePaths) {
-        pathList.add(path);
-        selectedDeviceIdSet.add(path.getDeviceId());
-      }
 
       this.sharedQueryDataSource =
           dataRegion.query(
-              pathList,
+              sourcePaths,
               // when all the selected series are under the same device, the QueryDataSource will be
               // filtered according to timeIndex
-              selectedDeviceIdSet.size() == 1 ? selectedDeviceIdSet.iterator().next() : null,
+              singleDeviceId,
               this,
               // time filter may be stateful, so we need to copy it
               globalTimeFilter != null ? globalTimeFilter.copy() : null,
@@ -479,7 +495,7 @@ public class FragmentInstanceContext extends QueryContext {
         closedFilePaths = new HashSet<>();
         unClosedFilePaths = new HashSet<>();
         addUsedFilesForQuery((QueryDataSource) sharedQueryDataSource);
-        ((QueryDataSource) sharedQueryDataSource).setSingleDevice(selectedDeviceIdSet.size() == 1);
+        ((QueryDataSource) sharedQueryDataSource).setSingleDevice(singleDeviceId != null);
       }
     } finally {
       setInitQueryDataSourceCost(System.nanoTime() - startTime);
