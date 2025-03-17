@@ -30,6 +30,7 @@ import org.apache.iotdb.commons.schema.SchemaConstant;
 import org.apache.iotdb.commons.schema.column.ColumnHeader;
 import org.apache.iotdb.commons.schema.filter.SchemaFilterType;
 import org.apache.iotdb.commons.schema.node.role.IMeasurementMNode;
+import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.view.LogicalViewSchema;
 import org.apache.iotdb.commons.schema.view.viewExpression.ViewExpression;
 import org.apache.iotdb.commons.utils.FileUtils;
@@ -1473,6 +1474,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
       final TableDeviceAttributeUpdateNode updateNode) {
     final String database = updateNode.getDatabase();
     final String tableName = updateNode.getTableName();
+    final TsTable table = DataNodeTableCache.getInstance().getTable(database, tableName);
     final Expression predicate = updateNode.getIdFuzzyPredicate();
     final List<ColumnHeader> columnHeaderList = updateNode.getColumnHeaderList();
     final Map<Symbol, List<InputLocation>> inputLocations =
@@ -1547,8 +1549,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
         filterLeafColumnTransformerList,
         filterOutputTransformer,
         commonTransformerList,
-        database,
-        tableName,
+        table,
         columnHeaderList,
         projectLeafColumnTransformerList,
         updateNode.getAssignments().stream()
@@ -1600,8 +1601,10 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
             constructTableDevicesBlackListNode.getPatternInfo());
     final DeviceBlackListConstructor constructor =
         DeleteDevice.constructDevicePredicateUpdater(
-            PathUtils.unQualifyDatabaseName(storageGroupFullPath),
-            constructTableDevicesBlackListNode.getTableName(),
+            DataNodeTableCache.getInstance()
+                .getTable(
+                    PathUtils.unQualifyDatabaseName(storageGroupFullPath),
+                    constructTableDevicesBlackListNode.getTableName()),
             constructTableDevicesBlackListNode.getFilterInfo(),
             (pointer, name) -> deviceAttributeStore.getAttributes(pointer, name),
             regionStatistics);
