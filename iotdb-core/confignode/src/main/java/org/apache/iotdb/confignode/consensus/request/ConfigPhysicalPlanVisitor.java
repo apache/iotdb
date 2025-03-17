@@ -39,6 +39,7 @@ import org.apache.iotdb.confignode.consensus.request.write.table.RenameTablePlan
 import org.apache.iotdb.confignode.consensus.request.write.table.SetTableColumnCommentPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.SetTableCommentPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.SetTablePropertiesPlan;
+import org.apache.iotdb.confignode.consensus.request.write.table.view.SetViewCommentPlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.CommitSetSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.CreateSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.DropSchemaTemplatePlan;
@@ -167,6 +168,8 @@ public abstract class ConfigPhysicalPlanVisitor<R, C> {
         return visitPipeDeleteDevices((PipeDeleteDevicesPlan) plan, context);
       case SetTableComment:
         return visitSetTableComment((SetTableCommentPlan) plan, context);
+      case SetViewComment:
+        return visitSetViewComment((SetViewCommentPlan) plan, context);
       case SetTableColumnComment:
         return visitSetTableColumnComment((SetTableColumnCommentPlan) plan, context);
       case RenameTable:
@@ -438,6 +441,11 @@ public abstract class ConfigPhysicalPlanVisitor<R, C> {
 
   public R visitSetTableComment(final SetTableCommentPlan setTableCommentPlan, final C context) {
     return visitPlan(setTableCommentPlan, context);
+  }
+
+  // Use set table by default
+  public R visitSetViewComment(final SetViewCommentPlan setViewCommentPlan, final C context) {
+    return visitSetTableComment(setViewCommentPlan, context);
   }
 
   public R visitSetTableColumnComment(

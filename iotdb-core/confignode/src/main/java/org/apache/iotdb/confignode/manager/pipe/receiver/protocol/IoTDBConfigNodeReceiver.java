@@ -365,6 +365,7 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
                     PrivilegeType.ALTER))
             .getStatus();
       case SetTableComment:
+      case SetViewComment:
         return configManager
             .checkUserPrivileges(
                 username,

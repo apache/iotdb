@@ -113,6 +113,7 @@ public class ConfigRegionListeningFilter {
               Arrays.asList(
                   ConfigPhysicalPlanType.SetTableProperties,
                   ConfigPhysicalPlanType.SetTableComment,
+                  ConfigPhysicalPlanType.SetViewComment,
                   ConfigPhysicalPlanType.SetTableColumnComment,
                   ConfigPhysicalPlanType.RenameTable)));
       OPTION_PLAN_MAP.put(

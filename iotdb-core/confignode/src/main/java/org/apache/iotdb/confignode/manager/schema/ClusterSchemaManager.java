@@ -63,6 +63,7 @@ import org.apache.iotdb.confignode.consensus.request.write.database.SetTimeParti
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeEnrichedPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.SetTableColumnCommentPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.SetTableCommentPlan;
+import org.apache.iotdb.confignode.consensus.request.write.table.view.SetViewCommentPlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.CreateSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.DropSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.ExtendSchemaTemplatePlan;
@@ -1450,7 +1451,9 @@ public class ClusterSchemaManager {
       final boolean isView,
       final boolean isGeneratedByPipe) {
     final SetTableCommentPlan setTableCommentPlan =
-        new SetTableCommentPlan(database, tableName, comment);
+        isView
+            ? new SetViewCommentPlan(database, tableName, comment)
+            : new SetTableCommentPlan(database, tableName, comment);
     try {
       return getConsensusManager()
           .write(
