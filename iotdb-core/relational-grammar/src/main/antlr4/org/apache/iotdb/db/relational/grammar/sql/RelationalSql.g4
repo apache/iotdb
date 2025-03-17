@@ -249,6 +249,18 @@ viewColumnDefinition
     | identifier (type)? (columnCategory=FIELD)? FROM original_measurement=identifier comment?
     ;
 
+alterViewStatement
+    : ALTER VIEW (IF EXISTS)? from=qualifiedName RENAME TO to=identifier #renameTableView
+    | ALTER VIEW (IF EXISTS)? viewName=qualifiedName ADD COLUMN (IF NOT EXISTS)? viewColumnDefinition #addViewColumn
+    | ALTER VIEW (IF EXISTS)? viewName=qualifiedName RENAME COLUMN (IF EXISTS)? from=identifier TO to=identifier #renameViewColumn
+    | ALTER VIEW (IF EXISTS)? viewName=qualifiedName DROP COLUMN (IF EXISTS)? column=identifier #dropViewColumn
+    | ALTER VIEW (IF EXISTS)? viewName=qualifiedName SET PROPERTIES propertyAssignments #setTableViewProperties
+    ;
+
+dropViewStatement
+    : DROP VIEW (IF EXISTS)? qualifiedName
+    ;
+
 // IoTDB Objects
 
 prefixPath
