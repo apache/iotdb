@@ -229,6 +229,7 @@ public class StreamingHashAggregationOperator extends AbstractOperator {
 
     do {
       Column[] result = new Column[resultColumnsCount];
+
       // contains unPreGrouped group by columns and value columns
       TsBlock buildResult = aggregationBuilder.buildResult();
 

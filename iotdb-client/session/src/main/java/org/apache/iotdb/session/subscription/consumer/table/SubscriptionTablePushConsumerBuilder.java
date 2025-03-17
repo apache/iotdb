@@ -21,6 +21,7 @@ package org.apache.iotdb.session.subscription.consumer.table;
 
 import org.apache.iotdb.session.subscription.consumer.AckStrategy;
 import org.apache.iotdb.session.subscription.consumer.ConsumeListener;
+import org.apache.iotdb.session.subscription.consumer.ISubscriptionTablePushConsumer;
 import org.apache.iotdb.session.subscription.consumer.base.AbstractSubscriptionPushConsumerBuilder;
 
 import java.util.List;
@@ -132,7 +133,7 @@ public class SubscriptionTablePushConsumerBuilder extends AbstractSubscriptionPu
   }
 
   @Override
-  public SubscriptionTablePushConsumer buildTablePushConsumer() {
+  public ISubscriptionTablePushConsumer buildTablePushConsumer() {
     return new SubscriptionTablePushConsumer(this);
   }
 }

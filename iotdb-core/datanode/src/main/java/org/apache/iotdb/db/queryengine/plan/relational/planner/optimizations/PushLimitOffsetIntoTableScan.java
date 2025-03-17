@@ -30,13 +30,13 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationN
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.DeviceTableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.FilterNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.GapFillNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.GroupNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.InformationSchemaTableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.JoinNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.LimitNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.LinearFillNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.PreviousFillNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ProjectNode;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.node.SortBasedGroupNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.SortNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.StreamSortNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TableFunctionProcessorNode;
@@ -221,7 +221,7 @@ public class PushLimitOffsetIntoTableScan implements PlanOptimizer {
     }
 
     @Override
-    public PlanNode visitSortBasedGroup(SortBasedGroupNode node, Context context) {
+    public PlanNode visitGroup(GroupNode node, Context context) {
       return visitSort(node, context);
     }
 
@@ -246,12 +246,12 @@ public class PushLimitOffsetIntoTableScan implements PlanOptimizer {
 
     @Override
     public PlanNode visitTableFunctionProcessor(TableFunctionProcessorNode node, Context context) {
-      if (node.getChildren().isEmpty()) {
-        context.enablePushDown = false;
-        return node;
-      } else {
-        return visitPlan(node, context);
+      context.enablePushDown = false;
+      if (node.getChild() != null) {
+        Context subContext = new Context();
+        node.setChild(node.getChild().accept(this, subContext));
       }
+      return node;
     }
 
     @Override

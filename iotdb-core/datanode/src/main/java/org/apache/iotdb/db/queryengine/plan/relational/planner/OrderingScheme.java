@@ -39,7 +39,6 @@ import static com.google.common.collect.ImmutableList.toImmutableList;
 import static java.util.Objects.requireNonNull;
 
 public class OrderingScheme {
-
   private final List<Symbol> orderBy;
   private final Map<Symbol, SortOrder> orderings;
 

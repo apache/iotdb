@@ -476,7 +476,7 @@ public class InsertNodeMemoryEstimator {
     return size;
   }
 
-  private static long sizeOfMeasurementSchema(final MeasurementSchema measurementSchema) {
+  public static long sizeOfMeasurementSchema(final MeasurementSchema measurementSchema) {
     if (measurementSchema == null) {
       return 0L;
     }

@@ -56,6 +56,7 @@ import static org.apache.iotdb.commons.conf.IoTDBConstant.TTL_INFINITE;
 public class TsTable {
 
   public static final String TIME_COLUMN_NAME = "time";
+  public static final String COMMENT_KEY = "__comment";
   private static final TimeColumnSchema TIME_COLUMN_SCHEMA =
       new TimeColumnSchema(TIME_COLUMN_NAME, TSDataType.TIMESTAMP);
 
@@ -221,7 +222,7 @@ public class TsTable {
     return ttlValue;
   }
 
-  public long getTableTTLInMS() {
+  private long getTableTTLInMS() {
     final Optional<String> ttl = getPropValue(TTL_PROPERTY);
     return ttl.isPresent() && !ttl.get().equalsIgnoreCase(TTL_INFINITE)
         ? Long.parseLong(ttl.get())

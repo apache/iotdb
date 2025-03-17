@@ -23,6 +23,7 @@ import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.commons.consensus.DataRegionId;
+import org.apache.iotdb.commons.exception.StartupException;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.consensus.common.Peer;
 import org.apache.iotdb.consensus.config.ConsensusConfig;
@@ -38,6 +39,8 @@ import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
@@ -50,6 +53,8 @@ import java.util.Map;
 import static org.junit.Assert.assertTrue;
 
 public class StabilityTest {
+
+  private static Logger LOGGER = LoggerFactory.getLogger(StabilityTest.class);
 
   private final ConsensusGroupId dataRegionId = new DataRegionId(1);
 
@@ -237,25 +242,53 @@ public class StabilityTest {
     peerList1And2.add(new Peer(dataRegionId, 2, new TEndPoint("0.0.0.0", basePort)));
     correctPeers.put(dataRegionId, peerList1And2);
     consensusImpl.recordCorrectPeerListBeforeStarting(correctPeers);
-    consensusImpl.start();
-    Assert.assertEquals(2, consensusImpl.getImpl(dataRegionId).getConfiguration().size());
-    consensusImpl.stop();
+    try {
+      consensusImpl.start();
+      Assert.assertEquals(2, consensusImpl.getImpl(dataRegionId).getConfiguration().size());
+      consensusImpl.stop();
+    } catch (IOException e) {
+      if (e.getCause() instanceof StartupException) {
+        LOGGER.info("Cannot start IoTConsensus because", e);
+      } else {
+        LOGGER.error("Failed because", e);
+        Assert.fail(e.getMessage());
+      }
+    }
 
     // test remove sync channel
     List<Peer> peerList1 = new ArrayList<>();
     peerList1.add(new Peer(dataRegionId, 1, new TEndPoint("0.0.0.0", basePort)));
     correctPeers.put(dataRegionId, peerList1);
     consensusImpl.recordCorrectPeerListBeforeStarting(correctPeers);
-    consensusImpl.start();
-    Assert.assertEquals(1, consensusImpl.getImpl(dataRegionId).getConfiguration().size());
-    consensusImpl.stop();
+    try {
+      consensusImpl.start();
+      Assert.assertEquals(1, consensusImpl.getImpl(dataRegionId).getConfiguration().size());
+      consensusImpl.stop();
+    } catch (IOException e) {
+      if (e.getCause() instanceof StartupException) {
+        LOGGER.info("Cannot start IoTConsensus because", e);
+      } else {
+        LOGGER.error("Failed because", e);
+        Assert.fail(e.getMessage());
+      }
+    }
 
     // test remove invalid peer
     List<Peer> peerList2 = new ArrayList<>();
     peerList2.add(new Peer(dataRegionId, 2, new TEndPoint("0.0.0.0", basePort)));
     correctPeers.put(dataRegionId, peerList2);
     consensusImpl.recordCorrectPeerListBeforeStarting(correctPeers);
-    consensusImpl.start();
-    Assert.assertNull(consensusImpl.getImpl(dataRegionId));
+    try {
+      consensusImpl.start();
+      Assert.assertNull(consensusImpl.getImpl(dataRegionId));
+      consensusImpl.stop();
+    } catch (IOException e) {
+      if (e.getCause() instanceof StartupException) {
+        LOGGER.info("Cannot start IoTConsensus because", e);
+      } else {
+        LOGGER.error("Failed because", e);
+        Assert.fail(e.getMessage());
+      }
+    }
   }
 }

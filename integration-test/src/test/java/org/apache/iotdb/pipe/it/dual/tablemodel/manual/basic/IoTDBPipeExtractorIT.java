@@ -111,6 +111,7 @@ public class IoTDBPipeExtractorIT extends AbstractPipeTableModelDualManualIT {
       extractorAttributes.put("extractor.table-name", "test");
       extractorAttributes.put("extractor.pattern", "root.db1");
       extractorAttributes.put("extractor.inclusion", "data.insert");
+      extractorAttributes.put("user", "root");
 
       connectorAttributes.put("connector", "iotdb-thrift-connector");
       connectorAttributes.put("connector.batch.enable", "false");
@@ -264,6 +265,7 @@ public class IoTDBPipeExtractorIT extends AbstractPipeTableModelDualManualIT {
       extractorAttributes.put("extractor.pattern", "root.db.d2");
       extractorAttributes.put("extractor.history.enable", "false");
       extractorAttributes.put("extractor.realtime.enable", "true");
+      extractorAttributes.put("user", "root");
       TSStatus status =
           client.createPipe(
               new TCreatePipeReq("p2", connectorAttributes)
@@ -401,6 +403,7 @@ public class IoTDBPipeExtractorIT extends AbstractPipeTableModelDualManualIT {
       // 1970-01-01T08:00:02+08:00
       extractorAttributes.put("extractor.history.start-time", "2");
       extractorAttributes.put("extractor.history.end-time", "3");
+      extractorAttributes.put("user", "root");
 
       connectorAttributes.put("connector", "iotdb-thrift-connector");
       connectorAttributes.put("connector.batch.enable", "false");
@@ -498,6 +501,7 @@ public class IoTDBPipeExtractorIT extends AbstractPipeTableModelDualManualIT {
       extractorAttributes.put("source.inclusion", "data.insert");
       extractorAttributes.put("source.start-time", "2");
       extractorAttributes.put("source.end-time", "4");
+      extractorAttributes.put("user", "root");
 
       final TSStatus status =
           client.createPipe(
@@ -616,6 +620,7 @@ public class IoTDBPipeExtractorIT extends AbstractPipeTableModelDualManualIT {
       extractorAttributes.put("source.start-time", "2");
       // 1970-01-01T08:00:04+08:00
       extractorAttributes.put("source.end-time", "4");
+      extractorAttributes.put("user", "root");
 
       connectorAttributes.put("connector", "iotdb-thrift-connector");
       connectorAttributes.put("connector.batch.enable", "false");
@@ -733,6 +738,7 @@ public class IoTDBPipeExtractorIT extends AbstractPipeTableModelDualManualIT {
       extractorAttributes.put("source.history.start-time", "1");
       extractorAttributes.put("source.history.end-time", "2");
       extractorAttributes.put("source.history.loose-range", "time, path");
+      extractorAttributes.put("user", "root");
 
       connectorAttributes.put("connector", "iotdb-thrift-connector");
       connectorAttributes.put("connector.batch.enable", "false");
@@ -789,6 +795,7 @@ public class IoTDBPipeExtractorIT extends AbstractPipeTableModelDualManualIT {
     extractorAttributes.put("source.start-time", "2");
     extractorAttributes.put("source.end-time", "10");
     extractorAttributes.put("source.realtime.mode", "batch");
+    extractorAttributes.put("user", "root");
 
     connectorAttributes.put("connector", "iotdb-thrift-connector");
     connectorAttributes.put("connector.batch.enable", "false");

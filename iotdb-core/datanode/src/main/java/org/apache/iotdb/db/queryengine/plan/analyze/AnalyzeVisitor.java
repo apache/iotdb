@@ -65,8 +65,6 @@ import org.apache.iotdb.db.queryengine.execution.operator.window.ainode.Inferenc
 import org.apache.iotdb.db.queryengine.execution.operator.window.ainode.TailInferenceWindow;
 import org.apache.iotdb.db.queryengine.metric.QueryPlanCostMetricSet;
 import org.apache.iotdb.db.queryengine.plan.analyze.load.LoadTsFileAnalyzer;
-import org.apache.iotdb.db.queryengine.plan.analyze.load.LoadTsFileToTableModelAnalyzer;
-import org.apache.iotdb.db.queryengine.plan.analyze.load.LoadTsFileToTreeModelAnalyzer;
 import org.apache.iotdb.db.queryengine.plan.analyze.lock.DataNodeSchemaLockManager;
 import org.apache.iotdb.db.queryengine.plan.analyze.lock.SchemaLockType;
 import org.apache.iotdb.db.queryengine.plan.analyze.schema.ISchemaFetcher;
@@ -79,7 +77,6 @@ import org.apache.iotdb.db.queryengine.plan.expression.leaf.ConstantOperand;
 import org.apache.iotdb.db.queryengine.plan.expression.leaf.TimeSeriesOperand;
 import org.apache.iotdb.db.queryengine.plan.expression.multi.FunctionExpression;
 import org.apache.iotdb.db.queryengine.plan.expression.visitor.ExistUnknownTypeInExpression;
-import org.apache.iotdb.db.queryengine.plan.planner.LocalExecutionPlanner;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.write.MeasurementGroup;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.DeviceViewIntoPathDescriptor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.FillDescriptor;
@@ -154,7 +151,6 @@ import org.apache.iotdb.db.queryengine.plan.statement.sys.ExplainStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowQueriesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowVersionStatement;
 import org.apache.iotdb.db.schemaengine.template.Template;
-import org.apache.iotdb.db.storageengine.load.config.LoadTsFileConfigurator;
 import org.apache.iotdb.db.storageengine.load.metrics.LoadTsFileCostMetricsSet;
 import org.apache.iotdb.db.utils.constant.SqlConstant;
 import org.apache.iotdb.rpc.RpcUtils;
@@ -1699,7 +1695,8 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
           .getModelInferenceDescriptor()
           .setOutputColumnNames(
               columnHeaders.stream().map(ColumnHeader::getColumnName).collect(Collectors.toList()));
-      analysis.setRespDatasetHeader(new DatasetHeader(columnHeaders, true));
+      boolean isIgnoreTimestamp = !queryStatement.isGenerateTime();
+      analysis.setRespDatasetHeader(new DatasetHeader(columnHeaders, isIgnoreTimestamp));
       return;
     }
 
@@ -2598,7 +2595,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     analysis.setRealStatement(createTimeSeriesStatement);
 
     checkIsTemplateCompatible(
-        createTimeSeriesStatement.getPath(), createTimeSeriesStatement.getAlias(), context, true);
+        createTimeSeriesStatement.getPath(), createTimeSeriesStatement.getAlias(), context);
 
     PathPatternTree patternTree = new PathPatternTree();
     patternTree.appendFullPath(createTimeSeriesStatement.getPath());
@@ -2610,14 +2607,9 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
   }
 
   private void checkIsTemplateCompatible(
-      final PartialPath timeSeriesPath,
-      final String alias,
-      final MPPQueryContext context,
-      final boolean takeLock) {
-    if (takeLock) {
-      DataNodeSchemaLockManager.getInstance()
-          .takeReadLock(context, SchemaLockType.TIMESERIES_VS_TEMPLATE);
-    }
+      final PartialPath timeSeriesPath, final String alias, final MPPQueryContext context) {
+    DataNodeSchemaLockManager.getInstance()
+        .takeReadLock(context, SchemaLockType.TIMESERIES_VS_TEMPLATE);
     final Pair<Template, PartialPath> templateInfo =
         schemaFetcher.checkTemplateSetAndPreSetInfo(timeSeriesPath, alias);
     if (templateInfo != null) {
@@ -2631,12 +2623,9 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       final PartialPath devicePath,
       final List<String> measurements,
       final List<String> aliasList,
-      final MPPQueryContext context,
-      final boolean takeLock) {
-    if (takeLock) {
-      DataNodeSchemaLockManager.getInstance()
-          .takeReadLock(context, SchemaLockType.TIMESERIES_VS_TEMPLATE);
-    }
+      final MPPQueryContext context) {
+    DataNodeSchemaLockManager.getInstance()
+        .takeReadLock(context, SchemaLockType.TIMESERIES_VS_TEMPLATE);
     for (int i = 0; i < measurements.size(); i++) {
       final Pair<Template, PartialPath> templateInfo =
           schemaFetcher.checkTemplateSetAndPreSetInfo(
@@ -2705,8 +2694,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
         createAlignedTimeSeriesStatement.getDevicePath(),
         createAlignedTimeSeriesStatement.getMeasurements(),
         createAlignedTimeSeriesStatement.getAliasList(),
-        context,
-        true);
+        context);
 
     PathPatternTree pathPatternTree = new PathPatternTree();
     for (String measurement : createAlignedTimeSeriesStatement.getMeasurements()) {
@@ -2733,8 +2721,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
         internalCreateTimeSeriesStatement.getDevicePath(),
         internalCreateTimeSeriesStatement.getMeasurements(),
         null,
-        context,
-        true);
+        context);
 
     PathPatternTree pathPatternTree = new PathPatternTree();
     for (String measurement : internalCreateTimeSeriesStatement.getMeasurements()) {
@@ -2760,14 +2747,10 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     analysis.setRealStatement(internalCreateMultiTimeSeriesStatement);
 
     final PathPatternTree pathPatternTree = new PathPatternTree();
-    DataNodeSchemaLockManager.getInstance()
-        .takeReadLock(context, SchemaLockType.TIMESERIES_VS_TABLE);
-    DataNodeSchemaLockManager.getInstance()
-        .takeReadLock(context, SchemaLockType.TIMESERIES_VS_TEMPLATE);
     for (final Map.Entry<PartialPath, Pair<Boolean, MeasurementGroup>> entry :
         internalCreateMultiTimeSeriesStatement.getDeviceMap().entrySet()) {
       checkIsTemplateCompatible(
-          entry.getKey(), entry.getValue().right.getMeasurements(), null, context, false);
+          entry.getKey(), entry.getValue().right.getMeasurements(), null, context);
       pathPatternTree.appendFullPath(entry.getKey().concatNode(ONE_LEVEL_PATH_WILDCARD));
     }
 
@@ -2792,13 +2775,9 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     final List<MeasurementPath> timeseriesPathList = createMultiTimeSeriesStatement.getPaths();
     final List<String> aliasList = createMultiTimeSeriesStatement.getAliasList();
 
-    DataNodeSchemaLockManager.getInstance()
-        .takeReadLock(context, SchemaLockType.TIMESERIES_VS_TABLE);
-    DataNodeSchemaLockManager.getInstance()
-        .takeReadLock(context, SchemaLockType.TIMESERIES_VS_TEMPLATE);
     for (int i = 0; i < timeseriesPathList.size(); i++) {
       checkIsTemplateCompatible(
-          timeseriesPathList.get(i), aliasList == null ? null : aliasList.get(i), context, false);
+          timeseriesPathList.get(i), aliasList == null ? null : aliasList.get(i), context);
     }
 
     final PathPatternTree patternTree = new PathPatternTree();
@@ -3005,7 +2984,9 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     context.setQueryType(QueryType.WRITE);
 
     final long startTime = System.nanoTime();
-    try (final LoadTsFileAnalyzer loadTsFileAnalyzer = getAnalyzer(loadTsFileStatement, context)) {
+    try (final LoadTsFileAnalyzer loadTsFileAnalyzer =
+        new LoadTsFileAnalyzer(
+            loadTsFileStatement, loadTsFileStatement.isGeneratedByPipe(), context)) {
       return (Analysis) loadTsFileAnalyzer.analyzeFileByFile(new Analysis());
     } catch (final Exception e) {
       final String exceptionMessage =
@@ -3021,27 +3002,6 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     } finally {
       LoadTsFileCostMetricsSet.getInstance()
           .recordPhaseTimeCost(ANALYSIS, System.nanoTime() - startTime);
-    }
-  }
-
-  private LoadTsFileAnalyzer getAnalyzer(
-      LoadTsFileStatement loadTsFileStatement, MPPQueryContext context) {
-    if (Objects.equals(loadTsFileStatement.getModel(), LoadTsFileConfigurator.MODEL_TREE_VALUE)) {
-      // Load to tree-model
-      return new LoadTsFileToTreeModelAnalyzer(
-          loadTsFileStatement, loadTsFileStatement.isGeneratedByPipe(), context);
-    } else {
-      // Load to table-model
-      if (Objects.nonNull(loadTsFileStatement.getDatabase())) {
-        return new LoadTsFileToTableModelAnalyzer(
-            loadTsFileStatement,
-            loadTsFileStatement.isGeneratedByPipe(),
-            LocalExecutionPlanner.getInstance().metadata,
-            context);
-      } else {
-        throw new SemanticException(
-            "Database name must be specified when loading data into the table model.");
-      }
     }
   }
 
@@ -4064,12 +4024,8 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     }
     // Make sure all paths are not under any templates
     try {
-      DataNodeSchemaLockManager.getInstance()
-          .takeReadLock(context, SchemaLockType.TIMESERIES_VS_TABLE);
-      DataNodeSchemaLockManager.getInstance()
-          .takeReadLock(context, SchemaLockType.TIMESERIES_VS_TEMPLATE);
       for (final PartialPath path : createLogicalViewStatement.getTargetPathList()) {
-        checkIsTemplateCompatible(path, null, context, false);
+        checkIsTemplateCompatible(path, null, context);
       }
     } catch (final Exception e) {
       analysis.setFinishQueryAfterAnalyze(true);

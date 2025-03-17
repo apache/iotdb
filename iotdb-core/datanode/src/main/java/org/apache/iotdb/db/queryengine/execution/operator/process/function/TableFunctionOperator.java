@@ -19,12 +19,14 @@
 
 package org.apache.iotdb.db.queryengine.execution.operator.process.function;
 
+import org.apache.iotdb.db.queryengine.execution.MemoryEstimationHelper;
 import org.apache.iotdb.db.queryengine.execution.operator.Operator;
 import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
+import org.apache.iotdb.db.queryengine.execution.operator.process.AggregationMergeSortOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.ProcessOperator;
+import org.apache.iotdb.db.queryengine.execution.operator.process.function.partition.PartitionCache;
 import org.apache.iotdb.db.queryengine.execution.operator.process.function.partition.PartitionState;
 import org.apache.iotdb.db.queryengine.execution.operator.process.function.partition.Slice;
-import org.apache.iotdb.db.queryengine.execution.operator.process.function.partition.SliceCache;
 import org.apache.iotdb.udf.api.relational.access.Record;
 import org.apache.iotdb.udf.api.relational.table.TableFunctionProcessorProvider;
 import org.apache.iotdb.udf.api.relational.table.processor.TableFunctionDataProcessor;
@@ -32,11 +34,13 @@ import org.apache.iotdb.udf.api.relational.table.processor.TableFunctionDataProc
 import com.google.common.util.concurrent.ListenableFuture;
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.block.column.ColumnBuilder;
+import org.apache.tsfile.common.conf.TSFileDescriptor;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.block.TsBlock;
 import org.apache.tsfile.read.common.block.TsBlockBuilder;
 import org.apache.tsfile.read.common.block.column.LongColumnBuilder;
 import org.apache.tsfile.read.common.block.column.RunLengthEncodedColumn;
+import org.apache.tsfile.utils.RamUsageEstimator;
 
 import java.util.Arrays;
 import java.util.Iterator;
@@ -47,6 +51,12 @@ import static org.apache.iotdb.db.queryengine.execution.operator.source.relation
 // only one input source is supported now
 public class TableFunctionOperator implements ProcessOperator {
 
+  private static final long INSTANCE_SIZE =
+      RamUsageEstimator.shallowSizeOfInstance(AggregationMergeSortOperator.class);
+
+  private static final int DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES =
+      TSFileDescriptor.getInstance().getConfig().getMaxTsBlockSizeInBytes();
+
   private final OperatorContext operatorContext;
   private final Operator inputOperator;
   private final TableFunctionProcessorProvider processorProvider;
@@ -54,13 +64,12 @@ public class TableFunctionOperator implements ProcessOperator {
   private final TsBlockBuilder blockBuilder;
   private final int properChannelCount;
   private final boolean needPassThrough;
+  private final PartitionCache partitionCache;
 
   private TableFunctionDataProcessor processor;
   private PartitionState partitionState;
   private ListenableFuture<?> isBlocked;
   private boolean finished = false;
-
-  private SliceCache sliceCache;
 
   public TableFunctionOperator(
       OperatorContext operatorContext,
@@ -82,7 +91,7 @@ public class TableFunctionOperator implements ProcessOperator {
     this.needPassThrough = properChannelCount != outputDataTypes.size();
     this.partitionState = null;
     this.blockBuilder = new TsBlockBuilder(outputDataTypes);
-    this.sliceCache = new SliceCache();
+    this.partitionCache = new PartitionCache();
   }
 
   @Override
@@ -118,6 +127,9 @@ public class TableFunctionOperator implements ProcessOperator {
 
   @Override
   public TsBlock next() throws Exception {
+    if (partitionState == null) {
+      partitionState = partitionRecognizer.nextState();
+    }
     PartitionState.StateType stateType = partitionState.getStateType();
     Slice slice = partitionState.getSlice();
     if (stateType == PartitionState.StateType.INIT
@@ -134,7 +146,7 @@ public class TableFunctionOperator implements ProcessOperator {
         }
         finished = true;
         TsBlock tsBlock = buildTsBlock(properColumnBuilders, passThroughIndexBuilder);
-        sliceCache.clear();
+        partitionCache.clear();
         consumeCurrentPartitionState();
         return tsBlock;
       }
@@ -143,7 +155,7 @@ public class TableFunctionOperator implements ProcessOperator {
           // previous partition state has not finished consuming yet
           processor.finish(properColumnBuilders, passThroughIndexBuilder);
           TsBlock tsBlock = buildTsBlock(properColumnBuilders, passThroughIndexBuilder);
-          sliceCache.clear();
+          partitionCache.clear();
           processor = null;
           return tsBlock;
         } else {
@@ -151,7 +163,7 @@ public class TableFunctionOperator implements ProcessOperator {
           processor.beforeStart();
         }
       }
-      sliceCache.addSlice(slice);
+      partitionCache.addSlice(slice);
       Iterator<Record> recordIterator = slice.getRequiredRecordIterator();
       while (recordIterator.hasNext()) {
         processor.process(recordIterator.next(), properColumnBuilders, passThroughIndexBuilder);
@@ -190,7 +202,7 @@ public class TableFunctionOperator implements ProcessOperator {
     if (needPassThrough) {
       // handle pass through column only if needed
       Column passThroughIndex = passThroughIndexBuilder.build();
-      for (Column[] passThroughColumns : sliceCache.getPassThroughResult(passThroughIndex)) {
+      for (Column[] passThroughColumns : partitionCache.getPassThroughResult(passThroughIndex)) {
         for (int i = 0; i < passThroughColumns.length; i++) {
           ColumnBuilder passThroughColumnBuilder = passThroughColumnBuilders.get(i);
           for (int j = 0; j < passThroughColumns[i].getPositionCount(); j++) {
@@ -216,16 +228,12 @@ public class TableFunctionOperator implements ProcessOperator {
 
   @Override
   public boolean hasNext() throws Exception {
-    if (partitionState == null) {
-      isBlocked().get(); // wait for the next TsBlock
-      partitionState = partitionRecognizer.nextState();
-    }
     return !finished;
   }
 
   @Override
   public void close() throws Exception {
-    sliceCache.close();
+    partitionCache.close();
     inputOperator.close();
   }
 
@@ -236,21 +244,26 @@ public class TableFunctionOperator implements ProcessOperator {
 
   @Override
   public long calculateMaxPeekMemory() {
-    return 0;
+    return inputOperator.calculateMaxPeekMemory()
+        + Math.max(DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES, blockBuilder.getRetainedSizeInBytes());
   }
 
   @Override
   public long calculateMaxReturnSize() {
-    return 0;
+    return Math.max(DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES, blockBuilder.getRetainedSizeInBytes());
   }
 
   @Override
   public long calculateRetainedSizeAfterCallingNext() {
-    return 0;
+    return inputOperator.calculateRetainedSizeAfterCallingNext();
   }
 
   @Override
   public long ramBytesUsed() {
-    return 0;
+    return INSTANCE_SIZE
+        + MemoryEstimationHelper.getEstimatedSizeOfAccountableObject(operatorContext)
+        + MemoryEstimationHelper.getEstimatedSizeOfAccountableObject(inputOperator)
+        + blockBuilder.getRetainedSizeInBytes()
+        + partitionCache.getEstimatedSize();
   }
 }

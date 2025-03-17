@@ -29,11 +29,13 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.GroupRe
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationTableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationTreeDeviceViewScanNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AssignUniqueId;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.CollectNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.DeviceTableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.EnforceSingleRowNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ExchangeNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.FilterNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.GroupNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.InformationSchemaTableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.JoinNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.LimitNode;
@@ -520,8 +522,17 @@ public final class PlanMatchPattern {
         .with(new SemiJoinMatcher(sourceSymbolAlias, filteringSymbolAlias, outputAlias));
   }
 
+  public static PlanMatchPattern assignUniqueId(String uniqueSymbolAlias, PlanMatchPattern source) {
+    return node(AssignUniqueId.class, source)
+        .withAlias(uniqueSymbolAlias, new AssignUniqueIdMatcher());
+  }
+
   public static PlanMatchPattern streamSort(PlanMatchPattern source) {
     return node(StreamSortNode.class, source);
+  }
+
+  public static PlanMatchPattern group(PlanMatchPattern source) {
+    return node(GroupNode.class, source);
   }
 
   public static PlanMatchPattern sort(PlanMatchPattern source) {
@@ -586,10 +597,6 @@ public final class PlanMatchPattern {
     return project(assignments, source)
         .withExactAssignedOutputs(assignments.values())
         .withExactAssignments(assignments.values());
-  }
-
-  public static PlanMatchPattern exchange(PlanMatchPattern... sources) {
-    return node(ExchangeNode.class, sources);
   }
 
   public static ExpectedValueProvider<JoinNode.EquiJoinClause> equiJoinClause(

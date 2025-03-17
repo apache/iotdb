@@ -20,12 +20,13 @@
 package org.apache.iotdb.db.storageengine.buffer;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.commons.memory.IMemoryBlock;
+import org.apache.iotdb.commons.memory.MemoryBlockType;
 import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.commons.utils.TestOnly;
-import org.apache.iotdb.db.conf.IoTDBConfig;
+import org.apache.iotdb.db.conf.DataNodeMemoryConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.queryengine.execution.fragment.QueryContext;
-import org.apache.iotdb.db.queryengine.metric.SeriesScanCostMetricSet;
 import org.apache.iotdb.db.queryengine.metric.TimeSeriesMetadataCacheMetrics;
 import org.apache.iotdb.db.storageengine.dataregion.read.control.FileReaderManager;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileID;
@@ -53,8 +54,6 @@ import java.util.WeakHashMap;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.LongConsumer;
 
-import static org.apache.iotdb.db.queryengine.metric.SeriesScanCostMetricSet.READ_TIMESERIES_METADATA_CACHE;
-import static org.apache.iotdb.db.queryengine.metric.SeriesScanCostMetricSet.READ_TIMESERIES_METADATA_FILE;
 import static org.apache.tsfile.utils.RamUsageEstimator.sizeOfCharArray;
 
 /**
@@ -66,13 +65,10 @@ public class TimeSeriesMetadataCache {
 
   private static final Logger logger = LoggerFactory.getLogger(TimeSeriesMetadataCache.class);
   private static final Logger DEBUG_LOGGER = LoggerFactory.getLogger("QUERY_DEBUG");
-  private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
-  private static final long MEMORY_THRESHOLD_IN_TIME_SERIES_METADATA_CACHE =
-      config.getAllocateMemoryForTimeSeriesMetaDataCache();
-  private static final boolean CACHE_ENABLE = config.isMetaDataCacheEnable();
-
-  private static final SeriesScanCostMetricSet SERIES_SCAN_COST_METRIC_SET =
-      SeriesScanCostMetricSet.getInstance();
+  private static final DataNodeMemoryConfig memoryConfig =
+      IoTDBDescriptor.getInstance().getMemoryConfig();
+  private static final IMemoryBlock CACHE_MEMORY_BLOCK;
+  private static final boolean CACHE_ENABLE = memoryConfig.isMetaDataCacheEnable();
 
   private final Cache<TimeSeriesMetadataCacheKey, TimeseriesMetadata> lruCache;
 
@@ -82,14 +78,23 @@ public class TimeSeriesMetadataCache {
       Collections.synchronizedMap(new WeakHashMap<>());
   private static final String SEPARATOR = "$";
 
+  static {
+    CACHE_MEMORY_BLOCK =
+        memoryConfig
+            .getTimeSeriesMetaDataCacheMemoryManager()
+            .exactAllocate("TimeSeriesMetadataCache", MemoryBlockType.STATIC);
+    // TODO @spricoder find a better way to get the size of cache
+    CACHE_MEMORY_BLOCK.allocate(CACHE_MEMORY_BLOCK.getTotalMemorySizeInBytes());
+  }
+
   private TimeSeriesMetadataCache() {
     if (CACHE_ENABLE) {
       logger.info(
-          "TimeSeriesMetadataCache size = {}", MEMORY_THRESHOLD_IN_TIME_SERIES_METADATA_CACHE);
+          "TimeSeriesMetadataCache size = {}", CACHE_MEMORY_BLOCK.getTotalMemorySizeInBytes());
     }
     lruCache =
         Caffeine.newBuilder()
-            .maximumWeight(MEMORY_THRESHOLD_IN_TIME_SERIES_METADATA_CACHE)
+            .maximumWeight(CACHE_MEMORY_BLOCK.getTotalMemorySizeInBytes())
             .weigher(
                 (Weigher<TimeSeriesMetadataCacheKey, TimeseriesMetadata>)
                     (key, value) ->
@@ -233,17 +238,19 @@ public class TimeSeriesMetadataCache {
             .getQueryStatistics()
             .getLoadTimeSeriesMetadataFromCacheCount()
             .incrementAndGet();
-        // in metric panel, loading BloomFilter time is included in loading TimeSeriesMetadata
-        SERIES_SCAN_COST_METRIC_SET.recordSeriesScanCost(
-            READ_TIMESERIES_METADATA_CACHE, System.nanoTime() - startTime);
+        queryContext
+            .getQueryStatistics()
+            .getLoadTimeSeriesMetadataFromCacheTime()
+            .getAndAdd(System.nanoTime() - startTime - loadBloomFilterTime);
       } else {
         queryContext
             .getQueryStatistics()
             .getLoadTimeSeriesMetadataFromDiskCount()
             .incrementAndGet();
-        // in metric panel, loading BloomFilter time is included in loading TimeSeriesMetadata
-        SERIES_SCAN_COST_METRIC_SET.recordSeriesScanCost(
-            READ_TIMESERIES_METADATA_FILE, System.nanoTime() - startTime);
+        queryContext
+            .getQueryStatistics()
+            .getLoadTimeSeriesMetadataFromDiskTime()
+            .getAndAdd(System.nanoTime() - startTime - loadBloomFilterTime);
       }
     }
   }
@@ -257,7 +264,7 @@ public class TimeSeriesMetadataCache {
   }
 
   public long getMaxMemory() {
-    return MEMORY_THRESHOLD_IN_TIME_SERIES_METADATA_CACHE;
+    return CACHE_MEMORY_BLOCK.getTotalMemorySizeInBytes();
   }
 
   public double getAverageLoadPenalty() {

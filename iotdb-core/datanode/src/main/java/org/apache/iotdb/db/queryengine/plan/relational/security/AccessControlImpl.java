@@ -19,13 +19,14 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.security;
 
-import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.commons.exception.auth.AccessDeniedException;
 import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.QualifiedObjectName;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.RelationalAuthorStatement;
 import org.apache.iotdb.db.queryengine.plan.relational.type.AuthorRType;
+
+import java.util.Objects;
 
 import static org.apache.iotdb.db.auth.AuthorityChecker.ONLY_ADMIN_ALLOWED;
 
@@ -83,6 +84,20 @@ public class AccessControlImpl implements AccessControl {
   }
 
   @Override
+  public void checkCanSelectFromDatabase4Pipe(final String userName, final String databaseName) {
+    if (Objects.isNull(userName)) {
+      throw new AccessDeniedException("User not exists");
+    }
+    authChecker.checkDatabasePrivilege(userName, databaseName, TableModelPrivilege.SELECT);
+  }
+
+  @Override
+  public boolean checkCanSelectFromTable4Pipe(
+      final String userName, final QualifiedObjectName tableName) {
+    return Objects.nonNull(userName) && authChecker.checkTablePrivilege4Pipe(userName, tableName);
+  }
+
+  @Override
   public void checkCanDeleteFromTable(String userName, QualifiedObjectName tableName) {
     authChecker.checkTablePrivilege(userName, tableName, TableModelPrivilege.DELETE);
   }
@@ -93,15 +108,9 @@ public class AccessControlImpl implements AccessControl {
   }
 
   @Override
-  public void checkUserHasMaintainPrivilege(String userName) {
-    authChecker.checkGlobalPrivilege(userName, TableModelPrivilege.MAINTAIN);
-  }
-
-  @Override
   public void checkUserCanRunRelationalAuthorStatement(
       String userName, RelationalAuthorStatement statement) {
     AuthorRType type = statement.getAuthorType();
-    TSStatus status;
     switch (type) {
       case CREATE_USER:
         // admin cannot be created.
@@ -178,6 +187,11 @@ public class AccessControlImpl implements AccessControl {
         return;
       case LIST_ROLE:
         if (AuthorityChecker.SUPER_USER.equals(userName)) {
+          return;
+        }
+
+        // user can list his roles.
+        if (statement.getUserName() != null && statement.getUserName().equals(userName)) {
           return;
         }
         authChecker.checkGlobalPrivilege(userName, TableModelPrivilege.MANAGE_ROLE);
@@ -274,6 +288,7 @@ public class AccessControlImpl implements AccessControl {
           authChecker.checkGlobalPrivilegeGrantOption(
               userName, TableModelPrivilege.getTableModelType(privilegeType));
         }
+        break;
       default:
         break;
     }

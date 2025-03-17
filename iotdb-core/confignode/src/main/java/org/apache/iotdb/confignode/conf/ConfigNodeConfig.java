@@ -28,6 +28,7 @@ import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.confignode.manager.load.balancer.RegionBalancer;
 import org.apache.iotdb.confignode.manager.load.balancer.router.leader.AbstractLeaderBalancer;
 import org.apache.iotdb.confignode.manager.load.balancer.router.priority.IPriorityBalancer;
+import org.apache.iotdb.confignode.manager.load.cache.IFailureDetector;
 import org.apache.iotdb.confignode.manager.partition.RegionGroupExtensionPolicy;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
@@ -97,20 +98,20 @@ public class ConfigNodeConfig {
 
   /** The policy of extension DataRegionGroup for each Database. */
   private RegionGroupExtensionPolicy dataRegionGroupExtensionPolicy =
-      RegionGroupExtensionPolicy.CUSTOM;
+      RegionGroupExtensionPolicy.AUTO;
 
   /**
    * When set data_region_group_extension_policy=CUSTOM, this parameter is the default number of
    * DataRegionGroups for each Database. When set data_region_group_extension_policy=AUTO, this
    * parameter is the default minimal number of DataRegionGroups for each Database.
    */
-  private int defaultDataRegionGroupNumPerDatabase = 3;
+  private int defaultDataRegionGroupNumPerDatabase = 2;
 
   /**
    * The maximum number of DataRegions expected to be managed by each DataNode. Set to 0 means that
    * each dataNode automatically has the number of CPU cores / 2 regions.
    */
-  private int dataRegionPerDataNode = 1;
+  private int dataRegionPerDataNode = 0;
 
   /** each dataNode automatically has the number of CPU cores / 2 regions. */
   private double dataRegionPerDataNodeProportion = 0.5;
@@ -179,6 +180,18 @@ public class ConfigNodeConfig {
 
   /** The heartbeat interval in milliseconds. */
   private long heartbeatIntervalInMs = 1000;
+
+  /** Failure detector implementation */
+  private String failureDetector = IFailureDetector.PHI_ACCRUAL_DETECTOR;
+
+  /** Max heartbeat elapsed time threshold for Fixed failure detector */
+  private long failureDetectorFixedThresholdInMs = 20000;
+
+  /** Max threshold for Phi accrual failure detector */
+  private long failureDetectorPhiThreshold = 30;
+
+  /** Acceptable pause duration for Phi accrual failure detector */
+  private long failureDetectorPhiAcceptablePauseInMs = 10000;
 
   /** The unknown DataNode detect interval in milliseconds. */
   private long unknownDataNodeDetectInterval = heartbeatIntervalInMs;
@@ -1215,5 +1228,37 @@ public class ConfigNodeConfig {
             && getSchemaRegionConsensusProtocolClass().equals(ConsensusFactory.RATIS_CONSENSUS))
         || (TConsensusGroupType.DataRegion.equals(regionGroupId.getType())
             && getDataRegionConsensusProtocolClass().equals(ConsensusFactory.RATIS_CONSENSUS));
+  }
+
+  public String getFailureDetector() {
+    return failureDetector;
+  }
+
+  public void setFailureDetector(String failureDetector) {
+    this.failureDetector = failureDetector;
+  }
+
+  public long getFailureDetectorFixedThresholdInMs() {
+    return failureDetectorFixedThresholdInMs;
+  }
+
+  public void setFailureDetectorFixedThresholdInMs(long failureDetectorFixedThresholdInMs) {
+    this.failureDetectorFixedThresholdInMs = failureDetectorFixedThresholdInMs;
+  }
+
+  public long getFailureDetectorPhiThreshold() {
+    return failureDetectorPhiThreshold;
+  }
+
+  public void setFailureDetectorPhiThreshold(long failureDetectorPhiThreshold) {
+    this.failureDetectorPhiThreshold = failureDetectorPhiThreshold;
+  }
+
+  public long getFailureDetectorPhiAcceptablePauseInMs() {
+    return failureDetectorPhiAcceptablePauseInMs;
+  }
+
+  public void setFailureDetectorPhiAcceptablePauseInMs(long failureDetectorPhiAcceptablePauseInMs) {
+    this.failureDetectorPhiAcceptablePauseInMs = failureDetectorPhiAcceptablePauseInMs;
   }
 }

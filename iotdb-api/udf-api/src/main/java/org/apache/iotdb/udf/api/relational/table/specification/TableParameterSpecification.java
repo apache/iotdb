@@ -21,6 +21,24 @@ package org.apache.iotdb.udf.api.relational.table.specification;
 
 import java.util.Optional;
 
+/**
+ * TableParameterSpecification are classified by two characteristics:
+ *
+ * <ul>
+ *   <li>1. Input tables have either row semantics or set semantics, as follows:
+ *       <ul>
+ *         <li>Row semantics means that the the result of the PTF as decided on a row-by-row basis.
+ *             As an extreme example, the DBMS could atomize the input table into individual rows,
+ *             and send each single row to a different processor.
+ *         <li>Set semantics means that the outcome of the function depends on how the data is
+ *             partitioned. A partition shall not be split across processors, nor may a processor
+ *             handle more than one partition.
+ *       </ul>
+ *   <li>2. Whether the input table supports pass-through columns or not. Pass-through columns isa
+ *       mechanism enabling the PTF to copy every column of an input row into columns of an output
+ *       row.
+ * </ul>
+ */
 public class TableParameterSpecification extends ParameterSpecification {
   // set semantics or row semantics (default is set semantics)
   private final boolean rowSemantics;

@@ -24,8 +24,8 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.OrderingScheme;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.SortOrder;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.Symbol;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.Rule;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.GroupNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.Patterns;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.node.SortBasedGroupNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TableFunctionNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TableFunctionProcessorNode;
 import org.apache.iotdb.db.queryengine.plan.relational.utils.matching.Captures;
@@ -108,7 +108,7 @@ public class ImplementTableFunctionSource implements Rule<TableFunctionNode> {
                           }
                         });
                 child.set(
-                    new SortBasedGroupNode(
+                    new GroupNode(
                         context.getIdAllocator().genPlanNodeId(),
                         child.get(),
                         new OrderingScheme(sortSymbols, sortOrderings),

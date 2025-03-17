@@ -23,6 +23,8 @@ import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.commons.consensus.DataRegionId;
+import org.apache.iotdb.commons.memory.IMemoryBlock;
+import org.apache.iotdb.commons.memory.MemoryBlockType;
 import org.apache.iotdb.commons.pipe.agent.plugin.builtin.BuiltinPipePlugin;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.consensus.IConsensus;
@@ -33,6 +35,7 @@ import org.apache.iotdb.consensus.config.PipeConsensusConfig;
 import org.apache.iotdb.consensus.config.PipeConsensusConfig.ReplicateMode;
 import org.apache.iotdb.consensus.config.RatisConfig;
 import org.apache.iotdb.consensus.config.RatisConfig.Snapshot;
+import org.apache.iotdb.db.conf.DataNodeMemoryConfig;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.consensus.statemachine.dataregion.DataRegionStateMachine;
@@ -40,7 +43,7 @@ import org.apache.iotdb.db.consensus.statemachine.dataregion.IoTConsensusDataReg
 import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
 import org.apache.iotdb.db.pipe.consensus.ConsensusPipeDataNodeDispatcher;
 import org.apache.iotdb.db.pipe.consensus.ConsensusPipeDataNodeRuntimeAgentGuardian;
-import org.apache.iotdb.db.pipe.consensus.ProgressIndexDataNodeManager;
+import org.apache.iotdb.db.pipe.consensus.ReplicateProgressDataNodeManager;
 import org.apache.iotdb.db.pipe.consensus.deletion.DeletionResourceManager;
 import org.apache.iotdb.db.storageengine.StorageEngine;
 import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
@@ -76,6 +79,8 @@ public class DataRegionConsensusImpl {
   private static class DataRegionConsensusImplHolder {
 
     private static final IoTDBConfig CONF = IoTDBDescriptor.getInstance().getConfig();
+    private static final DataNodeMemoryConfig MEMORY_CONFIG =
+        IoTDBDescriptor.getInstance().getMemoryConfig();
 
     private static IConsensus INSTANCE;
 
@@ -110,6 +115,10 @@ public class DataRegionConsensusImpl {
     }
 
     private static ConsensusConfig buildConsensusConfig() {
+      IMemoryBlock memoryBlock =
+          MEMORY_CONFIG
+              .getConsensusMemoryManager()
+              .exactAllocate("Consensus", MemoryBlockType.DYNAMIC);
       return ConsensusConfig.newBuilder()
           .setThisNodeId(CONF.getDataNodeId())
           .setThisNode(new TEndPoint(CONF.getInternalAddress(), CONF.getDataRegionConsensusPort()))
@@ -133,7 +142,7 @@ public class DataRegionConsensusImpl {
                   .setReplication(
                       IoTConsensusConfig.Replication.newBuilder()
                           .setWalThrottleThreshold(CONF.getThrottleThreshold())
-                          .setAllocateMemoryForConsensus(CONF.getAllocateMemoryForConsensus())
+                          .setConsensusMemoryBlock(memoryBlock)
                           .setMaxLogEntriesNumPerBatch(CONF.getMaxLogEntriesNumPerBatch())
                           .setMaxSizePerBatch(CONF.getMaxSizePerBatch())
                           .setMaxPendingBatchesNum(CONF.getMaxPendingBatchesNum())
@@ -170,7 +179,7 @@ public class DataRegionConsensusImpl {
                           .setConsensusPipeSelector(
                               () -> PipeDataNodeAgent.task().getAllConsensusPipe())
                           .setConsensusPipeReceiver(PipeDataNodeAgent.receiver().pipeConsensus())
-                          .setProgressIndexManager(new ProgressIndexDataNodeManager())
+                          .setProgressIndexManager(new ReplicateProgressDataNodeManager())
                           .setConsensusPipeGuardJobIntervalInSeconds(300)
                           .build())
                   .setReplicateMode(ReplicateMode.fromValue(CONF.getIotConsensusV2Mode()))

@@ -76,7 +76,9 @@ public class GroupedAggregator {
     if (step.isInputRaw()) {
       // Use select-all AggregationMask here because filter of Agg-Function is not supported now
       AggregationMask mask = AggregationMask.createSelectAll(block.getPositionCount());
-
+      if (maskChannel.isPresent()) {
+        mask.applyMaskBlock(block.getColumn(maskChannel.getAsInt()));
+      }
       accumulator.addInput(groupIds, arguments, mask);
     } else {
       accumulator.addIntermediate(groupIds, arguments[0]);

@@ -66,4 +66,8 @@ public class StatementAnalyzerFactory {
       Metadata metadata, AccessControl accessControl) {
     return new StatementAnalyzerFactory(metadata, new SqlParser(), accessControl);
   }
+
+  public AccessControl getAccessControl() {
+    return accessControl;
+  }
 }

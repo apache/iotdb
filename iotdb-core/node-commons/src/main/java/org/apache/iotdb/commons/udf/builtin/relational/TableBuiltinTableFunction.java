@@ -21,7 +21,6 @@ package org.apache.iotdb.commons.udf.builtin.relational;
 
 import org.apache.iotdb.commons.udf.builtin.relational.tvf.HOPTableFunction;
 import org.apache.iotdb.commons.udf.builtin.relational.tvf.NumberTableFunction;
-import org.apache.iotdb.commons.udf.builtin.relational.tvf.RepeatExample;
 import org.apache.iotdb.commons.udf.builtin.relational.tvf.SessionTableFunction;
 import org.apache.iotdb.commons.udf.builtin.relational.tvf.VariationTableFunction;
 import org.apache.iotdb.udf.api.relational.TableFunction;
@@ -73,8 +72,6 @@ public enum TableBuiltinTableFunction {
         return new VariationTableFunction();
       case "number":
         return new NumberTableFunction();
-      case "repeat":
-        return new RepeatExample();
       default:
         throw new UnsupportedOperationException("Unsupported table function: " + functionName);
     }

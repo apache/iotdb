@@ -55,7 +55,9 @@ public class PipeEventCollector implements EventCollector {
 
   private final boolean forceTabletFormat;
 
-  private final boolean skipParseTsFile;
+  private final boolean skipParsing;
+
+  private final boolean isUsedForConsensusPipe;
 
   private final AtomicInteger collectInvocationCount = new AtomicInteger(0);
   private boolean hasNoGeneratedEvent = true;
@@ -66,12 +68,14 @@ public class PipeEventCollector implements EventCollector {
       final long creationTime,
       final int regionId,
       final boolean forceTabletFormat,
-      final boolean skipParseTsFile) {
+      final boolean skipParsing,
+      final boolean isUsedInConsensusPipe) {
     this.pendingQueue = pendingQueue;
     this.creationTime = creationTime;
     this.regionId = regionId;
     this.forceTabletFormat = forceTabletFormat;
-    this.skipParseTsFile = skipParseTsFile;
+    this.skipParsing = skipParsing;
+    this.isUsedForConsensusPipe = isUsedInConsensusPipe;
   }
 
   @Override
@@ -96,6 +100,11 @@ public class PipeEventCollector implements EventCollector {
   }
 
   private void parseAndCollectEvent(final PipeInsertNodeTabletInsertionEvent sourceEvent) {
+    if (skipParsing) {
+      collectEvent(sourceEvent);
+      return;
+    }
+
     if (sourceEvent.shouldParseTimeOrPattern()) {
       for (final PipeRawTabletInsertionEvent parsedEvent :
           sourceEvent.toRawTabletInsertionEvents()) {
@@ -121,7 +130,7 @@ public class PipeEventCollector implements EventCollector {
       return;
     }
 
-    if (skipParseTsFile) {
+    if (skipParsing) {
       collectEvent(sourceEvent);
       return;
     }
@@ -153,14 +162,25 @@ public class PipeEventCollector implements EventCollector {
   }
 
   private void parseAndCollectEvent(final PipeDeleteDataNodeEvent deleteDataEvent) {
+    // For IoTConsensusV2, there is no need to parse. So we can directly transfer deleteDataEvent
+    if (isUsedForConsensusPipe) {
+      hasNoGeneratedEvent = false;
+      collectEvent(deleteDataEvent);
+      return;
+    }
+
     // Only used by events containing delete data node, no need to bind progress index here since
     // delete data event does not have progress index currently
     (deleteDataEvent.getDeleteDataNode() instanceof DeleteDataNode
             ? IoTDBSchemaRegionExtractor.TREE_PATTERN_PARSE_VISITOR.process(
                 deleteDataEvent.getDeleteDataNode(),
                 (IoTDBTreePattern) deleteDataEvent.getTreePattern())
-            : IoTDBSchemaRegionExtractor.TABLE_PATTERN_PARSE_VISITOR.process(
-                deleteDataEvent.getDeleteDataNode(), deleteDataEvent.getTablePattern()))
+            : IoTDBSchemaRegionExtractor.TABLE_PATTERN_PARSE_VISITOR
+                .process(deleteDataEvent.getDeleteDataNode(), deleteDataEvent.getTablePattern())
+                .flatMap(
+                    planNode ->
+                        IoTDBSchemaRegionExtractor.TABLE_PRIVILEGE_PARSE_VISITOR.process(
+                            planNode, deleteDataEvent.getUserName())))
         .map(
             planNode ->
                 new PipeDeleteDataNodeEvent(
@@ -170,6 +190,8 @@ public class PipeEventCollector implements EventCollector {
                     deleteDataEvent.getPipeTaskMeta(),
                     deleteDataEvent.getTreePattern(),
                     deleteDataEvent.getTablePattern(),
+                    deleteDataEvent.getUserName(),
+                    deleteDataEvent.isSkipIfNoPrivileges(),
                     deleteDataEvent.isGeneratedByPipe()))
         .ifPresent(
             event -> {

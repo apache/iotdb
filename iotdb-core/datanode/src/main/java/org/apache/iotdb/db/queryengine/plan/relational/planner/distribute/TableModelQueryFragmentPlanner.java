@@ -116,7 +116,7 @@ public class TableModelQueryFragmentPlanner {
             fragment,
             fragment.getId().genFragmentInstanceId(),
             QueryType.READ,
-            queryContext.getTimeOut(),
+            queryContext.getTimeOut() - (System.currentTimeMillis() - queryContext.getStartTime()),
             queryContext.getSession(),
             queryContext.isExplainAnalyze(),
             fragment.isRoot());
