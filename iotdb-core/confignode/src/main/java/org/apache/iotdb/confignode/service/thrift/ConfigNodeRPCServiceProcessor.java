@@ -545,7 +545,8 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
   public TSStatus deleteDatabase(final TDeleteDatabaseReq tDeleteReq) {
     return configManager.deleteDatabases(
         new TDeleteDatabasesReq(Collections.singletonList(tDeleteReq.getPrefixPath()))
-            .setIsGeneratedByPipe(tDeleteReq.isIsGeneratedByPipe()));
+            .setIsGeneratedByPipe(tDeleteReq.isIsGeneratedByPipe())
+            .setOriginClusterId(tDeleteReq.getOriginClusterId()));
   }
 
   @Override

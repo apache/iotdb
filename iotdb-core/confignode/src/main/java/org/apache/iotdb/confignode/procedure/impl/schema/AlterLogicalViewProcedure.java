@@ -88,6 +88,18 @@ public class AlterLogicalViewProcedure
     generatePathPatternTree();
   }
 
+  public AlterLogicalViewProcedure(
+      final String queryId,
+      final Map<PartialPath, ViewExpression> viewPathToSourceMap,
+      final boolean isGeneratedByPipe,
+      final String originClusterId) {
+    super(isGeneratedByPipe);
+    this.queryId = queryId;
+    this.viewPathToSourceMap = viewPathToSourceMap;
+    this.originClusterId = originClusterId;
+    generatePathPatternTree();
+  }
+
   @Override
   protected Flow executeFromState(
       final ConfigNodeProcedureEnv env, final AlterLogicalViewState state)
@@ -158,7 +170,10 @@ public class AlterLogicalViewProcedure
             targetSchemaRegionGroup,
             CnToDnAsyncRequestType.ALTER_VIEW,
             (dataNodeLocation, consensusGroupIdList) -> {
-              TAlterViewReq req = new TAlterViewReq().setIsGeneratedByPipe(isGeneratedByPipe);
+              TAlterViewReq req =
+                  new TAlterViewReq()
+                      .setIsGeneratedByPipe(isGeneratedByPipe)
+                      .setOriginClusterId(originClusterId);
               req.setSchemaRegionIdList(consensusGroupIdList);
               List<ByteBuffer> viewMapBinaryList = new ArrayList<>();
               for (TConsensusGroupId consensusGroupId : consensusGroupIdList) {

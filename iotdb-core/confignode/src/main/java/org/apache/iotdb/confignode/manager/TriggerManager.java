@@ -129,7 +129,8 @@ public class TriggerManager {
         .createTrigger(
             triggerInformation,
             needToSaveJar ? new Binary(req.getJarFile()) : null,
-            req.isSetIsGeneratedByPipe() && req.isIsGeneratedByPipe());
+            req.isSetIsGeneratedByPipe() && req.isIsGeneratedByPipe(),
+            req.getOriginClusterId());
   }
 
   public TSStatus dropTrigger(TDropTriggerReq req) {

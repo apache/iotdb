@@ -191,8 +191,11 @@ public class PipeDeleteDataNodeEvent extends EnrichedEvent implements Serializab
   @Override
   public ByteBuffer serializeToByteBuffer() {
     final ByteBuffer planBuffer = deleteDataNode.serializeToByteBuffer();
-    final ByteBuffer result = ByteBuffer.allocate(Byte.BYTES + planBuffer.limit());
+    final ByteBuffer result =
+        ByteBuffer.allocate(
+            Byte.BYTES + planBuffer.limit() + computeOriginClusterIdBufferSize(originClusterId));
     ReadWriteIOUtils.write(isGeneratedByPipe, result);
+    ReadWriteIOUtils.write(originClusterId, result);
     result.put(planBuffer);
     return result;
   }
@@ -200,6 +203,7 @@ public class PipeDeleteDataNodeEvent extends EnrichedEvent implements Serializab
   @Override
   public void deserializeFromByteBuffer(final ByteBuffer buffer) {
     isGeneratedByPipe = ReadWriteIOUtils.readBool(buffer);
+    originClusterId = ReadWriteIOUtils.readString(buffer);
     deleteDataNode = (DeleteDataNode) PlanNodeType.deserialize(buffer);
     progressIndex = deleteDataNode.getProgressIndex();
   }
@@ -215,8 +219,8 @@ public class PipeDeleteDataNodeEvent extends EnrichedEvent implements Serializab
   @Override
   public String toString() {
     return String.format(
-            "PipDeleteDataNodeEvent{progressIndex=%s, isGeneratedByPipe=%s}",
-            progressIndex, isGeneratedByPipe)
+            "PipDeleteDataNodeEvent{progressIndex=%s, isGeneratedByPipe=%s, originClusterId=%s}",
+            progressIndex, isGeneratedByPipe, originClusterId)
         + " - "
         + super.toString();
   }
@@ -224,8 +228,8 @@ public class PipeDeleteDataNodeEvent extends EnrichedEvent implements Serializab
   @Override
   public String coreReportMessage() {
     return String.format(
-            "PipeDeleteDataNodeEvent{progressIndex=%s, isGeneratedByPipe=%s}",
-            progressIndex, isGeneratedByPipe)
+            "PipeDeleteDataNodeEvent{progressIndex=%s, isGeneratedByPipe=%s, originClusterId=%s}",
+            progressIndex, isGeneratedByPipe, originClusterId)
         + " - "
         + super.coreReportMessage();
   }

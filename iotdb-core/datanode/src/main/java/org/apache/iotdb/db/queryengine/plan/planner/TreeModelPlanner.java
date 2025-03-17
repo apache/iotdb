@@ -134,22 +134,16 @@ public class TreeModelPlanner implements IPlanner {
                 instanceof LoadTsFileStatement;
     if (statement instanceof LoadTsFileStatement || isPipeEnrichedTsFileLoad) {
       scheduler =
-          statement instanceof PipeEnrichedStatement
-              ? new LoadTsFileScheduler(
-                  distributedPlan,
-                  context,
-                  stateMachine,
-                  syncInternalServiceClientManager,
-                  partitionFetcher,
-                  true,
-                  ((PipeEnrichedStatement) statement).getOriginClusterId())
-              : new LoadTsFileScheduler(
-                  distributedPlan,
-                  context,
-                  stateMachine,
-                  syncInternalServiceClientManager,
-                  partitionFetcher,
-                  false);
+          new LoadTsFileScheduler(
+              distributedPlan,
+              context,
+              stateMachine,
+              syncInternalServiceClientManager,
+              partitionFetcher,
+              isPipeEnrichedTsFileLoad,
+              statement instanceof PipeEnrichedStatement
+                  ? ((PipeEnrichedStatement) statement).getOriginClusterId()
+                  : null);
 
     } else {
       scheduler =

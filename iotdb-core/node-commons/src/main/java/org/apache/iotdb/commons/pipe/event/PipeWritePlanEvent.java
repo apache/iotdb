@@ -125,8 +125,8 @@ public abstract class PipeWritePlanEvent extends EnrichedEvent implements Serial
   @Override
   public String toString() {
     return String.format(
-            "PipeWritePlanEvent{progressIndex=%s, isGeneratedByPipe=%s}",
-            progressIndex, isGeneratedByPipe)
+            "PipeWritePlanEvent{progressIndex=%s, isGeneratedByPipe=%s, originClusterId=%s}",
+            progressIndex, isGeneratedByPipe, originClusterId)
         + " - "
         + super.toString();
   }
@@ -134,8 +134,8 @@ public abstract class PipeWritePlanEvent extends EnrichedEvent implements Serial
   @Override
   public String coreReportMessage() {
     return String.format(
-            "PipeWritePlanEvent{progressIndex=%s, isGeneratedByPipe=%s}",
-            progressIndex, isGeneratedByPipe)
+            "PipeWritePlanEvent{progressIndex=%s, isGeneratedByPipe=%s, originClusterId=%s}",
+            progressIndex, isGeneratedByPipe, originClusterId)
         + " - "
         + super.coreReportMessage();
   }

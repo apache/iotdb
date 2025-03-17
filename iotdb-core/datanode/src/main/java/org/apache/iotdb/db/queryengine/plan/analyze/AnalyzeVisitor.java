@@ -2986,7 +2986,10 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     final long startTime = System.nanoTime();
     try (final LoadTsFileAnalyzer loadTsFileAnalyzer =
         new LoadTsFileAnalyzer(
-            loadTsFileStatement, loadTsFileStatement.isGeneratedByPipe(), context)) {
+            loadTsFileStatement,
+            loadTsFileStatement.isGeneratedByPipe(),
+            loadTsFileStatement.getOriginClusterId(),
+            context)) {
       return (Analysis) loadTsFileAnalyzer.analyzeFileByFile(new Analysis());
     } catch (final Exception e) {
       final String exceptionMessage =

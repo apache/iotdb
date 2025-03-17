@@ -50,6 +50,7 @@ public class LoadTsFileDataTypeConverter {
       STATEMENT_EXCEPTION_VISITOR = new LoadConvertedInsertTabletStatementExceptionVisitor();
 
   private final boolean isGeneratedByPipe;
+  private final String originClusterId;
 
   private final SqlParser relationalSqlParser = new SqlParser();
   private final LoadTableStatementDataTypeConvertExecutionVisitor
@@ -59,8 +60,10 @@ public class LoadTsFileDataTypeConverter {
       treeStatementDataTypeConvertExecutionVisitor =
           new LoadTreeStatementDataTypeConvertExecutionVisitor(this::executeForTreeModel);
 
-  public LoadTsFileDataTypeConverter(final boolean isGeneratedByPipe) {
+  public LoadTsFileDataTypeConverter(
+      final boolean isGeneratedByPipe, final String originClusterId) {
     this.isGeneratedByPipe = isGeneratedByPipe;
+    this.originClusterId = originClusterId;
   }
 
   public Optional<TSStatus> convertForTableModel(final LoadTsFile loadTsFileTableStatement) {
@@ -80,7 +83,7 @@ public class LoadTsFileDataTypeConverter {
   private TSStatus executeForTableModel(final Statement statement, final String databaseName) {
     return Coordinator.getInstance()
         .executeForTableModel(
-            isGeneratedByPipe ? new PipeEnrichedStatement(statement) : statement,
+            isGeneratedByPipe ? new PipeEnrichedStatement(statement, originClusterId) : statement,
             relationalSqlParser,
             SESSION_MANAGER.getCurrSession(),
             SESSION_MANAGER.requestQueryId(),
@@ -106,7 +109,7 @@ public class LoadTsFileDataTypeConverter {
   private TSStatus executeForTreeModel(final Statement statement) {
     return Coordinator.getInstance()
         .executeForTreeModel(
-            isGeneratedByPipe ? new PipeEnrichedStatement(statement) : statement,
+            isGeneratedByPipe ? new PipeEnrichedStatement(statement, originClusterId) : statement,
             SESSION_MANAGER.requestQueryId(),
             SESSION_MANAGER.getSessionInfo(SESSION_MANAGER.getCurrSession()),
             "",

@@ -414,7 +414,8 @@ public class ProcedureManager {
             new AlterLogicalViewProcedure(
                 queryId,
                 viewPathToSourceMap,
-                req.isSetIsGeneratedByPipe() && req.isIsGeneratedByPipe());
+                req.isSetIsGeneratedByPipe() && req.isIsGeneratedByPipe(),
+                req.getOriginClusterId());
         this.executor.submitProcedure(procedure);
       }
     }
@@ -1250,9 +1251,12 @@ public class ProcedureManager {
    *     {@link TSStatusCode#CREATE_TRIGGER_ERROR} otherwise
    */
   public TSStatus createTrigger(
-      TriggerInformation triggerInformation, Binary jarFile, boolean isGeneratedByPipe) {
+      TriggerInformation triggerInformation,
+      Binary jarFile,
+      boolean isGeneratedByPipe,
+      String originClusterId) {
     final CreateTriggerProcedure createTriggerProcedure =
-        new CreateTriggerProcedure(triggerInformation, jarFile, isGeneratedByPipe);
+        new CreateTriggerProcedure(triggerInformation, jarFile, isGeneratedByPipe, originClusterId);
     try {
       if (jarFile != null
           && new UpdateProcedurePlan(createTriggerProcedure).getSerializedSize() > planSizeLimit) {

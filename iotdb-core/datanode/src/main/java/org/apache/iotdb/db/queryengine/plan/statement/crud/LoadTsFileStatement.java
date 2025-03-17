@@ -60,6 +60,7 @@ public class LoadTsFileStatement extends Statement {
   private boolean convertOnTypeMismatch = true;
   private boolean autoCreateDatabase = true;
   private boolean isGeneratedByPipe = false;
+  private String originClusterId;
 
   private Map<String, String> loadAttributes;
 
@@ -67,16 +68,6 @@ public class LoadTsFileStatement extends Statement {
   private List<Boolean> isTableModel;
   private final List<TsFileResource> resources;
   private final List<Long> writePointCountList;
-
-  public String getOriginClusterId() {
-    return originClusterId;
-  }
-
-  public void setOriginClusterId(String originClusterId) {
-    this.originClusterId = originClusterId;
-  }
-
-  private String originClusterId;
 
   public LoadTsFileStatement(String filePath) throws FileNotFoundException {
     this.file = new File(filePath);
@@ -215,6 +206,14 @@ public class LoadTsFileStatement extends Statement {
 
   public boolean isGeneratedByPipe() {
     return isGeneratedByPipe;
+  }
+
+  public String getOriginClusterId() {
+    return originClusterId;
+  }
+
+  public void setOriginClusterId(String originClusterId) {
+    this.originClusterId = originClusterId;
   }
 
   public List<File> getTsFiles() {

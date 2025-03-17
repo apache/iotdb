@@ -691,7 +691,6 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
               .alterLogicalViewByPipe((AlterLogicalViewNode) req.getPlanNode()));
     }
     final Object statement = PLAN_TO_STATEMENT_VISITOR.process(req.getPlanNode(), null);
-
     return statement instanceof Statement
         ? new TPipeTransferResp(executeStatementAndClassifyExceptions((Statement) statement))
         : new TPipeTransferResp(

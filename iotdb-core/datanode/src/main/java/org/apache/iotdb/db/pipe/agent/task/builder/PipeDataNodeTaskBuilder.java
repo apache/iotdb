@@ -96,6 +96,7 @@ public class PipeDataNodeTaskBuilder {
 
     // We first build the extractor and connector, then build the processor.
 
+    // build connector first to get the sink clusterIds
     final PipeTaskConnectorStage connectorStage;
     final PipeType pipeType = pipeStaticMeta.getPipeType();
 

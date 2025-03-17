@@ -120,7 +120,6 @@ public class PipeConnectorSubtaskManager {
               : new UnboundedBlockingPendingQueue<>(new PipeDataRegionEventCounter());
 
       for (int connectorIndex = 0; connectorIndex < connectorNum; connectorIndex++) {
-
         final PipeConnector pipeConnector =
             isDataRegionConnector
                 ? PipeDataNodeAgent.plugin().dataRegion().reflectConnector(pipeConnectorParameters)

@@ -29,6 +29,7 @@ import org.apache.iotdb.commons.pipe.datastructure.pattern.TablePattern;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.TreePattern;
 import org.apache.iotdb.pipe.api.event.Event;
 
+import org.apache.tsfile.common.conf.TSFileConfig;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -79,8 +80,6 @@ public abstract class EnrichedEvent implements Event {
   protected String userName;
   protected boolean skipIfNoPrivileges;
 
-  // protected final String originClusterId;
-
   protected EnrichedEvent(
       final String pipeName,
       final long creationTime,
@@ -103,7 +102,6 @@ public abstract class EnrichedEvent implements Event {
     this.skipIfNoPrivileges = skipIfNoPrivileges;
     this.startTime = startTime;
     this.endTime = endTime;
-    // this.originClusterId = originClusterId;
 
     isPatternParsed =
         (treePattern == null || treePattern.isRoot())
@@ -460,6 +458,15 @@ public abstract class EnrichedEvent implements Event {
 
   public boolean isReleased() {
     return isReleased.get();
+  }
+
+  public int computeOriginClusterIdBufferSize(final String originClusterId) {
+    if (originClusterId == null) {
+      return Integer.BYTES;
+    } else {
+      byte[] bytes = originClusterId.getBytes(TSFileConfig.STRING_CHARSET);
+      return Integer.BYTES + bytes.length;
+    }
   }
 
   /**

@@ -749,8 +749,14 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
   @Override
   public String toString() {
     return String.format(
-            "PipeTsFileInsertionEvent{resource=%s, tsFile=%s, isLoaded=%s, isGeneratedByPipe=%s, isClosed=%s, eventParser=%s}",
-            resource, tsFile, isLoaded, isGeneratedByPipe, isClosed.get(), eventParser)
+            "PipeTsFileInsertionEvent{resource=%s, tsFile=%s, isLoaded=%s, isGeneratedByPipe=%s, isClosed=%s, eventParser=%s, originClusterId=%s}",
+            resource,
+            tsFile,
+            isLoaded,
+            isGeneratedByPipe,
+            isClosed.get(),
+            eventParser,
+            originClusterId)
         + " - "
         + super.toString();
   }
@@ -758,8 +764,8 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
   @Override
   public String coreReportMessage() {
     return String.format(
-            "PipeTsFileInsertionEvent{resource=%s, tsFile=%s, isLoaded=%s, isGeneratedByPipe=%s, isClosed=%s}",
-            resource, tsFile, isLoaded, isGeneratedByPipe, isClosed.get())
+            "PipeTsFileInsertionEvent{resource=%s, tsFile=%s, isLoaded=%s, isGeneratedByPipe=%s, isClosed=%s, originClusterId=%s}",
+            resource, tsFile, isLoaded, isGeneratedByPipe, isClosed.get(), originClusterId)
         + " - "
         + super.coreReportMessage();
   }

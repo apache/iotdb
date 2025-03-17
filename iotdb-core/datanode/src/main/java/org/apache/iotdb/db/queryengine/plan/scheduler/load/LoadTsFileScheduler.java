@@ -428,6 +428,7 @@ public class LoadTsFileScheduler implements IScheduler {
     try {
       loadCommandReq.setIsGeneratedByPipe(isGeneratedByPipe);
       loadCommandReq.setProgressIndex(assignProgressIndex(tsFileResource));
+      loadCommandReq.setOriginClusterId(originClusterId);
       Future<FragInstanceDispatchResult> dispatchResultFuture =
           dispatcher.dispatchCommand(loadCommandReq, allReplicaSets);
 
@@ -582,7 +583,7 @@ public class LoadTsFileScheduler implements IScheduler {
 
   private void convertFailedTsFilesToTabletsAndRetry() {
     final LoadTsFileDataTypeConverter loadTsFileDataTypeConverter =
-        new LoadTsFileDataTypeConverter(isGeneratedByPipe);
+        new LoadTsFileDataTypeConverter(isGeneratedByPipe, originClusterId);
 
     final Iterator<Integer> iterator = failedTsFileNodeIndexes.listIterator();
     while (iterator.hasNext()) {

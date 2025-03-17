@@ -164,13 +164,6 @@ public class SetTTLProcedure extends StateMachineProcedure<ConfigNodeProcedureEn
             : ProcedureType.SET_TTL_PROCEDURE.getTypeCode());
     super.serialize(stream);
     ReadWriteIOUtils.write(plan.serializeToByteBuffer(), stream);
-
-    if (originClusterId == null) {
-      stream.writeBoolean(false);
-    } else {
-      stream.writeBoolean(true);
-      ReadWriteIOUtils.write(originClusterId, stream);
-    }
   }
 
   @Override
@@ -179,15 +172,6 @@ public class SetTTLProcedure extends StateMachineProcedure<ConfigNodeProcedureEn
     try {
       ReadWriteIOUtils.readInt(byteBuffer);
       this.plan = (SetTTLPlan) ConfigPhysicalPlan.Factory.create(byteBuffer);
-
-      if (byteBuffer.hasRemaining()) {
-        boolean hasClusterId = byteBuffer.get() != 0;
-        if (hasClusterId) {
-          this.originClusterId = ReadWriteIOUtils.readString(byteBuffer);
-        } else {
-          this.originClusterId = null;
-        }
-      }
     } catch (IOException e) {
       LOGGER.error("IO error when deserialize setTTL plan.", e);
     }

@@ -101,6 +101,7 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
       isTableModelStatement; // Whether the statement itself is table model or not (not the TsFiles)
   private final String statementString;
   private final boolean isGeneratedByPipe;
+  private final String originClusterId;
 
   private final List<File> tsFiles;
   private final List<Boolean> isTableModelTsFile;
@@ -119,7 +120,10 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
   private LoadTsFileTableSchemaCache tableSchemaCache;
 
   public LoadTsFileAnalyzer(
-      LoadTsFileStatement loadTsFileStatement, boolean isGeneratedByPipe, MPPQueryContext context) {
+      LoadTsFileStatement loadTsFileStatement,
+      boolean isGeneratedByPipe,
+      String originClusterId,
+      MPPQueryContext context) {
     this.context = context;
 
     this.loadTsFileTreeStatement = loadTsFileStatement;
@@ -127,6 +131,7 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
     this.isTableModelStatement = false;
     this.statementString = loadTsFileStatement.toString();
     this.isGeneratedByPipe = isGeneratedByPipe;
+    this.originClusterId = originClusterId;
 
     this.tsFiles = loadTsFileStatement.getTsFiles();
     this.isTableModelTsFile = new ArrayList<>(Collections.nCopies(this.tsFiles.size(), false));
@@ -140,7 +145,10 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
   }
 
   public LoadTsFileAnalyzer(
-      LoadTsFile loadTsFileTableStatement, boolean isGeneratedByPipe, MPPQueryContext context) {
+      LoadTsFile loadTsFileTableStatement,
+      boolean isGeneratedByPipe,
+      String originClusterId,
+      MPPQueryContext context) {
     this.context = context;
 
     this.loadTsFileTreeStatement = null;
@@ -148,6 +156,7 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
     this.isTableModelStatement = true;
     this.statementString = loadTsFileTableStatement.toString();
     this.isGeneratedByPipe = isGeneratedByPipe;
+    this.originClusterId = originClusterId;
 
     this.tsFiles = loadTsFileTableStatement.getTsFiles();
     this.isTableModelTsFile = new ArrayList<>(Collections.nCopies(this.tsFiles.size(), false));
@@ -561,7 +570,7 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
     }
 
     final LoadTsFileDataTypeConverter loadTsFileDataTypeConverter =
-        new LoadTsFileDataTypeConverter(isGeneratedByPipe);
+        new LoadTsFileDataTypeConverter(isGeneratedByPipe, originClusterId);
 
     for (int i = 0; i < tsFiles.size(); i++) {
       try {
