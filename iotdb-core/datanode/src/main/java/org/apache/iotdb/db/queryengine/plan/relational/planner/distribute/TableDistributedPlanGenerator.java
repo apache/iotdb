@@ -271,8 +271,7 @@ public class TableDistributedPlanGenerator
     }
 
     TopKNode newTopKNode = (TopKNode) node.clone();
-    for (int i = 0; i < childrenNodes.size(); i++) {
-      PlanNode child = childrenNodes.get(i);
+    for (PlanNode child : childrenNodes) {
       TopKNode subTopKNode =
           new TopKNode(
               queryId.genPlanNodeId(),
@@ -468,14 +467,14 @@ public class TableDistributedPlanGenerator
     }
 
     String dbName = node.getQualifiedObjectName().getDatabaseName();
-    if (!dataPartition.getDataPartitionMap().containsKey(dbName)) {
+    Map<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TRegionReplicaSet>>> seriesSlotMap =
+        dataPartition.getDataPartitionMap().get(dbName);
+    if (seriesSlotMap == null) {
       throw new SemanticException(
           String.format("Given queried database: %s is not exist!", dbName));
     }
 
     final Map<TRegionReplicaSet, DeviceTableScanNode> tableScanNodeMap = new HashMap<>();
-    Map<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TRegionReplicaSet>>> seriesSlotMap =
-        dataPartition.getDataPartitionMap().get(dbName);
     Map<Integer, List<TRegionReplicaSet>> cachedSeriesSlotWithRegions = new HashMap<>();
     for (final DeviceEntry deviceEntry : node.getDeviceEntries()) {
       List<TRegionReplicaSet> regionReplicaSets =
@@ -550,15 +549,15 @@ public class TableDistributedPlanGenerator
     }
 
     String dbName = node.getTreeDBName();
-    if (!dataPartition.getDataPartitionMap().containsKey(dbName)) {
+    Map<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TRegionReplicaSet>>> seriesSlotMap =
+        dataPartition.getDataPartitionMap().get(dbName);
+    if (seriesSlotMap == null) {
       throw new SemanticException(
           String.format("Given queried database: %s is not exist!", dbName));
     }
 
     Map<TRegionReplicaSet, Pair<TreeAlignedDeviceViewScanNode, TreeNonAlignedDeviceViewScanNode>>
         tableScanNodeMap = new HashMap<>();
-    Map<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TRegionReplicaSet>>> seriesSlotMap =
-        dataPartition.getDataPartitionMap().get(dbName);
     Map<Integer, List<TRegionReplicaSet>> cachedSeriesSlotWithRegions = new HashMap<>();
     for (DeviceEntry deviceEntry : node.getDeviceEntries()) {
       List<TRegionReplicaSet> regionReplicaSets =
@@ -760,13 +759,13 @@ public class TableDistributedPlanGenerator
     boolean needSplit = false;
     List<List<TRegionReplicaSet>> regionReplicaSetsList = new ArrayList<>();
     if (dataPartition != null) {
-      if (!dataPartition.getDataPartitionMap().containsKey(dbName)) {
+      Map<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TRegionReplicaSet>>> seriesSlotMap =
+          dataPartition.getDataPartitionMap().get(dbName);
+      if (seriesSlotMap == null) {
         throw new SemanticException(
             String.format("Given queried database: %s is not exist!", dbName));
       }
 
-      Map<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TRegionReplicaSet>>> seriesSlotMap =
-          dataPartition.getDataPartitionMap().get(dbName);
       Map<Integer, List<TRegionReplicaSet>> cachedSeriesSlotWithRegions = new HashMap<>();
       for (DeviceEntry deviceEntry : node.getDeviceEntries()) {
         List<TRegionReplicaSet> regionReplicaSets =
