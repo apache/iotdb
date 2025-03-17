@@ -221,16 +221,10 @@ public class RelationalInsertTabletNode extends InsertTabletNode {
     return splitMap;
   }
 
-  public static RelationalInsertTabletNode deserialize(ByteBuffer byteBuffer) {
-    RelationalInsertTabletNode insertNode = new RelationalInsertTabletNode(new PlanNodeId(""));
-    insertNode.subDeserialize(byteBuffer);
-    insertNode.setPlanNodeId(PlanNodeId.deserialize(byteBuffer));
-    return insertNode;
-  }
-
   @Override
   protected void serializeAttributes(ByteBuffer byteBuffer) {
-    super.serializeAttributes(byteBuffer);
+    getType().serialize(byteBuffer);
+    subSerialize(byteBuffer);
     for (int i = 0; i < measurements.length; i++) {
       if (measurements[i] != null) {
         columnCategories[i].serialize(byteBuffer);
@@ -240,12 +234,30 @@ public class RelationalInsertTabletNode extends InsertTabletNode {
 
   @Override
   protected void serializeAttributes(DataOutputStream stream) throws IOException {
-    super.serializeAttributes(stream);
+    getType().serialize(stream);
+    subSerialize(stream);
     for (int i = 0; i < measurements.length; i++) {
       if (measurements[i] != null) {
         columnCategories[i].serialize(stream);
       }
     }
+  }
+
+  @Override
+  void writeTabletAttribute(ByteBuffer byteBuffer) {
+    ReadWriteIOUtils.write((byte) (singleDevice ? -1 : 0), byteBuffer);
+  }
+
+  @Override
+  void writeTabletAttribute(DataOutputStream stream) throws IOException {
+    ReadWriteIOUtils.write((byte) (singleDevice ? -1 : 0), stream);
+  }
+
+  public static RelationalInsertTabletNode deserialize(ByteBuffer byteBuffer) {
+    RelationalInsertTabletNode insertNode = new RelationalInsertTabletNode(new PlanNodeId(""));
+    insertNode.subDeserialize(byteBuffer);
+    insertNode.setPlanNodeId(PlanNodeId.deserialize(byteBuffer));
+    return insertNode;
   }
 
   @Override
@@ -256,6 +268,11 @@ public class RelationalInsertTabletNode extends InsertTabletNode {
       columnCategories[i] = TsTableColumnCategory.deserialize(buffer);
     }
     setColumnCategories(columnCategories);
+  }
+
+  @Override
+  void readTabletAttribute(ByteBuffer buffer) {
+    singleDevice = buffer.get() == -1;
   }
 
   @Override

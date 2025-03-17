@@ -455,7 +455,7 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
     writeTimes(buffer);
     writeBitMaps(buffer);
     writeValues(buffer);
-    ReadWriteIOUtils.write((byte) (isAligned ? 1 : 0), buffer);
+    writeTabletAttribute(buffer);
   }
 
   void subSerialize(DataOutputStream stream) throws IOException {
@@ -465,7 +465,7 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
     writeTimes(stream);
     writeBitMaps(stream);
     writeValues(stream);
-    ReadWriteIOUtils.write((byte) (isAligned ? 1 : 0), stream);
+    writeTabletAttribute(stream);
   }
 
   /** Serialize measurements or measurement schemas, ignoring failed time series */
@@ -707,6 +707,14 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
     }
   }
 
+  void writeTabletAttribute(ByteBuffer buffer) {
+    ReadWriteIOUtils.write((byte) (isAligned ? 1 : 0), buffer);
+  }
+
+  void writeTabletAttribute(DataOutputStream stream) throws IOException {
+    ReadWriteIOUtils.write((byte) (isAligned ? 1 : 0), stream);
+  }
+
   public static InsertTabletNode deserialize(ByteBuffer byteBuffer) {
     InsertTabletNode insertNode = new InsertTabletNode(new PlanNodeId(""));
     insertNode.subDeserialize(byteBuffer);
@@ -753,6 +761,10 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
     }
     columns =
         QueryDataSetUtils.readTabletValuesFromBuffer(buffer, dataTypes, measurementSize, rowCount);
+    readTabletAttribute(buffer);
+  }
+
+  void readTabletAttribute(ByteBuffer buffer) {
     isAligned = buffer.get() == 1;
   }
 
