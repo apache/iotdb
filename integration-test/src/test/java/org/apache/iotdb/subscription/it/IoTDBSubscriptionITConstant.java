@@ -28,7 +28,7 @@ public class IoTDBSubscriptionITConstant {
 
   private static final long AWAITILITY_POLL_DELAY_SECOND = 1L;
   private static final long AWAITILITY_POLL_INTERVAL_SECOND = 1L;
-  private static final long AWAITILITY_AT_MOST_SECOND = 600L;
+  private static final long AWAITILITY_AT_MOST_SECOND = 60L;
 
   public static final ConditionFactory AWAIT =
       Awaitility.await()
