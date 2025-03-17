@@ -48,6 +48,6 @@ public class AlterTableAddColumnTask extends AbstractAlterOrDropTableTask {
   public ListenableFuture<ConfigTaskResult> execute(final IConfigTaskExecutor configTaskExecutor)
       throws InterruptedException {
     return configTaskExecutor.alterTableAddColumn(
-        database, tableName, columnList, queryId, tableIfExists, columnIfExists);
+        database, tableName, columnList, queryId, tableIfExists, columnIfExists, tableView);
   }
 }

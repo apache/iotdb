@@ -51,6 +51,6 @@ public class AlterTableRenameColumnTask extends AbstractAlterOrDropTableTask {
   public ListenableFuture<ConfigTaskResult> execute(final IConfigTaskExecutor configTaskExecutor)
       throws InterruptedException {
     return configTaskExecutor.alterTableRenameColumn(
-        database, tableName, oldName, newName, queryId, tableIfExists, columnIfExists);
+        database, tableName, oldName, newName, queryId, tableIfExists, columnIfExists, tableView);
   }
 }

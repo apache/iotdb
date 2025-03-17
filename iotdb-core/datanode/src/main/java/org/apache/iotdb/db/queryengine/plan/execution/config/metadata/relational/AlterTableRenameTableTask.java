@@ -43,6 +43,6 @@ public class AlterTableRenameTableTask extends AbstractAlterOrDropTableTask {
   public ListenableFuture<ConfigTaskResult> execute(final IConfigTaskExecutor configTaskExecutor)
       throws InterruptedException {
     return configTaskExecutor.alterTableRenameTable(
-        database, tableName, targetName, queryId, tableIfExists);
+        database, tableName, targetName, queryId, tableIfExists, tableView);
   }
 }

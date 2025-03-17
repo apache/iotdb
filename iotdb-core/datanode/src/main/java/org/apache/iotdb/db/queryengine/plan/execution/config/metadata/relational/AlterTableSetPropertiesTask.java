@@ -45,6 +45,6 @@ public class AlterTableSetPropertiesTask extends AbstractAlterOrDropTableTask {
   public ListenableFuture<ConfigTaskResult> execute(final IConfigTaskExecutor configTaskExecutor)
       throws InterruptedException {
     return configTaskExecutor.alterTableSetProperties(
-        database, tableName, properties, queryId, tableIfExists);
+        database, tableName, properties, queryId, tableIfExists, tableView);
   }
 }

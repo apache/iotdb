@@ -48,6 +48,13 @@ public class AlterTableCommentColumnTask extends AbstractAlterOrDropTableTask {
   public ListenableFuture<ConfigTaskResult> execute(final IConfigTaskExecutor configTaskExecutor)
       throws InterruptedException {
     return configTaskExecutor.alterTableCommentColumn(
-        database, tableName, columnName, queryId, tableIfExists, columnIfExists, comment);
+        database,
+        tableName,
+        columnName,
+        queryId,
+        tableIfExists,
+        columnIfExists,
+        comment,
+        tableView);
   }
 }

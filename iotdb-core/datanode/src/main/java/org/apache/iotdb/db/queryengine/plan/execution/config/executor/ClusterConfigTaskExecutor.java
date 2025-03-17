@@ -3587,7 +3587,8 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
       final String sourceName,
       final String targetName,
       final String queryId,
-      final boolean tableIfExists) {
+      final boolean tableIfExists,
+      final boolean isView) {
     final SettableFuture<ConfigTaskResult> future = SettableFuture.create();
     try (final ConfigNodeClient client =
         CLUSTER_DELETION_CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
@@ -3606,6 +3607,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
               queryId,
               AlterOrDropTableOperationType.RENAME_TABLE,
               stream.toByteArray(),
+              isView,
               client);
 
       if (TSStatusCode.SUCCESS_STATUS.getStatusCode() == tsStatus.getCode()
@@ -3629,7 +3631,8 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
       final List<TsTableColumnSchema> columnSchemaList,
       final String queryId,
       final boolean tableIfExists,
-      final boolean columnIfExists) {
+      final boolean columnIfExists,
+      final boolean isView) {
     final SettableFuture<ConfigTaskResult> future = SettableFuture.create();
     try (final ConfigNodeClient client =
         CLUSTER_DELETION_CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
@@ -3641,6 +3644,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
               queryId,
               AlterOrDropTableOperationType.ADD_COLUMN,
               TsTableColumnSchemaUtil.serialize(columnSchemaList),
+              isView,
               client);
 
       if (TSStatusCode.SUCCESS_STATUS.getStatusCode() == tsStatus.getCode()
@@ -3666,7 +3670,8 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
       final String newName,
       final String queryId,
       final boolean tableIfExists,
-      final boolean columnIfExists) {
+      final boolean columnIfExists,
+      final boolean isView) {
     final SettableFuture<ConfigTaskResult> future = SettableFuture.create();
     try (final ConfigNodeClient client =
         CLUSTER_DELETION_CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
@@ -3686,6 +3691,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
               queryId,
               AlterOrDropTableOperationType.RENAME_COLUMN,
               stream.toByteArray(),
+              isView,
               client);
 
       if (TSStatusCode.SUCCESS_STATUS.getStatusCode() == tsStatus.getCode()
@@ -3710,7 +3716,8 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
       final String columnName,
       final String queryId,
       final boolean tableIfExists,
-      final boolean columnIfExists) {
+      final boolean columnIfExists,
+      final boolean isView) {
     final SettableFuture<ConfigTaskResult> future = SettableFuture.create();
     try (final ConfigNodeClient client =
         CLUSTER_DELETION_CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
@@ -3729,6 +3736,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
               queryId,
               AlterOrDropTableOperationType.DROP_COLUMN,
               stream.toByteArray(),
+              isView,
               client);
 
       if (TSStatusCode.SUCCESS_STATUS.getStatusCode() == tsStatus.getCode()
@@ -3752,7 +3760,8 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
       final String tableName,
       final Map<String, String> properties,
       final String queryId,
-      final boolean ifExists) {
+      final boolean ifExists,
+      final boolean isView) {
     final SettableFuture<ConfigTaskResult> future = SettableFuture.create();
     try (final ConfigNodeClient client =
         CLUSTER_DELETION_CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
@@ -3771,6 +3780,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
               queryId,
               AlterOrDropTableOperationType.SET_PROPERTIES,
               stream.toByteArray(),
+              isView,
               client);
 
       if (TSStatusCode.SUCCESS_STATUS.getStatusCode() == tsStatus.getCode()
@@ -3792,7 +3802,8 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
       final String tableName,
       final String queryId,
       final boolean ifExists,
-      final String comment) {
+      final String comment,
+      final boolean isView) {
     final SettableFuture<ConfigTaskResult> future = SettableFuture.create();
     try (final ConfigNodeClient client =
         CLUSTER_DELETION_CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
@@ -3811,6 +3822,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
               queryId,
               AlterOrDropTableOperationType.COMMENT_TABLE,
               stream.toByteArray(),
+              false,
               client);
 
       if (TSStatusCode.SUCCESS_STATUS.getStatusCode() == tsStatus.getCode()
@@ -3834,7 +3846,8 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
       final String queryId,
       final boolean tableIfExists,
       final boolean columnIfExists,
-      final String comment) {
+      final String comment,
+      final boolean isView) {
     final SettableFuture<ConfigTaskResult> future = SettableFuture.create();
     try (final ConfigNodeClient client =
         CLUSTER_DELETION_CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
@@ -3854,6 +3867,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
               queryId,
               AlterOrDropTableOperationType.COMMENT_COLUMN,
               stream.toByteArray(),
+              isView,
               client);
 
       if (TSStatusCode.SUCCESS_STATUS.getStatusCode() == tsStatus.getCode()
@@ -3885,6 +3899,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
               queryId,
               AlterOrDropTableOperationType.DROP_TABLE,
               new byte[0],
+              true,
               client);
 
       if (TSStatusCode.SUCCESS_STATUS.getStatusCode() == tsStatus.getCode()
@@ -4017,6 +4032,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
       final String queryId,
       final AlterOrDropTableOperationType type,
       final byte[] updateInfo,
+      final boolean isView,
       final ConfigNodeClient client)
       throws TException {
     TSStatus tsStatus;
@@ -4026,6 +4042,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
     req.setQueryId(queryId);
     req.setOperationType(type.getTypeValue());
     req.setUpdateInfo(updateInfo);
+    req.setIsView(isView);
 
     do {
       try {
