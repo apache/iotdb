@@ -863,7 +863,7 @@ struct TPipeConfigTransferReq {
 struct TPipeConfigTransferResp {
   1: required common.TSStatus status
   2: optional binary body
-  3: optional string cluster
+  3: optional string clusterId
 }
 
 struct TDeleteTimeSeriesReq {

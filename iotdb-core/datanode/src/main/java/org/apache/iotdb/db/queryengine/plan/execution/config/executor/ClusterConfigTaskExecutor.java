@@ -3299,7 +3299,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
       }
       return new TPipeTransferResp(pipeConfigTransferResp.status)
           .setBody(pipeConfigTransferResp.body)
-          .setClusterId(pipeConfigTransferResp.cluster);
+          .setClusterId(pipeConfigTransferResp.clusterId);
     } catch (Exception e) {
       return new TPipeTransferResp(
           new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode())
