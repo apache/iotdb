@@ -320,10 +320,13 @@ public class TsFileProcessor {
     if (!insertRowNode.isGeneratedByPipe()) {
       workMemTable.markAsNotGeneratedByPipe();
     }
-    if ("Not Set".equals(workMemTable.getCurrentOriginClusterId())) {
-      workMemTable.setCurrentOriginClusterId(insertRowNode.getOriginClusterId());
-    } else if (!Objects.equals(
-        insertRowNode.getOriginClusterId(), workMemTable.getCurrentOriginClusterId())) {
+    final String originClusterId =
+        insertRowNode.getOriginClusterId() == null
+            ? config.getClusterId()
+            : insertRowNode.getOriginClusterId();
+    if (Objects.isNull(workMemTable.getCurrentOriginClusterId())) {
+      workMemTable.setCurrentOriginClusterId(originClusterId);
+    } else if (!Objects.equals(originClusterId, workMemTable.getCurrentOriginClusterId())) {
       workMemTable.markAsNotFromTheSameCluster();
     }
 
@@ -418,10 +421,13 @@ public class TsFileProcessor {
     if (!insertRowsNode.isGeneratedByPipe()) {
       workMemTable.markAsNotGeneratedByPipe();
     }
-    if ("Not Set".equals(workMemTable.getCurrentOriginClusterId())) {
-      workMemTable.setCurrentOriginClusterId(insertRowsNode.getOriginClusterId());
-    } else if (!Objects.equals(
-        insertRowsNode.getOriginClusterId(), workMemTable.getCurrentOriginClusterId())) {
+    final String originClusterId =
+        insertRowsNode.getOriginClusterId() == null
+            ? config.getClusterId()
+            : insertRowsNode.getOriginClusterId();
+    if (Objects.isNull(workMemTable.getCurrentOriginClusterId())) {
+      workMemTable.setCurrentOriginClusterId(originClusterId);
+    } else if (!Objects.equals(originClusterId, workMemTable.getCurrentOriginClusterId())) {
       workMemTable.markAsNotFromTheSameCluster();
     }
     PipeInsertionDataNodeListener.getInstance()
@@ -591,10 +597,13 @@ public class TsFileProcessor {
     if (!insertTabletNode.isGeneratedByPipe()) {
       workMemTable.markAsNotGeneratedByPipe();
     }
-    if ("Not Set".equals(workMemTable.getCurrentOriginClusterId())) {
-      workMemTable.setCurrentOriginClusterId(insertTabletNode.getOriginClusterId());
-    } else if (!Objects.equals(
-        insertTabletNode.getOriginClusterId(), workMemTable.getCurrentOriginClusterId())) {
+    final String originClusterId =
+        insertTabletNode.getOriginClusterId() == null
+            ? config.getClusterId()
+            : insertTabletNode.getOriginClusterId();
+    if (Objects.isNull(workMemTable.getCurrentOriginClusterId())) {
+      workMemTable.setCurrentOriginClusterId(originClusterId);
+    } else if (!Objects.equals(originClusterId, workMemTable.getCurrentOriginClusterId())) {
       workMemTable.markAsNotFromTheSameCluster();
     }
 

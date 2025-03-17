@@ -126,7 +126,7 @@ public abstract class AbstractMemTable implements IMemTable {
 
   private final AtomicBoolean isToTallyFromTheSameCluster = new AtomicBoolean(true);
 
-  private String currentOriginClusterId = "Not Set";
+  private String currentOriginClusterId = null;
 
   protected AbstractMemTable() {
     this.database = null;
