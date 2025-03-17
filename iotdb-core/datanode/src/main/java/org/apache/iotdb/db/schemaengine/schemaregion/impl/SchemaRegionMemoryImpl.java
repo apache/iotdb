@@ -27,10 +27,10 @@ import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.schema.SchemaConstant;
-import org.apache.iotdb.commons.schema.column.ColumnHeader;
 import org.apache.iotdb.commons.schema.filter.SchemaFilterType;
 import org.apache.iotdb.commons.schema.node.role.IMeasurementMNode;
 import org.apache.iotdb.commons.schema.table.TsTable;
+import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
 import org.apache.iotdb.commons.schema.view.LogicalViewSchema;
 import org.apache.iotdb.commons.schema.view.viewExpression.ViewExpression;
 import org.apache.iotdb.commons.utils.FileUtils;
@@ -1476,17 +1476,20 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
     final String tableName = updateNode.getTableName();
     final TsTable table = DataNodeTableCache.getInstance().getTable(database, tableName);
     final Expression predicate = updateNode.getIdFuzzyPredicate();
-    final List<ColumnHeader> columnHeaderList = updateNode.getColumnHeaderList();
+    final List<TsTableColumnSchema> columnSchemaList =
+        updateNode.getColumnHeaderList().stream()
+            .map(columnHeader -> table.getColumnSchema(columnHeader.getColumnName()))
+            .collect(Collectors.toList());
     final Map<Symbol, List<InputLocation>> inputLocations =
         makeLayout(Collections.singletonList(updateNode));
     final SessionInfo sessionInfo = updateNode.getSessionInfo();
     final TypeProvider mockTypeProvider =
         new TypeProvider(
-            columnHeaderList.stream()
+            columnSchemaList.stream()
                 .collect(
                     Collectors.toMap(
-                        columnHeader -> new Symbol(columnHeader.getColumnName()),
-                        columnHeader -> TypeFactory.getType(columnHeader.getColumnType()))));
+                        columnSchema -> new Symbol(columnSchema.getColumnName()),
+                        columnSchema -> TypeFactory.getType(columnSchema.getDataType()))));
     final Metadata metadata = LocalExecutionPlanner.getInstance().metadata;
 
     // records LeafColumnTransformer of filter
@@ -1515,7 +1518,9 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
             : null;
 
     final List<TSDataType> filterOutputDataTypes =
-        columnHeaderList.stream().map(ColumnHeader::getColumnType).collect(Collectors.toList());
+        columnSchemaList.stream()
+            .map(TsTableColumnSchema::getDataType)
+            .collect(Collectors.toList());
 
     // records LeafColumnTransformer of project expressions
     final List<LeafColumnTransformer> projectLeafColumnTransformerList = new ArrayList<>();
@@ -1549,8 +1554,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
         filterLeafColumnTransformerList,
         filterOutputTransformer,
         commonTransformerList,
-        table,
-        columnHeaderList,
+        columnSchemaList,
         projectLeafColumnTransformerList,
         updateNode.getAssignments().stream()
             .map(
