@@ -105,6 +105,7 @@ public class ConfigRegionListeningFilter {
               Arrays.asList(
                   ConfigPhysicalPlanType.CommitCreateTable,
                   ConfigPhysicalPlanType.PipeCreateTable,
+                  ConfigPhysicalPlanType.PipeCreateView,
                   ConfigPhysicalPlanType.AddTableColumn)));
       OPTION_PLAN_MAP.put(
           new PartialPath("schema.table.alter"),

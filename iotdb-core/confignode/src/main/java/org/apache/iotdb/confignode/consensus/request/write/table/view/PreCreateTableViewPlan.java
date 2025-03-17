@@ -17,11 +17,12 @@
  * under the License.
  */
 
-package org.apache.iotdb.confignode.consensus.request.write.table;
+package org.apache.iotdb.confignode.consensus.request.write.table.view;
 
 import org.apache.iotdb.commons.schema.table.TableNodeStatus;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
+import org.apache.iotdb.confignode.consensus.request.write.table.PreCreateTablePlan;
 
 import java.io.DataOutputStream;
 import java.io.IOException;

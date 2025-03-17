@@ -206,8 +206,11 @@ public class AddTableColumnProcedure
         isGeneratedByPipe
             ? ProcedureType.PIPE_ENRICHED_ADD_TABLE_COLUMN_PROCEDURE.getTypeCode()
             : ProcedureType.ADD_TABLE_COLUMN_PROCEDURE.getTypeCode());
-    super.serialize(stream);
+    innerSerialize(stream);
+  }
 
+  protected void innerSerialize(final DataOutputStream stream) throws IOException {
+    super.serialize(stream);
     TsTableColumnSchemaUtil.serialize(addedColumnList, stream);
   }
 
