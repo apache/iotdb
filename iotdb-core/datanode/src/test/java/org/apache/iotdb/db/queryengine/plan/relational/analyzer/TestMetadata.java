@@ -41,7 +41,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.metadata.ColumnSchema;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.DeviceEntry;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.ITableDeviceSchemaValidation;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
-import org.apache.iotdb.db.queryengine.plan.relational.metadata.NonAlignedAlignedDeviceEntry;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.NonAlignedDeviceEntry;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.OperatorNotFoundException;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.QualifiedObjectName;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.TableSchema;
@@ -288,7 +288,7 @@ public class TestMetadata implements Metadata {
                 IDeviceID.Factory.DEFAULT_FACTORY.create(DEVICE_3), new Binary[0]),
             new AlignedDeviceEntry(
                 IDeviceID.Factory.DEFAULT_FACTORY.create(DEVICE_6), new Binary[0]),
-            new NonAlignedAlignedDeviceEntry(
+            new NonAlignedDeviceEntry(
                 IDeviceID.Factory.DEFAULT_FACTORY.create(DEVICE_5), new Binary[0]));
       }
 
