@@ -379,8 +379,8 @@ public class CommonConfig {
 
   // memory management
   private boolean enableMemoryTransfer = false;
-
   private boolean enableMemoryAdapt = false;
+  private boolean isShrinkAll = true;
   private long memoryCheckIntervalInS = 20;
 
   CommonConfig() {
@@ -1770,5 +1770,13 @@ public class CommonConfig {
 
   public void setEnableMemoryAdapt(boolean enableMemoryAdapt) {
     this.enableMemoryAdapt = enableMemoryAdapt;
+  }
+
+  public boolean isShrinkAll() {
+    return isShrinkAll;
+  }
+
+  public void setShrinkAll(boolean shrinkAll) {
+    isShrinkAll = shrinkAll;
   }
 }

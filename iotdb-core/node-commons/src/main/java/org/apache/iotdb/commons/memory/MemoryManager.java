@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.commons.memory;
 
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.utils.TestOnly;
 
 import org.slf4j.Logger;
@@ -43,7 +44,7 @@ public class MemoryManager {
   private static final long MEMORY_ALLOCATE_MIN_SIZE_IN_BYTES = 32;
 
   /** Whether to take all dynamic part into consideration when shrink */
-  private boolean shrink_all = false;
+  private boolean shrink_all = CommonDescriptor.getInstance().getConfig().isShrinkAll();
 
   /** The threshold of memory update */
   private double memory_update_threshold = 0.1;
