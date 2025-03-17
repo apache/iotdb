@@ -18,7 +18,8 @@
 
 import logging
 import warnings
-
+import re
+import pandas as pd
 from iotdb.Session import Session
 
 from .Exceptions import ProgrammingError
@@ -112,6 +113,9 @@ class Cursor(object):
 
         time_index = []
         time_names = []
+        time_group_sql = ""
+        time_group_flag = False
+
         if self.__sqlalchemy_mode:
             sql_seqs = []
             seqs = sql.split("\n")
@@ -125,9 +129,48 @@ class Cursor(object):
                     time_names = [
                         name for name in seq.replace("FROM Time Name", "").split()
                     ]
+                elif seq.find("GROUP BY") >= 0:
+                    time_group_sql = seq
+                    time_group_flag = True
                 else:
                     sql_seqs.append(seq)
             sql = "\n".join(sql_seqs)
+
+            if time_group_flag:
+                temp_sql = sql
+                min_sql_seqs = []
+                max_sql_seqs = []
+                temp_seqs = temp_sql.split("\n")
+                for seq in temp_seqs:
+                    if seq.find("SELECT") >= 0:
+                        min_seq = seq
+                        max_seq = seq
+                        aggregate_functions = ["count", "max_value", "min_value", "sum", "avg"]
+                        for func in aggregate_functions:
+                            max_seq = re.sub(r"\b" + func + r"\b", "MAX_TIME",  max_seq)
+                            min_seq = re.sub(r"\b" + func + r"\b", "MIN_TIME",  min_seq)
+                        min_sql_seqs.append(min_seq)
+                        max_sql_seqs.append(max_seq)
+                    else:
+                        min_sql_seqs.append(seq)
+                        max_sql_seqs.append(seq)
+                min_sql = "\n".join(min_sql_seqs)
+                max_sql = "\n".join(max_sql_seqs)
+                min_data_set = self.__session.execute_statement(min_sql)
+                min_data = pd.DataFrame(min_data_set.todf())
+                min_value = min_data.iloc[0, 0]
+                max_data_set = self.__session.execute_statement(max_sql)
+                max_data = pd.DataFrame(max_data_set.todf())
+                max_value = max_data.iloc[0, 0]
+                time_group_sql = re.sub(r"startTime", str(min_value), time_group_sql)
+                time_group_sql = re.sub(r"endTime", str(max_value), time_group_sql)
+                sql_seqs = []
+                seqs = sql.split("\n")
+                for seq in seqs:
+                    if seq.find("LIMIT") >= 0:
+                        sql_seqs.append(time_group_sql)
+                    sql_seqs.append(seq)
+                sql = "\n".join(sql_seqs)
 
         try:
             data_set = self.__session.execute_statement(sql)
