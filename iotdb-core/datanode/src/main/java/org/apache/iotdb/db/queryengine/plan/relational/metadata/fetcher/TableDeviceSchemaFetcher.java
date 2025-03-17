@@ -61,6 +61,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
@@ -113,7 +114,8 @@ public class TableDeviceSchemaFetcher {
                   .getSessionInfoOfTableModel(SessionManager.getInstance().getCurrSession()),
               "Fetch Device for insert",
               LocalExecutionPlanner.getInstance().metadata,
-              context.getTimeOut(),
+              // Never timeout for insert
+              Long.MAX_VALUE,
               false);
 
       if (executionResult.status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
@@ -171,6 +173,7 @@ public class TableDeviceSchemaFetcher {
     final List<DeviceEntry> deviceEntryList = new ArrayList<>();
     final ShowDevice statement = new ShowDevice(database, table);
     final TsTable tableInstance = DataNodeTableCache.getInstance().getTable(database, table);
+    final AtomicBoolean mayContainDuplicateDevice = new AtomicBoolean(false);
     if (tableInstance == null) {
       TableMetadataImpl.throwTableNotExistsException(database, table);
     }
@@ -183,6 +186,7 @@ public class TableDeviceSchemaFetcher {
         deviceEntryList,
         attributeColumns,
         queryContext,
+        mayContainDuplicateDevice,
         false)) {
       fetchMissingDeviceSchemaForQuery(
           database, tableInstance, attributeColumns, statement, deviceEntryList, queryContext);
@@ -191,8 +195,9 @@ public class TableDeviceSchemaFetcher {
     // TODO table metadata:  implement deduplicate during schemaRegion execution
     // TODO table metadata:  need further process on input predicates and transform them into
     // disjoint sets
-    final Set<DeviceEntry> set = new LinkedHashSet<>(deviceEntryList);
-    return new ArrayList<>(set);
+    return mayContainDuplicateDevice.get()
+        ? new ArrayList<>(new LinkedHashSet<>(deviceEntryList))
+        : deviceEntryList;
   }
 
   // Used by show/count device and update device.
@@ -205,6 +210,7 @@ public class TableDeviceSchemaFetcher {
       final List<DeviceEntry> deviceEntryList,
       final List<String> attributeColumns,
       final MPPQueryContext queryContext,
+      final AtomicBoolean mayContainDuplicateDevice,
       final boolean isDirectDeviceQuery) {
     final Pair<List<Expression>, List<Expression>> separatedExpression =
         SchemaPredicateUtil.separateIdDeterminedPredicate(
@@ -219,7 +225,7 @@ public class TableDeviceSchemaFetcher {
     // expressions inner each element are and-concat representing conditions of different column
     final List<Map<Integer, List<SchemaFilter>>> index2FilterMapList =
         SchemaPredicateUtil.convertDeviceIdPredicateToOrConcatList(
-            idDeterminedPredicateList, tableInstance);
+            idDeterminedPredicateList, tableInstance, mayContainDuplicateDevice);
     // If List<Expression> in idPredicateList contains all id columns comparison which can use
     // SchemaCache, we store its index.
     final List<Integer> idSingleMatchIndexList =
@@ -339,8 +345,7 @@ public class TableDeviceSchemaFetcher {
 
     final DeviceEntry deviceEntry =
         new AlignedDeviceEntry(
-            deviceID,
-            attributeColumns.stream().map(attributeMap::get).collect(Collectors.toList()));
+            deviceID, attributeColumns.stream().map(attributeMap::get).toArray(Binary[]::new));
     // TODO table metadata: process cases that selected attr columns different from those used for
     // predicate
     if (check.test(deviceEntry)) {
@@ -396,7 +401,8 @@ public class TableDeviceSchemaFetcher {
                   "fetch device for query %s : %s",
                   mppQueryContext.getQueryId(), mppQueryContext.getSql()),
               LocalExecutionPlanner.getInstance().metadata,
-              mppQueryContext.getTimeOut(),
+              mppQueryContext.getTimeOut()
+                  - (System.currentTimeMillis() - mppQueryContext.getStartTime()),
               false);
 
       if (executionResult.status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
@@ -430,7 +436,7 @@ public class TableDeviceSchemaFetcher {
           final DeviceEntry deviceEntry =
               new AlignedDeviceEntry(
                   deviceID,
-                  attributeColumns.stream().map(attributeMap::get).collect(Collectors.toList()));
+                  attributeColumns.stream().map(attributeMap::get).toArray(Binary[]::new));
           mppQueryContext.reserveMemoryForFrontEnd(deviceEntry.ramBytesUsed());
           deviceEntryList.add(deviceEntry);
           // Only cache those exact device query

@@ -33,6 +33,7 @@ import org.apache.iotdb.pipe.it.dual.tablemodel.manual.AbstractPipeTableModelDua
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.junit.Assert;
+import org.junit.Before;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -52,6 +53,12 @@ import static org.awaitility.Awaitility.await;
 @RunWith(IoTDBTestRunner.class)
 @Category({MultiClusterIT2DualTableManualEnhanced.class})
 public class IoTDBPipeAutoDropIT extends AbstractPipeTableModelDualManualIT {
+
+  @Override
+  @Before
+  public void setUp() {
+    super.setUp();
+  }
 
   @Test
   public void testAutoDropInHistoricalTransfer() throws Exception {
@@ -82,6 +89,7 @@ public class IoTDBPipeAutoDropIT extends AbstractPipeTableModelDualManualIT {
 
       extractorAttributes.put("mode.snapshot", "true");
       extractorAttributes.put("capture.table", "true");
+      extractorAttributes.put("user", "root");
 
       connectorAttributes.put("connector", "iotdb-thrift-connector");
       connectorAttributes.put("connector.batch.enable", "false");
@@ -164,6 +172,7 @@ public class IoTDBPipeAutoDropIT extends AbstractPipeTableModelDualManualIT {
       extractorAttributes.put("capture.table", "true");
       extractorAttributes.put("start-time", "0");
       extractorAttributes.put("end-time", "49");
+      extractorAttributes.put("user", "root");
 
       connectorAttributes.put("connector", "iotdb-thrift-connector");
       connectorAttributes.put("connector.batch.enable", "false");

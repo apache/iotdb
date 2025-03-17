@@ -35,6 +35,7 @@ import org.apache.commons.cli.DefaultParser;
 import org.apache.commons.cli.HelpFormatter;
 import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
+import org.apache.commons.lang3.ObjectUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.thrift.TException;
 import org.jline.reader.LineReader;
@@ -103,8 +104,8 @@ public class ExportData extends AbstractDataTool {
       if (Constants.SQL_DIALECT_VALUE_TABLE.equalsIgnoreCase(sqlDialectValue)) {
         sqlDialectTree = false;
         csvOptions = OptionsUtil.createTableExportCsvOptions();
-        tsFileOptions = OptionsUtil.createTableExportTsFileSqlOptions();
-        sqlOptions = OptionsUtil.createTableExportTsFileSqlOptions();
+        tsFileOptions = OptionsUtil.createTableExportTsFileOptions();
+        sqlOptions = OptionsUtil.createTableExportSqlOptions();
       } else {
         ioTPrinter.println(String.format("sql_dialect %s is not support", sqlDialectValue));
         printHelpOptions(
@@ -297,14 +298,14 @@ public class ExportData extends AbstractDataTool {
     }
     if (commandLine.getOptionValue(Constants.DB_ARGS) != null) {
       database = commandLine.getOptionValue(Constants.DB_ARGS).toLowerCase();
+      if (ObjectUtils.isNotEmpty(database) && "information_schema".equalsIgnoreCase(database)) {
+        ioTPrinter.println(
+            String.format("Does not support exporting system databases %s", database));
+        System.exit(Constants.CODE_ERROR);
+      }
     }
     if (commandLine.getOptionValue(Constants.TABLE_ARGS) != null) {
       table = commandLine.getOptionValue(Constants.TABLE_ARGS).toLowerCase();
-    } else {
-      if (!sqlDialectTree && StringUtils.isBlank(queryCommand)) {
-        ioTPrinter.println(Constants.queryTableParamRequired);
-        System.exit(Constants.CODE_ERROR);
-      }
     }
     if (commandLine.getOptionValue(Constants.START_TIME_ARGS) != null) {
       startTime = commandLine.getOptionValue(Constants.START_TIME_ARGS);

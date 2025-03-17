@@ -150,7 +150,7 @@ public abstract class BasicUserManager extends BasicRoleManager {
     }
   }
 
-  public boolean grantRoleToUser(String roleName, String username) throws AuthException {
+  public void grantRoleToUser(String roleName, String username) throws AuthException {
     lock.writeLock(username);
     try {
       User user = this.getEntity(username);
@@ -158,17 +158,13 @@ public abstract class BasicUserManager extends BasicRoleManager {
         throw new AuthException(
             getEntityNotExistErrorCode(), String.format(getNoSuchEntityError(), username));
       }
-      if (user.hasRole(roleName)) {
-        return false;
-      }
       user.getRoleSet().add(roleName);
-      return true;
     } finally {
       lock.writeUnlock(username);
     }
   }
 
-  public boolean revokeRoleFromUser(String roleName, String username) throws AuthException {
+  public void revokeRoleFromUser(String roleName, String username) throws AuthException {
     lock.writeLock(username);
     try {
       User user = this.getEntity(username);
@@ -176,11 +172,7 @@ public abstract class BasicUserManager extends BasicRoleManager {
         throw new AuthException(
             getEntityNotExistErrorCode(), String.format(getNoSuchEntityError(), username));
       }
-      if (!user.hasRole(roleName)) {
-        return false;
-      }
       user.getRoleSet().remove(roleName);
-      return true;
     } finally {
       lock.writeUnlock(username);
     }

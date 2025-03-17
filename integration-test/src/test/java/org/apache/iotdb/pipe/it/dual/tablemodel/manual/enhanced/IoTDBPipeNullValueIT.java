@@ -31,6 +31,7 @@ import org.apache.iotdb.pipe.it.dual.tablemodel.manual.AbstractPipeTableModelDua
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.junit.Assert;
+import org.junit.Before;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -42,6 +43,12 @@ import java.util.function.Consumer;
 @RunWith(IoTDBTestRunner.class)
 @Category({MultiClusterIT2DualTableManualEnhanced.class})
 public class IoTDBPipeNullValueIT extends AbstractPipeTableModelDualManualIT {
+
+  @Override
+  @Before
+  public void setUp() {
+    super.setUp();
+  }
 
   private enum InsertType {
     SESSION_INSERT_RECORD,
@@ -82,6 +89,7 @@ public class IoTDBPipeNullValueIT extends AbstractPipeTableModelDualManualIT {
 
       extractorAttributes.put("capture.table", "true");
       extractorAttributes.put("realtime-mode", realtime);
+      extractorAttributes.put("user", "root");
       if (withParsing) {
         extractorAttributes.put("start-time", "150");
         extractorAttributes.put("end-time", "249");

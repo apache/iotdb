@@ -62,7 +62,7 @@ public class MeasurementToTableViewAdaptorUtils {
           break;
         case ATTRIBUTE:
           Binary attributeColumnValue =
-              deviceEntry.getAttributeColumnValues().get(columnsIndexArray[i]);
+              deviceEntry.getAttributeColumnValues()[columnsIndexArray[i]];
           valueColumns[i] = getIdOrAttributeValueColumn(attributeColumnValue, positionCount);
           break;
         case FIELD:

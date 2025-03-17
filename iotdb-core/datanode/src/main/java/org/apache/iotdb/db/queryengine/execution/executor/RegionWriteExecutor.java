@@ -85,8 +85,10 @@ import org.slf4j.LoggerFactory;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 public class RegionWriteExecutor {
@@ -146,9 +148,9 @@ public class RegionWriteExecutor {
   }
 
   @SuppressWarnings("squid:S1181")
-  public RegionExecutionResult execute(ConsensusGroupId groupId, PlanNode planNode) {
+  public RegionExecutionResult execute(final ConsensusGroupId groupId, final PlanNode planNode) {
     try {
-      ReentrantReadWriteLock lock = regionManager.getRegionLock(groupId);
+      final ReentrantReadWriteLock lock = regionManager.getRegionLock(groupId);
       if (lock == null) {
         return RegionExecutionResult.create(
             false,
@@ -156,7 +158,18 @@ public class RegionWriteExecutor {
             RpcUtils.getStatus(TSStatusCode.NO_AVAILABLE_REGION_GROUP));
       }
       return planNode.accept(executionVisitor, new WritePlanNodeExecutionContext(groupId, lock));
-    } catch (Throwable e) {
+    } catch (final Throwable e) {
+      // Detect problems caused by removed region
+      if (Objects.isNull(regionManager.getRegionLock(groupId))) {
+        final String errorMsg =
+            "Exception "
+                + e.getClass().getSimpleName()
+                + " encountered during region removal, will retry. Message: "
+                + e.getMessage();
+        LOGGER.info(errorMsg);
+        return RegionExecutionResult.create(
+            false, errorMsg, RpcUtils.getStatus(TSStatusCode.NO_AVAILABLE_REGION_GROUP));
+      }
       LOGGER.warn(e.getMessage(), e);
       return RegionExecutionResult.create(
           false,
@@ -485,11 +498,11 @@ public class RegionWriteExecutor {
             measurementGroupMap.remove(emptyDevice);
           }
 
-          final RegionExecutionResult failingResult =
+          final RegionExecutionResult executionResult =
               registerTimeSeries(measurementGroupMap, node, context, failingStatus);
 
-          if (failingResult != null) {
-            return failingResult;
+          if (executionResult != null) {
+            return executionResult;
           }
 
           final TSStatus status = RpcUtils.getStatus(failingStatus);
@@ -616,7 +629,12 @@ public class RegionWriteExecutor {
           measurementGroup.removeMeasurements(failingMeasurementMap.keySet());
 
           return processExecutionResultOfInternalCreateSchema(
-              super.visitInternalCreateTimeSeries(node, context),
+              !measurementGroup.isEmpty()
+                  ? super.visitInternalCreateTimeSeries(node, context)
+                  : RegionExecutionResult.create(
+                      true,
+                      "Execute successfully",
+                      RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS, "Execute successfully")),
               failingStatus,
               alreadyExistingStatus);
         } finally {
@@ -661,8 +679,13 @@ public class RegionWriteExecutor {
           MeasurementGroup measurementGroup;
           Map<Integer, MetadataException> failingMeasurementMap;
           MetadataException metadataException;
-          for (final Map.Entry<PartialPath, Pair<Boolean, MeasurementGroup>> deviceEntry :
-              node.getDeviceMap().entrySet()) {
+
+          final Iterator<Map.Entry<PartialPath, Pair<Boolean, MeasurementGroup>>> iterator =
+              node.getDeviceMap().entrySet().iterator();
+
+          while (iterator.hasNext()) {
+            final Map.Entry<PartialPath, Pair<Boolean, MeasurementGroup>> deviceEntry =
+                iterator.next();
             measurementGroup = deviceEntry.getValue().right;
             failingMeasurementMap =
                 schemaRegion.checkMeasurementExistence(
@@ -690,10 +713,18 @@ public class RegionWriteExecutor {
               }
             }
             measurementGroup.removeMeasurements(failingMeasurementMap.keySet());
+            if (measurementGroup.isEmpty()) {
+              iterator.remove();
+            }
           }
 
           return processExecutionResultOfInternalCreateSchema(
-              super.visitInternalCreateMultiTimeSeries(node, context),
+              !node.getDeviceMap().isEmpty()
+                  ? super.visitInternalCreateMultiTimeSeries(node, context)
+                  : RegionExecutionResult.create(
+                      true,
+                      "Execute successfully",
+                      RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS, "Execute successfully")),
               failingStatus,
               alreadyExistingStatus);
         } finally {

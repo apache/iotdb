@@ -32,6 +32,7 @@ import org.apache.iotdb.pipe.it.dual.tablemodel.manual.AbstractPipeTableModelDua
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.junit.Assert;
+import org.junit.Before;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -49,6 +50,13 @@ import static org.junit.Assert.fail;
 @RunWith(IoTDBTestRunner.class)
 @Category({MultiClusterIT2DualTableManualBasic.class})
 public class IoTDBPipeSyntaxIT extends AbstractPipeTableModelDualManualIT {
+
+  @Override
+  @Before
+  public void setUp() {
+    super.setUp();
+  }
+
   @Test
   public void testValidPipeName() throws Exception {
     final DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
@@ -556,6 +564,7 @@ public class IoTDBPipeSyntaxIT extends AbstractPipeTableModelDualManualIT {
       extractorAttributes.put("extractor.mode.strict", "true");
       extractorAttributes.put("extractor.start-time", "1");
       extractorAttributes.put("extractor.end-time", "2");
+      extractorAttributes.put("user", "root");
 
       connectorAttributes.put("connector", "iotdb-thrift-connector");
       connectorAttributes.put("connector.batch.enable", "false");

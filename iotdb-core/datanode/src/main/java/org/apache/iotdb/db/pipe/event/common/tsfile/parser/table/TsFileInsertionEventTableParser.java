@@ -24,28 +24,33 @@ import org.apache.iotdb.commons.pipe.datastructure.pattern.TablePattern;
 import org.apache.iotdb.db.pipe.event.common.PipeInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tsfile.parser.TsFileInsertionEventParser;
+import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
+import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryBlock;
+import org.apache.iotdb.db.queryengine.plan.Coordinator;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.QualifiedObjectName;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 
-import org.apache.tsfile.file.metadata.TableSchema;
 import org.apache.tsfile.read.TsFileSequenceReader;
-import org.apache.tsfile.read.controller.CachedChunkLoaderImpl;
-import org.apache.tsfile.read.controller.MetadataQuerierByFileImpl;
-import org.apache.tsfile.read.query.executor.TableQueryExecutor;
 import org.apache.tsfile.write.record.Tablet;
 
 import java.io.File;
 import java.io.IOException;
 import java.util.Iterator;
-import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.Objects;
 
 public class TsFileInsertionEventTableParser extends TsFileInsertionEventParser {
 
-  private final TableQueryExecutor tableQueryExecutor;
+  private final long startTime;
+  private final long endTime;
+  private final TablePattern tablePattern;
+  private final String userName;
 
-  private final Iterator<Map.Entry<String, TableSchema>> filteredTableSchemaIterator;
+  private final PipeMemoryBlock allocatedMemoryBlockForBatchData;
+  private final PipeMemoryBlock allocatedMemoryBlockForChunk;
+  private final PipeMemoryBlock allocatedMemoryBlockForChunkMeta;
+  private final PipeMemoryBlock allocatedMemoryBlockForTableSchemas;
 
   public TsFileInsertionEventTableParser(
       final File tsFile,
@@ -53,21 +58,27 @@ public class TsFileInsertionEventTableParser extends TsFileInsertionEventParser 
       final long startTime,
       final long endTime,
       final PipeTaskMeta pipeTaskMeta,
+      final String userName,
       final PipeInsertionEvent sourceEvent)
       throws IOException {
     super(null, pattern, startTime, endTime, pipeTaskMeta, sourceEvent);
 
     try {
+      this.allocatedMemoryBlockForChunk =
+          PipeDataNodeResourceManager.memory().forceAllocateForTabletWithRetry(0);
+      this.allocatedMemoryBlockForBatchData =
+          PipeDataNodeResourceManager.memory().forceAllocateForTabletWithRetry(0);
+      this.allocatedMemoryBlockForChunkMeta =
+          PipeDataNodeResourceManager.memory().forceAllocateForTabletWithRetry(0);
+      this.allocatedMemoryBlockForTableSchemas =
+          PipeDataNodeResourceManager.memory().forceAllocateForTabletWithRetry(0);
+
+      this.startTime = startTime;
+      this.endTime = endTime;
+      this.tablePattern = pattern;
+
+      this.userName = userName;
       tsFileSequenceReader = new TsFileSequenceReader(tsFile.getPath(), true, true);
-      filteredTableSchemaIterator =
-          tsFileSequenceReader.getTableSchemaMap().entrySet().stream()
-              .filter(entry -> Objects.isNull(pattern) || pattern.matchesTable(entry.getKey()))
-              .iterator();
-      tableQueryExecutor =
-          new TableQueryExecutor(
-              new MetadataQuerierByFileImpl(tsFileSequenceReader),
-              new CachedChunkLoaderImpl(tsFileSequenceReader),
-              TableQueryExecutor.TableQueryOrdering.DEVICE);
     } catch (final Exception e) {
       close();
       throw e;
@@ -79,29 +90,48 @@ public class TsFileInsertionEventTableParser extends TsFileInsertionEventParser 
     return () ->
         new Iterator<TabletInsertionEvent>() {
 
-          private TsFileInsertionEventTableParserTabletIterator tabletIterator = null;
+          private TsFileInsertionEventTableParserTabletIterator tabletIterator;
 
           @Override
           public boolean hasNext() {
-            while (tabletIterator == null || !tabletIterator.hasNext()) {
-              if (!filteredTableSchemaIterator.hasNext()) {
+            try {
+              if (tabletIterator == null) {
+                tabletIterator =
+                    new TsFileInsertionEventTableParserTabletIterator(
+                        tsFileSequenceReader,
+                        entry ->
+                            (Objects.isNull(tablePattern)
+                                    || tablePattern.matchesTable(entry.getKey()))
+                                && hasTablePrivilege(entry.getKey()),
+                        allocatedMemoryBlockForTablet,
+                        allocatedMemoryBlockForBatchData,
+                        allocatedMemoryBlockForChunk,
+                        allocatedMemoryBlockForChunkMeta,
+                        allocatedMemoryBlockForTableSchemas,
+                        startTime,
+                        endTime);
+              }
+              if (!tabletIterator.hasNext()) {
                 close();
                 return false;
               }
-
-              final Map.Entry<String, TableSchema> entry = filteredTableSchemaIterator.next();
-
-              try {
-                tabletIterator =
-                    new TsFileInsertionEventTableParserTabletIterator(
-                        tableQueryExecutor, entry.getKey(), entry.getValue(), startTime, endTime);
-              } catch (final Exception e) {
-                close();
-                throw new PipeException("failed to create TsFileInsertionDataTabletIterator", e);
-              }
+              return true;
+            } catch (Exception e) {
+              close();
+              throw new PipeException("Error while parsing tsfile insertion event", e);
             }
+          }
 
-            return true;
+          private boolean hasTablePrivilege(final String tableName) {
+            return Objects.isNull(userName)
+                || Objects.isNull(sourceEvent)
+                || Objects.isNull(sourceEvent.getTableModelDatabaseName())
+                || Coordinator.getInstance()
+                    .getAccessControl()
+                    .checkCanSelectFromTable4Pipe(
+                        userName,
+                        new QualifiedObjectName(
+                            sourceEvent.getTableModelDatabaseName(), tableName));
           }
 
           @Override
@@ -116,32 +146,83 @@ public class TsFileInsertionEventTableParser extends TsFileInsertionEventParser 
             final TabletInsertionEvent next;
             if (!hasNext()) {
               next =
-                  new PipeRawTabletInsertionEvent(
-                      Boolean.TRUE,
-                      sourceEvent != null ? sourceEvent.getTreeModelDatabaseName() : null,
-                      tablet,
-                      true,
-                      sourceEvent != null ? sourceEvent.getPipeName() : null,
-                      sourceEvent != null ? sourceEvent.getCreationTime() : 0,
-                      pipeTaskMeta,
-                      sourceEvent,
-                      true);
+                  sourceEvent == null
+                      ? new PipeRawTabletInsertionEvent(
+                          Boolean.TRUE,
+                          null,
+                          null,
+                          null,
+                          tablet,
+                          true,
+                          null,
+                          0,
+                          pipeTaskMeta,
+                          sourceEvent,
+                          true)
+                      : new PipeRawTabletInsertionEvent(
+                          Boolean.TRUE,
+                          sourceEvent.getSourceDatabaseNameFromDataRegion(),
+                          sourceEvent.getRawTableModelDataBase(),
+                          sourceEvent.getRawTreeModelDataBase(),
+                          tablet,
+                          true,
+                          sourceEvent.getPipeName(),
+                          sourceEvent.getCreationTime(),
+                          pipeTaskMeta,
+                          sourceEvent,
+                          true);
               close();
             } else {
               next =
-                  new PipeRawTabletInsertionEvent(
-                      Boolean.TRUE,
-                      sourceEvent != null ? sourceEvent.getTreeModelDatabaseName() : null,
-                      tablet,
-                      true,
-                      sourceEvent != null ? sourceEvent.getPipeName() : null,
-                      sourceEvent != null ? sourceEvent.getCreationTime() : 0,
-                      pipeTaskMeta,
-                      sourceEvent,
-                      false);
+                  sourceEvent == null
+                      ? new PipeRawTabletInsertionEvent(
+                          Boolean.TRUE,
+                          null,
+                          null,
+                          null,
+                          tablet,
+                          true,
+                          null,
+                          0,
+                          pipeTaskMeta,
+                          sourceEvent,
+                          false)
+                      : new PipeRawTabletInsertionEvent(
+                          Boolean.TRUE,
+                          sourceEvent.getSourceDatabaseNameFromDataRegion(),
+                          sourceEvent.getRawTableModelDataBase(),
+                          sourceEvent.getRawTreeModelDataBase(),
+                          tablet,
+                          true,
+                          sourceEvent.getPipeName(),
+                          sourceEvent.getCreationTime(),
+                          pipeTaskMeta,
+                          sourceEvent,
+                          false);
             }
             return next;
           }
         };
+  }
+
+  @Override
+  public void close() {
+    super.close();
+
+    if (allocatedMemoryBlockForBatchData != null) {
+      allocatedMemoryBlockForBatchData.close();
+    }
+
+    if (allocatedMemoryBlockForChunk != null) {
+      allocatedMemoryBlockForChunk.close();
+    }
+
+    if (allocatedMemoryBlockForChunkMeta != null) {
+      allocatedMemoryBlockForChunkMeta.close();
+    }
+
+    if (allocatedMemoryBlockForTableSchemas != null) {
+      allocatedMemoryBlockForTableSchemas.close();
+    }
   }
 }

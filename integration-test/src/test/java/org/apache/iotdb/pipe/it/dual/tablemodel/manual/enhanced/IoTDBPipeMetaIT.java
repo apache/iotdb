@@ -32,6 +32,7 @@ import org.apache.iotdb.pipe.it.dual.tablemodel.manual.AbstractPipeTableModelDua
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.junit.Assert;
+import org.junit.Before;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -45,6 +46,13 @@ import java.util.Map;
 @RunWith(IoTDBTestRunner.class)
 @Category({MultiClusterIT2DualTableManualEnhanced.class})
 public class IoTDBPipeMetaIT extends AbstractPipeTableModelDualManualIT {
+
+  @Override
+  @Before
+  public void setUp() {
+    super.setUp();
+  }
+
   @Test
   public void testTableSync() throws Exception {
     final DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
@@ -63,6 +71,7 @@ public class IoTDBPipeMetaIT extends AbstractPipeTableModelDualManualIT {
       extractorAttributes.put("extractor.capture.table", "true");
       extractorAttributes.put("extractor.database-name", "test");
       extractorAttributes.put("extractor.table-name", "t.*[0-9]");
+      extractorAttributes.put("user", "root");
 
       connectorAttributes.put("connector", "iotdb-thrift-connector");
       connectorAttributes.put("connector.ip", receiverIp);
@@ -204,6 +213,7 @@ public class IoTDBPipeMetaIT extends AbstractPipeTableModelDualManualIT {
       extractorAttributes.put("extractor.inclusion", "all");
       extractorAttributes.put("extractor.capture.tree", "false");
       extractorAttributes.put("extractor.capture.table", "true");
+      extractorAttributes.put("user", "root");
 
       connectorAttributes.put("connector", "iotdb-thrift-connector");
       connectorAttributes.put("connector.ip", receiverIp);
@@ -252,6 +262,7 @@ public class IoTDBPipeMetaIT extends AbstractPipeTableModelDualManualIT {
       extractorAttributes.put("extractor.inclusion.exclusion", "data.delete");
       extractorAttributes.put("extractor.capture.tree", "true");
       extractorAttributes.put("extractor.capture.table", "false");
+      extractorAttributes.put("user", "root");
 
       connectorAttributes.put("connector", "iotdb-thrift-connector");
       connectorAttributes.put("connector.ip", receiverIp);
@@ -329,6 +340,7 @@ public class IoTDBPipeMetaIT extends AbstractPipeTableModelDualManualIT {
       extractorAttributes.put("extractor.capture.table", "true");
       extractorAttributes.put("extractor.database-name", "test");
       extractorAttributes.put("extractor.table-name", "t.*[0-9]");
+      extractorAttributes.put("user", "root");
 
       connectorAttributes.put("connector", "iotdb-thrift-connector");
       connectorAttributes.put("connector.ip", receiverIp);

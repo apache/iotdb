@@ -68,6 +68,7 @@ public class ReadPointCrossCompactionWriter extends AbstractCrossCompactionWrite
     isDeviceExistedInTargetFiles[seqFileIndexArray[subTaskId]] = true;
     isEmptyFile[seqFileIndexArray[subTaskId]] = false;
     lastTime[subTaskId] = timestamps.getEndTime();
+    lastTimeSet[subTaskId] = true;
   }
 
   @Override

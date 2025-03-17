@@ -67,6 +67,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.DeviceViewInt
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.IntoPathDescriptor;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.Symbol;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationTreeDeviceViewScanNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AssignUniqueId;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.DeviceTableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.EnforceSingleRowNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ExchangeNode;
@@ -75,10 +76,15 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.node.LinearFillNo
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.MarkDistinctNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.PreviousFillNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.SemiJoinNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TableFunctionProcessorNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TreeDeviceViewScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ValueFillNode;
+import org.apache.iotdb.udf.api.relational.table.argument.Argument;
+import org.apache.iotdb.udf.api.relational.table.argument.ScalarArgument;
+import org.apache.iotdb.udf.api.relational.table.argument.TableArgument;
 
+import com.google.common.base.Joiner;
 import org.apache.commons.lang3.Validate;
 import org.apache.tsfile.utils.Pair;
 import org.eclipse.jetty.util.StringUtil;
@@ -91,6 +97,7 @@ import java.util.Map.Entry;
 import java.util.Optional;
 
 import static com.google.common.base.Preconditions.checkArgument;
+import static java.lang.String.format;
 import static org.apache.iotdb.db.utils.DateTimeUtils.TIMESTAMP_PRECISION;
 
 public class PlanGraphPrinter extends PlanVisitor<List<String>, PlanGraphPrinter.GraphContext> {
@@ -978,6 +985,63 @@ public class PlanGraphPrinter extends PlanVisitor<List<String>, PlanGraphPrinter
     boxValue.add(
         String.format("FilteringSourceJoinSymbol: %s", node.getFilteringSourceJoinSymbol()));
     return render(node, boxValue, context);
+  }
+
+  @Override
+  public List<String> visitAssignUniqueId(AssignUniqueId node, GraphContext context) {
+    List<String> boxValue = new ArrayList<>();
+    boxValue.add(String.format("AssignUniqueId-%s", node.getPlanNodeId().getId()));
+    boxValue.add(String.format("OutputSymbols: %s", node.getOutputSymbols()));
+    boxValue.add(String.format("IdColumnSymbol: %s", node.getIdColumn()));
+    return render(node, boxValue, context);
+  }
+
+  @Override
+  public List<String> visitTableFunctionProcessor(
+      TableFunctionProcessorNode node, GraphContext context) {
+    List<String> boxValue = new ArrayList<>();
+    boxValue.add(String.format("TableFunctionProcessor-%s", node.getPlanNodeId().getId()));
+    boxValue.add(String.format("Function: %s", node.getName()));
+    boxValue.add(String.format("ProperOutputs: %s", node.getProperOutputs()));
+    boxValue.add(String.format("OutputSymbols: %s", node.getOutputSymbols()));
+    boxValue.add(String.format("RequiredSymbols: %s", node.getRequiredSymbols()));
+    node.getDataOrganizationSpecification()
+        .ifPresent(
+            specification -> {
+              if (!specification.getPartitionBy().isEmpty()) {
+                boxValue.add(
+                    "Partition by: [" + Joiner.on(", ").join(specification.getPartitionBy()) + "]");
+              }
+              specification
+                  .getOrderingScheme()
+                  .ifPresent(orderingScheme -> boxValue.add("Order by: " + orderingScheme));
+            });
+    if (!node.getArguments().isEmpty()) {
+      node.getArguments().forEach((key, value) -> boxValue.add(formatArgument(key, value)));
+    }
+    return render(node, boxValue, context);
+  }
+
+  private String formatArgument(String argumentName, Argument argument) {
+    if (argument instanceof ScalarArgument) {
+      return formatScalarArgument(argumentName, (ScalarArgument) argument);
+    } else if (argument instanceof TableArgument) {
+      return formatTableArgument(argumentName, (TableArgument) argument);
+    } else {
+      return argumentName + " => " + argument;
+    }
+  }
+
+  private String formatScalarArgument(String argumentName, ScalarArgument argument) {
+    return format(
+        "%s => ScalarArgument{type=%s, value=%s}",
+        argumentName, argument.getType(), argument.getValue());
+  }
+
+  private String formatTableArgument(String argumentName, TableArgument argument) {
+    return format(
+        "%s => TableArgument{%s}",
+        argumentName, argument.isRowSemantics() ? "row semantics" : "set semantics");
   }
 
   private String printRegion(TRegionReplicaSet regionReplicaSet) {

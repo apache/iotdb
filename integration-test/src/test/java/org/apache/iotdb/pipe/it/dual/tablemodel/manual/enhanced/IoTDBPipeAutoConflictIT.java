@@ -48,6 +48,7 @@ import static org.junit.Assert.fail;
 @RunWith(IoTDBTestRunner.class)
 @Category({MultiClusterIT2DualTableManualEnhanced.class})
 public class IoTDBPipeAutoConflictIT extends AbstractPipeTableModelDualManualIT {
+
   @Before
   public void setUp() {
     MultiEnvFactory.createEnv(2);
@@ -111,6 +112,7 @@ public class IoTDBPipeAutoConflictIT extends AbstractPipeTableModelDualManualIT 
       extractorAttributes.put("capture.table", "true");
       // Add this property to avoid making self cycle.
       extractorAttributes.put("source.forwarding-pipe-requests", "false");
+      extractorAttributes.put("user", "root");
 
       connectorAttributes.put("sink", "iotdb-thrift-sink");
       connectorAttributes.put("sink.batch.enable", "false");
@@ -142,6 +144,7 @@ public class IoTDBPipeAutoConflictIT extends AbstractPipeTableModelDualManualIT 
       extractorAttributes.put("capture.table", "true");
       // Add this property to avoid to make self cycle.
       extractorAttributes.put("source.forwarding-pipe-requests", "false");
+      extractorAttributes.put("user", "root");
 
       connectorAttributes.put("connector", "iotdb-thrift-connector");
       connectorAttributes.put("connector.batch.enable", "false");
@@ -206,6 +209,7 @@ public class IoTDBPipeAutoConflictIT extends AbstractPipeTableModelDualManualIT 
       extractorAttributes.put("table-name", "test.*");
       extractorAttributes.put("capture.table", "true");
       extractorAttributes.put("source.forwarding-pipe-requests", "false");
+      extractorAttributes.put("user", "root");
 
       connectorAttributes.put("connector", "iotdb-thrift-connector");
       connectorAttributes.put("connector.batch.enable", "false");
@@ -237,6 +241,7 @@ public class IoTDBPipeAutoConflictIT extends AbstractPipeTableModelDualManualIT 
       extractorAttributes.put("table-name", "test.*");
       extractorAttributes.put("capture.table", "true");
       extractorAttributes.put("source.forwarding-pipe-requests", "false");
+      extractorAttributes.put("user", "root");
 
       connectorAttributes.put("connector", "iotdb-thrift-connector");
       connectorAttributes.put("connector.batch.enable", "true");

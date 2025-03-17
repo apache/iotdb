@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.exception.StartupException;
 import org.apache.iotdb.commons.udf.service.UDFManagementService;
+import org.apache.iotdb.db.conf.DataNodeMemoryConfig;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.StorageEngineException;
@@ -78,6 +79,8 @@ public class EnvironmentUtils {
 
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
   private static final CommonConfig commonConfig = CommonDescriptor.getInstance().getConfig();
+  private static final DataNodeMemoryConfig memoryConfig =
+      IoTDBDescriptor.getInstance().getMemoryConfig();
   private static final TierManager tierManager = TierManager.getInstance();
 
   public static long TEST_QUERY_JOB_ID = 1;
@@ -138,7 +141,7 @@ public class EnvironmentUtils {
     IoTDBDescriptor.getInstance().getConfig().setEnableMQTTService(false);
 
     // clean cache
-    if (config.isMetaDataCacheEnable()) {
+    if (memoryConfig.isMetaDataCacheEnable()) {
       ChunkCache.getInstance().clear();
       TimeSeriesMetadataCache.getInstance().clear();
       BloomFilterCache.getInstance().clear();
@@ -259,10 +262,6 @@ public class EnvironmentUtils {
   public static void envSetUp() {
     logger.debug("EnvironmentUtil setup...");
     config.setThriftServerAwaitTimeForStopService(60);
-    // we do not start 9091 port in test.
-    config.setAvgSeriesPointNumberThreshold(Integer.MAX_VALUE);
-    // use async wal mode in test
-    config.setAvgSeriesPointNumberThreshold(Integer.MAX_VALUE);
 
     createAllDir();
 

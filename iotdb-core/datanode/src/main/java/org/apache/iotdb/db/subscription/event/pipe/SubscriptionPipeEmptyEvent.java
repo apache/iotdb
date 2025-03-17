@@ -27,7 +27,7 @@ public class SubscriptionPipeEmptyEvent implements SubscriptionPipeEvents {
   public void ack() {}
 
   @Override
-  public void cleanUp() {}
+  public void cleanUp(final boolean force) {}
 
   /////////////////////////////// stringify ///////////////////////////////
 

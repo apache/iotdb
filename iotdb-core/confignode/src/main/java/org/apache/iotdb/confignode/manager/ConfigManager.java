@@ -249,6 +249,7 @@ import org.apache.iotdb.service.rpc.thrift.TPipeTransferResp;
 
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.utils.Pair;
+import org.apache.tsfile.utils.ReadWriteIOUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -1640,6 +1641,15 @@ public class ConfigManager implements IManager {
   }
 
   @Override
+  public TSStatus flushOnSpecificDN(
+      final TFlushReq req, final Map<Integer, TDataNodeLocation> dataNodeLocationMap) {
+    final TSStatus status = confirmLeader();
+    return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
+        ? RpcUtils.squashResponseStatusList(nodeManager.flushOnSpecificDN(req, dataNodeLocationMap))
+        : status;
+  }
+
+  @Override
   public TSStatus clearCache(final Set<Integer> clearCacheOptions) {
     final TSStatus status = confirmLeader();
     return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
@@ -1806,9 +1816,10 @@ public class ConfigManager implements IManager {
         } catch (InterruptedException e) {
           Thread.currentThread().interrupt();
           LOGGER.warn("Unexpected interruption during retry getting latest region route map");
+          resp.getStatus().setCode(TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode());
+          return resp;
         }
       }
-
       resp.setTimestamp(System.currentTimeMillis());
       resp.setRegionRouteMap(getLoadManager().getRegionPriorityMap());
     }
@@ -2660,6 +2671,19 @@ public class ConfigManager implements IManager {
           return procedureManager.alterTableDropColumn(req);
         case DROP_TABLE:
           return procedureManager.dropTable(req);
+        case COMMENT_TABLE:
+          return clusterSchemaManager.setTableComment(
+              req.getDatabase(),
+              req.getTableName(),
+              ReadWriteIOUtils.readString(req.updateInfo),
+              false);
+        case COMMENT_COLUMN:
+          return clusterSchemaManager.setTableColumnComment(
+              req.getDatabase(),
+              req.getTableName(),
+              ReadWriteIOUtils.readString(req.updateInfo),
+              ReadWriteIOUtils.readString(req.updateInfo),
+              false);
         default:
           throw new IllegalArgumentException();
       }

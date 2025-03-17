@@ -23,14 +23,15 @@ import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.execution.exchange.sink.DownStreamChannelLocation;
-import org.apache.iotdb.db.queryengine.metric.QueryPlanCostMetricSet;
 import org.apache.iotdb.db.queryengine.plan.analyze.QueryType;
+import org.apache.iotdb.db.queryengine.plan.planner.distribution.NodeDistribution;
 import org.apache.iotdb.db.queryengine.plan.planner.distribution.WriteFragmentParallelPlanner;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.DistributedQueryPlan;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.FragmentInstance;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.LogicalQueryPlan;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.SubPlan;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.WritePlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.sink.IdentitySinkNode;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Analysis;
@@ -53,8 +54,6 @@ import java.util.Map;
 import static com.google.common.base.Preconditions.checkArgument;
 import static java.util.Objects.requireNonNull;
 import static org.apache.iotdb.db.queryengine.execution.warnings.WarningCollector.NOOP;
-import static org.apache.iotdb.db.queryengine.metric.QueryPlanCostMetricSet.DISTRIBUTION_PLANNER;
-import static org.apache.iotdb.db.queryengine.metric.QueryPlanCostMetricSet.TABLE_TYPE;
 
 public class TableDistributedPlanner {
 
@@ -100,7 +99,6 @@ public class TableDistributedPlanner {
   }
 
   public DistributedQueryPlan plan() {
-    long startTime = System.nanoTime();
     TableDistributedPlanGenerator.PlanContext planContext =
         new TableDistributedPlanGenerator.PlanContext();
     PlanNode outputNodeWithExchange = generateDistributedPlanWithOptimize(planContext);
@@ -112,13 +110,8 @@ public class TableDistributedPlanner {
     }
 
     adjustUpStream(outputNodeWithExchange, planContext);
-    DistributedQueryPlan resultDistributedPlan = generateDistributedPlan(outputNodeWithExchange);
 
-    if (analysis.isQuery()) {
-      QueryPlanCostMetricSet.getInstance()
-          .recordPlanCost(TABLE_TYPE, DISTRIBUTION_PLANNER, System.nanoTime() - startTime);
-    }
-    return resultDistributedPlan;
+    return generateDistributedPlan(outputNodeWithExchange, planContext.nodeDistributionMap);
   }
 
   public PlanNode generateDistributedPlanWithOptimize(
@@ -161,7 +154,9 @@ public class TableDistributedPlanner {
     return new AddExchangeNodes(mppQueryContext).addExchangeNodes(distributedPlan, planContext);
   }
 
-  private DistributedQueryPlan generateDistributedPlan(PlanNode outputNodeWithExchange) {
+  private DistributedQueryPlan generateDistributedPlan(
+      PlanNode outputNodeWithExchange,
+      final Map<PlanNodeId, NodeDistribution> nodeDistributionMap) {
     // generate subPlan
     SubPlan subPlan =
         new SubPlanGenerator()
@@ -171,7 +166,9 @@ public class TableDistributedPlanner {
     // generate fragment instances
     List<FragmentInstance> fragmentInstances =
         mppQueryContext.getQueryType() == QueryType.READ
-            ? new TableModelQueryFragmentPlanner(subPlan, analysis, mppQueryContext).plan()
+            ? new TableModelQueryFragmentPlanner(
+                    subPlan, analysis, mppQueryContext, nodeDistributionMap)
+                .plan()
             : new WriteFragmentParallelPlanner(
                     subPlan, analysis, mppQueryContext, WritePlanNode::splitByPartition)
                 .parallelPlan();

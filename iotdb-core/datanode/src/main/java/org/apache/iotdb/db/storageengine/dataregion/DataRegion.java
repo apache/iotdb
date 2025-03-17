@@ -52,6 +52,7 @@ import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.exception.quota.ExceedQuotaException;
 import org.apache.iotdb.db.pipe.consensus.deletion.DeletionResource;
 import org.apache.iotdb.db.pipe.consensus.deletion.DeletionResource.Status;
+import org.apache.iotdb.db.pipe.consensus.deletion.persist.PageCacheDeletionBuffer;
 import org.apache.iotdb.db.pipe.extractor.dataregion.realtime.listener.PipeInsertionDataNodeListener;
 import org.apache.iotdb.db.queryengine.common.DeviceContext;
 import org.apache.iotdb.db.queryengine.execution.fragment.QueryContext;
@@ -659,6 +660,12 @@ public class DataRegion implements IDataRegionForQuery {
     }
 
     if (StorageEngine.getInstance().isReadyForReadAndWrite()) {
+      if (config.getDataRegionConsensusProtocolClass().equals(ConsensusFactory.IOT_CONSENSUS)
+          || config
+              .getDataRegionConsensusProtocolClass()
+              .equals(ConsensusFactory.IOT_CONSENSUS_V2)) {
+        WALManager.getInstance().applyForWALNode(databaseName + FILE_NAME_SEPARATOR + dataRegionId);
+      }
       logger.info("The data region {}[{}] is created successfully", databaseName, dataRegionId);
     } else {
       logger.info("The data region {}[{}] is recovered successfully", databaseName, dataRegionId);
@@ -676,7 +683,8 @@ public class DataRegion implements IDataRegionForQuery {
     long timePartitionId = resource.getTimePartition();
     Map<IDeviceID, Long> endTimeMap = new HashMap<>();
     for (IDeviceID deviceId : resource.getDevices()) {
-      long endTime = resource.getEndTime(deviceId);
+      @SuppressWarnings("OptionalGetWithoutIsPresent") // checked above
+      long endTime = resource.getEndTime(deviceId).get();
       endTimeMap.put(deviceId, endTime);
     }
     if (config.isEnableSeparateData()) {
@@ -692,7 +700,9 @@ public class DataRegion implements IDataRegionForQuery {
     Map<IDeviceID, Long> endTimeMap = new HashMap<>();
     for (TsFileResource resource : resources) {
       for (IDeviceID deviceId : resource.getDevices()) {
-        long endTime = resource.getEndTime(deviceId);
+        // checked above
+        //noinspection OptionalGetWithoutIsPresent
+        long endTime = resource.getEndTime(deviceId).get();
         endTimeMap.put(deviceId, endTime);
       }
     }
@@ -2172,7 +2182,9 @@ public class DataRegion implements IDataRegionForQuery {
         if (tsFileResource.isClosed()) {
           tsfileResourcesForQuery.add(tsFileResource);
         } else {
-          tsFileResource.getProcessor().query(pathList, context, tsfileResourcesForQuery);
+          tsFileResource
+              .getProcessor()
+              .query(pathList, context, tsfileResourcesForQuery, globalTimeFilter);
         }
       } catch (IOException e) {
         throw new MetadataException(e);
@@ -2465,6 +2477,7 @@ public class DataRegion implements IDataRegionForQuery {
     }
   }
 
+  @SuppressWarnings("OptionalGetWithoutIsPresent")
   private boolean canSkipDelete(TsFileResource tsFileResource, ModEntry deletion) {
     long fileStartTime = tsFileResource.getTimeIndex().getMinStartTime();
     long fileEndTime =
@@ -2488,10 +2501,11 @@ public class DataRegion implements IDataRegionForQuery {
     }
 
     for (IDeviceID device : tsFileResource.getDevices()) {
-      long startTime = tsFileResource.getTimeIndex().getStartTime(device);
+      // we are iterating the time index so the times are definitely present
+      long startTime = tsFileResource.getTimeIndex().getStartTime(device).get();
       long endTime =
           tsFileResource.isClosed()
-              ? tsFileResource.getTimeIndex().getEndTime(device)
+              ? tsFileResource.getTimeIndex().getEndTime(device).get()
               : Long.MAX_VALUE;
       if (deletion.affects(device, startTime, endTime)) {
         return false;
@@ -3151,7 +3165,12 @@ public class DataRegion implements IDataRegionForQuery {
       moveModFile(newModFileToLoad, newTargetModFile, deleteOriginFile);
     }
     // force update mod file metrics
-    tsFileResource.getExclusiveModFile();
+    final ModificationFile mods = tsFileResource.getExclusiveModFile();
+
+    if (mods != null && mods.exists()) {
+      FileMetrics.getInstance().increaseModFileNum(1);
+      FileMetrics.getInstance().increaseModFileSize(mods.getFileLength());
+    }
   }
 
   @SuppressWarnings("java:S2139")
@@ -3815,6 +3834,9 @@ public class DataRegion implements IDataRegionForQuery {
         .getDataRegionConsensusProtocolClass()
         .equals(ConsensusFactory.RATIS_CONSENSUS)) {
       acquireDirectBufferMemCost = config.getDataRatisConsensusLogAppenderBufferSizeMax();
+    }
+    if (config.getDataRegionConsensusProtocolClass().equals(ConsensusFactory.IOT_CONSENSUS_V2)) {
+      acquireDirectBufferMemCost += PageCacheDeletionBuffer.DAL_BUFFER_SIZE;
     }
     return acquireDirectBufferMemCost;
   }

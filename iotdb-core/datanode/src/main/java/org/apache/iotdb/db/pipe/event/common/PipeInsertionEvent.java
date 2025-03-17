@@ -24,15 +24,43 @@ import org.apache.iotdb.commons.pipe.datastructure.pattern.TablePattern;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.TreePattern;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.utils.PathUtils;
+import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
 
 import javax.validation.constraints.NotNull;
 
+import java.util.HashSet;
+import java.util.Set;
+
+/**
+ * The data model used to record the Event and the data model of the DataRegion corresponding to the
+ * source data, so this type requires some specifications .
+ *
+ * <p>1. {@code sourceDatabaseNameFromDataRegion} is immutable, coming from the source data or the
+ * DataBaseName corresponding to the Processor that generates this Event.
+ *
+ * <p>2. {@code isTableModelEvent} is mutable, because it may be necessary to support the conversion
+ * of the table model to the tree model or the tree model to the table model, leaving it to the user
+ * to decide what model the data is. If it is not defined, the default is the data model
+ * corresponding to {@code sourceDatabaseNameFromDataRegion}.
+ *
+ * <p>3. {@code treeModelDatabaseName} and {@code tableModelDatabaseName} are mutable, and the user
+ * can change the name of the world, but it must correspond to the {@code isTableModelEvent} field.
+ * The default is determined by {@code sourceDatabaseNameFromDataRegion}.
+ *
+ * <p>4. The corresponding {@link PipeTsFileInsertionEvent} cannot convert the data model at will,
+ * and TSFile does not support this.
+ */
 public abstract class PipeInsertionEvent extends EnrichedEvent {
 
-  private Boolean isTableModelEvent; // lazy initialization
+  // Record the database name of the DataRegion corresponding to the SourceEvent
+  private final String sourceDatabaseNameFromDataRegion;
 
-  private String treeModelDatabaseName;
-  private String tableModelDatabaseName; // lazy initialization
+  protected Boolean isTableModelEvent; // lazy initialization
+
+  protected String treeModelDatabaseName; // lazy initialization
+  protected String tableModelDatabaseName; // lazy initialization
+
+  private Set<String> noPrivilegeTableNames = new HashSet<>();
 
   protected PipeInsertionEvent(
       final String pipeName,
@@ -40,13 +68,26 @@ public abstract class PipeInsertionEvent extends EnrichedEvent {
       final PipeTaskMeta pipeTaskMeta,
       final TreePattern treePattern,
       final TablePattern tablePattern,
+      final String userName,
+      final boolean skipIfNoPrivileges,
       final long startTime,
       final long endTime,
       final Boolean isTableModelEvent,
-      final String treeModelDatabaseName,
-      final String tableModelDatabaseName) {
-    super(pipeName, creationTime, pipeTaskMeta, treePattern, tablePattern, startTime, endTime);
+      final String databaseNameFromDataRegion,
+      final String tableModelDatabaseName,
+      final String treeModelDatabaseName) {
+    super(
+        pipeName,
+        creationTime,
+        pipeTaskMeta,
+        treePattern,
+        tablePattern,
+        userName,
+        skipIfNoPrivileges,
+        startTime,
+        endTime);
     this.isTableModelEvent = isTableModelEvent;
+    this.sourceDatabaseNameFromDataRegion = databaseNameFromDataRegion;
     this.treeModelDatabaseName = treeModelDatabaseName;
     if (tableModelDatabaseName != null) {
       this.tableModelDatabaseName = tableModelDatabaseName.toLowerCase();
@@ -59,6 +100,8 @@ public abstract class PipeInsertionEvent extends EnrichedEvent {
       final PipeTaskMeta pipeTaskMeta,
       final TreePattern treePattern,
       final TablePattern tablePattern,
+      final String userName,
+      final boolean skipIfNoPrivileges,
       final long startTime,
       final long endTime,
       final Boolean isTableModelEvent,
@@ -69,10 +112,13 @@ public abstract class PipeInsertionEvent extends EnrichedEvent {
         pipeTaskMeta,
         treePattern,
         tablePattern,
+        userName,
+        skipIfNoPrivileges,
         startTime,
         endTime,
         isTableModelEvent,
         databaseNameFromDataRegion,
+        null,
         null);
   }
 
@@ -86,23 +132,39 @@ public abstract class PipeInsertionEvent extends EnrichedEvent {
 
   public boolean isTableModelEvent() {
     if (isTableModelEvent == null) {
-      throw new IllegalStateException("isTableModelEvent is not initialized");
+      if (sourceDatabaseNameFromDataRegion == null) {
+        throw new IllegalStateException("databaseNameFromDataRegion is null");
+      }
+      return isTableModelEvent = PathUtils.isTableModelDatabase(sourceDatabaseNameFromDataRegion);
     }
     return isTableModelEvent;
   }
 
-  /** Only for internal use. */
-  protected Boolean getRawIsTableModelEvent() {
+  public Boolean getRawIsTableModelEvent() {
     return isTableModelEvent;
   }
 
-  public String getTreeModelDatabaseName() {
+  public String getSourceDatabaseNameFromDataRegion() {
+    return sourceDatabaseNameFromDataRegion;
+  }
+
+  public String getRawTableModelDataBase() {
+    return tableModelDatabaseName;
+  }
+
+  public String getRawTreeModelDataBase() {
     return treeModelDatabaseName;
+  }
+
+  public String getTreeModelDatabaseName() {
+    return treeModelDatabaseName == null
+        ? treeModelDatabaseName = PathUtils.qualifyDatabaseName(sourceDatabaseNameFromDataRegion)
+        : treeModelDatabaseName;
   }
 
   public String getTableModelDatabaseName() {
     return tableModelDatabaseName == null
-        ? tableModelDatabaseName = PathUtils.unQualifyDatabaseName(treeModelDatabaseName)
+        ? tableModelDatabaseName = PathUtils.unQualifyDatabaseName(sourceDatabaseNameFromDataRegion)
         : tableModelDatabaseName;
   }
 
@@ -110,6 +172,14 @@ public abstract class PipeInsertionEvent extends EnrichedEvent {
     // Please note that if you parse TsFile, you need to use TreeModelDatabaseName, so you need to
     // rename TreeModelDatabaseName as well.
     this.tableModelDatabaseName = tableModelDatabaseName.toLowerCase();
-    this.treeModelDatabaseName = "root." + tableModelDatabaseName;
+    this.treeModelDatabaseName = PathUtils.qualifyDatabaseName(tableModelDatabaseName);
+  }
+
+  public void addTable(final String tableName) {
+    noPrivilegeTableNames.add(tableName);
+  }
+
+  public Set<String> getNoPrivilegeTableNames() {
+    return noPrivilegeTableNames;
   }
 }

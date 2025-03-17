@@ -20,8 +20,8 @@
 package org.apache.iotdb.db.subscription.event.pipe;
 
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
-import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
 import org.apache.iotdb.db.subscription.event.batch.SubscriptionPipeTabletEventBatch;
+import org.apache.iotdb.db.subscription.event.batch.SubscriptionPipeTabletIterationSnapshot;
 
 import java.util.List;
 import java.util.Objects;
@@ -32,33 +32,31 @@ import static com.google.common.base.MoreObjects.toStringHelper;
 public class SubscriptionPipeTabletBatchEvents implements SubscriptionPipeEvents {
 
   private final SubscriptionPipeTabletEventBatch batch;
-  private volatile List<EnrichedEvent> iteratedEnrichedEvents;
+  private volatile SubscriptionPipeTabletIterationSnapshot iterationSnapshot;
 
   public SubscriptionPipeTabletBatchEvents(final SubscriptionPipeTabletEventBatch batch) {
     this.batch = batch;
   }
 
-  public void receiveIterationSnapshot(final List<EnrichedEvent> iteratedEnrichedEvents) {
-    this.iteratedEnrichedEvents = iteratedEnrichedEvents;
+  public void receiveIterationSnapshot(
+      final SubscriptionPipeTabletIterationSnapshot iterationSnapshot) {
+    this.iterationSnapshot = iterationSnapshot;
   }
 
   @Override
   public void ack() {
     batch.ack();
-
-    // only decrease the reference count of iterated events
-    for (final EnrichedEvent enrichedEvent : iteratedEnrichedEvents) {
-      if (enrichedEvent instanceof PipeTsFileInsertionEvent) {
-        // close data container in tsfile event
-        ((PipeTsFileInsertionEvent) enrichedEvent).close();
-      }
-      enrichedEvent.decreaseReferenceCount(this.getClass().getName(), true);
+    if (Objects.nonNull(iterationSnapshot)) {
+      iterationSnapshot.ack();
     }
   }
 
   @Override
-  public void cleanUp() {
-    batch.cleanUp();
+  public void cleanUp(final boolean force) {
+    batch.cleanUp(force);
+    if (Objects.nonNull(iterationSnapshot)) {
+      iterationSnapshot.cleanUp();
+    }
   }
 
   /////////////////////////////// stringify ///////////////////////////////
@@ -67,7 +65,11 @@ public class SubscriptionPipeTabletBatchEvents implements SubscriptionPipeEvents
   public String toString() {
     return toStringHelper(this)
         .add("batch", batch)
-        .add("events", formatEnrichedEvents(iteratedEnrichedEvents, 4))
+        .add(
+            "events",
+            Objects.nonNull(iterationSnapshot)
+                ? formatEnrichedEvents(iterationSnapshot.getIteratedEnrichedEvents(), 4)
+                : "<unknown>")
         .toString();
   }
 
@@ -92,6 +94,8 @@ public class SubscriptionPipeTabletBatchEvents implements SubscriptionPipeEvents
 
   @Override
   public int getPipeEventCount() {
-    return iteratedEnrichedEvents.size();
+    return Objects.nonNull(iterationSnapshot)
+        ? iterationSnapshot.getIteratedEnrichedEvents().size()
+        : 0;
   }
 }

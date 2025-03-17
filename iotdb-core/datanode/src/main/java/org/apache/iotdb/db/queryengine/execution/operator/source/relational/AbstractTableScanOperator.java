@@ -36,10 +36,7 @@ import org.apache.tsfile.common.conf.TSFileDescriptor;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.block.TsBlock;
 import org.apache.tsfile.read.common.block.TsBlockBuilder;
-import org.apache.tsfile.read.common.block.column.BinaryColumn;
 import org.apache.tsfile.read.common.block.column.LongColumn;
-import org.apache.tsfile.read.common.block.column.RunLengthEncodedColumn;
-import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.RamUsageEstimator;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
 
@@ -209,17 +206,6 @@ public abstract class AbstractTableScanOperator extends AbstractSeriesScanOperat
   }
 
   abstract String getNthIdColumnValue(DeviceEntry deviceEntry, int idColumnIndex);
-
-  private RunLengthEncodedColumn getIdOrAttributeValueColumn(Binary value, int positionCount) {
-    if (value == null) {
-      return new RunLengthEncodedColumn(
-          new BinaryColumn(1, Optional.of(new boolean[] {true}), new Binary[] {null}),
-          positionCount);
-    } else {
-      return new RunLengthEncodedColumn(
-          new BinaryColumn(1, Optional.empty(), new Binary[] {value}), positionCount);
-    }
-  }
 
   @Override
   public boolean hasNext() throws Exception {

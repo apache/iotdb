@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.tools.it;
 
-import org.apache.iotdb.cli.it.AbstractScript;
+import org.apache.iotdb.cli.it.AbstractScriptIT;
 import org.apache.iotdb.isession.ISession;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
@@ -41,7 +41,7 @@ import java.util.List;
 
 @RunWith(IoTDBTestRunner.class)
 @Category({LocalStandaloneIT.class, ClusterIT.class})
-public class ExportTsFileTestIT extends AbstractScript {
+public class ExportTsFileTestIT extends AbstractScriptIT {
   private static String ip;
 
   private static String port;
@@ -76,7 +76,7 @@ public class ExportTsFileTestIT extends AbstractScript {
 
   @Override
   protected void testOnWindows() throws IOException {
-    final String[] output = {"!!!Warning:Tablet is empty,no data can be exported."};
+    final String[] output = {"Export TsFile Count: 0"};
     ProcessBuilder builder =
         new ProcessBuilder(
             "cmd.exe",
@@ -90,10 +90,8 @@ public class ExportTsFileTestIT extends AbstractScript {
             "root",
             "-pw",
             "root",
-            "-t",
-            "target",
-            "-q",
-            "select * from root.test.t2 where time > 1 and time < 1000000000000",
+            "-path",
+            "root.test.t2.**",
             "&",
             "exit",
             "%^errorlevel%");
@@ -102,7 +100,7 @@ public class ExportTsFileTestIT extends AbstractScript {
 
     prepareData();
 
-    final String[] output1 = {"Export completely!"};
+    final String[] output1 = {"Export TsFile Count: "};
     ProcessBuilder builder1 =
         new ProcessBuilder(
             "cmd.exe",
@@ -116,10 +114,8 @@ public class ExportTsFileTestIT extends AbstractScript {
             "root",
             "-pw",
             "root",
-            "-t",
-            "target",
-            "-q",
-            "select * from root.test.t2 where time > 1 and time < 1000000000000",
+            "-path",
+            "root.test.t2.**",
             "&",
             "exit",
             "%^errorlevel%");
@@ -129,7 +125,7 @@ public class ExportTsFileTestIT extends AbstractScript {
 
   @Override
   protected void testOnUnix() throws IOException {
-    final String[] output = {"!!!Warning:Tablet is empty,no data can be exported."};
+    final String[] output = {"Export TsFile Count: 0"};
     // -h 127.0.0.1 -p 6667 -u root -pw root -td ./ -q "select * from root.**"
     ProcessBuilder builder =
         new ProcessBuilder(
@@ -143,16 +139,14 @@ public class ExportTsFileTestIT extends AbstractScript {
             "root",
             "-pw",
             "root",
-            "-t",
-            "target",
-            "-q",
-            "select * from root.**");
+            "-path",
+            "root.**");
     builder.environment().put("CLASSPATH", libPath);
     testOutput(builder, output, 0);
 
     prepareData();
 
-    final String[] output1 = {"Export completely!"};
+    final String[] output1 = {"Export TsFile Count: "};
     // -h 127.0.0.1 -p 6667 -u root -pw root -td ./ -q "select * from root.**"
     ProcessBuilder builder1 =
         new ProcessBuilder(
@@ -166,10 +160,8 @@ public class ExportTsFileTestIT extends AbstractScript {
             "root",
             "-pw",
             "root",
-            "-t",
-            "target",
-            "-q",
-            "select * from root.**");
+            "-path",
+            "root.**");
     builder1.environment().put("CLASSPATH", libPath);
     testOutput(builder1, output1, 0);
   }

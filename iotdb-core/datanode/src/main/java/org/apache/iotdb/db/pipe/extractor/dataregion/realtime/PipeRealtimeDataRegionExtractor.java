@@ -29,6 +29,7 @@ import org.apache.iotdb.commons.pipe.datastructure.pattern.TablePattern;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.TreePattern;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.pipe.event.ProgressReportEvent;
+import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.commons.utils.TimePartitionUtils;
 import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
 import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
@@ -36,7 +37,7 @@ import org.apache.iotdb.db.pipe.event.realtime.PipeRealtimeEvent;
 import org.apache.iotdb.db.pipe.extractor.dataregion.DataRegionListeningFilter;
 import org.apache.iotdb.db.pipe.extractor.dataregion.realtime.listener.PipeInsertionDataNodeListener;
 import org.apache.iotdb.db.pipe.extractor.dataregion.realtime.listener.PipeTimePartitionListener;
-import org.apache.iotdb.db.pipe.metric.PipeDataRegionEventCounter;
+import org.apache.iotdb.db.pipe.metric.source.PipeDataRegionEventCounter;
 import org.apache.iotdb.db.storageengine.StorageEngine;
 import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
 import org.apache.iotdb.db.utils.DateTimeUtils;
@@ -78,6 +79,7 @@ import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstan
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.SOURCE_MODS_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.SOURCE_REALTIME_LOOSE_RANGE_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.SOURCE_START_TIME_KEY;
+import static org.apache.iotdb.commons.pipe.extractor.IoTDBExtractor.getSkipIfNoPrivileges;
 
 public abstract class PipeRealtimeDataRegionExtractor implements PipeExtractor {
 
@@ -124,6 +126,8 @@ public abstract class PipeRealtimeDataRegionExtractor implements PipeExtractor {
   protected final AtomicBoolean isClosed = new AtomicBoolean(false);
 
   private String taskID;
+  protected String userName;
+  protected boolean skipIfNoPrivileges = true;
 
   protected PipeRealtimeDataRegionExtractor() {
     // Do nothing
@@ -220,8 +224,11 @@ public abstract class PipeRealtimeDataRegionExtractor implements PipeExtractor {
     if (dataRegion != null) {
       final String databaseName = dataRegion.getDatabaseName();
       if (databaseName != null) {
-        isDbNameCoveredByPattern =
-            treePattern.coversDb(databaseName) && tablePattern.coversDb(databaseName);
+        if (PathUtils.isTableModelDatabase(databaseName)) {
+          isDbNameCoveredByPattern = tablePattern.coversDb(databaseName);
+        } else {
+          isDbNameCoveredByPattern = treePattern.coversDb(databaseName);
+        }
       }
     }
 
@@ -234,12 +241,22 @@ public abstract class PipeRealtimeDataRegionExtractor implements PipeExtractor {
             ? TimePartitionUtils.getTimePartitionId(realtimeDataExtractionEndTime)
             : TimePartitionUtils.getTimePartitionId(realtimeDataExtractionEndTime) - 1;
 
-    isForwardingPipeRequests =
+    final boolean isDoubleLiving =
         parameters.getBooleanOrDefault(
             Arrays.asList(
-                PipeExtractorConstant.EXTRACTOR_FORWARDING_PIPE_REQUESTS_KEY,
-                PipeExtractorConstant.SOURCE_FORWARDING_PIPE_REQUESTS_KEY),
-            PipeExtractorConstant.EXTRACTOR_FORWARDING_PIPE_REQUESTS_DEFAULT_VALUE);
+                PipeExtractorConstant.EXTRACTOR_MODE_DOUBLE_LIVING_KEY,
+                PipeExtractorConstant.SOURCE_MODE_DOUBLE_LIVING_KEY),
+            PipeExtractorConstant.EXTRACTOR_MODE_DOUBLE_LIVING_DEFAULT_VALUE);
+    if (isDoubleLiving) {
+      isForwardingPipeRequests = false;
+    } else {
+      isForwardingPipeRequests =
+          parameters.getBooleanOrDefault(
+              Arrays.asList(
+                  PipeExtractorConstant.EXTRACTOR_FORWARDING_PIPE_REQUESTS_KEY,
+                  PipeExtractorConstant.SOURCE_FORWARDING_PIPE_REQUESTS_KEY),
+              PipeExtractorConstant.EXTRACTOR_FORWARDING_PIPE_REQUESTS_DEFAULT_VALUE);
+    }
 
     if (parameters.hasAnyAttributes(EXTRACTOR_MODS_KEY, SOURCE_MODS_KEY)) {
       shouldTransferModFile =
@@ -252,6 +269,15 @@ public abstract class PipeRealtimeDataRegionExtractor implements PipeExtractor {
               Arrays.asList(SOURCE_MODS_ENABLE_KEY, EXTRACTOR_MODS_ENABLE_KEY),
               EXTRACTOR_MODS_ENABLE_DEFAULT_VALUE || shouldExtractDeletion);
     }
+
+    userName =
+        parameters.getStringByKeys(
+            PipeExtractorConstant.EXTRACTOR_IOTDB_USER_KEY,
+            PipeExtractorConstant.SOURCE_IOTDB_USER_KEY,
+            PipeExtractorConstant.EXTRACTOR_IOTDB_USERNAME_KEY,
+            PipeExtractorConstant.SOURCE_IOTDB_USERNAME_KEY);
+
+    skipIfNoPrivileges = getSkipIfNoPrivileges(parameters);
 
     if (LOGGER.isInfoEnabled()) {
       LOGGER.info(
@@ -471,6 +497,14 @@ public abstract class PipeRealtimeDataRegionExtractor implements PipeExtractor {
 
   public final TablePattern getTablePattern() {
     return tablePattern;
+  }
+
+  public String getUserName() {
+    return userName;
+  }
+
+  public boolean isSkipIfNoPrivileges() {
+    return skipIfNoPrivileges;
   }
 
   public final String getDataRegionId() {

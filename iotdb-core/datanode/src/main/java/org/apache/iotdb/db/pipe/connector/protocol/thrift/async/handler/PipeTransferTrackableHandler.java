@@ -28,7 +28,7 @@ import org.apache.thrift.TException;
 import org.apache.thrift.async.AsyncMethodCallback;
 
 public abstract class PipeTransferTrackableHandler
-    implements AsyncMethodCallback<TPipeTransferResp> {
+    implements AsyncMethodCallback<TPipeTransferResp>, AutoCloseable {
 
   protected final IoTDBDataRegionAsyncConnector connector;
 
@@ -38,25 +38,30 @@ public abstract class PipeTransferTrackableHandler
 
   @Override
   public void onComplete(final TPipeTransferResp response) {
-    if (!connector.isClosed()) {
-      if (onCompleteInternal(response)) {
-        // eliminate handler only when all transmissions corresponding to the handler have been
-        // completed
-        connector.eliminateHandler(this);
-      }
-    } else {
+    if (connector.isClosed()) {
       clearEventsReferenceCount();
+      connector.eliminateHandler(this);
+      return;
+    }
+
+    if (onCompleteInternal(response)) {
+      // eliminate handler only when all transmissions corresponding to the handler have been
+      // completed
+      // NOTE: We should not clear the reference count of events, as this would cause the
+      // `org.apache.iotdb.pipe.it.dual.tablemodel.manual.basic.IoTDBPipeDataSinkIT#testSinkTsFileFormat3` test to fail.
       connector.eliminateHandler(this);
     }
   }
 
   @Override
   public void onError(final Exception exception) {
-    if (!connector.isClosed()) {
-      onErrorInternal(exception);
-    } else {
+    if (connector.isClosed()) {
       clearEventsReferenceCount();
+      connector.eliminateHandler(this);
+      return;
     }
+
+    onErrorInternal(exception);
     connector.eliminateHandler(this);
   }
 
@@ -76,6 +81,7 @@ public abstract class PipeTransferTrackableHandler
     connector.trackHandler(this);
     if (connector.isClosed()) {
       clearEventsReferenceCount();
+      connector.eliminateHandler(this);
       return false;
     }
     doTransfer(client, req);
@@ -95,4 +101,9 @@ public abstract class PipeTransferTrackableHandler
       throws TException;
 
   public abstract void clearEventsReferenceCount();
+
+  @Override
+  public void close() {
+    // do nothing
+  }
 }

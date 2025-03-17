@@ -33,6 +33,7 @@ import org.apache.iotdb.pipe.it.dual.tablemodel.manual.AbstractPipeTableModelDua
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.junit.Assert;
+import org.junit.Before;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -44,6 +45,13 @@ import java.util.Map;
 @RunWith(IoTDBTestRunner.class)
 @Category({MultiClusterIT2DualTableManualBasic.class})
 public class IoTDBPipeSwitchStatusIT extends AbstractPipeTableModelDualManualIT {
+
+  @Override
+  @Before
+  public void setUp() {
+    super.setUp();
+  }
+
   @Test
   public void testPipeSwitchStatus() throws Exception {
     final DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
@@ -66,6 +74,7 @@ public class IoTDBPipeSwitchStatusIT extends AbstractPipeTableModelDualManualIT 
       extractorAttributes.put("mode.strict", "true");
       extractorAttributes.put("start-time", "1");
       extractorAttributes.put("end-time", "2");
+      extractorAttributes.put("user", "root");
 
       connectorAttributes.put("connector", "iotdb-thrift-connector");
       connectorAttributes.put("connector.batch.enable", "false");
@@ -155,6 +164,7 @@ public class IoTDBPipeSwitchStatusIT extends AbstractPipeTableModelDualManualIT 
       extractorAttributes.put("mode.strict", "true");
       extractorAttributes.put("start-time", "1");
       extractorAttributes.put("end-time", "2");
+      extractorAttributes.put("user", "root");
 
       connectorAttributes.put("connector", "iotdb-thrift-connector");
       connectorAttributes.put("connector.batch.enable", "false");
@@ -233,6 +243,7 @@ public class IoTDBPipeSwitchStatusIT extends AbstractPipeTableModelDualManualIT 
       extractorAttributes.put("mode.strict", "true");
       extractorAttributes.put("start-time", "0");
       extractorAttributes.put("end-time", "200");
+      extractorAttributes.put("user", "root");
 
       connectorAttributes.put("connector", "iotdb-thrift-connector");
       connectorAttributes.put("connector.batch.enable", "false");
@@ -293,6 +304,7 @@ public class IoTDBPipeSwitchStatusIT extends AbstractPipeTableModelDualManualIT 
       extractorAttributes.put("mode.strict", "true");
       extractorAttributes.put("start-time", "0");
       extractorAttributes.put("end-time", "200");
+      extractorAttributes.put("user", "root");
 
       connectorAttributes.put("connector", "iotdb-thrift-connector");
       connectorAttributes.put("connector.batch.enable", "false");
