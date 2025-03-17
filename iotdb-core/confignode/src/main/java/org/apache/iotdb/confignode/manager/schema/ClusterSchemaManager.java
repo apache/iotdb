@@ -1524,6 +1524,33 @@ public class ClusterSchemaManager {
     return new Pair<>(RpcUtils.SUCCESS_STATUS, updatedTable);
   }
 
+  private static Optional<Pair<TSStatus, TsTable>> checkTable4View(
+      final String database, final TsTable table, final boolean isView) {
+    if (!isView && TreeViewSchema.isTreeViewTable(table)) {
+      return Optional.of(
+          new Pair<>(
+              RpcUtils.getStatus(
+                  TSStatusCode.SEMANTIC_ERROR,
+                  String.format(
+                      "Table '%s.%s' is a tree view table, does not support alter table",
+                      database, table.getTableName())),
+              null));
+    }
+
+    if (isView && !TreeViewSchema.isTreeViewTable(table)) {
+      return Optional.of(
+          new Pair<>(
+              RpcUtils.getStatus(
+                  TSStatusCode.SEMANTIC_ERROR,
+                  String.format(
+                      "Table '%s.%s' is a base table, does not support alter view",
+                      database, table.getTableName())),
+              null));
+    }
+
+    return Optional.empty();
+  }
+
   @TableModel
   public long getDatabaseMaxTTL(final String database) {
     return clusterSchemaInfo.getDatabaseMaxTTL(database);
