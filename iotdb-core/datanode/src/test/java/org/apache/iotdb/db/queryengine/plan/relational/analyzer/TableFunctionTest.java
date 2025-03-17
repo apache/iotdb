@@ -40,11 +40,11 @@ import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.exchange;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.group;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.join;
+import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.mergeSort;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.output;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.project;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.sort;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.specification;
-import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.streamSort;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.tableFunctionProcessor;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.tableScan;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.TableFunctionProcessorMatcher.TableArgumentValue.Builder.tableArgument;
@@ -99,11 +99,7 @@ public class TableFunctionTest {
      *               │        └──TableScan
      *               └──ExchangeNode
      *                    └──TableFunctionProcessor
-     *                        └──CollectNode
-     *                            ├──ExchangeNode
-     *                            │     └──TableScan
-     *                            └──ExchangeNode
-     *                                  └──TableScan
+     *                        └──TableScan
      */
     assertPlan(planTester.getFragmentPlan(0), output(collect(exchange(), exchange(), exchange())));
     assertPlan(
@@ -111,10 +107,7 @@ public class TableFunctionTest {
     assertPlan(
         planTester.getFragmentPlan(2), tableFunctionProcessor(tableFunctionMatcher, tableScan));
     assertPlan(
-        planTester.getFragmentPlan(3),
-        tableFunctionProcessor(tableFunctionMatcher, collect(exchange(), exchange())));
-    assertPlan(planTester.getFragmentPlan(4), tableScan);
-    assertPlan(planTester.getFragmentPlan(5), tableScan);
+        planTester.getFragmentPlan(3), tableFunctionProcessor(tableFunctionMatcher, tableScan));
   }
 
   @Test
@@ -159,7 +152,7 @@ public class TableFunctionTest {
      *               │        └──TableScan
      *               └──ExchangeNode
      *                    └──TableFunctionProcessor
-     *                        └──CollectNode
+     *                         └──TableScan
      *                            ├──ExchangeNode
      *                            │     └──TableScan
      *                            └──ExchangeNode
@@ -171,10 +164,7 @@ public class TableFunctionTest {
     assertPlan(
         planTester.getFragmentPlan(2), tableFunctionProcessor(tableFunctionMatcher, tableScan));
     assertPlan(
-        planTester.getFragmentPlan(3),
-        tableFunctionProcessor(tableFunctionMatcher, collect(exchange(), exchange())));
-    assertPlan(planTester.getFragmentPlan(4), tableScan);
-    assertPlan(planTester.getFragmentPlan(5), tableScan);
+        planTester.getFragmentPlan(3), tableFunctionProcessor(tableFunctionMatcher, tableScan));
   }
 
   @Test
@@ -223,7 +213,7 @@ public class TableFunctionTest {
      *               └──ExchangeNode
      *                    └──TableFunctionProcessor
      *                        └──streamSort
-     *                              └──CollectNode
+     *                              └──MergeSortNode
      *                                     ├──ExchangeNode
      *                                     │     └──TableScan
      *                                     └──ExchangeNode
@@ -236,7 +226,7 @@ public class TableFunctionTest {
         planTester.getFragmentPlan(2), tableFunctionProcessor(tableFunctionMatcher, tableScan));
     assertPlan(
         planTester.getFragmentPlan(3),
-        tableFunctionProcessor(tableFunctionMatcher, streamSort(collect(exchange(), exchange()))));
+        tableFunctionProcessor(tableFunctionMatcher, mergeSort(exchange(), exchange())));
     assertPlan(planTester.getFragmentPlan(4), tableScan);
     assertPlan(planTester.getFragmentPlan(5), tableScan);
   }

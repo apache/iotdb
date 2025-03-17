@@ -609,11 +609,14 @@ public class TableDistributedPlanGenerator
             .orElse(null);
     if (!crossRegionDevices.isEmpty()) {
       node.setDeviceEntries(crossRegionDevices);
-      result.add(
-          new CollectNode(
-              queryId.genPlanNodeId(),
-              constructDeviceTableScanByRegionReplicaSet(node, context),
-              node.getOutputSymbols()));
+      MergeSortNode mergeSortNode =
+          new MergeSortNode(
+              queryId.genPlanNodeId(), context.expectedOrderingScheme, node.getOutputSymbols());
+      for (PlanNode node1 : constructDeviceTableScanByRegionReplicaSet(node, context)) {
+        mergeSortNode.addChild(node1);
+      }
+      nodeOrderingMap.put(mergeSortNode.getPlanNodeId(), mergeSortNode.getOrderingScheme());
+      result.add(mergeSortNode);
     }
     return result;
   }
@@ -1072,28 +1075,22 @@ public class TableDistributedPlanGenerator
     if (node.getChildren().isEmpty()) {
       return Collections.singletonList(node);
     }
-    boolean pushDown = context.isPushDownGrouping();
-    try {
-      context.setPushDownGrouping(node.isRowSemantic());
-      boolean canSplitPushDown =
-          node.isRowSemantic()
-              || (node.getChild() instanceof GroupNode)
-                  && ((GroupNode) node.getChild()).isEnableParalleled();
-      List<PlanNode> childrenNodes = node.getChild().accept(this, context);
-      if (childrenNodes.size() == 1) {
-        node.setChild(childrenNodes.get(0));
-        return Collections.singletonList(node);
-      } else if (!canSplitPushDown) {
-        CollectNode collectNode =
-            new CollectNode(queryId.genPlanNodeId(), node.getChildren().get(0).getOutputSymbols());
-        childrenNodes.forEach(collectNode::addChild);
-        node.setChild(collectNode);
-        return Collections.singletonList(node);
-      } else {
-        return splitForEachChild(node, childrenNodes);
-      }
-    } finally {
-      context.setPushDownGrouping(pushDown);
+    boolean canSplitPushDown =
+        node.isRowSemantic()
+            || (node.getChild() instanceof GroupNode)
+                && ((GroupNode) node.getChild()).isEnableParalleled();
+    List<PlanNode> childrenNodes = node.getChild().accept(this, context);
+    if (childrenNodes.size() == 1) {
+      node.setChild(childrenNodes.get(0));
+      return Collections.singletonList(node);
+    } else if (!canSplitPushDown) {
+      CollectNode collectNode =
+          new CollectNode(queryId.genPlanNodeId(), node.getChildren().get(0).getOutputSymbols());
+      childrenNodes.forEach(collectNode::addChild);
+      node.setChild(collectNode);
+      return Collections.singletonList(node);
+    } else {
+      return splitForEachChild(node, childrenNodes);
     }
   }
 
