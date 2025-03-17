@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.confignode.persistence.schema;
 
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.common.rpc.thrift.TSchemaNode;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.IoTDBException;
@@ -740,10 +741,18 @@ public class ConfigMTree {
   }
 
   public void setTableComment(
-      final PartialPath database, final String tableName, final String comment)
+      final PartialPath database,
+      final String tableName,
+      final String comment,
+      final boolean isView)
       throws MetadataException {
     final TsTable table = getTable(database, tableName);
-    ClusterSchemaManager.checkTable4View(database.getTailNode(), table, false);
+    final Optional<Pair<TSStatus, TsTable>> check =
+        ClusterSchemaManager.checkTable4View(database.getTailNode(), table, isView);
+    if (check.isPresent()) {
+      throw new MetadataException(
+          check.get().getLeft().getMessage(), check.get().getLeft().getCode());
+    }
     if (Objects.nonNull(comment)) {
       table.addProp(TsTable.COMMENT_KEY, comment);
     } else {
