@@ -83,6 +83,7 @@ import org.apache.iotdb.confignode.persistence.schema.CNSnapshotFileType;
 import org.apache.iotdb.confignode.persistence.schema.ConfigNodeSnapshotParser;
 import org.apache.iotdb.confignode.procedure.impl.schema.table.AddTableColumnProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.table.CreateTableProcedure;
+import org.apache.iotdb.confignode.procedure.impl.schema.table.CreateTableViewProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.table.DropTableColumnProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.table.DropTableProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.table.RenameTableColumnProcedure;
@@ -621,7 +622,9 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
             ? configManager.getTTLManager().unsetTTL((SetTTLPlan) plan, true)
             : configManager.getTTLManager().setTTL((SetTTLPlan) plan, true);
       case PipeCreateTable:
-        return executeIdempotentCreateTable((PipeCreateTablePlan) plan, queryId);
+        return executeIdempotentCreateTableOrView((PipeCreateTablePlan) plan, queryId, false);
+      case PipeCreateView:
+        return executeIdempotentCreateTableOrView((PipeCreateTablePlan) plan, queryId, true);
       case AddTableColumn:
         return configManager
             .getProcedureManager()
@@ -787,8 +790,9 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
     }
   }
 
-  private TSStatus executeIdempotentCreateTable(
-      final PipeCreateTablePlan plan, final String queryId) throws ConsensusException {
+  private TSStatus executeIdempotentCreateTableOrView(
+      final PipeCreateTablePlan plan, final String queryId, final boolean isView)
+      throws ConsensusException {
     final String database = plan.getDatabase();
     final TsTable table = plan.getTable();
     TSStatus result =
@@ -799,9 +803,15 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
                 table,
                 table.getTableName(),
                 queryId,
-                ProcedureType.CREATE_TABLE_PROCEDURE,
-                new CreateTableProcedure(database, table, true));
-    if (result.getCode() == TSStatusCode.TABLE_ALREADY_EXISTS.getStatusCode()) {
+                isView
+                    ? ProcedureType.CREATE_TABLE_VIEW_PROCEDURE
+                    : ProcedureType.CREATE_TABLE_PROCEDURE,
+                isView
+                    ? new CreateTableViewProcedure(database, table, true, true)
+                    : new CreateTableProcedure(database, table, true));
+    // Note that the view and its column won't be auto created
+    // Skip it to avoid affecting the existing base table
+    if (!isView && result.getCode() == TSStatusCode.TABLE_ALREADY_EXISTS.getStatusCode()) {
       // If the table already exists, we shall add the sender table's columns to the
       // receiver's table, inner procedure guaranteeing that the columns existing at the
       // receiver table will be trimmed
