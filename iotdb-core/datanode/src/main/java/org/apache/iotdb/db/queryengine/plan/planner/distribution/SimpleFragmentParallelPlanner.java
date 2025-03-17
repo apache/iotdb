@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.queryengine.plan.planner.distribution;
 
+import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
@@ -39,6 +40,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.ExchangeNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.sink.MultiChildrenSinkNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.LastSeriesSourceNode;
+import org.apache.iotdb.db.queryengine.plan.scheduler.FragmentInstanceDispatcherImpl;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.QueryStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowTimeSeriesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.ExplainAnalyzeStatement;
@@ -205,7 +207,10 @@ public class SimpleFragmentParallelPlanner implements IFragmentParallelPlaner {
         IoTDBDescriptor.getInstance().getConfig().getReadConsistencyLevel();
     // TODO: (Chen Rongzhao) need to make the values of ReadConsistencyLevel as static variable or
     // enums
-    boolean selectRandomDataNode = "weak".equals(readConsistencyLevel);
+    boolean selectLocalOrRandomDataNode =
+        "weak".equals(readConsistencyLevel)
+            || regionReplicaSet.getRegionId().getType().equals(TConsensusGroupType.SchemaRegion);
+    ;
 
     // When planning fragment onto specific DataNode, the DataNode whose endPoint is in
     // black list won't be considered because it may have connection issue now.
@@ -222,9 +227,15 @@ public class SimpleFragmentParallelPlanner implements IFragmentParallelPlaner {
       logger.info("available replicas: {}", availableDataNodes);
     }
     int targetIndex;
-    if (!selectRandomDataNode || queryContext.getSession() == null) {
+    if (!selectLocalOrRandomDataNode || queryContext.getSession() == null) {
       targetIndex = 0;
     } else {
+      // Always choose local dataNode first
+      for (final TDataNodeLocation location : availableDataNodes) {
+        if (FragmentInstanceDispatcherImpl.isDispatchedToLocal(location.getInternalEndPoint())) {
+          return location;
+        }
+      }
       targetIndex = (int) (queryContext.getSession().getSessionId() % availableDataNodes.size());
     }
     return availableDataNodes.get(targetIndex);
