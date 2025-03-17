@@ -35,12 +35,12 @@ import java.util.function.Consumer;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanAssert.assertPlan;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.aggregation;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.aggregationFunction;
-import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.any;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.anyTree;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.collect;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.exchange;
+import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.group;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.join;
-import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.mergeSort;
+import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.output;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.project;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.sort;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.specification;
@@ -90,22 +90,31 @@ public class TableFunctionTest {
 
     /*
      *   └──OutputNode
-     *         └──TableFunctionProcessor
-     *               └──CollectNode
-     *                   ├──ExchangeNode
-     *                   ├──ExchangeNode
-     *                   └──ExchangeNode
-     *
-     *   └──ExchangeNode
-     *         └──TableScan
+     *         └──CollectNode
+     *               ├──ExchangeNode
+     *               │    └──TableFunctionProcessor
+     *               │        └──TableScan
+     *               ├──ExchangeNode
+     *               │    └──TableFunctionProcessor
+     *               │        └──TableScan
+     *               └──ExchangeNode
+     *                    └──TableFunctionProcessor
+     *                        └──CollectNode
+     *                            ├──ExchangeNode
+     *                            │     └──TableScan
+     *                            └──ExchangeNode
+     *                                  └──TableScan
      */
-
+    assertPlan(planTester.getFragmentPlan(0), output(collect(exchange(), exchange(), exchange())));
     assertPlan(
-        planTester.getFragmentPlan(0),
-        anyTree(tableFunctionProcessor(tableFunctionMatcher, collect(any(exchange())))));
-    for (int i = 1; i <= 3; i++) {
-      assertPlan(planTester.getFragmentPlan(i), tableScan);
-    }
+        planTester.getFragmentPlan(1), tableFunctionProcessor(tableFunctionMatcher, tableScan));
+    assertPlan(
+        planTester.getFragmentPlan(2), tableFunctionProcessor(tableFunctionMatcher, tableScan));
+    assertPlan(
+        planTester.getFragmentPlan(3),
+        tableFunctionProcessor(tableFunctionMatcher, collect(exchange(), exchange())));
+    assertPlan(planTester.getFragmentPlan(4), tableScan);
+    assertPlan(planTester.getFragmentPlan(5), tableScan);
   }
 
   @Test
@@ -141,21 +150,31 @@ public class TableFunctionTest {
     // Verify DistributionPlan
     /*
      *   └──OutputNode
-     *        └──TableFunctionProcessor
-     *               └──CollectNode
-     *                   ├──ExchangeNode
-     *                   ├──ExchangeNode
-     *                   └──ExchangeNode
-     *
-     *   └──ExchangeNode
-     *         └──TableScan
+     *         └──CollectNode
+     *               ├──ExchangeNode
+     *               │    └──TableFunctionProcessor
+     *               │        └──TableScan
+     *               ├──ExchangeNode
+     *               │    └──TableFunctionProcessor
+     *               │        └──TableScan
+     *               └──ExchangeNode
+     *                    └──TableFunctionProcessor
+     *                        └──CollectNode
+     *                            ├──ExchangeNode
+     *                            │     └──TableScan
+     *                            └──ExchangeNode
+     *                                  └──TableScan
      */
+    assertPlan(planTester.getFragmentPlan(0), output(collect(exchange(), exchange(), exchange())));
     assertPlan(
-        planTester.getFragmentPlan(0),
-        anyTree(tableFunctionProcessor(tableFunctionMatcher, collect(any(exchange())))));
-    for (int i = 1; i <= 3; i++) {
-      assertPlan(planTester.getFragmentPlan(i), tableScan);
-    }
+        planTester.getFragmentPlan(1), tableFunctionProcessor(tableFunctionMatcher, tableScan));
+    assertPlan(
+        planTester.getFragmentPlan(2), tableFunctionProcessor(tableFunctionMatcher, tableScan));
+    assertPlan(
+        planTester.getFragmentPlan(3),
+        tableFunctionProcessor(tableFunctionMatcher, collect(exchange(), exchange())));
+    assertPlan(planTester.getFragmentPlan(4), tableScan);
+    assertPlan(planTester.getFragmentPlan(5), tableScan);
   }
 
   @Test
@@ -188,28 +207,38 @@ public class TableFunctionTest {
                         .passThroughSymbols(
                             "time", "tag1", "tag2", "tag3", "attr1", "attr2", "s1", "s2", "s3"));
     // Verify full LogicalPlan
-    // Output - TableFunctionProcessor - StreamSort - TableScan
+    // Output - TableFunctionProcessor - GroupNode - TableScan
     assertPlan(
-        logicalQueryPlan,
-        anyTree(tableFunctionProcessor(tableFunctionMatcher, streamSort(tableScan))));
+        logicalQueryPlan, anyTree(tableFunctionProcessor(tableFunctionMatcher, group(tableScan))));
     // Verify DistributionPlan
     /*
      *   └──OutputNode
-     *        └──TableFunctionProcessor
-     *               └──CollectNode
-     *                   ├──ExchangeNode
-     *                   ├──ExchangeNode
-     *                   └──ExchangeNode
-     *
-     *   └──ExchangeNode
-     *         └──TableScan
+     *         └──CollectNode
+     *               ├──ExchangeNode
+     *               │    └──TableFunctionProcessor
+     *               │        └──TableScan
+     *               ├──ExchangeNode
+     *               │    └──TableFunctionProcessor
+     *               │        └──TableScan
+     *               └──ExchangeNode
+     *                    └──TableFunctionProcessor
+     *                        └──streamSort
+     *                              └──CollectNode
+     *                                     ├──ExchangeNode
+     *                                     │     └──TableScan
+     *                                     └──ExchangeNode
+     *                                           └──TableScan
      */
+    assertPlan(planTester.getFragmentPlan(0), output(collect(exchange(), exchange(), exchange())));
     assertPlan(
-        planTester.getFragmentPlan(0),
-        anyTree(tableFunctionProcessor(tableFunctionMatcher, mergeSort(any(exchange())))));
-    for (int i = 1; i <= 3; i++) {
-      assertPlan(planTester.getFragmentPlan(i), tableScan);
-    }
+        planTester.getFragmentPlan(1), tableFunctionProcessor(tableFunctionMatcher, tableScan));
+    assertPlan(
+        planTester.getFragmentPlan(2), tableFunctionProcessor(tableFunctionMatcher, tableScan));
+    assertPlan(
+        planTester.getFragmentPlan(3),
+        tableFunctionProcessor(tableFunctionMatcher, streamSort(collect(exchange(), exchange()))));
+    assertPlan(planTester.getFragmentPlan(4), tableScan);
+    assertPlan(planTester.getFragmentPlan(5), tableScan);
   }
 
   @Test

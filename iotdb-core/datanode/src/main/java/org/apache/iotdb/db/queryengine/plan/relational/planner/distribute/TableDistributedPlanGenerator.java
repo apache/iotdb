@@ -308,7 +308,7 @@ public class TableDistributedPlanGenerator
                     node.getOrderingScheme(),
                     false,
                     false,
-                    node.getPartitionKeyCount());
+                    node.getPartitionKeyCount() - 1);
             result.add(subSortNode);
             nodeOrderingMap.put(subSortNode.getPlanNodeId(), subSortNode.getOrderingScheme());
           }

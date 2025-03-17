@@ -140,6 +140,6 @@ public class GroupNode extends SortNode {
 
   @Override
   public String toString() {
-    return "AuxSortNode-" + this.getPlanNodeId();
+    return "GroupNode-" + this.getPlanNodeId();
   }
 }

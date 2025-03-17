@@ -931,7 +931,7 @@ public class PlanGraphPrinter extends PlanVisitor<List<String>, PlanGraphPrinter
   @Override
   public List<String> visitGroup(GroupNode node, GraphContext context) {
     List<String> boxValue = new ArrayList<>();
-    boxValue.add(String.format("AuxSort-%s", node.getPlanNodeId().getId()));
+    boxValue.add(String.format("GroupNode-%s", node.getPlanNodeId().getId()));
     boxValue.add(String.format("EnableParalleled: %s", node.isEnableParalleled()));
     boxValue.add(String.format("PartitionKeyCount: %s", node.getPartitionKeyCount()));
     boxValue.add(String.format("OrderingScheme: %s", node.getOrderingScheme()));
