@@ -460,12 +460,8 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
         }
       }
     } catch (final AccessDeniedException e) {
-      close();
       throw e;
     } catch (final Exception e) {
-      close();
-
-      // close() should be called before re-interrupting the thread
       if (e instanceof InterruptedException) {
         Thread.currentThread().interrupt();
       }
