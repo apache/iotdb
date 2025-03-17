@@ -461,14 +461,36 @@ public class TableDistributedPlanGenerator
 
   public List<PlanNode> visitDeviceTableScan(
       final DeviceTableScanNode node, final PlanContext context) {
+    DataPartition dataPartition = analysis.getDataPartitionInfo();
+    if (dataPartition == null) {
+      node.setRegionReplicaSet(NOT_ASSIGNED);
+      return Collections.singletonList(node);
+    }
+
     final Map<TRegionReplicaSet, DeviceTableScanNode> tableScanNodeMap = new HashMap<>();
+    String dbName = node.getQualifiedObjectName().getDatabaseName();
+    if (!dataPartition.getDataPartitionMap().containsKey(dbName)) {
+      throw new SemanticException(
+          String.format("Given queried database: %s is not exist!", dbName));
+    }
+
+    Map<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TRegionReplicaSet>>> seriesSlotMap =
+        dataPartition.getDataPartitionMap().get(dbName);
+    Map<Integer, List<TRegionReplicaSet>> cachedSeriesSlotWithRegions = new HashMap<>();
 
     for (final DeviceEntry deviceEntry : node.getDeviceEntries()) {
-      final List<TRegionReplicaSet> regionReplicaSets =
-          analysis.getDataRegionReplicaSetWithTimeFilter(
-              node.getQualifiedObjectName().getDatabaseName(),
+      List<TRegionReplicaSet> regionReplicaSets =
+          getReplicaSetWithTimeFilter(
+              dataPartition,
+              seriesSlotMap,
               deviceEntry.getDeviceID(),
-              node.getTimeFilter());
+              node.getTimeFilter(),
+              cachedSeriesSlotWithRegions);
+      //      final List<TRegionReplicaSet> regionReplicaSets =
+      //          dataPartition.getDataRegionReplicaSetWithTimeFilter(
+      //              dbName,
+      //              deviceEntry.getDeviceID(),
+      //              node.getTimeFilter());
 
       for (final TRegionReplicaSet regionReplicaSet : regionReplicaSets) {
         final DeviceTableScanNode deviceTableScanNode =
@@ -528,12 +550,18 @@ public class TableDistributedPlanGenerator
 
   @Override
   public List<PlanNode> visitTreeDeviceViewScan(TreeDeviceViewScanNode node, PlanContext context) {
+    DataPartition dataPartition = analysis.getDataPartitionInfo();
+    if (dataPartition == null) {
+      node.setRegionReplicaSet(NOT_ASSIGNED);
+      return Collections.singletonList(node);
+    }
+
     Map<TRegionReplicaSet, Pair<TreeAlignedDeviceViewScanNode, TreeNonAlignedDeviceViewScanNode>>
         tableScanNodeMap = new HashMap<>();
 
     for (DeviceEntry deviceEntry : node.getDeviceEntries()) {
       List<TRegionReplicaSet> regionReplicaSets =
-          analysis.getDataRegionReplicaSetWithTimeFilter(
+          dataPartition.getDataRegionReplicaSetWithTimeFilter(
               node.getTreeDBName(), deviceEntry.getDeviceID(), node.getTimeFilter());
 
       for (TRegionReplicaSet regionReplicaSet : regionReplicaSets) {
@@ -723,15 +751,15 @@ public class TableDistributedPlanGenerator
         node instanceof AggregationTreeDeviceViewScanNode
             ? ((AggregationTreeDeviceViewScanNode) node).getTreeDBName()
             : node.getQualifiedObjectName().getDatabaseName();
-    DataPartition dataPartition = analysis.getDataPartition();
+    DataPartition dataPartition = analysis.getDataPartitionInfo();
     boolean needSplit = false;
     List<List<TRegionReplicaSet>> regionReplicaSetsList = new ArrayList<>();
-    if (dataPartition == null) {
-      // do nothing
-    } else if (!dataPartition.getDataPartitionMap().containsKey(dbName)) {
-      throw new SemanticException(
-          String.format("Given queried database: %s is not exist!", dbName));
-    } else {
+    if (dataPartition != null) {
+      if (!dataPartition.getDataPartitionMap().containsKey(dbName)) {
+        throw new SemanticException(
+            String.format("Given queried database: %s is not exist!", dbName));
+      }
+
       Map<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TRegionReplicaSet>>> seriesSlotMap =
           dataPartition.getDataPartitionMap().get(dbName);
       Map<Integer, List<TRegionReplicaSet>> cachedSeriesSlotWithRegions = new HashMap<>();
