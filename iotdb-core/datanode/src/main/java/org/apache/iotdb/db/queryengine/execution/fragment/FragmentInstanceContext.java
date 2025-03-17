@@ -766,7 +766,9 @@ public class FragmentInstanceContext extends QueryContext {
         .recordTimeSeriesMetadataMetrics(
             getQueryStatistics().getLoadTimeSeriesMetadataFromCacheCount().get(),
             getQueryStatistics().getLoadTimeSeriesMetadataFromDiskCount().get(),
-            getQueryStatistics().getLoadTimeSeriesMetadataActualIOSize().get());
+            getQueryStatistics().getLoadTimeSeriesMetadataActualIOSize().get(),
+            getQueryStatistics().getLoadTimeSeriesMetadataFromCacheTime().get(),
+            getQueryStatistics().getLoadTimeSeriesMetadataFromDiskTime().get());
 
     SeriesScanCostMetricSet.getInstance()
         .recordConstructChunkReadersCount(
