@@ -99,9 +99,10 @@ public class ShowDevicesResult extends ShowSchemaResult implements IDeviceSchema
                         .getNodeLength())
                 : (String[]) entry.getDeviceID().getSegments());
     final Map<String, Binary> attributeProviderMap = new HashMap<>();
+
     if (entry instanceof AlignedDeviceEntry) {
       for (int i = 0; i < attributeColumns.size(); ++i) {
-        attributeProviderMap.put(attributeColumns.get(i), entry.getAttributeColumnValues().get(i));
+        attributeProviderMap.put(attributeColumns.get(i), entry.getAttributeColumnValues()[i]);
       }
     }
     result.setAttributeProvider(attributeProviderMap::get);

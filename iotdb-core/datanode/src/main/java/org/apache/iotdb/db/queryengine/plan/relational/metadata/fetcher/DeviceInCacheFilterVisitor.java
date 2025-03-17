@@ -64,9 +64,7 @@ public class DeviceInCacheFilterVisitor extends SchemaFilterVisitor<AlignedDevic
         .getChild()
         .accept(
             StringValueFilterVisitor.getInstance(),
-            deviceEntry
-                .getAttributeColumnValues()
-                .get(attributeIndexMap.get(filter.getKey()))
+            deviceEntry.getAttributeColumnValues()[attributeIndexMap.get(filter.getKey())]
                 .getStringValue(TSFileConfig.STRING_CHARSET));
   }
 }
