@@ -156,6 +156,7 @@ public abstract class IoTDBAirGapConnector extends IoTDBConnector {
   @Override
   @SuppressWarnings("java:S2095")
   public void handshake() throws Exception {
+    List<TEndPoint> failedNodeUrls = new ArrayList<>();
     for (int i = 0; i < sockets.size(); i++) {
       if (Boolean.TRUE.equals(isSocketAlive.get(i))) {
         continue;
@@ -207,16 +208,32 @@ public abstract class IoTDBAirGapConnector extends IoTDBConnector {
         LOGGER.warn(
             "Handshake error occurs. It may be caused by an error on the receiving end. Ignore it.",
             e);
+        failedNodeUrls.add(nodeUrls.get(i));
       }
     }
-
-    for (int i = 0; i < sockets.size(); i++) {
-      if (Boolean.TRUE.equals(isSocketAlive.get(i))) {
+    if (shouldSendToAllClients) {
+      boolean allAlive = true;
+      for (int i = 0; i < sockets.size(); i++) {
+        if (Boolean.FALSE.equals(isSocketAlive.get(i))) {
+          allAlive = false;
+          break;
+        }
+      }
+      if (allAlive) {
         return;
       }
+    } else {
+      for (int i = 0; i < sockets.size(); i++) {
+        if (Boolean.TRUE.equals(isSocketAlive.get(i))) {
+          return;
+        }
+      }
     }
-    throw new PipeConnectionException(
-        String.format("All target servers %s are not available.", nodeUrls));
+    throw shouldSendToAllClients
+        ? new PipeConnectionException(
+            String.format("All target servers %s are not available.", nodeUrls))
+        : new PipeConnectionException(
+            String.format("Some target servers %s are not available.", failedNodeUrls));
   }
 
   protected void sendHandshakeReq(final AirGapSocket socket) throws IOException {
@@ -255,7 +272,7 @@ public abstract class IoTDBAirGapConnector extends IoTDBConnector {
       final String pipeName,
       final long creationTime,
       final File file,
-      final AirGapSocket socket,
+      final List<Integer> socketIndexes,
       final boolean isMultiFile)
       throws PipeException, IOException {
     final int readFileBufferSize = PipeConfig.getInstance().getPipeConnectorReadFileBufferSize();
@@ -272,27 +289,36 @@ public abstract class IoTDBAirGapConnector extends IoTDBConnector {
             readLength == readFileBufferSize
                 ? readBuffer
                 : Arrays.copyOfRange(readBuffer, 0, readLength);
-        if (!send(
-            pipeName,
-            creationTime,
-            socket,
+        final byte[] bytes =
             isMultiFile
                 ? getTransferMultiFilePieceBytes(file.getName(), position, payload)
-                : getTransferSingleFilePieceBytes(file.getName(), position, payload))) {
-          final String errorMessage =
-              String.format("Transfer file %s error. Socket %s.", file, socket);
-          if (mayNeedHandshakeWhenFail()) {
-            // Send handshake because we don't know whether the receiver side configNode
-            // has set up a new one
-            sendHandshakeReq(socket);
+                : getTransferSingleFilePieceBytes(file.getName(), position, payload);
+        for (final int socketIndex : socketIndexes) {
+          final AirGapSocket socket = sockets.get(socketIndex);
+          try {
+            if (!send(pipeName, creationTime, socket, bytes)) {
+              final String errorMessage =
+                  String.format("Transfer file %s error. Socket %s.", file, socket);
+              if (mayNeedHandshakeWhenFail()) {
+                // Send handshake because we don't know whether the receiver side configNode
+                // has set up a new one
+                sendHandshakeReq(socket);
+              }
+              receiverStatusHandler.handle(
+                  new TSStatus(TSStatusCode.PIPE_RECEIVER_USER_CONFLICT_EXCEPTION.getStatusCode())
+                      .setMessage(errorMessage),
+                  errorMessage,
+                  file.toString());
+            } else {
+              position += readLength;
+            }
+          } catch (final Exception e) {
+            isSocketAlive.set(socketIndex, false);
+            throw new PipeConnectionException(
+                String.format(
+                    "Network error when transfer file %s, because %s.", file, e.getMessage()),
+                e);
           }
-          receiverStatusHandler.handle(
-              new TSStatus(TSStatusCode.PIPE_RECEIVER_USER_CONFLICT_EXCEPTION.getStatusCode())
-                  .setMessage(errorMessage),
-              errorMessage,
-              file.toString());
-        } else {
-          position += readLength;
         }
       }
     }
@@ -308,6 +334,20 @@ public abstract class IoTDBAirGapConnector extends IoTDBConnector {
 
   protected int nextSocketIndex() {
     return loadBalancer.nextSocketIndex();
+  }
+
+  protected List<Integer> allAliveSocketsIndex() {
+    final List<Integer> indexes = new ArrayList<>();
+    final int socketSize = sockets.size();
+    for (int clientIndex = 0; clientIndex < socketSize; ++clientIndex) {
+      if (Boolean.TRUE.equals(isSocketAlive.get(clientIndex))) {
+        indexes.add(clientIndex);
+      } else {
+        throw new PipeConnectionException(
+            String.format("Socket %s is closed, will try to handshake", sockets.get(clientIndex)));
+      }
+    }
+    return indexes;
   }
 
   protected boolean send(
