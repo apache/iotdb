@@ -493,6 +493,7 @@ public class MemoryManager {
     return memorySize;
   }
 
+  @TestOnly
   public void setTotalMemorySizeInBytes(long totalMemorySizeInBytes) {
     this.totalMemorySizeInBytes = totalMemorySizeInBytes;
   }
@@ -541,12 +542,6 @@ public class MemoryManager {
 
   // region auto adapt memory
 
-  /** Get the dynamic used memory ratio of this memory manager */
-  public synchronized double getDynamicUsedMemoryRatio() {
-    return (double) (cachedUsedMemorySizeInBytes - cachedStaticUsedMemorySizeInBytes)
-        / (totalMemorySizeInBytes - cachedStaticAllocatedMemorySizeInBytes);
-  }
-
   long cachedStaticAllocatedMemorySizeInBytes = 0L;
   long cachedStaticUsedMemorySizeInBytes = 0L;
   long cachedUsedMemorySizeInBytes = 1L;
@@ -570,8 +565,14 @@ public class MemoryManager {
     }
   }
 
+  /** Get the dynamic used memory ratio of this memory manager */
+  private synchronized double getDynamicUsedMemoryRatio() {
+    return (double) (cachedUsedMemorySizeInBytes - cachedStaticUsedMemorySizeInBytes)
+        / (totalMemorySizeInBytes - cachedStaticAllocatedMemorySizeInBytes);
+  }
+
   /** Whether this memory manager is available to shrink */
-  public synchronized boolean isAvailableToShrink() {
+  private synchronized boolean isAvailableToShrink() {
     if (!shrink_all) {
       return initialAllocatedMemorySizeInBytes - totalMemorySizeInBytes
               < initialAllocatedMemorySizeInBytes * memory_update_threshold
@@ -585,7 +586,7 @@ public class MemoryManager {
   }
 
   /** Try to shrink this memory manager */
-  public synchronized long shrink() {
+  private synchronized long shrink() {
     if (!shrink_all) {
       long shrinkSize =
           (long)
@@ -672,7 +673,7 @@ public class MemoryManager {
    *
    * @return true if available to expand, otherwise false
    */
-  public synchronized boolean isAvailableToExpand() {
+  private synchronized boolean isAvailableToExpand() {
     for (MemoryManager memoryManager : children.values()) {
       if (memoryManager.isAvailableToExpand()) {
         return true;
@@ -686,7 +687,7 @@ public class MemoryManager {
     return false;
   }
 
-  public synchronized void expand(double ratio) {
+  private synchronized void expand(double ratio) {
     // Update total memory size by actual size
     long beforeTotalMemorySizeInBytes = this.totalMemorySizeInBytes;
     this.totalMemorySizeInBytes *= ratio;
@@ -715,23 +716,23 @@ public class MemoryManager {
   }
 
   /** Set update callback */
-  public MemoryManager setUpdateCallback(final BiConsumer<Long, Long> updateCallback) {
+  private MemoryManager setUpdateCallback(final BiConsumer<Long, Long> updateCallback) {
     this.updateCallback.set(updateCallback);
     return this;
   }
 
-  public MemoryManager setShrinkAll(boolean shrink_all) {
+  private MemoryManager setShrinkAll(boolean shrink_all) {
     this.shrink_all = shrink_all;
     return this;
   }
 
-  public MemoryManager setMemoryUpdateThreshold(double memory_update_threshold) {
+  private MemoryManager setMemoryUpdateThreshold(double memory_update_threshold) {
     this.memory_update_threshold = memory_update_threshold;
     return this;
   }
 
   /** Get the score of this memory manager */
-  public synchronized double getScore() {
+  private synchronized double getScore() {
     return (double) (cachedUsedMemorySizeInBytes - cachedStaticUsedMemorySizeInBytes)
         / (totalMemorySizeInBytes - cachedStaticAllocatedMemorySizeInBytes);
   }
