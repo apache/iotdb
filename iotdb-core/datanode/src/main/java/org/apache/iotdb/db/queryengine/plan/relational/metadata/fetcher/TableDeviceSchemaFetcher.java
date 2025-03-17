@@ -304,7 +304,10 @@ public class TableDeviceSchemaFetcher {
       statement.setIdDeterminedFilterList(idPredicateForFetch);
       statement.setIdFuzzyPredicate(compactedIdFuzzyPredicate);
       statement.setPartitionKeyList(fetchPaths);
-      statement.setAttributeColumns(attributeColumns);
+      // Return only the required attributes for non-schema queries
+      if (!isDirectDeviceQuery) {
+        statement.setAttributeColumns(attributeColumns);
+      }
       return true;
     }
     return false;
