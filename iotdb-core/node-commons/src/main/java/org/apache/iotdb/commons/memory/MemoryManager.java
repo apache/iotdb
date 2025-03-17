@@ -716,17 +716,17 @@ public class MemoryManager {
   }
 
   /** Set update callback */
-  private MemoryManager setUpdateCallback(final BiConsumer<Long, Long> updateCallback) {
+  public MemoryManager setUpdateCallback(final BiConsumer<Long, Long> updateCallback) {
     this.updateCallback.set(updateCallback);
     return this;
   }
 
-  private MemoryManager setShrinkAll(boolean shrink_all) {
+  public MemoryManager setShrinkAll(boolean shrink_all) {
     this.shrink_all = shrink_all;
     return this;
   }
 
-  private MemoryManager setMemoryUpdateThreshold(double memory_update_threshold) {
+  public MemoryManager setMemoryUpdateThreshold(double memory_update_threshold) {
     this.memory_update_threshold = memory_update_threshold;
     return this;
   }
