@@ -3822,7 +3822,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
               queryId,
               AlterOrDropTableOperationType.COMMENT_TABLE,
               stream.toByteArray(),
-              false,
+              isView,
               client);
 
       if (TSStatusCode.SUCCESS_STATUS.getStatusCode() == tsStatus.getCode()

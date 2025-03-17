@@ -676,7 +676,12 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
         context.getSession().getUserName(), new QualifiedObjectName(database, tableName));
 
     return new AlterTableCommentTableTask(
-        database, tableName, context.getQueryId().getId(), node.ifExists(), node.getComment());
+        database,
+        tableName,
+        context.getQueryId().getId(),
+        node.ifExists(),
+        node.getComment(),
+        node.isView());
   }
 
   @Override

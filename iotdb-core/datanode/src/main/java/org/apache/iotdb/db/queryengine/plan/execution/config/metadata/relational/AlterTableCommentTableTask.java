@@ -34,8 +34,9 @@ public class AlterTableCommentTableTask extends AbstractAlterOrDropTableTask {
       final String tableName,
       final String queryId,
       final boolean ifExists,
-      final @Nullable String comment) {
-    super(database, tableName, queryId, ifExists, false);
+      final @Nullable String comment,
+      final boolean view) {
+    super(database, tableName, queryId, ifExists, view);
     this.comment = comment;
   }
 

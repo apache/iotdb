@@ -880,7 +880,8 @@ public final class SqlFormatter {
     @Override
     protected Void visitSetTableComment(final SetTableComment node, final Integer indent) {
       builder
-          .append("COMMENT ON TABLE ")
+          .append("COMMENT ON")
+          .append(node.isView() ? " VIEW " : " TABLE ")
           .append(formatName(node.getTableName()))
           .append(" IS ")
           .append(node.getComment());
