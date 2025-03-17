@@ -569,7 +569,8 @@ public abstract class AbstractCli {
       ZoneId zoneId = ZoneId.of(connection.getTimeZone());
       statement.setFetchSize(fetchSize);
       boolean hasResultSet = statement.execute(cmd.trim());
-      updateUsingDatabaseIfNecessary(connection.getParams().getDb().orElse(null));
+      updateSqlDialectAndUsingDatabase(
+          connection.getParams().getSqlDialect(), connection.getParams().getDb().orElse(null));
       if (hasResultSet) {
         // print the result
         try (ResultSet resultSet = statement.getResultSet()) {
@@ -890,13 +891,18 @@ public abstract class AbstractCli {
     return true;
   }
 
-  private static void updateUsingDatabaseIfNecessary(String database) {
-    if (!Objects.equals(usingDatabase, database)) {
-      usingDatabase = database;
+  private static void updateSqlDialectAndUsingDatabase(
+      String sqlDialectOfConnection, String databaseOfConnection) {
+    boolean needUpdateCliPrefix =
+        !Objects.equals(sqlDialect, sqlDialectOfConnection)
+            || !Objects.equals(usingDatabase, databaseOfConnection);
+    sqlDialect = sqlDialectOfConnection;
+    usingDatabase = databaseOfConnection;
+    if (needUpdateCliPrefix) {
+      cliPrefix = IOTDB;
       if (sqlDialect != null && Model.TABLE.name().equals(sqlDialect.toUpperCase())) {
-        cliPrefix = IOTDB;
-        if (database != null) {
-          cliPrefix += ":" + database;
+        if (databaseOfConnection != null) {
+          cliPrefix += ":" + databaseOfConnection;
         }
       }
     }

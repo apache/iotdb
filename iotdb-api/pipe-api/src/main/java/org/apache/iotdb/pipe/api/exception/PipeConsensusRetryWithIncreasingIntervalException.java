@@ -15,20 +15,13 @@
  * KIND, either express or implied.  See the License for the
  * specific language governing permissions and limitations
  * under the License.
- *
  */
 
-package org.apache.iotdb.db.exception.metadata.template;
+package org.apache.iotdb.pipe.api.exception;
 
-import org.apache.iotdb.commons.exception.MetadataException;
-import org.apache.iotdb.rpc.TSStatusCode;
+public class PipeConsensusRetryWithIncreasingIntervalException extends PipeException {
 
-public class NoTemplateOnMNodeException extends MetadataException {
-
-  public NoTemplateOnMNodeException(String path) {
-    super(
-        String.format("NO template on %s", path),
-        TSStatusCode.TEMPLATE_NOT_SET.getStatusCode(),
-        true);
+  public PipeConsensusRetryWithIncreasingIntervalException(String message) {
+    super(message);
   }
 }

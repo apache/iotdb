@@ -57,6 +57,7 @@ public class ExportDataTable extends AbstractExportData {
 
   private static final IoTPrinter ioTPrinter = new IoTPrinter(System.out);
   private static ITableSession tableSession;
+  private static List<String> tables = new ArrayList<>();
 
   @Override
   public void init() throws IoTDBConnectionException, StatementExecutionException {
@@ -76,16 +77,18 @@ public class ExportDataTable extends AbstractExportData {
       ioTPrinter.println(String.format(Constants.TARGET_DATABASE_NOT_EXIST_MSG, database));
       System.exit(1);
     }
-    if (StringUtils.isNotBlank(table)) {
-      sessionDataSet = tableSession.executeQueryStatement("show tables", timeout);
-      List<String> tables = new ArrayList<>();
-      while (sessionDataSet.hasNext()) {
-        tables.add(sessionDataSet.next().getField(0).getStringValue());
-      }
-      if (CollectionUtils.isEmpty(tables) || !tables.contains(table)) {
-        ioTPrinter.println(String.format(Constants.TARGET_TABLE_NOT_EXIST_MSG, table));
-        System.exit(1);
-      }
+    sessionDataSet = tableSession.executeQueryStatement("show tables", timeout);
+    while (sessionDataSet.hasNext()) {
+      tables.add(sessionDataSet.next().getField(0).getStringValue());
+    }
+    if (CollectionUtils.isEmpty(tables)
+        || (ObjectUtils.isNotEmpty(table) && !tables.contains(table))) {
+      ioTPrinter.println(String.format(Constants.TARGET_TABLE_NOT_EXIST_MSG, table));
+      System.exit(1);
+    }
+    if (ObjectUtils.isNotEmpty(table)) {
+      tables.clear();
+      tables.add(table);
     }
     if (ObjectUtils.isNotEmpty(sessionDataSet)) {
       sessionDataSet.close();
@@ -94,94 +97,99 @@ public class ExportDataTable extends AbstractExportData {
 
   @Override
   public void exportBySql(String sql, int index) {
+    List<String> exportSql = new ArrayList<>();
     if (StringUtils.isNotBlank(sql)) {
       if (Constants.SQL_SUFFIXS.equalsIgnoreCase(exportType)
           || Constants.TSFILE_SUFFIXS.equalsIgnoreCase(exportType)) {
         legalCheck(sql);
       }
+      exportSql.add(sql);
     } else {
-      StringBuilder sqlBuilder = new StringBuilder("select * from ").append(table);
-      if (StringUtils.isNotBlank(startTime) || StringUtils.isNotBlank(endTime)) {
-        sqlBuilder.append(" where ");
-        if (StringUtils.isNotBlank(startTime)) {
-          sqlBuilder.append("time >= ").append(startTime);
+      StringBuilder sqlBuilder;
+      for (String table : tables) {
+        sqlBuilder = new StringBuilder("select * from ").append(table);
+        if (StringUtils.isNotBlank(startTime) || StringUtils.isNotBlank(endTime)) {
+          sqlBuilder.append(" where ");
+          if (StringUtils.isNotBlank(startTime)) {
+            sqlBuilder.append("time >= ").append(startTime);
+          }
+          if (StringUtils.isNotBlank(startTime) && StringUtils.isNotBlank(endTime)) {
+            sqlBuilder.append(" and ");
+          }
+          if (StringUtils.isNotBlank(endTime)) {
+            sqlBuilder.append("time <= ").append(endTime);
+          }
         }
-        if (StringUtils.isNotBlank(startTime) && StringUtils.isNotBlank(endTime)) {
-          sqlBuilder.append(" and ");
-        }
-        if (StringUtils.isNotBlank(endTime)) {
-          sqlBuilder.append("time <= ").append(endTime);
-        }
+        exportSql.add(sqlBuilder.toString());
       }
-      sql = sqlBuilder.toString();
     }
-    String path = targetDirectory + targetFile + index;
-    try (SessionDataSet sessionDataSet = tableSession.executeQueryStatement(sql, timeout)) {
-      if (Constants.SQL_SUFFIXS.equalsIgnoreCase(exportType)) {
-        exportToSqlFile(sessionDataSet, path);
-      } else if (Constants.TSFILE_SUFFIXS.equalsIgnoreCase(exportType)) {
-        long start = System.currentTimeMillis();
-        boolean isComplete = exportToTsFile(sessionDataSet, path + ".tsfile");
-        if (isComplete) {
-          long end = System.currentTimeMillis();
-          ioTPrinter.println("Export completely!cost: " + (end - start) + " ms.");
+    for (int i = 0; i < exportSql.size(); i++) {
+      String path = targetDirectory + targetFile + i;
+      String table = tables.get(i);
+      try (SessionDataSet sessionDataSet =
+          tableSession.executeQueryStatement(exportSql.get(i), timeout)) {
+        if (Constants.SQL_SUFFIXS.equalsIgnoreCase(exportType)) {
+          exportToSqlFile(sessionDataSet, table, path);
+        } else if (Constants.TSFILE_SUFFIXS.equalsIgnoreCase(exportType)) {
+          long start = System.currentTimeMillis();
+          boolean isComplete = exportToTsFile(sessionDataSet, path + ".tsfile", table);
+          if (isComplete) {
+            long end = System.currentTimeMillis();
+            ioTPrinter.println("Export completely!cost: " + (end - start) + " ms.");
+          }
+        } else {
+          exportToCsvFile(sessionDataSet, path);
         }
-      } else {
-        exportToCsvFile(sessionDataSet, path);
+        sessionDataSet.closeOperationHandle();
+        ioTPrinter.println("Export completely!");
+      } catch (StatementExecutionException
+          | IoTDBConnectionException
+          | IOException
+          | WriteProcessException e) {
+        ioTPrinter.println("Cannot dump result because: " + e.getMessage());
       }
-      sessionDataSet.closeOperationHandle();
-      ioTPrinter.println("Export completely!");
-    } catch (StatementExecutionException
-        | IoTDBConnectionException
-        | IOException
-        | WriteProcessException e) {
-      ioTPrinter.println("Cannot dump result because: " + e.getMessage());
     }
   }
 
-  private void exportToSqlFile(SessionDataSet sessionDataSet, String filePath)
+  private void exportToSqlFile(SessionDataSet sessionDataSet, String table, String filePath)
       throws IOException, IoTDBConnectionException, StatementExecutionException {
     StringBuilder sqlBuilder;
     List<String> headers = sessionDataSet.getColumnNames();
     String prevSql = "insert into " + table + "(" + StringUtils.join(headers, ",") + ") values(";
     final List<String> columnTypes = sessionDataSet.getColumnTypes();
-    boolean hasNext = true;
+    boolean hasNext = sessionDataSet.hasNext();
     int fileIndex = 0;
     while (hasNext) {
       final String finalFilePath = filePath + "_" + fileIndex + ".sql";
       int countLine = 0;
       try (FileWriter writer = new FileWriter(finalFilePath)) {
-        while (countLine++ < linesPerFile) {
-          if (sessionDataSet.hasNext()) {
-            RowRecord rowRecord = sessionDataSet.next();
-            sqlBuilder = new StringBuilder();
-            List<Field> fields = rowRecord.getFields();
-            sqlBuilder.append(prevSql);
-            for (int i = 0; i < fields.size(); i++) {
-              if (i > 0) {
-                sqlBuilder.append(",");
-              }
-              final TSDataType type = getType(columnTypes.get(i));
-              if (TSDataType.TEXT.equals(type) || TSDataType.STRING.equals(type)) {
-                sqlBuilder.append("\'").append(fields.get(i).getObjectValue(type)).append("\'");
-              } else {
-                sqlBuilder.append(fields.get(i).getObjectValue(type));
-              }
+        while (countLine++ < linesPerFile && hasNext) {
+          RowRecord rowRecord = sessionDataSet.next();
+          sqlBuilder = new StringBuilder();
+          List<Field> fields = rowRecord.getFields();
+          sqlBuilder.append(prevSql);
+          for (int i = 0; i < fields.size(); i++) {
+            if (i > 0) {
+              sqlBuilder.append(",");
             }
-            sqlBuilder.append(");\n");
-            writer.write(sqlBuilder.toString());
-          } else {
-            hasNext = false;
-            break;
+            final TSDataType type = getType(columnTypes.get(i));
+            if (TSDataType.TEXT.equals(type) || TSDataType.STRING.equals(type)) {
+              sqlBuilder.append("\'").append(fields.get(i).getObjectValue(type)).append("\'");
+            } else {
+              sqlBuilder.append(fields.get(i).getObjectValue(type));
+            }
           }
+          sqlBuilder.append(");\n");
+          writer.write(sqlBuilder.toString());
+          hasNext = sessionDataSet.hasNext();
         }
-        fileIndex++;
         writer.flush();
+        fileIndex++;
       }
     }
   }
 
-  private Boolean exportToTsFile(SessionDataSet sessionDataSet, String filePath)
+  private Boolean exportToTsFile(SessionDataSet sessionDataSet, String filePath, String table)
       throws IOException,
           IoTDBConnectionException,
           StatementExecutionException,
@@ -195,7 +203,7 @@ public class ExportDataTable extends AbstractExportData {
     }
     boolean isEmpty = false;
     Map<String, Integer> deviceColumnIndices = new HashMap<>();
-    List<ColumnSchema> columnSchemas = collectSchemas(columnNamesRaw, deviceColumnIndices);
+    List<ColumnSchema> columnSchemas = collectSchemas(columnNamesRaw, deviceColumnIndices, table);
     try (ITsFileWriter tsFileWriter =
         new TsFileWriterBuilder()
             .file(f)
@@ -227,36 +235,36 @@ public class ExportDataTable extends AbstractExportData {
       throws IOException, IoTDBConnectionException, StatementExecutionException {
     List<String> headers = sessionDataSet.getColumnNames();
     int fileIndex = 0;
-    boolean hasNext = true;
+    boolean hasNext = sessionDataSet.hasNext();
     while (hasNext) {
-      int i = 0;
       final String finalFilePath = filePath + "_" + fileIndex + ".csv";
       final CSVPrinterWrapper csvPrinterWrapper = new CSVPrinterWrapper(finalFilePath);
       csvPrinterWrapper.printRecord(headers);
+      int i = 0;
       while (i++ < linesPerFile) {
-        if (sessionDataSet.hasNext()) {
-          RowRecord rowRecord = sessionDataSet.next();
-          if (rowRecord.getTimestamp() != 0) {
-            csvPrinterWrapper.print(timeTrans(rowRecord.getTimestamp()));
-          }
-          rowRecord
-              .getFields()
-              .forEach(
-                  field -> {
-                    String fieldStringValue = field.getStringValue();
-                    if (!"null".equals(field.getStringValue())) {
-                      if ((field.getDataType() == TSDataType.TEXT
-                          || field.getDataType() == TSDataType.STRING)) {
-                        fieldStringValue = "\"" + fieldStringValue + "\"";
-                      }
-                      csvPrinterWrapper.print(fieldStringValue);
-                    } else {
-                      csvPrinterWrapper.print("");
+        RowRecord rowRecord = sessionDataSet.next();
+        if (rowRecord.getTimestamp() != 0) {
+          csvPrinterWrapper.print(timeTrans(rowRecord.getTimestamp()));
+        }
+        rowRecord
+            .getFields()
+            .forEach(
+                field -> {
+                  String fieldStringValue = field.getStringValue();
+                  if (!"null".equals(field.getStringValue())) {
+                    if ((field.getDataType() == TSDataType.TEXT
+                        || field.getDataType() == TSDataType.STRING)) {
+                      fieldStringValue = "\"" + fieldStringValue + "\"";
                     }
-                  });
-          csvPrinterWrapper.println();
-        } else {
-          hasNext = false;
+                    csvPrinterWrapper.print(fieldStringValue);
+                  } else {
+                    csvPrinterWrapper.print("");
+                  }
+                });
+        csvPrinterWrapper.println();
+        // 检查下一行是否存在
+        hasNext = sessionDataSet.hasNext();
+        if (!hasNext) {
           break;
         }
       }
@@ -313,7 +321,7 @@ public class ExportDataTable extends AbstractExportData {
   }
 
   private List<ColumnSchema> collectSchemas(
-      List<String> columnNames, Map<String, Integer> deviceColumnIndices)
+      List<String> columnNames, Map<String, Integer> deviceColumnIndices, String table)
       throws IoTDBConnectionException, StatementExecutionException {
     List<ColumnSchema> columnSchemas = new ArrayList<>();
     SessionDataSet sessionDataSet = tableSession.executeQueryStatement("describe " + table);

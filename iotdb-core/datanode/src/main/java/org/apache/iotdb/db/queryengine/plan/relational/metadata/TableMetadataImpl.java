@@ -540,7 +540,7 @@ public class TableMetadataImpl implements Metadata {
         throw new SemanticException(
             "Scalar function "
                 + functionName.toLowerCase(Locale.ENGLISH)
-                + " must have at least two arguments, and first argument must be char type.");
+                + " must have at least two arguments, and first argument pattern must be TEXT or STRING type.");
       }
       return STRING;
     } else if (TableBuiltinScalarFunction.GREATEST.getFunctionName().equalsIgnoreCase(functionName)

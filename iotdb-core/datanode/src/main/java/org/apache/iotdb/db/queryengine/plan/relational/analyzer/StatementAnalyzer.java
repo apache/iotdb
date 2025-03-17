@@ -55,7 +55,14 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AllColumns;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AllRows;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AlterDB;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AlterPipe;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ArithmeticBinaryExpression;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ArithmeticUnaryExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AstVisitor;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.BetweenPredicate;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Cast;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CoalesceExpression;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Columns;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ComparisonExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CountDevice;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateDB;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateIndex;
@@ -77,6 +84,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropPipePlugin;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropTable;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropTopic;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Except;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ExistsPredicate;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Explain;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ExplainAnalyze;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
@@ -88,32 +96,43 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.GroupBy;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.GroupingElement;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.GroupingSets;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Identifier;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.IfExpression;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.InListExpression;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.InPredicate;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Insert;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.InsertRow;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.InsertRows;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.InsertTablet;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Intersect;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.IsNotNullPredicate;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.IsNullPredicate;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Join;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.JoinCriteria;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.JoinOn;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.JoinUsing;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LikePredicate;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Limit;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Literal;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LoadTsFile;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LogicalExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LongLiteral;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.NaturalJoin;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Node;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.NotExpression;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.NullIfExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Offset;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.OrderBy;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.PipeEnriched;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Property;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.QualifiedName;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.QuantifiedComparisonExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Query;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.QuerySpecification;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Relation;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.RenameColumn;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.RenameTable;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Row;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SearchedCaseExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Select;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SelectItem;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SetOperation;
@@ -127,6 +146,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowPipes;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowSubscriptions;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowTables;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowTopics;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SimpleCaseExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SimpleGroupBy;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SingleColumn;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SortItem;
@@ -140,11 +160,13 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.TableFunctionArgu
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.TableFunctionInvocation;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.TableFunctionTableArgument;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.TableSubquery;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Trim;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Union;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Update;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.UpdateAssignment;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Use;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Values;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.WhenClause;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.With;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.WithQuery;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.WrappedInsertStatement;
@@ -194,8 +216,12 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.OptionalLong;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
 import java.util.function.Predicate;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+import java.util.regex.PatternSyntaxException;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -1034,6 +1060,20 @@ public class StatementAnalyzer {
     private void analyzeWhere(Node node, Scope scope, Expression predicate) {
       verifyNoAggregateWindowOrGroupingFunctions(predicate, "WHERE clause");
 
+      // contains Columns, expand them and concat them
+      if (containsColumns(predicate)) {
+        ExpandColumnsVisitor visitor = new ExpandColumnsVisitor(null);
+        List<Expression> expandedExpressions = visitor.process(predicate, scope);
+        if (expandedExpressions.isEmpty()) {
+          throw new IllegalStateException("There is at least one result of expanded");
+        }
+        if (expandedExpressions.size() >= 2) {
+          predicate = new LogicalExpression(LogicalExpression.Operator.AND, expandedExpressions);
+        } else {
+          predicate = expandedExpressions.get(0);
+        }
+      }
+
       ExpressionAnalysis expressionAnalysis = analyzeExpression(predicate, scope);
       analysis.recordSubqueries(node, expressionAnalysis);
 
@@ -1061,8 +1101,25 @@ public class StatementAnalyzer {
           analyzeSelectAllColumns(
               (AllColumns) item, node, scope, outputExpressionBuilder, selectExpressionBuilder);
         } else if (item instanceof SingleColumn) {
-          analyzeSelectSingleColumn(
-              (SingleColumn) item, node, scope, outputExpressionBuilder, selectExpressionBuilder);
+          SingleColumn singleColumn = (SingleColumn) item;
+          Expression selectExpression = singleColumn.getExpression();
+          if (containsColumns(selectExpression)) {
+            ExpandColumnsVisitor visitor =
+                new ExpandColumnsVisitor(singleColumn.getAlias().orElse(null));
+            List<Expression> expandedExpressions = visitor.process(selectExpression, scope);
+            if (expandedExpressions.isEmpty()) {
+              throw new IllegalStateException("There is at least one result of expanded");
+            }
+            singleColumn.setExpandedExpressions(expandedExpressions);
+            singleColumn.setAccordingColumnName(visitor.getAccordingColumnNames());
+            for (Expression expression : expandedExpressions) {
+              analyzeSelectSingleColumn(
+                  expression, node, scope, outputExpressionBuilder, selectExpressionBuilder);
+            }
+          } else {
+            analyzeSelectSingleColumn(
+                selectExpression, node, scope, outputExpressionBuilder, selectExpressionBuilder);
+          }
         } else {
           throw new IllegalArgumentException(
               "Unsupported SelectItem type: " + item.getClass().getName());
@@ -1075,6 +1132,788 @@ public class StatementAnalyzer {
       }
 
       return outputExpressionBuilder.build();
+    }
+
+    /**
+     * Check if there is Columns function in expression, and verify they are same if there are multi
+     * Column functions.
+     *
+     * @param expression input expression
+     * @return if there is Columns function in expression
+     * @throws SemanticException if there are multi Columns functions but different
+     */
+    private boolean containsColumns(Expression expression) {
+      return containsColumnsHelper(expression) != null;
+    }
+
+    private Node containsColumnsHelper(Node node) {
+      if (node instanceof Columns) {
+        return node;
+      }
+
+      Node target = null;
+      for (Node child : node.getChildren()) {
+        Node childResult = containsColumnsHelper(child);
+
+        if (childResult == null) {
+          continue;
+        }
+
+        // initialize target
+        if (target == null) {
+          target = childResult;
+          continue;
+        }
+
+        if (!childResult.equals(target)) {
+          throw new SemanticException(
+              "Multiple different COLUMNS in the same expression are not supported");
+        }
+      }
+      return target;
+    }
+
+    private class ExpandColumnsVisitor extends AstVisitor<List<Expression>, Scope> {
+      private final Identifier alias;
+      // Record Columns expanded result in process, not always equals with final result
+      private List<Expression> expandedExpressions;
+      // Records the actual output column name of each Expression, used to compute output Scope.
+      private List<String> accordingColumnNames;
+
+      private ExpandColumnsVisitor(Identifier alias) {
+        this.alias = alias;
+      }
+
+      public List<String> getAccordingColumnNames() {
+        return accordingColumnNames;
+      }
+
+      protected List<Expression> visitNode(Node node, Scope scope) {
+        throw new UnsupportedOperationException(
+            "This Visitor only supported process of Expression");
+      }
+
+      protected List<Expression> visitExpression(Expression node, Scope scope) {
+        if (node.getChildren().isEmpty()) {
+          return Collections.singletonList(node);
+        }
+        throw new UnsupportedOperationException("UnSupported Expression: " + node);
+      }
+
+      @Override
+      public List<Expression> visitColumns(Columns node, Scope context) {
+        // avoid redundant process
+        if (expandedExpressions != null) {
+          return expandedExpressions;
+        }
+
+        List<Field> requestedFields = (List<Field>) context.getRelationType().getVisibleFields();
+        List<Field> fields = filterInaccessibleFields(requestedFields);
+        if (fields.isEmpty()) {
+          if (!requestedFields.isEmpty()) {
+            throw new SemanticException("Relation not found or not allowed");
+          }
+          throw new SemanticException("COLUMNS not allowed for relation that has no columns");
+        }
+
+        ImmutableList.Builder<Expression> matchedColumns = ImmutableList.builder();
+        ImmutableList.Builder<String> outputColumnNames = ImmutableList.builder();
+        if (node.isColumnsAsterisk()) {
+          for (Field field : fields) {
+            String columnName = field.getName().orElse(null);
+            if (columnName == null) {
+              throw new SemanticException("Unknown ColumnName: " + field);
+            }
+            matchedColumns.add(new Identifier(columnName));
+            outputColumnNames.add(alias == null ? columnName : alias.getValue());
+          }
+        } else {
+          Pattern pattern;
+          try {
+            pattern = Pattern.compile(node.getPattern());
+          } catch (PatternSyntaxException e) {
+            throw new SemanticException(String.format("Invalid regex '%s'", node.getPattern()));
+          }
+          Matcher matcher = pattern.matcher("");
+
+          for (Field field : fields) {
+            String columnName = field.getName().orElse(null);
+            if (columnName == null) {
+              throw new SemanticException("Unknown ColumnName: " + field);
+            }
+            matcher.reset(columnName);
+            if (matcher.matches()) {
+              matchedColumns.add(new Identifier(columnName));
+
+              // process alias
+              if (alias != null) {
+                try {
+                  outputColumnNames.add(matcher.replaceAll(alias.getValue()));
+                } catch (Exception e) {
+                  throw new SemanticException(e.getMessage());
+                }
+              } else {
+                outputColumnNames.add(columnName);
+              }
+            }
+          }
+        }
+        List<Expression> result = matchedColumns.build();
+        if (result.isEmpty()) {
+          throw new SemanticException(
+              String.format("No matching columns found that match regex '%s'", node.getPattern()));
+        }
+        expandedExpressions = result;
+        accordingColumnNames = outputColumnNames.build();
+
+        return result;
+      }
+
+      @Override
+      protected List<Expression> visitArithmeticBinary(
+          ArithmeticBinaryExpression node, Scope context) {
+        List<Expression> leftResult = process(node.getLeft(), context);
+        List<Expression> rightResult = process(node.getRight(), context);
+
+        if (expandedExpressions == null) {
+          // no Columns need to be expanded
+          return Collections.singletonList(node);
+        }
+
+        ImmutableList.Builder<Expression> resultBuilder = new ImmutableList.Builder<>();
+        int leftSize = leftResult.size();
+        int rightSize = rightResult.size();
+        int maxSize = Math.max(leftSize, rightSize);
+
+        AtomicInteger baseIndex = new AtomicInteger(0);
+        // if child is expanded, index of it reference the baseIndex, else the index of it always be
+        // 0
+        AtomicInteger leftIndex = (leftSize == maxSize) ? baseIndex : new AtomicInteger(0);
+        AtomicInteger rightIndex = (rightSize == maxSize) ? baseIndex : new AtomicInteger(0);
+        for (int i = 0; i < maxSize; i++) {
+          resultBuilder.add(
+              new ArithmeticBinaryExpression(
+                  node.getOperator(),
+                  leftResult.get(leftIndex.get()),
+                  rightResult.get(rightIndex.get())));
+          baseIndex.getAndIncrement();
+        }
+
+        return resultBuilder.build();
+      }
+
+      @Override
+      protected List<Expression> visitArithmeticUnary(
+          ArithmeticUnaryExpression node, Scope context) {
+        List<Expression> childResult = process(node.getValue(), context);
+        if (expandedExpressions == null) {
+          // no Columns need to be expanded
+          return Collections.singletonList(node);
+        }
+
+        ImmutableList.Builder<Expression> resultBuilder = new ImmutableList.Builder<>();
+        for (Expression expression : childResult) {
+          resultBuilder.add(new ArithmeticUnaryExpression(node.getSign(), expression));
+        }
+
+        return resultBuilder.build();
+      }
+
+      @Override
+      protected List<Expression> visitBetweenPredicate(BetweenPredicate node, Scope context) {
+        List<Expression> valueResult = process(node.getValue(), context);
+        List<Expression> minResult = process(node.getMin(), context);
+        List<Expression> maxResult = process(node.getMax(), context);
+        if (expandedExpressions == null) {
+          // no Columns need to be expanded
+          return Collections.singletonList(node);
+        }
+
+        ImmutableList.Builder<Expression> resultBuilder = new ImmutableList.Builder<>();
+        int valueResultSize = valueResult.size();
+        int minResultSize = minResult.size();
+        int maxResultSize = maxResult.size();
+        int maxSize = Math.max(valueResultSize, Math.max(minResultSize, maxResultSize));
+
+        AtomicInteger baseIndex = new AtomicInteger(0);
+        // if child is expanded, index of it reference the baseIndex, else the index of it always be
+        // 0
+        AtomicInteger valueIndex = (valueResultSize == maxSize) ? baseIndex : new AtomicInteger(0);
+        AtomicInteger minIndex = (minResultSize == maxSize) ? baseIndex : new AtomicInteger(0);
+        AtomicInteger maxIndex = (maxResultSize == maxSize) ? baseIndex : new AtomicInteger(0);
+        for (int i = 0; i < maxSize; i++) {
+          resultBuilder.add(
+              new BetweenPredicate(
+                  valueResult.get(valueIndex.get()),
+                  minResult.get(minIndex.get()),
+                  maxResult.get(maxIndex.get())));
+          baseIndex.getAndIncrement();
+        }
+
+        return resultBuilder.build();
+      }
+
+      @Override
+      protected List<Expression> visitCast(Cast node, Scope context) {
+        List<Expression> childResult = process(node.getExpression(), context);
+        if (expandedExpressions == null) {
+          // no Columns need to be expanded
+          return Collections.singletonList(node);
+        }
+
+        ImmutableList.Builder<Expression> resultBuilder = new ImmutableList.Builder<>();
+        for (Expression expression : childResult) {
+          resultBuilder.add(new Cast(expression, node.getType()));
+        }
+
+        return resultBuilder.build();
+      }
+
+      @Override
+      protected List<Expression> visitCoalesceExpression(CoalesceExpression node, Scope context) {
+        ImmutableList.Builder<List<Expression>> childrenResultListBuilder =
+            new ImmutableList.Builder<>();
+        node.getOperands()
+            .forEach(operand -> childrenResultListBuilder.add(process(operand, context)));
+        List<List<Expression>> childrenResultList = childrenResultListBuilder.build();
+        if (expandedExpressions == null) {
+          // no Columns need to be expanded
+          return Collections.singletonList(node);
+        }
+
+        ImmutableList.Builder<Expression> resultBuilder = new ImmutableList.Builder<>();
+        int maxSize = childrenResultList.stream().mapToInt(List::size).max().orElse(0);
+
+        AtomicInteger baseIndex = new AtomicInteger(0);
+        // if child is expanded, index of it reference the baseIndex, else the index of it always be
+        // 0
+        AtomicInteger[] childrenIndexes = new AtomicInteger[childrenResultList.size()];
+        for (int i = 0; i < childrenIndexes.length; i++) {
+          childrenIndexes[i] =
+              (childrenResultList.get(i).size() == maxSize) ? baseIndex : new AtomicInteger(0);
+        }
+        for (int i = 0; i < maxSize; i++) {
+          ImmutableList.Builder<Expression> operandListBuilder = new ImmutableList.Builder<>();
+          for (int j = 0; j < childrenIndexes.length; j++) {
+            int operandIndexInResult = childrenIndexes[j].get();
+            operandListBuilder.add(childrenResultList.get(j).get(operandIndexInResult));
+          }
+          resultBuilder.add(new CoalesceExpression(operandListBuilder.build()));
+          baseIndex.getAndIncrement();
+        }
+        return resultBuilder.build();
+      }
+
+      @Override
+      protected List<Expression> visitComparisonExpression(
+          ComparisonExpression node, Scope context) {
+        List<Expression> leftResult = process(node.getLeft(), context);
+        List<Expression> rightResult = process(node.getRight(), context);
+
+        if (expandedExpressions == null) {
+          // no Columns need to be expanded
+          return Collections.singletonList(node);
+        }
+
+        ImmutableList.Builder<Expression> resultBuilder = new ImmutableList.Builder<>();
+        int leftSize = leftResult.size();
+        int rightSize = rightResult.size();
+        int maxSize = Math.max(leftSize, rightSize);
+
+        AtomicInteger baseIndex = new AtomicInteger(0);
+        // if child is expanded, index of it reference the baseIndex, else the index of it always be
+        // 0
+        AtomicInteger leftIndex = (leftSize == maxSize) ? baseIndex : new AtomicInteger(0);
+        AtomicInteger rightIndex = (rightSize == maxSize) ? baseIndex : new AtomicInteger(0);
+        for (int i = 0; i < maxSize; i++) {
+          resultBuilder.add(
+              new ComparisonExpression(
+                  node.getOperator(),
+                  leftResult.get(leftIndex.get()),
+                  rightResult.get(rightIndex.get())));
+          baseIndex.getAndIncrement();
+        }
+
+        return resultBuilder.build();
+      }
+
+      @Override
+      protected List<Expression> visitDereferenceExpression(
+          DereferenceExpression node, Scope context) {
+        process(node.getBase(), context);
+        if (expandedExpressions == null) {
+          return Collections.singletonList(node);
+        }
+        throw new SemanticException("Columns are not supported in DereferenceExpression");
+      }
+
+      @Override
+      protected List<Expression> visitExists(ExistsPredicate node, Scope context) {
+        // We don't need to process Query here
+        return Collections.singletonList(node);
+      }
+
+      @Override
+      protected List<Expression> visitFunctionCall(FunctionCall node, Scope context) {
+        ImmutableList.Builder<List<Expression>> childrenResultListBuilder =
+            new ImmutableList.Builder<>();
+        node.getArguments()
+            .forEach(operand -> childrenResultListBuilder.add(process(operand, context)));
+        List<List<Expression>> childrenResultList = childrenResultListBuilder.build();
+        if (expandedExpressions == null) {
+          // no Columns need to be expanded
+          return Collections.singletonList(node);
+        }
+
+        ImmutableList.Builder<Expression> resultBuilder = new ImmutableList.Builder<>();
+        int maxSize = childrenResultList.stream().mapToInt(List::size).max().orElse(0);
+
+        AtomicInteger baseIndex = new AtomicInteger(0);
+        // if child is expanded, index of it reference the baseIndex, else the index of it always be
+        // 0
+        AtomicInteger[] childrenIndexes = new AtomicInteger[childrenResultList.size()];
+        for (int i = 0; i < childrenIndexes.length; i++) {
+          childrenIndexes[i] =
+              (childrenResultList.get(i).size() == maxSize) ? baseIndex : new AtomicInteger(0);
+        }
+        for (int i = 0; i < maxSize; i++) {
+          ImmutableList.Builder<Expression> operandListBuilder = new ImmutableList.Builder<>();
+          for (int j = 0; j < childrenIndexes.length; j++) {
+            int operandIndexInResult = childrenIndexes[j].get();
+            operandListBuilder.add(childrenResultList.get(j).get(operandIndexInResult));
+          }
+          resultBuilder.add(new FunctionCall(node.getName(), operandListBuilder.build()));
+          baseIndex.getAndIncrement();
+        }
+        return resultBuilder.build();
+      }
+
+      @Override
+      protected List<Expression> visitIdentifier(Identifier node, Scope context) {
+        return Collections.singletonList(node);
+      }
+
+      @Override
+      protected List<Expression> visitIfExpression(IfExpression node, Scope context) {
+        List<Expression> firstResult = process(node.getCondition(), context);
+        List<Expression> secondResult = process(node.getTrueValue(), context);
+        List<Expression> thirdResult =
+            node.getFalseValue().isPresent() ? process(node.getFalseValue().get(), context) : null;
+        if (expandedExpressions == null) {
+          // no Columns need to be expanded
+          return Collections.singletonList(node);
+        }
+
+        ImmutableList.Builder<Expression> resultBuilder = new ImmutableList.Builder<>();
+        int firstSize = firstResult.size();
+        int secondSize = secondResult.size();
+        int thirdSize = thirdResult == null ? 0 : thirdResult.size();
+        int maxSize = Math.max(thirdSize, Math.max(firstSize, secondSize));
+
+        AtomicInteger baseIndex = new AtomicInteger(0);
+        // if child is expanded, index of it reference the baseIndex, else the index of it always be
+        // 0
+        AtomicInteger firstIndex = (firstSize == maxSize) ? baseIndex : new AtomicInteger(0);
+        AtomicInteger secondIndex = (secondSize == maxSize) ? baseIndex : new AtomicInteger(0);
+        AtomicInteger thirdIndex = (thirdSize == maxSize) ? baseIndex : new AtomicInteger(0);
+        for (int i = 0; i < maxSize; i++) {
+          resultBuilder.add(
+              new IfExpression(
+                  firstResult.get(firstIndex.get()),
+                  secondResult.get(secondIndex.get()),
+                  thirdResult == null ? null : thirdResult.get(thirdIndex.get())));
+          baseIndex.getAndIncrement();
+        }
+
+        return resultBuilder.build();
+      }
+
+      @Override
+      protected List<Expression> visitInListExpression(InListExpression node, Scope context) {
+        ImmutableList.Builder<List<Expression>> childrenResultListBuilder =
+            new ImmutableList.Builder<>();
+        node.getValues()
+            .forEach(operand -> childrenResultListBuilder.add(process(operand, context)));
+        List<List<Expression>> childrenResultList = childrenResultListBuilder.build();
+        if (expandedExpressions == null) {
+          // no Columns need to be expanded
+          return Collections.singletonList(node);
+        }
+
+        ImmutableList.Builder<Expression> resultBuilder = new ImmutableList.Builder<>();
+        int maxSize = childrenResultList.stream().mapToInt(List::size).max().orElse(0);
+
+        AtomicInteger baseIndex = new AtomicInteger(0);
+        // if child is expanded, index of it reference the baseIndex, else the index of it always be
+        // 0
+        AtomicInteger[] childrenIndexes = new AtomicInteger[childrenResultList.size()];
+        for (int i = 0; i < childrenIndexes.length; i++) {
+          childrenIndexes[i] =
+              (childrenResultList.get(i).size() == maxSize) ? baseIndex : new AtomicInteger(0);
+        }
+        for (int i = 0; i < maxSize; i++) {
+          ImmutableList.Builder<Expression> operandListBuilder = new ImmutableList.Builder<>();
+          for (int j = 0; j < childrenIndexes.length; j++) {
+            int operandIndexInResult = childrenIndexes[j].get();
+            operandListBuilder.add(childrenResultList.get(j).get(operandIndexInResult));
+          }
+          resultBuilder.add(new InListExpression(operandListBuilder.build()));
+          baseIndex.getAndIncrement();
+        }
+        return resultBuilder.build();
+      }
+
+      @Override
+      protected List<Expression> visitInPredicate(InPredicate node, Scope context) {
+        List<Expression> leftResult = process(node.getValue(), context);
+        List<Expression> rightResult = process(node.getValueList(), context);
+
+        if (expandedExpressions == null) {
+          // no Columns need to be expanded
+          return Collections.singletonList(node);
+        }
+
+        ImmutableList.Builder<Expression> resultBuilder = new ImmutableList.Builder<>();
+        int leftSize = leftResult.size();
+        int rightSize = rightResult.size();
+        int maxSize = Math.max(leftSize, rightSize);
+
+        AtomicInteger baseIndex = new AtomicInteger(0);
+        // if child is expanded, index of it reference the baseIndex, else the index of it always be
+        // 0
+        AtomicInteger leftIndex = (leftSize == maxSize) ? baseIndex : new AtomicInteger(0);
+        AtomicInteger rightIndex = (rightSize == maxSize) ? baseIndex : new AtomicInteger(0);
+        for (int i = 0; i < maxSize; i++) {
+          resultBuilder.add(
+              new InPredicate(leftResult.get(leftIndex.get()), rightResult.get(rightIndex.get())));
+          baseIndex.getAndIncrement();
+        }
+
+        return resultBuilder.build();
+      }
+
+      @Override
+      protected List<Expression> visitIsNotNullPredicate(IsNotNullPredicate node, Scope context) {
+        List<Expression> childResult = process(node.getValue(), context);
+        if (expandedExpressions == null) {
+          // no Columns need to be expanded
+          return Collections.singletonList(node);
+        }
+
+        ImmutableList.Builder<Expression> resultBuilder = new ImmutableList.Builder<>();
+        for (Expression expression : childResult) {
+          resultBuilder.add(new IsNotNullPredicate(expression));
+        }
+
+        return resultBuilder.build();
+      }
+
+      @Override
+      protected List<Expression> visitIsNullPredicate(IsNullPredicate node, Scope context) {
+        List<Expression> childResult = process(node.getValue(), context);
+        if (expandedExpressions == null) {
+          // no Columns need to be expanded
+          return Collections.singletonList(node);
+        }
+
+        ImmutableList.Builder<Expression> resultBuilder = new ImmutableList.Builder<>();
+        for (Expression expression : childResult) {
+          resultBuilder.add(new IsNullPredicate(expression));
+        }
+
+        return resultBuilder.build();
+      }
+
+      @Override
+      protected List<Expression> visitLikePredicate(LikePredicate node, Scope context) {
+        List<Expression> firstResult = process(node.getValue(), context);
+        List<Expression> secondResult = process(node.getPattern(), context);
+        List<Expression> thirdResult =
+            node.getEscape().isPresent() ? process(node.getEscape().get(), context) : null;
+        if (expandedExpressions == null) {
+          // no Columns need to be expanded
+          return Collections.singletonList(node);
+        }
+
+        ImmutableList.Builder<Expression> resultBuilder = new ImmutableList.Builder<>();
+        int firstSize = firstResult.size();
+        int secondSize = secondResult.size();
+        int thirdSize = thirdResult == null ? 0 : thirdResult.size();
+        int maxSize = Math.max(thirdSize, Math.max(firstSize, secondSize));
+
+        AtomicInteger baseIndex = new AtomicInteger(0);
+        // if child is expanded, index of it reference the baseIndex, else the index of it always be
+        // 0
+        AtomicInteger firstIndex = (firstSize == maxSize) ? baseIndex : new AtomicInteger(0);
+        AtomicInteger secondIndex = (secondSize == maxSize) ? baseIndex : new AtomicInteger(0);
+        AtomicInteger thirdIndex = (thirdSize == maxSize) ? baseIndex : new AtomicInteger(0);
+        for (int i = 0; i < maxSize; i++) {
+          resultBuilder.add(
+              new LikePredicate(
+                  firstResult.get(firstIndex.get()),
+                  secondResult.get(secondIndex.get()),
+                  thirdResult == null ? null : thirdResult.get(thirdIndex.get())));
+          baseIndex.getAndIncrement();
+        }
+
+        return resultBuilder.build();
+      }
+
+      @Override
+      protected List<Expression> visitLiteral(Literal node, Scope context) {
+        return Collections.singletonList(node);
+      }
+
+      @Override
+      protected List<Expression> visitLogicalExpression(LogicalExpression node, Scope context) {
+        ImmutableList.Builder<List<Expression>> childrenResultListBuilder =
+            new ImmutableList.Builder<>();
+        node.getTerms()
+            .forEach(operand -> childrenResultListBuilder.add(process(operand, context)));
+        List<List<Expression>> childrenResultList = childrenResultListBuilder.build();
+        if (expandedExpressions == null) {
+          // no Columns need to be expanded
+          return Collections.singletonList(node);
+        }
+
+        ImmutableList.Builder<Expression> resultBuilder = new ImmutableList.Builder<>();
+        int maxSize = childrenResultList.stream().mapToInt(List::size).max().orElse(0);
+
+        AtomicInteger baseIndex = new AtomicInteger(0);
+        // if child is expanded, index of it reference the baseIndex, else the index of it always be
+        // 0
+        AtomicInteger[] childrenIndexes = new AtomicInteger[childrenResultList.size()];
+        for (int i = 0; i < childrenIndexes.length; i++) {
+          childrenIndexes[i] =
+              (childrenResultList.get(i).size() == maxSize) ? baseIndex : new AtomicInteger(0);
+        }
+        for (int i = 0; i < maxSize; i++) {
+          ImmutableList.Builder<Expression> operandListBuilder = new ImmutableList.Builder<>();
+          for (int j = 0; j < childrenIndexes.length; j++) {
+            int operandIndexInResult = childrenIndexes[j].get();
+            operandListBuilder.add(childrenResultList.get(j).get(operandIndexInResult));
+          }
+          resultBuilder.add(new LogicalExpression(node.getOperator(), operandListBuilder.build()));
+          baseIndex.getAndIncrement();
+        }
+        return resultBuilder.build();
+      }
+
+      @Override
+      protected List<Expression> visitNotExpression(NotExpression node, Scope context) {
+        List<Expression> childResult = process(node.getValue(), context);
+        if (expandedExpressions == null) {
+          // no Columns need to be expanded
+          return Collections.singletonList(node);
+        }
+
+        ImmutableList.Builder<Expression> resultBuilder = new ImmutableList.Builder<>();
+        for (Expression expression : childResult) {
+          resultBuilder.add(new NotExpression(expression));
+        }
+
+        return resultBuilder.build();
+      }
+
+      @Override
+      protected List<Expression> visitNullIfExpression(NullIfExpression node, Scope context) {
+        throw new SemanticException(
+            String.format("%s are not supported now", node.getClass().getSimpleName()));
+      }
+
+      @Override
+      protected List<Expression> visitQuantifiedComparisonExpression(
+          QuantifiedComparisonExpression node, Scope context) {
+        List<Expression> childResult = process(node.getValue(), context);
+        if (expandedExpressions == null) {
+          // no Columns need to be expanded
+          return Collections.singletonList(node);
+        }
+
+        ImmutableList.Builder<Expression> resultBuilder = new ImmutableList.Builder<>();
+        for (Expression expression : childResult) {
+          resultBuilder.add(
+              new QuantifiedComparisonExpression(
+                  node.getOperator(), node.getQuantifier(), expression, node.getSubquery()));
+        }
+
+        return resultBuilder.build();
+      }
+
+      @Override
+      protected List<Expression> visitRow(Row node, Scope context) {
+        throw new SemanticException(
+            String.format("%s are not supported now", node.getClass().getSimpleName()));
+      }
+
+      @Override
+      protected List<Expression> visitSearchedCaseExpression(
+          SearchedCaseExpression node, Scope context) {
+        ImmutableList.Builder<List<Expression>> firstChildResultListBuilder =
+            new ImmutableList.Builder<>();
+        node.getWhenClauses()
+            .forEach(when -> firstChildResultListBuilder.add(process(when, context)));
+        List<List<Expression>> firstChildResultList = firstChildResultListBuilder.build();
+        List<Expression> secondResult =
+            node.getDefaultValue().isPresent()
+                ? process(node.getDefaultValue().get(), context)
+                : null;
+
+        if (expandedExpressions == null) {
+          // no Columns need to be expanded
+          return Collections.singletonList(node);
+        }
+
+        ImmutableList.Builder<Expression> resultBuilder = new ImmutableList.Builder<>();
+        int secondSize = secondResult == null ? 0 : secondResult.size();
+        int maxSize = firstChildResultList.stream().mapToInt(List::size).max().orElse(0);
+        maxSize = Math.max(maxSize, secondSize);
+
+        AtomicInteger baseIndex = new AtomicInteger(0);
+        // if child is expanded, index of it reference the baseIndex, else the index of it always be
+        // 0
+        AtomicInteger[] childrenIndexes = new AtomicInteger[firstChildResultList.size()];
+        for (int i = 0; i < childrenIndexes.length; i++) {
+          childrenIndexes[i] =
+              (firstChildResultList.get(i).size() == maxSize) ? baseIndex : new AtomicInteger(0);
+        }
+        AtomicInteger secondIndex = (secondSize == maxSize) ? baseIndex : new AtomicInteger(0);
+        for (int i = 0; i < maxSize; i++) {
+          ImmutableList.Builder<WhenClause> operandListBuilder = new ImmutableList.Builder<>();
+          for (int j = 0; j < childrenIndexes.length; j++) {
+            int operandIndexInResult = childrenIndexes[j].get();
+            operandListBuilder.add(
+                (WhenClause) firstChildResultList.get(j).get(operandIndexInResult));
+          }
+
+          resultBuilder.add(
+              new SearchedCaseExpression(
+                  operandListBuilder.build(),
+                  (secondResult == null ? null : secondResult.get(secondIndex.get()))));
+          baseIndex.getAndIncrement();
+        }
+        return resultBuilder.build();
+      }
+
+      @Override
+      protected List<Expression> visitSimpleCaseExpression(
+          SimpleCaseExpression node, Scope context) {
+        List<Expression> firstResult = process(node.getOperand(), context);
+        ImmutableList.Builder<List<Expression>> whenResultListBuilder =
+            new ImmutableList.Builder<>();
+        node.getWhenClauses().forEach(when -> whenResultListBuilder.add(process(when, context)));
+        List<List<Expression>> whenResultList = whenResultListBuilder.build();
+        List<Expression> secondResult =
+            node.getDefaultValue().isPresent()
+                ? process(node.getDefaultValue().get(), context)
+                : null;
+
+        if (expandedExpressions == null) {
+          // no Columns need to be expanded
+          return Collections.singletonList(node);
+        }
+
+        ImmutableList.Builder<Expression> resultBuilder = new ImmutableList.Builder<>();
+        int firstSize = firstResult.size();
+        int secondSize = secondResult == null ? 0 : secondResult.size();
+        int maxSize = whenResultList.stream().mapToInt(List::size).max().orElse(0);
+        maxSize = Math.max(Math.max(firstSize, maxSize), secondSize);
+
+        AtomicInteger baseIndex = new AtomicInteger(0);
+        // if child is expanded, index of it reference the baseIndex, else the index of it always be
+        // 0
+        AtomicInteger[] childrenIndexes = new AtomicInteger[whenResultList.size()];
+        AtomicInteger firstIndex = (firstSize == maxSize) ? baseIndex : new AtomicInteger(0);
+        for (int i = 0; i < childrenIndexes.length; i++) {
+          childrenIndexes[i] =
+              (whenResultList.get(i).size() == maxSize) ? baseIndex : new AtomicInteger(0);
+        }
+        AtomicInteger secondIndex = (secondSize == maxSize) ? baseIndex : new AtomicInteger(0);
+        for (int i = 0; i < maxSize; i++) {
+          ImmutableList.Builder<WhenClause> operandListBuilder = new ImmutableList.Builder<>();
+          for (int j = 0; j < childrenIndexes.length; j++) {
+            int operandIndexInResult = childrenIndexes[j].get();
+            operandListBuilder.add((WhenClause) whenResultList.get(j).get(operandIndexInResult));
+          }
+
+          resultBuilder.add(
+              new SimpleCaseExpression(
+                  firstResult.get(firstIndex.get()),
+                  operandListBuilder.build(),
+                  (secondResult == null ? null : secondResult.get(secondIndex.get()))));
+          baseIndex.getAndIncrement();
+        }
+        return resultBuilder.build();
+      }
+
+      @Override
+      protected List<Expression> visitSubqueryExpression(SubqueryExpression node, Scope context) {
+        // We don't need to process Query here
+        return Collections.singletonList(node);
+      }
+
+      @Override
+      protected List<Expression> visitTrim(Trim node, Scope context) {
+        List<Expression> firstResult = process(node.getTrimSource(), context);
+        List<Expression> secondResult =
+            node.getTrimCharacter().isPresent()
+                ? process(node.getTrimCharacter().get(), context)
+                : null;
+        if (expandedExpressions == null) {
+          // no Columns need to be expanded
+          return Collections.singletonList(node);
+        }
+
+        ImmutableList.Builder<Expression> resultBuilder = new ImmutableList.Builder<>();
+        int firstSize = firstResult.size();
+        int secondSize = secondResult == null ? 0 : secondResult.size();
+        int maxSize = Math.max(secondSize, firstSize);
+
+        AtomicInteger baseIndex = new AtomicInteger(0);
+        // if child is expanded, index of it reference the baseIndex, else the index of it always be
+        // 0
+        AtomicInteger firstIndex = (firstSize == maxSize) ? baseIndex : new AtomicInteger(0);
+        AtomicInteger secondIndex = (secondSize == maxSize) ? baseIndex : new AtomicInteger(0);
+        for (int i = 0; i < maxSize; i++) {
+          resultBuilder.add(
+              new Trim(
+                  node.getSpecification(),
+                  firstResult.get(firstIndex.get()),
+                  secondResult == null ? null : secondResult.get(secondIndex.get())));
+          baseIndex.getAndIncrement();
+        }
+
+        return resultBuilder.build();
+      }
+
+      @Override
+      protected List<Expression> visitWhenClause(WhenClause node, Scope context) {
+        List<Expression> leftResult = process(node.getOperand(), context);
+        List<Expression> rightResult = process(node.getResult(), context);
+
+        if (expandedExpressions == null) {
+          // no Columns need to be expanded
+          return Collections.singletonList(node);
+        }
+
+        ImmutableList.Builder<Expression> resultBuilder = new ImmutableList.Builder<>();
+        int leftSize = leftResult.size();
+        int rightSize = rightResult.size();
+        int maxSize = Math.max(leftSize, rightSize);
+
+        AtomicInteger baseIndex = new AtomicInteger(0);
+        // if child is expanded, index of it reference the baseIndex, else the index of it always be
+        // 0
+        AtomicInteger leftIndex = (leftSize == maxSize) ? baseIndex : new AtomicInteger(0);
+        AtomicInteger rightIndex = (rightSize == maxSize) ? baseIndex : new AtomicInteger(0);
+        for (int i = 0; i < maxSize; i++) {
+          resultBuilder.add(
+              new WhenClause(leftResult.get(leftIndex.get()), rightResult.get(rightIndex.get())));
+          baseIndex.getAndIncrement();
+        }
+
+        return resultBuilder.build();
+      }
     }
 
     private void analyzeSelectAllColumns(
@@ -1318,12 +2157,11 @@ public class StatementAnalyzer {
     //    }
 
     private void analyzeSelectSingleColumn(
-        SingleColumn singleColumn,
+        Expression expression,
         QuerySpecification node,
         Scope scope,
         ImmutableList.Builder<Expression> outputExpressionBuilder,
         ImmutableList.Builder<Analysis.SelectExpression> selectExpressionBuilder) {
-      Expression expression = singleColumn.getExpression();
       ExpressionAnalysis expressionAnalysis = analyzeExpression(expression, scope);
       analysis.recordSubqueries(node, expressionAnalysis);
       outputExpressionBuilder.add(expression);
@@ -1578,6 +2416,70 @@ public class StatementAnalyzer {
         } else if (item instanceof SingleColumn) {
           SingleColumn column = (SingleColumn) item;
           Expression expression = column.getExpression();
+
+          // process Columns
+          List<Expression> expandedExpressions = column.getExpandedExpressions();
+          if (expandedExpressions != null) {
+            for (int i = 0; i < expandedExpressions.size(); i++) {
+              expression = expandedExpressions.get(i);
+
+              // Different from process of normal SingleColumn, alias has been processed when
+              // expanded Columns in analyzeSelect, so we needn't process alias here.
+              Optional<String> field = Optional.empty();
+              Optional<QualifiedObjectName> originTable = Optional.empty();
+              // Put accordingColumnName into originColumn to rename expr in OutputNode if necessary
+              Optional<String> originColumn = Optional.of(column.getAccordingColumnNames().get(i));
+              QualifiedName name = null;
+
+              if (expression instanceof Identifier) {
+                name = QualifiedName.of(((Identifier) expression).getValue());
+              }
+
+              if (name != null) {
+                Field matchingField = null;
+                try {
+                  matchingField = analysis.getResolvedField(expression).getField();
+                } catch (IllegalArgumentException e) {
+                  List<Field> matchingFields = sourceScope.getRelationType().resolveFields(name);
+                  if (!matchingFields.isEmpty()) {
+                    matchingField = matchingFields.get(0);
+                  }
+                }
+                if (matchingField != null) {
+                  originTable = matchingField.getOriginTable();
+                }
+
+                // expression is Identifier, the name of field is original column name
+                field = originColumn;
+              }
+
+              boolean aliased = column.getAlias().isPresent();
+              Field newField =
+                  Field.newUnqualified(
+                      aliased ? originColumn : field,
+                      analysis.getType(expression),
+                      TsTableColumnCategory.FIELD,
+                      originTable,
+                      originColumn,
+                      aliased);
+              // outputExpressions to look up the type
+              if (originTable.isPresent()) {
+                analysis.addSourceColumns(
+                    newField,
+                    ImmutableSet.of(
+                        new Analysis.SourceColumn(
+                            originTable.get(),
+                            originColumn.orElseThrow(
+                                () -> new NoSuchElementException("No value present")))));
+              } else {
+                analysis.addSourceColumns(
+                    newField, analysis.getExpressionSourceColumns(expression));
+              }
+              outputFields.add(newField);
+            }
+            continue;
+          }
+
           Optional<Identifier> field = column.getAlias();
 
           Optional<QualifiedObjectName> originTable = Optional.empty();
