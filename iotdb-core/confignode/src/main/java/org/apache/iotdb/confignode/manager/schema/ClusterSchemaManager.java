@@ -1409,12 +1409,12 @@ public class ClusterSchemaManager {
           null);
     }
 
-    if (TreeViewSchema.isTreeViewTable(originalTable)) {
+    if (!TreeViewSchema.isTreeViewTable(originalTable)) {
       return new Pair<>(
           RpcUtils.getStatus(
               TSStatusCode.SEMANTIC_ERROR,
               String.format(
-                  "Table '%s.%s' is a tree view table, does not support alter",
+                  "Currently only support renaming tree view table, '%s.%s' is a base table",
                   database, tableName)),
           null);
     }
