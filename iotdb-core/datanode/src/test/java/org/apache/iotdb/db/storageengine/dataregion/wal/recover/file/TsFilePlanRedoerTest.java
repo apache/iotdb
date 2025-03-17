@@ -22,12 +22,14 @@ import org.apache.iotdb.commons.path.AlignedFullPath;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.NonAlignedFullPath;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.queryengine.execution.fragment.QueryContext;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.DeleteDataNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertTabletNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalInsertTabletNode;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.IMemTable;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.ReadOnlyMemChunk;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFile;
@@ -58,6 +60,7 @@ import org.apache.tsfile.write.record.datapoint.LongDataPoint;
 import org.apache.tsfile.write.record.datapoint.StringDataPoint;
 import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.junit.After;
+import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -609,6 +612,71 @@ public class TsFilePlanRedoerTest {
     TsFilePlanRedoer planRedoer = new TsFilePlanRedoer(tsFileResource);
     planRedoer.redoDelete(deleteDataNode);
     assertTrue(modsFile.exists());
+  }
+
+  @Test
+  public void testRedoRelationalInsertTablet()
+      throws IOException,
+          WriteProcessException,
+          org.apache.iotdb.db.exception.WriteProcessException {
+    // generate .tsfile and update resource in memory
+    File file = new File(FILE_NAME);
+    generateCompleteFile(file);
+    tsFileResource = new TsFileResource(file);
+    IDeviceID existDevice = IDeviceID.Factory.DEFAULT_FACTORY.create("table1.tag1");
+    tsFileResource.updateStartTime(existDevice, 0);
+    tsFileResource.updateEndTime(existDevice, 1000);
+
+    long[] times = new long[] {110L, 111L, 112L, 113L, 114L, 115L, 116L};
+    List<TSDataType> dataTypes = new ArrayList<>();
+    dataTypes.add(TSDataType.STRING);
+    dataTypes.add(TSDataType.INT32);
+    dataTypes.add(TSDataType.BOOLEAN);
+
+    Object[] columns = new Object[3];
+    columns[0] = new Binary[times.length];
+    columns[1] = new int[times.length];
+    columns[2] = new boolean[times.length];
+
+    for (int r = 0; r < times.length; r++) {
+      ((Binary[]) columns[0])[r] = new Binary("tag" + (int) (r / 3), TSFileConfig.STRING_CHARSET);
+      ((int[]) columns[1])[r] = 100 + r;
+      ((boolean[]) columns[2])[r] = (r % 2 == 0);
+    }
+
+    BitMap[] bitMaps = new BitMap[dataTypes.size()];
+    for (int i = 0; i < dataTypes.size(); i++) {
+      if (bitMaps[i] == null) {
+        bitMaps[i] = new BitMap(times.length);
+      }
+    }
+
+    RelationalInsertTabletNode relationalInsertTabletNode =
+        new RelationalInsertTabletNode(
+            new PlanNodeId(""),
+            new PartialPath("table1", false),
+            false,
+            new String[] {
+              "t", "s1", "s2",
+            },
+            dataTypes.toArray(new TSDataType[3]),
+            new MeasurementSchema[] {
+              new MeasurementSchema("t", TSDataType.STRING),
+              new MeasurementSchema("s1", TSDataType.INT32),
+              new MeasurementSchema("s2", TSDataType.BOOLEAN),
+            },
+            times,
+            bitMaps,
+            columns,
+            times.length,
+            new TsTableColumnCategory[] {
+              TsTableColumnCategory.TAG, TsTableColumnCategory.FIELD, TsTableColumnCategory.FIELD,
+            });
+
+    TsFilePlanRedoer planRedoer = new TsFilePlanRedoer(tsFileResource);
+    planRedoer.redoInsert(relationalInsertTabletNode);
+    IMemTable recoveryMemTable = planRedoer.getRecoveryMemTable();
+    Assert.assertEquals(2, recoveryMemTable.getMemTableMap().size());
   }
 
   @Test

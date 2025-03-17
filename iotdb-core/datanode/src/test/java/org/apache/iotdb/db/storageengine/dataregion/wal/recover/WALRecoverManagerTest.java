@@ -553,6 +553,9 @@ public class WALRecoverManagerTest {
     return insertTabletNode;
   }
 
+  @Test
+  public void testRedoRelationalInsertTabletNode() {}
+
   private List<WALRecoverListener> prepareCrashedTsFile()
       throws IOException, WriteProcessException {
     List<WALRecoverListener> recoverListeners = new ArrayList<>();
