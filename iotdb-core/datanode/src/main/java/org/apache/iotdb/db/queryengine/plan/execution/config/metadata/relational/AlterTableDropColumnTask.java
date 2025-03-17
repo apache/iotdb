@@ -36,8 +36,8 @@ public class AlterTableDropColumnTask extends AbstractAlterOrDropTableTask {
       final String queryId,
       final boolean tableIfExists,
       final boolean columnIfExists,
-      final boolean tableView) {
-    super(database, tableName, queryId, tableIfExists, tableView);
+      final boolean view) {
+    super(database, tableName, queryId, tableIfExists, view);
     this.columnName = columnName;
     this.columnIfExists = columnIfExists;
   }
@@ -46,6 +46,6 @@ public class AlterTableDropColumnTask extends AbstractAlterOrDropTableTask {
   public ListenableFuture<ConfigTaskResult> execute(final IConfigTaskExecutor configTaskExecutor)
       throws InterruptedException {
     return configTaskExecutor.alterTableDropColumn(
-        database, tableName, columnName, queryId, tableIfExists, columnIfExists, tableView);
+        database, tableName, columnName, queryId, tableIfExists, columnIfExists, view);
   }
 }

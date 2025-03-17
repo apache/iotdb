@@ -59,6 +59,8 @@ statement
 
     // Table View Statement
     | createTableViewStatement
+    | alterViewStatement
+    | dropViewStatement
 
     // Index Statement
     | createIndexStatement

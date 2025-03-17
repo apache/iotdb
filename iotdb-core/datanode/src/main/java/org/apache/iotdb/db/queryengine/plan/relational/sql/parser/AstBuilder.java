@@ -392,7 +392,7 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
   @Override
   public Node visitDropTableStatement(final RelationalSqlParser.DropTableStatementContext ctx) {
     return new DropTable(
-        getLocation(ctx), getQualifiedName(ctx.qualifiedName()), ctx.EXISTS() != null);
+        getLocation(ctx), getQualifiedName(ctx.qualifiedName()), ctx.EXISTS() != null, false);
   }
 
   @Override
@@ -631,6 +631,12 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
       path[i + 1] = parseNodeString(nodeNames.get(i).getText());
     }
     return new PartialPath(path);
+  }
+
+  @Override
+  public Node visitDropViewStatement(final RelationalSqlParser.DropViewStatementContext ctx) {
+    return new DropTable(
+        getLocation(ctx), getQualifiedName(ctx.qualifiedName()), ctx.EXISTS() != null, true);
   }
 
   @Override

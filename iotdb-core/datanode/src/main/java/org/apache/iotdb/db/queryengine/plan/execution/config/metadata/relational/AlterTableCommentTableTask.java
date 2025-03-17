@@ -43,6 +43,6 @@ public class AlterTableCommentTableTask extends AbstractAlterOrDropTableTask {
   public ListenableFuture<ConfigTaskResult> execute(final IConfigTaskExecutor configTaskExecutor)
       throws InterruptedException {
     return configTaskExecutor.alterTableCommentTable(
-        database, tableName, queryId, tableIfExists, comment, tableView);
+        database, tableName, queryId, tableIfExists, comment, view);
   }
 }

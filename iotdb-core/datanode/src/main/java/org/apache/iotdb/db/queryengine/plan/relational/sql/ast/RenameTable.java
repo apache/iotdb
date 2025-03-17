@@ -32,19 +32,19 @@ public class RenameTable extends Statement {
   private final Identifier target;
 
   private final boolean tableIfExists;
-  private final boolean tableView;
+  private final boolean view;
 
   public RenameTable(
       final NodeLocation location,
       final QualifiedName source,
       final Identifier target,
       final boolean tableIfExists,
-      final boolean tableView) {
+      final boolean view) {
     super(requireNonNull(location, "location is null"));
     this.source = requireNonNull(source, "source name is null");
     this.target = requireNonNull(target, "target name is null");
     this.tableIfExists = tableIfExists;
-    this.tableView = tableView;
+    this.view = view;
   }
 
   public QualifiedName getSource() {
@@ -59,8 +59,8 @@ public class RenameTable extends Statement {
     return tableIfExists;
   }
 
-  public boolean isTableView() {
-    return tableView;
+  public boolean isView() {
+    return view;
   }
 
   @Override
@@ -75,7 +75,7 @@ public class RenameTable extends Statement {
 
   @Override
   public int hashCode() {
-    return Objects.hash(source, target, tableIfExists, tableView);
+    return Objects.hash(source, target, tableIfExists, view);
   }
 
   @Override
@@ -90,7 +90,7 @@ public class RenameTable extends Statement {
     return tableIfExists == that.tableIfExists
         && Objects.equals(source, that.source)
         && Objects.equals(target, that.target)
-        && tableView == that.tableView;
+        && view == that.view;
   }
 
   @Override
@@ -99,7 +99,7 @@ public class RenameTable extends Statement {
         .add("source", source)
         .add("target", target)
         .add("tableIfExists", tableIfExists)
-        .add("tableView", tableView)
+        .add("view", view)
         .toString();
   }
 }

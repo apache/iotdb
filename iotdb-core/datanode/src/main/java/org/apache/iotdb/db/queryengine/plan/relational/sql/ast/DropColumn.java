@@ -34,7 +34,7 @@ public class DropColumn extends Statement {
 
   private final boolean tableIfExists;
   private final boolean columnIfExists;
-  private final boolean tableView;
+  private final boolean view;
 
   public DropColumn(
       final NodeLocation location,
@@ -42,13 +42,13 @@ public class DropColumn extends Statement {
       final Identifier field,
       final boolean tableIfExists,
       final boolean columnIfExists,
-      final boolean tableView) {
+      final boolean view) {
     super(requireNonNull(location, "location is null"));
     this.table = requireNonNull(table, "table is null");
     this.field = requireNonNull(field, "field is null");
     this.tableIfExists = tableIfExists;
     this.columnIfExists = columnIfExists;
-    this.tableView = tableView;
+    this.view = view;
   }
 
   public QualifiedName getTable() {
@@ -67,8 +67,8 @@ public class DropColumn extends Statement {
     return columnIfExists;
   }
 
-  public boolean isTableView() {
-    return tableView;
+  public boolean isView() {
+    return view;
   }
 
   @Override
@@ -94,12 +94,12 @@ public class DropColumn extends Statement {
         && columnIfExists == that.columnIfExists
         && Objects.equals(table, that.table)
         && Objects.equals(field, that.field)
-        && tableView == that.tableView;
+        && view == that.view;
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(table, field, tableIfExists, columnIfExists, tableView);
+    return Objects.hash(table, field, tableIfExists, columnIfExists, view);
   }
 
   @Override
@@ -109,7 +109,7 @@ public class DropColumn extends Statement {
         .add("field", field)
         .add("tableIfExists", tableIfExists)
         .add("columnIfExists", columnIfExists)
-        .add("tableView", tableView)
+        .add("view", view)
         .toString();
   }
 }

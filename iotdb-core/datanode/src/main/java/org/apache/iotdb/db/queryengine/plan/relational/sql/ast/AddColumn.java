@@ -33,7 +33,7 @@ public class AddColumn extends Statement {
 
   private final boolean tableIfExists;
   private final boolean columnIfNotExists;
-  private final boolean tableView;
+  private final boolean view;
 
   public AddColumn(
       final NodeLocation location,
@@ -41,14 +41,14 @@ public class AddColumn extends Statement {
       final ColumnDefinition column,
       final boolean tableIfExists,
       final boolean columnIfNotExists,
-      final boolean tableView) {
+      final boolean view) {
     super(requireNonNull(location, "location is null"));
 
     this.tableName = requireNonNull(tableName, "tableName is null");
     this.column = requireNonNull(column, "column is null");
     this.tableIfExists = tableIfExists;
     this.columnIfNotExists = columnIfNotExists;
-    this.tableView = tableView;
+    this.view = view;
   }
 
   public QualifiedName getTableName() {
@@ -67,8 +67,8 @@ public class AddColumn extends Statement {
     return columnIfNotExists;
   }
 
-  public boolean isTableView() {
-    return tableView;
+  public boolean isView() {
+    return view;
   }
 
   @Override
@@ -83,7 +83,7 @@ public class AddColumn extends Statement {
 
   @Override
   public int hashCode() {
-    return Objects.hash(tableName, column, tableIfExists, columnIfNotExists, tableView);
+    return Objects.hash(tableName, column, tableIfExists, columnIfNotExists, view);
   }
 
   @Override
@@ -99,7 +99,7 @@ public class AddColumn extends Statement {
         && columnIfNotExists == that.columnIfNotExists
         && Objects.equals(tableName, that.tableName)
         && Objects.equals(column, that.column)
-        && tableView == that.tableView;
+        && view == that.view;
   }
 
   @Override
@@ -109,7 +109,7 @@ public class AddColumn extends Statement {
         .add("column", column)
         .add("tableIfExists", tableIfExists)
         .add("columnIfNotExists", columnIfNotExists)
-        .add("tableView", tableView)
+        .add("view", view)
         .toString();
   }
 }

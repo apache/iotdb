@@ -36,8 +36,8 @@ public class AlterTableSetPropertiesTask extends AbstractAlterOrDropTableTask {
       final Map<String, String> properties,
       final String queryId,
       final boolean ifExists,
-      final boolean tableView) {
-    super(database, tableName, queryId, ifExists, tableView);
+      final boolean view) {
+    super(database, tableName, queryId, ifExists, view);
     this.properties = properties;
   }
 
@@ -45,6 +45,6 @@ public class AlterTableSetPropertiesTask extends AbstractAlterOrDropTableTask {
   public ListenableFuture<ConfigTaskResult> execute(final IConfigTaskExecutor configTaskExecutor)
       throws InterruptedException {
     return configTaskExecutor.alterTableSetProperties(
-        database, tableName, properties, queryId, tableIfExists, tableView);
+        database, tableName, properties, queryId, tableIfExists, view);
   }
 }

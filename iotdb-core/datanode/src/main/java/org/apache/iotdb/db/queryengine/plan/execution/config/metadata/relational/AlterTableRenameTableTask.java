@@ -34,8 +34,8 @@ public class AlterTableRenameTableTask extends AbstractAlterOrDropTableTask {
       final String queryId,
       final String targetName,
       final boolean tableIfExists,
-      final boolean tableView) {
-    super(database, tableName, queryId, tableIfExists, tableView);
+      final boolean view) {
+    super(database, tableName, queryId, tableIfExists, view);
     this.targetName = targetName;
   }
 
@@ -43,6 +43,6 @@ public class AlterTableRenameTableTask extends AbstractAlterOrDropTableTask {
   public ListenableFuture<ConfigTaskResult> execute(final IConfigTaskExecutor configTaskExecutor)
       throws InterruptedException {
     return configTaskExecutor.alterTableRenameTable(
-        database, tableName, targetName, queryId, tableIfExists, tableView);
+        database, tableName, targetName, queryId, tableIfExists, view);
   }
 }
