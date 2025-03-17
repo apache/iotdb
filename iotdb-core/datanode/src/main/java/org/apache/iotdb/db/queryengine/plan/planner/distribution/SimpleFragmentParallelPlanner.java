@@ -210,7 +210,6 @@ public class SimpleFragmentParallelPlanner implements IFragmentParallelPlaner {
     boolean selectLocalOrRandomDataNode =
         "weak".equals(readConsistencyLevel)
             || regionReplicaSet.getRegionId().getType().equals(TConsensusGroupType.SchemaRegion);
-    ;
 
     // When planning fragment onto specific DataNode, the DataNode whose endPoint is in
     // black list won't be considered because it may have connection issue now.
