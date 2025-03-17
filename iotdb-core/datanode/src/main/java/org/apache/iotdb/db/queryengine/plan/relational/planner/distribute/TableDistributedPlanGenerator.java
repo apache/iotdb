@@ -494,8 +494,8 @@ public class TableDistributedPlanGenerator
   public List<PlanNode> visitDeviceTableScan(
       final DeviceTableScanNode node, final PlanContext context) {
     if (context.isPushDownGrouping()) {
-      //      return constructDeviceTableScanByTags(node, context);
-      return constructDeviceTableScanTmp(node, context);
+      return constructDeviceTableScanByTags(node, context);
+//      return constructDeviceTableScanTmp(node, context);
     } else {
       return constructDeviceTableScanByRegionReplicaSet(node, context);
     }
