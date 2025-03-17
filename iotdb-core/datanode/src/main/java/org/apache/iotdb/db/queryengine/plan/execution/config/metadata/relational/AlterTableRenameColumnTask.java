@@ -39,8 +39,9 @@ public class AlterTableRenameColumnTask extends AbstractAlterOrDropTableTask {
       final String newName,
       final String queryId,
       final boolean tableIfExists,
-      final boolean columnIfExists) {
-    super(database, tableName, queryId, tableIfExists);
+      final boolean columnIfExists,
+      final boolean tableView) {
+    super(database, tableName, queryId, tableIfExists, tableView);
     this.oldName = oldName;
     this.newName = newName;
     this.columnIfExists = columnIfExists;

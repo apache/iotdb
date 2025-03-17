@@ -567,7 +567,8 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
         tableName,
         context.getQueryId().getId(),
         node.getTarget().getValue(),
-        node.tableIfExists());
+        node.tableIfExists(),
+        node.isTableView());
   }
 
   @Override
@@ -592,7 +593,8 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
                 definition.getComment())),
         context.getQueryId().getId(),
         node.tableIfExists(),
-        node.columnIfNotExists());
+        node.columnIfNotExists(),
+        node.isTableView());
   }
 
   @Override
@@ -618,7 +620,8 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
         node.getTarget().getValue(),
         context.getQueryId().getId(),
         node.tableIfExists(),
-        node.columnIfExists());
+        node.columnIfExists(),
+        node.isTableView());
   }
 
   @Override
@@ -637,7 +640,8 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
         node.getField().getValue(),
         context.getQueryId().getId(),
         node.tableIfExists(),
-        node.columnIfExists());
+        node.columnIfExists(),
+        node.isTableView());
   }
 
   @Override
@@ -656,7 +660,8 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
         tableName,
         convertPropertiesToMap(node.getProperties(), true),
         context.getQueryId().getId(),
-        node.ifExists());
+        node.ifExists(),
+        node.getType() == SetProperties.Type.TREE_VIEW);
   }
 
   @Override

@@ -35,8 +35,9 @@ public class AlterTableSetPropertiesTask extends AbstractAlterOrDropTableTask {
       final String tableName,
       final Map<String, String> properties,
       final String queryId,
-      final boolean ifExists) {
-    super(database, tableName, queryId, ifExists);
+      final boolean ifExists,
+      final boolean tableView) {
+    super(database, tableName, queryId, ifExists, tableView);
     this.properties = properties;
   }
 

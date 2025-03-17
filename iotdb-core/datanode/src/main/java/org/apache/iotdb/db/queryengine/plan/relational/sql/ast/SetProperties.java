@@ -33,28 +33,26 @@ public class SetProperties extends Statement {
 
   public enum Type {
     TABLE,
-    MATERIALIZED_VIEW
+    MATERIALIZED_VIEW,
+    TREE_VIEW,
   }
 
   private final Type type;
   private final QualifiedName name;
   private final List<Property> properties;
   private final boolean ifExists;
-  private final boolean tableView;
 
   public SetProperties(
       final @Nonnull NodeLocation location,
       final Type type,
       final QualifiedName name,
       final List<Property> properties,
-      final boolean ifExists,
-      final boolean tableView) {
+      final boolean ifExists) {
     super(requireNonNull(location, "location is null"));
     this.type = requireNonNull(type, "type is null");
     this.name = requireNonNull(name, "name is null");
     this.properties = ImmutableList.copyOf(requireNonNull(properties, "properties is null"));
     this.ifExists = ifExists;
-    this.tableView = tableView;
   }
 
   public Type getType() {
@@ -73,10 +71,6 @@ public class SetProperties extends Statement {
     return ifExists;
   }
 
-  public boolean isTableView() {
-    return tableView;
-  }
-
   @Override
   public <R, C> R accept(final AstVisitor<R, C> visitor, final C context) {
     return visitor.visitSetProperties(this, context);
@@ -89,7 +83,7 @@ public class SetProperties extends Statement {
 
   @Override
   public int hashCode() {
-    return Objects.hash(type, name, properties, ifExists, tableView);
+    return Objects.hash(type, name, properties, ifExists);
   }
 
   @Override
@@ -104,8 +98,7 @@ public class SetProperties extends Statement {
     return type == o.type
         && ifExists == o.ifExists
         && Objects.equals(name, o.name)
-        && Objects.equals(properties, o.properties)
-        && tableView == o.tableView;
+        && Objects.equals(properties, o.properties);
   }
 
   @Override
@@ -115,7 +108,6 @@ public class SetProperties extends Statement {
         .add("name", name)
         .add("properties", properties)
         .add("ifExists", ifExists)
-        .add("tableView", tableView)
         .toString();
   }
 }

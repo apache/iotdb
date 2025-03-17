@@ -478,8 +478,7 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
         SetProperties.Type.TABLE,
         getQualifiedName(ctx.qualifiedName()),
         properties,
-        Objects.nonNull(ctx.EXISTS()),
-        false);
+        Objects.nonNull(ctx.EXISTS()));
   }
 
   @Override
@@ -595,11 +594,10 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
     }
     return new SetProperties(
         getLocation(ctx),
-        SetProperties.Type.TABLE,
+        SetProperties.Type.TREE_VIEW,
         getQualifiedName(ctx.qualifiedName()),
         properties,
-        Objects.nonNull(ctx.EXISTS()),
-        true);
+        Objects.nonNull(ctx.EXISTS()));
   }
 
   @Override

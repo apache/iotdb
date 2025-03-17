@@ -35,8 +35,9 @@ public class AlterTableDropColumnTask extends AbstractAlterOrDropTableTask {
       final String columnName,
       final String queryId,
       final boolean tableIfExists,
-      final boolean columnIfExists) {
-    super(database, tableName, queryId, tableIfExists);
+      final boolean columnIfExists,
+      final boolean tableView) {
+    super(database, tableName, queryId, tableIfExists, tableView);
     this.columnName = columnName;
     this.columnIfExists = columnIfExists;
   }

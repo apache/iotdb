@@ -356,7 +356,8 @@ public class TableHeaderSchemaValidator {
             parseInputColumnSchema(inputColumnList),
             context.getQueryId().getId(),
             true,
-            true);
+            true,
+            false);
     try {
       final ListenableFuture<ConfigTaskResult> future = task.execute(configTaskExecutor);
       final ConfigTaskResult result = future.get();

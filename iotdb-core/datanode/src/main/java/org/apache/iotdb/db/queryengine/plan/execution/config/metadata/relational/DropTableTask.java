@@ -31,7 +31,7 @@ public class DropTableTask extends AbstractAlterOrDropTableTask {
       final String tableName,
       final String queryId,
       final boolean tableIfExists) {
-    super(database, tableName, queryId, tableIfExists);
+    super(database, tableName, queryId, tableIfExists, false);
   }
 
   @Override

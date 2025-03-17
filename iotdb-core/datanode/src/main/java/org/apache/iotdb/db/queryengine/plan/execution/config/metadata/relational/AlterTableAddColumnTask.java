@@ -37,8 +37,9 @@ public class AlterTableAddColumnTask extends AbstractAlterOrDropTableTask {
       final List<TsTableColumnSchema> columnList,
       final String queryId,
       final boolean tableIfExists,
-      final boolean columnIfExists) {
-    super(database, tableName, queryId, tableIfExists);
+      final boolean columnIfExists,
+      final boolean tableView) {
+    super(database, tableName, queryId, tableIfExists, tableView);
     this.columnList = columnList;
     this.columnIfExists = columnIfExists;
   }

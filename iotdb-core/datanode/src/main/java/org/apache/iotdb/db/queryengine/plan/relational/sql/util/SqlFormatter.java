@@ -769,7 +769,8 @@ public final class SqlFormatter {
 
     @Override
     protected Void visitRenameTable(final RenameTable node, final Integer indent) {
-      builder.append("ALTER TABLE ");
+      builder.append("ALTER");
+      builder.append(node.isTableView() ? " VIEW " : " TABLE ");
       if (node.tableIfExists()) {
         builder.append("IF EXISTS ");
       }
@@ -791,6 +792,8 @@ public final class SqlFormatter {
           builder.append("TABLE ");
         case MATERIALIZED_VIEW:
           builder.append("MATERIALIZED VIEW ");
+        case TREE_VIEW:
+          builder.append("VIEW ");
       }
       if (node.ifExists()) {
         builder.append("IF EXISTS ");
@@ -818,7 +821,8 @@ public final class SqlFormatter {
 
     @Override
     protected Void visitRenameColumn(RenameColumn node, Integer indent) {
-      builder.append("ALTER TABLE ");
+      builder.append("ALTER");
+      builder.append(node.isTableView() ? " VIEW " : " TABLE ");
       if (node.tableIfExists()) {
         builder.append("IF EXISTS ");
       }
@@ -838,7 +842,8 @@ public final class SqlFormatter {
 
     @Override
     protected Void visitDropColumn(final DropColumn node, final Integer indent) {
-      builder.append("ALTER TABLE ");
+      builder.append("ALTER");
+      builder.append(node.isTableView() ? " VIEW " : " TABLE ");
       if (node.tableIfExists()) {
         builder.append("IF EXISTS ");
       }
@@ -855,7 +860,8 @@ public final class SqlFormatter {
 
     @Override
     protected Void visitAddColumn(final AddColumn node, final Integer indent) {
-      builder.append("ALTER TABLE ");
+      builder.append("ALTER");
+      builder.append(node.isTableView() ? " VIEW " : " TABLE ");
       if (node.tableIfExists()) {
         builder.append("IF EXISTS ");
       }

@@ -38,7 +38,7 @@ public class AlterTableCommentColumnTask extends AbstractAlterOrDropTableTask {
       final boolean tableIfExists,
       final boolean columnIfExists,
       final String comment) {
-    super(database, tableName, queryId, tableIfExists);
+    super(database, tableName, queryId, tableIfExists, false);
     this.columnName = columnName;
     this.columnIfExists = columnIfExists;
     this.comment = comment;

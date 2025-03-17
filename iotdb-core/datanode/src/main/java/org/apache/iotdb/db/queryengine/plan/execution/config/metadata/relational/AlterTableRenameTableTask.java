@@ -33,8 +33,9 @@ public class AlterTableRenameTableTask extends AbstractAlterOrDropTableTask {
       final String tableName,
       final String queryId,
       final String targetName,
-      final boolean tableIfExists) {
-    super(database, tableName, queryId, tableIfExists);
+      final boolean tableIfExists,
+      final boolean tableView) {
+    super(database, tableName, queryId, tableIfExists, tableView);
     this.targetName = targetName;
   }
 
