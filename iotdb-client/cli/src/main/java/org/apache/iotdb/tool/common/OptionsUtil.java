@@ -319,7 +319,6 @@ public class OptionsUtil extends Constants {
             .longOpt(TABLE_ARGS)
             .argName(TABLE_ARGS)
             .hasArg()
-            .required()
             .desc(TABLE_DESC_EXPORT)
             .build();
     options.addOption(opTable);
@@ -362,7 +361,6 @@ public class OptionsUtil extends Constants {
             .longOpt(TABLE_ARGS)
             .argName(TABLE_ARGS)
             .hasArg()
-            .required()
             .desc(TABLE_DESC_EXPORT)
             .build();
     options.addOption(opTable);
@@ -733,7 +731,6 @@ public class OptionsUtil extends Constants {
             .longOpt(TABLE_ARGS)
             .argName(TABLE_ARGS)
             .hasArg()
-            .required()
             .desc(TABLE_DESC_IMPORT)
             .build();
     options.addOption(opTable);

@@ -37,6 +37,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AbstractQueryDeviceWithCache.getDeviceColumnHeaderList;
 
@@ -145,6 +146,7 @@ public abstract class AbstractTraverseDevice extends Statement {
             entries,
             attributeColumns,
             context,
+            new AtomicBoolean(false),
             true);
   }
 
