@@ -467,31 +467,24 @@ public class TableDistributedPlanGenerator
       return Collections.singletonList(node);
     }
 
-    final Map<TRegionReplicaSet, DeviceTableScanNode> tableScanNodeMap = new HashMap<>();
     String dbName = node.getQualifiedObjectName().getDatabaseName();
     if (!dataPartition.getDataPartitionMap().containsKey(dbName)) {
       throw new SemanticException(
           String.format("Given queried database: %s is not exist!", dbName));
     }
 
+    final Map<TRegionReplicaSet, DeviceTableScanNode> tableScanNodeMap = new HashMap<>();
     Map<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TRegionReplicaSet>>> seriesSlotMap =
         dataPartition.getDataPartitionMap().get(dbName);
     Map<Integer, List<TRegionReplicaSet>> cachedSeriesSlotWithRegions = new HashMap<>();
-
     for (final DeviceEntry deviceEntry : node.getDeviceEntries()) {
       List<TRegionReplicaSet> regionReplicaSets =
-          getReplicaSetWithTimeFilter(
+          getDeviceReplicaSets(
               dataPartition,
               seriesSlotMap,
               deviceEntry.getDeviceID(),
               node.getTimeFilter(),
               cachedSeriesSlotWithRegions);
-      //      final List<TRegionReplicaSet> regionReplicaSets =
-      //          dataPartition.getDataRegionReplicaSetWithTimeFilter(
-      //              dbName,
-      //              deviceEntry.getDeviceID(),
-      //              node.getTimeFilter());
-
       for (final TRegionReplicaSet regionReplicaSet : regionReplicaSets) {
         final DeviceTableScanNode deviceTableScanNode =
             tableScanNodeMap.computeIfAbsent(
@@ -556,13 +549,25 @@ public class TableDistributedPlanGenerator
       return Collections.singletonList(node);
     }
 
+    String dbName = node.getTreeDBName();
+    if (!dataPartition.getDataPartitionMap().containsKey(dbName)) {
+      throw new SemanticException(
+          String.format("Given queried database: %s is not exist!", dbName));
+    }
+
     Map<TRegionReplicaSet, Pair<TreeAlignedDeviceViewScanNode, TreeNonAlignedDeviceViewScanNode>>
         tableScanNodeMap = new HashMap<>();
-
+    Map<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TRegionReplicaSet>>> seriesSlotMap =
+        dataPartition.getDataPartitionMap().get(dbName);
+    Map<Integer, List<TRegionReplicaSet>> cachedSeriesSlotWithRegions = new HashMap<>();
     for (DeviceEntry deviceEntry : node.getDeviceEntries()) {
       List<TRegionReplicaSet> regionReplicaSets =
-          dataPartition.getDataRegionReplicaSetWithTimeFilter(
-              node.getTreeDBName(), deviceEntry.getDeviceID(), node.getTimeFilter());
+          getDeviceReplicaSets(
+              dataPartition,
+              seriesSlotMap,
+              deviceEntry.getDeviceID(),
+              node.getTimeFilter(),
+              cachedSeriesSlotWithRegions);
 
       for (TRegionReplicaSet regionReplicaSet : regionReplicaSets) {
         boolean aligned = deviceEntry instanceof AlignedDeviceEntry;
@@ -765,7 +770,7 @@ public class TableDistributedPlanGenerator
       Map<Integer, List<TRegionReplicaSet>> cachedSeriesSlotWithRegions = new HashMap<>();
       for (DeviceEntry deviceEntry : node.getDeviceEntries()) {
         List<TRegionReplicaSet> regionReplicaSets =
-            getReplicaSetWithTimeFilter(
+            getDeviceReplicaSets(
                 dataPartition,
                 seriesSlotMap,
                 deviceEntry.getDeviceID(),
@@ -842,7 +847,7 @@ public class TableDistributedPlanGenerator
     return resultTableScanNodeList;
   }
 
-  private List<TRegionReplicaSet> getReplicaSetWithTimeFilter(
+  private List<TRegionReplicaSet> getDeviceReplicaSets(
       DataPartition dataPartition,
       Map<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TRegionReplicaSet>>> seriesSlotMap,
       IDeviceID deviceId,
@@ -851,23 +856,23 @@ public class TableDistributedPlanGenerator
 
     // given seriesPartitionSlot has already been calculated
     final TSeriesPartitionSlot seriesPartitionSlot = dataPartition.calculateDeviceGroupId(deviceId);
-    if (cachedSeriesSlotWithRegions.containsKey(seriesPartitionSlot.getSlotId())) {
-      return cachedSeriesSlotWithRegions.get(seriesPartitionSlot.getSlotId());
+    List<TRegionReplicaSet> regionReplicaSets =
+        cachedSeriesSlotWithRegions.get(seriesPartitionSlot.getSlotId());
+    if (regionReplicaSets != null) {
+      return regionReplicaSets;
     }
 
-    if (!seriesSlotMap.containsKey(seriesPartitionSlot)) {
-      cachedSeriesSlotWithRegions.put(
-          seriesPartitionSlot.getSlotId(), Collections.singletonList(NOT_ASSIGNED));
-      return cachedSeriesSlotWithRegions.get(seriesPartitionSlot.getSlotId());
-    }
-
+    // given seriesPartitionSlot has not been calculated
     Map<TTimePartitionSlot, List<TRegionReplicaSet>> timeSlotMap =
         seriesSlotMap.get(seriesPartitionSlot);
+    if (timeSlotMap == null) {
+      List<TRegionReplicaSet> cachedReplicaSets = Collections.singletonList(NOT_ASSIGNED);
+      cachedSeriesSlotWithRegions.put(seriesPartitionSlot.getSlotId(), cachedReplicaSets);
+      return cachedReplicaSets;
+    }
     if (timeSlotMap.size() == 1) {
       TTimePartitionSlot timePartitionSlot = timeSlotMap.keySet().iterator().next();
-      if (timeFilter == null
-          || TimePartitionUtils.satisfyPartitionStartTime(
-              timeFilter, timePartitionSlot.startTime)) {
+      if (TimePartitionUtils.satisfyPartitionStartTime(timeFilter, timePartitionSlot.startTime)) {
         cachedSeriesSlotWithRegions.put(
             seriesPartitionSlot.getSlotId(), timeSlotMap.values().iterator().next());
         return timeSlotMap.values().iterator().next();
@@ -887,14 +892,6 @@ public class TableDistributedPlanGenerator
     List<TRegionReplicaSet> resultList = new ArrayList<>(resultSet);
     cachedSeriesSlotWithRegions.put(seriesPartitionSlot.getSlotId(), resultList);
     return resultList;
-    //    return seriesSlotMap.get(seriesPartitionSlot).entrySet().stream()
-    //        .filter(
-    //            entry ->
-    //                TimePartitionUtils.satisfyPartitionStartTime(timeFilter,
-    // entry.getKey().startTime))
-    //        .flatMap(entry -> entry.getValue().stream())
-    //        .distinct()
-    //        .collect(toList());
   }
 
   @Override
