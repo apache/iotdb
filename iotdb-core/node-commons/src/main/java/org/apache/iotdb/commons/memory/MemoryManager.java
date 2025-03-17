@@ -43,7 +43,7 @@ public class MemoryManager {
   private static final long MEMORY_ALLOCATE_MIN_SIZE_IN_BYTES = 32;
 
   /** Whether to take all dynamic part into consideration when shrink */
-  private boolean shrink_all = true;
+  private boolean shrink_all = false;
 
   /** The threshold of memory update */
   private double memory_update_threshold = 0.1;
