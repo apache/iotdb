@@ -74,7 +74,11 @@ public class MemoryRuntimeAgent implements IService {
   }
 
   private void transferMemory() {
-    MemoryConfig.global().getMemoryManager("OnHeap").transfer();
+    MemoryManager onHeapMemoryManager = MemoryConfig.global().getMemoryManager("OnHeap");
+    if (onHeapMemoryManager != null) {
+      onHeapMemoryManager.updateCache();
+      onHeapMemoryManager.transfer();
+    }
   }
 
   private void adaptTotalMemory() {

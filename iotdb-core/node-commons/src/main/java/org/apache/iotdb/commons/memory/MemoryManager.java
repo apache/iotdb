@@ -543,22 +543,31 @@ public class MemoryManager {
 
   /** Get the dynamic used memory ratio of this memory manager */
   public synchronized double getDynamicUsedMemoryRatio() {
-    return (double) (getUsedMemorySizeInBytes() - getStaticUsedMemorySizeInBytes())
-        / (totalMemorySizeInBytes - getStaticAllocatedMemorySizeInBytes());
+    return (double) (cachedUsedMemorySizeInBytes - cachedStaticUsedMemorySizeInBytes)
+        / (totalMemorySizeInBytes - cachedStaticAllocatedMemorySizeInBytes);
   }
 
-  /** Get static used memory size in bytes of memory manager */
-  public synchronized long getStaticUsedMemorySizeInBytes() {
-    long memorySize = 0;
-    for (IMemoryBlock memoryBlock : allocatedMemoryBlocks.values()) {
-      if (memoryBlock.getMemoryBlockType() == MemoryBlockType.STATIC) {
-        memorySize += memoryBlock.getUsedMemoryInBytes();
+  long cachedStaticAllocatedMemorySizeInBytes = 0L;
+  long cachedStaticUsedMemorySizeInBytes = 0L;
+  long cachedUsedMemorySizeInBytes = 1L;
+
+  void updateCache() {
+    cachedStaticAllocatedMemorySizeInBytes = staticAllocatedMemorySizeInBytes;
+    cachedStaticUsedMemorySizeInBytes = 0L;
+    cachedUsedMemorySizeInBytes = 0L;
+    for (IMemoryBlock block : allocatedMemoryBlocks.values()) {
+      long usedMemoryInBytes = block.getUsedMemoryInBytes();
+      if (block.getMemoryBlockType() == MemoryBlockType.STATIC) {
+        cachedStaticUsedMemorySizeInBytes += usedMemoryInBytes;
       }
+      cachedUsedMemorySizeInBytes += usedMemoryInBytes;
     }
-    for (MemoryManager child : children.values()) {
-      memorySize += child.getStaticUsedMemorySizeInBytes();
+    for (MemoryManager memoryManager : children.values()) {
+      memoryManager.updateCache();
+      cachedStaticAllocatedMemorySizeInBytes += memoryManager.staticAllocatedMemorySizeInBytes;
+      cachedStaticUsedMemorySizeInBytes += memoryManager.cachedStaticUsedMemorySizeInBytes;
+      cachedUsedMemorySizeInBytes += memoryManager.cachedUsedMemorySizeInBytes;
     }
-    return memorySize;
   }
 
   /** Whether this memory manager is available to shrink */
@@ -570,8 +579,8 @@ public class MemoryManager {
     } else {
       return initialAllocatedMemorySizeInBytes - totalMemorySizeInBytes
               < initialAllocatedMemorySizeInBytes * memory_update_threshold
-          && (totalMemorySizeInBytes - getStaticAllocatedMemorySizeInBytes())
-              > (getUsedMemorySizeInBytes() - getStaticAllocatedMemorySizeInBytes());
+          && (totalMemorySizeInBytes - cachedStaticAllocatedMemorySizeInBytes)
+              > (cachedUsedMemorySizeInBytes - cachedStaticUsedMemorySizeInBytes);
     }
   }
 
@@ -723,17 +732,8 @@ public class MemoryManager {
 
   /** Get the score of this memory manager */
   public synchronized double getScore() {
-    return (double) (getUsedMemorySizeInBytes() - getStaticUsedMemorySizeInBytes())
-        / (totalMemorySizeInBytes - getStaticAllocatedMemorySizeInBytes());
-  }
-
-  /** Get static allocated memory size in bytes of memory manager */
-  public synchronized long getStaticAllocatedMemorySizeInBytes() {
-    long memorySize = staticAllocatedMemorySizeInBytes;
-    for (MemoryManager child : children.values()) {
-      memorySize += child.getStaticAllocatedMemorySizeInBytes();
-    }
-    return memorySize;
+    return (double) (cachedUsedMemorySizeInBytes - cachedStaticUsedMemorySizeInBytes)
+        / (totalMemorySizeInBytes - cachedStaticAllocatedMemorySizeInBytes);
   }
 
   /** Try to update allocation */
