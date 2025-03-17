@@ -604,7 +604,7 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
               : String.format(
                   "Parse TsFile %s error. Because: %s", resource.getTsFilePath(), e.getMessage());
       LOGGER.warn(errorMsg, e);
-      throw new PipeException(errorMsg);
+      throw new PipeException(errorMsg, e);
     }
   }
 
@@ -682,7 +682,7 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
 
       final String errorMsg = String.format("Read TsFile %s error.", resource.getTsFilePath());
       LOGGER.warn(errorMsg, e);
-      throw new PipeException(errorMsg);
+      throw new PipeException(errorMsg, e);
     }
   }
 
