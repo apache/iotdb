@@ -605,18 +605,20 @@ public class MemoryManager {
         IMemoryBlock targetMemoryBlock = null;
         MemoryManager targetMemoryManager = null;
         // try to find min used ratio memory block
-        for (IMemoryBlock memoryBlock : allocatedMemoryBlocks.values()) {
-          if (memoryBlock.getMemoryBlockType() == MemoryBlockType.STATIC) {
-            continue;
-          }
-          if (targetMemoryBlock == null) {
-            targetMemoryBlock = memoryBlock;
-            minRatio = memoryBlock.getUsedRatio();
-          } else {
-            double ratio = memoryBlock.getUsedRatio();
-            if (ratio < minRatio) {
+        if (isAvailableToShrink()) {
+          for (IMemoryBlock memoryBlock : allocatedMemoryBlocks.values()) {
+            if (memoryBlock.getMemoryBlockType() == MemoryBlockType.STATIC) {
+              continue;
+            }
+            if (targetMemoryBlock == null) {
               targetMemoryBlock = memoryBlock;
-              minRatio = ratio;
+              minRatio = memoryBlock.getUsedRatio();
+            } else {
+              double ratio = memoryBlock.getUsedRatio();
+              if (ratio < minRatio) {
+                targetMemoryBlock = memoryBlock;
+                minRatio = ratio;
+              }
             }
           }
         }
@@ -635,7 +637,7 @@ public class MemoryManager {
           return targetMemoryManager.shrink();
         } else if (targetMemoryBlock != null) {
           // if targetMemoryBlock is not null, we shrink the targetMemoryBlock
-          long shrinkSize = -targetMemoryBlock.resizeByRatio(1 - memory_update_threshold);
+          long shrinkSize = -targetMemoryBlock.resizeByRatio(1 - memory_update_threshold / 10);
           long beforeTotalMemorySizeInBytes = totalMemorySizeInBytes;
           totalMemorySizeInBytes -= shrinkSize;
           allocatedMemorySizeInBytes -= shrinkSize;
