@@ -122,7 +122,8 @@ public class SetTablePropertiesProcedure
       final Pair<TSStatus, TsTable> result =
           env.getConfigManager()
               .getClusterSchemaManager()
-              .updateTableProperties(database, tableName, originalProperties, updatedProperties);
+              .updateTableProperties(
+                  database, tableName, originalProperties, updatedProperties, false);
       final TSStatus status = result.getLeft();
       if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         setFailure(

@@ -1488,7 +1488,8 @@ public class ClusterSchemaManager {
       final String database,
       final String tableName,
       final Map<String, String> originalProperties,
-      final Map<String, String> updatedProperties)
+      final Map<String, String> updatedProperties,
+      final boolean isTableView)
       throws MetadataException {
     final TsTable originalTable = getTableIfExists(database, tableName).orElse(null);
 
@@ -1498,6 +1499,12 @@ public class ClusterSchemaManager {
               TSStatusCode.TABLE_NOT_EXISTS,
               String.format("Table '%s.%s' does not exist", database, tableName)),
           null);
+    }
+
+    final Optional<Pair<TSStatus, TsTable>> result =
+        checkTable4View(database, originalTable, isTableView);
+    if (result.isPresent()) {
+      return result.get();
     }
 
     updatedProperties
