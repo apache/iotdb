@@ -33,32 +33,22 @@ public class AddColumn extends Statement {
 
   private final boolean tableIfExists;
   private final boolean columnIfNotExists;
-
-  public AddColumn(
-      final QualifiedName tableName,
-      final ColumnDefinition column,
-      final boolean tableIfExists,
-      final boolean columnIfNotExists) {
-    super(null);
-
-    this.tableName = requireNonNull(tableName, "tableName is null");
-    this.column = requireNonNull(column, "column is null");
-    this.tableIfExists = tableIfExists;
-    this.columnIfNotExists = columnIfNotExists;
-  }
+  private final boolean tableView;
 
   public AddColumn(
       final NodeLocation location,
       final QualifiedName tableName,
       final ColumnDefinition column,
       final boolean tableIfExists,
-      final boolean columnIfNotExists) {
+      final boolean columnIfNotExists,
+      final boolean tableView) {
     super(requireNonNull(location, "location is null"));
 
     this.tableName = requireNonNull(tableName, "tableName is null");
     this.column = requireNonNull(column, "column is null");
     this.tableIfExists = tableIfExists;
     this.columnIfNotExists = columnIfNotExists;
+    this.tableView = tableView;
   }
 
   public QualifiedName getTableName() {
@@ -75,6 +65,10 @@ public class AddColumn extends Statement {
 
   public boolean columnIfNotExists() {
     return columnIfNotExists;
+  }
+
+  public boolean isTableView() {
+    return tableView;
   }
 
   @Override

@@ -34,18 +34,21 @@ public class DropColumn extends Statement {
 
   private final boolean tableIfExists;
   private final boolean columnIfExists;
+  private final boolean tableView;
 
   public DropColumn(
       final NodeLocation location,
       final QualifiedName table,
       final Identifier field,
       final boolean tableIfExists,
-      final boolean columnIfExists) {
+      final boolean columnIfExists,
+      final boolean tableView) {
     super(requireNonNull(location, "location is null"));
     this.table = requireNonNull(table, "table is null");
     this.field = requireNonNull(field, "field is null");
     this.tableIfExists = tableIfExists;
     this.columnIfExists = columnIfExists;
+    this.tableView = tableView;
   }
 
   public QualifiedName getTable() {
@@ -62,6 +65,10 @@ public class DropColumn extends Statement {
 
   public boolean columnIfExists() {
     return columnIfExists;
+  }
+
+  public boolean isTableView() {
+    return tableView;
   }
 
   @Override

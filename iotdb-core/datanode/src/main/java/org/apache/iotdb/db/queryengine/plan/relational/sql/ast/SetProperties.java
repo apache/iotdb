@@ -40,18 +40,21 @@ public class SetProperties extends Statement {
   private final QualifiedName name;
   private final List<Property> properties;
   private final boolean ifExists;
+  private final boolean tableView;
 
   public SetProperties(
       final @Nonnull NodeLocation location,
       final Type type,
       final QualifiedName name,
       final List<Property> properties,
-      final boolean ifExists) {
+      final boolean ifExists,
+      final boolean tableView) {
     super(requireNonNull(location, "location is null"));
     this.type = requireNonNull(type, "type is null");
     this.name = requireNonNull(name, "name is null");
     this.properties = ImmutableList.copyOf(requireNonNull(properties, "properties is null"));
     this.ifExists = ifExists;
+    this.tableView = tableView;
   }
 
   public Type getType() {
@@ -68,6 +71,10 @@ public class SetProperties extends Statement {
 
   public boolean ifExists() {
     return ifExists;
+  }
+
+  public boolean isTableView() {
+    return tableView;
   }
 
   @Override

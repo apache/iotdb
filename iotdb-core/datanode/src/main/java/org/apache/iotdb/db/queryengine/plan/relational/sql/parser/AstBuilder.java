@@ -417,7 +417,8 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
         getLocation(ctx),
         getQualifiedName(ctx.from),
         lowerIdentifier((Identifier) visit(ctx.to)),
-        Objects.nonNull(ctx.EXISTS()));
+        Objects.nonNull(ctx.EXISTS()),
+        false);
   }
 
   @Override
@@ -427,7 +428,8 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
         getQualifiedName(ctx.tableName),
         (ColumnDefinition) visit(ctx.column),
         ctx.EXISTS().size() == (Objects.nonNull(ctx.NOT()) ? 2 : 1),
-        Objects.nonNull(ctx.NOT()));
+        Objects.nonNull(ctx.NOT()),
+        false);
   }
 
   @Override
@@ -444,7 +446,8 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
         ctx.EXISTS().stream()
             .anyMatch(
                 node ->
-                    node.getSymbol().getTokenIndex() > ctx.COLUMN().getSymbol().getTokenIndex()));
+                    node.getSymbol().getTokenIndex() > ctx.COLUMN().getSymbol().getTokenIndex()),
+        false);
   }
 
   @Override
@@ -460,7 +463,8 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
         ctx.EXISTS().stream()
             .anyMatch(
                 node ->
-                    node.getSymbol().getTokenIndex() > ctx.COLUMN().getSymbol().getTokenIndex()));
+                    node.getSymbol().getTokenIndex() > ctx.COLUMN().getSymbol().getTokenIndex()),
+        false);
   }
 
   @Override
@@ -474,7 +478,8 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
         SetProperties.Type.TABLE,
         getQualifiedName(ctx.qualifiedName()),
         properties,
-        Objects.nonNull(ctx.EXISTS()));
+        Objects.nonNull(ctx.EXISTS()),
+        false);
   }
 
   @Override
@@ -523,6 +528,78 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
         parsePrefixPath(ctx.prefixPath()),
         Objects.nonNull(ctx.REPLACE()),
         Objects.nonNull(ctx.RESTRICT()));
+  }
+
+  @Override
+  public Node visitRenameTableView(final RelationalSqlParser.RenameTableViewContext ctx) {
+    return new RenameTable(
+        getLocation(ctx),
+        getQualifiedName(ctx.from),
+        lowerIdentifier((Identifier) visit(ctx.to)),
+        Objects.nonNull(ctx.EXISTS()),
+        true);
+  }
+
+  @Override
+  public Node visitAddViewColumn(final RelationalSqlParser.AddViewColumnContext ctx) {
+    return new AddColumn(
+        getLocation(ctx),
+        getQualifiedName(ctx.viewName),
+        (ColumnDefinition) visit(ctx.viewColumnDefinition()),
+        ctx.EXISTS().size() == (Objects.nonNull(ctx.NOT()) ? 2 : 1),
+        Objects.nonNull(ctx.NOT()),
+        true);
+  }
+
+  @Override
+  public Node visitRenameViewColumn(final RelationalSqlParser.RenameViewColumnContext ctx) {
+    return new RenameColumn(
+        getLocation(ctx),
+        getQualifiedName(ctx.viewName),
+        (Identifier) visit(ctx.from),
+        (Identifier) visit(ctx.to),
+        ctx.EXISTS().stream()
+            .anyMatch(
+                node ->
+                    node.getSymbol().getTokenIndex() < ctx.COLUMN().getSymbol().getTokenIndex()),
+        ctx.EXISTS().stream()
+            .anyMatch(
+                node ->
+                    node.getSymbol().getTokenIndex() > ctx.COLUMN().getSymbol().getTokenIndex()),
+        true);
+  }
+
+  @Override
+  public Node visitDropViewColumn(final RelationalSqlParser.DropViewColumnContext ctx) {
+    return new DropColumn(
+        getLocation(ctx),
+        getQualifiedName(ctx.viewName),
+        lowerIdentifier((Identifier) visit(ctx.column)),
+        ctx.EXISTS().stream()
+            .anyMatch(
+                node ->
+                    node.getSymbol().getTokenIndex() < ctx.COLUMN().getSymbol().getTokenIndex()),
+        ctx.EXISTS().stream()
+            .anyMatch(
+                node ->
+                    node.getSymbol().getTokenIndex() > ctx.COLUMN().getSymbol().getTokenIndex()),
+        true);
+  }
+
+  @Override
+  public Node visitSetTableViewProperties(
+      final RelationalSqlParser.SetTableViewPropertiesContext ctx) {
+    List<Property> properties = ImmutableList.of();
+    if (ctx.propertyAssignments() != null) {
+      properties = visit(ctx.propertyAssignments().property(), Property.class);
+    }
+    return new SetProperties(
+        getLocation(ctx),
+        SetProperties.Type.TABLE,
+        getQualifiedName(ctx.qualifiedName()),
+        properties,
+        Objects.nonNull(ctx.EXISTS()),
+        true);
   }
 
   @Override

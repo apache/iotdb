@@ -32,16 +32,19 @@ public class RenameTable extends Statement {
   private final Identifier target;
 
   private final boolean tableIfExists;
+  private final boolean tableView;
 
   public RenameTable(
       final NodeLocation location,
       final QualifiedName source,
       final Identifier target,
-      final boolean tableIfExists) {
+      final boolean tableIfExists,
+      final boolean tableView) {
     super(requireNonNull(location, "location is null"));
     this.source = requireNonNull(source, "source name is null");
     this.target = requireNonNull(target, "target name is null");
     this.tableIfExists = tableIfExists;
+    this.tableView = tableView;
   }
 
   public QualifiedName getSource() {
@@ -54,6 +57,10 @@ public class RenameTable extends Statement {
 
   public boolean tableIfExists() {
     return tableIfExists;
+  }
+
+  public boolean isTableView() {
+    return tableView;
   }
 
   @Override
