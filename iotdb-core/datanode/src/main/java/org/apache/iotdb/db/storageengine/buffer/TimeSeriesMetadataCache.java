@@ -27,7 +27,6 @@ import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.DataNodeMemoryConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.queryengine.execution.fragment.QueryContext;
-import org.apache.iotdb.db.queryengine.metric.SeriesScanCostMetricSet;
 import org.apache.iotdb.db.queryengine.metric.TimeSeriesMetadataCacheMetrics;
 import org.apache.iotdb.db.storageengine.dataregion.read.control.FileReaderManager;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileID;
@@ -55,8 +54,6 @@ import java.util.WeakHashMap;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.LongConsumer;
 
-import static org.apache.iotdb.db.queryengine.metric.SeriesScanCostMetricSet.READ_TIMESERIES_METADATA_CACHE;
-import static org.apache.iotdb.db.queryengine.metric.SeriesScanCostMetricSet.READ_TIMESERIES_METADATA_FILE;
 import static org.apache.tsfile.utils.RamUsageEstimator.sizeOfCharArray;
 
 /**
@@ -72,9 +69,6 @@ public class TimeSeriesMetadataCache {
       IoTDBDescriptor.getInstance().getMemoryConfig();
   private static final IMemoryBlock CACHE_MEMORY_BLOCK;
   private static final boolean CACHE_ENABLE = memoryConfig.isMetaDataCacheEnable();
-
-  private static final SeriesScanCostMetricSet SERIES_SCAN_COST_METRIC_SET =
-      SeriesScanCostMetricSet.getInstance();
 
   private final Cache<TimeSeriesMetadataCacheKey, TimeseriesMetadata> lruCache;
 
@@ -244,17 +238,19 @@ public class TimeSeriesMetadataCache {
             .getQueryStatistics()
             .getLoadTimeSeriesMetadataFromCacheCount()
             .incrementAndGet();
-        // in metric panel, loading BloomFilter time is included in loading TimeSeriesMetadata
-        SERIES_SCAN_COST_METRIC_SET.recordSeriesScanCost(
-            READ_TIMESERIES_METADATA_CACHE, System.nanoTime() - startTime);
+        queryContext
+            .getQueryStatistics()
+            .getLoadTimeSeriesMetadataFromCacheTime()
+            .getAndAdd(System.nanoTime() - startTime - loadBloomFilterTime);
       } else {
         queryContext
             .getQueryStatistics()
             .getLoadTimeSeriesMetadataFromDiskCount()
             .incrementAndGet();
-        // in metric panel, loading BloomFilter time is included in loading TimeSeriesMetadata
-        SERIES_SCAN_COST_METRIC_SET.recordSeriesScanCost(
-            READ_TIMESERIES_METADATA_FILE, System.nanoTime() - startTime);
+        queryContext
+            .getQueryStatistics()
+            .getLoadTimeSeriesMetadataFromDiskTime()
+            .getAndAdd(System.nanoTime() - startTime - loadBloomFilterTime);
       }
     }
   }
