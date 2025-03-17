@@ -419,14 +419,14 @@ public abstract class ConfigPhysicalPlan implements IConsensusRequest {
         case SetTableComment:
           plan = new SetTableCommentPlan(ConfigPhysicalPlanType.SetTableComment);
           break;
+        case SetViewComment:
+          plan = new SetViewCommentPlan();
+          break;
         case SetTableColumnComment:
           plan = new SetTableColumnCommentPlan();
           break;
         case RenameTable:
           plan = new RenameTablePlan();
-          break;
-        case SetViewComment:
-          plan = new SetViewCommentPlan();
           break;
         case CreatePipeSinkV1:
           plan = new CreatePipeSinkPlanV1();

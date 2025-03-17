@@ -24,7 +24,7 @@ import org.apache.iotdb.confignode.consensus.request.write.table.SetTableComment
 
 public class SetViewCommentPlan extends SetTableCommentPlan {
   public SetViewCommentPlan() {
-    super(ConfigPhysicalPlanType.SetTableComment);
+    super(ConfigPhysicalPlanType.SetViewComment);
   }
 
   public SetViewCommentPlan(final String database, final String tableName, final String comment) {

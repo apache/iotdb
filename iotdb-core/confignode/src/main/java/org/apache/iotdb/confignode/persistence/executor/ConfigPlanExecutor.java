@@ -585,6 +585,7 @@ public class ConfigPlanExecutor {
       case CommitDeleteTable:
         return clusterSchemaInfo.dropTable((CommitDeleteTablePlan) physicalPlan);
       case SetTableComment:
+      case SetViewComment:
         return clusterSchemaInfo.setTableComment((SetTableCommentPlan) physicalPlan);
       case SetTableColumnComment:
         return clusterSchemaInfo.setTableColumnComment((SetTableColumnCommentPlan) physicalPlan);
