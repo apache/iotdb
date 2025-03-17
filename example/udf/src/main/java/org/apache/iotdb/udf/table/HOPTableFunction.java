@@ -56,7 +56,6 @@ public class HOPTableFunction implements TableFunction {
         TableParameterSpecification.builder()
             .name(DATA_PARAMETER_NAME)
             .passThroughColumns()
-            .keepWhenEmpty()
             .build(),
         ScalarParameterSpecification.builder()
             .name(TIMECOL_PARAMETER_NAME)
