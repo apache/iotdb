@@ -64,7 +64,8 @@ public abstract class MultiAlignedTVListIterator implements MemPointIterator {
     this.alignedTvListIterators = new ArrayList<>(alignedTvLists.size());
     for (AlignedTVList alignedTvList : alignedTvLists) {
       alignedTvListIterators.add(
-          alignedTvList.iterator(tsDataTypeList, columnIndexList, floatPrecision, encodingList));
+          alignedTvList.iterator(
+              tsDataTypeList, columnIndexList, null, floatPrecision, encodingList));
     }
     this.valueColumnsDeletionList = valueColumnsDeletionList;
     this.floatPrecision = floatPrecision != null ? floatPrecision : 0;
