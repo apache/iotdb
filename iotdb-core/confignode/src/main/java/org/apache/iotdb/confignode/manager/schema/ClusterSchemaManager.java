@@ -1528,7 +1528,7 @@ public class ClusterSchemaManager {
     return new Pair<>(RpcUtils.SUCCESS_STATUS, updatedTable);
   }
 
-  private static Optional<Pair<TSStatus, TsTable>> checkTable4View(
+  public static Optional<Pair<TSStatus, TsTable>> checkTable4View(
       final String database, final TsTable table, final boolean isView) {
     if (!isView && TreeViewSchema.isTreeViewTable(table)) {
       return Optional.of(

@@ -38,6 +38,7 @@ import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
 import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.commons.utils.ThriftConfigNodeSerDeUtils;
+import org.apache.iotdb.confignode.manager.schema.ClusterSchemaManager;
 import org.apache.iotdb.confignode.persistence.schema.mnode.IConfigMNode;
 import org.apache.iotdb.confignode.persistence.schema.mnode.factory.ConfigMNodeFactory;
 import org.apache.iotdb.confignode.persistence.schema.mnode.impl.ConfigTableNode;
@@ -742,6 +743,7 @@ public class ConfigMTree {
       final PartialPath database, final String tableName, final String comment)
       throws MetadataException {
     final TsTable table = getTable(database, tableName);
+    ClusterSchemaManager.checkTable4View(database.getTailNode(), table, false);
     if (Objects.nonNull(comment)) {
       table.addProp(TsTable.COMMENT_KEY, comment);
     } else {
