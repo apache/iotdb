@@ -77,9 +77,7 @@ public class TsFileInsertionEventParserProvider {
 
     if (treePattern instanceof IoTDBTreePattern
         && !((IoTDBTreePattern) treePattern).mayMatchMultipleTimeSeriesInOneDevice()) {
-      // 1. If time filter exists, use query here because the scan container may filter it
-      // row by row in single page chunk.
-      // 2. If the pattern matches only one time series in one device, use query container here
+      // If the pattern matches only one time series in one device, use query container here
       // because there is no timestamps merge overhead.
       //
       // Note: We judge prefix pattern as matching multiple timeseries in one device because it's
