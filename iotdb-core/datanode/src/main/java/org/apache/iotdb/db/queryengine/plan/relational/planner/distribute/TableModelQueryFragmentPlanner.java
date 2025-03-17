@@ -127,12 +127,12 @@ public class TableModelQueryFragmentPlanner {
 
     // Get the target region for origin PlanFragment, then its instance will be distributed one
     // of them.
-    TRegionReplicaSet regionReplicaSet = fragment.getTargetRegionForTableModel();
+    TRegionReplicaSet regionReplicaSet = fragment.getTargetRegionForTableModel(nodeDistributionMap);
     if (regionReplicaSet != null
         && !CollectionUtils.isEmpty(regionReplicaSet.getDataNodeLocations())) {
       regionReplicaSet = topology.getReachableSet(regionReplicaSet);
       if (regionReplicaSet.getDataNodeLocations().isEmpty()) {
-        throw new ReplicaSetUnreachableException(fragment.getTargetRegionForTableModel());
+        throw new ReplicaSetUnreachableException(fragment.getTargetRegionForTableModel(nodeDistributionMap));
       }
     }
 
