@@ -3887,7 +3887,11 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
 
   @Override
   public SettableFuture<ConfigTaskResult> dropTable(
-      final String database, final String tableName, final String queryId, final boolean ifExists) {
+      final String database,
+      final String tableName,
+      final String queryId,
+      final boolean ifExists,
+      final boolean isView) {
     final SettableFuture<ConfigTaskResult> future = SettableFuture.create();
     try (final ConfigNodeClient client =
         CLUSTER_DELETION_CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
@@ -3899,7 +3903,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
               queryId,
               AlterOrDropTableOperationType.DROP_TABLE,
               new byte[0],
-              true,
+              isView,
               client);
 
       if (TSStatusCode.SUCCESS_STATUS.getStatusCode() == tsStatus.getCode()
