@@ -1300,7 +1300,8 @@ public class ClusterSchemaManager {
   public synchronized Pair<TSStatus, TsTable> tableColumnCheckForColumnExtension(
       final String database,
       final String tableName,
-      final List<TsTableColumnSchema> columnSchemaList)
+      final List<TsTableColumnSchema> columnSchemaList,
+      final boolean isTableView)
       throws MetadataException {
     final TsTable originalTable = getTableIfExists(database, tableName).orElse(null);
 
@@ -1312,14 +1313,10 @@ public class ClusterSchemaManager {
           null);
     }
 
-    if (TreeViewSchema.isTreeViewTable(originalTable)) {
-      return new Pair<>(
-          RpcUtils.getStatus(
-              TSStatusCode.SEMANTIC_ERROR,
-              String.format(
-                  "Table '%s.%s' is a tree view table, does not support alter",
-                  database, tableName)),
-          null);
+    final Optional<Pair<TSStatus, TsTable>> result =
+        checkTable4View(database, originalTable, isTableView);
+    if (result.isPresent()) {
+      return result.get();
     }
 
     final TsTable expandedTable = TsTable.deserialize(ByteBuffer.wrap(originalTable.serialize()));

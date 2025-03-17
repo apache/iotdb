@@ -1979,6 +1979,7 @@ public class ProcedureManager {
           }
           break;
         case ADD_TABLE_COLUMN_PROCEDURE:
+        case ADD_TABLE_VIEW_COLUMN_PROCEDURE:
         case SET_TABLE_PROPERTIES_PROCEDURE:
         case RENAME_TABLE_COLUMN_PROCEDURE:
         case DROP_TABLE_COLUMN_PROCEDURE:

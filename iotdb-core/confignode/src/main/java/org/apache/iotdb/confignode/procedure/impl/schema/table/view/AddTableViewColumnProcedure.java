@@ -42,6 +42,11 @@ public class AddTableViewColumnProcedure extends AddTableColumnProcedure {
   }
 
   @Override
+  protected String getActionMessage() {
+    return "add view column";
+  }
+
+  @Override
   public void serialize(final DataOutputStream stream) throws IOException {
     stream.writeShort(
         isGeneratedByPipe
