@@ -26,9 +26,12 @@ import org.apache.iotdb.commons.pipe.datastructure.queue.listening.AbstractPipeL
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.pipe.event.PipeSnapshotEvent;
 import org.apache.iotdb.commons.pipe.event.SerializableEvent;
+import org.apache.iotdb.commons.schema.table.TreeViewSchema;
+import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.snapshot.SnapshotProcessor;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeCreateTablePlan;
+import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeCreateViewPlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeEnrichedPlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeUnsetSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.CommitCreateTablePlan;
@@ -53,6 +56,7 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
+import java.util.Optional;
 
 public class ConfigRegionListeningQueue extends AbstractPipeListeningQueue
     implements SnapshotProcessor {
@@ -93,17 +97,24 @@ public class ConfigRegionListeningQueue extends AbstractPipeListeningQueue
           break;
         case CommitCreateTable:
           try {
+            final Optional<TsTable> table =
+                ConfigNode.getInstance()
+                    .getConfigManager()
+                    .getClusterSchemaManager()
+                    .getTableIfExists(
+                        ((CommitCreateTablePlan) plan).getDatabase(),
+                        ((CommitCreateTablePlan) plan).getTableName());
+            if (!table.isPresent()) {
+              // Won't reach here
+              return;
+            }
             event =
                 new PipeConfigRegionWritePlanEvent(
-                    new PipeCreateTablePlan(
-                        ((CommitCreateTablePlan) plan).getDatabase(),
-                        ConfigNode.getInstance()
-                            .getConfigManager()
-                            .getClusterSchemaManager()
-                            .getTableIfExists(
-                                ((CommitCreateTablePlan) plan).getDatabase(),
-                                ((CommitCreateTablePlan) plan).getTableName())
-                            .orElse(null)),
+                    TreeViewSchema.isTreeViewTable(table.get())
+                        ? new PipeCreateViewPlan(
+                            ((CommitCreateTablePlan) plan).getDatabase(), table.get())
+                        : new PipeCreateTablePlan(
+                            ((CommitCreateTablePlan) plan).getDatabase(), table.get()),
                     isGeneratedByPipe);
           } catch (final MetadataException e) {
             LOGGER.warn("Failed to collect CommitCreateTablePlan", e);
