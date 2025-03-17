@@ -677,6 +677,7 @@ public class TsFilePlanRedoerTest {
     planRedoer.redoInsert(relationalInsertTabletNode);
     IMemTable recoveryMemTable = planRedoer.getRecoveryMemTable();
     Assert.assertEquals(2, recoveryMemTable.getMemTableMap().size());
+    Assert.assertFalse(recoveryMemTable.getMemTableMap().containsKey(existDevice));
   }
 
   @Test
