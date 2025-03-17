@@ -45,33 +45,41 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 import static org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory.TAG;
-import static org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory.TIME;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.ParallelizeGrouping.CanParalleled.ENABLE;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.ParallelizeGrouping.CanParalleled.PENDING;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.ParallelizeGrouping.CanParalleled.UNABLE;
 
 /**
- * This rule is used to determine whether the GroupNode can be parallelized during Logical
+ * This rule is used to determine whether the GroupNode can be optimized during logical plan.
  *
  * <p>Optimization phase: Logical plan planning.
  *
- * <p>The GroupNode can be parallelized if the following conditions are met:
- *
  * <ul>
- *   SortingKey is empty and the result child node has been pre-grouped. In the other world, the
- *   PartitionKey matches the lasted offspring that guarantees the data is grouped by PartitionKey.
- *   For example:
- *   <li>GroupNode[tag1,tag2] -> SortNode[sort=tag1]
- *   <li>GroupNode[tag1,tag2] -> TopKNode[sort=tag1,tag2]
- *   <li>GroupNode[tag1,tag2] -> AggregationNode[group=tag1]
- *   <li>GroupNode[tag1,tag2] -> TableFunctionNode[partition=tag1]
+ *   The GroupNode can be eliminated if the lasted offspring that guarantees the data is grouped by
+ *   PartitionKey and ordered by OrderKey. For example:
+ *   <ul>
+ *     <li>GroupNode[PK={device_id}, OK={time}] -> ... -> TableDeviceScanNode
+ *     <li>GroupNode[PK={device_id,attr}, OK={time}] -> ... -> TableDeviceScanNode
+ *     <li>GroupNode[PK={tag1,tag2}, OK={tag3}] -> SortNode[sort={tag1,tag2,tag3}]
+ *     <li>GroupNode[PK={tag1,tag2}, OK={tag3}] -> TopKNode[sort={tag1,tag2,tag3}]
+ *     <li>GroupNode[PK={tag1,tag2}, OK={}] -> AggregationNode[group={tag1,tag2}]
+ *     <li>GroupNode[PK={tag1}, OK={}] -> TableFunctionNode[partition={tag1,tag2}]
+ *   </ul>
  * </ul>
  *
  * <ul>
- *   SortingKey is time column and the lasted offspring that guarantees the data is grouped by
- *   PartitionKey is TableDeviceScanNode. For example:
- *   <li>GroupNode[device_id,time] -> ... -> TableDeviceScanNode
+ *   The GroupNode can be transformed into a StreamSortNode if the lasted offspring that guarantees
+ *   the data is grouped by PartitionKey but not ordered by OrderKey. For example:
+ *   <ul>
+ *     <li>GroupNode[PK={device_id}, OK={s1}] -> ... -> TableDeviceScanNode
+ *     <li>GroupNode[PK={device_id,attr}, OK={s1}] -> ... -> TableDeviceScanNode
+ *     <li>GroupNode[PK={tag1,tag2}, OK={s1}] -> SortNode[sort={tag1,tag2,tag3}]
+ *     <li>GroupNode[PK={tag1,tag2}, OK={s1}] -> TopKNode[sort={tag1,tag2,tag3}]
+ *     <li>GroupNode[PK={tag1,tag2}, OK={s1}] -> AggregationNode[group={tag1,tag2,s1}]
+ *   </ul>
  * </ul>
+ *
+ * <p>Otherwise, the GroupNode cannot be optimized. It will be transformed into a SortNode.
  */
 public class ParallelizeGrouping implements PlanOptimizer {
   @Override
@@ -79,7 +87,7 @@ public class ParallelizeGrouping implements PlanOptimizer {
     if (!(context.getAnalysis().isQuery())) {
       return plan;
     }
-    return plan.accept(new Rewriter(context.getAnalysis()), new Context());
+    return plan.accept(new Rewriter(context.getAnalysis()), new Context(null, 0));
   }
 
   private static class Rewriter extends PlanVisitor<PlanNode, Context> {
@@ -98,29 +106,17 @@ public class ParallelizeGrouping implements PlanOptimizer {
       return newNode;
     }
 
-    /**
-     * We need to make sure:
-     *
-     * <ul>
-     *   <li>(1) All keys in context#orderKey are used for partition.
-     *   <li>(2) childOrderSchema can match the prefix of context#orderKey, so that partition-based
-     *       operation can be pushed down.
-     * </ul>
-     */
+    /** We need to make sure: context#partitionKey can match the prefix of childOrderSchema */
     private void checkPrefixMatch(Context context, List<Symbol> childOrder) {
       if (context.canSkip()) {
         return;
       }
+      if (context.partitionKeyCount > childOrder.size()) {
+        context.canParalleled = UNABLE;
+        return;
+      }
       OrderingScheme prefix = context.sortKey;
-      if (prefix.getOrderBy().size() != context.partitionKeyCount) {
-        context.canParalleled = UNABLE;
-        return;
-      }
-      if (prefix.getOrderBy().size() > childOrder.size()) {
-        context.canParalleled = UNABLE;
-        return;
-      }
-      for (int i = 0; i < prefix.getOrderBy().size(); i++) {
+      for (int i = 0; i < context.partitionKeyCount; i++) {
         Symbol lhs = prefix.getOrderBy().get(i);
         Symbol rhs = childOrder.get(i);
         if (!lhs.equals(rhs)) {
@@ -204,18 +200,18 @@ public class ParallelizeGrouping implements PlanOptimizer {
         OrderingScheme sortKey = context.sortKey;
         Map<Symbol, ColumnSchema> tableColumnSchema =
             analysis.getTableColumnSchema(node.getQualifiedObjectName());
-        // 1. It is possible for the last sort key to be a time column
-        if (sortKey.getOrderBy().size() > context.partitionKeyCount + 1) {
-          context.canParalleled = UNABLE;
-          return node;
-        } else if (sortKey.getOrderBy().size() == context.partitionKeyCount + 1) {
-          Symbol lastSymbol = sortKey.getOrderBy().get(context.partitionKeyCount);
-          if (!tableColumnSchema.containsKey(lastSymbol)
-              || tableColumnSchema.get(lastSymbol).getColumnCategory() != TIME) {
-            context.canParalleled = UNABLE;
-            return node;
-          }
-        }
+        //        // 1. It is possible for the last sort key to be a time column
+        //        if (sortKey.getOrderBy().size() > context.partitionKeyCount + 1) {
+        //          context.canParalleled = UNABLE;
+        //          return node;
+        //        } else if (sortKey.getOrderBy().size() == context.partitionKeyCount + 1) {
+        //          Symbol lastSymbol = sortKey.getOrderBy().get(context.partitionKeyCount);
+        //          if (!tableColumnSchema.containsKey(lastSymbol)
+        //              || tableColumnSchema.get(lastSymbol).getColumnCategory() != TIME) {
+        //            context.canParalleled = UNABLE;
+        //            return node;
+        //          }
+        //        }
         // 2. check there are no field in sortKey and all tags in sortKey
         Set<Symbol> tagSymbols =
             tableColumnSchema.entrySet().stream()

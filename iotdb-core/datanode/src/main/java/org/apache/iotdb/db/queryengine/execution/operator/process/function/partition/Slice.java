@@ -58,7 +58,8 @@ public class Slice {
             .collect(Collectors.toList());
     this.requiredColumns =
         requiredChannels.stream().map(partitionColumns::get).toArray(Column[]::new);
-    this.requiredDataTypes = requiredChannels.stream().map(dataTypes::get).collect(Collectors.toList());
+    this.requiredDataTypes =
+        requiredChannels.stream().map(dataTypes::get).collect(Collectors.toList());
     this.passThroughColumns =
         passThroughChannels.stream().map(partitionColumns::get).toArray(Column[]::new);
 

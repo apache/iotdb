@@ -296,9 +296,14 @@ public class TableDistributedPlanGenerator
               node.getOrderingScheme(), nodeOrderingMap.get(child.getPlanNodeId()))) {
             result.add(child);
           } else {
-            SortNode subSortNode =
-                new SortNode(
-                    queryId.genPlanNodeId(), child, node.getOrderingScheme(), false, false);
+            StreamSortNode subSortNode =
+                new StreamSortNode(
+                    queryId.genPlanNodeId(),
+                    child,
+                    node.getOrderingScheme(),
+                    false,
+                    false,
+                    node.getPartitionKeyCount());
             result.add(subSortNode);
             nodeOrderingMap.put(subSortNode.getPlanNodeId(), subSortNode.getOrderingScheme());
           }
