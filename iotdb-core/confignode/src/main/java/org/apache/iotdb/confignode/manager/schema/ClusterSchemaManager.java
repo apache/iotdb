@@ -1447,6 +1447,7 @@ public class ClusterSchemaManager {
       final String database,
       final String tableName,
       final String comment,
+      final boolean isView,
       final boolean isGeneratedByPipe) {
     final SetTableCommentPlan setTableCommentPlan =
         new SetTableCommentPlan(database, tableName, comment);

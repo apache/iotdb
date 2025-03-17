@@ -144,6 +144,7 @@ import org.apache.iotdb.confignode.consensus.request.write.table.SetTableColumnC
 import org.apache.iotdb.confignode.consensus.request.write.table.SetTableCommentPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.SetTablePropertiesPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.view.PreCreateTableViewPlan;
+import org.apache.iotdb.confignode.consensus.request.write.table.view.SetViewCommentPlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.CreateSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.DropSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.ExtendSchemaTemplatePlan;
@@ -1351,6 +1352,18 @@ public class ConfigPhysicalPlanSerDeTest {
     Assert.assertEquals(setTableCommentPlan.getDatabase(), setTableCommentPlan1.getDatabase());
     Assert.assertEquals(setTableCommentPlan.getTableName(), setTableCommentPlan1.getTableName());
     Assert.assertEquals(setTableCommentPlan.getComment(), setTableCommentPlan1.getComment());
+  }
+
+  @Test
+  public void SetViewCommentPlanTest() throws IOException {
+    final SetViewCommentPlan setViewCommentPlan =
+        new SetViewCommentPlan("database1", "table1", "comment");
+    final SetViewCommentPlan setViewCommentPlan1 =
+        (SetViewCommentPlan)
+            ConfigPhysicalPlan.Factory.create(setViewCommentPlan.serializeToByteBuffer());
+    Assert.assertEquals(setViewCommentPlan.getDatabase(), setViewCommentPlan1.getDatabase());
+    Assert.assertEquals(setViewCommentPlan.getTableName(), setViewCommentPlan1.getTableName());
+    Assert.assertEquals(setViewCommentPlan.getComment(), setViewCommentPlan1.getComment());
   }
 
   @Test

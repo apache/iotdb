@@ -36,6 +36,7 @@ import org.apache.iotdb.confignode.consensus.request.write.table.RenameTableColu
 import org.apache.iotdb.confignode.consensus.request.write.table.SetTableColumnCommentPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.SetTableCommentPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.SetTablePropertiesPlan;
+import org.apache.iotdb.confignode.consensus.request.write.table.view.SetViewCommentPlan;
 import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
 
 import org.junit.Assert;
@@ -131,6 +132,14 @@ public class PipeConfigPhysicalPlanTablePatternParseVisitorTest {
         new SetTableCommentPlan("db1", "ab", "a"),
         new SetTableCommentPlan("db1", "ac", "a"),
         new SetTableCommentPlan("da", "ac", "a"));
+  }
+
+  @Test
+  public void testSetViewComment() {
+    testInput(
+        new SetViewCommentPlan("db1", "ab", "a"),
+        new SetViewCommentPlan("db1", "ac", "a"),
+        new SetViewCommentPlan("da", "ac", "a"));
   }
 
   @Test

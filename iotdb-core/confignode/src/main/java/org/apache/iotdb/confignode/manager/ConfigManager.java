@@ -2728,6 +2728,7 @@ public class ConfigManager implements IManager {
               req.getDatabase(),
               req.getTableName(),
               ReadWriteIOUtils.readString(req.updateInfo),
+              req.isSetIsView() && req.isIsView(),
               false);
         case COMMENT_COLUMN:
           return clusterSchemaManager.setTableColumnComment(

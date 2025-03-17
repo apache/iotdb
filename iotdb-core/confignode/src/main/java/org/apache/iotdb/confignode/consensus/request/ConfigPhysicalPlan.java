@@ -115,6 +115,7 @@ import org.apache.iotdb.confignode.consensus.request.write.table.SetTableColumnC
 import org.apache.iotdb.confignode.consensus.request.write.table.SetTableCommentPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.SetTablePropertiesPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.view.PreCreateTableViewPlan;
+import org.apache.iotdb.confignode.consensus.request.write.table.view.SetViewCommentPlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.CommitSetSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.CreateSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.DropSchemaTemplatePlan;
@@ -416,13 +417,16 @@ public abstract class ConfigPhysicalPlan implements IConsensusRequest {
           plan = new CommitDeleteColumnPlan();
           break;
         case SetTableComment:
-          plan = new SetTableCommentPlan();
+          plan = new SetTableCommentPlan(ConfigPhysicalPlanType.SetTableComment);
           break;
         case SetTableColumnComment:
           plan = new SetTableColumnCommentPlan();
           break;
         case RenameTable:
           plan = new RenameTablePlan();
+          break;
+        case SetViewComment:
+          plan = new SetViewCommentPlan();
           break;
         case CreatePipeSinkV1:
           plan = new CreatePipeSinkPlanV1();

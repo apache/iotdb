@@ -211,6 +211,7 @@ public enum ConfigPhysicalPlanType {
   SetTableComment((short) 866),
   RenameTable((short) 867),
   PreCreateTableView((short) 868),
+  SetViewComment((short) 869),
 
   /** Deprecated types for sync, restored them for upgrade. */
   @Deprecated
