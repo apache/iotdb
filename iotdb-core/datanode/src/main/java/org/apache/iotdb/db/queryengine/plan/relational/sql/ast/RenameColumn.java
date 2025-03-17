@@ -100,12 +100,13 @@ public final class RenameColumn extends Statement {
         && columnIfNotExists == that.columnIfNotExists
         && Objects.equals(table, that.table)
         && Objects.equals(source, that.source)
-        && Objects.equals(target, that.target);
+        && Objects.equals(target, that.target)
+        && tableView == that.tableView;
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(table, source, target);
+    return Objects.hash(table, source, target, tableView);
   }
 
   @Override
@@ -116,6 +117,7 @@ public final class RenameColumn extends Statement {
         .add("target", target)
         .add("tableIfExists", tableIfExists)
         .add("columnIfExists", columnIfNotExists)
+        .add("tableView", tableView)
         .toString();
   }
 }

@@ -93,12 +93,13 @@ public class DropColumn extends Statement {
     return tableIfExists == that.tableIfExists
         && columnIfExists == that.columnIfExists
         && Objects.equals(table, that.table)
-        && Objects.equals(field, that.field);
+        && Objects.equals(field, that.field)
+        && tableView == that.tableView;
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(table, field, tableIfExists, columnIfExists);
+    return Objects.hash(table, field, tableIfExists, columnIfExists, tableView);
   }
 
   @Override
@@ -108,6 +109,7 @@ public class DropColumn extends Statement {
         .add("field", field)
         .add("tableIfExists", tableIfExists)
         .add("columnIfExists", columnIfExists)
+        .add("tableView", tableView)
         .toString();
   }
 }

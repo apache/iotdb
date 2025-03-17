@@ -75,7 +75,7 @@ public class RenameTable extends Statement {
 
   @Override
   public int hashCode() {
-    return Objects.hash(source, target, tableIfExists);
+    return Objects.hash(source, target, tableIfExists, tableView);
   }
 
   @Override
@@ -89,7 +89,8 @@ public class RenameTable extends Statement {
     final RenameTable that = (RenameTable) o;
     return tableIfExists == that.tableIfExists
         && Objects.equals(source, that.source)
-        && Objects.equals(target, that.target);
+        && Objects.equals(target, that.target)
+        && tableView == that.tableView;
   }
 
   @Override
@@ -98,6 +99,7 @@ public class RenameTable extends Statement {
         .add("source", source)
         .add("target", target)
         .add("tableIfExists", tableIfExists)
+        .add("tableView", tableView)
         .toString();
   }
 }

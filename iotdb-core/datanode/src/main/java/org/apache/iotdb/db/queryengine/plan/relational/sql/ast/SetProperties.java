@@ -89,7 +89,7 @@ public class SetProperties extends Statement {
 
   @Override
   public int hashCode() {
-    return Objects.hash(type, name, properties, ifExists);
+    return Objects.hash(type, name, properties, ifExists, tableView);
   }
 
   @Override
@@ -104,7 +104,8 @@ public class SetProperties extends Statement {
     return type == o.type
         && ifExists == o.ifExists
         && Objects.equals(name, o.name)
-        && Objects.equals(properties, o.properties);
+        && Objects.equals(properties, o.properties)
+        && tableView == o.tableView;
   }
 
   @Override
@@ -114,6 +115,7 @@ public class SetProperties extends Statement {
         .add("name", name)
         .add("properties", properties)
         .add("ifExists", ifExists)
+        .add("tableView", tableView)
         .toString();
   }
 }

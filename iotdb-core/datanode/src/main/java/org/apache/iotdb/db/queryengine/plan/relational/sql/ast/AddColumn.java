@@ -83,7 +83,7 @@ public class AddColumn extends Statement {
 
   @Override
   public int hashCode() {
-    return Objects.hash(tableName, column, tableIfExists, columnIfNotExists);
+    return Objects.hash(tableName, column, tableIfExists, columnIfNotExists, tableView);
   }
 
   @Override
@@ -98,7 +98,8 @@ public class AddColumn extends Statement {
     return tableIfExists == that.tableIfExists
         && columnIfNotExists == that.columnIfNotExists
         && Objects.equals(tableName, that.tableName)
-        && Objects.equals(column, that.column);
+        && Objects.equals(column, that.column)
+        && tableView == that.tableView;
   }
 
   @Override
@@ -108,6 +109,7 @@ public class AddColumn extends Statement {
         .add("column", column)
         .add("tableIfExists", tableIfExists)
         .add("columnIfNotExists", columnIfNotExists)
+        .add("tableView", tableView)
         .toString();
   }
 }
