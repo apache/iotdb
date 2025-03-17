@@ -111,6 +111,7 @@ public enum Metric {
   MEMORY_USAGE_MONITOR("memory_usage_monitor"),
   METRIC_LOAD_TIME_SERIES_METADATA("metric_load_time_series_metadata"),
   METRIC_QUERY_CACHE("metric_query_cache"),
+  METRIC_QUERY_CACHE_TIMER("metric_query_cache_timer"),
   QUERY_METADATA_COST("query_metadata_cost"),
   DISPATCHER("dispatcher"),
   QUERY_EXECUTION("query_execution"),
