@@ -173,17 +173,18 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
 
   private final PipeTransferSliceReqHandler sliceReqHandler = new PipeTransferSliceReqHandler();
 
-  private final SqlParser relationalSqlParser = new SqlParser();
-
-  private static final Set<String> ALREADY_CREATED_DATABASES = ConcurrentHashMap.newKeySet();
+  private static final Set<String> ALREADY_CREATED_TABLE_MODEL_DATABASES =
+      ConcurrentHashMap.newKeySet();
+  private final SqlParser tableSqlParser = new SqlParser();
 
   private static final SessionManager SESSION_MANAGER = SessionManager.getInstance();
   private static final long LOGIN_PERIODIC_VERIFICATION_INTERVAL_MS =
       PipeConfig.getInstance().getPipeReceiverLoginPeriodicVerificationIntervalMs();
-  private static final double MEMORY_EXPAND_RATIO =
-      PipeConfig.getInstance().getPipeReceiverInsertNodeMemoryExpandRatio();
   private long lastSuccessfulLoginTime = Long.MIN_VALUE;
-  private PipeMemoryBlock memoryBlock;
+
+  private static final double ACTUAL_TO_ESTIMATED_MEMORY_RATIO =
+      PipeConfig.getInstance().getPipeReceiverInsertNodeMemoryExpandRatio();
+  private PipeMemoryBlock allocatedMemoryBlock;
 
   static {
     try {
@@ -787,14 +788,15 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
   }
 
   private TSStatus executeStatementAndClassifyExceptions(final Statement statement) {
-    long memory = 0L;
+    long estimatedMemory = 0L;
     try {
       if (statement instanceof InsertBaseStatement) {
-        memory = ((InsertBaseStatement) statement).ramBytesUsed();
-        memoryBlock =
+        estimatedMemory = ((InsertBaseStatement) statement).ramBytesUsed();
+        allocatedMemoryBlock =
             PipeDataNodeResourceManager.memory()
-                .forceAllocate((long) (memory * MEMORY_EXPAND_RATIO));
+                .forceAllocate((long) (estimatedMemory * ACTUAL_TO_ESTIMATED_MEMORY_RATIO));
       }
+
       final TSStatus result =
           executeStatementWithPermissionCheckAndRetryOnDataTypeMismatch(statement);
       if (result.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
@@ -809,17 +811,19 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
         return statement.accept(STATEMENT_STATUS_VISITOR, result);
       }
     } catch (final PipeRuntimeOutOfMemoryCriticalException e) {
-      final String msg =
+      final String message =
           String.format(
               "Temporarily out of memory when executing statement %s, Requested memory: %s, used memory: %s, total memory: %s",
               statement,
-              memory,
+              estimatedMemory * ACTUAL_TO_ESTIMATED_MEMORY_RATIO,
               PipeDataNodeResourceManager.memory().getUsedMemorySizeInBytes(),
               PipeDataNodeResourceManager.memory().getFreeMemorySizeInBytes());
-      LOGGER.debug("Receiver id = {}: {}", receiverId.get(), msg, e);
+      if (LOGGER.isDebugEnabled()) {
+        LOGGER.debug("Receiver id = {}: {}", receiverId.get(), message, e);
+      }
       return new TSStatus(
               TSStatusCode.PIPE_RECEIVER_TEMPORARY_UNAVAILABLE_EXCEPTION.getStatusCode())
-          .setMessage(msg);
+          .setMessage(message);
     } catch (final Exception e) {
       LOGGER.warn(
           "Receiver id = {}: Exception encountered while executing statement {}: ",
@@ -828,9 +832,9 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
           e);
       return statement.accept(STATEMENT_EXCEPTION_VISITOR, e);
     } finally {
-      if (Objects.nonNull(memoryBlock)) {
-        memoryBlock.close();
-        memoryBlock = null;
+      if (Objects.nonNull(allocatedMemoryBlock)) {
+        allocatedMemoryBlock.close();
+        allocatedMemoryBlock = null;
       }
     }
   }
@@ -938,7 +942,7 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
       return Coordinator.getInstance()
           .executeForTableModel(
               shouldMarkAsPipeRequest.get() ? new PipeEnrichedStatement(statement) : statement,
-              relationalSqlParser,
+              tableSqlParser,
               SESSION_MANAGER.getCurrSession(),
               SESSION_MANAGER.requestQueryId(),
               SESSION_MANAGER.getSessionInfoOfPipeReceiver(
@@ -948,7 +952,7 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
               IoTDBDescriptor.getInstance().getConfig().getQueryTimeoutThreshold())
           .status;
     } catch (final Exception e) {
-      ALREADY_CREATED_DATABASES.remove(databaseName);
+      ALREADY_CREATED_TABLE_MODEL_DATABASES.remove(databaseName);
 
       final Throwable rootCause = getRootCause(e);
       if (rootCause.getMessage() != null
@@ -962,7 +966,7 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
         return Coordinator.getInstance()
             .executeForTableModel(
                 shouldMarkAsPipeRequest.get() ? new PipeEnrichedStatement(statement) : statement,
-                relationalSqlParser,
+                tableSqlParser,
                 SESSION_MANAGER.getCurrSession(),
                 SESSION_MANAGER.requestQueryId(),
                 SESSION_MANAGER.getSessionInfoOfPipeReceiver(
@@ -979,7 +983,7 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
   }
 
   private void autoCreateDatabaseIfNecessary(final String database) {
-    if (ALREADY_CREATED_DATABASES.contains(database)) {
+    if (ALREADY_CREATED_TABLE_MODEL_DATABASES.contains(database)) {
       return;
     }
 
@@ -1006,7 +1010,7 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
       throw new PipeException("Auto create database failed because: " + e.getMessage());
     }
 
-    ALREADY_CREATED_DATABASES.add(database);
+    ALREADY_CREATED_TABLE_MODEL_DATABASES.add(database);
   }
 
   private TSStatus executeStatementForTreeModel(final Statement statement) {
@@ -1044,7 +1048,7 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
           Coordinator.getInstance()
               .executeForTableModel(
                   shouldMarkAsPipeRequest.get() ? new PipeEnriched(statement) : statement,
-                  relationalSqlParser,
+                  tableSqlParser,
                   SESSION_MANAGER.getCurrSession(),
                   SESSION_MANAGER.requestQueryId(),
                   SESSION_MANAGER.getSessionInfoOfPipeReceiver(
