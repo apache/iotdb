@@ -64,7 +64,6 @@ public class TsFileInsertionDataContainerProvider {
   }
 
   public TsFileInsertionDataContainer provide() throws IOException {
-
     // Use scan container to save memory
     if ((double) PipeDataNodeResourceManager.memory().getUsedMemorySizeInBytes()
             / PipeDataNodeResourceManager.memory().getTotalMemorySizeInBytes()
