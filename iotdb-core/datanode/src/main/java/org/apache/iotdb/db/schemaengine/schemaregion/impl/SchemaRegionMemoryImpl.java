@@ -1461,7 +1461,8 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
       for (final PartialPath pattern :
           TableDeviceQuerySource.getDevicePatternList(
               updateNode.getDatabase(),
-              updateNode.getTableName(),
+              DataNodeTableCache.getInstance()
+                  .getTable(updateNode.getDatabase(), updateNode.getTableName()),
               updateNode.getIdDeterminedFilterList())) {
         mTree.updateTableDevice(pattern, batchUpdater);
       }
@@ -1564,7 +1565,9 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
         (pointer, name) -> deviceAttributeStore.getAttributes(pointer, name),
         (deviceId, pointer, values) ->
             updateAttribute(database, tableName, deviceId, pointer, attributeNames, values),
-        attributeNames);
+        attributeNames,
+        database,
+        table);
   }
 
   @Override
@@ -1600,15 +1603,14 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
       throws MetadataException {
     final List<PartialPath> paths =
         DeleteDevice.constructPaths(
-            PathUtils.unQualifyDatabaseName(storageGroupFullPath),
+            storageGroupFullPath,
             constructTableDevicesBlackListNode.getTableName(),
             constructTableDevicesBlackListNode.getPatternInfo());
     final DeviceBlackListConstructor constructor =
         DeleteDevice.constructDevicePredicateUpdater(
+            storageGroupFullPath,
             DataNodeTableCache.getInstance()
-                .getTable(
-                    PathUtils.unQualifyDatabaseName(storageGroupFullPath),
-                    constructTableDevicesBlackListNode.getTableName()),
+                .getTable(storageGroupFullPath, constructTableDevicesBlackListNode.getTableName()),
             constructTableDevicesBlackListNode.getFilterInfo(),
             (pointer, name) -> deviceAttributeStore.getAttributes(pointer, name),
             regionStatistics);

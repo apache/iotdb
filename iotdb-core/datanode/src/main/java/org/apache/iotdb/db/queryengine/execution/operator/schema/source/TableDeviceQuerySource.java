@@ -30,7 +30,6 @@ import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
 import org.apache.iotdb.commons.utils.PathUtils;
-import org.apache.iotdb.db.queryengine.plan.relational.metadata.TableMetadataImpl;
 import org.apache.iotdb.db.schemaengine.rescon.ISchemaRegionStatistics;
 import org.apache.iotdb.db.schemaengine.schemaregion.ISchemaRegion;
 import org.apache.iotdb.db.schemaengine.schemaregion.read.resp.info.IDeviceSchemaInfo;
@@ -56,7 +55,8 @@ import static org.apache.iotdb.commons.conf.IoTDBConstant.PATH_ROOT;
 
 public class TableDeviceQuerySource implements ISchemaSource<IDeviceSchemaInfo> {
 
-  private final String tableName;
+  private final TsTable table;
+  private final int idIndex;
 
   private final List<List<SchemaFilter>> idDeterminedPredicateList;
 
@@ -68,20 +68,23 @@ public class TableDeviceQuerySource implements ISchemaSource<IDeviceSchemaInfo> 
 
   public TableDeviceQuerySource(
       final String database,
-      final String tableName,
+      final TsTable table,
       final List<List<SchemaFilter>> idDeterminedPredicateList,
       final List<ColumnHeader> columnHeaderList,
       final List<TsTableColumnSchema> columnSchemaList,
       final DevicePredicateFilter filter,
       final boolean needAligned) {
-    this.database = database;
-    this.tableName = tableName;
+    this.idIndex =
+        !needAligned && PathUtils.isTableModelDatabase(database)
+            ? 3
+            : DataNodeTreeViewSchemaUtils.getPatternNodes(table).length;
+    this.table = table;
     this.idDeterminedPredicateList = idDeterminedPredicateList;
     this.columnHeaderList = columnHeaderList;
     // Calculate this outside to save cpu
     this.columnSchemaList = columnSchemaList;
     this.filter = filter;
-    this.devicePatternList = getDevicePatternList(database, tableName, idDeterminedPredicateList);
+    this.devicePatternList = getDevicePatternList(database, table, idDeterminedPredicateList);
     this.needAligned = needAligned;
   }
 
@@ -204,12 +207,9 @@ public class TableDeviceQuerySource implements ISchemaSource<IDeviceSchemaInfo> 
 
   public static @Nonnull List<PartialPath> getDevicePatternList(
       final String database,
-      final String tableName,
+      final TsTable table,
       final List<List<SchemaFilter>> idDeterminedPredicateList) {
-    final TsTable table = DataNodeTableCache.getInstance().getTable(database, tableName);
-    if (Objects.isNull(table)) {
-      TableMetadataImpl.throwTableNotExistsException(database, tableName);
-    }
+    final String tableName = table.getTableName();
     return DeviceFilterUtil.convertToDevicePattern(
         !TreeViewSchema.isTreeViewTable(table)
             ? new String[] {PATH_ROOT, database, tableName}
@@ -226,20 +226,10 @@ public class TableDeviceQuerySource implements ISchemaSource<IDeviceSchemaInfo> 
   @Override
   public void transformToTsBlockColumns(
       final IDeviceSchemaInfo schemaInfo, final TsBlockBuilder builder, final String database) {
-    final TsTable table = DataNodeTableCache.getInstance().getTable(this.database, tableName);
     if (!needAligned) {
-      transformToTableDeviceTsBlockColumns(
-          schemaInfo,
-          builder,
-          columnSchemaList,
-          PathUtils.isTableModelDatabase(database)
-              ? 3
-              : DataNodeTreeViewSchemaUtils.getPatternNodes(table).length);
+      transformToTableDeviceTsBlockColumns(schemaInfo, builder, columnSchemaList, idIndex);
     } else {
-      transformToTreeDeviceTsBlockColumns(
-          schemaInfo,
-          builder, columnSchemaList,
-          DataNodeTreeViewSchemaUtils.getPatternNodes(table).length);
+      transformToTreeDeviceTsBlockColumns(schemaInfo, builder, columnSchemaList, idIndex);
     }
   }
 
@@ -312,12 +302,13 @@ public class TableDeviceQuerySource implements ISchemaSource<IDeviceSchemaInfo> 
 
   @Override
   public long getSchemaStatistic(final ISchemaRegion schemaRegion) {
-    return schemaRegion.getSchemaRegionStatistics().getTableDevicesNumber(tableName);
+    return schemaRegion.getSchemaRegionStatistics().getTableDevicesNumber(table.getTableName());
   }
 
   @Override
   public long getMaxMemory(final ISchemaRegion schemaRegion) {
     final ISchemaRegionStatistics statistics = schemaRegion.getSchemaRegionStatistics();
+    final String tableName = table.getTableName();
     final long devicesNumber = statistics.getTableDevicesNumber(tableName);
     return devicePatternList.stream().allMatch(path -> ((ExtendedPartialPath) path).isNormalPath())
         ? Math.min(

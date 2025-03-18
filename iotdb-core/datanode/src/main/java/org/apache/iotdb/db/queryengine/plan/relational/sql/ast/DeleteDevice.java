@@ -37,6 +37,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.Symbol;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.ColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.leaf.LeafColumnTransformer;
 import org.apache.iotdb.db.schemaengine.rescon.MemSchemaRegionStatistics;
+import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModEntry;
 import org.apache.iotdb.db.storageengine.dataregion.modification.TableDeletionEntry;
 
@@ -139,10 +140,14 @@ public class DeleteDevice extends AbstractTraverseDevice {
       }
     }
 
-    return TableDeviceQuerySource.getDevicePatternList(database, tableName, idDeterminedFilterList);
+    return TableDeviceQuerySource.getDevicePatternList(
+        database,
+        DataNodeTableCache.getInstance().getTable(database, tableName),
+        idDeterminedFilterList);
   }
 
   public static DeviceBlackListConstructor constructDevicePredicateUpdater(
+      final String database,
       final TsTable table,
       final byte[] filterInfo,
       final BiFunction<Integer, String, Binary> attributeProvider,
@@ -215,7 +220,9 @@ public class DeleteDevice extends AbstractTraverseDevice {
         table.getTableName(),
         columnSchemaList,
         attributeProvider,
-        regionStatistics);
+        regionStatistics,
+        database,
+        table);
   }
 
   @Override

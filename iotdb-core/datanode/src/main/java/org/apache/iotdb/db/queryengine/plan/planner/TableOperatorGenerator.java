@@ -1694,13 +1694,14 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
                     SchemaQueryScanOperator.class.getSimpleName()),
             SchemaSourceFactory.getTableDeviceQuerySource(
                 node.getDatabase(),
-                node.getTableName(),
+                table,
                 node.getIdDeterminedFilterList(),
                 node.getColumnHeaderList(),
                 node.getColumnHeaderList().stream()
                     .map(columnHeader -> table.getColumnSchema(columnHeader.getColumnName()))
                     .collect(Collectors.toList()),
-                null, node.isNeedAligned()));
+                null,
+                node.isNeedAligned()));
     operator.setLimit(node.getLimit());
     return operator;
   }
@@ -1727,7 +1728,7 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
                 SchemaCountOperator.class.getSimpleName()),
         SchemaSourceFactory.getTableDeviceQuerySource(
             database,
-            node.getTableName(),
+            table,
             node.getIdDeterminedFilterList(),
             node.getColumnHeaderList(),
             columnSchemaList,
@@ -1751,8 +1752,11 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
                                 0,
                                 context.getTypeProvider(),
                                 metadata)),
-                    columnSchemaList)
-                : null, false));
+                    columnSchemaList,
+                    database,
+                    table)
+                : null,
+            false));
   }
 
   @Override
