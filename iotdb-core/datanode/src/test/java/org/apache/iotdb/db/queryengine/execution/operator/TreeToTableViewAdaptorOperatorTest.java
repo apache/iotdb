@@ -63,7 +63,6 @@ import org.junit.Test;
 
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.TimeUnit;
@@ -176,7 +175,7 @@ public class TreeToTableViewAdaptorOperatorTest {
                   2, planNodeId, TreeToTableViewAdaptorOperator.class.getSimpleName()),
               new AlignedDeviceEntry(
                   alignedPath.getDeviceId(),
-                  Arrays.asList(new Binary("attr1", TSFileConfig.STRING_CHARSET))),
+                  new Binary[] {new Binary("attr1", TSFileConfig.STRING_CHARSET)}),
               columnIndexArray,
               columnSchemas,
               seriesScanOperator,

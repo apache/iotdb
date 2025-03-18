@@ -61,6 +61,7 @@ import org.apache.tsfile.read.common.block.TsBlock;
 import org.apache.tsfile.read.common.type.Type;
 import org.apache.tsfile.read.common.type.TypeEnum;
 import org.apache.tsfile.read.common.type.TypeFactory;
+import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.junit.After;
 import org.junit.Before;
@@ -69,7 +70,6 @@ import org.junit.Test;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -611,15 +611,15 @@ public class NonAlignedTreeDeviceViewScanOperatorTreeTest {
             new NonAlignedAlignedDeviceEntry(
                 IDeviceID.Factory.DEFAULT_FACTORY.create(
                     NON_ALIGNED_TREE_DEVICE_VIEW_SCAN_OPERATOR_TREE_TEST + ".device0"),
-                Collections.emptyList()),
+                new Binary[0]),
             new NonAlignedAlignedDeviceEntry(
                 IDeviceID.Factory.DEFAULT_FACTORY.create(
                     NON_ALIGNED_TREE_DEVICE_VIEW_SCAN_OPERATOR_TREE_TEST + ".device1"),
-                Collections.emptyList()),
+                new Binary[0]),
             new NonAlignedAlignedDeviceEntry(
                 IDeviceID.Factory.DEFAULT_FACTORY.create(
                     NON_ALIGNED_TREE_DEVICE_VIEW_SCAN_OPERATOR_TREE_TEST + ".device1"),
-                Collections.emptyList()));
+                new Binary[0]));
     Expression timePredicate = null;
     Expression pushDownPredicate = null;
     long pushDownLimit = 0;

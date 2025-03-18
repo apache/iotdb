@@ -46,6 +46,7 @@ import org.apache.tsfile.read.common.block.column.DoubleColumn;
 import org.apache.tsfile.read.common.block.column.FloatColumn;
 import org.apache.tsfile.read.common.block.column.IntColumn;
 import org.apache.tsfile.read.common.block.column.LongColumn;
+import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
@@ -110,15 +111,15 @@ public class DeviceIteratorScanOperatorTest {
               new AlignedDeviceEntry(
                   IDeviceID.Factory.DEFAULT_FACTORY.create(
                       DEVICE_ITERATOR_SCAN_OPERATOR_TEST + ".device0"),
-                  Collections.emptyList()),
+                  new Binary[0]),
               new AlignedDeviceEntry(
                   IDeviceID.Factory.DEFAULT_FACTORY.create(
                       DEVICE_ITERATOR_SCAN_OPERATOR_TEST + ".device0"),
-                  Collections.emptyList()),
+                  new Binary[0]),
               new AlignedDeviceEntry(
                   IDeviceID.Factory.DEFAULT_FACTORY.create(
                       DEVICE_ITERATOR_SCAN_OPERATOR_TEST + ".device0"),
-                  Collections.emptyList()));
+                  new Binary[0]));
 
       DeviceIteratorScanOperator.DeviceChildOperatorTreeGenerator generator =
           new DeviceIteratorScanOperator.DeviceChildOperatorTreeGenerator() {
