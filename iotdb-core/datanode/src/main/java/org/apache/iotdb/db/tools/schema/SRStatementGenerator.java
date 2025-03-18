@@ -183,7 +183,9 @@ public class SRStatementGenerator implements Iterator<Object>, Iterable<Object> 
               genAlignedTimeseriesStatement(
                   // skip common database
                   node, databaseFullPath.concatPath(node.getPartialPath(), 1));
-          statements.push(stmt);
+          if (Objects.nonNull(stmt)) {
+            statements.push(stmt);
+          }
         }
         cleanMTreeNode(node);
         if (ancestors.isEmpty()) {
