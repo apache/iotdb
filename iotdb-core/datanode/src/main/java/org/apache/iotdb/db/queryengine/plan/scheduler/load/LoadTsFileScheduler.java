@@ -407,8 +407,6 @@ public class LoadTsFileScheduler implements IScheduler {
         stateMachine.transitionToFailed(status);
         return false;
       }
-
-      checkAllReplicaSetsConsistency();
     } catch (IOException e) {
       LOGGER.warn(
           "Serialize Progress Index error, isFirstPhaseSuccess: {}, uuid: {}, tsFile: {}",
@@ -425,8 +423,7 @@ public class LoadTsFileScheduler implements IScheduler {
       stateMachine.transitionToFailed(e);
       return false;
     } catch (Exception e) {
-      LOGGER.warn(
-          String.format("Exception occurred during second phase of loading TsFile %s.", tsFile), e);
+      LOGGER.warn("Exception occurred during second phase of loading TsFile {}.", tsFile, e);
       stateMachine.transitionToFailed(e);
       return false;
     }
@@ -440,25 +437,6 @@ public class LoadTsFileScheduler implements IScheduler {
         final DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream)) {
       tsFileResource.getMaxProgressIndex().serialize(dataOutputStream);
       return ByteBuffer.wrap(byteArrayOutputStream.getBuf(), 0, byteArrayOutputStream.size());
-    }
-  }
-
-  public void checkAllReplicaSetsConsistency() throws RegionReplicaSetChangedException {
-    for (final TRegionReplicaSet replicaSet : allReplicaSets) {
-      final TConsensusGroupId regionId = replicaSet.getRegionId();
-      if (regionId == null) {
-        LOGGER.info(
-            "region id is null during region consistency check, will skip this region: {}",
-            replicaSet);
-        continue;
-      }
-
-      final TRegionReplicaSet currentReplicaSet =
-          partitionFetcher.fetcher.getRegionReplicaSet(regionId);
-      if (!Objects.equals(replicaSet, currentReplicaSet)) {
-        LOGGER.warn("Region replica set changed from {} to {}", replicaSet, currentReplicaSet);
-        throw new RegionReplicaSetChangedException(replicaSet, currentReplicaSet);
-      }
     }
   }
 

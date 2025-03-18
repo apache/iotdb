@@ -21,13 +21,11 @@ package org.apache.iotdb.db.protocol.thrift.impl;
 
 import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
-import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TFlushReq;
 import org.apache.iotdb.common.rpc.thrift.TLoadSample;
 import org.apache.iotdb.common.rpc.thrift.TNodeLocations;
-import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.common.rpc.thrift.TSender;
 import org.apache.iotdb.common.rpc.thrift.TServiceType;
@@ -273,7 +271,6 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.Optional;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -460,20 +457,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
   }
 
   @Override
-  public TLoadResp sendLoadCommand(final TLoadCommandReq req) {
-    final List<Integer> regionIds = req.getRegionIds();
-    final Map<Integer, TRegionReplicaSet> id2replicaSetBeforeExecution =
-        req.isSetRegionIds()
-                && req.getCommandType() == LoadTsFileScheduler.LoadCommand.EXECUTE.ordinal()
-            ? regionIds.stream()
-                .collect(
-                    Collectors.toMap(
-                        regionId -> regionId,
-                        regionId ->
-                            partitionFetcher.getRegionReplicaSet(
-                                new TConsensusGroupId(TConsensusGroupType.DataRegion, regionId))))
-            : Collections.emptyMap();
-
+  public TLoadResp sendLoadCommand(TLoadCommandReq req) {
     final ProgressIndex progressIndex;
     if (req.isSetProgressIndex()) {
       progressIndex = ProgressIndexType.deserializeFrom(ByteBuffer.wrap(req.getProgressIndex()));
@@ -484,39 +468,13 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
           "Use local generated load progress index {} for uuid {}.", progressIndex, req.uuid);
     }
 
-    final TLoadResp resp =
-        createTLoadResp(
-            StorageEngine.getInstance()
-                .executeLoadCommand(
-                    LoadTsFileScheduler.LoadCommand.values()[req.commandType],
-                    req.uuid,
-                    req.isSetIsGeneratedByPipe() && req.isGeneratedByPipe,
-                    progressIndex));
-
-    if (!id2replicaSetBeforeExecution.isEmpty()) {
-      for (Map.Entry<Integer, TRegionReplicaSet> entryBefore :
-          id2replicaSetBeforeExecution.entrySet()) {
-        final TRegionReplicaSet replicaSetAfterExecution =
-            partitionFetcher.getRegionReplicaSet(
-                new TConsensusGroupId(TConsensusGroupType.DataRegion, entryBefore.getKey()));
-        LOGGER.warn(
-            "Load request {} for region {} executed with replica set changed from {} to {}",
-            req.uuid,
-            entryBefore.getKey(),
-            entryBefore.getValue(),
-            replicaSetAfterExecution);
-        if (!Objects.equals(entryBefore.getValue(), replicaSetAfterExecution)) {
-          return createTLoadResp(
-              RpcUtils.getStatus(
-                  TSStatusCode.LOAD_FILE_ERROR,
-                  String.format(
-                      "Region %d replica set changed from %s to %s",
-                      entryBefore.getKey(), entryBefore.getValue(), replicaSetAfterExecution)));
-        }
-      }
-    }
-
-    return resp;
+    return createTLoadResp(
+        StorageEngine.getInstance()
+            .executeLoadCommand(
+                LoadTsFileScheduler.LoadCommand.values()[req.commandType],
+                req.uuid,
+                req.isSetIsGeneratedByPipe() && req.isGeneratedByPipe,
+                progressIndex));
   }
 
   private TLoadResp createTLoadResp(TSStatus resultStatus) {
@@ -1973,23 +1931,24 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
   }
 
   @Override
-  public TSStatus updateTemplate(TUpdateTemplateReq req) {
+  public TSStatus updateTemplate(final TUpdateTemplateReq req) {
     switch (TemplateInternalRPCUpdateType.getType(req.type)) {
-      case ADD_TEMPLATE_SET_INFO:
-        DataNodeSchemaLockManager.getInstance()
-            .takeWriteLock(SchemaLockType.TIMESERIES_VS_TEMPLATE);
-        try {
-          ClusterTemplateManager.getInstance().addTemplateSetInfo(req.getTemplateInfo());
-        } finally {
-          DataNodeSchemaLockManager.getInstance()
-              .releaseWriteLock(SchemaLockType.TIMESERIES_VS_TEMPLATE);
-        }
+        // Reserved for rolling upgrade
+      case ROLLBACK_INVALIDATE_TEMPLATE_SET_INFO:
+        ClusterTemplateManager.getInstance().addTemplateSetInfo(req.getTemplateInfo());
         break;
       case INVALIDATE_TEMPLATE_SET_INFO:
         ClusterTemplateManager.getInstance().invalidateTemplateSetInfo(req.getTemplateInfo());
         break;
       case ADD_TEMPLATE_PRE_SET_INFO:
-        ClusterTemplateManager.getInstance().addTemplatePreSetInfo(req.getTemplateInfo());
+        DataNodeSchemaLockManager.getInstance()
+            .takeWriteLock(SchemaLockType.TIMESERIES_VS_TEMPLATE);
+        try {
+          ClusterTemplateManager.getInstance().addTemplatePreSetInfo(req.getTemplateInfo());
+        } finally {
+          DataNodeSchemaLockManager.getInstance()
+              .releaseWriteLock(SchemaLockType.TIMESERIES_VS_TEMPLATE);
+        }
         break;
       case COMMIT_TEMPLATE_SET_INFO:
         ClusterTemplateManager.getInstance().commitTemplatePreSetInfo(req.getTemplateInfo());
