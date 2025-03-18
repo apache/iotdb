@@ -370,6 +370,9 @@ public class StatementGenerator {
                 ColumnCategory.values()[insertTabletReq.columnCategories.get(i).intValue()]);
       }
       insertStatement.setColumnCategories(columnCategories);
+      if (insertTabletReq.isAligned) {
+        insertStatement.setSingleDevice();
+      }
     }
     PERFORMANCE_OVERVIEW_METRICS.recordParseCost(System.nanoTime() - startTime);
     return insertStatement;

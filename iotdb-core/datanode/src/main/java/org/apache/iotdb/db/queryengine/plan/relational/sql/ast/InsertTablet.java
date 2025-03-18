@@ -27,6 +27,7 @@ import org.apache.tsfile.file.metadata.IDeviceID;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -102,13 +103,20 @@ public class InsertTablet extends WrappedInsertStatement {
       return;
     }
     InsertTabletStatement insertTabletStatement = getInnerTreeStatement();
-    deviceID2LastIdxMap = new LinkedHashMap<>(insertTabletStatement.getRowCount());
-    for (int i = 0; i < insertTabletStatement.getRowCount(); i++) {
-      IDeviceID deviceID = insertTabletStatement.getTableDeviceID(i);
-      deviceID2LastIdxMap.put(deviceID, i);
-    }
-    if (deviceID2LastIdxMap.size() == 1) {
-      insertTabletStatement.setSingleDevice();
+    if (insertTabletStatement.isSingleDevice()) {
+      if (insertTabletStatement.getRowCount() > 0) {
+        deviceID2LastIdxMap =
+            Collections.singletonMap(
+                insertTabletStatement.getTableDeviceID(0), insertTabletStatement.getRowCount() - 1);
+      } else {
+        deviceID2LastIdxMap = Collections.emptyMap();
+      }
+    } else {
+      deviceID2LastIdxMap = new LinkedHashMap<>(insertTabletStatement.getRowCount());
+      for (int i = 0; i < insertTabletStatement.getRowCount(); i++) {
+        IDeviceID deviceID = insertTabletStatement.getTableDeviceID(i);
+        deviceID2LastIdxMap.put(deviceID, i);
+      }
     }
   }
 }
