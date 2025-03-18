@@ -193,7 +193,6 @@ public class RegionWriteExecutor {
                 TSStatusCode.SYSTEM_READ_ONLY,
                 "Fail to do non-query operations because system is read-only."));
       }
-
       try {
         final TSStatus status = executePlanNodeInConsensusLayer(context.getRegionId(), node);
         return RegionExecutionResult.create(
@@ -217,6 +216,10 @@ public class RegionWriteExecutor {
     private TSStatus executePlanNodeInConsensusLayer(
         final ConsensusGroupId groupId, final PlanNode planNode) throws ConsensusException {
       if (groupId instanceof DataRegionId) {
+        if (planNode instanceof InsertNode) {
+          ((InsertNode) planNode).cachedByteBuffer();
+          planNode.getMemorySize();
+        }
         return dataRegionConsensus.write(groupId, planNode);
       } else {
         return schemaRegionConsensus.write(groupId, planNode);
@@ -308,6 +311,8 @@ public class RegionWriteExecutor {
                 "Failed to complete the insertion because trigger error before the insertion.");
       } else {
         final long startWriteTime = System.nanoTime();
+        if (CONFIG.getDataRegionNum()) insertNode.cachedByteBuffer();
+        insertNode.getMemorySize();
         status = dataRegionConsensus.write(groupId, insertNode);
         PERFORMANCE_OVERVIEW_METRICS.recordScheduleStorageCost(System.nanoTime() - startWriteTime);
 
