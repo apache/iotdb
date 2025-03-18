@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.pipe.event.common.tsfile.parser;
 
-import org.apache.iotdb.db.pipe.metric.PipeTsFileToTabletMetrics;
+import org.apache.iotdb.db.pipe.metric.processor.PipeTsFileToTabletMetrics;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 
 import java.util.Iterator;
@@ -28,12 +28,13 @@ public class TabletInsertionEventIterable implements Iterable<TabletInsertionEve
   private final Iterable<TabletInsertionEvent> originalIterable;
   private int count = 0;
   private boolean isMarked = false;
-  private final PipeTsFileToTabletMetrics.PipeID pipeID;
+  private final PipeTsFileToTabletMetrics.PipeCallerID pipeCallerID;
 
   public TabletInsertionEventIterable(
-      Iterable<TabletInsertionEvent> originalIterable, PipeTsFileToTabletMetrics.PipeID pipeID) {
+      Iterable<TabletInsertionEvent> originalIterable,
+      PipeTsFileToTabletMetrics.PipeCallerID pipeCallerID) {
     this.originalIterable = originalIterable;
-    this.pipeID = pipeID;
+    this.pipeCallerID = pipeCallerID;
   }
 
   @Override
@@ -46,8 +47,8 @@ public class TabletInsertionEventIterable implements Iterable<TabletInsertionEve
         boolean hasNext = originalIterator.hasNext();
         if (!hasNext && !isMarked) {
           isMarked = true;
-          if (pipeID != null) {
-            PipeTsFileToTabletMetrics.getInstance().markTabletCount(pipeID, count);
+          if (pipeCallerID != null) {
+            PipeTsFileToTabletMetrics.getInstance().markTabletCount(pipeCallerID, count);
           }
         }
         return hasNext;

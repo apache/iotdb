@@ -25,6 +25,7 @@ import org.apache.iotdb.db.pipe.metric.overview.PipeHeartbeatEventMetrics;
 import org.apache.iotdb.db.pipe.metric.overview.PipeResourceMetrics;
 import org.apache.iotdb.db.pipe.metric.overview.PipeWALInsertNodeCacheMetrics;
 import org.apache.iotdb.db.pipe.metric.processor.PipeProcessorMetrics;
+import org.apache.iotdb.db.pipe.metric.processor.PipeTsFileToTabletMetrics;
 import org.apache.iotdb.db.pipe.metric.receiver.PipeDataNodeReceiverMetrics;
 import org.apache.iotdb.db.pipe.metric.schema.PipeSchemaRegionConnectorMetrics;
 import org.apache.iotdb.db.pipe.metric.schema.PipeSchemaRegionExtractorMetrics;
