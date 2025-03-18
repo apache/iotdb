@@ -75,6 +75,12 @@ public class TsFileInsertionEventParserProvider {
           tsFile, tablePattern, startTime, endTime, pipeTaskMeta, userName, sourceEvent);
     }
 
+    // Use scan container to save memory
+    if (!PipeDataNodeResourceManager.memory().isEnough4TabletParsing()) {
+      return new TsFileInsertionEventScanParser(
+          tsFile, treePattern, startTime, endTime, pipeTaskMeta, sourceEvent);
+    }
+
     if (treePattern instanceof IoTDBTreePattern
         && !((IoTDBTreePattern) treePattern).mayMatchMultipleTimeSeriesInOneDevice()) {
       // If the pattern matches only one time series in one device, use query container here

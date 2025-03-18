@@ -82,7 +82,7 @@ public class PipeRealtimeDataRegionHybridExtractor extends PipeRealtimeDataRegio
   }
 
   private void extractTabletInsertion(final PipeRealtimeEvent event) {
-    final TsFileEpoch.State state = event.getTsFileEpoch().getState(this);
+    TsFileEpoch.State state = event.getTsFileEpoch().getState(this);
 
     if (state != TsFileEpoch.State.USING_TSFILE
         && state != TsFileEpoch.State.USING_BOTH
@@ -104,6 +104,7 @@ public class PipeRealtimeDataRegionHybridExtractor extends PipeRealtimeDataRegio
               });
     }
 
+    state = event.getTsFileEpoch().getState(this);
     switch (state) {
       case USING_TSFILE:
         // Ignore the tablet event.
