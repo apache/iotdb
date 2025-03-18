@@ -26,6 +26,7 @@ import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchemaUtil;
 import org.apache.iotdb.confignode.consensus.request.write.table.AddTableColumnPlan;
+import org.apache.iotdb.confignode.consensus.request.write.table.view.AddTableViewColumnPlan;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureSuspendedException;
@@ -136,7 +137,9 @@ public class AddTableColumnProcedure
         env.getConfigManager()
             .getClusterSchemaManager()
             .executePlan(
-                new AddTableColumnPlan(database, tableName, addedColumnList, false),
+                this instanceof AddTableViewColumnProcedure
+                    ? new AddTableViewColumnPlan(database, tableName, addedColumnList, false)
+                    : new AddTableColumnPlan(database, tableName, addedColumnList, false),
                 isGeneratedByPipe);
     if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       setFailure(new ProcedureException(new IoTDBException(status.getMessage(), status.getCode())));
@@ -183,7 +186,9 @@ public class AddTableColumnProcedure
         env.getConfigManager()
             .getClusterSchemaManager()
             .executePlan(
-                new AddTableColumnPlan(database, tableName, addedColumnList, true),
+                this instanceof AddTableViewColumnProcedure
+                    ? new AddTableViewColumnPlan(database, tableName, addedColumnList, true)
+                    : new AddTableColumnPlan(database, tableName, addedColumnList, true),
                 isGeneratedByPipe);
     if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       setFailure(new ProcedureException(new IoTDBException(status.getMessage(), status.getCode())));
