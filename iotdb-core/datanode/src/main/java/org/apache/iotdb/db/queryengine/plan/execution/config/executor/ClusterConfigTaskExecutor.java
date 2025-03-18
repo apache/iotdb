@@ -2768,9 +2768,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
         future.setException(new IOException("Remove ConfigNode failed: " + status.getMessage()));
         return future;
       } else {
-        LOGGER.info(
-            "ConfigNode: {} is removed. If the confignode data directory is no longer needed, you can delete it manually.",
-            removeConfigNodeId);
+        LOGGER.info("ConfigNode: {} is removed.", removeConfigNodeId);
         future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
       }
 
