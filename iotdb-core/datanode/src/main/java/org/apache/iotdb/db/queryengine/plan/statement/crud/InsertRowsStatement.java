@@ -193,12 +193,12 @@ public class InsertRowsStatement extends InsertBaseStatement {
   }
 
   @Override
-  protected long calculateBytes() {
+  protected long calculateBytesUsed() {
     return INSTANCE_SIZE
         + (Objects.nonNull(insertRowStatementList)
             ? UpdateDetailContainer.LIST_SIZE
                 + insertRowStatementList.stream()
-                    .mapToLong(InsertRowStatement::calculateBytes)
+                    .mapToLong(InsertRowStatement::calculateBytesUsed)
                     .reduce(0L, Long::sum)
             : 0);
   }

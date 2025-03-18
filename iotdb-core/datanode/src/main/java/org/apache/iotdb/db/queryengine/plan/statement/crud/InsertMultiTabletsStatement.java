@@ -161,12 +161,12 @@ public class InsertMultiTabletsStatement extends InsertBaseStatement {
   }
 
   @Override
-  protected long calculateBytes() {
+  protected long calculateBytesUsed() {
     return INSTANCE_SIZE
         + (Objects.nonNull(insertTabletStatementList)
             ? UpdateDetailContainer.LIST_SIZE
                 + insertTabletStatementList.stream()
-                    .mapToLong(InsertTabletStatement::calculateBytes)
+                    .mapToLong(InsertTabletStatement::calculateBytesUsed)
                     .reduce(0L, Long::sum)
             : 0);
   }

@@ -698,7 +698,7 @@ public abstract class InsertBaseStatement extends Statement implements Accountab
                 : 0L)
             + shallowSizeOfList(indexOfSourcePathsOfLogicalViews)
             + RamUsageEstimator.sizeOf(databaseName)
-            + calculateBytes();
+            + calculateBytesUsed();
     return ramBytesUsed;
   }
 
@@ -711,5 +711,5 @@ public abstract class InsertBaseStatement extends Statement implements Accountab
         : 0L;
   }
 
-  protected abstract long calculateBytes();
+  protected abstract long calculateBytesUsed();
 }

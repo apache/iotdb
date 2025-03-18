@@ -531,7 +531,7 @@ public class InsertTabletStatement extends InsertBaseStatement implements ISchem
   }
 
   @Override
-  protected long calculateBytes() {
+  protected long calculateBytesUsed() {
     return INSTANCE_SIZE
         + RamUsageEstimator.sizeOf(times)
         + InsertNodeMemoryEstimator.sizeOfBitMapArray(nullBitMaps)
