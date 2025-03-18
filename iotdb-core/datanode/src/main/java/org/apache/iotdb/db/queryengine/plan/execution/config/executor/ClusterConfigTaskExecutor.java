@@ -2928,7 +2928,9 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
       if (removeConfigNodeLocations.size() != 1) {
         LOGGER.error(
             "The ConfigNode to be removed is not in the cluster, or the input format is incorrect.");
-        future.set(new ConfigTaskResult(TSStatusCode.REMOVE_CONFIGNODE_ERROR));
+        future.setException(
+            new IOException(
+                "The ConfigNode to be removed is not in the cluster, or the input format is incorrect."));
       }
 
       TConfigNodeLocation configNodeLocation = removeConfigNodeLocations.get(0);
