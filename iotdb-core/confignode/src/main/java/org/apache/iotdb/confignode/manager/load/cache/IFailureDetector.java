@@ -34,9 +34,9 @@ public interface IFailureDetector {
   /**
    * Given the heartbeat history, decide whether this endpoint is still available
    *
-   * @param Id the unique identifier of the history owner
+   * @param id the unique identifier of the history owner
    * @param history heartbeat history
    * @return false if the endpoint is under failure
    */
-  boolean isAvailable(Object Id, List<AbstractHeartbeatSample> history);
+  boolean isAvailable(Object id, List<AbstractHeartbeatSample> history);
 }

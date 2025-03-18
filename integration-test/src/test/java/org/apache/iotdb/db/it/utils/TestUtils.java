@@ -56,7 +56,6 @@ import java.util.Set;
 import java.util.TreeMap;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
-import java.util.stream.Collectors;
 
 import static org.apache.iotdb.itbase.constant.TestConstant.DELTA;
 import static org.apache.iotdb.itbase.constant.TestConstant.NULL;
@@ -1710,11 +1709,11 @@ public class TestUtils {
     long retryIntervalMS = 1000;
     while (true) {
       try (Connection connection = EnvFactory.getEnv().getConnection()) {
-        final List<BaseNodeWrapper> allDataNodes = new ArrayList<>(EnvFactory.getEnv().getDataNodeWrapperList());
-        EnvFactory.getEnv().ensureNodeStatus(
-            allDataNodes,
-            Collections.nCopies(allDataNodes.size(), NodeStatus.Running)
-        );
+        final List<BaseNodeWrapper> allDataNodes =
+            new ArrayList<>(EnvFactory.getEnv().getDataNodeWrapperList());
+        EnvFactory.getEnv()
+            .ensureNodeStatus(
+                allDataNodes, Collections.nCopies(allDataNodes.size(), NodeStatus.Running));
         break;
       } catch (Exception e) {
         try {

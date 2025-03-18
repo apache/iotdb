@@ -67,7 +67,7 @@ import java.util.stream.Collectors;
 public class TopologyService implements Runnable, IClusterStatusSubscriber {
   private static final Logger LOGGER = LoggerFactory.getLogger(TopologyService.class);
   private static final long PROBING_INTERVAL_MS = 5_000L;
-  private static final long PROBING_TIMEOUT_MS = 1_000L;
+  private static final long PROBING_TIMEOUT_MS = PROBING_INTERVAL_MS;
   private static final int SAMPLING_WINDOW_SIZE = 100;
 
   private final ExecutorService topologyThread =

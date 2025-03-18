@@ -52,6 +52,7 @@ public class PhiAccrualDetector implements IFailureDetector {
   private final long minHeartbeatStdNs;
   private final int codeStartSampleCount;
   private final IFailureDetector fallbackDuringColdStart;
+  /* We are using cache here to avoid managing entry life cycles manually */
   private final Cache<Object, Boolean> availibilityCache;
 
   public PhiAccrualDetector(
@@ -70,18 +71,16 @@ public class PhiAccrualDetector implements IFailureDetector {
   }
 
   @Override
-  public boolean isAvailable(Object Id, List<AbstractHeartbeatSample> history) {
-    /* We are copying this history to avoid concurrent modification. */
-    final List<AbstractHeartbeatSample> historyCopy = new ArrayList<>(history);
+  public boolean isAvailable(Object id, List<AbstractHeartbeatSample> history) {
     if (history.size() < codeStartSampleCount) {
       /* We haven't received enough heartbeat replies.*/
-      return fallbackDuringColdStart.isAvailable(Id, historyCopy);
+      return fallbackDuringColdStart.isAvailable(id, history);
     }
-    final PhiAccrual phiAccrual = create(historyCopy);
+    final PhiAccrual phiAccrual = create(history);
     final boolean isAvailable = phiAccrual.phi() < (double) this.threshold;
 
-    final Boolean previousAvailability = availibilityCache.getIfPresent(Id);
-    availibilityCache.put(Id, isAvailable);
+    final Boolean previousAvailability = availibilityCache.getIfPresent(id);
+    availibilityCache.put(id, isAvailable);
 
     if (Boolean.TRUE.equals(previousAvailability) && !isAvailable) {
       // log the status change and dump the heartbeat history for analysis use

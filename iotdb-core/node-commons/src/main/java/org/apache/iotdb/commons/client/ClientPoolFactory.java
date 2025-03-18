@@ -208,7 +208,6 @@ public class ClientPoolFactory {
                       .setConnectionTimeoutMs(conf.getCnConnectionTimeoutInMS())
                       .setRpcThriftCompressionEnabled(conf.isRpcThriftCompressionEnabled())
                       .setSelectorNumOfAsyncClientManager(conf.getSelectorNumOfClientManager())
-                      .setPrintLogWhenEncounterException(false)
                       .build(),
                   ThreadName.ASYNC_DATANODE_HEARTBEAT_CLIENT_POOL.getName()),
               new ClientPoolProperty.Builder<AsyncDataNodeInternalServiceClient>()

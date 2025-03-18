@@ -89,6 +89,7 @@ import org.apache.iotdb.db.protocol.client.ConfigNodeInfo;
 import org.apache.iotdb.db.protocol.client.cn.DnToCnInternalServiceAsyncRequestManager;
 import org.apache.iotdb.db.protocol.client.cn.DnToCnRequestType;
 import org.apache.iotdb.db.protocol.client.dn.DataNodeExternalServiceAsyncRequestManager;
+import org.apache.iotdb.db.protocol.client.dn.DataNodeIntraHeartbeatManager;
 import org.apache.iotdb.db.protocol.client.dn.DataNodeMPPServiceAsyncRequestManager;
 import org.apache.iotdb.db.protocol.client.dn.DnToDnInternalServiceAsyncRequestManager;
 import org.apache.iotdb.db.protocol.client.dn.DnToDnRequestType;
@@ -1803,7 +1804,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
       throws TException {
     return new TTestConnectionResp(
         new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()),
-        testAllDataNodeInternalServiceConnection(nodeLocations.getDataNodeLocations()));
+        testAllDataNodeConnectionInHeartbeatChannel(nodeLocations.getDataNodeLocations()));
   }
 
   private static <Location, RequestType> List<TTestConnectionResult> testConnections(
@@ -1831,6 +1832,18 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
         DnToCnRequestType.TEST_CONNECTION,
         (AsyncRequestContext<Object, TSStatus, DnToCnRequestType, TConfigNodeLocation> handler) ->
             DnToCnInternalServiceAsyncRequestManager.getInstance().sendAsyncRequest(handler));
+  }
+
+  private List<TTestConnectionResult> testAllDataNodeConnectionInHeartbeatChannel(
+      List<TDataNodeLocation> dataNodeLocations) {
+    return testConnections(
+        dataNodeLocations,
+        TDataNodeLocation::getDataNodeId,
+        TDataNodeLocation::getInternalEndPoint,
+        TServiceType.DataNodeInternalService,
+        DnToDnRequestType.TEST_CONNECTION,
+        (AsyncRequestContext<Object, TSStatus, DnToDnRequestType, TDataNodeLocation> handler) ->
+            DataNodeIntraHeartbeatManager.getInstance().sendAsyncRequest(handler));
   }
 
   private List<TTestConnectionResult> testAllDataNodeInternalServiceConnection(
