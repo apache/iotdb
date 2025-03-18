@@ -573,7 +573,7 @@ public class ProcedureManager {
     this.executor.submitProcedure(
         new RemoveDataNodesProcedure(removeDataNodePlan.getDataNodeLocations(), nodeStatusMap));
     LOGGER.info(
-        "Submit RemoveDataNodeProcedure successfully, {}",
+        "Submit RemoveDataNodesProcedure successfully, {}",
         removeDataNodePlan.getDataNodeLocations());
     return true;
   }

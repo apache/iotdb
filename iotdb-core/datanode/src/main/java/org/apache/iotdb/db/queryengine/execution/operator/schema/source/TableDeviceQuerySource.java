@@ -56,13 +56,12 @@ import static org.apache.iotdb.commons.conf.IoTDBConstant.PATH_ROOT;
 
 public class TableDeviceQuerySource implements ISchemaSource<IDeviceSchemaInfo> {
 
-  private final String database;
-
   private final String tableName;
 
   private final List<List<SchemaFilter>> idDeterminedPredicateList;
 
   private final List<ColumnHeader> columnHeaderList;
+  private final List<TsTableColumnSchema> columnSchemaList;
   private final DevicePredicateFilter filter;
   private @Nonnull List<PartialPath> devicePatternList;
   private final boolean needAligned;
@@ -72,12 +71,15 @@ public class TableDeviceQuerySource implements ISchemaSource<IDeviceSchemaInfo> 
       final String tableName,
       final List<List<SchemaFilter>> idDeterminedPredicateList,
       final List<ColumnHeader> columnHeaderList,
+      final List<TsTableColumnSchema> columnSchemaList,
       final DevicePredicateFilter filter,
       final boolean needAligned) {
     this.database = database;
     this.tableName = tableName;
     this.idDeterminedPredicateList = idDeterminedPredicateList;
     this.columnHeaderList = columnHeaderList;
+    // Calculate this outside to save cpu
+    this.columnSchemaList = columnSchemaList;
     this.filter = filter;
     this.devicePatternList = getDevicePatternList(database, tableName, idDeterminedPredicateList);
     this.needAligned = needAligned;
@@ -229,19 +231,14 @@ public class TableDeviceQuerySource implements ISchemaSource<IDeviceSchemaInfo> 
       transformToTableDeviceTsBlockColumns(
           schemaInfo,
           builder,
-          this.database,
-          tableName,
-          columnHeaderList,
+          columnSchemaList,
           PathUtils.isTableModelDatabase(database)
               ? 3
               : DataNodeTreeViewSchemaUtils.getPatternNodes(table).length);
     } else {
       transformToTreeDeviceTsBlockColumns(
           schemaInfo,
-          builder,
-          this.database,
-          tableName,
-          columnHeaderList,
+          builder, columnSchemaList,
           DataNodeTreeViewSchemaUtils.getPatternNodes(table).length);
     }
   }
@@ -249,17 +246,12 @@ public class TableDeviceQuerySource implements ISchemaSource<IDeviceSchemaInfo> 
   public static void transformToTableDeviceTsBlockColumns(
       final IDeviceSchemaInfo schemaInfo,
       final TsBlockBuilder builder,
-      final String database,
-      final String tableName,
-      final List<ColumnHeader> columnHeaderList,
+      final List<TsTableColumnSchema> columnSchemaList,
       int idIndex) {
     builder.getTimeColumnBuilder().writeLong(0L);
     int resultIndex = 0;
     final String[] pathNodes = schemaInfo.getRawNodes();
-    final TsTable table = DataNodeTableCache.getInstance().getTable(database, tableName);
-    TsTableColumnSchema columnSchema;
-    for (final ColumnHeader columnHeader : columnHeaderList) {
-      columnSchema = table.getColumnSchema(columnHeader.getColumnName());
+    for (final TsTableColumnSchema columnSchema : columnSchemaList) {
       if (columnSchema.getColumnCategory().equals(TsTableColumnCategory.TAG)) {
         if (pathNodes.length <= idIndex || pathNodes[idIndex] == null) {
           builder.getColumnBuilder(resultIndex).appendNull();
@@ -270,7 +262,7 @@ public class TableDeviceQuerySource implements ISchemaSource<IDeviceSchemaInfo> 
         }
         idIndex++;
       } else if (columnSchema.getColumnCategory().equals(TsTableColumnCategory.ATTRIBUTE)) {
-        final Binary attributeValue = schemaInfo.getAttributeValue(columnHeader.getColumnName());
+        final Binary attributeValue = schemaInfo.getAttributeValue(columnSchema.getColumnName());
         if (attributeValue == null) {
           builder.getColumnBuilder(resultIndex).appendNull();
         } else {
@@ -285,17 +277,12 @@ public class TableDeviceQuerySource implements ISchemaSource<IDeviceSchemaInfo> 
   private static void transformToTreeDeviceTsBlockColumns(
       final IDeviceSchemaInfo schemaInfo,
       final TsBlockBuilder builder,
-      final String database,
-      final String tableName,
-      final List<ColumnHeader> columnHeaderList,
+      final List<TsTableColumnSchema> columnSchemaList,
       final int beginIndex) {
     builder.getTimeColumnBuilder().writeLong(0L);
     int resultIndex = 0;
     final String[] pathNodes = schemaInfo.getRawNodes();
-    final TsTable table = DataNodeTableCache.getInstance().getTable(database, tableName);
-    TsTableColumnSchema columnSchema;
-    for (final ColumnHeader columnHeader : columnHeaderList) {
-      columnSchema = table.getColumnSchema(columnHeader.getColumnName());
+    for (final TsTableColumnSchema columnSchema : columnSchemaList) {
       if (Objects.nonNull(columnSchema)
           && columnSchema.getColumnCategory().equals(TsTableColumnCategory.TAG)) {
         if (pathNodes.length <= resultIndex + beginIndex

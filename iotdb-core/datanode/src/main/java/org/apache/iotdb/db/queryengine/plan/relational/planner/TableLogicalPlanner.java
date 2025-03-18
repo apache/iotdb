@@ -338,7 +338,7 @@ public class TableLogicalPlanner {
 
   private PlanNode planFetchDevice(final FetchDevice statement, final Analysis analysis) {
     final List<ColumnHeader> columnHeaderList =
-        getDeviceColumnHeaderList(statement.getDatabase(), statement.getTableName());
+        getDeviceColumnHeaderList(statement.getDatabase(), statement.getTableName(), null);
 
     analysis.setRespDatasetHeader(new DatasetHeader(columnHeaderList, true));
 

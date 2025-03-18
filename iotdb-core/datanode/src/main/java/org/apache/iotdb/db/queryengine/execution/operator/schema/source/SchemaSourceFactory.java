@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.schema.column.ColumnHeader;
 import org.apache.iotdb.commons.schema.filter.SchemaFilter;
+import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
 import org.apache.iotdb.db.schemaengine.schemaregion.read.resp.info.IDeviceSchemaInfo;
 import org.apache.iotdb.db.schemaengine.schemaregion.read.resp.info.INodeSchemaInfo;
 import org.apache.iotdb.db.schemaengine.schemaregion.read.resp.info.ITimeSeriesSchemaInfo;
@@ -113,9 +114,10 @@ public class SchemaSourceFactory {
       final String tableName,
       final List<List<SchemaFilter>> idDeterminedFilterList,
       final List<ColumnHeader> columnHeaderList,
+      final List<TsTableColumnSchema> columnSchemaList,
       final DevicePredicateFilter filter,
       final boolean needAligned) {
     return new TableDeviceQuerySource(
-        database, tableName, idDeterminedFilterList, columnHeaderList, filter, needAligned);
+        database, tableName, idDeterminedFilterList, columnHeaderList, columnSchemaList, filter, needAligned);
   }
 }

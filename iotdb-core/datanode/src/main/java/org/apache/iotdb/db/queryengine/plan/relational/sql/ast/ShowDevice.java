@@ -21,6 +21,7 @@ package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
 
 import org.apache.iotdb.commons.schema.column.ColumnHeader;
 import org.apache.iotdb.commons.schema.table.TreeViewSchema;
+import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.db.queryengine.common.header.DatasetHeader;
 import org.apache.iotdb.db.queryengine.execution.operator.schema.source.TableDeviceQuerySource;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Analysis;
@@ -112,12 +113,18 @@ public class ShowDevice extends AbstractQueryDeviceWithCache {
       endIndex = results.size();
     }
 
+    final TsTable table = DataNodeTableCache.getInstance().getTable(database, tableName);
     results
         .subList(startIndex, endIndex)
         .forEach(
             result ->
                 TableDeviceQuerySource.transformToTableDeviceTsBlockColumns(
-                    result, tsBlockBuilder, database, tableName, columnHeaderList, 1));
+                    result,
+                    tsBlockBuilder,
+                    columnHeaderList.stream()
+                        .map(columnHeader -> table.getColumnSchema(columnHeader.getColumnName()))
+                        .collect(Collectors.toList()),
+                    1));
     return tsBlockBuilder.build();
   }
 

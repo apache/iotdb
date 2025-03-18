@@ -24,7 +24,8 @@ import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.AlignedFullPath;
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.commons.schema.column.ColumnHeader;
+import org.apache.iotdb.commons.schema.table.TsTable;
+import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.queryengine.common.FragmentInstanceId;
@@ -174,6 +175,7 @@ import org.apache.iotdb.db.queryengine.transformation.dag.column.ColumnTransform
 import org.apache.iotdb.db.queryengine.transformation.dag.column.leaf.LeafColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.DateBinFunctionColumnTransformer;
 import org.apache.iotdb.db.schemaengine.schemaregion.read.resp.info.IDeviceSchemaInfo;
+import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
 import org.apache.iotdb.db.utils.datastructure.SortKey;
 import org.apache.iotdb.udf.api.relational.TableFunction;
 import org.apache.iotdb.udf.api.relational.table.TableFunctionProcessorProvider;
@@ -1679,6 +1681,8 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
   public Operator visitTableDeviceQueryScan(
       final TableDeviceQueryScanNode node, final LocalExecutionPlanContext context) {
     // Query scan use filterNode directly
+    final TsTable table =
+        DataNodeTableCache.getInstance().getTable(node.getDatabase(), node.getTableName());
     final SchemaQueryScanOperator<IDeviceSchemaInfo> operator =
         new SchemaQueryScanOperator<>(
             node.getPlanNodeId(),
@@ -1693,8 +1697,10 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
                 node.getTableName(),
                 node.getIdDeterminedFilterList(),
                 node.getColumnHeaderList(),
-                null,
-                node.isNeedAligned()));
+                node.getColumnHeaderList().stream()
+                    .map(columnHeader -> table.getColumnSchema(columnHeader.getColumnName()))
+                    .collect(Collectors.toList()),
+                null, node.isNeedAligned()));
     operator.setLimit(node.getLimit());
     return operator;
   }
@@ -1703,8 +1709,11 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
   public Operator visitTableDeviceQueryCount(
       final TableDeviceQueryCountNode node, final LocalExecutionPlanContext context) {
     final String database = node.getDatabase();
-    final String tableName = node.getTableName();
-    final List<ColumnHeader> columnHeaderList = node.getColumnHeaderList();
+    final TsTable table = DataNodeTableCache.getInstance().getTable(database, node.getTableName());
+    final List<TsTableColumnSchema> columnSchemaList =
+        node.getColumnHeaderList().stream()
+            .map(columnHeader -> table.getColumnSchema(columnHeader.getColumnName()))
+            .collect(Collectors.toList());
 
     // In "count" we have to reuse filter operator per "next"
     final List<LeafColumnTransformer> filterLeafColumnTransformerList = new ArrayList<>();
@@ -1720,7 +1729,8 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
             database,
             node.getTableName(),
             node.getIdDeterminedFilterList(),
-            columnHeaderList,
+            node.getColumnHeaderList(),
+            columnSchemaList,
             Objects.nonNull(node.getIdFuzzyPredicate())
                 ? new DevicePredicateFilter(
                     filterLeafColumnTransformerList,
@@ -1741,11 +1751,8 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
                                 0,
                                 context.getTypeProvider(),
                                 metadata)),
-                    database,
-                    tableName,
-                    columnHeaderList)
-                : null,
-            false));
+                    columnSchemaList)
+                : null, false));
   }
 
   @Override
