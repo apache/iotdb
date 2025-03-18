@@ -68,6 +68,7 @@ import java.util.stream.Collectors;
 
 import static org.apache.iotdb.db.queryengine.metric.DriverSchedulerMetricSet.BLOCK_QUEUED_TIME;
 import static org.apache.iotdb.db.queryengine.metric.DriverSchedulerMetricSet.READY_QUEUED_TIME;
+import static org.apache.iotdb.db.storageengine.dataregion.VirtualDataRegion.EMPTY_QUERY_DATA_SOURCE;
 import static org.apache.iotdb.db.utils.ErrorHandlingUtils.getRootCause;
 import static org.apache.iotdb.rpc.TSStatusCode.DATE_OUT_OF_RANGE;
 
@@ -452,6 +453,7 @@ public class FragmentInstanceContext extends QueryContext {
   public void initQueryDataSource(List<IFullPath> sourcePaths) throws QueryProcessException {
     long startTime = System.nanoTime();
     if (sourcePaths == null || sourcePaths.isEmpty()) {
+      this.sharedQueryDataSource = EMPTY_QUERY_DATA_SOURCE;
       return;
     }
 
