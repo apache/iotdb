@@ -23,8 +23,8 @@ import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.TableClusterIT;
 import org.apache.iotdb.itbase.category.TableLocalStandaloneIT;
-
 import org.apache.iotdb.rpc.TSStatusCode;
+
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Test;
@@ -2099,28 +2099,24 @@ public class IoTDBMultiTAGsWithAttributesTableIT {
   public void exceptionTest() {
     String errMsg = TSStatusCode.SEMANTIC_ERROR.toString() + ':' + ONLY_SUPPORT_EQUI_JOIN;
     tableAssertTestFail(
-        "select * from table0 t0 full join table1 t1 on t0.num>t1.num",
-            errMsg,
-        DATABASE_NAME);
+        "select * from table0 t0 full join table1 t1 on t0.num>t1.num", errMsg, DATABASE_NAME);
 
     tableAssertTestFail(
-        "select * from table0 t0 full join table1 t1 on t0.num!=t1.num",
-            errMsg,
-        DATABASE_NAME);
+        "select * from table0 t0 full join table1 t1 on t0.num!=t1.num", errMsg, DATABASE_NAME);
 
     tableAssertTestFail(
         "select * from table0 t0 full join table1 t1 on t0.device=t1.device AND t0.num>t1.num",
-            errMsg,
+        errMsg,
         DATABASE_NAME);
 
     tableAssertTestFail(
         "select * from table0 t0 full join table1 t1 on t0.device=t1.device OR t0.num>t1.num",
-            errMsg,
+        errMsg,
         DATABASE_NAME);
 
     tableAssertTestFail(
         "select * from table0 t0 full join table1 t1 on t0.device=t1.device OR t0.time=t1.time",
-            errMsg,
+        errMsg,
         DATABASE_NAME);
   }
 
