@@ -73,7 +73,7 @@ public class RelationalInsertTabletNode extends InsertTabletNode {
     super(
         id,
         devicePath,
-        isAligned,
+        true,
         measurements,
         dataTypes,
         measurementSchemas,
@@ -86,6 +86,7 @@ public class RelationalInsertTabletNode extends InsertTabletNode {
 
   public RelationalInsertTabletNode(PlanNodeId id) {
     super(id);
+    super.isAligned = true;
   }
 
   @TestOnly
@@ -100,7 +101,7 @@ public class RelationalInsertTabletNode extends InsertTabletNode {
       Object[] columns,
       int rowCount,
       TsTableColumnCategory[] columnCategories) {
-    super(id, devicePath, isAligned, measurements, dataTypes, times, bitMaps, columns, rowCount);
+    super(id, devicePath, true, measurements, dataTypes, times, bitMaps, columns, rowCount);
     setColumnCategories(columnCategories);
   }
 
@@ -223,8 +224,7 @@ public class RelationalInsertTabletNode extends InsertTabletNode {
 
   @Override
   protected void serializeAttributes(ByteBuffer byteBuffer) {
-    getType().serialize(byteBuffer);
-    subSerialize(byteBuffer);
+    super.serializeAttributes(byteBuffer);
     for (int i = 0; i < measurements.length; i++) {
       if (measurements[i] != null) {
         columnCategories[i].serialize(byteBuffer);
@@ -234,8 +234,7 @@ public class RelationalInsertTabletNode extends InsertTabletNode {
 
   @Override
   protected void serializeAttributes(DataOutputStream stream) throws IOException {
-    getType().serialize(stream);
-    subSerialize(stream);
+    super.serializeAttributes(stream);
     for (int i = 0; i < measurements.length; i++) {
       if (measurements[i] != null) {
         columnCategories[i].serialize(stream);
