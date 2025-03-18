@@ -2168,6 +2168,11 @@ public class IoTDBDescriptor {
             properties.getProperty(
                 "load_tsfile_analyze_schema_memory_size_in_bytes",
                 String.valueOf(conf.getLoadTsFileAnalyzeSchemaMemorySizeInBytes()))));
+    conf.setLoadTsFileTabletConversionBatchMemorySizeInBytes(
+        Long.parseLong(
+            properties.getProperty(
+                "load_tsfile_tablet_conversion_batch_memory_size_in_bytes",
+                String.valueOf(conf.getLoadTsFileTabletConversionBatchMemorySizeInBytes()))));
     conf.setLoadTsFileMaxDeviceCountToUseDeviceTimeIndex(
         Integer.parseInt(
             properties.getProperty(

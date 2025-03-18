@@ -30,14 +30,13 @@ import org.slf4j.LoggerFactory;
 
 import java.util.concurrent.atomic.AtomicLong;
 
-public class LoadTsFileAnalyzeSchemaMemoryBlock extends LoadTsFileAbstractMemoryBlock {
-  private static final Logger LOGGER =
-      LoggerFactory.getLogger(LoadTsFileAnalyzeSchemaMemoryBlock.class);
+public class LoadTsFileMemoryBlock extends LoadTsFileAbstractMemoryBlock {
+  private static final Logger LOGGER = LoggerFactory.getLogger(LoadTsFileMemoryBlock.class);
 
   private long totalMemorySizeInBytes;
   private final AtomicLong memoryUsageInBytes;
 
-  LoadTsFileAnalyzeSchemaMemoryBlock(long totalMemorySizeInBytes) {
+  LoadTsFileMemoryBlock(long totalMemorySizeInBytes) {
     super();
 
     this.totalMemorySizeInBytes = totalMemorySizeInBytes;
@@ -60,7 +59,7 @@ public class LoadTsFileAnalyzeSchemaMemoryBlock extends LoadTsFileAbstractMemory
             Metric.LOAD_MEM.toString(),
             MetricLevel.IMPORTANT,
             Tag.NAME.toString(),
-            LoadTsFileMemMetricSet.LOAD_TSFILE_ANALYZE_SCHEMA_MEMORY)
+            LoadTsFileMemMetricSet.LOAD_TSFILE_OTHER_MEMORY)
         .incr(memoryInBytes);
   }
 
@@ -75,8 +74,13 @@ public class LoadTsFileAnalyzeSchemaMemoryBlock extends LoadTsFileAbstractMemory
             Metric.LOAD_MEM.toString(),
             MetricLevel.IMPORTANT,
             Tag.NAME.toString(),
-            LoadTsFileMemMetricSet.LOAD_TSFILE_ANALYZE_SCHEMA_MEMORY)
+            LoadTsFileMemMetricSet.LOAD_TSFILE_OTHER_MEMORY)
         .decr(memoryInBytes);
+  }
+
+  @Override
+  public void clearMemoryUsage() {
+    memoryUsageInBytes.set(0);
   }
 
   @Override
@@ -108,7 +112,7 @@ public class LoadTsFileAnalyzeSchemaMemoryBlock extends LoadTsFileAbstractMemory
 
   @Override
   public String toString() {
-    return "LoadTsFileAnalyzeSchemaMemoryBlock{"
+    return "LoadTsFileMemoryBlock{"
         + "totalMemorySizeInBytes="
         + totalMemorySizeInBytes
         + ", usedMemoryInBytes="
