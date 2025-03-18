@@ -171,6 +171,7 @@ public class ConfigRegionListeningFilter {
           Collections.unmodifiableList(
               Arrays.asList(
                   ConfigPhysicalPlanType.CreateUser,
+                  ConfigPhysicalPlanType.RCreateUser,
                   ConfigPhysicalPlanType.CreateUserWithRawPassword)));
       OPTION_PLAN_MAP.put(
           new PartialPath("auth.user.alter"),
@@ -180,7 +181,7 @@ public class ConfigRegionListeningFilter {
       OPTION_PLAN_MAP.put(
           new PartialPath("auth.user.drop"),
           Collections.unmodifiableList(
-              Arrays.asList(ConfigPhysicalPlanType.DropUser, ConfigPhysicalPlanType.RUpdateUser)));
+              Arrays.asList(ConfigPhysicalPlanType.DropUser, ConfigPhysicalPlanType.RDropUser)));
 
       // Both
       OPTION_PLAN_MAP.put(
