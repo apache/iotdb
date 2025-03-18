@@ -128,7 +128,7 @@ public class AtomicLongMemoryBlock extends IMemoryBlock {
   }
 
   @Override
-  public double getUsedRatio() {
+  public double getScore() {
     return (double) usedMemoryInBytes.get() / totalMemorySizeInBytes;
   }
 

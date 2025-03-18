@@ -99,7 +99,7 @@ public abstract class IMemoryBlock implements AutoCloseable {
   /** Get the free memory in byte of this memory block */
   public abstract long getFreeMemoryInBytes();
 
-  public abstract double getUsedRatio();
+  public abstract double getScore();
 
   /** Get the name of memory block */
   public String getName() {
