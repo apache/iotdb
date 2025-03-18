@@ -25,7 +25,6 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.schema.column.ColumnHeader;
 import org.apache.iotdb.commons.schema.filter.SchemaFilter;
 import org.apache.iotdb.commons.schema.filter.impl.DeviceFilterUtil;
-import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.TableMetadataImpl;
@@ -51,13 +50,12 @@ import java.util.Objects;
 
 public class TableDeviceQuerySource implements ISchemaSource<IDeviceSchemaInfo> {
 
-  private final String database;
-
   private final String tableName;
 
   private final List<List<SchemaFilter>> idDeterminedPredicateList;
 
   private final List<ColumnHeader> columnHeaderList;
+  private final List<TsTableColumnSchema> columnSchemaList;
   private final DevicePredicateFilter filter;
   private @Nonnull List<PartialPath> devicePatternList;
 
@@ -66,11 +64,13 @@ public class TableDeviceQuerySource implements ISchemaSource<IDeviceSchemaInfo> 
       final String tableName,
       final List<List<SchemaFilter>> idDeterminedPredicateList,
       final List<ColumnHeader> columnHeaderList,
+      final List<TsTableColumnSchema> columnSchemaList,
       final DevicePredicateFilter filter) {
-    this.database = database;
     this.tableName = tableName;
     this.idDeterminedPredicateList = idDeterminedPredicateList;
     this.columnHeaderList = columnHeaderList;
+    // Calculate this outside to save cpu
+    this.columnSchemaList = columnSchemaList;
     this.filter = filter;
     this.devicePatternList = getDevicePatternList(database, tableName, idDeterminedPredicateList);
   }
@@ -214,23 +214,18 @@ public class TableDeviceQuerySource implements ISchemaSource<IDeviceSchemaInfo> 
   @Override
   public void transformToTsBlockColumns(
       final IDeviceSchemaInfo schemaInfo, final TsBlockBuilder builder, final String database) {
-    transformToTsBlockColumns(schemaInfo, builder, database, tableName, columnHeaderList, 3);
+    transformToTsBlockColumns(schemaInfo, builder, columnSchemaList, 3);
   }
 
   public static void transformToTsBlockColumns(
       final IDeviceSchemaInfo schemaInfo,
       final TsBlockBuilder builder,
-      final String database,
-      final String tableName,
-      final List<ColumnHeader> columnHeaderList,
+      final List<TsTableColumnSchema> columnSchemaList,
       int idIndex) {
     builder.getTimeColumnBuilder().writeLong(0L);
     int resultIndex = 0;
     final String[] pathNodes = schemaInfo.getRawNodes();
-    final TsTable table = DataNodeTableCache.getInstance().getTable(database, tableName);
-    TsTableColumnSchema columnSchema;
-    for (final ColumnHeader columnHeader : columnHeaderList) {
-      columnSchema = table.getColumnSchema(columnHeader.getColumnName());
+    for (final TsTableColumnSchema columnSchema : columnSchemaList) {
       if (columnSchema.getColumnCategory().equals(TsTableColumnCategory.TAG)) {
         if (pathNodes.length <= idIndex || pathNodes[idIndex] == null) {
           builder.getColumnBuilder(resultIndex).appendNull();
@@ -241,7 +236,7 @@ public class TableDeviceQuerySource implements ISchemaSource<IDeviceSchemaInfo> 
         }
         idIndex++;
       } else if (columnSchema.getColumnCategory().equals(TsTableColumnCategory.ATTRIBUTE)) {
-        final Binary attributeValue = schemaInfo.getAttributeValue(columnHeader.getColumnName());
+        final Binary attributeValue = schemaInfo.getAttributeValue(columnSchema.getColumnName());
         if (attributeValue == null) {
           builder.getColumnBuilder(resultIndex).appendNull();
         } else {

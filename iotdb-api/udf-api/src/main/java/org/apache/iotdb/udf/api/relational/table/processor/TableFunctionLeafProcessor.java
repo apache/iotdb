@@ -15,20 +15,28 @@
  * KIND, either express or implied.  See the License for the
  * specific language governing permissions and limitations
  * under the License.
- *
  */
 
-package org.apache.iotdb.db.exception.metadata.template;
+package org.apache.iotdb.udf.api.relational.table.processor;
 
-import org.apache.iotdb.commons.exception.MetadataException;
-import org.apache.iotdb.rpc.TSStatusCode;
+import org.apache.tsfile.block.column.ColumnBuilder;
 
-public class NoTemplateOnMNodeException extends MetadataException {
+import java.util.List;
 
-  public NoTemplateOnMNodeException(String path) {
-    super(
-        String.format("NO template on %s", path),
-        TSStatusCode.TEMPLATE_NOT_SET.getStatusCode(),
-        true);
+public interface TableFunctionLeafProcessor {
+
+  default void beforeStart() {
+    // do nothing
   }
+
+  /**
+   * This method processes a portion of data. It is called multiple times until the processor is
+   * fully processed.
+   *
+   * @param columnBuilders a list of {@link ColumnBuilder} for each column in the output table.
+   */
+  void process(List<ColumnBuilder> columnBuilders);
+
+  /** This method is called to determine if the processor has finished processing all data. */
+  boolean isFinish();
 }

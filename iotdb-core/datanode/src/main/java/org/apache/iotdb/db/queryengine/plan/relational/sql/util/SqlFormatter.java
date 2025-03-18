@@ -90,6 +90,9 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SingleColumn;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.StartPipe;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.StopPipe;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Table;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.TableFunctionArgument;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.TableFunctionInvocation;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.TableFunctionTableArgument;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.TableSubquery;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Union;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Update;
@@ -1477,6 +1480,78 @@ public final class SqlFormatter {
 
         builder.append(" (").append(formattedColumns).append(')');
       }
+    }
+
+    @Override
+    public Void visitTableFunctionInvocation(TableFunctionInvocation node, Integer indent) {
+      append(indent, "TABLE(");
+      appendTableFunctionInvocation(node, indent + 1);
+      builder.append(")");
+      return null;
+    }
+
+    private void appendTableFunctionInvocation(TableFunctionInvocation node, Integer indent) {
+      builder.append(formatName(node.getName())).append("(\n");
+      appendTableFunctionArguments(node.getArguments(), indent + 1);
+      builder.append(")");
+    }
+
+    private void appendTableFunctionArguments(List<TableFunctionArgument> arguments, int indent) {
+      for (int i = 0; i < arguments.size(); i++) {
+        TableFunctionArgument argument = arguments.get(i);
+        if (argument.getName().isPresent()) {
+          append(indent, formatName(argument.getName().get()));
+          builder.append(" => ");
+        } else {
+          append(indent, "");
+        }
+        Node value = argument.getValue();
+        if (value instanceof Expression) {
+          builder.append(formatExpression((Expression) value));
+        } else {
+          process(value, indent + 1);
+        }
+        if (i < arguments.size() - 1) {
+          builder.append(",\n");
+        }
+      }
+    }
+
+    @Override
+    public Void visitTableArgument(TableFunctionTableArgument node, Integer indent) {
+      Relation relation = node.getTable();
+      Node unaliased =
+          relation instanceof AliasedRelation
+              ? ((AliasedRelation) relation).getRelation()
+              : relation;
+      if (unaliased instanceof TableSubquery) {
+        // unpack the relation from TableSubquery to avoid adding another pair of parentheses
+        unaliased = ((TableSubquery) unaliased).getQuery();
+      }
+      builder.append("TABLE(");
+      process(unaliased, indent);
+      builder.append(")");
+      if (relation instanceof AliasedRelation) {
+        AliasedRelation aliasedRelation = (AliasedRelation) relation;
+        builder.append(" AS ").append(formatName(aliasedRelation.getAlias()));
+        appendAliasColumns(builder, aliasedRelation.getColumnNames());
+      }
+      if (node.getPartitionBy().isPresent()) {
+        builder.append("\n");
+        append(indent, "PARTITION BY ")
+            .append(
+                node.getPartitionBy().get().stream()
+                    .map(SqlFormatter::formatExpression)
+                    .collect(joining(", ")));
+      }
+      node.getOrderBy()
+          .ifPresent(
+              orderBy -> {
+                builder.append("\n");
+                append(indent, formatOrderBy(orderBy));
+              });
+
+      return null;
     }
   }
 }
