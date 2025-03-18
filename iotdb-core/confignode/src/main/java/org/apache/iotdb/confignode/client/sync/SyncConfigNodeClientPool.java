@@ -88,7 +88,7 @@ public class SyncConfigNodeClientPool {
           case REPORT_CONFIG_NODE_SHUTDOWN:
             return client.reportConfigNodeShutdown((TConfigNodeLocation) req);
           case STOP_AND_CLEAR_CONFIG_NODE:
-            // Only use stopConfigNode when the ConfigNode is removed.
+            // Only use stopAndClearConfigNode when the ConfigNode is removed.
             return client.stopAndClearConfigNode((TConfigNodeLocation) req);
           case SET_CONFIGURATION:
             return client.setConfiguration((TSetConfigurationReq) req);
