@@ -477,7 +477,7 @@ public class PipeConfig {
         "PipeReceiverLoginPeriodicVerificationIntervalMs: {}",
         getPipeReceiverLoginPeriodicVerificationIntervalMs());
     LOGGER.info(
-        "PipeReceiverActualToEstimatedMemoryExpandRatio: {}",
+        "PipeReceiverActualToEstimatedMemoryRatio: {}",
         getPipeReceiverActualToEstimatedMemoryRatio());
 
     LOGGER.info(

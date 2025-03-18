@@ -1048,8 +1048,9 @@ public class CommonConfig {
     return pipeReceiverLoginPeriodicVerificationIntervalMs;
   }
 
-  public void setPipeReceiverActualToEstimatedMemoryRatio(double pipeReceiverMemoryExpandRatio) {
-    this.pipeReceiverActualToEstimatedMemoryRatio = pipeReceiverMemoryExpandRatio;
+  public void setPipeReceiverActualToEstimatedMemoryRatio(
+      double pipeReceiverActualToEstimatedMemoryRatio) {
+    this.pipeReceiverActualToEstimatedMemoryRatio = pipeReceiverActualToEstimatedMemoryRatio;
   }
 
   public double getPipeReceiverActualToEstimatedMemoryRatio() {
