@@ -108,7 +108,7 @@ public class PipeConfigRegionSnapshotEvent extends PipeSnapshotEvent
 
   public PipeConfigRegionSnapshotEvent(
       final String snapshotPath, final String templateFilePath, final CNSnapshotFileType type) {
-    this(snapshotPath, templateFilePath, type, null, 0, null, null, null);
+    this(snapshotPath, templateFilePath, type, null, 0, null, null, null, null, true);
   }
 
   public PipeConfigRegionSnapshotEvent(
@@ -119,13 +119,17 @@ public class PipeConfigRegionSnapshotEvent extends PipeSnapshotEvent
       final long creationTime,
       final PipeTaskMeta pipeTaskMeta,
       final TreePattern treePattern,
-      final TablePattern tablePattern) {
+      final TablePattern tablePattern,
+      final String userName,
+      final boolean skipIfNoPrivileges) {
     super(
         pipeName,
         creationTime,
         pipeTaskMeta,
         treePattern,
         tablePattern,
+        userName,
+        skipIfNoPrivileges,
         PipeConfigNodeResourceManager.snapshot());
     this.snapshotPath = snapshotPath;
     this.templateFilePath = Objects.nonNull(templateFilePath) ? templateFilePath : "";
@@ -187,6 +191,8 @@ public class PipeConfigRegionSnapshotEvent extends PipeSnapshotEvent
       final PipeTaskMeta pipeTaskMeta,
       final TreePattern treePattern,
       final TablePattern tablePattern,
+      final String userName,
+      final boolean skipIfNoPrivileges,
       final long startTime,
       final long endTime) {
     return new PipeConfigRegionSnapshotEvent(
@@ -197,7 +203,9 @@ public class PipeConfigRegionSnapshotEvent extends PipeSnapshotEvent
         creationTime,
         pipeTaskMeta,
         treePattern,
-        tablePattern);
+        tablePattern,
+        userName,
+        skipIfNoPrivileges);
   }
 
   @Override
@@ -320,8 +328,7 @@ public class PipeConfigRegionSnapshotEvent extends PipeSnapshotEvent
           resourceManager.decreaseSnapshotReference(templateFilePath);
         }
       } catch (final Exception e) {
-        LOGGER.warn(
-            String.format("Decrease reference count for snapshot %s error.", snapshotPath), e);
+        LOGGER.warn("Decrease reference count for snapshot {} error.", snapshotPath, e);
       }
     }
   }

@@ -48,6 +48,7 @@ public class TsFileInsertionEventParserProvider {
 
   protected final PipeTaskMeta pipeTaskMeta;
   protected final PipeTsFileInsertionEvent sourceEvent;
+  private final String userName;
 
   public TsFileInsertionEventParserProvider(
       final File tsFile,
@@ -56,6 +57,7 @@ public class TsFileInsertionEventParserProvider {
       final long startTime,
       final long endTime,
       final PipeTaskMeta pipeTaskMeta,
+      final String userName,
       final PipeTsFileInsertionEvent sourceEvent) {
     this.tsFile = tsFile;
     this.treePattern = treePattern;
@@ -63,13 +65,14 @@ public class TsFileInsertionEventParserProvider {
     this.startTime = startTime;
     this.endTime = endTime;
     this.pipeTaskMeta = pipeTaskMeta;
+    this.userName = userName;
     this.sourceEvent = sourceEvent;
   }
 
   public TsFileInsertionEventParser provide() throws IOException {
     if (sourceEvent.isTableModelEvent()) {
       return new TsFileInsertionEventTableParser(
-          tsFile, tablePattern, startTime, endTime, pipeTaskMeta, sourceEvent);
+          tsFile, tablePattern, startTime, endTime, pipeTaskMeta, userName, sourceEvent);
     }
 
     if (startTime != Long.MIN_VALUE

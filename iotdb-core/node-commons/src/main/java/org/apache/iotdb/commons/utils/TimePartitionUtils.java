@@ -148,12 +148,15 @@ public class TimePartitionUtils {
   }
 
   public static boolean satisfyPartitionStartTime(Filter timeFilter, long partitionStartTime) {
+    if (timeFilter == null) {
+      return true;
+    }
+
     long partitionEndTime =
         partitionStartTime >= timePartitionLowerBoundWithoutOverflow
             ? Long.MAX_VALUE
             : (partitionStartTime + timePartitionInterval - 1);
-    return timeFilter == null
-        || timeFilter.satisfyStartEndTime(partitionStartTime, partitionEndTime);
+    return timeFilter.satisfyStartEndTime(partitionStartTime, partitionEndTime);
   }
 
   public static boolean satisfyTimePartition(Filter timeFilter, long partitionId) {

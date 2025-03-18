@@ -531,6 +531,21 @@ public class StorageEngine implements IService {
     checkResults(tasks, "Failed to sync close processor.");
   }
 
+  public void syncCloseProcessorsInRegion(List<String> dataRegionIds) {
+    List<Future<Void>> tasks = new ArrayList<>();
+    for (DataRegion dataRegion : dataRegionMap.values()) {
+      if (dataRegion != null && dataRegionIds.contains(dataRegion.getDataRegionId())) {
+        tasks.add(
+            cachedThreadPool.submit(
+                () -> {
+                  dataRegion.syncCloseAllWorkingTsFileProcessors();
+                  return null;
+                }));
+      }
+    }
+    checkResults(tasks, "Failed to sync close processor.");
+  }
+
   public void syncCloseProcessorsInDatabase(String databaseName, boolean isSeq) {
     List<Future<Void>> tasks = new ArrayList<>();
     for (DataRegion dataRegion : dataRegionMap.values()) {
@@ -639,7 +654,9 @@ public class StorageEngine implements IService {
   }
 
   public void operateFlush(TFlushReq req) {
-    if (req.storageGroups == null || req.storageGroups.isEmpty()) {
+    if (req.getRegionIds() != null && !req.getRegionIds().isEmpty()) {
+      StorageEngine.getInstance().syncCloseProcessorsInRegion(req.getRegionIds());
+    } else if (req.storageGroups == null || req.storageGroups.isEmpty()) {
       StorageEngine.getInstance().syncCloseAllProcessor();
       WALManager.getInstance().syncDeleteOutdatedFilesInWALNodes();
     } else {
@@ -862,6 +879,10 @@ public class StorageEngine implements IService {
 
   public List<DataRegionId> getAllDataRegionIds() {
     return new ArrayList<>(dataRegionMap.keySet());
+  }
+
+  public int getDataRegionNumber() {
+    return dataRegionMap.size();
   }
 
   /** This method is not thread-safe */

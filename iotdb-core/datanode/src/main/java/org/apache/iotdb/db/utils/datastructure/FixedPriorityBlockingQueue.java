@@ -158,8 +158,8 @@ public class FixedPriorityBlockingQueue<T> {
 
   private void pollLast() {
     final ReentrantLock lock = this.lock;
-    lock.lock();
     T element = null;
+    lock.lock();
     try {
       element = queue.pollLast();
     } finally {

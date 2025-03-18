@@ -35,19 +35,19 @@ public class SubscriptionTablePushConsumer extends AbstractSubscriptionPushConsu
 
   @Override
   protected AbstractSubscriptionProvider constructSubscriptionProvider(
-      TEndPoint endPoint,
-      String username,
-      String password,
-      String consumerId,
-      String consumerGroupId,
-      int thriftMaxFrameSize) {
+      final TEndPoint endPoint,
+      final String username,
+      final String password,
+      final String consumerId,
+      final String consumerGroupId,
+      final int thriftMaxFrameSize) {
     return new SubscriptionTableProvider(
         endPoint, username, password, consumerId, consumerGroupId, thriftMaxFrameSize);
   }
 
   /////////////////////////////// ctor ///////////////////////////////
 
-  protected SubscriptionTablePushConsumer(AbstractSubscriptionPushConsumerBuilder builder) {
+  protected SubscriptionTablePushConsumer(final AbstractSubscriptionPushConsumerBuilder builder) {
     super(builder);
   }
 
@@ -64,32 +64,42 @@ public class SubscriptionTablePushConsumer extends AbstractSubscriptionPushConsu
   }
 
   @Override
-  public void subscribe(String topicName) throws SubscriptionException {
+  public void subscribe(final String topicName) throws SubscriptionException {
     super.subscribe(topicName);
   }
 
   @Override
-  public void subscribe(String... topicNames) throws SubscriptionException {
+  public void subscribe(final String... topicNames) throws SubscriptionException {
     super.subscribe(topicNames);
   }
 
   @Override
-  public void subscribe(Set<String> topicNames) throws SubscriptionException {
+  public void subscribe(final Set<String> topicNames) throws SubscriptionException {
     super.subscribe(topicNames);
   }
 
   @Override
-  public void unsubscribe(String topicName) throws SubscriptionException {
+  public void unsubscribe(final String topicName) throws SubscriptionException {
     super.unsubscribe(topicName);
   }
 
   @Override
-  public void unsubscribe(String... topicNames) throws SubscriptionException {
+  public void unsubscribe(final String... topicNames) throws SubscriptionException {
     super.unsubscribe(topicNames);
   }
 
   @Override
-  public void unsubscribe(Set<String> topicNames) throws SubscriptionException {
+  public void unsubscribe(final Set<String> topicNames) throws SubscriptionException {
     super.unsubscribe(topicNames);
+  }
+
+  @Override
+  public String getConsumerId() {
+    return super.getConsumerId();
+  }
+
+  @Override
+  public String getConsumerGroupId() {
+    return super.getConsumerGroupId();
   }
 }

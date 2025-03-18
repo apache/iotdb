@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.planner.distribute;
 
+import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
@@ -30,6 +31,7 @@ import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.PlanFragmentId;
 import org.apache.iotdb.db.queryengine.execution.exchange.sink.DownStreamChannelLocation;
 import org.apache.iotdb.db.queryengine.plan.analyze.QueryType;
+import org.apache.iotdb.db.queryengine.plan.planner.distribution.NodeDistribution;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.FragmentInstance;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.PlanFragment;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.SubPlan;
@@ -41,6 +43,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ExchangeNode
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CountDevice;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowDevice;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Statement;
+import org.apache.iotdb.db.queryengine.plan.scheduler.FragmentInstanceDispatcherImpl;
 
 import org.apache.tsfile.utils.Pair;
 import org.slf4j.Logger;
@@ -74,10 +77,17 @@ public class TableModelQueryFragmentPlanner {
   // Record FragmentInstances dispatched to same DataNode
   private final Map<TDataNodeLocation, List<FragmentInstance>> dataNodeFIMap = new HashMap<>();
 
-  TableModelQueryFragmentPlanner(SubPlan subPlan, Analysis analysis, MPPQueryContext queryContext) {
+  private final Map<PlanNodeId, NodeDistribution> nodeDistributionMap;
+
+  TableModelQueryFragmentPlanner(
+      SubPlan subPlan,
+      Analysis analysis,
+      MPPQueryContext queryContext,
+      final Map<PlanNodeId, NodeDistribution> nodeDistributionMap) {
     this.subPlan = subPlan;
     this.analysis = analysis;
     this.queryContext = queryContext;
+    this.nodeDistributionMap = nodeDistributionMap;
   }
 
   public List<FragmentInstance> plan() {
@@ -89,7 +99,7 @@ public class TableModelQueryFragmentPlanner {
   private void prepare() {
     for (PlanFragment fragment : subPlan.getPlanFragmentList()) {
       recordPlanNodeRelation(fragment.getPlanNodeTree(), fragment.getId());
-      produceFragmentInstance(fragment);
+      produceFragmentInstance(fragment, nodeDistributionMap);
     }
 
     fragmentInstanceList.forEach(
@@ -101,20 +111,21 @@ public class TableModelQueryFragmentPlanner {
     root.getChildren().forEach(child -> recordPlanNodeRelation(child, planFragmentId));
   }
 
-  private void produceFragmentInstance(PlanFragment fragment) {
+  private void produceFragmentInstance(
+      PlanFragment fragment, final Map<PlanNodeId, NodeDistribution> nodeDistributionMap) {
     FragmentInstance fragmentInstance =
         new FragmentInstance(
             fragment,
             fragment.getId().genFragmentInstanceId(),
             QueryType.READ,
-            queryContext.getTimeOut(),
+            queryContext.getTimeOut() - (System.currentTimeMillis() - queryContext.getStartTime()),
             queryContext.getSession(),
             queryContext.isExplainAnalyze(),
             fragment.isRoot());
 
     // Get the target region for origin PlanFragment, then its instance will be distributed one
     // of them.
-    TRegionReplicaSet regionReplicaSet = fragment.getTargetRegion();
+    TRegionReplicaSet regionReplicaSet = fragment.getTargetRegionForTableModel(nodeDistributionMap);
 
     // Set ExecutorType and target host for the instance,
     // We need to store all the replica host in case of the scenario that the instance need to be
@@ -163,7 +174,9 @@ public class TableModelQueryFragmentPlanner {
     }
     String readConsistencyLevel =
         IoTDBDescriptor.getInstance().getConfig().getReadConsistencyLevel();
-    boolean selectRandomDataNode = "weak".equals(readConsistencyLevel);
+    boolean selectLocalOrRandomDataNode =
+        "weak".equals(readConsistencyLevel)
+            || regionReplicaSet.getRegionId().getType().equals(TConsensusGroupType.SchemaRegion);
 
     // When planning fragment onto specific DataNode, the DataNode whose endPoint is in
     // black list won't be considered because it may have connection issue now.
@@ -180,9 +193,15 @@ public class TableModelQueryFragmentPlanner {
       LOGGER.info("Available replicas: {}", availableDataNodes);
     }
     int targetIndex;
-    if (!selectRandomDataNode || queryContext.getSession() == null) {
+    if (!selectLocalOrRandomDataNode || queryContext.getSession() == null) {
       targetIndex = 0;
     } else {
+      // Always choose local dataNode first
+      for (final TDataNodeLocation location : availableDataNodes) {
+        if (FragmentInstanceDispatcherImpl.isDispatchedToLocal(location.getInternalEndPoint())) {
+          return location;
+        }
+      }
       targetIndex = (int) (queryContext.getSession().getSessionId() % availableDataNodes.size());
     }
     return availableDataNodes.get(targetIndex);

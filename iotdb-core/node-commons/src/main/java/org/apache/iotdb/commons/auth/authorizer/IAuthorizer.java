@@ -40,9 +40,17 @@ public interface IAuthorizer extends SnapshotProcessor {
    * @param username The username of the user.
    * @param password The password of the user.
    * @return True if such user exists and the given password is correct, else return false.
-   * @throws AuthException if exception raised when searching for the user.
    */
   boolean login(String username, String password) throws AuthException;
+
+  /**
+   * Login for a user in pipe.
+   *
+   * @param username The username of the user.
+   * @param password The password of the user.
+   * @return The hashed password
+   */
+  String login4Pipe(String username, String password);
 
   /**
    * Create a user with given username and password. New users will only be granted no privileges.

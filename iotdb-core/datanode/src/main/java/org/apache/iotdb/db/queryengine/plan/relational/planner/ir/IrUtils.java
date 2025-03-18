@@ -45,6 +45,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Predicate;
 
 import static java.util.Objects.requireNonNull;
@@ -69,18 +70,22 @@ public final class IrUtils {
 
   // Use for table device fetching
   // Expand the inPredicates to better check the in list and hit device cache
-  public static List<Expression> extractOrPredicatesWithInExpanded(final Expression expression) {
+  public static List<Expression> extractOrPredicatesWithInExpanded(
+      final Expression expression, final AtomicBoolean mayContainDuplicateDevice) {
     ImmutableList.Builder<Expression> resultBuilder = ImmutableList.builder();
-    extractOrPredicatesWithInExpanded(expression, resultBuilder);
+    extractOrPredicatesWithInExpanded(expression, resultBuilder, mayContainDuplicateDevice);
     return resultBuilder.build();
   }
 
   private static void extractOrPredicatesWithInExpanded(
-      final Expression expression, final ImmutableList.Builder<Expression> resultBuilder) {
+      final Expression expression,
+      final ImmutableList.Builder<Expression> resultBuilder,
+      final AtomicBoolean mayContainDuplicateDevice) {
     if (expression instanceof LogicalExpression) {
       if (((LogicalExpression) expression).getOperator() == LogicalExpression.Operator.OR) {
+        mayContainDuplicateDevice.set(true);
         for (final Expression term : ((LogicalExpression) expression).getTerms()) {
-          extractOrPredicatesWithInExpanded(term, resultBuilder);
+          extractOrPredicatesWithInExpanded(term, resultBuilder, mayContainDuplicateDevice);
         }
       }
     } else if (expression instanceof InPredicate) {

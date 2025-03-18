@@ -32,6 +32,8 @@ import org.apache.iotdb.confignode.consensus.request.write.table.AddTableColumnP
 import org.apache.iotdb.confignode.consensus.request.write.table.CommitDeleteColumnPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.CommitDeleteTablePlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.RenameTableColumnPlan;
+import org.apache.iotdb.confignode.consensus.request.write.table.SetTableColumnCommentPlan;
+import org.apache.iotdb.confignode.consensus.request.write.table.SetTableCommentPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.SetTablePropertiesPlan;
 import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
 
@@ -112,6 +114,22 @@ public class PipeConfigPhysicalPlanTablePatternParseVisitorTest {
         new CommitDeleteTablePlan("db1", "ab"),
         new CommitDeleteTablePlan("db1", "ac"),
         new CommitDeleteTablePlan("da", "ac"));
+  }
+
+  @Test
+  public void testSetTableComment() {
+    testInput(
+        new SetTableCommentPlan("db1", "ab", "a"),
+        new SetTableCommentPlan("db1", "ac", "a"),
+        new SetTableCommentPlan("da", "ac", "a"));
+  }
+
+  @Test
+  public void testSetTableColumnComment() {
+    testInput(
+        new SetTableColumnCommentPlan("db1", "ab", "a", "a"),
+        new SetTableColumnCommentPlan("db1", "ac", "a", "a"),
+        new SetTableColumnCommentPlan("da", "ac", "a", "a"));
   }
 
   @Test

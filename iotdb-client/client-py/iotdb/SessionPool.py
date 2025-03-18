@@ -46,6 +46,7 @@ class PoolConfig(object):
         enable_redirection: bool = True,
         use_ssl: bool = False,
         ca_certs: str = None,
+        connection_timeout_in_ms: int = None,
     ):
         self.host = host
         self.port = port
@@ -65,6 +66,7 @@ class PoolConfig(object):
         self.enable_redirection = enable_redirection
         self.use_ssl = use_ssl
         self.ca_certs = ca_certs
+        self.connection_timeout_in_ms = connection_timeout_in_ms
 
 
 class SessionPool(object):
@@ -92,6 +94,7 @@ class SessionPool(object):
                 enable_redirection=self.__pool_config.enable_redirection,
                 use_ssl=self.__pool_config.use_ssl,
                 ca_certs=self.__pool_config.ca_certs,
+                connection_timeout_in_ms=self.__pool_config.connection_timeout_in_ms,
             )
             session.sql_dialect = self.sql_dialect
             session.database = self.database
@@ -107,6 +110,7 @@ class SessionPool(object):
                 enable_redirection=self.__pool_config.enable_redirection,
                 use_ssl=self.__pool_config.use_ssl,
                 ca_certs=self.__pool_config.ca_certs,
+                connection_timeout_in_ms=self.__pool_config.connection_timeout_in_ms,
             )
             session.sql_dialect = self.sql_dialect
             session.database = self.database

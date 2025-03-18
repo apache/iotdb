@@ -71,6 +71,7 @@ public class IoTDBPipeMetaIT extends AbstractPipeTableModelDualManualIT {
       extractorAttributes.put("extractor.capture.table", "true");
       extractorAttributes.put("extractor.database-name", "test");
       extractorAttributes.put("extractor.table-name", "t.*[0-9]");
+      extractorAttributes.put("user", "root");
 
       connectorAttributes.put("connector", "iotdb-thrift-connector");
       connectorAttributes.put("connector.ip", receiverIp);
@@ -212,6 +213,7 @@ public class IoTDBPipeMetaIT extends AbstractPipeTableModelDualManualIT {
       extractorAttributes.put("extractor.inclusion", "all");
       extractorAttributes.put("extractor.capture.tree", "false");
       extractorAttributes.put("extractor.capture.table", "true");
+      extractorAttributes.put("user", "root");
 
       connectorAttributes.put("connector", "iotdb-thrift-connector");
       connectorAttributes.put("connector.ip", receiverIp);
@@ -260,6 +262,7 @@ public class IoTDBPipeMetaIT extends AbstractPipeTableModelDualManualIT {
       extractorAttributes.put("extractor.inclusion.exclusion", "data.delete");
       extractorAttributes.put("extractor.capture.tree", "true");
       extractorAttributes.put("extractor.capture.table", "false");
+      extractorAttributes.put("user", "root");
 
       connectorAttributes.put("connector", "iotdb-thrift-connector");
       connectorAttributes.put("connector.ip", receiverIp);
@@ -337,6 +340,7 @@ public class IoTDBPipeMetaIT extends AbstractPipeTableModelDualManualIT {
       extractorAttributes.put("extractor.capture.table", "true");
       extractorAttributes.put("extractor.database-name", "test");
       extractorAttributes.put("extractor.table-name", "t.*[0-9]");
+      extractorAttributes.put("user", "root");
 
       connectorAttributes.put("connector", "iotdb-thrift-connector");
       connectorAttributes.put("connector.ip", receiverIp);

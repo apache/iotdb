@@ -194,7 +194,13 @@ public class PipeTransferTsFileHandler extends PipeTransferTrackableHandler {
     this.dataBaseName = dataBaseName;
     currentFile = transferExclusiveMod ? exclusiveModFile : tsFile;
 
-    waitForResourceEnough4Slicing(Integer.MAX_VALUE);
+    // NOTE: Waiting for resource enough for slicing here may cause deadlock!
+    // TsFile events are producing and consuming at the same time, and the memory of a TsFile
+    // event is not released until the TsFile is sealed. So if the memory is not enough for slicing,
+    // the TsFile event will be blocked and waiting for the memory to be released. At the same time,
+    // the memory of the TsFile event is not released, so the memory is not enough for slicing. This
+    // will cause a deadlock.
+    waitForResourceEnough4Slicing((long) ((1 + Math.random()) * 20 * 1000)); // 20 - 40 seconds
     readFileBufferSize =
         (int)
             Math.min(
@@ -203,7 +209,11 @@ public class PipeTransferTsFileHandler extends PipeTransferTrackableHandler {
                     ? Math.max(tsFile.length(), exclusiveModFile.length())
                     : tsFile.length());
     memoryBlock =
-        PipeDataNodeResourceManager.memory().forceAllocateForTsFileWithRetry(readFileBufferSize);
+        PipeDataNodeResourceManager.memory()
+            .forceAllocateForTsFileWithRetry(
+                PipeConfig.getInstance().isPipeConnectorReadFileBufferMemoryControlEnabled()
+                    ? readFileBufferSize
+                    : 0);
     readBuffer = new byte[readFileBufferSize];
     position = 0;
 
@@ -522,7 +532,14 @@ public class PipeTransferTsFileHandler extends PipeTransferTrackableHandler {
     memoryBlock.close();
   }
 
+  /**
+   * @param timeoutMs CAN NOT BE UNLIMITED, otherwise it may cause deadlock.
+   */
   private void waitForResourceEnough4Slicing(final long timeoutMs) throws InterruptedException {
+    if (!PipeConfig.getInstance().isPipeConnectorReadFileBufferMemoryControlEnabled()) {
+      return;
+    }
+
     final PipeMemoryManager memoryManager = PipeDataNodeResourceManager.memory();
     if (memoryManager.isEnough4TsFileSlicing()) {
       return;

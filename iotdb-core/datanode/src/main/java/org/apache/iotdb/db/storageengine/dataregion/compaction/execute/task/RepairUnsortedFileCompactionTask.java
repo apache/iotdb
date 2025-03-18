@@ -151,7 +151,7 @@ public class RepairUnsortedFileCompactionTask extends InnerSpaceCompactionTask {
 
   @Override
   protected void prepareTargetFiles() throws IOException {
-    CompactionUtils.updateProgressIndex(
+    CompactionUtils.updateProgressIndexAndMark(
         filesView.targetFilesInPerformer,
         filesView.sourceFilesInCompactionPerformer,
         Collections.emptyList());

@@ -632,7 +632,7 @@ public class CompactionMetrics implements IMetricSet {
         Metric.COMPACTION_TASK_MEMORY_DISTRIBUTION.toString(),
         MetricLevel.IMPORTANT,
         this,
-        metrics -> SystemInfo.getInstance().getCompactionMemoryCost().get(),
+        metrics -> SystemInfo.getInstance().getCompactionMemoryBlock().getUsedMemoryInBytes(),
         Tag.NAME.toString(),
         "total_usage");
     metricService.createAutoGauge(

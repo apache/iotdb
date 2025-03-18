@@ -181,8 +181,8 @@ public class SubscriptionEvent implements Comparable<SubscriptionEvent> {
    * {@link ConcurrentHashMap#compute} method of inFlightEvents in {@link
    * SubscriptionPrefetchingQueue} or {@link SubscriptionPrefetchingQueue#cleanUp}.
    */
-  public void cleanUp() {
-    pipeEvents.cleanUp();
+  public void cleanUp(final boolean force) {
+    pipeEvents.cleanUp(force);
     response.cleanUp();
 
     // TODO: clean more fields

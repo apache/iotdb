@@ -27,9 +27,10 @@ import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.schema.SchemaConstant;
-import org.apache.iotdb.commons.schema.column.ColumnHeader;
 import org.apache.iotdb.commons.schema.filter.SchemaFilterType;
 import org.apache.iotdb.commons.schema.node.role.IMeasurementMNode;
+import org.apache.iotdb.commons.schema.table.TsTable;
+import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
 import org.apache.iotdb.commons.schema.view.LogicalViewSchema;
 import org.apache.iotdb.commons.schema.view.viewExpression.ViewExpression;
 import org.apache.iotdb.commons.utils.FileUtils;
@@ -80,6 +81,7 @@ import org.apache.iotdb.db.schemaengine.schemaregion.SchemaRegionUtils;
 import org.apache.iotdb.db.schemaengine.schemaregion.attribute.DeviceAttributeStore;
 import org.apache.iotdb.db.schemaengine.schemaregion.attribute.IDeviceAttributeStore;
 import org.apache.iotdb.db.schemaengine.schemaregion.attribute.update.DeviceAttributeCacheUpdater;
+import org.apache.iotdb.db.schemaengine.schemaregion.attribute.update.UpdateDetailContainer;
 import org.apache.iotdb.db.schemaengine.schemaregion.logfile.FakeCRC32Deserializer;
 import org.apache.iotdb.db.schemaengine.schemaregion.logfile.FakeCRC32Serializer;
 import org.apache.iotdb.db.schemaengine.schemaregion.logfile.SchemaLogReader;
@@ -88,6 +90,7 @@ import org.apache.iotdb.db.schemaengine.schemaregion.logfile.visitor.SchemaRegio
 import org.apache.iotdb.db.schemaengine.schemaregion.logfile.visitor.SchemaRegionPlanSerializer;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.mem.MTreeBelowSGMemoryImpl;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.mem.mnode.IMemMNode;
+import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.mem.mnode.info.TableDeviceInfo;
 import org.apache.iotdb.db.schemaengine.schemaregion.read.req.IShowDevicesPlan;
 import org.apache.iotdb.db.schemaengine.schemaregion.read.req.IShowNodesPlan;
 import org.apache.iotdb.db.schemaengine.schemaregion.read.req.IShowTimeSeriesPlan;
@@ -613,7 +616,19 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
                   regionStatistics.activateTemplate(deviceMNode.getSchemaTemplateId());
                 }
               },
-              (tableDeviceMode, tableName) -> regionStatistics.addTableDevice(tableName),
+              (tableDeviceMode, tableName) -> {
+                regionStatistics.addTableDevice(tableName);
+                regionStatistics.addTableAttributeMemory(
+                    tableName,
+                    deviceAttributeStore
+                        .getAttributes(
+                            ((TableDeviceInfo<?>) tableDeviceMode.getDeviceInfo())
+                                .getAttributePointer())
+                        .values()
+                        .stream()
+                        .map(UpdateDetailContainer::sizeOf)
+                        .reduce(0L, Long::sum));
+              },
               tagManager::readTags,
               tagManager::readAttributes);
       logger.info(
@@ -1409,7 +1424,9 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
       mTree.createOrUpdateTableDevice(
           tableName,
           deviceId,
-          () -> deviceAttributeStore.createAttribute(attributeNameList, attributeValueList),
+          () ->
+              deviceAttributeStore.createAttribute(
+                  attributeNameList, attributeValueList, node.getTableName()),
           pointer -> {
             updateAttribute(
                 databaseName, tableName, deviceId, pointer, attributeNameList, attributeValueList);
@@ -1427,7 +1444,8 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
       final List<String> attributeNameList,
       final Object[] attributeValueList) {
     final Map<String, Binary> resultMap =
-        deviceAttributeStore.alterAttribute(pointer, attributeNameList, attributeValueList);
+        deviceAttributeStore.alterAttribute(
+            pointer, attributeNameList, attributeValueList, tableName);
     if (!isRecovering) {
       TableDeviceSchemaCache.getInstance()
           .updateAttributes(
@@ -1456,18 +1474,22 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
       final TableDeviceAttributeUpdateNode updateNode) {
     final String database = updateNode.getDatabase();
     final String tableName = updateNode.getTableName();
+    final TsTable table = DataNodeTableCache.getInstance().getTable(database, tableName);
     final Expression predicate = updateNode.getIdFuzzyPredicate();
-    final List<ColumnHeader> columnHeaderList = updateNode.getColumnHeaderList();
+    final List<TsTableColumnSchema> columnSchemaList =
+        updateNode.getColumnHeaderList().stream()
+            .map(columnHeader -> table.getColumnSchema(columnHeader.getColumnName()))
+            .collect(Collectors.toList());
     final Map<Symbol, List<InputLocation>> inputLocations =
         makeLayout(Collections.singletonList(updateNode));
     final SessionInfo sessionInfo = updateNode.getSessionInfo();
     final TypeProvider mockTypeProvider =
         new TypeProvider(
-            columnHeaderList.stream()
+            columnSchemaList.stream()
                 .collect(
                     Collectors.toMap(
-                        columnHeader -> new Symbol(columnHeader.getColumnName()),
-                        columnHeader -> TypeFactory.getType(columnHeader.getColumnType()))));
+                        columnSchema -> new Symbol(columnSchema.getColumnName()),
+                        columnSchema -> TypeFactory.getType(columnSchema.getDataType()))));
     final Metadata metadata = LocalExecutionPlanner.getInstance().metadata;
 
     // records LeafColumnTransformer of filter
@@ -1496,7 +1518,9 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
             : null;
 
     final List<TSDataType> filterOutputDataTypes =
-        columnHeaderList.stream().map(ColumnHeader::getColumnType).collect(Collectors.toList());
+        columnSchemaList.stream()
+            .map(TsTableColumnSchema::getDataType)
+            .collect(Collectors.toList());
 
     // records LeafColumnTransformer of project expressions
     final List<LeafColumnTransformer> projectLeafColumnTransformerList = new ArrayList<>();
@@ -1530,9 +1554,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
         filterLeafColumnTransformerList,
         filterOutputTransformer,
         commonTransformerList,
-        database,
-        tableName,
-        columnHeaderList,
+        columnSchemaList,
         projectLeafColumnTransformerList,
         updateNode.getAssignments().stream()
             .map(
@@ -1549,7 +1571,8 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
   public void deleteTableDevice(final DeleteTableDeviceNode deleteTableDeviceNode)
       throws MetadataException {
     if (mTree.deleteTableDevice(
-        deleteTableDeviceNode.getTableName(), deviceAttributeStore::removeAttribute)) {
+        deleteTableDeviceNode.getTableName(),
+        size -> deviceAttributeStore.removeAttribute(size, deleteTableDeviceNode.getTableName()))) {
       deviceAttributeCacheUpdater.invalidate(deleteTableDeviceNode.getTableName());
       writeToMLog(deleteTableDeviceNode);
     }
@@ -1562,7 +1585,9 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
         dropTableAttributeNode.getTableName(),
         pointer ->
             deviceAttributeStore.removeAttribute(
-                pointer, dropTableAttributeNode.getColumnName()))) {
+                pointer,
+                dropTableAttributeNode.getColumnName(),
+                dropTableAttributeNode.getTableName()))) {
       deviceAttributeCacheUpdater.invalidate(
           dropTableAttributeNode.getTableName(), dropTableAttributeNode.getColumnName());
       writeToMLog(dropTableAttributeNode);
@@ -1580,8 +1605,10 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
             constructTableDevicesBlackListNode.getPatternInfo());
     final DeviceBlackListConstructor constructor =
         DeleteDevice.constructDevicePredicateUpdater(
-            PathUtils.unQualifyDatabaseName(storageGroupFullPath),
-            constructTableDevicesBlackListNode.getTableName(),
+            DataNodeTableCache.getInstance()
+                .getTable(
+                    PathUtils.unQualifyDatabaseName(storageGroupFullPath),
+                    constructTableDevicesBlackListNode.getTableName()),
             constructTableDevicesBlackListNode.getFilterInfo(),
             (pointer, name) -> deviceAttributeStore.getAttributes(pointer, name),
             regionStatistics);
@@ -1622,7 +1649,11 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
             rollbackTableDevicesBlackListNode.getPatternInfo());
     for (final PartialPath pattern : paths) {
       mTree.deleteTableDevicesInBlackList(
-          pattern, deviceAttributeStore::removeAttribute, deviceAttributeCacheUpdater::invalidate);
+          pattern,
+          size ->
+              deviceAttributeStore.removeAttribute(
+                  size, rollbackTableDevicesBlackListNode.getTableName()),
+          deviceAttributeCacheUpdater::invalidate);
     }
     writeToMLog(rollbackTableDevicesBlackListNode);
   }

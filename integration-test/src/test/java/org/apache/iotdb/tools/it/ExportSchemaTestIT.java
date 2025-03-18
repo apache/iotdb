@@ -18,7 +18,7 @@
  */
 package org.apache.iotdb.tools.it;
 
-import org.apache.iotdb.cli.it.AbstractScript;
+import org.apache.iotdb.cli.it.AbstractScriptIT;
 import org.apache.iotdb.isession.ISession;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
@@ -41,7 +41,7 @@ import java.io.IOException;
 
 @RunWith(IoTDBTestRunner.class)
 @Category({LocalStandaloneIT.class, ClusterIT.class})
-public class ExportSchemaTestIT extends AbstractScript {
+public class ExportSchemaTestIT extends AbstractScriptIT {
   private static String ip;
 
   private static String port;
