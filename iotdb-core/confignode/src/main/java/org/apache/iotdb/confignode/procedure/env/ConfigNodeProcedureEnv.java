@@ -318,14 +318,15 @@ public class ConfigNodeProcedureEnv {
    * @param tConfigNodeLocation config node location
    * @throws ProcedureException if failed status
    */
-  public void stopConfigNode(TConfigNodeLocation tConfigNodeLocation) throws ProcedureException {
+  public void stopAndClearConfigNode(TConfigNodeLocation tConfigNodeLocation)
+      throws ProcedureException {
     TSStatus tsStatus =
         (TSStatus)
             SyncConfigNodeClientPool.getInstance()
                 .sendSyncRequestToConfigNodeWithRetry(
                     tConfigNodeLocation.getInternalEndPoint(),
                     tConfigNodeLocation,
-                    CnToCnNodeRequestType.STOP_CONFIG_NODE);
+                    CnToCnNodeRequestType.STOP_AND_CLEAR_CONFIG_NODE);
 
     if (tsStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       throw new ProcedureException(tsStatus.getMessage());
