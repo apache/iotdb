@@ -183,7 +183,7 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
   private long lastSuccessfulLoginTime = Long.MIN_VALUE;
 
   private static final double ACTUAL_TO_ESTIMATED_MEMORY_RATIO =
-      PipeConfig.getInstance().getPipeReceiverInsertNodeMemoryExpandRatio();
+      PipeConfig.getInstance().getPipeReceiverActualToEstimatedMemoryRatio();
   private PipeMemoryBlock allocatedMemoryBlock;
 
   static {

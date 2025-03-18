@@ -258,7 +258,7 @@ public class CommonConfig {
   private int pipeAirGapReceiverPort = 9780;
 
   private long pipeReceiverLoginPeriodicVerificationIntervalMs = 300000;
-  private double pipeReceiverInsertNodeMemoryExpandRatio = 3;
+  private double pipeReceiverActualToEstimatedMemoryRatio = 3;
 
   private int pipeMaxAllowedHistoricalTsFilePerDataRegion = 100;
   private int pipeMaxAllowedPendingTsFileEpochPerDataRegion = 5;
@@ -1048,12 +1048,12 @@ public class CommonConfig {
     return pipeReceiverLoginPeriodicVerificationIntervalMs;
   }
 
-  public void setPipeReceiverInsertNodeMemoryExpandRatio(double pipeReceiverMemoryExpandRatio) {
-    this.pipeReceiverInsertNodeMemoryExpandRatio = pipeReceiverMemoryExpandRatio;
+  public void setPipeReceiverActualToEstimatedMemoryRatio(double pipeReceiverMemoryExpandRatio) {
+    this.pipeReceiverActualToEstimatedMemoryRatio = pipeReceiverMemoryExpandRatio;
   }
 
-  public double getPipeReceiverInsertNodeMemoryExpandRatio() {
-    return pipeReceiverInsertNodeMemoryExpandRatio;
+  public double getPipeReceiverActualToEstimatedMemoryRatio() {
+    return pipeReceiverActualToEstimatedMemoryRatio;
   }
 
   public int getPipeMaxAllowedHistoricalTsFilePerDataRegion() {

@@ -40,6 +40,7 @@ import java.util.Optional;
 import java.util.stream.Collectors;
 
 public class InsertMultiTabletsStatement extends InsertBaseStatement {
+
   private static final long INSTANCE_SIZE =
       RamUsageEstimator.shallowSizeOfInstance(InsertMultiTabletsStatement.class);
 
