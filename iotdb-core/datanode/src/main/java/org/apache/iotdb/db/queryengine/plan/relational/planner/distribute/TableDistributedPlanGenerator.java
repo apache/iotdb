@@ -1235,7 +1235,7 @@ public class TableDistributedPlanGenerator
       TRegionReplicaSet mostUsedSchemaRegion = null;
       int maxDeviceEntrySizeOfTableScan = 0;
       for (final Map.Entry<TRegionReplicaSet, TableDeviceFetchNode> entry :
-          topology.filterReachableCandidates(tableDeviceFetchMap.entrySet())) {
+          tableDeviceFetchMap.entrySet()) {
         final TRegionReplicaSet regionReplicaSet = entry.getKey();
         final TableDeviceFetchNode subTableDeviceFetchNode = entry.getValue();
         res.add(subTableDeviceFetchNode);

@@ -132,7 +132,7 @@ public class ClusterTopology {
     }
     this.dataNodes = dataNodes;
     this.topologyMap = latestTopology;
-    if (latestTopology.get(myself) == null) {
+    if (latestTopology.get(myself) == null || latestTopology.get(myself).isEmpty()) {
       // latest topology doesn't include this node information.
       // This mostly happens when this node just starts and haven't report connection details.
       this.isPartitioned = false;
