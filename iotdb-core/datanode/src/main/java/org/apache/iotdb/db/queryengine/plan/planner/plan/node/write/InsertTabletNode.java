@@ -1238,6 +1238,12 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
     return deviceID;
   }
 
+  public void cacheDeviceId() {
+    if (deviceID == null) {
+      deviceID = DeviceIDFactory.getInstance().getDeviceID(targetPath);
+    }
+  }
+
   protected static class PartitionSplitInfo {
 
     // for each List in split, they are range1.start, range1.end, range2.start, range2.end, ...

@@ -111,6 +111,18 @@ public class RelationalInsertTabletNode extends InsertTabletNode {
 
   @Override
   public IDeviceID getDeviceID(int rowIdx) {
+    if (deviceIDs == null) {
+      cacheDeviceId();
+    }
+    if (singleDevice) {
+      return deviceIDs[0];
+    } else {
+      return deviceIDs[rowIdx];
+    }
+  }
+
+  @Override
+  public void cacheDeviceId() {
     if (singleDevice) {
       if (deviceIDs == null) {
         deviceIDs = new IDeviceID[1];
@@ -127,32 +139,32 @@ public class RelationalInsertTabletNode extends InsertTabletNode {
         }
         deviceIDs[0] = Factory.DEFAULT_FACTORY.create(deviceIdSegments);
       }
-      return deviceIDs[0];
-    }
-    if (deviceIDs == null) {
-      deviceIDs = new IDeviceID[rowCount];
-    }
-    if (deviceIDs[rowIdx] == null) {
-      String[] deviceIdSegments = new String[idColumnIndices.size() + 1];
-      deviceIdSegments[0] = this.getTableName();
-      for (int i = 0; i < idColumnIndices.size(); i++) {
-        final Integer columnIndex = idColumnIndices.get(i);
-        Object idSeg = ((Object[]) columns[columnIndex])[rowIdx];
-        boolean isNull =
-            bitMaps != null
-                && bitMaps[columnIndex] != null
-                && bitMaps[columnIndex].isMarked(rowIdx);
-        deviceIdSegments[i + 1] = !isNull && idSeg != null ? idSeg.toString() : null;
+    } else {
+      if (deviceIDs == null) {
+        deviceIDs = new IDeviceID[rowCount];
       }
-      IDeviceID currentDeviceId = Factory.DEFAULT_FACTORY.create(deviceIdSegments);
-      if (rowIdx > 0 && currentDeviceId.equals(deviceIDs[rowIdx - 1])) {
-        deviceIDs[rowIdx] = deviceIDs[rowIdx - 1];
-      } else {
-        deviceIDs[rowIdx] = currentDeviceId;
+      for (int rowIdx = 0; rowIdx < rowCount; rowIdx++) {
+        if (deviceIDs[rowIdx] == null) {
+          String[] deviceIdSegments = new String[idColumnIndices.size() + 1];
+          deviceIdSegments[0] = this.getTableName();
+          for (int i = 0; i < idColumnIndices.size(); i++) {
+            final Integer columnIndex = idColumnIndices.get(i);
+            Object idSeg = ((Object[]) columns[columnIndex])[rowIdx];
+            boolean isNull =
+                bitMaps != null
+                    && bitMaps[columnIndex] != null
+                    && bitMaps[columnIndex].isMarked(rowIdx);
+            deviceIdSegments[i + 1] = !isNull && idSeg != null ? idSeg.toString() : null;
+          }
+          IDeviceID currentDeviceId = Factory.DEFAULT_FACTORY.create(deviceIdSegments);
+          if (rowIdx > 0 && currentDeviceId.equals(deviceIDs[rowIdx - 1])) {
+            deviceIDs[rowIdx] = deviceIDs[rowIdx - 1];
+          } else {
+            deviceIDs[rowIdx] = currentDeviceId;
+          }
+        }
       }
     }
-
-    return deviceIDs[rowIdx];
   }
 
   @Override
