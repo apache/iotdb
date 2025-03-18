@@ -39,6 +39,7 @@ import org.apache.tsfile.read.common.TimeRange;
 import org.apache.tsfile.read.common.block.TsBlock;
 import org.apache.tsfile.read.common.block.TsBlockBuilder;
 import org.apache.tsfile.read.reader.IPointReader;
+import org.apache.tsfile.utils.BitMap;
 import org.apache.tsfile.utils.TsPrimitiveType;
 import org.apache.tsfile.write.UnSupportedDataTypeException;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
@@ -49,6 +50,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
+
+import static org.apache.iotdb.db.utils.ModificationUtils.isPointDeleted;
 
 public class AlignedReadOnlyMemChunk extends ReadOnlyMemChunk {
   private final String timeChunkName;
@@ -318,9 +321,32 @@ public class AlignedReadOnlyMemChunk extends ReadOnlyMemChunk {
             valueColumnsDeletionList,
             floatPrecision,
             encodingList);
+
+    BitMap bitMap = new BitMap(dataTypes.size());
+    List<int[]> valueColumnDeleteCursor = new ArrayList<>();
+    for (int i = 0; i < dataTypes.size(); i++) {
+      valueColumnDeleteCursor.add(new int[] {0});
+    }
     while (timeValuePairIterator.hasNextTimeValuePair()) {
       TimeValuePair tvPair = timeValuePairIterator.nextTimeValuePair();
       TsPrimitiveType[] values = tvPair.getValue().getVector();
+
+      bitMap.reset();
+      // check valueColumnsDeletionList
+      for (int columnIndex = 0; columnIndex < dataTypes.size(); columnIndex++) {
+        if (values[columnIndex] == null
+            || (valueColumnsDeletionList != null
+                && isPointDeleted(
+                    tvPair.getTimestamp(),
+                    valueColumnsDeletionList.get(columnIndex),
+                    valueColumnDeleteCursor.get(columnIndex)))) {
+          bitMap.mark(columnIndex);
+        }
+      }
+      if (bitMap.isAllMarked()) {
+        continue;
+      }
+
       // time column
       builder.getTimeColumnBuilder().writeLong(tvPair.getTimestamp());
       // value columns
