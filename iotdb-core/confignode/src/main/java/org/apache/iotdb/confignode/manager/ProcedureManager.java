@@ -101,6 +101,7 @@ import org.apache.iotdb.confignode.procedure.impl.schema.table.DropTableProcedur
 import org.apache.iotdb.confignode.procedure.impl.schema.table.RenameTableColumnProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.table.RenameTableProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.table.SetTablePropertiesProcedure;
+import org.apache.iotdb.confignode.procedure.impl.schema.table.view.AddTableViewColumnProcedure;
 import org.apache.iotdb.confignode.procedure.impl.subscription.consumer.CreateConsumerProcedure;
 import org.apache.iotdb.confignode.procedure.impl.subscription.consumer.DropConsumerProcedure;
 import org.apache.iotdb.confignode.procedure.impl.subscription.consumer.runtime.ConsumerGroupMetaSyncProcedure;
@@ -1795,18 +1796,28 @@ public class ProcedureManager {
   }
 
   public TSStatus alterTableAddColumn(final TAlterOrDropTableReq req) {
+    final boolean isView = req.isSetIsView() && req.isIsView();
     return executeWithoutDuplicate(
         req.database,
         null,
         req.tableName,
         req.queryId,
-        ProcedureType.ADD_TABLE_COLUMN_PROCEDURE,
-        new AddTableColumnProcedure(
-            req.database,
-            req.tableName,
-            req.queryId,
-            TsTableColumnSchemaUtil.deserializeColumnSchemaList(req.updateInfo),
-            false));
+        isView
+            ? ProcedureType.ADD_TABLE_VIEW_COLUMN_PROCEDURE
+            : ProcedureType.ADD_TABLE_COLUMN_PROCEDURE,
+        isView
+            ? new AddTableViewColumnProcedure(
+                req.database,
+                req.tableName,
+                req.queryId,
+                TsTableColumnSchemaUtil.deserializeColumnSchemaList(req.updateInfo),
+                false)
+            : new AddTableColumnProcedure(
+                req.database,
+                req.tableName,
+                req.queryId,
+                TsTableColumnSchemaUtil.deserializeColumnSchemaList(req.updateInfo),
+                false));
   }
 
   public TSStatus alterTableSetProperties(final TAlterOrDropTableReq req) {
