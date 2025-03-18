@@ -2097,7 +2097,7 @@ public class IoTDBMultiTAGsWithAttributesTableIT {
 
   @Test
   public void exceptionTest() {
-    String errMsg = TSStatusCode.SEMANTIC_ERROR.toString() + ':' + ONLY_SUPPORT_EQUI_JOIN;
+    String errMsg = TSStatusCode.SEMANTIC_ERROR.getStatusCode() + ": " + ONLY_SUPPORT_EQUI_JOIN;
     tableAssertTestFail(
         "select * from table0 t0 full join table1 t1 on t0.num>t1.num", errMsg, DATABASE_NAME);
 

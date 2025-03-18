@@ -387,27 +387,28 @@ public class IoTDBCorrelatedExistsSubqueryIT {
     tableResultSetEqualTest(sql, expectedHeader, retArray, DATABASE_NAME);
   }
 
+  @Test
   public void testNonComparisonFilterInCorrelatedExistsSubquery() {
-    String errMsg = TSStatusCode.SEMANTIC_ERROR.toString() + ':' + ONLY_SUPPORT_EQUI_JOIN;
+    String errMsg = TSStatusCode.SEMANTIC_ERROR.getStatusCode() + ": " + ONLY_SUPPORT_EQUI_JOIN;
     // Legality check: Correlated subquery with Non-equality comparison is not support for now.
     tableAssertTestFail(
-        "select s1 from table1 t1 where exists(select s1 from table3 t3 where t1.s1 > t3.s1);",
+        "select s1 from table1 t1 where exists(select s1 from table3 t3 where t1.s1 > t3.s1)",
         errMsg,
         DATABASE_NAME);
     tableAssertTestFail(
-        "select s1 from table1 t1 where exists(select s1 from table3 t3 where t1.s1 >= t3.s1);",
+        "select s1 from table1 t1 where exists(select s1 from table3 t3 where t1.s1 >= t3.s1)",
         errMsg,
         DATABASE_NAME);
     tableAssertTestFail(
-        "select s1 from table1 t1 where exists(select s1 from table3 t3 where t1.s1 < t3.s1);",
+        "select s1 from table1 t1 where exists(select s1 from table3 t3 where t1.s1 < t3.s1)",
         errMsg,
         DATABASE_NAME);
     tableAssertTestFail(
-        "select s1 from table1 t1 where exists(select s1 from table3 t3 where t1.s1 <= t3.s1);",
+        "select s1 from table1 t1 where exists(select s1 from table3 t3 where t1.s1 <= t3.s1)",
         errMsg,
         DATABASE_NAME);
     tableAssertTestFail(
-        "select s1 from table1 t1 where exists(select s1 from table3 t3 where t1.s1 != t3.s1);",
+        "select s1 from table1 t1 where exists(select s1 from table3 t3 where t1.s1 != t3.s1)",
         errMsg,
         DATABASE_NAME);
   }
