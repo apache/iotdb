@@ -143,6 +143,7 @@ import org.apache.iotdb.confignode.consensus.request.write.table.RollbackCreateT
 import org.apache.iotdb.confignode.consensus.request.write.table.SetTableColumnCommentPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.SetTableCommentPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.SetTablePropertiesPlan;
+import org.apache.iotdb.confignode.consensus.request.write.table.view.AddTableViewColumnPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.view.PreCreateTableViewPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.view.SetViewCommentPlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.CreateSchemaTemplatePlan;
@@ -1185,6 +1186,27 @@ public class ConfigPhysicalPlanSerDeTest {
         addTableColumnPlan0.getColumnSchemaList().size(),
         addTableColumnPlan1.getColumnSchemaList().size());
     Assert.assertEquals(addTableColumnPlan0.isRollback(), addTableColumnPlan1.isRollback());
+  }
+
+  @Test
+  public void AddTableViewColumnPlanTest() throws IOException {
+    final AddTableViewColumnPlan addTableViewColumnPlan0 =
+        new AddTableViewColumnPlan(
+            "database1",
+            "table1",
+            Collections.singletonList(new TagColumnSchema("Id", TSDataType.STRING)),
+            false);
+    final AddTableViewColumnPlan addTableViewColumnPlan1 =
+        (AddTableViewColumnPlan)
+            ConfigPhysicalPlan.Factory.create(addTableViewColumnPlan0.serializeToByteBuffer());
+    Assert.assertEquals(
+        addTableViewColumnPlan0.getDatabase(), addTableViewColumnPlan1.getDatabase());
+    Assert.assertEquals(
+        addTableViewColumnPlan0.getTableName(), addTableViewColumnPlan1.getTableName());
+    Assert.assertEquals(
+        addTableViewColumnPlan0.getColumnSchemaList().size(),
+        addTableViewColumnPlan1.getColumnSchemaList().size());
+    Assert.assertEquals(addTableViewColumnPlan0.isRollback(), addTableViewColumnPlan1.isRollback());
   }
 
   @Test

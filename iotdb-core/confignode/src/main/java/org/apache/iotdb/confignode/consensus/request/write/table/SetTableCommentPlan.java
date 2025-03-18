@@ -38,7 +38,7 @@ public class SetTableCommentPlan extends AbstractTablePlan {
     this(ConfigPhysicalPlanType.SetTableComment, database, tableName, comment);
   }
 
-  public SetTableCommentPlan(
+  protected SetTableCommentPlan(
       final ConfigPhysicalPlanType type,
       final String database,
       final String tableName,

@@ -207,6 +207,9 @@ public class ProcedureFactory implements IProcedureFactory {
       case ADD_TABLE_COLUMN_PROCEDURE:
         procedure = new AddTableColumnProcedure(false);
         break;
+      case ADD_TABLE_VIEW_COLUMN_PROCEDURE:
+        procedure = new AddTableViewColumnProcedure(false);
+        break;
       case SET_TABLE_PROPERTIES_PROCEDURE:
         procedure = new SetTablePropertiesProcedure(false);
         break;
@@ -409,6 +412,8 @@ public class ProcedureFactory implements IProcedureFactory {
       return ProcedureType.CREATE_TABLE_VIEW_PROCEDURE;
     } else if (procedure instanceof CreateTableProcedure) {
       return ProcedureType.CREATE_TABLE_PROCEDURE;
+    } else if (procedure instanceof AddTableViewColumnProcedure) {
+      return ProcedureType.ADD_TABLE_VIEW_COLUMN_PROCEDURE;
     } else if (procedure instanceof AddTableColumnProcedure) {
       return ProcedureType.ADD_TABLE_COLUMN_PROCEDURE;
     } else if (procedure instanceof SetTablePropertiesProcedure) {

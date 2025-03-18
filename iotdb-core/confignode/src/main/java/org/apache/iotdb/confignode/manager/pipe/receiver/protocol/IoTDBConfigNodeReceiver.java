@@ -64,6 +64,7 @@ import org.apache.iotdb.confignode.consensus.request.write.table.RenameTablePlan
 import org.apache.iotdb.confignode.consensus.request.write.table.SetTableColumnCommentPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.SetTableCommentPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.SetTablePropertiesPlan;
+import org.apache.iotdb.confignode.consensus.request.write.table.view.AddTableViewColumnPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.view.SetViewCommentPlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.CommitSetSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.ExtendSchemaTemplatePlan;
@@ -90,6 +91,7 @@ import org.apache.iotdb.confignode.procedure.impl.schema.table.DropTableProcedur
 import org.apache.iotdb.confignode.procedure.impl.schema.table.RenameTableColumnProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.table.RenameTableProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.table.SetTablePropertiesProcedure;
+import org.apache.iotdb.confignode.procedure.impl.schema.table.view.AddTableViewColumnProcedure;
 import org.apache.iotdb.confignode.procedure.store.ProcedureType;
 import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
 import org.apache.iotdb.confignode.rpc.thrift.TDeleteDatabasesReq;
@@ -338,6 +340,7 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
                     PrivilegeType.CREATE))
             .getStatus();
       case AddTableColumn:
+      case AddViewColumn:
         return configManager
             .checkUserPrivileges(
                 username,
@@ -641,6 +644,21 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
                     ((AddTableColumnPlan) plan).getTableName(),
                     queryId,
                     ((AddTableColumnPlan) plan).getColumnSchemaList(),
+                    true));
+      case AddViewColumn:
+        return configManager
+            .getProcedureManager()
+            .executeWithoutDuplicate(
+                ((AddTableViewColumnPlan) plan).getDatabase(),
+                null,
+                ((AddTableViewColumnPlan) plan).getTableName(),
+                queryId,
+                ProcedureType.ADD_TABLE_VIEW_COLUMN_PROCEDURE,
+                new AddTableViewColumnProcedure(
+                    ((AddTableViewColumnPlan) plan).getDatabase(),
+                    ((AddTableViewColumnPlan) plan).getTableName(),
+                    queryId,
+                    ((AddTableViewColumnPlan) plan).getColumnSchemaList(),
                     true));
       case SetTableProperties:
         return configManager

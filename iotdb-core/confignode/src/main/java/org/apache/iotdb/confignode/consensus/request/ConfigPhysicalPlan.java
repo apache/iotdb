@@ -114,6 +114,7 @@ import org.apache.iotdb.confignode.consensus.request.write.table.RollbackCreateT
 import org.apache.iotdb.confignode.consensus.request.write.table.SetTableColumnCommentPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.SetTableCommentPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.SetTablePropertiesPlan;
+import org.apache.iotdb.confignode.consensus.request.write.table.view.AddTableViewColumnPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.view.PreCreateTableViewPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.view.SetViewCommentPlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.CommitSetSchemaTemplatePlan;
@@ -396,7 +397,10 @@ public abstract class ConfigPhysicalPlan implements IConsensusRequest {
           plan = new CommitCreateTablePlan();
           break;
         case AddTableColumn:
-          plan = new AddTableColumnPlan();
+          plan = new AddTableColumnPlan(ConfigPhysicalPlanType.AddTableColumn);
+          break;
+        case AddViewColumn:
+          plan = new AddTableViewColumnPlan();
           break;
         case SetTableProperties:
           plan = new SetTablePropertiesPlan();

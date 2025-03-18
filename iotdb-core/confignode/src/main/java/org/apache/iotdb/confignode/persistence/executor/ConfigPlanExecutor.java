@@ -571,6 +571,7 @@ public class ConfigPlanExecutor {
       case CommitCreateTable:
         return clusterSchemaInfo.commitCreateTable((CommitCreateTablePlan) physicalPlan);
       case AddTableColumn:
+      case AddViewColumn:
         return clusterSchemaInfo.addTableColumn((AddTableColumnPlan) physicalPlan);
       case RenameTableColumn:
         return clusterSchemaInfo.renameTableColumn((RenameTableColumnPlan) physicalPlan);
