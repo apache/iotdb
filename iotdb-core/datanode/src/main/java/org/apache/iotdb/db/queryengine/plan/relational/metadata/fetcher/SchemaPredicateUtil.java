@@ -44,6 +44,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
 
 public class SchemaPredicateUtil {
@@ -114,7 +115,9 @@ public class SchemaPredicateUtil {
   // e.g. (a OR b) AND (c OR d) -> (a AND c) OR (a AND d) OR (b AND c) OR (b AND d)
   // if input is empty, then return [[]]
   static List<Map<Integer, List<SchemaFilter>>> convertDeviceIdPredicateToOrConcatList(
-      final List<Expression> schemaFilterList, final TsTable table) {
+      final List<Expression> schemaFilterList,
+      final TsTable table,
+      final AtomicBoolean mayContainDuplicateDevice) {
     final ConvertSchemaPredicateToFilterVisitor visitor =
         new ConvertSchemaPredicateToFilterVisitor();
     final ConvertSchemaPredicateToFilterVisitor.Context context =
@@ -122,7 +125,10 @@ public class SchemaPredicateUtil {
 
     final List<List<Expression>> orConcatList =
         schemaFilterList.stream()
-            .map(IrUtils::extractOrPredicatesWithInExpanded)
+            .map(
+                expression ->
+                    IrUtils.extractOrPredicatesWithInExpanded(
+                        expression, mayContainDuplicateDevice))
             .collect(Collectors.toList());
     final int orSize = orConcatList.size();
     int remainingCaseNum = orConcatList.stream().map(List::size).reduce(1, (a, b) -> a * b);

@@ -60,6 +60,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.nio.ByteBuffer;
+import java.time.format.DateTimeParseException;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.CancellationException;
@@ -73,6 +74,7 @@ import static com.google.common.base.Throwables.throwIfUnchecked;
 import static org.apache.iotdb.db.queryengine.common.DataNodeEndPoints.isSameNode;
 import static org.apache.iotdb.db.queryengine.metric.QueryExecutionMetricSet.WAIT_FOR_RESULT;
 import static org.apache.iotdb.db.utils.ErrorHandlingUtils.getRootCause;
+import static org.apache.iotdb.rpc.TSStatusCode.DATE_OUT_OF_RANGE;
 
 /**
  * QueryExecution stores all the status of a query which is being prepared or running inside the MPP
@@ -469,6 +471,9 @@ public class QueryExecution implements IQueryExecution {
         throw (IoTDBRuntimeException) rootCause;
       } else if (rootCause instanceof IoTDBException) {
         throw (IoTDBException) rootCause;
+      } else if (rootCause instanceof DateTimeParseException) {
+        throw new IoTDBRuntimeException(
+            rootCause.getMessage(), DATE_OUT_OF_RANGE.getStatusCode(), true);
       }
       throw new IoTDBException(rootCause, TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
     } else {

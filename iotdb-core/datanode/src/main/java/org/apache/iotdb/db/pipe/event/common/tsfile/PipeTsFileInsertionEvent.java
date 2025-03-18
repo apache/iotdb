@@ -568,7 +568,9 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
 
   @Override
   public Iterable<TabletInsertionEvent> toTabletInsertionEvents() throws PipeException {
-    return toTabletInsertionEvents(Long.MAX_VALUE);
+    // 20 - 40 seconds for waiting
+    // Can not be unlimited or will cause deadlock
+    return toTabletInsertionEvents((long) ((1 + Math.random()) * 20 * 1000));
   }
 
   public Iterable<TabletInsertionEvent> toTabletInsertionEvents(final long timeoutMs)

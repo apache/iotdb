@@ -34,6 +34,7 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 
@@ -43,7 +44,7 @@ public class ExchangeNode extends SingleChildProcessNode {
   private FragmentInstanceId upstreamInstanceId;
   private PlanNodeId upstreamPlanNodeId;
 
-  private List<Symbol> outputSymbols = null;
+  private List<Symbol> outputSymbols = Collections.emptyList();
 
   private int indexOfUpstreamSinkHandle = 0;
 
@@ -103,9 +104,8 @@ public class ExchangeNode extends SingleChildProcessNode {
 
     int index = ReadWriteIOUtils.readInt(byteBuffer);
     int outputSymbolsSize = ReadWriteIOUtils.readInt(byteBuffer);
-    List<Symbol> outputSymbols = null;
+    List<Symbol> outputSymbols = new ArrayList<>();
     if (outputSymbolsSize > 0) {
-      outputSymbols = new ArrayList<>(outputSymbolsSize);
       for (int i = 0; i < outputSymbolsSize; i++) {
         outputSymbols.add(Symbol.deserialize(byteBuffer));
       }

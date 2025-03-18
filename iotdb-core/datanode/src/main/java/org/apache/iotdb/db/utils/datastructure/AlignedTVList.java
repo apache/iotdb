@@ -909,13 +909,12 @@ public abstract class AlignedTVList extends TVList {
 
     int measurementColumnNum = 0;
     long size = 0;
-    // value & bitmap array mem size
+    // value array mem size
     for (int i = 0; i < types.length; i++) {
       TSDataType type = types[i];
       if (type != null
           && (columnCategories == null || columnCategories[i] == TsTableColumnCategory.FIELD)) {
         size += (long) ARRAY_SIZE * (long) type.getDataTypeSize();
-        size += (long) ARRAY_SIZE / 8 + 1;
         measurementColumnNum++;
       }
     }
@@ -940,10 +939,13 @@ public abstract class AlignedTVList extends TVList {
   public long alignedTvListArrayMemCost() {
     long size = 0;
     // value & bitmap array mem size
-    for (TSDataType type : dataTypes) {
+    for (int column = 0; column < dataTypes.size(); column++) {
+      TSDataType type = dataTypes.get(column);
       if (type != null) {
         size += (long) PrimitiveArrayManager.ARRAY_SIZE * (long) type.getDataTypeSize();
-        size += (long) PrimitiveArrayManager.ARRAY_SIZE / 8 + 1;
+        if (bitMaps != null && bitMaps.get(column) != null) {
+          size += (long) PrimitiveArrayManager.ARRAY_SIZE / 8 + 1;
+        }
       }
     }
     // size is 0 when all types are null

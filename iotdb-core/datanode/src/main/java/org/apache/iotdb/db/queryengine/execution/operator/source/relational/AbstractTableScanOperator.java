@@ -217,7 +217,7 @@ public abstract class AbstractTableScanOperator extends AbstractSeriesScanOperat
           break;
         case ATTRIBUTE:
           Binary attributeColumnValue =
-              currentDeviceEntry.getAttributeColumnValues().get(columnsIndexArray[i]);
+              currentDeviceEntry.getAttributeColumnValues()[columnsIndexArray[i]];
           valueColumns[i] = getIdOrAttributeValueColumn(attributeColumnValue, positionCount);
           break;
         case FIELD:
