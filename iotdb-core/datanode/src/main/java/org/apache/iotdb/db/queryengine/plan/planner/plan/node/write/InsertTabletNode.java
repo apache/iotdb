@@ -880,7 +880,7 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
     writeTimes(buffer, rangeList, rowNumInRange);
     writeBitMaps(buffer, rangeList, rowNumInRange);
     writeValues(buffer, rangeList);
-    buffer.put((byte) (isAligned ? 1 : 0));
+    writeTabletAttribute(buffer);
   }
 
   /** Serialize measurement schemas, ignoring failed time series */
@@ -936,6 +936,10 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
         serializeColumn(dataTypes[i], columns[i], buffer, startEnd[0], startEnd[1]);
       }
     }
+  }
+
+  void writeTabletAttribute(IWALByteBufferView buffer) {
+    buffer.put((byte) (isAligned ? 1 : 0));
   }
 
   private void serializeColumn(
@@ -1024,6 +1028,10 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
     }
     columns =
         QueryDataSetUtils.readTabletValuesFromStream(stream, dataTypes, measurementSize, rowCount);
+    readTabletAttribute(stream);
+  }
+
+  void readTabletAttribute(DataInputStream stream) throws IOException {
     isAligned = stream.readByte() == 1;
   }
 
@@ -1064,7 +1072,7 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
     }
     columns =
         QueryDataSetUtils.readTabletValuesFromBuffer(buffer, dataTypes, measurementSize, rowCount);
-    isAligned = buffer.get() == 1;
+    readTabletAttribute(buffer);
   }
 
   // endregion

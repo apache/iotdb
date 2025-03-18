@@ -276,6 +276,11 @@ public class RelationalInsertTabletNode extends InsertTabletNode {
   }
 
   @Override
+  void readTabletAttribute(DataInputStream stream) throws IOException {
+    singleDevice = stream.readByte() == -1;
+  }
+
+  @Override
   void subSerialize(IWALByteBufferView buffer, List<int[]> rangeList) {
     super.subSerialize(buffer, rangeList);
     for (int i = 0; i < measurements.length; i++) {
@@ -283,6 +288,11 @@ public class RelationalInsertTabletNode extends InsertTabletNode {
         buffer.put(columnCategories[i].getCategory());
       }
     }
+  }
+
+  @Override
+  void writeTabletAttribute(IWALByteBufferView buffer) {
+    buffer.put((byte) (singleDevice ? -1 : 0));
   }
 
   @Override
