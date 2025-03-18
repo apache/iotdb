@@ -46,8 +46,8 @@ public enum PipeRequestType {
   TRANSFER_TABLET_BINARY_V2((short) 12),
   TRANSFER_TABLET_BATCH_V2((short) 13),
 
-  // Schema region
-  TRANSFER_SCHEMA_PLAN((short) 100),
+  // Schema region / Delete Data
+  TRANSFER_PLAN_NODE((short) 100),
   TRANSFER_SCHEMA_SNAPSHOT_PIECE((short) 101),
   TRANSFER_SCHEMA_SNAPSHOT_SEAL((short) 102),
 

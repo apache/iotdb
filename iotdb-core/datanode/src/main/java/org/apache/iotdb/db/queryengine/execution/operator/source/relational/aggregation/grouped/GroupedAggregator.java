@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.grouped;
 
+import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.AggregationMask;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationNode;
 
 import com.google.common.primitives.Ints;
@@ -73,7 +74,12 @@ public class GroupedAggregator {
     }
 
     if (step.isInputRaw()) {
-      accumulator.addInput(groupIds, arguments);
+      // Use select-all AggregationMask here because filter of Agg-Function is not supported now
+      AggregationMask mask = AggregationMask.createSelectAll(block.getPositionCount());
+      if (maskChannel.isPresent()) {
+        mask.applyMaskBlock(block.getColumn(maskChannel.getAsInt()));
+      }
+      accumulator.addInput(groupIds, arguments, mask);
     } else {
       accumulator.addIntermediate(groupIds, arguments[0]);
     }

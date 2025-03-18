@@ -73,8 +73,11 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.concurrent.CancellationException;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Future;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
@@ -123,7 +126,7 @@ public class PipeConsensus implements IConsensus {
 
   @Override
   public synchronized void start() throws IOException {
-    initAndRecover();
+    Future<Void> recoverFuture = initAndRecover();
 
     rpcService.initSyncedServiceImpl(new PipeConsensusRPCServiceProcessor(this, config.getPipe()));
     try {
@@ -132,50 +135,68 @@ public class PipeConsensus implements IConsensus {
       throw new IOException(e);
     }
 
+    try {
+      recoverFuture.get();
+    } catch (CancellationException ce) {
+      LOGGER.info("IoTV2 Recover Task is cancelled", ce);
+    } catch (ExecutionException ee) {
+      LOGGER.error("Exception while waiting for recover future completion", ee);
+    } catch (InterruptedException ie) {
+      Thread.currentThread().interrupt();
+      LOGGER.warn("IoTV2 Recover Task is interrupted", ie);
+    }
+    // only when we recover all consensus group can we launch async backend checker thread
     consensusPipeGuardian.start(
         CONSENSUS_PIPE_GUARDIAN_TASK_ID,
         this::checkAllConsensusPipe,
         config.getPipe().getConsensusPipeGuardJobIntervalInSeconds());
   }
 
-  private void initAndRecover() throws IOException {
+  private Future<Void> initAndRecover() throws IOException {
     if (!storageDir.exists()) {
       // init
       if (!storageDir.mkdirs()) {
         LOGGER.warn("Unable to create consensus dir at {}", storageDir);
         throw new IOException(String.format("Unable to create consensus dir at %s", storageDir));
       }
+      return CompletableFuture.completedFuture(null);
     } else {
       // asynchronously recover, retry logic is implemented at PipeConsensusImpl
-      CompletableFuture<Void> future =
-          CompletableFuture.runAsync(
-                  () -> {
-                    try (DirectoryStream<Path> stream =
-                        Files.newDirectoryStream(storageDir.toPath())) {
-                      for (Path path : stream) {
-                        ConsensusGroupId consensusGroupId =
-                            parsePeerFileName(path.getFileName().toString());
-                        PipeConsensusServerImpl consensus =
-                            new PipeConsensusServerImpl(
-                                new Peer(consensusGroupId, thisNodeId, thisNode),
-                                registry.apply(consensusGroupId),
-                                path.toString(),
-                                new ArrayList<>(),
-                                config,
-                                consensusPipeManager,
-                                syncClientManager);
-                        stateMachineMap.put(consensusGroupId, consensus);
-                        checkPeerListAndStartIfEligible(consensusGroupId, consensus);
-                      }
+      return CompletableFuture.runAsync(
+              () -> {
+                try (DirectoryStream<Path> stream = Files.newDirectoryStream(storageDir.toPath())) {
+                  for (Path path : stream) {
+                    ConsensusGroupId consensusGroupId =
+                        parsePeerFileName(path.getFileName().toString());
+                    try {
+                      PipeConsensusServerImpl consensus =
+                          new PipeConsensusServerImpl(
+                              new Peer(consensusGroupId, thisNodeId, thisNode),
+                              registry.apply(consensusGroupId),
+                              new ArrayList<>(),
+                              config,
+                              consensusPipeManager,
+                              syncClientManager);
+                      stateMachineMap.put(consensusGroupId, consensus);
+                      checkPeerListAndStartIfEligible(consensusGroupId, consensus);
                     } catch (Exception e) {
-                      LOGGER.error("Failed to recover consensus from {}", storageDir, e);
+                      LOGGER.error(
+                          "Failed to recover consensus from {} for {}, ignore it and continue recover other group, async backend checker thread will automatically deregister related pipe side effects for this failed consensus group.",
+                          storageDir,
+                          consensusGroupId,
+                          e);
                     }
-                  })
-              .exceptionally(
-                  e -> {
-                    LOGGER.error("Failed to recover consensus from {}", storageDir, e);
-                    return null;
-                  });
+                  }
+                } catch (IOException e) {
+                  LOGGER.error(
+                      "Failed to recover consensus from {} because read dir failed", storageDir, e);
+                }
+              })
+          .exceptionally(
+              e -> {
+                LOGGER.error("Failed to recover consensus from {}", storageDir, e);
+                return null;
+              });
     }
   }
 
@@ -225,8 +246,8 @@ public class PipeConsensus implements IConsensus {
                 Collectors.groupingBy(
                     entry -> entry.getKey().getConsensusGroupId(),
                     Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue)));
+    stateMachineMapLock.writeLock().lock();
     try {
-      stateMachineMapLock.writeLock().lock();
       stateMachineMap.forEach(
           (key, value) ->
               value.checkConsensusPipe(existedPipes.getOrDefault(key, ImmutableMap.of())));
@@ -301,38 +322,40 @@ public class PipeConsensus implements IConsensus {
 
     Lock lock =
         consensusGroupIdReentrantLockMap.computeIfAbsent(groupId, key -> new ReentrantLock());
+    lock.lock();
     try {
-      lock.lock();
       stateMachineMapLock.readLock().lock();
-      if (stateMachineMap.containsKey(groupId)) {
-        throw new ConsensusGroupAlreadyExistException(groupId);
-      }
+      try {
+        if (stateMachineMap.containsKey(groupId)) {
+          throw new ConsensusGroupAlreadyExistException(groupId);
+        }
 
-      final String path = getPeerDir(groupId);
-      File consensusDir = new File(path);
-      if (!consensusDir.exists() && !consensusDir.mkdirs()) {
-        LOGGER.warn("Unable to create consensus dir for group {} at {}", groupId, path);
-        throw new ConsensusException(
-            String.format("Unable to create consensus dir for group %s", groupId));
-      }
+        final String path = getPeerDir(groupId);
+        File consensusDir = new File(path);
+        if (!consensusDir.exists() && !consensusDir.mkdirs()) {
+          LOGGER.warn("Unable to create consensus dir for group {} at {}", groupId, path);
+          throw new ConsensusException(
+              String.format("Unable to create consensus dir for group %s", groupId));
+        }
 
-      PipeConsensusServerImpl consensus =
-          new PipeConsensusServerImpl(
-              new Peer(groupId, thisNodeId, thisNode),
-              registry.apply(groupId),
-              path,
-              peers,
-              config,
-              consensusPipeManager,
-              syncClientManager);
-      stateMachineMap.put(groupId, consensus);
-      consensus.start(false); // pipe will start after creating
-      KillPoint.setKillPoint(DataNodeKillPoints.DESTINATION_CREATE_LOCAL_PEER);
-    } catch (IOException e) {
-      LOGGER.warn("Cannot create local peer for group {} with peers {}", groupId, peers, e);
-      throw new ConsensusException(e);
+        PipeConsensusServerImpl consensus =
+            new PipeConsensusServerImpl(
+                new Peer(groupId, thisNodeId, thisNode),
+                registry.apply(groupId),
+                peers,
+                config,
+                consensusPipeManager,
+                syncClientManager);
+        stateMachineMap.put(groupId, consensus);
+        consensus.start(false); // pipe will start after creating
+        KillPoint.setKillPoint(DataNodeKillPoints.DESTINATION_CREATE_LOCAL_PEER);
+      } catch (IOException e) {
+        LOGGER.warn("Cannot create local peer for group {} with peers {}", groupId, peers, e);
+        throw new ConsensusException(e);
+      } finally {
+        stateMachineMapLock.readLock().unlock();
+      }
     } finally {
-      stateMachineMapLock.readLock().unlock();
       lock.unlock();
     }
   }
@@ -342,24 +365,24 @@ public class PipeConsensus implements IConsensus {
     KillPoint.setKillPoint(IoTConsensusDeleteLocalPeerKillPoints.BEFORE_DELETE);
     Lock lock =
         consensusGroupIdReentrantLockMap.computeIfAbsent(groupId, key -> new ReentrantLock());
+    lock.lock();
     try {
-      lock.lock();
       stateMachineMapLock.readLock().lock();
-      if (!stateMachineMap.containsKey(groupId)) {
-        throw new ConsensusGroupNotExistException(groupId);
+      try {
+        if (!stateMachineMap.containsKey(groupId)) {
+          throw new ConsensusGroupNotExistException(groupId);
+        }
+
+        final PipeConsensusServerImpl consensus = stateMachineMap.get(groupId);
+        consensus.clear();
+        stateMachineMap.remove(groupId);
+
+        FileUtils.deleteFileOrDirectory(new File(getPeerDir(groupId)));
+        KillPoint.setKillPoint(IoTConsensusDeleteLocalPeerKillPoints.AFTER_DELETE);
+      } finally {
+        stateMachineMapLock.readLock().unlock();
       }
-
-      final PipeConsensusServerImpl consensus = stateMachineMap.get(groupId);
-      consensus.clear();
-      stateMachineMap.remove(groupId);
-
-      FileUtils.deleteFileOrDirectory(new File(getPeerDir(groupId)));
-      KillPoint.setKillPoint(IoTConsensusDeleteLocalPeerKillPoints.AFTER_DELETE);
-    } catch (IOException e) {
-      LOGGER.warn("Cannot delete local peer for group {}", groupId, e);
-      throw new ConsensusException(e);
     } finally {
-      stateMachineMapLock.readLock().unlock();
       lock.unlock();
       consensusGroupIdReentrantLockMap.remove(groupId);
     }
@@ -460,7 +483,7 @@ public class PipeConsensus implements IConsensus {
 
     if (!correctPeers.contains(new Peer(groupId, thisNodeId, thisNode))) {
       LOGGER.warn(
-          "[RESET PEER LIST] Local peer is not in the correct configuration, delete local peer {}",
+          "[RESET PEER LIST] {} Local peer is not in the correct configuration, delete it.",
           groupId);
       deleteLocalPeer(groupId);
       return;
@@ -473,9 +496,10 @@ public class PipeConsensus implements IConsensus {
       if (!correctPeers.contains(peer)) {
         try {
           impl.dropConsensusPipeToTargetPeer(peer);
-          LOGGER.info("[RESET PEER LIST] Remove sync channel with: {}", peer);
+          LOGGER.info("[RESET PEER LIST] {} Remove sync channel with: {}", groupId, peer);
         } catch (ConsensusGroupModifyPeerException e) {
-          LOGGER.error("[RESET PEER LIST] Failed to remove sync channel with: {}", peer, e);
+          LOGGER.error(
+              "[RESET PEER LIST] {} Failed to remove sync channel with: {}", groupId, peer, e);
         }
       }
     }
@@ -484,9 +508,10 @@ public class PipeConsensus implements IConsensus {
       if (!impl.containsPeer(peer) && peer.getNodeId() != this.thisNodeId) {
         try {
           impl.createConsensusPipeToTargetPeer(peer, false);
-          LOGGER.info("[RESET PEER LIST] Build sync channel with: {}", peer);
+          LOGGER.info("[RESET PEER LIST] {} Build sync channel with: {}", groupId, peer);
         } catch (ConsensusGroupModifyPeerException e) {
-          LOGGER.warn("[RESET PEER LIST] Failed to build sync channel with: {}", peer, e);
+          LOGGER.warn(
+              "[RESET PEER LIST] {} Failed to build sync channel with: {}", groupId, peer, e);
         }
       }
     }
@@ -494,12 +519,14 @@ public class PipeConsensus implements IConsensus {
     String currentPeerListStr = impl.getPeers().toString();
     if (!previousPeerListStr.equals(currentPeerListStr)) {
       LOGGER.info(
-          "[RESET PEER LIST] Local peer list has been reset: {} -> {}",
+          "[RESET PEER LIST] {} Local peer list has been reset: {} -> {}",
+          groupId,
           previousPeerListStr,
           impl.getPeers());
     } else {
       LOGGER.info(
-          "[RESET PEER LIST] The current peer list is correct, nothing need to be reset: {}",
+          "[RESET PEER LIST] {} The current peer list is correct, nothing need to be reset: {}",
+          groupId,
           previousPeerListStr);
     }
   }

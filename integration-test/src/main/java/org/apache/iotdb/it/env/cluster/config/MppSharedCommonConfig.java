@@ -167,9 +167,9 @@ public class MppSharedCommonConfig implements CommonConfig {
   }
 
   @Override
-  public CommonConfig setAvgSeriesPointNumberThreshold(int avgSeriesPointNumberThreshold) {
-    cnConfig.setAvgSeriesPointNumberThreshold(avgSeriesPointNumberThreshold);
-    dnConfig.setAvgSeriesPointNumberThreshold(avgSeriesPointNumberThreshold);
+  public CommonConfig setTargetChunkPointNum(int targetChunkPointNum) {
+    cnConfig.setTargetChunkPointNum(targetChunkPointNum);
+    dnConfig.setTargetChunkPointNum(targetChunkPointNum);
     return this;
   }
 
@@ -259,6 +259,13 @@ public class MppSharedCommonConfig implements CommonConfig {
   }
 
   @Override
+  public CommonConfig setTTLCheckInterval(long ttlCheckInterval) {
+    cnConfig.setTTLCheckInterval(ttlCheckInterval);
+    dnConfig.setTTLCheckInterval(ttlCheckInterval);
+    return this;
+  }
+
+  @Override
   public CommonConfig setTimePartitionOrigin(long timePartitionOrigin) {
     cnConfig.setTimePartitionOrigin(timePartitionOrigin);
     dnConfig.setTimePartitionOrigin(timePartitionOrigin);
@@ -313,6 +320,13 @@ public class MppSharedCommonConfig implements CommonConfig {
   public CommonConfig setEnableMQTTService(boolean enableMQTTService) {
     cnConfig.setEnableMQTTService(enableMQTTService);
     dnConfig.setEnableMQTTService(enableMQTTService);
+    return this;
+  }
+
+  @Override
+  public CommonConfig setMqttPayloadFormatter(String mqttPayloadFormatter) {
+    cnConfig.setMqttPayloadFormatter(mqttPayloadFormatter);
+    dnConfig.setMqttPayloadFormatter(mqttPayloadFormatter);
     return this;
   }
 
@@ -379,6 +393,13 @@ public class MppSharedCommonConfig implements CommonConfig {
   public CommonConfig setSeriesSlotNum(int seriesSlotNum) {
     cnConfig.setSeriesSlotNum(seriesSlotNum);
     dnConfig.setSeriesSlotNum(seriesSlotNum);
+    return this;
+  }
+
+  @Override
+  public CommonConfig setSeriesPartitionExecutorClass(String seriesPartitionExecutorClass) {
+    cnConfig.setSeriesPartitionExecutorClass(seriesPartitionExecutorClass);
+    dnConfig.setSeriesPartitionExecutorClass(seriesPartitionExecutorClass);
     return this;
   }
 

@@ -30,6 +30,7 @@ import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.SessionInfo;
 import org.apache.iotdb.db.queryengine.plan.analyze.IPartitionFetcher;
 import org.apache.iotdb.db.queryengine.plan.relational.function.OperatorType;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.AlignedDeviceEntry;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.ColumnMetadata;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.ColumnSchema;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.DeviceEntry;
@@ -45,6 +46,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.type.TypeManager;
 import org.apache.iotdb.db.queryengine.plan.relational.type.TypeNotFoundException;
 import org.apache.iotdb.db.queryengine.plan.relational.type.TypeSignature;
 import org.apache.iotdb.mpp.rpc.thrift.TRegionRouteReq;
+import org.apache.iotdb.udf.api.relational.TableFunction;
 
 import com.google.common.collect.ImmutableList;
 import org.apache.tsfile.common.conf.TSFileConfig;
@@ -289,42 +291,42 @@ public class TSBSMetadata implements Metadata {
         && attributeColumns.isEmpty()) {
       // r01, r02
       return ImmutableList.of(
-          new DeviceEntry(new StringArrayDeviceID(T1_DEVICE_1.split("\\.")), ImmutableList.of()),
-          new DeviceEntry(new StringArrayDeviceID(T1_DEVICE_2.split("\\.")), ImmutableList.of()));
+          new AlignedDeviceEntry(new StringArrayDeviceID(T1_DEVICE_1.split("\\.")), new Binary[0]),
+          new AlignedDeviceEntry(new StringArrayDeviceID(T1_DEVICE_2.split("\\.")), new Binary[0]));
     } else if (expressionList.size() == 1
         && expressionList.get(0).toString().equals("(\"fleet\" = 'South')")
         && attributeColumns.size() == 1
         && attributeColumns.get(0).equals("load_capacity")) {
       // r03
       return ImmutableList.of(
-          new DeviceEntry(
+          new AlignedDeviceEntry(
               new StringArrayDeviceID(T1_DEVICE_1.split("\\.")),
-              ImmutableList.of(new Binary("2000", TSFileConfig.STRING_CHARSET))),
-          new DeviceEntry(
+              new Binary[] {new Binary("2000", TSFileConfig.STRING_CHARSET)}),
+          new AlignedDeviceEntry(
               new StringArrayDeviceID(T1_DEVICE_2.split("\\.")),
-              ImmutableList.of(new Binary("1000", TSFileConfig.STRING_CHARSET))));
+              new Binary[] {new Binary("1000", TSFileConfig.STRING_CHARSET)}));
     } else {
       // others (The return result maybe not correct in actual, but it is convenient for test of
       // DistributionPlan)
       return Arrays.asList(
-          new DeviceEntry(
+          new AlignedDeviceEntry(
               new StringArrayDeviceID(T1_DEVICE_1.split("\\.")),
-              ImmutableList.of(Binary.EMPTY_VALUE, Binary.EMPTY_VALUE)),
-          new DeviceEntry(
+              new Binary[] {Binary.EMPTY_VALUE, Binary.EMPTY_VALUE}),
+          new AlignedDeviceEntry(
               new StringArrayDeviceID(T1_DEVICE_2.split("\\.")),
-              ImmutableList.of(Binary.EMPTY_VALUE, Binary.EMPTY_VALUE)),
-          new DeviceEntry(
+              new Binary[] {Binary.EMPTY_VALUE, Binary.EMPTY_VALUE}),
+          new AlignedDeviceEntry(
               new StringArrayDeviceID(T1_DEVICE_3.split("\\.")),
-              ImmutableList.of(Binary.EMPTY_VALUE, Binary.EMPTY_VALUE)),
-          new DeviceEntry(
+              new Binary[] {Binary.EMPTY_VALUE, Binary.EMPTY_VALUE}),
+          new AlignedDeviceEntry(
               new StringArrayDeviceID(T2_DEVICE_1.split("\\.")),
-              ImmutableList.of(Binary.EMPTY_VALUE, Binary.EMPTY_VALUE)),
-          new DeviceEntry(
+              new Binary[] {Binary.EMPTY_VALUE, Binary.EMPTY_VALUE}),
+          new AlignedDeviceEntry(
               new StringArrayDeviceID(T2_DEVICE_2.split("\\.")),
-              ImmutableList.of(Binary.EMPTY_VALUE, Binary.EMPTY_VALUE)),
-          new DeviceEntry(
+              new Binary[] {Binary.EMPTY_VALUE, Binary.EMPTY_VALUE}),
+          new AlignedDeviceEntry(
               new StringArrayDeviceID(T2_DEVICE_3.split("\\.")),
-              ImmutableList.of(Binary.EMPTY_VALUE, Binary.EMPTY_VALUE)));
+              new Binary[] {Binary.EMPTY_VALUE, Binary.EMPTY_VALUE}));
     }
   }
 
@@ -370,6 +372,11 @@ public class TSBSMetadata implements Metadata {
   public DataPartition getDataPartitionWithUnclosedTimeRange(
       String database, List<DataPartitionQueryParam> sgNameToQueryParamsMap) {
     return DATA_PARTITION;
+  }
+
+  @Override
+  public TableFunction getTableFunction(String functionName) {
+    return null;
   }
 
   private static final DataPartition DATA_PARTITION =

@@ -39,6 +39,8 @@ public class ShowPipesStatement extends ShowStatement implements IConfigStatemen
 
   private boolean whereClause;
 
+  private boolean isTableModel;
+
   public String getPipeName() {
     return pipeName;
   }
@@ -47,12 +49,20 @@ public class ShowPipesStatement extends ShowStatement implements IConfigStatemen
     return whereClause;
   }
 
-  public void setPipeName(String pipeName) {
+  public boolean isTableModel() {
+    return isTableModel;
+  }
+
+  public void setPipeName(final String pipeName) {
     this.pipeName = pipeName;
   }
 
-  public void setWhereClause(boolean whereClause) {
+  public void setWhereClause(final boolean whereClause) {
     this.whereClause = whereClause;
+  }
+
+  public void setTableModel(final boolean tableModel) {
+    this.isTableModel = tableModel;
   }
 
   @Override
@@ -61,17 +71,17 @@ public class ShowPipesStatement extends ShowStatement implements IConfigStatemen
   }
 
   @Override
-  public TSStatus checkPermissionBeforeProcess(String userName) {
+  public TSStatus checkPermissionBeforeProcess(final String userName) {
     if (AuthorityChecker.SUPER_USER.equals(userName)) {
       return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     }
     return AuthorityChecker.getTSStatus(
-        AuthorityChecker.checkSystemPermission(userName, PrivilegeType.USE_PIPE.ordinal()),
+        AuthorityChecker.checkSystemPermission(userName, PrivilegeType.USE_PIPE),
         PrivilegeType.USE_PIPE);
   }
 
   @Override
-  public <R, C> R accept(StatementVisitor<R, C> visitor, C context) {
+  public <R, C> R accept(final StatementVisitor<R, C> visitor, final C context) {
     return visitor.visitShowPipes(this, context);
   }
 }

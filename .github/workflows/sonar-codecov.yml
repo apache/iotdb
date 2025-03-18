@@ -9,7 +9,6 @@ on:
       - master
       - "rel/*"
       - "rc/*"
-      - 'force_ci/**'
     paths-ignore:
       - "docs/**"
       - 'site/**'
@@ -34,7 +33,7 @@ env:
   MAVEN_OPTS: -Dhttp.keepAlive=false -Dmaven.wagon.http.pool=false -Dmaven.wagon.http.retryHandler.class=standard -Dmaven.wagon.http.retryHandler.count=3
   MAVEN_ARGS: --batch-mode --no-transfer-progress
   PR_NUMBER: ${{ github.event.number }}
-  DEVELOCITY_ACCESS_KEY: ${{ secrets.GE_ACCESS_TOKEN }}
+  DEVELOCITY_ACCESS_KEY: ${{ secrets.DEVELOCITY_ACCESS_KEY }}
 
 jobs:
   codecov:

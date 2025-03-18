@@ -43,6 +43,7 @@ public class ClusterConstant {
   public static final String DEFAULT_DATA_NODE_PROPERTIES = "DefaultDataNodeProperties";
   public static final String DEFAULT_DATA_NODE_COMMON_PROPERTIES =
       "DefaultDataNodeCommonProperties";
+  public static final String DATA_REGION_PER_DATANODE = "integrationTest.dataRegionPerDataNode";
 
   // Cluster Configurations
   public static final String CLUSTER_CONFIGURATIONS = "ClusterConfigurations";
@@ -163,6 +164,7 @@ public class ClusterConstant {
 
   public static final String MQTT_HOST = "mqtt_host";
   public static final String MQTT_PORT = "mqtt_port";
+  public static final String MQTT_DATA_PATH = "mqtt_data_path";
   public static final String UDF_LIB_DIR = "udf_lib_dir";
   public static final String TRIGGER_LIB_DIR = "trigger_lib_dir";
   public static final String PIPE_LIB_DIR = "pipe_lib_dir";
@@ -202,6 +204,7 @@ public class ClusterConstant {
       "schema_region_ratis_log_appender_buffer_size_max";
   public static final String DATA_REGION_RATIS_LOG_APPENDER_BUFFER_SIZE_MAX =
       "data_region_ratis_log_appender_buffer_size_max";
+  public static final String DATA_REGION_PER_DATA_NODE = "data_region_per_data_node";
 
   // Paths
   public static final String USER_DIR = "user.dir";

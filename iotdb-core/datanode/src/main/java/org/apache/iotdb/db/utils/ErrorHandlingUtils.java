@@ -106,7 +106,12 @@ public class ErrorHandlingUtils {
             || status.getCode() == TSStatusCode.ILLEGAL_PATH.getStatusCode()
             || status.getCode() == TSStatusCode.NUMERIC_VALUE_OUT_OF_RANGE.getStatusCode()
             || status.getCode() == TSStatusCode.DIVISION_BY_ZERO.getStatusCode()
-            || status.getCode() == TSStatusCode.DATE_OUT_OF_RANGE.getStatusCode()) {
+            || status.getCode() == TSStatusCode.DATE_OUT_OF_RANGE.getStatusCode()
+            || status.getCode() == TSStatusCode.TABLE_NOT_EXISTS.getStatusCode()
+            || status.getCode() == TSStatusCode.TABLE_ALREADY_EXISTS.getStatusCode()
+            || status.getCode() == TSStatusCode.COLUMN_NOT_EXISTS.getStatusCode()
+            || status.getCode() == TSStatusCode.COLUMN_ALREADY_EXISTS.getStatusCode()
+            || status.getCode() == TSStatusCode.UDF_LOAD_CLASS_ERROR.getStatusCode()) {
           LOGGER.info(message);
         } else {
           LOGGER.warn(message, e);

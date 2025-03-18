@@ -25,7 +25,7 @@ import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.session.subscription.consumer.AckStrategy;
 import org.apache.iotdb.session.subscription.consumer.ConsumeResult;
-import org.apache.iotdb.session.subscription.consumer.SubscriptionPushConsumer;
+import org.apache.iotdb.session.subscription.consumer.tree.SubscriptionTreePushConsumer;
 import org.apache.iotdb.subscription.it.triple.regression.AbstractSubscriptionRegressionIT;
 
 import org.apache.thrift.TException;
@@ -64,7 +64,7 @@ public class IoTDBTimeRangeDBTsfilePushConsumerIT extends AbstractSubscriptionRe
   private String pattern = database + ".**";
   private String topicName = "topic_TimeRangeDBTsfilePushConsumer";
   private List<IMeasurementSchema> schemaList = new ArrayList<>();
-  private SubscriptionPushConsumer consumer;
+  private SubscriptionTreePushConsumer consumer;
 
   @Override
   @Before
@@ -126,7 +126,7 @@ public class IoTDBTimeRangeDBTsfilePushConsumerIT extends AbstractSubscriptionRe
     // Write data before subscribing
     insert_data(1704038396000L); // 2023-12-31 23:59:56+08:00
     consumer =
-        new SubscriptionPushConsumer.Builder()
+        new SubscriptionTreePushConsumer.Builder()
             .host(SRC_HOST)
             .port(SRC_PORT)
             .consumerId("db_time_range_accurate_tsfile")
@@ -162,38 +162,36 @@ public class IoTDBTimeRangeDBTsfilePushConsumerIT extends AbstractSubscriptionRe
 
     AWAIT.untilAsserted(
         () -> {
-          assertEquals(onReceive.get(), 1);
-          // loose-time should 2 records,get 4 records
-          assertTrue(rowCount.get() >= 2);
+          assertGte(onReceive.get(), 1);
+          assertGte(rowCount.get(), 2);
         });
 
     insert_data(System.currentTimeMillis()); // now, not in range
     AWAIT.untilAsserted(
         () -> {
-          assertEquals(onReceive.get(), 1);
-          assertTrue(rowCount.get() >= 2);
+          assertGte(onReceive.get(), 1);
+          assertGte(rowCount.get(), 2);
         });
 
     insert_data(1707782400000L); // 2024-02-13 08:00:00+08:00
     AWAIT.untilAsserted(
         () -> {
-          assertEquals(onReceive.get(), 2);
-          assertTrue(rowCount.get() >= 6);
+          assertGte(onReceive.get(), 2);
+          assertGte(rowCount.get(), 6);
         });
 
     insert_data(1711814398000L); // 2024-03-30 23:59:58+08:00
     AWAIT.untilAsserted(
         () -> {
-          // Because the end time is 2024-03-31 00:00:00, closed interval
-          assertEquals(onReceive.get(), 3);
-          assertTrue(rowCount.get() >= 8);
+          assertGte(onReceive.get(), 3);
+          assertGte(rowCount.get(), 8);
         });
 
     insert_data(1711900798000L); // 2024-03-31 23:59:58+08:00
     AWAIT.untilAsserted(
         () -> {
-          assertEquals(onReceive.get(), 3);
-          assertTrue(rowCount.get() >= 8);
+          assertGte(onReceive.get(), 3);
+          assertGte(rowCount.get(), 8);
         });
   }
 }

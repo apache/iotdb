@@ -60,12 +60,10 @@ import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.TestUtils
 import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.TestUtils.DEFAULT_WARNING;
 import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.TestUtils.QUERY_CONTEXT;
 import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.TestUtils.SESSION_INFO;
-import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.TestUtils.SHANGHAI_SHENZHEN_DEVICE_ENTRIES;
 import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.TestUtils.SHENZHEN_DEVICE_ENTRIES;
 import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.TestUtils.TEST_MATADATA;
 import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.TestUtils.assertAnalyzeSemanticException;
 import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.TestUtils.assertJoinNodeEquals;
-import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.TestUtils.assertMergeSortNode;
 import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.TestUtils.assertNodeMatches;
 import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.TestUtils.assertTableScan;
 import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.TestUtils.buildSymbols;
@@ -125,6 +123,32 @@ public class JoinTest {
             + "FROM table1 t1 JOIN table1 t2 USING(time) OFFSET 3 LIMIT 6");
   }
 
+  /*
+   * IdentitySinkNode-210
+   *   └──OutputNode-12
+   *       └──OffsetNode-8
+   *           └──LimitNode-9
+   *               └──JoinNode-7
+   *                   ├──ExchangeNode-197: [SourceAddress:192.0.11.1/test_query.2.0/205]
+   *                   └──ExchangeNode-201: [SourceAddress:192.0.11.1/test_query.6.0/209]
+   *
+   * IdentitySinkNode-205
+   *   └──MergeSortNode-149
+   *       ├──ExchangeNode-194: [SourceAddress:192.0.12.1/test_query.3.0/202]
+   *       ├──ExchangeNode-195: [SourceAddress:192.0.11.1/test_query.4.0/203]
+   *       └──ExchangeNode-196: [SourceAddress:192.0.10.1/test_query.5.0/204]
+   *
+   * IdentitySinkNode-209
+   *   └──MergeSortNode-156
+   *       ├──ExchangeNode-198: [SourceAddress:192.0.12.1/test_query.7.0/206]
+   *       ├──ExchangeNode-199: [SourceAddress:192.0.11.1/test_query.8.0/207]
+   *       └──ExchangeNode-200: [SourceAddress:192.0.10.1/test_query.9.0/208]
+   *
+   * IdentitySinkNode-204
+   *   └──SortNode-152
+   *       └──DeviceTableScanNode-147
+   * ...
+   */
   private void assertInnerJoinTest1(String sql) {
     analysis = analyzeSQL(sql, TEST_MATADATA, QUERY_CONTEXT);
     SymbolAllocator symbolAllocator = new SymbolAllocator();
@@ -161,6 +185,7 @@ public class JoinTest {
         (DeviceTableScanNode) getChildrenNode(rightSortNode, 1);
     assertTableScan(rightDeviceTableScanNode, ALL_DEVICE_ENTRIES, Ordering.ASC, 0, 0, true, "");
 
+    // Before ExchangeNode logic optimize
     /*
      * IdentitySinkNode-178
      *   └──OutputNode-12
@@ -194,33 +219,55 @@ public class JoinTest {
      *   └──SortNode-154
      *       └──DeviceTableScanNode-150
      */
+
+    // After ExchangeNode logic optimize
+    /*
+     * IdentitySinkNode-210
+     *   └──OutputNode-12
+     *       └──OffsetNode-8
+     *           └──LimitNode-9
+     *               └──JoinNode-7
+     *                   ├──ExchangeNode-197: [SourceAddress:192.0.11.1/test_query.2.0/205]
+     *                   └──ExchangeNode-201: [SourceAddress:192.0.11.1/test_query.6.0/209]
+     *
+     * IdentitySinkNode-205
+     *   └──MergeSortNode-149
+     *       ├──ExchangeNode-194: [SourceAddress:192.0.12.1/test_query.3.0/202]
+     *       ├──ExchangeNode-195: [SourceAddress:192.0.11.1/test_query.4.0/203]
+     *       └──ExchangeNode-196: [SourceAddress:192.0.10.1/test_query.5.0/204]
+     *
+     * IdentitySinkNode-209
+     *   └──MergeSortNode-156
+     *       ├──ExchangeNode-198: [SourceAddress:192.0.12.1/test_query.7.0/206]
+     *       ├──ExchangeNode-199: [SourceAddress:192.0.11.1/test_query.8.0/207]
+     *       └──ExchangeNode-200: [SourceAddress:192.0.10.1/test_query.9.0/208]
+     *
+     * IdentitySinkNode-204
+     *   └──SortNode-152
+     *       └──DeviceTableScanNode-147
+     * ...
+     */
+
     distributedQueryPlan =
         new TableDistributedPlanner(
                 analysis, symbolAllocator, logicalQueryPlan, TEST_MATADATA, null)
             .plan();
-    assertEquals(5, distributedQueryPlan.getFragments().size());
-    IdentitySinkNode identitySinkNode =
+    assertEquals(9, distributedQueryPlan.getFragments().size());
+    identitySinkNode =
         (IdentitySinkNode) distributedQueryPlan.getFragments().get(0).getPlanNodeTree();
     outputNode = (OutputNode) getChildrenNode(identitySinkNode, 1);
     assertTrue(getChildrenNode(outputNode, 3) instanceof JoinNode);
     joinNode = (JoinNode) getChildrenNode(outputNode, 3);
-    assertTrue(joinNode.getLeftChild() instanceof MergeSortNode);
-    MergeSortNode mergeSortNode = (MergeSortNode) joinNode.getLeftChild();
-    assertMergeSortNode(mergeSortNode);
-    leftSortNode = (SortNode) mergeSortNode.getChildren().get(1);
-    deviceTableScanNode = (DeviceTableScanNode) getChildrenNode(leftSortNode, 1);
-    assertTableScan(
-        deviceTableScanNode, SHANGHAI_SHENZHEN_DEVICE_ENTRIES, Ordering.ASC, 0, 0, true, "");
+    assertTrue(joinNode.getLeftChild() instanceof ExchangeNode);
+    assertTrue(joinNode.getRightChild() instanceof ExchangeNode);
 
     identitySinkNode =
         (IdentitySinkNode) distributedQueryPlan.getFragments().get(1).getPlanNodeTree();
-    assertTrue(getChildrenNode(identitySinkNode, 1) instanceof SortNode);
-    assertTrue(getChildrenNode(identitySinkNode, 2) instanceof DeviceTableScanNode);
-    deviceTableScanNode = (DeviceTableScanNode) getChildrenNode(identitySinkNode, 2);
-    assertTableScan(deviceTableScanNode, SHENZHEN_DEVICE_ENTRIES, Ordering.ASC, 0, 0, true, "");
+    assertTrue(getChildrenNode(identitySinkNode, 1) instanceof MergeSortNode);
+    assertTrue(getChildrenNode(identitySinkNode, 2) instanceof ExchangeNode);
 
     identitySinkNode =
-        (IdentitySinkNode) distributedQueryPlan.getFragments().get(3).getPlanNodeTree();
+        (IdentitySinkNode) distributedQueryPlan.getFragments().get(6).getPlanNodeTree();
     assertTrue(getChildrenNode(identitySinkNode, 1) instanceof SortNode);
     assertTrue(getChildrenNode(identitySinkNode, 2) instanceof DeviceTableScanNode);
     deviceTableScanNode = (DeviceTableScanNode) getChildrenNode(identitySinkNode, 2);
@@ -320,6 +367,7 @@ public class JoinTest {
     assertTableScan(
         rightDeviceTableScanNode, SHENZHEN_DEVICE_ENTRIES, Ordering.ASC, 0, 0, true, "");
 
+    // Before ExchangeNode optimize
     /*
      * IdentitySinkNode-197
      *   └──OutputNode-21
@@ -344,18 +392,18 @@ public class JoinTest {
         new TableDistributedPlanner(
                 analysis, symbolAllocator, logicalQueryPlan, TEST_MATADATA, null)
             .plan();
-    assertEquals(3, distributedQueryPlan.getFragments().size());
+    assertEquals(5, distributedQueryPlan.getFragments().size());
     identitySinkNode =
         (IdentitySinkNode) distributedQueryPlan.getFragments().get(0).getPlanNodeTree();
     assertTrue(getChildrenNode(identitySinkNode, 5) instanceof JoinNode);
     joinNode = (JoinNode) getChildrenNode(identitySinkNode, 5);
     assertTrue(joinNode.getLeftChild() instanceof ExchangeNode);
-    assertTrue(joinNode.getRightChild() instanceof MergeSortNode);
-    mergeSortNode = (MergeSortNode) joinNode.getRightChild();
-    assertNodeMatches(
-        mergeSortNode, MergeSortNode.class, SortNode.class, DeviceTableScanNode.class);
-    deviceTableScanNode = (DeviceTableScanNode) getChildrenNode(mergeSortNode, 2);
-    assertTableScan(deviceTableScanNode, SHENZHEN_DEVICE_ENTRIES, Ordering.ASC, 0, 0, true, "");
+    assertTrue(joinNode.getRightChild() instanceof ExchangeNode);
+
+    mergeSortNode =
+        (MergeSortNode)
+            distributedQueryPlan.getFragments().get(2).getPlanNodeTree().getChildren().get(0);
+    assertNodeMatches(mergeSortNode, MergeSortNode.class, ExchangeNode.class);
 
     identitySinkNode =
         (IdentitySinkNode) distributedQueryPlan.getFragments().get(1).getPlanNodeTree();

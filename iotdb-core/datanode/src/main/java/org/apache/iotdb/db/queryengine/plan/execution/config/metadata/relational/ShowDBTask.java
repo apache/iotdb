@@ -84,7 +84,7 @@ public class ShowDBTask implements IConfigTask {
             .collect(Collectors.toList());
 
     final TsBlockBuilder builder = new TsBlockBuilder(outputDataTypes);
-    InformationSchemaUtils.buildDatabaseTsBlock(canSeenDB, builder, false);
+    InformationSchemaUtils.buildDatabaseTsBlock(canSeenDB, builder, false, true);
     for (final Map.Entry<String, TDatabaseInfo> entry : storageGroupInfoMap.entrySet()) {
       final String dbName = entry.getKey();
       if (Boolean.FALSE.equals(canSeenDB.test(dbName))) {
@@ -124,7 +124,7 @@ public class ShowDBTask implements IConfigTask {
             .collect(Collectors.toList());
 
     final TsBlockBuilder builder = new TsBlockBuilder(outputDataTypes);
-    InformationSchemaUtils.buildDatabaseTsBlock(canSeenDB, builder, true);
+    InformationSchemaUtils.buildDatabaseTsBlock(canSeenDB, builder, true, true);
     for (final Map.Entry<String, TDatabaseInfo> entry : storageGroupInfoMap.entrySet()) {
       final String dbName = entry.getKey();
       if (!canSeenDB.test(dbName)) {

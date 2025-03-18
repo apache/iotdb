@@ -141,6 +141,10 @@ public interface BaseEnv {
       Constant.Version version, String username, String password, String sqlDialect)
       throws SQLException;
 
+  Connection getConnection(
+      DataNodeWrapper dataNodeWrapper, String username, String password, String sqlDialect)
+      throws SQLException;
+
   default Connection getConnection(String username, String password) throws SQLException {
     return getConnection(username, password, TREE_SQL_DIALECT);
   }
@@ -205,6 +209,9 @@ public interface BaseEnv {
   ITableSession getTableSessionConnectionWithDB(String database) throws IoTDBConnectionException;
 
   ITableSession getTableSessionConnection(List<String> nodeUrls) throws IoTDBConnectionException;
+
+  ITableSession getTableSessionConnection(String userName, String password)
+      throws IoTDBConnectionException;
 
   /**
    * Get the index of the first dataNode with a SchemaRegion leader.
@@ -299,6 +306,9 @@ public interface BaseEnv {
 
   /** Shutdown all existed DataNodes. */
   void shutdownAllDataNodes();
+
+  /** Shutdown forcibly all existed DataNodes. */
+  void shutdownForciblyAllDataNodes();
 
   int getMqttPort();
 

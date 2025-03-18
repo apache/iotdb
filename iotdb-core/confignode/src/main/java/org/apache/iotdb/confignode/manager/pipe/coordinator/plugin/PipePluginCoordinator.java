@@ -32,7 +32,9 @@ import org.apache.iotdb.confignode.rpc.thrift.TDropPipePluginReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetJarInListReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetJarInListResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetPipePluginTableResp;
+import org.apache.iotdb.confignode.rpc.thrift.TShowPipePluginReq;
 import org.apache.iotdb.consensus.exception.ConsensusException;
+import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.slf4j.Logger;
@@ -82,6 +84,18 @@ public class PipePluginCoordinator {
   }
 
   public TSStatus dropPipePlugin(TDropPipePluginReq req) {
+    final String pluginName = req.getPluginName();
+    final boolean isSetIfExistsCondition =
+        req.isSetIfExistsCondition() && req.isIfExistsCondition();
+    if (!pipePluginInfo.isPipePluginExisted(pluginName, req.isTableModel)) {
+      return isSetIfExistsCondition
+          ? RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS)
+          : RpcUtils.getStatus(
+              TSStatusCode.DROP_PIPE_PLUGIN_ERROR,
+              String.format(
+                  "Failed to drop pipe plugin %s. Failures: %s does not exist.",
+                  pluginName, pluginName));
+    }
     return configManager.getProcedureManager().dropPipePlugin(req);
   }
 
@@ -89,6 +103,21 @@ public class PipePluginCoordinator {
     try {
       return ((PipePluginTableResp)
               configManager.getConsensusManager().read(new GetPipePluginTablePlan()))
+          .convertToThriftResponse();
+    } catch (IOException | ConsensusException e) {
+      LOGGER.error("Fail to get PipePluginTable", e);
+      return new TGetPipePluginTableResp(
+          new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode())
+              .setMessage(e.getMessage()),
+          Collections.emptyList());
+    }
+  }
+
+  public TGetPipePluginTableResp getPipePluginTableExtended(TShowPipePluginReq req) {
+    try {
+      return ((PipePluginTableResp)
+              configManager.getConsensusManager().read(new GetPipePluginTablePlan()))
+          .filter(req.isTableModel)
           .convertToThriftResponse();
     } catch (IOException | ConsensusException e) {
       LOGGER.error("Fail to get PipePluginTable", e);

@@ -77,6 +77,11 @@ public class InsertRowsOfOneDeviceNode extends InsertNode {
     insertRowNodeList = new ArrayList<>();
   }
 
+  @Override
+  public InsertNode mergeInsertNode(List<InsertNode> insertNodes) {
+    throw new UnsupportedOperationException("InsertRowsOfOneDeviceNode not support merge");
+  }
+
   public InsertRowsOfOneDeviceNode(
       PlanNodeId id, List<Integer> insertRowNodeIndexList, List<InsertRowNode> insertRowNodeList) {
     super(id);

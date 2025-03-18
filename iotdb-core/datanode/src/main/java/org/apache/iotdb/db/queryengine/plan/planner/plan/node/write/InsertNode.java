@@ -50,6 +50,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
+import java.util.stream.Collectors;
 
 public abstract class InsertNode extends SearchNode {
 
@@ -93,6 +94,26 @@ public abstract class InsertNode extends SearchNode {
   protected InsertNode(PlanNodeId id) {
     super(id);
   }
+
+  @Override
+  public final SearchNode merge(List<SearchNode> searchNodes) {
+    if (searchNodes.isEmpty()) {
+      throw new IllegalArgumentException("insertNodes should never be empty");
+    }
+    if (searchNodes.size() == 1) {
+      return searchNodes.get(0);
+    }
+    List<InsertNode> insertNodes =
+        searchNodes.stream()
+            .map(searchNode -> (InsertNode) searchNode)
+            .collect(Collectors.toList());
+    InsertNode result = mergeInsertNode(insertNodes);
+    result.setSearchIndex(insertNodes.get(0).getSearchIndex());
+    result.setTargetPath(insertNodes.get(0).getTargetPath());
+    return result;
+  }
+
+  public abstract InsertNode mergeInsertNode(List<InsertNode> insertNodes);
 
   protected InsertNode(
       PlanNodeId id,
@@ -317,7 +338,8 @@ public abstract class InsertNode extends SearchNode {
 
   public boolean allMeasurementFailed() {
     if (measurements != null) {
-      return failedMeasurementNumber >= measurements.length;
+      return failedMeasurementNumber
+          >= measurements.length - (idColumnIndices == null ? 0 : idColumnIndices.size());
     }
     return true;
   }
@@ -420,6 +442,7 @@ public abstract class InsertNode extends SearchNode {
         .getPartialPath(ReadWriteIOUtils.readString(stream));
   }
 
+  @Override
   public long getMemorySize() {
     if (memorySize == 0) {
       memorySize = InsertNodeMemoryEstimator.sizeOf(this);

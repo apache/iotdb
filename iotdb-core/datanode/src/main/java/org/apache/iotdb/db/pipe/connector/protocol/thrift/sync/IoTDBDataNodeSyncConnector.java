@@ -26,6 +26,8 @@ import org.apache.iotdb.commons.utils.NodeUrlUtils;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.pipe.connector.client.IoTDBDataNodeSyncClientManager;
+import org.apache.iotdb.pipe.api.annotation.TableModel;
+import org.apache.iotdb.pipe.api.annotation.TreeModel;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameterValidator;
 
 import org.slf4j.Logger;
@@ -37,6 +39,8 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+@TreeModel
+@TableModel
 public abstract class IoTDBDataNodeSyncConnector extends IoTDBSslSyncConnector {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBDataNodeSyncConnector.class);
@@ -83,7 +87,9 @@ public abstract class IoTDBDataNodeSyncConnector extends IoTDBSslSyncConnector {
       final String username,
       final String password,
       final boolean shouldReceiverConvertOnTypeMismatch,
-      final String loadTsFileStrategy) {
+      final String loadTsFileStrategy,
+      final boolean validateTsFile,
+      final boolean shouldMarkAsPipeRequest) {
     clientManager =
         new IoTDBDataNodeSyncClientManager(
             nodeUrls,
@@ -95,7 +101,9 @@ public abstract class IoTDBDataNodeSyncConnector extends IoTDBSslSyncConnector {
             username,
             password,
             shouldReceiverConvertOnTypeMismatch,
-            loadTsFileStrategy);
+            loadTsFileStrategy,
+            validateTsFile,
+            shouldMarkAsPipeRequest);
     return clientManager;
   }
 }

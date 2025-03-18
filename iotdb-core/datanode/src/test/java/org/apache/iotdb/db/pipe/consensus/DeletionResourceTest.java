@@ -66,17 +66,20 @@ public class DeletionResourceTest {
   private static final String[] FAKE_DATA_REGION_IDS = {"2", "3", "4", "5", "6"};
   private static final String DELETION_BASE_DIR =
       IoTDBDescriptor.getInstance().getConfig().getIotConsensusV2DeletionFileDir();
-  private static final int THIS_DATANODE_ID =
-      IoTDBDescriptor.getInstance().getConfig().getDataNodeId();
+  private static final int THIS_DATANODE_ID = 0;
   private DeletionResourceManager deletionResourceManager;
+  private int previousDataNodeId;
 
   @Before
   public void setUp() throws Exception {
+    previousDataNodeId = IoTDBDescriptor.getInstance().getConfig().getDataNodeId();
+    IoTDBDescriptor.getInstance().getConfig().setDataNodeId(THIS_DATANODE_ID);
     DeletionResourceManager.buildForTest();
   }
 
   @After
   public void tearDown() throws Exception {
+    IoTDBDescriptor.getInstance().getConfig().setDataNodeId(previousDataNodeId);
     for (String FAKE_DATA_REGION_ID : FAKE_DATA_REGION_IDS) {
       File baseDir = new File(DELETION_BASE_DIR + File.separator + FAKE_DATA_REGION_ID);
       if (baseDir.exists()) {
@@ -176,16 +179,16 @@ public class DeletionResourceTest {
     deletionRemove(false);
   }
 
-  public void deletionRemove(boolean isRelational)
+  public void deletionRemove(final boolean isRelational)
       throws IllegalPathException, InterruptedException, IOException {
     deletionResourceManager = DeletionResourceManager.getInstance(FAKE_DATA_REGION_IDS[3]);
     // new a deletion
-    int rebootTimes = 0;
-    int deletionCount = 20;
-    MeasurementPath path = new MeasurementPath("root.vehicle.d2.s0");
-    List<PipeDeleteDataNodeEvent> deletionEvents = new ArrayList<>();
+    final int rebootTimes = 0;
+    final int deletionCount = 20;
+    final MeasurementPath path = new MeasurementPath("root.vehicle.d2.s0");
+    final List<PipeDeleteDataNodeEvent> deletionEvents = new ArrayList<>();
     for (int i = 0; i < deletionCount; i++) {
-      AbstractDeleteDataNode deleteDataNode;
+      final AbstractDeleteDataNode deleteDataNode;
       if (isRelational) {
         deleteDataNode =
             new RelationalDeleteDataNode(
@@ -200,9 +203,10 @@ public class DeletionResourceTest {
       }
       deleteDataNode.setProgressIndex(
           new RecoverProgressIndex(THIS_DATANODE_ID, new SimpleProgressIndex(rebootTimes, i)));
-      PipeDeleteDataNodeEvent deletionEvent = new PipeDeleteDataNodeEvent(deleteDataNode, true);
+      final PipeDeleteDataNodeEvent deletionEvent =
+          new PipeDeleteDataNodeEvent(deleteDataNode, true);
       deletionEvents.add(deletionEvent);
-      DeletionResource deletionResource =
+      final DeletionResource deletionResource =
           deletionResourceManager.registerDeletionResource(deleteDataNode);
       deletionEvent.setDeletionResource(
           deletionResourceManager.getDeletionResource(deleteDataNode));
@@ -211,11 +215,11 @@ public class DeletionResourceTest {
       }
     }
     deletionEvents.forEach(deletionEvent -> deletionEvent.increaseReferenceCount("test"));
-    List<Path> paths =
+    final List<Path> paths =
         Files.list(Paths.get(DELETION_BASE_DIR + File.separator + FAKE_DATA_REGION_IDS[3]))
             .collect(Collectors.toList());
     Assert.assertTrue(paths.stream().anyMatch(Files::isRegularFile));
-    int beforeFileCount = paths.size();
+    final int beforeFileCount = paths.size();
     if (beforeFileCount < 2) {
       return;
     }
@@ -223,25 +227,25 @@ public class DeletionResourceTest {
     deletionEvents.forEach(deletionEvent -> deletionEvent.decreaseReferenceCount("test", false));
     // Sleep to wait deletion being removed
     Thread.sleep(1000);
-    List<Path> newPaths =
+    final List<Path> newPaths =
         Files.list(Paths.get(DELETION_BASE_DIR + File.separator + FAKE_DATA_REGION_IDS[3]))
             .collect(Collectors.toList());
-    int afterCount = newPaths.size();
+    final int afterCount = newPaths.size();
     Assert.assertTrue(afterCount < beforeFileCount);
   }
 
   @Test
   public void testWaitForResult() throws Exception {
     // prepare pipe component
-    PipeRealtimeDataRegionExtractor extractor = new PipeRealtimeDataRegionHybridExtractor();
-    PipeParameters parameters =
+    final PipeRealtimeDataRegionExtractor extractor = new PipeRealtimeDataRegionHybridExtractor();
+    final PipeParameters parameters =
         new PipeParameters(
             new HashMap<String, String>() {
               {
                 put(PipeExtractorConstant.EXTRACTOR_INCLUSION_KEY, "data");
               }
             });
-    PipeTaskRuntimeConfiguration configuration =
+    final PipeTaskRuntimeConfiguration configuration =
         new PipeTaskRuntimeConfiguration(
             new PipeTaskExtractorRuntimeEnvironment(
                 "1", 1, Integer.parseInt(FAKE_DATA_REGION_IDS[4]), null));
@@ -251,13 +255,13 @@ public class DeletionResourceTest {
     PipeInsertionDataNodeListener.getInstance()
         .startListenAndAssign(FAKE_DATA_REGION_IDS[4], extractor);
     deletionResourceManager = DeletionResourceManager.getInstance(FAKE_DATA_REGION_IDS[4]);
-    int rebootTimes = 0;
-    MeasurementPath path = new MeasurementPath("root.vehicle.d2.s0");
-    AbstractDeleteDataNode deleteDataNode =
+    final int rebootTimes = 0;
+    final MeasurementPath path = new MeasurementPath("root.vehicle.d2.s0");
+    final AbstractDeleteDataNode deleteDataNode =
         new DeleteDataNode(new PlanNodeId("1"), Collections.singletonList(path), 50, 150);
     deleteDataNode.setProgressIndex(
         new RecoverProgressIndex(THIS_DATANODE_ID, new SimpleProgressIndex(rebootTimes, 1)));
-    DeletionResource deletionResource =
+    final DeletionResource deletionResource =
         PipeInsertionDataNodeListener.getInstance()
             .listenToDeleteData(FAKE_DATA_REGION_IDS[4], deleteDataNode);
     Assert.assertSame(Status.SUCCESS, deletionResource.waitForResult());

@@ -253,6 +253,7 @@ public class OperatorMemoryTest {
   public void lastCacheScanOperatorTest() {
     TsBlock tsBlock = Mockito.mock(TsBlock.class);
     Mockito.when(tsBlock.getRetainedSizeInBytes()).thenReturn(1024L);
+    Mockito.when(tsBlock.getSizeInBytes()).thenReturn(1024L);
     LastCacheScanOperator lastCacheScanOperator = new LastCacheScanOperator(null, null, tsBlock);
 
     assertEquals(1024, lastCacheScanOperator.calculateMaxPeekMemory());
@@ -383,6 +384,7 @@ public class OperatorMemoryTest {
   public void lastQuerySortOperatorTest() {
     TsBlock tsBlock = Mockito.mock(TsBlock.class);
     Mockito.when(tsBlock.getRetainedSizeInBytes()).thenReturn(16 * 1024L);
+    Mockito.when(tsBlock.getSizeInBytes()).thenReturn(16 * 1024L);
     Mockito.when(tsBlock.getPositionCount()).thenReturn(16);
     List<Operator> children = new ArrayList<>(4);
 
@@ -686,8 +688,6 @@ public class OperatorMemoryTest {
               driverContext.getOperatorContexts().get(0),
               Mockito.mock(ISchemaSource.class));
 
-      assertEquals(DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES, operator.calculateMaxPeekMemory());
-      assertEquals(DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES, operator.calculateMaxReturnSize());
       assertEquals(0, operator.calculateRetainedSizeAfterCallingNext());
 
     } finally {

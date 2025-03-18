@@ -35,7 +35,6 @@ import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.schematree.ClusterSchemaTree;
 import org.apache.iotdb.db.queryengine.plan.Coordinator;
 import org.apache.iotdb.db.queryengine.plan.analyze.ClusterPartitionFetcher;
-import org.apache.iotdb.db.queryengine.plan.analyze.QueryType;
 import org.apache.iotdb.db.queryengine.plan.execution.ExecutionResult;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.write.MeasurementGroup;
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
@@ -91,9 +90,8 @@ class AutoCreateSchemaExecutor {
         "",
         ClusterPartitionFetcher.getInstance(),
         schemaFetcher,
-        context == null || context.getQueryType().equals(QueryType.WRITE)
-            ? config.getQueryTimeoutThreshold()
-            : context.getTimeOut(),
+        // Never timeout for write statement
+        Long.MAX_VALUE,
         false);
   }
 
@@ -204,8 +202,7 @@ class AutoCreateSchemaExecutor {
       if (!AuthorityChecker.SUPER_USER.equals(userName)) {
         TSStatus status =
             AuthorityChecker.getTSStatus(
-                AuthorityChecker.checkSystemPermission(
-                    userName, PrivilegeType.EXTEND_TEMPLATE.ordinal()),
+                AuthorityChecker.checkSystemPermission(userName, PrivilegeType.EXTEND_TEMPLATE),
                 PrivilegeType.EXTEND_TEMPLATE);
         if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
           throw new RuntimeException(new IoTDBException(status.getMessage(), status.getCode()));
@@ -226,8 +223,7 @@ class AutoCreateSchemaExecutor {
       if (!AuthorityChecker.SUPER_USER.equals(userName)) {
         TSStatus status =
             AuthorityChecker.getTSStatus(
-                AuthorityChecker.checkSystemPermission(
-                    userName, PrivilegeType.EXTEND_TEMPLATE.ordinal()),
+                AuthorityChecker.checkSystemPermission(userName, PrivilegeType.EXTEND_TEMPLATE),
                 PrivilegeType.EXTEND_TEMPLATE);
         if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
           throw new RuntimeException(new IoTDBException(status.getMessage(), status.getCode()));

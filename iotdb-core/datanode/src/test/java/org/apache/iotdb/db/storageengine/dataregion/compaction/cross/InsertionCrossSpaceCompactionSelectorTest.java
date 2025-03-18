@@ -57,6 +57,7 @@ import java.util.concurrent.Phaser;
 
 import static org.apache.iotdb.db.storageengine.dataregion.compaction.utils.TsFileGeneratorUtils.writeNonAlignedChunk;
 
+@SuppressWarnings("OptionalGetWithoutIsPresent")
 public class InsertionCrossSpaceCompactionSelectorTest extends AbstractCompactionTest {
 
   @Before
@@ -146,7 +147,7 @@ public class InsertionCrossSpaceCompactionSelectorTest extends AbstractCompactio
 
     Phaser phaser = new Phaser(1);
     int submitTaskNum =
-        CompactionScheduler.scheduleInsertionCompaction(tsFileManager, 0, phaser, context);
+        CompactionScheduler.tryToSubmitInsertionCompactionTask(tsFileManager, 0, phaser, context);
     Assert.assertEquals(1, submitTaskNum);
     // perform insertion compaction
     phaser.awaitAdvanceInterruptibly(phaser.arrive());
@@ -169,7 +170,7 @@ public class InsertionCrossSpaceCompactionSelectorTest extends AbstractCompactio
     // unseq resource2 d2[10, 20]
 
     submitTaskNum =
-        CompactionScheduler.scheduleInsertionCompaction(tsFileManager, 0, phaser, context);
+        CompactionScheduler.tryToSubmitInsertionCompactionTask(tsFileManager, 0, phaser, context);
     Assert.assertEquals(0, submitTaskNum);
     Assert.assertTrue(
         TsFileResourceUtils.validateTsFileResourcesHasNoOverlap(tsFileManager.getTsFileList(true)));
@@ -2029,7 +2030,8 @@ public class InsertionCrossSpaceCompactionSelectorTest extends AbstractCompactio
             new MeasurementSchema("s1", TSDataType.INT64, TSEncoding.PLAIN, CompressionType.SNAPPY);
         ChunkWriterImpl iChunkWriter = new ChunkWriterImpl(schema);
         List<TimeRange> pages = new ArrayList<>();
-        pages.add(new TimeRange(resource.getStartTime(device), resource.getEndTime(device)));
+        pages.add(
+            new TimeRange(resource.getStartTime(device).get(), resource.getEndTime(device).get()));
         writeNonAlignedChunk(iChunkWriter, tsFileIOWriter, pages, resource.isSeq());
         tsFileIOWriter.endChunkGroup();
       }

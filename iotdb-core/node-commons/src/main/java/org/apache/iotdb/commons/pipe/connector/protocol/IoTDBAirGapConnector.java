@@ -24,6 +24,8 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.connector.payload.airgap.AirGapELanguageConstant;
 import org.apache.iotdb.commons.pipe.connector.payload.airgap.AirGapOneByteResponse;
+import org.apache.iotdb.pipe.api.annotation.TableModel;
+import org.apache.iotdb.pipe.api.annotation.TreeModel;
 import org.apache.iotdb.pipe.api.customizer.configuration.PipeConnectorRuntimeConfiguration;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 import org.apache.iotdb.pipe.api.exception.PipeConnectionException;
@@ -43,7 +45,9 @@ import java.net.Socket;
 import java.net.SocketException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.zip.CRC32;
 
 import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.CONNECTOR_AIR_GAP_E_LANGUAGE_ENABLE_DEFAULT_VALUE;
@@ -57,6 +61,8 @@ import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstan
 import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.SINK_AIR_GAP_HANDSHAKE_TIMEOUT_MS_KEY;
 import static org.apache.iotdb.commons.utils.BasicStructureSerDeUtil.LONG_LEN;
 
+@TreeModel
+@TableModel
 public abstract class IoTDBAirGapConnector extends IoTDBConnector {
 
   protected static class AirGapSocket extends Socket {
@@ -93,6 +99,8 @@ public abstract class IoTDBAirGapConnector extends IoTDBConnector {
 
   // The air gap connector does not use clientManager thus we put handshake type here
   protected boolean supportModsIfIsDataNodeReceiver = true;
+
+  private final Map<TEndPoint, Long> failLogTimes = new HashMap<>();
 
   @Override
   public void customize(
@@ -176,17 +184,30 @@ public abstract class IoTDBAirGapConnector extends IoTDBConnector {
         socket.setKeepAlive(true);
         sockets.set(i, socket);
         LOGGER.info("Successfully connected to target server ip: {}, port: {}.", ip, port);
+        failLogTimes.remove(nodeUrls.get(i));
       } catch (final Exception e) {
-        LOGGER.warn(
-            "Failed to connect to target server ip: {}, port: {}, because: {}. Ignore it.",
-            ip,
-            port,
-            e.getMessage());
+        final TEndPoint endPoint = nodeUrls.get(i);
+        final long currentTimeMillis = System.currentTimeMillis();
+        final Long lastFailLogTime = failLogTimes.get(endPoint);
+        if (lastFailLogTime == null || currentTimeMillis - lastFailLogTime > 60000) {
+          failLogTimes.put(endPoint, currentTimeMillis);
+          LOGGER.warn(
+              "Failed to connect to target server ip: {}, port: {}, because: {}. Ignore it.",
+              ip,
+              port,
+              e.getMessage());
+        }
         continue;
       }
 
-      sendHandshakeReq(socket);
-      isSocketAlive.set(i, true);
+      try {
+        sendHandshakeReq(socket);
+        isSocketAlive.set(i, true);
+      } catch (Exception e) {
+        LOGGER.warn(
+            "Handshake error occurs. It may be caused by an error on the receiving end. Ignore it.",
+            e);
+      }
     }
 
     for (int i = 0; i < sockets.size(); i++) {

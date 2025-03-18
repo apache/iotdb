@@ -20,6 +20,7 @@ package org.apache.iotdb.session.it;
 
 import org.apache.iotdb.common.rpc.thrift.TAggregationType;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.it.utils.TestUtils;
 import org.apache.iotdb.db.protocol.thrift.OperationType;
 import org.apache.iotdb.isession.ISession;
 import org.apache.iotdb.isession.SessionDataSet;
@@ -36,12 +37,16 @@ import org.apache.commons.lang3.StringUtils;
 import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.common.constant.TsFileConstant;
 import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.exception.write.WriteProcessException;
+import org.apache.tsfile.file.metadata.IDeviceID;
+import org.apache.tsfile.file.metadata.IDeviceID.Factory;
 import org.apache.tsfile.file.metadata.enums.CompressionType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.tsfile.read.common.Field;
 import org.apache.tsfile.read.common.RowRecord;
 import org.apache.tsfile.utils.Binary;
-import org.apache.tsfile.utils.BitMap;
+import org.apache.tsfile.write.TsFileWriter;
+import org.apache.tsfile.write.record.TSRecord;
 import org.apache.tsfile.write.record.Tablet;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.apache.tsfile.write.schema.MeasurementSchema;
@@ -55,6 +60,8 @@ import org.junit.runner.RunWith;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.File;
+import java.io.IOException;
 import java.security.SecureRandom;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -64,6 +71,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.TimeUnit;
 
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
@@ -72,6 +80,7 @@ import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
+@SuppressWarnings({"ThrowFromFinallyBlock", "ResultOfMethodCallIgnored"})
 @RunWith(IoTDBTestRunner.class)
 public class IoTDBSessionSimpleIT {
 
@@ -336,7 +345,7 @@ public class IoTDBSessionSimpleIT {
       expected.add(TSDataType.TEXT.name());
 
       Set<String> actual = new HashSet<>();
-      SessionDataSet dataSet = session.executeQueryStatement("show timeseries root.**");
+      SessionDataSet dataSet = session.executeQueryStatement("show timeseries root.sg1.**");
       while (dataSet.hasNext()) {
         actual.add(dataSet.next().getFields().get(3).getStringValue());
       }
@@ -479,7 +488,7 @@ public class IoTDBSessionSimpleIT {
 
   @Test
   @Category({LocalStandaloneIT.class, ClusterIT.class})
-  public void insertTabletWithNullValuesTest() {
+  public void insertTabletWithNullValuesTest() throws InterruptedException {
     try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
       List<IMeasurementSchema> schemaList = new ArrayList<>();
       schemaList.add(new MeasurementSchema("s0", TSDataType.DOUBLE, TSEncoding.RLE));
@@ -505,14 +514,9 @@ public class IoTDBSessionSimpleIT {
             new Binary(String.valueOf(time), TSFileConfig.STRING_CHARSET));
       }
 
-      BitMap[] bitMaps = new BitMap[schemaList.size()];
       for (int i = 0; i < schemaList.size(); i++) {
-        if (bitMaps[i] == null) {
-          bitMaps[i] = new BitMap(10);
-        }
-        bitMaps[i].mark(i);
+        tablet.getBitMaps()[i].mark(i);
       }
-      tablet.bitMaps = bitMaps;
 
       if (tablet.getRowSize() != 0) {
         session.insertTablet(tablet);
@@ -526,6 +530,38 @@ public class IoTDBSessionSimpleIT {
         for (Field field : rowRecord.getFields()) {
           assertEquals(9L, field.getLongV());
         }
+      }
+      dataSet = session.executeQueryStatement("select s3 from root.sg1.d1");
+      int result = 0;
+      assertTrue(dataSet.hasNext());
+      while (dataSet.hasNext()) {
+        RowRecord rowRecord = dataSet.next();
+        Field field = rowRecord.getFields().get(0);
+        // skip null value
+        if (result == 3) {
+          result++;
+        }
+        assertEquals(result++, field.getIntV());
+      }
+    } catch (Exception e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
+    TimeUnit.MILLISECONDS.sleep(2000);
+
+    TestUtils.stopForciblyAndRestartDataNodes();
+
+    try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
+      SessionDataSet dataSet = session.executeQueryStatement("select s3 from root.sg1.d1");
+      int result = 0;
+      while (dataSet.hasNext()) {
+        RowRecord rowRecord = dataSet.next();
+        Field field = rowRecord.getFields().get(0);
+        // skip null value
+        if (result == 3) {
+          result++;
+        }
+        assertEquals(result++, field.getIntV());
       }
     } catch (Exception e) {
       e.printStackTrace();
@@ -572,6 +608,17 @@ public class IoTDBSessionSimpleIT {
       while (dataSet.hasNext()) {
         RowRecord rowRecord = dataSet.next();
         List<Field> fields = rowRecord.getFields();
+        // this test may occasionally fail by IndexOutOfBoundsException
+        if (fields.size() != 7) {
+          SessionDataSet showTimeseriesDataSet =
+              session.executeQueryStatement("show timeseries root.sg1.d1.*");
+          LOGGER.error("show timeseries result:");
+          while (showTimeseriesDataSet.hasNext()) {
+            RowRecord row = showTimeseriesDataSet.next();
+            LOGGER.error(row.toString());
+          }
+          LOGGER.error("The number of fields is not correct. fields values: " + fields);
+        }
         assertEquals(fields.get(5).getBinaryV(), fields.get(6).getBinaryV());
       }
     } catch (Exception e) {
@@ -748,7 +795,7 @@ public class IoTDBSessionSimpleIT {
         LOGGER.error("", e);
       }
 
-      final SessionDataSet dataSet = session.executeQueryStatement("SHOW TIMESERIES");
+      final SessionDataSet dataSet = session.executeQueryStatement("SHOW TIMESERIES root.sg.**");
       assertFalse(dataSet.hasNext());
 
       session.deleteStorageGroup(storageGroup);
@@ -1738,6 +1785,42 @@ public class IoTDBSessionSimpleIT {
 
   @Test
   @Category({LocalStandaloneIT.class, ClusterIT.class})
+  public void insertPartialSQLTest() throws IoTDBConnectionException, StatementExecutionException {
+    try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
+      session.createAlignedTimeseries(
+          "root.partial_insert.d1",
+          Collections.singletonList("s1"),
+          Collections.singletonList(TSDataType.BOOLEAN),
+          Collections.singletonList(TSEncoding.PLAIN),
+          Collections.singletonList(CompressionType.UNCOMPRESSED),
+          null);
+      try {
+        session.executeNonQueryStatement(
+            "insert into root.partial_insert.d1(time, s1) values (10000,true),(20000,false),(35000,-1.5),(30000,-1),(40000,0),(50000,1),(60000,1.5),(70000,'string'),(80000,'1989-06-15'),(90000,638323200000)");
+        fail("Exception expected");
+      } catch (StatementExecutionException e) {
+        assertEquals(
+            "507: Fail to insert measurements [s1] caused by [The BOOLEAN should be true/TRUE, false/FALSE or 0/1]",
+            e.getMessage());
+      }
+
+      SessionDataSet dataSet =
+          session.executeQueryStatement("select * from root.partial_insert.d1");
+      long[] timestamps = new long[] {10000, 20000, 40000, 50000};
+      Boolean[] values = new Boolean[] {true, false, false, true};
+      int cnt = 0;
+      while (dataSet.hasNext()) {
+        RowRecord rec = dataSet.next();
+        assertEquals(timestamps[cnt], rec.getTimestamp());
+        assertEquals(values[cnt], rec.getFields().get(0).getBoolV());
+        cnt++;
+      }
+      assertEquals(4, cnt);
+    }
+  }
+
+  @Test
+  @Category({LocalStandaloneIT.class, ClusterIT.class})
   public void insertBinaryAsTextTest() {
     try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
       // prepare binary data
@@ -1857,6 +1940,191 @@ public class IoTDBSessionSimpleIT {
       assertEquals(1000, dataSet.next().getFields().get(0).getLongV());
     } catch (IoTDBConnectionException | StatementExecutionException e) {
       e.printStackTrace();
+    }
+  }
+
+  @Test
+  @Category({LocalStandaloneIT.class, ClusterIT.class})
+  public void insertMinMaxTimeTest() throws IoTDBConnectionException, StatementExecutionException {
+    try {
+      try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
+        try {
+          session.executeNonQueryStatement(
+              "SET CONFIGURATION \"timestamp_precision_check_enabled\"=\"false\"");
+        } catch (StatementExecutionException e) {
+          // run in IDE will trigger this, ignore it
+          if (!e.getMessage().contains("Unable to find the configuration file")) {
+            throw e;
+          }
+        }
+
+        session.executeNonQueryStatement(
+            String.format(
+                "INSERT INTO root.testInsertMinMax.d1(timestamp, s1) VALUES (%d, 1)",
+                Long.MIN_VALUE));
+        session.executeNonQueryStatement(
+            String.format(
+                "INSERT INTO root.testInsertMinMax.d1(timestamp, s1) VALUES (%d, 1)",
+                Long.MAX_VALUE));
+
+        SessionDataSet dataSet =
+            session.executeQueryStatement("SELECT * FROM root.testInsertMinMax.d1");
+        RowRecord record = dataSet.next();
+        assertEquals(Long.MIN_VALUE, record.getTimestamp());
+        record = dataSet.next();
+        assertEquals(Long.MAX_VALUE, record.getTimestamp());
+        assertFalse(dataSet.hasNext());
+
+        session.executeNonQueryStatement("FLUSH");
+        dataSet = session.executeQueryStatement("SELECT * FROM root.testInsertMinMax.d1");
+        record = dataSet.next();
+        assertEquals(Long.MIN_VALUE, record.getTimestamp());
+        record = dataSet.next();
+        assertEquals(Long.MAX_VALUE, record.getTimestamp());
+        assertFalse(dataSet.hasNext());
+      }
+    } finally {
+      try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
+        try {
+          session.executeNonQueryStatement(
+              "SET CONFIGURATION \"timestamp_precision_check_enabled\"=\"true\"");
+        } catch (StatementExecutionException e) {
+          // run in IDE will trigger this, ignore it
+          if (!e.getMessage().contains("Unable to find the configuration file")) {
+            throw e;
+          }
+        }
+      }
+    }
+  }
+
+  @Test
+  @Category({LocalStandaloneIT.class, ClusterIT.class})
+  public void loadMinMaxTimeNonAlignedTest()
+      throws IoTDBConnectionException,
+          StatementExecutionException,
+          IOException,
+          WriteProcessException {
+    File file = new File("target", "test.tsfile");
+    try (TsFileWriter writer = new TsFileWriter(file)) {
+      IDeviceID deviceID = Factory.DEFAULT_FACTORY.create("root.testLoadMinMax.d1");
+      writer.registerTimeseries(deviceID, new MeasurementSchema("s1", TSDataType.INT32));
+      TSRecord record = new TSRecord(deviceID, Long.MIN_VALUE);
+      record.addPoint("s1", 1);
+      writer.writeRecord(record);
+      record.setTime(Long.MAX_VALUE);
+      writer.writeRecord(record);
+    }
+
+    try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
+      try {
+        session.executeNonQueryStatement(
+            "SET CONFIGURATION \"timestamp_precision_check_enabled\"=\"false\"");
+      } catch (StatementExecutionException e) {
+        // run in IDE will trigger this, ignore it
+        if (!e.getMessage().contains("Unable to find the configuration file")) {
+          throw e;
+        }
+      }
+      session.executeNonQueryStatement("LOAD \"" + file.getAbsolutePath() + "\"");
+
+      SessionDataSet dataSet =
+          session.executeQueryStatement("SELECT * FROM root.testLoadMinMax.d1");
+      RowRecord record = dataSet.next();
+      assertEquals(Long.MIN_VALUE, record.getTimestamp());
+      record = dataSet.next();
+      assertEquals(Long.MAX_VALUE, record.getTimestamp());
+      assertFalse(dataSet.hasNext());
+    } finally {
+      try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
+        try {
+          session.executeNonQueryStatement(
+              "SET CONFIGURATION \"timestamp_precision_check_enabled\"=\"true\"");
+        } catch (StatementExecutionException e) {
+          // run in IDE will trigger this, ignore it
+          if (!e.getMessage().contains("Unable to find the configuration file")) {
+            throw e;
+          }
+        }
+      }
+      file.delete();
+    }
+  }
+
+  @Test
+  @Category({LocalStandaloneIT.class, ClusterIT.class})
+  public void loadMinMaxTimeAlignedTest()
+      throws IoTDBConnectionException,
+          StatementExecutionException,
+          IOException,
+          WriteProcessException {
+    File file = new File("target", "test.tsfile");
+    try (TsFileWriter writer = new TsFileWriter(file)) {
+      IDeviceID deviceID = Factory.DEFAULT_FACTORY.create("root.testLoadMinMaxAligned.d1");
+      writer.registerAlignedTimeseries(
+          deviceID, Collections.singletonList(new MeasurementSchema("s1", TSDataType.INT32)));
+      TSRecord record = new TSRecord(deviceID, Long.MIN_VALUE);
+      record.addPoint("s1", 1);
+      writer.writeRecord(record);
+      record.setTime(Long.MAX_VALUE);
+      writer.writeRecord(record);
+    }
+
+    try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
+      try {
+        session.executeNonQueryStatement(
+            "SET CONFIGURATION \"timestamp_precision_check_enabled\"=\"false\"");
+      } catch (StatementExecutionException e) {
+        // run in IDE will trigger this, ignore it
+        if (!e.getMessage().contains("Unable to find the configuration file")) {
+          throw e;
+        }
+      }
+      session.executeNonQueryStatement("LOAD \"" + file.getAbsolutePath() + "\"");
+
+      SessionDataSet dataSet =
+          session.executeQueryStatement("SELECT * FROM root.testLoadMinMaxAligned.d1");
+      RowRecord record = dataSet.next();
+      assertEquals(Long.MIN_VALUE, record.getTimestamp());
+      record = dataSet.next();
+      assertEquals(Long.MAX_VALUE, record.getTimestamp());
+      assertFalse(dataSet.hasNext());
+    } finally {
+      try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
+        try {
+          session.executeNonQueryStatement(
+              "SET CONFIGURATION \"timestamp_precision_check_enabled\"=\"true\"");
+        } catch (StatementExecutionException e) {
+          // run in IDE will trigger this, ignore it
+          if (!e.getMessage().contains("Unable to find the configuration file")) {
+            throw e;
+          }
+        }
+      }
+      file.delete();
+    }
+  }
+
+  @Test
+  public void testWriteRestartAndDeleteDB()
+      throws IoTDBConnectionException, StatementExecutionException {
+    try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
+      session.insertRecord("root.sg1.d1", 1, Arrays.asList("s3"), Arrays.asList("1"));
+
+      TestUtils.stopForciblyAndRestartDataNodes();
+
+      SessionDataSet dataSet = session.executeQueryStatement("select s3 from root.sg1.d1");
+      dataSet.next();
+      dataSet.close();
+
+      session.executeNonQueryStatement("DELETE DATABASE root.sg1");
+
+      session.insertRecord(
+          "root.sg1.d1", 1, Arrays.asList("s1", "s2", "s3"), Arrays.asList("1", "1", "1"));
+
+      dataSet = session.executeQueryStatement("SELECT * FROM root.sg1.d1");
+      RowRecord record = dataSet.next();
+      assertEquals(3, record.getFields().size());
     }
   }
 }

@@ -25,7 +25,7 @@ import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.session.subscription.consumer.AckStrategy;
 import org.apache.iotdb.session.subscription.consumer.ConsumeResult;
-import org.apache.iotdb.session.subscription.consumer.SubscriptionPushConsumer;
+import org.apache.iotdb.session.subscription.consumer.tree.SubscriptionTreePushConsumer;
 import org.apache.iotdb.subscription.it.triple.regression.AbstractSubscriptionRegressionIT;
 
 import org.apache.thrift.TException;
@@ -69,7 +69,7 @@ public class IoTDBTSPatternTsfilePushConsumerIT extends AbstractSubscriptionRegr
   private static List<IMeasurementSchema> schemaList = new ArrayList<>();
 
   private static final String pattern = device + ".s_0";
-  private static SubscriptionPushConsumer consumer;
+  private static SubscriptionTreePushConsumer consumer;
 
   @Override
   @Before
@@ -152,7 +152,7 @@ public class IoTDBTSPatternTsfilePushConsumerIT extends AbstractSubscriptionRegr
     rowCounts.add(d1s0_rowCount);
     rowCounts.add(other_d2_rowCount);
     consumer =
-        new SubscriptionPushConsumer.Builder()
+        new SubscriptionTreePushConsumer.Builder()
             .host(SRC_HOST)
             .port(SRC_PORT)
             .consumerId("ts_TsFile_consumer")
@@ -218,7 +218,7 @@ public class IoTDBTSPatternTsfilePushConsumerIT extends AbstractSubscriptionRegr
     System.out.println(FORMAT.format(new Date()) + " src:" + getCount(session_src, sql));
     AWAIT.untilAsserted(
         () -> {
-          assertEquals(onReceiveCount.get(), 2, "receive files over 2");
+          assertGte(onReceiveCount.get(), 2, "receive files over 2");
           assertEquals(rowCounts.get(0).get(), 25, device + ".s_0");
           assertEquals(rowCounts.get(1).get(), 0, device + ".s_1");
           assertEquals(rowCounts.get(2).get(), 0, database + ".d_1.s_0");

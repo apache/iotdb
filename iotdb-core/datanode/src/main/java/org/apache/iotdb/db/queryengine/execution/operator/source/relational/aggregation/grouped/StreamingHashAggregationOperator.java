@@ -53,8 +53,6 @@ public class StreamingHashAggregationOperator extends AbstractOperator {
   private static final long INSTANCE_SIZE =
       RamUsageEstimator.shallowSizeOfInstance(StreamingHashAggregationOperator.class);
 
-  private final OperatorContext operatorContext;
-
   private final Operator child;
 
   private final int[] preGroupedChannels;
@@ -103,7 +101,7 @@ public class StreamingHashAggregationOperator extends AbstractOperator {
       long maxPartialMemory,
       boolean spillEnabled,
       long unSpillMemoryLimit) {
-    this.operatorContext = operatorContext;
+    super.operatorContext = operatorContext;
     this.child = child;
 
     this.preGroupedChannels = Ints.toArray(preGroupedChannels);
@@ -226,11 +224,12 @@ public class StreamingHashAggregationOperator extends AbstractOperator {
   }
 
   private void evaluateAndFlushGroup(TsBlock page, int position) {
-    Column[] result = new Column[resultColumnsCount];
     // offset of value columns index
     int offset = preGroupedIndexInResult.length + unPreGroupedIndexInResult.length;
 
     do {
+      Column[] result = new Column[resultColumnsCount];
+
       // contains unPreGrouped group by columns and value columns
       TsBlock buildResult = aggregationBuilder.buildResult();
 

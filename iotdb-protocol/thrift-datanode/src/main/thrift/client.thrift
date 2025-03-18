@@ -173,6 +173,7 @@ struct TSFetchResultsReq{
   4: required i64 queryId
   5: required bool isAlign
   6: optional i64 timeout
+  7: optional i64 statementId
 }
 
 struct TSFetchResultsResp{

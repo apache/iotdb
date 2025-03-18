@@ -38,24 +38,29 @@ import org.apache.tsfile.read.common.block.TsBlockBuilder;
 import org.apache.tsfile.utils.Binary;
 
 import java.util.List;
+import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
 public class ShowTablesDetailsTask implements IConfigTask {
 
   private final String database;
+  private final Predicate<String> checkCanShowTable;
 
-  public ShowTablesDetailsTask(final String database) {
+  public ShowTablesDetailsTask(final String database, final Predicate<String> checkCanShowTable) {
     this.database = database;
+    this.checkCanShowTable = checkCanShowTable;
   }
 
   @Override
   public ListenableFuture<ConfigTaskResult> execute(final IConfigTaskExecutor configTaskExecutor)
       throws InterruptedException {
-    return configTaskExecutor.showTables(database, true);
+    return configTaskExecutor.showTables(database, checkCanShowTable, true);
   }
 
   public static void buildTsBlock(
-      final List<TTableInfo> tableInfoList, final SettableFuture<ConfigTaskResult> future) {
+      final List<TTableInfo> tableInfoList,
+      final SettableFuture<ConfigTaskResult> future,
+      final Predicate<String> checkCanShowTable) {
     final List<TSDataType> outputDataTypes =
         ColumnHeaderConstant.showTablesDetailsColumnHeaders.stream()
             .map(ColumnHeader::getColumnType)
@@ -63,24 +68,33 @@ public class ShowTablesDetailsTask implements IConfigTask {
 
     final TsBlockBuilder builder = new TsBlockBuilder(outputDataTypes);
 
-    tableInfoList.forEach(
-        tableInfo -> {
-          builder.getTimeColumnBuilder().writeLong(0L);
+    tableInfoList.stream()
+        .filter(t -> checkCanShowTable.test(t.getTableName()))
+        .forEach(
+            tableInfo -> {
+              builder.getTimeColumnBuilder().writeLong(0L);
 
-          builder
-              .getColumnBuilder(0)
-              .writeBinary(new Binary(tableInfo.getTableName(), TSFileConfig.STRING_CHARSET));
-          builder
-              .getColumnBuilder(1)
-              .writeBinary(new Binary(tableInfo.getTTL(), TSFileConfig.STRING_CHARSET));
-          builder
-              .getColumnBuilder(2)
-              .writeBinary(
-                  new Binary(
-                      TableNodeStatus.values()[tableInfo.getState()].toString(),
-                      TSFileConfig.STRING_CHARSET));
-          builder.declarePosition();
-        });
+              builder
+                  .getColumnBuilder(0)
+                  .writeBinary(new Binary(tableInfo.getTableName(), TSFileConfig.STRING_CHARSET));
+              builder
+                  .getColumnBuilder(1)
+                  .writeBinary(new Binary(tableInfo.getTTL(), TSFileConfig.STRING_CHARSET));
+              builder
+                  .getColumnBuilder(2)
+                  .writeBinary(
+                      new Binary(
+                          TableNodeStatus.values()[tableInfo.getState()].toString(),
+                          TSFileConfig.STRING_CHARSET));
+              builder
+                  .getColumnBuilder(3)
+                  .writeBinary(
+                      new Binary(
+                          tableInfo.isSetComment() ? tableInfo.getComment() : "",
+                          TSFileConfig.STRING_CHARSET));
+
+              builder.declarePosition();
+            });
 
     final DatasetHeader datasetHeader = DatasetHeaderFactory.getShowTablesDetailsHeader();
     future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS, builder.build(), datasetHeader));

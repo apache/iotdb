@@ -21,15 +21,11 @@ package org.apache.iotdb.db.queryengine.execution.operator.source.relational;
 
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.db.queryengine.execution.MemoryEstimationHelper;
-import org.apache.iotdb.db.queryengine.execution.aggregation.timerangeiterator.ITableTimeRangeIterator;
-import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
 import org.apache.iotdb.db.queryengine.execution.operator.process.last.LastQueryUtil;
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.LastAccumulator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.LastByDescAccumulator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.LastDescAccumulator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.TableAggregator;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.SeriesScanOptions;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.ColumnSchema;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.DeviceEntry;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.QualifiedObjectName;
@@ -44,12 +40,10 @@ import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.utils.RamUsageEstimator;
 import org.apache.tsfile.utils.TsPrimitiveType;
 import org.apache.tsfile.write.UnSupportedDataTypeException;
-import org.apache.tsfile.write.schema.IMeasurementSchema;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.OptionalLong;
-import java.util.Set;
 import java.util.concurrent.TimeUnit;
 
 import static org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.Utils.serializeTimeValue;
@@ -67,7 +61,6 @@ public class LastQueryAggTableScanOperator extends AbstractAggTableScanOperator 
   private static final TableDeviceSchemaCache TABLE_DEVICE_SCHEMA_CACHE =
       TableDeviceSchemaCache.getInstance();
 
-  private boolean finished = false;
   private final String dbName;
   private int outputDeviceIndex;
   private DeviceEntry currentDeviceEntry;
@@ -84,58 +77,27 @@ public class LastQueryAggTableScanOperator extends AbstractAggTableScanOperator 
   private int lastTimeAggregationIdx = -1;
 
   public LastQueryAggTableScanOperator(
-      PlanNodeId sourceId,
-      OperatorContext context,
-      List<ColumnSchema> aggColumnSchemas,
-      int[] aggColumnsIndexArray,
-      List<DeviceEntry> unCachedDeviceEntries,
+      AbstractAggTableScanOperatorParameter parameter,
       List<DeviceEntry> cachedDeviceEntries,
-      SeriesScanOptions seriesScanOptions,
-      List<String> measurementColumnNames,
-      Set<String> allSensors,
-      List<IMeasurementSchema> measurementSchemas,
-      List<TableAggregator> tableAggregators,
-      List<ColumnSchema> groupingKeySchemas,
-      int[] groupingKeyIndex,
-      ITableTimeRangeIterator tableTimeRangeIterator,
-      boolean ascending,
-      boolean canUseStatistics,
-      List<Integer> aggregatorInputChannels,
       QualifiedObjectName qualifiedObjectName,
       List<Integer> hitCachesIndexes,
       List<Pair<OptionalLong, TsPrimitiveType[]>> hitCachedResults) {
 
-    super(
-        sourceId,
-        context,
-        aggColumnSchemas,
-        aggColumnsIndexArray,
-        unCachedDeviceEntries,
-        unCachedDeviceEntries.size(),
-        seriesScanOptions,
-        measurementColumnNames,
-        allSensors,
-        measurementSchemas,
-        tableAggregators,
-        groupingKeySchemas,
-        groupingKeyIndex,
-        tableTimeRangeIterator,
-        ascending,
-        canUseStatistics,
-        aggregatorInputChannels);
+    super(parameter);
 
     // notice that: deviceEntries store all unCachedDeviceEntries
-    this.allDeviceCount = cachedDeviceEntries.size() + unCachedDeviceEntries.size();
+    this.allDeviceCount = cachedDeviceEntries.size() + parameter.deviceCount;
     this.cachedDeviceEntries = cachedDeviceEntries;
-    this.needUpdateCache = LastQueryUtil.needUpdateCache(seriesScanOptions.getGlobalTimeFilter());
+    this.needUpdateCache =
+        LastQueryUtil.needUpdateCache(parameter.seriesScanOptions.getGlobalTimeFilter());
     this.needUpdateNullEntry =
-        LastQueryUtil.needUpdateNullEntry(seriesScanOptions.getGlobalTimeFilter());
+        LastQueryUtil.needUpdateNullEntry(parameter.seriesScanOptions.getGlobalTimeFilter());
     this.hitCachesIndexes = hitCachesIndexes;
     this.hitCachedResults = hitCachedResults;
     this.dbName = qualifiedObjectName.getDatabaseName();
 
-    for (int i = 0; i < tableAggregators.size(); i++) {
-      if (tableAggregators.get(i).getAccumulator() instanceof LastAccumulator) {
+    for (int i = 0; i < parameter.tableAggregators.size(); i++) {
+      if (parameter.tableAggregators.get(i).getAccumulator() instanceof LastAccumulator) {
         lastTimeAggregationIdx = i;
       }
     }
@@ -202,10 +164,8 @@ public class LastQueryAggTableScanOperator extends AbstractAggTableScanOperator 
       switch (category) {
         case TAG:
           String id =
-              (String)
-                  cachedDeviceEntries
-                      .get(currentHitCacheIndex)
-                      .getNthSegment(aggColumnsIndexArray[columnIdx] + 1);
+              getNthIdColumnValue(
+                  cachedDeviceEntries.get(currentHitCacheIndex), aggColumnsIndexArray[columnIdx]);
           if (id == null) {
             if (aggregator.getStep().isOutputPartial()) {
               columnBuilder.writeBinary(
@@ -231,10 +191,8 @@ public class LastQueryAggTableScanOperator extends AbstractAggTableScanOperator 
           break;
         case ATTRIBUTE:
           Binary attribute =
-              cachedDeviceEntries
-                  .get(currentHitCacheIndex)
-                  .getAttributeColumnValues()
-                  .get(aggColumnsIndexArray[columnIdx]);
+              cachedDeviceEntries.get(currentHitCacheIndex)
+                  .getAttributeColumnValues()[aggColumnsIndexArray[columnIdx]];
           if (attribute == null) {
             if (aggregator.getStep().isOutputPartial()) {
               columnBuilder.writeBinary(
@@ -416,6 +374,12 @@ public class LastQueryAggTableScanOperator extends AbstractAggTableScanOperator 
 
     // after appendAggregationResult invoked, aggregators must be cleared
     resetTableAggregators();
+  }
+
+  @Override
+  String getNthIdColumnValue(DeviceEntry deviceEntry, int idColumnIndex) {
+    // +1 for skipping the table name segment
+    return ((String) deviceEntry.getNthSegment(idColumnIndex + 1));
   }
 
   private TsPrimitiveType cloneTsPrimitiveType(TsPrimitiveType originalValue) {

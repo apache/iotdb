@@ -28,11 +28,15 @@ import org.apache.iotdb.confignode.rpc.thrift.TTimeSlotList;
 import org.apache.thrift.TException;
 import org.apache.thrift.protocol.TProtocol;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -44,6 +48,8 @@ import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
 
 public class SeriesPartitionTable {
+
+  private static final Logger LOGGER = LoggerFactory.getLogger(SeriesPartitionTable.class);
 
   private final ConcurrentSkipListMap<TTimePartitionSlot, List<TConsensusGroupId>>
       seriesPartitionMap;
@@ -233,6 +239,28 @@ public class SeriesPartitionTable {
       return null;
     }
     return lastEntry.getValue().get(lastEntry.getValue().size() - 1);
+  }
+
+  /**
+   * Remove PartitionTable where the TimeSlot is expired.
+   *
+   * @param TTL The Time To Live
+   * @param currentTimeSlot The current TimeSlot
+   */
+  public List<TTimePartitionSlot> autoCleanPartitionTable(
+      long TTL, TTimePartitionSlot currentTimeSlot) {
+    List<TTimePartitionSlot> removedTimePartitions = new ArrayList<>();
+    Iterator<Map.Entry<TTimePartitionSlot, List<TConsensusGroupId>>> iterator =
+        seriesPartitionMap.entrySet().iterator();
+    while (iterator.hasNext()) {
+      Map.Entry<TTimePartitionSlot, List<TConsensusGroupId>> entry = iterator.next();
+      TTimePartitionSlot timePartitionSlot = entry.getKey();
+      if (timePartitionSlot.getStartTime() + TTL < currentTimeSlot.getStartTime()) {
+        removedTimePartitions.add(timePartitionSlot);
+        iterator.remove();
+      }
+    }
+    return removedTimePartitions;
   }
 
   public void serialize(OutputStream outputStream, TProtocol protocol)

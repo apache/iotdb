@@ -90,6 +90,7 @@ import org.slf4j.LoggerFactory;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
@@ -226,7 +227,8 @@ public class DataRegionTest {
       tsfileProcessor.query(
           Collections.singletonList(IFullPath.convertToIFullPath(fullPath)),
           EnvironmentUtils.TEST_QUERY_CONTEXT,
-          tsfileResourcesForQuery);
+          tsfileResourcesForQuery,
+          null);
     }
 
     Assert.assertEquals(1, tsfileResourcesForQuery.size());
@@ -385,8 +387,19 @@ public class DataRegionTest {
 
     for (int r = 0; r < 100; r++) {
       times[r] = r;
-      ((int[]) columns[0])[r] = 1;
-      ((long[]) columns[1])[r] = 1;
+      ((int[]) columns[0])[r] = r;
+      ((long[]) columns[1])[r] = r;
+    }
+
+    BitMap[] bitMaps = new BitMap[2];
+    bitMaps[0] = new BitMap(100);
+    bitMaps[1] = new BitMap(100);
+    for (int r = 0; r < 100; r++) {
+      if (r % 2 == 0) {
+        bitMaps[0].mark(r);
+      } else {
+        bitMaps[1].mark(r);
+      }
     }
 
     InsertTabletNode insertTabletNode1 =
@@ -398,11 +411,15 @@ public class DataRegionTest {
             dataTypes,
             measurementSchemas,
             times,
-            null,
+            bitMaps,
             columns,
             times.length);
-
+    int hashCode1 = Arrays.hashCode((int[]) columns[0]);
+    int hashCode2 = Arrays.hashCode((long[]) columns[1]);
     dataRegion.insertTablet(insertTabletNode1);
+    // the hashCode should not be changed when insert
+    Assert.assertEquals(hashCode1, Arrays.hashCode((int[]) columns[0]));
+    Assert.assertEquals(hashCode2, Arrays.hashCode((long[]) columns[1]));
     dataRegion.syncCloseAllWorkingTsFileProcessors();
 
     for (int r = 50; r < 149; r++) {
@@ -1012,8 +1029,6 @@ public class DataRegionTest {
           QueryProcessException,
           DataRegionException,
           TsFileProcessorException {
-    int defaultAvgSeriesPointNumberThreshold = config.getAvgSeriesPointNumberThreshold();
-    config.setAvgSeriesPointNumberThreshold(2);
     DataRegion dataRegion1 = new DummyDataRegion(systemDir, "root.Rows");
     long[] time = new long[] {3, 4, 1, 2};
     List<Integer> indexList = new ArrayList<>();
@@ -1043,7 +1058,6 @@ public class DataRegionTest {
       Assert.assertTrue(resource.isClosed());
     }
     dataRegion1.syncDeleteDataFiles();
-    config.setAvgSeriesPointNumberThreshold(defaultAvgSeriesPointNumberThreshold);
   }
 
   @Test

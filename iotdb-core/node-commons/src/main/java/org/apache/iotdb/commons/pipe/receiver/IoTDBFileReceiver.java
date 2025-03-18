@@ -33,6 +33,7 @@ import org.apache.iotdb.commons.pipe.connector.payload.thrift.request.PipeTransf
 import org.apache.iotdb.commons.pipe.connector.payload.thrift.request.PipeTransferHandshakeV1Req;
 import org.apache.iotdb.commons.pipe.connector.payload.thrift.request.PipeTransferHandshakeV2Req;
 import org.apache.iotdb.commons.pipe.connector.payload.thrift.response.PipeTransferFilePieceResp;
+import org.apache.iotdb.commons.utils.RetryUtils;
 import org.apache.iotdb.commons.utils.StatusUtils;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -83,6 +84,9 @@ public abstract class IoTDBFileReceiver implements IoTDBReceiver {
 
   // Used to determine current strategy is sync or async
   protected final AtomicBoolean isUsingAsyncLoadTsFileStrategy = new AtomicBoolean(false);
+  protected final AtomicBoolean validateTsFile = new AtomicBoolean(true);
+
+  protected final AtomicBoolean shouldMarkAsPipeRequest = new AtomicBoolean(true);
 
   @Override
   public IoTDBConnectorRequestVersion getVersion() {
@@ -112,7 +116,11 @@ public abstract class IoTDBFileReceiver implements IoTDBReceiver {
     if (receiverFileDirWithIdSuffix.get() != null) {
       if (receiverFileDirWithIdSuffix.get().exists()) {
         try {
-          FileUtils.deleteDirectory(receiverFileDirWithIdSuffix.get());
+          RetryUtils.retryOnException(
+              () -> {
+                FileUtils.deleteDirectory(receiverFileDirWithIdSuffix.get());
+                return null;
+              });
           LOGGER.info(
               "Receiver id = {}: Original receiver file dir {} was deleted.",
               receiverId.get(),
@@ -277,6 +285,18 @@ public abstract class IoTDBFileReceiver implements IoTDBReceiver {
               loadTsFileStrategyString));
     }
 
+    validateTsFile.set(
+        Boolean.parseBoolean(
+            req.getParams()
+                .getOrDefault(
+                    PipeTransferHandshakeConstant.HANDSHAKE_KEY_VALIDATE_TSFILE, "true")));
+
+    shouldMarkAsPipeRequest.set(
+        Boolean.parseBoolean(
+            req.getParams()
+                .getOrDefault(
+                    PipeTransferHandshakeConstant.HANDSHAKE_KEY_MARK_AS_PIPE_REQUEST, "true")));
+
     // Handle the handshake request as a v1 request.
     // Here we construct a fake "dataNode" request to valid from v1 validation logic, though
     // it may not require the actual type of the v1 request.
@@ -395,10 +415,10 @@ public abstract class IoTDBFileReceiver implements IoTDBReceiver {
     return writingFile != null && writingFile.exists() && writingFile.getName().equals(fileName);
   }
 
-  private void closeCurrentWritingFileWriter(final boolean fsyncAfterClose) {
+  private void closeCurrentWritingFileWriter(final boolean fsyncBeforeClose) {
     if (writingFileWriter != null) {
       try {
-        if (IS_FSYNC_ENABLED && fsyncAfterClose) {
+        if (IS_FSYNC_ENABLED && fsyncBeforeClose) {
           writingFileWriter.getFD().sync();
         }
         writingFileWriter.close();
@@ -440,7 +460,7 @@ public abstract class IoTDBFileReceiver implements IoTDBReceiver {
   private void deleteFile(final File file) {
     if (file.exists()) {
       try {
-        FileUtils.delete(file);
+        RetryUtils.retryOnException(() -> FileUtils.delete(file));
         LOGGER.info(
             "Receiver id = {}: Original writing file {} was deleted.",
             receiverId.get(),
@@ -547,10 +567,16 @@ public abstract class IoTDBFileReceiver implements IoTDBReceiver {
     }
   }
 
+  // Support null in fileName list, which means that this file is optional and is currently absent
   protected final TPipeTransferResp handleTransferFileSealV2(final PipeTransferFileSealReqV2 req) {
+    final List<String> fileNames = req.getFileNames();
     final List<File> files =
-        req.getFileNames().stream()
-            .map(fileName -> new File(receiverFileDirWithIdSuffix.get(), fileName))
+        fileNames.stream()
+            .map(
+                fileName ->
+                    Objects.nonNull(fileName)
+                        ? new File(receiverFileDirWithIdSuffix.get(), fileName)
+                        : null)
             .collect(Collectors.toList());
     try {
       if (!isWritingFileAvailable()) {
@@ -566,14 +592,16 @@ public abstract class IoTDBFileReceiver implements IoTDBReceiver {
 
       // Any of the transferred files cannot be empty, or else the receiver
       // will not sense this file because no pieces are sent
-      for (int i = 0; i < req.getFileNames().size(); ++i) {
-        final TPipeTransferResp resp =
-            i == req.getFileNames().size() - 1
-                ? checkFinalFileSeal(req.getFileNames().get(i), req.getFileLengths().get(i))
-                : checkNonFinalFileSeal(
-                    files.get(i), req.getFileNames().get(i), req.getFileLengths().get(i));
-        if (Objects.nonNull(resp)) {
-          return resp;
+      for (int i = 0; i < fileNames.size(); ++i) {
+        final String fileName = fileNames.get(i);
+        if (Objects.nonNull(fileName)) {
+          final TPipeTransferResp resp =
+              i == fileNames.size() - 1
+                  ? checkFinalFileSeal(fileName, req.getFileLengths().get(i))
+                  : checkNonFinalFileSeal(files.get(i), fileName, req.getFileLengths().get(i));
+          if (Objects.nonNull(resp)) {
+            return resp;
+          }
         }
       }
 
@@ -598,7 +626,9 @@ public abstract class IoTDBFileReceiver implements IoTDBReceiver {
       writingFile = null;
 
       final List<String> fileAbsolutePaths =
-          files.stream().map(File::getAbsolutePath).collect(Collectors.toList());
+          files.stream()
+              .map(file -> Objects.nonNull(file) ? file.getAbsolutePath() : null)
+              .collect(Collectors.toList());
 
       final TSStatus status = loadFileV2(req, fileAbsolutePaths);
       if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
@@ -749,7 +779,7 @@ public abstract class IoTDBFileReceiver implements IoTDBReceiver {
 
     if (writingFile != null) {
       try {
-        FileUtils.delete(writingFile);
+        RetryUtils.retryOnException(() -> FileUtils.delete(writingFile));
         LOGGER.info(
             "Receiver id = {}: Handling exit: Writing file {} was deleted.",
             receiverId.get(),
@@ -774,7 +804,11 @@ public abstract class IoTDBFileReceiver implements IoTDBReceiver {
     if (receiverFileDirWithIdSuffix.get() != null) {
       if (receiverFileDirWithIdSuffix.get().exists()) {
         try {
-          FileUtils.deleteDirectory(receiverFileDirWithIdSuffix.get());
+          RetryUtils.retryOnException(
+              () -> {
+                FileUtils.deleteDirectory(receiverFileDirWithIdSuffix.get());
+                return null;
+              });
           LOGGER.info(
               "Receiver id = {}: Handling exit: Original receiver file dir {} was deleted.",
               receiverId.get(),

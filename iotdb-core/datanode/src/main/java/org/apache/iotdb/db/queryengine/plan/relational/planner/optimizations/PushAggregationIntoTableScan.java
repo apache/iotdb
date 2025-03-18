@@ -105,6 +105,10 @@ public class PushAggregationIntoTableScan implements PlanOptimizer {
         return node;
       }
 
+      if (tableScanNode.containsNonAlignedDevice()) {
+        return node;
+      }
+
       PushDownLevel pushDownLevel =
           calculatePushDownLevel(
               node.getAggregations().values(),
@@ -142,6 +146,10 @@ public class PushAggregationIntoTableScan implements PlanOptimizer {
           hasProject ? projectNode.getAssignments().getMap() : null;
       // calculate Function part
       for (AggregationNode.Aggregation aggregation : values) {
+        if (aggregation.isDistinct()) {
+          return PushDownLevel.NOOP;
+        }
+
         // all the functions can be pre-agg in AggTableScanNode
 
         // if expr appears in arguments of Aggregation, we don't push down

@@ -148,7 +148,7 @@ public class CompactionUtils {
     Set<ModEntry> modifications = new HashSet<>();
     // get compaction mods from all source unseq files
     for (TsFileResource unseqFile : unseqResources) {
-      modifications.addAll(ModificationFile.getCompactionMods(unseqFile).getAllMods());
+      modifications.addAll(ModificationFile.readAllCompactionModifications(unseqFile.getTsFile()));
     }
 
     // write target mods file
@@ -158,7 +158,8 @@ public class CompactionUtils {
         continue;
       }
       Set<ModEntry> seqModifications =
-          new HashSet<>(ModificationFile.getCompactionMods(seqResources.get(i)).getAllMods());
+          new HashSet<>(
+              ModificationFile.readAllCompactionModifications(seqResources.get(i).getTsFile()));
       modifications.addAll(seqModifications);
       updateOneTargetMods(targetResource, modifications);
       modifications.removeAll(seqModifications);
@@ -323,16 +324,26 @@ public class CompactionUtils {
     }
   }
 
-  public static void updateProgressIndex(
+  public static void updateProgressIndexAndMark(
       List<TsFileResource> targetResources,
       List<TsFileResource> seqResources,
       List<TsFileResource> unseqResources) {
     for (TsFileResource targetResource : targetResources) {
       for (TsFileResource unseqResource : unseqResources) {
         targetResource.updateProgressIndex(unseqResource.getMaxProgressIndexAfterClose());
+        targetResource.setGeneratedByPipe(
+            unseqResource.isGeneratedByPipe() && targetResource.isGeneratedByPipe());
+        targetResource.setGeneratedByPipeConsensus(
+            unseqResource.isGeneratedByPipeConsensus()
+                && targetResource.isGeneratedByPipeConsensus());
       }
       for (TsFileResource seqResource : seqResources) {
         targetResource.updateProgressIndex(seqResource.getMaxProgressIndexAfterClose());
+        targetResource.setGeneratedByPipe(
+            seqResource.isGeneratedByPipe() && targetResource.isGeneratedByPipe());
+        targetResource.setGeneratedByPipeConsensus(
+            seqResource.isGeneratedByPipeConsensus()
+                && targetResource.isGeneratedByPipeConsensus());
       }
     }
   }

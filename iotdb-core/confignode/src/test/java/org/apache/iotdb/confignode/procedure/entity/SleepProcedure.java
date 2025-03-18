@@ -41,11 +41,6 @@ public class SleepProcedure extends Procedure<TestProcEnv> {
   protected void rollback(TestProcEnv testProcEnv) throws IOException, InterruptedException {}
 
   @Override
-  protected boolean abort(TestProcEnv testProcEnv) {
-    return false;
-  }
-
-  @Override
   public void serialize(DataOutputStream stream) throws IOException {
     stream.writeInt(TestProcedureFactory.TestProcedureType.SLEEP_PROCEDURE.ordinal());
     super.serialize(stream);

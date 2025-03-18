@@ -78,7 +78,7 @@ set PARAMETERS=%*
 
 @REM if "%PARAMETERS%" == "" set PARAMETERS=-h 127.0.0.1 -p 6667 -u root -pw root
 
-@REF if DEFAULT_SQL_DIALECT is empty, set it to "tree"
+@REM if DEFAULT_SQL_DIALECT is empty, set it to "tree"
 if "%DEFAULT_SQL_DIALECT%" == "" set DEFAULT_SQL_DIALECT=tree
 
 @REM set default parameters

@@ -75,9 +75,7 @@ public class ShowRegionStatement extends ShowStatement implements IConfigStateme
 
   @Override
   public TSStatus checkPermissionBeforeProcess(String userName) {
-    return AuthorityChecker.getTSStatus(
-        AuthorityChecker.SUPER_USER.equals(userName),
-        "Only the admin user can perform this operation");
+    return AuthorityChecker.checkSuperUserOrMaintain(userName);
   }
 
   @Override

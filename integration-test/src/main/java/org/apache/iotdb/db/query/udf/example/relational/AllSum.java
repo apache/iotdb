@@ -19,10 +19,10 @@
 
 package org.apache.iotdb.db.query.udf.example.relational;
 
-import org.apache.iotdb.udf.api.customizer.config.ScalarFunctionConfig;
-import org.apache.iotdb.udf.api.customizer.parameter.FunctionParameters;
+import org.apache.iotdb.udf.api.customizer.analysis.ScalarFunctionAnalysis;
+import org.apache.iotdb.udf.api.customizer.parameter.FunctionArguments;
+import org.apache.iotdb.udf.api.exception.UDFArgumentNotValidException;
 import org.apache.iotdb.udf.api.exception.UDFException;
-import org.apache.iotdb.udf.api.exception.UDFParameterNotValidException;
 import org.apache.iotdb.udf.api.relational.ScalarFunction;
 import org.apache.iotdb.udf.api.relational.access.Record;
 import org.apache.iotdb.udf.api.type.Type;
@@ -30,43 +30,50 @@ import org.apache.iotdb.udf.api.type.Type;
 import java.util.HashSet;
 import java.util.Set;
 
-/** Calculate the sum of all parameters. Only support inputs of INT32,INT64,DOUBLE,FLOAT type. */
+/** Calculate the sum of all arguments. Only support inputs of INT32,INT64,DOUBLE,FLOAT type. */
 public class AllSum implements ScalarFunction {
 
   private Type outputDataType;
 
   @Override
-  public void validate(FunctionParameters parameters) throws UDFException {
-    if (parameters.getChildExpressionsSize() < 1) {
-      throw new UDFParameterNotValidException("At least one parameter is required.");
+  public ScalarFunctionAnalysis analyze(FunctionArguments arguments)
+      throws UDFArgumentNotValidException {
+    if (arguments.getArgumentsSize() < 1) {
+      throw new UDFArgumentNotValidException("At least one parameter is required.");
     }
-    for (int i = 0; i < parameters.getChildExpressionsSize(); i++) {
-      if (parameters.getDataType(i) != Type.INT32
-          && parameters.getDataType(i) != Type.INT64
-          && parameters.getDataType(i) != Type.FLOAT
-          && parameters.getDataType(i) != Type.DOUBLE) {
-        throw new UDFParameterNotValidException(
+    for (int i = 0; i < arguments.getArgumentsSize(); i++) {
+      if (arguments.getDataType(i) != Type.INT32
+          && arguments.getDataType(i) != Type.INT64
+          && arguments.getDataType(i) != Type.FLOAT
+          && arguments.getDataType(i) != Type.DOUBLE) {
+        throw new UDFArgumentNotValidException(
             "Only support inputs of INT32,INT64,DOUBLE,FLOAT type.");
       }
     }
+    return new ScalarFunctionAnalysis.Builder()
+        .outputDataType(inferOutputDataType(arguments))
+        .build();
   }
 
   @Override
-  public void beforeStart(FunctionParameters parameters, ScalarFunctionConfig configurations) {
+  public void beforeStart(FunctionArguments arguments) throws UDFException {
+    this.outputDataType = inferOutputDataType(arguments);
+  }
+
+  private Type inferOutputDataType(FunctionArguments arguments) {
     Set<Type> inputTypeSet = new HashSet<>();
-    for (int i = 0; i < parameters.getChildExpressionsSize(); i++) {
-      inputTypeSet.add(parameters.getDataType(i));
+    for (int i = 0; i < arguments.getArgumentsSize(); i++) {
+      inputTypeSet.add(arguments.getDataType(i));
     }
     if (inputTypeSet.contains(Type.DOUBLE)) {
-      outputDataType = Type.DOUBLE;
+      return Type.DOUBLE;
     } else if (inputTypeSet.contains(Type.FLOAT)) {
-      outputDataType = Type.FLOAT;
+      return Type.FLOAT;
     } else if (inputTypeSet.contains(Type.INT64)) {
-      outputDataType = Type.INT64;
+      return Type.INT64;
     } else {
-      outputDataType = Type.INT32;
+      return Type.INT32;
     }
-    configurations.setOutputDataType(outputDataType);
   }
 
   @Override

@@ -19,19 +19,21 @@
 
 package org.apache.iotdb.db.subscription.event.pipe;
 
+import static com.google.common.base.MoreObjects.toStringHelper;
+
 public class SubscriptionPipeEmptyEvent implements SubscriptionPipeEvents {
 
   @Override
   public void ack() {}
 
   @Override
-  public void cleanUp() {}
+  public void cleanUp(final boolean force) {}
 
   /////////////////////////////// stringify ///////////////////////////////
 
   @Override
   public String toString() {
-    return "SubscriptionEmptyPipeEvent";
+    return toStringHelper(this).toString();
   }
 
   //////////////////////////// APIs provided for metric framework ////////////////////////////

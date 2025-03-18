@@ -44,7 +44,7 @@ public class ShowPipes extends PipeStatement {
   }
 
   @Override
-  public <R, C> R accept(AstVisitor<R, C> visitor, C context) {
+  public <R, C> R accept(final AstVisitor<R, C> visitor, final C context) {
     return visitor.visitShowPipes(this, context);
   }
 
@@ -54,16 +54,16 @@ public class ShowPipes extends PipeStatement {
   }
 
   @Override
-  public boolean equals(Object obj) {
+  public boolean equals(final Object obj) {
     if (this == obj) {
       return true;
     }
     if (obj == null || getClass() != obj.getClass()) {
       return false;
     }
-    ShowPipes other = (ShowPipes) obj;
-    return Objects.equals(pipeName, other.pipeName)
-        && Objects.equals(hasWhereClause, other.hasWhereClause);
+    final ShowPipes that = (ShowPipes) obj;
+    return Objects.equals(this.pipeName, that.pipeName)
+        && Objects.equals(this.hasWhereClause, that.hasWhereClause);
   }
 
   @Override

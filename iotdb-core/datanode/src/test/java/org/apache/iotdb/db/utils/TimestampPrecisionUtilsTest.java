@@ -45,6 +45,11 @@ public class TimestampPrecisionUtilsTest {
       fail();
     } catch (Exception ignored) {
     }
+    try {
+      TimestampPrecisionUtils.checkTimestampPrecision(-1694689856546000L);
+      fail();
+    } catch (Exception ignored) {
+    }
   }
 
   @Test
@@ -65,6 +70,11 @@ public class TimestampPrecisionUtilsTest {
     TimestampPrecisionUtils.TIMESTAMP_PRECISION = "us";
     try {
       TimestampPrecisionUtils.checkTimestampPrecision(1694689856546000000L);
+      fail();
+    } catch (Exception ignored) {
+    }
+    try {
+      TimestampPrecisionUtils.checkTimestampPrecision(-1694689856546000000L);
       fail();
     } catch (Exception ignored) {
     }

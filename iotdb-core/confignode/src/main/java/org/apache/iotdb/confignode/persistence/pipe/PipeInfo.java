@@ -33,7 +33,7 @@ import org.apache.iotdb.confignode.manager.pipe.agent.PipeConfigNodeAgent;
 import org.apache.iotdb.confignode.manager.pipe.agent.runtime.PipeConfigRegionListener;
 import org.apache.iotdb.confignode.manager.pipe.agent.task.PipeConfigNodeSubtask;
 import org.apache.iotdb.confignode.manager.pipe.agent.task.PipeConfigNodeTaskAgent;
-import org.apache.iotdb.confignode.manager.pipe.metric.PipeTemporaryMetaInCoordinatorMetrics;
+import org.apache.iotdb.confignode.manager.pipe.metric.overview.PipeTemporaryMetaInCoordinatorMetrics;
 import org.apache.iotdb.mpp.rpc.thrift.TPushPipeMetaRespExceptionMessage;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -90,7 +90,7 @@ public class PipeInfo implements SnapshotProcessor {
                 PipeConfigNodeAgent.runtime()
                     .increaseListenerReference(plan.getPipeStaticMeta().getExtractorParameters());
                 return null;
-              } catch (Exception e) {
+              } catch (final Exception e) {
                 throw new PipeException("Failed to increase listener reference", e);
               }
             });

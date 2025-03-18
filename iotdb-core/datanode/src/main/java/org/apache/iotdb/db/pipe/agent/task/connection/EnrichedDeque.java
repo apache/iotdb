@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.pipe.agent.task.connection;
 
-import org.apache.iotdb.db.pipe.metric.PipeDataRegionEventCounter;
+import org.apache.iotdb.db.pipe.metric.source.PipeDataRegionEventCounter;
 import org.apache.iotdb.pipe.api.event.Event;
 
 import java.util.Deque;

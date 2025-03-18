@@ -22,7 +22,10 @@ package org.apache.iotdb.commons.pipe.extractor;
 import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.commons.consensus.index.impl.MetaProgressIndex;
 import org.apache.iotdb.commons.consensus.index.impl.MinimumProgressIndex;
+import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.exception.auth.AccessDeniedException;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.IoTDBTreePattern;
+import org.apache.iotdb.commons.pipe.datastructure.pattern.TablePattern;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.TreePattern;
 import org.apache.iotdb.commons.pipe.datastructure.queue.ConcurrentIterableLinkedQueue;
 import org.apache.iotdb.commons.pipe.datastructure.queue.listening.AbstractPipeListeningQueue;
@@ -30,6 +33,8 @@ import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.pipe.event.PipeSnapshotEvent;
 import org.apache.iotdb.commons.pipe.event.PipeWritePlanEvent;
 import org.apache.iotdb.commons.pipe.event.ProgressReportEvent;
+import org.apache.iotdb.pipe.api.annotation.TableModel;
+import org.apache.iotdb.pipe.api.annotation.TreeModel;
 import org.apache.iotdb.pipe.api.customizer.configuration.PipeExtractorRuntimeConfiguration;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 import org.apache.iotdb.pipe.api.event.Event;
@@ -37,15 +42,19 @@ import org.apache.iotdb.pipe.api.exception.PipeException;
 
 import org.apache.tsfile.utils.Pair;
 
+import java.io.IOException;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicBoolean;
 
+@TreeModel
+@TableModel
 public abstract class IoTDBNonDataRegionExtractor extends IoTDBExtractor {
 
-  protected IoTDBTreePattern pipePattern;
+  protected IoTDBTreePattern treePattern;
+  protected TablePattern tablePattern;
 
   private List<PipeSnapshotEvent> historicalEvents = new LinkedList<>();
   // A fixed size initialized only when the historicalEvents are first
@@ -68,6 +77,7 @@ public abstract class IoTDBNonDataRegionExtractor extends IoTDBExtractor {
     super.customize(parameters, configuration);
 
     final TreePattern pattern = TreePattern.parsePipePatternFromSourceParameters(parameters);
+
     if (!(pattern instanceof IoTDBTreePattern
         && (((IoTDBTreePattern) pattern).isPrefix()
             || ((IoTDBTreePattern) pattern).isFullPath()))) {
@@ -76,7 +86,8 @@ public abstract class IoTDBNonDataRegionExtractor extends IoTDBExtractor {
               "The path pattern %s is not valid for the source. Only prefix or full path is allowed.",
               pattern.getPattern()));
     }
-    pipePattern = (IoTDBTreePattern) pattern;
+    treePattern = (IoTDBTreePattern) pattern;
+    tablePattern = TablePattern.parsePipePatternFromSourceParameters(parameters);
   }
 
   @Override
@@ -152,8 +163,14 @@ public abstract class IoTDBNonDataRegionExtractor extends IoTDBExtractor {
       }
     }
 
+    // Check whether snapshot being parsed exists
+    PipeWritePlanEvent realtimeEvent = null;
+    if (hasNextEventInCurrentSnapshot()) {
+      realtimeEvent = getNextEventInCurrentSnapshot();
+    }
+
     // Historical
-    if (!historicalEvents.isEmpty()) {
+    while (Objects.isNull(realtimeEvent) && !historicalEvents.isEmpty()) {
       final PipeSnapshotEvent historicalEvent =
           (PipeSnapshotEvent)
               historicalEvents
@@ -162,30 +179,49 @@ public abstract class IoTDBNonDataRegionExtractor extends IoTDBExtractor {
                       pipeName,
                       creationTime,
                       pipeTaskMeta,
-                      pipePattern,
-                      null,
+                      treePattern,
+                      tablePattern,
+                      userName,
+                      skipIfNoPrivileges,
                       Long.MIN_VALUE,
                       Long.MAX_VALUE);
 
-      if (historicalEvents.isEmpty()) {
-        // We only report progress for the last snapshot event.
-        historicalEvent.bindProgressIndex(new MetaProgressIndex(iterator.getNextIndex() - 1));
+      if (canSkipSnapshotPrivilegeCheck(historicalEvent)) {
+        if (historicalEvents.isEmpty()) {
+          // We only report progress for the last snapshot event.
+          historicalEvent.bindProgressIndex(new MetaProgressIndex(iterator.getNextIndex() - 1));
+        }
+
+        historicalEvent.increaseReferenceCount(IoTDBNonDataRegionExtractor.class.getName());
+        // We allow to send the events with empty transferred types to make the last
+        // event commit and report its progress
+        confineHistoricalEventTransferTypes(historicalEvent);
+        return historicalEvent;
       }
 
-      historicalEvent.increaseReferenceCount(IoTDBNonDataRegionExtractor.class.getName());
-      // We allow to send the events with empty transferred types to make the last
-      // event commit and report its progress
-      confineHistoricalEventTransferTypes(historicalEvent);
-      return historicalEvent;
+      initSnapshotGenerator(historicalEvent);
+      if (hasNextEventInCurrentSnapshot()) {
+        realtimeEvent = getNextEventInCurrentSnapshot();
+      }
     }
 
+    // Bind index for the last event parsed from snapshot or realtime event
+    final boolean shouldBindIndex = historicalEvents.isEmpty() && !hasNextEventInCurrentSnapshot();
+
     // Realtime
-    PipeWritePlanEvent realtimeEvent = (PipeWritePlanEvent) iterator.next(getMaxBlockingTimeMs());
+    if (Objects.isNull(realtimeEvent)) {
+      realtimeEvent = (PipeWritePlanEvent) iterator.peek(getMaxBlockingTimeMs());
+    }
     if (Objects.isNull(realtimeEvent)) {
       return null;
     }
 
-    realtimeEvent = trimRealtimeEventByPipePattern(realtimeEvent).orElse(null);
+    realtimeEvent =
+        trimRealtimeEventByPipePattern(realtimeEvent)
+            .flatMap(this::trimRealtimeEventByPrivilege)
+            .orElse(null);
+    iterator.next(0);
+
     if (Objects.isNull(realtimeEvent)
         || !isTypeListened(realtimeEvent)
         || (!isForwardingPipeRequests && realtimeEvent.isGeneratedByPipe())) {
@@ -194,11 +230,15 @@ public abstract class IoTDBNonDataRegionExtractor extends IoTDBExtractor {
               pipeName,
               creationTime,
               pipeTaskMeta,
-              pipePattern,
-              null,
+              treePattern,
+              tablePattern,
+              userName,
+              skipIfNoPrivileges,
               Long.MIN_VALUE,
               Long.MAX_VALUE);
-      event.bindProgressIndex(new MetaProgressIndex(iterator.getNextIndex() - 1));
+      if (shouldBindIndex) {
+        event.bindProgressIndex(new MetaProgressIndex(iterator.getNextIndex() - 1));
+      }
       event.increaseReferenceCount(IoTDBNonDataRegionExtractor.class.getName());
       return event;
     }
@@ -209,16 +249,32 @@ public abstract class IoTDBNonDataRegionExtractor extends IoTDBExtractor {
                 pipeName,
                 creationTime,
                 pipeTaskMeta,
-                pipePattern,
-                null,
+                treePattern,
+                tablePattern,
+                userName,
+                skipIfNoPrivileges,
                 Long.MIN_VALUE,
                 Long.MAX_VALUE);
-    realtimeEvent.bindProgressIndex(new MetaProgressIndex(iterator.getNextIndex() - 1));
+    if (shouldBindIndex) {
+      realtimeEvent.bindProgressIndex(new MetaProgressIndex(iterator.getNextIndex() - 1));
+    }
     realtimeEvent.increaseReferenceCount(IoTDBNonDataRegionExtractor.class.getName());
     return realtimeEvent;
   }
 
   protected abstract long getMaxBlockingTimeMs();
+
+  protected abstract boolean canSkipSnapshotPrivilegeCheck(final PipeSnapshotEvent event);
+
+  protected abstract void initSnapshotGenerator(final PipeSnapshotEvent event)
+      throws IOException, IllegalPathException;
+
+  protected abstract boolean hasNextEventInCurrentSnapshot();
+
+  protected abstract PipeWritePlanEvent getNextEventInCurrentSnapshot();
+
+  protected abstract Optional<PipeWritePlanEvent> trimRealtimeEventByPrivilege(
+      final PipeWritePlanEvent event) throws AccessDeniedException;
 
   // The trimmed event shall be non-null.
   protected abstract Optional<PipeWritePlanEvent> trimRealtimeEventByPipePattern(

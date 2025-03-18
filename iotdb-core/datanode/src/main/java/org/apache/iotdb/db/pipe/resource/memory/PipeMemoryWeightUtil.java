@@ -24,18 +24,29 @@ import org.apache.iotdb.db.pipe.event.common.row.PipeRow;
 import org.apache.iotdb.db.utils.MemUtils;
 
 import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.file.metadata.AbstractAlignedChunkMetadata;
+import org.apache.tsfile.file.metadata.ChunkMetadata;
+import org.apache.tsfile.file.metadata.IChunkMetadata;
 import org.apache.tsfile.file.metadata.IDeviceID;
+import org.apache.tsfile.file.metadata.TableSchema;
 import org.apache.tsfile.read.common.BatchData;
+import org.apache.tsfile.read.common.Chunk;
 import org.apache.tsfile.read.common.Field;
 import org.apache.tsfile.read.common.RowRecord;
 import org.apache.tsfile.utils.Binary;
+import org.apache.tsfile.utils.BitMap;
 import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.utils.TsPrimitiveType;
 import org.apache.tsfile.write.record.Tablet;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
+import org.apache.tsfile.write.schema.MeasurementSchema;
 
 import java.util.List;
 import java.util.Map;
+
+import static org.apache.tsfile.utils.RamUsageEstimator.NUM_BYTES_ARRAY_HEADER;
+import static org.apache.tsfile.utils.RamUsageEstimator.NUM_BYTES_OBJECT_REF;
+import static org.apache.tsfile.utils.RamUsageEstimator.alignObjectSize;
 
 public class PipeMemoryWeightUtil {
 
@@ -197,9 +208,12 @@ public class PipeMemoryWeightUtil {
       return totalSizeInBytes;
     }
 
+    long[] timestamps = tablet.getTimestamps();
+    Object[] tabletValues = tablet.getValues();
+
     // timestamps
-    if (tablet.timestamps != null) {
-      totalSizeInBytes += tablet.timestamps.length * 8L;
+    if (timestamps != null) {
+      totalSizeInBytes += timestamps.length * 8L;
     }
 
     // values
@@ -217,10 +231,10 @@ public class PipeMemoryWeightUtil {
         }
 
         if (tsDataType.isBinary()) {
-          if (tablet.values == null || tablet.values.length <= column) {
+          if (tabletValues == null || tabletValues.length <= column) {
             continue;
           }
-          final Binary[] values = ((Binary[]) tablet.values[column]);
+          final Binary[] values = ((Binary[]) tabletValues[column]);
           if (values == null) {
             continue;
           }
@@ -229,15 +243,16 @@ public class PipeMemoryWeightUtil {
                 value == null ? 0 : (value.getLength() == -1 ? 0 : value.getLength());
           }
         } else {
-          totalSizeInBytes += (long) tablet.timestamps.length * tsDataType.getDataTypeSize();
+          totalSizeInBytes += (long) timestamps.length * tsDataType.getDataTypeSize();
         }
       }
     }
 
     // bitMaps
-    if (tablet.bitMaps != null) {
-      for (int i = 0; i < tablet.bitMaps.length; i++) {
-        totalSizeInBytes += tablet.bitMaps[i] == null ? 0 : tablet.bitMaps[i].getSize();
+    BitMap[] bitMaps = tablet.getBitMaps();
+    if (bitMaps != null) {
+      for (int i = 0; i < bitMaps.length; i++) {
+        totalSizeInBytes += bitMaps[i] == null ? 0 : bitMaps[i].getSize();
       }
     }
 
@@ -245,5 +260,108 @@ public class PipeMemoryWeightUtil {
     totalSizeInBytes += 100;
 
     return totalSizeInBytes;
+  }
+
+  public static long calculateTableSchemaBytesUsed(TableSchema tableSchema) {
+    long totalSizeInBytes = 0;
+
+    final String tableName = tableSchema.getTableName();
+    if (tableName != null) {
+      totalSizeInBytes += tableName.length();
+    }
+
+    final List<IMeasurementSchema> measurementSchemas = tableSchema.getColumnSchemas();
+    if (measurementSchemas != null) {
+      totalSizeInBytes +=
+          NUM_BYTES_ARRAY_HEADER + (long) NUM_BYTES_OBJECT_REF * measurementSchemas.size();
+      for (IMeasurementSchema measurementSchema : measurementSchemas) {
+        InsertNodeMemoryEstimator.sizeOfMeasurementSchema((MeasurementSchema) measurementSchema);
+      }
+    }
+
+    final List<Tablet.ColumnCategory> categories = tableSchema.getColumnTypes();
+    if (categories != null) {
+      totalSizeInBytes +=
+          alignObjectSize(
+              (long) NUM_BYTES_ARRAY_HEADER
+                  + (long) NUM_BYTES_OBJECT_REF * (long) categories.size());
+    }
+
+    return totalSizeInBytes;
+  }
+
+  public static int calculateBatchDataRamBytesUsed(BatchData batchData) {
+    int totalSizeInBytes = 0;
+
+    // timestamp
+    totalSizeInBytes += 8;
+
+    // values
+    final TSDataType type = batchData.getDataType();
+    if (type != null) {
+      if (type == TSDataType.VECTOR && batchData.getVector() != null) {
+        for (int i = 0; i < batchData.getVector().length; ++i) {
+          final TsPrimitiveType primitiveType = batchData.getVector()[i];
+          if (primitiveType == null || primitiveType.getDataType() == null) {
+            continue;
+          }
+          // consider variable references (plus 8) and memory alignment (round up to 8)
+          totalSizeInBytes += roundUpToMultiple(primitiveType.getSize() + 8, 8);
+        }
+      } else {
+        if (type.isBinary()) {
+          final Binary binary = batchData.getBinary();
+          // refer to org.apache.tsfile.utils.TsPrimitiveType.TsBinary.getSize
+          totalSizeInBytes +=
+              roundUpToMultiple((binary == null ? 8 : binary.getLength() + 8) + 8, 8);
+        } else {
+          totalSizeInBytes += roundUpToMultiple(TsPrimitiveType.getByType(type).getSize() + 8, 8);
+        }
+      }
+    }
+
+    return batchData.length() * totalSizeInBytes;
+  }
+
+  public static long calculateChunkRamBytesUsed(Chunk chunk) {
+    return chunk != null ? chunk.getRetainedSizeInBytes() : 0L;
+  }
+
+  public static long calculateAlignedChunkMetaBytesUsed(
+      AbstractAlignedChunkMetadata alignedChunkMetadata) {
+    if (alignedChunkMetadata == null) {
+      return 0L;
+    }
+
+    final ChunkMetadata timeChunkMetadata =
+        (ChunkMetadata) alignedChunkMetadata.getTimeChunkMetadata();
+    final List<IChunkMetadata> valueChunkMetadataList =
+        alignedChunkMetadata.getValueChunkMetadataList();
+
+    long size = timeChunkMetadata != null ? timeChunkMetadata.getRetainedSizeInBytes() : 0;
+    if (valueChunkMetadataList != null && !valueChunkMetadataList.isEmpty()) {
+      for (IChunkMetadata valueChunkMetadata : valueChunkMetadataList) {
+        if (valueChunkMetadata != null) {
+          size += ((ChunkMetadata) valueChunkMetadata).getRetainedSizeInBytes();
+        }
+      }
+    }
+
+    return size;
+  }
+
+  /**
+   * Rounds up the given integer num to the nearest multiple of n.
+   *
+   * @param num The integer to be rounded up.
+   * @param n The specified multiple.
+   * @return The nearest multiple of n greater than or equal to num.
+   */
+  private static int roundUpToMultiple(int num, int n) {
+    if (n == 0) {
+      throw new IllegalArgumentException("The multiple n must be greater than 0");
+    }
+    // Calculate the rounded up value to the nearest multiple of n
+    return ((num + n - 1) / n) * n;
   }
 }

@@ -36,6 +36,8 @@ import static org.apache.iotdb.it.env.cluster.ClusterConstant.DATANODE_MAX_DIREC
 import static org.apache.iotdb.it.env.cluster.ClusterConstant.DATANODE_MAX_HEAP_SIZE;
 import static org.apache.iotdb.it.env.cluster.ClusterConstant.DATA_NODE_NAME;
 import static org.apache.iotdb.it.env.cluster.ClusterConstant.DATA_REGION_CONSENSUS_PROTOCOL_CLASS;
+import static org.apache.iotdb.it.env.cluster.ClusterConstant.DATA_REGION_PER_DATANODE;
+import static org.apache.iotdb.it.env.cluster.ClusterConstant.DATA_REGION_PER_DATA_NODE;
 import static org.apache.iotdb.it.env.cluster.ClusterConstant.DATA_REGION_RATIS_LOG_APPENDER_BUFFER_SIZE_MAX;
 import static org.apache.iotdb.it.env.cluster.ClusterConstant.DATA_REPLICATION_FACTOR;
 import static org.apache.iotdb.it.env.cluster.ClusterConstant.DEFAULT_DATA_NODE_COMMON_PROPERTIES;
@@ -56,6 +58,7 @@ import static org.apache.iotdb.it.env.cluster.ClusterConstant.DN_WAL_DIRS;
 import static org.apache.iotdb.it.env.cluster.ClusterConstant.IOTDB_SYSTEM_PROPERTIES_FILE;
 import static org.apache.iotdb.it.env.cluster.ClusterConstant.MAIN_CLASS_NAME;
 import static org.apache.iotdb.it.env.cluster.ClusterConstant.MAX_TSBLOCK_SIZE_IN_BYTES;
+import static org.apache.iotdb.it.env.cluster.ClusterConstant.MQTT_DATA_PATH;
 import static org.apache.iotdb.it.env.cluster.ClusterConstant.MQTT_HOST;
 import static org.apache.iotdb.it.env.cluster.ClusterConstant.MQTT_PORT;
 import static org.apache.iotdb.it.env.cluster.ClusterConstant.PAGE_SIZE_IN_BYTE;
@@ -82,6 +85,8 @@ public class DataNodeWrapper extends AbstractNodeWrapper {
 
   private final String defaultCommonPropertiesFile;
 
+  private final int regionPerDataNode;
+
   public DataNodeWrapper(
       final String seedConfigNode,
       final String testClassName,
@@ -103,6 +108,7 @@ public class DataNodeWrapper extends AbstractNodeWrapper {
         EnvUtils.getFilePathFromSysVar(DEFAULT_DATA_NODE_PROPERTIES, clusterIndex);
     this.defaultCommonPropertiesFile =
         EnvUtils.getFilePathFromSysVar(DEFAULT_DATA_NODE_COMMON_PROPERTIES, clusterIndex);
+    this.regionPerDataNode = EnvUtils.getIntFromSysVar(DATA_REGION_PER_DATANODE, 0, clusterIndex);
     // Initialize mutable properties
     reloadMutableFields();
 
@@ -110,6 +116,8 @@ public class DataNodeWrapper extends AbstractNodeWrapper {
     // Override mqtt properties of super class
     immutableCommonProperties.setProperty(MQTT_HOST, super.getIp());
     immutableCommonProperties.setProperty(MQTT_PORT, String.valueOf(this.mqttPort));
+    immutableCommonProperties.setProperty(
+        MQTT_DATA_PATH, getNodePath() + File.separator + "mqttData");
     immutableCommonProperties.setProperty(
         PIPE_AIR_GAP_RECEIVER_PORT, String.valueOf(this.pipeAirGapReceiverPort));
 
@@ -145,6 +153,14 @@ public class DataNodeWrapper extends AbstractNodeWrapper {
     return workDirFilePath("data/datanode/system/schema", IoTDBStartCheck.PROPERTIES_FILE_NAME);
   }
 
+  public String getDataDir() {
+    return getNodePath() + File.separator + "data";
+  }
+
+  public String getWalDir() {
+    return getDataDir() + File.separator + "datanode" + File.separator + "wal";
+  }
+
   @Override
   protected MppJVMConfig initVMConfig() {
     return MppJVMConfig.builder()
@@ -173,6 +189,11 @@ public class DataNodeWrapper extends AbstractNodeWrapper {
             "-DTSFILE_CONF=" + confDir,
             MAIN_CLASS_NAME,
             "-s"));
+  }
+
+  @Override
+  String getNodeType() {
+    return "datanode";
   }
 
   @Override
@@ -209,6 +230,7 @@ public class DataNodeWrapper extends AbstractNodeWrapper {
     mutableNodeProperties.setProperty(WAL_BUFFER_SIZE_IN_BYTE, "16777216");
     mutableNodeProperties.setProperty(SCHEMA_REGION_RATIS_LOG_APPENDER_BUFFER_SIZE_MAX, "8388608");
     mutableNodeProperties.setProperty(DATA_REGION_RATIS_LOG_APPENDER_BUFFER_SIZE_MAX, "8388608");
+    mutableNodeProperties.setProperty(DATA_REGION_PER_DATA_NODE, String.valueOf(regionPerDataNode));
   }
 
   @Override

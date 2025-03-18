@@ -21,7 +21,7 @@ package org.apache.iotdb.db.pipe.receiver.visitor;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.TablePattern;
-import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTabletRawReq;
+import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTabletRawReqV2;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tsfile.parser.table.TsFileInsertionEventTableParser;
 import org.apache.iotdb.db.pipe.receiver.protocol.thrift.IoTDBDataNodeReceiver;
@@ -127,6 +127,7 @@ public class PipeTableStatementDataTypeConvertExecutionVisitor
               Long.MIN_VALUE,
               Long.MAX_VALUE,
               null,
+              "root",
               null)) {
         for (final TabletInsertionEvent tabletInsertionEvent : parser.toTabletInsertionEvents()) {
           if (!(tabletInsertionEvent instanceof PipeRawTabletInsertionEvent)) {
@@ -137,10 +138,12 @@ public class PipeTableStatementDataTypeConvertExecutionVisitor
 
           final PipeConvertedInsertTabletStatement statement =
               new PipeConvertedInsertTabletStatement(
-                  PipeTransferTabletRawReq.toTPipeTransferRawReq(
+                  PipeTransferTabletRawReqV2.toTPipeTransferRawReq(
                           rawTabletInsertionEvent.convertToTablet(),
-                          rawTabletInsertionEvent.isAligned())
-                      .constructStatement());
+                          rawTabletInsertionEvent.isAligned(),
+                          databaseName)
+                      .constructStatement(),
+                  false);
 
           TSStatus result;
           try {

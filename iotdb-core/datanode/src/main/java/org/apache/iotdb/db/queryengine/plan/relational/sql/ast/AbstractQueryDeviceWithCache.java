@@ -35,6 +35,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 public abstract class AbstractQueryDeviceWithCache extends AbstractTraverseDevice {
 
@@ -61,6 +62,8 @@ public abstract class AbstractQueryDeviceWithCache extends AbstractTraverseDevic
     final boolean needFetch =
         super.parseRawExpression(entries, tableInstance, attributeColumns, context);
     if (!needFetch) {
+      context.reserveMemoryForFrontEnd(
+          entries.stream().map(DeviceEntry::ramBytesUsed).reduce(0L, Long::sum));
       results =
           entries.stream()
               .map(
@@ -73,16 +76,28 @@ public abstract class AbstractQueryDeviceWithCache extends AbstractTraverseDevic
   }
 
   public static List<ColumnHeader> getDeviceColumnHeaderList(
-      final String database, final String tableName) {
-    return DataNodeTableCache.getInstance().getTable(database, tableName).getColumnList().stream()
-        .filter(
-            columnSchema ->
-                columnSchema.getColumnCategory().equals(TsTableColumnCategory.TAG)
-                    || columnSchema.getColumnCategory().equals(TsTableColumnCategory.ATTRIBUTE))
-        .map(
-            columnSchema ->
-                new ColumnHeader(columnSchema.getColumnName(), columnSchema.getDataType()))
-        .collect(Collectors.toList());
+      final String database, final String tableName, final List<String> attributeColumns) {
+    final TsTable table = DataNodeTableCache.getInstance().getTable(database, tableName);
+    return Objects.isNull(attributeColumns)
+        ? table.getColumnList().stream()
+            .filter(
+                columnSchema ->
+                    columnSchema.getColumnCategory().equals(TsTableColumnCategory.TAG)
+                        || columnSchema.getColumnCategory().equals(TsTableColumnCategory.ATTRIBUTE))
+            .map(
+                columnSchema ->
+                    new ColumnHeader(columnSchema.getColumnName(), columnSchema.getDataType()))
+            .collect(Collectors.toList())
+        : Stream.concat(
+                table.getColumnList().stream()
+                    .filter(
+                        columnSchema ->
+                            columnSchema.getColumnCategory().equals(TsTableColumnCategory.TAG)),
+                attributeColumns.stream().map(table::getColumnSchema))
+            .map(
+                columnSchema ->
+                    new ColumnHeader(columnSchema.getColumnName(), columnSchema.getDataType()))
+            .collect(Collectors.toList());
   }
 
   public abstract DatasetHeader getDataSetHeader();

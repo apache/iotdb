@@ -25,12 +25,17 @@ import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.connector.payload.thrift.request.PipeTransferCompressedReq;
 import org.apache.iotdb.commons.pipe.connector.payload.thrift.response.PipeTransferFilePieceResp;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
+import org.apache.iotdb.commons.utils.RetryUtils;
 import org.apache.iotdb.db.pipe.connector.client.IoTDBDataNodeAsyncClientManager;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTsFilePieceReq;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTsFilePieceWithModReq;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTsFileSealWithModReq;
 import org.apache.iotdb.db.pipe.connector.protocol.thrift.async.IoTDBDataRegionAsyncConnector;
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
+import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
+import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryManager;
+import org.apache.iotdb.db.pipe.resource.memory.PipeTsFileMemoryBlock;
+import org.apache.iotdb.pipe.api.exception.PipeException;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferReq;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferResp;
@@ -75,6 +80,7 @@ public class PipeTransferTsFileHandler extends PipeTransferTrackableHandler {
   private final String dataBaseName;
 
   private final int readFileBufferSize;
+  private final PipeTsFileMemoryBlock memoryBlock;
   private final byte[] readBuffer;
   private long position;
 
@@ -95,7 +101,7 @@ public class PipeTransferTsFileHandler extends PipeTransferTrackableHandler {
       final File modFile,
       final boolean transferMod,
       final String dataBaseName)
-      throws FileNotFoundException {
+      throws FileNotFoundException, InterruptedException {
     super(connector);
 
     this.pipeName2WeightMap = pipeName2WeightMap;
@@ -110,7 +116,24 @@ public class PipeTransferTsFileHandler extends PipeTransferTrackableHandler {
     this.dataBaseName = dataBaseName;
     currentFile = transferMod ? modFile : tsFile;
 
-    readFileBufferSize = PipeConfig.getInstance().getPipeConnectorReadFileBufferSize();
+    // NOTE: Waiting for resource enough for slicing here may cause deadlock!
+    // TsFile events are producing and consuming at the same time, and the memory of a TsFile
+    // event is not released until the TsFile is sealed. So if the memory is not enough for slicing,
+    // the TsFile event will be blocked and waiting for the memory to be released. At the same time,
+    // the memory of the TsFile event is not released, so the memory is not enough for slicing. This
+    // will cause a deadlock.
+    waitForResourceEnough4Slicing((long) ((1 + Math.random()) * 20 * 1000)); // 20 - 40 seconds
+    readFileBufferSize =
+        (int)
+            Math.min(
+                PipeConfig.getInstance().getPipeConnectorReadFileBufferSize(),
+                transferMod ? Math.max(tsFile.length(), modFile.length()) : tsFile.length());
+    memoryBlock =
+        PipeDataNodeResourceManager.memory()
+            .forceAllocateForTsFileWithRetry(
+                PipeConfig.getInstance().isPipeConnectorReadFileBufferMemoryControlEnabled()
+                    ? readFileBufferSize
+                    : 0);
     readBuffer = new byte[readFileBufferSize];
     position = 0;
 
@@ -238,7 +261,11 @@ public class PipeTransferTsFileHandler extends PipeTransferTrackableHandler {
 
         // Delete current file when using tsFile as batch
         if (events.stream().anyMatch(event -> !(event instanceof PipeTsFileInsertionEvent))) {
-          FileUtils.delete(currentFile);
+          RetryUtils.retryOnException(
+              () -> {
+                FileUtils.delete(currentFile);
+                return null;
+              });
         }
       } catch (final IOException e) {
         LOGGER.warn(
@@ -270,6 +297,7 @@ public class PipeTransferTsFileHandler extends PipeTransferTrackableHandler {
           client.returnSelf();
         }
       }
+
       return true;
     }
 
@@ -341,7 +369,11 @@ public class PipeTransferTsFileHandler extends PipeTransferTrackableHandler {
 
       // Delete current file when using tsFile as batch
       if (events.stream().anyMatch(event -> !(event instanceof PipeTsFileInsertionEvent))) {
-        FileUtils.delete(currentFile);
+        RetryUtils.retryOnException(
+            () -> {
+              FileUtils.delete(currentFile);
+              return null;
+            });
       }
     } catch (final IOException e) {
       LOGGER.warn("Failed to close file reader or delete tsFile when failed to transfer file.", e);
@@ -369,5 +401,61 @@ public class PipeTransferTsFileHandler extends PipeTransferTrackableHandler {
   @Override
   public void clearEventsReferenceCount() {
     events.forEach(event -> event.clearReferenceCount(PipeTransferTsFileHandler.class.getName()));
+  }
+
+  @Override
+  public void close() {
+    super.close();
+    memoryBlock.close();
+  }
+
+  /**
+   * @param timeoutMs CAN NOT BE UNLIMITED, otherwise it may cause deadlock.
+   */
+  private void waitForResourceEnough4Slicing(final long timeoutMs) throws InterruptedException {
+    if (!PipeConfig.getInstance().isPipeConnectorReadFileBufferMemoryControlEnabled()) {
+      return;
+    }
+
+    final PipeMemoryManager memoryManager = PipeDataNodeResourceManager.memory();
+    if (memoryManager.isEnough4TsFileSlicing()) {
+      return;
+    }
+
+    final long startTime = System.currentTimeMillis();
+    long lastRecordTime = startTime;
+
+    final long memoryCheckIntervalMs =
+        PipeConfig.getInstance().getPipeCheckMemoryEnoughIntervalMs();
+    while (!memoryManager.isEnough4TsFileSlicing()) {
+      Thread.sleep(memoryCheckIntervalMs);
+
+      final long currentTime = System.currentTimeMillis();
+      final double elapsedRecordTimeSeconds = (currentTime - lastRecordTime) / 1000.0;
+      final double waitTimeSeconds = (currentTime - startTime) / 1000.0;
+      if (elapsedRecordTimeSeconds > 10.0) {
+        LOGGER.info(
+            "Wait for resource enough for slicing tsfile {} for {} seconds.",
+            tsFile,
+            waitTimeSeconds);
+        lastRecordTime = currentTime;
+      } else if (LOGGER.isDebugEnabled()) {
+        LOGGER.debug(
+            "Wait for resource enough for slicing tsfile {} for {} seconds.",
+            tsFile,
+            waitTimeSeconds);
+      }
+
+      if (waitTimeSeconds * 1000 > timeoutMs) {
+        // should contain 'TimeoutException' in exception message
+        throw new PipeException(
+            String.format("TimeoutException: Waited %s seconds", waitTimeSeconds));
+      }
+    }
+
+    final long currentTime = System.currentTimeMillis();
+    final double waitTimeSeconds = (currentTime - startTime) / 1000.0;
+    LOGGER.info(
+        "Wait for resource enough for slicing tsfile {} for {} seconds.", tsFile, waitTimeSeconds);
   }
 }

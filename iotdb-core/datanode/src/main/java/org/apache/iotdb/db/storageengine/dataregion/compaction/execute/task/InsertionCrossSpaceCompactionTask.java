@@ -23,7 +23,6 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.service.metrics.FileMetrics;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.constant.CompactionTaskType;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.exception.CompactionRecoverException;
-import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.exception.CompactionValidationFailedException;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.CompactionUtils;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.log.CompactionLogAnalyzer;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.log.CompactionLogger;
@@ -48,7 +47,7 @@ import java.util.stream.Stream;
 public class InsertionCrossSpaceCompactionTask extends AbstractCompactionTask {
 
   private Phaser phaser;
-  private boolean failToPassValidation = false;
+  private boolean failedBeforeReplaceInMemory = true;
 
   public InsertionCrossSpaceCompactionTask(
       Phaser phaser,
@@ -89,6 +88,7 @@ public class InsertionCrossSpaceCompactionTask extends AbstractCompactionTask {
     this.needRecoverTaskInfoFromLogFile = true;
     this.selectedSeqFiles = Collections.emptyList();
     this.selectedUnseqFiles = new ArrayList<>(1);
+    this.failedBeforeReplaceInMemory = false;
   }
 
   private TsFileResource unseqFileToInsert;
@@ -152,9 +152,6 @@ public class InsertionCrossSpaceCompactionTask extends AbstractCompactionTask {
       logger.logSourceFile(unseqFileToInsert);
       logger.logTargetFile(targetFile);
       logger.force();
-      CompactionUtils.prepareCompactionModFiles(
-          Collections.singletonList(targetFile), Collections.singletonList(unseqFileToInsert));
-
       prepareTargetFiles();
 
       validateCompactionResult(
@@ -164,6 +161,7 @@ public class InsertionCrossSpaceCompactionTask extends AbstractCompactionTask {
 
       replaceTsFileInMemory(
           Collections.singletonList(unseqFileToInsert), Collections.singletonList(targetFile));
+      failedBeforeReplaceInMemory = false;
 
       lockWrite(Collections.singletonList(unseqFileToInsert));
       CompactionUtils.deleteTsFileResourceWithoutLock(unseqFileToInsert);
@@ -178,9 +176,6 @@ public class InsertionCrossSpaceCompactionTask extends AbstractCompactionTask {
           targetFile,
           String.format("%.2f", costTime));
     } catch (Exception e) {
-      if (e instanceof CompactionValidationFailedException) {
-        failToPassValidation = true;
-      }
       isSuccess = false;
       handleException(LOGGER, e);
       recover();
@@ -294,7 +289,7 @@ public class InsertionCrossSpaceCompactionTask extends AbstractCompactionTask {
         || (unseqFileToInsert != null
             && unseqFileToInsert.anyModFileExists()
             && !targetFile.anyModFileExists())
-        || failToPassValidation;
+        || failedBeforeReplaceInMemory;
   }
 
   private void rollback() throws IOException {

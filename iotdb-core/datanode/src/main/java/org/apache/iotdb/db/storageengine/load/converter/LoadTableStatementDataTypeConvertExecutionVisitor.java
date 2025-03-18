@@ -21,7 +21,7 @@ package org.apache.iotdb.db.storageengine.load.converter;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.TablePattern;
-import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTabletRawReq;
+import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTabletRawReqV2;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tsfile.parser.table.TsFileInsertionEventTableParser;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AstVisitor;
@@ -76,6 +76,7 @@ public class LoadTableStatementDataTypeConvertExecutionVisitor
               Long.MIN_VALUE,
               Long.MAX_VALUE,
               null,
+              "root",
               null)) {
         for (final TabletInsertionEvent tabletInsertionEvent : parser.toTabletInsertionEvents()) {
           if (!(tabletInsertionEvent instanceof PipeRawTabletInsertionEvent)) {
@@ -86,10 +87,12 @@ public class LoadTableStatementDataTypeConvertExecutionVisitor
 
           final LoadConvertedInsertTabletStatement statement =
               new LoadConvertedInsertTabletStatement(
-                  PipeTransferTabletRawReq.toTPipeTransferRawReq(
+                  PipeTransferTabletRawReqV2.toTPipeTransferRawReq(
                           rawTabletInsertionEvent.convertToTablet(),
-                          rawTabletInsertionEvent.isAligned())
-                      .constructStatement());
+                          rawTabletInsertionEvent.isAligned(),
+                          databaseName)
+                      .constructStatement(),
+                  loadTsFileStatement.isConvertOnTypeMismatch());
 
           TSStatus result;
           try {
@@ -121,6 +124,10 @@ public class LoadTableStatementDataTypeConvertExecutionVisitor
               || result.getCode() == TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode()
               || result.getCode()
                   == TSStatusCode.LOAD_IDEMPOTENT_CONFLICT_EXCEPTION.getStatusCode())) {
+            LOGGER.warn(
+                "Failed to convert data type for LoadTsFileStatement: {}, status code is {}.",
+                loadTsFileStatement,
+                result.getCode());
             return Optional.empty();
           }
         }

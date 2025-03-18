@@ -27,7 +27,6 @@ import org.apache.iotdb.consensus.pipe.thrift.TCommitId;
 import org.apache.iotdb.consensus.pipe.thrift.TPipeConsensusTransferReq;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.AbstractDeleteDataNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.DeleteDataNode;
 
 import org.apache.tsfile.utils.PublicBAOS;
 import org.slf4j.Logger;
@@ -85,7 +84,8 @@ public class PipeConsensusDeleteNodeReq extends TPipeConsensusTransferReq {
       TPipeConsensusTransferReq transferReq) {
     final PipeConsensusDeleteNodeReq deleteNodeReq = new PipeConsensusDeleteNodeReq();
 
-    deleteNodeReq.deleteDataNode = (DeleteDataNode) PlanNodeType.deserialize(transferReq.body);
+    deleteNodeReq.deleteDataNode =
+        (AbstractDeleteDataNode) PlanNodeType.deserialize(transferReq.body);
 
     deleteNodeReq.version = transferReq.version;
     deleteNodeReq.type = transferReq.type;

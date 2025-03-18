@@ -37,12 +37,12 @@ import org.apache.iotdb.db.schemaengine.schemaregion.attribute.update.GeneralReg
 import org.apache.iotdb.db.tools.schema.SchemaRegionSnapshotParser;
 import org.apache.iotdb.rpc.TSStatusCode;
 
-import org.apache.tsfile.utils.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.nio.file.Path;
+import java.util.List;
 import java.util.Objects;
 
 public class SchemaRegionStateMachine extends BaseStateMachine {
@@ -147,7 +147,7 @@ public class SchemaRegionStateMachine extends BaseStateMachine {
   }
 
   public void listen2Snapshot4PipeListener(final boolean isTmp) {
-    final Pair<Path, Path> snapshotPaths =
+    final List<Path> snapshotPaths =
         SchemaRegionSnapshotParser.getSnapshotPaths(
             Utils.fromConsensusGroupIdToRaftGroupId(schemaRegion.getSchemaRegionId())
                 .getUuid()
@@ -155,7 +155,7 @@ public class SchemaRegionStateMachine extends BaseStateMachine {
             isTmp);
     final SchemaRegionListeningQueue listener =
         PipeDataNodeAgent.runtime().schemaListener(schemaRegion.getSchemaRegionId());
-    if (Objects.isNull(snapshotPaths) || Objects.isNull(snapshotPaths.getLeft())) {
+    if (Objects.isNull(snapshotPaths) || Objects.isNull(snapshotPaths.get(0))) {
       if (listener.isOpened()) {
         logger.warn(
             "Schema Region Listening Queue Listen to snapshot failed, the historical data may not be transferred. snapshotPaths:{}",
@@ -163,11 +163,14 @@ public class SchemaRegionStateMachine extends BaseStateMachine {
       }
       return;
     }
+    final Path tLogPath = snapshotPaths.get(1);
+    final Path attributeSnapshotPath = snapshotPaths.get(2);
     listener.tryListenToSnapshot(
-        snapshotPaths.getLeft().toString(),
+        snapshotPaths.get(0).toString(),
         // Transfer tLogSnapshot iff it exists and is non-empty
-        Objects.nonNull(snapshotPaths.getRight()) && snapshotPaths.getRight().toFile().length() > 0
-            ? snapshotPaths.getRight().toString()
+        Objects.nonNull(tLogPath) && tLogPath.toFile().length() > 0 ? tLogPath.toString() : null,
+        Objects.nonNull(attributeSnapshotPath) && attributeSnapshotPath.toFile().length() > 0
+            ? attributeSnapshotPath.toString()
             : null,
         schemaRegion.getDatabaseFullPath());
   }

@@ -23,7 +23,7 @@ import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.MultiClusterIT2SubscriptionRegressionConsumer;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
-import org.apache.iotdb.session.subscription.consumer.SubscriptionPullConsumer;
+import org.apache.iotdb.session.subscription.consumer.tree.SubscriptionTreePullConsumer;
 import org.apache.iotdb.subscription.it.triple.regression.AbstractSubscriptionRegressionIT;
 
 import org.apache.thrift.TException;
@@ -50,7 +50,6 @@ import static org.apache.iotdb.subscription.it.IoTDBSubscriptionITConstant.AWAIT
  * format: tsfile
  * pattern:device
  * Same group pull consumer share progress
- * About 1/5 chance, over 1000
  */
 @RunWith(IoTDBTestRunner.class)
 @Category({MultiClusterIT2SubscriptionRegressionConsumer.class})
@@ -60,8 +59,8 @@ public class IoTDBConsumer2With1TopicShareProcessTsfileIT extends AbstractSubscr
   private static final String topicName = "topicConsumer2With1TopicShareProcessTsfile";
   private static List<IMeasurementSchema> schemaList = new ArrayList<>();
   private String pattern = device + ".**";
-  private SubscriptionPullConsumer consumer2;
-  private static SubscriptionPullConsumer consumer;
+  private SubscriptionTreePullConsumer consumer2;
+  private static SubscriptionTreePullConsumer consumer;
 
   @Override
   @Before
@@ -136,17 +135,16 @@ public class IoTDBConsumer2With1TopicShareProcessTsfileIT extends AbstractSubscr
     Thread thread =
         new Thread(
             () -> {
-              for (int i = 0; i < 200; i++) {
+              long timestamp = 1706659200000L; // 2024-01-31 08:00:00+08:00
+              for (int i = 0; i < 20; i++) {
                 try {
-                  insert_data(1706659200000L);
-                  Thread.sleep(1000);
+                  insert_data(timestamp);
                 } catch (IoTDBConnectionException e) {
                   throw new RuntimeException(e);
                 } catch (StatementExecutionException e) {
                   throw new RuntimeException(e);
-                } catch (InterruptedException e) {
-                  throw new RuntimeException(e);
                 }
+                timestamp += 20000;
               }
             });
     AtomicInteger rowCount1 = new AtomicInteger(0);
@@ -177,14 +175,14 @@ public class IoTDBConsumer2With1TopicShareProcessTsfileIT extends AbstractSubscr
     thread2.join();
     thread.join();
 
-    System.out.println("src :" + getCount(session_src, "select count(s_0) from " + device));
+    System.out.println("src=" + getCount(session_src, "select count(s_0) from " + device));
     System.out.println("rowCount1=" + rowCount1.get());
     System.out.println("rowCount2=" + rowCount2.get());
     AWAIT.untilAsserted(
         () -> {
           assertGte(
               rowCount1.get() + rowCount2.get(),
-              1000,
+              getCount(session_src, "select count(s_0) from " + device),
               "consumer share process rowCount1="
                   + rowCount1.get()
                   + " rowCount2="

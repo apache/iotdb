@@ -192,7 +192,7 @@ public class CrossSpaceCompactionSelectorTest extends AbstractCompactionTest {
     int oldMaxFileNumForCompaction = SystemInfo.getInstance().getTotalFileLimitForCompaction();
     SystemInfo.getInstance().setTotalFileLimitForCompactionTask(1);
     SystemInfo.getInstance().getCompactionFileNumCost().set(0);
-    SystemInfo.getInstance().getCompactionMemoryCost().set(0);
+    SystemInfo.getInstance().getCompactionMemoryBlock().setUsedMemoryInBytes(0);
     try {
       createFiles(19, 2, 3, 50, 0, 10000, 50, 50, false, true);
       createFiles(1, 2, 3, 3000, 0, 10000, 50, 50, false, false);
@@ -233,7 +233,8 @@ public class CrossSpaceCompactionSelectorTest extends AbstractCompactionTest {
               });
       thread.start();
       thread.join(TimeUnit.SECONDS.toMillis(2));
-      Assert.assertEquals(0, SystemInfo.getInstance().getCompactionMemoryCost().get());
+      Assert.assertEquals(
+          0, SystemInfo.getInstance().getCompactionMemoryBlock().getUsedMemoryInBytes());
       Assert.assertEquals(0, SystemInfo.getInstance().getCompactionFileNumCost().get());
       for (TsFileResource resource : seqResources) {
         Assert.assertEquals(TsFileResourceStatus.NORMAL, resource.getStatus());
@@ -349,56 +350,7 @@ public class CrossSpaceCompactionSelectorTest extends AbstractCompactionTest {
                 cd2.await();
                 CrossCompactionTaskResource crossCompactionTaskResource =
                     selector.selectOneTaskResources(candidate);
-                if (!crossCompactionTaskResource.isValid()) {
-                  throw new RuntimeException("compaction task resource is not valid");
-                }
-                if (crossCompactionTaskResource.getSeqFiles().size() != 1) {
-                  throw new RuntimeException("selected seq file should be 1");
-                }
-                if (crossCompactionTaskResource.getUnseqFiles().size() != 1) {
-                  throw new RuntimeException("selected unseq file num should be 1");
-                }
-
-                CrossSpaceCompactionTask crossSpaceCompactionTask =
-                    new CrossSpaceCompactionTask(
-                        0,
-                        tsFileManager,
-                        crossCompactionTaskResource.getSeqFiles(),
-                        crossCompactionTaskResource.getUnseqFiles(),
-                        IoTDBDescriptor.getInstance()
-                            .getConfig()
-                            .getCrossCompactionPerformer()
-                            .createInstance(),
-                        crossCompactionTaskResource.getTotalMemoryCost(),
-                        tsFileManager.getNextCompactionTaskId());
-                // set file status to COMPACTION_CANDIDATE
-                if (!crossSpaceCompactionTask.setSourceFilesToCompactionCandidate()) {
-                  throw new RuntimeException("set status should be true");
-                }
-                for (int i = 0; i < seqResources.size(); i++) {
-                  TsFileResource resource = seqResources.get(i);
-                  if (i < 1) {
-                    if (resource.getStatus() != TsFileResourceStatus.COMPACTION_CANDIDATE) {
-                      throw new RuntimeException("status should be COMPACTION_CANDIDATE");
-                    }
-                  } else if (i == 1) {
-                    if (resource.getStatus() != TsFileResourceStatus.DELETED) {
-                      throw new RuntimeException("status should be DELETED");
-                    }
-                  } else if (resource.getStatus() != TsFileResourceStatus.NORMAL) {
-                    throw new RuntimeException("status should be NORMAL");
-                  }
-                }
-                for (int i = 0; i < unseqResources.size(); i++) {
-                  TsFileResource resource = unseqResources.get(i);
-                  if (i < 1) {
-                    if (resource.getStatus() != TsFileResourceStatus.COMPACTION_CANDIDATE) {
-                      throw new RuntimeException("status should be COMPACTION_CANDIDATE");
-                    }
-                  } else if (resource.getStatus() != TsFileResourceStatus.NORMAL) {
-                    throw new RuntimeException("status should be NORMAL");
-                  }
-                }
+                Assert.assertFalse(crossCompactionTaskResource.isValid());
               } catch (Exception e) {
                 fail.set(true);
                 e.printStackTrace();
@@ -1181,56 +1133,7 @@ public class CrossSpaceCompactionSelectorTest extends AbstractCompactionTest {
 
                 CrossCompactionTaskResource crossCompactionTaskResource =
                     selector.selectOneTaskResources(candidate);
-                if (!crossCompactionTaskResource.isValid()) {
-                  throw new RuntimeException("compaction task resource is not valid");
-                }
-                if (crossCompactionTaskResource.getSeqFiles().size() != 1) {
-                  throw new RuntimeException("selected seq file num is not 1");
-                }
-                if (crossCompactionTaskResource.getUnseqFiles().size() != 1) {
-                  throw new RuntimeException("selected unseq file num is not 1");
-                }
-
-                CrossSpaceCompactionTask crossSpaceCompactionTask =
-                    new CrossSpaceCompactionTask(
-                        0,
-                        tsFileManager,
-                        crossCompactionTaskResource.getSeqFiles(),
-                        crossCompactionTaskResource.getUnseqFiles(),
-                        IoTDBDescriptor.getInstance()
-                            .getConfig()
-                            .getCrossCompactionPerformer()
-                            .createInstance(),
-                        crossCompactionTaskResource.getTotalMemoryCost(),
-                        tsFileManager.getNextCompactionTaskId());
-                // set file status to COMPACTION_CANDIDATE
-                if (!crossSpaceCompactionTask.setSourceFilesToCompactionCandidate()) {
-                  throw new RuntimeException("set status should be true");
-                }
-                for (int i = 0; i < unseqResources.size(); i++) {
-                  TsFileResource resource = unseqResources.get(i);
-                  if (i < 1) {
-                    if (resource.getStatus() != TsFileResourceStatus.COMPACTION_CANDIDATE) {
-                      throw new RuntimeException("status should be COMPACTION_CANDIDATE");
-                    }
-                  } else if (i == 1) {
-                    if (resource.getStatus() != TsFileResourceStatus.DELETED) {
-                      throw new RuntimeException("status should be DELETED");
-                    }
-                  } else if (resource.getStatus() != TsFileResourceStatus.NORMAL) {
-                    throw new RuntimeException("status should be NORMAL");
-                  }
-                }
-                for (int i = 0; i < seqResources.size(); i++) {
-                  TsFileResource resource = seqResources.get(i);
-                  if (i < 1) {
-                    if (resource.getStatus() != TsFileResourceStatus.COMPACTION_CANDIDATE) {
-                      throw new RuntimeException("status should be COMPACTION_CANDIDATE");
-                    }
-                  } else if (resource.getStatus() != TsFileResourceStatus.NORMAL) {
-                    throw new RuntimeException("status should be NORMAL");
-                  }
-                }
+                Assert.assertFalse(crossCompactionTaskResource.isValid());
               } catch (Exception e) {
                 fail.set(true);
                 e.printStackTrace();

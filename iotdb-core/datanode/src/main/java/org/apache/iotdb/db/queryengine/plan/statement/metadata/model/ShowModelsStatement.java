@@ -68,7 +68,7 @@ public class ShowModelsStatement extends Statement implements IConfigStatement {
       return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     }
     return AuthorityChecker.getTSStatus(
-        AuthorityChecker.checkSystemPermission(userName, PrivilegeType.USE_MODEL.ordinal()),
+        AuthorityChecker.checkSystemPermission(userName, PrivilegeType.USE_MODEL),
         PrivilegeType.USE_MODEL);
   }
 

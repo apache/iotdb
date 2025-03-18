@@ -37,7 +37,7 @@ public class RecordIterator implements Iterator<Record> {
   private final List<Column> childrenColumns;
   private final List<org.apache.tsfile.read.common.type.Type> dataTypes;
   private final int positionCount;
-  private int currentIndex;
+  protected int currentIndex;
 
   public RecordIterator(
       List<Column> childrenColumns,
@@ -52,6 +52,10 @@ public class RecordIterator implements Iterator<Record> {
     }
   }
 
+  protected int getCurrentIndex() {
+    return currentIndex++;
+  }
+
   @Override
   public boolean hasNext() {
     return currentIndex < positionCount;
@@ -59,65 +63,85 @@ public class RecordIterator implements Iterator<Record> {
 
   @Override
   public Record next() {
-    final int index = currentIndex++;
-    return new Record() {
-      @Override
-      public int getInt(int columnIndex) {
-        return childrenColumns.get(columnIndex).getInt(index);
-      }
+    return new RecordImpl(childrenColumns, dataTypes, getCurrentIndex());
+  }
 
-      @Override
-      public long getLong(int columnIndex) {
-        return childrenColumns.get(columnIndex).getLong(index);
-      }
+  private static class RecordImpl implements Record {
 
-      @Override
-      public float getFloat(int columnIndex) {
-        return childrenColumns.get(columnIndex).getFloat(index);
-      }
+    private final List<Column> childrenColumns;
+    private final List<org.apache.tsfile.read.common.type.Type> dataTypes;
+    private int index;
 
-      @Override
-      public double getDouble(int columnIndex) {
-        return childrenColumns.get(columnIndex).getDouble(index);
-      }
+    private RecordImpl(
+        List<Column> childrenColumns,
+        List<org.apache.tsfile.read.common.type.Type> dataTypes,
+        int index) {
+      this.childrenColumns = childrenColumns;
+      this.dataTypes = dataTypes;
+      this.index = index;
+    }
 
-      @Override
-      public boolean getBoolean(int columnIndex) {
-        return childrenColumns.get(columnIndex).getBoolean(index);
-      }
+    @Override
+    public int getInt(int columnIndex) {
+      return childrenColumns.get(columnIndex).getInt(index);
+    }
 
-      @Override
-      public Binary getBinary(int columnIndex) {
-        return childrenColumns.get(columnIndex).getBinary(index);
-      }
+    @Override
+    public long getLong(int columnIndex) {
+      return childrenColumns.get(columnIndex).getLong(index);
+    }
 
-      @Override
-      public String getString(int columnIndex) {
-        return childrenColumns
-            .get(columnIndex)
-            .getBinary(index)
-            .getStringValue(TSFileConfig.STRING_CHARSET);
-      }
+    @Override
+    public float getFloat(int columnIndex) {
+      return childrenColumns.get(columnIndex).getFloat(index);
+    }
 
-      @Override
-      public LocalDate getLocalDate(int columnIndex) {
-        return DateUtils.parseIntToLocalDate(childrenColumns.get(columnIndex).getInt(index));
-      }
+    @Override
+    public double getDouble(int columnIndex) {
+      return childrenColumns.get(columnIndex).getDouble(index);
+    }
 
-      @Override
-      public Type getDataType(int columnIndex) {
-        return UDFDataTypeTransformer.transformReadTypeToUDFDataType(dataTypes.get(columnIndex));
-      }
+    @Override
+    public boolean getBoolean(int columnIndex) {
+      return childrenColumns.get(columnIndex).getBoolean(index);
+    }
 
-      @Override
-      public boolean isNull(int columnIndex) {
-        return childrenColumns.get(columnIndex).isNull(index);
-      }
+    @Override
+    public Binary getBinary(int columnIndex) {
+      return childrenColumns.get(columnIndex).getBinary(index);
+    }
 
-      @Override
-      public int size() {
-        return childrenColumns.size();
-      }
-    };
+    @Override
+    public String getString(int columnIndex) {
+      return childrenColumns
+          .get(columnIndex)
+          .getBinary(index)
+          .getStringValue(TSFileConfig.STRING_CHARSET);
+    }
+
+    @Override
+    public LocalDate getLocalDate(int columnIndex) {
+      return DateUtils.parseIntToLocalDate(childrenColumns.get(columnIndex).getInt(index));
+    }
+
+    @Override
+    public Object getObject(int columnIndex) {
+      return childrenColumns.get(columnIndex).getObject(index);
+    }
+
+    @Override
+    public Type getDataType(int columnIndex) {
+      return UDFDataTypeTransformer.transformReadTypeToUDFDataType(dataTypes.get(columnIndex));
+    }
+
+    @Override
+    public boolean isNull(int columnIndex) {
+      return childrenColumns.get(columnIndex).isNull(index);
+    }
+
+    @Override
+    public int size() {
+      return childrenColumns.size();
+    }
   }
 }

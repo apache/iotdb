@@ -119,6 +119,7 @@ enum TRegionMaintainTaskStatus {
 struct TFlushReq {
    1: optional string isSeq
    2: optional list<string> storageGroups
+   3: optional list<string> regionIds
 }
 
 struct TSettleReq {
@@ -281,7 +282,8 @@ enum TAggregationType {
   FIRST_BY,
   LAST_BY,
   MIN,
-  MAX
+  MAX,
+  COUNT_ALL
 }
 
 struct TShowConfigurationTemplateResp {

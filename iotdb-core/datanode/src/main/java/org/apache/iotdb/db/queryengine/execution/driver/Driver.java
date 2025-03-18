@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.execution.driver;
 
+import org.apache.iotdb.commons.exception.IoTDBRuntimeException;
 import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.queryengine.execution.exchange.sink.ISink;
@@ -244,13 +245,17 @@ public abstract class Driver implements IDriver {
       }
       return NOT_BLOCKED;
     } catch (Throwable t) {
+      Throwable actualCause = t;
+      if (actualCause.getCause() instanceof IoTDBRuntimeException) {
+        actualCause = actualCause.getCause();
+      }
       List<StackTraceElement> interrupterStack = exclusiveLock.getInterrupterStack();
       if (interrupterStack == null) {
-        driverContext.failed(t);
-        if (t instanceof RuntimeException) {
-          throw (RuntimeException) t;
+        driverContext.failed(actualCause);
+        if (actualCause instanceof RuntimeException) {
+          throw (RuntimeException) actualCause;
         } else {
-          throw new RuntimeException(t);
+          throw new RuntimeException(actualCause);
         }
       }
 
@@ -260,7 +265,7 @@ public abstract class Driver implements IDriver {
       Exception exception = new Exception("Interrupted By");
       exception.setStackTrace(interrupterStack.toArray(new StackTraceElement[0]));
       RuntimeException newException = new RuntimeException("Driver was interrupted", exception);
-      newException.addSuppressed(t);
+      newException.addSuppressed(actualCause);
       driverContext.failed(newException);
       throw newException;
     } finally {

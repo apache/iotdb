@@ -37,7 +37,7 @@ public class StopPipe extends PipeStatement {
   }
 
   @Override
-  public <R, C> R accept(AstVisitor<R, C> visitor, C context) {
+  public <R, C> R accept(final AstVisitor<R, C> visitor, final C context) {
     return visitor.visitStopPipe(this, context);
   }
 
@@ -47,15 +47,15 @@ public class StopPipe extends PipeStatement {
   }
 
   @Override
-  public boolean equals(Object obj) {
+  public boolean equals(final Object obj) {
     if (this == obj) {
       return true;
     }
     if (obj == null || getClass() != obj.getClass()) {
       return false;
     }
-    StopPipe other = (StopPipe) obj;
-    return Objects.equals(pipeName, other.pipeName);
+    final StopPipe that = (StopPipe) obj;
+    return Objects.equals(this.pipeName, that.pipeName);
   }
 
   @Override

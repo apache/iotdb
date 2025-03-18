@@ -222,7 +222,7 @@ public class SnapshotTaker {
 
           // rewrite the resource in snapshot to update the mod file path
           ModificationFile sharedModFileTemp = resource.getSharedModFile();
-          resource.setSharedModFile(new ModificationFile(snapshotSharedModFile), false);
+          resource.setSharedModFile(new ModificationFile(snapshotSharedModFile, false), false);
           resource.serialize(snapshotResourceFile.getAbsolutePath());
           resource.setSharedModFile(sharedModFileTemp, false);
         } else {

@@ -28,19 +28,25 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.InsertRows;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Statement;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementType;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementVisitor;
+import org.apache.iotdb.db.schemaengine.schemaregion.attribute.update.UpdateDetailContainer;
 
 import org.apache.tsfile.annotations.TableModel;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.exception.NotImplementedException;
+import org.apache.tsfile.utils.RamUsageEstimator;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
 public class InsertRowsStatement extends InsertBaseStatement {
+
+  private static final long INSTANCE_SIZE =
+      RamUsageEstimator.shallowSizeOfInstance(InsertRowsStatement.class);
 
   /** the InsertRowsStatement list */
   private List<InsertRowStatement> insertRowStatementList;
@@ -187,6 +193,17 @@ public class InsertRowsStatement extends InsertBaseStatement {
   }
 
   @Override
+  protected long calculateBytesUsed() {
+    return INSTANCE_SIZE
+        + (Objects.nonNull(insertRowStatementList)
+            ? UpdateDetailContainer.LIST_SIZE
+                + insertRowStatementList.stream()
+                    .mapToLong(InsertRowStatement::calculateBytesUsed)
+                    .reduce(0L, Long::sum)
+            : 0);
+  }
+
+  @Override
   @TableModel
   public Optional<String> getDatabaseName() {
     Optional<String> database = Optional.empty();
@@ -208,5 +225,15 @@ public class InsertRowsStatement extends InsertBaseStatement {
   @Override
   public Statement toRelationalStatement(MPPQueryContext context) {
     return new InsertRows(this, context);
+  }
+
+  @Override
+  public void removeAttributeColumns() {
+    subRemoveAttributeColumns(Collections.emptyList());
+  }
+
+  @Override
+  protected void subRemoveAttributeColumns(List<Integer> columnsToKeep) {
+    insertRowStatementList.forEach(InsertBaseStatement::removeAttributeColumns);
   }
 }

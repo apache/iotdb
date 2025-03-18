@@ -119,6 +119,9 @@ public class PipeExtractorConstant {
   public static final String EXTRACTOR_MODE_SNAPSHOT_KEY = "extractor.mode.snapshot";
   public static final String SOURCE_MODE_SNAPSHOT_KEY = "source.mode.snapshot";
   public static final boolean EXTRACTOR_MODE_SNAPSHOT_DEFAULT_VALUE = false;
+  public static final String EXTRACTOR_MODE_DOUBLE_LIVING_KEY = "extractor.mode.double-living";
+  public static final String SOURCE_MODE_DOUBLE_LIVING_KEY = "source.mode.double-living";
+  public static final boolean EXTRACTOR_MODE_DOUBLE_LIVING_DEFAULT_VALUE = false;
 
   public static final String EXTRACTOR_START_TIME_KEY = "extractor.start-time";
   public static final String SOURCE_START_TIME_KEY = "source.start-time";
@@ -131,6 +134,18 @@ public class PipeExtractorConstant {
   public static final long EXTRACTOR_WATERMARK_INTERVAL_DEFAULT_VALUE = -1; // -1 means no watermark
   public static final String EXTRACTOR_WATERMARK_INTERVAL_KEY = "extractor.watermark.interval-ms";
   public static final String SOURCE_WATERMARK_INTERVAL_KEY = "source.watermark.interval-ms";
+
+  public static final String EXTRACTOR_IOTDB_USER_KEY = "extractor.user";
+  public static final String SOURCE_IOTDB_USER_KEY = "source.user";
+  public static final String EXTRACTOR_IOTDB_USERNAME_KEY = "extractor.username";
+  public static final String SOURCE_IOTDB_USERNAME_KEY = "source.username";
+
+  public static final String EXTRACTOR_IOTDB_PASSWORD_KEY = "extractor.password";
+  public static final String SOURCE_IOTDB_PASSWORD_KEY = "source.password";
+
+  public static final String EXTRACTOR_SKIP_IF_KEY = "extractor.skipif";
+  public static final String SOURCE_SKIP_IF_KEY = "source.skipif";
+  public static final String EXTRACTOR_IOTDB_SKIP_IF_NO_PRIVILEGES = "no-privileges";
 
   ///////////////////// pipe consensus /////////////////////
 

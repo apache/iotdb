@@ -51,6 +51,8 @@ public abstract class PlanNode implements IConsensusRequest {
 
   protected boolean isGeneratedByPipe = false;
 
+  protected PlanNode() {}
+
   protected PlanNode(PlanNodeId id) {
     requireNonNull(id, "id is null");
     this.id = id;

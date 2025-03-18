@@ -33,6 +33,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.LogicalQueryPlan;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.WritePlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.read.CountSchemaMergeNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.pipe.PipeEnrichedWritePlanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Analysis;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Field;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.RelationType;
@@ -83,7 +84,7 @@ import java.util.Optional;
 import static java.util.Objects.requireNonNull;
 import static org.apache.iotdb.db.queryengine.metric.QueryPlanCostMetricSet.LOGICAL_PLANNER;
 import static org.apache.iotdb.db.queryengine.metric.QueryPlanCostMetricSet.LOGICAL_PLAN_OPTIMIZE;
-import static org.apache.iotdb.db.queryengine.metric.QueryPlanCostMetricSet.TABLE_TYPE;
+import static org.apache.iotdb.db.queryengine.plan.relational.planner.node.OutputNode.COLUMN_NAME_PREFIX;
 import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CountDevice.COUNT_DEVICE_HEADER_STRING;
 import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowDevice.getDeviceColumnHeaderList;
 import static org.apache.iotdb.db.queryengine.plan.relational.type.InternalTypeManager.getTSDataType;
@@ -136,7 +137,7 @@ public class TableLogicalPlanner {
     if (analysis.isQuery()) {
       long logicalPlanCostTime = System.nanoTime() - startTime;
       QueryPlanCostMetricSet.getInstance()
-          .recordPlanCost(TABLE_TYPE, LOGICAL_PLANNER, logicalPlanCostTime);
+          .recordTablePlanCost(LOGICAL_PLANNER, logicalPlanCostTime);
       queryContext.setLogicalPlanCost(logicalPlanCostTime);
 
       startTime = System.nanoTime();
@@ -161,13 +162,26 @@ public class TableLogicalPlanner {
               - queryContext.getFetchSchemaCost();
       queryContext.setLogicalOptimizationCost(logicalOptimizationCost);
       QueryPlanCostMetricSet.getInstance()
-          .recordPlanCost(TABLE_TYPE, LOGICAL_PLAN_OPTIMIZE, logicalOptimizationCost);
+          .recordTablePlanCost(LOGICAL_PLAN_OPTIMIZE, logicalOptimizationCost);
     }
 
     return new LogicalQueryPlan(queryContext, planNode);
   }
 
-  private PlanNode planStatement(final Analysis analysis, final Statement statement) {
+  private PlanNode planStatement(final Analysis analysis, Statement statement) {
+    // Schema statements are handled here
+    if (statement instanceof PipeEnriched) {
+      Statement innerStatement = ((PipeEnriched) statement).getInnerStatement();
+      if (innerStatement instanceof CreateOrUpdateDevice) {
+        return new PipeEnrichedWritePlanNode(
+            (WritePlanNode)
+                planCreateOrUpdateDevice((CreateOrUpdateDevice) innerStatement, analysis));
+      }
+      if (innerStatement instanceof Update) {
+        return new PipeEnrichedWritePlanNode(
+            (WritePlanNode) planUpdate((Update) innerStatement, analysis));
+      }
+    }
     if (statement instanceof CreateOrUpdateDevice) {
       return planCreateOrUpdateDevice((CreateOrUpdateDevice) statement, analysis);
     }
@@ -229,7 +243,17 @@ public class TableLogicalPlanner {
     } else {
       RelationType outputDescriptor = analysis.getOutputDescriptor();
       for (Field field : outputDescriptor.getVisibleFields()) {
-        String name = field.getName().orElse("_col" + columnNumber);
+        String name = field.getName().orElse(null);
+
+        if (name == null) {
+          String originColumnName = field.getOriginColumnName().orElse(null);
+          StringBuilder stringBuilder = new StringBuilder(COLUMN_NAME_PREFIX).append(columnNumber);
+          // process of expr with Column, we record originColumnName in Field when analyze
+          if (originColumnName != null) {
+            stringBuilder.append('_').append(originColumnName);
+          }
+          name = stringBuilder.toString();
+        }
 
         names.add(name);
         int fieldIndex = outputDescriptor.indexOf(field);
@@ -308,7 +332,7 @@ public class TableLogicalPlanner {
 
   private PlanNode planFetchDevice(final FetchDevice statement, final Analysis analysis) {
     final List<ColumnHeader> columnHeaderList =
-        getDeviceColumnHeaderList(statement.getDatabase(), statement.getTableName());
+        getDeviceColumnHeaderList(statement.getDatabase(), statement.getTableName(), null);
 
     analysis.setRespDatasetHeader(new DatasetHeader(columnHeaderList, true));
 

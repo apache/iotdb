@@ -23,6 +23,7 @@ import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.TableClusterIT;
 import org.apache.iotdb.itbase.category.TableLocalStandaloneIT;
+import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
@@ -36,7 +37,7 @@ import java.util.Arrays;
 
 import static org.apache.iotdb.db.it.utils.TestUtils.tableAssertTestFail;
 import static org.apache.iotdb.db.it.utils.TestUtils.tableResultSetEqualTest;
-import static org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.JoinUtils.FULL_JOIN_ONLY_SUPPORT_EQUI_JOIN;
+import static org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.JoinUtils.ONLY_SUPPORT_EQUI_JOIN;
 import static org.junit.Assert.fail;
 
 /** In this IT, table has more than one TAGs and Attributes. */
@@ -2096,29 +2097,26 @@ public class IoTDBMultiTAGsWithAttributesTableIT {
 
   @Test
   public void exceptionTest() {
+    String errMsg = TSStatusCode.SEMANTIC_ERROR.getStatusCode() + ": " + ONLY_SUPPORT_EQUI_JOIN;
     tableAssertTestFail(
-        "select * from table0 t0 full join table1 t1 on t0.num>t1.num",
-        FULL_JOIN_ONLY_SUPPORT_EQUI_JOIN,
-        DATABASE_NAME);
+        "select * from table0 t0 full join table1 t1 on t0.num>t1.num", errMsg, DATABASE_NAME);
 
     tableAssertTestFail(
-        "select * from table0 t0 full join table1 t1 on t0.num!=t1.num",
-        FULL_JOIN_ONLY_SUPPORT_EQUI_JOIN,
-        DATABASE_NAME);
+        "select * from table0 t0 full join table1 t1 on t0.num!=t1.num", errMsg, DATABASE_NAME);
 
     tableAssertTestFail(
         "select * from table0 t0 full join table1 t1 on t0.device=t1.device AND t0.num>t1.num",
-        FULL_JOIN_ONLY_SUPPORT_EQUI_JOIN,
+        errMsg,
         DATABASE_NAME);
 
     tableAssertTestFail(
         "select * from table0 t0 full join table1 t1 on t0.device=t1.device OR t0.num>t1.num",
-        FULL_JOIN_ONLY_SUPPORT_EQUI_JOIN,
+        errMsg,
         DATABASE_NAME);
 
     tableAssertTestFail(
         "select * from table0 t0 full join table1 t1 on t0.device=t1.device OR t0.time=t1.time",
-        FULL_JOIN_ONLY_SUPPORT_EQUI_JOIN,
+        errMsg,
         DATABASE_NAME);
   }
 

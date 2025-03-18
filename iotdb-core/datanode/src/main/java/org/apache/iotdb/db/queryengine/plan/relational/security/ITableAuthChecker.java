@@ -44,6 +44,9 @@ public interface ITableAuthChecker {
    */
   void checkDatabasePrivilege(String userName, String databaseName, TableModelPrivilege privilege);
 
+  void checkDatabasePrivilegeGrantOption(
+      String userName, String databaseName, TableModelPrivilege privilege);
+
   /**
    * Check if user has specified privilege on the specified table or bigger scope (like database or
    * ANY).
@@ -55,6 +58,12 @@ public interface ITableAuthChecker {
    */
   void checkTablePrivilege(
       String userName, QualifiedObjectName tableName, TableModelPrivilege privilege);
+
+  void checkTablePrivilegeGrantOption(
+      String userName, QualifiedObjectName tableName, TableModelPrivilege privilege);
+
+  // This does not throw exception for performance issue.
+  boolean checkTablePrivilege4Pipe(final String userName, final QualifiedObjectName tableName);
 
   /**
    * Check if user has any privilege on the specified table or bigger scope (like database or ANY).
@@ -73,4 +82,15 @@ public interface ITableAuthChecker {
    * @throws AccessDeniedException if not allowed
    */
   void checkGlobalPrivilege(String userName, TableModelPrivilege privilege);
+
+  /**
+   * Check if user has the specified global privilege
+   *
+   * @param userName name of user
+   * @param privilege specified global privilege to be checked
+   * @throws AccessDeniedException if not allowed
+   */
+  void checkGlobalPrivilegeGrantOption(String userName, TableModelPrivilege privilege);
+
+  void checkAnyScopePrivilegeGrantOption(String userName, TableModelPrivilege privilege);
 }

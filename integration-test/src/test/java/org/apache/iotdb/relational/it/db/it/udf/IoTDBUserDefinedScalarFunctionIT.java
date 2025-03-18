@@ -62,7 +62,7 @@ public class IoTDBUserDefinedScalarFunctionIT {
         "insert into t2(time, device_id, s1) values (1, 'd0', '2024-02-28')",
         "insert into t2(time, device_id, s1) values (2, 'd0', '2024-02-29')",
         "insert into t2(time, device_id, s1) values (3, 'd0', '2024-03-01')",
-        "CREATE FUNCTION date_plus as 'org.apache.iotdb.db.query.udf.example.relational.DatePlusOne'"
+        "CREATE FUNCTION date_plus as 'org.apache.iotdb.db.query.udf.example.relational.DatePlus'"
       };
 
   @BeforeClass

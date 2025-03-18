@@ -142,7 +142,7 @@ public class PipeTsFileResourceManagerTest {
           new TreeDeletionEntry(new MeasurementPath("root.lemming.**"), 1, Long.MAX_VALUE)
         };
 
-    try (ModificationFile mFile = new ModificationFile(modsFilePath)) {
+    try (ModificationFile mFile = new ModificationFile(new File(modsFilePath), false)) {
       for (ModEntry mod : modifications) {
         mFile.write(mod);
       }

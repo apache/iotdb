@@ -38,6 +38,8 @@ import static org.apache.tsfile.read.common.type.LongType.INT64;
 public enum TableBuiltinAggregationFunction {
   SUM("sum"),
   COUNT("count"),
+  COUNT_ALL("count_all"),
+  COUNT_IF("count_if"),
   AVG("avg"),
   EXTREME("extreme"),
   MAX("max"),
@@ -81,6 +83,8 @@ public enum TableBuiltinAggregationFunction {
     final String functionName = name.toLowerCase();
     switch (functionName) {
       case "count":
+      case "count_all":
+      case "count_if":
         return INT64;
       case "sum":
         return DOUBLE;

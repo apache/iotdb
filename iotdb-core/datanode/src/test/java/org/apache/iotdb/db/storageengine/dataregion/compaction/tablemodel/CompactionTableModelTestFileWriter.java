@@ -54,11 +54,25 @@ public class CompactionTableModelTestFileWriter extends CompactionTestFileWriter
     for (String idColumnName : idColumnNames) {
       measurementSchemas.add(
           new MeasurementSchema(
-              idColumnName, TSDataType.TEXT, TSEncoding.PLAIN, CompressionType.UNCOMPRESSED));
+              idColumnName, TSDataType.STRING, TSEncoding.PLAIN, CompressionType.UNCOMPRESSED));
       columnTypes.add(ColumnCategory.TAG);
     }
     tableSchema.merge(new TableSchema(tableName, measurementSchemas, columnTypes));
     schema.registerTableSchema(tableSchema);
+  }
+
+  public void registerTableSchemaWithTagField(String tableName, List<String> columnNames) {
+    List<IMeasurementSchema> measurementSchemas = new ArrayList<>();
+    List<ColumnCategory> columnTypes = new ArrayList<>();
+    int cnt = 0;
+    for (String columnName : columnNames) {
+      measurementSchemas.add(
+          new MeasurementSchema(
+              columnName, TSDataType.STRING, TSEncoding.PLAIN, CompressionType.UNCOMPRESSED));
+      columnTypes.add(cnt % 2 == 0 ? ColumnCategory.FIELD : ColumnCategory.TAG);
+      cnt++;
+    }
+    schema.registerTableSchema(new TableSchema(tableName, measurementSchemas, columnTypes));
   }
 
   public IDeviceID startChunkGroup(String tableName, List<String> idColumnFields)

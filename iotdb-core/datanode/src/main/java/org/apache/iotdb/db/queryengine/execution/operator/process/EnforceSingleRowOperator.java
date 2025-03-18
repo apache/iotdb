@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.execution.operator.process;
 
+import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.queryengine.execution.MemoryEstimationHelper;
 import org.apache.iotdb.db.queryengine.execution.operator.Operator;
 import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
@@ -54,12 +55,12 @@ public class EnforceSingleRowOperator implements ProcessOperator {
 
   @Override
   public TsBlock next() throws Exception {
-    TsBlock tsBlock = child.next();
+    TsBlock tsBlock = child.nextWithTimer();
     if (tsBlock == null || tsBlock.isEmpty()) {
       return tsBlock;
     }
     if (tsBlock.getPositionCount() > 1 || finished) {
-      throw new IllegalStateException(MULTIPLE_ROWS_ERROR_MESSAGE);
+      throw new SemanticException(MULTIPLE_ROWS_ERROR_MESSAGE);
     }
     finished = true;
     return tsBlock;
@@ -83,7 +84,7 @@ public class EnforceSingleRowOperator implements ProcessOperator {
     if (childFinished && !finished) {
       // finished == false means the child has no result returned up to now, but we need at least
       // one result.
-      throw new IllegalStateException(NO_RESULT_ERROR_MESSAGE);
+      throw new SemanticException(NO_RESULT_ERROR_MESSAGE);
     }
     // Even if finished == true, we can not return true here, we need to call child.next() to check
     // if child has more data.

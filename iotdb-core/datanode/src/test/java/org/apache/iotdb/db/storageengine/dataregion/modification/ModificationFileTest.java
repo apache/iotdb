@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.modification;
 
+import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.recover.CompactionRecoverManager;
 import org.apache.iotdb.db.storageengine.dataregion.modification.IDPredicate.FullExactMatch;
@@ -37,6 +38,11 @@ import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
@@ -64,7 +70,7 @@ public class ModificationFileTest {
               new TimeRange(5, 6)),
           new TableDeletionEntry(new DeletionPredicate("table4"), new TimeRange(7, 8)),
         };
-    try (ModificationFile mFile = new ModificationFile(tempFileName)) {
+    try (ModificationFile mFile = new ModificationFile(tempFileName, false)) {
       for (int i = 0; i < 4; i++) {
         mFile.write(modifications[i]);
       }
@@ -105,7 +111,7 @@ public class ModificationFileTest {
               new TimeRange(5, 6)),
           new TableDeletionEntry(new DeletionPredicate("table4"), new TimeRange(7, 8)),
         };
-    try (ModificationFile mFile = new ModificationFile(tempFileName)) {
+    try (ModificationFile mFile = new ModificationFile(tempFileName, false)) {
       mFile.write(Arrays.asList(modifications));
       List<ModEntry> modificationList = mFile.getAllMods();
       assertEquals(modifications.length, modificationList.size());
@@ -124,7 +130,7 @@ public class ModificationFileTest {
   public void testCompact01() {
     String tempFileName = TestConstant.BASE_OUTPUT_PATH.concat("compact01.mods");
     long time = 1000;
-    try (ModificationFile modificationFile = new ModificationFile(tempFileName)) {
+    try (ModificationFile modificationFile = new ModificationFile(tempFileName, false)) {
       while (modificationFile.getFileLength() < 1024 * 1024) {
         modificationFile.write(
             new TreeDeletionEntry(
@@ -151,7 +157,7 @@ public class ModificationFileTest {
   public void testCompact02() {
     String tempFileName = TestConstant.BASE_OUTPUT_PATH.concat("compact02.mods");
     long time = 1000;
-    try (ModificationFile modificationFile = new ModificationFile(tempFileName)) {
+    try (ModificationFile modificationFile = new ModificationFile(tempFileName, false)) {
       while (modificationFile.getFileLength() < 1024 * 100) {
         modificationFile.write(
             new TreeDeletionEntry(
@@ -173,7 +179,7 @@ public class ModificationFileTest {
   @Test
   public void testCompact03() {
     String tempFileName = TestConstant.BASE_OUTPUT_PATH.concat("compact03.mods");
-    try (ModificationFile modificationFile = new ModificationFile(tempFileName)) {
+    try (ModificationFile modificationFile = new ModificationFile(tempFileName, false)) {
       while (modificationFile.getFileLength() < 1024 * 1024) {
         modificationFile.write(
             new TreeDeletionEntry(
@@ -198,7 +204,7 @@ public class ModificationFileTest {
   @Test
   public void testCompact04() {
     String tempFileName = TestConstant.BASE_OUTPUT_PATH.concat("compact04.mods");
-    try (ModificationFile modificationFile = new ModificationFile(tempFileName)) {
+    try (ModificationFile modificationFile = new ModificationFile(tempFileName, false)) {
       long time = 0;
       while (modificationFile.getFileLength() < 1024 * 1024) {
         for (int i = 0; i < 5; i++) {
@@ -228,7 +234,7 @@ public class ModificationFileTest {
   public void testCompact05() {
     String tempFileName = TestConstant.BASE_OUTPUT_PATH.concat("compact01.mods");
     long time = 1000;
-    try (ModificationFile modificationFile = new ModificationFile(tempFileName)) {
+    try (ModificationFile modificationFile = new ModificationFile(tempFileName, false)) {
       while (modificationFile.getFileLength() < 1024 * 1024) {
         modificationFile.write(
             new TableDeletionEntry(
@@ -253,7 +259,7 @@ public class ModificationFileTest {
   public void testCompact06() {
     String tempFileName = TestConstant.BASE_OUTPUT_PATH.concat("compact02.mods");
     long time = 1000;
-    try (ModificationFile modificationFile = new ModificationFile(tempFileName)) {
+    try (ModificationFile modificationFile = new ModificationFile(tempFileName, false)) {
       while (modificationFile.getFileLength() < 1024 * 100) {
         modificationFile.write(
             new TableDeletionEntry(
@@ -274,7 +280,7 @@ public class ModificationFileTest {
   @Test
   public void testCompact07() {
     String tempFileName = TestConstant.BASE_OUTPUT_PATH.concat("compact03.mods");
-    try (ModificationFile modificationFile = new ModificationFile(tempFileName)) {
+    try (ModificationFile modificationFile = new ModificationFile(tempFileName, false)) {
       while (modificationFile.getFileLength() < 1024 * 1024) {
         modificationFile.write(
             new TableDeletionEntry(
@@ -298,7 +304,7 @@ public class ModificationFileTest {
   @Test
   public void testCompact08() {
     String tempFileName = TestConstant.BASE_OUTPUT_PATH.concat("compact04.mods");
-    try (ModificationFile modificationFile = new ModificationFile(tempFileName)) {
+    try (ModificationFile modificationFile = new ModificationFile(tempFileName, false)) {
       long time = 0;
       while (modificationFile.getFileLength() < 1024 * 1024) {
         for (int i = 0; i < 5; i++) {
@@ -337,8 +343,8 @@ public class ModificationFileTest {
     String modsFileName = TestConstant.BASE_OUTPUT_PATH.concat("compact01.mods");
     String modsSettleFileName = TestConstant.BASE_OUTPUT_PATH.concat("compact01.mods.settle");
 
-    try (ModificationFile modsFile = new ModificationFile(modsFileName);
-        ModificationFile modsSettleFile = new ModificationFile(modsSettleFileName)) {
+    try (ModificationFile modsFile = new ModificationFile(modsFileName, false);
+        ModificationFile modsSettleFile = new ModificationFile(modsSettleFileName, false)) {
 
       modsFile.write(
           new TreeDeletionEntry(
@@ -369,7 +375,7 @@ public class ModificationFileTest {
   public void testRecover02() throws IOException {
     String modsSettleFileName = TestConstant.BASE_OUTPUT_PATH.concat("compact02.mods.settle");
     String originModsFileName = TestConstant.BASE_OUTPUT_PATH.concat("compact02.mods");
-    try (ModificationFile modsSettleFile = new ModificationFile(modsSettleFileName)) {
+    try (ModificationFile modsSettleFile = new ModificationFile(modsSettleFileName, false)) {
       modsSettleFile.write(
           new TreeDeletionEntry(
               new MeasurementPath(new String[] {"root", "sg", "d1"}),
@@ -393,8 +399,8 @@ public class ModificationFileTest {
     String modsSettleFileName = TestConstant.BASE_OUTPUT_PATH.concat("compact01.mods.settle");
 
     long time = 0;
-    try (ModificationFile modsFile = new ModificationFile(modsFileName);
-        ModificationFile modsSettleFile = new ModificationFile(modsSettleFileName)) {
+    try (ModificationFile modsFile = new ModificationFile(modsFileName, false);
+        ModificationFile modsSettleFile = new ModificationFile(modsSettleFileName, false)) {
 
       ModEntry[] modEntries = {
         new TableDeletionEntry(
@@ -432,7 +438,7 @@ public class ModificationFileTest {
     String originModsFileName = TestConstant.BASE_OUTPUT_PATH.concat("compact02.mods");
 
     long time = 0;
-    try (ModificationFile modsSettleFile = new ModificationFile(modsSettleFileName)) {
+    try (ModificationFile modsSettleFile = new ModificationFile(modsSettleFileName, false)) {
       ModEntry[] modEntries = {
         new TableDeletionEntry(
             new DeletionPredicate("table1", new NOP()),
@@ -459,5 +465,57 @@ public class ModificationFileTest {
     } finally {
       Files.delete(new File(originModsFileName).toPath());
     }
+  }
+
+  @Test
+  public void testConcurrentClose() throws ExecutionException, InterruptedException, IOException {
+    String modsFileName = TestConstant.BASE_OUTPUT_PATH.concat("concurrentClose.mods");
+    try (ModificationFile modsFile = new ModificationFile(modsFileName, false)) {
+      ExecutorService threadPool = Executors.newCachedThreadPool();
+      AtomicInteger writeCounter = new AtomicInteger();
+      int maxWrite = 10000;
+      int closeInterval = 100;
+      int closeFutureNum = 5;
+      Future<Void> writeFuture = threadPool.submit(() -> write(modsFile, maxWrite, writeCounter));
+      List<Future<Void>> closeFutures = new ArrayList<>();
+      for (int i = 0; i < closeFutureNum; i++) {
+        closeFutures.add(
+            threadPool.submit(() -> close(modsFile, writeCounter, maxWrite, closeInterval)));
+      }
+      writeFuture.get();
+      for (Future<Void> closeFuture : closeFutures) {
+        closeFuture.get();
+      }
+      assertEquals(maxWrite, modsFile.getAllMods().size());
+    } finally {
+      Files.delete(new File(modsFileName).toPath());
+    }
+  }
+
+  private Void write(ModificationFile modificationFile, int maxWrite, AtomicInteger writeCounter)
+      throws IllegalPathException, IOException {
+    for (int i = 0; i < maxWrite; i++) {
+      modificationFile.write(new TreeDeletionEntry(new MeasurementPath("root.db1.d1.s1"), i, i));
+      writeCounter.incrementAndGet();
+    }
+    return null;
+  }
+
+  private Void close(
+      ModificationFile modificationFile,
+      AtomicInteger writeCounter,
+      int maxWrite,
+      int closeInterval)
+      throws IOException, InterruptedException {
+    int prevWriteCnt = 0;
+    while (writeCounter.get() < maxWrite) {
+      int writeCnt = writeCounter.get();
+      if (writeCnt - prevWriteCnt >= closeInterval) {
+        modificationFile.close();
+        prevWriteCnt = writeCnt;
+      }
+      Thread.sleep(10);
+    }
+    return null;
   }
 }

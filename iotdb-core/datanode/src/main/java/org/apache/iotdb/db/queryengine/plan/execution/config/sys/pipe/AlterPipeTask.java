@@ -37,13 +37,13 @@ public class AlterPipeTask implements IConfigTask {
 
   private final AlterPipeStatement alterPipeStatement;
 
-  public AlterPipeTask(AlterPipeStatement alterPipeStatement) {
+  public AlterPipeTask(final AlterPipeStatement alterPipeStatement) {
     // support now() function
     applyNowFunctionToExtractorAttributes(alterPipeStatement.getExtractorAttributes());
     this.alterPipeStatement = alterPipeStatement;
   }
 
-  public AlterPipeTask(AlterPipe node) {
+  public AlterPipeTask(final AlterPipe node) {
     alterPipeStatement = new AlterPipeStatement(StatementType.ALTER_PIPE);
     alterPipeStatement.setPipeName(node.getPipeName());
     alterPipeStatement.setIfExists(node.hasIfExistsCondition());
@@ -57,10 +57,12 @@ public class AlterPipeTask implements IConfigTask {
     alterPipeStatement.setReplaceAllExtractorAttributes(node.isReplaceAllExtractorAttributes());
     alterPipeStatement.setReplaceAllProcessorAttributes(node.isReplaceAllProcessorAttributes());
     alterPipeStatement.setReplaceAllConnectorAttributes(node.isReplaceAllConnectorAttributes());
+
+    alterPipeStatement.setTableModel(true);
   }
 
   @Override
-  public ListenableFuture<ConfigTaskResult> execute(IConfigTaskExecutor configTaskExecutor)
+  public ListenableFuture<ConfigTaskResult> execute(final IConfigTaskExecutor configTaskExecutor)
       throws InterruptedException {
     return configTaskExecutor.alterPipe(alterPipeStatement);
   }

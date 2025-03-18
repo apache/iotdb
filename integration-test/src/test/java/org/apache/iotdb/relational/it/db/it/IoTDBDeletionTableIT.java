@@ -24,8 +24,6 @@ import org.apache.iotdb.isession.ITableSession;
 import org.apache.iotdb.isession.SessionDataSet;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
-import org.apache.iotdb.itbase.category.ClusterIT;
-import org.apache.iotdb.itbase.category.LocalStandaloneIT;
 import org.apache.iotdb.itbase.category.ManualIT;
 import org.apache.iotdb.itbase.category.TableClusterIT;
 import org.apache.iotdb.itbase.category.TableLocalStandaloneIT;
@@ -99,6 +97,7 @@ public class IoTDBDeletionTableIT {
         .setPartitionInterval(1000)
         .setMemtableSizeThreshold(10000);
     // Adjust MemTable threshold size to make it flush automatically
+    EnvFactory.getEnv().getConfig().getDataNodeConfig().setCompactionScheduleInterval(5000);
     EnvFactory.getEnv().initClusterEnvironment();
   }
 
@@ -120,6 +119,80 @@ public class IoTDBDeletionTableIT {
   @AfterClass
   public static void tearDownClass() {
     EnvFactory.getEnv().cleanClusterEnvironment();
+  }
+
+  @Test
+  public void testDeleteTimeWithSort1() throws SQLException {
+    try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        Statement statement = connection.createStatement()) {
+      statement.execute("use test");
+      statement.execute(
+          "create table t1(device_id string tag, s0 int32 field, s1 int32 field, s3 int32 field)");
+      statement.execute(
+          "insert into t1(time, device_id, s0, s1, s3) values (10, 'device_1', 100, 100, 200)");
+      statement.execute(
+          "insert into t1(time, device_id, s0, s1, s3) values (150, 'device_1', 100, 100, 200)");
+      statement.execute(
+          "insert into t1(time, device_id, s0, s1, s3) values (202, 'device_1', 100, 100, 200)");
+      statement.execute("delete from t1 where time <= 200 and device_id='device_1'");
+      statement.execute(
+          "insert into t1(time, device_id, s0, s1, s3) values (10, 'device_1', 100, 100, 200)");
+      statement.execute(
+          "insert into t1(time, device_id, s0, s1, s3) values (10, 'device_1', 100, 100, 200)");
+      statement.execute("delete from t1 where time <= 200 and device_id='device_1'");
+
+      ResultSet resultSet = statement.executeQuery("select * from t1");
+      int count = 0;
+      while (resultSet.next()) {
+        count++;
+      }
+      Assert.assertEquals(1, count);
+      count = 0;
+
+      statement.execute(
+          "insert into t1(time, device_id, s0, s1, s3) values (10, 'device_1', 100, 100, 200)");
+      statement.execute("delete from t1 where time <= 200 and device_id='device_1'");
+      resultSet = statement.executeQuery("select * from t1");
+      while (resultSet.next()) {
+        count++;
+      }
+      Assert.assertEquals(1, count);
+    }
+  }
+
+  @Test
+  public void testDeleteTimeWithSort2() throws SQLException {
+    try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        Statement statement = connection.createStatement()) {
+      statement.execute("use test");
+      statement.execute(
+          "create table t2(device_id string tag, s0 int32 field, s1 int32 field, s3 int32 field)");
+      statement.execute(
+          "insert into t2(time, device_id, s0, s1, s3) values (10, 'device_1', 100, 100, 200)");
+      statement.execute(
+          "insert into t2(time, device_id, s0, s1, s3) values (150, 'device_1', 100, 100, 200)");
+      statement.execute(
+          "insert into t2(time, device_id, s0, s1, s3) values (202, 'device_1', 100, 100, 200)");
+      statement.execute("delete from t2 where time <= 200 and device_id='device_1'");
+
+      ResultSet resultSet = statement.executeQuery("select * from t2");
+      int count = 0;
+      while (resultSet.next()) {
+        count++;
+      }
+      Assert.assertEquals(1, count);
+      count = 0;
+
+      statement.execute(
+          "insert into t2(time, device_id, s0, s1, s3) values (10, 'device_1', 100, 100, 200)");
+      statement.execute("delete from t2 where time <= 200 and device_id='device_1'");
+
+      resultSet = statement.executeQuery("select * from t2");
+      while (resultSet.next()) {
+        count++;
+      }
+      Assert.assertEquals(1, count);
+    }
   }
 
   /** Should delete this case after the deletion value filter feature be implemented */
@@ -350,6 +423,28 @@ public class IoTDBDeletionTableIT {
           cnt++;
         }
         assertEquals(49, cnt);
+      }
+    }
+    cleanData(4);
+  }
+
+  @Test
+  public void testSuccessfullyInvalidateCache() throws SQLException {
+    prepareData(4, 1);
+    try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        Statement statement = connection.createStatement()) {
+      statement.execute("use test");
+      statement.executeQuery(
+          "SELECT last(time), last_by(s0,time), last_by(s1,time), last_by(s2,time), last_by(s3,time), last_by(s4,time) FROM vehicle4 where deviceId = 'd0'");
+
+      // [1, 400] -> [1, 299]
+      statement.execute("DELETE FROM vehicle4 WHERE time >= 300");
+      try (ResultSet set = statement.executeQuery("SELECT s0 FROM vehicle4")) {
+        int cnt = 0;
+        while (set.next()) {
+          cnt++;
+        }
+        assertEquals(299, cnt);
       }
     }
     cleanData(4);
@@ -593,7 +688,7 @@ public class IoTDBDeletionTableIT {
       try (ResultSet ignored = statement.executeQuery("SELECT * FROM vehicle" + testNum)) {
         fail("Exception expected");
       } catch (SQLException e) {
-        assertEquals("701: Table 'test.vehicle12' does not exist", e.getMessage());
+        assertEquals("550: Table 'test.vehicle12' does not exist.", e.getMessage());
       }
 
       statement.execute(
@@ -994,7 +1089,13 @@ public class IoTDBDeletionTableIT {
         threadPool.submit(
             () ->
                 write(
-                    writtenPointCounter, threadPool, fileNumMax, pointPerFile, deviceNum, testNum));
+                    writtenPointCounter,
+                    threadPool,
+                    fileNumMax,
+                    pointPerFile,
+                    deviceNum,
+                    testNum,
+                    true));
     int deletionRange = 150;
     int deletionInterval = 1500;
     Future<Void> deletionThread =
@@ -1041,7 +1142,13 @@ public class IoTDBDeletionTableIT {
         threadPool.submit(
             () ->
                 write(
-                    writtenPointCounter, threadPool, fileNumMax, pointPerFile, deviceNum, testNum));
+                    writtenPointCounter,
+                    threadPool,
+                    fileNumMax,
+                    pointPerFile,
+                    deviceNum,
+                    testNum,
+                    true));
     int deletionRange = 100;
     int minIntervalToRecord = 1000;
     Future<Void> deletionThread =
@@ -1094,7 +1201,8 @@ public class IoTDBDeletionTableIT {
                     fileNumMax,
                     pointPerFile,
                     deviceNum,
-                    testNum));
+                    testNum,
+                    true));
     int deletionRange = 100;
     int minIntervalToRecord = 1000;
     Future<Void> deletionThread =
@@ -1155,7 +1263,8 @@ public class IoTDBDeletionTableIT {
       int fileNumMax,
       int pointPerFile,
       int deviceNum,
-      int testNum)
+      int testNum,
+      boolean roundRobinDevice)
       throws SQLException {
 
     try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
@@ -1165,20 +1274,37 @@ public class IoTDBDeletionTableIT {
       statement.execute("use test");
 
       statement.execute(
-          "create table if not exists table" + testNum + "(deviceId STRING TAG, s0 INT32 field)");
+          "create table if not exists table"
+              + testNum
+              + "(city TAG, deviceId STRING TAG, s0 INT32 field)");
 
       for (int i = 1; i <= fileNumMax; i++) {
         for (int j = 0; j < pointPerFile; j++) {
           long time = writtenPointCounter.get() + 1;
-          statement.execute(
-              String.format(
-                  "INSERT INTO test.table"
-                      + testNum
-                      + "(time, deviceId, s0) VALUES(%d,'d"
-                      + (time % deviceNum)
-                      + "',%d)",
-                  time,
-                  time));
+          if (roundRobinDevice) {
+            statement.execute(
+                String.format(
+                    "INSERT INTO test.table"
+                        + testNum
+                        + "(time, city, deviceId, s0) VALUES(%d, 'bj', 'd"
+                        + (time % deviceNum)
+                        + "',%d)",
+                    time,
+                    time));
+          } else {
+            for (int d = 0; d < deviceNum; d++) {
+              statement.execute(
+                  String.format(
+                      "INSERT INTO test.table"
+                          + testNum
+                          + "(time, city, deviceId, s0) VALUES(%d, 'bj', 'd"
+                          + d
+                          + "',%d)",
+                      time,
+                      time));
+            }
+          }
+
           writtenPointCounter.incrementAndGet();
           if (Thread.interrupted()) {
             return null;
@@ -1393,6 +1519,144 @@ public class IoTDBDeletionTableIT {
     return null;
   }
 
+  private Void randomDeviceDeletion(
+      AtomicLong writtenPointCounter,
+      List<AtomicLong> deviceDeletedPointCounters,
+      ExecutorService allThreads,
+      int fileNumMax,
+      int pointPerFile,
+      int deletionRange,
+      int minIntervalToRecord,
+      int testNum)
+      throws SQLException, InterruptedException {
+    // delete random 'deletionRange' points each time
+    List<List<TimeRange>> allDeviceUndeletedRanges = new ArrayList<>();
+    for (int i = 0; i < deviceDeletedPointCounters.size(); i++) {
+      allDeviceUndeletedRanges.add(new ArrayList<>());
+    }
+    // pointPerFile * fileNumMax
+    long deletionEnd = (long) fileNumMax * pointPerFile - 1;
+    long nextRangeStart = 0;
+    Random random = new Random();
+
+    try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        Statement statement = connection.createStatement()) {
+
+      statement.execute("create database if not exists test");
+      statement.execute("use test");
+      while ((writtenPointCounter.get() < deletionEnd
+              || allDeviceUndeletedRanges.stream().anyMatch(l -> !l.isEmpty()))
+          && !Thread.interrupted()) {
+        // record the newly inserted interval if it is long enough
+        for (int i = 0; i < deviceDeletedPointCounters.size(); i++) {
+          long currentWrittenTime = writtenPointCounter.get();
+          List<TimeRange> deviceUndeletedRanges = allDeviceUndeletedRanges.get(i);
+
+          if (currentWrittenTime - nextRangeStart >= minIntervalToRecord) {
+            deviceUndeletedRanges.add(new TimeRange(nextRangeStart, currentWrittenTime));
+            nextRangeStart = currentWrittenTime + 1;
+          }
+          if (deviceUndeletedRanges.isEmpty()) {
+            Thread.sleep(10);
+            continue;
+          }
+          // pick up a random range
+          int rangeIndex = random.nextInt(deviceUndeletedRanges.size());
+          TimeRange timeRange = deviceUndeletedRanges.get(rangeIndex);
+          // delete a random part in the range
+          LOGGER.debug("Pick up a range [{}, {}]", timeRange.getMin(), timeRange.getMax());
+          long rangeDeletionStart;
+          long timeRangeLength = timeRange.getMax() - timeRange.getMin() + 1;
+          if (timeRangeLength == 1) {
+            rangeDeletionStart = timeRange.getMin();
+          } else {
+            rangeDeletionStart = random.nextInt((int) (timeRangeLength - 1)) + timeRange.getMin();
+          }
+          long rangeDeletionEnd = Math.min(rangeDeletionStart + deletionRange, timeRange.getMax());
+          LOGGER.debug("Deletion range [{}, {}]", rangeDeletionStart, rangeDeletionEnd);
+
+          statement.execute(
+              "delete from test.table"
+                  + testNum
+                  + " where time >= "
+                  + rangeDeletionStart
+                  + " and time <= "
+                  + rangeDeletionEnd
+                  + " and deviceId = 'd"
+                  + i
+                  + "'");
+          deviceDeletedPointCounters.get(i).addAndGet(rangeDeletionEnd - rangeDeletionStart + 1);
+          LOGGER.debug(
+              "Deleted range [{}, {}], written points: {}, deleted points: {}",
+              timeRange.getMin(),
+              timeRange.getMax(),
+              currentWrittenTime + 1,
+              deviceDeletedPointCounters.get(i).get());
+
+          // update the range
+          if (rangeDeletionStart == timeRange.getMin() && rangeDeletionEnd == timeRange.getMax()) {
+            // range fully deleted
+            deviceUndeletedRanges.remove(rangeIndex);
+          } else if (rangeDeletionStart == timeRange.getMin()) {
+            // prefix deleted
+            timeRange.setMin(rangeDeletionEnd + 1);
+          } else if (rangeDeletionEnd == timeRange.getMax()) {
+            // suffix deleted
+            timeRange.setMax(rangeDeletionStart - 1);
+          } else {
+            // split into two ranges
+            deviceUndeletedRanges.add(new TimeRange(rangeDeletionEnd + 1, timeRange.getMax()));
+            timeRange.setMax(rangeDeletionStart - 1);
+          }
+
+          // check the point count
+          try (ResultSet set =
+              statement.executeQuery(
+                  "select count(*) from table"
+                      + testNum
+                      + " where time <= "
+                      + currentWrittenTime
+                      + " AND deviceId = 'd"
+                      + i
+                      + "'")) {
+            assertTrue(set.next());
+            long expectedCnt = currentWrittenTime + 1 - deviceDeletedPointCounters.get(i).get();
+            if (expectedCnt != set.getLong(1)) {
+              allDeviceUndeletedRanges.set(i, mergeRanges(deviceUndeletedRanges));
+              List<TimeRange> remainingRanges =
+                  collectDataRanges(statement, currentWrittenTime, testNum);
+              LOGGER.debug("Expected ranges: {}", deviceUndeletedRanges);
+              LOGGER.debug("Remaining ranges: {}", remainingRanges);
+              fail(
+                  String.format(
+                      "Inconsistent number of points %d - %d", expectedCnt, set.getLong(1)));
+            }
+          }
+
+          Thread.sleep(10);
+        }
+      }
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
+      return null;
+    } catch (SQLException e) {
+      if (e.getMessage().contains("Fail to reconnect")) {
+        // restart triggered, ignore
+        return null;
+      } else {
+        allThreads.shutdownNow();
+        throw e;
+      }
+    } catch (ParallelRequestTimeoutException ignored) {
+      // restart triggered, ignore
+      return null;
+    } catch (Throwable e) {
+      allThreads.shutdownNow();
+      throw e;
+    }
+    return null;
+  }
+
   private Void restart(
       AtomicLong writtenPointCounter, long targetPointNum, ExecutorService threadPool)
       throws InterruptedException, SQLException {
@@ -1455,7 +1719,6 @@ public class IoTDBDeletionTableIT {
   }
 
   @Test
-  @Category({LocalStandaloneIT.class, ClusterIT.class})
   public void deleteTableOfTheSameNameTest()
       throws IoTDBConnectionException, StatementExecutionException {
     int testNum = 24;
@@ -1518,6 +1781,109 @@ public class IoTDBDeletionTableIT {
 
       dataSet =
           session.executeQueryStatement("select * from db3.table" + testNum + " order by time");
+      assertFalse(dataSet.hasNext());
+    }
+  }
+
+  @Test
+  public void testConcurrentFlushAndRandomDeviceDeletion()
+      throws InterruptedException, ExecutionException, SQLException {
+    int testNum = 25;
+    try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        Statement statement = connection.createStatement()) {
+      statement.execute("drop database if exists test");
+      statement.execute(
+          "SET CONFIGURATION inner_compaction_task_selection_mods_file_threshold='1024'");
+      statement.execute("SET CONFIGURATION inner_seq_performer='FAST'");
+    } catch (Exception ignored) {
+      // remote mode cannot find the config file during SET CONFIGURATION
+    }
+
+    AtomicLong writtenPointCounter = new AtomicLong(-1);
+    int fileNumMax = 100;
+    int pointPerFile = 100;
+    int deviceNum = 4;
+    List<AtomicLong> deviceDeletedPointCounters = new ArrayList<>(deviceNum);
+    for (int i = 0; i < deviceNum; i++) {
+      deviceDeletedPointCounters.add(new AtomicLong(0));
+    }
+
+    ExecutorService threadPool = Executors.newCachedThreadPool();
+    Future<Void> writeThread =
+        threadPool.submit(
+            () ->
+                write(
+                    writtenPointCounter,
+                    threadPool,
+                    fileNumMax,
+                    pointPerFile,
+                    deviceNum,
+                    testNum,
+                    false));
+    int deletionRange = 100;
+    int minIntervalToRecord = 1000;
+    Future<Void> deletionThread =
+        threadPool.submit(
+            () ->
+                randomDeviceDeletion(
+                    writtenPointCounter,
+                    deviceDeletedPointCounters,
+                    threadPool,
+                    fileNumMax,
+                    pointPerFile,
+                    deletionRange,
+                    minIntervalToRecord,
+                    testNum));
+    writeThread.get();
+    deletionThread.get();
+    threadPool.shutdown();
+    boolean success = threadPool.awaitTermination(1, TimeUnit.MINUTES);
+    assertTrue(success);
+
+    try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        Statement statement = connection.createStatement()) {
+      statement.execute("drop database if exists test");
+      statement.execute("SET CONFIGURATION inner_seq_performer='read_chunk'");
+    }
+  }
+
+  @Test
+  public void testCaseSensitivity() throws IoTDBConnectionException, StatementExecutionException {
+    try (ITableSession session = EnvFactory.getEnv().getTableSessionConnection()) {
+      session.executeNonQueryStatement("CREATE DATABASE IF NOT EXISTS db1");
+      session.executeNonQueryStatement("USE db1");
+      session.executeNonQueryStatement("CREATE TABLE case_sensitivity (tag1 TAG, s1 INT32)");
+
+      session.executeNonQueryStatement(
+          "INSERT INTO case_sensitivity (time, tag1, s1) VALUES (1, 'd1', 1)");
+      session.executeNonQueryStatement(
+          "INSERT INTO case_sensitivity (time, tag1, s1) VALUES (2, 'd2', 2)");
+      session.executeNonQueryStatement(
+          "INSERT INTO case_sensitivity (time, tag1, s1) VALUES (3, 'd3', 3)");
+
+      session.executeNonQueryStatement("DELETE FROM DB1.case_sensitivity where time = 1");
+      SessionDataSet dataSet =
+          session.executeQueryStatement("select * from db1.case_sensitivity order by time");
+      RowRecord rec = dataSet.next();
+      assertEquals(2, rec.getFields().get(0).getLongV());
+      assertEquals("d2", rec.getFields().get(1).toString());
+      assertEquals(2, rec.getFields().get(2).getIntV());
+      rec = dataSet.next();
+      assertEquals(3, rec.getFields().get(0).getLongV());
+      assertEquals("d3", rec.getFields().get(1).toString());
+      assertEquals(3, rec.getFields().get(2).getIntV());
+      assertFalse(dataSet.hasNext());
+
+      session.executeNonQueryStatement("DELETE FROM db1.CASE_sensitivity where time = 2");
+      dataSet = session.executeQueryStatement("select * from db1.case_sensitivity order by time");
+      rec = dataSet.next();
+      assertEquals(3, rec.getFields().get(0).getLongV());
+      assertEquals("d3", rec.getFields().get(1).toString());
+      assertEquals(3, rec.getFields().get(2).getIntV());
+      assertFalse(dataSet.hasNext());
+
+      session.executeNonQueryStatement("DELETE FROM db1.CASE_sensitivity where TAG1 = 'd3'");
+      dataSet = session.executeQueryStatement("select * from db1.case_sensitivity order by time");
       assertFalse(dataSet.hasNext());
     }
   }

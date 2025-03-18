@@ -19,39 +19,67 @@
 
 package org.apache.iotdb.confignode.manager.pipe.extractor;
 
+import org.apache.iotdb.commons.auth.entity.PrivilegeType;
+import org.apache.iotdb.commons.auth.entity.PrivilegeUnion;
 import org.apache.iotdb.commons.consensus.ConfigRegionId;
+import org.apache.iotdb.commons.exception.auth.AccessDeniedException;
 import org.apache.iotdb.commons.pipe.agent.task.progress.PipeEventCommitManager;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
+import org.apache.iotdb.commons.pipe.datastructure.pattern.IoTDBTreePattern;
+import org.apache.iotdb.commons.pipe.datastructure.pattern.TablePattern;
 import org.apache.iotdb.commons.pipe.datastructure.queue.listening.AbstractPipeListeningQueue;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.pipe.event.PipeSnapshotEvent;
 import org.apache.iotdb.commons.pipe.event.PipeWritePlanEvent;
 import org.apache.iotdb.commons.pipe.extractor.IoTDBNonDataRegionExtractor;
+import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
+import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
+import org.apache.iotdb.confignode.consensus.request.write.database.DatabaseSchemaPlan;
+import org.apache.iotdb.confignode.consensus.request.write.database.DeleteDatabasePlan;
+import org.apache.iotdb.confignode.manager.PermissionManager;
 import org.apache.iotdb.confignode.manager.pipe.agent.PipeConfigNodeAgent;
 import org.apache.iotdb.confignode.manager.pipe.event.PipeConfigRegionSnapshotEvent;
 import org.apache.iotdb.confignode.manager.pipe.event.PipeConfigRegionWritePlanEvent;
-import org.apache.iotdb.confignode.manager.pipe.metric.PipeConfigNodeRemainingTimeMetrics;
-import org.apache.iotdb.confignode.manager.pipe.metric.PipeConfigRegionExtractorMetrics;
+import org.apache.iotdb.confignode.manager.pipe.metric.overview.PipeConfigNodeRemainingTimeMetrics;
+import org.apache.iotdb.confignode.manager.pipe.metric.source.PipeConfigRegionExtractorMetrics;
+import org.apache.iotdb.confignode.persistence.schema.CNPhysicalPlanGenerator;
+import org.apache.iotdb.confignode.persistence.schema.ConfigNodeSnapshotParser;
 import org.apache.iotdb.confignode.service.ConfigNode;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.consensus.exception.ConsensusException;
+import org.apache.iotdb.pipe.api.annotation.TableModel;
+import org.apache.iotdb.pipe.api.annotation.TreeModel;
 import org.apache.iotdb.pipe.api.customizer.configuration.PipeExtractorRuntimeConfiguration;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 import org.apache.iotdb.pipe.api.exception.PipeException;
+import org.apache.iotdb.rpc.TSStatusCode;
 
+import java.io.IOException;
+import java.nio.file.Paths;
 import java.util.HashSet;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 
+@TreeModel
+@TableModel
 public class IoTDBConfigRegionExtractor extends IoTDBNonDataRegionExtractor {
 
-  public static final PipeConfigPhysicalPlanPatternParseVisitor PATTERN_PARSE_VISITOR =
-      new PipeConfigPhysicalPlanPatternParseVisitor();
+  public static final PipeConfigPhysicalPlanTreePatternParseVisitor TREE_PATTERN_PARSE_VISITOR =
+      new PipeConfigPhysicalPlanTreePatternParseVisitor();
+  public static final PipeConfigPhysicalPlanTablePatternParseVisitor TABLE_PATTERN_PARSE_VISITOR =
+      new PipeConfigPhysicalPlanTablePatternParseVisitor();
+  public static final PipeConfigPhysicalPlanTreeScopeParseVisitor TREE_SCOPE_PARSE_VISITOR =
+      new PipeConfigPhysicalPlanTreeScopeParseVisitor();
+  public static final PipeConfigPhysicalPlanTableScopeParseVisitor TABLE_SCOPE_PARSE_VISITOR =
+      new PipeConfigPhysicalPlanTableScopeParseVisitor();
+  public static final PipeConfigPhysicalPlanTablePrivilegeParseVisitor
+      TABLE_PRIVILEGE_PARSE_VISITOR = new PipeConfigPhysicalPlanTablePrivilegeParseVisitor();
 
   private Set<ConfigPhysicalPlanType> listenedTypeSet = new HashSet<>();
+  private CNPhysicalPlanGenerator parser;
 
   @Override
   public void customize(
@@ -114,19 +142,180 @@ public class IoTDBConfigRegionExtractor extends IoTDBNonDataRegionExtractor {
   }
 
   @Override
+  protected boolean canSkipSnapshotPrivilegeCheck(final PipeSnapshotEvent event) {
+    final PermissionManager permissionManager =
+        ConfigNode.getInstance().getConfigManager().getPermissionManager();
+    switch (((PipeConfigRegionSnapshotEvent) event).getFileType()) {
+      case USER:
+        return !tablePattern.isTableModelDataAllowedToBeCaptured()
+            || Objects.nonNull(userName)
+                && permissionManager
+                        .checkUserPrivileges(
+                            userName, new PrivilegeUnion(PrivilegeType.MANAGE_USER))
+                        .getStatus()
+                        .getCode()
+                    == TSStatusCode.SUCCESS_STATUS.getStatusCode();
+      case ROLE:
+        return !tablePattern.isTableModelDataAllowedToBeCaptured()
+            || Objects.nonNull(userName)
+                && permissionManager
+                        .checkUserPrivileges(
+                            userName, new PrivilegeUnion(PrivilegeType.MANAGE_ROLE))
+                        .getStatus()
+                        .getCode()
+                    == TSStatusCode.SUCCESS_STATUS.getStatusCode();
+      case USER_ROLE:
+        return !tablePattern.isTableModelDataAllowedToBeCaptured()
+            || Objects.nonNull(userName)
+                && permissionManager
+                        .checkUserPrivileges(
+                            userName, new PrivilegeUnion(PrivilegeType.MANAGE_ROLE))
+                        .getStatus()
+                        .getCode()
+                    == TSStatusCode.SUCCESS_STATUS.getStatusCode()
+            || Objects.nonNull(userName)
+                && permissionManager
+                        .checkUserPrivileges(
+                            userName, new PrivilegeUnion(PrivilegeType.MANAGE_USER))
+                        .getStatus()
+                        .getCode()
+                    == TSStatusCode.SUCCESS_STATUS.getStatusCode();
+      case SCHEMA:
+        // Currently do not check tree model mTree
+        return Objects.nonNull(((PipeConfigRegionSnapshotEvent) event).getTemplateFile())
+            || permissionManager
+                    .checkUserPrivileges(userName, new PrivilegeUnion(null, false, true))
+                    .getStatus()
+                    .getCode()
+                == TSStatusCode.SUCCESS_STATUS.getStatusCode();
+      default:
+        return true;
+    }
+  }
+
+  @Override
+  protected void initSnapshotGenerator(final PipeSnapshotEvent event) throws IOException {
+    final PipeConfigRegionSnapshotEvent snapshotEvent = (PipeConfigRegionSnapshotEvent) event;
+    parser =
+        ConfigNodeSnapshotParser.translate2PhysicalPlan(
+            Paths.get(snapshotEvent.getSnapshotFile().getPath()),
+            Objects.nonNull(snapshotEvent.getTemplateFile())
+                ? Paths.get(snapshotEvent.getTemplateFile().getPath())
+                : null,
+            snapshotEvent.getFileType());
+  }
+
+  @Override
+  protected boolean hasNextEventInCurrentSnapshot() {
+    return Objects.nonNull(parser) && parser.hasNext();
+  }
+
+  @Override
+  protected PipeWritePlanEvent getNextEventInCurrentSnapshot() {
+    return new PipeConfigRegionWritePlanEvent(parser.next(), false);
+  }
+
+  @Override
+  protected Optional<PipeWritePlanEvent> trimRealtimeEventByPrivilege(
+      final PipeWritePlanEvent event) {
+    final ConfigPhysicalPlan plan =
+        ((PipeConfigRegionWritePlanEvent) event).getConfigPhysicalPlan();
+    final Boolean isTableDatabasePlan = isTableDatabasePlan(plan);
+    if (Boolean.FALSE.equals(isTableDatabasePlan)) {
+      return Optional.of(event);
+    }
+
+    final Optional<ConfigPhysicalPlan> result =
+        TABLE_PRIVILEGE_PARSE_VISITOR.process(plan, userName);
+    if (result.isPresent()) {
+      return Optional.of(
+          new PipeConfigRegionWritePlanEvent(result.get(), event.isGeneratedByPipe()));
+    }
+    if (skipIfNoPrivileges) {
+      return Optional.empty();
+    }
+    throw new AccessDeniedException("Not has privilege to transfer plan: " + plan);
+  }
+
+  @Override
   protected Optional<PipeWritePlanEvent> trimRealtimeEventByPipePattern(
       final PipeWritePlanEvent event) {
-    return PATTERN_PARSE_VISITOR
-        .process(((PipeConfigRegionWritePlanEvent) event).getConfigPhysicalPlan(), pipePattern)
+    return parseConfigPlan(
+            ((PipeConfigRegionWritePlanEvent) event).getConfigPhysicalPlan(),
+            treePattern,
+            tablePattern)
         .map(
             configPhysicalPlan ->
                 new PipeConfigRegionWritePlanEvent(configPhysicalPlan, event.isGeneratedByPipe()));
   }
 
+  public static Optional<ConfigPhysicalPlan> parseConfigPlan(
+      final ConfigPhysicalPlan plan,
+      final IoTDBTreePattern treePattern,
+      final TablePattern tablePattern) {
+    Optional<ConfigPhysicalPlan> result = Optional.of(plan);
+    final Boolean isTableDatabasePlan = isTableDatabasePlan(plan);
+    if (!Boolean.TRUE.equals(isTableDatabasePlan)) {
+      result = TREE_PATTERN_PARSE_VISITOR.process(plan, treePattern);
+      if (!result.isPresent()) {
+        return result;
+      }
+    }
+    if (!Boolean.FALSE.equals(isTableDatabasePlan)) {
+      result = TABLE_PATTERN_PARSE_VISITOR.process(result.get(), tablePattern);
+      if (!result.isPresent()) {
+        return result;
+      }
+    }
+    if (!treePattern.isTreeModelDataAllowedToBeCaptured()) {
+      result = TREE_SCOPE_PARSE_VISITOR.process(result.get(), null);
+      if (!result.isPresent()) {
+        return result;
+      }
+    }
+    if (!tablePattern.isTableModelDataAllowedToBeCaptured()) {
+      result = TABLE_SCOPE_PARSE_VISITOR.process(result.get(), null);
+      if (!result.isPresent()) {
+        return result;
+      }
+    }
+    return result;
+  }
+
   @Override
   protected boolean isTypeListened(final PipeWritePlanEvent event) {
-    return listenedTypeSet.contains(
-        ((PipeConfigRegionWritePlanEvent) event).getConfigPhysicalPlan().getType());
+    return isTypeListened(
+        ((PipeConfigRegionWritePlanEvent) event).getConfigPhysicalPlan(),
+        listenedTypeSet,
+        treePattern,
+        tablePattern);
+  }
+
+  public static boolean isTypeListened(
+      final ConfigPhysicalPlan plan,
+      final Set<ConfigPhysicalPlanType> listenedTypeSet,
+      final IoTDBTreePattern treePattern,
+      final TablePattern tablePattern) {
+    final Boolean isTableDatabasePlan = isTableDatabasePlan(plan);
+    return listenedTypeSet.contains(plan.getType())
+        && (Objects.isNull(isTableDatabasePlan)
+            || Boolean.TRUE.equals(isTableDatabasePlan)
+                && tablePattern.isTableModelDataAllowedToBeCaptured()
+            || Boolean.FALSE.equals(isTableDatabasePlan)
+                && treePattern.isTreeModelDataAllowedToBeCaptured());
+  }
+
+  private static Boolean isTableDatabasePlan(final ConfigPhysicalPlan plan) {
+    if (plan instanceof DatabaseSchemaPlan) {
+      return ((DatabaseSchemaPlan) plan).getSchema().isIsTableModel()
+          ? Boolean.TRUE
+          : Boolean.FALSE;
+    } else if (plan instanceof DeleteDatabasePlan) {
+      return PathUtils.isTableModelDatabase(((DeleteDatabasePlan) plan).getName())
+          ? Boolean.TRUE
+          : Boolean.FALSE;
+    }
+    return null;
   }
 
   @Override

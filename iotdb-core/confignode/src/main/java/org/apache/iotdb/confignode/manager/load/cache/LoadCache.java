@@ -30,6 +30,8 @@ import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.commons.cluster.NodeType;
 import org.apache.iotdb.commons.cluster.RegionStatus;
+import org.apache.iotdb.confignode.conf.ConfigNodeConfig;
+import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.manager.IManager;
 import org.apache.iotdb.confignode.manager.ProcedureManager;
 import org.apache.iotdb.confignode.manager.load.cache.consensus.ConsensusGroupCache;
@@ -63,6 +65,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 /** Maintain all kinds of heartbeat samples and statistics. */
@@ -75,6 +78,8 @@ public class LoadCache {
       Math.max(
           ProcedureManager.PROCEDURE_WAIT_TIME_OUT - TimeUnit.SECONDS.toMillis(2),
           TimeUnit.SECONDS.toMillis(10));
+
+  private static final ConfigNodeConfig CONF = ConfigNodeDescriptor.getInstance().getConf();
 
   // Map<NodeId, is heartbeat processing>
   // False indicates there is no processing heartbeat request, true otherwise
@@ -164,13 +169,16 @@ public class LoadCache {
             regionReplicaSets.forEach(
                 regionReplicaSet -> {
                   TConsensusGroupId regionGroupId = regionReplicaSet.getRegionId();
+                  boolean isStrongConsistency =
+                      CONF.isConsensusGroupStrongConsistency(regionGroupId);
                   regionGroupCacheMap.put(
                       regionGroupId,
                       new RegionGroupCache(
                           database,
                           regionReplicaSet.getDataNodeLocations().stream()
                               .map(TDataNodeLocation::getDataNodeId)
-                              .collect(Collectors.toSet())));
+                              .collect(Collectors.toSet()),
+                          isStrongConsistency));
                   consensusGroupCacheMap.put(regionGroupId, new ConsensusGroupCache());
                 }));
   }
@@ -277,7 +285,9 @@ public class LoadCache {
    */
   public void createRegionGroupHeartbeatCache(
       String database, TConsensusGroupId regionGroupId, Set<Integer> dataNodeIds) {
-    regionGroupCacheMap.put(regionGroupId, new RegionGroupCache(database, dataNodeIds));
+    boolean isStrongConsistency = CONF.isConsensusGroupStrongConsistency(regionGroupId);
+    regionGroupCacheMap.put(
+        regionGroupId, new RegionGroupCache(database, dataNodeIds, isStrongConsistency));
     consensusGroupCacheMap.put(regionGroupId, new ConsensusGroupCache());
   }
 
@@ -537,6 +547,22 @@ public class LoadCache {
                 nodeCacheEntry.getValue() instanceof DataNodeHeartbeatCache
                     && Arrays.stream(status)
                         .anyMatch(s -> s.equals(nodeCacheEntry.getValue().getNodeStatus())))
+        .map(Map.Entry::getKey)
+        .collect(Collectors.toList());
+  }
+
+  /**
+   * Filter DataNodes through the NodeStatus predicate.
+   *
+   * @param statusPredicate The NodeStatus predicate
+   * @return Filtered DataNodes with the predicate
+   */
+  public List<Integer> filterDataNodeThroughStatus(Function<NodeStatus, Boolean> statusPredicate) {
+    return nodeCacheMap.entrySet().stream()
+        .filter(
+            nodeCacheEntry ->
+                nodeCacheEntry.getValue() instanceof DataNodeHeartbeatCache
+                    && statusPredicate.apply(nodeCacheEntry.getValue().getNodeStatus()))
         .map(Map.Entry::getKey)
         .collect(Collectors.toList());
   }

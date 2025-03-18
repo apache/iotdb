@@ -35,6 +35,7 @@ import com.google.common.collect.ImmutableMap;
 import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.utils.Binary;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
@@ -48,8 +49,6 @@ public class MockTableModelDataPartition {
           IoTDBDescriptor.getInstance().getConfig().getSeriesPartitionExecutorClass(),
           IoTDBDescriptor.getInstance().getConfig().getSeriesPartitionSlotNum());
 
-  private static final String DB_NAME = "testdb";
-
   static final String DEVICE_1 = "table1.beijing.A1.ZZ";
   static final String DEVICE_2 = "table1.beijing.A2.XX";
   static final String DEVICE_3 = "table1.shanghai.A3.YY";
@@ -57,30 +56,44 @@ public class MockTableModelDataPartition {
   static final String DEVICE_5 = "table1.shenzhen.B2.ZZ";
   static final String DEVICE_6 = "table1.shenzhen.B1.XX";
 
-  static final List<Binary> DEVICE_1_ATTRIBUTES =
-      Arrays.asList(
-          new Binary("high", TSFileConfig.STRING_CHARSET),
-          new Binary("big", TSFileConfig.STRING_CHARSET));
-  static final List<Binary> DEVICE_2_ATTRIBUTES =
-      Arrays.asList(
-          new Binary("high", TSFileConfig.STRING_CHARSET),
-          new Binary("small", TSFileConfig.STRING_CHARSET));
-  static final List<Binary> DEVICE_3_ATTRIBUTES =
-      Arrays.asList(
-          new Binary("low", TSFileConfig.STRING_CHARSET),
-          new Binary("small", TSFileConfig.STRING_CHARSET));
-  static final List<Binary> DEVICE_4_ATTRIBUTES =
-      Arrays.asList(
-          new Binary("low", TSFileConfig.STRING_CHARSET),
-          new Binary("big", TSFileConfig.STRING_CHARSET));
-  static final List<Binary> DEVICE_5_ATTRIBUTES =
-      Arrays.asList(
-          new Binary("mid", TSFileConfig.STRING_CHARSET),
-          new Binary("big", TSFileConfig.STRING_CHARSET));
-  static final List<Binary> DEVICE_6_ATTRIBUTES =
-      Arrays.asList(
-          new Binary("mid", TSFileConfig.STRING_CHARSET),
-          new Binary("small", TSFileConfig.STRING_CHARSET));
+  static final List<List<String>> DEVICES_REGION_GROUP = new ArrayList<>(3);
+
+  static {
+    DEVICES_REGION_GROUP.add(Arrays.asList(DEVICE_5, DEVICE_6));
+    DEVICES_REGION_GROUP.add(Arrays.asList(DEVICE_4, DEVICE_5, DEVICE_6, DEVICE_3));
+    DEVICES_REGION_GROUP.add(Arrays.asList(DEVICE_2, DEVICE_1));
+  }
+
+  static final Binary[] DEVICE_1_ATTRIBUTES =
+      new Binary[] {
+        new Binary("high", TSFileConfig.STRING_CHARSET),
+        new Binary("big", TSFileConfig.STRING_CHARSET)
+      };
+  static final Binary[] DEVICE_2_ATTRIBUTES =
+      new Binary[] {
+        new Binary("high", TSFileConfig.STRING_CHARSET),
+        new Binary("small", TSFileConfig.STRING_CHARSET)
+      };
+  static final Binary[] DEVICE_3_ATTRIBUTES =
+      new Binary[] {
+        new Binary("low", TSFileConfig.STRING_CHARSET),
+        new Binary("small", TSFileConfig.STRING_CHARSET)
+      };
+  static final Binary[] DEVICE_4_ATTRIBUTES =
+      new Binary[] {
+        new Binary("low", TSFileConfig.STRING_CHARSET),
+        new Binary("big", TSFileConfig.STRING_CHARSET)
+      };
+  static final Binary[] DEVICE_5_ATTRIBUTES =
+      new Binary[] {
+        new Binary("mid", TSFileConfig.STRING_CHARSET),
+        new Binary("big", TSFileConfig.STRING_CHARSET)
+      };
+  static final Binary[] DEVICE_6_ATTRIBUTES =
+      new Binary[] {
+        new Binary("mid", TSFileConfig.STRING_CHARSET),
+        new Binary("small", TSFileConfig.STRING_CHARSET)
+      };
 
   private static final TRegionReplicaSet DATA_REGION_GROUP_1 = genDataRegionGroup(10, 1, 2);
   private static final TRegionReplicaSet DATA_REGION_GROUP_2 = genDataRegionGroup(11, 3, 2);
@@ -99,7 +112,7 @@ public class MockTableModelDataPartition {
    * device6(startTime:0): DataRegionGroup_2,
    * device6(startTime:100): DataRegionGroup_3,
    */
-  public static DataPartition constructDataPartition() {
+  public static DataPartition constructDataPartition(String dbName) {
     DataPartition dataPartition =
         new DataPartition(
             IoTDBDescriptor.getInstance().getConfig().getSeriesPartitionExecutorClass(),
@@ -132,13 +145,13 @@ public class MockTableModelDataPartition {
     devicePartitionMap.put(EXECUTOR.getSeriesPartitionSlot(DEVICE_5), dataRegionMap3);
     devicePartitionMap.put(EXECUTOR.getSeriesPartitionSlot(DEVICE_6), dataRegionMap3);
 
-    dbPartitionMap.put(DB_NAME, devicePartitionMap);
+    dbPartitionMap.put(dbName, devicePartitionMap);
     dataPartition.setDataPartitionMap(dbPartitionMap);
 
     return dataPartition;
   }
 
-  public static SchemaPartition constructSchemaPartition() {
+  public static SchemaPartition constructSchemaPartition(String dbName) {
     final SchemaPartition schemaPartition =
         new SchemaPartition(
             IoTDBDescriptor.getInstance().getConfig().getSeriesPartitionExecutorClass(),
@@ -162,7 +175,7 @@ public class MockTableModelDataPartition {
     schemaRegionMap.put(EXECUTOR.getSeriesPartitionSlot(DEVICE_1), schemaRegion1);
     schemaRegionMap.put(EXECUTOR.getSeriesPartitionSlot(DEVICE_2), schemaRegion2);
     schemaRegionMap.put(EXECUTOR.getSeriesPartitionSlot(DEVICE_3), schemaRegion2);
-    schemaPartitionMap.put(DB_NAME, schemaRegionMap);
+    schemaPartitionMap.put(dbName, schemaRegionMap);
     schemaPartition.setSchemaPartitionMap(schemaPartitionMap);
 
     return schemaPartition;

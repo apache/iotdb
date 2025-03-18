@@ -19,7 +19,7 @@
 package org.apache.iotdb.commons.auth.user;
 
 import org.apache.iotdb.commons.auth.AuthException;
-import org.apache.iotdb.commons.auth.entity.User;
+import org.apache.iotdb.commons.auth.entity.Role;
 
 import org.apache.thrift.TException;
 
@@ -35,9 +35,9 @@ public class LocalFileUserManager extends BasicUserManager {
 
   @Override
   public boolean processTakeSnapshot(File snapshotDir) throws TException, IOException {
-    accessor.cleanUserFolder();
-    for (Map.Entry<String, User> entry : userMap.entrySet()) {
-      accessor.saveUser(entry.getValue());
+    accessor.cleanEntityFolder();
+    for (Map.Entry<String, Role> entry : entityMap.entrySet()) {
+      accessor.saveEntity(entry.getValue());
     }
     return accessor.processTakeSnapshot(snapshotDir);
   }

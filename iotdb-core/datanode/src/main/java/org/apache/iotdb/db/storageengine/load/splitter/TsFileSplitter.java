@@ -250,6 +250,10 @@ public class TsFileSplitter {
         int satisfiedLength = 0;
         long endTime =
             timePartitionSlot.getStartTime() + TimePartitionUtils.getTimePartitionInterval();
+        // beware of overflow
+        if (endTime <= timePartitionSlot.getStartTime()) {
+          endTime = Long.MAX_VALUE;
+        }
         for (int i = 0; i < times.length; i++) {
           if (times[i] >= endTime) {
             chunkData.writeDecodePage(times, values, satisfiedLength);
@@ -265,6 +269,9 @@ public class TsFileSplitter {
             satisfiedLength = 0;
             endTime =
                 timePartitionSlot.getStartTime() + TimePartitionUtils.getTimePartitionInterval();
+            if (endTime <= timePartitionSlot.getStartTime()) {
+              endTime = Long.MAX_VALUE;
+            }
             chunkData = ChunkData.createChunkData(isAligned, curDevice, header, timePartitionSlot);
           }
           satisfiedLength += 1;
@@ -368,10 +375,7 @@ public class TsFileSplitter {
   }
 
   private void getAllModification(List<ModEntry> deletions) throws IOException {
-    try (ModificationFile modificationFile =
-        new ModificationFile(ModificationFile.getExclusiveMods(tsFile))) {
-      deletions.addAll(modificationFile.getAllMods());
-    }
+    deletions.addAll(ModificationFile.readAllModifications(tsFile, true));
   }
 
   private boolean checkMagic(TsFileSequenceReader reader) throws IOException {

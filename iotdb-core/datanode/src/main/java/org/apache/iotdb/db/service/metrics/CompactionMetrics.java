@@ -46,6 +46,7 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
 
 public class CompactionMetrics implements IMetricSet {
   private static final String NOT_ALIGNED = "not_aligned";
@@ -631,7 +632,7 @@ public class CompactionMetrics implements IMetricSet {
         Metric.COMPACTION_TASK_MEMORY_DISTRIBUTION.toString(),
         MetricLevel.IMPORTANT,
         this,
-        metrics -> SystemInfo.getInstance().getCompactionMemoryCost().get(),
+        metrics -> SystemInfo.getInstance().getCompactionMemoryBlock().getUsedMemoryInBytes(),
         Tag.NAME.toString(),
         "total_usage");
     metricService.createAutoGauge(
@@ -722,6 +723,16 @@ public class CompactionMetrics implements IMetricSet {
       DoNothingMetricManager.DO_NOTHING_HISTOGRAM;
   private Histogram settleCompactionTaskSelectedFileSize =
       DoNothingMetricManager.DO_NOTHING_HISTOGRAM;
+
+  private final AtomicLong totalCachedDeviceTimeIndexSize = new AtomicLong(0);
+
+  public void addSelectionCachedDeviceTimeIndexSize(long size) {
+    totalCachedDeviceTimeIndexSize.addAndGet(size);
+  }
+
+  public void decreaseSelectionCachedDeviceTimeIndexSize(long size) {
+    totalCachedDeviceTimeIndexSize.addAndGet(-size);
+  }
 
   public void updateCompactionTaskSelectionNum(CompactionScheduleContext context) {
     seqInnerSpaceCompactionTaskSelectedNum.set(context.getSubmitSeqInnerSpaceCompactionTaskNum());
@@ -913,6 +924,14 @@ public class CompactionMetrics implements IMetricSet {
             MetricLevel.IMPORTANT,
             Tag.NAME.toString(),
             "settle");
+
+    metricService.createAutoGauge(
+        Metric.COMPACTION_SELECTION_CACHED_TIME_INDEX_SIZE.toString(),
+        MetricLevel.IMPORTANT,
+        this,
+        metrics -> totalCachedDeviceTimeIndexSize.get(),
+        Tag.NAME.toString(),
+        "total_cached_device_time_index_size");
   }
 
   private void unbindCompactionTaskSelection(AbstractMetricService metricService) {
@@ -935,6 +954,11 @@ public class CompactionMetrics implements IMetricSet {
           Tag.NAME.toString(),
           taskType);
     }
+    metricService.remove(
+        MetricType.AUTO_GAUGE,
+        Metric.COMPACTION_SELECTION_CACHED_TIME_INDEX_SIZE.toString(),
+        Tag.NAME.toString(),
+        "total_cached_device_time_index_size");
   }
 
   // endregion

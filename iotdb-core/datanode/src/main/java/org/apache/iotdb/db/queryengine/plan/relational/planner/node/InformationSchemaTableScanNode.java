@@ -28,13 +28,9 @@ import org.apache.iotdb.db.queryengine.plan.relational.metadata.QualifiedObjectN
 import org.apache.iotdb.db.queryengine.plan.relational.planner.Symbol;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
 
-import org.apache.tsfile.utils.ReadWriteIOUtils;
-
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -85,6 +81,8 @@ public class InformationSchemaTableScanNode extends TableScanNode {
     this.regionReplicaSet = regionReplicaSet;
   }
 
+  private InformationSchemaTableScanNode() {}
+
   @Override
   public <R, C> R accept(PlanVisitor<R, C> visitor, C context) {
     return visitor.visitInformationSchemaTableScan(this, context);
@@ -107,106 +105,25 @@ public class InformationSchemaTableScanNode extends TableScanNode {
   protected void serializeAttributes(ByteBuffer byteBuffer) {
     PlanNodeType.INFORMATION_SCHEMA_TABLE_SCAN_NODE.serialize(byteBuffer);
 
-    if (qualifiedObjectName.getDatabaseName() != null) {
-      ReadWriteIOUtils.write(true, byteBuffer);
-      ReadWriteIOUtils.write(qualifiedObjectName.getDatabaseName(), byteBuffer);
-    } else {
-      ReadWriteIOUtils.write(false, byteBuffer);
-    }
-    ReadWriteIOUtils.write(qualifiedObjectName.getObjectName(), byteBuffer);
-
-    ReadWriteIOUtils.write(outputSymbols.size(), byteBuffer);
-    outputSymbols.forEach(symbol -> ReadWriteIOUtils.write(symbol.getName(), byteBuffer));
-
-    ReadWriteIOUtils.write(assignments.size(), byteBuffer);
-    for (Map.Entry<Symbol, ColumnSchema> entry : assignments.entrySet()) {
-      Symbol.serialize(entry.getKey(), byteBuffer);
-      ColumnSchema.serialize(entry.getValue(), byteBuffer);
-    }
-
-    if (pushDownPredicate != null) {
-      ReadWriteIOUtils.write(true, byteBuffer);
-      Expression.serialize(pushDownPredicate, byteBuffer);
-    } else {
-      ReadWriteIOUtils.write(false, byteBuffer);
-    }
-
-    ReadWriteIOUtils.write(pushDownLimit, byteBuffer);
-    ReadWriteIOUtils.write(pushDownOffset, byteBuffer);
+    TableScanNode.serializeMemberVariables(this, byteBuffer, true);
   }
 
   @Override
   protected void serializeAttributes(DataOutputStream stream) throws IOException {
     PlanNodeType.INFORMATION_SCHEMA_TABLE_SCAN_NODE.serialize(stream);
-    if (qualifiedObjectName.getDatabaseName() != null) {
-      ReadWriteIOUtils.write(true, stream);
-      ReadWriteIOUtils.write(qualifiedObjectName.getDatabaseName(), stream);
-    } else {
-      ReadWriteIOUtils.write(false, stream);
-    }
-    ReadWriteIOUtils.write(qualifiedObjectName.getObjectName(), stream);
 
-    ReadWriteIOUtils.write(outputSymbols.size(), stream);
-    for (Symbol symbol : outputSymbols) {
-      ReadWriteIOUtils.write(symbol.getName(), stream);
-    }
-
-    ReadWriteIOUtils.write(assignments.size(), stream);
-    for (Map.Entry<Symbol, ColumnSchema> entry : assignments.entrySet()) {
-      Symbol.serialize(entry.getKey(), stream);
-      ColumnSchema.serialize(entry.getValue(), stream);
-    }
-
-    if (pushDownPredicate != null) {
-      ReadWriteIOUtils.write(true, stream);
-      Expression.serialize(pushDownPredicate, stream);
-    } else {
-      ReadWriteIOUtils.write(false, stream);
-    }
-
-    ReadWriteIOUtils.write(pushDownLimit, stream);
-    ReadWriteIOUtils.write(pushDownOffset, stream);
+    TableScanNode.serializeMemberVariables(this, stream, true);
   }
 
   public static InformationSchemaTableScanNode deserialize(ByteBuffer byteBuffer) {
-    boolean hasDatabaseName = ReadWriteIOUtils.readBool(byteBuffer);
-    String databaseName = null;
-    if (hasDatabaseName) {
-      databaseName = ReadWriteIOUtils.readString(byteBuffer);
-    }
-    String tableName = ReadWriteIOUtils.readString(byteBuffer);
-    QualifiedObjectName qualifiedObjectName = new QualifiedObjectName(databaseName, tableName);
+    InformationSchemaTableScanNode node = new InformationSchemaTableScanNode();
+    TableScanNode.deserializeMemberVariables(byteBuffer, node, true);
 
-    int size = ReadWriteIOUtils.readInt(byteBuffer);
-    List<Symbol> outputSymbols = new ArrayList<>(size);
-    for (int i = 0; i < size; i++) {
-      outputSymbols.add(Symbol.deserialize(byteBuffer));
-    }
+    node.setPlanNodeId(PlanNodeId.deserialize(byteBuffer));
+    return node;
+  }
 
-    size = ReadWriteIOUtils.readInt(byteBuffer);
-    Map<Symbol, ColumnSchema> assignments = new HashMap<>(size);
-    for (int i = 0; i < size; i++) {
-      assignments.put(Symbol.deserialize(byteBuffer), ColumnSchema.deserialize(byteBuffer));
-    }
-
-    Expression pushDownPredicate = null;
-    boolean hasPushDownPredicate = ReadWriteIOUtils.readBool(byteBuffer);
-    if (hasPushDownPredicate) {
-      pushDownPredicate = Expression.deserialize(byteBuffer);
-    }
-
-    long pushDownLimit = ReadWriteIOUtils.readLong(byteBuffer);
-    long pushDownOffset = ReadWriteIOUtils.readLong(byteBuffer);
-
-    PlanNodeId planNodeId = PlanNodeId.deserialize(byteBuffer);
-
-    return new InformationSchemaTableScanNode(
-        planNodeId,
-        qualifiedObjectName,
-        outputSymbols,
-        assignments,
-        pushDownPredicate,
-        pushDownLimit,
-        pushDownOffset);
+  public String toString() {
+    return "InformationSchemaTableScanNode-" + this.getPlanNodeId();
   }
 }
