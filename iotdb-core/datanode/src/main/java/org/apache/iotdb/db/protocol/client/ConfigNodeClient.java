@@ -708,8 +708,8 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
   }
 
   @Override
-  public TSStatus stopConfigNode(TConfigNodeLocation configNodeLocation) throws TException {
-    throw new TException("DataNode to ConfigNode client doesn't support stopConfigNode.");
+  public TSStatus stopAndClearConfigNode(TConfigNodeLocation configNodeLocation) throws TException {
+    throw new TException("DataNode to ConfigNode client doesn't support stopAndClearConfigNode.");
   }
 
   @Override
