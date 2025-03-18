@@ -52,6 +52,7 @@ public abstract class AbstractCompactionWriter implements AutoCloseable {
 
   // check if there is unseq error point during writing
   protected long[] lastTime = new long[subTaskNum];
+  protected boolean[] lastTimeSet = new boolean[subTaskNum];
 
   // Each sub task has its own chunk writer.
   // The index of the array corresponds to subTaskId.
@@ -104,7 +105,7 @@ public abstract class AbstractCompactionWriter implements AutoCloseable {
 
   public void startMeasurement(String measurement, IChunkWriter chunkWriter, int subTaskId) {
     lastCheckIndex = 0;
-    lastTime[subTaskId] = Long.MIN_VALUE;
+    lastTimeSet[subTaskId] = false;
     chunkWriters[subTaskId] = chunkWriter;
     measurementId[subTaskId] = measurement;
   }
@@ -313,7 +314,7 @@ public abstract class AbstractCompactionWriter implements AutoCloseable {
   }
 
   protected void checkPreviousTimestamp(long currentWritingTimestamp, int subTaskId) {
-    if (currentWritingTimestamp <= lastTime[subTaskId]) {
+    if (lastTimeSet[subTaskId] && currentWritingTimestamp <= lastTime[subTaskId]) {
       throw new CompactionLastTimeCheckFailedException(
           ((PlainDeviceID) deviceId).toStringID()
               + IoTDBConstant.PATH_SEPARATOR

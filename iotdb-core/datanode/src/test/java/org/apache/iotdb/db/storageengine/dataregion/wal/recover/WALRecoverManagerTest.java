@@ -88,6 +88,7 @@ import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
+@SuppressWarnings("OptionalGetWithoutIsPresent")
 public class WALRecoverManagerTest {
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
   private static final CommonConfig commonConfig = CommonDescriptor.getInstance().getConfig();
@@ -320,10 +321,10 @@ public class WALRecoverManagerTest {
     assertEquals(15, chunk.getChunkStatistic().getEndTime());
     reader.close();
     // check .resource file in memory
-    assertEquals(1, tsFileWithWALResource.getStartTime(DEVICE1_NAME));
-    assertEquals(2, tsFileWithWALResource.getEndTime(DEVICE1_NAME));
-    assertEquals(3, tsFileWithWALResource.getStartTime(DEVICE2_NAME));
-    assertEquals(15, tsFileWithWALResource.getEndTime(DEVICE2_NAME));
+    assertEquals(1, (long) tsFileWithWALResource.getStartTime(DEVICE1_NAME).get());
+    assertEquals(2, (long) tsFileWithWALResource.getEndTime(DEVICE1_NAME).get());
+    assertEquals(3, (long) tsFileWithWALResource.getStartTime(DEVICE2_NAME).get());
+    assertEquals(15, (long) tsFileWithWALResource.getEndTime(DEVICE2_NAME).get());
     // check file existence
     assertTrue(new File(FILE_WITH_WAL_NAME).exists());
     assertTrue(new File(FILE_WITH_WAL_NAME.concat(TsFileResource.RESOURCE_SUFFIX)).exists());
@@ -345,10 +346,10 @@ public class WALRecoverManagerTest {
     assertEquals(3, chunk.getChunkStatistic().getEndTime());
     reader.close();
     // check .resource file in memory
-    assertEquals(1, tsFileWithoutWALResource.getStartTime(DEVICE1_NAME));
-    assertEquals(2, tsFileWithoutWALResource.getEndTime(DEVICE1_NAME));
-    assertEquals(3, tsFileWithoutWALResource.getStartTime(DEVICE2_NAME));
-    assertEquals(3, tsFileWithoutWALResource.getEndTime(DEVICE2_NAME));
+    assertEquals(1, ((long) tsFileWithoutWALResource.getStartTime(DEVICE1_NAME).get()));
+    assertEquals(2, ((long) tsFileWithoutWALResource.getEndTime(DEVICE1_NAME).get()));
+    assertEquals(3, ((long) tsFileWithoutWALResource.getStartTime(DEVICE2_NAME).get()));
+    assertEquals(3, ((long) tsFileWithoutWALResource.getEndTime(DEVICE2_NAME).get()));
     // check file existence
     assertTrue(new File(FILE_WITHOUT_WAL_NAME).exists());
     assertTrue(new File(FILE_WITHOUT_WAL_NAME.concat(TsFileResource.RESOURCE_SUFFIX)).exists());

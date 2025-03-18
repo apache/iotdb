@@ -654,7 +654,8 @@ public class DataRegion implements IDataRegionForQuery {
     long timePartitionId = resource.getTimePartition();
     Map<IDeviceID, Long> endTimeMap = new HashMap<>();
     for (IDeviceID deviceId : resource.getDevices()) {
-      long endTime = resource.getEndTime(deviceId);
+      @SuppressWarnings("OptionalGetWithoutIsPresent") // checked above
+      long endTime = resource.getEndTime(deviceId).get();
       endTimeMap.put(deviceId, endTime);
     }
     if (config.isEnableSeparateData()) {
@@ -670,7 +671,9 @@ public class DataRegion implements IDataRegionForQuery {
     Map<IDeviceID, Long> endTimeMap = new HashMap<>();
     for (TsFileResource resource : resources) {
       for (IDeviceID deviceId : resource.getDevices()) {
-        long endTime = resource.getEndTime(deviceId);
+        // checked above
+        //noinspection OptionalGetWithoutIsPresent
+        long endTime = resource.getEndTime(deviceId).get();
         endTimeMap.put(deviceId, endTime);
       }
     }
@@ -2326,6 +2329,7 @@ public class DataRegion implements IDataRegionForQuery {
     }
   }
 
+  @SuppressWarnings("OptionalGetWithoutIsPresent")
   private boolean canSkipDelete(
       TsFileResource tsFileResource,
       Set<PartialPath> devicePaths,
@@ -2369,8 +2373,8 @@ public class DataRegion implements IDataRegionForQuery {
           // resource does not contain this device
           continue;
         }
-        deviceStartTime = tsFileResource.getStartTime(deviceId);
-        deviceEndTime = tsFileResource.getEndTime(deviceId);
+        deviceStartTime = tsFileResource.getStartTime(deviceId).get();
+        deviceEndTime = tsFileResource.getEndTime(deviceId).get();
       }
 
       if (!tsFileResource.isClosed() && deviceEndTime == Long.MIN_VALUE) {

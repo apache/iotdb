@@ -52,6 +52,7 @@ import java.util.stream.Collectors;
  * Estimate the memory cost of one compaction task with specific source files based on its
  * corresponding implementation.
  */
+@SuppressWarnings("OptionalGetWithoutIsPresent")
 public abstract class AbstractCompactionEstimator {
 
   private static final Map<File, FileInfo> globalFileInfoCacheForFailedCompaction =
@@ -128,10 +129,11 @@ public abstract class AbstractCompactionEstimator {
     }
     int maxOverlapFileNumInSubCompactionTask = 1;
     for (IDeviceID device : devices) {
+      @SuppressWarnings("OptionalGetWithoutIsPresent")
       List<DeviceTimeIndex> resourcesContainsCurrentDevice =
           resourceDevices.stream()
               .filter(resource -> !resource.definitelyNotContains(device))
-              .sorted(Comparator.comparingLong(resource -> resource.getStartTime(device)))
+              .sorted(Comparator.comparingLong(resource -> resource.getStartTime(device).get()))
               .collect(Collectors.toList());
       if (resourcesContainsCurrentDevice.size() < maxOverlapFileNumInSubCompactionTask) {
         continue;
@@ -140,8 +142,9 @@ public abstract class AbstractCompactionEstimator {
       long maxEndTimeOfCurrentDevice = Long.MIN_VALUE;
       int overlapFileNumOfCurrentDevice = 0;
       for (DeviceTimeIndex resource : resourcesContainsCurrentDevice) {
-        long deviceStartTimeInCurrentFile = resource.getStartTime(device);
-        long deviceEndTimeInCurrentFile = resource.getEndTime(device);
+        // checked by Stream.filter()
+        long deviceStartTimeInCurrentFile = resource.getStartTime(device).get();
+        long deviceEndTimeInCurrentFile = resource.getEndTime(device).get();
         if (deviceStartTimeInCurrentFile <= maxEndTimeOfCurrentDevice) {
           // has overlap, update max end time
           maxEndTimeOfCurrentDevice =
