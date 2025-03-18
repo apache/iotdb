@@ -142,8 +142,8 @@ public abstract class TabletInsertionEventParser {
     final MeasurementSchema[] originMeasurementSchemaList = insertRowNode.getMeasurementSchemas();
     final String[] originColumnNameStringList = insertRowNode.getMeasurements();
     final TsTableColumnCategory[] originColumnCategories = insertRowNode.getColumnCategories();
-    final TSDataType[] originValueColumnDataTypes = insertRowNode.getDataTypes();
-    final Object[] originValueColumns = insertRowNode.getValues();
+    final TSDataType[] originValueDataTypes = insertRowNode.getDataTypes();
+    final Object[] originValues = insertRowNode.getValues();
 
     for (int i = 0; i < originColumnIndex2FilteredColumnIndexMapperList.length; i++) {
       if (originColumnIndex2FilteredColumnIndexMapperList[i] != null) {
@@ -154,12 +154,11 @@ public abstract class TabletInsertionEventParser {
             originColumnCategories != null && originColumnCategories[i] != null
                 ? originColumnCategories[i].toTsFileColumnType()
                 : Tablet.ColumnCategory.FIELD;
-        this.valueColumnDataTypes[filteredColumnIndex] = originValueColumnDataTypes[i];
+        this.valueColumnDataTypes[filteredColumnIndex] = originValueDataTypes[i];
         final BitMap bitMap = new BitMap(this.timestampColumn.length);
-        if (Objects.isNull(originValueColumns[i])
-            || Objects.isNull(originValueColumnDataTypes[i])) {
+        if (Objects.isNull(originValues[i]) || Objects.isNull(originValueDataTypes[i])) {
           fillNullValue(
-              originValueColumnDataTypes[i],
+              originValueDataTypes[i],
               this.valueColumns,
               bitMap,
               filteredColumnIndex,
@@ -167,8 +166,8 @@ public abstract class TabletInsertionEventParser {
         } else {
           this.valueColumns[filteredColumnIndex] =
               filterValueColumnsByRowIndexList(
-                  originValueColumnDataTypes[i],
-                  originValueColumns[i],
+                  originValueDataTypes[i],
+                  originValues[i],
                   rowIndexList,
                   true,
                   bitMap, // use the output bitmap since there is no bitmap in InsertRowNode
