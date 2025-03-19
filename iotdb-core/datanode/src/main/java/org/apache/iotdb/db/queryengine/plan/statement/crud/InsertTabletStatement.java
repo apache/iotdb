@@ -26,6 +26,7 @@ import org.apache.iotdb.commons.utils.TimePartitionUtils;
 import org.apache.iotdb.db.exception.metadata.DataTypeMismatchException;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.exception.sql.SemanticException;
+import org.apache.iotdb.db.pipe.resource.memory.InsertNodeMemoryEstimator;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.schematree.IMeasurementSchemaInfo;
 import org.apache.iotdb.db.queryengine.plan.analyze.schema.ISchemaValidation;
@@ -47,6 +48,7 @@ import org.apache.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.BitMap;
 import org.apache.tsfile.utils.Pair;
+import org.apache.tsfile.utils.RamUsageEstimator;
 import org.apache.tsfile.write.UnSupportedDataTypeException;
 import org.apache.tsfile.write.schema.MeasurementSchema;
 
@@ -59,6 +61,9 @@ import java.util.Map;
 import java.util.Objects;
 
 public class InsertTabletStatement extends InsertBaseStatement implements ISchemaValidation {
+
+  private static final long INSTANCE_SIZE =
+      RamUsageEstimator.shallowSizeOfInstance(InsertTabletStatement.class);
 
   private static final String DATATYPE_UNSUPPORTED = "Data type %s is not supported.";
 
@@ -540,6 +545,19 @@ public class InsertTabletStatement extends InsertBaseStatement implements ISchem
     }
     CommonUtils.swapArray(columns, src, target);
     deviceIDs = null;
+  }
+
+  @Override
+  protected long calculateBytesUsed() {
+    return INSTANCE_SIZE
+        + RamUsageEstimator.sizeOf(times)
+        + InsertNodeMemoryEstimator.sizeOfBitMapArray(nullBitMaps)
+        + InsertNodeMemoryEstimator.sizeOfColumns(columns, measurementSchemas)
+        + (Objects.nonNull(deviceIDs)
+            ? Arrays.stream(deviceIDs)
+                .mapToLong(InsertNodeMemoryEstimator::sizeOfIDeviceID)
+                .reduce(0L, Long::sum)
+            : 0L);
   }
 
   public boolean isNull(int row, int col) {

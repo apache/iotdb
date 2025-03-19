@@ -64,30 +64,36 @@ public class MockTableModelDataPartition {
     DEVICES_REGION_GROUP.add(Arrays.asList(DEVICE_2, DEVICE_1));
   }
 
-  static final List<Binary> DEVICE_1_ATTRIBUTES =
-      Arrays.asList(
-          new Binary("high", TSFileConfig.STRING_CHARSET),
-          new Binary("big", TSFileConfig.STRING_CHARSET));
-  static final List<Binary> DEVICE_2_ATTRIBUTES =
-      Arrays.asList(
-          new Binary("high", TSFileConfig.STRING_CHARSET),
-          new Binary("small", TSFileConfig.STRING_CHARSET));
-  static final List<Binary> DEVICE_3_ATTRIBUTES =
-      Arrays.asList(
-          new Binary("low", TSFileConfig.STRING_CHARSET),
-          new Binary("small", TSFileConfig.STRING_CHARSET));
-  static final List<Binary> DEVICE_4_ATTRIBUTES =
-      Arrays.asList(
-          new Binary("low", TSFileConfig.STRING_CHARSET),
-          new Binary("big", TSFileConfig.STRING_CHARSET));
-  static final List<Binary> DEVICE_5_ATTRIBUTES =
-      Arrays.asList(
-          new Binary("mid", TSFileConfig.STRING_CHARSET),
-          new Binary("big", TSFileConfig.STRING_CHARSET));
-  static final List<Binary> DEVICE_6_ATTRIBUTES =
-      Arrays.asList(
-          new Binary("mid", TSFileConfig.STRING_CHARSET),
-          new Binary("small", TSFileConfig.STRING_CHARSET));
+  static final Binary[] DEVICE_1_ATTRIBUTES =
+      new Binary[] {
+        new Binary("high", TSFileConfig.STRING_CHARSET),
+        new Binary("big", TSFileConfig.STRING_CHARSET)
+      };
+  static final Binary[] DEVICE_2_ATTRIBUTES =
+      new Binary[] {
+        new Binary("high", TSFileConfig.STRING_CHARSET),
+        new Binary("small", TSFileConfig.STRING_CHARSET)
+      };
+  static final Binary[] DEVICE_3_ATTRIBUTES =
+      new Binary[] {
+        new Binary("low", TSFileConfig.STRING_CHARSET),
+        new Binary("small", TSFileConfig.STRING_CHARSET)
+      };
+  static final Binary[] DEVICE_4_ATTRIBUTES =
+      new Binary[] {
+        new Binary("low", TSFileConfig.STRING_CHARSET),
+        new Binary("big", TSFileConfig.STRING_CHARSET)
+      };
+  static final Binary[] DEVICE_5_ATTRIBUTES =
+      new Binary[] {
+        new Binary("mid", TSFileConfig.STRING_CHARSET),
+        new Binary("big", TSFileConfig.STRING_CHARSET)
+      };
+  static final Binary[] DEVICE_6_ATTRIBUTES =
+      new Binary[] {
+        new Binary("mid", TSFileConfig.STRING_CHARSET),
+        new Binary("small", TSFileConfig.STRING_CHARSET)
+      };
 
   private static final TRegionReplicaSet DATA_REGION_GROUP_1 = genDataRegionGroup(10, 1, 2);
   private static final TRegionReplicaSet DATA_REGION_GROUP_2 = genDataRegionGroup(11, 3, 2);

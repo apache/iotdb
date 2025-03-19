@@ -1125,11 +1125,11 @@ public class AnalyzerTest {
             context,
             new SqlParser(),
             sessionInfo);
-    assertEquals(1, analysis.getDataPartition().getDataPartitionMap().size());
+    assertEquals(1, analysis.getDataPartitionInfo().getDataPartitionMap().size());
     Map<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TRegionReplicaSet>>>
         partitionSlotMapMap =
             analysis
-                .getDataPartition()
+                .getDataPartitionInfo()
                 .getDataPartitionMap()
                 .get(sessionInfo.getDatabaseName().orElse(null));
     assertEquals(3, partitionSlotMapMap.size());
@@ -1178,12 +1178,12 @@ public class AnalyzerTest {
             context,
             new SqlParser(),
             sessionInfo);
-    assertEquals(1, analysis.getDataPartition().getDataPartitionMap().size());
-    assertEquals(1, analysis.getDataPartition().getDataPartitionMap().size());
+    assertEquals(1, analysis.getDataPartitionInfo().getDataPartitionMap().size());
+    assertEquals(1, analysis.getDataPartitionInfo().getDataPartitionMap().size());
     final Map<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TRegionReplicaSet>>>
         partitionSlotMapMap =
             analysis
-                .getDataPartition()
+                .getDataPartitionInfo()
                 .getDataPartitionMap()
                 .get(sessionInfo.getDatabaseName().orElse(null));
     assertEquals(1, partitionSlotMapMap.size());
