@@ -60,7 +60,7 @@ import java.util.concurrent.BlockingQueue;
 
 import static org.apache.iotdb.db.utils.ModificationUtils.isPointDeleted;
 
-public class AlignedWritableMemChunk implements IWritableMemChunk {
+public class AlignedWritableMemChunk extends AbstractWritableMemChunk implements IWritableMemChunk {
 
   private final Map<String, Integer> measurementIndexMap;
   private final List<TSDataType> dataTypes;
@@ -190,32 +190,10 @@ public class AlignedWritableMemChunk implements IWritableMemChunk {
   }
 
   protected void handoverAlignedTvList() {
-    // ensure query contexts won't be removed from list during handover process.
-    list.lockQueryList();
-    try {
-      if (list.isSorted()) {
-        sortedList.add(list);
-      } else if (list.getQueryContextList().isEmpty()) {
-        list.sort();
-        sortedList.add(list);
-      } else {
-        QueryContext firstQuery = list.getQueryContextList().get(0);
-        // reserve query memory
-        if (firstQuery instanceof FragmentInstanceContext) {
-          MemoryReservationManager memoryReservationManager =
-              ((FragmentInstanceContext) firstQuery).getMemoryReservationContext();
-          memoryReservationManager.reserveMemoryCumulatively(list.calculateRamSize());
-        }
-        // update current TVList owner to first query in the list
-        list.setOwnerQuery(firstQuery);
-        // clone tv list
-        AlignedTVList cloneList = list.clone();
-        cloneList.sort();
-        sortedList.add(cloneList);
-      }
-    } finally {
-      list.unlockQueryList();
+    if (!list.isSorted()) {
+      list.sort();
     }
+    sortedList.add(list);
     this.list = AlignedTVList.newAlignedList(dataTypes);
   }
 
@@ -781,28 +759,6 @@ public class AlignedWritableMemChunk implements IWritableMemChunk {
       } catch (InterruptedException e) {
         Thread.currentThread().interrupt();
       }
-    }
-  }
-
-  private void maybeReleaseTvList(AlignedTVList alignedTvList) {
-    alignedTvList.lockQueryList();
-    try {
-      if (alignedTvList.getQueryContextList().isEmpty()) {
-        alignedTvList.clear();
-      } else {
-        QueryContext firstQuery = alignedTvList.getQueryContextList().get(0);
-        // transfer memory from write process to read process. Here it reserves read memory and
-        // releaseFlushedMemTable will release write memory.
-        if (firstQuery instanceof FragmentInstanceContext) {
-          MemoryReservationManager memoryReservationManager =
-              ((FragmentInstanceContext) firstQuery).getMemoryReservationContext();
-          memoryReservationManager.reserveMemoryCumulatively(alignedTvList.calculateRamSize());
-        }
-        // update current TVList owner to first query in the list
-        alignedTvList.setOwnerQuery(firstQuery);
-      }
-    } finally {
-      alignedTvList.unlockQueryList();
     }
   }
 
