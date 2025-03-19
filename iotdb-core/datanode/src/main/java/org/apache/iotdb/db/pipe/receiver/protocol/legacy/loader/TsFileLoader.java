@@ -57,7 +57,7 @@ public class TsFileLoader implements ILoader {
       LoadTsFileStatement statement = new LoadTsFileStatement(tsFile.getAbsolutePath());
       statement.setDeleteAfterLoad(true);
       statement.setConvertOnTypeMismatch(true);
-      statement.setTabletConversionThreshold(-1);
+      statement.setTabletConversionThresholdBytes(-1);
       statement.setDatabaseLevel(parseSgLevel());
       statement.setVerifySchema(true);
       statement.setAutoCreateDatabase(false);

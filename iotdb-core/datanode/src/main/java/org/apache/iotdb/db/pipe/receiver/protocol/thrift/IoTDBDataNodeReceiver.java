@@ -600,7 +600,7 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
     final LoadTsFileStatement statement = new LoadTsFileStatement(fileAbsolutePath);
     statement.setDeleteAfterLoad(true);
     statement.setConvertOnTypeMismatch(true);
-    statement.setTabletConversionThreshold(-1);
+    statement.setTabletConversionThresholdBytes(-1);
     statement.setVerifySchema(validateTsFile.get());
     statement.setAutoCreateDatabase(false);
     statement.setDatabase(dataBaseName);

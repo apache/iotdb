@@ -1096,7 +1096,7 @@ public class IoTDBConfig {
 
   private double loadWriteThroughputBytesPerSecond = -1; // Bytes/s
 
-  private int loadTabletConversionThreshold = -1;
+  private long loadTabletConversionThresholdBytes = -1;
 
   private boolean loadActiveListeningEnable = true;
 
@@ -3825,12 +3825,12 @@ public class IoTDBConfig {
     this.loadWriteThroughputBytesPerSecond = loadWriteThroughputBytesPerSecond;
   }
 
-  public int getLoadTabletConversionThreshold() {
-    return loadTabletConversionThreshold;
+  public long getLoadTabletConversionThresholdBytes() {
+    return loadTabletConversionThresholdBytes;
   }
 
-  public void setLoadTabletConversionThreshold(int loadTabletConversionThreshold) {
-    this.loadTabletConversionThreshold = loadTabletConversionThreshold;
+  public void setLoadTabletConversionThresholdBytes(long loadTabletConversionThresholdBytes) {
+    this.loadTabletConversionThresholdBytes = loadTabletConversionThresholdBytes;
   }
 
   public int getLoadActiveListeningMaxThreadNum() {

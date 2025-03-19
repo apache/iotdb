@@ -36,16 +36,16 @@ import static com.google.common.base.MoreObjects.toStringHelper;
 import static java.util.Objects.requireNonNull;
 
 public class LoadTsFile extends Statement {
+
   private final String filePath;
 
-  private final File file;
   private int databaseLevel; // For loading to tree-model only
   private String database; // For loading to table-model only
   private boolean deleteAfterLoad = false;
   private boolean convertOnTypeMismatch = true;
-  private int tabletConversionThreshold = -1;
+  private long tabletConversionThresholdBytes = -1;
   private boolean autoCreateDatabase = true;
-  private boolean verify;
+  private boolean verify = true;
   private boolean isGeneratedByPipe = false;
 
   private final Map<String, String> loadAttributes;
@@ -59,11 +59,11 @@ public class LoadTsFile extends Statement {
     super(location);
     this.filePath = requireNonNull(filePath, "filePath is null");
 
-    this.file = new File(filePath);
+    File file = new File(filePath);
     this.databaseLevel = IoTDBDescriptor.getInstance().getConfig().getDefaultStorageGroupLevel();
     this.deleteAfterLoad = false;
     this.convertOnTypeMismatch = true;
-    this.tabletConversionThreshold = -1;
+    this.tabletConversionThresholdBytes = -1;
     this.verify = true;
     this.autoCreateDatabase = IoTDBDescriptor.getInstance().getConfig().isAutoCreateSchemaEnabled();
     this.resources = new ArrayList<>();
@@ -105,8 +105,8 @@ public class LoadTsFile extends Statement {
     return convertOnTypeMismatch;
   }
 
-  public int getTabletConversionThreshold() {
-    return tabletConversionThreshold;
+  public long getTabletConversionThresholdBytes() {
+    return tabletConversionThresholdBytes;
   }
 
   public boolean isVerifySchema() {
@@ -173,8 +173,8 @@ public class LoadTsFile extends Statement {
     this.deleteAfterLoad = LoadTsFileConfigurator.parseOrGetDefaultOnSuccess(loadAttributes);
     this.convertOnTypeMismatch =
         LoadTsFileConfigurator.parseOrGetDefaultConvertOnTypeMismatch(loadAttributes);
-    this.tabletConversionThreshold =
-        LoadTsFileConfigurator.parseOrGetDefaultTabletConversionThreshold(loadAttributes);
+    this.tabletConversionThresholdBytes =
+        LoadTsFileConfigurator.parseOrGetDefaultTabletConversionThresholdBytes(loadAttributes);
     this.verify = LoadTsFileConfigurator.parseOrGetDefaultVerify(loadAttributes);
   }
 

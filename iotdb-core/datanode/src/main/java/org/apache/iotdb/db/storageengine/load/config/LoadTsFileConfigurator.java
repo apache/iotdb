@@ -136,13 +136,15 @@ public class LoadTsFileConfigurator {
 
   public static final String TABLET_CONVERSION_THRESHOLD_KEY = "tablet-conversion-threshold";
 
-  public static int parseOrGetDefaultTabletConversionThreshold(
+  public static long parseOrGetDefaultTabletConversionThresholdBytes(
       final Map<String, String> loadAttributes) {
-    return Integer.parseInt(
+    return Long.parseLong(
         loadAttributes.getOrDefault(
             TABLET_CONVERSION_THRESHOLD_KEY,
             String.valueOf(
-                IoTDBDescriptor.getInstance().getConfig().getLoadTabletConversionThreshold())));
+                IoTDBDescriptor.getInstance()
+                    .getConfig()
+                    .getLoadTabletConversionThresholdBytes())));
   }
 
   public static final String VERIFY_KEY = "verify";

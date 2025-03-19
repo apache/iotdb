@@ -199,7 +199,7 @@ public class ActiveLoadTsFileLoader {
     final LoadTsFileStatement statement = new LoadTsFileStatement(filePair.getLeft());
     statement.setDeleteAfterLoad(true);
     statement.setConvertOnTypeMismatch(true);
-    statement.setTabletConversionThreshold(-1);
+    statement.setTabletConversionThresholdBytes(-1);
     statement.setVerifySchema(isVerify);
     statement.setAutoCreateDatabase(false);
     return executeStatement(filePair.getRight() ? new PipeEnrichedStatement(statement) : statement);

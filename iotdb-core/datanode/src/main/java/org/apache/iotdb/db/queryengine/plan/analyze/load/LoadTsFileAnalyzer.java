@@ -114,7 +114,7 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
   private final boolean isDeleteAfterLoad;
   private final boolean isConvertOnTypeMismatch;
   private final boolean isAutoCreateDatabase;
-  private final int tabletConversionThreshold;
+  private final long tabletConversionThresholdBytes;
 
   // Schema creators for tree and table
   private TreeSchemaAutoCreatorAndVerifier treeSchemaAutoCreatorAndVerifier;
@@ -138,7 +138,7 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
     this.isVerifySchema = loadTsFileStatement.isVerifySchema();
     this.isDeleteAfterLoad = loadTsFileStatement.isDeleteAfterLoad();
     this.isConvertOnTypeMismatch = loadTsFileStatement.isConvertOnTypeMismatch();
-    this.tabletConversionThreshold = loadTsFileStatement.getTabletConversionThreshold();
+    this.tabletConversionThresholdBytes = loadTsFileStatement.getTabletConversionThresholdBytes();
     this.isAutoCreateDatabase = loadTsFileStatement.isAutoCreateDatabase();
   }
 
@@ -160,7 +160,8 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
     this.isVerifySchema = loadTsFileTableStatement.isVerifySchema();
     this.isDeleteAfterLoad = loadTsFileTableStatement.isDeleteAfterLoad();
     this.isConvertOnTypeMismatch = loadTsFileTableStatement.isConvertOnTypeMismatch();
-    this.tabletConversionThreshold = loadTsFileTableStatement.getTabletConversionThreshold();
+    this.tabletConversionThresholdBytes =
+        loadTsFileTableStatement.getTabletConversionThresholdBytes();
     this.isAutoCreateDatabase = loadTsFileTableStatement.isAutoCreateDatabase();
   }
 
@@ -261,7 +262,7 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
         continue;
       }
 
-      if (tsFile.length() < tabletConversionThreshold) {
+      if (tsFile.length() < tabletConversionThresholdBytes) {
         tabletConvertionList.add(tsFile);
         if (LOGGER.isInfoEnabled()) {
           LOGGER.info(
