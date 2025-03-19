@@ -349,18 +349,22 @@ public class DeviceTimeIndex implements ITimeIndex {
 
   @Override
   public Optional<Long> getStartTime(IDeviceID deviceId) {
-    if (!deviceToIndex.containsKey(deviceId)) {
+    Integer index = deviceToIndex.get(deviceId);
+    if (index == null) {
       return Optional.empty();
+    } else {
+      return Optional.of(startTimes[index]);
     }
-    return Optional.of(startTimes[deviceToIndex.get(deviceId)]);
   }
 
   @Override
   public Optional<Long> getEndTime(IDeviceID deviceId) {
-    if (!deviceToIndex.containsKey(deviceId)) {
+    Integer index = deviceToIndex.get(deviceId);
+    if (index == null) {
       return Optional.empty();
+    } else {
+      return Optional.of(endTimes[index]);
     }
-    return Optional.of(endTimes[deviceToIndex.get(deviceId)]);
   }
 
   @Override
