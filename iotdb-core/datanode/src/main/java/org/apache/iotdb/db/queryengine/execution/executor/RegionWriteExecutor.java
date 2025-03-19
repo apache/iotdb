@@ -311,7 +311,7 @@ public class RegionWriteExecutor {
                 "Failed to complete the insertion because trigger error before the insertion.");
       } else {
         final long startWriteTime = System.nanoTime();
-        if (CONFIG.getDataRegionNum()) insertNode.cachedByteBuffer();
+        insertNode.cachedByteBuffer();
         insertNode.getMemorySize();
         status = dataRegionConsensus.write(groupId, insertNode);
         PERFORMANCE_OVERVIEW_METRICS.recordScheduleStorageCost(System.nanoTime() - startWriteTime);
