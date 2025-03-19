@@ -206,7 +206,7 @@ public class IoTDBRelationalDatabaseMetadata extends IoTDBAbstractDatabaseMetada
       throws SQLException {
 
     Statement stmt = this.connection.createStatement();
-    boolean mode1 = true;
+    boolean legacyMode = true;
 
     ResultSet rs;
     try {
@@ -220,7 +220,7 @@ public class IoTDBRelationalDatabaseMetadata extends IoTDBAbstractDatabaseMetada
       try {
         String sql = String.format("show tables details from %s", schemaPattern);
         rs = stmt.executeQuery(sql);
-        mode1 = false;
+        legacyMode = false;
       } catch (SQLException e1) {
         LOGGER.error(SHOW_TABLES_ERROR_MSG, e.getMessage());
         throw e;
@@ -265,14 +265,14 @@ public class IoTDBRelationalDatabaseMetadata extends IoTDBAbstractDatabaseMetada
           valueInRow.add(schemaPattern);
         } else if (i == 1) {
           // valueInRow.add(rs.getString(2));
-          valueInRow.add(mode1 ? rs.getString("table_name") : rs.getString("TableName"));
+          valueInRow.add(legacyMode ? rs.getString("table_name") : rs.getString("TableName"));
         } else if (i == 2) {
           valueInRow.add("TABLE");
         } else if (i == 3) {
           // String tgtString = "";
           // String ttl = rs.getString("ttl(ms)");
           // tgtString += "TTL(ms): " + ttl;
-          String comment = mode1 ? rs.getString("comment") : rs.getString("Comment");
+          String comment = legacyMode ? rs.getString("comment") : rs.getString("Comment");
           if (comment != null && !comment.isEmpty()) {
             valueInRow.add(comment);
           } else {
@@ -324,7 +324,7 @@ public class IoTDBRelationalDatabaseMetadata extends IoTDBAbstractDatabaseMetada
       throws SQLException {
 
     Statement stmt = this.connection.createStatement();
-    boolean mode1 = true;
+    boolean legacyMode = true;
     ResultSet rs;
 
     // Get Table Metadata
@@ -340,7 +340,7 @@ public class IoTDBRelationalDatabaseMetadata extends IoTDBAbstractDatabaseMetada
       try {
         String sql = String.format("desc %s.%s details", schemaPattern, tableNamePattern);
         rs = stmt.executeQuery(sql);
-        mode1 = false;
+        legacyMode = false;
       } catch (SQLException e1) {
         LOGGER.error(SHOW_TABLES_ERROR_MSG, e.getMessage());
         throw e;
@@ -389,8 +389,8 @@ public class IoTDBRelationalDatabaseMetadata extends IoTDBAbstractDatabaseMetada
     // Extract Metadata
     int count = 1;
     while (rs.next()) {
-      String columnName = mode1 ? rs.getString("column_name") : rs.getString("ColumnName"); // 3
-      String type = mode1 ? rs.getString("datatype") : rs.getString("DataType"); // 4
+      String columnName = legacyMode ? rs.getString("column_name") : rs.getString("ColumnName"); // 3
+      String type = legacyMode ? rs.getString("datatype") : rs.getString("DataType"); // 4
       List<Object> valueInRow = new ArrayList<>();
       for (int i = 0; i < fields.length; i++) {
         if (i == 0) {
@@ -421,7 +421,7 @@ public class IoTDBRelationalDatabaseMetadata extends IoTDBAbstractDatabaseMetada
         } else if (i == 8) {
           valueInRow.add(getTypeScale(fields[i].getSqlType()));
         } else if (i == 9) {
-          String comment = mode1 ? rs.getString("comment") : rs.getString("Comment");
+          String comment = legacyMode ? rs.getString("comment") : rs.getString("Comment");
           if (comment != null && !comment.isEmpty()) {
             valueInRow.add(comment);
           } else {
@@ -476,7 +476,7 @@ public class IoTDBRelationalDatabaseMetadata extends IoTDBAbstractDatabaseMetada
       throws SQLException {
 
     Statement stmt = connection.createStatement();
-    boolean mode1 = true;
+    boolean legacyMode = true;
     ResultSet rs;
 
     try {
@@ -491,7 +491,7 @@ public class IoTDBRelationalDatabaseMetadata extends IoTDBAbstractDatabaseMetada
       try {
         String sql = String.format("desc %s.%s", schemaPattern, tableNamePattern);
         rs = stmt.executeQuery(sql);
-        mode1 = false;
+        legacyMode = false;
       } catch (SQLException e1) {
         LOGGER.error(SHOW_TABLES_ERROR_MSG, e.getMessage());
         throw e;
@@ -528,8 +528,8 @@ public class IoTDBRelationalDatabaseMetadata extends IoTDBAbstractDatabaseMetada
 
     int count = 1;
     while (rs.next()) {
-      String columnName = mode1 ? rs.getString("column_name") : rs.getString("ColumnName");
-      String category = mode1 ? rs.getString("category") : rs.getString("Category");
+      String columnName = legacyMode ? rs.getString("column_name") : rs.getString("ColumnName");
+      String category = legacyMode ? rs.getString("category") : rs.getString("Category");
       if (category.equals("TAG") || category.equals("TIME")) {
         List<Object> valueInRow = new ArrayList<>();
         for (int i = 0; i < fields.length; ++i) {
