@@ -76,14 +76,15 @@ public class LoadTsFileStatement extends Statement {
     this.verifySchema = true;
     this.deleteAfterLoad = false;
     this.convertOnTypeMismatch = true;
-    this.tabletConversionThresholdBytes = -1;
+    this.tabletConversionThresholdBytes =
+        IoTDBDescriptor.getInstance().getConfig().getLoadTabletConversionThresholdBytes();
     this.autoCreateDatabase = IoTDBDescriptor.getInstance().getConfig().isAutoCreateSchemaEnabled();
-    this.resources = new ArrayList<>();
-    this.writePointCountList = new ArrayList<>();
-    this.statementType = StatementType.MULTI_BATCH_INSERT;
 
     this.tsFiles = processTsFile(file);
+    this.resources = new ArrayList<>();
+    this.writePointCountList = new ArrayList<>();
     this.isTableModel = new ArrayList<>(Collections.nCopies(this.tsFiles.size(), false));
+    this.statementType = StatementType.MULTI_BATCH_INSERT;
   }
 
   public static List<File> processTsFile(final File file) throws FileNotFoundException {
@@ -109,8 +110,10 @@ public class LoadTsFileStatement extends Statement {
     this.verifySchema = true;
     this.deleteAfterLoad = false;
     this.convertOnTypeMismatch = true;
-    this.tabletConversionThresholdBytes = -1;
+    this.tabletConversionThresholdBytes =
+        IoTDBDescriptor.getInstance().getConfig().getLoadTabletConversionThresholdBytes();
     this.autoCreateDatabase = IoTDBDescriptor.getInstance().getConfig().isAutoCreateSchemaEnabled();
+
     this.tsFiles = new ArrayList<>();
     this.resources = new ArrayList<>();
     this.writePointCountList = new ArrayList<>();
