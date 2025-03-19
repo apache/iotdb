@@ -40,7 +40,6 @@ import org.apache.tsfile.read.common.TimeRange;
 import org.apache.tsfile.read.common.block.TsBlock;
 import org.apache.tsfile.read.common.block.TsBlockBuilder;
 import org.apache.tsfile.read.reader.IPointReader;
-import org.apache.tsfile.utils.BitMap;
 import org.apache.tsfile.utils.TsPrimitiveType;
 import org.apache.tsfile.write.UnSupportedDataTypeException;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
@@ -51,8 +50,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
-
-import static org.apache.iotdb.db.utils.ModificationUtils.isPointDeleted;
 
 public class AlignedReadOnlyMemChunk extends ReadOnlyMemChunk {
   private final String timeChunkName;
@@ -166,93 +163,90 @@ public class AlignedReadOnlyMemChunk extends ReadOnlyMemChunk {
       valueStatisticsList.add(pageValueStatistics);
 
       TsBlock tsBlock = timeValuePairIterator.nextBatch();
-      if (!tsBlock.isEmpty()) {
-        // time column
-        for (int i = 0; i < tsBlock.getPositionCount(); i++) {
-          pageTimeStatistics.update(tsBlock.getTimeByIndex(i));
-          chunkTimeStatistics.update(tsBlock.getTimeByIndex(i));
+      // time column
+      for (int i = 0; i < tsBlock.getPositionCount(); i++) {
+        pageTimeStatistics.update(tsBlock.getTimeByIndex(i));
+        chunkTimeStatistics.update(tsBlock.getTimeByIndex(i));
+      }
+      // value columns
+      for (int column = 0; column < tsBlock.getValueColumnCount(); column++) {
+        Statistics<? extends Serializable> pageValueStats =
+            Statistics.getStatsByType(dataTypes.get(column));
+        switch (dataTypes.get(column)) {
+          case BOOLEAN:
+            for (int i = 0; i < tsBlock.getPositionCount(); i++) {
+              if (tsBlock.getColumn(column).isNull(i)) {
+                continue;
+              }
+              pageValueStats.update(
+                  tsBlock.getTimeByIndex(i), tsBlock.getColumn(column).getBoolean(i));
+              chunkValueStatistics[column].update(
+                  tsBlock.getTimeByIndex(i), tsBlock.getColumn(column).getBoolean(i));
+            }
+            break;
+          case INT32:
+          case DATE:
+            for (int i = 0; i < tsBlock.getPositionCount(); i++) {
+              if (tsBlock.getColumn(column).isNull(i)) {
+                continue;
+              }
+              pageValueStats.update(tsBlock.getTimeByIndex(i), tsBlock.getColumn(column).getInt(i));
+              chunkValueStatistics[column].update(
+                  tsBlock.getTimeByIndex(i), tsBlock.getColumn(column).getInt(i));
+            }
+            break;
+          case INT64:
+          case TIMESTAMP:
+            for (int i = 0; i < tsBlock.getPositionCount(); i++) {
+              if (tsBlock.getColumn(column).isNull(i)) {
+                continue;
+              }
+              pageValueStats.update(
+                  tsBlock.getTimeByIndex(i), tsBlock.getColumn(column).getLong(i));
+              chunkValueStatistics[column].update(
+                  tsBlock.getTimeByIndex(i), tsBlock.getColumn(column).getLong(i));
+            }
+            break;
+          case FLOAT:
+            for (int i = 0; i < tsBlock.getPositionCount(); i++) {
+              if (tsBlock.getColumn(column).isNull(i)) {
+                continue;
+              }
+              pageValueStats.update(
+                  tsBlock.getTimeByIndex(i), tsBlock.getColumn(column).getFloat(i));
+              chunkValueStatistics[column].update(
+                  tsBlock.getTimeByIndex(i), tsBlock.getColumn(column).getFloat(i));
+            }
+            break;
+          case DOUBLE:
+            for (int i = 0; i < tsBlock.getPositionCount(); i++) {
+              if (tsBlock.getColumn(column).isNull(i)) {
+                continue;
+              }
+              pageValueStats.update(
+                  tsBlock.getTimeByIndex(i), tsBlock.getColumn(column).getDouble(i));
+              chunkValueStatistics[column].update(
+                  tsBlock.getTimeByIndex(i), tsBlock.getColumn(column).getDouble(i));
+            }
+            break;
+          case TEXT:
+          case BLOB:
+          case STRING:
+            for (int i = 0; i < tsBlock.getPositionCount(); i++) {
+              if (tsBlock.getColumn(column).isNull(i)) {
+                continue;
+              }
+              pageValueStats.update(
+                  tsBlock.getTimeByIndex(i), tsBlock.getColumn(column).getBinary(i));
+              chunkValueStatistics[column].update(
+                  tsBlock.getTimeByIndex(i), tsBlock.getColumn(column).getBinary(i));
+            }
+            break;
+          default:
+            throw new UnSupportedDataTypeException(
+                String.format("Data type %s is not supported.", dataTypes.get(column)));
         }
-        // value columns
-        for (int column = 0; column < tsBlock.getValueColumnCount(); column++) {
-          Statistics<? extends Serializable> pageValueStats =
-              Statistics.getStatsByType(dataTypes.get(column));
-          switch (dataTypes.get(column)) {
-            case BOOLEAN:
-              for (int i = 0; i < tsBlock.getPositionCount(); i++) {
-                if (tsBlock.getColumn(column).isNull(i)) {
-                  continue;
-                }
-                pageValueStats.update(
-                    tsBlock.getTimeByIndex(i), tsBlock.getColumn(column).getBoolean(i));
-                chunkValueStatistics[column].update(
-                    tsBlock.getTimeByIndex(i), tsBlock.getColumn(column).getBoolean(i));
-              }
-              break;
-            case INT32:
-            case DATE:
-              for (int i = 0; i < tsBlock.getPositionCount(); i++) {
-                if (tsBlock.getColumn(column).isNull(i)) {
-                  continue;
-                }
-                pageValueStats.update(
-                    tsBlock.getTimeByIndex(i), tsBlock.getColumn(column).getInt(i));
-                chunkValueStatistics[column].update(
-                    tsBlock.getTimeByIndex(i), tsBlock.getColumn(column).getInt(i));
-              }
-              break;
-            case INT64:
-            case TIMESTAMP:
-              for (int i = 0; i < tsBlock.getPositionCount(); i++) {
-                if (tsBlock.getColumn(column).isNull(i)) {
-                  continue;
-                }
-                pageValueStats.update(
-                    tsBlock.getTimeByIndex(i), tsBlock.getColumn(column).getLong(i));
-                chunkValueStatistics[column].update(
-                    tsBlock.getTimeByIndex(i), tsBlock.getColumn(column).getLong(i));
-              }
-              break;
-            case FLOAT:
-              for (int i = 0; i < tsBlock.getPositionCount(); i++) {
-                if (tsBlock.getColumn(column).isNull(i)) {
-                  continue;
-                }
-                pageValueStats.update(
-                    tsBlock.getTimeByIndex(i), tsBlock.getColumn(column).getFloat(i));
-                chunkValueStatistics[column].update(
-                    tsBlock.getTimeByIndex(i), tsBlock.getColumn(column).getFloat(i));
-              }
-              break;
-            case DOUBLE:
-              for (int i = 0; i < tsBlock.getPositionCount(); i++) {
-                if (tsBlock.getColumn(column).isNull(i)) {
-                  continue;
-                }
-                pageValueStats.update(
-                    tsBlock.getTimeByIndex(i), tsBlock.getColumn(column).getDouble(i));
-                chunkValueStatistics[column].update(
-                    tsBlock.getTimeByIndex(i), tsBlock.getColumn(column).getDouble(i));
-              }
-              break;
-            case TEXT:
-            case BLOB:
-            case STRING:
-              for (int i = 0; i < tsBlock.getPositionCount(); i++) {
-                if (tsBlock.getColumn(column).isNull(i)) {
-                  continue;
-                }
-                pageValueStats.update(
-                    tsBlock.getTimeByIndex(i), tsBlock.getColumn(column).getBinary(i));
-                chunkValueStatistics[column].update(
-                    tsBlock.getTimeByIndex(i), tsBlock.getColumn(column).getBinary(i));
-              }
-              break;
-            default:
-              throw new UnSupportedDataTypeException(
-                  String.format("Data type %s is not supported.", dataTypes.get(column)));
-          }
-          pageValueStatistics[column] = pageValueStats.isEmpty() ? null : pageValueStats;
-        }
+        pageValueStatistics[column] = pageValueStats.isEmpty() ? null : pageValueStats;
       }
     }
 
@@ -335,30 +329,9 @@ public class AlignedReadOnlyMemChunk extends ReadOnlyMemChunk {
             encodingList,
             context.isIgnoreAllNullRows());
 
-    BitMap bitMap = new BitMap(dataTypes.size());
-    List<int[]> valueColumnDeleteCursor = new ArrayList<>();
-    for (int i = 0; i < dataTypes.size(); i++) {
-      valueColumnDeleteCursor.add(new int[] {0});
-    }
     while (timeValuePairIterator.hasNextTimeValuePair()) {
       TimeValuePair tvPair = timeValuePairIterator.nextTimeValuePair();
       TsPrimitiveType[] values = tvPair.getValue().getVector();
-
-      bitMap.reset();
-      // check valueColumnsDeletionList
-      for (int columnIndex = 0; columnIndex < dataTypes.size(); columnIndex++) {
-        if (values[columnIndex] == null
-            || (valueColumnsDeletionList != null
-                && isPointDeleted(
-                    tvPair.getTimestamp(),
-                    valueColumnsDeletionList.get(columnIndex),
-                    valueColumnDeleteCursor.get(columnIndex)))) {
-          bitMap.mark(columnIndex);
-        }
-      }
-      if (context.isIgnoreAllNullRows() && bitMap.isAllMarked()) {
-        continue;
-      }
 
       // time column
       builder.getTimeColumnBuilder().writeLong(tvPair.getTimestamp());

@@ -125,20 +125,19 @@ public class MergeSortMultiAlignedTVListIterator extends MultiAlignedTVListItera
               bitMap.unmark(columnIndex);
             }
           }
+
+          // check valueColumnsDeletionList
+          if (valueColumnsDeletionList != null
+              && isPointDeleted(
+                  currentTime,
+                  valueColumnsDeletionList.get(columnIndex),
+                  valueColumnDeleteCursor.get(columnIndex))) {
+            iteratorIndices[columnIndex] = -1;
+            bitMap.mark(columnIndex);
+          }
         }
       }
 
-      // check valueColumnsDeletionList
-      for (int columnIndex = 0; columnIndex < tsDataTypeList.size(); columnIndex++) {
-        if (valueColumnsDeletionList != null
-            && isPointDeleted(
-                currentTime,
-                valueColumnsDeletionList.get(columnIndex),
-                valueColumnDeleteCursor.get(columnIndex))) {
-          iteratorIndices[columnIndex] = -1;
-          bitMap.mark(columnIndex);
-        }
-      }
       if (ignoreAllNullRows && bitMap.isAllMarked()) {
         Iterator<Integer> it = probeIterators.iterator();
         while (it.hasNext()) {
