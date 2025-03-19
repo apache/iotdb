@@ -619,27 +619,6 @@ public class IoTDBDataRegionAsyncConnector extends IoTDBConnector {
     return retryEventQueue.size();
   }
 
-  // For performance, this will not acquire lock and does not guarantee the correct
-  // result. However, this shall not cause any exceptions when concurrently read & written.
-  public int getRetryEventCount(final String pipeName) {
-    final AtomicInteger count = new AtomicInteger(0);
-    try {
-      retryEventQueue.forEach(
-          event -> {
-            if (event instanceof EnrichedEvent
-                && pipeName.equals(((EnrichedEvent) event).getPipeName())) {
-              count.incrementAndGet();
-            }
-          });
-      return count.get();
-    } catch (final Exception e) {
-      if (LOGGER.isDebugEnabled()) {
-        LOGGER.debug("Failed to get retry event count for pipe {}.", pipeName, e);
-      }
-      return count.get();
-    }
-  }
-
   //////////////////////// APIs provided for PipeTransferTrackableHandler ////////////////////////
 
   public boolean isClosed() {

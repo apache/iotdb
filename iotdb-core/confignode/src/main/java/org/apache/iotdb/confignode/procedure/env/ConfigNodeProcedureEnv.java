@@ -68,6 +68,7 @@ import org.apache.iotdb.mpp.rpc.thrift.TDropPipePluginInstanceReq;
 import org.apache.iotdb.mpp.rpc.thrift.TDropTriggerInstanceReq;
 import org.apache.iotdb.mpp.rpc.thrift.TInactiveTriggerInstanceReq;
 import org.apache.iotdb.mpp.rpc.thrift.TInvalidateCacheReq;
+import org.apache.iotdb.mpp.rpc.thrift.TNotifyRegionMigrationReq;
 import org.apache.iotdb.mpp.rpc.thrift.TPushConsumerGroupMetaReq;
 import org.apache.iotdb.mpp.rpc.thrift.TPushConsumerGroupMetaResp;
 import org.apache.iotdb.mpp.rpc.thrift.TPushMultiPipeMetaReq;
@@ -319,14 +320,15 @@ public class ConfigNodeProcedureEnv {
    * @param tConfigNodeLocation config node location
    * @throws ProcedureException if failed status
    */
-  public void stopConfigNode(TConfigNodeLocation tConfigNodeLocation) throws ProcedureException {
+  public void stopAndClearConfigNode(TConfigNodeLocation tConfigNodeLocation)
+      throws ProcedureException {
     TSStatus tsStatus =
         (TSStatus)
             SyncConfigNodeClientPool.getInstance()
                 .sendSyncRequestToConfigNodeWithRetry(
                     tConfigNodeLocation.getInternalEndPoint(),
                     tConfigNodeLocation,
-                    CnToCnNodeRequestType.STOP_CONFIG_NODE);
+                    CnToCnNodeRequestType.STOP_AND_CLEAR_CONFIG_NODE);
 
     if (tsStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       throw new ProcedureException(tsStatus.getMessage());
@@ -478,6 +480,20 @@ public class ConfigNodeProcedureEnv {
     req.setStorageGroup(storageGroup);
     req.setRegionReplicaSet(regionReplicaSet);
     return req;
+  }
+
+  public List<TSStatus> notifyRegionMigrationToAllDataNodes(
+      TConsensusGroupId consensusGroupId, boolean isStart) {
+    final Map<Integer, TDataNodeLocation> dataNodeLocationMap =
+        configManager.getNodeManager().getRegisteredDataNodeLocations();
+    final TNotifyRegionMigrationReq request =
+        new TNotifyRegionMigrationReq(consensusGroupId, isStart);
+
+    final DataNodeAsyncRequestContext<TNotifyRegionMigrationReq, TSStatus> clientHandler =
+        new DataNodeAsyncRequestContext<>(
+            CnToDnAsyncRequestType.NOTIFY_REGION_MIGRATION, request, dataNodeLocationMap);
+    CnToDnInternalServiceAsyncRequestManager.getInstance().sendAsyncRequestWithRetry(clientHandler);
+    return clientHandler.getResponseList();
   }
 
   public void persistRegionGroup(CreateRegionGroupsPlan createRegionGroupsPlan) {

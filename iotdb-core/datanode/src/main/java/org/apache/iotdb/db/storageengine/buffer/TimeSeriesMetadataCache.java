@@ -126,8 +126,8 @@ public class TimeSeriesMetadataCache {
         queryContext.getQueryStatistics().getLoadBloomFilterActualIOSize()::addAndGet;
     boolean cacheHit = true;
     try {
-      String deviceStringFormat = key.device.toString();
       if (!CACHE_ENABLE) {
+        String deviceStringFormat = key.device.toString();
         cacheHit = false;
 
         // bloom filter part
@@ -158,6 +158,7 @@ public class TimeSeriesMetadataCache {
           DEBUG_LOGGER.info("Cache miss: {}.{} in file: {}", key.device, key.measurement, filePath);
           DEBUG_LOGGER.info("Device: {}, all sensors: {}", key.device, allSensors);
         }
+        String deviceStringFormat = key.device.toString();
         // allow for the parallelism of different devices
         synchronized (
             devices.computeIfAbsent(

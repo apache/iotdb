@@ -85,7 +85,8 @@ public class PipeInsertNodeTabletInsertionEvent extends PipeInsertionEvent
           + RamUsageEstimator.shallowSizeOfInstance(WALEntryHandler.class)
           + RamUsageEstimator.shallowSizeOfInstance(WALEntryPosition.class)
           + RamUsageEstimator.shallowSizeOfInstance(AtomicInteger.class)
-          + RamUsageEstimator.shallowSizeOfInstance(AtomicBoolean.class);
+          + RamUsageEstimator.shallowSizeOfInstance(AtomicBoolean.class)
+          + RamUsageEstimator.shallowSizeOf(Boolean.class);
   private static final long SET_SIZE = RamUsageEstimator.shallowSizeOfInstance(HashSet.class);
 
   private final WALEntryHandler walEntryHandler;
@@ -590,6 +591,12 @@ public class PipeInsertNodeTabletInsertionEvent extends PipeInsertionEvent
     return INSTANCE_SIZE
         + (Objects.nonNull(devicePath) ? PartialPath.estimateSize(devicePath) : 0)
         + (Objects.nonNull(progressIndex) ? progressIndex.ramBytesUsed() : 0)
+        + (Objects.nonNull(treeModelDatabaseName)
+            ? RamUsageEstimator.sizeOf(treeModelDatabaseName)
+            : 0)
+        + (Objects.nonNull(tableModelDatabaseName)
+            ? RamUsageEstimator.sizeOf(tableModelDatabaseName)
+            : 0)
         + (Objects.nonNull(tableNames)
             ? SET_SIZE
                 + tableNames.stream().mapToLong(RamUsageEstimator::sizeOf).reduce(0L, Long::sum)
