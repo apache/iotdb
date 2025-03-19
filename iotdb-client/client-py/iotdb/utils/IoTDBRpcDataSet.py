@@ -24,7 +24,7 @@ import numpy as np
 import pandas as pd
 from thrift.transport import TTransport
 from iotdb.thrift.rpc.IClientRPCService import TSFetchResultsReq, TSCloseOperationReq
-from iotdb.tsfile.utils.DateUtils import parse_int_to_date
+from iotdb.tsfile.utils.date_utils import parse_int_to_date
 from iotdb.utils.IoTDBConnectionException import IoTDBConnectionException
 from iotdb.utils.IoTDBConstants import TSDataType
 

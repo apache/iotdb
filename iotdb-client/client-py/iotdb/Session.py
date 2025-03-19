@@ -59,7 +59,7 @@ from .thrift.rpc.ttypes import (
     TSLastDataQueryReq,
     TSInsertStringRecordsOfOneDeviceReq,
 )
-from .tsfile.utils.DateUtils import parse_date_to_int
+from .tsfile.utils.date_utils import parse_date_to_int
 from .utils.IoTDBConnectionException import IoTDBConnectionException
 
 logger = logging.getLogger("IoTDB")

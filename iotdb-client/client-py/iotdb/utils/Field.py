@@ -18,7 +18,7 @@
 
 # for package
 from iotdb.utils.IoTDBConstants import TSDataType
-from iotdb.tsfile.utils.DateUtils import parse_int_to_date
+from iotdb.tsfile.utils.date_utils import parse_int_to_date
 import numpy as np
 import pandas as pd
 
