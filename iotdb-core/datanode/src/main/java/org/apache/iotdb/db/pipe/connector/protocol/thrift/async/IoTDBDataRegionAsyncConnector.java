@@ -189,63 +189,74 @@ public class IoTDBDataRegionAsyncConnector extends IoTDBConnector {
       throws IOException, WriteProcessException, InterruptedException {
     final PipeTabletEventBatch batch = endPointAndBatch.getRight();
 
+    if (batch instanceof PipeTabletEventPlainBatch) {
+      transferPlainBatch(endPointAndBatch, batch);
+    } else if (batch instanceof PipeTabletEventTsFileBatch) {
+      transferTsFileBatch(endPointAndBatch, batch);
+    } else {
+      LOGGER.warn(
+          "Unsupported batch type {} when transferring tablet insertion event.", batch.getClass());
+    }
+  }
+
+  private void transferPlainBatch(
+      final Pair<TEndPoint, PipeTabletEventBatch> endPointAndBatch,
+      final PipeTabletEventBatch batch)
+      throws IOException, WriteProcessException, InterruptedException {
+    final PipeTransferTabletBatchEventHandler handler =
+        new PipeTransferTabletBatchEventHandler((PipeTabletEventPlainBatch) batch, this);
+    transfer(endPointAndBatch.getLeft(), handler);
+    batch.onSuccess();
+  }
+
+  private void transferTsFileBatch(
+      final Pair<TEndPoint, PipeTabletEventBatch> endPointAndBatch,
+      final PipeTabletEventBatch batch)
+      throws IOException, WriteProcessException, InterruptedException {
+    final PipeTabletEventTsFileBatch tsFileBatch = (PipeTabletEventTsFileBatch) batch;
+    final List<Pair<String, File>> dbTsFilePairs = tsFileBatch.sealTsFiles();
+    final Map<Pair<String, Long>, Double> pipe2WeightMap = tsFileBatch.deepCopyPipe2WeightMap();
+    final List<EnrichedEvent> events = tsFileBatch.deepCopyEvents();
+    final AtomicInteger eventsReferenceCount = new AtomicInteger(dbTsFilePairs.size());
+    final AtomicBoolean eventsHadBeenAddedToRetryQueue = new AtomicBoolean(false);
+
     // The handler is used to determine whether the Event in the Batch needs to be cleared. If the
     // handler is null, it means that the handler has not been created successfully, and the events
-    // in the batch do not need to be cleared. Success indicates whether the onError function needs
+    // in the batch do not need to be cleared. needsOnErrorCall indicates whether the onError
+    // function needs
     // to be called manually to clear the exception.
-    PipeTransferTrackableHandler handler = null;
-    boolean needsOnErrorCall = true;
-    Throwable exception = null;
-    try {
-      if (batch instanceof PipeTabletEventPlainBatch) {
-        handler = new PipeTransferTabletBatchEventHandler((PipeTabletEventPlainBatch) batch, this);
-        needsOnErrorCall = false;
-        transfer(endPointAndBatch.getLeft(), (PipeTransferTabletBatchEventHandler) handler);
-      } else if (batch instanceof PipeTabletEventTsFileBatch) {
-        final PipeTabletEventTsFileBatch tsFileBatch = (PipeTabletEventTsFileBatch) batch;
-        final List<Pair<String, File>> dbTsFilePairs = tsFileBatch.sealTsFiles();
-        final Map<Pair<String, Long>, Double> pipe2WeightMap = tsFileBatch.deepCopyPipe2WeightMap();
-        final List<EnrichedEvent> events = tsFileBatch.deepCopyEvents();
-        final AtomicInteger eventsReferenceCount = new AtomicInteger(dbTsFilePairs.size());
-        final AtomicBoolean eventsHadBeenAddedToRetryQueue = new AtomicBoolean(false);
+    PipeTransferTsFileHandler handler = null;
+    boolean needsOnErrorCall = false;
+    Throwable throwable = null;
 
-        for (Pair<String, File> sealedFile : dbTsFilePairs) {
-          handler =
-              new PipeTransferTsFileHandler(
-                  this,
-                  pipe2WeightMap,
-                  events,
-                  eventsReferenceCount,
-                  eventsHadBeenAddedToRetryQueue,
-                  sealedFile.right,
-                  null,
-                  false,
-                  sealedFile.left);
-          needsOnErrorCall = false;
-          transfer((PipeTransferTsFileHandler) handler);
-          needsOnErrorCall = true;
-        }
-        needsOnErrorCall = false;
-      } else {
-        LOGGER.warn(
-            "Unsupported batch type {} when transferring tablet insertion event.",
-            batch.getClass());
-      }
-    } catch (Exception | Error e) {
-      exception = e;
-      if (e instanceof Error) {
+    try {
+      for (Pair<String, File> sealedFile : dbTsFilePairs) {
+        handler =
+            new PipeTransferTsFileHandler(
+                this,
+                pipe2WeightMap,
+                events,
+                eventsReferenceCount,
+                eventsHadBeenAddedToRetryQueue,
+                sealedFile.right,
+                null,
+                false,
+                sealedFile.left);
+        transfer(handler);
         needsOnErrorCall = true;
       }
+      needsOnErrorCall = false;
+      batch.onSuccess();
+    } catch (Exception | Error e) {
+      throwable = e;
       throw e;
     } finally {
-      if (handler != null) {
-        endPointAndBatch.getRight().onSuccess();
-        if (needsOnErrorCall) {
-          handler.onError(
-              exception instanceof Exception
-                  ? (Exception) exception
-                  : new PipeException(exception.getMessage()));
-        }
+      if (needsOnErrorCall) {
+        handler.onError(
+            throwable instanceof Exception
+                ? (Exception) throwable
+                : new PipeException(throwable.getMessage()));
+        batch.onSuccess();
       }
     }
   }
