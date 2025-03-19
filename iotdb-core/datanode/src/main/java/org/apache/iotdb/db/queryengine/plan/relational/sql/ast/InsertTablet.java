@@ -117,6 +117,9 @@ public class InsertTablet extends WrappedInsertStatement {
         IDeviceID deviceID = insertTabletStatement.getTableDeviceID(i);
         deviceID2LastIdxMap.put(deviceID, i);
       }
+      if (deviceID2LastIdxMap.size() == 1) {
+        insertTabletStatement.setSingleDevice();
+      }
     }
   }
 }
