@@ -2864,6 +2864,14 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
         nodeIds.removeAll(invalidNodeIds);
       }
 
+      if (nodeIds.size() != 1) {
+        LOGGER.error(
+            "The DataNode to be removed is not in the cluster, or the input format is incorrect.");
+        future.setException(
+            new IOException(
+                "The DataNode to be removed is not in the cluster, or the input format is incorrect."));
+      }
+
       LOGGER.info("Starting to remove DataNode with nodeIds: {}", nodeIds);
 
       final Set<Integer> finalNodeIds = nodeIds;
