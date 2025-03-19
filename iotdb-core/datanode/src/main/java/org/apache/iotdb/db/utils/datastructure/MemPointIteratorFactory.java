@@ -368,10 +368,10 @@ public class MemPointIteratorFactory {
         return false;
       }
 
-      if (i == 0 || tvLists.get(i).rowCount() == 0) {
+      if (tvLists.get(i).rowCount() == 0) {
         continue;
       }
-      if (list.getTime(0) <= time) {
+      if (i > 0 && list.getTime(0) <= time) {
         return false;
       }
       time = list.getTime(list.rowCount() - 1);

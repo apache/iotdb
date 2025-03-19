@@ -1730,8 +1730,8 @@ public abstract class AlignedTVList extends TVList {
       if (!probeNext) {
         prepareNext();
       }
-      if (findValidRow) {
-        index = Arrays.stream(selectedIndices).min().orElse(rows);
+      if (findValidRow && selectedIndices.length > 0) {
+        index = Arrays.stream(selectedIndices).min().getAsInt();
       }
       return index < rows;
     }
