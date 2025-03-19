@@ -21,6 +21,7 @@ package org.apache.iotdb.db.queryengine.execution.fragment;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.exception.IoTDBException;
+import org.apache.iotdb.commons.path.AlignedPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
@@ -49,7 +50,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.time.ZoneId;
-import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -59,6 +59,8 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
+
+import static org.apache.iotdb.db.storageengine.dataregion.VirtualDataRegion.EMPTY_QUERY_DATA_SOURCE;
 
 public class FragmentInstanceContext extends QueryContext {
 
@@ -416,24 +418,37 @@ public class FragmentInstanceContext extends QueryContext {
 
   public void initQueryDataSource(List<PartialPath> sourcePaths) throws QueryProcessException {
     long startTime = System.nanoTime();
-    if (sourcePaths == null) {
+    if (sourcePaths == null || sourcePaths.isEmpty()) {
+      this.sharedQueryDataSource = EMPTY_QUERY_DATA_SOURCE;
       return;
+    }
+    String singleDevice = null;
+    if (sourcePaths.size() == 1) {
+      singleDevice = sourcePaths.get(0).getDevice();
+    } else {
+      Set<String> selectedDeviceSet = new HashSet<>();
+      for (PartialPath sourcePath : sourcePaths) {
+        if (sourcePath instanceof AlignedPath) {
+          singleDevice = null;
+          break;
+        } else {
+          singleDevice = sourcePath.getDevice();
+          selectedDeviceSet.add(singleDevice);
+          if (selectedDeviceSet.size() > 1) {
+            singleDevice = null;
+            break;
+          }
+        }
+      }
     }
     dataRegion.readLock();
     try {
-      List<PartialPath> pathList = new ArrayList<>();
-      Set<String> selectedDeviceIdSet = new HashSet<>();
-      for (PartialPath path : sourcePaths) {
-        pathList.add(path);
-        selectedDeviceIdSet.add(path.getDevice());
-      }
-
       this.sharedQueryDataSource =
           dataRegion.query(
-              pathList,
+              sourcePaths,
               // when all the selected series are under the same device, the QueryDataSource will be
               // filtered according to timeIndex
-              selectedDeviceIdSet.size() == 1 ? selectedDeviceIdSet.iterator().next() : null,
+              singleDevice,
               this,
               // time filter may be stateful, so we need to copy it
               globalTimeFilter != null ? globalTimeFilter.copy() : null,
@@ -445,7 +460,7 @@ public class FragmentInstanceContext extends QueryContext {
         closedFilePaths = new HashSet<>();
         unClosedFilePaths = new HashSet<>();
         addUsedFilesForQuery((QueryDataSource) sharedQueryDataSource);
-        ((QueryDataSource) sharedQueryDataSource).setSingleDevice(selectedDeviceIdSet.size() == 1);
+        ((QueryDataSource) sharedQueryDataSource).setSingleDevice(singleDevice != null);
       }
     } finally {
       setInitQueryDataSourceCost(System.nanoTime() - startTime);
