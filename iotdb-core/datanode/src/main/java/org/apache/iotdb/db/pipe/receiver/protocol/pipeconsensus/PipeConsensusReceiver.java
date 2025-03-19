@@ -1248,7 +1248,8 @@ public class PipeConsensusReceiver {
     public void returnSelf(ConsensusPipeName consensusPipeName)
         throws DiskSpaceInsufficientException, IOException {
       // if config multi-disks, tsFileWriter will roll to new writing path.
-      // must roll before return, because the writing file may be deleted.
+      // must roll before set used to false, because the writing file may be deleted if other event
+      // uses this tsfileWriter.
       if (receiveDirs.size() > 1) {
         rollToNextWritingPath();
       }
