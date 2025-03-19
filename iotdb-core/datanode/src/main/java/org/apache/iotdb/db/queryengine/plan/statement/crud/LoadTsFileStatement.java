@@ -260,6 +260,7 @@ public class LoadTsFileStatement extends Statement {
         LoadTsFileConfigurator.parseOrGetDefaultConvertOnTypeMismatch(loadAttributes);
     this.tabletConversionThresholdBytes =
         LoadTsFileConfigurator.parseOrGetDefaultTabletConversionThresholdBytes(loadAttributes);
+    this.verifySchema = LoadTsFileConfigurator.parseOrGetDefaultVerify(loadAttributes);
   }
 
   @Override

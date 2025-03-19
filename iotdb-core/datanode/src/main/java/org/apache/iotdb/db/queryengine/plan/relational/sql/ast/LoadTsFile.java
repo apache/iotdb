@@ -46,35 +46,37 @@ public class LoadTsFile extends Statement {
   private long tabletConversionThresholdBytes = -1;
   private boolean autoCreateDatabase = true;
   private boolean verify = true;
+
   private boolean isGeneratedByPipe = false;
 
   private final Map<String, String> loadAttributes;
 
   private final List<File> tsFiles;
-  private List<Boolean> isTableModel;
   private final List<TsFileResource> resources;
   private final List<Long> writePointCountList;
+  private List<Boolean> isTableModel;
 
   public LoadTsFile(NodeLocation location, String filePath, Map<String, String> loadAttributes) {
     super(location);
     this.filePath = requireNonNull(filePath, "filePath is null");
 
-    File file = new File(filePath);
     this.databaseLevel = IoTDBDescriptor.getInstance().getConfig().getDefaultStorageGroupLevel();
     this.deleteAfterLoad = false;
     this.convertOnTypeMismatch = true;
-    this.tabletConversionThresholdBytes = -1;
-    this.verify = true;
+    this.tabletConversionThresholdBytes =
+        IoTDBDescriptor.getInstance().getConfig().getLoadTabletConversionThresholdBytes();
     this.autoCreateDatabase = IoTDBDescriptor.getInstance().getConfig().isAutoCreateSchemaEnabled();
-    this.resources = new ArrayList<>();
-    this.writePointCountList = new ArrayList<>();
+    this.verify = true;
+
     this.loadAttributes = loadAttributes == null ? Collections.emptyMap() : loadAttributes;
     initAttributes();
 
     try {
       this.tsFiles =
           org.apache.iotdb.db.queryengine.plan.statement.crud.LoadTsFileStatement.processTsFile(
-              file);
+              new File(filePath));
+      this.resources = new ArrayList<>();
+      this.writePointCountList = new ArrayList<>();
       this.isTableModel = new ArrayList<>(Collections.nCopies(this.tsFiles.size(), true));
     } catch (FileNotFoundException e) {
       throw new SemanticException(e);
