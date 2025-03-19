@@ -52,9 +52,9 @@ public class MemoryControlledWALEntryQueue {
       while (SystemInfo.getInstance().cannotReserveMemoryForWalEntry(elementSize)) {
         nonFullCondition.wait();
       }
+      SystemInfo.getInstance().updateWalQueueMemoryCost(elementSize);
     }
     queue.put(e);
-    SystemInfo.getInstance().updateWalQueueMemoryCost(elementSize);
   }
 
   public WALEntry take() throws InterruptedException {
