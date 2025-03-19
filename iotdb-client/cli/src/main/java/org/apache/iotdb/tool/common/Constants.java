@@ -209,7 +209,8 @@ public class Constants {
   public static final String INSERT_CSV_MEET_ERROR_MSG = "Meet error when insert csv because ";
   public static final String TARGET_DATABASE_NOT_EXIST_MSG =
       "The target database %s does not exist";
-  public static final String TARGET_TABLE_NOT_EXIST_MSG = "The target table %s does not exist";
+  public static final String TARGET_TABLE_NOT_EXIST_MSG =
+      "There are no tables or the target table %s does not exist";
 
   public static final String[] TIME_FORMAT =
       new String[] {"default", "long", "number", "timestamp"};

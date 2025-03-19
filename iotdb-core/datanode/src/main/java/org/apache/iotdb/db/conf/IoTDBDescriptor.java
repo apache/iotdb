@@ -1893,6 +1893,9 @@ public class IoTDBDescriptor {
     String[][] tierDataDirs = new String[tiers.length][];
     for (int i = 0; i < tiers.length; ++i) {
       tierDataDirs[i] = tiers[i].split(",");
+      for (int j = 0; j < tierDataDirs[i].length; j++) {
+        tierDataDirs[i][j] = tierDataDirs[i][j].trim();
+      }
     }
     return tierDataDirs;
   }

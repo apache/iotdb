@@ -66,6 +66,7 @@ import org.apache.tsfile.file.metadata.StringArrayDeviceID;
 import org.apache.tsfile.read.common.type.StringType;
 import org.apache.tsfile.read.common.type.Type;
 import org.apache.tsfile.read.common.type.TypeFactory;
+import org.apache.tsfile.utils.Binary;
 import org.mockito.Mockito;
 
 import java.util.Arrays;
@@ -284,18 +285,17 @@ public class TestMatadata implements Metadata {
       if (expressionList.isEmpty()) {
         return ImmutableList.of(
             new AlignedDeviceEntry(
-                IDeviceID.Factory.DEFAULT_FACTORY.create(DEVICE_3), ImmutableList.of()),
+                IDeviceID.Factory.DEFAULT_FACTORY.create(DEVICE_3), new Binary[0]),
             new AlignedDeviceEntry(
-                IDeviceID.Factory.DEFAULT_FACTORY.create(DEVICE_6), ImmutableList.of()),
+                IDeviceID.Factory.DEFAULT_FACTORY.create(DEVICE_6), new Binary[0]),
             new NonAlignedAlignedDeviceEntry(
-                IDeviceID.Factory.DEFAULT_FACTORY.create(DEVICE_5), ImmutableList.of()));
+                IDeviceID.Factory.DEFAULT_FACTORY.create(DEVICE_5), new Binary[0]));
       }
 
       return ImmutableList.of(
+          new AlignedDeviceEntry(IDeviceID.Factory.DEFAULT_FACTORY.create(DEVICE_3), new Binary[0]),
           new AlignedDeviceEntry(
-              IDeviceID.Factory.DEFAULT_FACTORY.create(DEVICE_3), ImmutableList.of()),
-          new AlignedDeviceEntry(
-              IDeviceID.Factory.DEFAULT_FACTORY.create(DEVICE_6), ImmutableList.of()));
+              IDeviceID.Factory.DEFAULT_FACTORY.create(DEVICE_6), new Binary[0]));
     }
 
     if (expressionList.size() == 2) {
