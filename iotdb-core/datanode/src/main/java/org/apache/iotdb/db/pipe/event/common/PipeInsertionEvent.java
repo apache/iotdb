@@ -92,6 +92,12 @@ public abstract class PipeInsertionEvent extends EnrichedEvent {
     if (tableModelDatabaseName != null) {
       this.tableModelDatabaseName = tableModelDatabaseName.toLowerCase();
     }
+    // Rewrite to reduce unnecessary parsing
+    this.isPatternParsed =
+        !isTableModelEvent() && (treePattern == null || treePattern.isRoot())
+            || isTableModelEvent()
+                && (tablePattern == null
+                    || !tablePattern.hasUserSpecifiedDatabasePatternOrTablePattern());
   }
 
   protected PipeInsertionEvent(
