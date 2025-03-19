@@ -1247,12 +1247,16 @@ public class PipeConsensusReceiver {
 
     public void returnSelf(ConsensusPipeName consensusPipeName)
         throws DiskSpaceInsufficientException, IOException {
-      this.isUsed = false;
-      this.commitIdOfCorrespondingHolderEvent = null;
       // if config multi-disks, tsFileWriter will roll to new writing path.
+      // must roll before return, because the writing file may be deleted.
       if (receiveDirs.size() > 1) {
         rollToNextWritingPath();
       }
+      // must set used to false after set commitIdOfCorrespondingHolderEvent to null to avoid the
+      // situation that tsfileWriter is used by other event before set
+      // commitIdOfCorrespondingHolderEvent to null
+      this.commitIdOfCorrespondingHolderEvent = null;
+      this.isUsed = false;
       LOGGER.info(
           "PipeConsensus-PipeName-{}: tsFileWriter-{} returned self",
           consensusPipeName.toString(),
