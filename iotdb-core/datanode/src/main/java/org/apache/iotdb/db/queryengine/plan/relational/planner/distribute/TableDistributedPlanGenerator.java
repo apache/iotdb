@@ -309,7 +309,7 @@ public class TableDistributedPlanGenerator
                     false,
                     node.getPartitionKeyCount() - 1);
             result.add(subSortNode);
-            nodeOrderingMap.put(subSortNode.getPlanNodeId(), subSortNode.getOrderingScheme());
+            // should not set nodeOrderingMap here
           }
         }
         return result;
