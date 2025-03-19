@@ -199,4 +199,18 @@ public class FunctionViewExpression extends ViewExpression {
   public List<ViewExpression> getExpressions() {
     return this.expressions;
   }
+
+  @Override
+  public boolean equals(Object obj) {
+    if (this == obj) {
+      return true;
+    }
+    if (obj == null || getClass() != obj.getClass()) {
+      return false;
+    }
+    FunctionViewExpression that = (FunctionViewExpression) obj;
+    return functionName.equals(that.functionName)
+        && functionAttributesKeyValueList.equals(that.functionAttributesKeyValueList)
+        && expressions.equals(that.expressions);
+  }
 }
