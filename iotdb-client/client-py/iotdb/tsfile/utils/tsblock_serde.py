@@ -110,7 +110,7 @@ def convert_to_df(name_list, type_list, name_index, binary_list):
             time_column_values, np.dtype(np.longlong).newbyteorder(">")
         )
         if time_array.dtype.byteorder == ">":
-            time_array = time_array.byteswap().newbyteorder("<")
+            time_array = time_array.byteswap().view(time_array.dtype.newbyteorder("<"))
 
         if result[TIMESTAMP_STR] is None:
             result[TIMESTAMP_STR] = time_array
@@ -165,7 +165,9 @@ def convert_to_df(name_list, type_list, name_index, binary_list):
                 raise RuntimeError("unsupported data type {}.".format(data_type))
 
             if data_array.dtype.byteorder == ">":
-                data_array = data_array.byteswap().newbyteorder("<")
+                data_array = data_array.byteswap().view(
+                    data_array.dtype.newbyteorder("<")
+                )
 
             null_indicator = null_indicators[location]
             if len(data_array) < total_length or (
@@ -249,7 +251,7 @@ def _get_type_in_byte(data_type: pd.Series):
     elif data_type == "text":
         return b"\x05"
     else:
-        raise BadConfigValueError(
+        raise RuntimeError(
             "data_type",
             data_type,
             "data_type should be in ['bool', 'int32', 'int64', 'float32', 'float64', 'text']",
@@ -272,8 +274,8 @@ def deserialize(buffer):
     column_encodings, buffer = read_column_encoding(buffer, value_column_count + 1)
 
     time_column_values, buffer = read_time_column(buffer, position_count)
-    column_values = [None] * value_column_count
-    null_indicators = [None] * value_column_count
+    column_values = [] * value_column_count
+    null_indicators = [] * value_column_count
     for i in range(value_column_count):
         column_value, null_indicator, buffer = read_column(
             column_encodings[i + 1], buffer, data_types[i], position_count
@@ -336,7 +338,7 @@ def get_data_type_byte_from_str(value):
         byte: corresponding data type in [b'\x00', b'\x01', b'\x02', b'\x03', b'\x04', b'\x05']
     """
     if value not in ["bool", "int32", "int64", "float32", "float64", "text"]:
-        raise BadConfigValueError(
+        raise RuntimeError(
             "data_type",
             value,
             "data_type should be in ['bool', 'int32', 'int64', 'float32', 'float64', 'text']",
