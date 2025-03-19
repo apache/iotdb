@@ -41,7 +41,7 @@ public class VirtualDataRegion implements IDataRegionForQuery {
 
   private static final String VIRTUAL_DB_NAME = "root.__virtual";
 
-  private static final QueryDataSource EMPTY_QUERY_DATA_SOURCE =
+  public static final QueryDataSource EMPTY_QUERY_DATA_SOURCE =
       new QueryDataSource(Collections.emptyList(), Collections.emptyList());
 
   private static final QueryDataSourceForRegionScan EMPTY_REGION_QUERY_DATA_SOURCE =

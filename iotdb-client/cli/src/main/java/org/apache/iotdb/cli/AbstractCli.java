@@ -569,6 +569,7 @@ public abstract class AbstractCli {
       ZoneId zoneId = ZoneId.of(connection.getTimeZone());
       statement.setFetchSize(fetchSize);
       boolean hasResultSet = statement.execute(cmd.trim());
+      long costTime = System.currentTimeMillis() - startTime;
       updateSqlDialectAndUsingDatabase(
           connection.getParams().getSqlDialect(), connection.getParams().getDb().orElse(null));
       if (hasResultSet) {
@@ -580,7 +581,6 @@ public abstract class AbstractCli {
           List<List<String>> lists =
               cacheResult(ctx, resultSet, maxSizeList, columnLength, resultSetMetaData, zoneId);
           output(ctx, lists, maxSizeList);
-          long costTime = System.currentTimeMillis() - startTime;
           ctx.getPrinter().println(String.format("It costs %.3fs", costTime / 1000.0));
           while (!isReachEnd) {
             if (continuePrint) {
