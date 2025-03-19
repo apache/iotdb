@@ -2613,15 +2613,15 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     try {
       for (int i = 0; i < measurements.size(); i++) {
         final Pair<Template, PartialPath> templateInfo =
-                schemaFetcher.checkTemplateSetAndPreSetInfo(
-                        devicePath.concatNode(measurements.get(i)),
-                        aliasList == null ? null : aliasList.get(i));
+            schemaFetcher.checkTemplateSetAndPreSetInfo(
+                devicePath.concatNode(measurements.get(i)),
+                aliasList == null ? null : aliasList.get(i));
         if (templateInfo != null) {
           throw new SemanticException(
-                  new TemplateIncompatibleException(
-                          devicePath.getFullPath() + measurements,
-                          templateInfo.left.getName(),
-                          templateInfo.right));
+              new TemplateIncompatibleException(
+                  devicePath.getFullPath() + measurements,
+                  templateInfo.left.getName(),
+                  templateInfo.right));
         }
       }
     } finally {
