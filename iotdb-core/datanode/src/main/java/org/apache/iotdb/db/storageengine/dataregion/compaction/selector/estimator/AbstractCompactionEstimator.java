@@ -23,6 +23,7 @@ import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.CompactionUtils;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.batch.utils.BatchCompactionPlan;
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileID;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceStatus;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.ArrayDeviceTimeIndex;
@@ -36,7 +37,6 @@ import org.apache.tsfile.common.conf.TSFileDescriptor;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.read.TsFileSequenceReader;
 
-import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -54,11 +54,11 @@ import java.util.stream.Collectors;
  */
 public abstract class AbstractCompactionEstimator {
 
-  private static final Map<File, FileInfo> globalFileInfoCacheForFailedCompaction =
+  private static final Map<TsFileID, FileInfo> globalFileInfoCacheForFailedCompaction =
       Collections.synchronizedMap(
           new LRUMap<>(
               IoTDBDescriptor.getInstance().getConfig().getGlobalCompactionFileInfoCacheSize()));
-  private static final Map<File, FileInfo.RoughFileInfo> globalRoughInfoCacheForCompaction =
+  private static final Map<TsFileID, FileInfo.RoughFileInfo> globalRoughInfoCacheForCompaction =
       Collections.synchronizedMap(new LRUMap<>(100000));
   protected Map<TsFileResource, FileInfo> fileInfoCache = new HashMap<>();
   protected Map<TsFileResource, FileInfo.RoughFileInfo> roughInfoMap = new HashMap<>();
@@ -102,10 +102,10 @@ public abstract class AbstractCompactionEstimator {
     if (fileInfoCache.containsKey(resource)) {
       return fileInfoCache.get(resource);
     }
-    File file = new File(resource.getTsFilePath());
+    TsFileID tsFileID = resource.getTsFileID();
     synchronized (globalFileInfoCacheForFailedCompaction) {
-      if (globalFileInfoCacheForFailedCompaction.containsKey(file)) {
-        FileInfo fileInfo = globalFileInfoCacheForFailedCompaction.get(file);
+      FileInfo fileInfo = globalFileInfoCacheForFailedCompaction.get(tsFileID);
+      if (fileInfo != null) {
         fileInfoCache.put(resource, fileInfo);
         return fileInfo;
       }
@@ -114,10 +114,10 @@ public abstract class AbstractCompactionEstimator {
       FileInfo fileInfo = CompactionEstimateUtils.calculateFileInfo(reader);
       fileInfoCache.put(resource, fileInfo);
       synchronized (globalFileInfoCacheForFailedCompaction) {
-        globalFileInfoCacheForFailedCompaction.put(file, fileInfo);
+        globalFileInfoCacheForFailedCompaction.put(tsFileID, fileInfo);
       }
       synchronized (globalRoughInfoCacheForCompaction) {
-        globalRoughInfoCacheForCompaction.put(file, fileInfo.getSimpleFileInfo());
+        globalRoughInfoCacheForCompaction.put(tsFileID, fileInfo.getSimpleFileInfo());
       }
       return fileInfo;
     }
@@ -200,7 +200,7 @@ public abstract class AbstractCompactionEstimator {
       return roughFileInfo;
     }
     synchronized (globalRoughInfoCacheForCompaction) {
-      roughFileInfo = globalRoughInfoCacheForCompaction.get(resource.getTsFile());
+      roughFileInfo = globalRoughInfoCacheForCompaction.get(resource.getTsFileID());
     }
     if (roughFileInfo != null) {
       roughInfoMap.put(resource, roughFileInfo);
@@ -213,7 +213,7 @@ public abstract class AbstractCompactionEstimator {
       return;
     }
     synchronized (globalFileInfoCacheForFailedCompaction) {
-      globalFileInfoCacheForFailedCompaction.remove(resource.getTsFile());
+      globalFileInfoCacheForFailedCompaction.remove(resource.getTsFileID());
     }
   }
 }

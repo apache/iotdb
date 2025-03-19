@@ -19,19 +19,20 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.compaction.selector.estimator;
 
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileID;
+
 import org.apache.tsfile.utils.RamUsageEstimator;
 
-import java.io.File;
 import java.util.Map;
 
 public class FileInfo {
   public static final long MEMORY_COST_OF_FILE_INFO_ENTRY_IN_CACHE =
       RamUsageEstimator.shallowSizeOfInstance(FileInfo.class)
-          + RamUsageEstimator.shallowSizeOfInstance(File.class)
+          + RamUsageEstimator.shallowSizeOfInstance(TsFileID.class)
           + RamUsageEstimator.shallowSizeOfInstance(Map.Entry.class);
   public static final long MEMORY_COST_OF_ROUGH_FILE_INFO_ENTRY_IN_CACHE =
       RamUsageEstimator.shallowSizeOfInstance(RoughFileInfo.class)
-          + RamUsageEstimator.shallowSizeOfInstance(File.class)
+          + RamUsageEstimator.shallowSizeOfInstance(TsFileID.class)
           + RamUsageEstimator.shallowSizeOfInstance(Map.Entry.class);
   // total chunk num in this tsfile
   int totalChunkNum = 0;
