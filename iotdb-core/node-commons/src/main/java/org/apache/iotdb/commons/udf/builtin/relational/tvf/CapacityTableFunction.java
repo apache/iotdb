@@ -41,7 +41,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
-public class NumberTableFunction implements TableFunction {
+public class CapacityTableFunction implements TableFunction {
   private static final String DATA_PARAMETER_NAME = "DATA";
   private static final String SIZE_PARAMETER_NAME = "SIZE";
 
