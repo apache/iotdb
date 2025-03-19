@@ -26,7 +26,10 @@ import org.apache.iotdb.commons.path.NonAlignedFullPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.exception.WriteProcessException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.queryengine.exception.MemoryNotEnoughException;
+import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceContext;
 import org.apache.iotdb.db.queryengine.execution.fragment.QueryContext;
+import org.apache.iotdb.db.queryengine.plan.planner.memory.MemoryReservationManager;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertTabletNode;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModEntry;
@@ -52,6 +55,7 @@ import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
+import org.mockito.Mockito;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -581,5 +585,30 @@ public class PrimitiveMemTableTest {
     memTable.serializeToWAL(walBuffer);
     // TODO: revert until TsFile is updated
     // assertEquals(0, walBuffer.getBuffer().remaining());
+  }
+
+  @Test
+  public void testReleaseWithNotEnoughMemory() {
+    TSDataType dataType = TSDataType.INT32;
+    WritableMemChunk series =
+        new WritableMemChunk(new MeasurementSchema("s1", dataType, TSEncoding.PLAIN));
+    int count = 100;
+    for (int i = 0; i < count; i++) {
+      series.writeNonAlignedPoint(i, i);
+    }
+
+    // mock MemoryNotEnoughException exception
+    TVList list = series.getWorkingTVList();
+    MemoryReservationManager memoryReservationManager =
+        Mockito.mock(MemoryReservationManager.class);
+    Mockito.doThrow(new MemoryNotEnoughException(""))
+        .when(memoryReservationManager)
+        .reserveMemoryCumulatively(list.calculateRamSize());
+
+    FragmentInstanceContext queryContext = Mockito.mock(FragmentInstanceContext.class);
+    Mockito.when(queryContext.getMemoryReservationContext()).thenReturn(memoryReservationManager);
+    list.getQueryContextSet().add(queryContext);
+
+    series.release();
   }
 }

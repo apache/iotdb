@@ -687,11 +687,11 @@ public class FragmentInstanceContext extends QueryContext {
   private void releaseTVListOwnedByQuery() {
     for (TVList tvList : tvListSet) {
       tvList.lockQueryList();
-      List<QueryContext> queryContextList = tvList.getQueryContextList();
+      Set<QueryContext> queryContextSet = tvList.getQueryContextSet();
       try {
-        queryContextList.remove(this);
+        queryContextSet.remove(this);
         if (tvList.getOwnerQuery() == this) {
-          if (queryContextList.isEmpty()) {
+          if (queryContextSet.isEmpty()) {
             LOGGER.debug(
                 "TVList {} is released by the query, FragmentInstance Id is {}",
                 tvList,
@@ -699,11 +699,13 @@ public class FragmentInstanceContext extends QueryContext {
             memoryReservationManager.releaseMemoryCumulatively(tvList.calculateRamSize());
             tvList.clear();
           } else {
+            FragmentInstanceContext queryContext =
+                (FragmentInstanceContext) queryContextSet.iterator().next();
             LOGGER.debug(
                 "TVList {} is now owned by another query, FragmentInstance Id is {}",
                 tvList,
-                ((FragmentInstanceContext) queryContextList.get(0)).getId());
-            tvList.setOwnerQuery(queryContextList.get(0));
+                queryContext.getId());
+            tvList.setOwnerQuery(queryContext);
           }
         }
       } finally {
