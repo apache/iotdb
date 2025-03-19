@@ -2739,10 +2739,11 @@ public class Session implements ISession {
     if (tablet.getRowSize() == 0) {
       return;
     }
+    boolean isSingleDevice = SessionUtils.isTabletContainsSingleDevice(tablet);
     if (enableRedirection) {
-      insertRelationalTabletWithLeaderCache(tablet);
+      insertRelationalTabletWithLeaderCache(tablet, isSingleDevice);
     } else {
-      TSInsertTabletReq request = genTSInsertTabletReq(tablet, false, false);
+      TSInsertTabletReq request = genTSInsertTabletReq(tablet, false, isSingleDevice);
       request.setWriteToTable(true);
       request.setColumnCategories(
           tablet.getColumnTypes().stream()
@@ -2755,12 +2756,12 @@ public class Session implements ISession {
     }
   }
 
-  private void insertRelationalTabletWithLeaderCache(Tablet tablet)
+  private void insertRelationalTabletWithLeaderCache(Tablet tablet, boolean isSingleDevice)
       throws IoTDBConnectionException, StatementExecutionException {
     Map<SessionConnection, Tablet> relationalTabletGroup = new HashMap<>();
     if (tableModelDeviceIdToEndpoint.isEmpty()) {
       relationalTabletGroup.put(defaultSessionConnection, tablet);
-    } else if (SessionUtils.isTabletContainsSingleDevice(tablet)) {
+    } else if (isSingleDevice) {
       relationalTabletGroup.put(getSessionConnection(tablet.getDeviceID(0)), tablet);
     } else {
       for (int i = 0; i < tablet.getRowSize(); i++) {
@@ -2800,18 +2801,19 @@ public class Session implements ISession {
       }
     }
     if (relationalTabletGroup.size() == 1) {
-      insertRelationalTabletOnce(relationalTabletGroup);
+      insertRelationalTabletOnce(relationalTabletGroup, isSingleDevice);
     } else {
       insertRelationalTabletByGroup(relationalTabletGroup);
     }
   }
 
-  private void insertRelationalTabletOnce(Map<SessionConnection, Tablet> relationalTabletGroup)
+  private void insertRelationalTabletOnce(
+      Map<SessionConnection, Tablet> relationalTabletGroup, boolean isSingleDevice)
       throws IoTDBConnectionException, StatementExecutionException {
     Map.Entry<SessionConnection, Tablet> entry = relationalTabletGroup.entrySet().iterator().next();
     SessionConnection connection = entry.getKey();
     Tablet tablet = entry.getValue();
-    TSInsertTabletReq request = genTSInsertTabletReq(tablet, false, false);
+    TSInsertTabletReq request = genTSInsertTabletReq(tablet, false, isSingleDevice);
     request.setWriteToTable(true);
     request.setColumnCategories(
         tablet.getColumnTypes().stream().map(t -> (byte) t.ordinal()).collect(Collectors.toList()));
