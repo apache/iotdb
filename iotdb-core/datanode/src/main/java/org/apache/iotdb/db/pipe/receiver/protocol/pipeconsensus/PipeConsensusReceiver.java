@@ -1145,13 +1145,13 @@ public class PipeConsensusReceiver {
     private final ConsensusPipeName consensusPipeName;
     private final int index;
     private File localWritingDir;
-    // whether this buffer is used. this will be updated when first transfer tsFile piece or
-    // when transfer seal.
-    private boolean isUsed = false;
-    // If isUsed is true, this variable will be set to the TCommitId of holderEvent
-    private TCommitId commitIdOfCorrespondingHolderEvent;
     private File writingFile;
     private RandomAccessFile writingFileWriter;
+    // whether this buffer is used. this will be updated when first transfer tsFile piece or
+    // when transfer seal.
+    private volatile boolean isUsed = false;
+    // If isUsed is true, this variable will be set to the TCommitId of holderEvent
+    private volatile TCommitId commitIdOfCorrespondingHolderEvent;
 
     public PipeConsensusTsFileWriter(int index, ConsensusPipeName consensusPipeName) {
       this.index = index;
