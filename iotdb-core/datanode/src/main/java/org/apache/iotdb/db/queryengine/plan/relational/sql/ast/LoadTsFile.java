@@ -103,8 +103,18 @@ public class LoadTsFile extends Statement {
     return deleteAfterLoad;
   }
 
+  public LoadTsFile setDeleteAfterLoad(boolean deleteAfterLoad) {
+    this.deleteAfterLoad = deleteAfterLoad;
+    return this;
+  }
+
   public boolean isConvertOnTypeMismatch() {
     return convertOnTypeMismatch;
+  }
+
+  public LoadTsFile setConvertOnTypeMismatch(boolean convertOnTypeMismatch) {
+    this.convertOnTypeMismatch = convertOnTypeMismatch;
+    return this;
   }
 
   public long getTabletConversionThresholdBytes() {

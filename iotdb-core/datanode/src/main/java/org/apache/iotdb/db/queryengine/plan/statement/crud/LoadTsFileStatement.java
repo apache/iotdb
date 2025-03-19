@@ -174,16 +174,18 @@ public class LoadTsFileStatement extends Statement {
     return verifySchema;
   }
 
-  public void setDeleteAfterLoad(boolean deleteAfterLoad) {
+  public LoadTsFileStatement setDeleteAfterLoad(boolean deleteAfterLoad) {
     this.deleteAfterLoad = deleteAfterLoad;
+    return this;
   }
 
   public boolean isDeleteAfterLoad() {
     return deleteAfterLoad;
   }
 
-  public void setConvertOnTypeMismatch(boolean convertOnTypeMismatch) {
+  public LoadTsFileStatement setConvertOnTypeMismatch(boolean convertOnTypeMismatch) {
     this.convertOnTypeMismatch = convertOnTypeMismatch;
+    return this;
   }
 
   public boolean isConvertOnTypeMismatch() {

@@ -576,10 +576,15 @@ public class LoadTsFileScheduler implements IScheduler {
                 ? loadTsFileDataTypeConverter
                     .convertForTableModel(
                         new LoadTsFile(null, filePath, Collections.emptyMap())
-                            .setDatabase(failedNode.getDatabase()))
+                            .setDatabase(failedNode.getDatabase())
+                            .setDeleteAfterLoad(failedNode.isDeleteAfterLoad())
+                            .setConvertOnTypeMismatch(true))
                     .orElse(null)
                 : loadTsFileDataTypeConverter
-                    .convertForTreeModel(new LoadTsFileStatement(filePath))
+                    .convertForTreeModel(
+                        new LoadTsFileStatement(filePath)
+                            .setDeleteAfterLoad(failedNode.isDeleteAfterLoad())
+                            .setConvertOnTypeMismatch(true))
                     .orElse(null);
 
         if (loadTsFileDataTypeConverter.isSuccessful(status)) {

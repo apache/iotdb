@@ -371,10 +371,15 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
             ? loadTsFileDataTypeConverter
                 .convertForTableModel(
                     new LoadTsFile(null, tsFiles.get(i).getPath(), Collections.emptyMap())
-                        .setDatabase(databaseForTableData))
+                        .setDatabase(databaseForTableData)
+                        .setDeleteAfterLoad(isDeleteAfterLoad)
+                        .setConvertOnTypeMismatch(isConvertOnTypeMismatch))
                 .orElse(null)
             : loadTsFileDataTypeConverter
-                .convertForTreeModel(new LoadTsFileStatement(tsFiles.get(i).getPath()))
+                .convertForTreeModel(
+                    new LoadTsFileStatement(tsFiles.get(i).getPath())
+                        .setDeleteAfterLoad(isDeleteAfterLoad)
+                        .setConvertOnTypeMismatch(isConvertOnTypeMismatch))
                 .orElse(null);
 
     if (status == null || !loadTsFileDataTypeConverter.isSuccessful(status)) {
@@ -649,10 +654,15 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
                 ? loadTsFileDataTypeConverter
                     .convertForTableModel(
                         new LoadTsFile(null, tsFiles.get(i).getPath(), Collections.emptyMap())
-                            .setDatabase(databaseForTableData))
+                            .setDatabase(databaseForTableData)
+                            .setDeleteAfterLoad(isDeleteAfterLoad)
+                            .setConvertOnTypeMismatch(isConvertOnTypeMismatch))
                     .orElse(null)
                 : loadTsFileDataTypeConverter
-                    .convertForTreeModel(new LoadTsFileStatement(tsFiles.get(i).getPath()))
+                    .convertForTreeModel(
+                        new LoadTsFileStatement(tsFiles.get(i).getPath())
+                            .setDeleteAfterLoad(isDeleteAfterLoad)
+                            .setConvertOnTypeMismatch(isConvertOnTypeMismatch))
                     .orElse(null);
 
         if (status == null) {
