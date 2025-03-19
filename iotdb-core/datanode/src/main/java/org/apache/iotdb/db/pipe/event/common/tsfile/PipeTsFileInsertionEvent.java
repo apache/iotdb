@@ -117,9 +117,14 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent
     this.resource = resource;
     tsFile = resource.getTsFile();
 
-    final ModificationFile modFile = resource.getModFile();
-    this.isWithMod = isWithMod && modFile.exists();
-    this.modFile = this.isWithMod ? new File(modFile.getFilePath()) : null;
+    final ModificationFile resourceModFile = resource.getModFile();
+    final File modFile = new File(resourceModFile.getFilePath());
+    this.isWithMod =
+        isWithMod
+            && (resourceModFile.exists()
+                || PipeDataNodeResourceManager.tsfile().getFileReferenceCountWithoutLock(modFile)
+                    > 0);
+    this.modFile = this.isWithMod ? modFile : null;
 
     this.isLoaded = isLoaded;
     this.isGeneratedByPipe = resource.isGeneratedByPipe();
