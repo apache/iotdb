@@ -51,9 +51,9 @@ public class LoadTsFile extends Statement {
 
   private final Map<String, String> loadAttributes;
 
-  private final List<File> tsFiles;
-  private final List<TsFileResource> resources;
-  private final List<Long> writePointCountList;
+  private List<File> tsFiles;
+  private List<TsFileResource> resources;
+  private List<Long> writePointCountList;
   private List<Boolean> isTableModel;
 
   public LoadTsFile(NodeLocation location, String filePath, Map<String, String> loadAttributes) {
@@ -148,11 +148,6 @@ public class LoadTsFile extends Statement {
     return tsFiles;
   }
 
-  public void setTsFiles(List<File> tsFiles) {
-    this.tsFiles.clear();
-    this.tsFiles.addAll(tsFiles);
-  }
-
   public void addTsFileResource(TsFileResource resource) {
     resources.add(resource);
   }
@@ -178,6 +173,47 @@ public class LoadTsFile extends Statement {
     this.tabletConversionThresholdBytes =
         LoadTsFileConfigurator.parseOrGetDefaultTabletConversionThresholdBytes(loadAttributes);
     this.verify = LoadTsFileConfigurator.parseOrGetDefaultVerify(loadAttributes);
+  }
+
+  public boolean reconstructStatementIfMiniFileConverted(final List<Boolean> isMiniTsFile) {
+    int lastNonMiniTsFileIndex = -1;
+
+    for (int i = 0, n = isMiniTsFile.size(); i < n; i++) {
+      if (isMiniTsFile.get(i)) {
+        continue;
+      }
+
+      ++lastNonMiniTsFileIndex;
+      if (tsFiles != null) {
+        tsFiles.set(lastNonMiniTsFileIndex, tsFiles.get(i));
+      }
+      if (isTableModel != null) {
+        isTableModel.set(lastNonMiniTsFileIndex, isTableModel.get(i));
+      }
+      if (resources != null) {
+        resources.set(lastNonMiniTsFileIndex, resources.get(i));
+      }
+      if (writePointCountList != null) {
+        writePointCountList.set(lastNonMiniTsFileIndex, writePointCountList.get(i));
+      }
+    }
+
+    tsFiles =
+        tsFiles != null ? tsFiles.subList(0, lastNonMiniTsFileIndex + 1) : Collections.emptyList();
+    isTableModel =
+        isTableModel != null
+            ? isTableModel.subList(0, lastNonMiniTsFileIndex + 1)
+            : Collections.emptyList();
+    resources =
+        resources != null
+            ? resources.subList(0, lastNonMiniTsFileIndex + 1)
+            : Collections.emptyList();
+    writePointCountList =
+        writePointCountList != null
+            ? writePointCountList.subList(0, lastNonMiniTsFileIndex + 1)
+            : Collections.emptyList();
+
+    return tsFiles == null || tsFiles.isEmpty();
   }
 
   @Override
