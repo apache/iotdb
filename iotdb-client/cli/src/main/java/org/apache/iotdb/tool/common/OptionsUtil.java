@@ -311,7 +311,7 @@ public class OptionsUtil extends Constants {
     return options;
   }
 
-  public static Options createTableExportTsFileSqlOptions() {
+  public static Options createTableExportTsFileOptions() {
     Options options = createTableExportCommonOptions();
 
     Option opTable =
@@ -319,7 +319,48 @@ public class OptionsUtil extends Constants {
             .longOpt(TABLE_ARGS)
             .argName(TABLE_ARGS)
             .hasArg()
-            .required()
+            .desc(TABLE_DESC_EXPORT)
+            .build();
+    options.addOption(opTable);
+
+    Option opDataType =
+        Option.builder(DATA_TYPE_ARGS)
+            .longOpt(DATA_TYPE_NAME)
+            .argName(DATA_TYPE_NAME)
+            .hasArg()
+            .desc(DATA_TYPE_DESC)
+            .build();
+    options.addOption(opDataType);
+
+    Option opTimeFormat =
+        Option.builder(TIME_FORMAT_ARGS)
+            .longOpt(TIME_FORMAT_NAME)
+            .argName(TIME_FORMAT_NAME)
+            .hasArg()
+            .desc(TIME_FORMAT_DESC)
+            .build();
+    options.addOption(opTimeFormat);
+
+    Option opTimeZone =
+        Option.builder(TIME_ZONE_ARGS)
+            .longOpt(TIME_ZONE_NAME)
+            .argName(TIME_ZONE_NAME)
+            .hasArg()
+            .desc(TIME_ZONE_DESC)
+            .build();
+    options.addOption(opTimeZone);
+
+    return options;
+  }
+
+  public static Options createTableExportSqlOptions() {
+    Options options = createTableExportCommonOptions();
+
+    Option opTable =
+        Option.builder(TABLE_ARGS)
+            .longOpt(TABLE_ARGS)
+            .argName(TABLE_ARGS)
+            .hasArg()
             .desc(TABLE_DESC_EXPORT)
             .build();
     options.addOption(opTable);
@@ -416,6 +457,15 @@ public class OptionsUtil extends Constants {
             .desc(ALIGNED_EXPORT_DESC)
             .build();
     options.addOption(opAligned);
+
+    Option opLinesPerFile =
+        Option.builder(LINES_PER_FILE_ARGS)
+            .longOpt(LINES_PER_FILE_NAME)
+            .argName(LINES_PER_FILE_NAME)
+            .hasArg()
+            .desc(LINES_PER_FILE_DESC)
+            .build();
+    options.addOption(opLinesPerFile);
 
     Option opTimeFormat =
         Option.builder(TIME_FORMAT_ARGS)
@@ -681,7 +731,6 @@ public class OptionsUtil extends Constants {
             .longOpt(TABLE_ARGS)
             .argName(TABLE_ARGS)
             .hasArg()
-            .required()
             .desc(TABLE_DESC_IMPORT)
             .build();
     options.addOption(opTable);

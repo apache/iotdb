@@ -224,11 +224,12 @@ public class StreamingHashAggregationOperator extends AbstractOperator {
   }
 
   private void evaluateAndFlushGroup(TsBlock page, int position) {
-    Column[] result = new Column[resultColumnsCount];
     // offset of value columns index
     int offset = preGroupedIndexInResult.length + unPreGroupedIndexInResult.length;
 
     do {
+      Column[] result = new Column[resultColumnsCount];
+
       // contains unPreGrouped group by columns and value columns
       TsBlock buildResult = aggregationBuilder.buildResult();
 

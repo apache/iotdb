@@ -62,6 +62,9 @@ public interface ITableAuthChecker {
   void checkTablePrivilegeGrantOption(
       String userName, QualifiedObjectName tableName, TableModelPrivilege privilege);
 
+  // This does not throw exception for performance issue.
+  boolean checkTablePrivilege4Pipe(final String userName, final QualifiedObjectName tableName);
+
   /**
    * Check if user has any privilege on the specified table or bigger scope (like database or ANY).
    *

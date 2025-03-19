@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.schema.column.ColumnHeader;
 import org.apache.iotdb.commons.schema.filter.SchemaFilter;
 import org.apache.iotdb.commons.schema.table.TsTable;
+import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
 import org.apache.iotdb.db.queryengine.common.SessionInfo;
 import org.apache.iotdb.db.queryengine.execution.operator.schema.source.DeviceBlackListConstructor;
 import org.apache.iotdb.db.queryengine.execution.operator.schema.source.TableDeviceQuerySource;
@@ -142,8 +143,7 @@ public class DeleteDevice extends AbstractTraverseDevice {
   }
 
   public static DeviceBlackListConstructor constructDevicePredicateUpdater(
-      final String database,
-      final String tableName,
+      final TsTable table,
       final byte[] filterInfo,
       final BiFunction<Integer, String, Binary> attributeProvider,
       final MemSchemaRegionStatistics regionStatistics) {
@@ -155,9 +155,9 @@ public class DeleteDevice extends AbstractTraverseDevice {
     }
 
     final int size = ReadWriteIOUtils.readInt(buffer);
-    final List<ColumnHeader> columnHeaderList = new ArrayList<>(size);
+    final List<TsTableColumnSchema> columnSchemaList = new ArrayList<>(size);
     for (int i = 0; i < size; i++) {
-      columnHeaderList.add(ColumnHeader.deserialize(buffer));
+      columnSchemaList.add(table.getColumnSchema(ColumnHeader.deserialize(buffer).getColumnName()));
     }
 
     SessionInfo sessionInfo = null;
@@ -167,7 +167,7 @@ public class DeleteDevice extends AbstractTraverseDevice {
 
     final AtomicInteger valueColumnIndex = new AtomicInteger(0);
     final Map<Symbol, List<InputLocation>> inputLocations =
-        columnHeaderList.stream()
+        columnSchemaList.stream()
             .collect(
                 Collectors.toMap(
                     columnHeader -> new Symbol(columnHeader.getColumnName()),
@@ -177,11 +177,11 @@ public class DeleteDevice extends AbstractTraverseDevice {
 
     final TypeProvider mockTypeProvider =
         new TypeProvider(
-            columnHeaderList.stream()
+            columnSchemaList.stream()
                 .collect(
                     Collectors.toMap(
                         columnHeader -> new Symbol(columnHeader.getColumnName()),
-                        columnHeader -> TypeFactory.getType(columnHeader.getColumnType()))));
+                        columnHeader -> TypeFactory.getType(columnHeader.getDataType()))));
     final Metadata metadata = LocalExecutionPlanner.getInstance().metadata;
 
     // records LeafColumnTransformer of filter
@@ -212,9 +212,8 @@ public class DeleteDevice extends AbstractTraverseDevice {
     return new DeviceBlackListConstructor(
         filterLeafColumnTransformerList,
         filterOutputTransformer,
-        database,
-        tableName,
-        columnHeaderList,
+        table.getTableName(),
+        columnSchemaList,
         attributeProvider,
         regionStatistics);
   }

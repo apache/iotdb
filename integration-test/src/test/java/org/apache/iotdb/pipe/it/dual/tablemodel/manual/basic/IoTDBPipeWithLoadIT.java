@@ -105,6 +105,7 @@ public class IoTDBPipeWithLoadIT extends AbstractPipeTableModelDualManualIT {
     // Enable mods transfer
     extractorAttributes.put("mods", "true");
     extractorAttributes.put("capture.table", "true");
+    extractorAttributes.put("user", "root");
 
     connectorAttributes.put("connector.batch.enable", "false");
     connectorAttributes.put("connector.ip", receiverIp);
@@ -151,6 +152,7 @@ public class IoTDBPipeWithLoadIT extends AbstractPipeTableModelDualManualIT {
 
     extractorAttributes.put("capture.table", "true");
     extractorAttributes.put("extractor.realtime.mode", "file");
+    extractorAttributes.put("user", "root");
 
     connectorAttributes.put("connector.batch.enable", "false");
     connectorAttributes.put("connector.ip", receiverIp);
@@ -236,6 +238,7 @@ public class IoTDBPipeWithLoadIT extends AbstractPipeTableModelDualManualIT {
 
     extractorAttributes.put("capture.table", "true");
     extractorAttributes.put("extractor.realtime.mode", "file");
+    extractorAttributes.put("user", "root");
 
     connectorAttributes.put("connector.batch.enable", "false");
     connectorAttributes.put("connector.ip", receiverIp);
@@ -316,6 +319,7 @@ public class IoTDBPipeWithLoadIT extends AbstractPipeTableModelDualManualIT {
 
     extractorAttributes.put("capture.table", "true");
     extractorAttributes.put("extractor.realtime.mode", "file");
+    extractorAttributes.put("user", "root");
 
     connectorAttributes.put("connector.batch.enable", "false");
     connectorAttributes.put("connector.ip", receiverIp);

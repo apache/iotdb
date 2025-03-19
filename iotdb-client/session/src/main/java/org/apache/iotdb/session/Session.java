@@ -425,6 +425,7 @@ public class Session implements ISession {
     if (nodeUrls.isEmpty()) {
       throw new IllegalArgumentException("nodeUrls shouldn't be empty.");
     }
+    Collections.shuffle(nodeUrls);
     this.nodeUrls = nodeUrls;
     this.username = username;
     this.password = password;
@@ -441,6 +442,7 @@ public class Session implements ISession {
       if (builder.nodeUrls.isEmpty()) {
         throw new IllegalArgumentException("nodeUrls shouldn't be empty.");
       }
+      Collections.shuffle(builder.nodeUrls);
       this.nodeUrls = builder.nodeUrls;
       this.enableQueryRedirection = true;
     } else {

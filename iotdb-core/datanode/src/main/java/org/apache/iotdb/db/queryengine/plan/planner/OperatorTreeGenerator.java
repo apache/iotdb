@@ -2310,6 +2310,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
         FragmentInstanceManager.getInstance().getModelInferenceExecutor(),
         node.getInputColumnNames(),
         node.getChild().getOutputColumnNames(),
+        node.isGenerateTimeColumn(),
         maxRetainedSize,
         maxReturnSize);
   }
