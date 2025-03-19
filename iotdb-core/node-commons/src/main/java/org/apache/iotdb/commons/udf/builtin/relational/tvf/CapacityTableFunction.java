@@ -63,10 +63,7 @@ public class CapacityTableFunction implements TableFunction {
     }
     return TableFunctionAnalysis.builder()
         .properColumnSchema(
-            new DescribedSchema.Builder()
-                .addField("window_index", Type.INT64)
-                .addField("count", Type.INT64)
-                .build())
+            new DescribedSchema.Builder().addField("window_index", Type.INT64).build())
         .requiredColumns(DATA_PARAMETER_NAME, Collections.singletonList(0))
         .build();
   }
@@ -114,10 +111,8 @@ public class CapacityTableFunction implements TableFunction {
 
     private void outputWindow(
         List<ColumnBuilder> properColumnBuilders, ColumnBuilder passThroughIndexBuilder) {
-      int sz = currentRowIndexes.size();
       for (Long currentRowIndex : currentRowIndexes) {
         properColumnBuilders.get(0).writeLong(windowIndex);
-        properColumnBuilders.get(1).writeLong(sz);
         passThroughIndexBuilder.writeLong(currentRowIndex);
       }
       windowIndex++;

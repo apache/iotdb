@@ -51,45 +51,15 @@ public class GroupNode extends SortNode {
    */
   private int partitionKeyCount;
 
-  /** GroupNode can be pushed down for paralleled execution. */
-  private boolean enableParalleled = false;
-
   public GroupNode(PlanNodeId id, PlanNode child, OrderingScheme scheme, int partitionKeyCount) {
     super(id, child, scheme, false, false);
-    this.partitionKeyCount = partitionKeyCount;
-  }
-
-  public GroupNode(
-      PlanNodeId id,
-      PlanNode child,
-      OrderingScheme scheme,
-      boolean partial,
-      boolean orderByAllIdsAndTime,
-      boolean enableParalleled,
-      int partitionKeyCount) {
-    super(id, child, scheme, partial, orderByAllIdsAndTime);
-    this.enableParalleled = enableParalleled;
     this.partitionKeyCount = partitionKeyCount;
   }
 
   @Override
   public PlanNode replaceChildren(List<PlanNode> newChildren) {
     return new GroupNode(
-        id,
-        Iterables.getOnlyElement(newChildren),
-        orderingScheme,
-        partial,
-        orderByAllIdsAndTime,
-        enableParalleled,
-        partitionKeyCount);
-  }
-
-  public boolean isEnableParalleled() {
-    return enableParalleled;
-  }
-
-  public void setEnableParalleled(boolean enableParalleled) {
-    this.enableParalleled = enableParalleled;
+        id, Iterables.getOnlyElement(newChildren), orderingScheme, partitionKeyCount);
   }
 
   public int getPartitionKeyCount() {
@@ -103,21 +73,13 @@ public class GroupNode extends SortNode {
 
   @Override
   public PlanNode clone() {
-    return new GroupNode(
-        id,
-        null,
-        orderingScheme,
-        partial,
-        orderByAllIdsAndTime,
-        enableParalleled,
-        partitionKeyCount);
+    return new GroupNode(id, null, orderingScheme, partitionKeyCount);
   }
 
   @Override
   protected void serializeAttributes(ByteBuffer byteBuffer) {
     PlanNodeType.TABLE_GROUP_NODE.serialize(byteBuffer);
     orderingScheme.serialize(byteBuffer);
-    ReadWriteIOUtils.write(enableParalleled, byteBuffer);
     ReadWriteIOUtils.write(partitionKeyCount, byteBuffer);
   }
 
@@ -125,17 +87,14 @@ public class GroupNode extends SortNode {
   protected void serializeAttributes(DataOutputStream stream) throws IOException {
     PlanNodeType.TABLE_GROUP_NODE.serialize(stream);
     orderingScheme.serialize(stream);
-    ReadWriteIOUtils.write(enableParalleled, stream);
     ReadWriteIOUtils.write(partitionKeyCount, stream);
   }
 
   public static GroupNode deserialize(ByteBuffer byteBuffer) {
     OrderingScheme orderingScheme = OrderingScheme.deserialize(byteBuffer);
-    boolean enableParalleled = ReadWriteIOUtils.readBoolean(byteBuffer);
     int partitionColumnCount = ReadWriteIOUtils.readInt(byteBuffer);
     PlanNodeId planNodeId = PlanNodeId.deserialize(byteBuffer);
-    return new GroupNode(
-        planNodeId, null, orderingScheme, false, false, enableParalleled, partitionColumnCount);
+    return new GroupNode(planNodeId, null, orderingScheme, partitionColumnCount);
   }
 
   @Override

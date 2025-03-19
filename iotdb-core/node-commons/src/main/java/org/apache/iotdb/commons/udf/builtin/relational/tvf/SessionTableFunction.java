@@ -114,7 +114,6 @@ public class SessionTableFunction implements TableFunction {
       long timeValue = input.getLong(0);
       if (!currentRowIndexes.isEmpty() && timeValue > windowEnd) {
         outputWindow(properColumnBuilders, passThroughIndexBuilder);
-
       }
       if (currentRowIndexes.isEmpty()) {
         windowStart = timeValue;
@@ -135,7 +134,7 @@ public class SessionTableFunction implements TableFunction {
         List<ColumnBuilder> properColumnBuilders, ColumnBuilder passThroughIndexBuilder) {
       for (Long currentRowIndex : currentRowIndexes) {
         properColumnBuilders.get(0).writeLong(windowStart);
-        properColumnBuilders.get(1).writeLong(windowEnd - 1);
+        properColumnBuilders.get(1).writeLong(windowEnd - gap);
         passThroughIndexBuilder.writeLong(currentRowIndex);
       }
       currentRowIndexes.clear();

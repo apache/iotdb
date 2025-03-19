@@ -270,8 +270,7 @@ public class TableDistributedPlanGenerator
     }
 
     TopKNode newTopKNode = (TopKNode) node.clone();
-    for (int i = 0; i < childrenNodes.size(); i++) {
-      PlanNode child = childrenNodes.get(i);
+    for (PlanNode child : childrenNodes) {
       TopKNode subTopKNode =
           new TopKNode(
               queryId.genPlanNodeId(),
@@ -291,32 +290,26 @@ public class TableDistributedPlanGenerator
   public List<PlanNode> visitGroup(GroupNode node, PlanContext context) {
     boolean pushDown = context.isPushDownGrouping();
     try {
-      context.setPushDownGrouping(node.isEnableParalleled());
-//      if (node.isEnableParalleled()) {
-        List<PlanNode> result = new ArrayList<>();
-        context.setExpectedOrderingScheme(node.getOrderingScheme());
-        List<PlanNode> childrenNodes = node.getChild().accept(this, context);
-        for (PlanNode child : childrenNodes) {
-          if (canSortEliminated(
-              node.getOrderingScheme(), nodeOrderingMap.get(child.getPlanNodeId()))) {
-            result.add(child);
-          } else {
-            StreamSortNode subSortNode =
-                new StreamSortNode(
-                    queryId.genPlanNodeId(),
-                    child,
-                    node.getOrderingScheme(),
-                    false,
-                    false,
-                    node.getPartitionKeyCount() - 1);
-            result.add(subSortNode);
-//            nodeOrderingMap.put(subSortNode.getPlanNodeId(), subSortNode.getOrderingScheme());
-          }
+      context.setPushDownGrouping(true);
+      List<PlanNode> result = new ArrayList<>();
+      context.setExpectedOrderingScheme(node.getOrderingScheme());
+      List<PlanNode> childrenNodes = node.getChild().accept(this, context);
+      for (PlanNode child : childrenNodes) {
+        if (canSortEliminated(
+            node.getOrderingScheme(), nodeOrderingMap.get(child.getPlanNodeId()))) {
+          result.add(child);
+        } else {
+          GroupNode subGroupNode =
+              new GroupNode(
+                  queryId.genPlanNodeId(),
+                  child,
+                  node.getOrderingScheme(),
+                  node.getPartitionKeyCount());
+          result.add(subGroupNode);
+          // should not set nodeOrderingMap here
         }
-        return result;
-//      } else {
-//        return visitSort(node, context);
-//      }
+      }
+      return result;
     } finally {
       context.setPushDownGrouping(pushDown);
     }
@@ -495,66 +488,28 @@ public class TableDistributedPlanGenerator
       final DeviceTableScanNode node, final PlanContext context) {
     if (context.isPushDownGrouping()) {
       return constructDeviceTableScanByTags(node, context);
-      //      return constructDeviceTableScanTmp(node, context);
     } else {
       return constructDeviceTableScanByRegionReplicaSet(node, context);
     }
   }
 
-  private List<PlanNode> constructDeviceTableScanTmp(
-      final DeviceTableScanNode node, final PlanContext context) {
-    List<PlanNode> result = new ArrayList<>();
-    final Map<TRegionReplicaSet, Integer> regionDeviceCount = new HashMap<>();
-    for (final DeviceEntry deviceEntry : node.getDeviceEntries()) {
-      final List<TRegionReplicaSet> regionReplicaSets =
-          analysis.getDataRegionReplicaSetWithTimeFilter(
-              node.getQualifiedObjectName().getDatabaseName(),
-              deviceEntry.getDeviceID(),
-              node.getTimeFilter());
-      List<PlanNode> tmp = new ArrayList<>();
-      for (final TRegionReplicaSet regionReplicaSet : regionReplicaSets) {
-        regionDeviceCount.put(
-            regionReplicaSet, regionDeviceCount.getOrDefault(regionReplicaSet, 0) + 1);
-        DeviceTableScanNode scanNode =
-            new DeviceTableScanNode(
-                queryId.genPlanNodeId(),
-                node.getQualifiedObjectName(),
-                node.getOutputSymbols(),
-                node.getAssignments(),
-                new ArrayList<>(),
-                node.getIdAndAttributeIndexMap(),
-                node.getScanOrder(),
-                node.getTimePredicate().orElse(null),
-                node.getPushDownPredicate(),
-                node.getPushDownLimit(),
-                node.getPushDownOffset(),
-                node.isPushLimitToEachDevice(),
-                node.containsNonAlignedDevice());
-        scanNode.setRegionReplicaSet(regionReplicaSet);
-        scanNode.appendDeviceEntry(deviceEntry);
-        tmp.add(scanNode);
-      }
-      if (context.hasSortProperty) {
-        processSortProperty(node, tmp, context);
-      }
-      if (tmp.size() == 1) {
-        result.add(tmp.get(0));
-      } else {
-        CollectNode collectNode =
-            new CollectNode(queryId.genPlanNodeId(), tmp, node.getOutputSymbols());
-        result.add(collectNode);
-      }
-    }
-    context.mostUsedRegion =
-        regionDeviceCount.entrySet().stream()
-            .max(Comparator.comparingInt(Map.Entry::getValue))
-            .map(Map.Entry::getKey)
-            .orElse(null);
-    return result;
-  }
-
   private List<PlanNode> constructDeviceTableScanByTags(
       final DeviceTableScanNode node, final PlanContext context) {
+    DataPartition dataPartition = analysis.getDataPartitionInfo();
+    if (dataPartition == null) {
+      node.setRegionReplicaSet(NOT_ASSIGNED);
+      return Collections.singletonList(node);
+    }
+
+    String dbName = node.getQualifiedObjectName().getDatabaseName();
+    Map<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TRegionReplicaSet>>> seriesSlotMap =
+        dataPartition.getDataPartitionMap().get(dbName);
+    if (seriesSlotMap == null) {
+      throw new SemanticException(
+          String.format("Given queried database: %s is not exist!", dbName));
+    }
+    Map<Integer, List<TRegionReplicaSet>> cachedSeriesSlotWithRegions = new HashMap<>();
+
     List<PlanNode> result = new ArrayList<>();
     List<DeviceEntry> crossRegionDevices = new ArrayList<>();
 
@@ -562,10 +517,12 @@ public class TableDistributedPlanGenerator
     final Map<TRegionReplicaSet, Integer> regionDeviceCount = new HashMap<>();
     for (final DeviceEntry deviceEntry : node.getDeviceEntries()) {
       final List<TRegionReplicaSet> regionReplicaSets =
-          analysis.getDataRegionReplicaSetWithTimeFilter(
-              node.getQualifiedObjectName().getDatabaseName(),
+          getDeviceReplicaSets(
+              dataPartition,
+              seriesSlotMap,
               deviceEntry.getDeviceID(),
-              node.getTimeFilter());
+              node.getTimeFilter(),
+              cachedSeriesSlotWithRegions);
       regionReplicaSets.forEach(
           regionReplicaSet ->
               regionDeviceCount.put(
@@ -623,15 +580,31 @@ public class TableDistributedPlanGenerator
 
   private List<PlanNode> constructDeviceTableScanByRegionReplicaSet(
       final DeviceTableScanNode node, final PlanContext context) {
+    DataPartition dataPartition = analysis.getDataPartitionInfo();
+    if (dataPartition == null) {
+      node.setRegionReplicaSet(NOT_ASSIGNED);
+      return Collections.singletonList(node);
+    }
+
+    String dbName = node.getQualifiedObjectName().getDatabaseName();
+    Map<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TRegionReplicaSet>>> seriesSlotMap =
+        dataPartition.getDataPartitionMap().get(dbName);
+    if (seriesSlotMap == null) {
+      throw new SemanticException(
+          String.format("Given queried database: %s is not exist!", dbName));
+    }
 
     final Map<TRegionReplicaSet, DeviceTableScanNode> tableScanNodeMap = new HashMap<>();
-    for (final DeviceEntry deviceEntry : node.getDeviceEntries()) {
-      final List<TRegionReplicaSet> regionReplicaSets =
-          analysis.getDataRegionReplicaSetWithTimeFilter(
-              node.getQualifiedObjectName().getDatabaseName(),
-              deviceEntry.getDeviceID(),
-              node.getTimeFilter());
+    Map<Integer, List<TRegionReplicaSet>> cachedSeriesSlotWithRegions = new HashMap<>();
 
+    for (final DeviceEntry deviceEntry : node.getDeviceEntries()) {
+      List<TRegionReplicaSet> regionReplicaSets =
+          getDeviceReplicaSets(
+              dataPartition,
+              seriesSlotMap,
+              deviceEntry.getDeviceID(),
+              node.getTimeFilter(),
+              cachedSeriesSlotWithRegions);
       for (final TRegionReplicaSet regionReplicaSet : regionReplicaSets) {
         final DeviceTableScanNode deviceTableScanNode =
             tableScanNodeMap.computeIfAbsent(
@@ -689,13 +662,31 @@ public class TableDistributedPlanGenerator
 
   @Override
   public List<PlanNode> visitTreeDeviceViewScan(TreeDeviceViewScanNode node, PlanContext context) {
+    DataPartition dataPartition = analysis.getDataPartitionInfo();
+    if (dataPartition == null) {
+      node.setRegionReplicaSet(NOT_ASSIGNED);
+      return Collections.singletonList(node);
+    }
+
+    String dbName = node.getTreeDBName();
+    Map<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TRegionReplicaSet>>> seriesSlotMap =
+        dataPartition.getDataPartitionMap().get(dbName);
+    if (seriesSlotMap == null) {
+      throw new SemanticException(
+          String.format("Given queried database: %s is not exist!", dbName));
+    }
+
     Map<TRegionReplicaSet, Pair<TreeAlignedDeviceViewScanNode, TreeNonAlignedDeviceViewScanNode>>
         tableScanNodeMap = new HashMap<>();
-
+    Map<Integer, List<TRegionReplicaSet>> cachedSeriesSlotWithRegions = new HashMap<>();
     for (DeviceEntry deviceEntry : node.getDeviceEntries()) {
       List<TRegionReplicaSet> regionReplicaSets =
-          analysis.getDataRegionReplicaSetWithTimeFilter(
-              node.getTreeDBName(), deviceEntry.getDeviceID(), node.getTimeFilter());
+          getDeviceReplicaSets(
+              dataPartition,
+              seriesSlotMap,
+              deviceEntry.getDeviceID(),
+              node.getTimeFilter(),
+              cachedSeriesSlotWithRegions);
 
       for (TRegionReplicaSet regionReplicaSet : regionReplicaSets) {
         boolean aligned = deviceEntry instanceof AlignedDeviceEntry;
@@ -884,21 +875,21 @@ public class TableDistributedPlanGenerator
         node instanceof AggregationTreeDeviceViewScanNode
             ? ((AggregationTreeDeviceViewScanNode) node).getTreeDBName()
             : node.getQualifiedObjectName().getDatabaseName();
-    DataPartition dataPartition = analysis.getDataPartition();
+    DataPartition dataPartition = analysis.getDataPartitionInfo();
     boolean needSplit = false;
     List<List<TRegionReplicaSet>> regionReplicaSetsList = new ArrayList<>();
-    if (dataPartition == null) {
-      // do nothing
-    } else if (!dataPartition.getDataPartitionMap().containsKey(dbName)) {
-      throw new SemanticException(
-          String.format("Given queried database: %s is not exist!", dbName));
-    } else {
+    if (dataPartition != null) {
       Map<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TRegionReplicaSet>>> seriesSlotMap =
           dataPartition.getDataPartitionMap().get(dbName);
+      if (seriesSlotMap == null) {
+        throw new SemanticException(
+            String.format("Given queried database: %s is not exist!", dbName));
+      }
+
       Map<Integer, List<TRegionReplicaSet>> cachedSeriesSlotWithRegions = new HashMap<>();
       for (DeviceEntry deviceEntry : node.getDeviceEntries()) {
         List<TRegionReplicaSet> regionReplicaSets =
-            getReplicaSetWithTimeFilter(
+            getDeviceReplicaSets(
                 dataPartition,
                 seriesSlotMap,
                 deviceEntry.getDeviceID(),
@@ -975,7 +966,7 @@ public class TableDistributedPlanGenerator
     return resultTableScanNodeList;
   }
 
-  private List<TRegionReplicaSet> getReplicaSetWithTimeFilter(
+  private List<TRegionReplicaSet> getDeviceReplicaSets(
       DataPartition dataPartition,
       Map<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TRegionReplicaSet>>> seriesSlotMap,
       IDeviceID deviceId,
@@ -984,23 +975,23 @@ public class TableDistributedPlanGenerator
 
     // given seriesPartitionSlot has already been calculated
     final TSeriesPartitionSlot seriesPartitionSlot = dataPartition.calculateDeviceGroupId(deviceId);
-    if (cachedSeriesSlotWithRegions.containsKey(seriesPartitionSlot.getSlotId())) {
-      return cachedSeriesSlotWithRegions.get(seriesPartitionSlot.getSlotId());
+    List<TRegionReplicaSet> regionReplicaSets =
+        cachedSeriesSlotWithRegions.get(seriesPartitionSlot.getSlotId());
+    if (regionReplicaSets != null) {
+      return regionReplicaSets;
     }
 
-    if (!seriesSlotMap.containsKey(seriesPartitionSlot)) {
-      cachedSeriesSlotWithRegions.put(
-          seriesPartitionSlot.getSlotId(), Collections.singletonList(NOT_ASSIGNED));
-      return cachedSeriesSlotWithRegions.get(seriesPartitionSlot.getSlotId());
-    }
-
+    // given seriesPartitionSlot has not been calculated
     Map<TTimePartitionSlot, List<TRegionReplicaSet>> timeSlotMap =
         seriesSlotMap.get(seriesPartitionSlot);
+    if (timeSlotMap == null) {
+      List<TRegionReplicaSet> cachedReplicaSets = Collections.singletonList(NOT_ASSIGNED);
+      cachedSeriesSlotWithRegions.put(seriesPartitionSlot.getSlotId(), cachedReplicaSets);
+      return cachedReplicaSets;
+    }
     if (timeSlotMap.size() == 1) {
       TTimePartitionSlot timePartitionSlot = timeSlotMap.keySet().iterator().next();
-      if (timeFilter == null
-          || TimePartitionUtils.satisfyPartitionStartTime(
-              timeFilter, timePartitionSlot.startTime)) {
+      if (TimePartitionUtils.satisfyPartitionStartTime(timeFilter, timePartitionSlot.startTime)) {
         cachedSeriesSlotWithRegions.put(
             seriesPartitionSlot.getSlotId(), timeSlotMap.values().iterator().next());
         return timeSlotMap.values().iterator().next();
@@ -1020,14 +1011,6 @@ public class TableDistributedPlanGenerator
     List<TRegionReplicaSet> resultList = new ArrayList<>(resultSet);
     cachedSeriesSlotWithRegions.put(seriesPartitionSlot.getSlotId(), resultList);
     return resultList;
-    //    return seriesSlotMap.get(seriesPartitionSlot).entrySet().stream()
-    //        .filter(
-    //            entry ->
-    //                TimePartitionUtils.satisfyPartitionStartTime(timeFilter,
-    // entry.getKey().startTime))
-    //        .flatMap(entry -> entry.getValue().stream())
-    //        .distinct()
-    //        .collect(toList());
   }
 
   @Override
@@ -1075,10 +1058,7 @@ public class TableDistributedPlanGenerator
     if (node.getChildren().isEmpty()) {
       return Collections.singletonList(node);
     }
-    boolean canSplitPushDown =
-        node.isRowSemantic()
-            || (node.getChild() instanceof GroupNode)
-                && ((GroupNode) node.getChild()).isEnableParalleled();
+    boolean canSplitPushDown = node.isRowSemantic() || (node.getChild() instanceof GroupNode);
     List<PlanNode> childrenNodes = node.getChild().accept(this, context);
     if (childrenNodes.size() == 1) {
       node.setChild(childrenNodes.get(0));
@@ -1093,10 +1073,6 @@ public class TableDistributedPlanGenerator
       return splitForEachChild(node, childrenNodes);
     }
   }
-
-  // select * from TABLE(p99(TABLE(t1))
-  // TFN -> ScanNode
-
 
   private void buildRegionNodeMap(
       AggregationTableScanNode originalAggTableScanNode,

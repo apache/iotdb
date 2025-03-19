@@ -73,6 +73,9 @@ public abstract class AbstractTraverseDevice extends Statement {
   // to help reuse filter operator
   protected List<ColumnHeader> columnHeaderList;
 
+  // If there are no attribute columns, we can skip returning it to save time
+  private List<String> attributeColumns;
+
   // For sql-input show device usage
   protected AbstractTraverseDevice(
       final NodeLocation location, final Table table, final Expression where) {
@@ -181,12 +184,16 @@ public abstract class AbstractTraverseDevice extends Statement {
     this.partitionKeyList = partitionKeyList;
   }
 
+  public void setAttributeColumns(final List<String> attributeColumns) {
+    this.attributeColumns = attributeColumns;
+  }
+
   public List<ColumnHeader> getColumnHeaderList() {
     return columnHeaderList;
   }
 
   public void setColumnHeaderList() {
-    this.columnHeaderList = getDeviceColumnHeaderList(database, tableName);
+    this.columnHeaderList = getDeviceColumnHeaderList(database, tableName, attributeColumns);
   }
 
   @Override

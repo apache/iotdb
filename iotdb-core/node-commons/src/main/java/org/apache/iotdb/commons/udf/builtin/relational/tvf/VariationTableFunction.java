@@ -75,10 +75,7 @@ public class VariationTableFunction implements TableFunction {
             expectedFieldName,
             ImmutableSet.of(Type.INT32, Type.INT64, Type.FLOAT, Type.DOUBLE));
     DescribedSchema properColumnSchema =
-        new DescribedSchema.Builder()
-            .addField("window_index", Type.INT64)
-            .addField("base_value", Type.DOUBLE)
-            .build();
+        new DescribedSchema.Builder().addField("window_index", Type.INT64).build();
     // outputColumnSchema
     return TableFunctionAnalysis.builder()
         .properColumnSchema(properColumnSchema)
@@ -137,7 +134,6 @@ public class VariationTableFunction implements TableFunction {
         List<ColumnBuilder> properColumnBuilders, ColumnBuilder passThroughIndexBuilder) {
       for (Long currentRowIndex : currentRowIndexes) {
         properColumnBuilders.get(0).writeLong(windowIndex);
-        properColumnBuilders.get(1).writeDouble(baseValue);
         passThroughIndexBuilder.writeLong(currentRowIndex);
       }
       currentRowIndexes.clear();

@@ -21,11 +21,13 @@ package org.apache.iotdb.db.pipe.event.common.tsfile;
 
 import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.commons.consensus.index.impl.MinimumProgressIndex;
+import org.apache.iotdb.commons.exception.auth.AccessDeniedException;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.TablePattern;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.TreePattern;
 import org.apache.iotdb.commons.pipe.resource.ref.PipePhantomReferenceManager.PipeEventResource;
+import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.pipe.event.ReferenceTrackableEvent;
 import org.apache.iotdb.db.pipe.event.common.PipeInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
@@ -52,7 +54,6 @@ import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
-import java.nio.file.AccessDeniedException;
 import java.util.Collections;
 import java.util.Map;
 import java.util.Objects;
@@ -429,29 +430,52 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
   }
 
   @Override
-  public void throwIfNoPrivilege() throws IOException {
-    if (!isTableModelEvent()) {
-      return;
-    }
-    for (final IDeviceID deviceID : getDeviceSet()) {
-      if (!tablePattern.matchesDatabase(getTableModelDatabaseName())
-          || !tablePattern.matchesTable(deviceID.getTableName())) {
-        continue;
+  public void throwIfNoPrivilege() {
+    try {
+      if (!isTableModelEvent() || AuthorityChecker.SUPER_USER.equals(userName)) {
+        return;
       }
-      if (!Coordinator.getInstance()
-          .getAccessControl()
-          .checkCanSelectFromTable4Pipe(
-              userName,
-              new QualifiedObjectName(getTableModelDatabaseName(), deviceID.getTableName()))) {
-        if (skipIfNoPrivileges) {
-          shouldParse4Privilege = true;
-        } else {
-          throw new AccessDeniedException(
-              String.format(
-                  "No privilege for SELECT for user %s at table %s.%s",
-                  userName, tableModelDatabaseName, deviceID.getTableName()));
+      if (!waitForTsFileClose()) {
+        LOGGER.info("Temporary tsFile {} detected, will skip its transfer.", tsFile);
+        return;
+      }
+      for (final IDeviceID deviceID : getDeviceSet()) {
+        if (!tablePattern.matchesDatabase(getTableModelDatabaseName())
+            || !tablePattern.matchesTable(deviceID.getTableName())) {
+          continue;
+        }
+        if (!Coordinator.getInstance()
+            .getAccessControl()
+            .checkCanSelectFromTable4Pipe(
+                userName,
+                new QualifiedObjectName(getTableModelDatabaseName(), deviceID.getTableName()))) {
+          if (skipIfNoPrivileges) {
+            shouldParse4Privilege = true;
+          } else {
+            throw new AccessDeniedException(
+                String.format(
+                    "No privilege for SELECT for user %s at table %s.%s",
+                    userName, tableModelDatabaseName, deviceID.getTableName()));
+          }
         }
       }
+    } catch (final AccessDeniedException e) {
+      throw e;
+    } catch (final Exception e) {
+      if (e instanceof InterruptedException) {
+        Thread.currentThread().interrupt();
+      }
+
+      final String errorMsg =
+          e instanceof InterruptedException
+              ? String.format(
+                  "Interrupted when waiting for parsing privilege for TsFile %s.",
+                  resource.getTsFilePath())
+              : String.format(
+                  "Parse TsFile %s when checking privilege error. Because: %s",
+                  resource.getTsFilePath(), e.getMessage());
+      LOGGER.warn(errorMsg, e);
+      throw new PipeException(errorMsg, e);
     }
   }
 
@@ -578,7 +602,7 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
               : String.format(
                   "Parse TsFile %s error. Because: %s", resource.getTsFilePath(), e.getMessage());
       LOGGER.warn(errorMsg, e);
-      throw new PipeException(errorMsg);
+      throw new PipeException(errorMsg, e);
     }
   }
 
@@ -656,7 +680,7 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
 
       final String errorMsg = String.format("Read TsFile %s error.", resource.getTsFilePath());
       LOGGER.warn(errorMsg, e);
-      throw new PipeException(errorMsg);
+      throw new PipeException(errorMsg, e);
     }
   }
 

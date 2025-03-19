@@ -438,9 +438,6 @@ public class UnaliasSymbolReferences implements PlanOptimizer {
               node.getPlanNodeId(),
               rewrittenSource.getRoot(),
               newOrderingScheme,
-              node.isPartial(),
-              node.isOrderByAllIdsAndTime(),
-              node.isEnableParalleled(),
               node.getPartitionKeyCount()),
           mapping);
     }

@@ -212,7 +212,6 @@ public class TableFunctionTest {
      *               │        └──TableScan
      *               └──ExchangeNode
      *                    └──TableFunctionProcessor
-     *                        └──streamSort
      *                              └──MergeSortNode
      *                                     ├──ExchangeNode
      *                                     │     └──TableScan

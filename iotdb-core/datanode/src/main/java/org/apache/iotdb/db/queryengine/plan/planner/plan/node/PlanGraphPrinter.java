@@ -932,9 +932,18 @@ public class PlanGraphPrinter extends PlanVisitor<List<String>, PlanGraphPrinter
   public List<String> visitGroup(GroupNode node, GraphContext context) {
     List<String> boxValue = new ArrayList<>();
     boxValue.add(String.format("GroupNode-%s", node.getPlanNodeId().getId()));
-    boxValue.add(String.format("EnableParalleled: %s", node.isEnableParalleled()));
-    boxValue.add(String.format("PartitionKeyCount: %s", node.getPartitionKeyCount()));
-    boxValue.add(String.format("OrderingScheme: %s", node.getOrderingScheme()));
+    boxValue.add(
+        String.format(
+            "PartitionKey: %s",
+            node.getOrderingScheme().getOrderBy().subList(0, node.getPartitionKeyCount())));
+    List<String> orderKey = new ArrayList<>();
+    for (int i = node.getPartitionKeyCount();
+        i < node.getOrderingScheme().getOrderBy().size();
+        i++) {
+      Symbol symbol = node.getOrderingScheme().getOrderBy().get(i);
+      orderKey.add(symbol + " " + node.getOrderingScheme().getOrdering(symbol));
+    }
+    boxValue.add(String.format("OrderKey: %s", orderKey));
     return render(node, boxValue, context);
   }
 
