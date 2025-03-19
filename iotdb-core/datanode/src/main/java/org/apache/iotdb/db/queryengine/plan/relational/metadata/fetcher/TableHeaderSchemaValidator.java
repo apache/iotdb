@@ -101,7 +101,7 @@ public class TableHeaderSchemaValidator {
     // The schema cache R/W and fetch operation must be locked together thus the cache clean
     // operation executed by delete timeSeries will be effective.
     DataNodeSchemaLockManager.getInstance()
-        .takeReadLock(context, SchemaLockType.VALIDATE_VS_DELETION);
+        .takeReadLock(context, SchemaLockType.VALIDATE_VS_DELETION_TABLE);
 
     try {
       final List<ColumnSchema> inputColumnList = tableSchema.getColumns();
