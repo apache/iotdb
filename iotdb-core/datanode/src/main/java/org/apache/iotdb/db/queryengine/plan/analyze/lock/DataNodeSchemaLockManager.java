@@ -39,7 +39,7 @@ public class DataNodeSchemaLockManager {
     final int lockNum = SchemaLockType.values().length;
     this.locks = new ReentrantReadWriteLock[lockNum];
     for (int i = 0; i < lockNum; i++) {
-      locks[i] = new ReentrantReadWriteLock(false);
+      locks[i] = new ReentrantReadWriteLock(true);
     }
   }
 
@@ -49,6 +49,8 @@ public class DataNodeSchemaLockManager {
     }
   }
 
+  // This is called at the very last to guarantee safety
+  // And can be also called when the read's safety is guaranteed to reduce lock granularity
   public void releaseReadLock(final MPPQueryContext queryContext) {
     if (queryContext != null && !queryContext.getAcquiredLocks().isEmpty()) {
       queryContext

@@ -103,156 +103,162 @@ public class TableHeaderSchemaValidator {
     DataNodeSchemaLockManager.getInstance()
         .takeReadLock(context, SchemaLockType.VALIDATE_VS_DELETION);
 
-    final List<ColumnSchema> inputColumnList = tableSchema.getColumns();
-    if (inputColumnList == null || inputColumnList.isEmpty()) {
-      throw new SemanticException("No column other than Time present, please check the request");
-    }
-    // Get directly if there is a table because we do not want "addColumn" to affect
-    // original writings
-    TsTable table =
-        DataNodeTableCache.getInstance().getTableInWrite(database, tableSchema.getTableName());
-    final List<ColumnSchema> missingColumnList = new ArrayList<>();
-
-    final boolean isAutoCreateSchemaEnabled =
-        IoTDBDescriptor.getInstance().getConfig().isAutoCreateSchemaEnabled();
-    // first round validate, check existing schema
-    if (table == null) {
-      // TODO table metadata: authority check for table create
-      // auto create missing table
-      // it's ok that many write requests concurrently auto create same table, the thread safety
-      // will be guaranteed by ProcedureManager.createTable in CN
-      if (allowCreateTable && isAutoCreateSchemaEnabled) {
-        autoCreateTable(context, database, tableSchema);
-        table = DataNodeTableCache.getInstance().getTable(database, tableSchema.getTableName());
-        if (table == null) {
-          throw new IllegalStateException(
-              "auto create table succeed, but cannot get table schema in current node's DataNodeTableCache, may be caused by concurrently auto creating table");
-        }
-      } else {
-        TableMetadataImpl.throwTableNotExistsException(database, tableSchema.getTableName());
+    try {
+      final List<ColumnSchema> inputColumnList = tableSchema.getColumns();
+      if (inputColumnList == null || inputColumnList.isEmpty()) {
+        throw new SemanticException("No column other than Time present, please check the request");
       }
-    } else {
-      // If table with this name already exists and isStrictIdColumn is true, make sure the existing
-      // id columns are the prefix of the incoming id columns, or vice versa
-      if (isStrictIdColumn) {
-        final List<TsTableColumnSchema> realIdColumns = table.getIdColumnSchemaList();
-        final List<ColumnSchema> incomingIdColumns = tableSchema.getIdColumns();
-        if (realIdColumns.size() <= incomingIdColumns.size()) {
-          // When incoming table has more ID columns, the existing id columns
-          // should be the prefix of the incoming id columns (or equal)
-          for (int indexReal = 0; indexReal < realIdColumns.size(); indexReal++) {
-            final String idName = realIdColumns.get(indexReal).getColumnName();
-            final int indexIncoming = tableSchema.getIndexAmongIdColumns(idName);
-            if (indexIncoming != indexReal) {
-              throw new LoadAnalyzeTableColumnDisorderException(
-                  String.format(
-                      "Can not create table because incoming table has no less id columns than existing table, "
-                          + "and the existing id columns are not the prefix of the incoming id columns. "
-                          + "Existing id column: %s, index in existing table: %s, index in incoming table: %s",
-                      idName, indexReal, indexIncoming));
-            }
+      // Get directly if there is a table because we do not want "addColumn" to affect
+      // original writings
+      TsTable table =
+          DataNodeTableCache.getInstance().getTableInWrite(database, tableSchema.getTableName());
+      final List<ColumnSchema> missingColumnList = new ArrayList<>();
+
+      final boolean isAutoCreateSchemaEnabled =
+          IoTDBDescriptor.getInstance().getConfig().isAutoCreateSchemaEnabled();
+      // first round validate, check existing schema
+      if (table == null) {
+        // TODO table metadata: authority check for table create
+        // auto create missing table
+        // it's ok that many write requests concurrently auto create same table, the thread safety
+        // will be guaranteed by ProcedureManager.createTable in CN
+        if (allowCreateTable && isAutoCreateSchemaEnabled) {
+          autoCreateTable(context, database, tableSchema);
+          table = DataNodeTableCache.getInstance().getTable(database, tableSchema.getTableName());
+          if (table == null) {
+            throw new IllegalStateException(
+                "auto create table succeed, but cannot get table schema in current node's DataNodeTableCache, may be caused by concurrently auto creating table");
           }
         } else {
-          // When existing table has more ID columns, the incoming id columns
-          // should be the prefix of the existing id columns
-          for (int indexIncoming = 0; indexIncoming < incomingIdColumns.size(); indexIncoming++) {
-            final String idName = incomingIdColumns.get(indexIncoming).getName();
-            final int indexReal = table.getIdColumnOrdinal(idName);
-            if (indexReal != indexIncoming) {
-              throw new LoadAnalyzeTableColumnDisorderException(
-                  String.format(
-                      "Can not create table because existing table has more id columns than incoming table, "
-                          + "and the incoming id columns are not the prefix of the existing id columns. "
-                          + "Incoming id column: %s, index in existing table: %s, index in incoming table: %s",
-                      idName, indexReal, indexIncoming));
+          TableMetadataImpl.throwTableNotExistsException(database, tableSchema.getTableName());
+        }
+      } else {
+        // If table with this name already exists and isStrictIdColumn is true, make sure the
+        // existing
+        // id columns are the prefix of the incoming id columns, or vice versa
+        if (isStrictIdColumn) {
+          final List<TsTableColumnSchema> realIdColumns = table.getIdColumnSchemaList();
+          final List<ColumnSchema> incomingIdColumns = tableSchema.getIdColumns();
+          if (realIdColumns.size() <= incomingIdColumns.size()) {
+            // When incoming table has more ID columns, the existing id columns
+            // should be the prefix of the incoming id columns (or equal)
+            for (int indexReal = 0; indexReal < realIdColumns.size(); indexReal++) {
+              final String idName = realIdColumns.get(indexReal).getColumnName();
+              final int indexIncoming = tableSchema.getIndexAmongIdColumns(idName);
+              if (indexIncoming != indexReal) {
+                throw new LoadAnalyzeTableColumnDisorderException(
+                    String.format(
+                        "Can not create table because incoming table has no less id columns than existing table, "
+                            + "and the existing id columns are not the prefix of the incoming id columns. "
+                            + "Existing id column: %s, index in existing table: %s, index in incoming table: %s",
+                        idName, indexReal, indexIncoming));
+              }
+            }
+          } else {
+            // When existing table has more ID columns, the incoming id columns
+            // should be the prefix of the existing id columns
+            for (int indexIncoming = 0; indexIncoming < incomingIdColumns.size(); indexIncoming++) {
+              final String idName = incomingIdColumns.get(indexIncoming).getName();
+              final int indexReal = table.getIdColumnOrdinal(idName);
+              if (indexReal != indexIncoming) {
+                throw new LoadAnalyzeTableColumnDisorderException(
+                    String.format(
+                        "Can not create table because existing table has more id columns than incoming table, "
+                            + "and the incoming id columns are not the prefix of the existing id columns. "
+                            + "Incoming id column: %s, index in existing table: %s, index in incoming table: %s",
+                        idName, indexReal, indexIncoming));
+              }
             }
           }
         }
       }
-    }
 
-    boolean refreshed = false;
-    boolean noField = true;
-    for (final ColumnSchema columnSchema : inputColumnList) {
-      TsTableColumnSchema existingColumn = table.getColumnSchema(columnSchema.getName());
-      if (Objects.isNull(existingColumn)) {
-        if (!refreshed) {
-          // Refresh because there may be new columns added and failed to commit
-          // Allow refresh only once to avoid too much failure columns in sql when there are column
-          // procedures
-          refreshed = true;
-          table = DataNodeTableCache.getInstance().getTable(database, tableSchema.getTableName());
-          existingColumn = table.getColumnSchema(columnSchema.getName());
-        }
+      boolean refreshed = false;
+      boolean noField = true;
+      for (final ColumnSchema columnSchema : inputColumnList) {
+        TsTableColumnSchema existingColumn = table.getColumnSchema(columnSchema.getName());
         if (Objects.isNull(existingColumn)) {
-          // check arguments for column auto creation
-          if (columnSchema.getColumnCategory() == null) {
-            throw new SemanticException(
-                String.format(
-                    "Unknown column category for %s. Cannot auto create column.",
-                    columnSchema.getName()),
-                TSStatusCode.COLUMN_NOT_EXISTS.getStatusCode());
+          if (!refreshed) {
+            // Refresh because there may be new columns added and failed to commit
+            // Allow refresh only once to avoid too much failure columns in sql when there are
+            // column
+            // procedures
+            refreshed = true;
+            table = DataNodeTableCache.getInstance().getTable(database, tableSchema.getTableName());
+            existingColumn = table.getColumnSchema(columnSchema.getName());
           }
-          if (columnSchema.getType() == null) {
-            throw new SemanticException(
-                String.format(
-                    "Unknown column data type for %s. Cannot auto create column.",
-                    columnSchema.getName()),
-                TSStatusCode.COLUMN_NOT_EXISTS.getStatusCode());
+          if (Objects.isNull(existingColumn)) {
+            // check arguments for column auto creation
+            if (columnSchema.getColumnCategory() == null) {
+              throw new SemanticException(
+                  String.format(
+                      "Unknown column category for %s. Cannot auto create column.",
+                      columnSchema.getName()),
+                  TSStatusCode.COLUMN_NOT_EXISTS.getStatusCode());
+            }
+            if (columnSchema.getType() == null) {
+              throw new SemanticException(
+                  String.format(
+                      "Unknown column data type for %s. Cannot auto create column.",
+                      columnSchema.getName()),
+                  TSStatusCode.COLUMN_NOT_EXISTS.getStatusCode());
+            }
+            missingColumnList.add(columnSchema);
           }
-          missingColumnList.add(columnSchema);
-        }
-        if (noField
-            && columnSchema.getColumnCategory() != null
-            && columnSchema.getColumnCategory() == TsTableColumnCategory.FIELD) {
-          noField = false;
-        }
-      } else {
-        // leave measurement columns' dataType checking to the caller, then the caller can decide
-        // whether to do partial insert
+          if (noField
+              && columnSchema.getColumnCategory() != null
+              && columnSchema.getColumnCategory() == TsTableColumnCategory.FIELD) {
+            noField = false;
+          }
+        } else {
+          // leave measurement columns' dataType checking to the caller, then the caller can decide
+          // whether to do partial insert
 
-        // only check column category
-        if (columnSchema.getColumnCategory() != null
-            && !existingColumn.getColumnCategory().equals(columnSchema.getColumnCategory())) {
-          throw new SemanticException(
-              String.format("Wrong category at column %s.", columnSchema.getName()),
-              TSStatusCode.COLUMN_CATEGORY_MISMATCH.getStatusCode());
-        }
-        if (noField && existingColumn.getColumnCategory() == TsTableColumnCategory.FIELD) {
-          noField = false;
+          // only check column category
+          if (columnSchema.getColumnCategory() != null
+              && !existingColumn.getColumnCategory().equals(columnSchema.getColumnCategory())) {
+            throw new SemanticException(
+                String.format("Wrong category at column %s.", columnSchema.getName()),
+                TSStatusCode.COLUMN_CATEGORY_MISMATCH.getStatusCode());
+          }
+          if (noField && existingColumn.getColumnCategory() == TsTableColumnCategory.FIELD) {
+            noField = false;
+          }
         }
       }
-    }
-    if (noField) {
-      throw new SemanticException("No Field column present, please check the request");
-    }
+      if (noField) {
+        throw new SemanticException("No Field column present, please check the request");
+      }
 
-    final List<ColumnSchema> resultColumnList = new ArrayList<>();
-    if (!missingColumnList.isEmpty() && isAutoCreateSchemaEnabled) {
-      // TODO table metadata: authority check for table alter
-      // check id or attribute column data type in this method
-      autoCreateColumn(database, tableSchema.getTableName(), missingColumnList, context);
-      table = DataNodeTableCache.getInstance().getTable(database, tableSchema.getTableName());
-    } else if (!missingColumnList.isEmpty()
-        && !IoTDBDescriptor.getInstance().getConfig().isEnablePartialInsert()) {
-      throw new SemanticException(
-          String.format(
-              "Missing columns %s.",
-              missingColumnList.stream().map(ColumnSchema::getName).collect(Collectors.toList())),
-          TSStatusCode.COLUMN_NOT_EXISTS.getStatusCode());
-    }
+      final List<ColumnSchema> resultColumnList = new ArrayList<>();
+      if (!missingColumnList.isEmpty() && isAutoCreateSchemaEnabled) {
+        // TODO table metadata: authority check for table alter
+        // check id or attribute column data type in this method
+        autoCreateColumn(database, tableSchema.getTableName(), missingColumnList, context);
+        table = DataNodeTableCache.getInstance().getTable(database, tableSchema.getTableName());
+      } else if (!missingColumnList.isEmpty()
+          && !IoTDBDescriptor.getInstance().getConfig().isEnablePartialInsert()) {
+        throw new SemanticException(
+            String.format(
+                "Missing columns %s.",
+                missingColumnList.stream().map(ColumnSchema::getName).collect(Collectors.toList())),
+            TSStatusCode.COLUMN_NOT_EXISTS.getStatusCode());
+      }
 
-    table
-        .getColumnList()
-        .forEach(
-            o ->
-                resultColumnList.add(
-                    new ColumnSchema(
-                        o.getColumnName(),
-                        TypeFactory.getType(o.getDataType()),
-                        false,
-                        o.getColumnCategory())));
-    return Optional.of(new TableSchema(tableSchema.getTableName(), resultColumnList));
+      table
+          .getColumnList()
+          .forEach(
+              o ->
+                  resultColumnList.add(
+                      new ColumnSchema(
+                          o.getColumnName(),
+                          TypeFactory.getType(o.getDataType()),
+                          false,
+                          o.getColumnCategory())));
+      return Optional.of(new TableSchema(tableSchema.getTableName(), resultColumnList));
+    } finally {
+      DataNodeSchemaLockManager.getInstance().releaseReadLock(context);
+    }
   }
 
   private void autoCreateTable(

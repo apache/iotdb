@@ -2610,12 +2610,16 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       final PartialPath timeSeriesPath, final String alias, final MPPQueryContext context) {
     DataNodeSchemaLockManager.getInstance()
         .takeReadLock(context, SchemaLockType.TIMESERIES_VS_TEMPLATE);
-    final Pair<Template, PartialPath> templateInfo =
-        schemaFetcher.checkTemplateSetAndPreSetInfo(timeSeriesPath, alias);
-    if (templateInfo != null) {
-      throw new SemanticException(
-          new TemplateIncompatibleException(
-              timeSeriesPath.getFullPath(), templateInfo.left.getName(), templateInfo.right));
+    try {
+      final Pair<Template, PartialPath> templateInfo =
+          schemaFetcher.checkTemplateSetAndPreSetInfo(timeSeriesPath, alias);
+      if (templateInfo != null) {
+        throw new SemanticException(
+            new TemplateIncompatibleException(
+                timeSeriesPath.getFullPath(), templateInfo.left.getName(), templateInfo.right));
+      }
+    } finally {
+      DataNodeSchemaLockManager.getInstance().releaseReadLock(context);
     }
   }
 
@@ -2626,18 +2630,22 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       final MPPQueryContext context) {
     DataNodeSchemaLockManager.getInstance()
         .takeReadLock(context, SchemaLockType.TIMESERIES_VS_TEMPLATE);
-    for (int i = 0; i < measurements.size(); i++) {
-      final Pair<Template, PartialPath> templateInfo =
-          schemaFetcher.checkTemplateSetAndPreSetInfo(
-              devicePath.concatAsMeasurementPath(measurements.get(i)),
-              aliasList == null ? null : aliasList.get(i));
-      if (templateInfo != null) {
-        throw new SemanticException(
-            new TemplateIncompatibleException(
-                devicePath.getFullPath() + measurements,
-                templateInfo.left.getName(),
-                templateInfo.right));
+    try {
+      for (int i = 0; i < measurements.size(); i++) {
+        final Pair<Template, PartialPath> templateInfo =
+            schemaFetcher.checkTemplateSetAndPreSetInfo(
+                devicePath.concatAsMeasurementPath(measurements.get(i)),
+                aliasList == null ? null : aliasList.get(i));
+        if (templateInfo != null) {
+          throw new SemanticException(
+              new TemplateIncompatibleException(
+                  devicePath.getFullPath() + measurements,
+                  templateInfo.left.getName(),
+                  templateInfo.right));
+        }
       }
+    } finally {
+      DataNodeSchemaLockManager.getInstance().releaseReadLock(context);
     }
   }
 

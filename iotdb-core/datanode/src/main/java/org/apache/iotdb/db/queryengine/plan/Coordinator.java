@@ -234,10 +234,11 @@ public class Coordinator {
       }
       return result;
     } finally {
+      // Final logic to guarantee safety
+      DataNodeSchemaLockManager.getInstance().releaseReadLock(queryContext);
       if (queryContext != null) {
         queryContext.releaseAllMemoryReservedForFrontEnd();
       }
-      DataNodeSchemaLockManager.getInstance().releaseReadLock(queryContext);
     }
   }
 
