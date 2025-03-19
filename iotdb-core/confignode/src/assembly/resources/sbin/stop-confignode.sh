@@ -24,11 +24,11 @@ CONFIGNODE_CONF="$(dirname "$0")/../conf"
 if [ -f "${CONFIGNODE_CONF}/iotdb-system.properties" ]; then
     cn_internal_port=$(sed '/^cn_internal_port=/!d;s/.*=//' "${CONFIGNODE_CONF}"/iotdb-system.properties)
     # trim the port
-    cn_internal_port=$(echo "cn_internal_port" | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//')
+    cn_internal_port=$(echo "$cn_internal_port" | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//')
 else
     cn_internal_port=$(sed '/^cn_internal_port=/!d;s/.*=//' "${CONFIGNODE_CONF}"/iotdb-confignode.properties)
     # trim the port
-    cn_internal_port=$(echo "cn_internal_port" | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//')
+    cn_internal_port=$(echo "$cn_internal_port" | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//')
 fi
 
 if [ -z "$cn_internal_port" ]; then

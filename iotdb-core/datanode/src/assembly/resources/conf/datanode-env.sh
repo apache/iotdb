@@ -163,7 +163,7 @@ get_first_data_dir() {
     fi
 
     # trim the dir
-    data_dir_value=$(echo "data_dir_value" | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//')
+    data_dir_value=$(echo "$data_dir_value" | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//')
 
     if [[ "$data_dir_value" == /* ]]; then
         echo "$data_dir_value"
