@@ -50,6 +50,7 @@ import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceStatus;
 import org.apache.iotdb.db.storageengine.dataregion.utils.TsFileResourceUtils;
 import org.apache.iotdb.db.storageengine.load.converter.LoadTsFileDataTypeConverter;
+import org.apache.iotdb.db.storageengine.load.metrics.LoadTsFileCostMetricsSet;
 import org.apache.iotdb.db.utils.TimestampPrecisionUtils;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -86,6 +87,9 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(LoadTsFileAnalyzer.class);
 
+  private static final LoadTsFileCostMetricsSet LOAD_TSFILE_COST_METRICS_SET =
+      LoadTsFileCostMetricsSet.getInstance();
+
   final IPartitionFetcher partitionFetcher = ClusterPartitionFetcher.getInstance();
   final ISchemaFetcher schemaFetcher = ClusterSchemaFetcher.getInstance();
   private final Metadata metadata = LocalExecutionPlanner.getInstance().metadata;
@@ -121,6 +125,9 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
   // Schema creators for tree and table
   private TreeSchemaAutoCreatorAndVerifier treeSchemaAutoCreatorAndVerifier;
   private LoadTsFileTableSchemaCache tableSchemaCache;
+
+  // Metrics
+  private long tabletsCastTimeCost = 0;
 
   public LoadTsFileAnalyzer(
       LoadTsFileStatement loadTsFileStatement, boolean isGeneratedByPipe, MPPQueryContext context) {
@@ -194,11 +201,11 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
       return analysis;
     }
 
-    if (!doAnalyzeFileByFile(analysis)) {
-      return analysis;
-    }
-
     try {
+      if (!doAnalyzeFileByFile(analysis)) {
+        return analysis;
+      }
+
       // flush remaining metadata of tree-model, currently no need for table-model
       if (treeSchemaAutoCreatorAndVerifier != null) {
         treeSchemaAutoCreatorAndVerifier.flush();
@@ -219,6 +226,11 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
       analysis.setFinishQueryAfterAnalyze(true);
       analysis.setFailStatus(RpcUtils.getStatus(TSStatusCode.LOAD_FILE_ERROR, exceptionMessage));
       return analysis;
+    } finally {
+      if (tabletsCastTimeCost > 0) {
+        LOAD_TSFILE_COST_METRICS_SET.recordPhaseTimeCost(
+            LoadTsFileCostMetricsSet.ANALYSIS_CAST_TABLETS, tabletsCastTimeCost);
+      }
     }
 
     LOGGER.info("Load - Analysis Stage: all tsfiles have been analyzed.");
@@ -363,41 +375,46 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
   }
 
   private boolean handleSingleMiniFile(final int i) throws FileNotFoundException {
-    final LoadTsFileDataTypeConverter loadTsFileDataTypeConverter =
-        new LoadTsFileDataTypeConverter(isGeneratedByPipe);
+    final long startTime = System.nanoTime();
+    try {
+      final LoadTsFileDataTypeConverter loadTsFileDataTypeConverter =
+          new LoadTsFileDataTypeConverter(isGeneratedByPipe);
 
-    final TSStatus status =
-        isTableModelTsFile.get(i)
-            ? loadTsFileDataTypeConverter
-                .convertForTableModel(
-                    new LoadTsFile(null, tsFiles.get(i).getPath(), Collections.emptyMap())
-                        .setDatabase(databaseForTableData)
-                        .setDeleteAfterLoad(isDeleteAfterLoad)
-                        .setConvertOnTypeMismatch(isConvertOnTypeMismatch))
-                .orElse(null)
-            : loadTsFileDataTypeConverter
-                .convertForTreeModel(
-                    new LoadTsFileStatement(tsFiles.get(i).getPath())
-                        .setDeleteAfterLoad(isDeleteAfterLoad)
-                        .setConvertOnTypeMismatch(isConvertOnTypeMismatch))
-                .orElse(null);
+      final TSStatus status =
+          isTableModelTsFile.get(i)
+              ? loadTsFileDataTypeConverter
+                  .convertForTableModel(
+                      new LoadTsFile(null, tsFiles.get(i).getPath(), Collections.emptyMap())
+                          .setDatabase(databaseForTableData)
+                          .setDeleteAfterLoad(isDeleteAfterLoad)
+                          .setConvertOnTypeMismatch(isConvertOnTypeMismatch))
+                  .orElse(null)
+              : loadTsFileDataTypeConverter
+                  .convertForTreeModel(
+                      new LoadTsFileStatement(tsFiles.get(i).getPath())
+                          .setDeleteAfterLoad(isDeleteAfterLoad)
+                          .setConvertOnTypeMismatch(isConvertOnTypeMismatch))
+                  .orElse(null);
 
-    if (status == null || !loadTsFileDataTypeConverter.isSuccessful(status)) {
-      LOGGER.warn(
-          "Load: Failed to convert mini tsfile {} to tablets from statement {}. Status: {}.",
-          tsFiles.get(i).getPath(),
-          isTableModelStatement ? loadTsFileTableStatement : loadTsFileTreeStatement,
-          status);
-      return false;
+      if (status == null || !loadTsFileDataTypeConverter.isSuccessful(status)) {
+        LOGGER.warn(
+            "Load: Failed to convert mini tsfile {} to tablets from statement {}. Status: {}.",
+            tsFiles.get(i).getPath(),
+            isTableModelStatement ? loadTsFileTableStatement : loadTsFileTreeStatement,
+            status);
+        return false;
+      }
+
+      // A mark of successful conversion
+      isMiniTsFile.set(i, Boolean.TRUE);
+      isMiniTsFileConverted = true;
+
+      addTsFileResource(null);
+      addWritePointCount(0);
+      return true;
+    } finally {
+      tabletsCastTimeCost += System.nanoTime() - startTime;
     }
-
-    // A mark of successful conversion
-    isMiniTsFile.set(i, Boolean.TRUE);
-    isMiniTsFileConverted = true;
-
-    addTsFileResource(null);
-    addWritePointCount(0);
-    return true;
   }
 
   private void doAnalyzeSingleTreeFile(
@@ -648,6 +665,7 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
         new LoadTsFileDataTypeConverter(isGeneratedByPipe);
 
     for (int i = 0; i < tsFiles.size(); i++) {
+      final long startTime = System.nanoTime();
       try {
         final TSStatus status =
             isTableModelTsFile.get(i)
@@ -689,6 +707,8 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
         analysis.setFailStatus(
             new TSStatus(TSStatusCode.LOAD_FILE_ERROR.getStatusCode()).setMessage(e.getMessage()));
         break;
+      } finally {
+        tabletsCastTimeCost += System.nanoTime() - startTime;
       }
     }
 

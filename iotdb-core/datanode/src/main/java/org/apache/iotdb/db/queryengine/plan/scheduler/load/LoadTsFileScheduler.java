@@ -300,7 +300,7 @@ public class LoadTsFileScheduler implements IScheduler {
           convertFailedTsFilesToTabletsAndRetry();
         } finally {
           LOAD_TSFILE_COST_METRICS_SET.recordPhaseTimeCost(
-              LoadTsFileCostMetricsSet.CAST_TABLETS, System.nanoTime() - startTime);
+              LoadTsFileCostMetricsSet.SCHEDULER_CAST_TABLETS, System.nanoTime() - startTime);
         }
       }
     } finally {
