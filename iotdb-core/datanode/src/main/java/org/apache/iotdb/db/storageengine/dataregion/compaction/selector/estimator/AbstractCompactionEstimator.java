@@ -58,7 +58,10 @@ public abstract class AbstractCompactionEstimator {
       Collections.synchronizedMap(
           new LRUMap<>(
               IoTDBDescriptor.getInstance().getConfig().getGlobalCompactionFileInfoCacheSize()));
+  private static final Map<File, FileInfo.RoughFileInfo> globalRoughInfoCacheForCompaction =
+      Collections.synchronizedMap(new LRUMap<>(100000));
   protected Map<TsFileResource, FileInfo> fileInfoCache = new HashMap<>();
+  protected Map<TsFileResource, FileInfo.RoughFileInfo> roughInfoMap = new HashMap<>();
   protected Map<TsFileResource, ArrayDeviceTimeIndex> deviceTimeIndexCache = new HashMap<>();
 
   protected IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
@@ -112,6 +115,9 @@ public abstract class AbstractCompactionEstimator {
       fileInfoCache.put(resource, fileInfo);
       synchronized (globalFileInfoCacheForFailedCompaction) {
         globalFileInfoCacheForFailedCompaction.put(file, fileInfo);
+      }
+      synchronized (globalRoughInfoCacheForCompaction) {
+        globalRoughInfoCacheForCompaction.put(file, fileInfo.getSimpleFileInfo());
       }
       return fileInfo;
     }
@@ -182,6 +188,24 @@ public abstract class AbstractCompactionEstimator {
   public void cleanup() {
     deviceTimeIndexCache.clear();
     fileInfoCache.clear();
+  }
+
+  public boolean hasCachedRoughFileInfo(TsFileResource resource) {
+    return getRoughFileInfo(resource) != null;
+  }
+
+  public FileInfo.RoughFileInfo getRoughFileInfo(TsFileResource resource) {
+    FileInfo.RoughFileInfo roughFileInfo = roughInfoMap.get(resource);
+    if (roughFileInfo != null) {
+      return roughFileInfo;
+    }
+    synchronized (globalRoughInfoCacheForCompaction) {
+      roughFileInfo = globalRoughInfoCacheForCompaction.get(resource.getTsFile());
+    }
+    if (roughFileInfo != null) {
+      roughInfoMap.put(resource, roughFileInfo);
+    }
+    return roughFileInfo;
   }
 
   public static void removeFileInfoFromGlobalFileInfoCache(TsFileResource resource) {

@@ -32,9 +32,19 @@ public class FastCrossSpaceCompactionEstimator extends AbstractCrossSpaceEstimat
   protected long calculatingMetadataMemoryCost(CompactionTaskInfo taskInfo) {
     long cost = 0;
     // add ChunkMetadata size of MultiTsFileDeviceIterator
+    long maxAlignedSeriesMemCost =
+        taskInfo.getFileInfoList().stream()
+            .mapToLong(fileInfo -> fileInfo.maxMemToReadAlignedSeries)
+            .sum();
+    long maxNonAlignedSeriesMemCost =
+        taskInfo.getFileInfoList().stream()
+            .mapToLong(
+                fileInfo ->
+                    fileInfo.maxMemToReadNonAlignedSeries * config.getSubCompactionTaskNum())
+            .sum();
     cost +=
         Math.min(
-            taskInfo.getTotalChunkMetadataSize(),
+            Math.max(maxAlignedSeriesMemCost, maxNonAlignedSeriesMemCost),
             taskInfo.getFileInfoList().size()
                 * taskInfo.getMaxChunkMetadataNumInDevice()
                 * taskInfo.getMaxChunkMetadataSize());
@@ -90,10 +100,11 @@ public class FastCrossSpaceCompactionEstimator extends AbstractCrossSpaceEstimat
     sourceFiles.addAll(seqResources);
     sourceFiles.addAll(unseqResources);
 
-    MetadataInfo metadataInfo =
-        CompactionEstimateUtils.collectMetadataInfo(sourceFiles, CompactionType.CROSS_COMPACTION);
+    CompactionTaskMetadataInfo metadataInfo =
+        CompactionEstimateUtils.collectMetadataInfoFromDisk(
+            sourceFiles, CompactionType.CROSS_COMPACTION);
 
-    int maxConcurrentSeriesNum = metadataInfo.getMaxConcurrentSeriesNum();
+    int maxConcurrentSeriesNum = metadataInfo.getMaxConcurrentSeriesNum(true);
     long maxChunkSize = config.getTargetChunkSize();
     long maxPageSize = tsFileConfig.getPageSizeInByte();
     int maxOverlapFileNum = calculatingMaxOverlapFileNumInSubCompactionTask(sourceFiles);

@@ -29,16 +29,12 @@ import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.estimato
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 
 import org.apache.tsfile.exception.write.WriteProcessException;
-import org.apache.tsfile.file.metadata.enums.CompressionType;
-import org.apache.tsfile.file.metadata.enums.TSEncoding;
-import org.apache.tsfile.read.common.TimeRange;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.List;
 
 public class CompactionTaskMemCostEstimatorTest extends AbstractCompactionTest {
@@ -113,42 +109,5 @@ public class CompactionTaskMemCostEstimatorTest extends AbstractCompactionTest {
         new FastCrossSpaceCompactionEstimator()
             .estimateCrossCompactionMemory(seqResources, unseqResources);
     Assert.assertTrue(cost > 0);
-  }
-
-  @Test
-  public void testEstimateWithNegativeBatchSize() throws IOException {
-    TsFileResource resource = createEmptyFileAndResource(true);
-    try (CompactionTestFileWriter writer = new CompactionTestFileWriter(resource)) {
-      writer.startChunkGroup("d1");
-      List<String> measurements = new ArrayList<>();
-      for (int i = 0; i < 10; i++) {
-        measurements.add("s" + i);
-      }
-      writer.generateSimpleAlignedSeriesToCurrentDevice(
-          measurements,
-          new TimeRange[] {new TimeRange(0, 10000)},
-          TSEncoding.PLAIN,
-          CompressionType.UNCOMPRESSED);
-      writer.endChunkGroup();
-
-      writer.startChunkGroup("d2");
-      for (int i = 0; i < 10; i++) {
-        writer.generateSimpleNonAlignedSeriesToCurrentDevice(
-            "s" + i,
-            new TimeRange[] {new TimeRange(0, 10000)},
-            TSEncoding.PLAIN,
-            CompressionType.UNCOMPRESSED);
-      }
-      writer.endChunkGroup();
-      writer.endFile();
-    }
-    seqResources.add(resource);
-    IoTDBDescriptor.getInstance().getConfig().setCompactionMaxAlignedSeriesNumInOneBatch(-1);
-    ReadChunkInnerCompactionEstimator estimator = new ReadChunkInnerCompactionEstimator();
-    long v1 = estimator.roughEstimateInnerCompactionMemory(seqResources);
-    Assert.assertTrue(v1 < 0);
-    IoTDBDescriptor.getInstance().getConfig().setCompactionMaxAlignedSeriesNumInOneBatch(10);
-    long v2 = estimator.roughEstimateInnerCompactionMemory(seqResources);
-    Assert.assertTrue(v2 > 0);
   }
 }

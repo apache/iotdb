@@ -19,7 +19,20 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.compaction.selector.estimator;
 
+import org.apache.tsfile.utils.RamUsageEstimator;
+
+import java.io.File;
+import java.util.Map;
+
 public class FileInfo {
+  public static final long MEMORY_COST_OF_FILE_INFO_ENTRY_IN_CACHE =
+      RamUsageEstimator.shallowSizeOfInstance(FileInfo.class)
+          + RamUsageEstimator.shallowSizeOfInstance(File.class)
+          + RamUsageEstimator.shallowSizeOfInstance(Map.Entry.class);
+  public static final long MEMORY_COST_OF_ROUGH_FILE_INFO_ENTRY_IN_CACHE =
+      RamUsageEstimator.shallowSizeOfInstance(RoughFileInfo.class)
+          + RamUsageEstimator.shallowSizeOfInstance(File.class)
+          + RamUsageEstimator.shallowSizeOfInstance(Map.Entry.class);
   // total chunk num in this tsfile
   int totalChunkNum = 0;
   // max chunk num of one timeseries in this tsfile
@@ -34,16 +47,37 @@ public class FileInfo {
 
   long averageChunkMetadataSize = 0;
 
+  long maxMemToReadAlignedSeries;
+  long maxMemToReadNonAlignedSeries;
+
   public FileInfo(
       int totalChunkNum,
       int maxSeriesChunkNum,
       int maxAlignedSeriesNumInDevice,
       int maxDeviceChunkNum,
-      long averageChunkMetadataSize) {
+      long averageChunkMetadataSize,
+      long maxMemToReadAlignedSeries,
+      long maxMemToReadNonAlignedSeries) {
     this.totalChunkNum = totalChunkNum;
     this.maxSeriesChunkNum = maxSeriesChunkNum;
     this.maxAlignedSeriesNumInDevice = maxAlignedSeriesNumInDevice;
     this.maxDeviceChunkNum = maxDeviceChunkNum;
     this.averageChunkMetadataSize = averageChunkMetadataSize;
+    this.maxMemToReadAlignedSeries = maxMemToReadAlignedSeries;
+    this.maxMemToReadNonAlignedSeries = maxMemToReadNonAlignedSeries;
+  }
+
+  public RoughFileInfo getSimpleFileInfo() {
+    return new RoughFileInfo(maxMemToReadAlignedSeries, maxMemToReadNonAlignedSeries);
+  }
+
+  public static class RoughFileInfo {
+    long maxMemToReadAlignedSeries;
+    long maxMemToReadNonAlignedSeries;
+
+    public RoughFileInfo(long maxMemToReadAlignedSeries, long maxMemToReadNonAlignedSeries) {
+      this.maxMemToReadAlignedSeries = maxMemToReadAlignedSeries;
+      this.maxMemToReadNonAlignedSeries = maxMemToReadNonAlignedSeries;
+    }
   }
 }

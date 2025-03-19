@@ -21,11 +21,18 @@ package org.apache.iotdb.db.storageengine.dataregion.compaction.selector.impl;
 
 import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.commons.service.metric.enums.Tag;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.ICompactionPerformer;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.impl.FastCompactionPerformer;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.impl.ReadChunkCompactionPerformer;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.InnerSpaceCompactionTask;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.CompactionScheduleContext;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.estimator.AbstractInnerSpaceEstimator;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.estimator.FastCompactionInnerCompactionEstimator;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.estimator.ReadChunkInnerCompactionEstimator;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.utils.TsFileResourceCandidate;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileManager;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
+import org.apache.iotdb.db.storageengine.rescon.memory.SystemInfo;
 import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.metrics.utils.SystemMetric;
 
@@ -148,6 +155,10 @@ public class NewSizeTieredCompactionSelector extends SizeTieredCompactionSelecto
           levelTaskSelection.endCurrentTaskSelection();
           break;
         }
+        if (!levelTaskSelection.canSelectMoreFiles(currentFile)) {
+          levelTaskSelection.endCurrentTaskSelection();
+          break;
+        }
         levelTaskSelection.addSelectedResource(currentFile, idx);
       }
       levelTaskSelection.endCurrentTaskSelection();
@@ -170,8 +181,28 @@ public class NewSizeTieredCompactionSelector extends SizeTieredCompactionSelecto
     int lastSelectedFileIndex = -1;
     int nextTaskStartIndex = -1;
 
+    boolean estimateCompactionTaskMemoryDuringSelection;
+    boolean reachMemoryLimit = false;
+    ICompactionPerformer performer;
+    AbstractInnerSpaceEstimator estimator;
+    long memoryCost;
+
     private InnerSpaceCompactionTaskSelection(long level) {
       this.level = level;
+      resetMemoryEstimationFields();
+    }
+
+    private void resetMemoryEstimationFields() {
+      estimateCompactionTaskMemoryDuringSelection = true;
+      reachMemoryLimit = false;
+      performer =
+          sequence ? context.getSeqCompactionPerformer() : context.getUnseqCompactionPerformer();
+      if (performer instanceof ReadChunkCompactionPerformer) {
+        estimator = new ReadChunkInnerCompactionEstimator();
+      } else if (performer instanceof FastCompactionPerformer) {
+        estimator = new FastCompactionInnerCompactionEstimator();
+      }
+      memoryCost = 0;
     }
 
     private boolean haveOverlappedDevices(TsFileResourceCandidate resourceCandidate)
@@ -212,6 +243,33 @@ public class NewSizeTieredCompactionSelector extends SizeTieredCompactionSelecto
       return currentSelectedResources.isEmpty();
     }
 
+    private boolean canSelectMoreFiles(TsFileResourceCandidate currentFile) {
+      if (!estimateCompactionTaskMemoryDuringSelection) {
+        return true;
+      }
+      if (!estimator.hasCachedRoughFileInfo(currentFile.resource)) {
+        estimateCompactionTaskMemoryDuringSelection = false;
+        return true;
+      }
+      long memoryCost;
+      try {
+        memoryCost =
+            estimator.roughEstimateInnerCompactionMemory(
+                Stream.concat(currentSelectedResources.stream(), Stream.of(currentFile.resource))
+                    .collect(Collectors.toList()));
+      } catch (IOException e) {
+        return false;
+      }
+      if (memoryCost < 0) {
+        return false;
+      }
+      if (memoryCost > SystemInfo.getInstance().getMemorySizeForCompaction()) {
+        reachMemoryLimit = true;
+        return false;
+      }
+      return true;
+    }
+
     private void reset() {
       currentSelectedResources = new ArrayList<>();
       currentSkippedResources = new ArrayList<>();
@@ -219,6 +277,7 @@ public class NewSizeTieredCompactionSelector extends SizeTieredCompactionSelecto
       lastContinuousSkippedResources = new ArrayList<>();
       currentSelectedFileTotalSize = 0;
       currentSkippedFileTotalSize = 0;
+      resetMemoryEstimationFields();
     }
 
     private boolean isTaskTooLarge(TsFileResourceCandidate currentFile) {
@@ -242,7 +301,8 @@ public class NewSizeTieredCompactionSelector extends SizeTieredCompactionSelecto
           long currentFileSize = resource.getTsFileSize();
           if (totalFileSize + currentFileSize > singleFileSizeThreshold
               || totalFileNum + 1 > totalFileNumUpperBound
-              || !isFileLevelSatisfied(resource.getTsFileID().getInnerCompactionCount())) {
+              || !isFileLevelSatisfied(resource.getTsFileID().getInnerCompactionCount())
+              || estimateCompactionTaskMemoryDuringSelection) {
             break;
           }
           currentSkippedResources.add(resource);
@@ -257,7 +317,9 @@ public class NewSizeTieredCompactionSelector extends SizeTieredCompactionSelecto
         }
 
         boolean canCompactAllFiles =
-            totalFileSize <= singleFileSizeThreshold && totalFileNum <= totalFileNumUpperBound;
+            totalFileSize <= singleFileSizeThreshold
+                && totalFileNum <= totalFileNumUpperBound
+                && !estimateCompactionTaskMemoryDuringSelection;
         if (canCompactAllFiles) {
           currentSelectedResources =
               Stream.concat(currentSelectedResources.stream(), currentSkippedResources.stream())
@@ -271,10 +333,14 @@ public class NewSizeTieredCompactionSelector extends SizeTieredCompactionSelecto
         boolean isSatisfied =
             (currentSelectedResources.size() >= totalFileNumLowerBound
                     || !isActiveTimePartition
-                    || currentSelectedFileTotalSize >= singleFileSizeThreshold)
+                    || currentSelectedFileTotalSize >= singleFileSizeThreshold
+                    || reachMemoryLimit)
                 && currentSelectedResources.size() > 1;
         if (isSatisfied) {
           InnerSpaceCompactionTask task = createInnerSpaceCompactionTask();
+          if (estimateCompactionTaskMemoryDuringSelection) {
+            task.setRoughMemoryCost(memoryCost);
+          }
           selectedTaskList.add(task);
         }
       } finally {

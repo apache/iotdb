@@ -30,6 +30,7 @@ import org.apache.iotdb.db.storageengine.dataregion.DataRegionInfo;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.constant.CompactionTaskType;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.exception.CompactionFileCountExceededException;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.exception.CompactionMemoryNotEnoughException;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.estimator.FileInfo;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.TsFileProcessor;
 
 import org.slf4j.Logger;
@@ -405,7 +406,11 @@ public class SystemInfo {
         (long)
             (config.getAllocateMemoryForStorageEngine() * config.getWriteProportionForMemtable());
     memorySizeForCompaction =
-        (long) (config.getAllocateMemoryForStorageEngine() * config.getCompactionProportion());
+        (long) (config.getAllocateMemoryForStorageEngine() * config.getCompactionProportion())
+            - config.getGlobalCompactionFileInfoCacheSize()
+                * FileInfo.MEMORY_COST_OF_FILE_INFO_ENTRY_IN_CACHE
+            - config.getGlobalCompactionRoughFileInfoCacheSize()
+                * FileInfo.MEMORY_COST_OF_ROUGH_FILE_INFO_ENTRY_IN_CACHE;
     memorySizeForWalBufferQueue =
         (long)
             (config.getAllocateMemoryForStorageEngine()

@@ -593,6 +593,9 @@ public class IoTDBConfig {
   /** The size of global compaction estimation file info cahce. */
   private int globalCompactionFileInfoCacheSize = 1000;
 
+  /** The size of global compaction estimation rough file info cahce. */
+  private int globalCompactionRoughFileInfoCacheSize = 100000;
+
   /** whether to cache meta data(ChunkMetaData and TsFileMetaData) or not. */
   private boolean metaDataCacheEnable = true;
 
@@ -4013,8 +4016,8 @@ public class IoTDBConfig {
     return globalCompactionFileInfoCacheSize;
   }
 
-  public void setGlobalCompactionFileInfoCacheSize(int globalCompactionFileInfoCacheSize) {
-    this.globalCompactionFileInfoCacheSize = globalCompactionFileInfoCacheSize;
+  public int getGlobalCompactionRoughFileInfoCacheSize() {
+    return globalCompactionRoughFileInfoCacheSize;
   }
 
   public boolean isEnableAuditLog() {

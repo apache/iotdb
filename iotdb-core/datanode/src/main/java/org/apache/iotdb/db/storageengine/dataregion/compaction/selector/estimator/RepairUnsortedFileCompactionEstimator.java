@@ -31,10 +31,22 @@ public class RepairUnsortedFileCompactionEstimator extends AbstractInnerSpaceEst
   protected long calculatingMetadataMemoryCost(CompactionTaskInfo taskInfo) {
     long cost = 0;
     // add ChunkMetadata size of MultiTsFileDeviceIterator
+    long maxAlignedSeriesMemCost =
+        taskInfo.getFileInfoList().stream()
+            .mapToLong(fileInfo -> fileInfo.maxMemToReadAlignedSeries)
+            .sum();
+    long maxNonAlignedSeriesMemCost =
+        taskInfo.getFileInfoList().stream()
+            .mapToLong(
+                fileInfo ->
+                    fileInfo.maxMemToReadNonAlignedSeries * config.getSubCompactionTaskNum())
+            .sum();
     cost +=
         Math.min(
-            taskInfo.getTotalChunkMetadataSize(),
-            taskInfo.getMaxChunkMetadataNumInDevice() * taskInfo.getMaxChunkMetadataSize());
+            Math.max(maxAlignedSeriesMemCost, maxNonAlignedSeriesMemCost),
+            taskInfo.getFileInfoList().size()
+                * taskInfo.getMaxChunkMetadataNumInDevice()
+                * taskInfo.getMaxChunkMetadataSize());
 
     // add ChunkMetadata size of targetFileWriter
     long sizeForFileWriter =

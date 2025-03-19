@@ -73,6 +73,7 @@ public abstract class AbstractCompactionTask {
   protected CompactionTaskSummary summary;
   protected long serialId;
   protected CompactionTaskStage taskStage;
+  protected long roughMemoryCost = -1L;
   protected long memoryCost = 0L;
 
   protected boolean recoverMemoryStatus;
@@ -253,6 +254,10 @@ public abstract class AbstractCompactionTask {
         throw new FileCannotTransitToCompactingException(f);
       }
     }
+  }
+
+  public void setRoughMemoryCost(long memoryCost) {
+    this.roughMemoryCost = memoryCost;
   }
 
   public abstract long getEstimatedMemoryCost();

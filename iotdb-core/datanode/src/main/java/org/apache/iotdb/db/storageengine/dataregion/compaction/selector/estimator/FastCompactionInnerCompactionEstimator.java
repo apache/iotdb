@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.compaction.selector.estimator;
 
-import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.constant.CompactionType;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 
 import java.io.IOException;
@@ -31,9 +30,19 @@ public class FastCompactionInnerCompactionEstimator extends AbstractInnerSpaceEs
   public long calculatingMetadataMemoryCost(CompactionTaskInfo taskInfo) {
     long cost = 0;
     // add ChunkMetadata size of MultiTsFileDeviceIterator
+    long maxAlignedSeriesMemCost =
+        taskInfo.getFileInfoList().stream()
+            .mapToLong(fileInfo -> fileInfo.maxMemToReadAlignedSeries)
+            .sum();
+    long maxNonAlignedSeriesMemCost =
+        taskInfo.getFileInfoList().stream()
+            .mapToLong(
+                fileInfo ->
+                    fileInfo.maxMemToReadNonAlignedSeries * config.getSubCompactionTaskNum())
+            .sum();
     cost +=
         Math.min(
-            taskInfo.getTotalChunkMetadataSize(),
+            Math.max(maxAlignedSeriesMemCost, maxNonAlignedSeriesMemCost),
             taskInfo.getFileInfoList().size()
                 * taskInfo.getMaxChunkMetadataNumInDevice()
                 * taskInfo.getMaxChunkMetadataSize());
@@ -84,13 +93,10 @@ public class FastCompactionInnerCompactionEstimator extends AbstractInnerSpaceEs
     if (config.getCompactionMaxAlignedSeriesNumInOneBatch() <= 0) {
       return -1L;
     }
-    MetadataInfo metadataInfo =
-        CompactionEstimateUtils.collectMetadataInfo(
-            resources,
-            resources.get(0).isSeq()
-                ? CompactionType.INNER_SEQ_COMPACTION
-                : CompactionType.INNER_UNSEQ_COMPACTION);
-    int maxConcurrentSeriesNum = metadataInfo.getMaxConcurrentSeriesNum();
+    CompactionTaskMetadataInfo metadataInfo =
+        CompactionEstimateUtils.collectMetadataInfoFromCachedFileInfo(
+            resources, roughInfoMap, true);
+    int maxConcurrentSeriesNum = metadataInfo.getMaxConcurrentSeriesNum(true);
     long maxChunkSize = config.getTargetChunkSize();
     long maxPageSize = tsFileConfig.getPageSizeInByte();
     int maxOverlapFileNum = calculatingMaxOverlapFileNumInSubCompactionTask(resources);
@@ -99,5 +105,14 @@ public class FastCompactionInnerCompactionEstimator extends AbstractInnerSpaceEs
     return (maxOverlapFileNum + 1) * maxConcurrentSeriesNum * (maxChunkSize + maxPageSize)
         + fixedMemoryBudget
         + metadataInfo.metadataMemCost;
+  }
+
+  @Override
+  protected int calculatingMaxOverlapFileNumInSubCompactionTask(List<TsFileResource> resources)
+      throws IOException {
+    if (resources.get(0).isSeq()) {
+      return 1;
+    }
+    return super.calculatingMaxOverlapFileNumInSubCompactionTask(resources);
   }
 }

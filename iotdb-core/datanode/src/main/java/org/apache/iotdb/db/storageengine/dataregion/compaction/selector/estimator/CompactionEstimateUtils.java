@@ -55,11 +55,13 @@ public class CompactionEstimateUtils {
    *
    * @throws IOException if io errors occurred
    */
-  public static FileInfo calculateFileInfo(TsFileSequenceReader reader) throws IOException {
+  static FileInfo calculateFileInfo(TsFileSequenceReader reader) throws IOException {
     int totalChunkNum = 0;
     int maxChunkNum = 0;
     int maxAlignedSeriesNumInDevice = -1;
     int maxDeviceChunkNum = 0;
+    long maxMemCostToReadAlignedSeriesMetadata = 0;
+    long maxMemCostToReadNonAlignedSeriesMetadata = 0;
     TsFileDeviceIterator deviceIterator = reader.getAllDevicesIteratorWithIsAligned();
     while (deviceIterator.hasNext()) {
       int deviceChunkNum = 0;
@@ -68,6 +70,7 @@ public class CompactionEstimateUtils {
       Pair<IDeviceID, Boolean> deviceWithIsAlignedPair = deviceIterator.next();
       IDeviceID device = deviceWithIsAlignedPair.left;
       boolean isAlignedDevice = deviceWithIsAlignedPair.right;
+      long memCostToReadMetadata = 0;
 
       Iterator<Map<String, List<ChunkMetadata>>> measurementChunkMetadataListMapIterator =
           reader.getMeasurementChunkMetadataListMapIterator(device);
@@ -81,6 +84,22 @@ public class CompactionEstimateUtils {
         for (Map.Entry<String, List<ChunkMetadata>> measurementChunkMetadataList :
             measurementChunkMetadataListMap.entrySet()) {
           int currentChunkMetadataListSize = measurementChunkMetadataList.getValue().size();
+          long chunkMetadataMemCost = 0;
+          for (ChunkMetadata chunkMetadata : measurementChunkMetadataList.getValue()) {
+            if (chunkMetadata != null) {
+              chunkMetadataMemCost =
+                  ChunkMetadata.calculateRamSize(
+                      chunkMetadata.getMeasurementUid(), chunkMetadata.getDataType());
+              break;
+            }
+          }
+          long currentSeriesRamSize = chunkMetadataMemCost * currentChunkMetadataListSize;
+          if (isAlignedDevice) {
+            memCostToReadMetadata += currentSeriesRamSize;
+          } else {
+            maxMemCostToReadNonAlignedSeriesMetadata =
+                Math.max(maxMemCostToReadNonAlignedSeriesMetadata, currentSeriesRamSize);
+          }
           deviceChunkNum += currentChunkMetadataListSize;
           totalChunkNum += currentChunkMetadataListSize;
           maxChunkNum = Math.max(maxChunkNum, currentChunkMetadataListSize);
@@ -91,6 +110,8 @@ public class CompactionEstimateUtils {
             Math.max(maxAlignedSeriesNumInDevice, alignedSeriesNumInDevice);
       }
       maxDeviceChunkNum = Math.max(maxDeviceChunkNum, deviceChunkNum);
+      maxMemCostToReadAlignedSeriesMetadata =
+          Math.max(maxMemCostToReadAlignedSeriesMetadata, memCostToReadMetadata);
     }
     long averageChunkMetadataSize =
         totalChunkNum == 0 ? 0 : reader.getAllMetadataSize() / totalChunkNum;
@@ -99,13 +120,15 @@ public class CompactionEstimateUtils {
         maxChunkNum,
         maxAlignedSeriesNumInDevice,
         maxDeviceChunkNum,
-        averageChunkMetadataSize);
+        averageChunkMetadataSize,
+        maxMemCostToReadAlignedSeriesMetadata,
+        maxMemCostToReadNonAlignedSeriesMetadata);
   }
 
-  static MetadataInfo collectMetadataInfo(List<TsFileResource> resources, CompactionType taskType)
-      throws IOException {
+  static CompactionTaskMetadataInfo collectMetadataInfoFromDisk(
+      List<TsFileResource> resources, CompactionType taskType) throws IOException {
     CompactionEstimateUtils.addReadLock(resources);
-    MetadataInfo metadataInfo = new MetadataInfo();
+    CompactionTaskMetadataInfo metadataInfo = new CompactionTaskMetadataInfo();
     long cost = 0L;
     Map<IDeviceID, Long> deviceMetadataSizeMap = new HashMap<>();
     try {
@@ -113,8 +136,11 @@ public class CompactionEstimateUtils {
         cost += resource.getTotalModSizeInByte();
         try (CompactionTsFileReader reader =
             new CompactionTsFileReader(resource.getTsFilePath(), taskType)) {
+          Map<IDeviceID, Long> deviceMetadataSizeMapAndCollectMetadataInfo =
+              CompactionEstimateUtils.getDeviceMetadataSizeMapAndCollectMetadataInfo(
+                  reader, metadataInfo);
           for (Map.Entry<IDeviceID, Long> entry :
-              getDeviceMetadataSizeMapAndCollectMetadataInfo(reader, metadataInfo).entrySet()) {
+              deviceMetadataSizeMapAndCollectMetadataInfo.entrySet()) {
             deviceMetadataSizeMap.merge(entry.getKey(), entry.getValue(), Long::sum);
           }
         }
@@ -127,8 +153,31 @@ public class CompactionEstimateUtils {
     }
   }
 
+  static CompactionTaskMetadataInfo collectMetadataInfoFromCachedFileInfo(
+      List<TsFileResource> resources,
+      Map<TsFileResource, FileInfo.RoughFileInfo> cachedFileInfo,
+      boolean hasConcurrentSubTask) {
+    CompactionTaskMetadataInfo metadataInfo = new CompactionTaskMetadataInfo();
+    for (TsFileResource resource : resources) {
+      metadataInfo.metadataMemCost += resource.getTotalModSizeInByte();
+      long maxMemToReadAlignedSeries = cachedFileInfo.get(resource).maxMemToReadAlignedSeries;
+      long maxMemToReadNonAlignedSeries = cachedFileInfo.get(resource).maxMemToReadNonAlignedSeries;
+      metadataInfo.metadataMemCost +=
+          Math.max(
+              maxMemToReadAlignedSeries,
+              maxMemToReadNonAlignedSeries
+                  * (hasConcurrentSubTask
+                      ? IoTDBDescriptor.getInstance().getConfig().getSubCompactionTaskNum()
+                      : 1));
+      if (maxMemToReadAlignedSeries > 0) {
+        metadataInfo.hasAlignedSeries = true;
+      }
+    }
+    return metadataInfo;
+  }
+
   static Map<IDeviceID, Long> getDeviceMetadataSizeMapAndCollectMetadataInfo(
-      CompactionTsFileReader reader, MetadataInfo metadataInfo) throws IOException {
+      CompactionTsFileReader reader, CompactionTaskMetadataInfo metadataInfo) throws IOException {
     Map<IDeviceID, Long> deviceMetadataSizeMap = new HashMap<>();
     TsFileDeviceIterator deviceIterator = reader.getAllDevicesIteratorWithIsAligned();
     while (deviceIterator.hasNext()) {
