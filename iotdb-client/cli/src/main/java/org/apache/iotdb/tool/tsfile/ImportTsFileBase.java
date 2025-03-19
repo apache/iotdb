@@ -44,6 +44,7 @@ public abstract class ImportTsFileBase implements Runnable {
   private static ImportTsFileOperation successOperation;
   private static String failDir;
   private static ImportTsFileOperation failOperation;
+  protected static String databaseName;
 
   @Override
   public void run() {
@@ -248,5 +249,9 @@ public abstract class ImportTsFileBase implements Runnable {
 
   protected String getTimePrecision() {
     return timePrecision;
+  }
+
+  public static void setDatabaseName(String databaseName) {
+    ImportTsFileBase.databaseName = databaseName;
   }
 }
