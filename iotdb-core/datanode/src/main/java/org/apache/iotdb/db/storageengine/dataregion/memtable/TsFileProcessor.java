@@ -25,6 +25,7 @@ import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.AlignedPath;
 import org.apache.iotdb.commons.path.IFullPath;
+import org.apache.iotdb.commons.pipe.receiver.IoTDBFileReceiver;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
 import org.apache.iotdb.commons.utils.TestOnly;
@@ -326,7 +327,9 @@ public class TsFileProcessor {
             : insertRowNode.getOriginClusterId();
     if (Objects.isNull(workMemTable.getCurrentOriginClusterId())) {
       workMemTable.setCurrentOriginClusterId(originClusterId);
-    } else if (!Objects.equals(originClusterId, workMemTable.getCurrentOriginClusterId())) {
+      // Use ClusterIdMap to compare the clusterIds by location
+    } else if (IoTDBFileReceiver.getClusterIdMap().get(originClusterId)
+        != IoTDBFileReceiver.getClusterIdMap().get(workMemTable.getCurrentOriginClusterId())) {
       workMemTable.markAsNotFromTheSameCluster();
     }
 

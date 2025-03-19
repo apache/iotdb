@@ -47,7 +47,9 @@ import org.slf4j.LoggerFactory;
 import java.io.File;
 import java.io.IOException;
 import java.io.RandomAccessFile;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
@@ -74,6 +76,8 @@ public abstract class IoTDBFileReceiver implements IoTDBReceiver {
   protected String username = CONNECTOR_IOTDB_USER_DEFAULT_VALUE;
   protected String password = CONNECTOR_IOTDB_PASSWORD_DEFAULT_VALUE;
 
+  // Used to store the clusterId for location comparison
+  public static final Map<String, String> CLUSTER_ID_MAP = new HashMap<>();
   protected String clusterIdFromHandshakeRequest;
 
   private static final boolean IS_FSYNC_ENABLED =
@@ -211,7 +215,7 @@ public abstract class IoTDBFileReceiver implements IoTDBReceiver {
           "Receiver id = {}: Handshake failed, response status = {}.", receiverId.get(), status);
       return new TPipeTransferResp(status);
     }
-
+    CLUSTER_ID_MAP.putIfAbsent(clusterIdFromConfigNode, clusterIdFromConfigNode);
     // Reject to handshake if the request does not contain sender's clusterId.
     clusterIdFromHandshakeRequest =
         req.getParams().get(PipeTransferHandshakeConstant.HANDSHAKE_KEY_CLUSTER_ID);
@@ -223,6 +227,7 @@ public abstract class IoTDBFileReceiver implements IoTDBReceiver {
           "Receiver id = {}: Handshake failed, response status = {}.", receiverId.get(), status);
       return new TPipeTransferResp(status);
     }
+    CLUSTER_ID_MAP.putIfAbsent(clusterIdFromHandshakeRequest, clusterIdFromHandshakeRequest);
 
     // Reject to handshake if the receiver and sender are from the same cluster.
     if (Objects.equals(clusterIdFromConfigNode, clusterIdFromHandshakeRequest)) {
@@ -314,6 +319,10 @@ public abstract class IoTDBFileReceiver implements IoTDBReceiver {
   protected abstract String getClusterId();
 
   protected abstract TSStatus tryLogin();
+
+  public static Map<String, String> getClusterIdMap() {
+    return CLUSTER_ID_MAP;
+  }
 
   protected final TPipeTransferResp handleTransferFilePiece(
       final PipeTransferFilePieceReq req,
