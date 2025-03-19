@@ -320,7 +320,8 @@ public class AlterLogicalViewProcedure
         && Objects.equals(getCycles(), that.getCycles())
         && Objects.equals(isGeneratedByPipe, that.isGeneratedByPipe)
         && Objects.equals(queryId, that.queryId)
-        && Objects.equals(viewPathToSourceMap, that.viewPathToSourceMap);
+        && Objects.equals(viewPathToSourceMap, that.viewPathToSourceMap)
+        && Objects.equals(originClusterId, that.originClusterId);
   }
 
   @Override
@@ -331,7 +332,8 @@ public class AlterLogicalViewProcedure
         getCycles(),
         isGeneratedByPipe,
         queryId,
-        viewPathToSourceMap);
+        viewPathToSourceMap,
+        originClusterId);
   }
 
   private class AlterLogicalViewRegionTaskExecutor<Q>

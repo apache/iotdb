@@ -195,7 +195,6 @@ public class PipeDeleteDataNodeEvent extends EnrichedEvent implements Serializab
         ByteBuffer.allocate(
             Byte.BYTES + planBuffer.limit() + computeOriginClusterIdBufferSize(originClusterId));
     ReadWriteIOUtils.write(isGeneratedByPipe, result);
-    ReadWriteIOUtils.write(originClusterId, result);
     result.put(planBuffer);
     return result;
   }
@@ -203,7 +202,6 @@ public class PipeDeleteDataNodeEvent extends EnrichedEvent implements Serializab
   @Override
   public void deserializeFromByteBuffer(final ByteBuffer buffer) {
     isGeneratedByPipe = ReadWriteIOUtils.readBool(buffer);
-    originClusterId = ReadWriteIOUtils.readString(buffer);
     deleteDataNode = (DeleteDataNode) PlanNodeType.deserialize(buffer);
     progressIndex = deleteDataNode.getProgressIndex();
   }

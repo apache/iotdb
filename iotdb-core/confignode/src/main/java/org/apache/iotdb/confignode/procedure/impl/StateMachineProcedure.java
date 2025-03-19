@@ -25,6 +25,7 @@ import org.apache.iotdb.confignode.procedure.exception.ProcedureSuspendedExcepti
 import org.apache.iotdb.confignode.procedure.exception.ProcedureYieldException;
 
 import org.apache.thrift.annotation.Nullable;
+import org.apache.tsfile.utils.ReadWriteIOUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -282,13 +283,7 @@ public abstract class StateMachineProcedure<Env, TState> extends Procedure<Env> 
     for (int state : states) {
       stream.writeInt(state);
     }
-
-    if (originClusterId == null) {
-      stream.writeBoolean(false);
-    } else {
-      stream.writeBoolean(true);
-      stream.writeUTF(originClusterId);
-    }
+    ReadWriteIOUtils.write(originClusterId, stream);
   }
 
   @Override
@@ -304,18 +299,7 @@ public abstract class StateMachineProcedure<Env, TState> extends Procedure<Env> 
         stateFlow = Flow.NO_MORE_STATE;
       }
     }
-    this.setStateDeserialized(true);
-    if (byteBuffer.hasRemaining()) {
-      boolean hasClusterId = byteBuffer.get() != 0;
-      if (hasClusterId) {
-        int strLength = byteBuffer.getShort();
-        byte[] bytes = new byte[strLength];
-        byteBuffer.get(bytes);
-        originClusterId = new String(bytes);
-      } else {
-        originClusterId = null;
-      }
-    }
+    originClusterId = ReadWriteIOUtils.readString(byteBuffer);
   }
 
   /**
@@ -330,5 +314,9 @@ public abstract class StateMachineProcedure<Env, TState> extends Procedure<Env> 
 
   private void setStateDeserialized(boolean isDeserialized) {
     this.isStateDeserialized = isDeserialized;
+  }
+
+  public String getOriginClusterId() {
+    return originClusterId;
   }
 }

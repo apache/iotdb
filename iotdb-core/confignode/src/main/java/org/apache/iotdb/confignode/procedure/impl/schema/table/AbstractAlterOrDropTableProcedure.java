@@ -249,11 +249,12 @@ public abstract class AbstractAlterOrDropTableProcedure<T>
     final AbstractAlterOrDropTableProcedure<?> that = (AbstractAlterOrDropTableProcedure<?>) o;
     return Objects.equals(database, that.database)
         && Objects.equals(tableName, that.tableName)
-        && Objects.equals(queryId, that.queryId);
+        && Objects.equals(queryId, that.queryId)
+        && Objects.equals(originClusterId, that.originClusterId);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(database, tableName, queryId);
+    return Objects.hash(database, tableName, queryId, originClusterId);
   }
 }
