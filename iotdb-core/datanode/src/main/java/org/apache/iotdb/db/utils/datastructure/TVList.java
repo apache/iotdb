@@ -41,7 +41,9 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.ReentrantLock;
 
@@ -69,8 +71,8 @@ public abstract class TVList implements WALEntryValue {
 
   // lock to provide synchronization for query list
   private final ReentrantLock queryListLock = new ReentrantLock();
-  // list of query that this TVList is used
-  protected final List<QueryContext> queryContextList;
+  // set of query that this TVList is used
+  protected final Set<QueryContext> queryContextSet;
 
   // the owner query which is obligated to release the TVList.
   // When it is null, the TVList is owned by insert thread and released after flush.
@@ -90,7 +92,7 @@ public abstract class TVList implements WALEntryValue {
     seqRowCount = 0;
     maxTime = Long.MIN_VALUE;
     minTime = Long.MAX_VALUE;
-    queryContextList = new ArrayList<>();
+    queryContextSet = new HashSet<>();
     referenceCount = new AtomicInteger();
   }
 
@@ -415,7 +417,7 @@ public abstract class TVList implements WALEntryValue {
   }
 
   // common clone for both TVList and AlignedTVList
-  protected synchronized void cloneAs(TVList cloneList) {
+  protected void cloneAs(TVList cloneList) {
     // clone timestamps
     for (long[] timestampArray : timestamps) {
       cloneList.timestamps.add(cloneTime(timestampArray));
@@ -440,7 +442,7 @@ public abstract class TVList implements WALEntryValue {
     sorted = true;
     maxTime = Long.MIN_VALUE;
     minTime = Long.MAX_VALUE;
-    queryContextList.clear();
+    queryContextSet.clear();
     ownerQuery = null;
     clearTime();
     clearValue();
@@ -618,8 +620,8 @@ public abstract class TVList implements WALEntryValue {
     return ownerQuery;
   }
 
-  public List<QueryContext> getQueryContextList() {
-    return queryContextList;
+  public Set<QueryContext> getQueryContextSet() {
+    return queryContextSet;
   }
 
   public List<BitMap> getBitMap() {

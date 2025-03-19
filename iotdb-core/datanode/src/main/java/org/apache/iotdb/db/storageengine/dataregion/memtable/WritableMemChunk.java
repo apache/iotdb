@@ -54,7 +54,7 @@ import java.util.stream.Collectors;
 
 import static org.apache.iotdb.db.utils.MemUtils.getBinarySize;
 
-public class WritableMemChunk implements IWritableMemChunk {
+public class WritableMemChunk extends AbstractWritableMemChunk implements IWritableMemChunk {
 
   private IMeasurementSchema schema;
   private TVList list;
@@ -77,46 +77,10 @@ public class WritableMemChunk implements IWritableMemChunk {
   private WritableMemChunk() {}
 
   protected void handoverTvList() {
-    // ensure query contexts won't be removed from list during handover process.
-    list.lockQueryList();
-    try {
-      if (list.isSorted()) {
-        sortedList.add(list);
-      } else if (list.getQueryContextList().isEmpty()) {
-        list.sort();
-        sortedList.add(list);
-      } else {
-        /*
-         * +----------------------+
-         * |      MemTable        |
-         * |                      |
-         * |   +---------------+  |          +----------+
-         * |   | sorted TVList |  |      +---+   Query  |
-         * |   +------^--------+  |      |   +----------+
-         * |          |           |      |
-         * +----------+-----------+      |
-         *            | Clone + Sort     |
-         *      +-----+------+           |
-         *      |   TVList   | <---------+
-         *      +------------+
-         */
-        QueryContext firstQuery = list.getQueryContextList().get(0);
-        // reserve query memory
-        if (firstQuery instanceof FragmentInstanceContext) {
-          MemoryReservationManager memoryReservationManager =
-              ((FragmentInstanceContext) firstQuery).getMemoryReservationContext();
-          memoryReservationManager.reserveMemoryCumulatively(list.calculateRamSize());
-        }
-        // update current TVList owner to first query in the list
-        list.setOwnerQuery(firstQuery);
-        // clone tv list
-        TVList cloneList = list.clone();
-        cloneList.sort();
-        sortedList.add(cloneList);
-      }
-    } finally {
-      list.unlockQueryList();
+    if (!list.isSorted()) {
+      list.sort();
     }
+    sortedList.add(list);
     this.list = TVList.newList(schema.getType());
   }
 
@@ -307,6 +271,7 @@ public class WritableMemChunk implements IWritableMemChunk {
     }
   }
 
+  // TODO: will remove clone logic later
   @Override
   public synchronized void sortTvListForFlush() {
     TVList cloneList = null;
@@ -314,8 +279,8 @@ public class WritableMemChunk implements IWritableMemChunk {
     try {
       // During flush, if the working TVList is not sorted and referenced by some query, we need to
       // clone it. The query still refer to original unsorted TVList.
-      if (!list.isSorted() && !list.getQueryContextList().isEmpty()) {
-        QueryContext firstQuery = list.getQueryContextList().get(0);
+      if (!list.isSorted() && !list.getQueryContextSet().isEmpty()) {
+        QueryContext firstQuery = list.getQueryContextSet().iterator().next();
         // reserve query memory
         if (firstQuery instanceof FragmentInstanceContext) {
           MemoryReservationManager memoryReservationManager =
@@ -682,34 +647,6 @@ public class WritableMemChunk implements IWritableMemChunk {
       } catch (InterruptedException e) {
         Thread.currentThread().interrupt();
       }
-    }
-  }
-
-  /**
-   * Release process for memtable flush. Release the TVList if there is no query on it, otherwise
-   * set query owner and release the TVList until query finishes.
-   *
-   * @param tvList
-   */
-  private void maybeReleaseTvList(TVList tvList) {
-    tvList.lockQueryList();
-    try {
-      if (tvList.getQueryContextList().isEmpty()) {
-        tvList.clear();
-      } else {
-        QueryContext firstQuery = tvList.getQueryContextList().get(0);
-        // transfer memory from write process to read process. Here it reserves read memory and
-        // releaseFlushedMemTable will release write memory.
-        if (firstQuery instanceof FragmentInstanceContext) {
-          MemoryReservationManager memoryReservationManager =
-              ((FragmentInstanceContext) firstQuery).getMemoryReservationContext();
-          memoryReservationManager.reserveMemoryCumulatively(tvList.calculateRamSize());
-        }
-        // update current TVList owner to first query in the list
-        tvList.setOwnerQuery(firstQuery);
-      }
-    } finally {
-      tvList.unlockQueryList();
     }
   }
 

@@ -143,7 +143,7 @@ public abstract class AlignedTVList extends TVList {
   }
 
   @Override
-  public AlignedTVList clone() {
+  public synchronized AlignedTVList clone() {
     AlignedTVList cloneList = AlignedTVList.newAlignedList(dataTypes);
     cloneAs(cloneList);
     cloneList.timeDeletedCnt = this.timeDeletedCnt;
