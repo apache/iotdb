@@ -292,7 +292,7 @@ public class TableDistributedPlanGenerator
     boolean pushDown = context.isPushDownGrouping();
     try {
       context.setPushDownGrouping(node.isEnableParalleled());
-      if (node.isEnableParalleled()) {
+//      if (node.isEnableParalleled()) {
         List<PlanNode> result = new ArrayList<>();
         context.setExpectedOrderingScheme(node.getOrderingScheme());
         List<PlanNode> childrenNodes = node.getChild().accept(this, context);
@@ -310,13 +310,13 @@ public class TableDistributedPlanGenerator
                     false,
                     node.getPartitionKeyCount() - 1);
             result.add(subSortNode);
-            nodeOrderingMap.put(subSortNode.getPlanNodeId(), subSortNode.getOrderingScheme());
+//            nodeOrderingMap.put(subSortNode.getPlanNodeId(), subSortNode.getOrderingScheme());
           }
         }
         return result;
-      } else {
-        return visitSort(node, context);
-      }
+//      } else {
+//        return visitSort(node, context);
+//      }
     } finally {
       context.setPushDownGrouping(pushDown);
     }
@@ -495,7 +495,7 @@ public class TableDistributedPlanGenerator
       final DeviceTableScanNode node, final PlanContext context) {
     if (context.isPushDownGrouping()) {
       return constructDeviceTableScanByTags(node, context);
-//      return constructDeviceTableScanTmp(node, context);
+      //      return constructDeviceTableScanTmp(node, context);
     } else {
       return constructDeviceTableScanByRegionReplicaSet(node, context);
     }
@@ -1093,6 +1093,10 @@ public class TableDistributedPlanGenerator
       return splitForEachChild(node, childrenNodes);
     }
   }
+
+  // select * from TABLE(p99(TABLE(t1))
+  // TFN -> ScanNode
+
 
   private void buildRegionNodeMap(
       AggregationTableScanNode originalAggTableScanNode,
