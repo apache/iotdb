@@ -69,7 +69,7 @@ public class MemChunkLoaderTest {
     Mockito.when(chunk.getTvListQueryMap()).thenReturn(booleanTvListMap);
     List<TVList> booleanTvLists = new ArrayList<>(booleanTvListMap.keySet());
     MemPointIterator timeValuePairIterator =
-        MemPointIteratorFactory.mergeSort(TSDataType.BOOLEAN, booleanTvLists);
+        MemPointIteratorFactory.create(TSDataType.BOOLEAN, booleanTvLists);
     timeValuePairIterator.nextBatch();
     Mockito.when(chunk.getMemPointIterator()).thenReturn(timeValuePairIterator);
 
@@ -148,7 +148,7 @@ public class MemChunkLoaderTest {
     Mockito.when(chunk.getTvListQueryMap()).thenReturn(int32TvListMap);
     List<TVList> int32TvLists = new ArrayList<>(int32TvListMap.keySet());
     MemPointIterator timeValuePairIterator =
-        MemPointIteratorFactory.mergeSort(TSDataType.INT32, int32TvLists);
+        MemPointIteratorFactory.create(TSDataType.INT32, int32TvLists);
     timeValuePairIterator.nextBatch();
     Mockito.when(chunk.getMemPointIterator()).thenReturn(timeValuePairIterator);
 
@@ -228,7 +228,7 @@ public class MemChunkLoaderTest {
     Mockito.when(chunk.getTvListQueryMap()).thenReturn(int64TvListMap);
     List<TVList> int64TvLists = new ArrayList<>(int64TvListMap.keySet());
     MemPointIterator timeValuePairIterator =
-        MemPointIteratorFactory.mergeSort(TSDataType.INT64, int64TvLists);
+        MemPointIteratorFactory.create(TSDataType.INT64, int64TvLists);
     timeValuePairIterator.nextBatch();
     Mockito.when(chunk.getMemPointIterator()).thenReturn(timeValuePairIterator);
 
@@ -308,7 +308,7 @@ public class MemChunkLoaderTest {
     Mockito.when(chunk.getTvListQueryMap()).thenReturn(floatTvListMap);
     List<TVList> floatTvLists = new ArrayList<>(floatTvListMap.keySet());
     MemPointIterator timeValuePairIterator =
-        MemPointIteratorFactory.mergeSort(TSDataType.FLOAT, floatTvLists);
+        MemPointIteratorFactory.create(TSDataType.FLOAT, floatTvLists);
     timeValuePairIterator.nextBatch();
     Mockito.when(chunk.getMemPointIterator()).thenReturn(timeValuePairIterator);
 
@@ -388,7 +388,7 @@ public class MemChunkLoaderTest {
     Mockito.when(chunk.getTvListQueryMap()).thenReturn(doubleTvListMap);
     List<TVList> doubleTvLists = new ArrayList<>(doubleTvListMap.keySet());
     MemPointIterator timeValuePairIterator =
-        MemPointIteratorFactory.mergeSort(TSDataType.DOUBLE, doubleTvLists);
+        MemPointIteratorFactory.create(TSDataType.DOUBLE, doubleTvLists);
     timeValuePairIterator.nextBatch();
     Mockito.when(chunk.getMemPointIterator()).thenReturn(timeValuePairIterator);
 
@@ -468,7 +468,7 @@ public class MemChunkLoaderTest {
     Mockito.when(chunk.getTvListQueryMap()).thenReturn(textTvListMap);
     List<TVList> textTvLists = new ArrayList<>(textTvListMap.keySet());
     MemPointIterator timeValuePairIterator =
-        MemPointIteratorFactory.mergeSort(TSDataType.TEXT, textTvLists);
+        MemPointIteratorFactory.create(TSDataType.TEXT, textTvLists);
     timeValuePairIterator.nextBatch();
     Mockito.when(chunk.getMemPointIterator()).thenReturn(timeValuePairIterator);
 
