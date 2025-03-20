@@ -121,7 +121,7 @@
         <mockito.version>2.23.4</mockito.version>
         <!-- This was the last version to support Java 8 -->
         <!--mockito.version>4.11.0</mockito.version-->
-        <moquette.version>0.17</moquette.version>
+        <moquette.version>0.18</moquette.version>
         <netty.version>4.1.115.Final</netty.version>
         <nimbus-jose-jwt.version>9.37.3</nimbus-jose-jwt.version>
         <oauth2-oidc-sdk.version>10.15</oauth2-oidc-sdk.version>
