@@ -28,6 +28,8 @@ import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
 
 import javax.validation.constraints.NotNull;
 
+import java.util.Objects;
+
 /**
  * The data model used to record the Event and the data model of the DataRegion corresponding to the
  * source data, so this type requires some specifications .
@@ -88,11 +90,13 @@ public abstract class PipeInsertionEvent extends EnrichedEvent {
       this.tableModelDatabaseName = tableModelDatabaseName.toLowerCase();
     }
     // Rewrite to reduce unnecessary parsing
-    this.isPatternParsed =
-        !isTableModelEvent() && (treePattern == null || treePattern.isRoot())
-            || isTableModelEvent()
-                && (tablePattern == null
-                    || !tablePattern.hasUserSpecifiedDatabasePatternOrTablePattern());
+    if (Objects.nonNull(isTableModelEvent) || Objects.nonNull(sourceDatabaseNameFromDataRegion)) {
+      this.isPatternParsed =
+          !isTableModelEvent() && (treePattern == null || treePattern.isRoot())
+              || isTableModelEvent()
+                  && (tablePattern == null
+                      || !tablePattern.hasUserSpecifiedDatabasePatternOrTablePattern());
+    }
   }
 
   protected PipeInsertionEvent(
