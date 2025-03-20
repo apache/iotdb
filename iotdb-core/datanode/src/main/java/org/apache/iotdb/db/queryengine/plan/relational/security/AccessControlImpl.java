@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.commons.exception.auth.AccessDeniedException;
 import org.apache.iotdb.commons.schema.table.InformationSchema;
 import org.apache.iotdb.db.auth.AuthorityChecker;
+import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.QualifiedObjectName;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.RelationalAuthorStatement;
 import org.apache.iotdb.db.queryengine.plan.relational.type.AuthorRType;
@@ -260,6 +261,10 @@ public class AccessControlImpl implements AccessControl {
         if (AuthorityChecker.SUPER_USER.equals(statement.getUserName())) {
           throw new AccessDeniedException("Cannot grant/revoke privileges of admin user");
         }
+        if (InformationSchema.INFORMATION_DATABASE.equals(statement.getDatabase())) {
+          throw new SemanticException(
+              "Cannot grant or revoke any privileges to information_schema");
+        }
         if (AuthorityChecker.SUPER_USER.equals(userName)) {
           return;
         }
@@ -276,6 +281,10 @@ public class AccessControlImpl implements AccessControl {
       case REVOKE_ROLE_TB:
         if (AuthorityChecker.SUPER_USER.equals(statement.getUserName())) {
           throw new AccessDeniedException("Cannot grant/revoke privileges of admin user");
+        }
+        if (InformationSchema.INFORMATION_DATABASE.equals(statement.getDatabase())) {
+          throw new SemanticException(
+              "Cannot grant or revoke any privileges to information_schema");
         }
         if (AuthorityChecker.SUPER_USER.equals(userName)) {
           return;
