@@ -171,13 +171,7 @@ class IoTDBRpcDataSet(object):
             time_array = time_array.byteswap().view(time_array.dtype.newbyteorder("<"))
         result[0] = time_array
         total_length = len(time_array)
-        for i in range(self.column_size):
-            if self.ignore_timestamp is True:
-                column_name = self.__column_name_list[i]
-            else:
-                column_name = self.__column_name_list[i + 1]
-
-            location = self.column_name_2_tsblock_column_index_dict[column_name]
+        for i, location in enumerate(self.__column_index_2_tsblock_column_index_list):
             if location < 0:
                 continue
             data_type = self.__data_type_for_tsblock_column[location]
