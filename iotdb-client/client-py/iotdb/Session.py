@@ -1502,11 +1502,15 @@ class Session(object):
             resp.dataTypeList,
             resp.columnNameIndexMap,
             resp.queryId,
+            self.__session_id,
             self.__client,
             self.__statement_id,
-            self.__session_id,
             resp.queryResult,
             resp.ignoreTimeStamp,
+            timeout,
+            resp.moreData,
+            self.__fetch_size,
+            resp.columnIndex2TsBlockColumnIndexList,
         )
 
     def execute_non_query_statement(self, sql):
@@ -1567,11 +1571,15 @@ class Session(object):
                 resp.dataTypeList,
                 resp.columnNameIndexMap,
                 resp.queryId,
+                self.__session_id,
                 self.__client,
                 self.__statement_id,
-                self.__session_id,
                 resp.queryResult,
                 resp.ignoreTimeStamp,
+                timeout,
+                resp.moreData,
+                self.__fetch_size,
+                resp.columnIndex2TsBlockColumnIndexList,
             )
         else:
             return None
@@ -1779,11 +1787,15 @@ class Session(object):
             resp.dataTypeList,
             resp.columnNameIndexMap,
             resp.queryId,
+            self.__session_id,
             self.__client,
             self.__statement_id,
-            self.__session_id,
             resp.queryResult,
             resp.ignoreTimeStamp,
+            0,
+            resp.moreData,
+            self.__fetch_size,
+            resp.columnIndex2TsBlockColumnIndexList,
         )
 
     def execute_last_data_query(self, paths: list, last_time: int) -> SessionDataSet:
@@ -1820,11 +1832,15 @@ class Session(object):
             resp.dataTypeList,
             resp.columnNameIndexMap,
             resp.queryId,
-            self.__client,
             self.__statement_id,
+            self.__client,
             self.__session_id,
             resp.queryResult,
             resp.ignoreTimeStamp,
+            0,
+            resp.moreData,
+            self.__fetch_size,
+            resp.columnIndex2TsBlockColumnIndexList,
         )
 
     def insert_string_records_of_one_device(

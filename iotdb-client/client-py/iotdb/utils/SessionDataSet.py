@@ -37,11 +37,15 @@ class SessionDataSet(object):
         column_type_list,
         column_name_index,
         query_id,
-        client,
         statement_id,
+        client,
         session_id,
         query_result,
         ignore_timestamp,
+        time_out,
+        more_data,
+        fetch_size,
+        column_index_2_tsblock_column_index_list,
     ):
         self.iotdb_rpc_data_set = IoTDBRpcDataSet(
             sql,
@@ -49,21 +53,17 @@ class SessionDataSet(object):
             column_type_list,
             column_name_index,
             ignore_timestamp,
+            more_data,
             query_id,
             client,
             statement_id,
             session_id,
             query_result,
-            5000,
+            fetch_size,
+            time_out,
+            column_index_2_tsblock_column_index_list,
         )
-        self.column_size = self.iotdb_rpc_data_set.column_size
-        self.is_ignore_timestamp = self.iotdb_rpc_data_set.ignore_timestamp
-        self.column_names = tuple(self.iotdb_rpc_data_set.get_column_names())
-        self.column_ordinal_dict = self.iotdb_rpc_data_set.column_ordinal_dict
-        self.column_type_deduplicated_list = tuple(
-            self.iotdb_rpc_data_set.column_type_deduplicated_list
-        )
-        if self.is_ignore_timestamp:
+        if ignore_timestamp:
             self.__field_list = [
                 Field(data_type)
                 for data_type in self.iotdb_rpc_data_set.get_column_types()
