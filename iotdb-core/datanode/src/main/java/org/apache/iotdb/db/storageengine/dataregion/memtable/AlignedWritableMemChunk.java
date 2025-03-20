@@ -457,27 +457,6 @@ public class AlignedWritableMemChunk implements IWritableMemChunk {
 
   @Override
   public synchronized void sortTvListForFlush() {
-    AlignedTVList cloneList = null;
-    list.lockQueryList();
-    try {
-      if (!list.isSorted() && !list.getQueryContextList().isEmpty()) {
-        QueryContext firstQuery = list.getQueryContextList().get(0);
-        // reserve query memory
-        if (firstQuery instanceof FragmentInstanceContext) {
-          MemoryReservationManager memoryReservationManager =
-              ((FragmentInstanceContext) firstQuery).getMemoryReservationContext();
-          memoryReservationManager.reserveMemoryCumulatively(list.calculateRamSize());
-        }
-        list.setOwnerQuery(firstQuery);
-        cloneList = list.clone();
-      }
-    } finally {
-      list.unlockQueryList();
-    }
-    if (cloneList != null) {
-      setWorkingTVList(cloneList);
-    }
-
     if (!list.isSorted()) {
       list.sort();
     }
