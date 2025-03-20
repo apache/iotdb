@@ -23,11 +23,20 @@ import org.apache.iotdb.db.queryengine.exception.MemoryNotEnoughException;
 import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceContext;
 import org.apache.iotdb.db.queryengine.execution.fragment.QueryContext;
 import org.apache.iotdb.db.queryengine.plan.planner.memory.MemoryReservationManager;
+import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.IWALByteBufferView;
 import org.apache.iotdb.db.utils.datastructure.TVList;
 
-import java.util.Iterator;
+import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.utils.Binary;
+import org.apache.tsfile.utils.BitMap;
+import org.apache.tsfile.write.chunk.IChunkWriter;
+import org.apache.tsfile.write.schema.IMeasurementSchema;
 
-public class AbstractWritableMemChunk {
+import java.util.Iterator;
+import java.util.List;
+import java.util.concurrent.BlockingQueue;
+
+public abstract class AbstractWritableMemChunk implements IWritableMemChunk {
   protected static long RETRY_INTERVAL_MS = 100L;
   protected static long MAX_WAIT_QUERY_MS = 60 * 1000L;
 
@@ -98,4 +107,124 @@ public class AbstractWritableMemChunk {
       tvList.unlockQueryList();
     }
   }
+
+  @Override
+  public long getFirstPoint() {
+    if (count() == 0) {
+      return Long.MAX_VALUE;
+    }
+    return getMinTime();
+  }
+
+  @Override
+  public long getLastPoint() {
+    if (count() == 0) {
+      return Long.MIN_VALUE;
+    }
+    return getMaxTime();
+  }
+
+  @Override
+  public abstract void putLong(long t, long v);
+
+  @Override
+  public abstract void putInt(long t, int v);
+
+  @Override
+  public abstract void putFloat(long t, float v);
+
+  @Override
+  public abstract void putDouble(long t, double v);
+
+  @Override
+  public abstract void putBinary(long t, Binary v);
+
+  @Override
+  public abstract void putBoolean(long t, boolean v);
+
+  @Override
+  public abstract void putAlignedRow(long t, Object[] v);
+
+  @Override
+  public abstract void putLongs(long[] t, long[] v, BitMap bitMap, int start, int end);
+
+  @Override
+  public abstract void putInts(long[] t, int[] v, BitMap bitMap, int start, int end);
+
+  @Override
+  public abstract void putFloats(long[] t, float[] v, BitMap bitMap, int start, int end);
+
+  @Override
+  public abstract void putDoubles(long[] t, double[] v, BitMap bitMap, int start, int end);
+
+  @Override
+  public abstract void putBinaries(long[] t, Binary[] v, BitMap bitMap, int start, int end);
+
+  @Override
+  public abstract void putBooleans(long[] t, boolean[] v, BitMap bitMap, int start, int end);
+
+  @Override
+  public abstract void putAlignedTablet(long[] t, Object[] v, BitMap[] bitMaps, int start, int end);
+
+  @Override
+  public abstract void writeNonAlignedPoint(long insertTime, Object objectValue);
+
+  @Override
+  public abstract void writeAlignedPoints(
+      long insertTime, Object[] objectValue, List<IMeasurementSchema> schemaList);
+
+  @Override
+  public abstract void writeNonAlignedTablet(
+      long[] times, Object valueList, BitMap bitMap, TSDataType dataType, int start, int end);
+
+  @Override
+  public abstract void writeAlignedTablet(
+      long[] times,
+      Object[] valueList,
+      BitMap[] bitMaps,
+      List<IMeasurementSchema> schemaList,
+      int start,
+      int end);
+
+  @Override
+  public abstract long count();
+
+  @Override
+  public abstract long rowCount();
+
+  @Override
+  public abstract IMeasurementSchema getSchema();
+
+  @Override
+  public abstract void sortTvListForFlush();
+
+  @Override
+  public abstract int delete(long lowerBound, long upperBound);
+
+  @Override
+  public abstract IChunkWriter createIChunkWriter();
+
+  @Override
+  public abstract void encode(BlockingQueue<Object> ioTaskQueue);
+
+  @Override
+  public abstract void release();
+
+  @Override
+  public abstract boolean isEmpty();
+
+  @Override
+  public abstract List<? extends TVList> getSortedList();
+
+  @Override
+  public abstract TVList getWorkingTVList();
+
+  @Override
+  public abstract void setWorkingTVList(TVList list);
+
+  @Override
+  public abstract void serializeToWAL(IWALByteBufferView buffer);
+
+  @Override
+  public abstract int serializedSize();
 }

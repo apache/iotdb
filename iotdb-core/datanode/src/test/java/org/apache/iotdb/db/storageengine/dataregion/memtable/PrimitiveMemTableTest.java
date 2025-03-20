@@ -81,7 +81,6 @@ import java.util.Random;
 import java.util.concurrent.ExecutorService;
 
 import static org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceContext.createFragmentInstanceContext;
-
 import static org.junit.Assert.assertEquals;
 
 public class PrimitiveMemTableTest {
