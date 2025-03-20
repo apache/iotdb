@@ -340,14 +340,15 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
                     PrivilegeType.WRITE_SCHEMA))
             .getStatus();
       case SetTTL:
-        return configManager
+        return Objects.equals(
+                configManager
                     .getTTLManager()
                     .getAllTTL()
                     .get(
                         String.join(
                             String.valueOf(IoTDBConstant.PATH_SEPARATOR),
-                            ((SetTTLPlan) plan).getPathPattern()))
-                == ((SetTTLPlan) plan).getTTL()
+                            ((SetTTLPlan) plan).getPathPattern())),
+                ((SetTTLPlan) plan).getTTL())
             ? StatusUtils.OK
             : configManager
                 .checkUserPrivileges(
