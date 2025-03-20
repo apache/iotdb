@@ -287,12 +287,11 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
                 .checkUserPrivileges(username, new PrivilegeUnion(PrivilegeType.MANAGE_DATABASE))
                 .getStatus();
       case DeleteDatabase:
-        return PathUtils.isTableModelDatabase(((DatabaseSchemaPlan) plan).getSchema().getName())
+        return PathUtils.isTableModelDatabase(((DeleteDatabasePlan) plan).getName())
             ? configManager
                 .checkUserPrivileges(
                     username,
-                    new PrivilegeUnion(
-                        ((DatabaseSchemaPlan) plan).getSchema().getName(), PrivilegeType.DROP))
+                    new PrivilegeUnion(((DeleteDatabasePlan) plan).getName(), PrivilegeType.DROP))
                 .getStatus()
             : configManager
                 .checkUserPrivileges(username, new PrivilegeUnion(PrivilegeType.MANAGE_DATABASE))
