@@ -152,6 +152,10 @@ public class PipeConfig {
     return COMMON_CONFIG.isPipeConnectorRPCThriftCompressionEnabled();
   }
 
+  public int getPipeAsyncConnectorForcedRetryTsFileEventQueueSizeThreshold() {
+    return COMMON_CONFIG.getPipeAsyncConnectorForcedRetryTsFileEventQueueSizeThreshold();
+  }
+
   public int getPipeAsyncConnectorForcedRetryTabletEventQueueSizeThreshold() {
     return COMMON_CONFIG.getPipeAsyncConnectorForcedRetryTabletEventQueueSizeThreshold();
   }
@@ -450,6 +454,9 @@ public class PipeConfig {
         "PipeRemainingTimeCommitRateAverageTime: {}", getPipeRemainingTimeCommitRateAverageTime());
     LOGGER.info("PipeTsFileScanParsingThreshold(): {}", getPipeTsFileScanParsingThreshold());
 
+    LOGGER.info(
+        "PipeAsyncConnectorForcedRetryTsFileEventQueueSizeThreshold: {}",
+        getPipeAsyncConnectorForcedRetryTsFileEventQueueSizeThreshold());
     LOGGER.info(
         "PipeAsyncConnectorForcedRetryTabletEventQueueSizeThreshold: {}",
         getPipeAsyncConnectorForcedRetryTabletEventQueueSizeThreshold());

@@ -235,6 +235,7 @@ public class CommonConfig {
   private long pipeConnectorRetryIntervalMs = 1000L;
   private boolean pipeConnectorRPCThriftCompressionEnabled = false;
 
+  private int pipeAsyncConnectorForcedRetryTsFileEventQueueSizeThreshold = 5;
   private int pipeAsyncConnectorForcedRetryTabletEventQueueSizeThreshold = 20;
   private int pipeAsyncConnectorForcedRetryTotalEventQueueSizeThreshold = 30;
   private long pipeAsyncConnectorMaxRetryExecutionTimeMsPerCall = 500;
@@ -861,6 +862,16 @@ public class CommonConfig {
 
   public boolean isPipeConnectorRPCThriftCompressionEnabled() {
     return pipeConnectorRPCThriftCompressionEnabled;
+  }
+
+  public void setPipeAsyncConnectorForcedRetryTsFileEventQueueSizeThreshold(
+      int pipeAsyncConnectorForcedRetryTsFileEventQueueSizeThreshold) {
+    this.pipeAsyncConnectorForcedRetryTsFileEventQueueSizeThreshold =
+        pipeAsyncConnectorForcedRetryTsFileEventQueueSizeThreshold;
+  }
+
+  public int getPipeAsyncConnectorForcedRetryTsFileEventQueueSizeThreshold() {
+    return pipeAsyncConnectorForcedRetryTsFileEventQueueSizeThreshold;
   }
 
   public void setPipeAsyncConnectorForcedRetryTabletEventQueueSizeThreshold(

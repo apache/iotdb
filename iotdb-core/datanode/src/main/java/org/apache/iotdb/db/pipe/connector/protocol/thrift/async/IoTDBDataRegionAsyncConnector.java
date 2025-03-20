@@ -55,6 +55,7 @@ import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TsFileInsertionEvent;
+import org.apache.iotdb.pipe.api.exception.PipeException;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferReq;
 
 import com.google.common.collect.ImmutableSet;
@@ -100,6 +101,8 @@ public class IoTDBDataRegionAsyncConnector extends IoTDBConnector {
   private final BlockingQueue<Event> retryEventQueue = new LinkedBlockingQueue<>();
   private final PipeDataRegionEventCounter retryEventQueueEventCounter =
       new PipeDataRegionEventCounter();
+  private final int forcedRetryTsFileEventQueueSizeThreshold =
+      PipeConfig.getInstance().getPipeAsyncConnectorForcedRetryTsFileEventQueueSizeThreshold();
   private final int forcedRetryTabletEventQueueSizeThreshold =
       PipeConfig.getInstance().getPipeAsyncConnectorForcedRetryTabletEventQueueSizeThreshold();
   private final int forcedRetryTotalEventQueueSizeThreshold =
@@ -462,11 +465,14 @@ public class IoTDBDataRegionAsyncConnector extends IoTDBConnector {
         || (!forced
             && retryEventQueueEventCounter.getTabletInsertionEventCount()
                 < forcedRetryTabletEventQueueSizeThreshold
+            && retryEventQueueEventCounter.getTsFileInsertionEventCount()
+                < forcedRetryTsFileEventQueueSizeThreshold
             && retryEventQueue.size() < forcedRetryTotalEventQueueSizeThreshold)) {
       return;
     }
 
     final long retryStartTime = System.currentTimeMillis();
+    final int remainingEvents = retryEventQueue.size();
     while (!retryEventQueue.isEmpty()) {
       synchronized (this) {
         if (isClosed.get()) {
@@ -505,12 +511,18 @@ public class IoTDBDataRegionAsyncConnector extends IoTDBConnector {
       }
 
       // Stop retrying if the execution time exceeds the threshold for better realtime performance
-      if (System.currentTimeMillis() - retryStartTime > maxRetryExecutionTimeMsPerCall
-          && (!forced
-              || retryEventQueueEventCounter.getTabletInsertionEventCount()
-                      < forcedRetryTabletEventQueueSizeThreshold
-                  && retryEventQueue.size() < forcedRetryTotalEventQueueSizeThreshold)) {
-        return;
+      if (System.currentTimeMillis() - retryStartTime > maxRetryExecutionTimeMsPerCall) {
+        if (retryEventQueueEventCounter.getTabletInsertionEventCount()
+                < forcedRetryTabletEventQueueSizeThreshold
+            && retryEventQueueEventCounter.getTsFileInsertionEventCount()
+                < forcedRetryTsFileEventQueueSizeThreshold
+            && retryEventQueue.size() < forcedRetryTotalEventQueueSizeThreshold) {
+          return;
+        }
+
+        if (remainingEvents <= retryEventQueue.size()) {
+          throw new PipeException("Failed to transfer events in retry queue.");
+        }
       }
     }
   }
