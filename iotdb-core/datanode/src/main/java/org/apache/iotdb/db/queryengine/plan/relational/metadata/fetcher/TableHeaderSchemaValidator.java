@@ -101,7 +101,7 @@ public class TableHeaderSchemaValidator {
     // The schema cache R/W and fetch operation must be locked together thus the cache clean
     // operation executed by delete timeSeries will be effective.
     DataNodeSchemaLockManager.getInstance()
-        .takeReadLock(context, SchemaLockType.VALIDATE_VS_DELETION);
+        .takeReadLock(context, SchemaLockType.VALIDATE_VS_DELETION_TABLE);
 
     final List<ColumnSchema> inputColumnList = tableSchema.getColumns();
     if (inputColumnList == null || inputColumnList.isEmpty()) {
@@ -274,7 +274,7 @@ public class TableHeaderSchemaValidator {
                 "Auto create table column failed.", result.getStatusCode().getStatusCode()));
       }
       DataNodeSchemaLockManager.getInstance()
-          .takeReadLock(context, SchemaLockType.VALIDATE_VS_DELETION);
+          .takeReadLock(context, SchemaLockType.VALIDATE_VS_DELETION_TABLE);
     } catch (final ExecutionException e) {
       throw new RuntimeException(e);
     } catch (final InterruptedException e) {
@@ -374,7 +374,7 @@ public class TableHeaderSchemaValidator {
                 result.getStatusCode().getStatusCode()));
       }
       DataNodeSchemaLockManager.getInstance()
-          .takeReadLock(context, SchemaLockType.VALIDATE_VS_DELETION);
+          .takeReadLock(context, SchemaLockType.VALIDATE_VS_DELETION_TABLE);
     } catch (final ExecutionException | InterruptedException e) {
       LOGGER.warn("Auto add table column failed.", e);
       throw new RuntimeException(e);

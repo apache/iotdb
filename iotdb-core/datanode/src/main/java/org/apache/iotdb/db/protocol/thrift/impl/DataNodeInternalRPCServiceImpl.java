@@ -566,7 +566,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
 
   @Override
   public TSStatus invalidateSchemaCache(final TInvalidateCacheReq req) {
-    DataNodeSchemaLockManager.getInstance().takeWriteLock(SchemaLockType.VALIDATE_VS_DELETION);
+    DataNodeSchemaLockManager.getInstance().takeWriteLock(SchemaLockType.VALIDATE_VS_DELETION_TREE);
     try {
       TreeDeviceSchemaCacheManager.getInstance().takeWriteLock();
       try {
@@ -582,7 +582,8 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
         TreeDeviceSchemaCacheManager.getInstance().releaseWriteLock();
       }
     } finally {
-      DataNodeSchemaLockManager.getInstance().releaseWriteLock(SchemaLockType.VALIDATE_VS_DELETION);
+      DataNodeSchemaLockManager.getInstance()
+          .releaseWriteLock(SchemaLockType.VALIDATE_VS_DELETION_TREE);
     }
   }
 
@@ -649,7 +650,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
   @Override
   public TSStatus invalidateMatchedSchemaCache(final TInvalidateMatchedSchemaCacheReq req) {
     final TreeDeviceSchemaCacheManager cache = TreeDeviceSchemaCacheManager.getInstance();
-    DataNodeSchemaLockManager.getInstance().takeWriteLock(SchemaLockType.VALIDATE_VS_DELETION);
+    DataNodeSchemaLockManager.getInstance().takeWriteLock(SchemaLockType.VALIDATE_VS_DELETION_TREE);
     try {
       cache.takeWriteLock();
       try {
@@ -658,7 +659,8 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
         cache.releaseWriteLock();
       }
     } finally {
-      DataNodeSchemaLockManager.getInstance().releaseWriteLock(SchemaLockType.VALIDATE_VS_DELETION);
+      DataNodeSchemaLockManager.getInstance()
+          .releaseWriteLock(SchemaLockType.VALIDATE_VS_DELETION_TREE);
     }
     return RpcUtils.SUCCESS_STATUS;
   }
@@ -1570,13 +1572,15 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
 
   @Override
   public TSStatus invalidateTableCache(final TInvalidateTableCacheReq req) {
-    DataNodeSchemaLockManager.getInstance().takeWriteLock(SchemaLockType.VALIDATE_VS_DELETION);
+    DataNodeSchemaLockManager.getInstance()
+        .takeWriteLock(SchemaLockType.VALIDATE_VS_DELETION_TABLE);
     try {
       TableDeviceSchemaCache.getInstance()
           .invalidate(PathUtils.unQualifyDatabaseName(req.getDatabase()), req.getTableName());
       return StatusUtils.OK;
     } finally {
-      DataNodeSchemaLockManager.getInstance().releaseWriteLock(SchemaLockType.VALIDATE_VS_DELETION);
+      DataNodeSchemaLockManager.getInstance()
+          .releaseWriteLock(SchemaLockType.VALIDATE_VS_DELETION_TABLE);
     }
   }
 
@@ -1652,7 +1656,8 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
 
   @Override
   public TSStatus invalidateMatchedTableDeviceCache(final TTableDeviceInvalidateCacheReq req) {
-    DataNodeSchemaLockManager.getInstance().takeWriteLock(SchemaLockType.VALIDATE_VS_DELETION);
+    DataNodeSchemaLockManager.getInstance()
+        .takeWriteLock(SchemaLockType.VALIDATE_VS_DELETION_TABLE);
     try {
       TableDeviceSchemaCache.getInstance()
           .invalidate(
@@ -1662,7 +1667,8 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
                   req.getDatabase(), req.getTableName(), req.getPatternInfo()));
       return StatusUtils.OK;
     } finally {
-      DataNodeSchemaLockManager.getInstance().releaseWriteLock(SchemaLockType.VALIDATE_VS_DELETION);
+      DataNodeSchemaLockManager.getInstance()
+          .releaseWriteLock(SchemaLockType.VALIDATE_VS_DELETION_TABLE);
     }
   }
 
@@ -1701,7 +1707,8 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
 
   @Override
   public TSStatus invalidateColumnCache(final TInvalidateColumnCacheReq req) {
-    DataNodeSchemaLockManager.getInstance().takeWriteLock(SchemaLockType.VALIDATE_VS_DELETION);
+    DataNodeSchemaLockManager.getInstance()
+        .takeWriteLock(SchemaLockType.VALIDATE_VS_DELETION_TABLE);
     try {
       TableDeviceSchemaCache.getInstance()
           .invalidate(
@@ -1711,7 +1718,8 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
               req.isIsAttributeColumn());
       return StatusUtils.OK;
     } finally {
-      DataNodeSchemaLockManager.getInstance().releaseWriteLock(SchemaLockType.VALIDATE_VS_DELETION);
+      DataNodeSchemaLockManager.getInstance()
+          .releaseWriteLock(SchemaLockType.VALIDATE_VS_DELETION_TABLE);
     }
   }
 
