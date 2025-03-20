@@ -271,7 +271,9 @@ def deserialize(buffer):
     position_count, buffer = read_int_from_buffer(buffer)
     column_encodings, buffer = read_column_encoding(buffer, value_column_count + 1)
 
-    time_column_values, buffer = read_time_column(buffer, position_count)
+    time_column_values, _, buffer = read_column(
+        column_encodings[0], buffer, TSDataType.INT64, position_count
+    )
     column_values = [None] * value_column_count
     null_indicators = [None] * value_column_count
     for i in range(value_column_count):
@@ -382,15 +384,6 @@ def deserialize_null_indicators(buffer, size):
 #    +---------------+-----------------+-------------+
 #    | byte          | list[byte]      | list[int64] |
 #    +---------------+-----------------+-------------+
-
-
-def read_time_column(buffer, size):
-    null_indicators, buffer = deserialize_null_indicators(buffer, size)
-    if null_indicators is None:
-        values, buffer = read_from_buffer(buffer, size * 8)
-    else:
-        raise Exception("TimeColumn should not contains null value")
-    return values, buffer
 
 
 def read_int64_column(buffer, data_type, position_count):
@@ -537,7 +530,7 @@ def read_run_length_column(buffer, data_type, position_count):
 
     return (
         repeat(column, data_type, position_count),
-        null_indicators * position_count,
+        None if null_indicators is None else null_indicators * position_count,
         buffer,
     )
 
@@ -546,7 +539,7 @@ def repeat(buffer, data_type, position_count):
     if data_type == TSDataType.BOOLEAN or data_type == TSDataType.TEXT:
         return buffer * position_count
     else:
-        res = bytes(0)
+        res = bytearray()
         for _ in range(position_count):
-            res.join(buffer)
-        return res
+            res.extend(buffer if isinstance(buffer, bytes) else bytes(buffer))
+        return bytes(res)

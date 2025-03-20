@@ -205,20 +205,11 @@ class IoTDBRpcDataSet(object):
                 )
             # TEXT, STRING, BLOB
             elif data_type == 5 or data_type == 11 or data_type == 10:
-                j = 0
-                offset = 0
+                index = 0
                 data_array = []
-                while offset < value_buffer_len:
-                    length = int.from_bytes(
-                        value_buffer[offset : offset + 4],
-                        byteorder="big",
-                        signed=False,
-                    )
-                    offset += 4
-                    value = bytes(value_buffer[offset : offset + length])
-                    data_array.append(value)
-                    j += 1
-                    offset += length
+                while index < value_buffer_len:
+                    data_array.append(value_buffer[index])
+                    index += 1
                 data_array = np.array(data_array, dtype=object)
             else:
                 raise RuntimeError("unsupported data type {}.".format(data_type))
@@ -331,38 +322,21 @@ class IoTDBRpcDataSet(object):
                     )
                 # TEXT, STRING
                 elif data_type == 5 or data_type == 11:
-                    j = 0
-                    offset = 0
+                    index = 0
                     data_array = []
-                    while offset < value_buffer_len:
-                        length = int.from_bytes(
-                            value_buffer[offset : offset + 4],
-                            byteorder="big",
-                            signed=False,
-                        )
-                        offset += 4
-                        value_bytes = bytes(value_buffer[offset : offset + length])
+                    while index < value_buffer_len:
+                        value_bytes = value_buffer[index]
                         value = value_bytes.decode("utf-8")
                         data_array.append(value)
-                        j += 1
-                        offset += length
+                        index += 1
                     data_array = pd.Series(data_array).astype(str)
                 # BLOB
                 elif data_type == 10:
-                    j = 0
-                    offset = 0
+                    index = 0
                     data_array = []
-                    while offset < value_buffer_len:
-                        length = int.from_bytes(
-                            value_buffer[offset : offset + 4],
-                            byteorder="big",
-                            signed=False,
-                        )
-                        offset += 4
-                        value = value_buffer[offset : offset + length]
-                        data_array.append(value)
-                        j += 1
-                        offset += length
+                    while index < value_buffer_len:
+                        data_array.append(value_buffer[index])
+                        index += 1
                     data_array = pd.Series(data_array)
                 # DATE
                 elif data_type == 9:
