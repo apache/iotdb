@@ -93,12 +93,13 @@ public class PipeEnrichedPlan extends ConfigPhysicalPlan {
       return false;
     }
     PipeEnrichedPlan that = (PipeEnrichedPlan) obj;
-    return innerPlan.equals(that.innerPlan);
+    return innerPlan.equals(that.innerPlan)
+        && Objects.equals(originClusterId, that.originClusterId);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(innerPlan);
+    return Objects.hash(innerPlan, originClusterId);
   }
 
   @Override

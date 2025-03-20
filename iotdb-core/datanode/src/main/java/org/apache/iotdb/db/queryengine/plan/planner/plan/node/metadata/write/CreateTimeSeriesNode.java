@@ -244,7 +244,6 @@ public class CreateTimeSeriesNode extends WritePlanNode implements ICreateTimeSe
     }
 
     id = ReadWriteIOUtils.readString(byteBuffer);
-
     return new CreateTimeSeriesNode(
         new PlanNodeId(id), path, dataType, encoding, compressor, props, tags, attributes, alias);
   }
