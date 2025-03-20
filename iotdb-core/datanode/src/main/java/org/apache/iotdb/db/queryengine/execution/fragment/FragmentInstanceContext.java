@@ -186,6 +186,22 @@ public class FragmentInstanceContext extends QueryContext {
     return instanceContext;
   }
 
+  @TestOnly
+  public static FragmentInstanceContext createFragmentInstanceContext(
+      FragmentInstanceId id,
+      FragmentInstanceStateMachine stateMachine,
+      MemoryReservationManager memoryReservationManager) {
+    FragmentInstanceContext instanceContext =
+        new FragmentInstanceContext(
+            id,
+            stateMachine,
+            new SessionInfo(1, "test", ZoneId.systemDefault()),
+            memoryReservationManager);
+    instanceContext.initialize();
+    instanceContext.start();
+    return instanceContext;
+  }
+
   private FragmentInstanceContext(
       FragmentInstanceId id,
       FragmentInstanceStateMachine stateMachine,
@@ -216,6 +232,20 @@ public class FragmentInstanceContext extends QueryContext {
     this.dataNodeQueryContext = null;
     this.memoryReservationManager =
         new ThreadSafeMemoryReservationManager(id.getQueryId(), this.getClass().getName());
+  }
+
+  private FragmentInstanceContext(
+      FragmentInstanceId id,
+      FragmentInstanceStateMachine stateMachine,
+      SessionInfo sessionInfo,
+      MemoryReservationManager memoryReservationManager) {
+    this.id = id;
+    this.stateMachine = stateMachine;
+    this.executionEndTime.set(END_TIME_INITIAL_VALUE);
+    this.sessionInfo = sessionInfo;
+    this.dataNodeQueryContextMap = null;
+    this.dataNodeQueryContext = null;
+    this.memoryReservationManager = memoryReservationManager;
   }
 
   private FragmentInstanceContext(
