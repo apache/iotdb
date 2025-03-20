@@ -584,6 +584,8 @@ public class IoTDBDataRegionAsyncConnector extends IoTDBConnector {
   public synchronized void close() {
     isClosed.set(true);
 
+    syncConnector.close();
+
     if (tabletBatchBuilder != null) {
       tabletBatchBuilder.close();
     }
