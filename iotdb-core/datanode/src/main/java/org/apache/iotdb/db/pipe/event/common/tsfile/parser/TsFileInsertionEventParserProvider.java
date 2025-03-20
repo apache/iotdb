@@ -29,6 +29,7 @@ import org.apache.iotdb.db.pipe.event.common.tsfile.parser.query.TsFileInsertion
 import org.apache.iotdb.db.pipe.event.common.tsfile.parser.scan.TsFileInsertionEventScanParser;
 import org.apache.iotdb.db.pipe.event.common.tsfile.parser.table.TsFileInsertionEventTableParser;
 import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
+import org.apache.iotdb.db.pipe.resource.tsfile.PipeTsFileResource;
 
 import org.apache.tsfile.file.metadata.IDeviceID;
 
@@ -48,6 +49,7 @@ public class TsFileInsertionEventParserProvider {
 
   protected final PipeTaskMeta pipeTaskMeta;
   protected final PipeTsFileInsertionEvent sourceEvent;
+  private final String userName;
 
   public TsFileInsertionEventParserProvider(
       final File tsFile,
@@ -56,6 +58,7 @@ public class TsFileInsertionEventParserProvider {
       final long startTime,
       final long endTime,
       final PipeTaskMeta pipeTaskMeta,
+      final String userName,
       final PipeTsFileInsertionEvent sourceEvent) {
     this.tsFile = tsFile;
     this.treePattern = treePattern;
@@ -63,22 +66,27 @@ public class TsFileInsertionEventParserProvider {
     this.startTime = startTime;
     this.endTime = endTime;
     this.pipeTaskMeta = pipeTaskMeta;
+    this.userName = userName;
     this.sourceEvent = sourceEvent;
   }
 
   public TsFileInsertionEventParser provide() throws IOException {
     if (sourceEvent.isTableModelEvent()) {
       return new TsFileInsertionEventTableParser(
-          tsFile, tablePattern, startTime, endTime, pipeTaskMeta, sourceEvent);
+          tsFile, tablePattern, startTime, endTime, pipeTaskMeta, userName, sourceEvent);
     }
 
-    if (startTime != Long.MIN_VALUE
-        || endTime != Long.MAX_VALUE
-        || treePattern instanceof IoTDBTreePattern
-            && !((IoTDBTreePattern) treePattern).mayMatchMultipleTimeSeriesInOneDevice()) {
-      // 1. If time filter exists, use query here because the scan container may filter it
-      // row by row in single page chunk.
-      // 2. If the pattern matches only one time series in one device, use query container here
+    // Use scan container to save memory
+    if ((double) PipeDataNodeResourceManager.memory().getUsedMemorySizeInBytes()
+            / PipeDataNodeResourceManager.memory().getTotalMemorySizeInBytes()
+        > PipeTsFileResource.MEMORY_SUFFICIENT_THRESHOLD) {
+      return new TsFileInsertionEventScanParser(
+          tsFile, treePattern, startTime, endTime, pipeTaskMeta, sourceEvent);
+    }
+
+    if (treePattern instanceof IoTDBTreePattern
+        && !((IoTDBTreePattern) treePattern).mayMatchMultipleTimeSeriesInOneDevice()) {
+      // If the pattern matches only one time series in one device, use query container here
       // because there is no timestamps merge overhead.
       //
       // Note: We judge prefix pattern as matching multiple timeseries in one device because it's

@@ -20,7 +20,6 @@
 package org.apache.iotdb.db.queryengine.plan.relational.analyzer;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
-import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.partition.DataPartition;
 import org.apache.iotdb.commons.partition.SchemaPartition;
@@ -32,6 +31,7 @@ import org.apache.iotdb.db.queryengine.plan.execution.memory.StatementMemorySour
 import org.apache.iotdb.db.queryengine.plan.execution.memory.TableModelStatementMemorySourceContext;
 import org.apache.iotdb.db.queryengine.plan.execution.memory.TableModelStatementMemorySourceVisitor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.TimePredicate;
+import org.apache.iotdb.db.queryengine.plan.relational.analyzer.tablefunction.TableFunctionInvocationAnalysis;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.ColumnSchema;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.QualifiedObjectName;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.ResolvedFunction;
@@ -62,6 +62,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowStatement;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Statement;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SubqueryExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Table;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.TableFunctionInvocation;
 import org.apache.iotdb.db.queryengine.plan.statement.component.FillPolicy;
 
 import com.google.common.collect.ArrayListMultimap;
@@ -71,10 +72,8 @@ import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Multimap;
 import com.google.common.collect.Streams;
 import com.google.errorprone.annotations.Immutable;
-import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.read.common.block.TsBlock;
 import org.apache.tsfile.read.common.type.Type;
-import org.apache.tsfile.read.filter.basic.Filter;
 import org.apache.tsfile.utils.TimeDuration;
 
 import javax.annotation.Nullable;
@@ -103,7 +102,6 @@ import static java.util.Collections.unmodifiableList;
 import static java.util.Collections.unmodifiableMap;
 import static java.util.Collections.unmodifiableSet;
 import static java.util.Objects.requireNonNull;
-import static org.apache.iotdb.commons.partition.DataPartition.NOT_ASSIGNED;
 
 public class Analysis implements IAnalysis {
 
@@ -183,6 +181,9 @@ public class Analysis implements IAnalysis {
 
   private final Set<NodeRef<Relation>> aliasedRelations = new LinkedHashSet<>();
 
+  private final Map<NodeRef<TableFunctionInvocation>, TableFunctionInvocationAnalysis>
+      tableFunctionAnalyses = new LinkedHashMap<>();
+
   private final Map<QualifiedObjectName, Map<Symbol, ColumnSchema>> tableColumnSchemas =
       new HashMap<>();
 
@@ -207,10 +208,6 @@ public class Analysis implements IAnalysis {
   private boolean emptyDataSource = false;
 
   private boolean isQuery = false;
-
-  public DataPartition getDataPartition() {
-    return dataPartition;
-  }
 
   public Analysis(@Nullable Statement root, Map<NodeRef<Parameter>, Expression> parameters) {
     this.root = root;
@@ -845,13 +842,13 @@ public class Analysis implements IAnalysis {
     redirectNodeList.add(endPoint);
   }
 
-  public List<TRegionReplicaSet> getDataRegionReplicaSetWithTimeFilter(
-      final String database, final IDeviceID deviceId, final Filter timeFilter) {
-    if (dataPartition == null) {
-      return Collections.singletonList(NOT_ASSIGNED);
-    } else {
-      return dataPartition.getDataRegionReplicaSetWithTimeFilter(database, deviceId, timeFilter);
-    }
+  public void setTableFunctionAnalysis(
+      TableFunctionInvocation node, TableFunctionInvocationAnalysis analysis) {
+    tableFunctionAnalyses.put(NodeRef.of(node), analysis);
+  }
+
+  public TableFunctionInvocationAnalysis getTableFunctionAnalysis(TableFunctionInvocation node) {
+    return tableFunctionAnalyses.get(NodeRef.of(node));
   }
 
   @Override

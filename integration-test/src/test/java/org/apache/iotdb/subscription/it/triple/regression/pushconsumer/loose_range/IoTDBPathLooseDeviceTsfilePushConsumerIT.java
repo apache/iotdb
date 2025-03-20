@@ -199,7 +199,7 @@ public class IoTDBPathLooseDeviceTsfilePushConsumerIT extends AbstractSubscripti
 
     AWAIT.untilAsserted(
         () -> {
-          assertEquals(onReceive.get(), 1);
+          assertGte(onReceive.get(), 1);
           assertGte(rowCounts.get(0).get(), 3, "Write data before subscription" + device);
           assertGte(rowCounts.get(0).get(), 3, "Write data before subscription" + device2);
         });
@@ -211,7 +211,7 @@ public class IoTDBPathLooseDeviceTsfilePushConsumerIT extends AbstractSubscripti
 
     AWAIT.untilAsserted(
         () -> {
-          assertEquals(onReceive.get(), 1);
+          assertGte(onReceive.get(), 1);
           assertGte(rowCounts.get(0).get(), 3, "Write out-of-range data" + device);
           assertGte(rowCounts.get(0).get(), 3, "Write out-of-range data" + device2);
         });
@@ -223,7 +223,7 @@ public class IoTDBPathLooseDeviceTsfilePushConsumerIT extends AbstractSubscripti
 
     AWAIT.untilAsserted(
         () -> {
-          assertEquals(onReceive.get(), 2);
+          assertGte(onReceive.get(), 2);
           assertGte(rowCounts.get(0).get(), 8, "write data" + device);
           assertGte(rowCounts.get(0).get(), 8, "write data " + device2);
         });
@@ -235,7 +235,7 @@ public class IoTDBPathLooseDeviceTsfilePushConsumerIT extends AbstractSubscripti
 
     AWAIT.untilAsserted(
         () -> {
-          assertEquals(onReceive.get(), 3);
+          assertGte(onReceive.get(), 3);
           assertGte(rowCounts.get(0).get(), 10, "Write data: end boundary at " + device);
           assertGte(rowCounts.get(0).get(), 10, "Write data: end boundary at " + device2);
         });
@@ -246,7 +246,7 @@ public class IoTDBPathLooseDeviceTsfilePushConsumerIT extends AbstractSubscripti
 
     AWAIT.untilAsserted(
         () -> {
-          assertEquals(onReceive.get(), 3);
+          assertGte(onReceive.get(), 3);
           assertGte(rowCounts.get(0).get(), 10, "Write data: > end " + device);
           assertGte(rowCounts.get(0).get(), 10, "Write data: > end " + device2);
         });

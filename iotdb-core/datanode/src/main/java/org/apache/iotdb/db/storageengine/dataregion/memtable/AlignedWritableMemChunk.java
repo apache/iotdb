@@ -30,17 +30,17 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.IWALByteBufferView;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALWriteUtils;
 import org.apache.iotdb.db.utils.datastructure.AlignedTVList;
-import org.apache.iotdb.db.utils.datastructure.MergeSortAlignedTVListIterator;
+import org.apache.iotdb.db.utils.datastructure.MemPointIterator;
+import org.apache.iotdb.db.utils.datastructure.MemPointIteratorFactory;
 import org.apache.iotdb.db.utils.datastructure.TVList;
 
 import org.apache.tsfile.common.conf.TSFileDescriptor;
 import org.apache.tsfile.enums.TSDataType;
-import org.apache.tsfile.read.TimeValuePair;
 import org.apache.tsfile.read.common.TimeRange;
+import org.apache.tsfile.read.common.block.TsBlock;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.BitMap;
 import org.apache.tsfile.utils.Pair;
-import org.apache.tsfile.utils.TsPrimitiveType;
 import org.apache.tsfile.write.UnSupportedDataTypeException;
 import org.apache.tsfile.write.chunk.AlignedChunkWriterImpl;
 import org.apache.tsfile.write.chunk.IChunkWriter;
@@ -460,27 +460,6 @@ public class AlignedWritableMemChunk implements IWritableMemChunk {
 
   @Override
   public synchronized void sortTvListForFlush() {
-    AlignedTVList cloneList = null;
-    list.lockQueryList();
-    try {
-      if (!list.isSorted() && !list.getQueryContextList().isEmpty()) {
-        QueryContext firstQuery = list.getQueryContextList().get(0);
-        // reserve query memory
-        if (firstQuery instanceof FragmentInstanceContext) {
-          MemoryReservationManager memoryReservationManager =
-              ((FragmentInstanceContext) firstQuery).getMemoryReservationContext();
-          memoryReservationManager.reserveMemoryCumulatively(list.calculateRamSize());
-        }
-        list.setOwnerQuery(firstQuery);
-        cloneList = list.clone();
-      }
-    } finally {
-      list.unlockQueryList();
-    }
-    if (cloneList != null) {
-      setWorkingTVList(cloneList);
-    }
-
     if (!list.isSorted()) {
       list.sort();
     }
@@ -752,70 +731,82 @@ public class AlignedWritableMemChunk implements IWritableMemChunk {
     // create MergeSortAlignedTVListIterator.
     List<AlignedTVList> alignedTvLists = new ArrayList<>(sortedList);
     alignedTvLists.add(list);
-    MergeSortAlignedTVListIterator timeValuePairIterator =
-        new MergeSortAlignedTVListIterator(
-            alignedTvLists, dataTypes, null, null, null, ignoreAllNullRows);
+    MemPointIterator timeValuePairIterator =
+        MemPointIteratorFactory.create(dataTypes, null, alignedTvLists, ignoreAllNullRows);
 
     int pointNumInPage = 0;
     int pointNumInChunk = 0;
     long[] times = new long[MAX_NUMBER_OF_POINTS_IN_PAGE];
 
-    while (timeValuePairIterator.hasNextTimeValuePair()) {
-      TimeValuePair tvPair = timeValuePairIterator.nextTimeValuePair();
-      times[pointNumInPage] = tvPair.getTimestamp();
-      TsPrimitiveType[] values = tvPair.getValue().getVector();
-
-      for (int columnIndex = 0; columnIndex < values.length; columnIndex++) {
-        ValueChunkWriter valueChunkWriter =
-            alignedChunkWriter.getValueChunkWriterByIndex(columnIndex);
-        boolean isNull = values[columnIndex] == null;
-        switch (schemaList.get(columnIndex).getType()) {
-          case BOOLEAN:
-            valueChunkWriter.write(tvPair.getTimestamp(), values[columnIndex].getBoolean(), isNull);
-            break;
-          case INT32:
-          case DATE:
-            valueChunkWriter.write(tvPair.getTimestamp(), values[columnIndex].getInt(), isNull);
-            break;
-          case INT64:
-          case TIMESTAMP:
-            valueChunkWriter.write(tvPair.getTimestamp(), values[columnIndex].getLong(), isNull);
-            break;
-          case FLOAT:
-            valueChunkWriter.write(tvPair.getTimestamp(), values[columnIndex].getFloat(), isNull);
-            break;
-          case DOUBLE:
-            valueChunkWriter.write(tvPair.getTimestamp(), values[columnIndex].getDouble(), isNull);
-            break;
-          case TEXT:
-          case BLOB:
-          case STRING:
-            valueChunkWriter.write(tvPair.getTimestamp(), values[columnIndex].getBinary(), isNull);
-            break;
-          default:
-            break;
-        }
+    while (timeValuePairIterator.hasNextBatch()) {
+      TsBlock tsBlock = timeValuePairIterator.nextBatch();
+      if (tsBlock == null) {
+        continue;
       }
+      for (int rowIndex = 0; rowIndex < tsBlock.getPositionCount(); rowIndex++) {
+        long time = tsBlock.getTimeByIndex(rowIndex);
+        times[pointNumInPage] = time;
 
-      pointNumInPage++;
-      pointNumInChunk++;
-
-      if (pointNumInPage == MAX_NUMBER_OF_POINTS_IN_PAGE
-          || pointNumInChunk >= maxNumberOfPointsInChunk) {
-        alignedChunkWriter.write(times, pointNumInPage, 0);
-        pointNumInPage = 0;
-      }
-
-      if (pointNumInChunk >= maxNumberOfPointsInChunk) {
-        alignedChunkWriter.sealCurrentPage();
-        alignedChunkWriter.clearPageWriter();
-        try {
-          ioTaskQueue.put(alignedChunkWriter);
-        } catch (InterruptedException e) {
-          Thread.currentThread().interrupt();
+        for (int columnIndex = 0; columnIndex < dataTypes.size(); columnIndex++) {
+          ValueChunkWriter valueChunkWriter =
+              alignedChunkWriter.getValueChunkWriterByIndex(columnIndex);
+          if (tsBlock.getColumn(columnIndex).isNull(rowIndex)) {
+            valueChunkWriter.write(time, null, true);
+            continue;
+          }
+          switch (schemaList.get(columnIndex).getType()) {
+            case BOOLEAN:
+              valueChunkWriter.write(
+                  time, tsBlock.getColumn(columnIndex).getBoolean(rowIndex), false);
+              break;
+            case INT32:
+            case DATE:
+              valueChunkWriter.write(time, tsBlock.getColumn(columnIndex).getInt(rowIndex), false);
+              break;
+            case INT64:
+            case TIMESTAMP:
+              valueChunkWriter.write(time, tsBlock.getColumn(columnIndex).getLong(rowIndex), false);
+              break;
+            case FLOAT:
+              valueChunkWriter.write(
+                  time, tsBlock.getColumn(columnIndex).getFloat(rowIndex), false);
+              break;
+            case DOUBLE:
+              valueChunkWriter.write(
+                  time, tsBlock.getColumn(columnIndex).getDouble(rowIndex), false);
+              break;
+            case TEXT:
+            case BLOB:
+            case STRING:
+              valueChunkWriter.write(
+                  time, tsBlock.getColumn(columnIndex).getBinary(rowIndex), false);
+              break;
+            default:
+              break;
+          }
         }
-        alignedChunkWriter = new AlignedChunkWriterImpl(schemaList);
-        pointNumInChunk = 0;
+        pointNumInPage++;
+        pointNumInChunk++;
+
+        // new page
+        if (pointNumInPage == MAX_NUMBER_OF_POINTS_IN_PAGE
+            || pointNumInChunk >= maxNumberOfPointsInChunk) {
+          alignedChunkWriter.write(times, pointNumInPage, 0);
+          pointNumInPage = 0;
+        }
+
+        // new chunk
+        if (pointNumInChunk >= maxNumberOfPointsInChunk) {
+          alignedChunkWriter.sealCurrentPage();
+          alignedChunkWriter.clearPageWriter();
+          try {
+            ioTaskQueue.put(alignedChunkWriter);
+          } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+          }
+          alignedChunkWriter = new AlignedChunkWriterImpl(schemaList);
+          pointNumInChunk = 0;
+        }
       }
     }
 
@@ -882,13 +873,24 @@ public class AlignedWritableMemChunk implements IWritableMemChunk {
 
   @Override
   public boolean isEmpty() {
-    if (list.rowCount() == 0) {
+    if (rowCount() == 0) {
       return true;
     }
     if (ignoreAllNullRows) {
-      return measurementIndexMap.isEmpty()
-          || (list.getAllValueColDeletedMap() != null
-              && list.getAllValueColDeletedMap().isAllMarked());
+      if (measurementIndexMap.isEmpty()) {
+        return true;
+      }
+      if (list.getAllValueColDeletedMap() == null
+          || !list.getAllValueColDeletedMap().isAllMarked()) {
+        return false;
+      }
+      for (AlignedTVList alignedTvList : sortedList) {
+        if (alignedTvList.getAllValueColDeletedMap() == null
+            || !alignedTvList.getAllValueColDeletedMap().isAllMarked()) {
+          return false;
+        }
+      }
+      return true;
     }
     return false;
   }

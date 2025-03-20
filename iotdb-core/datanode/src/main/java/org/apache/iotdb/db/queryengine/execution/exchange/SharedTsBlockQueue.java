@@ -38,6 +38,7 @@ import org.slf4j.LoggerFactory;
 import javax.annotation.concurrent.NotThreadSafe;
 
 import java.util.LinkedList;
+import java.util.Optional;
 import java.util.Queue;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
@@ -82,6 +83,8 @@ public class SharedTsBlockQueue {
 
   private long maxBytesCanReserve =
       IoTDBDescriptor.getInstance().getMemoryConfig().getMaxBytesPerFragmentInstance();
+
+  private volatile Throwable abortedCause = null;
 
   // used for SharedTsBlockQueue listener
   private final ExecutorService executorService;
@@ -180,6 +183,9 @@ public class SharedTsBlockQueue {
   public TsBlock remove() {
     if (closed) {
       // try throw underlying exception instead of "Source handle is aborted."
+      if (abortedCause != null) {
+        throw new IllegalStateException(abortedCause);
+      }
       try {
         blocked.get();
       } catch (InterruptedException e) {
@@ -346,6 +352,7 @@ public class SharedTsBlockQueue {
     if (closed) {
       return;
     }
+    abortedCause = t;
     closed = true;
     if (!blocked.isDone()) {
       blocked.setException(t);
@@ -367,5 +374,9 @@ public class SharedTsBlockQueue {
               bufferRetainedSizeInBytes);
       bufferRetainedSizeInBytes = 0;
     }
+  }
+
+  public Optional<Throwable> getAbortedCause() {
+    return Optional.ofNullable(abortedCause);
   }
 }

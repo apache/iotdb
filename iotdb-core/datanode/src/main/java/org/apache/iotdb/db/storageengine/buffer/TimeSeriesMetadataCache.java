@@ -27,7 +27,6 @@ import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.DataNodeMemoryConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.queryengine.execution.fragment.QueryContext;
-import org.apache.iotdb.db.queryengine.metric.SeriesScanCostMetricSet;
 import org.apache.iotdb.db.queryengine.metric.TimeSeriesMetadataCacheMetrics;
 import org.apache.iotdb.db.storageengine.dataregion.read.control.FileReaderManager;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileID;
@@ -55,8 +54,6 @@ import java.util.WeakHashMap;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.LongConsumer;
 
-import static org.apache.iotdb.db.queryengine.metric.SeriesScanCostMetricSet.READ_TIMESERIES_METADATA_CACHE;
-import static org.apache.iotdb.db.queryengine.metric.SeriesScanCostMetricSet.READ_TIMESERIES_METADATA_FILE;
 import static org.apache.tsfile.utils.RamUsageEstimator.sizeOfCharArray;
 
 /**
@@ -72,9 +69,6 @@ public class TimeSeriesMetadataCache {
       IoTDBDescriptor.getInstance().getMemoryConfig();
   private static final IMemoryBlock CACHE_MEMORY_BLOCK;
   private static final boolean CACHE_ENABLE = memoryConfig.isMetaDataCacheEnable();
-
-  private static final SeriesScanCostMetricSet SERIES_SCAN_COST_METRIC_SET =
-      SeriesScanCostMetricSet.getInstance();
 
   private final Cache<TimeSeriesMetadataCacheKey, TimeseriesMetadata> lruCache;
 
@@ -132,8 +126,8 @@ public class TimeSeriesMetadataCache {
         queryContext.getQueryStatistics().getLoadBloomFilterActualIOSize()::addAndGet;
     boolean cacheHit = true;
     try {
-      String deviceStringFormat = key.device.toString();
       if (!CACHE_ENABLE) {
+        String deviceStringFormat = key.device.toString();
         cacheHit = false;
 
         // bloom filter part
@@ -164,6 +158,7 @@ public class TimeSeriesMetadataCache {
           DEBUG_LOGGER.info("Cache miss: {}.{} in file: {}", key.device, key.measurement, filePath);
           DEBUG_LOGGER.info("Device: {}, all sensors: {}", key.device, allSensors);
         }
+        String deviceStringFormat = key.device.toString();
         // allow for the parallelism of different devices
         synchronized (
             devices.computeIfAbsent(
@@ -244,17 +239,19 @@ public class TimeSeriesMetadataCache {
             .getQueryStatistics()
             .getLoadTimeSeriesMetadataFromCacheCount()
             .incrementAndGet();
-        // in metric panel, loading BloomFilter time is included in loading TimeSeriesMetadata
-        SERIES_SCAN_COST_METRIC_SET.recordSeriesScanCost(
-            READ_TIMESERIES_METADATA_CACHE, System.nanoTime() - startTime);
+        queryContext
+            .getQueryStatistics()
+            .getLoadTimeSeriesMetadataFromCacheTime()
+            .getAndAdd(System.nanoTime() - startTime - loadBloomFilterTime);
       } else {
         queryContext
             .getQueryStatistics()
             .getLoadTimeSeriesMetadataFromDiskCount()
             .incrementAndGet();
-        // in metric panel, loading BloomFilter time is included in loading TimeSeriesMetadata
-        SERIES_SCAN_COST_METRIC_SET.recordSeriesScanCost(
-            READ_TIMESERIES_METADATA_FILE, System.nanoTime() - startTime);
+        queryContext
+            .getQueryStatistics()
+            .getLoadTimeSeriesMetadataFromDiskTime()
+            .getAndAdd(System.nanoTime() - startTime - loadBloomFilterTime);
       }
     }
   }

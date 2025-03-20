@@ -20,6 +20,7 @@
 package org.apache.iotdb.consensus.iot.client;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.utils.RetryUtils;
 import org.apache.iotdb.consensus.iot.logdispatcher.Batch;
 import org.apache.iotdb.consensus.iot.logdispatcher.LogDispatcher.LogDispatcherThread;
 import org.apache.iotdb.consensus.iot.logdispatcher.LogDispatcherThreadMetrics;
@@ -45,6 +46,7 @@ public class DispatchLogHandler implements AsyncMethodCallback<TSyncLogEntriesRe
   private final long createTime;
   private final LogDispatcherThreadMetrics logDispatcherThreadMetrics;
   private int retryCount;
+  private long retryInterval;
 
   public DispatchLogHandler(
       LogDispatcherThread thread,
@@ -54,14 +56,16 @@ public class DispatchLogHandler implements AsyncMethodCallback<TSyncLogEntriesRe
     this.logDispatcherThreadMetrics = logDispatcherThreadMetrics;
     this.batch = batch;
     this.createTime = System.nanoTime();
+    this.retryInterval = thread.getConfig().getReplication().getBasicRetryWaitTimeMs();
   }
 
   @Override
   public void onComplete(TSyncLogEntriesRes response) {
-    if (response.getStatuses().stream().anyMatch(status -> needRetry(status.getCode()))) {
+    if (response.getStatuses().stream()
+        .anyMatch(status -> RetryUtils.needRetryForConsensus(status.getCode()))) {
       List<String> retryStatusMessages =
           response.getStatuses().stream()
-              .filter(status -> needRetry(status.getCode()))
+              .filter(status -> RetryUtils.needRetryForConsensus(status.getCode()))
               .map(TSStatus::getMessage)
               .collect(Collectors.toList());
 
@@ -92,12 +96,6 @@ public class DispatchLogHandler implements AsyncMethodCallback<TSyncLogEntriesRe
     logDispatcherThreadMetrics.recordSyncLogTimePerRequest(System.nanoTime() - createTime);
   }
 
-  public static boolean needRetry(int statusCode) {
-    return statusCode == TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode()
-        || statusCode == TSStatusCode.SYSTEM_READ_ONLY.getStatusCode()
-        || statusCode == TSStatusCode.WRITE_PROCESS_REJECT.getStatusCode();
-  }
-
   @Override
   public void onError(Exception exception) {
     ++retryCount;
@@ -119,12 +117,11 @@ public class DispatchLogHandler implements AsyncMethodCallback<TSyncLogEntriesRe
   }
 
   private void sleepCorrespondingTimeAndRetryAsynchronous() {
-    long sleepTime =
-        Math.min(
-            (long)
-                (thread.getConfig().getReplication().getBasicRetryWaitTimeMs()
-                    * Math.pow(2, retryCount)),
-            thread.getConfig().getReplication().getMaxRetryWaitTimeMs());
+    if (retryInterval != thread.getConfig().getReplication().getMaxRetryWaitTimeMs()) {
+      retryInterval =
+          Math.min(retryInterval * 2, thread.getConfig().getReplication().getMaxRetryWaitTimeMs());
+    }
+
     thread
         .getImpl()
         .getBackgroundTaskService()
@@ -141,7 +138,7 @@ public class DispatchLogHandler implements AsyncMethodCallback<TSyncLogEntriesRe
                 thread.sendBatchAsync(batch, this);
               }
             },
-            sleepTime,
+            retryInterval,
             TimeUnit.MILLISECONDS);
   }
 

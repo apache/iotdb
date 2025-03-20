@@ -21,7 +21,6 @@ package org.apache.iotdb.db.storageengine.dataregion.read.reader.chunk;
 
 import org.apache.iotdb.db.storageengine.dataregion.read.reader.chunk.metadata.AlignedPageMetadata;
 import org.apache.iotdb.db.utils.CommonUtils;
-import org.apache.iotdb.db.utils.datastructure.MergeSortAlignedTVListIterator;
 
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.block.column.ColumnBuilder;
@@ -54,9 +53,7 @@ public class MemAlignedPageReader implements IPageReader {
   private TsBlock tsBlock;
   private final AlignedPageMetadata pageMetadata;
 
-  private final MergeSortAlignedTVListIterator mergeSortAlignedTVListIterator;
-  private final int[] pageStartOffsets;
-  private final int[] pageEndOffsets;
+  private final int pageIndex;
   private final Supplier<TsBlock> tsBlockSupplier;
   private final List<TSDataType> tsDataTypes;
 
@@ -67,17 +64,13 @@ public class MemAlignedPageReader implements IPageReader {
 
   public MemAlignedPageReader(
       Supplier<TsBlock> tsBlockSupplier,
-      MergeSortAlignedTVListIterator mergeSortAlignedTVListIterator,
-      int[] pageStartOffsets,
-      int[] pageEndOffSets,
+      int pageIndex,
       List<TSDataType> tsDataTypes,
       Statistics<? extends Serializable> timeStatistics,
       Statistics<? extends Serializable>[] valueStatistics,
       Filter recordFilter) {
     this.tsBlockSupplier = tsBlockSupplier;
-    this.mergeSortAlignedTVListIterator = mergeSortAlignedTVListIterator;
-    this.pageStartOffsets = pageStartOffsets;
-    this.pageEndOffsets = pageEndOffSets;
+    this.pageIndex = pageIndex;
     this.recordFilter = recordFilter;
     this.tsDataTypes = tsDataTypes;
     this.pageMetadata = new AlignedPageMetadata(timeStatistics, valueStatistics);
@@ -231,7 +224,7 @@ public class MemAlignedPageReader implements IPageReader {
 
   private void getTsBlock() {
     if (tsBlock == null) {
-      initializeOffsets();
+      initializeTsBlockIndex();
       tsBlock = tsBlockSupplier.get();
       if (pageMetadata.getStatistics() == null) {
         initPageStatistics();
@@ -239,12 +232,9 @@ public class MemAlignedPageReader implements IPageReader {
     }
   }
 
-  private void initializeOffsets() {
-    if (pageStartOffsets != null) {
-      mergeSortAlignedTVListIterator.setAlignedTVListOffsets(pageStartOffsets);
-    }
+  private void initializeTsBlockIndex() {
     if (tsBlockSupplier instanceof MemAlignedChunkReader.TsBlockSupplier) {
-      ((MemAlignedChunkReader.TsBlockSupplier) tsBlockSupplier).setPageEndOffsets(pageEndOffsets);
+      ((MemAlignedChunkReader.TsBlockSupplier) tsBlockSupplier).setTsBlockIndex(pageIndex);
     }
   }
 

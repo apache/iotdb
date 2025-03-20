@@ -306,6 +306,7 @@ public class TsFileResource implements PersistentResource {
       TsFileResourceBlockType.EMPTY_BLOCK.serialize(outputStream);
     }
 
+    TsFileResourceBlockType.PIPE_MARK.serialize(outputStream);
     ReadWriteIOUtils.write(isGeneratedByPipeConsensus, outputStream);
     ReadWriteIOUtils.write(isGeneratedByPipe, outputStream);
   }
@@ -335,14 +336,17 @@ public class TsFileResource implements PersistentResource {
       while (inputStream.available() > 0) {
         final TsFileResourceBlockType blockType =
             TsFileResourceBlockType.deserialize(ReadWriteIOUtils.readByte(inputStream));
-        if (blockType == TsFileResourceBlockType.PROGRESS_INDEX) {
-          maxProgressIndex = ProgressIndexType.deserializeFrom(inputStream);
+        switch (blockType) {
+          case PROGRESS_INDEX:
+            maxProgressIndex = ProgressIndexType.deserializeFrom(inputStream);
+            break;
+          case PIPE_MARK:
+            isGeneratedByPipeConsensus = ReadWriteIOUtils.readBoolean(inputStream);
+            isGeneratedByPipe = ReadWriteIOUtils.readBoolean(inputStream);
+            break;
+          default:
+            break;
         }
-      }
-
-      if (inputStream.available() > 0) {
-        isGeneratedByPipeConsensus = ReadWriteIOUtils.readBoolean(inputStream);
-        isGeneratedByPipe = ReadWriteIOUtils.readBoolean(inputStream);
       }
     }
   }
@@ -630,10 +634,10 @@ public class TsFileResource implements PersistentResource {
 
   // cannot use FileTimeIndex
   public long getOrderTimeForSeq(IDeviceID deviceId, boolean ascending) {
-    if (timeIndex instanceof ArrayDeviceTimeIndex && !definitelyNotContains(deviceId)) {
-      // checked above
-      //noinspection OptionalGetWithoutIsPresent
-      return ascending ? getStartTime(deviceId).get() : getEndTime(deviceId).get();
+    if (timeIndex instanceof ArrayDeviceTimeIndex) {
+      return ascending
+          ? timeIndex.getStartTime(deviceId).orElse(Long.MIN_VALUE)
+          : timeIndex.getEndTime(deviceId).orElse(Long.MAX_VALUE);
     } else {
       return ascending ? Long.MIN_VALUE : Long.MAX_VALUE;
     }
@@ -641,12 +645,15 @@ public class TsFileResource implements PersistentResource {
 
   // can use FileTimeIndex
   public long getOrderTimeForUnseq(IDeviceID deviceId, boolean ascending) {
-    if (!definitelyNotContains(deviceId)) {
-      // checked above
-      //noinspection OptionalGetWithoutIsPresent
-      return ascending ? getStartTime(deviceId).get() : getEndTime(deviceId).get();
+    if (timeIndex instanceof ArrayDeviceTimeIndex) {
+      if (ascending) {
+        return timeIndex.getStartTime(deviceId).orElse(Long.MIN_VALUE);
+      } else {
+        return timeIndex.getEndTime(deviceId).orElse(Long.MAX_VALUE);
+      }
     } else {
-      return ascending ? Long.MIN_VALUE : Long.MAX_VALUE;
+      // FileTimeIndex
+      return ascending ? getFileStartTime() : getFileEndTime();
     }
   }
 
@@ -996,21 +1003,22 @@ public class TsFileResource implements PersistentResource {
       return false;
     }
 
-    // check above
-    long startTime = getStartTime(deviceId).get();
-    long endTime = isClosed() || !isSeq ? getEndTime(deviceId).get() : Long.MAX_VALUE;
-    if (startTime > endTime) {
-      // startTime > endTime indicates that there is something wrong with this TsFile. Return false
-      // directly, or it may lead to infinite loop in GroupByMonthFilter#getTimePointPosition.
-      LOGGER.warn(
-          "startTime[{}] of TsFileResource[{}] is greater than its endTime[{}]",
-          startTime,
-          this,
-          endTime);
-      return false;
-    }
-
     if (timeFilter != null) {
+      // check above
+      long startTime = getStartTime(deviceId).get();
+      long endTime = isClosed() || !isSeq ? getEndTime(deviceId).get() : Long.MAX_VALUE;
+      if (startTime > endTime) {
+        // startTime > endTime indicates that there is something wrong with this TsFile. Return
+        // false
+        // directly, or it may lead to infinite loop in GroupByMonthFilter#getTimePointPosition.
+        LOGGER.warn(
+            "startTime[{}] of TsFileResource[{}] is greater than its endTime[{}]",
+            startTime,
+            this,
+            endTime);
+        return false;
+      }
+
       boolean res = timeFilter.satisfyStartEndTime(startTime, endTime);
       if (debug && !res) {
         DEBUG_LOGGER.info(

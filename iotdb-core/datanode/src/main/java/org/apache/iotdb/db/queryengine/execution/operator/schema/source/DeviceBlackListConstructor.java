@@ -20,8 +20,8 @@
 package org.apache.iotdb.db.queryengine.execution.operator.schema.source;
 
 import org.apache.iotdb.commons.exception.MetadataException;
-import org.apache.iotdb.commons.schema.column.ColumnHeader;
 import org.apache.iotdb.commons.schema.node.role.IDeviceMNode;
+import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.ColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.leaf.LeafColumnTransformer;
 import org.apache.iotdb.db.schemaengine.rescon.MemSchemaRegionStatistics;
@@ -39,22 +39,21 @@ public class DeviceBlackListConstructor extends DeviceUpdater {
 
   private long preDeletedNum = 0;
   private final MemSchemaRegionStatistics regionStatistics;
+  private final String tableName;
 
   public DeviceBlackListConstructor(
       final List<LeafColumnTransformer> filterLeafColumnTransformerList,
       final ColumnTransformer filterOutputTransformer,
-      final String database,
       final String tableName,
-      final List<ColumnHeader> columnHeaderList,
+      final List<TsTableColumnSchema> columnSchemaList,
       final BiFunction<Integer, String, Binary> attributeProvider,
       final MemSchemaRegionStatistics regionStatistics) {
     super(
         filterLeafColumnTransformerList,
         filterOutputTransformer,
-        database,
-        tableName,
-        columnHeaderList,
+        columnSchemaList,
         attributeProvider);
+    this.tableName = tableName;
     this.regionStatistics = regionStatistics;
   }
 
