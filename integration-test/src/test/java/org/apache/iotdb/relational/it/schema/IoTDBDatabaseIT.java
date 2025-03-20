@@ -332,7 +332,6 @@ public class IoTDBDatabaseIT {
     try (final Connection adminCon = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
         final Statement adminStmt = adminCon.createStatement()) {
       adminStmt.execute("create user test 'password'");
-      adminStmt.execute("create database db");
     }
 
     try (final Connection connection =
