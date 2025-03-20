@@ -24,17 +24,14 @@ import org.apache.iotdb.commons.client.async.AsyncPipeDataTransferServiceClient;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.connector.protocol.IoTDBConnector;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
-import org.apache.iotdb.db.pipe.agent.task.subtask.connector.PipeConnectorSubtask;
 import org.apache.iotdb.db.pipe.connector.client.IoTDBDataNodeAsyncClientManager;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.batch.PipeTabletEventBatch;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.batch.PipeTabletEventPlainBatch;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.batch.PipeTabletEventTsFileBatch;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.batch.PipeTransferBatchReqBuilder;
-import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferPlanNodeReq;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTabletBinaryReqV2;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTabletInsertNodeReqV2;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTabletRawReqV2;
-import org.apache.iotdb.db.pipe.connector.protocol.thrift.async.handler.PipeTransferEnrichedEventHandler;
 import org.apache.iotdb.db.pipe.connector.protocol.thrift.async.handler.PipeTransferTabletBatchEventHandler;
 import org.apache.iotdb.db.pipe.connector.protocol.thrift.async.handler.PipeTransferTabletInsertNodeEventHandler;
 import org.apache.iotdb.db.pipe.connector.protocol.thrift.async.handler.PipeTransferTabletRawEventHandler;
@@ -57,8 +54,6 @@ import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TsFileInsertionEvent;
-import org.apache.iotdb.pipe.api.exception.PipeConnectionException;
-import org.apache.iotdb.pipe.api.exception.PipeException;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferReq;
 
 import com.google.common.collect.ImmutableSet;
@@ -453,9 +448,8 @@ public class IoTDBDataRegionAsyncConnector extends IoTDBConnector {
    * @see PipeConnector#transfer(TsFileInsertionEvent) for more details.
    */
   private void transferQueuedEventsIfNecessary() throws Exception {
+    // FORCED if counter...
     if (retryEventQueue.isEmpty()) {
-      // Trigger cron heartbeat event in retry connector to send batch in time
-      retryTransfer(PipeConnectorSubtask.CRON_HEARTBEAT_EVENT);
       return;
     }
 
@@ -503,12 +497,9 @@ public class IoTDBDataRegionAsyncConnector extends IoTDBConnector {
 
       // Stop retrying if the execution time exceeds the threshold for better realtime performance
       if (System.currentTimeMillis() - retryStartTime > maxRetryExecutionTimeMsPerCall) {
-        break;
+        return;
       }
     }
-
-    // Trigger cron heartbeat event in retry connector to send batch in time
-    retryTransfer(PipeConnectorSubtask.CRON_HEARTBEAT_EVENT);
   }
 
   private void retryTransfer(final TabletInsertionEvent tabletInsertionEvent) throws Exception {
@@ -527,76 +518,6 @@ public class IoTDBDataRegionAsyncConnector extends IoTDBConnector {
   private void retryTransfer(final TsFileInsertionEvent tsFileInsertionEvent) throws Exception {
     // Directly transfers TsFile insertion event
     transferWithoutCheck(tsFileInsertionEvent);
-  }
-
-  private void retryTransfer(final Event event) throws Exception {
-    if (event instanceof PipeDeleteDataNodeEvent) {
-      doTransferWrapper((PipeDeleteDataNodeEvent) event);
-      return;
-    }
-
-    // Commit pending batches to maintain event order before processing this event
-    if (isTabletBatchModeEnabled && !tabletBatchBuilder.isEmpty()) {
-      doTransferWrapper();
-    }
-
-    if (!isSpecialEvent(event)) {
-      LOGGER.warn("Unsupported event type in IoTDBThriftAsyncConnector: {}.", event.getClass());
-    }
-  }
-
-  private boolean isSpecialEvent(final Event event) {
-    return event instanceof PipeHeartbeatEvent || event instanceof PipeTerminateEvent;
-  }
-
-  private void doTransferWrapper(final PipeDeleteDataNodeEvent pipeDeleteDataNodeEvent)
-      throws PipeException {
-    // We increase the reference count for this event to determine if the event may be released.
-    if (!pipeDeleteDataNodeEvent.increaseReferenceCount(
-        IoTDBDataRegionAsyncConnector.class.getName())) {
-      return;
-    }
-
-    try {
-      doTransfer(pipeDeleteDataNodeEvent);
-    } finally {
-      pipeDeleteDataNodeEvent.decreaseReferenceCount(
-          IoTDBDataRegionAsyncConnector.class.getName(), false);
-    }
-  }
-
-  private void doTransfer(final PipeDeleteDataNodeEvent pipeDeleteDataNodeEvent)
-      throws PipeException {
-    AsyncPipeDataTransferServiceClient client = null;
-    PipeTransferEnrichedEventHandler pipeTransferEnrichedEventHandler = null;
-    try {
-      final TPipeTransferReq req =
-          compressIfNeeded(
-              PipeTransferPlanNodeReq.toTPipeTransferReq(
-                  pipeDeleteDataNodeEvent.getDeleteDataNode()));
-      pipeTransferEnrichedEventHandler =
-          new PipeTransferEnrichedEventHandler(pipeDeleteDataNodeEvent, req, this);
-      client = clientManager.borrowClient();
-      pipeTransferEnrichedEventHandler.transfer(client);
-
-      if (LOGGER.isDebugEnabled()) {
-        LOGGER.debug("Successfully transferred deletion event {}.", pipeDeleteDataNodeEvent);
-      }
-    } catch (final Exception ex) {
-      logOnClientException(client, ex);
-      if (pipeTransferEnrichedEventHandler != null) {
-        pipeTransferEnrichedEventHandler.onError(ex);
-      } else {
-        throw new PipeConnectionException("Failed to transfer deletion event.", ex);
-      }
-    }
-  }
-
-  private void doTransferWrapper() throws Exception {
-    for (final Pair<TEndPoint, PipeTabletEventBatch> nonEmptyBatch :
-        tabletBatchBuilder.getAllNonEmptyBatches()) {
-      transferInBatchWithoutCheck(nonEmptyBatch);
-    }
   }
 
   /**
