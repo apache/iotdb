@@ -1516,13 +1516,13 @@ class Session(object):
         """
         request = TSExecuteStatementReq(self.__session_id, sql, self.__statement_id)
         try:
-            resp = self.__client.executeUpdateStatement(request)
+            resp = self.__client.executeUpdateStatementV2(request)
         except TTransport.TException as e:
             if self.reconnect():
                 try:
                     request.sessionId = self.__session_id
                     request.statementId = self.__statement_id
-                    resp = self.__client.executeUpdateStatement(request)
+                    resp = self.__client.executeUpdateStatementV2(request)
                 except TTransport.TException as e1:
                     raise IoTDBConnectionException(e1) from None
             else:
@@ -1547,13 +1547,13 @@ class Session(object):
             self.__session_id, sql, self.__statement_id, timeout
         )
         try:
-            resp = self.__client.executeStatement(request)
+            resp = self.__client.executeStatementV2(request)
         except TTransport.TException as e:
             if self.reconnect():
                 try:
                     request.sessionId = self.__session_id
                     request.statementId = self.__statement_id
-                    resp = self.__client.executeStatement(request)
+                    resp = self.__client.executeStatementV2(request)
                 except TTransport.TException as e1:
                     raise IoTDBConnectionException(e1) from None
             else:
@@ -1570,7 +1570,7 @@ class Session(object):
                 self.__client,
                 self.__statement_id,
                 self.__session_id,
-                resp.queryDataSet,
+                resp.queryResult,
                 resp.ignoreTimeStamp,
             )
         else:
@@ -1761,13 +1761,13 @@ class Session(object):
             enableRedirectQuery=False,
         )
         try:
-            resp = self.__client.executeRawDataQuery(request)
+            resp = self.__client.executeRawDataQueryV2(request)
         except TTransport.TException as e:
             if self.reconnect():
                 try:
                     request.sessionId = self.__session_id
                     request.statementId = self.__statement_id
-                    resp = self.__client.executeRawDataQuery(request)
+                    resp = self.__client.executeRawDataQueryV2(request)
                 except TTransport.TException as e1:
                     raise IoTDBConnectionException(e1) from None
             else:
@@ -1782,7 +1782,7 @@ class Session(object):
             self.__client,
             self.__statement_id,
             self.__session_id,
-            resp.queryDataSet,
+            resp.queryResult,
             resp.ignoreTimeStamp,
         )
 
@@ -1802,13 +1802,13 @@ class Session(object):
             enableRedirectQuery=False,
         )
         try:
-            resp = self.__client.executeLastDataQuery(request)
+            resp = self.__client.executeLastDataQueryV2(request)
         except TTransport.TException as e:
             if self.reconnect():
                 try:
                     request.sessionId = self.__session_id
                     request.statementId = self.__statement_id
-                    resp = self.__client.executeLastDataQuery(request)
+                    resp = self.__client.executeLastDataQueryV2(request)
                 except TTransport.TException as e1:
                     raise IoTDBConnectionException(e1) from None
             else:
@@ -1823,7 +1823,7 @@ class Session(object):
             self.__client,
             self.__statement_id,
             self.__session_id,
-            resp.queryDataSet,
+            resp.queryResult,
             resp.ignoreTimeStamp,
         )
 
@@ -2474,7 +2474,7 @@ class SessionConnection(object):
 
     def change_database(self, sql):
         try:
-            self.client.executeUpdateStatement(
+            self.client.executeUpdateStatementV2(
                 TSExecuteStatementReq(self.session_id, sql, self.statement_id)
             )
         except TTransport.TException as e:
