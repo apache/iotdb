@@ -225,7 +225,7 @@ public class IoTDBDataRegionAsyncConnector extends IoTDBConnector {
     endPointAndBatch.getRight().onSuccess();
   }
 
-  private void transferInEventWithoutCheck(final TabletInsertionEvent tabletInsertionEvent)
+  private boolean transferInEventWithoutCheck(final TabletInsertionEvent tabletInsertionEvent)
       throws Exception {
     if (tabletInsertionEvent instanceof PipeInsertNodeTabletInsertionEvent) {
       final PipeInsertNodeTabletInsertionEvent pipeInsertNodeTabletInsertionEvent =
@@ -233,7 +233,7 @@ public class IoTDBDataRegionAsyncConnector extends IoTDBConnector {
       // We increase the reference count for this event to determine if the event may be released.
       if (!pipeInsertNodeTabletInsertionEvent.increaseReferenceCount(
           IoTDBDataRegionAsyncConnector.class.getName())) {
-        return;
+        return false;
       }
 
       final InsertNode insertNode =
@@ -261,7 +261,7 @@ public class IoTDBDataRegionAsyncConnector extends IoTDBConnector {
       // We increase the reference count for this event to determine if the event may be released.
       if (!pipeRawTabletInsertionEvent.increaseReferenceCount(
           IoTDBDataRegionAsyncConnector.class.getName())) {
-        return;
+        return false;
       }
 
       final TPipeTransferReq pipeTransferTabletRawReq =
@@ -278,6 +278,8 @@ public class IoTDBDataRegionAsyncConnector extends IoTDBConnector {
 
       transfer(pipeRawTabletInsertionEvent.getDeviceId(), pipeTransferTabletReqHandler);
     }
+
+    return true;
   }
 
   private void transfer(
@@ -333,14 +335,14 @@ public class IoTDBDataRegionAsyncConnector extends IoTDBConnector {
     transferWithoutCheck(tsFileInsertionEvent);
   }
 
-  private void transferWithoutCheck(final TsFileInsertionEvent tsFileInsertionEvent)
+  private boolean transferWithoutCheck(final TsFileInsertionEvent tsFileInsertionEvent)
       throws Exception {
     final PipeTsFileInsertionEvent pipeTsFileInsertionEvent =
         (PipeTsFileInsertionEvent) tsFileInsertionEvent;
     // We increase the reference count for this event to determine if the event may be released.
     if (!pipeTsFileInsertionEvent.increaseReferenceCount(
         IoTDBDataRegionAsyncConnector.class.getName())) {
-      return;
+      return false;
     }
 
     // We assume that no exceptions will be thrown after reference count is increased.
@@ -370,6 +372,7 @@ public class IoTDBDataRegionAsyncConnector extends IoTDBConnector {
                   : null);
 
       transfer(pipeTransferTsFileHandler);
+      return true;
     } catch (final Exception e) {
       // Just in case. To avoid the case that exception occurred when constructing the handler.
       pipeTsFileInsertionEvent.decreaseReferenceCount(
@@ -502,22 +505,52 @@ public class IoTDBDataRegionAsyncConnector extends IoTDBConnector {
     }
   }
 
-  private void retryTransfer(final TabletInsertionEvent tabletInsertionEvent) throws Exception {
+  private void retryTransfer(final TabletInsertionEvent tabletInsertionEvent) {
     if (isTabletBatchModeEnabled) {
-      final Pair<TEndPoint, PipeTabletEventBatch> endPointAndBatch =
-          tabletBatchBuilder.onEvent(tabletInsertionEvent);
-      if (Objects.isNull(endPointAndBatch)) {
-        return;
+      try {
+        transferInBatchWithoutCheck(tabletBatchBuilder.onEvent(tabletInsertionEvent));
+        if (tabletInsertionEvent instanceof EnrichedEvent) {
+          ((EnrichedEvent) tabletInsertionEvent)
+              .decreaseReferenceCount(IoTDBDataRegionAsyncConnector.class.getName(), false);
+        }
+      } catch (final Exception e) {
+        addFailureEventToRetryQueue(tabletInsertionEvent);
       }
-      transferInBatchWithoutCheck(endPointAndBatch);
-    } else {
-      transferInEventWithoutCheck(tabletInsertionEvent);
+      return;
+    }
+
+    // Tablet batch mode is not enabled, so we need to transfer the event directly.
+    try {
+      if (transferInEventWithoutCheck(tabletInsertionEvent)) {
+        if (tabletInsertionEvent instanceof EnrichedEvent) {
+          ((EnrichedEvent) tabletInsertionEvent)
+              .decreaseReferenceCount(IoTDBDataRegionAsyncConnector.class.getName(), false);
+        }
+      } else {
+        addFailureEventToRetryQueue(tabletInsertionEvent);
+      }
+    } catch (final Exception e) {
+      if (tabletInsertionEvent instanceof EnrichedEvent) {
+        ((EnrichedEvent) tabletInsertionEvent)
+            .decreaseReferenceCount(IoTDBDataRegionAsyncConnector.class.getName(), false);
+      }
+      addFailureEventToRetryQueue(tabletInsertionEvent);
     }
   }
 
-  private void retryTransfer(final TsFileInsertionEvent tsFileInsertionEvent) throws Exception {
-    // Directly transfers TsFile insertion event
-    transferWithoutCheck(tsFileInsertionEvent);
+  private void retryTransfer(final PipeTsFileInsertionEvent tsFileInsertionEvent) {
+    try {
+      if (transferWithoutCheck(tsFileInsertionEvent)) {
+        tsFileInsertionEvent.decreaseReferenceCount(
+            IoTDBDataRegionAsyncConnector.class.getName(), false);
+      } else {
+        addFailureEventToRetryQueue(tsFileInsertionEvent);
+      }
+    } catch (final Exception e) {
+      tsFileInsertionEvent.decreaseReferenceCount(
+          IoTDBDataRegionAsyncConnector.class.getName(), false);
+      addFailureEventToRetryQueue(tsFileInsertionEvent);
+    }
   }
 
   /**
