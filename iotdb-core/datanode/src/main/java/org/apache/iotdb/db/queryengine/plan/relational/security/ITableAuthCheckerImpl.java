@@ -21,6 +21,7 @@ package org.apache.iotdb.db.queryengine.plan.relational.security;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.commons.exception.auth.AccessDeniedException;
+import org.apache.iotdb.commons.schema.table.InformationSchema;
 import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.QualifiedObjectName;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -29,7 +30,9 @@ public class ITableAuthCheckerImpl implements ITableAuthChecker {
 
   @Override
   public void checkDatabaseVisibility(String userName, String databaseName) {
-    if (AuthorityChecker.SUPER_USER.equals(userName)) {
+    if (AuthorityChecker.SUPER_USER.equals(userName)
+        // Information_schema is visible to any user
+        || InformationSchema.INFORMATION_DATABASE.equals(databaseName)) {
       return;
     }
     if (!AuthorityChecker.checkDBVisible(userName, databaseName)) {
@@ -132,7 +135,9 @@ public class ITableAuthCheckerImpl implements ITableAuthChecker {
 
   @Override
   public void checkTableVisibility(String userName, QualifiedObjectName tableName) {
-    if (AuthorityChecker.SUPER_USER.equals(userName)) {
+    if (AuthorityChecker.SUPER_USER.equals(userName)
+        // Information_schema is visible to any user
+        || tableName.getDatabaseName().equals(InformationSchema.INFORMATION_DATABASE)) {
       return;
     }
     if (!AuthorityChecker.checkTableVisible(
