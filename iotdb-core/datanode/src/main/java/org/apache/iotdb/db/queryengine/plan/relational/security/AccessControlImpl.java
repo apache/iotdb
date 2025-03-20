@@ -56,6 +56,10 @@ public class AccessControlImpl implements AccessControl {
 
   @Override
   public void checkCanShowOrUseDatabase(String userName, String databaseName) {
+    // Information_schema is visible to any user
+    if (databaseName.equals(InformationSchema.INFORMATION_DATABASE)) {
+      return;
+    }
     authChecker.checkDatabaseVisibility(userName, databaseName);
   }
 
@@ -110,6 +114,10 @@ public class AccessControlImpl implements AccessControl {
 
   @Override
   public void checkCanShowOrDescTable(String userName, QualifiedObjectName tableName) {
+    // Information_schema is visible to any user
+    if (tableName.getDatabaseName().equals(InformationSchema.INFORMATION_DATABASE)) {
+      return;
+    }
     authChecker.checkTableVisibility(userName, tableName);
   }
 
