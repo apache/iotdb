@@ -434,6 +434,26 @@ public class CommonDescriptor {
                         "pipe_async_connector_max_retry_execution_time_ms_per_call",
                         String.valueOf(
                             config.getPipeAsyncConnectorMaxRetryExecutionTimeMsPerCall())))));
+    config.setPipeAsyncConnectorForcedRetryTabletEventQueueSizeThreshold(
+        Integer.parseInt(
+            Optional.ofNullable(
+                    properties.getProperty("pipe_async_sink_forced_retry_tablet_event_queue_size"))
+                .orElse(
+                    properties.getProperty(
+                        "pipe_async_connector_forced_retry_tablet_event_queue_size",
+                        String.valueOf(
+                            config
+                                .getPipeAsyncConnectorForcedRetryTabletEventQueueSizeThreshold())))));
+    config.setPipeAsyncConnectorForcedRetryTotalEventQueueSizeThreshold(
+        Integer.parseInt(
+            Optional.ofNullable(
+                    properties.getProperty("pipe_async_sink_forced_retry_total_event_queue_size"))
+                .orElse(
+                    properties.getProperty(
+                        "pipe_async_connector_forced_retry_total_event_queue_size",
+                        String.valueOf(
+                            config
+                                .getPipeAsyncConnectorForcedRetryTotalEventQueueSizeThreshold())))));
     int pipeAsyncConnectorSelectorNumber =
         Integer.parseInt(
             Optional.ofNullable(properties.getProperty("pipe_sink_selector_number"))

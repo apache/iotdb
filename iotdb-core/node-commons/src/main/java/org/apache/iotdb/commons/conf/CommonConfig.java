@@ -235,6 +235,8 @@ public class CommonConfig {
   private long pipeConnectorRetryIntervalMs = 1000L;
   private boolean pipeConnectorRPCThriftCompressionEnabled = false;
 
+  private int pipeAsyncConnectorForcedRetryTabletEventQueueSizeThreshold = 20;
+  private int pipeAsyncConnectorForcedRetryTotalEventQueueSizeThreshold = 30;
   private long pipeAsyncConnectorMaxRetryExecutionTimeMsPerCall = 500;
   private int pipeAsyncConnectorSelectorNumber =
       Math.max(4, Runtime.getRuntime().availableProcessors() / 2);
@@ -859,6 +861,26 @@ public class CommonConfig {
 
   public boolean isPipeConnectorRPCThriftCompressionEnabled() {
     return pipeConnectorRPCThriftCompressionEnabled;
+  }
+
+  public void setPipeAsyncConnectorForcedRetryTabletEventQueueSizeThreshold(
+      int pipeAsyncConnectorForcedRetryTabletEventQueueSizeThreshold) {
+    this.pipeAsyncConnectorForcedRetryTabletEventQueueSizeThreshold =
+        pipeAsyncConnectorForcedRetryTabletEventQueueSizeThreshold;
+  }
+
+  public int getPipeAsyncConnectorForcedRetryTabletEventQueueSizeThreshold() {
+    return pipeAsyncConnectorForcedRetryTabletEventQueueSizeThreshold;
+  }
+
+  public void setPipeAsyncConnectorForcedRetryTotalEventQueueSizeThreshold(
+      int pipeAsyncConnectorForcedRetryTotalEventQueueSizeThreshold) {
+    this.pipeAsyncConnectorForcedRetryTotalEventQueueSizeThreshold =
+        pipeAsyncConnectorForcedRetryTotalEventQueueSizeThreshold;
+  }
+
+  public int getPipeAsyncConnectorForcedRetryTotalEventQueueSizeThreshold() {
+    return pipeAsyncConnectorForcedRetryTotalEventQueueSizeThreshold;
   }
 
   public void setPipeAsyncConnectorMaxRetryExecutionTimeMsPerCall(
