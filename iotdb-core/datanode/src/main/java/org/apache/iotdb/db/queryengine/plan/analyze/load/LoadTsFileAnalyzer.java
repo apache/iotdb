@@ -126,9 +126,6 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
   private TreeSchemaAutoCreatorAndVerifier treeSchemaAutoCreatorAndVerifier;
   private LoadTsFileTableSchemaCache tableSchemaCache;
 
-  // Metrics
-  private long tabletsCastTimeCost = 0;
-
   public LoadTsFileAnalyzer(
       LoadTsFileStatement loadTsFileStatement, boolean isGeneratedByPipe, MPPQueryContext context) {
     this.context = context;
@@ -226,11 +223,6 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
       analysis.setFinishQueryAfterAnalyze(true);
       analysis.setFailStatus(RpcUtils.getStatus(TSStatusCode.LOAD_FILE_ERROR, exceptionMessage));
       return analysis;
-    } finally {
-      if (tabletsCastTimeCost > 0) {
-        LOAD_TSFILE_COST_METRICS_SET.recordPhaseTimeCost(
-            LoadTsFileCostMetricsSet.ANALYSIS_CAST_TABLETS, tabletsCastTimeCost);
-      }
     }
 
     LOGGER.info("Load - Analysis Stage: all tsfiles have been analyzed.");
@@ -413,7 +405,8 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
       addWritePointCount(0);
       return true;
     } finally {
-      tabletsCastTimeCost += System.nanoTime() - startTime;
+      LOAD_TSFILE_COST_METRICS_SET.recordPhaseTimeCost(
+          LoadTsFileCostMetricsSet.ANALYSIS_CAST_TABLETS, System.nanoTime() - startTime);
     }
   }
 
@@ -708,7 +701,8 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
             new TSStatus(TSStatusCode.LOAD_FILE_ERROR.getStatusCode()).setMessage(e.getMessage()));
         break;
       } finally {
-        tabletsCastTimeCost += System.nanoTime() - startTime;
+        LOAD_TSFILE_COST_METRICS_SET.recordPhaseTimeCost(
+            LoadTsFileCostMetricsSet.ANALYSIS_CAST_TABLETS, System.nanoTime() - startTime);
       }
     }
 
