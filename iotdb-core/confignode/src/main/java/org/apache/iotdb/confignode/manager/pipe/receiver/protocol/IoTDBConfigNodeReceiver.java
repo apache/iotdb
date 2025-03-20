@@ -355,7 +355,9 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
                     new PrivilegeUnion(
                         Collections.singletonList(
                             new PartialPath(((SetTTLPlan) plan).getPathPattern())),
-                        PrivilegeType.WRITE_SCHEMA))
+                        ((SetTTLPlan) plan).isDataBase()
+                            ? PrivilegeType.MANAGE_DATABASE
+                            : PrivilegeType.WRITE_SCHEMA))
                 .getStatus();
       case UpdateTriggerStateInTable:
       case DeleteTriggerInTable:
