@@ -1039,7 +1039,8 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
     return executeAggregationQueryInternal(req, SELECT_RESULT);
   }
 
-  public TSExecuteStatementResp executeGroupByQueryIntervalQuery2(TSGroupByQueryIntervalReq req)
+  @Override
+  public TSExecuteStatementResp executeGroupByQueryIntervalQuery(TSGroupByQueryIntervalReq req)
       throws TException {
 
     try {
@@ -1085,31 +1086,6 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
               req.getAggregationType(),
               dataRegionList);
 
-      String outputColumnName = req.getAggregationType().name();
-      List<ColumnHeader> columnHeaders =
-          Collections.singletonList(new ColumnHeader(outputColumnName, dataType));
-      DatasetHeader header = new DatasetHeader(columnHeaders, false);
-      header.setColumnToTsBlockIndexMap(Collections.singletonList(outputColumnName));
-
-      TSExecuteStatementResp resp = createResponse(header, 1);
-      TSQueryDataSet queryDataSet = convertTsBlockByFetchSize(blockResult);
-      resp.setQueryDataSet(queryDataSet);
-
-      return resp;
-    } catch (Exception e) {
-      return RpcUtils.getTSExecuteStatementResp(
-          onQueryException(e, "\"" + req + "\". " + OperationType.EXECUTE_AGG_QUERY));
-    } finally {
-      SESSION_MANAGER.updateIdleTime();
-    }
-  }
-
-  @Override
-  public TSExecuteStatementResp executeGroupByQueryIntervalQuery(TSGroupByQueryIntervalReq req)
-      throws TException {
-    try {
-      TSDataType dataType = TSDataType.getTsDataType((byte) req.getDataType());
-      List<TsBlock> blockResult = Collections.emptyList();
       String outputColumnName = req.getAggregationType().name();
       List<ColumnHeader> columnHeaders =
           Collections.singletonList(new ColumnHeader(outputColumnName, dataType));
