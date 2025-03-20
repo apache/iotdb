@@ -1368,10 +1368,20 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
       }
 
       List<PartialPath> targetPath = new ArrayList<>();
+      List<List<Long>> timeRanges = new ArrayList<>();
       for (IoTDBSqlParser.DataElementContext dataElementContext :
           ctx.trainingData().dataElement()) {
+        if (dataElementContext.timeRange() != null) {
+          long currentTime = CommonDateTimeUtils.currentTime();
+          long startTime = parseTimeValue(dataElementContext.timeRange().timeValue(0), currentTime);
+          long endTime = parseTimeValue(dataElementContext.timeRange().timeValue(1), currentTime);
+          timeRanges.add(Arrays.asList(startTime, endTime));
+        } else {
+          timeRanges.add(Collections.emptyList());
+        }
         targetPath.add(parsePrefixPath(dataElementContext.pathPatternElement().prefixPath()));
       }
+      createTrainingStatement.setTargetTimeRanges(timeRanges);
       createTrainingStatement.setTargetPathPatterns(targetPath);
       return createTrainingStatement;
     }

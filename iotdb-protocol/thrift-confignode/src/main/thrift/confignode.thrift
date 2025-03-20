@@ -1054,6 +1054,7 @@ struct TCreateTrainingReq {
     7: optional bool useAllData
     8: optional map<string, string> parameters
     9: optional string existingModelId
+    10: optional list<list<i64>> timeRanges
 }
 
 // ====================================================

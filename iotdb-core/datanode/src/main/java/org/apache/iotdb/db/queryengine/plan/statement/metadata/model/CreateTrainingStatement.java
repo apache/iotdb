@@ -37,6 +37,7 @@ public class CreateTrainingStatement extends Statement implements IConfigStateme
   String existingModelId = null;
 
   List<PartialPath> targetPathPatterns;
+  List<List<Long>> targetTimeRanges;
 
   public CreateTrainingStatement(String modelId, String modelType) {
     this.modelId = modelId;
@@ -75,8 +76,12 @@ public class CreateTrainingStatement extends Statement implements IConfigStateme
     this.modelId = modelId;
   }
 
-  public void setModelType(String modelType) {
-    this.modelType = modelType;
+  public void setTargetTimeRanges(List<List<Long>> targetTimeRanges) {
+    this.targetTimeRanges = targetTimeRanges;
+  }
+
+  public List<List<Long>> getTargetTimeRanges() {
+    return targetTimeRanges;
   }
 
   public void setParameters(Map<String, String> parameters) {

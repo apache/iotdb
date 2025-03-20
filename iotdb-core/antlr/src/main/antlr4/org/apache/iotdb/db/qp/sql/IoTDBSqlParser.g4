@@ -702,7 +702,7 @@ trainingData
     ;
 
 dataElement
-    : pathPatternElement
+    : pathPatternElement (LL_BRACKET timeRange LR_BRACKET)?
     ;
 
 pathPatternElement

@@ -78,6 +78,7 @@ struct TInferenceResp {
 struct ITableSchema {
   1: required string database
   2: required string tableName
+  3: optional list<i64> timeRange
 }
 
 struct TTrainingReq {

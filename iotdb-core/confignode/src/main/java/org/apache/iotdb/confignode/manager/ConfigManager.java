@@ -2593,8 +2593,10 @@ public class ConfigManager implements IManager {
       tableSchemaList.add(new ITableSchema("root.**", ""));
       return tableSchemaList;
     }
-    for (String fullPath : req.targetDbs) {
-      tableSchemaList.add(new ITableSchema(fullPath, ""));
+    for (int i = 0; i < req.getTargetDbsSize(); i++) {
+      ITableSchema tableSchema = new ITableSchema(req.getTargetDbs().get(i), "");
+      tableSchema.setTimeRange(req.getTimeRanges().get(i));
+      tableSchemaList.add(tableSchema);
     }
     return tableSchemaList;
   }
@@ -2665,6 +2667,7 @@ public class ConfigManager implements IManager {
         }
       }
     } catch (final Exception e) {
+      status.setCode(TSStatusCode.CAN_NOT_CONNECT_CONFIGNODE.getStatusCode());
       status.setMessage(e.getMessage());
       try {
         updateModelInfo(new TUpdateModelInfoReq(req.modelId, ModelStatus.UNAVAILABLE.ordinal()));

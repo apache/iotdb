@@ -34,6 +34,7 @@ public class CreateTraining extends Statement {
 
   private List<Table> targetTables;
   private List<String> targetDbs;
+  private List<List<Long>> targetTimeRanges;
   private boolean useAllData = false;
 
   public CreateTraining(String modelId, String modelType, boolean isTableModel) {
@@ -106,6 +107,14 @@ public class CreateTraining extends Statement {
 
   public boolean isUseAllData() {
     return useAllData;
+  }
+
+  public void setTargetTimeRanges(List<List<Long>> targetTimeRanges) {
+    this.targetTimeRanges = targetTimeRanges;
+  }
+
+  public List<List<Long>> getTargetTimeRanges() {
+    return targetTimeRanges;
   }
 
   @Override
