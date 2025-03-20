@@ -463,7 +463,20 @@ public class IoTDBDatabaseIT {
                   "consumer_group_name,STRING,TAG,",
                   "subscribed_consumers,STRING,ATTRIBUTE,")));
 
+      // Currently only root can query information_schema
+      Assert.assertThrows(
+          SQLException.class,
+          () -> {
+            statement.execute("select * from databases");
+          });
+    }
+
+    try (final Connection connection =
+            EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        final Statement statement = connection.createStatement()) {
       // Test table query
+      statement.execute("use information_schema");
+
       statement.execute("create database test");
       statement.execute(
           "create table test.test (a tag, b attribute, c int32 comment 'turbine') comment 'test'");
