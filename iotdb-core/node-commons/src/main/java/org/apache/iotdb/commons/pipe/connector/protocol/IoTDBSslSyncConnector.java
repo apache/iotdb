@@ -126,7 +126,9 @@ public abstract class IoTDBSslSyncConnector extends IoTDBConnector {
             useLeaderCache,
             loadBalanceStrategy,
             shouldReceiverConvertOnTypeMismatch,
-            loadTsFileStrategy);
+            loadTsFileStrategy,
+            loadTsFileValidation,
+            shouldMarkAsPipeRequest);
   }
 
   protected abstract IoTDBSyncClientManager constructClient(
@@ -139,7 +141,9 @@ public abstract class IoTDBSslSyncConnector extends IoTDBConnector {
       final boolean useLeaderCache,
       final String loadBalanceStrategy,
       final boolean shouldReceiverConvertOnTypeMismatch,
-      final String loadTsFileStrategy);
+      final String loadTsFileStrategy,
+      final boolean validateTsFile,
+      final boolean shouldMarkAsPipeRequest);
 
   @Override
   public void handshake() throws Exception {

@@ -105,7 +105,7 @@ public class RemoteCommonConfig implements CommonConfig {
   }
 
   @Override
-  public CommonConfig setAvgSeriesPointNumberThreshold(int avgSeriesPointNumberThreshold) {
+  public CommonConfig setTargetChunkPointNum(int targetChunkPointNum) {
     return this;
   }
 
@@ -162,6 +162,11 @@ public class RemoteCommonConfig implements CommonConfig {
 
   @Override
   public CommonConfig setTimePartitionInterval(long timePartitionInterval) {
+    return this;
+  }
+
+  @Override
+  public CommonConfig setTTLCheckInterval(long ttlCheckInterval) {
     return this;
   }
 
@@ -246,6 +251,11 @@ public class RemoteCommonConfig implements CommonConfig {
 
   @Override
   public CommonConfig setSeriesSlotNum(int seriesSlotNum) {
+    return this;
+  }
+
+  @Override
+  public CommonConfig setSeriesPartitionExecutorClass(String seriesPartitionExecutorClass) {
     return this;
   }
 

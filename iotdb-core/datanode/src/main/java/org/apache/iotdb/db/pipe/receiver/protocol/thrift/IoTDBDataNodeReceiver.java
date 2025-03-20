@@ -23,6 +23,7 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.connector.payload.airgap.AirGapPseudoTPipeTransferRequest;
 import org.apache.iotdb.commons.pipe.connector.payload.thrift.common.PipeTransferSliceReqHandler;
 import org.apache.iotdb.commons.pipe.connector.payload.thrift.request.PipeRequestType;
@@ -34,6 +35,7 @@ import org.apache.iotdb.commons.pipe.datastructure.pattern.IoTDBPipePattern;
 import org.apache.iotdb.commons.pipe.receiver.IoTDBFileReceiver;
 import org.apache.iotdb.commons.pipe.receiver.PipeReceiverStatusHandler;
 import org.apache.iotdb.commons.utils.FileUtils;
+import org.apache.iotdb.commons.utils.RetryUtils;
 import org.apache.iotdb.commons.utils.StatusUtils;
 import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.conf.IoTDBConfig;
@@ -54,7 +56,7 @@ import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransfer
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTsFileSealReq;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTsFileSealWithModReq;
 import org.apache.iotdb.db.pipe.event.common.schema.PipeSchemaRegionSnapshotEvent;
-import org.apache.iotdb.db.pipe.metric.PipeDataNodeReceiverMetrics;
+import org.apache.iotdb.db.pipe.metric.receiver.PipeDataNodeReceiverMetrics;
 import org.apache.iotdb.db.pipe.receiver.visitor.PipePlanToStatementVisitor;
 import org.apache.iotdb.db.pipe.receiver.visitor.PipeStatementDataTypeConvertExecutionVisitor;
 import org.apache.iotdb.db.pipe.receiver.visitor.PipeStatementExceptionVisitor;
@@ -141,6 +143,9 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
   private final PipeTransferSliceReqHandler sliceReqHandler = new PipeTransferSliceReqHandler();
 
   private static final SessionManager SESSION_MANAGER = SessionManager.getInstance();
+  private static final long LOGIN_PERIODIC_VERIFICATION_INTERVAL_MS =
+      PipeConfig.getInstance().getPipeReceiverLoginPeriodicVerificationIntervalMs();
+  private long lastSuccessfulLoginTime = Long.MIN_VALUE;
 
   static {
     try {
@@ -408,14 +413,23 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
   @Override
   protected TSStatus tryLogin() {
     final IClientSession clientSession = SESSION_MANAGER.getCurrSession();
-    if (clientSession == null || !clientSession.isLogin()) {
-      return SESSION_MANAGER.login(
-          SESSION_MANAGER.getCurrSession(),
-          username,
-          password,
-          ZoneId.systemDefault().toString(),
-          SessionManager.CURRENT_RPC_VERSION,
-          IoTDBConstant.ClientVersion.V_1_0);
+    if (clientSession == null
+        || !clientSession.isLogin()
+        || (LOGIN_PERIODIC_VERIFICATION_INTERVAL_MS >= 0
+            && lastSuccessfulLoginTime
+                < System.currentTimeMillis() - LOGIN_PERIODIC_VERIFICATION_INTERVAL_MS)) {
+      final TSStatus status =
+          SESSION_MANAGER.login(
+              SESSION_MANAGER.getCurrSession(),
+              username,
+              password,
+              ZoneId.systemDefault().toString(),
+              SessionManager.CURRENT_RPC_VERSION,
+              IoTDBConstant.ClientVersion.V_1_0);
+      if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        lastSuccessfulLoginTime = System.currentTimeMillis();
+      }
+      return status;
     }
     return StatusUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
   }
@@ -468,7 +482,11 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
       final File sourceFile = new File(absolutePath);
       if (!Objects.equals(
           loadActiveListeningPipeDir, sourceFile.getParentFile().getAbsolutePath())) {
-        FileUtils.moveFileWithMD5Check(sourceFile, new File(loadActiveListeningPipeDir));
+        RetryUtils.retryOnException(
+            () -> {
+              FileUtils.moveFileWithMD5Check(sourceFile, new File(loadActiveListeningPipeDir));
+              return null;
+            });
       }
     }
 
@@ -480,7 +498,7 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
 
     statement.setDeleteAfterLoad(true);
     statement.setConvertOnTypeMismatch(true);
-    statement.setVerifySchema(true);
+    statement.setVerifySchema(validateTsFile.get());
     statement.setAutoCreateDatabase(false);
 
     return executeStatementAndClassifyExceptions(statement);
@@ -662,14 +680,19 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
     return shouldConvertDataTypeOnTypeMismatch
             && ((statement instanceof InsertBaseStatement
                     && ((InsertBaseStatement) statement).hasFailedMeasurements())
-                || status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode())
+                || (status.getCode() != TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode()
+                    && status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()))
         ? statement.accept(statementDataTypeConvertExecutionVisitor, status).orElse(status)
         : status;
   }
 
   private TSStatus executeStatement(final Statement statement) {
     IClientSession clientSession = SESSION_MANAGER.getCurrSessionAndUpdateIdleTime();
-    if (clientSession == null || !clientSession.isLogin()) {
+    if (clientSession == null
+        || !clientSession.isLogin()
+        || (LOGIN_PERIODIC_VERIFICATION_INTERVAL_MS >= 0
+            && lastSuccessfulLoginTime
+                < System.currentTimeMillis() - LOGIN_PERIODIC_VERIFICATION_INTERVAL_MS)) {
       final BasicOpenSessionResp openSessionResp =
           SESSION_MANAGER.login(
               SESSION_MANAGER.getCurrSession(),
@@ -686,6 +709,7 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
             openSessionResp);
         return RpcUtils.getStatus(openSessionResp.getCode(), openSessionResp.getMessage());
       }
+      lastSuccessfulLoginTime = System.currentTimeMillis();
       clientSession = SESSION_MANAGER.getCurrSession();
     }
 
@@ -702,7 +726,7 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
 
     return Coordinator.getInstance()
         .executeForTreeModel(
-            new PipeEnrichedStatement(statement),
+            shouldMarkAsPipeRequest.get() ? new PipeEnrichedStatement(statement) : statement,
             SessionManager.getInstance().requestQueryId(),
             SESSION_MANAGER.getSessionInfo(clientSession),
             "",

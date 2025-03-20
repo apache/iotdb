@@ -43,7 +43,9 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Arrays;
+import java.util.List;
 import java.util.Objects;
+import java.util.stream.Collectors;
 
 public abstract class InsertNode extends SearchNode implements ComparableConsensusRequest {
 
@@ -82,6 +84,26 @@ public abstract class InsertNode extends SearchNode implements ComparableConsens
   protected InsertNode(PlanNodeId id) {
     super(id);
   }
+
+  @Override
+  public final SearchNode merge(List<SearchNode> searchNodes) {
+    if (searchNodes.isEmpty()) {
+      throw new IllegalArgumentException("insertNodes should never be empty");
+    }
+    if (searchNodes.size() == 1) {
+      return searchNodes.get(0);
+    }
+    List<InsertNode> insertNodes =
+        searchNodes.stream()
+            .map(searchNode -> (InsertNode) searchNode)
+            .collect(Collectors.toList());
+    InsertNode result = mergeInsertNode(insertNodes);
+    result.setSearchIndex(insertNodes.get(0).getSearchIndex());
+    result.setDevicePath(insertNodes.get(0).getDevicePath());
+    return result;
+  }
+
+  public abstract InsertNode mergeInsertNode(List<InsertNode> insertNodes);
 
   protected InsertNode(
       PlanNodeId id,
@@ -314,6 +336,7 @@ public abstract class InsertNode extends SearchNode implements ComparableConsens
     return result;
   }
 
+  @Override
   public long getMemorySize() {
     if (memorySize == 0) {
       memorySize = InsertNodeMemoryEstimator.sizeOf(this);

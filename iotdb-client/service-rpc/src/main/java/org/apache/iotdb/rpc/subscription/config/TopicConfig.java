@@ -53,6 +53,8 @@ public class TopicConfig extends PipeParameters {
 
   private static final Map<String, String> SINK_TABLET_FORMAT_CONFIG =
       Collections.singletonMap("format", "tablet");
+  private static final Map<String, String> SINK_TS_FILE_FORMAT_CONFIG =
+      Collections.singletonMap("format", "tsfile");
 
   private static final Map<String, String> SNAPSHOT_MODE_CONFIG =
       Collections.singletonMap("mode", MODE_SNAPSHOT_VALUE);
@@ -124,6 +126,19 @@ public class TopicConfig extends PipeParameters {
         .collect(Collectors.toMap(key -> key, key -> looseRangeValue));
   }
 
+  public Map<String, String> getAttributesWithSourcePrefix() {
+    final Map<String, String> attributesWithProcessorPrefix = new HashMap<>();
+    attributes.forEach(
+        (key, value) -> {
+          if (key.toLowerCase().startsWith("source")) {
+            attributesWithProcessorPrefix.put(key, value);
+          }
+        });
+    return attributesWithProcessorPrefix;
+  }
+
+  /////////////////////////////// processor attributes mapping ///////////////////////////////
+
   public Map<String, String> getAttributesWithProcessorPrefix() {
     final Map<String, String> attributesWithProcessorPrefix = new HashMap<>();
     attributes.forEach(
@@ -136,6 +151,22 @@ public class TopicConfig extends PipeParameters {
   }
 
   public Map<String, String> getAttributesWithSinkFormat() {
-    return Collections.emptyMap(); // default to hybrid
+    // refer to
+    // org.apache.iotdb.db.pipe.agent.task.connection.PipeEventCollector.parseAndCollectEvent(org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent)
+    return TopicConstant.FORMAT_TS_FILE_HANDLER_VALUE.equalsIgnoreCase(
+            attributes.getOrDefault(TopicConstant.FORMAT_KEY, TopicConstant.FORMAT_DEFAULT_VALUE))
+        ? SINK_TS_FILE_FORMAT_CONFIG
+        : SINK_TABLET_FORMAT_CONFIG;
+  }
+
+  public Map<String, String> getAttributesWithSinkPrefix() {
+    final Map<String, String> attributesWithProcessorPrefix = new HashMap<>();
+    attributes.forEach(
+        (key, value) -> {
+          if (key.toLowerCase().startsWith("sink")) {
+            attributesWithProcessorPrefix.put(key, value);
+          }
+        });
+    return attributesWithProcessorPrefix;
   }
 }

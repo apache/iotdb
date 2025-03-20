@@ -30,6 +30,7 @@ import org.apache.iotdb.commons.utils.NodeUrlUtils;
 import org.apache.iotdb.confignode.manager.load.balancer.RegionBalancer;
 import org.apache.iotdb.confignode.manager.load.balancer.router.leader.AbstractLeaderBalancer;
 import org.apache.iotdb.confignode.manager.load.balancer.router.priority.IPriorityBalancer;
+import org.apache.iotdb.confignode.manager.load.cache.IFailureDetector;
 import org.apache.iotdb.confignode.manager.partition.RegionGroupExtensionPolicy;
 import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
 import org.apache.iotdb.metrics.utils.NodeType;
@@ -238,12 +239,13 @@ public class ConfigNodeDescriptor {
                 .trim()));
 
     conf.setSchemaRegionPerDataNode(
-        Double.parseDouble(
-            properties
-                .getProperty(
-                    "schema_region_per_data_node",
-                    String.valueOf(conf.getSchemaRegionPerDataNode()))
-                .trim()));
+        (int)
+            Double.parseDouble(
+                properties
+                    .getProperty(
+                        "schema_region_per_data_node",
+                        String.valueOf(conf.getSchemaRegionPerDataNode()))
+                    .trim()));
 
     conf.setDataRegionGroupExtensionPolicy(
         RegionGroupExtensionPolicy.parse(
@@ -258,11 +260,13 @@ public class ConfigNodeDescriptor {
                 String.valueOf(conf.getDefaultDataRegionGroupNumPerDatabase()).trim())));
 
     conf.setDataRegionPerDataNode(
-        Double.parseDouble(
-            properties
-                .getProperty(
-                    "data_region_per_data_node", String.valueOf(conf.getDataRegionPerDataNode()))
-                .trim()));
+        (int)
+            Double.parseDouble(
+                properties
+                    .getProperty(
+                        "data_region_per_data_node",
+                        String.valueOf(conf.getDataRegionPerDataNode()))
+                    .trim()));
 
     try {
       conf.setRegionAllocateStrategy(
@@ -315,6 +319,35 @@ public class ConfigNodeDescriptor {
                 .getProperty(
                     "heartbeat_interval_in_ms", String.valueOf(conf.getHeartbeatIntervalInMs()))
                 .trim()));
+
+    String failureDetector = properties.getProperty("failure_detector", conf.getFailureDetector());
+    if (IFailureDetector.FIXED_DETECTOR.equals(failureDetector)
+        || IFailureDetector.PHI_ACCRUAL_DETECTOR.equals(failureDetector)) {
+      conf.setFailureDetector(failureDetector);
+    } else {
+      throw new IOException(
+          String.format(
+              "Unknown failure_detector: %s, " + "please set to \"fixed\" or \"phi_accrual\"",
+              failureDetector));
+    }
+
+    conf.setFailureDetectorFixedThresholdInMs(
+        Long.parseLong(
+            properties.getProperty(
+                "failure_detector_fixed_threshold_in_ms",
+                String.valueOf(conf.getFailureDetectorFixedThresholdInMs()))));
+
+    conf.setFailureDetectorPhiThreshold(
+        Long.parseLong(
+            properties.getProperty(
+                "failure_detector_phi_threshold",
+                String.valueOf(conf.getFailureDetectorPhiThreshold()))));
+
+    conf.setFailureDetectorPhiAcceptablePauseInMs(
+        Long.parseLong(
+            properties.getProperty(
+                "failure_detector_phi_acceptable_pause_in_ms",
+                String.valueOf(conf.getFailureDetectorPhiAcceptablePauseInMs()))));
 
     String leaderDistributionPolicy =
         properties

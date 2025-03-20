@@ -45,7 +45,6 @@ import org.apache.iotdb.confignode.consensus.request.write.partition.RemoveRegio
 import org.apache.iotdb.confignode.manager.ConfigManager;
 import org.apache.iotdb.confignode.manager.load.cache.consensus.ConsensusGroupHeartbeatSample;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
-import org.apache.iotdb.confignode.procedure.scheduler.LockQueue;
 import org.apache.iotdb.mpp.rpc.thrift.TCreatePeerReq;
 import org.apache.iotdb.mpp.rpc.thrift.TMaintainPeerReq;
 import org.apache.iotdb.mpp.rpc.thrift.TRegionLeaderChangeResp;
@@ -77,9 +76,6 @@ public class RegionMaintainHandler {
 
   private final ConfigManager configManager;
 
-  /** region migrate lock */
-  private final LockQueue regionMigrateLock = new LockQueue();
-
   private final IClientManager<TEndPoint, SyncDataNodeInternalServiceClient> dataNodeClientManager;
 
   public RegionMaintainHandler(ConfigManager configManager) {
@@ -96,7 +92,7 @@ public class RegionMaintainHandler {
         location.getDataNodeId(), location.getClientRpcEndPoint());
   }
 
-  public String simplifiedLocation(TDataNodeLocation dataNodeLocation) {
+  public static String simplifiedLocation(TDataNodeLocation dataNodeLocation) {
     return dataNodeLocation.getDataNodeId() + "@" + dataNodeLocation.getInternalEndPoint().getIp();
   }
 
@@ -447,10 +443,6 @@ public class RegionMaintainHandler {
     return !isSucceed(status);
   }
 
-  public LockQueue getRegionMigrateLock() {
-    return regionMigrateLock;
-  }
-
   /**
    * Change the leader of given Region.
    *
@@ -575,12 +567,19 @@ public class RegionMaintainHandler {
         configManager.getNodeManager().filterDataNodeThroughStatus(allowingStatus).stream()
             .map(TDataNodeConfiguration::getLocation)
             .collect(Collectors.toList());
+    final int leaderId = configManager.getLoadManager().getRegionLeaderMap().get(regionId);
     Collections.shuffle(aliveDataNodes);
+    Optional<TDataNodeLocation> bestChoice = Optional.empty();
     for (TDataNodeLocation aliveDataNode : aliveDataNodes) {
       if (regionLocations.contains(aliveDataNode) && !excludeLocations.contains(aliveDataNode)) {
-        return Optional.of(aliveDataNode);
+        if (leaderId == aliveDataNode.getDataNodeId()) {
+          bestChoice = Optional.of(aliveDataNode);
+          break;
+        } else if (!bestChoice.isPresent()) {
+          bestChoice = Optional.of(aliveDataNode);
+        }
       }
     }
-    return Optional.empty();
+    return bestChoice;
   }
 }

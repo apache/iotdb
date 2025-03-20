@@ -55,10 +55,11 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.load.LoadSingleTsF
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.load.LoadTsFilePieceNode;
 import org.apache.iotdb.db.queryengine.plan.scheduler.FragInstanceDispatchResult;
 import org.apache.iotdb.db.queryengine.plan.scheduler.IScheduler;
+import org.apache.iotdb.db.queryengine.plan.statement.crud.LoadTsFileStatement;
 import org.apache.iotdb.db.storageengine.StorageEngine;
-import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
 import org.apache.iotdb.db.storageengine.dataregion.flush.MemTableFlushTask;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
+import org.apache.iotdb.db.storageengine.load.converter.LoadTsFileDataTypeConverter;
 import org.apache.iotdb.db.storageengine.load.memory.LoadTsFileDataCacheMemoryBlock;
 import org.apache.iotdb.db.storageengine.load.memory.LoadTsFileMemoryManager;
 import org.apache.iotdb.db.storageengine.load.metrics.LoadTsFileCostMetricsSet;
@@ -86,9 +87,12 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.List;
+import java.util.ListIterator;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.CancellationException;
@@ -126,6 +130,7 @@ public class LoadTsFileScheduler implements IScheduler {
   private final LoadTsFileDispatcherImpl dispatcher;
   private final DataPartitionBatchFetcher partitionFetcher;
   private final List<LoadSingleTsFileNode> tsFileNodeList;
+  private final List<Integer> failedTsFileNodeIndexes;
   private final PlanFragmentId fragmentId;
   private final Set<TRegionReplicaSet> allReplicaSets;
   private final boolean isGeneratedByPipe;
@@ -141,6 +146,7 @@ public class LoadTsFileScheduler implements IScheduler {
     this.queryContext = queryContext;
     this.stateMachine = stateMachine;
     this.tsFileNodeList = new ArrayList<>();
+    this.failedTsFileNodeIndexes = new ArrayList<>();
     this.fragmentId = distributedQueryPlan.getRootSubPlan().getPlanFragment().getId();
     this.dispatcher = new LoadTsFileDispatcherImpl(internalServiceClientManager, isGeneratedByPipe);
     this.partitionFetcher = new DataPartitionBatchFetcher(partitionFetcher);
@@ -181,8 +187,8 @@ public class LoadTsFileScheduler implements IScheduler {
           } else if (!node.needDecodeTsFile(
               slotList ->
                   partitionFetcher.queryDataPartition(
-                      slotList,
-                      queryContext.getSession().getUserName()))) { // do not decode, load locally
+                      slotList, queryContext.getSession().getUserName()))) {
+            // do not decode, load locally
             final long startTime = System.nanoTime();
             try {
               isLoadSingleTsFileSuccess = loadLocally(node);
@@ -190,7 +196,8 @@ public class LoadTsFileScheduler implements IScheduler {
               LOAD_TSFILE_COST_METRICS_SET.recordPhaseTimeCost(
                   LoadTsFileCostMetricsSet.LOAD_LOCALLY, System.nanoTime() - startTime);
             }
-          } else { // need decode, load locally or remotely, use two phases method
+          } else {
+            // need decode, load locally or remotely, use two phases method
             String uuid = UUID.randomUUID().toString();
             dispatcher.setUuid(uuid);
             allReplicaSets.clear();
@@ -198,8 +205,7 @@ public class LoadTsFileScheduler implements IScheduler {
             long startTime = System.nanoTime();
             final boolean isFirstPhaseSuccess;
             try {
-              isFirstPhaseSuccess =
-                  firstPhaseWithRetry(node, CONFIG.getLoadTsFileRetryCountOnRegionChange());
+              isFirstPhaseSuccess = firstPhase(node);
             } finally {
               LOAD_TSFILE_COST_METRICS_SET.recordPhaseTimeCost(
                   LoadTsFileCostMetricsSet.FIRST_PHASE, System.nanoTime() - startTime);
@@ -229,6 +235,7 @@ public class LoadTsFileScheduler implements IScheduler {
                 tsFileNodeListSize);
           } else {
             isLoadSuccess = false;
+            failedTsFileNodeIndexes.add(i);
             LOGGER.warn(
                 "Can not Load TsFile {}, load process [{}/{}]",
                 filePath,
@@ -237,6 +244,7 @@ public class LoadTsFileScheduler implements IScheduler {
           }
         } catch (Exception e) {
           isLoadSuccess = false;
+          failedTsFileNodeIndexes.add(i);
           stateMachine.transitionToFailed(e);
           LOGGER.warn("LoadTsFileScheduler loads TsFile {} error", filePath, e);
         } finally {
@@ -247,38 +255,39 @@ public class LoadTsFileScheduler implements IScheduler {
           }
         }
       }
+
       if (isLoadSuccess) {
         stateMachine.transitionToFinished();
+      } else {
+        final StringBuilder failedTsFiles =
+            new StringBuilder(
+                !tsFileNodeList.isEmpty()
+                    ? tsFileNodeList.get(0).getTsFileResource().getTsFilePath()
+                    : "");
+        final ListIterator<Integer> iterator = failedTsFileNodeIndexes.listIterator(1);
+        while (iterator.hasNext()) {
+          failedTsFiles
+              .append(", ")
+              .append(tsFileNodeList.get(iterator.next()).getTsFileResource().getTsFilePath());
+        }
+        final long startTime = System.nanoTime();
+        try {
+          // if failed to load some TsFiles, then try to convert the TsFiles to Tablets
+          LOGGER.info(
+              "Load TsFile(s) failed, will try to convert to tablets and insert. Failed TsFiles: {}",
+              failedTsFiles);
+          convertFailedTsFilesToTabletsAndRetry();
+        } finally {
+          LOAD_TSFILE_COST_METRICS_SET.recordPhaseTimeCost(
+              LoadTsFileCostMetricsSet.CAST_TABLETS, System.nanoTime() - startTime);
+        }
       }
     } finally {
       LoadTsFileMemoryManager.getInstance().releaseDataCacheMemoryBlock();
     }
   }
 
-  private boolean firstPhaseWithRetry(LoadSingleTsFileNode node, int retryCountOnRegionChange) {
-    retryCountOnRegionChange = Math.max(0, retryCountOnRegionChange);
-    while (true) {
-      try {
-        return firstPhase(node);
-      } catch (RegionReplicaSetChangedException e) {
-        if (retryCountOnRegionChange > 0) {
-          LOGGER.warn(
-              "Region replica set changed during loading TsFile {}, maybe due to region migration, will retry for {} times.",
-              node.getTsFileResource(),
-              retryCountOnRegionChange);
-          retryCountOnRegionChange--;
-        } else {
-          stateMachine.transitionToFailed(e);
-          LOGGER.warn(
-              "Region replica set changed during loading TsFile {} after retry.",
-              node.getTsFileResource());
-          return false;
-        }
-      }
-    }
-  }
-
-  private boolean firstPhase(LoadSingleTsFileNode node) throws RegionReplicaSetChangedException {
+  private boolean firstPhase(LoadSingleTsFileNode node) {
     final TsFileDataManager tsFileDataManager = new TsFileDataManager(this, node, block);
     try {
       new TsFileSplitter(
@@ -288,8 +297,6 @@ public class LoadTsFileScheduler implements IScheduler {
         stateMachine.transitionToFailed(new TSStatus(TSStatusCode.LOAD_FILE_ERROR.getStatusCode()));
         return false;
       }
-    } catch (RegionReplicaSetChangedException e) {
-      throw e;
     } catch (IllegalStateException e) {
       stateMachine.transitionToFailed(e);
       LOGGER.warn(
@@ -341,7 +348,7 @@ public class LoadTsFileScheduler implements IScheduler {
           for (TSStatus status : result.getFailureStatus().getSubStatus()) {
             LOGGER.warn(
                 "Sub status code {}. Sub status message {}.",
-                TSStatusCode.representOf(status.getCode()).name(),
+                TSStatusCode.representOf(status.getCode()).toString(),
                 status.getMessage());
           }
         }
@@ -415,6 +422,10 @@ public class LoadTsFileScheduler implements IScheduler {
       LOGGER.warn("Interrupt or Execution error.", e);
       stateMachine.transitionToFailed(e);
       return false;
+    } catch (Exception e) {
+      LOGGER.warn("Exception occurred during second phase of loading TsFile {}.", tsFile, e);
+      stateMachine.transitionToFailed(e);
+      return false;
     }
     return true;
   }
@@ -460,50 +471,103 @@ public class LoadTsFileScheduler implements IScheduler {
     }
 
     // add metrics
-    DataRegion dataRegion =
-        StorageEngine.getInstance()
-            .getDataRegion(
-                (DataRegionId)
-                    ConsensusGroupId.Factory.createFromTConsensusGroupId(
-                        node.getLocalRegionReplicaSet().getRegionId()));
-
-    dataRegion
-        .getNonSystemDatabaseName()
+    Optional.ofNullable(
+            StorageEngine.getInstance()
+                .getDataRegion(
+                    (DataRegionId)
+                        ConsensusGroupId.Factory.createFromTConsensusGroupId(
+                            node.getLocalRegionReplicaSet().getRegionId())))
         .ifPresent(
-            databaseName -> {
-              // Report load tsFile points to IoTDB flush metrics
-              MemTableFlushTask.recordFlushPointsMetricInternal(
-                  node.getWritePointCount(), databaseName, dataRegion.getDataRegionId());
+            dataRegion ->
+                dataRegion
+                    .getNonSystemDatabaseName()
+                    .ifPresent(
+                        databaseName -> {
+                          // Report load tsFile points to IoTDB flush metrics
+                          MemTableFlushTask.recordFlushPointsMetricInternal(
+                              node.getWritePointCount(),
+                              databaseName,
+                              dataRegion.getDataRegionId());
 
-              MetricService.getInstance()
-                  .count(
-                      node.getWritePointCount(),
-                      Metric.QUANTITY.toString(),
-                      MetricLevel.CORE,
-                      Tag.NAME.toString(),
-                      Metric.POINTS_IN.toString(),
-                      Tag.DATABASE.toString(),
-                      databaseName,
-                      Tag.REGION.toString(),
-                      dataRegion.getDataRegionId(),
-                      Tag.TYPE.toString(),
-                      Metric.LOAD_POINT_COUNT.toString());
-              MetricService.getInstance()
-                  .count(
-                      node.getWritePointCount(),
-                      Metric.LEADER_QUANTITY.toString(),
-                      MetricLevel.CORE,
-                      Tag.NAME.toString(),
-                      Metric.POINTS_IN.toString(),
-                      Tag.DATABASE.toString(),
-                      databaseName,
-                      Tag.REGION.toString(),
-                      dataRegion.getDataRegionId(),
-                      Tag.TYPE.toString(),
-                      Metric.LOAD_POINT_COUNT.toString());
-            });
+                          MetricService.getInstance()
+                              .count(
+                                  node.getWritePointCount(),
+                                  Metric.QUANTITY.toString(),
+                                  MetricLevel.CORE,
+                                  Tag.NAME.toString(),
+                                  Metric.POINTS_IN.toString(),
+                                  Tag.DATABASE.toString(),
+                                  databaseName,
+                                  Tag.REGION.toString(),
+                                  dataRegion.getDataRegionId(),
+                                  Tag.TYPE.toString(),
+                                  Metric.LOAD_POINT_COUNT.toString());
+                          MetricService.getInstance()
+                              .count(
+                                  node.getWritePointCount(),
+                                  Metric.LEADER_QUANTITY.toString(),
+                                  MetricLevel.CORE,
+                                  Tag.NAME.toString(),
+                                  Metric.POINTS_IN.toString(),
+                                  Tag.DATABASE.toString(),
+                                  databaseName,
+                                  Tag.REGION.toString(),
+                                  dataRegion.getDataRegionId(),
+                                  Tag.TYPE.toString(),
+                                  Metric.LOAD_POINT_COUNT.toString());
+                        }));
 
     return true;
+  }
+
+  private void convertFailedTsFilesToTabletsAndRetry() {
+    final LoadTsFileDataTypeConverter loadTsFileDataTypeConverter =
+        new LoadTsFileDataTypeConverter(isGeneratedByPipe);
+
+    final Iterator<Integer> iterator = failedTsFileNodeIndexes.listIterator();
+    while (iterator.hasNext()) {
+      final int failedLoadTsFileIndex = iterator.next();
+      final LoadSingleTsFileNode failedNode = tsFileNodeList.get(failedLoadTsFileIndex);
+      final String filePath = failedNode.getTsFileResource().getTsFilePath();
+
+      try {
+        final TSStatus status =
+            loadTsFileDataTypeConverter
+                .convertForTreeModel(new LoadTsFileStatement(filePath))
+                .orElse(null);
+
+        if (loadTsFileDataTypeConverter.isSuccessful(status)) {
+          iterator.remove();
+          LOGGER.info(
+              "Load: Successfully converted TsFile {} into tablets and inserted.",
+              failedNode.getTsFileResource().getTsFilePath());
+        } else {
+          LOGGER.warn(
+              "Load: Failed to convert to tablets from TsFile {}. Status: {}",
+              failedNode.getTsFileResource().getTsFilePath(),
+              status);
+        }
+      } catch (final Exception e) {
+        LOGGER.warn(
+            "Load: Failed to convert to tablets from TsFile {}. Exception: {}",
+            failedNode.getTsFileResource().getTsFilePath(),
+            e.getMessage(),
+            e);
+      }
+    }
+
+    // If all failed TsFiles are converted into tablets and inserted,
+    // we can consider the load process as successful.
+    if (failedTsFileNodeIndexes.isEmpty()) {
+      stateMachine.transitionToFinished();
+    } else {
+      stateMachine.transitionToFailed(
+          new LoadFileException(
+              "Failed to load some TsFiles by converting them into tablets. Failed TsFiles: "
+                  + failedTsFileNodeIndexes.stream()
+                      .map(i -> tsFileNodeList.get(i).getTsFileResource().getTsFilePath())
+                      .collect(Collectors.joining(", "))));
+    }
   }
 
   @Override
@@ -589,7 +653,7 @@ public class LoadTsFileScheduler implements IScheduler {
 
           dataSize -= pieceNode.getDataSize();
           block.reduceMemoryUsage(pieceNode.getDataSize());
-          regionId2ReplicaSetAndNode.put(
+          regionId2ReplicaSetAndNode.replace(
               sortedRegionId,
               new Pair<>(
                   replicaSet,

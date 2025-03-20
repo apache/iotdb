@@ -75,21 +75,18 @@ public class ReadChunkInnerCompactionEstimator extends AbstractInnerSpaceEstimat
   @Override
   public long roughEstimateInnerCompactionMemory(List<TsFileResource> resources)
       throws IOException {
-    long metadataCost =
-        CompactionEstimateUtils.roughEstimateMetadataCostInCompaction(
-            resources, CompactionType.INNER_SEQ_COMPACTION);
-    if (metadataCost < 0) {
-      return metadataCost;
+    if (config.getCompactionMaxAlignedSeriesNumInOneBatch() <= 0) {
+      return -1L;
     }
-    int maxConcurrentSeriesNum =
-        Math.max(
-            config.getCompactionMaxAlignedSeriesNumInOneBatch(), config.getSubCompactionTaskNum());
+    MetadataInfo metadataInfo =
+        CompactionEstimateUtils.collectMetadataInfo(resources, CompactionType.INNER_SEQ_COMPACTION);
+    int maxConcurrentSeriesNum = metadataInfo.getMaxConcurrentSeriesNum();
     long maxChunkSize = config.getTargetChunkSize();
     long maxPageSize = tsFileConfig.getPageSizeInByte();
     // source files (chunk + uncompressed page)
     // target file (chunk + unsealed page writer)
     return 2 * maxConcurrentSeriesNum * (maxChunkSize + maxPageSize)
         + fixedMemoryBudget
-        + metadataCost;
+        + metadataInfo.metadataMemCost;
   }
 }

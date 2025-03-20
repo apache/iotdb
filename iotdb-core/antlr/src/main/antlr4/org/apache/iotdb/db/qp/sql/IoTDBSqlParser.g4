@@ -64,7 +64,9 @@ ddlStatement
     | createContinuousQuery | dropContinuousQuery | showContinuousQueries
     // Cluster
     | showVariables | showCluster | showRegions | showDataNodes | showConfigNodes | showClusterId
-    | getRegionId | getTimeSlotList | countTimeSlotList | getSeriesSlotList | migrateRegion | verifyConnection
+    | getRegionId | getTimeSlotList | countTimeSlotList | getSeriesSlotList
+    | migrateRegion | reconstructRegion | extendRegion | removeRegion  | removeDataNode | removeConfigNode
+    | verifyConnection
     // AINode
     | showAINodes | createModel | dropModel | showModels | callInference
     // Quota
@@ -536,8 +538,30 @@ migrateRegion
     : MIGRATE REGION regionId=INTEGER_LITERAL FROM fromId=INTEGER_LITERAL TO toId=INTEGER_LITERAL
     ;
 
+reconstructRegion
+    : RECONSTRUCT REGION regionIds+=INTEGER_LITERAL (COMMA regionIds+=INTEGER_LITERAL)* ON targetDataNodeId=INTEGER_LITERAL
+    ;
+
+extendRegion
+    : EXTEND REGION regionId=INTEGER_LITERAL TO targetDataNodeId=INTEGER_LITERAL
+    ;
+
+removeRegion
+    : REMOVE REGION regionId=INTEGER_LITERAL FROM targetDataNodeId=INTEGER_LITERAL
+    ;
+
 verifyConnection
     : VERIFY CONNECTION (DETAILS)?
+    ;
+
+// ---- Remove DataNode
+removeDataNode
+    : REMOVE DATANODE dataNodeId=INTEGER_LITERAL
+    ;
+
+// ---- Remove ConfigNode
+removeConfigNode
+    : REMOVE CONFIGNODE configNodeId=INTEGER_LITERAL
     ;
 
 // Pipe Task =========================================================================================

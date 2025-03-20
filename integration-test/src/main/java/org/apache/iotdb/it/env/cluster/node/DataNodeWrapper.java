@@ -176,6 +176,11 @@ public class DataNodeWrapper extends AbstractNodeWrapper {
   }
 
   @Override
+  String getNodeType() {
+    return "datanode";
+  }
+
+  @Override
   protected void reloadMutableFields() {
     mutableCommonProperties.setProperty(CONFIG_NODE_CONSENSUS_PROTOCOL_CLASS, SIMPLE_CONSENSUS);
     mutableCommonProperties.setProperty(SCHEMA_REGION_CONSENSUS_PROTOCOL_CLASS, SIMPLE_CONSENSUS);

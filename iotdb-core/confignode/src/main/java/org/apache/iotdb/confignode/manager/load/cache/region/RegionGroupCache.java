@@ -42,14 +42,16 @@ public class RegionGroupCache {
   private final Map<Integer, RegionCache> regionCacheMap;
   // The current RegionGroupStatistics, used for providing statistics to other services
   private final AtomicReference<RegionGroupStatistics> currentStatistics;
+  private final boolean isStrongConsistency;
 
   /** Constructor for create RegionGroupCache with default RegionGroupStatistics. */
-  public RegionGroupCache(String database, Set<Integer> dataNodeIds) {
+  public RegionGroupCache(String database, Set<Integer> dataNodeIds, boolean isStrongConsistency) {
     this.database = database;
     this.regionCacheMap = new ConcurrentHashMap<>();
     dataNodeIds.forEach(dataNodeId -> regionCacheMap.put(dataNodeId, new RegionCache()));
     this.currentStatistics =
         new AtomicReference<>(RegionGroupStatistics.generateDefaultRegionGroupStatistics());
+    this.isStrongConsistency = isStrongConsistency;
   }
 
   /**
@@ -108,34 +110,31 @@ public class RegionGroupCache {
 
   private RegionGroupStatus caculateRegionGroupStatus(
       Map<Integer, RegionStatistics> regionStatisticsMap) {
-    int unknownCount = 0;
-    int readonlyCount = 0;
+
+    int runningCount = 0;
+    int addingCount = 0;
     int removingCount = 0;
     for (RegionStatistics regionStatistics : regionStatisticsMap.values()) {
-      unknownCount += RegionStatus.Unknown.equals(regionStatistics.getRegionStatus()) ? 1 : 0;
-      readonlyCount += RegionStatus.ReadOnly.equals(regionStatistics.getRegionStatus()) ? 1 : 0;
+      runningCount += RegionStatus.Running.equals(regionStatistics.getRegionStatus()) ? 1 : 0;
+      addingCount += RegionStatus.Adding.equals(regionStatistics.getRegionStatus()) ? 1 : 0;
       removingCount += RegionStatus.Removing.equals(regionStatistics.getRegionStatus()) ? 1 : 0;
     }
+    int baseCount = regionCacheMap.size() - addingCount - removingCount;
 
-    if (unknownCount + readonlyCount + removingCount == 0) {
-      // The RegionGroup is considered as Running only if
-      // all Regions are in the Running status
+    if (runningCount == baseCount) {
+      // The RegionGroup is considered as Running only if all Regions are in the Running status.
       return RegionGroupStatus.Running;
-    } else if (readonlyCount == 0) {
-      return (unknownCount + removingCount) <= ((regionCacheMap.size() - 1) / 2)
-          // The RegionGroup is considered as Available when the number of Unknown Regions is less
-          // than half
+    }
+    if (isStrongConsistency) {
+      // For strong consistency algorithms, the RegionGroup is considered as Available when the
+      // number of Regions in the Running status is greater than half.
+      return runningCount > (baseCount / 2)
           ? RegionGroupStatus.Available
-          // Disabled otherwise
           : RegionGroupStatus.Disabled;
     } else {
-      return (unknownCount + readonlyCount + removingCount) <= ((regionCacheMap.size() - 1) / 2)
-          // The RegionGroup is considered as Discouraged when the number of Unknown or ReadOnly
-          // Regions is less
-          // than half, and there are at least 1 ReadOnly Region
-          ? RegionGroupStatus.Discouraged
-          // Disabled otherwise
-          : RegionGroupStatus.Disabled;
+      // For weak consistency algorithms, the RegionGroup is considered as Available when the number
+      // of Regions in the Running status is greater than or equal to 1.
+      return (runningCount >= 1) ? RegionGroupStatus.Available : RegionGroupStatus.Disabled;
     }
   }
 

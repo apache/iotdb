@@ -184,7 +184,7 @@ public class IoTDBTestParamTopicIT extends AbstractSubscriptionRegressionIT {
     printTopics("testCreateTopic_invalidTime5");
   }
 
-  @Test
+  @Test(expected = StatementExecutionException.class)
   public void testCreateTopic_invalidTime6()
       throws IoTDBConnectionException,
           StatementExecutionException,

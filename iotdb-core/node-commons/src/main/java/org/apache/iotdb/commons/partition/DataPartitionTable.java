@@ -35,9 +35,11 @@ import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
@@ -262,6 +264,22 @@ public class DataPartitionTable {
         (seriesPartitionSlot, seriesPartitionTable) ->
             result.put(seriesPartitionSlot, seriesPartitionTable.getLastConsensusGroupId()));
     return result;
+  }
+
+  /**
+   * Remove PartitionTable where the TimeSlot is expired.
+   *
+   * @param TTL The Time To Live
+   * @param currentTimeSlot The current TimeSlot
+   */
+  public Set<TTimePartitionSlot> autoCleanPartitionTable(
+      long TTL, TTimePartitionSlot currentTimeSlot) {
+    Set<TTimePartitionSlot> removedTimePartitionSlots = new HashSet<>();
+    dataPartitionMap.forEach(
+        (seriesPartitionSlot, seriesPartitionTable) ->
+            removedTimePartitionSlots.addAll(
+                seriesPartitionTable.autoCleanPartitionTable(TTL, currentTimeSlot)));
+    return removedTimePartitionSlots;
   }
 
   public void serialize(OutputStream outputStream, TProtocol protocol)

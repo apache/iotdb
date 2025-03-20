@@ -29,6 +29,7 @@ import org.apache.iotdb.db.storageengine.rescon.disk.FolderManager;
 import org.apache.iotdb.db.storageengine.rescon.disk.strategy.DirectoryStrategyType;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 import org.apache.iotdb.pipe.api.exception.PipeException;
+import org.apache.iotdb.session.util.RetryUtils;
 
 import org.apache.commons.io.FileUtils;
 import org.apache.tsfile.common.constant.TsFileConstant;
@@ -424,7 +425,7 @@ public class PipeTabletEventTsFileBatch extends PipeTabletEventBatch {
       }
 
       try {
-        FileUtils.delete(fileWriter.getIOWriter().getFile());
+        RetryUtils.retryOnException(() -> FileUtils.delete(fileWriter.getIOWriter().getFile()));
       } catch (final Exception e) {
         LOGGER.info(
             "Batch id = {}: Failed to delete the tsfile {} when trying to close batch, because {}",

@@ -134,7 +134,7 @@ public class RepairDataFileScanUtilTest extends AbstractCompactionTest {
 
   @Test
   public void testWrongResourceStatistics() throws IOException {
-    TsFileResource resource = createEmptyFileAndResource(true);
+    TsFileResource resource = createEmptyFileAndResourceWithName("1-1-1-0", 0, true);
     try (CompactionTestFileWriter writer = new CompactionTestFileWriter(resource)) {
       writer.startChunkGroup("d1");
       writer.generateSimpleAlignedSeriesToCurrentDeviceWithNullValue(

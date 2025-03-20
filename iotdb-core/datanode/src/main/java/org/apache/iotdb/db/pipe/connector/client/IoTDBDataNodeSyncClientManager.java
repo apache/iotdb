@@ -52,7 +52,9 @@ public class IoTDBDataNodeSyncClientManager extends IoTDBSyncClientManager
       final boolean useLeaderCache,
       final String loadBalanceStrategy,
       final boolean shouldReceiverConvertOnTypeMismatch,
-      final String loadTsFileStrategy) {
+      final String loadTsFileStrategy,
+      final boolean validateTsFile,
+      final boolean shouldMarkAsPipeRequest) {
     super(
         endPoints,
         username,
@@ -63,7 +65,9 @@ public class IoTDBDataNodeSyncClientManager extends IoTDBSyncClientManager
         useLeaderCache,
         loadBalanceStrategy,
         shouldReceiverConvertOnTypeMismatch,
-        loadTsFileStrategy);
+        loadTsFileStrategy,
+        validateTsFile,
+        shouldMarkAsPipeRequest);
   }
 
   @Override

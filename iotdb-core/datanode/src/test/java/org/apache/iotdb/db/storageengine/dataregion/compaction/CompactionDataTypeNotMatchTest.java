@@ -48,6 +48,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
+@SuppressWarnings("OptionalGetWithoutIsPresent")
 public class CompactionDataTypeNotMatchTest extends AbstractCompactionTest {
   private final String oldThreadName = Thread.currentThread().getName();
   private final IDeviceID device = new PlainDeviceID(COMPACTION_TEST_SG + ".d1");
@@ -74,7 +75,8 @@ public class CompactionDataTypeNotMatchTest extends AbstractCompactionTest {
             0, tsFileManager, seqResources, true, new ReadChunkCompactionPerformer(), 0);
     Assert.assertTrue(task.start());
     TsFileResourceUtils.validateTsFileDataCorrectness(tsFileManager.getTsFileList(true).get(0));
-    Assert.assertEquals(2, tsFileManager.getTsFileList(true).get(0).getStartTime(device));
+    Assert.assertEquals(
+        2, ((long) tsFileManager.getTsFileList(true).get(0).getStartTime(device).get()));
   }
 
   @Test
@@ -86,7 +88,8 @@ public class CompactionDataTypeNotMatchTest extends AbstractCompactionTest {
             0, tsFileManager, seqResources, true, new FastCompactionPerformer(false), 0);
     Assert.assertTrue(task.start());
     TsFileResourceUtils.validateTsFileDataCorrectness(tsFileManager.getTsFileList(true).get(0));
-    Assert.assertEquals(2, tsFileManager.getTsFileList(true).get(0).getStartTime(device));
+    Assert.assertEquals(
+        2, ((long) tsFileManager.getTsFileList(true).get(0).getStartTime(device).get()));
   }
 
   @Test
@@ -98,7 +101,8 @@ public class CompactionDataTypeNotMatchTest extends AbstractCompactionTest {
             0, tsFileManager, seqResources, true, new ReadPointCompactionPerformer(), 0);
     Assert.assertTrue(task.start());
     TsFileResourceUtils.validateTsFileDataCorrectness(tsFileManager.getTsFileList(true).get(0));
-    Assert.assertEquals(2, tsFileManager.getTsFileList(true).get(0).getStartTime(device));
+    Assert.assertEquals(
+        2, ((long) tsFileManager.getTsFileList(true).get(0).getStartTime(device).get()));
   }
 
   @Test
@@ -110,7 +114,8 @@ public class CompactionDataTypeNotMatchTest extends AbstractCompactionTest {
             0, tsFileManager, seqResources, true, new ReadChunkCompactionPerformer(), 0);
     Assert.assertTrue(task.start());
     TsFileResourceUtils.validateTsFileDataCorrectness(tsFileManager.getTsFileList(true).get(0));
-    Assert.assertEquals(2, tsFileManager.getTsFileList(true).get(0).getStartTime(device));
+    Assert.assertEquals(
+        2, ((long) tsFileManager.getTsFileList(true).get(0).getStartTime(device).get()));
   }
 
   @Test
@@ -122,7 +127,8 @@ public class CompactionDataTypeNotMatchTest extends AbstractCompactionTest {
             0, tsFileManager, seqResources, true, new FastCompactionPerformer(false), 0);
     Assert.assertTrue(task.start());
     TsFileResourceUtils.validateTsFileDataCorrectness(tsFileManager.getTsFileList(true).get(0));
-    Assert.assertEquals(2, tsFileManager.getTsFileList(true).get(0).getStartTime(device));
+    Assert.assertEquals(
+        2, ((long) tsFileManager.getTsFileList(true).get(0).getStartTime(device).get()));
   }
 
   @Test
@@ -134,7 +140,8 @@ public class CompactionDataTypeNotMatchTest extends AbstractCompactionTest {
             0, tsFileManager, seqResources, true, new ReadPointCompactionPerformer(), 0);
     Assert.assertTrue(task.start());
     TsFileResourceUtils.validateTsFileDataCorrectness(tsFileManager.getTsFileList(true).get(0));
-    Assert.assertEquals(2, tsFileManager.getTsFileList(true).get(0).getStartTime(device));
+    Assert.assertEquals(
+        2, ((long) tsFileManager.getTsFileList(true).get(0).getStartTime(device).get()));
   }
 
   private void generateDataTypeNotMatchFilesWithNonAlignedSeries()

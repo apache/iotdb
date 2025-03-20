@@ -34,8 +34,10 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.Queue;
 
 /** TTL Cache Tree, which is a prefix B+ tree with each node storing TTL. */
 @NotThreadSafe
@@ -169,6 +171,31 @@ public class TTLCache {
   }
 
   /**
+   * Get the maximum ttl of the subtree of the corresponding database.
+   *
+   * @param database the path of the database.
+   * @return the maximum ttl of the subtree of the corresponding database. return NULL_TTL if the
+   *     TTL is not set or the database does not exist.
+   */
+  public long getDatabaseMaxTTL(String database) {
+    CacheNode node = ttlCacheTree.getChild(database);
+    if (node == null) {
+      return NULL_TTL;
+    }
+    Queue<CacheNode> queue = new LinkedList<>();
+    queue.add(node);
+    long maxTTL = node.ttl;
+    while (!queue.isEmpty()) {
+      CacheNode current = queue.poll();
+      for (CacheNode child : current.getChildren().values()) {
+        queue.add(child);
+        maxTTL = Math.max(maxTTL, child.ttl);
+      }
+    }
+    return maxTTL;
+  }
+
+  /**
    * @return key is path contains wildcard between each node
    */
   public Map<String, Long> getAllPathTTL() {
@@ -263,6 +290,9 @@ public class TTLCache {
     }
 
     public CacheNode getChild(String name) {
+      if (name.startsWith("root.")) {
+        name = name.substring("root.".length());
+      }
       return children.get(name);
     }
 

@@ -20,12 +20,15 @@
 package org.apache.iotdb.confignode.conf;
 
 import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
+import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
+import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.client.property.ClientPoolProperty.DefaultProperty;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.confignode.manager.load.balancer.RegionBalancer;
 import org.apache.iotdb.confignode.manager.load.balancer.router.leader.AbstractLeaderBalancer;
 import org.apache.iotdb.confignode.manager.load.balancer.router.priority.IPriorityBalancer;
+import org.apache.iotdb.confignode.manager.load.cache.IFailureDetector;
 import org.apache.iotdb.confignode.manager.partition.RegionGroupExtensionPolicy;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
@@ -91,7 +94,7 @@ public class ConfigNodeConfig {
   private int defaultSchemaRegionGroupNumPerDatabase = 1;
 
   /** The maximum number of SchemaRegions expected to be managed by each DataNode. */
-  private double schemaRegionPerDataNode = schemaReplicationFactor;
+  private int schemaRegionPerDataNode = 1;
 
   /** The policy of extension DataRegionGroup for each Database. */
   private RegionGroupExtensionPolicy dataRegionGroupExtensionPolicy =
@@ -104,8 +107,14 @@ public class ConfigNodeConfig {
    */
   private int defaultDataRegionGroupNumPerDatabase = 2;
 
-  /** The maximum number of DataRegions expected to be managed by each DataNode. */
-  private double dataRegionPerDataNode = 5.0;
+  /**
+   * The maximum number of DataRegions expected to be managed by each DataNode. Set to 0 means that
+   * each dataNode automatically has the number of CPU cores / 2 regions.
+   */
+  private int dataRegionPerDataNode = 0;
+
+  /** each dataNode automatically has the number of CPU cores / 2 regions. */
+  private double dataRegionPerDataNodeProportion = 0.5;
 
   /** RegionGroup allocate policy. */
   private RegionBalancer.RegionGroupAllocatePolicy regionGroupAllocatePolicy =
@@ -171,6 +180,18 @@ public class ConfigNodeConfig {
 
   /** The heartbeat interval in milliseconds. */
   private long heartbeatIntervalInMs = 1000;
+
+  /** Failure detector implementation */
+  private String failureDetector = IFailureDetector.PHI_ACCRUAL_DETECTOR;
+
+  /** Max heartbeat elapsed time threshold for Fixed failure detector */
+  private long failureDetectorFixedThresholdInMs = 20000;
+
+  /** Max threshold for Phi accrual failure detector */
+  private long failureDetectorPhiThreshold = 30;
+
+  /** Acceptable pause duration for Phi accrual failure detector */
+  private long failureDetectorPhiAcceptablePauseInMs = 10000;
 
   /** The unknown DataNode detect interval in milliseconds. */
   private long unknownDataNodeDetectInterval = heartbeatIntervalInMs;
@@ -479,11 +500,11 @@ public class ConfigNodeConfig {
     this.defaultDataRegionGroupNumPerDatabase = defaultDataRegionGroupNumPerDatabase;
   }
 
-  public double getSchemaRegionPerDataNode() {
+  public int getSchemaRegionPerDataNode() {
     return schemaRegionPerDataNode;
   }
 
-  public void setSchemaRegionPerDataNode(double schemaRegionPerDataNode) {
+  public void setSchemaRegionPerDataNode(int schemaRegionPerDataNode) {
     this.schemaRegionPerDataNode = schemaRegionPerDataNode;
   }
 
@@ -495,12 +516,16 @@ public class ConfigNodeConfig {
     this.dataRegionConsensusProtocolClass = dataRegionConsensusProtocolClass;
   }
 
-  public double getDataRegionPerDataNode() {
+  public int getDataRegionPerDataNode() {
     return dataRegionPerDataNode;
   }
 
-  public void setDataRegionPerDataNode(double dataRegionPerDataNode) {
+  public void setDataRegionPerDataNode(int dataRegionPerDataNode) {
     this.dataRegionPerDataNode = dataRegionPerDataNode;
+  }
+
+  public double getDataRegionPerDataNodeProportion() {
+    return dataRegionPerDataNodeProportion;
   }
 
   public RegionBalancer.RegionGroupAllocatePolicy getRegionGroupAllocatePolicy() {
@@ -1196,5 +1221,44 @@ public class ConfigNodeConfig {
         getConfigNodeId(),
         new TEndPoint(getInternalAddress(), getInternalPort()),
         new TEndPoint(getInternalAddress(), getConsensusPort()));
+  }
+
+  public boolean isConsensusGroupStrongConsistency(TConsensusGroupId regionGroupId) {
+    return (TConsensusGroupType.SchemaRegion.equals(regionGroupId.getType())
+            && getSchemaRegionConsensusProtocolClass().equals(ConsensusFactory.RATIS_CONSENSUS))
+        || (TConsensusGroupType.DataRegion.equals(regionGroupId.getType())
+            && getDataRegionConsensusProtocolClass().equals(ConsensusFactory.RATIS_CONSENSUS));
+  }
+
+  public String getFailureDetector() {
+    return failureDetector;
+  }
+
+  public void setFailureDetector(String failureDetector) {
+    this.failureDetector = failureDetector;
+  }
+
+  public long getFailureDetectorFixedThresholdInMs() {
+    return failureDetectorFixedThresholdInMs;
+  }
+
+  public void setFailureDetectorFixedThresholdInMs(long failureDetectorFixedThresholdInMs) {
+    this.failureDetectorFixedThresholdInMs = failureDetectorFixedThresholdInMs;
+  }
+
+  public long getFailureDetectorPhiThreshold() {
+    return failureDetectorPhiThreshold;
+  }
+
+  public void setFailureDetectorPhiThreshold(long failureDetectorPhiThreshold) {
+    this.failureDetectorPhiThreshold = failureDetectorPhiThreshold;
+  }
+
+  public long getFailureDetectorPhiAcceptablePauseInMs() {
+    return failureDetectorPhiAcceptablePauseInMs;
+  }
+
+  public void setFailureDetectorPhiAcceptablePauseInMs(long failureDetectorPhiAcceptablePauseInMs) {
+    this.failureDetectorPhiAcceptablePauseInMs = failureDetectorPhiAcceptablePauseInMs;
   }
 }

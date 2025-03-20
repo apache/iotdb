@@ -21,7 +21,7 @@ package org.apache.iotdb.confignode.it.regionmigration.pass.datanodecrash;
 
 import org.apache.iotdb.commons.utils.KillPoint.DataNodeKillPoints;
 import org.apache.iotdb.commons.utils.KillPoint.KillNode;
-import org.apache.iotdb.confignode.it.regionmigration.IoTDBRegionMigrateReliabilityITFramework;
+import org.apache.iotdb.confignode.it.regionmigration.IoTDBRegionOperationReliabilityITFramework;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.DailyIT;
 
@@ -31,7 +31,7 @@ import org.junit.runner.RunWith;
 
 @Category({DailyIT.class})
 @RunWith(IoTDBTestRunner.class)
-public class IoTDBRegionMigrateDataNodeCrashIT extends IoTDBRegionMigrateReliabilityITFramework {
+public class IoTDBRegionMigrateDataNodeCrashIT extends IoTDBRegionOperationReliabilityITFramework {
   // region Coordinator DataNode crash tests
 
   private final int dataReplicateFactor = 2;

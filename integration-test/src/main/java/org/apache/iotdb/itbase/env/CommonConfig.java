@@ -56,7 +56,7 @@ public interface CommonConfig {
 
   CommonConfig setPrimitiveArraySize(int primitiveArraySize);
 
-  CommonConfig setAvgSeriesPointNumberThreshold(int avgSeriesPointNumberThreshold);
+  CommonConfig setTargetChunkPointNum(int targetChunkPointNum);
 
   CommonConfig setMaxTsBlockLineNumber(int maxTsBlockLineNumber);
 
@@ -79,6 +79,8 @@ public interface CommonConfig {
   CommonConfig setDataReplicationFactor(int dataReplicationFactor);
 
   CommonConfig setTimePartitionInterval(long timePartitionInterval);
+
+  CommonConfig setTTLCheckInterval(long ttlCheckInterval);
 
   CommonConfig setTimePartitionOrigin(long timePartitionOrigin);
 
@@ -113,6 +115,8 @@ public interface CommonConfig {
   CommonConfig setDataRatisTriggerSnapshotThreshold(long threshold);
 
   CommonConfig setSeriesSlotNum(int seriesSlotNum);
+
+  CommonConfig setSeriesPartitionExecutorClass(String seriesPartitionExecutorClass);
 
   CommonConfig setSchemaMemoryAllocate(String schemaMemoryAllocate);
 

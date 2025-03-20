@@ -112,6 +112,9 @@ public interface BaseEnv {
 
   Connection getConnection(String username, String password) throws SQLException;
 
+  Connection getConnection(DataNodeWrapper dataNodeWrapper, String username, String password)
+      throws SQLException;
+
   default Connection getWriteOnlyConnectionWithSpecifiedDataNode(DataNodeWrapper dataNode)
       throws SQLException {
     return getWriteOnlyConnectionWithSpecifiedDataNode(
@@ -247,6 +250,9 @@ public interface BaseEnv {
 
   /** Shutdown all existed DataNodes. */
   void shutdownAllDataNodes();
+
+  /** Shutdown forcibly all existed DataNodes. */
+  void shutdownForciblyAllDataNodes();
 
   int getMqttPort();
 

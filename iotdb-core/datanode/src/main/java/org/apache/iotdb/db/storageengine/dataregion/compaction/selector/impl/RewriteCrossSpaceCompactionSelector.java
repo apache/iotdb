@@ -25,6 +25,7 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.MergeException;
 import org.apache.iotdb.db.service.metrics.CompactionMetrics;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.constant.CompactionTaskType;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.exception.CompactionSourceFileDeletedException;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.CompactionUtils;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.CompactionScheduleContext;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.CompactionTaskManager;
@@ -68,7 +69,8 @@ public class RewriteCrossSpaceCompactionSelector implements ICrossSpaceSelector 
   protected TsFileManager tsFileManager;
 
   private static boolean hasPrintedLog = false;
-  private static int maxDeserializedFileNumToCheckInsertionCandidateValid = 500;
+  private static int maxDeserializedFileNumToCheckInsertionCandidateValid = 100;
+  private static int maxFileNumToSelectInsertionTaskInOnePartition = 200;
 
   private final long memoryBudget;
   private final int maxCrossCompactionFileNum;
@@ -140,6 +142,8 @@ public class RewriteCrossSpaceCompactionSelector implements ICrossSpaceSelector 
           candidate.getUnseqFiles().size());
 
       return executeTaskResourceSelection(candidate);
+    } catch (CompactionSourceFileDeletedException e) {
+      return new CrossCompactionTaskResource();
     } catch (Exception e) {
       if (e instanceof StopReadTsFileByInterruptException || Thread.interrupted()) {
         Thread.currentThread().interrupt();
@@ -163,6 +167,14 @@ public class RewriteCrossSpaceCompactionSelector implements ICrossSpaceSelector 
           "Selecting insertion cross compaction task resources from {} seqFile, {} unseqFiles",
           candidate.getSeqFiles().size(),
           candidate.getUnseqFiles().size());
+      boolean delaySelection =
+          candidate.getSeqFiles().size() + candidate.getUnseqFiles().size()
+              > maxFileNumToSelectInsertionTaskInOnePartition;
+      if (delaySelection) {
+        context.delayInsertionSelection(timePartition);
+        return new InsertionCrossCompactionTaskResource();
+      }
+
       InsertionCrossCompactionTaskResource result =
           insertionCrossSpaceCompactionSelector.executeInsertionCrossSpaceCompactionTaskSelection();
       if (result.isValid()) {
@@ -227,7 +239,7 @@ public class RewriteCrossSpaceCompactionSelector implements ICrossSpaceSelector 
           compactionEstimator.roughEstimateCrossCompactionMemory(
               newSelectedSeqResources, newSelectedUnseqResources);
       long memoryCost =
-          CompactionEstimateUtils.shouldAccurateEstimate(roughEstimatedMemoryCost)
+          CompactionEstimateUtils.shouldUseRoughEstimatedResult(roughEstimatedMemoryCost)
               ? roughEstimatedMemoryCost
               : compactionEstimator.estimateCrossCompactionMemory(
                   newSelectedSeqResources, newSelectedUnseqResources);

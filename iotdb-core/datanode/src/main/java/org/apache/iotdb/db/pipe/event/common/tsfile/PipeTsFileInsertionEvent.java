@@ -31,7 +31,7 @@ import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tsfile.container.TsFileInsertionDataContainer;
 import org.apache.iotdb.db.pipe.event.common.tsfile.container.TsFileInsertionDataContainerProvider;
 import org.apache.iotdb.db.pipe.extractor.dataregion.realtime.assigner.PipeTimePartitionProgressIndexKeeper;
-import org.apache.iotdb.db.pipe.metric.PipeDataNodeRemainingEventAndTimeMetrics;
+import org.apache.iotdb.db.pipe.metric.overview.PipeDataNodeRemainingEventAndTimeMetrics;
 import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
 import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryManager;
 import org.apache.iotdb.db.pipe.resource.tsfile.PipeTsFileResourceManager;
@@ -55,6 +55,7 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
 
 public class PipeTsFileInsertionEvent extends EnrichedEvent
     implements TsFileInsertionEvent, ReferenceTrackableEvent {
@@ -74,7 +75,7 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent
   private final boolean isGeneratedByHistoricalExtractor;
 
   private final AtomicBoolean isClosed;
-  private TsFileInsertionDataContainer dataContainer;
+  private final AtomicReference<TsFileInsertionDataContainer> dataContainer;
 
   // The point count of the TsFile. Used for metrics on PipeConsensus' receiver side.
   // May be updated after it is flushed. Should be negative if not set.
@@ -85,14 +86,12 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent
   public PipeTsFileInsertionEvent(
       final TsFileResource resource,
       final boolean isLoaded,
-      final boolean isGeneratedByPipe,
       final boolean isGeneratedByHistoricalExtractor) {
     // The modFile must be copied before the event is assigned to the listening pipes
     this(
         resource,
         true,
         isLoaded,
-        isGeneratedByPipe,
         isGeneratedByHistoricalExtractor,
         null,
         0,
@@ -106,7 +105,6 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent
       final TsFileResource resource,
       final boolean isWithMod,
       final boolean isLoaded,
-      final boolean isGeneratedByPipe,
       final boolean isGeneratedByHistoricalExtractor,
       final String pipeName,
       final long creationTime,
@@ -124,7 +122,7 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent
     this.modFile = this.isWithMod ? new File(modFile.getFilePath()) : null;
 
     this.isLoaded = isLoaded;
-    this.isGeneratedByPipe = isGeneratedByPipe;
+    this.isGeneratedByPipe = resource.isGeneratedByPipe();
     this.isGeneratedByPipeConsensus = resource.isGeneratedByPipeConsensus();
     this.isGeneratedByHistoricalExtractor = isGeneratedByHistoricalExtractor;
 
@@ -163,6 +161,8 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent
     // If the status is "closed", then the resource status is "closed", the tsFile won't be altered
     // and can be sent.
     isClosed.set(resource.isClosed());
+
+    this.dataContainer = new AtomicReference<>(null);
   }
 
   /**
@@ -251,10 +251,6 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent
       if (isWithMod) {
         modFile = PipeDataNodeResourceManager.tsfile().increaseFileReference(modFile, false, null);
       }
-      if (Objects.nonNull(pipeName)) {
-        PipeDataNodeRemainingEventAndTimeMetrics.getInstance()
-            .increaseTsFileEventCount(pipeName, creationTime);
-      }
       return true;
     } catch (final Exception e) {
       LOGGER.warn(
@@ -263,6 +259,11 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent
               tsFile, modFile, holderMessage),
           e);
       return false;
+    } finally {
+      if (Objects.nonNull(pipeName)) {
+        PipeDataNodeRemainingEventAndTimeMetrics.getInstance()
+            .increaseTsFileEventCount(pipeName, creationTime);
+      }
     }
   }
 
@@ -273,6 +274,7 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent
       if (isWithMod) {
         PipeDataNodeResourceManager.tsfile().decreaseFileReference(modFile);
       }
+      close();
       return true;
     } catch (final Exception e) {
       LOGGER.warn(
@@ -344,7 +346,6 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent
         resource,
         isWithMod,
         isLoaded,
-        isGeneratedByPipe,
         isGeneratedByHistoricalExtractor,
         pipeName,
         creationTime,
@@ -401,7 +402,9 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent
 
   @Override
   public Iterable<TabletInsertionEvent> toTabletInsertionEvents() throws PipeException {
-    return toTabletInsertionEvents(Long.MAX_VALUE);
+    // 20 - 40 seconds for waiting
+    // Can not be unlimited or will cause deadlock
+    return toTabletInsertionEvents((long) ((1 + Math.random()) * 20 * 1000));
   }
 
   public Iterable<TabletInsertionEvent> toTabletInsertionEvents(final long timeoutMs)
@@ -443,7 +446,7 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent
     long lastRecordTime = startTime;
 
     final long memoryCheckIntervalMs =
-        PipeConfig.getInstance().getPipeTsFileParserCheckMemoryEnoughIntervalMs();
+        PipeConfig.getInstance().getPipeCheckMemoryEnoughIntervalMs();
     while (!memoryManager.isEnough4TabletParsing()) {
       Thread.sleep(memoryCheckIntervalMs);
 
@@ -489,13 +492,12 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent
 
   private TsFileInsertionDataContainer initDataContainer() {
     try {
-      if (dataContainer == null) {
-        dataContainer =
-            new TsFileInsertionDataContainerProvider(
-                    tsFile, pipePattern, startTime, endTime, pipeTaskMeta, this)
-                .provide();
-      }
-      return dataContainer;
+      dataContainer.compareAndSet(
+          null,
+          new TsFileInsertionDataContainerProvider(
+                  tsFile, pipePattern, startTime, endTime, pipeTaskMeta, this)
+              .provide());
+      return dataContainer.get();
     } catch (final IOException e) {
       close();
 
@@ -532,10 +534,13 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent
   /** Release the resource of {@link TsFileInsertionDataContainer}. */
   @Override
   public void close() {
-    if (dataContainer != null) {
-      dataContainer.close();
-      dataContainer = null;
-    }
+    dataContainer.getAndUpdate(
+        container -> {
+          if (Objects.nonNull(container)) {
+            container.close();
+          }
+          return null;
+        });
   }
 
   /////////////////////////// Object ///////////////////////////
@@ -568,7 +573,12 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent
   @Override
   public PipeEventResource eventResourceBuilder() {
     return new PipeTsFileInsertionEventResource(
-        this.isReleased, this.referenceCount, this.tsFile, this.isWithMod, this.modFile);
+        this.isReleased,
+        this.referenceCount,
+        this.tsFile,
+        this.isWithMod,
+        this.modFile,
+        this.dataContainer);
   }
 
   private static class PipeTsFileInsertionEventResource extends PipeEventResource {
@@ -576,29 +586,41 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent
     private final File tsFile;
     private final boolean isWithMod;
     private final File modFile;
+    private final AtomicReference<TsFileInsertionDataContainer> dataContainer;
 
     private PipeTsFileInsertionEventResource(
         final AtomicBoolean isReleased,
         final AtomicInteger referenceCount,
         final File tsFile,
         final boolean isWithMod,
-        final File modFile) {
+        final File modFile,
+        final AtomicReference<TsFileInsertionDataContainer> dataContainer) {
       super(isReleased, referenceCount);
       this.tsFile = tsFile;
       this.isWithMod = isWithMod;
       this.modFile = modFile;
+      this.dataContainer = dataContainer;
     }
 
     @Override
     protected void finalizeResource() {
       try {
+        // decrease reference count
         PipeDataNodeResourceManager.tsfile().decreaseFileReference(tsFile);
         if (isWithMod) {
           PipeDataNodeResourceManager.tsfile().decreaseFileReference(modFile);
         }
+
+        // close data container
+        dataContainer.getAndUpdate(
+            container -> {
+              if (Objects.nonNull(container)) {
+                container.close();
+              }
+              return null;
+            });
       } catch (final Exception e) {
-        LOGGER.warn(
-            String.format("Decrease reference count for TsFile %s error.", tsFile.getPath()), e);
+        LOGGER.warn("Decrease reference count for TsFile {} error.", tsFile.getPath(), e);
       }
     }
   }

@@ -309,6 +309,21 @@ struct TMigrateRegionReq {
     3: required i32 toId
 }
 
+struct TReconstructRegionReq {
+    1: required list<i32> regionIds
+    2: required i32 dataNodeId
+}
+
+struct TExtendRegionReq {
+    1: required i32 regionId
+    2: required i32 dataNodeId
+}
+
+struct TRemoveRegionReq {
+    1: required i32 regionId
+    2: required i32 dataNodeId
+}
+
 // Authorize
 struct TAuthorizerReq {
   1: required i32 authorType
@@ -390,8 +405,8 @@ struct TClusterParameters {
   6: required string configNodeConsensusProtocolClass
   7: required i64 timePartitionInterval
   8: required string readConsistencyLevel
-  9: required double schemaRegionPerDataNode
-  10: required double dataRegionPerDataNode
+  9: required i32 schemaRegionPerDataNode
+  10: required i32 dataRegionPerDataNode
   11: required i32 seriesPartitionSlotNum
   12: required string seriesPartitionExecutorClass
   13: required double diskSpaceWarningThreshold
@@ -1320,8 +1335,8 @@ service IConfigNodeRPCService {
    */
   common.TSStatus reportConfigNodeShutdown(common.TConfigNodeLocation configNodeLocation)
 
-  /** Stop the specific ConfigNode */
-  common.TSStatus stopConfigNode(common.TConfigNodeLocation configNodeLocation)
+  /** Stop the specific ConfigNode and clear data */
+  common.TSStatus stopAndClearConfigNode(common.TConfigNodeLocation configNodeLocation)
 
   /** The ConfigNode-leader will ping other ConfigNodes periodically */
   TConfigNodeHeartbeatResp getConfigNodeHeartBeat(TConfigNodeHeartbeatReq req)
@@ -1473,6 +1488,12 @@ service IConfigNodeRPCService {
 
   /** Migrate a region replica from one dataNode to another */
   common.TSStatus migrateRegion(TMigrateRegionReq req)
+
+  common.TSStatus reconstructRegion(TReconstructRegionReq req)
+
+  common.TSStatus extendRegion(TExtendRegionReq req)
+
+  common.TSStatus removeRegion(TRemoveRegionReq req)
 
   /** Kill query */
   common.TSStatus killQuery(string queryId, i32 dataNodeId)

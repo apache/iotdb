@@ -54,6 +54,8 @@ public class PipeEventCollector implements EventCollector {
 
   private final boolean forceTabletFormat;
 
+  private final boolean skipParsing;
+
   private final AtomicInteger collectInvocationCount = new AtomicInteger(0);
   private boolean hasNoGeneratedEvent = true;
   private boolean isFailedToIncreaseReferenceCount = false;
@@ -62,11 +64,13 @@ public class PipeEventCollector implements EventCollector {
       final UnboundedBlockingPendingQueue<Event> pendingQueue,
       final long creationTime,
       final int regionId,
-      final boolean forceTabletFormat) {
+      final boolean forceTabletFormat,
+      final boolean skipParsing) {
     this.pendingQueue = pendingQueue;
     this.creationTime = creationTime;
     this.regionId = regionId;
     this.forceTabletFormat = forceTabletFormat;
+    this.skipParsing = skipParsing;
   }
 
   @Override
@@ -95,6 +99,11 @@ public class PipeEventCollector implements EventCollector {
   }
 
   private void parseAndCollectEvent(final PipeInsertNodeTabletInsertionEvent sourceEvent) {
+    if (skipParsing) {
+      collectEvent(sourceEvent);
+      return;
+    }
+
     if (sourceEvent.shouldParseTimeOrPattern()) {
       for (final PipeRawTabletInsertionEvent parsedEvent :
           sourceEvent.toRawTabletInsertionEvents()) {
@@ -117,6 +126,11 @@ public class PipeEventCollector implements EventCollector {
       LOGGER.warn(
           "Pipe skipping temporary TsFile which shouldn't be transferred: {}",
           sourceEvent.getTsFile());
+      return;
+    }
+
+    if (skipParsing) {
+      collectEvent(sourceEvent);
       return;
     }
 

@@ -81,18 +81,16 @@ public class FastCompactionInnerCompactionEstimator extends AbstractInnerSpaceEs
   @Override
   public long roughEstimateInnerCompactionMemory(List<TsFileResource> resources)
       throws IOException {
-    long metadataCost =
-        CompactionEstimateUtils.roughEstimateMetadataCostInCompaction(
+    if (config.getCompactionMaxAlignedSeriesNumInOneBatch() <= 0) {
+      return -1L;
+    }
+    MetadataInfo metadataInfo =
+        CompactionEstimateUtils.collectMetadataInfo(
             resources,
             resources.get(0).isSeq()
                 ? CompactionType.INNER_SEQ_COMPACTION
                 : CompactionType.INNER_UNSEQ_COMPACTION);
-    if (metadataCost < 0) {
-      return metadataCost;
-    }
-    int maxConcurrentSeriesNum =
-        Math.max(
-            config.getCompactionMaxAlignedSeriesNumInOneBatch(), config.getSubCompactionTaskNum());
+    int maxConcurrentSeriesNum = metadataInfo.getMaxConcurrentSeriesNum();
     long maxChunkSize = config.getTargetChunkSize();
     long maxPageSize = tsFileConfig.getPageSizeInByte();
     int maxOverlapFileNum = calculatingMaxOverlapFileNumInSubCompactionTask(resources);
@@ -100,6 +98,6 @@ public class FastCompactionInnerCompactionEstimator extends AbstractInnerSpaceEs
     // target file (chunk + unsealed page writer)
     return (maxOverlapFileNum + 1) * maxConcurrentSeriesNum * (maxChunkSize + maxPageSize)
         + fixedMemoryBudget
-        + metadataCost;
+        + metadataInfo.metadataMemCost;
   }
 }

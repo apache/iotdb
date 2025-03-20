@@ -23,7 +23,6 @@ import org.apache.iotdb.commons.concurrent.ThreadName;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
-import org.apache.iotdb.confignode.procedure.exception.ProcedureSuspendedException;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureYieldException;
 import org.apache.iotdb.confignode.procedure.scheduler.ProcedureScheduler;
 import org.apache.iotdb.confignode.procedure.scheduler.SimpleProcedureScheduler;
@@ -186,24 +185,14 @@ public class ProcedureExecutor<Env> {
             // executing, we need to set its state to RUNNABLE.
             procedure.setState(ProcedureState.RUNNABLE);
             runnableList.add(procedure);
-          } else {
-            procedure.afterRecover(environment);
           }
         });
     restoreLocks();
 
-    waitingTimeoutList.forEach(
-        procedure -> {
-          procedure.afterRecover(environment);
-          timeoutExecutor.add(procedure);
-        });
+    waitingTimeoutList.forEach(timeoutExecutor::add);
 
     failedList.forEach(scheduler::addBack);
-    runnableList.forEach(
-        procedure -> {
-          procedure.afterRecover(environment);
-          scheduler.addBack(procedure);
-        });
+    runnableList.forEach(scheduler::addBack);
     scheduler.signalAll();
   }
 
@@ -289,7 +278,7 @@ public class ProcedureExecutor<Env> {
         new CompletedProcedureRecycler(store, completed, cleanTimeInterval, cleanEvictTTL));
   }
 
-  private void addInternalProcedure(InternalProcedure interalProcedure) {
+  public void addInternalProcedure(InternalProcedure interalProcedure) {
     if (interalProcedure == null) {
       return;
     }
@@ -418,21 +407,16 @@ public class ProcedureExecutor<Env> {
           "The executing procedure should in RUNNABLE state, but it's not. Procedure is {}", proc);
       return;
     }
-    boolean suspended = false;
     boolean reExecute;
 
     Procedure<Env>[] subprocs = null;
     do {
       reExecute = false;
-      proc.resetPersistance();
       try {
         subprocs = proc.doExecute(this.environment);
         if (subprocs != null && subprocs.length == 0) {
           subprocs = null;
         }
-      } catch (ProcedureSuspendedException e) {
-        LOG.debug("Suspend {}", proc);
-        suspended = true;
       } catch (ProcedureYieldException e) {
         LOG.debug("Yield {}", proc);
         yieldProcedure(proc);
@@ -455,22 +439,20 @@ public class ProcedureExecutor<Env> {
           }
         } else if (proc.getState() == ProcedureState.WAITING_TIMEOUT) {
           LOG.info("Added into timeoutExecutor {}", proc);
-        } else if (!suspended) {
+        } else {
           proc.setState(ProcedureState.SUCCESS);
         }
       }
       // add procedure into rollback stack.
       rootProcStack.addRollbackStep(proc);
 
-      if (proc.needPersistance()) {
-        updateStoreOnExecution(rootProcStack, proc, subprocs);
-      }
+      updateStoreOnExecution(rootProcStack, proc, subprocs);
 
       if (!store.isRunning()) {
         return;
       }
 
-      if (proc.isRunnable() && !suspended && proc.isYieldAfterExecution(this.environment)) {
+      if (proc.isRunnable() && proc.isYieldAfterExecution(this.environment)) {
         yieldProcedure(proc);
         return;
       }
@@ -481,7 +463,7 @@ public class ProcedureExecutor<Env> {
     }
 
     releaseLock(proc, false);
-    if (!suspended && proc.isFinished() && proc.hasParent()) {
+    if (proc.isFinished() && proc.hasParent()) {
       countDownChildren(rootProcStack, proc);
     }
   }
@@ -518,6 +500,7 @@ public class ProcedureExecutor<Env> {
       subproc.updateMetricsOnSubmit(getEnvironment());
       procedures.put(subproc.getProcId(), subproc);
       scheduler.addFront(subproc);
+      LOG.info("Sub-Procedure pid={} has been submitted", subproc.getProcId());
     }
   }
 
@@ -693,11 +676,6 @@ public class ProcedureExecutor<Env> {
     if (proc.hasLock()) {
       releaseLock(proc, true);
     }
-    try {
-      proc.completionCleanup(this.environment);
-    } catch (Throwable e) {
-      LOG.error("CODE-BUG:Uncaught runtime exception for procedure {}", proc, e);
-    }
   }
 
   private void rootProcedureCleanup(Procedure<Env> proc) {
@@ -731,7 +709,7 @@ public class ProcedureExecutor<Env> {
     protected long keepAliveTime = -1;
 
     public WorkerThread(ThreadGroup threadGroup) {
-      this(threadGroup, "ProcExecWorker-");
+      this(threadGroup, "ProcedureCoreWorker-");
     }
 
     public WorkerThread(ThreadGroup threadGroup, String prefix) {
@@ -751,26 +729,28 @@ public class ProcedureExecutor<Env> {
         while (isRunning() && keepAlive(lastUpdated)) {
           Procedure<Env> procedure = scheduler.poll(keepAliveTime, TimeUnit.MILLISECONDS);
           if (procedure == null) {
+            Thread.sleep(1000);
             continue;
           }
           this.activeProcedure.set(procedure);
-          int activeCount = activeExecutorCount.incrementAndGet();
+          activeExecutorCount.incrementAndGet();
           startTime.set(System.currentTimeMillis());
           executeProcedure(procedure);
-          activeCount = activeExecutorCount.decrementAndGet();
-          LOG.trace("Halt pid={}, activeCount={}", procedure.getProcId(), activeCount);
+          activeExecutorCount.decrementAndGet();
+          LOG.trace(
+              "Halt pid={}, activeCount={}", procedure.getProcId(), activeExecutorCount.get());
           this.activeProcedure.set(null);
           lastUpdated = System.currentTimeMillis();
           startTime.set(lastUpdated);
         }
 
-      } catch (Throwable throwable) {
+      } catch (Exception e) {
         if (this.activeProcedure.get() != null) {
           LOG.warn(
-              "Procedure Worker {} terminated {}",
+              "Exception happened when worker {} execute procedure {}",
               getName(),
               this.activeProcedure.get(),
-              throwable);
+              e);
         }
       } finally {
         LOG.info("Procedure worker {} terminated.", getName());
@@ -796,12 +776,12 @@ public class ProcedureExecutor<Env> {
     }
   }
 
-  // A worker thread which can be added when core workers are stuck. Will timeout after
-  // keepAliveTime if there is no procedure to run.
-  private final class KeepAliveWorkerThread extends WorkerThread {
+  // A temporary worker thread will be launched when too many core workers are stuck.
+  // They will timeout after keepAliveTime if there is no procedure to run.
+  private final class TemporaryWorkerThread extends WorkerThread {
 
-    public KeepAliveWorkerThread(ThreadGroup group) {
-      super(group, "KAProcExecWorker-");
+    public TemporaryWorkerThread(ThreadGroup group) {
+      super(group, "ProcedureTemporaryWorker-");
       this.keepAliveTime = TimeUnit.SECONDS.toMillis(10);
     }
 
@@ -823,22 +803,25 @@ public class ProcedureExecutor<Env> {
       updateTimestamp();
     }
 
-    private int checkForStuckWorkers() {
+    private int calculateRunningAndStuckWorkers() {
       // Check if any of the worker is stuck
-      int stuckCount = 0;
+      int runningCount = 0, stuckCount = 0;
       for (WorkerThread worker : workerThreads) {
-        if (worker.activeProcedure.get() == null
-            || worker.getCurrentRunTime() < DEFAULT_WORKER_STUCK_THRESHOLD) {
+        if (worker.activeProcedure.get() == null) {
           continue;
         }
-
+        runningCount++;
         // WARN the worker is stuck
-        stuckCount++;
-        LOG.warn(
-            "Worker stuck {}({}), run time {} ms",
-            worker,
-            worker.activeProcedure.get().getProcType(),
-            worker.getCurrentRunTime());
+        if (worker.getCurrentRunTime() < DEFAULT_WORKER_STUCK_THRESHOLD) {
+          stuckCount++;
+          LOG.warn(
+              "Worker stuck {}({}), run time {} ms",
+              worker,
+              worker.activeProcedure.get().getProcType(),
+              worker.getCurrentRunTime());
+        }
+        LOG.info(
+            "Procedure workers: {} is running, {} is running and stuck", runningCount, stuckCount);
       }
       return stuckCount;
     }
@@ -854,7 +837,7 @@ public class ProcedureExecutor<Env> {
       // Let's add new worker thread more aggressively, as they will timeout finally if there is no
       // work to do.
       if (stuckPerc >= DEFAULT_WORKER_ADD_STUCK_PERCENTAGE && workerThreads.size() < maxPoolSize) {
-        final KeepAliveWorkerThread worker = new KeepAliveWorkerThread(threadGroup);
+        final TemporaryWorkerThread worker = new TemporaryWorkerThread(threadGroup);
         workerThreads.add(worker);
         worker.start();
         LOG.debug("Added new worker thread {}", worker);
@@ -863,7 +846,7 @@ public class ProcedureExecutor<Env> {
 
     @Override
     protected void periodicExecute(Env env) {
-      final int stuckCount = checkForStuckWorkers();
+      final int stuckCount = calculateRunningAndStuckWorkers();
       checkThreadCount(stuckCount);
       updateTimestamp();
     }
@@ -940,28 +923,6 @@ public class ProcedureExecutor<Env> {
     LOG.debug("{} is stored.", procedure);
     // Add the procedure to the executor
     return pushProcedure(procedure);
-  }
-
-  /**
-   * Abort a specified procedure.
-   *
-   * @param procId procedure id
-   * @param force whether abort the running procdure.
-   * @return true if the procedure exists and has received the abort.
-   */
-  public boolean abort(long procId, boolean force) {
-    Procedure<Env> procedure = procedures.get(procId);
-    if (procedure != null) {
-      if (!force && procedure.wasExecuted()) {
-        return false;
-      }
-      return procedure.abort(this.environment);
-    }
-    return false;
-  }
-
-  public boolean abort(long procId) {
-    return abort(procId, true);
   }
 
   public ProcedureScheduler getScheduler() {

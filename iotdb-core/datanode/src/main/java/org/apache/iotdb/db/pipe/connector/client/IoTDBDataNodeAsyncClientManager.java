@@ -35,6 +35,7 @@ import org.apache.iotdb.pipe.api.exception.PipeException;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferResp;
 
+import org.apache.thrift.TException;
 import org.apache.thrift.async.AsyncMethodCallback;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -84,14 +85,18 @@ public class IoTDBDataNodeAsyncClientManager extends IoTDBClientManager
       final String username,
       final String password,
       final boolean shouldReceiverConvertOnTypeMismatch,
-      final String loadTsFileStrategy) {
+      final String loadTsFileStrategy,
+      final boolean validateTsFile,
+      final boolean shouldMarkAsPipeRequest) {
     super(
         endPoints,
         username,
         password,
         shouldReceiverConvertOnTypeMismatch,
         loadTsFileStrategy,
-        useLeaderCache);
+        useLeaderCache,
+        validateTsFile,
+        shouldMarkAsPipeRequest);
 
     endPointSet = new HashSet<>(endPoints);
 
@@ -248,6 +253,12 @@ public class IoTDBDataNodeAsyncClientManager extends IoTDBClientManager
           PipeTransferHandshakeConstant.HANDSHAKE_KEY_LOAD_TSFILE_STRATEGY, loadTsFileStrategy);
       params.put(PipeTransferHandshakeConstant.HANDSHAKE_KEY_USERNAME, username);
       params.put(PipeTransferHandshakeConstant.HANDSHAKE_KEY_PASSWORD, password);
+      params.put(
+          PipeTransferHandshakeConstant.HANDSHAKE_KEY_VALIDATE_TSFILE,
+          Boolean.toString(validateTsFile));
+      params.put(
+          PipeTransferHandshakeConstant.HANDSHAKE_KEY_MARK_AS_PIPE_REQUEST,
+          Boolean.toString(shouldMarkAsPipeRequest));
 
       client.setTimeoutDynamically(PipeConfig.getInstance().getPipeConnectorHandshakeTimeoutMs());
       client.pipeTransfer(PipeTransferDataNodeHandshakeV2Req.toTPipeTransferReq(params), callback);
@@ -256,7 +267,7 @@ public class IoTDBDataNodeAsyncClientManager extends IoTDBClientManager
       // Retry to handshake by PipeTransferHandshakeV1Req.
       if (resp.get() != null
           && resp.get().getStatus().getCode() == TSStatusCode.PIPE_TYPE_ERROR.getStatusCode()) {
-        LOGGER.info(
+        LOGGER.warn(
             "Handshake error by PipeTransferHandshakeV2Req with receiver {}:{} "
                 + "retry to handshake by PipeTransferHandshakeV1Req.",
             targetNodeUrl.getIp(),
@@ -277,6 +288,9 @@ public class IoTDBDataNodeAsyncClientManager extends IoTDBClientManager
       if (exception.get() != null) {
         throw new PipeConnectionException("Failed to handshake.", exception.get());
       }
+    } catch (TException e) {
+      client.resetMethodStateIfStopped();
+      throw e;
     } finally {
       client.setShouldReturnSelf(true);
       client.returnSelf();

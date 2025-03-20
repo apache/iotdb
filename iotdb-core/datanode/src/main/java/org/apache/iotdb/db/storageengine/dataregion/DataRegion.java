@@ -30,6 +30,7 @@ import org.apache.iotdb.commons.schema.SchemaConstant;
 import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.commons.service.metric.PerformanceOverviewMetrics;
 import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
+import org.apache.iotdb.commons.utils.RetryUtils;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.commons.utils.TimePartitionUtils;
 import org.apache.iotdb.consensus.ConsensusFactory;
@@ -157,7 +158,6 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
-import java.util.concurrent.Phaser;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
@@ -631,6 +631,12 @@ public class DataRegion implements IDataRegionForQuery {
     }
 
     if (StorageEngine.getInstance().isReadyForReadAndWrite()) {
+      if (config.getDataRegionConsensusProtocolClass().equals(ConsensusFactory.IOT_CONSENSUS)
+          || config
+              .getDataRegionConsensusProtocolClass()
+              .equals(ConsensusFactory.IOT_CONSENSUS_V2)) {
+        WALManager.getInstance().applyForWALNode(databaseName + FILE_NAME_SEPARATOR + dataRegionId);
+      }
       logger.info("The data region {}[{}] is created successfully", databaseName, dataRegionId);
     } else {
       logger.info("The data region {}[{}] is recovered successfully", databaseName, dataRegionId);
@@ -648,7 +654,8 @@ public class DataRegion implements IDataRegionForQuery {
     long timePartitionId = resource.getTimePartition();
     Map<IDeviceID, Long> endTimeMap = new HashMap<>();
     for (IDeviceID deviceId : resource.getDevices()) {
-      long endTime = resource.getEndTime(deviceId);
+      @SuppressWarnings("OptionalGetWithoutIsPresent") // checked above
+      long endTime = resource.getEndTime(deviceId).get();
       endTimeMap.put(deviceId, endTime);
     }
     if (config.isEnableSeparateData()) {
@@ -664,7 +671,9 @@ public class DataRegion implements IDataRegionForQuery {
     Map<IDeviceID, Long> endTimeMap = new HashMap<>();
     for (TsFileResource resource : resources) {
       for (IDeviceID deviceId : resource.getDevices()) {
-        long endTime = resource.getEndTime(deviceId);
+        // checked above
+        //noinspection OptionalGetWithoutIsPresent
+        long endTime = resource.getEndTime(deviceId).get();
         endTimeMap.put(deviceId, endTime);
       }
     }
@@ -2135,7 +2144,9 @@ public class DataRegion implements IDataRegionForQuery {
         if (tsFileResource.isClosed()) {
           tsfileResourcesForQuery.add(tsFileResource);
         } else {
-          tsFileResource.getProcessor().query(pathList, context, tsfileResourcesForQuery);
+          tsFileResource
+              .getProcessor()
+              .query(pathList, context, tsfileResourcesForQuery, globalTimeFilter);
         }
       } catch (IOException e) {
         throw new MetadataException(e);
@@ -2318,6 +2329,7 @@ public class DataRegion implements IDataRegionForQuery {
     }
   }
 
+  @SuppressWarnings("OptionalGetWithoutIsPresent")
   private boolean canSkipDelete(
       TsFileResource tsFileResource,
       Set<PartialPath> devicePaths,
@@ -2361,8 +2373,8 @@ public class DataRegion implements IDataRegionForQuery {
           // resource does not contain this device
           continue;
         }
-        deviceStartTime = tsFileResource.getStartTime(deviceId);
-        deviceEndTime = tsFileResource.getEndTime(deviceId);
+        deviceStartTime = tsFileResource.getStartTime(deviceId).get();
+        deviceEndTime = tsFileResource.getEndTime(deviceId).get();
       }
 
       if (!tsFileResource.isClosed() && deviceEndTime == Long.MIN_VALUE) {
@@ -2657,31 +2669,32 @@ public class DataRegion implements IDataRegionForQuery {
     if (!isCompactionSelecting.compareAndSet(false, true)) {
       return 0;
     }
-    int trySubmitCount = 0;
+    CompactionScheduleContext context = new CompactionScheduleContext();
     try {
       List<Long> timePartitions = new ArrayList<>(tsFileManager.getTimePartitions());
       // Sort the time partition from largest to smallest
       timePartitions.sort(Comparator.reverseOrder());
 
-      CompactionScheduleContext context = new CompactionScheduleContext();
-
       // schedule insert compaction
-      trySubmitCount += executeInsertionCompaction(timePartitions, context);
-      context.incrementSubmitTaskNum(CompactionTaskType.INSERTION, trySubmitCount);
+      int[] submitCountOfTimePartitions = executeInsertionCompaction(timePartitions, context);
 
       // schedule the other compactions
-      if (trySubmitCount == 0) {
-        // the name of this variable is trySubmitCount, because the task submitted to the queue
-        // could be evicted due to the low priority of the task
-        for (long timePartition : timePartitions) {
-          CompactionScheduler.sharedLockCompactionSelection();
-          try {
-            trySubmitCount +=
-                CompactionScheduler.scheduleCompaction(tsFileManager, timePartition, context);
-          } finally {
-            context.clearTimePartitionDeviceInfoCache();
-            CompactionScheduler.sharedUnlockCompactionSelection();
-          }
+      for (int i = 0; i < timePartitions.size(); i++) {
+        boolean skipOtherCompactionSchedule =
+            submitCountOfTimePartitions[i] > 0
+                && !config
+                    .getDataRegionConsensusProtocolClass()
+                    .equals(ConsensusFactory.IOT_CONSENSUS_V2);
+        if (skipOtherCompactionSchedule) {
+          continue;
+        }
+        long timePartition = timePartitions.get(i);
+        CompactionScheduler.sharedLockCompactionSelection();
+        try {
+          CompactionScheduler.scheduleCompaction(tsFileManager, timePartition, context);
+        } finally {
+          context.clearTimePartitionDeviceInfoCache();
+          CompactionScheduler.sharedUnlockCompactionSelection();
         }
       }
       if (context.hasSubmitTask()) {
@@ -2694,7 +2707,7 @@ public class DataRegion implements IDataRegionForQuery {
     } finally {
       isCompactionSelecting.set(false);
     }
-    return trySubmitCount;
+    return context.getSubmitCompactionTaskNum();
   }
 
   /** Schedule settle compaction for ttl check. */
@@ -2741,40 +2754,36 @@ public class DataRegion implements IDataRegionForQuery {
     return trySubmitCount;
   }
 
-  protected int executeInsertionCompaction(
+  protected int[] executeInsertionCompaction(
       List<Long> timePartitions, CompactionScheduleContext context) throws InterruptedException {
-    int trySubmitCount = 0;
+    int[] trySubmitCountOfTimePartitions = new int[timePartitions.size()];
     CompactionScheduler.sharedLockCompactionSelection();
     try {
       while (true) {
         int currentSubmitCount = 0;
-        for (long timePartition : timePartitions) {
-          while (true) {
-            Phaser insertionTaskPhaser = new Phaser(1);
-            int selectedTaskNum =
-                CompactionScheduler.scheduleInsertionCompaction(
-                    tsFileManager, timePartition, insertionTaskPhaser, context);
-            insertionTaskPhaser.awaitAdvanceInterruptibly(insertionTaskPhaser.arrive());
-            currentSubmitCount += selectedTaskNum;
-            if (selectedTaskNum <= 0) {
-              break;
-            }
-          }
+        for (int i = 0; i < timePartitions.size(); i++) {
+          long timePartition = timePartitions.get(i);
+          int selectedTaskNum =
+              CompactionScheduler.scheduleInsertionCompaction(
+                  tsFileManager, timePartition, context);
+          currentSubmitCount += selectedTaskNum;
+          trySubmitCountOfTimePartitions[i] += selectedTaskNum;
           context.clearTimePartitionDeviceInfoCache();
         }
         if (currentSubmitCount <= 0) {
           break;
         }
-        trySubmitCount += currentSubmitCount;
+        context.incrementSubmitTaskNum(CompactionTaskType.INSERTION, currentSubmitCount);
       }
     } catch (InterruptedException e) {
       throw e;
     } catch (Throwable e) {
       logger.error("Meet error in insertion compaction schedule.", e);
     } finally {
+      context.clearTimePartitionDeviceInfoCache();
       CompactionScheduler.sharedUnlockCompactionSelection();
     }
-    return trySubmitCount;
+    return trySubmitCountOfTimePartitions;
   }
 
   /**
@@ -2954,8 +2963,7 @@ public class DataRegion implements IDataRegionForQuery {
       final boolean deleteOriginFile,
       boolean isGeneratedByPipe)
       throws LoadFileException, DiskSpaceInsufficientException {
-    final File targetFile;
-    targetFile =
+    final File targetFile =
         fsFactory.getFile(
             TierManager.getInstance().getNextFolderForTsFile(0, false),
             databaseName
@@ -2967,7 +2975,7 @@ public class DataRegion implements IDataRegionForQuery {
                 + tsFileResource.getTsFile().getName());
     tsFileResource.setFile(targetFile);
     if (tsFileManager.contains(tsFileResource, false)) {
-      logger.error("The file {} has already been loaded in unsequence list", tsFileResource);
+      logger.warn("The file {} has already been loaded in unsequence list", tsFileResource);
       return false;
     }
 
@@ -2984,12 +2992,20 @@ public class DataRegion implements IDataRegionForQuery {
     }
     try {
       if (deleteOriginFile) {
-        FileUtils.moveFile(tsFileToLoad, targetFile);
+        RetryUtils.retryOnException(
+            () -> {
+              FileUtils.moveFile(tsFileToLoad, targetFile);
+              return null;
+            });
       } else {
-        Files.copy(tsFileToLoad.toPath(), targetFile.toPath());
+        RetryUtils.retryOnException(
+            () -> {
+              Files.copy(tsFileToLoad.toPath(), targetFile.toPath());
+              return null;
+            });
       }
     } catch (final IOException e) {
-      logger.error(
+      logger.warn(
           "File renaming failed when loading tsfile. Origin: {}, Target: {}",
           tsFileToLoad.getAbsolutePath(),
           targetFile.getAbsolutePath(),
@@ -3006,13 +3022,20 @@ public class DataRegion implements IDataRegionForQuery {
         fsFactory.getFile(targetFile.getAbsolutePath() + RESOURCE_SUFFIX);
     try {
       if (deleteOriginFile) {
-        FileUtils.moveFile(resourceFileToLoad, targetResourceFile);
+        RetryUtils.retryOnException(
+            () -> {
+              FileUtils.moveFile(resourceFileToLoad, targetResourceFile);
+              return null;
+            });
       } else {
-        Files.copy(resourceFileToLoad.toPath(), targetResourceFile.toPath());
+        RetryUtils.retryOnException(
+            () -> {
+              Files.copy(resourceFileToLoad.toPath(), targetResourceFile.toPath());
+              return null;
+            });
       }
-
     } catch (final IOException e) {
-      logger.error(
+      logger.warn(
           "File renaming failed when loading .resource file. Origin: {}, Target: {}",
           resourceFileToLoad.getAbsolutePath(),
           targetResourceFile.getAbsolutePath(),
@@ -3033,18 +3056,34 @@ public class DataRegion implements IDataRegionForQuery {
       final File targetModFile =
           fsFactory.getFile(targetFile.getAbsolutePath() + ModificationFile.FILE_SUFFIX);
       try {
-        Files.deleteIfExists(targetModFile.toPath());
+        RetryUtils.retryOnException(
+            () -> {
+              Files.deleteIfExists(targetModFile.toPath());
+              return null;
+            });
       } catch (final IOException e) {
         logger.warn("Cannot delete localModFile {}", targetModFile, e);
       }
       try {
+        final long modFileSize = modFileToLoad.length();
         if (deleteOriginFile) {
-          FileUtils.moveFile(modFileToLoad, targetModFile);
+          RetryUtils.retryOnException(
+              () -> {
+                FileUtils.moveFile(modFileToLoad, targetModFile);
+                return null;
+              });
         } else {
-          Files.copy(modFileToLoad.toPath(), targetModFile.toPath());
+          RetryUtils.retryOnException(
+              () -> {
+                Files.copy(modFileToLoad.toPath(), targetModFile.toPath());
+                return null;
+              });
         }
+
+        FileMetrics.getInstance().increaseModFileNum(1);
+        FileMetrics.getInstance().increaseModFileSize(modFileSize);
       } catch (final IOException e) {
-        logger.error(
+        logger.warn(
             "File renaming failed when loading .mod file. Origin: {}, Target: {}",
             modFileToLoad.getAbsolutePath(),
             targetModFile.getAbsolutePath(),

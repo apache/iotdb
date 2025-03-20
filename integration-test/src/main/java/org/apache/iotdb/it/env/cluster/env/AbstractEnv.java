@@ -325,6 +325,10 @@ public abstract class AbstractEnv implements BaseEnv {
     return result;
   }
 
+  public void checkNodeInStatus(int nodeId, NodeStatus expectation) {
+    checkClusterStatus(nodeStatusMap -> expectation.getStatus().equals(nodeStatusMap.get(nodeId)));
+  }
+
   public void checkClusterStatusWithoutUnknown() {
     checkClusterStatus(
         nodeStatusMap -> nodeStatusMap.values().stream().noneMatch("Unknown"::equals));
@@ -430,6 +434,15 @@ public abstract class AbstractEnv implements BaseEnv {
   public Connection getConnection(String username, String password) throws SQLException {
     return new ClusterTestConnection(
         getWriteConnection(null, username, password), getReadConnections(null, username, password));
+  }
+
+  @Override
+  public Connection getConnection(
+      final DataNodeWrapper dataNodeWrapper, final String username, final String password)
+      throws SQLException {
+    return new ClusterTestConnection(
+        getWriteConnectionWithSpecifiedDataNode(dataNodeWrapper, null, username, password),
+        getReadConnections(null, dataNodeWrapper, username, password));
   }
 
   @Override
@@ -602,6 +615,36 @@ public abstract class AbstractEnv implements BaseEnv {
                 readConnection);
           });
     }
+    return readConnRequestDelegate.requestAll();
+  }
+
+  protected List<NodeConnection> getReadConnections(
+      final Constant.Version version,
+      final DataNodeWrapper dataNode,
+      final String username,
+      final String password)
+      throws SQLException {
+    final List<String> endpoints = new ArrayList<>();
+    final ParallelRequestDelegate<NodeConnection> readConnRequestDelegate =
+        new ParallelRequestDelegate<>(endpoints, NODE_START_TIMEOUT);
+
+    endpoints.add(dataNode.getIpAndPortString());
+    readConnRequestDelegate.addRequest(
+        () -> {
+          Connection readConnection =
+              DriverManager.getConnection(
+                  Config.IOTDB_URL_PREFIX
+                      + dataNode.getIpAndPortString()
+                      + getParam(version, NODE_NETWORK_TIMEOUT_MS, ZERO_TIME_ZONE),
+                  System.getProperty("User", username),
+                  System.getProperty("Password", password));
+          return new NodeConnection(
+              dataNode.getIpAndPortString(),
+              NodeConnection.NodeRole.DATA_NODE,
+              NodeConnection.ConnectionRole.READ,
+              readConnection);
+        });
+
     return readConnRequestDelegate.requestAll();
   }
 
@@ -1028,6 +1071,11 @@ public abstract class AbstractEnv implements BaseEnv {
   @Override
   public void shutdownAllDataNodes() {
     dataNodeWrapperList.forEach(AbstractNodeWrapper::stop);
+  }
+
+  @Override
+  public void shutdownForciblyAllDataNodes() {
+    dataNodeWrapperList.forEach(AbstractNodeWrapper::stopForcibly);
   }
 
   @Override

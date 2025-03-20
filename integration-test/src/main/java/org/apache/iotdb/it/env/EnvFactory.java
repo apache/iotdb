@@ -20,6 +20,7 @@
 package org.apache.iotdb.it.env;
 
 import org.apache.iotdb.it.env.cluster.env.AIEnv;
+import org.apache.iotdb.it.env.cluster.env.AbstractEnv;
 import org.apache.iotdb.it.env.cluster.env.Cluster1Env;
 import org.apache.iotdb.it.env.cluster.env.SimpleEnv;
 import org.apache.iotdb.it.env.remote.env.RemoteServerEnv;
@@ -72,5 +73,9 @@ public class EnvFactory {
       }
     }
     return env;
+  }
+
+  public static AbstractEnv getAbstractEnv() {
+    return (AbstractEnv) getEnv();
   }
 }

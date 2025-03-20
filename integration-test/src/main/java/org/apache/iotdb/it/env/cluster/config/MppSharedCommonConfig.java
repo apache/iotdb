@@ -146,9 +146,9 @@ public class MppSharedCommonConfig implements CommonConfig {
   }
 
   @Override
-  public CommonConfig setAvgSeriesPointNumberThreshold(int avgSeriesPointNumberThreshold) {
-    cnConfig.setAvgSeriesPointNumberThreshold(avgSeriesPointNumberThreshold);
-    dnConfig.setAvgSeriesPointNumberThreshold(avgSeriesPointNumberThreshold);
+  public CommonConfig setTargetChunkPointNum(int targetChunkPointNum) {
+    cnConfig.setTargetChunkPointNum(targetChunkPointNum);
+    dnConfig.setTargetChunkPointNum(targetChunkPointNum);
     return this;
   }
 
@@ -227,6 +227,13 @@ public class MppSharedCommonConfig implements CommonConfig {
   public CommonConfig setTimePartitionInterval(long timePartitionInterval) {
     cnConfig.setTimePartitionInterval(timePartitionInterval);
     dnConfig.setTimePartitionInterval(timePartitionInterval);
+    return this;
+  }
+
+  @Override
+  public CommonConfig setTTLCheckInterval(long ttlCheckInterval) {
+    cnConfig.setTTLCheckInterval(ttlCheckInterval);
+    dnConfig.setTTLCheckInterval(ttlCheckInterval);
     return this;
   }
 
@@ -351,6 +358,13 @@ public class MppSharedCommonConfig implements CommonConfig {
   public CommonConfig setSeriesSlotNum(int seriesSlotNum) {
     cnConfig.setSeriesSlotNum(seriesSlotNum);
     dnConfig.setSeriesSlotNum(seriesSlotNum);
+    return this;
+  }
+
+  @Override
+  public CommonConfig setSeriesPartitionExecutorClass(String seriesPartitionExecutorClass) {
+    cnConfig.setSeriesPartitionExecutorClass(seriesPartitionExecutorClass);
+    dnConfig.setSeriesPartitionExecutorClass(seriesPartitionExecutorClass);
     return this;
   }
 

@@ -89,6 +89,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TDropPipePluginReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropPipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropTopicReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropTriggerReq;
+import org.apache.iotdb.confignode.rpc.thrift.TExtendRegionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetAllPipeInfoResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetAllSubscriptionInfoResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetAllTemplatesResp;
@@ -116,7 +117,9 @@ import org.apache.iotdb.confignode.rpc.thrift.TMigrateRegionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TPermissionInfoResp;
 import org.apache.iotdb.confignode.rpc.thrift.TPipeConfigTransferReq;
 import org.apache.iotdb.confignode.rpc.thrift.TPipeConfigTransferResp;
+import org.apache.iotdb.confignode.rpc.thrift.TReconstructRegionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TRegionRouteMapResp;
+import org.apache.iotdb.confignode.rpc.thrift.TRemoveRegionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TSchemaNodeManagementResp;
 import org.apache.iotdb.confignode.rpc.thrift.TSchemaPartitionTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TSetDataNodeStatusReq;
@@ -143,6 +146,7 @@ import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import java.util.List;
+import java.util.Map;
 
 /**
  * A subset of services provided by {@link ConfigManager}. For use internally only, passed to
@@ -534,6 +538,9 @@ public interface IManager {
   /** Flush on all DataNodes. */
   TSStatus flush(TFlushReq req);
 
+  /** Flush on specific Datanode. */
+  TSStatus flushOnSpecificDN(TFlushReq req, Map<Integer, TDataNodeLocation> dataNodeLocationMap);
+
   /** Clear cache on all DataNodes. */
   TSStatus clearCache();
 
@@ -782,6 +789,12 @@ public interface IManager {
   TGetSeriesSlotListResp getSeriesSlotList(TGetSeriesSlotListReq req);
 
   TSStatus migrateRegion(TMigrateRegionReq req);
+
+  TSStatus reconstructRegion(TReconstructRegionReq req);
+
+  TSStatus extendRegion(TExtendRegionReq req);
+
+  TSStatus removeRegion(TRemoveRegionReq req);
 
   TSStatus createCQ(TCreateCQReq req);
 

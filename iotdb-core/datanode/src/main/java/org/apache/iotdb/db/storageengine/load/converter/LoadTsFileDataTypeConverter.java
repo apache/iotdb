@@ -25,11 +25,15 @@ import org.apache.iotdb.db.protocol.session.SessionManager;
 import org.apache.iotdb.db.queryengine.plan.Coordinator;
 import org.apache.iotdb.db.queryengine.plan.analyze.ClusterPartitionFetcher;
 import org.apache.iotdb.db.queryengine.plan.analyze.schema.ClusterSchemaFetcher;
+import org.apache.iotdb.db.queryengine.plan.statement.Statement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.LoadTsFileStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.pipe.PipeEnrichedStatement;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.util.Optional;
 
 public class LoadTsFileDataTypeConverter {
 
@@ -37,36 +41,50 @@ public class LoadTsFileDataTypeConverter {
 
   private static final SessionManager SESSION_MANAGER = SessionManager.getInstance();
 
-  private final LoadTreeStatementDataTypeConvertExecutionVisitor
-      treeStatementDataTypeConvertExecutionVisitor =
-          new LoadTreeStatementDataTypeConvertExecutionVisitor(
-              statement ->
-                  Coordinator.getInstance()
-                      .executeForTreeModel(
-                          statement,
-                          SESSION_MANAGER.requestQueryId(),
-                          SESSION_MANAGER.getSessionInfo(SESSION_MANAGER.getCurrSession()),
-                          "",
-                          ClusterPartitionFetcher.getInstance(),
-                          ClusterSchemaFetcher.getInstance(),
-                          IoTDBDescriptor.getInstance().getConfig().getQueryTimeoutThreshold(),
-                          false)
-                      .status);
-
   public static final LoadConvertedInsertTabletStatementTSStatusVisitor STATEMENT_STATUS_VISITOR =
       new LoadConvertedInsertTabletStatementTSStatusVisitor();
   public static final LoadConvertedInsertTabletStatementExceptionVisitor
       STATEMENT_EXCEPTION_VISITOR = new LoadConvertedInsertTabletStatementExceptionVisitor();
 
-  public TSStatus convertForTreeModel(LoadTsFileStatement loadTsFileTreeStatement) {
+  private final boolean isGeneratedByPipe;
+
+  private final LoadTreeStatementDataTypeConvertExecutionVisitor
+      treeStatementDataTypeConvertExecutionVisitor =
+          new LoadTreeStatementDataTypeConvertExecutionVisitor(this::executeForTreeModel);
+
+  public LoadTsFileDataTypeConverter(final boolean isGeneratedByPipe) {
+    this.isGeneratedByPipe = isGeneratedByPipe;
+  }
+
+  public Optional<TSStatus> convertForTreeModel(final LoadTsFileStatement loadTsFileTreeStatement) {
     try {
-      return loadTsFileTreeStatement
-          .accept(treeStatementDataTypeConvertExecutionVisitor, null)
-          .orElse(null);
+      return loadTsFileTreeStatement.accept(treeStatementDataTypeConvertExecutionVisitor, null);
     } catch (Exception e) {
       LOGGER.warn(
           "Failed to convert data types for tree model statement {}.", loadTsFileTreeStatement, e);
-      return new TSStatus(TSStatusCode.LOAD_FILE_ERROR.getStatusCode()).setMessage(e.getMessage());
+      return Optional.of(
+          new TSStatus(TSStatusCode.LOAD_FILE_ERROR.getStatusCode()).setMessage(e.getMessage()));
     }
+  }
+
+  private TSStatus executeForTreeModel(final Statement statement) {
+    return Coordinator.getInstance()
+        .executeForTreeModel(
+            isGeneratedByPipe ? new PipeEnrichedStatement(statement) : statement,
+            SESSION_MANAGER.requestQueryId(),
+            SESSION_MANAGER.getSessionInfo(SESSION_MANAGER.getCurrSession()),
+            "",
+            ClusterPartitionFetcher.getInstance(),
+            ClusterSchemaFetcher.getInstance(),
+            IoTDBDescriptor.getInstance().getConfig().getQueryTimeoutThreshold(),
+            false)
+        .status;
+  }
+
+  public boolean isSuccessful(final TSStatus status) {
+    return status != null
+        && (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
+            || status.getCode() == TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode()
+            || status.getCode() == TSStatusCode.LOAD_IDEMPOTENT_CONFLICT_EXCEPTION.getStatusCode());
   }
 }

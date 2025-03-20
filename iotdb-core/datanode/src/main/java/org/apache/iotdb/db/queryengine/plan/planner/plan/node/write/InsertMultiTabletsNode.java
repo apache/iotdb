@@ -98,6 +98,11 @@ public class InsertMultiTabletsNode extends InsertNode {
     insertTabletNodeList = new ArrayList<>();
   }
 
+  @Override
+  public InsertNode mergeInsertNode(List<InsertNode> insertNodes) {
+    throw new UnsupportedOperationException("InsertMultiTabletsNode not support merge");
+  }
+
   public InsertMultiTabletsNode(
       PlanNodeId id,
       List<Integer> parentInsertTabletNodeIndexList,

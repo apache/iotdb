@@ -144,7 +144,7 @@ public class PipeConnectorConstant {
   public static final String CONNECTOR_OPC_UA_MODEL_CLIENT_SERVER_VALUE = "client-server";
   public static final String CONNECTOR_OPC_UA_MODEL_PUB_SUB_VALUE = "pub-sub";
   public static final String CONNECTOR_OPC_UA_MODEL_DEFAULT_VALUE =
-      CONNECTOR_OPC_UA_MODEL_PUB_SUB_VALUE;
+      CONNECTOR_OPC_UA_MODEL_CLIENT_SERVER_VALUE;
 
   public static final String CONNECTOR_OPC_UA_TCP_BIND_PORT_KEY = "connector.opcua.tcp.port";
   public static final String SINK_OPC_UA_TCP_BIND_PORT_KEY = "sink.opcua.tcp.port";
@@ -237,6 +237,21 @@ public class PipeConnectorConstant {
               Arrays.asList(
                   CONNECTOR_LOAD_TSFILE_STRATEGY_ASYNC_VALUE,
                   CONNECTOR_LOAD_TSFILE_STRATEGY_SYNC_VALUE)));
+
+  public static final String CONNECTOR_LOAD_TSFILE_VALIDATION_KEY =
+      "connector.load-tsfile-validation";
+  public static final String SINK_LOAD_TSFILE_VALIDATION_KEY = "sink.load-tsfile-validation";
+  public static final boolean CONNECTOR_LOAD_TSFILE_VALIDATION_DEFAULT_VALUE = true;
+
+  public static final String CONNECTOR_MARK_AS_PIPE_REQUEST_KEY = "connector.mark-as-pipe-request";
+  public static final String SINK_MARK_AS_PIPE_REQUEST_KEY = "sink.mark-as-pipe-request";
+  public static final boolean CONNECTOR_MARK_AS_PIPE_REQUEST_DEFAULT_VALUE = true;
+
+  public static final String CONNECTOR_OPC_DA_CLSID_KEY = "connector.opcda.clsid";
+  public static final String SINK_OPC_DA_CLSID_KEY = "sink.opcda.clsid";
+
+  public static final String CONNECTOR_OPC_DA_PROGID_KEY = "connector.opcda.progid";
+  public static final String SINK_OPC_DA_PROGID_KEY = "sink.opcda.progid";
 
   private PipeConnectorConstant() {
     throw new IllegalStateException("Utility class");

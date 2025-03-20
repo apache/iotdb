@@ -68,7 +68,8 @@ public class PipeTaskProcessorStage extends PipeTaskStage {
       final UnboundedBlockingPendingQueue<Event> pipeConnectorOutputPendingQueue,
       final PipeProcessorSubtaskExecutor executor,
       final PipeTaskMeta pipeTaskMeta,
-      final boolean forceTabletFormat) {
+      final boolean forceTabletFormat,
+      final boolean skipParsing) {
     final PipeProcessorRuntimeConfiguration runtimeConfiguration =
         new PipeTaskRuntimeConfiguration(
             new PipeTaskProcessorRuntimeEnvironment(
@@ -100,7 +101,11 @@ public class PipeTaskProcessorStage extends PipeTaskStage {
     final String taskId = pipeName + "_" + regionId + "_" + creationTime;
     final PipeEventCollector pipeConnectorOutputEventCollector =
         new PipeEventCollector(
-            pipeConnectorOutputPendingQueue, creationTime, regionId, forceTabletFormat);
+            pipeConnectorOutputPendingQueue,
+            creationTime,
+            regionId,
+            forceTabletFormat,
+            skipParsing);
     this.pipeProcessorSubtask =
         new PipeProcessorSubtask(
             taskId,

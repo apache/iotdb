@@ -50,6 +50,12 @@ public class ContinuousSameSearchIndexSeparatorNode extends SearchNode implement
   }
 
   @Override
+  public SearchNode merge(List<SearchNode> searchNodes) {
+    throw new UnsupportedOperationException(
+        "ContinuousSameSearchIndexSeparatorNode not support merge");
+  }
+
+  @Override
   public void serializeToWAL(IWALByteBufferView buffer) {
     buffer.putShort(PlanNodeType.CONTINUOUS_SAME_SEARCH_INDEX_SEPARATOR.getNodeType());
     // search index is always -1

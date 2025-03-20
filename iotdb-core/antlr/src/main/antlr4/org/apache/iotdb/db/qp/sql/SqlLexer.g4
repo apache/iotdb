@@ -165,6 +165,10 @@ CONFIGNODES
     : C O N F I G N O D E S
     ;
 
+CONFIGNODE
+    : C O N F I G N O D E
+    ;
+
 CONFIGURATION
     : C O N F I G U R A T I O N
     ;
@@ -215,6 +219,10 @@ DATABASE
 
 DATABASES
     : D A T A B A S E S
+    ;
+
+DATANODE
+    : D A T A N O D E
     ;
 
 DATANODEID
@@ -296,6 +304,10 @@ EXISTS
 
 EXPLAIN
     : E X P L A I N
+    ;
+
+EXTEND
+    : E X T E N D
     ;
 
 EXTRACTOR
@@ -636,6 +648,10 @@ RANGE
 
 READONLY
     : R E A D O N L Y
+    ;
+
+RECONSTRUCT
+    : R E C O N S T R U C T
     ;
 
 REGEXP

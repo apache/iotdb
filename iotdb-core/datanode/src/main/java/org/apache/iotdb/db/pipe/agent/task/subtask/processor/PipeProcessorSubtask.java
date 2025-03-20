@@ -31,8 +31,8 @@ import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
 import org.apache.iotdb.db.pipe.agent.task.connection.PipeEventCollector;
 import org.apache.iotdb.db.pipe.event.UserDefinedEnrichedEvent;
 import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
-import org.apache.iotdb.db.pipe.metric.PipeDataNodeRemainingEventAndTimeMetrics;
-import org.apache.iotdb.db.pipe.metric.PipeProcessorMetrics;
+import org.apache.iotdb.db.pipe.metric.overview.PipeDataNodeRemainingEventAndTimeMetrics;
+import org.apache.iotdb.db.pipe.metric.processor.PipeProcessorMetrics;
 import org.apache.iotdb.db.pipe.processor.pipeconsensus.PipeConsensusProcessor;
 import org.apache.iotdb.db.storageengine.StorageEngine;
 import org.apache.iotdb.db.utils.ErrorHandlingUtils;
@@ -228,10 +228,9 @@ public class PipeProcessorSubtask extends PipeReportableSubtask {
     PipeProcessorMetrics.getInstance().deregister(taskID);
     try {
       isClosed.set(true);
-
-      // pipeProcessor closes first, then no more events will be added into outputEventCollector.
-      // only after that, outputEventCollector can be closed.
       pipeProcessor.close();
+      // It is important to note that even if the subtask and its corresponding processor are
+      // closed, the execution thread may still deliver events downstream.
     } catch (final Exception e) {
       LOGGER.info(
           "Exception occurred when closing pipe processor subtask {}, root cause: {}",

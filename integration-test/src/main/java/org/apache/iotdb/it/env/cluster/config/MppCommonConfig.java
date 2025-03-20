@@ -149,8 +149,8 @@ public class MppCommonConfig extends MppBaseConfig implements CommonConfig {
   }
 
   @Override
-  public CommonConfig setAvgSeriesPointNumberThreshold(int avgSeriesPointNumberThreshold) {
-    setProperty("avg_series_point_number_threshold", String.valueOf(avgSeriesPointNumberThreshold));
+  public CommonConfig setTargetChunkPointNum(int targetChunkPointNum) {
+    setProperty("target_chunk_point_num", String.valueOf(targetChunkPointNum));
     return this;
   }
 
@@ -227,6 +227,12 @@ public class MppCommonConfig extends MppBaseConfig implements CommonConfig {
   @Override
   public CommonConfig setTimePartitionInterval(long timePartitionInterval) {
     setProperty("time_partition_interval", String.valueOf(timePartitionInterval));
+    return this;
+  }
+
+  @Override
+  public CommonConfig setTTLCheckInterval(long ttlCheckInterval) {
+    setProperty("ttl_check_interval", String.valueOf(ttlCheckInterval));
     return this;
   }
 
@@ -354,6 +360,12 @@ public class MppCommonConfig extends MppBaseConfig implements CommonConfig {
   @Override
   public CommonConfig setSeriesSlotNum(int seriesSlotNum) {
     setProperty("series_slot_num", String.valueOf(seriesSlotNum));
+    return this;
+  }
+
+  @Override
+  public CommonConfig setSeriesPartitionExecutorClass(String seriesPartitionExecutorClass) {
+    setProperty("series_partition_executor_class", seriesPartitionExecutorClass);
     return this;
   }
 

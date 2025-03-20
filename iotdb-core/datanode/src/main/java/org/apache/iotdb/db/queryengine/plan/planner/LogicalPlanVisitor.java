@@ -231,7 +231,7 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
     }
 
     if (queryStatement.hasModelInference()) {
-      planBuilder.planInference(analysis);
+      planBuilder = planBuilder.planInference(analysis);
     }
 
     // plan select into

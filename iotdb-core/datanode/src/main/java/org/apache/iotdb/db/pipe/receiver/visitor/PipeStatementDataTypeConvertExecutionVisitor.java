@@ -105,7 +105,8 @@ public class PipeStatementDataTypeConvertExecutionVisitor
               new PipeConvertedInsertTabletStatement(
                   PipeTransferTabletRawReq.toTPipeTransferRawReq(
                           tabletWithIsAligned.getLeft(), tabletWithIsAligned.getRight())
-                      .constructStatement());
+                      .constructStatement(),
+                  false);
 
           TSStatus result;
           try {

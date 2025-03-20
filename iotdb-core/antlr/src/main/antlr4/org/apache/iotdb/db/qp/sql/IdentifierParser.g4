@@ -62,6 +62,7 @@ keyWords
     | CLUSTERID
     | CONCAT
     | CONDITION
+    | CONFIGNODE
     | CONFIGNODES
     | CONFIGURATION
     | CONNECTION
@@ -78,6 +79,7 @@ keyWords
     | DATA_REGION_GROUP_NUM
     | DATABASE
     | DATABASES
+    | DATANODE
     | DATANODEID
     | DATANODES
     | DATASET

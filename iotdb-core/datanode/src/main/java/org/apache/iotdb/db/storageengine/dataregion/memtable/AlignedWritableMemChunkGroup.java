@@ -22,6 +22,7 @@ package org.apache.iotdb.db.storageengine.dataregion.memtable;
 import org.apache.iotdb.commons.path.AlignedPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternUtil;
+import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.IWALByteBufferView;
 
 import org.apache.tsfile.utils.BitMap;
@@ -44,20 +45,25 @@ public class AlignedWritableMemChunkGroup implements IWritableMemChunkGroup {
     memChunk = new AlignedWritableMemChunk(schemaList);
   }
 
+  @TestOnly
+  public AlignedWritableMemChunkGroup(
+      AlignedWritableMemChunk memChunk, List<IMeasurementSchema> schemaList) {
+    this.memChunk = memChunk;
+  }
+
   private AlignedWritableMemChunkGroup() {
     // Empty constructor
   }
 
   @Override
-  public boolean writeValuesWithFlushCheck(
+  public void writeTablet(
       long[] times,
       Object[] columns,
       BitMap[] bitMaps,
       List<IMeasurementSchema> schemaList,
       int start,
       int end) {
-    return memChunk.writeAlignedValuesWithFlushCheck(
-        times, columns, bitMaps, schemaList, start, end);
+    memChunk.writeAlignedTablet(times, columns, bitMaps, schemaList, start, end);
   }
 
   @Override
@@ -84,9 +90,8 @@ public class AlignedWritableMemChunkGroup implements IWritableMemChunkGroup {
   }
 
   @Override
-  public boolean writeWithFlushCheck(
-      long insertTime, Object[] objectValue, List<IMeasurementSchema> schemaList) {
-    return memChunk.writeAlignedValueWithFlushCheck(insertTime, objectValue, schemaList);
+  public void writeRow(long insertTime, Object[] objectValue, List<IMeasurementSchema> schemaList) {
+    memChunk.writeAlignedPoints(insertTime, objectValue, schemaList);
   }
 
   @Override
@@ -135,8 +140,8 @@ public class AlignedWritableMemChunkGroup implements IWritableMemChunkGroup {
   }
 
   @Override
-  public long getCurrentTVListSize(String measurement) {
-    return memChunk.getTVList().rowCount();
+  public IWritableMemChunk getWritableMemChunk(String measurement) {
+    return memChunk;
   }
 
   @Override
@@ -158,10 +163,17 @@ public class AlignedWritableMemChunkGroup implements IWritableMemChunkGroup {
     memChunk.serializeToWAL(buffer);
   }
 
-  public static AlignedWritableMemChunkGroup deserialize(DataInputStream stream)
+  protected static AlignedWritableMemChunkGroup deserialize(DataInputStream stream)
       throws IOException {
     AlignedWritableMemChunkGroup memChunkGroup = new AlignedWritableMemChunkGroup();
     memChunkGroup.memChunk = AlignedWritableMemChunk.deserialize(stream);
+    return memChunkGroup;
+  }
+
+  protected static AlignedWritableMemChunkGroup deserializeSingleTVListMemChunks(
+      DataInputStream stream) throws IOException {
+    AlignedWritableMemChunkGroup memChunkGroup = new AlignedWritableMemChunkGroup();
+    memChunkGroup.memChunk = AlignedWritableMemChunk.deserializeSingleTVListMemChunks(stream);
     return memChunkGroup;
   }
 }

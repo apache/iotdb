@@ -32,12 +32,21 @@ public class LoadConvertedInsertTabletStatement extends PipeConvertedInsertTable
   private static final Logger LOGGER =
       LoggerFactory.getLogger(LoadConvertedInsertTabletStatement.class);
 
-  public LoadConvertedInsertTabletStatement(final InsertTabletStatement insertTabletStatement) {
+  private final boolean shouldConvertOnTypeMismatch;
+
+  public LoadConvertedInsertTabletStatement(
+      final InsertTabletStatement insertTabletStatement,
+      final boolean shouldConvertOnTypeMismatch) {
     super(insertTabletStatement);
+    this.shouldConvertOnTypeMismatch = shouldConvertOnTypeMismatch;
   }
 
   @Override
   protected boolean checkAndCastDataType(int columnIndex, TSDataType dataType) {
+    if (!shouldConvertOnTypeMismatch) {
+      return originalCheckAndCastDataType(columnIndex, dataType);
+    }
+
     LOGGER.info(
         "Load: Inserting tablet to {}.{}. Casting type from {} to {}.",
         devicePath,

@@ -43,6 +43,7 @@ import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.confignode.conf.ConfigNodeConfig;
 import org.apache.iotdb.confignode.conf.ConfigNodeConstant;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
+import org.apache.iotdb.confignode.conf.ConfigNodeSystemPropertiesHandler;
 import org.apache.iotdb.confignode.conf.SystemPropertiesUtils;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
 import org.apache.iotdb.confignode.consensus.request.read.ainode.GetAINodeConfigurationPlan;
@@ -131,6 +132,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TDropPipePluginReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropPipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropTopicReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropTriggerReq;
+import org.apache.iotdb.confignode.rpc.thrift.TExtendRegionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetAllPipeInfoResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetAllSubscriptionInfoResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetAllTemplatesResp;
@@ -160,7 +162,9 @@ import org.apache.iotdb.confignode.rpc.thrift.TMigrateRegionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TPermissionInfoResp;
 import org.apache.iotdb.confignode.rpc.thrift.TPipeConfigTransferReq;
 import org.apache.iotdb.confignode.rpc.thrift.TPipeConfigTransferResp;
+import org.apache.iotdb.confignode.rpc.thrift.TReconstructRegionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TRegionRouteMapResp;
+import org.apache.iotdb.confignode.rpc.thrift.TRemoveRegionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TSchemaNodeManagementReq;
 import org.apache.iotdb.confignode.rpc.thrift.TSchemaNodeManagementResp;
 import org.apache.iotdb.confignode.rpc.thrift.TSchemaPartitionReq;
@@ -789,7 +793,7 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
 
   /** Stop ConfigNode */
   @Override
-  public TSStatus stopConfigNode(TConfigNodeLocation configNodeLocation) {
+  public TSStatus stopAndClearConfigNode(TConfigNodeLocation configNodeLocation) {
     new Thread(
             // TODO: Perhaps we should find some other way of shutting down the config node, adding
             // a hard dependency
@@ -798,18 +802,19 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
             //  instance is created feels cleaner.
             () -> {
               try {
-                // Sleep 1s before stop itself
-                TimeUnit.SECONDS.sleep(1);
+                // Sleep 5s before stop itself
+                TimeUnit.SECONDS.sleep(5);
               } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
                 LOGGER.warn(e.getMessage());
               } finally {
+                ConfigNodeSystemPropertiesHandler.getInstance().delete();
                 configNode.stop();
               }
             })
         .start();
     return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode())
-        .setMessage("Stop ConfigNode success.");
+        .setMessage("Stop And Clear ConfigNode Success.");
   }
 
   @Override
@@ -1207,6 +1212,21 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
   @Override
   public TSStatus migrateRegion(TMigrateRegionReq req) {
     return configManager.migrateRegion(req);
+  }
+
+  @Override
+  public TSStatus reconstructRegion(TReconstructRegionReq req) {
+    return configManager.reconstructRegion(req);
+  }
+
+  @Override
+  public TSStatus extendRegion(TExtendRegionReq req) throws TException {
+    return configManager.extendRegion(req);
+  }
+
+  @Override
+  public TSStatus removeRegion(TRemoveRegionReq req) throws TException {
+    return configManager.removeRegion(req);
   }
 
   @Override

@@ -28,8 +28,10 @@ import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.pipe.resource.ref.PipePhantomReferenceManager.PipeEventResource;
 import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
 import org.apache.iotdb.db.pipe.event.ReferenceTrackableEvent;
-import org.apache.iotdb.db.pipe.metric.PipeDataNodeRemainingEventAndTimeMetrics;
+import org.apache.iotdb.db.pipe.metric.overview.PipeDataNodeRemainingEventAndTimeMetrics;
 import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
+import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryWeightUtil;
+import org.apache.iotdb.db.pipe.resource.memory.PipeTabletMemoryBlock;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowsNode;
@@ -56,11 +58,12 @@ import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.BiConsumer;
 import java.util.stream.Collectors;
 
 public class PipeInsertNodeTabletInsertionEvent extends EnrichedEvent
-    implements TabletInsertionEvent, ReferenceTrackableEvent, Accountable {
+    implements TabletInsertionEvent, ReferenceTrackableEvent, Accountable, AutoCloseable {
 
   private static final Logger LOGGER =
       LoggerFactory.getLogger(PipeInsertNodeTabletInsertionEvent.class);
@@ -74,6 +77,9 @@ public class PipeInsertNodeTabletInsertionEvent extends EnrichedEvent
   private final WALEntryHandler walEntryHandler;
   private final boolean isAligned;
   private final boolean isGeneratedByPipe;
+
+  private final AtomicReference<PipeTabletMemoryBlock> allocatedMemoryBlock;
+  private volatile List<Tablet> tablets;
 
   private List<TabletInsertionDataContainer> dataContainers;
 
@@ -120,6 +126,8 @@ public class PipeInsertNodeTabletInsertionEvent extends EnrichedEvent
     this.progressIndex = progressIndex;
     this.isAligned = isAligned;
     this.isGeneratedByPipe = isGeneratedByPipe;
+
+    this.allocatedMemoryBlock = new AtomicReference<>();
   }
 
   public InsertNode getInsertNode() throws WALPipeException {
@@ -168,11 +176,12 @@ public class PipeInsertNodeTabletInsertionEvent extends EnrichedEvent
   public boolean internallyDecreaseResourceReferenceCount(final String holderMessage) {
     try {
       PipeDataNodeResourceManager.wal().unpin(walEntryHandler);
-      // Release the containers' memory.
+      // release the containers' memory and close memory block
       if (dataContainers != null) {
         dataContainers.clear();
         dataContainers = null;
       }
+      close();
       return true;
     } catch (final Exception e) {
       LOGGER.warn(
@@ -333,10 +342,22 @@ public class PipeInsertNodeTabletInsertionEvent extends EnrichedEvent
     return initDataContainers().get(i).isAligned();
   }
 
-  public List<Tablet> convertToTablets() {
-    return initDataContainers().stream()
-        .map(TabletInsertionDataContainer::convertToTablet)
-        .collect(Collectors.toList());
+  public synchronized List<Tablet> convertToTablets() {
+    if (Objects.isNull(tablets)) {
+      tablets =
+          initDataContainers().stream()
+              .map(TabletInsertionDataContainer::convertToTablet)
+              .collect(Collectors.toList());
+      allocatedMemoryBlock.compareAndSet(
+          null,
+          PipeDataNodeResourceManager.memory()
+              .forceAllocateForTabletWithRetry(
+                  tablets.stream()
+                      .map(PipeMemoryWeightUtil::calculateTabletSizeInBytes)
+                      .reduce(Long::sum)
+                      .orElse(0L)));
+    }
+    return tablets;
   }
 
   /////////////////////////// dataContainer ///////////////////////////
@@ -452,32 +473,53 @@ public class PipeInsertNodeTabletInsertionEvent extends EnrichedEvent
   @Override
   public PipeEventResource eventResourceBuilder() {
     return new PipeInsertNodeTabletInsertionEventResource(
-        this.isReleased, this.referenceCount, this.walEntryHandler);
+        this.isReleased, this.referenceCount, this.walEntryHandler, this.allocatedMemoryBlock);
   }
 
   private static class PipeInsertNodeTabletInsertionEventResource extends PipeEventResource {
 
     private final WALEntryHandler walEntryHandler;
+    private final AtomicReference<PipeTabletMemoryBlock> allocatedMemoryBlock;
 
     private PipeInsertNodeTabletInsertionEventResource(
         final AtomicBoolean isReleased,
         final AtomicInteger referenceCount,
-        final WALEntryHandler walEntryHandler) {
+        final WALEntryHandler walEntryHandler,
+        final AtomicReference<PipeTabletMemoryBlock> allocatedMemoryBlock) {
       super(isReleased, referenceCount);
       this.walEntryHandler = walEntryHandler;
+      this.allocatedMemoryBlock = allocatedMemoryBlock;
     }
 
     @Override
     protected void finalizeResource() {
       try {
         PipeDataNodeResourceManager.wal().unpin(walEntryHandler);
-        // no need to release the containers' memory because it has already been GCed
+        allocatedMemoryBlock.getAndUpdate(
+            memoryBlock -> {
+              if (Objects.nonNull(memoryBlock)) {
+                memoryBlock.close();
+              }
+              return null;
+            });
       } catch (final Exception e) {
         LOGGER.warn(
-            String.format(
-                "Decrease reference count for memTable %d error.", walEntryHandler.getMemTableId()),
-            e);
+            "Decrease reference count for memTable {} error.", walEntryHandler.getMemTableId(), e);
       }
     }
+  }
+
+  /////////////////////////// AutoCloseable ///////////////////////////
+
+  @Override
+  public synchronized void close() {
+    allocatedMemoryBlock.getAndUpdate(
+        memoryBlock -> {
+          if (Objects.nonNull(memoryBlock)) {
+            memoryBlock.close();
+          }
+          return null;
+        });
+    tablets = null;
   }
 }

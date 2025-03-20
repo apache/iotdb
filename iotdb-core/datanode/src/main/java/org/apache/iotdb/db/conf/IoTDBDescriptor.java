@@ -413,11 +413,10 @@ public class IoTDBDescriptor {
             properties.getProperty(
                 "tvlist_sort_algorithm", conf.getTvListSortAlgorithm().toString())));
 
-    conf.setAvgSeriesPointNumberThreshold(
+    conf.setTVListSortThreshold(
         Integer.parseInt(
             properties.getProperty(
-                "avg_series_point_number_threshold",
-                Integer.toString(conf.getAvgSeriesPointNumberThreshold()))));
+                "tvlist_sort_threshold", Integer.toString(conf.getTvListSortThreshold()))));
 
     conf.setCheckPeriodWhenInsertBlocked(
         Integer.parseInt(
@@ -751,11 +750,6 @@ public class IoTDBDescriptor {
             properties.getProperty(
                 "inner_compaction_task_selection_mods_file_threshold",
                 Long.toString(conf.getInnerCompactionTaskSelectionModsFileThreshold()))));
-
-    conf.setTtlCheckInterval(
-        Long.parseLong(
-            properties.getProperty(
-                "ttl_check_interval", Long.toString(conf.getTTlCheckInterval()))));
 
     conf.setMaxExpiredTime(
         Long.parseLong(
@@ -2023,11 +2017,26 @@ public class IoTDBDescriptor {
         BinaryAllocator.getInstance().close(true);
       }
 
+      commonDescriptor
+          .getConfig()
+          .setTimestampPrecisionCheckEnabled(
+              Boolean.parseBoolean(
+                  properties.getProperty(
+                      "timestamp_precision_check_enabled",
+                      ConfigurationFileUtils.getConfigurationDefaultValue(
+                          "timestamp_precision_check_enabled"))));
+
       // update query_sample_throughput_bytes_per_sec
       loadQuerySampleThroughput(properties);
       // update trusted_uri_pattern
       loadTrustedUriPattern(properties);
 
+      // tvlist_sort_threshold
+      conf.setTVListSortThreshold(
+          Integer.parseInt(
+              properties.getProperty(
+                  "tvlist_sort_threshold",
+                  ConfigurationFileUtils.getConfigurationDefaultValue("tvlist_sort_threshold"))));
     } catch (Exception e) {
       if (e instanceof InterruptedException) {
         Thread.currentThread().interrupt();
@@ -2427,6 +2436,12 @@ public class IoTDBDescriptor {
     if (conf.getLoadActiveListeningMaxThreadNum() <= 0) {
       conf.setLoadActiveListeningMaxThreadNum(Runtime.getRuntime().availableProcessors());
     }
+
+    conf.setLoadActiveListeningVerifyEnable(
+        Boolean.parseBoolean(
+            properties.getProperty(
+                "load_active_listening_verify_enable",
+                Boolean.toString(conf.isLoadActiveListeningVerifyEnable()))));
   }
 
   private void loadLoadTsFileHotModifiedProp(TrimProperties properties) throws IOException {

@@ -493,6 +493,15 @@ public class ExportData extends AbstractDataTool {
             .build();
     options.addOption(opTimeZone);
 
+    Option opLinesPerFile =
+        Option.builder(LINES_PER_FILE_ARGS)
+            .longOpt(LINES_PER_FILE_NAME)
+            .argName(LINES_PER_FILE_NAME)
+            .hasArg()
+            .desc("Lines per dump file.(optional)")
+            .build();
+    options.addOption(opLinesPerFile);
+
     Option opQuery =
         Option.builder(QUERY_COMMAND_ARGS)
             .longOpt(QUERY_COMMAND_NAME)

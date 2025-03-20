@@ -168,10 +168,10 @@ public class IoTDBPipeIdempotentIT extends AbstractPipeDualAutoIT {
         Collections.singletonList(
             "create timeSeries root.ln.wf01.wt01.status0(status0) with datatype=BOOLEAN,encoding=PLAIN"),
         "delete timeSeries root.ln.wf01.wt01.status0",
-        "create timeSeries root.ln.wf01.wt01.status2(status2) with datatype=BOOLEAN,encoding=PLAIN",
-        "count timeSeries",
-        "count(timeseries),",
-        Collections.singleton("1,"));
+        "create database root.sg",
+        "count databases",
+        "count,",
+        Collections.singleton("2,"));
   }
 
   @Test
@@ -260,10 +260,10 @@ public class IoTDBPipeIdempotentIT extends AbstractPipeDualAutoIT {
             "create timeSeries using device template on root.sg1.d1",
             "create timeSeries using device template on root.sg1.d2"),
         "delete timeSeries of schema template t1 from root.sg1.*",
-        "create timeSeries using device template on root.sg1.d3",
-        "count timeSeries",
-        "count(timeseries),",
-        Collections.singleton("3,"));
+        "create database root.sg2",
+        "count databases",
+        "count,",
+        Collections.singleton("2,"));
   }
 
   @Test
