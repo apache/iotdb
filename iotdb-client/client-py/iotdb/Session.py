@@ -1483,13 +1483,13 @@ class Session(object):
             self.__session_id, sql, self.__statement_id, self.__fetch_size, timeout
         )
         try:
-            resp = self.__client.executeQueryStatement(request)
+            resp = self.__client.executeQueryStatementV2(request)
         except TTransport.TException as e:
             if self.reconnect():
                 try:
                     request.sessionId = self.__session_id
                     request.statementId = self.__statement_id
-                    resp = self.__client.executeQueryStatement(request)
+                    resp = self.__client.executeQueryStatementV2(request)
                 except TTransport.TException as e1:
                     raise IoTDBConnectionException(e1) from None
             else:
@@ -1505,7 +1505,7 @@ class Session(object):
             self.__client,
             self.__statement_id,
             self.__session_id,
-            resp.queryDataSet,
+            resp.queryResult,
             resp.ignoreTimeStamp,
         )
 

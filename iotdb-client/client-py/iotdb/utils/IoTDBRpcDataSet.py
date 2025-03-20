@@ -25,6 +25,7 @@ import pandas as pd
 from thrift.transport import TTransport
 from iotdb.thrift.rpc.IClientRPCService import TSFetchResultsReq, TSCloseOperationReq
 from iotdb.tsfile.utils.date_utils import parse_int_to_date
+from iotdb.tsfile.utils.tsblock_serde import deserialize
 from iotdb.utils.IoTDBConnectionException import IoTDBConnectionException
 from iotdb.utils.IoTDBConstants import TSDataType
 
@@ -51,7 +52,7 @@ class IoTDBRpcDataSet(object):
         client,
         statement_id,
         session_id,
-        query_data_set,
+        query_result,
         fetch_size,
     ):
         self.__statement_id = statement_id
@@ -99,7 +100,9 @@ class IoTDBRpcDataSet(object):
                     self.column_type_deduplicated_list.append(
                         TSDataType[column_type_list[i]]
                     )
-        self.__query_data_set = query_data_set
+        self.__query_result = query_result
+        if query_result is not None:
+            self.__query_result_size = len(query_result)
         self.__is_closed = False
         self.__empty_resultSet = False
         self.__rows_index = 0
@@ -144,13 +147,19 @@ class IoTDBRpcDataSet(object):
     def construct_one_data_frame(self):
         if (
             self.has_cached_data_frame
-            or self.__query_data_set is None
-            or len(self.__query_data_set.time) == 0
+            or self.__query_result is None
+            or len(self.__query_result) == 0
         ):
             return
+        binary_size = len(self.__query_result)
+        binary_index = 0
         result = {}
+        time_column_values, column_values, null_indicators, _ = deserialize(
+            self.__query_result[0]
+        )
+        self.__query_result = None
         time_array = np.frombuffer(
-            self.__query_data_set.time, np.dtype(np.longlong).newbyteorder(">")
+            time_column_values, np.dtype(np.longlong).newbyteorder(">")
         )
         if time_array.dtype.byteorder == ">":
             time_array = time_array.byteswap().view(time_array.dtype.newbyteorder("<"))
@@ -168,7 +177,7 @@ class IoTDBRpcDataSet(object):
             if location < 0:
                 continue
             data_type = self.column_type_deduplicated_list[location]
-            value_buffer = self.__query_data_set.valueList[location]
+            value_buffer = column_values[location]
             value_buffer_len = len(value_buffer)
             # DOUBLE
             if data_type == 4:
@@ -216,15 +225,14 @@ class IoTDBRpcDataSet(object):
                 data_array = data_array.byteswap().view(
                     data_array.dtype.newbyteorder("<")
                 )
+
+            null_indicator = null_indicators[location]
+
             if len(data_array) < total_length:
                 tmp_array = np.full(total_length, None, dtype=object)
-
-                bitmap_buffer = self.__query_data_set.bitmapList[location]
-                buffer = _to_bitbuffer(bitmap_buffer)
-                bit_mask = (np.frombuffer(buffer, "u1") - ord("0")).astype(bool)
-                if len(bit_mask) != total_length:
-                    bit_mask = bit_mask[:total_length]
-                tmp_array[bit_mask] = data_array
+                if null_indicator is not None:
+                    indexes = [not v for v in null_indicator]
+                    tmp_array[indexes] = data_array
 
                 # INT32, DATE
                 if data_type == 1 or data_type == 9:
@@ -238,8 +246,8 @@ class IoTDBRpcDataSet(object):
                 data_array = tmp_array
 
             result[i + 1] = data_array
-        self.__query_data_set = None
-        self.data_frame = pd.DataFrame(result, dtype=object)
+        self.data_frame = pd.DataFrame(result)
+        self.__query_result = None
         if not self.data_frame.empty:
             self.has_cached_data_frame = True
 
@@ -247,9 +255,7 @@ class IoTDBRpcDataSet(object):
         return self.has_cached_data_frame
 
     def _has_next_result_set(self):
-        if (self.__query_data_set is not None) and (
-            len(self.__query_data_set.time) != 0
-        ):
+        if (self.__query_result is not None) and (len(self.__query_result[0]) != 0):
             return True
         if self.__empty_resultSet:
             return False
@@ -262,8 +268,12 @@ class IoTDBRpcDataSet(object):
         for column_name in self.__column_name_list:
             result[column_name] = []
         while self._has_next_result_set():
+            time_column_values, column_values, null_indicators, _ = deserialize(
+                self.__query_result[0]
+            )
+            self.__query_result = None
             time_array = np.frombuffer(
-                self.__query_data_set.time, np.dtype(np.longlong).newbyteorder(">")
+                time_column_values, np.dtype(np.longlong).newbyteorder(">")
             )
             if time_array.dtype.byteorder == ">":
                 time_array = time_array.byteswap().view(
@@ -272,10 +282,9 @@ class IoTDBRpcDataSet(object):
             if self.ignore_timestamp is None or self.ignore_timestamp is False:
                 result[IoTDBRpcDataSet.TIMESTAMP_STR].append(time_array)
 
-            self.__query_data_set.time = []
             total_length = len(time_array)
 
-            for i in range(len(self.__query_data_set.bitmapList)):
+            for i in range(len(column_values)):
                 if self.ignore_timestamp is True:
                     column_name = self.__column_name_list[i]
                 else:
@@ -287,7 +296,7 @@ class IoTDBRpcDataSet(object):
                 if location < 0:
                     continue
                 data_type = self.column_type_deduplicated_list[location]
-                value_buffer = self.__query_data_set.valueList[location]
+                value_buffer = column_values[location]
                 value_buffer_len = len(value_buffer)
                 # DOUBLE
                 if data_type == 4:
@@ -359,8 +368,8 @@ class IoTDBRpcDataSet(object):
                     data_array = data_array.byteswap().view(
                         data_array.dtype.newbyteorder("<")
                     )
-                self.__query_data_set.valueList[location] = None
                 tmp_array = []
+                null_indicator = null_indicators[location]
                 if len(data_array) < total_length:
                     # BOOLEAN, INT32, INT64, TIMESTAMP
                     if (
@@ -384,12 +393,9 @@ class IoTDBRpcDataSet(object):
                     ):
                         tmp_array = np.full(total_length, None, dtype=data_array.dtype)
 
-                    bitmap_buffer = self.__query_data_set.bitmapList[location]
-                    buffer = _to_bitbuffer(bitmap_buffer)
-                    bit_mask = (np.frombuffer(buffer, "u1") - ord("0")).astype(bool)
-                    if len(bit_mask) != total_length:
-                        bit_mask = bit_mask[:total_length]
-                    tmp_array[bit_mask] = data_array
+                    if null_indicator is not None:
+                        indexes = [not v for v in null_indicator]
+                        tmp_array[indexes] = data_array
 
                     if data_type == 1:
                         tmp_array = pd.Series(tmp_array).astype("Int32")
@@ -430,11 +436,11 @@ class IoTDBRpcDataSet(object):
             self.__default_time_out,
         )
         try:
-            resp = self.__client.fetchResults(request)
+            resp = self.__client.fetchResultsV2(request)
             if not resp.hasResultSet:
                 self.__empty_resultSet = True
             else:
-                self.__query_data_set = resp.queryDataSet
+                self.__query_result = resp.queryResult
             return resp.hasResultSet
         except TTransport.TException as e:
             raise RuntimeError(

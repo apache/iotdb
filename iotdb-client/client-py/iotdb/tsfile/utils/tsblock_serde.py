@@ -110,7 +110,7 @@ def convert_to_df(name_list, type_list, name_index, binary_list):
             time_column_values, np.dtype(np.longlong).newbyteorder(">")
         )
         if time_array.dtype.byteorder == ">":
-            time_array = time_array.byteswap().view(time_array.dtype.newbyteorder("<"))
+            time_array = time_array.byteswap().newbyteorder("<")
 
         if result[TIMESTAMP_STR] is None:
             result[TIMESTAMP_STR] = time_array
@@ -165,9 +165,7 @@ def convert_to_df(name_list, type_list, name_index, binary_list):
                 raise RuntimeError("unsupported data type {}.".format(data_type))
 
             if data_array.dtype.byteorder == ">":
-                data_array = data_array.byteswap().view(
-                    data_array.dtype.newbyteorder("<")
-                )
+                data_array = data_array.byteswap().newbyteorder("<")
 
             null_indicator = null_indicators[location]
             if len(data_array) < total_length or (
@@ -274,8 +272,8 @@ def deserialize(buffer):
     column_encodings, buffer = read_column_encoding(buffer, value_column_count + 1)
 
     time_column_values, buffer = read_time_column(buffer, position_count)
-    column_values = [] * value_column_count
-    null_indicators = [] * value_column_count
+    column_values = [None] * value_column_count
+    null_indicators = [None] * value_column_count
     for i in range(value_column_count):
         column_value, null_indicator, buffer = read_column(
             column_encodings[i + 1], buffer, data_types[i], position_count

@@ -40,7 +40,7 @@ class SessionDataSet(object):
         client,
         statement_id,
         session_id,
-        query_data_set,
+        query_result,
         ignore_timestamp,
     ):
         self.iotdb_rpc_data_set = IoTDBRpcDataSet(
@@ -53,7 +53,7 @@ class SessionDataSet(object):
             client,
             statement_id,
             session_id,
-            query_data_set,
+            query_result,
             5000,
         )
         self.column_size = self.iotdb_rpc_data_set.column_size
