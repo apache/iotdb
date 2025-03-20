@@ -577,7 +577,7 @@ public abstract class AbstractMemTable implements IMemTable {
     }
 
     List<BitMap> bitMaps = new ArrayList<>();
-    long[] timestamps = alignedMemChunk.getFilteredTimestamp(deletionList, bitMaps, true);
+    long[] timestamps = alignedMemChunk.getFilteredTimestamp(deletionList, bitMaps);
 
     buildAlignedMemChunkHandle(
         deviceID,
@@ -614,7 +614,7 @@ public abstract class AbstractMemTable implements IMemTable {
     }
 
     List<BitMap> bitMaps = new ArrayList<>();
-    long[] timestamps = memChunk.getFilteredTimestamp(deletionList, bitMaps, true);
+    long[] timestamps = memChunk.getFilteredTimestamp(deletionList, bitMaps);
     buildAlignedMemChunkHandle(
         deviceID,
         timestamps,
