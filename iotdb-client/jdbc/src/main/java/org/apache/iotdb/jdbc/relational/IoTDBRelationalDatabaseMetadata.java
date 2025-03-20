@@ -389,7 +389,8 @@ public class IoTDBRelationalDatabaseMetadata extends IoTDBAbstractDatabaseMetada
     // Extract Metadata
     int count = 1;
     while (rs.next()) {
-      String columnName = legacyMode ? rs.getString("column_name") : rs.getString("ColumnName"); // 3
+      String columnName =
+          legacyMode ? rs.getString("column_name") : rs.getString("ColumnName"); // 3
       String type = legacyMode ? rs.getString("datatype") : rs.getString("DataType"); // 4
       List<Object> valueInRow = new ArrayList<>();
       for (int i = 0; i < fields.length; i++) {
