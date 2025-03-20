@@ -305,29 +305,6 @@ public class WritableMemChunk implements IWritableMemChunk {
 
   @Override
   public synchronized void sortTvListForFlush() {
-    TVList cloneList = null;
-    list.lockQueryList();
-    try {
-      // During flush, if the working TVList is not sorted and referenced by some query, we need to
-      // clone it. The query still refer to original unsorted TVList.
-      if (!list.isSorted() && !list.getQueryContextList().isEmpty()) {
-        QueryContext firstQuery = list.getQueryContextList().get(0);
-        // reserve query memory
-        if (firstQuery instanceof FragmentInstanceContext) {
-          MemoryReservationManager memoryReservationManager =
-              ((FragmentInstanceContext) firstQuery).getMemoryReservationContext();
-          memoryReservationManager.reserveMemoryCumulatively(list.calculateRamSize());
-        }
-        list.setOwnerQuery(firstQuery);
-        cloneList = list.clone();
-      }
-    } finally {
-      list.unlockQueryList();
-    }
-    if (cloneList != null) {
-      setWorkingTVList(cloneList);
-    }
-
     if (!list.isSorted()) {
       list.sort();
     }
