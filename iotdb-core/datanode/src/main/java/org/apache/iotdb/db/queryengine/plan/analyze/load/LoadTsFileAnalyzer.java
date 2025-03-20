@@ -82,6 +82,7 @@ import java.util.Optional;
 
 import static org.apache.iotdb.db.queryengine.plan.execution.config.TableConfigTaskVisitor.DATABASE_NOT_SPECIFIED;
 import static org.apache.iotdb.db.queryengine.plan.execution.config.TableConfigTaskVisitor.validateDatabaseName;
+import static org.apache.iotdb.db.storageengine.load.metrics.LoadTsFileCostMetricsSet.ANALYSIS;
 
 public class LoadTsFileAnalyzer implements AutoCloseable {
 
@@ -203,9 +204,15 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
         return analysis;
       }
 
-      // flush remaining metadata of tree-model, currently no need for table-model
-      if (treeSchemaAutoCreatorAndVerifier != null) {
-        treeSchemaAutoCreatorAndVerifier.flush();
+      final long startTime = System.nanoTime();
+      try {
+        // flush remaining metadata of tree-model, currently no need for table-model
+        if (treeSchemaAutoCreatorAndVerifier != null) {
+          treeSchemaAutoCreatorAndVerifier.flush();
+        }
+      } finally {
+        LoadTsFileCostMetricsSet.getInstance()
+            .recordPhaseTimeCost(ANALYSIS, System.nanoTime() - startTime);
       }
     } catch (AuthException e) {
       setFailAnalysisForAuthException(analysis, e);
@@ -278,6 +285,7 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
         continue;
       }
 
+      final long startTime = System.nanoTime();
       try {
         analyzeSingleTsFile(tsFile, i);
         if (LOGGER.isInfoEnabled()) {
@@ -309,6 +317,9 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
         analysis.setFinishQueryAfterAnalyze(true);
         analysis.setFailStatus(RpcUtils.getStatus(TSStatusCode.LOAD_FILE_ERROR, exceptionMessage));
         return false;
+      } finally {
+        LoadTsFileCostMetricsSet.getInstance()
+            .recordPhaseTimeCost(ANALYSIS, System.nanoTime() - startTime);
       }
     }
 
