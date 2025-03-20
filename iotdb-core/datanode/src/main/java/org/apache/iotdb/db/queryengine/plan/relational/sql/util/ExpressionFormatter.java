@@ -29,6 +29,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.BinaryLiteral;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.BooleanLiteral;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Cast;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CoalesceExpression;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Columns;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ComparisonExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CurrentDatabase;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CurrentTime;
@@ -540,6 +541,11 @@ public final class ExpressionFormatter {
     @Override
     protected String visitNumericTypeParameter(NumericParameter node, Void context) {
       return node.getValue();
+    }
+
+    @Override
+    protected String visitColumns(Columns node, Void context) {
+      return "COLUMNS(" + (node.isColumnsAsterisk() ? "*" : node.getPattern()) + ")";
     }
 
     private String formatBinaryExpression(String operator, Expression left, Expression right) {

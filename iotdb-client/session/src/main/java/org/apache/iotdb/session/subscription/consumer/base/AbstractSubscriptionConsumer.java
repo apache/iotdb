@@ -63,6 +63,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -83,7 +84,6 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.BiFunction;
 import java.util.stream.Collectors;
 
-import static org.apache.iotdb.rpc.subscription.config.TopicConstant.MODE_SNAPSHOT_VALUE;
 import static org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionPollResponseType.ERROR;
 import static org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionPollResponseType.FILE_INIT;
 import static org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionPollResponseType.TABLETS;
@@ -124,9 +124,16 @@ abstract class AbstractSubscriptionConsumer implements AutoCloseable {
   protected volatile Map<String, TopicConfig> subscribedTopics = new HashMap<>();
 
   public boolean allSnapshotTopicMessagesHaveBeenConsumed() {
-    return subscribedTopics.values().stream()
-        .noneMatch(
-            (config) -> config.getAttributesWithSourceMode().containsValue(MODE_SNAPSHOT_VALUE));
+    return allTopicMessagesHaveBeenConsumed(subscribedTopics.keySet());
+  }
+
+  private boolean allTopicMessagesHaveBeenConsumed(final Collection<String> topicNames) {
+    // For the topic that needs to be detected, there are two scenarios to consider:
+    //   1. If configs as live, it cannot be determined whether the topic has been fully consumed.
+    //   2. If configs as snapshot, it means the topic has not been automatically unsubscribed.
+    // Therefore, the logic can be summarized as follows: if there is a matching topic in subscribed
+    // topics, then it has not been fully consumed.
+    return topicNames.stream().map(subscribedTopics::get).noneMatch(Objects::nonNull);
   }
 
   /////////////////////////////// getter ///////////////////////////////
@@ -284,8 +291,11 @@ abstract class AbstractSubscriptionConsumer implements AutoCloseable {
 
     // close subscription providers
     providers.acquireWriteLock();
-    providers.closeProviders();
-    providers.releaseWriteLock();
+    try {
+      providers.closeProviders();
+    } finally {
+      providers.releaseWriteLock();
+    }
 
     isClosed.set(true);
 
@@ -495,7 +505,7 @@ abstract class AbstractSubscriptionConsumer implements AutoCloseable {
                         final String topicNameToUnsubscribe = commitContext.getTopicName();
                         LOGGER.info(
                             "Termination occurred when SubscriptionConsumer {} polling topics, unsubscribe topic {} automatically",
-                            this,
+                            coreReportMessage(),
                             topicNameToUnsubscribe);
                         unsubscribe(Collections.singleton(topicNameToUnsubscribe), false);
                         return Optional.empty();
@@ -666,6 +676,11 @@ abstract class AbstractSubscriptionConsumer implements AutoCloseable {
 
         // TODO: maybe we can poll a few more times
         if (!messages.isEmpty()) {
+          break;
+        }
+
+        // check if all topic messages have been consumed
+        if (allTopicMessagesHaveBeenConsumed(topicNames)) {
           break;
         }
 

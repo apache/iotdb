@@ -20,11 +20,15 @@
 package org.apache.iotdb.db.pipe.extractor.schemaregion;
 
 import org.apache.iotdb.commons.consensus.SchemaRegionId;
+import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.exception.auth.AccessDeniedException;
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.pipe.datastructure.queue.listening.AbstractPipeListeningQueue;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.pipe.event.PipeSnapshotEvent;
 import org.apache.iotdb.commons.pipe.event.PipeWritePlanEvent;
 import org.apache.iotdb.commons.pipe.extractor.IoTDBNonDataRegionExtractor;
+import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.consensus.exception.ConsensusException;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -32,19 +36,26 @@ import org.apache.iotdb.db.consensus.SchemaRegionConsensusImpl;
 import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
 import org.apache.iotdb.db.pipe.event.common.schema.PipeSchemaRegionSnapshotEvent;
 import org.apache.iotdb.db.pipe.event.common.schema.PipeSchemaRegionWritePlanEvent;
-import org.apache.iotdb.db.pipe.metric.PipeDataNodeRemainingEventAndTimeMetrics;
-import org.apache.iotdb.db.pipe.metric.PipeSchemaRegionExtractorMetrics;
+import org.apache.iotdb.db.pipe.metric.overview.PipeDataNodeRemainingEventAndTimeMetrics;
+import org.apache.iotdb.db.pipe.metric.schema.PipeSchemaRegionExtractorMetrics;
+import org.apache.iotdb.db.queryengine.plan.Coordinator;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.write.AlterTimeSeriesNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.pipe.PipeOperateSchemaQueueNode;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Node;
+import org.apache.iotdb.db.schemaengine.SchemaEngine;
+import org.apache.iotdb.db.tools.schema.SRStatementGenerator;
+import org.apache.iotdb.db.tools.schema.SchemaRegionSnapshotParser;
 import org.apache.iotdb.pipe.api.annotation.TableModel;
 import org.apache.iotdb.pipe.api.annotation.TreeModel;
 import org.apache.iotdb.pipe.api.customizer.configuration.PipeExtractorRuntimeConfiguration;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 
+import java.io.IOException;
+import java.nio.file.Paths;
 import java.util.HashSet;
 import java.util.Objects;
 import java.util.Optional;
@@ -57,10 +68,16 @@ public class IoTDBSchemaRegionExtractor extends IoTDBNonDataRegionExtractor {
       new PipePlanTreePatternParseVisitor();
   public static final PipePlanTablePatternParseVisitor TABLE_PATTERN_PARSE_VISITOR =
       new PipePlanTablePatternParseVisitor();
+  public static final PipePlanTablePrivilegeParseVisitor TABLE_PRIVILEGE_PARSE_VISITOR =
+      new PipePlanTablePrivilegeParseVisitor();
+  private static final PipeStatementToPlanVisitor STATEMENT_TO_PLAN_VISITOR =
+      new PipeStatementToPlanVisitor();
 
   private SchemaRegionId schemaRegionId;
 
   private Set<PlanNodeType> listenedTypeSet = new HashSet<>();
+  private String database;
+  private SRStatementGenerator generator;
 
   @Override
   public void customize(
@@ -98,6 +115,7 @@ public class IoTDBSchemaRegionExtractor extends IoTDBNonDataRegionExtractor {
         == 1) {
       SchemaRegionConsensusImpl.getInstance()
           .write(schemaRegionId, new PipeOperateSchemaQueueNode(new PlanNodeId(""), true));
+      database = SchemaEngine.getInstance().getSchemaRegion(schemaRegionId).getDatabaseFullPath();
     }
 
     super.start();
@@ -133,6 +151,66 @@ public class IoTDBSchemaRegionExtractor extends IoTDBNonDataRegionExtractor {
     // The dataNode processor can sleep if it supplies null
     // Here we return immediately to be consistent with the data region extractor
     return 0;
+  }
+
+  @Override
+  protected boolean canSkipSnapshotPrivilegeCheck(final PipeSnapshotEvent event) {
+    try {
+      if (PathUtils.isTableModelDatabase(database)) {
+        Coordinator.getInstance()
+            .getAccessControl()
+            .checkCanSelectFromDatabase4Pipe(userName, database);
+      }
+      return true;
+    } catch (final AccessDeniedException e) {
+      return false;
+    }
+  }
+
+  @Override
+  protected void initSnapshotGenerator(final PipeSnapshotEvent event)
+      throws IOException, IllegalPathException {
+    final PipeSchemaRegionSnapshotEvent snapshotEvent = (PipeSchemaRegionSnapshotEvent) event;
+    generator =
+        SchemaRegionSnapshotParser.translate2Statements(
+            Paths.get(snapshotEvent.getMTreeSnapshotFile().getPath()),
+            Objects.nonNull(snapshotEvent.getTagLogSnapshotFile())
+                ? Paths.get(snapshotEvent.getTagLogSnapshotFile().getPath())
+                : null,
+            Objects.nonNull(snapshotEvent.getAttributeSnapshotFile())
+                ? Paths.get(snapshotEvent.getAttributeSnapshotFile().getPath())
+                : null,
+            PartialPath.getQualifiedDatabasePartialPath(database));
+  }
+
+  @Override
+  protected boolean hasNextEventInCurrentSnapshot() {
+    return Objects.nonNull(generator) && generator.hasNext();
+  }
+
+  @Override
+  protected PipeWritePlanEvent getNextEventInCurrentSnapshot() {
+    // Currently only support table model event
+    return new PipeSchemaRegionWritePlanEvent(
+        STATEMENT_TO_PLAN_VISITOR.process((Node) generator.next()), false);
+  }
+
+  @Override
+  protected Optional<PipeWritePlanEvent> trimRealtimeEventByPrivilege(
+      final PipeWritePlanEvent event) throws AccessDeniedException {
+    final Optional<PlanNode> result =
+        TABLE_PRIVILEGE_PARSE_VISITOR.process(
+            ((PipeSchemaRegionWritePlanEvent) event).getPlanNode(), userName);
+    if (result.isPresent()) {
+      return Optional.of(
+          new PipeSchemaRegionWritePlanEvent(result.get(), event.isGeneratedByPipe()));
+    }
+    if (skipIfNoPrivileges) {
+      return Optional.empty();
+    }
+    throw new AccessDeniedException(
+        "Not has privilege to transfer event: "
+            + ((PipeSchemaRegionWritePlanEvent) event).getPlanNode());
   }
 
   @Override

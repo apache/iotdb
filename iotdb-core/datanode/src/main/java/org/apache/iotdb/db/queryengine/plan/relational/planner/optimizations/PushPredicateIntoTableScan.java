@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.partition.DataPartition;
 import org.apache.iotdb.commons.partition.DataPartitionQueryParam;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.QueryId;
 import org.apache.iotdb.db.queryengine.metric.QueryPlanCostMetricSet;
@@ -32,6 +33,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertTabletNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalInsertTabletNode;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Analysis;
+import org.apache.iotdb.db.queryengine.plan.relational.analyzer.NodeRef;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.predicate.ConvertPredicateToTimeFilterVisitor;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.predicate.PredicateCombineIntoTableScanChecker;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.predicate.PredicatePushIntoMetadataChecker;
@@ -41,6 +43,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.NonAlignedAlignedDeviceEntry;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.Assignments;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.EqualityInference;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.IrExpressionInterpreter;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.IrTypeAnalyzer;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.OrderingScheme;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.PlannerContext;
@@ -50,6 +53,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.SymbolAllocator;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.SymbolsExtractor;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.ir.ReplaceSymbolInExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AssignUniqueId;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.DeviceTableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.FilterNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.JoinNode;
@@ -62,18 +66,22 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.FunctionCall;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LogicalExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Node;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.NullLiteral;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SymbolReference;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
+import org.apache.tsfile.read.common.type.Type;
 import org.apache.tsfile.read.filter.basic.Filter;
 import org.apache.tsfile.utils.Pair;
 
 import javax.annotation.Nullable;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
+import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -86,6 +94,7 @@ import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
 import static com.google.common.base.Preconditions.checkArgument;
+import static com.google.common.base.Preconditions.checkState;
 import static com.google.common.collect.ImmutableMap.toImmutableMap;
 import static java.util.Objects.requireNonNull;
 import static org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory.ATTRIBUTE;
@@ -108,10 +117,13 @@ import static org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.node.ChildReplacer.replaceChildren;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.node.JoinNode.JoinType.FULL;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.node.JoinNode.JoinType.INNER;
-import static org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.JoinUtils.FULL_JOIN_ONLY_SUPPORT_EQUI_JOIN;
+import static org.apache.iotdb.db.queryengine.plan.relational.planner.node.JoinNode.JoinType.LEFT;
+import static org.apache.iotdb.db.queryengine.plan.relational.planner.node.JoinNode.JoinType.RIGHT;
+import static org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.JoinUtils.ONLY_SUPPORT_EQUI_JOIN;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.JoinUtils.extractJoinPredicate;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.JoinUtils.joinEqualityExpression;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.JoinUtils.processInnerJoin;
+import static org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.JoinUtils.processLimitedOuterJoin;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.QueryCardinalityUtil.extractCardinality;
 import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.BooleanLiteral.TRUE_LITERAL;
 import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ComparisonExpression.Operator.EQUAL;
@@ -632,7 +644,7 @@ public class PushPredicateIntoTableScan implements PlanOptimizer {
           context.inheritedPredicate != null ? context.inheritedPredicate : TRUE_LITERAL;
 
       // See if we can rewrite outer joins in terms of a plain inner join
-      // node = tryNormalizeToOuterToInnerJoin(node, inheritedPredicate);
+      node = tryNormalizeToOuterToInnerJoin(node, inheritedPredicate);
 
       Expression leftEffectivePredicate = TRUE_LITERAL;
       // effectivePredicateExtractor.extract(session, node.getLeftChild(), types, typeAnalyzer);
@@ -661,6 +673,21 @@ public class PushPredicateIntoTableScan implements PlanOptimizer {
           postJoinPredicate = innerJoinPushDownResult.getPostJoinPredicate();
           newJoinPredicate = innerJoinPushDownResult.getJoinPredicate();
           break;
+        case LEFT:
+          JoinUtils.OuterJoinPushDownResult leftOuterJoinPushDownResult =
+              processLimitedOuterJoin(
+                  metadata,
+                  inheritedPredicate,
+                  leftEffectivePredicate,
+                  rightEffectivePredicate,
+                  joinPredicate,
+                  node.getLeftChild().getOutputSymbols(),
+                  node.getRightChild().getOutputSymbols());
+          leftPredicate = leftOuterJoinPushDownResult.getOuterJoinPredicate();
+          rightPredicate = leftOuterJoinPushDownResult.getInnerJoinPredicate();
+          postJoinPredicate = leftOuterJoinPushDownResult.getPostJoinPredicate();
+          newJoinPredicate = leftOuterJoinPushDownResult.getJoinPredicate();
+          break;
         case FULL:
           leftPredicate = TRUE_LITERAL;
           rightPredicate = TRUE_LITERAL;
@@ -668,8 +695,8 @@ public class PushPredicateIntoTableScan implements PlanOptimizer {
           newJoinPredicate = joinPredicate;
           break;
         default:
-          throw new IllegalStateException(
-              "Only support INNER JOIN and FULL OUTER JOIN in current version");
+          throw new IllegalArgumentException(
+              "Unsupported join type in predicate push down: " + node.getJoinType().name());
       }
 
       // newJoinPredicate = simplifyExpression(newJoinPredicate);
@@ -710,8 +737,8 @@ public class PushPredicateIntoTableScan implements PlanOptimizer {
 
           equiJoinClauses.add(new JoinNode.EquiJoinClause(leftSymbol, rightSymbol));
         } else {
-          if (node.getJoinType() == FULL) {
-            throw new UnsupportedOperationException(FULL_JOIN_ONLY_SUPPORT_EQUI_JOIN);
+          if (node.getJoinType() != INNER) {
+            throw new SemanticException(ONLY_SUPPORT_EQUI_JOIN);
           }
           joinFilterBuilder.add(conjunct);
         }
@@ -1069,6 +1096,18 @@ public class PushPredicateIntoTableScan implements PlanOptimizer {
     }
 
     @Override
+    public PlanNode visitAssignUniqueId(AssignUniqueId node, RewriteContext context) {
+      Expression inheritedPredicate =
+          context.inheritedPredicate != null ? context.inheritedPredicate : TRUE_LITERAL;
+      Set<Symbol> predicateSymbols = extractUnique(inheritedPredicate);
+      checkState(
+          !predicateSymbols.contains(node.getIdColumn()),
+          "UniqueId in predicate is not yet supported");
+      PlanNode rewrittenChild = node.getChild().accept(this, context);
+      return node.replaceChildren(ImmutableList.of(rewrittenChild));
+    }
+
+    @Override
     public PlanNode visitInsertTablet(InsertTabletNode node, RewriteContext context) {
       return node;
     }
@@ -1108,6 +1147,114 @@ public class PushPredicateIntoTableScan implements PlanOptimizer {
       } else {
         return metadata.getDataPartition(database, dataPartitionQueryParams);
       }
+    }
+
+    private JoinNode tryNormalizeToOuterToInnerJoin(JoinNode node, Expression inheritedPredicate) {
+      checkArgument(
+          EnumSet.of(INNER, RIGHT, LEFT, FULL).contains(node.getJoinType()),
+          "Unsupported join type: %s",
+          node.getJoinType());
+
+      if (node.getJoinType() == JoinNode.JoinType.INNER) {
+        return node;
+      }
+
+      if (node.getJoinType() == JoinNode.JoinType.FULL) {
+        boolean canConvertToLeftJoin =
+            canConvertOuterToInner(node.getLeftChild().getOutputSymbols(), inheritedPredicate);
+        boolean canConvertToRightJoin =
+            canConvertOuterToInner(node.getRightChild().getOutputSymbols(), inheritedPredicate);
+        if (!canConvertToLeftJoin && !canConvertToRightJoin) {
+          return node;
+        }
+        if (canConvertToLeftJoin && canConvertToRightJoin) {
+          return new JoinNode(
+              node.getPlanNodeId(),
+              INNER,
+              node.getLeftChild(),
+              node.getRightChild(),
+              node.getCriteria(),
+              node.getLeftOutputSymbols(),
+              node.getRightOutputSymbols(),
+              node.getFilter(),
+              node.isSpillable());
+        }
+        if (canConvertToLeftJoin) {
+          return new JoinNode(
+              node.getPlanNodeId(),
+              LEFT,
+              node.getLeftChild(),
+              node.getRightChild(),
+              node.getCriteria(),
+              node.getLeftOutputSymbols(),
+              node.getRightOutputSymbols(),
+              node.getFilter(),
+              node.isSpillable());
+        } else {
+          // temp fix because right join is not supported for now.
+          return node;
+        }
+        //        return new JoinNode(
+        //            node.getPlanNodeId(),
+        //            canConvertToLeftJoin ? LEFT : RIGHT,
+        //            node.getLeftChild(),
+        //            node.getRightChild(),
+        //            node.getCriteria(),
+        //            node.getLeftOutputSymbols(),
+        //            node.getRightOutputSymbols(),
+        //            node.getFilter(),
+        //            node.isSpillable());
+      }
+
+      if (node.getJoinType() == JoinNode.JoinType.LEFT
+              && !canConvertOuterToInner(
+                  node.getRightChild().getOutputSymbols(), inheritedPredicate)
+          || node.getJoinType() == JoinNode.JoinType.RIGHT
+              && !canConvertOuterToInner(
+                  node.getLeftChild().getOutputSymbols(), inheritedPredicate)) {
+        return node;
+      }
+      return new JoinNode(
+          node.getPlanNodeId(),
+          JoinNode.JoinType.INNER,
+          node.getLeftChild(),
+          node.getRightChild(),
+          node.getCriteria(),
+          node.getLeftOutputSymbols(),
+          node.getRightOutputSymbols(),
+          node.getFilter(),
+          node.isSpillable());
+    }
+
+    private boolean canConvertOuterToInner(
+        List<Symbol> innerSymbolsForOuterJoin, Expression inheritedPredicate) {
+      Set<Symbol> innerSymbols = ImmutableSet.copyOf(innerSymbolsForOuterJoin);
+      for (Expression conjunct : extractConjuncts(inheritedPredicate)) {
+        if (isDeterministic(conjunct)) {
+          // Ignore a conjunct for this test if we cannot deterministically get responses from it
+          Object response = nullInputEvaluator(innerSymbols, conjunct);
+          if (response == null
+              || response instanceof NullLiteral
+              || Boolean.FALSE.equals(response)) {
+            // If there is a single conjunct that returns FALSE or NULL given all NULL inputs for
+            // the inner side symbols of an outer join
+            // then this conjunct removes all effects of the outer join, and effectively turns this
+            // into an equivalent of an inner join.
+            // So, let's just rewrite this join as an INNER join
+            return true;
+          }
+        }
+      }
+      return false;
+    }
+
+    /** Evaluates an expression's response to binding the specified input symbols to NULL */
+    private Object nullInputEvaluator(Collection<Symbol> nullSymbols, Expression expression) {
+      Map<NodeRef<Expression>, Type> expressionTypes =
+          typeAnalyzer.getTypes(queryContext.getSession(), symbolAllocator.getTypes(), expression);
+      return new IrExpressionInterpreter(
+              expression, plannerContext, queryContext.getSession(), expressionTypes)
+          .optimize(symbol -> nullSymbols.contains(symbol) ? null : symbol.toSymbolReference());
     }
   }
 

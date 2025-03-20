@@ -141,86 +141,86 @@ public class ExportDataTree extends AbstractExportData {
         }
       }
     }
-    boolean hasNext = true;
+    boolean hasNext = sessionDataSet.hasNext();
     while (hasNext) {
-      int i = 0;
       final String finalFilePath = filePath + "_" + fileIndex + ".sql";
       try (FileWriter writer = new FileWriter(finalFilePath)) {
         if (writeNull) {
           break;
         }
-        while (i++ < linesPerFile) {
-          if (sessionDataSet.hasNext()) {
-            RowRecord rowRecord = sessionDataSet.next();
-            List<Field> fields = rowRecord.getFields();
-            List<String> headersTemp = new ArrayList<>(seriesList);
-            List<String> timeseries = new ArrayList<>();
-            if (headers.contains("Device")) {
-              deviceName = fields.get(0).toString();
-              if (deviceName.startsWith(SYSTEM_DATABASE + ".")) {
-                continue;
-              }
-              for (String header : headersTemp) {
-                timeseries.add(deviceName + "." + header);
-              }
-            } else {
-              if (headers.get(1).startsWith(SYSTEM_DATABASE + ".")) {
-                continue;
-              }
-              timeseries.addAll(headers);
-              timeseries.remove(0);
+        int i = 0;
+        while (i++ < linesPerFile && hasNext) {
+          RowRecord rowRecord = sessionDataSet.next();
+          List<Field> fields = rowRecord.getFields();
+          List<String> headersTemp = new ArrayList<>(seriesList);
+          List<String> timeseries = new ArrayList<>();
+          if (headers.contains("Device")) {
+            deviceName = fields.get(0).toString();
+            if (deviceName.startsWith(SYSTEM_DATABASE + ".")) {
+              continue;
             }
-            String sqlMiddle = null;
-            if (Boolean.TRUE.equals(aligned)) {
-              sqlMiddle = " ALIGNED VALUES (" + rowRecord.getTimestamp() + ",";
-            } else {
-              sqlMiddle = " VALUES (" + rowRecord.getTimestamp() + ",";
+            for (String header : headersTemp) {
+              timeseries.add(deviceName + "." + header);
             }
-            List<String> values = new ArrayList<>();
-            if (headers.contains("Device")) {
-              fields.remove(0);
-            }
-            for (int index = 0; index < fields.size(); index++) {
-              RowRecord next =
-                  session
-                      .executeQueryStatement("SHOW TIMESERIES " + timeseries.get(index), timeout)
-                      .next();
-              if (ObjectUtils.isNotEmpty(next)) {
-                List<Field> timeseriesList = next.getFields();
-                String value = fields.get(index).toString();
-                if (value.equals("null")) {
-                  headersTemp.remove(seriesList.get(index));
-                  continue;
-                }
-                if ("TEXT".equalsIgnoreCase(timeseriesList.get(3).getStringValue())) {
-                  values.add("\"" + value + "\"");
-                } else {
-                  values.add(value);
-                }
-              } else {
-                headersTemp.remove(seriesList.get(index));
-              }
-            }
-            if (CollectionUtils.isNotEmpty(headersTemp)) {
-              writer.write(
-                  "INSERT INTO "
-                      + deviceName
-                      + "(TIMESTAMP,"
-                      + String.join(",", headersTemp)
-                      + ")"
-                      + sqlMiddle
-                      + String.join(",", values)
-                      + ");\n");
-            }
-
           } else {
-            hasNext = false;
+            if (headers.get(1).startsWith(SYSTEM_DATABASE + ".")) {
+              continue;
+            }
+            timeseries.addAll(headers);
+            timeseries.remove(0);
+          }
+          String sqlMiddle =
+              Boolean.TRUE.equals(aligned)
+                  ? " ALIGNED VALUES (" + rowRecord.getTimestamp() + ","
+                  : " VALUES (" + rowRecord.getTimestamp() + ",";
+          List<String> values = new ArrayList<>();
+          if (headers.contains("Device")) {
+            fields.remove(0);
+          }
+          for (int index = 0; index < fields.size(); index++) {
+            RowRecord next =
+                session
+                    .executeQueryStatement("SHOW TIMESERIES " + timeseries.get(index), timeout)
+                    .next();
+            if (ObjectUtils.isNotEmpty(next)) {
+              List<Field> timeseriesList = next.getFields();
+              String value = fields.get(index).toString();
+              if (value.equals("null")) {
+                headersTemp.remove(seriesList.get(index));
+                continue;
+              }
+              if ("TEXT".equalsIgnoreCase(timeseriesList.get(3).getStringValue())) {
+                values.add("\"" + value + "\"");
+              } else {
+                values.add(value);
+              }
+            } else {
+              headersTemp.remove(seriesList.get(index));
+            }
+          }
+          if (CollectionUtils.isNotEmpty(headersTemp)) {
+            writer.write(
+                "INSERT INTO "
+                    + deviceName
+                    + "(TIMESTAMP,"
+                    + String.join(",", headersTemp)
+                    + ")"
+                    + sqlMiddle
+                    + String.join(",", values)
+                    + ");\n");
+          }
+          hasNext = sessionDataSet.hasNext();
+          if (!hasNext) {
             break;
           }
         }
-        fileIndex++;
         writer.flush();
       }
+      // 如果没有更多数据，退出循环
+      if (!hasNext) {
+        break;
+      }
+      fileIndex++;
     }
   }
 
@@ -266,43 +266,44 @@ public class ExportDataTree extends AbstractExportData {
       throws IOException, IoTDBConnectionException, StatementExecutionException {
     List<String> headers = sessionDataSet.getColumnNames();
     int fileIndex = 0;
-    boolean hasNext = true;
+    boolean hasNext = sessionDataSet.hasNext();
     while (hasNext) {
-      int i = 0;
       final String finalFilePath = filePath + "_" + fileIndex + ".csv";
-      final CSVPrinterWrapper csvPrinterWrapper = new CSVPrinterWrapper(finalFilePath);
+      CSVPrinterWrapper csvPrinterWrapper = new CSVPrinterWrapper(finalFilePath);
       csvPrinterWrapper.printRecord(headers);
-      while (i++ < linesPerFile) {
-        if (sessionDataSet.hasNext()) {
-          RowRecord rowRecord = sessionDataSet.next();
-          if (rowRecord.getTimestamp() != 0) {
-            csvPrinterWrapper.print(timeTrans(rowRecord.getTimestamp()));
-          }
-          rowRecord
-              .getFields()
-              .forEach(
-                  field -> {
-                    String fieldStringValue = field.getStringValue();
-                    if (!"null".equals(field.getStringValue())) {
-                      if ((field.getDataType() == TSDataType.TEXT
-                              || field.getDataType() == TSDataType.STRING)
-                          && !fieldStringValue.startsWith("root.")) {
-                        fieldStringValue = "\"" + fieldStringValue + "\"";
-                      }
-                      csvPrinterWrapper.print(fieldStringValue);
-                    } else {
-                      csvPrinterWrapper.print("");
+      int i = 0;
+      while (i++ < linesPerFile && hasNext) {
+        RowRecord rowRecord = sessionDataSet.next();
+        if (rowRecord.getTimestamp() != 0) {
+          csvPrinterWrapper.print(timeTrans(rowRecord.getTimestamp()));
+        }
+        rowRecord
+            .getFields()
+            .forEach(
+                field -> {
+                  String fieldStringValue = field.getStringValue();
+                  if (!"null".equals(field.getStringValue())) {
+                    if ((field.getDataType() == TSDataType.TEXT
+                            || field.getDataType() == TSDataType.STRING)
+                        && !fieldStringValue.startsWith("root.")) {
+                      fieldStringValue = "\"" + fieldStringValue + "\"";
                     }
-                  });
-          csvPrinterWrapper.println();
-        } else {
-          hasNext = false;
+                    csvPrinterWrapper.print(fieldStringValue);
+                  } else {
+                    csvPrinterWrapper.print("");
+                  }
+                });
+        csvPrinterWrapper.println();
+        hasNext = sessionDataSet.hasNext();
+        if (!hasNext) {
           break;
         }
       }
-      fileIndex++;
       csvPrinterWrapper.flush();
-      csvPrinterWrapper.close();
+      if (!hasNext) {
+        break;
+      }
+      fileIndex++;
     }
   }
 

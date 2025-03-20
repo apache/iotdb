@@ -62,7 +62,7 @@ public abstract class SubscriptionPipeEventBatch {
 
   public abstract void ack();
 
-  public abstract void cleanUp();
+  public abstract void cleanUp(final boolean force);
 
   /////////////////////////////// APIs ///////////////////////////////
 

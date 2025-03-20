@@ -20,22 +20,28 @@
 package org.apache.iotdb.db.storageengine.dataregion.read.reader.chunk;
 
 import org.apache.iotdb.db.storageengine.dataregion.memtable.ReadOnlyMemChunk;
+import org.apache.iotdb.db.utils.datastructure.MemPointIterator;
 
+import org.apache.tsfile.file.metadata.IChunkMetadata;
+import org.apache.tsfile.file.metadata.statistics.Statistics;
 import org.apache.tsfile.read.TimeValuePair;
 import org.apache.tsfile.read.common.BatchData;
+import org.apache.tsfile.read.common.block.TsBlock;
 import org.apache.tsfile.read.filter.basic.Filter;
 import org.apache.tsfile.read.reader.IChunkReader;
 import org.apache.tsfile.read.reader.IPageReader;
 import org.apache.tsfile.read.reader.IPointReader;
 
 import java.io.IOException;
-import java.util.Collections;
+import java.io.Serializable;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.function.Supplier;
 
 /** To read chunk data in memory. */
 public class MemChunkReader implements IChunkReader, IPointReader {
 
-  private final IPointReader timeValuePairIterator;
+  private final MemPointIterator timeValuePairIterator;
   private final Filter globalTimeFilter;
   private final List<IPageReader> pageReaderList;
 
@@ -43,13 +49,26 @@ public class MemChunkReader implements IChunkReader, IPointReader {
   private TimeValuePair cachedTimeValuePair;
 
   public MemChunkReader(ReadOnlyMemChunk readableChunk, Filter globalTimeFilter) {
-    timeValuePairIterator = readableChunk.getPointReader();
+    this.timeValuePairIterator = readableChunk.getMemPointIterator();
     this.globalTimeFilter = globalTimeFilter;
-    // we treat one ReadOnlyMemChunk as one Page
-    this.pageReaderList =
-        Collections.singletonList(
-            new MemPageReader(
-                readableChunk.getTsBlock(), readableChunk.getChunkMetaData(), globalTimeFilter));
+    this.pageReaderList = new ArrayList<>();
+    initAllPageReaders(readableChunk.getChunkMetaData(), readableChunk.getPageStatisticsList());
+  }
+
+  private void initAllPageReaders(
+      IChunkMetadata metadata, List<Statistics<? extends Serializable>> pageStats) {
+    Supplier<TsBlock> tsBlockSupplier = new TsBlockSupplier();
+    for (int pageIndex = 0; pageIndex < pageStats.size(); pageIndex++) {
+      MemPageReader pageReader =
+          new MemPageReader(
+              tsBlockSupplier,
+              pageIndex,
+              metadata.getDataType(),
+              metadata.getMeasurementUid(),
+              pageStats.get(pageIndex),
+              globalTimeFilter);
+      this.pageReaderList.add(pageReader);
+    }
   }
 
   @Override
@@ -113,5 +132,24 @@ public class MemChunkReader implements IChunkReader, IPointReader {
   @Override
   public List<IPageReader> loadPageReaderList() {
     return this.pageReaderList;
+  }
+
+  /**
+   * TsBlockSupplier enables to read pages in MemTable lazily. All MemPageReaders share one
+   * TsBlockSupplier object.
+   */
+  class TsBlockSupplier implements Supplier<TsBlock> {
+    private int tsBlockIndex;
+
+    public TsBlockSupplier() {}
+
+    public void setTsBlockIndex(int tsBlockIndex) {
+      this.tsBlockIndex = tsBlockIndex;
+    }
+
+    @Override
+    public TsBlock get() {
+      return timeValuePairIterator.getBatch(tsBlockIndex);
+    }
   }
 }

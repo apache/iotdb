@@ -30,8 +30,9 @@ import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
 import org.apache.iotdb.db.pipe.event.realtime.PipeRealtimeEvent;
 import org.apache.iotdb.db.pipe.extractor.dataregion.IoTDBDataRegionExtractor;
 import org.apache.iotdb.db.pipe.extractor.dataregion.realtime.epoch.TsFileEpoch;
-import org.apache.iotdb.db.pipe.metric.PipeDataRegionExtractorMetrics;
+import org.apache.iotdb.db.pipe.metric.source.PipeDataRegionExtractorMetrics;
 import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
+import org.apache.iotdb.db.storageengine.StorageEngine;
 import org.apache.iotdb.db.storageengine.dataregion.wal.WALManager;
 import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
@@ -46,6 +47,9 @@ public class PipeRealtimeDataRegionHybridExtractor extends PipeRealtimeDataRegio
 
   private static final Logger LOGGER =
       LoggerFactory.getLogger(PipeRealtimeDataRegionHybridExtractor.class);
+
+  private final boolean isPipeEpochKeepTsFileAfterStuckRestartEnabled =
+      PipeConfig.getInstance().isPipeEpochKeepTsFileAfterStuckRestartEnabled();
 
   @Override
   protected void doExtract(final PipeRealtimeEvent event) {
@@ -78,13 +82,17 @@ public class PipeRealtimeDataRegionHybridExtractor extends PipeRealtimeDataRegio
   }
 
   private void extractTabletInsertion(final PipeRealtimeEvent event) {
-    if (canNotUseTabletAnyMore(event)) {
+    TsFileEpoch.State state = event.getTsFileEpoch().getState(this);
+
+    if (state != TsFileEpoch.State.USING_TSFILE
+        && state != TsFileEpoch.State.USING_BOTH
+        && canNotUseTabletAnyMore(event)) {
       event
           .getTsFileEpoch()
           .migrateState(
               this,
-              state -> {
-                switch (state) {
+              curState -> {
+                switch (curState) {
                   case EMPTY:
                   case USING_TSFILE:
                     return TsFileEpoch.State.USING_TSFILE;
@@ -96,7 +104,7 @@ public class PipeRealtimeDataRegionHybridExtractor extends PipeRealtimeDataRegio
               });
     }
 
-    final TsFileEpoch.State state = event.getTsFileEpoch().getState(this);
+    state = event.getTsFileEpoch().getState(this);
     switch (state) {
       case USING_TSFILE:
         // Ignore the tablet event.
@@ -222,6 +230,10 @@ public class PipeRealtimeDataRegionHybridExtractor extends PipeRealtimeDataRegio
   }
 
   private boolean isPipeTaskCurrentlyRestarted(final PipeRealtimeEvent event) {
+    if (!isPipeEpochKeepTsFileAfterStuckRestartEnabled) {
+      return false;
+    }
+
     final boolean isPipeTaskCurrentlyRestarted =
         PipeDataNodeAgent.task().isPipeTaskCurrentlyRestarted(pipeName);
     if (isPipeTaskCurrentlyRestarted && event.mayExtractorUseTablets(this)) {
@@ -251,14 +263,16 @@ public class PipeRealtimeDataRegionHybridExtractor extends PipeRealtimeDataRegio
   private boolean mayMemTablePinnedCountReachDangerousThreshold(final PipeRealtimeEvent event) {
     final boolean mayMemTablePinnedCountReachDangerousThreshold =
         PipeDataNodeResourceManager.wal().getPinnedWalCount()
-            >= PipeConfig.getInstance().getPipeMaxAllowedPinnedMemTableCount();
+            >= PipeConfig.getInstance().getPipeMaxAllowedPinnedMemTableCount()
+                * StorageEngine.getInstance().getDataRegionNumber();
     if (mayMemTablePinnedCountReachDangerousThreshold && event.mayExtractorUseTablets(this)) {
       LOGGER.info(
           "Pipe task {}@{} canNotUseTabletAnyMore3: The number of pinned memtables {} has reached the dangerous threshold {}",
           pipeName,
           dataRegionId,
           PipeDataNodeResourceManager.wal().getPinnedWalCount(),
-          PipeConfig.getInstance().getPipeMaxAllowedPinnedMemTableCount());
+          PipeConfig.getInstance().getPipeMaxAllowedPinnedMemTableCount()
+              * StorageEngine.getInstance().getDataRegionNumber());
     }
     return mayMemTablePinnedCountReachDangerousThreshold;
   }

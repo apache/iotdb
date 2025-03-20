@@ -21,11 +21,13 @@ package org.apache.iotdb.db.pipe.event.common.tsfile;
 
 import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.commons.consensus.index.impl.MinimumProgressIndex;
+import org.apache.iotdb.commons.exception.auth.AccessDeniedException;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.TablePattern;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.TreePattern;
 import org.apache.iotdb.commons.pipe.resource.ref.PipePhantomReferenceManager.PipeEventResource;
+import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.pipe.event.ReferenceTrackableEvent;
 import org.apache.iotdb.db.pipe.event.common.PipeInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
@@ -33,10 +35,12 @@ import org.apache.iotdb.db.pipe.event.common.tsfile.aggregator.TsFileInsertionPo
 import org.apache.iotdb.db.pipe.event.common.tsfile.parser.TsFileInsertionEventParser;
 import org.apache.iotdb.db.pipe.event.common.tsfile.parser.TsFileInsertionEventParserProvider;
 import org.apache.iotdb.db.pipe.extractor.dataregion.realtime.assigner.PipeTimePartitionProgressIndexKeeper;
-import org.apache.iotdb.db.pipe.metric.PipeDataNodeRemainingEventAndTimeMetrics;
+import org.apache.iotdb.db.pipe.metric.overview.PipeDataNodeRemainingEventAndTimeMetrics;
 import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
 import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryManager;
 import org.apache.iotdb.db.pipe.resource.tsfile.PipeTsFileResourceManager;
+import org.apache.iotdb.db.queryengine.plan.Coordinator;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.QualifiedObjectName;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.TsFileProcessor;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
@@ -74,7 +78,8 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
   // This is true iff the modFile exists and should be transferred
   private boolean isWithMod;
   private File modFile;
-  private File sharedModFile;
+  private final File sharedModFile;
+  private boolean shouldParse4Privilege = false;
 
   private final boolean isLoaded;
   private final boolean isGeneratedByPipe;
@@ -95,7 +100,6 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
       final String databaseNameFromDataRegion,
       final TsFileResource resource,
       final boolean isLoaded,
-      final boolean isGeneratedByPipe,
       final boolean isGeneratedByHistoricalExtractor) {
     // The modFile must be copied before the event is assigned to the listening pipes
     this(
@@ -104,13 +108,14 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
         resource,
         true,
         isLoaded,
-        isGeneratedByPipe,
         isGeneratedByHistoricalExtractor,
         null,
         0,
         null,
         null,
         null,
+        null,
+        true,
         Long.MIN_VALUE,
         Long.MAX_VALUE);
   }
@@ -121,13 +126,14 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
       final TsFileResource resource,
       final boolean isWithMod,
       final boolean isLoaded,
-      final boolean isGeneratedByPipe,
       final boolean isGeneratedByHistoricalExtractor,
       final String pipeName,
       final long creationTime,
       final PipeTaskMeta pipeTaskMeta,
       final TreePattern treePattern,
       final TablePattern tablePattern,
+      final String userName,
+      final boolean skipIfNoPrivileges,
       final long startTime,
       final long endTime) {
     super(
@@ -136,6 +142,8 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
         pipeTaskMeta,
         treePattern,
         tablePattern,
+        userName,
+        skipIfNoPrivileges,
         startTime,
         endTime,
         isTableModelEvent,
@@ -151,7 +159,7 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
         resource.getSharedModFile() != null ? resource.getSharedModFile().getFile() : null;
 
     this.isLoaded = isLoaded;
-    this.isGeneratedByPipe = isGeneratedByPipe;
+    this.isGeneratedByPipe = resource.isGeneratedByPipe();
     this.isGeneratedByPipeConsensus = resource.isGeneratedByPipeConsensus();
     this.isGeneratedByHistoricalExtractor = isGeneratedByHistoricalExtractor;
 
@@ -165,7 +173,6 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
               synchronized (isClosed) {
                 isClosed.set(true);
                 isClosed.notifyAll();
-
                 // Update flushPointCount after TsFile is closed
                 flushPointCount = processor.getMemTableFlushPointCount();
               }
@@ -351,6 +358,22 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
     }
   }
 
+  /**
+   * Get ProgressIndex without waiting for tsfile close. Can be used in getting progressIndex when
+   * memTable becomes immutable.
+   */
+  public ProgressIndex forceGetProgressIndex() {
+    if (resource.isEmpty()) {
+      LOGGER.warn(
+          "Skipping temporary TsFile {}'s progressIndex, will report MinimumProgressIndex", tsFile);
+      return MinimumProgressIndex.INSTANCE;
+    }
+    if (Objects.nonNull(overridingProgressIndex)) {
+      return overridingProgressIndex;
+    }
+    return resource.getMaxProgressIndex();
+  }
+
   @Override
   protected void reportProgress() {
     super.reportProgress();
@@ -368,12 +391,19 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
   }
 
   @Override
+  public boolean shouldParsePattern() {
+    return super.shouldParsePattern() || shouldParse4Privilege;
+  }
+
+  @Override
   public PipeTsFileInsertionEvent shallowCopySelfAndBindPipeTaskMetaForProgressReport(
       final String pipeName,
       final long creationTime,
       final PipeTaskMeta pipeTaskMeta,
       final TreePattern treePattern,
       final TablePattern tablePattern,
+      final String userName,
+      final boolean skipIfNoPrivileges,
       final long startTime,
       final long endTime) {
     return new PipeTsFileInsertionEvent(
@@ -382,13 +412,14 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
         resource,
         isWithMod,
         isLoaded,
-        isGeneratedByPipe,
         isGeneratedByHistoricalExtractor,
         pipeName,
         creationTime,
         pipeTaskMeta,
         treePattern,
         tablePattern,
+        userName,
+        skipIfNoPrivileges,
         startTime,
         endTime);
   }
@@ -396,6 +427,56 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
   @Override
   public boolean isGeneratedByPipe() {
     return isGeneratedByPipe;
+  }
+
+  @Override
+  public void throwIfNoPrivilege() {
+    try {
+      if (!isTableModelEvent() || AuthorityChecker.SUPER_USER.equals(userName)) {
+        return;
+      }
+      if (!waitForTsFileClose()) {
+        LOGGER.info("Temporary tsFile {} detected, will skip its transfer.", tsFile);
+        return;
+      }
+      for (final IDeviceID deviceID : getDeviceSet()) {
+        if (!tablePattern.matchesDatabase(getTableModelDatabaseName())
+            || !tablePattern.matchesTable(deviceID.getTableName())) {
+          continue;
+        }
+        if (!Coordinator.getInstance()
+            .getAccessControl()
+            .checkCanSelectFromTable4Pipe(
+                userName,
+                new QualifiedObjectName(getTableModelDatabaseName(), deviceID.getTableName()))) {
+          if (skipIfNoPrivileges) {
+            shouldParse4Privilege = true;
+          } else {
+            throw new AccessDeniedException(
+                String.format(
+                    "No privilege for SELECT for user %s at table %s.%s",
+                    userName, tableModelDatabaseName, deviceID.getTableName()));
+          }
+        }
+      }
+    } catch (final AccessDeniedException e) {
+      throw e;
+    } catch (final Exception e) {
+      if (e instanceof InterruptedException) {
+        Thread.currentThread().interrupt();
+      }
+
+      final String errorMsg =
+          e instanceof InterruptedException
+              ? String.format(
+                  "Interrupted when waiting for parsing privilege for TsFile %s.",
+                  resource.getTsFilePath())
+              : String.format(
+                  "Parse TsFile %s when checking privilege error. Because: %s",
+                  resource.getTsFilePath(), e.getMessage());
+      LOGGER.warn(errorMsg, e);
+      throw new PipeException(errorMsg, e);
+    }
   }
 
   @Override
@@ -414,14 +495,7 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
     }
 
     try {
-      final Map<IDeviceID, Boolean> deviceIsAlignedMap =
-          PipeDataNodeResourceManager.tsfile()
-              .getDeviceIsAlignedMapFromCache(
-                  PipeTsFileResourceManager.getHardlinkOrCopiedFileInPipeDir(resource.getTsFile()),
-                  false);
-      final Set<IDeviceID> deviceSet =
-          Objects.nonNull(deviceIsAlignedMap) ? deviceIsAlignedMap.keySet() : resource.getDevices();
-      return deviceSet.stream()
+      return getDeviceSet().stream()
           .anyMatch(
               deviceID -> {
                 // Tree model
@@ -447,6 +521,17 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
     }
   }
 
+  private Set<IDeviceID> getDeviceSet() throws IOException {
+    final Map<IDeviceID, Boolean> deviceIsAlignedMap =
+        PipeDataNodeResourceManager.tsfile()
+            .getDeviceIsAlignedMapFromCache(
+                PipeTsFileResourceManager.getHardlinkOrCopiedFileInPipeDir(resource.getTsFile()),
+                false);
+    return Objects.nonNull(deviceIsAlignedMap)
+        ? deviceIsAlignedMap.keySet()
+        : resource.getDevices();
+  }
+
   /////////////////////////// PipeInsertionEvent ///////////////////////////
 
   @Override
@@ -457,17 +542,7 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
       }
 
       try {
-        final Map<IDeviceID, Boolean> deviceIsAlignedMap =
-            PipeDataNodeResourceManager.tsfile()
-                .getDeviceIsAlignedMapFromCache(
-                    PipeTsFileResourceManager.getHardlinkOrCopiedFileInPipeDir(
-                        resource.getTsFile()),
-                    false);
-        final Set<IDeviceID> deviceSet =
-            Objects.nonNull(deviceIsAlignedMap)
-                ? deviceIsAlignedMap.keySet()
-                : resource.getDevices();
-        for (final IDeviceID deviceID : deviceSet) {
+        for (final IDeviceID deviceID : getDeviceSet()) {
           if (deviceID instanceof PlainDeviceID
               || deviceID.getTableName().startsWith(TREE_MODEL_EVENT_TABLE_NAME_PREFIX)
               || deviceID.getTableName().equals(PATH_ROOT)) {
@@ -493,7 +568,9 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
 
   @Override
   public Iterable<TabletInsertionEvent> toTabletInsertionEvents() throws PipeException {
-    return toTabletInsertionEvents(Long.MAX_VALUE);
+    // 20 - 40 seconds for waiting
+    // Can not be unlimited or will cause deadlock
+    return toTabletInsertionEvents((long) ((1 + Math.random()) * 20 * 1000));
   }
 
   public Iterable<TabletInsertionEvent> toTabletInsertionEvents(final long timeoutMs)
@@ -502,6 +579,10 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
       if (!waitForTsFileClose()) {
         LOGGER.warn(
             "Pipe skipping temporary TsFile's parsing which shouldn't be transferred: {}", tsFile);
+        return Collections.emptyList();
+      }
+      // Skip if is table events and tree model
+      if (Objects.isNull(userName) && isTableModelEvent()) {
         return Collections.emptyList();
       }
       waitForResourceEnough4Parsing(timeoutMs);
@@ -521,7 +602,7 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
               : String.format(
                   "Parse TsFile %s error. Because: %s", resource.getTsFilePath(), e.getMessage());
       LOGGER.warn(errorMsg, e);
-      throw new PipeException(errorMsg);
+      throw new PipeException(errorMsg, e);
     }
   }
 
@@ -584,7 +665,14 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
       eventParser.compareAndSet(
           null,
           new TsFileInsertionEventParserProvider(
-                  tsFile, treePattern, tablePattern, startTime, endTime, pipeTaskMeta, this)
+                  tsFile,
+                  treePattern,
+                  tablePattern,
+                  startTime,
+                  endTime,
+                  pipeTaskMeta,
+                  userName,
+                  this)
               .provide());
       return eventParser.get();
     } catch (final IOException e) {
@@ -592,7 +680,7 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
 
       final String errorMsg = String.format("Read TsFile %s error.", resource.getTsFilePath());
       LOGGER.warn(errorMsg, e);
-      throw new PipeException(errorMsg);
+      throw new PipeException(errorMsg, e);
     }
   }
 
@@ -713,8 +801,7 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
               return null;
             });
       } catch (final Exception e) {
-        LOGGER.warn(
-            String.format("Decrease reference count for TsFile %s error.", tsFile.getPath()), e);
+        LOGGER.warn("Decrease reference count for TsFile {} error.", tsFile.getPath(), e);
       }
     }
   }

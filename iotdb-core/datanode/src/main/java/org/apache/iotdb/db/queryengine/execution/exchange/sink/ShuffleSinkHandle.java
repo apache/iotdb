@@ -68,7 +68,7 @@ public class ShuffleSinkHandle implements ISinkHandle {
 
   /** max bytes this ShuffleSinkHandle can reserve. */
   private long maxBytesCanReserve =
-      IoTDBDescriptor.getInstance().getConfig().getMaxBytesPerFragmentInstance();
+      IoTDBDescriptor.getInstance().getMemoryConfig().getMaxBytesPerFragmentInstance();
 
   private static final long INSTANCE_SIZE =
       RamUsageEstimator.shallowSizeOfInstance(ShuffleSinkHandle.class)
@@ -270,6 +270,9 @@ public class ShuffleSinkHandle implements ISinkHandle {
 
   private void checkState() {
     if (aborted) {
+      for (ISinkChannel channel : downStreamChannelList) {
+        channel.checkState();
+      }
       throw new IllegalStateException("ShuffleSinkHandle is aborted.");
     }
   }

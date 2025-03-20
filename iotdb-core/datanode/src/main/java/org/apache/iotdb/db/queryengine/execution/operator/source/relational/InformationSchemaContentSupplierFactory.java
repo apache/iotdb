@@ -40,7 +40,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TShowSubscriptionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowTopicInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TShowTopicReq;
 import org.apache.iotdb.confignode.rpc.thrift.TTableInfo;
-import org.apache.iotdb.db.pipe.metric.PipeDataNodeRemainingEventAndTimeMetrics;
+import org.apache.iotdb.db.pipe.metric.overview.PipeDataNodeRemainingEventAndTimeMetrics;
 import org.apache.iotdb.db.protocol.client.ConfigNodeClient;
 import org.apache.iotdb.db.protocol.client.ConfigNodeClientManager;
 import org.apache.iotdb.db.protocol.client.ConfigNodeInfo;
@@ -249,6 +249,12 @@ public class InformationSchemaContentSupplierFactory {
           new Binary(
               TableNodeStatus.values()[currentTable.getState()].toString(),
               TSFileConfig.STRING_CHARSET));
+      if (currentTable.isSetComment()) {
+        columnBuilders[4].writeBinary(
+            new Binary(currentTable.getComment(), TSFileConfig.STRING_CHARSET));
+      } else {
+        columnBuilders[4].appendNull();
+      }
       resultBuilder.declarePosition();
       currentTable = null;
     }
@@ -328,6 +334,13 @@ public class InformationSchemaContentSupplierFactory {
           new Binary(
               preDeletedColumns.contains(schema.getColumnName()) ? "PRE_DELETE" : "USING",
               TSFileConfig.STRING_CHARSET));
+
+      if (schema.getProps().containsKey(TsTable.COMMENT_KEY)) {
+        columnBuilders[6].writeBinary(
+            new Binary(schema.getProps().get(TsTable.COMMENT_KEY), TSFileConfig.STRING_CHARSET));
+      } else {
+        columnBuilders[6].appendNull();
+      }
       resultBuilder.declarePosition();
     }
 

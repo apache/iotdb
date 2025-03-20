@@ -21,6 +21,7 @@ package org.apache.iotdb.db.storageengine.dataregion.read.reader.chunk;
 
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.AlignedChunkMetadata;
+import org.apache.tsfile.file.metadata.IMetadata;
 import org.apache.tsfile.file.metadata.statistics.IntegerStatistics;
 import org.apache.tsfile.file.metadata.statistics.Statistics;
 import org.apache.tsfile.file.metadata.statistics.TimeStatistics;
@@ -37,6 +38,7 @@ import org.mockito.Mockito;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.Optional;
+import java.util.function.Supplier;
 
 import static org.apache.tsfile.read.filter.factory.ValueFilterApi.DEFAULT_MEASUREMENT_INDEX;
 
@@ -94,15 +96,37 @@ public class AlignedMemPageReaderTest {
   }
 
   private MemAlignedPageReader generateAlignedPageReader() {
+    Supplier<TsBlock> tsBlockSupplier = () -> tsBlock1;
+    Statistics[] valueStatistcsList =
+        chunkMetadata1.getValueChunkMetadataList().stream()
+            .map(IMetadata::getStatistics)
+            .toArray(Statistics[]::new);
     MemAlignedPageReader alignedPageReader =
-        new MemAlignedPageReader(tsBlock1, chunkMetadata1, null);
+        new MemAlignedPageReader(
+            tsBlockSupplier,
+            0,
+            Arrays.asList(TSDataType.INT32, TSDataType.INT32),
+            chunkMetadata1.getTimeStatistics(),
+            valueStatistcsList,
+            null);
     alignedPageReader.initTsBlockBuilder(Arrays.asList(TSDataType.INT32, TSDataType.INT32));
     return alignedPageReader;
   }
 
   private MemAlignedPageReader generateSingleColumnAlignedPageReader() {
+    Supplier<TsBlock> tsBlockSupplier = () -> tsBlock2;
+    Statistics[] valueStatistcsList =
+        chunkMetadata2.getValueChunkMetadataList().stream()
+            .map(IMetadata::getStatistics)
+            .toArray(Statistics[]::new);
     MemAlignedPageReader alignedPageReader =
-        new MemAlignedPageReader(tsBlock2, chunkMetadata2, null);
+        new MemAlignedPageReader(
+            tsBlockSupplier,
+            0,
+            Arrays.asList(TSDataType.INT32),
+            chunkMetadata2.getTimeStatistics(),
+            valueStatistcsList,
+            null);
     alignedPageReader.initTsBlockBuilder(Collections.singletonList(TSDataType.INT32));
     return alignedPageReader;
   }
