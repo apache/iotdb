@@ -246,7 +246,7 @@ class IoTDBRpcDataSet(object):
                 data_array = tmp_array
 
             result[i + 1] = data_array
-        self.data_frame = pd.DataFrame(result)
+        self.data_frame = pd.DataFrame(result, dtype=object)
         self.__query_result = None
         if not self.data_frame.empty:
             self.has_cached_data_frame = True
