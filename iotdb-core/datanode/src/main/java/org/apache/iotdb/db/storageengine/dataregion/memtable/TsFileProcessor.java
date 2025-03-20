@@ -321,16 +321,18 @@ public class TsFileProcessor {
     if (!insertRowNode.isGeneratedByPipe()) {
       workMemTable.markAsNotGeneratedByPipe();
     }
-    final String originClusterId =
-        insertRowNode.getOriginClusterId() == null
-            ? config.getClusterId()
-            : insertRowNode.getOriginClusterId();
-    if (Objects.isNull(workMemTable.getCurrentOriginClusterId())) {
-      workMemTable.setCurrentOriginClusterId(originClusterId);
-      // Use ClusterIdMap to compare the clusterIds by location
-    } else if (IoTDBFileReceiver.getClusterIdMap().get(originClusterId)
-        != IoTDBFileReceiver.getClusterIdMap().get(workMemTable.getCurrentOriginClusterId())) {
-      workMemTable.markAsNotFromTheSameCluster();
+    if (workMemTable.isTotallyFromTheSameCluster()) {
+      final String originClusterId =
+          insertRowNode.getOriginClusterId() == null
+              ? config.getClusterId()
+              : insertRowNode.getOriginClusterId();
+      if (Objects.isNull(workMemTable.getCurrentOriginClusterId())) {
+        workMemTable.setCurrentOriginClusterId(originClusterId);
+        // Use ClusterIdMap to compare the clusterIds by location rather than value
+      } else if (IoTDBFileReceiver.getClusterIdMap().get(originClusterId)
+          != IoTDBFileReceiver.getClusterIdMap().get(workMemTable.getCurrentOriginClusterId())) {
+        workMemTable.markAsNotFromTheSameCluster();
+      }
     }
 
     PipeInsertionDataNodeListener.getInstance()
@@ -424,14 +426,18 @@ public class TsFileProcessor {
     if (!insertRowsNode.isGeneratedByPipe()) {
       workMemTable.markAsNotGeneratedByPipe();
     }
-    final String originClusterId =
-        insertRowsNode.getOriginClusterId() == null
-            ? config.getClusterId()
-            : insertRowsNode.getOriginClusterId();
-    if (Objects.isNull(workMemTable.getCurrentOriginClusterId())) {
-      workMemTable.setCurrentOriginClusterId(originClusterId);
-    } else if (!Objects.equals(originClusterId, workMemTable.getCurrentOriginClusterId())) {
-      workMemTable.markAsNotFromTheSameCluster();
+    if (workMemTable.isTotallyFromTheSameCluster()) {
+      final String originClusterId =
+          insertRowsNode.getOriginClusterId() == null
+              ? config.getClusterId()
+              : insertRowsNode.getOriginClusterId();
+      if (Objects.isNull(workMemTable.getCurrentOriginClusterId())) {
+        workMemTable.setCurrentOriginClusterId(originClusterId);
+        // Use ClusterIdMap to compare the clusterIds by location rather than value
+      } else if (IoTDBFileReceiver.getClusterIdMap().get(originClusterId)
+          != IoTDBFileReceiver.getClusterIdMap().get(workMemTable.getCurrentOriginClusterId())) {
+        workMemTable.markAsNotFromTheSameCluster();
+      }
     }
     PipeInsertionDataNodeListener.getInstance()
         .listenToInsertNode(
@@ -600,14 +606,18 @@ public class TsFileProcessor {
     if (!insertTabletNode.isGeneratedByPipe()) {
       workMemTable.markAsNotGeneratedByPipe();
     }
-    final String originClusterId =
-        insertTabletNode.getOriginClusterId() == null
-            ? config.getClusterId()
-            : insertTabletNode.getOriginClusterId();
-    if (Objects.isNull(workMemTable.getCurrentOriginClusterId())) {
-      workMemTable.setCurrentOriginClusterId(originClusterId);
-    } else if (!Objects.equals(originClusterId, workMemTable.getCurrentOriginClusterId())) {
-      workMemTable.markAsNotFromTheSameCluster();
+    if (workMemTable.isTotallyFromTheSameCluster()) {
+      final String originClusterId =
+          insertTabletNode.getOriginClusterId() == null
+              ? config.getClusterId()
+              : insertTabletNode.getOriginClusterId();
+      if (Objects.isNull(workMemTable.getCurrentOriginClusterId())) {
+        workMemTable.setCurrentOriginClusterId(originClusterId);
+        // Use ClusterIdMap to compare the clusterIds by location rather than value
+      } else if (IoTDBFileReceiver.getClusterIdMap().get(originClusterId)
+          != IoTDBFileReceiver.getClusterIdMap().get(workMemTable.getCurrentOriginClusterId())) {
+        workMemTable.markAsNotFromTheSameCluster();
+      }
     }
 
     PipeInsertionDataNodeListener.getInstance()

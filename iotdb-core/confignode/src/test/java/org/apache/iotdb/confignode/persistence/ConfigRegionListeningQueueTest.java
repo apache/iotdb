@@ -79,7 +79,8 @@ public class ConfigRegionListeningQueueTest {
                 "",
                 new HashSet<>(),
                 false,
-                new ArrayList<>()));
+                new ArrayList<>()),
+            "a6670472-91a4-4194-9916-08236680b4d8");
 
     PipeConfigNodeAgent.runtime().listener().tryListenToPlan(plan1, false, null);
     PipeConfigNodeAgent.runtime().listener().tryListenToPlan(plan2, false, null);
@@ -102,7 +103,9 @@ public class ConfigRegionListeningQueueTest {
     Assert.assertEquals(
         plan2.getInnerPlan(), ((PipeConfigRegionWritePlanEvent) event2).getConfigPhysicalPlan());
     Assert.assertTrue(((PipeConfigRegionWritePlanEvent) event2).isGeneratedByPipe());
-
+    Assert.assertEquals(
+        "a6670472-91a4-4194-9916-08236680b4d8",
+        ((PipeConfigRegionWritePlanEvent) event2).getOriginClusterId());
     Assert.assertNull(itr.next(0));
   }
 }

@@ -111,16 +111,28 @@ public class PipeSchemaRegionWritePlanEvent extends PipeWritePlanEvent {
                 + computeOriginClusterIdBufferSize(originClusterId));
     ReadWriteIOUtils.write(PipeSchemaSerializableEventType.SCHEMA_WRITE_PLAN.getType(), result);
     ReadWriteIOUtils.write(isGeneratedByPipe, result);
-    ReadWriteIOUtils.write(originClusterId, result);
     result.put(planBuffer);
+    ReadWriteIOUtils.write(originClusterId, result);
     return result;
   }
 
   @Override
   public void deserializeFromByteBuffer(final ByteBuffer buffer) {
     isGeneratedByPipe = ReadWriteIOUtils.readBool(buffer);
-    originClusterId = ReadWriteIOUtils.readString(buffer);
     planNode = PlanNodeType.deserialize(buffer);
+
+    // There might be an ignoredChildrenSize 0
+    if (buffer.hasRemaining()) {
+      if (buffer.remaining() >= Integer.BYTES) {
+        buffer.mark(); // Mark current position
+        if (buffer.getInt() != 0) {
+          buffer.reset();
+        }
+      }
+      if (buffer.hasRemaining()) {
+        originClusterId = ReadWriteIOUtils.readString(buffer);
+      }
+    }
   }
 
   /////////////////////////// Object ///////////////////////////
