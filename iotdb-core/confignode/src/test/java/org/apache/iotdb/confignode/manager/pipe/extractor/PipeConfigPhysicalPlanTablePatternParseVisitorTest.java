@@ -28,6 +28,7 @@ import org.apache.iotdb.confignode.consensus.request.write.auth.AuthorRelational
 import org.apache.iotdb.confignode.consensus.request.write.database.DatabaseSchemaPlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.DeleteDatabasePlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeCreateTablePlan;
+import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeDeleteDevicesPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.AddTableColumnPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.CommitDeleteColumnPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.CommitDeleteTablePlan;
@@ -114,6 +115,14 @@ public class PipeConfigPhysicalPlanTablePatternParseVisitorTest {
         new CommitDeleteTablePlan("db1", "ab"),
         new CommitDeleteTablePlan("db1", "ac"),
         new CommitDeleteTablePlan("da", "ac"));
+  }
+
+  @Test
+  public void testPipeDeleteDevices() {
+    testInput(
+        new PipeDeleteDevicesPlan("db1", "ab", new byte[0], new byte[0], new byte[0]),
+        new PipeDeleteDevicesPlan("db1", "ac", new byte[0], new byte[0], new byte[0]),
+        new PipeDeleteDevicesPlan("da", "ac", new byte[0], new byte[0], new byte[0]));
   }
 
   @Test

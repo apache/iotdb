@@ -28,9 +28,6 @@ import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
 
 import javax.validation.constraints.NotNull;
 
-import java.util.HashSet;
-import java.util.Set;
-
 /**
  * The data model used to record the Event and the data model of the DataRegion corresponding to the
  * source data, so this type requires some specifications .
@@ -59,8 +56,6 @@ public abstract class PipeInsertionEvent extends EnrichedEvent {
 
   protected String treeModelDatabaseName; // lazy initialization
   protected String tableModelDatabaseName; // lazy initialization
-
-  private Set<String> noPrivilegeTableNames = new HashSet<>();
 
   protected PipeInsertionEvent(
       final String pipeName,
@@ -179,13 +174,5 @@ public abstract class PipeInsertionEvent extends EnrichedEvent {
     // rename TreeModelDatabaseName as well.
     this.tableModelDatabaseName = tableModelDatabaseName.toLowerCase();
     this.treeModelDatabaseName = PathUtils.qualifyDatabaseName(tableModelDatabaseName);
-  }
-
-  public void addTable(final String tableName) {
-    noPrivilegeTableNames.add(tableName);
-  }
-
-  public Set<String> getNoPrivilegeTableNames() {
-    return noPrivilegeTableNames;
   }
 }
