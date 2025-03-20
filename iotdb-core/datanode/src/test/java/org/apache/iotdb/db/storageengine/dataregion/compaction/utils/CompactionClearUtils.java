@@ -49,7 +49,7 @@ public class CompactionClearUtils {
     deleteAllFilesInOneDirBySuffix("target", CompactionLogger.INNER_COMPACTION_LOG_NAME_SUFFIX);
     deleteAllFilesInOneDirBySuffix("target", CompactionLogger.CROSS_COMPACTION_LOG_NAME_SUFFIX);
     // clean cache
-    if (IoTDBDescriptor.getInstance().getConfig().isMetaDataCacheEnable()) {
+    if (IoTDBDescriptor.getInstance().getMemoryConfig().isMetaDataCacheEnable()) {
       ChunkCache.getInstance().clear();
       TimeSeriesMetadataCache.getInstance().clear();
       BloomFilterCache.getInstance().clear();

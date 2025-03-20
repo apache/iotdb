@@ -57,8 +57,8 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LoadTsFile;
 import org.apache.iotdb.db.queryengine.plan.scheduler.FragInstanceDispatchResult;
 import org.apache.iotdb.db.queryengine.plan.scheduler.IScheduler;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.LoadTsFileStatement;
+import org.apache.iotdb.db.service.RegionMigrateService;
 import org.apache.iotdb.db.storageengine.StorageEngine;
-import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
 import org.apache.iotdb.db.storageengine.dataregion.flush.MemTableFlushTask;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.ArrayDeviceTimeIndex;
@@ -97,6 +97,7 @@ import java.util.List;
 import java.util.ListIterator;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.CancellationException;
@@ -193,6 +194,8 @@ public class LoadTsFileScheduler implements IScheduler {
           }
           shouldRemoveFileFromLoadingSet = true;
 
+          final long startTimeMs = System.currentTimeMillis();
+
           if (node.isTsFileEmpty()) {
             LOGGER.info("Load skip TsFile {}, because it has no data.", filePath);
           } else if (!node.needDecodeTsFile(
@@ -235,6 +238,13 @@ public class LoadTsFileScheduler implements IScheduler {
             if (!isFirstPhaseSuccess || !isSecondPhaseSuccess) {
               isLoadSingleTsFileSuccess = false;
             }
+          }
+
+          if (RegionMigrateService.getInstance().getLastNotifyTime() > startTimeMs) {
+            LOGGER.warn(
+                "LoadTsFileScheduler: Region migration started or ended during loading TsFile {}, will convert to insertion to avoid data loss",
+                filePath);
+            isLoadSingleTsFileSuccess = false;
           }
 
           if (isLoadSingleTsFileSuccess) {
@@ -290,7 +300,7 @@ public class LoadTsFileScheduler implements IScheduler {
           convertFailedTsFilesToTabletsAndRetry();
         } finally {
           LOAD_TSFILE_COST_METRICS_SET.recordPhaseTimeCost(
-              LoadTsFileCostMetricsSet.CAST_TABLETS, System.nanoTime() - startTime);
+              LoadTsFileCostMetricsSet.SCHEDULER_CAST_TABLETS, System.nanoTime() - startTime);
         }
       }
     } finally {
@@ -336,7 +346,7 @@ public class LoadTsFileScheduler implements IScheduler {
             fragmentId.genFragmentInstanceId(),
             null,
             queryContext.getQueryType(),
-            queryContext.getTimeOut(),
+            queryContext.getTimeOut() - (System.currentTimeMillis() - queryContext.getStartTime()),
             queryContext.getSession());
     instance.setExecutorAndHost(new StorageExecutor(replicaSet));
     Future<FragInstanceDispatchResult> dispatchResultFuture =
@@ -433,6 +443,10 @@ public class LoadTsFileScheduler implements IScheduler {
       LOGGER.warn("Interrupt or Execution error.", e);
       stateMachine.transitionToFailed(e);
       return false;
+    } catch (Exception e) {
+      LOGGER.warn("Exception occurred during second phase of loading TsFile {}.", tsFile, e);
+      stateMachine.transitionToFailed(e);
+      return false;
     }
     return true;
   }
@@ -479,7 +493,8 @@ public class LoadTsFileScheduler implements IScheduler {
               fragmentId.genFragmentInstanceId(),
               null,
               queryContext.getQueryType(),
-              queryContext.getTimeOut(),
+              queryContext.getTimeOut()
+                  - (System.currentTimeMillis() - queryContext.getStartTime()),
               queryContext.getSession());
       instance.setExecutorAndHost(new StorageExecutor(node.getLocalRegionReplicaSet()));
       dispatcher.dispatchLocally(instance);
@@ -496,48 +511,51 @@ public class LoadTsFileScheduler implements IScheduler {
     }
 
     // add metrics
-    DataRegion dataRegion =
-        StorageEngine.getInstance()
-            .getDataRegion(
-                (DataRegionId)
-                    ConsensusGroupId.Factory.createFromTConsensusGroupId(
-                        node.getLocalRegionReplicaSet().getRegionId()));
-
-    dataRegion
-        .getNonSystemDatabaseName()
+    Optional.ofNullable(
+            StorageEngine.getInstance()
+                .getDataRegion(
+                    (DataRegionId)
+                        ConsensusGroupId.Factory.createFromTConsensusGroupId(
+                            node.getLocalRegionReplicaSet().getRegionId())))
         .ifPresent(
-            databaseName -> {
-              // Report load tsFile points to IoTDB flush metrics
-              MemTableFlushTask.recordFlushPointsMetricInternal(
-                  node.getWritePointCount(), databaseName, dataRegion.getDataRegionId());
+            dataRegion ->
+                dataRegion
+                    .getNonSystemDatabaseName()
+                    .ifPresent(
+                        databaseName -> {
+                          // Report load tsFile points to IoTDB flush metrics
+                          MemTableFlushTask.recordFlushPointsMetricInternal(
+                              node.getWritePointCount(),
+                              databaseName,
+                              dataRegion.getDataRegionId());
 
-              MetricService.getInstance()
-                  .count(
-                      node.getWritePointCount(),
-                      Metric.QUANTITY.toString(),
-                      MetricLevel.CORE,
-                      Tag.NAME.toString(),
-                      Metric.POINTS_IN.toString(),
-                      Tag.DATABASE.toString(),
-                      databaseName,
-                      Tag.REGION.toString(),
-                      dataRegion.getDataRegionId(),
-                      Tag.TYPE.toString(),
-                      Metric.LOAD_POINT_COUNT.toString());
-              MetricService.getInstance()
-                  .count(
-                      node.getWritePointCount(),
-                      Metric.LEADER_QUANTITY.toString(),
-                      MetricLevel.CORE,
-                      Tag.NAME.toString(),
-                      Metric.POINTS_IN.toString(),
-                      Tag.DATABASE.toString(),
-                      databaseName,
-                      Tag.REGION.toString(),
-                      dataRegion.getDataRegionId(),
-                      Tag.TYPE.toString(),
-                      Metric.LOAD_POINT_COUNT.toString());
-            });
+                          MetricService.getInstance()
+                              .count(
+                                  node.getWritePointCount(),
+                                  Metric.QUANTITY.toString(),
+                                  MetricLevel.CORE,
+                                  Tag.NAME.toString(),
+                                  Metric.POINTS_IN.toString(),
+                                  Tag.DATABASE.toString(),
+                                  databaseName,
+                                  Tag.REGION.toString(),
+                                  dataRegion.getDataRegionId(),
+                                  Tag.TYPE.toString(),
+                                  Metric.LOAD_POINT_COUNT.toString());
+                          MetricService.getInstance()
+                              .count(
+                                  node.getWritePointCount(),
+                                  Metric.LEADER_QUANTITY.toString(),
+                                  MetricLevel.CORE,
+                                  Tag.NAME.toString(),
+                                  Metric.POINTS_IN.toString(),
+                                  Tag.DATABASE.toString(),
+                                  databaseName,
+                                  Tag.REGION.toString(),
+                                  dataRegion.getDataRegionId(),
+                                  Tag.TYPE.toString(),
+                                  Metric.LOAD_POINT_COUNT.toString());
+                        }));
 
     return true;
   }
@@ -558,10 +576,15 @@ public class LoadTsFileScheduler implements IScheduler {
                 ? loadTsFileDataTypeConverter
                     .convertForTableModel(
                         new LoadTsFile(null, filePath, Collections.emptyMap())
-                            .setDatabase(failedNode.getDatabase()))
+                            .setDatabase(failedNode.getDatabase())
+                            .setDeleteAfterLoad(failedNode.isDeleteAfterLoad())
+                            .setConvertOnTypeMismatch(true))
                     .orElse(null)
                 : loadTsFileDataTypeConverter
-                    .convertForTreeModel(new LoadTsFileStatement(filePath))
+                    .convertForTreeModel(
+                        new LoadTsFileStatement(filePath)
+                            .setDeleteAfterLoad(failedNode.isDeleteAfterLoad())
+                            .setConvertOnTypeMismatch(true))
                     .orElse(null);
 
         if (loadTsFileDataTypeConverter.isSuccessful(status)) {

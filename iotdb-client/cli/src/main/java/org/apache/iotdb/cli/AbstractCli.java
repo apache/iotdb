@@ -569,7 +569,9 @@ public abstract class AbstractCli {
       ZoneId zoneId = ZoneId.of(connection.getTimeZone());
       statement.setFetchSize(fetchSize);
       boolean hasResultSet = statement.execute(cmd.trim());
-      updateUsingDatabaseIfNecessary(connection.getParams().getDb().orElse(null));
+      long costTime = System.currentTimeMillis() - startTime;
+      updateSqlDialectAndUsingDatabase(
+          connection.getParams().getSqlDialect(), connection.getParams().getDb().orElse(null));
       if (hasResultSet) {
         // print the result
         try (ResultSet resultSet = statement.getResultSet()) {
@@ -579,7 +581,6 @@ public abstract class AbstractCli {
           List<List<String>> lists =
               cacheResult(ctx, resultSet, maxSizeList, columnLength, resultSetMetaData, zoneId);
           output(ctx, lists, maxSizeList);
-          long costTime = System.currentTimeMillis() - startTime;
           ctx.getPrinter().println(String.format("It costs %.3fs", costTime / 1000.0));
           while (!isReachEnd) {
             if (continuePrint) {
@@ -890,13 +891,18 @@ public abstract class AbstractCli {
     return true;
   }
 
-  private static void updateUsingDatabaseIfNecessary(String database) {
-    if (!Objects.equals(usingDatabase, database)) {
-      usingDatabase = database;
+  private static void updateSqlDialectAndUsingDatabase(
+      String sqlDialectOfConnection, String databaseOfConnection) {
+    boolean needUpdateCliPrefix =
+        !Objects.equals(sqlDialect, sqlDialectOfConnection)
+            || !Objects.equals(usingDatabase, databaseOfConnection);
+    sqlDialect = sqlDialectOfConnection;
+    usingDatabase = databaseOfConnection;
+    if (needUpdateCliPrefix) {
+      cliPrefix = IOTDB;
       if (sqlDialect != null && Model.TABLE.name().equals(sqlDialect.toUpperCase())) {
-        cliPrefix = IOTDB;
-        if (database != null) {
-          cliPrefix += ":" + database;
+        if (databaseOfConnection != null) {
+          cliPrefix += ":" + databaseOfConnection;
         }
       }
     }

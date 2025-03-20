@@ -19,62 +19,44 @@
 
 package org.apache.iotdb.consensus.iot.logdispatcher;
 
+import org.apache.iotdb.commons.memory.AtomicLongMemoryBlock;
+import org.apache.iotdb.commons.memory.IMemoryBlock;
 import org.apache.iotdb.commons.service.metric.MetricService;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 
 public class IoTConsensusMemoryManager {
   private static final Logger logger = LoggerFactory.getLogger(IoTConsensusMemoryManager.class);
-  private final AtomicLong memorySizeInByte = new AtomicLong(0);
   private final AtomicLong queueMemorySizeInByte = new AtomicLong(0);
   private final AtomicLong syncMemorySizeInByte = new AtomicLong(0);
-  private Long maxMemorySizeInByte = Runtime.getRuntime().maxMemory() / 10;
-  private Long maxMemorySizeForQueueInByte = Runtime.getRuntime().maxMemory() / 100 * 6;
+  private IMemoryBlock memoryBlock =
+      new AtomicLongMemoryBlock("Consensus-Default", null, Runtime.getRuntime().maxMemory() / 10);
+  private Double maxMemoryRatioForQueue = 0.6;
 
   private IoTConsensusMemoryManager() {
     MetricService.getInstance().addMetricSet(new IoTConsensusMemoryManagerMetrics(this));
   }
 
   public boolean reserve(long size, boolean fromQueue) {
-    AtomicBoolean result = new AtomicBoolean(false);
-    memorySizeInByte.updateAndGet(
-        memorySize -> {
-          long remainSize =
-              (fromQueue ? maxMemorySizeForQueueInByte : maxMemorySizeInByte) - memorySize;
-          if (size > remainSize) {
-            logger.debug(
-                "consensus memory limited. required: {}, used: {}, total: {}",
-                size,
-                memorySize,
-                maxMemorySizeInByte);
-            result.set(false);
-            return memorySize;
-          } else {
-            logger.debug(
-                "{} add {} bytes, total memory size: {} bytes.",
-                Thread.currentThread().getName(),
-                size,
-                memorySize + size);
-            result.set(true);
-            return memorySize + size;
-          }
-        });
-    if (result.get()) {
+    boolean result =
+        fromQueue
+            ? memoryBlock.allocateIfSufficient(size, maxMemoryRatioForQueue)
+            : memoryBlock.allocate(size);
+    if (result) {
       if (fromQueue) {
         queueMemorySizeInByte.addAndGet(size);
       } else {
         syncMemorySizeInByte.addAndGet(size);
       }
     }
-    return result.get();
+    return result;
   }
 
   public void free(long size, boolean fromQueue) {
-    long currentUsedMemory = memorySizeInByte.addAndGet(-size);
+    long currentUsedMemory = memoryBlock.release(size);
     if (fromQueue) {
       queueMemorySizeInByte.addAndGet(-size);
     } else {
@@ -87,13 +69,13 @@ public class IoTConsensusMemoryManager {
         currentUsedMemory);
   }
 
-  public void init(long maxMemorySize, long maxMemorySizeForQueue) {
-    this.maxMemorySizeInByte = maxMemorySize;
-    this.maxMemorySizeForQueueInByte = maxMemorySizeForQueue;
+  public void init(IMemoryBlock memoryBlock, double maxMemoryRatioForQueue) {
+    this.memoryBlock = memoryBlock;
+    this.maxMemoryRatioForQueue = maxMemoryRatioForQueue;
   }
 
   long getMemorySizeInByte() {
-    return memorySizeInByte.get();
+    return memoryBlock.getUsedMemoryInBytes();
   }
 
   long getQueueMemorySizeInByte() {

@@ -42,6 +42,7 @@ import java.io.IOException;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 
 public abstract class BasicAuthorizer implements IAuthorizer, IService {
@@ -111,6 +112,17 @@ public abstract class BasicAuthorizer implements IAuthorizer, IService {
     return user != null
         && password != null
         && AuthUtils.validatePassword(password, user.getPassword());
+  }
+
+  @Override
+  public String login4Pipe(final String username, final String password) {
+    final User user = userManager.getEntity(username);
+    return (user != null
+                && password != null
+                && AuthUtils.validatePassword(password, user.getPassword())
+            || Objects.isNull(password))
+        ? user.getPassword()
+        : null;
   }
 
   @Override
@@ -231,17 +243,11 @@ public abstract class BasicAuthorizer implements IAuthorizer, IService {
           TSStatusCode.ROLE_NOT_EXIST, String.format(NO_SUCH_ROLE_EXCEPTION, roleName));
     }
     // the role may be deleted before it ts granted to the user, so a double check is necessary.
-    boolean success = userManager.grantRoleToUser(roleName, userName);
-    if (success) {
-      role = roleManager.getEntity(roleName);
-      if (role == null) {
-        throw new AuthException(
-            TSStatusCode.ROLE_NOT_EXIST, String.format(NO_SUCH_ROLE_EXCEPTION, roleName));
-      }
-    } else {
+    userManager.grantRoleToUser(roleName, userName);
+    role = roleManager.getEntity(roleName);
+    if (role == null) {
       throw new AuthException(
-          TSStatusCode.USER_ALREADY_HAS_ROLE,
-          String.format("User %s already has role %s", userName, roleName));
+          TSStatusCode.ROLE_NOT_EXIST, String.format(NO_SUCH_ROLE_EXCEPTION, roleName));
     }
   }
 
@@ -257,11 +263,7 @@ public abstract class BasicAuthorizer implements IAuthorizer, IService {
       throw new AuthException(
           TSStatusCode.ROLE_NOT_EXIST, String.format(NO_SUCH_ROLE_EXCEPTION, roleName));
     }
-    if (!userManager.revokeRoleFromUser(roleName, userName)) {
-      throw new AuthException(
-          TSStatusCode.USER_NOT_HAS_ROLE,
-          String.format("User %s does not have role %s", userName, roleName));
-    }
+    userManager.revokeRoleFromUser(roleName, userName);
   }
 
   @Override
@@ -324,6 +326,9 @@ public abstract class BasicAuthorizer implements IAuthorizer, IService {
       case RELATIONAL:
         // check any scope privilege
         if (union.isForAny()) {
+          if (union.getPrivilegeType() == null) {
+            return role.checkAnyVisible();
+          }
           if (union.isGrantOption()) {
             return role.checkAnyScopePrivilegeGrantOption(union.getPrivilegeType());
           }

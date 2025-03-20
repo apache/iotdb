@@ -20,7 +20,6 @@
 package org.apache.iotdb.db.storageengine.dataregion.read.reader.chunk;
 
 import org.apache.iotdb.db.storageengine.dataregion.read.reader.chunk.metadata.PageMetadata;
-import org.apache.iotdb.db.utils.datastructure.MergeSortTvListIterator;
 
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.block.column.ColumnBuilder;
@@ -51,10 +50,7 @@ public class MemPageReader implements IPageReader {
   private TsBlock tsBlock;
   private Filter recordFilter;
 
-  private final MergeSortTvListIterator mergeSortTvListIterator;
-  // MemPage range - [pageStartOffsets, pageEndOffsets)
-  private final int[] pageStartOffsets;
-  private final int[] pageEndOffsets;
+  private final int pageIndex;
   private final Supplier<TsBlock> tsBlockSupplier;
   private final TSDataType tsDataType;
   private final PageMetadata pageMetadata;
@@ -63,17 +59,13 @@ public class MemPageReader implements IPageReader {
 
   public MemPageReader(
       Supplier<TsBlock> tsBlockSupplier,
-      MergeSortTvListIterator mergeSortTvListIterator,
-      int[] pageStartOffsets,
-      int[] pageEndOffSets,
+      int pageIndex,
       TSDataType tsDataType,
       String measurementUid,
       Statistics statistics,
       Filter recordFilter) {
     this.tsBlockSupplier = tsBlockSupplier;
-    this.mergeSortTvListIterator = mergeSortTvListIterator;
-    this.pageStartOffsets = pageStartOffsets;
-    this.pageEndOffsets = pageEndOffSets;
+    this.pageIndex = pageIndex;
     this.recordFilter = recordFilter;
     this.tsDataType = tsDataType;
     this.pageMetadata = new PageMetadata(measurementUid, tsDataType, statistics);
@@ -240,7 +232,7 @@ public class MemPageReader implements IPageReader {
 
   private void getTsBlock() {
     if (tsBlock == null) {
-      initializeOffsets();
+      initializeTsBlockIndex();
       tsBlock = tsBlockSupplier.get();
       if (pageMetadata.getStatistics() == null) {
         initPageStatistics();
@@ -248,12 +240,9 @@ public class MemPageReader implements IPageReader {
     }
   }
 
-  private void initializeOffsets() {
-    if (pageStartOffsets != null) {
-      mergeSortTvListIterator.setTVListOffsets(pageStartOffsets);
-    }
+  private void initializeTsBlockIndex() {
     if (tsBlockSupplier instanceof MemChunkReader.TsBlockSupplier) {
-      ((MemChunkReader.TsBlockSupplier) tsBlockSupplier).setPageEndOffsets(pageEndOffsets);
+      ((MemChunkReader.TsBlockSupplier) tsBlockSupplier).setTsBlockIndex(pageIndex);
     }
   }
 

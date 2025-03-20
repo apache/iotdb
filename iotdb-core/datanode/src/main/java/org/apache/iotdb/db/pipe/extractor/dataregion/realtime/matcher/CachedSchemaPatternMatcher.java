@@ -27,6 +27,9 @@ import org.apache.iotdb.db.pipe.event.common.deletion.PipeDeleteDataNodeEvent;
 import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
 import org.apache.iotdb.db.pipe.event.realtime.PipeRealtimeEvent;
 import org.apache.iotdb.db.pipe.extractor.dataregion.realtime.PipeRealtimeDataRegionExtractor;
+import org.apache.iotdb.db.queryengine.plan.Coordinator;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.QualifiedObjectName;
+import org.apache.iotdb.db.queryengine.plan.relational.security.AccessControl;
 
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
@@ -54,7 +57,7 @@ public class CachedSchemaPatternMatcher implements PipeDataRegionMatcher {
   protected static final String TREE_MODEL_EVENT_TABLE_NAME_PREFIX = PATH_ROOT + PATH_SEPARATOR;
 
   protected final ReentrantReadWriteLock lock;
-
+  private final AccessControl accessControl = Coordinator.getInstance().getAccessControl();
   protected final Set<PipeRealtimeDataRegionExtractor> extractors;
 
   protected final Cache<IDeviceID, Set<PipeRealtimeDataRegionExtractor>> deviceToExtractorsCache;
@@ -95,6 +98,17 @@ public class CachedSchemaPatternMatcher implements PipeDataRegionMatcher {
     try {
       extractors.remove(extractor);
       deviceToExtractorsCache.invalidateAll();
+      databaseAndTableToExtractorsCache.invalidateAll();
+    } finally {
+      lock.writeLock().unlock();
+    }
+  }
+
+  @Override
+  public void invalidateCache() {
+    lock.writeLock().lock();
+    try {
+      // Will invalidate device cache
       databaseAndTableToExtractorsCache.invalidateAll();
     } finally {
       lock.writeLock().unlock();
@@ -277,15 +291,31 @@ public class CachedSchemaPatternMatcher implements PipeDataRegionMatcher {
       }
 
       final TablePattern tablePattern = extractor.getTablePattern();
-      if (Objects.isNull(tablePattern)
-          || (tablePattern.isTableModelDataAllowedToBeCaptured()
-              && tablePattern.matchesDatabase(databaseNameAndTableName.getLeft())
-              && tablePattern.matchesTable(databaseNameAndTableName.getRight().getTableName()))) {
+      if (matchesTablePattern(tablePattern, databaseNameAndTableName)
+          && (!extractor.isSkipIfNoPrivileges()
+              || notFilteredByAccess(extractor.getUserName(), databaseNameAndTableName))) {
         filteredExtractors.add(extractor);
       }
     }
 
     return filteredExtractors;
+  }
+
+  private boolean matchesTablePattern(
+      final TablePattern tablePattern, final Pair<String, IDeviceID> databaseNameAndTableName) {
+    return Objects.isNull(tablePattern)
+        || (tablePattern.isTableModelDataAllowedToBeCaptured()
+            && tablePattern.matchesDatabase(databaseNameAndTableName.getLeft())
+            && tablePattern.matchesTable(databaseNameAndTableName.getRight().getTableName()));
+  }
+
+  private boolean notFilteredByAccess(
+      final String userName, final Pair<String, IDeviceID> databaseNameAndTableName) {
+    return accessControl.checkCanSelectFromTable4Pipe(
+        userName,
+        new QualifiedObjectName(
+            databaseNameAndTableName.getLeft(),
+            databaseNameAndTableName.getRight().getTableName()));
   }
 
   @Override

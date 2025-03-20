@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.partition.DataPartition;
 import org.apache.iotdb.commons.partition.DataPartitionQueryParam;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.QueryId;
 import org.apache.iotdb.db.queryengine.metric.QueryPlanCostMetricSet;
@@ -737,7 +738,7 @@ public class PushPredicateIntoTableScan implements PlanOptimizer {
           equiJoinClauses.add(new JoinNode.EquiJoinClause(leftSymbol, rightSymbol));
         } else {
           if (node.getJoinType() != INNER) {
-            throw new UnsupportedOperationException(ONLY_SUPPORT_EQUI_JOIN);
+            throw new SemanticException(ONLY_SUPPORT_EQUI_JOIN);
           }
           joinFilterBuilder.add(conjunct);
         }
@@ -1178,16 +1179,31 @@ public class PushPredicateIntoTableScan implements PlanOptimizer {
               node.getFilter(),
               node.isSpillable());
         }
-        return new JoinNode(
-            node.getPlanNodeId(),
-            canConvertToLeftJoin ? LEFT : RIGHT,
-            node.getLeftChild(),
-            node.getRightChild(),
-            node.getCriteria(),
-            node.getLeftOutputSymbols(),
-            node.getRightOutputSymbols(),
-            node.getFilter(),
-            node.isSpillable());
+        if (canConvertToLeftJoin) {
+          return new JoinNode(
+              node.getPlanNodeId(),
+              LEFT,
+              node.getLeftChild(),
+              node.getRightChild(),
+              node.getCriteria(),
+              node.getLeftOutputSymbols(),
+              node.getRightOutputSymbols(),
+              node.getFilter(),
+              node.isSpillable());
+        } else {
+          // temp fix because right join is not supported for now.
+          return node;
+        }
+        //        return new JoinNode(
+        //            node.getPlanNodeId(),
+        //            canConvertToLeftJoin ? LEFT : RIGHT,
+        //            node.getLeftChild(),
+        //            node.getRightChild(),
+        //            node.getCriteria(),
+        //            node.getLeftOutputSymbols(),
+        //            node.getRightOutputSymbols(),
+        //            node.getFilter(),
+        //            node.isSpillable());
       }
 
       if (node.getJoinType() == JoinNode.JoinType.LEFT

@@ -309,9 +309,9 @@ public class PipeConsensusServerImpl {
   }
 
   public TSStatus write(IConsensusRequest request) {
+    stateMachineLock.lock();
     try {
       long consensusWriteStartTime = System.nanoTime();
-      stateMachineLock.lock();
       long getStateMachineLockTime = System.nanoTime();
       // statistic the time of acquiring stateMachine lock
       pipeConsensusServerMetrics.recordGetStateMachineLockTime(
@@ -335,9 +335,9 @@ public class PipeConsensusServerImpl {
   }
 
   public TSStatus writeOnFollowerReplica(IConsensusRequest request) {
+    stateMachineLock.lock();
     try {
       long consensusWriteStartTime = System.nanoTime();
-      stateMachineLock.lock();
       long getStateMachineLockTime = System.nanoTime();
       // statistic the time of acquiring stateMachine lock
       pipeConsensusServerMetrics.recordGetStateMachineLockTime(

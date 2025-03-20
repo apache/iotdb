@@ -101,9 +101,7 @@ public class FormatColumnTransformer extends MultiColumnTransformer {
       case BLOB:
         return column.getObject(i);
       case DATE:
-        long timestamp =
-            DateTimeUtils.correctPrecision(DateUtils.parseIntToTimestamp(column.getInt(i), zoneId));
-        return DateTimeUtils.convertToLocalDate(timestamp, zoneId);
+        return DateUtils.parseIntToLocalDate(column.getInt(i));
       case TIMESTAMP:
         return DateTimeUtils.convertToZonedDateTime(column.getLong(i), zoneId);
       default:

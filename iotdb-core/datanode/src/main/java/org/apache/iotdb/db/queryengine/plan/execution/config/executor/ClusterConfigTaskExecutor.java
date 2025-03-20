@@ -296,6 +296,7 @@ import org.apache.iotdb.trigger.api.enums.FailureStrategy;
 import org.apache.iotdb.udf.api.relational.AggregateFunction;
 import org.apache.iotdb.udf.api.relational.ScalarFunction;
 import org.apache.iotdb.udf.api.relational.TableFunction;
+import org.apache.iotdb.udf.api.relational.table.specification.ParameterSpecification;
 
 import com.google.common.util.concurrent.SettableFuture;
 import org.apache.commons.codec.digest.DigestUtils;
@@ -613,6 +614,23 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
             functionType = FunctionType.AGGREGATE;
           } else if (o instanceof TableFunction) {
             functionType = FunctionType.TABLE;
+            // check there is no duplicate argument specification for name
+            TableFunction tableFunction = (TableFunction) o;
+            Set<String> argNames = new HashSet<>();
+            for (ParameterSpecification specification :
+                tableFunction.getArgumentsSpecifications()) {
+              if (!argNames.add(specification.getName())) {
+                future.setException(
+                    new IoTDBException(
+                        "Failed to create function '"
+                            + udfName
+                            + "', because there is duplicate argument name '"
+                            + specification.getName()
+                            + "'.",
+                        TSStatusCode.UDF_LOAD_CLASS_ERROR.getStatusCode()));
+                return future;
+              }
+            }
           }
         }
         tCreateFunctionReq.setFunctionType(functionType);
@@ -2846,6 +2864,14 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
         nodeIds.removeAll(invalidNodeIds);
       }
 
+      if (nodeIds.size() != 1) {
+        LOGGER.error(
+            "The DataNode to be removed is not in the cluster, or the input format is incorrect.");
+        future.setException(
+            new IOException(
+                "The DataNode to be removed is not in the cluster, or the input format is incorrect."));
+      }
+
       LOGGER.info("Starting to remove DataNode with nodeIds: {}", nodeIds);
 
       final Set<Integer> finalNodeIds = nodeIds;
@@ -2910,7 +2936,9 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
       if (removeConfigNodeLocations.size() != 1) {
         LOGGER.error(
             "The ConfigNode to be removed is not in the cluster, or the input format is incorrect.");
-        future.set(new ConfigTaskResult(TSStatusCode.REMOVE_CONFIGNODE_ERROR));
+        future.setException(
+            new IOException(
+                "The ConfigNode to be removed is not in the cluster, or the input format is incorrect."));
       }
 
       TConfigNodeLocation configNodeLocation = removeConfigNodeLocations.get(0);
@@ -2920,9 +2948,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
         future.setException(new IOException("Remove ConfigNode failed: " + status.getMessage()));
         return future;
       } else {
-        LOGGER.info(
-            "ConfigNode: {} is removed. If the confignode data directory is no longer needed, you can delete it manually.",
-            removeConfigNodeId);
+        LOGGER.info("ConfigNode: {} is removed.", removeConfigNodeId);
         future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
       }
 
@@ -3755,6 +3781,91 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
 
       if (TSStatusCode.SUCCESS_STATUS.getStatusCode() == tsStatus.getCode()
           || (TSStatusCode.TABLE_NOT_EXISTS.getStatusCode() == tsStatus.getCode() && ifExists)) {
+        future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
+      } else {
+        future.setException(
+            new IoTDBException(getTableErrorMessage(tsStatus, database), tsStatus.getCode()));
+      }
+    } catch (final ClientManagerException | TException e) {
+      future.setException(e);
+    }
+    return future;
+  }
+
+  @Override
+  public SettableFuture<ConfigTaskResult> alterTableCommentTable(
+      final String database,
+      final String tableName,
+      final String queryId,
+      final boolean ifExists,
+      final String comment) {
+    final SettableFuture<ConfigTaskResult> future = SettableFuture.create();
+    try (final ConfigNodeClient client =
+        CLUSTER_DELETION_CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
+
+      final ByteArrayOutputStream stream = new ByteArrayOutputStream();
+      try {
+        ReadWriteIOUtils.write(comment, stream);
+      } catch (final IOException ignored) {
+        // ByteArrayOutputStream won't throw IOException
+      }
+
+      final TSStatus tsStatus =
+          sendAlterReq2ConfigNode(
+              database,
+              tableName,
+              queryId,
+              AlterOrDropTableOperationType.COMMENT_TABLE,
+              stream.toByteArray(),
+              client);
+
+      if (TSStatusCode.SUCCESS_STATUS.getStatusCode() == tsStatus.getCode()
+          || TSStatusCode.TABLE_NOT_EXISTS.getStatusCode() == tsStatus.getCode() && ifExists) {
+        future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
+      } else {
+        future.setException(
+            new IoTDBException(getTableErrorMessage(tsStatus, database), tsStatus.getCode()));
+      }
+    } catch (final ClientManagerException | TException e) {
+      future.setException(e);
+    }
+    return future;
+  }
+
+  @Override
+  public SettableFuture<ConfigTaskResult> alterTableCommentColumn(
+      final String database,
+      final String tableName,
+      final String columnName,
+      final String queryId,
+      final boolean tableIfExists,
+      final boolean columnIfExists,
+      final String comment) {
+    final SettableFuture<ConfigTaskResult> future = SettableFuture.create();
+    try (final ConfigNodeClient client =
+        CLUSTER_DELETION_CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
+
+      final ByteArrayOutputStream stream = new ByteArrayOutputStream();
+      try {
+        ReadWriteIOUtils.write(columnName, stream);
+        ReadWriteIOUtils.write(comment, stream);
+      } catch (final IOException ignored) {
+        // ByteArrayOutputStream won't throw IOException
+      }
+
+      final TSStatus tsStatus =
+          sendAlterReq2ConfigNode(
+              database,
+              tableName,
+              queryId,
+              AlterOrDropTableOperationType.COMMENT_COLUMN,
+              stream.toByteArray(),
+              client);
+
+      if (TSStatusCode.SUCCESS_STATUS.getStatusCode() == tsStatus.getCode()
+          || (TSStatusCode.TABLE_NOT_EXISTS.getStatusCode() == tsStatus.getCode() && tableIfExists)
+          || (TSStatusCode.COLUMN_NOT_EXISTS.getStatusCode() == tsStatus.getCode()
+              && columnIfExists)) {
         future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
       } else {
         future.setException(

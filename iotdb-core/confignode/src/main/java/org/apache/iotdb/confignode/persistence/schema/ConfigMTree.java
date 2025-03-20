@@ -711,6 +711,37 @@ public class ConfigMTree {
     store.deleteChild(databaseNode, tableName);
   }
 
+  public void setTableComment(
+      final PartialPath database, final String tableName, final String comment)
+      throws MetadataException {
+    final TsTable table = getTable(database, tableName);
+    if (Objects.nonNull(comment)) {
+      table.addProp(TsTable.COMMENT_KEY, comment);
+    } else {
+      table.removeProp(TsTable.COMMENT_KEY);
+    }
+  }
+
+  public void setTableColumnComment(
+      final PartialPath database,
+      final String tableName,
+      final String columnName,
+      final String comment)
+      throws MetadataException {
+    final TsTable table = getTable(database, tableName);
+
+    final TsTableColumnSchema columnSchema = table.getColumnSchema(columnName);
+    if (Objects.isNull(columnSchema)) {
+      throw new ColumnNotExistsException(
+          PathUtils.unQualifyDatabaseName(database.getFullPath()), tableName, columnName);
+    }
+    if (Objects.nonNull(comment)) {
+      columnSchema.getProps().put(TsTable.COMMENT_KEY, comment);
+    } else {
+      columnSchema.getProps().remove(TsTable.COMMENT_KEY);
+    }
+  }
+
   public List<TsTable> getAllUsingTablesUnderSpecificDatabase(final PartialPath databasePath)
       throws MetadataException {
     final IConfigMNode databaseNode = getDatabaseNodeByDatabasePath(databasePath).getAsMNode();

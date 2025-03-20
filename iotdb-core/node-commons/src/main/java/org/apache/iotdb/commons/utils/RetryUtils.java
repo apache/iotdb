@@ -19,10 +19,18 @@
 
 package org.apache.iotdb.commons.utils;
 
+import org.apache.iotdb.rpc.TSStatusCode;
+
 public class RetryUtils {
 
   public interface CallableWithException<T, E extends Exception> {
     T call() throws E;
+  }
+
+  public static boolean needRetryForConsensus(int statusCode) {
+    return statusCode == TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode()
+        || statusCode == TSStatusCode.SYSTEM_READ_ONLY.getStatusCode()
+        || statusCode == TSStatusCode.WRITE_PROCESS_REJECT.getStatusCode();
   }
 
   public static final int MAX_RETRIES = 3;

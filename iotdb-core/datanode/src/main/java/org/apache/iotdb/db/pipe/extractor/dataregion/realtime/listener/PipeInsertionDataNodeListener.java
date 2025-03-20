@@ -102,6 +102,7 @@ public class PipeInsertionDataNodeListener {
       final TsFileResource tsFileResource,
       final boolean isLoaded,
       final boolean isGeneratedByPipe) {
+    tsFileResource.setGeneratedByPipe(isGeneratedByPipe);
     // We don't judge whether listenToTsFileExtractorCount.get() == 0 here on purpose
     // because extractors may use tsfile events when some exceptions occur in the
     // insert nodes listening process.
@@ -115,12 +116,7 @@ public class PipeInsertionDataNodeListener {
 
     assigner.publishToAssign(
         PipeRealtimeEventFactory.createRealtimeEvent(
-            dataRegionId,
-            assigner.isTableModel(),
-            databaseName,
-            tsFileResource,
-            isLoaded,
-            isGeneratedByPipe));
+            dataRegionId, assigner.isTableModel(), databaseName, tsFileResource, isLoaded));
   }
 
   public void listenToInsertNode(
@@ -183,6 +179,12 @@ public class PipeInsertionDataNodeListener {
         (key, value) ->
             value.publishToAssign(
                 PipeRealtimeEventFactory.createRealtimeEvent(key, shouldPrintMessage)));
+  }
+
+  //////////////////////////// Permission change ////////////////////////////
+
+  public void invalidateAllCache() {
+    dataRegionId2Assigner.values().forEach(PipeDataRegionAssigner::invalidateCache);
   }
 
   /////////////////////////////// singleton ///////////////////////////////

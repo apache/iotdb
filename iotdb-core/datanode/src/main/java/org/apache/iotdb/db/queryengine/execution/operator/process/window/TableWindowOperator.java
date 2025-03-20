@@ -150,7 +150,7 @@ public class TableWindowOperator implements ProcessOperator {
 
     if (inputOperator.hasNextWithTimer()) {
       // This TsBlock is pre-sorted with PARTITION BY and ORDER BY channels
-      TsBlock preSortedBlock = inputOperator.next();
+      TsBlock preSortedBlock = inputOperator.nextWithTimer();
       // StreamSort Operator sometimes returns null
       if (preSortedBlock == null || preSortedBlock.isEmpty()) {
         return null;

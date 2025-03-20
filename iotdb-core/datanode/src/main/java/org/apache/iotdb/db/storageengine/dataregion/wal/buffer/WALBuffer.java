@@ -64,6 +64,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
+import java.util.function.Predicate;
 
 import static org.apache.iotdb.db.storageengine.dataregion.wal.node.WALNode.DEFAULT_SEARCH_INDEX;
 
@@ -661,6 +662,18 @@ public class WALBuffer extends AbstractWALBuffer {
     buffersLock.lock();
     try {
       idleBufferReadyCondition.await();
+    } finally {
+      buffersLock.unlock();
+    }
+  }
+
+  @Override
+  public void waitForFlush(Predicate<WALBuffer> waitPredicate) throws InterruptedException {
+    buffersLock.lock();
+    try {
+      if (waitPredicate.test(this)) {
+        idleBufferReadyCondition.await();
+      }
     } finally {
       buffersLock.unlock();
     }
