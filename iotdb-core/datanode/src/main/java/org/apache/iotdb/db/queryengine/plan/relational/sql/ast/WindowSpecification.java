@@ -9,7 +9,7 @@ import java.util.Optional;
 import static com.google.common.base.MoreObjects.toStringHelper;
 import static java.util.Objects.requireNonNull;
 
-public class WindowSpecification extends Node {
+public class WindowSpecification extends Node implements Window {
   private final Optional<Identifier> existingWindowName;
   private final List<Expression> partitionBy;
   private final Optional<OrderBy> orderBy;

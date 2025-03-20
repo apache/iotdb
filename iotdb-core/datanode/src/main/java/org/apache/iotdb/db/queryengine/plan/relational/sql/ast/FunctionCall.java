@@ -34,7 +34,7 @@ import static java.util.Objects.requireNonNull;
 
 public class FunctionCall extends Expression {
   private final QualifiedName name;
-  private final Optional<WindowSpecification> window;
+  private final Optional<Window> window;
   private final boolean distinct;
   private final List<Expression> arguments;
 
@@ -70,7 +70,7 @@ public class FunctionCall extends Expression {
   public FunctionCall(
       NodeLocation location,
       QualifiedName name,
-      Optional<WindowSpecification> window,
+      Optional<Window> window,
       boolean distinct,
       List<Expression> arguments) {
     super(requireNonNull(location, "location is null"));
@@ -93,7 +93,7 @@ public class FunctionCall extends Expression {
     return arguments;
   }
 
-  public Optional<WindowSpecification> getWindow() {
+  public Optional<Window> getWindow() {
     return window;
   }
 

@@ -1631,6 +1631,7 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
               query.getGroupBy(),
               query.getHaving(),
               fill,
+              query.getWindows(),
               orderBy,
               offset,
               limit),
@@ -1757,6 +1758,7 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
         visitIfPresent(ctx.groupBy(), GroupBy.class),
         visitIfPresent(ctx.having, Expression.class),
         Optional.empty(),
+        visit(ctx.windowDefinition(), WindowDefinition.class),
         Optional.empty(),
         Optional.empty(),
         Optional.empty());
@@ -2209,15 +2211,21 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
   }
 
   // ********************* primary expressions **********************
-  //  @Override
-  //  public Node visitSimpleOver(RelationalSqlParser.SimpleOverContext ctx) {
-  //    return visitWindowSpecification(ctx.over().windowSpecification());
-  //  }
-
   @Override
   public Node visitOver(RelationalSqlParser.OverContext ctx) {
-    // TODO: Window Reference
+    if (ctx.windowName != null) {
+      return new WindowReference(getLocation(ctx), (Identifier) visit(ctx.windowName));
+    }
+
     return visit(ctx.windowSpecification());
+  }
+
+  @Override
+  public Node visitWindowDefinition(RelationalSqlParser.WindowDefinitionContext ctx) {
+    return new WindowDefinition(
+        getLocation(ctx),
+        (Identifier) visit(ctx.name),
+        (WindowSpecification) visit(ctx.windowSpecification()));
   }
 
   @Override
@@ -2448,7 +2456,7 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
 
   @Override
   public Node visitFunctionCall(RelationalSqlParser.FunctionCallContext ctx) {
-    Optional<WindowSpecification> window = visitIfPresent(ctx.over(), WindowSpecification.class);
+    Optional<Window> window = visitIfPresent(ctx.over(), Window.class);
 
     QualifiedName name = getQualifiedName(ctx.qualifiedName());
 

@@ -274,6 +274,11 @@ public class QueryPlanner {
       outputs.stream().map(builder::translate).forEach(newFields::add);
 
       builder = builder.withScope(analysis.getScope(node.getOrderBy().orElse(null)), newFields);
+      builder =
+          planWindowFunctions(
+              node,
+              builder,
+              ImmutableList.copyOf(analysis.getOrderByWindowFunctions(node.getOrderBy().get())));
       analysis.setSortNode(true);
     }
 

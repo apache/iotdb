@@ -151,6 +151,8 @@ public class ExpressionAnalyzer {
   private final Map<NodeRef<Node>, ResolvedFunction> resolvedFunctions = new LinkedHashMap<>();
   private final Set<NodeRef<SubqueryExpression>> subqueries = new LinkedHashSet<>();
   private final Set<NodeRef<ExistsPredicate>> existsSubqueries = new LinkedHashSet<>();
+  private final Map<NodeRef<Expression>, Type> expressionCoercions = new LinkedHashMap<>();
+  private final Set<NodeRef<Expression>> typeOnlyCoercions = new LinkedHashSet<>();
 
   private final Set<NodeRef<InPredicate>> subqueryInPredicates = new LinkedHashSet<>();
   private final Map<NodeRef<Expression>, Analysis.PredicateCoercions> predicateCoercions =
@@ -234,6 +236,55 @@ public class ExpressionAnalyzer {
     this.getPreanalyzedType = requireNonNull(getPreanalyzedType, "getPreanalyzedType is null");
   }
 
+  public static ExpressionAnalysis analyzeWindow(
+      Metadata metadata,
+      SessionInfo session,
+      MPPQueryContext queryContext,
+      StatementAnalyzerFactory statementAnalyzerFactory,
+      AccessControl accessControl,
+      Scope scope,
+      Analysis analysis,
+      WarningCollector noop,
+      CorrelationSupport correlationSupport,
+      Analysis.ResolvedWindow window,
+      Node originalNode) {
+    ExpressionAnalyzer analyzer =
+        new ExpressionAnalyzer(
+            metadata,
+            queryContext,
+            accessControl,
+            statementAnalyzerFactory,
+            analysis,
+            session,
+            TypeProvider.empty(),
+            noop);
+    analyzer.analyzeWindow(window, scope, originalNode, correlationSupport);
+
+    updateAnalysis(analysis, analyzer, session, accessControl);
+
+    return new ExpressionAnalysis(
+        analyzer.getExpressionTypes(),
+        analyzer.getSubqueryInPredicates(),
+        analyzer.getSubqueries(),
+        analyzer.getExistsSubqueries(),
+        analyzer.getColumnReferences(),
+        analyzer.getQuantifiedComparisons(),
+        analyzer.getWindowFunctions());
+  }
+
+  private void analyzeWindow(
+      Analysis.ResolvedWindow window,
+      Scope scope,
+      Node originalNode,
+      CorrelationSupport correlationSupport) {
+    Visitor visitor = new Visitor(scope, warningCollector);
+    visitor.analyzeWindow(
+        window,
+        new StackableAstVisitor.StackableAstVisitorContext<>(
+            Context.notInLambda(scope, correlationSupport)),
+        originalNode);
+  }
+
   public Map<NodeRef<Node>, ResolvedFunction> getResolvedFunctions() {
     return unmodifiableMap(resolvedFunctions);
   }
@@ -249,6 +300,18 @@ public class ExpressionAnalyzer {
     expressionTypes.put(NodeRef.of(expression), type);
 
     return type;
+  }
+
+  public Set<NodeRef<FunctionCall>> getWindowFunctions() {
+    return unmodifiableSet(windowFunctions);
+  }
+
+  public Map<NodeRef<Expression>, Type> getExpressionCoercions() {
+    return unmodifiableMap(expressionCoercions);
+  }
+
+  public Set<NodeRef<Expression>> getTypeOnlyCoercions() {
+    return unmodifiableSet(typeOnlyCoercions);
   }
 
   private Type getExpressionType(Expression expression) {
@@ -1675,7 +1738,8 @@ public class ExpressionAnalyzer {
         analyzer.getSubqueries(),
         analyzer.getExistsSubqueries(),
         analyzer.getColumnReferences(),
-        analyzer.getQuantifiedComparisons());
+        analyzer.getQuantifiedComparisons(),
+        analyzer.getWindowFunctions());
   }
 
   public static ExpressionAnalysis analyzeExpression(
@@ -1710,7 +1774,8 @@ public class ExpressionAnalyzer {
         analyzer.getSubqueries(),
         analyzer.getExistsSubqueries(),
         analyzer.getColumnReferences(),
-        analyzer.getQuantifiedComparisons());
+        analyzer.getQuantifiedComparisons(),
+        analyzer.getWindowFunctions());
   }
 
   public static void analyzeExpressionWithoutSubqueries(

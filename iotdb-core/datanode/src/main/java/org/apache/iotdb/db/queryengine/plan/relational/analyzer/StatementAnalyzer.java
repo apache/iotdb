@@ -95,6 +95,7 @@ import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.Aggregati
 import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.CanonicalizationAware.canonicalizationAwareKey;
 import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.ExpressionTreeUtils.asQualifiedName;
 import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.ExpressionTreeUtils.extractAggregateFunctions;
+import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.ExpressionTreeUtils.extractWindowExpressions;
 import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.ExpressionTreeUtils.extractWindowFunctions;
 import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.Scope.BasisType.TABLE;
 import static org.apache.iotdb.db.queryengine.plan.relational.metadata.MetadataUtil.createQualifiedObjectName;
@@ -817,6 +818,7 @@ public class StatementAnalyzer {
       hasFillInParentScope = node.getFill().isPresent() || hasFillInParentScope;
 
       Scope sourceScope = analyzeFrom(node, scope);
+      analyzeWindowDefinitions(node, sourceScope);
       resolveFunctionCallAndMeasureWindows(node);
 
       node.getWhere().ifPresent(where -> analyzeWhere(node, sourceScope, where));
@@ -872,6 +874,19 @@ public class StatementAnalyzer {
           .forEach(sourceExpressions::add);
       node.getHaving().ifPresent(sourceExpressions::add);
 
+      for (WindowDefinition windowDefinition : node.getWindows()) {
+        WindowSpecification window = windowDefinition.getWindow();
+        sourceExpressions.addAll(window.getPartitionBy());
+        getSortItemsFromOrderBy(window.getOrderBy()).stream()
+            .map(SortItem::getSortKey)
+            .forEach(sourceExpressions::add);
+        if (window.getFrame().isPresent()) {
+          WindowFrame frame = window.getFrame().get();
+          frame.getStart().getValue().ifPresent(sourceExpressions::add);
+          frame.getEnd().flatMap(FrameBound::getValue).ifPresent(sourceExpressions::add);
+        }
+      }
+
       analyzeAggregations(
           node, sourceScope, orderByScope, groupByAnalysis, sourceExpressions, orderByExpressions);
       analyzeWindowFunctionsAndMeasures(node, outputExpressions, orderByExpressions);
@@ -902,64 +917,47 @@ public class StatementAnalyzer {
         List<Expression> outputExpressions,
         List<Expression> orderByExpressions) {
       analysis.setWindowFunctions(node, analyzeWindowFunctions(node, outputExpressions));
-      //      if (node.getOrderBy().isPresent()) {
-      //        OrderBy orderBy = node.getOrderBy().get();
-      //        analysis.setOrderByWindowFunctions(orderBy, analyzeWindowFunctions(node,
-      // orderByExpressions));
-      //        analysis.setOrderByWindowMeasures(orderBy,
-      // extractWindowMeasures(orderByExpressions));
-      //      }
+      if (node.getOrderBy().isPresent()) {
+        OrderBy orderBy = node.getOrderBy().get();
+        analysis.setOrderByWindowFunctions(
+            orderBy, analyzeWindowFunctions(node, orderByExpressions));
+      }
     }
 
     private List<FunctionCall> analyzeWindowFunctions(
         QuerySpecification node, List<Expression> expressions) {
       List<FunctionCall> windowFunctions = extractWindowFunctions(expressions);
 
-      //      for (FunctionCall windowFunction : windowFunctions) {
-      //        List<Expression> nestedWindowExpressions =
-      // extractWindowExpressions(windowFunction.getArguments());
-      //        if (!nestedWindowExpressions.isEmpty()) {
-      //          throw semanticException(NESTED_WINDOW, nestedWindowExpressions.get(0), "Cannot
-      // nest window functions or row pattern measures inside window function arguments");
-      //        }
-      //
-      //        if (windowFunction.isDistinct()) {
-      //          throw semanticException(NOT_SUPPORTED, node, "DISTINCT in window function
-      // parameters not yet supported: %s", windowFunction);
-      //        }
-      //
-      //        Analysis.ResolvedWindow window = analysis.getWindow(windowFunction);
-      //        // TODO get function requirements from window function metadata when we have it
-      //        String name = windowFunction.getName().toString().toLowerCase(ENGLISH);
-      //        if (name.equals("lag") || name.equals("lead")) {
-      //          if (!window.getOrderBy().isPresent()) {
-      //            throw semanticException(MISSING_ORDER_BY, (Node)
-      // windowFunction.getWindow().orElseThrow(), "%s function requires an ORDER BY window clause",
-      // windowFunction.getName());
-      //          }
-      //          if (window.getFrame().isPresent()) {
-      //            throw semanticException(INVALID_WINDOW_FRAME, window.getFrame().get(), "Cannot
-      // specify window frame for %s function", windowFunction.getName());
-      //          }
-      //        }
-      //
-      //        if (!WINDOW_VALUE_FUNCTIONS.contains(name) &&
-      // windowFunction.getNullTreatment().isPresent()) {
-      //          throw semanticException(NULL_TREATMENT_NOT_ALLOWED, windowFunction, "Cannot
-      // specify null treatment clause for %s function", windowFunction.getName());
-      //        }
-      //
-      //        List<Type> argumentTypes = mappedCopy(windowFunction.getArguments(),
-      // analysis::getType);
-      //
-      //        ResolvedFunction resolvedFunction = functionResolver.resolveFunction(session,
-      // windowFunction.getName(), fromTypes(argumentTypes), accessControl);
-      //        FunctionKind kind = resolvedFunction.getFunctionKind();
-      //        if (kind != AGGREGATE && kind != WINDOW) {
-      //          throw semanticException(FUNCTION_NOT_WINDOW, node, "Not a window function: %s",
-      // windowFunction.getName());
-      //        }
-      //      }
+      for (FunctionCall windowFunction : windowFunctions) {
+        List<Expression> nestedWindowExpressions =
+            extractWindowExpressions(windowFunction.getArguments());
+        if (!nestedWindowExpressions.isEmpty()) {
+          throw new SemanticException(
+              "Cannot nest window functions or row pattern measures inside window function arguments");
+        }
+
+        if (windowFunction.isDistinct()) {
+          throw new SemanticException(
+              String.format(
+                  "DISTINCT in window function parameters not yet supported: %s", windowFunction));
+        }
+
+        Analysis.ResolvedWindow window = analysis.getWindow(windowFunction);
+        // TODO get function requirements from window function metadata when we have it
+        String name = windowFunction.getName().toString().toLowerCase(ENGLISH);
+        if (name.equals("lag") || name.equals("lead")) {
+          if (!window.getOrderBy().isPresent()) {
+            throw new SemanticException(
+                String.format(
+                    "%s function requires an ORDER BY window clause", windowFunction.getName()));
+          }
+          if (window.getFrame().isPresent()) {
+            throw new SemanticException(
+                String.format(
+                    "Cannot specify window frame for %s function", windowFunction.getName()));
+          }
+        }
+      }
 
       return windowFunctions;
     }
@@ -986,83 +984,131 @@ public class StatementAnalyzer {
       }
     }
 
+    private void analyzeWindowDefinitions(QuerySpecification node, Scope scope) {
+      for (WindowDefinition windowDefinition : node.getWindows()) {
+        CanonicalizationAware<Identifier> canonicalName =
+            canonicalizationAwareKey(windowDefinition.getName());
+
+        if (analysis.getWindowDefinition(node, canonicalName) != null) {
+          throw new SemanticException(
+              String.format(
+                  "WINDOW name '%s' specified more than once", windowDefinition.getName()));
+        }
+
+        Analysis.ResolvedWindow resolvedWindow =
+            resolveWindowSpecification(node, windowDefinition.getWindow());
+
+        // Analyze window after it is resolved, because resolving might provide necessary
+        // information, e.g. ORDER BY necessary for frame analysis.
+        // Analyze only newly introduced window properties. Properties of the referenced window have
+        // been already analyzed.
+        analyzeWindow(node, resolvedWindow, scope, windowDefinition.getWindow());
+
+        analysis.addWindowDefinition(node, canonicalName, resolvedWindow);
+      }
+    }
+
+    private void analyzeWindow(
+        QuerySpecification querySpecification,
+        Analysis.ResolvedWindow window,
+        Scope scope,
+        Node originalNode) {
+      ExpressionAnalysis expressionAnalysis =
+          ExpressionAnalyzer.analyzeWindow(
+              metadata,
+              sessionContext,
+              queryContext,
+              statementAnalyzerFactory,
+              accessControl,
+              scope,
+              analysis,
+              WarningCollector.NOOP,
+              correlationSupport,
+              window,
+              originalNode);
+      analysis.recordSubqueries(querySpecification, expressionAnalysis);
+    }
+
     private Analysis.ResolvedWindow resolveWindowSpecification(
-        QuerySpecification querySpecification, WindowSpecification window) {
-      //      if (window instanceof WindowReference windowReference) {
-      //        CanonicalizationAware<Identifier> canonicalName =
-      // canonicalizationAwareKey(windowReference.getName());
-      //        ResolvedWindow referencedWindow = analysis.getWindowDefinition(querySpecification,
-      // canonicalName);
-      //        if (referencedWindow == null) {
-      //          throw semanticException(INVALID_WINDOW_REFERENCE, windowReference.getName(),
-      // "Cannot resolve WINDOW name %s", windowReference.getName());
-      //        }
-      //
-      //        return new ResolvedWindow(
-      //            referencedWindow.getPartitionBy(),
-      //            referencedWindow.getOrderBy(),
-      //            referencedWindow.getFrame(),
-      //            !referencedWindow.getPartitionBy().isEmpty(),
-      //            referencedWindow.getOrderBy().isPresent(),
-      //            referencedWindow.getFrame().isPresent());
-      //      }
+        QuerySpecification querySpecification, Window window) {
+      if (window instanceof WindowReference) {
+        WindowReference windowReference = (WindowReference) window;
+        CanonicalizationAware<Identifier> canonicalName =
+            canonicalizationAwareKey(windowReference.getName());
+        Analysis.ResolvedWindow referencedWindow =
+            analysis.getWindowDefinition(querySpecification, canonicalName);
+        if (referencedWindow == null) {
+          throw new SemanticException(
+              String.format("Cannot resolve WINDOW name %s", windowReference.getName()));
+        }
+
+        return new Analysis.ResolvedWindow(
+            referencedWindow.getPartitionBy(),
+            referencedWindow.getOrderBy(),
+            referencedWindow.getFrame(),
+            !referencedWindow.getPartitionBy().isEmpty(),
+            referencedWindow.getOrderBy().isPresent(),
+            referencedWindow.getFrame().isPresent());
+      }
 
       WindowSpecification windowSpecification = (WindowSpecification) window;
 
-      //      if (windowSpecification.getExistingWindowName().isPresent()) {
-      //        Identifier referencedName = windowSpecification.getExistingWindowName().get();
-      //        CanonicalizationAware<Identifier> canonicalName =
-      // canonicalizationAwareKey(referencedName);
-      //        Analysis.ResolvedWindow referencedWindow =
-      // analysis.getWindowDefinition(querySpecification, canonicalName);
-      //        if (referencedWindow == null) {
-      //          throw semanticException(INVALID_WINDOW_REFERENCE, referencedName, "Cannot resolve
-      // WINDOW name %s", referencedName);
-      //        }
-      //
-      //        // analyze dependencies between this window specification and referenced window
-      // specification
-      //        if (!windowSpecification.getPartitionBy().isEmpty()) {
-      //          throw semanticException(INVALID_PARTITION_BY,
-      // windowSpecification.getPartitionBy().get(0), "WINDOW specification with named WINDOW
-      // reference cannot specify PARTITION BY");
-      //        }
-      //        if (windowSpecification.getOrderBy().isPresent() &&
-      // referencedWindow.getOrderBy().isPresent()) {
-      //          throw semanticException(INVALID_ORDER_BY, windowSpecification.getOrderBy().get(),
-      // "Cannot specify ORDER BY if referenced named WINDOW specifies ORDER BY");
-      //        }
-      //        if (referencedWindow.getFrame().isPresent()) {
-      //          throw semanticException(INVALID_WINDOW_REFERENCE,
-      // windowSpecification.getExistingWindowName().get(), "Cannot reference named WINDOW
-      // containing frame specification");
-      //        }
-      //
-      //        // resolve window
-      //        Optional<OrderBy> orderBy = windowSpecification.getOrderBy();
-      //        boolean orderByInherited = false;
-      //        if (!orderBy.isPresent() && referencedWindow.getOrderBy().isPresent()) {
-      //          orderBy = referencedWindow.getOrderBy();
-      //          orderByInherited = true;
-      //        }
-      //
-      //        List<Expression> partitionBy = windowSpecification.getPartitionBy();
-      //        boolean partitionByInherited = false;
-      //        if (!referencedWindow.getPartitionBy().isEmpty()) {
-      //          partitionBy = referencedWindow.getPartitionBy();
-      //          partitionByInherited = true;
-      //        }
-      //
-      //        Optional<WindowFrame> windowFrame = windowSpecification.getFrame();
-      //        boolean frameInherited = false;
-      //        if (!windowFrame.isPresent() && referencedWindow.getFrame().isPresent()) {
-      //          windowFrame = referencedWindow.getFrame();
-      //          frameInherited = true;
-      //        }
-      //
-      //        return new Analysis.ResolvedWindow(partitionBy, orderBy, windowFrame,
-      // partitionByInherited, orderByInherited, frameInherited);
-      //      }
+      if (windowSpecification.getExistingWindowName().isPresent()) {
+        Identifier referencedName = windowSpecification.getExistingWindowName().get();
+        CanonicalizationAware<Identifier> canonicalName = canonicalizationAwareKey(referencedName);
+        Analysis.ResolvedWindow referencedWindow =
+            analysis.getWindowDefinition(querySpecification, canonicalName);
+        if (referencedWindow == null) {
+          throw new SemanticException(
+              String.format("Cannot resolve WINDOW name %s", referencedName));
+        }
+
+        // analyze dependencies between this window specification and referenced window
+        // specification
+        if (!windowSpecification.getPartitionBy().isEmpty()) {
+          throw new SemanticException(
+              "WINDOW specification with named WINDOW reference cannot specify PARTITION BY");
+        }
+        if (windowSpecification.getOrderBy().isPresent()
+            && referencedWindow.getOrderBy().isPresent()) {
+          throw new SemanticException(
+              "Cannot specify ORDER BY if referenced named WINDOW specifies ORDER BY");
+        }
+        if (referencedWindow.getFrame().isPresent()) {
+          throw new SemanticException(
+              "Cannot reference named WINDOW containing frame specification");
+        }
+
+        // resolve window
+        Optional<OrderBy> orderBy = windowSpecification.getOrderBy();
+        boolean orderByInherited = false;
+        if (!orderBy.isPresent() && referencedWindow.getOrderBy().isPresent()) {
+          orderBy = referencedWindow.getOrderBy();
+          orderByInherited = true;
+        }
+
+        List<Expression> partitionBy = windowSpecification.getPartitionBy();
+        boolean partitionByInherited = false;
+        if (!referencedWindow.getPartitionBy().isEmpty()) {
+          partitionBy = referencedWindow.getPartitionBy();
+          partitionByInherited = true;
+        }
+
+        Optional<WindowFrame> windowFrame = windowSpecification.getFrame();
+        boolean frameInherited = false;
+        if (!windowFrame.isPresent() && referencedWindow.getFrame().isPresent()) {
+          windowFrame = referencedWindow.getFrame();
+          frameInherited = true;
+        }
+
+        return new Analysis.ResolvedWindow(
+            partitionBy,
+            orderBy,
+            windowFrame,
+            partitionByInherited,
+            orderByInherited,
+            frameInherited);
+      }
 
       return new Analysis.ResolvedWindow(
           windowSpecification.getPartitionBy(),

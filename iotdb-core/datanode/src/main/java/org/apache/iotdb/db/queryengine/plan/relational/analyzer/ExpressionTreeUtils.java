@@ -69,6 +69,10 @@ public final class ExpressionTreeUtils {
     return extractExpressions(nodes, FunctionCall.class, ExpressionTreeUtils::isWindowFunction);
   }
 
+  static List<Expression> extractWindowExpressions(Iterable<? extends Node> nodes) {
+    return ImmutableList.<Expression>builder().addAll(extractWindowFunctions(nodes)).build();
+  }
+
   private static boolean isWindowFunction(FunctionCall functionCall) {
     return functionCall.getWindow().isPresent();
   }

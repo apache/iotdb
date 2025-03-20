@@ -36,6 +36,7 @@ public class QuerySpecification extends QueryBody {
   private final Optional<GroupBy> groupBy;
   private final Optional<Expression> having;
   private final Optional<Fill> fill;
+  private final List<WindowDefinition> windows;
   private final Optional<OrderBy> orderBy;
   private final Optional<Offset> offset;
   private final Optional<Node> limit;
@@ -47,10 +48,11 @@ public class QuerySpecification extends QueryBody {
       Optional<GroupBy> groupBy,
       Optional<Expression> having,
       Optional<Fill> fill,
+      List<WindowDefinition> windows,
       Optional<OrderBy> orderBy,
       Optional<Offset> offset,
       Optional<Node> limit) {
-    this(null, select, from, where, groupBy, having, fill, orderBy, offset, limit);
+    this(null, select, from, where, groupBy, having, fill, windows, orderBy, offset, limit);
   }
 
   public QuerySpecification(
@@ -61,6 +63,7 @@ public class QuerySpecification extends QueryBody {
       Optional<GroupBy> groupBy,
       Optional<Expression> having,
       Optional<Fill> fill,
+      List<WindowDefinition> windows,
       Optional<OrderBy> orderBy,
       Optional<Offset> offset,
       Optional<Node> limit) {
@@ -72,6 +75,7 @@ public class QuerySpecification extends QueryBody {
     this.groupBy = requireNonNull(groupBy, "groupBy is null");
     this.having = requireNonNull(having, "having is null");
     this.fill = requireNonNull(fill, "fill is null");
+    this.windows = requireNonNull(windows, "windows is null");
     this.orderBy = requireNonNull(orderBy, "orderBy is null");
     this.offset = requireNonNull(offset, "offset is null");
     this.limit = requireNonNull(limit, "limit is null");
@@ -99,6 +103,10 @@ public class QuerySpecification extends QueryBody {
 
   public Optional<Fill> getFill() {
     return fill;
+  }
+
+  public List<WindowDefinition> getWindows() {
+    return windows;
   }
 
   public Optional<OrderBy> getOrderBy() {

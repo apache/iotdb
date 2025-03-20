@@ -46,6 +46,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.FieldReference;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Fill;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.FunctionCall;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Identifier;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.InPredicate;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Join;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Literal;
@@ -193,8 +194,13 @@ public class Analysis implements IAnalysis {
   private final Map<QualifiedObjectName, Map<Symbol, ColumnSchema>> tableColumnSchemas =
       new HashMap<>();
 
+  private final Map<
+          NodeRef<QuerySpecification>, Map<CanonicalizationAware<Identifier>, ResolvedWindow>>
+      windowDefinitions = new LinkedHashMap<>();
   private final Map<NodeRef<Node>, ResolvedWindow> windows = new LinkedHashMap<>();
   private final Map<NodeRef<QuerySpecification>, List<FunctionCall>> windowFunctions =
+      new LinkedHashMap<>();
+  private final Map<NodeRef<OrderBy>, List<FunctionCall>> orderByWindowFunctions =
       new LinkedHashMap<>();
 
   private DataPartition dataPartition;
@@ -1190,6 +1196,24 @@ public class Analysis implements IAnalysis {
     }
   }
 
+  public void addWindowDefinition(
+      QuerySpecification query, CanonicalizationAware<Identifier> name, ResolvedWindow window) {
+    windowDefinitions
+        .computeIfAbsent(NodeRef.of(query), key -> new LinkedHashMap<>())
+        .put(name, window);
+  }
+
+  public ResolvedWindow getWindowDefinition(
+      QuerySpecification query, CanonicalizationAware<Identifier> name) {
+    Map<CanonicalizationAware<Identifier>, ResolvedWindow> windows =
+        windowDefinitions.get(NodeRef.of(query));
+    if (windows != null) {
+      return windows.get(name);
+    }
+
+    return null;
+  }
+
   public void setWindow(Node node, ResolvedWindow window) {
     windows.put(NodeRef.of(node), window);
   }
@@ -1204,6 +1228,14 @@ public class Analysis implements IAnalysis {
 
   public List<FunctionCall> getWindowFunctions(QuerySpecification query) {
     return windowFunctions.get(NodeRef.of(query));
+  }
+
+  public void setOrderByWindowFunctions(OrderBy node, List<FunctionCall> functions) {
+    orderByWindowFunctions.put(NodeRef.of(node), ImmutableList.copyOf(functions));
+  }
+
+  public List<FunctionCall> getOrderByWindowFunctions(OrderBy query) {
+    return orderByWindowFunctions.get(NodeRef.of(query));
   }
 
   public static class ResolvedWindow {

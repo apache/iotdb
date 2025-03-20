@@ -793,6 +793,7 @@ querySpecification
       (WHERE where=booleanExpression)?
       (GROUP BY groupBy)?
       (HAVING having=booleanExpression)?
+      (WINDOW windowDefinition (',' windowDefinition)*)?
     ;
 
 groupBy
@@ -937,13 +938,15 @@ primaryExpression
     | DATE_BIN '(' timeDuration ',' valueExpression (',' timeValue)? ')'                  #dateBin
     | DATE_BIN_GAPFILL '(' timeDuration ',' valueExpression (',' timeValue)? ')'          #dateBinGapFill
     | '(' expression ')'                                                                  #parenthesizedExpression
-//    | identifier over                                                                     #simpleOver
     ;
 
 over
     : OVER (windowName=identifier | '(' windowSpecification ')')
     ;
 
+windowDefinition
+    : name=identifier AS '(' windowSpecification ')'
+    ;
 
 windowSpecification
     : (existingWindowName=identifier)?

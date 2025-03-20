@@ -557,10 +557,10 @@ public final class ExpressionFormatter {
     return sortItems.stream().map(sortItemFormatterFunction()).collect(joining(", "));
   }
 
-  private static String formatWindow(WindowSpecification window) {
-    //    if (window instanceof WindowReference) {
-    //      return formatExpression(((WindowReference) window).getName());
-    //    }
+  private static String formatWindow(Window window) {
+    if (window instanceof WindowReference) {
+      return formatExpression(((WindowReference) window).getName());
+    }
 
     return formatWindowSpecification((WindowSpecification) window);
   }
