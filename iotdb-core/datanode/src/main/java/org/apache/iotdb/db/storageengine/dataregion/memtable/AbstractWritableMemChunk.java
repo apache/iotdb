@@ -61,7 +61,6 @@ public class AbstractWritableMemChunk {
               firstQuery.failed(
                   new MemoryNotEnoughException(
                       "Memory not enough to clone the tvlist during flush phase"));
-              iterator.remove();
             }
           } finally {
             tvList.unlockQueryList();
