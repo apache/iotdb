@@ -138,7 +138,7 @@ public class FragmentInstanceContext extends QueryContext {
       IDataRegionForQuery dataRegion,
       Filter timeFilter) {
     FragmentInstanceContext instanceContext =
-        new FragmentInstanceContext(id, stateMachine, sessionInfo, dataRegion, timeFilter);
+        new FragmentInstanceContext(id, stateMachine, sessionInfo, dataRegion, timeFilter, false);
     instanceContext.initialize();
     instanceContext.start();
     return instanceContext;
@@ -220,7 +220,8 @@ public class FragmentInstanceContext extends QueryContext {
       FragmentInstanceStateMachine stateMachine,
       SessionInfo sessionInfo,
       IDataRegionForQuery dataRegion,
-      Filter globalTimeFilter) {
+      Filter globalTimeFilter,
+      boolean mayHaveDeleteOperation) {
     this.id = id;
     this.stateMachine = stateMachine;
     this.executionEndTime.set(END_TIME_INITIAL_VALUE);
@@ -230,6 +231,7 @@ public class FragmentInstanceContext extends QueryContext {
     this.dataNodeQueryContextMap = null;
     this.memoryReservationManager =
         new ThreadSafeMemoryReservationManager(id.getQueryId(), this.getClass().getName());
+    this.mayHaveDeleteOperation = mayHaveDeleteOperation;
   }
 
   @TestOnly

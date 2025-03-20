@@ -43,6 +43,12 @@ public class DriverTaskId implements ID, Comparable<DriverTaskId> {
     this.fullId = String.format("%s.%d", id.getFullId(), pipelineId);
   }
 
+  public DriverTaskId(FragmentInstanceId id, int pipelineId, String fullId) {
+    this.fragmentInstanceId = id;
+    this.pipelineId = pipelineId;
+    this.fullId = fullId;
+  }
+
   @Override
   public int hashCode() {
     return Objects.hash(fragmentInstanceId, pipelineId);

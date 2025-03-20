@@ -64,6 +64,8 @@ public class QueryContext {
 
   private final Set<TsFileID> nonExistentModFiles = new CopyOnWriteArraySet<>();
 
+  protected boolean mayHaveDeleteOperation = true;
+
   public QueryContext() {}
 
   public QueryContext(long queryId) {
@@ -79,6 +81,10 @@ public class QueryContext {
   }
 
   private boolean checkIfModificationExists(TsFileResource tsFileResource) {
+    if (!mayHaveDeleteOperation) {
+      return false;
+    }
+
     if (nonExistentModFiles.contains(tsFileResource.getTsFileID())) {
       return false;
     }

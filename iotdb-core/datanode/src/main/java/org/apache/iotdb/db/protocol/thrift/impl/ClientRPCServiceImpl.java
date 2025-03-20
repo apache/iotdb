@@ -655,6 +655,14 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
     }
   }
 
+  private final QueryId queryId = new QueryId("stub_query");
+  private final FragmentInstanceId instanceId =
+      new FragmentInstanceId(new PlanFragmentId(queryId, 0), "stub-instance");
+  private final PlanNodeId planNodeId = new PlanNodeId("1");
+  private final List<InputLocation[]> inputLocationList =
+      Collections.singletonList(new InputLocation[] {new InputLocation(0, 0)});
+  private final String testDriverFullId = "driver_full_id";
+
   @SuppressWarnings("java:S2095") // close() do nothing
   private List<TsBlock> executeGroupByQueryInternal(
       SessionInfo sessionInfo,
@@ -677,17 +685,13 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
 
     Filter timeFilter = TimeFilterApi.between(startTime, endTime - 1);
 
-    QueryId queryId = new QueryId("stub_query");
-    FragmentInstanceId instanceId =
-        new FragmentInstanceId(new PlanFragmentId(queryId, 0), "stub-instance");
     FragmentInstanceStateMachine stateMachine =
         new FragmentInstanceStateMachine(
             instanceId, FragmentInstanceManager.getInstance().instanceNotificationExecutor);
     FragmentInstanceContext fragmentInstanceContext =
         createFragmentInstanceContext(
             instanceId, stateMachine, sessionInfo, dataRegionList.get(0), timeFilter);
-    DriverContext driverContext = new DriverContext(fragmentInstanceContext, 0);
-    PlanNodeId planNodeId = new PlanNodeId("1");
+    DriverContext driverContext = new DriverContext(fragmentInstanceContext, 0, testDriverFullId);
     driverContext.addOperatorContext(1, planNodeId, SeriesScanOperator.class.getSimpleName());
     driverContext
         .getOperatorContexts()
@@ -709,7 +713,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
                 true,
                 true),
             AggregationStep.SINGLE,
-            Collections.singletonList(new InputLocation[] {new InputLocation(0, 0)}));
+            inputLocationList);
 
     GroupByTimeParameter groupByTimeParameter =
         new GroupByTimeParameter(
@@ -721,7 +725,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
     if (isAligned) {
       path =
           new AlignedPath(
-              device,
+              device.split("\\."),
               Collections.singletonList(measurement),
               Collections.singletonList(measurementSchema));
       operator =
@@ -1035,8 +1039,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
     return executeAggregationQueryInternal(req, SELECT_RESULT);
   }
 
-  @Override
-  public TSExecuteStatementResp executeGroupByQueryIntervalQuery(TSGroupByQueryIntervalReq req)
+  public TSExecuteStatementResp executeGroupByQueryIntervalQuery2(TSGroupByQueryIntervalReq req)
       throws TException {
 
     try {
@@ -1082,6 +1085,31 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
               req.getAggregationType(),
               dataRegionList);
 
+      String outputColumnName = req.getAggregationType().name();
+      List<ColumnHeader> columnHeaders =
+          Collections.singletonList(new ColumnHeader(outputColumnName, dataType));
+      DatasetHeader header = new DatasetHeader(columnHeaders, false);
+      header.setColumnToTsBlockIndexMap(Collections.singletonList(outputColumnName));
+
+      TSExecuteStatementResp resp = createResponse(header, 1);
+      TSQueryDataSet queryDataSet = convertTsBlockByFetchSize(blockResult);
+      resp.setQueryDataSet(queryDataSet);
+
+      return resp;
+    } catch (Exception e) {
+      return RpcUtils.getTSExecuteStatementResp(
+          onQueryException(e, "\"" + req + "\". " + OperationType.EXECUTE_AGG_QUERY));
+    } finally {
+      SESSION_MANAGER.updateIdleTime();
+    }
+  }
+
+  @Override
+  public TSExecuteStatementResp executeGroupByQueryIntervalQuery(TSGroupByQueryIntervalReq req)
+      throws TException {
+    try {
+      TSDataType dataType = TSDataType.getTsDataType((byte) req.getDataType());
+      List<TsBlock> blockResult = Collections.emptyList();
       String outputColumnName = req.getAggregationType().name();
       List<ColumnHeader> columnHeaders =
           Collections.singletonList(new ColumnHeader(outputColumnName, dataType));

@@ -55,6 +55,12 @@ public class DriverContext {
     this.driverTaskID = new DriverTaskId(fragmentInstanceContext.getId(), pipelineId);
   }
 
+  public DriverContext(
+      FragmentInstanceContext fragmentInstanceContext, int pipelineId, String fullId) {
+    this.fragmentInstanceContext = fragmentInstanceContext;
+    this.driverTaskID = new DriverTaskId(fragmentInstanceContext.getId(), pipelineId, fullId);
+  }
+
   public OperatorContext addOperatorContext(
       int operatorId, PlanNodeId planNodeId, String operatorType) {
 
