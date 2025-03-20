@@ -407,7 +407,20 @@ public class IoTDBDataRegionAsyncConnector extends IoTDBConnector {
       return;
     }
 
-    retryTransfer(event);
+    syncConnector.transfer(event);
+  }
+
+  /** Try its best to commit data in order. Flush can also be a trigger to transfer batched data. */
+  private void transferBatchedEventsIfNecessary()
+      throws IOException, WriteProcessException, InterruptedException {
+    if (!isTabletBatchModeEnabled || tabletBatchBuilder.isEmpty()) {
+      return;
+    }
+
+    for (final Pair<TEndPoint, PipeTabletEventBatch> endPointAndBatch :
+        tabletBatchBuilder.getAllNonEmptyBatches()) {
+      transferInBatchWithoutCheck(endPointAndBatch);
+    }
   }
 
   //////////////////////////// Leader cache update ////////////////////////////
@@ -442,7 +455,7 @@ public class IoTDBDataRegionAsyncConnector extends IoTDBConnector {
   private void transferQueuedEventsIfNecessary() throws Exception {
     if (retryEventQueue.isEmpty()) {
       // Trigger cron heartbeat event in retry connector to send batch in time
-      retryConnector.transfer(PipeConnectorSubtask.CRON_HEARTBEAT_EVENT);
+      retryTransfer(PipeConnectorSubtask.CRON_HEARTBEAT_EVENT);
       return;
     }
 
@@ -496,67 +509,6 @@ public class IoTDBDataRegionAsyncConnector extends IoTDBConnector {
 
     // Trigger cron heartbeat event in retry connector to send batch in time
     retryTransfer(PipeConnectorSubtask.CRON_HEARTBEAT_EVENT);
-  }
-
-  /** Try its best to commit data in order. Flush can also be a trigger to transfer batched data. */
-  private void transferBatchedEventsIfNecessary()
-      throws IOException, WriteProcessException, InterruptedException {
-    if (!isTabletBatchModeEnabled || tabletBatchBuilder.isEmpty()) {
-      return;
-    }
-
-    for (final Pair<TEndPoint, PipeTabletEventBatch> endPointAndBatch :
-        tabletBatchBuilder.getAllNonEmptyBatches()) {
-      transferInBatchWithoutCheck(endPointAndBatch);
-    }
-  }
-
-  /**
-   * Add failure {@link Event} to retry queue.
-   *
-   * @param event {@link Event} to retry
-   */
-  @SuppressWarnings("java:S899")
-  public void addFailureEventToRetryQueue(final Event event) {
-    if (event instanceof EnrichedEvent && ((EnrichedEvent) event).isReleased()) {
-      return;
-    }
-
-    if (isClosed.get()) {
-      if (event instanceof EnrichedEvent) {
-        ((EnrichedEvent) event).clearReferenceCount(IoTDBDataRegionAsyncConnector.class.getName());
-      }
-      return;
-    }
-
-    retryEventQueue.offer(event);
-    if (LOGGER.isDebugEnabled()) {
-      LOGGER.debug("Added event {} to retry queue.", event);
-    }
-
-    if (isClosed.get()) {
-      if (event instanceof EnrichedEvent) {
-        ((EnrichedEvent) event).clearReferenceCount(IoTDBDataRegionAsyncConnector.class.getName());
-      }
-    }
-  }
-
-  /**
-   * Add failure {@link EnrichedEvent}s to retry queue.
-   *
-   * @param events {@link EnrichedEvent}s to retry
-   */
-  public void addFailureEventsToRetryQueue(final Iterable<EnrichedEvent> events) {
-    events.forEach(this::addFailureEventToRetryQueue);
-  }
-
-  public synchronized void clearRetryEventsReferenceCount() {
-    while (!retryEventQueue.isEmpty()) {
-      final Event event = retryEventQueue.poll();
-      if (event instanceof EnrichedEvent) {
-        ((EnrichedEvent) event).clearReferenceCount(IoTDBDataRegionAsyncConnector.class.getName());
-      }
-    }
   }
 
   private void retryTransfer(final TabletInsertionEvent tabletInsertionEvent) throws Exception {
@@ -647,6 +599,45 @@ public class IoTDBDataRegionAsyncConnector extends IoTDBConnector {
     }
   }
 
+  /**
+   * Add failure {@link Event} to retry queue.
+   *
+   * @param event {@link Event} to retry
+   */
+  @SuppressWarnings("java:S899")
+  public void addFailureEventToRetryQueue(final Event event) {
+    if (event instanceof EnrichedEvent && ((EnrichedEvent) event).isReleased()) {
+      return;
+    }
+
+    if (isClosed.get()) {
+      if (event instanceof EnrichedEvent) {
+        ((EnrichedEvent) event).clearReferenceCount(IoTDBDataRegionAsyncConnector.class.getName());
+      }
+      return;
+    }
+
+    retryEventQueue.offer(event);
+    if (LOGGER.isDebugEnabled()) {
+      LOGGER.debug("Added event {} to retry queue.", event);
+    }
+
+    if (isClosed.get()) {
+      if (event instanceof EnrichedEvent) {
+        ((EnrichedEvent) event).clearReferenceCount(IoTDBDataRegionAsyncConnector.class.getName());
+      }
+    }
+  }
+
+  /**
+   * Add failure {@link EnrichedEvent}s to retry queue.
+   *
+   * @param events {@link EnrichedEvent}s to retry
+   */
+  public void addFailureEventsToRetryQueue(final Iterable<EnrichedEvent> events) {
+    events.forEach(this::addFailureEventToRetryQueue);
+  }
+
   //////////////////////////// Operations for close ////////////////////////////
 
   @Override
@@ -698,6 +689,15 @@ public class IoTDBDataRegionAsyncConnector extends IoTDBConnector {
     clearRetryEventsReferenceCount();
 
     super.close();
+  }
+
+  public synchronized void clearRetryEventsReferenceCount() {
+    while (!retryEventQueue.isEmpty()) {
+      final Event event = retryEventQueue.poll();
+      if (event instanceof EnrichedEvent) {
+        ((EnrichedEvent) event).clearReferenceCount(IoTDBDataRegionAsyncConnector.class.getName());
+      }
+    }
   }
 
   //////////////////////// APIs provided for metric framework ////////////////////////
