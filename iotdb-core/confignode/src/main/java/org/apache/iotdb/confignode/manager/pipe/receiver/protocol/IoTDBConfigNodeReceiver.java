@@ -264,11 +264,38 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
   private TSStatus checkPermission(final ConfigPhysicalPlan plan) {
     switch (plan.getType()) {
       case CreateDatabase:
+        return PathUtils.isTableModelDatabase(((DatabaseSchemaPlan) plan).getSchema().getName())
+            ? configManager
+                .checkUserPrivileges(
+                    username,
+                    new PrivilegeUnion(
+                        ((DatabaseSchemaPlan) plan).getSchema().getName(), PrivilegeType.CREATE))
+                .getStatus()
+            : configManager
+                .checkUserPrivileges(username, new PrivilegeUnion(PrivilegeType.MANAGE_DATABASE))
+                .getStatus();
       case AlterDatabase:
+        return PathUtils.isTableModelDatabase(((DatabaseSchemaPlan) plan).getSchema().getName())
+            ? configManager
+                .checkUserPrivileges(
+                    username,
+                    new PrivilegeUnion(
+                        ((DatabaseSchemaPlan) plan).getSchema().getName(), PrivilegeType.ALTER))
+                .getStatus()
+            : configManager
+                .checkUserPrivileges(username, new PrivilegeUnion(PrivilegeType.MANAGE_DATABASE))
+                .getStatus();
       case DeleteDatabase:
-        return configManager
-            .checkUserPrivileges(username, new PrivilegeUnion(PrivilegeType.MANAGE_DATABASE))
-            .getStatus();
+        return PathUtils.isTableModelDatabase(((DatabaseSchemaPlan) plan).getSchema().getName())
+            ? configManager
+                .checkUserPrivileges(
+                    username,
+                    new PrivilegeUnion(
+                        ((DatabaseSchemaPlan) plan).getSchema().getName(), PrivilegeType.DROP))
+                .getStatus()
+            : configManager
+                .checkUserPrivileges(username, new PrivilegeUnion(PrivilegeType.MANAGE_DATABASE))
+                .getStatus();
       case ExtendSchemaTemplate:
         return configManager
             .checkUserPrivileges(username, new PrivilegeUnion(PrivilegeType.EXTEND_TEMPLATE))
