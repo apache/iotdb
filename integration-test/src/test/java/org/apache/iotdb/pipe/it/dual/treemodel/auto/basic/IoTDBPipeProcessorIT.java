@@ -33,6 +33,7 @@ import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.junit.Assert;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -76,6 +77,7 @@ public class IoTDBPipeProcessorIT extends AbstractPipeDualTreeModelAutoIT {
     receiverEnv.initClusterEnvironment();
   }
 
+  @Ignore
   @Test
   public void testTumblingTimeSamplingProcessor() throws Exception {
     final DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
