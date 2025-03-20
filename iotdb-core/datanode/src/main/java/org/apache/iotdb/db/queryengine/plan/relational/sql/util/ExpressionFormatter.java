@@ -19,67 +19,14 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.sql.util;
 
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AllColumns;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AllRows;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ArithmeticBinaryExpression;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ArithmeticUnaryExpression;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AstVisitor;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.BetweenPredicate;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.BinaryLiteral;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.BooleanLiteral;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Cast;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CoalesceExpression;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ComparisonExpression;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CurrentDatabase;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CurrentTime;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CurrentUser;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DecimalLiteral;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DereferenceExpression;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DoubleLiteral;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ExistsPredicate;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.FieldReference;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.FunctionCall;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.GenericDataType;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.GenericLiteral;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.GroupingElement;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.GroupingSets;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Identifier;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.IfExpression;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.InListExpression;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.InPredicate;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.IsNotNullPredicate;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.IsNullPredicate;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LikePredicate;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Literal;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LogicalExpression;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LongLiteral;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Node;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.NotExpression;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.NullIfExpression;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.NullLiteral;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.NumericParameter;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.OrderBy;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Parameter;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.QualifiedName;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.QuantifiedComparisonExpression;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Row;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SearchedCaseExpression;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SimpleCaseExpression;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SimpleGroupBy;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SortItem;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.StringLiteral;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SubqueryExpression;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SymbolReference;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Trim;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.TypeParameter;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.WhenClause;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.*;
 
 import com.google.common.base.Joiner;
 import com.google.common.collect.ImmutableList;
 
 import java.text.DecimalFormat;
 import java.text.DecimalFormatSymbols;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 import java.util.Optional;
@@ -310,6 +257,10 @@ public final class ExpressionFormatter {
       }
 
       builder.append(')');
+
+      if (node.getWindow().isPresent()) {
+        builder.append(" OVER ").append(formatWindow(node.getWindow().get()));
+      }
 
       return builder.toString();
     }
@@ -604,6 +555,72 @@ public final class ExpressionFormatter {
 
   public static String formatSortItems(List<SortItem> sortItems) {
     return sortItems.stream().map(sortItemFormatterFunction()).collect(joining(", "));
+  }
+
+  private static String formatWindow(WindowSpecification window) {
+    //    if (window instanceof WindowReference) {
+    //      return formatExpression(((WindowReference) window).getName());
+    //    }
+
+    return formatWindowSpecification((WindowSpecification) window);
+  }
+
+  static String formatWindowSpecification(WindowSpecification windowSpecification) {
+    List<String> parts = new ArrayList<>();
+
+    if (windowSpecification.getExistingWindowName().isPresent()) {
+      parts.add(formatExpression(windowSpecification.getExistingWindowName().get()));
+    }
+    if (!windowSpecification.getPartitionBy().isEmpty()) {
+      parts.add(
+          "PARTITION BY "
+              + windowSpecification.getPartitionBy().stream()
+                  .map(ExpressionFormatter::formatExpression)
+                  .collect(joining(", ")));
+    }
+    if (windowSpecification.getOrderBy().isPresent()) {
+      parts.add(formatOrderBy(windowSpecification.getOrderBy().get()));
+    }
+    if (windowSpecification.getFrame().isPresent()) {
+      parts.add(formatFrame(windowSpecification.getFrame().get()));
+    }
+
+    return '(' + Joiner.on(' ').join(parts) + ')';
+  }
+
+  private static String formatFrame(WindowFrame windowFrame) {
+    StringBuilder builder = new StringBuilder();
+
+    builder.append(windowFrame.getType().toString()).append(' ');
+
+    if (windowFrame.getEnd().isPresent()) {
+      builder
+          .append("BETWEEN ")
+          .append(formatFrameBound(windowFrame.getStart()))
+          .append(" AND ")
+          .append(formatFrameBound(windowFrame.getEnd().get()));
+    } else {
+      builder.append(formatFrameBound(windowFrame.getStart()));
+    }
+
+    return builder.toString();
+  }
+
+  private static String formatFrameBound(FrameBound frameBound) {
+    switch (frameBound.getType()) {
+      case UNBOUNDED_PRECEDING:
+        return "UNBOUNDED PRECEDING";
+      case PRECEDING:
+        return formatExpression(frameBound.getValue().get()) + " PRECEDING";
+      case CURRENT_ROW:
+        return "CURRENT ROW";
+      case FOLLOWING:
+        return formatExpression(frameBound.getValue().get()) + " FOLLOWING";
+      case UNBOUNDED_FOLLOWING:
+        return "UNBOUNDED FOLLOWING";
+      default:
+        throw new IllegalArgumentException("Unsupported frame type: " + frameBound.getType());
+    }
   }
 
   static String formatGroupBy(List<GroupingElement> groupingElements) {

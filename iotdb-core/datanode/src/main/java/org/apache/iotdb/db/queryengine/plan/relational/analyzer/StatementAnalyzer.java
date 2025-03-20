@@ -41,104 +41,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.ScopeAware;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.Symbol;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.TranslationMap;
 import org.apache.iotdb.db.queryengine.plan.relational.security.AccessControl;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AbstractQueryDeviceWithCache;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AbstractTraverseDevice;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AddColumn;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AliasedRelation;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AllColumns;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AllRows;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AlterDB;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AlterPipe;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AstVisitor;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CountDevice;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateDB;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateIndex;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateOrUpdateDevice;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreatePipe;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreatePipePlugin;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateTable;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateTopic;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Delete;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DeleteDevice;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DereferenceExpression;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DescribeTable;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropColumn;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropDB;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropFunction;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropIndex;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropPipe;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropPipePlugin;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropTable;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropTopic;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Except;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Explain;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ExplainAnalyze;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.FetchDevice;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.FieldReference;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Fill;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.FunctionCall;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.GroupBy;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.GroupingElement;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.GroupingSets;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Identifier;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Insert;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.InsertRow;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.InsertRows;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.InsertTablet;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Intersect;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Join;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.JoinCriteria;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.JoinOn;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.JoinUsing;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Limit;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Literal;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LoadTsFile;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LongLiteral;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.NaturalJoin;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Node;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Offset;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.OrderBy;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.PipeEnriched;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Property;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.QualifiedName;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Query;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.QuerySpecification;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Relation;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.RenameColumn;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.RenameTable;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Row;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Select;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SelectItem;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SetOperation;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SetProperties;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowDB;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowDevice;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowFunctions;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowIndex;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowPipePlugins;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowPipes;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowSubscriptions;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowTables;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowTopics;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SimpleGroupBy;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SingleColumn;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SortItem;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.StartPipe;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Statement;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.StopPipe;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SubqueryExpression;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SymbolReference;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Table;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.TableSubquery;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Union;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Update;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.UpdateAssignment;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Use;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Values;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.With;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.WithQuery;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.WrappedInsertStatement;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.*;
 import org.apache.iotdb.db.queryengine.plan.statement.component.FillPolicy;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertBaseStatement;
 import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
@@ -192,6 +95,7 @@ import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.Aggregati
 import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.CanonicalizationAware.canonicalizationAwareKey;
 import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.ExpressionTreeUtils.asQualifiedName;
 import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.ExpressionTreeUtils.extractAggregateFunctions;
+import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.ExpressionTreeUtils.extractWindowFunctions;
 import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.Scope.BasisType.TABLE;
 import static org.apache.iotdb.db.queryengine.plan.relational.metadata.MetadataUtil.createQualifiedObjectName;
 import static org.apache.iotdb.db.queryengine.plan.relational.metadata.TableMetadataImpl.isTimestampType;
@@ -913,6 +817,7 @@ public class StatementAnalyzer {
       hasFillInParentScope = node.getFill().isPresent() || hasFillInParentScope;
 
       Scope sourceScope = analyzeFrom(node, scope);
+      resolveFunctionCallAndMeasureWindows(node);
 
       node.getWhere().ifPresent(where -> analyzeWhere(node, sourceScope, where));
 
@@ -969,6 +874,7 @@ public class StatementAnalyzer {
 
       analyzeAggregations(
           node, sourceScope, orderByScope, groupByAnalysis, sourceExpressions, orderByExpressions);
+      analyzeWindowFunctionsAndMeasures(node, outputExpressions, orderByExpressions);
 
       if (analysis.isAggregation(node) && node.getOrderBy().isPresent()) {
         ImmutableList.Builder<Expression> aggregates =
@@ -989,6 +895,182 @@ public class StatementAnalyzer {
       }
 
       return outputScope;
+    }
+
+    private void analyzeWindowFunctionsAndMeasures(
+        QuerySpecification node,
+        List<Expression> outputExpressions,
+        List<Expression> orderByExpressions) {
+      analysis.setWindowFunctions(node, analyzeWindowFunctions(node, outputExpressions));
+      //      if (node.getOrderBy().isPresent()) {
+      //        OrderBy orderBy = node.getOrderBy().get();
+      //        analysis.setOrderByWindowFunctions(orderBy, analyzeWindowFunctions(node,
+      // orderByExpressions));
+      //        analysis.setOrderByWindowMeasures(orderBy,
+      // extractWindowMeasures(orderByExpressions));
+      //      }
+    }
+
+    private List<FunctionCall> analyzeWindowFunctions(
+        QuerySpecification node, List<Expression> expressions) {
+      List<FunctionCall> windowFunctions = extractWindowFunctions(expressions);
+
+      //      for (FunctionCall windowFunction : windowFunctions) {
+      //        List<Expression> nestedWindowExpressions =
+      // extractWindowExpressions(windowFunction.getArguments());
+      //        if (!nestedWindowExpressions.isEmpty()) {
+      //          throw semanticException(NESTED_WINDOW, nestedWindowExpressions.get(0), "Cannot
+      // nest window functions or row pattern measures inside window function arguments");
+      //        }
+      //
+      //        if (windowFunction.isDistinct()) {
+      //          throw semanticException(NOT_SUPPORTED, node, "DISTINCT in window function
+      // parameters not yet supported: %s", windowFunction);
+      //        }
+      //
+      //        Analysis.ResolvedWindow window = analysis.getWindow(windowFunction);
+      //        // TODO get function requirements from window function metadata when we have it
+      //        String name = windowFunction.getName().toString().toLowerCase(ENGLISH);
+      //        if (name.equals("lag") || name.equals("lead")) {
+      //          if (!window.getOrderBy().isPresent()) {
+      //            throw semanticException(MISSING_ORDER_BY, (Node)
+      // windowFunction.getWindow().orElseThrow(), "%s function requires an ORDER BY window clause",
+      // windowFunction.getName());
+      //          }
+      //          if (window.getFrame().isPresent()) {
+      //            throw semanticException(INVALID_WINDOW_FRAME, window.getFrame().get(), "Cannot
+      // specify window frame for %s function", windowFunction.getName());
+      //          }
+      //        }
+      //
+      //        if (!WINDOW_VALUE_FUNCTIONS.contains(name) &&
+      // windowFunction.getNullTreatment().isPresent()) {
+      //          throw semanticException(NULL_TREATMENT_NOT_ALLOWED, windowFunction, "Cannot
+      // specify null treatment clause for %s function", windowFunction.getName());
+      //        }
+      //
+      //        List<Type> argumentTypes = mappedCopy(windowFunction.getArguments(),
+      // analysis::getType);
+      //
+      //        ResolvedFunction resolvedFunction = functionResolver.resolveFunction(session,
+      // windowFunction.getName(), fromTypes(argumentTypes), accessControl);
+      //        FunctionKind kind = resolvedFunction.getFunctionKind();
+      //        if (kind != AGGREGATE && kind != WINDOW) {
+      //          throw semanticException(FUNCTION_NOT_WINDOW, node, "Not a window function: %s",
+      // windowFunction.getName());
+      //        }
+      //      }
+
+      return windowFunctions;
+    }
+
+    private void resolveFunctionCallAndMeasureWindows(QuerySpecification querySpecification) {
+      ImmutableList.Builder<Expression> expressions = ImmutableList.builder();
+
+      // SELECT expressions and ORDER BY expressions can contain window functions
+      for (SelectItem item : querySpecification.getSelect().getSelectItems()) {
+        if (item instanceof AllColumns) {
+          ((AllColumns) item).getTarget().ifPresent(expressions::add);
+        } else if (item instanceof SingleColumn) {
+          expressions.add(((SingleColumn) item).getExpression());
+        }
+      }
+      for (SortItem sortItem : getSortItemsFromOrderBy(querySpecification.getOrderBy())) {
+        expressions.add(sortItem.getSortKey());
+      }
+
+      for (FunctionCall windowFunction : extractWindowFunctions(expressions.build())) {
+        Analysis.ResolvedWindow resolvedWindow =
+            resolveWindowSpecification(querySpecification, windowFunction.getWindow().get());
+        analysis.setWindow(windowFunction, resolvedWindow);
+      }
+    }
+
+    private Analysis.ResolvedWindow resolveWindowSpecification(
+        QuerySpecification querySpecification, WindowSpecification window) {
+      //      if (window instanceof WindowReference windowReference) {
+      //        CanonicalizationAware<Identifier> canonicalName =
+      // canonicalizationAwareKey(windowReference.getName());
+      //        ResolvedWindow referencedWindow = analysis.getWindowDefinition(querySpecification,
+      // canonicalName);
+      //        if (referencedWindow == null) {
+      //          throw semanticException(INVALID_WINDOW_REFERENCE, windowReference.getName(),
+      // "Cannot resolve WINDOW name %s", windowReference.getName());
+      //        }
+      //
+      //        return new ResolvedWindow(
+      //            referencedWindow.getPartitionBy(),
+      //            referencedWindow.getOrderBy(),
+      //            referencedWindow.getFrame(),
+      //            !referencedWindow.getPartitionBy().isEmpty(),
+      //            referencedWindow.getOrderBy().isPresent(),
+      //            referencedWindow.getFrame().isPresent());
+      //      }
+
+      WindowSpecification windowSpecification = (WindowSpecification) window;
+
+      //      if (windowSpecification.getExistingWindowName().isPresent()) {
+      //        Identifier referencedName = windowSpecification.getExistingWindowName().get();
+      //        CanonicalizationAware<Identifier> canonicalName =
+      // canonicalizationAwareKey(referencedName);
+      //        Analysis.ResolvedWindow referencedWindow =
+      // analysis.getWindowDefinition(querySpecification, canonicalName);
+      //        if (referencedWindow == null) {
+      //          throw semanticException(INVALID_WINDOW_REFERENCE, referencedName, "Cannot resolve
+      // WINDOW name %s", referencedName);
+      //        }
+      //
+      //        // analyze dependencies between this window specification and referenced window
+      // specification
+      //        if (!windowSpecification.getPartitionBy().isEmpty()) {
+      //          throw semanticException(INVALID_PARTITION_BY,
+      // windowSpecification.getPartitionBy().get(0), "WINDOW specification with named WINDOW
+      // reference cannot specify PARTITION BY");
+      //        }
+      //        if (windowSpecification.getOrderBy().isPresent() &&
+      // referencedWindow.getOrderBy().isPresent()) {
+      //          throw semanticException(INVALID_ORDER_BY, windowSpecification.getOrderBy().get(),
+      // "Cannot specify ORDER BY if referenced named WINDOW specifies ORDER BY");
+      //        }
+      //        if (referencedWindow.getFrame().isPresent()) {
+      //          throw semanticException(INVALID_WINDOW_REFERENCE,
+      // windowSpecification.getExistingWindowName().get(), "Cannot reference named WINDOW
+      // containing frame specification");
+      //        }
+      //
+      //        // resolve window
+      //        Optional<OrderBy> orderBy = windowSpecification.getOrderBy();
+      //        boolean orderByInherited = false;
+      //        if (!orderBy.isPresent() && referencedWindow.getOrderBy().isPresent()) {
+      //          orderBy = referencedWindow.getOrderBy();
+      //          orderByInherited = true;
+      //        }
+      //
+      //        List<Expression> partitionBy = windowSpecification.getPartitionBy();
+      //        boolean partitionByInherited = false;
+      //        if (!referencedWindow.getPartitionBy().isEmpty()) {
+      //          partitionBy = referencedWindow.getPartitionBy();
+      //          partitionByInherited = true;
+      //        }
+      //
+      //        Optional<WindowFrame> windowFrame = windowSpecification.getFrame();
+      //        boolean frameInherited = false;
+      //        if (!windowFrame.isPresent() && referencedWindow.getFrame().isPresent()) {
+      //          windowFrame = referencedWindow.getFrame();
+      //          frameInherited = true;
+      //        }
+      //
+      //        return new Analysis.ResolvedWindow(partitionBy, orderBy, windowFrame,
+      // partitionByInherited, orderByInherited, frameInherited);
+      //      }
+
+      return new Analysis.ResolvedWindow(
+          windowSpecification.getPartitionBy(),
+          windowSpecification.getOrderBy(),
+          windowSpecification.getFrame(),
+          false,
+          false,
+          false);
     }
 
     private Scope analyzeFrom(QuerySpecification node, Optional<Scope> scope) {

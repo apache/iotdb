@@ -65,8 +65,17 @@ public final class ExpressionTreeUtils {
         .collect(toImmutableList());
   }
 
+  public static List<FunctionCall> extractWindowFunctions(Iterable<? extends Node> nodes) {
+    return extractExpressions(nodes, FunctionCall.class, ExpressionTreeUtils::isWindowFunction);
+  }
+
+  private static boolean isWindowFunction(FunctionCall functionCall) {
+    return functionCall.getWindow().isPresent();
+  }
+
   private static boolean isAggregation(FunctionCall functionCall) {
-    return isAggregationFunction(functionCall.getName().toString());
+    return isAggregationFunction(functionCall.getName().toString())
+        && !functionCall.getWindow().isPresent();
   }
 
   private static List<Node> linearizeNodes(Node node) {

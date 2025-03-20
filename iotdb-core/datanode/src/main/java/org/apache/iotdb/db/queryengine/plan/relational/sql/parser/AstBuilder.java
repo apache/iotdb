@@ -35,161 +35,7 @@ import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.protocol.session.IClientSession;
 import org.apache.iotdb.db.queryengine.plan.expression.leaf.TimestampOperand;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AddColumn;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AliasedRelation;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AllColumns;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AllRows;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AlterDB;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AlterPipe;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ArithmeticBinaryExpression;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ArithmeticUnaryExpression;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.BetweenPredicate;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.BinaryLiteral;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.BooleanLiteral;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Cast;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ClearCache;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CoalesceExpression;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ColumnDefinition;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ComparisonExpression;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CountDevice;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CountStatement;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateDB;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateFunction;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateIndex;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreatePipe;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreatePipePlugin;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateTable;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateTopic;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CurrentDatabase;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CurrentTime;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CurrentUser;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DataType;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DataTypeParameter;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Delete;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DeleteDevice;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DereferenceExpression;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DescribeTable;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DoubleLiteral;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropColumn;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropDB;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropFunction;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropIndex;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropPipe;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropPipePlugin;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropTable;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropTopic;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Except;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ExistsPredicate;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Explain;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ExplainAnalyze;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ExtendRegion;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Fill;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Flush;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.FunctionCall;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.GenericDataType;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.GroupBy;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.GroupingElement;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.GroupingSets;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Identifier;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.IfExpression;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.InListExpression;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.InPredicate;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.InsertRows;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Intersect;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.IsNotNullPredicate;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.IsNullPredicate;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Join;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.JoinCriteria;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.JoinOn;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.JoinUsing;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.KillQuery;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LikePredicate;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Limit;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Literal;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LoadConfiguration;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LoadTsFile;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LogicalExpression;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LongLiteral;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.MigrateRegion;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.NaturalJoin;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Node;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.NodeLocation;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.NotExpression;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.NullIfExpression;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.NullLiteral;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.NumericParameter;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Offset;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.OrderBy;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Parameter;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Property;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.QualifiedName;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.QuantifiedComparisonExpression;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Query;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.QueryBody;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.QuerySpecification;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ReconstructRegion;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Relation;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.RelationalAuthorStatement;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.RemoveConfigNode;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.RemoveDataNode;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.RemoveRegion;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.RenameColumn;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.RenameTable;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Row;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SearchedCaseExpression;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Select;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SelectItem;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SetConfiguration;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SetProperties;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SetSqlDialect;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SetSystemStatus;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowAINodes;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowCluster;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowClusterId;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowConfigNodes;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowCurrentDatabase;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowCurrentSqlDialect;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowCurrentTimestamp;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowCurrentUser;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowDB;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowDataNodes;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowDevice;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowFunctions;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowIndex;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowPipePlugins;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowPipes;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowRegions;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowStatement;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowSubscriptions;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowTables;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowTopics;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowVariables;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowVersion;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SimpleCaseExpression;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SimpleGroupBy;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SingleColumn;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SortItem;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.StartPipe;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.StartRepairData;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Statement;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.StopPipe;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.StopRepairData;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.StringLiteral;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SubqueryExpression;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Table;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.TableExpressionType;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.TableSubquery;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Trim;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.TypeParameter;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Union;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Update;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.UpdateAssignment;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Use;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Values;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.WhenClause;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.With;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.WithQuery;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.*;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.util.AstUtil;
 import org.apache.iotdb.db.queryengine.plan.relational.type.AuthorRType;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementType;
@@ -2363,6 +2209,90 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
   }
 
   // ********************* primary expressions **********************
+  //  @Override
+  //  public Node visitSimpleOver(RelationalSqlParser.SimpleOverContext ctx) {
+  //    return visitWindowSpecification(ctx.over().windowSpecification());
+  //  }
+
+  @Override
+  public Node visitOver(RelationalSqlParser.OverContext ctx) {
+    // TODO: Window Reference
+    return visit(ctx.windowSpecification());
+  }
+
+  @Override
+  public Node visitWindowSpecification(RelationalSqlParser.WindowSpecificationContext ctx) {
+    Optional<Identifier> existingWindowName = getIdentifierIfPresent(ctx.existingWindowName);
+
+    List<Expression> partitionBy = visit(ctx.partition, Expression.class);
+
+    Optional<OrderBy> orderBy = Optional.empty();
+    if (ctx.ORDER() != null) {
+      orderBy =
+          Optional.of(new OrderBy(getLocation(ctx.ORDER()), visit(ctx.sortItem(), SortItem.class)));
+    }
+
+    Optional<WindowFrame> frame = Optional.empty();
+    if (ctx.windowFrame() != null) {
+      frame = Optional.of((WindowFrame) visitFrameExtent(ctx.windowFrame().frameExtent()));
+    }
+
+    return new WindowSpecification(
+        getLocation(ctx), existingWindowName, partitionBy, orderBy, frame);
+  }
+
+  @Override
+  public Node visitFrameExtent(RelationalSqlParser.FrameExtentContext ctx) {
+    WindowFrame.Type frameType = toWindowFrameType(ctx.frameType);
+    FrameBound start = (FrameBound) visit(ctx.start);
+    Optional<FrameBound> end = visitIfPresent(ctx.end, FrameBound.class);
+    return new WindowFrame(getLocation(ctx), frameType, start, end);
+  }
+
+  private static WindowFrame.Type toWindowFrameType(Token token) {
+    switch (token.getType()) {
+      case RelationalSqlLexer.ROWS:
+        return WindowFrame.Type.ROWS;
+      case RelationalSqlLexer.RANGE:
+        return WindowFrame.Type.RANGE;
+      case RelationalSqlLexer.GROUPS:
+        return WindowFrame.Type.GROUPS;
+      default:
+        throw new IllegalArgumentException("Unsupported window frame type: " + token.getText());
+    }
+  }
+
+  @Override
+  public Node visitUnboundedFrame(RelationalSqlParser.UnboundedFrameContext ctx) {
+    switch (ctx.boundType.getType()) {
+      case RelationalSqlLexer.PRECEDING:
+        return new FrameBound(getLocation(ctx), FrameBound.Type.UNBOUNDED_PRECEDING);
+      case RelationalSqlLexer.FOLLOWING:
+        return new FrameBound(getLocation(ctx), FrameBound.Type.UNBOUNDED_FOLLOWING);
+      default:
+        throw new IllegalArgumentException(
+            "Unsupported unbounded type: " + ctx.boundType.getText());
+    }
+  }
+
+  @Override
+  public Node visitCurrentRowBound(RelationalSqlParser.CurrentRowBoundContext ctx) {
+    return new FrameBound(getLocation(ctx), FrameBound.Type.CURRENT_ROW);
+  }
+
+  @Override
+  public Node visitBoundedFrame(RelationalSqlParser.BoundedFrameContext ctx) {
+    Expression value = (Expression) visit(ctx.expression());
+    switch (ctx.boundType.getType()) {
+      case RelationalSqlLexer.PRECEDING:
+        return new FrameBound(getLocation(ctx), FrameBound.Type.PRECEDING, value);
+      case RelationalSqlLexer.FOLLOWING:
+        return new FrameBound(getLocation(ctx), FrameBound.Type.FOLLOWING, value);
+      default:
+        throw new IllegalArgumentException("Unsupported bounded type: " + ctx.boundType.getText());
+    }
+  }
+
   @Override
   public Node visitParenthesizedExpression(RelationalSqlParser.ParenthesizedExpressionContext ctx) {
     return visit(ctx.expression());
@@ -2518,6 +2448,7 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
 
   @Override
   public Node visitFunctionCall(RelationalSqlParser.FunctionCallContext ctx) {
+    Optional<WindowSpecification> window = visitIfPresent(ctx.over(), WindowSpecification.class);
 
     QualifiedName name = getQualifiedName(ctx.qualifiedName());
 
@@ -2603,7 +2534,7 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
       }
     }
 
-    return new FunctionCall(getLocation(ctx), name, distinct, arguments);
+    return new FunctionCall(getLocation(ctx), name, window, distinct, arguments);
   }
 
   @Override

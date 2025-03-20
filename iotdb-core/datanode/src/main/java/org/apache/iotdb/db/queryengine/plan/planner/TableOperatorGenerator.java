@@ -69,6 +69,12 @@ import org.apache.iotdb.db.queryengine.execution.operator.process.gapfill.GapFil
 import org.apache.iotdb.db.queryengine.execution.operator.process.join.SimpleNestedLoopCrossJoinOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.join.merge.comparator.JoinKeyComparatorFactory;
 import org.apache.iotdb.db.queryengine.execution.operator.process.last.LastQueryUtil;
+import org.apache.iotdb.db.queryengine.execution.operator.process.window.TableWindowOperator;
+import org.apache.iotdb.db.queryengine.execution.operator.process.window.function.WindowFunction;
+import org.apache.iotdb.db.queryengine.execution.operator.process.window.function.WindowFunctionFactory;
+import org.apache.iotdb.db.queryengine.execution.operator.process.window.function.aggregate.AggregationWindowFunction;
+import org.apache.iotdb.db.queryengine.execution.operator.process.window.function.aggregate.WindowAggregator;
+import org.apache.iotdb.db.queryengine.execution.operator.process.window.partition.frame.FrameInfo;
 import org.apache.iotdb.db.queryengine.execution.operator.schema.CountMergeOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.schema.SchemaCountOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.schema.SchemaQueryScanOperator;
@@ -111,9 +117,11 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.sink.IdentitySinkN
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.InputLocation;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.SeriesScanOptions;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.predicate.ConvertPredicateToTimeFilterVisitor;
+import org.apache.iotdb.db.queryengine.plan.relational.function.FunctionKind;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.ColumnSchema;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.DeviceEntry;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.ResolvedFunction;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache.TableDeviceSchemaCache;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.CastToBlobLiteralVisitor;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.CastToBooleanLiteralVisitor;
@@ -154,6 +162,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TopKNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TreeAlignedDeviceViewScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TreeNonAlignedDeviceViewScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ValueFillNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.WindowNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.TableDeviceFetchNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.TableDeviceQueryCountNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.TableDeviceQueryScanNode;
@@ -230,6 +239,7 @@ import static org.apache.iotdb.db.queryengine.execution.operator.process.join.me
 import static org.apache.iotdb.db.queryengine.execution.operator.source.relational.InformationSchemaContentSupplierFactory.getSupplier;
 import static org.apache.iotdb.db.queryengine.execution.operator.source.relational.TableScanOperator.constructAlignedPath;
 import static org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.AccumulatorFactory.createAccumulator;
+import static org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.AccumulatorFactory.createBuiltinAccumulator;
 import static org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.AccumulatorFactory.createGroupedAccumulator;
 import static org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.grouped.hash.GroupByHash.DEFAULT_GROUP_NUMBER;
 import static org.apache.iotdb.db.queryengine.plan.analyze.PredicateUtils.convertPredicateToFilter;
@@ -2447,5 +2457,182 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
             .collect(Collectors.toList()),
         node.getDistinctSymbols().stream().map(childLayout::get).collect(Collectors.toList()),
         Optional.empty());
+  }
+
+  @Override
+  public Operator visitWindowFunction(WindowNode node, LocalExecutionPlanContext context) {
+    TypeProvider typeProvider = context.getTypeProvider();
+    Operator child = node.getChild().accept(this, context);
+    OperatorContext operatorContext =
+        context
+            .getDriverContext()
+            .addOperatorContext(
+                context.getNextOperatorId(),
+                node.getPlanNodeId(),
+                TableWindowOperator.class.getSimpleName());
+
+    Map<Symbol, Integer> childLayout =
+        makeLayoutFromOutputSymbols(node.getChild().getOutputSymbols());
+
+    // Partition channel
+    List<Symbol> partitionBySymbols = node.getSpecification().getPartitionBy();
+    List<Integer> partitionChannels =
+        ImmutableList.copyOf(getChannelsForSymbols(partitionBySymbols, childLayout));
+
+    // Sort channel
+    List<Integer> sortChannels = ImmutableList.of();
+    //    List<SortOrder> sortOrder = ImmutableList.of();
+    if (node.getSpecification().getOrderingScheme().isPresent()) {
+      OrderingScheme orderingScheme = node.getSpecification().getOrderingScheme().get();
+      sortChannels = getChannelsForSymbols(orderingScheme.getOrderBy(), childLayout);
+      //      sortOrder = orderingScheme.getOrderingList();
+    }
+
+    // Output channel
+    ImmutableList.Builder<Integer> outputChannels = ImmutableList.builder();
+    List<TSDataType> outputDataTypes = new ArrayList<>();
+    List<TSDataType> inputDataTypes =
+        getOutputColumnTypes(node.getChild(), context.getTypeProvider());
+    for (int i = 0; i < inputDataTypes.size(); i++) {
+      outputChannels.add(i);
+      outputDataTypes.add(inputDataTypes.get(i));
+    }
+
+    // Window functions
+    List<FrameInfo> frameInfoList = new ArrayList<>();
+    List<WindowFunction> windowFunctions = new ArrayList<>();
+    List<Symbol> windowFunctionOutputSymbols = new ArrayList<>();
+    List<TSDataType> windowFunctionOutputDataTypes = new ArrayList<>();
+    for (Map.Entry<Symbol, WindowNode.Function> entry : node.getWindowFunctions().entrySet()) {
+      // Create FrameInfo
+      WindowNode.Frame frame = entry.getValue().getFrame();
+
+      Optional<Integer> frameStartChannel = Optional.empty();
+      if (frame.getStartValue().isPresent()) {
+        frameStartChannel = Optional.ofNullable(childLayout.get(frame.getStartValue().get()));
+      }
+      //      Optional<Integer> sortKeyChannelForStartComparison = Optional.empty();
+      //      if (frame.getSortKeyCoercedForFrameStartComparison().isPresent()) {
+      //        sortKeyChannelForStartComparison =
+      // Optional.ofNullable(childLayout.get(frame.getSortKeyCoercedForFrameStartComparison().get()));
+      //      }
+      Optional<Integer> frameEndChannel = Optional.empty();
+      if (frame.getEndValue().isPresent()) {
+        frameEndChannel = Optional.ofNullable(childLayout.get(frame.getEndValue().get()));
+      }
+      //      Optional<Integer> sortKeyChannelForEndComparison = Optional.empty();
+      //      if (frame.getSortKeyCoercedForFrameEndComparison().isPresent()) {
+      //        sortKeyChannelForEndComparison =
+      // Optional.ofNullable(childLayout.get(frame.getSortKeyCoercedForFrameEndComparison().get()));
+      //      }
+      Optional<Integer> sortKeyChannel = Optional.empty();
+      Optional<SortOrder> ordering = Optional.empty();
+      if (node.getSpecification().getOrderingScheme().isPresent()) {
+        sortKeyChannel = Optional.of(sortChannels.get(0));
+        //        if (sortOrder.get(0).isNullsFirst()) {
+        //          if (sortOrder.get(0).isAscending()) {
+        //            ordering = Optional.of(ASC_NULLS_FIRST);
+        //          } else {
+        //            ordering = Optional.of(DESC_NULLS_FIRST);
+        //          }
+        //        } else {
+        //          if (sortOrder.get(0).isAscending()) {
+        //            ordering = Optional.of(ASC_NULLS_LAST);
+        //          } else {
+        //            ordering = Optional.of(DESC_NULLS_LAST);
+        //          }
+        //        }
+      }
+      FrameInfo frameInfo =
+          new FrameInfo(
+              frame.getType(),
+              frame.getStartType(),
+              frameStartChannel,
+              frame.getEndType(),
+              frameEndChannel,
+              sortKeyChannel,
+              ordering);
+      frameInfoList.add(frameInfo);
+
+      // Arguments
+      WindowNode.Function function = entry.getValue();
+      ResolvedFunction resolvedFunction = function.getResolvedFunction();
+      List<Integer> argumentChannels = new ArrayList<>();
+      for (Expression argument : function.getArguments()) {
+        Symbol argumentSymbol = Symbol.from(argument);
+        argumentChannels.add(childLayout.get(argumentSymbol));
+      }
+
+      // Return value
+      Type returnType = resolvedFunction.getSignature().getReturnType();
+      windowFunctionOutputDataTypes.add(getTSDataType(returnType));
+
+      // Window function
+      Symbol symbol = entry.getKey();
+      WindowFunction windowFunction;
+      FunctionKind functionKind = resolvedFunction.getFunctionKind();
+      if (functionKind == FunctionKind.AGGREGATE) {
+        WindowAggregator tableWindowAggregator =
+            buildWindowAggregator(symbol, function, typeProvider, argumentChannels);
+        windowFunction = new AggregationWindowFunction(tableWindowAggregator);
+      } else if (functionKind == FunctionKind.WINDOW) {
+        String functionName = function.getResolvedFunction().getSignature().getName();
+        windowFunction =
+            WindowFunctionFactory.createBuiltinWindowFunction(functionName, argumentChannels);
+      } else {
+        throw new UnsupportedOperationException("Unsupported function kind: " + functionKind);
+      }
+
+      windowFunctions.add(windowFunction);
+      windowFunctionOutputSymbols.add(symbol);
+    }
+
+    // Compute layout
+    ImmutableMap.Builder<Symbol, Integer> outputMappings = ImmutableMap.builder();
+    for (Symbol symbol : node.getChild().getOutputSymbols()) {
+      outputMappings.put(symbol, childLayout.get(symbol));
+    }
+    int channel = inputDataTypes.size();
+
+    for (Symbol symbol : windowFunctionOutputSymbols) {
+      outputMappings.put(symbol, channel);
+      channel++;
+    }
+
+    outputDataTypes.addAll(windowFunctionOutputDataTypes);
+    return new TableWindowOperator(
+        operatorContext,
+        child,
+        inputDataTypes,
+        outputDataTypes,
+        outputChannels.build(),
+        windowFunctions,
+        frameInfoList,
+        partitionChannels,
+        sortChannels);
+  }
+
+  private WindowAggregator buildWindowAggregator(
+      Symbol symbol,
+      WindowNode.Function function,
+      TypeProvider typeProvider,
+      List<Integer> argumentChannels) {
+    // Create accumulator first
+    String functionName = function.getResolvedFunction().getSignature().getName();
+    List<TSDataType> originalArgumentTypes =
+        function.getResolvedFunction().getSignature().getArgumentTypes().stream()
+            .map(InternalTypeManager::getTSDataType)
+            .collect(Collectors.toList());
+    TableAccumulator accumulator =
+        createBuiltinAccumulator(
+            getAggregationTypeByFuncName(functionName),
+            originalArgumentTypes,
+            function.getArguments(),
+            Collections.emptyMap(),
+            true);
+
+    // Create aggregator by accumulator
+    return new WindowAggregator(
+        accumulator, getTSDataType(typeProvider.getTableModelType(symbol)), argumentChannels);
   }
 }

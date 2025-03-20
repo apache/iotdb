@@ -28,17 +28,20 @@ import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
+import java.util.Optional;
 
 import static java.util.Objects.requireNonNull;
 
 public class FunctionCall extends Expression {
   private final QualifiedName name;
+  private final Optional<WindowSpecification> window;
   private final boolean distinct;
   private final List<Expression> arguments;
 
   public FunctionCall(QualifiedName name, List<Expression> arguments) {
     super(null);
     this.name = requireNonNull(name, "name is null");
+    this.window = Optional.empty();
     this.distinct = false;
     this.arguments = requireNonNull(arguments, "arguments is null");
   }
@@ -46,6 +49,7 @@ public class FunctionCall extends Expression {
   public FunctionCall(QualifiedName name, boolean distinct, List<Expression> arguments) {
     super(null);
     this.name = requireNonNull(name, "name is null");
+    this.window = Optional.empty();
     this.distinct = distinct;
     this.arguments = requireNonNull(arguments, "arguments is null");
   }
@@ -58,8 +62,23 @@ public class FunctionCall extends Expression {
       NodeLocation location, QualifiedName name, boolean distinct, List<Expression> arguments) {
     super(requireNonNull(location, "location is null"));
     this.name = requireNonNull(name, "name is null");
+    this.window = Optional.empty();
     this.distinct = distinct;
     this.arguments = requireNonNull(arguments, "arguments is null");
+  }
+
+  public FunctionCall(
+      NodeLocation location,
+      QualifiedName name,
+      Optional<WindowSpecification> window,
+      boolean distinct,
+      List<Expression> arguments) {
+    super(requireNonNull(location, "location is null"));
+
+    this.name = name;
+    this.window = window;
+    this.distinct = distinct;
+    this.arguments = arguments;
   }
 
   public QualifiedName getName() {
@@ -72,6 +91,10 @@ public class FunctionCall extends Expression {
 
   public List<Expression> getArguments() {
     return arguments;
+  }
+
+  public Optional<WindowSpecification> getWindow() {
+    return window;
   }
 
   @Override
@@ -141,5 +164,8 @@ public class FunctionCall extends Expression {
     while (size-- > 0) {
       arguments.add(Expression.deserialize(byteBuffer));
     }
+
+    // TODO: serialize window
+    this.window = Optional.empty();
   }
 }

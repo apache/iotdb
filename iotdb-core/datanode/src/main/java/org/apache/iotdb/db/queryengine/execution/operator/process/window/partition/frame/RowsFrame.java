@@ -43,8 +43,6 @@ public class RowsFrame implements Frame {
   @Override
   public Range getRange(
       int currentPosition, int currentGroup, int peerGroupStart, int peerGroupEnd) {
-    int posInPartition = currentPosition - partitionStart;
-
     int offset;
     int frameStart;
     switch (frameInfo.getStartType()) {
@@ -52,15 +50,17 @@ public class RowsFrame implements Frame {
         frameStart = 0;
         break;
       case PRECEDING:
-        offset = (int) getOffset(frameInfo.getStartOffsetChannel(), currentPosition);
-        frameStart = posInPartition - offset;
+        offset =
+            (int) getOffset(frameInfo.getStartOffsetChannel(), currentPosition + partitionStart);
+        frameStart = currentPosition - offset;
         break;
       case CURRENT_ROW:
-        frameStart = posInPartition;
+        frameStart = currentPosition;
         break;
       case FOLLOWING:
-        offset = (int) getOffset(frameInfo.getStartOffsetChannel(), currentPosition);
-        frameStart = posInPartition + offset;
+        offset =
+            (int) getOffset(frameInfo.getStartOffsetChannel(), currentPosition + partitionStart);
+        frameStart = currentPosition + offset;
         break;
       default:
         // UNBOUND_FOLLOWING is not allowed in frame start
@@ -70,15 +70,15 @@ public class RowsFrame implements Frame {
     int frameEnd;
     switch (frameInfo.getEndType()) {
       case PRECEDING:
-        offset = (int) getOffset(frameInfo.getEndOffsetChannel(), currentPosition);
-        frameEnd = posInPartition - offset;
+        offset = (int) getOffset(frameInfo.getEndOffsetChannel(), currentPosition + partitionStart);
+        frameEnd = currentPosition - offset;
         break;
       case CURRENT_ROW:
-        frameEnd = posInPartition;
+        frameEnd = currentPosition;
         break;
       case FOLLOWING:
-        offset = (int) getOffset(frameInfo.getEndOffsetChannel(), currentPosition);
-        frameEnd = posInPartition + offset;
+        offset = (int) getOffset(frameInfo.getEndOffsetChannel(), currentPosition + partitionStart);
+        frameEnd = currentPosition + offset;
         break;
       case UNBOUNDED_FOLLOWING:
         frameEnd = partitionSize - 1;

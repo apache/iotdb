@@ -916,8 +916,8 @@ primaryExpression
     | dateExpression                                                                      #dateTimeExpression
     | '(' expression (',' expression)+ ')'                                                #rowConstructor
     | ROW '(' expression (',' expression)* ')'                                            #rowConstructor
-    | qualifiedName '(' (label=identifier '.')? ASTERISK ')'                              #functionCall
-    | qualifiedName '(' (setQuantifier? expression (',' expression)*)?')'                 #functionCall
+    | qualifiedName '(' (label=identifier '.')? ASTERISK ')' over?                        #functionCall
+    | qualifiedName '(' (setQuantifier? expression (',' expression)*)?')' over?           #functionCall
     | '(' query ')'                                                                       #subqueryExpression
     // This is an extension to ANSI SQL, which considers EXISTS to be a <boolean expression>
     | EXISTS '(' query ')'                                                                #exists
@@ -937,6 +937,39 @@ primaryExpression
     | DATE_BIN '(' timeDuration ',' valueExpression (',' timeValue)? ')'                  #dateBin
     | DATE_BIN_GAPFILL '(' timeDuration ',' valueExpression (',' timeValue)? ')'          #dateBinGapFill
     | '(' expression ')'                                                                  #parenthesizedExpression
+//    | identifier over                                                                     #simpleOver
+    ;
+
+over
+    : OVER (windowName=identifier | '(' windowSpecification ')')
+    ;
+
+
+windowSpecification
+    : (existingWindowName=identifier)?
+      (PARTITION BY partition+=expression (',' partition+=expression)*)?
+      (ORDER BY sortItem (',' sortItem)*)?
+      windowFrame?
+    ;
+
+windowFrame
+    : frameExtent
+    ;
+
+frameExtent
+    : frameType=RANGE start=frameBound
+    | frameType=ROWS start=frameBound
+    | frameType=GROUPS start=frameBound
+    | frameType=RANGE BETWEEN start=frameBound AND end=frameBound
+    | frameType=ROWS BETWEEN start=frameBound AND end=frameBound
+    | frameType=GROUPS BETWEEN start=frameBound AND end=frameBound
+    ;
+
+frameBound
+    : UNBOUNDED boundType=PRECEDING                 #unboundedFrame
+    | UNBOUNDED boundType=FOLLOWING                 #unboundedFrame
+    | CURRENT ROW                                   #currentRowBound
+    | expression boundType=(PRECEDING | FOLLOWING)  #boundedFrame
     ;
 
 literalExpression

@@ -31,6 +31,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationN
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ApplyNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.LimitNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TopKNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.WindowNode;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SymbolReference;
 
@@ -46,6 +47,7 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 
 import static com.google.common.collect.ImmutableList.toImmutableList;
+import static com.google.common.collect.ImmutableSet.toImmutableSet;
 import static java.util.Objects.requireNonNull;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationNode.groupingSets;
 
@@ -226,6 +228,47 @@ public class SymbolMapper {
       }
     }
     return new OrderingScheme(newSymbols.build(), newOrderings.buildOrThrow());
+  }
+
+  public WindowNode map(WindowNode node, PlanNode source) {
+    ImmutableMap.Builder<Symbol, WindowNode.Function> newFunctions = ImmutableMap.builder();
+    node.getWindowFunctions()
+        .forEach(
+            (symbol, function) -> {
+              List<Expression> newArguments =
+                  function.getArguments().stream().map(this::map).collect(toImmutableList());
+              WindowNode.Frame newFrame = map(function.getFrame());
+
+              newFunctions.put(
+                  map(symbol),
+                  new WindowNode.Function(
+                      function.getResolvedFunction(),
+                      newArguments,
+                      newFrame,
+                      function.isIgnoreNulls()));
+            });
+
+    return new WindowNode(
+        node.getPlanNodeId(),
+        source,
+        node.getSpecification(),
+        newFunctions.buildOrThrow(),
+        node.getHashSymbol().map(this::map),
+        node.getPrePartitionedInputs().stream().map(this::map).collect(toImmutableSet()),
+        node.getPreSortedOrderPrefix());
+  }
+
+  private WindowNode.Frame map(WindowNode.Frame frame) {
+    return new WindowNode.Frame(
+        frame.getType(),
+        frame.getStartType(),
+        frame.getStartValue().map(this::map),
+        frame.getSortKeyCoercedForFrameStartComparison().map(this::map),
+        frame.getEndType(),
+        frame.getEndValue().map(this::map),
+        frame.getSortKeyCoercedForFrameEndComparison().map(this::map),
+        frame.getOriginalStartValue(),
+        frame.getOriginalEndValue());
   }
 
   public TopKNode map(TopKNode node, List<PlanNode> source) {

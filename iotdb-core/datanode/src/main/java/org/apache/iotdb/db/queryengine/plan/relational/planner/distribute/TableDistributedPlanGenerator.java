@@ -66,6 +66,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TreeAlignedD
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TreeDeviceViewScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TreeNonAlignedDeviceViewScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ValueFillNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.WindowNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.AbstractTableDeviceQueryNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.TableDeviceFetchNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.TableDeviceQueryCountNode;
@@ -1239,6 +1240,23 @@ public class TableDistributedPlanGenerator
       context.mostUsedRegion = mostUsedSchemaRegion;
       return res;
     }
+  }
+
+  @Override
+  public List<PlanNode> visitWindowFunction(WindowNode node, PlanContext context) {
+    List<PlanNode> childrenNodes = node.getChild().accept(this, context);
+    OrderingScheme childOrdering = nodeOrderingMap.get(childrenNodes.get(0).getPlanNodeId());
+    Optional<OrderingScheme> ordering = node.getSpecification().getOrderingScheme();
+    if (childOrdering != null) {
+      nodeOrderingMap.put(node.getPlanNodeId(), childOrdering);
+    }
+
+    // TODO: multi-child
+    if (childrenNodes.size() == 1) {
+      node.setChild(childrenNodes.get(0));
+    }
+
+    return Collections.singletonList(node);
   }
 
   public static class PlanContext {
