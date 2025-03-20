@@ -352,12 +352,12 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
             : configManager
                 .checkUserPrivileges(
                     username,
-                    new PrivilegeUnion(
-                        Collections.singletonList(
-                            new PartialPath(((SetTTLPlan) plan).getPathPattern())),
-                        ((SetTTLPlan) plan).isDataBase()
-                            ? PrivilegeType.MANAGE_DATABASE
-                            : PrivilegeType.WRITE_SCHEMA))
+                    ((SetTTLPlan) plan).isDataBase()
+                        ? new PrivilegeUnion(PrivilegeType.MANAGE_DATABASE)
+                        : new PrivilegeUnion(
+                            Collections.singletonList(
+                                new PartialPath(((SetTTLPlan) plan).getPathPattern())),
+                            PrivilegeType.WRITE_SCHEMA))
                 .getStatus();
       case UpdateTriggerStateInTable:
       case DeleteTriggerInTable:
