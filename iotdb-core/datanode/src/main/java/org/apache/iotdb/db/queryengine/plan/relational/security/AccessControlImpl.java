@@ -27,6 +27,7 @@ import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.QualifiedObjectName;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.RelationalAuthorStatement;
 import org.apache.iotdb.db.queryengine.plan.relational.type.AuthorRType;
+import org.apache.iotdb.db.schemaengine.table.InformationSchemaUtils;
 
 import java.util.Objects;
 
@@ -42,16 +43,19 @@ public class AccessControlImpl implements AccessControl {
 
   @Override
   public void checkCanCreateDatabase(String userName, String databaseName) {
+    InformationSchemaUtils.checkDBNameInWrite(databaseName);
     authChecker.checkDatabasePrivilege(userName, databaseName, TableModelPrivilege.CREATE);
   }
 
   @Override
   public void checkCanDropDatabase(String userName, String databaseName) {
+    InformationSchemaUtils.checkDBNameInWrite(databaseName);
     authChecker.checkDatabasePrivilege(userName, databaseName, TableModelPrivilege.DROP);
   }
 
   @Override
   public void checkCanAlterDatabase(String userName, String databaseName) {
+    InformationSchemaUtils.checkDBNameInWrite(databaseName);
     authChecker.checkDatabasePrivilege(userName, databaseName, TableModelPrivilege.ALTER);
   }
 
@@ -66,21 +70,25 @@ public class AccessControlImpl implements AccessControl {
 
   @Override
   public void checkCanCreateTable(String userName, QualifiedObjectName tableName) {
+    InformationSchemaUtils.checkDBNameInWrite(tableName.getDatabaseName());
     authChecker.checkTablePrivilege(userName, tableName, TableModelPrivilege.CREATE);
   }
 
   @Override
   public void checkCanDropTable(String userName, QualifiedObjectName tableName) {
+    InformationSchemaUtils.checkDBNameInWrite(tableName.getDatabaseName());
     authChecker.checkTablePrivilege(userName, tableName, TableModelPrivilege.DROP);
   }
 
   @Override
   public void checkCanAlterTable(String userName, QualifiedObjectName tableName) {
+    InformationSchemaUtils.checkDBNameInWrite(tableName.getDatabaseName());
     authChecker.checkTablePrivilege(userName, tableName, TableModelPrivilege.ALTER);
   }
 
   @Override
   public void checkCanInsertIntoTable(String userName, QualifiedObjectName tableName) {
+    InformationSchemaUtils.checkDBNameInWrite(tableName.getDatabaseName());
     authChecker.checkTablePrivilege(userName, tableName, TableModelPrivilege.INSERT);
   }
 
@@ -110,6 +118,7 @@ public class AccessControlImpl implements AccessControl {
 
   @Override
   public void checkCanDeleteFromTable(String userName, QualifiedObjectName tableName) {
+    InformationSchemaUtils.checkDBNameInWrite(tableName.getDatabaseName());
     authChecker.checkTablePrivilege(userName, tableName, TableModelPrivilege.DELETE);
   }
 
