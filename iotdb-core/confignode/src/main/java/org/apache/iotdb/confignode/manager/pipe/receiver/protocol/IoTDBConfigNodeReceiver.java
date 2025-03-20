@@ -340,7 +340,14 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
                     PrivilegeType.WRITE_SCHEMA))
             .getStatus();
       case SetTTL:
-        return isTTLIdempotent((SetTTLPlan) plan)
+        return configManager
+                    .getTTLManager()
+                    .getAllTTL()
+                    .get(
+                        String.join(
+                            String.valueOf(IoTDBConstant.PATH_SEPARATOR),
+                            ((SetTTLPlan) plan).getPathPattern()))
+                == ((SetTTLPlan) plan).getTTL()
             ? StatusUtils.OK
             : configManager
                 .checkUserPrivileges(
@@ -529,14 +536,6 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
       default:
         return StatusUtils.OK;
     }
-  }
-
-  private boolean isTTLIdempotent(final SetTTLPlan plan) {
-    return configManager
-            .getTTLManager()
-            .getAllTTL()
-            .get(String.join(String.valueOf(IoTDBConstant.PATH_SEPARATOR), plan.getPathPattern()))
-        == plan.getTTL();
   }
 
   private TSStatus executePlan(final ConfigPhysicalPlan plan) throws ConsensusException {
