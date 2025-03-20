@@ -182,7 +182,10 @@ public class AlterTableColumnDataTypeProcedure
 
   @Override
   public void serialize(final DataOutputStream stream) throws IOException {
-    stream.writeShort(ProcedureType.ALTER_TABLE_COLUMN_DATATYPE_PROCEDURE.getTypeCode());
+    stream.writeShort(
+        isGeneratedByPipe
+            ? ProcedureType.PIPE_ENRICHED_ALTER_COLUMN_DATATYPE_PROCEDURE.getTypeCode()
+            : ProcedureType.ALTER_TABLE_COLUMN_DATATYPE_PROCEDURE.getTypeCode());
     super.serialize(stream);
 
     ReadWriteIOUtils.write(columnName, stream);

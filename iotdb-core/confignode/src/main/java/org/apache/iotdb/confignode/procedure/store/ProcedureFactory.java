@@ -288,6 +288,9 @@ public class ProcedureFactory implements IProcedureFactory {
       case PIPE_ENRICHED_DROP_TABLE_COLUMN_PROCEDURE:
         procedure = new DropTableColumnProcedure(true);
         break;
+      case PIPE_ENRICHED_ALTER_COLUMN_DATATYPE_PROCEDURE:
+        procedure = new AlterTableColumnDataTypeProcedure(true);
+        break;
       case PIPE_ENRICHED_DELETE_DEVICES_PROCEDURE:
         procedure = new DeleteDevicesProcedure(true);
         break;
@@ -408,6 +411,8 @@ public class ProcedureFactory implements IProcedureFactory {
       return ProcedureType.RENAME_TABLE_COLUMN_PROCEDURE;
     } else if (procedure instanceof DropTableColumnProcedure) {
       return ProcedureType.DROP_TABLE_COLUMN_PROCEDURE;
+    } else if (procedure instanceof AlterTableColumnDataTypeProcedure) {
+      return ProcedureType.ALTER_TABLE_COLUMN_DATATYPE_PROCEDURE;
     } else if (procedure instanceof DropTableProcedure) {
       return ProcedureType.DROP_TABLE_PROCEDURE;
     } else if (procedure instanceof DeleteDevicesProcedure) {
@@ -470,8 +475,6 @@ public class ProcedureFactory implements IProcedureFactory {
       return ProcedureType.NEVER_FINISH_PROCEDURE;
     } else if (procedure instanceof AddNeverFinishSubProcedureProcedure) {
       return ProcedureType.ADD_NEVER_FINISH_SUB_PROCEDURE_PROCEDURE;
-    } else if (procedure instanceof AlterTableColumnDataTypeProcedure) {
-      return ProcedureType.ALTER_TABLE_COLUMN_DATATYPE_PROCEDURE;
     }
     throw new UnsupportedOperationException(
         "Procedure type " + procedure.getClass() + " is not supported");

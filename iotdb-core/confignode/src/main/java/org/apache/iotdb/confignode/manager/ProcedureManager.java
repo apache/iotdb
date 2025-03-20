@@ -1973,6 +1973,7 @@ public class ProcedureManager {
         case DROP_TABLE_COLUMN_PROCEDURE:
         case DROP_TABLE_PROCEDURE:
         case DELETE_DEVICES_PROCEDURE:
+        case ALTER_TABLE_COLUMN_DATATYPE_PROCEDURE:
           final AbstractAlterOrDropTableProcedure<?> alterTableProcedure =
               (AbstractAlterOrDropTableProcedure<?>) procedure;
           if (type == thisType && queryId.equals(alterTableProcedure.getQueryId())) {
