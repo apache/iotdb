@@ -52,7 +52,7 @@ import java.util.stream.Collectors;
 
 import static org.apache.iotdb.db.utils.MemUtils.getBinarySize;
 
-public class WritableMemChunk extends AbstractWritableMemChunk implements IWritableMemChunk {
+public class WritableMemChunk extends AbstractWritableMemChunk {
 
   private IMeasurementSchema schema;
   private TVList list;
@@ -245,72 +245,10 @@ public class WritableMemChunk extends AbstractWritableMemChunk implements IWrita
   }
 
   @Override
-  public synchronized TVList getSortedTvListForQuery() {
-    sortTVList();
-    // increase reference count
-    list.increaseReferenceCount();
-    return list;
-  }
-
-  @Override
-  public synchronized TVList getSortedTvListForQuery(
-      List<IMeasurementSchema> measurementSchema, boolean ignoreAllNullRows) {
-    throw new UnSupportedDataTypeException(UNSUPPORTED_TYPE + list.getDataType());
-  }
-
-  private void sortTVList() {
-    // check reference count
-    if ((list.getReferenceCount() > 0 && !list.isSorted())) {
-      list = list.clone();
-    }
-
-    if (!list.isSorted()) {
-      list.sort();
-    }
-  }
-
-  @Override
   public synchronized void sortTvListForFlush() {
     if (!list.isSorted()) {
       list.sort();
     }
-  }
-
-  private void filterDeletedTimestamp(
-      TVList tvlist, List<TimeRange> deletionList, List<Long> timestampList) {
-    long lastTime = Long.MIN_VALUE;
-    int[] deletionCursor = {0};
-    int rowCount = tvlist.rowCount();
-    for (int i = 0; i < rowCount; i++) {
-      if (tvlist.getBitMap() != null && tvlist.isNullValue(tvlist.getValueIndex(i))) {
-        continue;
-      }
-      long curTime = tvlist.getTime(i);
-      if (deletionList != null
-          && ModificationUtils.isPointDeleted(curTime, deletionList, deletionCursor)) {
-        continue;
-      }
-
-      if (i == rowCount - 1 || curTime != lastTime) {
-        timestampList.add(curTime);
-      }
-      lastTime = curTime;
-    }
-  }
-
-  public long[] getFilteredTimestamp(List<TimeRange> deletionList) {
-    List<Long> timestampList = new ArrayList<>();
-    filterDeletedTimestamp(list, deletionList, timestampList);
-    for (TVList tvList : sortedList) {
-      filterDeletedTimestamp(tvList, deletionList, timestampList);
-    }
-
-    // remove duplicated time
-    List<Long> distinctTimestamps = timestampList.stream().distinct().collect(Collectors.toList());
-    // sort timestamps
-    long[] filteredTimestamps = distinctTimestamps.stream().mapToLong(Long::longValue).toArray();
-    Arrays.sort(filteredTimestamps);
-    return filteredTimestamps;
   }
 
   @Override
@@ -362,22 +300,6 @@ public class WritableMemChunk extends AbstractWritableMemChunk implements IWrita
       minTime = Math.min(minTime, tvList.getMinTime());
     }
     return minTime;
-  }
-
-  @Override
-  public long getFirstPoint() {
-    if (count() == 0) {
-      return Long.MAX_VALUE;
-    }
-    return getMinTime();
-  }
-
-  @Override
-  public long getLastPoint() {
-    if (count() == 0) {
-      return Long.MIN_VALUE;
-    }
-    return getMaxTime();
   }
 
   @Override
@@ -613,6 +535,14 @@ public class WritableMemChunk extends AbstractWritableMemChunk implements IWrita
   }
 
   @Override
+  public void release() {
+    maybeReleaseTvList(list);
+    for (TVList tvList : sortedList) {
+      maybeReleaseTvList(tvList);
+    }
+  }
+
+  @Override
   public int serializedSize() {
     int serializedSize = schema.serializedSize() + list.serializedSize();
     serializedSize += Integer.BYTES;
@@ -658,5 +588,42 @@ public class WritableMemChunk extends AbstractWritableMemChunk implements IWrita
   @Override
   public List<TVList> getSortedList() {
     return sortedList;
+  }
+
+  private void filterDeletedTimestamp(
+      TVList tvlist, List<TimeRange> deletionList, List<Long> timestampList) {
+    long lastTime = Long.MIN_VALUE;
+    int[] deletionCursor = {0};
+    int rowCount = tvlist.rowCount();
+    for (int i = 0; i < rowCount; i++) {
+      if (tvlist.getBitMap() != null && tvlist.isNullValue(tvlist.getValueIndex(i))) {
+        continue;
+      }
+      long curTime = tvlist.getTime(i);
+      if (deletionList != null
+          && ModificationUtils.isPointDeleted(curTime, deletionList, deletionCursor)) {
+        continue;
+      }
+
+      if (i == rowCount - 1 || curTime != lastTime) {
+        timestampList.add(curTime);
+      }
+      lastTime = curTime;
+    }
+  }
+
+  public long[] getFilteredTimestamp(List<TimeRange> deletionList) {
+    List<Long> timestampList = new ArrayList<>();
+    filterDeletedTimestamp(list, deletionList, timestampList);
+    for (TVList tvList : sortedList) {
+      filterDeletedTimestamp(tvList, deletionList, timestampList);
+    }
+
+    // remove duplicated time
+    List<Long> distinctTimestamps = timestampList.stream().distinct().collect(Collectors.toList());
+    // sort timestamps
+    long[] filteredTimestamps = distinctTimestamps.stream().mapToLong(Long::longValue).toArray();
+    Arrays.sort(filteredTimestamps);
+    return filteredTimestamps;
   }
 }

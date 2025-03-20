@@ -82,42 +82,12 @@ public interface IWritableMemChunk extends WALEntryValue {
       int end,
       TSStatus[] results);
 
+  // exclude deleted value
   long count();
 
   long rowCount();
 
   IMeasurementSchema getSchema();
-
-  /**
-   * served for read requests.
-   *
-   * <p>if tv list has been sorted, just return reference of it
-   *
-   * <p>if tv list hasn't been sorted and has no reference, sort and return reference of it
-   *
-   * <p>if tv list hasn't been sorted and has reference we should copy and sort it, then return ths
-   * list
-   *
-   * <p>the mechanism is just like copy on write
-   *
-   * <p>This interface should be synchronized for concurrent with sortTvListForFlush
-   *
-   * @return sorted tv list
-   */
-  TVList getSortedTvListForQuery();
-
-  /**
-   * served for vector read requests.
-   *
-   * <p>the mechanism is just like copy on write
-   *
-   * <p>This interface should be synchronized for concurrent with sortTvListForFlush
-   *
-   * @param ignoreAllNullRows whether to ignore all null rows, true for tree model, false for table
-   *     model
-   * @return sorted tv list
-   */
-  TVList getSortedTvListForQuery(List<IMeasurementSchema> schemaList, boolean ignoreAllNullRows);
 
   /**
    * served for flush requests. The logic is just same as getSortedTVListForQuery, but without add
