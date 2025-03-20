@@ -299,6 +299,22 @@ public class WritableMemChunk extends AbstractWritableMemChunk {
   }
 
   @Override
+  public long getFirstPoint() {
+    if (count() == 0) {
+      return Long.MAX_VALUE;
+    }
+    return getMinTime();
+  }
+
+  @Override
+  public long getLastPoint() {
+    if (count() == 0) {
+      return Long.MIN_VALUE;
+    }
+    return getMaxTime();
+  }
+
+  @Override
   public boolean isEmpty() {
     return count() == 0;
   }

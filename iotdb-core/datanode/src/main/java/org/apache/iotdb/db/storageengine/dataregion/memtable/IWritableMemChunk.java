@@ -79,7 +79,6 @@ public interface IWritableMemChunk extends WALEntryValue {
       int start,
       int end);
 
-  // exclude deleted value
   long count();
 
   long rowCount();

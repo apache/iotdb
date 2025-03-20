@@ -235,14 +235,10 @@ public class AlignedWritableMemChunk extends AbstractWritableMemChunk {
 
   @Override
   public long count() {
-    long count = list.count();
-    for (AlignedTVList alignedTvList : sortedList) {
-      count += alignedTvList.count();
-    }
     if (measurementIndexMap.isEmpty()) {
-      return count;
+      return rowCount();
     }
-    return count * measurementIndexMap.size();
+    return rowCount() * measurementIndexMap.size();
   }
 
   @Override
@@ -632,6 +628,22 @@ public class AlignedWritableMemChunk extends AbstractWritableMemChunk {
     for (AlignedTVList alignedTvList : sortedList) {
       maybeReleaseTvList(alignedTvList);
     }
+  }
+
+  @Override
+  public long getFirstPoint() {
+    if (rowCount() == 0) {
+      return Long.MAX_VALUE;
+    }
+    return getMinTime();
+  }
+
+  @Override
+  public long getLastPoint() {
+    if (rowCount() == 0) {
+      return Long.MIN_VALUE;
+    }
+    return getMaxTime();
   }
 
   @Override
