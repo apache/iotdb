@@ -242,14 +242,10 @@ public class AlignedWritableMemChunk extends AbstractWritableMemChunk {
 
   @Override
   public long count() {
-    long count = list.count();
-    for (AlignedTVList alignedTvList : sortedList) {
-      count += alignedTvList.count();
-    }
     if (!ignoreAllNullRows && measurementIndexMap.isEmpty()) {
-      return count;
+      return rowCount();
     }
-    return count * measurementIndexMap.size();
+    return rowCount() * measurementIndexMap.size();
   }
 
   @Override
@@ -653,6 +649,22 @@ public class AlignedWritableMemChunk extends AbstractWritableMemChunk {
   }
 
   @Override
+  public long getFirstPoint() {
+    if (rowCount() == 0) {
+      return Long.MAX_VALUE;
+    }
+    return getMinTime();
+  }
+
+  @Override
+  public long getLastPoint() {
+    if (rowCount() == 0) {
+      return Long.MIN_VALUE;
+    }
+    return getMaxTime();
+  }
+
+  @Override
   public boolean isEmpty() {
     if (rowCount() == 0) {
       return true;
@@ -661,14 +673,19 @@ public class AlignedWritableMemChunk extends AbstractWritableMemChunk {
       if (measurementIndexMap.isEmpty()) {
         return true;
       }
-      if (list.getAllValueColDeletedMap() == null
-          || !list.getAllValueColDeletedMap().isAllMarked()) {
-        return false;
+
+      if (list.rowCount() > 0) {
+        BitMap allValueColDeletedMap = list.getAllValueColDeletedMap();
+        if (allValueColDeletedMap == null || !allValueColDeletedMap.isAllMarked()) {
+          return false;
+        }
       }
       for (AlignedTVList alignedTvList : sortedList) {
-        if (alignedTvList.getAllValueColDeletedMap() == null
-            || !alignedTvList.getAllValueColDeletedMap().isAllMarked()) {
-          return false;
+        if (alignedTvList.rowCount() > 0) {
+          BitMap allValueColDeletedMap = alignedTvList.getAllValueColDeletedMap();
+          if (allValueColDeletedMap == null || !allValueColDeletedMap.isAllMarked()) {
+            return false;
+          }
         }
       }
       return true;
