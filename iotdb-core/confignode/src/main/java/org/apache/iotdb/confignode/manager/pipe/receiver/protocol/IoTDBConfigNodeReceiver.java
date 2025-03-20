@@ -23,6 +23,7 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.commons.auth.entity.PrivilegeUnion;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
+import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.pipe.connector.payload.airgap.AirGapPseudoTPipeTransferRequest;
@@ -339,14 +340,16 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
                     PrivilegeType.WRITE_SCHEMA))
             .getStatus();
       case SetTTL:
-        return configManager
-            .checkUserPrivileges(
-                username,
-                new PrivilegeUnion(
-                    Collections.singletonList(
-                        new PartialPath(((SetTTLPlan) plan).getPathPattern())),
-                    PrivilegeType.WRITE_SCHEMA))
-            .getStatus();
+        return isTTLIdempotent((SetTTLPlan) plan)
+            ? StatusUtils.OK
+            : configManager
+                .checkUserPrivileges(
+                    username,
+                    new PrivilegeUnion(
+                        Collections.singletonList(
+                            new PartialPath(((SetTTLPlan) plan).getPathPattern())),
+                        PrivilegeType.WRITE_SCHEMA))
+                .getStatus();
       case UpdateTriggerStateInTable:
       case DeleteTriggerInTable:
         return configManager
@@ -526,6 +529,14 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
       default:
         return StatusUtils.OK;
     }
+  }
+
+  private boolean isTTLIdempotent(final SetTTLPlan plan) {
+    return configManager
+            .getTTLManager()
+            .getAllTTL()
+            .get(String.join(String.valueOf(IoTDBConstant.PATH_SEPARATOR), plan.getPathPattern()))
+        == plan.getTTL();
   }
 
   private TSStatus executePlan(final ConfigPhysicalPlan plan) throws ConsensusException {
