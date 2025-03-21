@@ -95,6 +95,10 @@ public class TablePattern {
     return tablePattern == null ? EXTRACTOR_TABLE_NAME_DEFAULT_VALUE : tablePattern.pattern();
   }
 
+  public boolean hasTablePattern() {
+    return tablePattern != null;
+  }
+
   /**
    * Interpret from source parameters and get a pipe pattern.
    *

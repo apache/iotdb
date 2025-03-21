@@ -93,9 +93,7 @@ public abstract class PipeInsertionEvent extends EnrichedEvent {
     if (Objects.nonNull(isTableModelEvent) || Objects.nonNull(sourceDatabaseNameFromDataRegion)) {
       this.isPatternParsed =
           !isTableModelEvent() && (treePattern == null || treePattern.isRoot())
-              || isTableModelEvent()
-                  && (tablePattern == null
-                      || !tablePattern.hasUserSpecifiedDatabasePatternOrTablePattern());
+              || isTableModelEvent() && (tablePattern == null || !tablePattern.hasTablePattern());
     }
   }
 
