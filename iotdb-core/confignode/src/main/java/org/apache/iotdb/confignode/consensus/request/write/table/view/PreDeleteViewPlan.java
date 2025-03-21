@@ -19,15 +19,6 @@
 
 package org.apache.iotdb.confignode.consensus.request.write.table.view;
 
-import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
-import org.apache.iotdb.confignode.consensus.request.write.table.CommitDeleteTablePlan;
+import org.apache.iotdb.confignode.consensus.request.write.table.PreDeleteTablePlan;
 
-public class CommitDeleteViewPlan extends CommitDeleteTablePlan {
-  public CommitDeleteViewPlan() {
-    super(ConfigPhysicalPlanType.CommitDeleteViewColumn);
-  }
-
-  public CommitDeleteViewPlan(final String database, final String tableName) {
-    super(ConfigPhysicalPlanType.CommitDeleteViewColumn, database, tableName);
-  }
-}
+public class PreDeleteViewPlan extends PreDeleteTablePlan {}

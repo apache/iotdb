@@ -191,7 +191,7 @@ public enum ConfigPhysicalPlanType {
   CommitSetSchemaTemplate((short) 813),
   ExtendSchemaTemplate((short) 814),
 
-  /* Table */
+  /* Table or View */
   PreCreateTable((short) 850),
   RollbackCreateTable((short) 851),
   CommitCreateTable((short) 852),

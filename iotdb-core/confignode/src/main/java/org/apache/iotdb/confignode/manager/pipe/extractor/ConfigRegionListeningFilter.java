@@ -122,7 +122,9 @@ public class ConfigRegionListeningFilter {
           Collections.unmodifiableList(
               Arrays.asList(
                   ConfigPhysicalPlanType.CommitDeleteTable,
+                  ConfigPhysicalPlanType.CommitDeleteView,
                   ConfigPhysicalPlanType.CommitDeleteColumn,
+                  ConfigPhysicalPlanType.CommitDeleteViewColumn,
                   ConfigPhysicalPlanType.PipeDeleteDevices)));
 
       OPTION_PLAN_MAP.put(

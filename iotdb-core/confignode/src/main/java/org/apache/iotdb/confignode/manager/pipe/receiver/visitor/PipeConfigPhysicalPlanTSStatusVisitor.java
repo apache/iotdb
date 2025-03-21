@@ -508,22 +508,12 @@ public class PipeConfigPhysicalPlanTSStatusVisitor
   @Override
   public TSStatus visitPipeCreateTable(
       final PipeCreateTablePlan pipeCreateTablePlan, final TSStatus context) {
-    if (context.getCode() == TSStatusCode.DATABASE_NOT_EXIST.getStatusCode()
-        || context.getCode() == TSStatusCode.TABLE_ALREADY_EXISTS.getStatusCode()
-        || context.getCode() == TSStatusCode.COLUMN_ALREADY_EXISTS.getStatusCode()) {
-      return new TSStatus(TSStatusCode.PIPE_RECEIVER_IDEMPOTENT_CONFLICT_EXCEPTION.getStatusCode())
-          .setMessage(context.getMessage());
-    }
-    return super.visitPipeCreateTable(pipeCreateTablePlan, context);
+    return visitCommonTablePlan(pipeCreateTablePlan, context);
   }
 
   @Override
   public TSStatus visitAddTableColumn(
       final AddTableColumnPlan addTableColumnPlan, final TSStatus context) {
-    if (context.getCode() == TSStatusCode.COLUMN_ALREADY_EXISTS.getStatusCode()) {
-      return new TSStatus(TSStatusCode.PIPE_RECEIVER_IDEMPOTENT_CONFLICT_EXCEPTION.getStatusCode())
-          .setMessage(context.getMessage());
-    }
     return visitCommonTablePlan(addTableColumnPlan, context);
   }
 
