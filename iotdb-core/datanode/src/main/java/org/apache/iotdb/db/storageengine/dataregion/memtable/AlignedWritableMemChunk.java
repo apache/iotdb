@@ -191,7 +191,7 @@ public class AlignedWritableMemChunk extends AbstractWritableMemChunk {
       list.sort();
     }
     sortedList.add(list);
-    this.list = AlignedTVList.newAlignedList(dataTypes);
+    this.list = AlignedTVList.newAlignedList(new ArrayList<>(dataTypes));
   }
 
   @Override
