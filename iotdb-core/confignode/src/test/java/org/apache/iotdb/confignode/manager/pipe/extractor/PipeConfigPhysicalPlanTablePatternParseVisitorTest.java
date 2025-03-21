@@ -28,7 +28,6 @@ import org.apache.iotdb.confignode.consensus.request.write.auth.AuthorRelational
 import org.apache.iotdb.confignode.consensus.request.write.database.DatabaseSchemaPlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.DeleteDatabasePlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeCreateTableOrViewPlan;
-import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeCreateViewPlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeDeleteDevicesPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.AddTableColumnPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.CommitDeleteColumnPlan;
@@ -79,14 +78,6 @@ public class PipeConfigPhysicalPlanTablePatternParseVisitorTest {
         new PipeCreateTableOrViewPlan("db1", new TsTable("ab")),
         new PipeCreateTableOrViewPlan("db1", new TsTable("ac")),
         new PipeCreateTableOrViewPlan("da", new TsTable("a2b")));
-  }
-
-  @Test
-  public void testCreateView() {
-    testInput(
-        new PipeCreateViewPlan("db1", new TsTable("ab")),
-        new PipeCreateViewPlan("db1", new TsTable("ac")),
-        new PipeCreateViewPlan("da", new TsTable("a2b")));
   }
 
   @Test

@@ -25,7 +25,6 @@ import org.apache.iotdb.confignode.consensus.request.write.database.DatabaseSche
 import org.apache.iotdb.confignode.consensus.request.write.database.DeleteDatabasePlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.SetTTLPlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeCreateTableOrViewPlan;
-import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeCreateViewPlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeDeactivateTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeDeleteDevicesPlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeDeleteLogicalViewPlan;
@@ -153,8 +152,6 @@ public abstract class ConfigPhysicalPlanVisitor<R, C> {
         return visitTTL((SetTTLPlan) plan, context);
       case PipeCreateTableOrView:
         return visitPipeCreateTable((PipeCreateTableOrViewPlan) plan, context);
-      case PipeCreateView:
-        return visitPipeCreateView((PipeCreateViewPlan) plan, context);
       case AddTableColumn:
         return visitAddTableColumn((AddTableColumnPlan) plan, context);
       case AddViewColumn:
@@ -408,10 +405,6 @@ public abstract class ConfigPhysicalPlanVisitor<R, C> {
   public R visitPipeCreateTable(
       final PipeCreateTableOrViewPlan pipeCreateTableOrViewPlan, final C context) {
     return visitPlan(pipeCreateTableOrViewPlan, context);
-  }
-
-  public R visitPipeCreateView(final PipeCreateViewPlan pipeCreateViewPlan, final C context) {
-    return visitPlan(pipeCreateViewPlan, context);
   }
 
   public R visitAddTableColumn(final AddTableColumnPlan addTableColumnPlan, final C context) {
