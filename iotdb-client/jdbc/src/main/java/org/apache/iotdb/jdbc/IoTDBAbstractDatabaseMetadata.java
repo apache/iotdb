@@ -849,10 +849,7 @@ public abstract class IoTDBAbstractDatabaseMetadata implements DatabaseMetaData 
     return true;
   }
 
-  @Override
-  public String getSchemaTerm() throws SQLException {
-    return "database";
-  }
+  public abstract String getSchemaTerm() throws SQLException;
 
   @Override
   public String getProcedureTerm() throws SQLException {
