@@ -252,10 +252,10 @@ public class IoTDBDeleteAlignedTimeseriesIT extends AbstractSchemaIT {
     String[] retArray = new String[] {"1,4.0,", "2,8.0,"};
     int cnt = 0;
     try (Connection connection = EnvFactory.getEnv().getConnection();
-         Statement statement = connection.createStatement()) {
+        Statement statement = connection.createStatement()) {
       statement.execute(
-              "create aligned timeseries root.turbine1.d1(s1 FLOAT encoding=PLAIN compression=SNAPPY, "
-                      + "s2 INT64 encoding=PLAIN compression=SNAPPY, s4 DOUBLE encoding=PLAIN compression=SNAPPY)");
+          "create aligned timeseries root.turbine1.d1(s1 FLOAT encoding=PLAIN compression=SNAPPY, "
+              + "s2 INT64 encoding=PLAIN compression=SNAPPY, s4 DOUBLE encoding=PLAIN compression=SNAPPY)");
       statement.execute("INSERT INTO root.turbine1.d1(timestamp,s1,s2,s4) ALIGNED VALUES(1,1,2,4)");
 
       try (ResultSet resultSet = statement.executeQuery("SELECT s4 FROM root.turbine1.d1")) {
@@ -272,7 +272,7 @@ public class IoTDBDeleteAlignedTimeseriesIT extends AbstractSchemaIT {
       // delete series in the middle
       statement.execute("DELETE timeseries root.turbine1.d1.s4");
       statement.execute(
-              "INSERT INTO root.turbine1.d1(timestamp,s3,s4) ALIGNED VALUES(2,false,8.0)");
+          "INSERT INTO root.turbine1.d1(timestamp,s3,s4) ALIGNED VALUES(2,false,8.0)");
       statement.execute("FLUSH");
 
       try (ResultSet resultSet = statement.executeQuery("SELECT s4 FROM root.turbine1.d1")) {
