@@ -214,10 +214,6 @@ public class PrimitiveMemTableTest {
 
   @Test
   public void totalSeriesNumberTest() throws IOException, QueryProcessException, MetadataException {
-    IoTDBConfig conf = IoTDBDescriptor.getInstance().getConfig();
-    int dataNodeId = 0;
-    conf.setDataNodeId(dataNodeId);
-
     IMemTable memTable = new PrimitiveMemTable(database, dataRegionId);
     int count = 10;
     String deviceId = "d1";
