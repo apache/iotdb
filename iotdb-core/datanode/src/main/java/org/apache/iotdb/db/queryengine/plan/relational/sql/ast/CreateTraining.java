@@ -21,19 +21,26 @@ package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
 public class CreateTraining extends Statement {
 
   private final String modelId;
   private String curDatabase;
   private final String modelType;
-  private final boolean isTableModel;
 
   private Map<String, String> parameters;
   private String existingModelId = null;
 
-  private List<Table> targetTables;
+  // IoTDB has two types of models: table model and tree model
+  // So we need to distinguish the schema of the models
+  // Table model: [targetDbs and targetTables]
+  // Tree model: [targetPaths]
+  private final boolean isTableModel;
+  private List<String> targetTables;
   private List<String> targetDbs;
+  private List<String> targetPaths;
+
   private List<List<Long>> targetTimeRanges;
   private boolean useAllData = false;
 
@@ -69,7 +76,7 @@ public class CreateTraining extends Statement {
     this.targetDbs = targetDbs;
   }
 
-  public void setTargetTables(List<Table> targetTables) {
+  public void setTargetTables(List<String> targetTables) {
     this.targetTables = targetTables;
   }
 
@@ -81,7 +88,7 @@ public class CreateTraining extends Statement {
     return targetDbs;
   }
 
-  public List<Table> getTargetTables() {
+  public List<String> getTargetTables() {
     return targetTables;
   }
 
@@ -117,6 +124,14 @@ public class CreateTraining extends Statement {
     return targetTimeRanges;
   }
 
+  public void setTargetPaths(List<String> targetPaths) {
+    this.targetPaths = targetPaths;
+  }
+
+  public List<String> getTargetPaths() {
+    return targetPaths;
+  }
+
   @Override
   public List<? extends Node> getChildren() {
     return null;
@@ -124,16 +139,57 @@ public class CreateTraining extends Statement {
 
   @Override
   public int hashCode() {
-    return 0;
+    return Objects.hash(
+        modelId,
+        modelType,
+        existingModelId,
+        isTableModel,
+        parameters,
+        targetTimeRanges,
+        useAllData);
   }
 
   @Override
   public boolean equals(Object obj) {
-    return false;
+    if (!(obj instanceof CreateTraining)) {
+      return false;
+    }
+    CreateTraining createTraining = (CreateTraining) obj;
+    return modelId.equals(createTraining.modelId)
+        && modelType.equals(createTraining.modelType)
+        && isTableModel == createTraining.isTableModel
+        && Objects.equals(existingModelId, createTraining.existingModelId)
+        && Objects.equals(parameters, createTraining.parameters)
+        && Objects.equals(targetTimeRanges, createTraining.targetTimeRanges)
+        && useAllData == createTraining.useAllData;
   }
 
   @Override
   public String toString() {
-    return null;
+    return "CreateTraining{"
+        + "modelId='"
+        + modelId
+        + '\''
+        + ", modelType='"
+        + modelType
+        + '\''
+        + ", parameters="
+        + parameters
+        + ", existingModelId='"
+        + existingModelId
+        + '\''
+        + ", isTableModel="
+        + isTableModel
+        + ", targetTables="
+        + targetTables
+        + ", targetDbs="
+        + targetDbs
+        + ", targetPaths="
+        + targetPaths
+        + ", targetTimeRanges="
+        + targetTimeRanges
+        + ", useAllData="
+        + useAllData
+        + '}';
   }
 }

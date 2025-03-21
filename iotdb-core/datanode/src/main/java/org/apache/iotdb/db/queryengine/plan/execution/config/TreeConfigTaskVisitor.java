@@ -777,11 +777,11 @@ public class TreeConfigTaskVisitor extends StatementVisitor<IConfigTask, MPPQuer
     CreateTraining createTraining =
         new CreateTraining(
             createTrainingStatement.getModelId(), createTrainingStatement.getModelType(), false);
-    createTraining.setTargetDbs(targetPathPatterns);
+    createTraining.setTargetPaths(targetPathPatterns);
+    createTraining.setTargetTimeRanges(createTrainingStatement.getTargetTimeRanges());
     createTraining.setParameters(createTrainingStatement.getParameters());
     createTraining.setExistingModelId(createTrainingStatement.getExistingModelId());
     createTraining.setUseAllData(false);
-    createTraining.setTargetTimeRanges(createTrainingStatement.getTargetTimeRanges());
     return new CreateTrainingTask(createTraining);
   }
 }

@@ -2920,7 +2920,7 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
     if (ctx.trainingData().ALL() != null) {
       createTraining.setUseAllData(true);
     } else {
-      List<Table> targetTables = new ArrayList<>();
+      List<String> targetTables = new ArrayList<>();
       List<String> targetDbs = new ArrayList<>();
       for (RelationalSqlParser.DataElementContext dataElementContext :
           ctx.trainingData().dataElement()) {
@@ -2929,7 +2929,7 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
               ((Identifier) visit(dataElementContext.databaseElement().database)).getValue());
         } else {
           targetTables.add(
-              new Table(getQualifiedName(dataElementContext.tableElement().qualifiedName())));
+              getQualifiedName(dataElementContext.tableElement().qualifiedName()).toString());
         }
       }
 

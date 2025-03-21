@@ -1044,17 +1044,26 @@ struct TUpdateModelInfoReq {
     6: optional i32 outputLength
 }
 
+struct TDataSchemaForTable{
+    1: required list<string> databaseList
+    2: required list<string> tableList
+    3: required string curDatabase
+}
+
+struct TDataSchemaForTree{
+    1: required list<string> path
+}
+
 struct TCreateTrainingReq {
     1: required string modelId
     2: required string modelType
     3: required bool isTableModel
-    4: optional string curDatabase
-    5: optional list<string> targetTables
-    6: optional list<string> targetDbs
-    7: optional bool useAllData
-    8: optional map<string, string> parameters
-    9: optional string existingModelId
-    10: optional list<list<i64>> timeRanges
+    4: optional TDataSchemaForTable dataSchemaForTable
+    5: optional TDataSchemaForTree dataSchemaForTree
+    6: optional bool useAllData
+    7: optional map<string, string> parameters
+    8: optional string existingModelId
+    9: optional list<list<i64>> timeRanges
 }
 
 // ====================================================

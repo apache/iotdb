@@ -86,6 +86,8 @@ import org.apache.iotdb.confignode.rpc.thrift.TCreateTrainingReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateTriggerReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRemoveReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRemoveResp;
+import org.apache.iotdb.confignode.rpc.thrift.TDataSchemaForTable;
+import org.apache.iotdb.confignode.rpc.thrift.TDataSchemaForTree;
 import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
 import org.apache.iotdb.confignode.rpc.thrift.TDeactivateSchemaTemplateReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDeleteDatabasesReq;
@@ -3168,18 +3170,22 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
               createTraining.getModelId(),
               createTraining.getModelType(),
               createTraining.isTableModel());
-      req.setCurDatabase(createTraining.getCurDatabase());
+
+      if (createTraining.isTableModel()) {
+        TDataSchemaForTable dataSchemaForTable = new TDataSchemaForTable();
+        dataSchemaForTable.setCurDatabase(createTraining.getCurDatabase());
+        dataSchemaForTable.setTableList(createTraining.getTargetTables());
+        dataSchemaForTable.setDatabaseList(createTraining.getTargetDbs());
+        req.setDataSchemaForTable(dataSchemaForTable);
+      } else {
+        TDataSchemaForTree dataSchemaForTree = new TDataSchemaForTree();
+        dataSchemaForTree.setPath(createTraining.getTargetPaths());
+        req.setDataSchemaForTree(dataSchemaForTree);
+      }
       req.setParameters(createTraining.getParameters());
-      req.setTargetDbs(createTraining.getTargetDbs());
       req.setUseAllData(createTraining.isUseAllData());
       req.setTimeRanges(createTraining.getTargetTimeRanges());
       req.setExistingModelId(createTraining.getExistingModelId());
-      if (createTraining.getTargetTables() != null) {
-        req.setTargetTables(
-            createTraining.getTargetTables().stream()
-                .map(table -> table.getName().toString())
-                .collect(Collectors.toList()));
-      }
       final TSStatus executionStatus = client.createTraining(req);
       if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != executionStatus.getCode()) {
         future.setException(new IoTDBException(executionStatus.message, executionStatus.code));

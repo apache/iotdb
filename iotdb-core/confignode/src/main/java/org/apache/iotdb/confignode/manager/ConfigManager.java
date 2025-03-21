@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.confignode.manager;
 
-import org.apache.iotdb.ainode.rpc.thrift.ITableSchema;
+import org.apache.iotdb.ainode.rpc.thrift.IDataSchema;
 import org.apache.iotdb.ainode.rpc.thrift.TTrainingReq;
 import org.apache.iotdb.common.rpc.thrift.TAINodeConfiguration;
 import org.apache.iotdb.common.rpc.thrift.TAINodeLocation;
@@ -164,6 +164,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRegisterReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRestartReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRestartResp;
 import org.apache.iotdb.confignode.rpc.thrift.TDataPartitionTableResp;
+import org.apache.iotdb.confignode.rpc.thrift.TDataSchemaForTable;
 import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
 import org.apache.iotdb.confignode.rpc.thrift.TDeactivateSchemaTemplateReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDeleteDatabasesReq;
@@ -345,6 +346,8 @@ public class ConfigManager implements IManager {
   private final RetryFailedTasksThread retryFailedTasksThread;
 
   private static final String DATABASE = "\tDatabase=";
+
+  private static final String DOT = ".";
 
   public ConfigManager() throws IOException {
     // Build the persistence module
@@ -2587,42 +2590,43 @@ public class ConfigManager implements IManager {
         : status;
   }
 
-  private List<ITableSchema> fetchSchemaForTreeModel(TCreateTrainingReq req) {
-    List<ITableSchema> tableSchemaList = new ArrayList<>();
+  private List<IDataSchema> fetchSchemaForTreeModel(TCreateTrainingReq req) {
+    List<IDataSchema> dataSchemaList = new ArrayList<>();
     if (req.useAllData) {
-      tableSchemaList.add(new ITableSchema("root.**", ""));
-      return tableSchemaList;
+      dataSchemaList.add(new IDataSchema("root.**"));
+      return dataSchemaList;
     }
-    for (int i = 0; i < req.getTargetDbsSize(); i++) {
-      ITableSchema tableSchema = new ITableSchema(req.getTargetDbs().get(i), "");
-      tableSchema.setTimeRange(req.getTimeRanges().get(i));
-      tableSchemaList.add(tableSchema);
+    for (int i = 0; i < req.getDataSchemaForTree().getPathSize(); i++) {
+      IDataSchema dataSchema = new IDataSchema(req.getDataSchemaForTree().getPath().get(i));
+      dataSchema.setTimeRange(req.getTimeRanges().get(i));
+      dataSchemaList.add(dataSchema);
     }
-    return tableSchemaList;
+    return dataSchemaList;
   }
 
-  private List<ITableSchema> fetchSchemaForTableModel(TCreateTrainingReq req) {
-    List<ITableSchema> tableSchemaList = new ArrayList<>();
-    if (req.useAllData || !req.targetDbs.isEmpty()) {
+  private List<IDataSchema> fetchSchemaForTableModel(TCreateTrainingReq req) {
+    List<IDataSchema> dataSchemaList = new ArrayList<>();
+    TDataSchemaForTable dataSchemaForTable = req.getDataSchemaForTable();
+    if (req.useAllData || !dataSchemaForTable.getDatabaseList().isEmpty()) {
       List<String> databaseNameList = new ArrayList<>();
       if (req.useAllData) {
         TShowDatabaseResp resp = showDatabase(new TGetDatabaseReq());
         databaseNameList.addAll(resp.getDatabaseInfoMap().keySet());
       } else {
-        databaseNameList.addAll(req.targetDbs);
+        databaseNameList.addAll(dataSchemaForTable.getDatabaseList());
       }
 
       for (String database : databaseNameList) {
         TShowTableResp resp = showTables(database, false);
         for (TTableInfo tableInfo : resp.getTableInfoList()) {
-          tableSchemaList.add(new ITableSchema(database, tableInfo.getTableName()));
+          dataSchemaList.add(new IDataSchema(database + DOT + tableInfo.tableName));
         }
       }
     }
-    for (String tableName : req.targetTables) {
-      tableSchemaList.add(new ITableSchema(req.curDatabase, tableName));
+    for (String tableName : dataSchemaForTable.getTableList()) {
+      dataSchemaList.add(new IDataSchema(dataSchemaForTable.curDatabase + DOT + tableName));
     }
-    return tableSchemaList;
+    return dataSchemaList;
   }
 
   public TSStatus createTraining(TCreateTrainingReq req) {
@@ -2648,16 +2652,16 @@ public class ConfigManager implements IManager {
         throw new MetadataException("Can't init model " + req.getModelId());
       }
 
-      List<ITableSchema> schemaList;
+      List<IDataSchema> dataSchema;
       if (req.isTableModel) {
-        schemaList = fetchSchemaForTableModel(req);
+        dataSchema = fetchSchemaForTableModel(req);
         trainingReq.setDbType("iotdb.table");
       } else {
-        schemaList = fetchSchemaForTreeModel(req);
+        dataSchema = fetchSchemaForTreeModel(req);
         trainingReq.setDbType("iotdb.tree");
       }
       updateModelInfo(new TUpdateModelInfoReq(req.modelId, ModelStatus.TRAINING.ordinal()));
-      trainingReq.setTargetTables(schemaList);
+      trainingReq.setTargetDataSchema(dataSchema);
 
       try (AINodeClient client =
           AINodeClientManager.getInstance().borrowClient(AINodeInfo.endPoint)) {

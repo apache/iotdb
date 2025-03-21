@@ -75,17 +75,16 @@ struct TInferenceResp {
   2: required list<binary> inferenceResult
 }
 
-struct ITableSchema {
-  1: required string database
-  2: required string tableName
-  3: optional list<i64> timeRange
+struct IDataSchema {
+  1: required string schemaName
+  2: optional list<i64> timeRange
 }
 
 struct TTrainingReq {
   1: required string dbType
   2: required string modelId
   3: required string modelType
-  4: optional list<ITableSchema> targetTables;
+  4: optional list<IDataSchema> targetDataSchema;
   5: optional map<string, string> parameters;
   6: optional string existingModelId
 }
