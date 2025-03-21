@@ -343,7 +343,7 @@ def test_query_data():
                 row_record = session_data_set.next()
                 assert row_record.get_timestamp() == 0
                 for i in range(len(column_names)):
-                    if (
+                    if values[row][i] is not None and (
                         data_types[i] == TSDataType.FLOAT
                         or data_types[i] == TSDataType.DOUBLE
                     ):
