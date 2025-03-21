@@ -25,7 +25,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 /** Used to manage the slices of the partition. It is all in memory now. */
-public class SliceCache {
+public class PartitionCache {
 
   private final List<Slice> slices = new ArrayList<>();
   private final List<Long> startOffsets = new ArrayList<>();
