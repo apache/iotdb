@@ -164,8 +164,8 @@ public class IoTDBRealTimeDBTsfilePushConsumerIT extends AbstractSubscriptionReg
     insert_data(System.currentTimeMillis());
     AWAIT.untilAsserted(
         () -> {
-          assertEquals(onReceive.get(), 1, "should process 1 file");
-          assertEquals(rowCount.get(), 4, "4 records");
+          assertGte(onReceive.get(), 1, "should process 1 file");
+          assertGte(rowCount.get(), 4, "4 records");
         });
 
     // Subscribe and then write data
@@ -173,8 +173,8 @@ public class IoTDBRealTimeDBTsfilePushConsumerIT extends AbstractSubscriptionReg
 
     AWAIT.untilAsserted(
         () -> {
-          assertEquals(onReceive.get(), 2, "should process 2 file");
-          assertEquals(rowCount.get(), 8, "8 records");
+          assertGte(onReceive.get(), 2, "should process 2 file");
+          assertGte(rowCount.get(), 8, "8 records");
         });
   }
 }

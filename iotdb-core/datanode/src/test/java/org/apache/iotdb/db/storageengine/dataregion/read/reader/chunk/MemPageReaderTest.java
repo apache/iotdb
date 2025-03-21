@@ -65,9 +65,7 @@ public class MemPageReaderTest {
     Supplier<TsBlock> tsBlockSupplier = () -> tsBlock;
     return new MemPageReader(
         tsBlockSupplier,
-        null,
-        null,
-        null,
+        0,
         chunkMetadata.getDataType(),
         chunkMetadata.getMeasurementUid(),
         null,

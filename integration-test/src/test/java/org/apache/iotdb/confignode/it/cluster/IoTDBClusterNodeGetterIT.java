@@ -239,7 +239,7 @@ public class IoTDBClusterNodeGetterIT {
       }
 
       // Test stop ConfigNode
-      status = client.stopConfigNode(removedConfigNodeLocation);
+      status = client.stopAndClearConfigNode(removedConfigNodeLocation);
       assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
     }
   }

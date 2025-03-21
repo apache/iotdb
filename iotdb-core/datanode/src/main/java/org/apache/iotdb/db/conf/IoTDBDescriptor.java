@@ -1893,6 +1893,9 @@ public class IoTDBDescriptor {
     String[][] tierDataDirs = new String[tiers.length][];
     for (int i = 0; i < tiers.length; ++i) {
       tierDataDirs[i] = tiers[i].split(",");
+      for (int j = 0; j < tierDataDirs[i].length; j++) {
+        tierDataDirs[i][j] = tierDataDirs[i][j].trim();
+      }
     }
     return tierDataDirs;
   }
@@ -2198,6 +2201,12 @@ public class IoTDBDescriptor {
             properties.getProperty(
                 "load_write_throughput_bytes_per_second",
                 String.valueOf(conf.getLoadWriteThroughputBytesPerSecond()))));
+
+    conf.setLoadTabletConversionThresholdBytes(
+        Long.parseLong(
+            properties.getProperty(
+                "load_tablet_conversion_threshold_bytes",
+                String.valueOf(conf.getLoadTabletConversionThresholdBytes()))));
 
     conf.setLoadActiveListeningEnable(
         Boolean.parseBoolean(
