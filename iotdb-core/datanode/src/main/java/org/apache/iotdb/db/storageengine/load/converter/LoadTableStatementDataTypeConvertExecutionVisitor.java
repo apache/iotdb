@@ -21,46 +21,31 @@ package org.apache.iotdb.db.storageengine.load.converter;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.TablePattern;
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTabletRawReqV2;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tsfile.parser.table.TsFileInsertionEventTableParser;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AstVisitor;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LoadTsFile;
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
-import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertMultiTabletsStatement;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFile;
 import org.apache.iotdb.db.storageengine.dataregion.modification.v1.ModificationFileV1;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
-import org.apache.iotdb.db.storageengine.load.memory.LoadTsFileMemoryBlock;
-import org.apache.iotdb.db.storageengine.load.memory.LoadTsFileMemoryManager;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.commons.io.FileUtils;
-import org.apache.tsfile.write.record.Tablet;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
-import java.util.ArrayList;
-import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
-import java.util.stream.Collectors;
-
-import static org.apache.iotdb.db.pipe.resource.memory.PipeMemoryWeightUtil.calculateTabletSizeInBytes;
 
 public class LoadTableStatementDataTypeConvertExecutionVisitor
     extends AstVisitor<Optional<TSStatus>, String> {
 
   private static final Logger LOGGER =
       LoggerFactory.getLogger(LoadTableStatementDataTypeConvertExecutionVisitor.class);
-
-  private static final long TABLET_BATCH_MEMORY_SIZE_IN_BYTES =
-      IoTDBDescriptor.getInstance()
-          .getConfig()
-          .getLoadTsFileTabletConversionBatchMemorySizeInBytes();
 
   @FunctionalInterface
   public interface StatementExecutor {
@@ -86,11 +71,7 @@ public class LoadTableStatementDataTypeConvertExecutionVisitor
 
     LOGGER.info("Start data type conversion for LoadTsFileStatement: {}.", loadTsFileStatement);
 
-    final LoadTsFileMemoryBlock block =
-        LoadTsFileMemoryManager.getInstance()
-            .allocateMemoryBlock(TABLET_BATCH_MEMORY_SIZE_IN_BYTES);
-    final List<PipeTransferTabletRawReqV2> tabletRawReqs = new ArrayList<>();
-
+    // TODO: Use batch insert after Table model supports insertMultiTablets
     for (final File file : loadTsFileStatement.getTsFiles()) {
       try (final TsFileInsertionEventTableParser parser =
           new TsFileInsertionEventTableParser(
@@ -108,24 +89,49 @@ public class LoadTableStatementDataTypeConvertExecutionVisitor
           final PipeRawTabletInsertionEvent rawTabletInsertionEvent =
               (PipeRawTabletInsertionEvent) tabletInsertionEvent;
 
-          final Tablet tablet = rawTabletInsertionEvent.convertToTablet();
-          final PipeTransferTabletRawReqV2 tabletRawReq =
-              PipeTransferTabletRawReqV2.toTPipeTransferRawReq(
-                  tablet, rawTabletInsertionEvent.isAligned(), databaseName);
-          tabletRawReqs.add(tabletRawReq);
-          block.addMemoryUsage(calculateTabletSizeInBytes(tablet) + 1);
-          if (block.hasEnoughMemory()) {
-            continue;
+          final LoadConvertedInsertTabletStatement statement =
+              new LoadConvertedInsertTabletStatement(
+                  PipeTransferTabletRawReqV2.toTPipeTransferRawReq(
+                          rawTabletInsertionEvent.convertToTablet(),
+                          rawTabletInsertionEvent.isAligned(),
+                          databaseName)
+                      .constructStatement(),
+                  loadTsFileStatement.isConvertOnTypeMismatch());
+
+          TSStatus result;
+          try {
+            result =
+                statement.accept(
+                    LoadTsFileDataTypeConverter.STATEMENT_STATUS_VISITOR,
+                    statementExecutor.execute(statement, databaseName));
+
+            // Retry max 5 times if the write process is rejected
+            for (int i = 0;
+                i < 5
+                    && result.getCode()
+                        == TSStatusCode.LOAD_TEMPORARY_UNAVAILABLE_EXCEPTION.getStatusCode();
+                i++) {
+              Thread.sleep(100L * (i + 1));
+              result =
+                  statement.accept(
+                      LoadTsFileDataTypeConverter.STATEMENT_STATUS_VISITOR,
+                      statementExecutor.execute(statement, databaseName));
+            }
+          } catch (final Exception e) {
+            if (e instanceof InterruptedException) {
+              Thread.currentThread().interrupt();
+            }
+            result = statement.accept(LoadTsFileDataTypeConverter.STATEMENT_EXCEPTION_VISITOR, e);
           }
 
-          final TSStatus result =
-              executeInsertMultiTabletsWithRetry(
-                  tabletRawReqs, databaseName, loadTsFileStatement.isConvertOnTypeMismatch());
-
-          tabletRawReqs.clear();
-          block.clearMemoryUsage();
-
-          if (!handleTSStatus(result, loadTsFileStatement)) {
+          if (!(result.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
+              || result.getCode() == TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode()
+              || result.getCode()
+                  == TSStatusCode.LOAD_IDEMPOTENT_CONFLICT_EXCEPTION.getStatusCode())) {
+            LOGGER.warn(
+                "Failed to convert data type for LoadTsFileStatement: {}, status code is {}.",
+                loadTsFileStatement,
+                result.getCode());
             return Optional.empty();
           }
         }
@@ -136,98 +142,22 @@ public class LoadTableStatementDataTypeConvertExecutionVisitor
       }
     }
 
-    if (!tabletRawReqs.isEmpty()) {
-      try {
-        final TSStatus result =
-            executeInsertMultiTabletsWithRetry(
-                tabletRawReqs, databaseName, loadTsFileStatement.isConvertOnTypeMismatch());
-
-        tabletRawReqs.clear();
-        block.clearMemoryUsage();
-
-        if (!handleTSStatus(result, loadTsFileStatement)) {
-          return Optional.empty();
-        }
-      } catch (final Exception e) {
-        LOGGER.warn(
-            "Failed to convert data type for LoadTsFileStatement: {}.", loadTsFileStatement, e);
-        return Optional.empty();
-      }
-    }
-
-    block.close();
-
     if (loadTsFileStatement.isDeleteAfterLoad()) {
       loadTsFileStatement
-              .getTsFiles()
-              .forEach(
-                      tsfile -> {
-                        FileUtils.deleteQuietly(tsfile);
-                        final String tsFilePath = tsfile.getAbsolutePath();
-                        FileUtils.deleteQuietly(new File(tsFilePath + TsFileResource.RESOURCE_SUFFIX));
-                        FileUtils.deleteQuietly(new File(tsFilePath + ModificationFileV1.FILE_SUFFIX));
-                        FileUtils.deleteQuietly(new File(tsFilePath + ModificationFile.FILE_SUFFIX));
-                      });
+          .getTsFiles()
+          .forEach(
+              tsfile -> {
+                FileUtils.deleteQuietly(tsfile);
+                final String tsFilePath = tsfile.getAbsolutePath();
+                FileUtils.deleteQuietly(new File(tsFilePath + TsFileResource.RESOURCE_SUFFIX));
+                FileUtils.deleteQuietly(new File(tsFilePath + ModificationFileV1.FILE_SUFFIX));
+                FileUtils.deleteQuietly(new File(tsFilePath + ModificationFile.FILE_SUFFIX));
+              });
     }
 
     LOGGER.info(
-            "Data type conversion for LoadTsFileStatement {} is successful.", loadTsFileStatement);
+        "Data type conversion for LoadTsFileStatement {} is successful.", loadTsFileStatement);
 
     return Optional.of(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()));
-  }
-
-  private TSStatus executeInsertMultiTabletsWithRetry(
-      final List<PipeTransferTabletRawReqV2> tabletRawReqs,
-      String databaseName,
-      boolean isConvertOnTypeMismatch) {
-    final InsertMultiTabletsStatement batchStatement = new InsertMultiTabletsStatement();
-    batchStatement.setInsertTabletStatementList(
-        tabletRawReqs.stream()
-            .map(
-                req ->
-                    new LoadConvertedInsertTabletStatement(
-                        req.constructStatement(), isConvertOnTypeMismatch))
-            .collect(Collectors.toList()));
-
-    TSStatus result;
-    try {
-      result =
-          batchStatement.accept(
-              LoadTsFileDataTypeConverter.STATEMENT_STATUS_VISITOR,
-              statementExecutor.execute(batchStatement, databaseName));
-
-      // Retry max 5 times if the write process is rejected
-      for (int i = 0;
-          i < 5
-              && result.getCode()
-                  == TSStatusCode.LOAD_TEMPORARY_UNAVAILABLE_EXCEPTION.getStatusCode();
-          i++) {
-        Thread.sleep(100L * (i + 1));
-        result =
-            batchStatement.accept(
-                LoadTsFileDataTypeConverter.STATEMENT_STATUS_VISITOR,
-                statementExecutor.execute(batchStatement, databaseName));
-      }
-    } catch (final Exception e) {
-      if (e instanceof InterruptedException) {
-        Thread.currentThread().interrupt();
-      }
-      result = batchStatement.accept(LoadTsFileDataTypeConverter.STATEMENT_EXCEPTION_VISITOR, e);
-    }
-    return result;
-  }
-
-  private static boolean handleTSStatus(
-      final TSStatus result, final LoadTsFile loadTsFileStatement) {
-    if (!(result.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
-        || result.getCode() == TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode()
-        || result.getCode() == TSStatusCode.LOAD_IDEMPOTENT_CONFLICT_EXCEPTION.getStatusCode())) {
-      LOGGER.warn(
-          "Failed to convert data type for LoadTsFileStatement: {}, status code is {}.",
-          loadTsFileStatement,
-          result.getCode());
-      return false;
-    }
-    return true;
   }
 }
