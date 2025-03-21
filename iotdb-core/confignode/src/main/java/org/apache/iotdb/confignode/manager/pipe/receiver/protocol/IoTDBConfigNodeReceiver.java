@@ -36,6 +36,7 @@ import org.apache.iotdb.commons.pipe.datastructure.pattern.TablePattern;
 import org.apache.iotdb.commons.pipe.receiver.IoTDBFileReceiver;
 import org.apache.iotdb.commons.pipe.receiver.PipeReceiverStatusHandler;
 import org.apache.iotdb.commons.schema.column.ColumnHeaderConstant;
+import org.apache.iotdb.commons.schema.table.TreeViewSchema;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
 import org.apache.iotdb.commons.schema.ttl.TTLCache;
@@ -627,9 +628,7 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
             ? configManager.getTTLManager().unsetTTL((SetTTLPlan) plan, true)
             : configManager.getTTLManager().setTTL((SetTTLPlan) plan, true);
       case PipeCreateTableOrView:
-        return executeIdempotentCreateTableOrView((PipeCreateTableOrViewPlan) plan, queryId, false);
-      case PipeCreateView:
-        return executeIdempotentCreateTableOrView((PipeCreateTableOrViewPlan) plan, queryId, true);
+        return executeIdempotentCreateTableOrView((PipeCreateTableOrViewPlan) plan, queryId);
       case AddTableColumn:
         return configManager
             .getProcedureManager()
@@ -821,10 +820,10 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
   }
 
   private TSStatus executeIdempotentCreateTableOrView(
-      final PipeCreateTableOrViewPlan plan, final String queryId, final boolean isView)
-      throws ConsensusException {
+      final PipeCreateTableOrViewPlan plan, final String queryId) throws ConsensusException {
     final String database = plan.getDatabase();
     final TsTable table = plan.getTable();
+    final boolean isView = TreeViewSchema.isTreeViewTable(table);
     TSStatus result =
         configManager
             .getProcedureManager()
