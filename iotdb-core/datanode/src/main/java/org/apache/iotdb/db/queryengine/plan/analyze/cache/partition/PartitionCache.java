@@ -649,7 +649,7 @@ public class PartitionCache {
       Map<String, List<DataPartitionQueryParam>> storageGroupToQueryParamsMap) {
     dataPartitionCacheLock.readLock().lock();
     try {
-      if (storageGroupToQueryParamsMap.size() == 0) {
+      if (storageGroupToQueryParamsMap.isEmpty()) {
         cacheMetrics.record(false, CacheMetrics.DATA_PARTITION_CACHE_NAME);
         return null;
       }
@@ -665,7 +665,9 @@ public class PartitionCache {
           return null;
         }
       }
-      logger.debug("[{} Cache] hit", CacheMetrics.DATA_PARTITION_CACHE_NAME);
+      if (logger.isDebugEnabled()) {
+        logger.debug("[{} Cache] hit", CacheMetrics.DATA_PARTITION_CACHE_NAME);
+      }
       // cache hit
       cacheMetrics.record(true, CacheMetrics.DATA_PARTITION_CACHE_NAME);
       return new DataPartition(dataPartitionMap, seriesSlotExecutorName, seriesPartitionSlotNum);
@@ -689,10 +691,12 @@ public class PartitionCache {
       List<DataPartitionQueryParam> dataPartitionQueryParams) {
     DataPartitionTable dataPartitionTable = dataPartitionCache.getIfPresent(storageGroupName);
     if (null == dataPartitionTable) {
-      logger.debug(
-          "[{} Cache] miss when search database {}",
-          CacheMetrics.DATA_PARTITION_CACHE_NAME,
-          storageGroupName);
+      if (logger.isDebugEnabled()) {
+        logger.debug(
+            "[{} Cache] miss when search database {}",
+            CacheMetrics.DATA_PARTITION_CACHE_NAME,
+            storageGroupName);
+      }
       return false;
     }
     Map<TSeriesPartitionSlot, SeriesPartitionTable> cachedStorageGroupPartitionMap =
@@ -776,10 +780,12 @@ public class PartitionCache {
     if (null == cacheConsensusGroupId
         || cacheConsensusGroupId.isEmpty()
         || null == timePartitionSlot) {
-      logger.debug(
-          "[{} Cache] miss when search time partition {}",
-          CacheMetrics.DATA_PARTITION_CACHE_NAME,
-          timePartitionSlot);
+      if (logger.isDebugEnabled()) {
+        logger.debug(
+            "[{} Cache] miss when search time partition {}",
+            CacheMetrics.DATA_PARTITION_CACHE_NAME,
+            timePartitionSlot);
+      }
       return false;
     }
     List<TRegionReplicaSet> regionReplicaSets = new LinkedList<>();
