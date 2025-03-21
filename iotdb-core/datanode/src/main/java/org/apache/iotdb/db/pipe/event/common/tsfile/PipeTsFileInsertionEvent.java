@@ -395,6 +395,10 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
     return super.shouldParsePattern() || shouldParse4Privilege;
   }
 
+  public boolean shouldParsePrivilege() {
+    return shouldParse4Privilege;
+  }
+
   @Override
   public PipeTsFileInsertionEvent shallowCopySelfAndBindPipeTaskMetaForProgressReport(
       final String pipeName,
