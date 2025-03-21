@@ -118,6 +118,7 @@ import org.apache.iotdb.confignode.consensus.request.write.table.view.CommitDele
 import org.apache.iotdb.confignode.consensus.request.write.table.view.CommitDeleteViewPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.view.PreCreateTableViewPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.view.PreDeleteViewColumnPlan;
+import org.apache.iotdb.confignode.consensus.request.write.table.view.PreDeleteViewPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.view.SetViewCommentPlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.CommitSetSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.CreateSchemaTemplatePlan;
@@ -210,10 +211,10 @@ public abstract class ConfigPhysicalPlan implements IConsensusRequest {
           plan = new UpdateAINodePlan();
           break;
         case CreateDatabase:
-          plan = new DatabaseSchemaPlan(ConfigPhysicalPlanType.CreateDatabase);
+          plan = new DatabaseSchemaPlan(configPhysicalPlanType);
           break;
         case AlterDatabase:
-          plan = new DatabaseSchemaPlan(ConfigPhysicalPlanType.AlterDatabase);
+          plan = new DatabaseSchemaPlan(configPhysicalPlanType);
           break;
         case SetTTL:
           plan = new SetTTLPlan();
@@ -399,7 +400,7 @@ public abstract class ConfigPhysicalPlan implements IConsensusRequest {
           plan = new CommitCreateTablePlan();
           break;
         case AddTableColumn:
-          plan = new AddTableColumnPlan(ConfigPhysicalPlanType.AddTableColumn);
+          plan = new AddTableColumnPlan(configPhysicalPlanType);
           break;
         case AddViewColumn:
           plan = new AddTableViewColumnPlan();
@@ -411,28 +412,31 @@ public abstract class ConfigPhysicalPlan implements IConsensusRequest {
           plan = new RenameTableColumnPlan();
           break;
         case PreDeleteTable:
-          plan = new PreDeleteTablePlan();
+          plan = new PreDeleteTablePlan(configPhysicalPlanType);
+          break;
+        case PreDeleteView:
+          plan = new PreDeleteViewPlan();
           break;
         case CommitDeleteTable:
-          plan = new CommitDeleteTablePlan(ConfigPhysicalPlanType.CommitDeleteTable);
+          plan = new CommitDeleteTablePlan(configPhysicalPlanType);
           break;
         case CommitDeleteView:
           plan = new CommitDeleteViewPlan();
           break;
         case PreDeleteColumn:
-          plan = new PreDeleteColumnPlan(ConfigPhysicalPlanType.PreDeleteColumn);
+          plan = new PreDeleteColumnPlan(configPhysicalPlanType);
           break;
         case PreDeleteViewColumn:
           plan = new PreDeleteViewColumnPlan();
           break;
         case CommitDeleteColumn:
-          plan = new CommitDeleteColumnPlan(ConfigPhysicalPlanType.CommitDeleteColumn);
+          plan = new CommitDeleteColumnPlan(configPhysicalPlanType);
           break;
         case CommitDeleteViewColumn:
           plan = new CommitDeleteViewColumnPlan();
           break;
         case SetTableComment:
-          plan = new SetTableCommentPlan(ConfigPhysicalPlanType.SetTableComment);
+          plan = new SetTableCommentPlan(configPhysicalPlanType);
           break;
         case SetViewComment:
           plan = new SetViewCommentPlan();
