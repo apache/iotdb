@@ -43,7 +43,6 @@ import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeFormatterBuilder;
-import java.time.format.DateTimeParseException;
 import java.time.format.ResolverStyle;
 import java.time.format.SignStyle;
 import java.time.temporal.ChronoField;
@@ -533,27 +532,23 @@ public class DateTimeUtils {
   }
 
   public static long getInstantWithPrecision(String str, String timestampPrecision) {
-    try {
-      ZonedDateTime zonedDateTime = ZonedDateTime.parse(str, formatter);
-      Instant instant = zonedDateTime.toInstant();
-      if ("us".equals(timestampPrecision) || "microsecond".equals(timestampPrecision)) {
-        if (instant.getEpochSecond() < 0 && instant.getNano() > 0) {
-          // adjustment can reduce the loss of the division
-          long millis = Math.multiplyExact(instant.getEpochSecond() + 1, 1000_000L);
-          long adjustment = instant.getNano() / 1000 - 1L;
-          return Math.addExact(millis, adjustment);
-        } else {
-          long millis = Math.multiplyExact(instant.getEpochSecond(), 1000_000L);
-          return Math.addExact(millis, instant.getNano() / 1000);
-        }
-      } else if ("ns".equals(timestampPrecision) || "nanosecond".equals(timestampPrecision)) {
-        long millis = Math.multiplyExact(instant.getEpochSecond(), 1000_000_000L);
-        return Math.addExact(millis, instant.getNano());
+    ZonedDateTime zonedDateTime = ZonedDateTime.parse(str, formatter);
+    Instant instant = zonedDateTime.toInstant();
+    if ("us".equals(timestampPrecision) || "microsecond".equals(timestampPrecision)) {
+      if (instant.getEpochSecond() < 0 && instant.getNano() > 0) {
+        // adjustment can reduce the loss of the division
+        long millis = Math.multiplyExact(instant.getEpochSecond() + 1, 1000_000L);
+        long adjustment = instant.getNano() / 1000 - 1L;
+        return Math.addExact(millis, adjustment);
+      } else {
+        long millis = Math.multiplyExact(instant.getEpochSecond(), 1000_000L);
+        return Math.addExact(millis, instant.getNano() / 1000);
       }
-      return instant.toEpochMilli();
-    } catch (DateTimeParseException e) {
-      throw new RuntimeException(e.getMessage());
+    } else if ("ns".equals(timestampPrecision) || "nanosecond".equals(timestampPrecision)) {
+      long millis = Math.multiplyExact(instant.getEpochSecond(), 1000_000_000L);
+      return Math.addExact(millis, instant.getNano());
     }
+    return instant.toEpochMilli();
   }
 
   /** convert date time string to millisecond, microsecond or nanosecond. */
