@@ -392,11 +392,11 @@ class IoTDBRpcDataSet(object):
             if v is None or len(v) < 1 or v[0] is None:
                 result[k] = []
             elif v[0].dtype == "Int32":
-                result[k] = pd.Series(np.concatenate(v, axis=0)).astype("Int32")
+                result[k] = pd.concat(v, ignore_index=True).astype("Int32")
             elif v[0].dtype == "Int64":
-                result[k] = pd.Series(np.concatenate(v, axis=0)).astype("Int64")
+                result[k] = pd.concat(v, ignore_index=True).astype("Int64")
             elif v[0].dtype == bool:
-                result[k] = pd.Series(np.concatenate(v, axis=0)).astype("boolean")
+                result[k] = pd.concat(v, ignore_index=True).astype("boolean")
             else:
                 result[k] = np.concatenate(v, axis=0)
 
