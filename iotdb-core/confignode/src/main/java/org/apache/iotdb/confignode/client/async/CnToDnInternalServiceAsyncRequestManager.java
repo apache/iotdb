@@ -75,6 +75,7 @@ import org.apache.iotdb.mpp.rpc.thrift.TInvalidateCacheReq;
 import org.apache.iotdb.mpp.rpc.thrift.TInvalidateColumnCacheReq;
 import org.apache.iotdb.mpp.rpc.thrift.TInvalidateMatchedSchemaCacheReq;
 import org.apache.iotdb.mpp.rpc.thrift.TInvalidateTableCacheReq;
+import org.apache.iotdb.mpp.rpc.thrift.TNotifyRegionMigrationReq;
 import org.apache.iotdb.mpp.rpc.thrift.TPipeHeartbeatReq;
 import org.apache.iotdb.mpp.rpc.thrift.TPushConsumerGroupMetaReq;
 import org.apache.iotdb.mpp.rpc.thrift.TPushMultiPipeMetaReq;
@@ -256,6 +257,11 @@ public class CnToDnInternalServiceAsyncRequestManager
         CnToDnAsyncRequestType.UPDATE_REGION_ROUTE_MAP,
         (req, client, handler) ->
             client.updateRegionCache((TRegionRouteReq) req, (DataNodeTSStatusRPCHandler) handler));
+    actionMapBuilder.put(
+        CnToDnAsyncRequestType.NOTIFY_REGION_MIGRATION,
+        (req, client, handler) ->
+            client.notifyRegionMigration(
+                (TNotifyRegionMigrationReq) req, (DataNodeTSStatusRPCHandler) handler));
     actionMapBuilder.put(
         CnToDnAsyncRequestType.CHANGE_REGION_LEADER,
         (req, client, handler) ->

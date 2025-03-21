@@ -22,6 +22,7 @@ package org.apache.iotdb.db.queryengine.execution.fragment;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.commons.exception.IoTDBRuntimeException;
+import org.apache.iotdb.commons.path.AlignedFullPath;
 import org.apache.iotdb.commons.path.IFullPath;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
@@ -67,6 +68,7 @@ import java.util.stream.Collectors;
 
 import static org.apache.iotdb.db.queryengine.metric.DriverSchedulerMetricSet.BLOCK_QUEUED_TIME;
 import static org.apache.iotdb.db.queryengine.metric.DriverSchedulerMetricSet.READY_QUEUED_TIME;
+import static org.apache.iotdb.db.storageengine.dataregion.VirtualDataRegion.EMPTY_QUERY_DATA_SOURCE;
 import static org.apache.iotdb.db.utils.ErrorHandlingUtils.getRootCause;
 import static org.apache.iotdb.rpc.TSStatusCode.DATE_OUT_OF_RANGE;
 
@@ -196,6 +198,22 @@ public class FragmentInstanceContext extends QueryContext {
     return instanceContext;
   }
 
+  @TestOnly
+  public static FragmentInstanceContext createFragmentInstanceContext(
+      FragmentInstanceId id,
+      FragmentInstanceStateMachine stateMachine,
+      MemoryReservationManager memoryReservationManager) {
+    FragmentInstanceContext instanceContext =
+        new FragmentInstanceContext(
+            id,
+            stateMachine,
+            new SessionInfo(1, "test", ZoneId.systemDefault()),
+            memoryReservationManager);
+    instanceContext.initialize();
+    instanceContext.start();
+    return instanceContext;
+  }
+
   private FragmentInstanceContext(
       FragmentInstanceId id,
       FragmentInstanceStateMachine stateMachine,
@@ -226,6 +244,20 @@ public class FragmentInstanceContext extends QueryContext {
     this.dataNodeQueryContext = null;
     this.memoryReservationManager =
         new ThreadSafeMemoryReservationManager(id.getQueryId(), this.getClass().getName());
+  }
+
+  private FragmentInstanceContext(
+      FragmentInstanceId id,
+      FragmentInstanceStateMachine stateMachine,
+      SessionInfo sessionInfo,
+      MemoryReservationManager memoryReservationManager) {
+    this.id = id;
+    this.stateMachine = stateMachine;
+    this.executionEndTime.set(END_TIME_INITIAL_VALUE);
+    this.sessionInfo = sessionInfo;
+    this.dataNodeQueryContextMap = null;
+    this.dataNodeQueryContext = null;
+    this.memoryReservationManager = memoryReservationManager;
   }
 
   private FragmentInstanceContext(
@@ -450,24 +482,40 @@ public class FragmentInstanceContext extends QueryContext {
 
   public void initQueryDataSource(List<IFullPath> sourcePaths) throws QueryProcessException {
     long startTime = System.nanoTime();
-    if (sourcePaths == null) {
+    if (sourcePaths == null || sourcePaths.isEmpty()) {
+      this.sharedQueryDataSource = EMPTY_QUERY_DATA_SOURCE;
       return;
     }
+
+    IDeviceID singleDeviceId = null;
+    if (sourcePaths.size() == 1) {
+      singleDeviceId = sourcePaths.get(0).getDeviceId();
+    } else {
+      Set<IDeviceID> selectedDeviceIdSet = new HashSet<>();
+      for (IFullPath sourcePath : sourcePaths) {
+        if (sourcePath instanceof AlignedFullPath) {
+          singleDeviceId = null;
+          break;
+        } else {
+          singleDeviceId = sourcePath.getDeviceId();
+          selectedDeviceIdSet.add(singleDeviceId);
+          if (selectedDeviceIdSet.size() > 1) {
+            singleDeviceId = null;
+            break;
+          }
+        }
+      }
+    }
+
     dataRegion.readLock();
     try {
-      List<IFullPath> pathList = new ArrayList<>();
-      Set<IDeviceID> selectedDeviceIdSet = new HashSet<>();
-      for (IFullPath path : sourcePaths) {
-        pathList.add(path);
-        selectedDeviceIdSet.add(path.getDeviceId());
-      }
 
       this.sharedQueryDataSource =
           dataRegion.query(
-              pathList,
+              sourcePaths,
               // when all the selected series are under the same device, the QueryDataSource will be
               // filtered according to timeIndex
-              selectedDeviceIdSet.size() == 1 ? selectedDeviceIdSet.iterator().next() : null,
+              singleDeviceId,
               this,
               // time filter may be stateful, so we need to copy it
               globalTimeFilter != null ? globalTimeFilter.copy() : null,
@@ -479,7 +527,7 @@ public class FragmentInstanceContext extends QueryContext {
         closedFilePaths = new HashSet<>();
         unClosedFilePaths = new HashSet<>();
         addUsedFilesForQuery((QueryDataSource) sharedQueryDataSource);
-        ((QueryDataSource) sharedQueryDataSource).setSingleDevice(selectedDeviceIdSet.size() == 1);
+        ((QueryDataSource) sharedQueryDataSource).setSingleDevice(singleDeviceId != null);
       }
     } finally {
       setInitQueryDataSourceCost(System.nanoTime() - startTime);
@@ -669,11 +717,11 @@ public class FragmentInstanceContext extends QueryContext {
   private void releaseTVListOwnedByQuery() {
     for (TVList tvList : tvListSet) {
       tvList.lockQueryList();
-      List<QueryContext> queryContextList = tvList.getQueryContextList();
+      Set<QueryContext> queryContextSet = tvList.getQueryContextSet();
       try {
-        queryContextList.remove(this);
+        queryContextSet.remove(this);
         if (tvList.getOwnerQuery() == this) {
-          if (queryContextList.isEmpty()) {
+          if (queryContextSet.isEmpty()) {
             LOGGER.debug(
                 "TVList {} is released by the query, FragmentInstance Id is {}",
                 tvList,
@@ -681,11 +729,13 @@ public class FragmentInstanceContext extends QueryContext {
             memoryReservationManager.releaseMemoryCumulatively(tvList.calculateRamSize());
             tvList.clear();
           } else {
+            FragmentInstanceContext queryContext =
+                (FragmentInstanceContext) queryContextSet.iterator().next();
             LOGGER.debug(
                 "TVList {} is now owned by another query, FragmentInstance Id is {}",
                 tvList,
-                ((FragmentInstanceContext) queryContextList.get(0)).getId());
-            tvList.setOwnerQuery(queryContextList.get(0));
+                queryContext.getId());
+            tvList.setOwnerQuery(queryContext);
           }
         }
       } finally {

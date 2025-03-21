@@ -23,6 +23,7 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.commons.auth.entity.PrivilegeUnion;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
+import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.pipe.connector.payload.airgap.AirGapPseudoTPipeTransferRequest;
@@ -56,6 +57,7 @@ import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeDele
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeDeleteTimeSeriesPlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeEnrichedPlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeUnsetSchemaTemplatePlan;
+import org.apache.iotdb.confignode.consensus.request.write.table.AbstractTablePlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.AddTableColumnPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.CommitDeleteColumnPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.CommitDeleteTablePlan;
@@ -269,11 +271,37 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
   private TSStatus checkPermission(final ConfigPhysicalPlan plan) {
     switch (plan.getType()) {
       case CreateDatabase:
+        return PathUtils.isTableModelDatabase(((DatabaseSchemaPlan) plan).getSchema().getName())
+            ? configManager
+                .checkUserPrivileges(
+                    username,
+                    new PrivilegeUnion(
+                        ((DatabaseSchemaPlan) plan).getSchema().getName(), PrivilegeType.CREATE))
+                .getStatus()
+            : configManager
+                .checkUserPrivileges(username, new PrivilegeUnion(PrivilegeType.MANAGE_DATABASE))
+                .getStatus();
       case AlterDatabase:
+        return PathUtils.isTableModelDatabase(((DatabaseSchemaPlan) plan).getSchema().getName())
+            ? configManager
+                .checkUserPrivileges(
+                    username,
+                    new PrivilegeUnion(
+                        ((DatabaseSchemaPlan) plan).getSchema().getName(), PrivilegeType.ALTER))
+                .getStatus()
+            : configManager
+                .checkUserPrivileges(username, new PrivilegeUnion(PrivilegeType.MANAGE_DATABASE))
+                .getStatus();
       case DeleteDatabase:
-        return configManager
-            .checkUserPrivileges(username, new PrivilegeUnion(PrivilegeType.MANAGE_DATABASE))
-            .getStatus();
+        return PathUtils.isTableModelDatabase(((DeleteDatabasePlan) plan).getName())
+            ? configManager
+                .checkUserPrivileges(
+                    username,
+                    new PrivilegeUnion(((DeleteDatabasePlan) plan).getName(), PrivilegeType.DROP))
+                .getStatus()
+            : configManager
+                .checkUserPrivileges(username, new PrivilegeUnion(PrivilegeType.MANAGE_DATABASE))
+                .getStatus();
       case ExtendSchemaTemplate:
         return configManager
             .checkUserPrivileges(username, new PrivilegeUnion(PrivilegeType.EXTEND_TEMPLATE))
@@ -317,14 +345,26 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
                     PrivilegeType.WRITE_SCHEMA))
             .getStatus();
       case SetTTL:
-        return configManager
-            .checkUserPrivileges(
-                username,
-                new PrivilegeUnion(
-                    Collections.singletonList(
-                        new PartialPath(((SetTTLPlan) plan).getPathPattern())),
-                    PrivilegeType.WRITE_SCHEMA))
-            .getStatus();
+        return Objects.equals(
+                configManager
+                    .getTTLManager()
+                    .getAllTTL()
+                    .get(
+                        String.join(
+                            String.valueOf(IoTDBConstant.PATH_SEPARATOR),
+                            ((SetTTLPlan) plan).getPathPattern())),
+                ((SetTTLPlan) plan).getTTL())
+            ? StatusUtils.OK
+            : configManager
+                .checkUserPrivileges(
+                    username,
+                    ((SetTTLPlan) plan).isDataBase()
+                        ? new PrivilegeUnion(PrivilegeType.MANAGE_DATABASE)
+                        : new PrivilegeUnion(
+                            Collections.singletonList(
+                                new PartialPath(((SetTTLPlan) plan).getPathPattern())),
+                            PrivilegeType.WRITE_SCHEMA))
+                .getStatus();
       case UpdateTriggerStateInTable:
       case DeleteTriggerInTable:
         return configManager
@@ -341,58 +381,18 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
             .getStatus();
       case AddTableColumn:
       case AddViewColumn:
-        return configManager
-            .checkUserPrivileges(
-                username,
-                new PrivilegeUnion(
-                    ((AddTableColumnPlan) plan).getDatabase(),
-                    ((AddTableColumnPlan) plan).getTableName(),
-                    PrivilegeType.ALTER))
-            .getStatus();
       case SetTableProperties:
-        return configManager
-            .checkUserPrivileges(
-                username,
-                new PrivilegeUnion(
-                    ((SetTablePropertiesPlan) plan).getDatabase(),
-                    ((SetTablePropertiesPlan) plan).getTableName(),
-                    PrivilegeType.ALTER))
-            .getStatus();
       case CommitDeleteColumn:
-        return configManager
-            .checkUserPrivileges(
-                username,
-                new PrivilegeUnion(
-                    ((CommitDeleteColumnPlan) plan).getDatabase(),
-                    ((CommitDeleteColumnPlan) plan).getTableName(),
-                    PrivilegeType.ALTER))
-            .getStatus();
       case SetTableComment:
       case SetViewComment:
-        return configManager
-            .checkUserPrivileges(
-                username,
-                new PrivilegeUnion(
-                    ((SetTableCommentPlan) plan).getDatabase(),
-                    ((SetTableCommentPlan) plan).getTableName(),
-                    PrivilegeType.ALTER))
-            .getStatus();
       case SetTableColumnComment:
-        return configManager
-            .checkUserPrivileges(
-                username,
-                new PrivilegeUnion(
-                    ((SetTableColumnCommentPlan) plan).getDatabase(),
-                    ((SetTableColumnCommentPlan) plan).getTableName(),
-                    PrivilegeType.ALTER))
-            .getStatus();
       case RenameTable:
         return configManager
             .checkUserPrivileges(
                 username,
                 new PrivilegeUnion(
-                    ((RenameTablePlan) plan).getDatabase(),
-                    ((RenameTablePlan) plan).getTableName(),
+                    ((AbstractTablePlan) plan).getDatabase(),
+                    ((AbstractTablePlan) plan).getTableName(),
                     PrivilegeType.ALTER))
             .getStatus();
       case CommitDeleteTable:

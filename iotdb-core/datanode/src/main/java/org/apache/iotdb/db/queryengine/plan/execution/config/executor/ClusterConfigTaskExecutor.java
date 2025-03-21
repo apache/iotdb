@@ -2865,6 +2865,14 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
         nodeIds.removeAll(invalidNodeIds);
       }
 
+      if (nodeIds.size() != 1) {
+        LOGGER.error(
+            "The DataNode to be removed is not in the cluster, or the input format is incorrect.");
+        future.setException(
+            new IOException(
+                "The DataNode to be removed is not in the cluster, or the input format is incorrect."));
+      }
+
       LOGGER.info("Starting to remove DataNode with nodeIds: {}", nodeIds);
 
       final Set<Integer> finalNodeIds = nodeIds;
@@ -2929,7 +2937,9 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
       if (removeConfigNodeLocations.size() != 1) {
         LOGGER.error(
             "The ConfigNode to be removed is not in the cluster, or the input format is incorrect.");
-        future.set(new ConfigTaskResult(TSStatusCode.REMOVE_CONFIGNODE_ERROR));
+        future.setException(
+            new IOException(
+                "The ConfigNode to be removed is not in the cluster, or the input format is incorrect."));
       }
 
       TConfigNodeLocation configNodeLocation = removeConfigNodeLocations.get(0);
@@ -2939,9 +2949,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
         future.setException(new IOException("Remove ConfigNode failed: " + status.getMessage()));
         return future;
       } else {
-        LOGGER.info(
-            "ConfigNode: {} is removed. If the confignode data directory is no longer needed, you can delete it manually.",
-            removeConfigNodeId);
+        LOGGER.info("ConfigNode: {} is removed.", removeConfigNodeId);
         future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
       }
 

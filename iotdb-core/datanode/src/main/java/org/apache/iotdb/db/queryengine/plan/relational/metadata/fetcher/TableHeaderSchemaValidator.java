@@ -45,7 +45,6 @@ import org.apache.iotdb.db.queryengine.plan.relational.metadata.TableSchema;
 import org.apache.iotdb.db.queryengine.plan.relational.security.AccessControl;
 import org.apache.iotdb.db.queryengine.plan.relational.type.InternalTypeManager;
 import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
-import org.apache.iotdb.db.schemaengine.table.InformationSchemaUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import com.google.common.util.concurrent.ListenableFuture;
@@ -96,12 +95,10 @@ public class TableHeaderSchemaValidator {
       final boolean allowCreateTable,
       final boolean isStrictIdColumn)
       throws LoadAnalyzeTableColumnDisorderException {
-    InformationSchemaUtils.checkDBNameInWrite(database);
-
     // The schema cache R/W and fetch operation must be locked together thus the cache clean
     // operation executed by delete timeSeries will be effective.
     DataNodeSchemaLockManager.getInstance()
-        .takeReadLock(context, SchemaLockType.VALIDATE_VS_DELETION);
+        .takeReadLock(context, SchemaLockType.VALIDATE_VS_DELETION_TABLE);
 
     final List<ColumnSchema> inputColumnList = tableSchema.getColumns();
     if (inputColumnList == null || inputColumnList.isEmpty()) {
@@ -257,6 +254,8 @@ public class TableHeaderSchemaValidator {
 
   private void autoCreateTable(
       final MPPQueryContext context, final String database, final TableSchema tableSchema) {
+    // Release to avoid deadlock
+    DataNodeSchemaLockManager.getInstance().releaseReadLock(context);
     final TsTable tsTable = new TsTable(tableSchema.getTableName());
     addColumnSchema(tableSchema.getColumns(), tsTable);
     accessControl.checkCanCreateTable(
@@ -271,9 +270,11 @@ public class TableHeaderSchemaValidator {
             new IoTDBException(
                 "Auto create table column failed.", result.getStatusCode().getStatusCode()));
       }
-    } catch (ExecutionException e) {
+      DataNodeSchemaLockManager.getInstance()
+          .takeReadLock(context, SchemaLockType.VALIDATE_VS_DELETION_TABLE);
+    } catch (final ExecutionException e) {
       throw new RuntimeException(e);
-    } catch (InterruptedException e) {
+    } catch (final InterruptedException e) {
       /* Clean up whatever needs to be handled before interrupting  */
       Thread.currentThread().interrupt();
       throw new RuntimeException(e);
@@ -347,6 +348,7 @@ public class TableHeaderSchemaValidator {
       final String tableName,
       final List<ColumnSchema> inputColumnList,
       final MPPQueryContext context) {
+    DataNodeSchemaLockManager.getInstance().releaseReadLock(context);
     accessControl.checkCanAlterTable(
         context.getSession().getUserName(), new QualifiedObjectName(database, tableName));
     final AlterTableAddColumnTask task =
@@ -369,6 +371,8 @@ public class TableHeaderSchemaValidator {
                     database, tableName, inputColumnList),
                 result.getStatusCode().getStatusCode()));
       }
+      DataNodeSchemaLockManager.getInstance()
+          .takeReadLock(context, SchemaLockType.VALIDATE_VS_DELETION_TABLE);
     } catch (final ExecutionException | InterruptedException e) {
       LOGGER.warn("Auto add table column failed.", e);
       throw new RuntimeException(e);

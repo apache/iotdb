@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.partition.DataPartition;
 import org.apache.iotdb.commons.partition.DataPartitionQueryParam;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.QueryId;
 import org.apache.iotdb.db.queryengine.metric.QueryPlanCostMetricSet;
@@ -737,7 +738,7 @@ public class PushPredicateIntoTableScan implements PlanOptimizer {
           equiJoinClauses.add(new JoinNode.EquiJoinClause(leftSymbol, rightSymbol));
         } else {
           if (node.getJoinType() != INNER) {
-            throw new UnsupportedOperationException(ONLY_SUPPORT_EQUI_JOIN);
+            throw new SemanticException(ONLY_SUPPORT_EQUI_JOIN);
           }
           joinFilterBuilder.add(conjunct);
         }

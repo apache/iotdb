@@ -195,7 +195,6 @@ import org.apache.iotdb.db.queryengine.plan.statement.sys.SetConfigurationStatem
 import org.apache.iotdb.db.queryengine.plan.statement.sys.SetSystemStatusStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.StartRepairDataStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.StopRepairDataStatement;
-import org.apache.iotdb.db.schemaengine.table.InformationSchemaUtils;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 
 import org.apache.tsfile.common.conf.TSFileConfig;
@@ -343,7 +342,6 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
   @Override
   protected IConfigTask visitDropDB(final DropDB node, final MPPQueryContext context) {
     context.setQueryType(QueryType.WRITE);
-    InformationSchemaUtils.checkDBNameInWrite(node.getDbName().getValue());
     accessControl.checkCanDropDatabase(
         context.getSession().getUserName(), node.getDbName().getValue());
     return new DropDBTask(node);
@@ -473,7 +471,7 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
   private Pair<String, TsTable> parseTable4CreateTableOrView(
       final CreateTable node, final MPPQueryContext context) {
     context.setQueryType(QueryType.WRITE);
-    final Pair<String, String> databaseTablePair = splitQualifiedName(node.getName(), true);
+    final Pair<String, String> databaseTablePair = splitQualifiedName(node.getName());
     final String database = databaseTablePair.getLeft();
     final String tableName = databaseTablePair.getRight();
 
@@ -550,7 +548,7 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
   @Override
   protected IConfigTask visitRenameTable(final RenameTable node, final MPPQueryContext context) {
     context.setQueryType(QueryType.WRITE);
-    final Pair<String, String> databaseTablePair = splitQualifiedName(node.getSource(), true);
+    final Pair<String, String> databaseTablePair = splitQualifiedName(node.getSource());
     final String database = databaseTablePair.getLeft();
     final String tableName = databaseTablePair.getRight();
 
@@ -574,7 +572,7 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
   @Override
   protected IConfigTask visitAddColumn(final AddColumn node, final MPPQueryContext context) {
     context.setQueryType(QueryType.WRITE);
-    final Pair<String, String> databaseTablePair = splitQualifiedName(node.getTableName(), true);
+    final Pair<String, String> databaseTablePair = splitQualifiedName(node.getTableName());
     final String database = databaseTablePair.getLeft();
     final String tableName = databaseTablePair.getRight();
 
@@ -600,7 +598,7 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
   @Override
   protected IConfigTask visitRenameColumn(final RenameColumn node, final MPPQueryContext context) {
     context.setQueryType(QueryType.WRITE);
-    final Pair<String, String> databaseTablePair = splitQualifiedName(node.getTable(), true);
+    final Pair<String, String> databaseTablePair = splitQualifiedName(node.getTable());
     final String database = databaseTablePair.getLeft();
     final String tableName = databaseTablePair.getRight();
 
@@ -627,7 +625,7 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
   @Override
   protected IConfigTask visitDropColumn(final DropColumn node, final MPPQueryContext context) {
     context.setQueryType(QueryType.WRITE);
-    final Pair<String, String> databaseTablePair = splitQualifiedName(node.getTable(), true);
+    final Pair<String, String> databaseTablePair = splitQualifiedName(node.getTable());
     final String database = databaseTablePair.getLeft();
     final String tableName = databaseTablePair.getRight();
 
@@ -648,7 +646,7 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
   protected IConfigTask visitSetProperties(
       final SetProperties node, final MPPQueryContext context) {
     context.setQueryType(QueryType.WRITE);
-    final Pair<String, String> databaseTablePair = splitQualifiedName(node.getName(), true);
+    final Pair<String, String> databaseTablePair = splitQualifiedName(node.getName());
     final String database = databaseTablePair.getLeft();
     final String tableName = databaseTablePair.getRight();
 
@@ -668,7 +666,7 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
   protected IConfigTask visitSetTableComment(
       final SetTableComment node, final MPPQueryContext context) {
     context.setQueryType(QueryType.WRITE);
-    final Pair<String, String> databaseTablePair = splitQualifiedName(node.getTableName(), true);
+    final Pair<String, String> databaseTablePair = splitQualifiedName(node.getTableName());
     final String database = databaseTablePair.getLeft();
     final String tableName = databaseTablePair.getRight();
 
@@ -688,7 +686,7 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
   protected IConfigTask visitSetColumnComment(
       final SetColumnComment node, final MPPQueryContext context) {
     context.setQueryType(QueryType.WRITE);
-    final Pair<String, String> databaseTablePair = splitQualifiedName(node.getTable(), true);
+    final Pair<String, String> databaseTablePair = splitQualifiedName(node.getTable());
     final String database = databaseTablePair.getLeft();
     final String tableName = databaseTablePair.getRight();
 
@@ -706,7 +704,6 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
   }
 
   public static void validateDatabaseName(final String dbName) throws SemanticException {
-    InformationSchemaUtils.checkDBNameInWrite(dbName);
     // Check database length here
     if (dbName.contains(PATH_SEPARATOR)
         || !IoTDBConfig.STORAGE_GROUP_PATTERN.matcher(dbName).matches()
@@ -720,16 +717,13 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
     }
   }
 
-  public Pair<String, String> splitQualifiedName(final QualifiedName name, final boolean isWrite) {
+  public Pair<String, String> splitQualifiedName(final QualifiedName name) {
     String database = clientSession.getDatabaseName();
     if (name.getPrefix().isPresent()) {
       database = name.getPrefix().get().toString();
     }
     if (database == null) {
       throw new SemanticException(DATABASE_NOT_SPECIFIED);
-    }
-    if (isWrite) {
-      InformationSchemaUtils.checkDBNameInWrite(database);
     }
     return new Pair<>(database, name.getSuffix());
   }
@@ -774,7 +768,7 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
   @Override
   protected IConfigTask visitDropTable(final DropTable node, final MPPQueryContext context) {
     context.setQueryType(QueryType.WRITE);
-    final Pair<String, String> databaseTablePair = splitQualifiedName(node.getTableName(), true);
+    final Pair<String, String> databaseTablePair = splitQualifiedName(node.getTableName());
     final String database = databaseTablePair.getLeft();
     final String tableName = databaseTablePair.getRight();
 
@@ -834,7 +828,7 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
   protected IConfigTask visitDescribeTable(
       final DescribeTable node, final MPPQueryContext context) {
     context.setQueryType(QueryType.READ);
-    final Pair<String, String> databaseTablePair = splitQualifiedName(node.getTable(), false);
+    final Pair<String, String> databaseTablePair = splitQualifiedName(node.getTable());
     final String database = databaseTablePair.getLeft();
     final String tableName = databaseTablePair.getRight();
 

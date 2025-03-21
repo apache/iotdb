@@ -235,6 +235,9 @@ public class CommonConfig {
   private long pipeConnectorRetryIntervalMs = 1000L;
   private boolean pipeConnectorRPCThriftCompressionEnabled = false;
 
+  private int pipeAsyncConnectorForcedRetryTsFileEventQueueSizeThreshold = 5;
+  private int pipeAsyncConnectorForcedRetryTabletEventQueueSizeThreshold = 20;
+  private int pipeAsyncConnectorForcedRetryTotalEventQueueSizeThreshold = 30;
   private long pipeAsyncConnectorMaxRetryExecutionTimeMsPerCall = 500;
   private int pipeAsyncConnectorSelectorNumber =
       Math.max(4, Runtime.getRuntime().availableProcessors() / 2);
@@ -258,10 +261,11 @@ public class CommonConfig {
   private int pipeAirGapReceiverPort = 9780;
 
   private long pipeReceiverLoginPeriodicVerificationIntervalMs = 300000;
+  private double pipeReceiverActualToEstimatedMemoryRatio = 3;
 
   private int pipeMaxAllowedHistoricalTsFilePerDataRegion = 100;
   private int pipeMaxAllowedPendingTsFileEpochPerDataRegion = 5;
-  private int pipeMaxAllowedPinnedMemTableCount = 5; // per data region
+  private int pipeMaxAllowedPinnedMemTableCount = 10; // per data region
   private long pipeMaxAllowedLinkedTsFileCount = 300;
   private float pipeMaxAllowedLinkedDeletedTsFileDiskUsagePercentage = 0.1F;
   private long pipeStuckRestartIntervalSeconds = 120;
@@ -860,6 +864,36 @@ public class CommonConfig {
     return pipeConnectorRPCThriftCompressionEnabled;
   }
 
+  public void setPipeAsyncConnectorForcedRetryTsFileEventQueueSizeThreshold(
+      int pipeAsyncConnectorForcedRetryTsFileEventQueueSizeThreshold) {
+    this.pipeAsyncConnectorForcedRetryTsFileEventQueueSizeThreshold =
+        pipeAsyncConnectorForcedRetryTsFileEventQueueSizeThreshold;
+  }
+
+  public int getPipeAsyncConnectorForcedRetryTsFileEventQueueSizeThreshold() {
+    return pipeAsyncConnectorForcedRetryTsFileEventQueueSizeThreshold;
+  }
+
+  public void setPipeAsyncConnectorForcedRetryTabletEventQueueSizeThreshold(
+      int pipeAsyncConnectorForcedRetryTabletEventQueueSizeThreshold) {
+    this.pipeAsyncConnectorForcedRetryTabletEventQueueSizeThreshold =
+        pipeAsyncConnectorForcedRetryTabletEventQueueSizeThreshold;
+  }
+
+  public int getPipeAsyncConnectorForcedRetryTabletEventQueueSizeThreshold() {
+    return pipeAsyncConnectorForcedRetryTabletEventQueueSizeThreshold;
+  }
+
+  public void setPipeAsyncConnectorForcedRetryTotalEventQueueSizeThreshold(
+      int pipeAsyncConnectorForcedRetryTotalEventQueueSizeThreshold) {
+    this.pipeAsyncConnectorForcedRetryTotalEventQueueSizeThreshold =
+        pipeAsyncConnectorForcedRetryTotalEventQueueSizeThreshold;
+  }
+
+  public int getPipeAsyncConnectorForcedRetryTotalEventQueueSizeThreshold() {
+    return pipeAsyncConnectorForcedRetryTotalEventQueueSizeThreshold;
+  }
+
   public void setPipeAsyncConnectorMaxRetryExecutionTimeMsPerCall(
       long pipeAsyncConnectorMaxRetryExecutionTimeMsPerCall) {
     this.pipeAsyncConnectorMaxRetryExecutionTimeMsPerCall =
@@ -1045,6 +1079,15 @@ public class CommonConfig {
 
   public long getPipeReceiverLoginPeriodicVerificationIntervalMs() {
     return pipeReceiverLoginPeriodicVerificationIntervalMs;
+  }
+
+  public void setPipeReceiverActualToEstimatedMemoryRatio(
+      double pipeReceiverActualToEstimatedMemoryRatio) {
+    this.pipeReceiverActualToEstimatedMemoryRatio = pipeReceiverActualToEstimatedMemoryRatio;
+  }
+
+  public double getPipeReceiverActualToEstimatedMemoryRatio() {
+    return pipeReceiverActualToEstimatedMemoryRatio;
   }
 
   public int getPipeMaxAllowedHistoricalTsFilePerDataRegion() {

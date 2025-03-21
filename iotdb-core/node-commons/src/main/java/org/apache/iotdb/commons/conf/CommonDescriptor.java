@@ -434,6 +434,36 @@ public class CommonDescriptor {
                         "pipe_async_connector_max_retry_execution_time_ms_per_call",
                         String.valueOf(
                             config.getPipeAsyncConnectorMaxRetryExecutionTimeMsPerCall())))));
+    config.setPipeAsyncConnectorForcedRetryTsFileEventQueueSizeThreshold(
+        Integer.parseInt(
+            Optional.ofNullable(
+                    properties.getProperty("pipe_async_sink_forced_retry_tsfile_event_queue_size"))
+                .orElse(
+                    properties.getProperty(
+                        "pipe_async_connector_forced_retry_tsfile_event_queue_size",
+                        String.valueOf(
+                            config
+                                .getPipeAsyncConnectorForcedRetryTsFileEventQueueSizeThreshold())))));
+    config.setPipeAsyncConnectorForcedRetryTabletEventQueueSizeThreshold(
+        Integer.parseInt(
+            Optional.ofNullable(
+                    properties.getProperty("pipe_async_sink_forced_retry_tablet_event_queue_size"))
+                .orElse(
+                    properties.getProperty(
+                        "pipe_async_connector_forced_retry_tablet_event_queue_size",
+                        String.valueOf(
+                            config
+                                .getPipeAsyncConnectorForcedRetryTabletEventQueueSizeThreshold())))));
+    config.setPipeAsyncConnectorForcedRetryTotalEventQueueSizeThreshold(
+        Integer.parseInt(
+            Optional.ofNullable(
+                    properties.getProperty("pipe_async_sink_forced_retry_total_event_queue_size"))
+                .orElse(
+                    properties.getProperty(
+                        "pipe_async_connector_forced_retry_total_event_queue_size",
+                        String.valueOf(
+                            config
+                                .getPipeAsyncConnectorForcedRetryTotalEventQueueSizeThreshold())))));
     int pipeAsyncConnectorSelectorNumber =
         Integer.parseInt(
             Optional.ofNullable(properties.getProperty("pipe_sink_selector_number"))
@@ -517,6 +547,11 @@ public class CommonDescriptor {
             properties.getProperty(
                 "pipe_receiver_login_periodic_verification_interval_ms",
                 Long.toString(config.getPipeReceiverLoginPeriodicVerificationIntervalMs()))));
+    config.setPipeReceiverActualToEstimatedMemoryRatio(
+        Double.parseDouble(
+            properties.getProperty(
+                "pipe_receiver_actual_to_estimated_memory_ratio",
+                Double.toString(config.getPipeReceiverActualToEstimatedMemoryRatio()))));
 
     config.setPipeMaxAllowedHistoricalTsFilePerDataRegion(
         Integer.parseInt(

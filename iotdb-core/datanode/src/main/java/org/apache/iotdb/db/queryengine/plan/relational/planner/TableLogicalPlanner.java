@@ -498,6 +498,16 @@ public class TableLogicalPlanner {
         createRelationPlan(analysis, (Query) (statement.getStatement()));
     Symbol symbol =
         symbolAllocator.newSymbol(ColumnHeaderConstant.EXPLAIN_ANALYZE, StringType.getInstance());
+
+    // recording permittedOutputs of ExplainAnalyzeNode's child
+    RelationType outputDescriptor = analysis.getOutputDescriptor(statement.getStatement());
+    ImmutableList.Builder<Symbol> childPermittedOutputs = ImmutableList.builder();
+    for (Field field : outputDescriptor.getVisibleFields()) {
+      int fieldIndex = outputDescriptor.indexOf(field);
+      Symbol columnSymbol = originalQueryPlan.getSymbol(fieldIndex);
+      childPermittedOutputs.add(columnSymbol);
+    }
+
     PlanNode newRoot =
         new ExplainAnalyzeNode(
             queryContext.getQueryId().genPlanNodeId(),
@@ -505,7 +515,8 @@ public class TableLogicalPlanner {
             statement.isVerbose(),
             queryContext.getLocalQueryId(),
             queryContext.getTimeOut(),
-            symbol);
+            symbol,
+            childPermittedOutputs.build());
     return new RelationPlan(
         newRoot,
         originalQueryPlan.getScope(),

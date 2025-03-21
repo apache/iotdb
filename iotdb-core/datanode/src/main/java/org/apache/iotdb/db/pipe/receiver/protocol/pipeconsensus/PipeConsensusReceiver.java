@@ -1145,13 +1145,13 @@ public class PipeConsensusReceiver {
     private final ConsensusPipeName consensusPipeName;
     private final int index;
     private File localWritingDir;
-    // whether this buffer is used. this will be updated when first transfer tsFile piece or
-    // when transfer seal.
-    private boolean isUsed = false;
-    // If isUsed is true, this variable will be set to the TCommitId of holderEvent
-    private TCommitId commitIdOfCorrespondingHolderEvent;
     private File writingFile;
     private RandomAccessFile writingFileWriter;
+    // whether this buffer is used. this will be updated when first transfer tsFile piece or
+    // when transfer seal.
+    private volatile boolean isUsed = false;
+    // If isUsed is true, this variable will be set to the TCommitId of holderEvent
+    private volatile TCommitId commitIdOfCorrespondingHolderEvent;
 
     public PipeConsensusTsFileWriter(int index, ConsensusPipeName consensusPipeName) {
       this.index = index;
@@ -1247,12 +1247,17 @@ public class PipeConsensusReceiver {
 
     public void returnSelf(ConsensusPipeName consensusPipeName)
         throws DiskSpaceInsufficientException, IOException {
-      this.isUsed = false;
-      this.commitIdOfCorrespondingHolderEvent = null;
       // if config multi-disks, tsFileWriter will roll to new writing path.
+      // must roll before set used to false, because the writing file may be deleted if other event
+      // uses this tsfileWriter.
       if (receiveDirs.size() > 1) {
         rollToNextWritingPath();
       }
+      // must set used to false after set commitIdOfCorrespondingHolderEvent to null to avoid the
+      // situation that tsfileWriter is used by other event before set
+      // commitIdOfCorrespondingHolderEvent to null
+      this.commitIdOfCorrespondingHolderEvent = null;
+      this.isUsed = false;
       LOGGER.info(
           "PipeConsensus-PipeName-{}: tsFileWriter-{} returned self",
           consensusPipeName.toString(),
