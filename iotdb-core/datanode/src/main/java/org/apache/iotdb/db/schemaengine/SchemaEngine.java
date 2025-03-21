@@ -316,7 +316,7 @@ public class SchemaEngine {
       throws MetadataException {
     ISchemaRegion schemaRegion = schemaRegionMap.remove(schemaRegionId);
     if (schemaRegion == null) {
-      logger.warn("SchemaRegion(id = {}) has been deleted, skiped", schemaRegionId);
+      logger.warn("SchemaRegion(id = {}) has been deleted, skipped", schemaRegionId);
       return;
     }
     schemaRegion.deleteSchemaRegion();
