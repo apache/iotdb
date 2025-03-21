@@ -144,7 +144,7 @@ public class ModelManager {
   // Currently this method is only used by built-in timer_xl
   public TSStatus updateModelInfo(TUpdateModelInfoReq req) {
     if (!modelInfo.contain(req.getModelId())) {
-      return new TSStatus(TSStatusCode.MODEL_EXIST_ERROR.getStatusCode())
+      return new TSStatus(TSStatusCode.MODEL_NOT_FOUND_ERROR.getStatusCode())
           .setMessage(String.format("Model %s doesn't exists", req.getModelId()));
     }
     try {

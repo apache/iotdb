@@ -27,17 +27,18 @@ import org.apache.iotdb.db.queryengine.plan.statement.StatementVisitor;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
 public class CreateTrainingStatement extends Statement implements IConfigStatement {
 
-  String modelId;
-  String modelType;
+  private final String modelId;
+  private final String modelType;
 
-  Map<String, String> parameters;
-  String existingModelId = null;
+  private Map<String, String> parameters;
+  private String existingModelId = null;
 
-  List<PartialPath> targetPathPatterns;
-  List<List<Long>> targetTimeRanges;
+  private List<PartialPath> targetPathPatterns;
+  private List<List<Long>> targetTimeRanges;
 
   public CreateTrainingStatement(String modelId, String modelType) {
     this.modelId = modelId;
@@ -72,10 +73,6 @@ public class CreateTrainingStatement extends Statement implements IConfigStateme
     this.existingModelId = existingModelId;
   }
 
-  public void setModelId(String modelId) {
-    this.modelId = modelId;
-  }
-
   public void setTargetTimeRanges(List<List<Long>> targetTimeRanges) {
     this.targetTimeRanges = targetTimeRanges;
   }
@@ -90,17 +87,40 @@ public class CreateTrainingStatement extends Statement implements IConfigStateme
 
   @Override
   public int hashCode() {
-    return 0;
+    return Objects.hash(super.hashCode(), modelId, modelType, existingModelId, parameters);
   }
 
   @Override
   public boolean equals(Object obj) {
-    return false;
+    if (!(obj instanceof CreateTrainingStatement)) {
+      return false;
+    }
+    CreateTrainingStatement target = (CreateTrainingStatement) obj;
+    return modelId.equals(target.modelId)
+        && modelType.equals(target.modelType)
+        && Objects.equals(existingModelId, target.existingModelId)
+        && Objects.equals(parameters, target.parameters);
   }
 
   @Override
   public String toString() {
-    return null;
+    return "CreateTrainingStatement{"
+        + "modelId='"
+        + modelId
+        + '\''
+        + ", modelType='"
+        + modelType
+        + '\''
+        + ", parameters="
+        + parameters
+        + ", existingModelId='"
+        + existingModelId
+        + '\''
+        + ", targetPathPatterns="
+        + targetPathPatterns
+        + ", targetTimeRanges="
+        + targetTimeRanges
+        + '}';
   }
 
   @Override
