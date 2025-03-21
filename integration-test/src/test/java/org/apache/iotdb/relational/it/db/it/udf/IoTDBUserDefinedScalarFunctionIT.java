@@ -89,6 +89,36 @@ public class IoTDBUserDefinedScalarFunctionIT {
   }
 
   @Test
+  public void testInvokeAfterDrop() {
+    try (Connection connection = EnvFactory.getEnv().getTableConnection();
+        Statement statement = connection.createStatement()) {
+      statement.execute("USE test");
+      statement.execute(
+          "CREATE FUNCTION tmp_udsf as 'org.apache.iotdb.db.query.udf.example.relational.ContainNull'");
+      List<String> expectedResult = Arrays.asList("1,false", "2,true", "3,false", "5,true");
+      int row = 0;
+      try (ResultSet resultSet =
+          statement.executeQuery("select time, tmp_udsf(s1) as s1_null from vehicle")) {
+        while (resultSet.next()) {
+          Assert.assertEquals(
+              expectedResult.get(row), resultSet.getLong(1) + "," + resultSet.getBoolean(2));
+          row++;
+        }
+        assertEquals(4, row);
+      }
+      statement.execute("DROP FUNCTION tmp_udsf");
+      try {
+        statement.execute("select time, tmp_udsf(s1) as s1_null from vehicle");
+        fail();
+      } catch (Exception e) {
+        Assert.assertTrue(e.getMessage().contains("Unknown function"));
+      }
+    } catch (Exception e) {
+      fail(e.getMessage());
+    }
+  }
+
+  @Test
   public void testIllegalInput() {
     try (Connection connection = EnvFactory.getEnv().getTableConnection();
         Statement statement = connection.createStatement()) {
