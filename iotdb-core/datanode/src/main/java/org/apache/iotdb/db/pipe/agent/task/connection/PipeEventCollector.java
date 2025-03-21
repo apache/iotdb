@@ -136,7 +136,7 @@ public class PipeEventCollector implements EventCollector {
     }
 
     if (!forceTabletFormat
-        && (!sourceEvent.shouldParseTimeOrPattern() || !canSkipParsing4TsFileEvent(sourceEvent))) {
+        && (!sourceEvent.shouldParseTimeOrPattern() || canSkipParsing4TsFileEvent(sourceEvent))) {
       collectEvent(sourceEvent);
       return;
     }
