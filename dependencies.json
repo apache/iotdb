@@ -50,7 +50,7 @@
         "io.micrometer:micrometer-commons",
         "io.micrometer:micrometer-core",
         "io.micrometer:micrometer-observation",
-        "io.moquette:moquette-broker",
+        "com.github.moquette-io.moquette:moquette-broker",
         "io.netty:netty-buffer",
         "io.netty:netty-codec",
         "io.netty:netty-codec-dns",
