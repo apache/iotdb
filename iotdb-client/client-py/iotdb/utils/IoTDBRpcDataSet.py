@@ -22,11 +22,13 @@ import logging
 import numpy as np
 import pandas as pd
 from thrift.transport import TTransport
+
 from iotdb.thrift.rpc.IClientRPCService import TSFetchResultsReq, TSCloseOperationReq
 from iotdb.tsfile.utils.date_utils import parse_int_to_date
 from iotdb.tsfile.utils.tsblock_serde import deserialize
-from iotdb.utils.IoTDBConnectionException import IoTDBConnectionException
+from iotdb.utils.exception import IoTDBConnectionException
 from iotdb.utils.IoTDBConstants import TSDataType
+from iotdb.utils.rpc_utils import verify_success
 
 logger = logging.getLogger("IoTDB")
 TIMESTAMP_STR = "Time"
@@ -60,6 +62,7 @@ class IoTDBRpcDataSet(object):
         self.__fetch_size = fetch_size
         self.column_size = len(column_name_list)
         self.__time_out = time_out
+        self.__more_data = more_data
 
         self.__column_name_list = []
         self.__column_type_list = []
@@ -112,7 +115,6 @@ class IoTDBRpcDataSet(object):
         self.__query_result_index = 0
         self.__is_closed = False
         self.__empty_resultSet = False
-        self.__rows_index = 0
         self.has_cached_data_frame = False
         self.data_frame = None
 
@@ -146,7 +148,7 @@ class IoTDBRpcDataSet(object):
             return True
         if self.__empty_resultSet:
             return False
-        if self.fetch_results():
+        if self.__more_data and self.fetch_results():
             self.construct_one_data_frame()
             return True
         return False
@@ -254,7 +256,7 @@ class IoTDBRpcDataSet(object):
             return True
         if self.__empty_resultSet:
             return False
-        if self.fetch_results():
+        if self.__more_data and self.fetch_results():
             return True
         return False
 
@@ -405,7 +407,6 @@ class IoTDBRpcDataSet(object):
     def fetch_results(self):
         if self.__is_closed:
             raise IoTDBConnectionException("This DataSet is already closed")
-        self.__rows_index = 0
         request = TSFetchResultsReq(
             self.__session_id,
             self.__sql,
@@ -413,9 +414,12 @@ class IoTDBRpcDataSet(object):
             self.__query_id,
             True,
             self.__time_out,
+            self.__statement_id,
         )
         try:
             resp = self.__client.fetchResultsV2(request)
+            verify_success(resp.status)
+            self.__more_data = resp.moreData
             if not resp.hasResultSet:
                 self.__empty_resultSet = True
             else:
@@ -423,7 +427,7 @@ class IoTDBRpcDataSet(object):
                 self.__query_result_index = 0
             return resp.hasResultSet
         except TTransport.TException as e:
-            raise RuntimeError(
+            raise IoTDBConnectionException(
                 "Cannot fetch result from server, because of network connection: ", e
             )
 
