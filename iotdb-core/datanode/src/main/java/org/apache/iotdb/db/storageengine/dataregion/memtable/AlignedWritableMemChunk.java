@@ -806,14 +806,7 @@ public class AlignedWritableMemChunk extends AbstractWritableMemChunk {
         // We need to extend a new column in AlignedMemChunk and AlignedTVList.
         // And the reorderedColumnValues should extend one more column for the new measurement
         if (index == null) {
-          index =
-              measurementIndexMap.isEmpty()
-                  ? 0
-                  : measurementIndexMap.values().stream()
-                          .mapToInt(Integer::intValue)
-                          .max()
-                          .getAsInt()
-                      + 1;
+          index = this.list.getTsDataTypes().size();
           this.measurementIndexMap.put(schemaListInInsertPlan.get(i).getMeasurementName(), index);
           this.schemaList.add(schemaListInInsertPlan.get(i));
           this.list.extendColumn(schemaListInInsertPlan.get(i).getType());
@@ -835,7 +828,6 @@ public class AlignedWritableMemChunk extends AbstractWritableMemChunk {
   private void filterDeletedTimeStamp(
       AlignedTVList alignedTVList,
       List<List<TimeRange>> valueColumnsDeletionList,
-      boolean ignoreAllNullRows,
       Map<Long, BitMap> timestampWithBitmap) {
     BitMap allValueColDeletedMap = alignedTVList.getAllValueColDeletedMap();
 
@@ -877,13 +869,12 @@ public class AlignedWritableMemChunk extends AbstractWritableMemChunk {
     }
   }
 
-  public long[] getFilteredTimestamp(
-      List<List<TimeRange>> deletionList, List<BitMap> bitMaps, boolean ignoreAllNullRows) {
+  public long[] getFilteredTimestamp(List<List<TimeRange>> deletionList, List<BitMap> bitMaps) {
     Map<Long, BitMap> timestampWithBitmap = new TreeMap<>();
 
-    filterDeletedTimeStamp(list, deletionList, ignoreAllNullRows, timestampWithBitmap);
+    filterDeletedTimeStamp(list, deletionList, timestampWithBitmap);
     for (AlignedTVList alignedTVList : sortedList) {
-      filterDeletedTimeStamp(alignedTVList, deletionList, ignoreAllNullRows, timestampWithBitmap);
+      filterDeletedTimeStamp(alignedTVList, deletionList, timestampWithBitmap);
     }
 
     List<Long> filteredTimestamps = new ArrayList<>();
