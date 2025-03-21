@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.confignode.manager.load.cache.region;
 
+import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.commons.cluster.RegionStatus;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.confignode.manager.partition.RegionGroupStatus;
@@ -44,10 +45,15 @@ public class RegionGroupCache {
   private final boolean isStrongConsistency;
 
   /** Constructor for create RegionGroupCache with default RegionGroupStatistics. */
-  public RegionGroupCache(String database, Set<Integer> dataNodeIds, boolean isStrongConsistency) {
+  public RegionGroupCache(
+      String database,
+      TConsensusGroupId groupId,
+      Set<Integer> dataNodeIds,
+      boolean isStrongConsistency) {
     this.database = database;
     this.regionCacheMap = new ConcurrentHashMap<>();
-    dataNodeIds.forEach(dataNodeId -> regionCacheMap.put(dataNodeId, new RegionCache()));
+    dataNodeIds.forEach(
+        dataNodeId -> regionCacheMap.put(dataNodeId, new RegionCache(dataNodeId, groupId)));
     this.currentStatistics =
         new AtomicReference<>(RegionGroupStatistics.generateDefaultRegionGroupStatistics());
     this.isStrongConsistency = isStrongConsistency;
@@ -77,8 +83,8 @@ public class RegionGroupCache {
    *
    * @param dataNodeId the specified DataNode
    */
-  public void createRegionCache(int dataNodeId) {
-    regionCacheMap.put(dataNodeId, new RegionCache());
+  public void createRegionCache(int dataNodeId, TConsensusGroupId groupId) {
+    regionCacheMap.put(dataNodeId, new RegionCache(dataNodeId, groupId));
   }
 
   /**

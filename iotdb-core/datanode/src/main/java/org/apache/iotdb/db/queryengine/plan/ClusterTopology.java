@@ -34,24 +34,27 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 
 public class ClusterTopology {
   private static final Logger LOGGER = LoggerFactory.getLogger(ClusterTopology.class);
   private final Integer myself;
-  private volatile Map<Integer, TDataNodeLocation> dataNodes;
-  private volatile Map<Integer, Set<Integer>> topologyMap;
-  private volatile boolean isPartitioned;
+  private final AtomicReference<Map<Integer, TDataNodeLocation>> dataNodes;
+  private final AtomicReference<Map<Integer, Set<Integer>>> topologyMap;
+  private final AtomicBoolean isPartitioned = new AtomicBoolean();
 
   public static ClusterTopology getInstance() {
     return ClusterTopologyHolder.INSTANCE;
   }
 
-  public TRegionReplicaSet getReachableSet(TRegionReplicaSet origin) {
-    if (!isPartitioned || origin == null) {
+  public TRegionReplicaSet getValidatedReplicaSet(TRegionReplicaSet origin) {
+    if (!isPartitioned.get() || origin == null) {
       return origin;
     }
-    final Set<Integer> reachableToMyself = Collections.unmodifiableSet(topologyMap.get(myself));
+    final Set<Integer> reachableToMyself =
+        Collections.unmodifiableSet(topologyMap.get().get(myself));
     final List<TDataNodeLocation> locations = new ArrayList<>();
     for (final TDataNodeLocation location : origin.getDataNodeLocations()) {
       if (reachableToMyself.contains(location.getDataNodeId())) {
@@ -63,27 +66,31 @@ public class ClusterTopology {
 
   public <T> Set<Map.Entry<TRegionReplicaSet, T>> filterReachableCandidates(
       Set<Map.Entry<TRegionReplicaSet, T>> input) {
+    if (!isPartitioned.get()) {
+      return input;
+    }
     final List<TRegionReplicaSet> allSets =
         input.stream().map(Map.Entry::getKey).collect(Collectors.toList());
     final List<TRegionReplicaSet> candidates = getReachableCandidates(allSets);
-    final Map<TConsensusGroupId, TRegionReplicaSet> newSet = new HashMap<>();
-    candidates.forEach(set -> newSet.put(set.getRegionId(), set));
+    final Map<TConsensusGroupId, TRegionReplicaSet> newMap = new HashMap<>();
+    candidates.forEach(set -> newMap.put(set.getRegionId(), set));
     final Map<TRegionReplicaSet, T> candidateMap = new HashMap<>();
     for (final Map.Entry<TRegionReplicaSet, T> entry : input) {
       final TConsensusGroupId gid = entry.getKey().getRegionId();
-      if (newSet.containsKey(gid)) {
-        candidateMap.put(newSet.get(gid), entry.getValue());
+      final TRegionReplicaSet replicaSet = newMap.get(gid);
+      if (replicaSet != null) {
+        candidateMap.put(replicaSet, entry.getValue());
       }
     }
     return candidateMap.entrySet();
   }
 
-  public List<TRegionReplicaSet> getReachableCandidates(List<TRegionReplicaSet> all) {
-    if (!isPartitioned || all == null || all.isEmpty()) {
+  private List<TRegionReplicaSet> getReachableCandidates(List<TRegionReplicaSet> all) {
+    if (!isPartitioned.get() || all == null || all.isEmpty()) {
       return all;
     }
     final Map<Integer, Set<Integer>> topologyMapCurrent =
-        Collections.unmodifiableMap(this.topologyMap);
+        Collections.unmodifiableMap(this.topologyMap.get());
 
     // brute-force search to select DataNode candidates that can communicate to all
     // TRegionReplicaSets
@@ -115,7 +122,7 @@ public class ClusterTopology {
       commonLocations.retainAll(dataNodeCandidates);
       if (!commonLocations.isEmpty()) {
         final List<TDataNodeLocation> validLocations =
-            commonLocations.stream().map(dataNodes::get).collect(Collectors.toList());
+            commonLocations.stream().map(dataNodes.get()::get).collect(Collectors.toList());
         final TRegionReplicaSet validCandidate =
             new TRegionReplicaSet(replicaSet.getRegionId(), validLocations);
         reachableSetCandidates.add(validCandidate);
@@ -127,19 +134,19 @@ public class ClusterTopology {
 
   public void updateTopology(
       final Map<Integer, TDataNodeLocation> dataNodes, Map<Integer, Set<Integer>> latestTopology) {
-    if (!latestTopology.equals(topologyMap)) {
+    if (!latestTopology.equals(topologyMap.get())) {
       LOGGER.info("[Topology] latest view from config-node: {}", latestTopology);
     }
-    this.dataNodes = dataNodes;
-    this.topologyMap = latestTopology;
+    this.dataNodes.set(dataNodes);
+    this.topologyMap.set(latestTopology);
     if (latestTopology.get(myself) == null || latestTopology.get(myself).isEmpty()) {
       // latest topology doesn't include this node information.
       // This mostly happens when this node just starts and haven't report connection details.
-      this.isPartitioned = false;
+      this.isPartitioned.set(false);
     } else {
-      this.isPartitioned = latestTopology.get(myself).size() != latestTopology.keySet().size();
+      this.isPartitioned.set(latestTopology.get(myself).size() != latestTopology.keySet().size());
     }
-    if (isPartitioned && LOGGER.isDebugEnabled()) {
+    if (isPartitioned.get() && LOGGER.isDebugEnabled()) {
       final Set<Integer> allDataLocations = new HashSet<>(latestTopology.keySet());
       allDataLocations.removeAll(latestTopology.get(myself));
       final String partitioned =
@@ -154,8 +161,9 @@ public class ClusterTopology {
   private ClusterTopology() {
     this.myself =
         IoTDBDescriptor.getInstance().getConfig().generateLocalDataNodeLocation().getDataNodeId();
-    this.isPartitioned = false;
-    this.topologyMap = null;
+    this.isPartitioned.set(false);
+    this.topologyMap = new AtomicReference<>(Collections.emptyMap());
+    this.dataNodes = new AtomicReference<>(Collections.emptyMap());
   }
 
   private static class ClusterTopologyHolder {

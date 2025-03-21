@@ -83,7 +83,8 @@ public class WriteFragmentParallelPlanner implements IFragmentParallelPlaner {
               Long.MAX_VALUE,
               queryContext.getSession());
       if (split.getRegionReplicaSet() != null) {
-        final TRegionReplicaSet validSet = topology.getReachableSet(split.getRegionReplicaSet());
+        final TRegionReplicaSet validSet =
+            topology.getValidatedReplicaSet(split.getRegionReplicaSet());
         instance.setExecutorAndHost(new StorageExecutor(validSet));
       }
       ret.add(instance);

@@ -25,6 +25,7 @@ import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.tsfile.utils.Preconditions;
 
 import java.util.Objects;
+import java.util.Optional;
 
 /** QueryExecutor indicates this query can execute directly without data from StorageEngine */
 public class QueryExecutor implements ExecutorType {
@@ -35,9 +36,9 @@ public class QueryExecutor implements ExecutorType {
   }
 
   @Override
-  public TDataNodeLocation getDataNodeLocation() {
+  public Optional<TDataNodeLocation> getDataNodeLocation() {
     Preconditions.checkArgument(dataNodeLocation != null);
-    return dataNodeLocation;
+    return Optional.of(dataNodeLocation);
   }
 
   @Override

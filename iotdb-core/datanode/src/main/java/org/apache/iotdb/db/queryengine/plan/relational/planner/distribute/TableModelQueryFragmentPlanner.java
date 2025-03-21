@@ -130,7 +130,7 @@ public class TableModelQueryFragmentPlanner {
     TRegionReplicaSet regionReplicaSet = fragment.getTargetRegionForTableModel(nodeDistributionMap);
     if (regionReplicaSet != null
         && !CollectionUtils.isEmpty(regionReplicaSet.getDataNodeLocations())) {
-      regionReplicaSet = topology.getReachableSet(regionReplicaSet);
+      regionReplicaSet = topology.getValidatedReplicaSet(regionReplicaSet);
       if (regionReplicaSet.getDataNodeLocations().isEmpty()) {
         throw new ReplicaSetUnreachableException(
             fragment.getTargetRegionForTableModel(nodeDistributionMap));

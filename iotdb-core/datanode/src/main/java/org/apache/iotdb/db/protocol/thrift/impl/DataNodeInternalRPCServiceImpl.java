@@ -1843,7 +1843,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
         TServiceType.DataNodeInternalService,
         DnToDnRequestType.TEST_CONNECTION,
         (AsyncRequestContext<Object, TSStatus, DnToDnRequestType, TDataNodeLocation> handler) ->
-            DataNodeIntraHeartbeatManager.getInstance().sendAsyncRequest(handler));
+            DataNodeIntraHeartbeatManager.getInstance().sendAsyncRequest(handler, 1, null, true));
   }
 
   private List<TTestConnectionResult> testAllDataNodeInternalServiceConnection(

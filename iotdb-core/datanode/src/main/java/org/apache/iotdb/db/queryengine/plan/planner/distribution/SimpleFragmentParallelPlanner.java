@@ -158,7 +158,7 @@ public class SimpleFragmentParallelPlanner implements IFragmentParallelPlaner {
     TRegionReplicaSet regionReplicaSet = fragment.getTargetRegionForTreeModel();
     if (regionReplicaSet != null
         && !CollectionUtils.isEmpty(regionReplicaSet.getDataNodeLocations())) {
-      regionReplicaSet = topology.getReachableSet(regionReplicaSet);
+      regionReplicaSet = topology.getValidatedReplicaSet(regionReplicaSet);
       if (regionReplicaSet.getDataNodeLocations().isEmpty()) {
         throw new ReplicaSetUnreachableException(fragment.getTargetRegionForTreeModel());
       }

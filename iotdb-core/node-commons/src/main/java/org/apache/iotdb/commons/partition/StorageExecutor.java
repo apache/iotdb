@@ -23,8 +23,10 @@ import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 
 import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
 
 import java.util.Objects;
+import java.util.Optional;
 
 /** StorageExecutor indicates execution of this query need data from StorageEngine */
 public class StorageExecutor implements ExecutorType {
@@ -35,11 +37,12 @@ public class StorageExecutor implements ExecutorType {
   }
 
   @Override
-  public TDataNodeLocation getDataNodeLocation() {
+  @Nullable
+  public Optional<TDataNodeLocation> getDataNodeLocation() {
     if (regionReplicaSet.getDataNodeLocations().isEmpty()) {
-      return null;
+      return Optional.empty();
     }
-    return regionReplicaSet.getDataNodeLocations().get(0);
+    return Optional.of(regionReplicaSet.getDataNodeLocations().get(0));
   }
 
   @Override

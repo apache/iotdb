@@ -182,6 +182,7 @@ public class LoadCache {
                       regionGroupId,
                       new RegionGroupCache(
                           database,
+                          regionGroupId,
                           regionReplicaSet.getDataNodeLocations().stream()
                               .map(TDataNodeLocation::getDataNodeId)
                               .collect(Collectors.toSet()),
@@ -294,7 +295,8 @@ public class LoadCache {
       String database, TConsensusGroupId regionGroupId, Set<Integer> dataNodeIds) {
     boolean isStrongConsistency = CONF.isConsensusGroupStrongConsistency(regionGroupId);
     regionGroupCacheMap.put(
-        regionGroupId, new RegionGroupCache(database, dataNodeIds, isStrongConsistency));
+        regionGroupId,
+        new RegionGroupCache(database, regionGroupId, dataNodeIds, isStrongConsistency));
     consensusGroupCacheMap.put(regionGroupId, new ConsensusGroupCache());
   }
 
@@ -306,7 +308,7 @@ public class LoadCache {
    */
   public void createRegionCache(TConsensusGroupId regionGroupId, int dataNodeId) {
     Optional.ofNullable(regionGroupCacheMap.get(regionGroupId))
-        .ifPresent(cache -> cache.createRegionCache(dataNodeId));
+        .ifPresent(cache -> cache.createRegionCache(dataNodeId, regionGroupId));
   }
 
   /**

@@ -57,8 +57,10 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Consumer;
@@ -73,6 +75,8 @@ public class TopologyService implements Runnable, IClusterStatusSubscriber {
   private final ExecutorService topologyThread =
       IoTDBThreadPoolFactory.newSingleThreadExecutor(
           ThreadName.CONFIG_NODE_TOPOLOGY_SERVICE.getName());
+
+  private Future<?> future = null;
   private final Consumer<Map<Integer, Set<Integer>>> topologyChangeListener;
 
   private final AwaitForSignal awaitForSignal;
@@ -91,7 +95,7 @@ public class TopologyService implements Runnable, IClusterStatusSubscriber {
       IManager configManager, Consumer<Map<Integer, Set<Integer>>> topologyChangeListener) {
     this.configManager = configManager;
     this.topologyChangeListener = topologyChangeListener;
-    this.heartbeats = new HashMap<>();
+    this.heartbeats = new ConcurrentHashMap<>();
     this.shouldRun = new AtomicBoolean(false);
     this.awaitForSignal = new AwaitForSignal(this.getClass().getSimpleName());
 
@@ -114,19 +118,19 @@ public class TopologyService implements Runnable, IClusterStatusSubscriber {
   }
 
   public synchronized void startTopologyService() {
+    if (future == null) {
+      future = this.topologyThread.submit(this);
+    }
     shouldRun.set(true);
-    topologyThread.submit(this);
     LOGGER.info("Topology Probing has started successfully");
   }
 
   public synchronized void stopTopologyService() {
     shouldRun.set(false);
-    topologyThread.shutdown();
-    try {
-      topologyThread.awaitTermination(PROBING_INTERVAL_MS, TimeUnit.MILLISECONDS);
-    } catch (InterruptedException e) {
-      Thread.currentThread().interrupt();
-    }
+    future.cancel(true);
+    future = null;
+    heartbeats.clear();
+    startingDataNodes.clear();
     LOGGER.info("Topology Probing has stopped successfully");
   }
 
@@ -134,17 +138,18 @@ public class TopologyService implements Runnable, IClusterStatusSubscriber {
    * Schedule the {@link #topologyProbing} task either: 1. every PROBING_INTERVAL_MS interval. 2.
    * Manually triggered by outside events (node restart / register, etc.).
    */
-  private void mayWait() {
+  private boolean mayWait() {
     try {
       this.awaitForSignal.await(PROBING_INTERVAL_MS, TimeUnit.MILLISECONDS);
+      return true;
     } catch (InterruptedException e) {
-      Thread.currentThread().interrupt();
+      return false;
     }
   }
 
   @Override
   public void run() {
-    for (; shouldRun.get(); mayWait()) {
+    while (shouldRun.get() && mayWait()) {
       topologyProbing();
     }
   }
@@ -163,7 +168,7 @@ public class TopologyService implements Runnable, IClusterStatusSubscriber {
       dataNodeIds.add(location.getDataNodeId());
     }
 
-    // 2. send the verify connection RPC to all datanode
+    // 2. send the verify connection RPC to all datanodes
     final TNodeLocations nodeLocations = new TNodeLocations();
     nodeLocations.setDataNodeLocations(dataNodeLocations);
     nodeLocations.setConfigNodeLocations(Collections.emptyList());
@@ -215,6 +220,7 @@ public class TopologyService implements Runnable, IClusterStatusSubscriber {
     final Map<Integer, Set<Integer>> latestTopology =
         dataNodeLocations.stream()
             .collect(Collectors.toMap(TDataNodeLocation::getDataNodeId, k -> new HashSet<>()));
+    final Map<Integer, Set<Integer>> partitioned = new HashMap<>();
     for (final Map.Entry<Pair<Integer, Integer>, List<AbstractHeartbeatSample>> entry :
         heartbeats.entrySet()) {
       final int fromId = entry.getKey().getLeft();
@@ -222,13 +228,30 @@ public class TopologyService implements Runnable, IClusterStatusSubscriber {
       if (!entry.getValue().isEmpty()
           && !failureDetector.isAvailable(entry.getKey(), entry.getValue())) {
         LOGGER.debug("Connection from DataNode {} to DataNode {} is broken", fromId, toId);
+        partitioned.computeIfAbsent(fromId, id -> new HashSet<>()).add(toId);
       } else {
         latestTopology.get(fromId).add(toId);
       }
     }
 
+    if (!partitioned.isEmpty()) {
+      logAsymmetricPartition(partitioned);
+    }
+
     // 5. notify the listeners on topology change
-    topologyChangeListener.accept(latestTopology);
+    if (shouldRun.get()) {
+      topologyChangeListener.accept(latestTopology);
+    }
+  }
+
+  private void logAsymmetricPartition(final Map<Integer, Set<Integer>> partitioned) {
+    for (final int fromId : partitioned.keySet()) {
+      for (final int toId : partitioned.get(fromId)) {
+        if (partitioned.get(toId) == null || !partitioned.get(toId).contains(fromId)) {
+          LOGGER.warn("[Topology] Asymmetric network partition from {} to {}", fromId, toId);
+        }
+      }
+    }
   }
 
   /** We only listen to datanode remove / restart / register events */

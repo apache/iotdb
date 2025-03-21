@@ -20,16 +20,20 @@
 package org.apache.iotdb.db.queryengine.plan.planner.exceptions;
 
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
+import org.apache.iotdb.commons.exception.IoTDBRuntimeException;
+import org.apache.iotdb.rpc.TSStatusCode;
 
 import java.util.Collection;
 
 /**
  * During planning phase of Query, if there exists no datanode that can be served as the role of
- * RootFragmentInstance, that is, no datanode can reach to all replica-sets possibly due to network
- * partition issues, this exception will be thrown and this query will fail.
+ * RootFragmentInstance placement, that is, no datanode can reach to all replica-sets possibly due
+ * to network partition issues, this exception will be thrown and this query will fail.
  */
-public class RootFIPlacementException extends RuntimeException {
+public class RootFIPlacementException extends IoTDBRuntimeException {
   public RootFIPlacementException(Collection<TRegionReplicaSet> replicaSets) {
-    super(replicaSets.toString());
+    super(
+        "root FragmentInstance placement error: " + replicaSets.toString(),
+        TSStatusCode.PLAN_FAILED_NETWORK_PARTITION.getStatusCode());
   }
 }
