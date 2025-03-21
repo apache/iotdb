@@ -694,6 +694,19 @@ showSubscriptions
 // ---- Create Model
 createModel
     : CREATE MODEL modelName=identifier uriClause
+    | CREATE MODEL modelType=identifier modelId=identifier (WITH HYPERPARAMETERS LR_BRACKET hparamPair (COMMA hparamPair)* RR_BRACKET)? (FROM MODEL existingModelId=identifier)? ON DATASET LR_BRACKET trainingData RR_BRACKET
+    ;
+
+trainingData
+    : dataElement(COMMA dataElement)*
+    ;
+
+dataElement
+    : pathPatternElement (LR_BRACKET timeRange RR_BRACKET)?
+    ;
+
+pathPatternElement
+    : PATH path=prefixPath
     ;
 
 windowFunction

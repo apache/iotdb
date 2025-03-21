@@ -17,17 +17,17 @@
 #
 import os
 
-from iotdb.ainode.constant import (AINODE_CONF_DIRECTORY_NAME,
-                                   AINODE_CONF_FILE_NAME,
-                                   AINODE_MODELS_DIR, AINODE_LOG_DIR, AINODE_SYSTEM_DIR, AINODE_INFERENCE_RPC_ADDRESS,
-                                   AINODE_INFERENCE_RPC_PORT, AINODE_THRIFT_COMPRESSION_ENABLED,
-                                   AINODE_SYSTEM_FILE_NAME, AINODE_CLUSTER_NAME, AINODE_VERSION_INFO, AINODE_BUILD_INFO,
-                                   AINODE_CONF_GIT_FILE_NAME, AINODE_CONF_POM_FILE_NAME, AINODE_ROOT_DIR,
-                                   AINODE_ROOT_CONF_DIRECTORY_NAME)
-from iotdb.ainode.exception import BadNodeUrlError
-from iotdb.ainode.log import Logger
-from iotdb.ainode.util.decorator import singleton
-from iotdb.thrift.common.ttypes import TEndPoint
+from ainode.core.constant import (AINODE_CONF_DIRECTORY_NAME,
+                                  AINODE_CONF_FILE_NAME,
+                                  AINODE_MODELS_DIR, AINODE_LOG_DIR, AINODE_SYSTEM_DIR, AINODE_INFERENCE_RPC_ADDRESS,
+                                  AINODE_INFERENCE_RPC_PORT, AINODE_THRIFT_COMPRESSION_ENABLED,
+                                  AINODE_SYSTEM_FILE_NAME, AINODE_CLUSTER_NAME, AINODE_VERSION_INFO, AINODE_BUILD_INFO,
+                                  AINODE_CONF_GIT_FILE_NAME, AINODE_CONF_POM_FILE_NAME, AINODE_ROOT_DIR,
+                                  AINODE_ROOT_CONF_DIRECTORY_NAME)
+from ainode.core.exception import BadNodeUrlError
+from ainode.core.log import Logger
+from ainode.core.util.decorator import singleton
+from ainode.thrift.common.ttypes import TEndPoint
 
 logger = Logger()
 

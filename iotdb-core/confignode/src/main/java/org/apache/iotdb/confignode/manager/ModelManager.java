@@ -20,9 +20,13 @@
 package org.apache.iotdb.confignode.manager;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.model.ModelInformation;
+import org.apache.iotdb.commons.model.ModelStatus;
 import org.apache.iotdb.commons.model.ModelType;
 import org.apache.iotdb.confignode.consensus.request.read.model.GetModelInfoPlan;
 import org.apache.iotdb.confignode.consensus.request.read.model.ShowModelPlan;
+import org.apache.iotdb.confignode.consensus.request.write.model.CreateModelPlan;
+import org.apache.iotdb.confignode.consensus.request.write.model.UpdateModelInfoPlan;
 import org.apache.iotdb.confignode.consensus.response.model.GetModelInfoResp;
 import org.apache.iotdb.confignode.consensus.response.model.ModelTableResp;
 import org.apache.iotdb.confignode.persistence.ModelInfo;
@@ -32,6 +36,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TGetModelInfoReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetModelInfoResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowModelReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowModelResp;
+import org.apache.iotdb.confignode.rpc.thrift.TUpdateModelInfoReq;
 import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.consensus.exception.ConsensusException;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -60,7 +65,18 @@ public class ModelManager {
       return new TSStatus(TSStatusCode.MODEL_EXIST_ERROR.getStatusCode())
           .setMessage(String.format("Model name %s already exists", req.modelName));
     }
-    return configManager.getProcedureManager().createModel(req.modelName, req.uri);
+    try {
+      if (req.uri.isEmpty()) {
+        return configManager.getConsensusManager().write(new CreateModelPlan(req.modelName));
+      }
+      return configManager.getProcedureManager().createModel(req.modelName, req.uri);
+    } catch (ConsensusException e) {
+      LOGGER.warn("Unexpected error happened while getting model: ", e);
+      // consensus layer related errors
+      TSStatus res = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
+      res.setMessage(e.getMessage());
+      return res;
+    }
   }
 
   public TSStatus dropModel(TDropModelReq req) {
@@ -122,6 +138,39 @@ public class ModelManager {
       TSStatus res = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
       res.setMessage(e.getMessage());
       return new TGetModelInfoResp(res);
+    }
+  }
+
+  // Currently this method is only used by built-in timer_xl
+  public TSStatus updateModelInfo(TUpdateModelInfoReq req) {
+    if (!modelInfo.contain(req.getModelId())) {
+      return new TSStatus(TSStatusCode.MODEL_NOT_FOUND_ERROR.getStatusCode())
+          .setMessage(String.format("Model %s doesn't exists", req.getModelId()));
+    }
+    try {
+      ModelInformation modelInformation =
+          new ModelInformation(ModelType.USER_DEFINED, req.getModelId());
+      modelInformation.updateStatus(ModelStatus.values()[req.getModelStatus()]);
+      modelInformation.setAttribute(req.getAttributes());
+      modelInformation.setInputColumnSize(1);
+      if (req.isSetOutputLength()) {
+        modelInformation.setOutputLength(req.getOutputLength());
+      }
+      if (req.isSetInputLength()) {
+        modelInformation.setInputLength(req.getInputLength());
+      }
+      UpdateModelInfoPlan updateModelInfoPlan =
+          new UpdateModelInfoPlan(req.getModelId(), modelInformation);
+      if (req.isSetAiNodeIds()) {
+        updateModelInfoPlan.setNodeIds(req.getAiNodeIds());
+      }
+      return configManager.getConsensusManager().write(updateModelInfoPlan);
+    } catch (ConsensusException e) {
+      LOGGER.warn("Unexpected error happened while updating model info: ", e);
+      // consensus layer related errors
+      TSStatus res = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
+      res.setMessage(e.getMessage());
+      return res;
     }
   }
 
