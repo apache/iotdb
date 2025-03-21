@@ -532,6 +532,38 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
         : resource.getDevices();
   }
 
+  /////////////////////////// PipeInsertionEvent ///////////////////////////
+
+  @Override
+  public boolean isTableModelEvent() {
+    if (getRawIsTableModelEvent() == null) {
+      if (getSourceDatabaseNameFromDataRegion() != null) {
+        return super.isTableModelEvent();
+      }
+
+      try {
+        for (final IDeviceID deviceID : getDeviceSet()) {
+          if (deviceID instanceof PlainDeviceID
+              || deviceID.getTableName().startsWith(TREE_MODEL_EVENT_TABLE_NAME_PREFIX)
+              || deviceID.getTableName().equals(PATH_ROOT)) {
+            markAsTreeModelEvent();
+          } else {
+            markAsTableModelEvent();
+          }
+          break;
+        }
+      } catch (final Exception e) {
+        throw new PipeException(
+            String.format(
+                "Pipe %s: failed to judge whether TsFile %s is table model or tree model",
+                pipeName, resource.getTsFilePath()),
+            e);
+      }
+    }
+
+    return getRawIsTableModelEvent();
+  }
+
   /////////////////////////// TsFileInsertionEvent ///////////////////////////
 
   @Override
