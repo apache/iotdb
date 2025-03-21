@@ -28,7 +28,7 @@ from thrift.transport import TSocket, TTransport
 from iotdb.utils.SessionDataSet import SessionDataSet
 from .template.Template import Template
 from .template.TemplateQueryType import TemplateQueryType
-from .thrift.common.ttypes import TEndPoint, TSStatus
+from .thrift.common.ttypes import TEndPoint
 from .thrift.rpc.IClientRPCService import (
     Client,
     TSCreateTimeseriesReq,

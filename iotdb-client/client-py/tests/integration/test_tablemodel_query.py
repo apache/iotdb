@@ -15,6 +15,8 @@
 # specific language governing permissions and limitations
 # under the License.
 #
+import math
+
 import pandas as pd
 
 from iotdb.table_session import TableSession, TableSessionConfig
@@ -341,10 +343,20 @@ def test_query_data():
                 row_record = session_data_set.next()
                 assert row_record.get_timestamp() == 0
                 for i in range(len(column_names)):
-                    assert (
-                        row_record.get_fields()[i].get_object_value(data_types[i])
-                        == values[row][i]
-                    )
+                    if (
+                        data_types[i] == TSDataType.FLOAT
+                        or data_types[i] == TSDataType.DOUBLE
+                    ):
+                        assert math.isclose(
+                            row_record.get_fields()[i].get_object_value(data_types[i]),
+                            values[row][i],
+                            rel_tol=1e-6,
+                        )
+                    else:
+                        assert (
+                            row_record.get_fields()[i].get_object_value(data_types[i])
+                            == values[row][i]
+                        )
                 row += 1
         # Determine whether it meets expectations
         assert expect == row
