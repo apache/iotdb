@@ -126,10 +126,12 @@ import org.apache.iotdb.confignode.consensus.request.write.table.PreCreateTableP
 import org.apache.iotdb.confignode.consensus.request.write.table.PreDeleteColumnPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.PreDeleteTablePlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.RenameTableColumnPlan;
+import org.apache.iotdb.confignode.consensus.request.write.table.RenameTablePlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.RollbackCreateTablePlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.SetTableColumnCommentPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.SetTableCommentPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.SetTablePropertiesPlan;
+import org.apache.iotdb.confignode.consensus.request.write.table.view.PreCreateTableViewPlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.CommitSetSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.CreateSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.DropSchemaTemplatePlan;
@@ -562,11 +564,14 @@ public class ConfigPlanExecutor {
         return clusterSchemaInfo.extendSchemaTemplate((ExtendSchemaTemplatePlan) physicalPlan);
       case PreCreateTable:
         return clusterSchemaInfo.preCreateTable((PreCreateTablePlan) physicalPlan);
+      case PreCreateTableView:
+        return clusterSchemaInfo.preCreateTableView((PreCreateTableViewPlan) physicalPlan);
       case RollbackCreateTable:
         return clusterSchemaInfo.rollbackCreateTable((RollbackCreateTablePlan) physicalPlan);
       case CommitCreateTable:
         return clusterSchemaInfo.commitCreateTable((CommitCreateTablePlan) physicalPlan);
       case AddTableColumn:
+      case AddViewColumn:
         return clusterSchemaInfo.addTableColumn((AddTableColumnPlan) physicalPlan);
       case RenameTableColumn:
         return clusterSchemaInfo.renameTableColumn((RenameTableColumnPlan) physicalPlan);
@@ -581,9 +586,12 @@ public class ConfigPlanExecutor {
       case CommitDeleteTable:
         return clusterSchemaInfo.dropTable((CommitDeleteTablePlan) physicalPlan);
       case SetTableComment:
+      case SetViewComment:
         return clusterSchemaInfo.setTableComment((SetTableCommentPlan) physicalPlan);
       case SetTableColumnComment:
         return clusterSchemaInfo.setTableColumnComment((SetTableColumnCommentPlan) physicalPlan);
+      case RenameTable:
+        return clusterSchemaInfo.renameTable((RenameTablePlan) physicalPlan);
       case CreatePipeV2:
         return pipeInfo.createPipe((CreatePipePlanV2) physicalPlan);
       case SetPipeStatusV2:

@@ -25,6 +25,7 @@ import org.apache.iotdb.commons.pipe.agent.plugin.builtin.BuiltinPipePlugin;
 import org.apache.iotdb.commons.pipe.agent.plugin.meta.PipePluginMeta;
 import org.apache.iotdb.commons.schema.table.InformationSchema;
 import org.apache.iotdb.commons.schema.table.TableNodeStatus;
+import org.apache.iotdb.commons.schema.table.TableType;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.TsTableInternalRPCUtil;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
@@ -254,6 +255,17 @@ public class InformationSchemaContentSupplierFactory {
             new Binary(currentTable.getComment(), TSFileConfig.STRING_CHARSET));
       } else {
         columnBuilders[4].appendNull();
+      }
+      if (dbName.equals(InformationSchema.INFORMATION_DATABASE)) {
+        columnBuilders[5].writeBinary(
+            new Binary(TableType.SYSTEM_VIEW.getName(), TSFileConfig.STRING_CHARSET));
+      } else if (currentTable.isSetType()) {
+        columnBuilders[5].writeBinary(
+            new Binary(
+                TableType.values()[currentTable.getType()].getName(), TSFileConfig.STRING_CHARSET));
+      } else {
+        columnBuilders[5].writeBinary(
+            new Binary(TableType.BASE_TABLE.getName(), TSFileConfig.STRING_CHARSET));
       }
       resultBuilder.declarePosition();
       currentTable = null;

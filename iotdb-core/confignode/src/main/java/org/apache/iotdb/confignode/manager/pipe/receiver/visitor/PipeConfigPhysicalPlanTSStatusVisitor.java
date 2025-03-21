@@ -27,7 +27,7 @@ import org.apache.iotdb.confignode.consensus.request.write.auth.AuthorTreePlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.DatabaseSchemaPlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.DeleteDatabasePlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.SetTTLPlan;
-import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeCreateTablePlan;
+import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeCreateTableOrViewPlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeDeactivateTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeDeleteDevicesPlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeDeleteLogicalViewPlan;
@@ -37,6 +37,7 @@ import org.apache.iotdb.confignode.consensus.request.write.table.AddTableColumnP
 import org.apache.iotdb.confignode.consensus.request.write.table.CommitDeleteColumnPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.CommitDeleteTablePlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.RenameTableColumnPlan;
+import org.apache.iotdb.confignode.consensus.request.write.table.RenameTablePlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.SetTableColumnCommentPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.SetTableCommentPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.SetTablePropertiesPlan;
@@ -506,23 +507,13 @@ public class PipeConfigPhysicalPlanTSStatusVisitor
 
   @Override
   public TSStatus visitPipeCreateTable(
-      final PipeCreateTablePlan pipeCreateTablePlan, final TSStatus context) {
-    if (context.getCode() == TSStatusCode.DATABASE_NOT_EXIST.getStatusCode()
-        || context.getCode() == TSStatusCode.TABLE_ALREADY_EXISTS.getStatusCode()
-        || context.getCode() == TSStatusCode.COLUMN_ALREADY_EXISTS.getStatusCode()) {
-      return new TSStatus(TSStatusCode.PIPE_RECEIVER_IDEMPOTENT_CONFLICT_EXCEPTION.getStatusCode())
-          .setMessage(context.getMessage());
-    }
-    return super.visitPipeCreateTable(pipeCreateTablePlan, context);
+      final PipeCreateTableOrViewPlan pipeCreateTableOrViewPlan, final TSStatus context) {
+    return visitCommonTablePlan(pipeCreateTableOrViewPlan, context);
   }
 
   @Override
   public TSStatus visitAddTableColumn(
       final AddTableColumnPlan addTableColumnPlan, final TSStatus context) {
-    if (context.getCode() == TSStatusCode.COLUMN_ALREADY_EXISTS.getStatusCode()) {
-      return new TSStatus(TSStatusCode.PIPE_RECEIVER_IDEMPOTENT_CONFLICT_EXCEPTION.getStatusCode())
-          .setMessage(context.getMessage());
-    }
     return visitCommonTablePlan(addTableColumnPlan, context);
   }
 
@@ -566,6 +557,11 @@ public class PipeConfigPhysicalPlanTSStatusVisitor
   public TSStatus visitSetTableColumnComment(
       final SetTableColumnCommentPlan setTableColumnCommentPlan, final TSStatus context) {
     return visitCommonTablePlan(setTableColumnCommentPlan, context);
+  }
+
+  @Override
+  public TSStatus visitRenameTable(final RenameTablePlan renameTablePlan, final TSStatus context) {
+    return visitCommonTablePlan(renameTablePlan, context);
   }
 
   private TSStatus visitCommonTablePlan(final ConfigPhysicalPlan plan, final TSStatus context) {

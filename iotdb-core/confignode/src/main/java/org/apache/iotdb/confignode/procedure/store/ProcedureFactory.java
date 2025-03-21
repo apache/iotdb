@@ -58,7 +58,10 @@ import org.apache.iotdb.confignode.procedure.impl.schema.table.DeleteDevicesProc
 import org.apache.iotdb.confignode.procedure.impl.schema.table.DropTableColumnProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.table.DropTableProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.table.RenameTableColumnProcedure;
+import org.apache.iotdb.confignode.procedure.impl.schema.table.RenameTableProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.table.SetTablePropertiesProcedure;
+import org.apache.iotdb.confignode.procedure.impl.schema.table.view.AddTableViewColumnProcedure;
+import org.apache.iotdb.confignode.procedure.impl.schema.table.view.CreateTableViewProcedure;
 import org.apache.iotdb.confignode.procedure.impl.subscription.consumer.AlterConsumerGroupProcedure;
 import org.apache.iotdb.confignode.procedure.impl.subscription.consumer.CreateConsumerProcedure;
 import org.apache.iotdb.confignode.procedure.impl.subscription.consumer.DropConsumerProcedure;
@@ -203,8 +206,14 @@ public class ProcedureFactory implements IProcedureFactory {
       case CREATE_TABLE_PROCEDURE:
         procedure = new CreateTableProcedure(false);
         break;
+      case CREATE_TABLE_VIEW_PROCEDURE:
+        procedure = new CreateTableViewProcedure(false);
+        break;
       case ADD_TABLE_COLUMN_PROCEDURE:
         procedure = new AddTableColumnProcedure(false);
+        break;
+      case ADD_TABLE_VIEW_COLUMN_PROCEDURE:
+        procedure = new AddTableViewColumnProcedure(false);
         break;
       case SET_TABLE_PROPERTIES_PROCEDURE:
         procedure = new SetTablePropertiesProcedure(false);
@@ -220,6 +229,9 @@ public class ProcedureFactory implements IProcedureFactory {
         break;
       case DELETE_DEVICES_PROCEDURE:
         procedure = new DeleteDevicesProcedure(false);
+        break;
+      case RENAME_TABLE_PROCEDURE:
+        procedure = new RenameTableProcedure(false);
         break;
       case CREATE_PIPE_PLUGIN_PROCEDURE:
         procedure = new CreatePipePluginProcedure();
@@ -286,6 +298,15 @@ public class ProcedureFactory implements IProcedureFactory {
         break;
       case PIPE_ENRICHED_DELETE_DEVICES_PROCEDURE:
         procedure = new DeleteDevicesProcedure(true);
+        break;
+      case PIPE_ENRICHED_RENAME_TABLE_PROCEDURE:
+        procedure = new RenameTableProcedure(true);
+        break;
+      case PIPE_ENRICHED_CREATE_TABLE_VIEW_PROCEDURE:
+        procedure = new CreateTableViewProcedure(true);
+        break;
+      case PIPE_ENRICHED_ADD_TABLE_VIEW_COLUMN_PROCEDURE:
+        procedure = new AddTableViewColumnProcedure(true);
         break;
       case REMOVE_AI_NODE_PROCEDURE:
         procedure = new RemoveAINodeProcedure();
@@ -394,8 +415,12 @@ public class ProcedureFactory implements IProcedureFactory {
       return ProcedureType.DEACTIVATE_TEMPLATE_PROCEDURE;
     } else if (procedure instanceof UnsetTemplateProcedure) {
       return ProcedureType.UNSET_TEMPLATE_PROCEDURE;
+    } else if (procedure instanceof CreateTableViewProcedure) {
+      return ProcedureType.CREATE_TABLE_VIEW_PROCEDURE;
     } else if (procedure instanceof CreateTableProcedure) {
       return ProcedureType.CREATE_TABLE_PROCEDURE;
+    } else if (procedure instanceof AddTableViewColumnProcedure) {
+      return ProcedureType.ADD_TABLE_VIEW_COLUMN_PROCEDURE;
     } else if (procedure instanceof AddTableColumnProcedure) {
       return ProcedureType.ADD_TABLE_COLUMN_PROCEDURE;
     } else if (procedure instanceof SetTablePropertiesProcedure) {
@@ -408,6 +433,8 @@ public class ProcedureFactory implements IProcedureFactory {
       return ProcedureType.DROP_TABLE_PROCEDURE;
     } else if (procedure instanceof DeleteDevicesProcedure) {
       return ProcedureType.DELETE_DEVICES_PROCEDURE;
+    } else if (procedure instanceof RenameTableProcedure) {
+      return ProcedureType.RENAME_TABLE_PROCEDURE;
     } else if (procedure instanceof CreatePipePluginProcedure) {
       return ProcedureType.CREATE_PIPE_PLUGIN_PROCEDURE;
     } else if (procedure instanceof DropPipePluginProcedure) {

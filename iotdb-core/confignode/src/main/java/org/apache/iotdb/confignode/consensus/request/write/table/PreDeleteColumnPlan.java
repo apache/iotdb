@@ -22,12 +22,20 @@ package org.apache.iotdb.confignode.consensus.request.write.table;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
 
 public class PreDeleteColumnPlan extends AbstractTableColumnPlan {
-  public PreDeleteColumnPlan() {
-    super(ConfigPhysicalPlanType.PreDeleteColumn);
+  public PreDeleteColumnPlan(final ConfigPhysicalPlanType type) {
+    super(type);
   }
 
   public PreDeleteColumnPlan(
       final String database, final String tableName, final String columnName) {
-    super(ConfigPhysicalPlanType.PreDeleteColumn, database, tableName, columnName);
+    this(ConfigPhysicalPlanType.PreDeleteColumn, database, tableName, columnName);
+  }
+
+  protected PreDeleteColumnPlan(
+      final ConfigPhysicalPlanType type,
+      final String database,
+      final String tableName,
+      final String columnName) {
+    super(type, database, tableName, columnName);
   }
 }

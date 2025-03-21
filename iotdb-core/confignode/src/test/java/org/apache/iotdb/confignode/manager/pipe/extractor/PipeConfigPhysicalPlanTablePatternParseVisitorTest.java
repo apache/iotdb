@@ -27,7 +27,7 @@ import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
 import org.apache.iotdb.confignode.consensus.request.write.auth.AuthorRelationalPlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.DatabaseSchemaPlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.DeleteDatabasePlan;
-import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeCreateTablePlan;
+import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeCreateTableOrViewPlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeDeleteDevicesPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.AddTableColumnPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.CommitDeleteColumnPlan;
@@ -36,6 +36,9 @@ import org.apache.iotdb.confignode.consensus.request.write.table.RenameTableColu
 import org.apache.iotdb.confignode.consensus.request.write.table.SetTableColumnCommentPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.SetTableCommentPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.SetTablePropertiesPlan;
+import org.apache.iotdb.confignode.consensus.request.write.table.view.AddTableViewColumnPlan;
+import org.apache.iotdb.confignode.consensus.request.write.table.view.CommitDeleteViewColumnPlan;
+import org.apache.iotdb.confignode.consensus.request.write.table.view.SetViewCommentPlan;
 import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
 
 import org.junit.Assert;
@@ -72,9 +75,9 @@ public class PipeConfigPhysicalPlanTablePatternParseVisitorTest {
   @Test
   public void testCreateTable() {
     testInput(
-        new PipeCreateTablePlan("db1", new TsTable("ab")),
-        new PipeCreateTablePlan("db1", new TsTable("ac")),
-        new PipeCreateTablePlan("da", new TsTable("a2b")));
+        new PipeCreateTableOrViewPlan("db1", new TsTable("ab")),
+        new PipeCreateTableOrViewPlan("db1", new TsTable("ac")),
+        new PipeCreateTableOrViewPlan("da", new TsTable("a2b")));
   }
 
   @Test
@@ -83,6 +86,14 @@ public class PipeConfigPhysicalPlanTablePatternParseVisitorTest {
         new AddTableColumnPlan("db1", "ab", new ArrayList<>(), false),
         new AddTableColumnPlan("db1", "ac", new ArrayList<>(), false),
         new AddTableColumnPlan("da", "ac", new ArrayList<>(), false));
+  }
+
+  @Test
+  public void testAddViewColumn() {
+    testInput(
+        new AddTableViewColumnPlan("db1", "ab", new ArrayList<>(), false),
+        new AddTableViewColumnPlan("db1", "ac", new ArrayList<>(), false),
+        new AddTableViewColumnPlan("da", "ac", new ArrayList<>(), false));
   }
 
   @Test
@@ -99,6 +110,14 @@ public class PipeConfigPhysicalPlanTablePatternParseVisitorTest {
         new CommitDeleteColumnPlan("db1", "ab", "a"),
         new CommitDeleteColumnPlan("db1", "ac", "a"),
         new CommitDeleteColumnPlan("da", "ac", "a"));
+  }
+
+  @Test
+  public void testCommitDeleteViewColumn() {
+    testInput(
+        new CommitDeleteViewColumnPlan("db1", "ab", "a"),
+        new CommitDeleteViewColumnPlan("db1", "ac", "a"),
+        new CommitDeleteViewColumnPlan("da", "ac", "a"));
   }
 
   @Test
@@ -131,6 +150,14 @@ public class PipeConfigPhysicalPlanTablePatternParseVisitorTest {
         new SetTableCommentPlan("db1", "ab", "a"),
         new SetTableCommentPlan("db1", "ac", "a"),
         new SetTableCommentPlan("da", "ac", "a"));
+  }
+
+  @Test
+  public void testSetViewComment() {
+    testInput(
+        new SetViewCommentPlan("db1", "ab", "a"),
+        new SetViewCommentPlan("db1", "ac", "a"),
+        new SetViewCommentPlan("da", "ac", "a"));
   }
 
   @Test

@@ -25,14 +25,17 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.schema.column.ColumnHeader;
 import org.apache.iotdb.commons.schema.filter.SchemaFilter;
 import org.apache.iotdb.commons.schema.filter.impl.DeviceFilterUtil;
+import org.apache.iotdb.commons.schema.table.TreeViewSchema;
+import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
-import org.apache.iotdb.db.queryengine.plan.relational.metadata.TableMetadataImpl;
+import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.db.schemaengine.rescon.ISchemaRegionStatistics;
 import org.apache.iotdb.db.schemaengine.schemaregion.ISchemaRegion;
 import org.apache.iotdb.db.schemaengine.schemaregion.read.resp.info.IDeviceSchemaInfo;
 import org.apache.iotdb.db.schemaengine.schemaregion.read.resp.reader.ISchemaReader;
 import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
+import org.apache.iotdb.db.schemaengine.table.DataNodeTreeViewSchemaUtils;
 
 import com.google.common.util.concurrent.ListenableFuture;
 import org.apache.tsfile.common.conf.TSFileConfig;
@@ -48,9 +51,12 @@ import java.util.List;
 import java.util.NoSuchElementException;
 import java.util.Objects;
 
+import static org.apache.iotdb.commons.conf.IoTDBConstant.PATH_ROOT;
+
 public class TableDeviceQuerySource implements ISchemaSource<IDeviceSchemaInfo> {
 
-  private final String tableName;
+  private final TsTable table;
+  private final int idIndex;
 
   private final List<List<SchemaFilter>> idDeterminedPredicateList;
 
@@ -58,21 +64,28 @@ public class TableDeviceQuerySource implements ISchemaSource<IDeviceSchemaInfo> 
   private final List<TsTableColumnSchema> columnSchemaList;
   private final DevicePredicateFilter filter;
   private @Nonnull List<PartialPath> devicePatternList;
+  private final boolean needAligned;
 
   public TableDeviceQuerySource(
       final String database,
-      final String tableName,
+      final TsTable table,
       final List<List<SchemaFilter>> idDeterminedPredicateList,
       final List<ColumnHeader> columnHeaderList,
       final List<TsTableColumnSchema> columnSchemaList,
-      final DevicePredicateFilter filter) {
-    this.tableName = tableName;
+      final DevicePredicateFilter filter,
+      final boolean needAligned) {
+    this.idIndex =
+        !needAligned && PathUtils.isTableModelDatabase(database)
+            ? 3
+            : DataNodeTreeViewSchemaUtils.getPatternNodes(table).length;
+    this.table = table;
     this.idDeterminedPredicateList = idDeterminedPredicateList;
     this.columnHeaderList = columnHeaderList;
     // Calculate this outside to save cpu
     this.columnSchemaList = columnSchemaList;
     this.filter = filter;
-    this.devicePatternList = getDevicePatternList(database, tableName, idDeterminedPredicateList);
+    this.devicePatternList = getDevicePatternList(database, table, idDeterminedPredicateList);
+    this.needAligned = needAligned;
   }
 
   @Override
@@ -194,14 +207,13 @@ public class TableDeviceQuerySource implements ISchemaSource<IDeviceSchemaInfo> 
 
   public static @Nonnull List<PartialPath> getDevicePatternList(
       final String database,
-      final String tableName,
+      final TsTable table,
       final List<List<SchemaFilter>> idDeterminedPredicateList) {
-    if (Objects.isNull(DataNodeTableCache.getInstance().getTable(database, tableName))) {
-      TableMetadataImpl.throwTableNotExistsException(database, tableName);
-    }
+    final String tableName = table.getTableName();
     return DeviceFilterUtil.convertToDevicePattern(
-        database,
-        tableName,
+        !TreeViewSchema.isTreeViewTable(table)
+            ? new String[] {PATH_ROOT, database, tableName}
+            : DataNodeTreeViewSchemaUtils.getPatternNodes(table),
         DataNodeTableCache.getInstance().getTable(database, tableName).getIdNums(),
         idDeterminedPredicateList);
   }
@@ -214,10 +226,14 @@ public class TableDeviceQuerySource implements ISchemaSource<IDeviceSchemaInfo> 
   @Override
   public void transformToTsBlockColumns(
       final IDeviceSchemaInfo schemaInfo, final TsBlockBuilder builder, final String database) {
-    transformToTsBlockColumns(schemaInfo, builder, columnSchemaList, 3);
+    if (!needAligned) {
+      transformToTableDeviceTsBlockColumns(schemaInfo, builder, columnSchemaList, idIndex);
+    } else {
+      transformToTreeDeviceTsBlockColumns(schemaInfo, builder, columnSchemaList, idIndex);
+    }
   }
 
-  public static void transformToTsBlockColumns(
+  public static void transformToTableDeviceTsBlockColumns(
       final IDeviceSchemaInfo schemaInfo,
       final TsBlockBuilder builder,
       final List<TsTableColumnSchema> columnSchemaList,
@@ -248,22 +264,51 @@ public class TableDeviceQuerySource implements ISchemaSource<IDeviceSchemaInfo> 
     builder.declarePosition();
   }
 
+  private static void transformToTreeDeviceTsBlockColumns(
+      final IDeviceSchemaInfo schemaInfo,
+      final TsBlockBuilder builder,
+      final List<TsTableColumnSchema> columnSchemaList,
+      final int beginIndex) {
+    builder.getTimeColumnBuilder().writeLong(0L);
+    int resultIndex = 0;
+    final String[] pathNodes = schemaInfo.getRawNodes();
+    for (final TsTableColumnSchema columnSchema : columnSchemaList) {
+      if (Objects.nonNull(columnSchema)
+          && columnSchema.getColumnCategory().equals(TsTableColumnCategory.TAG)) {
+        if (pathNodes.length <= resultIndex + beginIndex
+            || pathNodes[resultIndex + beginIndex] == null) {
+          builder.getColumnBuilder(resultIndex).appendNull();
+        } else {
+          builder
+              .getColumnBuilder(resultIndex)
+              .writeBinary(
+                  new Binary(pathNodes[resultIndex + beginIndex], TSFileConfig.STRING_CHARSET));
+        }
+        resultIndex++;
+      }
+    }
+    builder.getColumnBuilder(resultIndex).writeBoolean(schemaInfo.isAligned());
+    builder.declarePosition();
+  }
+
   @Override
   public boolean hasSchemaStatistic(final ISchemaRegion schemaRegion) {
     return (Objects.isNull(idDeterminedPredicateList)
             || idDeterminedPredicateList.isEmpty()
             || idDeterminedPredicateList.stream().allMatch(List::isEmpty))
-        && Objects.isNull(filter);
+        && Objects.isNull(filter)
+        && PathUtils.isTableModelDatabase(schemaRegion.getDatabaseFullPath());
   }
 
   @Override
   public long getSchemaStatistic(final ISchemaRegion schemaRegion) {
-    return schemaRegion.getSchemaRegionStatistics().getTableDevicesNumber(tableName);
+    return schemaRegion.getSchemaRegionStatistics().getTableDevicesNumber(table.getTableName());
   }
 
   @Override
   public long getMaxMemory(final ISchemaRegion schemaRegion) {
     final ISchemaRegionStatistics statistics = schemaRegion.getSchemaRegionStatistics();
+    final String tableName = table.getTableName();
     final long devicesNumber = statistics.getTableDevicesNumber(tableName);
     return devicePatternList.stream().allMatch(path -> ((ExtendedPartialPath) path).isNormalPath())
         ? Math.min(

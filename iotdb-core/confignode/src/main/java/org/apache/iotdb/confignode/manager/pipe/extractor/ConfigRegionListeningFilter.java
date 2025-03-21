@@ -104,21 +104,27 @@ public class ConfigRegionListeningFilter {
           Collections.unmodifiableList(
               Arrays.asList(
                   ConfigPhysicalPlanType.CommitCreateTable,
-                  ConfigPhysicalPlanType.PipeCreateTable,
-                  ConfigPhysicalPlanType.AddTableColumn)));
+                  ConfigPhysicalPlanType.PipeCreateTableOrView,
+                  ConfigPhysicalPlanType.PipeCreateView,
+                  ConfigPhysicalPlanType.AddTableColumn,
+                  ConfigPhysicalPlanType.AddViewColumn)));
       OPTION_PLAN_MAP.put(
           new PartialPath("schema.table.alter"),
           Collections.unmodifiableList(
               Arrays.asList(
                   ConfigPhysicalPlanType.SetTableProperties,
                   ConfigPhysicalPlanType.SetTableComment,
-                  ConfigPhysicalPlanType.SetTableColumnComment)));
+                  ConfigPhysicalPlanType.SetViewComment,
+                  ConfigPhysicalPlanType.SetTableColumnComment,
+                  ConfigPhysicalPlanType.RenameTable)));
       OPTION_PLAN_MAP.put(
           new PartialPath("schema.table.drop"),
           Collections.unmodifiableList(
               Arrays.asList(
                   ConfigPhysicalPlanType.CommitDeleteTable,
+                  ConfigPhysicalPlanType.CommitDeleteView,
                   ConfigPhysicalPlanType.CommitDeleteColumn,
+                  ConfigPhysicalPlanType.CommitDeleteViewColumn,
                   ConfigPhysicalPlanType.PipeDeleteDevices)));
 
       OPTION_PLAN_MAP.put(

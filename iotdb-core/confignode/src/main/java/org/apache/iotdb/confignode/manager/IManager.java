@@ -31,6 +31,7 @@ import org.apache.iotdb.commons.auth.entity.PrivilegeUnion;
 import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
+import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
 import org.apache.iotdb.confignode.consensus.request.read.ainode.GetAINodeConfigurationPlan;
 import org.apache.iotdb.confignode.consensus.request.read.database.CountDatabasePlan;
 import org.apache.iotdb.confignode.consensus.request.read.database.GetDatabasePlan;
@@ -75,6 +76,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TCreateModelReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreatePipePluginReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreatePipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateSchemaTemplateReq;
+import org.apache.iotdb.confignode.rpc.thrift.TCreateTableViewReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateTopicReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateTriggerReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRegisterReq;
@@ -860,7 +862,16 @@ public interface IManager {
   /** Set space quota. */
   TSStatus setSpaceQuota(TSetSpaceQuotaReq req);
 
+  TSStatus createTreeViewTable(
+      final String databaseName,
+      final String tableName,
+      final PartialPath nameSpace,
+      final List<TsTableColumnSchema> columns,
+      final String ttl);
+
   TSStatus createTable(final ByteBuffer tableInfo);
+
+  TSStatus createTableView(final TCreateTableViewReq req);
 
   TSStatus alterOrDropTable(final TAlterOrDropTableReq req);
 
