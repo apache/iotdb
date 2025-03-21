@@ -53,7 +53,6 @@ public class IoTDBMaintainAuthIT {
         "INSERT INTO table1(time,device_id,s1) values(1, 'd1', 1)",
         String.format(CREATE_USER_FORMAT, USER_1, PASSWORD),
         "GRANT SELECT ON TABLE table1 TO USER " + USER_1,
-        "GRANT SELECT ON information_schema.queries TO USER " + USER_1,
         String.format(CREATE_USER_FORMAT, USER_2, PASSWORD)
       };
 
@@ -167,8 +166,6 @@ public class IoTDBMaintainAuthIT {
 
     // case 12: show queries
     // user1 with select on information_schema.queries
-    expectedHeader =
-        new String[] {"query_id", "start_time", "datanode_id", "elapsed_time", "statement", "user"};
     tableAssertTestFail(
         "SHOW QUERIES",
         TSStatusCode.NO_PERMISSION.getStatusCode()

@@ -20,12 +20,19 @@
 package org.apache.iotdb.relational.it.schema;
 
 import org.apache.iotdb.db.it.utils.TestUtils;
+import org.apache.iotdb.isession.ITableSession;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.TableClusterIT;
 import org.apache.iotdb.itbase.category.TableLocalStandaloneIT;
 import org.apache.iotdb.itbase.env.BaseEnv;
+import org.apache.iotdb.rpc.IoTDBConnectionException;
+import org.apache.iotdb.rpc.StatementExecutionException;
 
+import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.write.record.Tablet;
+import org.apache.tsfile.write.schema.IMeasurementSchema;
+import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.BeforeClass;
@@ -38,7 +45,10 @@ import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
+import java.util.List;
 
 import static org.apache.iotdb.commons.schema.column.ColumnHeaderConstant.describeTableColumnHeaders;
 import static org.apache.iotdb.commons.schema.column.ColumnHeaderConstant.describeTableDetailsColumnHeaders;
@@ -47,6 +57,7 @@ import static org.apache.iotdb.commons.schema.column.ColumnHeaderConstant.showTa
 import static org.apache.iotdb.commons.schema.column.ColumnHeaderConstant.showTablesDetailsColumnHeaders;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 @RunWith(IoTDBTestRunner.class)
@@ -613,6 +624,9 @@ public class IoTDBTableIT {
           assertEquals(showDBColumnHeaders.get(i).getColumnName(), metaData.getColumnName(i + 1));
         }
         Assert.assertTrue(resultSet.next());
+        if (resultSet.getString(1).equals("information_schema")) {
+          assertTrue(resultSet.next());
+        }
         assertEquals("db", resultSet.getString(1));
         Assert.assertFalse(resultSet.next());
       }
@@ -630,6 +644,83 @@ public class IoTDBTableIT {
         final Statement userStmt = userCon.createStatement()) {
       userStmt.execute("use db");
       userStmt.execute("drop table test");
+    }
+  }
+
+  // Test deadlock
+  @Test(timeout = 60000)
+  public void testConcurrentAutoCreateAndDropColumn() throws Exception {
+    try (final ITableSession session = EnvFactory.getEnv().getTableSessionConnection();
+        final Connection adminCon = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        final Statement adminStmt = adminCon.createStatement()) {
+      adminStmt.execute("create database db1");
+      session.executeNonQueryStatement("USE \"db1\"");
+
+      final StringBuilder sb = new StringBuilder("CREATE TABLE table8 (tag1 string tag");
+      for (int i = 0; i < 100; ++i) {
+        sb.append(String.format(", m%s string", i));
+      }
+      sb.append(")");
+      session.executeNonQueryStatement(sb.toString());
+
+      final Thread insertThread =
+          new Thread(
+              () -> {
+                for (int i = 0; i < 100; ++i) {
+                  final List<IMeasurementSchema> schemaList = new ArrayList<>();
+                  schemaList.add(new MeasurementSchema("tag1", TSDataType.STRING));
+                  schemaList.add(new MeasurementSchema("attr1", TSDataType.STRING));
+                  schemaList.add(
+                      new MeasurementSchema(String.format("m%s", 100 + i), TSDataType.DOUBLE));
+                  final List<Tablet.ColumnCategory> columnTypes =
+                      Arrays.asList(
+                          Tablet.ColumnCategory.TAG,
+                          Tablet.ColumnCategory.ATTRIBUTE,
+                          Tablet.ColumnCategory.FIELD);
+
+                  long timestamp = 0;
+                  final Tablet tablet =
+                      new Tablet(
+                          "table8",
+                          IMeasurementSchema.getMeasurementNameList(schemaList),
+                          IMeasurementSchema.getDataTypeList(schemaList),
+                          columnTypes,
+                          15);
+
+                  for (int row = 0; row < 15; row++) {
+                    tablet.addTimestamp(row, timestamp);
+                    tablet.addValue("tag1", row, "tag:" + timestamp);
+                    tablet.addValue("attr1", row, "attr:" + timestamp);
+                    tablet.addValue(String.format("m%s", 100 + i), row, timestamp * 1.0);
+                    timestamp++;
+                  }
+
+                  try {
+                    session.insert(tablet);
+                  } catch (final StatementExecutionException | IoTDBConnectionException e) {
+                    throw new RuntimeException(e);
+                  }
+                  tablet.reset();
+                }
+              });
+
+      final Thread deletionThread =
+          new Thread(
+              () -> {
+                for (int i = 0; i < 100; ++i) {
+                  try {
+                    adminStmt.execute(String.format("alter table db1.table8 drop column m%s", i));
+                  } catch (final SQLException e) {
+                    throw new RuntimeException(e);
+                  }
+                }
+              });
+
+      insertThread.start();
+      deletionThread.start();
+
+      insertThread.join();
+      deletionThread.join();
     }
   }
 }

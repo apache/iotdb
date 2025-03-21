@@ -34,6 +34,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.node.CollectNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.DeviceTableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.EnforceSingleRowNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ExchangeNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ExplainAnalyzeNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.FilterNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.InformationSchemaTableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.JoinNode;
@@ -250,6 +251,10 @@ public final class PlanMatchPattern {
     return this;
   }
 
+  public static PlanMatchPattern aggregation(PlanMatchPattern source) {
+    return node(AggregationNode.class, source);
+  }
+
   public static PlanMatchPattern aggregation(
       Map<String, ExpectedValueProvider<AggregationFunction>> aggregations,
       PlanMatchPattern source) {
@@ -415,6 +420,10 @@ public final class PlanMatchPattern {
     return result;
   }
 
+  public static PlanMatchPattern aggregationTableScan() {
+    return node(AggregationTableScanNode.class);
+  }
+
   public static PlanMatchPattern markDistinct(
       String markerSymbol, List<String> distinctSymbols, PlanMatchPattern source) {
     return node(MarkDistinctNode.class, source)
@@ -564,6 +573,10 @@ public final class PlanMatchPattern {
 
   public static PlanMatchPattern strictOutput(List<String> outputs, PlanMatchPattern source) {
     return output(outputs, source).withExactOutputs(outputs);
+  }
+
+  public static PlanMatchPattern explainAnalyze(PlanMatchPattern source) {
+    return node(ExplainAnalyzeNode.class, source);
   }
 
   public static PlanMatchPattern project(PlanMatchPattern source) {

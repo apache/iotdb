@@ -42,6 +42,17 @@ for /f  "eol=# tokens=2 delims==" %%i in ('findstr /i "^dn_rpc_port"
 "%config_file%"') do (
   set dn_rpc_port=%%i
 )
+@REM trim the port
+:delLeft1
+if "%dn_rpc_port:~0,1%"==" " (
+    set "dn_rpc_port=%dn_rpc_port:~1%"
+    goto delLeft1
+)
+:delRight1
+if "%dn_rpc_port:~-1%"==" " (
+    set "dn_rpc_port=%dn_rpc_port:~0,-1%"
+    goto delRight1
+)
 
 if not defined dn_rpc_port (
   echo "WARNING: dn_rpc_port not found in the configuration file. Using default value dn_rpc_port = 6667"
@@ -50,17 +61,7 @@ if not defined dn_rpc_port (
 
 echo Check whether the rpc_port is used..., port is %dn_rpc_port%
 
-for /f  "eol=# tokens=2 delims==" %%i in ('findstr /i "dn_rpc_address"
-"%config_file%"') do (
-  set dn_rpc_address=%%i
-)
-
-if not defined dn_rpc_address (
-  echo "WARNING: dn_rpc_address not found in the configuration file. Using default value dn_rpc_address = 0.0.0.0"
-  set dn_rpc_address=0.0.0.0
-)
-
-for /f "tokens=5" %%a in ('netstat /ano ^| findstr %dn_rpc_address%:%dn_rpc_port%') do (
+for /f "tokens=5" %%a in ('netstat /ano ^| findstr :%dn_rpc_port% ') do (
   taskkill /f /pid %%a
   echo Close DataNode, PID: %%a
 )

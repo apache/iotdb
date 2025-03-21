@@ -31,6 +31,8 @@ import org.apache.iotdb.db.queryengine.execution.warnings.WarningCollector;
 import org.apache.iotdb.db.queryengine.plan.analyze.AnalyzeUtils;
 import org.apache.iotdb.db.queryengine.plan.analyze.QueryType;
 import org.apache.iotdb.db.queryengine.plan.analyze.load.LoadTsFileAnalyzer;
+import org.apache.iotdb.db.queryengine.plan.analyze.lock.DataNodeSchemaLockManager;
+import org.apache.iotdb.db.queryengine.plan.analyze.lock.SchemaLockType;
 import org.apache.iotdb.db.queryengine.plan.analyze.schema.SchemaValidator;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.tablefunction.ArgumentAnalysis;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.tablefunction.ArgumentsAnalysis;
@@ -175,8 +177,6 @@ import org.apache.iotdb.db.queryengine.plan.relational.type.TypeManager;
 import org.apache.iotdb.db.queryengine.plan.statement.component.FillPolicy;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertBaseStatement;
 import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
-import org.apache.iotdb.db.schemaengine.table.InformationSchemaUtils;
-import org.apache.iotdb.db.storageengine.load.metrics.LoadTsFileCostMetricsSet;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.udf.api.relational.TableFunction;
@@ -255,7 +255,6 @@ import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Join.Type.
 import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Join.Type.RIGHT;
 import static org.apache.iotdb.db.queryengine.plan.relational.sql.util.AstUtil.preOrder;
 import static org.apache.iotdb.db.queryengine.plan.relational.utils.NodeUtils.getSortItemsFromOrderBy;
-import static org.apache.iotdb.db.storageengine.load.metrics.LoadTsFileCostMetricsSet.ANALYSIS;
 import static org.apache.tsfile.read.common.type.BooleanType.BOOLEAN;
 
 public class StatementAnalyzer {
@@ -469,7 +468,6 @@ public class StatementAnalyzer {
           sessionContext.getUserName(),
           new QualifiedObjectName(node.getDatabase(), node.getTableName()));
       final TranslationMap translationMap = analyzeTraverseDevice(node, context, true);
-      InformationSchemaUtils.checkDBNameInWrite(node.getDatabase());
       final TsTable table =
           DataNodeTableCache.getInstance().getTable(node.getDatabase(), node.getTableName());
       node.parseRawExpression(
@@ -525,7 +523,6 @@ public class StatementAnalyzer {
       accessControl.checkCanDeleteFromTable(
           sessionContext.getUserName(),
           new QualifiedObjectName(node.getDatabase(), node.getTableName()));
-      InformationSchemaUtils.checkDBNameInWrite(node.getDatabase());
       final TsTable table =
           DataNodeTableCache.getInstance().getTable(node.getDatabase(), node.getTableName());
       if (Objects.isNull(table)) {
@@ -638,7 +635,6 @@ public class StatementAnalyzer {
     protected Scope visitLoadTsFile(final LoadTsFile node, final Optional<Scope> scope) {
       queryContext.setQueryType(QueryType.WRITE);
 
-      final long startTime = System.nanoTime();
       try (final LoadTsFileAnalyzer loadTsFileAnalyzer =
           new LoadTsFileAnalyzer(node, node.isGeneratedByPipe(), queryContext)) {
         loadTsFileAnalyzer.analyzeFileByFile(analysis);
@@ -649,9 +645,6 @@ public class StatementAnalyzer {
                 node, e.getMessage() == null ? e.getClass().getName() : e.getMessage());
         analysis.setFinishQueryAfterAnalyze(true);
         analysis.setFailStatus(RpcUtils.getStatus(TSStatusCode.LOAD_FILE_ERROR, exceptionMessage));
-      } finally {
-        LoadTsFileCostMetricsSet.getInstance()
-            .recordPhaseTimeCost(ANALYSIS, System.nanoTime() - startTime);
       }
 
       return createAndAssignScope(node, scope);
@@ -3828,6 +3821,12 @@ public class StatementAnalyzer {
     protected Scope visitCreateOrUpdateDevice(
         final CreateOrUpdateDevice node, final Optional<Scope> context) {
       queryContext.setQueryType(QueryType.WRITE);
+      DataNodeSchemaLockManager.getInstance()
+          .takeReadLock(queryContext, SchemaLockType.VALIDATE_VS_DELETION_TABLE);
+      if (Objects.isNull(
+          DataNodeTableCache.getInstance().getTable(node.getDatabase(), node.getTable()))) {
+        TableMetadataImpl.throwTableNotExistsException(node.getDatabase(), node.getTable());
+      }
       return null;
     }
 
