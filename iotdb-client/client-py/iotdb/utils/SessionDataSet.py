@@ -21,7 +21,7 @@ from iotdb.utils.Field import Field
 
 # for package
 from iotdb.utils.IoTDBConstants import TSDataType
-from iotdb.utils.IoTDBRpcDataSet import IoTDBRpcDataSet
+from iotdb.utils.iotdb_rpc_dataset import IoTDBRpcDataSet
 from iotdb.utils.RowRecord import RowRecord
 
 import pandas as pd

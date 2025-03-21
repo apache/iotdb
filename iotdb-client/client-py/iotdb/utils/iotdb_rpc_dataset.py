@@ -154,94 +154,98 @@ class IoTDBRpcDataSet(object):
         return False
 
     def construct_one_data_frame(self):
-        if (
-            self.has_cached_data_frame
-            or self.__query_result is None
-            or len(self.__query_result) <= self.__query_result_index
-        ):
+        if self.has_cached_data_frame or self.__query_result is None:
             return
         result = {}
-        time_column_values, column_values, null_indicators, _ = deserialize(
-            self.__query_result[self.__query_result_index]
-        )
-        self.__query_result[self.__query_result_index] = None
-        self.__query_result_index += 1
-        time_array = np.frombuffer(
-            time_column_values, np.dtype(np.longlong).newbyteorder(">")
-        )
-        if time_array.dtype.byteorder == ">":
-            time_array = time_array.byteswap().view(time_array.dtype.newbyteorder("<"))
-        result[0] = time_array
-        total_length = len(time_array)
-        for i, location in enumerate(self.__column_index_2_tsblock_column_index_list):
-            if location < 0:
-                continue
-            data_type = self.__data_type_for_tsblock_column[location]
-            value_buffer = column_values[location]
-            value_buffer_len = len(value_buffer)
-            # DOUBLE
-            if data_type == 4:
-                data_array = np.frombuffer(
-                    value_buffer, np.dtype(np.double).newbyteorder(">")
+        for i in range(len(self.__column_index_2_tsblock_column_index_list)):
+            result[i] = []
+        while self.__query_result_index < len(self.__query_result):
+            time_column_values, column_values, null_indicators, _ = deserialize(
+                self.__query_result[self.__query_result_index]
+            )
+            self.__query_result[self.__query_result_index] = None
+            self.__query_result_index += 1
+            time_array = np.frombuffer(
+                time_column_values, np.dtype(np.longlong).newbyteorder(">")
+            )
+            if time_array.dtype.byteorder == ">":
+                time_array = time_array.byteswap().view(
+                    time_array.dtype.newbyteorder("<")
                 )
-            # FLOAT
-            elif data_type == 3:
-                data_array = np.frombuffer(
-                    value_buffer, np.dtype(np.float32).newbyteorder(">")
-                )
-            # BOOLEAN
-            elif data_type == 0:
-                data_array = np.array(value_buffer).astype("bool")
-            # INT32, DATE
-            elif data_type == 1 or data_type == 9:
-                data_array = np.frombuffer(
-                    value_buffer, np.dtype(np.int32).newbyteorder(">")
-                )
-            # INT64, TIMESTAMP
-            elif data_type == 2 or data_type == 8:
-                data_array = np.frombuffer(
-                    value_buffer, np.dtype(np.int64).newbyteorder(">")
-                )
-            # TEXT, STRING, BLOB
-            elif data_type == 5 or data_type == 11 or data_type == 10:
-                index = 0
-                data_array = []
-                while index < value_buffer_len:
-                    data_array.append(value_buffer[index])
-                    index += 1
-                data_array = np.array(data_array, dtype=object)
-            else:
-                raise RuntimeError("unsupported data type {}.".format(data_type))
-            if data_array.dtype.byteorder == ">":
-                data_array = data_array.byteswap().view(
-                    data_array.dtype.newbyteorder("<")
-                )
-
-            null_indicator = null_indicators[location]
-
-            if len(data_array) < total_length or (
-                data_type == 0 and null_indicator is not None
+            result[0].append(time_array)
+            total_length = len(time_array)
+            for i, location in enumerate(
+                self.__column_index_2_tsblock_column_index_list
             ):
-                tmp_array = np.full(total_length, None, dtype=object)
-                if null_indicator is not None:
-                    indexes = [not v for v in null_indicator]
-                    if data_type == 0:
-                        tmp_array[indexes] = data_array[indexes]
-                    else:
-                        tmp_array[indexes] = data_array
-
-                # INT32, DATE
-                if data_type == 1 or data_type == 9:
-                    tmp_array = pd.Series(tmp_array, dtype="Int32")
-                # INT64, TIMESTAMP
-                elif data_type == 2 or data_type == 8:
-                    tmp_array = pd.Series(tmp_array, dtype="Int64")
+                if location < 0:
+                    continue
+                data_type = self.__data_type_for_tsblock_column[location]
+                value_buffer = column_values[location]
+                value_buffer_len = len(value_buffer)
+                # DOUBLE
+                if data_type == 4:
+                    data_array = np.frombuffer(
+                        value_buffer, np.dtype(np.double).newbyteorder(">")
+                    )
+                # FLOAT
+                elif data_type == 3:
+                    data_array = np.frombuffer(
+                        value_buffer, np.dtype(np.float32).newbyteorder(">")
+                    )
                 # BOOLEAN
                 elif data_type == 0:
-                    tmp_array = pd.Series(tmp_array, dtype="boolean")
-                data_array = tmp_array
+                    data_array = np.array(value_buffer).astype("bool")
+                # INT32, DATE
+                elif data_type == 1 or data_type == 9:
+                    data_array = np.frombuffer(
+                        value_buffer, np.dtype(np.int32).newbyteorder(">")
+                    )
+                # INT64, TIMESTAMP
+                elif data_type == 2 or data_type == 8:
+                    data_array = np.frombuffer(
+                        value_buffer, np.dtype(np.int64).newbyteorder(">")
+                    )
+                # TEXT, STRING, BLOB
+                elif data_type == 5 or data_type == 11 or data_type == 10:
+                    index = 0
+                    data_array = []
+                    while index < value_buffer_len:
+                        data_array.append(value_buffer[index])
+                        index += 1
+                    data_array = np.array(data_array, dtype=object)
+                else:
+                    raise RuntimeError("unsupported data type {}.".format(data_type))
+                if data_array.dtype.byteorder == ">":
+                    data_array = data_array.byteswap().view(
+                        data_array.dtype.newbyteorder("<")
+                    )
 
-            result[i + 1] = data_array
+                null_indicator = null_indicators[location]
+
+                if len(data_array) < total_length or (
+                    data_type == 0 and null_indicator is not None
+                ):
+                    tmp_array = np.full(total_length, None, dtype=object)
+                    if null_indicator is not None:
+                        indexes = [not v for v in null_indicator]
+                        if data_type == 0:
+                            tmp_array[indexes] = data_array[indexes]
+                        else:
+                            tmp_array[indexes] = data_array
+
+                    # INT32, DATE
+                    if data_type == 1 or data_type == 9:
+                        tmp_array = pd.Series(tmp_array, dtype="Int32")
+                    # INT64, TIMESTAMP
+                    elif data_type == 2 or data_type == 8:
+                        tmp_array = pd.Series(tmp_array, dtype="Int64")
+                    # BOOLEAN
+                    elif data_type == 0:
+                        tmp_array = pd.Series(tmp_array, dtype="boolean")
+                    data_array = tmp_array
+
+                result[i].append(data_array)
+        self.__query_result = None
         self.data_frame = pd.DataFrame(result, dtype=object)
         if not self.data_frame.empty:
             self.has_cached_data_frame = True
