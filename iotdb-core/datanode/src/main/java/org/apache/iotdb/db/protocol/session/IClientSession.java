@@ -153,6 +153,13 @@ public abstract class IClientSession {
 
   public void setSqlDialect(SqlDialect sqlDialect) {
     this.sqlDialect = sqlDialect;
+    this.databaseName = null;
+  }
+
+  public void setSqlDialectAndClean(SqlDialect sqlDialect) {
+    this.sqlDialect = sqlDialect;
+    // clean database to avoid misuse of it between different SqlDialect
+    this.databaseName = null;
   }
 
   public void setSqlDialectAndClean(SqlDialect sqlDialect) {
