@@ -390,12 +390,7 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
     }
   }
 
-  @Override
-  public boolean shouldParsePattern() {
-    return super.shouldParsePattern() || shouldParse4Privilege;
-  }
-
-  public boolean shouldParsePrivilege() {
+  public boolean shouldParse4Privilege() {
     return shouldParse4Privilege;
   }
 

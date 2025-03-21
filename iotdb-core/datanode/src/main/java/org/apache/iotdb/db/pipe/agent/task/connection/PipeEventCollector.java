@@ -136,7 +136,8 @@ public class PipeEventCollector implements EventCollector {
     }
 
     if (!forceTabletFormat
-        && (!sourceEvent.shouldParseTimeOrPattern() || canSkipParsing4TsFileEvent(sourceEvent))) {
+        && !sourceEvent.shouldParse4Privilege()
+        && canSkipParsing4TsFileEvent(sourceEvent)) {
       collectEvent(sourceEvent);
       return;
     }
@@ -151,11 +152,11 @@ public class PipeEventCollector implements EventCollector {
   }
 
   private boolean canSkipParsing4TsFileEvent(final PipeTsFileInsertionEvent sourceEvent) {
-    return sourceEvent.isTableModelEvent()
-        && (sourceEvent.getTablePattern() == null
-            || !sourceEvent.getTablePattern().hasTablePattern())
-        && !sourceEvent.shouldParseTime()
-        && !sourceEvent.shouldParsePrivilege();
+    return !sourceEvent.shouldParseTimeOrPattern()
+        || (sourceEvent.isTableModelEvent()
+            && (sourceEvent.getTablePattern() == null
+                || !sourceEvent.getTablePattern().hasTablePattern())
+            && !sourceEvent.shouldParseTime());
   }
 
   private void collectParsedRawTableEvent(final PipeRawTabletInsertionEvent parsedEvent) {
