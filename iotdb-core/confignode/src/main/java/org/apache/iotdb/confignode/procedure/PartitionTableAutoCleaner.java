@@ -55,6 +55,7 @@ public class PartitionTableAutoCleaner<Env> extends InternalProcedure<Env> {
 
   @Override
   protected void periodicExecute(Env env) {
+    LOGGER.info("[PartitionTableCleaner] Start periodic check");
     List<String> databases = configManager.getClusterSchemaManager().getDatabaseNames(null);
     Map<String, Long> databaseTTLMap = new TreeMap<>();
     for (String database : databases) {
@@ -71,6 +72,9 @@ public class PartitionTableAutoCleaner<Env> extends InternalProcedure<Env> {
       }
     }
     if (!databaseTTLMap.isEmpty()) {
+      LOGGER.info(
+          "[PartitionTableCleaner] Periodically activate PartitionTableAutoCleaner for: {}",
+          databaseTTLMap);
       // Only clean the partition table when necessary
       TTimePartitionSlot currentTimePartitionSlot =
           TimePartitionUtils.getCurrentTimePartitionSlot();
