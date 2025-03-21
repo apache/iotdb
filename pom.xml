@@ -25,7 +25,7 @@
     <repositories>
         <repository>
             <id>jitpack.io</id>
-            <url>https://www.jitpack.io</url>
+            <url>https://jitpack.io</url>
         </repository>
     </repositories>
     <parent>
