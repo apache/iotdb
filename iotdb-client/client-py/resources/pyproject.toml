@@ -28,7 +28,7 @@ readme = "README.md"
 authors = [
     { name = "Apache IoTDB", email = "dev@iotdb.apache.org" }
 ]
-license = { text = "Apache License, Version 2.0"}
+license = "Apache-2.0"
 keywords = ["iotdb", "apache", "client", "API"]
 classifiers = [
     "Programming Language :: Python :: 3",
