@@ -37,6 +37,7 @@ import org.apache.iotdb.confignode.consensus.request.write.table.AddTableColumnP
 import org.apache.iotdb.confignode.consensus.request.write.table.CommitDeleteColumnPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.CommitDeleteTablePlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.RenameTableColumnPlan;
+import org.apache.iotdb.confignode.consensus.request.write.table.RenameTablePlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.SetTableColumnCommentPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.SetTableCommentPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.SetTablePropertiesPlan;
@@ -566,6 +567,11 @@ public class PipeConfigPhysicalPlanTSStatusVisitor
   public TSStatus visitSetTableColumnComment(
       final SetTableColumnCommentPlan setTableColumnCommentPlan, final TSStatus context) {
     return visitCommonTablePlan(setTableColumnCommentPlan, context);
+  }
+
+  @Override
+  public TSStatus visitRenameTable(final RenameTablePlan renameTablePlan, final TSStatus context) {
+    return visitCommonTablePlan(renameTablePlan, context);
   }
 
   private TSStatus visitCommonTablePlan(final ConfigPhysicalPlan plan, final TSStatus context) {
