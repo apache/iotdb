@@ -848,10 +848,6 @@ public class ConfigNodeProcedureEnv {
     return scheduler;
   }
 
-  public LockQueue getRegionMigrateLock() {
-    return regionMaintainHandler.getRegionMigrateLock();
-  }
-
   public ReentrantLock getSchedulerLock() {
     return schedulerLock;
   }
