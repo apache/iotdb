@@ -298,10 +298,14 @@ def read_byte_from_buffer(buffer):
     return read_from_buffer(buffer, 1)
 
 
+next
+
+
 def read_from_buffer(buffer, size):
-    res = buffer[:size]
-    buffer = buffer[size:]
-    return res, buffer
+    mv = memoryview(buffer)
+    res = mv[:size]
+    new_buffer = mv[size:]
+    return res, new_buffer
 
 
 # Read ColumnType
@@ -395,7 +399,7 @@ def read_int64_column(buffer, data_type, position_count):
     else:
         size = null_indicators.count(False)
 
-    if TSDataType.INT64 == data_type or TSDataType.DOUBLE == data_type:
+    if data_type == 2 or data_type == 4:
         values, buffer = read_from_buffer(buffer, size * 8)
         return values, null_indicators, buffer
     else:
@@ -417,7 +421,7 @@ def read_int32_column(buffer, data_type, position_count):
     else:
         size = null_indicators.count(False)
 
-    if TSDataType.INT32 == data_type or TSDataType.FLOAT == data_type:
+    if data_type == 1 or data_type == 3:
         values, buffer = read_from_buffer(buffer, size * 4)
         return values, null_indicators, buffer
     else:
@@ -433,7 +437,7 @@ def read_int32_column(buffer, data_type, position_count):
 
 
 def read_byte_column(buffer, data_type, position_count):
-    if data_type != TSDataType.BOOLEAN:
+    if data_type != 0:
         raise Exception("Invalid data type: " + data_type)
     null_indicators, buffer = deserialize_null_indicators(buffer, position_count)
     res, buffer = deserialize_from_boolean_array(buffer, position_count)
@@ -487,7 +491,7 @@ def deserialize_from_boolean_array(buffer, size):
 
 
 def read_binary_column(buffer, data_type, position_count):
-    if data_type != TSDataType.TEXT:
+    if data_type != 5:
         raise Exception("Invalid data type: " + data_type)
     null_indicators, buffer = deserialize_null_indicators(buffer, position_count)
 
@@ -540,7 +544,7 @@ def read_run_length_column(buffer, data_type, position_count):
 
 
 def repeat(buffer, data_type, position_count):
-    if data_type == TSDataType.BOOLEAN or data_type == TSDataType.TEXT:
+    if data_type == 0 or data_type == 5:
         return buffer * position_count
     else:
         res = bytearray()

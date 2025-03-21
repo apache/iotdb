@@ -105,9 +105,8 @@ class SessionDataSet(object):
     def construct_row_record_from_data_frame(self):
         df = self.iotdb_rpc_data_set.data_frame
         row = df.iloc[self.row_index].to_list()
-        row_values = row[1:]
-        for i, value in enumerate(row_values):
-            self.__field_list[i].value = value
+        for field, value in zip(self.__field_list, row[1:]):
+            field.value = value
 
         row_record = RowRecord(
             row[0],
