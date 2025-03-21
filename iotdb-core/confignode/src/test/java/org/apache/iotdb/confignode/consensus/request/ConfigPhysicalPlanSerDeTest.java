@@ -92,7 +92,7 @@ import org.apache.iotdb.confignode.consensus.request.write.partition.AutoCleanPa
 import org.apache.iotdb.confignode.consensus.request.write.partition.CreateDataPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.write.partition.CreateSchemaPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.write.partition.RemoveRegionLocationPlan;
-import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeCreateTablePlan;
+import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeCreateTableOrViewPlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeCreateViewPlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeDeactivateTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeDeleteDevicesPlan;
@@ -1816,21 +1816,23 @@ public class ConfigPhysicalPlanSerDeTest {
     table.addColumnSchema(
         new FieldColumnSchema(
             "Measurement", TSDataType.DOUBLE, TSEncoding.GORILLA, CompressionType.SNAPPY));
-    final PipeCreateTablePlan pipeCreateTablePlan0 =
-        new PipeCreateTablePlan("root.database1", table);
-    final PipeCreateTablePlan pipeCreateTablePlan1 =
-        (PipeCreateTablePlan)
-            ConfigPhysicalPlan.Factory.create(pipeCreateTablePlan0.serializeToByteBuffer());
+    final PipeCreateTableOrViewPlan pipeCreateTableOrViewPlan0 =
+        new PipeCreateTableOrViewPlan("root.database1", table);
+    final PipeCreateTableOrViewPlan pipeCreateTableOrViewPlan1 =
+        (PipeCreateTableOrViewPlan)
+            ConfigPhysicalPlan.Factory.create(pipeCreateTableOrViewPlan0.serializeToByteBuffer());
 
-    Assert.assertEquals(pipeCreateTablePlan0.getDatabase(), pipeCreateTablePlan1.getDatabase());
     Assert.assertEquals(
-        pipeCreateTablePlan0.getTable().getTableName(),
-        pipeCreateTablePlan1.getTable().getTableName());
+        pipeCreateTableOrViewPlan0.getDatabase(), pipeCreateTableOrViewPlan1.getDatabase());
     Assert.assertEquals(
-        pipeCreateTablePlan0.getTable().getColumnNum(),
-        pipeCreateTablePlan1.getTable().getColumnNum());
+        pipeCreateTableOrViewPlan0.getTable().getTableName(),
+        pipeCreateTableOrViewPlan1.getTable().getTableName());
     Assert.assertEquals(
-        pipeCreateTablePlan0.getTable().getIdNums(), pipeCreateTablePlan1.getTable().getIdNums());
+        pipeCreateTableOrViewPlan0.getTable().getColumnNum(),
+        pipeCreateTableOrViewPlan1.getTable().getColumnNum());
+    Assert.assertEquals(
+        pipeCreateTableOrViewPlan0.getTable().getIdNums(),
+        pipeCreateTableOrViewPlan1.getTable().getIdNums());
   }
 
   @Test
@@ -1842,8 +1844,8 @@ public class ConfigPhysicalPlanSerDeTest {
         new FieldColumnSchema(
             "Measurement", TSDataType.DOUBLE, TSEncoding.GORILLA, CompressionType.SNAPPY));
     final PipeCreateViewPlan pipeCreateViewPlan0 = new PipeCreateViewPlan("root.database1", table);
-    final PipeCreateTablePlan pipeCreateViewPlan1 =
-        (PipeCreateTablePlan)
+    final PipeCreateTableOrViewPlan pipeCreateViewPlan1 =
+        (PipeCreateTableOrViewPlan)
             ConfigPhysicalPlan.Factory.create(pipeCreateViewPlan0.serializeToByteBuffer());
 
     Assert.assertEquals(pipeCreateViewPlan0.getDatabase(), pipeCreateViewPlan1.getDatabase());

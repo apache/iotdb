@@ -104,7 +104,7 @@ public class ConfigRegionListeningFilter {
           Collections.unmodifiableList(
               Arrays.asList(
                   ConfigPhysicalPlanType.CommitCreateTable,
-                  ConfigPhysicalPlanType.PipeCreateTable,
+                  ConfigPhysicalPlanType.PipeCreateTableOrView,
                   ConfigPhysicalPlanType.PipeCreateView,
                   ConfigPhysicalPlanType.AddTableColumn,
                   ConfigPhysicalPlanType.AddViewColumn)));

@@ -50,7 +50,7 @@ import org.apache.iotdb.confignode.consensus.request.write.auth.AuthorTreePlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.DatabaseSchemaPlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.DeleteDatabasePlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.SetTTLPlan;
-import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeCreateTablePlan;
+import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeCreateTableOrViewPlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeDeactivateTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeDeleteDevicesPlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeDeleteLogicalViewPlan;
@@ -370,13 +370,13 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
         return configManager
             .checkUserPrivileges(username, new PrivilegeUnion(PrivilegeType.USE_TRIGGER))
             .getStatus();
-      case PipeCreateTable:
+      case PipeCreateTableOrView:
         return configManager
             .checkUserPrivileges(
                 username,
                 new PrivilegeUnion(
-                    ((PipeCreateTablePlan) plan).getDatabase(),
-                    ((PipeCreateTablePlan) plan).getTable().getTableName(),
+                    ((PipeCreateTableOrViewPlan) plan).getDatabase(),
+                    ((PipeCreateTableOrViewPlan) plan).getTable().getTableName(),
                     PrivilegeType.CREATE))
             .getStatus();
       case AddTableColumn:
@@ -626,10 +626,10 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
         return ((SetTTLPlan) plan).getTTL() == TTLCache.NULL_TTL
             ? configManager.getTTLManager().unsetTTL((SetTTLPlan) plan, true)
             : configManager.getTTLManager().setTTL((SetTTLPlan) plan, true);
-      case PipeCreateTable:
-        return executeIdempotentCreateTableOrView((PipeCreateTablePlan) plan, queryId, false);
+      case PipeCreateTableOrView:
+        return executeIdempotentCreateTableOrView((PipeCreateTableOrViewPlan) plan, queryId, false);
       case PipeCreateView:
-        return executeIdempotentCreateTableOrView((PipeCreateTablePlan) plan, queryId, true);
+        return executeIdempotentCreateTableOrView((PipeCreateTableOrViewPlan) plan, queryId, true);
       case AddTableColumn:
         return configManager
             .getProcedureManager()
@@ -821,7 +821,7 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
   }
 
   private TSStatus executeIdempotentCreateTableOrView(
-      final PipeCreateTablePlan plan, final String queryId, final boolean isView)
+      final PipeCreateTableOrViewPlan plan, final String queryId, final boolean isView)
       throws ConsensusException {
     final String database = plan.getDatabase();
     final TsTable table = plan.getTable();

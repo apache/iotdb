@@ -62,8 +62,7 @@ import org.apache.iotdb.confignode.consensus.request.write.partition.CreateDataP
 import org.apache.iotdb.confignode.consensus.request.write.partition.CreateSchemaPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.write.partition.RemoveRegionLocationPlan;
 import org.apache.iotdb.confignode.consensus.request.write.partition.UpdateRegionLocationPlan;
-import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeCreateTablePlan;
-import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeCreateViewPlan;
+import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeCreateTableOrViewPlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeDeactivateTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeDeleteDevicesPlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeDeleteLogicalViewPlan;
@@ -521,11 +520,8 @@ public abstract class ConfigPhysicalPlan implements IConsensusRequest {
         case PipeDeactivateTemplate:
           plan = new PipeDeactivateTemplatePlan();
           break;
-        case PipeCreateTable:
-          plan = new PipeCreateTablePlan();
-          break;
-        case PipeCreateView:
-          plan = new PipeCreateViewPlan();
+        case PipeCreateTableOrView:
+          plan = new PipeCreateTableOrViewPlan();
           break;
         case PipeDeleteDevices:
           plan = new PipeDeleteDevicesPlan();

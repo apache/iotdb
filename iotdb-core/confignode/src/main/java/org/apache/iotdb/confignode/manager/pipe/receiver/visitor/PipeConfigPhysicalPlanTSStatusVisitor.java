@@ -27,7 +27,7 @@ import org.apache.iotdb.confignode.consensus.request.write.auth.AuthorTreePlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.DatabaseSchemaPlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.DeleteDatabasePlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.SetTTLPlan;
-import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeCreateTablePlan;
+import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeCreateTableOrViewPlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeDeactivateTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeDeleteDevicesPlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeDeleteLogicalViewPlan;
@@ -507,8 +507,8 @@ public class PipeConfigPhysicalPlanTSStatusVisitor
 
   @Override
   public TSStatus visitPipeCreateTable(
-      final PipeCreateTablePlan pipeCreateTablePlan, final TSStatus context) {
-    return visitCommonTablePlan(pipeCreateTablePlan, context);
+      final PipeCreateTableOrViewPlan pipeCreateTableOrViewPlan, final TSStatus context) {
+    return visitCommonTablePlan(pipeCreateTableOrViewPlan, context);
   }
 
   @Override

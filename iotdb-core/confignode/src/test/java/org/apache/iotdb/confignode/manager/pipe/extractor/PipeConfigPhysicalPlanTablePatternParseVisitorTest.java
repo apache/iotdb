@@ -27,7 +27,7 @@ import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
 import org.apache.iotdb.confignode.consensus.request.write.auth.AuthorRelationalPlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.DatabaseSchemaPlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.DeleteDatabasePlan;
-import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeCreateTablePlan;
+import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeCreateTableOrViewPlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeCreateViewPlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeDeleteDevicesPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.AddTableColumnPlan;
@@ -76,9 +76,9 @@ public class PipeConfigPhysicalPlanTablePatternParseVisitorTest {
   @Test
   public void testCreateTable() {
     testInput(
-        new PipeCreateTablePlan("db1", new TsTable("ab")),
-        new PipeCreateTablePlan("db1", new TsTable("ac")),
-        new PipeCreateTablePlan("da", new TsTable("a2b")));
+        new PipeCreateTableOrViewPlan("db1", new TsTable("ab")),
+        new PipeCreateTableOrViewPlan("db1", new TsTable("ac")),
+        new PipeCreateTableOrViewPlan("da", new TsTable("a2b")));
   }
 
   @Test

@@ -26,7 +26,7 @@ import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanVisitor;
 import org.apache.iotdb.confignode.consensus.request.write.auth.AuthorRelationalPlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.DatabaseSchemaPlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.DeleteDatabasePlan;
-import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeCreateTablePlan;
+import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeCreateTableOrViewPlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeDeleteDevicesPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.AbstractTablePlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.AddTableColumnPlan;
@@ -79,11 +79,11 @@ public class PipeConfigPhysicalPlanTablePatternParseVisitor
 
   @Override
   public Optional<ConfigPhysicalPlan> visitPipeCreateTable(
-      final PipeCreateTablePlan pipeCreateTablePlan, final TablePattern pattern) {
+      final PipeCreateTableOrViewPlan pipeCreateTableOrViewPlan, final TablePattern pattern) {
     return pattern.matchesDatabase(
-                PathUtils.unQualifyDatabaseName(pipeCreateTablePlan.getDatabase()))
-            && pattern.matchesTable(pipeCreateTablePlan.getTable().getTableName())
-        ? Optional.of(pipeCreateTablePlan)
+                PathUtils.unQualifyDatabaseName(pipeCreateTableOrViewPlan.getDatabase()))
+            && pattern.matchesTable(pipeCreateTableOrViewPlan.getTable().getTableName())
+        ? Optional.of(pipeCreateTableOrViewPlan)
         : Optional.empty();
   }
 

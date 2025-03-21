@@ -25,7 +25,6 @@ import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.schema.node.role.IDatabaseMNode;
 import org.apache.iotdb.commons.schema.node.utils.IMNodeFactory;
-import org.apache.iotdb.commons.schema.table.TreeViewSchema;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.utils.AuthUtils;
 import org.apache.iotdb.commons.utils.PathUtils;
@@ -36,8 +35,7 @@ import org.apache.iotdb.confignode.consensus.request.write.auth.AuthorRelational
 import org.apache.iotdb.confignode.consensus.request.write.auth.AuthorTreePlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.DatabaseSchemaPlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.SetTTLPlan;
-import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeCreateTablePlan;
-import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeCreateViewPlan;
+import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeCreateTableOrViewPlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.CommitSetSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.CreateSchemaTemplatePlan;
 import org.apache.iotdb.confignode.persistence.schema.mnode.IConfigMNode;
@@ -460,10 +458,7 @@ public class CNPhysicalPlanGenerator
             stack.push(new Pair<>(databaseMNode, true));
             name = databaseMNode.getName();
             for (final TsTable table : tableSet) {
-              planDeque.add(
-                  TreeViewSchema.isTreeViewTable(table)
-                      ? new PipeCreateViewPlan(name, table)
-                      : new PipeCreateTablePlan(name, table));
+              planDeque.add(new PipeCreateTableOrViewPlan(name, table));
             }
             tableSet.clear();
             break;

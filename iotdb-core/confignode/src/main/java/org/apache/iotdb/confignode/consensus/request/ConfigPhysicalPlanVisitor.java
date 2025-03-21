@@ -24,7 +24,7 @@ import org.apache.iotdb.confignode.consensus.request.write.auth.AuthorTreePlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.DatabaseSchemaPlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.DeleteDatabasePlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.SetTTLPlan;
-import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeCreateTablePlan;
+import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeCreateTableOrViewPlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeCreateViewPlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeDeactivateTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeDeleteDevicesPlan;
@@ -151,8 +151,8 @@ public abstract class ConfigPhysicalPlanVisitor<R, C> {
         return visitRRevokeRoleSysPrivilege((AuthorRelationalPlan) plan, context);
       case SetTTL:
         return visitTTL((SetTTLPlan) plan, context);
-      case PipeCreateTable:
-        return visitPipeCreateTable((PipeCreateTablePlan) plan, context);
+      case PipeCreateTableOrView:
+        return visitPipeCreateTable((PipeCreateTableOrViewPlan) plan, context);
       case PipeCreateView:
         return visitPipeCreateView((PipeCreateViewPlan) plan, context);
       case AddTableColumn:
@@ -405,8 +405,9 @@ public abstract class ConfigPhysicalPlanVisitor<R, C> {
     return visitPlan(setTTLPlan, context);
   }
 
-  public R visitPipeCreateTable(final PipeCreateTablePlan pipeCreateTablePlan, final C context) {
-    return visitPlan(pipeCreateTablePlan, context);
+  public R visitPipeCreateTable(
+      final PipeCreateTableOrViewPlan pipeCreateTableOrViewPlan, final C context) {
+    return visitPlan(pipeCreateTableOrViewPlan, context);
   }
 
   public R visitPipeCreateView(final PipeCreateViewPlan pipeCreateViewPlan, final C context) {

@@ -23,12 +23,12 @@ import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
 import org.apache.iotdb.confignode.consensus.request.write.table.PreCreateTablePlan;
 
-public class PipeCreateTablePlan extends PreCreateTablePlan {
-  public PipeCreateTablePlan() {
-    super(ConfigPhysicalPlanType.PipeCreateTable);
+public class PipeCreateTableOrViewPlan extends PreCreateTablePlan {
+  public PipeCreateTableOrViewPlan() {
+    super(ConfigPhysicalPlanType.PipeCreateTableOrView);
   }
 
-  public PipeCreateTablePlan(final String database, final TsTable table) {
-    super(ConfigPhysicalPlanType.PipeCreateTable, database, table);
+  public PipeCreateTableOrViewPlan(final String database, final TsTable table) {
+    super(ConfigPhysicalPlanType.PipeCreateTableOrView, database, table);
   }
 }

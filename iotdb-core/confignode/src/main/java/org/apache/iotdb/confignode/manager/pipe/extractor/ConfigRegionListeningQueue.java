@@ -26,12 +26,10 @@ import org.apache.iotdb.commons.pipe.datastructure.queue.listening.AbstractPipeL
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.pipe.event.PipeSnapshotEvent;
 import org.apache.iotdb.commons.pipe.event.SerializableEvent;
-import org.apache.iotdb.commons.schema.table.TreeViewSchema;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.snapshot.SnapshotProcessor;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
-import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeCreateTablePlan;
-import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeCreateViewPlan;
+import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeCreateTableOrViewPlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeEnrichedPlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeUnsetSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.CommitCreateTablePlan;
@@ -110,11 +108,8 @@ public class ConfigRegionListeningQueue extends AbstractPipeListeningQueue
             }
             event =
                 new PipeConfigRegionWritePlanEvent(
-                    TreeViewSchema.isTreeViewTable(table.get())
-                        ? new PipeCreateViewPlan(
-                            ((CommitCreateTablePlan) plan).getDatabase(), table.get())
-                        : new PipeCreateTablePlan(
-                            ((CommitCreateTablePlan) plan).getDatabase(), table.get()),
+                    new PipeCreateTableOrViewPlan(
+                        ((CommitCreateTablePlan) plan).getDatabase(), table.get()),
                     isGeneratedByPipe);
           } catch (final MetadataException e) {
             LOGGER.warn("Failed to collect CommitCreateTablePlan", e);

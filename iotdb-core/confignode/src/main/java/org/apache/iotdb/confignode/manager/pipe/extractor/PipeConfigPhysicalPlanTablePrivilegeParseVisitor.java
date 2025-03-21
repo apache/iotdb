@@ -26,7 +26,7 @@ import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanVisitor;
 import org.apache.iotdb.confignode.consensus.request.write.auth.AuthorRelationalPlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.DatabaseSchemaPlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.DeleteDatabasePlan;
-import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeCreateTablePlan;
+import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeCreateTableOrViewPlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeDeleteDevicesPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.AbstractTablePlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.AddTableColumnPlan;
@@ -94,20 +94,20 @@ public class PipeConfigPhysicalPlanTablePrivilegeParseVisitor
 
   @Override
   public Optional<ConfigPhysicalPlan> visitPipeCreateTable(
-      final PipeCreateTablePlan pipeCreateTablePlan, final String userName) {
+      final PipeCreateTableOrViewPlan pipeCreateTableOrViewPlan, final String userName) {
     return ConfigNode.getInstance()
                 .getConfigManager()
                 .getPermissionManager()
                 .checkUserPrivileges(
                     userName,
                     new PrivilegeUnion(
-                        pipeCreateTablePlan.getDatabase(),
-                        pipeCreateTablePlan.getTable().getTableName(),
+                        pipeCreateTableOrViewPlan.getDatabase(),
+                        pipeCreateTableOrViewPlan.getTable().getTableName(),
                         null))
                 .getStatus()
                 .getCode()
             == TSStatusCode.SUCCESS_STATUS.getStatusCode()
-        ? Optional.of(pipeCreateTablePlan)
+        ? Optional.of(pipeCreateTableOrViewPlan)
         : Optional.empty();
   }
 
