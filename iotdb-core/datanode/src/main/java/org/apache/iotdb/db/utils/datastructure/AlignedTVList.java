@@ -568,6 +568,9 @@ public abstract class AlignedTVList extends TVList {
       bitMaps.set(columnIndex, columnBitMaps);
     }
     for (int i = 0; i < bitMaps.get(columnIndex).size(); i++) {
+      if (bitMaps.get(columnIndex).get(i) == null) {
+        bitMaps.get(columnIndex).set(i, new BitMap(ARRAY_SIZE));
+      }
       bitMaps.get(columnIndex).get(i).markAll();
     }
   }
