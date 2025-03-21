@@ -260,8 +260,6 @@ class IoTDBRpcDataSet(object):
 
     def result_set_to_pandas(self):
         result = {}
-        # for column_name in self.__column_name_list:
-        #     result[column_name] = []
         for i in range(len(self.__column_index_2_tsblock_column_index_list)):
             result[i] = []
         while self._has_next_result_set():
@@ -287,7 +285,6 @@ class IoTDBRpcDataSet(object):
             ):
                 if location < 0:
                     continue
-                data_type = self.__data_type_for_tsblock_column[location]
                 data_type = self.__data_type_for_tsblock_column[location]
                 value_buffer = column_values[location]
                 value_buffer_len = len(value_buffer)
@@ -356,7 +353,7 @@ class IoTDBRpcDataSet(object):
                         or data_type == 2
                         or data_type == 8
                     ):
-                        tmp_array = np.full(total_length, np.nan, dtype=np.float32)
+                        tmp_array = np.full(total_length, pd.NA, dtype=object)
                     # FLOAT, DOUBLE
                     elif data_type == 3 or data_type == 4:
                         tmp_array = np.full(

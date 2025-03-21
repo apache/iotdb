@@ -15,12 +15,14 @@
 # specific language governing permissions and limitations
 # under the License.
 #
+import pandas as pd
 
 from iotdb.table_session import TableSession, TableSessionConfig
 from iotdb.utils.IoTDBConstants import TSDataType
 from iotdb.utils.Tablet import Tablet, ColumnType
 from datetime import date
 from .iotdb_container import IoTDBContainer
+
 
 # Test query data
 def test_query_data():
@@ -311,33 +313,126 @@ def test_query_data():
             table_name, column_names, data_types, values, timestamps, column_types
         )
         session.insert(tablet)
-        # Calculate the number of rows in the actual time series
-        actual = 0
+        row = 0
         with session.execute_query_statement(
             "select * from table_b"
         ) as session_data_set:
             print(session_data_set.get_column_names())
             while session_data_set.has_next():
                 print(session_data_set.next())
-                actual = actual + 1
+                row += 1
         # Determine whether it meets expectations
-        assert expect == actual
+        assert expect == row
 
         with session.execute_query_statement(
             "select * from table_b"
         ) as session_data_set:
             df = session_data_set.todf()
-        # Determine whether it meets expectations
-        assert expect == actual
+            rows, columns = df.shape
+            assert rows == expect
+            assert columns == len(column_names) + 1
 
+        row = 0
         with session.execute_query_statement(
-            "select " + ','.join(column_names) + " from table_b"
+            "select " + ",".join(column_names) + " from table_b"
         ) as session_data_set:
             assert session_data_set.get_column_names() == column_names
             while session_data_set.has_next():
-                rowRecord = session_data_set.next()
-                actual = actual + 1
+                row_record = session_data_set.next()
+                assert row_record.get_timestamp() == 0
+                for i in range(len(column_names)):
+                    assert (
+                        row_record.get_fields()[i].get_object_value(data_types[i])
+                        == values[row][i]
+                    )
+                row += 1
         # Determine whether it meets expectations
-        assert expect == actual
+        assert expect == row
+
+        with session.execute_query_statement(
+            "select " + ",".join(column_names) + " from table_b"
+        ) as session_data_set:
+            df = session_data_set.todf()
+            assert list(df.columns) == column_names
+            rows, columns = df.shape
+            assert rows == expect
+            assert columns == len(column_names)
+            for i in range(rows):
+                for j in range(columns):
+                    if pd.isna(df.iloc[i, j]):
+                        assert values[i][j] is None
+                    else:
+                        assert df.iloc[i, j] == values[i][j]
+
+        row = 0
+        with session.execute_query_statement(
+            "select tag1, tag1 from table_b"
+        ) as session_data_set:
+            assert session_data_set.get_column_names() == ["tag1", "tag1"]
+            while session_data_set.has_next():
+                row_record = session_data_set.next()
+                assert row_record.get_timestamp() == 0
+                for i in range(len(["tag1", "tag1"])):
+                    assert (
+                        row_record.get_fields()[i].get_object_value(
+                            row_record.get_fields()[i].get_data_type()
+                        )
+                        == values[row][0]
+                    )
+                row += 1
+        # Determine whether it meets expectations
+        assert expect == row
+
+        with session.execute_query_statement(
+            "select tag1, tag1 from table_b"
+        ) as session_data_set:
+            df = session_data_set.todf()
+            assert list(df.columns) == ["tag1", "tag1"]
+            rows, columns = df.shape
+            assert rows == expect
+            assert columns == 2
+            for i in range(rows):
+                for j in range(columns):
+                    if pd.isna(df.iloc[i, j]):
+                        assert values[i][j] is None
+                    else:
+                        assert df.iloc[i, j] == values[i][0]
+
+        row = 0
+        with session.execute_query_statement(
+            "select tag1, attr1 as tag1 from table_b"
+        ) as session_data_set:
+            assert session_data_set.get_column_names() == ["tag1", "tag1"]
+            while session_data_set.has_next():
+                row_record = session_data_set.next()
+                print(row_record)
+                assert row_record.get_timestamp() == 0
+                assert (
+                    row_record.get_fields()[0].get_object_value(
+                        row_record.get_fields()[0].get_data_type()
+                    )
+                    == values[row][0]
+                )
+                assert (
+                    row_record.get_fields()[1].get_object_value(
+                        row_record.get_fields()[1].get_data_type()
+                    )
+                    == values[row][3]
+                )
+                row += 1
+        # Determine whether it meets expectations
+        assert expect == row
+
+        with session.execute_query_statement(
+            "select tag1, attr1 as tag1 from table_b"
+        ) as session_data_set:
+            df = session_data_set.todf()
+            assert list(df.columns) == ["tag1", "tag1"]
+            rows, columns = df.shape
+            assert rows == expect
+            assert columns == 2
+            for i in range(rows):
+                assert df.iloc[i, 0] == values[i][0]
+                assert df.iloc[i, 1] == values[i][3]
 
         session.close()

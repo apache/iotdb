@@ -201,7 +201,9 @@ class Field(object):
             return np.float64(self.value)
         elif data_type == 9:
             return parse_int_to_date(self.value)
-        elif data_type == 5 or data_type == 10 or data_type == 11:
+        elif data_type == 5 or data_type == 11:
+            return self.value.decode("utf-8")
+        elif data_type == 10:
             return self.value
         else:
             raise RuntimeError("Unsupported data type:" + str(data_type))
