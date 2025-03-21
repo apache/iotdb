@@ -1677,7 +1677,8 @@ public class ConfigPhysicalPlanSerDeTest {
                     .setTTL(Long.MAX_VALUE)
                     .setSchemaReplicationFactor(3)
                     .setDataReplicationFactor(3)
-                    .setTimePartitionInterval(604800)));
+                    .setTimePartitionInterval(604800)),
+            "a6670472-91a4-4194-9916-08236680b4d8");
     Assert.assertEquals(plan, ConfigPhysicalPlan.Factory.create(plan.serializeToByteBuffer()));
   }
 

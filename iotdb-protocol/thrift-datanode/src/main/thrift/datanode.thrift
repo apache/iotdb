@@ -390,6 +390,7 @@ struct TLoadCommandReq {
     2: required string uuid
     3: optional bool isGeneratedByPipe
     4: optional binary progressIndex
+    5: optional string originClusterId
 }
 
 struct TAttributeUpdateReq {
@@ -436,12 +437,14 @@ struct TDeleteDataForDeleteSchemaReq {
   1: required list<common.TConsensusGroupId> dataRegionIdList
   2: required binary pathPatternTree
   3: optional bool isGeneratedByPipe
+  4: optional string originClusterId
 }
 
 struct TDeleteTimeSeriesReq {
   1: required list<common.TConsensusGroupId> schemaRegionIdList
   2: required binary pathPatternTree
   3: optional bool isGeneratedByPipe
+  4: optional string originCluster
 }
 
 struct TConstructSchemaBlackListWithTemplateReq {
@@ -458,6 +461,7 @@ struct TDeactivateTemplateReq {
   1: required list<common.TConsensusGroupId> schemaRegionIdList
   2: required map<string, list<i32>> templateSetInfo
   3: optional bool isGeneratedByPipe
+  4: optional string originClusterId
 }
 
 struct TCountPathsUsingTemplateReq {
@@ -574,12 +578,14 @@ struct TDeleteViewSchemaReq {
    1: required list<common.TConsensusGroupId> schemaRegionIdList
    2: required binary pathPatternTree
    3: optional bool isGeneratedByPipe
+   4: optional string originClusterId
 }
 
 struct TAlterViewReq {
   1: required list<common.TConsensusGroupId> schemaRegionIdList
   2: required list<binary> viewBinaryList
   3: optional bool isGeneratedByPipe
+  4: optional string originClusterId
 }
 
 // ====================================================

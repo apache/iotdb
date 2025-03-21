@@ -64,12 +64,17 @@ public class ConfigRegionListeningQueue extends AbstractPipeListeningQueue
   /////////////////////////////// Function ///////////////////////////////
 
   public synchronized void tryListenToPlan(
-      final ConfigPhysicalPlan plan, final boolean isGeneratedByPipe) {
+      final ConfigPhysicalPlan plan,
+      final boolean isGeneratedByPipe,
+      final String originClusterId) {
     if (ConfigRegionListeningFilter.shouldPlanBeListened(plan)) {
       final PipeConfigRegionWritePlanEvent event;
       switch (plan.getType()) {
         case PipeEnriched:
-          tryListenToPlan(((PipeEnrichedPlan) plan).getInnerPlan(), true);
+          tryListenToPlan(
+              ((PipeEnrichedPlan) plan).getInnerPlan(),
+              true,
+              (((PipeEnrichedPlan) plan).getOriginClusterId()));
           return;
         case UnsetTemplate:
           // Different clusters have different template ids, so we need to
@@ -85,7 +90,8 @@ public class ConfigRegionListeningQueue extends AbstractPipeListeningQueue
                             .getTemplate(((UnsetSchemaTemplatePlan) plan).getTemplateId())
                             .getName(),
                         ((UnsetSchemaTemplatePlan) plan).getPath().getFullPath()),
-                    isGeneratedByPipe);
+                    isGeneratedByPipe,
+                    originClusterId);
           } catch (final MetadataException e) {
             LOGGER.warn("Failed to collect UnsetTemplatePlan", e);
             return;
@@ -104,14 +110,15 @@ public class ConfigRegionListeningQueue extends AbstractPipeListeningQueue
                                 ((CommitCreateTablePlan) plan).getDatabase(),
                                 ((CommitCreateTablePlan) plan).getTableName())
                             .orElse(null)),
-                    isGeneratedByPipe);
+                    isGeneratedByPipe,
+                    originClusterId);
           } catch (final MetadataException e) {
             LOGGER.warn("Failed to collect CommitCreateTablePlan", e);
             return;
           }
           break;
         default:
-          event = new PipeConfigRegionWritePlanEvent(plan, isGeneratedByPipe);
+          event = new PipeConfigRegionWritePlanEvent(plan, isGeneratedByPipe, originClusterId);
       }
       tryListen(event);
     }

@@ -3306,7 +3306,8 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
         LOGGER.warn("Failed to handleTransferConfigPlan, status is {}.", pipeConfigTransferResp);
       }
       return new TPipeTransferResp(pipeConfigTransferResp.status)
-          .setBody(pipeConfigTransferResp.body);
+          .setBody(pipeConfigTransferResp.body)
+          .setClusterId(pipeConfigTransferResp.clusterId);
     } catch (Exception e) {
       return new TPipeTransferResp(
           new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode())

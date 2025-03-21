@@ -68,6 +68,17 @@ public class CreateTriggerProcedure extends AbstractNodeProcedure<CreateTriggerS
     this.jarFile = jarFile;
   }
 
+  public CreateTriggerProcedure(
+      final TriggerInformation triggerInformation,
+      final Binary jarFile,
+      final boolean isGeneratedByPipe,
+      final String originClusterId) {
+    super(isGeneratedByPipe);
+    this.triggerInformation = triggerInformation;
+    this.jarFile = jarFile;
+    this.originClusterId = originClusterId;
+  }
+
   @Override
   protected Flow executeFromState(
       final ConfigNodeProcedureEnv env, final CreateTriggerState state) {
@@ -154,7 +165,8 @@ public class CreateTriggerProcedure extends AbstractNodeProcedure<CreateTriggerS
                   isGeneratedByPipe
                       ? new PipeEnrichedPlan(
                           new UpdateTriggerStateInTablePlan(
-                              triggerInformation.getTriggerName(), TTriggerState.ACTIVE))
+                              triggerInformation.getTriggerName(), TTriggerState.ACTIVE),
+                          originClusterId)
                       : new UpdateTriggerStateInTablePlan(
                           triggerInformation.getTriggerName(), TTriggerState.ACTIVE));
           setNextState(CreateTriggerState.CONFIG_NODE_ACTIVE);
@@ -208,7 +220,8 @@ public class CreateTriggerProcedure extends AbstractNodeProcedure<CreateTriggerS
               .write(
                   isGeneratedByPipe
                       ? new PipeEnrichedPlan(
-                          new DeleteTriggerInTablePlan(triggerInformation.getTriggerName()))
+                          new DeleteTriggerInTablePlan(triggerInformation.getTriggerName()),
+                          originClusterId)
                       : new DeleteTriggerInTablePlan(triggerInformation.getTriggerName()));
         } catch (ConsensusException e) {
           LOG.warn("Failed in the write API executing the consensus layer due to: ", e);
@@ -310,7 +323,8 @@ public class CreateTriggerProcedure extends AbstractNodeProcedure<CreateTriggerS
           && thatProc.getCurrentState().equals(this.getCurrentState())
           && thatProc.getCycles() == this.getCycles()
           && thatProc.isGeneratedByPipe == this.isGeneratedByPipe
-          && thatProc.triggerInformation.equals(this.triggerInformation);
+          && thatProc.triggerInformation.equals(this.triggerInformation)
+          && Objects.equals(thatProc.originClusterId, this.originClusterId);
     }
     return false;
   }
@@ -318,6 +332,11 @@ public class CreateTriggerProcedure extends AbstractNodeProcedure<CreateTriggerS
   @Override
   public int hashCode() {
     return Objects.hash(
-        getProcId(), getCurrentState(), getCycles(), isGeneratedByPipe, triggerInformation);
+        getProcId(),
+        getCurrentState(),
+        getCycles(),
+        isGeneratedByPipe,
+        triggerInformation,
+        originClusterId);
   }
 }

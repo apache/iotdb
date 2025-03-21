@@ -491,6 +491,7 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
             insertRowStatement.getValues(),
             insertRowStatement.isNeedInferType());
     insertNode.setFailedMeasurementNumber(insertRowStatement.getFailedMeasurementNumber());
+    insertNode.setOriginClusterId(insertRowStatement.getOriginClusterId());
     return insertNode;
   }
 
@@ -503,12 +504,14 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
     if (node instanceof LoadTsFileNode) {
       return node;
     } else if (node instanceof InsertNode) {
-      return new PipeEnrichedInsertNode((InsertNode) node);
+      return new PipeEnrichedInsertNode(
+          (InsertNode) node, pipeEnrichedStatement.getOriginClusterId());
     } else if (node instanceof DeleteDataNode) {
-      return new PipeEnrichedDeleteDataNode((DeleteDataNode) node);
+      return new PipeEnrichedDeleteDataNode(
+          (DeleteDataNode) node, pipeEnrichedStatement.getOriginClusterId());
     }
 
-    return new PipeEnrichedWritePlanNode(node);
+    return new PipeEnrichedWritePlanNode(node, pipeEnrichedStatement.getOriginClusterId());
   }
 
   @Override

@@ -109,6 +109,8 @@ public abstract class InsertBaseStatement extends Statement implements Accountab
 
   protected long ramBytesUsed = Long.MIN_VALUE;
 
+  protected String originClusterId;
+
   // endregion
 
   public PartialPath getDevicePath() {
@@ -619,6 +621,14 @@ public abstract class InsertBaseStatement extends Statement implements Accountab
     if (writeToTable) {
       isAligned = true;
     }
+  }
+
+  public String getOriginClusterId() {
+    return originClusterId;
+  }
+
+  public void setOriginClusterId(String originClusterId) {
+    this.originClusterId = originClusterId;
   }
 
   @TableModel

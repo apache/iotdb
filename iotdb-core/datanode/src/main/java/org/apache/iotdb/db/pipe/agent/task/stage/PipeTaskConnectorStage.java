@@ -28,6 +28,8 @@ import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 
+import java.util.Set;
+
 public class PipeTaskConnectorStage extends PipeTaskStage {
 
   protected final String pipeName;
@@ -85,5 +87,9 @@ public class PipeTaskConnectorStage extends PipeTaskStage {
 
   public UnboundedBlockingPendingQueue<Event> getPipeConnectorPendingQueue() {
     return PipeConnectorSubtaskManager.instance().getPipeConnectorPendingQueue(connectorSubtaskId);
+  }
+
+  public Set<String> getPipeConnectorClusterIds() {
+    return PipeConnectorSubtaskManager.instance().getSinkClusterIds(connectorSubtaskId);
   }
 }

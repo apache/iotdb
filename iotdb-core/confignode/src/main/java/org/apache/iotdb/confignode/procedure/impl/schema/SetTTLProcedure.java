@@ -65,6 +65,12 @@ public class SetTTLProcedure extends StateMachineProcedure<ConfigNodeProcedureEn
     this.plan = plan;
   }
 
+  public SetTTLProcedure(
+      SetTTLPlan plan, final boolean isGeneratedByPipe, final String originClusterId) {
+    super(isGeneratedByPipe, originClusterId);
+    this.plan = plan;
+  }
+
   @Override
   protected Flow executeFromState(ConfigNodeProcedureEnv env, SetTTLState state)
       throws ProcedureSuspendedException, ProcedureYieldException, InterruptedException {
@@ -91,7 +97,8 @@ public class SetTTLProcedure extends StateMachineProcedure<ConfigNodeProcedureEn
       res =
           env.getConfigManager()
               .getConsensusManager()
-              .write(isGeneratedByPipe ? new PipeEnrichedPlan(this.plan) : this.plan);
+              .write(
+                  isGeneratedByPipe ? new PipeEnrichedPlan(this.plan, originClusterId) : this.plan);
     } catch (ConsensusException e) {
       LOGGER.warn("Failed in the write API executing the consensus layer due to: ", e);
       res = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
@@ -179,11 +186,12 @@ public class SetTTLProcedure extends StateMachineProcedure<ConfigNodeProcedureEn
       return false;
     }
     return this.plan.equals(((SetTTLProcedure) o).plan)
-        && this.isGeneratedByPipe == (((SetTTLProcedure) o).isGeneratedByPipe);
+        && this.isGeneratedByPipe == (((SetTTLProcedure) o).isGeneratedByPipe)
+        && Objects.equals(this.originClusterId, ((SetTTLProcedure) o).originClusterId);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(plan, isGeneratedByPipe);
+    return Objects.hash(plan, isGeneratedByPipe, originClusterId);
   }
 }

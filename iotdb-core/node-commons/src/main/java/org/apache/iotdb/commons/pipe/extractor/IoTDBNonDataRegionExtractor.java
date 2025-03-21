@@ -47,6 +47,7 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 @TreeModel
@@ -69,6 +70,8 @@ public abstract class IoTDBNonDataRegionExtractor extends IoTDBExtractor {
   protected final AtomicBoolean hasBeenClosed = new AtomicBoolean(false);
 
   protected abstract AbstractPipeListeningQueue getListeningQueue();
+
+  protected Set<String> sinkClusterIds;
 
   @Override
   public void customize(
@@ -224,7 +227,11 @@ public abstract class IoTDBNonDataRegionExtractor extends IoTDBExtractor {
 
     if (Objects.isNull(realtimeEvent)
         || !isTypeListened(realtimeEvent)
-        || (!isForwardingPipeRequests && realtimeEvent.isGeneratedByPipe())) {
+        || (!isForwardingPipeRequests && realtimeEvent.isGeneratedByPipe())
+        || (isDoubleLiving
+            && Objects.nonNull(realtimeEvent.getOriginClusterId())
+            && Objects.nonNull(sinkClusterIds)
+            && sinkClusterIds.contains(realtimeEvent.getOriginClusterId()))) {
       final ProgressReportEvent event =
           new ProgressReportEvent(
               pipeName,
@@ -283,6 +290,14 @@ public abstract class IoTDBNonDataRegionExtractor extends IoTDBExtractor {
   protected abstract boolean isTypeListened(final PipeWritePlanEvent event);
 
   protected abstract void confineHistoricalEventTransferTypes(final PipeSnapshotEvent event);
+
+  public Set<String> getSinkClusterIds() {
+    return sinkClusterIds;
+  }
+
+  public void setSinkClusterIds(Set<String> sinkClusterIds) {
+    this.sinkClusterIds = sinkClusterIds;
+  }
 
   @Override
   public void close() throws Exception {

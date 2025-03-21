@@ -55,7 +55,10 @@ public class TTLManager {
   }
 
   /** Set ttl when creating database. */
-  public TSStatus setTTL(DatabaseSchemaPlan databaseSchemaPlan, final boolean isGeneratedByPipe)
+  public TSStatus setTTL(
+      DatabaseSchemaPlan databaseSchemaPlan,
+      final boolean isGeneratedByPipe,
+      final String originClusterId)
       throws IllegalPathException {
     long ttl = databaseSchemaPlan.getSchema().getTTL();
     if (ttl < 0) {
@@ -67,10 +70,13 @@ public class TTLManager {
         new SetTTLPlan(
             PathUtils.splitPathToDetachedNodes(databaseSchemaPlan.getSchema().getName()), ttl);
     setTTLPlan.setDataBase(true);
-    return configManager.getProcedureManager().setTTL(setTTLPlan, isGeneratedByPipe);
+    return configManager
+        .getProcedureManager()
+        .setTTL(setTTLPlan, isGeneratedByPipe, originClusterId);
   }
 
-  public TSStatus setTTL(SetTTLPlan setTTLPlan, final boolean isGeneratedByPipe) {
+  public TSStatus setTTL(
+      SetTTLPlan setTTLPlan, final boolean isGeneratedByPipe, final String originClusterId) {
     PartialPath path = new PartialPath(setTTLPlan.getPathPattern());
     if (!checkIsPathValidated(path)) {
       TSStatus errorStatus = new TSStatus(TSStatusCode.ILLEGAL_PARAMETER.getStatusCode());
@@ -89,10 +95,13 @@ public class TTLManager {
     // if path matches database, then set both path and path.**
     setTTLPlan.setDataBase(configManager.getPartitionManager().isDatabaseExist(path.getFullPath()));
 
-    return configManager.getProcedureManager().setTTL(setTTLPlan, isGeneratedByPipe);
+    return configManager
+        .getProcedureManager()
+        .setTTL(setTTLPlan, isGeneratedByPipe, originClusterId);
   }
 
-  public TSStatus unsetTTL(SetTTLPlan setTTLPlan, final boolean isGeneratedByPipe) {
+  public TSStatus unsetTTL(
+      SetTTLPlan setTTLPlan, final boolean isGeneratedByPipe, final String originClusterId) {
     PartialPath path = new PartialPath(setTTLPlan.getPathPattern());
     if (!checkIsPathValidated(path)) {
       TSStatus errorStatus = new TSStatus(TSStatusCode.ILLEGAL_PARAMETER.getStatusCode());
@@ -105,7 +114,9 @@ public class TTLManager {
     // if path matches database, then unset both path and path.**
     setTTLPlan.setDataBase(configManager.getPartitionManager().isDatabaseExist(path.getFullPath()));
 
-    return configManager.getProcedureManager().setTTL(setTTLPlan, isGeneratedByPipe);
+    return configManager
+        .getProcedureManager()
+        .setTTL(setTTLPlan, isGeneratedByPipe, originClusterId);
   }
 
   public DataSet showTTL(ShowTTLPlan showTTLPlan) {

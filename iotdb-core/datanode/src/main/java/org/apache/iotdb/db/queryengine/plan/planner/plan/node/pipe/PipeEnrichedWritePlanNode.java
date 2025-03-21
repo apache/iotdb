@@ -81,6 +81,13 @@ public class PipeEnrichedWritePlanNode extends WritePlanNode {
     this.writePlanNode = schemaWriteNode;
   }
 
+  public PipeEnrichedWritePlanNode(
+      final WritePlanNode schemaWriteNode, final String originClusterId) {
+    super(schemaWriteNode.getPlanNodeId());
+    this.writePlanNode = schemaWriteNode;
+    this.originClusterId = originClusterId;
+  }
+
   public WritePlanNode getWritePlanNode() {
     return writePlanNode;
   }
@@ -93,6 +100,11 @@ public class PipeEnrichedWritePlanNode extends WritePlanNode {
   @Override
   public void markAsGeneratedByPipe() {
     writePlanNode.markAsGeneratedByPipe();
+  }
+
+  @Override
+  public void setOriginClusterId(final String originClusterId) {
+    writePlanNode.setOriginClusterId(originClusterId);
   }
 
   @Override
@@ -191,7 +203,7 @@ public class PipeEnrichedWritePlanNode extends WritePlanNode {
             plan ->
                 plan instanceof PipeEnrichedWritePlanNode
                     ? plan
-                    : new PipeEnrichedWritePlanNode(plan))
+                    : new PipeEnrichedWritePlanNode(plan, originClusterId))
         .collect(Collectors.toList());
   }
 }

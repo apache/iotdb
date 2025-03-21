@@ -44,6 +44,7 @@ public class PipeDeleteDataNodeEvent extends EnrichedEvent implements Serializab
   private AbstractDeleteDataNode deleteDataNode;
   private DeletionResource deletionResource;
   private boolean isGeneratedByPipe;
+  private String originClusterId;
   private ProgressIndex progressIndex;
 
   public PipeDeleteDataNodeEvent() {
@@ -53,7 +54,14 @@ public class PipeDeleteDataNodeEvent extends EnrichedEvent implements Serializab
 
   public PipeDeleteDataNodeEvent(
       final AbstractDeleteDataNode deleteDataNode, final boolean isGeneratedByPipe) {
-    this(deleteDataNode, null, 0, null, null, null, null, true, isGeneratedByPipe);
+    this(deleteDataNode, null, 0, null, null, null, null, true, isGeneratedByPipe, null);
+  }
+
+  public PipeDeleteDataNodeEvent(
+      final AbstractDeleteDataNode deleteDataNode,
+      final boolean isGeneratedByPipe,
+      final String originClusterId) {
+    this(deleteDataNode, null, 0, null, null, null, null, true, isGeneratedByPipe, originClusterId);
   }
 
   public PipeDeleteDataNodeEvent(
@@ -65,7 +73,8 @@ public class PipeDeleteDataNodeEvent extends EnrichedEvent implements Serializab
       final TablePattern tablePattern,
       final String userName,
       final boolean skipIfNoPrivileges,
-      final boolean isGeneratedByPipe) {
+      final boolean isGeneratedByPipe,
+      final String originClusterId) {
     super(
         pipeName,
         creationTime,
@@ -78,6 +87,7 @@ public class PipeDeleteDataNodeEvent extends EnrichedEvent implements Serializab
         Long.MAX_VALUE);
     this.isGeneratedByPipe = isGeneratedByPipe;
     this.deleteDataNode = deleteDataNode;
+    this.originClusterId = originClusterId;
     Optional.ofNullable(deleteDataNode)
         .ifPresent(node -> this.progressIndex = deleteDataNode.getProgressIndex());
   }
@@ -137,12 +147,18 @@ public class PipeDeleteDataNodeEvent extends EnrichedEvent implements Serializab
         tablePattern,
         userName,
         skipIfNoPrivileges,
-        isGeneratedByPipe);
+        isGeneratedByPipe,
+        originClusterId);
   }
 
   @Override
   public boolean isGeneratedByPipe() {
     return isGeneratedByPipe;
+  }
+
+  @Override
+  public String getOriginClusterId() {
+    return originClusterId;
   }
 
   @Override
@@ -175,9 +191,12 @@ public class PipeDeleteDataNodeEvent extends EnrichedEvent implements Serializab
   @Override
   public ByteBuffer serializeToByteBuffer() {
     final ByteBuffer planBuffer = deleteDataNode.serializeToByteBuffer();
-    final ByteBuffer result = ByteBuffer.allocate(Byte.BYTES + planBuffer.limit());
+    final ByteBuffer result =
+        ByteBuffer.allocate(
+            Byte.BYTES + planBuffer.limit() + computeOriginClusterIdBufferSize(originClusterId));
     ReadWriteIOUtils.write(isGeneratedByPipe, result);
     result.put(planBuffer);
+    ReadWriteIOUtils.write(originClusterId, result);
     return result;
   }
 
@@ -186,6 +205,9 @@ public class PipeDeleteDataNodeEvent extends EnrichedEvent implements Serializab
     isGeneratedByPipe = ReadWriteIOUtils.readBool(buffer);
     deleteDataNode = (DeleteDataNode) PlanNodeType.deserialize(buffer);
     progressIndex = deleteDataNode.getProgressIndex();
+    if (buffer.hasRemaining()) {
+      originClusterId = ReadWriteIOUtils.readString(buffer);
+    }
   }
 
   public static PipeDeleteDataNodeEvent deserialize(final ByteBuffer buffer) {
@@ -199,8 +221,8 @@ public class PipeDeleteDataNodeEvent extends EnrichedEvent implements Serializab
   @Override
   public String toString() {
     return String.format(
-            "PipDeleteDataNodeEvent{progressIndex=%s, isGeneratedByPipe=%s}",
-            progressIndex, isGeneratedByPipe)
+            "PipDeleteDataNodeEvent{progressIndex=%s, isGeneratedByPipe=%s, originClusterId=%s}",
+            progressIndex, isGeneratedByPipe, originClusterId)
         + " - "
         + super.toString();
   }
@@ -208,8 +230,8 @@ public class PipeDeleteDataNodeEvent extends EnrichedEvent implements Serializab
   @Override
   public String coreReportMessage() {
     return String.format(
-            "PipeDeleteDataNodeEvent{progressIndex=%s, isGeneratedByPipe=%s}",
-            progressIndex, isGeneratedByPipe)
+            "PipeDeleteDataNodeEvent{progressIndex=%s, isGeneratedByPipe=%s, originClusterId=%s}",
+            progressIndex, isGeneratedByPipe, originClusterId)
         + " - "
         + super.coreReportMessage();
   }

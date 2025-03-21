@@ -203,7 +203,8 @@ public class IoTDBSchemaRegionExtractor extends IoTDBNonDataRegionExtractor {
             ((PipeSchemaRegionWritePlanEvent) event).getPlanNode(), userName);
     if (result.isPresent()) {
       return Optional.of(
-          new PipeSchemaRegionWritePlanEvent(result.get(), event.isGeneratedByPipe()));
+          new PipeSchemaRegionWritePlanEvent(
+              result.get(), event.isGeneratedByPipe(), event.getOriginClusterId()));
     }
     if (skipIfNoPrivileges) {
       return Optional.empty();
@@ -225,7 +226,7 @@ public class IoTDBSchemaRegionExtractor extends IoTDBNonDataRegionExtractor {
                     .map(
                         planNode1 ->
                             new PipeSchemaRegionWritePlanEvent(
-                                planNode1, event.isGeneratedByPipe())));
+                                planNode1, event.isGeneratedByPipe(), event.getOriginClusterId())));
   }
 
   @Override

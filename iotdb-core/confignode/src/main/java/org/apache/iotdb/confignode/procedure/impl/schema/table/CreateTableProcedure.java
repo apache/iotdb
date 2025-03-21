@@ -71,6 +71,16 @@ public class CreateTableProcedure
     this.table = table;
   }
 
+  public CreateTableProcedure(
+      final String database,
+      final TsTable table,
+      final boolean isGeneratedByPipe,
+      final String originClusterId) {
+    super(isGeneratedByPipe, originClusterId);
+    this.database = database;
+    this.table = table;
+  }
+
   @Override
   protected Flow executeFromState(final ConfigNodeProcedureEnv env, final CreateTableState state)
       throws ProcedureSuspendedException, ProcedureYieldException, InterruptedException {
@@ -170,7 +180,8 @@ public class CreateTableProcedure
     final TSStatus status =
         SchemaUtils.executeInConsensusLayer(
             isGeneratedByPipe
-                ? new PipeEnrichedPlan(new CommitCreateTablePlan(database, table.getTableName()))
+                ? new PipeEnrichedPlan(
+                    new CommitCreateTablePlan(database, table.getTableName()), originClusterId)
                 : new CommitCreateTablePlan(database, table.getTableName()),
             env,
             LOGGER);

@@ -29,6 +29,7 @@ import org.apache.iotdb.commons.pipe.datastructure.pattern.TablePattern;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.TreePattern;
 import org.apache.iotdb.pipe.api.event.Event;
 
+import org.apache.tsfile.common.conf.TSFileConfig;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -403,6 +404,8 @@ public abstract class EnrichedEvent implements Event {
 
   public abstract boolean isGeneratedByPipe();
 
+  public abstract String getOriginClusterId();
+
   /** Whether the {@link EnrichedEvent} need to be committed in order. */
   public boolean needToCommit() {
     return true;
@@ -455,6 +458,15 @@ public abstract class EnrichedEvent implements Event {
 
   public boolean isReleased() {
     return isReleased.get();
+  }
+
+  public int computeOriginClusterIdBufferSize(final String originClusterId) {
+    if (originClusterId == null) {
+      return Integer.BYTES;
+    } else {
+      byte[] bytes = originClusterId.getBytes(TSFileConfig.STRING_CHARSET);
+      return Integer.BYTES + bytes.length;
+    }
   }
 
   /**

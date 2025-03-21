@@ -262,6 +262,12 @@ public class InsertRowsNode extends InsertNode implements WALEntryValue {
   }
 
   @Override
+  public void setOriginClusterId(final String originClusterId) {
+    this.originClusterId = originClusterId;
+    insertRowNodeList.forEach(insertRowNode -> insertRowNode.setOriginClusterId(originClusterId));
+  }
+
+  @Override
   public List<WritePlanNode> splitByPartition(IAnalysis analysis) {
     Map<TRegionReplicaSet, InsertRowsNode> splitMap = new HashMap<>();
     List<TEndPoint> redirectInfo = new ArrayList<>();

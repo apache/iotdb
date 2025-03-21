@@ -95,14 +95,8 @@ public class PipeDataNodeTaskBuilder {
     checkConflict(extractorParameters, connectorParameters);
 
     // We first build the extractor and connector, then build the processor.
-    final PipeTaskExtractorStage extractorStage =
-        new PipeTaskExtractorStage(
-            pipeStaticMeta.getPipeName(),
-            pipeStaticMeta.getCreationTime(),
-            extractorParameters,
-            regionId,
-            pipeTaskMeta);
 
+    // build connector first to get the sink clusterIds
     final PipeTaskConnectorStage connectorStage;
     final PipeType pipeType = pipeStaticMeta.getPipeType();
 
@@ -124,6 +118,14 @@ public class PipeDataNodeTaskBuilder {
               CONNECTOR_EXECUTOR_MAP.get(pipeType));
     }
 
+    final PipeTaskExtractorStage extractorStage =
+        new PipeTaskExtractorStage(
+            pipeStaticMeta.getPipeName(),
+            pipeStaticMeta.getCreationTime(),
+            extractorParameters,
+            regionId,
+            pipeTaskMeta,
+            connectorStage.getPipeConnectorClusterIds());
     // The processor connects the extractor and connector.
     final PipeTaskProcessorStage processorStage =
         new PipeTaskProcessorStage(

@@ -237,6 +237,11 @@ public class PipeRealtimeEvent extends EnrichedEvent {
   }
 
   @Override
+  public String getOriginClusterId() {
+    return event.getOriginClusterId();
+  }
+
+  @Override
   public String toString() {
     return "PipeRealtimeEvent{"
         + "event="

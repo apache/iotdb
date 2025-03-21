@@ -161,12 +161,14 @@ struct TSetDataNodeStatusReq {
 struct TDeleteDatabaseReq {
   1: required string prefixPath
   2: optional bool isGeneratedByPipe
+  3: optional string originClusterId
 }
 
 struct TDeleteDatabasesReq {
   1: required list<string> prefixPathList
   2: optional bool isGeneratedByPipe
   3: optional bool isTableModel
+  4: optional string originClusterId
 }
 
 struct TSetSchemaReplicationFactorReq {
@@ -540,11 +542,13 @@ struct TCreateTriggerReq {
   10: optional binary jarFile
   11: optional string jarMD5
   12: optional bool isGeneratedByPipe
+  13: optional string originClusterId
 }
 
 struct TDropTriggerReq {
   1: required string triggerName
   2: optional bool isGeneratedByPipe
+  3: optional string originClusterId
 }
 
 struct TGetLocationForTriggerResp {
@@ -735,6 +739,7 @@ struct TSetSchemaTemplateReq {
   2: required string name
   3: required string path
   4: optional bool isGeneratedByPipe
+  5: optional string originClusterId
 }
 
 struct TGetPathsSetTemplatesReq {
@@ -858,24 +863,28 @@ struct TPipeConfigTransferReq {
 struct TPipeConfigTransferResp {
   1: required common.TSStatus status
   2: optional binary body
+  3: optional string clusterId
 }
 
 struct TDeleteTimeSeriesReq {
   1: required string queryId
   2: required binary pathPatternTree
   3: optional bool isGeneratedByPipe
+  4: optional string originClusterId
 }
 
 struct TDeleteLogicalViewReq {
   1: required string queryId
   2: required binary pathPatternTree
   3: optional bool isGeneratedByPipe
+  4: optional string originClusterId
 }
 
 struct TAlterLogicalViewReq {
   1: required string queryId
   2: required binary viewBinary
   3: optional bool isGeneratedByPipe
+  4: optional string originClusterId
 }
 
 // Subscription topic
@@ -998,6 +1007,7 @@ struct TDeactivateSchemaTemplateReq {
   2: required binary pathPatternTree
   3: optional string templateName
   4: optional bool isGeneratedByPipe
+  5: optional string originClusterId
 }
 
 struct TUnsetSchemaTemplateReq {
@@ -1005,6 +1015,7 @@ struct TUnsetSchemaTemplateReq {
   2: required string templateName
   3: required string path
   4: optional bool isGeneratedByPipe
+  5: optional string originClusterId
 }
 
 struct TCreateModelReq {

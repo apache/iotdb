@@ -523,6 +523,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
                 LoadTsFileScheduler.LoadCommand.values()[req.commandType],
                 req.uuid,
                 req.isSetIsGeneratedByPipe() && req.isGeneratedByPipe,
+                req.getOriginClusterId(),
                 progressIndex));
   }
 
@@ -718,7 +719,8 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
                     req.isSetIsGeneratedByPipe() && req.isIsGeneratedByPipe()
                         ? new PipeEnrichedDeleteDataNode(
                             new DeleteDataNode(
-                                new PlanNodeId(""), pathList, Long.MIN_VALUE, Long.MAX_VALUE))
+                                new PlanNodeId(""), pathList, Long.MIN_VALUE, Long.MAX_VALUE),
+                            req.getOriginClusterId())
                         : new DeleteDataNode(
                             new PlanNodeId(""), pathList, Long.MIN_VALUE, Long.MAX_VALUE))
                 .getStatus());
@@ -745,7 +747,8 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
                   new SchemaRegionId(consensusGroupId.getId()),
                   req.isSetIsGeneratedByPipe() && req.isIsGeneratedByPipe()
                       ? new PipeEnrichedNonWritePlanNode(
-                          new DeleteTimeSeriesNode(new PlanNodeId(""), filteredPatternTree))
+                          new DeleteTimeSeriesNode(new PlanNodeId(""), filteredPatternTree),
+                          req.getOriginCluster())
                       : new DeleteTimeSeriesNode(new PlanNodeId(""), filteredPatternTree))
               .getStatus();
         });
@@ -871,7 +874,8 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
                   new SchemaRegionId(consensusGroupId.getId()),
                   req.isSetIsGeneratedByPipe() && req.isIsGeneratedByPipe()
                       ? new PipeEnrichedNonWritePlanNode(
-                          new DeactivateTemplateNode(new PlanNodeId(""), filteredTemplateSetInfo))
+                          new DeactivateTemplateNode(new PlanNodeId(""), filteredTemplateSetInfo),
+                          req.getOriginClusterId())
                       : new DeactivateTemplateNode(new PlanNodeId(""), filteredTemplateSetInfo))
               .getStatus();
         });
@@ -1084,7 +1088,8 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
                   new SchemaRegionId(consensusGroupId.getId()),
                   req.isSetIsGeneratedByPipe() && req.isIsGeneratedByPipe()
                       ? new PipeEnrichedNonWritePlanNode(
-                          new DeleteLogicalViewNode(new PlanNodeId(""), filteredPatternTree))
+                          new DeleteLogicalViewNode(new PlanNodeId(""), filteredPatternTree),
+                          req.getOriginClusterId())
                       : new DeleteLogicalViewNode(new PlanNodeId(""), filteredPatternTree))
               .getStatus();
         });
@@ -1117,7 +1122,8 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
                   req.isSetIsGeneratedByPipe() && req.isIsGeneratedByPipe()
                       ? new PipeEnrichedNonWritePlanNode(
                           new AlterLogicalViewNode(
-                              new PlanNodeId(""), schemaRegionRequestMap.get(consensusGroupId)))
+                              new PlanNodeId(""), schemaRegionRequestMap.get(consensusGroupId)),
+                          req.getOriginClusterId())
                       : new AlterLogicalViewNode(
                           new PlanNodeId(""), schemaRegionRequestMap.get(consensusGroupId)))
               .getStatus();

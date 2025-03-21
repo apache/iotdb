@@ -25,6 +25,7 @@ import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.AlignedPath;
 import org.apache.iotdb.commons.path.IFullPath;
+import org.apache.iotdb.commons.pipe.receiver.IoTDBFileReceiver;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
 import org.apache.iotdb.commons.utils.TestOnly;
@@ -103,6 +104,7 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentLinkedDeque;
 import java.util.concurrent.CopyOnWriteArrayList;
@@ -319,6 +321,20 @@ public class TsFileProcessor {
     if (!insertRowNode.isGeneratedByPipe()) {
       workMemTable.markAsNotGeneratedByPipe();
     }
+    if (workMemTable.isTotallyFromTheSameCluster()) {
+      final String originClusterId =
+          insertRowNode.getOriginClusterId() == null
+              ? config.getClusterId()
+              : insertRowNode.getOriginClusterId();
+      if (Objects.isNull(workMemTable.getCurrentOriginClusterId())) {
+        workMemTable.setCurrentOriginClusterId(originClusterId);
+        // Use ClusterIdMap to compare the clusterIds by location rather than value
+      } else if (IoTDBFileReceiver.getClusterIdMap().get(originClusterId)
+          != IoTDBFileReceiver.getClusterIdMap().get(workMemTable.getCurrentOriginClusterId())) {
+        workMemTable.markAsNotFromTheSameCluster();
+      }
+    }
+
     PipeInsertionDataNodeListener.getInstance()
         .listenToInsertNode(
             dataRegionInfo.getDataRegion().getDataRegionId(),
@@ -409,6 +425,19 @@ public class TsFileProcessor {
     PipeDataNodeAgent.runtime().assignSimpleProgressIndexIfNeeded(insertRowsNode);
     if (!insertRowsNode.isGeneratedByPipe()) {
       workMemTable.markAsNotGeneratedByPipe();
+    }
+    if (workMemTable.isTotallyFromTheSameCluster()) {
+      final String originClusterId =
+          insertRowsNode.getOriginClusterId() == null
+              ? config.getClusterId()
+              : insertRowsNode.getOriginClusterId();
+      if (Objects.isNull(workMemTable.getCurrentOriginClusterId())) {
+        workMemTable.setCurrentOriginClusterId(originClusterId);
+        // Use ClusterIdMap to compare the clusterIds by location rather than value
+      } else if (IoTDBFileReceiver.getClusterIdMap().get(originClusterId)
+          != IoTDBFileReceiver.getClusterIdMap().get(workMemTable.getCurrentOriginClusterId())) {
+        workMemTable.markAsNotFromTheSameCluster();
+      }
     }
     PipeInsertionDataNodeListener.getInstance()
         .listenToInsertNode(
@@ -577,6 +606,20 @@ public class TsFileProcessor {
     if (!insertTabletNode.isGeneratedByPipe()) {
       workMemTable.markAsNotGeneratedByPipe();
     }
+    if (workMemTable.isTotallyFromTheSameCluster()) {
+      final String originClusterId =
+          insertTabletNode.getOriginClusterId() == null
+              ? config.getClusterId()
+              : insertTabletNode.getOriginClusterId();
+      if (Objects.isNull(workMemTable.getCurrentOriginClusterId())) {
+        workMemTable.setCurrentOriginClusterId(originClusterId);
+        // Use ClusterIdMap to compare the clusterIds by location rather than value
+      } else if (IoTDBFileReceiver.getClusterIdMap().get(originClusterId)
+          != IoTDBFileReceiver.getClusterIdMap().get(workMemTable.getCurrentOriginClusterId())) {
+        workMemTable.markAsNotFromTheSameCluster();
+      }
+    }
+
     PipeInsertionDataNodeListener.getInstance()
         .listenToInsertNode(
             dataRegionInfo.getDataRegion().getDataRegionId(),
@@ -1291,7 +1334,10 @@ public class TsFileProcessor {
                 dataRegionInfo.getDataRegion().getDatabaseName(),
                 tsFileResource,
                 false,
-                tmpMemTable.isTotallyGeneratedByPipe());
+                tmpMemTable.isTotallyGeneratedByPipe(),
+                tmpMemTable.isTotallyFromTheSameCluster()
+                    ? tmpMemTable.getCurrentOriginClusterId()
+                    : null);
 
         // When invoke closing TsFile after insert data to memTable, we shouldn't flush until invoke
         // flushing memTable in System module.

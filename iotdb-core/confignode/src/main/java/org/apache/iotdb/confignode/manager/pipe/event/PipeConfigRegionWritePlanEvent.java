@@ -42,7 +42,24 @@ public class PipeConfigRegionWritePlanEvent extends PipeWritePlanEvent {
 
   public PipeConfigRegionWritePlanEvent(
       final ConfigPhysicalPlan configPhysicalPlan, final boolean isGeneratedByPipe) {
-    this(configPhysicalPlan, null, 0, null, null, null, null, true, isGeneratedByPipe);
+    this(configPhysicalPlan, null, 0, null, null, null, null, true, isGeneratedByPipe, null);
+  }
+
+  public PipeConfigRegionWritePlanEvent(
+      final ConfigPhysicalPlan configPhysicalPlan,
+      final boolean isGeneratedByPipe,
+      final String originClusterId) {
+    this(
+        configPhysicalPlan,
+        null,
+        0,
+        null,
+        null,
+        null,
+        null,
+        true,
+        isGeneratedByPipe,
+        originClusterId);
   }
 
   public PipeConfigRegionWritePlanEvent(
@@ -54,7 +71,8 @@ public class PipeConfigRegionWritePlanEvent extends PipeWritePlanEvent {
       final TablePattern tablePattern,
       final String userName,
       final boolean skipIfNoPrivileges,
-      final boolean isGeneratedByPipe) {
+      final boolean isGeneratedByPipe,
+      final String originClusterId) {
     super(
         pipeName,
         creationTime,
@@ -63,7 +81,8 @@ public class PipeConfigRegionWritePlanEvent extends PipeWritePlanEvent {
         tablePattern,
         userName,
         skipIfNoPrivileges,
-        isGeneratedByPipe);
+        isGeneratedByPipe,
+        originClusterId);
     this.configPhysicalPlan = configPhysicalPlan;
   }
 
@@ -91,16 +110,22 @@ public class PipeConfigRegionWritePlanEvent extends PipeWritePlanEvent {
         tablePattern,
         userName,
         skipIfNoPrivileges,
-        false);
+        false,
+        null);
   }
 
   @Override
   public ByteBuffer serializeToByteBuffer() {
     final ByteBuffer planBuffer = configPhysicalPlan.serializeToByteBuffer();
-    final ByteBuffer result = ByteBuffer.allocate(Byte.BYTES * 2 + planBuffer.limit());
+    final ByteBuffer result =
+        ByteBuffer.allocate(
+            Byte.BYTES * 2
+                + planBuffer.limit()
+                + computeOriginClusterIdBufferSize(originClusterId));
     ReadWriteIOUtils.write(PipeConfigSerializableEventType.CONFIG_WRITE_PLAN.getType(), result);
     ReadWriteIOUtils.write(isGeneratedByPipe, result);
     result.put(planBuffer);
+    ReadWriteIOUtils.write(originClusterId, result);
     return result;
   }
 
@@ -108,6 +133,19 @@ public class PipeConfigRegionWritePlanEvent extends PipeWritePlanEvent {
   public void deserializeFromByteBuffer(final ByteBuffer buffer) throws IOException {
     isGeneratedByPipe = ReadWriteIOUtils.readBool(buffer);
     configPhysicalPlan = ConfigPhysicalPlan.Factory.create(buffer);
+
+    // There might be an ignoredChildrenSize 0
+    if (buffer.hasRemaining()) {
+      if (buffer.remaining() >= Integer.BYTES) {
+        buffer.mark(); // Mark current position
+        if (buffer.getInt() != 0) {
+          buffer.reset();
+        }
+      }
+      if (buffer.hasRemaining()) {
+        originClusterId = ReadWriteIOUtils.readString(buffer);
+      }
+    }
   }
 
   /////////////////////////// Object ///////////////////////////

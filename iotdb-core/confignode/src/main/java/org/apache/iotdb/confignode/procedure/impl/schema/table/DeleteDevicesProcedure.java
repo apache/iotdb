@@ -95,6 +95,21 @@ public class DeleteDevicesProcedure extends AbstractAlterOrDropTableProcedure<De
     this.modBytes = modBytes;
   }
 
+  public DeleteDevicesProcedure(
+      final String database,
+      final String tableName,
+      final String queryId,
+      final @Nonnull byte[] patternBytes,
+      final @Nonnull byte[] filterBytes,
+      final @Nonnull byte[] modBytes,
+      final boolean isGeneratedByPipe,
+      final String originClusterId) {
+    super(database, tableName, queryId, isGeneratedByPipe, originClusterId);
+    this.patternBytes = patternBytes;
+    this.filterBytes = filterBytes;
+    this.modBytes = modBytes;
+  }
+
   @Override
   protected Flow executeFromState(final ConfigNodeProcedureEnv env, final DeleteDevicesState state)
       throws ProcedureSuspendedException, ProcedureYieldException, InterruptedException {
@@ -289,7 +304,8 @@ public class DeleteDevicesProcedure extends AbstractAlterOrDropTableProcedure<De
                   isGeneratedByPipe
                       ? new PipeEnrichedPlan(
                           new PipeDeleteDevicesPlan(
-                              database, tableName, patternBytes, filterBytes, modBytes))
+                              database, tableName, patternBytes, filterBytes, modBytes),
+                          originClusterId)
                       : new PipeDeleteDevicesPlan(
                           database, tableName, patternBytes, filterBytes, modBytes));
     } catch (final ConsensusException e) {

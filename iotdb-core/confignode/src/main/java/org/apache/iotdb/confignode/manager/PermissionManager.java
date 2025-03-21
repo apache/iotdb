@@ -59,7 +59,8 @@ public class PermissionManager {
    * @param isGeneratedByPipe whether the plan is operated by pipe receiver
    * @return TSStatus
    */
-  public TSStatus operatePermission(AuthorPlan authorPlan, boolean isGeneratedByPipe) {
+  public TSStatus operatePermission(
+      AuthorPlan authorPlan, boolean isGeneratedByPipe, String originClusterIds) {
     TSStatus tsStatus;
     // If the permissions change, clear the cache content affected by the operation
     LOGGER.info("Auth: run auth plan: {}", authorPlan.toString());
@@ -69,14 +70,17 @@ public class PermissionManager {
           || authorPlan.getAuthorType() == ConfigPhysicalPlanType.CreateUserWithRawPassword) {
         tsStatus =
             getConsensusManager()
-                .write(isGeneratedByPipe ? new PipeEnrichedPlan(authorPlan) : authorPlan);
+                .write(
+                    isGeneratedByPipe
+                        ? new PipeEnrichedPlan(authorPlan, originClusterIds)
+                        : authorPlan);
       } else {
         List<TDataNodeConfiguration> allDataNodes =
             configManager.getNodeManager().getRegisteredDataNodes();
         tsStatus =
             configManager
                 .getProcedureManager()
-                .operateAuthPlan(authorPlan, allDataNodes, isGeneratedByPipe);
+                .operateAuthPlan(authorPlan, allDataNodes, isGeneratedByPipe, originClusterIds);
       }
       return tsStatus;
     } catch (final ConsensusException e) {

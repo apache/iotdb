@@ -263,6 +263,12 @@ public class InsertMultiTabletsNode extends InsertNode {
   }
 
   @Override
+  public void setOriginClusterId(final String originClusterId) {
+    this.originClusterId = originClusterId;
+    insertTabletNodeList.forEach(node -> node.setOriginClusterId(originClusterId));
+  }
+
+  @Override
   public boolean equals(Object o) {
     if (this == o) return true;
     if (o == null || getClass() != o.getClass()) return false;

@@ -26,6 +26,8 @@ import org.apache.iotdb.commons.pipe.agent.task.stage.PipeTaskStage;
 import org.apache.iotdb.commons.pipe.config.plugin.configuraion.PipeTaskRuntimeConfiguration;
 import org.apache.iotdb.commons.pipe.config.plugin.env.PipeTaskExtractorRuntimeEnvironment;
 import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
+import org.apache.iotdb.db.pipe.extractor.dataregion.IoTDBDataRegionExtractor;
+import org.apache.iotdb.db.pipe.extractor.schemaregion.IoTDBSchemaRegionExtractor;
 import org.apache.iotdb.db.storageengine.StorageEngine;
 import org.apache.iotdb.pipe.api.PipeExtractor;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameterValidator;
@@ -34,6 +36,8 @@ import org.apache.iotdb.pipe.api.exception.PipeException;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.util.Set;
 
 public class PipeTaskExtractorStage extends PipeTaskStage {
 
@@ -46,7 +50,8 @@ public class PipeTaskExtractorStage extends PipeTaskStage {
       long creationTime,
       PipeParameters extractorParameters,
       int regionId,
-      PipeTaskMeta pipeTaskMeta) {
+      PipeTaskMeta pipeTaskMeta,
+      Set<String> originClusterIds) {
     pipeExtractor =
         StorageEngine.getInstance().getAllDataRegionIds().contains(new DataRegionId(regionId))
             ? PipeDataNodeAgent.plugin().dataRegion().reflectExtractor(extractorParameters)
@@ -64,6 +69,15 @@ public class PipeTaskExtractorStage extends PipeTaskStage {
               new PipeTaskExtractorRuntimeEnvironment(
                   pipeName, creationTime, regionId, pipeTaskMeta));
       pipeExtractor.customize(extractorParameters, runtimeConfiguration);
+
+      if (pipeExtractor instanceof IoTDBDataRegionExtractor) {
+        ((IoTDBDataRegionExtractor) pipeExtractor).setSinkClusterIds(originClusterIds);
+      }
+
+      if (pipeExtractor instanceof IoTDBSchemaRegionExtractor) {
+        ((IoTDBSchemaRegionExtractor) pipeExtractor).setSinkClusterIds(originClusterIds);
+      }
+
     } catch (Exception e) {
       try {
         pipeExtractor.close();

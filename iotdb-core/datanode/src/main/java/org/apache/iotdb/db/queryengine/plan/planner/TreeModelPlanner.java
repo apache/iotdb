@@ -140,7 +140,11 @@ public class TreeModelPlanner implements IPlanner {
               stateMachine,
               syncInternalServiceClientManager,
               partitionFetcher,
-              isPipeEnrichedTsFileLoad);
+              isPipeEnrichedTsFileLoad,
+              statement instanceof PipeEnrichedStatement
+                  ? ((PipeEnrichedStatement) statement).getOriginClusterId()
+                  : null);
+
     } else {
       scheduler =
           new ClusterScheduler(

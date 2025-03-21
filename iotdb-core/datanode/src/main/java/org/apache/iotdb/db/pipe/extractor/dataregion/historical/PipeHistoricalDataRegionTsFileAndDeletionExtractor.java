@@ -804,6 +804,7 @@ public class PipeHistoricalDataRegionTsFileAndDeletionExtractor
             shouldTransferModFile,
             false,
             true,
+            null,
             pipeName,
             creationTime,
             pipeTaskMeta,
@@ -870,7 +871,8 @@ public class PipeHistoricalDataRegionTsFileAndDeletionExtractor
             tablePattern,
             userName,
             skipIfNoPrivileges,
-            false);
+            false,
+            null);
 
     if (sloppyPattern || isDbNameCoveredByPattern) {
       event.skipParsingPattern();

@@ -134,7 +134,7 @@ public class ConfigRegionStateMachine implements IStateMachine, IStateMachine.Ev
     }
 
     if (result.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      PipeConfigNodeAgent.runtime().listener().tryListenToPlan(plan, false);
+      PipeConfigNodeAgent.runtime().listener().tryListenToPlan(plan, false, null);
     }
 
     return result;
@@ -428,7 +428,7 @@ public class ConfigRegionStateMachine implements IStateMachine, IStateMachine.Ev
               // Recover the linked queue.
               // Note that the "nextPlan"s may contain create and drop pipe operations
               // and will affect whether the queue listen to the plans.
-              PipeConfigNodeAgent.runtime().listener().tryListenToPlan(nextPlan, false);
+              PipeConfigNodeAgent.runtime().listener().tryListenToPlan(nextPlan, false, null);
             }
           } catch (UnknownPhysicalPlanTypeException e) {
             LOGGER.error("Try listen to plan failed", e);
