@@ -153,7 +153,6 @@ public abstract class IClientSession {
 
   public void setSqlDialect(SqlDialect sqlDialect) {
     this.sqlDialect = sqlDialect;
-    this.databaseName = null;
   }
 
   public void setSqlDialectAndClean(SqlDialect sqlDialect) {
