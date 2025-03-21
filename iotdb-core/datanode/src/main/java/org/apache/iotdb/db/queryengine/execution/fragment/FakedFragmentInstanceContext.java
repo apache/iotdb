@@ -98,4 +98,8 @@ public class FakedFragmentInstanceContext extends FragmentInstanceContext {
       sharedQueryDataSource = null;
     }
   }
+
+  protected boolean checkIfModificationExists(TsFileResource tsFileResource) {
+    return false;
+  }
 }
