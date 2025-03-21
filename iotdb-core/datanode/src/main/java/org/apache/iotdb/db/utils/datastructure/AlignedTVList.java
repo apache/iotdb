@@ -146,7 +146,7 @@ public abstract class AlignedTVList extends TVList {
   }
 
   @Override
-  public AlignedTVList clone() {
+  public synchronized AlignedTVList clone() {
     AlignedTVList cloneList = AlignedTVList.newAlignedList(dataTypes);
     cloneAs(cloneList);
     cloneList.timeDeletedCnt = this.timeDeletedCnt;
@@ -1547,7 +1547,7 @@ public abstract class AlignedTVList extends TVList {
     private final List<Integer> columnIndexList;
     private final List<TimeRange> timeColumnDeletion;
     private final List<List<TimeRange>> valueColumnsDeletionList;
-    private final Integer floatPrecision;
+    private final int floatPrecision;
     private final List<TSEncoding> encodingList;
     private final boolean ignoreAllNullRows;
 
@@ -1576,7 +1576,7 @@ public abstract class AlignedTVList extends TVList {
               ? IntStream.range(0, dataTypes.size()).boxed().collect(Collectors.toList())
               : columnIndexList;
       this.allValueColDeletedMap = ignoreAllNullRows ? getAllValueColDeletedMap() : null;
-      this.floatPrecision = floatPrecision;
+      this.floatPrecision = floatPrecision != null ? floatPrecision : 0;
       this.encodingList = encodingList;
       this.timeColumnDeletion = timeColumnDeletion;
       this.valueColumnsDeletionList = valueColumnsDeletionList;
@@ -1677,7 +1677,7 @@ public abstract class AlignedTVList extends TVList {
     }
 
     public TsPrimitiveType getPrimitiveTypeObject(int rowIndex, int columnIndex) {
-      int valueIndex = getValueIndex(index);
+      int valueIndex = getValueIndex(rowIndex);
       if (valueIndex < 0 || valueIndex >= rows) {
         return null;
       }
@@ -1701,19 +1701,19 @@ public abstract class AlignedTVList extends TVList {
           return TsPrimitiveType.getByType(
               TSDataType.INT64, getLongByValueIndex(valueIndex, validColumnIndex));
         case FLOAT:
-          return TsPrimitiveType.getByType(
-              TSDataType.FLOAT,
-              roundValueWithGivenPrecision(
-                  getFloatByValueIndex(valueIndex, validColumnIndex),
-                  floatPrecision,
-                  encodingList.get(columnIndex)));
+          float valueF = getFloatByValueIndex(valueIndex, validColumnIndex);
+          if (encodingList != null) {
+            valueF =
+                roundValueWithGivenPrecision(valueF, floatPrecision, encodingList.get(columnIndex));
+          }
+          return TsPrimitiveType.getByType(TSDataType.FLOAT, valueF);
         case DOUBLE:
-          return TsPrimitiveType.getByType(
-              TSDataType.DOUBLE,
-              roundValueWithGivenPrecision(
-                  getDoubleByValueIndex(valueIndex, validColumnIndex),
-                  floatPrecision,
-                  encodingList.get(columnIndex)));
+          double valueD = getDoubleByValueIndex(valueIndex, validColumnIndex);
+          if (encodingList != null) {
+            valueD =
+                roundValueWithGivenPrecision(valueD, floatPrecision, encodingList.get(columnIndex));
+          }
+          return TsPrimitiveType.getByType(TSDataType.DOUBLE, valueD);
         case TEXT:
         case BLOB:
         case STRING:
@@ -1861,18 +1861,22 @@ public abstract class AlignedTVList extends TVList {
               valueBuilder.writeLong(getLongByValueIndex(originRowIndex, validColumnIndex));
               break;
             case FLOAT:
-              valueBuilder.writeFloat(
-                  roundValueWithGivenPrecision(
-                      getFloatByValueIndex(originRowIndex, validColumnIndex),
-                      floatPrecision,
-                      encodingList.get(columnIndex)));
+              float valueF = getFloatByValueIndex(originRowIndex, validColumnIndex);
+              if (encodingList != null) {
+                valueF =
+                    roundValueWithGivenPrecision(
+                        valueF, floatPrecision, encodingList.get(columnIndex));
+              }
+              valueBuilder.writeFloat(valueF);
               break;
             case DOUBLE:
-              valueBuilder.writeDouble(
-                  roundValueWithGivenPrecision(
-                      getDoubleByValueIndex(originRowIndex, validColumnIndex),
-                      floatPrecision,
-                      encodingList.get(columnIndex)));
+              double valueD = getDoubleByValueIndex(originRowIndex, validColumnIndex);
+              if (encodingList != null) {
+                valueD =
+                    roundValueWithGivenPrecision(
+                        valueD, floatPrecision, encodingList.get(columnIndex));
+              }
+              valueBuilder.writeDouble(valueD);
               break;
             case TEXT:
             case BLOB:
