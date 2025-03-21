@@ -87,21 +87,45 @@ public class LoadTreeStatementDataTypeConvertExecutionVisitor
         LoadTsFileMemoryManager.getInstance()
             .allocateMemoryBlock(TABLET_BATCH_MEMORY_SIZE_IN_BYTES);
     final List<PipeTransferTabletRawReq> tabletRawReqs = new ArrayList<>();
+    try {
+      for (final File file : loadTsFileStatement.getTsFiles()) {
+        try (final TsFileInsertionEventScanParser parser =
+            new TsFileInsertionEventScanParser(
+                file, new IoTDBTreePattern(null), Long.MIN_VALUE, Long.MAX_VALUE, null, null)) {
+          for (final Pair<Tablet, Boolean> tabletWithIsAligned : parser.toTabletWithIsAligneds()) {
+            final PipeTransferTabletRawReq tabletRawReq =
+                PipeTransferTabletRawReq.toTPipeTransferRawReq(
+                    tabletWithIsAligned.getLeft(), tabletWithIsAligned.getRight());
+            final long curMemory = calculateTabletSizeInBytes(tabletWithIsAligned.getLeft()) + 1;
+            if (block.hasEnoughMemory(curMemory)) {
+              tabletRawReqs.add(tabletRawReq);
+              block.addMemoryUsage(curMemory);
+              continue;
+            }
 
-    for (final File file : loadTsFileStatement.getTsFiles()) {
-      try (final TsFileInsertionEventScanParser parser =
-          new TsFileInsertionEventScanParser(
-              file, new IoTDBTreePattern(null), Long.MIN_VALUE, Long.MAX_VALUE, null, null)) {
-        for (final Pair<Tablet, Boolean> tabletWithIsAligned : parser.toTabletWithIsAligneds()) {
-          final PipeTransferTabletRawReq tabletRawReq =
-              PipeTransferTabletRawReq.toTPipeTransferRawReq(
-                  tabletWithIsAligned.getLeft(), tabletWithIsAligned.getRight());
-          tabletRawReqs.add(tabletRawReq);
-          block.addMemoryUsage(calculateTabletSizeInBytes(tabletWithIsAligned.getLeft()) + 1);
-          if (block.hasEnoughMemory()) {
-            continue;
+            final TSStatus result =
+                executeInsertMultiTabletsWithRetry(
+                    tabletRawReqs, loadTsFileStatement.isConvertOnTypeMismatch());
+
+            tabletRawReqs.clear();
+            block.clearMemoryUsage();
+
+            if (!handleTSStatus(result, loadTsFileStatement)) {
+              return Optional.empty();
+            }
+
+            tabletRawReqs.add(tabletRawReq);
+            block.addMemoryUsage(curMemory);
           }
+        } catch (final Exception e) {
+          LOGGER.warn(
+              "Failed to convert data type for LoadTsFileStatement: {}.", loadTsFileStatement, e);
+          return Optional.empty();
+        }
+      }
 
+      if (!tabletRawReqs.isEmpty()) {
+        try {
           final TSStatus result =
               executeInsertMultiTabletsWithRetry(
                   tabletRawReqs, loadTsFileStatement.isConvertOnTypeMismatch());
@@ -112,50 +136,33 @@ public class LoadTreeStatementDataTypeConvertExecutionVisitor
           if (!handleTSStatus(result, loadTsFileStatement)) {
             return Optional.empty();
           }
-        }
-      } catch (final Exception e) {
-        LOGGER.warn(
-            "Failed to convert data type for LoadTsFileStatement: {}.", loadTsFileStatement, e);
-        return Optional.empty();
-      }
-    }
-
-    if (!tabletRawReqs.isEmpty()) {
-      try {
-        final TSStatus result =
-            executeInsertMultiTabletsWithRetry(
-                tabletRawReqs, loadTsFileStatement.isConvertOnTypeMismatch());
-
-        tabletRawReqs.clear();
-        block.clearMemoryUsage();
-
-        if (!handleTSStatus(result, loadTsFileStatement)) {
+        } catch (final Exception e) {
+          LOGGER.warn(
+              "Failed to convert data type for LoadTsFileStatement: {}.", loadTsFileStatement, e);
           return Optional.empty();
         }
-      } catch (final Exception e) {
-        LOGGER.warn(
-            "Failed to convert data type for LoadTsFileStatement: {}.", loadTsFileStatement, e);
-        return Optional.empty();
       }
+    } finally {
+      tabletRawReqs.clear();
+      block.clearMemoryUsage();
+      block.close();
     }
-
-    block.close();
 
     if (loadTsFileStatement.isDeleteAfterLoad()) {
       loadTsFileStatement
-              .getTsFiles()
-              .forEach(
-                      tsfile -> {
-                        FileUtils.deleteQuietly(tsfile);
-                        final String tsFilePath = tsfile.getAbsolutePath();
-                        FileUtils.deleteQuietly(new File(tsFilePath + TsFileResource.RESOURCE_SUFFIX));
-                        FileUtils.deleteQuietly(new File(tsFilePath + ModificationFileV1.FILE_SUFFIX));
-                        FileUtils.deleteQuietly(new File(tsFilePath + ModificationFile.FILE_SUFFIX));
-                      });
+          .getTsFiles()
+          .forEach(
+              tsfile -> {
+                FileUtils.deleteQuietly(tsfile);
+                final String tsFilePath = tsfile.getAbsolutePath();
+                FileUtils.deleteQuietly(new File(tsFilePath + TsFileResource.RESOURCE_SUFFIX));
+                FileUtils.deleteQuietly(new File(tsFilePath + ModificationFileV1.FILE_SUFFIX));
+                FileUtils.deleteQuietly(new File(tsFilePath + ModificationFile.FILE_SUFFIX));
+              });
     }
 
     LOGGER.info(
-            "Data type conversion for LoadTsFileStatement {} is successful.", loadTsFileStatement);
+        "Data type conversion for LoadTsFileStatement {} is successful.", loadTsFileStatement);
 
     return Optional.of(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()));
   }
