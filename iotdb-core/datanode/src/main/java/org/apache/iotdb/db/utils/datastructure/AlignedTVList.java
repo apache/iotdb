@@ -131,7 +131,7 @@ public abstract class AlignedTVList extends TVList {
         }
       }
     }
-    AlignedTVList alignedTvList = AlignedTVList.newAlignedList(dataTypeList);
+    AlignedTVList alignedTvList = AlignedTVList.newAlignedList(new ArrayList<>(dataTypeList));
     alignedTvList.timestamps = this.timestamps;
     alignedTvList.indices = this.indices;
     alignedTvList.values = values;
@@ -147,7 +147,7 @@ public abstract class AlignedTVList extends TVList {
 
   @Override
   public synchronized AlignedTVList clone() {
-    AlignedTVList cloneList = AlignedTVList.newAlignedList(dataTypes);
+    AlignedTVList cloneList = AlignedTVList.newAlignedList(new ArrayList<>(dataTypes));
     cloneAs(cloneList);
     cloneList.timeDeletedCnt = this.timeDeletedCnt;
     System.arraycopy(
@@ -1398,7 +1398,7 @@ public abstract class AlignedTVList extends TVList {
       bitMaps[columnIndex] = bitMap;
     }
 
-    AlignedTVList tvList = AlignedTVList.newAlignedList(dataTypes);
+    AlignedTVList tvList = AlignedTVList.newAlignedList(new ArrayList<>(dataTypes));
     tvList.putAlignedValues(times, values, bitMaps, 0, rowCount, null);
 
     boolean hasTimeColDeletedMap = stream.read() == 1;
