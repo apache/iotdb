@@ -560,27 +560,31 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
 
   private TSStatus loadTsFileAsync(final String dataBaseName, final List<String> absolutePaths)
       throws IOException {
-    if (Objects.nonNull(dataBaseName)) {
-      throw new PipeException(
-          "Async load tsfile does not support table model tsfile. Given database name: "
-              + dataBaseName);
-    }
-
     final String loadActiveListeningPipeDir = IOTDB_CONFIG.getLoadActiveListeningPipeDir();
     if (Objects.isNull(loadActiveListeningPipeDir)) {
       throw new PipeException("Load active listening pipe dir is not set.");
     }
 
+    if (Objects.nonNull(dataBaseName)) {
+      final File targetDir = new File(loadActiveListeningPipeDir, dataBaseName);
+      return this.loadTsFileAsyncToTargetDir(targetDir, absolutePaths);
+    }
+
+    return loadTsFileAsyncToTargetDir(new File(loadActiveListeningPipeDir), absolutePaths);
+  }
+
+  private TSStatus loadTsFileAsyncToTargetDir(
+      final File targetDir, final List<String> absolutePaths) throws IOException {
     for (final String absolutePath : absolutePaths) {
       if (absolutePath == null) {
         continue;
       }
       final File sourceFile = new File(absolutePath);
       if (!Objects.equals(
-          loadActiveListeningPipeDir, sourceFile.getParentFile().getAbsolutePath())) {
+          targetDir.getAbsolutePath(), sourceFile.getParentFile().getAbsolutePath())) {
         RetryUtils.retryOnException(
             () -> {
-              FileUtils.moveFileWithMD5Check(sourceFile, new File(loadActiveListeningPipeDir));
+              FileUtils.moveFileWithMD5Check(sourceFile, targetDir);
               return null;
             });
       }

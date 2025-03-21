@@ -54,6 +54,7 @@ import java.nio.file.Path;
 import java.nio.file.SimpleFileVisitor;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.time.ZoneId;
+import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.concurrent.LinkedBlockingQueue;
@@ -197,6 +198,10 @@ public class ActiveLoadTsFileLoader {
 
   private TSStatus loadTsFile(final Pair<String, Boolean> filePair) throws FileNotFoundException {
     final LoadTsFileStatement statement = new LoadTsFileStatement(filePair.getLeft());
+    List<File> files = statement.getTsFiles();
+    if(!files.isEmpty()) {
+      statement.setDatabase(files.get(0).getParentFile().getName());
+    }
     statement.setDeleteAfterLoad(true);
     statement.setConvertOnTypeMismatch(true);
     statement.setVerifySchema(isVerify);
