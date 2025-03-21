@@ -67,6 +67,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicReference;
 
 // manage all the schemaRegion in this dataNode
 public class SchemaEngine {
@@ -314,19 +315,26 @@ public class SchemaEngine {
 
   public synchronized void deleteSchemaRegion(final SchemaRegionId schemaRegionId)
       throws MetadataException {
-    // Remove the region first for concurrent exceptions detection
-    final ISchemaRegion schemaRegion = schemaRegionMap.remove(schemaRegionId);
+    final ISchemaRegion schemaRegion = schemaRegionMap.get(schemaRegionId);
     if (schemaRegion == null) {
       logger.warn("SchemaRegion(id = {}) has been deleted, skipped", schemaRegionId);
       return;
     }
-    try {
-      schemaRegion.deleteSchemaRegion();
-    } catch (final Throwable e) {
-      // If any error occurs, we should restore the schema region for next
-      // retries to avoid resource leakage
-      schemaRegionMap.put(schemaRegionId, schemaRegion);
-      throw e;
+    final AtomicReference<MetadataException> lastException = new AtomicReference<>();
+    // Synchronize it for region deletion detection when error occurs
+    schemaRegionMap.compute(
+        schemaRegionId,
+        (regionId, iSchemaRegion) -> {
+          try {
+            schemaRegion.deleteSchemaRegion();
+          } catch (final MetadataException e) {
+            lastException.set(e);
+            return iSchemaRegion;
+          }
+          return null;
+        });
+    if (Objects.nonNull(lastException.get())) {
+      throw lastException.get();
     }
     schemaMetricManager.removeSchemaRegionMetric(schemaRegionId.getId());
 
