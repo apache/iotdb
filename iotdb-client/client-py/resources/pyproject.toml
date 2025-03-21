@@ -32,7 +32,6 @@ license = "Apache-2.0"
 keywords = ["iotdb", "apache", "client", "API"]
 classifiers = [
     "Programming Language :: Python :: 3",
-    "License :: OSI Approved :: Apache Software License",
     "Operating System :: OS Independent",
     "Topic :: Software Development :: Libraries",
     "Topic :: Software Development :: Libraries :: Python Modules"
