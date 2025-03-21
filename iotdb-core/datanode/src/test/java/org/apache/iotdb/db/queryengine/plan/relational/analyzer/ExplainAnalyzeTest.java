@@ -28,7 +28,6 @@ import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.aggregationTableScan;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.explainAnalyze;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.output;
-import static org.apache.iotdb.db.queryengine.plan.relational.planner.node.Patterns.explainAnalyze;
 
 public class ExplainAnalyzeTest {
   private final PlanTester planTester = new PlanTester();
