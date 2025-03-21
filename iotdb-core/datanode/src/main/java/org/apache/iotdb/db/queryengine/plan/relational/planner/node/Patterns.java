@@ -133,6 +133,10 @@ public final class Patterns {
     return typeOf(OutputNode.class);
   }
 
+  public static Pattern<ExplainAnalyzeNode> explainAnalyze() {
+    return typeOf(ExplainAnalyzeNode.class);
+  }
+
   public static Pattern<ProjectNode> project() {
     return typeOf(ProjectNode.class);
   }
