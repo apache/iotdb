@@ -20,6 +20,7 @@ package org.apache.iotdb.db.storageengine.dataregion.compaction.cross;
 
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.db.exception.MergeException;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.AbstractCompactionTest;
@@ -32,6 +33,7 @@ import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.utils.Cr
 import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.utils.InsertionCrossCompactionTaskResource;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.utils.CompactionFileGeneratorUtils;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFile;
+import org.apache.iotdb.db.storageengine.dataregion.modification.TreeDeletionEntry;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceStatus;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.ArrayDeviceTimeIndex;
@@ -136,6 +138,8 @@ public class InsertionCrossSpaceCompactionRecoverTest extends AbstractCompaction
             targetFile.getTsFilePath() + CompactionLogger.INSERTION_COMPACTION_LOG_NAME_SUFFIX);
 
     CompactionFileGeneratorUtils.generateMods(deleteMap, unseqResource1, true);
+    ModificationFile.getExclusiveMods(unseqResource1)
+        .write(new TreeDeletionEntry(new MeasurementPath("root.db1.d1.s1"), 0, 100));
 
     try (SimpleCompactionLogger logger = new SimpleCompactionLogger(logFile)) {
       logger.logSourceFile(taskResource.toInsertUnSeqFile);
@@ -157,7 +161,7 @@ public class InsertionCrossSpaceCompactionRecoverTest extends AbstractCompaction
     Assert.assertTrue(
         new File(unseqResource1.getTsFilePath() + TsFileResource.RESOURCE_SUFFIX).exists());
     Assert.assertTrue(unseqResource1.anyModFileExists());
-    Assert.assertFalse(unseqResource1.getCompactionModFile().getFileLength() > 0);
+    Assert.assertNull(unseqResource1.getCompactionModFile());
 
     Assert.assertFalse(targetFile.tsFileExists());
     Assert.assertFalse(targetFile.resourceFileExists());
@@ -248,7 +252,7 @@ public class InsertionCrossSpaceCompactionRecoverTest extends AbstractCompaction
     Assert.assertFalse(
         new File(unseqResource1.getTsFilePath() + TsFileResource.RESOURCE_SUFFIX).exists());
     Assert.assertFalse(unseqResource1.anyModFileExists());
-    Assert.assertFalse(unseqResource1.getCompactionModFile().exists());
+    Assert.assertNull(unseqResource1.getCompactionModFile());
 
     Assert.assertTrue(targetFile.tsFileExists());
     Assert.assertTrue(targetFile.resourceFileExists());
@@ -311,6 +315,7 @@ public class InsertionCrossSpaceCompactionRecoverTest extends AbstractCompaction
     InsertionCrossSpaceCompactionTask task =
         new InsertionCrossSpaceCompactionTask(new Phaser(), 0, tsFileManager, taskResource, 0);
     TsFileResource targetFile = new TsFileResource(task.generateTargetFile());
+    targetFile.setModFileManagement(modFileManagement);
     File logFile =
         new File(
             targetFile.getTsFilePath() + CompactionLogger.INSERTION_COMPACTION_LOG_NAME_SUFFIX);
@@ -328,21 +333,22 @@ public class InsertionCrossSpaceCompactionRecoverTest extends AbstractCompaction
       Files.createLink(
           new File(targetTsFile.getPath() + TsFileResource.RESOURCE_SUFFIX).toPath(),
           new File(sourceTsFile.getPath() + TsFileResource.RESOURCE_SUFFIX).toPath());
-      if (unseqResource1.anyModFileExists()) {
+      if (unseqResource1.exclusiveModFileExists()) {
         Files.createLink(
             ModificationFile.getExclusiveMods(targetTsFile).toPath(),
             ModificationFile.getExclusiveMods(sourceTsFile).toPath());
       }
     }
 
+    targetFile.deserialize();
     // recover compaction, all source file should be deleted and target file should be existed
     new InsertionCrossSpaceCompactionTask("root.testsg", "0", tsFileManager, logFile).recover();
 
     Assert.assertFalse(unseqResource1.getTsFile().exists());
     Assert.assertFalse(
         new File(unseqResource1.getTsFilePath() + TsFileResource.RESOURCE_SUFFIX).exists());
-    Assert.assertFalse(unseqResource1.getTotalModSizeInByte() > 0);
-    Assert.assertFalse(unseqResource1.getCompactionModFile().getFileLength() > 0);
+    Assert.assertTrue(unseqResource1.getTotalModSizeInByte() > 0);
+    Assert.assertNull(unseqResource1.getCompactionModFile());
 
     Assert.assertTrue(targetFile.tsFileExists());
     Assert.assertTrue(targetFile.resourceFileExists());
@@ -425,7 +431,7 @@ public class InsertionCrossSpaceCompactionRecoverTest extends AbstractCompaction
     Assert.assertTrue(
         new File(unseqResource1.getTsFilePath() + TsFileResource.RESOURCE_SUFFIX).exists());
     Assert.assertTrue(unseqResource1.anyModFileExists());
-    Assert.assertFalse(unseqResource1.getCompactionModFile().getFileLength() > 0);
+    Assert.assertNull(unseqResource1.getCompactionModFile());
 
     Assert.assertFalse(targetFile.tsFileExists());
     Assert.assertFalse(targetFile.resourceFileExists());
@@ -439,6 +445,7 @@ public class InsertionCrossSpaceCompactionRecoverTest extends AbstractCompaction
     resource.setFile(new File(filePath));
     resource.setStatusForTest(TsFileResourceStatus.NORMAL);
     resource.setSeq(seq);
+    resource.setModFileManagement(modFileManagement);
     return resource;
   }
 
