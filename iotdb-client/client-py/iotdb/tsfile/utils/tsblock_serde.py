@@ -298,9 +298,6 @@ def read_byte_from_buffer(buffer):
     return read_from_buffer(buffer, 1)
 
 
-next
-
-
 def read_from_buffer(buffer, size):
     mv = memoryview(buffer)
     res = mv[:size]
