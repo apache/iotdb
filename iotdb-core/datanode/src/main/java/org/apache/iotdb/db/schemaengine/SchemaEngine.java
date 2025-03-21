@@ -319,7 +319,14 @@ public class SchemaEngine {
       logger.warn("SchemaRegion(id = {}) has been deleted, skipped", schemaRegionId);
       return;
     }
-    schemaRegion.deleteSchemaRegion();
+    try {
+      schemaRegion.deleteSchemaRegion();
+    } catch (final Throwable e) {
+      // If any error occurs, we should restore the schema region for next
+      // retries to avoid resource leakage
+      schemaRegionMap.put(schemaRegionId, schemaRegion);
+      throw e;
+    }
     schemaMetricManager.removeSchemaRegionMetric(schemaRegionId.getId());
 
     // check whether the sg dir is empty
