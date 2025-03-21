@@ -260,8 +260,10 @@ class IoTDBRpcDataSet(object):
 
     def result_set_to_pandas(self):
         result = {}
-        for column_name in self.__column_name_list:
-            result[column_name] = []
+        # for column_name in self.__column_name_list:
+        #     result[column_name] = []
+        for i in range(len(self.__column_index_2_tsblock_column_index_list)):
+            result[i] = []
         while self._has_next_result_set():
             time_column_values, column_values, null_indicators, _ = deserialize(
                 self.__query_result[self.__query_result_index]
@@ -276,19 +278,16 @@ class IoTDBRpcDataSet(object):
                     time_array.dtype.newbyteorder("<")
                 )
             if self.ignore_timestamp is None or self.ignore_timestamp is False:
-                result[TIMESTAMP_STR].append(time_array)
+                result[0].append(time_array)
 
             total_length = len(time_array)
 
-            for i in range(len(column_values)):
-                if self.ignore_timestamp is True:
-                    column_name = self.__column_name_list[i]
-                else:
-                    column_name = self.__column_name_list[i + 1]
-
-                location = self.column_name_2_tsblock_column_index_dict[column_name]
+            for i, location in enumerate(
+                self.__column_index_2_tsblock_column_index_list
+            ):
                 if location < 0:
                     continue
+                data_type = self.__data_type_for_tsblock_column[location]
                 data_type = self.__data_type_for_tsblock_column[location]
                 value_buffer = column_values[location]
                 value_buffer_len = len(value_buffer)
@@ -388,7 +387,7 @@ class IoTDBRpcDataSet(object):
 
                     data_array = tmp_array
 
-                result[column_name].append(data_array)
+                result[i].append(data_array)
 
         for k, v in result.items():
             if v is None or len(v) < 1 or v[0] is None:
@@ -403,6 +402,7 @@ class IoTDBRpcDataSet(object):
                 result[k] = np.concatenate(v, axis=0)
 
         df = pd.DataFrame(result)
+        df.columns = self.__column_name_list
         return df
 
     def fetch_results(self):

@@ -4,7 +4,6 @@ on:
     branches:
       - master
       - "rc/*"
-      - query_v2_py
     paths:
       - 'pom.xml'
       - 'iotdb-client/pom.xml'

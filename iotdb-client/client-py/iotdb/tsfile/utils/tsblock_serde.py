@@ -328,6 +328,8 @@ def get_data_type(value):
         return TSDataType.DOUBLE
     elif value == b"\x05":
         return TSDataType.TEXT
+    else:
+        raise Exception("Invalid data type: " + value)
 
 
 def get_data_type_byte_from_str(value):
@@ -512,6 +514,8 @@ def read_column(encoding, buffer, data_type, position_count):
         return read_binary_column(buffer, data_type, position_count)
     elif encoding == b"\x04":
         return read_run_length_column(buffer, data_type, position_count)
+    elif encoding == b"\x05":
+        return read_dictionary_column(buffer, data_type, position_count)
     else:
         raise Exception("Unsupported encoding: " + encoding)
 
@@ -543,3 +547,7 @@ def repeat(buffer, data_type, position_count):
         for _ in range(position_count):
             res.extend(buffer if isinstance(buffer, bytes) else bytes(buffer))
         return bytes(res)
+
+
+def read_dictionary_column(buffer, data_type, position_count):
+    raise Exception("dictionary column not implemented")
