@@ -314,14 +314,13 @@ public class SchemaEngine {
 
   public synchronized void deleteSchemaRegion(SchemaRegionId schemaRegionId)
       throws MetadataException {
-    ISchemaRegion schemaRegion = schemaRegionMap.get(schemaRegionId);
+    ISchemaRegion schemaRegion = schemaRegionMap.remove(schemaRegionId);
     if (schemaRegion == null) {
       logger.warn("SchemaRegion(id = {}) has been deleted, skiped", schemaRegionId);
       return;
     }
     schemaRegion.deleteSchemaRegion();
     schemaMetricManager.removeSchemaRegionMetric(schemaRegionId.getId());
-    schemaRegionMap.remove(schemaRegionId);
 
     // check whether the sg dir is empty
     File sgDir = new File(config.getSchemaDir(), schemaRegion.getDatabaseFullPath());
