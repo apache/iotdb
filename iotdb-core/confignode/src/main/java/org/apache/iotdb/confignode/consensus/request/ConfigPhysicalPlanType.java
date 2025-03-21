@@ -217,6 +217,7 @@ public enum ConfigPhysicalPlanType {
   CommitDeleteView((short) 872),
   RenameView((short) 873),
   SetViewProperties((short) 874),
+  PreDeleteViewColumn((short) 875),
 
   /** Deprecated types for sync, restored them for upgrade. */
   @Deprecated

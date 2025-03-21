@@ -19,6 +19,16 @@
 
 package org.apache.iotdb.confignode.consensus.request.write.table.view;
 
+import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
 import org.apache.iotdb.confignode.consensus.request.write.table.PreDeleteColumnPlan;
 
-public class PreDeleteViewColumnPlan extends PreDeleteColumnPlan {}
+public class PreDeleteViewColumnPlan extends PreDeleteColumnPlan {
+  public PreDeleteViewColumnPlan() {
+    super(ConfigPhysicalPlanType.PreDeleteViewColumn);
+  }
+
+  public PreDeleteViewColumnPlan(
+      final String database, final String tableName, final String columnName) {
+    super(ConfigPhysicalPlanType.PreDeleteViewColumn, database, tableName, columnName);
+  }
+}
