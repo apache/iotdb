@@ -751,14 +751,7 @@ public class AlignedWritableMemChunk extends AbstractWritableMemChunk {
         // We need to extend a new column in AlignedMemChunk and AlignedTVList.
         // And the reorderedColumnValues should extend one more column for the new measurement
         if (index == null) {
-          index =
-              measurementIndexMap.isEmpty()
-                  ? 0
-                  : measurementIndexMap.values().stream()
-                          .mapToInt(Integer::intValue)
-                          .max()
-                          .getAsInt()
-                      + 1;
+          index = this.list.getTsDataTypes().size();
           this.measurementIndexMap.put(schemaListInInsertPlan.get(i).getMeasurementId(), index);
           this.schemaList.add(schemaListInInsertPlan.get(i));
           this.list.extendColumn(schemaListInInsertPlan.get(i).getType());
