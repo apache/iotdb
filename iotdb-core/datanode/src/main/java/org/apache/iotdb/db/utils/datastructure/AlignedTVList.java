@@ -346,10 +346,11 @@ public abstract class AlignedTVList extends TVList {
 
   public void extendColumn(TSDataType dataType) {
     if (bitMaps == null) {
-      bitMaps = new ArrayList<>(values.size());
+      List<List<BitMap>> localBitMaps = new ArrayList<>(values.size());
       for (int i = 0; i < values.size(); i++) {
-        bitMaps.add(null);
+        localBitMaps.add(null);
       }
+      bitMaps = localBitMaps;
     }
     List<Object> columnValue = new ArrayList<>();
     List<BitMap> columnBitMaps = new ArrayList<>();
@@ -611,10 +612,11 @@ public abstract class AlignedTVList extends TVList {
 
   public void deleteColumn(int columnIndex) {
     if (bitMaps == null) {
-      bitMaps = new ArrayList<>(dataTypes.size());
+      List<List<BitMap>> localBitMaps = new ArrayList<>(dataTypes.size());
       for (int j = 0; j < dataTypes.size(); j++) {
-        bitMaps.add(null);
+        localBitMaps.add(null);
       }
+      bitMaps = localBitMaps;
     }
     if (bitMaps.get(columnIndex) == null) {
       List<BitMap> columnBitMaps = new ArrayList<>();
@@ -870,10 +872,11 @@ public abstract class AlignedTVList extends TVList {
   private void markNullValue(int columnIndex, int arrayIndex, int elementIndex) {
     // init BitMaps if doesn't have
     if (bitMaps == null) {
-      bitMaps = new ArrayList<>(dataTypes.size());
+      List<List<BitMap>> localBitMaps = new ArrayList<>(dataTypes.size());
       for (int i = 0; i < dataTypes.size(); i++) {
-        bitMaps.add(null);
+        localBitMaps.add(null);
       }
+      bitMaps = localBitMaps;
     }
 
     // if the bitmap in columnIndex is null, init the bitmap of this column from the beginning
