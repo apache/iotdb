@@ -203,19 +203,48 @@ public class IoTDBDataRegionAsyncConnector extends IoTDBConnector {
     final PipeTabletEventBatch batch = endPointAndBatch.getRight();
 
     if (batch instanceof PipeTabletEventPlainBatch) {
-      transfer(
-          endPointAndBatch.getLeft(),
-          new PipeTransferTabletBatchEventHandler((PipeTabletEventPlainBatch) batch, this));
+      transferPlainBatch(endPointAndBatch, batch);
     } else if (batch instanceof PipeTabletEventTsFileBatch) {
-      final PipeTabletEventTsFileBatch tsFileBatch = (PipeTabletEventTsFileBatch) batch;
-      final List<Pair<String, File>> dbTsFilePairs = tsFileBatch.sealTsFiles();
-      final Map<Pair<String, Long>, Double> pipe2WeightMap = tsFileBatch.deepCopyPipe2WeightMap();
-      final List<EnrichedEvent> events = tsFileBatch.deepCopyEvents();
-      final AtomicInteger eventsReferenceCount = new AtomicInteger(dbTsFilePairs.size());
-      final AtomicBoolean eventsHadBeenAddedToRetryQueue = new AtomicBoolean(false);
+      transferTsFileBatch(endPointAndBatch, batch);
+    } else {
+      LOGGER.warn(
+          "Unsupported batch type {} when transferring tablet insertion event.", batch.getClass());
+    }
+  }
 
-      for (final Pair<String, File> sealedFile : dbTsFilePairs) {
-        transfer(
+  private void transferPlainBatch(
+      final Pair<TEndPoint, PipeTabletEventBatch> endPointAndBatch,
+      final PipeTabletEventBatch batch)
+      throws IOException, WriteProcessException, InterruptedException {
+    final PipeTransferTabletBatchEventHandler handler =
+        new PipeTransferTabletBatchEventHandler((PipeTabletEventPlainBatch) batch, this);
+    transfer(endPointAndBatch.getLeft(), handler);
+    batch.onSuccess();
+  }
+
+  private void transferTsFileBatch(
+      final Pair<TEndPoint, PipeTabletEventBatch> endPointAndBatch,
+      final PipeTabletEventBatch batch)
+      throws IOException, WriteProcessException, InterruptedException {
+    final PipeTabletEventTsFileBatch tsFileBatch = (PipeTabletEventTsFileBatch) batch;
+    final List<Pair<String, File>> dbTsFilePairs = tsFileBatch.sealTsFiles();
+    final Map<Pair<String, Long>, Double> pipe2WeightMap = tsFileBatch.deepCopyPipe2WeightMap();
+    final List<EnrichedEvent> events = tsFileBatch.deepCopyEvents();
+    final AtomicInteger eventsReferenceCount = new AtomicInteger(dbTsFilePairs.size());
+    final AtomicBoolean eventsHadBeenAddedToRetryQueue = new AtomicBoolean(false);
+
+    // The handler is used to determine whether the Event in the Batch needs to be cleared. If the
+    // handler is null, it means that the handler has not been created successfully, and the events
+    // in the batch do not need to be cleared. needsOnErrorCall indicates whether the onError
+    // function needs
+    // to be called manually to clear the exception.
+    PipeTransferTsFileHandler handler = null;
+    boolean needsOnErrorCall = false;
+    Throwable throwable = null;
+
+    try {
+      for (Pair<String, File> sealedFile : dbTsFilePairs) {
+        handler =
             new PipeTransferTsFileHandler(
                 this,
                 pipe2WeightMap,
@@ -225,14 +254,24 @@ public class IoTDBDataRegionAsyncConnector extends IoTDBConnector {
                 sealedFile.right,
                 null,
                 false,
-                sealedFile.left));
+                sealedFile.left);
+        transfer(handler);
+        needsOnErrorCall = true;
       }
-    } else {
-      LOGGER.warn(
-          "Unsupported batch type {} when transferring tablet insertion event.", batch.getClass());
+      needsOnErrorCall = false;
+      batch.onSuccess();
+    } catch (Exception | Error e) {
+      throwable = e;
+      throw e;
+    } finally {
+      if (needsOnErrorCall) {
+        handler.onError(
+            throwable instanceof Exception
+                ? (Exception) throwable
+                : new PipeException(throwable.getMessage()));
+        batch.onSuccess();
+      }
     }
-
-    endPointAndBatch.getRight().onSuccess();
   }
 
   private boolean transferInEventWithoutCheck(final TabletInsertionEvent tabletInsertionEvent)
