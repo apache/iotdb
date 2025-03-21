@@ -51,6 +51,7 @@ import org.slf4j.LoggerFactory;
 import java.io.Closeable;
 import java.sql.Date;
 import java.time.LocalDate;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -65,7 +66,6 @@ public class OpcDaServerHandle implements Closeable {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(OpcDaServerHandle.class);
 
-  private final PointerByReference ppvServer = new PointerByReference();
   private final OpcDaHeader.IOPCServer opcServer;
   private final OpcDaHeader.IOPCItemMgt itemMgt;
   private final OpcDaHeader.IOPCSyncIO syncIO;
@@ -269,6 +269,7 @@ public class OpcDaServerHandle implements Closeable {
     // Free after write
     if (Objects.nonNull(bstr)) {
       OleAuto.INSTANCE.SysFreeString(bstr);
+      bstr = null;
     }
 
     final Pointer pErrors = ppErrors.getValue();
@@ -370,9 +371,6 @@ public class OpcDaServerHandle implements Closeable {
     serverHandleMap.clear();
 
     // Release resource
-    if (Objects.nonNull(ppvServer.getValue())) {
-      Ole32.INSTANCE.CoTaskMemFree(ppvServer.getValue());
-    }
     if (Objects.nonNull(syncIO)) {
       syncIO.Release();
     }
