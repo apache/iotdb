@@ -105,13 +105,22 @@ class SessionDataSet(object):
     def construct_row_record_from_data_frame(self):
         df = self.iotdb_rpc_data_set.data_frame
         row = df.iloc[self.row_index].to_list()
-        for field, value in zip(self.__field_list, row[1:]):
-            field.value = value
+        if self.iotdb_rpc_data_set.ignore_timestamp:
+            for field, value in zip(self.__field_list, row):
+                field.value = value
 
-        row_record = RowRecord(
-            row[0],
-            self.__field_list,
-        )
+            row_record = RowRecord(
+                0,
+                self.__field_list,
+            )
+        else:
+            for field, value in zip(self.__field_list, row[1:]):
+                field.value = value
+
+            row_record = RowRecord(
+                row[0],
+                self.__field_list,
+            )
         self.row_index += 1
         if self.row_index == len(df):
             self.row_index = 0

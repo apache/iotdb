@@ -172,7 +172,8 @@ class IoTDBRpcDataSet(object):
                 time_array = time_array.byteswap().view(
                     time_array.dtype.newbyteorder("<")
                 )
-            result[0].append(time_array)
+            if self.ignore_timestamp is None or self.ignore_timestamp is False:
+                result[0].append(time_array)
             total_length = len(time_array)
             for i, location in enumerate(
                 self.__column_index_2_tsblock_column_index_list
@@ -210,7 +211,7 @@ class IoTDBRpcDataSet(object):
                     index = 0
                     data_array = []
                     while index < value_buffer_len:
-                        data_array.append(value_buffer[index])
+                        data_array.append(value_buffer[index].tobytes())
                         index += 1
                     data_array = np.array(data_array, dtype=object)
                 else:
@@ -245,6 +246,19 @@ class IoTDBRpcDataSet(object):
                     data_array = tmp_array
 
                 result[i].append(data_array)
+        for k, v in result.items():
+            if v is None or len(v) < 1 or v[0] is None:
+                result[k] = []
+            elif v[0].dtype == "Int32":
+                v = [x if isinstance(x, pd.Series) else pd.Series(x) for x in v]
+                result[k] = pd.concat(v, ignore_index=True).astype("Int32")
+            elif v[0].dtype == "Int64":
+                v = [x if isinstance(x, pd.Series) else pd.Series(x) for x in v]
+                result[k] = pd.concat(v, ignore_index=True).astype("Int64")
+            elif v[0].dtype == bool:
+                result[k] = pd.Series(np.concatenate(v, axis=0)).astype("boolean")
+            else:
+                result[k] = np.concatenate(v, axis=0)
         self.__query_result = None
         self.data_frame = pd.DataFrame(result, dtype=object)
         if not self.data_frame.empty:
@@ -322,7 +336,7 @@ class IoTDBRpcDataSet(object):
                     index = 0
                     data_array = []
                     while index < value_buffer_len:
-                        value_bytes = value_buffer[index]
+                        value_bytes = value_buffer[index].tobytes()
                         value = value_bytes.decode("utf-8")
                         data_array.append(value)
                         index += 1
@@ -332,7 +346,7 @@ class IoTDBRpcDataSet(object):
                     index = 0
                     data_array = []
                     while index < value_buffer_len:
-                        data_array.append(value_buffer[index])
+                        data_array.append(value_buffer[index].tobytes())
                         index += 1
                     data_array = pd.Series(data_array)
                 # DATE
