@@ -153,7 +153,6 @@ import org.apache.iotdb.db.queryengine.plan.relational.type.TypeManager;
 import org.apache.iotdb.db.queryengine.plan.statement.component.FillPolicy;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertBaseStatement;
 import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
-import org.apache.iotdb.db.schemaengine.table.InformationSchemaUtils;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.udf.api.relational.TableFunction;
@@ -441,7 +440,6 @@ public class StatementAnalyzer {
           sessionContext.getUserName(),
           new QualifiedObjectName(node.getDatabase(), node.getTableName()));
       final TranslationMap translationMap = analyzeTraverseDevice(node, context, true);
-      InformationSchemaUtils.checkDBNameInWrite(node.getDatabase());
       final TsTable table =
           DataNodeTableCache.getInstance().getTable(node.getDatabase(), node.getTableName());
       node.parseRawExpression(
@@ -497,7 +495,6 @@ public class StatementAnalyzer {
       accessControl.checkCanDeleteFromTable(
           sessionContext.getUserName(),
           new QualifiedObjectName(node.getDatabase(), node.getTableName()));
-      InformationSchemaUtils.checkDBNameInWrite(node.getDatabase());
       final TsTable table =
           DataNodeTableCache.getInstance().getTable(node.getDatabase(), node.getTableName());
       if (Objects.isNull(table)) {
