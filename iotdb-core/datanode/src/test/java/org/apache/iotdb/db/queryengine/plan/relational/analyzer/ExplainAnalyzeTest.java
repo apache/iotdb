@@ -28,6 +28,7 @@ import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.aggregationTableScan;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.explainAnalyze;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.output;
+import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.project;
 
 public class ExplainAnalyzeTest {
   private final PlanTester planTester = new PlanTester();
@@ -36,6 +37,7 @@ public class ExplainAnalyzeTest {
   public void testColumnPrune() {
     LogicalQueryPlan logicalQueryPlan =
         planTester.createPlan("explain analyze select count(s1) from table1 group by tag1");
-    assertPlan(logicalQueryPlan, output(explainAnalyze((aggregation(aggregationTableScan())))));
+    assertPlan(
+        logicalQueryPlan, output(explainAnalyze(project(aggregation(aggregationTableScan())))));
   }
 }
