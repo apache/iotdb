@@ -98,6 +98,7 @@ public class PartitionCache {
 
   public void clear() {
     slices.clear();
+    startOffsets.clear();
   }
 
   public void close() {

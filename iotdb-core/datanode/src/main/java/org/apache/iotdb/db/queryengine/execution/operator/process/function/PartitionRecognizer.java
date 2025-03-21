@@ -112,7 +112,9 @@ public class PartitionRecognizer {
   }
 
   private PartitionState handleInitState() {
-    if (currentTsBlock == null || currentTsBlock.isEmpty()) {
+    if (noMoreData) {
+      return PartitionState.FINISHED_STATE;
+    } else if (currentTsBlock == null || currentTsBlock.isEmpty()) {
       return PartitionState.INIT_STATE;
     }
     // init the partition Key as the first row
@@ -158,15 +160,39 @@ public class PartitionRecognizer {
    * all rows have the same partition values, return the position count of the current TsBlock.
    */
   private int findNextDifferentRowIndex() {
-    SortKey compareKey = new SortKey(currentTsBlock, currentIndex);
-    while (compareKey.rowIndex < currentTsBlock.getPositionCount()) {
-      if (partitionComparator.compare(currentPartitionKey, compareKey) != 0) {
-        currentPartitionKey = compareKey;
-        return compareKey.rowIndex;
-      }
-      compareKey.rowIndex++;
+    int totalRows = currentTsBlock.getPositionCount();
+
+    // check if all rows have the same partition values
+    SortKey compareKey = new SortKey(currentTsBlock, totalRows - 1);
+    if (partitionComparator.compare(currentPartitionKey, compareKey) == 0) {
+      return totalRows;
     }
-    return compareKey.rowIndex;
+
+    // check the first row
+    compareKey.rowIndex = currentIndex;
+    if (partitionComparator.compare(currentPartitionKey, compareKey) != 0) {
+      currentPartitionKey = compareKey;
+      return currentIndex;
+    }
+
+    // binary search to find the next different partition values
+    int low = currentIndex;
+    int high = totalRows - 1;
+    int firstDiff = totalRows;
+    while (low <= high) {
+      compareKey.rowIndex = low + (high - low) / 2;
+      int cmp = partitionComparator.compare(currentPartitionKey, compareKey);
+      if (cmp == 0) {
+        low = compareKey.rowIndex + 1;
+      } else {
+        // try to find earlier different row
+        firstDiff = compareKey.rowIndex;
+        high = compareKey.rowIndex - 1;
+      }
+    }
+    compareKey.rowIndex = firstDiff;
+    currentPartitionKey = compareKey;
+    return firstDiff;
   }
 
   private Slice getSlice(int startPartitionIndex, int endPartitionIndex) {

@@ -22,6 +22,7 @@ package org.apache.iotdb.udf.api.relational.table.processor;
 import org.apache.iotdb.udf.api.relational.access.Record;
 import org.apache.iotdb.udf.api.relational.table.TableFunctionAnalysis;
 
+import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.block.column.ColumnBuilder;
 
 import java.util.List;
@@ -49,6 +50,13 @@ public interface TableFunctionDataProcessor {
       Record input,
       List<ColumnBuilder> properColumnBuilders,
       ColumnBuilder passThroughIndexBuilder);
+
+  default void process(
+      Column[] inputs,
+      List<ColumnBuilder> properColumnBuilders,
+      ColumnBuilder passThroughIndexBuilder) {
+    // do nothing
+  }
 
   /**
    * This method is called after all data is processed. It is used to finalize the output table and

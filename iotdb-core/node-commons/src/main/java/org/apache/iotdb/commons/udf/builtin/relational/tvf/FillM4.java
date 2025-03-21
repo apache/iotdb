@@ -34,21 +34,23 @@ import org.apache.iotdb.udf.api.relational.table.specification.ScalarParameterSp
 import org.apache.iotdb.udf.api.relational.table.specification.TableParameterSpecification;
 import org.apache.iotdb.udf.api.type.Type;
 
-import org.apache.tsfile.block.column.Column;
+import com.google.common.collect.ImmutableList;
+import com.google.common.collect.ImmutableSet;
 import org.apache.tsfile.block.column.ColumnBuilder;
+import org.apache.tsfile.utils.Pair;
 
-import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
 import static org.apache.iotdb.commons.udf.builtin.relational.tvf.WindowTVFUtils.findColumnIndex;
 
-public class SessionTableFunction implements TableFunction {
+public class FillM4 implements TableFunction {
+
   private static final String DATA_PARAMETER_NAME = "DATA";
+  private static final String COL_PARAMETER_NAME = "COL";
   private static final String TIMECOL_PARAMETER_NAME = "TIMECOL";
-  private static final String GAP_PARAMETER_NAME = "GAP";
+  private static final String INTERVAL_PARAMETER_NAME = "INTERVAL";
 
   @Override
   public List<ParameterSpecification> getArgumentsSpecifications() {
@@ -57,54 +59,63 @@ public class SessionTableFunction implements TableFunction {
             .name(DATA_PARAMETER_NAME)
             .passThroughColumns()
             .build(),
+        ScalarParameterSpecification.builder().name(COL_PARAMETER_NAME).type(Type.STRING).build(),
         ScalarParameterSpecification.builder()
             .name(TIMECOL_PARAMETER_NAME)
             .type(Type.STRING)
+            .defaultValue("time")
             .build(),
-        ScalarParameterSpecification.builder().name(GAP_PARAMETER_NAME).type(Type.INT64).build());
+        ScalarParameterSpecification.builder()
+            .name(INTERVAL_PARAMETER_NAME)
+            .type(Type.INT64)
+            .build());
   }
 
   @Override
   public TableFunctionAnalysis analyze(Map<String, Argument> arguments) throws UDFException {
     TableArgument tableArgument = (TableArgument) arguments.get(DATA_PARAMETER_NAME);
-    String expectedFieldName =
-        (String) ((ScalarArgument) arguments.get(TIMECOL_PARAMETER_NAME)).getValue();
-    int requiredIndex =
-        findColumnIndex(tableArgument, expectedFieldName, Collections.singleton(Type.TIMESTAMP));
+    int requiredIndex1 =
+        findColumnIndex(
+            tableArgument,
+            (String) ((ScalarArgument) arguments.get(TIMECOL_PARAMETER_NAME)).getValue(),
+            ImmutableSet.of(Type.TIMESTAMP));
+    int requiredIndex2 =
+        findColumnIndex(
+            tableArgument,
+            (String) ((ScalarArgument) arguments.get(COL_PARAMETER_NAME)).getValue(),
+            ImmutableSet.of(Type.INT32, Type.INT64, Type.FLOAT, Type.DOUBLE));
     DescribedSchema properColumnSchema =
         new DescribedSchema.Builder()
-            .addField("window_start", Type.TIMESTAMP)
-            .addField("window_end", Type.TIMESTAMP)
+            .addField("fill_value", Type.DOUBLE)
+            .addField("is_origin", Type.BOOLEAN)
             .build();
-
     // outputColumnSchema
     return TableFunctionAnalysis.builder()
         .properColumnSchema(properColumnSchema)
-        .requiredColumns(DATA_PARAMETER_NAME, Collections.singletonList(requiredIndex))
+        .requiredColumns(DATA_PARAMETER_NAME, ImmutableList.of(requiredIndex1, requiredIndex2))
         .build();
   }
 
   @Override
   public TableFunctionProcessorProvider getProcessorProvider(Map<String, Argument> arguments) {
-    long gap = (long) ((ScalarArgument) arguments.get(GAP_PARAMETER_NAME)).getValue();
     return new TableFunctionProcessorProvider() {
       @Override
       public TableFunctionDataProcessor getDataProcessor() {
-        return new SessionDataProcessor(gap);
+        long interval = (long) ((ScalarArgument) arguments.get(INTERVAL_PARAMETER_NAME)).getValue();
+        return new FillM4Processor(interval);
       }
     };
   }
 
-  private static class SessionDataProcessor implements TableFunctionDataProcessor {
+  private static class FillM4Processor implements TableFunctionDataProcessor {
 
-    private final long gap;
-    private final List<Long> currentRowIndexes = new ArrayList<>();
-    private long curIndex = 0;
-    private long windowStart = -1;
+    private final long interval;
+    private M4Data m4Data = null;
     private long windowEnd = -1;
+    private long curIndex = 0;
 
-    public SessionDataProcessor(long gap) {
-      this.gap = gap;
+    public FillM4Processor(long interval) {
+      this.interval = interval;
     }
 
     @Override
@@ -113,52 +124,80 @@ public class SessionTableFunction implements TableFunction {
         List<ColumnBuilder> properColumnBuilders,
         ColumnBuilder passThroughIndexBuilder) {
       long timeValue = input.getLong(0);
-      if (!currentRowIndexes.isEmpty() && timeValue > windowEnd) {
+      if (m4Data != null && timeValue > windowEnd) {
         outputWindow(properColumnBuilders, passThroughIndexBuilder);
       }
-      if (currentRowIndexes.isEmpty()) {
-        windowStart = timeValue;
+      if (m4Data == null) {
+        m4Data = new M4Data(input.getDouble(1), curIndex);
+        windowEnd = timeValue + interval;
       }
-      currentRowIndexes.add(curIndex);
-      windowEnd = timeValue + gap;
+      m4Data.update(input.getDouble(1), curIndex);
       curIndex++;
     }
 
     @Override
-    public void process(
-        Column[] inputs,
-        List<ColumnBuilder> properColumnBuilders,
-        ColumnBuilder passThroughIndexBuilder) {
-      Column timeColumn = inputs[0];
-      for (int i = 0; i < timeColumn.getPositionCount(); i++) {
-        long timeValue = timeColumn.getLong(i);
-        if (!currentRowIndexes.isEmpty() && timeValue > windowEnd) {
-          outputWindow(properColumnBuilders, passThroughIndexBuilder);
-        }
-        if (currentRowIndexes.isEmpty()) {
-          windowStart = timeValue;
-        }
-        currentRowIndexes.add(curIndex);
-        windowEnd = timeValue + gap;
-        curIndex++;
-      }
-    }
-
-    @Override
     public void finish(List<ColumnBuilder> columnBuilders, ColumnBuilder passThroughIndexBuilder) {
-      if (!currentRowIndexes.isEmpty()) {
+      if (m4Data != null) {
         outputWindow(columnBuilders, passThroughIndexBuilder);
       }
     }
 
     private void outputWindow(
         List<ColumnBuilder> properColumnBuilders, ColumnBuilder passThroughIndexBuilder) {
-      for (Long currentRowIndex : currentRowIndexes) {
-        properColumnBuilders.get(0).writeLong(windowStart);
-        properColumnBuilders.get(1).writeLong(windowEnd - gap);
-        passThroughIndexBuilder.writeLong(currentRowIndex);
+      // 对 M4 数据去重后输出
+      List<Pair<Long, Double>> m4DataList =
+          Arrays.asList(
+              new Pair<>(m4Data.firstIndex, m4Data.firstValue),
+              new Pair<>(m4Data.minIndex, m4Data.minValue),
+              new Pair<>(m4Data.maxIndex, m4Data.maxValue),
+              new Pair<>(m4Data.lastIndex, m4Data.lastValue));
+      m4DataList.sort((o1, o2) -> (int) (o1.left - o2.left));
+      properColumnBuilders.get(0).writeDouble(m4DataList.get(0).right);
+      properColumnBuilders.get(1).writeBoolean(true);
+      passThroughIndexBuilder.writeLong(m4DataList.get(0).left);
+      for (int i = 1; i < m4DataList.size(); i++) {
+        if (!m4DataList.get(i).left.equals(m4DataList.get(i - 1).left)) {
+          properColumnBuilders.get(0).writeDouble(m4DataList.get(i).right);
+          properColumnBuilders.get(1).writeBoolean(true);
+          passThroughIndexBuilder.writeLong(m4DataList.get(i).left);
+        }
       }
-      currentRowIndexes.clear();
+      m4Data = null;
+    }
+  }
+
+  private static class M4Data {
+    private double firstValue;
+    private long firstIndex;
+    private double minValue;
+    private long minIndex;
+    private long maxIndex;
+    private double maxValue;
+    private double lastValue;
+    private long lastIndex;
+
+    public M4Data(double value, long index) {
+      this.firstValue = value;
+      this.minValue = value;
+      this.maxValue = value;
+      this.lastValue = value;
+      this.firstIndex = index;
+      this.minIndex = index;
+      this.maxIndex = index;
+      this.lastIndex = index;
+    }
+
+    public void update(double value, long index) {
+      if (value < maxValue) {
+        minValue = value;
+        minIndex = index;
+      }
+      if (value > maxValue) {
+        maxValue = value;
+        maxIndex = index;
+      }
+      lastValue = value;
+      lastIndex = index;
     }
   }
 }

@@ -32,7 +32,6 @@ import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
-import java.util.NoSuchElementException;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -80,22 +79,45 @@ public class Slice {
         .toArray(Column[]::new);
   }
 
+  public Column[] getRequiredColumns() {
+    return requiredColumns;
+  }
+
+  //  public Iterator<Record> getRequiredRecordIterator() {
+  //
+  //    return new Iterator<Record>() {
+  //      private int curIndex = 0;
+  //
+  //      @Override
+  //      public boolean hasNext() {
+  //        return curIndex < size;
+  //      }
+  //
+  //      @Override
+  //      public Record next() {
+  //        if (!hasNext()) {
+  //          throw new NoSuchElementException();
+  //        }
+  //        final int idx = curIndex++;
+  //        return getRecord(idx, requiredColumns, requiredDataTypes);
+  //      }
+  //    };
+  //  }
+
   public Iterator<Record> getRequiredRecordIterator() {
     return new Iterator<Record>() {
-      private int curIndex = 0;
+      //      private int curIndex = 0;
+      private final RecordImpl record = new RecordImpl(-1, requiredColumns, requiredDataTypes);
 
       @Override
       public boolean hasNext() {
-        return curIndex < size;
+        record.offset++;
+        return record.offset < size;
       }
 
       @Override
       public Record next() {
-        if (!hasNext()) {
-          throw new NoSuchElementException();
-        }
-        final int idx = curIndex++;
-        return getRecord(idx, requiredColumns, requiredDataTypes);
+        return record;
       }
     };
   }
@@ -109,7 +131,7 @@ public class Slice {
   }
 
   private static class RecordImpl implements Record {
-    private final int offset;
+    private int offset;
     private final Column[] originalColumns;
     private final List<Type> dataTypes;
 
