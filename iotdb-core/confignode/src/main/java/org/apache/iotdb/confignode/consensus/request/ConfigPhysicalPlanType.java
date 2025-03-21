@@ -213,6 +213,10 @@ public enum ConfigPhysicalPlanType {
   PreCreateTableView((short) 868),
   SetViewComment((short) 869),
   AddViewColumn((short) 870),
+  CommitDeleteViewColumn((short) 871),
+  CommitDeleteView((short) 872),
+  RenameView((short) 873),
+  SetViewProperties((short) 874),
 
   /** Deprecated types for sync, restored them for upgrade. */
   @Deprecated

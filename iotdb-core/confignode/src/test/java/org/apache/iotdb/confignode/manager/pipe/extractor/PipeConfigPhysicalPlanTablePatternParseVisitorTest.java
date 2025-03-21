@@ -38,6 +38,7 @@ import org.apache.iotdb.confignode.consensus.request.write.table.SetTableColumnC
 import org.apache.iotdb.confignode.consensus.request.write.table.SetTableCommentPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.SetTablePropertiesPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.view.AddTableViewColumnPlan;
+import org.apache.iotdb.confignode.consensus.request.write.table.view.CommitDeleteViewColumnPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.view.SetViewCommentPlan;
 import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
 
@@ -118,6 +119,14 @@ public class PipeConfigPhysicalPlanTablePatternParseVisitorTest {
         new CommitDeleteColumnPlan("db1", "ab", "a"),
         new CommitDeleteColumnPlan("db1", "ac", "a"),
         new CommitDeleteColumnPlan("da", "ac", "a"));
+  }
+
+  @Test
+  public void testCommitDeleteViewColumn() {
+    testInput(
+        new CommitDeleteViewColumnPlan("db1", "ab", "a"),
+        new CommitDeleteViewColumnPlan("db1", "ac", "a"),
+        new CommitDeleteViewColumnPlan("da", "ac", "a"));
   }
 
   @Test

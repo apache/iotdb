@@ -19,4 +19,6 @@
 
 package org.apache.iotdb.confignode.consensus.request.write.table.view;
 
-public class RenameViewColumnPlan {}
+import org.apache.iotdb.confignode.consensus.request.write.table.RenameTableColumnPlan;
+
+public class RenameViewColumnPlan extends RenameTableColumnPlan {}

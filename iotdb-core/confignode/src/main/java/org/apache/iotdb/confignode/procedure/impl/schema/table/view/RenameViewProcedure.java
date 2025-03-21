@@ -17,18 +17,6 @@
  * under the License.
  */
 
-package org.apache.iotdb.confignode.consensus.request.write.table.view;
+package org.apache.iotdb.confignode.procedure.impl.schema.table.view;
 
-import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
-import org.apache.iotdb.confignode.consensus.request.write.table.CommitDeleteColumnPlan;
-
-public class CommitDeleteViewColumnPlan extends CommitDeleteColumnPlan {
-  public CommitDeleteViewColumnPlan() {
-    super(ConfigPhysicalPlanType.CommitDeleteViewColumn);
-  }
-
-  public CommitDeleteViewColumnPlan(
-      final String database, final String tableName, final String columnName) {
-    super(ConfigPhysicalPlanType.CommitDeleteViewColumn, database, tableName, columnName);
-  }
-}
+public class RenameViewProcedure {}

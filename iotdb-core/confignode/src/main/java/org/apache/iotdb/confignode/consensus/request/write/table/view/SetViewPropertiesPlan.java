@@ -19,4 +19,6 @@
 
 package org.apache.iotdb.confignode.consensus.request.write.table.view;
 
-public class SetViewPropertiesPlan {}
+import org.apache.iotdb.confignode.consensus.request.write.table.SetTablePropertiesPlan;
+
+public class SetViewPropertiesPlan extends SetTablePropertiesPlan {}

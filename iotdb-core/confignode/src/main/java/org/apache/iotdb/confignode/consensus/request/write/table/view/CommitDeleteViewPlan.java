@@ -19,4 +19,6 @@
 
 package org.apache.iotdb.confignode.consensus.request.write.table.view;
 
-public class CommitDeleteViewPlan {}
+import org.apache.iotdb.confignode.consensus.request.write.table.CommitDeleteTablePlan;
+
+public class CommitDeleteViewPlan extends CommitDeleteTablePlan {}

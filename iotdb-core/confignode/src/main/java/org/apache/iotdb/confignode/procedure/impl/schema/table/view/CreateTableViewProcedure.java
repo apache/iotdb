@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.confignode.procedure.impl.schema.table;
+package org.apache.iotdb.confignode.procedure.impl.schema.table.view;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.exception.IoTDBException;
@@ -30,6 +30,7 @@ import org.apache.iotdb.confignode.exception.DatabaseNotExistsException;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
 import org.apache.iotdb.confignode.procedure.impl.schema.SchemaUtils;
+import org.apache.iotdb.confignode.procedure.impl.schema.table.CreateTableProcedure;
 import org.apache.iotdb.confignode.procedure.state.schema.CreateTableState;
 import org.apache.iotdb.confignode.procedure.store.ProcedureType;
 import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
