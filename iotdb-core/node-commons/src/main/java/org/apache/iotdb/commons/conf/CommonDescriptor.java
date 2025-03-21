@@ -254,6 +254,22 @@ public class CommonDescriptor {
 
     loadRetryProperties(properties);
     loadBinaryAllocatorProps(properties);
+
+    config.setEnableMemoryTransfer(
+        Boolean.parseBoolean(
+            properties.getProperty(
+                "enable_memory_transfer", Boolean.toString(config.isEnableMemoryTransfer()))));
+    config.setMemoryCheckIntervalInS(
+        Integer.parseInt(
+            properties.getProperty(
+                "memory_check_interval", String.valueOf(config.getMemoryCheckIntervalInS()))));
+    config.setEnableMemoryAdapt(
+        Boolean.parseBoolean(
+            properties.getProperty(
+                "enable_memory_adapt", Boolean.toString(config.isEnableMemoryAdapt()))));
+    config.setShrinkAll(
+        Boolean.parseBoolean(
+            properties.getProperty("shrink_all", Boolean.toString(config.isShrinkAll()))));
   }
 
   private void loadPipeProps(TrimProperties properties) {

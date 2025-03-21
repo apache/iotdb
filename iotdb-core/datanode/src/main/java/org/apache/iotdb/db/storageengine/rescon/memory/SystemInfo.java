@@ -47,6 +47,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 
 public class SystemInfo {
+
   private static final Logger logger = LoggerFactory.getLogger(SystemInfo.class);
 
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
@@ -350,6 +351,7 @@ public class SystemInfo {
   }
 
   public void loadWriteMemory() {
+    // TODO: load memory size for memtable from config
     memorySizeForMemtable = memoryConfig.getMemtableMemoryManager().getTotalMemorySizeInBytes();
     FLUSH_THRESHOLD = memorySizeForMemtable * config.getFlushProportion();
     REJECT_THRESHOLD = memorySizeForMemtable * memoryConfig.getRejectProportion();
