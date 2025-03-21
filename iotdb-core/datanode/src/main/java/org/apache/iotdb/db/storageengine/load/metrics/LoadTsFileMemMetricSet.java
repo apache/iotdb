@@ -30,7 +30,7 @@ import org.apache.iotdb.metrics.utils.MetricType;
 public class LoadTsFileMemMetricSet implements IMetricSet {
 
   private static final String LOAD_TSFILE_USED_MEMORY = "LoadTsFileUsedMemory";
-  public static final String LOAD_TSFILE_ANALYZE_SCHEMA_MEMORY = "LoadTsFileAnalyzeSchemaMemory";
+  public static final String LOAD_TSFILE_OTHER_MEMORY = "LoadTsFileOtherMemory";
 
   private static final String LOAD_TSFILE_DATA_CACHE_MEMORY = "LoadTsFileDataCacheMemory";
 
@@ -57,7 +57,7 @@ public class LoadTsFileMemMetricSet implements IMetricSet {
             Metric.LOAD_MEM.toString(),
             MetricLevel.IMPORTANT,
             Tag.NAME.toString(),
-            LOAD_TSFILE_ANALYZE_SCHEMA_MEMORY)
+            LOAD_TSFILE_OTHER_MEMORY)
         .set(0L);
   }
 
@@ -77,7 +77,7 @@ public class LoadTsFileMemMetricSet implements IMetricSet {
         MetricType.AUTO_GAUGE,
         Metric.LOAD_MEM.toString(),
         Tag.NAME.toString(),
-        LOAD_TSFILE_ANALYZE_SCHEMA_MEMORY);
+        LOAD_TSFILE_OTHER_MEMORY);
   }
 
   //////////////////////////// singleton ////////////////////////////
