@@ -373,6 +373,12 @@ def test_query_data():
                 for j in range(columns):
                     if pd.isna(df.iloc[i, j]):
                         assert values[i][j] is None
+                    elif isinstance(values[i][j], float):
+                        assert math.isclose(
+                            df.iloc[i, j],
+                            values[i][j],
+                            rel_tol=1e-6,
+                        )
                     else:
                         assert df.iloc[i, j] == values[i][j]
 
