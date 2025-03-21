@@ -202,6 +202,7 @@ import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.Pair;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
@@ -1226,8 +1227,25 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
     context.setQueryType(QueryType.WRITE);
 
     String curDatabase = clientSession.getDatabaseName();
-    node.setCurDatabase(curDatabase);
-    return new CreateTrainingTask(node);
+    List<String> tableList = new ArrayList<>();
+    for (QualifiedName tableName : node.getTargetTables()) {
+      List<String> parts = tableName.getParts();
+      if (parts.size() == 1) {
+        tableList.add(curDatabase + "." + parts.get(0));
+      } else {
+        tableList.add(parts.get(1) + "." + parts.get(0));
+      }
+    }
+
+    return new CreateTrainingTask(
+        node.getModelId(),
+        node.getModelType(),
+        node.getParameters(),
+        node.isUseAllData(),
+        node.getTargetTimeRanges(),
+        node.getExistingModelId(),
+        node.getTargetDbs(),
+        tableList);
   }
 
   @Override

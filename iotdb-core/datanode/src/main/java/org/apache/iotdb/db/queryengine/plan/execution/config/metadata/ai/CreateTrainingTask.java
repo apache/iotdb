@@ -22,24 +22,87 @@ package org.apache.iotdb.db.queryengine.plan.execution.config.metadata.ai;
 import org.apache.iotdb.db.queryengine.plan.execution.config.ConfigTaskResult;
 import org.apache.iotdb.db.queryengine.plan.execution.config.IConfigTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.executor.IConfigTaskExecutor;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateTraining;
 
 import com.google.common.util.concurrent.ListenableFuture;
 
+import java.util.List;
+import java.util.Map;
+
 public class CreateTrainingTask implements IConfigTask {
 
-  private final CreateTraining createTraining;
+  private final String modelId;
+  private final String modelType;
+  private final boolean isTableModel;
+  private final Map<String, String> parameters;
+  private final boolean useAllData;
+  private final List<List<Long>> timeRanges;
+  private final String existingModelId;
 
-  public CreateTrainingTask(CreateTraining createTraining) {
-    if (!createTraining.getModelType().equalsIgnoreCase("timer_xl")) {
+  // Data schema for table model
+  private List<String> targetTables;
+  private List<String> targetDbs;
+  // Data schema for tree model
+  private List<String> targetPaths;
+
+  public CreateTrainingTask(
+      String modelId,
+      String modelType,
+      Map<String, String> parameters,
+      boolean useAllData,
+      List<List<Long>> timeRanges,
+      String existingModelId,
+      List<String> targetTables,
+      List<String> targetDbs) {
+    if (!modelType.equalsIgnoreCase("timer_xl")) {
       throw new UnsupportedOperationException("Only TimerXL model is supported now.");
     }
-    this.createTraining = createTraining;
+    this.modelId = modelId;
+    this.modelType = modelType;
+    this.parameters = parameters;
+    this.useAllData = useAllData;
+    this.timeRanges = timeRanges;
+    this.existingModelId = existingModelId;
+
+    this.isTableModel = true;
+    this.targetTables = targetTables;
+    this.targetDbs = targetDbs;
+  }
+
+  public CreateTrainingTask(
+      String modelId,
+      String modelType,
+      Map<String, String> parameters,
+      boolean useAllData,
+      List<List<Long>> timeRanges,
+      String existingModelId,
+      List<String> targetPaths) {
+    if (!modelType.equalsIgnoreCase("timer_xl")) {
+      throw new UnsupportedOperationException("Only TimerXL model is supported now.");
+    }
+    this.modelId = modelId;
+    this.modelType = modelType;
+    this.parameters = parameters;
+    this.useAllData = useAllData;
+    this.timeRanges = timeRanges;
+    this.existingModelId = existingModelId;
+
+    this.isTableModel = false;
+    this.targetPaths = targetPaths;
   }
 
   @Override
   public ListenableFuture<ConfigTaskResult> execute(IConfigTaskExecutor configTaskExecutor)
       throws InterruptedException {
-    return configTaskExecutor.createTraining(createTraining);
+    return configTaskExecutor.createTraining(
+        modelId,
+        modelType,
+        isTableModel,
+        parameters,
+        useAllData,
+        timeRanges,
+        existingModelId,
+        targetTables,
+        targetDbs,
+        targetPaths);
   }
 }

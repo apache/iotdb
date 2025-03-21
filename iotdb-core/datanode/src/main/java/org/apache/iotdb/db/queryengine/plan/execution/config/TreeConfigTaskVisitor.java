@@ -107,7 +107,6 @@ import org.apache.iotdb.db.queryengine.plan.execution.config.sys.subscription.Cr
 import org.apache.iotdb.db.queryengine.plan.execution.config.sys.subscription.DropTopicTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.sys.subscription.ShowSubscriptionsTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.sys.subscription.ShowTopicsTask;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateTraining;
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementNode;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementVisitor;
@@ -774,14 +773,13 @@ public class TreeConfigTaskVisitor extends StatementVisitor<IConfigTask, MPPQuer
     for (PartialPath partialPath : partialPathList) {
       targetPathPatterns.add(partialPath.getFullPath());
     }
-    CreateTraining createTraining =
-        new CreateTraining(
-            createTrainingStatement.getModelId(), createTrainingStatement.getModelType(), false);
-    createTraining.setTargetPaths(targetPathPatterns);
-    createTraining.setTargetTimeRanges(createTrainingStatement.getTargetTimeRanges());
-    createTraining.setParameters(createTrainingStatement.getParameters());
-    createTraining.setExistingModelId(createTrainingStatement.getExistingModelId());
-    createTraining.setUseAllData(false);
-    return new CreateTrainingTask(createTraining);
+    return new CreateTrainingTask(
+        createTrainingStatement.getModelId(),
+        createTrainingStatement.getModelType(),
+        createTrainingStatement.getParameters(),
+        false,
+        createTrainingStatement.getTargetTimeRanges(),
+        createTrainingStatement.getExistingModelId(),
+        targetPathPatterns);
   }
 }

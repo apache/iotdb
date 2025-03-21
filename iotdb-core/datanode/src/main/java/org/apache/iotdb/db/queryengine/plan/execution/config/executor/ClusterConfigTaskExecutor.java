@@ -218,7 +218,6 @@ import org.apache.iotdb.db.queryengine.plan.execution.config.sys.subscription.Sh
 import org.apache.iotdb.db.queryengine.plan.expression.Expression;
 import org.apache.iotdb.db.queryengine.plan.expression.visitor.TransformToViewExpressionVisitor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.write.view.AlterLogicalViewNode;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateTraining;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DeleteDevice;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropDB;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowCluster;
@@ -3161,31 +3160,36 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
   }
 
   @Override
-  public SettableFuture<ConfigTaskResult> createTraining(CreateTraining createTraining) {
+  public SettableFuture<ConfigTaskResult> createTraining(
+      String modelId,
+      String modelType,
+      boolean isTableModel,
+      Map<String, String> parameters,
+      boolean useAllData,
+      List<List<Long>> timeRanges,
+      String existingModelId,
+      @Nullable List<String> tableList,
+      @Nullable List<String> databaseList,
+      @Nullable List<String> pathList) {
     final SettableFuture<ConfigTaskResult> future = SettableFuture.create();
     try (final ConfigNodeClient client =
         CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
-      final TCreateTrainingReq req =
-          new TCreateTrainingReq(
-              createTraining.getModelId(),
-              createTraining.getModelType(),
-              createTraining.isTableModel());
+      final TCreateTrainingReq req = new TCreateTrainingReq(modelId, modelType, isTableModel);
 
-      if (createTraining.isTableModel()) {
+      if (isTableModel) {
         TDataSchemaForTable dataSchemaForTable = new TDataSchemaForTable();
-        dataSchemaForTable.setCurDatabase(createTraining.getCurDatabase());
-        dataSchemaForTable.setTableList(createTraining.getTargetTables());
-        dataSchemaForTable.setDatabaseList(createTraining.getTargetDbs());
+        dataSchemaForTable.setTableList(tableList);
+        dataSchemaForTable.setDatabaseList(databaseList);
         req.setDataSchemaForTable(dataSchemaForTable);
       } else {
         TDataSchemaForTree dataSchemaForTree = new TDataSchemaForTree();
-        dataSchemaForTree.setPath(createTraining.getTargetPaths());
+        dataSchemaForTree.setPath(pathList);
         req.setDataSchemaForTree(dataSchemaForTree);
       }
-      req.setParameters(createTraining.getParameters());
-      req.setUseAllData(createTraining.isUseAllData());
-      req.setTimeRanges(createTraining.getTargetTimeRanges());
-      req.setExistingModelId(createTraining.getExistingModelId());
+      req.setParameters(parameters);
+      req.setUseAllData(useAllData);
+      req.setTimeRanges(timeRanges);
+      req.setExistingModelId(existingModelId);
       final TSStatus executionStatus = client.createTraining(req);
       if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != executionStatus.getCode()) {
         future.setException(new IoTDBException(executionStatus.message, executionStatus.code));

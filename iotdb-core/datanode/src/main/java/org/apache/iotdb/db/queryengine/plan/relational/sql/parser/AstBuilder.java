@@ -2898,12 +2898,20 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
     }
   }
 
+  private List<Long> parseTimePair(RelationalSqlParser.TimeRangeContext timeRangeContext) {
+    long currentTime = CommonDateTimeUtils.currentTime();
+    List<Long> timeRange = new ArrayList<>();
+    timeRange.add(parseTimeValue(timeRangeContext.timeValue(0), currentTime));
+    timeRange.add(parseTimeValue(timeRangeContext.timeValue(1), currentTime));
+    return timeRange;
+  }
+
   @Override
   public Node visitCreateModelStatement(RelationalSqlParser.CreateModelStatementContext ctx) {
     String modelId = ctx.modelId.getText();
     validateModelName(modelId);
     String modelType = ctx.modelType.getText();
-    CreateTraining createTraining = new CreateTraining(modelId, modelType, true);
+    CreateTraining createTraining = new CreateTraining(modelId, modelType);
     if (ctx.HYPERPARAMETERS() != null) {
       Map<String, String> parameters = new HashMap<>();
       for (RelationalSqlParser.HparamPairContext hparamPairContext : ctx.hparamPair()) {
@@ -2917,19 +2925,26 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
       createTraining.setExistingModelId(ctx.existingModelId.getText());
     }
 
+    List<List<Long>> dbTimeRange = new ArrayList<>();
+    List<List<Long>> tableTimeRange = new ArrayList<>();
     if (ctx.trainingData().ALL() != null) {
       createTraining.setUseAllData(true);
     } else {
-      List<String> targetTables = new ArrayList<>();
+      List<QualifiedName> targetTables = new ArrayList<>();
       List<String> targetDbs = new ArrayList<>();
       for (RelationalSqlParser.DataElementContext dataElementContext :
           ctx.trainingData().dataElement()) {
         if (dataElementContext.databaseElement() != null) {
           targetDbs.add(
               ((Identifier) visit(dataElementContext.databaseElement().database)).getValue());
+          if (dataElementContext.databaseElement().timeRange() != null) {
+            dbTimeRange.add(parseTimePair(dataElementContext.databaseElement().timeRange()));
+          }
         } else {
-          targetTables.add(
-              getQualifiedName(dataElementContext.tableElement().qualifiedName()).toString());
+          targetTables.add(getQualifiedName(dataElementContext.tableElement().qualifiedName()));
+          if (dataElementContext.tableElement().timeRange() != null) {
+            tableTimeRange.add(parseTimePair(dataElementContext.tableElement().timeRange()));
+          }
         }
       }
 
@@ -2939,6 +2954,9 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
       }
       createTraining.setTargetDbs(targetDbs);
       createTraining.setTargetTables(targetTables);
+
+      dbTimeRange.addAll(tableTimeRange);
+      createTraining.setTargetTimeRanges(dbTimeRange);
     }
     return createTraining;
   }

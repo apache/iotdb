@@ -26,42 +26,26 @@ import java.util.Objects;
 public class CreateTraining extends Statement {
 
   private final String modelId;
-  private String curDatabase;
   private final String modelType;
 
   private Map<String, String> parameters;
   private String existingModelId = null;
 
-  // IoTDB has two types of models: table model and tree model
-  // So we need to distinguish the schema of the models
-  // Table model: [targetDbs and targetTables]
-  // Tree model: [targetPaths]
-  private final boolean isTableModel;
-  private List<String> targetTables;
+  private List<QualifiedName> targetTables;
   private List<String> targetDbs;
-  private List<String> targetPaths;
 
   private List<List<Long>> targetTimeRanges;
   private boolean useAllData = false;
 
-  public CreateTraining(String modelId, String modelType, boolean isTableModel) {
+  public CreateTraining(String modelId, String modelType) {
     super(null);
     this.modelId = modelId;
     this.modelType = modelType;
-    this.isTableModel = isTableModel;
   }
 
   @Override
   public <R, C> R accept(AstVisitor<R, C> visitor, C context) {
     return visitor.visitCreateTraining(this, context);
-  }
-
-  public void setCurDatabase(String curDatabase) {
-    this.curDatabase = curDatabase;
-  }
-
-  public String getCurDatabase() {
-    return curDatabase;
   }
 
   public void setParameters(Map<String, String> parameters) {
@@ -76,7 +60,7 @@ public class CreateTraining extends Statement {
     this.targetDbs = targetDbs;
   }
 
-  public void setTargetTables(List<String> targetTables) {
+  public void setTargetTables(List<QualifiedName> targetTables) {
     this.targetTables = targetTables;
   }
 
@@ -88,7 +72,7 @@ public class CreateTraining extends Statement {
     return targetDbs;
   }
 
-  public List<String> getTargetTables() {
+  public List<QualifiedName> getTargetTables() {
     return targetTables;
   }
 
@@ -108,10 +92,6 @@ public class CreateTraining extends Statement {
     return existingModelId;
   }
 
-  public boolean isTableModel() {
-    return isTableModel;
-  }
-
   public boolean isUseAllData() {
     return useAllData;
   }
@@ -124,14 +104,6 @@ public class CreateTraining extends Statement {
     return targetTimeRanges;
   }
 
-  public void setTargetPaths(List<String> targetPaths) {
-    this.targetPaths = targetPaths;
-  }
-
-  public List<String> getTargetPaths() {
-    return targetPaths;
-  }
-
   @Override
   public List<? extends Node> getChildren() {
     return null;
@@ -140,13 +112,7 @@ public class CreateTraining extends Statement {
   @Override
   public int hashCode() {
     return Objects.hash(
-        modelId,
-        modelType,
-        existingModelId,
-        isTableModel,
-        parameters,
-        targetTimeRanges,
-        useAllData);
+        modelId, modelType, existingModelId, parameters, targetTimeRanges, useAllData);
   }
 
   @Override
@@ -157,7 +123,6 @@ public class CreateTraining extends Statement {
     CreateTraining createTraining = (CreateTraining) obj;
     return modelId.equals(createTraining.modelId)
         && modelType.equals(createTraining.modelType)
-        && isTableModel == createTraining.isTableModel
         && Objects.equals(existingModelId, createTraining.existingModelId)
         && Objects.equals(parameters, createTraining.parameters)
         && Objects.equals(targetTimeRanges, createTraining.targetTimeRanges)
@@ -178,14 +143,10 @@ public class CreateTraining extends Statement {
         + ", existingModelId='"
         + existingModelId
         + '\''
-        + ", isTableModel="
-        + isTableModel
         + ", targetTables="
         + targetTables
         + ", targetDbs="
         + targetDbs
-        + ", targetPaths="
-        + targetPaths
         + ", targetTimeRanges="
         + targetTimeRanges
         + ", useAllData="
