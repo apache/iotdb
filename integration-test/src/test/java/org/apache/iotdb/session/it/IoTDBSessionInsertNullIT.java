@@ -21,6 +21,7 @@ package org.apache.iotdb.session.it;
 import org.apache.iotdb.isession.ISession;
 import org.apache.iotdb.isession.SessionDataSet;
 import org.apache.iotdb.it.env.EnvFactory;
+import org.apache.iotdb.it.env.cluster.node.DataNodeWrapper;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
 import org.apache.iotdb.itbase.category.LocalStandaloneIT;
@@ -43,11 +44,13 @@ import org.junit.runner.RunWith;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.File;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.fail;
 
 @RunWith(IoTDBTestRunner.class)
@@ -421,6 +424,31 @@ public class IoTDBSessionInsertNullIT {
       session.executeNonQueryStatement("flush");
       nums = queryCountRecords(session, "select count(s1) from " + deviceId);
       assertEquals(0, nums);
+      for (DataNodeWrapper dn : EnvFactory.getEnv().getDataNodeWrapperList()) {
+        File dir =
+            new File(
+                dn.getDataDir()
+                    + File.separator
+                    + "datanode"
+                    + File.separator
+                    + "data"
+                    + File.separator
+                    + "sequence"
+                    + File.separator
+                    + "root.sg1"
+                    + File.separator
+                    + "1"
+                    + File.separator
+                    + "0");
+        if (dir.exists() && dir.isDirectory()) {
+          File[] files = dir.listFiles();
+          if (files != null) {
+            for (File file : files) {
+              assertFalse(file.getName().endsWith("broken"));
+            }
+          }
+        }
+      }
     } catch (Exception e) {
       e.printStackTrace();
       fail(e.getMessage());
