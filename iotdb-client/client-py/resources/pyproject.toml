@@ -28,11 +28,10 @@ readme = "README.md"
 authors = [
     { name = "Apache IoTDB", email = "dev@iotdb.apache.org" }
 ]
-license = { text = "Apache License, Version 2.0"}
+license = "Apache-2.0"
 keywords = ["iotdb", "apache", "client", "API"]
 classifiers = [
     "Programming Language :: Python :: 3",
-    "License :: OSI Approved :: Apache Software License",
     "Operating System :: OS Independent",
     "Topic :: Software Development :: Libraries",
     "Topic :: Software Development :: Libraries :: Python Modules"
@@ -42,7 +41,7 @@ dependencies = [
     "thrift>=0.14.1",
     "pandas>=1.0.0",
     "numpy>=1.0.0",
-    "sqlalchemy<1.5,>=1.4",
+    "sqlalchemy>=1.4",
     "sqlalchemy-utils>=0.37.8"
 ]
 
