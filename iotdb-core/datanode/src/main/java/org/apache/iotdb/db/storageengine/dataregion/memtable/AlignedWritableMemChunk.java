@@ -235,9 +235,6 @@ public class AlignedWritableMemChunk extends AbstractWritableMemChunk {
 
   @Override
   public long count() {
-    if (measurementIndexMap.isEmpty()) {
-      return rowCount();
-    }
     return rowCount() * measurementIndexMap.size();
   }
 
