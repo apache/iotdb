@@ -28,9 +28,9 @@
 
 class ThriftConnection {
 public:
-    const static int THRIFT_DEFAULT_BUFFER_SIZE = 4096;
-    const static int THRIFT_MAX_FRAME_SIZE = 1048576;
-    const static int CONNECTION_TIMEOUT_IN_MS = 1000;
+    static constexpr int THRIFT_DEFAULT_BUFFER_SIZE = 4096;
+    static constexpr int THRIFT_MAX_FRAME_SIZE = 1048576;
+    static constexpr int CONNECTION_TIMEOUT_IN_MS = 1000;
 private:
     TEndPoint endPoint;
 
