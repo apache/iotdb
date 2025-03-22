@@ -24,6 +24,14 @@ from iotdb.utils.IoTDBConstants import TSDataType
 
 TIMESTAMP_STR = "Time"
 START_INDEX = 2
+DATA_TYPE_MAP = {
+    b"\x00": 0,
+    b"\x01": 1,
+    b"\x02": 2,
+    b"\x03": 3,
+    b"\x04": 4,
+    b"\x05": 5,
+}
 
 
 # convert dataFrame to tsBlock in binary
@@ -317,20 +325,10 @@ def read_column_types(buffer, value_column_count):
 
 
 def get_data_type(value):
-    if value == b"\x00":
-        return TSDataType.BOOLEAN
-    elif value == b"\x01":
-        return TSDataType.INT32
-    elif value == b"\x02":
-        return TSDataType.INT64
-    elif value == b"\x03":
-        return TSDataType.FLOAT
-    elif value == b"\x04":
-        return TSDataType.DOUBLE
-    elif value == b"\x05":
-        return TSDataType.TEXT
-    else:
-        raise Exception("Invalid data type: " + value)
+    try:
+        return DATA_TYPE_MAP[value]
+    except KeyError:
+        raise Exception("Invalid data type: " + str(value))
 
 
 def get_data_type_byte_from_str(value):
@@ -442,33 +440,10 @@ def read_byte_column(buffer, data_type, position_count):
 
 
 def deserialize_from_boolean_array(buffer, size):
-    packed_boolean_array, buffer = read_from_buffer(buffer, (size + 7) // 8)
-    current_byte = 0
-    output = [None] * size
-    position = 0
-    # read null bits 8 at a time
-    while position < (size & ~0b111):
-        value = packed_boolean_array[current_byte]
-        output[position] = (value & 0b1000_0000) != 0
-        output[position + 1] = (value & 0b0100_0000) != 0
-        output[position + 2] = (value & 0b0010_0000) != 0
-        output[position + 3] = (value & 0b0001_0000) != 0
-        output[position + 4] = (value & 0b0000_1000) != 0
-        output[position + 5] = (value & 0b0000_0100) != 0
-        output[position + 6] = (value & 0b0000_0010) != 0
-        output[position + 7] = (value & 0b0000_0001) != 0
-
-        position += 8
-        current_byte += 1
-    # read last null bits
-    if (size & 0b111) > 0:
-        value = packed_boolean_array[-1]
-        mask = 0b1000_0000
-        position = size & ~0b111
-        while position < size:
-            output[position] = (value & mask) != 0
-            mask >>= 1
-            position += 1
+    num_bytes = (size + 7) // 8
+    packed_boolean_array, buffer = read_from_buffer(buffer, num_bytes)
+    arr = np.frombuffer(packed_boolean_array, dtype=np.uint8)
+    output = np.unpackbits(arr)[:size].astype(bool).tolist()
     return output, buffer
 
 
@@ -504,23 +479,6 @@ def read_binary_column(buffer, data_type, position_count):
     return values, null_indicators, buffer
 
 
-def read_column(encoding, buffer, data_type, position_count):
-    if encoding == b"\x00":
-        return read_byte_column(buffer, data_type, position_count)
-    elif encoding == b"\x01":
-        return read_int32_column(buffer, data_type, position_count)
-    elif encoding == b"\x02":
-        return read_int64_column(buffer, data_type, position_count)
-    elif encoding == b"\x03":
-        return read_binary_column(buffer, data_type, position_count)
-    elif encoding == b"\x04":
-        return read_run_length_column(buffer, data_type, position_count)
-    elif encoding == b"\x05":
-        return read_dictionary_column(buffer, data_type, position_count)
-    else:
-        raise Exception("Unsupported encoding: " + encoding)
-
-
 # Serialized data layout:
 #    +-----------+-------------------------+
 #    | encoding  | serialized inner column |
@@ -552,3 +510,21 @@ def repeat(buffer, data_type, position_count):
 
 def read_dictionary_column(buffer, data_type, position_count):
     raise Exception("dictionary column not implemented")
+
+
+ENCODING_FUNC_MAP = {
+    b"\x00": read_byte_column,
+    b"\x01": read_int32_column,
+    b"\x02": read_int64_column,
+    b"\x03": read_binary_column,
+    b"\x04": read_run_length_column,
+    b"\x05": read_dictionary_column,
+}
+
+
+def read_column(encoding, buffer, data_type, position_count):
+    try:
+        func = ENCODING_FUNC_MAP[encoding]
+    except KeyError:
+        raise Exception("Unsupported encoding: " + str(encoding))
+    return func(buffer, data_type, position_count)
