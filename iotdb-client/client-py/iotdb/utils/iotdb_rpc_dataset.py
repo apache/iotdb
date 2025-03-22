@@ -161,6 +161,7 @@ class IoTDBRpcDataSet(object):
         for i in range(len(self.__column_index_2_tsblock_column_index_list)):
             result[i] = []
             has_pd_series.append(False)
+        total_length = 0
         while self.__query_result_index < len(self.__query_result):
             time_column_values, column_values, null_indicators, _ = deserialize(
                 self.__query_result[self.__query_result_index]
@@ -176,7 +177,8 @@ class IoTDBRpcDataSet(object):
                 )
             if self.ignore_timestamp is None or self.ignore_timestamp is False:
                 result[0].append(time_array)
-            total_length = len(time_array)
+            current_length = len(time_array)
+            total_length += current_length
             for i, location in enumerate(
                 self.__column_index_2_tsblock_column_index_list
             ):
@@ -225,10 +227,10 @@ class IoTDBRpcDataSet(object):
 
                 null_indicator = null_indicators[location]
 
-                if len(data_array) < total_length or (
+                if len(data_array) < current_length or (
                     data_type == 0 and null_indicator is not None
                 ):
-                    tmp_array = np.full(total_length, None, dtype=object)
+                    tmp_array = np.full(current_length, None, dtype=object)
                     if null_indicator is not None:
                         indexes = [not v for v in null_indicator]
                         if data_type == 0:
@@ -253,7 +255,12 @@ class IoTDBRpcDataSet(object):
                 result[i].append(data_array)
         for k, v in result.items():
             if not has_pd_series[k]:
-                result[k] = np.concatenate(v, axis=0)
+                result = np.empty(total_length, dtype=v[0].dtype)
+                pos = 0
+                for arr in v:
+                    length = arr.shape[0]
+                    result[pos : pos + length] = arr
+                    pos += length
             else:
                 v = [x if isinstance(x, pd.Series) else pd.Series(x) for x in v]
                 result[k] = pd.concat(v, ignore_index=True)
