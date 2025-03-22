@@ -21,6 +21,7 @@
 
 #include <vector>
 #include <atomic>
+#include <boost/optional.hpp>
 #include <mutex>
 #include <chrono>
 #include <thread>
@@ -33,7 +34,52 @@
 
 class TEndPoint;
 
-class NodesSupplier {
+class RoundRobinPolicy {
+public:
+    static TEndPoint select(const std::vector<TEndPoint>& nodes) {
+        static std::atomic_uint index{0};
+
+        if (nodes.empty()) {
+            throw IoTDBException("No available nodes");
+        }
+
+        return nodes[index++ % nodes.size()];
+    }
+};
+
+class INodesSupplier {
+public:
+    virtual ~INodesSupplier() = default;
+    virtual boost::optional<TEndPoint> getQueryEndPoint() = 0;
+
+    using NodeSelectionPolicy = std::function<TEndPoint(const std::vector<TEndPoint>&)>;
+};
+
+class DummyNodesSupplier : public INodesSupplier {
+public:
+    explicit DummyNodesSupplier(const std::vector<TEndPoint>& nodes, 
+                                NodeSelectionPolicy policy = RoundRobinPolicy::select) 
+        : availableNodes_(nodes), policy_(std::move(policy)) {}
+
+    boost::optional<TEndPoint> getQueryEndPoint() override {
+        try {
+            if (availableNodes_.empty()) {
+                return boost::none;
+            }
+            return policy_(availableNodes_);
+        } catch (const IoTDBException& e) {
+            return boost::none;
+        }
+    }
+
+    ~DummyNodesSupplier() override {}
+
+private:
+    const std::vector<TEndPoint> availableNodes_;
+    NodeSelectionPolicy policy_;
+};
+
+class NodesSupplier : public INodesSupplier {
 public:
     static const std::string SHOW_DATA_NODES_COMMAND;
     static const std::string STATUS_COLUMN_NAME;
@@ -57,8 +103,6 @@ public:
     bool enableRPCCompression;
     std::string version;
     std::string zoneId;
-
-    using NodeSelectionPolicy = std::function<TEndPoint(const std::vector<TEndPoint>&)>;
     
     static std::shared_ptr<NodesSupplier> create(std::vector<TEndPoint> endpoints,
         std::string userName, std::string password, std::string zoneId = "",
@@ -68,7 +112,7 @@ public:
         bool useSSL = false, bool enableRPCCompression = false,
         std::string version = "V_1_0",
         std::chrono::milliseconds refreshInterval = std::chrono::milliseconds(TIMEOUT_IN_MS),
-        NodeSelectionPolicy policy = roundRobinPolicy) {
+        NodeSelectionPolicy policy = RoundRobinPolicy::select) {
         if (endpoints.empty()) {
             return nullptr;
         }
@@ -100,7 +144,17 @@ public:
         return selectionPolicy(endpoints);
     }
 
-    ~NodesSupplier() {
+    boost::optional<TEndPoint> getQueryEndPoint() override {
+        try {
+            return selectQueryEndpoint();
+        } catch (const IoTDBException& e) {
+            return boost::none;
+        } catch (...) {
+            return boost::none;
+        }
+    }
+
+    ~NodesSupplier() override {
         stopBackgroundRefresh();
     }
 
@@ -141,7 +195,7 @@ private:
 
     std::vector<TEndPoint> fetchLatestEndpoints() {
         if (client == nullptr) {
-            client = std::make_shared<ThriftConnection>(roundRobinPolicy(endpoints));
+            client = std::make_shared<ThriftConnection>(selectionPolicy(endpoints));
             client->init(userName, password, enableRPCCompression, zoneId, version);
         }
         unique_ptr<SessionDataSet> sessionDataSet = client->executeQueryStatement(SHOW_DATA_NODES_COMMAND);
@@ -196,14 +250,6 @@ private:
                 refreshThread.join();
             }
         }
-    }
-
-    static TEndPoint roundRobinPolicy(const std::vector<TEndPoint>& nodes) {
-        static std::atomic_uint roundRobinIndex{0};
-        if (nodes.empty()) {
-            throw IoTDBException("No available nodes");
-        }
-        return nodes[roundRobinIndex++ % nodes.size()];
     }
 };
 
