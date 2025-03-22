@@ -298,14 +298,14 @@ public class IoTDBFillTableIT {
           "1970-01-01T00:00:00.002Z,shanghai,d1,212,2111,",
         };
     tableResultSetEqualTest(
-        "select time,city,device_id,s1,s2 from table2 FILL METHOD PREVIOUS FILL_GROUP 2,3",
+        "select time,city,device_id,s1,s2 from table2 FILL METHOD PREVIOUS FILL_GROUP 2,3 order by 2,3",
         expectedHeader,
         retArray,
         DATABASE_NAME);
 
     // case11: all without time filter using previous fill with FILL_GROUP and TIME_COLUMN
     tableResultSetEqualTest(
-        "select time,city,device_id,s1,s2 from table2 FILL METHOD PREVIOUS TIME_COLUMN 1 FILL_GROUP 2,3",
+        "select time,city,device_id,s1,s2 from table2 FILL METHOD PREVIOUS TIME_COLUMN 1 FILL_GROUP 2,3 order by 2,3",
         expectedHeader,
         retArray,
         DATABASE_NAME);
@@ -326,7 +326,7 @@ public class IoTDBFillTableIT {
           "1970-01-01T00:00:00.002Z,shanghai,d1,212,2111,",
         };
     tableResultSetEqualTest(
-        "select time,city,device_id,s1,s2 from table2 FILL METHOD PREVIOUS TIME_BOUND 2ms FILL_GROUP 2,3",
+        "select time,city,device_id,s1,s2 from table2 FILL METHOD PREVIOUS TIME_BOUND 2ms FILL_GROUP 2,3 order by 2,3",
         expectedHeader,
         retArray,
         DATABASE_NAME);
@@ -334,7 +334,7 @@ public class IoTDBFillTableIT {
     // case13: all without time filter using previous fill with TIME_BOUND, FILL_GROUP and
     // TIME_COLUMN
     tableResultSetEqualTest(
-        "select time,city,device_id,s1,s2 from table2 FILL METHOD PREVIOUS TIME_BOUND 2ms TIME_COLUMN 1 FILL_GROUP 2,3",
+        "select time,city,device_id,s1,s2 from table2 FILL METHOD PREVIOUS TIME_BOUND 2ms TIME_COLUMN 1 FILL_GROUP 2,3 order by 2,3",
         expectedHeader,
         retArray,
         DATABASE_NAME);
@@ -503,14 +503,14 @@ public class IoTDBFillTableIT {
           "1970-01-01T00:00:00.002Z,shanghai,d1,212,null,",
         };
     tableResultSetEqualTest(
-        "select time,city,device_id,s1,s2 from table3 FILL METHOD LINEAR FILL_GROUP 2,3",
+        "select time,city,device_id,s1,s2 from table3 FILL METHOD LINEAR FILL_GROUP 2,3 order by 2,3",
         expectedHeader,
         retArray,
         DATABASE_NAME);
 
     // case11: all without time filter using linear fill with FILL_GROUP and TIME_COLUMN
     tableResultSetEqualTest(
-        "select time,city,device_id,s1,s2 from table3 FILL METHOD LINEAR TIME_COLUMN 1 FILL_GROUP 2,3",
+        "select time,city,device_id,s1,s2 from table3 FILL METHOD LINEAR TIME_COLUMN 1 FILL_GROUP 2,3 order by 2,3",
         expectedHeader,
         retArray,
         DATABASE_NAME);

@@ -329,7 +329,11 @@ public class IoTDBConfig {
   /** How many threads can concurrently flush. When <= 0, use CPU core number. */
   private int flushThreadCount = Runtime.getRuntime().availableProcessors();
 
-  private int degreeOfParallelism = Math.max(1, Runtime.getRuntime().availableProcessors() / 2);
+  /** How many threads can concurrently execute query statement. When <= 0, use CPU core number. */
+  private int queryThreadCount = Runtime.getRuntime().availableProcessors();
+
+  //  private int degreeOfParallelism = Math.max(1, Runtime.getRuntime().availableProcessors() / 2);
+  private int degreeOfParallelism = 1;
 
   private int mergeThresholdOfExplainAnalyze = 10;
 

@@ -39,6 +39,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.node.EnforceSingl
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ExplainAnalyzeNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.FilterNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.GapFillNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.GroupNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.InformationSchemaTableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.JoinNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.LimitNode;
@@ -432,6 +433,23 @@ public class UnaliasSymbolReferences implements PlanOptimizer {
               newOrderingScheme,
               node.isPartial(),
               node.isOrderByAllIdsAndTime()),
+          mapping);
+    }
+
+    @Override
+    public PlanAndMappings visitGroup(GroupNode node, UnaliasContext context) {
+      PlanAndMappings rewrittenSource = node.getChild().accept(this, context);
+      Map<Symbol, Symbol> mapping = new HashMap<>(rewrittenSource.getMappings());
+      SymbolMapper mapper = symbolMapper(mapping);
+
+      OrderingScheme newOrderingScheme = mapper.map(node.getOrderingScheme());
+
+      return new PlanAndMappings(
+          new GroupNode(
+              node.getPlanNodeId(),
+              rewrittenSource.getRoot(),
+              newOrderingScheme,
+              node.getPartitionKeyCount()),
           mapping);
     }
 
@@ -873,6 +891,7 @@ public class UnaliasSymbolReferences implements PlanOptimizer {
                 Optional.empty(),
                 ImmutableList.of(),
                 Optional.empty(),
+                node.isRowSemantic(),
                 node.getArguments()),
             mapping);
       }
@@ -908,6 +927,7 @@ public class UnaliasSymbolReferences implements PlanOptimizer {
               newPassThroughSpecification,
               newRequiredSymbols,
               newSpecification,
+              node.isRowSemantic(),
               node.getArguments());
 
       return new PlanAndMappings(rewrittenTableFunctionProcessor, mapping);

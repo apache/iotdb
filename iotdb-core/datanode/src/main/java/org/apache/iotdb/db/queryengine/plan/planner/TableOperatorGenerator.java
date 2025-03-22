@@ -143,6 +143,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ExchangeNode
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ExplainAnalyzeNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.FilterNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.GapFillNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.GroupNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.InformationSchemaTableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.JoinNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.LimitNode;
@@ -1360,6 +1361,19 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
             sortItemIndexList.subList(0, node.getStreamCompareKeyEndIndex() + 1),
             sortItemDataTypeList.subList(0, node.getStreamCompareKeyEndIndex() + 1)),
         TSFileDescriptor.getInstance().getConfig().getMaxTsBlockLineNumber());
+  }
+
+  @Override
+  public Operator visitGroup(GroupNode node, LocalExecutionPlanContext context) {
+    StreamSortNode streamSortNode =
+        new StreamSortNode(
+            node.getPlanNodeId(),
+            node.getChild(),
+            node.getOrderingScheme(),
+            false,
+            false,
+            node.getPartitionKeyCount() - 1);
+    return visitStreamSort(streamSortNode, context);
   }
 
   @Override
