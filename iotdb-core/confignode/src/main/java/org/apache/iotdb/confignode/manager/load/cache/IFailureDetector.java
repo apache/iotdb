@@ -29,11 +29,14 @@ public interface IFailureDetector {
   String FIXED_DETECTOR = "fixed";
   String PHI_ACCRUAL_DETECTOR = "phi_accrual";
 
+  int PHI_COLD_START_THRESHOLD = 60;
+
   /**
    * Given the heartbeat history, decide whether this endpoint is still available
    *
+   * @param id the unique identifier of the history owner
    * @param history heartbeat history
    * @return false if the endpoint is under failure
    */
-  boolean isAvailable(List<AbstractHeartbeatSample> history);
+  boolean isAvailable(Object id, List<AbstractHeartbeatSample> history);
 }

@@ -25,13 +25,12 @@ import org.apache.iotdb.commons.concurrent.ThreadName;
 import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
-import org.apache.iotdb.confignode.manager.IManager;
-import org.apache.iotdb.confignode.manager.load.balancer.RouteBalancer;
 import org.apache.iotdb.confignode.manager.load.cache.LoadCache;
 import org.apache.iotdb.confignode.manager.load.cache.consensus.ConsensusGroupStatistics;
 import org.apache.iotdb.confignode.manager.load.cache.node.NodeStatistics;
 import org.apache.iotdb.confignode.manager.load.cache.region.RegionGroupStatistics;
 import org.apache.iotdb.confignode.manager.load.subscriber.ConsensusGroupStatisticsChangeEvent;
+import org.apache.iotdb.confignode.manager.load.subscriber.IClusterStatusSubscriber;
 import org.apache.iotdb.confignode.manager.load.subscriber.NodeStatisticsChangeEvent;
 import org.apache.iotdb.confignode.manager.load.subscriber.RegionGroupStatisticsChangeEvent;
 
@@ -75,7 +74,7 @@ public class EventService {
       previousConsensusGroupStatisticsMap;
   private final EventBus eventPublisher;
 
-  public EventService(IManager configManager, LoadCache loadCache, RouteBalancer routeBalancer) {
+  public EventService(LoadCache loadCache) {
     this.loadCache = loadCache;
     this.previousNodeStatisticsMap = new TreeMap<>();
     this.previousRegionGroupStatisticsMap = new TreeMap<>();
@@ -86,8 +85,10 @@ public class EventService {
             ThreadName.CONFIG_NODE_LOAD_PUBLISHER.getName(),
             IoTDBThreadPoolFactory.newFixedThreadPool(
                 5, ThreadName.CONFIG_NODE_LOAD_PUBLISHER.getName()));
-    eventPublisher.register(configManager.getPipeManager().getPipeRuntimeCoordinator());
-    eventPublisher.register(routeBalancer);
+  }
+
+  public void register(final IClusterStatusSubscriber listener) {
+    this.eventPublisher.register(listener);
   }
 
   /** Start the event service. */
