@@ -155,7 +155,7 @@ class IoTDBRpcDataSet(object):
 
     def construct_one_data_frame(self):
         if self.has_cached_data_frame or self.__query_result is None:
-            return
+            return True
         result = {}
         for i in range(len(self.__column_index_2_tsblock_column_index_list)):
             result[i] = []
@@ -247,16 +247,19 @@ class IoTDBRpcDataSet(object):
 
                 result[i].append(data_array)
         for k, v in result.items():
-            if v is None or len(v) < 1 or v[0] is None:
+            if not v or v[0] is None:
                 result[k] = []
-            elif v[0].dtype == "Int32":
-                v = [x if isinstance(x, pd.Series) else pd.Series(x) for x in v]
-                result[k] = pd.concat(v, ignore_index=True).astype("Int32")
-            elif v[0].dtype == "Int64":
-                v = [x if isinstance(x, pd.Series) else pd.Series(x) for x in v]
-                result[k] = pd.concat(v, ignore_index=True).astype("Int64")
-            elif v[0].dtype == bool:
-                result[k] = pd.Series(np.concatenate(v, axis=0)).astype("boolean")
+                continue
+            current_dtype = v[0].dtype
+            if current_dtype in ("Int32", "Int64"):
+                if not all(isinstance(x, pd.Series) for x in v):
+                    v = [x if isinstance(x, pd.Series) else pd.Series(x) for x in v]
+                result[k] = pd.concat(v, ignore_index=True).astype(current_dtype)
+            elif current_dtype == bool:
+                if all(isinstance(x, pd.Series) for x in v):
+                    result[k] = pd.concat(v, ignore_index=True).astype("boolean")
+                else:
+                    result[k] = pd.Series(np.concatenate(v, axis=0)).astype("boolean")
             else:
                 result[k] = np.concatenate(v, axis=0)
         self.__query_result = None
