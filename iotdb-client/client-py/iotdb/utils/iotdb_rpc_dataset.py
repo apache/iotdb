@@ -157,8 +157,10 @@ class IoTDBRpcDataSet(object):
         if self.has_cached_data_frame or self.__query_result is None:
             return True
         result = {}
+        has_null = []
         for i in range(len(self.__column_index_2_tsblock_column_index_list)):
-            result[i] = None
+            result[i] = []
+            has_null.append(False)
         while self.__query_result_index < len(self.__query_result):
             time_column_values, column_values, null_indicators, _ = deserialize(
                 self.__query_result[self.__query_result_index]
@@ -173,10 +175,7 @@ class IoTDBRpcDataSet(object):
                     time_array.dtype.newbyteorder("<")
                 )
             if self.ignore_timestamp is None or self.ignore_timestamp is False:
-                if result[0] is None:
-                    result[0] = time_array
-                else:
-                    result[0] = np.concatenate((result[0], time_array))
+                result[0].append(time_array)
             total_length = len(time_array)
             for i, location in enumerate(
                 self.__column_index_2_tsblock_column_index_list
@@ -248,21 +247,16 @@ class IoTDBRpcDataSet(object):
                         tmp_array = pd.Series(tmp_array, dtype="boolean")
                     data_array = tmp_array
 
-                if result[i] is None:
-                    result[i] = data_array
-                else:
-                    if isinstance(result[i], np.ndarray) and isinstance(
-                        data_array, np.ndarray
-                    ):
-                        result[i] = np.concatenate((result[i], data_array))
-                    else:
-                        if not isinstance(result[i], pd.Series):
-                            result[i] = pd.Series(result[i])
-                        if isinstance(data_array, np.ndarray):
-                            data_array = pd.Series(data_array)
-                        result[i] = pd.concat(
-                            [result[i], data_array], ignore_index=True
-                        )
+                if isinstance(data_array, pd.Series):
+                    has_null[i] = True
+                result[i].append(data_array)
+        for k, v in result.items():
+            if not has_null[k]:
+                result[k] = np.concatenate(v, axis=0)
+            else:
+                v = [x if isinstance(x, pd.Series) else pd.Series(x) for x in v]
+                result[k] = pd.concat(v, ignore_index=True)
+
         self.__query_result = None
         self.data_frame = pd.DataFrame(result, dtype=object)
         if not self.data_frame.empty:
