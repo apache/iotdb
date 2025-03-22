@@ -254,13 +254,12 @@ class IoTDBRpcDataSet(object):
 
                 result[i].append(data_array)
         for k, v in result.items():
-            if not has_pd_series[k]:
-                result = np.empty(total_length, dtype=v[0].dtype)
-                pos = 0
-                for arr in v:
-                    length = arr.shape[0]
-                    result[pos : pos + length] = arr
-                    pos += length
+            if v is None or len(v) < 1 or v[0] is None:
+                result[k] = []
+            elif not has_pd_series[k]:
+                res = np.empty(total_length, dtype=v[0].dtype)
+                np.concatenate(v, axis=0, out=res)
+                result[k] = res
             else:
                 v = [x if isinstance(x, pd.Series) else pd.Series(x) for x in v]
                 result[k] = pd.concat(v, ignore_index=True)
