@@ -245,10 +245,11 @@ public abstract class TVList implements WALEntryValue {
   protected void markNullValue(int arrayIndex, int elementIndex) {
     // init bitMap if doesn't have
     if (bitMap == null) {
-      bitMap = new ArrayList<>();
+      List<BitMap> localBitMap = new ArrayList<>();
       for (int i = 0; i < timestamps.size(); i++) {
-        bitMap.add(new BitMap(ARRAY_SIZE));
+        localBitMap.add(new BitMap(ARRAY_SIZE));
       }
+      bitMap = localBitMap;
     }
     // if the bitmap in arrayIndex is null, init the bitmap
     if (bitMap.get(arrayIndex) == null) {
