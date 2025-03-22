@@ -250,18 +250,18 @@ class IoTDBRpcDataSet(object):
             if not v or v[0] is None:
                 result[k] = []
                 continue
-            current_dtype = v[0].dtype
+
+            series_list = [x if isinstance(x, pd.Series) else pd.Series(x) for x in v]
+            current_dtype = series_list[0].dtype
+
             if current_dtype in ("Int32", "Int64"):
-                if not all(isinstance(x, pd.Series) for x in v):
-                    v = [x if isinstance(x, pd.Series) else pd.Series(x) for x in v]
-                result[k] = pd.concat(v, ignore_index=True).astype(current_dtype)
+                result[k] = pd.concat(series_list, ignore_index=True).astype(
+                    current_dtype
+                )
             elif current_dtype == bool:
-                if all(isinstance(x, pd.Series) for x in v):
-                    result[k] = pd.concat(v, ignore_index=True).astype("boolean")
-                else:
-                    result[k] = pd.Series(np.concatenate(v, axis=0)).astype("boolean")
+                result[k] = pd.concat(series_list, ignore_index=True).astype("boolean")
             else:
-                result[k] = np.concatenate(v, axis=0)
+                result[k] = pd.concat(series_list, ignore_index=True).astype(object)
         self.__query_result = None
         self.data_frame = pd.DataFrame(result, dtype=object)
         if not self.data_frame.empty:
