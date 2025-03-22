@@ -118,12 +118,6 @@ public:
             TSOpenSessionResp openResp;
             client->openSession(openResp, openReq);
             RpcUtils::verifySuccess(openResp.status);
-            if (Session::protocolVersion != openResp.serverProtocolVersion) {
-                if (openResp.serverProtocolVersion == 0) {
-                    throw IoTDBException(string("Protocol not supported, Client version is ") + to_string(Session::protocolVersion) +
-                                      ", but Server version is " + to_string(openResp.serverProtocolVersion));
-                }
-            }
             sessionId = openResp.sessionId;
             statementId = client->requestStatementId(sessionId);
         } catch (const TTransportException &e) {

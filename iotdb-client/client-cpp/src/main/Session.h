@@ -1080,13 +1080,12 @@ private:
 };
 
 class Session {
-public:
-    static const TSProtocolVersion::type protocolVersion = TSProtocolVersion::IOTDB_SERVICE_PROTOCOL_V3;
 private:
     std::string host;
     int rpcPort;
     std::string username;
     std::string password;
+    const TSProtocolVersion::type protocolVersion = TSProtocolVersion::IOTDB_SERVICE_PROTOCOL_V3;
     std::shared_ptr<IClientRPCServiceIf> client;
     std::shared_ptr<TTransport> transport;
     bool isClosed = true;
