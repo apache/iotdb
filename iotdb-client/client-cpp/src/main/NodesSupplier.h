@@ -40,11 +40,11 @@ public:
     const std::string IP_COLUMN_NAME = "RpcAddress";
     const std::string PORT_COLUMN_NAME = "RpcPort";
     const std::string REMOVING_STATUS = "Removing";
-    static constexpr int64_t TIMEOUT_IN_MS = 60000;
+    const int64_t TIMEOUT_IN_MS = 60000;
     const int FETCH_SIZE = 10000;
-    static constexpr THRIFT_DEFAULT_BUFFER_SIZE = 4096;
-    static constexpr THRIFT_MAX_FRAME_SIZE = 1048576;
-    static constexpr CONNECTION_TIMEOUT_IN_MS = 1000;
+    const int THRIFT_DEFAULT_BUFFER_SIZE = 4096;
+    const int THRIFT_MAX_FRAME_SIZE = 1048576;
+    const int CONNECTION_TIMEOUT_IN_MS = 1000;
     std::shared_ptr<ThriftConnection> client;
 
     std::string userName;
