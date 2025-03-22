@@ -57,6 +57,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.ExecutorService;
@@ -119,6 +120,7 @@ public class TopologyService implements Runnable, IClusterStatusSubscriber {
 
   public synchronized void startTopologyService() {
     if (future == null) {
+      CompletableFuture.runAsync(this, topologyThread);
       future = this.topologyThread.submit(this);
     }
     shouldRun.set(true);
@@ -130,7 +132,6 @@ public class TopologyService implements Runnable, IClusterStatusSubscriber {
     future.cancel(true);
     future = null;
     heartbeats.clear();
-    startingDataNodes.clear();
     LOGGER.info("Topology Probing has stopped successfully");
   }
 
@@ -154,7 +155,7 @@ public class TopologyService implements Runnable, IClusterStatusSubscriber {
     }
   }
 
-  private void topologyProbing() {
+  private synchronized void topologyProbing() {
     // 1. get the latest datanode list
     final List<TDataNodeLocation> dataNodeLocations = new ArrayList<>();
     final Set<Integer> dataNodeIds = new HashSet<>();
