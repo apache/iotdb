@@ -37,6 +37,8 @@ public class TSFileConfig implements Serializable {
 
   private boolean useMad = false;
 
+  private boolean writeM4LSM = true;
+
   private int errorParam = 1;
 
   /** encoding configuration */
@@ -189,6 +191,14 @@ public class TSFileConfig implements Serializable {
 
   public void setUseMad(boolean useMad) {
     this.useMad = useMad;
+  }
+
+  public boolean isWriteM4LSM() {
+    return writeM4LSM;
+  }
+
+  public void setWriteM4LSM(boolean writeM4LSM) {
+    this.writeM4LSM = writeM4LSM;
   }
 
   public int getErrorParam() {

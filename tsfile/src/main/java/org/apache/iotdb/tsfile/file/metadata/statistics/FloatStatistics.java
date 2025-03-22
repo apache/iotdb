@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.tsfile.file.metadata.statistics;
 
+import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.exception.filter.StatisticsClassException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
@@ -130,8 +131,10 @@ public class FloatStatistics extends Statistics<Float> {
       long topTimestamp,
       float last,
       double sumValue) {
-    updateMinInfo(minValue, bottomTimestamp);
-    updateMaxInfo(maxValue, topTimestamp);
+    if (TSFileDescriptor.getInstance().getConfig().isWriteM4LSM()) {
+      updateMinInfo(minValue, bottomTimestamp);
+      updateMaxInfo(maxValue, topTimestamp);
+    }
     this.sumValue += sumValue;
     this.lastValue = last;
   }
@@ -289,8 +292,10 @@ public class FloatStatistics extends Statistics<Float> {
   @Override
   public int serializeStats(OutputStream outputStream) throws IOException {
     int byteLen = 0;
-    byteLen += ReadWriteIOUtils.write(minInfo, minMaxDataType, outputStream);
-    byteLen += ReadWriteIOUtils.write(maxInfo, minMaxDataType, outputStream);
+    if (TSFileDescriptor.getInstance().getConfig().isWriteM4LSM()) {
+      byteLen += ReadWriteIOUtils.write(minInfo, minMaxDataType, outputStream);
+      byteLen += ReadWriteIOUtils.write(maxInfo, minMaxDataType, outputStream);
+    }
     byteLen += ReadWriteIOUtils.write(firstValue, outputStream);
     byteLen += ReadWriteIOUtils.write(lastValue, outputStream);
     byteLen += ReadWriteIOUtils.write(sumValue, outputStream);
@@ -310,8 +315,10 @@ public class FloatStatistics extends Statistics<Float> {
   /** @author Yuyuan Kang */
   @Override
   public void deserialize(ByteBuffer byteBuffer) {
-    this.minInfo = ReadWriteIOUtils.readMinMaxInfo(byteBuffer, minMaxDataType);
-    this.maxInfo = ReadWriteIOUtils.readMinMaxInfo(byteBuffer, minMaxDataType);
+    if (TSFileDescriptor.getInstance().getConfig().isWriteM4LSM()) {
+      this.minInfo = ReadWriteIOUtils.readMinMaxInfo(byteBuffer, minMaxDataType);
+      this.maxInfo = ReadWriteIOUtils.readMinMaxInfo(byteBuffer, minMaxDataType);
+    }
     this.firstValue = ReadWriteIOUtils.readFloat(byteBuffer);
     this.lastValue = ReadWriteIOUtils.readFloat(byteBuffer);
     this.sumValue = ReadWriteIOUtils.readDouble(byteBuffer);

@@ -118,6 +118,9 @@ public class TSFileDescriptor {
       conf.setUseMad(
           Boolean.parseBoolean(
               properties.getProperty("use_Mad", Boolean.toString(conf.isUseMad()))));
+      conf.setWriteM4LSM(
+          Boolean.parseBoolean(
+              properties.getProperty("write_m4_lsm", Boolean.toString(conf.isWriteM4LSM()))));
       conf.setErrorParam(
           Integer.parseInt(
               properties.getProperty("error_Param", Integer.toString(conf.getErrorParam()))));

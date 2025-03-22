@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.tsfile.file.metadata.statistics;
 
+import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.encoding.decoder.Decoder;
 import org.apache.iotdb.tsfile.encoding.decoder.PlainDecoder;
 import org.apache.iotdb.tsfile.exception.filter.StatisticsClassException;
@@ -133,10 +134,13 @@ public abstract class Statistics<T> {
     byteLen += ReadWriteIOUtils.write(endTime, outputStream);
     // value statistics of different data type
     byteLen += serializeStats(outputStream);
-    // serialize stepRegress
-    byteLen += serializeStepRegress(outputStream, true);
-    // serialize value index
-    byteLen += serializeValueIndex(outputStream, true);
+
+    if (TSFileDescriptor.getInstance().getConfig().isWriteM4LSM()) {
+      // serialize stepRegress
+      byteLen += serializeStepRegress(outputStream, true);
+      // serialize value index
+      byteLen += serializeValueIndex(outputStream, true);
+    }
     return byteLen;
   }
 
@@ -147,10 +151,12 @@ public abstract class Statistics<T> {
     byteLen += ReadWriteIOUtils.write(endTime, outputStream);
     // value statistics of different data type
     byteLen += serializeStats(outputStream);
-    // serialize stepRegress
-    byteLen += serializeStepRegress(outputStream, log);
-    // serialize value index
-    byteLen += serializeValueIndex(outputStream, log);
+    if (TSFileDescriptor.getInstance().getConfig().isWriteM4LSM()) {
+      // serialize stepRegress
+      byteLen += serializeStepRegress(outputStream, log);
+      // serialize value index
+      byteLen += serializeValueIndex(outputStream, log);
+    }
     return byteLen;
   }
 
@@ -312,8 +318,10 @@ public abstract class Statistics<T> {
       endTime = time;
     }
     // update time index
-    updateStepRegress(time);
-    updateValueIndex(value);
+    if (TSFileDescriptor.getInstance().getConfig().isWriteM4LSM()) {
+      updateStepRegress(time);
+      updateValueIndex(value);
+    }
     updateStats(value, time);
   }
 
@@ -326,8 +334,10 @@ public abstract class Statistics<T> {
     if (time > this.endTime) {
       endTime = time;
     }
-    updateStepRegress(time);
-    updateValueIndex(value);
+    if (TSFileDescriptor.getInstance().getConfig().isWriteM4LSM()) {
+      updateStepRegress(time);
+      updateValueIndex(value);
+    }
     updateStats(value, time);
   }
 
@@ -340,8 +350,10 @@ public abstract class Statistics<T> {
     if (time > this.endTime) {
       endTime = time;
     }
-    updateStepRegress(time);
-    updateValueIndex(value);
+    if (TSFileDescriptor.getInstance().getConfig().isWriteM4LSM()) {
+      updateStepRegress(time);
+      updateValueIndex(value);
+    }
     updateStats(value, time);
   }
 
@@ -354,8 +366,10 @@ public abstract class Statistics<T> {
     if (time > this.endTime) {
       endTime = time;
     }
-    updateStepRegress(time);
-    updateValueIndex(value);
+    if (TSFileDescriptor.getInstance().getConfig().isWriteM4LSM()) {
+      updateStepRegress(time);
+      updateValueIndex(value);
+    }
     updateStats(value, time);
   }
 
@@ -392,8 +406,10 @@ public abstract class Statistics<T> {
     if (time[batchSize - 1] > this.endTime) {
       endTime = time[batchSize - 1];
     }
-    updateStepRegress(time, batchSize);
-    updateValueIndex(values, batchSize);
+    if (TSFileDescriptor.getInstance().getConfig().isWriteM4LSM()) {
+      updateStepRegress(time, batchSize);
+      updateValueIndex(values, batchSize);
+    }
     updateStats(values, time, batchSize);
   }
 
@@ -406,8 +422,10 @@ public abstract class Statistics<T> {
     if (time[batchSize - 1] > this.endTime) {
       endTime = time[batchSize - 1];
     }
-    updateStepRegress(time, batchSize);
-    updateValueIndex(values, batchSize);
+    if (TSFileDescriptor.getInstance().getConfig().isWriteM4LSM()) {
+      updateStepRegress(time, batchSize);
+      updateValueIndex(values, batchSize);
+    }
     updateStats(values, time, batchSize);
   }
 
@@ -420,8 +438,10 @@ public abstract class Statistics<T> {
     if (time[batchSize - 1] > this.endTime) {
       endTime = time[batchSize - 1];
     }
-    updateStepRegress(time, batchSize);
-    updateValueIndex(values, batchSize);
+    if (TSFileDescriptor.getInstance().getConfig().isWriteM4LSM()) {
+      updateStepRegress(time, batchSize);
+      updateValueIndex(values, batchSize);
+    }
     updateStats(values, time, batchSize);
   }
 
@@ -434,8 +454,10 @@ public abstract class Statistics<T> {
     if (time[batchSize - 1] > this.endTime) {
       endTime = time[batchSize - 1];
     }
-    updateStepRegress(time, batchSize);
-    updateValueIndex(values, batchSize);
+    if (TSFileDescriptor.getInstance().getConfig().isWriteM4LSM()) {
+      updateStepRegress(time, batchSize);
+      updateValueIndex(values, batchSize);
+    }
     updateStats(values, time, batchSize);
   }
 
@@ -601,8 +623,10 @@ public abstract class Statistics<T> {
     statistics.setStartTime(ReadWriteIOUtils.readLong(buffer));
     statistics.setEndTime(ReadWriteIOUtils.readLong(buffer));
     statistics.deserialize(buffer);
-    statistics.deserializeStepRegress(buffer);
-    statistics.deserializeValueIndex(buffer);
+    if (TSFileDescriptor.getInstance().getConfig().isWriteM4LSM()) {
+      statistics.deserializeStepRegress(buffer);
+      statistics.deserializeValueIndex(buffer);
+    }
     statistics.isEmpty = false;
     return statistics;
   }

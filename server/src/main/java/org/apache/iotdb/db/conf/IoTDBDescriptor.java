@@ -929,6 +929,13 @@ public class IoTDBDescriptor {
                     Boolean.toString(TSFileDescriptor.getInstance().getConfig().isUseMad()))));
     TSFileDescriptor.getInstance()
         .getConfig()
+        .setWriteM4LSM(
+            Boolean.parseBoolean(
+                properties.getProperty(
+                    "write_m4_lsm",
+                    Boolean.toString(TSFileDescriptor.getInstance().getConfig().isWriteM4LSM()))));
+    TSFileDescriptor.getInstance()
+        .getConfig()
         .setErrorParam(
             Integer.parseInt(
                 properties.getProperty(
