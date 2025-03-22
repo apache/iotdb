@@ -28,9 +28,9 @@
 
 class ThriftConnection {
 public:
-    constexpr int THRIFT_DEFAULT_BUFFER_SIZE = 4096;
-    constexpr int THRIFT_MAX_FRAME_SIZE = 1048576;
-    constexpr int CONNECTION_TIMEOUT_IN_MS = 1000;
+    static constexpr int THRIFT_DEFAULT_BUFFER_SIZE;
+    static constexpr int THRIFT_MAX_FRAME_SIZE;
+    static constexpr int CONNECTION_TIMEOUT_IN_MS;
 private:
     TEndPoint endPoint;
 
@@ -187,5 +187,9 @@ public:
         }
     }
 };
+
+constexpr int ThriftConnection::THRIFT_DEFAULT_BUFFER_SIZE = 4096;
+constexpr int ThriftConnection::THRIFT_MAX_FRAME_SIZE = 1048576;
+constexpr int ThriftConnection::CONNECTION_TIMEOUT_IN_MS = 1000;
 
 #endif

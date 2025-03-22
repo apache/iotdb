@@ -35,16 +35,17 @@ class TEndPoint;
 
 class NodesSupplier {
 public:
-    const std::string SHOW_DATA_NODES_COMMAND = "SHOW DATANODES";
-    const std::string STATUS_COLUMN_NAME = "Status";
-    const std::string IP_COLUMN_NAME = "RpcAddress";
-    const std::string PORT_COLUMN_NAME = "RpcPort";
-    const std::string REMOVING_STATUS = "Removing";
-    const int64_t TIMEOUT_IN_MS = 60000;
-    const int FETCH_SIZE = 10000;
-    const int THRIFT_DEFAULT_BUFFER_SIZE = 4096;
-    const int THRIFT_MAX_FRAME_SIZE = 1048576;
-    const int CONNECTION_TIMEOUT_IN_MS = 1000;
+    static const std::string SHOW_DATA_NODES_COMMAND;
+    static const std::string STATUS_COLUMN_NAME;
+    static const std::string IP_COLUMN_NAME;
+    static const std::string PORT_COLUMN_NAME;
+    static const std::string REMOVING_STATUS;
+
+    static const int64_t TIMEOUT_IN_MS;
+    static const int FETCH_SIZE;
+    static const int THRIFT_DEFAULT_BUFFER_SIZE;
+    static const int THRIFT_MAX_FRAME_SIZE;
+    static const int CONNECTION_TIMEOUT_IN_MS;
     std::shared_ptr<ThriftConnection> client;
 
     std::string userName;
@@ -205,5 +206,17 @@ private:
         return nodes[roundRobinIndex++ % nodes.size()];
     }
 };
+
+const std::string NodesSupplier::SHOW_DATA_NODES_COMMAND = "SHOW DATANODES";
+const std::string NodesSupplier::STATUS_COLUMN_NAME = "Status";
+const std::string NodesSupplier::IP_COLUMN_NAME = "RpcAddress";
+const std::string NodesSupplier::PORT_COLUMN_NAME = "RpcPort";
+const std::string NodesSupplier::REMOVING_STATUS = "Removing";
+
+const int64_t NodesSupplier::TIMEOUT_IN_MS = 60000;
+const int NodesSupplier::FETCH_SIZE = 10000;
+const int NodesSupplier::THRIFT_DEFAULT_BUFFER_SIZE = 4096;
+const int NodesSupplier::THRIFT_MAX_FRAME_SIZE = 1048576;
+const int NodesSupplier::CONNECTION_TIMEOUT_IN_MS = 1000;
 
 #endif
