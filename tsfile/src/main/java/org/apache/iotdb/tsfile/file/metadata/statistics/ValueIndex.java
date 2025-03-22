@@ -33,7 +33,7 @@ import java.util.List;
 
 public class ValueIndex {
 
-  int errorParam = TSFileDescriptor.getInstance().getConfig().getErrorParam();
+  double errorParam = TSFileDescriptor.getInstance().getConfig().getErrorParam();
   private DoubleArrayList values = new DoubleArrayList();
   public SDTEncoder sdtEncoder = new SDTEncoder();
   public double errorBound = 0;

@@ -25,11 +25,7 @@ import org.apache.iotdb.tsfile.utils.Loader;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileNotFoundException;
-import java.io.IOException;
-import java.io.InputStream;
+import java.io.*;
 import java.net.URL;
 import java.util.Properties;
 import java.util.Set;
@@ -122,8 +118,8 @@ public class TSFileDescriptor {
           Boolean.parseBoolean(
               properties.getProperty("write_m4_lsm", Boolean.toString(conf.isWriteM4LSM()))));
       conf.setErrorParam(
-          Integer.parseInt(
-              properties.getProperty("error_Param", Integer.toString(conf.getErrorParam()))));
+          Double.parseDouble(
+              properties.getProperty("error_Param", Double.toString(conf.getErrorParam()))));
       conf.setUseValueIndex(
           Boolean.parseBoolean(
               properties.getProperty("use_ValueIndex", Boolean.toString(conf.isUseValueIndex()))));

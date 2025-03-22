@@ -937,10 +937,10 @@ public class IoTDBDescriptor {
     TSFileDescriptor.getInstance()
         .getConfig()
         .setErrorParam(
-            Integer.parseInt(
+            Double.parseDouble(
                 properties.getProperty(
                     "error_Param",
-                    Integer.toString(TSFileDescriptor.getInstance().getConfig().getErrorParam()))));
+                    Double.toString(TSFileDescriptor.getInstance().getConfig().getErrorParam()))));
     TSFileDescriptor.getInstance()
         .getConfig()
         .setUseValueIndex(

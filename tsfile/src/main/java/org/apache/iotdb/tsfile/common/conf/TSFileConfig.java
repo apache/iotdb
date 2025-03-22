@@ -39,7 +39,7 @@ public class TSFileConfig implements Serializable {
 
   private boolean writeM4LSM = true;
 
-  private int errorParam = 1;
+  private double errorParam = 1;
 
   /** encoding configuration */
   public static final int RLE_MIN_REPEATED_NUM = 8;
@@ -201,11 +201,11 @@ public class TSFileConfig implements Serializable {
     this.writeM4LSM = writeM4LSM;
   }
 
-  public int getErrorParam() {
+  public double getErrorParam() {
     return errorParam;
   }
 
-  public void setErrorParam(int errorParam) {
+  public void setErrorParam(double errorParam) {
     this.errorParam = errorParam;
   }
 
