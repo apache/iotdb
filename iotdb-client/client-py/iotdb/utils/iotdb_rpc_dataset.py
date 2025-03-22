@@ -157,10 +157,10 @@ class IoTDBRpcDataSet(object):
         if self.has_cached_data_frame or self.__query_result is None:
             return True
         result = {}
-        has_null = []
+        has_pd_series = []
         for i in range(len(self.__column_index_2_tsblock_column_index_list)):
             result[i] = []
-            has_null.append(False)
+            has_pd_series.append(False)
         while self.__query_result_index < len(self.__query_result):
             time_column_values, column_values, null_indicators, _ = deserialize(
                 self.__query_result[self.__query_result_index]
@@ -239,19 +239,20 @@ class IoTDBRpcDataSet(object):
                     # INT32, DATE
                     if data_type == 1 or data_type == 9:
                         tmp_array = pd.Series(tmp_array, dtype="Int32")
+                        has_pd_series[i] = True
                     # INT64, TIMESTAMP
                     elif data_type == 2 or data_type == 8:
                         tmp_array = pd.Series(tmp_array, dtype="Int64")
+                        has_pd_series[i] = True
                     # BOOLEAN
                     elif data_type == 0:
                         tmp_array = pd.Series(tmp_array, dtype="boolean")
+                        has_pd_series[i] = True
                     data_array = tmp_array
 
-                if isinstance(data_array, pd.Series):
-                    has_null[i] = True
                 result[i].append(data_array)
         for k, v in result.items():
-            if not has_null[k]:
+            if not has_pd_series[k]:
                 result[k] = np.concatenate(v, axis=0)
             else:
                 v = [x if isinstance(x, pd.Series) else pd.Series(x) for x in v]
