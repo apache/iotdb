@@ -63,7 +63,7 @@ public abstract class BooleanTVList extends TVList {
   }
 
   @Override
-  public BooleanTVList clone() {
+  public synchronized BooleanTVList clone() {
     BooleanTVList cloneList = BooleanTVList.newList();
     cloneAs(cloneList);
     cloneBitMap(cloneList);

@@ -64,7 +64,7 @@ public abstract class BinaryTVList extends TVList {
   }
 
   @Override
-  public BinaryTVList clone() {
+  public synchronized BinaryTVList clone() {
     BinaryTVList cloneList = BinaryTVList.newList();
     cloneAs(cloneList);
     cloneBitMap(cloneList);

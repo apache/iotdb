@@ -63,7 +63,7 @@ public abstract class IntTVList extends TVList {
   }
 
   @Override
-  public IntTVList clone() {
+  public synchronized IntTVList clone() {
     IntTVList cloneList = IntTVList.newList();
     cloneAs(cloneList);
     cloneBitMap(cloneList);
