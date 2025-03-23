@@ -84,4 +84,15 @@ public class PipeDataNodeBuilder {
     }
     return consensusGroupIdToPipeTaskMap;
   }
+
+  public Map<Integer, PipeTask> buildExternalPipeTasks() {
+    final Map<Integer, PipeTask> consensusGroupIdToPipeTaskMap = new HashMap<>();
+    int parallelism =
+        pipeMeta.getStaticMeta().getExtractorParameters().getIntOrDefault("parallelism", 1);
+    for (int i = -1; i >= -parallelism; i--) {
+      consensusGroupIdToPipeTaskMap.put(
+          i, new PipeDataNodeTaskBuilder(pipeMeta.getStaticMeta(), i, null).build());
+    }
+    return consensusGroupIdToPipeTaskMap;
+  }
 }

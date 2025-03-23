@@ -594,6 +594,10 @@ public class PipeTaskInfo implements SnapshotProcessor {
                             return; // pipe consensus pipe task will not change
                           }
 
+                          if (PipeType.EXTERNAL.equals(pipeMeta.getStaticMeta().getPipeType())) {
+                            return;
+                          }
+
                           final Map<Integer, PipeTaskMeta> consensusGroupIdToTaskMetaMap =
                               pipeMeta.getRuntimeMeta().getConsensusGroupId2TaskMetaMap();
 
@@ -613,6 +617,9 @@ public class PipeTaskInfo implements SnapshotProcessor {
                           } else {
                             // If CN does not contain the region group, it means the data
                             // region group is newly added.
+                            if (PipeType.EXTERNAL.equals(pipeMeta.getStaticMeta().getPipeType())) {
+                              return;
+                            }
                             if (newLeader != -1) {
                               consensusGroupIdToTaskMetaMap.put(
                                   consensusGroupId.getId(),

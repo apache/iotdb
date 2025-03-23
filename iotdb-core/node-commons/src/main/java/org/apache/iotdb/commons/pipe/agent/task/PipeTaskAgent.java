@@ -30,6 +30,7 @@ import org.apache.iotdb.commons.pipe.agent.task.meta.PipeStaticMeta;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeStatus;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTemporaryMetaInAgent;
+import org.apache.iotdb.commons.pipe.agent.task.meta.PipeType;
 import org.apache.iotdb.commons.pipe.agent.task.progress.CommitterKey;
 import org.apache.iotdb.commons.pipe.agent.task.progress.PipeEventCommitManager;
 import org.apache.iotdb.commons.pipe.connector.limiter.PipeEndPointRateLimiter;
@@ -195,8 +196,10 @@ public abstract class PipeTaskAgent {
     // Then check if pipe runtime meta has changed, if so, update the pipe
     final PipeRuntimeMeta runtimeMetaInAgent = metaInAgent.getRuntimeMeta();
     final PipeRuntimeMeta runtimeMetaFromCoordinator = metaFromCoordinator.getRuntimeMeta();
-    executeSinglePipeRuntimeMetaChanges(
-        staticMetaFromCoordinator, runtimeMetaFromCoordinator, runtimeMetaInAgent);
+    if (!PipeType.EXTERNAL.equals(staticMetaFromCoordinator.getPipeType())) {
+      executeSinglePipeRuntimeMetaChanges(
+          staticMetaFromCoordinator, runtimeMetaFromCoordinator, runtimeMetaInAgent);
+    }
   }
 
   private void executeSinglePipeRuntimeMetaChanges(

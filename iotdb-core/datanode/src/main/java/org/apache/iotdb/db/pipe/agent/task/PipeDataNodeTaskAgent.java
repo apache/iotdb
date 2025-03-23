@@ -117,6 +117,9 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
   @Override
   protected Map<Integer, PipeTask> buildPipeTasks(final PipeMeta pipeMetaFromConfigNode)
       throws IllegalPathException {
+    if (PipeType.EXTERNAL == pipeMetaFromConfigNode.getStaticMeta().getPipeType()) {
+      return new PipeDataNodeBuilder(pipeMetaFromConfigNode).buildExternalPipeTasks();
+    }
     return new PipeDataNodeBuilder(pipeMetaFromConfigNode).build();
   }
 

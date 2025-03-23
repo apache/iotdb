@@ -31,6 +31,7 @@ public class PipeSubtaskExecutorManager {
   private final PipeConnectorSubtaskExecutor connectorExecutor;
   private final SubscriptionSubtaskExecutor subscriptionExecutor;
   private final PipeConsensusSubtaskExecutor consensusExecutor;
+  private final PipeConnectorSubtaskExecutor externalExecutor;
 
   public PipeProcessorSubtaskExecutor getProcessorExecutor() {
     return processorExecutor;
@@ -44,6 +45,10 @@ public class PipeSubtaskExecutorManager {
     return subscriptionExecutor;
   }
 
+  public PipeConnectorSubtaskExecutor getExternalExecutor() {
+    return externalExecutor;
+  }
+
   public PipeConsensusSubtaskExecutor getConsensusExecutor() {
     return consensusExecutor;
   }
@@ -55,6 +60,7 @@ public class PipeSubtaskExecutorManager {
     connectorExecutor = new PipeConnectorSubtaskExecutor();
     subscriptionExecutor = new SubscriptionSubtaskExecutor();
     consensusExecutor = new PipeConsensusSubtaskExecutor();
+    externalExecutor = new PipeConnectorSubtaskExecutor();
   }
 
   private static class PipeTaskExecutorHolder {

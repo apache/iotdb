@@ -269,7 +269,7 @@ public class CreatePipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
           new PipeTaskMeta(
               new RecoverProgressIndex(senderDataNodeId, new SimpleProgressIndex(0, 0)),
               senderDataNodeId));
-    } else {
+    } else if (!PipeType.EXTERNAL.equals(pipeStaticMeta.getPipeType())) {
       // data regions & schema regions
       env.getConfigManager()
           .getLoadManager()

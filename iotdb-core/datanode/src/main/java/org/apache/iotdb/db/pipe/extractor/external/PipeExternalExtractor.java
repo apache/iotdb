@@ -38,7 +38,7 @@ public class PipeExternalExtractor implements PipeExtractor {
   protected final AtomicBoolean hasBeenStarted = new AtomicBoolean(false);
   protected final AtomicBoolean isClosed = new AtomicBoolean(false);
 
-  final String deviceId = "root.sg.d1";
+  protected String deviceId = "root.sg.d1";
   final long[] times = new long[] {110L, 111L, 112L, 113L, 114L};
   final String[] measurementIds =
       new String[] {"s1", "s2", "s3", "s4", "s5", "s6", "s7", "s8", "s9", "s10"};
@@ -83,6 +83,7 @@ public class PipeExternalExtractor implements PipeExtractor {
     pipeName = environment.getPipeName();
     creationTime = environment.getCreationTime();
     pipeTaskMeta = environment.getPipeTaskMeta();
+    deviceId = "root.sg.d" + -environment.getRegionId();
   }
 
   @Override
@@ -151,8 +152,13 @@ public class PipeExternalExtractor implements PipeExtractor {
                 pipeTaskMeta,
                 null,
                 false);
+        if (!event.increaseReferenceCount(PipeExternalExtractor.class.getName())) {
+          LOGGER.warn(
+              "The reference count of the event {} cannot be increased, skipping it.", event);
+          continue;
+        }
         pendingQueue.waitedOffer(event);
-        Thread.sleep(1000); // Adjust polling interval as needed
+        Thread.sleep(1000);
       }
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
@@ -166,7 +172,7 @@ public class PipeExternalExtractor implements PipeExtractor {
     if (isClosed.get()) {
       return null;
     }
-    return (PipeRawTabletInsertionEvent) pendingQueue.directPoll();
+    return pendingQueue.directPoll();
   }
 
   @Override
