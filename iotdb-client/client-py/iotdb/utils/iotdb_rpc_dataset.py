@@ -250,13 +250,9 @@ class IoTDBRpcDataSet(object):
                     elif data_type == 0:
                         tmp_array = pd.Series(tmp_array, dtype="boolean")
                         has_pd_series[i] = True
-                    # FLOAT
-                    elif data_type == 3:
-                        tmp_array = pd.Series(tmp_array, dtype="Float32")
-                        has_pd_series[i] = True
-                    # DOUBLE
-                    elif data_type == 4:
-                        tmp_array = pd.Series(tmp_array, dtype="Float64")
+                    # FLOAT, DOUBLE
+                    elif data_type == 3 or data_type == 4:
+                        tmp_array = pd.Series(tmp_array)
                         has_pd_series[i] = True
                     data_array = tmp_array
 
