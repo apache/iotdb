@@ -35,6 +35,8 @@ import java.util.concurrent.atomic.AtomicBoolean;
 public class MemoryRuntimeAgent implements IService {
   private static final Logger LOGGER = LoggerFactory.getLogger(MemoryRuntimeAgent.class);
   private static final CommonConfig CONFIG = CommonDescriptor.getInstance().getConfig();
+  private static final MemoryManager ON_HEAP_MEMORY_MANAGER =
+      MemoryConfig.global().getMemoryManager("OnHeap");
   private static final boolean ENABLE_MEMORY_TRANSFER = CONFIG.isEnableMemoryTransfer();
   private static final boolean ENABLE_MEMORY_ADAPT = CONFIG.isEnableMemoryAdapt();
   private static final long MEMORY_CHECK_INTERVAL_IN_S = CONFIG.getMemoryCheckIntervalInS();
@@ -74,21 +76,19 @@ public class MemoryRuntimeAgent implements IService {
   }
 
   private void transferMemory() {
-    MemoryManager onHeapMemoryManager = MemoryConfig.global().getMemoryManager("OnHeap");
-    if (onHeapMemoryManager != null) {
-      onHeapMemoryManager.updateCache();
-      onHeapMemoryManager.transfer();
+    if (ON_HEAP_MEMORY_MANAGER != null) {
+      ON_HEAP_MEMORY_MANAGER.updateCache();
+      ON_HEAP_MEMORY_MANAGER.transfer();
     }
   }
 
   private void adaptTotalMemory() {
     long totalMemory = Runtime.getRuntime().totalMemory();
-    MemoryManager memoryManager = MemoryConfig.global().getMemoryManager("OnHeap");
-    if (memoryManager != null) {
-      long originMemorySize = memoryManager.getInitialAllocatedMemorySizeInBytes();
+    if (ON_HEAP_MEMORY_MANAGER != null) {
+      long originMemorySize = ON_HEAP_MEMORY_MANAGER.getInitialAllocatedMemorySizeInBytes();
       if (originMemorySize != totalMemory) {
         LOGGER.info("Total memory size changed from {} to {}", originMemorySize, totalMemory);
-        memoryManager.resizeByRatio((double) totalMemory / originMemorySize);
+        ON_HEAP_MEMORY_MANAGER.resizeByRatio((double) totalMemory / originMemorySize);
       }
     }
   }
