@@ -22,6 +22,7 @@ package org.apache.iotdb.db.queryengine.plan.relational.planner.distribute;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.PlanFragmentId;
+import org.apache.iotdb.db.queryengine.execution.exchange.sink.DownStreamChannelLocation;
 import org.apache.iotdb.db.queryengine.plan.ClusterTopology;
 import org.apache.iotdb.db.queryengine.plan.analyze.QueryType;
 import org.apache.iotdb.db.queryengine.plan.planner.distribution.NodeDistribution;
@@ -31,7 +32,9 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.PlanFragment;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.SubPlan;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.sink.MultiChildrenSinkNode;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Analysis;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ExchangeNode;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CountDevice;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowDevice;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Statement;
@@ -80,7 +83,7 @@ public class TableModelQueryFragmentPlanner extends AbstractFragmentParallelPlan
   @Override
   public List<FragmentInstance> parallelPlan() {
     prepare();
-    calculateNodeTopologyBetweenInstance(fragmentInstanceList, planNodeMap, instanceMap);
+    calculateNodeTopologyBetweenInstance();
     return fragmentInstanceList;
   }
 
@@ -97,6 +100,35 @@ public class TableModelQueryFragmentPlanner extends AbstractFragmentParallelPlan
   private void recordPlanNodeRelation(PlanNode root, PlanFragmentId planFragmentId) {
     planNodeMap.put(root.getPlanNodeId(), new Pair<>(planFragmentId, root));
     root.getChildren().forEach(child -> recordPlanNodeRelation(child, planFragmentId));
+  }
+
+  private void calculateNodeTopologyBetweenInstance() {
+    for (FragmentInstance instance : fragmentInstanceList) {
+      PlanNode rootNode = instance.getFragment().getPlanNodeTree();
+      if (rootNode instanceof MultiChildrenSinkNode) {
+        MultiChildrenSinkNode sinkNode = (MultiChildrenSinkNode) rootNode;
+        for (DownStreamChannelLocation downStreamChannelLocation :
+            sinkNode.getDownStreamChannelLocationList()) {
+          // Set target Endpoint for FragmentSinkNode
+          PlanNodeId downStreamNodeId =
+              new PlanNodeId(downStreamChannelLocation.getRemotePlanNodeId());
+          FragmentInstance downStreamInstance =
+              findDownStreamInstance(planNodeMap, instanceMap, downStreamNodeId);
+          downStreamChannelLocation.setRemoteEndpoint(
+              downStreamInstance.getHostDataNode().getMPPDataExchangeEndPoint());
+          downStreamChannelLocation.setRemoteFragmentInstanceId(
+              downStreamInstance.getId().toThrift());
+
+          // Set upstream info for corresponding ExchangeNode in downstream FragmentInstance
+          PlanNode downStreamExchangeNode = planNodeMap.get(downStreamNodeId).right;
+          ((ExchangeNode) downStreamExchangeNode)
+              .setUpstream(
+                  instance.getHostDataNode().getMPPDataExchangeEndPoint(),
+                  instance.getId(),
+                  sinkNode.getPlanNodeId());
+        }
+      }
+    }
   }
 
   private void produceFragmentInstance(

@@ -28,14 +28,11 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.queryengine.common.DataNodeEndPoints;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.PlanFragmentId;
-import org.apache.iotdb.db.queryengine.execution.exchange.sink.DownStreamChannelLocation;
 import org.apache.iotdb.db.queryengine.plan.planner.IFragmentParallelPlaner;
 import org.apache.iotdb.db.queryengine.plan.planner.exceptions.ReplicaSetUnreachableException;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.sink.MultiChildrenSinkNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.distribute.TableModelQueryFragmentPlanner;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ExchangeNode;
 
 import org.apache.commons.collections4.CollectionUtils;
 import org.apache.tsfile.utils.Pair;
@@ -140,39 +137,7 @@ public abstract class AbstractFragmentParallelPlanner implements IFragmentParall
     return availableDataNodes.get(targetIndex);
   }
 
-  protected void calculateNodeTopologyBetweenInstance(
-      List<FragmentInstance> fragmentInstanceList,
-      Map<PlanNodeId, Pair<PlanFragmentId, PlanNode>> planNodeMap,
-      Map<PlanFragmentId, FragmentInstance> instanceMap) {
-    for (FragmentInstance instance : fragmentInstanceList) {
-      PlanNode rootNode = instance.getFragment().getPlanNodeTree();
-      if (rootNode instanceof MultiChildrenSinkNode) {
-        MultiChildrenSinkNode sinkNode = (MultiChildrenSinkNode) rootNode;
-        for (DownStreamChannelLocation downStreamChannelLocation :
-            sinkNode.getDownStreamChannelLocationList()) {
-          // Set target Endpoint for FragmentSinkNode
-          PlanNodeId downStreamNodeId =
-              new PlanNodeId(downStreamChannelLocation.getRemotePlanNodeId());
-          FragmentInstance downStreamInstance =
-              findDownStreamInstance(planNodeMap, instanceMap, downStreamNodeId);
-          downStreamChannelLocation.setRemoteEndpoint(
-              downStreamInstance.getHostDataNode().getMPPDataExchangeEndPoint());
-          downStreamChannelLocation.setRemoteFragmentInstanceId(
-              downStreamInstance.getId().toThrift());
-
-          // Set upstream info for corresponding ExchangeNode in downstream FragmentInstance
-          PlanNode downStreamExchangeNode = planNodeMap.get(downStreamNodeId).right;
-          ((ExchangeNode) downStreamExchangeNode)
-              .setUpstream(
-                  instance.getHostDataNode().getMPPDataExchangeEndPoint(),
-                  instance.getId(),
-                  sinkNode.getPlanNodeId());
-        }
-      }
-    }
-  }
-
-  private FragmentInstance findDownStreamInstance(
+  protected FragmentInstance findDownStreamInstance(
       Map<PlanNodeId, Pair<PlanFragmentId, PlanNode>> planNodeMap,
       Map<PlanFragmentId, FragmentInstance> instanceMap,
       PlanNodeId exchangeNodeId) {
