@@ -29,22 +29,13 @@
 #include <condition_variable>
 #include <algorithm>
 
-#include "Session.h"
 #include "ThriftConnection.h"
 
 class TEndPoint;
 
 class RoundRobinPolicy {
 public:
-    static TEndPoint select(const std::vector<TEndPoint>& nodes) {
-        static std::atomic_uint index{0};
-
-        if (nodes.empty()) {
-            throw IoTDBException("No available nodes");
-        }
-
-        return nodes[index++ % nodes.size()];
-    }
+    static TEndPoint select(const std::vector<TEndPoint>& nodes);
 };
 
 class INodesSupplier {
@@ -58,21 +49,11 @@ public:
 class DummyNodesSupplier : public INodesSupplier {
 public:
     explicit DummyNodesSupplier(const std::vector<TEndPoint>& nodes, 
-                                NodeSelectionPolicy policy = RoundRobinPolicy::select) 
-        : availableNodes_(nodes), policy_(std::move(policy)) {}
+                                NodeSelectionPolicy policy = RoundRobinPolicy::select);
 
-    boost::optional<TEndPoint> getQueryEndPoint() override {
-        try {
-            if (availableNodes_.empty()) {
-                return boost::none;
-            }
-            return policy_(availableNodes_);
-        } catch (const IoTDBException& e) {
-            return boost::none;
-        }
-    }
+    boost::optional<TEndPoint> getQueryEndPoint() override;
 
-    ~DummyNodesSupplier() override {}
+    ~DummyNodesSupplier() override;
 
 private:
     const std::vector<TEndPoint> availableNodes_;
@@ -92,8 +73,35 @@ public:
     static const int THRIFT_DEFAULT_BUFFER_SIZE;
     static const int THRIFT_MAX_FRAME_SIZE;
     static const int CONNECTION_TIMEOUT_IN_MS;
-    std::shared_ptr<ThriftConnection> client;
 
+    static std::shared_ptr<NodesSupplier> create(
+        std::vector<TEndPoint> endpoints,
+        std::string userName, std::string password, std::string zoneId = "",
+        int32_t thriftDefaultBufferSize = ThriftConnection::THRIFT_DEFAULT_BUFFER_SIZE,
+        int32_t thriftMaxFrameSize = ThriftConnection::THRIFT_MAX_FRAME_SIZE,
+        int32_t connectionTimeoutInMs = ThriftConnection::CONNECTION_TIMEOUT_IN_MS,
+        bool useSSL = false, bool enableRPCCompression = false,
+        std::string version = "V_1_0",
+        std::chrono::milliseconds refreshInterval = std::chrono::milliseconds(TIMEOUT_IN_MS),
+        NodeSelectionPolicy policy = RoundRobinPolicy::select
+    );
+
+    NodesSupplier(
+        std::string userName, std::string password, const std::string& zoneId,
+        int32_t thriftDefaultBufferSize, int32_t thriftMaxFrameSize,
+        int32_t connectionTimeoutInMs, bool useSSL, bool enableRPCCompression,
+        std::string version, std::vector<TEndPoint> endpoints, NodeSelectionPolicy policy
+    );
+
+    std::vector<TEndPoint> getCurrentEndpoints();
+
+    TEndPoint selectQueryEndpoint();
+
+    boost::optional<TEndPoint> getQueryEndPoint() override;
+
+    ~NodesSupplier() override;
+
+private:
     std::string userName;
     std::string password;
     int32_t thriftDefaultBufferSize;
@@ -103,166 +111,26 @@ public:
     bool enableRPCCompression;
     std::string version;
     std::string zoneId;
-    
-    static std::shared_ptr<NodesSupplier> create(std::vector<TEndPoint> endpoints,
-        std::string userName, std::string password, std::string zoneId = "",
-        int32_t thriftDefaultBufferSize = ThriftConnection::THRIFT_DEFAULT_BUFFER_SIZE,
-        int32_t thriftMaxFrameSize = ThriftConnection::THRIFT_MAX_FRAME_SIZE,
-        int32_t connectionTimeoutInMs = ThriftConnection::CONNECTION_TIMEOUT_IN_MS,
-        bool useSSL = false, bool enableRPCCompression = false,
-        std::string version = "V_1_0",
-        std::chrono::milliseconds refreshInterval = std::chrono::milliseconds(TIMEOUT_IN_MS),
-        NodeSelectionPolicy policy = RoundRobinPolicy::select) {
-        if (endpoints.empty()) {
-            return nullptr;
-        }
-        auto supplier = std::make_shared<NodesSupplier>(userName, password, zoneId, thriftDefaultBufferSize,
-            thriftMaxFrameSize, connectionTimeoutInMs, useSSL, enableRPCCompression, version, std::move(endpoints), std::move(policy));
-        supplier->startBackgroundRefresh(refreshInterval);
-        return supplier;
-    }
 
-    NodesSupplier(std::string userName, std::string password, std::string zoneId, int32_t thriftDefaultBufferSize,
-        int32_t thriftMaxFrameSize, int32_t connectionTimeoutInMs, bool useSSL, bool enableRPCCompression,
-        std::string version, std::vector<TEndPoint> endpoints, NodeSelectionPolicy policy) : userName(userName),
-            password(password), zoneId(zoneId),
-            thriftDefaultBufferSize(thriftDefaultBufferSize),
-            thriftMaxFrameSize(thriftMaxFrameSize), connectionTimeoutInMs(connectionTimeoutInMs),
-            useSSL(useSSL), enableRPCCompression(enableRPCCompression),
-            version(version), endpoints(std::move(endpoints)),
-            selectionPolicy(std::move(policy)){
-        deduplicateEndpoints();
-    }
-
-    std::vector<TEndPoint> getCurrentEndpoints() {
-        std::lock_guard<std::mutex> lock(mutex);
-        return endpoints;
-    }
-
-    TEndPoint selectQueryEndpoint() {
-        std::lock_guard<std::mutex> lock(mutex);
-        return selectionPolicy(endpoints);
-    }
-
-    boost::optional<TEndPoint> getQueryEndPoint() override {
-        try {
-            return selectQueryEndpoint();
-        } catch (const IoTDBException& e) {
-            return boost::none;
-        } catch (...) {
-            return boost::none;
-        }
-    }
-
-    ~NodesSupplier() override {
-        stopBackgroundRefresh();
-    }
-
-private:
     std::mutex mutex;
     std::vector<TEndPoint> endpoints;
     NodeSelectionPolicy selectionPolicy;
-    
+
     std::atomic<bool> isRunning{false};
     std::thread refreshThread;
     std::condition_variable refreshCondition;
 
-    std::shared_ptr<IClientRPCServiceIf> rpcClient;
+    std::shared_ptr<ThriftConnection> client;
 
-    void deduplicateEndpoints() {
-        std::vector<TEndPoint> uniqueEndpoints;
-        uniqueEndpoints.reserve(endpoints.size());
-        for (const auto& endpoint : endpoints) {
-            if (std::find(uniqueEndpoints.begin(), uniqueEndpoints.end(), endpoint) == uniqueEndpoints.end()) {
-                uniqueEndpoints.push_back(endpoint);
-            }
-        }
-        endpoints = std::move(uniqueEndpoints);
-    }
+    void deduplicateEndpoints();
 
-    void startBackgroundRefresh(std::chrono::milliseconds interval) {
-        isRunning = true;
-        refreshThread = std::thread([this, interval] {
-            while (isRunning) {
-                refreshEndpointList();
-                std::unique_lock<std::mutex> cvLock(this->mutex);
-                refreshCondition.wait_for(cvLock, interval, [this]() {
-                    return !isRunning.load();
-                });
-            }
-        });
-    }
+    void startBackgroundRefresh(std::chrono::milliseconds interval);
 
-    std::vector<TEndPoint> fetchLatestEndpoints() {
-        if (client == nullptr) {
-            client = std::make_shared<ThriftConnection>(selectionPolicy(endpoints));
-            client->init(userName, password, enableRPCCompression, zoneId, version);
-        }
-        unique_ptr<SessionDataSet> sessionDataSet = client->executeQueryStatement(SHOW_DATA_NODES_COMMAND);
-        uint32_t columnAddrIdx = -1, columnPortIdx = -1, columnStatusIdx = -1;
-        auto columnNames = sessionDataSet->getColumnNames();
-        for (uint32_t i = 0; i < columnNames.size(); i++) {
-            if (columnNames[i] == IP_COLUMN_NAME) {
-                columnAddrIdx = i;
-            } else if (columnNames[i] == PORT_COLUMN_NAME) {
-                columnPortIdx = i;
-            } else if (columnNames[i] == STATUS_COLUMN_NAME) {
-                columnStatusIdx = i;
-            }
-        }
-        std::vector<TEndPoint> ret;
-        try {
-            while (sessionDataSet->hasNext()) {
-                RowRecord* record = sessionDataSet->next();
-                std::string ip = record->fields.at(columnAddrIdx).stringV;
-                int32_t port = record->fields.at(columnPortIdx).intV;
-                if (ip == "0.0.0.0" || REMOVING_STATUS == record->fields.at(columnStatusIdx).stringV) {
-                    std::cout << ip << ":" << port << std::endl;
-                    continue;
-                }
-                TEndPoint endpoint;
-                endpoint.ip = ip;
-                endpoint.port = port;
-                ret.emplace_back(endpoint);
-            }
-        }
-        catch (exception& e) {
-            client.reset();
-            throw IoTDBException(std::string("NodesSupplier::fetchLatestEndpoints") + e.what());
-        }
-        return ret;
-    }
+    std::vector<TEndPoint> fetchLatestEndpoints();
 
-    void refreshEndpointList() {
-        auto newEndpoints = fetchLatestEndpoints();
-        if (newEndpoints.empty()) {
-            return;
-        }
-        std::lock_guard<std::mutex> lock(mutex);
-        endpoints.swap(newEndpoints);
-        deduplicateEndpoints();
-    }
+    void refreshEndpointList();
 
-    void stopBackgroundRefresh() noexcept {
-        if (isRunning.exchange(false)) {
-            refreshCondition.notify_all();
-            if (refreshThread.joinable()) {
-                refreshThread.join();
-            }
-        }
-    }
+    void stopBackgroundRefresh() noexcept;
 };
-
-const std::string NodesSupplier::SHOW_DATA_NODES_COMMAND = "SHOW DATANODES";
-const std::string NodesSupplier::STATUS_COLUMN_NAME = "Status";
-const std::string NodesSupplier::IP_COLUMN_NAME = "RpcAddress";
-const std::string NodesSupplier::PORT_COLUMN_NAME = "RpcPort";
-const std::string NodesSupplier::REMOVING_STATUS = "Removing";
-
-const int64_t NodesSupplier::TIMEOUT_IN_MS = 60000;
-const int NodesSupplier::FETCH_SIZE = 10000;
-const int NodesSupplier::THRIFT_DEFAULT_BUFFER_SIZE = 4096;
-const int NodesSupplier::THRIFT_MAX_FRAME_SIZE = 1048576;
-const int NodesSupplier::CONNECTION_TIMEOUT_IN_MS = 1000;
 
 #endif
