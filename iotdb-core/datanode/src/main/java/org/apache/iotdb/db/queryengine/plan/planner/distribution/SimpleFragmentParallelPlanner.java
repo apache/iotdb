@@ -156,7 +156,7 @@ public class SimpleFragmentParallelPlanner extends AbstractFragmentParallelPlann
     fragmentInstanceList.add(fragmentInstance);
   }
 
-  void calculateNodeTopologyBetweenInstance() {
+  private void calculateNodeTopologyBetweenInstance() {
     for (FragmentInstance instance : fragmentInstanceList) {
       PlanNode rootNode = instance.getFragment().getPlanNodeTree();
       if (rootNode instanceof MultiChildrenSinkNode) {
