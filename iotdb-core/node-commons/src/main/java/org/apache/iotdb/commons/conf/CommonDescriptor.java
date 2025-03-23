@@ -270,6 +270,12 @@ public class CommonDescriptor {
     config.setShrinkAll(
         Boolean.parseBoolean(
             properties.getProperty("shrink_all", Boolean.toString(config.isShrinkAll()))));
+    config.setLowBound(
+        Double.parseDouble(
+            properties.getProperty("low_bound", String.valueOf(config.getLowBound()))));
+    config.setStepRatio(
+        Double.parseDouble(
+            properties.getProperty("step_ratio", String.valueOf(config.getStepRatio()))));
   }
 
   private void loadPipeProps(TrimProperties properties) {

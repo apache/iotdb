@@ -386,6 +386,8 @@ public class CommonConfig {
   private boolean enableMemoryAdapt = false;
   private boolean isShrinkAll = true;
   private long memoryCheckIntervalInS = 20;
+  private double lowBound = 0.9;
+  private double stepRatio = 0.1;
 
   CommonConfig() {
     // Empty constructor
@@ -1821,5 +1823,21 @@ public class CommonConfig {
 
   public void setShrinkAll(boolean shrinkAll) {
     isShrinkAll = shrinkAll;
+  }
+
+  public double getStepRatio() {
+    return stepRatio;
+  }
+
+  public void setStepRatio(double stepRatio) {
+    this.stepRatio = stepRatio;
+  }
+
+  public double getLowBound() {
+    return lowBound;
+  }
+
+  public void setLowBound(double lowBound) {
+    this.lowBound = lowBound;
   }
 }

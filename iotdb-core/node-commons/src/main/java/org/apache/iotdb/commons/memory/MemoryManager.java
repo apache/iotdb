@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.commons.memory;
 
+import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.utils.TestOnly;
 
@@ -34,6 +35,8 @@ import java.util.function.LongUnaryOperator;
 public class MemoryManager {
   private static final Logger LOGGER = LoggerFactory.getLogger(MemoryManager.class);
 
+  private static final CommonConfig CONFIG = CommonDescriptor.getInstance().getConfig();
+
   /** The max retry times for memory allocation */
   private static final int MEMORY_ALLOCATE_MAX_RETRIES = 3;
 
@@ -44,12 +47,12 @@ public class MemoryManager {
   private static final long MEMORY_ALLOCATE_MIN_SIZE_IN_BYTES = 32;
 
   /** Whether to take all dynamic part into consideration when shrink */
-  private boolean shrinkAll = CommonDescriptor.getInstance().getConfig().isShrinkAll();
+  private boolean shrinkAll = CONFIG.isShrinkAll();
 
   /** The threshold of memory update */
-  private double lowBound = 0.9;
+  private double lowBound = CONFIG.getLowBound();
 
-  private double stepRatio = 0.1;
+  private double stepRatio = CONFIG.getStepRatio();
 
   /** The name of memory manager */
   private final String name;
