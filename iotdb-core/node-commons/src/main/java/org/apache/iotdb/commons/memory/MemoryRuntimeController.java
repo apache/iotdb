@@ -32,8 +32,8 @@ import org.slf4j.LoggerFactory;
 
 import java.util.concurrent.atomic.AtomicBoolean;
 
-public class MemoryRuntimeAgent implements IService {
-  private static final Logger LOGGER = LoggerFactory.getLogger(MemoryRuntimeAgent.class);
+public class MemoryRuntimeController implements IService {
+  private static final Logger LOGGER = LoggerFactory.getLogger(MemoryRuntimeController.class);
   private static final CommonConfig CONFIG = CommonDescriptor.getInstance().getConfig();
   private static final MemoryManager ON_HEAP_MEMORY_MANAGER =
       MemoryConfig.global().getMemoryManager("OnHeap");
@@ -57,7 +57,7 @@ public class MemoryRuntimeAgent implements IService {
     if (ENABLE_MEMORY_TRANSFER) {
       LOGGER.info(
           "Enable automatic memory transfer with an interval of {} s", MEMORY_CHECK_INTERVAL_IN_S);
-      MemoryRuntimeAgent.getInstance()
+      MemoryRuntimeController.getInstance()
           .registerPeriodicalJob(
               "GlobalMemoryManager#transfer()", this::transferMemory, MEMORY_CHECK_INTERVAL_IN_S);
     }
@@ -65,7 +65,7 @@ public class MemoryRuntimeAgent implements IService {
     if (ENABLE_MEMORY_ADAPT) {
       LOGGER.info(
           "Enable automatic memory adapt with an interval of {} s", MEMORY_CHECK_INTERVAL_IN_S);
-      MemoryRuntimeAgent.getInstance()
+      MemoryRuntimeController.getInstance()
           .registerPeriodicalJob(
               "MemoryRuntimeAgent#adaptTotalMemory()",
               this::adaptTotalMemory,
@@ -109,14 +109,14 @@ public class MemoryRuntimeAgent implements IService {
 
   @Override
   public ServiceType getID() {
-    return ServiceType.MEMORY_RUNTIME_AGENT;
+    return ServiceType.MEMORY_RUNTIME_CONTROLLER;
   }
 
   private static class MemoryRuntimeAgentHolder {
-    private static final MemoryRuntimeAgent HANDLE = new MemoryRuntimeAgent();
+    private static final MemoryRuntimeController HANDLE = new MemoryRuntimeController();
   }
 
-  public static MemoryRuntimeAgent getInstance() {
+  public static MemoryRuntimeController getInstance() {
     return MemoryRuntimeAgentHolder.HANDLE;
   }
 }
