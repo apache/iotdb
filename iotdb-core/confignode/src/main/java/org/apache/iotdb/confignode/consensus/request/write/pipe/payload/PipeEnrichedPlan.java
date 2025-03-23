@@ -22,6 +22,8 @@ package org.apache.iotdb.confignode.consensus.request.write.pipe.payload;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
 
+import org.apache.tsfile.utils.ReadWriteIOUtils;
+
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -62,26 +64,13 @@ public class PipeEnrichedPlan extends ConfigPhysicalPlan {
     ByteBuffer buffer = innerPlan.serializeToByteBuffer();
     stream.write(buffer.array(), 0, buffer.limit());
 
-    if (originClusterId == null) {
-      stream.writeBoolean(false);
-    } else {
-      stream.writeBoolean(true);
-      stream.writeUTF(originClusterId);
-    }
+    ReadWriteIOUtils.write(originClusterId, stream);
   }
 
   @Override
   protected void deserializeImpl(ByteBuffer buffer) throws IOException {
     innerPlan = ConfigPhysicalPlan.Factory.create(buffer);
-
-    if (buffer.hasRemaining() && buffer.get() == 1) { // Read boolean
-      int strLength = buffer.getShort();
-      byte[] bytes = new byte[strLength];
-      buffer.get(bytes);
-      originClusterId = new String(bytes);
-    } else {
-      originClusterId = null;
-    }
+    originClusterId = ReadWriteIOUtils.readString(buffer);
   }
 
   @Override
