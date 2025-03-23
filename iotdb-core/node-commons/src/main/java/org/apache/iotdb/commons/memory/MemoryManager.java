@@ -47,7 +47,9 @@ public class MemoryManager {
   private boolean shrinkAll = CommonDescriptor.getInstance().getConfig().isShrinkAll();
 
   /** The threshold of memory update */
-  private double memoryUpdateThreshold = 0.1;
+  private double lowBound = 0.9;
+
+  private double stepRatio = 0.1;
 
   /** The name of memory manager */
   private final String name;
@@ -554,12 +556,10 @@ public class MemoryManager {
   /** Whether this memory manager is available to shrink */
   private synchronized boolean isAvailableToShrink() {
     if (!shrinkAll) {
-      return initialAllocatedMemorySizeInBytes - totalMemorySizeInBytes
-              < initialAllocatedMemorySizeInBytes * memoryUpdateThreshold
+      return totalMemorySizeInBytes >= initialAllocatedMemorySizeInBytes * lowBound
           && totalMemorySizeInBytes > allocatedMemorySizeInBytes;
     } else {
-      return initialAllocatedMemorySizeInBytes - totalMemorySizeInBytes
-              < initialAllocatedMemorySizeInBytes * memoryUpdateThreshold
+      return totalMemorySizeInBytes >= initialAllocatedMemorySizeInBytes * lowBound
           && (totalMemorySizeInBytes - cachedStaticAllocatedMemorySizeInBytes)
               > (cachedUsedMemorySizeInBytes - cachedStaticUsedMemorySizeInBytes);
     }
@@ -573,9 +573,8 @@ public class MemoryManager {
               Math.max(
                   0,
                   Math.min(
-                      getAvailableMemorySizeInBytes() * memoryUpdateThreshold,
-                      totalMemorySizeInBytes
-                          - initialAllocatedMemorySizeInBytes * (1 - memoryUpdateThreshold)));
+                      getAvailableMemorySizeInBytes() * stepRatio,
+                      totalMemorySizeInBytes - initialAllocatedMemorySizeInBytes * lowBound));
       totalMemorySizeInBytes -= shrinkSize;
       return shrinkSize;
     } else {
@@ -586,9 +585,8 @@ public class MemoryManager {
                 Math.max(
                     0,
                     Math.min(
-                        getAvailableMemorySizeInBytes() * memoryUpdateThreshold,
-                        totalMemorySizeInBytes
-                            - initialAllocatedMemorySizeInBytes * (1 - memoryUpdateThreshold)));
+                        getAvailableMemorySizeInBytes() * stepRatio,
+                        totalMemorySizeInBytes - initialAllocatedMemorySizeInBytes * lowBound));
         totalMemorySizeInBytes -= shrinkSize;
         return shrinkSize;
       } else {
@@ -628,7 +626,7 @@ public class MemoryManager {
           return targetMemoryManager.shrink();
         } else if (targetMemoryBlock != null) {
           // if targetMemoryBlock is not null, we shrink the targetMemoryBlock
-          long shrinkSize = -targetMemoryBlock.resizeByRatio(1 - memoryUpdateThreshold / 10);
+          long shrinkSize = -targetMemoryBlock.resizeByRatio(1 - (1 - lowBound) * stepRatio);
           long beforeTotalMemorySizeInBytes = totalMemorySizeInBytes;
           totalMemorySizeInBytes -= shrinkSize;
           allocatedMemorySizeInBytes -= shrinkSize;
@@ -706,8 +704,13 @@ public class MemoryManager {
     return this;
   }
 
-  public MemoryManager setMemoryUpdateThreshold(double memory_update_threshold) {
-    this.memoryUpdateThreshold = memory_update_threshold;
+  public MemoryManager setLowBound(double lowBound) {
+    this.lowBound = lowBound;
+    return this;
+  }
+
+  public MemoryManager setStepRatio(double stepRatio) {
+    this.stepRatio = stepRatio;
     return this;
   }
 
