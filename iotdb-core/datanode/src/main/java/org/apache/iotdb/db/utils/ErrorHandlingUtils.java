@@ -154,9 +154,8 @@ public class ErrorHandlingUtils {
     } else if (t instanceof QueryInBatchStatementException) {
       return RpcUtils.getStatus(
           TSStatusCode.QUERY_NOT_ALLOWED, INFO_NOT_ALLOWED_IN_BATCH_ERROR + rootCause.getMessage());
-    } else if (t instanceof RootFIPlacementException) {
-      return RpcUtils.getStatus(TSStatusCode.PLAN_FAILED_NETWORK_PARTITION, rootCause.getMessage());
-    } else if (t instanceof ReplicaSetUnreachableException) {
+    } else if (t instanceof RootFIPlacementException
+        || t instanceof ReplicaSetUnreachableException) {
       return RpcUtils.getStatus(TSStatusCode.PLAN_FAILED_NETWORK_PARTITION, rootCause.getMessage());
     } else if (t instanceof IoTDBException) {
       return RpcUtils.getStatus(((IoTDBException) t).getErrorCode(), rootCause.getMessage());

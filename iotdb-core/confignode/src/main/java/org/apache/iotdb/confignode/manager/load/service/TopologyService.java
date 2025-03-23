@@ -234,7 +234,7 @@ public class TopologyService implements Runnable, IClusterStatusSubscriber {
     }
 
     if (!partitioned.isEmpty()) {
-      logAsymmetricPartition(partitioned);
+      logAsymmetricPartition(partitioned, dataNodeIds.size());
     }
 
     // 5. notify the listeners on topology change
@@ -243,8 +243,14 @@ public class TopologyService implements Runnable, IClusterStatusSubscriber {
     }
   }
 
-  private void logAsymmetricPartition(final Map<Integer, Set<Integer>> partitioned) {
+  private void logAsymmetricPartition(
+      final Map<Integer, Set<Integer>> partitioned, final int totalNodes) {
     for (final int fromId : partitioned.keySet()) {
+      final Set<Integer> unreachable = partitioned.get(fromId);
+      if (unreachable.size() >= totalNodes - 1) {
+        // this node is partitioned symmetrically from other nodes
+        continue;
+      }
       for (final int toId : partitioned.get(fromId)) {
         if (partitioned.get(toId) == null || !partitioned.get(toId).contains(fromId)) {
           LOGGER.warn("[Topology] Asymmetric network partition from {} to {}", fromId, toId);
