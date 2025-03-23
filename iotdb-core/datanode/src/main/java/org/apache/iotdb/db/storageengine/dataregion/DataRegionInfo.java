@@ -38,6 +38,7 @@ public class DataRegionInfo {
    */
   private final AtomicLong memoryCost;
 
+  // TODO @spricoder dynamic threshold
   /** The threshold of reporting it's size to SystemInfo */
   private final long storageGroupSizeReportThreshold =
       (long)

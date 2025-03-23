@@ -495,7 +495,7 @@ public class MemoryManager {
    *
    * @param ratio the ratio of new total memory size to old total memory size
    */
-  public synchronized void reAllocateInitialMemoryAccordingToRatio(double ratio) {
+  public synchronized void resizeByRatio(double ratio) {
     // Update initial allocated memory size by ratio
     long beforeInitialAllocatedMemorySizeInBytes = this.initialAllocatedMemorySizeInBytes;
     this.initialAllocatedMemorySizeInBytes *= ratio;
@@ -511,7 +511,7 @@ public class MemoryManager {
     }
     // Re-allocate memory for all child memory managers
     for (Map.Entry<String, MemoryManager> entry : children.entrySet()) {
-      entry.getValue().reAllocateInitialMemoryAccordingToRatio(ratio);
+      entry.getValue().resizeByRatio(ratio);
     }
     if (updateCallback.get() != null) {
       try {

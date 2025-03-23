@@ -88,8 +88,7 @@ public class MemoryRuntimeAgent implements IService {
       long originMemorySize = memoryManager.getInitialAllocatedMemorySizeInBytes();
       if (originMemorySize != totalMemory) {
         LOGGER.info("Total memory size changed from {} to {}", originMemorySize, totalMemory);
-        memoryManager.reAllocateInitialMemoryAccordingToRatio(
-            (double) totalMemory / originMemorySize);
+        memoryManager.resizeByRatio((double) totalMemory / originMemorySize);
       }
     }
   }
