@@ -36,7 +36,6 @@ import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileManager;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -45,7 +44,7 @@ import java.util.stream.Collectors;
 
 public class ReplicateProgressDataNodeManager implements ReplicateProgressManager {
   private static final int DATA_NODE_ID = IoTDBDescriptor.getInstance().getConfig().getDataNodeId();
-  private static final Map<String, AtomicLong> groupId2ReplicateIndex = new HashMap<>();
+  private static final Map<String, AtomicLong> groupId2ReplicateIndex = new ConcurrentHashMap<>();
   private final Map<ConsensusGroupId, ProgressIndex> groupId2MaxProgressIndex;
   private final Map<ConsensusPipeName, Long> consensusPipe2pinnedCommitIndexForMigration;
 
