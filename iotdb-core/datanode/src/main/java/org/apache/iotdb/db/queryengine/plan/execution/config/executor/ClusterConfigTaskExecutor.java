@@ -1470,7 +1470,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
   public SettableFuture<ConfigTaskResult> setSqlDialect(IClientSession.SqlDialect sqlDialect) {
     final SettableFuture<ConfigTaskResult> future = SettableFuture.create();
     try {
-      SessionManager.getInstance().getCurrSession().setSqlDialect(sqlDialect);
+      SessionManager.getInstance().getCurrSession().setSqlDialectAndClean(sqlDialect);
       future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
     } catch (Exception e) {
       future.setException(e);
