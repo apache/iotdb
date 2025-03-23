@@ -1331,8 +1331,8 @@ public class PipeConsensusReceiver {
     private final PipeConsensusTsFileWriterPool tsFileWriterPool;
     private final AtomicInteger WALEventCount = new AtomicInteger(0);
     private final AtomicInteger tsFileEventCount = new AtomicInteger(0);
-    private long onSyncedReplicateIndex = 0;
-    private int connectorRebootTimes = 0;
+    private volatile long onSyncedReplicateIndex = 0;
+    private volatile int connectorRebootTimes = 0;
 
     public RequestExecutor(
         PipeConsensusReceiverMetrics metric, PipeConsensusTsFileWriterPool tsFileWriterPool) {
