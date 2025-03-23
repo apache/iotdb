@@ -63,7 +63,6 @@ public class PipeEnrichedPlan extends ConfigPhysicalPlan {
     stream.writeShort(getType().getPlanType());
     ByteBuffer buffer = innerPlan.serializeToByteBuffer();
     stream.write(buffer.array(), 0, buffer.limit());
-
     ReadWriteIOUtils.write(originClusterId, stream);
   }
 
