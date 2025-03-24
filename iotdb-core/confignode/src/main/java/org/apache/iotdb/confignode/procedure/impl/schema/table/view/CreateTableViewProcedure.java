@@ -139,7 +139,7 @@ public class CreateTableViewProcedure extends CreateTableProcedure {
         isGeneratedByPipe
             ? ProcedureType.PIPE_ENRICHED_CREATE_TABLE_VIEW_PROCEDURE.getTypeCode()
             : ProcedureType.CREATE_TABLE_VIEW_PROCEDURE.getTypeCode());
-    serializeAttributes(stream);
+    innerSerialize(stream);
     ReadWriteIOUtils.write(replace, stream);
 
     ReadWriteIOUtils.write(Objects.nonNull(oldView), stream);

@@ -256,6 +256,10 @@ public class DropTableColumnProcedure
         isGeneratedByPipe
             ? ProcedureType.PIPE_ENRICHED_DROP_TABLE_COLUMN_PROCEDURE.getTypeCode()
             : ProcedureType.DROP_TABLE_COLUMN_PROCEDURE.getTypeCode());
+    innerSerialize(stream);
+  }
+
+  protected void innerSerialize(final DataOutputStream stream) throws IOException {
     super.serialize(stream);
 
     ReadWriteIOUtils.write(columnName, stream);

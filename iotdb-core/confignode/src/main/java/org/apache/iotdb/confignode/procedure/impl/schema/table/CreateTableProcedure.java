@@ -274,10 +274,10 @@ public class CreateTableProcedure
         isGeneratedByPipe
             ? ProcedureType.PIPE_ENRICHED_CREATE_TABLE_PROCEDURE.getTypeCode()
             : ProcedureType.CREATE_TABLE_PROCEDURE.getTypeCode());
-    serializeAttributes(stream);
+    innerSerialize(stream);
   }
 
-  protected void serializeAttributes(final DataOutputStream stream) throws IOException {
+  protected void innerSerialize(final DataOutputStream stream) throws IOException {
     super.serialize(stream);
     ReadWriteIOUtils.write(database, stream);
     table.serialize(stream);

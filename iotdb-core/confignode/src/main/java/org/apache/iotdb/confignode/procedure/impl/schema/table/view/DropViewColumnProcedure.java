@@ -50,6 +50,6 @@ public class DropViewColumnProcedure extends DropTableColumnProcedure {
         isGeneratedByPipe
             ? ProcedureType.PIPE_ENRICHED_DROP_VIEW_COLUMN_PROCEDURE.getTypeCode()
             : ProcedureType.DROP_VIEW_COLUMN_PROCEDURE.getTypeCode());
-    super.serialize(stream);
+    innerSerialize(stream);
   }
 }

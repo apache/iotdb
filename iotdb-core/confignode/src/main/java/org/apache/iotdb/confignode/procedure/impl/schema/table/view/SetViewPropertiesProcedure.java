@@ -19,4 +19,38 @@
 
 package org.apache.iotdb.confignode.procedure.impl.schema.table.view;
 
-public class SetViewPropertiesProcedure {}
+import org.apache.iotdb.confignode.procedure.impl.schema.table.SetTablePropertiesProcedure;
+import org.apache.iotdb.confignode.procedure.store.ProcedureType;
+
+import java.io.DataOutputStream;
+import java.io.IOException;
+import java.util.Map;
+
+public class SetViewPropertiesProcedure extends SetTablePropertiesProcedure {
+  public SetViewPropertiesProcedure(final boolean isGeneratedByPipe) {
+    super(isGeneratedByPipe);
+  }
+
+  public SetViewPropertiesProcedure(
+      final String database,
+      final String tableName,
+      final String queryId,
+      final Map<String, String> properties,
+      final boolean isGeneratedByPipe) {
+    super(database, tableName, queryId, properties, isGeneratedByPipe);
+  }
+
+  @Override
+  protected String getActionMessage() {
+    return "set view properties";
+  }
+
+  @Override
+  public void serialize(final DataOutputStream stream) throws IOException {
+    stream.writeShort(
+        isGeneratedByPipe
+            ? ProcedureType.PIPE_ENRICHED_SET_VIEW_PROPERTIES_PROCEDURE.getTypeCode()
+            : ProcedureType.SET_VIEW_PROPERTIES_PROCEDURE.getTypeCode());
+    innerSerialize(stream);
+  }
+}

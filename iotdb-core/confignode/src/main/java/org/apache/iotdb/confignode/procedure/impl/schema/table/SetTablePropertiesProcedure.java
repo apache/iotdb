@@ -226,6 +226,10 @@ public class SetTablePropertiesProcedure
         isGeneratedByPipe
             ? ProcedureType.PIPE_ENRICHED_SET_TABLE_PROPERTIES_PROCEDURE.getTypeCode()
             : ProcedureType.SET_TABLE_PROPERTIES_PROCEDURE.getTypeCode());
+    innerSerialize(stream);
+  }
+
+  protected void innerSerialize(final DataOutputStream stream) throws IOException {
     super.serialize(stream);
 
     ReadWriteIOUtils.write(originalProperties, stream);
