@@ -578,8 +578,10 @@ public class ConfigPlanExecutor {
       case SetTableProperties:
         return clusterSchemaInfo.setTableProperties((SetTablePropertiesPlan) physicalPlan);
       case PreDeleteColumn:
+      case PreDeleteViewColumn:
         return clusterSchemaInfo.preDeleteColumn((PreDeleteColumnPlan) physicalPlan);
       case CommitDeleteColumn:
+      case CommitDeleteViewColumn:
         return clusterSchemaInfo.commitDeleteColumn((CommitDeleteColumnPlan) physicalPlan);
       case PreDeleteTable:
         return clusterSchemaInfo.preDeleteTable((PreDeleteTablePlan) physicalPlan);

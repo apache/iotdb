@@ -120,6 +120,7 @@ import org.apache.iotdb.confignode.consensus.request.write.table.view.PreCreateT
 import org.apache.iotdb.confignode.consensus.request.write.table.view.PreDeleteViewColumnPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.view.PreDeleteViewPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.view.SetViewCommentPlan;
+import org.apache.iotdb.confignode.consensus.request.write.table.view.SetViewPropertiesPlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.CommitSetSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.CreateSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.DropSchemaTemplatePlan;
@@ -406,7 +407,10 @@ public abstract class ConfigPhysicalPlan implements IConsensusRequest {
           plan = new AddTableViewColumnPlan();
           break;
         case SetTableProperties:
-          plan = new SetTablePropertiesPlan();
+          plan = new SetTablePropertiesPlan(configPhysicalPlanType);
+          break;
+        case SetViewProperties:
+          plan = new SetViewPropertiesPlan();
           break;
         case RenameTableColumn:
           plan = new RenameTableColumnPlan();

@@ -19,6 +19,18 @@
 
 package org.apache.iotdb.confignode.consensus.request.write.table.view;
 
+import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
 import org.apache.iotdb.confignode.consensus.request.write.table.SetTablePropertiesPlan;
 
-public class SetViewPropertiesPlan extends SetTablePropertiesPlan {}
+import java.util.Map;
+
+public class SetViewPropertiesPlan extends SetTablePropertiesPlan {
+  public SetViewPropertiesPlan() {
+    super(ConfigPhysicalPlanType.SetViewProperties);
+  }
+
+  public SetViewPropertiesPlan(
+      final String database, final String tableName, final Map<String, String> properties) {
+    super(ConfigPhysicalPlanType.SetViewProperties, database, tableName, properties);
+  }
+}
