@@ -394,12 +394,13 @@ public class DataRegion implements IDataRegionForQuery {
 
     // init data dirs' root disks
     this.rootDisks2DataDirsMapForLoad = new HashMap<>(config.getDataDirs().length);
-    for (String dataDir : config.getDataDirs()) {
+    for (String dataDir : config.getTierDataDirs()[0]) {
       File dataDirFile = new File(dataDir);
       try {
         String mountPoint = PathUtils.getMountPoint(dataDirFile.getCanonicalPath());
         this.rootDisks2DataDirsMapForLoad.put(
             mountPoint, fsFactory.getFile(dataDir, IoTDBConstant.UNSEQUENCE_FOLDER_NAME).getPath());
+        logger.info("Add {}'s mount point {}", dataDir, mountPoint);
       } catch (Exception e) {
         logger.warn(
             "Exception occurs when reading data dir's mount point {}, may because your OS is windows.",
