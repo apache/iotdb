@@ -19,4 +19,31 @@
 
 package org.apache.iotdb.confignode.procedure.impl.schema.table.view;
 
-public class DropViewProcedure {}
+import org.apache.iotdb.confignode.procedure.impl.schema.table.DropTableProcedure;
+import org.apache.iotdb.confignode.procedure.store.ProcedureType;
+
+import java.io.DataOutputStream;
+import java.io.IOException;
+
+public class DropViewProcedure extends DropTableProcedure {
+  public DropViewProcedure(final boolean isGeneratedByPipe) {
+    super(isGeneratedByPipe);
+  }
+
+  public DropViewProcedure(
+      final String database,
+      final String tableName,
+      final String queryId,
+      final boolean isGeneratedByPipe) {
+    super(database, tableName, queryId, isGeneratedByPipe);
+  }
+
+  @Override
+  public void serialize(final DataOutputStream stream) throws IOException {
+    stream.writeShort(
+        isGeneratedByPipe
+            ? ProcedureType.PIPE_ENRICHED_DROP_VIEW_PROCEDURE.getTypeCode()
+            : ProcedureType.DROP_VIEW_PROCEDURE.getTypeCode());
+    innerSerialize(stream);
+  }
+}

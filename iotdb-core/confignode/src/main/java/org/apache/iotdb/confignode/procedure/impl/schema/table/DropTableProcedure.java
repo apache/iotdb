@@ -234,4 +234,8 @@ public class DropTableProcedure extends AbstractAlterOrDropTableProcedure<DropTa
             : ProcedureType.DROP_TABLE_PROCEDURE.getTypeCode());
     super.serialize(stream);
   }
+
+  protected void innerSerialize(final DataOutputStream stream) throws IOException {
+    super.serialize(stream);
+  }
 }
