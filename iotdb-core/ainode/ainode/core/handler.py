@@ -24,7 +24,6 @@ from ainode.thrift.ainode.ttypes import (TDeleteModelReq, TRegisterModelReq,
                                          TAIHeartbeatReq, TInferenceReq, TRegisterModelResp, TInferenceResp,
                                          TAIHeartbeatResp, TTrainingReq)
 from ainode.thrift.common.ttypes import TSStatus
-from ainode.core.manager.training_manager import TrainingManager
 
 
 class AINodeRPCServiceHandler(IAINodeRPCService.Iface):
@@ -45,5 +44,4 @@ class AINodeRPCServiceHandler(IAINodeRPCService.Iface):
         return ClusterManager.get_heart_beat(req)
 
     def createTrainingTask(self, req: TTrainingReq) -> TSStatus:
-        return self._training_manager.create_training_task(req.modelId, req.modelType, req.targetTables, req.parameters)
-
+        pass
