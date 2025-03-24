@@ -19,6 +19,16 @@
 
 package org.apache.iotdb.confignode.consensus.request.write.table.view;
 
+import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
 import org.apache.iotdb.confignode.consensus.request.write.table.RenameTableColumnPlan;
 
-public class RenameViewColumnPlan extends RenameTableColumnPlan {}
+public class RenameViewColumnPlan extends RenameTableColumnPlan {
+  public RenameViewColumnPlan() {
+    super(ConfigPhysicalPlanType.RenameViewColumn);
+  }
+
+  public RenameViewColumnPlan(
+      final String database, final String tableName, final String oldName, final String newName) {
+    super(ConfigPhysicalPlanType.RenameViewColumn, database, tableName, oldName, newName);
+  }
+}

@@ -104,6 +104,7 @@ import org.apache.iotdb.confignode.procedure.impl.schema.table.view.AddViewColum
 import org.apache.iotdb.confignode.procedure.impl.schema.table.view.CreateTableViewProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.table.view.DropViewColumnProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.table.view.DropViewProcedure;
+import org.apache.iotdb.confignode.procedure.impl.schema.table.view.RenameViewColumnProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.table.view.SetViewPropertiesProcedure;
 import org.apache.iotdb.confignode.procedure.impl.subscription.consumer.CreateConsumerProcedure;
 import org.apache.iotdb.confignode.procedure.impl.subscription.consumer.DropConsumerProcedure;
@@ -1847,19 +1848,30 @@ public class ProcedureManager {
   }
 
   public TSStatus alterTableRenameColumn(final TAlterOrDropTableReq req) {
+    final boolean isView = req.isSetIsView() && req.isIsView();
     return executeWithoutDuplicate(
         req.database,
         null,
         req.tableName,
         req.queryId,
-        ProcedureType.RENAME_TABLE_COLUMN_PROCEDURE,
-        new RenameTableColumnProcedure(
-            req.database,
-            req.tableName,
-            req.queryId,
-            ReadWriteIOUtils.readString(req.updateInfo),
-            ReadWriteIOUtils.readString(req.updateInfo),
-            false));
+        isView
+            ? ProcedureType.RENAME_VIEW_COLUMN_PROCEDURE
+            : ProcedureType.RENAME_TABLE_COLUMN_PROCEDURE,
+        isView
+            ? new RenameViewColumnProcedure(
+                req.database,
+                req.tableName,
+                req.queryId,
+                ReadWriteIOUtils.readString(req.updateInfo),
+                ReadWriteIOUtils.readString(req.updateInfo),
+                false)
+            : new RenameTableColumnProcedure(
+                req.database,
+                req.tableName,
+                req.queryId,
+                ReadWriteIOUtils.readString(req.updateInfo),
+                ReadWriteIOUtils.readString(req.updateInfo),
+                false));
   }
 
   public TSStatus alterTableDropColumn(final TAlterOrDropTableReq req) {
@@ -2018,12 +2030,14 @@ public class ProcedureManager {
         case SET_TABLE_PROPERTIES_PROCEDURE:
         case SET_VIEW_PROPERTIES_PROCEDURE:
         case RENAME_TABLE_COLUMN_PROCEDURE:
+        case RENAME_VIEW_COLUMN_PROCEDURE:
         case DROP_TABLE_COLUMN_PROCEDURE:
         case DROP_VIEW_COLUMN_PROCEDURE:
         case DROP_TABLE_PROCEDURE:
         case DROP_VIEW_PROCEDURE:
         case DELETE_DEVICES_PROCEDURE:
         case RENAME_TABLE_PROCEDURE:
+        case RENAME_VIEW_PROCEDURE:
           final AbstractAlterOrDropTableProcedure<?> alterTableProcedure =
               (AbstractAlterOrDropTableProcedure<?>) procedure;
           if (type == thisType && queryId.equals(alterTableProcedure.getQueryId())) {

@@ -24,10 +24,12 @@ import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.confignode.consensus.request.write.table.RenameTableColumnPlan;
+import org.apache.iotdb.confignode.consensus.request.write.table.view.RenameViewColumnPlan;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureSuspendedException;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureYieldException;
+import org.apache.iotdb.confignode.procedure.impl.schema.table.view.RenameViewColumnProcedure;
 import org.apache.iotdb.confignode.procedure.state.schema.RenameTableColumnState;
 import org.apache.iotdb.confignode.procedure.store.ProcedureType;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -110,7 +112,8 @@ public class RenameTableColumnProcedure
       final Pair<TSStatus, TsTable> result =
           env.getConfigManager()
               .getClusterSchemaManager()
-              .tableColumnCheckForColumnRenaming(database, tableName, oldName, newName);
+              .tableColumnCheckForColumnRenaming(
+                  database, tableName, oldName, newName, this instanceof RenameViewColumnProcedure);
       final TSStatus status = result.getLeft();
       if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         setFailure(
@@ -135,7 +138,9 @@ public class RenameTableColumnProcedure
         env.getConfigManager()
             .getClusterSchemaManager()
             .executePlan(
-                new RenameTableColumnPlan(database, tableName, oldName, newName),
+                this instanceof RenameViewColumnProcedure
+                    ? new RenameViewColumnPlan(database, tableName, oldName, newName)
+                    : new RenameTableColumnPlan(database, tableName, oldName, newName),
                 isGeneratedByPipe);
     if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       setFailure(new ProcedureException(new IoTDBException(status.getMessage(), status.getCode())));
