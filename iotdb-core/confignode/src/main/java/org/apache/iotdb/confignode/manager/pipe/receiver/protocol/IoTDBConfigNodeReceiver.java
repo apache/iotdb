@@ -70,6 +70,7 @@ import org.apache.iotdb.confignode.consensus.request.write.table.SetTablePropert
 import org.apache.iotdb.confignode.consensus.request.write.table.view.AddTableViewColumnPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.view.CommitDeleteViewColumnPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.view.SetViewCommentPlan;
+import org.apache.iotdb.confignode.consensus.request.write.table.view.SetViewPropertiesPlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.CommitSetSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.ExtendSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.trigger.DeleteTriggerInTablePlan;
@@ -97,6 +98,7 @@ import org.apache.iotdb.confignode.procedure.impl.schema.table.SetTablePropertie
 import org.apache.iotdb.confignode.procedure.impl.schema.table.view.AddViewColumnProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.table.view.CreateTableViewProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.table.view.DropViewColumnProcedure;
+import org.apache.iotdb.confignode.procedure.impl.schema.table.view.SetViewPropertiesProcedure;
 import org.apache.iotdb.confignode.procedure.store.ProcedureType;
 import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
 import org.apache.iotdb.confignode.rpc.thrift.TDeleteDatabasesReq;
@@ -679,6 +681,21 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
                     ((SetTablePropertiesPlan) plan).getTableName(),
                     queryId,
                     ((SetTablePropertiesPlan) plan).getProperties(),
+                    true));
+      case SetViewProperties:
+        return configManager
+            .getProcedureManager()
+            .executeWithoutDuplicate(
+                ((SetViewPropertiesPlan) plan).getDatabase(),
+                null,
+                ((SetViewPropertiesPlan) plan).getTableName(),
+                queryId,
+                ProcedureType.SET_VIEW_PROPERTIES_PROCEDURE,
+                new SetViewPropertiesProcedure(
+                    ((SetViewPropertiesPlan) plan).getDatabase(),
+                    ((SetViewPropertiesPlan) plan).getTableName(),
+                    queryId,
+                    ((SetViewPropertiesPlan) plan).getProperties(),
                     true));
       case CommitDeleteColumn:
         return configManager
