@@ -383,11 +383,14 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
       case AddTableColumn:
       case AddViewColumn:
       case SetTableProperties:
+      case SetViewProperties:
       case CommitDeleteColumn:
+      case CommitDeleteViewColumn:
       case SetTableComment:
       case SetViewComment:
       case SetTableColumnComment:
       case RenameTable:
+      case RenameView:
         return configManager
             .checkUserPrivileges(
                 username,
@@ -397,6 +400,7 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
                     PrivilegeType.ALTER))
             .getStatus();
       case CommitDeleteTable:
+      case CommitDeleteView:
         return configManager
             .checkUserPrivileges(
                 username,
