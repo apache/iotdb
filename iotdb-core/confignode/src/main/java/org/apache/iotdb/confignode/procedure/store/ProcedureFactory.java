@@ -237,7 +237,7 @@ public class ProcedureFactory implements IProcedureFactory {
         procedure = new DropTableProcedure(false);
         break;
       case DROP_VIEW_PROCEDURE:
-        procedure = new DropViewProcedure(false)
+        procedure = new DropViewProcedure(false);
         break;
       case DELETE_DEVICES_PROCEDURE:
         procedure = new DeleteDevicesProcedure(false);
