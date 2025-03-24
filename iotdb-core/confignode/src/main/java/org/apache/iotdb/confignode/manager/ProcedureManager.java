@@ -103,6 +103,7 @@ import org.apache.iotdb.confignode.procedure.impl.schema.table.SetTablePropertie
 import org.apache.iotdb.confignode.procedure.impl.schema.table.view.AddViewColumnProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.table.view.CreateTableViewProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.table.view.DropViewColumnProcedure;
+import org.apache.iotdb.confignode.procedure.impl.schema.table.view.SetViewPropertiesProcedure;
 import org.apache.iotdb.confignode.procedure.impl.subscription.consumer.CreateConsumerProcedure;
 import org.apache.iotdb.confignode.procedure.impl.subscription.consumer.DropConsumerProcedure;
 import org.apache.iotdb.confignode.procedure.impl.subscription.consumer.runtime.ConsumerGroupMetaSyncProcedure;
@@ -1820,18 +1821,28 @@ public class ProcedureManager {
   }
 
   public TSStatus alterTableSetProperties(final TAlterOrDropTableReq req) {
+    final boolean isView = req.isSetIsView() && req.isIsView();
     return executeWithoutDuplicate(
         req.database,
         null,
         req.tableName,
         req.queryId,
-        ProcedureType.SET_TABLE_PROPERTIES_PROCEDURE,
-        new SetTablePropertiesProcedure(
-            req.database,
-            req.tableName,
-            req.queryId,
-            ReadWriteIOUtils.readMap(req.updateInfo),
-            false));
+        isView
+            ? ProcedureType.SET_VIEW_PROPERTIES_PROCEDURE
+            : ProcedureType.SET_TABLE_PROPERTIES_PROCEDURE,
+        isView
+            ? new SetViewPropertiesProcedure(
+                req.database,
+                req.tableName,
+                req.queryId,
+                ReadWriteIOUtils.readMap(req.updateInfo),
+                false)
+            : new SetTablePropertiesProcedure(
+                req.database,
+                req.tableName,
+                req.queryId,
+                ReadWriteIOUtils.readMap(req.updateInfo),
+                false));
   }
 
   public TSStatus alterTableRenameColumn(final TAlterOrDropTableReq req) {
