@@ -78,7 +78,7 @@ public class PipeConfigPhysicalPlanTablePatternParseVisitor
   }
 
   @Override
-  public Optional<ConfigPhysicalPlan> visitPipeCreateTable(
+  public Optional<ConfigPhysicalPlan> visitPipeCreateTableOrView(
       final PipeCreateTableOrViewPlan pipeCreateTableOrViewPlan, final TablePattern pattern) {
     return pattern.matchesDatabase(
                 PathUtils.unQualifyDatabaseName(pipeCreateTableOrViewPlan.getDatabase()))

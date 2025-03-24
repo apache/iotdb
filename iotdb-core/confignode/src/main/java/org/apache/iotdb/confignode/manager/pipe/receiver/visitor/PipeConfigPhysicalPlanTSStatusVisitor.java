@@ -506,7 +506,7 @@ public class PipeConfigPhysicalPlanTSStatusVisitor
   }
 
   @Override
-  public TSStatus visitPipeCreateTable(
+  public TSStatus visitPipeCreateTableOrView(
       final PipeCreateTableOrViewPlan pipeCreateTableOrViewPlan, final TSStatus context) {
     return visitCommonTablePlan(pipeCreateTableOrViewPlan, context);
   }

@@ -39,7 +39,12 @@ import org.apache.iotdb.confignode.consensus.request.write.table.SetTableColumnC
 import org.apache.iotdb.confignode.consensus.request.write.table.SetTableCommentPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.SetTablePropertiesPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.view.AddTableViewColumnPlan;
+import org.apache.iotdb.confignode.consensus.request.write.table.view.CommitDeleteViewColumnPlan;
+import org.apache.iotdb.confignode.consensus.request.write.table.view.CommitDeleteViewPlan;
+import org.apache.iotdb.confignode.consensus.request.write.table.view.RenameViewColumnPlan;
+import org.apache.iotdb.confignode.consensus.request.write.table.view.RenameViewPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.view.SetViewCommentPlan;
+import org.apache.iotdb.confignode.consensus.request.write.table.view.SetViewPropertiesPlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.CommitSetSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.CreateSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.DropSchemaTemplatePlan;
@@ -151,19 +156,27 @@ public abstract class ConfigPhysicalPlanVisitor<R, C> {
       case SetTTL:
         return visitTTL((SetTTLPlan) plan, context);
       case PipeCreateTableOrView:
-        return visitPipeCreateTable((PipeCreateTableOrViewPlan) plan, context);
+        return visitPipeCreateTableOrView((PipeCreateTableOrViewPlan) plan, context);
       case AddTableColumn:
         return visitAddTableColumn((AddTableColumnPlan) plan, context);
       case AddViewColumn:
         return visitAddTableViewColumn((AddTableViewColumnPlan) plan, context);
       case SetTableProperties:
         return visitSetTableProperties((SetTablePropertiesPlan) plan, context);
+      case SetViewProperties:
+        return visitSetViewProperties((SetViewPropertiesPlan) plan, context);
       case RenameTableColumn:
         return visitRenameTableColumn((RenameTableColumnPlan) plan, context);
+      case RenameViewColumn:
+        return visitRenameViewColumn((RenameViewColumnPlan) plan, context);
       case CommitDeleteColumn:
         return visitCommitDeleteColumn((CommitDeleteColumnPlan) plan, context);
+      case CommitDeleteViewColumn:
+        return visitCommitDeleteViewColumn((CommitDeleteViewColumnPlan) plan, context);
       case CommitDeleteTable:
         return visitCommitDeleteTable((CommitDeleteTablePlan) plan, context);
+      case CommitDeleteView:
+        return visitCommitDeleteView((CommitDeleteViewPlan) plan, context);
       case PipeDeleteDevices:
         return visitPipeDeleteDevices((PipeDeleteDevicesPlan) plan, context);
       case SetTableComment:
@@ -174,6 +187,8 @@ public abstract class ConfigPhysicalPlanVisitor<R, C> {
         return visitSetTableColumnComment((SetTableColumnCommentPlan) plan, context);
       case RenameTable:
         return visitRenameTable((RenameTablePlan) plan, context);
+      case RenameView:
+        return visitRenameView((RenameViewPlan) plan, context);
       default:
         return visitPlan(plan, context);
     }
@@ -402,7 +417,7 @@ public abstract class ConfigPhysicalPlanVisitor<R, C> {
     return visitPlan(setTTLPlan, context);
   }
 
-  public R visitPipeCreateTable(
+  public R visitPipeCreateTableOrView(
       final PipeCreateTableOrViewPlan pipeCreateTableOrViewPlan, final C context) {
     return visitPlan(pipeCreateTableOrViewPlan, context);
   }
@@ -422,9 +437,20 @@ public abstract class ConfigPhysicalPlanVisitor<R, C> {
     return visitPlan(setTablePropertiesPlan, context);
   }
 
+  // Use set table properties by default
+  public R visitSetViewProperties(
+      final SetViewPropertiesPlan setViewPropertiesPlan, final C context) {
+    return visitSetTableProperties(setViewPropertiesPlan, context);
+  }
+
   public R visitCommitDeleteColumn(
       final CommitDeleteColumnPlan commitDeleteColumnPlan, final C context) {
     return visitPlan(commitDeleteColumnPlan, context);
+  }
+
+  public R visitCommitDeleteViewColumn(
+      final CommitDeleteViewColumnPlan commitDeleteViewColumnPlan, final C context) {
+    return visitCommitDeleteColumn(commitDeleteViewColumnPlan, context);
   }
 
   public R visitRenameTableColumn(
@@ -432,9 +458,19 @@ public abstract class ConfigPhysicalPlanVisitor<R, C> {
     return visitPlan(renameTableColumnPlan, context);
   }
 
+  // Use commit delete table by default
+  public R visitRenameViewColumn(final RenameViewColumnPlan renameViewColumnPlan, final C context) {
+    return visitRenameTableColumn(renameViewColumnPlan, context);
+  }
+
   public R visitCommitDeleteTable(
       final CommitDeleteTablePlan commitDeleteTablePlan, final C context) {
     return visitPlan(commitDeleteTablePlan, context);
+  }
+
+  // Use commit delete table by default
+  public R visitCommitDeleteView(final CommitDeleteViewPlan commitDeleteViewPlan, final C context) {
+    return visitCommitDeleteTable(commitDeleteViewPlan, context);
   }
 
   public R visitPipeDeleteDevices(
@@ -458,5 +494,10 @@ public abstract class ConfigPhysicalPlanVisitor<R, C> {
 
   public R visitRenameTable(final RenameTablePlan renameTablePlan, final C context) {
     return visitPlan(renameTablePlan, context);
+  }
+
+  // Use rename table by default
+  public R visitRenameView(final RenameViewPlan renameViewPlan, final C context) {
+    return visitRenameTable(renameViewPlan, context);
   }
 }

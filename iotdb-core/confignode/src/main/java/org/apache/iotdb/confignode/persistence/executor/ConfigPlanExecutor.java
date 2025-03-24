@@ -577,6 +577,7 @@ public class ConfigPlanExecutor {
       case RenameViewColumn:
         return clusterSchemaInfo.renameTableColumn((RenameTableColumnPlan) physicalPlan);
       case SetTableProperties:
+      case SetViewProperties:
         return clusterSchemaInfo.setTableProperties((SetTablePropertiesPlan) physicalPlan);
       case PreDeleteColumn:
       case PreDeleteViewColumn:

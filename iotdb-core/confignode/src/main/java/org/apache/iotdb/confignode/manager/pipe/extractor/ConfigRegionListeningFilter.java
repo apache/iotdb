@@ -105,7 +105,6 @@ public class ConfigRegionListeningFilter {
               Arrays.asList(
                   ConfigPhysicalPlanType.CommitCreateTable,
                   ConfigPhysicalPlanType.PipeCreateTableOrView,
-                  ConfigPhysicalPlanType.PipeCreateView,
                   ConfigPhysicalPlanType.AddTableColumn,
                   ConfigPhysicalPlanType.AddViewColumn)));
       OPTION_PLAN_MAP.put(
@@ -113,10 +112,14 @@ public class ConfigRegionListeningFilter {
           Collections.unmodifiableList(
               Arrays.asList(
                   ConfigPhysicalPlanType.SetTableProperties,
+                  ConfigPhysicalPlanType.SetViewProperties,
                   ConfigPhysicalPlanType.SetTableComment,
                   ConfigPhysicalPlanType.SetViewComment,
                   ConfigPhysicalPlanType.SetTableColumnComment,
-                  ConfigPhysicalPlanType.RenameTable)));
+                  ConfigPhysicalPlanType.RenameTable,
+                  ConfigPhysicalPlanType.RenameView,
+                  ConfigPhysicalPlanType.RenameTableColumn,
+                  ConfigPhysicalPlanType.RenameViewColumn)));
       OPTION_PLAN_MAP.put(
           new PartialPath("schema.table.drop"),
           Collections.unmodifiableList(

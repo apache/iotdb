@@ -93,7 +93,7 @@ public class PipeConfigPhysicalPlanTablePrivilegeParseVisitor
   }
 
   @Override
-  public Optional<ConfigPhysicalPlan> visitPipeCreateTable(
+  public Optional<ConfigPhysicalPlan> visitPipeCreateTableOrView(
       final PipeCreateTableOrViewPlan pipeCreateTableOrViewPlan, final String userName) {
     return ConfigNode.getInstance()
                 .getConfigManager()
