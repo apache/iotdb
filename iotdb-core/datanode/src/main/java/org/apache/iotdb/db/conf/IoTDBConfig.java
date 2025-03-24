@@ -333,7 +333,6 @@ public class IoTDBConfig {
   private int queryThreadCount = Runtime.getRuntime().availableProcessors();
 
   private int degreeOfParallelism = Math.max(1, Runtime.getRuntime().availableProcessors() / 2);
-  //  private int degreeOfParallelism = 1;
 
   private int mergeThresholdOfExplainAnalyze = 10;
 
@@ -406,16 +405,16 @@ public class IoTDBConfig {
   private int tvListSortThreshold = 0;
 
   /** Enable inner space compaction for sequence files */
-  private volatile boolean enableSeqSpaceCompaction = false;
+  private volatile boolean enableSeqSpaceCompaction = true;
 
   /** Enable inner space compaction for unsequence files */
-  private volatile boolean enableUnseqSpaceCompaction = false;
+  private volatile boolean enableUnseqSpaceCompaction = true;
 
   /** Compact the unsequence files into the overlapped sequence files */
-  private volatile boolean enableCrossSpaceCompaction = false;
+  private volatile boolean enableCrossSpaceCompaction = true;
 
   /** Enable auto repair compaction */
-  private volatile boolean enableAutoRepairCompaction = false;
+  private volatile boolean enableAutoRepairCompaction = true;
 
   /** The buffer for sort operation */
   private long sortBufferSize = 1024 * 1024L;

@@ -20,8 +20,6 @@
 package org.apache.iotdb.commons.udf.builtin.relational;
 
 import org.apache.iotdb.commons.udf.builtin.relational.tvf.CapacityTableFunction;
-import org.apache.iotdb.commons.udf.builtin.relational.tvf.FillM4;
-import org.apache.iotdb.commons.udf.builtin.relational.tvf.GroupBySession;
 import org.apache.iotdb.commons.udf.builtin.relational.tvf.HOPTableFunction;
 import org.apache.iotdb.commons.udf.builtin.relational.tvf.SessionTableFunction;
 import org.apache.iotdb.commons.udf.builtin.relational.tvf.VariationTableFunction;
@@ -36,10 +34,7 @@ public enum TableBuiltinTableFunction {
   HOP("hop"),
   SESSION("session"),
   VARIATION("variation"),
-  CAPACITY("capacity"),
-  REPEAT("repeat"),
-  COUNT_BY_SESSION("count_by_session"),
-  FILL_M4("fill_m4");
+  CAPACITY("capacity");
 
   private final String functionName;
 
@@ -75,10 +70,6 @@ public enum TableBuiltinTableFunction {
         return new VariationTableFunction();
       case "capacity":
         return new CapacityTableFunction();
-      case "count_by_session":
-        return new GroupBySession();
-      case "fill_m4":
-        return new FillM4();
       default:
         throw new UnsupportedOperationException("Unsupported table function: " + functionName);
     }
