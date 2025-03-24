@@ -19,4 +19,37 @@
 
 package org.apache.iotdb.confignode.procedure.impl.schema.table.view;
 
-public class RenameViewProcedure {}
+import org.apache.iotdb.confignode.procedure.impl.schema.table.RenameTableProcedure;
+import org.apache.iotdb.confignode.procedure.store.ProcedureType;
+
+import java.io.DataOutputStream;
+import java.io.IOException;
+
+public class RenameViewProcedure extends RenameTableProcedure {
+  public RenameViewProcedure(final boolean isGeneratedByPipe) {
+    super(isGeneratedByPipe);
+  }
+
+  public RenameViewProcedure(
+      final String database,
+      final String tableName,
+      final String queryId,
+      final String newName,
+      final boolean isGeneratedByPipe) {
+    super(database, tableName, queryId, newName, isGeneratedByPipe);
+  }
+
+  @Override
+  protected String getActionMessage() {
+    return "rename view";
+  }
+
+  @Override
+  public void serialize(final DataOutputStream stream) throws IOException {
+    stream.writeShort(
+        isGeneratedByPipe
+            ? ProcedureType.PIPE_ENRICHED_RENAME_VIEW_PROCEDURE.getTypeCode()
+            : ProcedureType.RENAME_VIEW_PROCEDURE.getTypeCode());
+    innerSerialize(stream);
+  }
+}

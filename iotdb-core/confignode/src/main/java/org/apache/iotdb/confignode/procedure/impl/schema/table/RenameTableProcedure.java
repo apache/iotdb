@@ -196,6 +196,10 @@ public class RenameTableProcedure extends AbstractAlterOrDropTableProcedure<Rena
         isGeneratedByPipe
             ? ProcedureType.PIPE_ENRICHED_RENAME_TABLE_PROCEDURE.getTypeCode()
             : ProcedureType.RENAME_TABLE_PROCEDURE.getTypeCode());
+    innerSerialize(stream);
+  }
+
+  protected void innerSerialize(final DataOutputStream stream) throws IOException {
     super.serialize(stream);
 
     ReadWriteIOUtils.write(newName, stream);
