@@ -23,6 +23,7 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
+import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.file.SystemFileFactory;
@@ -154,8 +155,13 @@ import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.FileSystem;
+import java.nio.file.FileSystems;
 import java.nio.file.Files;
+import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.nio.file.attribute.FileAttributeView;
+import java.nio.file.spi.FileSystemProvider;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -325,6 +331,8 @@ public class DataRegion implements IDataRegionForQuery {
 
   private final DataRegionMetrics metrics;
 
+  private final Map<String, String> rootDisks2DataDirsMapForLoad;
+
   /**
    * Construct a database processor.
    *
@@ -388,6 +396,18 @@ public class DataRegion implements IDataRegionForQuery {
       recover();
     }
 
+    // init data dirs' root disks
+    this.rootDisks2DataDirsMapForLoad = new HashMap<>(config.getDataDirs().length);
+    for (String dataDir : config.getDataDirs()) {
+      File dataDirFile = new File(dataDir);
+      String dataDirRoot =
+          dataDirFile
+              .getAbsolutePath()
+              .substring(0, dataDirFile.getAbsolutePath().indexOf(dataDirFile.getName()));
+      this.rootDisks2DataDirsMapForLoad.put(
+          dataDirRoot, fsFactory.getFile(dataDir, IoTDBConstant.UNSEQUENCE_FOLDER_NAME).getPath());
+    }
+
     this.metrics = new DataRegionMetrics(this);
     MetricService.getInstance().addMetricSet(metrics);
   }
@@ -400,6 +420,7 @@ public class DataRegion implements IDataRegionForQuery {
     this.partitionMaxFileVersions = new HashMap<>();
     partitionMaxFileVersions.put(0L, 0L);
     upgradeModFileThreadPool = null;
+    this.rootDisks2DataDirsMapForLoad = new HashMap<>();
     this.metrics = new DataRegionMetrics(this);
   }
 
@@ -3051,17 +3072,46 @@ public class DataRegion implements IDataRegionForQuery {
       final boolean deleteOriginFile,
       boolean isGeneratedByPipe)
       throws LoadFileException, DiskSpaceInsufficientException {
-    final File targetFile =
-        fsFactory.getFile(
-            TierManager.getInstance().getNextFolderForTsFile(0, false),
-            databaseName
-                + File.separatorChar
-                + dataRegionId
-                + File.separatorChar
-                + filePartitionId
-                + File.separator
-                + tsFileResource.getTsFile().getName());
-    tsFileResource.setFile(targetFile);
+    File targetFile = null;
+    boolean needDownGradeToSequence = true;
+    final String fileDirRoot =
+        tsFileToLoad
+            .getAbsolutePath()
+            .substring(0, tsFileToLoad.getAbsolutePath().indexOf(tsFileToLoad.getName()));
+    if ((config.isEnableMultiDisksAwareLoadForIoTV2()
+            && tsFileResource.isGeneratedByPipeConsensus())
+        || (config.isEnableMultiDisksAwareLoadForPipe() && tsFileResource.isGeneratedByPipe())) {
+      if (rootDisks2DataDirsMapForLoad.containsKey(fileDirRoot)) {
+        targetFile =
+            fsFactory.getFile(
+                rootDisks2DataDirsMapForLoad.get(fileDirRoot),
+                databaseName
+                    + File.separatorChar
+                    + dataRegionId
+                    + File.separatorChar
+                    + filePartitionId
+                    + File.separator
+                    + tsFileResource.getTsFile().getName());
+        needDownGradeToSequence = false;
+      }
+    }
+
+    if (needDownGradeToSequence) {
+      targetFile =
+          fsFactory.getFile(
+              TierManager.getInstance().getNextFolderForTsFile(0, false),
+              databaseName
+                  + File.separatorChar
+                  + dataRegionId
+                  + File.separatorChar
+                  + filePartitionId
+                  + File.separator
+                  + tsFileResource.getTsFile().getName());
+    }
+
+    // var used in lambda must be final
+    final File finalTargetFile = targetFile;
+    tsFileResource.setFile(finalTargetFile);
     if (tsFileManager.contains(tsFileResource, false)) {
       logger.warn("The file {} has already been loaded in unsequence list", tsFileResource);
       return false;
@@ -3082,13 +3132,13 @@ public class DataRegion implements IDataRegionForQuery {
       if (deleteOriginFile) {
         RetryUtils.retryOnException(
             () -> {
-              FileUtils.moveFile(tsFileToLoad, targetFile);
+              FileUtils.moveFile(tsFileToLoad, finalTargetFile);
               return null;
             });
       } else {
         RetryUtils.retryOnException(
             () -> {
-              Files.copy(tsFileToLoad.toPath(), targetFile.toPath());
+              Files.copy(tsFileToLoad.toPath(), finalTargetFile.toPath());
               return null;
             });
       }

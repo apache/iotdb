@@ -2404,6 +2404,12 @@ public class IoTDBDescriptor {
             .filter(dir -> !dir.isEmpty())
             .toArray(String[]::new));
 
+    conf.setEnableMultiDisksAwareLoadForPipe(
+        Boolean.parseBoolean(
+            properties.getProperty(
+                "enable_multi_disks_aware_load_for_pipe",
+                Boolean.toString(conf.isEnableMultiDisksAwareLoadForPipe()))));
+
     conf.setIotConsensusV2ReceiverFileDirs(
         Arrays.stream(
                 properties
@@ -2414,6 +2420,12 @@ public class IoTDBDescriptor {
                     .split(","))
             .filter(dir -> !dir.isEmpty())
             .toArray(String[]::new));
+
+    conf.setEnableMultiDisksAwareLoadForIoTV2(
+        Boolean.parseBoolean(
+            properties.getProperty(
+                "enable_multi_disks_aware_load_for_iotv2",
+                Boolean.toString(conf.isEnableMultiDisksAwareLoadForIoTV2()))));
 
     conf.setIotConsensusV2DeletionFileDir(
         properties.getProperty(
