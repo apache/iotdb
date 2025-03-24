@@ -1236,8 +1236,11 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
   public TSStatus renameTable(final RenameTablePlan plan) {
     databaseReadWriteLock.writeLock().lock();
     try {
-      // TODO
+      tableModelMTree.renameTable(
+          getQualifiedDatabasePartialPath(plan.getDatabase()), plan.getTableName());
       return RpcUtils.SUCCESS_STATUS;
+    } catch (final MetadataException e) {
+      return RpcUtils.getStatus(e.getErrorCode(), e.getMessage());
     } finally {
       databaseReadWriteLock.writeLock().unlock();
     }

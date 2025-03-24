@@ -744,6 +744,15 @@ public class ConfigMTree {
     store.deleteChild(databaseNode, tableName);
   }
 
+  public void renameTable(final PartialPath database, final String tableName)
+      throws MetadataException {
+    final IConfigMNode databaseNode = getDatabaseNodeByDatabasePath(database).getAsMNode();
+    final ConfigTableNode tableNode = (ConfigTableNode) databaseNode.getChild(tableName);
+    store.deleteChild(databaseNode, tableName);
+    tableNode.setName(tableName);
+    store.addChild(databaseNode, tableName, tableNode);
+  }
+
   public void setTableComment(
       final PartialPath database,
       final String tableName,
