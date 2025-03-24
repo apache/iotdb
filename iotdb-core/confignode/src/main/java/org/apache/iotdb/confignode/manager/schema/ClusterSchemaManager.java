@@ -1343,11 +1343,7 @@ public class ClusterSchemaManager {
   }
 
   public synchronized Pair<TSStatus, TsTable> tableColumnCheckForColumnRenaming(
-      final String database,
-      final String tableName,
-      final String oldName,
-      final String newName,
-      final boolean isTableView)
+      final String database, final String tableName, final String oldName, final String newName)
       throws MetadataException {
     final TsTable originalTable = getTableIfExists(database, tableName).orElse(null);
 
@@ -1359,10 +1355,14 @@ public class ClusterSchemaManager {
           null);
     }
 
-    final Optional<Pair<TSStatus, TsTable>> result =
-        checkTable4View(database, originalTable, isTableView);
-    if (result.isPresent()) {
-      return result.get();
+    if (!TreeViewSchema.isTreeViewTable(originalTable)) {
+      return new Pair<>(
+          RpcUtils.getStatus(
+              TSStatusCode.SEMANTIC_ERROR,
+              String.format(
+                  "Currently only support renaming tree view table, '%s.%s' is a base table",
+                  database, tableName)),
+          null);
     }
 
     final TsTableColumnSchema schema = originalTable.getColumnSchema(oldName);

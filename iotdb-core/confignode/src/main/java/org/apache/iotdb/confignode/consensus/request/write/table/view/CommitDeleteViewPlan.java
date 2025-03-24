@@ -24,10 +24,10 @@ import org.apache.iotdb.confignode.consensus.request.write.table.CommitDeleteTab
 
 public class CommitDeleteViewPlan extends CommitDeleteTablePlan {
   public CommitDeleteViewPlan() {
-    super(ConfigPhysicalPlanType.CommitDeleteViewColumn);
+    super(ConfigPhysicalPlanType.CommitDeleteView);
   }
 
   public CommitDeleteViewPlan(final String database, final String tableName) {
-    super(ConfigPhysicalPlanType.CommitDeleteViewColumn, database, tableName);
+    super(ConfigPhysicalPlanType.CommitDeleteView, database, tableName);
   }
 }
