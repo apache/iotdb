@@ -143,7 +143,11 @@ public class SimpleFragmentParallelPlanner extends AbstractFragmentParallelPlann
             fragment.isRoot());
 
     selectExecutorAndHost(
-        fragment, fragmentInstance, topology::getValidatedReplicaSet, dataNodeFIMap);
+        fragment,
+        fragmentInstance,
+        fragment::getTargetRegionForTreeModel,
+        topology::getValidatedReplicaSet,
+        dataNodeFIMap);
 
     if (analysis.getTreeStatement() instanceof QueryStatement
         || analysis.getTreeStatement() instanceof ExplainAnalyzeStatement

@@ -44,6 +44,7 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
+import java.util.function.Supplier;
 
 public abstract class AbstractFragmentParallelPlanner implements IFragmentParallelPlaner {
   private static final Logger LOGGER =
@@ -58,11 +59,12 @@ public abstract class AbstractFragmentParallelPlanner implements IFragmentParall
   protected void selectExecutorAndHost(
       PlanFragment fragment,
       FragmentInstance fragmentInstance,
+      Supplier<TRegionReplicaSet> replicaSetProvider,
       Function<TRegionReplicaSet, TRegionReplicaSet> validator,
       Map<TDataNodeLocation, List<FragmentInstance>> dataNodeFIMap) {
     // Get the target region for origin PlanFragment, then its instance will be distributed one
     // of them.
-    TRegionReplicaSet regionReplicaSet = fragment.getTargetRegionForTreeModel();
+    TRegionReplicaSet regionReplicaSet = replicaSetProvider.get();
     if (regionReplicaSet != null
         && !CollectionUtils.isEmpty(regionReplicaSet.getDataNodeLocations())) {
       regionReplicaSet = validator.apply(regionReplicaSet);
@@ -87,7 +89,7 @@ public abstract class AbstractFragmentParallelPlanner implements IFragmentParall
       }
     } else {
       fragmentInstance.setExecutorAndHost(new StorageExecutor(regionReplicaSet));
-      fragmentInstance.setHostDataNode(this.selectTargetDataNode(regionReplicaSet));
+      fragmentInstance.setHostDataNode(selectTargetDataNode(regionReplicaSet));
     }
 
     dataNodeFIMap.compute(

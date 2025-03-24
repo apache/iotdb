@@ -144,7 +144,11 @@ public class TableModelQueryFragmentPlanner extends AbstractFragmentParallelPlan
             fragment.isRoot());
 
     selectExecutorAndHost(
-        fragment, fragmentInstance, topology::getValidatedReplicaSet, dataNodeFIMap);
+        fragment,
+        fragmentInstance,
+        () -> fragment.getTargetRegionForTableModel(nodeDistributionMap),
+        topology::getValidatedReplicaSet,
+        dataNodeFIMap);
 
     final Statement statement = analysis.getStatement();
     if (analysis.isQuery() || statement instanceof ShowDevice || statement instanceof CountDevice) {
