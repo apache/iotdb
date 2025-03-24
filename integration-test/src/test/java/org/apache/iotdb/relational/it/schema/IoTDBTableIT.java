@@ -423,7 +423,7 @@ public class IoTDBTableIT {
       dataTypes = new String[] {"TIMESTAMP", "STRING", "STRING", "FLOAT", "DOUBLE"};
       categories = new String[] {"TIME", "TAG", "TAG", "FIELD", "FIELD"};
       statuses = new String[] {"USING", "USING", "USING", "USING", "USING"};
-      comments = new String[] {"recent", "", "", "", "fast"};
+      comments = new String[] {"recent", "null", "null", "null", "fast"};
       try (final ResultSet resultSet = statement.executeQuery("describe table2 details")) {
         int cnt = 0;
         ResultSetMetaData metaData = resultSet.getMetaData();
