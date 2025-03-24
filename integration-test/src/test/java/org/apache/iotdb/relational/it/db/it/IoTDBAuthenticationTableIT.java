@@ -153,7 +153,7 @@ public class IoTDBAuthenticationTableIT {
           fail("Should have thrown an exception");
         } catch (StatementExecutionException e) {
           assertEquals(
-              "803: Access Denied: No permissions for this operation, please add privilege INSERT ON test.table1",
+              "803: Access Denied: No permissions for this operation, please add privilege INSERT ON 汉化.table1",
               e.getMessage());
         }
 
@@ -168,7 +168,7 @@ public class IoTDBAuthenticationTableIT {
           fail("Should have thrown an exception");
         } catch (StatementExecutionException e) {
           assertEquals(
-              "803: Access Denied: No permissions for this operation, please add privilege INSERT ON test.table1",
+              "803: Access Denied: No permissions for this operation, please add privilege INSERT ON 汉化.table1",
               e.getMessage());
         }
 
@@ -183,7 +183,7 @@ public class IoTDBAuthenticationTableIT {
           fail("Should have thrown an exception");
         } catch (StatementExecutionException e) {
           assertEquals(
-              "803: Access Denied: No permissions for this operation, please add privilege INSERT ON test.table1",
+              "803: Access Denied: No permissions for this operation, please add privilege INSERT ON 汉化.table1",
               e.getMessage());
         }
 
@@ -198,7 +198,7 @@ public class IoTDBAuthenticationTableIT {
           fail("Should have thrown an exception");
         } catch (StatementExecutionException e) {
           assertEquals(
-              "803: Access Denied: No permissions for this operation, please add privilege INSERT ON test.table1",
+              "803: Access Denied: No permissions for this operation, please add privilege INSERT ON 汉化.table1",
               e.getMessage());
         }
 
@@ -213,7 +213,7 @@ public class IoTDBAuthenticationTableIT {
           fail("Should have thrown an exception");
         } catch (StatementExecutionException e) {
           assertEquals(
-              "803: Access Denied: No permissions for this operation, please add privilege INSERT ON test.table1",
+              "803: Access Denied: No permissions for this operation, please add privilege INSERT ON 汉化.table1",
               e.getMessage());
         }
 
@@ -225,7 +225,7 @@ public class IoTDBAuthenticationTableIT {
           fail("Should have thrown an exception");
         } catch (StatementExecutionException e) {
           assertEquals(
-              "301: [EXECUTE_STATEMENT_ERROR(301)] Exception occurred: insertTablet failed. Access Denied: No permissions for this operation, please add privilege CREATE ON test.table2",
+              "301: [EXECUTE_STATEMENT_ERROR(301)] Exception occurred: insertTablet failed. Access Denied: No permissions for this operation, please add privilege CREATE ON 汉化.table2",
               e.getMessage());
         }
         sessionRoot.executeNonQueryStatement("GRANT CREATE ON DATABASE \"汉化\" TO USER userA");
@@ -265,7 +265,7 @@ public class IoTDBAuthenticationTableIT {
           fail("Should have thrown an exception");
         } catch (StatementExecutionException e) {
           assertEquals(
-              "301: [EXECUTE_STATEMENT_ERROR(301)] Exception occurred: insertTablet failed. Access Denied: No permissions for this operation, please add privilege ALTER ON test.table2",
+              "301: [EXECUTE_STATEMENT_ERROR(301)] Exception occurred: insertTablet failed. Access Denied: No permissions for this operation, please add privilege ALTER ON 汉化.table2",
               e.getMessage());
         }
         sessionRoot.executeNonQueryStatement("GRANT ALTER ON TABLE table2 TO USER userA");
@@ -292,7 +292,7 @@ public class IoTDBAuthenticationTableIT {
           fail("Should have thrown an exception");
         } catch (StatementExecutionException e) {
           assertEquals(
-              "803: Access Denied: No permissions for this operation, please add privilege INSERT ON test.table1",
+              "803: Access Denied: No permissions for this operation, please add privilege INSERT ON 汉化.table1",
               e.getMessage());
         }
 
@@ -317,7 +317,7 @@ public class IoTDBAuthenticationTableIT {
           fail("Should have thrown an exception");
         } catch (StatementExecutionException e) {
           assertEquals(
-              "803: Access Denied: No permissions for this operation, please add privilege INSERT ON test.table1",
+              "803: Access Denied: No permissions for this operation, please add privilege INSERT ON 汉化.table1",
               e.getMessage());
         }
         // after revoked cannot revoke again
@@ -370,7 +370,7 @@ public class IoTDBAuthenticationTableIT {
           fail("Should have thrown an exception");
         } catch (StatementExecutionException e) {
           assertEquals(
-              "803: Access Denied: No permissions for this operation, please add privilege INSERT ON test.table1",
+              "803: Access Denied: No permissions for this operation, please add privilege INSERT ON 汉化.table1",
               e.getMessage());
         }
         // userB can revoke himself
@@ -409,7 +409,7 @@ public class IoTDBAuthenticationTableIT {
           fail("Should have thrown an exception");
         } catch (StatementExecutionException e) {
           assertEquals(
-              "803: Access Denied: No permissions for this operation, please add privilege INSERT ON test.table1",
+              "803: Access Denied: No permissions for this operation, please add privilege INSERT ON 汉化.table1",
               e.getMessage());
         }
 
@@ -424,7 +424,7 @@ public class IoTDBAuthenticationTableIT {
           fail("Should have thrown an exception");
         } catch (StatementExecutionException e) {
           assertEquals(
-              "803: Access Denied: No permissions for this operation, please add privilege INSERT ON test.table1",
+              "803: Access Denied: No permissions for this operation, please add privilege INSERT ON 汉化.table1",
               e.getMessage());
         }
 
@@ -439,7 +439,7 @@ public class IoTDBAuthenticationTableIT {
           fail("Should have thrown an exception");
         } catch (StatementExecutionException e) {
           assertEquals(
-              "803: Access Denied: No permissions for this operation, please add privilege INSERT ON test.table1",
+              "803: Access Denied: No permissions for this operation, please add privilege INSERT ON 汉化.table1",
               e.getMessage());
         }
 
@@ -454,7 +454,7 @@ public class IoTDBAuthenticationTableIT {
           fail("Should have thrown an exception");
         } catch (StatementExecutionException e) {
           assertEquals(
-              "803: Access Denied: No permissions for this operation, please add privilege INSERT ON test.table1",
+              "803: Access Denied: No permissions for this operation, please add privilege INSERT ON 汉化.table1",
               e.getMessage());
         }
 
@@ -469,7 +469,7 @@ public class IoTDBAuthenticationTableIT {
           fail("Should have thrown an exception");
         } catch (StatementExecutionException e) {
           assertEquals(
-              "803: Access Denied: No permissions for this operation, please add privilege INSERT ON test.table1",
+              "803: Access Denied: No permissions for this operation, please add privilege INSERT ON 汉化.table1",
               e.getMessage());
         }
 
@@ -492,7 +492,7 @@ public class IoTDBAuthenticationTableIT {
           fail("Should have thrown an exception");
         } catch (StatementExecutionException e) {
           assertEquals(
-              "803: Access Denied: No permissions for this operation, please add privilege INSERT ON test.table1",
+              "803: Access Denied: No permissions for this operation, please add privilege INSERT ON 汉化.table1",
               e.getMessage());
         }
 
@@ -517,7 +517,7 @@ public class IoTDBAuthenticationTableIT {
           fail("Should have thrown an exception");
         } catch (StatementExecutionException e) {
           assertEquals(
-              "803: Access Denied: No permissions for this operation, please add privilege INSERT ON test.table1",
+              "803: Access Denied: No permissions for this operation, please add privilege INSERT ON 汉化.table1",
               e.getMessage());
         }
         // after revoked cannot revoke again
@@ -554,7 +554,7 @@ public class IoTDBAuthenticationTableIT {
           fail("Should have thrown an exception");
         } catch (StatementExecutionException e) {
           assertEquals(
-              "803: Access Denied: No permissions for this operation, please add privilege INSERT ON test.table1",
+              "803: Access Denied: No permissions for this operation, please add privilege INSERT ON 汉化.table1",
               e.getMessage());
         }
 
@@ -571,7 +571,7 @@ public class IoTDBAuthenticationTableIT {
           fail("Should have thrown an exception");
         } catch (StatementExecutionException e) {
           assertEquals(
-              "803: Access Denied: No permissions for this operation, please add privilege INSERT ON test.table1",
+              "803: Access Denied: No permissions for this operation, please add privilege INSERT ON 汉化.table1",
               e.getMessage());
         }
         // userD can revoke himself
@@ -594,7 +594,7 @@ public class IoTDBAuthenticationTableIT {
           fail("Should have thrown an exception");
         } catch (StatementExecutionException e) {
           assertEquals(
-              "803: Access Denied: No permissions for this operation, please add privilege INSERT ON test.table1",
+              "803: Access Denied: No permissions for this operation, please add privilege INSERT ON 汉化.table1",
               e.getMessage());
         }
       }
