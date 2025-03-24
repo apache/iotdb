@@ -71,6 +71,7 @@ import org.apache.iotdb.confignode.consensus.request.write.table.view.AddTableVi
 import org.apache.iotdb.confignode.consensus.request.write.table.view.CommitDeleteViewColumnPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.view.CommitDeleteViewPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.view.RenameViewColumnPlan;
+import org.apache.iotdb.confignode.consensus.request.write.table.view.RenameViewPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.view.SetViewCommentPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.view.SetViewPropertiesPlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.CommitSetSchemaTemplatePlan;
@@ -102,6 +103,7 @@ import org.apache.iotdb.confignode.procedure.impl.schema.table.view.CreateTableV
 import org.apache.iotdb.confignode.procedure.impl.schema.table.view.DropViewColumnProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.table.view.DropViewProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.table.view.RenameViewColumnProcedure;
+import org.apache.iotdb.confignode.procedure.impl.schema.table.view.RenameViewProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.table.view.SetViewPropertiesProcedure;
 import org.apache.iotdb.confignode.procedure.store.ProcedureType;
 import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
@@ -847,6 +849,21 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
                     ((RenameTablePlan) plan).getTableName(),
                     queryId,
                     ((RenameTablePlan) plan).getNewName(),
+                    true));
+      case RenameView:
+        configManager
+            .getProcedureManager()
+            .executeWithoutDuplicate(
+                ((RenameViewPlan) plan).getDatabase(),
+                null,
+                ((RenameViewPlan) plan).getTableName(),
+                queryId,
+                ProcedureType.RENAME_VIEW_PROCEDURE,
+                new RenameViewProcedure(
+                    ((RenameViewPlan) plan).getDatabase(),
+                    ((RenameViewPlan) plan).getTableName(),
+                    queryId,
+                    ((RenameViewPlan) plan).getNewName(),
                     true));
       case CreateUser:
       case CreateUserWithRawPassword:

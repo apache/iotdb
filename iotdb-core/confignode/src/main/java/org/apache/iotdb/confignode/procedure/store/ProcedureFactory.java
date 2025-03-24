@@ -65,6 +65,7 @@ import org.apache.iotdb.confignode.procedure.impl.schema.table.view.CreateTableV
 import org.apache.iotdb.confignode.procedure.impl.schema.table.view.DropViewColumnProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.table.view.DropViewProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.table.view.RenameViewColumnProcedure;
+import org.apache.iotdb.confignode.procedure.impl.schema.table.view.RenameViewProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.table.view.SetViewPropertiesProcedure;
 import org.apache.iotdb.confignode.procedure.impl.subscription.consumer.AlterConsumerGroupProcedure;
 import org.apache.iotdb.confignode.procedure.impl.subscription.consumer.CreateConsumerProcedure;
@@ -249,6 +250,9 @@ public class ProcedureFactory implements IProcedureFactory {
       case RENAME_TABLE_PROCEDURE:
         procedure = new RenameTableProcedure(false);
         break;
+      case RENAME_VIEW_PROCEDURE:
+        procedure = new RenameViewProcedure(false);
+        break;
       case CREATE_PIPE_PLUGIN_PROCEDURE:
         procedure = new CreatePipePluginProcedure();
         break;
@@ -335,6 +339,9 @@ public class ProcedureFactory implements IProcedureFactory {
         break;
       case PIPE_ENRICHED_RENAME_VIEW_COLUMN_PROCEDURE:
         procedure = new RenameViewColumnProcedure(true);
+        break;
+      case PIPE_ENRICHED_RENAME_VIEW_PROCEDURE:
+        procedure = new RenameViewProcedure(true);
         break;
       case REMOVE_AI_NODE_PROCEDURE:
         procedure = new RemoveAINodeProcedure();

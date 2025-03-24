@@ -30,12 +30,20 @@ import java.nio.ByteBuffer;
 public class RenameTablePlan extends AbstractTablePlan {
   private String newName;
 
-  public RenameTablePlan() {
-    super(ConfigPhysicalPlanType.RenameTable);
+  public RenameTablePlan(final ConfigPhysicalPlanType type) {
+    super(type);
   }
 
   public RenameTablePlan(final String database, final String tableName, final String newName) {
-    super(ConfigPhysicalPlanType.RenameTable, database, tableName);
+    this(ConfigPhysicalPlanType.RenameTable, database, tableName, newName);
+  }
+
+  protected RenameTablePlan(
+      final ConfigPhysicalPlanType type,
+      final String database,
+      final String tableName,
+      final String newName) {
+    super(type, database, tableName);
     this.newName = newName;
   }
 
