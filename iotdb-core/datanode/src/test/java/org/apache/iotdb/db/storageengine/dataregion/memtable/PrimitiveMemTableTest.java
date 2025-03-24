@@ -18,17 +18,34 @@
  */
 package org.apache.iotdb.db.storageengine.dataregion.memtable;
 
+import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.AlignedFullPath;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.NonAlignedFullPath;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.db.conf.IoTDBConfig;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.WriteProcessException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.queryengine.common.FragmentInstanceId;
+import org.apache.iotdb.db.queryengine.common.PlanFragmentId;
+import org.apache.iotdb.db.queryengine.common.QueryId;
+import org.apache.iotdb.db.queryengine.exception.CpuNotEnoughException;
+import org.apache.iotdb.db.queryengine.exception.MemoryNotEnoughException;
+import org.apache.iotdb.db.queryengine.execution.driver.IDriver;
+import org.apache.iotdb.db.queryengine.execution.exchange.MPPDataExchangeManager;
+import org.apache.iotdb.db.queryengine.execution.exchange.sink.ISink;
+import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceContext;
+import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceExecution;
+import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceStateMachine;
 import org.apache.iotdb.db.queryengine.execution.fragment.QueryContext;
+import org.apache.iotdb.db.queryengine.execution.schedule.IDriverScheduler;
+import org.apache.iotdb.db.queryengine.plan.planner.memory.MemoryReservationManager;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertTabletNode;
+import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModEntry;
 import org.apache.iotdb.db.storageengine.dataregion.modification.TreeDeletionEntry;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALByteBufferForTest;
@@ -52,6 +69,7 @@ import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
+import org.mockito.Mockito;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -62,8 +80,13 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
+import java.util.concurrent.ExecutorService;
+
+import static org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceContext.createFragmentInstanceContext;
 
 public class PrimitiveMemTableTest {
+  private static final IoTDBConfig conf = IoTDBDescriptor.getInstance().getConfig();
+  private static final int dataNodeId = 0;
 
   String database = "root.test";
   String dataRegionId = "1";
@@ -96,6 +119,7 @@ public class PrimitiveMemTableTest {
   @Before
   public void setUp() {
     delta = Math.pow(0.1, TSFileDescriptor.getInstance().getConfig().getFloatPrecision());
+    conf.setDataNodeId(dataNodeId);
   }
 
   @Test
@@ -190,6 +214,10 @@ public class PrimitiveMemTableTest {
 
   @Test
   public void totalSeriesNumberTest() throws IOException, QueryProcessException, MetadataException {
+    IoTDBConfig conf = IoTDBDescriptor.getInstance().getConfig();
+    int dataNodeId = 0;
+    conf.setDataNodeId(dataNodeId);
+
     IMemTable memTable = new PrimitiveMemTable(database, dataRegionId);
     int count = 10;
     String deviceId = "d1";
@@ -581,5 +609,65 @@ public class PrimitiveMemTableTest {
     memTable.serializeToWAL(walBuffer);
     // TODO: revert until TsFile is updated
     // assertEquals(0, walBuffer.getBuffer().remaining());
+  }
+
+  @Test
+  public void testReleaseWithNotEnoughMemory() throws CpuNotEnoughException {
+    TSDataType dataType = TSDataType.INT32;
+    WritableMemChunk series =
+        new WritableMemChunk(new MeasurementSchema("s1", dataType, TSEncoding.PLAIN));
+    int count = 100;
+    for (int i = 0; i < count; i++) {
+      series.writeNonAlignedPoint(i, i);
+    }
+
+    // mock MemoryNotEnoughException exception
+    TVList list = series.getWorkingTVList();
+
+    // mock MemoryReservationManager
+    MemoryReservationManager memoryReservationManager =
+        Mockito.mock(MemoryReservationManager.class);
+    Mockito.doThrow(new MemoryNotEnoughException(""))
+        .when(memoryReservationManager)
+        .reserveMemoryCumulatively(list.calculateRamSize());
+
+    // create FragmentInstanceId
+    QueryId queryId = new QueryId("stub_query");
+    FragmentInstanceId instanceId =
+        new FragmentInstanceId(new PlanFragmentId(queryId, 0), "stub-instance");
+    ExecutorService instanceNotificationExecutor =
+        IoTDBThreadPoolFactory.newFixedThreadPool(1, "test-instance-notification");
+    FragmentInstanceStateMachine stateMachine =
+        new FragmentInstanceStateMachine(instanceId, instanceNotificationExecutor);
+    FragmentInstanceContext queryContext =
+        createFragmentInstanceContext(instanceId, stateMachine, memoryReservationManager);
+    queryContext.initializeNumOfDrivers(1);
+    DataRegion dataRegion = Mockito.mock(DataRegion.class);
+    queryContext.setDataRegion(dataRegion);
+
+    list.getQueryContextSet().add(queryContext);
+    Map<TVList, Integer> tvlistMap = new HashMap<>();
+    tvlistMap.put(list, 100);
+    queryContext.addTVListToSet(tvlistMap);
+
+    // fragment instance execution
+    IDriverScheduler scheduler = Mockito.mock(IDriverScheduler.class);
+    List<IDriver> drivers = Collections.emptyList();
+    ISink sinkHandle = Mockito.mock(ISink.class);
+    MPPDataExchangeManager exchangeManager = Mockito.mock(MPPDataExchangeManager.class);
+    FragmentInstanceExecution execution =
+        FragmentInstanceExecution.createFragmentInstanceExecution(
+            scheduler,
+            instanceId,
+            queryContext,
+            drivers,
+            sinkHandle,
+            stateMachine,
+            -1,
+            false,
+            exchangeManager);
+
+    queryContext.decrementNumOfUnClosedDriver();
+    series.release();
   }
 }

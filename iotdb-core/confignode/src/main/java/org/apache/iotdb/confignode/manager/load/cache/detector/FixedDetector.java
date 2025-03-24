@@ -41,7 +41,7 @@ public class FixedDetector implements IFailureDetector {
   }
 
   @Override
-  public boolean isAvailable(List<AbstractHeartbeatSample> history) {
+  public boolean isAvailable(Object id, List<AbstractHeartbeatSample> history) {
     final AbstractHeartbeatSample lastSample =
         history.isEmpty() ? null : history.get(history.size() - 1);
     if (lastSample != null) {

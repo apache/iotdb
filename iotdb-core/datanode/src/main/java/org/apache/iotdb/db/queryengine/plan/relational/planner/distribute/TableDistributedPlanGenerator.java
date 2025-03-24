@@ -30,8 +30,10 @@ import org.apache.iotdb.commons.utils.TimePartitionUtils;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.QueryId;
+import org.apache.iotdb.db.queryengine.plan.ClusterTopology;
 import org.apache.iotdb.db.queryengine.plan.planner.TableOperatorGenerator;
 import org.apache.iotdb.db.queryengine.plan.planner.distribution.NodeDistribution;
+import org.apache.iotdb.db.queryengine.plan.planner.exceptions.RootFIPlacementException;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
@@ -126,6 +128,7 @@ public class TableDistributedPlanGenerator
   private final SymbolAllocator symbolAllocator;
   private final Map<PlanNodeId, OrderingScheme> nodeOrderingMap = new HashMap<>();
   private final DataNodeLocationSupplierFactory.DataNodeLocationSupplier dataNodeLocationSupplier;
+  private final ClusterTopology topology = ClusterTopology.getInstance();
 
   public TableDistributedPlanGenerator(
       final MPPQueryContext queryContext,
@@ -640,7 +643,7 @@ public class TableDistributedPlanGenerator
     TRegionReplicaSet mostUsedDataRegion = null;
     int maxDeviceEntrySizeOfTableScan = 0;
     for (final Map.Entry<TRegionReplicaSet, DeviceTableScanNode> entry :
-        tableScanNodeMap.entrySet()) {
+        topology.filterReachableCandidates(tableScanNodeMap.entrySet())) {
       final DeviceTableScanNode subDeviceTableScanNode = entry.getValue();
       resultTableScanNodeList.add(subDeviceTableScanNode);
 
@@ -649,6 +652,9 @@ public class TableDistributedPlanGenerator
         mostUsedDataRegion = entry.getKey();
         maxDeviceEntrySizeOfTableScan = subDeviceTableScanNode.getDeviceEntries().size();
       }
+    }
+    if (mostUsedDataRegion == null) {
+      throw new RootFIPlacementException(tableScanNodeMap.keySet());
     }
     context.mostUsedRegion = mostUsedDataRegion;
 
@@ -756,7 +762,7 @@ public class TableDistributedPlanGenerator
     for (Map.Entry<
             TRegionReplicaSet,
             Pair<TreeAlignedDeviceViewScanNode, TreeNonAlignedDeviceViewScanNode>>
-        entry : tableScanNodeMap.entrySet()) {
+        entry : topology.filterReachableCandidates(tableScanNodeMap.entrySet())) {
       TRegionReplicaSet regionReplicaSet = entry.getKey();
       Pair<TreeAlignedDeviceViewScanNode, TreeNonAlignedDeviceViewScanNode> pair = entry.getValue();
       int currentDeviceEntrySize = 0;
@@ -775,6 +781,9 @@ public class TableDistributedPlanGenerator
         mostUsedDataRegion = regionReplicaSet;
         maxDeviceEntrySizeOfTableScan = currentDeviceEntrySize;
       }
+    }
+    if (mostUsedDataRegion == null) {
+      throw new RootFIPlacementException(tableScanNodeMap.keySet());
     }
     context.mostUsedRegion = mostUsedDataRegion;
 
@@ -933,7 +942,8 @@ public class TableDistributedPlanGenerator
     List<PlanNode> resultTableScanNodeList = new ArrayList<>();
     TRegionReplicaSet mostUsedDataRegion = null;
     int maxDeviceEntrySizeOfTableScan = 0;
-    for (Map.Entry<TRegionReplicaSet, AggregationTableScanNode> entry : regionNodeMap.entrySet()) {
+    for (Map.Entry<TRegionReplicaSet, AggregationTableScanNode> entry :
+        topology.filterReachableCandidates(regionNodeMap.entrySet())) {
       DeviceTableScanNode subDeviceTableScanNode = entry.getValue();
       resultTableScanNodeList.add(subDeviceTableScanNode);
 
@@ -942,6 +952,9 @@ public class TableDistributedPlanGenerator
         mostUsedDataRegion = entry.getKey();
         maxDeviceEntrySizeOfTableScan = subDeviceTableScanNode.getDeviceEntries().size();
       }
+    }
+    if (mostUsedDataRegion == null) {
+      throw new RootFIPlacementException(regionNodeMap.keySet());
     }
     context.mostUsedRegion = mostUsedDataRegion;
 
@@ -1459,6 +1472,9 @@ public class TableDistributedPlanGenerator
           mostUsedSchemaRegion = regionReplicaSet;
           maxDeviceEntrySizeOfTableScan = subTableDeviceFetchNode.getDeviceIdList().size();
         }
+      }
+      if (mostUsedSchemaRegion == null) {
+        throw new RootFIPlacementException(tableDeviceFetchMap.keySet());
       }
       context.mostUsedRegion = mostUsedSchemaRegion;
       return res;

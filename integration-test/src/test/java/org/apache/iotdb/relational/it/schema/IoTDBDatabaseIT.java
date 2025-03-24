@@ -328,8 +328,14 @@ public class IoTDBDatabaseIT {
 
   @Test
   public void testInformationSchema() throws SQLException {
+    // Use a normal user to test visibility
+    try (final Connection adminCon = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        final Statement adminStmt = adminCon.createStatement()) {
+      adminStmt.execute("create user test 'password'");
+    }
+
     try (final Connection connection =
-            EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+            EnvFactory.getEnv().getConnection("test", "password", BaseEnv.TABLE_SQL_DIALECT);
         final Statement statement = connection.createStatement()) {
       // Test unsupported write plans
       final Set<String> writeSQLs =
@@ -456,7 +462,20 @@ public class IoTDBDatabaseIT {
                   "consumer_group_name,STRING,TAG,",
                   "subscribed_consumers,STRING,ATTRIBUTE,")));
 
+      // Currently only root can query information_schema
+      Assert.assertThrows(
+          SQLException.class,
+          () -> {
+            statement.execute("select * from databases");
+          });
+    }
+
+    try (final Connection connection =
+            EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        final Statement statement = connection.createStatement()) {
       // Test table query
+      statement.execute("use information_schema");
+
       statement.execute("create database test");
       statement.execute(
           "create table test.test (a tag, b attribute, c int32 comment 'turbine') comment 'test'");
@@ -604,12 +623,25 @@ public class IoTDBDatabaseIT {
       TestUtils.assertResultSetEqual(
           userStmt.executeQuery("show databases"),
           "Database,TTL(ms),SchemaReplicationFactor,DataReplicationFactor,TimePartitionInterval,",
-          Collections.emptySet());
+          Collections.singleton("information_schema,INF,null,null,null,"));
     }
 
     try (final Connection adminCon = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
         final Statement adminStmt = adminCon.createStatement()) {
       adminStmt.execute("GRANT SELECT ON DATABASE DB to user test");
+
+      // Information_schema does not support grant & revoke
+      Assert.assertThrows(
+          SQLException.class,
+          () -> {
+            adminStmt.execute("GRANT SELECT ON DATABASE information_schema to user test");
+          });
+
+      Assert.assertThrows(
+          SQLException.class,
+          () -> {
+            adminStmt.execute("REVOKE SELECT ON information_schema.tables from user test");
+          });
     }
 
     try (final Connection userCon =
@@ -622,6 +654,9 @@ public class IoTDBDatabaseIT {
           assertEquals(showDBColumnHeaders.get(i).getColumnName(), metaData.getColumnName(i + 1));
         }
         Assert.assertTrue(resultSet.next());
+        if (resultSet.getString(1).equals("information_schema")) {
+          assertTrue(resultSet.next());
+        }
         assertEquals("db", resultSet.getString(1));
         Assert.assertFalse(resultSet.next());
       }
