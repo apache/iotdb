@@ -66,6 +66,7 @@ import org.apache.iotdb.confignode.consensus.request.write.table.SetTableColumnC
 import org.apache.iotdb.confignode.consensus.request.write.table.SetTableCommentPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.SetTablePropertiesPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.view.PreCreateTableViewPlan;
+import org.apache.iotdb.confignode.consensus.request.write.table.view.PreDeleteViewColumnPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.view.SetViewCommentPlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.CommitSetSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.CreateSchemaTemplatePlan;
@@ -1525,7 +1526,8 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
       if (tableModelMTree.preDeleteColumn(
           getQualifiedDatabasePartialPath(plan.getDatabase()),
           plan.getTableName(),
-          plan.getColumnName())) {
+          plan.getColumnName(),
+          plan instanceof PreDeleteViewColumnPlan)) {
         status.setMessage("");
       }
       return status;

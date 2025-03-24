@@ -2003,7 +2003,9 @@ public class ProcedureManager {
         case SET_TABLE_PROPERTIES_PROCEDURE:
         case RENAME_TABLE_COLUMN_PROCEDURE:
         case DROP_TABLE_COLUMN_PROCEDURE:
+        case DROP_VIEW_COLUMN_PROCEDURE:
         case DROP_TABLE_PROCEDURE:
+        case DROP_VIEW_PROCEDURE:
         case DELETE_DEVICES_PROCEDURE:
         case RENAME_TABLE_PROCEDURE:
           final AbstractAlterOrDropTableProcedure<?> alterTableProcedure =

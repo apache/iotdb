@@ -916,14 +916,17 @@ public class ConfigMTree {
   // Return true if removed column is an attribute column
   // false if measurement column
   public boolean preDeleteColumn(
-      final PartialPath database, final String tableName, final String columnName)
+      final PartialPath database,
+      final String tableName,
+      final String columnName,
+      final boolean isView)
       throws MetadataException, SemanticException {
     final ConfigTableNode node = getTableNode(database, tableName);
-    if (TreeViewSchema.isTreeViewTable(node.getTable())) {
+    final Optional<Pair<TSStatus, TsTable>> check =
+        ClusterSchemaManager.checkTable4View(database.getTailNode(), node.getTable(), isView);
+    if (check.isPresent()) {
       throw new MetadataException(
-          String.format(
-              "Table '%s.%s' is a tree view table, does not support alter", database, tableName),
-          TSStatusCode.SEMANTIC_ERROR.getStatusCode());
+          check.get().getLeft().getMessage(), check.get().getLeft().getCode());
     }
 
     final TsTableColumnSchema columnSchema = node.getTable().getColumnSchema(columnName);

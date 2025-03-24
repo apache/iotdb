@@ -377,6 +377,7 @@ public class ProcedureFactory implements IProcedureFactory {
     return procedure;
   }
 
+  // The "pipeEnriched" is not considered here
   public static ProcedureType getProcedureType(final Procedure<?> procedure) {
     if (procedure instanceof DeleteDatabaseProcedure) {
       return ProcedureType.DELETE_DATABASE_PROCEDURE;

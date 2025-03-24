@@ -68,6 +68,7 @@ import org.apache.iotdb.confignode.consensus.request.write.table.SetTableColumnC
 import org.apache.iotdb.confignode.consensus.request.write.table.SetTableCommentPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.SetTablePropertiesPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.view.AddTableViewColumnPlan;
+import org.apache.iotdb.confignode.consensus.request.write.table.view.CommitDeleteViewColumnPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.view.SetViewCommentPlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.CommitSetSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.ExtendSchemaTemplatePlan;
@@ -95,6 +96,7 @@ import org.apache.iotdb.confignode.procedure.impl.schema.table.RenameTableProced
 import org.apache.iotdb.confignode.procedure.impl.schema.table.SetTablePropertiesProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.table.view.AddViewColumnProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.table.view.CreateTableViewProcedure;
+import org.apache.iotdb.confignode.procedure.impl.schema.table.view.DropViewColumnProcedure;
 import org.apache.iotdb.confignode.procedure.store.ProcedureType;
 import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
 import org.apache.iotdb.confignode.rpc.thrift.TDeleteDatabasesReq;
@@ -692,6 +694,21 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
                     ((CommitDeleteColumnPlan) plan).getTableName(),
                     queryId,
                     ((CommitDeleteColumnPlan) plan).getColumnName(),
+                    true));
+      case CommitDeleteViewColumn:
+        return configManager
+            .getProcedureManager()
+            .executeWithoutDuplicate(
+                ((CommitDeleteViewColumnPlan) plan).getDatabase(),
+                null,
+                ((CommitDeleteViewColumnPlan) plan).getTableName(),
+                queryId,
+                ProcedureType.DROP_VIEW_COLUMN_PROCEDURE,
+                new DropViewColumnProcedure(
+                    ((CommitDeleteViewColumnPlan) plan).getDatabase(),
+                    ((CommitDeleteViewColumnPlan) plan).getTableName(),
+                    queryId,
+                    ((CommitDeleteViewColumnPlan) plan).getColumnName(),
                     true));
       case RenameTableColumn:
         return configManager
