@@ -4165,8 +4165,6 @@ public class Session implements ISession {
 
   protected void changeSqlDialect(String sqlDialect) {
     this.sqlDialect = sqlDialect;
-    // clean database to avoid misuse of it between different SqlDialect
-    this.database = null;
   }
 
   public String getSqlDialect() {
