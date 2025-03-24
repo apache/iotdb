@@ -404,6 +404,11 @@ struct TSchemaRegionAttributeInfo {
   3: required binary body
 }
 
+struct TDeviceViewResp {
+  1: required common.TSStatus status
+  2: required map<string, map<string, map<byte, i32>>> deviewViewUpdateMap
+}
+
 struct TLoadResp {
   1: required bool accepted
   2: optional string message
