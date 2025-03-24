@@ -277,7 +277,7 @@ public class StreamingHashAggregationOperator extends AbstractOperator {
     while (low <= high) {
       int mid = low + (high - low) / 2;
       compareKey.rowIndex = mid;
-      int cmp = groupKeyComparator.compare(compareKey, new SortKey(page, mid));
+      int cmp = groupKeyComparator.compare(currentKey, compareKey);
       if (cmp == 0) {
         low = mid + 1;
       } else {
