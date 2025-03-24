@@ -35,6 +35,7 @@ import org.apache.iotdb.commons.service.metric.PerformanceOverviewMetrics;
 import org.apache.iotdb.commons.service.metric.enums.Metric;
 import org.apache.iotdb.commons.service.metric.enums.Tag;
 import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
+import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.commons.utils.RetryUtils;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.commons.utils.TimePartitionUtils;
@@ -155,13 +156,8 @@ import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
-import java.nio.file.FileSystem;
-import java.nio.file.FileSystems;
 import java.nio.file.Files;
-import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.nio.file.attribute.FileAttributeView;
-import java.nio.file.spi.FileSystemProvider;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -400,12 +396,16 @@ public class DataRegion implements IDataRegionForQuery {
     this.rootDisks2DataDirsMapForLoad = new HashMap<>(config.getDataDirs().length);
     for (String dataDir : config.getDataDirs()) {
       File dataDirFile = new File(dataDir);
-      String dataDirRoot =
-          dataDirFile
-              .getAbsolutePath()
-              .substring(0, dataDirFile.getAbsolutePath().indexOf(dataDirFile.getName()));
-      this.rootDisks2DataDirsMapForLoad.put(
-          dataDirRoot, fsFactory.getFile(dataDir, IoTDBConstant.UNSEQUENCE_FOLDER_NAME).getPath());
+      try {
+        String mountPoint = PathUtils.getMountPoint(dataDirFile.getCanonicalPath());
+        this.rootDisks2DataDirsMapForLoad.put(
+            mountPoint, fsFactory.getFile(dataDir, IoTDBConstant.UNSEQUENCE_FOLDER_NAME).getPath());
+      } catch (Exception e) {
+        logger.warn(
+            "Exception occurs when reading data dir's mount point {}, may because your OS is windows.",
+            dataDir,
+            e);
+      }
     }
 
     this.metrics = new DataRegionMetrics(this);
@@ -3074,10 +3074,16 @@ public class DataRegion implements IDataRegionForQuery {
       throws LoadFileException, DiskSpaceInsufficientException {
     File targetFile = null;
     boolean needDownGradeToSequence = true;
-    final String fileDirRoot =
-        tsFileToLoad
-            .getAbsolutePath()
-            .substring(0, tsFileToLoad.getAbsolutePath().indexOf(tsFileToLoad.getName()));
+    String fileDirRoot = null;
+    try {
+      fileDirRoot = PathUtils.getMountPoint(tsFileToLoad.getCanonicalPath());
+    } catch (Exception e) {
+      logger.warn(
+          "Exception occurs when reading target file's mount point {}, may because your OS is windows.",
+          tsFileToLoad,
+          e);
+    }
+
     if ((config.isEnableMultiDisksAwareLoadForIoTV2()
             && tsFileResource.isGeneratedByPipeConsensus())
         || (config.isEnableMultiDisksAwareLoadForPipe() && tsFileResource.isGeneratedByPipe())) {

@@ -28,6 +28,7 @@ import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.read.common.parser.PathNodesGenerator;
 import org.apache.tsfile.read.common.parser.PathVisitor;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -223,5 +224,24 @@ public class PathUtils {
 
   public static boolean isTableModelDatabase(final String databaseName) {
     return !databaseName.startsWith("root.");
+  }
+
+  /**
+   * Get the mount point of one specific file given its path. NOTE: only can be used in Linux and
+   * MacOS System.
+   */
+  public static String getMountPoint(String path) throws IOException, InterruptedException {
+    Process process = Runtime.getRuntime().exec("df " + path);
+    process.waitFor();
+
+    try (java.util.Scanner scanner = new java.util.Scanner(process.getInputStream())) {
+      if (scanner.hasNextLine()) {
+        scanner.nextLine();
+        String line = scanner.nextLine().trim();
+        String[] parts = line.split("\\s+");
+        return parts[parts.length - 1];
+      }
+    }
+    return null;
   }
 }
