@@ -152,9 +152,7 @@ public class DropTableProcedure extends AbstractAlterOrDropTableProcedure<DropTa
     }
 
     setNextState(
-        this instanceof DropViewProcedure
-            ? DropTableState.DELETE_DEVICES
-            : DropTableState.DELETE_DATA);
+        this instanceof DropViewProcedure ? DropTableState.DROP_TABLE : DropTableState.DELETE_DATA);
   }
 
   private void deleteData(final ConfigNodeProcedureEnv env) {
