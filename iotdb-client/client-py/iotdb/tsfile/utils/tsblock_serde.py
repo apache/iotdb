@@ -24,14 +24,6 @@ from iotdb.utils.IoTDBConstants import TSDataType
 
 TIMESTAMP_STR = "Time"
 START_INDEX = 2
-DATA_TYPE_MAP = {
-    b"\x00": 0,
-    b"\x01": 1,
-    b"\x02": 2,
-    b"\x03": 3,
-    b"\x04": 4,
-    b"\x05": 5,
-}
 
 
 # convert dataFrame to tsBlock in binary
@@ -317,18 +309,11 @@ def read_from_buffer(buffer, size):
 
 
 def read_column_types(buffer, value_column_count):
-    data_types = []
-    for _ in range(value_column_count):
-        res, buffer = read_byte_from_buffer(buffer)
-        data_types.append(get_data_type(res))
-    return data_types, buffer
-
-
-def get_data_type(value):
-    try:
-        return DATA_TYPE_MAP[value]
-    except KeyError:
-        raise Exception("Invalid data type: " + str(value))
+    data_types = np.frombuffer(buffer, dtype=np.uint8, count=value_column_count)
+    new_buffer = memoryview(buffer)[value_column_count:]
+    if not np.all(np.isin(data_types, [0, 1, 2, 3, 4, 5])):
+        raise Exception("Invalid data type encountered: " + str(data_types))
+    return data_types, new_buffer
 
 
 def get_data_type_byte_from_str(value):
@@ -362,19 +347,18 @@ def get_data_type_byte_from_str(value):
 
 
 def read_column_encoding(buffer, size):
-    encodings = []
-    for _ in range(size):
-        res, buffer = read_byte_from_buffer(buffer)
-        encodings.append(res)
-    return encodings, buffer
+    encodings = np.frombuffer(buffer, dtype=np.uint8, count=size)
+    new_buffer = memoryview(buffer)[size:]
+    return encodings, new_buffer
 
 
 # Read Column
 
 
 def deserialize_null_indicators(buffer, size):
-    may_have_null, buffer = read_byte_from_buffer(buffer)
-    if may_have_null != b"\x00":
+    may_have_null = np.frombuffer(buffer, dtype=np.uint8, count=1)
+    buffer = memoryview(buffer)[1:]
+    if may_have_null[0] != 0:
         return deserialize_from_boolean_array(buffer, size)
     return None, buffer
 
@@ -416,11 +400,15 @@ def read_int32_column(buffer, data_type, position_count):
     else:
         size = null_indicators.count(False)
 
-    if data_type == 1 or data_type == 3:
-        values, buffer = read_from_buffer(buffer, size * 4)
-        return values, null_indicators, buffer
+    if data_type == 1:
+        dtype = ">i4"
+    elif data_type == 3:
+        dtype = ">f4"
     else:
-        raise Exception("Invalid data type: " + data_type)
+        raise Exception("Invalid data type: " + str(data_type))
+    values = np.frombuffer(buffer, dtype, count=size)
+    buffer = memoryview(buffer)[size * 4:]
+    return values, null_indicators, buffer
 
 
 # Serialized data layout:
@@ -443,7 +431,7 @@ def deserialize_from_boolean_array(buffer, size):
     num_bytes = (size + 7) // 8
     packed_boolean_array, buffer = read_from_buffer(buffer, num_bytes)
     arr = np.frombuffer(packed_boolean_array, dtype=np.uint8)
-    output = np.unpackbits(arr)[:size].astype(bool).tolist()
+    output = np.unpackbits(arr)[:size].astype(bool)
     return output, buffer
 
 
@@ -513,12 +501,12 @@ def read_dictionary_column(buffer, data_type, position_count):
 
 
 ENCODING_FUNC_MAP = {
-    b"\x00": read_byte_column,
-    b"\x01": read_int32_column,
-    b"\x02": read_int64_column,
-    b"\x03": read_binary_column,
-    b"\x04": read_run_length_column,
-    b"\x05": read_dictionary_column,
+    0: read_byte_column,
+    1: read_int32_column,
+    2: read_int64_column,
+    3: read_binary_column,
+    4: read_run_length_column,
+    5: read_dictionary_column,
 }
 
 

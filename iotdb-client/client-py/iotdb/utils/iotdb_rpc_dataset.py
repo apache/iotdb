@@ -194,9 +194,7 @@ class IoTDBRpcDataSet(object):
                     )
                 # FLOAT
                 elif data_type == 3:
-                    data_array = np.frombuffer(
-                        value_buffer, np.dtype(np.float32).newbyteorder(">")
-                    )
+                    data_array = value_buffer
                 # BOOLEAN
                 elif data_type == 0:
                     data_array = np.array(value_buffer).astype("bool")
