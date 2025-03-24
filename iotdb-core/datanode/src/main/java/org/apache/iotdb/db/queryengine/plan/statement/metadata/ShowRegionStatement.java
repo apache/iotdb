@@ -49,7 +49,7 @@ public class ShowRegionStatement extends ShowStatement implements IConfigStateme
     this.nodeIds = nodeIds;
   }
 
-  public List<PartialPath> getStorageGroups() {
+  public List<PartialPath> getDatabases() {
     return storageGroups;
   }
 
