@@ -99,6 +99,7 @@ public class FakedFragmentInstanceContext extends FragmentInstanceContext {
     }
   }
 
+  @Override
   protected boolean checkIfModificationExists(TsFileResource tsFileResource) {
     return false;
   }

@@ -712,7 +712,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
     if (isAligned) {
       path =
           new AlignedPath(
-              device,
+              device.split("\\."),
               Collections.singletonList(measurement),
               Collections.singletonList(measurementSchema));
       operator =
