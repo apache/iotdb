@@ -38,22 +38,11 @@ public class ShowRegionStatement extends ShowStatement implements IConfigStateme
 
   public ShowRegionStatement() {}
 
-  public ShowRegionStatement(TConsensusGroupType regionType) {
-    this.regionType = regionType;
-  }
-
-  public ShowRegionStatement(
-      TConsensusGroupType regionType, List<PartialPath> storageGroups, List<Integer> nodeIds) {
-    this.regionType = regionType;
-    this.storageGroups = storageGroups;
-    this.nodeIds = nodeIds;
-  }
-
   public List<PartialPath> getStorageGroups() {
     return storageGroups;
   }
 
-  public void setStorageGroups(List<PartialPath> storageGroups) {
+  public void setStorageGroups(final List<PartialPath> storageGroups) {
     this.storageGroups = storageGroups;
   }
 
@@ -61,11 +50,11 @@ public class ShowRegionStatement extends ShowStatement implements IConfigStateme
     return regionType;
   }
 
-  public void setRegionType(TConsensusGroupType regionType) {
+  public void setRegionType(final TConsensusGroupType regionType) {
     this.regionType = regionType;
   }
 
-  public void setNodeIds(List<Integer> nodeIds) {
+  public void setNodeIds(final List<Integer> nodeIds) {
     this.nodeIds = nodeIds;
   }
 
@@ -74,7 +63,7 @@ public class ShowRegionStatement extends ShowStatement implements IConfigStateme
   }
 
   @Override
-  public TSStatus checkPermissionBeforeProcess(String userName) {
+  public TSStatus checkPermissionBeforeProcess(final String userName) {
     return AuthorityChecker.checkSuperUserOrMaintain(userName);
   }
 
@@ -84,7 +73,7 @@ public class ShowRegionStatement extends ShowStatement implements IConfigStateme
   }
 
   @Override
-  public <R, C> R accept(StatementVisitor<R, C> visitor, C context) {
+  public <R, C> R accept(final StatementVisitor<R, C> visitor, final C context) {
     return visitor.visitShowRegion(this, context);
   }
 }
