@@ -31,11 +31,13 @@ import org.apache.iotdb.confignode.client.async.handlers.DataNodeAsyncRequestCon
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeEnrichedPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.CommitDeleteTablePlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.PreDeleteTablePlan;
+import org.apache.iotdb.confignode.consensus.request.write.table.view.PreDeleteViewPlan;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureSuspendedException;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureYieldException;
 import org.apache.iotdb.confignode.procedure.impl.schema.SchemaUtils;
+import org.apache.iotdb.confignode.procedure.impl.schema.table.view.DropViewProcedure;
 import org.apache.iotdb.confignode.procedure.state.schema.DropTableState;
 import org.apache.iotdb.confignode.procedure.store.ProcedureType;
 import org.apache.iotdb.mpp.rpc.thrift.TDeleteDataOrDevicesForDropTableReq;
@@ -117,7 +119,11 @@ public class DropTableProcedure extends AbstractAlterOrDropTableProcedure<DropTa
   private void checkAndPreDeleteTable(final ConfigNodeProcedureEnv env) {
     final TSStatus status =
         SchemaUtils.executeInConsensusLayer(
-            new PreDeleteTablePlan(database, tableName), env, LOGGER);
+            this instanceof DropViewProcedure
+                ? new PreDeleteViewPlan(database, tableName)
+                : new PreDeleteTablePlan(database, tableName),
+            env,
+            LOGGER);
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       setNextState(DropTableState.INVALIDATE_CACHE);
     } else {
