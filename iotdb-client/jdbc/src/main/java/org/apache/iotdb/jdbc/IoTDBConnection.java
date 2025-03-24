@@ -644,8 +644,11 @@ public class IoTDBConnection implements Connection {
     params.setDb(database);
   }
 
-  protected void changeDefaultSqlDialect(String sqlDialect) {
-    params.setSqlDialect(sqlDialect);
+  protected void mayChangeDefaultSqlDialect(String sqlDialect) {
+    if (!sqlDialect.equals(params.getSqlDialect())) {
+      params.setSqlDialect(sqlDialect);
+      params.setDb(null);
+    }
   }
 
   public int getTimeFactor() {
