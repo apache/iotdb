@@ -80,6 +80,7 @@ public class RenameTableColumnProcedure
           LOGGER.info("Pre release info of table {}.{} when renaming column", database, tableName);
           preRelease(env);
           break;
+          // TODO: Change data for base table
         case RENAME_COLUMN:
           LOGGER.info("Rename column to table {}.{} on config node", database, tableName);
           renameColumn(env);
@@ -211,6 +212,10 @@ public class RenameTableColumnProcedure
         isGeneratedByPipe
             ? ProcedureType.PIPE_ENRICHED_RENAME_TABLE_COLUMN_PROCEDURE.getTypeCode()
             : ProcedureType.RENAME_TABLE_COLUMN_PROCEDURE.getTypeCode());
+    innerSerialize(stream);
+  }
+
+  protected void innerSerialize(final DataOutputStream stream) throws IOException {
     super.serialize(stream);
 
     ReadWriteIOUtils.write(oldName, stream);
