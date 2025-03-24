@@ -100,7 +100,7 @@ import org.apache.iotdb.confignode.procedure.impl.schema.table.DropTableProcedur
 import org.apache.iotdb.confignode.procedure.impl.schema.table.RenameTableColumnProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.table.RenameTableProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.table.SetTablePropertiesProcedure;
-import org.apache.iotdb.confignode.procedure.impl.schema.table.view.AddTableViewColumnProcedure;
+import org.apache.iotdb.confignode.procedure.impl.schema.table.view.AddViewColumnProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.table.view.CreateTableViewProcedure;
 import org.apache.iotdb.confignode.procedure.impl.subscription.consumer.CreateConsumerProcedure;
 import org.apache.iotdb.confignode.procedure.impl.subscription.consumer.DropConsumerProcedure;
@@ -1802,11 +1802,9 @@ public class ProcedureManager {
         null,
         req.tableName,
         req.queryId,
+        isView ? ProcedureType.ADD_VIEW_COLUMN_PROCEDURE : ProcedureType.ADD_TABLE_COLUMN_PROCEDURE,
         isView
-            ? ProcedureType.ADD_TABLE_VIEW_COLUMN_PROCEDURE
-            : ProcedureType.ADD_TABLE_COLUMN_PROCEDURE,
-        isView
-            ? new AddTableViewColumnProcedure(
+            ? new AddViewColumnProcedure(
                 req.database,
                 req.tableName,
                 req.queryId,
@@ -1990,7 +1988,7 @@ public class ProcedureManager {
           }
           break;
         case ADD_TABLE_COLUMN_PROCEDURE:
-        case ADD_TABLE_VIEW_COLUMN_PROCEDURE:
+        case ADD_VIEW_COLUMN_PROCEDURE:
         case SET_TABLE_PROPERTIES_PROCEDURE:
         case RENAME_TABLE_COLUMN_PROCEDURE:
         case DROP_TABLE_COLUMN_PROCEDURE:

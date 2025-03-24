@@ -60,7 +60,7 @@ import org.apache.iotdb.confignode.procedure.impl.schema.table.DropTableProcedur
 import org.apache.iotdb.confignode.procedure.impl.schema.table.RenameTableColumnProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.table.RenameTableProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.table.SetTablePropertiesProcedure;
-import org.apache.iotdb.confignode.procedure.impl.schema.table.view.AddTableViewColumnProcedure;
+import org.apache.iotdb.confignode.procedure.impl.schema.table.view.AddViewColumnProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.table.view.CreateTableViewProcedure;
 import org.apache.iotdb.confignode.procedure.impl.subscription.consumer.AlterConsumerGroupProcedure;
 import org.apache.iotdb.confignode.procedure.impl.subscription.consumer.CreateConsumerProcedure;
@@ -212,8 +212,8 @@ public class ProcedureFactory implements IProcedureFactory {
       case ADD_TABLE_COLUMN_PROCEDURE:
         procedure = new AddTableColumnProcedure(false);
         break;
-      case ADD_TABLE_VIEW_COLUMN_PROCEDURE:
-        procedure = new AddTableViewColumnProcedure(false);
+      case ADD_VIEW_COLUMN_PROCEDURE:
+        procedure = new AddViewColumnProcedure(false);
         break;
       case SET_TABLE_PROPERTIES_PROCEDURE:
         procedure = new SetTablePropertiesProcedure(false);
@@ -305,8 +305,8 @@ public class ProcedureFactory implements IProcedureFactory {
       case PIPE_ENRICHED_CREATE_TABLE_VIEW_PROCEDURE:
         procedure = new CreateTableViewProcedure(true);
         break;
-      case PIPE_ENRICHED_ADD_TABLE_VIEW_COLUMN_PROCEDURE:
-        procedure = new AddTableViewColumnProcedure(true);
+      case PIPE_ENRICHED_ADD_VIEW_COLUMN_PROCEDURE:
+        procedure = new AddViewColumnProcedure(true);
         break;
       case REMOVE_AI_NODE_PROCEDURE:
         procedure = new RemoveAINodeProcedure();
@@ -419,8 +419,8 @@ public class ProcedureFactory implements IProcedureFactory {
       return ProcedureType.CREATE_TABLE_VIEW_PROCEDURE;
     } else if (procedure instanceof CreateTableProcedure) {
       return ProcedureType.CREATE_TABLE_PROCEDURE;
-    } else if (procedure instanceof AddTableViewColumnProcedure) {
-      return ProcedureType.ADD_TABLE_VIEW_COLUMN_PROCEDURE;
+    } else if (procedure instanceof AddViewColumnProcedure) {
+      return ProcedureType.ADD_VIEW_COLUMN_PROCEDURE;
     } else if (procedure instanceof AddTableColumnProcedure) {
       return ProcedureType.ADD_TABLE_COLUMN_PROCEDURE;
     } else if (procedure instanceof SetTablePropertiesProcedure) {

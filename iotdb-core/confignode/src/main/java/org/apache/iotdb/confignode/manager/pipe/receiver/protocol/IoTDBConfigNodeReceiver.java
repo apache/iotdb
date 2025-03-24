@@ -93,7 +93,7 @@ import org.apache.iotdb.confignode.procedure.impl.schema.table.DropTableProcedur
 import org.apache.iotdb.confignode.procedure.impl.schema.table.RenameTableColumnProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.table.RenameTableProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.table.SetTablePropertiesProcedure;
-import org.apache.iotdb.confignode.procedure.impl.schema.table.view.AddTableViewColumnProcedure;
+import org.apache.iotdb.confignode.procedure.impl.schema.table.view.AddViewColumnProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.table.view.CreateTableViewProcedure;
 import org.apache.iotdb.confignode.procedure.store.ProcedureType;
 import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
@@ -652,8 +652,8 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
                 null,
                 ((AddTableViewColumnPlan) plan).getTableName(),
                 queryId,
-                ProcedureType.ADD_TABLE_VIEW_COLUMN_PROCEDURE,
-                new AddTableViewColumnProcedure(
+                ProcedureType.ADD_VIEW_COLUMN_PROCEDURE,
+                new AddViewColumnProcedure(
                     ((AddTableViewColumnPlan) plan).getDatabase(),
                     ((AddTableViewColumnPlan) plan).getTableName(),
                     queryId,

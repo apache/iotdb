@@ -27,12 +27,12 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.util.List;
 
-public class AddTableViewColumnProcedure extends AddTableColumnProcedure {
-  public AddTableViewColumnProcedure(final boolean isGeneratedByPipe) {
+public class AddViewColumnProcedure extends AddTableColumnProcedure {
+  public AddViewColumnProcedure(final boolean isGeneratedByPipe) {
     super(isGeneratedByPipe);
   }
 
-  public AddTableViewColumnProcedure(
+  public AddViewColumnProcedure(
       final String database,
       final String tableName,
       final String queryId,
@@ -50,8 +50,8 @@ public class AddTableViewColumnProcedure extends AddTableColumnProcedure {
   public void serialize(final DataOutputStream stream) throws IOException {
     stream.writeShort(
         isGeneratedByPipe
-            ? ProcedureType.PIPE_ENRICHED_ADD_TABLE_VIEW_COLUMN_PROCEDURE.getTypeCode()
-            : ProcedureType.ADD_TABLE_VIEW_COLUMN_PROCEDURE.getTypeCode());
+            ? ProcedureType.PIPE_ENRICHED_ADD_VIEW_COLUMN_PROCEDURE.getTypeCode()
+            : ProcedureType.ADD_VIEW_COLUMN_PROCEDURE.getTypeCode());
     innerSerialize(stream);
   }
 }

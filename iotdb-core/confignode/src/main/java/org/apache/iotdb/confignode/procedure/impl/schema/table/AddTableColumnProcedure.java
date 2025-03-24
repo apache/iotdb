@@ -31,7 +31,7 @@ import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureSuspendedException;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureYieldException;
-import org.apache.iotdb.confignode.procedure.impl.schema.table.view.AddTableViewColumnProcedure;
+import org.apache.iotdb.confignode.procedure.impl.schema.table.view.AddViewColumnProcedure;
 import org.apache.iotdb.confignode.procedure.state.schema.AddTableColumnState;
 import org.apache.iotdb.confignode.procedure.store.ProcedureType;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -109,10 +109,7 @@ public class AddTableColumnProcedure
           env.getConfigManager()
               .getClusterSchemaManager()
               .tableColumnCheckForColumnExtension(
-                  database,
-                  tableName,
-                  addedColumnList,
-                  this instanceof AddTableViewColumnProcedure);
+                  database, tableName, addedColumnList, this instanceof AddViewColumnProcedure);
       final TSStatus status = result.getLeft();
       if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         setFailure(
@@ -137,7 +134,7 @@ public class AddTableColumnProcedure
         env.getConfigManager()
             .getClusterSchemaManager()
             .executePlan(
-                this instanceof AddTableViewColumnProcedure
+                this instanceof AddViewColumnProcedure
                     ? new AddTableViewColumnPlan(database, tableName, addedColumnList, false)
                     : new AddTableColumnPlan(database, tableName, addedColumnList, false),
                 isGeneratedByPipe);
@@ -186,7 +183,7 @@ public class AddTableColumnProcedure
         env.getConfigManager()
             .getClusterSchemaManager()
             .executePlan(
-                this instanceof AddTableViewColumnProcedure
+                this instanceof AddViewColumnProcedure
                     ? new AddTableViewColumnPlan(database, tableName, addedColumnList, true)
                     : new AddTableColumnPlan(database, tableName, addedColumnList, true),
                 isGeneratedByPipe);
