@@ -222,6 +222,9 @@ public class TableFunctionOperator implements ProcessOperator {
         builtCount += subBlockPositionCount;
         result.add(subProperBlock.appendValueColumns(passThroughColumns));
       }
+    } else {
+      // split the proper block into smaller blocks
+      result.add(properBlock);
     }
     properBlockBuilder.reset();
     return result;

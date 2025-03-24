@@ -33,7 +33,6 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationN
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationNode.Aggregation;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.FilterNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.GapFillNode;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.node.GroupNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.LimitNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.LinearFillNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.OffsetNode;
@@ -821,11 +820,8 @@ public class QueryPlanner {
     OrderingScheme orderingScheme = new OrderingScheme(orderBySymbols.build(), orderings);
     analysis.setSortNode(true);
     return subPlan.withNewRoot(
-        new GroupNode(
-            queryIdAllocator.genPlanNodeId(),
-            subPlan.getRoot(),
-            orderingScheme,
-            groupingKeys.size()));
+        new SortNode(
+            queryIdAllocator.genPlanNodeId(), subPlan.getRoot(), orderingScheme, false, false));
   }
 
   private PlanBuilder distinct(
