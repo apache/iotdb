@@ -84,6 +84,7 @@ public enum ThreadName {
   CONFIG_NODE_SIMPLE_CONSENSUS_WAL_FLUSH("ConfigNode-Simple-Consensus-WAL-Flush-Thread"),
   // -------------------------- ConfigNode-Heartbeat --------------------------
   CONFIG_NODE_HEART_BEAT_SERVICE("Cluster-Heartbeat-Service"),
+  CONFIG_NODE_TOPOLOGY_SERVICE("Topology-Service"),
   ASYNC_CONFIGNODE_HEARTBEAT_CLIENT_POOL("AsyncConfigNodeHeartbeatServiceClientPool"),
   ASYNC_DATANODE_HEARTBEAT_CLIENT_POOL("AsyncDataNodeHeartbeatServiceClientPool"),
   // -------------------------- ConfigNode-LoadBalance --------------------------
@@ -341,6 +342,7 @@ public enum ThreadName {
       new HashSet<>(
           Arrays.asList(
               CONFIG_NODE_HEART_BEAT_SERVICE,
+              CONFIG_NODE_TOPOLOGY_SERVICE,
               ASYNC_CONFIGNODE_HEARTBEAT_CLIENT_POOL,
               ASYNC_DATANODE_HEARTBEAT_CLIENT_POOL));
 

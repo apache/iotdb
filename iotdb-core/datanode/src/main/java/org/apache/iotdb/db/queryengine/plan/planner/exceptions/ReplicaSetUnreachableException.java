@@ -17,26 +17,21 @@
  * under the License.
  */
 
-package org.apache.iotdb.commons.partition;
+package org.apache.iotdb.db.queryengine.plan.planner.exceptions;
 
-import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
+import org.apache.iotdb.commons.exception.IoTDBRuntimeException;
+import org.apache.iotdb.rpc.TSStatusCode;
 
-import java.util.Optional;
-
-/** The interface is used to indicate where to execute a FragmentInstance */
-public interface ExecutorType {
-
-  /** Indicate if ExecutorType is StorageExecutor */
-  boolean isStorageExecutor();
-
-  /**
-   * @return Optional.empty() iff {@link #isStorageExecutor()} and all candidate replica locations
-   *     are unreachable
-   */
-  Optional<TDataNodeLocation> getDataNodeLocation();
-
-  default TRegionReplicaSet getRegionReplicaSet() {
-    throw new UnsupportedOperationException(getClass().getName());
+/**
+ * When ALL DataNodeLocations in a QUERY-typed {@link
+ * org.apache.iotdb.db.queryengine.plan.planner.plan.FragmentInstance} are unreachable, possibly due
+ * to network partition issues, this exception will be thrown and this query will fail.
+ */
+public class ReplicaSetUnreachableException extends IoTDBRuntimeException {
+  public ReplicaSetUnreachableException(TRegionReplicaSet replicaSet) {
+    super(
+        "All replica cannot be reached:" + replicaSet.toString(),
+        TSStatusCode.PLAN_FAILED_NETWORK_PARTITION.getStatusCode());
   }
 }
