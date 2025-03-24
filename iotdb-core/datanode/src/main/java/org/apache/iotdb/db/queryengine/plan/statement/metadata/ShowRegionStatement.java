@@ -32,18 +32,18 @@ import java.util.List;
 public class ShowRegionStatement extends ShowStatement implements IConfigStatement {
 
   private TConsensusGroupType regionType;
-  private List<PartialPath> storageGroups;
+  private List<PartialPath> databases;
 
   private List<Integer> nodeIds;
 
   public ShowRegionStatement() {}
 
   public List<PartialPath> getDatabases() {
-    return storageGroups;
+    return databases;
   }
 
-  public void setStorageGroups(final List<PartialPath> storageGroups) {
-    this.storageGroups = storageGroups;
+  public void setDatabases(final List<PartialPath> databases) {
+    this.databases = databases;
   }
 
   public TConsensusGroupType getRegionType() {

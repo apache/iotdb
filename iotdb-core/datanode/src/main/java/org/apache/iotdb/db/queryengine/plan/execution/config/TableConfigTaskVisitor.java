@@ -380,8 +380,10 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
     // corresponding tree-model variant and execute that.
     final ShowRegionStatement treeStatement = new ShowRegionStatement();
     treeStatement.setRegionType(showRegions.getRegionType());
-    treeStatement.setStorageGroups(
-        Collections.singletonList(new PartialPath(new String[] {showRegions.getDatabase()})));
+    treeStatement.setDatabases(
+        Objects.nonNull(showRegions.getDatabase())
+            ? Collections.singletonList(new PartialPath(new String[] {showRegions.getDatabase()}))
+            : null);
     treeStatement.setNodeIds(showRegions.getNodeIds());
     return new ShowRegionTask(treeStatement, true);
   }

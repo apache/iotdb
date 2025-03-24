@@ -1117,7 +1117,12 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
     } else if (ctx.SCHEMA() != null) {
       regionType = TConsensusGroupType.SchemaRegion;
     }
-    return new ShowRegions(regionType, ((Identifier) visit(ctx.identifier())).getValue(), null);
+    return new ShowRegions(
+        regionType,
+        Objects.nonNull(ctx.identifier())
+            ? ((Identifier) visit(ctx.identifier())).getValue()
+            : null,
+        null);
   }
 
   @Override
