@@ -177,7 +177,11 @@ public class DropTableColumnProcedure
       }
     }
 
-    setNextState(DropTableColumnState.EXECUTE_ON_REGIONS);
+    // View does not need to be executed on regions
+    setNextState(
+        this instanceof DropViewColumnProcedure
+            ? DropTableColumnState.DROP_COLUMN
+            : DropTableColumnState.EXECUTE_ON_REGIONS);
   }
 
   private void executeOnRegions(final ConfigNodeProcedureEnv env) {
