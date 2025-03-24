@@ -572,6 +572,10 @@ public class PipeConfigPhysicalPlanTSStatusVisitor
       return new TSStatus(TSStatusCode.PIPE_RECEIVER_IDEMPOTENT_CONFLICT_EXCEPTION.getStatusCode())
           .setMessage(context.getMessage());
     }
+    if (context.getCode() == TSStatusCode.SEMANTIC_ERROR.getStatusCode()) {
+      return new TSStatus(TSStatusCode.PIPE_RECEIVER_USER_CONFLICT_EXCEPTION.getStatusCode())
+          .setMessage(context.getMessage());
+    }
     return visitPlan(plan, context);
   }
 }
