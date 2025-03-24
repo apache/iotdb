@@ -267,25 +267,19 @@ public class IoTDBSessionRelationalIT {
         session.executeNonQueryStatement("insert into wrong_time values(1+1,'bb','cc','dd')");
         fail("No exception thrown");
       } catch (StatementExecutionException e) {
-        assertEquals(
-            "701: Unsupported expression: (1 + 1)",
-            e.getMessage());
+        assertEquals("701: Unsupported expression: (1 + 1)", e.getMessage());
       }
       try {
         session.executeNonQueryStatement("insert into wrong_time values(1.0,'bb','cc','dd')");
         fail("No exception thrown");
       } catch (StatementExecutionException e) {
-        assertEquals(
-            "701: Unsupported expression: 1E0",
-            e.getMessage());
+        assertEquals("701: Unsupported expression: 1E0", e.getMessage());
       }
       try {
         session.executeNonQueryStatement("insert into wrong_time values(true,'bb','cc','dd')");
         fail("No exception thrown");
       } catch (StatementExecutionException e) {
-        assertEquals(
-            "701: Unsupported expression: true",
-            e.getMessage());
+        assertEquals("701: Unsupported expression: true", e.getMessage());
       }
       session.executeNonQueryStatement("drop table wrong_time");
     }
