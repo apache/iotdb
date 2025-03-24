@@ -45,7 +45,7 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 import static org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory.TAG;
-import static org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.ParallelizeGrouping.CanOptimized.ELIMINATE;
+import static org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.ParallelizeGrouping.CanOptimized.ENABLE_PARALLEL;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.ParallelizeGrouping.CanOptimized.KEEP_GROUP;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.ParallelizeGrouping.CanOptimized.PENDING;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.ParallelizeGrouping.CanOptimized.TO_SORT;
@@ -55,29 +55,20 @@ import static org.apache.iotdb.db.queryengine.plan.relational.planner.optimizati
  *
  * <p>Optimization phase: Logical plan planning.
  *
- * <ul>
- *   The GroupNode can be eliminated if the lasted offspring that guarantees the data is grouped by
- *   PartitionKey and ordered by OrderKey. For example:
- *   <ul>
- *     <li>GroupNode[PK={device_id}, OK={time}] -> ... -> TableDeviceScanNode
- *     <li>GroupNode[PK={device_id,attr}, OK={time}] -> ... -> TableDeviceScanNode
- *     <li>GroupNode[PK={tag1,tag2}, OK={tag3}] -> SortNode[sort={tag1,tag2,tag3}]
- *     <li>GroupNode[PK={tag1,tag2}, OK={tag3}] -> TopKNode[sort={tag1,tag2,tag3}]
- *     <li>GroupNode[PK={tag1,tag2}, OK={}] -> AggregationNode[group={tag1,tag2}]
- *     <li>GroupNode[PK={tag1}, OK={}] -> TableFunctionNode[partition={tag1,tag2}]
- *   </ul>
- * </ul>
+ * <p>
  *
  * <ul>
- *   The GroupNode should be kept and implemented as a StreamSortOperator later if the lasted
- *   offspring that guarantees the data is grouped by PartitionKey but not ordered by OrderKey. For
- *   example:
+ *   The GroupNode can be paralleled if the lasted offspring that guarantees the data is grouped by
+ *   PartitionKey or is sorted by PartitionKey. For example:
  *   <ul>
+ *     <li>GroupNode[PK={device_id}, OK={time}] -> ... -> TableDeviceScanNode
  *     <li>GroupNode[PK={device_id}, OK={s1}] -> ... -> TableDeviceScanNode
- *     <li>GroupNode[PK={device_id,attr}, OK={s1}] -> ... -> TableDeviceScanNode
- *     <li>GroupNode[PK={tag1,tag2}, OK={s1}] -> SortNode[sort={tag1,tag2,tag3}]
+ *     <li>GroupNode[PK={device_id,attr}, OK={time}] -> ... -> TableDeviceScanNode
+ *     <li>GroupNode[PK={tag1,tag2}, OK={tag3}] -> SortNode[sort={tag1,tag2,tag3}]
  *     <li>GroupNode[PK={tag1,tag2}, OK={s1}] -> TopKNode[sort={tag1,tag2,tag3}]
+ *     <li>GroupNode[PK={tag1,tag2}, OK={}] -> AggregationNode[group={tag1,tag2}]
  *     <li>GroupNode[PK={tag1,tag2}, OK={s1}] -> AggregationNode[group={tag1,tag2,s1}]
+ *     <li>GroupNode[PK={tag1}, OK={}] -> TableFunctionNode[partition={tag1,tag2}]
  *   </ul>
  * </ul>
  *
@@ -109,7 +100,7 @@ public class ParallelizeGrouping implements PlanOptimizer {
     }
 
     /** We need to make sure: context#partitionKey can match the prefix of childOrderSchema */
-    private void checkForPartitionBasedNode(Context context, List<Symbol> childOrder) {
+    private void checkPrefixMatch(Context context, List<Symbol> childOrder) {
       if (context.canSkip()) {
         return;
       }
@@ -126,49 +117,17 @@ public class ParallelizeGrouping implements PlanOptimizer {
           return;
         }
       }
-      if (context.partitionKeyCount == prefix.getOrderBy().size()) {
-        context.canOptimized = ELIMINATE;
-      } else {
-        context.canOptimized = KEEP_GROUP;
-      }
-    }
-
-    private void checkForSortBasedNode(Context context, OrderingScheme childOrder) {
-      if (context.canSkip()) {
-        return;
-      }
-      if (context.partitionKeyCount > childOrder.getOrderBy().size()) {
-        context.canOptimized = TO_SORT;
-        return;
-      }
-      OrderingScheme prefix = context.sortKey;
-      for (int i = 0; i < context.partitionKeyCount; i++) {
-        Symbol lhs = prefix.getOrderBy().get(i);
-        Symbol rhs = childOrder.getOrderBy().get(i);
-        if (!lhs.equals(rhs)) {
-          context.canOptimized = TO_SORT;
-          return;
-        }
-      }
-      for (int i = context.partitionKeyCount; i < prefix.getOrderBy().size(); i++) {
-        Symbol lhs = prefix.getOrderBy().get(i);
-        Symbol rhs = childOrder.getOrderBy().get(i);
-        if (!lhs.equals(rhs) || !prefix.getOrdering(lhs).equals(childOrder.getOrdering(lhs))) {
-          context.canOptimized = KEEP_GROUP;
-          return;
-        }
-      }
-      context.canOptimized = ELIMINATE;
+      context.canOptimized = ENABLE_PARALLEL;
     }
 
     @Override
     public PlanNode visitGroup(GroupNode node, Context context) {
-      checkForPartitionBasedNode(
+      checkPrefixMatch(
           context, node.getOrderingScheme().getOrderBy().subList(0, node.getPartitionKeyCount()));
       Context newContext = new Context(node.getOrderingScheme(), node.getPartitionKeyCount());
       PlanNode child = node.getChild().accept(this, newContext);
       switch (newContext.canOptimized) {
-        case ELIMINATE:
+        case ENABLE_PARALLEL:
           return child;
         case KEEP_GROUP:
           GroupNode newNode = (GroupNode) node.clone();
@@ -182,19 +141,19 @@ public class ParallelizeGrouping implements PlanOptimizer {
 
     @Override
     public PlanNode visitSort(SortNode node, Context context) {
-      checkForSortBasedNode(context, node.getOrderingScheme());
+      checkPrefixMatch(context, node.getOrderingScheme().getOrderBy());
       return visitPlan(node, context);
     }
 
     @Override
     public PlanNode visitStreamSort(StreamSortNode node, Context context) {
-      checkForSortBasedNode(context, node.getOrderingScheme());
+      checkPrefixMatch(context, node.getOrderingScheme().getOrderBy());
       return visitPlan(node, context);
     }
 
     @Override
     public PlanNode visitTopK(TopKNode node, Context context) {
-      checkForSortBasedNode(context, node.getOrderingScheme());
+      checkPrefixMatch(context, node.getOrderingScheme().getOrderBy());
       return visitPlan(node, context);
     }
 
@@ -229,7 +188,7 @@ public class ParallelizeGrouping implements PlanOptimizer {
         if (!dataOrganizationSpecification.isPresent()) {
           context.canOptimized = TO_SORT;
         } else {
-          checkForPartitionBasedNode(context, dataOrganizationSpecification.get().getPartitionBy());
+          checkPrefixMatch(context, dataOrganizationSpecification.get().getPartitionBy());
         }
       }
       return visitPlan(node, context);
@@ -276,13 +235,13 @@ public class ParallelizeGrouping implements PlanOptimizer {
 
     @Override
     public PlanNode visitAggregation(AggregationNode node, Context context) {
-      checkForPartitionBasedNode(context, node.getGroupingKeys());
+      checkPrefixMatch(context, node.getGroupingKeys());
       return visitPlan(node, context);
     }
 
     @Override
     public PlanNode visitAggregationTableScan(AggregationTableScanNode node, Context context) {
-      checkForPartitionBasedNode(context, node.getGroupingKeys());
+      checkPrefixMatch(context, node.getGroupingKeys());
       return node;
     }
   }
@@ -304,7 +263,7 @@ public class ParallelizeGrouping implements PlanOptimizer {
 
   protected enum CanOptimized {
     KEEP_GROUP,
-    ELIMINATE,
+    ENABLE_PARALLEL,
     TO_SORT,
     PENDING
   }

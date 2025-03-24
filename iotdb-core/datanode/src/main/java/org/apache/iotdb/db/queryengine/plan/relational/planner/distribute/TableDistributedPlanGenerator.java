@@ -291,31 +291,27 @@ public class TableDistributedPlanGenerator
 
   @Override
   public List<PlanNode> visitGroup(GroupNode node, PlanContext context) {
-    boolean pushDown = context.isPushDownGrouping();
-    try {
-      context.setPushDownGrouping(true);
-      List<PlanNode> result = new ArrayList<>();
-      context.setExpectedOrderingScheme(node.getOrderingScheme());
-      List<PlanNode> childrenNodes = node.getChild().accept(this, context);
-      for (PlanNode child : childrenNodes) {
-        if (canSortEliminated(
-            node.getOrderingScheme(), nodeOrderingMap.get(child.getPlanNodeId()))) {
-          result.add(child);
-        } else {
-          GroupNode subGroupNode =
-              new GroupNode(
-                  queryId.genPlanNodeId(),
-                  child,
-                  node.getOrderingScheme(),
-                  node.getPartitionKeyCount());
-          result.add(subGroupNode);
-          // should not set nodeOrderingMap here
-        }
+    context.setExpectedOrderingScheme(node.getOrderingScheme());
+    nodeOrderingMap.put(node.getPlanNodeId(), node.getOrderingScheme());
+    context.setPushDownGrouping(true);
+    List<PlanNode> result = new ArrayList<>();
+    context.setExpectedOrderingScheme(node.getOrderingScheme());
+    List<PlanNode> childrenNodes = node.getChild().accept(this, context);
+    for (PlanNode child : childrenNodes) {
+      if (canSortEliminated(node.getOrderingScheme(), nodeOrderingMap.get(child.getPlanNodeId()))) {
+        result.add(child);
+      } else {
+        GroupNode subGroupNode =
+            new GroupNode(
+                queryId.genPlanNodeId(),
+                child,
+                node.getOrderingScheme(),
+                node.getPartitionKeyCount());
+        result.add(subGroupNode);
+        // should not set nodeOrderingMap here
       }
-      return result;
-    } finally {
-      context.setPushDownGrouping(pushDown);
     }
+    return result;
   }
 
   @Override

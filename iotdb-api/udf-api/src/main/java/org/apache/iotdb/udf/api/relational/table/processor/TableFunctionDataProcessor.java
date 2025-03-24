@@ -22,7 +22,6 @@ package org.apache.iotdb.udf.api.relational.table.processor;
 import org.apache.iotdb.udf.api.relational.access.Record;
 import org.apache.iotdb.udf.api.relational.table.TableFunctionAnalysis;
 
-import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.block.column.ColumnBuilder;
 
 import java.util.List;
