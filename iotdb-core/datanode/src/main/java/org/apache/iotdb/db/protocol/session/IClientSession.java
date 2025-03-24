@@ -161,12 +161,6 @@ public abstract class IClientSession {
     this.databaseName = null;
   }
 
-  public void setSqlDialectAndClean(SqlDialect sqlDialect) {
-    this.sqlDialect = sqlDialect;
-    // clean database to avoid misuse of it between different SqlDialect
-    this.databaseName = null;
-  }
-
   @Nullable
   public String getDatabaseName() {
     return databaseName;
