@@ -1281,7 +1281,7 @@ service IConfigNodeRPCService {
   // ======================================================
 
   /**
-   * Set a new Databse, all fields in TDatabaseSchema can be customized
+   * Set a new Database, all fields in TDatabaseSchema can be customized
    * while the undefined fields will automatically use default values
    *
    * @return SUCCESS_STATUS if the new Database set successfully

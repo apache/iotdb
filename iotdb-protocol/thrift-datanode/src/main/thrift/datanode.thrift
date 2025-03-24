@@ -1177,6 +1177,12 @@ service IDataNodeRPCService {
    */
   common.TSStatus deleteTableDeviceInBlackList(TTableDeviceDeletionWithPatternOrModReq req)
 
+  /**
+   * Get tree device view info for device view
+   */
+  TDeviceViewResp getTreeDeviceViewInfo(list<common.TConsensusGroupId> regionIds, list<string> prefixPattern)
+
+
   common.TTestConnectionResp submitTestConnectionTask(common.TNodeLocations nodeLocations)
 
   common.TTestConnectionResp submitInternalTestConnectionTask(common.TNodeLocations nodeLocations)
