@@ -51,13 +51,6 @@ public interface TableFunctionDataProcessor {
       List<ColumnBuilder> properColumnBuilders,
       ColumnBuilder passThroughIndexBuilder);
 
-  default void process(
-      Column[] inputs,
-      List<ColumnBuilder> properColumnBuilders,
-      ColumnBuilder passThroughIndexBuilder) {
-    // do nothing
-  }
-
   /**
    * This method is called after all data is processed. It is used to finalize the output table and
    * close resource. All remaining data should be written to the columnBuilders.

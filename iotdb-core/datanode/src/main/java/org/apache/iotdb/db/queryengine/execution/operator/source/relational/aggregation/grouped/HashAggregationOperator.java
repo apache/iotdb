@@ -140,6 +140,7 @@ public class HashAggregationOperator extends AbstractOperator {
       if (block == null) {
         return null;
       }
+
       aggregationBuilder.processBlock(block);
       aggregationBuilder.updateMemory();
       updateOccupiedMemorySize();
