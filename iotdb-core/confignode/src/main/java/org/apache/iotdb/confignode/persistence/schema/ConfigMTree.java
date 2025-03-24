@@ -753,6 +753,16 @@ public class ConfigMTree {
     store.addChild(databaseNode, tableName, tableNode);
   }
 
+  public void renameTableColumn(
+      final PartialPath database,
+      final String tableName,
+      final String oldName,
+      final String newName)
+      throws MetadataException {
+    final ConfigTableNode tableNode = getTableNode(database, tableName);
+    tableNode.getTable().renameColumnSchema(oldName, newName);
+  }
+
   public void setTableComment(
       final PartialPath database,
       final String tableName,

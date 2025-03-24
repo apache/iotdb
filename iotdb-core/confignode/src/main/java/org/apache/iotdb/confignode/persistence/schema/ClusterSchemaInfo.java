@@ -1462,13 +1462,13 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
   }
 
   public TSStatus renameTableColumn(final RenameTableColumnPlan plan) {
-    databaseReadWriteLock.writeLock().lock();
-    try {
-      // TODO
-      return RpcUtils.SUCCESS_STATUS;
-    } finally {
-      databaseReadWriteLock.writeLock().unlock();
-    }
+    return executeWithLock(
+        () ->
+            tableModelMTree.renameTableColumn(
+                getQualifiedDatabasePartialPath(plan.getDatabase()),
+                plan.getTableName(),
+                plan.getOldName(),
+                plan.getNewName()));
   }
 
   public TSStatus setTableProperties(final SetTablePropertiesPlan plan) {
