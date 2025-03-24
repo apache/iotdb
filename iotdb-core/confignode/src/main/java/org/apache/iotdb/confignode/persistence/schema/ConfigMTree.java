@@ -714,7 +714,8 @@ public class ConfigMTree {
     tableNode.setStatus(TableNodeStatus.USING);
   }
 
-  public void preDeleteTable(final PartialPath database, final String tableName)
+  public void preDeleteTable(
+      final PartialPath database, final String tableName, final boolean isView)
       throws MetadataException {
     final IConfigMNode databaseNode = getDatabaseNodeByDatabasePath(database).getAsMNode();
     if (!databaseNode.hasChild(tableName)) {
@@ -722,11 +723,14 @@ public class ConfigMTree {
           database.getFullPath().substring(ROOT.length() + 1), tableName);
     }
     final ConfigTableNode tableNode = (ConfigTableNode) databaseNode.getChild(tableName);
-    if (TreeViewSchema.isTreeViewTable(tableNode.getTable())) {
-      throw new MetadataException(
-          String.format(
-              "Table '%s.%s' is a tree view table, does not support drop", database, tableName),
-          TSStatusCode.SEMANTIC_ERROR.getStatusCode());
+    final Optional<Pair<TSStatus, TsTable>> check =
+        ClusterSchemaManager.checkTable4View(
+            database.getTailNode(),
+            ((ConfigTableNode) databaseNode.getChild(tableName)).getTable(),
+            isView);
+    if (check.isPresent()) {
+      throw new SemanticException(
+          check.get().getLeft().getMessage(), check.get().getLeft().getCode());
     }
     if (tableNode.getStatus().equals(TableNodeStatus.PRE_CREATE)) {
       throw new IllegalStateException();
