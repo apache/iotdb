@@ -1545,11 +1545,11 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
     TShowRegionResp showRegionResp = new TShowRegionResp();
     final TShowRegionReq showRegionReq = new TShowRegionReq().setIsTableModel(isTableModel);
     showRegionReq.setConsensusGroupType(showRegionStatement.getRegionType());
-    if (showRegionStatement.getDatabases() == null) {
+    if (showRegionStatement.getStorageGroups() == null) {
       showRegionReq.setDatabases(null);
     } else {
       showRegionReq.setDatabases(
-          showRegionStatement.getDatabases().stream()
+          showRegionStatement.getStorageGroups().stream()
               .map(PartialPath::getFullPath)
               .collect(Collectors.toList()));
     }
