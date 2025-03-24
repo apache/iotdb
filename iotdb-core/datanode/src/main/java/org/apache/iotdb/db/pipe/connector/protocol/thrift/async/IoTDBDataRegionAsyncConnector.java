@@ -228,10 +228,10 @@ public class IoTDBDataRegionAsyncConnector extends IoTDBConnector {
                   false,
                   sealedFile.left));
         }
-      } catch (Error | Exception e) {
-        LOGGER.warn("TSFileBatch transfer failed: {}", e.getMessage());
+      } catch (final Throwable t) {
+        LOGGER.warn("Failed to transfer tsfile batch ({}).", dbTsFilePairs, t);
         if (eventsHadBeenAddedToRetryQueue.compareAndSet(false, true)) {
-          this.addFailureEventsToRetryQueue(events);
+          addFailureEventsToRetryQueue(events);
         }
       }
     } else {
