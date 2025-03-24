@@ -102,6 +102,7 @@ import org.apache.iotdb.confignode.procedure.impl.schema.table.RenameTableProced
 import org.apache.iotdb.confignode.procedure.impl.schema.table.SetTablePropertiesProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.table.view.AddViewColumnProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.table.view.CreateTableViewProcedure;
+import org.apache.iotdb.confignode.procedure.impl.schema.table.view.DropViewColumnProcedure;
 import org.apache.iotdb.confignode.procedure.impl.subscription.consumer.CreateConsumerProcedure;
 import org.apache.iotdb.confignode.procedure.impl.subscription.consumer.DropConsumerProcedure;
 import org.apache.iotdb.confignode.procedure.impl.subscription.consumer.runtime.ConsumerGroupMetaSyncProcedure;
@@ -1850,18 +1851,28 @@ public class ProcedureManager {
   }
 
   public TSStatus alterTableDropColumn(final TAlterOrDropTableReq req) {
+    final boolean isView = req.isSetIsView() && req.isIsView();
     return executeWithoutDuplicate(
         req.database,
         null,
         req.tableName,
         req.queryId,
-        ProcedureType.DROP_TABLE_COLUMN_PROCEDURE,
-        new DropTableColumnProcedure(
-            req.database,
-            req.tableName,
-            req.queryId,
-            ReadWriteIOUtils.readString(req.updateInfo),
-            false));
+        isView
+            ? ProcedureType.DROP_VIEW_COLUMN_PROCEDURE
+            : ProcedureType.DROP_TABLE_COLUMN_PROCEDURE,
+        isView
+            ? new DropViewColumnProcedure(
+                req.database,
+                req.tableName,
+                req.queryId,
+                ReadWriteIOUtils.readString(req.updateInfo),
+                false)
+            : new DropTableColumnProcedure(
+                req.database,
+                req.tableName,
+                req.queryId,
+                ReadWriteIOUtils.readString(req.updateInfo),
+                false));
   }
 
   public TSStatus dropTable(final TAlterOrDropTableReq req) {
