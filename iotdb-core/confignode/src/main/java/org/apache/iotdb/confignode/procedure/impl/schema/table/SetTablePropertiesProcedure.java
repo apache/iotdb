@@ -24,10 +24,12 @@ import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.confignode.consensus.request.write.table.SetTablePropertiesPlan;
+import org.apache.iotdb.confignode.consensus.request.write.table.view.SetViewPropertiesPlan;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureSuspendedException;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureYieldException;
+import org.apache.iotdb.confignode.procedure.impl.schema.table.view.SetViewPropertiesProcedure;
 import org.apache.iotdb.confignode.procedure.state.schema.SetTablePropertiesState;
 import org.apache.iotdb.confignode.procedure.store.ProcedureType;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -123,7 +125,11 @@ public class SetTablePropertiesProcedure
           env.getConfigManager()
               .getClusterSchemaManager()
               .updateTableProperties(
-                  database, tableName, originalProperties, updatedProperties, false);
+                  database,
+                  tableName,
+                  originalProperties,
+                  updatedProperties,
+                  this instanceof SetViewPropertiesProcedure);
       final TSStatus status = result.getLeft();
       if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         setFailure(
@@ -148,7 +154,9 @@ public class SetTablePropertiesProcedure
         env.getConfigManager()
             .getClusterSchemaManager()
             .executePlan(
-                new SetTablePropertiesPlan(database, tableName, updatedProperties),
+                this instanceof SetViewPropertiesProcedure
+                    ? new SetViewPropertiesPlan(database, tableName, updatedProperties)
+                    : new SetTablePropertiesPlan(database, tableName, updatedProperties),
                 isGeneratedByPipe);
     if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       setFailure(new ProcedureException(new IoTDBException(status.getMessage(), status.getCode())));
