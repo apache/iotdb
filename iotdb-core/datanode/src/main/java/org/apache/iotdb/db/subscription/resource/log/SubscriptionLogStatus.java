@@ -36,10 +36,10 @@ import java.util.concurrent.atomic.AtomicLong;
 
 class SubscriptionLogStatus {
 
-  private final Logger logger;
   private static final long BASE_INTERVAL_IN_MS =
       SubscriptionConfig.getInstance().getSubscriptionLogManagerBaseIntervalMs();
 
+  private final Logger logger;
   private final Cache<Pair<String, String>, AtomicLong> lastReportTimestamps;
 
   public SubscriptionLogStatus(final Class<?> logClass) {
