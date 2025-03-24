@@ -34,7 +34,6 @@ import org.apache.iotdb.udf.api.relational.table.specification.ScalarParameterSp
 import org.apache.iotdb.udf.api.relational.table.specification.TableParameterSpecification;
 import org.apache.iotdb.udf.api.type.Type;
 
-import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.block.column.ColumnBuilder;
 
 import java.util.ArrayList;
@@ -123,26 +122,6 @@ public class SessionTableFunction implements TableFunction {
       currentRowIndexes.add(curIndex);
       windowEnd = timeValue + gap;
       curIndex++;
-    }
-
-    @Override
-    public void process(
-        Column[] inputs,
-        List<ColumnBuilder> properColumnBuilders,
-        ColumnBuilder passThroughIndexBuilder) {
-      Column timeColumn = inputs[0];
-      for (int i = 0; i < timeColumn.getPositionCount(); i++) {
-        long timeValue = timeColumn.getLong(i);
-        if (!currentRowIndexes.isEmpty() && timeValue > windowEnd) {
-          outputWindow(properColumnBuilders, passThroughIndexBuilder);
-        }
-        if (currentRowIndexes.isEmpty()) {
-          windowStart = timeValue;
-        }
-        currentRowIndexes.add(curIndex);
-        windowEnd = timeValue + gap;
-        curIndex++;
-      }
     }
 
     @Override
