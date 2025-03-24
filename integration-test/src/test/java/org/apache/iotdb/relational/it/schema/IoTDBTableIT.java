@@ -49,6 +49,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.Objects;
 
 import static org.apache.iotdb.commons.schema.column.ColumnHeaderConstant.describeTableColumnHeaders;
 import static org.apache.iotdb.commons.schema.column.ColumnHeaderConstant.describeTableDetailsColumnHeaders;
@@ -423,7 +424,7 @@ public class IoTDBTableIT {
       dataTypes = new String[] {"TIMESTAMP", "STRING", "STRING", "FLOAT", "DOUBLE"};
       categories = new String[] {"TIME", "TAG", "TAG", "FIELD", "FIELD"};
       statuses = new String[] {"USING", "USING", "USING", "USING", "USING"};
-      comments = new String[] {"recent", "null", "null", "null", "fast"};
+      comments = new String[] {"recent", null, null, null, "fast"};
       try (final ResultSet resultSet = statement.executeQuery("describe table2 details")) {
         int cnt = 0;
         ResultSetMetaData metaData = resultSet.getMetaData();
@@ -438,7 +439,11 @@ public class IoTDBTableIT {
           assertEquals(dataTypes[cnt], resultSet.getString(2));
           assertEquals(categories[cnt], resultSet.getString(3));
           assertEquals(statuses[cnt], resultSet.getString(4));
-          assertEquals(comments[cnt], resultSet.getString(5));
+          if (Objects.nonNull(comments[cnt])) {
+            assertEquals(comments[cnt], resultSet.getString(5));
+          } else {
+            assertTrue(resultSet.wasNull());
+          }
           cnt++;
         }
         assertEquals(columnNames.length, cnt);
