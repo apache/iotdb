@@ -29,7 +29,6 @@ from ainode.thrift.common.ttypes import TSStatus
 class AINodeRPCServiceHandler(IAINodeRPCService.Iface):
     def __init__(self):
         self._model_manager = ModelManager()
-        self._training_manager = TrainingManager()
 
     def registerModel(self, req: TRegisterModelReq) -> TRegisterModelResp:
         return self._model_manager.register_model(req)
