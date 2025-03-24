@@ -445,6 +445,8 @@ public class ProcedureFactory implements IProcedureFactory {
       return ProcedureType.ADD_VIEW_COLUMN_PROCEDURE;
     } else if (procedure instanceof AddTableColumnProcedure) {
       return ProcedureType.ADD_TABLE_COLUMN_PROCEDURE;
+    } else if (procedure instanceof SetViewPropertiesProcedure) {
+      return ProcedureType.SET_VIEW_PROPERTIES_PROCEDURE;
     } else if (procedure instanceof SetTablePropertiesProcedure) {
       return ProcedureType.SET_TABLE_PROPERTIES_PROCEDURE;
     } else if (procedure instanceof RenameTableColumnProcedure) {
@@ -453,6 +455,8 @@ public class ProcedureFactory implements IProcedureFactory {
       return ProcedureType.DROP_VIEW_COLUMN_PROCEDURE;
     } else if (procedure instanceof DropTableColumnProcedure) {
       return ProcedureType.DROP_TABLE_COLUMN_PROCEDURE;
+    } else if (procedure instanceof DropViewProcedure) {
+      return ProcedureType.DROP_VIEW_PROCEDURE;
     } else if (procedure instanceof DropTableProcedure) {
       return ProcedureType.DROP_TABLE_PROCEDURE;
     } else if (procedure instanceof DeleteDevicesProcedure) {
