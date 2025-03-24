@@ -418,12 +418,13 @@ public class IoTDBTableIT {
       statement.execute("COMMENT ON COLUMN table2.region_id IS '重庆'");
       statement.execute("COMMENT ON COLUMN table2.region_id IS NULL");
       statement.execute("COMMENT ON COLUMN test2.table2.time IS 'recent'");
+      statement.execute("COMMENT ON COLUMN test2.table2.region_id IS ''");
 
       columnNames = new String[] {"time", "region_id", "plant_id", "temperature", "speed"};
       dataTypes = new String[] {"TIMESTAMP", "STRING", "STRING", "FLOAT", "DOUBLE"};
       categories = new String[] {"TIME", "TAG", "TAG", "FIELD", "FIELD"};
       statuses = new String[] {"USING", "USING", "USING", "USING", "USING"};
-      comments = new String[] {"recent", null, null, null, "fast"};
+      comments = new String[] {"recent", "", null, null, "fast"};
       try (final ResultSet resultSet = statement.executeQuery("describe table2 details")) {
         int cnt = 0;
         ResultSetMetaData metaData = resultSet.getMetaData();
