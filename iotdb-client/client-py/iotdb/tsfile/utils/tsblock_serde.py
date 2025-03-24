@@ -272,16 +272,16 @@ def deserialize(buffer):
     column_encodings, buffer = read_column_encoding(buffer, value_column_count + 1)
 
     time_column_values, _, buffer = read_column(
-        column_encodings[0], buffer, TSDataType.INT64, position_count
+        column_encodings[0], buffer, 2, position_count
     )
-    column_values = [None] * value_column_count
-    null_indicators = [None] * value_column_count
+    column_values = []
+    null_indicators = []
     for i in range(value_column_count):
         column_value, null_indicator, buffer = read_column(
             column_encodings[i + 1], buffer, data_types[i], position_count
         )
-        column_values[i] = column_value
-        null_indicators[i] = null_indicator
+        column_values.append(column_value)
+        null_indicators.append(null_indicator)
 
     return time_column_values, column_values, null_indicators, position_count
 
@@ -290,8 +290,9 @@ def deserialize(buffer):
 
 
 def read_int_from_buffer(buffer):
-    res, buffer = read_from_buffer(buffer, 4)
-    return int.from_bytes(res, "big"), buffer
+    res = np.frombuffer(buffer, dtype=">i4", count=1)
+    buffer = buffer[4:]
+    return res[0], buffer
 
 
 def read_byte_from_buffer(buffer):
@@ -299,9 +300,8 @@ def read_byte_from_buffer(buffer):
 
 
 def read_from_buffer(buffer, size):
-    mv = memoryview(buffer)
-    res = mv[:size]
-    new_buffer = mv[size:]
+    res = buffer[:size]
+    new_buffer = buffer[size:]
     return res, new_buffer
 
 
@@ -310,7 +310,7 @@ def read_from_buffer(buffer, size):
 
 def read_column_types(buffer, value_column_count):
     data_types = np.frombuffer(buffer, dtype=np.uint8, count=value_column_count)
-    new_buffer = memoryview(buffer)[value_column_count:]
+    new_buffer = buffer[value_column_count:]
     if not np.all(np.isin(data_types, [0, 1, 2, 3, 4, 5])):
         raise Exception("Invalid data type encountered: " + str(data_types))
     return data_types, new_buffer
@@ -348,7 +348,7 @@ def get_data_type_byte_from_str(value):
 
 def read_column_encoding(buffer, size):
     encodings = np.frombuffer(buffer, dtype=np.uint8, count=size)
-    new_buffer = memoryview(buffer)[size:]
+    new_buffer = buffer[size:]
     return encodings, new_buffer
 
 
@@ -356,9 +356,9 @@ def read_column_encoding(buffer, size):
 
 
 def deserialize_null_indicators(buffer, size):
-    may_have_null = np.frombuffer(buffer, dtype=np.uint8, count=1)
-    buffer = memoryview(buffer)[1:]
-    if may_have_null[0] != 0:
+    may_have_null = buffer[0]
+    buffer = buffer[1:]
+    if may_have_null != 0:
         return deserialize_from_boolean_array(buffer, size)
     return None, buffer
 
@@ -378,11 +378,15 @@ def read_int64_column(buffer, data_type, position_count):
     else:
         size = null_indicators.count(False)
 
-    if data_type == 2 or data_type == 4:
-        values, buffer = read_from_buffer(buffer, size * 8)
-        return values, null_indicators, buffer
+    if data_type == 2:
+        dtype = ">i8"
+    elif data_type == 4:
+        dtype = ">f8"
     else:
-        raise Exception("Invalid data type: " + data_type)
+        raise Exception("Invalid data type: " + str(data_type))
+    values = np.frombuffer(buffer, dtype, count=size)
+    buffer = buffer[size * 8 :]
+    return values, null_indicators, buffer
 
 
 # Serialized data layout:
@@ -407,7 +411,7 @@ def read_int32_column(buffer, data_type, position_count):
     else:
         raise Exception("Invalid data type: " + str(data_type))
     values = np.frombuffer(buffer, dtype, count=size)
-    buffer = memoryview(buffer)[size * 4:]
+    buffer = buffer[size * 4 :]
     return values, null_indicators, buffer
 
 

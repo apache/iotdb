@@ -163,21 +163,18 @@ class IoTDBRpcDataSet(object):
             has_pd_series.append(False)
         total_length = 0
         while self.__query_result_index < len(self.__query_result):
-            time_column_values, column_values, null_indicators, _ = deserialize(
-                self.__query_result[self.__query_result_index]
+            time_column_values, column_values, null_indicators, current_length = (
+                deserialize(memoryview(self.__query_result[self.__query_result_index]))
             )
             self.__query_result[self.__query_result_index] = None
             self.__query_result_index += 1
-            time_array = np.frombuffer(
-                time_column_values, np.dtype(np.longlong).newbyteorder(">")
-            )
+            time_array = time_column_values
             if time_array.dtype.byteorder == ">":
                 time_array = time_array.byteswap().view(
                     time_array.dtype.newbyteorder("<")
                 )
             if self.ignore_timestamp is None or self.ignore_timestamp is False:
                 result[0].append(time_array)
-            current_length = len(time_array)
             total_length += current_length
             for i, location in enumerate(
                 self.__column_index_2_tsblock_column_index_list
@@ -189,9 +186,7 @@ class IoTDBRpcDataSet(object):
                 value_buffer_len = len(value_buffer)
                 # DOUBLE
                 if data_type == 4:
-                    data_array = np.frombuffer(
-                        value_buffer, np.dtype(np.double).newbyteorder(">")
-                    )
+                    data_array = value_buffer
                 # FLOAT
                 elif data_type == 3:
                     data_array = value_buffer
@@ -200,14 +195,10 @@ class IoTDBRpcDataSet(object):
                     data_array = np.array(value_buffer).astype("bool")
                 # INT32, DATE
                 elif data_type == 1 or data_type == 9:
-                    data_array = np.frombuffer(
-                        value_buffer, np.dtype(np.int32).newbyteorder(">")
-                    )
+                    data_array = value_buffer
                 # INT64, TIMESTAMP
                 elif data_type == 2 or data_type == 8:
-                    data_array = np.frombuffer(
-                        value_buffer, np.dtype(np.int64).newbyteorder(">")
-                    )
+                    data_array = value_buffer
                 # TEXT, STRING, BLOB
                 elif data_type == 5 or data_type == 11 or data_type == 10:
                     index = 0
