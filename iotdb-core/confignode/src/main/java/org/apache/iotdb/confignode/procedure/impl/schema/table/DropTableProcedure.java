@@ -28,9 +28,9 @@ import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.confignode.client.async.CnToDnAsyncRequestType;
 import org.apache.iotdb.confignode.client.async.CnToDnInternalServiceAsyncRequestManager;
 import org.apache.iotdb.confignode.client.async.handlers.DataNodeAsyncRequestContext;
-import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeEnrichedPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.CommitDeleteTablePlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.PreDeleteTablePlan;
+import org.apache.iotdb.confignode.consensus.request.write.table.view.CommitDeleteViewPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.view.PreDeleteViewPlan;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
@@ -151,7 +151,10 @@ public class DropTableProcedure extends AbstractAlterOrDropTableProcedure<DropTa
       }
     }
 
-    setNextState(DropTableState.DELETE_DATA);
+    setNextState(
+        this instanceof DropViewProcedure
+            ? DropTableState.DELETE_DEVICES
+            : DropTableState.DELETE_DATA);
   }
 
   private void deleteData(final ConfigNodeProcedureEnv env) {
@@ -194,12 +197,13 @@ public class DropTableProcedure extends AbstractAlterOrDropTableProcedure<DropTa
 
   private void dropTable(final ConfigNodeProcedureEnv env) {
     final TSStatus status =
-        SchemaUtils.executeInConsensusLayer(
-            isGeneratedByPipe
-                ? new PipeEnrichedPlan(new CommitDeleteTablePlan(database, tableName))
-                : new CommitDeleteTablePlan(database, tableName),
-            env,
-            LOGGER);
+        env.getConfigManager()
+            .getClusterSchemaManager()
+            .executePlan(
+                this instanceof DropViewProcedure
+                    ? new CommitDeleteViewPlan(database, tableName)
+                    : new CommitDeleteTablePlan(database, tableName),
+                isGeneratedByPipe);
     if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       setFailure(new ProcedureException(new IoTDBException(status.getMessage(), status.getCode())));
     }
