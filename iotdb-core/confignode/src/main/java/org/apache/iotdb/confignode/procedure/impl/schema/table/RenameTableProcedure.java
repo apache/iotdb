@@ -24,10 +24,12 @@ import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.confignode.consensus.request.write.table.RenameTablePlan;
+import org.apache.iotdb.confignode.consensus.request.write.table.view.RenameViewPlan;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureSuspendedException;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureYieldException;
+import org.apache.iotdb.confignode.procedure.impl.schema.table.view.RenameViewProcedure;
 import org.apache.iotdb.confignode.procedure.state.schema.RenameTableState;
 import org.apache.iotdb.confignode.procedure.store.ProcedureType;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -126,7 +128,11 @@ public class RenameTableProcedure extends AbstractAlterOrDropTableProcedure<Rena
     final TSStatus status =
         env.getConfigManager()
             .getClusterSchemaManager()
-            .executePlan(new RenameTablePlan(database, tableName, newName), isGeneratedByPipe);
+            .executePlan(
+                this instanceof RenameViewProcedure
+                    ? new RenameViewPlan(database, tableName, newName)
+                    : new RenameTablePlan(database, tableName, newName),
+                isGeneratedByPipe);
     if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       setFailure(new ProcedureException(new IoTDBException(status.getMessage(), status.getCode())));
     } else {
@@ -164,7 +170,11 @@ public class RenameTableProcedure extends AbstractAlterOrDropTableProcedure<Rena
     final TSStatus status =
         env.getConfigManager()
             .getClusterSchemaManager()
-            .executePlan(new RenameTablePlan(database, newName, tableName), isGeneratedByPipe);
+            .executePlan(
+                this instanceof RenameViewProcedure
+                    ? new RenameViewPlan(database, newName, tableName)
+                    : new RenameTablePlan(database, newName, tableName),
+                isGeneratedByPipe);
     if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       setFailure(new ProcedureException(new IoTDBException(status.getMessage(), status.getCode())));
     }
