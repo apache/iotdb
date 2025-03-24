@@ -69,6 +69,7 @@ import org.apache.iotdb.confignode.consensus.request.write.table.SetTableComment
 import org.apache.iotdb.confignode.consensus.request.write.table.SetTablePropertiesPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.view.AddTableViewColumnPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.view.CommitDeleteViewColumnPlan;
+import org.apache.iotdb.confignode.consensus.request.write.table.view.CommitDeleteViewPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.view.SetViewCommentPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.view.SetViewPropertiesPlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.CommitSetSchemaTemplatePlan;
@@ -98,6 +99,7 @@ import org.apache.iotdb.confignode.procedure.impl.schema.table.SetTablePropertie
 import org.apache.iotdb.confignode.procedure.impl.schema.table.view.AddViewColumnProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.table.view.CreateTableViewProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.table.view.DropViewColumnProcedure;
+import org.apache.iotdb.confignode.procedure.impl.schema.table.view.DropViewProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.table.view.SetViewPropertiesProcedure;
 import org.apache.iotdb.confignode.procedure.store.ProcedureType;
 import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
@@ -755,6 +757,20 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
                 new DropTableProcedure(
                     ((CommitDeleteTablePlan) plan).getDatabase(),
                     ((CommitDeleteTablePlan) plan).getTableName(),
+                    queryId,
+                    true));
+      case CommitDeleteView:
+        return configManager
+            .getProcedureManager()
+            .executeWithoutDuplicate(
+                ((CommitDeleteViewPlan) plan).getDatabase(),
+                null,
+                ((CommitDeleteViewPlan) plan).getTableName(),
+                queryId,
+                ProcedureType.DROP_VIEW_PROCEDURE,
+                new DropViewProcedure(
+                    ((CommitDeleteViewPlan) plan).getDatabase(),
+                    ((CommitDeleteViewPlan) plan).getTableName(),
                     queryId,
                     true));
       case SetTableComment:
