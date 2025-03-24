@@ -954,9 +954,8 @@ public abstract class AbstractMemTable implements IMemTable {
   public Map<IDeviceID, Long> getMaxTime() {
     Map<IDeviceID, Long> latestTimeForEachDevice = new HashMap<>();
     for (Entry<IDeviceID, IWritableMemChunkGroup> entry : memTableMap.entrySet()) {
-      long maxTime = entry.getValue().getMaxTime();
-      if (entry.getValue().count() > 0) {
-        latestTimeForEachDevice.put(entry.getKey(), maxTime);
+      if (entry.getValue().count() > 0 && !entry.getValue().isEmpty()) {
+        latestTimeForEachDevice.put(entry.getKey(), entry.getValue().getMaxTime());
       }
     }
     return latestTimeForEachDevice;

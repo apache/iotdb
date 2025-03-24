@@ -206,6 +206,7 @@ public class IoTDBRelationalDatabaseMetadata extends IoTDBAbstractDatabaseMetada
       throws SQLException {
 
     Statement stmt = this.connection.createStatement();
+    boolean legacyMode = true;
 
     ResultSet rs;
     try {
@@ -214,9 +215,18 @@ public class IoTDBRelationalDatabaseMetadata extends IoTDBAbstractDatabaseMetada
               "select * from information_schema.tables where database like '%s'", schemaPattern);
       rs = stmt.executeQuery(sql);
     } catch (SQLException e) {
-      stmt.close();
       LOGGER.error(SHOW_TABLES_ERROR_MSG, e.getMessage());
-      throw e;
+
+      try {
+        String sql = String.format("show tables details from %s", schemaPattern);
+        rs = stmt.executeQuery(sql);
+        legacyMode = false;
+      } catch (SQLException e1) {
+        LOGGER.error(SHOW_TABLES_ERROR_MSG, e.getMessage());
+        throw e;
+      }
+    } finally {
+      stmt.close();
     }
 
     // Setup Fields
@@ -255,14 +265,14 @@ public class IoTDBRelationalDatabaseMetadata extends IoTDBAbstractDatabaseMetada
           valueInRow.add(schemaPattern);
         } else if (i == 1) {
           // valueInRow.add(rs.getString(2));
-          valueInRow.add(rs.getString("table_name"));
+          valueInRow.add(legacyMode ? rs.getString("table_name") : rs.getString("TableName"));
         } else if (i == 2) {
           valueInRow.add("TABLE");
         } else if (i == 3) {
           // String tgtString = "";
           // String ttl = rs.getString("ttl(ms)");
           // tgtString += "TTL(ms): " + ttl;
-          String comment = rs.getString("comment");
+          String comment = legacyMode ? rs.getString("comment") : rs.getString("Comment");
           if (comment != null && !comment.isEmpty()) {
             valueInRow.add(comment);
           } else {
@@ -276,7 +286,6 @@ public class IoTDBRelationalDatabaseMetadata extends IoTDBAbstractDatabaseMetada
           valueInRow.add("TABLE");
         }
       }
-      LOGGER.info("Table: {}", valueInRow);
       valuesList.add(valueInRow);
     }
 
@@ -315,6 +324,7 @@ public class IoTDBRelationalDatabaseMetadata extends IoTDBAbstractDatabaseMetada
       throws SQLException {
 
     Statement stmt = this.connection.createStatement();
+    boolean legacyMode = true;
     ResultSet rs;
 
     // Get Table Metadata
@@ -325,9 +335,19 @@ public class IoTDBRelationalDatabaseMetadata extends IoTDBAbstractDatabaseMetada
               schemaPattern, tableNamePattern);
       rs = stmt.executeQuery(sql);
     } catch (SQLException e) {
-      stmt.close();
       LOGGER.error(SHOW_TABLES_ERROR_MSG, e.getMessage());
-      throw e;
+
+      try {
+        String sql = String.format("desc %s.%s details", schemaPattern, tableNamePattern);
+        rs = stmt.executeQuery(sql);
+        legacyMode = false;
+      } catch (SQLException e1) {
+        LOGGER.error(SHOW_TABLES_ERROR_MSG, e.getMessage());
+        throw e;
+      }
+
+    } finally {
+      stmt.close();
     }
 
     // Setup Fields
@@ -369,8 +389,9 @@ public class IoTDBRelationalDatabaseMetadata extends IoTDBAbstractDatabaseMetada
     // Extract Metadata
     int count = 1;
     while (rs.next()) {
-      String columnName = rs.getString("column_name"); // 3
-      String type = rs.getString("datatype"); // 4
+      String columnName =
+          legacyMode ? rs.getString("column_name") : rs.getString("ColumnName"); // 3
+      String type = legacyMode ? rs.getString("datatype") : rs.getString("DataType"); // 4
       List<Object> valueInRow = new ArrayList<>();
       for (int i = 0; i < fields.length; i++) {
         if (i == 0) {
@@ -396,11 +417,12 @@ public class IoTDBRelationalDatabaseMetadata extends IoTDBAbstractDatabaseMetada
             valueInRow.add(ResultSetMetaData.columnNoNulls);
           }
         } else if (i == 7) {
-          valueInRow.add(getTypePrecision(fields[i].getSqlType()));
+          // valueInRow.add(getTypePrecision(fields[i].getSqlType()));
+          valueInRow.add(0);
         } else if (i == 8) {
           valueInRow.add(getTypeScale(fields[i].getSqlType()));
         } else if (i == 9) {
-          String comment = rs.getString("comment");
+          String comment = legacyMode ? rs.getString("comment") : rs.getString("Comment");
           if (comment != null && !comment.isEmpty()) {
             valueInRow.add(comment);
           } else {
@@ -455,6 +477,7 @@ public class IoTDBRelationalDatabaseMetadata extends IoTDBAbstractDatabaseMetada
       throws SQLException {
 
     Statement stmt = connection.createStatement();
+    boolean legacyMode = true;
     ResultSet rs;
 
     try {
@@ -464,9 +487,19 @@ public class IoTDBRelationalDatabaseMetadata extends IoTDBAbstractDatabaseMetada
               schemaPattern, tableNamePattern);
       rs = stmt.executeQuery(sql);
     } catch (SQLException e) {
-      stmt.close();
       LOGGER.error(SHOW_TABLES_ERROR_MSG, e.getMessage());
-      throw e;
+
+      try {
+        String sql = String.format("desc %s.%s", schemaPattern, tableNamePattern);
+        rs = stmt.executeQuery(sql);
+        legacyMode = false;
+      } catch (SQLException e1) {
+        LOGGER.error(SHOW_TABLES_ERROR_MSG, e.getMessage());
+        throw e;
+      }
+
+    } finally {
+      stmt.close();
     }
 
     Field[] fields = new Field[6];
@@ -496,24 +529,27 @@ public class IoTDBRelationalDatabaseMetadata extends IoTDBAbstractDatabaseMetada
 
     int count = 1;
     while (rs.next()) {
-      String columnName = rs.getString("column_name");
-      List<Object> valueInRow = new ArrayList<>();
-      for (int i = 0; i < fields.length; ++i) {
-        if (i == 0) {
-          valueInRow.add("");
-        } else if (i == 1) {
-          valueInRow.add("");
-        } else if (i == 2) {
-          valueInRow.add("");
-        } else if (i == 3) {
-          valueInRow.add(columnName);
-        } else if (i == 4) {
-          valueInRow.add(count++);
-        } else {
-          valueInRow.add(PRIMARY);
+      String columnName = legacyMode ? rs.getString("column_name") : rs.getString("ColumnName");
+      String category = legacyMode ? rs.getString("category") : rs.getString("Category");
+      if (category.equals("TAG") || category.equals("TIME")) {
+        List<Object> valueInRow = new ArrayList<>();
+        for (int i = 0; i < fields.length; ++i) {
+          if (i == 0) {
+            valueInRow.add("");
+          } else if (i == 1) {
+            valueInRow.add("");
+          } else if (i == 2) {
+            valueInRow.add("");
+          } else if (i == 3) {
+            valueInRow.add(columnName);
+          } else if (i == 4) {
+            valueInRow.add(count++);
+          } else {
+            valueInRow.add(PRIMARY);
+          }
         }
+        valuesList.add(valueInRow);
       }
-      valuesList.add(valueInRow);
     }
 
     ByteBuffer tsBlock = null;
@@ -550,5 +586,10 @@ public class IoTDBRelationalDatabaseMetadata extends IoTDBAbstractDatabaseMetada
   @Override
   public String getIdentifierQuoteString() throws SQLException {
     return "\"";
+  }
+
+  @Override
+  public String getSchemaTerm() throws SQLException {
+    return "database";
   }
 }

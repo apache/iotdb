@@ -27,8 +27,6 @@ import org.apache.iotdb.confignode.manager.ConfigManager;
 import org.apache.iotdb.confignode.manager.load.cache.consensus.ConsensusGroupStatistics;
 import org.apache.iotdb.confignode.manager.load.subscriber.ConsensusGroupStatisticsChangeEvent;
 import org.apache.iotdb.confignode.manager.load.subscriber.IClusterStatusSubscriber;
-import org.apache.iotdb.confignode.manager.load.subscriber.NodeStatisticsChangeEvent;
-import org.apache.iotdb.confignode.manager.load.subscriber.RegionGroupStatisticsChangeEvent;
 
 import org.apache.tsfile.utils.Pair;
 
@@ -57,16 +55,6 @@ public class PipeLeaderChangeHandler implements IClusterStatusSubscriber {
                 ConfigNodeDescriptor.getInstance().getConf().getConfigNodeId())));
 
     onConsensusGroupStatisticsChanged(new ConsensusGroupStatisticsChangeEvent(virtualChangeMap));
-  }
-
-  @Override
-  public void onNodeStatisticsChanged(NodeStatisticsChangeEvent event) {
-    // Do nothing
-  }
-
-  @Override
-  public void onRegionGroupStatisticsChanged(RegionGroupStatisticsChangeEvent event) {
-    // Do nothing
   }
 
   @Override

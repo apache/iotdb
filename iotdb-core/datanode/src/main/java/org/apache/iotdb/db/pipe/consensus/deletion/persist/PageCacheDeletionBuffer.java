@@ -39,10 +39,10 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 import java.nio.charset.StandardCharsets;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.PriorityBlockingQueue;
 import java.util.concurrent.TimeUnit;
@@ -83,7 +83,7 @@ public class PageCacheDeletionBuffer implements DeletionBuffer {
   // Total size of this batch.
   private final AtomicInteger totalSize = new AtomicInteger(0);
   // All deletions that will be handled in a single persist task
-  private final List<DeletionResource> pendingDeletionsInOneTask = new ArrayList<>();
+  private final List<DeletionResource> pendingDeletionsInOneTask = new CopyOnWriteArrayList<>();
 
   // whether close method is called
   private volatile boolean isClosed = false;
