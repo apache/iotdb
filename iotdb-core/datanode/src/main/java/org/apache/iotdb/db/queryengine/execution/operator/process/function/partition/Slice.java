@@ -83,43 +83,41 @@ public class Slice {
     return requiredColumns;
   }
 
-  //  public Iterator<Record> getRequiredRecordIterator() {
-  //
-  //    return new Iterator<Record>() {
-  //      private int curIndex = 0;
-  //
-  //      @Override
-  //      public boolean hasNext() {
-  //        return curIndex < size;
-  //      }
-  //
-  //      @Override
-  //      public Record next() {
-  //        if (!hasNext()) {
-  //          throw new NoSuchElementException();
-  //        }
-  //        final int idx = curIndex++;
-  //        return getRecord(idx, requiredColumns, requiredDataTypes);
-  //      }
-  //    };
-  //  }
+  public Iterator<Record> getRequiredRecordIterator(boolean requireSnapshot) {
+    if (!requireSnapshot) {
+      return new Iterator<Record>() {
+        private final RecordImpl record = new RecordImpl(-1, requiredColumns, requiredDataTypes);
 
-  public Iterator<Record> getRequiredRecordIterator() {
-    return new Iterator<Record>() {
-      //      private int curIndex = 0;
-      private final RecordImpl record = new RecordImpl(-1, requiredColumns, requiredDataTypes);
+        @Override
+        public boolean hasNext() {
+          record.offset++;
+          return record.offset < size;
+        }
 
-      @Override
-      public boolean hasNext() {
-        record.offset++;
-        return record.offset < size;
-      }
+        @Override
+        public Record next() {
+          return record;
+        }
+      };
+    } else {
+      return new Iterator<Record>() {
+        private int curIndex = 0;
 
-      @Override
-      public Record next() {
-        return record;
-      }
-    };
+        @Override
+        public boolean hasNext() {
+          return curIndex < size;
+        }
+
+        @Override
+        public Record next() {
+          if (!hasNext()) {
+            throw new java.util.NoSuchElementException();
+          }
+          final int idx = curIndex++;
+          return getRecord(idx, requiredColumns, requiredDataTypes);
+        }
+      };
+    }
   }
 
   public long getEstimatedSize() {

@@ -73,7 +73,8 @@ public class ImplementTableFunctionSource implements Rule<TableFunctionNode> {
               ImmutableList.of(),
               Optional.empty(),
               false,
-              node.getArguments()));
+              node.getArguments(),
+              false));
     } else if (node.getChildren().size() == 1) {
       // Single source does not require pre-processing.
       // If the source has row semantics, its specification is empty.
@@ -124,7 +125,8 @@ public class ImplementTableFunctionSource implements Rule<TableFunctionNode> {
               sourceProperties.getRequiredColumns(),
               sourceProperties.getDataOrganizationSpecification(),
               sourceProperties.isRowSemantics(),
-              node.getArguments()));
+              node.getArguments(),
+              sourceProperties.isRequireRecordSnapshot()));
     } else {
       // we don't support multiple source now.
       throw new IllegalArgumentException("table function does not support multiple source now.");

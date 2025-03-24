@@ -4137,7 +4137,8 @@ public class StatementAnalyzer {
               argumentsAnalysis.getPassedArguments(),
               orderedTableArguments.build(),
               requiredColumns,
-              properSchema.map(describedSchema -> describedSchema.getFields().size()).orElse(0)));
+              properSchema.map(describedSchema -> describedSchema.getFields().size()).orElse(0),
+              functionAnalysis.isRequireRecordSnapshot()));
 
       return createAndAssignScope(node, scope, fields.build());
     }

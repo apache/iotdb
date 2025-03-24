@@ -92,6 +92,7 @@ public class FillM4 implements TableFunction {
     // outputColumnSchema
     return TableFunctionAnalysis.builder()
         .properColumnSchema(properColumnSchema)
+        .requireRecordSnapshot(false)
         .requiredColumns(DATA_PARAMETER_NAME, ImmutableList.of(requiredIndex1, requiredIndex2))
         .build();
   }

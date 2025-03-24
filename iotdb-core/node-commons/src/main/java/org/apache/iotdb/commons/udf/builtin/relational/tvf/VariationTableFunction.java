@@ -79,6 +79,7 @@ public class VariationTableFunction implements TableFunction {
     // outputColumnSchema
     return TableFunctionAnalysis.builder()
         .properColumnSchema(properColumnSchema)
+        .requireRecordSnapshot(false)
         .requiredColumns(DATA_PARAMETER_NAME, Collections.singletonList(requiredIndex))
         .build();
   }
@@ -89,12 +90,12 @@ public class VariationTableFunction implements TableFunction {
     return new TableFunctionProcessorProvider() {
       @Override
       public TableFunctionDataProcessor getDataProcessor() {
-        return new VarianceDataProcessor(delta);
+        return new VariationDataProcessor(delta);
       }
     };
   }
 
-  private static class VarianceDataProcessor implements TableFunctionDataProcessor {
+  private static class VariationDataProcessor implements TableFunctionDataProcessor {
 
     private final double gap;
     private final List<Long> currentRowIndexes = new ArrayList<>();
@@ -102,7 +103,7 @@ public class VariationTableFunction implements TableFunction {
     private long curIndex = 0;
     private long windowIndex = 0;
 
-    public VarianceDataProcessor(double delta) {
+    public VariationDataProcessor(double delta) {
       this.gap = delta;
     }
 

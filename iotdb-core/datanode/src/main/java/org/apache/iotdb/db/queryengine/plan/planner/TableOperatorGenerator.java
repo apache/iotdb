@@ -2483,7 +2483,8 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
           properChannelCount,
           requiredChannels,
           passThroughChannels,
-          partitionChannels);
+          partitionChannels,
+          node.isRequireRecordSnapshot());
     }
   }
 

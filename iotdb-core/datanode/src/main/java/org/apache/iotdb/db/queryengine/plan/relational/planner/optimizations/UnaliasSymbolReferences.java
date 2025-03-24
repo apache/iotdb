@@ -851,7 +851,8 @@ public class UnaliasSymbolReferences implements PlanOptimizer {
                 properties.isRowSemantics(),
                 newPassThroughSpecification,
                 inputMapper.map(properties.getRequiredColumns()),
-                newSpecification));
+                newSpecification,
+                properties.isRequireRecordSnapshot()));
       }
 
       return new PlanAndMappings(
@@ -881,7 +882,8 @@ public class UnaliasSymbolReferences implements PlanOptimizer {
                 ImmutableList.of(),
                 Optional.empty(),
                 node.isRowSemantic(),
-                node.getArguments()),
+                node.getArguments(),
+                node.isRequireRecordSnapshot()),
             mapping);
       }
 
@@ -917,7 +919,8 @@ public class UnaliasSymbolReferences implements PlanOptimizer {
               newRequiredSymbols,
               newSpecification,
               node.isRowSemantic(),
-              node.getArguments());
+              node.getArguments(),
+              node.isRequireRecordSnapshot());
 
       return new PlanAndMappings(rewrittenTableFunctionProcessor, mapping);
     }

@@ -288,7 +288,7 @@ public class TableFunctionOperatorTest {
   }
 
   private void checkIteratorSimply(Slice slice, List<List<Object>> expected) {
-    Iterator<Record> recordIterable = slice.getRequiredRecordIterator();
+    Iterator<Record> recordIterable = slice.getRequiredRecordIterator(false);
     int i = 0;
     while (recordIterable.hasNext()) {
       Record record = recordIterable.next();

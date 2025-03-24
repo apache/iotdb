@@ -64,6 +64,7 @@ public class CapacityTableFunction implements TableFunction {
     return TableFunctionAnalysis.builder()
         .properColumnSchema(
             new DescribedSchema.Builder().addField("window_index", Type.INT64).build())
+        .requireRecordSnapshot(false)
         .requiredColumns(DATA_PARAMETER_NAME, Collections.singletonList(0))
         .build();
   }

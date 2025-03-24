@@ -65,6 +65,8 @@ public class TableFunctionProcessorNode extends SingleChildProcessNode {
 
   private final Map<String, Argument> arguments;
 
+  private final boolean requireRecordSnapshot;
+
   public TableFunctionProcessorNode(
       PlanNodeId id,
       String name,
@@ -74,7 +76,8 @@ public class TableFunctionProcessorNode extends SingleChildProcessNode {
       List<Symbol> requiredSymbols,
       Optional<DataOrganizationSpecification> dataOrganizationSpecification,
       boolean rowSemantic,
-      Map<String, Argument> arguments) {
+      Map<String, Argument> arguments,
+      boolean requireRecordSnapshot) {
     super(id, source.orElse(null));
     this.name = requireNonNull(name, "name is null");
     this.properOutputs = ImmutableList.copyOf(properOutputs);
@@ -84,6 +87,7 @@ public class TableFunctionProcessorNode extends SingleChildProcessNode {
         requireNonNull(dataOrganizationSpecification, "specification is null");
     this.rowSemantic = rowSemantic;
     this.arguments = ImmutableMap.copyOf(arguments);
+    this.requireRecordSnapshot = requireRecordSnapshot;
   }
 
   public TableFunctionProcessorNode(
@@ -94,7 +98,8 @@ public class TableFunctionProcessorNode extends SingleChildProcessNode {
       List<Symbol> requiredSymbols,
       Optional<DataOrganizationSpecification> dataOrganizationSpecification,
       boolean rowSemantic,
-      Map<String, Argument> arguments) {
+      Map<String, Argument> arguments,
+      boolean requireRecordSnapshot) {
     super(id);
     this.name = requireNonNull(name, "name is null");
     this.properOutputs = ImmutableList.copyOf(properOutputs);
@@ -104,6 +109,7 @@ public class TableFunctionProcessorNode extends SingleChildProcessNode {
         requireNonNull(dataOrganizationSpecification, "specification is null");
     this.rowSemantic = rowSemantic;
     this.arguments = ImmutableMap.copyOf(arguments);
+    this.requireRecordSnapshot = requireRecordSnapshot;
   }
 
   public String getName() {
@@ -134,6 +140,10 @@ public class TableFunctionProcessorNode extends SingleChildProcessNode {
     return arguments;
   }
 
+  public boolean isRequireRecordSnapshot() {
+    return requireRecordSnapshot;
+  }
+
   @Override
   public PlanNode clone() {
     return new TableFunctionProcessorNode(
@@ -144,7 +154,8 @@ public class TableFunctionProcessorNode extends SingleChildProcessNode {
         requiredSymbols,
         dataOrganizationSpecification,
         rowSemantic,
-        arguments);
+        arguments,
+        requireRecordSnapshot);
   }
 
   @Override
@@ -199,6 +210,7 @@ public class TableFunctionProcessorNode extends SingleChildProcessNode {
           ReadWriteIOUtils.write(key, byteBuffer);
           value.serialize(byteBuffer);
         });
+    ReadWriteIOUtils.write(requireRecordSnapshot, byteBuffer);
   }
 
   @Override
@@ -227,6 +239,7 @@ public class TableFunctionProcessorNode extends SingleChildProcessNode {
       ReadWriteIOUtils.write(entry.getKey(), stream);
       entry.getValue().serialize(stream);
     }
+    ReadWriteIOUtils.write(requireRecordSnapshot, stream);
   }
 
   public static TableFunctionProcessorNode deserialize(ByteBuffer byteBuffer) {
@@ -259,6 +272,7 @@ public class TableFunctionProcessorNode extends SingleChildProcessNode {
       Argument value = Argument.deserialize(byteBuffer);
       arguments.put(key, value);
     }
+    boolean requireRecordSnapshot = ReadWriteIOUtils.readBoolean(byteBuffer);
 
     PlanNodeId planNodeId = PlanNodeId.deserialize(byteBuffer);
     return new TableFunctionProcessorNode(
@@ -269,7 +283,8 @@ public class TableFunctionProcessorNode extends SingleChildProcessNode {
         requiredSymbols,
         dataOrganizationSpecification,
         rowSemantic,
-        arguments);
+        arguments,
+        requireRecordSnapshot);
   }
 
   @Override
@@ -285,6 +300,7 @@ public class TableFunctionProcessorNode extends SingleChildProcessNode {
         requiredSymbols,
         dataOrganizationSpecification,
         rowSemantic,
-        arguments);
+        arguments,
+        requireRecordSnapshot);
   }
 }

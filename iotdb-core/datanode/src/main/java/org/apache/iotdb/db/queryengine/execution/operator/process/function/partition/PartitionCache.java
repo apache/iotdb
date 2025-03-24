@@ -37,8 +37,7 @@ public class PartitionCache {
     int sliceIndex = findSliceIndex(passThroughIndexes.getLong(0));
     int indexStart = 0;
     for (int i = 1; i < passThroughIndexes.getPositionCount(); i++) {
-      int tmp = findSliceIndex(passThroughIndexes.getLong(i));
-      if (tmp != sliceIndex) {
+      if (!inSlice(passThroughIndexes.getLong(i), sliceIndex)) {
         int[] indexArray = new int[i - indexStart];
         for (int j = indexStart; j < i; j++) {
           indexArray[j - indexStart] =
@@ -47,7 +46,7 @@ public class PartitionCache {
 
         result.add(slices.get(sliceIndex).getPassThroughResult(indexArray));
         indexStart = i;
-        sliceIndex = tmp;
+        sliceIndex = findSliceIndex(passThroughIndexes.getLong(i));
       }
     }
     int[] indexArray = new int[passThroughIndexes.getPositionCount() - indexStart];
@@ -76,6 +75,7 @@ public class PartitionCache {
   }
 
   private int findSliceIndex(long passThroughIndex) {
+    // find the last index that is less than or equal to passThroughIndex
     int left = 0;
     int right = startOffsets.size() - 1;
     int result = -1;
@@ -90,6 +90,11 @@ public class PartitionCache {
       }
     }
     return result;
+  }
+
+  private boolean inSlice(long passThroughIndex, int sliceIndex) {
+    return passThroughIndex >= getSliceOffset(sliceIndex)
+        && passThroughIndex < getSliceOffset(sliceIndex) + slices.get(sliceIndex).getSize();
   }
 
   public long getEstimatedSize() {

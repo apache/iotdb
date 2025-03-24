@@ -77,6 +77,7 @@ public class GroupBySession implements TableFunction {
     // outputColumnSchema
     return TableFunctionAnalysis.builder()
         .properColumnSchema(properColumnSchema)
+        .requireRecordSnapshot(false)
         .requiredColumns(DATA_PARAMETER_NAME, Collections.singletonList(requiredIndex))
         .build();
   }
