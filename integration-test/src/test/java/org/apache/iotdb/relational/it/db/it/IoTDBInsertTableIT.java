@@ -118,11 +118,11 @@ public class IoTDBInsertTableIT {
             EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
         final Statement statement = connection.createStatement()) {
       statement.execute("use \"test\"");
-      statement.execute("create table sg1 (tag1 string tag, s1 int32 field)");
-      statement.execute("insert into sg1(tag1,time,s1) values('d1',1,2)");
+      statement.execute("create table sg2 (tag1 string tag, s1 int32 field)");
+      statement.execute("insert into sg2(tag1,time,s1) values('d1',1,2)");
       statement.execute("flush");
-      statement.execute("insert into sg1(tag1,time,s1) values('d1',2,2)");
-      statement.execute("insert into sg1(tag1,time,s1) values('d1',604800001,2)");
+      statement.execute("insert into sg2(tag1,time,s1) values('d1',2,2)");
+      statement.execute("insert into sg2(tag1,time,s1) values('d1',604800001,2)");
       statement.execute("flush");
 
       // Test show regions in table model
