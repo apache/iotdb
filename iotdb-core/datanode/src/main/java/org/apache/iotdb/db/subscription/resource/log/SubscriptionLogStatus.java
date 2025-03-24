@@ -30,13 +30,15 @@ import org.slf4j.LoggerFactory;
 
 import java.util.Objects;
 import java.util.Optional;
+import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 
 class SubscriptionLogStatus {
 
   private final Logger logger;
-  private static final long BASE_INTERVAL_IN_MS = 1_000;
+  private static final long BASE_INTERVAL_IN_MS =
+      SubscriptionConfig.getInstance().getSubscriptionLogManagerBaseIntervalMs();
 
   private final Cache<Pair<String, String>, AtomicLong> lastReportTimestamps;
 
@@ -45,7 +47,7 @@ class SubscriptionLogStatus {
     this.lastReportTimestamps =
         Caffeine.newBuilder()
             .expireAfterAccess(
-                SubscriptionConfig.getInstance().getSubscriptionTsFileDeduplicationWindowSeconds(),
+                SubscriptionConfig.getInstance().getSubscriptionLogManagerWindowSeconds(),
                 TimeUnit.SECONDS)
             .build();
   }
@@ -53,13 +55,20 @@ class SubscriptionLogStatus {
   public Optional<Logger> schedule(final String consumerGroupId, final String topicName) {
     final Pair<String, String> key = new Pair<>(consumerGroupId, topicName);
     final long now = System.currentTimeMillis();
-    // Calculate the allowed logging interval based on the current thread count
-    final int threadCount = SubscriptionAgent.broker().getPrefetchingQueueCount();
-    final long allowedInterval = BASE_INTERVAL_IN_MS * threadCount;
+    // Calculate the allowed logging interval based on the current prefetching queue count
+    final int count = SubscriptionAgent.broker().getPrefetchingQueueCount();
+    final long allowedInterval = BASE_INTERVAL_IN_MS * count;
     // If the key does not exist, initialize an AtomicLong set to one interval before now
     final AtomicLong lastTime =
         Objects.requireNonNull(
-            lastReportTimestamps.get(key, k -> new AtomicLong(now - allowedInterval)));
+            lastReportTimestamps.get(
+                key,
+                k ->
+                    new AtomicLong(
+                        now
+                            // introduce randomness
+                            - BASE_INTERVAL_IN_MS
+                                * ThreadLocalRandom.current().nextLong(1, count + 1))));
     final long last = lastTime.get();
     if (now - last >= allowedInterval) {
       // Use compareAndSet to ensure that only one thread updates at a time,
