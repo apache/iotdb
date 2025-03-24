@@ -38,7 +38,7 @@ public class ShowRegionStatement extends ShowStatement implements IConfigStateme
 
   public ShowRegionStatement() {}
 
-  public List<PartialPath> getStorageGroups() {
+  public List<PartialPath> getDatabases() {
     return storageGroups;
   }
 

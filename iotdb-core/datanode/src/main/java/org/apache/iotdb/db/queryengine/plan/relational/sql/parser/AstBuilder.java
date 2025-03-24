@@ -1579,7 +1579,7 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
             throw new SemanticException("Database is not set yet.");
           }
         }
-        String obj = ctx.privilegeObjectScope().objectName.getText();
+        String obj = ((Identifier) (visit(ctx.privilegeObjectScope().objectName))).getValue();
         return new RelationalAuthorStatement(
             toUser
                 ? toTable ? AuthorRType.GRANT_USER_TB : AuthorRType.GRANT_USER_DB
@@ -1592,8 +1592,14 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
             grantOption,
             null);
       } else if (ctx.privilegeObjectScope().objectScope() != null) {
-        String db = ctx.privilegeObjectScope().objectScope().dbname.getText().toLowerCase();
-        String tb = ctx.privilegeObjectScope().objectScope().tbname.getText().toLowerCase();
+        String db =
+            ((Identifier) (visit(ctx.privilegeObjectScope().objectScope().dbname)))
+                .getValue()
+                .toLowerCase();
+        String tb =
+            ((Identifier) (visit(ctx.privilegeObjectScope().objectScope().tbname)))
+                .getValue()
+                .toLowerCase();
         return new RelationalAuthorStatement(
             toUser ? AuthorRType.GRANT_USER_TB : AuthorRType.GRANT_ROLE_TB,
             toUser ? name : "",
@@ -1656,14 +1662,26 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
           if (databaseName == null) {
             throw new SemanticException("Database is not set yet.");
           }
-          tableName = ctx.privilegeObjectScope().objectName.getText().toLowerCase();
+          tableName =
+              ((Identifier) (visit(ctx.privilegeObjectScope().objectName)))
+                  .getValue()
+                  .toLowerCase();
         } else {
-          databaseName = ctx.privilegeObjectScope().objectName.getText().toLowerCase();
+          databaseName =
+              ((Identifier) (visit(ctx.privilegeObjectScope().objectName)))
+                  .getValue()
+                  .toLowerCase();
         }
       } else if (ctx.privilegeObjectScope().objectScope() != null) {
         fromTable = true;
-        databaseName = ctx.privilegeObjectScope().objectScope().dbname.getText().toLowerCase();
-        tableName = ctx.privilegeObjectScope().objectScope().tbname.getText().toLowerCase();
+        databaseName =
+            ((Identifier) (visit(ctx.privilegeObjectScope().objectScope().dbname)))
+                .getValue()
+                .toLowerCase();
+        tableName =
+            ((Identifier) (visit(ctx.privilegeObjectScope().objectScope().tbname)))
+                .getValue()
+                .toLowerCase();
       }
 
       // The REVOKE ALL command can revoke privileges for users, databases, and tables.
