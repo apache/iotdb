@@ -463,6 +463,8 @@ public class ProcedureFactory implements IProcedureFactory {
       return ProcedureType.SET_VIEW_PROPERTIES_PROCEDURE;
     } else if (procedure instanceof SetTablePropertiesProcedure) {
       return ProcedureType.SET_TABLE_PROPERTIES_PROCEDURE;
+    } else if (procedure instanceof RenameViewColumnProcedure) {
+      return ProcedureType.RENAME_VIEW_COLUMN_PROCEDURE;
     } else if (procedure instanceof RenameTableColumnProcedure) {
       return ProcedureType.RENAME_TABLE_COLUMN_PROCEDURE;
     } else if (procedure instanceof DropViewColumnProcedure) {
@@ -475,6 +477,8 @@ public class ProcedureFactory implements IProcedureFactory {
       return ProcedureType.DROP_TABLE_PROCEDURE;
     } else if (procedure instanceof DeleteDevicesProcedure) {
       return ProcedureType.DELETE_DEVICES_PROCEDURE;
+    } else if (procedure instanceof RenameViewProcedure) {
+      return ProcedureType.RENAME_VIEW_PROCEDURE;
     } else if (procedure instanceof RenameTableProcedure) {
       return ProcedureType.RENAME_TABLE_PROCEDURE;
     } else if (procedure instanceof CreatePipePluginProcedure) {
