@@ -31,6 +31,7 @@ import org.apache.iotdb.confignode.client.async.handlers.DataNodeAsyncRequestCon
 import org.apache.iotdb.confignode.consensus.request.write.table.CommitDeleteColumnPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.PreDeleteColumnPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.view.CommitDeleteViewColumnPlan;
+import org.apache.iotdb.confignode.consensus.request.write.table.view.PreDeleteViewColumnPlan;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureSuspendedException;
@@ -134,7 +135,11 @@ public class DropTableColumnProcedure
   private void checkAndPreDeleteColumn(final ConfigNodeProcedureEnv env) {
     final TSStatus status =
         SchemaUtils.executeInConsensusLayer(
-            new PreDeleteColumnPlan(database, tableName, columnName), env, LOGGER);
+            this instanceof DropViewColumnProcedure
+                ? new PreDeleteViewColumnPlan(database, tableName, columnName)
+                : new PreDeleteColumnPlan(database, tableName, columnName),
+            env,
+            LOGGER);
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       isAttributeColumn = status.isSetMessage();
       setNextState(DropTableColumnState.INVALIDATE_CACHE);
