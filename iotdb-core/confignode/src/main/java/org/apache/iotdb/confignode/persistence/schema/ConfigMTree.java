@@ -750,7 +750,7 @@ public class ConfigMTree {
     final Optional<Pair<TSStatus, TsTable>> check =
         ClusterSchemaManager.checkTable4View(database.getTailNode(), table, isView);
     if (check.isPresent()) {
-      throw new MetadataException(
+      throw new SemanticException(
           check.get().getLeft().getMessage(), check.get().getLeft().getCode());
     }
     if (Objects.nonNull(comment)) {
@@ -925,7 +925,7 @@ public class ConfigMTree {
     final Optional<Pair<TSStatus, TsTable>> check =
         ClusterSchemaManager.checkTable4View(database.getTailNode(), node.getTable(), isView);
     if (check.isPresent()) {
-      throw new MetadataException(
+      throw new SemanticException(
           check.get().getLeft().getMessage(), check.get().getLeft().getCode());
     }
 

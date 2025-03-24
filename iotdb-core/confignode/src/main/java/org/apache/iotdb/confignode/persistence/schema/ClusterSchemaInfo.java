@@ -1251,6 +1251,8 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
       return RpcUtils.SUCCESS_STATUS;
     } catch (final MetadataException e) {
       return RpcUtils.getStatus(e.getErrorCode(), e.getMessage());
+    } catch (final SemanticException e) {
+      return RpcUtils.getStatus(TSStatusCode.SEMANTIC_ERROR.getStatusCode(), e.getMessage());
     } finally {
       databaseReadWriteLock.writeLock().unlock();
     }
