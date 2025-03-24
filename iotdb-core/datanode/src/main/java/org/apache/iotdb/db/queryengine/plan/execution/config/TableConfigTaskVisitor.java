@@ -31,7 +31,6 @@ import org.apache.iotdb.commons.schema.table.TreeViewSchema;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.column.TimeColumnSchema;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
-import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
 import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.exception.sql.SemanticException;
@@ -506,16 +505,15 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
         throw new SemanticException(
             String.format("Columns in table shall not share the same name %s.", columnName));
       }
-      final TsTableColumnSchema schema =
-          TableHeaderSchemaValidator.generateColumnSchema(category, columnName, dataType, comment);
-      table.addColumnSchema(schema);
-      if (columnDefinition instanceof ViewFieldDefinition) {
-        schema
-            .getProps()
-            .put(
-                TreeViewSchema.ORIGINAL_NAME,
-                ((ViewFieldDefinition) columnDefinition).getFrom().getValue());
-      }
+      table.addColumnSchema(
+          TableHeaderSchemaValidator.generateColumnSchema(
+              category,
+              columnName,
+              dataType,
+              comment,
+              (columnDefinition instanceof ViewFieldDefinition)
+                  ? ((ViewFieldDefinition) columnDefinition).getFrom().getValue()
+                  : null));
     }
     return new Pair<>(database, table);
   }
@@ -588,7 +586,10 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
                 definition.getColumnCategory(),
                 definition.getName().getValue(),
                 getDataType(definition.getType()),
-                definition.getComment())),
+                definition.getComment(),
+                (definition instanceof ViewFieldDefinition)
+                    ? ((ViewFieldDefinition) definition).getFrom().getValue()
+                    : null)),
         context.getQueryId().getId(),
         node.tableIfExists(),
         node.columnIfNotExists(),

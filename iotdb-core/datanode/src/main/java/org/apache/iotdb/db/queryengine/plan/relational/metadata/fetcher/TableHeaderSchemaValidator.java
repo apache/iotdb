@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher;
 
 import org.apache.iotdb.commons.exception.IoTDBException;
+import org.apache.iotdb.commons.schema.table.TreeViewSchema;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.column.AttributeColumnSchema;
 import org.apache.iotdb.commons.schema.table.column.FieldColumnSchema;
@@ -298,7 +299,7 @@ public class TableHeaderSchemaValidator {
         throw new ColumnCreationFailException(
             "Cannot create column " + columnSchema.getName() + " datatype is not provided");
       }
-      tsTable.addColumnSchema(generateColumnSchema(category, columnName, dataType, null));
+      tsTable.addColumnSchema(generateColumnSchema(category, columnName, dataType, null, null));
     }
   }
 
@@ -306,7 +307,8 @@ public class TableHeaderSchemaValidator {
       final TsTableColumnCategory category,
       final String columnName,
       final TSDataType dataType,
-      final @Nullable String comment) {
+      final @Nullable String comment,
+      final String from) {
     final TsTableColumnSchema schema;
     switch (category) {
       case TAG:
@@ -333,6 +335,9 @@ public class TableHeaderSchemaValidator {
                 dataType,
                 getDefaultEncoding(dataType),
                 TSFileDescriptor.getInstance().getConfig().getCompressor());
+        if (Objects.nonNull(from)) {
+          schema.getProps().put(TreeViewSchema.ORIGINAL_NAME, from);
+        }
         break;
       default:
         throw new IllegalArgumentException();
