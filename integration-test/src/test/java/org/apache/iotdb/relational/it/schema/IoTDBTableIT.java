@@ -49,7 +49,6 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
-import java.util.Objects;
 
 import static org.apache.iotdb.commons.schema.column.ColumnHeaderConstant.describeTableColumnHeaders;
 import static org.apache.iotdb.commons.schema.column.ColumnHeaderConstant.describeTableDetailsColumnHeaders;
@@ -439,11 +438,7 @@ public class IoTDBTableIT {
           assertEquals(dataTypes[cnt], resultSet.getString(2));
           assertEquals(categories[cnt], resultSet.getString(3));
           assertEquals(statuses[cnt], resultSet.getString(4));
-          if (Objects.nonNull(comments[cnt])) {
-            assertEquals(comments[cnt], resultSet.getString(5));
-          } else {
-            assertTrue(resultSet.wasNull());
-          }
+          assertEquals(comments[cnt], resultSet.getString(5));
           cnt++;
         }
         assertEquals(columnNames.length, cnt);
