@@ -1154,130 +1154,96 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
   // region table management
 
   public TSStatus preCreateTable(final PreCreateTablePlan plan) {
-    databaseReadWriteLock.writeLock().lock();
-    try {
-      tableModelMTree.preCreateTable(
-          getQualifiedDatabasePartialPath(plan.getDatabase()), plan.getTable());
-      return RpcUtils.SUCCESS_STATUS;
-    } catch (final MetadataException e) {
-      return RpcUtils.getStatus(e.getErrorCode(), e.getMessage());
-    } finally {
-      databaseReadWriteLock.writeLock().unlock();
-    }
+    return executeWithLock(
+        () ->
+            tableModelMTree.preCreateTable(
+                getQualifiedDatabasePartialPath(plan.getDatabase()), plan.getTable()));
   }
 
   public TSStatus preCreateTableView(final PreCreateTableViewPlan plan) {
-    databaseReadWriteLock.writeLock().lock();
-    try {
-      tableModelMTree.preCreateTableView(
-          getQualifiedDatabasePartialPath(plan.getDatabase()), plan.getTable(), plan.getStatus());
-      return RpcUtils.SUCCESS_STATUS;
-    } catch (final MetadataException e) {
-      return RpcUtils.getStatus(e.getErrorCode(), e.getMessage());
-    } finally {
-      databaseReadWriteLock.writeLock().unlock();
-    }
+    return executeWithLock(
+        () ->
+            tableModelMTree.preCreateTableView(
+                getQualifiedDatabasePartialPath(plan.getDatabase()),
+                plan.getTable(),
+                plan.getStatus()));
   }
 
   public TSStatus rollbackCreateTable(final RollbackCreateTablePlan plan) {
-    databaseReadWriteLock.writeLock().lock();
-    try {
-      tableModelMTree.rollbackCreateTable(
-          getQualifiedDatabasePartialPath(plan.getDatabase()), plan.getTableName());
-      return RpcUtils.SUCCESS_STATUS;
-    } catch (final MetadataException e) {
-      return RpcUtils.getStatus(e.getErrorCode(), e.getMessage());
-    } finally {
-      databaseReadWriteLock.writeLock().unlock();
-    }
+    return executeWithLock(
+        () ->
+            tableModelMTree.rollbackCreateTable(
+                getQualifiedDatabasePartialPath(plan.getDatabase()), plan.getTableName()));
   }
 
   public TSStatus commitCreateTable(final CommitCreateTablePlan plan) {
-    databaseReadWriteLock.writeLock().lock();
-    try {
-      tableModelMTree.commitCreateTable(
-          getQualifiedDatabasePartialPath(plan.getDatabase()), plan.getTableName());
-      return RpcUtils.SUCCESS_STATUS;
-    } catch (final MetadataException e) {
-      return RpcUtils.getStatus(e.getErrorCode(), e.getMessage());
-    } finally {
-      databaseReadWriteLock.writeLock().unlock();
-    }
+    return executeWithLock(
+        () ->
+            tableModelMTree.commitCreateTable(
+                getQualifiedDatabasePartialPath(plan.getDatabase()), plan.getTableName()));
   }
 
   public TSStatus preDeleteTable(final PreDeleteTablePlan plan) {
-    databaseReadWriteLock.writeLock().lock();
-    try {
-      tableModelMTree.preDeleteTable(
-          getQualifiedDatabasePartialPath(plan.getDatabase()),
-          plan.getTableName(),
-          plan instanceof PreDeleteViewPlan);
-      return RpcUtils.SUCCESS_STATUS;
-    } catch (final MetadataException e) {
-      return RpcUtils.getStatus(e.getErrorCode(), e.getMessage());
-    } finally {
-      databaseReadWriteLock.writeLock().unlock();
-    }
+    return executeWithLock(
+        () ->
+            tableModelMTree.preDeleteTable(
+                getQualifiedDatabasePartialPath(plan.getDatabase()),
+                plan.getTableName(),
+                plan instanceof PreDeleteViewPlan));
   }
 
   public TSStatus dropTable(final CommitDeleteTablePlan plan) {
-    databaseReadWriteLock.writeLock().lock();
-    try {
-      tableModelMTree.dropTable(
-          getQualifiedDatabasePartialPath(plan.getDatabase()), plan.getTableName());
-      return RpcUtils.SUCCESS_STATUS;
-    } catch (final MetadataException e) {
-      return RpcUtils.getStatus(e.getErrorCode(), e.getMessage());
-    } finally {
-      databaseReadWriteLock.writeLock().unlock();
-    }
+    return executeWithLock(
+        () ->
+            tableModelMTree.dropTable(
+                getQualifiedDatabasePartialPath(plan.getDatabase()), plan.getTableName()));
   }
 
   public TSStatus renameTable(final RenameTablePlan plan) {
-    databaseReadWriteLock.writeLock().lock();
-    try {
-      tableModelMTree.renameTable(
-          getQualifiedDatabasePartialPath(plan.getDatabase()), plan.getTableName());
-      return RpcUtils.SUCCESS_STATUS;
-    } catch (final MetadataException e) {
-      return RpcUtils.getStatus(e.getErrorCode(), e.getMessage());
-    } finally {
-      databaseReadWriteLock.writeLock().unlock();
-    }
+    return executeWithLock(
+        () ->
+            tableModelMTree.renameTable(
+                getQualifiedDatabasePartialPath(plan.getDatabase()), plan.getTableName()));
   }
 
   public TSStatus setTableComment(final SetTableCommentPlan plan) {
+    return executeWithLock(
+        () ->
+            tableModelMTree.setTableComment(
+                getQualifiedDatabasePartialPath(plan.getDatabase()),
+                plan.getTableName(),
+                plan.getComment(),
+                plan instanceof SetViewCommentPlan));
+  }
+
+  public TSStatus setTableColumnComment(final SetTableColumnCommentPlan plan) {
+    return executeWithLock(
+        () ->
+            tableModelMTree.setTableColumnComment(
+                getQualifiedDatabasePartialPath(plan.getDatabase()),
+                plan.getTableName(),
+                plan.getColumnName(),
+                plan.getComment()));
+  }
+
+  private TSStatus executeWithLock(final ThrowingRunnable runnable) {
     databaseReadWriteLock.writeLock().lock();
     try {
-      tableModelMTree.setTableComment(
-          getQualifiedDatabasePartialPath(plan.getDatabase()),
-          plan.getTableName(),
-          plan.getComment(),
-          plan instanceof SetViewCommentPlan);
+      runnable.run();
       return RpcUtils.SUCCESS_STATUS;
     } catch (final MetadataException e) {
       return RpcUtils.getStatus(e.getErrorCode(), e.getMessage());
     } catch (final SemanticException e) {
       return RpcUtils.getStatus(TSStatusCode.SEMANTIC_ERROR.getStatusCode(), e.getMessage());
+    } catch (final Throwable e) {
+      return RpcUtils.getStatus(TSStatusCode.INTERNAL_SERVER_ERROR, e.getMessage());
     } finally {
       databaseReadWriteLock.writeLock().unlock();
     }
   }
 
-  public TSStatus setTableColumnComment(final SetTableColumnCommentPlan plan) {
-    databaseReadWriteLock.writeLock().lock();
-    try {
-      tableModelMTree.setTableColumnComment(
-          getQualifiedDatabasePartialPath(plan.getDatabase()),
-          plan.getTableName(),
-          plan.getColumnName(),
-          plan.getComment());
-      return RpcUtils.SUCCESS_STATUS;
-    } catch (final MetadataException e) {
-      return RpcUtils.getStatus(e.getErrorCode(), e.getMessage());
-    } finally {
-      databaseReadWriteLock.writeLock().unlock();
-    }
+  public interface ThrowingRunnable {
+    void run() throws Throwable;
   }
 
   public ShowTableResp showTables(final ShowTablePlan plan) {
@@ -1479,26 +1445,20 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
   }
 
   public TSStatus addTableColumn(final AddTableColumnPlan plan) {
-    databaseReadWriteLock.writeLock().lock();
-    try {
-      if (plan.isRollback()) {
-        tableModelMTree.rollbackAddTableColumn(
-            getQualifiedDatabasePartialPath(plan.getDatabase()),
-            plan.getTableName(),
-            plan.getColumnSchemaList());
-      } else {
-        tableModelMTree.addTableColumn(
-            getQualifiedDatabasePartialPath(plan.getDatabase()),
-            plan.getTableName(),
-            plan.getColumnSchemaList());
-      }
-      return RpcUtils.SUCCESS_STATUS;
-    } catch (final MetadataException e) {
-      LOGGER.warn(e.getMessage(), e);
-      return RpcUtils.getStatus(e.getErrorCode(), e.getMessage());
-    } finally {
-      databaseReadWriteLock.writeLock().unlock();
-    }
+    return executeWithLock(
+        () -> {
+          if (plan.isRollback()) {
+            tableModelMTree.rollbackAddTableColumn(
+                getQualifiedDatabasePartialPath(plan.getDatabase()),
+                plan.getTableName(),
+                plan.getColumnSchemaList());
+          } else {
+            tableModelMTree.addTableColumn(
+                getQualifiedDatabasePartialPath(plan.getDatabase()),
+                plan.getTableName(),
+                plan.getColumnSchemaList());
+          }
+        });
   }
 
   public TSStatus renameTableColumn(final RenameTableColumnPlan plan) {
@@ -1512,19 +1472,12 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
   }
 
   public TSStatus setTableProperties(final SetTablePropertiesPlan plan) {
-    databaseReadWriteLock.writeLock().lock();
-    try {
-      tableModelMTree.setTableProperties(
-          getQualifiedDatabasePartialPath(plan.getDatabase()),
-          plan.getTableName(),
-          plan.getProperties());
-      return RpcUtils.SUCCESS_STATUS;
-    } catch (final MetadataException e) {
-      LOGGER.warn(e.getMessage(), e);
-      return RpcUtils.getStatus(e.getErrorCode(), e.getMessage());
-    } finally {
-      databaseReadWriteLock.writeLock().unlock();
-    }
+    return executeWithLock(
+        () ->
+            tableModelMTree.setTableProperties(
+                getQualifiedDatabasePartialPath(plan.getDatabase()),
+                plan.getTableName(),
+                plan.getProperties()));
   }
 
   public TSStatus preDeleteColumn(final PreDeleteColumnPlan plan) {
@@ -1550,19 +1503,12 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
   }
 
   public TSStatus commitDeleteColumn(final CommitDeleteColumnPlan plan) {
-    databaseReadWriteLock.writeLock().lock();
-    try {
-      tableModelMTree.commitDeleteColumn(
-          getQualifiedDatabasePartialPath(plan.getDatabase()),
-          plan.getTableName(),
-          plan.getColumnName());
-      return RpcUtils.SUCCESS_STATUS;
-    } catch (final MetadataException e) {
-      LOGGER.warn(e.getMessage(), e);
-      return RpcUtils.getStatus(e.getErrorCode(), e.getMessage());
-    } finally {
-      databaseReadWriteLock.writeLock().unlock();
-    }
+    return executeWithLock(
+        () ->
+            tableModelMTree.commitDeleteColumn(
+                getQualifiedDatabasePartialPath(plan.getDatabase()),
+                plan.getTableName(),
+                plan.getColumnName()));
   }
 
   // endregion
