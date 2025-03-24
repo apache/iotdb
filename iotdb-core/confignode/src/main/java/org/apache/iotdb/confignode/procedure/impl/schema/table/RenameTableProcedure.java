@@ -75,6 +75,7 @@ public class RenameTableProcedure extends AbstractAlterOrDropTableProcedure<Rena
           LOGGER.info("Pre release info of table {}.{} when renaming table", database, tableName);
           preRelease(env);
           break;
+          // TODO: Change data for base table
         case RENAME_TABLE:
           LOGGER.info("Rename column to table {}.{} on config node", database, tableName);
           renameTable(env);
