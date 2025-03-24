@@ -43,7 +43,6 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.Pr
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.PruneCorrelatedJoinCorrelation;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.PruneDistinctAggregation;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.PruneEnforceSingleRowColumns;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.PruneExplainAnalyzeColumns;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.PruneFillColumns;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.PruneFilterColumns;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.PruneGapFillColumns;
@@ -116,7 +115,6 @@ public class LogicalOptimizeFactory {
             new PruneMarkDistinctColumns(),
             new PruneOffsetColumns(),
             new PruneOutputSourceColumns(),
-            new PruneExplainAnalyzeColumns(),
             new PruneProjectColumns(),
             new PruneSortColumns(),
             new PruneTableFunctionProcessorSourceColumns(),

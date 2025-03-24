@@ -71,7 +71,6 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AssignUnique
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.DeviceTableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.EnforceSingleRowNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ExchangeNode;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ExplainAnalyzeNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.GapFillNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.LinearFillNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.MarkDistinctNode;
@@ -819,14 +818,6 @@ public class PlanGraphPrinter extends PlanVisitor<List<String>, PlanGraphPrinter
     boxValue.add(String.format("OutputNode-%s", node.getPlanNodeId().getId()));
     boxValue.add(String.format("OutputColumns-%s", node.getOutputColumnNames()));
     boxValue.add(String.format("OutputSymbols: %s", node.getOutputSymbols()));
-    return render(node, boxValue, context);
-  }
-
-  @Override
-  public List<String> visitExplainAnalyze(ExplainAnalyzeNode node, GraphContext context) {
-    List<String> boxValue = new ArrayList<>();
-    boxValue.add(String.format("ExplainAnalyze-%s", node.getPlanNodeId().getId()));
-    boxValue.add(String.format("ChildPermittedOutputs: %s", node.getChildPermittedOutputs()));
     return render(node, boxValue, context);
   }
 
