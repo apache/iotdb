@@ -66,7 +66,6 @@ public class MyTest3 {
     config.setCompactionStrategy(CompactionStrategy.NO_COMPACTION);
 
     originalEnableCPV = config.isEnableCPV();
-    //    config.setEnableCPV(false); // MOC
     config.setEnableCPV(true); // CPV
 
     originalUseChunkIndex = TSFileDescriptor.getInstance().getConfig().isUseTimeIndex();

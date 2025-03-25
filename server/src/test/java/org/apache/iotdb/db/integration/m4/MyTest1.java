@@ -72,9 +72,6 @@ public class MyTest1 {
     originalEnableCPV = config.isEnableCPV();
     config.setEnableCPV(true); // CPV
 
-    //    originalUseChunkIndex = TSFileDescriptor.getInstance().getConfig().isUseTimeIndex();
-    //    TSFileDescriptor.getInstance().getConfig().setUseTimeIndex(false);
-
     originalUseMad = TSFileDescriptor.getInstance().getConfig().isUseMad();
     TSFileDescriptor.getInstance().getConfig().setUseMad(true);
 
