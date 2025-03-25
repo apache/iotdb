@@ -66,6 +66,7 @@ import org.apache.iotdb.mpp.rpc.thrift.TDeleteDataForDeleteSchemaReq;
 import org.apache.iotdb.mpp.rpc.thrift.TDeleteDataOrDevicesForDropTableReq;
 import org.apache.iotdb.mpp.rpc.thrift.TDeleteTimeSeriesReq;
 import org.apache.iotdb.mpp.rpc.thrift.TDeleteViewSchemaReq;
+import org.apache.iotdb.mpp.rpc.thrift.TDeviceViewReq;
 import org.apache.iotdb.mpp.rpc.thrift.TDropFunctionInstanceReq;
 import org.apache.iotdb.mpp.rpc.thrift.TDropPipePluginInstanceReq;
 import org.apache.iotdb.mpp.rpc.thrift.TDropTriggerInstanceReq;
@@ -447,6 +448,11 @@ public class CnToDnInternalServiceAsyncRequestManager
             client.deleteTableDeviceInBlackList(
                 (TTableDeviceDeletionWithPatternOrModReq) req,
                 (DataNodeTSStatusRPCHandler) handler));
+    actionMapBuilder.put(
+        CnToDnAsyncRequestType.GET_TREE_DEVICE_VIEW_INFO,
+        (req, client, handler) ->
+            client.getTreeDeviceViewInfo(
+                (TDeviceViewReq) req, (TreeDeviceViewUpdateHandler) handler));
     actionMapBuilder.put(
         CnToDnAsyncRequestType.CLEAN_DATA_NODE_CACHE,
         (req, client, handler) ->

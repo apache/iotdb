@@ -404,6 +404,11 @@ struct TSchemaRegionAttributeInfo {
   3: required binary body
 }
 
+struct TDeviceViewReq {
+  1: required list<common.TConsensusGroupId> regionIds
+  2: required list<string> prefixPattern
+}
+
 struct TDeviceViewResp {
   1: required common.TSStatus status
   2: required map<string, byte> deviewViewUpdateMap
@@ -1185,7 +1190,7 @@ service IDataNodeRPCService {
   /**
    * Get tree device view info for device view
    */
-  TDeviceViewResp getTreeDeviceViewInfo(list<common.TConsensusGroupId> regionIds, list<string> prefixPattern)
+  TDeviceViewResp getTreeDeviceViewInfo(TDeviceViewReq req)
 
 
   common.TTestConnectionResp submitTestConnectionTask(common.TNodeLocations nodeLocations)

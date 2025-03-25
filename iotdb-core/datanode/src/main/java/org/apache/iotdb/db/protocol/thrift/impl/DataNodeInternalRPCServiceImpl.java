@@ -217,6 +217,7 @@ import org.apache.iotdb.mpp.rpc.thrift.TDeleteDataForDeleteSchemaReq;
 import org.apache.iotdb.mpp.rpc.thrift.TDeleteDataOrDevicesForDropTableReq;
 import org.apache.iotdb.mpp.rpc.thrift.TDeleteTimeSeriesReq;
 import org.apache.iotdb.mpp.rpc.thrift.TDeleteViewSchemaReq;
+import org.apache.iotdb.mpp.rpc.thrift.TDeviceViewReq;
 import org.apache.iotdb.mpp.rpc.thrift.TDeviceViewResp;
 import org.apache.iotdb.mpp.rpc.thrift.TDropFunctionInstanceReq;
 import org.apache.iotdb.mpp.rpc.thrift.TDropPipePluginInstanceReq;
@@ -1715,19 +1716,18 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
   }
 
   @Override
-  public TDeviceViewResp getTreeDeviceViewInfo(
-      final List<TConsensusGroupId> regionIds, final List<String> prefixPaths) {
+  public TDeviceViewResp getTreeDeviceViewInfo(final TDeviceViewReq req) {
     final TDeviceViewResp resp = new TDeviceViewResp();
     resp.setDeviewViewUpdateMap(new ConcurrentHashMap<>());
     final TSStatus status =
         executeInternalSchemaTask(
-            regionIds,
+            req.getRegionIds(),
             consensusGroupId -> {
               final ISchemaRegion schemaRegion =
                   schemaEngine.getSchemaRegion(new SchemaRegionId(consensusGroupId.getId()));
               final ISchemaSource<ITimeSeriesSchemaInfo> schemaSource =
                   SchemaSourceFactory.getTimeSeriesSchemaCountSource(
-                      new PartialPath(prefixPaths.toArray(new String[0])),
+                      new PartialPath(req.getPrefixPattern().toArray(new String[0])),
                       false,
                       // Does not support logical view currently
                       SchemaFilterFactory.createViewTypeFilter(ViewType.BASE),
