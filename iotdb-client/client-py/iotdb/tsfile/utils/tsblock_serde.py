@@ -18,8 +18,6 @@
 
 import numpy as np
 
-from iotdb.utils.IoTDBConstants import TSDataType
-
 
 # Serialized tsBlock:
 #    +-------------+---------------+---------+------------+-----------+----------+
@@ -229,7 +227,11 @@ def read_run_length_column(buffer, data_type, position_count):
 
 def repeat(column, data_type, position_count):
     if data_type in (0, 5):
-        return np.full(position_count, column)
+        return (
+            np.full(position_count, column[0])
+            if column.size == 1
+            else np.array(column * position_count, dtype=object)
+        )
     else:
         res = bytearray()
         for _ in range(position_count):
