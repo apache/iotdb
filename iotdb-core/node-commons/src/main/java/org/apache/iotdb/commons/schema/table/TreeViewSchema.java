@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.commons.schema.table;
 
+import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternUtil;
 
@@ -29,6 +30,30 @@ public class TreeViewSchema {
 
   public static boolean isTreeViewTable(final TsTable table) {
     return table.getPropValue(TREE_PATH_PATTERN).isPresent();
+  }
+
+  public static PartialPath getPrefixPattern(final TsTable table) {
+    return table
+        .getPropValue(TreeViewSchema.TREE_PATH_PATTERN)
+        .map(TreeViewSchema::forceSeparateStringToPartialPath)
+        .orElseThrow(
+            () ->
+                new SemanticException(
+                    String.format(
+                        "Failed to get the original database, because the %s is null for table %s",
+                        TreeViewSchema.TREE_PATH_PATTERN, table.getTableName())));
+  }
+
+  public static PartialPath forceSeparateStringToPartialPath(final String string) {
+    final PartialPath partialPath;
+    try {
+      partialPath = new PartialPath(string);
+    } catch (final IllegalPathException e) {
+      throw new SemanticException(
+          String.format(
+              "Failed to parse the tree view string %s when convert to IDeviceID", string));
+    }
+    return partialPath;
   }
 
   public static boolean isRestrict(final TsTable table) {

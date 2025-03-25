@@ -23,9 +23,10 @@ import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
-import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
+import org.apache.iotdb.commons.schema.table.TreeViewSchema;
+import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.confignode.client.async.CnToDnAsyncRequestType;
 import org.apache.iotdb.confignode.manager.ConfigManager;
 import org.apache.iotdb.confignode.procedure.impl.schema.DataNodeRegionTaskExecutor;
@@ -50,13 +51,14 @@ public class TreeDeviceViewFieldDetector {
   private static final Logger LOGGER = LoggerFactory.getLogger(TreeDeviceViewFieldDetector.class);
   private final ConfigManager configManager;
   private final PartialPath path;
+  private final TsTable table;
 
   private TDeviceViewResp result;
 
-  public TreeDeviceViewFieldDetector(final ConfigManager configManager, final String path)
-      throws IllegalPathException {
+  public TreeDeviceViewFieldDetector(final ConfigManager configManager, final TsTable table) {
     this.configManager = configManager;
-    this.path = new PartialPath(path);
+    this.path = TreeViewSchema.getPrefixPattern(table);
+    this.table = table;
   }
 
   public TDeviceViewResp getResult() {

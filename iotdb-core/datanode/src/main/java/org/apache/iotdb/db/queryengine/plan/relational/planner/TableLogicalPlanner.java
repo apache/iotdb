@@ -476,7 +476,7 @@ public class TableLogicalPlanner {
 
     if (TreeViewSchema.isTreeViewTable(table)) {
       final PathPatternTree tree = new PathPatternTree();
-      tree.appendPathPattern(DataNodeTreeViewSchemaUtils.getOriginalPattern(table));
+      tree.appendPathPattern(DataNodeTreeViewSchemaUtils.getPrefixPattern(table));
       tree.constructTree();
 
       analysis.setSchemaPartitionInfo(

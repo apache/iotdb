@@ -19,11 +19,8 @@
 
 package org.apache.iotdb.db.schemaengine.table;
 
-import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.commons.schema.table.TreeViewSchema;
 import org.apache.iotdb.commons.schema.table.TsTable;
-import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.DeviceIDFactory;
 
 import org.apache.tsfile.file.metadata.IDeviceID;
@@ -32,23 +29,13 @@ import org.apache.tsfile.file.metadata.StringArrayDeviceID;
 import java.util.Arrays;
 import java.util.stream.Stream;
 
+import static org.apache.iotdb.commons.schema.table.TreeViewSchema.getPrefixPattern;
+
 public class DataNodeTreeViewSchemaUtils {
 
   public static String[] getPatternNodes(final TsTable table) {
-    final PartialPath path = getOriginalPattern(table);
+    final PartialPath path = getPrefixPattern(table);
     return Arrays.copyOf(path.getNodes(), path.getNodeLength() - 1);
-  }
-
-  public static PartialPath getOriginalPattern(final TsTable table) {
-    return table
-        .getPropValue(TreeViewSchema.TREE_PATH_PATTERN)
-        .map(DataNodeTreeViewSchemaUtils::forceSeparateStringToPartialPath)
-        .orElseThrow(
-            () ->
-                new SemanticException(
-                    String.format(
-                        "Failed to get the original database, because the %s is null for table %s",
-                        TreeViewSchema.TREE_PATH_PATTERN, table.getTableName())));
   }
 
   public static IDeviceID convertToIDeviceID(final TsTable table, final String[] idValues) {
@@ -58,18 +45,6 @@ public class DataNodeTreeViewSchemaUtils {
                     Arrays.stream(getPatternNodes(table)),
                     Arrays.stream((String[]) DeviceIDFactory.truncateTailingNull(idValues)))
                 .toArray(String[]::new)));
-  }
-
-  public static PartialPath forceSeparateStringToPartialPath(final String string) {
-    final PartialPath partialPath;
-    try {
-      partialPath = new PartialPath(string);
-    } catch (final IllegalPathException e) {
-      throw new SemanticException(
-          String.format(
-              "Failed to parse the tree view string %s when convert to IDeviceID", string));
-    }
-    return partialPath;
   }
 
   private DataNodeTreeViewSchemaUtils() {

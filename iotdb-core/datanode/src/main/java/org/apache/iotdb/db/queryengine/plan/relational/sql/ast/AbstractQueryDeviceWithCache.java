@@ -75,7 +75,7 @@ public abstract class AbstractQueryDeviceWithCache extends AbstractTraverseDevic
                           deviceEntry,
                           attributeColumns,
                           TreeViewSchema.isTreeViewTable(tableInstance)
-                              ? DataNodeTreeViewSchemaUtils.getOriginalPattern(tableInstance)
+                              ? DataNodeTreeViewSchemaUtils.getPrefixPattern(tableInstance)
                                       .getNodeLength()
                                   - 1
                               : 0))
