@@ -28,6 +28,8 @@ import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.schema.table.TreeViewSchema;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.column.FieldColumnSchema;
+import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
+import org.apache.iotdb.commons.utils.StatusUtils;
 import org.apache.iotdb.confignode.client.async.CnToDnAsyncRequestType;
 import org.apache.iotdb.confignode.manager.ConfigManager;
 import org.apache.iotdb.confignode.procedure.impl.schema.DataNodeRegionTaskExecutor;
@@ -47,6 +49,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 public class TreeDeviceViewFieldDetector {
 
@@ -63,18 +66,42 @@ public class TreeDeviceViewFieldDetector {
     this.table = table;
   }
 
-  public TDeviceViewResp getResult() {
-    new TreeDeviceViewFieldDetectionTaskExecutor(configManager, getLatestSchemaRegionMap())
-        .execute();
+  public TSStatus getResult() {
     if (table.getFieldNum() == 0) {
+      new TreeDeviceViewFieldDetectionTaskExecutor(configManager, getLatestSchemaRegionMap())
+          .execute();
+      if (result.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        return result.getStatus();
+      }
       result
           .getDeviewViewUpdateMap()
           .forEach(
               (field, type) ->
                   table.addColumnSchema(
                       new FieldColumnSchema(field, TSDataType.getTsDataType(type))));
+    } else {
+      final List<String> names =
+          table.getColumnList().stream()
+              .filter(
+                  columnSchema ->
+                      columnSchema instanceof FieldColumnSchema
+                          && columnSchema.getDataType() == TSDataType.UNKNOWN)
+              .map(TsTableColumnSchema::getColumnName)
+              .collect(Collectors.toList());
+      if (names.isEmpty()) {
+        return StatusUtils.OK;
+      }
+      new TreeDeviceViewFieldDetectionTaskExecutor(configManager, getLatestSchemaRegionMap())
+          .execute();
+      if (result.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        return result.getStatus();
+      }
+      names.forEach(
+          name ->
+              table.resetFieldColumnType(
+                  name, TSDataType.getTsDataType(result.getDeviewViewUpdateMap().get(name))));
     }
-    return result;
+    return StatusUtils.OK;
   }
 
   private Map<TConsensusGroupId, TRegionReplicaSet> getLatestSchemaRegionMap() {
