@@ -828,9 +828,15 @@ public class ConfigPlanExecutor {
     final GetRegionInfoListPlan getRegionInfoListPlan = (GetRegionInfoListPlan) req;
     final TShowRegionReq showRegionReq = getRegionInfoListPlan.getShowRegionReq();
     if (showRegionReq != null && showRegionReq.isSetDatabases()) {
-      final List<String> storageGroups = showRegionReq.getDatabases();
+      final List<String> databases = showRegionReq.getDatabases();
       final List<String> matchedStorageGroups =
-          clusterSchemaInfo.getMatchedDatabaseSchemasByName(storageGroups, false).values().stream()
+          clusterSchemaInfo
+              .getMatchedDatabaseSchemasByName(
+                  databases,
+                  ((GetRegionInfoListPlan) req).getShowRegionReq().isSetIsTableModel()
+                      && ((GetRegionInfoListPlan) req).getShowRegionReq().isIsTableModel())
+              .values()
+              .stream()
               .map(TDatabaseSchema::getName)
               .collect(Collectors.toList());
       if (!matchedStorageGroups.isEmpty()) {

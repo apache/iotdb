@@ -23,6 +23,7 @@ import org.apache.iotdb.common.rpc.thrift.Model;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.auth.AccessDeniedException;
 import org.apache.iotdb.commons.executable.ExecutableManager;
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.pipe.agent.plugin.builtin.BuiltinPipePlugin;
 import org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant;
 import org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant;
@@ -383,7 +384,10 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
     // corresponding tree-model variant and execute that.
     final ShowRegionStatement treeStatement = new ShowRegionStatement();
     treeStatement.setRegionType(showRegions.getRegionType());
-    treeStatement.setStorageGroups(showRegions.getDatabases());
+    treeStatement.setDatabases(
+        Objects.nonNull(showRegions.getDatabase())
+            ? Collections.singletonList(new PartialPath(new String[] {showRegions.getDatabase()}))
+            : null);
     treeStatement.setNodeIds(showRegions.getNodeIds());
     return new ShowRegionTask(treeStatement, true);
   }
