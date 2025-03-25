@@ -22,7 +22,7 @@ package org.apache.iotdb.confignode.procedure.impl.trigger;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.trigger.TriggerInformation;
 import org.apache.iotdb.commons.trigger.exception.TriggerManagementException;
-import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeEnrichedPlan;
+import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeEnrichedPlanV2;
 import org.apache.iotdb.confignode.consensus.request.write.trigger.AddTriggerInTablePlan;
 import org.apache.iotdb.confignode.consensus.request.write.trigger.DeleteTriggerInTablePlan;
 import org.apache.iotdb.confignode.consensus.request.write.trigger.UpdateTriggerStateInTablePlan;
@@ -163,7 +163,7 @@ public class CreateTriggerProcedure extends AbstractNodeProcedure<CreateTriggerS
               .getConsensusManager()
               .write(
                   isGeneratedByPipe
-                      ? new PipeEnrichedPlan(
+                      ? new PipeEnrichedPlanV2(
                           new UpdateTriggerStateInTablePlan(
                               triggerInformation.getTriggerName(), TTriggerState.ACTIVE),
                           originClusterId)
@@ -219,7 +219,7 @@ public class CreateTriggerProcedure extends AbstractNodeProcedure<CreateTriggerS
               .getConsensusManager()
               .write(
                   isGeneratedByPipe
-                      ? new PipeEnrichedPlan(
+                      ? new PipeEnrichedPlanV2(
                           new DeleteTriggerInTablePlan(triggerInformation.getTriggerName()),
                           originClusterId)
                       : new DeleteTriggerInTablePlan(triggerInformation.getTriggerName()));

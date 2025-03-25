@@ -23,7 +23,7 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.schema.table.TsTable;
-import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeEnrichedPlan;
+import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeEnrichedPlanV2;
 import org.apache.iotdb.confignode.consensus.request.write.table.CommitCreateTablePlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.PreCreateTablePlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.RollbackCreateTablePlan;
@@ -180,7 +180,7 @@ public class CreateTableProcedure
     final TSStatus status =
         SchemaUtils.executeInConsensusLayer(
             isGeneratedByPipe
-                ? new PipeEnrichedPlan(
+                ? new PipeEnrichedPlanV2(
                     new CommitCreateTablePlan(database, table.getTableName()), originClusterId)
                 : new CommitCreateTablePlan(database, table.getTableName()),
             env,

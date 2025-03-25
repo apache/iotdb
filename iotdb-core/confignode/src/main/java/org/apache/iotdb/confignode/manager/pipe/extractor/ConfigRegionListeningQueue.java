@@ -30,6 +30,7 @@ import org.apache.iotdb.commons.snapshot.SnapshotProcessor;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeCreateTablePlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeEnrichedPlan;
+import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeEnrichedPlanV2;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeUnsetSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.CommitCreateTablePlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.UnsetSchemaTemplatePlan;
@@ -71,10 +72,13 @@ public class ConfigRegionListeningQueue extends AbstractPipeListeningQueue
       final PipeConfigRegionWritePlanEvent event;
       switch (plan.getType()) {
         case PipeEnriched:
+          tryListenToPlan(((PipeEnrichedPlan) plan).getInnerPlan(), true, null);
+          return;
+        case PipeEnrichedV2:
           tryListenToPlan(
-              ((PipeEnrichedPlan) plan).getInnerPlan(),
+              ((PipeEnrichedPlanV2) plan).getInnerPlan(),
               true,
-              (((PipeEnrichedPlan) plan).getOriginClusterId()));
+              (((PipeEnrichedPlanV2) plan).getOriginClusterId()));
           return;
         case UnsetTemplate:
           // Different clusters have different template ids, so we need to

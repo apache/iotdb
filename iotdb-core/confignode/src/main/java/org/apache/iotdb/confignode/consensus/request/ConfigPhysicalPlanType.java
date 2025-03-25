@@ -286,6 +286,7 @@ public enum ConfigPhysicalPlanType {
   PipeSetTTL((short) 1705),
   PipeCreateTable((short) 1706),
   PipeDeleteDevices((short) 1707),
+  PipeEnrichedV2((short) 1708),
 
   /** Subscription */
   CreateTopic((short) 1800),

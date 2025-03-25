@@ -25,7 +25,7 @@ import org.apache.iotdb.commons.auth.AuthException;
 import org.apache.iotdb.commons.auth.entity.PrivilegeUnion;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
 import org.apache.iotdb.confignode.consensus.request.write.auth.AuthorPlan;
-import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeEnrichedPlan;
+import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeEnrichedPlanV2;
 import org.apache.iotdb.confignode.consensus.response.auth.PermissionInfoResp;
 import org.apache.iotdb.confignode.manager.consensus.ConsensusManager;
 import org.apache.iotdb.confignode.persistence.AuthorInfo;
@@ -72,7 +72,7 @@ public class PermissionManager {
             getConsensusManager()
                 .write(
                     isGeneratedByPipe
-                        ? new PipeEnrichedPlan(authorPlan, originClusterIds)
+                        ? new PipeEnrichedPlanV2(authorPlan, originClusterIds)
                         : authorPlan);
       } else {
         List<TDataNodeConfiguration> allDataNodes =

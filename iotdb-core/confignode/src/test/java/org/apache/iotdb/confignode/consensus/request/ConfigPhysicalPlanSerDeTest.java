@@ -97,6 +97,7 @@ import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeDele
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeDeleteLogicalViewPlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeDeleteTimeSeriesPlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeEnrichedPlan;
+import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeEnrichedPlanV2;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeUnsetSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.plugin.CreatePipePluginPlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.plugin.DropPipePluginPlan;
@@ -1669,7 +1670,7 @@ public class ConfigPhysicalPlanSerDeTest {
   @Test
   public void pipeEnrichedPlanTest() throws IOException {
     final PipeEnrichedPlan plan =
-        new PipeEnrichedPlan(
+        new PipeEnrichedPlanV2(
             new DatabaseSchemaPlan(
                 ConfigPhysicalPlanType.CreateDatabase,
                 new TDatabaseSchema()

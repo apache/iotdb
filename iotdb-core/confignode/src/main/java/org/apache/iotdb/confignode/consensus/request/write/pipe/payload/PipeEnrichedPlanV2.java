@@ -22,42 +22,41 @@ package org.apache.iotdb.confignode.consensus.request.write.pipe.payload;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
 
+import org.apache.tsfile.utils.ReadWriteIOUtils;
+
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Objects;
 
-public class PipeEnrichedPlan extends ConfigPhysicalPlan {
+public class PipeEnrichedPlanV2 extends PipeEnrichedPlan {
 
-  protected ConfigPhysicalPlan innerPlan;
+  private String originClusterId;
 
-  public PipeEnrichedPlan() {
-    super(ConfigPhysicalPlanType.PipeEnriched);
+  public PipeEnrichedPlanV2() {
+    super(ConfigPhysicalPlanType.PipeEnrichedV2);
   }
 
-  public PipeEnrichedPlan(ConfigPhysicalPlan innerPlan) {
-    super(ConfigPhysicalPlanType.PipeEnriched);
+  public PipeEnrichedPlanV2(ConfigPhysicalPlan innerPlan, String originClusterId) {
+    super(ConfigPhysicalPlanType.PipeEnrichedV2);
     this.innerPlan = innerPlan;
+    this.originClusterId = originClusterId;
   }
 
-  protected PipeEnrichedPlan(ConfigPhysicalPlanType type) {
-    super(type);
-  }
-
-  public ConfigPhysicalPlan getInnerPlan() {
-    return innerPlan;
+  public String getOriginClusterId() {
+    return originClusterId;
   }
 
   @Override
   protected void serializeImpl(DataOutputStream stream) throws IOException {
-    stream.writeShort(getType().getPlanType());
-    ByteBuffer buffer = innerPlan.serializeToByteBuffer();
-    stream.write(buffer.array(), 0, buffer.limit());
+    super.serializeImpl(stream);
+    ReadWriteIOUtils.write(originClusterId, stream);
   }
 
   @Override
   protected void deserializeImpl(ByteBuffer buffer) throws IOException {
-    innerPlan = ConfigPhysicalPlan.Factory.create(buffer);
+    super.deserializeImpl(buffer);
+    originClusterId = ReadWriteIOUtils.readString(buffer);
   }
 
   @Override
@@ -68,17 +67,18 @@ public class PipeEnrichedPlan extends ConfigPhysicalPlan {
     if (obj == null || getClass() != obj.getClass()) {
       return false;
     }
-    PipeEnrichedPlan that = (PipeEnrichedPlan) obj;
-    return innerPlan.equals(that.innerPlan);
+    PipeEnrichedPlanV2 that = (PipeEnrichedPlanV2) obj;
+    return innerPlan.equals(that.innerPlan)
+        && Objects.equals(originClusterId, that.originClusterId);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(innerPlan);
+    return Objects.hash(innerPlan, originClusterId);
   }
 
   @Override
   public String toString() {
-    return "PipeEnrichedPlan{" + "innerPlan='" + innerPlan + "'}";
+    return "PipeEnrichedPlanV2{" + "innerPlan='" + innerPlan + "'}";
   }
 }

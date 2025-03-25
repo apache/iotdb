@@ -56,7 +56,7 @@ import org.apache.iotdb.confignode.consensus.request.write.database.DeleteDataba
 import org.apache.iotdb.confignode.consensus.request.write.database.SetDataReplicationFactorPlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.SetSchemaReplicationFactorPlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.SetTimePartitionIntervalPlan;
-import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeEnrichedPlan;
+import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeEnrichedPlanV2;
 import org.apache.iotdb.confignode.consensus.request.write.table.AddTableColumnPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.RenameTableColumnPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.SetTableColumnCommentPlan;
@@ -183,7 +183,7 @@ public class ClusterSchemaManager {
           getConsensusManager()
               .write(
                   isGeneratedByPipe
-                      ? new PipeEnrichedPlan(databaseSchemaPlan, originClusterIds)
+                      ? new PipeEnrichedPlanV2(databaseSchemaPlan, originClusterIds)
                       : databaseSchemaPlan);
       // set ttl
       if (schema.isSetTTL()) {
@@ -267,7 +267,7 @@ public class ClusterSchemaManager {
           getConsensusManager()
               .write(
                   isGeneratedByPipe
-                      ? new PipeEnrichedPlan(databaseSchemaPlan, originClusterId)
+                      ? new PipeEnrichedPlanV2(databaseSchemaPlan, originClusterId)
                       : databaseSchemaPlan);
       PartitionMetrics.bindDatabaseReplicationFactorMetricsWhenUpdate(
           MetricService.getInstance(),
@@ -294,7 +294,7 @@ public class ClusterSchemaManager {
           getConsensusManager()
               .write(
                   isGeneratedByPipe
-                      ? new PipeEnrichedPlan(deleteDatabasePlan, originClusterId)
+                      ? new PipeEnrichedPlanV2(deleteDatabasePlan, originClusterId)
                       : deleteDatabasePlan);
     } catch (final ConsensusException e) {
       LOGGER.warn(CONSENSUS_WRITE_ERROR, e);
@@ -933,7 +933,7 @@ public class ClusterSchemaManager {
       return getConsensusManager()
           .write(
               isGeneratedByPipe
-                  ? new PipeEnrichedPlan(
+                  ? new PipeEnrichedPlanV2(
                       new UnsetSchemaTemplatePlan(templateId, path), originClusterId)
                   : new UnsetSchemaTemplatePlan(templateId, path));
     } catch (ConsensusException e) {
@@ -1043,7 +1043,7 @@ public class ClusterSchemaManager {
           getConsensusManager()
               .write(
                   isGeneratedByPipe
-                      ? new PipeEnrichedPlan(extendSchemaTemplatePlan, originClusterId)
+                      ? new PipeEnrichedPlanV2(extendSchemaTemplatePlan, originClusterId)
                       : extendSchemaTemplatePlan);
     } catch (ConsensusException e) {
       LOGGER.warn(CONSENSUS_WRITE_ERROR, e);
@@ -1299,7 +1299,7 @@ public class ClusterSchemaManager {
       return getConsensusManager()
           .write(
               isGeneratedByPipe
-                  ? new PipeEnrichedPlan(addTableColumnPlan, originClusterId)
+                  ? new PipeEnrichedPlanV2(addTableColumnPlan, originClusterId)
                   : addTableColumnPlan);
     } catch (final ConsensusException e) {
       LOGGER.warn(e.getMessage(), e);
@@ -1334,7 +1334,7 @@ public class ClusterSchemaManager {
       return getConsensusManager()
           .write(
               isGeneratedByPipe
-                  ? new PipeEnrichedPlan(renameTableColumnPlan, originClusterId)
+                  ? new PipeEnrichedPlanV2(renameTableColumnPlan, originClusterId)
                   : renameTableColumnPlan);
     } catch (final ConsensusException e) {
       LOGGER.warn(e.getMessage(), e);
@@ -1354,7 +1354,7 @@ public class ClusterSchemaManager {
       return getConsensusManager()
           .write(
               isGeneratedByPipe
-                  ? new PipeEnrichedPlan(setTablePropertiesPlan, originClusterId)
+                  ? new PipeEnrichedPlanV2(setTablePropertiesPlan, originClusterId)
                   : setTablePropertiesPlan);
     } catch (final ConsensusException e) {
       LOGGER.warn(e.getMessage(), e);
@@ -1374,7 +1374,7 @@ public class ClusterSchemaManager {
       return getConsensusManager()
           .write(
               isGeneratedByPipe
-                  ? new PipeEnrichedPlan(setTableCommentPlan, originClusterId)
+                  ? new PipeEnrichedPlanV2(setTableCommentPlan, originClusterId)
                   : setTableCommentPlan);
     } catch (final ConsensusException e) {
       LOGGER.warn(e.getMessage(), e);
@@ -1395,7 +1395,7 @@ public class ClusterSchemaManager {
       return getConsensusManager()
           .write(
               isGeneratedByPipe
-                  ? new PipeEnrichedPlan(setTableColumnCommentPlan, originClusterId)
+                  ? new PipeEnrichedPlanV2(setTableColumnCommentPlan, originClusterId)
                   : setTableColumnCommentPlan);
     } catch (final ConsensusException e) {
       LOGGER.warn(e.getMessage(), e);

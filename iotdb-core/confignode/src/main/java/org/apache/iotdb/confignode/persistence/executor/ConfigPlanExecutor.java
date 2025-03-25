@@ -647,6 +647,7 @@ public class ConfigPlanExecutor {
       case ShowPipeV1:
         return new TSStatus(TSStatusCode.INCOMPATIBLE_VERSION.getStatusCode());
       case PipeEnriched:
+      case PipeEnrichedV2:
         return executeNonQueryPlan(((PipeEnrichedPlan) physicalPlan).getInnerPlan());
       case PipeDeleteTimeSeries:
       case PipeDeleteLogicalView:

@@ -28,7 +28,7 @@ import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.confignode.client.async.CnToDnAsyncRequestType;
 import org.apache.iotdb.confignode.client.async.CnToDnInternalServiceAsyncRequestManager;
 import org.apache.iotdb.confignode.client.async.handlers.DataNodeAsyncRequestContext;
-import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeEnrichedPlan;
+import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeEnrichedPlanV2;
 import org.apache.iotdb.confignode.consensus.request.write.table.CommitDeleteColumnPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.PreDeleteColumnPlan;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
@@ -213,7 +213,7 @@ public class DropTableColumnProcedure
     final TSStatus status =
         SchemaUtils.executeInConsensusLayer(
             isGeneratedByPipe
-                ? new PipeEnrichedPlan(
+                ? new PipeEnrichedPlanV2(
                     new CommitDeleteColumnPlan(database, tableName, columnName), originClusterId)
                 : new CommitDeleteColumnPlan(database, tableName, columnName),
             env,
