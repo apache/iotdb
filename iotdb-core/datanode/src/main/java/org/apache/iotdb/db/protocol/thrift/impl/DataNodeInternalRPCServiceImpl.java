@@ -58,9 +58,11 @@ import org.apache.iotdb.commons.pipe.agent.plugin.meta.PipePluginMeta;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeMeta;
 import org.apache.iotdb.commons.schema.SchemaConstant;
 import org.apache.iotdb.commons.schema.cache.CacheClearOptions;
+import org.apache.iotdb.commons.schema.filter.SchemaFilterFactory;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.TsTableInternalRPCType;
 import org.apache.iotdb.commons.schema.table.TsTableInternalRPCUtil;
+import org.apache.iotdb.commons.schema.view.ViewType;
 import org.apache.iotdb.commons.schema.view.viewExpression.ViewExpression;
 import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.commons.service.metric.enums.Tag;
@@ -1727,7 +1729,8 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
                   SchemaSourceFactory.getTimeSeriesSchemaCountSource(
                       new PartialPath(prefixPaths.toArray(new String[0])),
                       false,
-                      null,
+                      // Does not support logical view currently
+                      SchemaFilterFactory.createViewTypeFilter(ViewType.BASE),
                       null,
                       SchemaConstant.ALL_MATCH_SCOPE);
               try (final ISchemaReader<ITimeSeriesSchemaInfo> schemaReader =
