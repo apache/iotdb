@@ -1723,11 +1723,9 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
             consensusGroupId -> {
               final ISchemaRegion schemaRegion =
                   schemaEngine.getSchemaRegion(new SchemaRegionId(consensusGroupId.getId()));
-              final String database = schemaRegion.getDatabaseFullPath();
-
               final ISchemaSource<ITimeSeriesSchemaInfo> schemaSource =
                   SchemaSourceFactory.getTimeSeriesSchemaCountSource(
-                      SchemaConstant.ALL_MATCH_PATTERN,
+                      new PartialPath(prefixPaths.toArray(new String[0])),
                       false,
                       null,
                       null,
@@ -1735,26 +1733,10 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
               try (final ISchemaReader<ITimeSeriesSchemaInfo> schemaReader =
                   schemaSource.getSchemaReader(schemaRegion)) {
                 while (schemaReader.hasNext()) {
-                  final ITimeSeriesSchemaInfo result = schemaReader.next();
+                  final IMeasurementSchema schema = schemaReader.next().getSchema();
 
                   resp.getDeviewViewUpdateMap()
-                      .compute(
-                          database,
-                          (db, info) -> {
-                            if (Objects.isNull(info)) {
-                              info = new TSchemaRegionViewInfo();
-                            }
-                            final IMeasurementSchema schema = result.getSchema();
-                            if (Objects.isNull(info.getMeasurementsDataTypeCountMap())) {
-                              info.setMeasurementsDataTypeCountMap(new HashMap<>());
-                            }
-                            info.getMeasurementsDataTypeCountMap()
-                                .computeIfAbsent(schema.getMeasurementName(), k -> new HashMap<>())
-                                .compute(
-                                    schema.getType().serialize(),
-                                    (type, num) -> Objects.nonNull(num) ? num + 1 : 1);
-                            return info;
-                          });
+                      .put(schema.getMeasurementName(), schema.getTypeInByte());
                 }
               } catch (final Exception e) {
                 LOGGER.warn(e.getMessage(), e);
