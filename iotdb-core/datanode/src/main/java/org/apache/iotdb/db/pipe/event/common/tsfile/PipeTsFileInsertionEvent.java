@@ -157,9 +157,9 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
     this.isWithMod =
         isWithMod
             && (resourceModFile.exists()
-                || PipeDataNodeResourceManager.tsfile().getFileReferenceCountWithoutLock(modFile)
-                    > 0);
-    this.modFile = this.isWithMod ? resource.getExclusiveModFile().getFile() : null;
+                || isGeneratedByHistoricalExtractor
+                    && isHardLinkFileExists(resourceModFile.getFile()));
+    this.modFile = this.isWithMod ? resourceModFile.getFile() : null;
     // TODO: process the shared mod file
     this.sharedModFile =
         resource.getSharedModFile() != null ? resource.getSharedModFile().getFile() : null;
@@ -205,6 +205,17 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
     isClosed.set(resource.isClosed());
 
     this.eventParser = new AtomicReference<>(null);
+  }
+
+  private static boolean isHardLinkFileExists(final File modFile) {
+    try {
+      return PipeDataNodeResourceManager.tsfile()
+              .getFileReferenceCountWithoutLock(
+                  PipeTsFileResourceManager.getHardlinkOrCopiedFileInPipeDir(modFile))
+          > 0;
+    } catch (final Exception e) {
+      return false;
+    }
   }
 
   /**
