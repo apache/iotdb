@@ -70,7 +70,7 @@ public class PipeTableModeTsFileBuilder extends PipeTsFileBuilder {
     if (dataBase2TabletList.isEmpty()) {
       return new ArrayList<>(0);
     }
-    List<Pair<String, File>> pairList = new ArrayList<>();
+    final List<Pair<String, File>> pairList = new ArrayList<>();
     for (Map.Entry<String, List<Tablet>> entry : dataBase2TabletList.entrySet()) {
       final LinkedHashSet<LinkedList<Pair<Tablet, List<Pair<IDeviceID, Integer>>>>> linkedHashSet =
           new LinkedHashSet<>();
@@ -112,9 +112,6 @@ public class PipeTableModeTsFileBuilder extends PipeTsFileBuilder {
           .computeIfAbsent(tablet.getTableName(), k -> new ArrayList<>())
           .add((T) new Pair<>(tablet, WriteUtils.splitTabletByDevice(tablet)));
     }
-
-    // Replace ArrayList with LinkedList to improve performance
-    final LinkedHashSet<LinkedList<T>> table2Tablets = new LinkedHashSet<>();
 
     // Sort the tablets by start time in first device
     for (final List<T> tablets : tableName2Tablets.values()) {

@@ -33,6 +33,7 @@ import java.util.concurrent.CountDownLatch;
 /** General RPC handler for TSStatus response type. */
 public class AsyncTSStatusRPCHandler extends DataNodeAsyncRequestRPCHandler<TSStatus> {
 
+  private final boolean keepSilent;
   private static final Logger LOGGER = LoggerFactory.getLogger(AsyncTSStatusRPCHandler.class);
 
   public AsyncTSStatusRPCHandler(
@@ -41,8 +42,10 @@ public class AsyncTSStatusRPCHandler extends DataNodeAsyncRequestRPCHandler<TSSt
       TDataNodeLocation targetDataNode,
       Map<Integer, TDataNodeLocation> dataNodeLocationMap,
       Map<Integer, TSStatus> responseMap,
-      CountDownLatch countDownLatch) {
+      CountDownLatch countDownLatch,
+      boolean keepSilent) {
     super(requestType, requestId, targetDataNode, dataNodeLocationMap, responseMap, countDownLatch);
+    this.keepSilent = keepSilent;
   }
 
   @Override
@@ -53,13 +56,17 @@ public class AsyncTSStatusRPCHandler extends DataNodeAsyncRequestRPCHandler<TSSt
     if (response.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       // Remove only if success
       nodeLocationMap.remove(requestId);
-      LOGGER.info("Successfully {} on DataNode: {}", requestType, formattedTargetLocation);
+      if (!keepSilent) {
+        LOGGER.info("Successfully {} on DataNode: {}", requestType, formattedTargetLocation);
+      }
     } else {
-      LOGGER.error(
-          "Failed to {} on DataNode: {}, response: {}",
-          requestType,
-          formattedTargetLocation,
-          response);
+      if (!keepSilent) {
+        LOGGER.error(
+            "Failed to {} on DataNode: {}, response: {}",
+            requestType,
+            formattedTargetLocation,
+            response);
+      }
     }
 
     // Always CountDown
@@ -75,7 +82,9 @@ public class AsyncTSStatusRPCHandler extends DataNodeAsyncRequestRPCHandler<TSSt
             + formattedTargetLocation
             + ", exception: "
             + e.getMessage();
-    LOGGER.error(errorMsg);
+    if (!keepSilent) {
+      LOGGER.error(errorMsg);
+    }
 
     responseMap.put(
         requestId,

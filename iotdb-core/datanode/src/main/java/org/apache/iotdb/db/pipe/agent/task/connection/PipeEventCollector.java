@@ -136,11 +136,8 @@ public class PipeEventCollector implements EventCollector {
     }
 
     if (!forceTabletFormat
-        && (!sourceEvent.shouldParseTimeOrPattern()
-            || (sourceEvent.isTableModelEvent()
-                && (sourceEvent.getTablePattern() == null
-                    || !sourceEvent.getTablePattern().hasTablePattern())
-                && !sourceEvent.shouldParseTime()))) {
+        && !sourceEvent.shouldParse4Privilege()
+        && canSkipParsing4TsFileEvent(sourceEvent)) {
       collectEvent(sourceEvent);
       return;
     }
@@ -152,6 +149,14 @@ public class PipeEventCollector implements EventCollector {
     } finally {
       sourceEvent.close();
     }
+  }
+
+  private boolean canSkipParsing4TsFileEvent(final PipeTsFileInsertionEvent sourceEvent) {
+    return !sourceEvent.shouldParseTimeOrPattern()
+        || (sourceEvent.isTableModelEvent()
+            && (sourceEvent.getTablePattern() == null
+                || !sourceEvent.getTablePattern().hasTablePattern())
+            && !sourceEvent.shouldParseTime());
   }
 
   private void collectParsedRawTableEvent(final PipeRawTabletInsertionEvent parsedEvent) {

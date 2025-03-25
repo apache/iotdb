@@ -1470,7 +1470,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
   public SettableFuture<ConfigTaskResult> setSqlDialect(IClientSession.SqlDialect sqlDialect) {
     final SettableFuture<ConfigTaskResult> future = SettableFuture.create();
     try {
-      SessionManager.getInstance().getCurrSession().setSqlDialect(sqlDialect);
+      SessionManager.getInstance().getCurrSession().setSqlDialectAndClean(sqlDialect);
       future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
     } catch (Exception e) {
       future.setException(e);
@@ -1545,11 +1545,11 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
     TShowRegionResp showRegionResp = new TShowRegionResp();
     final TShowRegionReq showRegionReq = new TShowRegionReq().setIsTableModel(isTableModel);
     showRegionReq.setConsensusGroupType(showRegionStatement.getRegionType());
-    if (showRegionStatement.getStorageGroups() == null) {
+    if (showRegionStatement.getDatabases() == null) {
       showRegionReq.setDatabases(null);
     } else {
       showRegionReq.setDatabases(
-          showRegionStatement.getStorageGroups().stream()
+          showRegionStatement.getDatabases().stream()
               .map(PartialPath::getFullPath)
               .collect(Collectors.toList()));
     }
