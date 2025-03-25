@@ -77,7 +77,7 @@ public class TsTable {
   // Cache, avoid string parsing
   private transient long ttlValue = Long.MIN_VALUE;
   private transient int idNums = 0;
-  private transient int measurementNum = 0;
+  private transient int fieldNum = 0;
 
   public TsTable(final String tableName) {
     this.tableName = tableName;
@@ -146,7 +146,7 @@ public class TsTable {
         idNums++;
         idColumnIndexMap.put(columnSchema.getColumnName(), idNums - 1);
       } else if (columnSchema.getColumnCategory().equals(TsTableColumnCategory.FIELD)) {
-        measurementNum++;
+        fieldNum++;
       }
     } finally {
       readWriteLock.writeLock().unlock();
@@ -201,7 +201,7 @@ public class TsTable {
       } else if (columnSchema != null) {
         columnSchemaMap.remove(columnName);
         if (columnSchema.getColumnCategory().equals(TsTableColumnCategory.FIELD)) {
-          measurementNum--;
+          fieldNum--;
         }
       }
     } finally {
@@ -227,10 +227,10 @@ public class TsTable {
     }
   }
 
-  public int getMeasurementNum() {
+  public int getFieldNum() {
     readWriteLock.readLock().lock();
     try {
-      return measurementNum;
+      return fieldNum;
     } finally {
       readWriteLock.readLock().unlock();
     }

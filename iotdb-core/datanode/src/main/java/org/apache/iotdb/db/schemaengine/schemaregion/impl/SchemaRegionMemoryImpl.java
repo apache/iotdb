@@ -891,7 +891,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
         (long)
                 DataNodeTableCache.getInstance()
                     .getTable(storageGroupFullPath, tableName)
-                    .getMeasurementNum()
+                    .getFieldNum()
             * notExistNum,
         notExistNum);
   }
