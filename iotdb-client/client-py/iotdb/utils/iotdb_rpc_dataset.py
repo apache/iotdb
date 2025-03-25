@@ -252,7 +252,7 @@ class IoTDBRpcDataSet(object):
             self.__query_result_index += 1
             if self.ignore_timestamp is None or self.ignore_timestamp is False:
                 if time_array.dtype.byteorder == ">" and len(time_array) > 0:
-                    time_array = time_array.byteswap().newbyteorder()
+                    time_array.byteswap().view(time_array.dtype.newbyteorder("="))
                 result[0].append(time_array)
 
             for i, location in enumerate(
@@ -265,8 +265,12 @@ class IoTDBRpcDataSet(object):
                 # BOOLEAN, INT32, INT64, FLOAT, DOUBLE, TIMESTAMP, BLOB
                 if data_type in (0, 1, 2, 3, 4, 8, 10):
                     data_array = column_array
-                    if data_array.dtype.byteorder == ">" and len(data_array) > 0:
-                        data_array = data_array.byteswap().newbyteorder()
+                    if (
+                        data_type != 10
+                        and data_array.dtype.byteorder == ">"
+                        and len(data_array) > 0
+                    ):
+                        data_array.byteswap().view(data_array.dtype.newbyteorder("="))
                 # TEXT, STRING
                 elif data_type in (5, 11):
                     data_array = np.array([x.decode("utf-8") for x in column_array])
