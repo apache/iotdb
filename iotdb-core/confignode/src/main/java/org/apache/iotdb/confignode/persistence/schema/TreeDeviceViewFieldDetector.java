@@ -140,14 +140,12 @@ public class TreeDeviceViewFieldDetector {
                 if (!result.getDeviewViewUpdateMap().containsKey(measurement)) {
                   result.getDeviewViewUpdateMap().put(measurement, type);
                 } else {
-                  result =
-                      new TDeviceViewResp(
-                          RpcUtils.getStatus(
-                              TSStatusCode.DATA_TYPE_MISMATCH,
-                              String.format(
-                                  "Multiple types encountered when auto detecting type of measurement '%s', please check",
-                                  measurement)),
-                          Collections.emptyMap());
+                  result.setStatus(
+                      RpcUtils.getStatus(
+                          TSStatusCode.DATA_TYPE_MISMATCH,
+                          String.format(
+                              "Multiple types encountered when auto detecting type of measurement '%s', please check",
+                              measurement)));
                 }
               });
     }
