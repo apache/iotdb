@@ -1716,7 +1716,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
   }
 
   @Override
-  public TDeviceViewResp getTreeDeviceViewInfo(final TDeviceViewReq req) {
+  public TDeviceViewResp detectTreeDeviceViewFieldType(final TDeviceViewReq req) {
     final TDeviceViewResp resp = new TDeviceViewResp();
     resp.setDeviewViewUpdateMap(new ConcurrentHashMap<>());
     final TSStatus status =

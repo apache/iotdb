@@ -1190,7 +1190,7 @@ service IDataNodeRPCService {
   /**
    * Get tree device view info for device view
    */
-  TDeviceViewResp getTreeDeviceViewInfo(TDeviceViewReq req)
+  TDeviceViewResp detectTreeDeviceViewFieldType(TDeviceViewReq req)
 
 
   common.TTestConnectionResp submitTestConnectionTask(common.TNodeLocations nodeLocations)
