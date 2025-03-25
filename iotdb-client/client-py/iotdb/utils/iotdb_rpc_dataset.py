@@ -251,6 +251,8 @@ class IoTDBRpcDataSet(object):
             self.__query_result[self.__query_result_index] = None
             self.__query_result_index += 1
             if self.ignore_timestamp is None or self.ignore_timestamp is False:
+                if time_array.dtype.byteorder == ">" and len(time_array) > 0:
+                    time_array = time_array.byteswap().newbyteorder()
                 result[0].append(time_array)
 
             for i, location in enumerate(
@@ -263,6 +265,8 @@ class IoTDBRpcDataSet(object):
                 # BOOLEAN, INT32, INT64, FLOAT, DOUBLE, TIMESTAMP, BLOB
                 if data_type in (0, 1, 2, 3, 4, 8, 10):
                     data_array = column_array
+                    if data_array.dtype.byteorder == ">" and len(data_array) > 0:
+                        data_array = data_array.byteswap().newbyteorder()
                 # TEXT, STRING
                 elif data_type in (5, 11):
                     data_array = np.array([x.decode("utf-8") for x in column_array])
@@ -271,11 +275,12 @@ class IoTDBRpcDataSet(object):
                     data_array = pd.Series(column_array).apply(parse_int_to_date)
                 else:
                     raise RuntimeError("unsupported data type {}.".format(data_type))
-                tmp_array = []
+
                 null_indicator = null_indicators[location]
                 if len(data_array) < array_length or (
                     data_type == 0 and null_indicator is not None
                 ):
+                    tmp_array = []
                     # BOOLEAN, INT32, INT64, TIMESTAMP
                     if (
                         data_type == 0
