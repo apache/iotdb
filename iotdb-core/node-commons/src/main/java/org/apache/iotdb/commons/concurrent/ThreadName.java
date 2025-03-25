@@ -69,7 +69,6 @@ public enum ThreadName {
   PBTREE_FLUSH_MONITOR("PBTree-Flush-Monitor"),
   PBTREE_WORKER_POOL("PBTree-Worker-Pool"),
   GENERAL_REGION_ATTRIBUTE_SECURITY_SERVICE("General-Region-Attribute-Security-Service"),
-  TREE_DEVICE_VIEW_UPDATER("Tree-Device-View-Updater"),
 
   // -------------------------- ClientService --------------------------
   CLIENT_RPC_SERVICE("ClientRPC-Service"),
@@ -246,8 +245,7 @@ public enum ThreadName {
               SCHEMA_FORCE_MLOG,
               PBTREE_FLUSH_MONITOR,
               PBTREE_WORKER_POOL,
-              GENERAL_REGION_ATTRIBUTE_SECURITY_SERVICE,
-              TREE_DEVICE_VIEW_UPDATER));
+              GENERAL_REGION_ATTRIBUTE_SECURITY_SERVICE));
 
   private static final Set<ThreadName> clientServiceThreadNames =
       new HashSet<>(Arrays.asList(CLIENT_RPC_SERVICE, CLIENT_RPC_PROCESSOR));
