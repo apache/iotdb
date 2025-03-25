@@ -21,15 +21,16 @@ from thrift.Thrift import TException
 from thrift.protocol import TCompactProtocol, TBinaryProtocol
 from thrift.transport import TSocket, TTransport
 
-from iotdb.ainode.config import AINodeDescriptor
-from iotdb.ainode.constant import TSStatusCode
-from iotdb.ainode.log import Logger
-from iotdb.ainode.util.decorator import singleton
-from iotdb.ainode.util.status import verify_success
-from iotdb.thrift.common.ttypes import TEndPoint, TSStatus, TAINodeLocation, TAINodeConfiguration
-from iotdb.thrift.confignode import IConfigNodeRPCService
-from iotdb.thrift.confignode.ttypes import (TAINodeRemoveReq, TNodeVersionInfo,
-                                            TAINodeRegisterReq, TAINodeRestartReq)
+from ainode.core.config import AINodeDescriptor
+from ainode.core.constant import TSStatusCode
+from ainode.core.log import Logger
+from ainode.core.util.decorator import singleton
+from ainode.core.util.status import verify_success
+from ainode.thrift.common.ttypes import TEndPoint, TSStatus, TAINodeLocation, TAINodeConfiguration
+from ainode.thrift.confignode import IConfigNodeRPCService
+from ainode.thrift.confignode.ttypes import (TAINodeRemoveReq, TNodeVersionInfo,
+                                             TAINodeRegisterReq, TAINodeRestartReq)
+from ainode.thrift.confignode.ttypes import TUpdateModelInfoReq
 
 logger = Logger()
 
@@ -198,6 +199,29 @@ class ConfigNodeClient(object):
             except TTransport.TException:
                 logger.warning("Failed to connect to ConfigNode {} from AINode when executing "
                                "get_ainode_configuration()",
+                               self._config_leader)
+                self._config_leader = None
+            self._wait_and_reconnect()
+        raise TException(self._MSG_RECONNECTION_FAIL)
+
+    def update_model_info(self, model_id:str, model_status:int, attribute:str = "", ainode_id=None, input_length=0, output_length=0) -> None:
+        if ainode_id is None:
+            ainode_id = []
+        for _ in range(0, self._RETRY_NUM):
+            try:
+                req = TUpdateModelInfoReq(
+                    model_id, model_status, attribute
+                )
+                if ainode_id is not None:
+                    req.aiNodeIds = ainode_id
+                req.inputLength = input_length
+                req.outputLength = output_length
+                status = self._client.updateModelInfo(req)
+                if not self._update_config_node_leader(status):
+                    verify_success(status, "An error occurs when calling update model info")
+                    return status
+            except TTransport.TException:
+                logger.warning("Failed to connect to ConfigNode {} from AINode when executing update model info",
                                self._config_leader)
                 self._config_leader = None
             self._wait_and_reconnect()
