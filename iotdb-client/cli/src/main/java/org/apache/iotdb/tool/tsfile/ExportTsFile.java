@@ -33,7 +33,6 @@ import org.apache.commons.cli.DefaultParser;
 import org.apache.commons.cli.HelpFormatter;
 import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
-import org.apache.commons.lang3.StringUtils;
 import org.slf4j.LoggerFactory;
 
 import java.util.concurrent.ExecutorService;
@@ -50,9 +49,9 @@ public class ExportTsFile {
     logger.setLevel(Level.ERROR);
     Options options = OptionsUtil.createSubscriptionTsFileOptions();
     parseParams(args, options);
-    if (StringUtils.isEmpty(commonParam.getPath())) {
-      commonParam.setSqlDialect(Constants.TABLE_MODEL);
-    }
+    //    if (StringUtils.isEmpty(commonParam.getPath())) {
+    //      commonParam.setSqlDialect(Constants.TABLE_MODEL);
+    //    }
     AbstractSubscriptionTsFile.setSubscriptionSession();
     String nowFormat = Constants.DATE_FORMAT_VIEW.format(System.currentTimeMillis());
     String topicName = Constants.TOPIC_NAME_PREFIX + nowFormat;
@@ -74,10 +73,15 @@ public class ExportTsFile {
 
   private static void parseParams(String[] args, Options options) {
     HelpFormatter hf = new HelpFormatter();
+    hf.setOptionComparator(null);
     CommandLine cli = null;
     CommandLineParser cliParser = new DefaultParser();
     try {
       cli = cliParser.parse(options, args);
+      if (cli.hasOption(Constants.HELP_ARGS) || args.length == 0) {
+        hf.printHelp(Constants.SUBSCRIPTION_CLI_PREFIX, options, true);
+        System.exit(0);
+      }
       if (cli.hasOption(Constants.SQL_DIALECT_ARGS)) {
         commonParam.setSqlDialect(cli.getOptionValue(Constants.SQL_DIALECT_ARGS));
       }
@@ -96,12 +100,12 @@ public class ExportTsFile {
       if (cli.hasOption(Constants.PATH_ARGS)) {
         commonParam.setPath(cli.getOptionValue(Constants.PATH_ARGS));
       }
-      if (cli.hasOption(Constants.DB_ARGS)) {
-        commonParam.setDatabase(cli.getOptionValue(Constants.DB_ARGS));
-      }
-      if (cli.hasOption(Constants.TABLE_ARGS)) {
-        commonParam.setTable(cli.getOptionValue(Constants.TABLE_ARGS));
-      }
+      //      if (cli.hasOption(Constants.DB_ARGS)) {
+      //        commonParam.setDatabase(cli.getOptionValue(Constants.DB_ARGS));
+      //      }
+      //      if (cli.hasOption(Constants.TABLE_ARGS)) {
+      //        commonParam.setTable(cli.getOptionValue(Constants.TABLE_ARGS));
+      //      }
       if (cli.hasOption(Constants.TARGET_DIR_ARGS)) {
         commonParam.setTargetDir(cli.getOptionValue(Constants.TARGET_DIR_ARGS));
       }
