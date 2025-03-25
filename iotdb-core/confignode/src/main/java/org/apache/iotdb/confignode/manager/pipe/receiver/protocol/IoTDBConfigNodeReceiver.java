@@ -22,7 +22,6 @@ package org.apache.iotdb.confignode.manager.pipe.receiver.protocol;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
-import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.pipe.connector.payload.airgap.AirGapPseudoTPipeTransferRequest;
@@ -284,27 +283,12 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
                 PrivilegeType.WRITE_SCHEMA.ordinal())
             .getStatus();
       case SetTTL:
-        return Objects.equals(
-                configManager
-                    .getTTLManager()
-                    .getAllTTL()
-                    .get(
-                        String.join(
-                            String.valueOf(IoTDBConstant.PATH_SEPARATOR),
-                            ((SetTTLPlan) plan).getPathPattern())),
-                ((SetTTLPlan) plan).getTTL())
-            ? StatusUtils.OK
-            : configManager
-                .checkUserPrivileges(
-                    username,
-                    ((SetTTLPlan) plan).isDataBase()
-                        ? Collections.emptyList()
-                        : Collections.singletonList(
-                            new PartialPath(((SetTTLPlan) plan).getPathPattern())),
-                    ((SetTTLPlan) plan).isDataBase()
-                        ? PrivilegeType.MANAGE_DATABASE.ordinal()
-                        : PrivilegeType.WRITE_SCHEMA.ordinal())
-                .getStatus();
+        return configManager
+            .checkUserPrivileges(
+                username,
+                Collections.singletonList(new PartialPath(((SetTTLPlan) plan).getPathPattern())),
+                PrivilegeType.WRITE_SCHEMA.ordinal())
+            .getStatus();
       case UpdateTriggerStateInTable:
       case DeleteTriggerInTable:
         return configManager

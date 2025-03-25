@@ -21,13 +21,6 @@
 -->
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
-    <!--Add the JitPack repository because the moquette-broker dependency needs to be resolved from the JitPack repository-->
-    <repositories>
-        <repository>
-            <id>jitpack.io</id>
-            <url>https://jitpack.io</url>
-        </repository>
-    </repositories>
     <parent>
         <groupId>org.apache</groupId>
         <artifactId>apache</artifactId>
@@ -128,7 +121,7 @@
         <mockito.version>2.23.4</mockito.version>
         <!-- This was the last version to support Java 8 -->
         <!--mockito.version>4.11.0</mockito.version-->
-        <moquette.version>0.18.0</moquette.version>
+        <moquette.version>0.17</moquette.version>
         <netty.version>4.1.115.Final</netty.version>
         <nimbus-jose-jwt.version>9.37.3</nimbus-jose-jwt.version>
         <oauth2-oidc-sdk.version>10.15</oauth2-oidc-sdk.version>
@@ -175,7 +168,7 @@
         <thrift.version>0.14.1</thrift.version>
         <xz.version>1.9</xz.version>
         <zstd-jni.version>1.5.6-3</zstd-jni.version>
-        <tsfile.version>1.1.1-250324-SNAPSHOT</tsfile.version>
+        <tsfile.version>1.1.0-250219-SNAPSHOT</tsfile.version>
     </properties>
     <!--
     if we claim dependencies in dependencyManagement, then we do not claim
@@ -439,7 +432,7 @@
                 <version>${reflections.version}</version>
             </dependency>
             <dependency>
-                <groupId>com.github.moquette-io.moquette</groupId>
+                <groupId>io.moquette</groupId>
                 <artifactId>moquette-broker</artifactId>
                 <version>${moquette.version}</version>
             </dependency>

@@ -308,7 +308,7 @@ public class CommonConfig {
   private int subscriptionPollMaxBlockingTimeMs = 500;
   private int subscriptionDefaultTimeoutInMs = 10_000; // 10s
   private long subscriptionLaunchRetryIntervalMs = 1000;
-  private int subscriptionRecycleUncommittedEventIntervalMs = 600_000; // 600s
+  private int subscriptionRecycleUncommittedEventIntervalMs = 600000; // 600s
   private long subscriptionReadFileBufferSize = 8 * MB;
   private long subscriptionReadTabletBufferSize = 8 * MB;
   private long subscriptionTsFileDeduplicationWindowSeconds = 120; // 120s
@@ -316,8 +316,6 @@ public class CommonConfig {
   private long subscriptionEstimatedInsertNodeTabletInsertionEventSize = 64 * KB;
   private long subscriptionEstimatedRawTabletInsertionEventSize = 16 * KB;
   private long subscriptionMaxAllowedEventCountInTabletBatch = 100;
-  private long subscriptionLogManagerWindowSeconds = 120; // 120s
-  private long subscriptionLogManagerBaseIntervalMs = 1_000; // 1s
 
   private boolean subscriptionPrefetchEnabled = false;
   private float subscriptionPrefetchMemoryThreshold = 0.5F;
@@ -1508,23 +1506,6 @@ public class CommonConfig {
       final long subscriptionMaxAllowedEventCountInTabletBatch) {
     this.subscriptionMaxAllowedEventCountInTabletBatch =
         subscriptionMaxAllowedEventCountInTabletBatch;
-  }
-
-  public long getSubscriptionLogManagerWindowSeconds() {
-    return subscriptionLogManagerWindowSeconds;
-  }
-
-  public void setSubscriptionLogManagerWindowSeconds(long subscriptionLogManagerWindowSeconds) {
-    this.subscriptionLogManagerWindowSeconds = subscriptionLogManagerWindowSeconds;
-  }
-
-  public long getSubscriptionLogManagerBaseIntervalMs() {
-    return subscriptionLogManagerBaseIntervalMs;
-  }
-
-  public void setSubscriptionLogManagerBaseIntervalMs(
-      final long subscriptionLogManagerBaseIntervalMs) {
-    this.subscriptionLogManagerBaseIntervalMs = subscriptionLogManagerBaseIntervalMs;
   }
 
   public boolean getSubscriptionPrefetchEnabled() {

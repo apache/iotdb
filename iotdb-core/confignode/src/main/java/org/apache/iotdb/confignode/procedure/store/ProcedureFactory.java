@@ -40,7 +40,6 @@ import org.apache.iotdb.confignode.procedure.impl.pipe.task.StartPipeProcedureV2
 import org.apache.iotdb.confignode.procedure.impl.pipe.task.StopPipeProcedureV2;
 import org.apache.iotdb.confignode.procedure.impl.region.AddRegionPeerProcedure;
 import org.apache.iotdb.confignode.procedure.impl.region.CreateRegionGroupsProcedure;
-import org.apache.iotdb.confignode.procedure.impl.region.NotifyRegionMigrationProcedure;
 import org.apache.iotdb.confignode.procedure.impl.region.ReconstructRegionProcedure;
 import org.apache.iotdb.confignode.procedure.impl.region.RegionMigrateProcedure;
 import org.apache.iotdb.confignode.procedure.impl.region.RemoveRegionPeerProcedure;
@@ -121,10 +120,6 @@ public class ProcedureFactory implements IProcedureFactory {
         break;
       case RECONSTRUCT_REGION_PROCEDURE:
         procedure = new ReconstructRegionProcedure();
-        break;
-      case NOTIFY_REGION_MIGRATION_PROCEDURE:
-        procedure = new NotifyRegionMigrationProcedure();
-        break;
       case DELETE_TIMESERIES_PROCEDURE:
         procedure = new DeleteTimeSeriesProcedure(false);
         break;
@@ -323,8 +318,6 @@ public class ProcedureFactory implements IProcedureFactory {
       return ProcedureType.DELETE_TIMESERIES_PROCEDURE;
     } else if (procedure instanceof ReconstructRegionProcedure) {
       return ProcedureType.RECONSTRUCT_REGION_PROCEDURE;
-    } else if (procedure instanceof NotifyRegionMigrationProcedure) {
-      return ProcedureType.NOTIFY_REGION_MIGRATION_PROCEDURE;
     } else if (procedure instanceof CreateTriggerProcedure) {
       return ProcedureType.CREATE_TRIGGER_PROCEDURE;
     } else if (procedure instanceof DropTriggerProcedure) {

@@ -262,7 +262,7 @@
             <artifactId>jersey-container-servlet-core</artifactId>
         </dependency>
         <dependency>
-            <groupId>com.github.moquette-io.moquette</groupId>
+            <groupId>io.moquette</groupId>
             <artifactId>moquette-broker</artifactId>
         </dependency>
         <dependency>

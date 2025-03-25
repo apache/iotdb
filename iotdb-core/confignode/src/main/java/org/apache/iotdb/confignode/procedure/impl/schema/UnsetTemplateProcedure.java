@@ -144,6 +144,9 @@ public class UnsetTemplateProcedure
 
   private void invalidateCache(final ConfigNodeProcedureEnv env) {
     try {
+      // Cannot roll back after cache invalidation
+      // Because we do not know whether there are time series successfully created
+      alreadyRollback = true;
       executeInvalidateCache(env);
       setNextState(UnsetTemplateState.CHECK_DATANODE_TEMPLATE_ACTIVATION);
     } catch (final ProcedureException e) {
@@ -214,26 +217,21 @@ public class UnsetTemplateProcedure
     }
     alreadyRollback = true;
     ProcedureException rollbackException;
-    try {
-      executeRollbackInvalidateCache(env);
-      final TSStatus status =
-          env.getConfigManager()
-              .getClusterSchemaManager()
-              .rollbackPreUnsetSchemaTemplate(template.getId(), path);
-      if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-        return;
-      } else {
-        LOGGER.error(
-            "Failed to rollback pre unset template operation of template {} set on {}",
-            template.getName(),
-            path);
-        rollbackException =
-            new ProcedureException(
-                new MetadataException(
-                    "Rollback template pre unset failed because of" + status.getMessage()));
-      }
-    } catch (final ProcedureException e) {
-      rollbackException = e;
+    final TSStatus status =
+        env.getConfigManager()
+            .getClusterSchemaManager()
+            .rollbackPreUnsetSchemaTemplate(template.getId(), path);
+    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      return;
+    } else {
+      LOGGER.error(
+          "Failed to rollback pre unset template operation of template {} set on {}",
+          template.getName(),
+          path);
+      rollbackException =
+          new ProcedureException(
+              new MetadataException(
+                  "Rollback template pre unset failed because of" + status.getMessage()));
     }
     try {
       executeInvalidateCache(env);
@@ -244,42 +242,6 @@ public class UnsetTemplateProcedure
               new MetadataException(
                   "Rollback unset template failed and the cluster template info management is strictly broken. Please try unset again.")));
     }
-  }
-
-  private void executeRollbackInvalidateCache(ConfigNodeProcedureEnv env)
-      throws ProcedureException {
-    Map<Integer, TDataNodeLocation> dataNodeLocationMap =
-        env.getConfigManager().getNodeManager().getRegisteredDataNodeLocations();
-    TUpdateTemplateReq rollbackTemplateSetInfoReq = new TUpdateTemplateReq();
-    rollbackTemplateSetInfoReq.setType(
-        TemplateInternalRPCUpdateType.ROLLBACK_INVALIDATE_TEMPLATE_SET_INFO.toByte());
-    rollbackTemplateSetInfoReq.setTemplateInfo(getAddTemplateSetInfo());
-    DataNodeAsyncRequestContext<TUpdateTemplateReq, TSStatus> clientHandler =
-        new DataNodeAsyncRequestContext<>(
-            CnToDnAsyncRequestType.UPDATE_TEMPLATE,
-            rollbackTemplateSetInfoReq,
-            dataNodeLocationMap);
-    CnToDnInternalServiceAsyncRequestManager.getInstance().sendAsyncRequestWithRetry(clientHandler);
-    Map<Integer, TSStatus> statusMap = clientHandler.getResponseMap();
-    for (TSStatus status : statusMap.values()) {
-      // all dataNodes must clear the related template cache
-      if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-        LOGGER.error(
-            "Failed to rollback template cache of template {} set on {}", template.getName(), path);
-        throw new ProcedureException(new MetadataException("Rollback template cache failed"));
-      }
-    }
-  }
-
-  private ByteBuffer getAddTemplateSetInfo() {
-    if (this.addTemplateSetInfo == null) {
-      this.addTemplateSetInfo =
-          ByteBuffer.wrap(
-              TemplateInternalRPCUtil.generateAddTemplateSetInfoBytes(
-                  template, path.getFullPath()));
-    }
-
-    return addTemplateSetInfo;
   }
 
   @Override

@@ -83,7 +83,6 @@ public class RegionMigrateProcedure extends RegionOperationProcedure<RegionTrans
               regionId,
               handler.simplifiedLocation(originalDataNode),
               handler.simplifiedLocation(destDataNode));
-          addChildProcedure(new NotifyRegionMigrationProcedure(regionId, true));
           setNextState(RegionTransitionState.ADD_REGION_PEER);
           break;
         case ADD_REGION_PEER:
@@ -125,7 +124,6 @@ public class RegionMigrateProcedure extends RegionOperationProcedure<RegionTrans
               CommonDateTimeUtils.convertMillisecondToDurationStr(
                   System.currentTimeMillis() - getSubmittedTime()),
               DateTimeUtils.convertLongToDate(getSubmittedTime(), "ms"));
-          addChildProcedure(new NotifyRegionMigrationProcedure(regionId, false));
           return Flow.NO_MORE_STATE;
         default:
           throw new ProcedureException("Unsupported state: " + state.name());

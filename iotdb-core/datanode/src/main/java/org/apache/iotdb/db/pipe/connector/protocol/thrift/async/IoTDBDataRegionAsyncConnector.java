@@ -199,24 +199,17 @@ public class IoTDBDataRegionAsyncConnector extends IoTDBConnector {
       final AtomicInteger eventsReferenceCount = new AtomicInteger(sealedFiles.size());
       final AtomicBoolean eventsHadBeenAddedToRetryQueue = new AtomicBoolean(false);
 
-      try {
-        for (final File sealedFile : sealedFiles) {
-          transfer(
-              new PipeTransferTsFileHandler(
-                  this,
-                  pipe2WeightMap,
-                  events,
-                  eventsReferenceCount,
-                  eventsHadBeenAddedToRetryQueue,
-                  sealedFile,
-                  null,
-                  false));
-        }
-      } catch (final Throwable t) {
-        LOGGER.warn("Failed to transfer tsfile batch ({}).", sealedFiles, t);
-        if (eventsHadBeenAddedToRetryQueue.compareAndSet(false, true)) {
-          addFailureEventsToRetryQueue(events);
-        }
+      for (final File sealedFile : sealedFiles) {
+        transfer(
+            new PipeTransferTsFileHandler(
+                this,
+                pipe2WeightMap,
+                events,
+                eventsReferenceCount,
+                eventsHadBeenAddedToRetryQueue,
+                sealedFile,
+                null,
+                false));
       }
     } else {
       LOGGER.warn(

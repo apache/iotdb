@@ -70,7 +70,6 @@ import org.apache.iotdb.mpp.rpc.thrift.TDropPipePluginInstanceReq;
 import org.apache.iotdb.mpp.rpc.thrift.TDropTriggerInstanceReq;
 import org.apache.iotdb.mpp.rpc.thrift.TInactiveTriggerInstanceReq;
 import org.apache.iotdb.mpp.rpc.thrift.TInvalidateCacheReq;
-import org.apache.iotdb.mpp.rpc.thrift.TNotifyRegionMigrationReq;
 import org.apache.iotdb.mpp.rpc.thrift.TPushConsumerGroupMetaReq;
 import org.apache.iotdb.mpp.rpc.thrift.TPushConsumerGroupMetaResp;
 import org.apache.iotdb.mpp.rpc.thrift.TPushMultiPipeMetaReq;
@@ -521,20 +520,6 @@ public class ConfigNodeProcedureEnv {
     req.setStorageGroup(storageGroup);
     req.setRegionReplicaSet(regionReplicaSet);
     return req;
-  }
-
-  public List<TSStatus> notifyRegionMigrationToAllDataNodes(
-      TConsensusGroupId consensusGroupId, boolean isStart) {
-    final Map<Integer, TDataNodeLocation> dataNodeLocationMap =
-        configManager.getNodeManager().getRegisteredDataNodeLocations();
-    final TNotifyRegionMigrationReq request =
-        new TNotifyRegionMigrationReq(consensusGroupId, isStart);
-
-    final DataNodeAsyncRequestContext<TNotifyRegionMigrationReq, TSStatus> clientHandler =
-        new DataNodeAsyncRequestContext<>(
-            CnToDnAsyncRequestType.NOTIFY_REGION_MIGRATION, request, dataNodeLocationMap);
-    CnToDnInternalServiceAsyncRequestManager.getInstance().sendAsyncRequestWithRetry(clientHandler);
-    return clientHandler.getResponseList();
   }
 
   public void persistRegionGroup(CreateRegionGroupsPlan createRegionGroupsPlan) {

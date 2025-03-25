@@ -41,7 +41,6 @@ import org.apache.iotdb.db.consensus.DataRegionConsensusImpl;
 import org.apache.iotdb.db.consensus.SchemaRegionConsensusImpl;
 import org.apache.iotdb.db.protocol.thrift.impl.DataNodeRegionManager;
 import org.apache.iotdb.mpp.rpc.thrift.TMaintainPeerReq;
-import org.apache.iotdb.mpp.rpc.thrift.TNotifyRegionMigrationReq;
 import org.apache.iotdb.mpp.rpc.thrift.TRegionMigrateResult;
 import org.apache.iotdb.mpp.rpc.thrift.TResetPeerListReq;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -54,7 +53,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
 
 public class RegionMigrateService implements IService {
@@ -74,28 +72,12 @@ public class RegionMigrateService implements IService {
   // where different asynchronous tasks are submitted to the same datanode within a single procedure
   private static final ConcurrentHashMap<Long, TRegionMigrateResult> taskResultMap =
       new ConcurrentHashMap<>();
-
-  private static final AtomicLong lastNotifyTime = new AtomicLong(Long.MIN_VALUE);
-
   private static final TRegionMigrateResult unfinishedResult = new TRegionMigrateResult();
 
   private RegionMigrateService() {}
 
   public static RegionMigrateService getInstance() {
     return Holder.INSTANCE;
-  }
-
-  public void notifyRegionMigration(TNotifyRegionMigrationReq req) {
-    lastNotifyTime.set(System.currentTimeMillis());
-    if (req.isIsStart()) {
-      LOGGER.info("Region {} is notified to begin migrating", req.getRegionId());
-    } else {
-      LOGGER.info("Region {} is notified to finish migrating", req.getRegionId());
-    }
-  }
-
-  public long getLastNotifyTime() {
-    return lastNotifyTime.get();
   }
 
   /**

@@ -100,7 +100,7 @@ public class TimeoutExecutorThread<Env> extends StoppableThread {
 
     @Override
     public int compareTo(Delayed other) {
-      return Long.compare(
+      return Long.compareUnsigned(
           this.getDelay(TimeUnit.MILLISECONDS), other.getDelay(TimeUnit.MILLISECONDS));
     }
   }

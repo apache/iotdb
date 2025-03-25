@@ -776,16 +776,6 @@ public class CommonDescriptor {
             properties.getProperty(
                 "subscription_max_allowed_event_count_in_tablet_batch",
                 String.valueOf(config.getSubscriptionMaxAllowedEventCountInTabletBatch()))));
-    config.setSubscriptionLogManagerWindowSeconds(
-        Long.parseLong(
-            properties.getProperty(
-                "subscription_log_manager_window_seconds",
-                String.valueOf(config.getSubscriptionLogManagerWindowSeconds()))));
-    config.setSubscriptionLogManagerBaseIntervalMs(
-        Long.parseLong(
-            properties.getProperty(
-                "subscription_log_manager_base_interval_ms",
-                String.valueOf(config.getSubscriptionLogManagerBaseIntervalMs()))));
 
     config.setSubscriptionPrefetchEnabled(
         Boolean.parseBoolean(
