@@ -66,7 +66,7 @@ public class TreeDeviceViewFieldDetector {
     this.table = table;
   }
 
-  public TSStatus getResult() {
+  public TSStatus detectMissingFieldTypes() {
     if (table.getFieldNum() == 0) {
       new TreeDeviceViewFieldDetectionTaskExecutor(configManager, getLatestSchemaRegionMap())
           .execute();

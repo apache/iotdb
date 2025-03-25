@@ -129,6 +129,7 @@ import org.apache.iotdb.confignode.persistence.partition.PartitionInfo;
 import org.apache.iotdb.confignode.persistence.pipe.PipeInfo;
 import org.apache.iotdb.confignode.persistence.quota.QuotaInfo;
 import org.apache.iotdb.confignode.persistence.schema.ClusterSchemaInfo;
+import org.apache.iotdb.confignode.persistence.schema.TreeDeviceViewFieldDetector;
 import org.apache.iotdb.confignode.persistence.subscription.SubscriptionInfo;
 import org.apache.iotdb.confignode.procedure.impl.schema.SchemaUtils;
 import org.apache.iotdb.confignode.rpc.thrift.TAINodeRegisterReq;
@@ -2698,10 +2699,14 @@ public class ConfigManager implements IManager {
 
   @Override
   public TSStatus createTableView(final TCreateTableViewReq req) {
-    final TSStatus status = confirmLeader();
+    TSStatus status = confirmLeader();
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       final Pair<String, TsTable> pair =
           TsTableInternalRPCUtil.deserializeSingleTsTableWithDatabase(req.getTableInfo());
+      status = new TreeDeviceViewFieldDetector(this, pair.getRight()).detectMissingFieldTypes();
+      if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        return status;
+      }
       return procedureManager.createTableView(pair.left, pair.right, req.isReplace());
     } else {
       return status;
