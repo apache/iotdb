@@ -97,6 +97,14 @@ public class SubscriptionConfig {
     return COMMON_CONFIG.getSubscriptionMaxAllowedEventCountInTabletBatch();
   }
 
+  public long getSubscriptionLogManagerWindowSeconds() {
+    return COMMON_CONFIG.getSubscriptionLogManagerWindowSeconds();
+  }
+
+  public long getSubscriptionLogManagerBaseIntervalMs() {
+    return COMMON_CONFIG.getSubscriptionLogManagerBaseIntervalMs();
+  }
+
   public boolean getSubscriptionPrefetchEnabled() {
     return COMMON_CONFIG.getSubscriptionPrefetchEnabled();
   }
@@ -171,6 +179,10 @@ public class SubscriptionConfig {
     LOGGER.info(
         "SubscriptionMaxAllowedEventCountInTabletBatch: {}",
         getSubscriptionMaxAllowedEventCountInTabletBatch());
+    LOGGER.info(
+        "SubscriptionLogManagerWindowSeconds: {}", getSubscriptionLogManagerWindowSeconds());
+    LOGGER.info(
+        "SubscriptionLogManagerBaseIntervalMs: {}", getSubscriptionLogManagerBaseIntervalMs());
 
     LOGGER.info("SubscriptionPrefetchEnabled: {}", getSubscriptionPrefetchEnabled());
     LOGGER.info(

@@ -207,6 +207,7 @@ import org.apache.iotdb.mpp.rpc.thrift.TInvalidatePermissionCacheReq;
 import org.apache.iotdb.mpp.rpc.thrift.TLoadCommandReq;
 import org.apache.iotdb.mpp.rpc.thrift.TLoadResp;
 import org.apache.iotdb.mpp.rpc.thrift.TMaintainPeerReq;
+import org.apache.iotdb.mpp.rpc.thrift.TNotifyRegionMigrationReq;
 import org.apache.iotdb.mpp.rpc.thrift.TPipeHeartbeatReq;
 import org.apache.iotdb.mpp.rpc.thrift.TPipeHeartbeatResp;
 import org.apache.iotdb.mpp.rpc.thrift.TPushConsumerGroupMetaReq;
@@ -1933,7 +1934,6 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
   @Override
   public TSStatus updateTemplate(final TUpdateTemplateReq req) {
     switch (TemplateInternalRPCUpdateType.getType(req.type)) {
-        // Reserved for rolling upgrade
       case ROLLBACK_INVALIDATE_TEMPLATE_SET_INFO:
         ClusterTemplateManager.getInstance().addTemplateSetInfo(req.getTemplateInfo());
         break;
@@ -2143,6 +2143,12 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
   @Override
   public TRegionMigrateResult getRegionMaintainResult(long taskId) throws TException {
     return RegionMigrateService.getInstance().getRegionMaintainResult(taskId);
+  }
+
+  @Override
+  public TSStatus notifyRegionMigration(TNotifyRegionMigrationReq req) throws TException {
+    RegionMigrateService.getInstance().notifyRegionMigration(req);
+    return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
   }
 
   private TSStatus createNewRegion(ConsensusGroupId regionId, String storageGroup) {
