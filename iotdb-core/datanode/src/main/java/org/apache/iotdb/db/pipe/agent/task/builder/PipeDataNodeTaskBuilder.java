@@ -73,7 +73,7 @@ public class PipeDataNodeTaskBuilder {
     CONNECTOR_EXECUTOR_MAP.put(
         PipeType.CONSENSUS, PipeSubtaskExecutorManager.getInstance().getConsensusExecutor());
     CONNECTOR_EXECUTOR_MAP.put(
-        PipeType.EXTERNAL, PipeSubtaskExecutorManager.getInstance().getExternalExecutor());
+        PipeType.EXTERNAL, PipeSubtaskExecutorManager.getInstance().getConnectorExecutor());
   }
 
   protected final Map<String, String> systemParameters = new HashMap<>();
@@ -158,9 +158,6 @@ public class PipeDataNodeTaskBuilder {
   }
 
   private void generateSystemParameters() {
-    if (pipeTaskMeta == null) {
-      return;
-    }
     if (!(pipeTaskMeta.getProgressIndex() instanceof MinimumProgressIndex)) {
       systemParameters.put(SystemConstant.RESTART_KEY, Boolean.TRUE.toString());
     }

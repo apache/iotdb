@@ -21,6 +21,7 @@ package org.apache.iotdb.db.pipe.agent.task.builder;
 
 import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.commons.consensus.SchemaRegionId;
+import org.apache.iotdb.commons.consensus.index.impl.MinimumProgressIndex;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.pipe.agent.task.PipeTask;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeMeta;
@@ -91,7 +92,12 @@ public class PipeDataNodeBuilder {
         pipeMeta.getStaticMeta().getExtractorParameters().getIntOrDefault("parallelism", 1);
     for (int i = -1; i >= -parallelism; i--) {
       consensusGroupIdToPipeTaskMap.put(
-          i, new PipeDataNodeTaskBuilder(pipeMeta.getStaticMeta(), i, null).build());
+          i,
+          new PipeDataNodeTaskBuilder(
+                  pipeMeta.getStaticMeta(),
+                  i,
+                  new PipeTaskMeta(MinimumProgressIndex.INSTANCE, CONFIG.getDataNodeId()))
+              .build());
     }
     return consensusGroupIdToPipeTaskMap;
   }
