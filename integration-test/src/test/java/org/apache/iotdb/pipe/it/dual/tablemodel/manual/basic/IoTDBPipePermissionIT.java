@@ -256,7 +256,6 @@ public class IoTDBPipePermissionIT extends AbstractPipeTableModelDualManualIT {
       extractorAttributes.put("extractor.inclusion", "all");
       extractorAttributes.put("extractor.capture.tree", "false");
       extractorAttributes.put("extractor.capture.table", "true");
-      extractorAttributes.put("extractor.database-name", dbName);
       extractorAttributes.put("user", "root");
 
       connectorAttributes.put("connector", "iotdb-thrift-connector");
@@ -293,7 +292,10 @@ public class IoTDBPipePermissionIT extends AbstractPipeTableModelDualManualIT {
           (String) null);
 
       if (!TestUtils.tryExecuteNonQueryWithRetry(
-          receiverEnv, "grant insert,create on database test to user testUser")) {
+          "information_schema",
+          BaseEnv.TABLE_SQL_DIALECT,
+          receiverEnv,
+          "grant insert,create on database test to user testUser")) {
         return;
       }
 
