@@ -1732,11 +1732,19 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
                       SchemaConstant.ALL_MATCH_SCOPE);
               try (final ISchemaReader<ITimeSeriesSchemaInfo> schemaReader =
                   schemaSource.getSchemaReader(schemaRegion)) {
+                final Map<String, Byte> updateMap = resp.getDeviewViewUpdateMap();
                 while (schemaReader.hasNext()) {
                   final IMeasurementSchema schema = schemaReader.next().getSchema();
 
-                  resp.getDeviewViewUpdateMap()
-                      .put(schema.getMeasurementName(), schema.getTypeInByte());
+                  if (!updateMap.containsKey(schema.getMeasurementName())) {
+                    updateMap.put(schema.getMeasurementName(), schema.getTypeInByte());
+                  } else if (schema.getTypeInByte() != updateMap.get(schema.getMeasurementName())) {
+                    return RpcUtils.getStatus(
+                        TSStatusCode.DATA_TYPE_MISMATCH,
+                        String.format(
+                            "Multiple types encountered when auto detecting type of measurement '%s', please check",
+                            schema.getMeasurementName()));
+                  }
                 }
               } catch (final Exception e) {
                 LOGGER.warn(e.getMessage(), e);
