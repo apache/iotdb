@@ -287,7 +287,7 @@ class IoTDBRpcDataSet(object):
                     # FLOAT, DOUBLE
                     elif data_type == 3 or data_type == 4:
                         tmp_array = np.full(
-                            array_length, np.nan, dtype=data_array.dtype
+                            array_length, np.nan, dtype=data_type.np_dtype()
                         )
                     # TEXT, STRING, BLOB, DATE
                     elif (

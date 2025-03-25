@@ -220,18 +220,23 @@ def read_run_length_column(buffer, data_type, position_count):
     column, null_indicators, buffer = read_column(encoding[0], buffer, data_type, 1)
     return (
         repeat(column, data_type, position_count),
-        None if null_indicators is None else null_indicators * position_count,
+        (
+            None
+            if null_indicators is None
+            else np.full(position_count, null_indicators[0])
+        ),
         buffer,
     )
 
 
 def repeat(column, data_type, position_count):
     if data_type in (0, 5):
-        return (
-            np.full(position_count, column[0])
-            if column.size == 1
-            else np.array(column * position_count, dtype=object)
-        )
+        if column.size == 1:
+            return np.full(
+                position_count, column[0], dtype=(bool if data_type == 0 else object)
+            )
+        else:
+            return np.array(column * position_count, dtype=object)
     else:
         res = bytearray()
         for _ in range(position_count):
