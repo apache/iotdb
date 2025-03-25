@@ -33,6 +33,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Scanner;
 
 public class PathUtils {
 
@@ -234,7 +235,7 @@ public class PathUtils {
     Process process = Runtime.getRuntime().exec("df " + path);
     process.waitFor();
 
-    try (java.util.Scanner scanner = new java.util.Scanner(process.getInputStream())) {
+    try (Scanner scanner = new java.util.Scanner(process.getInputStream())) {
       if (scanner.hasNextLine()) {
         scanner.nextLine();
         String line = scanner.nextLine().trim();
