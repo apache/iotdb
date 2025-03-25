@@ -4,7 +4,6 @@ on:
     branches:
       - master
       - "rc/*"
-      - query_v3_py
     paths:
       - 'pom.xml'
       - 'iotdb-client/pom.xml'
@@ -41,104 +40,104 @@ env:
   MAVEN_ARGS: --batch-mode --no-transfer-progress
 
 jobs:
-#  cpp:
-#    strategy:
-#      fail-fast: false
-#      max-parallel: 15
-#      matrix:
-#        os: [ubuntu-20.04, ubuntu-22.04, ubuntu-24.04, windows-2019, windows-2022, macos-latest]
-#    runs-on: ${{ matrix.os}}
-#
-#    steps:
-#      - uses: actions/checkout@v4
-#      - name: Install CPP Dependencies (Ubuntu)
-#        if: runner.os == 'Linux'
-#        shell: bash
-#        run: |
-#          sudo apt-get update
-#          sudo apt-get install libboost-all-dev
-#      - name: Install CPP Dependencies (Mac)
-#        # remove some xcode to release disk space
-#        if: runner.os == 'macOS'
-#        shell: bash
-#        run: |
-#          brew install boost
-#          sudo rm -rf /Applications/Xcode_14.3.1.app
-#          sudo rm -rf /Applications/Xcode_15.0.1.app
-#          sudo rm -rf /Applications/Xcode_15.1.app
-#          sudo rm -rf /Applications/Xcode_15.2.app
-#          sudo rm -rf /Applications/Xcode_15.3.app
-#      - name: Install CPP Dependencies (Windows)
-#        if: runner.os == 'Windows'
-#        run: |
-#          choco install winflexbison3
-#          if ("${{ matrix.os }}" -eq "windows-2019") {
-#            choco install boost-msvc-14.2
-#          } else {
-#            choco install boost-msvc-14.3
-#          }
-#          $boost_path = (Get-ChildItem -Path 'C:\local\' -Filter 'boost_*').FullName
-#          echo $boost_path >> $env:GITHUB_PATH
-#      - name: Cache Maven packages
-#        uses: actions/cache@v4
-#        with:
-#          path: ~/.m2
-#          key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
-#          restore-keys: ${{ runner.os }}-m2-
-#      - name: Build IoTDB server
-#        shell: bash
-#        run: ./mvnw clean install -pl distribution -am -DskipTests
-#      - name: Test with Maven
-#        shell: bash
-#        # Explicitly using mvnw here as the build requires maven 3.9 and the default installation is older
-#        # Explicitly using "install" instead of package in order to be sure we're using libs built on this machine
-#        # (was causing problems on windows, but could cause problem on linux, when updating the thrift module)
-#        run: |
-#          if [[ "$RUNNER_OS" == "Linux" ]]; then
-#            ./mvnw clean verify -P with-cpp -pl iotdb-client/client-cpp,example/client-cpp-example -am -Diotdb-tools-thrift.version=0.14.1.1-glibc223-SNAPSHOT
-#          elif [[ "${{ matrix.os }}" == "windows-2019" ]]; then
-#            ./mvnw clean verify -P with-cpp -pl iotdb-client/client-cpp,example/client-cpp-example -am -Diotdb-tools-thrift.version=0.14.1.1-msvc142-SNAPSHOT -Dcmake.generator="Visual Studio 16 2019"
-#          else
-#            ./mvnw clean verify -P with-cpp -pl iotdb-client/client-cpp,example/client-cpp-example -am
-#          fi
-#      - name: Upload Artifact
-#        if: failure()
-#        uses: actions/upload-artifact@v4
-#        with:
-#          name: cpp-IT-${{ runner.os }}
-#          path: distribution/target/apache-iotdb-*-all-bin/apache-iotdb-*-all-bin/logs
-#          retention-days: 1
-#
-#  go:
-#    runs-on: ubuntu-latest
-#
-#    steps:
-#      - uses: actions/checkout@v4
-#        with:
-#          token: ${{secrets.GITHUB_TOKEN}}
-#          submodules: recursive
-#      - name: Cache Maven packages
-#        uses: actions/cache@v4
-#        with:
-#          path: ~/.m2
-#          key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
-#          restore-keys: ${{ runner.os }}-m2-
-#      - name: Compile IoTDB Server
-#        run: mvn clean package -pl distribution -am -DskipTests
-#      - name: Integration test
-#        shell: bash
-#        run: |
-#          cd iotdb-client
-#          git clone https://github.com/apache/iotdb-client-go.git
-#          cd iotdb-client-go
-#          make e2e_test_for_parent_git_repo e2e_test_clean_for_parent_git_repo
+  cpp:
+    strategy:
+      fail-fast: false
+      max-parallel: 15
+      matrix:
+        os: [ubuntu-20.04, ubuntu-22.04, ubuntu-24.04, windows-2019, windows-2022, macos-latest]
+    runs-on: ${{ matrix.os}}
+
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install CPP Dependencies (Ubuntu)
+        if: runner.os == 'Linux'
+        shell: bash
+        run: |
+          sudo apt-get update
+          sudo apt-get install libboost-all-dev
+      - name: Install CPP Dependencies (Mac)
+        # remove some xcode to release disk space
+        if: runner.os == 'macOS'
+        shell: bash
+        run: |
+          brew install boost
+          sudo rm -rf /Applications/Xcode_14.3.1.app
+          sudo rm -rf /Applications/Xcode_15.0.1.app
+          sudo rm -rf /Applications/Xcode_15.1.app
+          sudo rm -rf /Applications/Xcode_15.2.app
+          sudo rm -rf /Applications/Xcode_15.3.app
+      - name: Install CPP Dependencies (Windows)
+        if: runner.os == 'Windows'
+        run: |
+          choco install winflexbison3
+          if ("${{ matrix.os }}" -eq "windows-2019") {
+            choco install boost-msvc-14.2
+          } else {
+            choco install boost-msvc-14.3
+          }
+          $boost_path = (Get-ChildItem -Path 'C:\local\' -Filter 'boost_*').FullName
+          echo $boost_path >> $env:GITHUB_PATH
+      - name: Cache Maven packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.m2
+          key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
+          restore-keys: ${{ runner.os }}-m2-
+      - name: Build IoTDB server
+        shell: bash
+        run: ./mvnw clean install -pl distribution -am -DskipTests
+      - name: Test with Maven
+        shell: bash
+        # Explicitly using mvnw here as the build requires maven 3.9 and the default installation is older
+        # Explicitly using "install" instead of package in order to be sure we're using libs built on this machine
+        # (was causing problems on windows, but could cause problem on linux, when updating the thrift module)
+        run: |
+          if [[ "$RUNNER_OS" == "Linux" ]]; then
+            ./mvnw clean verify -P with-cpp -pl iotdb-client/client-cpp,example/client-cpp-example -am -Diotdb-tools-thrift.version=0.14.1.1-glibc223-SNAPSHOT
+          elif [[ "${{ matrix.os }}" == "windows-2019" ]]; then
+            ./mvnw clean verify -P with-cpp -pl iotdb-client/client-cpp,example/client-cpp-example -am -Diotdb-tools-thrift.version=0.14.1.1-msvc142-SNAPSHOT -Dcmake.generator="Visual Studio 16 2019"
+          else
+            ./mvnw clean verify -P with-cpp -pl iotdb-client/client-cpp,example/client-cpp-example -am
+          fi
+      - name: Upload Artifact
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: cpp-IT-${{ runner.os }}
+          path: distribution/target/apache-iotdb-*-all-bin/apache-iotdb-*-all-bin/logs
+          retention-days: 1
+
+  go:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          token: ${{secrets.GITHUB_TOKEN}}
+          submodules: recursive
+      - name: Cache Maven packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.m2
+          key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
+          restore-keys: ${{ runner.os }}-m2-
+      - name: Compile IoTDB Server
+        run: mvn clean package -pl distribution -am -DskipTests
+      - name: Integration test
+        shell: bash
+        run: |
+          cd iotdb-client
+          git clone https://github.com/apache/iotdb-client-go.git
+          cd iotdb-client-go
+          make e2e_test_for_parent_git_repo e2e_test_clean_for_parent_git_repo
 
   python:
     strategy:
       fail-fast: false
       max-parallel: 15
       matrix:
-        python: [ '3.6']
+        python: [ '3.6', '3.x']
     runs-on: ${{ (matrix.python == '3.6' && 'ubuntu-20.04') || 'ubuntu-latest' }}
 
     steps:
