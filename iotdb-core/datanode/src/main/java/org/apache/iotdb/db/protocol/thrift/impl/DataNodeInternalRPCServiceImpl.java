@@ -1718,7 +1718,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
   @Override
   public TDeviceViewResp detectTreeDeviceViewFieldType(final TDeviceViewReq req) {
     final TDeviceViewResp resp = new TDeviceViewResp();
-    resp.setDeviewViewUpdateMap(new ConcurrentHashMap<>());
+    resp.setDeviewViewFieldTypeMap(new ConcurrentHashMap<>());
     final TSStatus status =
         executeInternalSchemaTask(
             req.getRegionIds(),
@@ -1735,7 +1735,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
                       SchemaConstant.ALL_MATCH_SCOPE);
               try (final ISchemaReader<ITimeSeriesSchemaInfo> schemaReader =
                   schemaSource.getSchemaReader(schemaRegion)) {
-                final Map<String, Byte> updateMap = resp.getDeviewViewUpdateMap();
+                final Map<String, Byte> updateMap = resp.getDeviewViewFieldTypeMap();
                 while (schemaReader.hasNext()) {
                   final IMeasurementSchema schema = schemaReader.next().getSchema();
 

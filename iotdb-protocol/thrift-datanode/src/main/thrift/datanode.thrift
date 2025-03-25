@@ -411,7 +411,7 @@ struct TDeviceViewReq {
 
 struct TDeviceViewResp {
   1: required common.TSStatus status
-  2: required map<string, byte> deviewViewUpdateMap
+  2: required map<string, byte> deviewViewFieldTypeMap
 }
 
 struct TLoadResp {

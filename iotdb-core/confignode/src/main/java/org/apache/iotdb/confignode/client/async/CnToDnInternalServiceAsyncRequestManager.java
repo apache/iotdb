@@ -452,7 +452,7 @@ public class CnToDnInternalServiceAsyncRequestManager
     actionMapBuilder.put(
         CnToDnAsyncRequestType.DETECT_TREE_DEVICE_VIEW_FIELD_TYPE,
         (req, client, handler) ->
-            client.getTreeDeviceViewInfo(
+            client.detectTreeDeviceViewFieldType(
                 (TDeviceViewReq) req, (TreeDeviceViewFieldDetectionHandler) handler));
     actionMapBuilder.put(
         CnToDnAsyncRequestType.CLEAN_DATA_NODE_CACHE,

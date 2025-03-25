@@ -92,7 +92,7 @@ public class TreeDeviceViewFieldDetectionHandler
         requestId,
         new TDeviceViewResp()
             .setStatus(RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR, errorMsg))
-            .setDeviewViewUpdateMap(new HashMap<>()));
+            .setDeviewViewFieldTypeMap(new HashMap<>()));
 
     // Always CountDown
     countDownLatch.countDown();

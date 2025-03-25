@@ -74,7 +74,7 @@ public class TreeDeviceViewFieldDetector {
         return result.getStatus();
       }
       result
-          .getDeviewViewUpdateMap()
+          .getDeviewViewFieldTypeMap()
           .forEach(
               (field, type) ->
                   table.addColumnSchema(
@@ -99,7 +99,7 @@ public class TreeDeviceViewFieldDetector {
       names.forEach(
           name ->
               table.resetFieldColumnType(
-                  name, TSDataType.getTsDataType(result.getDeviewViewUpdateMap().get(name))));
+                  name, TSDataType.getTsDataType(result.getDeviewViewFieldTypeMap().get(name))));
     }
     return StatusUtils.OK;
   }
@@ -173,11 +173,11 @@ public class TreeDeviceViewFieldDetector {
       }
 
       // The map is always nonnull in the resp
-      resp.getDeviewViewUpdateMap()
+      resp.getDeviewViewFieldTypeMap()
           .forEach(
               (measurement, type) -> {
-                if (!result.getDeviewViewUpdateMap().containsKey(measurement)) {
-                  result.getDeviewViewUpdateMap().put(measurement, type);
+                if (!result.getDeviewViewFieldTypeMap().containsKey(measurement)) {
+                  result.getDeviewViewFieldTypeMap().put(measurement, type);
                 } else {
                   result.setStatus(
                       RpcUtils.getStatus(
