@@ -49,7 +49,6 @@ import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
@@ -219,7 +218,6 @@ public class TopologyService implements Runnable, IClusterStatusSubscriber {
     final Map<Integer, Set<Integer>> latestTopology =
         dataNodeLocations.stream()
             .collect(Collectors.toMap(TDataNodeLocation::getDataNodeId, k -> new HashSet<>()));
-    final Map<Integer, Set<Integer>> partitioned = new HashMap<>();
     for (final Map.Entry<Pair<Integer, Integer>, List<AbstractHeartbeatSample>> entry :
         heartbeats.entrySet()) {
       final int fromId = entry.getKey().getLeft();
@@ -227,15 +225,12 @@ public class TopologyService implements Runnable, IClusterStatusSubscriber {
       if (!entry.getValue().isEmpty()
           && !failureDetector.isAvailable(entry.getKey(), entry.getValue())) {
         LOGGER.debug("Connection from DataNode {} to DataNode {} is broken", fromId, toId);
-        partitioned.computeIfAbsent(fromId, id -> new HashSet<>()).add(toId);
       } else {
         latestTopology.get(fromId).add(toId);
       }
     }
 
-    if (!partitioned.isEmpty()) {
-      logAsymmetricPartition(partitioned, dataNodeIds.size());
-    }
+    logAsymmetricPartition(latestTopology);
 
     // 5. notify the listeners on topology change
     if (shouldRun.get()) {
@@ -243,17 +238,28 @@ public class TopologyService implements Runnable, IClusterStatusSubscriber {
     }
   }
 
-  private void logAsymmetricPartition(
-      final Map<Integer, Set<Integer>> partitioned, final int totalNodes) {
-    for (final int fromId : partitioned.keySet()) {
-      final Set<Integer> unreachable = partitioned.get(fromId);
-      if (unreachable.size() >= totalNodes - 1) {
-        // this node is partitioned symmetrically from other nodes
-        continue;
-      }
-      for (final int toId : partitioned.get(fromId)) {
-        if (partitioned.get(toId) == null || !partitioned.get(toId).contains(fromId)) {
-          LOGGER.warn("[Topology] Asymmetric network partition from {} to {}", fromId, toId);
+  private void logAsymmetricPartition(final Map<Integer, Set<Integer>> topology) {
+    final Set<Integer> nodes = topology.keySet();
+    if (nodes.size() == 1) {
+      // 1 DataNode
+      return;
+    }
+
+    for (int from : nodes) {
+      for (int to : nodes) {
+        if (from == to) {
+          continue;
+        }
+
+        // whether we have asymmetric partition [from -> to]
+        final Set<Integer> reachableFrom = topology.get(from);
+        final Set<Integer> reachableTo = topology.get(to);
+        if (reachableFrom.size() <= 1 || reachableTo.size() <= 1) {
+          // symmetric partition for (from) or (to)
+          continue;
+        }
+        if (reachableTo.contains(from) && !reachableFrom.contains(to)) {
+          LOGGER.warn("[Topology] Asymmetric network partition from {} to {}", from, to);
         }
       }
     }
