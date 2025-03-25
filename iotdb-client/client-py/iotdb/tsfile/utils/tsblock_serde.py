@@ -227,13 +227,13 @@ def read_run_length_column(buffer, data_type, position_count):
     )
 
 
-def repeat(buffer, data_type, position_count):
-    if data_type == 0 or data_type == 5:
-        return buffer * position_count
+def repeat(column, data_type, position_count):
+    if data_type in (0, 5):
+        return np.full(position_count, column)
     else:
         res = bytearray()
         for _ in range(position_count):
-            res.extend(buffer if isinstance(buffer, bytes) else bytes(buffer))
+            res.extend(column if isinstance(column, bytes) else bytes(column))
         return bytes(res)
 
 

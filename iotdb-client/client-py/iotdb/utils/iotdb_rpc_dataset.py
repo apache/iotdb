@@ -180,7 +180,6 @@ class IoTDBRpcDataSet(object):
 
                 column_array = column_arrays[location]
                 null_indicator = null_indicators[location]
-
                 if len(column_array) < array_length or (
                     data_type == 0 and null_indicator is not None
                 ):
