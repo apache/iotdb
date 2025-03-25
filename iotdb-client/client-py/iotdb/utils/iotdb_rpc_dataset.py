@@ -163,69 +163,34 @@ class IoTDBRpcDataSet(object):
             has_pd_series.append(False)
         total_length = 0
         while self.__query_result_index < len(self.__query_result):
-            time_column_values, column_values, null_indicators, current_length = (
-                deserialize(memoryview(self.__query_result[self.__query_result_index]))
+            time_array, column_arrays, null_indicators, array_length = deserialize(
+                memoryview(self.__query_result[self.__query_result_index])
             )
             self.__query_result[self.__query_result_index] = None
             self.__query_result_index += 1
-            time_array = time_column_values
-            if time_array.dtype.byteorder == ">":
-                time_array = time_array.byteswap().view(
-                    time_array.dtype.newbyteorder("<")
-                )
             if self.ignore_timestamp is None or self.ignore_timestamp is False:
                 result[0].append(time_array)
-            total_length += current_length
+            total_length += array_length
             for i, location in enumerate(
                 self.__column_index_2_tsblock_column_index_list
             ):
                 if location < 0:
                     continue
                 data_type = self.__data_type_for_tsblock_column[location]
-                value_buffer = column_values[location]
-                value_buffer_len = len(value_buffer)
-                # DOUBLE
-                if data_type == 4:
-                    data_array = value_buffer
-                # FLOAT
-                elif data_type == 3:
-                    data_array = value_buffer
-                # BOOLEAN
-                elif data_type == 0:
-                    data_array = np.array(value_buffer).astype("bool")
-                # INT32, DATE
-                elif data_type == 1 or data_type == 9:
-                    data_array = value_buffer
-                # INT64, TIMESTAMP
-                elif data_type == 2 or data_type == 8:
-                    data_array = value_buffer
-                # TEXT, STRING, BLOB
-                elif data_type == 5 or data_type == 11 or data_type == 10:
-                    index = 0
-                    data_array = []
-                    while index < value_buffer_len:
-                        data_array.append(value_buffer[index].tobytes())
-                        index += 1
-                    data_array = np.array(data_array, dtype=object)
-                else:
-                    raise RuntimeError("unsupported data type {}.".format(data_type))
-                if data_array.dtype.byteorder == ">":
-                    data_array = data_array.byteswap().view(
-                        data_array.dtype.newbyteorder("<")
-                    )
 
+                column_array = column_arrays[location]
                 null_indicator = null_indicators[location]
 
-                if len(data_array) < current_length or (
+                if len(column_array) < array_length or (
                     data_type == 0 and null_indicator is not None
                 ):
-                    tmp_array = np.full(current_length, None, dtype=object)
+                    tmp_array = np.full(array_length, None, dtype=object)
                     if null_indicator is not None:
                         indexes = [not v for v in null_indicator]
                         if data_type == 0:
-                            tmp_array[indexes] = data_array[indexes]
+                            tmp_array[indexes] = column_array[indexes]
                         else:
-                            tmp_array[indexes] = data_array
+                            tmp_array[indexes] = column_array
 
                     # INT32, DATE
                     if data_type == 1 or data_type == 9:
@@ -243,9 +208,9 @@ class IoTDBRpcDataSet(object):
                     elif data_type == 3 or data_type == 4:
                         tmp_array = pd.Series(tmp_array)
                         has_pd_series[i] = True
-                    data_array = tmp_array
+                    column_array = tmp_array
 
-                result[i].append(data_array)
+                result[i].append(column_array)
         for k, v in result.items():
             if v is None or len(v) < 1 or v[0] is None:
                 result[k] = []
@@ -281,22 +246,13 @@ class IoTDBRpcDataSet(object):
         for i in range(len(self.__column_index_2_tsblock_column_index_list)):
             result[i] = []
         while self._has_next_result_set():
-            time_column_values, column_values, null_indicators, _ = deserialize(
-                self.__query_result[self.__query_result_index]
+            time_array, column_arrays, null_indicators, array_length = deserialize(
+                memoryview(self.__query_result[self.__query_result_index])
             )
             self.__query_result[self.__query_result_index] = None
             self.__query_result_index += 1
-            time_array = np.frombuffer(
-                time_column_values, np.dtype(np.longlong).newbyteorder(">")
-            )
-            if time_array.dtype.byteorder == ">":
-                time_array = time_array.byteswap().view(
-                    time_array.dtype.newbyteorder("<")
-                )
             if self.ignore_timestamp is None or self.ignore_timestamp is False:
                 result[0].append(time_array)
-
-            total_length = len(time_array)
 
             for i, location in enumerate(
                 self.__column_index_2_tsblock_column_index_list
@@ -304,64 +260,21 @@ class IoTDBRpcDataSet(object):
                 if location < 0:
                     continue
                 data_type = self.__data_type_for_tsblock_column[location]
-                value_buffer = column_values[location]
-                value_buffer_len = len(value_buffer)
-                # DOUBLE
-                if data_type == 4:
-                    data_array = np.frombuffer(
-                        value_buffer, np.dtype(np.double).newbyteorder(">")
-                    )
-                # FLOAT
-                elif data_type == 3:
-                    data_array = np.frombuffer(
-                        value_buffer, np.dtype(np.float32).newbyteorder(">")
-                    )
-                # BOOLEAN
-                elif data_type == 0:
-                    data_array = np.array(value_buffer).astype("bool")
-                # INT32
-                elif data_type == 1:
-                    data_array = np.frombuffer(
-                        value_buffer, np.dtype(np.int32).newbyteorder(">")
-                    )
-                # INT64, TIMESTAMP
-                elif data_type == 2 or data_type == 8:
-                    data_array = np.frombuffer(
-                        value_buffer, np.dtype(np.int64).newbyteorder(">")
-                    )
+                column_array = column_arrays[location]
+                # BOOLEAN, INT32, INT64, FLOAT, DOUBLE, TIMESTAMP, BLOB
+                if data_type in (0, 1, 2, 3, 4, 8, 10):
+                    data_array = column_array
                 # TEXT, STRING
-                elif data_type == 5 or data_type == 11:
-                    index = 0
-                    data_array = []
-                    while index < value_buffer_len:
-                        value_bytes = value_buffer[index].tobytes()
-                        value = value_bytes.decode("utf-8")
-                        data_array.append(value)
-                        index += 1
-                    data_array = pd.Series(data_array).astype(str)
-                # BLOB
-                elif data_type == 10:
-                    index = 0
-                    data_array = []
-                    while index < value_buffer_len:
-                        data_array.append(value_buffer[index].tobytes())
-                        index += 1
-                    data_array = pd.Series(data_array)
+                elif data_type in (5, 11):
+                    data_array = np.array([x.decode("utf-8") for x in column_array])
                 # DATE
                 elif data_type == 9:
-                    data_array = np.frombuffer(
-                        value_buffer, np.dtype(np.int32).newbyteorder(">")
-                    )
-                    data_array = pd.Series(data_array).apply(parse_int_to_date)
+                    data_array = pd.Series(column_array).apply(parse_int_to_date)
                 else:
                     raise RuntimeError("unsupported data type {}.".format(data_type))
-                if data_array.dtype.byteorder == ">" and len(data_array) > 0:
-                    data_array = data_array.byteswap().view(
-                        data_array.dtype.newbyteorder("<")
-                    )
                 tmp_array = []
                 null_indicator = null_indicators[location]
-                if len(data_array) < total_length or (
+                if len(data_array) < array_length or (
                     data_type == 0 and null_indicator is not None
                 ):
                     # BOOLEAN, INT32, INT64, TIMESTAMP
@@ -371,11 +284,11 @@ class IoTDBRpcDataSet(object):
                         or data_type == 2
                         or data_type == 8
                     ):
-                        tmp_array = np.full(total_length, pd.NA, dtype=object)
+                        tmp_array = np.full(array_length, pd.NA, dtype=object)
                     # FLOAT, DOUBLE
                     elif data_type == 3 or data_type == 4:
                         tmp_array = np.full(
-                            total_length, np.nan, dtype=data_array.dtype
+                            array_length, np.nan, dtype=data_array.dtype
                         )
                     # TEXT, STRING, BLOB, DATE
                     elif (
@@ -384,7 +297,7 @@ class IoTDBRpcDataSet(object):
                         or data_type == 10
                         or data_type == 9
                     ):
-                        tmp_array = np.full(total_length, None, dtype=object)
+                        tmp_array = np.full(array_length, None, dtype=object)
 
                     if null_indicator is not None:
                         indexes = [not v for v in null_indicator]
