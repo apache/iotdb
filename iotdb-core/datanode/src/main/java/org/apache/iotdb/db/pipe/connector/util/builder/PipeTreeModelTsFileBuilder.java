@@ -23,6 +23,7 @@ import org.apache.commons.io.FileUtils;
 import org.apache.tsfile.exception.write.WriteProcessException;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.read.common.Path;
+import org.apache.tsfile.utils.BitMap;
 import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.write.record.Tablet;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
@@ -32,6 +33,7 @@ import org.slf4j.LoggerFactory;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -194,6 +196,50 @@ public class PipeTreeModelTsFileBuilder extends PipeTsFileBuilder {
     return sealedFiles;
   }
 
+  private Tablet tryBestToAggregateTablets(
+      final String deviceId, final LinkedList<Tablet> tablets) {
+    if (tablets.isEmpty()) {
+      return null;
+    }
+
+    // Retrieve the first tablet to serve as the basis for the aggregation
+    final Tablet firstTablet = tablets.peekFirst();
+    final long[] aggregationTimestamps = firstTablet.getTimestamps();
+    final int aggregationMaxRow = firstTablet.getMaxRowNumber();
+
+    // Prepare lists to accumulate schemas, values, and bitMaps
+    final List<IMeasurementSchema> aggregatedSchemas = new ArrayList<>();
+    final List<Object> aggregatedValues = new ArrayList<>();
+    final List<BitMap> aggregatedBitMaps = new ArrayList<>();
+
+    // Iterate and poll tablets from the head that satisfy the aggregation criteria.
+    // We only process consecutive tablets that have the same timestamps and maxRowNumber.
+    while (!tablets.isEmpty()) {
+      final Tablet tablet = tablets.peekFirst();
+      if (Arrays.equals(tablet.getTimestamps(), aggregationTimestamps)
+          && tablet.getMaxRowNumber() == aggregationMaxRow) {
+        // Aggregate the current tablet's data
+        aggregatedSchemas.addAll(tablet.getSchemas());
+        aggregatedValues.addAll(Arrays.asList(tablet.getValues()));
+        aggregatedBitMaps.addAll(Arrays.asList(tablet.getBitMaps()));
+        // Remove the aggregated tablet
+        tablets.pollFirst();
+      } else {
+        // Stop aggregating once a tablet does not meet the criteria
+        break;
+      }
+    }
+
+    // Construct a new aggregated Tablet using the collected data.
+    return new Tablet(
+        deviceId,
+        aggregatedSchemas,
+        aggregationTimestamps,
+        aggregatedValues.toArray(),
+        aggregatedBitMaps.toArray(new BitMap[0]),
+        aggregationMaxRow);
+  }
+
   private void tryBestToWriteTabletsIntoOneFile(
       final LinkedHashMap<String, LinkedList<Tablet>> device2TabletsLinkedList,
       final Map<String, Boolean> device2Aligned)
@@ -210,14 +256,14 @@ public class PipeTreeModelTsFileBuilder extends PipeTsFileBuilder {
 
       Tablet lastTablet = null;
       while (!tablets.isEmpty()) {
-        final Tablet tablet = tablets.peekFirst();
+        final Tablet tablet = tryBestToAggregateTablets(deviceId, tablets);
         if (Objects.isNull(lastTablet)
             // lastTablet.rowSize is not 0
             || lastTablet.getTimestamp(lastTablet.getRowSize() - 1) < tablet.getTimestamp(0)) {
           tabletsToWrite.add(tablet);
           lastTablet = tablet;
-          tablets.pollFirst();
         } else {
+          tablets.addFirst(tablet);
           break;
         }
       }
