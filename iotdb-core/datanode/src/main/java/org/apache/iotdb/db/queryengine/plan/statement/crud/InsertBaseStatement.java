@@ -429,7 +429,7 @@ public abstract class InsertBaseStatement extends Statement implements Accountab
                     .reduce(0L, Long::sum)
                 : 0L)
             + shallowSizeOfList(indexOfSourcePathsOfLogicalViews)
-            + calculateBytes();
+            + calculateBytesUsed();
     return ramBytesUsed;
   }
 
@@ -442,5 +442,5 @@ public abstract class InsertBaseStatement extends Statement implements Accountab
         : 0L;
   }
 
-  protected abstract long calculateBytes();
+  protected abstract long calculateBytesUsed();
 }

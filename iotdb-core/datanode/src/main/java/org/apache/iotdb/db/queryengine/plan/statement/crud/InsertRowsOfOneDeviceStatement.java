@@ -40,6 +40,7 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 public class InsertRowsOfOneDeviceStatement extends InsertBaseStatement {
+
   private static final long INSTANCE_SIZE =
       RamUsageEstimator.shallowSizeOfInstance(InsertRowsOfOneDeviceStatement.class);
 
@@ -173,12 +174,12 @@ public class InsertRowsOfOneDeviceStatement extends InsertBaseStatement {
   }
 
   @Override
-  protected long calculateBytes() {
+  protected long calculateBytesUsed() {
     return INSTANCE_SIZE
         + (Objects.nonNull(insertRowStatementList)
             ? InsertRowsStatement.LIST_SIZE
                 + insertRowStatementList.stream()
-                    .mapToLong(InsertRowStatement::calculateBytes)
+                    .mapToLong(InsertRowStatement::calculateBytesUsed)
                     .reduce(0L, Long::sum)
             : 0);
   }

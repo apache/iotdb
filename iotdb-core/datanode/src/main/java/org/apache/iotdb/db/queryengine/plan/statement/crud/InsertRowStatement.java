@@ -58,9 +58,11 @@ import java.util.List;
 import java.util.Map;
 
 public class InsertRowStatement extends InsertBaseStatement implements ISchemaValidation {
+
+  private static final Logger LOGGER = LoggerFactory.getLogger(InsertRowStatement.class);
+
   private static final long INSTANCE_SIZE =
       RamUsageEstimator.shallowSizeOfInstance(InsertRowStatement.class);
-  private static final Logger LOGGER = LoggerFactory.getLogger(InsertRowStatement.class);
 
   protected static final byte TYPE_RAW_STRING = -1;
   protected static final byte TYPE_NULL = -2;
@@ -469,7 +471,7 @@ public class InsertRowStatement extends InsertBaseStatement implements ISchemaVa
   }
 
   @Override
-  protected long calculateBytes() {
+  protected long calculateBytesUsed() {
     return INSTANCE_SIZE
         + InsertNodeMemoryEstimator.sizeOfValues(values, measurementSchemas)
         + RamUsageEstimator.sizeOf(measurementIsAligned);

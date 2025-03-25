@@ -35,6 +35,7 @@ import java.util.Objects;
 import java.util.stream.Collectors;
 
 public class InsertMultiTabletsStatement extends InsertBaseStatement {
+
   private static final long INSTANCE_SIZE =
       RamUsageEstimator.shallowSizeOfInstance(InsertMultiTabletsStatement.class);
 
@@ -150,12 +151,12 @@ public class InsertMultiTabletsStatement extends InsertBaseStatement {
   }
 
   @Override
-  protected long calculateBytes() {
+  protected long calculateBytesUsed() {
     return INSTANCE_SIZE
         + (Objects.nonNull(insertTabletStatementList)
             ? InsertRowsStatement.LIST_SIZE
                 + insertTabletStatementList.stream()
-                    .mapToLong(InsertTabletStatement::calculateBytes)
+                    .mapToLong(InsertTabletStatement::calculateBytesUsed)
                     .reduce(0L, Long::sum)
             : 0);
   }

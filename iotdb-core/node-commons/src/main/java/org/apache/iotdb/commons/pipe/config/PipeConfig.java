@@ -234,8 +234,8 @@ public class PipeConfig {
     return COMMON_CONFIG.getPipeReceiverLoginPeriodicVerificationIntervalMs();
   }
 
-  public double getPipeReceiverInsertNodeMemoryExpandRatio() {
-    return COMMON_CONFIG.getPipeReceiverInsertNodeMemoryExpandRatio();
+  public double getPipeReceiverActualToEstimatedMemoryRatio() {
+    return COMMON_CONFIG.getPipeReceiverActualToEstimatedMemoryRatio();
   }
 
   /////////////////////////////// Hybrid Mode ///////////////////////////////
@@ -459,8 +459,8 @@ public class PipeConfig {
         "PipeReceiverLoginPeriodicVerificationIntervalMs: {}",
         getPipeReceiverLoginPeriodicVerificationIntervalMs());
     LOGGER.info(
-        "PipeReceiverInsertNodeMemoryExpandRatio: {}",
-        getPipeReceiverInsertNodeMemoryExpandRatio());
+        "PipeReceiverActualToEstimatedMemoryRatio: {}",
+        getPipeReceiverActualToEstimatedMemoryRatio());
 
     LOGGER.info(
         "PipeMaxAllowedHistoricalTsFilePerDataRegion: {}",

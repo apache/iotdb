@@ -56,6 +56,7 @@ public class InsertTabletStatement extends InsertBaseStatement implements ISchem
   private static final Logger LOGGER = LoggerFactory.getLogger(InsertTabletStatement.class);
   private static final long INSTANCE_SIZE =
       RamUsageEstimator.shallowSizeOfInstance(InsertTabletStatement.class);
+
   private static final String DATATYPE_UNSUPPORTED = "Data type %s is not supported.";
 
   protected long[] times; // times should be sorted. It is done in the session API.
@@ -416,7 +417,7 @@ public class InsertTabletStatement extends InsertBaseStatement implements ISchem
   }
 
   @Override
-  protected long calculateBytes() {
+  protected long calculateBytesUsed() {
     return INSTANCE_SIZE
         + RamUsageEstimator.sizeOf(times)
         + InsertNodeMemoryEstimator.sizeOfBitMapArray(bitMaps)
