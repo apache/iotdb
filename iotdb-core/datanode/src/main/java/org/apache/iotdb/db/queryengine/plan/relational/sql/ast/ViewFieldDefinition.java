@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 
 import javax.annotation.Nullable;
 
+import java.util.ArrayList;
 import java.util.Objects;
 
 public class ViewFieldDefinition extends ColumnDefinition {
@@ -38,6 +39,13 @@ public class ViewFieldDefinition extends ColumnDefinition {
       final Identifier from) {
     super(location, name, type, TsTableColumnCategory.FIELD, charsetName, comment);
     this.from = from;
+  }
+
+  @Override
+  protected DataType getDefaultType(final DataType type) {
+    return Objects.nonNull(type)
+        ? type
+        : new GenericDataType(new Identifier("unknown"), new ArrayList<>());
   }
 
   public Identifier getFrom() {
