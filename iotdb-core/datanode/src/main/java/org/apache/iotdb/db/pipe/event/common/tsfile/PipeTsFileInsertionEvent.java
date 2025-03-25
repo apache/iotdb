@@ -122,8 +122,7 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent
     this.isWithMod =
         isWithMod
             && (resourceModFile.exists()
-                || isGeneratedByHistoricalExtractor && PipeDataNodeResourceManager.tsfile().getFileReferenceCountWithoutLock(modFile)
-                    > 0);
+                || isGeneratedByHistoricalExtractor && isHardLinkFileExists(modFile));
     this.modFile = this.isWithMod ? modFile : null;
 
     this.isLoaded = isLoaded;
@@ -170,7 +169,16 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent
     this.dataContainer = new AtomicReference<>(null);
   }
 
-  
+  private static boolean isHardLinkFileExists(final File modFile) {
+    try {
+      return PipeDataNodeResourceManager.tsfile()
+              .getFileReferenceCountWithoutLock(
+                  PipeTsFileResourceManager.getHardlinkOrCopiedFileInPipeDir(modFile))
+          > 0;
+    } catch (final Exception e) {
+      return false;
+    }
+  }
 
   /**
    * @return {@code false} if this file can't be sent by pipe because it is empty. {@code true}
