@@ -44,14 +44,14 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-public class TreeDeviceViewUpdater {
+public class TreeDeviceViewFieldDetector {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(TreeDeviceViewUpdater.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(TreeDeviceViewFieldDetector.class);
   private final ConfigManager configManager;
   private Map<String, Byte> currentType;
   private TSStatus result;
 
-  public TreeDeviceViewUpdater(final ConfigManager configManager) {
+  public TreeDeviceViewFieldDetector(final ConfigManager configManager) {
     this.configManager = configManager;
   }
 
@@ -77,7 +77,7 @@ public class TreeDeviceViewUpdater {
           configManager,
           targetRegionGroup,
           false,
-          CnToDnAsyncRequestType.GET_TREE_DEVICE_VIEW_INFO,
+          CnToDnAsyncRequestType.DETECT_TREE_DEVICE_VIEW_FIELD_TYPE,
           ((dataNodeLocation, consensusGroupIdList) -> consensusGroupIdList));
     }
 
@@ -86,25 +86,33 @@ public class TreeDeviceViewUpdater {
         final TDataNodeLocation dataNodeLocation,
         final List<TConsensusGroupId> consensusGroupIdList,
         TDeviceViewResp response) {
+      // Fail-fast
+      if (result.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        return Collections.emptyList();
+      }
+
       final List<TConsensusGroupId> failedRegionList = new ArrayList<>();
       if (response.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         mergeDeviceViewResp(response);
         return Collections.emptyList();
+      } else if (response.getStatus().getCode()
+          == TSStatusCode.DATA_TYPE_MISMATCH.getStatusCode()) {
+        result = response.getStatus();
+        return Collections.emptyList();
       }
 
-      // If some regions have failed, the "maxSegmentNum" of database is still usable
-      // Though the measurement num may not be correct, we still assume that the difference
-      // of the measurement types is so large that the failure won't affect much
-      // We still apply the regions without failure to make the update more likely to
-      // succeed in large cluster with weak network
       if (response.getStatus().getCode() == TSStatusCode.MULTIPLE_ERROR.getStatusCode()) {
         final List<TSStatus> subStatus = response.getStatus().getSubStatus();
         for (int i = 0; i < subStatus.size(); i++) {
-          if (subStatus.get(i).getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-            failedRegionList.add(consensusGroupIdList.get(i));
-          } else if (Objects.nonNull(response)) {
+          if (subStatus.get(i).getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
             mergeDeviceViewResp(response);
             response = null;
+          } else if (subStatus.get(i).getCode()
+              == TSStatusCode.DATA_TYPE_MISMATCH.getStatusCode()) {
+            result = subStatus.get(i);
+            return Collections.emptyList();
+          } else if (Objects.nonNull(response)) {
+            failedRegionList.add(consensusGroupIdList.get(i));
           }
         }
       } else {
@@ -140,8 +148,9 @@ public class TreeDeviceViewUpdater {
     protected void onAllReplicasetFailure(
         final TConsensusGroupId consensusGroupId,
         final Set<TDataNodeLocation> dataNodeLocationSet) {
-      final String errorMsg = "Failed to update device view on region {}, skip this round";
+      final String errorMsg = "Failed to get device view field type on region {}.";
       LOGGER.warn(errorMsg, consensusGroupId);
+      result = RpcUtils.getStatus(TSStatusCode.TYPE_NOT_FOUND, errorMsg);
       interruptTask();
     }
   }

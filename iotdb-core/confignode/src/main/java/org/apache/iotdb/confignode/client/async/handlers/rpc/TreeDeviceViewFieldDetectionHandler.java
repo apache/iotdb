@@ -32,11 +32,13 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.CountDownLatch;
 
-public class TreeDeviceViewUpdateHandler extends DataNodeAsyncRequestRPCHandler<TDeviceViewResp> {
+public class TreeDeviceViewFieldDetectionHandler
+    extends DataNodeAsyncRequestRPCHandler<TDeviceViewResp> {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(TreeDeviceViewUpdateHandler.class);
+  private static final Logger LOGGER =
+      LoggerFactory.getLogger(TreeDeviceViewFieldDetectionHandler.class);
 
-  protected TreeDeviceViewUpdateHandler(
+  protected TreeDeviceViewFieldDetectionHandler(
       final CnToDnAsyncRequestType requestType,
       final int requestId,
       final TDataNodeLocation targetNode,

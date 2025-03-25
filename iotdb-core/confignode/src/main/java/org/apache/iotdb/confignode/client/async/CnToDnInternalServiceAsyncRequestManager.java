@@ -43,7 +43,7 @@ import org.apache.iotdb.confignode.client.async.handlers.rpc.PipePushMetaRPCHand
 import org.apache.iotdb.confignode.client.async.handlers.rpc.SchemaUpdateRPCHandler;
 import org.apache.iotdb.confignode.client.async.handlers.rpc.SubmitTestConnectionTaskRPCHandler;
 import org.apache.iotdb.confignode.client.async.handlers.rpc.TransferLeaderRPCHandler;
-import org.apache.iotdb.confignode.client.async.handlers.rpc.TreeDeviceViewUpdateHandler;
+import org.apache.iotdb.confignode.client.async.handlers.rpc.TreeDeviceViewFieldDetectionHandler;
 import org.apache.iotdb.confignode.client.async.handlers.rpc.subscription.CheckSchemaRegionUsingTemplateRPCHandler;
 import org.apache.iotdb.confignode.client.async.handlers.rpc.subscription.ConsumerGroupPushMetaRPCHandler;
 import org.apache.iotdb.confignode.client.async.handlers.rpc.subscription.TopicPushMetaRPCHandler;
@@ -450,10 +450,10 @@ public class CnToDnInternalServiceAsyncRequestManager
                 (TTableDeviceDeletionWithPatternOrModReq) req,
                 (DataNodeTSStatusRPCHandler) handler));
     actionMapBuilder.put(
-        CnToDnAsyncRequestType.GET_TREE_DEVICE_VIEW_INFO,
+        CnToDnAsyncRequestType.DETECT_TREE_DEVICE_VIEW_FIELD_TYPE,
         (req, client, handler) ->
             client.getTreeDeviceViewInfo(
-                (TDeviceViewReq) req, (TreeDeviceViewUpdateHandler) handler));
+                (TDeviceViewReq) req, (TreeDeviceViewFieldDetectionHandler) handler));
     actionMapBuilder.put(
         CnToDnAsyncRequestType.CLEAN_DATA_NODE_CACHE,
         (req, client, handler) ->
