@@ -243,11 +243,11 @@ commentStatement
 // ------------------------------------------- Table View Statement ---------------------------------------------------------
 createTableViewStatement
     : CREATE (OR REPLACE)? TABLE VIEW qualifiedName
-    '(' (viewColumnDefinition (',' viewColumnDefinition)*) ')'
-    AS prefixPath
-    comment?
-    (WITH properties)?
-    (RESTRICT)?
+        '(' (viewColumnDefinition (',' viewColumnDefinition)*) ')'
+        AS prefixPath
+        comment?
+        (WITH properties)?
+        (RESTRICT)?
     ;
 
 viewColumnDefinition
