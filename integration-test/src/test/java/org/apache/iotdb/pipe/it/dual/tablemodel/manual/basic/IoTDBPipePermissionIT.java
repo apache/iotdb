@@ -22,6 +22,7 @@ package org.apache.iotdb.pipe.it.dual.tablemodel.manual.basic;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.client.sync.SyncConfigNodeIServiceClient;
 import org.apache.iotdb.confignode.rpc.thrift.TCreatePipeReq;
+import org.apache.iotdb.confignode.rpc.thrift.TStartPipeReq;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.db.it.utils.TestUtils;
 import org.apache.iotdb.it.env.MultiEnvFactory;
@@ -250,6 +251,7 @@ public class IoTDBPipePermissionIT extends AbstractPipeTableModelDualManualIT {
       final Map<String, String> connectorAttributes = new HashMap<>();
 
       final String dbName = "test";
+      final String tbName = "test";
 
       extractorAttributes.put("extractor.inclusion", "all");
       extractorAttributes.put("extractor.capture.tree", "false");
@@ -272,22 +274,23 @@ public class IoTDBPipePermissionIT extends AbstractPipeTableModelDualManualIT {
       Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
 
       Assert.assertEquals(
-          TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.startPipe("testPipe").getCode());
+          TSStatusCode.SUCCESS_STATUS.getStatusCode(),
+          client.startPipeExtended(new TStartPipeReq("testPipe").setIsTableModel(true)).getCode());
 
-      TableModelUtils.createDataBaseAndTable(senderEnv, "test", "test");
+      TableModelUtils.createDataBaseAndTable(senderEnv, tbName, dbName);
 
       // Write some data
-      if (!TableModelUtils.insertData("test", "test", 0, 100, senderEnv)) {
+      if (!TableModelUtils.insertData(dbName, tbName, 0, 100, senderEnv)) {
         return;
       }
 
       // Shall not be transferred
-      TestUtils.assertDataEventuallyOnEnv(
+      TestUtils.assertDataAlwaysOnEnv(
           receiverEnv,
-          "show tables from test1",
-          "TableName,TTL(ms),",
-          Collections.singleton("test1,INF,"),
-          "information_schema");
+          "show databases",
+          "Database,TTL(ms),SchemaReplicationFactor,DataReplicationFactor,TimePartitionInterval,",
+          Collections.singleton("information_schema,INF,null,null,null,"),
+          (String) null);
 
       if (!TestUtils.tryExecuteNonQueryWithRetry(
           receiverEnv, "grant insert,create on database test to user testUser")) {
@@ -296,8 +299,8 @@ public class IoTDBPipePermissionIT extends AbstractPipeTableModelDualManualIT {
 
       // Will finally pass
       TableModelUtils.assertCountData(
-          "test",
-          "test",
+          dbName,
+          tbName,
           100,
           receiverEnv,
           o -> {
