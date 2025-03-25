@@ -394,20 +394,23 @@ public class DataRegion implements IDataRegionForQuery {
 
     // init data dirs' root disks
     this.rootDisks2DataDirsMapForLoad = new HashMap<>(config.getTierDataDirs()[0].length);
-    for (String dataDir : config.getTierDataDirs()[0]) {
-      File dataDirFile = new File(dataDir);
-      try {
-        String mountPoint = PathUtils.getMountPoint(dataDirFile.getCanonicalPath());
-        this.rootDisks2DataDirsMapForLoad.put(
-            mountPoint, fsFactory.getFile(dataDir, IoTDBConstant.UNSEQUENCE_FOLDER_NAME).getPath());
-        logger.info("Add {}'s mount point {}", dataDir, mountPoint);
-      } catch (Exception e) {
-        logger.warn(
-            "Exception occurs when reading data dir's mount point {}, may because your OS is windows.",
-            dataDir,
-            e);
-      }
-    }
+    Arrays.stream(config.getTierDataDirs()[0])
+        .filter(Objects::nonNull)
+        .map(v -> fsFactory.getFile(v, IoTDBConstant.UNSEQUENCE_FOLDER_NAME).getPath())
+        .forEach(
+            dataDirPath -> {
+              File dataDirFile = new File(dataDirPath);
+              try {
+                String mountPoint = PathUtils.getMountPoint(dataDirFile.getCanonicalPath());
+                this.rootDisks2DataDirsMapForLoad.put(mountPoint, dataDirPath);
+                logger.info("Add {}'s mount point {}", dataDirPath, mountPoint);
+              } catch (Exception e) {
+                logger.warn(
+                    "Exception occurs when reading data dir's mount point {}, may because your OS is windows.",
+                    dataDirPath,
+                    e);
+              }
+            });
 
     this.metrics = new DataRegionMetrics(this);
     MetricService.getInstance().addMetricSet(metrics);
@@ -3074,7 +3077,7 @@ public class DataRegion implements IDataRegionForQuery {
       boolean isGeneratedByPipe)
       throws LoadFileException, DiskSpaceInsufficientException {
     File targetFile = null;
-    boolean needDownGradeToSequence = true;
+    boolean needDownGradeToSequenceStrategy = true;
     String fileDirRoot = null;
     try {
       fileDirRoot = PathUtils.getMountPoint(tsFileToLoad.getCanonicalPath());
@@ -3085,10 +3088,13 @@ public class DataRegion implements IDataRegionForQuery {
           e);
     }
 
+    // only IoTV2 and Pipe will try to enable multi-disks awareness
     if ((config.isEnableMultiDisksAwareLoadForIoTV2()
             && tsFileResource.isGeneratedByPipeConsensus())
         || (config.isEnableMultiDisksAwareLoadForPipe() && tsFileResource.isGeneratedByPipe())) {
       if (rootDisks2DataDirsMapForLoad.containsKey(fileDirRoot)) {
+        // if there is an overlap between firDirRoot and data directories' disk roots, try to get
+        // targetFile in the same disk
         targetFile =
             fsFactory.getFile(
                 rootDisks2DataDirsMapForLoad.get(fileDirRoot),
@@ -3099,11 +3105,12 @@ public class DataRegion implements IDataRegionForQuery {
                     + filePartitionId
                     + File.separator
                     + tsFileResource.getTsFile().getName());
-        needDownGradeToSequence = false;
+
+        needDownGradeToSequenceStrategy = false;
       }
     }
 
-    if (needDownGradeToSequence) {
+    if (needDownGradeToSequenceStrategy) {
       targetFile =
           fsFactory.getFile(
               TierManager.getInstance().getNextFolderForTsFile(0, false),
