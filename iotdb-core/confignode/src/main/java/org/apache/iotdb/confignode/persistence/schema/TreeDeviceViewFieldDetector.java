@@ -20,16 +20,14 @@
 package org.apache.iotdb.confignode.persistence.schema;
 
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
-import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.commons.utils.PathUtils;
+import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.confignode.client.async.CnToDnAsyncRequestType;
 import org.apache.iotdb.confignode.manager.ConfigManager;
-import org.apache.iotdb.confignode.manager.partition.PartitionManager;
 import org.apache.iotdb.confignode.procedure.impl.schema.DataNodeRegionTaskExecutor;
 import org.apache.iotdb.mpp.rpc.thrift.TDeviceViewReq;
 import org.apache.iotdb.mpp.rpc.thrift.TDeviceViewResp;
@@ -46,7 +44,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
-import java.util.stream.Collectors;
 
 public class TreeDeviceViewFieldDetector {
 
@@ -54,8 +51,7 @@ public class TreeDeviceViewFieldDetector {
   private final ConfigManager configManager;
   private final PartialPath path;
 
-  private Map<String, Byte> currentType;
-  private TSStatus result;
+  private TDeviceViewResp result;
 
   public TreeDeviceViewFieldDetector(final ConfigManager configManager, final String path)
       throws IllegalPathException {
@@ -63,22 +59,23 @@ public class TreeDeviceViewFieldDetector {
     this.path = new PartialPath(path);
   }
 
-  private Map<TConsensusGroupId, TRegionReplicaSet> getLatestSchemaRegionMap() {
-    final PartitionManager partitionManager = configManager.getPartitionManager();
-    return partitionManager
-        .getAllReplicaSetsMap(TConsensusGroupType.SchemaRegion)
-        .entrySet()
-        .stream()
-        .filter(
-            entry ->
-                !PathUtils.isTableModelDatabase(partitionManager.getRegionDatabase(entry.getKey())))
-        .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
+  public TDeviceViewResp getResult() {
+    new TreeDeviceViewFieldDetectionTaskExecutor(configManager, getLatestSchemaRegionMap())
+        .execute();
+    return result;
   }
 
-  private class TreeDeviceUpdateTaskExecutor
+  private Map<TConsensusGroupId, TRegionReplicaSet> getLatestSchemaRegionMap() {
+    final PathPatternTree tree = new PathPatternTree();
+    tree.appendPathPattern(path);
+    tree.constructTree();
+    return configManager.getRelatedSchemaRegionGroup(tree);
+  }
+
+  private class TreeDeviceViewFieldDetectionTaskExecutor
       extends DataNodeRegionTaskExecutor<TDeviceViewReq, TDeviceViewResp> {
 
-    protected TreeDeviceUpdateTaskExecutor(
+    protected TreeDeviceViewFieldDetectionTaskExecutor(
         final ConfigManager configManager,
         final Map<TConsensusGroupId, TRegionReplicaSet> targetRegionGroup) {
       super(
@@ -96,7 +93,7 @@ public class TreeDeviceViewFieldDetector {
         final List<TConsensusGroupId> consensusGroupIdList,
         TDeviceViewResp response) {
       // Fail-fast
-      if (result.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      if (result.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         return Collections.emptyList();
       }
 
@@ -106,7 +103,7 @@ public class TreeDeviceViewFieldDetector {
         return Collections.emptyList();
       } else if (response.getStatus().getCode()
           == TSStatusCode.DATA_TYPE_MISMATCH.getStatusCode()) {
-        result = response.getStatus();
+        result = response;
         return Collections.emptyList();
       }
 
@@ -118,7 +115,7 @@ public class TreeDeviceViewFieldDetector {
             response = null;
           } else if (subStatus.get(i).getCode()
               == TSStatusCode.DATA_TYPE_MISMATCH.getStatusCode()) {
-            result = subStatus.get(i);
+            result = response;
             return Collections.emptyList();
           } else if (Objects.nonNull(response)) {
             failedRegionList.add(consensusGroupIdList.get(i));
@@ -131,8 +128,8 @@ public class TreeDeviceViewFieldDetector {
     }
 
     private void mergeDeviceViewResp(final TDeviceViewResp resp) {
-      if (Objects.isNull(currentType)) {
-        currentType = resp.getDeviewViewUpdateMap();
+      if (Objects.isNull(result)) {
+        result = resp;
         return;
       }
 
@@ -140,15 +137,17 @@ public class TreeDeviceViewFieldDetector {
       resp.getDeviewViewUpdateMap()
           .forEach(
               (measurement, type) -> {
-                if (!currentType.containsKey(measurement)) {
-                  currentType.put(measurement, type);
+                if (!result.getDeviewViewUpdateMap().containsKey(measurement)) {
+                  result.getDeviewViewUpdateMap().put(measurement, type);
                 } else {
                   result =
-                      RpcUtils.getStatus(
-                          TSStatusCode.DATA_TYPE_MISMATCH,
-                          String.format(
-                              "Multiple types encountered when auto detecting type of measurement '%s', please check",
-                              measurement));
+                      new TDeviceViewResp(
+                          RpcUtils.getStatus(
+                              TSStatusCode.DATA_TYPE_MISMATCH,
+                              String.format(
+                                  "Multiple types encountered when auto detecting type of measurement '%s', please check",
+                                  measurement)),
+                          Collections.emptyMap());
                 }
               });
     }
@@ -159,7 +158,9 @@ public class TreeDeviceViewFieldDetector {
         final Set<TDataNodeLocation> dataNodeLocationSet) {
       final String errorMsg = "Failed to get device view field type on region {}.";
       LOGGER.warn(errorMsg, consensusGroupId);
-      result = RpcUtils.getStatus(TSStatusCode.TYPE_NOT_FOUND, errorMsg);
+      result =
+          new TDeviceViewResp(
+              RpcUtils.getStatus(TSStatusCode.TYPE_NOT_FOUND, errorMsg), Collections.emptyMap());
       interruptTask();
     }
   }
