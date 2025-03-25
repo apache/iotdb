@@ -780,7 +780,7 @@ public class StorageEngine implements IService {
         region.abortCompaction();
         region.syncDeleteDataFiles();
         region.deleteFolder(systemDir);
-        region.deleteDALFolder();
+        region.deleteDALFolderAndClose();
         switch (CONFIG.getDataRegionConsensusProtocolClass()) {
           case ConsensusFactory.IOT_CONSENSUS:
           case ConsensusFactory.IOT_CONSENSUS_V2:

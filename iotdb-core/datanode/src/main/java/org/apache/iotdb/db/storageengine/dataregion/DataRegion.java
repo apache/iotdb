@@ -1701,9 +1701,13 @@ public class DataRegion implements IDataRegionForQuery {
     }
   }
 
-  public void deleteDALFolder() {
+  public void deleteDALFolderAndClose() {
     Optional.ofNullable(DeletionResourceManager.getInstance(dataRegionId))
-        .ifPresent(DeletionResourceManager::removeDAL);
+        .ifPresent(
+            manager -> {
+              manager.close();
+              manager.removeDAL();
+            });
   }
 
   /** close all tsfile resource */
