@@ -23,9 +23,7 @@ import org.apache.iotdb.cli.utils.IoTPrinter;
 import org.apache.iotdb.isession.SessionConfig;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
-import org.apache.iotdb.session.subscription.SubscriptionTableSessionBuilder;
 import org.apache.iotdb.session.subscription.SubscriptionTreeSessionBuilder;
-import org.apache.iotdb.tool.common.Constants;
 
 import java.util.concurrent.ExecutorService;
 
@@ -35,29 +33,31 @@ public abstract class AbstractSubscriptionTsFile {
   protected static CommonParam commonParam = CommonParam.getInstance();
 
   public static void setSubscriptionSession() throws IoTDBConnectionException {
-    if (Constants.TABLE_MODEL.equalsIgnoreCase(commonParam.getSqlDialect())) {
-      commonParam.setSubscriptionTsFile(new SubscriptionTableTsFile());
-      commonParam.setTableSubs(
-          new SubscriptionTableSessionBuilder()
-              .host(commonParam.getSrcHost())
-              .port(commonParam.getSrcPort())
-              .username(commonParam.getSrcUserName())
-              .password(commonParam.getSrcPassword())
-              .thriftMaxFrameSize(SessionConfig.DEFAULT_MAX_FRAME_SIZE)
-              .build());
-      commonParam.getTableSubs().open();
-    } else {
-      commonParam.setSubscriptionTsFile(new SubscriptionTreeTsFile());
-      commonParam.setTreeSubs(
-          new SubscriptionTreeSessionBuilder()
-              .host(commonParam.getSrcHost())
-              .port(commonParam.getSrcPort())
-              .username(commonParam.getSrcUserName())
-              .password(commonParam.getSrcPassword())
-              .thriftMaxFrameSize(SessionConfig.DEFAULT_MAX_FRAME_SIZE)
-              .build());
-      commonParam.getTreeSubs().open();
-    }
+    /* table mode is not currently(2.0.2) supported
+       if (Constants.TABLE_MODEL.equalsIgnoreCase(commonParam.getSqlDialect())) {
+         commonParam.setSubscriptionTsFile(new SubscriptionTableTsFile());
+         commonParam.setTableSubs(
+             new SubscriptionTableSessionBuilder()
+                 .host(commonParam.getSrcHost())
+                 .port(commonParam.getSrcPort())
+                 .username(commonParam.getSrcUserName())
+                 .password(commonParam.getSrcPassword())
+                 .thriftMaxFrameSize(SessionConfig.DEFAULT_MAX_FRAME_SIZE)
+                 .build());
+         commonParam.getTableSubs().open();
+       } else {
+    */
+    commonParam.setSubscriptionTsFile(new SubscriptionTreeTsFile());
+    commonParam.setTreeSubs(
+        new SubscriptionTreeSessionBuilder()
+            .host(commonParam.getSrcHost())
+            .port(commonParam.getSrcPort())
+            .username(commonParam.getSrcUserName())
+            .password(commonParam.getSrcPassword())
+            .thriftMaxFrameSize(SessionConfig.DEFAULT_MAX_FRAME_SIZE)
+            .build());
+    commonParam.getTreeSubs().open();
+    //    }
   }
 
   public abstract void createTopics(String topicName)

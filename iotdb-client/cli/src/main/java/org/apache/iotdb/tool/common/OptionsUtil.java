@@ -964,7 +964,7 @@ public class OptionsUtil extends Constants {
 
   public static Options createSubscriptionTsFileOptions() {
     Options options = new Options();
-
+    /* table mode is not currently(2.0.2) supported
     Option opSqlDialect =
         Option.builder(SQL_DIALECT_ARGS)
             .longOpt(SQL_DIALECT_ARGS)
@@ -973,7 +973,7 @@ public class OptionsUtil extends Constants {
             .desc(SQL_DIALECT_DESC)
             .build();
     options.addOption(opSqlDialect);
-
+     */
     Option opHost =
         Option.builder(HOST_ARGS)
             .longOpt(HOST_NAME)
@@ -1020,19 +1020,21 @@ public class OptionsUtil extends Constants {
             .build();
     options.addOption(opPath);
 
-    Option opDatabase =
-        Option.builder(DB_ARGS).longOpt(DB_NAME).argName(DB_ARGS).hasArg().desc(DB_DESC).build();
-    options.addOption(opDatabase);
+    /* table mode is not currently(2.0.2) supported
+       Option opDatabase =
 
-    Option opTable =
-        Option.builder(TABLE_ARGS)
-            .longOpt(TABLE_ARGS)
-            .argName(TABLE_ARGS)
-            .hasArg()
-            .desc(TABLE_DESC)
-            .build();
-    options.addOption(opTable);
+    Option.builder(DB_ARGS).longOpt(DB_NAME).argName(DB_ARGS).hasArg().desc(DB_DESC).build();
+       options.addOption(opDatabase);
 
+       Option opTable =
+           Option.builder(TABLE_ARGS)
+               .longOpt(TABLE_ARGS)
+               .argName(TABLE_ARGS)
+               .hasArg()
+               .desc(TABLE_DESC)
+               .build();
+       options.addOption(opTable);
+    */
     Option opStartTime =
         Option.builder(START_TIME_ARGS)
             .longOpt(START_TIME_ARGS)
@@ -1069,7 +1071,8 @@ public class OptionsUtil extends Constants {
             .build();
     options.addOption(opThreadNum);
 
-    Option opHelp = Option.builder(HELP_ARGS).longOpt(HELP_ARGS).hasArg().desc(HELP_DESC).build();
+    Option opHelp =
+        Option.builder(HELP_ARGS).longOpt(HELP_ARGS).hasArg(false).desc(HELP_DESC).build();
     options.addOption(opHelp);
     return options;
   }
