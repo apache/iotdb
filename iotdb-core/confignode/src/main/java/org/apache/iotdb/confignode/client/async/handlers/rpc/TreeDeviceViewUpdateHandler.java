@@ -41,14 +41,14 @@ public class TreeDeviceViewUpdateHandler extends DataNodeAsyncRequestRPCHandler<
       final int requestId,
       final TDataNodeLocation targetNode,
       final Map<Integer, TDataNodeLocation> dataNodeLocationMap,
-      final Map<Integer, TDeviceViewResp> integerTTestConnectionRespMap,
+      final Map<Integer, TDeviceViewResp> integerTDeviceViewRespMap,
       final CountDownLatch countDownLatch) {
     super(
         requestType,
         requestId,
         targetNode,
         dataNodeLocationMap,
-        integerTTestConnectionRespMap,
+        integerTDeviceViewRespMap,
         countDownLatch);
   }
 
