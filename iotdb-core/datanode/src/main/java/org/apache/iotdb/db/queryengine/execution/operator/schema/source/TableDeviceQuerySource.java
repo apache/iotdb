@@ -215,7 +215,8 @@ public class TableDeviceQuerySource implements ISchemaSource<IDeviceSchemaInfo> 
             ? new String[] {PATH_ROOT, database, tableName}
             : DataNodeTreeViewSchemaUtils.getPatternNodes(table),
         DataNodeTableCache.getInstance().getTable(database, tableName).getIdNums(),
-        idDeterminedPredicateList);
+        idDeterminedPredicateList,
+        TreeViewSchema.isRestrict(table));
   }
 
   @Override

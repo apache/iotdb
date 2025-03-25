@@ -44,14 +44,15 @@ public class DeviceFilterUtil {
   public static List<PartialPath> convertToDevicePattern(
       final String[] prefix,
       final int idColumnNum,
-      final List<List<SchemaFilter>> idDeterminedFilterList) {
+      final List<List<SchemaFilter>> idDeterminedFilterList,
+      final boolean isRestrict) {
     final List<PartialPath> pathList = new ArrayList<>();
     final int length = idColumnNum + prefix.length;
     for (final List<SchemaFilter> idFilterList : idDeterminedFilterList) {
       final String[] nodes = new String[length];
       Arrays.fill(nodes, ONE_LEVEL_PATH_WILDCARD);
       System.arraycopy(prefix, 0, nodes, 0, prefix.length);
-      final ExtendedPartialPath partialPath = new ExtendedPartialPath(nodes);
+      final ExtendedPartialPath partialPath = new ExtendedPartialPath(nodes, isRestrict);
       for (final SchemaFilter schemaFilter : idFilterList) {
         if (schemaFilter.getSchemaFilterType().equals(SchemaFilterType.ID)) {
           final int index = ((IdFilter) schemaFilter).getIndex() + prefix.length;

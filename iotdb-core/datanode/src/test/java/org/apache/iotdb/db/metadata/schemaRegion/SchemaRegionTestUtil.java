@@ -457,7 +457,8 @@ public class SchemaRegionTestUtil {
         DeviceFilterUtil.convertToDevicePattern(
             new String[] {PATH_ROOT, schemaRegion.getDatabaseFullPath(), table},
             idColumnNum,
-            Collections.singletonList(idDeterminedFilterList));
+            Collections.singletonList(idDeterminedFilterList),
+            false);
     final List<IDeviceSchemaInfo> result = new ArrayList<>();
     for (final PartialPath pattern : patternList) {
       try (final ISchemaReader<IDeviceSchemaInfo> reader =
