@@ -52,6 +52,11 @@ struct TRegionMigrateResult {
   4: required common.TRegionMaintainTaskStatus taskStatus
 }
 
+struct TNotifyRegionMigrationReq {
+  1: required common.TConsensusGroupId regionId
+  2: required bool isStart
+}
+
 struct TCreatePeerReq {
   1: required common.TConsensusGroupId regionId
   2: required list<common.TDataNodeLocation> regionLocations
@@ -780,6 +785,11 @@ service IDataNodeRPCService {
    * Get the result of a region maintainance task
    */
   TRegionMigrateResult getRegionMaintainResult(i64 taskId)
+
+    /**
+     * Notify the DataNode of the beginning or ending the migration of the specified RegionGroup
+     */
+    common.TSStatus notifyRegionMigration(TNotifyRegionMigrationReq req)
 
   /**
    * Config node will clean DataNode cache, the Data node will not accept read/write request when disabled
