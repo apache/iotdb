@@ -393,7 +393,7 @@ public class DataRegion implements IDataRegionForQuery {
     }
 
     // init data dirs' root disks
-    this.rootDisks2DataDirsMapForLoad = new HashMap<>(config.getDataDirs().length);
+    this.rootDisks2DataDirsMapForLoad = new HashMap<>(config.getTierDataDirs()[0].length);
     for (String dataDir : config.getTierDataDirs()[0]) {
       File dataDirFile = new File(dataDir);
       try {
