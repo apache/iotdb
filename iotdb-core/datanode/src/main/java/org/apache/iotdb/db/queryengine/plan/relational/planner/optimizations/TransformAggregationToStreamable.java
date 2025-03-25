@@ -134,13 +134,17 @@ public class TransformAggregationToStreamable implements PlanOptimizer {
       }
       Optional<DataOrganizationSpecification> dataOrganizationSpecification =
           node.getDataOrganizationSpecification();
-      return dataOrganizationSpecification
-          .<List<Symbol>>map(
-              organizationSpecification ->
-                  organizationSpecification.getPartitionBy().stream()
-                      .filter(context.groupingKeys::contains)
-                      .collect(Collectors.toList()))
-          .orElseGet(ImmutableList::of);
+      List<Symbol> res =
+          dataOrganizationSpecification
+              .<List<Symbol>>map(
+                  organizationSpecification ->
+                      organizationSpecification.getPartitionBy().stream()
+                          .filter(context.groupingKeys::contains)
+                          .collect(Collectors.toList()))
+              .orElseGet(ImmutableList::of);
+      res.add(new Symbol("window_start"));
+      res.add(new Symbol("window_end"));
+      return res;
     }
 
     @Override
