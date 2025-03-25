@@ -32,7 +32,6 @@ import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 
 import java.sql.Connection;
-import java.sql.ResultSet;
 import java.sql.Statement;
 
 import static org.apache.iotdb.db.it.utils.TestUtils.tableAssertTestFail;
@@ -166,23 +165,6 @@ public class IoTDBUserDefinedTableFunctionIT {
     SQLFunctionUtils.createUDF(
         "exclude", "org.apache.iotdb.db.query.udf.example.relational.MyExcludeColumn");
     SQLFunctionUtils.createUDF("split", "org.apache.iotdb.db.query.udf.example.relational.MySplit");
-    try (Connection connection = EnvFactory.getEnv().getTableConnection();
-        Statement statement = connection.createStatement(); ) {
-      statement.execute("use " + DATABASE_NAME);
-      try (ResultSet resultSet =
-          statement.executeQuery(
-              "select * from TABLE(REPEAT(TABLE(select * from TABLE(EXCLUDE(TABLE(vehicle), 's2'))), 3))")) {
-        int col = resultSet.getMetaData().getColumnCount();
-        while (resultSet.next()) {
-          for (int i = 1; i <= col; i++) {
-            System.out.print(resultSet.getString(i) + "\t");
-          }
-          System.out.println();
-        }
-      }
-    } catch (Exception e) {
-      e.printStackTrace();
-    }
     String[] expectedHeader = new String[] {"time", "device_id", "s1", "output"};
     String[] retArray =
         new String[] {
