@@ -245,6 +245,25 @@ public class TsTable {
     }
   }
 
+  public void resetFieldColumnType(final String name, final TSDataType type) {
+    readWriteLock.writeLock().lock();
+    try {
+      columnSchemaMap.computeIfPresent(
+          name,
+          (k, val) ->
+              val instanceof FieldColumnSchema
+                  ? new FieldColumnSchema(
+                      val.getColumnName(),
+                      type,
+                      ((FieldColumnSchema) val).getEncoding(),
+                      ((FieldColumnSchema) val).getCompressor(),
+                      val.getProps())
+                  : val);
+    } finally {
+      readWriteLock.readLock().unlock();
+    }
+  }
+
   // This shall only be called on DataNode, where the tsTable is replaced completely thus an old
   // cache won't pollute the newest value
   public long getTableTTL() {

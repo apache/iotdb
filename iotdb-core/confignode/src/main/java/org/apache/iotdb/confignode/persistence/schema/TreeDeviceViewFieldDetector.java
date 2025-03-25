@@ -27,6 +27,7 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.schema.table.TreeViewSchema;
 import org.apache.iotdb.commons.schema.table.TsTable;
+import org.apache.iotdb.commons.schema.table.column.FieldColumnSchema;
 import org.apache.iotdb.confignode.client.async.CnToDnAsyncRequestType;
 import org.apache.iotdb.confignode.manager.ConfigManager;
 import org.apache.iotdb.confignode.procedure.impl.schema.DataNodeRegionTaskExecutor;
@@ -35,6 +36,7 @@ import org.apache.iotdb.mpp.rpc.thrift.TDeviceViewResp;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
+import org.apache.tsfile.enums.TSDataType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -64,6 +66,14 @@ public class TreeDeviceViewFieldDetector {
   public TDeviceViewResp getResult() {
     new TreeDeviceViewFieldDetectionTaskExecutor(configManager, getLatestSchemaRegionMap())
         .execute();
+    if (table.getFieldNum() == 0) {
+      result
+          .getDeviewViewUpdateMap()
+          .forEach(
+              (field, type) ->
+                  table.addColumnSchema(
+                      new FieldColumnSchema(field, TSDataType.getTsDataType(type))));
+    }
     return result;
   }
 
