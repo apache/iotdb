@@ -73,7 +73,6 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Update;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.WrappedStatement;
 import org.apache.iotdb.db.queryengine.plan.relational.type.InternalTypeManager;
 import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
-import org.apache.iotdb.db.schemaengine.table.DataNodeTreeViewSchemaUtils;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
@@ -476,7 +475,7 @@ public class TableLogicalPlanner {
 
     if (TreeViewSchema.isTreeViewTable(table)) {
       final PathPatternTree tree = new PathPatternTree();
-      tree.appendPathPattern(DataNodeTreeViewSchemaUtils.getPrefixPattern(table));
+      tree.appendPathPattern(TreeViewSchema.getPrefixPattern(table));
       tree.constructTree();
 
       analysis.setSchemaPartitionInfo(

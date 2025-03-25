@@ -20,8 +20,10 @@
 package org.apache.iotdb.commons.schema.table;
 
 import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.exception.IoTDBRuntimeException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternUtil;
+import org.apache.iotdb.rpc.TSStatusCode;
 
 public class TreeViewSchema {
   public static final String ORIGINAL_NAME = "__original_name";
@@ -38,10 +40,11 @@ public class TreeViewSchema {
         .map(TreeViewSchema::forceSeparateStringToPartialPath)
         .orElseThrow(
             () ->
-                new SemanticException(
+                new IoTDBRuntimeException(
                     String.format(
                         "Failed to get the original database, because the %s is null for table %s",
-                        TreeViewSchema.TREE_PATH_PATTERN, table.getTableName())));
+                        TreeViewSchema.TREE_PATH_PATTERN, table.getTableName()),
+                    TSStatusCode.SEMANTIC_ERROR.getStatusCode()));
   }
 
   public static PartialPath forceSeparateStringToPartialPath(final String string) {
@@ -49,9 +52,10 @@ public class TreeViewSchema {
     try {
       partialPath = new PartialPath(string);
     } catch (final IllegalPathException e) {
-      throw new SemanticException(
+      throw new IoTDBRuntimeException(
           String.format(
-              "Failed to parse the tree view string %s when convert to IDeviceID", string));
+              "Failed to parse the tree view string %s when convert to IDeviceID", string),
+          TSStatusCode.SEMANTIC_ERROR.getStatusCode());
     }
     return partialPath;
   }
