@@ -188,7 +188,7 @@ class IoTDBRpcDataSet(object):
                         indexes = [not v for v in null_indicator]
                         if data_type == 0:
                             tmp_array[indexes] = column_array[indexes]
-                        else:
+                        elif len(column_array) != 0:
                             tmp_array[indexes] = column_array
 
                     # INT32, DATE
@@ -311,7 +311,7 @@ class IoTDBRpcDataSet(object):
                         indexes = [not v for v in null_indicator]
                         if data_type == 0:
                             tmp_array[indexes] = data_array[indexes]
-                        else:
+                        elif len(data_array) != 0:
                             tmp_array[indexes] = data_array
 
                     if data_type == 1:
