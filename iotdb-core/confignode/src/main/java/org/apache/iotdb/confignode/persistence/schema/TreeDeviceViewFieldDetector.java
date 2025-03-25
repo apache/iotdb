@@ -24,11 +24,14 @@ import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.confignode.client.async.CnToDnAsyncRequestType;
 import org.apache.iotdb.confignode.manager.ConfigManager;
 import org.apache.iotdb.confignode.manager.partition.PartitionManager;
 import org.apache.iotdb.confignode.procedure.impl.schema.DataNodeRegionTaskExecutor;
+import org.apache.iotdb.mpp.rpc.thrift.TDeviceViewReq;
 import org.apache.iotdb.mpp.rpc.thrift.TDeviceViewResp;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -37,6 +40,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -48,11 +52,15 @@ public class TreeDeviceViewFieldDetector {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(TreeDeviceViewFieldDetector.class);
   private final ConfigManager configManager;
+  private final PartialPath path;
+
   private Map<String, Byte> currentType;
   private TSStatus result;
 
-  public TreeDeviceViewFieldDetector(final ConfigManager configManager) {
+  public TreeDeviceViewFieldDetector(final ConfigManager configManager, final String path)
+      throws IllegalPathException {
     this.configManager = configManager;
+    this.path = new PartialPath(path);
   }
 
   private Map<TConsensusGroupId, TRegionReplicaSet> getLatestSchemaRegionMap() {
@@ -68,7 +76,7 @@ public class TreeDeviceViewFieldDetector {
   }
 
   private class TreeDeviceUpdateTaskExecutor
-      extends DataNodeRegionTaskExecutor<List<TConsensusGroupId>, TDeviceViewResp> {
+      extends DataNodeRegionTaskExecutor<TDeviceViewReq, TDeviceViewResp> {
 
     protected TreeDeviceUpdateTaskExecutor(
         final ConfigManager configManager,
@@ -78,7 +86,8 @@ public class TreeDeviceViewFieldDetector {
           targetRegionGroup,
           false,
           CnToDnAsyncRequestType.DETECT_TREE_DEVICE_VIEW_FIELD_TYPE,
-          ((dataNodeLocation, consensusGroupIdList) -> consensusGroupIdList));
+          ((dataNodeLocation, consensusGroupIdList) ->
+              new TDeviceViewReq(consensusGroupIdList, Arrays.asList(path.getNodes()))));
     }
 
     @Override
