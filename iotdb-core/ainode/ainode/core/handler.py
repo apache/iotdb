@@ -16,14 +16,14 @@
 # under the License.
 #
 
-from iotdb.ainode.manager.cluster_manager import ClusterManager
-from iotdb.ainode.manager.inference_manager import InferenceManager
-from iotdb.ainode.manager.model_manager import ModelManager
-from iotdb.thrift.ainode import IAINodeRPCService
-from iotdb.thrift.ainode.ttypes import (TDeleteModelReq, TRegisterModelReq,
-                                        TAIHeartbeatReq, TInferenceReq, TRegisterModelResp, TInferenceResp,
-                                        TAIHeartbeatResp)
-from iotdb.thrift.common.ttypes import TSStatus
+from ainode.core.manager.cluster_manager import ClusterManager
+from ainode.core.manager.inference_manager import InferenceManager
+from ainode.core.manager.model_manager import ModelManager
+from ainode.thrift.ainode import IAINodeRPCService
+from ainode.thrift.ainode.ttypes import (TDeleteModelReq, TRegisterModelReq,
+                                         TAIHeartbeatReq, TInferenceReq, TRegisterModelResp, TInferenceResp,
+                                         TAIHeartbeatResp, TTrainingReq)
+from ainode.thrift.common.ttypes import TSStatus
 
 
 class AINodeRPCServiceHandler(IAINodeRPCService.Iface):
@@ -41,3 +41,6 @@ class AINodeRPCServiceHandler(IAINodeRPCService.Iface):
 
     def getAIHeartbeat(self, req: TAIHeartbeatReq) -> TAIHeartbeatResp:
         return ClusterManager.get_heart_beat(req)
+
+    def createTrainingTask(self, req: TTrainingReq) -> TSStatus:
+        pass

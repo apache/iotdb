@@ -330,7 +330,7 @@ public class IoTDBStatement implements Statement {
     }
 
     if (execResp.isSetTableModel()) {
-      connection.changeDefaultSqlDialect(execResp.tableModel ? TABLE : TREE);
+      connection.mayChangeDefaultSqlDialect(execResp.tableModel ? TABLE : TREE);
     }
 
     if (execResp.isSetColumns()) {

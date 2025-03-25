@@ -987,6 +987,7 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
       return;
     }
 
+    Coordinator.getInstance().getAccessControl().checkCanCreateDatabase(username, database);
     final TDatabaseSchema schema = new TDatabaseSchema(new TDatabaseSchema(database));
     schema.setIsTableModel(true);
 

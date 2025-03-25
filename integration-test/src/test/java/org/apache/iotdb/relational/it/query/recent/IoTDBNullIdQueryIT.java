@@ -523,6 +523,18 @@ public class IoTDBNullIdQueryIT {
     }
   }
 
+  @Test
+  public void setSqlDialectContextCleanTest() throws SQLException {
+    try (Connection userCon = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        Statement userStmt = userCon.createStatement()) {
+      userStmt.execute("create database test1");
+      userStmt.execute("use test1");
+      userStmt.execute("set sql_dialect=tree");
+      assertCurrentSqlDialect(true, userStmt);
+      userStmt.execute("insert into root.db(time,s1) values (0,1), (1, 3), (2,5)");
+    }
+  }
+
   public static void assertCurrentSqlDialect(boolean expectedTree, Statement statement)
       throws SQLException {
     ResultSet resultSet = statement.executeQuery("show current_sql_dialect");

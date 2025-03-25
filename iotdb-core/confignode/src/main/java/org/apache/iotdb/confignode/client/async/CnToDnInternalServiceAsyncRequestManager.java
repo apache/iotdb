@@ -381,6 +381,11 @@ public class CnToDnInternalServiceAsyncRequestManager
             client.submitTestConnectionTask(
                 (TNodeLocations) req, (SubmitTestConnectionTaskRPCHandler) handler));
     actionMapBuilder.put(
+        CnToDnAsyncRequestType.SUBMIT_TEST_DN_INTERNAL_CONNECTION_TASK,
+        (req, client, handler) ->
+            client.submitInternalTestConnectionTask(
+                (TNodeLocations) req, (SubmitTestConnectionTaskRPCHandler) handler));
+    actionMapBuilder.put(
         CnToDnAsyncRequestType.TEST_CONNECTION,
         (req, client, handler) ->
             client.testConnectionEmptyRPC((DataNodeTSStatusRPCHandler) handler));
