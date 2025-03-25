@@ -288,13 +288,6 @@ public interface IConfigTaskExecutor {
 
   TThrottleQuotaResp getThrottleQuota();
 
-  SettableFuture<ConfigTaskResult> createModel(
-      CreateModelStatement createModelStatement, MPPQueryContext context);
-
-  SettableFuture<ConfigTaskResult> dropModel(String modelName);
-
-  SettableFuture<ConfigTaskResult> showModels(String modelName);
-
   TPipeTransferResp handleTransferConfigPlan(String clientId, TPipeTransferReq req);
 
   void handlePipeConfigClientExit(String clientId);
@@ -413,4 +406,24 @@ public interface IConfigTaskExecutor {
   SettableFuture<ConfigTaskResult> showCurrentDatabase(@Nullable String currentDatabase);
 
   SettableFuture<ConfigTaskResult> showCurrentTimestamp();
+
+  // =============================== AI =========================================
+  SettableFuture<ConfigTaskResult> createModel(
+      CreateModelStatement createModelStatement, MPPQueryContext context);
+
+  SettableFuture<ConfigTaskResult> dropModel(String modelName);
+
+  SettableFuture<ConfigTaskResult> showModels(String modelName);
+
+  SettableFuture<ConfigTaskResult> createTraining(
+      String modelId,
+      String modelType,
+      boolean isTableModel,
+      Map<String, String> parameters,
+      boolean useAllData,
+      List<List<Long>> timeRanges,
+      String existingModelId,
+      @Nullable List<String> tableList,
+      @Nullable List<String> databaseList,
+      @Nullable List<String> pathList);
 }

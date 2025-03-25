@@ -120,6 +120,14 @@ public class ModelInformation {
     return modelName;
   }
 
+  public void setInputLength(int length) {
+    inputShape[0] = length;
+  }
+
+  public void setOutputLength(int length) {
+    outputShape[0] = length;
+  }
+
   // calculation modelType and outputColumn metadata for different built-in models
   public void setInputColumnSize(int size) {
     inputShape[1] = size;
@@ -127,11 +135,16 @@ public class ModelInformation {
       outputShape[1] = size;
     } else if (modelType == ModelType.BUILT_IN_ANOMALY_DETECTION) {
       outputShape[1] = 1;
+    } else {
+      outputShape[1] = size;
     }
     if (modelType == ModelType.BUILT_IN_FORECAST) {
       buildOutputDataTypeForBuiltInModel(TSDataType.DOUBLE, outputShape[1]);
     } else if (modelType == ModelType.BUILT_IN_ANOMALY_DETECTION) {
       buildOutputDataTypeForBuiltInModel(TSDataType.INT32, outputShape[1]);
+    } else {
+      buildOutputDataTypeForBuiltInModel(TSDataType.FLOAT, outputShape[1]);
+      buildInputDataTypeForBuiltInModel(TSDataType.FLOAT, inputShape[1]);
     }
   }
 
@@ -143,6 +156,13 @@ public class ModelInformation {
     outputDataType = new TSDataType[num];
     for (int i = 0; i < num; i++) {
       outputDataType[i] = tsDataType;
+    }
+  }
+
+  private void buildInputDataTypeForBuiltInModel(TSDataType tsDataType, int num) {
+    inputDataType = new TSDataType[num];
+    for (int i = 0; i < num; i++) {
+      inputDataType[i] = tsDataType;
     }
   }
 

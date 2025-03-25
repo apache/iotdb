@@ -21,7 +21,7 @@ from enum import Enum
 import numpy as np
 import pandas as pd
 
-from iotdb.ainode.exception import BadConfigValueError
+from ainode.core.exception import BadConfigValueError
 
 
 class TSDataType(Enum):
@@ -143,7 +143,7 @@ def convert_to_df(name_list, type_list, name_index, binary_list):
             time_column_values, np.dtype(np.longlong).newbyteorder(">")
         )
         if time_array.dtype.byteorder == ">":
-            time_array = time_array.byteswap().newbyteorder("<")
+            time_array = time_array.byteswap().view(time_array.dtype.newbyteorder("<"))
 
         if result[TIMESTAMP_STR] is None:
             result[TIMESTAMP_STR] = time_array
@@ -198,7 +198,7 @@ def convert_to_df(name_list, type_list, name_index, binary_list):
                 raise RuntimeError("unsupported data type {}.".format(data_type))
 
             if data_array.dtype.byteorder == ">":
-                data_array = data_array.byteswap().newbyteorder("<")
+                data_array = data_array.byteswap().view(data_array.dtype.newbyteorder("<"))
 
             null_indicator = null_indicators[location]
             if len(data_array) < total_length or (data_type == TSDataType.BOOLEAN and null_indicator is not None):

@@ -75,6 +75,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TCreatePipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateSchemaTemplateReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateTableViewReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateTopicReq;
+import org.apache.iotdb.confignode.rpc.thrift.TCreateTrainingReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateTriggerReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeConfigurationResp;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRegisterReq;
@@ -178,6 +179,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TTestOperation;
 import org.apache.iotdb.confignode.rpc.thrift.TThrottleQuotaResp;
 import org.apache.iotdb.confignode.rpc.thrift.TUnsetSchemaTemplateReq;
 import org.apache.iotdb.confignode.rpc.thrift.TUnsubscribeReq;
+import org.apache.iotdb.confignode.rpc.thrift.TUpdateModelInfoReq;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.rpc.DeepCopyRpcTransportFactory;
@@ -1285,6 +1287,18 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
   public TGetModelInfoResp getModelInfo(TGetModelInfoReq req) throws TException {
     return executeRemoteCallWithRetry(
         () -> client.getModelInfo(req), resp -> !updateConfigNodeLeader(resp.getStatus()));
+  }
+
+  @Override
+  public TSStatus updateModelInfo(TUpdateModelInfoReq req) throws TException {
+    return executeRemoteCallWithRetry(
+        () -> client.updateModelInfo(req), status -> !updateConfigNodeLeader(status));
+  }
+
+  @Override
+  public TSStatus createTraining(TCreateTrainingReq req) throws TException {
+    return executeRemoteCallWithRetry(
+        () -> client.createTraining(req), status -> !updateConfigNodeLeader(status));
   }
 
   @Override

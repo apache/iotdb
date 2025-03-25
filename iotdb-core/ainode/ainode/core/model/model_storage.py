@@ -24,14 +24,13 @@ import torch
 import torch._dynamo
 from pylru import lrucache
 
-from iotdb.ainode.config import AINodeDescriptor
-from iotdb.ainode.constant import (DEFAULT_MODEL_FILE_NAME,
-                                   DEFAULT_CONFIG_FILE_NAME)
-from iotdb.ainode.exception import ModelNotExistError
-from iotdb.ainode.log import Logger
-from iotdb.ainode.model.model_factory import fetch_model_by_uri
-from iotdb.ainode.util.lock import ModelLockPool
-
+from ainode.core.config import AINodeDescriptor
+from ainode.core.constant import (DEFAULT_MODEL_FILE_NAME,
+                                  DEFAULT_CONFIG_FILE_NAME)
+from ainode.core.exception import ModelNotExistError
+from ainode.core.log import Logger
+from ainode.core.model.model_factory import fetch_model_by_uri
+from ainode.core.util.lock import ModelLockPool
 logger = Logger()
 
 
