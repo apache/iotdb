@@ -567,6 +567,7 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
       return;
     }
 
+    accessControl.checkCanCreateDatabase(context.getSession().getUserName(), database);
     final CreateDBTask task =
         new CreateDBTask(new TDatabaseSchema(database).setIsTableModel(true), true);
     try {
