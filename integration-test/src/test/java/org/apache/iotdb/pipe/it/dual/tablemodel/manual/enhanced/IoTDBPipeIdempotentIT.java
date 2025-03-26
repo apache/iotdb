@@ -61,7 +61,7 @@ public class IoTDBPipeIdempotentIT extends AbstractPipeTableModelDualManualIT {
   @Test
   public void testCreateTableViewIdempotent() throws Exception {
     testTableConfigIdempotent(
-        Collections.emptyList(), "create table view test() as root.a.** restrict");
+        Collections.emptyList(), "create table view test(s1 field int32) as root.a.** restrict");
   }
 
   @Test
@@ -73,7 +73,7 @@ public class IoTDBPipeIdempotentIT extends AbstractPipeTableModelDualManualIT {
   @Test
   public void testAlterViewAddColumnIdempotent() throws Exception {
     testTableConfigIdempotent(
-        Collections.singletonList("create table view test() as root.a.** restrict"),
+        Collections.singletonList("create table view test(s1 field int32) as root.a.** restrict"),
         "alter view test add column a tag");
   }
 
@@ -87,7 +87,7 @@ public class IoTDBPipeIdempotentIT extends AbstractPipeTableModelDualManualIT {
   @Test
   public void testAlterViewSetPropertiesIdempotent() throws Exception {
     testTableConfigIdempotent(
-        Collections.singletonList("create table view test() as root.a.** restrict"),
+        Collections.singletonList("create table view test(s1 field int32) as root.a.** restrict"),
         "alter view test set properties ttl=100");
   }
 
@@ -101,7 +101,8 @@ public class IoTDBPipeIdempotentIT extends AbstractPipeTableModelDualManualIT {
   @Test
   public void testAlterViewDropColumnIdempotent() throws Exception {
     testTableConfigIdempotent(
-        Collections.singletonList("create table view test(a tag) as root.a.** restrict"),
+        Collections.singletonList(
+            "create table view test(a tag, s1 field int32) as root.a.** restrict"),
         "alter view test drop column a");
   }
 
@@ -113,8 +114,23 @@ public class IoTDBPipeIdempotentIT extends AbstractPipeTableModelDualManualIT {
   @Test
   public void testDropViewIdempotent() throws Exception {
     testTableConfigIdempotent(
-        Collections.singletonList("create table view test() as root.a.** restrict"),
+        Collections.singletonList("create table view test(s1 field int32) as root.a.** restrict"),
         "drop view test");
+  }
+
+  @Test
+  public void testRenameViewColumnIdempotent() throws Exception {
+    testTableConfigIdempotent(
+        Collections.singletonList(
+            "create table view test(a tag, s1 field int32) as root.a.** restrict"),
+        "alter view test rename column a to b");
+  }
+
+  @Test
+  public void testRenameViewIdempotent() throws Exception {
+    testTableConfigIdempotent(
+        Collections.singletonList("create table view test(s1 field int32) as root.a.** restrict"),
+        "alter view test rename to test1");
   }
 
   @Test
