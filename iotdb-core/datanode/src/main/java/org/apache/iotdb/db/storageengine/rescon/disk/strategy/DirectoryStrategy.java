@@ -23,8 +23,6 @@ import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.utils.JVMCommonUtils;
 import org.apache.iotdb.db.exception.DiskSpaceInsufficientException;
 
-import org.apache.tsfile.fileSystem.FSType;
-import org.apache.tsfile.utils.FSUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -51,8 +49,7 @@ public abstract class DirectoryStrategy {
   public void setFolders(List<String> folders) throws DiskSpaceInsufficientException {
     boolean hasSpace = false;
     for (String folder : folders) {
-      if (FSUtils.getFSType(folder) == FSType.LOCAL && JVMCommonUtils.hasSpace(folder)
-          || FSUtils.getFSType(folder) == FSType.OBJECT_STORAGE) {
+      if (JVMCommonUtils.hasSpace(folder)) {
         hasSpace = true;
         break;
       }
