@@ -69,7 +69,11 @@ public class TreeDeviceViewFieldDetector {
 
   public TSStatus detectMissingFieldTypes() {
     if (table.getFieldNum() == 0) {
-      new TreeDeviceViewFieldDetectionTaskExecutor(configManager, getLatestSchemaRegionMap())
+      new TreeDeviceViewFieldDetectionTaskExecutor(
+              configManager,
+              getLatestSchemaRegionMap(),
+              table.getIdNums(),
+              TreeViewSchema.isRestrict(table))
           .execute();
       if (result.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         return result.getStatus();
@@ -81,18 +85,23 @@ public class TreeDeviceViewFieldDetector {
                   table.addColumnSchema(
                       new FieldColumnSchema(field, TSDataType.getTsDataType(type))));
     } else {
-      final List<String> names =
+      final Set<String> names =
           table.getColumnList().stream()
               .filter(
                   columnSchema ->
                       columnSchema instanceof FieldColumnSchema
                           && columnSchema.getDataType() == TSDataType.UNKNOWN)
               .map(TsTableColumnSchema::getColumnName)
-              .collect(Collectors.toList());
+              .collect(Collectors.toSet());
       if (names.isEmpty()) {
         return StatusUtils.OK;
       }
-      new TreeDeviceViewFieldDetectionTaskExecutor(configManager, getLatestSchemaRegionMap())
+      new TreeDeviceViewFieldDetectionTaskExecutor(
+              configManager,
+              getLatestSchemaRegionMap(),
+              table.getIdNums(),
+              TreeViewSchema.isRestrict(table),
+              names)
           .execute();
       if (result.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         return result.getStatus();
@@ -123,14 +132,34 @@ public class TreeDeviceViewFieldDetector {
 
     protected TreeDeviceViewFieldDetectionTaskExecutor(
         final ConfigManager configManager,
-        final Map<TConsensusGroupId, TRegionReplicaSet> targetRegionGroup) {
+        final Map<TConsensusGroupId, TRegionReplicaSet> targetRegionGroup,
+        final int tagNumber,
+        final boolean restrict) {
       super(
           configManager,
           targetRegionGroup,
           false,
           CnToDnAsyncRequestType.DETECT_TREE_DEVICE_VIEW_FIELD_TYPE,
           ((dataNodeLocation, consensusGroupIdList) ->
-              new TDeviceViewReq(consensusGroupIdList, Arrays.asList(path.getNodes()))));
+              new TDeviceViewReq(
+                  consensusGroupIdList, Arrays.asList(path.getNodes()), tagNumber, restrict)));
+    }
+
+    protected TreeDeviceViewFieldDetectionTaskExecutor(
+        final ConfigManager configManager,
+        final Map<TConsensusGroupId, TRegionReplicaSet> targetRegionGroup,
+        final int tagNumber,
+        final boolean restrict,
+        final Set<String> measurements) {
+      super(
+          configManager,
+          targetRegionGroup,
+          false,
+          CnToDnAsyncRequestType.DETECT_TREE_DEVICE_VIEW_FIELD_TYPE,
+          ((dataNodeLocation, consensusGroupIdList) ->
+              new TDeviceViewReq(
+                      consensusGroupIdList, Arrays.asList(path.getNodes()), tagNumber, restrict)
+                  .setRequiredMeasurements(measurements)));
     }
 
     @Override

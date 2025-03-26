@@ -407,6 +407,9 @@ struct TSchemaRegionAttributeInfo {
 struct TDeviceViewReq {
   1: required list<common.TConsensusGroupId> regionIds
   2: required list<string> prefixPattern
+  3: required i32 tagNumber
+  4: required bool restrict
+  5: optional set<string> requiredMeasurements
 }
 
 struct TDeviceViewResp {
