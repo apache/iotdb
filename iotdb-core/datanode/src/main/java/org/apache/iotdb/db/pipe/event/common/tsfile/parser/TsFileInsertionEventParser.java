@@ -39,6 +39,9 @@ public abstract class TsFileInsertionEventParser implements AutoCloseable {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(TsFileInsertionEventParser.class);
 
+  protected final String pipeName;
+  protected final long creationTime;
+
   protected final TreePattern treePattern; // used to filter data
   protected final TablePattern tablePattern; // used to filter data
   protected final GlobalTimeExpression timeFilterExpression; // used to filter data
@@ -48,17 +51,24 @@ public abstract class TsFileInsertionEventParser implements AutoCloseable {
   protected final PipeTaskMeta pipeTaskMeta; // used to report progress
   protected final PipeInsertionEvent sourceEvent; // used to report progress
 
+  protected final long initialTimeNano = System.nanoTime();
+
   protected final PipeMemoryBlock allocatedMemoryBlockForTablet;
 
   protected TsFileSequenceReader tsFileSequenceReader;
 
   protected TsFileInsertionEventParser(
+      final String pipeName,
+      final long creationTime,
       final TreePattern treePattern,
       final TablePattern tablePattern,
       final long startTime,
       final long endTime,
       final PipeTaskMeta pipeTaskMeta,
       final PipeInsertionEvent sourceEvent) {
+    this.pipeName = pipeName;
+    this.creationTime = creationTime;
+
     this.treePattern = treePattern;
     this.tablePattern = tablePattern;
     timeFilterExpression =
@@ -83,6 +93,14 @@ public abstract class TsFileInsertionEventParser implements AutoCloseable {
 
   @Override
   public void close() {
+    try {
+      if (pipeName != null) {
+        // report time usage
+      }
+    } catch (final Exception e) {
+      LOGGER.warn("Failed to report time usage for parsing tsfile for pipe {}", pipeName, e);
+    }
+
     try {
       if (tsFileSequenceReader != null) {
         tsFileSequenceReader.close();
