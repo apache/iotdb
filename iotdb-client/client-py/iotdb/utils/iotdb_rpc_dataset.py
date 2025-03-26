@@ -242,11 +242,8 @@ class IoTDBRpcDataSet(object):
 
     def result_set_to_pandas(self):
         result = {}
-        has_pd_series = []
         for i in range(len(self.__column_index_2_tsblock_column_index_list)):
             result[i] = []
-            has_pd_series.append(False)
-        total_length = 0
         while self._has_next_result_set():
             time_array, column_arrays, null_indicators, array_length = deserialize(
                 memoryview(self.__query_result[self.__query_result_index])
@@ -260,7 +257,6 @@ class IoTDBRpcDataSet(object):
                     )
                 result[0].append(time_array)
 
-            total_length += array_length
             for i, location in enumerate(
                 self.__column_index_2_tsblock_column_index_list
             ):
@@ -284,7 +280,7 @@ class IoTDBRpcDataSet(object):
                     data_array = np.array([x.decode("utf-8") for x in column_array])
                 # DATE
                 elif data_type == 9:
-                    data_array = np.array([parse_int_to_date(x) for x in column_array])
+                    data_array = pd.Series(column_array).apply(parse_int_to_date)
                 else:
                     raise RuntimeError("unsupported data type {}.".format(data_type))
 
@@ -324,13 +320,10 @@ class IoTDBRpcDataSet(object):
 
                     if data_type == 1:
                         tmp_array = pd.Series(tmp_array).astype("Int32")
-                        has_pd_series[i] = True
                     elif data_type == 2 or data_type == 8:
                         tmp_array = pd.Series(tmp_array).astype("Int64")
-                        has_pd_series[i] = True
                     elif data_type == 0:
                         tmp_array = pd.Series(tmp_array).astype("boolean")
-                        has_pd_series[i] = True
 
                     data_array = tmp_array
 
@@ -339,13 +332,16 @@ class IoTDBRpcDataSet(object):
         for k, v in result.items():
             if v is None or len(v) < 1 or v[0] is None:
                 result[k] = []
-            elif not has_pd_series[k]:
-                res = np.empty(total_length, dtype=v[0].dtype)
-                np.concatenate(v, axis=0, out=res)
-                result[k] = res
-            else:
+            elif v[0].dtype == "Int32":
                 v = [x if isinstance(x, pd.Series) else pd.Series(x) for x in v]
-                result[k] = pd.concat(v, ignore_index=True)
+                result[k] = pd.concat(v, ignore_index=True).astype("Int32")
+            elif v[0].dtype == "Int64":
+                v = [x if isinstance(x, pd.Series) else pd.Series(x) for x in v]
+                result[k] = pd.concat(v, ignore_index=True).astype("Int64")
+            elif v[0].dtype == bool:
+                result[k] = pd.Series(np.concatenate(v, axis=0)).astype("boolean")
+            else:
+                result[k] = np.concatenate(v, axis=0)
 
         df = pd.DataFrame(result)
         df.columns = self.__column_name_list
