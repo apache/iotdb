@@ -74,7 +74,7 @@ def read_from_buffer(buffer, size):
 def read_column_types(buffer, value_column_count):
     data_types = np.frombuffer(buffer, dtype=np.uint8, count=value_column_count)
     new_buffer = buffer[value_column_count:]
-    if not np.all(np.isin(data_types, [0, 1, 2, 3, 4, 5])):
+    if not np.all(np.isin(data_types, (0, 1, 2, 3, 4, 5))):
         raise Exception("Invalid data type encountered: " + str(data_types))
     return data_types, new_buffer
 
