@@ -614,7 +614,9 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
             ctx.comment() == null
                 ? null
                 : ((StringLiteral) visit(ctx.comment().string())).getValue(),
-            lowerIdentifier((Identifier) visit(ctx.original_measurement)))
+            Objects.nonNull(ctx.FROM())
+                ? lowerIdentifier((Identifier) visit(ctx.original_measurement))
+                : null)
         : new ColumnDefinition(
             getLocation(ctx),
             lowerIdentifier((Identifier) visit(ctx.identifier().get(0))),

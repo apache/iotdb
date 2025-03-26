@@ -330,11 +330,15 @@ public class TableHeaderSchemaValidator {
             "Create table or add column statement shall not specify column category TIME");
       case FIELD:
         schema =
-            new FieldColumnSchema(
-                columnName,
-                dataType,
-                getDefaultEncoding(dataType),
-                TSFileDescriptor.getInstance().getConfig().getCompressor());
+            dataType != TSDataType.UNKNOWN
+                ? new FieldColumnSchema(
+                    columnName,
+                    dataType,
+                    getDefaultEncoding(dataType),
+                    TSFileDescriptor.getInstance().getConfig().getCompressor())
+                // Unknown appears only for tree view field when the type needs auto-detection
+                // Skip encoding & compressors because view query does not need these
+                : new FieldColumnSchema(columnName, dataType);
         if (Objects.nonNull(from)) {
           schema.getProps().put(TreeViewSchema.ORIGINAL_NAME, from);
         }
