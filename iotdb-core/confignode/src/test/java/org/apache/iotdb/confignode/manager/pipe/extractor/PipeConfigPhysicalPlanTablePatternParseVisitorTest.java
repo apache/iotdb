@@ -33,12 +33,17 @@ import org.apache.iotdb.confignode.consensus.request.write.table.AddTableColumnP
 import org.apache.iotdb.confignode.consensus.request.write.table.CommitDeleteColumnPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.CommitDeleteTablePlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.RenameTableColumnPlan;
+import org.apache.iotdb.confignode.consensus.request.write.table.RenameTablePlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.SetTableColumnCommentPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.SetTableCommentPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.SetTablePropertiesPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.view.AddTableViewColumnPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.view.CommitDeleteViewColumnPlan;
+import org.apache.iotdb.confignode.consensus.request.write.table.view.CommitDeleteViewPlan;
+import org.apache.iotdb.confignode.consensus.request.write.table.view.RenameViewColumnPlan;
+import org.apache.iotdb.confignode.consensus.request.write.table.view.RenameViewPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.view.SetViewCommentPlan;
+import org.apache.iotdb.confignode.consensus.request.write.table.view.SetViewPropertiesPlan;
 import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
 
 import org.junit.Assert;
@@ -73,7 +78,7 @@ public class PipeConfigPhysicalPlanTablePatternParseVisitorTest {
   }
 
   @Test
-  public void testCreateTable() {
+  public void testCreateTableOrView() {
     testInput(
         new PipeCreateTableOrViewPlan("db1", new TsTable("ab")),
         new PipeCreateTableOrViewPlan("db1", new TsTable("ac")),
@@ -105,6 +110,14 @@ public class PipeConfigPhysicalPlanTablePatternParseVisitorTest {
   }
 
   @Test
+  public void testSetViewProperties() {
+    testInput(
+        new SetViewPropertiesPlan("db1", "ab", Collections.singletonMap("ttl", "2")),
+        new SetViewPropertiesPlan("db1", "ac", Collections.singletonMap("ttl", "2")),
+        new SetViewPropertiesPlan("da", "ac", Collections.singletonMap("ttl", "2")));
+  }
+
+  @Test
   public void testCommitDeleteColumn() {
     testInput(
         new CommitDeleteColumnPlan("db1", "ab", "a"),
@@ -129,11 +142,43 @@ public class PipeConfigPhysicalPlanTablePatternParseVisitorTest {
   }
 
   @Test
+  public void testRenameViewColumn() {
+    testInput(
+        new RenameViewColumnPlan("db1", "ab", "old", "new"),
+        new RenameViewColumnPlan("db1", "ac", "old", "new"),
+        new RenameViewColumnPlan("da", "ac", "old", "new"));
+  }
+
+  @Test
   public void testCommitDeleteTable() {
     testInput(
         new CommitDeleteTablePlan("db1", "ab"),
         new CommitDeleteTablePlan("db1", "ac"),
         new CommitDeleteTablePlan("da", "ac"));
+  }
+
+  @Test
+  public void testCommitDeleteView() {
+    testInput(
+        new CommitDeleteViewPlan("db1", "ab"),
+        new CommitDeleteViewPlan("db1", "ac"),
+        new CommitDeleteViewPlan("da", "ac"));
+  }
+
+  @Test
+  public void testRenameTable() {
+    testInput(
+        new RenameTablePlan("db1", "ab", "ac"),
+        new RenameTablePlan("db1", "ac", "ab"),
+        new RenameTablePlan("da", "ac", "ab"));
+  }
+
+  @Test
+  public void testRenameView() {
+    testInput(
+        new RenameViewPlan("db1", "ab", "ac"),
+        new RenameViewPlan("db1", "ac", "ab"),
+        new RenameViewPlan("da", "ac", "ab"));
   }
 
   @Test
