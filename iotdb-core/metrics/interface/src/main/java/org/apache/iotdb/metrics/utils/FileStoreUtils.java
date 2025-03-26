@@ -62,4 +62,27 @@ public class FileStoreUtils {
     }
     return fileStore;
   }
+
+  public static void main(String[] args) {
+     printFile("/Applications");
+     printFile("/Users");
+     printFile("/Users/root");
+  }
+
+  public static void printFile(String path) {
+    try {
+      // 获取文件存储对象（FileStore）
+      FileStore fileStore = FileStoreUtils.getFileStore(path);
+
+      // 输出文件所在磁盘的详细信息
+      System.out.println("文件所在的磁盘: " + fileStore);
+      System.out.println("文件系统类型: " + fileStore.type());
+      System.out.println("可用空间: " + fileStore.getUsableSpace());
+      System.out.println("总空间: " + fileStore.getTotalSpace());
+      System.out.println("是否只读: " + fileStore.isReadOnly());
+    } catch (IOException e) {
+      e.printStackTrace();
+    }
+  }
+
 }
