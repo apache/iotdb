@@ -76,7 +76,7 @@ public class TableFunctionOperator implements ProcessOperator {
   private ListenableFuture<?> isBlocked;
   private boolean finished = false;
 
-  private Queue<TsBlock> resultTsBlocks;
+  private final Queue<TsBlock> resultTsBlocks;
 
   public TableFunctionOperator(
       OperatorContext operatorContext,
