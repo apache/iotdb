@@ -162,7 +162,7 @@ public class IoTDBDataRegionAsyncConnector extends IoTDBConnector {
   }
 
   @Override
-  public void heartbeat() {
+  public void heartbeat() throws Exception {
     syncConnector.heartbeat();
   }
 
@@ -475,11 +475,11 @@ public class IoTDBDataRegionAsyncConnector extends IoTDBConnector {
         final Event peekedEvent = retryEventQueue.peek();
 
         if (peekedEvent instanceof PipeInsertNodeTabletInsertionEvent) {
-          syncConnector.transfer((PipeInsertNodeTabletInsertionEvent) peekedEvent);
+          retryTransfer((PipeInsertNodeTabletInsertionEvent) peekedEvent);
         } else if (peekedEvent instanceof PipeRawTabletInsertionEvent) {
-          syncConnector.transfer((PipeRawTabletInsertionEvent) peekedEvent);
+          retryTransfer((PipeRawTabletInsertionEvent) peekedEvent);
         } else if (peekedEvent instanceof PipeTsFileInsertionEvent) {
-          syncConnector.transfer((PipeTsFileInsertionEvent) peekedEvent);
+          retryTransfer((PipeTsFileInsertionEvent) peekedEvent);
         } else {
           LOGGER.warn(
               "IoTDBThriftAsyncConnector does not support transfer generic event: {}.",
@@ -528,6 +528,7 @@ public class IoTDBDataRegionAsyncConnector extends IoTDBConnector {
       } catch (final Exception e) {
         addFailureEventToRetryQueue(tabletInsertionEvent);
       }
+      return;
     }
 
     // Tablet batch mode is not enabled, so we need to transfer the event directly.
