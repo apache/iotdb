@@ -49,6 +49,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
 public class TreeDeviceViewFieldDetector {
@@ -58,7 +59,7 @@ public class TreeDeviceViewFieldDetector {
   private final PartialPath path;
   private final TsTable table;
 
-  private TDeviceViewResp result;
+  private TDeviceViewResp result = new TDeviceViewResp(StatusUtils.OK, new ConcurrentHashMap<>());
 
   public TreeDeviceViewFieldDetector(final ConfigManager configManager, final TsTable table) {
     this.configManager = configManager;
