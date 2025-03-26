@@ -97,7 +97,8 @@ public abstract class TsFileInsertionEventParser implements AutoCloseable {
     try {
       if (pipeName != null) {
         PipeTsFileToTabletsMetrics.getInstance()
-            .recordTsFileToTabletTime(pipeName, System.nanoTime() - initialTimeNano);
+            .recordTsFileToTabletTime(
+                pipeName + "_" + creationTime, System.nanoTime() - initialTimeNano);
       }
     } catch (final Exception e) {
       LOGGER.warn("Failed to report time usage for parsing tsfile for pipe {}", pipeName, e);
