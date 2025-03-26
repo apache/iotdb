@@ -520,7 +520,8 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
               columnName,
               dataType,
               comment,
-              (columnDefinition instanceof ViewFieldDefinition)
+              columnDefinition instanceof ViewFieldDefinition
+                      && Objects.nonNull(((ViewFieldDefinition) columnDefinition).getFrom())
                   ? ((ViewFieldDefinition) columnDefinition).getFrom().getValue()
                   : null));
     }
@@ -596,7 +597,8 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
                 definition.getName().getValue(),
                 getDataType(definition.getType()),
                 definition.getComment(),
-                (definition instanceof ViewFieldDefinition)
+                definition instanceof ViewFieldDefinition
+                        && Objects.nonNull(((ViewFieldDefinition) definition).getFrom())
                     ? ((ViewFieldDefinition) definition).getFrom().getValue()
                     : null)),
         context.getQueryId().getId(),

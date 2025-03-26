@@ -605,7 +605,7 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
 
   @Override
   public Node visitViewColumnDefinition(final RelationalSqlParser.ViewColumnDefinitionContext ctx) {
-    return Objects.nonNull(ctx.FROM())
+    return Objects.nonNull(ctx.FROM()) || Objects.nonNull(ctx.FIELD())
         ? new ViewFieldDefinition(
             getLocation(ctx),
             lowerIdentifier((Identifier) visit(ctx.identifier().get(0))),
