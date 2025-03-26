@@ -1073,7 +1073,6 @@ public class IoTDBConfig {
           + CONSENSUS_FOLDER_NAME
           + File.separator
           + DELETION_FOLDER_NAME;
-  private boolean enableMultiDisksAwareLoadForIoTV2 = false;
 
   /** Load related */
   private double maxAllocateMemoryRatioForLoad = 0.8;
@@ -1129,11 +1128,13 @@ public class IoTDBConfig {
 
   private boolean loadActiveListeningVerifyEnable = true;
 
+  private String loadDiskSelectStrategy;
+
+  private String loadDiskSelectStrategyForIoTV2AndPipe;
+
   /** Pipe related */
   /** initialized as empty, updated based on the latest `systemDir` during querying */
   private String[] pipeReceiverFileDirs = new String[0];
-
-  private boolean enableMultiDisksAwareLoadForPipe = false;
 
   /** Resource control */
   private boolean quotaEnable = false;
@@ -3852,6 +3853,23 @@ public class IoTDBConfig {
     this.loadActiveListeningVerifyEnable = loadActiveListeningVerifyEnable;
   }
 
+  public String getLoadDiskSelectStrategy() {
+    return loadDiskSelectStrategy;
+  }
+
+  public void setLoadDiskSelectStrategy(String loadDiskSelectStrategy) {
+    this.loadDiskSelectStrategy = loadDiskSelectStrategy;
+  }
+
+  public String getLoadDiskSelectStrategyForIoTV2AndPipe() {
+    return loadDiskSelectStrategyForIoTV2AndPipe;
+  }
+
+  public void setLoadDiskSelectStrategyForIoTV2AndPipe(
+      String loadDiskSelectStrategyForIoTV2AndPipe) {
+    this.loadDiskSelectStrategyForIoTV2AndPipe = loadDiskSelectStrategyForIoTV2AndPipe;
+  }
+
   public long getLoadActiveListeningCheckIntervalSeconds() {
     return loadActiveListeningCheckIntervalSeconds;
   }
@@ -3915,14 +3933,6 @@ public class IoTDBConfig {
     this.pipeReceiverFileDirs = pipeReceiverFileDirs;
   }
 
-  public boolean isEnableMultiDisksAwareLoadForPipe() {
-    return this.enableMultiDisksAwareLoadForPipe;
-  }
-
-  public void setEnableMultiDisksAwareLoadForPipe(boolean enableMultiDisksAwareLoadForPipe) {
-    this.enableMultiDisksAwareLoadForPipe = enableMultiDisksAwareLoadForPipe;
-  }
-
   public String[] getPipeReceiverFileDirs() {
     return (Objects.isNull(this.pipeReceiverFileDirs) || this.pipeReceiverFileDirs.length == 0)
         ? new String[] {systemDir + File.separator + "pipe" + File.separator + "receiver"}
@@ -3946,14 +3956,6 @@ public class IoTDBConfig {
               + "receiver"
         }
         : this.iotConsensusV2ReceiverFileDirs;
-  }
-
-  public boolean isEnableMultiDisksAwareLoadForIoTV2() {
-    return this.enableMultiDisksAwareLoadForIoTV2;
-  }
-
-  public void setEnableMultiDisksAwareLoadForIoTV2(boolean enableMultiDisksAwareLoadForIoTV2) {
-    this.enableMultiDisksAwareLoadForIoTV2 = enableMultiDisksAwareLoadForIoTV2;
   }
 
   public boolean isQuotaEnable() {

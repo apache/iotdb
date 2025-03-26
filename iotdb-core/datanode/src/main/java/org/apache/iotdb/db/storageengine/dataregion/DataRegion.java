@@ -23,7 +23,6 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
-import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.file.SystemFileFactory;
@@ -125,6 +124,9 @@ import org.apache.iotdb.db.storageengine.dataregion.wal.recover.file.UnsealedTsF
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALMode;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.listener.WALFlushListener;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.listener.WALRecoverListener;
+import org.apache.iotdb.db.storageengine.load.disk.ILoadDiskSelector;
+import org.apache.iotdb.db.storageengine.load.disk.MinIOSelector;
+import org.apache.iotdb.db.storageengine.load.disk.StorageBalanceSelector;
 import org.apache.iotdb.db.storageengine.load.limiter.LoadTsFileRateLimiter;
 import org.apache.iotdb.db.storageengine.rescon.disk.TierManager;
 import org.apache.iotdb.db.storageengine.rescon.memory.SystemInfo;
@@ -136,7 +138,6 @@ import org.apache.iotdb.db.tools.settle.TsFileAndModSettleTool;
 import org.apache.iotdb.db.utils.CommonUtils;
 import org.apache.iotdb.db.utils.DateTimeUtils;
 import org.apache.iotdb.db.utils.ModificationUtils;
-import org.apache.iotdb.metrics.utils.FileStoreUtils;
 import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -156,7 +157,6 @@ import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
-import java.nio.file.FileStore;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.ArrayList;
@@ -328,7 +328,8 @@ public class DataRegion implements IDataRegionForQuery {
 
   private final DataRegionMetrics metrics;
 
-  private final Map<String, String> rootDisks2DataDirsMapForLoad;
+  private final ILoadDiskSelector ordinaryLoadDiskSelector;
+  private final ILoadDiskSelector pipeAndIoTV2LoadDiskSelector;
 
   /**
    * Construct a database processor.
@@ -393,29 +394,27 @@ public class DataRegion implements IDataRegionForQuery {
       recover();
     }
 
-    // init data dirs' root disks
-    this.rootDisks2DataDirsMapForLoad = new HashMap<>(config.getTierDataDirs()[0].length);
-    Arrays.stream(config.getTierDataDirs()[0])
-        .filter(Objects::nonNull)
-        .map(v -> fsFactory.getFile(v, IoTDBConstant.UNSEQUENCE_FOLDER_NAME).getPath())
-        .forEach(
-            dataDirPath -> {
-              File dataDirFile = new File(dataDirPath);
-              try {
-                FileStore fileStore = FileStoreUtils.getFileStore(dataDirFile.getCanonicalPath());
-                if (fileStore != null) {
-                  String mountPoint = fileStore.toString();
-                  this.rootDisks2DataDirsMapForLoad.put(mountPoint, dataDirPath);
-                  logger.info("Add {}'s mount point {}", dataDirPath, mountPoint);
-                } else {
-                  logger.info(
-                      "Failed to find mount point {}, skip register it to map", dataDirPath);
-                }
-              } catch (Exception e) {
-                logger.warn(
-                    "Exception occurs when reading data dir's mount point {}", dataDirPath, e);
-              }
-            });
+    switch (ILoadDiskSelector.LoadDiskSelectorType.fromValue(config.getLoadDiskSelectStrategy())) {
+      case MIN_IO_FIRST:
+        ordinaryLoadDiskSelector = new MinIOSelector();
+        break;
+      case DISK_STORAGE_BALANCE_FIRST:
+      default:
+        ordinaryLoadDiskSelector = new StorageBalanceSelector();
+    }
+
+    switch (ILoadDiskSelector.LoadDiskSelectorType.fromValue(
+        config.getLoadDiskSelectStrategyForIoTV2AndPipe())) {
+      case MIN_IO_FIRST:
+        pipeAndIoTV2LoadDiskSelector = new MinIOSelector();
+        break;
+      case EXTEND_LOAD:
+        pipeAndIoTV2LoadDiskSelector = ordinaryLoadDiskSelector;
+        break;
+      case DISK_STORAGE_BALANCE_FIRST:
+      default:
+        pipeAndIoTV2LoadDiskSelector = new StorageBalanceSelector();
+    }
 
     this.metrics = new DataRegionMetrics(this);
     MetricService.getInstance().addMetricSet(metrics);
@@ -429,8 +428,29 @@ public class DataRegion implements IDataRegionForQuery {
     this.partitionMaxFileVersions = new HashMap<>();
     partitionMaxFileVersions.put(0L, 0L);
     upgradeModFileThreadPool = null;
-    this.rootDisks2DataDirsMapForLoad = new HashMap<>();
     this.metrics = new DataRegionMetrics(this);
+
+    switch (ILoadDiskSelector.LoadDiskSelectorType.fromValue(config.getLoadDiskSelectStrategy())) {
+      case MIN_IO_FIRST:
+        ordinaryLoadDiskSelector = new MinIOSelector();
+        break;
+      case DISK_STORAGE_BALANCE_FIRST:
+      default:
+        ordinaryLoadDiskSelector = new StorageBalanceSelector();
+    }
+
+    switch (ILoadDiskSelector.LoadDiskSelectorType.fromValue(
+        config.getLoadDiskSelectStrategyForIoTV2AndPipe())) {
+      case MIN_IO_FIRST:
+        pipeAndIoTV2LoadDiskSelector = new MinIOSelector();
+        break;
+      case EXTEND_LOAD:
+        pipeAndIoTV2LoadDiskSelector = ordinaryLoadDiskSelector;
+        break;
+      case DISK_STORAGE_BALANCE_FIRST:
+      default:
+        pipeAndIoTV2LoadDiskSelector = new StorageBalanceSelector();
+    }
   }
 
   @Override
@@ -3082,50 +3102,22 @@ public class DataRegion implements IDataRegionForQuery {
       boolean isGeneratedByPipe)
       throws LoadFileException, DiskSpaceInsufficientException {
     File targetFile = null;
-    boolean needDownGradeToSequenceStrategy = true;
-    String fileDirRoot = null;
-    try {
-      fileDirRoot =
-          Optional.ofNullable(FileStoreUtils.getFileStore(tsFileToLoad.getCanonicalPath()))
-              .map(Object::toString)
-              .orElse(null);
-    } catch (Exception e) {
-      logger.warn("Exception occurs when reading target file's mount point {}", tsFileToLoad, e);
-    }
-
-    // only IoTV2 and Pipe will try to enable multi-disks awareness
-    if ((config.isEnableMultiDisksAwareLoadForIoTV2()
-            && tsFileResource.isGeneratedByPipeConsensus())
-        || (config.isEnableMultiDisksAwareLoadForPipe() && tsFileResource.isGeneratedByPipe())) {
-      if (rootDisks2DataDirsMapForLoad.containsKey(fileDirRoot)) {
-        // if there is an overlap between firDirRoot and data directories' disk roots, try to get
-        // targetFile in the same disk
-        targetFile =
-            fsFactory.getFile(
-                rootDisks2DataDirsMapForLoad.get(fileDirRoot),
-                databaseName
-                    + File.separatorChar
-                    + dataRegionId
-                    + File.separatorChar
-                    + filePartitionId
-                    + File.separator
-                    + tsFileResource.getTsFile().getName());
-
-        needDownGradeToSequenceStrategy = false;
-      }
-    }
-
-    if (needDownGradeToSequenceStrategy) {
+    if (tsFileResource.isGeneratedByPipeConsensus() || tsFileResource.isGeneratedByPipe()) {
       targetFile =
-          fsFactory.getFile(
-              TierManager.getInstance().getNextFolderForTsFile(0, false),
-              databaseName
-                  + File.separatorChar
-                  + dataRegionId
-                  + File.separatorChar
-                  + filePartitionId
-                  + File.separator
-                  + tsFileResource.getTsFile().getName());
+          pipeAndIoTV2LoadDiskSelector.getTargetFile(
+              targetFile,
+              databaseName,
+              dataRegionId,
+              filePartitionId,
+              tsFileResource.getTsFile().getName());
+    } else {
+      targetFile =
+          ordinaryLoadDiskSelector.getTargetFile(
+              targetFile,
+              databaseName,
+              dataRegionId,
+              filePartitionId,
+              tsFileResource.getTsFile().getName());
     }
 
     // var used in lambda must be final

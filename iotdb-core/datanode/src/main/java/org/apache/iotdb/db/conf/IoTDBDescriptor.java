@@ -2144,7 +2144,7 @@ public class IoTDBDescriptor {
     }
   }
 
-  private void loadLoadTsFileProps(TrimProperties properties) {
+  private void loadLoadTsFileProps(TrimProperties properties) throws IOException {
     conf.setMaxAllocateMemoryRatioForLoad(
         Double.parseDouble(
             properties.getProperty(
@@ -2247,6 +2247,17 @@ public class IoTDBDescriptor {
             properties.getProperty(
                 "load_active_listening_verify_enable",
                 Boolean.toString(conf.isLoadActiveListeningVerifyEnable()))));
+
+    conf.setLoadDiskSelectStrategy(
+        properties.getProperty(
+            "load_disk_select_strategy",
+            ConfigurationFileUtils.getConfigurationDefaultValue("load_disk_select_strategy")));
+
+    conf.setLoadDiskSelectStrategyForIoTV2AndPipe(
+        properties.getProperty(
+            "load_disk_select_strategy_for_pipe_and_iotv2",
+            ConfigurationFileUtils.getConfigurationDefaultValue(
+                "load_disk_select_strategy_for_pipe_and_iotv2")));
   }
 
   private void loadLoadTsFileHotModifiedProp(TrimProperties properties) throws IOException {
@@ -2404,12 +2415,6 @@ public class IoTDBDescriptor {
             .filter(dir -> !dir.isEmpty())
             .toArray(String[]::new));
 
-    conf.setEnableMultiDisksAwareLoadForPipe(
-        Boolean.parseBoolean(
-            properties.getProperty(
-                "enable_multi_disks_aware_load_for_pipe",
-                Boolean.toString(conf.isEnableMultiDisksAwareLoadForPipe()))));
-
     conf.setIotConsensusV2ReceiverFileDirs(
         Arrays.stream(
                 properties
@@ -2420,12 +2425,6 @@ public class IoTDBDescriptor {
                     .split(","))
             .filter(dir -> !dir.isEmpty())
             .toArray(String[]::new));
-
-    conf.setEnableMultiDisksAwareLoadForIoTV2(
-        Boolean.parseBoolean(
-            properties.getProperty(
-                "enable_multi_disks_aware_load_for_iotv2",
-                Boolean.toString(conf.isEnableMultiDisksAwareLoadForIoTV2()))));
 
     conf.setIotConsensusV2DeletionFileDir(
         properties.getProperty(
