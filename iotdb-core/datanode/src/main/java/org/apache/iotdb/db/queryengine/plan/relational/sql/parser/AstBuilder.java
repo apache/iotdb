@@ -310,7 +310,7 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
     return new Use(getLocation(ctx), lowerIdentifier((Identifier) visit(ctx.database)));
   }
 
-  private static Identifier lowerIdentifier(Identifier identifier) {
+  public static Identifier lowerIdentifier(Identifier identifier) {
     if (identifier.getLocation().isPresent()) {
       return new Identifier(
           identifier.getLocation().get(), mapIdentifier(identifier), identifier.isDelimited());
@@ -3285,7 +3285,7 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
     return Optional.ofNullable(context).map(c -> (Identifier) visit(c));
   }
 
-  private static TsTableColumnCategory getColumnCategory(final Token category) {
+  public static TsTableColumnCategory getColumnCategory(final Token category) {
     if (category == null) {
       return FIELD;
     }
