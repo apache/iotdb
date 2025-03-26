@@ -25,6 +25,7 @@ import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
 import org.apache.iotdb.db.subscription.agent.SubscriptionAgent;
 import org.apache.iotdb.db.subscription.event.SubscriptionEvent;
 import org.apache.iotdb.db.subscription.metric.SubscriptionPrefetchingQueueMetrics;
+import org.apache.iotdb.db.subscription.resource.SubscriptionDataNodeResourceManager;
 import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.rpc.subscription.config.TopicConstant;
 import org.apache.iotdb.rpc.subscription.exception.SubscriptionException;
@@ -419,17 +420,25 @@ public class SubscriptionBroker {
     final SubscriptionPrefetchingQueue prefetchingQueue =
         topicNameToPrefetchingQueue.get(topicName);
     if (Objects.isNull(prefetchingQueue)) {
-      LOGGER.warn(
-          "Subscription: prefetching queue bound to topic [{}] for consumer group [{}] does not exist",
-          topicName,
-          brokerId);
+      SubscriptionDataNodeResourceManager.log()
+          .schedule(SubscriptionBroker.class, brokerId, topicName)
+          .ifPresent(
+              l ->
+                  l.warn(
+                      "Subscription: prefetching queue bound to topic [{}] for consumer group [{}] does not exist",
+                      topicName,
+                      brokerId));
       return false;
     }
     if (prefetchingQueue.isClosed()) {
-      LOGGER.warn(
-          "Subscription: prefetching queue bound to topic [{}] for consumer group [{}] is closed",
-          topicName,
-          brokerId);
+      SubscriptionDataNodeResourceManager.log()
+          .schedule(SubscriptionBroker.class, brokerId, topicName)
+          .ifPresent(
+              l ->
+                  l.warn(
+                      "Subscription: prefetching queue bound to topic [{}] for consumer group [{}] is closed",
+                      topicName,
+                      brokerId));
       return false;
     }
     return prefetchingQueue.executePrefetch();

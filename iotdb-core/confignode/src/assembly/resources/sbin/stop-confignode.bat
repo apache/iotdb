@@ -37,6 +37,18 @@ for /f  "eol=; tokens=2,2 delims==" %%i in ('findstr /i "^cn_internal_port"
 "%config_file%"') do (
   set cn_internal_port=%%i
 )
+@REM trim the port
+:delLeft1
+if "%cn_internal_port:~0,1%"==" " (
+    set "cn_internal_port=%cn_internal_port:~1%"
+    goto delLeft1
+)
+
+:delRight1
+if "%cn_internal_port:~-1%"==" " (
+    set "cn_internal_port=%cn_internal_port:~0,-1%"
+    goto delRight1
+)
 
 if not defined cn_internal_port (
   echo "WARNING: cn_internal_port not found in the configuration file. Using default value cn_internal_port = 10710"
@@ -45,17 +57,8 @@ if not defined cn_internal_port (
 
 echo "check whether the cn_internal_port is used..., port is %cn_internal_port%"
 
-for /f  "eol=; tokens=2,2 delims==" %%i in ('findstr /i "cn_internal_address"
-"%config_file%"') do (
-  set cn_internal_address=%%i
-)
-
-if not defined cn_internal_address (
-  echo "WARNING: cn_internal_address not found in the configuration file. Using default value cn_internal_address = 127.0.0.1"
-  set cn_internal_address=127.0.0.1
-)
-
-for /f "tokens=5" %%a in ('netstat /ano ^| findstr %cn_internal_address%:%cn_internal_port% ^| findstr LISTENING ') do (
+echo %cn_internal_address%:%cn_internal_port%;
+for /f "tokens=5" %%a in ('netstat /ano ^| findstr :%cn_internal_port% ^| findstr LISTENING ') do (
   taskkill /f /pid %%a
     echo "close ConfigNode, PID:" %%a
 )

@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.planner.distribute;
 
-import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
@@ -30,8 +29,10 @@ import org.apache.iotdb.db.queryengine.common.DataNodeEndPoints;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.PlanFragmentId;
 import org.apache.iotdb.db.queryengine.execution.exchange.sink.DownStreamChannelLocation;
+import org.apache.iotdb.db.queryengine.plan.ClusterTopology;
 import org.apache.iotdb.db.queryengine.plan.analyze.QueryType;
 import org.apache.iotdb.db.queryengine.plan.planner.distribution.NodeDistribution;
+import org.apache.iotdb.db.queryengine.plan.planner.exceptions.ReplicaSetUnreachableException;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.FragmentInstance;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.PlanFragment;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.SubPlan;
@@ -43,8 +44,8 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ExchangeNode
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CountDevice;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowDevice;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Statement;
-import org.apache.iotdb.db.queryengine.plan.scheduler.FragmentInstanceDispatcherImpl;
 
+import org.apache.commons.collections4.CollectionUtils;
 import org.apache.tsfile.utils.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -76,6 +77,7 @@ public class TableModelQueryFragmentPlanner {
 
   // Record FragmentInstances dispatched to same DataNode
   private final Map<TDataNodeLocation, List<FragmentInstance>> dataNodeFIMap = new HashMap<>();
+  private final ClusterTopology topology = ClusterTopology.getInstance();
 
   private final Map<PlanNodeId, NodeDistribution> nodeDistributionMap;
 
@@ -126,6 +128,14 @@ public class TableModelQueryFragmentPlanner {
     // Get the target region for origin PlanFragment, then its instance will be distributed one
     // of them.
     TRegionReplicaSet regionReplicaSet = fragment.getTargetRegionForTableModel(nodeDistributionMap);
+    if (regionReplicaSet != null
+        && !CollectionUtils.isEmpty(regionReplicaSet.getDataNodeLocations())) {
+      regionReplicaSet = topology.getValidatedReplicaSet(regionReplicaSet);
+      if (regionReplicaSet.getDataNodeLocations().isEmpty()) {
+        throw new ReplicaSetUnreachableException(
+            fragment.getTargetRegionForTableModel(nodeDistributionMap));
+      }
+    }
 
     // Set ExecutorType and target host for the instance,
     // We need to store all the replica host in case of the scenario that the instance need to be
@@ -174,9 +184,7 @@ public class TableModelQueryFragmentPlanner {
     }
     String readConsistencyLevel =
         IoTDBDescriptor.getInstance().getConfig().getReadConsistencyLevel();
-    boolean selectLocalOrRandomDataNode =
-        "weak".equals(readConsistencyLevel)
-            || regionReplicaSet.getRegionId().getType().equals(TConsensusGroupType.SchemaRegion);
+    boolean selectRandomDataNode = "weak".equals(readConsistencyLevel);
 
     // When planning fragment onto specific DataNode, the DataNode whose endPoint is in
     // black list won't be considered because it may have connection issue now.
@@ -193,15 +201,9 @@ public class TableModelQueryFragmentPlanner {
       LOGGER.info("Available replicas: {}", availableDataNodes);
     }
     int targetIndex;
-    if (!selectLocalOrRandomDataNode || queryContext.getSession() == null) {
+    if (!selectRandomDataNode || queryContext.getSession() == null) {
       targetIndex = 0;
     } else {
-      // Always choose local dataNode first
-      for (final TDataNodeLocation location : availableDataNodes) {
-        if (FragmentInstanceDispatcherImpl.isDispatchedToLocal(location.getInternalEndPoint())) {
-          return location;
-        }
-      }
       targetIndex = (int) (queryContext.getSession().getSessionId() % availableDataNodes.size());
     }
     return availableDataNodes.get(targetIndex);

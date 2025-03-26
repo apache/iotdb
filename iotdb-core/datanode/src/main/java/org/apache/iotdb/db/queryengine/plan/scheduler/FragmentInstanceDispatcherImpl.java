@@ -81,6 +81,8 @@ public class FragmentInstanceDispatcherImpl implements IFragInstanceDispatcher {
   private final ExecutorService writeOperationExecutor;
   private final QueryType type;
   private final MPPQueryContext queryContext;
+  private final String localhostIpAddr;
+  private final int localhostInternalPort;
   private final IClientManager<TEndPoint, SyncDataNodeInternalServiceClient>
       syncInternalServiceClientManager;
   private final IClientManager<TEndPoint, AsyncDataNodeInternalServiceClient>
@@ -109,6 +111,8 @@ public class FragmentInstanceDispatcherImpl implements IFragInstanceDispatcher {
     this.writeOperationExecutor = writeOperationExecutor;
     this.syncInternalServiceClientManager = syncInternalServiceClientManager;
     this.asyncInternalServiceClientManager = asyncInternalServiceClientManager;
+    this.localhostIpAddr = IoTDBDescriptor.getInstance().getConfig().getInternalAddress();
+    this.localhostInternalPort = IoTDBDescriptor.getInstance().getConfig().getInternalPort();
   }
 
   @Override
@@ -200,6 +204,11 @@ public class FragmentInstanceDispatcherImpl implements IFragInstanceDispatcher {
     List<FragmentInstance> localInstances = new ArrayList<>();
     List<FragmentInstance> remoteInstances = new ArrayList<>();
     for (FragmentInstance instance : instances) {
+      if (instance.getHostDataNode() == null) {
+        dataNodeFailureList.add(
+            new TSStatus(TSStatusCode.PLAN_FAILED_NETWORK_PARTITION.getStatusCode()));
+        continue;
+      }
       TEndPoint endPoint = instance.getHostDataNode().getInternalEndPoint();
       if (isDispatchedToLocal(endPoint)) {
         localInstances.add(instance);
@@ -304,9 +313,8 @@ public class FragmentInstanceDispatcherImpl implements IFragInstanceDispatcher {
     }
   }
 
-  public static boolean isDispatchedToLocal(TEndPoint endPoint) {
-    return IoTDBDescriptor.getInstance().getConfig().getInternalAddress().equals(endPoint.getIp())
-        && IoTDBDescriptor.getInstance().getConfig().getInternalPort() == endPoint.port;
+  private boolean isDispatchedToLocal(TEndPoint endPoint) {
+    return this.localhostIpAddr.equals(endPoint.getIp()) && localhostInternalPort == endPoint.port;
   }
 
   private void dispatchRemoteHelper(final FragmentInstance instance, final TEndPoint endPoint)

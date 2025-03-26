@@ -24,6 +24,8 @@ import org.apache.iotdb.common.rpc.thrift.TAINodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeConfiguration;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.cluster.NodeStatus;
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.snapshot.SnapshotProcessor;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.conf.SystemPropertiesUtils;
@@ -446,6 +448,11 @@ public class NodeInfo implements SnapshotProcessor {
    * @return {@link TSStatusCode#REMOVE_CONFIGNODE_ERROR} if remove online ConfigNode failed.
    */
   public TSStatus removeConfigNode(RemoveConfigNodePlan removeConfigNodePlan) {
+    if (removeConfigNodePlan.getConfigNodeLocation().getConfigNodeId()
+        == ConfigNodeDescriptor.getInstance().getConf().getConfigNodeId()) {
+      // set myself to Removing status
+      CommonDescriptor.getInstance().getConfig().setNodeStatus(NodeStatus.Removing);
+    }
     TSStatus status = new TSStatus();
     configNodeInfoReadWriteLock.writeLock().lock();
     versionInfoReadWriteLock.writeLock().lock();

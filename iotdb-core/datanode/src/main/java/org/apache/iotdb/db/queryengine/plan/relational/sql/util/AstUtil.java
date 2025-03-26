@@ -19,15 +19,20 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.sql.util;
 
+import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Identifier;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Literal;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LongLiteral;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Node;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.NullLiteral;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.StringLiteral;
 
 import com.google.common.graph.SuccessorsFunction;
 import com.google.common.graph.Traverser;
 
+import java.time.ZoneId;
 import java.util.List;
 import java.util.OptionalInt;
 import java.util.function.BiFunction;
@@ -36,6 +41,7 @@ import java.util.stream.Stream;
 
 import static com.google.common.collect.Streams.stream;
 import static java.util.Objects.requireNonNull;
+import static org.apache.iotdb.db.queryengine.plan.parser.ASTVisitor.parseDateTimeFormat;
 
 public final class AstUtil {
 
@@ -108,6 +114,22 @@ public final class AstUtil {
           String.format("Cannot insert identifier %s, please use string literal", expression));
     }
     throw new SemanticException("Unsupported expression: " + expression);
+  }
+
+  public static long expressionToTimestamp(Expression expression, ZoneId zoneId) {
+    long timestamp;
+    if (expression instanceof LongLiteral) {
+      timestamp = ((LongLiteral) expression).getParsedValue();
+    } else if (expression instanceof NullLiteral) {
+      throw new SemanticException("Timestamp cannot be null");
+    } else if (expression instanceof StringLiteral) {
+      timestamp =
+          parseDateTimeFormat(
+              ((StringLiteral) expression).getValue(), CommonDateTimeUtils.currentTime(), zoneId);
+    } else {
+      throw new SemanticException("Unsupported expression: " + expression);
+    }
+    return timestamp;
   }
 
   private AstUtil() {}

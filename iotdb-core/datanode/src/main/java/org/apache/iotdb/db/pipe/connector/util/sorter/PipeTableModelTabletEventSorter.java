@@ -60,7 +60,7 @@ public class PipeTableModelTabletEventSorter {
       return;
     }
 
-    HashMap<IDeviceID, List<Pair<Integer, Integer>>> deviceIDToIndexMap = new HashMap<>();
+    final HashMap<IDeviceID, List<Pair<Integer, Integer>>> deviceIDToIndexMap = new HashMap<>();
     final long[] timestamps = tablet.getTimestamps();
 
     IDeviceID lastDevice = tablet.getDeviceID(0);
@@ -85,7 +85,7 @@ public class PipeTableModelTabletEventSorter {
         isUnSorted = true;
       }
 
-      List<Pair<Integer, Integer>> list =
+      final List<Pair<Integer, Integer>> list =
           deviceIDToIndexMap.computeIfAbsent(lastDevice, k -> new ArrayList<>());
 
       if (!list.isEmpty()) {
@@ -97,7 +97,7 @@ public class PipeTableModelTabletEventSorter {
       previousTimestamp = currentTimestamp;
     }
 
-    List<Pair<Integer, Integer>> list =
+    final List<Pair<Integer, Integer>> list =
         deviceIDToIndexMap.computeIfAbsent(lastDevice, k -> new ArrayList<>());
     if (!list.isEmpty()) {
       isUnSorted = true;
@@ -167,7 +167,7 @@ public class PipeTableModelTabletEventSorter {
   }
 
   private void deduplicateTimestamps(final int startIndex, final int endIndex) {
-    long[] timestamps = tablet.getTimestamps();
+    final long[] timestamps = tablet.getTimestamps();
     long lastTime = timestamps[index[startIndex]];
     index[deduplicatedSize++] = index[startIndex];
     for (int i = startIndex + 1; i < endIndex; i++) {
@@ -183,7 +183,7 @@ public class PipeTableModelTabletEventSorter {
       return;
     }
 
-    long[] timestamps = tablet.getTimestamps();
+    final long[] timestamps = tablet.getTimestamps();
     for (int i = 1, size = tablet.getRowSize(); i < size; ++i) {
       final long currentTimestamp = timestamps[i];
       final long previousTimestamp = timestamps[i - 1];
@@ -229,7 +229,7 @@ public class PipeTableModelTabletEventSorter {
 
   private void deduplicateTimestamps() {
     deduplicatedSize = 1;
-    long[] timestamps = tablet.getTimestamps();
+    final long[] timestamps = tablet.getTimestamps();
     long lastTime = timestamps[0];
     IDeviceID deviceID = tablet.getDeviceID(index[0]);
     final Set<IDeviceID> deviceIDSet = new HashSet<>();

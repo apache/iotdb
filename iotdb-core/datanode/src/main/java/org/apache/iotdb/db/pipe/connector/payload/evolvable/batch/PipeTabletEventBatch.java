@@ -96,8 +96,16 @@ public abstract class PipeTabletEventBatch implements AutoCloseable {
       if (((EnrichedEvent) event)
           .increaseReferenceCount(PipeTransferBatchReqBuilder.class.getName())) {
 
-        if (constructBatch(event)) {
-          events.add((EnrichedEvent) event);
+        try {
+          if (constructBatch(event)) {
+            events.add((EnrichedEvent) event);
+          }
+        } catch (final Exception e) {
+          // If the event is not added to the batch, we need to decrease the reference count.
+          ((EnrichedEvent) event)
+              .decreaseReferenceCount(PipeTransferBatchReqBuilder.class.getName(), false);
+          // Will cause a retry
+          throw e;
         }
 
         if (firstEventProcessingTime == Long.MIN_VALUE) {

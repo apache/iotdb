@@ -172,6 +172,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowTriggersState
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowVariablesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.UnSetTTLStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.model.CreateModelStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.model.CreateTrainingStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.model.DropModelStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.model.ShowAINodesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.model.ShowModelsStatement;
@@ -1344,9 +1345,49 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
 
   @Override
   public Statement visitCreateModel(IoTDBSqlParser.CreateModelContext ctx) {
-    CreateModelStatement createModelStatement = new CreateModelStatement();
+    if (ctx.modelName == null) {
+      String modelId = ctx.modelId.getText();
+      String modelType = ctx.modelType.getText();
+      CreateTrainingStatement createTrainingStatement =
+          new CreateTrainingStatement(modelId, modelType);
+      if (ctx.hparamPair() != null) {
+        Map<String, String> parameterList = new HashMap<>();
+        for (IoTDBSqlParser.HparamPairContext hparamPairContext : ctx.hparamPair()) {
+          parameterList.put(
+              hparamPairContext.hparamKey.getText(), hparamPairContext.hparamValue().getText());
+        }
+        createTrainingStatement.setParameters(parameterList);
+      }
+
+      if (ctx.existingModelId != null) {
+        createTrainingStatement.setExistingModelId(ctx.existingModelId.getText());
+      }
+
+      if (ctx.trainingData() == null) {
+        throw new UnsupportedOperationException("data should not be set for model training");
+      }
+
+      List<PartialPath> targetPath = new ArrayList<>();
+      List<List<Long>> timeRanges = new ArrayList<>();
+      for (IoTDBSqlParser.DataElementContext dataElementContext :
+          ctx.trainingData().dataElement()) {
+        if (dataElementContext.timeRange() != null) {
+          long currentTime = CommonDateTimeUtils.currentTime();
+          long startTime = parseTimeValue(dataElementContext.timeRange().timeValue(0), currentTime);
+          long endTime = parseTimeValue(dataElementContext.timeRange().timeValue(1), currentTime);
+          timeRanges.add(Arrays.asList(startTime, endTime));
+        } else {
+          timeRanges.add(Collections.emptyList());
+        }
+        targetPath.add(parsePrefixPath(dataElementContext.pathPatternElement().prefixPath()));
+      }
+      createTrainingStatement.setTargetTimeRanges(timeRanges);
+      createTrainingStatement.setTargetPathPatterns(targetPath);
+      return createTrainingStatement;
+    }
     String modelName = ctx.modelName.getText();
     validateModelName(modelName);
+    CreateModelStatement createModelStatement = new CreateModelStatement();
     createModelStatement.setModelName(parseIdentifier(modelName));
     createModelStatement.setUri(parseAndValidateURI(ctx.uriClause()));
     return createModelStatement;
@@ -3531,9 +3572,9 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
           storageGroups.add(parsePrefixPath(prefixPathContext));
         }
       }
-      showRegionStatement.setStorageGroups(storageGroups);
+      showRegionStatement.setDatabases(storageGroups);
     } else {
-      showRegionStatement.setStorageGroups(null);
+      showRegionStatement.setDatabases(null);
     }
 
     if (ctx.ON() != null) {

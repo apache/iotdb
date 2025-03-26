@@ -45,6 +45,7 @@ public class LoadTsFileConfigurator {
         validateOnSuccessParam(value);
         break;
       case DATABASE_NAME_KEY:
+      case TABLET_CONVERSION_THRESHOLD_KEY:
         break;
       case CONVERT_ON_TYPE_MISMATCH_KEY:
         validateConvertOnTypeMismatchParam(value);
@@ -131,6 +132,19 @@ public class LoadTsFileConfigurator {
     return Boolean.parseBoolean(
         loadAttributes.getOrDefault(
             CONVERT_ON_TYPE_MISMATCH_KEY, String.valueOf(CONVERT_ON_TYPE_MISMATCH_DEFAULT_VALUE)));
+  }
+
+  public static final String TABLET_CONVERSION_THRESHOLD_KEY = "tablet-conversion-threshold";
+
+  public static long parseOrGetDefaultTabletConversionThresholdBytes(
+      final Map<String, String> loadAttributes) {
+    return Long.parseLong(
+        loadAttributes.getOrDefault(
+            TABLET_CONVERSION_THRESHOLD_KEY,
+            String.valueOf(
+                IoTDBDescriptor.getInstance()
+                    .getConfig()
+                    .getLoadTabletConversionThresholdBytes())));
   }
 
   public static final String VERIFY_KEY = "verify";

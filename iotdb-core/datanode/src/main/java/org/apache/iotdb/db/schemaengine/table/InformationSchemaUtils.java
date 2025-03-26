@@ -120,6 +120,7 @@ public class InformationSchemaUtils {
       builder.getColumnBuilder(1).writeBinary(new Binary("INF", TSFileConfig.STRING_CHARSET));
       if (isDetails) {
         builder.getColumnBuilder(2).writeBinary(new Binary("USING", TSFileConfig.STRING_CHARSET));
+        builder.getColumnBuilder(3).appendNull();
       }
       builder.declarePosition();
     }
@@ -171,6 +172,7 @@ public class InformationSchemaUtils {
               new Binary(columnSchema.getColumnCategory().name(), TSFileConfig.STRING_CHARSET));
       if (isDetails) {
         builder.getColumnBuilder(3).writeBinary(new Binary("USING", TSFileConfig.STRING_CHARSET));
+        builder.getColumnBuilder(4).appendNull();
       }
       builder.declarePosition();
     }
