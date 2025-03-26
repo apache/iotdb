@@ -67,6 +67,7 @@ import org.apache.iotdb.db.storageengine.dataregion.utils.TsFileResourceUtils;
 import org.apache.iotdb.db.storageengine.load.converter.LoadTsFileDataTypeConverter;
 import org.apache.iotdb.db.storageengine.load.memory.LoadTsFileAnalyzeSchemaMemoryBlock;
 import org.apache.iotdb.db.storageengine.load.memory.LoadTsFileMemoryManager;
+import org.apache.iotdb.db.storageengine.load.metrics.LoadTsFileCostMetricsSet;
 import org.apache.iotdb.db.utils.ModificationUtils;
 import org.apache.iotdb.db.utils.TimestampPrecisionUtils;
 import org.apache.iotdb.db.utils.constant.SqlConstant;
@@ -90,6 +91,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -106,6 +108,9 @@ import java.util.stream.Collectors;
 public class LoadTsFileAnalyzer implements AutoCloseable {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(LoadTsFileAnalyzer.class);
+
+  private static final LoadTsFileCostMetricsSet LOAD_TSFILE_COST_METRICS_SET =
+      LoadTsFileCostMetricsSet.getInstance();
 
   private static final IClientManager<ConfigRegionId, ConfigNodeClient> CONFIG_NODE_CLIENT_MANAGER =
       ConfigNodeClientManager.getInstance();
@@ -131,6 +136,21 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
 
   private final SchemaAutoCreatorAndVerifier schemaAutoCreatorAndVerifier;
 
+  private final boolean isGeneratedByPipe;
+
+  private final List<File> tsFiles;
+  private final List<Boolean> isMiniTsFile;
+  private boolean isMiniTsFileConverted = false;
+
+  // User specified configs
+  private final int databaseLevel;
+  private String databaseForTableData;
+  private final boolean isVerifySchema;
+  private final boolean isAutoCreateDatabase;
+  private final boolean isDeleteAfterLoad;
+  private final boolean isConvertOnTypeMismatch;
+  private final long tabletConversionThresholdBytes;
+
   LoadTsFileAnalyzer(
       LoadTsFileStatement loadTsFileStatement,
       MPPQueryContext context,
@@ -143,6 +163,18 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
     this.schemaFetcher = schemaFetcher;
 
     this.schemaAutoCreatorAndVerifier = new SchemaAutoCreatorAndVerifier();
+
+    this.isGeneratedByPipe = loadTsFileStatement.isGeneratedByPipe();
+
+    this.tsFiles = loadTsFileStatement.getTsFiles();
+    this.isMiniTsFile = new ArrayList<>(Collections.nCopies(this.tsFiles.size(), false));
+
+    this.databaseLevel = loadTsFileStatement.getDatabaseLevel();
+    this.isVerifySchema = loadTsFileStatement.isVerifySchema();
+    this.isAutoCreateDatabase = loadTsFileStatement.isAutoCreateDatabase();
+    this.isDeleteAfterLoad = loadTsFileStatement.isDeleteAfterLoad();
+    this.isConvertOnTypeMismatch = loadTsFileStatement.isConvertOnTypeMismatch();
+    this.tabletConversionThresholdBytes = loadTsFileStatement.getTabletConversionThresholdBytes();
   }
 
   public Analysis analyzeFileByFile(final boolean isDeleteAfterLoad) {
@@ -180,9 +212,9 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
               i + 1, tsfileNum, String.format("%.3f", (i + 1) * 100.00 / tsfileNum));
         }
       } catch (AuthException e) {
-        return createFailAnalysisForAuthException(e);
+        return setFailAnalysisForAuthException(analysis, e);
       } catch (LoadAnalyzeTypeMismatchException e) {
-        executeTabletConversion(analysis, e);
+        executeTabletConversionOnException(analysis, e);
         // just return false to STOP the analysis process,
         // the real result on the conversion will be set in the analysis.
         return analysis;
@@ -201,9 +233,9 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
     try {
       schemaAutoCreatorAndVerifier.flush();
     } catch (AuthException e) {
-      return createFailAnalysisForAuthException(e);
+      return setFailAnalysisForAuthException(analysis, e);
     } catch (LoadAnalyzeTypeMismatchException e) {
-      executeTabletConversion(analysis, e);
+      executeTabletConversionOnException(analysis, e);
       // just return false to STOP the analysis process,
       // the real result on the conversion will be set in the analysis.
       return analysis;
@@ -221,14 +253,42 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
 
     LOGGER.info("Load - Analysis Stage: all tsfiles have been analyzed.");
 
+    if (reconstructStatementIfMiniFileConverted()) {
+      // All mini tsfiles are converted to tablets, so the analysis is finished.
+      analysis.setFinishQueryAfterAnalyze(true);
+      analysis.setFailStatus(RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS));
+      return analysis;
+    }
+
     // data partition will be queried in the scheduler
     analysis.setStatement(loadTsFileStatement);
     return analysis;
   }
 
-  private void executeTabletConversion(final Analysis analysis, final LoadAnalyzeException e) {
+  private boolean checkBeforeAnalyzeFileByFile(Analysis analysis) {
+    // check if the system is read only
+    if (CommonDescriptor.getInstance().getConfig().isReadOnly()) {
+      analysis.setFinishQueryAfterAnalyze(true);
+      analysis.setFailStatus(
+          RpcUtils.getStatus(TSStatusCode.SYSTEM_READ_ONLY, LoadReadOnlyException.MESSAGE));
+      return false;
+    }
+
+    return true;
+  }
+
+  private boolean reconstructStatementIfMiniFileConverted() {
+    if (!isMiniTsFileConverted) {
+      return false;
+    }
+
+    return loadTsFileStatement.reconstructStatementIfMiniFileConverted(isMiniTsFile);
+  }
+
+  private void executeTabletConversionOnException(
+      final Analysis analysis, final LoadAnalyzeException e) {
     final LoadTsFileDataTypeConverter loadTsFileDataTypeConverter =
-        new LoadTsFileDataTypeConverter(loadTsFileStatement.isGeneratedByPipe());
+        new LoadTsFileDataTypeConverter(isGeneratedByPipe);
     final TSStatus status =
         (!(e instanceof LoadAnalyzeTypeMismatchException)
                 || loadTsFileStatement.isConvertOnTypeMismatch())
@@ -253,9 +313,50 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
     analysis.setStatement(loadTsFileStatement);
   }
 
+  private boolean shouldSkipConversion(LoadAnalyzeException e) {
+    return (e instanceof LoadAnalyzeTypeMismatchException)
+        && !loadTsFileStatement.isConvertOnTypeMismatch();
+  }
+
   @Override
   public void close() {
     schemaAutoCreatorAndVerifier.close();
+  }
+
+  private boolean handleSingleMiniFile(final int i) throws FileNotFoundException {
+    final long startTime = System.nanoTime();
+    try {
+      final LoadTsFileDataTypeConverter loadTsFileDataTypeConverter =
+          new LoadTsFileDataTypeConverter(isGeneratedByPipe);
+
+      final TSStatus status =
+          loadTsFileDataTypeConverter
+              .convertForTreeModel(
+                  new LoadTsFileStatement(tsFiles.get(i).getPath())
+                      .setDeleteAfterLoad(isDeleteAfterLoad)
+                      .setConvertOnTypeMismatch(isConvertOnTypeMismatch))
+              .orElse(null);
+
+      if (status == null || !loadTsFileDataTypeConverter.isSuccessful(status)) {
+        LOGGER.warn(
+            "Load: Failed to convert mini tsfile {} to tablets from statement {}. Status: {}.",
+            tsFiles.get(i).getPath(),
+            loadTsFileStatement,
+            status);
+        return false;
+      }
+
+      // A mark of successful conversion
+      isMiniTsFile.set(i, Boolean.TRUE);
+      isMiniTsFileConverted = true;
+
+      loadTsFileStatement.addTsFileResource(null);
+      loadTsFileStatement.addWritePointCount(0);
+      return true;
+    } finally {
+      LOAD_TSFILE_COST_METRICS_SET.recordPhaseTimeCost(
+          LoadTsFileCostMetricsSet.ANALYSIS_CAST_TABLETS, System.nanoTime() - startTime);
+    }
   }
 
   private void analyzeSingleTsFile(final File tsFile, final boolean isDeleteAfterLoad)
@@ -276,7 +377,7 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
         // Reset tsfileResource's isGeneratedByPipe mark to prevent deserializing the wrong mark.
         // If this tsfile is loaded by a pipe receiver, the correct mark will be added in
         // `listenToTsFile`
-        tsFileResource.setGeneratedByPipe(loadTsFileStatement.isGeneratedByPipe());
+        tsFileResource.setGeneratedByPipe(isGeneratedByPipe);
       }
 
       schemaAutoCreatorAndVerifier.setCurrentModificationsAndTimeIndex(tsFileResource);
@@ -332,8 +433,7 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
         .sum();
   }
 
-  private Analysis createFailAnalysisForAuthException(AuthException e) {
-    Analysis analysis = new Analysis();
+  private Analysis setFailAnalysisForAuthException(Analysis analysis, AuthException e) {
     analysis.setFinishQueryAfterAnalyze(true);
     analysis.setFailStatus(RpcUtils.getStatus(e.getCode(), e.getMessage()));
     return analysis;
