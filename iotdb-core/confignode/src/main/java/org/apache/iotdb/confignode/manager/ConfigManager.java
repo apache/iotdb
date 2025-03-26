@@ -516,7 +516,7 @@ public class ConfigManager implements IManager {
               dataNodeLocation.getDataNodeId(),
               new NodeHeartbeatSample(NodeStatus.Unknown));
       LOGGER.info(
-          "[ShutdownHook] The DataNode-{} will be shutdown soon, mark it as Unknown",
+          "The DataNode-{} will be shutdown soon, mark it as Unknown",
           dataNodeLocation.getDataNodeId());
     }
     return status;
@@ -1107,6 +1107,11 @@ public class ConfigManager implements IManager {
   }
 
   protected TSStatus confirmLeader() {
+    if (NodeStatus.Removing == CommonDescriptor.getInstance().getConfig().getNodeStatus()) {
+      TSStatus status = new TSStatus(TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode());
+      status.setMessage("ConfigNode is Removing");
+      return status;
+    }
     // Make sure the consensus layer has been initialized
     if (getConsensusManager() == null) {
       return new TSStatus(TSStatusCode.CONSENSUS_NOT_INITIALIZED.getStatusCode())
@@ -1430,7 +1435,7 @@ public class ConfigManager implements IManager {
               configNodeLocation.getConfigNodeId(),
               new NodeHeartbeatSample(NodeStatus.Unknown));
       LOGGER.info(
-          "[ShutdownHook] The ConfigNode-{} will be shutdown soon, mark it as Unknown",
+          "The ConfigNode-{} will be shutdown soon, mark it as Unknown",
           configNodeLocation.getConfigNodeId());
     }
     return status;
