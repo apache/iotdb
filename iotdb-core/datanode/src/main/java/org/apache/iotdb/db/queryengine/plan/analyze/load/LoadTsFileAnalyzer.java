@@ -350,8 +350,8 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
 
       // check whether the encrypt type of the tsfile is supported
       final EncryptParameter param = reader.getEncryptParam();
-      if (!Objects.equals(param.getType(), EncryptUtils.encryptParam.getType())
-          || !Arrays.equals(param.getKey(), EncryptUtils.encryptParam.getKey())) {
+      if (!Objects.equals(param.getType(), EncryptUtils.getEncryptParameter().getType())
+          || !Arrays.equals(param.getKey(), EncryptUtils.getEncryptParameter().getKey())) {
         throw new SemanticException("The encryption way of the TsFile is not supported.");
       }
 
