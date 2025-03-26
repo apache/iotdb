@@ -51,6 +51,10 @@ public final class RenameColumn extends Statement {
     this.tableIfExists = tableIfExists;
     this.columnIfNotExists = columnIfNotExists;
     this.view = view;
+    if (!view) {
+      throw new UnsupportedOperationException(
+          "The renaming for base table column is currently unsupported");
+    }
   }
 
   public QualifiedName getTable() {

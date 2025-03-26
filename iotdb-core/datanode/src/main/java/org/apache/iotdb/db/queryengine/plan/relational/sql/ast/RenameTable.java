@@ -45,6 +45,10 @@ public class RenameTable extends Statement {
     this.target = requireNonNull(target, "target name is null");
     this.tableIfExists = tableIfExists;
     this.view = view;
+    if (!view) {
+      throw new UnsupportedOperationException(
+          "The renaming for base table is currently unsupported");
+    }
   }
 
   public QualifiedName getSource() {

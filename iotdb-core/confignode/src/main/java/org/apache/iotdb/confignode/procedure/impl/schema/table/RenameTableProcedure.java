@@ -105,7 +105,8 @@ public class RenameTableProcedure extends AbstractAlterOrDropTableProcedure<Rena
       final Pair<TSStatus, TsTable> result =
           env.getConfigManager()
               .getClusterSchemaManager()
-              .tableCheckForRenaming(database, tableName, newName);
+              .tableCheckForRenaming(
+                  database, tableName, newName, this instanceof RenameViewProcedure);
       final TSStatus status = result.getLeft();
       if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         setFailure(

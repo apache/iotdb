@@ -112,7 +112,8 @@ public class RenameTableColumnProcedure
       final Pair<TSStatus, TsTable> result =
           env.getConfigManager()
               .getClusterSchemaManager()
-              .tableColumnCheckForColumnRenaming(database, tableName, oldName, newName);
+              .tableColumnCheckForColumnRenaming(
+                  database, tableName, oldName, newName, this instanceof RenameViewColumnProcedure);
       final TSStatus status = result.getLeft();
       if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         setFailure(

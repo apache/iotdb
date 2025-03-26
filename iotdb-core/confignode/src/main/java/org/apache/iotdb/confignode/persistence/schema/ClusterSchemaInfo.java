@@ -1203,7 +1203,9 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
     return executeWithLock(
         () ->
             tableModelMTree.renameTable(
-                getQualifiedDatabasePartialPath(plan.getDatabase()), plan.getTableName()));
+                getQualifiedDatabasePartialPath(plan.getDatabase()),
+                plan.getTableName(),
+                plan.getNewName()));
   }
 
   public TSStatus setTableComment(final SetTableCommentPlan plan) {
