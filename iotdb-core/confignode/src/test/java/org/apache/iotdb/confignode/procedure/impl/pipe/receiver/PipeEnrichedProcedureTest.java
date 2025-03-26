@@ -49,7 +49,13 @@ import org.apache.iotdb.confignode.procedure.impl.schema.table.DropTableProcedur
 import org.apache.iotdb.confignode.procedure.impl.schema.table.RenameTableColumnProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.table.RenameTableProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.table.SetTablePropertiesProcedure;
+import org.apache.iotdb.confignode.procedure.impl.schema.table.view.AddViewColumnProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.table.view.CreateTableViewProcedure;
+import org.apache.iotdb.confignode.procedure.impl.schema.table.view.DropViewColumnProcedure;
+import org.apache.iotdb.confignode.procedure.impl.schema.table.view.DropViewProcedure;
+import org.apache.iotdb.confignode.procedure.impl.schema.table.view.RenameViewColumnProcedure;
+import org.apache.iotdb.confignode.procedure.impl.schema.table.view.RenameViewProcedure;
+import org.apache.iotdb.confignode.procedure.impl.schema.table.view.SetViewPropertiesProcedure;
 import org.apache.iotdb.confignode.procedure.impl.sync.AuthOperationProcedure;
 import org.apache.iotdb.confignode.procedure.impl.trigger.CreateTriggerProcedure;
 import org.apache.iotdb.confignode.procedure.impl.trigger.DropTriggerProcedure;
@@ -560,7 +566,7 @@ public class PipeEnrichedProcedureTest {
   }
 
   @Test
-  public void RenameTableProcedureTest() throws IOException {
+  public void renameTableTest() throws IOException {
     final RenameTableProcedure renameTableProcedure =
         new RenameTableProcedure("database1", "table1", "0", "newName", true);
 
@@ -580,7 +586,7 @@ public class PipeEnrichedProcedureTest {
   }
 
   @Test
-  public void CreateTableViewProcedureTest() throws IOException {
+  public void createTableViewTest() throws IOException {
     final TsTable table = new TsTable("table1");
     table.addColumnSchema(new TagColumnSchema("Id", TSDataType.STRING));
     table.addColumnSchema(
@@ -599,7 +605,7 @@ public class PipeEnrichedProcedureTest {
         ProcedureType.PIPE_ENRICHED_CREATE_TABLE_VIEW_PROCEDURE.getTypeCode(),
         byteBuffer.getShort());
 
-    final CreateTableViewProcedure deserializedProcedure = new CreateTableViewProcedure(false);
+    final CreateTableViewProcedure deserializedProcedure = new CreateTableViewProcedure(true);
     deserializedProcedure.deserialize(byteBuffer);
 
     Assert.assertEquals(
@@ -613,5 +619,145 @@ public class PipeEnrichedProcedureTest {
     Assert.assertEquals(
         createTableViewProcedure.getTable().getIdNums(),
         deserializedProcedure.getTable().getIdNums());
+  }
+
+  @Test
+  public void addViewColumnTest() throws IOException {
+    final AddViewColumnProcedure addViewColumnProcedure =
+        new AddViewColumnProcedure(
+            "database1",
+            "table1",
+            "0",
+            Collections.singletonList(new TagColumnSchema("Id", TSDataType.STRING)),
+            true);
+
+    final ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+    final DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream);
+    addViewColumnProcedure.serialize(dataOutputStream);
+
+    final ByteBuffer byteBuffer = ByteBuffer.wrap(byteArrayOutputStream.toByteArray());
+
+    Assert.assertEquals(
+        ProcedureType.PIPE_ENRICHED_ADD_VIEW_COLUMN_PROCEDURE.getTypeCode(), byteBuffer.getShort());
+
+    final AddViewColumnProcedure deserializedProcedure = new AddViewColumnProcedure(true);
+    deserializedProcedure.deserialize(byteBuffer);
+
+    Assert.assertEquals(addViewColumnProcedure.getDatabase(), deserializedProcedure.getDatabase());
+    Assert.assertEquals(
+        addViewColumnProcedure.getTableName(), deserializedProcedure.getTableName());
+  }
+
+  @Test
+  public void dropViewColumnTest() throws IOException {
+    final DropViewColumnProcedure dropViewColumnProcedure =
+        new DropViewColumnProcedure("database1", "table1", "0", "columnName", true);
+
+    final ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+    final DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream);
+    dropViewColumnProcedure.serialize(dataOutputStream);
+
+    final ByteBuffer byteBuffer = ByteBuffer.wrap(byteArrayOutputStream.toByteArray());
+
+    Assert.assertEquals(
+        ProcedureType.PIPE_ENRICHED_DROP_VIEW_COLUMN_PROCEDURE.getTypeCode(),
+        byteBuffer.getShort());
+
+    final DropViewColumnProcedure deserializedProcedure = new DropViewColumnProcedure(true);
+    deserializedProcedure.deserialize(byteBuffer);
+
+    Assert.assertEquals(dropViewColumnProcedure, deserializedProcedure);
+  }
+
+  @Test
+  public void dropViewTest() throws IOException {
+    final DropViewProcedure dropViewProcedure =
+        new DropViewProcedure("database1", "table1", "0", true);
+
+    final ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+    final DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream);
+    dropViewProcedure.serialize(dataOutputStream);
+
+    final ByteBuffer byteBuffer = ByteBuffer.wrap(byteArrayOutputStream.toByteArray());
+
+    Assert.assertEquals(
+        ProcedureType.PIPE_ENRICHED_DROP_VIEW_PROCEDURE.getTypeCode(), byteBuffer.getShort());
+
+    final DropViewProcedure deserializedProcedure = new DropViewProcedure(true);
+    deserializedProcedure.deserialize(byteBuffer);
+
+    Assert.assertEquals(dropViewProcedure, deserializedProcedure);
+  }
+
+  @Test
+  public void renameViewColumnTest() throws IOException {
+    final RenameViewColumnProcedure renameViewColumnProcedure =
+        new RenameViewColumnProcedure("database1", "table1", "0", "oldName", "newName", true);
+
+    final ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+    final DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream);
+    renameViewColumnProcedure.serialize(dataOutputStream);
+
+    final ByteBuffer byteBuffer = ByteBuffer.wrap(byteArrayOutputStream.toByteArray());
+
+    Assert.assertEquals(
+        ProcedureType.PIPE_ENRICHED_RENAME_VIEW_COLUMN_PROCEDURE.getTypeCode(),
+        byteBuffer.getShort());
+
+    final RenameViewColumnProcedure deserializedProcedure = new RenameViewColumnProcedure(true);
+    deserializedProcedure.deserialize(byteBuffer);
+
+    Assert.assertEquals(renameViewColumnProcedure, deserializedProcedure);
+  }
+
+  @Test
+  public void renameViewTest() throws IOException {
+    final RenameViewProcedure renameViewProcedure =
+        new RenameViewProcedure("database1", "table1", "0", "newName", true);
+
+    final ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+    final DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream);
+    renameViewProcedure.serialize(dataOutputStream);
+
+    final ByteBuffer byteBuffer = ByteBuffer.wrap(byteArrayOutputStream.toByteArray());
+
+    Assert.assertEquals(
+        ProcedureType.PIPE_ENRICHED_RENAME_VIEW_PROCEDURE.getTypeCode(), byteBuffer.getShort());
+
+    final RenameViewProcedure deserializedProcedure = new RenameViewProcedure(true);
+    deserializedProcedure.deserialize(byteBuffer);
+
+    Assert.assertEquals(renameViewProcedure, deserializedProcedure);
+  }
+
+  @Test
+  public void setViewPropertiesTest() throws IOException {
+    final SetViewPropertiesProcedure setViewPropertiesProcedure =
+        new SetViewPropertiesProcedure(
+            "database1",
+            "table1",
+            "0",
+            new HashMap<String, String>() {
+              {
+                put("prop1", "value1");
+                put("ttl", null);
+              }
+            },
+            true);
+
+    final ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+    final DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream);
+    setViewPropertiesProcedure.serialize(dataOutputStream);
+
+    final ByteBuffer byteBuffer = ByteBuffer.wrap(byteArrayOutputStream.toByteArray());
+
+    Assert.assertEquals(
+        ProcedureType.PIPE_ENRICHED_SET_VIEW_PROPERTIES_PROCEDURE.getTypeCode(),
+        byteBuffer.getShort());
+
+    final SetViewPropertiesProcedure deserializedProcedure = new SetViewPropertiesProcedure(true);
+    deserializedProcedure.deserialize(byteBuffer);
+
+    Assert.assertEquals(setViewPropertiesProcedure, deserializedProcedure);
   }
 }
