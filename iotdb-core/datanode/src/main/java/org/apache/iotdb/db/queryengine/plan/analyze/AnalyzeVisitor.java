@@ -3039,7 +3039,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
 
     try (final LoadTsFileAnalyzer loadTsfileAnalyzer =
         new LoadTsFileAnalyzer(loadTsFileStatement, context, partitionFetcher, schemaFetcher)) {
-      return loadTsfileAnalyzer.analyzeFileByFile(loadTsFileStatement.isDeleteAfterLoad());
+      return loadTsfileAnalyzer.analyzeFileByFile(new Analysis());
     } catch (final Exception e) {
       final String exceptionMessage =
           String.format(

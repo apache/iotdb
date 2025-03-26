@@ -105,6 +105,8 @@ import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+import static org.apache.iotdb.db.storageengine.load.metrics.LoadTsFileCostMetricsSet.ANALYSIS;
+
 public class LoadTsFileAnalyzer implements AutoCloseable {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(LoadTsFileAnalyzer.class);
@@ -144,7 +146,6 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
 
   // User specified configs
   private final int databaseLevel;
-  private String databaseForTableData;
   private final boolean isVerifySchema;
   private final boolean isAutoCreateDatabase;
   private final boolean isDeleteAfterLoad;
@@ -177,9 +178,7 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
     this.tabletConversionThresholdBytes = loadTsFileStatement.getTabletConversionThresholdBytes();
   }
 
-  public Analysis analyzeFileByFile(final boolean isDeleteAfterLoad) {
-    final Analysis analysis = new Analysis();
-
+  public Analysis analyzeFileByFile(Analysis analysis) {
     // check if the system is read only
     if (CommonDescriptor.getInstance().getConfig().isReadOnly()) {
       analysis.setFinishQueryAfterAnalyze(true);
@@ -204,8 +203,9 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
         continue;
       }
 
+      final long startTime = System.nanoTime();
       try {
-        analyzeSingleTsFile(tsFile, isDeleteAfterLoad);
+        analyzeSingleTsFile(tsFile, i);
         if (LOGGER.isInfoEnabled()) {
           LOGGER.info(
               "Load - Analysis Stage: {}/{} tsfiles have been analyzed, progress: {}%",
@@ -214,10 +214,9 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
       } catch (AuthException e) {
         return setFailAnalysisForAuthException(analysis, e);
       } catch (LoadAnalyzeTypeMismatchException e) {
-        executeTabletConversionOnException(analysis, e);
         // just return false to STOP the analysis process,
         // the real result on the conversion will be set in the analysis.
-        return analysis;
+        return executeTabletConversionOnException(analysis, e);
       } catch (Exception e) {
         final String exceptionMessage =
             String.format(
@@ -227,6 +226,9 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
         analysis.setFinishQueryAfterAnalyze(true);
         analysis.setFailStatus(RpcUtils.getStatus(TSStatusCode.LOAD_FILE_ERROR, exceptionMessage));
         return analysis;
+      } finally {
+        LoadTsFileCostMetricsSet.getInstance()
+            .recordPhaseTimeCost(ANALYSIS, System.nanoTime() - startTime);
       }
     }
 
@@ -277,16 +279,15 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
     return true;
   }
 
-  private boolean reconstructStatementIfMiniFileConverted() {
-    if (!isMiniTsFileConverted) {
-      return false;
+  private Analysis executeTabletConversionOnException(
+      final Analysis analysis, final LoadAnalyzeException e) {
+    if (shouldSkipConversion(e)) {
+      analysis.setFailStatus(
+          new TSStatus(TSStatusCode.LOAD_FILE_ERROR.getStatusCode()).setMessage(e.getMessage()));
+      analysis.setFinishQueryAfterAnalyze(true);
+      return analysis;
     }
 
-    return loadTsFileStatement.reconstructStatementIfMiniFileConverted(isMiniTsFile);
-  }
-
-  private void executeTabletConversionOnException(
-      final Analysis analysis, final LoadAnalyzeException e) {
     final LoadTsFileDataTypeConverter loadTsFileDataTypeConverter =
         new LoadTsFileDataTypeConverter(isGeneratedByPipe);
     final TSStatus status =
@@ -311,6 +312,7 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
 
     analysis.setFinishQueryAfterAnalyze(true);
     analysis.setStatement(loadTsFileStatement);
+    return analysis;
   }
 
   private boolean shouldSkipConversion(LoadAnalyzeException e) {
@@ -321,6 +323,32 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
   @Override
   public void close() {
     schemaAutoCreatorAndVerifier.close();
+  }
+
+  private void analyzeSingleTsFile(final File tsFile, int index) throws Exception {
+    try (final TsFileSequenceReader reader = new TsFileSequenceReader(tsFile.getAbsolutePath())) {
+      // can be reused when constructing tsfile resource
+      final TsFileSequenceReaderTimeseriesMetadataIterator timeseriesMetadataIterator =
+          new TsFileSequenceReaderTimeseriesMetadataIterator(reader, true, 1);
+
+      // check if the tsfile is empty
+      if (!timeseriesMetadataIterator.hasNext()) {
+        throw new LoadEmptyFileException(tsFile.getAbsolutePath());
+      }
+
+      if (0 <= tabletConversionThresholdBytes
+          && tsFile.length() <= tabletConversionThresholdBytes
+          && handleSingleMiniFile(index)) {
+        return;
+      }
+
+      doAnalyzeSingleFile(tsFile, reader, timeseriesMetadataIterator);
+    } catch (final LoadEmptyFileException loadEmptyFileException) {
+      LOGGER.warn("Empty file detected, will skip loading this file: {}", tsFile.getAbsolutePath());
+      if (isDeleteAfterLoad) {
+        FileUtils.deleteQuietly(tsFile);
+      }
+    }
   }
 
   private boolean handleSingleMiniFile(final int i) throws FileNotFoundException {
@@ -359,70 +387,60 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
     }
   }
 
-  private void analyzeSingleTsFile(final File tsFile, final boolean isDeleteAfterLoad)
-      throws IOException, AuthException, LoadAnalyzeTypeMismatchException {
-    try (final TsFileSequenceReader reader = new TsFileSequenceReader(tsFile.getAbsolutePath())) {
-      // can be reused when constructing tsfile resource
-      final TsFileSequenceReaderTimeseriesMetadataIterator timeseriesMetadataIterator =
-          new TsFileSequenceReaderTimeseriesMetadataIterator(reader, true, 1);
+  private void doAnalyzeSingleFile(
+      final File tsFile,
+      final TsFileSequenceReader reader,
+      final TsFileSequenceReaderTimeseriesMetadataIterator timeseriesMetadataIterator)
+      throws IOException, LoadAnalyzeException, AuthException {
+    // construct tsfile resource
+    final TsFileResource tsFileResource = constructTsFileResource(reader, tsFile);
 
-      // construct tsfile resource
-      final TsFileResource tsFileResource = new TsFileResource(tsFile);
-      if (!tsFileResource.resourceFileExists()) {
-        // it will be serialized in LoadSingleTsFileNode
-        tsFileResource.updatePlanIndexes(reader.getMinPlanIndex());
-        tsFileResource.updatePlanIndexes(reader.getMaxPlanIndex());
-      } else {
-        tsFileResource.deserialize();
-        // Reset tsfileResource's isGeneratedByPipe mark to prevent deserializing the wrong mark.
-        // If this tsfile is loaded by a pipe receiver, the correct mark will be added in
-        // `listenToTsFile`
-        tsFileResource.setGeneratedByPipe(isGeneratedByPipe);
-      }
+    long writePointCount = 0;
 
-      schemaAutoCreatorAndVerifier.setCurrentModificationsAndTimeIndex(tsFileResource);
+    schemaAutoCreatorAndVerifier.setCurrentModificationsAndTimeIndex(tsFileResource);
 
-      // check if the tsfile is empty
-      if (!timeseriesMetadataIterator.hasNext()) {
-        throw new LoadEmptyFileException(tsFile.getAbsolutePath());
-      }
+    final boolean isAutoCreateSchemaOrVerifySchemaEnabled =
+        IoTDBDescriptor.getInstance().getConfig().isAutoCreateSchemaEnabled() || isVerifySchema;
 
-      long writePointCount = 0;
-
-      final boolean isAutoCreateSchemaOrVerifySchemaEnabled =
-          IoTDBDescriptor.getInstance().getConfig().isAutoCreateSchemaEnabled()
-              || loadTsFileStatement.isVerifySchema();
-      while (timeseriesMetadataIterator.hasNext()) {
-        final Map<IDeviceID, List<TimeseriesMetadata>> device2TimeseriesMetadata =
-            timeseriesMetadataIterator.next();
-
-        if (isAutoCreateSchemaOrVerifySchemaEnabled) {
-          schemaAutoCreatorAndVerifier.autoCreateAndVerify(reader, device2TimeseriesMetadata);
-        }
-
-        if (!tsFileResource.resourceFileExists()) {
-          TsFileResourceUtils.updateTsFileResource(device2TimeseriesMetadata, tsFileResource);
-        }
-
-        // TODO: how to get the correct write point count when
-        //  !isAutoCreateSchemaOrVerifySchemaEnabled
-        writePointCount += getWritePointCount(device2TimeseriesMetadata);
-      }
+    while (timeseriesMetadataIterator.hasNext()) {
+      final Map<IDeviceID, List<TimeseriesMetadata>> device2TimeseriesMetadata =
+          timeseriesMetadataIterator.next();
       if (isAutoCreateSchemaOrVerifySchemaEnabled) {
-        schemaAutoCreatorAndVerifier.flushAndClearDeviceIsAlignedCacheIfNecessary();
+        schemaAutoCreatorAndVerifier.autoCreateAndVerify(reader, device2TimeseriesMetadata);
       }
-
-      TimestampPrecisionUtils.checkTimestampPrecision(tsFileResource.getFileEndTime());
-      tsFileResource.setStatus(TsFileResourceStatus.NORMAL);
-
-      loadTsFileStatement.addTsFileResource(tsFileResource);
-      loadTsFileStatement.addWritePointCount(writePointCount);
-    } catch (final LoadEmptyFileException loadEmptyFileException) {
-      LOGGER.warn("Failed to load empty file: {}", tsFile.getAbsolutePath());
-      if (isDeleteAfterLoad) {
-        FileUtils.deleteQuietly(tsFile);
+      if (!tsFileResource.resourceFileExists()) {
+        TsFileResourceUtils.updateTsFileResource(device2TimeseriesMetadata, tsFileResource);
       }
+      // TODO: how to get the correct write point count when
+      //  !isAutoCreateSchemaOrVerifySchemaEnabled
+      writePointCount += getWritePointCount(device2TimeseriesMetadata);
     }
+    if (isAutoCreateSchemaOrVerifySchemaEnabled) {
+      schemaAutoCreatorAndVerifier.flushAndClearDeviceIsAlignedCacheIfNecessary();
+    }
+
+    TimestampPrecisionUtils.checkTimestampPrecision(tsFileResource.getFileEndTime());
+    tsFileResource.setStatus(TsFileResourceStatus.NORMAL);
+
+    loadTsFileStatement.addTsFileResource(tsFileResource);
+    loadTsFileStatement.addWritePointCount(writePointCount);
+  }
+
+  private TsFileResource constructTsFileResource(
+      final TsFileSequenceReader reader, final File tsFile) throws IOException {
+    final TsFileResource tsFileResource = new TsFileResource(tsFile);
+    if (!tsFileResource.resourceFileExists()) {
+      // it will be serialized in LoadSingleTsFileNode
+      tsFileResource.updatePlanIndexes(reader.getMinPlanIndex());
+      tsFileResource.updatePlanIndexes(reader.getMaxPlanIndex());
+    } else {
+      tsFileResource.deserialize();
+      // Reset tsfileResource's isGeneratedByPipe mark to prevent deserializing the wrong mark.
+      // If this tsfile is loaded by a pipe receiver, the correct mark will be added in
+      // `listenToTsFile`
+      tsFileResource.setGeneratedByPipe(isGeneratedByPipe);
+    }
+    return tsFileResource;
   }
 
   private long getWritePointCount(
@@ -431,6 +449,14 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
         .flatMap(List::stream)
         .mapToLong(t -> t.getStatistics().getCount())
         .sum();
+  }
+
+  private boolean reconstructStatementIfMiniFileConverted() {
+    if (!isMiniTsFileConverted) {
+      return false;
+    }
+
+    return loadTsFileStatement.reconstructStatementIfMiniFileConverted(isMiniTsFile);
   }
 
   private Analysis setFailAnalysisForAuthException(Analysis analysis, AuthException e) {
@@ -568,11 +594,11 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
       }
 
       try {
-        if (loadTsFileStatement.isVerifySchema()) {
+        if (isVerifySchema) {
           makeSureNoDuplicatedMeasurementsInDevices();
         }
 
-        if (loadTsFileStatement.isAutoCreateDatabase()) {
+        if (isAutoCreateDatabase) {
           autoCreateDatabase();
         }
 
@@ -580,7 +606,7 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
         // isAutoCreateSchemaEnabled is false.
         final ISchemaTree schemaTree = autoCreateSchema();
 
-        if (loadTsFileStatement.isVerifySchema()) {
+        if (isVerifySchema) {
           verifySchema(schemaTree);
         }
       } catch (AuthException | LoadAnalyzeTypeMismatchException e) {
@@ -612,7 +638,7 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
 
     private void autoCreateDatabase()
         throws LoadAnalyzeException, LoadFileException, IllegalPathException, AuthException {
-      final int databasePrefixNodesLength = loadTsFileStatement.getDatabaseLevel() + 1;
+      final int databasePrefixNodesLength = databaseLevel + 1;
       final Set<PartialPath> databasesNeededToBeSet = new HashSet<>();
 
       for (final IDeviceID device : schemaCache.getDevice2TimeSeries().keySet()) {
