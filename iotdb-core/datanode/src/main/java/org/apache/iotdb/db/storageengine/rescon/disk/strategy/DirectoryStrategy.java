@@ -51,7 +51,8 @@ public abstract class DirectoryStrategy {
   public void setFolders(List<String> folders) throws DiskSpaceInsufficientException {
     boolean hasSpace = false;
     for (String folder : folders) {
-      if (FSUtils.getFSType(folder) == FSType.LOCAL && JVMCommonUtils.hasSpace(folder)) {
+      if (FSUtils.getFSType(folder) == FSType.LOCAL && JVMCommonUtils.hasSpace(folder)
+          || FSUtils.getFSType(folder) == FSType.OBJECT_STORAGE) {
         hasSpace = true;
         break;
       }
