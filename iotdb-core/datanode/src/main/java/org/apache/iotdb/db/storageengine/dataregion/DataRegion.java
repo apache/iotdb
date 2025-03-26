@@ -35,7 +35,6 @@ import org.apache.iotdb.commons.service.metric.PerformanceOverviewMetrics;
 import org.apache.iotdb.commons.service.metric.enums.Metric;
 import org.apache.iotdb.commons.service.metric.enums.Tag;
 import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
-import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.commons.utils.RetryUtils;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.commons.utils.TimePartitionUtils;
@@ -137,6 +136,7 @@ import org.apache.iotdb.db.tools.settle.TsFileAndModSettleTool;
 import org.apache.iotdb.db.utils.CommonUtils;
 import org.apache.iotdb.db.utils.DateTimeUtils;
 import org.apache.iotdb.db.utils.ModificationUtils;
+import org.apache.iotdb.metrics.utils.FileStoreUtils;
 import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -156,6 +156,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.FileStore;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.ArrayList;
@@ -401,14 +402,18 @@ public class DataRegion implements IDataRegionForQuery {
             dataDirPath -> {
               File dataDirFile = new File(dataDirPath);
               try {
-                String mountPoint = PathUtils.getMountPoint(dataDirFile.getCanonicalPath());
-                this.rootDisks2DataDirsMapForLoad.put(mountPoint, dataDirPath);
-                logger.info("Add {}'s mount point {}", dataDirPath, mountPoint);
+                FileStore fileStore = FileStoreUtils.getFileStore(dataDirFile.getCanonicalPath());
+                if (fileStore != null) {
+                  String mountPoint = fileStore.toString();
+                  this.rootDisks2DataDirsMapForLoad.put(mountPoint, dataDirPath);
+                  logger.info("Add {}'s mount point {}", dataDirPath, mountPoint);
+                } else {
+                  logger.info(
+                      "Failed to find mount point {}, skip register it to map", dataDirPath);
+                }
               } catch (Exception e) {
                 logger.warn(
-                    "Exception occurs when reading data dir's mount point {}, may because your OS is windows.",
-                    dataDirPath,
-                    e);
+                    "Exception occurs when reading data dir's mount point {}", dataDirPath, e);
               }
             });
 
@@ -3080,12 +3085,12 @@ public class DataRegion implements IDataRegionForQuery {
     boolean needDownGradeToSequenceStrategy = true;
     String fileDirRoot = null;
     try {
-      fileDirRoot = PathUtils.getMountPoint(tsFileToLoad.getCanonicalPath());
+      fileDirRoot =
+          Optional.ofNullable(FileStoreUtils.getFileStore(tsFileToLoad.getCanonicalPath()))
+              .map(Object::toString)
+              .orElse(null);
     } catch (Exception e) {
-      logger.warn(
-          "Exception occurs when reading target file's mount point {}, may because your OS is windows.",
-          tsFileToLoad,
-          e);
+      logger.warn("Exception occurs when reading target file's mount point {}", tsFileToLoad, e);
     }
 
     // only IoTV2 and Pipe will try to enable multi-disks awareness
