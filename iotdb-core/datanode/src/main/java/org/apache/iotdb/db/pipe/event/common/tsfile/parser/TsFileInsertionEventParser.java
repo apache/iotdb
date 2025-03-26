@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.TablePattern;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.TreePattern;
 import org.apache.iotdb.db.pipe.event.common.PipeInsertionEvent;
+import org.apache.iotdb.db.pipe.metric.overview.PipeTsFileToTabletsMetrics;
 import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
 import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryBlock;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
@@ -95,7 +96,8 @@ public abstract class TsFileInsertionEventParser implements AutoCloseable {
   public void close() {
     try {
       if (pipeName != null) {
-        // report time usage
+        PipeTsFileToTabletsMetrics.getInstance()
+            .recordTsFileToTabletTime(pipeName, System.nanoTime() - initialTimeNano);
       }
     } catch (final Exception e) {
       LOGGER.warn("Failed to report time usage for parsing tsfile for pipe {}", pipeName, e);
