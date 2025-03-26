@@ -44,35 +44,65 @@ public class TableModelJDBCExample {
                 "jdbc:iotdb://127.0.0.1:6667?sql_dialect=table", "root", "root");
         Statement statement = connection.createStatement()) {
 
-      statement.execute("use test_g_0");
+      statement.execute("CREATE DATABASE test1");
+      statement.execute("CREATE DATABASE test2");
+
+      statement.execute("use test2");
+
+      // or use full qualified table name
+      statement.execute(
+          "create table test1.table1(region_id STRING TAG, plant_id STRING TAG, device_id STRING TAG, model STRING ATTRIBUTE, temperature FLOAT FIELD, humidity DOUBLE FIELD) with (TTL=3600000)");
+
+      statement.execute(
+          "create table table2(region_id STRING TAG, plant_id STRING TAG, color STRING ATTRIBUTE, temperature FLOAT FIELD, speed DOUBLE FIELD) with (TTL=6600000)");
+
       // show tables from current database
-      long startTime = System.currentTimeMillis();
-      try (ResultSet resultSet = statement.executeQuery("SELECT * from table_0")){
-//      try (ResultSet resultSet = statement.executeQuery("SELECT device_id, window_start, window_end, s_0" +
-//              " FROM TABLE(SESSION(" +
-//              "     DATA => TABLE(table_0) PARTITION BY device_id," +
-//              "     TIMECOL => 'time'," +
-//              "     GAP => 1500ms" +
-//              " ))")) {
+      try (ResultSet resultSet = statement.executeQuery("SHOW TABLES")) {
         ResultSetMetaData metaData = resultSet.getMetaData();
         System.out.println(metaData.getColumnCount());
-        long count = 0;
         while (resultSet.next()) {
-            count++;
-            if(count % 10000 == 0){
-                System.out.println(count);
-            }
-//          System.out.println();
-//          System.out.println(resultSet.getString(1) + ", " + resultSet.getInt(2));
+          System.out.println(resultSet.getString(1) + ", " + resultSet.getInt(2));
         }
-        long endTime = System.currentTimeMillis();
-        System.out.println("Time: " + (endTime - startTime) + "ms");
       }
 
-
+      // show tables by specifying another database
+      // using SHOW tables FROM
+      try (ResultSet resultSet = statement.executeQuery("SHOW TABLES FROM test1")) {
+        ResultSetMetaData metaData = resultSet.getMetaData();
+        System.out.println(metaData.getColumnCount());
+        while (resultSet.next()) {
+          System.out.println(resultSet.getString(1) + ", " + resultSet.getInt(2));
+        }
+      }
 
     } catch (IoTDBSQLException e) {
       LOGGER.error("IoTDB Jdbc example error", e);
+    }
+
+    // specify database in url
+    try (Connection connection =
+            DriverManager.getConnection(
+                "jdbc:iotdb://127.0.0.1:6667/test1?sql_dialect=table", "root", "root");
+        Statement statement = connection.createStatement()) {
+      // show tables from current database test1
+      try (ResultSet resultSet = statement.executeQuery("SHOW TABLES")) {
+        ResultSetMetaData metaData = resultSet.getMetaData();
+        System.out.println(metaData.getColumnCount());
+        while (resultSet.next()) {
+          System.out.println(resultSet.getString(1) + ", " + resultSet.getInt(2));
+        }
+      }
+
+      // change database to test2
+      statement.execute("use test2");
+
+      try (ResultSet resultSet = statement.executeQuery("SHOW TABLES")) {
+        ResultSetMetaData metaData = resultSet.getMetaData();
+        System.out.println(metaData.getColumnCount());
+        while (resultSet.next()) {
+          System.out.println(resultSet.getString(1) + ", " + resultSet.getInt(2));
+        }
+      }
     }
   }
 }
