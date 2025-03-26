@@ -22,6 +22,8 @@ package org.apache.iotdb.commons.utils;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 
 import org.apache.tsfile.fileSystem.FSFactoryProducer;
+import org.apache.tsfile.fileSystem.FSType;
+import org.apache.tsfile.utils.FSUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -71,6 +73,9 @@ public class JVMCommonUtils {
   }
 
   public static double getDiskFreeRatio(String dir) {
+    if (FSUtils.getFSType(dir) == FSType.OBJECT_STORAGE) {
+      return 1.0;
+    }
     File dirFile = new File(dir);
     if (!dirFile.mkdirs()) {
       // This may solve getFreeSpace() == 0?
