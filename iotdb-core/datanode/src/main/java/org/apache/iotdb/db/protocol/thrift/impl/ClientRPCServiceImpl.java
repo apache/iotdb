@@ -708,6 +708,10 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
 
     IMeasurementSchema measurementSchema = new MeasurementSchema(measurement, dataType);
     AbstractSeriesAggregationScanOperator operator;
+    boolean canUseStatistics =
+        !TSDataType.BLOB.equals(dataType)
+            || (!TAggregationType.LAST_VALUE.equals(aggregationType)
+                && !TAggregationType.FIRST_VALUE.equals(aggregationType));
     PartialPath path;
     if (isAligned) {
       path =
@@ -726,11 +730,13 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
               initTimeRangeIterator(groupByTimeParameter, true, true, sessionInfo.getZoneId()),
               groupByTimeParameter,
               DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES,
-              !TSDataType.BLOB.equals(dataType)
-                  || (!TAggregationType.LAST_VALUE.equals(aggregationType)
-                      && !TAggregationType.FIRST_VALUE.equals(aggregationType)));
+              canUseStatistics);
     } else {
-      path = new MeasurementPath(device, measurement, measurementSchema);
+      String[] splits = device.split("\\.");
+      String[] fullPaths = new String[splits.length + 1];
+      System.arraycopy(splits, 0, fullPaths, 0, splits.length);
+      fullPaths[splits.length] = measurement;
+      path = new MeasurementPath(fullPaths, measurementSchema);
       operator =
           new SeriesAggregationScanOperator(
               planNodeId,
@@ -742,9 +748,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
               initTimeRangeIterator(groupByTimeParameter, true, true, sessionInfo.getZoneId()),
               groupByTimeParameter,
               DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES,
-              !TSDataType.BLOB.equals(dataType)
-                  || (!TAggregationType.LAST_VALUE.equals(aggregationType)
-                      && !TAggregationType.FIRST_VALUE.equals(aggregationType)));
+              canUseStatistics);
     }
 
     try {
@@ -1066,7 +1070,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
               deviceId,
               measurementId,
               dataType,
-              true,
+              false,
               req.getStartTime(),
               req.getEndTime(),
               req.getInterval(),
