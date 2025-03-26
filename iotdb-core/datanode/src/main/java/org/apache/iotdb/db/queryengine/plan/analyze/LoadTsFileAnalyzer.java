@@ -179,61 +179,22 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
   }
 
   public Analysis analyzeFileByFile(Analysis analysis) {
-    // check if the system is read only
-    if (CommonDescriptor.getInstance().getConfig().isReadOnly()) {
-      analysis.setFinishQueryAfterAnalyze(true);
-      analysis.setFailStatus(
-          RpcUtils.getStatus(TSStatusCode.SYSTEM_READ_ONLY, LoadReadOnlyException.MESSAGE));
+    if (!checkBeforeAnalyzeFileByFile(analysis)) {
       return analysis;
     }
 
-    // analyze tsfile metadata file by file
-    for (int i = 0, tsfileNum = loadTsFileStatement.getTsFiles().size(); i < tsfileNum; i++) {
-      final File tsFile = loadTsFileStatement.getTsFiles().get(i);
-
-      if (tsFile.length() == 0) {
-        if (LOGGER.isWarnEnabled()) {
-          LOGGER.warn("TsFile {} is empty.", tsFile.getPath());
-        }
-        if (LOGGER.isInfoEnabled()) {
-          LOGGER.info(
-              "Load - Analysis Stage: {}/{} tsfiles have been analyzed, progress: {}%",
-              i + 1, tsfileNum, String.format("%.3f", (i + 1) * 100.00 / tsfileNum));
-        }
-        continue;
-      }
-
-      final long startTime = System.nanoTime();
-      try {
-        analyzeSingleTsFile(tsFile, i);
-        if (LOGGER.isInfoEnabled()) {
-          LOGGER.info(
-              "Load - Analysis Stage: {}/{} tsfiles have been analyzed, progress: {}%",
-              i + 1, tsfileNum, String.format("%.3f", (i + 1) * 100.00 / tsfileNum));
-        }
-      } catch (AuthException e) {
-        return setFailAnalysisForAuthException(analysis, e);
-      } catch (LoadAnalyzeTypeMismatchException e) {
-        // just return false to STOP the analysis process,
-        // the real result on the conversion will be set in the analysis.
-        return executeTabletConversionOnException(analysis, e);
-      } catch (Exception e) {
-        final String exceptionMessage =
-            String.format(
-                "The file %s is not a valid tsfile. Please check the input file. Detail: %s",
-                tsFile.getPath(), e.getMessage() == null ? e.getClass().getName() : e.getMessage());
-        LOGGER.warn(exceptionMessage, e);
-        analysis.setFinishQueryAfterAnalyze(true);
-        analysis.setFailStatus(RpcUtils.getStatus(TSStatusCode.LOAD_FILE_ERROR, exceptionMessage));
-        return analysis;
-      } finally {
-        LoadTsFileCostMetricsSet.getInstance()
-            .recordPhaseTimeCost(ANALYSIS, System.nanoTime() - startTime);
-      }
-    }
-
     try {
-      schemaAutoCreatorAndVerifier.flush();
+      if (!doAnalyzeFileByFile(analysis)) {
+        return analysis;
+      }
+      final long startTime = System.nanoTime();
+
+      try {
+        schemaAutoCreatorAndVerifier.flush();
+      } finally {
+        LOAD_TSFILE_COST_METRICS_SET.recordPhaseTimeCost(
+            LoadTsFileCostMetricsSet.ANALYSIS, System.nanoTime() - startTime);
+      }
     } catch (AuthException e) {
       return setFailAnalysisForAuthException(analysis, e);
     } catch (LoadAnalyzeTypeMismatchException e) {
@@ -279,50 +240,55 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
     return true;
   }
 
-  private Analysis executeTabletConversionOnException(
-      final Analysis analysis, final LoadAnalyzeException e) {
-    if (shouldSkipConversion(e)) {
-      analysis.setFailStatus(
-          new TSStatus(TSStatusCode.LOAD_FILE_ERROR.getStatusCode()).setMessage(e.getMessage()));
-      analysis.setFinishQueryAfterAnalyze(true);
-      return analysis;
+  private boolean doAnalyzeFileByFile(Analysis analysis) {
+    // analyze tsfile metadata file by file
+    for (int i = 0, tsfileNum = loadTsFileStatement.getTsFiles().size(); i < tsfileNum; i++) {
+      final File tsFile = loadTsFileStatement.getTsFiles().get(i);
+
+      if (tsFile.length() == 0) {
+        if (LOGGER.isWarnEnabled()) {
+          LOGGER.warn("TsFile {} is empty.", tsFile.getPath());
+        }
+        if (LOGGER.isInfoEnabled()) {
+          LOGGER.info(
+              "Load - Analysis Stage: {}/{} tsfiles have been analyzed, progress: {}%",
+              i + 1, tsfileNum, String.format("%.3f", (i + 1) * 100.00 / tsfileNum));
+        }
+        continue;
+      }
+
+      final long startTime = System.nanoTime();
+      try {
+        analyzeSingleTsFile(tsFile, i);
+        if (LOGGER.isInfoEnabled()) {
+          LOGGER.info(
+              "Load - Analysis Stage: {}/{} tsfiles have been analyzed, progress: {}%",
+              i + 1, tsfileNum, String.format("%.3f", (i + 1) * 100.00 / tsfileNum));
+        }
+      } catch (AuthException e) {
+        setFailAnalysisForAuthException(analysis, e);
+        return false;
+      } catch (LoadAnalyzeTypeMismatchException e) {
+        executeTabletConversionOnException(analysis, e);
+        // just return false to STOP the analysis process,
+        // the real result on the conversion will be set in the analysis.
+        return false;
+      } catch (Exception e) {
+        final String exceptionMessage =
+            String.format(
+                "The file %s is not a valid tsfile. Please check the input file. Detail: %s",
+                tsFile.getPath(), e.getMessage() == null ? e.getClass().getName() : e.getMessage());
+        LOGGER.warn(exceptionMessage, e);
+        analysis.setFinishQueryAfterAnalyze(true);
+        analysis.setFailStatus(RpcUtils.getStatus(TSStatusCode.LOAD_FILE_ERROR, exceptionMessage));
+        return false;
+      } finally {
+        LoadTsFileCostMetricsSet.getInstance()
+            .recordPhaseTimeCost(ANALYSIS, System.nanoTime() - startTime);
+      }
     }
 
-    final LoadTsFileDataTypeConverter loadTsFileDataTypeConverter =
-        new LoadTsFileDataTypeConverter(isGeneratedByPipe);
-    final TSStatus status =
-        (!(e instanceof LoadAnalyzeTypeMismatchException)
-                || loadTsFileStatement.isConvertOnTypeMismatch())
-            ? loadTsFileDataTypeConverter.convertForTreeModel(loadTsFileStatement).orElse(null)
-            : null;
-
-    if (status == null) {
-      LOGGER.warn(
-          "Load: Failed to convert to tablets from statement {}. Status is null.",
-          loadTsFileStatement);
-      analysis.setFailStatus(
-          new TSStatus(TSStatusCode.LOAD_FILE_ERROR.getStatusCode()).setMessage(e.getMessage()));
-    } else if (!loadTsFileDataTypeConverter.isSuccessful(status)) {
-      LOGGER.warn(
-          "Load: Failed to convert to tablets from statement {}. Status: {}",
-          loadTsFileStatement,
-          status);
-      analysis.setFailStatus(status);
-    }
-
-    analysis.setFinishQueryAfterAnalyze(true);
-    analysis.setStatement(loadTsFileStatement);
-    return analysis;
-  }
-
-  private boolean shouldSkipConversion(LoadAnalyzeException e) {
-    return (e instanceof LoadAnalyzeTypeMismatchException)
-        && !loadTsFileStatement.isConvertOnTypeMismatch();
-  }
-
-  @Override
-  public void close() {
-    schemaAutoCreatorAndVerifier.close();
+    return true;
   }
 
   private void analyzeSingleTsFile(final File tsFile, int index) throws Exception {
@@ -463,6 +429,52 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
     analysis.setFinishQueryAfterAnalyze(true);
     analysis.setFailStatus(RpcUtils.getStatus(e.getCode(), e.getMessage()));
     return analysis;
+  }
+
+  private Analysis executeTabletConversionOnException(
+      final Analysis analysis, final LoadAnalyzeException e) {
+    if (shouldSkipConversion(e)) {
+      analysis.setFailStatus(
+          new TSStatus(TSStatusCode.LOAD_FILE_ERROR.getStatusCode()).setMessage(e.getMessage()));
+      analysis.setFinishQueryAfterAnalyze(true);
+      return analysis;
+    }
+
+    final LoadTsFileDataTypeConverter loadTsFileDataTypeConverter =
+        new LoadTsFileDataTypeConverter(isGeneratedByPipe);
+    final TSStatus status =
+        (!(e instanceof LoadAnalyzeTypeMismatchException)
+                || loadTsFileStatement.isConvertOnTypeMismatch())
+            ? loadTsFileDataTypeConverter.convertForTreeModel(loadTsFileStatement).orElse(null)
+            : null;
+
+    if (status == null) {
+      LOGGER.warn(
+          "Load: Failed to convert to tablets from statement {}. Status is null.",
+          loadTsFileStatement);
+      analysis.setFailStatus(
+          new TSStatus(TSStatusCode.LOAD_FILE_ERROR.getStatusCode()).setMessage(e.getMessage()));
+    } else if (!loadTsFileDataTypeConverter.isSuccessful(status)) {
+      LOGGER.warn(
+          "Load: Failed to convert to tablets from statement {}. Status: {}",
+          loadTsFileStatement,
+          status);
+      analysis.setFailStatus(status);
+    }
+
+    analysis.setFinishQueryAfterAnalyze(true);
+    analysis.setStatement(loadTsFileStatement);
+    return analysis;
+  }
+
+  private boolean shouldSkipConversion(LoadAnalyzeException e) {
+    return (e instanceof LoadAnalyzeTypeMismatchException)
+        && !loadTsFileStatement.isConvertOnTypeMismatch();
+  }
+
+  @Override
+  public void close() {
+    schemaAutoCreatorAndVerifier.close();
   }
 
   private final class SchemaAutoCreatorAndVerifier {
