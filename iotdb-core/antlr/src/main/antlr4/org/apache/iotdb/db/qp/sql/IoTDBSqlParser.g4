@@ -823,7 +823,13 @@ comment
 
 propertyValue
     : DEFAULT       #defaultPropertyValue
-    | expression    #nonDefaultPropertyValue
+    | literalExpression    #nonDefaultPropertyValue
+    ;
+
+// Currently only support this in table property values
+literalExpression
+    : INTEGER_LITERAL
+    | STRING_LITERAL
     ;
 
 /**

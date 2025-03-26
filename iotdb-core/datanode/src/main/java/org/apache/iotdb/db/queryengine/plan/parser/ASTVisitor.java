@@ -94,6 +94,13 @@ import org.apache.iotdb.db.queryengine.plan.expression.unary.LikeExpression;
 import org.apache.iotdb.db.queryengine.plan.expression.unary.LogicNotExpression;
 import org.apache.iotdb.db.queryengine.plan.expression.unary.NegationExpression;
 import org.apache.iotdb.db.queryengine.plan.expression.unary.RegularExpression;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ColumnDefinition;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateTableView;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DataType;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Identifier;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Property;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.QualifiedName;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ViewFieldDefinition;
 import org.apache.iotdb.db.queryengine.plan.statement.AuthorType;
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementType;
@@ -206,6 +213,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.metadata.template.ShowSche
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.template.UnsetSchemaTemplateStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.view.AlterLogicalViewStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.view.CreateLogicalViewStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.view.CreateTableViewStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.view.DeleteLogicalViewStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.view.ShowLogicalViewStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.AuthorStatement;
@@ -237,6 +245,7 @@ import org.apache.iotdb.db.utils.constant.SqlConstant;
 import org.apache.iotdb.trigger.api.enums.TriggerEvent;
 import org.apache.iotdb.trigger.api.enums.TriggerType;
 
+import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.io.BaseEncoding;
 import org.antlr.v4.runtime.Token;
@@ -4597,6 +4606,77 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
               Integer.parseInt(windowContext.step.getText()));
     }
     statement.setInferenceWindow(inferenceWindow);
+  }
+
+  @Override
+  public Statement visitCreateTableView(final IoTDBSqlParser.CreateTableViewContext ctx) {
+    List<Property> properties = ImmutableList.of();
+    if (ctx.properties() != null) {
+      properties =
+          ctx.properties().propertyAssignments().property().stream()
+              .map(this::parseProperty)
+              .collect(Collectors.toList());
+    }
+    return new CreateTableViewStatement(
+        new CreateTableView(
+            null,
+            getQualifiedName(ctx.qualifiedName()),
+            visit(ctx.viewColumnDefinition(), ColumnDefinition.class),
+            null,
+            ctx.comment() == null
+                ? null
+                : parseStringLiteral(ctx.comment().STRING_LITERAL().getText())),
+        properties,
+        parsePrefixPath(ctx.prefixPath()),
+        Objects.nonNull(ctx.REPLACE()),
+        Objects.nonNull(ctx.RESTRICT()));
+  }
+
+  public ColumnDefinition parseViewColumnDefinition(
+      final IoTDBSqlParser.ViewColumnDefinitionContext ctx) {
+    return Objects.nonNull(ctx.FROM())
+        ? new ViewFieldDefinition(
+            null,
+            lowerIdentifier((Identifier) visit(ctx.identifier().get(0))),
+            Objects.nonNull(ctx.type()) ? (DataType) visit(ctx.type()) : null,
+            null,
+            ctx.comment() == null
+                ? null
+                : ((org.apache.iotdb.db.queryengine.plan.relational.sql.ast.StringLiteral)
+                        visit(ctx.comment().string()))
+                    .getValue(),
+            lowerIdentifier((Identifier) visit(ctx.original_measurement)))
+        : new ColumnDefinition(
+            null,
+            lowerIdentifier((Identifier) visit(ctx.identifier().get(0))),
+            Objects.nonNull(ctx.type()) ? (DataType) visit(ctx.type()) : null,
+            getColumnCategory(ctx.columnCategory),
+            null,
+            ctx.comment() == null
+                ? null
+                : ((org.apache.iotdb.db.queryengine.plan.relational.sql.ast.StringLiteral)
+                        visit(ctx.comment().string()))
+                    .getValue());
+  }
+
+  public Property parseProperty(final IoTDBSqlParser.PropertyContext ctx) {
+    final Identifier name = new Identifier(parseIdentifier(ctx.identifier().getText()));
+    final IoTDBSqlParser.PropertyValueContext valueContext = ctx.propertyValue();
+    if (valueContext instanceof IoTDBSqlParser.DefaultPropertyValueContext) {
+      return new Property(name);
+    }
+    org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression value =
+        (org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression)
+            parseExpression(
+                ((IoTDBSqlParser.NonDefaultPropertyValueContext) valueContext).expression(), false);
+    return new Property(name, value);
+  }
+
+  private QualifiedName getQualifiedName(final IoTDBSqlParser.QualifiedNameContext context) {
+    return QualifiedName.of(
+        context.identifier().stream()
+            .map(identifierContext -> new Identifier(parseIdentifier(identifierContext.getText())))
+            .collect(Collectors.toSet()));
   }
 
   @Override

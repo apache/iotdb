@@ -43,13 +43,13 @@ public class ColumnDefinition extends Node {
   @Nullable private final String comment;
 
   public ColumnDefinition(
-      final NodeLocation location,
+      final @Nullable NodeLocation location,
       final Identifier name,
       final DataType type,
       final TsTableColumnCategory columnCategory,
       final @Nullable String charsetName,
       final @Nullable String comment) {
-    super(requireNonNull(location, "location is null"));
+    super(location);
     this.name = requireNonNull(name, "name is null");
     this.columnCategory = requireNonNull(columnCategory, "columnCategory is null");
     this.type = getDefaultType(type);

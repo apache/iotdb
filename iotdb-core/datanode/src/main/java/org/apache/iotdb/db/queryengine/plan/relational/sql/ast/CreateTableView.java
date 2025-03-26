@@ -34,7 +34,7 @@ public class CreateTableView extends CreateTable {
   private final boolean restrict;
 
   public CreateTableView(
-      final NodeLocation location,
+      final @Nullable NodeLocation location,
       final QualifiedName name,
       final List<ColumnDefinition> elements,
       final @Nullable String charsetName,
