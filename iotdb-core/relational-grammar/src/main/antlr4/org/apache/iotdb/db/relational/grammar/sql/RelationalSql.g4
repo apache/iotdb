@@ -251,8 +251,8 @@ createTableViewStatement
     ;
 
 viewColumnDefinition
-    : identifier columnCategory=(TAG | TIME) comment?
-    | identifier (type)? (columnCategory=(TAG | TIME | FIELD))? comment?
+    : identifier columnCategory=(TAG | TIME | FIELD) comment?
+    | identifier type (columnCategory=(TAG | TIME | FIELD))? comment?
     | identifier (type)? (columnCategory=FIELD)? FROM original_measurement=identifier comment?
     ;
 
