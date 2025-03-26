@@ -97,10 +97,16 @@ public class TreeDeviceViewFieldDetector {
       if (result.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         return result.getStatus();
       }
-      names.forEach(
-          name ->
-              table.resetFieldColumnType(
-                  name, TSDataType.getTsDataType(result.getDeviewViewFieldTypeMap().get(name))));
+      for (final String name : names) {
+        if (result.getDeviewViewFieldTypeMap().containsKey(name)) {
+          table.resetFieldColumnType(
+              name, TSDataType.getTsDataType(result.getDeviewViewFieldTypeMap().get(name)));
+        } else {
+          return new TSStatus(TSStatusCode.TYPE_NOT_FOUND.getStatusCode())
+              .setMessage(
+                  String.format("Measurements not found for field %s, cannot auto detect", name));
+        }
+      }
     }
     return StatusUtils.OK;
   }
