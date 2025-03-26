@@ -168,11 +168,6 @@ public class TreeDeviceViewFieldDetector {
     }
 
     private void mergeDeviceViewResp(final TDeviceViewResp resp) {
-      if (Objects.isNull(result)) {
-        result = resp;
-        return;
-      }
-
       // The map is always nonnull in the resp
       resp.getDeviewViewFieldTypeMap()
           .forEach(
