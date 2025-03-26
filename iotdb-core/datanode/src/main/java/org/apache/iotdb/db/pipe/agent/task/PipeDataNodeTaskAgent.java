@@ -48,7 +48,7 @@ import org.apache.iotdb.db.pipe.extractor.dataregion.IoTDBDataRegionExtractor;
 import org.apache.iotdb.db.pipe.extractor.dataregion.realtime.listener.PipeInsertionDataNodeListener;
 import org.apache.iotdb.db.pipe.extractor.schemaregion.SchemaRegionListeningFilter;
 import org.apache.iotdb.db.pipe.metric.overview.PipeDataNodeRemainingEventAndTimeMetrics;
-import org.apache.iotdb.db.pipe.metric.processor.PipeTsFileToTabletMetrics;
+import org.apache.iotdb.db.pipe.metric.processor.PipeTsFileToTabletsMetrics;
 import org.apache.iotdb.db.pipe.metric.source.PipeDataRegionExtractorMetrics;
 import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
@@ -329,7 +329,7 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
 
     PipeDataNodeRemainingEventAndTimeMetrics.getInstance()
         .deregister(pipeName + "_" + creationTime);
-    PipeTsFileToTabletMetrics.getInstance().deregister(pipeName + "_" + creationTime);
+    PipeTsFileToTabletsMetrics.getInstance().deregister(pipeName + "_" + creationTime);
     return true;
   }
 
@@ -346,7 +346,7 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
       final long creationTime = pipeMeta.getStaticMeta().getCreationTime();
       PipeDataNodeRemainingEventAndTimeMetrics.getInstance()
           .deregister(pipeName + "_" + creationTime);
-      PipeTsFileToTabletMetrics.getInstance().deregister(pipeName + "_" + creationTime);
+      PipeTsFileToTabletsMetrics.getInstance().deregister(pipeName + "_" + creationTime);
     }
 
     return true;

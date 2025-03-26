@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.pipe.event.common.tsfile.parser;
 
-import org.apache.iotdb.db.pipe.metric.processor.PipeTsFileToTabletMetrics;
+import org.apache.iotdb.db.pipe.metric.processor.PipeTsFileToTabletsMetrics;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 
 import java.util.Iterator;
@@ -28,11 +28,11 @@ public class TabletInsertionEventIterable implements Iterable<TabletInsertionEve
   private final Iterable<TabletInsertionEvent> originalIterable;
   private int count = 0;
   private boolean isMarked = false;
-  private final PipeTsFileToTabletMetrics.PipeCallerID pipeCallerID;
+  private final PipeTsFileToTabletsMetrics.PipeCallerID pipeCallerID;
 
   public TabletInsertionEventIterable(
       Iterable<TabletInsertionEvent> originalIterable,
-      PipeTsFileToTabletMetrics.PipeCallerID pipeCallerID) {
+      PipeTsFileToTabletsMetrics.PipeCallerID pipeCallerID) {
     this.originalIterable = originalIterable;
     this.pipeCallerID = pipeCallerID;
   }
@@ -48,7 +48,7 @@ public class TabletInsertionEventIterable implements Iterable<TabletInsertionEve
         if (!hasNext && !isMarked) {
           isMarked = true;
           if (pipeCallerID != null) {
-            PipeTsFileToTabletMetrics.getInstance().markTabletCount(pipeCallerID, count);
+            PipeTsFileToTabletsMetrics.getInstance().markTabletCount(pipeCallerID, count);
           }
         }
         return hasNext;

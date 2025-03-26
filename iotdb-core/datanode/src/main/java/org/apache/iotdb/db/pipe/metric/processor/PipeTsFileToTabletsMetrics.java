@@ -38,9 +38,9 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
-public class PipeTsFileToTabletMetrics implements IMetricSet {
+public class PipeTsFileToTabletsMetrics implements IMetricSet {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(PipeTsFileToTabletMetrics.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(PipeTsFileToTabletsMetrics.class);
 
   @SuppressWarnings("java:S3077")
   private volatile AbstractMetricService metricService;
@@ -181,18 +181,18 @@ public class PipeTsFileToTabletMetrics implements IMetricSet {
 
   private static class PipeTsFileToTabletMetricsHolder {
 
-    private static final PipeTsFileToTabletMetrics INSTANCE = new PipeTsFileToTabletMetrics();
+    private static final PipeTsFileToTabletsMetrics INSTANCE = new PipeTsFileToTabletsMetrics();
 
     private PipeTsFileToTabletMetricsHolder() {
       // empty constructor
     }
   }
 
-  public static PipeTsFileToTabletMetrics getInstance() {
-    return PipeTsFileToTabletMetrics.PipeTsFileToTabletMetricsHolder.INSTANCE;
+  public static PipeTsFileToTabletsMetrics getInstance() {
+    return PipeTsFileToTabletsMetrics.PipeTsFileToTabletMetricsHolder.INSTANCE;
   }
 
-  private PipeTsFileToTabletMetrics() {
+  private PipeTsFileToTabletsMetrics() {
     // empty constructor
   }
 
