@@ -165,6 +165,7 @@ public class PipeConfigPhysicalPlanTablePatternParseVisitorTest {
         new CommitDeleteViewPlan("da", "ac"));
   }
 
+  // Match the oldName instead of the new one
   @Test
   public void testRenameTable() {
     testInput(
