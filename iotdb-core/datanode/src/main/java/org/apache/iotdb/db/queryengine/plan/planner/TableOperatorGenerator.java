@@ -1695,7 +1695,7 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
             SchemaSourceFactory.getTableDeviceQuerySource(
                 node.getDatabase(),
                 table,
-                node.getIdDeterminedFilterList(),
+                node.getTagDeterminedFilterList(),
                 node.getColumnHeaderList(),
                 node.getColumnHeaderList().stream()
                     .map(columnHeader -> table.getColumnSchema(columnHeader.getColumnName()))
@@ -1729,15 +1729,15 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
         SchemaSourceFactory.getTableDeviceQuerySource(
             database,
             table,
-            node.getIdDeterminedFilterList(),
+            node.getTagDeterminedFilterList(),
             node.getColumnHeaderList(),
             columnSchemaList,
-            Objects.nonNull(node.getIdFuzzyPredicate())
+            Objects.nonNull(node.getTagFuzzyPredicate())
                 ? new DevicePredicateFilter(
                     filterLeafColumnTransformerList,
                     new ColumnTransformerBuilder()
                         .process(
-                            node.getIdFuzzyPredicate(),
+                            node.getTagFuzzyPredicate(),
                             new ColumnTransformerBuilder.Context(
                                 context
                                     .getDriverContext()

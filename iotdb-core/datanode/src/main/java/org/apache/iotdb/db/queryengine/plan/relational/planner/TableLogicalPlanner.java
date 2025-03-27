@@ -381,11 +381,11 @@ public class TableLogicalPlanner {
             queryId.genPlanNodeId(),
             statement.getDatabase(),
             statement.getTableName(),
-            statement.getIdDeterminedFilterList(),
+            statement.getTagDeterminedFilterList(),
             null,
             statement.getColumnHeaderList(),
             null,
-            Objects.isNull(statement.getIdFuzzyPredicate()) ? pushDownLimit : -1,
+            Objects.isNull(statement.getTagFuzzyPredicate()) ? pushDownLimit : -1,
             statement.needAligned());
 
     // put the column type info into symbolAllocator to generate TypeProvider
@@ -398,9 +398,9 @@ public class TableLogicalPlanner {
                     TypeFactory.getType(columnHeader.getColumnType())));
 
     // Filter
-    if (Objects.nonNull(statement.getIdFuzzyPredicate())) {
+    if (Objects.nonNull(statement.getTagFuzzyPredicate())) {
       currentNode =
-          new FilterNode(queryId.genPlanNodeId(), currentNode, statement.getIdFuzzyPredicate());
+          new FilterNode(queryId.genPlanNodeId(), currentNode, statement.getTagFuzzyPredicate());
     }
 
     // Limit
@@ -424,8 +424,8 @@ public class TableLogicalPlanner {
             queryContext.getQueryId().genPlanNodeId(),
             statement.getDatabase(),
             statement.getTableName(),
-            statement.getIdDeterminedFilterList(),
-            statement.getIdFuzzyPredicate(),
+            statement.getTagDeterminedFilterList(),
+            statement.getTagFuzzyPredicate(),
             statement.getColumnHeaderList());
 
     // put the column type info into symbolAllocator to generate TypeProvider
@@ -459,8 +459,8 @@ public class TableLogicalPlanner {
         queryContext.getQueryId().genPlanNodeId(),
         statement.getDatabase(),
         statement.getTableName(),
-        statement.getIdDeterminedFilterList(),
-        statement.getIdFuzzyPredicate(),
+        statement.getTagDeterminedFilterList(),
+        statement.getTagFuzzyPredicate(),
         statement.getColumnHeaderList(),
         null,
         statement.getAssignments(),

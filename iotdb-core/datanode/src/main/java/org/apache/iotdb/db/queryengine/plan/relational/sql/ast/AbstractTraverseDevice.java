@@ -61,10 +61,10 @@ public abstract class AbstractTraverseDevice extends Statement {
    * <p>Each inner list represents a device pattern and each expression of it represents one
    * condition on some id column.
    */
-  protected List<List<SchemaFilter>> idDeterminedFilterList;
+  protected List<List<SchemaFilter>> tagDeterminedFilterList;
 
   /** filters/conditions involving non-id columns and concat by OR to id column filters */
-  protected Expression idFuzzyPredicate;
+  protected Expression tagFuzzyPredicate;
 
   private List<IDeviceID> partitionKeyList;
 
@@ -151,23 +151,23 @@ public abstract class AbstractTraverseDevice extends Statement {
             true);
   }
 
-  public List<List<SchemaFilter>> getIdDeterminedFilterList() {
-    if (idDeterminedFilterList == null) {
-      idDeterminedFilterList = Collections.singletonList(Collections.emptyList());
+  public List<List<SchemaFilter>> getTagDeterminedFilterList() {
+    if (tagDeterminedFilterList == null) {
+      tagDeterminedFilterList = Collections.singletonList(Collections.emptyList());
     }
-    return idDeterminedFilterList;
+    return tagDeterminedFilterList;
   }
 
-  public void setIdDeterminedFilterList(final List<List<SchemaFilter>> idDeterminedFilterList) {
-    this.idDeterminedFilterList = idDeterminedFilterList;
+  public void setTagDeterminedFilterList(final List<List<SchemaFilter>> tagDeterminedFilterList) {
+    this.tagDeterminedFilterList = tagDeterminedFilterList;
   }
 
-  public Expression getIdFuzzyPredicate() {
-    return idFuzzyPredicate;
+  public Expression getTagFuzzyPredicate() {
+    return tagFuzzyPredicate;
   }
 
-  public void setIdFuzzyPredicate(final Expression idFuzzyPredicate) {
-    this.idFuzzyPredicate = idFuzzyPredicate;
+  public void setTagFuzzyPredicate(final Expression tagFuzzyPredicate) {
+    this.tagFuzzyPredicate = tagFuzzyPredicate;
   }
 
   public boolean isIdDetermined() {
@@ -215,13 +215,13 @@ public abstract class AbstractTraverseDevice extends Statement {
     return Objects.equals(database, that.database)
         && Objects.equals(tableName, that.tableName)
         && Objects.equals(where, that.where)
-        && Objects.equals(idDeterminedFilterList, that.idDeterminedFilterList)
-        && Objects.equals(idFuzzyPredicate, that.idFuzzyPredicate);
+        && Objects.equals(tagDeterminedFilterList, that.tagDeterminedFilterList)
+        && Objects.equals(tagFuzzyPredicate, that.tagFuzzyPredicate);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(database, tableName, where, idDeterminedFilterList, idFuzzyPredicate);
+    return Objects.hash(database, tableName, where, tagDeterminedFilterList, tagFuzzyPredicate);
   }
 
   protected String toStringContent() {
@@ -235,9 +235,9 @@ public abstract class AbstractTraverseDevice extends Statement {
         + ", rawExpression="
         + where
         + ", idDeterminedFilterList="
-        + idDeterminedFilterList
+        + tagDeterminedFilterList
         + ", idFuzzyFilter="
-        + idFuzzyPredicate
+        + tagFuzzyPredicate
         + '}';
   }
 }

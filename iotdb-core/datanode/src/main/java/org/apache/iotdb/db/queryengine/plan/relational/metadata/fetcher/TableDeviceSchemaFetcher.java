@@ -22,7 +22,7 @@ package org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher;
 import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.commons.schema.column.ColumnHeader;
 import org.apache.iotdb.commons.schema.filter.SchemaFilter;
-import org.apache.iotdb.commons.schema.filter.impl.singlechild.IdFilter;
+import org.apache.iotdb.commons.schema.filter.impl.singlechild.TagFilter;
 import org.apache.iotdb.commons.schema.filter.impl.values.PreciseFilter;
 import org.apache.iotdb.commons.schema.table.TreeViewSchema;
 import org.apache.iotdb.commons.schema.table.TsTable;
@@ -217,33 +217,34 @@ public class TableDeviceSchemaFetcher {
       final AtomicBoolean mayContainDuplicateDevice,
       final boolean isDirectDeviceQuery) {
     final Pair<List<Expression>, List<Expression>> separatedExpression =
-        SchemaPredicateUtil.separateIdDeterminedPredicate(
+        SchemaPredicateUtil.separateTagDeterminedPredicate(
             expressionList, tableInstance, queryContext, isDirectDeviceQuery);
-    final List<Expression> idDeterminedPredicateList = separatedExpression.left; // and-concat
-    final List<Expression> idFuzzyPredicateList = separatedExpression.right; // and-concat
+    final List<Expression> tagDeterminedPredicateList = separatedExpression.left; // and-concat
+    final List<Expression> tagFuzzyPredicateList = separatedExpression.right; // and-concat
 
-    final Expression compactedIdFuzzyPredicate =
-        SchemaPredicateUtil.compactDeviceIdFuzzyPredicate(idFuzzyPredicateList);
+    final Expression compactedTagFuzzyPredicate =
+        SchemaPredicateUtil.compactDeviceIdFuzzyPredicate(tagFuzzyPredicateList);
 
     // Each element represents one batch of possible devices
     // expressions inner each element are and-concat representing conditions of different column
     final List<Map<Integer, List<SchemaFilter>>> index2FilterMapList =
         SchemaPredicateUtil.convertDeviceIdPredicateToOrConcatList(
-            idDeterminedPredicateList, tableInstance, mayContainDuplicateDevice);
+            tagDeterminedPredicateList, tableInstance, mayContainDuplicateDevice);
     // If List<Expression> in idPredicateList contains all id columns comparison which can use
     // SchemaCache, we store its index.
-    final List<Integer> idSingleMatchIndexList =
-        SchemaPredicateUtil.extractIdSingleMatchExpressionCases(index2FilterMapList, tableInstance);
+    final List<Integer> tagSingleMatchIndexList =
+        SchemaPredicateUtil.extractTagSingleMatchExpressionCases(
+            index2FilterMapList, tableInstance);
     // Store missing cache index in idSingleMatchIndexList
-    final List<Integer> idSingleMatchPredicateNotInCache = new ArrayList<>();
+    final List<Integer> tagSingleMatchPredicateNotInCache = new ArrayList<>();
 
-    final boolean isExactDeviceQuery = idSingleMatchIndexList.size() == index2FilterMapList.size();
+    final boolean isExactDeviceQuery = tagSingleMatchIndexList.size() == index2FilterMapList.size();
 
     // If the query is exact, then we can specify the fetch paths to determine the related schema
     // regions
     final List<IDeviceID> fetchPaths = isExactDeviceQuery ? new ArrayList<>() : null;
 
-    if (!idSingleMatchIndexList.isEmpty()) {
+    if (!tagSingleMatchIndexList.isEmpty()) {
       // Try get from cache
       final ConvertSchemaPredicateToFilterVisitor visitor =
           new ConvertSchemaPredicateToFilterVisitor();
@@ -253,10 +254,10 @@ public class TableDeviceSchemaFetcher {
           new DeviceInCacheFilterVisitor(attributeColumns);
 
       final Predicate<AlignedDeviceEntry> check;
-      if (Objects.isNull(compactedIdFuzzyPredicate)) {
+      if (Objects.isNull(compactedTagFuzzyPredicate)) {
         check = o -> true;
       } else {
-        final SchemaFilter fuzzyFilter = compactedIdFuzzyPredicate.accept(visitor, context);
+        final SchemaFilter fuzzyFilter = compactedTagFuzzyPredicate.accept(visitor, context);
         // Currently if a fuzzy predicate exists, if it cannot be converted to a schema filter, or
         // this query is about tree device view, we abandon cache and just fetch remote. Later cache
         // will be a memory source and combine filter
@@ -266,7 +267,7 @@ public class TableDeviceSchemaFetcher {
                 : null;
       }
 
-      for (final int index : idSingleMatchIndexList) {
+      for (final int index : tagSingleMatchIndexList) {
         if (!tryGetDeviceInCache(
             deviceEntryList,
             statement.getDatabase(),
@@ -277,31 +278,31 @@ public class TableDeviceSchemaFetcher {
             fetchPaths,
             isDirectDeviceQuery,
             queryContext)) {
-          idSingleMatchPredicateNotInCache.add(index);
+          tagSingleMatchPredicateNotInCache.add(index);
         }
       }
     }
 
-    if (idSingleMatchIndexList.size() < index2FilterMapList.size()
-        || !idSingleMatchPredicateNotInCache.isEmpty()) {
-      final List<List<SchemaFilter>> idPredicateForFetch =
+    if (tagSingleMatchIndexList.size() < index2FilterMapList.size()
+        || !tagSingleMatchPredicateNotInCache.isEmpty()) {
+      final List<List<SchemaFilter>> tagPredicateForFetch =
           new ArrayList<>(
               index2FilterMapList.size()
-                  - idSingleMatchIndexList.size()
-                  + idSingleMatchPredicateNotInCache.size());
+                  - tagSingleMatchIndexList.size()
+                  + tagSingleMatchPredicateNotInCache.size());
       int idx1 = 0;
       int idx2 = 0;
       for (int i = 0; i < index2FilterMapList.size(); i++) {
-        if (idx1 >= idSingleMatchIndexList.size() || i != idSingleMatchIndexList.get(idx1)) {
-          idPredicateForFetch.add(
+        if (idx1 >= tagSingleMatchIndexList.size() || i != tagSingleMatchIndexList.get(idx1)) {
+          tagPredicateForFetch.add(
               index2FilterMapList.get(i).values().stream()
                   .flatMap(Collection::stream)
                   .collect(Collectors.toList()));
         } else {
           idx1++;
-          if (idx2 >= idSingleMatchPredicateNotInCache.size()
-              || i == idSingleMatchPredicateNotInCache.get(idx2)) {
-            idPredicateForFetch.add(
+          if (idx2 >= tagSingleMatchPredicateNotInCache.size()
+              || i == tagSingleMatchPredicateNotInCache.get(idx2)) {
+            tagPredicateForFetch.add(
                 index2FilterMapList.get(i).values().stream()
                     .flatMap(Collection::stream)
                     .collect(Collectors.toList()));
@@ -309,8 +310,8 @@ public class TableDeviceSchemaFetcher {
           }
         }
       }
-      statement.setIdDeterminedFilterList(idPredicateForFetch);
-      statement.setIdFuzzyPredicate(compactedIdFuzzyPredicate);
+      statement.setTagDeterminedFilterList(tagPredicateForFetch);
+      statement.setTagFuzzyPredicate(compactedTagFuzzyPredicate);
       statement.setPartitionKeyList(fetchPaths);
       // Return only the required attributes for non-schema queries
       // if there is no need to put to cache
@@ -336,9 +337,9 @@ public class TableDeviceSchemaFetcher {
       final MPPQueryContext queryContext) {
     final String[] idValues = new String[tableInstance.getIdNums()];
     for (final List<SchemaFilter> schemaFilters : idFilters.values()) {
-      final IdFilter idFilter = (IdFilter) schemaFilters.get(0);
-      final SchemaFilter childFilter = idFilter.getChild();
-      idValues[idFilter.getIndex()] = ((PreciseFilter) childFilter).getValue();
+      final TagFilter tagFilter = (TagFilter) schemaFilters.get(0);
+      final SchemaFilter childFilter = tagFilter.getChild();
+      idValues[tagFilter.getIndex()] = ((PreciseFilter) childFilter).getValue();
     }
 
     return !TreeViewSchema.isTreeViewTable(tableInstance)

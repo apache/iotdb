@@ -23,7 +23,7 @@ import org.apache.iotdb.commons.schema.filter.SchemaFilter;
 import org.apache.iotdb.commons.schema.filter.SchemaFilterVisitor;
 import org.apache.iotdb.commons.schema.filter.impl.StringValueFilterVisitor;
 import org.apache.iotdb.commons.schema.filter.impl.singlechild.AttributeFilter;
-import org.apache.iotdb.commons.schema.filter.impl.singlechild.IdFilter;
+import org.apache.iotdb.commons.schema.filter.impl.singlechild.TagFilter;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.AlignedDeviceEntry;
 
 import org.apache.tsfile.common.conf.TSFileConfig;
@@ -49,7 +49,7 @@ public class DeviceInCacheFilterVisitor extends SchemaFilterVisitor<AlignedDevic
   }
 
   @Override
-  public Boolean visitIdFilter(final IdFilter filter, final AlignedDeviceEntry deviceEntry) {
+  public Boolean visitTagFilter(final TagFilter filter, final AlignedDeviceEntry deviceEntry) {
     // The first segment is "tableName", skip it
     final int index = filter.getIndex() + 1;
     return filter

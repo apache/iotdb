@@ -1463,7 +1463,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
               updateNode.getDatabase(),
               DataNodeTableCache.getInstance()
                   .getTable(updateNode.getDatabase(), updateNode.getTableName()),
-              updateNode.getIdDeterminedFilterList())) {
+              updateNode.getTagDeterminedFilterList())) {
         mTree.updateTableDevice(pattern, batchUpdater);
       }
     }
@@ -1476,7 +1476,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
     final String database = updateNode.getDatabase();
     final String tableName = updateNode.getTableName();
     final TsTable table = DataNodeTableCache.getInstance().getTable(database, tableName);
-    final Expression predicate = updateNode.getIdFuzzyPredicate();
+    final Expression predicate = updateNode.getTagFuzzyPredicate();
     final List<TsTableColumnSchema> columnSchemaList =
         updateNode.getColumnHeaderList().stream()
             .map(columnHeader -> table.getColumnSchema(columnHeader.getColumnName()))
