@@ -305,6 +305,9 @@ public class WriteBackConnector implements PipeConnector {
     if (session != null) {
       SESSION_MANAGER.closeSession(session, COORDINATOR::cleanupQueryExecution);
     }
+    if (treeSession != null) {
+      SESSION_MANAGER.closeSession(treeSession, COORDINATOR::cleanupQueryExecution);
+    }
   }
 
   private TSStatus executeStatementForTableModel(Statement statement, String dataBaseName) {
