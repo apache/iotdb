@@ -21,6 +21,7 @@ package org.apache.iotdb.confignode.procedure.impl.schema.table.view;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.exception.IoTDBException;
+import org.apache.iotdb.commons.schema.table.column.FieldColumnSchema;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
 import org.apache.iotdb.confignode.persistence.schema.TreeDeviceViewFieldDetector;
@@ -35,7 +36,7 @@ import org.apache.tsfile.enums.TSDataType;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.util.List;
-import java.util.Set;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 public class AddViewColumnProcedure extends AddTableColumnProcedure {
@@ -55,14 +56,15 @@ public class AddViewColumnProcedure extends AddTableColumnProcedure {
   @Override
   protected void columnCheck(final ConfigNodeProcedureEnv env) {
     super.columnCheck(env);
-    final Set<String> fields2Detect =
+    final Map<String, FieldColumnSchema> fields2Detect =
         addedColumnList.stream()
             .filter(
                 columnSchema ->
                     columnSchema.getColumnCategory() == TsTableColumnCategory.FIELD
                         && columnSchema.getDataType() == TSDataType.UNKNOWN)
-            .map(TsTableColumnSchema::getColumnName)
-            .collect(Collectors.toSet());
+            .collect(
+                Collectors.toMap(
+                    TsTableColumnSchema::getColumnName, FieldColumnSchema.class::cast));
     if (!fields2Detect.isEmpty()) {
       final TSStatus status =
           new TreeDeviceViewFieldDetector(env.getConfigManager(), table, fields2Detect)

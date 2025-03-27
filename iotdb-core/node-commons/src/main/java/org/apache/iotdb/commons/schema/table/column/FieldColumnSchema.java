@@ -66,6 +66,11 @@ public class FieldColumnSchema extends TsTableColumnSchema {
     this.compressor = compressor;
   }
 
+  // Only for table view
+  public void setDataType(final TSDataType dataType) {
+    this.dataType = dataType;
+  }
+
   @Override
   public TsTableColumnCategory getColumnCategory() {
     return TsTableColumnCategory.FIELD;
