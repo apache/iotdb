@@ -104,7 +104,8 @@ public class CreateTableViewProcedure extends CreateTableProcedure {
         setNextState(CreateTableState.PRE_CREATE);
       }
       final TSStatus status =
-          new TreeDeviceViewFieldDetector(env.getConfigManager(), table).detectMissingFieldTypes();
+          new TreeDeviceViewFieldDetector(env.getConfigManager(), table, null)
+              .detectMissingFieldTypes();
       if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         setFailure(
             new ProcedureException(new IoTDBException(status.getMessage(), status.getCode())));

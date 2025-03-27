@@ -19,13 +19,24 @@
 
 package org.apache.iotdb.confignode.procedure.impl.schema.table.view;
 
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.exception.IoTDBException;
+import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
+import org.apache.iotdb.confignode.persistence.schema.TreeDeviceViewFieldDetector;
+import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
+import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
 import org.apache.iotdb.confignode.procedure.impl.schema.table.AddTableColumnProcedure;
 import org.apache.iotdb.confignode.procedure.store.ProcedureType;
+import org.apache.iotdb.rpc.TSStatusCode;
+
+import org.apache.tsfile.enums.TSDataType;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.util.List;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 public class AddViewColumnProcedure extends AddTableColumnProcedure {
   public AddViewColumnProcedure(final boolean isGeneratedByPipe) {
@@ -39,6 +50,28 @@ public class AddViewColumnProcedure extends AddTableColumnProcedure {
       final List<TsTableColumnSchema> addedColumnList,
       final boolean isGeneratedByPipe) {
     super(database, tableName, queryId, addedColumnList, isGeneratedByPipe);
+  }
+
+  @Override
+  protected void columnCheck(final ConfigNodeProcedureEnv env) {
+    super.columnCheck(env);
+    final Set<String> fields2Detect =
+        addedColumnList.stream()
+            .filter(
+                columnSchema ->
+                    columnSchema.getColumnCategory() == TsTableColumnCategory.FIELD
+                        && columnSchema.getDataType() == TSDataType.UNKNOWN)
+            .map(TsTableColumnSchema::getColumnName)
+            .collect(Collectors.toSet());
+    if (!fields2Detect.isEmpty()) {
+      final TSStatus status =
+          new TreeDeviceViewFieldDetector(env.getConfigManager(), table, fields2Detect)
+              .detectMissingFieldTypes();
+      if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        setFailure(
+            new ProcedureException(new IoTDBException(status.getMessage(), status.getCode())));
+      }
+    }
   }
 
   @Override

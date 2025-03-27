@@ -50,7 +50,7 @@ public class AddTableColumnProcedure
     extends AbstractAlterOrDropTableProcedure<AddTableColumnState> {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(AddTableColumnProcedure.class);
-  private List<TsTableColumnSchema> addedColumnList;
+  protected List<TsTableColumnSchema> addedColumnList;
 
   public AddTableColumnProcedure(final boolean isGeneratedByPipe) {
     super(isGeneratedByPipe);
@@ -103,7 +103,7 @@ public class AddTableColumnProcedure
     }
   }
 
-  private void columnCheck(final ConfigNodeProcedureEnv env) {
+  protected void columnCheck(final ConfigNodeProcedureEnv env) {
     try {
       final Pair<TSStatus, TsTable> result =
           env.getConfigManager()

@@ -58,17 +58,20 @@ public class TreeDeviceViewFieldDetector {
   private final ConfigManager configManager;
   private final PartialPath path;
   private final TsTable table;
+  private final Set<String> fieldName;
 
   private TDeviceViewResp result = new TDeviceViewResp(StatusUtils.OK, new ConcurrentHashMap<>());
 
-  public TreeDeviceViewFieldDetector(final ConfigManager configManager, final TsTable table) {
+  public TreeDeviceViewFieldDetector(
+      final ConfigManager configManager, final TsTable table, final Set<String> fieldName) {
     this.configManager = configManager;
     this.path = TreeViewSchema.getPrefixPattern(table);
     this.table = table;
+    this.fieldName = fieldName;
   }
 
   public TSStatus detectMissingFieldTypes() {
-    if (table.getFieldNum() == 0) {
+    if (table.getFieldNum() == 0 && Objects.isNull(fieldName)) {
       new TreeDeviceViewFieldDetectionTaskExecutor(
               configManager,
               getLatestSchemaRegionMap(),
@@ -86,13 +89,15 @@ public class TreeDeviceViewFieldDetector {
                       new FieldColumnSchema(field, TSDataType.getTsDataType(type))));
     } else {
       final Set<String> names =
-          table.getColumnList().stream()
-              .filter(
-                  columnSchema ->
-                      columnSchema instanceof FieldColumnSchema
-                          && columnSchema.getDataType() == TSDataType.UNKNOWN)
-              .map(TsTableColumnSchema::getColumnName)
-              .collect(Collectors.toSet());
+          Objects.isNull(fieldName)
+              ? table.getColumnList().stream()
+                  .filter(
+                      columnSchema ->
+                          columnSchema instanceof FieldColumnSchema
+                              && columnSchema.getDataType() == TSDataType.UNKNOWN)
+                  .map(TsTableColumnSchema::getColumnName)
+                  .collect(Collectors.toSet())
+              : fieldName;
       if (names.isEmpty()) {
         return StatusUtils.OK;
       }
