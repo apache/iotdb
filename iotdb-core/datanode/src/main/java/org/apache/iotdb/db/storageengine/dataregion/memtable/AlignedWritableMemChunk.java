@@ -60,7 +60,7 @@ import static org.apache.iotdb.db.utils.ModificationUtils.isPointDeleted;
 public class AlignedWritableMemChunk extends AbstractWritableMemChunk {
 
   private final Map<String, Integer> measurementIndexMap;
-  private final List<TSDataType> dataTypes;
+  private List<TSDataType> dataTypes;
   private final List<IMeasurementSchema> schemaList;
   private AlignedTVList list;
   private List<AlignedTVList> sortedList;
@@ -192,6 +192,7 @@ public class AlignedWritableMemChunk extends AbstractWritableMemChunk {
     }
     sortedList.add(list);
     this.list = AlignedTVList.newAlignedList(new ArrayList<>(dataTypes));
+    this.dataTypes = list.getTsDataTypes();
   }
 
   @Override
