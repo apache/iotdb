@@ -340,7 +340,7 @@ public class TableHeaderSchemaValidator {
                 // Skip encoding & compressors because view query does not need these
                 : new FieldColumnSchema(columnName, dataType);
         if (Objects.nonNull(from)) {
-          schema.getProps().put(TreeViewSchema.ORIGINAL_NAME, from);
+          TreeViewSchema.setOriginalName(schema, from);
         }
         break;
       default:

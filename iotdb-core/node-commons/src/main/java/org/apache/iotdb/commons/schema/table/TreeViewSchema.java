@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.IoTDBRuntimeException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternUtil;
+import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 public class TreeViewSchema {
@@ -58,6 +59,14 @@ public class TreeViewSchema {
           TSStatusCode.SEMANTIC_ERROR.getStatusCode());
     }
     return partialPath;
+  }
+
+  public static String getOriginalName(final TsTableColumnSchema schema) {
+    return schema.getProps().get(ORIGINAL_NAME);
+  }
+
+  public static void setOriginalName(final TsTableColumnSchema schema, final String name) {
+    schema.getProps().put(ORIGINAL_NAME, name);
   }
 
   public static boolean isRestrict(final TsTable table) {

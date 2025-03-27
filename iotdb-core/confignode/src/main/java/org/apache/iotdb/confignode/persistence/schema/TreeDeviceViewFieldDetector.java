@@ -28,7 +28,6 @@ import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.schema.table.TreeViewSchema;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.column.FieldColumnSchema;
-import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
 import org.apache.iotdb.commons.utils.StatusUtils;
 import org.apache.iotdb.confignode.client.async.CnToDnAsyncRequestType;
 import org.apache.iotdb.confignode.manager.ConfigManager;
@@ -99,7 +98,11 @@ public class TreeDeviceViewFieldDetector {
                               && columnSchema.getDataType() == TSDataType.UNKNOWN)
                   .collect(
                       Collectors.toMap(
-                          TsTableColumnSchema::getColumnName, FieldColumnSchema.class::cast))
+                          fieldColumnSchema ->
+                              Objects.nonNull(TreeViewSchema.getOriginalName(fieldColumnSchema))
+                                  ? TreeViewSchema.getOriginalName(fieldColumnSchema)
+                                  : fieldColumnSchema.getColumnName(),
+                          FieldColumnSchema.class::cast))
               : fields;
       if (unknownFields.isEmpty()) {
         return StatusUtils.OK;
