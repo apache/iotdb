@@ -46,6 +46,7 @@ import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.constant
 import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.constant.InnerUnsequenceCompactionSelector;
 import org.apache.iotdb.db.storageengine.dataregion.wal.WALManager;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALMode;
+import org.apache.iotdb.db.storageengine.load.disk.ILoadDiskSelector;
 import org.apache.iotdb.db.storageengine.rescon.disk.TierManager;
 import org.apache.iotdb.db.storageengine.rescon.memory.SystemInfo;
 import org.apache.iotdb.db.utils.DateTimeUtils;
@@ -2355,7 +2356,7 @@ public class IoTDBDescriptor {
     LOGGER.info("allocateMemoryForPartitionCache = {}", conf.getAllocateMemoryForPartitionCache());
   }
 
-  private void loadLoadTsFileProps(TrimProperties properties) {
+  private void loadLoadTsFileProps(TrimProperties properties) throws IOException {
     conf.setMaxAllocateMemoryRatioForLoad(
         Double.parseDouble(
             properties.getProperty(
@@ -2442,6 +2443,16 @@ public class IoTDBDescriptor {
             properties.getProperty(
                 "load_active_listening_verify_enable",
                 Boolean.toString(conf.isLoadActiveListeningVerifyEnable()))));
+
+    conf.setLoadDiskSelectStrategy(
+        properties.getProperty(
+            "load_disk_select_strategy",
+            ILoadDiskSelector.LoadDiskSelectorType.MIN_IO_FIRST.getValue()));
+
+    conf.setLoadDiskSelectStrategyForIoTV2AndPipe(
+        properties.getProperty(
+            "load_disk_select_strategy_for_pipe_and_iotv2",
+            ILoadDiskSelector.LoadDiskSelectorType.INHERIT_LOAD.getValue()));
   }
 
   private void loadLoadTsFileHotModifiedProp(TrimProperties properties) throws IOException {
