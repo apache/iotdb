@@ -125,6 +125,9 @@ import org.apache.iotdb.db.storageengine.dataregion.wal.recover.file.UnsealedTsF
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALMode;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.listener.WALFlushListener;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.listener.WALRecoverListener;
+import org.apache.iotdb.db.storageengine.load.disk.ILoadDiskSelector;
+import org.apache.iotdb.db.storageengine.load.disk.InheritSystemMultiDisksStrategySelector;
+import org.apache.iotdb.db.storageengine.load.disk.MinIOSelector;
 import org.apache.iotdb.db.storageengine.load.limiter.LoadTsFileRateLimiter;
 import org.apache.iotdb.db.storageengine.rescon.disk.TierManager;
 import org.apache.iotdb.db.storageengine.rescon.memory.SystemInfo;
@@ -326,6 +329,9 @@ public class DataRegion implements IDataRegionForQuery {
 
   private final DataRegionMetrics metrics;
 
+  private ILoadDiskSelector ordinaryLoadDiskSelector;
+  private ILoadDiskSelector pipeAndIoTV2LoadDiskSelector;
+
   /**
    * Construct a database processor.
    *
@@ -389,6 +395,8 @@ public class DataRegion implements IDataRegionForQuery {
       recover();
     }
 
+    initDiskSelector();
+
     this.metrics = new DataRegionMetrics(this);
     MetricService.getInstance().addMetricSet(metrics);
   }
@@ -402,6 +410,32 @@ public class DataRegion implements IDataRegionForQuery {
     partitionMaxFileVersions.put(0L, 0L);
     upgradeModFileThreadPool = null;
     this.metrics = new DataRegionMetrics(this);
+
+    initDiskSelector();
+  }
+
+  private void initDiskSelector() {
+    switch (ILoadDiskSelector.LoadDiskSelectorType.fromValue(config.getLoadDiskSelectStrategy())) {
+      case INHERIT_SYSTEM_MULTI_DISKS_SELECT_STRATEGY:
+        ordinaryLoadDiskSelector = new InheritSystemMultiDisksStrategySelector();
+        break;
+      case MIN_IO_FIRST:
+      default:
+        ordinaryLoadDiskSelector = new MinIOSelector();
+    }
+
+    switch (ILoadDiskSelector.LoadDiskSelectorType.fromValue(
+        config.getLoadDiskSelectStrategyForIoTV2AndPipe())) {
+      case MIN_IO_FIRST:
+        pipeAndIoTV2LoadDiskSelector = new MinIOSelector();
+        break;
+      case INHERIT_SYSTEM_MULTI_DISKS_SELECT_STRATEGY:
+        pipeAndIoTV2LoadDiskSelector = new InheritSystemMultiDisksStrategySelector();
+        break;
+      case INHERIT_LOAD:
+      default:
+        pipeAndIoTV2LoadDiskSelector = ordinaryLoadDiskSelector;
+    }
   }
 
   @Override
@@ -3061,16 +3095,24 @@ public class DataRegion implements IDataRegionForQuery {
       final boolean deleteOriginFile,
       boolean isGeneratedByPipe)
       throws LoadFileException, DiskSpaceInsufficientException {
+    final int targetTierLevel = 0;
     final File targetFile =
-        fsFactory.getFile(
-            TierManager.getInstance().getNextFolderForTsFile(0, false),
-            databaseName
-                + File.separatorChar
-                + dataRegionId
-                + File.separatorChar
-                + filePartitionId
-                + File.separator
-                + tsFileResource.getTsFile().getName());
+        (tsFileResource.isGeneratedByPipeConsensus() || tsFileResource.isGeneratedByPipe())
+            ? pipeAndIoTV2LoadDiskSelector.getTargetFile(
+                tsFileToLoad,
+                databaseName,
+                dataRegionId,
+                filePartitionId,
+                tsFileResource.getTsFile().getName(),
+                targetTierLevel)
+            : ordinaryLoadDiskSelector.getTargetFile(
+                tsFileToLoad,
+                databaseName,
+                dataRegionId,
+                filePartitionId,
+                tsFileResource.getTsFile().getName(),
+                targetTierLevel);
+
     tsFileResource.setFile(targetFile);
     if (tsFileManager.contains(tsFileResource, false)) {
       logger.warn("The file {} has already been loaded in unsequence list", tsFileResource);
