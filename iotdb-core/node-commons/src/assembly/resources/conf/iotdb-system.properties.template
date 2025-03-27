@@ -246,8 +246,8 @@ dn_multi_dir_strategy=SequenceStrategy
 # The strategy is used to choose a proper disk for loading tsfile.
 # The info of the two strategies are as follows:
 # 1. MIN_IO_FIRST: the system will try to choose the same disk as tsFileToLoad for loading.
-# 2. DISK_STORAGE_BALANCE_FIRST: the system will make the disk choice that balance storage as much as possible.
-# If this property is unset, system will use MIN_IO_FIRST as default strategy because storage-balance is ensured with higher priority.
+# 2. INHERIT_SYSTEM_MULTI_DISKS_SELECT_STRATEGY: the system will choose one disk according to dn_multi_dir_strategy.
+# If this property is unset, system will use MIN_IO_FIRST as default strategy.
 # effectiveMode: restart
 # Datatype: String
 load_disk_select_strategy=MIN_IO_FIRST
@@ -256,9 +256,9 @@ load_disk_select_strategy=MIN_IO_FIRST
 # The strategy is used to choose a proper disk for loading tsfile.
 # The info of the three strategies are as follows:
 # 1. MIN_IO_FIRST: the system will try to choose the same disk as tsFileToLoad for loading.
-# 2. DISK_STORAGE_BALANCE_FIRST: the system will make the disk choice that balance storage as much as possible.
-$ 3. INHERIT_LOAD: the system will use the same strategy as load_disk_select_strategy
-# If this property is unset, system will use INHERIT_LOAD as default strategy because storage-balance is ensured with higher priority.
+# 2. INHERIT_SYSTEM_MULTI_DISKS_SELECT_STRATEGY: the system will choose one disk according to dn_multi_dir_strategy.
+$ 3. INHERIT_LOAD: the system will use the same strategy as load_disk_select_strategy.
+# If this property is unset, system will use INHERIT_LOAD as default strategy.
 # effectiveMode: restart
 # Datatype: String
 load_disk_select_strategy_for_pipe_and_iotv2=INHERIT_LOAD

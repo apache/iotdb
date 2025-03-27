@@ -36,7 +36,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 
-public class MinIOSelector extends StorageBalanceSelector {
+public class MinIOSelector extends InheritSystemMultiDisksStrategySelector {
 
   private static final Logger logger = LoggerFactory.getLogger(MinIOSelector.class);
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();

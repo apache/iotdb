@@ -27,11 +27,11 @@ import org.apache.tsfile.fileSystem.fsFactory.FSFactory;
 
 import java.io.File;
 
-public class StorageBalanceSelector implements ILoadDiskSelector {
+public class InheritSystemMultiDisksStrategySelector implements ILoadDiskSelector {
 
   protected final FSFactory fsFactory = FSFactoryProducer.getFSFactory();
 
-  public StorageBalanceSelector() {
+  public InheritSystemMultiDisksStrategySelector() {
     // empty body
   }
 
@@ -43,6 +43,7 @@ public class StorageBalanceSelector implements ILoadDiskSelector {
       long filePartitionId,
       String tsfileName)
       throws DiskSpaceInsufficientException {
+    // inherit system multi-disks select strategy, see configuration `dn_multi_dir_strategy`
     return fsFactory.getFile(
         TierManager.getInstance().getNextFolderForTsFile(0, false),
         databaseName

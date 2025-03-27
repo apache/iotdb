@@ -125,8 +125,8 @@ import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALMode;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.listener.WALFlushListener;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.listener.WALRecoverListener;
 import org.apache.iotdb.db.storageengine.load.disk.ILoadDiskSelector;
+import org.apache.iotdb.db.storageengine.load.disk.InheritSystemMultiDisksStrategySelector;
 import org.apache.iotdb.db.storageengine.load.disk.MinIOSelector;
-import org.apache.iotdb.db.storageengine.load.disk.StorageBalanceSelector;
 import org.apache.iotdb.db.storageengine.load.limiter.LoadTsFileRateLimiter;
 import org.apache.iotdb.db.storageengine.rescon.disk.TierManager;
 import org.apache.iotdb.db.storageengine.rescon.memory.SystemInfo;
@@ -415,8 +415,8 @@ public class DataRegion implements IDataRegionForQuery {
 
   private void initDiskSelector() {
     switch (ILoadDiskSelector.LoadDiskSelectorType.fromValue(config.getLoadDiskSelectStrategy())) {
-      case DISK_STORAGE_BALANCE_FIRST:
-        ordinaryLoadDiskSelector = new StorageBalanceSelector();
+      case INHERIT_SYSTEM_MULTI_DISKS_SELECT_STRATEGY:
+        ordinaryLoadDiskSelector = new InheritSystemMultiDisksStrategySelector();
         break;
       case MIN_IO_FIRST:
       default:
@@ -428,8 +428,8 @@ public class DataRegion implements IDataRegionForQuery {
       case MIN_IO_FIRST:
         pipeAndIoTV2LoadDiskSelector = new MinIOSelector();
         break;
-      case DISK_STORAGE_BALANCE_FIRST:
-        pipeAndIoTV2LoadDiskSelector = new StorageBalanceSelector();
+      case INHERIT_SYSTEM_MULTI_DISKS_SELECT_STRATEGY:
+        pipeAndIoTV2LoadDiskSelector = new InheritSystemMultiDisksStrategySelector();
         break;
       case INHERIT_LOAD:
       default:
@@ -3100,9 +3100,7 @@ public class DataRegion implements IDataRegionForQuery {
                 filePartitionId,
                 tsFileResource.getTsFile().getName());
 
-    // var used in lambda must be final
-    final File finalTargetFile = targetFile;
-    tsFileResource.setFile(finalTargetFile);
+    tsFileResource.setFile(targetFile);
     if (tsFileManager.contains(tsFileResource, false)) {
       logger.warn("The file {} has already been loaded in unsequence list", tsFileResource);
       return false;
@@ -3123,13 +3121,13 @@ public class DataRegion implements IDataRegionForQuery {
       if (deleteOriginFile) {
         RetryUtils.retryOnException(
             () -> {
-              FileUtils.moveFile(tsFileToLoad, finalTargetFile);
+              FileUtils.moveFile(tsFileToLoad, targetFile);
               return null;
             });
       } else {
         RetryUtils.retryOnException(
             () -> {
-              Files.copy(tsFileToLoad.toPath(), finalTargetFile.toPath());
+              Files.copy(tsFileToLoad.toPath(), targetFile.toPath());
               return null;
             });
       }

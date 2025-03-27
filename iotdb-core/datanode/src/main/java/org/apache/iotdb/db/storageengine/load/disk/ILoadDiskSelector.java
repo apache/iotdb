@@ -35,7 +35,7 @@ public interface ILoadDiskSelector {
 
   enum LoadDiskSelectorType {
     MIN_IO_FIRST("MIN_IO_FIRST"),
-    DISK_STORAGE_BALANCE_FIRST("DISK_STORAGE_BALANCE_FIRST"),
+    INHERIT_SYSTEM_MULTI_DISKS_SELECT_STRATEGY("INHERIT_SYSTEM_MULTI_DISKS_SELECT_STRATEGY"),
     // This type is specially designed for IoTV2 and Pipe, which means IoTV2 and Pipe will follow
     // the same strategy as ordinary load.
     INHERIT_LOAD("INHERIT_LOAD");
@@ -53,13 +53,13 @@ public interface ILoadDiskSelector {
     public static LoadDiskSelectorType fromValue(String value) {
       if (value.equalsIgnoreCase(MIN_IO_FIRST.getValue())) {
         return MIN_IO_FIRST;
-      } else if (value.equalsIgnoreCase(DISK_STORAGE_BALANCE_FIRST.getValue())) {
-        return DISK_STORAGE_BALANCE_FIRST;
+      } else if (value.equalsIgnoreCase(INHERIT_SYSTEM_MULTI_DISKS_SELECT_STRATEGY.getValue())) {
+        return INHERIT_SYSTEM_MULTI_DISKS_SELECT_STRATEGY;
       } else if (value.equalsIgnoreCase(INHERIT_LOAD.getValue())) {
         return INHERIT_LOAD;
       }
-      // return DISK_STORAGE_BALANCE_FIRST by default
-      return DISK_STORAGE_BALANCE_FIRST;
+      // return MIN_IO_FIRST by default
+      return MIN_IO_FIRST;
     }
   }
 }
