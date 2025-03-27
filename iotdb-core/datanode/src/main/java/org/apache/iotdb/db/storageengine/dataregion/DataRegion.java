@@ -3085,6 +3085,7 @@ public class DataRegion implements IDataRegionForQuery {
       final boolean deleteOriginFile,
       boolean isGeneratedByPipe)
       throws LoadFileException, DiskSpaceInsufficientException {
+    final int targetTierLevel = 0;
     final File targetFile =
         (tsFileResource.isGeneratedByPipeConsensus() || tsFileResource.isGeneratedByPipe())
             ? pipeAndIoTV2LoadDiskSelector.getTargetFile(
@@ -3092,13 +3093,15 @@ public class DataRegion implements IDataRegionForQuery {
                 databaseName,
                 dataRegionId,
                 filePartitionId,
-                tsFileResource.getTsFile().getName())
+                tsFileResource.getTsFile().getName(),
+                targetTierLevel)
             : ordinaryLoadDiskSelector.getTargetFile(
                 tsFileToLoad,
                 databaseName,
                 dataRegionId,
                 filePartitionId,
-                tsFileResource.getTsFile().getName());
+                tsFileResource.getTsFile().getName(),
+                targetTierLevel);
 
     tsFileResource.setFile(targetFile);
     if (tsFileManager.contains(tsFileResource, false)) {

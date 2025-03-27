@@ -74,7 +74,8 @@ public class MinIOSelector extends InheritSystemMultiDisksStrategySelector {
       String databaseName,
       String dataRegionId,
       long filePartitionId,
-      String tsfileName)
+      String tsfileName,
+      int tierLevel)
       throws DiskSpaceInsufficientException {
     File targetFile;
     String fileDirRoot = null;
@@ -105,6 +106,7 @@ public class MinIOSelector extends InheritSystemMultiDisksStrategySelector {
     }
 
     // if there isn't an overlap, downgrade to storage balance(sequence) strategy.
-    return super.getTargetFile(fileToLoad, databaseName, dataRegionId, filePartitionId, tsfileName);
+    return super.getTargetFile(
+        fileToLoad, databaseName, dataRegionId, filePartitionId, tsfileName, tierLevel);
   }
 }

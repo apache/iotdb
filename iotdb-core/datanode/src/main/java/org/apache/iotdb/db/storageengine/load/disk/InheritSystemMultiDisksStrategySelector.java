@@ -41,11 +41,12 @@ public class InheritSystemMultiDisksStrategySelector implements ILoadDiskSelecto
       String databaseName,
       String dataRegionId,
       long filePartitionId,
-      String tsfileName)
+      String tsfileName,
+      int tierLevel)
       throws DiskSpaceInsufficientException {
     // inherit system multi-disks select strategy, see configuration `dn_multi_dir_strategy`
     return fsFactory.getFile(
-        TierManager.getInstance().getNextFolderForTsFile(0, false),
+        TierManager.getInstance().getNextFolderForTsFile(tierLevel, false),
         databaseName
             + File.separatorChar
             + dataRegionId

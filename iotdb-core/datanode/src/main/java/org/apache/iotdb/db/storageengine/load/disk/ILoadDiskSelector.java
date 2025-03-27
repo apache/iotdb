@@ -30,7 +30,8 @@ public interface ILoadDiskSelector {
       String databaseName,
       String dataRegionId,
       long filePartitionId,
-      String tsfileName)
+      String tsfileName,
+      int tierLevel)
       throws DiskSpaceInsufficientException;
 
   enum LoadDiskSelectorType {
