@@ -175,9 +175,11 @@ public class HeartbeatService {
       heartbeatReq.setDataNodes(configManager.getNodeManager().getRegisteredDataNodeLocations());
     }
 
-    // region operations broadcast
-    heartbeatReq.setCurrentRegionOperations(
-        configManager.getProcedureManager().getRegionOperationConsensusIds());
+    // We broadcast region operations list every 100 heartbeat loops
+    if (heartbeatCounter.get() % 100 == 0) {
+      heartbeatReq.setCurrentRegionOperations(
+          configManager.getProcedureManager().getRegionOperationConsensusIds());
+    }
 
     /* Update heartbeat counter */
     heartbeatCounter.getAndIncrement();
