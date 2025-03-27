@@ -199,6 +199,8 @@ import java.util.List;
 
 import static org.apache.iotdb.commons.executable.ExecutableManager.getUnTrustedUriErrorMsg;
 import static org.apache.iotdb.commons.executable.ExecutableManager.isUriTrusted;
+import static org.apache.iotdb.db.queryengine.plan.execution.config.TableConfigTaskVisitor.checkAndEnrichSinkUserName;
+import static org.apache.iotdb.db.queryengine.plan.execution.config.TableConfigTaskVisitor.checkAndEnrichSourceUserName;
 
 public class TreeConfigTaskVisitor extends StatementVisitor<IConfigTask, MPPQueryContext> {
 
@@ -515,8 +517,8 @@ public class TreeConfigTaskVisitor extends StatementVisitor<IConfigTask, MPPQuer
 
   @Override
   public IConfigTask visitCreatePipe(
-      CreatePipeStatement createPipeStatement, MPPQueryContext context) {
-    for (String ExtractorAttribute : createPipeStatement.getExtractorAttributes().keySet()) {
+      final CreatePipeStatement createPipeStatement, final MPPQueryContext context) {
+    for (final String ExtractorAttribute : createPipeStatement.getExtractorAttributes().keySet()) {
       if (ExtractorAttribute.startsWith(SystemConstant.SYSTEM_PREFIX_KEY)) {
         throw new SemanticException(
             String.format(
@@ -529,6 +531,14 @@ public class TreeConfigTaskVisitor extends StatementVisitor<IConfigTask, MPPQuer
     createPipeStatement
         .getExtractorAttributes()
         .put(SystemConstant.SQL_DIALECT_KEY, SystemConstant.SQL_DIALECT_TREE_VALUE);
+    checkAndEnrichSourceUserName(
+        createPipeStatement.getPipeName(),
+        createPipeStatement.getExtractorAttributes(),
+        context.getSession().getUserName());
+    checkAndEnrichSinkUserName(
+        createPipeStatement.getPipeName(),
+        createPipeStatement.getConnectorAttributes(),
+        context.getSession().getUserName());
 
     return new CreatePipeTask(createPipeStatement);
   }

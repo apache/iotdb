@@ -169,6 +169,7 @@ public class ImportDataTable extends AbstractImportData {
           sql = sql.replace(";", "");
           session.executeNonQueryStatement(sql);
         } catch (IoTDBConnectionException | StatementExecutionException e) {
+          ioTPrinter.println(e.getMessage());
           failedRecords.add(Collections.singletonList(sql));
         }
       }
@@ -256,7 +257,7 @@ public class ImportDataTable extends AbstractImportData {
     List<String> headNames = new LinkedList<>(dataTypes.keySet());
     List<TSDataType> columnTypes = new LinkedList<>(dataTypes.values());
     List<Tablet.ColumnCategory> columnCategorys = new LinkedList<>(columnCategory.values());
-    Tablet tablet = new Tablet(table, headNames, columnTypes, columnCategorys);
+    Tablet tablet = new Tablet(table, headNames, columnTypes, columnCategorys, batchPointSize);
     for (CSVRecord recordObj : records) {
       boolean isFail = false;
       final int rowSize = tablet.getRowSize();
@@ -283,7 +284,7 @@ public class ImportDataTable extends AbstractImportData {
                 columnCategorys.add(newIndex, Tablet.ColumnCategory.FIELD);
               }
               writeAndEmptyDataSet(tablet, 3);
-              tablet = new Tablet(table, headNames, columnTypes, columnCategorys);
+              tablet = new Tablet(table, headNames, columnTypes, columnCategorys, batchPointSize);
               tablet.addTimestamp(rowSize, rowTimeStamp);
             } else {
               ioTPrinter.printf(
@@ -314,7 +315,7 @@ public class ImportDataTable extends AbstractImportData {
         failedRecords.add(recordObj.stream().collect(Collectors.toList()));
       }
     }
-    if (tablet.getValues().length > 0) {
+    if (tablet.getRowSize() > 0) {
       writeAndEmptyDataSet(tablet, 3);
     }
 

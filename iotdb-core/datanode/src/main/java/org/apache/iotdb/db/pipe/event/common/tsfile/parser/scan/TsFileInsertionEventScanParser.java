@@ -87,6 +87,8 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
   private byte lastMarker = Byte.MIN_VALUE;
 
   public TsFileInsertionEventScanParser(
+      final String pipeName,
+      final long creationTime,
       final File tsFile,
       final TreePattern pattern,
       final long startTime,
@@ -94,7 +96,7 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
       final PipeTaskMeta pipeTaskMeta,
       final PipeInsertionEvent sourceEvent)
       throws IOException {
-    super(pattern, null, startTime, endTime, pipeTaskMeta, sourceEvent);
+    super(pipeName, creationTime, pattern, null, startTime, endTime, pipeTaskMeta, sourceEvent);
 
     this.startTime = startTime;
     this.endTime = endTime;
@@ -113,6 +115,17 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
       close();
       throw e;
     }
+  }
+
+  public TsFileInsertionEventScanParser(
+      final File tsFile,
+      final TreePattern pattern,
+      final long startTime,
+      final long endTime,
+      final PipeTaskMeta pipeTaskMeta,
+      final PipeInsertionEvent sourceEvent)
+      throws IOException {
+    this(null, 0, tsFile, pattern, startTime, endTime, pipeTaskMeta, sourceEvent);
   }
 
   @Override
