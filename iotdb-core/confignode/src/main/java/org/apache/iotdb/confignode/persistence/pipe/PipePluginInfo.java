@@ -362,11 +362,14 @@ public class PipePluginInfo implements SnapshotProcessor {
       }
 
       for (final PipePluginMeta pipePluginMeta : pipePluginMetaKeeper.getAllPipePluginMeta()) {
+        if (pipePluginMeta.isBuiltin()) {
+          continue;
+        }
         final String pluginName = pipePluginMeta.getPluginName();
-        final String pluginDirPath = pipePluginExecutableManager.getPluginsDirPath(pluginName);
-        final PipePluginClassLoader pipePluginClassLoader =
-            classLoaderManager.createPipePluginClassLoader(pluginDirPath);
         try {
+          final String pluginDirPath = pipePluginExecutableManager.getPluginsDirPath(pluginName);
+          final PipePluginClassLoader pipePluginClassLoader =
+              classLoaderManager.createPipePluginClassLoader(pluginDirPath);
           final Class<?> pluginClass =
               Class.forName(pipePluginMeta.getClassName(), true, pipePluginClassLoader);
           pipePluginMetaKeeper.addPipePluginVisibility(
