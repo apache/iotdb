@@ -50,6 +50,7 @@ import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.commons.consensus.index.ProgressIndexType;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.commons.path.ExtendedPartialPath;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathDeserializeUtil;
@@ -1725,9 +1726,15 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
             consensusGroupId -> {
               final ISchemaRegion schemaRegion =
                   schemaEngine.getSchemaRegion(new SchemaRegionId(consensusGroupId.getId()));
+              // Get pattern nodes, length is (prefix - 1) + tagNumber + 1(measurement)
+              final String[] nodes = new String[req.getTagNumber() + req.getPrefixPattern().size()];
+              Arrays.fill(nodes, "*");
+              for (int i = 0; i < req.getPrefixPattern().size() - 1; ++i) {
+                nodes[i] = req.getPrefixPattern().get(i);
+              }
               final ISchemaSource<ITimeSeriesSchemaInfo> schemaSource =
                   SchemaSourceFactory.getTimeSeriesSchemaCountSource(
-                      new PartialPath(req.getPrefixPattern().toArray(new String[0])),
+                      new ExtendedPartialPath(nodes, req.isRestrict()),
                       false,
                       // Does not support logical view currently
                       SchemaFilterFactory.createViewTypeFilter(ViewType.BASE),
@@ -1738,15 +1745,21 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
                 final Map<String, Byte> updateMap = resp.getDeviewViewFieldTypeMap();
                 while (schemaReader.hasNext()) {
                   final IMeasurementSchema schema = schemaReader.next().getSchema();
+                  final String measurementName = schema.getMeasurementName();
 
-                  if (!updateMap.containsKey(schema.getMeasurementName())) {
-                    updateMap.put(schema.getMeasurementName(), schema.getTypeInByte());
-                  } else if (schema.getTypeInByte() != updateMap.get(schema.getMeasurementName())) {
+                  // For trimming
+                  if (req.isSetRequiredMeasurements()
+                      && !req.getRequiredMeasurements().contains(measurementName)) {
+                    continue;
+                  }
+                  if (!updateMap.containsKey(measurementName)) {
+                    updateMap.put(measurementName, schema.getTypeInByte());
+                  } else if (schema.getTypeInByte() != updateMap.get(measurementName)) {
                     return RpcUtils.getStatus(
                         TSStatusCode.DATA_TYPE_MISMATCH,
                         String.format(
                             "Multiple types encountered when auto detecting type of measurement '%s', please check",
-                            schema.getMeasurementName()));
+                            measurementName));
                   }
                 }
               } catch (final Exception e) {

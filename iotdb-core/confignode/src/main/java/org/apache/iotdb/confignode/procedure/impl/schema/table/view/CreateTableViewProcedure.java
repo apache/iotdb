@@ -27,6 +27,7 @@ import org.apache.iotdb.commons.schema.table.TreeViewSchema;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.confignode.consensus.request.write.table.view.PreCreateTableViewPlan;
 import org.apache.iotdb.confignode.exception.DatabaseNotExistsException;
+import org.apache.iotdb.confignode.persistence.schema.TreeDeviceViewFieldDetector;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
 import org.apache.iotdb.confignode.procedure.impl.schema.SchemaUtils;
@@ -87,6 +88,7 @@ public class CreateTableViewProcedure extends CreateTableProcedure {
                       String.format(
                           "Table '%s.%s' already exists.", database, table.getTableName()),
                       TABLE_ALREADY_EXISTS.getStatusCode())));
+          return;
         } else {
           oldView = oldTableAndStatus.get().getLeft();
           oldStatus = oldTableAndStatus.get().getRight();
@@ -100,6 +102,12 @@ public class CreateTableViewProcedure extends CreateTableProcedure {
           table.addProp(TsTable.TTL_PROPERTY, String.valueOf(schema.getTTL()));
         }
         setNextState(CreateTableState.PRE_CREATE);
+      }
+      final TSStatus status =
+          new TreeDeviceViewFieldDetector(env.getConfigManager(), table).detectMissingFieldTypes();
+      if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        setFailure(
+            new ProcedureException(new IoTDBException(status.getMessage(), status.getCode())));
       }
     } catch (final MetadataException | DatabaseNotExistsException e) {
       setFailure(new ProcedureException(e));
