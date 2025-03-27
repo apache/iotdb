@@ -35,6 +35,7 @@ import org.apache.iotdb.db.trigger.executor.TriggerFireVisitor;
 
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.IDeviceID;
+import org.apache.tsfile.utils.ReadWriteIOUtils;
 import org.apache.tsfile.write.schema.MeasurementSchema;
 
 import java.io.DataOutputStream;
@@ -244,16 +245,20 @@ public class PipeEnrichedInsertNode extends InsertNode {
   protected void serializeAttributes(final ByteBuffer byteBuffer) {
     PlanNodeType.PIPE_ENRICHED_INSERT_DATA.serialize(byteBuffer);
     insertNode.serialize(byteBuffer);
+    ReadWriteIOUtils.write(originClusterId, byteBuffer);
   }
 
   @Override
   protected void serializeAttributes(final DataOutputStream stream) throws IOException {
     PlanNodeType.PIPE_ENRICHED_INSERT_DATA.serialize(stream);
     insertNode.serialize(stream);
+    ReadWriteIOUtils.write(originClusterId, stream);
   }
 
   public static PipeEnrichedInsertNode deserialize(final ByteBuffer buffer) {
-    return new PipeEnrichedInsertNode((InsertNode) PlanNodeType.deserialize(buffer));
+    return new PipeEnrichedInsertNode(
+        (InsertNode) PlanNodeType.deserialize(buffer),
+        buffer.hasRemaining() ? ReadWriteIOUtils.readString(buffer) : null);
   }
 
   @Override

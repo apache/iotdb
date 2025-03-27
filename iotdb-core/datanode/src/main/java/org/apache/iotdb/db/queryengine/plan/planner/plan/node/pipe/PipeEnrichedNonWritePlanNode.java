@@ -33,6 +33,8 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.write.vie
 import org.apache.iotdb.db.queryengine.plan.statement.IConfigStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
 
+import org.apache.tsfile.utils.ReadWriteIOUtils;
+
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -152,16 +154,20 @@ public class PipeEnrichedNonWritePlanNode extends PlanNode {
   protected void serializeAttributes(ByteBuffer byteBuffer) {
     PlanNodeType.PIPE_ENRICHED_NON_WRITE.serialize(byteBuffer);
     nonWritePlanNode.serialize(byteBuffer);
+    ReadWriteIOUtils.write(originClusterId, byteBuffer);
   }
 
   @Override
   protected void serializeAttributes(DataOutputStream stream) throws IOException {
     PlanNodeType.PIPE_ENRICHED_NON_WRITE.serialize(stream);
     nonWritePlanNode.serialize(stream);
+    ReadWriteIOUtils.write(originClusterId, stream);
   }
 
   public static PipeEnrichedNonWritePlanNode deserialize(ByteBuffer buffer) {
-    return new PipeEnrichedNonWritePlanNode(PlanNodeType.deserialize(buffer));
+    return new PipeEnrichedNonWritePlanNode(
+        PlanNodeType.deserialize(buffer),
+        buffer.hasRemaining() ? ReadWriteIOUtils.readString(buffer) : null);
   }
 
   @Override
