@@ -31,6 +31,8 @@ import org.apache.iotdb.db.queryengine.execution.warnings.WarningCollector;
 import org.apache.iotdb.db.queryengine.plan.analyze.AnalyzeUtils;
 import org.apache.iotdb.db.queryengine.plan.analyze.QueryType;
 import org.apache.iotdb.db.queryengine.plan.analyze.load.LoadTsFileAnalyzer;
+import org.apache.iotdb.db.queryengine.plan.analyze.lock.DataNodeSchemaLockManager;
+import org.apache.iotdb.db.queryengine.plan.analyze.lock.SchemaLockType;
 import org.apache.iotdb.db.queryengine.plan.analyze.schema.SchemaValidator;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.tablefunction.ArgumentAnalysis;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.tablefunction.ArgumentsAnalysis;
@@ -3819,6 +3821,12 @@ public class StatementAnalyzer {
     protected Scope visitCreateOrUpdateDevice(
         final CreateOrUpdateDevice node, final Optional<Scope> context) {
       queryContext.setQueryType(QueryType.WRITE);
+      DataNodeSchemaLockManager.getInstance()
+          .takeReadLock(queryContext, SchemaLockType.VALIDATE_VS_DELETION_TABLE);
+      if (Objects.isNull(
+          DataNodeTableCache.getInstance().getTable(node.getDatabase(), node.getTable()))) {
+        TableMetadataImpl.throwTableNotExistsException(node.getDatabase(), node.getTable());
+      }
       return null;
     }
 

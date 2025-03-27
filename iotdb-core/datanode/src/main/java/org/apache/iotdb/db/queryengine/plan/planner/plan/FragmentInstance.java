@@ -142,7 +142,7 @@ public class FragmentInstance implements IConsensusRequest {
       return;
     }
     this.executorType = executorType;
-    this.hostDataNode = executorType.getDataNodeLocation();
+    this.hostDataNode = executorType.getDataNodeLocation().orElse(null);
   }
 
   // Although the HostDataNode is set in method setDataRegionAndHost(),

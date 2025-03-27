@@ -1130,6 +1130,10 @@ public class IoTDBConfig {
 
   private boolean loadActiveListeningVerifyEnable = true;
 
+  private String loadDiskSelectStrategy;
+
+  private String loadDiskSelectStrategyForIoTV2AndPipe;
+
   /** Pipe related */
   /** initialized as empty, updated based on the latest `systemDir` during querying */
   private String[] pipeReceiverFileDirs = new String[0];
@@ -3859,6 +3863,23 @@ public class IoTDBConfig {
 
   public void setLoadActiveListeningVerifyEnable(boolean loadActiveListeningVerifyEnable) {
     this.loadActiveListeningVerifyEnable = loadActiveListeningVerifyEnable;
+  }
+
+  public String getLoadDiskSelectStrategy() {
+    return loadDiskSelectStrategy;
+  }
+
+  public void setLoadDiskSelectStrategy(String loadDiskSelectStrategy) {
+    this.loadDiskSelectStrategy = loadDiskSelectStrategy;
+  }
+
+  public String getLoadDiskSelectStrategyForIoTV2AndPipe() {
+    return loadDiskSelectStrategyForIoTV2AndPipe;
+  }
+
+  public void setLoadDiskSelectStrategyForIoTV2AndPipe(
+      String loadDiskSelectStrategyForIoTV2AndPipe) {
+    this.loadDiskSelectStrategyForIoTV2AndPipe = loadDiskSelectStrategyForIoTV2AndPipe;
   }
 
   public long getLoadActiveListeningCheckIntervalSeconds() {

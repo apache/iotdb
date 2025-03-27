@@ -22,9 +22,6 @@ package org.apache.iotdb.db.storageengine.dataregion.memtable;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceContext;
-import org.apache.iotdb.db.queryengine.execution.fragment.QueryContext;
-import org.apache.iotdb.db.queryengine.plan.planner.memory.MemoryReservationManager;
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.IWALByteBufferView;
 import org.apache.iotdb.db.utils.ModificationUtils;
 import org.apache.iotdb.db.utils.datastructure.MemPointIterator;
@@ -55,7 +52,7 @@ import java.util.stream.Collectors;
 
 import static org.apache.iotdb.db.utils.MemUtils.getBinarySize;
 
-public class WritableMemChunk implements IWritableMemChunk {
+public class WritableMemChunk extends AbstractWritableMemChunk {
 
   private IMeasurementSchema schema;
   private TVList list;
@@ -78,46 +75,10 @@ public class WritableMemChunk implements IWritableMemChunk {
   private WritableMemChunk() {}
 
   protected void handoverTvList() {
-    // ensure query contexts won't be removed from list during handover process.
-    list.lockQueryList();
-    try {
-      if (list.isSorted()) {
-        sortedList.add(list);
-      } else if (list.getQueryContextList().isEmpty()) {
-        list.sort();
-        sortedList.add(list);
-      } else {
-        /*
-         * +----------------------+
-         * |      MemTable        |
-         * |                      |
-         * |   +---------------+  |          +----------+
-         * |   | sorted TVList |  |      +---+   Query  |
-         * |   +------^--------+  |      |   +----------+
-         * |          |           |      |
-         * +----------+-----------+      |
-         *            | Clone + Sort     |
-         *      +-----+------+           |
-         *      |   TVList   | <---------+
-         *      +------------+
-         */
-        QueryContext firstQuery = list.getQueryContextList().get(0);
-        // reserve query memory
-        if (firstQuery instanceof FragmentInstanceContext) {
-          MemoryReservationManager memoryReservationManager =
-              ((FragmentInstanceContext) firstQuery).getMemoryReservationContext();
-          memoryReservationManager.reserveMemoryCumulatively(list.calculateRamSize());
-        }
-        // update current TVList owner to first query in the list
-        list.setOwnerQuery(firstQuery);
-        // clone tv list
-        TVList cloneList = list.clone();
-        cloneList.sort();
-        sortedList.add(cloneList);
-      }
-    } finally {
-      list.unlockQueryList();
+    if (!list.isSorted()) {
+      list.sort();
     }
+    sortedList.add(list);
     this.list = TVList.newList(schema.getType());
   }
 
@@ -284,72 +245,10 @@ public class WritableMemChunk implements IWritableMemChunk {
   }
 
   @Override
-  public synchronized TVList getSortedTvListForQuery() {
-    sortTVList();
-    // increase reference count
-    list.increaseReferenceCount();
-    return list;
-  }
-
-  @Override
-  public synchronized TVList getSortedTvListForQuery(
-      List<IMeasurementSchema> measurementSchema, boolean ignoreAllNullRows) {
-    throw new UnSupportedDataTypeException(UNSUPPORTED_TYPE + list.getDataType());
-  }
-
-  private void sortTVList() {
-    // check reference count
-    if ((list.getReferenceCount() > 0 && !list.isSorted())) {
-      list = list.clone();
-    }
-
-    if (!list.isSorted()) {
-      list.sort();
-    }
-  }
-
-  @Override
   public synchronized void sortTvListForFlush() {
     if (!list.isSorted()) {
       list.sort();
     }
-  }
-
-  private void filterDeletedTimestamp(
-      TVList tvlist, List<TimeRange> deletionList, List<Long> timestampList) {
-    long lastTime = Long.MIN_VALUE;
-    int[] deletionCursor = {0};
-    int rowCount = tvlist.rowCount();
-    for (int i = 0; i < rowCount; i++) {
-      if (tvlist.getBitMap() != null && tvlist.isNullValue(tvlist.getValueIndex(i))) {
-        continue;
-      }
-      long curTime = tvlist.getTime(i);
-      if (deletionList != null
-          && ModificationUtils.isPointDeleted(curTime, deletionList, deletionCursor)) {
-        continue;
-      }
-
-      if (i == rowCount - 1 || curTime != lastTime) {
-        timestampList.add(curTime);
-      }
-      lastTime = curTime;
-    }
-  }
-
-  public long[] getFilteredTimestamp(List<TimeRange> deletionList) {
-    List<Long> timestampList = new ArrayList<>();
-    filterDeletedTimestamp(list, deletionList, timestampList);
-    for (TVList tvList : sortedList) {
-      filterDeletedTimestamp(tvList, deletionList, timestampList);
-    }
-
-    // remove duplicated time
-    List<Long> distinctTimestamps = timestampList.stream().distinct().collect(Collectors.toList());
-    // sort timestamps
-    long[] filteredTimestamps = distinctTimestamps.stream().mapToLong(Long::longValue).toArray();
-    Arrays.sort(filteredTimestamps);
-    return filteredTimestamps;
   }
 
   @Override
@@ -651,34 +550,6 @@ public class WritableMemChunk implements IWritableMemChunk {
     }
   }
 
-  /**
-   * Release process for memtable flush. Release the TVList if there is no query on it, otherwise
-   * set query owner and release the TVList until query finishes.
-   *
-   * @param tvList
-   */
-  private void maybeReleaseTvList(TVList tvList) {
-    tvList.lockQueryList();
-    try {
-      if (tvList.getQueryContextList().isEmpty()) {
-        tvList.clear();
-      } else {
-        QueryContext firstQuery = tvList.getQueryContextList().get(0);
-        // transfer memory from write process to read process. Here it reserves read memory and
-        // releaseFlushedMemTable will release write memory.
-        if (firstQuery instanceof FragmentInstanceContext) {
-          MemoryReservationManager memoryReservationManager =
-              ((FragmentInstanceContext) firstQuery).getMemoryReservationContext();
-          memoryReservationManager.reserveMemoryCumulatively(tvList.calculateRamSize());
-        }
-        // update current TVList owner to first query in the list
-        tvList.setOwnerQuery(firstQuery);
-      }
-    } finally {
-      tvList.unlockQueryList();
-    }
-  }
-
   @Override
   public void release() {
     maybeReleaseTvList(list);
@@ -733,5 +604,42 @@ public class WritableMemChunk implements IWritableMemChunk {
   @Override
   public List<TVList> getSortedList() {
     return sortedList;
+  }
+
+  private void filterDeletedTimestamp(
+      TVList tvlist, List<TimeRange> deletionList, List<Long> timestampList) {
+    long lastTime = Long.MIN_VALUE;
+    int[] deletionCursor = {0};
+    int rowCount = tvlist.rowCount();
+    for (int i = 0; i < rowCount; i++) {
+      if (tvlist.getBitMap() != null && tvlist.isNullValue(tvlist.getValueIndex(i))) {
+        continue;
+      }
+      long curTime = tvlist.getTime(i);
+      if (deletionList != null
+          && ModificationUtils.isPointDeleted(curTime, deletionList, deletionCursor)) {
+        continue;
+      }
+
+      if (i == rowCount - 1 || curTime != lastTime) {
+        timestampList.add(curTime);
+      }
+      lastTime = curTime;
+    }
+  }
+
+  public long[] getFilteredTimestamp(List<TimeRange> deletionList) {
+    List<Long> timestampList = new ArrayList<>();
+    filterDeletedTimestamp(list, deletionList, timestampList);
+    for (TVList tvList : sortedList) {
+      filterDeletedTimestamp(tvList, deletionList, timestampList);
+    }
+
+    // remove duplicated time
+    List<Long> distinctTimestamps = timestampList.stream().distinct().collect(Collectors.toList());
+    // sort timestamps
+    long[] filteredTimestamps = distinctTimestamps.stream().mapToLong(Long::longValue).toArray();
+    Arrays.sort(filteredTimestamps);
+    return filteredTimestamps;
   }
 }
