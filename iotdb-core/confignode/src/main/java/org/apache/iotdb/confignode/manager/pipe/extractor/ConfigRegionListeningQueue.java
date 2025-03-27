@@ -29,7 +29,7 @@ import org.apache.iotdb.commons.pipe.event.SerializableEvent;
 import org.apache.iotdb.commons.snapshot.SnapshotProcessor;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeCreateTablePlan;
-import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeEnrichedPlan;
+import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeEnrichedPlanV1;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeEnrichedPlanV2;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeUnsetSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.CommitCreateTablePlan;
@@ -71,8 +71,8 @@ public class ConfigRegionListeningQueue extends AbstractPipeListeningQueue
     if (ConfigRegionListeningFilter.shouldPlanBeListened(plan)) {
       final PipeConfigRegionWritePlanEvent event;
       switch (plan.getType()) {
-        case PipeEnriched:
-          tryListenToPlan(((PipeEnrichedPlan) plan).getInnerPlan(), true, null);
+        case PipeEnrichedV1:
+          tryListenToPlan(((PipeEnrichedPlanV1) plan).getInnerPlan(), true, null);
           return;
         case PipeEnrichedV2:
           tryListenToPlan(

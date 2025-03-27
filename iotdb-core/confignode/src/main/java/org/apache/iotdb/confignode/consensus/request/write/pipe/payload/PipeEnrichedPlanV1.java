@@ -27,20 +27,20 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Objects;
 
-public class PipeEnrichedPlan extends ConfigPhysicalPlan {
+public class PipeEnrichedPlanV1 extends ConfigPhysicalPlan {
 
   protected ConfigPhysicalPlan innerPlan;
 
-  public PipeEnrichedPlan() {
-    super(ConfigPhysicalPlanType.PipeEnriched);
+  public PipeEnrichedPlanV1() {
+    super(ConfigPhysicalPlanType.PipeEnrichedV1);
   }
 
-  public PipeEnrichedPlan(ConfigPhysicalPlan innerPlan) {
-    super(ConfigPhysicalPlanType.PipeEnriched);
+  public PipeEnrichedPlanV1(ConfigPhysicalPlan innerPlan) {
+    super(ConfigPhysicalPlanType.PipeEnrichedV1);
     this.innerPlan = innerPlan;
   }
 
-  protected PipeEnrichedPlan(ConfigPhysicalPlanType type) {
+  protected PipeEnrichedPlanV1(ConfigPhysicalPlanType type) {
     super(type);
   }
 
@@ -68,7 +68,7 @@ public class PipeEnrichedPlan extends ConfigPhysicalPlan {
     if (obj == null || getClass() != obj.getClass()) {
       return false;
     }
-    PipeEnrichedPlan that = (PipeEnrichedPlan) obj;
+    PipeEnrichedPlanV1 that = (PipeEnrichedPlanV1) obj;
     return innerPlan.equals(that.innerPlan);
   }
 
@@ -79,6 +79,6 @@ public class PipeEnrichedPlan extends ConfigPhysicalPlan {
 
   @Override
   public String toString() {
-    return "PipeEnrichedPlan{" + "innerPlan='" + innerPlan + "'}";
+    return "PipeEnrichedPlanV1{" + "innerPlan='" + innerPlan + "'}";
   }
 }

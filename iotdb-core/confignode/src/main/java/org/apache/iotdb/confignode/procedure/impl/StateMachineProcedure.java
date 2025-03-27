@@ -299,7 +299,9 @@ public abstract class StateMachineProcedure<Env, TState> extends Procedure<Env> 
         stateFlow = Flow.NO_MORE_STATE;
       }
     }
-    originClusterId = ReadWriteIOUtils.readString(byteBuffer);
+    if (byteBuffer.hasRemaining()) {
+      originClusterId = ReadWriteIOUtils.readString(byteBuffer);
+    }
   }
 
   /**

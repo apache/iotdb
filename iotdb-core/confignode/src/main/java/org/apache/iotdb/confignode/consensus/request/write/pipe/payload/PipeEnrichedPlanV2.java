@@ -29,7 +29,7 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Objects;
 
-public class PipeEnrichedPlanV2 extends PipeEnrichedPlan {
+public class PipeEnrichedPlanV2 extends PipeEnrichedPlanV1 {
 
   private String originClusterId;
 

@@ -278,7 +278,7 @@ public enum ConfigPhysicalPlanType {
   PipeHandleMetaChange((short) 1601),
 
   /** Pipe PayLoad. */
-  PipeEnriched((short) 1700),
+  PipeEnrichedV1((short) 1700),
   PipeUnsetTemplate((short) 1701),
   PipeDeleteTimeSeries((short) 1702),
   PipeDeleteLogicalView((short) 1703),
