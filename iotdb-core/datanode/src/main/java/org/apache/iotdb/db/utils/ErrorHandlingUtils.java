@@ -64,13 +64,6 @@ public class ErrorHandlingUtils {
 
   public static TSStatus onNpeOrUnexpectedException(
       Exception e, String operation, TSStatusCode statusCode) {
-    // Try catch for unknown error
-    if (StatusUtils.isUnknownError(statusCode.getStatusCode())) {
-      final TSStatus status = tryCatchQueryException(e);
-      if (Objects.nonNull(status)) {
-        statusCode = TSStatusCode.representOf(status.getCode());
-      }
-    }
     String message = String.format("[%s] Exception occurred: %s failed. ", statusCode, operation);
     if (e instanceof IOException || e instanceof NullPointerException) {
       LOGGER.error(ERROR_OPERATION_LOG, statusCode, operation, e);
