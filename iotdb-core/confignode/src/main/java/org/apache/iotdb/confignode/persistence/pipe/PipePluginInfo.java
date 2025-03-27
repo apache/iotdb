@@ -23,6 +23,8 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.executable.ExecutableManager;
 import org.apache.iotdb.commons.pipe.agent.plugin.meta.ConfigNodePipePluginMetaKeeper;
 import org.apache.iotdb.commons.pipe.agent.plugin.meta.PipePluginMeta;
+import org.apache.iotdb.commons.pipe.agent.plugin.service.PipePluginClassLoader;
+import org.apache.iotdb.commons.pipe.agent.plugin.service.PipePluginClassLoaderManager;
 import org.apache.iotdb.commons.pipe.agent.plugin.service.PipePluginExecutableManager;
 import org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant;
 import org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant;
@@ -73,12 +75,15 @@ public class PipePluginInfo implements SnapshotProcessor {
 
   private final ConfigNodePipePluginMetaKeeper pipePluginMetaKeeper;
   private final PipePluginExecutableManager pipePluginExecutableManager;
+  private final PipePluginClassLoaderManager classLoaderManager;
 
   public PipePluginInfo() throws IOException {
     this.pipePluginMetaKeeper = new ConfigNodePipePluginMetaKeeper();
     this.pipePluginExecutableManager =
         PipePluginExecutableManager.setupAndGetInstance(
             CONFIG_NODE_CONF.getPipeTemporaryLibDir(), CONFIG_NODE_CONF.getPipeDir());
+    this.classLoaderManager =
+        PipePluginClassLoaderManager.setupAndGetInstance(CONFIG_NODE_CONF.getPipeDir());
   }
 
   /////////////////////////////// Lock ///////////////////////////////
@@ -193,19 +198,32 @@ public class PipePluginInfo implements SnapshotProcessor {
   public TSStatus createPipePlugin(final CreatePipePluginPlan createPipePluginPlan) {
     try {
       final PipePluginMeta pipePluginMeta = createPipePluginPlan.getPipePluginMeta();
+      final String pluginName = pipePluginMeta.getPluginName();
 
       // try to drop the old pipe plugin if exists to reduce the effect of the inconsistency
-      dropPipePlugin(new DropPipePluginPlan(pipePluginMeta.getPluginName()));
+      dropPipePlugin(new DropPipePluginPlan(pluginName));
 
-      pipePluginMetaKeeper.addPipePluginMeta(pipePluginMeta.getPluginName(), pipePluginMeta);
+      pipePluginMetaKeeper.addPipePluginMeta(pluginName, pipePluginMeta);
       pipePluginMetaKeeper.addJarNameAndMd5(
           pipePluginMeta.getJarName(), pipePluginMeta.getJarMD5());
 
       if (createPipePluginPlan.getJarFile() != null) {
         pipePluginExecutableManager.savePluginToInstallDir(
             ByteBuffer.wrap(createPipePluginPlan.getJarFile().getValues()),
-            createPipePluginPlan.getPipePluginMeta().getPluginName(),
+            pluginName,
             pipePluginMeta.getJarName());
+        final String pluginDirPath = pipePluginExecutableManager.getPluginsDirPath(pluginName);
+        final PipePluginClassLoader pipePluginClassLoader =
+            classLoaderManager.createPipePluginClassLoader(pluginDirPath);
+        try {
+          classLoaderManager.addPluginAndClassLoader(pluginName, pipePluginClassLoader);
+        } catch (final Exception e) {
+          try {
+            pipePluginClassLoader.close();
+          } catch (final Exception ignored) {
+          }
+          throw e;
+        }
       }
 
       return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
@@ -321,13 +339,40 @@ public class PipePluginInfo implements SnapshotProcessor {
       final File snapshotFile = new File(snapshotDir, SNAPSHOT_FILE_NAME);
       if (!snapshotFile.exists() || !snapshotFile.isFile()) {
         LOGGER.error(
-            "Failed to load snapshot,snapshot file [{}] is not exist.",
+            "Failed to load snapshot, snapshot file [{}] is not exist.",
             snapshotFile.getAbsolutePath());
         return;
       }
 
       try (final FileInputStream fileInputStream = new FileInputStream(snapshotFile)) {
         pipePluginMetaKeeper.processLoadSnapshot(fileInputStream);
+      }
+
+      for (final PipePluginMeta pipePluginMeta : pipePluginMetaKeeper.getAllPipePluginMeta()) {
+        if (pipePluginMeta.isBuiltin()) {
+          continue;
+        }
+        final String pluginName = pipePluginMeta.getPluginName();
+        try {
+          final String pluginDirPath = pipePluginExecutableManager.getPluginsDirPath(pluginName);
+          final PipePluginClassLoader pipePluginClassLoader =
+              classLoaderManager.createPipePluginClassLoader(pluginDirPath);
+          try {
+            classLoaderManager.addPluginAndClassLoader(pluginName, pipePluginClassLoader);
+          } catch (final Exception e) {
+            try {
+              pipePluginClassLoader.close();
+            } catch (final Exception ignored) {
+            }
+            throw e;
+          }
+        } catch (final Exception e) {
+          LOGGER.warn(
+              "Failed to load plugin class for plugin [{}] when loading snapshot [{}] ",
+              pluginName,
+              snapshotFile.getAbsolutePath(),
+              e);
+        }
       }
     } finally {
       releasePipePluginInfoLock();
