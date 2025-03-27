@@ -530,7 +530,8 @@ public class IoTDBDatabaseIT {
           "id,",
           Collections.singleton("a2b,"));
       TestUtils.assertResultSetEqual(
-          statement.executeQuery("select * from pipe_plugins where plugin_name = 'IOTDB-THRIFT-SINK'"),
+          statement.executeQuery(
+              "select * from pipe_plugins where plugin_name = 'IOTDB-THRIFT-SINK'"),
           "plugin_name,plugin_type,class_name,plugin_jar,",
           new HashSet<>(
               Arrays.asList(
