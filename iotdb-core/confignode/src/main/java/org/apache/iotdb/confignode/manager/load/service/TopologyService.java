@@ -85,6 +85,7 @@ public class TopologyService implements Runnable, IClusterStatusSubscriber {
 
   /* (fromDataNodeId, toDataNodeId) -> heartbeat history */
   private final Map<Pair<Integer, Integer>, List<AbstractHeartbeatSample>> heartbeats;
+  private final Map<Pair<Integer, Integer>, Integer> accumulatedFailures;
   private final List<Integer> startingDataNodes = new CopyOnWriteArrayList<>();
 
   private final IFailureDetector failureDetector;
@@ -95,6 +96,7 @@ public class TopologyService implements Runnable, IClusterStatusSubscriber {
     this.configManager = configManager;
     this.topologyChangeListener = topologyChangeListener;
     this.heartbeats = new ConcurrentHashMap<>();
+    this.accumulatedFailures = new ConcurrentHashMap<>();
     this.shouldRun = new AtomicBoolean(false);
     this.awaitForSignal = new AwaitForSignal(this.getClass().getSimpleName());
 
@@ -129,6 +131,7 @@ public class TopologyService implements Runnable, IClusterStatusSubscriber {
     future.cancel(true);
     future = null;
     heartbeats.clear();
+    accumulatedFailures.clear();
     LOGGER.info("Topology Probing has stopped successfully");
   }
 
@@ -141,6 +144,7 @@ public class TopologyService implements Runnable, IClusterStatusSubscriber {
       this.awaitForSignal.await(PROBING_INTERVAL_MS, TimeUnit.MILLISECONDS);
       return true;
     } catch (InterruptedException e) {
+      // we don't reset the interrupt flag here since we may reuse this thread again.
       return false;
     }
   }
@@ -222,8 +226,19 @@ public class TopologyService implements Runnable, IClusterStatusSubscriber {
         heartbeats.entrySet()) {
       final int fromId = entry.getKey().getLeft();
       final int toId = entry.getKey().getRight();
-      if (!entry.getValue().isEmpty()
-          && !failureDetector.isAvailable(entry.getKey(), entry.getValue())) {
+
+      final boolean isReachable = !entry.getValue().isEmpty()
+          && !failureDetector.isAvailable(entry.getKey(), entry.getValue());
+
+      if (isReachable) {
+        // reset the failure accumulator
+        accumulatedFailures.put(entry.getKey(), 0);
+      } else {
+        accumulatedFailures.compute(entry.getKey(), (k, ov) -> Optional.ofNullable(ov).orElse(0) + 1);
+      }
+
+      // if 3 subsequent probing all failed, then it is highly possible a network partition.
+      if (accumulatedFailures.get(entry.getKey()) >= 3) {
         LOGGER.debug("Connection from DataNode {} to DataNode {} is broken", fromId, toId);
       } else {
         latestTopology.get(fromId).add(toId);
@@ -238,6 +253,10 @@ public class TopologyService implements Runnable, IClusterStatusSubscriber {
     }
   }
 
+  /**
+   * We only consider warning (one vs remaining) network partition. If we need to cover more
+   * complicated scenarios like (many vs many) network partition, we shall use graph algorithms then.
+   */
   private void logAsymmetricPartition(final Map<Integer, Set<Integer>> topology) {
     final Set<Integer> nodes = topology.keySet();
     if (nodes.size() == 1) {
@@ -247,7 +266,7 @@ public class TopologyService implements Runnable, IClusterStatusSubscriber {
 
     for (int from : nodes) {
       for (int to : nodes) {
-        if (from == to) {
+        if (from >= to) {
           continue;
         }
 
@@ -258,7 +277,7 @@ public class TopologyService implements Runnable, IClusterStatusSubscriber {
           // symmetric partition for (from) or (to)
           continue;
         }
-        if (reachableTo.contains(from) && !reachableFrom.contains(to)) {
+        if (!reachableTo.contains(from) && !reachableFrom.contains(to)) {
           LOGGER.warn("[Topology] Asymmetric network partition from {} to {}", from, to);
         }
       }
@@ -297,6 +316,7 @@ public class TopologyService implements Runnable, IClusterStatusSubscriber {
                             || Objects.equals(pair.getRight(), nodeId))
                 .collect(Collectors.toSet());
         toRemove.forEach(heartbeats::remove);
+        toRemove.forEach(accumulatedFailures::remove);
       } else {
         // we only trigger probing immediately if node comes around from UNKNOWN to RUNNING
         if (NodeStatus.Unknown.equals(changeEvent.getLeft().getStatus())
