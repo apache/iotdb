@@ -149,7 +149,7 @@ public class OpcUaNameSpace extends ManagedNamespaceWithLifecycle {
 
       for (int i = 0; i < tablet.getRowSize(); ++i) {
         final Object[] segments = tablet.getDeviceID(i).getSegments();
-        final String[] folderSegments = new String[segments.length + 2];
+        final String[] folderSegments = new String[segments.length + 1];
         folderSegments[0] = databaseName;
 
         for (int j = 0; j < segments.length; ++j) {
