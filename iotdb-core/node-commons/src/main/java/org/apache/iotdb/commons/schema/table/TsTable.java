@@ -260,7 +260,7 @@ public class TsTable {
                       val.getProps())
                   : val);
     } finally {
-      readWriteLock.readLock().unlock();
+      readWriteLock.writeLock().unlock();
     }
   }
 
