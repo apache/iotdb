@@ -164,8 +164,10 @@ public class OpcUaNameSpace extends ManagedNamespaceWithLifecycle {
             columnIndexes.stream()
                 .map(
                     index ->
-                        getTabletObjectValue4Opc(
-                            tablet.getValues()[index], finalI, schemas.get(index).getType()))
+                        tablet.isNull(finalI, index)
+                            ? null
+                            : getTabletObjectValue4Opc(
+                                tablet.getValues()[index], finalI, schemas.get(index).getType()))
                 .collect(Collectors.toList()));
       }
     }
@@ -228,6 +230,9 @@ public class OpcUaNameSpace extends ManagedNamespaceWithLifecycle {
 
     final String currentFolder = currentStr.toString();
     for (int i = 0; i < measurementSchemas.size(); ++i) {
+      if (Objects.isNull(values.get(i))) {
+        continue;
+      }
       final String name = measurementSchemas.get(i).getMeasurementName();
       final TSDataType type = measurementSchemas.get(i).getType();
       final NodeId nodeId = newNodeId(currentFolder + name);
