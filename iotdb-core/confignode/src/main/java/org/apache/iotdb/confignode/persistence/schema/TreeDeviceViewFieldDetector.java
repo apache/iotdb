@@ -128,8 +128,7 @@ public class TreeDeviceViewFieldDetector {
           return new TSStatus(TSStatusCode.TYPE_NOT_FOUND.getStatusCode())
               .setMessage(
                   String.format(
-                      "Measurements not found for field %s, cannot auto detect",
-                      unknownField.getKey()));
+                      "Measurements not found for %s, cannot auto detect", unknownField.getKey()));
         }
       }
     }

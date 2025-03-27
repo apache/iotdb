@@ -81,7 +81,7 @@ public class CreateTableViewProcedure extends CreateTableProcedure {
               .getClusterSchemaManager()
               .getTableAndStatusIfExists(database, table.getTableName());
       if (oldTableAndStatus.isPresent()) {
-        if (!TreeViewSchema.isTreeViewTable(table)) {
+        if (!TreeViewSchema.isTreeViewTable(oldTableAndStatus.get().getLeft())) {
           setFailure(
               new ProcedureException(
                   new IoTDBException(
@@ -92,6 +92,7 @@ public class CreateTableViewProcedure extends CreateTableProcedure {
         } else {
           oldView = oldTableAndStatus.get().getLeft();
           oldStatus = oldTableAndStatus.get().getRight();
+          setNextState(CreateTableState.PRE_CREATE);
         }
       } else {
         final TDatabaseSchema schema =
