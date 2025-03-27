@@ -87,6 +87,8 @@ public class LoadTreeStatementDataTypeConvertExecutionVisitor
         LoadTsFileMemoryManager.getInstance()
             .allocateMemoryBlock(TABLET_BATCH_MEMORY_SIZE_IN_BYTES);
     final List<PipeTransferTabletRawReq> tabletRawReqs = new ArrayList<>();
+    final List<Long> tabletRawReqSizes = new ArrayList<>();
+
     try {
       for (final File file : loadTsFileStatement.getTsFiles()) {
         try (final TsFileInsertionEventScanParser parser =
@@ -99,6 +101,7 @@ public class LoadTreeStatementDataTypeConvertExecutionVisitor
             final long curMemory = calculateTabletSizeInBytes(tabletWithIsAligned.getLeft()) + 1;
             if (block.hasEnoughMemory(curMemory)) {
               tabletRawReqs.add(tabletRawReq);
+              tabletRawReqSizes.add(curMemory);
               block.addMemoryUsage(curMemory);
               continue;
             }
@@ -107,14 +110,18 @@ public class LoadTreeStatementDataTypeConvertExecutionVisitor
                 executeInsertMultiTabletsWithRetry(
                     tabletRawReqs, loadTsFileStatement.isConvertOnTypeMismatch());
 
+            for (final long memoryCost : tabletRawReqSizes) {
+              block.reduceMemoryUsage(memoryCost);
+            }
             tabletRawReqs.clear();
-            block.clearMemoryUsage();
+            tabletRawReqSizes.clear();
 
             if (!handleTSStatus(result, loadTsFileStatement)) {
               return Optional.empty();
             }
 
             tabletRawReqs.add(tabletRawReq);
+            tabletRawReqSizes.add(curMemory);
             block.addMemoryUsage(curMemory);
           }
         } catch (final Exception e) {
@@ -130,8 +137,11 @@ public class LoadTreeStatementDataTypeConvertExecutionVisitor
               executeInsertMultiTabletsWithRetry(
                   tabletRawReqs, loadTsFileStatement.isConvertOnTypeMismatch());
 
+          for (final long memoryCost : tabletRawReqSizes) {
+            block.reduceMemoryUsage(memoryCost);
+          }
           tabletRawReqs.clear();
-          block.clearMemoryUsage();
+          tabletRawReqSizes.clear();
 
           if (!handleTSStatus(result, loadTsFileStatement)) {
             return Optional.empty();
@@ -143,8 +153,11 @@ public class LoadTreeStatementDataTypeConvertExecutionVisitor
         }
       }
     } finally {
+      for (final long memoryCost : tabletRawReqSizes) {
+        block.reduceMemoryUsage(memoryCost);
+      }
       tabletRawReqs.clear();
-      block.clearMemoryUsage();
+      tabletRawReqSizes.clear();
       block.close();
     }
 

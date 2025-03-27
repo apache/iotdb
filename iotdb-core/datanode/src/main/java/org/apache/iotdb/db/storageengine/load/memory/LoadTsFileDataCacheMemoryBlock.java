@@ -72,11 +72,6 @@ public class LoadTsFileDataCacheMemoryBlock extends LoadTsFileAbstractMemoryBloc
   }
 
   @Override
-  public void clearMemoryUsage() {
-    memoryUsageInBytes.set(0);
-  }
-
-  @Override
   public synchronized void forceResize(long newSizeInBytes) {
     throw new UnsupportedOperationException(
         "setTotalMemorySizeInBytes is not supported for LoadTsFileDataCacheMemoryBlock");

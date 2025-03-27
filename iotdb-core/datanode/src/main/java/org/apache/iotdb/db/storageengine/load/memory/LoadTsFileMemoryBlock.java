@@ -79,11 +79,6 @@ public class LoadTsFileMemoryBlock extends LoadTsFileAbstractMemoryBlock {
   }
 
   @Override
-  public void clearMemoryUsage() {
-    memoryUsageInBytes.set(0);
-  }
-
-  @Override
   synchronized long getMemoryUsageInBytes() {
     return memoryUsageInBytes.get();
   }
