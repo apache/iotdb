@@ -42,6 +42,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.util.Arrays;
+import java.util.Objects;
 import java.util.concurrent.ExecutionException;
 
 import static org.apache.iotdb.commons.utils.StatusUtils.needRetry;
@@ -62,6 +63,13 @@ public class ErrorHandlingUtils {
 
   public static TSStatus onNpeOrUnexpectedException(
       Exception e, String operation, TSStatusCode statusCode) {
+    // Try catch for unknown error
+    if (statusCode == TSStatusCode.INTERNAL_SERVER_ERROR) {
+      final TSStatus status = tryCatchQueryException(e);
+      if (Objects.nonNull(status)) {
+        statusCode = TSStatusCode.representOf(status.getCode());
+      }
+    }
     String message = String.format("[%s] Exception occurred: %s failed. ", statusCode, operation);
     if (e instanceof IOException || e instanceof NullPointerException) {
       LOGGER.error(ERROR_OPERATION_LOG, statusCode, operation, e);
@@ -75,9 +83,6 @@ public class ErrorHandlingUtils {
             ((IoTDBException) e.getCause()).getErrorCode(), rootCause.getMessage());
       }
       return RpcUtils.getStatus(TSStatusCode.SEMANTIC_ERROR, rootCause.getMessage());
-    }
-    if (e instanceof IoTDBRuntimeException) {
-      statusCode = TSStatusCode.representOf(((IoTDBRuntimeException) e).getErrorCode());
     }
     TSStatus status = RpcUtils.getStatus(statusCode, message + e.getMessage());
     status.setNeedRetry(needRetry(status));
