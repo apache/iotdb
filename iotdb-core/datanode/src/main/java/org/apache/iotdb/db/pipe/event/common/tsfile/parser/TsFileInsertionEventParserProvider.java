@@ -78,7 +78,7 @@ public class TsFileInsertionEventParserProvider {
 
     // Use scan container to save memory
     if ((double) PipeDataNodeResourceManager.memory().getUsedMemorySizeInBytes()
-            / PipeDataNodeResourceManager.memory().getTotalMemorySizeInBytes()
+            / PipeDataNodeResourceManager.memory().getTotalNonFloatingMemorySizeInBytes()
         > PipeTsFileResource.MEMORY_SUFFICIENT_THRESHOLD) {
       return new TsFileInsertionEventScanParser(
           tsFile, treePattern, startTime, endTime, pipeTaskMeta, sourceEvent);
