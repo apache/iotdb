@@ -912,7 +912,7 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
     return new CreatePipeTask(node);
   }
 
-  private void checkAndEnrichSourceUserName(
+  public static void checkAndEnrichSourceUserName(
       final String pipeName, final Map<String, String> extractorAttributes, final String userName) {
     final PipeParameters extractorParameters = new PipeParameters(extractorAttributes);
     final String pluginName =
@@ -944,7 +944,7 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
     }
   }
 
-  private void checkAndEnrichSinkUserName(
+  public static void checkAndEnrichSinkUserName(
       final String pipeName, final Map<String, String> connectorAttributes, final String userName) {
     final PipeParameters connectorParameters = new PipeParameters(connectorAttributes);
     final String pluginName =
