@@ -22,6 +22,7 @@ package org.apache.iotdb.db.queryengine.plan.analyze.load;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.auth.AuthException;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
+import org.apache.iotdb.commons.utils.RetryUtils;
 import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.load.LoadAnalyzeException;
@@ -52,6 +53,7 @@ import org.apache.iotdb.db.storageengine.dataregion.utils.TsFileResourceUtils;
 import org.apache.iotdb.db.storageengine.load.converter.LoadTsFileDataTypeConverter;
 import org.apache.iotdb.db.storageengine.load.metrics.LoadTsFileCostMetricsSet;
 import org.apache.iotdb.db.utils.TimestampPrecisionUtils;
+import org.apache.iotdb.pipe.api.exception.PipeException;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
@@ -107,6 +109,7 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
       isTableModelStatement; // Whether the statement itself is table model or not (not the TsFiles)
   private final String statementString;
   private final boolean isGeneratedByPipe;
+  private final boolean isAsyncLoad;
 
   private final List<File> tsFiles;
   private final List<Boolean> isMiniTsFile;
@@ -148,6 +151,7 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
     this.isDeleteAfterLoad = loadTsFileStatement.isDeleteAfterLoad();
     this.isConvertOnTypeMismatch = loadTsFileStatement.isConvertOnTypeMismatch();
     this.tabletConversionThresholdBytes = loadTsFileStatement.getTabletConversionThresholdBytes();
+    this.isAsyncLoad = loadTsFileStatement.isAsyncLoad();
   }
 
   public LoadTsFileAnalyzer(
@@ -172,6 +176,7 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
     this.isConvertOnTypeMismatch = loadTsFileTableStatement.isConvertOnTypeMismatch();
     this.tabletConversionThresholdBytes =
         loadTsFileTableStatement.getTabletConversionThresholdBytes();
+    this.isAsyncLoad = loadTsFileTableStatement.isAsyncLoad();
   }
 
   protected String getStatementString() {
@@ -196,6 +201,11 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
 
   public IAnalysis analyzeFileByFile(IAnalysis analysis) {
     if (!checkBeforeAnalyzeFileByFile(analysis)) {
+      return analysis;
+    }
+
+    if (isAsyncLoad) {
+      asyncLoadTsFileAnalyzer(analysis);
       return analysis;
     }
 
@@ -733,6 +743,56 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
         final Map<String, TableSchema> tableSchemaMap = reader.getTableSchemaMap();
         isTableModelTsFile.set(i, Objects.nonNull(tableSchemaMap) && !tableSchemaMap.isEmpty());
         isTableModelTsFileReliableIndex = i;
+      }
+    }
+  }
+
+  private void asyncLoadTsFileAnalyzer(IAnalysis analysis) {
+    final String[] loadActiveListeningDirs =
+        IoTDBDescriptor.getInstance().getConfig().getLoadActiveListeningDirs();
+    String targetFilePath = null;
+    for (int i = 0, size = loadActiveListeningDirs == null ? 0 : loadActiveListeningDirs.length;
+        i < size;
+        i++) {
+      if (loadActiveListeningDirs[i] != null) {
+        targetFilePath = loadActiveListeningDirs[i];
+        break;
+      }
+    }
+
+    if (targetFilePath == null) {
+      throw new PipeException("Load active listening pipe dir is not set.");
+    }
+
+    try {
+      if (Objects.nonNull(databaseForTableData)) {
+        final File targetDir = new File(targetFilePath, databaseForTableData);
+        this.loadTsFileAsyncToTargetDir(targetDir, tsFiles);
+      } else {
+        this.loadTsFileAsyncToTargetDir(new File(targetFilePath), tsFiles);
+      }
+    } catch (Exception e) {
+      LOGGER.warn("Load active listening dir {} failed.", targetFilePath, e);
+      analysis.setFailStatus(RpcUtils.getStatus(TSStatusCode.LOAD_FILE_ERROR, e.getMessage()));
+    }
+    analysis.setFinishQueryAfterAnalyze(true);
+  }
+
+  private void loadTsFileAsyncToTargetDir(final File targetDir, final List<File> absolutePaths)
+      throws IOException {
+    for (final File absolutePath : absolutePaths) {
+      if (absolutePath == null) {
+        continue;
+      }
+
+      if (!Objects.equals(
+          targetDir.getAbsolutePath(), absolutePath.getParentFile().getAbsolutePath())) {
+        RetryUtils.retryOnException(
+            () -> {
+              org.apache.iotdb.commons.utils.FileUtils.moveFileWithMD5Check(
+                  absolutePath, targetDir);
+              return null;
+            });
       }
     }
   }

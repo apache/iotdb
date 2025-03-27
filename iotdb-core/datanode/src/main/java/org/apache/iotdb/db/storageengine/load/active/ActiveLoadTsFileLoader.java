@@ -199,7 +199,7 @@ public class ActiveLoadTsFileLoader {
   private TSStatus loadTsFile(final Pair<String, Boolean> filePair) throws FileNotFoundException {
     final LoadTsFileStatement statement = new LoadTsFileStatement(filePair.getLeft());
     List<File> files = statement.getTsFiles();
-    if(!files.isEmpty()) {
+    if (!files.isEmpty()) {
       statement.setDatabase(files.get(0).getParentFile().getName());
     }
     statement.setDeleteAfterLoad(true);

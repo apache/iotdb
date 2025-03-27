@@ -50,7 +50,7 @@ public class LoadTsFileConfigurator {
       case CONVERT_ON_TYPE_MISMATCH_KEY:
         validateConvertOnTypeMismatchParam(value);
         break;
-      case VERIFY_KEY:
+      case ASYNC_LOAD_KEY:
         validateVerifyParam(value);
         break;
       default:
@@ -155,13 +155,30 @@ public class LoadTsFileConfigurator {
       throw new SemanticException(
           String.format(
               "Given %s value '%s' is not supported, please input a valid boolean value.",
-              VERIFY_KEY, verify));
+              ASYNC_LOAD_KEY, verify));
     }
   }
 
   public static boolean parseOrGetDefaultVerify(final Map<String, String> loadAttributes) {
     return Boolean.parseBoolean(
-        loadAttributes.getOrDefault(VERIFY_KEY, String.valueOf(VERIFY_DEFAULT_VALUE)));
+        loadAttributes.getOrDefault(ASYNC_LOAD_KEY, String.valueOf(ASYNC_LOAD_DEFAULT_VALUE)));
+  }
+
+  public static final String ASYNC_LOAD_KEY = "async-load";
+  private static final boolean ASYNC_LOAD_DEFAULT_VALUE = false;
+
+  public static void validateAsyncLoadParam(final String asyncLoad) {
+    if (!"true".equalsIgnoreCase(asyncLoad) && !"false".equalsIgnoreCase(asyncLoad)) {
+      throw new SemanticException(
+          String.format(
+              "Given %s value '%s' is not supported, please input a valid boolean value.",
+              ASYNC_LOAD_KEY, asyncLoad));
+    }
+  }
+
+  public static boolean parseOrGetDefaultAsyncLoad(final Map<String, String> loadAttributes) {
+    return Boolean.parseBoolean(
+        loadAttributes.getOrDefault(ASYNC_LOAD_KEY, String.valueOf(ASYNC_LOAD_DEFAULT_VALUE)));
   }
 
   private LoadTsFileConfigurator() {
