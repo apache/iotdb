@@ -21,6 +21,7 @@ package org.apache.iotdb.confignode.procedure.impl.schema.table.view;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.exception.IoTDBException;
+import org.apache.iotdb.commons.schema.table.TreeViewSchema;
 import org.apache.iotdb.commons.schema.table.column.FieldColumnSchema;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
@@ -37,6 +38,7 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.stream.Collectors;
 
 public class AddViewColumnProcedure extends AddTableColumnProcedure {
@@ -64,7 +66,11 @@ public class AddViewColumnProcedure extends AddTableColumnProcedure {
                         && columnSchema.getDataType() == TSDataType.UNKNOWN)
             .collect(
                 Collectors.toMap(
-                    TsTableColumnSchema::getColumnName, FieldColumnSchema.class::cast));
+                    fieldColumnSchema ->
+                        Objects.nonNull(TreeViewSchema.getOriginalName(fieldColumnSchema))
+                            ? TreeViewSchema.getOriginalName(fieldColumnSchema)
+                            : fieldColumnSchema.getColumnName(),
+                    FieldColumnSchema.class::cast));
     if (!fields2Detect.isEmpty()) {
       final TSStatus status =
           new TreeDeviceViewFieldDetector(env.getConfigManager(), table, fields2Detect)
