@@ -123,7 +123,8 @@ public class ErrorHandlingUtils {
             || status.getCode() == TSStatusCode.COLUMN_NOT_EXISTS.getStatusCode()
             || status.getCode() == TSStatusCode.COLUMN_ALREADY_EXISTS.getStatusCode()
             || status.getCode() == TSStatusCode.UDF_LOAD_CLASS_ERROR.getStatusCode()
-            || status.getCode() == TSStatusCode.PLAN_FAILED_NETWORK_PARTITION.getStatusCode()) {
+            || status.getCode() == TSStatusCode.PLAN_FAILED_NETWORK_PARTITION.getStatusCode()
+            || status.getCode() == TSStatusCode.SYNC_CONNECTION_ERROR.getStatusCode()) {
           LOGGER.info(message);
         } else {
           LOGGER.warn(message, e);
