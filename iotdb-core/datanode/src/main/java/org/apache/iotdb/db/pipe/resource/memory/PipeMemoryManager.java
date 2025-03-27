@@ -71,7 +71,8 @@ public class PipeMemoryManager {
       PipeConfig.getInstance().getPipeDataStructureTsFileMemoryBlockAllocationRejectThreshold();
   private volatile long usedMemorySizeInBytesOfTsFiles;
 
-  private static final double FLOATING_MEMORY_RATIO = 0.2;
+  private static final double FLOATING_MEMORY_RATIO =
+      PipeConfig.getInstance().getPipeTotalFloatingMemoryProportion();
 
   // Only non-zero memory blocks will be added to this set.
   private final Set<PipeMemoryBlock> allocatedBlocks = new HashSet<>();
