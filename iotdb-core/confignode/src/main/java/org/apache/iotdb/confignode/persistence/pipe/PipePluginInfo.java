@@ -228,11 +228,19 @@ public class PipePluginInfo implements SnapshotProcessor {
         final String pluginDirPath = pipePluginExecutableManager.getPluginsDirPath(pluginName);
         final PipePluginClassLoader pipePluginClassLoader =
             classLoaderManager.createPipePluginClassLoader(pluginDirPath);
-        final Class<?> pluginClass =
-            Class.forName(pipePluginMeta.getClassName(), true, pipePluginClassLoader);
-        pipePluginMetaKeeper.addPipePluginVisibility(
-            pluginName, VisibilityUtils.calculateFromPluginClass(pluginClass));
-        classLoaderManager.addPluginAndClassLoader(pluginName, pipePluginClassLoader);
+        try {
+          final Class<?> pluginClass =
+              Class.forName(pipePluginMeta.getClassName(), true, pipePluginClassLoader);
+          pipePluginMetaKeeper.addPipePluginVisibility(
+              pluginName, VisibilityUtils.calculateFromPluginClass(pluginClass));
+          classLoaderManager.addPluginAndClassLoader(pluginName, pipePluginClassLoader);
+        } catch (final Exception e) {
+          try {
+            pipePluginClassLoader.close();
+          } catch (final Exception ignored) {
+          }
+          throw e;
+        }
       }
 
       return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
@@ -370,11 +378,19 @@ public class PipePluginInfo implements SnapshotProcessor {
           final String pluginDirPath = pipePluginExecutableManager.getPluginsDirPath(pluginName);
           final PipePluginClassLoader pipePluginClassLoader =
               classLoaderManager.createPipePluginClassLoader(pluginDirPath);
-          final Class<?> pluginClass =
-              Class.forName(pipePluginMeta.getClassName(), true, pipePluginClassLoader);
-          pipePluginMetaKeeper.addPipePluginVisibility(
-              pluginName, VisibilityUtils.calculateFromPluginClass(pluginClass));
-          classLoaderManager.addPluginAndClassLoader(pluginName, pipePluginClassLoader);
+          try {
+            final Class<?> pluginClass =
+                Class.forName(pipePluginMeta.getClassName(), true, pipePluginClassLoader);
+            pipePluginMetaKeeper.addPipePluginVisibility(
+                pluginName, VisibilityUtils.calculateFromPluginClass(pluginClass));
+            classLoaderManager.addPluginAndClassLoader(pluginName, pipePluginClassLoader);
+          } catch (final Exception e) {
+            try {
+              pipePluginClassLoader.close();
+            } catch (final Exception ignored) {
+            }
+            throw e;
+          }
         } catch (final Exception e) {
           LOGGER.warn(
               "Failed to load plugin class for plugin [{}] when loading snapshot [{}] ",
