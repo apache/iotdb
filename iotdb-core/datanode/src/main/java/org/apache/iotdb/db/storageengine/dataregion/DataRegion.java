@@ -52,6 +52,7 @@ import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.exception.quota.ExceedQuotaException;
 import org.apache.iotdb.db.pipe.consensus.deletion.DeletionResource;
 import org.apache.iotdb.db.pipe.consensus.deletion.DeletionResource.Status;
+import org.apache.iotdb.db.pipe.consensus.deletion.DeletionResourceManager;
 import org.apache.iotdb.db.pipe.consensus.deletion.persist.PageCacheDeletionBuffer;
 import org.apache.iotdb.db.pipe.extractor.dataregion.realtime.listener.PipeInsertionDataNodeListener;
 import org.apache.iotdb.db.queryengine.common.DeviceContext;
@@ -1700,6 +1701,15 @@ public class DataRegion implements IDataRegionForQuery {
     }
   }
 
+  public void deleteDALFolderAndClose() {
+    Optional.ofNullable(DeletionResourceManager.getInstance(dataRegionId))
+        .ifPresent(
+            manager -> {
+              manager.close();
+              manager.removeDAL();
+            });
+  }
+
   /** close all tsfile resource */
   public void closeAllResources() {
     for (TsFileResource tsFileResource : tsFileManager.getTsFileList(false)) {
@@ -3165,12 +3175,7 @@ public class DataRegion implements IDataRegionForQuery {
       moveModFile(newModFileToLoad, newTargetModFile, deleteOriginFile);
     }
     // force update mod file metrics
-    final ModificationFile mods = tsFileResource.getExclusiveModFile();
-
-    if (mods != null && mods.exists()) {
-      FileMetrics.getInstance().increaseModFileNum(1);
-      FileMetrics.getInstance().increaseModFileSize(mods.getFileLength());
-    }
+    tsFileResource.getExclusiveModFile();
   }
 
   @SuppressWarnings("java:S2139")

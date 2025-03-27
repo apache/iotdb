@@ -35,6 +35,7 @@ import com.google.common.collect.ImmutableMap;
 import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.utils.Binary;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
@@ -55,30 +56,44 @@ public class MockTableModelDataPartition {
   static final String DEVICE_5 = "table1.shenzhen.B2.ZZ";
   static final String DEVICE_6 = "table1.shenzhen.B1.XX";
 
-  static final List<Binary> DEVICE_1_ATTRIBUTES =
-      Arrays.asList(
-          new Binary("high", TSFileConfig.STRING_CHARSET),
-          new Binary("big", TSFileConfig.STRING_CHARSET));
-  static final List<Binary> DEVICE_2_ATTRIBUTES =
-      Arrays.asList(
-          new Binary("high", TSFileConfig.STRING_CHARSET),
-          new Binary("small", TSFileConfig.STRING_CHARSET));
-  static final List<Binary> DEVICE_3_ATTRIBUTES =
-      Arrays.asList(
-          new Binary("low", TSFileConfig.STRING_CHARSET),
-          new Binary("small", TSFileConfig.STRING_CHARSET));
-  static final List<Binary> DEVICE_4_ATTRIBUTES =
-      Arrays.asList(
-          new Binary("low", TSFileConfig.STRING_CHARSET),
-          new Binary("big", TSFileConfig.STRING_CHARSET));
-  static final List<Binary> DEVICE_5_ATTRIBUTES =
-      Arrays.asList(
-          new Binary("mid", TSFileConfig.STRING_CHARSET),
-          new Binary("big", TSFileConfig.STRING_CHARSET));
-  static final List<Binary> DEVICE_6_ATTRIBUTES =
-      Arrays.asList(
-          new Binary("mid", TSFileConfig.STRING_CHARSET),
-          new Binary("small", TSFileConfig.STRING_CHARSET));
+  static final List<List<String>> DEVICES_REGION_GROUP = new ArrayList<>(3);
+
+  static {
+    DEVICES_REGION_GROUP.add(Arrays.asList(DEVICE_5, DEVICE_6));
+    DEVICES_REGION_GROUP.add(Arrays.asList(DEVICE_4, DEVICE_5, DEVICE_6, DEVICE_3));
+    DEVICES_REGION_GROUP.add(Arrays.asList(DEVICE_2, DEVICE_1));
+  }
+
+  static final Binary[] DEVICE_1_ATTRIBUTES =
+      new Binary[] {
+        new Binary("high", TSFileConfig.STRING_CHARSET),
+        new Binary("big", TSFileConfig.STRING_CHARSET)
+      };
+  static final Binary[] DEVICE_2_ATTRIBUTES =
+      new Binary[] {
+        new Binary("high", TSFileConfig.STRING_CHARSET),
+        new Binary("small", TSFileConfig.STRING_CHARSET)
+      };
+  static final Binary[] DEVICE_3_ATTRIBUTES =
+      new Binary[] {
+        new Binary("low", TSFileConfig.STRING_CHARSET),
+        new Binary("small", TSFileConfig.STRING_CHARSET)
+      };
+  static final Binary[] DEVICE_4_ATTRIBUTES =
+      new Binary[] {
+        new Binary("low", TSFileConfig.STRING_CHARSET),
+        new Binary("big", TSFileConfig.STRING_CHARSET)
+      };
+  static final Binary[] DEVICE_5_ATTRIBUTES =
+      new Binary[] {
+        new Binary("mid", TSFileConfig.STRING_CHARSET),
+        new Binary("big", TSFileConfig.STRING_CHARSET)
+      };
+  static final Binary[] DEVICE_6_ATTRIBUTES =
+      new Binary[] {
+        new Binary("mid", TSFileConfig.STRING_CHARSET),
+        new Binary("small", TSFileConfig.STRING_CHARSET)
+      };
 
   private static final TRegionReplicaSet DATA_REGION_GROUP_1 = genDataRegionGroup(10, 1, 2);
   private static final TRegionReplicaSet DATA_REGION_GROUP_2 = genDataRegionGroup(11, 3, 2);

@@ -19,8 +19,6 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.analyzer;
 
-import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
-import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.commons.partition.DataPartition;
 import org.apache.iotdb.commons.partition.DataPartitionQueryParam;
 import org.apache.iotdb.commons.partition.SchemaNodeManagementPartition;
@@ -293,10 +291,8 @@ public class TSBSMetadata implements Metadata {
         && attributeColumns.isEmpty()) {
       // r01, r02
       return ImmutableList.of(
-          new AlignedDeviceEntry(
-              new StringArrayDeviceID(T1_DEVICE_1.split("\\.")), ImmutableList.of()),
-          new AlignedDeviceEntry(
-              new StringArrayDeviceID(T1_DEVICE_2.split("\\.")), ImmutableList.of()));
+          new AlignedDeviceEntry(new StringArrayDeviceID(T1_DEVICE_1.split("\\.")), new Binary[0]),
+          new AlignedDeviceEntry(new StringArrayDeviceID(T1_DEVICE_2.split("\\.")), new Binary[0]));
     } else if (expressionList.size() == 1
         && expressionList.get(0).toString().equals("(\"fleet\" = 'South')")
         && attributeColumns.size() == 1
@@ -305,32 +301,32 @@ public class TSBSMetadata implements Metadata {
       return ImmutableList.of(
           new AlignedDeviceEntry(
               new StringArrayDeviceID(T1_DEVICE_1.split("\\.")),
-              ImmutableList.of(new Binary("2000", TSFileConfig.STRING_CHARSET))),
+              new Binary[] {new Binary("2000", TSFileConfig.STRING_CHARSET)}),
           new AlignedDeviceEntry(
               new StringArrayDeviceID(T1_DEVICE_2.split("\\.")),
-              ImmutableList.of(new Binary("1000", TSFileConfig.STRING_CHARSET))));
+              new Binary[] {new Binary("1000", TSFileConfig.STRING_CHARSET)}));
     } else {
       // others (The return result maybe not correct in actual, but it is convenient for test of
       // DistributionPlan)
       return Arrays.asList(
           new AlignedDeviceEntry(
               new StringArrayDeviceID(T1_DEVICE_1.split("\\.")),
-              ImmutableList.of(Binary.EMPTY_VALUE, Binary.EMPTY_VALUE)),
+              new Binary[] {Binary.EMPTY_VALUE, Binary.EMPTY_VALUE}),
           new AlignedDeviceEntry(
               new StringArrayDeviceID(T1_DEVICE_2.split("\\.")),
-              ImmutableList.of(Binary.EMPTY_VALUE, Binary.EMPTY_VALUE)),
+              new Binary[] {Binary.EMPTY_VALUE, Binary.EMPTY_VALUE}),
           new AlignedDeviceEntry(
               new StringArrayDeviceID(T1_DEVICE_3.split("\\.")),
-              ImmutableList.of(Binary.EMPTY_VALUE, Binary.EMPTY_VALUE)),
+              new Binary[] {Binary.EMPTY_VALUE, Binary.EMPTY_VALUE}),
           new AlignedDeviceEntry(
               new StringArrayDeviceID(T2_DEVICE_1.split("\\.")),
-              ImmutableList.of(Binary.EMPTY_VALUE, Binary.EMPTY_VALUE)),
+              new Binary[] {Binary.EMPTY_VALUE, Binary.EMPTY_VALUE}),
           new AlignedDeviceEntry(
               new StringArrayDeviceID(T2_DEVICE_2.split("\\.")),
-              ImmutableList.of(Binary.EMPTY_VALUE, Binary.EMPTY_VALUE)),
+              new Binary[] {Binary.EMPTY_VALUE, Binary.EMPTY_VALUE}),
           new AlignedDeviceEntry(
               new StringArrayDeviceID(T2_DEVICE_3.split("\\.")),
-              ImmutableList.of(Binary.EMPTY_VALUE, Binary.EMPTY_VALUE)));
+              new Binary[] {Binary.EMPTY_VALUE, Binary.EMPTY_VALUE}));
     }
   }
 
@@ -437,11 +433,6 @@ public class TSBSMetadata implements Metadata {
       @Override
       public boolean updateRegionCache(TRegionRouteReq req) {
         return false;
-      }
-
-      @Override
-      public TRegionReplicaSet getRegionReplicaSet(TConsensusGroupId id) {
-        return null;
       }
 
       @Override

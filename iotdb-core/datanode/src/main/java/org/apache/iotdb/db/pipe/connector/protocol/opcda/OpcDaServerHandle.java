@@ -65,7 +65,6 @@ public class OpcDaServerHandle implements Closeable {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(OpcDaServerHandle.class);
 
-  private final PointerByReference ppvServer = new PointerByReference();
   private final OpcDaHeader.IOPCServer opcServer;
   private final OpcDaHeader.IOPCItemMgt itemMgt;
   private final OpcDaHeader.IOPCSyncIO syncIO;
@@ -194,9 +193,7 @@ public class OpcDaServerHandle implements Closeable {
         addItem(itemId, schemas.get(i).getType());
       }
       for (int j = tablet.getRowSize() - 1; j >= 0; --j) {
-        if (Objects.isNull(tablet.getBitMaps())
-            || Objects.isNull(tablet.getBitMaps()[i])
-            || !tablet.getBitMaps()[i].isMarked(j)) {
+        if (!tablet.isNull(j, i)) {
           if (serverTimestampMap.get(itemId) <= tablet.getTimestamp(j)) {
             writeData(
                 itemId,
@@ -271,6 +268,7 @@ public class OpcDaServerHandle implements Closeable {
     // Free after write
     if (Objects.nonNull(bstr)) {
       OleAuto.INSTANCE.SysFreeString(bstr);
+      bstr = null;
     }
 
     final Pointer pErrors = ppErrors.getValue();
@@ -372,9 +370,6 @@ public class OpcDaServerHandle implements Closeable {
     serverHandleMap.clear();
 
     // Release resource
-    if (Objects.nonNull(ppvServer.getValue())) {
-      Ole32.INSTANCE.CoTaskMemFree(ppvServer.getValue());
-    }
     if (Objects.nonNull(syncIO)) {
       syncIO.Release();
     }

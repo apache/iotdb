@@ -52,6 +52,11 @@ struct TRegionMigrateResult {
   4: required common.TRegionMaintainTaskStatus taskStatus
 }
 
+struct TNotifyRegionMigrationReq {
+  1: required common.TConsensusGroupId regionId
+  2: required bool isStart
+}
+
 struct TCreatePeerReq {
   1: required common.TConsensusGroupId regionId
   2: required list<common.TDataNodeLocation> regionLocations
@@ -272,6 +277,8 @@ struct TDataNodeHeartbeatReq {
   9: optional i64 deviceQuotaRemain
   10: optional TDataNodeActivation activation
   11: optional set<common.TEndPoint> configNodeEndPoints
+  12: optional map<i32, common.TDataNodeLocation> dataNodes
+  13: optional map<i32, set<i32>> topology
 }
 
 struct TDataNodeActivation {
@@ -385,7 +392,6 @@ struct TLoadCommandReq {
     2: required string uuid
     3: optional bool isGeneratedByPipe
     4: optional binary progressIndex
-    5: optional list<i32> regionIds
 }
 
 struct TAttributeUpdateReq {
@@ -843,6 +849,11 @@ service IDataNodeRPCService {
    */
   TRegionMigrateResult getRegionMaintainResult(i64 taskId)
 
+    /**
+     * Notify the DataNode of the beginning or ending the migration of the specified RegionGroup
+     */
+    common.TSStatus notifyRegionMigration(TNotifyRegionMigrationReq req)
+
   /**
    * Config node will clean DataNode cache, the Data node will not accept read/write request when disabled
    * @param data node location
@@ -1167,6 +1178,8 @@ service IDataNodeRPCService {
   common.TSStatus deleteTableDeviceInBlackList(TTableDeviceDeletionWithPatternOrModReq req)
 
   common.TTestConnectionResp submitTestConnectionTask(common.TNodeLocations nodeLocations)
+
+  common.TTestConnectionResp submitInternalTestConnectionTask(common.TNodeLocations nodeLocations)
 
   /** Empty rpc, only for connection test */
   common.TSStatus testConnectionEmptyRPC()

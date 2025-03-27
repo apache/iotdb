@@ -22,6 +22,7 @@ package org.apache.iotdb.db.pipe.receiver.visitor;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.commons.exception.auth.AccessDeniedException;
 import org.apache.iotdb.db.exception.load.LoadRuntimeOutOfMemoryException;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.exception.sql.StatementAnalyzeException;
@@ -46,6 +47,10 @@ import org.apache.iotdb.rpc.TSStatusCode;
 public class PipeStatementExceptionVisitor extends StatementVisitor<TSStatus, Exception> {
   @Override
   public TSStatus visitNode(final StatementNode node, final Exception context) {
+    if (context instanceof AccessDeniedException) {
+      return new TSStatus(TSStatusCode.NO_PERMISSION.getStatusCode())
+          .setMessage(context.getMessage());
+    }
     return new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode())
         .setMessage(context.getMessage());
   }

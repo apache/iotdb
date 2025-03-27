@@ -677,7 +677,19 @@ public abstract class AstVisitor<R, C> {
     return visitStatement(node, context);
   }
 
+  protected R visitColumns(Columns node, C context) {
+    return visitExpression(node, context);
+  }
+
   protected R visitSetSqlDialect(SetSqlDialect node, C context) {
+    return visitStatement(node, context);
+  }
+
+  protected R visitCreateTraining(CreateTraining node, C context) {
+    return visitStatement(node, context);
+  }
+
+  protected R visitShowModels(ShowModels node, C context) {
     return visitStatement(node, context);
   }
 

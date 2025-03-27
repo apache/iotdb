@@ -57,6 +57,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LoadTsFile;
 import org.apache.iotdb.db.queryengine.plan.scheduler.FragInstanceDispatchResult;
 import org.apache.iotdb.db.queryengine.plan.scheduler.IScheduler;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.LoadTsFileStatement;
+import org.apache.iotdb.db.service.RegionMigrateService;
 import org.apache.iotdb.db.storageengine.StorageEngine;
 import org.apache.iotdb.db.storageengine.dataregion.flush.MemTableFlushTask;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
@@ -193,6 +194,8 @@ public class LoadTsFileScheduler implements IScheduler {
           }
           shouldRemoveFileFromLoadingSet = true;
 
+          final long startTimeMs = System.currentTimeMillis();
+
           if (node.isTsFileEmpty()) {
             LOGGER.info("Load skip TsFile {}, because it has no data.", filePath);
           } else if (!node.needDecodeTsFile(
@@ -235,6 +238,13 @@ public class LoadTsFileScheduler implements IScheduler {
             if (!isFirstPhaseSuccess || !isSecondPhaseSuccess) {
               isLoadSingleTsFileSuccess = false;
             }
+          }
+
+          if (RegionMigrateService.getInstance().getLastNotifyTime() > startTimeMs) {
+            LOGGER.warn(
+                "LoadTsFileScheduler: Region migration started or ended during loading TsFile {}, will convert to insertion to avoid data loss",
+                filePath);
+            isLoadSingleTsFileSuccess = false;
           }
 
           if (isLoadSingleTsFileSuccess) {
@@ -290,7 +300,7 @@ public class LoadTsFileScheduler implements IScheduler {
           convertFailedTsFilesToTabletsAndRetry();
         } finally {
           LOAD_TSFILE_COST_METRICS_SET.recordPhaseTimeCost(
-              LoadTsFileCostMetricsSet.CAST_TABLETS, System.nanoTime() - startTime);
+              LoadTsFileCostMetricsSet.SCHEDULER_CAST_TABLETS, System.nanoTime() - startTime);
         }
       }
     } finally {
@@ -418,8 +428,6 @@ public class LoadTsFileScheduler implements IScheduler {
         stateMachine.transitionToFailed(status);
         return false;
       }
-
-      checkAllReplicaSetsConsistency();
     } catch (IOException e) {
       LOGGER.warn(
           "Serialize Progress Index error, isFirstPhaseSuccess: {}, uuid: {}, tsFile: {}",
@@ -436,8 +444,7 @@ public class LoadTsFileScheduler implements IScheduler {
       stateMachine.transitionToFailed(e);
       return false;
     } catch (Exception e) {
-      LOGGER.warn(
-          String.format("Exception occurred during second phase of loading TsFile %s.", tsFile), e);
+      LOGGER.warn("Exception occurred during second phase of loading TsFile {}.", tsFile, e);
       stateMachine.transitionToFailed(e);
       return false;
     }
@@ -451,25 +458,6 @@ public class LoadTsFileScheduler implements IScheduler {
         final DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream)) {
       tsFileResource.getMaxProgressIndex().serialize(dataOutputStream);
       return ByteBuffer.wrap(byteArrayOutputStream.getBuf(), 0, byteArrayOutputStream.size());
-    }
-  }
-
-  public void checkAllReplicaSetsConsistency() throws RegionReplicaSetChangedException {
-    for (final TRegionReplicaSet replicaSet : allReplicaSets) {
-      final TConsensusGroupId regionId = replicaSet.getRegionId();
-      if (regionId == null) {
-        LOGGER.info(
-            "region id is null during region consistency check, will skip this region: {}",
-            replicaSet);
-        continue;
-      }
-
-      final TRegionReplicaSet currentReplicaSet =
-          partitionFetcher.fetcher.getRegionReplicaSet(regionId);
-      if (!Objects.equals(replicaSet, currentReplicaSet)) {
-        LOGGER.warn("Region replica set changed from {} to {}", replicaSet, currentReplicaSet);
-        throw new RegionReplicaSetChangedException(replicaSet, currentReplicaSet);
-      }
     }
   }
 
@@ -588,10 +576,15 @@ public class LoadTsFileScheduler implements IScheduler {
                 ? loadTsFileDataTypeConverter
                     .convertForTableModel(
                         new LoadTsFile(null, filePath, Collections.emptyMap())
-                            .setDatabase(failedNode.getDatabase()))
+                            .setDatabase(failedNode.getDatabase())
+                            .setDeleteAfterLoad(failedNode.isDeleteAfterLoad())
+                            .setConvertOnTypeMismatch(true))
                     .orElse(null)
                 : loadTsFileDataTypeConverter
-                    .convertForTreeModel(new LoadTsFileStatement(filePath))
+                    .convertForTreeModel(
+                        new LoadTsFileStatement(filePath)
+                            .setDeleteAfterLoad(failedNode.isDeleteAfterLoad())
+                            .setConvertOnTypeMismatch(true))
                     .orElse(null);
 
         if (loadTsFileDataTypeConverter.isSuccessful(status)) {

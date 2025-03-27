@@ -174,6 +174,7 @@ public abstract class DataNodeAsyncRequestRPCHandler<Response>
             (Map<Integer, TRegionLeaderChangeResp>) responseMap,
             countDownLatch);
       case SUBMIT_TEST_CONNECTION_TASK:
+      case SUBMIT_TEST_DN_INTERNAL_CONNECTION_TASK:
         return new SubmitTestConnectionTaskRPCHandler(
             requestType,
             requestId,
@@ -202,6 +203,7 @@ public abstract class DataNodeAsyncRequestRPCHandler<Response>
       case STOP_REPAIR_DATA:
       case LOAD_CONFIGURATION:
       case SET_SYSTEM_STATUS:
+      case NOTIFY_REGION_MIGRATION:
       case UPDATE_REGION_ROUTE_MAP:
       case INVALIDATE_SCHEMA_CACHE:
       case INVALIDATE_MATCHED_SCHEMA_CACHE:
