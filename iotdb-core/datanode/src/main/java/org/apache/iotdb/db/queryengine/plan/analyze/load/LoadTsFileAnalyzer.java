@@ -82,6 +82,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 
+import static org.apache.iotdb.commons.utils.FileUtils.copyFileWithMD5Check;
 import static org.apache.iotdb.db.queryengine.plan.execution.config.TableConfigTaskVisitor.DATABASE_NOT_SPECIFIED;
 import static org.apache.iotdb.db.queryengine.plan.execution.config.TableConfigTaskVisitor.validateDatabaseName;
 import static org.apache.iotdb.db.storageengine.load.metrics.LoadTsFileCostMetricsSet.ANALYSIS;
@@ -769,6 +770,7 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
         final File targetDir = new File(targetFilePath, databaseForTableData);
         this.loadTsFileAsyncToTargetDir(targetDir, tsFiles);
       } else {
+
         this.loadTsFileAsyncToTargetDir(new File(targetFilePath), tsFiles);
       }
     } catch (Exception e) {
@@ -778,22 +780,31 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
     analysis.setFinishQueryAfterAnalyze(true);
   }
 
-  private void loadTsFileAsyncToTargetDir(final File targetDir, final List<File> absolutePaths)
+  private void loadTsFileAsyncToTargetDir(final File targetDir, final List<File> files)
       throws IOException {
-    for (final File absolutePath : absolutePaths) {
-      if (absolutePath == null) {
+    for (final File file : files) {
+      if (file == null) {
         continue;
       }
 
-      if (!Objects.equals(
-          targetDir.getAbsolutePath(), absolutePath.getParentFile().getAbsolutePath())) {
-        RetryUtils.retryOnException(
-            () -> {
-              org.apache.iotdb.commons.utils.FileUtils.moveFileWithMD5Check(
-                  absolutePath, targetDir);
-              return null;
-            });
-      }
+      loadTsFileAsyncToTargetDir(targetDir, file);
+      loadTsFileAsyncToTargetDir(targetDir, new File(file.getAbsolutePath() + ".resource"));
+      loadTsFileAsyncToTargetDir(targetDir, new File(file.getAbsolutePath() + ".mods"));
+    }
+  }
+
+  private void loadTsFileAsyncToTargetDir(final File targetDir, final File file)
+      throws IOException {
+    if (!file.exists()) {
+      return;
+    }
+
+    if (!Objects.equals(targetDir.getAbsolutePath(), file.getParentFile().getAbsolutePath())) {
+      RetryUtils.retryOnException(
+          () -> {
+            copyFileWithMD5Check(file, targetDir);
+            return null;
+          });
     }
   }
 
