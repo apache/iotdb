@@ -243,4 +243,8 @@ public class StatusUtils {
     return NEED_RETRY.contains(statusCode)
         || (COMMON_CONFIG.isRetryForUnknownErrors() && UNKNOWN_ERRORS.contains(statusCode));
   }
+
+  public static boolean isUnknownError(int statusCode) {
+    return UNKNOWN_ERRORS.contains(statusCode);
+  }
 }

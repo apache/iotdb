@@ -22,6 +22,7 @@ package org.apache.iotdb.db.utils;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.commons.exception.IoTDBRuntimeException;
+import org.apache.iotdb.commons.utils.StatusUtils;
 import org.apache.iotdb.db.exception.BatchProcessException;
 import org.apache.iotdb.db.exception.QueryInBatchStatementException;
 import org.apache.iotdb.db.exception.StorageGroupNotReadyException;
@@ -64,7 +65,7 @@ public class ErrorHandlingUtils {
   public static TSStatus onNpeOrUnexpectedException(
       Exception e, String operation, TSStatusCode statusCode) {
     // Try catch for unknown error
-    if (statusCode == TSStatusCode.INTERNAL_SERVER_ERROR) {
+    if (StatusUtils.isUnknownError(statusCode.getStatusCode())) {
       final TSStatus status = tryCatchQueryException(e);
       if (Objects.nonNull(status)) {
         statusCode = TSStatusCode.representOf(status.getCode());
