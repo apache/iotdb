@@ -75,8 +75,6 @@ public class RegionMigrateService implements IService {
   private static final ConcurrentHashMap<Long, TRegionMigrateResult> taskResultMap =
       new ConcurrentHashMap<>();
 
-  //  private static final AtomicLong lastNotifyTime = new AtomicLong(Long.MIN_VALUE);
-
   private static class RegionOperationsCache {
 
     private long logicalClock = -1;
