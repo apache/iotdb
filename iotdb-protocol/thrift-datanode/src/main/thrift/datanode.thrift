@@ -283,7 +283,7 @@ struct TDataNodeHeartbeatReq {
   12: optional map<i32, common.TDataNodeLocation> dataNodes
   13: optional map<i32, set<i32>> topology
   14: required i64 logicalClock
-  15: required list<common.TConsensusGroupId> currentRegionOperations
+  15: optional list<common.TConsensusGroupId> currentRegionOperations
 }
 
 struct TDataNodeActivation {
