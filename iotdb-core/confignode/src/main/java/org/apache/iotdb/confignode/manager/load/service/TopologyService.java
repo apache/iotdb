@@ -309,21 +309,25 @@ public class TopologyService implements Runnable, IClusterStatusSubscriber {
         startingDataNodes.remove(nodeId);
       }
 
+      final Set<Pair<Integer, Integer>> affectedPairs =
+          heartbeats.keySet().stream()
+              .filter(
+                  pair ->
+                      Objects.equals(pair.getLeft(), nodeId)
+                          || Objects.equals(pair.getRight(), nodeId))
+              .collect(Collectors.toSet());
+
       if (changeEvent.getRight() == null) {
         // datanode removed from cluster, clean up probing history
-        final Set<Pair<Integer, Integer>> toRemove =
-            heartbeats.keySet().stream()
-                .filter(
-                    pair ->
-                        Objects.equals(pair.getLeft(), nodeId)
-                            || Objects.equals(pair.getRight(), nodeId))
-                .collect(Collectors.toSet());
-        toRemove.forEach(heartbeats::remove);
-        toRemove.forEach(accumulatedFailures::remove);
+        affectedPairs.forEach(heartbeats::remove);
+        affectedPairs.forEach(accumulatedFailures::remove);
       } else {
         // we only trigger probing immediately if node comes around from UNKNOWN to RUNNING
         if (NodeStatus.Unknown.equals(changeEvent.getLeft().getStatus())
             && NodeStatus.Running.equals(changeEvent.getRight().getStatus())) {
+          // let's clear the history when a new node comes around
+          affectedPairs.forEach(pair -> heartbeats.put(pair, new ArrayList<>()));
+          affectedPairs.forEach(pair -> accumulatedFailures.put(pair, 0));
           awaitForSignal.signal();
         }
       }
