@@ -32,6 +32,7 @@ import org.apache.iotdb.commons.utils.NodeUrlUtils;
 import org.apache.iotdb.confignode.rpc.thrift.TCQConfig;
 import org.apache.iotdb.confignode.rpc.thrift.TGlobalConfig;
 import org.apache.iotdb.confignode.rpc.thrift.TRatisConfig;
+import org.apache.iotdb.consensus.config.PipeConsensusConfig;
 import org.apache.iotdb.db.consensus.DataRegionConsensusImpl;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.service.metrics.IoTDBInternalLocalReporter;
@@ -47,6 +48,7 @@ import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.constant
 import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.constant.InnerUnsequenceCompactionSelector;
 import org.apache.iotdb.db.storageengine.dataregion.wal.WALManager;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALMode;
+import org.apache.iotdb.db.storageengine.load.disk.ILoadDiskSelector;
 import org.apache.iotdb.db.storageengine.rescon.disk.TierManager;
 import org.apache.iotdb.db.storageengine.rescon.memory.SystemInfo;
 import org.apache.iotdb.db.utils.DateTimeUtils;
@@ -1152,8 +1154,7 @@ public class IoTDBDescriptor {
     }
     conf.setIotConsensusV2Mode(
         properties.getProperty(
-            "iot_consensus_v2_mode",
-            ConfigurationFileUtils.getConfigurationDefaultValue("iot_consensus_v2_mode")));
+            "iot_consensus_v2_mode", PipeConsensusConfig.ReplicateMode.BATCH.getValue()));
     int deletionAheadLogBufferQueueCapacity =
         Integer.parseInt(
             properties.getProperty(
@@ -2251,13 +2252,12 @@ public class IoTDBDescriptor {
     conf.setLoadDiskSelectStrategy(
         properties.getProperty(
             "load_disk_select_strategy",
-            ConfigurationFileUtils.getConfigurationDefaultValue("load_disk_select_strategy")));
+            ILoadDiskSelector.LoadDiskSelectorType.MIN_IO_FIRST.getValue()));
 
     conf.setLoadDiskSelectStrategyForIoTV2AndPipe(
         properties.getProperty(
             "load_disk_select_strategy_for_pipe_and_iotv2",
-            ConfigurationFileUtils.getConfigurationDefaultValue(
-                "load_disk_select_strategy_for_pipe_and_iotv2")));
+            ILoadDiskSelector.LoadDiskSelectorType.INHERIT_LOAD.getValue()));
   }
 
   private void loadLoadTsFileHotModifiedProp(TrimProperties properties) throws IOException {

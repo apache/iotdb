@@ -328,8 +328,8 @@ public class DataRegion implements IDataRegionForQuery {
 
   private final DataRegionMetrics metrics;
 
-  private final ILoadDiskSelector ordinaryLoadDiskSelector;
-  private final ILoadDiskSelector pipeAndIoTV2LoadDiskSelector;
+  private ILoadDiskSelector ordinaryLoadDiskSelector;
+  private ILoadDiskSelector pipeAndIoTV2LoadDiskSelector;
 
   /**
    * Construct a database processor.
@@ -394,27 +394,7 @@ public class DataRegion implements IDataRegionForQuery {
       recover();
     }
 
-    switch (ILoadDiskSelector.LoadDiskSelectorType.fromValue(config.getLoadDiskSelectStrategy())) {
-      case MIN_IO_FIRST:
-        ordinaryLoadDiskSelector = new MinIOSelector();
-        break;
-      case DISK_STORAGE_BALANCE_FIRST:
-      default:
-        ordinaryLoadDiskSelector = new StorageBalanceSelector();
-    }
-
-    switch (ILoadDiskSelector.LoadDiskSelectorType.fromValue(
-        config.getLoadDiskSelectStrategyForIoTV2AndPipe())) {
-      case MIN_IO_FIRST:
-        pipeAndIoTV2LoadDiskSelector = new MinIOSelector();
-        break;
-      case EXTEND_LOAD:
-        pipeAndIoTV2LoadDiskSelector = ordinaryLoadDiskSelector;
-        break;
-      case DISK_STORAGE_BALANCE_FIRST:
-      default:
-        pipeAndIoTV2LoadDiskSelector = new StorageBalanceSelector();
-    }
+    initDiskSelector();
 
     this.metrics = new DataRegionMetrics(this);
     MetricService.getInstance().addMetricSet(metrics);
@@ -430,13 +410,17 @@ public class DataRegion implements IDataRegionForQuery {
     upgradeModFileThreadPool = null;
     this.metrics = new DataRegionMetrics(this);
 
+    initDiskSelector();
+  }
+
+  private void initDiskSelector() {
     switch (ILoadDiskSelector.LoadDiskSelectorType.fromValue(config.getLoadDiskSelectStrategy())) {
-      case MIN_IO_FIRST:
-        ordinaryLoadDiskSelector = new MinIOSelector();
-        break;
       case DISK_STORAGE_BALANCE_FIRST:
-      default:
         ordinaryLoadDiskSelector = new StorageBalanceSelector();
+        break;
+      case MIN_IO_FIRST:
+      default:
+        ordinaryLoadDiskSelector = new MinIOSelector();
     }
 
     switch (ILoadDiskSelector.LoadDiskSelectorType.fromValue(
@@ -444,12 +428,12 @@ public class DataRegion implements IDataRegionForQuery {
       case MIN_IO_FIRST:
         pipeAndIoTV2LoadDiskSelector = new MinIOSelector();
         break;
-      case EXTEND_LOAD:
-        pipeAndIoTV2LoadDiskSelector = ordinaryLoadDiskSelector;
-        break;
       case DISK_STORAGE_BALANCE_FIRST:
-      default:
         pipeAndIoTV2LoadDiskSelector = new StorageBalanceSelector();
+        break;
+      case INHERIT_LOAD:
+      default:
+        pipeAndIoTV2LoadDiskSelector = ordinaryLoadDiskSelector;
     }
   }
 
@@ -3101,24 +3085,20 @@ public class DataRegion implements IDataRegionForQuery {
       final boolean deleteOriginFile,
       boolean isGeneratedByPipe)
       throws LoadFileException, DiskSpaceInsufficientException {
-    File targetFile = null;
-    if (tsFileResource.isGeneratedByPipeConsensus() || tsFileResource.isGeneratedByPipe()) {
-      targetFile =
-          pipeAndIoTV2LoadDiskSelector.getTargetFile(
-              targetFile,
-              databaseName,
-              dataRegionId,
-              filePartitionId,
-              tsFileResource.getTsFile().getName());
-    } else {
-      targetFile =
-          ordinaryLoadDiskSelector.getTargetFile(
-              targetFile,
-              databaseName,
-              dataRegionId,
-              filePartitionId,
-              tsFileResource.getTsFile().getName());
-    }
+    final File targetFile =
+        (tsFileResource.isGeneratedByPipeConsensus() || tsFileResource.isGeneratedByPipe())
+            ? pipeAndIoTV2LoadDiskSelector.getTargetFile(
+                tsFileToLoad,
+                databaseName,
+                dataRegionId,
+                filePartitionId,
+                tsFileResource.getTsFile().getName())
+            : ordinaryLoadDiskSelector.getTargetFile(
+                tsFileToLoad,
+                databaseName,
+                dataRegionId,
+                filePartitionId,
+                tsFileResource.getTsFile().getName());
 
     // var used in lambda must be final
     final File finalTargetFile = targetFile;
