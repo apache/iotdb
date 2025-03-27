@@ -183,11 +183,12 @@ public class IoTDBConfigRegionExtractor extends IoTDBNonDataRegionExtractor {
       case SCHEMA:
         // Currently do not check tree model mTree
         return Objects.nonNull(((PipeConfigRegionSnapshotEvent) event).getTemplateFile())
-            || permissionManager
-                    .checkUserPrivileges(userName, new PrivilegeUnion(null, false, true))
-                    .getStatus()
-                    .getCode()
-                == TSStatusCode.SUCCESS_STATUS.getStatusCode();
+            || Objects.nonNull(userName)
+                && permissionManager
+                        .checkUserPrivileges(userName, new PrivilegeUnion(null, false, true))
+                        .getStatus()
+                        .getCode()
+                    == TSStatusCode.SUCCESS_STATUS.getStatusCode();
       default:
         return true;
     }
