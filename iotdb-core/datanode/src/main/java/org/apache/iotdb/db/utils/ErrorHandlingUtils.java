@@ -76,6 +76,9 @@ public class ErrorHandlingUtils {
       }
       return RpcUtils.getStatus(TSStatusCode.SEMANTIC_ERROR, rootCause.getMessage());
     }
+    if (e instanceof IoTDBRuntimeException) {
+      statusCode = TSStatusCode.representOf(((IoTDBRuntimeException) e).getErrorCode());
+    }
     TSStatus status = RpcUtils.getStatus(statusCode, message + e.getMessage());
     status.setNeedRetry(needRetry(status));
     return status;

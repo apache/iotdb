@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher;
 
 import org.apache.iotdb.commons.exception.IoTDBException;
+import org.apache.iotdb.commons.exception.IoTDBRuntimeException;
 import org.apache.iotdb.commons.schema.column.ColumnHeader;
 import org.apache.iotdb.commons.schema.filter.SchemaFilter;
 import org.apache.iotdb.commons.schema.filter.impl.singlechild.IdFilter;
@@ -52,6 +53,7 @@ import org.apache.tsfile.read.common.block.TsBlock;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.Pair;
 
+import java.net.ConnectException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
@@ -135,7 +137,10 @@ public class TableDeviceSchemaFetcher {
           tsBlock = coordinator.getQueryExecution(queryId).getBatchResult();
         } catch (final IoTDBException e) {
           t = e;
-          throw new RuntimeException("Fetch Table Device Schema failed. ", e);
+          throw e.getCause() instanceof ConnectException
+              ? new IoTDBRuntimeException(
+                  e.getCause(), TSStatusCode.SYNC_CONNECTION_ERROR.getStatusCode())
+              : new RuntimeException("Fetch Table Device Schema failed. ", e);
         }
         if (!tsBlock.isPresent() || tsBlock.get().isEmpty()) {
           break;
