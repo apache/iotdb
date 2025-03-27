@@ -227,14 +227,16 @@ public class TopologyService implements Runnable, IClusterStatusSubscriber {
       final int fromId = entry.getKey().getLeft();
       final int toId = entry.getKey().getRight();
 
-      final boolean isReachable = !entry.getValue().isEmpty()
-          && !failureDetector.isAvailable(entry.getKey(), entry.getValue());
+      final boolean isReachable =
+          !entry.getValue().isEmpty()
+              && !failureDetector.isAvailable(entry.getKey(), entry.getValue());
 
       if (isReachable) {
         // reset the failure accumulator
         accumulatedFailures.put(entry.getKey(), 0);
       } else {
-        accumulatedFailures.compute(entry.getKey(), (k, ov) -> Optional.ofNullable(ov).orElse(0) + 1);
+        accumulatedFailures.compute(
+            entry.getKey(), (k, ov) -> Optional.ofNullable(ov).orElse(0) + 1);
       }
 
       // if 3 subsequent probing all failed, then it is highly possible a network partition.
@@ -255,7 +257,8 @@ public class TopologyService implements Runnable, IClusterStatusSubscriber {
 
   /**
    * We only consider warning (one vs remaining) network partition. If we need to cover more
-   * complicated scenarios like (many vs many) network partition, we shall use graph algorithms then.
+   * complicated scenarios like (many vs many) network partition, we shall use graph algorithms
+   * then.
    */
   private void logAsymmetricPartition(final Map<Integer, Set<Integer>> topology) {
     final Set<Integer> nodes = topology.keySet();
