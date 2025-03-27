@@ -50,8 +50,11 @@ public class LoadTsFileConfigurator {
       case CONVERT_ON_TYPE_MISMATCH_KEY:
         validateConvertOnTypeMismatchParam(value);
         break;
-      case ASYNC_LOAD_KEY:
+      case VERIFY_KEY:
         validateVerifyParam(value);
+        break;
+      case ASYNC_LOAD_KEY:
+        validateAsyncLoadParam(value);
         break;
       default:
         throw new SemanticException("Invalid parameter '" + key + "' for LOAD TSFILE command.");
@@ -164,7 +167,7 @@ public class LoadTsFileConfigurator {
         loadAttributes.getOrDefault(ASYNC_LOAD_KEY, String.valueOf(ASYNC_LOAD_DEFAULT_VALUE)));
   }
 
-  public static final String ASYNC_LOAD_KEY = "async-load";
+  public static final String ASYNC_LOAD_KEY = "async";
   private static final boolean ASYNC_LOAD_DEFAULT_VALUE = false;
 
   public static void validateAsyncLoadParam(final String asyncLoad) {

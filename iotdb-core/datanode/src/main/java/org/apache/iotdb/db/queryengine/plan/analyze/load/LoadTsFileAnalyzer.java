@@ -747,7 +747,7 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
     }
   }
 
-  private void asyncLoadTsFileAnalyzer(IAnalysis analysis) {
+  private void asyncLoadTsFileAnalyzer(final IAnalysis analysis) {
     final String[] loadActiveListeningDirs =
         IoTDBDescriptor.getInstance().getConfig().getLoadActiveListeningDirs();
     String targetFilePath = null;
