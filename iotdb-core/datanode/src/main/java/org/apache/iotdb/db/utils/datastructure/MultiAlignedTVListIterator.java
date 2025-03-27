@@ -141,8 +141,9 @@ public abstract class MultiAlignedTVListIterator implements MemPointIterator {
           continue;
         }
 
+        int valueIndex = alignedTVList.getValueIndex(currentRowIndex(columnIndex));
         // null value
-        if (alignedTVList.isNullValue(currentRowIndex(columnIndex), validColumnIndex)) {
+        if (alignedTVList.isNullValue(valueIndex, validColumnIndex)) {
           valueBuilder.appendNull();
           continue;
         }
@@ -150,22 +151,18 @@ public abstract class MultiAlignedTVListIterator implements MemPointIterator {
         switch (tsDataTypeList.get(columnIndex)) {
           case BOOLEAN:
             valueBuilder.writeBoolean(
-                alignedTVList.getBooleanByValueIndex(
-                    currentRowIndex(columnIndex), validColumnIndex));
+                alignedTVList.getBooleanByValueIndex(valueIndex, validColumnIndex));
             break;
           case INT32:
           case DATE:
-            valueBuilder.writeInt(
-                alignedTVList.getIntByValueIndex(currentRowIndex(columnIndex), validColumnIndex));
+            valueBuilder.writeInt(alignedTVList.getIntByValueIndex(valueIndex, validColumnIndex));
             break;
           case INT64:
           case TIMESTAMP:
-            valueBuilder.writeLong(
-                alignedTVList.getLongByValueIndex(currentRowIndex(columnIndex), validColumnIndex));
+            valueBuilder.writeLong(alignedTVList.getLongByValueIndex(valueIndex, validColumnIndex));
             break;
           case FLOAT:
-            float valueF =
-                alignedTVList.getFloatByValueIndex(currentRowIndex(columnIndex), validColumnIndex);
+            float valueF = alignedTVList.getFloatByValueIndex(valueIndex, validColumnIndex);
             if (encodingList != null) {
               valueF =
                   alignedTVList.roundValueWithGivenPrecision(
@@ -174,8 +171,7 @@ public abstract class MultiAlignedTVListIterator implements MemPointIterator {
             valueBuilder.writeFloat(valueF);
             break;
           case DOUBLE:
-            double valueD =
-                alignedTVList.getDoubleByValueIndex(currentRowIndex(columnIndex), validColumnIndex);
+            double valueD = alignedTVList.getDoubleByValueIndex(valueIndex, validColumnIndex);
             if (encodingList != null) {
               valueD =
                   alignedTVList.roundValueWithGivenPrecision(
@@ -187,8 +183,7 @@ public abstract class MultiAlignedTVListIterator implements MemPointIterator {
           case BLOB:
           case STRING:
             valueBuilder.writeBinary(
-                alignedTVList.getBinaryByValueIndex(
-                    currentRowIndex(columnIndex), validColumnIndex));
+                alignedTVList.getBinaryByValueIndex(valueIndex, validColumnIndex));
             break;
           default:
             throw new UnSupportedDataTypeException(
