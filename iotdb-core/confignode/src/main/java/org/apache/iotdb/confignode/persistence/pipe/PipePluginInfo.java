@@ -352,13 +352,33 @@ public class PipePluginInfo implements SnapshotProcessor {
       final File snapshotFile = new File(snapshotDir, SNAPSHOT_FILE_NAME);
       if (!snapshotFile.exists() || !snapshotFile.isFile()) {
         LOGGER.error(
-            "Failed to load snapshot,snapshot file [{}] is not exist.",
+            "Failed to load snapshot, snapshot file [{}] is not exist.",
             snapshotFile.getAbsolutePath());
         return;
       }
 
       try (final FileInputStream fileInputStream = new FileInputStream(snapshotFile)) {
         pipePluginMetaKeeper.processLoadSnapshot(fileInputStream);
+      }
+
+      for (final PipePluginMeta pipePluginMeta : pipePluginMetaKeeper.getAllPipePluginMeta()) {
+        final String pluginName = pipePluginMeta.getPluginName();
+        final String pluginDirPath = pipePluginExecutableManager.getPluginsDirPath(pluginName);
+        final PipePluginClassLoader pipePluginClassLoader =
+            classLoaderManager.createPipePluginClassLoader(pluginDirPath);
+        try {
+          final Class<?> pluginClass =
+              Class.forName(pipePluginMeta.getClassName(), true, pipePluginClassLoader);
+          pipePluginMetaKeeper.addPipePluginVisibility(
+              pluginName, VisibilityUtils.calculateFromPluginClass(pluginClass));
+          classLoaderManager.addPluginAndClassLoader(pluginName, pipePluginClassLoader);
+        } catch (final Exception e) {
+          LOGGER.warn(
+              "Failed to load plugin class for plugin [{}] when loading snapshot [{}] ",
+              pluginName,
+              snapshotFile.getAbsolutePath(),
+              e);
+        }
       }
     } finally {
       releasePipePluginInfoLock();
