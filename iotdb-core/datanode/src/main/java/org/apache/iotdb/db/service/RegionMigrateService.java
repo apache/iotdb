@@ -75,42 +75,48 @@ public class RegionMigrateService implements IService {
   private static final ConcurrentHashMap<Long, TRegionMigrateResult> taskResultMap =
       new ConcurrentHashMap<>();
 
-  private static class RegionOperationsCache {
+  private static final TRegionMigrateResult unfinishedResult = new TRegionMigrateResult();
+
+  private static class RegionMigrationStatusCache {
 
     private long logicalClock = -1;
-
     private long timestamp = -1;
 
-    private List<TConsensusGroupId> regionOperations = Collections.emptyList();
+    private List<TConsensusGroupId> currentMigratingConsensusGroupIds = Collections.emptyList();
 
-    private long lastNotifyTime = Long.MIN_VALUE;
+    private long lastNotifyMigratingTime = Long.MIN_VALUE;
 
     public synchronized void update(
         long newLogicalClock, long newTimestamp, List<TConsensusGroupId> currentRegionOperations) {
-      if (newLogicalClock < logicalClock) {
-        return;
-      }
-      if (newLogicalClock == logicalClock && timestamp >= newTimestamp) {
+      if (newLogicalClock < logicalClock
+          || (newLogicalClock == logicalClock && newTimestamp <= timestamp)) {
         return;
       }
       logicalClock = newLogicalClock;
       timestamp = newTimestamp;
-      regionOperations = currentRegionOperations;
-      lastNotifyTime = System.currentTimeMillis();
+
+      currentMigratingConsensusGroupIds = currentRegionOperations;
+
+      if (currentRegionOperations != null && !currentRegionOperations.isEmpty()) {
+        lastNotifyMigratingTime = System.currentTimeMillis();
+      }
     }
 
-    public synchronized List<TConsensusGroupId> getRegionOperations() {
-      return regionOperations;
+    public synchronized void notifyMigrating() {
+      lastNotifyMigratingTime = System.currentTimeMillis();
     }
 
-    public synchronized long getLastNotifyTime() {
-      return lastNotifyTime;
+    public synchronized boolean hasMigratingRegions() {
+      return !currentMigratingConsensusGroupIds.isEmpty();
+    }
+
+    public synchronized long getLastNotifyMigratingTime() {
+      return lastNotifyMigratingTime;
     }
   }
 
-  RegionOperationsCache regionOperationsCache = new RegionOperationsCache();
-
-  private static final TRegionMigrateResult unfinishedResult = new TRegionMigrateResult();
+  private final RegionMigrationStatusCache regionMigrationStatusCache =
+      new RegionMigrationStatusCache();
 
   private RegionMigrateService() {}
 
@@ -119,9 +125,11 @@ public class RegionMigrateService implements IService {
   }
 
   public void notifyRegionMigration(TNotifyRegionMigrationReq req) {
-    regionOperationsCache.update(
+    regionMigrationStatusCache.update(
         req.getLogicalClock(), req.getTimestamp(), req.getCurrentRegionOperations());
+
     if (req.isSetIsStart() && req.isSetRegionId()) {
+      regionMigrationStatusCache.notifyMigrating();
       if (req.isIsStart()) {
         LOGGER.info("Region {} is notified to begin migrating", req.getRegionId());
       } else {
@@ -130,8 +138,12 @@ public class RegionMigrateService implements IService {
     }
   }
 
-  public long getLastNotifyTime() {
-    return regionOperationsCache.getLastNotifyTime();
+  public long getLastNotifyMigratingTime() {
+    return regionMigrationStatusCache.getLastNotifyMigratingTime();
+  }
+
+  public boolean mayHaveMigratingRegions() {
+    return regionMigrationStatusCache.hasMigratingRegions();
   }
 
   /**
