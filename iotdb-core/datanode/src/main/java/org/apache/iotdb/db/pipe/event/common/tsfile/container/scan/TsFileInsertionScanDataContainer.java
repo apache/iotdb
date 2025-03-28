@@ -90,6 +90,8 @@ public class TsFileInsertionScanDataContainer extends TsFileInsertionDataContain
   private byte lastMarker = Byte.MIN_VALUE;
 
   public TsFileInsertionScanDataContainer(
+      final String pipeName,
+      final long creationTime,
       final File tsFile,
       final PipePattern pattern,
       final long startTime,
@@ -97,7 +99,7 @@ public class TsFileInsertionScanDataContainer extends TsFileInsertionDataContain
       final PipeTaskMeta pipeTaskMeta,
       final EnrichedEvent sourceEvent)
       throws IOException {
-    super(pattern, startTime, endTime, pipeTaskMeta, sourceEvent);
+    super(pipeName, creationTime, pattern, startTime, endTime, pipeTaskMeta, sourceEvent);
 
     this.startTime = startTime;
     this.endTime = endTime;
@@ -116,6 +118,17 @@ public class TsFileInsertionScanDataContainer extends TsFileInsertionDataContain
       close();
       throw e;
     }
+  }
+
+  public TsFileInsertionScanDataContainer(
+      final File tsFile,
+      final PipePattern pattern,
+      final long startTime,
+      final long endTime,
+      final PipeTaskMeta pipeTaskMeta,
+      final EnrichedEvent sourceEvent)
+      throws IOException {
+    this(null, 0, tsFile, pattern, startTime, endTime, pipeTaskMeta, sourceEvent);
   }
 
   @Override
