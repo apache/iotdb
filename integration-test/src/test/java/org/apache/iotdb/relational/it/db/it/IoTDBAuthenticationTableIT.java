@@ -225,7 +225,7 @@ public class IoTDBAuthenticationTableIT {
           fail("Should have thrown an exception");
         } catch (StatementExecutionException e) {
           assertEquals(
-              "301: [EXECUTE_STATEMENT_ERROR(301)] Exception occurred: insertTablet failed. Access Denied: No permissions for this operation, please add privilege CREATE ON 汉化.table2",
+              "803: [EXECUTE_STATEMENT_ERROR(301)] Exception occurred: insertTablet failed. Access Denied: No permissions for this operation, please add privilege CREATE ON 汉化.table2",
               e.getMessage());
         }
         sessionRoot.executeNonQueryStatement("GRANT CREATE ON DATABASE \"汉化\" TO USER userA");
