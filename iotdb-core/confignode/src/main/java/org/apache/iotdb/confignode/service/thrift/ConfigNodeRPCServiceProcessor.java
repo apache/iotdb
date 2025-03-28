@@ -37,13 +37,10 @@ import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.commons.auth.entity.PrivilegeUnion;
 import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
-import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
-import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.schema.SchemaConstant;
-import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchemaUtil;
 import org.apache.iotdb.commons.utils.AuthUtils;
 import org.apache.iotdb.commons.utils.StatusUtils;
 import org.apache.iotdb.commons.utils.TestOnly;
@@ -107,7 +104,6 @@ import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeHeartbeatReq;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeHeartbeatResp;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterReq;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterResp;
-import org.apache.iotdb.confignode.rpc.thrift.TConstructTreeDeviceViewReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCountDatabaseResp;
 import org.apache.iotdb.confignode.rpc.thrift.TCountTimeSlotListReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCountTimeSlotListResp;
@@ -1395,22 +1391,6 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
   @Override
   public TDeleteTableDeviceResp deleteDevice(final TDeleteTableDeviceReq req) {
     return configManager.deleteDevice(req);
-  }
-
-  @Override
-  public TSStatus constructTreeView(final TConstructTreeDeviceViewReq req) {
-    final PartialPath path;
-    try {
-      path = new PartialPath(req.getPathPattern());
-    } catch (final IllegalPathException e) {
-      return new TSStatus(TSStatusCode.ILLEGAL_PATH.getStatusCode()).setMessage(e.getMessage());
-    }
-    return configManager.createTreeViewTable(
-        req.getDatabase(),
-        req.getTableName(),
-        path,
-        TsTableColumnSchemaUtil.deserializeColumnSchemaList(req.bufferForColumnInfo()),
-        req.isSetTTL() ? req.getTTL() : IoTDBConstant.TTL_INFINITE);
   }
 
   @Override

@@ -1210,14 +1210,6 @@ struct TTableInfo {
    5: optional i32 type
 }
 
-struct TConstructTreeDeviceViewReq {
-    1: required string database
-    2: required string tableName
-    3: required string pathPattern
-    4: required binary columnInfo
-    5: optional string TTL
-}
-
 struct TCreateTableViewReq {
     1: required binary tableInfo
     2: required bool replace
@@ -1990,8 +1982,7 @@ service IConfigNodeRPCService {
 
   TDeleteTableDeviceResp deleteDevice(TDeleteTableDeviceReq req)
 
-  // Tree view, used now for IT
-  common.TSStatus constructTreeView(TConstructTreeDeviceViewReq req)
+  // Table view
 
   common.TSStatus createTableView(TCreateTableViewReq req)
 }

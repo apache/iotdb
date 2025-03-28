@@ -58,10 +58,8 @@ import org.apache.iotdb.commons.path.PathPatternUtil;
 import org.apache.iotdb.commons.pipe.connector.payload.airgap.AirGapPseudoTPipeTransferRequest;
 import org.apache.iotdb.commons.schema.SchemaConstant;
 import org.apache.iotdb.commons.schema.table.AlterOrDropTableOperationType;
-import org.apache.iotdb.commons.schema.table.TreeViewSchema;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.TsTableInternalRPCUtil;
-import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
 import org.apache.iotdb.commons.schema.ttl.TTLCache;
 import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.commons.utils.AuthUtils;
@@ -280,7 +278,6 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -2766,39 +2763,6 @@ public class ConfigManager implements IManager {
     return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
         ? clusterQuotaManager.getThrottleQuota()
         : new TThrottleQuotaResp(status);
-  }
-
-  @Override
-  public TSStatus createTreeViewTable(
-      final String databaseName,
-      final String tableName,
-      final PartialPath pathPattern,
-      final List<TsTableColumnSchema> columns,
-      final String ttl) {
-    TSStatus status;
-    // May be concurrently deleted, now just ignore
-    if (!clusterSchemaManager.isDatabaseExist(databaseName)) {
-      final TDatabaseSchema newSchema = new TDatabaseSchema(databaseName).setIsTableModel(true);
-      status = ClusterSchemaManager.enrichDatabaseSchemaWithDefaultProperties(newSchema);
-      if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != status.getCode()) {
-        return status;
-      }
-      status =
-          setDatabase(new DatabaseSchemaPlan(ConfigPhysicalPlanType.CreateDatabase, newSchema));
-      if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != status.getCode()
-          && TSStatusCode.DATABASE_ALREADY_EXISTS.getStatusCode() != status.getCode()) {
-        return status;
-      }
-    }
-
-    final TsTable table = new TsTable(tableName);
-    TreeViewSchema.setPathPattern(table, pathPattern);
-
-    if (Objects.nonNull(ttl)) {
-      table.addProp(TsTable.TTL_PROPERTY, ttl);
-    }
-    columns.forEach(table::addColumnSchema);
-    return procedureManager.createTable(databaseName, table);
   }
 
   @Override

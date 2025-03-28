@@ -19,11 +19,6 @@
 
 package org.apache.iotdb.relational.it.schema;
 
-import org.apache.iotdb.commons.client.sync.SyncConfigNodeIServiceClient;
-import org.apache.iotdb.commons.schema.table.column.FieldColumnSchema;
-import org.apache.iotdb.commons.schema.table.column.TagColumnSchema;
-import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchemaUtil;
-import org.apache.iotdb.confignode.rpc.thrift.TConstructTreeDeviceViewReq;
 import org.apache.iotdb.db.it.utils.TestUtils;
 import org.apache.iotdb.isession.ITableSession;
 import org.apache.iotdb.it.env.EnvFactory;
@@ -33,7 +28,6 @@ import org.apache.iotdb.itbase.category.TableLocalStandaloneIT;
 import org.apache.iotdb.itbase.env.BaseEnv;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
-import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.write.record.Tablet;
@@ -46,7 +40,6 @@ import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 
-import java.nio.ByteBuffer;
 import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
@@ -750,35 +743,23 @@ public class IoTDBTableIT {
       fail(e.getMessage());
     }
 
-    try (final SyncConfigNodeIServiceClient client =
-            (SyncConfigNodeIServiceClient) EnvFactory.getEnv().getLeaderConfigNodeConnection();
-        final Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+    try (final Connection connection =
+            EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
         final Statement statement = connection.createStatement()) {
-      Assert.assertEquals(
-          TSStatusCode.SUCCESS_STATUS.getStatusCode(),
-          client
-              .constructTreeView(
-                  new TConstructTreeDeviceViewReq(
-                      "tree_view_db",
-                      "tree_table",
-                      "root.a.**",
-                      ByteBuffer.wrap(
-                          TsTableColumnSchemaUtil.serialize(
-                              Arrays.asList(
-                                  new TagColumnSchema("tag1", TSDataType.STRING),
-                                  new TagColumnSchema("tag2", TSDataType.STRING),
-                                  new FieldColumnSchema("s1", TSDataType.INT32),
-                                  new FieldColumnSchema("s2", TSDataType.STRING))))))
-              .getCode());
       statement.execute("create database tree_view_db");
       statement.execute("use tree_view_db");
       try {
         statement.execute(
-            "create or replace table view tree_table (tag1 tag, tag2 tag, s1 field, s2 field) as root.a.**");
+            "create or replace table view tree_table (tag1 tag, tag2 tag) as root.a.**");
         fail();
       } catch (final SQLException e) {
-
+        assertEquals(
+            "614: Multiple types encountered when auto detecting type of measurement 's1', please check",
+            e.getMessage());
       }
+      statement.execute(
+          "create or replace table view tree_table (tag1 tag, tag2 tag, s1 int32 field, s2 field) as root.a.**");
+
       TestUtils.assertResultSetEqual(
           statement.executeQuery("desc tree_table"),
           "ColumnName,DataType,Category,",

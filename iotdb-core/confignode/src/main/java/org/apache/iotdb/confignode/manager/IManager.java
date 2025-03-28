@@ -31,7 +31,6 @@ import org.apache.iotdb.commons.auth.entity.PrivilegeUnion;
 import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
-import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
 import org.apache.iotdb.confignode.consensus.request.read.ainode.GetAINodeConfigurationPlan;
 import org.apache.iotdb.confignode.consensus.request.read.database.CountDatabasePlan;
 import org.apache.iotdb.confignode.consensus.request.read.database.GetDatabasePlan;
@@ -861,13 +860,6 @@ public interface IManager {
 
   /** Set space quota. */
   TSStatus setSpaceQuota(TSetSpaceQuotaReq req);
-
-  TSStatus createTreeViewTable(
-      final String databaseName,
-      final String tableName,
-      final PartialPath nameSpace,
-      final List<TsTableColumnSchema> columns,
-      final String ttl);
 
   TSStatus createTable(final ByteBuffer tableInfo);
 
