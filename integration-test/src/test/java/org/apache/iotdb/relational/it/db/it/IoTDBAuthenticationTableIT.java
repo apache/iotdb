@@ -265,7 +265,7 @@ public class IoTDBAuthenticationTableIT {
           fail("Should have thrown an exception");
         } catch (StatementExecutionException e) {
           assertEquals(
-              "301: [EXECUTE_STATEMENT_ERROR(301)] Exception occurred: insertTablet failed. Access Denied: No permissions for this operation, please add privilege ALTER ON 汉化.table2",
+              "803: Access Denied: No permissions for this operation, please add privilege ALTER ON 汉化.table2",
               e.getMessage());
         }
         sessionRoot.executeNonQueryStatement("GRANT ALTER ON TABLE table2 TO USER userA");
