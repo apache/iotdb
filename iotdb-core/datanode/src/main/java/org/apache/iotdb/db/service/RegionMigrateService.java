@@ -107,7 +107,8 @@ public class RegionMigrateService implements IService {
     }
 
     public synchronized boolean hasMigratingRegions() {
-      return !currentMigratingConsensusGroupIds.isEmpty();
+      return currentMigratingConsensusGroupIds != null
+          && !currentMigratingConsensusGroupIds.isEmpty();
     }
 
     public synchronized long getLastNotifyMigratingTime() {
