@@ -24,12 +24,14 @@ import org.apache.iotdb.commons.concurrent.IoTThreadFactory;
 import org.apache.iotdb.commons.concurrent.ThreadName;
 import org.apache.iotdb.commons.concurrent.threadpool.WrappedThreadPoolExecutor;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
+import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.utils.RetryUtils;
 import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.protocol.session.IClientSession;
+import org.apache.iotdb.db.protocol.session.InternalClientSession;
 import org.apache.iotdb.db.protocol.session.SessionManager;
-import org.apache.iotdb.db.queryengine.common.SessionInfo;
 import org.apache.iotdb.db.queryengine.plan.Coordinator;
 import org.apache.iotdb.db.queryengine.plan.analyze.ClusterPartitionFetcher;
 import org.apache.iotdb.db.queryengine.plan.analyze.schema.ClusterSchemaFetcher;
@@ -54,6 +56,7 @@ import java.nio.file.Path;
 import java.nio.file.SimpleFileVisitor;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.time.ZoneId;
+import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.concurrent.LinkedBlockingQueue;
@@ -66,6 +69,8 @@ public class ActiveLoadTsFileLoader {
   private static final Logger LOGGER = LoggerFactory.getLogger(ActiveLoadTsFileLoader.class);
 
   private static final IoTDBConfig IOTDB_CONFIG = IoTDBDescriptor.getInstance().getConfig();
+
+  private final SessionManager SESSION_MANAGER = SessionManager.getInstance();
 
   private static final int MAX_PENDING_SIZE = 1000;
   private final ActiveLoadPendingQueue pendingQueue = new ActiveLoadPendingQueue();
@@ -149,30 +154,43 @@ public class ActiveLoadTsFileLoader {
   }
 
   private void tryLoadPendingTsFiles() {
-    while (true) {
-      final Optional<Pair<String, Boolean>> filePair = tryGetNextPendingFile();
-      if (!filePair.isPresent()) {
-        return;
-      }
+    final IClientSession session =
+        new InternalClientSession(
+            String.format(
+                "%s_%s",
+                ActiveLoadTsFileLoader.class.getSimpleName(), Thread.currentThread().getName()));
+    session.setUsername(AuthorityChecker.SUPER_USER);
+    session.setClientVersion(IoTDBConstant.ClientVersion.V_1_0);
+    session.setZoneId(ZoneId.systemDefault());
 
-      try {
-        final TSStatus result = loadTsFile(filePair.get());
-        if (result.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
-            || result.getCode() == TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode()) {
-          LOGGER.info(
-              "Successfully auto load tsfile {} (isGeneratedByPipe = {})",
-              filePair.get().getLeft(),
-              filePair.get().getRight());
-        } else {
-          handleLoadFailure(filePair.get(), result);
+    try {
+      while (true) {
+        final Optional<Pair<String, Boolean>> filePair = tryGetNextPendingFile();
+        if (!filePair.isPresent()) {
+          return;
         }
-      } catch (final FileNotFoundException e) {
-        handleFileNotFoundException(filePair.get());
-      } catch (final Exception e) {
-        handleOtherException(filePair.get(), e);
-      } finally {
-        pendingQueue.removeFromLoading(filePair.get().getLeft());
+
+        try {
+          final TSStatus result = loadTsFile(filePair.get(), session);
+          if (result.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
+              || result.getCode() == TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode()) {
+            LOGGER.info(
+                "Successfully auto load tsfile {} (isGeneratedByPipe = {})",
+                filePair.get().getLeft(),
+                filePair.get().getRight());
+          } else {
+            handleLoadFailure(filePair.get(), result);
+          }
+        } catch (final FileNotFoundException e) {
+          handleFileNotFoundException(filePair.get());
+        } catch (final Exception e) {
+          handleOtherException(filePair.get(), e);
+        } finally {
+          pendingQueue.removeFromLoading(filePair.get().getLeft());
+        }
       }
+    } finally {
+      SESSION_MANAGER.closeSession(session, Coordinator.getInstance()::cleanupQueryExecution);
     }
   }
 
@@ -195,27 +213,39 @@ public class ActiveLoadTsFileLoader {
     }
   }
 
-  private TSStatus loadTsFile(final Pair<String, Boolean> filePair) throws FileNotFoundException {
+  private TSStatus loadTsFile(final Pair<String, Boolean> filePair, final IClientSession session)
+      throws FileNotFoundException {
     final LoadTsFileStatement statement = new LoadTsFileStatement(filePair.getLeft());
+    final List<File> files = statement.getTsFiles();
+    if (!files.isEmpty()) {
+      final File parentFile = files.get(0).getParentFile();
+      statement.setDatabase(parentFile == null ? "null" : parentFile.getName());
+    }
     statement.setDeleteAfterLoad(true);
     statement.setConvertOnTypeMismatch(true);
     statement.setVerifySchema(isVerify);
     statement.setAutoCreateDatabase(false);
-    return executeStatement(filePair.getRight() ? new PipeEnrichedStatement(statement) : statement);
+    return executeStatement(
+        filePair.getRight() ? new PipeEnrichedStatement(statement) : statement, session);
   }
 
-  private TSStatus executeStatement(final Statement statement) {
-    return Coordinator.getInstance()
-        .executeForTreeModel(
-            statement,
-            SessionManager.getInstance().requestQueryId(),
-            new SessionInfo(0, AuthorityChecker.SUPER_USER, ZoneId.systemDefault()),
-            "",
-            ClusterPartitionFetcher.getInstance(),
-            ClusterSchemaFetcher.getInstance(),
-            IOTDB_CONFIG.getQueryTimeoutThreshold(),
-            false)
-        .status;
+  private TSStatus executeStatement(final Statement statement, final IClientSession session) {
+    SESSION_MANAGER.registerSession(session);
+    try {
+      return Coordinator.getInstance()
+          .executeForTreeModel(
+              statement,
+              SESSION_MANAGER.requestQueryId(),
+              SESSION_MANAGER.getSessionInfo(session),
+              "",
+              ClusterPartitionFetcher.getInstance(),
+              ClusterSchemaFetcher.getInstance(),
+              IOTDB_CONFIG.getQueryTimeoutThreshold(),
+              false)
+          .status;
+    } finally {
+      SESSION_MANAGER.removeCurrSession();
+    }
   }
 
   private void handleLoadFailure(final Pair<String, Boolean> filePair, final TSStatus status) {
