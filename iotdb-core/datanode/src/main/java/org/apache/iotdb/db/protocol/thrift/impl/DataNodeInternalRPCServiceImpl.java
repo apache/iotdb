@@ -1921,6 +1921,15 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
       }
     }
 
+    if (req.isSetCurrentRegionOperations()) {
+      RegionMigrateService.getInstance()
+          .notifyRegionMigration(
+              new TNotifyRegionMigrationReq(
+                  req.getLogicalClock(),
+                  req.getHeartbeatTimestamp(),
+                  req.getCurrentRegionOperations()));
+    }
+
     return resp;
   }
 
