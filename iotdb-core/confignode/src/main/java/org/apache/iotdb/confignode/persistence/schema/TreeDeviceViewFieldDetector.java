@@ -54,6 +54,7 @@ import java.util.stream.Collectors;
 public class TreeDeviceViewFieldDetector {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(TreeDeviceViewFieldDetector.class);
+  private static final int MEASUREMENT_TRIMMING_THRESHOLD = 1000;
   private final ConfigManager configManager;
   private final PartialPath path;
   private final TsTable table;
@@ -112,7 +113,9 @@ public class TreeDeviceViewFieldDetector {
               getLatestSchemaRegionMap(),
               table.getIdNums(),
               TreeViewSchema.isRestrict(table),
-              unknownFields.keySet())
+              unknownFields.size() <= MEASUREMENT_TRIMMING_THRESHOLD
+                  ? unknownFields.keySet()
+                  : null)
           .execute();
       if (result.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         return result.getStatus();
