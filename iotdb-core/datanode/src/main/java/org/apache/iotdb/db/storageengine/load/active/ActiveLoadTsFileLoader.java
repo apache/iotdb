@@ -163,33 +163,34 @@ public class ActiveLoadTsFileLoader {
     session.setClientVersion(IoTDBConstant.ClientVersion.V_1_0);
     session.setZoneId(ZoneId.systemDefault());
 
-    while (true) {
-      final Optional<Pair<String, Boolean>> filePair = tryGetNextPendingFile();
-      if (!filePair.isPresent()) {
-        return;
-      }
-
-      try {
-        final TSStatus result = loadTsFile(filePair.get(), session);
-        if (result.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
-            || result.getCode() == TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode()) {
-          LOGGER.info(
-              "Successfully auto load tsfile {} (isGeneratedByPipe = {})",
-              filePair.get().getLeft(),
-              filePair.get().getRight());
-        } else {
-          handleLoadFailure(filePair.get(), result);
+    try {
+      while (true) {
+        final Optional<Pair<String, Boolean>> filePair = tryGetNextPendingFile();
+        if (!filePair.isPresent()) {
+          return;
         }
-      } catch (final FileNotFoundException e) {
-        handleFileNotFoundException(filePair.get());
-      } catch (final Exception e) {
-        handleOtherException(filePair.get(), e);
-      } catch (Throwable t) {
-        SESSION_MANAGER.closeSession(session, Coordinator.getInstance()::cleanupQueryExecution);
-        throw t;
-      } finally {
-        pendingQueue.removeFromLoading(filePair.get().getLeft());
+
+        try {
+          final TSStatus result = loadTsFile(filePair.get(), session);
+          if (result.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
+              || result.getCode() == TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode()) {
+            LOGGER.info(
+                "Successfully auto load tsfile {} (isGeneratedByPipe = {})",
+                filePair.get().getLeft(),
+                filePair.get().getRight());
+          } else {
+            handleLoadFailure(filePair.get(), result);
+          }
+        } catch (final FileNotFoundException e) {
+          handleFileNotFoundException(filePair.get());
+        } catch (final Exception e) {
+          handleOtherException(filePair.get(), e);
+        } finally {
+          pendingQueue.removeFromLoading(filePair.get().getLeft());
+        }
       }
+    } finally {
+      SESSION_MANAGER.closeSession(session, Coordinator.getInstance()::cleanupQueryExecution);
     }
   }
 
@@ -215,9 +216,10 @@ public class ActiveLoadTsFileLoader {
   private TSStatus loadTsFile(final Pair<String, Boolean> filePair, final IClientSession session)
       throws FileNotFoundException {
     final LoadTsFileStatement statement = new LoadTsFileStatement(filePair.getLeft());
-    List<File> files = statement.getTsFiles();
+    final List<File> files = statement.getTsFiles();
     if (!files.isEmpty()) {
-      statement.setDatabase(files.get(0).getParentFile().getName());
+      final File parentFile = files.get(0).getParentFile();
+      statement.setDatabase(parentFile == null ? "null" : parentFile.getName());
     }
     statement.setDeleteAfterLoad(true);
     statement.setConvertOnTypeMismatch(true);
