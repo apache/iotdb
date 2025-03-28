@@ -70,7 +70,6 @@ public class ActiveLoadTsFileLoader {
 
   private static final IoTDBConfig IOTDB_CONFIG = IoTDBDescriptor.getInstance().getConfig();
 
-  private final Coordinator COORDINATOR = Coordinator.getInstance();
   private final SessionManager SESSION_MANAGER = SessionManager.getInstance();
 
   private static final int MAX_PENDING_SIZE = 1000;
@@ -186,7 +185,7 @@ public class ActiveLoadTsFileLoader {
       } catch (final Exception e) {
         handleOtherException(filePair.get(), e);
       } catch (Throwable t) {
-        SESSION_MANAGER.closeSession(session, COORDINATOR::cleanupQueryExecution);
+        SESSION_MANAGER.closeSession(session, Coordinator.getInstance()::cleanupQueryExecution);
         throw t;
       } finally {
         pendingQueue.removeFromLoading(filePair.get().getLeft());

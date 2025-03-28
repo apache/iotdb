@@ -83,6 +83,7 @@ import java.util.Objects;
 import java.util.Optional;
 
 import static org.apache.iotdb.commons.utils.FileUtils.copyFileWithMD5Check;
+import static org.apache.iotdb.commons.utils.FileUtils.moveFileWithMD5Check;
 import static org.apache.iotdb.db.queryengine.plan.execution.config.TableConfigTaskVisitor.DATABASE_NOT_SPECIFIED;
 import static org.apache.iotdb.db.queryengine.plan.execution.config.TableConfigTaskVisitor.validateDatabaseName;
 import static org.apache.iotdb.db.storageengine.load.metrics.LoadTsFileCostMetricsSet.ANALYSIS;
@@ -783,7 +784,7 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
   private void loadTsFileAsyncToTargetDir(final File targetDir, final List<File> files)
       throws IOException {
     for (final File file : files) {
-      if (file == null) {
+      if (file == null || !file.exists()) {
         continue;
       }
 
@@ -795,17 +796,15 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
 
   private void loadTsFileAsyncToTargetDir(final File targetDir, final File file)
       throws IOException {
-    if (!file.exists()) {
-      return;
-    }
-
-    if (!Objects.equals(targetDir.getAbsolutePath(), file.getParentFile().getAbsolutePath())) {
-      RetryUtils.retryOnException(
-          () -> {
+    RetryUtils.retryOnException(
+        () -> {
+          if (isDeleteAfterLoad) {
+            moveFileWithMD5Check(file, targetDir);
+          } else {
             copyFileWithMD5Check(file, targetDir);
-            return null;
-          });
-    }
+          }
+          return null;
+        });
   }
 
   @Override
