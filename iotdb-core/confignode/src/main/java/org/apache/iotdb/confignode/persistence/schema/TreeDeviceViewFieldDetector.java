@@ -208,6 +208,7 @@ public class TreeDeviceViewFieldDetector {
             response = null;
           } else if (subStatus.get(i).getCode()
               == TSStatusCode.DATA_TYPE_MISMATCH.getStatusCode()) {
+            response.setStatus(subStatus.get(i));
             result = response;
             return Collections.emptyList();
           } else if (Objects.nonNull(response)) {
