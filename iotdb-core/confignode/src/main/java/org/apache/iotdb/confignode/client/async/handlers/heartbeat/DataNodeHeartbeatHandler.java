@@ -35,15 +35,11 @@ import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.mpp.rpc.thrift.TDataNodeHeartbeatResp;
 
 import org.apache.thrift.async.AsyncMethodCallback;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.util.Map;
 import java.util.function.Consumer;
 
 public class DataNodeHeartbeatHandler implements AsyncMethodCallback<TDataNodeHeartbeatResp> {
-
-  private static final Logger LOGGER = LoggerFactory.getLogger(DataNodeHeartbeatHandler.class);
 
   private static final ConfigNodeConfig CONF = ConfigNodeDescriptor.getInstance().getConf();
   private static final boolean SCHEMA_REGION_SHOULD_CACHE_CONSENSUS_SAMPLE =
