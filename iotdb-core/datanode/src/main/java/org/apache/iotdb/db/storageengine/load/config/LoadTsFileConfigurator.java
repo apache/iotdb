@@ -158,7 +158,7 @@ public class LoadTsFileConfigurator {
       throw new SemanticException(
           String.format(
               "Given %s value '%s' is not supported, please input a valid boolean value.",
-              ASYNC_LOAD_KEY, verify));
+              VERIFY_KEY, verify));
     }
   }
 
