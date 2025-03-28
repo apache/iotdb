@@ -365,7 +365,7 @@ public class TsFileInsertionEventTableParserTabletIterator implements Iterator<T
       }
     }
 
-    if (offset == alignedChunkMetadata.getValueChunkMetadataList().size() - 1) {
+    if (offset >= alignedChunkMetadata.getValueChunkMetadataList().size()) {
       currentChunkMetadata = null;
     }
 
