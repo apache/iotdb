@@ -75,7 +75,7 @@ public class TableDeviceQuerySource implements ISchemaSource<IDeviceSchemaInfo> 
       final DevicePredicateFilter filter,
       final boolean needAligned) {
     this.tagIndex =
-        !needAligned && PathUtils.isTableModelDatabase(database)
+        !needAligned && !TreeViewSchema.isTreeViewTable(table)
             ? 3
             : DataNodeTreeViewSchemaUtils.getPatternNodes(table).length;
     this.table = table;
@@ -238,20 +238,20 @@ public class TableDeviceQuerySource implements ISchemaSource<IDeviceSchemaInfo> 
       final IDeviceSchemaInfo schemaInfo,
       final TsBlockBuilder builder,
       final List<TsTableColumnSchema> columnSchemaList,
-      int idIndex) {
+      int tagIndex) {
     builder.getTimeColumnBuilder().writeLong(0L);
     int resultIndex = 0;
     final String[] pathNodes = schemaInfo.getRawNodes();
     for (final TsTableColumnSchema columnSchema : columnSchemaList) {
       if (columnSchema.getColumnCategory().equals(TsTableColumnCategory.TAG)) {
-        if (pathNodes.length <= idIndex || pathNodes[idIndex] == null) {
+        if (pathNodes.length <= tagIndex || pathNodes[tagIndex] == null) {
           builder.getColumnBuilder(resultIndex).appendNull();
         } else {
           builder
               .getColumnBuilder(resultIndex)
-              .writeBinary(new Binary(pathNodes[idIndex], TSFileConfig.STRING_CHARSET));
+              .writeBinary(new Binary(pathNodes[tagIndex], TSFileConfig.STRING_CHARSET));
         }
-        idIndex++;
+        tagIndex++;
       } else if (columnSchema.getColumnCategory().equals(TsTableColumnCategory.ATTRIBUTE)) {
         final Binary attributeValue = schemaInfo.getAttributeValue(columnSchema.getColumnName());
         if (attributeValue == null) {

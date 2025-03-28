@@ -734,7 +734,7 @@ public class IoTDBTableIT {
       statement.execute("create timeSeries root.a.b.c.s1 int32");
       statement.execute("create timeSeries root.a.b.c.s2 string");
       statement.execute("create timeSeries root.a.b.s1 int32");
-      statement.execute("create timeSeries root.a.q.s1 boolean");
+      statement.execute("create timeSeries root.a.b.d.s1 boolean");
       statement.execute("create timeSeries root.a.b.c.f.g.h.s1 int32");
 
       // Put schema cache
@@ -758,30 +758,42 @@ public class IoTDBTableIT {
             e.getMessage());
       }
       statement.execute(
-          "create or replace table view tree_table (tag1 tag, tag2 tag, s1 int32 field, s2 field) as root.a.**");
+          "create or replace table view tree_table (tag1 tag, tag2 tag, s1 int32 field, s3 from s2) as root.a.**");
+      statement.execute("alter view tree_table rename to view_table");
+      statement.execute("alter view view_table rename column s1 to s11");
+      statement.execute("alter view view_table set properties ttl=100");
+      statement.execute("comment on view view_table is 'comment'");
 
       TestUtils.assertResultSetEqual(
-          statement.executeQuery("desc tree_table"),
+          statement.executeQuery("show tables details"),
+          "TableName,TTL(ms),Status,Comment,TableType,",
+          Collections.singleton("view_table,100,USING,comment,TREE_TO_TABLE VIEW,"));
+
+      TestUtils.assertResultSetEqual(
+          statement.executeQuery("desc view_table"),
           "ColumnName,DataType,Category,",
           new HashSet<>(
               Arrays.asList(
                   "time,TIMESTAMP,TIME,",
                   "tag1,STRING,TAG,",
                   "tag2,STRING,TAG,",
-                  "s1,INT32,FIELD,",
-                  "s2,STRING,FIELD,")));
+                  "s11,INT32,FIELD,",
+                  "s3,STRING,FIELD,")));
+      // Currently we show the device even if all of its measurements does not match the type,
+      // the handling logic at query because validate it at fetching will potentially cause a
+      // lot of time
       TestUtils.assertResultSetEqual(
-          statement.executeQuery("show devices from tree_table where tag1 = 'b'"),
+          statement.executeQuery("show devices from view_table where tag1 = 'b'"),
           "tag1,tag2,",
-          new HashSet<>(Arrays.asList("b,c,", "b,null,")));
+          new HashSet<>(Arrays.asList("b,c,", "b,null,", "b,d,")));
       TestUtils.assertResultSetEqual(
-          statement.executeQuery("show devices from tree_table where tag1 = 'b' and tag2 is null"),
+          statement.executeQuery("show devices from view_table where tag1 = 'b' and tag2 is null"),
           "tag1,tag2,",
           Collections.singleton("b,null,"));
       TestUtils.assertResultSetEqual(
-          statement.executeQuery("count devices from tree_table"),
+          statement.executeQuery("count devices from view_table"),
           "count(devices),",
-          Collections.singleton("2,"));
+          Collections.singleton("3,"));
     }
   }
 }
