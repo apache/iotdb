@@ -976,23 +976,31 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
   }
 
   @Override
-  protected IConfigTask visitAlterPipe(AlterPipe node, MPPQueryContext context) {
+  protected IConfigTask visitAlterPipe(final AlterPipe node, final MPPQueryContext context) {
     context.setQueryType(QueryType.WRITE);
-    accessControl.checkUserIsAdmin(context.getSession().getUserName());
 
-    for (String ExtractorAttribute : node.getExtractorAttributes().keySet()) {
-      if (ExtractorAttribute.startsWith(SystemConstant.SYSTEM_PREFIX_KEY)) {
+    final String userName = context.getSession().getUserName();
+    accessControl.checkUserIsAdmin(userName);
+
+    final String pipeName = node.getPipeName();
+    final Map<String, String> extractorAttributes = node.getExtractorAttributes();
+    for (final String attributeKey : extractorAttributes.keySet()) {
+      if (attributeKey.startsWith(SystemConstant.SYSTEM_PREFIX_KEY)) {
         throw new SemanticException(
             String.format(
-                "Failed to alter pipe %s, modifying %s is not allowed.",
-                node.getPipeName(), ExtractorAttribute));
+                "Failed to alter pipe %s, modifying %s is not allowed.", pipeName, attributeKey));
       }
     }
     // If the source is replaced, sql-dialect uses the current Alter Pipe sql-dialect. If it is
     // modified, the original sql-dialect is used.
     if (node.isReplaceAllExtractorAttributes()) {
-      node.getExtractorAttributes()
-          .put(SystemConstant.SQL_DIALECT_KEY, SystemConstant.SQL_DIALECT_TABLE_VALUE);
+      extractorAttributes.put(
+          SystemConstant.SQL_DIALECT_KEY, SystemConstant.SQL_DIALECT_TABLE_VALUE);
+      checkAndEnrichSourceUserName(pipeName, extractorAttributes, userName);
+    }
+
+    if (node.isReplaceAllConnectorAttributes()) {
+      checkAndEnrichSinkUserName(pipeName, node.getConnectorAttributes(), userName);
     }
 
     return new AlterPipeTask(node);
