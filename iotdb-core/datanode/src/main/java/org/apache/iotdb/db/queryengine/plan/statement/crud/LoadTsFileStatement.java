@@ -333,7 +333,6 @@ public class LoadTsFileStatement extends Statement {
     loadAttributes.put(CONVERT_ON_TYPE_MISMATCH_KEY, String.valueOf(convertOnTypeMismatch));
     loadAttributes.put(
         TABLET_CONVERSION_THRESHOLD_KEY, String.valueOf(tabletConversionThresholdBytes));
-
     loadAttributes.put(ASYNC_LOAD_KEY, String.valueOf(isAsyncLoad));
 
     return new LoadTsFile(null, file.getAbsolutePath(), loadAttributes);
