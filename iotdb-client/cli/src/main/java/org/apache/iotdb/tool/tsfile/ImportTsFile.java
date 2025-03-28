@@ -89,6 +89,7 @@ public class ImportTsFile extends AbstractTsFileTool {
   private static boolean isRemoteLoad = true;
   protected static boolean verify = true;
   private static SessionPool sessionPool;
+
   private static String databaseName;
 
   private static void createOptions() {
@@ -162,7 +163,7 @@ public class ImportTsFile extends AbstractTsFileTool {
             .longOpt(DATABASE_NAME)
             .argName(DATABASE_NAME)
             .hasArg()
-            .desc("The target database name (optional)")
+            .desc("The target database name for table-model(optional)")
             .build();
     options.addOption(opDatabase);
 

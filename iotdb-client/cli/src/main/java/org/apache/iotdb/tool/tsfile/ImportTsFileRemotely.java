@@ -193,6 +193,7 @@ public class ImportTsFileRemotely extends ImportTsFileBase {
     params.put(
         PipeTransferHandshakeConstant.HANDSHAKE_KEY_VALIDATE_TSFILE,
         Boolean.toString(validateTsFile));
+    params.put(PipeTransferHandshakeConstant.HANDSHAKE_KEY_DATABASE_NAME, databaseName);
     return params;
   }
 

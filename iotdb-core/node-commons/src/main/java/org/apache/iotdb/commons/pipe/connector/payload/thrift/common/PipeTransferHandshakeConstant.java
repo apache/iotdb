@@ -29,6 +29,7 @@ public class PipeTransferHandshakeConstant {
   public static final String HANDSHAKE_KEY_PASSWORD = "password";
   public static final String HANDSHAKE_KEY_VALIDATE_TSFILE = "validateTsFile";
   public static final String HANDSHAKE_KEY_MARK_AS_PIPE_REQUEST = "markAsPipeRequest";
+  public static final String HANDSHAKE_KEY_DATABASE_NAME = "databaseName";
 
   private PipeTransferHandshakeConstant() {
     // Utility class

@@ -88,6 +88,8 @@ public abstract class IoTDBFileReceiver implements IoTDBReceiver {
 
   protected final AtomicBoolean shouldMarkAsPipeRequest = new AtomicBoolean(true);
 
+  protected String databaseName = null;
+
   @Override
   public IoTDBConnectorRequestVersion getVersion() {
     return IoTDBConnectorRequestVersion.VERSION_1;
@@ -296,6 +298,8 @@ public abstract class IoTDBFileReceiver implements IoTDBReceiver {
             req.getParams()
                 .getOrDefault(
                     PipeTransferHandshakeConstant.HANDSHAKE_KEY_MARK_AS_PIPE_REQUEST, "true")));
+
+    databaseName = req.getParams().get(PipeTransferHandshakeConstant.HANDSHAKE_KEY_DATABASE_NAME);
 
     // Handle the handshake request as a v1 request.
     // Here we construct a fake "dataNode" request to valid from v1 validation logic, though
