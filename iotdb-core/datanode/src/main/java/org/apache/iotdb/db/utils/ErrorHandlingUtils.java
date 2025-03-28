@@ -22,7 +22,6 @@ package org.apache.iotdb.db.utils;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.commons.exception.IoTDBRuntimeException;
-import org.apache.iotdb.commons.utils.StatusUtils;
 import org.apache.iotdb.db.exception.BatchProcessException;
 import org.apache.iotdb.db.exception.QueryInBatchStatementException;
 import org.apache.iotdb.db.exception.StorageGroupNotReadyException;
@@ -43,7 +42,6 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.util.Arrays;
-import java.util.Objects;
 import java.util.concurrent.ExecutionException;
 
 import static org.apache.iotdb.commons.utils.StatusUtils.needRetry;
