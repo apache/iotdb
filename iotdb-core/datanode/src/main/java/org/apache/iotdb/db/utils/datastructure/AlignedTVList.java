@@ -145,7 +145,7 @@ public abstract class AlignedTVList extends TVList {
         }
       }
     }
-    AlignedTVList alignedTvList = AlignedTVList.newAlignedList(dataTypeList);
+    AlignedTVList alignedTvList = AlignedTVList.newAlignedList(new ArrayList<>(dataTypeList));
     alignedTvList.timestamps = this.timestamps;
     alignedTvList.indices = this.indices;
     alignedTvList.values = values;
@@ -161,7 +161,7 @@ public abstract class AlignedTVList extends TVList {
 
   @Override
   public synchronized AlignedTVList clone() {
-    AlignedTVList cloneList = AlignedTVList.newAlignedList(dataTypes);
+    AlignedTVList cloneList = AlignedTVList.newAlignedList(new ArrayList<>(dataTypes));
     cloneAs(cloneList);
     cloneList.timeDeletedCnt = this.timeDeletedCnt;
     System.arraycopy(
@@ -360,10 +360,11 @@ public abstract class AlignedTVList extends TVList {
 
   public void extendColumn(TSDataType dataType) {
     if (bitMaps == null) {
-      bitMaps = new ArrayList<>(values.size());
+      List<List<BitMap>> localBitMaps = new ArrayList<>(values.size());
       for (int i = 0; i < values.size(); i++) {
-        bitMaps.add(null);
+        localBitMaps.add(null);
       }
+      bitMaps = localBitMaps;
     }
     List<Object> columnValue = new ArrayList<>();
     List<BitMap> columnBitMaps = new ArrayList<>();
@@ -691,21 +692,26 @@ public abstract class AlignedTVList extends TVList {
   }
 
   public void deleteColumn(int columnIndex) {
-    if (bitMaps != null) {
-      bitMaps.remove(columnIndex);
-    }
-    if (memoryBinaryChunkSize != null) {
-      long[] newSizes = new long[memoryBinaryChunkSize.length - 1];
-      int cnt = 0;
-      for (int i = 0; i < memoryBinaryChunkSize.length; i++) {
-        if (i != columnIndex) {
-          newSizes[cnt++] = memoryBinaryChunkSize[i];
-        }
+    if (bitMaps == null) {
+      List<List<BitMap>> localBitMaps = new ArrayList<>(dataTypes.size());
+      for (int j = 0; j < dataTypes.size(); j++) {
+        localBitMaps.add(null);
       }
-      memoryBinaryChunkSize = newSizes;
+      bitMaps = localBitMaps;
     }
-    dataTypes.remove(columnIndex);
-    values.remove(columnIndex);
+    if (bitMaps.get(columnIndex) == null) {
+      List<BitMap> columnBitMaps = new ArrayList<>();
+      for (int i = 0; i < values.get(columnIndex).size(); i++) {
+        columnBitMaps.add(new BitMap(ARRAY_SIZE));
+      }
+      bitMaps.set(columnIndex, columnBitMaps);
+    }
+    for (int i = 0; i < bitMaps.get(columnIndex).size(); i++) {
+      if (bitMaps.get(columnIndex).get(i) == null) {
+        bitMaps.get(columnIndex).set(i, new BitMap(ARRAY_SIZE));
+      }
+      bitMaps.get(columnIndex).get(i).markAll();
+    }
   }
 
   protected Object cloneValue(TSDataType type, Object value) {
@@ -947,10 +953,11 @@ public abstract class AlignedTVList extends TVList {
   private boolean markNullValue(int columnIndex, int arrayIndex, int elementIndex) {
     // init BitMaps if doesn't have
     if (bitMaps == null) {
-      bitMaps = new ArrayList<>(dataTypes.size());
+      List<List<BitMap>> localBitMaps = new ArrayList<>(dataTypes.size());
       for (int i = 0; i < dataTypes.size(); i++) {
-        bitMaps.add(null);
+        localBitMaps.add(null);
       }
+      bitMaps = localBitMaps;
     }
 
     // if the bitmap in columnIndex is null, init the bitmap of this column from the beginning
@@ -1483,7 +1490,7 @@ public abstract class AlignedTVList extends TVList {
       bitMaps[columnIndex] = bitMap;
     }
 
-    AlignedTVList tvList = AlignedTVList.newAlignedList(dataTypes);
+    AlignedTVList tvList = AlignedTVList.newAlignedList(new ArrayList<>(dataTypes));
     tvList.putAlignedValues(times, values, bitMaps, 0, rowCount, null);
 
     boolean hasTimeColDeletedMap = stream.read() == 1;

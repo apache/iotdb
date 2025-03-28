@@ -39,6 +39,7 @@ import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.constant
 import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.constant.InnerUnsequenceCompactionSelector;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.TimeIndexLevel;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALMode;
+import org.apache.iotdb.db.storageengine.load.disk.ILoadDiskSelector.LoadDiskSelectorType;
 import org.apache.iotdb.db.utils.datastructure.TVListSortAlgorithm;
 import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
 import org.apache.iotdb.metrics.metricsets.system.SystemMetrics;
@@ -1127,6 +1128,11 @@ public class IoTDBConfig {
   private int loadActiveListeningMaxThreadNum = Runtime.getRuntime().availableProcessors();
 
   private boolean loadActiveListeningVerifyEnable = true;
+
+  private String loadDiskSelectStrategy = LoadDiskSelectorType.MIN_IO_FIRST.getValue();
+
+  private String loadDiskSelectStrategyForIoTV2AndPipe =
+      LoadDiskSelectorType.INHERIT_LOAD.getValue();
 
   /** Pipe related */
   /** initialized as empty, updated based on the latest `systemDir` during querying */
@@ -3847,6 +3853,23 @@ public class IoTDBConfig {
 
   public void setLoadActiveListeningVerifyEnable(boolean loadActiveListeningVerifyEnable) {
     this.loadActiveListeningVerifyEnable = loadActiveListeningVerifyEnable;
+  }
+
+  public String getLoadDiskSelectStrategy() {
+    return loadDiskSelectStrategy;
+  }
+
+  public void setLoadDiskSelectStrategy(String loadDiskSelectStrategy) {
+    this.loadDiskSelectStrategy = loadDiskSelectStrategy;
+  }
+
+  public String getLoadDiskSelectStrategyForIoTV2AndPipe() {
+    return loadDiskSelectStrategyForIoTV2AndPipe;
+  }
+
+  public void setLoadDiskSelectStrategyForIoTV2AndPipe(
+      String loadDiskSelectStrategyForIoTV2AndPipe) {
+    this.loadDiskSelectStrategyForIoTV2AndPipe = loadDiskSelectStrategyForIoTV2AndPipe;
   }
 
   public long getLoadActiveListeningCheckIntervalSeconds() {

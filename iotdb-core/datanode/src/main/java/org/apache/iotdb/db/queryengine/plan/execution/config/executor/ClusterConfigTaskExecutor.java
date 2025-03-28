@@ -82,9 +82,12 @@ import org.apache.iotdb.confignode.rpc.thrift.TCreateModelReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreatePipePluginReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreatePipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateTopicReq;
+import org.apache.iotdb.confignode.rpc.thrift.TCreateTrainingReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateTriggerReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRemoveReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRemoveResp;
+import org.apache.iotdb.confignode.rpc.thrift.TDataSchemaForTable;
+import org.apache.iotdb.confignode.rpc.thrift.TDataSchemaForTree;
 import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
 import org.apache.iotdb.confignode.rpc.thrift.TDeactivateSchemaTemplateReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDeleteDatabasesReq;
@@ -187,7 +190,7 @@ import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.ShowRegion
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.ShowTTLTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.ShowTriggersTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.ShowVariablesTask;
-import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.model.ShowModelsTask;
+import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.ai.ShowModelsTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.region.ExtendRegionTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.region.MigrateRegionTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.region.ReconstructRegionTask;
@@ -1546,11 +1549,11 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
     TShowRegionResp showRegionResp = new TShowRegionResp();
     final TShowRegionReq showRegionReq = new TShowRegionReq().setIsTableModel(isTableModel);
     showRegionReq.setConsensusGroupType(showRegionStatement.getRegionType());
-    if (showRegionStatement.getStorageGroups() == null) {
+    if (showRegionStatement.getDatabases() == null) {
       showRegionReq.setDatabases(null);
     } else {
       showRegionReq.setDatabases(
-          showRegionStatement.getStorageGroups().stream()
+          showRegionStatement.getDatabases().stream()
               .map(PartialPath::getFullPath)
               .collect(Collectors.toList()));
     }
@@ -3159,6 +3162,49 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
       }
       // convert model info list and buildTsBlock
       ShowModelsTask.buildTsBlock(showModelResp.getModelInfoList(), future);
+    } catch (final ClientManagerException | TException e) {
+      future.setException(e);
+    }
+    return future;
+  }
+
+  @Override
+  public SettableFuture<ConfigTaskResult> createTraining(
+      String modelId,
+      String modelType,
+      boolean isTableModel,
+      Map<String, String> parameters,
+      boolean useAllData,
+      List<List<Long>> timeRanges,
+      String existingModelId,
+      @Nullable List<String> tableList,
+      @Nullable List<String> databaseList,
+      @Nullable List<String> pathList) {
+    final SettableFuture<ConfigTaskResult> future = SettableFuture.create();
+    try (final ConfigNodeClient client =
+        CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
+      final TCreateTrainingReq req = new TCreateTrainingReq(modelId, modelType, isTableModel);
+
+      if (isTableModel) {
+        TDataSchemaForTable dataSchemaForTable = new TDataSchemaForTable();
+        dataSchemaForTable.setTableList(tableList);
+        dataSchemaForTable.setDatabaseList(databaseList);
+        req.setDataSchemaForTable(dataSchemaForTable);
+      } else {
+        TDataSchemaForTree dataSchemaForTree = new TDataSchemaForTree();
+        dataSchemaForTree.setPath(pathList);
+        req.setDataSchemaForTree(dataSchemaForTree);
+      }
+      req.setParameters(parameters);
+      req.setUseAllData(useAllData);
+      req.setTimeRanges(timeRanges);
+      req.setExistingModelId(existingModelId);
+      final TSStatus executionStatus = client.createTraining(req);
+      if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != executionStatus.getCode()) {
+        future.setException(new IoTDBException(executionStatus.message, executionStatus.code));
+      } else {
+        future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
+      }
     } catch (final ClientManagerException | TException e) {
       future.setException(e);
     }

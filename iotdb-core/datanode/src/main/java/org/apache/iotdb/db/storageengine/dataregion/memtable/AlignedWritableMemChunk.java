@@ -64,7 +64,7 @@ import static org.apache.iotdb.db.utils.ModificationUtils.isPointDeleted;
 public class AlignedWritableMemChunk extends AbstractWritableMemChunk {
 
   private Map<String, Integer> measurementIndexMap;
-  private final List<TSDataType> dataTypes;
+  private List<TSDataType> dataTypes;
   private final List<IMeasurementSchema> schemaList;
   private AlignedTVList list;
   private List<AlignedTVList> sortedList;
@@ -200,7 +200,8 @@ public class AlignedWritableMemChunk extends AbstractWritableMemChunk {
       list.sort();
     }
     sortedList.add(list);
-    this.list = AlignedTVList.newAlignedList(dataTypes);
+    this.list = AlignedTVList.newAlignedList(new ArrayList<>(dataTypes));
+    this.dataTypes = list.getTsDataTypes();
   }
 
   @Override
@@ -231,6 +232,107 @@ public class AlignedWritableMemChunk extends AbstractWritableMemChunk {
     if (TVLIST_SORT_THRESHOLD > 0 && list.rowCount() >= TVLIST_SORT_THRESHOLD) {
       handoverAlignedTvList();
     }
+  }
+
+  /**
+   * Check metadata of columns and return array that mapping existed metadata to index of data
+   * column.
+   *
+   * @param schemaListInInsertPlan Contains all existed schema in InsertPlan. If some timeseries
+   *     have been deleted, there will be null in its slot.
+   * @return columnIndexArray: schemaList[i] is schema of columns[columnIndexArray[i]]
+   */
+  private Pair<Object[], BitMap[]> checkAndReorderColumnValuesInInsertPlan(
+      List<IMeasurementSchema> schemaListInInsertPlan, Object[] columnValues, BitMap[] bitMaps) {
+    Object[] reorderedColumnValues = new Object[schemaList.size()];
+    BitMap[] reorderedBitMaps = bitMaps == null ? null : new BitMap[schemaList.size()];
+    for (int i = 0; i < schemaListInInsertPlan.size(); i++) {
+      IMeasurementSchema measurementSchema = schemaListInInsertPlan.get(i);
+      if (measurementSchema != null) {
+        Integer index = this.measurementIndexMap.get(measurementSchema.getMeasurementName());
+        // Index is null means this measurement was not in this AlignedTVList before.
+        // We need to extend a new column in AlignedMemChunk and AlignedTVList.
+        // And the reorderedColumnValues should extend one more column for the new measurement
+        if (index == null) {
+          index = this.list.getTsDataTypes().size();
+          this.measurementIndexMap.put(schemaListInInsertPlan.get(i).getMeasurementName(), index);
+          this.schemaList.add(schemaListInInsertPlan.get(i));
+          this.list.extendColumn(schemaListInInsertPlan.get(i).getType());
+          reorderedColumnValues =
+              Arrays.copyOf(reorderedColumnValues, reorderedColumnValues.length + 1);
+          if (reorderedBitMaps != null) {
+            reorderedBitMaps = Arrays.copyOf(reorderedBitMaps, reorderedBitMaps.length + 1);
+          }
+        }
+        reorderedColumnValues[index] = columnValues[i];
+        if (bitMaps != null) {
+          reorderedBitMaps[index] = bitMaps[i];
+        }
+      }
+    }
+    return new Pair<>(reorderedColumnValues, reorderedBitMaps);
+  }
+
+  private void filterDeletedTimeStamp(
+      AlignedTVList alignedTVList,
+      List<List<TimeRange>> valueColumnsDeletionList,
+      boolean ignoreAllNullRows,
+      Map<Long, BitMap> timestampWithBitmap) {
+    BitMap allValueColDeletedMap = alignedTVList.getAllValueColDeletedMap();
+
+    int rowCount = alignedTVList.rowCount();
+    List<int[]> valueColumnDeleteCursor = new ArrayList<>();
+    if (valueColumnsDeletionList != null) {
+      valueColumnsDeletionList.forEach(x -> valueColumnDeleteCursor.add(new int[] {0}));
+    }
+
+    for (int row = 0; row < rowCount; row++) {
+      // the row is deleted
+      if (allValueColDeletedMap != null && allValueColDeletedMap.isMarked(row)) {
+        continue;
+      }
+      long timestamp = alignedTVList.getTime(row);
+
+      BitMap bitMap = new BitMap(schemaList.size());
+      for (int column = 0; column < schemaList.size(); column++) {
+        if (alignedTVList.isNullValue(alignedTVList.getValueIndex(row), column)) {
+          bitMap.mark(column);
+        }
+
+        // skip deleted row
+        if (valueColumnsDeletionList != null
+            && !valueColumnsDeletionList.isEmpty()
+            && isPointDeleted(
+                timestamp,
+                valueColumnsDeletionList.get(column),
+                valueColumnDeleteCursor.get(column))) {
+          bitMap.mark(column);
+        }
+
+        // skip all-null row
+        if (ignoreAllNullRows && bitMap.isAllMarked()) {
+          continue;
+        }
+        timestampWithBitmap.put(timestamp, bitMap);
+      }
+    }
+  }
+
+  public long[] getFilteredTimestamp(
+      List<List<TimeRange>> deletionList, List<BitMap> bitMaps, boolean ignoreAllNullRows) {
+    Map<Long, BitMap> timestampWithBitmap = new TreeMap<>();
+
+    filterDeletedTimeStamp(list, deletionList, ignoreAllNullRows, timestampWithBitmap);
+    for (AlignedTVList alignedTVList : sortedList) {
+      filterDeletedTimeStamp(alignedTVList, deletionList, ignoreAllNullRows, timestampWithBitmap);
+    }
+
+    List<Long> filteredTimestamps = new ArrayList<>();
+    for (Map.Entry<Long, BitMap> entry : timestampWithBitmap.entrySet()) {
+      filteredTimestamps.add(entry.getKey());
+      bitMaps.add(entry.getValue());
+    }
+    return filteredTimestamps.stream().mapToLong(Long::valueOf).toArray();
   }
 
   @Override
@@ -818,113 +920,5 @@ public class AlignedWritableMemChunk extends AbstractWritableMemChunk {
         }
       }
     }
-  }
-
-  /**
-   * Check metadata of columns and return array that mapping existed metadata to index of data
-   * column.
-   *
-   * @param schemaListInInsertPlan Contains all existed schema in InsertPlan. If some timeseries
-   *     have been deleted, there will be null in its slot.
-   * @return columnIndexArray: schemaList[i] is schema of columns[columnIndexArray[i]]
-   */
-  private Pair<Object[], BitMap[]> checkAndReorderColumnValuesInInsertPlan(
-      List<IMeasurementSchema> schemaListInInsertPlan, Object[] columnValues, BitMap[] bitMaps) {
-    Object[] reorderedColumnValues = new Object[schemaList.size()];
-    BitMap[] reorderedBitMaps = bitMaps == null ? null : new BitMap[schemaList.size()];
-    for (int i = 0; i < schemaListInInsertPlan.size(); i++) {
-      IMeasurementSchema measurementSchema = schemaListInInsertPlan.get(i);
-      if (measurementSchema != null) {
-        Integer index = this.measurementIndexMap.get(measurementSchema.getMeasurementName());
-        // Index is null means this measurement was not in this AlignedTVList before.
-        // We need to extend a new column in AlignedMemChunk and AlignedTVList.
-        // And the reorderedColumnValues should extend one more column for the new measurement
-        if (index == null) {
-          index =
-              measurementIndexMap.isEmpty()
-                  ? 0
-                  : measurementIndexMap.values().stream()
-                          .mapToInt(Integer::intValue)
-                          .max()
-                          .getAsInt()
-                      + 1;
-          this.measurementIndexMap.put(schemaListInInsertPlan.get(i).getMeasurementName(), index);
-          this.schemaList.add(schemaListInInsertPlan.get(i));
-          this.list.extendColumn(schemaListInInsertPlan.get(i).getType());
-          reorderedColumnValues =
-              Arrays.copyOf(reorderedColumnValues, reorderedColumnValues.length + 1);
-          if (reorderedBitMaps != null) {
-            reorderedBitMaps = Arrays.copyOf(reorderedBitMaps, reorderedBitMaps.length + 1);
-          }
-        }
-        reorderedColumnValues[index] = columnValues[i];
-        if (bitMaps != null) {
-          reorderedBitMaps[index] = bitMaps[i];
-        }
-      }
-    }
-    return new Pair<>(reorderedColumnValues, reorderedBitMaps);
-  }
-
-  private void filterDeletedTimeStamp(
-      AlignedTVList alignedTVList,
-      List<List<TimeRange>> valueColumnsDeletionList,
-      boolean ignoreAllNullRows,
-      Map<Long, BitMap> timestampWithBitmap) {
-    BitMap allValueColDeletedMap = alignedTVList.getAllValueColDeletedMap();
-
-    int rowCount = alignedTVList.rowCount();
-    List<int[]> valueColumnDeleteCursor = new ArrayList<>();
-    if (valueColumnsDeletionList != null) {
-      valueColumnsDeletionList.forEach(x -> valueColumnDeleteCursor.add(new int[] {0}));
-    }
-
-    for (int row = 0; row < rowCount; row++) {
-      // the row is deleted
-      if (allValueColDeletedMap != null && allValueColDeletedMap.isMarked(row)) {
-        continue;
-      }
-      long timestamp = alignedTVList.getTime(row);
-
-      BitMap bitMap = new BitMap(schemaList.size());
-      for (int column = 0; column < schemaList.size(); column++) {
-        if (alignedTVList.isNullValue(alignedTVList.getValueIndex(row), column)) {
-          bitMap.mark(column);
-        }
-
-        // skip deleted row
-        if (valueColumnsDeletionList != null
-            && !valueColumnsDeletionList.isEmpty()
-            && isPointDeleted(
-                timestamp,
-                valueColumnsDeletionList.get(column),
-                valueColumnDeleteCursor.get(column))) {
-          bitMap.mark(column);
-        }
-
-        // skip all-null row
-        if (ignoreAllNullRows && bitMap.isAllMarked()) {
-          continue;
-        }
-        timestampWithBitmap.put(timestamp, bitMap);
-      }
-    }
-  }
-
-  public long[] getFilteredTimestamp(
-      List<List<TimeRange>> deletionList, List<BitMap> bitMaps, boolean ignoreAllNullRows) {
-    Map<Long, BitMap> timestampWithBitmap = new TreeMap<>();
-
-    filterDeletedTimeStamp(list, deletionList, ignoreAllNullRows, timestampWithBitmap);
-    for (AlignedTVList alignedTVList : sortedList) {
-      filterDeletedTimeStamp(alignedTVList, deletionList, ignoreAllNullRows, timestampWithBitmap);
-    }
-
-    List<Long> filteredTimestamps = new ArrayList<>();
-    for (Map.Entry<Long, BitMap> entry : timestampWithBitmap.entrySet()) {
-      filteredTimestamps.add(entry.getKey());
-      bitMaps.add(entry.getValue());
-    }
-    return filteredTimestamps.stream().mapToLong(Long::valueOf).toArray();
   }
 }
