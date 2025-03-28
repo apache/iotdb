@@ -43,6 +43,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import static org.apache.iotdb.db.storageengine.load.config.LoadTsFileConfigurator.ASYNC_LOAD_KEY;
 import static org.apache.iotdb.db.storageengine.load.config.LoadTsFileConfigurator.CONVERT_ON_TYPE_MISMATCH_KEY;
 import static org.apache.iotdb.db.storageengine.load.config.LoadTsFileConfigurator.DATABASE_LEVEL_KEY;
 import static org.apache.iotdb.db.storageengine.load.config.LoadTsFileConfigurator.DATABASE_NAME_KEY;
@@ -333,6 +334,8 @@ public class LoadTsFileStatement extends Statement {
     loadAttributes.put(
         TABLET_CONVERSION_THRESHOLD_KEY, String.valueOf(tabletConversionThresholdBytes));
 
+    loadAttributes.put(ASYNC_LOAD_KEY, String.valueOf(isAsyncLoad));
+
     return new LoadTsFile(null, file.getAbsolutePath(), loadAttributes);
   }
 
@@ -356,6 +359,8 @@ public class LoadTsFileStatement extends Statement {
         + convertOnTypeMismatch
         + ", tablet-conversion-threshold="
         + tabletConversionThresholdBytes
+        + ", async-load="
+        + isAsyncLoad
         + ", tsFiles size="
         + tsFiles.size()
         + '}';

@@ -419,7 +419,18 @@ public class FileUtils {
             targetDir.getAbsolutePath());
       }
     } else {
-      org.apache.commons.io.FileUtils.copyFileToDirectory(sourceFile, targetDir);
+      if (!(targetDir.exists() || targetDir.mkdirs())) {
+        final String log =
+            String.format("failed to create target directory: %s", targetDir.getAbsolutePath());
+        LOGGER.warn(log);
+        throw new IOException(log);
+      }
+
+      Files.copy(
+          sourceFile.toPath(),
+          targetFile.toPath(),
+          StandardCopyOption.REPLACE_EXISTING,
+          StandardCopyOption.COPY_ATTRIBUTES);
     }
   }
 
@@ -447,7 +458,8 @@ public class FileUtils {
     }
   }
 
-  private static String copyFileRenameWithMD5(File sourceFile, File targetDir) throws IOException {
+  private static String copyFileRenameWithMD5(final File sourceFile, final File targetDir)
+      throws IOException {
     try (final InputStream is = Files.newInputStream(sourceFile.toPath())) {
       final String sourceFileBaseName = FilenameUtils.getBaseName(sourceFile.getName());
       final String sourceFileExtension = FilenameUtils.getExtension(sourceFile.getName());
@@ -457,7 +469,11 @@ public class FileUtils {
           sourceFileBaseName + "-" + sourceFileMD5.substring(0, 16) + "." + sourceFileExtension;
       final File targetFile = new File(targetDir, targetFileName);
 
-      org.apache.commons.io.FileUtils.copyFile(sourceFile, targetFile);
+      Files.copy(
+          sourceFile.toPath(),
+          targetFile.toPath(),
+          StandardCopyOption.REPLACE_EXISTING,
+          StandardCopyOption.COPY_ATTRIBUTES);
       return targetFileName;
     }
   }

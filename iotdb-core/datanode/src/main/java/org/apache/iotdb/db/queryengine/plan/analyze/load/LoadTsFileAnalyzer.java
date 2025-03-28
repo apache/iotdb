@@ -779,12 +779,13 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
       analysis.setFailStatus(RpcUtils.getStatus(TSStatusCode.LOAD_FILE_ERROR, e.getMessage()));
     }
     analysis.setFinishQueryAfterAnalyze(true);
+    setRealStatement(analysis);
   }
 
   private void loadTsFileAsyncToTargetDir(final File targetDir, final List<File> files)
       throws IOException {
     for (final File file : files) {
-      if (file == null || !file.exists()) {
+      if (file == null) {
         continue;
       }
 
@@ -796,6 +797,9 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
 
   private void loadTsFileAsyncToTargetDir(final File targetDir, final File file)
       throws IOException {
+    if (!file.exists()) {
+      return;
+    }
     RetryUtils.retryOnException(
         () -> {
           if (isDeleteAfterLoad) {
