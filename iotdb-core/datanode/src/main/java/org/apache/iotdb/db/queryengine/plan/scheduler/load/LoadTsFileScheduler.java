@@ -229,9 +229,10 @@ public class LoadTsFileScheduler implements IScheduler {
             }
           }
 
-          if (RegionMigrateService.getInstance().getLastNotifyTime() > startTimeMs) {
+          if (RegionMigrateService.getInstance().getLastNotifyMigratingTime() > startTimeMs
+              || RegionMigrateService.getInstance().mayHaveMigratingRegions()) {
             LOGGER.warn(
-                "LoadTsFileScheduler: Region migration started or ended during loading TsFile {}, will convert to insertion to avoid data loss",
+                "LoadTsFileScheduler: Region migration was detected during loading TsFile {}, will convert to insertion to avoid data loss",
                 filePath);
             isLoadSingleTsFileSuccess = false;
           }

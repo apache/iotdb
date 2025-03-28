@@ -81,8 +81,8 @@ public class RegionMigrateProcedure extends RegionOperationProcedure<RegionTrans
               "[pid{}][MigrateRegion] started, {} will be migrated from DataNode {} to {}.",
               getProcId(),
               regionId,
-              handler.simplifiedLocation(originalDataNode),
-              handler.simplifiedLocation(destDataNode));
+              RegionMaintainHandler.simplifiedLocation(originalDataNode),
+              RegionMaintainHandler.simplifiedLocation(destDataNode));
           addChildProcedure(new NotifyRegionMigrationProcedure(regionId, true));
           setNextState(RegionTransitionState.ADD_REGION_PEER);
           break;
@@ -120,8 +120,8 @@ public class RegionMigrateProcedure extends RegionOperationProcedure<RegionTrans
               getProcId(),
               cleanHint,
               regionId,
-              handler.simplifiedLocation(originalDataNode),
-              handler.simplifiedLocation(destDataNode),
+              RegionMaintainHandler.simplifiedLocation(originalDataNode),
+              RegionMaintainHandler.simplifiedLocation(destDataNode),
               CommonDateTimeUtils.convertMillisecondToDurationStr(
                   System.currentTimeMillis() - getSubmittedTime()),
               DateTimeUtils.convertLongToDate(getSubmittedTime(), "ms"));
