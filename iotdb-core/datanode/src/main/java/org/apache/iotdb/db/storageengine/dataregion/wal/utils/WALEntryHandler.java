@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.storageengine.dataregion.wal.utils;
 
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertTabletNode;
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.WALEntry;
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.WALEntryValue;
 import org.apache.iotdb.db.storageengine.dataregion.wal.exception.MemTablePinException;
@@ -188,9 +189,23 @@ public class WALEntryHandler {
     return memTableId;
   }
 
+  @SuppressWarnings("SynchronizeOnNonFinalField")
   public void setEntryPosition(final long walFileVersionId, final long position) {
     this.walEntryPosition.setEntryPosition(walFileVersionId, position, value);
-    this.value = null;
+    if (value instanceof InsertTabletNode) {
+      ((InsertTabletNode) value).decRefCount();
+      synchronized (value) {
+        // if it is referenced by pipe, also decrease the reference count for pipe
+        // because after this method, it will be unreachable for pipe
+        if (((InsertTabletNode) value).isReferencedByPipe()) {
+          ((InsertTabletNode) value).decRefCount();
+          ((InsertTabletNode) value).setReferencedByPipe(false);
+        }
+        this.value = null;
+      }
+    } else {
+      this.value = null;
+    }
     synchronized (this) {
       this.notifyAll();
     }

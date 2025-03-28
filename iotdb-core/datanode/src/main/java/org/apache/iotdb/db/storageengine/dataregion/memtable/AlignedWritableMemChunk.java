@@ -22,6 +22,8 @@ package org.apache.iotdb.db.storageengine.dataregion.memtable;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertTabletStatement.TimeView;
+import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertTabletStatement.ValueView;
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.IWALByteBufferView;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALWriteUtils;
 import org.apache.iotdb.db.utils.datastructure.AlignedTVList;
@@ -141,8 +143,8 @@ public class AlignedWritableMemChunk extends AbstractWritableMemChunk {
   }
 
   @Override
-  public void putAlignedRow(long t, Object[] v) {
-    list.putAlignedValue(t, v);
+  public void putAlignedRow(long t, Object[] v, List<Integer> columnIndices) {
+    list.putAlignedValue(t, v, columnIndices);
   }
 
   @Override
@@ -177,8 +179,10 @@ public class AlignedWritableMemChunk extends AbstractWritableMemChunk {
 
   @Override
   public void putAlignedTablet(
-      long[] t, Object[] v, BitMap[] bitMaps, int start, int end, TSStatus[] results) {
-    list.putAlignedValues(t, v, bitMaps, start, end, results);
+      TimeView t, ValueView v, List<Integer> columnIndices, BitMap[] bitMaps, int start, int end, TSStatus[] results) {
+    int currentRowCount = list.rowCount();
+    t.putTo(list, null, start, end);
+    v.putTo(list, columnIndices, bitMaps, start, end);
   }
 
   @Override
@@ -188,7 +192,7 @@ public class AlignedWritableMemChunk extends AbstractWritableMemChunk {
 
   @Override
   public void writeNonAlignedTablet(
-      long[] times, Object valueList, BitMap bitMap, TSDataType dataType, int start, int end) {
+      TimeView times, ValueView values, int columnIndex, BitMap bitMap, TSDataType dataType, int start, int end) {
     throw new UnSupportedDataTypeException(UNSUPPORTED_TYPE + TSDataType.VECTOR);
   }
 
@@ -203,9 +207,8 @@ public class AlignedWritableMemChunk extends AbstractWritableMemChunk {
   @Override
   public void writeAlignedPoints(
       long insertTime, Object[] objectValue, List<IMeasurementSchema> schemaList) {
-    Object[] reorderedValue =
-        checkAndReorderColumnValuesInInsertPlan(schemaList, objectValue, null).left;
-    putAlignedRow(insertTime, reorderedValue);
+    List<Integer> columnIndices = calculateColumnIndices(schemaList);
+    putAlignedRow(insertTime, objectValue, columnIndices);
     if (TVLIST_SORT_THRESHOLD > 0 && list.rowCount() >= TVLIST_SORT_THRESHOLD) {
       handoverAlignedTvList();
     }
@@ -213,18 +216,15 @@ public class AlignedWritableMemChunk extends AbstractWritableMemChunk {
 
   @Override
   public void writeAlignedTablet(
-      long[] times,
-      Object[] valueList,
+      TimeView times,
+      ValueView valueList,
       BitMap[] bitMaps,
       List<IMeasurementSchema> schemaList,
       int start,
       int end,
       TSStatus[] results) {
-    Pair<Object[], BitMap[]> pair =
-        checkAndReorderColumnValuesInInsertPlan(schemaList, valueList, bitMaps);
-    Object[] reorderedColumnValues = pair.left;
-    BitMap[] reorderedBitMaps = pair.right;
-    putAlignedTablet(times, reorderedColumnValues, reorderedBitMaps, start, end, results);
+    List<Integer> columnIndices = calculateColumnIndices(schemaList);
+    putAlignedTablet(times, valueList, bitMaps, columnIndices, start, end, results);
     if (TVLIST_SORT_THRESHOLD > 0 && list.rowCount() >= TVLIST_SORT_THRESHOLD) {
       handoverAlignedTvList();
     }
@@ -795,7 +795,7 @@ public class AlignedWritableMemChunk extends AbstractWritableMemChunk {
    * @return columnIndexArray: schemaList[i] is schema of columns[columnIndexArray[i]]
    */
   private Pair<Object[], BitMap[]> checkAndReorderColumnValuesInInsertPlan(
-      List<IMeasurementSchema> schemaListInInsertPlan, Object[] columnValues, BitMap[] bitMaps) {
+      List<IMeasurementSchema> schemaListInInsertPlan, ValueView columnValues, BitMap[] bitMaps) {
     Object[] reorderedColumnValues = new Object[schemaList.size()];
     BitMap[] reorderedBitMaps = bitMaps == null ? null : new BitMap[schemaList.size()];
     for (int i = 0; i < schemaListInInsertPlan.size(); i++) {
@@ -830,6 +830,28 @@ public class AlignedWritableMemChunk extends AbstractWritableMemChunk {
       }
     }
     return new Pair<>(reorderedColumnValues, reorderedBitMaps);
+  }
+
+  private List<Integer> calculateColumnIndices(List<IMeasurementSchema> schemaListInInsertPlan) {
+    List<Integer> columnIndexList = new ArrayList<>();
+    for (IMeasurementSchema measurementSchema : schemaListInInsertPlan) {
+      if (measurementSchema != null) {
+        Integer index = this.measurementIndexMap.get(measurementSchema.getMeasurementName());
+        // Index is null means this measurement was not in this AlignedTVList before.
+        // We need to extend a new column in AlignedMemChunk and AlignedTVList.
+        // And the reorderedColumnValues should extend one more column for the new measurement
+        if (index == null) {
+          index = this.list.getColumnSize();
+          this.measurementIndexMap.put(measurementSchema.getMeasurementName(), index);
+          this.schemaList.add(measurementSchema);
+          this.list.extendColumn(measurementSchema.getType());
+        }
+        columnIndexList.add(index);
+      } else {
+        columnIndexList.add(-1);
+      }
+    }
+    return columnIndexList;
   }
 
   private void filterDeletedTimeStamp(

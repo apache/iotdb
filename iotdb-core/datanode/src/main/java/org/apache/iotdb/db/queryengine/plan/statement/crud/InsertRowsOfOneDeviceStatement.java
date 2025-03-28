@@ -213,7 +213,7 @@ public class InsertRowsOfOneDeviceStatement extends InsertBaseStatement {
   }
 
   @Override
-  protected void subRemoveAttributeColumns(List<Integer> columnsToKeep) {
+  protected void reserveColumns(List<Integer> columnsToKeep) {
     insertRowStatementList.forEach(InsertRowStatement::removeAttributeColumns);
   }
 }

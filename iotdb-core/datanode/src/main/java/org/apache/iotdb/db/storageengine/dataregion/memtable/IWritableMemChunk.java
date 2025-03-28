@@ -19,6 +19,8 @@
 package org.apache.iotdb.db.storageengine.dataregion.memtable;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertTabletStatement.TimeView;
+import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertTabletStatement.ValueView;
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.WALEntryValue;
 import org.apache.iotdb.db.utils.datastructure.TVList;
 
@@ -44,7 +46,7 @@ public interface IWritableMemChunk extends WALEntryValue {
 
   void putBoolean(long t, boolean v);
 
-  void putAlignedRow(long t, Object[] v);
+  void putAlignedRow(long t, Object[] v, List<Integer> columnIndices);
 
   void putLongs(long[] t, long[] v, BitMap bitMap, int start, int end);
 
@@ -59,7 +61,7 @@ public interface IWritableMemChunk extends WALEntryValue {
   void putBooleans(long[] t, boolean[] v, BitMap bitMap, int start, int end);
 
   void putAlignedTablet(
-      long[] t, Object[] v, BitMap[] bitMaps, int start, int end, TSStatus[] results);
+      TimeView t, ValueView v, List<Integer> columnIndices, BitMap[] bitMaps, int start, int end, TSStatus[] results);
 
   void writeNonAlignedPoint(long insertTime, Object objectValue);
 
@@ -71,11 +73,11 @@ public interface IWritableMemChunk extends WALEntryValue {
    * subsequent non-null value, e.g., {1, null, 3, null, 5} will be {1, 3, 5, null, 5}
    */
   void writeNonAlignedTablet(
-      long[] times, Object valueList, BitMap bitMap, TSDataType dataType, int start, int end);
+      TimeView times, ValueView values, int columnIndex, BitMap bitMap, TSDataType dataType, int start, int end);
 
   void writeAlignedTablet(
-      long[] times,
-      Object[] valueList,
+      TimeView times,
+      ValueView valueList,
       BitMap[] bitMaps,
       List<IMeasurementSchema> schemaList,
       int start,

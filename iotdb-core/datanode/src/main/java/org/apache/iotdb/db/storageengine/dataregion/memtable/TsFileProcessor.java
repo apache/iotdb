@@ -46,6 +46,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowNod
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowsNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertTabletNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalDeleteDataNode;
+import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertTabletStatement.ValueView;
 import org.apache.iotdb.db.schemaengine.schemaregion.utils.ResourceByPathUtils;
 import org.apache.iotdb.db.service.metrics.WritingMetrics;
 import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
@@ -577,6 +578,7 @@ public class TsFileProcessor {
     if (!insertTabletNode.isGeneratedByPipe()) {
       workMemTable.markAsNotGeneratedByPipe();
     }
+
     PipeInsertionDataNodeListener.getInstance()
         .listenToInsertNode(
             dataRegionInfo.getDataRegion().getDataRegionId(),
@@ -610,23 +612,23 @@ public class TsFileProcessor {
       final List<Pair<IDeviceID, Integer>> deviceEndOffsetPairs =
           insertTabletNode.splitByDevice(start, end);
       tsFileResource.updateStartTime(
-          deviceEndOffsetPairs.get(0).left, insertTabletNode.getTimes()[start]);
+          deviceEndOffsetPairs.get(0).left, insertTabletNode.getTimes().get(start));
       if (!sequence) {
         // For sequence tsfile, we update the endTime only when the file is prepared to be closed.
         // For unsequence tsfile, we have to update the endTime for each insertion.
         tsFileResource.updateEndTime(
             deviceEndOffsetPairs.get(0).left,
-            insertTabletNode.getTimes()[deviceEndOffsetPairs.get(0).right - 1]);
+            insertTabletNode.getTimes().get(deviceEndOffsetPairs.get(0).right - 1));
       }
       for (int i = 1; i < deviceEndOffsetPairs.size(); i++) {
         // the end offset of i - 1 is the start offset of i
         tsFileResource.updateStartTime(
             deviceEndOffsetPairs.get(i).left,
-            insertTabletNode.getTimes()[deviceEndOffsetPairs.get(i - 1).right]);
+            insertTabletNode.getTimes().get(deviceEndOffsetPairs.get(i - 1).right));
         if (!sequence) {
           tsFileResource.updateEndTime(
               deviceEndOffsetPairs.get(i).left,
-              insertTabletNode.getTimes()[deviceEndOffsetPairs.get(i).right - 1]);
+              insertTabletNode.getTimes().get(deviceEndOffsetPairs.get(i).right - 1));
         }
       }
     }
@@ -902,7 +904,7 @@ public class TsFileProcessor {
       IDeviceID deviceId,
       String[] measurements,
       TSDataType[] dataTypes,
-      Object[] columns,
+      ValueView columns,
       int start,
       int end)
       throws WriteProcessException {
@@ -913,10 +915,10 @@ public class TsFileProcessor {
 
     for (int i = 0; i < dataTypes.length; i++) {
       // Skip failed Measurements
-      if (dataTypes[i] == null || columns[i] == null || measurements[i] == null) {
+      if (dataTypes[i] == null || measurements[i] == null) {
         continue;
       }
-      updateMemCost(dataTypes[i], measurements[i], deviceId, start, end, memIncrements, columns[i]);
+      updateMemCost(dataTypes[i], measurements[i], deviceId, start, end, memIncrements, columns, i);
     }
     long memTableIncrement = memIncrements[0];
     long textDataIncrement = memIncrements[1];
@@ -929,7 +931,7 @@ public class TsFileProcessor {
       IDeviceID deviceId,
       String[] measurements,
       TSDataType[] dataTypes,
-      Object[] columns,
+      ValueView columns,
       TsTableColumnCategory[] columnCategories,
       int start,
       int end,
@@ -966,7 +968,8 @@ public class TsFileProcessor {
       int start,
       int end,
       long[] memIncrements,
-      Object column) {
+      ValueView columns,
+      int columnIndex) {
     // memIncrements = [memTable, text, chunk metadata] respectively
 
     if (workMemTable.chunkNotExist(deviceId, measurement)) {
@@ -995,8 +998,7 @@ public class TsFileProcessor {
     }
     // TEXT data size
     if (dataType.isBinary()) {
-      Binary[] binColumn = (Binary[]) column;
-      memIncrements[1] += MemUtils.getBinaryColumnSize(binColumn, start, end, null);
+      memIncrements[1] += MemUtils.getBinaryColumnSize(columns, columnIndex, start, end, null);
     }
   }
 
@@ -1007,7 +1009,7 @@ public class TsFileProcessor {
       int start,
       int end,
       long[] memIncrements,
-      Object[] columns,
+      ValueView columns,
       TsTableColumnCategory[] columnCategories,
       boolean noFailure,
       TSStatus[] results) {
@@ -1058,9 +1060,7 @@ public class TsFileProcessor {
       for (int i = 0; i < dataTypes.length; i++) {
         TSDataType dataType = dataTypes[i];
         String measurement = measurementIds[i];
-        Object column = columns[i];
         if (dataType == null
-            || column == null
             || measurement == null
             || (columnCategories != null && columnCategories[i] != TsTableColumnCategory.FIELD)) {
           continue;
@@ -1097,17 +1097,14 @@ public class TsFileProcessor {
     for (int i = 0; i < dataTypes.length; i++) {
       TSDataType dataType = dataTypes[i];
       String measurement = measurementIds[i];
-      Object column = columns[i];
       if (dataType == null
-          || column == null
           || measurement == null
           || (columnCategories != null && columnCategories[i] != TsTableColumnCategory.FIELD)) {
         continue;
       }
 
       if (dataType.isBinary()) {
-        Binary[] binColumn = (Binary[]) columns[i];
-        memIncrements[1] += MemUtils.getBinaryColumnSize(binColumn, start, end, results);
+        memIncrements[1] += MemUtils.getBinaryColumnSize(columns, i, start, end, results);
       }
     }
   }

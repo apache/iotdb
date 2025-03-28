@@ -21,6 +21,7 @@ package org.apache.iotdb.db.utils;
 
 import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.db.queryengine.plan.execution.IQueryExecution;
+import org.apache.iotdb.db.storageengine.rescon.memory.PrimitiveArrayManager;
 import org.apache.iotdb.service.rpc.thrift.TSQueryDataSet;
 
 import org.apache.tsfile.block.column.Column;
@@ -644,6 +645,18 @@ public class QueryDataSetUtils {
     return times;
   }
 
+  public static long[][] readTimesFromBufferWithPam(ByteBuffer buffer, int size) {
+    int numOfArray = size / PrimitiveArrayManager.ARRAY_SIZE + size % PrimitiveArrayManager.ARRAY_SIZE > 0 ? 1 : 0;
+    long[][] times = new long[size][];
+    for (int i = 0; i < numOfArray; i++) {
+      times[i] = (long[]) PrimitiveArrayManager.allocate(TSDataType.INT64);
+    }
+    for (int i = 0; i < size; i++) {
+      times[i / PrimitiveArrayManager.ARRAY_SIZE][i % PrimitiveArrayManager.ARRAY_SIZE] = buffer.getLong();
+    }
+    return times;
+  }
+
   public static long[] readTimesFromStream(DataInputStream stream, int size) throws IOException {
     long[] times = new long[size];
     for (int i = 0; i < size; i++) {
@@ -761,6 +774,62 @@ public class QueryDataSetUtils {
             binaryValues[index] = new Binary(binaryValue);
           }
           values[i] = binaryValues;
+          break;
+        default:
+          throw new UnSupportedDataTypeException(
+              String.format("data type %s is not supported when convert data at client", types[i]));
+      }
+    }
+    return values;
+  }
+
+  // allocate arrays with PrimitiveArrayManager
+  public static Object[][] readTabletValuesFromBufferWithPam(
+      ByteBuffer buffer, TSDataType[] types, int columns, int size) {
+    Object[][] values = new Object[columns][];
+    int arraySize = size / PrimitiveArrayManager.ARRAY_SIZE + size % PrimitiveArrayManager.ARRAY_SIZE == 0 ? 0 : 1;
+    for (int i = 0; i < columns; i++) {
+      values[i] = new Object[arraySize];
+      for (int j = 0; j < arraySize; j++) {
+        values[i][j] = PrimitiveArrayManager.allocate(types[i]);
+      }
+      switch (types[i]) {
+        case BOOLEAN:
+          for (int index = 0; index < size; index++) {
+            ((boolean[]) values[i][index / PrimitiveArrayManager.ARRAY_SIZE])[index % PrimitiveArrayManager.ARRAY_SIZE] = BytesUtils.byteToBool(buffer.get());
+          }
+          break;
+        case INT32:
+        case DATE:
+          for (int index = 0; index < size; index++) {
+            ((int[]) values[i][index / PrimitiveArrayManager.ARRAY_SIZE])[index % PrimitiveArrayManager.ARRAY_SIZE] = buffer.getInt();
+          }
+          break;
+        case INT64:
+        case TIMESTAMP:
+          for (int index = 0; index < size; index++) {
+            ((long[]) values[i][index / PrimitiveArrayManager.ARRAY_SIZE])[index % PrimitiveArrayManager.ARRAY_SIZE] = buffer.getLong();
+          }
+          break;
+        case FLOAT:
+          for (int index = 0; index < size; index++) {
+            ((float[]) values[i][index / PrimitiveArrayManager.ARRAY_SIZE])[index % PrimitiveArrayManager.ARRAY_SIZE] = buffer.getFloat();
+          }
+          break;
+        case DOUBLE:
+          for (int index = 0; index < size; index++) {
+            ((double[]) values[i][index / PrimitiveArrayManager.ARRAY_SIZE])[index % PrimitiveArrayManager.ARRAY_SIZE] = buffer.getDouble();
+          }
+          break;
+        case TEXT:
+        case BLOB:
+        case STRING:
+          for (int index = 0; index < size; index++) {
+            int binarySize = buffer.getInt();
+            byte[] binaryValue = new byte[binarySize];
+            buffer.get(binaryValue);
+            ((Binary[]) values[i][index / PrimitiveArrayManager.ARRAY_SIZE])[index % PrimitiveArrayManager.ARRAY_SIZE] = new Binary(binaryValue);
+          }
           break;
         default:
           throw new UnSupportedDataTypeException(

@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.db.utils.datastructure;
 
+import java.lang.reflect.Array;
+import java.util.stream.IntStream;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.queryengine.execution.fragment.QueryContext;
@@ -53,6 +55,7 @@ import static org.apache.iotdb.db.utils.ModificationUtils.isPointDeleted;
 import static org.apache.tsfile.utils.RamUsageEstimator.NUM_BYTES_ARRAY_HEADER;
 import static org.apache.tsfile.utils.RamUsageEstimator.NUM_BYTES_OBJECT_REF;
 
+@SuppressWarnings("SuspiciousSystemArraycopy")
 public abstract class TVList implements WALEntryValue {
   protected static final String ERR_DATATYPE_NOT_CONSISTENT = "DataType not consistent";
   // list of timestamp array, add 1 when expanded -> data point timestamp array
@@ -286,6 +289,169 @@ public abstract class TVList implements WALEntryValue {
     }
   }
 
+  public synchronized void putTimes(long[] time, BitMap bitMap, int start, int end) {
+    checkExpansion();
+
+    int idx = start;
+    int timeIdxOffset = 0;
+    if (bitMap != null && !bitMap.isAllUnmarked()) {
+      // time array is a reference, should clone necessary time array
+      long[] clonedTime = new long[end - start];
+      System.arraycopy(time, start, clonedTime, 0, end - start);
+      time = clonedTime;
+      timeIdxOffset = start;
+      // drop null at the end of value array
+      int nullCnt =
+          dropNullThenUpdateMinMaxTimeAndSorted(time, bitMap, start, end, timeIdxOffset);
+      end -= nullCnt;
+    } else {
+      updateMinMaxTimeAndSorted(time, start, end);
+    }
+
+    while (idx < end) {
+      int inputRemaining = end - idx;
+      int arrayIdx = rowCount / ARRAY_SIZE;
+      int elementIdx = rowCount % ARRAY_SIZE;
+      int internalRemaining = ARRAY_SIZE - elementIdx;
+      if (internalRemaining >= inputRemaining) {
+        // the remaining inputs can fit the last array, copy all remaining inputs into last array
+        System.arraycopy(
+            time, idx - timeIdxOffset, timestamps.get(arrayIdx), elementIdx, inputRemaining);
+        if (indices != null) {
+          int[] indexes = IntStream.range(rowCount, rowCount + inputRemaining).toArray();
+          System.arraycopy(indexes, 0, indices.get(arrayIdx), elementIdx, inputRemaining);
+        }
+        rowCount += inputRemaining;
+        break;
+      } else {
+        // the remaining inputs cannot fit the last array, fill the last array and create a new
+        // one and enter the next loop
+        System.arraycopy(
+            time, idx - timeIdxOffset, timestamps.get(arrayIdx), elementIdx, internalRemaining);
+        if (indices != null) {
+          int[] indexes = IntStream.range(rowCount, rowCount + internalRemaining).toArray();
+          System.arraycopy(indexes, 0, indices.get(arrayIdx), elementIdx, internalRemaining);
+        }
+        idx += internalRemaining;
+        rowCount += internalRemaining;
+        checkExpansion();
+      }
+    }
+  }
+
+  private Object createArrayCopy(Object valueValueArray, int valueValueArrayLength) {
+    if (valueValueArray instanceof boolean[]) {
+      return new boolean[valueValueArrayLength];
+    } else if (valueValueArray instanceof int[]) {
+      return new int[valueValueArrayLength];
+    } else if (valueValueArray instanceof long[]) {
+      return new long[valueValueArrayLength];
+    } else if (valueValueArray instanceof double[]) {
+      return new double[valueValueArrayLength];
+    } else if (valueValueArray instanceof float[]) {
+      return new float[valueValueArrayLength];
+    } else if (valueValueArray instanceof Binary[]) {
+      return new Binary[valueValueArrayLength];
+    } else {
+      throw new IllegalArgumentException("Unsupported array type: " + valueValueArray.getClass().getName());
+    }
+  }
+
+  protected abstract Object getValueArray(int arrayIndex);
+
+  public synchronized void putValues(
+      Object valueArray, BitMap bitMap, int start, int end, int pos, int valueArrayLength) {
+
+    int idx = start;
+    if (bitMap != null && !bitMap.isAllUnmarked()) {
+      // value array is a reference, should clone necessary value array
+      Object clonedValue = createArrayCopy(valueArray, valueArrayLength);
+      System.arraycopy(valueArray, 0, clonedValue, 0, valueArrayLength);
+      valueArray = clonedValue;
+      // drop null at the end of value array
+      int nullCnt =
+          dropNullVal(valueArray, bitMap, start, end);
+      end -= nullCnt;
+    }
+
+    while (idx < end) {
+      int inputRemaining = end - idx;
+      int arrayIdx = pos / ARRAY_SIZE;
+      int elementIdx = pos % ARRAY_SIZE;
+      int internalRemaining = ARRAY_SIZE - elementIdx;
+      if (internalRemaining >= inputRemaining) {
+        // the remaining inputs can fit the last array, copy all remaining inputs into last array
+        System.arraycopy(valueArray, idx, getValueArray(arrayIdx), elementIdx, inputRemaining);
+        break;
+      } else {
+        // the remaining inputs cannot fit the last array, fill the last array and create a new
+        // one and enter the next loop
+        System.arraycopy(valueArray, idx, getValueArray(arrayIdx), elementIdx, internalRemaining);
+        idx += internalRemaining;
+        pos += internalRemaining;
+      }
+    }
+  }
+
+  // move null values to the end of time array, then return number of null values
+  int dropNullThenUpdateMinMaxTimeAndSorted(
+      long[] time, BitMap bitMap, int start, int end, int tIdxOffset) {
+    long inPutMinTime = Long.MAX_VALUE;
+    boolean inputSorted = true;
+
+    int nullCnt = 0;
+    int inputSeqRowCount = 0;
+    for (int vIdx = start; vIdx < end; vIdx++) {
+      if (bitMap.isMarked(vIdx)) {
+        nullCnt++;
+        continue;
+      }
+      // move value ahead to replace null
+      int tIdx = vIdx - tIdxOffset;
+      if (nullCnt != 0) {
+        time[tIdx - nullCnt] = time[tIdx];
+      }
+      // update maxTime and sorted
+      tIdx = tIdx - nullCnt;
+      inPutMinTime = Math.min(inPutMinTime, time[tIdx]);
+      maxTime = Math.max(maxTime, time[tIdx]);
+      if (inputSorted) {
+        if (tIdx > 0 && time[tIdx - 1] > time[tIdx]) {
+          inputSorted = false;
+        } else {
+          inputSeqRowCount++;
+        }
+      }
+    }
+    minTime = Math.min(minTime, inPutMinTime);
+
+    if (sorted
+        && (rowCount == 0
+        || (end - start > nullCnt) && time[start - tIdxOffset] >= getTime(rowCount - 1))) {
+      seqRowCount += inputSeqRowCount;
+    }
+    sorted = sorted && inputSorted && (rowCount == 0 || inPutMinTime >= getTime(rowCount - 1));
+    return nullCnt;
+  }
+
+  // move null values to the end of value array, then return number of null values
+  int dropNullVal(
+      Object values, BitMap bitMap, int start, int end) {
+    int nullCnt = 0;
+    for (int vIdx = start; vIdx < end; vIdx++) {
+      if (bitMap.isMarked(vIdx)) {
+        nullCnt++;
+        continue;
+      }
+      // move value ahead to replace null
+      if (nullCnt != 0) {
+        Array.set(values, vIdx - nullCnt, Array.get(values, vIdx));
+      }
+    }
+    return nullCnt;
+  }
+
+
   public void putLong(long time, long value) {
     throw new UnsupportedOperationException(ERR_DATATYPE_NOT_CONSISTENT);
   }
@@ -310,7 +476,7 @@ public abstract class TVList implements WALEntryValue {
     throw new UnsupportedOperationException(ERR_DATATYPE_NOT_CONSISTENT);
   }
 
-  public void putAlignedValue(long time, Object[] value) {
+  public void putAlignedValue(long time, Object[] value, List<Integer> columnIndices) {
     throw new UnsupportedOperationException(ERR_DATATYPE_NOT_CONSISTENT);
   }
 
@@ -335,6 +501,11 @@ public abstract class TVList implements WALEntryValue {
   }
 
   public void putBooleans(long[] time, boolean[] value, BitMap bitMap, int start, int end) {
+    throw new UnsupportedOperationException(ERR_DATATYPE_NOT_CONSISTENT);
+  }
+
+  public void putAlignedValues(
+      Object[] value, List<Integer> columnIndices, BitMap[] bitMaps, int start, int end, TSStatus[] results, int pos) {
     throw new UnsupportedOperationException(ERR_DATATYPE_NOT_CONSISTENT);
   }
 

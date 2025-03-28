@@ -543,7 +543,7 @@ public class InsertRowStatement extends InsertBaseStatement implements ISchemaVa
   }
 
   @Override
-  protected void subRemoveAttributeColumns(List<Integer> columnsToKeep) {
+  protected void reserveColumns(List<Integer> columnsToKeep) {
     if (values != null) {
       values = columnsToKeep.stream().map(i -> values[i]).toArray();
     }

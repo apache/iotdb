@@ -23,6 +23,7 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertTabletNode;
+import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertTabletStatement.ValueView;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.tsfile.common.conf.TSFileConfig;
@@ -109,6 +110,19 @@ public class MemUtils {
           || results[i] == null
           || results[i].code == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         memSize += RamUsageEstimator.sizeOf(column[i].getValues());
+      }
+    }
+    return memSize;
+  }
+
+  public static long getBinaryColumnSize(ValueView columns, int columnIndex, int start, int end, TSStatus[] results) {
+    long memSize = 0;
+    memSize += (long) (end - start) * RamUsageEstimator.NUM_BYTES_OBJECT_HEADER;
+    for (int i = start; i < end; i++) {
+      if (results == null
+          || results[i] == null
+          || results[i].code == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        memSize += RamUsageEstimator.sizeOf(((Binary) columns.get(i, columnIndex)).getValues());
       }
     }
     return memSize;

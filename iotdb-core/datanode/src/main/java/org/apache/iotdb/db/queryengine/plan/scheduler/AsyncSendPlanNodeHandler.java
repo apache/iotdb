@@ -45,6 +45,7 @@ public class AsyncSendPlanNodeHandler implements AsyncMethodCallback<TSendBatchP
   private final long sendTime;
   private static final PerformanceOverviewMetrics PERFORMANCE_OVERVIEW_METRICS =
       PerformanceOverviewMetrics.getInstance();
+  private Runnable additionalOnCompleteOrError;
 
   public AsyncSendPlanNodeHandler(
       List<Integer> instanceIds,
@@ -74,6 +75,9 @@ public class AsyncSendPlanNodeHandler implements AsyncMethodCallback<TSendBatchP
         pendingNumber.notifyAll();
       }
     }
+    if (additionalOnCompleteOrError != null) {
+      additionalOnCompleteOrError.run();
+    }
   }
 
   @Override
@@ -94,6 +98,9 @@ public class AsyncSendPlanNodeHandler implements AsyncMethodCallback<TSendBatchP
         pendingNumber.notifyAll();
       }
     }
+    if (additionalOnCompleteOrError != null) {
+      additionalOnCompleteOrError.run();
+    }
   }
 
   private boolean needRetry(Exception e) {
@@ -105,5 +112,9 @@ public class AsyncSendPlanNodeHandler implements AsyncMethodCallback<TSendBatchP
 
   private boolean needRetry(TSendSinglePlanNodeResp resp) {
     return !resp.accepted && resp.status != null && StatusUtils.needRetryHelper(resp.status);
+  }
+
+  public void setAdditionalOnCompleteOrError(Runnable additionalOnCompleteOrError) {
+    this.additionalOnCompleteOrError = additionalOnCompleteOrError;
   }
 }

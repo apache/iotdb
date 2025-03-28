@@ -160,6 +160,7 @@ public class WALNode implements IWALNode {
         identifier,
         insertTabletNode.getSearchIndex());
     WALEntry walEntry = new WALInfoEntry(memTableId, insertTabletNode, rangeList);
+    insertTabletNode.incRefCount();
     return log(walEntry);
   }
 
@@ -478,7 +479,7 @@ public class WALNode implements IWALNode {
           || WALManager.getInstance().shouldThrottle();
     }
 
-    /**
+    /**.
      * Snapshot or flush one memTable.
      *
      * @return true if snapshot or flush is executed successfully

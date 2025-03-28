@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.plan.parser;
 
+import java.util.concurrent.atomic.AtomicInteger;
 import org.apache.iotdb.common.rpc.thrift.TAggregationType;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
@@ -26,6 +27,7 @@ import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.commons.service.metric.PerformanceOverviewMetrics;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.qp.sql.IoTDBSqlParser;
 import org.apache.iotdb.db.qp.sql.SqlLexer;
@@ -49,6 +51,10 @@ import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowsOfOneDeviceStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowsStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertTabletStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertTabletStatement.MultiArrayTimeView;
+import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertTabletStatement.SingleArrayTimeView;
+import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertTabletStatement.ThreeDArrayValueView;
+import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertTabletStatement.TwoDArrayValueView;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.QueryStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.CreateAlignedTimeSeriesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.CreateMultiTimeSeriesStatement;
@@ -67,6 +73,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.metadata.template.ShowSche
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.template.UnsetSchemaTemplateStatement;
 import org.apache.iotdb.db.schemaengine.schemaregion.utils.MetaFormatUtils;
 import org.apache.iotdb.db.schemaengine.template.TemplateQueryType;
+import org.apache.iotdb.db.storageengine.rescon.memory.PrimitiveArrayManager;
 import org.apache.iotdb.db.utils.QueryDataSetUtils;
 import org.apache.iotdb.db.utils.TimestampPrecisionUtils;
 import org.apache.iotdb.db.utils.constant.SqlConstant;
@@ -324,6 +331,34 @@ public class StatementGenerator {
     return insertStatement;
   }
 
+  private static void deserializeTimeValue(InsertTabletStatement insertTabletStatement,
+      ByteBuffer timeBuffer, ByteBuffer valueBuffer, int rowSize, TSDataType[] dataTypes) {
+    if (!IoTDBDescriptor.getInstance().getConfig().isUsePamForInsertTablet()) {
+      long[] timestamps =
+          QueryDataSetUtils.readTimesFromBuffer(timeBuffer, rowSize);
+      if (timestamps.length != 0) {
+        TimestampPrecisionUtils.checkTimestampPrecision(timestamps[0]);
+        TimestampPrecisionUtils.checkTimestampPrecision(timestamps[timestamps.length - 1]);
+      }
+      insertTabletStatement.setTimes(new SingleArrayTimeView(timestamps));
+      insertTabletStatement.setColumns(new TwoDArrayValueView(
+          QueryDataSetUtils.readTabletValuesFromBuffer(
+              valueBuffer,
+              dataTypes,
+              dataTypes.length,
+              rowSize), dataTypes, rowSize));
+    } else {
+      long[][] timestamps = QueryDataSetUtils.readTimesFromBufferWithPam(timeBuffer, rowSize);
+      if (timestamps.length != 0) {
+        TimestampPrecisionUtils.checkTimestampPrecision(timestamps[0][0]);
+        TimestampPrecisionUtils.checkTimestampPrecision(timestamps[rowSize / PrimitiveArrayManager.ARRAY_SIZE][rowSize % PrimitiveArrayManager.ARRAY_SIZE]);
+      }
+      insertTabletStatement.setTimes(new MultiArrayTimeView(PrimitiveArrayManager.ARRAY_SIZE, timestamps, rowSize));
+      insertTabletStatement.setColumns(new ThreeDArrayValueView(QueryDataSetUtils.readTabletValuesFromBufferWithPam(valueBuffer, dataTypes, dataTypes.length, rowSize), dataTypes, rowSize, PrimitiveArrayManager.ARRAY_SIZE));
+      insertTabletStatement.setRefCount(new AtomicInteger(1));
+    }
+  }
+
   public static InsertTabletStatement createStatement(TSInsertTabletReq insertTabletReq)
       throws IllegalPathException {
     final long startTime = System.nanoTime();
@@ -332,27 +367,21 @@ public class StatementGenerator {
     insertStatement.setDevicePath(
         DEVICE_PATH_CACHE.getPartialPath(insertTabletReq.getPrefixPath()));
     insertStatement.setMeasurements(insertTabletReq.getMeasurements().toArray(new String[0]));
-    long[] timestamps =
-        QueryDataSetUtils.readTimesFromBuffer(insertTabletReq.timestamps, insertTabletReq.size);
-    if (timestamps.length != 0) {
-      TimestampPrecisionUtils.checkTimestampPrecision(timestamps[timestamps.length - 1]);
+
+    TSDataType[] dataTypes = new TSDataType[insertTabletReq.types.size()];
+    for (int i = 0; i < insertTabletReq.types.size(); i++) {
+      dataTypes[i] = TSDataType.deserialize((byte) insertTabletReq.types.get(i).intValue());
     }
-    insertStatement.setTimes(timestamps);
-    insertStatement.setColumns(
-        QueryDataSetUtils.readTabletValuesFromBuffer(
-            insertTabletReq.values,
-            insertTabletReq.types,
-            insertTabletReq.types.size(),
-            insertTabletReq.size));
+
+    deserializeTimeValue(insertStatement, insertTabletReq.timestamps, insertTabletReq.values,
+        insertTabletReq.size, dataTypes);
+
     insertStatement.setBitMaps(
         QueryDataSetUtils.readBitMapsFromBuffer(
                 insertTabletReq.values, insertTabletReq.types.size(), insertTabletReq.size)
             .orElse(null));
     insertStatement.setRowCount(insertTabletReq.size);
-    TSDataType[] dataTypes = new TSDataType[insertTabletReq.types.size()];
-    for (int i = 0; i < insertTabletReq.types.size(); i++) {
-      dataTypes[i] = TSDataType.deserialize((byte) insertTabletReq.types.get(i).intValue());
-    }
+
     insertStatement.setDataTypes(dataTypes);
     insertStatement.setAligned(insertTabletReq.isAligned);
     insertStatement.setWriteToTable(insertTabletReq.isWriteToTable());
@@ -385,27 +414,20 @@ public class StatementGenerator {
       InsertTabletStatement insertTabletStatement = new InsertTabletStatement();
       insertTabletStatement.setDevicePath(DEVICE_PATH_CACHE.getPartialPath(req.prefixPaths.get(i)));
       insertTabletStatement.setMeasurements(req.measurementsList.get(i).toArray(new String[0]));
-      long[] timestamps =
-          QueryDataSetUtils.readTimesFromBuffer(req.timestampsList.get(i), req.sizeList.get(i));
-      if (timestamps.length != 0) {
-        TimestampPrecisionUtils.checkTimestampPrecision(timestamps[timestamps.length - 1]);
+      TSDataType[] dataTypes = new TSDataType[req.typesList.get(i).size()];
+      for (int j = 0; j < dataTypes.length; j++) {
+        dataTypes[j] = TSDataType.deserialize((byte) req.typesList.get(i).get(j).intValue());
       }
-      insertTabletStatement.setTimes(timestamps);
-      insertTabletStatement.setColumns(
-          QueryDataSetUtils.readTabletValuesFromBuffer(
-              req.valuesList.get(i),
-              req.typesList.get(i),
-              req.measurementsList.get(i).size(),
-              req.sizeList.get(i)));
+
+      deserializeTimeValue(insertTabletStatement, req.timestampsList.get(i), req.getValuesList().get(i),
+          req.sizeList.get(i), dataTypes);
+
       insertTabletStatement.setBitMaps(
           QueryDataSetUtils.readBitMapsFromBuffer(
                   req.valuesList.get(i), req.measurementsList.get(i).size(), req.sizeList.get(i))
               .orElse(null));
       insertTabletStatement.setRowCount(req.sizeList.get(i));
-      TSDataType[] dataTypes = new TSDataType[req.typesList.get(i).size()];
-      for (int j = 0; j < dataTypes.length; j++) {
-        dataTypes[j] = TSDataType.deserialize((byte) req.typesList.get(i).get(j).intValue());
-      }
+
       insertTabletStatement.setDataTypes(dataTypes);
       insertTabletStatement.setAligned(req.isAligned);
       // skip empty tablet

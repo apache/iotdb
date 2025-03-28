@@ -694,7 +694,8 @@ public class RelationPlanner extends AstVisitor<RelationPlan, Void> {
             insertTabletStatement.getBitMaps(),
             insertTabletStatement.getColumns(),
             insertTabletStatement.getRowCount(),
-            insertTabletStatement.getColumnCategories());
+            insertTabletStatement.getColumnCategories(),
+            insertTabletStatement.getRefCount());
     insertNode.setFailedMeasurementNumber(insertTabletStatement.getFailedMeasurementNumber());
     if (insertTabletStatement.isSingleDevice()) {
       insertNode.setSingleDevice();

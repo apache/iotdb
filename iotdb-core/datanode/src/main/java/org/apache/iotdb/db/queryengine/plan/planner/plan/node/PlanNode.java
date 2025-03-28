@@ -219,4 +219,8 @@ public abstract class PlanNode implements IConsensusRequest {
   public PlanNode replaceChildren(List<PlanNode> newChildren) {
     throw new UnsupportedOperationException();
   }
+
+  public void onDispatchStart() {
+    // do nothing
+  }
 }

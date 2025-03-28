@@ -416,26 +416,24 @@ public abstract class InsertBaseStatement extends Statement implements Accountab
               .toArray(TsTableColumnCategory[]::new);
     }
 
-    subRemoveAttributeColumns(columnsToKeep);
+    reserveColumns(columnsToKeep);
 
     // to reconstruct indices
     idColumnIndices = null;
     attrColumnIndices = null;
   }
 
-  protected abstract void subRemoveAttributeColumns(List<Integer> columnsToKeep);
+  protected abstract void reserveColumns(List<Integer> columnsToKeep);
 
   public static class FailedMeasurementInfo {
     protected String measurement;
     protected TSDataType dataType;
-    protected Object value;
     protected Exception cause;
 
     public FailedMeasurementInfo(
-        String measurement, TSDataType dataType, Object value, Exception cause) {
+        String measurement, TSDataType dataType, Exception cause) {
       this.measurement = measurement;
       this.dataType = dataType;
-      this.value = value;
       this.cause = cause;
     }
 
@@ -445,10 +443,6 @@ public abstract class InsertBaseStatement extends Statement implements Accountab
 
     public TSDataType getDataType() {
       return dataType;
-    }
-
-    public Object getValue() {
-      return value;
     }
   }
 

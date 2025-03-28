@@ -321,4 +321,9 @@ public abstract class DoubleTVList extends TVList {
     tvList.putDoubles(times, values, null, 0, rowCount);
     return tvList;
   }
+
+  @Override
+  protected Object getValueArray(int arrayIndex) {
+    return values.get(arrayIndex);
+  }
 }

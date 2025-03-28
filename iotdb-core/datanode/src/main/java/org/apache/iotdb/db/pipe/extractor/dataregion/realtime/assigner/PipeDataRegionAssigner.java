@@ -31,6 +31,7 @@ import org.apache.iotdb.db.pipe.consensus.deletion.DeletionResource;
 import org.apache.iotdb.db.pipe.consensus.deletion.DeletionResourceManager;
 import org.apache.iotdb.db.pipe.event.common.deletion.PipeDeleteDataNodeEvent;
 import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
+import org.apache.iotdb.db.pipe.event.common.tablet.PipeInsertNodeTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
 import org.apache.iotdb.db.pipe.event.realtime.PipeRealtimeEvent;
 import org.apache.iotdb.db.pipe.event.realtime.PipeRealtimeEventFactory;
@@ -39,6 +40,8 @@ import org.apache.iotdb.db.pipe.extractor.dataregion.realtime.matcher.CachedSche
 import org.apache.iotdb.db.pipe.extractor.dataregion.realtime.matcher.PipeDataRegionMatcher;
 import org.apache.iotdb.db.pipe.metric.source.PipeAssignerMetrics;
 import org.apache.iotdb.db.pipe.metric.source.PipeDataRegionEventCounter;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertTabletNode;
 import org.apache.iotdb.db.storageengine.StorageEngine;
 import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TsFileInsertionEvent;
@@ -121,6 +124,7 @@ public class PipeDataRegionAssigner implements Closeable {
     }
   }
 
+  @SuppressWarnings("SynchronizationOnLocalVariableOrMethodParameter")
   private void onAssignedHook(final PipeRealtimeEvent realtimeEvent) {
     realtimeEvent.gcSchemaInfo();
     realtimeEvent.decreaseReferenceCount(PipeDataRegionAssigner.class.getName(), false);
@@ -129,6 +133,20 @@ public class PipeDataRegionAssigner implements Closeable {
     eventCounter.decreaseEventCount(innerEvent);
     if (innerEvent instanceof PipeHeartbeatEvent) {
       ((PipeHeartbeatEvent) innerEvent).onAssigned();
+    }
+
+    if (innerEvent instanceof PipeInsertNodeTabletInsertionEvent) {
+      InsertNode insertNode = ((PipeInsertNodeTabletInsertionEvent) innerEvent).getInsertNodeViaCacheIfPossible();
+      if (insertNode instanceof InsertTabletNode) {
+        InsertTabletNode insertTabletNode = (InsertTabletNode) insertNode;
+        synchronized (insertTabletNode) {
+          // the reference count may already be decreased by flush
+          if (insertTabletNode.isReferencedByPipe()) {
+            insertTabletNode.decRefCount();
+            insertTabletNode.setReferencedByPipe(false);
+          }
+        }
+      }
     }
   }
 

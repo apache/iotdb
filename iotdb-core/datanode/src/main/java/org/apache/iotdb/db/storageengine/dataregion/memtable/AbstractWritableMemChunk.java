@@ -24,6 +24,8 @@ import org.apache.iotdb.db.queryengine.exception.MemoryNotEnoughException;
 import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceContext;
 import org.apache.iotdb.db.queryengine.execution.fragment.QueryContext;
 import org.apache.iotdb.db.queryengine.plan.planner.memory.MemoryReservationManager;
+import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertTabletStatement.TimeView;
+import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertTabletStatement.ValueView;
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.IWALByteBufferView;
 import org.apache.iotdb.db.utils.datastructure.TVList;
 
@@ -128,7 +130,7 @@ public abstract class AbstractWritableMemChunk implements IWritableMemChunk {
   public abstract void putBoolean(long t, boolean v);
 
   @Override
-  public abstract void putAlignedRow(long t, Object[] v);
+  public abstract void putAlignedRow(long t, Object[] v, List<Integer> columnIndices);
 
   @Override
   public abstract void putLongs(long[] t, long[] v, BitMap bitMap, int start, int end);
@@ -150,7 +152,7 @@ public abstract class AbstractWritableMemChunk implements IWritableMemChunk {
 
   @Override
   public abstract void putAlignedTablet(
-      long[] t, Object[] v, BitMap[] bitMaps, int start, int end, TSStatus[] results);
+      TimeView t, ValueView v, List<Integer> columnIndices, BitMap[] bitMaps, int start, int end, TSStatus[] results);
 
   @Override
   public abstract void writeNonAlignedPoint(long insertTime, Object objectValue);
@@ -161,12 +163,12 @@ public abstract class AbstractWritableMemChunk implements IWritableMemChunk {
 
   @Override
   public abstract void writeNonAlignedTablet(
-      long[] times, Object valueList, BitMap bitMap, TSDataType dataType, int start, int end);
+      TimeView times, ValueView values, int columnIndex, BitMap bitMap, TSDataType dataType, int start, int end);
 
   @Override
   public abstract void writeAlignedTablet(
-      long[] times,
-      Object[] valueList,
+      TimeView times,
+      ValueView valueList,
       BitMap[] bitMaps,
       List<IMeasurementSchema> schemaList,
       int start,

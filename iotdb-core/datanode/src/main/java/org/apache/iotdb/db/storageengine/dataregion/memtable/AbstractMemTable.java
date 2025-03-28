@@ -312,7 +312,7 @@ public abstract class AbstractMemTable implements IMemTable {
   public void writeTabletNode(InsertTabletNode insertTabletNode, int start, int end) {
     List<IMeasurementSchema> schemaList = new ArrayList<>();
     for (int i = 0; i < insertTabletNode.getMeasurementSchemas().length; i++) {
-      if (insertTabletNode.getColumns()[i] == null) {
+      if (insertTabletNode.getDataTypes()[i] == null) {
         schemaList.add(null);
       } else {
         schemaList.add(insertTabletNode.getMeasurementSchemas()[i]);
@@ -335,7 +335,7 @@ public abstract class AbstractMemTable implements IMemTable {
 
     List<IMeasurementSchema> schemaList = new ArrayList<>();
     for (int i = 0; i < insertTabletNode.getMeasurementSchemas().length; i++) {
-      if (insertTabletNode.getColumns()[i] == null
+      if (insertTabletNode.getDataTypes()[i] == null
           || (insertTabletNode.getColumnCategories() != null
               && insertTabletNode.getColumnCategories()[i] != TsTableColumnCategory.FIELD)) {
         schemaList.add(null);
