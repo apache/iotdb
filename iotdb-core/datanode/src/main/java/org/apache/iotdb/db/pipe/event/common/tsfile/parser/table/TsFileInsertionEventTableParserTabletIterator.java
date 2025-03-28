@@ -92,7 +92,7 @@ public class TsFileInsertionEventTableParserTabletIterator implements Iterator<T
   private List<String> measurementList;
   private List<TSDataType> dataTypeList;
 
-  private List<Pair<String, Integer>> measurementColumIndexList;
+  private List<Pair<String, Integer>> measurementColumnIndexList;
   private List<Integer> measurementIdIndexList;
 
   // Used to record whether the same Tablet is generated when parsing starts. Different table
@@ -229,7 +229,7 @@ public class TsFileInsertionEventTableParserTabletIterator implements Iterator<T
               measurementList = new ArrayList<>(columnSchemaSize);
               measurementNames = new HashSet<>();
 
-              measurementColumIndexList = new ArrayList<>(columnSchemaSize);
+              measurementColumnIndexList = new ArrayList<>(columnSchemaSize);
               measurementIdIndexList = new ArrayList<>(columnSchemaSize);
 
               for (int i = 0, j = 0; i < columnSchemaSize; i++) {
@@ -244,7 +244,7 @@ public class TsFileInsertionEventTableParserTabletIterator implements Iterator<T
                   dataTypeList.add(schema.getType());
                   if (!Tablet.ColumnCategory.TAG.equals(columnCategory)) {
                     measurementNames.add(measurementName);
-                    measurementColumIndexList.add(new Pair<>(measurementName, j));
+                    measurementColumnIndexList.add(new Pair<>(measurementName, j));
                   } else {
                     measurementIdIndexList.add(j);
                   }
@@ -346,7 +346,7 @@ public class TsFileInsertionEventTableParserTabletIterator implements Iterator<T
     // The metadata obtained by alignedChunkMetadata.getValueChunkMetadataList may not be continuous
     // when reading TSFile Chunks, so reordering the metadata here has little effect on the
     // efficiency of reading chunks.
-    for (Pair<String, Integer> m : measurementColumIndexList) {
+    for (Pair<String, Integer> m : measurementColumnIndexList) {
       final ChunkMetadata metadata = metadataMap.get(m.getLeft());
       if (metadata != null) {
         final Chunk chunk = reader.readMemChunk(metadata);
@@ -368,13 +368,13 @@ public class TsFileInsertionEventTableParserTabletIterator implements Iterator<T
     final TsPrimitiveType[] primitiveTypes = data.getVector();
     final List<IMeasurementSchema> measurementSchemas = tablet.getSchemas();
 
-    for (int i = 0, size = measurementColumIndexList.size(); i < size; i++) {
+    for (int i = 0, size = measurementColumnIndexList.size(); i < size; i++) {
       final TsPrimitiveType primitiveType = primitiveTypes[i];
       if (primitiveType == null) {
         continue;
       }
 
-      final int index = measurementColumIndexList.get(i).getRight();
+      final int index = measurementColumnIndexList.get(i).getRight();
       switch (measurementSchemas.get(index).getType()) {
         case BOOLEAN:
           tablet.addValue(rowIndex, index, primitiveType.getBoolean());
