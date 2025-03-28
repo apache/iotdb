@@ -164,7 +164,7 @@ public class LoadTsFileConfigurator {
 
   public static boolean parseOrGetDefaultVerify(final Map<String, String> loadAttributes) {
     return Boolean.parseBoolean(
-        loadAttributes.getOrDefault(ASYNC_LOAD_KEY, String.valueOf(ASYNC_LOAD_DEFAULT_VALUE)));
+        loadAttributes.getOrDefault(VERIFY_KEY, String.valueOf(VERIFY_DEFAULT_VALUE)));
   }
 
   public static final String ASYNC_LOAD_KEY = "async";
