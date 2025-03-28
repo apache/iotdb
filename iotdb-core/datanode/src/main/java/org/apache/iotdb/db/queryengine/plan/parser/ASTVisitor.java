@@ -3857,27 +3857,10 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     return new DropSchemaTemplateStatement(parseIdentifier(ctx.templateName.getText()));
   }
 
-  public Map<String, String> parseSyncAttributeClauses(
-      IoTDBSqlParser.SyncAttributeClausesContext ctx) {
-
-    Map<String, String> attributes = new HashMap<>();
-
-    List<IoTDBSqlParser.AttributePairContext> attributePairs = ctx.attributePair();
-    if (ctx.attributePair(0) != null) {
-      for (IoTDBSqlParser.AttributePairContext attributePair : attributePairs) {
-        attributes.put(
-            parseAttributeKey(attributePair.attributeKey()).toLowerCase(),
-            parseAttributeValue(attributePair.attributeValue()).toLowerCase());
-      }
-    }
-
-    return attributes;
-  }
-
   // PIPE
 
   @Override
-  public Statement visitCreatePipe(IoTDBSqlParser.CreatePipeContext ctx) {
+  public Statement visitCreatePipe(final IoTDBSqlParser.CreatePipeContext ctx) {
     final CreatePipeStatement createPipeStatement =
         new CreatePipeStatement(StatementType.CREATE_PIPE);
 

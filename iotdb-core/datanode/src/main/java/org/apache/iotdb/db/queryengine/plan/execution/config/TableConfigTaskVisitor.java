@@ -912,7 +912,7 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
     return new CreatePipeTask(node);
   }
 
-  private void checkAndEnrichSourceUserName(
+  public static void checkAndEnrichSourceUserName(
       final String pipeName, final Map<String, String> extractorAttributes, final String userName) {
     final PipeParameters extractorParameters = new PipeParameters(extractorAttributes);
     final String pluginName =
@@ -944,7 +944,7 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
     }
   }
 
-  private void checkAndEnrichSinkUserName(
+  public static void checkAndEnrichSinkUserName(
       final String pipeName, final Map<String, String> connectorAttributes, final String userName) {
     final PipeParameters connectorParameters = new PipeParameters(connectorAttributes);
     final String pluginName =
@@ -976,23 +976,32 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
   }
 
   @Override
-  protected IConfigTask visitAlterPipe(AlterPipe node, MPPQueryContext context) {
+  protected IConfigTask visitAlterPipe(final AlterPipe node, final MPPQueryContext context) {
     context.setQueryType(QueryType.WRITE);
-    accessControl.checkUserIsAdmin(context.getSession().getUserName());
 
-    for (String ExtractorAttribute : node.getExtractorAttributes().keySet()) {
-      if (ExtractorAttribute.startsWith(SystemConstant.SYSTEM_PREFIX_KEY)) {
+    final String userName = context.getSession().getUserName();
+    accessControl.checkUserIsAdmin(userName);
+
+    final String pipeName = node.getPipeName();
+    final Map<String, String> extractorAttributes = node.getExtractorAttributes();
+    for (final String extractorAttributeKey : extractorAttributes.keySet()) {
+      if (extractorAttributeKey.startsWith(SystemConstant.SYSTEM_PREFIX_KEY)) {
         throw new SemanticException(
             String.format(
                 "Failed to alter pipe %s, modifying %s is not allowed.",
-                node.getPipeName(), ExtractorAttribute));
+                pipeName, extractorAttributeKey));
       }
     }
     // If the source is replaced, sql-dialect uses the current Alter Pipe sql-dialect. If it is
     // modified, the original sql-dialect is used.
     if (node.isReplaceAllExtractorAttributes()) {
-      node.getExtractorAttributes()
-          .put(SystemConstant.SQL_DIALECT_KEY, SystemConstant.SQL_DIALECT_TABLE_VALUE);
+      extractorAttributes.put(
+          SystemConstant.SQL_DIALECT_KEY, SystemConstant.SQL_DIALECT_TABLE_VALUE);
+      checkAndEnrichSourceUserName(pipeName, extractorAttributes, userName);
+    }
+
+    if (node.isReplaceAllConnectorAttributes()) {
+      checkAndEnrichSinkUserName(pipeName, node.getConnectorAttributes(), userName);
     }
 
     return new AlterPipeTask(node);

@@ -66,6 +66,7 @@ public class StatusUtils {
     NEED_RETRY.add(TSStatusCode.LACK_PARTITION_ALLOCATION.getStatusCode());
     NEED_RETRY.add(TSStatusCode.NO_ENOUGH_DATANODE.getStatusCode());
     NEED_RETRY.add(TSStatusCode.TOO_MANY_CONCURRENT_QUERIES_ERROR.getStatusCode());
+    NEED_RETRY.add(TSStatusCode.SYNC_CONNECTION_ERROR.getStatusCode());
   }
 
   /**
@@ -241,5 +242,9 @@ public class StatusUtils {
   private static boolean needRetryHelperForSingleStatus(int statusCode) {
     return NEED_RETRY.contains(statusCode)
         || (COMMON_CONFIG.isRetryForUnknownErrors() && UNKNOWN_ERRORS.contains(statusCode));
+  }
+
+  public static boolean isUnknownError(int statusCode) {
+    return UNKNOWN_ERRORS.contains(statusCode);
   }
 }
