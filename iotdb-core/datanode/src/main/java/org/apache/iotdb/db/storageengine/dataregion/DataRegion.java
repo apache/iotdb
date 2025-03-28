@@ -118,6 +118,7 @@ import org.apache.iotdb.db.storageengine.dataregion.utils.fileTimeIndexCache.Fil
 import org.apache.iotdb.db.storageengine.dataregion.utils.validate.TsFileValidator;
 import org.apache.iotdb.db.storageengine.dataregion.wal.WALManager;
 import org.apache.iotdb.db.storageengine.dataregion.wal.node.IWALNode;
+import org.apache.iotdb.db.storageengine.dataregion.wal.node.WALNode;
 import org.apache.iotdb.db.storageengine.dataregion.wal.recover.WALRecoverManager;
 import org.apache.iotdb.db.storageengine.dataregion.wal.recover.file.SealedTsFileRecoverPerformer;
 import org.apache.iotdb.db.storageengine.dataregion.wal.recover.file.UnsealedTsFileRecoverPerformer;
@@ -660,11 +661,13 @@ public class DataRegion implements IDataRegionForQuery {
     }
 
     if (StorageEngine.getInstance().isReadyForReadAndWrite()) {
-      if (config.getDataRegionConsensusProtocolClass().equals(ConsensusFactory.IOT_CONSENSUS)
-          || config
-              .getDataRegionConsensusProtocolClass()
-              .equals(ConsensusFactory.IOT_CONSENSUS_V2)) {
-        WALManager.getInstance().applyForWALNode(databaseName + FILE_NAME_SEPARATOR + dataRegionId);
+      if (config.getDataRegionConsensusProtocolClass().equals(ConsensusFactory.IOT_CONSENSUS_V2)) {
+        IWALNode walNode =
+            WALManager.getInstance()
+                .applyForWALNode(databaseName + FILE_NAME_SEPARATOR + dataRegionId);
+        if (walNode instanceof WALNode) {
+          walNode.setSafelyDeletedSearchIndex(Long.MAX_VALUE);
+        }
       }
       logger.info("The data region {}[{}] is created successfully", databaseName, dataRegionId);
     } else {
