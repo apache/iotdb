@@ -53,12 +53,11 @@ public abstract class TsFileInsertionEventParser implements AutoCloseable {
   protected final PipeInsertionEvent sourceEvent; // used to report progress
 
   protected final long initialTimeNano = System.nanoTime();
+  protected boolean timeUsageReported = false;
 
   protected final PipeMemoryBlock allocatedMemoryBlockForTablet;
 
   protected TsFileSequenceReader tsFileSequenceReader;
-
-  protected boolean timeUsageReported = false;
 
   protected TsFileInsertionEventParser(
       final String pipeName,
