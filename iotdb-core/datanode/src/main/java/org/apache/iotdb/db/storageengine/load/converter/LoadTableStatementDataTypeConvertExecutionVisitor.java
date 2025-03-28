@@ -71,6 +71,7 @@ public class LoadTableStatementDataTypeConvertExecutionVisitor
 
     LOGGER.info("Start data type conversion for LoadTsFileStatement: {}.", loadTsFileStatement);
 
+    // TODO: Use batch insert after Table model supports insertMultiTablets
     for (final File file : loadTsFileStatement.getTsFiles()) {
       try (final TsFileInsertionEventTableParser parser =
           new TsFileInsertionEventTableParser(
