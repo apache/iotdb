@@ -62,7 +62,11 @@ public class ImportTsFileLocally extends ImportTsFileBase implements Runnable {
       parameters.add(String.format("\"%s\"=\"%s\"", DATABASE_NAME_KEY, databaseName));
     }
     String paramStr = String.join(",", parameters);
-    return String.format("load '%s' WITH (%s)", filePath, paramStr);
+    if (paramStr.isEmpty()) {
+      return String.format("load '%s'", filePath);
+    } else {
+      return String.format("load '%s' WITH (%s)", filePath, paramStr);
+    }
   }
 
   public static void setSessionPool(SessionPool sessionPool) {
