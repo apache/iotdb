@@ -39,6 +39,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.distribute.TableDistributedPlanner;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.DataNodeLocationSupplierFactory;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.PlanOptimizer;
+import org.apache.iotdb.db.queryengine.plan.relational.security.AccessControl;
 import org.apache.iotdb.db.queryengine.plan.relational.security.AllowAllAccessControl;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Statement;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.parser.SqlParser;
@@ -114,7 +115,7 @@ public class PlanTester {
     distributedQueryPlan = null;
     MPPQueryContext context = new MPPQueryContext(sql, queryId, sessionInfo, null, null);
 
-    Analysis analysis = analyze(sql, metadata);
+    Analysis analysis = analyze(sql, metadata, context);
     this.analysis = analysis;
     this.symbolAllocator = new SymbolAllocator();
 
@@ -136,7 +137,7 @@ public class PlanTester {
     distributedQueryPlan = null;
     MPPQueryContext context = new MPPQueryContext(sql, queryId, sessionInfo, null, null);
 
-    Analysis analysis = analyze(sql, metadata);
+    Analysis analysis = analyze(sql, metadata, context);
 
     TableLogicalPlanner logicalPlanner =
         new TableLogicalPlanner(
@@ -145,7 +146,7 @@ public class PlanTester {
     return logicalPlanner.plan(analysis);
   }
 
-  public static Analysis analyze(String sql, Metadata metadata) {
+  public static Analysis analyze(String sql, Metadata metadata, MPPQueryContext context) {
     SqlParser sqlParser = new SqlParser();
     String databaseName;
     if (metadata instanceof TSBSMetadata) {
@@ -159,9 +160,8 @@ public class PlanTester {
     SessionInfo session =
         new SessionInfo(
             0, "test", ZoneId.systemDefault(), databaseName, IClientSession.SqlDialect.TABLE);
-    final MPPQueryContext context =
-        new MPPQueryContext(sql, new QueryId("test_query"), session, null, null);
-    return analyzeStatement(statement, metadata, context, sqlParser, session);
+    return analyzeStatement(
+        statement, metadata, context, sqlParser, session, new AllowAllAccessControl());
   }
 
   public static Analysis analyzeStatement(
@@ -169,7 +169,8 @@ public class PlanTester {
       Metadata metadata,
       MPPQueryContext context,
       SqlParser sqlParser,
-      SessionInfo session) {
+      SessionInfo session,
+      AccessControl accessControl) {
     try {
       StatementAnalyzerFactory statementAnalyzerFactory =
           new StatementAnalyzerFactory(metadata, sqlParser, new AllowAllAccessControl());
@@ -181,7 +182,7 @@ public class PlanTester {
               statementAnalyzerFactory,
               Collections.emptyList(),
               Collections.emptyMap(),
-              new StatementRewriteFactory(metadata).getStatementRewrite(),
+              new StatementRewriteFactory(metadata, accessControl).getStatementRewrite(),
               NOOP);
       return analyzer.analyze(statement);
     } catch (Exception e) {

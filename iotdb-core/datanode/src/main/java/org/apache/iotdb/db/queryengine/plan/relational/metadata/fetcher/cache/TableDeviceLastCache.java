@@ -173,9 +173,8 @@ public class TableDeviceLastCache {
         measurement,
         (s, timeValuePair) -> {
           diff.set(
-              isTableModel
-                  ? 0
-                  : (int) RamUsageEstimator.sizeOf(s) + getTVPairEntrySize(timeValuePair));
+              (isTableModel ? 0 : (int) RamUsageEstimator.sizeOf(s))
+                  + getTVPairEntrySize(timeValuePair));
           time.set(timeValuePair.getTimestamp());
           return null;
         });

@@ -191,10 +191,8 @@ public class LastQueryAggTableScanOperator extends AbstractAggTableScanOperator 
           break;
         case ATTRIBUTE:
           Binary attribute =
-              cachedDeviceEntries
-                  .get(currentHitCacheIndex)
-                  .getAttributeColumnValues()
-                  .get(aggColumnsIndexArray[columnIdx]);
+              cachedDeviceEntries.get(currentHitCacheIndex)
+                  .getAttributeColumnValues()[aggColumnsIndexArray[columnIdx]];
           if (attribute == null) {
             if (aggregator.getStep().isOutputPartial()) {
               columnBuilder.writeBinary(

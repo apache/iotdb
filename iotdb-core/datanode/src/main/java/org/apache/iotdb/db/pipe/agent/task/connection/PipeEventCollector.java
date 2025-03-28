@@ -55,7 +55,7 @@ public class PipeEventCollector implements EventCollector {
 
   private final boolean forceTabletFormat;
 
-  private final boolean skipParseTsFile;
+  private final boolean skipParsing;
 
   private final boolean isUsedForConsensusPipe;
 
@@ -68,13 +68,13 @@ public class PipeEventCollector implements EventCollector {
       final long creationTime,
       final int regionId,
       final boolean forceTabletFormat,
-      final boolean skipParseTsFile,
+      final boolean skipParsing,
       final boolean isUsedInConsensusPipe) {
     this.pendingQueue = pendingQueue;
     this.creationTime = creationTime;
     this.regionId = regionId;
     this.forceTabletFormat = forceTabletFormat;
-    this.skipParseTsFile = skipParseTsFile;
+    this.skipParsing = skipParsing;
     this.isUsedForConsensusPipe = isUsedInConsensusPipe;
   }
 
@@ -100,7 +100,11 @@ public class PipeEventCollector implements EventCollector {
   }
 
   private void parseAndCollectEvent(final PipeInsertNodeTabletInsertionEvent sourceEvent) {
-    // TODO: let subscription module fully manage the parsing process of the insert node event
+    if (skipParsing) {
+      collectEvent(sourceEvent);
+      return;
+    }
+
     if (sourceEvent.shouldParseTimeOrPattern()) {
       for (final PipeRawTabletInsertionEvent parsedEvent :
           sourceEvent.toRawTabletInsertionEvents()) {
@@ -126,17 +130,14 @@ public class PipeEventCollector implements EventCollector {
       return;
     }
 
-    if (skipParseTsFile) {
+    if (skipParsing) {
       collectEvent(sourceEvent);
       return;
     }
 
     if (!forceTabletFormat
-        && (!sourceEvent.shouldParseTimeOrPattern()
-            || (sourceEvent.isTableModelEvent()
-                && (sourceEvent.getTablePattern() == null
-                    || !sourceEvent.getTablePattern().hasTablePattern())
-                && !sourceEvent.shouldParseTime()))) {
+        && !sourceEvent.shouldParse4Privilege()
+        && canSkipParsing4TsFileEvent(sourceEvent)) {
       collectEvent(sourceEvent);
       return;
     }
@@ -148,6 +149,14 @@ public class PipeEventCollector implements EventCollector {
     } finally {
       sourceEvent.close();
     }
+  }
+
+  private boolean canSkipParsing4TsFileEvent(final PipeTsFileInsertionEvent sourceEvent) {
+    return !sourceEvent.shouldParseTimeOrPattern()
+        || (sourceEvent.isTableModelEvent()
+            && (sourceEvent.getTablePattern() == null
+                || !sourceEvent.getTablePattern().hasTablePattern())
+            && !sourceEvent.shouldParseTime());
   }
 
   private void collectParsedRawTableEvent(final PipeRawTabletInsertionEvent parsedEvent) {
@@ -171,8 +180,12 @@ public class PipeEventCollector implements EventCollector {
             ? IoTDBSchemaRegionExtractor.TREE_PATTERN_PARSE_VISITOR.process(
                 deleteDataEvent.getDeleteDataNode(),
                 (IoTDBTreePattern) deleteDataEvent.getTreePattern())
-            : IoTDBSchemaRegionExtractor.TABLE_PATTERN_PARSE_VISITOR.process(
-                deleteDataEvent.getDeleteDataNode(), deleteDataEvent.getTablePattern()))
+            : IoTDBSchemaRegionExtractor.TABLE_PATTERN_PARSE_VISITOR
+                .process(deleteDataEvent.getDeleteDataNode(), deleteDataEvent.getTablePattern())
+                .flatMap(
+                    planNode ->
+                        IoTDBSchemaRegionExtractor.TABLE_PRIVILEGE_PARSE_VISITOR.process(
+                            planNode, deleteDataEvent.getUserName())))
         .map(
             planNode ->
                 new PipeDeleteDataNodeEvent(
@@ -182,6 +195,8 @@ public class PipeEventCollector implements EventCollector {
                     deleteDataEvent.getPipeTaskMeta(),
                     deleteDataEvent.getTreePattern(),
                     deleteDataEvent.getTablePattern(),
+                    deleteDataEvent.getUserName(),
+                    deleteDataEvent.isSkipIfNoPrivileges(),
                     deleteDataEvent.isGeneratedByPipe()))
         .ifPresent(
             event -> {

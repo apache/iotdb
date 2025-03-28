@@ -396,6 +396,7 @@ public class PipeConsensusReceiver {
     File writingFile = tsFileWriter.getWritingFile();
     RandomAccessFile writingFileWriter = tsFileWriter.getWritingFileWriter();
 
+    boolean isReturnTsFileWriter = false;
     try {
       if (isWritingFileNonAvailable(tsFileWriter)) {
         final TSStatus status =
@@ -445,7 +446,7 @@ public class PipeConsensusReceiver {
 
       if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         // if transfer success, disk buffer will be released.
-        tsFileWriter.returnSelf(consensusPipeName);
+        isReturnTsFileWriter = true;
         LOGGER.info(
             "PipeConsensus-PipeName-{}: Seal file {} successfully.",
             consensusPipeName,
@@ -458,7 +459,7 @@ public class PipeConsensusReceiver {
             status.getMessage());
       }
       return new TPipeConsensusTransferResp(status);
-    } catch (IOException | DiskSpaceInsufficientException e) {
+    } catch (IOException e) {
       LOGGER.warn(
           "PipeConsensus-PipeName-{}: Failed to seal file {} from req {}.",
           consensusPipeName,
@@ -486,6 +487,18 @@ public class PipeConsensusReceiver {
       // sender.
       closeCurrentWritingFileWriter(tsFileWriter, false);
       deleteCurrentWritingFile(tsFileWriter);
+      // must return tsfileWriter after deleting its file.
+      if (isReturnTsFileWriter) {
+        try {
+          tsFileWriter.returnSelf(consensusPipeName);
+        } catch (IOException | DiskSpaceInsufficientException e) {
+          LOGGER.warn(
+              "PipeConsensus-PipeName-{}: Failed to return tsFileWriter {}.",
+              consensusPipeName,
+              tsFileWriter,
+              e);
+        }
+      }
     }
   }
 
@@ -511,6 +524,7 @@ public class PipeConsensusReceiver {
         req.getFileNames().stream()
             .map(fileName -> new File(currentWritingDirPath, fileName))
             .collect(Collectors.toList());
+    boolean isReturnTsFileWriter = false;
     try {
       if (isWritingFileNonAvailable(tsFileWriter)) {
         final TSStatus status =
@@ -574,7 +588,7 @@ public class PipeConsensusReceiver {
 
       if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         // if transfer success, disk buffer will be released.
-        tsFileWriter.returnSelf(consensusPipeName);
+        isReturnTsFileWriter = true;
         LOGGER.info(
             "PipeConsensus-PipeName-{}: Seal file with mods {} successfully.",
             consensusPipeName,
@@ -606,6 +620,18 @@ public class PipeConsensusReceiver {
       // Clear the directory instead of only deleting the referenced files in seal request
       // to avoid previously undeleted file being redundant when transferring multi files
       IoTDBReceiverAgent.cleanPipeReceiverDir(currentWritingDirPath);
+      // must return tsfileWriter after deleting its file.
+      if (isReturnTsFileWriter) {
+        try {
+          tsFileWriter.returnSelf(consensusPipeName);
+        } catch (IOException | DiskSpaceInsufficientException e) {
+          LOGGER.warn(
+              "PipeConsensus-PipeName-{}: Failed to return tsFileWriter {}.",
+              consensusPipeName,
+              tsFileWriter,
+              e);
+        }
+      }
     }
   }
 
@@ -1055,8 +1081,8 @@ public class PipeConsensusReceiver {
       // buffer for it.
       if (!tsFileWriter.isPresent()) {
         // We should synchronously find the idle writer to avoid concurrency issues.
+        lock.lock();
         try {
-          lock.lock();
           // We need to check tsFileWriter.isPresent() here. Since there may be both retry-sent
           // tsfile
           // events and real-time-sent tsfile events, causing the receiver's tsFileWriter load to
@@ -1119,13 +1145,13 @@ public class PipeConsensusReceiver {
     private final ConsensusPipeName consensusPipeName;
     private final int index;
     private File localWritingDir;
-    // whether this buffer is used. this will be updated when first transfer tsFile piece or
-    // when transfer seal.
-    private boolean isUsed = false;
-    // If isUsed is true, this variable will be set to the TCommitId of holderEvent
-    private TCommitId commitIdOfCorrespondingHolderEvent;
     private File writingFile;
     private RandomAccessFile writingFileWriter;
+    // whether this buffer is used. this will be updated when first transfer tsFile piece or
+    // when transfer seal.
+    private volatile boolean isUsed = false;
+    // If isUsed is true, this variable will be set to the TCommitId of holderEvent
+    private volatile TCommitId commitIdOfCorrespondingHolderEvent;
 
     public PipeConsensusTsFileWriter(int index, ConsensusPipeName consensusPipeName) {
       this.index = index;
@@ -1221,12 +1247,17 @@ public class PipeConsensusReceiver {
 
     public void returnSelf(ConsensusPipeName consensusPipeName)
         throws DiskSpaceInsufficientException, IOException {
-      this.isUsed = false;
-      this.commitIdOfCorrespondingHolderEvent = null;
       // if config multi-disks, tsFileWriter will roll to new writing path.
+      // must roll before set used to false, because the writing file may be deleted if other event
+      // uses this tsfileWriter.
       if (receiveDirs.size() > 1) {
         rollToNextWritingPath();
       }
+      // must set used to false after set commitIdOfCorrespondingHolderEvent to null to avoid the
+      // situation that tsfileWriter is used by other event before set
+      // commitIdOfCorrespondingHolderEvent to null
+      this.commitIdOfCorrespondingHolderEvent = null;
+      this.isUsed = false;
       LOGGER.info(
           "PipeConsensus-PipeName-{}: tsFileWriter-{} returned self",
           consensusPipeName.toString(),
@@ -1300,8 +1331,8 @@ public class PipeConsensusReceiver {
     private final PipeConsensusTsFileWriterPool tsFileWriterPool;
     private final AtomicInteger WALEventCount = new AtomicInteger(0);
     private final AtomicInteger tsFileEventCount = new AtomicInteger(0);
-    private long onSyncedReplicateIndex = 0;
-    private int connectorRebootTimes = 0;
+    private volatile long onSyncedReplicateIndex = 0;
+    private volatile int connectorRebootTimes = 0;
 
     public RequestExecutor(
         PipeConsensusReceiverMetrics metric, PipeConsensusTsFileWriterPool tsFileWriterPool) {

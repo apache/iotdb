@@ -24,12 +24,16 @@ import org.apache.iotdb.commons.enums.PipeRemainingTimeRateAverageTime;
 import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
 import org.apache.iotdb.confignode.rpc.thrift.TGlobalConfig;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.io.File;
 import java.io.IOException;
 import java.util.Optional;
 
 public class CommonDescriptor {
 
+  private static final Logger LOGGER = LoggerFactory.getLogger(CommonDescriptor.class);
   private final CommonConfig config = new CommonConfig();
 
   private CommonDescriptor() {}
@@ -300,11 +304,19 @@ public class CommonDescriptor {
                 String.valueOf(
                     config.getPipeDataStructureTsFileMemoryBlockAllocationRejectThreshold()))));
 
-    config.setPipeRealTimeQueuePollHistoryThreshold(
+    config.setPipeRealTimeQueuePollTsFileThreshold(
+        Integer.parseInt(
+            Optional.ofNullable(
+                    properties.getProperty("pipe_realtime_queue_poll_history_threshold"))
+                .orElse(
+                    properties.getProperty(
+                        "pipe_realtime_queue_poll_tsfile_threshold",
+                        String.valueOf(config.getPipeRealTimeQueuePollTsFileThreshold())))));
+    config.setPipeRealTimeQueuePollHistoricalTsFileThreshold(
         Integer.parseInt(
             properties.getProperty(
-                "pipe_realtime_queue_poll_history_threshold",
-                Integer.toString(config.getPipeRealTimeQueuePollHistoryThreshold()))));
+                "pipe_realtime_queue_poll_historical_tsfile_threshold",
+                String.valueOf(config.getPipeRealTimeQueuePollHistoricalTsFileThreshold()))));
 
     int pipeSubtaskExecutorMaxThreadNum =
         Integer.parseInt(
@@ -413,6 +425,45 @@ public class CommonDescriptor {
                     properties.getProperty(
                         "pipe_connector_rpc_thrift_compression_enabled",
                         String.valueOf(config.isPipeConnectorRPCThriftCompressionEnabled())))));
+    config.setPipeAsyncConnectorMaxRetryExecutionTimeMsPerCall(
+        Long.parseLong(
+            Optional.ofNullable(
+                    properties.getProperty("pipe_async_sink_max_retry_execution_time_ms_per_call"))
+                .orElse(
+                    properties.getProperty(
+                        "pipe_async_connector_max_retry_execution_time_ms_per_call",
+                        String.valueOf(
+                            config.getPipeAsyncConnectorMaxRetryExecutionTimeMsPerCall())))));
+    config.setPipeAsyncConnectorForcedRetryTsFileEventQueueSizeThreshold(
+        Integer.parseInt(
+            Optional.ofNullable(
+                    properties.getProperty("pipe_async_sink_forced_retry_tsfile_event_queue_size"))
+                .orElse(
+                    properties.getProperty(
+                        "pipe_async_connector_forced_retry_tsfile_event_queue_size",
+                        String.valueOf(
+                            config
+                                .getPipeAsyncConnectorForcedRetryTsFileEventQueueSizeThreshold())))));
+    config.setPipeAsyncConnectorForcedRetryTabletEventQueueSizeThreshold(
+        Integer.parseInt(
+            Optional.ofNullable(
+                    properties.getProperty("pipe_async_sink_forced_retry_tablet_event_queue_size"))
+                .orElse(
+                    properties.getProperty(
+                        "pipe_async_connector_forced_retry_tablet_event_queue_size",
+                        String.valueOf(
+                            config
+                                .getPipeAsyncConnectorForcedRetryTabletEventQueueSizeThreshold())))));
+    config.setPipeAsyncConnectorForcedRetryTotalEventQueueSizeThreshold(
+        Integer.parseInt(
+            Optional.ofNullable(
+                    properties.getProperty("pipe_async_sink_forced_retry_total_event_queue_size"))
+                .orElse(
+                    properties.getProperty(
+                        "pipe_async_connector_forced_retry_total_event_queue_size",
+                        String.valueOf(
+                            config
+                                .getPipeAsyncConnectorForcedRetryTotalEventQueueSizeThreshold())))));
     int pipeAsyncConnectorSelectorNumber =
         Integer.parseInt(
             Optional.ofNullable(properties.getProperty("pipe_sink_selector_number"))
@@ -496,6 +547,11 @@ public class CommonDescriptor {
             properties.getProperty(
                 "pipe_receiver_login_periodic_verification_interval_ms",
                 Long.toString(config.getPipeReceiverLoginPeriodicVerificationIntervalMs()))));
+    config.setPipeReceiverActualToEstimatedMemoryRatio(
+        Double.parseDouble(
+            properties.getProperty(
+                "pipe_receiver_actual_to_estimated_memory_ratio",
+                Double.toString(config.getPipeReceiverActualToEstimatedMemoryRatio()))));
 
     config.setPipeMaxAllowedHistoricalTsFilePerDataRegion(
         Integer.parseInt(
@@ -532,6 +588,11 @@ public class CommonDescriptor {
             properties.getProperty(
                 "pipe_stuck_restart_min_interval_ms",
                 String.valueOf(config.getPipeStuckRestartMinIntervalMs()))));
+    config.setPipeEpochKeepTsFileAfterStuckRestartEnabled(
+        Boolean.parseBoolean(
+            properties.getProperty(
+                "pipe_epoch_keep_tsfile_after_stuck_restart_enabled",
+                String.valueOf(config.isPipeEpochKeepTsFileAfterStuckRestartEnabled()))));
     config.setPipeStorageEngineFlushTimeIntervalMs(
         Long.parseLong(
             properties.getProperty(
@@ -754,6 +815,16 @@ public class CommonDescriptor {
             properties.getProperty(
                 "subscription_max_allowed_event_count_in_tablet_batch",
                 String.valueOf(config.getSubscriptionMaxAllowedEventCountInTabletBatch()))));
+    config.setSubscriptionLogManagerWindowSeconds(
+        Long.parseLong(
+            properties.getProperty(
+                "subscription_log_manager_window_seconds",
+                String.valueOf(config.getSubscriptionLogManagerWindowSeconds()))));
+    config.setSubscriptionLogManagerBaseIntervalMs(
+        Long.parseLong(
+            properties.getProperty(
+                "subscription_log_manager_base_interval_ms",
+                String.valueOf(config.getSubscriptionLogManagerBaseIntervalMs()))));
 
     config.setSubscriptionPrefetchEnabled(
         Boolean.parseBoolean(

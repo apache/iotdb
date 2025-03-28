@@ -37,6 +37,8 @@ import org.apache.iotdb.confignode.consensus.request.write.table.AddTableColumnP
 import org.apache.iotdb.confignode.consensus.request.write.table.CommitDeleteColumnPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.CommitDeleteTablePlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.RenameTableColumnPlan;
+import org.apache.iotdb.confignode.consensus.request.write.table.SetTableColumnCommentPlan;
+import org.apache.iotdb.confignode.consensus.request.write.table.SetTableCommentPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.SetTablePropertiesPlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.CommitSetSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.CreateSchemaTemplatePlan;
@@ -533,20 +535,12 @@ public class PipeConfigPhysicalPlanTSStatusVisitor
   @Override
   public TSStatus visitCommitDeleteColumn(
       final CommitDeleteColumnPlan commitDeleteColumnPlan, final TSStatus context) {
-    if (context.getCode() == TSStatusCode.COLUMN_NOT_EXISTS.getStatusCode()) {
-      return new TSStatus(TSStatusCode.PIPE_RECEIVER_IDEMPOTENT_CONFLICT_EXCEPTION.getStatusCode())
-          .setMessage(context.getMessage());
-    }
     return visitCommonTablePlan(commitDeleteColumnPlan, context);
   }
 
   @Override
   public TSStatus visitRenameTableColumn(
       final RenameTableColumnPlan renameTableColumnPlan, final TSStatus context) {
-    if (context.getCode() == TSStatusCode.COLUMN_ALREADY_EXISTS.getStatusCode()) {
-      return new TSStatus(TSStatusCode.PIPE_RECEIVER_IDEMPOTENT_CONFLICT_EXCEPTION.getStatusCode())
-          .setMessage(context.getMessage());
-    }
     return visitCommonTablePlan(renameTableColumnPlan, context);
   }
 
@@ -562,9 +556,23 @@ public class PipeConfigPhysicalPlanTSStatusVisitor
     return visitCommonTablePlan(pipeDeleteDevicesPlan, context);
   }
 
+  @Override
+  public TSStatus visitSetTableComment(
+      final SetTableCommentPlan setTableCommentPlan, final TSStatus context) {
+    return visitCommonTablePlan(setTableCommentPlan, context);
+  }
+
+  @Override
+  public TSStatus visitSetTableColumnComment(
+      final SetTableColumnCommentPlan setTableColumnCommentPlan, final TSStatus context) {
+    return visitCommonTablePlan(setTableColumnCommentPlan, context);
+  }
+
   private TSStatus visitCommonTablePlan(final ConfigPhysicalPlan plan, final TSStatus context) {
     if (context.getCode() == TSStatusCode.DATABASE_NOT_EXIST.getStatusCode()
-        || context.getCode() == TSStatusCode.TABLE_NOT_EXISTS.getStatusCode()) {
+        || context.getCode() == TSStatusCode.TABLE_NOT_EXISTS.getStatusCode()
+        || context.getCode() == TSStatusCode.COLUMN_ALREADY_EXISTS.getStatusCode()
+        || context.getCode() == TSStatusCode.COLUMN_NOT_EXISTS.getStatusCode()) {
       return new TSStatus(TSStatusCode.PIPE_RECEIVER_IDEMPOTENT_CONFLICT_EXCEPTION.getStatusCode())
           .setMessage(context.getMessage());
     }

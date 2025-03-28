@@ -323,6 +323,12 @@ public class IoTDBConnection implements Connection {
   public void setSchema(String arg0) throws SQLException {
     // changeDefaultDatabase(arg0);
     if (getSqlDialect().equals(Constant.TABLE_DIALECT)) {
+      for (String str : IoTDBRelationalDatabaseMetadata.allIotdbTableSQLKeywords) {
+        if (arg0.equalsIgnoreCase(str)) {
+          arg0 = "\"" + arg0 + "\"";
+        }
+      }
+
       Statement stmt = this.createStatement();
       String sql = "USE " + arg0;
       boolean rs;
@@ -333,6 +339,7 @@ public class IoTDBConnection implements Connection {
         logger.error("Use database error: {}", e.getMessage());
         throw e;
       }
+      return;
     }
     throw new SQLException("Does not support setSchema");
   }
@@ -637,8 +644,11 @@ public class IoTDBConnection implements Connection {
     params.setDb(database);
   }
 
-  protected void changeDefaultSqlDialect(String sqlDialect) {
-    params.setSqlDialect(sqlDialect);
+  protected void mayChangeDefaultSqlDialect(String sqlDialect) {
+    if (!sqlDialect.equals(params.getSqlDialect())) {
+      params.setSqlDialect(sqlDialect);
+      params.setDb(null);
+    }
   }
 
   public int getTimeFactor() {

@@ -74,7 +74,7 @@ public class LoadTsFileDataCacheMemoryBlock extends LoadTsFileAbstractMemoryBloc
   @Override
   public synchronized void forceResize(long newSizeInBytes) {
     throw new UnsupportedOperationException(
-        "resize is not supported for LoadTsFileDataCacheMemoryBlock");
+        "setTotalMemorySizeInBytes is not supported for LoadTsFileDataCacheMemoryBlock");
   }
 
   @Override
@@ -128,7 +128,7 @@ public class LoadTsFileDataCacheMemoryBlock extends LoadTsFileAbstractMemoryBloc
     return "LoadTsFileDataCacheMemoryBlock{"
         + "limitedMemorySizeInBytes="
         + limitedMemorySizeInBytes.get()
-        + ", memoryUsageInBytes="
+        + ", usedMemoryInBytes="
         + memoryUsageInBytes.get()
         + '}';
   }

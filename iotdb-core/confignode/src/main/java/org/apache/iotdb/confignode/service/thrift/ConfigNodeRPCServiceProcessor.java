@@ -47,6 +47,7 @@ import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.confignode.conf.ConfigNodeConfig;
 import org.apache.iotdb.confignode.conf.ConfigNodeConstant;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
+import org.apache.iotdb.confignode.conf.ConfigNodeSystemPropertiesHandler;
 import org.apache.iotdb.confignode.conf.SystemPropertiesUtils;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
 import org.apache.iotdb.confignode.consensus.request.read.ainode.GetAINodeConfigurationPlan;
@@ -113,6 +114,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TCreatePipePluginReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreatePipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateSchemaTemplateReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateTopicReq;
+import org.apache.iotdb.confignode.rpc.thrift.TCreateTrainingReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateTriggerReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeConfigurationResp;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRegisterReq;
@@ -216,6 +218,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TTestOperation;
 import org.apache.iotdb.confignode.rpc.thrift.TThrottleQuotaResp;
 import org.apache.iotdb.confignode.rpc.thrift.TUnsetSchemaTemplateReq;
 import org.apache.iotdb.confignode.rpc.thrift.TUnsubscribeReq;
+import org.apache.iotdb.confignode.rpc.thrift.TUpdateModelInfoReq;
 import org.apache.iotdb.confignode.service.ConfigNode;
 import org.apache.iotdb.consensus.exception.ConsensusException;
 import org.apache.iotdb.db.queryengine.plan.relational.type.AuthorRType;
@@ -856,7 +859,10 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
     RemoveConfigNodePlan removeConfigNodePlan = new RemoveConfigNodePlan(configNodeLocation);
     TSStatus status = configManager.removeConfigNode(removeConfigNodePlan);
     // Print log to record the ConfigNode that performs the RemoveConfigNodeRequest
-    LOGGER.info("Execute RemoveConfigNodeRequest {} with result {}", configNodeLocation, status);
+    LOGGER.info(
+        "The result of submitting RemoveConfigNode job is {}. RemoveConfigNodeRequest: {}",
+        status,
+        configNodeLocation);
 
     return status;
   }
@@ -889,7 +895,7 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
 
   /** Stop ConfigNode */
   @Override
-  public TSStatus stopConfigNode(TConfigNodeLocation configNodeLocation) {
+  public TSStatus stopAndClearConfigNode(TConfigNodeLocation configNodeLocation) {
     new Thread(
             // TODO: Perhaps we should find some other way of shutting down the config node, adding
             // a hard dependency
@@ -898,18 +904,19 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
             //  instance is created feels cleaner.
             () -> {
               try {
-                // Sleep 1s before stop itself
-                TimeUnit.SECONDS.sleep(1);
+                // Sleep 5s before stop itself
+                TimeUnit.SECONDS.sleep(5);
               } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
                 LOGGER.warn(e.getMessage());
               } finally {
+                ConfigNodeSystemPropertiesHandler.getInstance().delete();
                 configNode.stop();
               }
             })
         .start();
     return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode())
-        .setMessage("Stop ConfigNode success.");
+        .setMessage("Stop And Clear ConfigNode Success.");
   }
 
   @Override
@@ -1370,6 +1377,16 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
   @Override
   public TGetModelInfoResp getModelInfo(TGetModelInfoReq req) {
     return configManager.getModelInfo(req);
+  }
+
+  @Override
+  public TSStatus updateModelInfo(TUpdateModelInfoReq req) throws TException {
+    return configManager.updateModelInfo(req);
+  }
+
+  @Override
+  public TSStatus createTraining(TCreateTrainingReq req) throws TException {
+    return configManager.createTraining(req);
   }
 
   @Override
