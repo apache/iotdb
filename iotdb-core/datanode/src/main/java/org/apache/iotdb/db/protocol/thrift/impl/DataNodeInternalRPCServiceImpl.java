@@ -1949,6 +1949,15 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
       clusterTopology.updateTopology(req.getDataNodes(), req.getTopology());
     }
 
+    if (req.isSetCurrentRegionOperations()) {
+      RegionMigrateService.getInstance()
+          .notifyRegionMigration(
+              new TNotifyRegionMigrationReq(
+                  req.getLogicalClock(),
+                  req.getHeartbeatTimestamp(),
+                  req.getCurrentRegionOperations()));
+    }
+
     return resp;
   }
 
