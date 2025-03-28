@@ -85,7 +85,6 @@ public class TopologyService implements Runnable, IClusterStatusSubscriber {
 
   /* (fromDataNodeId, toDataNodeId) -> heartbeat history */
   private final Map<Pair<Integer, Integer>, List<AbstractHeartbeatSample>> heartbeats;
-  private final Map<Pair<Integer, Integer>, Integer> accumulatedFailures;
   private final List<Integer> startingDataNodes = new CopyOnWriteArrayList<>();
 
   private final IFailureDetector failureDetector;
@@ -96,7 +95,6 @@ public class TopologyService implements Runnable, IClusterStatusSubscriber {
     this.configManager = configManager;
     this.topologyChangeListener = topologyChangeListener;
     this.heartbeats = new ConcurrentHashMap<>();
-    this.accumulatedFailures = new ConcurrentHashMap<>();
     this.shouldRun = new AtomicBoolean(false);
     this.awaitForSignal = new AwaitForSignal(this.getClass().getSimpleName());
 
@@ -131,7 +129,6 @@ public class TopologyService implements Runnable, IClusterStatusSubscriber {
     future.cancel(true);
     future = null;
     heartbeats.clear();
-    accumulatedFailures.clear();
     LOGGER.info("Topology Probing has stopped successfully");
   }
 
@@ -227,20 +224,8 @@ public class TopologyService implements Runnable, IClusterStatusSubscriber {
       final int fromId = entry.getKey().getLeft();
       final int toId = entry.getKey().getRight();
 
-      final boolean isReachable =
-          !entry.getValue().isEmpty()
-              && !failureDetector.isAvailable(entry.getKey(), entry.getValue());
-
-      if (isReachable) {
-        // reset the failure accumulator
-        accumulatedFailures.put(entry.getKey(), 0);
-      } else {
-        accumulatedFailures.compute(
-            entry.getKey(), (k, ov) -> Optional.ofNullable(ov).orElse(0) + 1);
-      }
-
-      // if 3 subsequent probing all failed, then it is highly possible a network partition.
-      if (accumulatedFailures.get(entry.getKey()) >= 3) {
+      if (!entry.getValue().isEmpty()
+              && !failureDetector.isAvailable(entry.getKey(), entry.getValue())) {
         LOGGER.debug("Connection from DataNode {} to DataNode {} is broken", fromId, toId);
       } else {
         latestTopology.get(fromId).add(toId);
@@ -320,14 +305,12 @@ public class TopologyService implements Runnable, IClusterStatusSubscriber {
       if (changeEvent.getRight() == null) {
         // datanode removed from cluster, clean up probing history
         affectedPairs.forEach(heartbeats::remove);
-        affectedPairs.forEach(accumulatedFailures::remove);
       } else {
         // we only trigger probing immediately if node comes around from UNKNOWN to RUNNING
         if (NodeStatus.Unknown.equals(changeEvent.getLeft().getStatus())
             && NodeStatus.Running.equals(changeEvent.getRight().getStatus())) {
           // let's clear the history when a new node comes around
           affectedPairs.forEach(pair -> heartbeats.put(pair, new ArrayList<>()));
-          affectedPairs.forEach(pair -> accumulatedFailures.put(pair, 0));
           awaitForSignal.signal();
         }
       }
