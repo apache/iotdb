@@ -73,6 +73,18 @@ public abstract class AbstractAlterOrDropTableProcedure<T>
     this.queryId = queryId;
   }
 
+  protected AbstractAlterOrDropTableProcedure(
+      final String database,
+      final String tableName,
+      final String queryId,
+      final boolean isGeneratedByPipe,
+      final String originClusterId) {
+    super(isGeneratedByPipe, originClusterId);
+    this.database = database;
+    this.tableName = tableName;
+    this.queryId = queryId;
+  }
+
   public String getDatabase() {
     return database;
   }
@@ -237,11 +249,12 @@ public abstract class AbstractAlterOrDropTableProcedure<T>
     final AbstractAlterOrDropTableProcedure<?> that = (AbstractAlterOrDropTableProcedure<?>) o;
     return Objects.equals(database, that.database)
         && Objects.equals(tableName, that.tableName)
-        && Objects.equals(queryId, that.queryId);
+        && Objects.equals(queryId, that.queryId)
+        && Objects.equals(originClusterId, that.originClusterId);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(database, tableName, queryId);
+    return Objects.hash(database, tableName, queryId, originClusterId);
   }
 }

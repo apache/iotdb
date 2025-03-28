@@ -34,6 +34,8 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.DeleteDataNo
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.SearchNode;
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.IWALByteBufferView;
 
+import org.apache.tsfile.utils.ReadWriteIOUtils;
+
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -58,6 +60,13 @@ public class PipeEnrichedDeleteDataNode extends AbstractDeleteDataNode {
     this.deleteDataNode = deleteDataNode;
   }
 
+  public PipeEnrichedDeleteDataNode(
+      final AbstractDeleteDataNode deleteDataNode, final String originClusterId) {
+    super(deleteDataNode.getPlanNodeId());
+    this.deleteDataNode = deleteDataNode;
+    this.originClusterId = originClusterId;
+  }
+
   public PlanNode getDeleteDataNode() {
     return deleteDataNode;
   }
@@ -70,6 +79,11 @@ public class PipeEnrichedDeleteDataNode extends AbstractDeleteDataNode {
   @Override
   public void markAsGeneratedByPipe() {
     deleteDataNode.markAsGeneratedByPipe();
+  }
+
+  @Override
+  public void setOriginClusterId(final String originClusterId) {
+    deleteDataNode.setOriginClusterId(originClusterId);
   }
 
   @Override
@@ -148,16 +162,20 @@ public class PipeEnrichedDeleteDataNode extends AbstractDeleteDataNode {
   protected void serializeAttributes(final ByteBuffer byteBuffer) {
     PlanNodeType.PIPE_ENRICHED_DELETE_DATA.serialize(byteBuffer);
     deleteDataNode.serialize(byteBuffer);
+    ReadWriteIOUtils.write(originClusterId, byteBuffer);
   }
 
   @Override
   protected void serializeAttributes(final DataOutputStream stream) throws IOException {
     PlanNodeType.PIPE_ENRICHED_DELETE_DATA.serialize(stream);
     deleteDataNode.serialize(stream);
+    ReadWriteIOUtils.write(originClusterId, stream);
   }
 
   public static PipeEnrichedDeleteDataNode deserialize(final ByteBuffer buffer) {
-    return new PipeEnrichedDeleteDataNode((DeleteDataNode) PlanNodeType.deserialize(buffer));
+    return new PipeEnrichedDeleteDataNode(
+        (DeleteDataNode) PlanNodeType.deserialize(buffer),
+        buffer.hasRemaining() ? ReadWriteIOUtils.readString(buffer) : null);
   }
 
   @Override
@@ -183,7 +201,7 @@ public class PipeEnrichedDeleteDataNode extends AbstractDeleteDataNode {
             plan ->
                 plan instanceof PipeEnrichedDeleteDataNode
                     ? plan
-                    : new PipeEnrichedDeleteDataNode((DeleteDataNode) plan))
+                    : new PipeEnrichedDeleteDataNode((DeleteDataNode) plan, originClusterId))
         .collect(Collectors.toList());
   }
 
@@ -206,6 +224,6 @@ public class PipeEnrichedDeleteDataNode extends AbstractDeleteDataNode {
                     (SearchNode) ((PipeEnrichedDeleteDataNode) searchNode).getDeleteDataNode())
             .collect(Collectors.toList());
     return new PipeEnrichedDeleteDataNode(
-        (DeleteDataNode) deleteDataNode.merge(unrichedDeleteDataNodes));
+        (DeleteDataNode) deleteDataNode.merge(unrichedDeleteDataNodes), originClusterId);
   }
 }

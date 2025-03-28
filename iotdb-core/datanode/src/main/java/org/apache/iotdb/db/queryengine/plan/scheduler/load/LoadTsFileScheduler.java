@@ -141,6 +141,7 @@ public class LoadTsFileScheduler implements IScheduler {
   private final Set<TRegionReplicaSet> allReplicaSets;
   private final boolean isGeneratedByPipe;
   private final LoadTsFileDataCacheMemoryBlock block;
+  private final String originClusterId;
 
   public LoadTsFileScheduler(
       DistributedQueryPlan distributedQueryPlan,
@@ -154,11 +155,40 @@ public class LoadTsFileScheduler implements IScheduler {
     this.tsFileNodeList = new ArrayList<>();
     this.failedTsFileNodeIndexes = new ArrayList<>();
     this.fragmentId = distributedQueryPlan.getRootSubPlan().getPlanFragment().getId();
-    this.dispatcher = new LoadTsFileDispatcherImpl(internalServiceClientManager, isGeneratedByPipe);
+    this.dispatcher =
+        new LoadTsFileDispatcherImpl(internalServiceClientManager, isGeneratedByPipe, null);
     this.partitionFetcher = new DataPartitionBatchFetcher(partitionFetcher);
     this.allReplicaSets = new HashSet<>();
     this.isGeneratedByPipe = isGeneratedByPipe;
     this.block = LoadTsFileMemoryManager.getInstance().allocateDataCacheMemoryBlock();
+    this.originClusterId = null;
+
+    for (FragmentInstance fragmentInstance : distributedQueryPlan.getInstances()) {
+      tsFileNodeList.add((LoadSingleTsFileNode) fragmentInstance.getFragment().getPlanNodeTree());
+    }
+  }
+
+  public LoadTsFileScheduler(
+      DistributedQueryPlan distributedQueryPlan,
+      MPPQueryContext queryContext,
+      QueryStateMachine stateMachine,
+      IClientManager<TEndPoint, SyncDataNodeInternalServiceClient> internalServiceClientManager,
+      IPartitionFetcher partitionFetcher,
+      boolean isGeneratedByPipe,
+      String originClusterId) {
+    this.queryContext = queryContext;
+    this.stateMachine = stateMachine;
+    this.tsFileNodeList = new ArrayList<>();
+    this.failedTsFileNodeIndexes = new ArrayList<>();
+    this.fragmentId = distributedQueryPlan.getRootSubPlan().getPlanFragment().getId();
+    this.dispatcher =
+        new LoadTsFileDispatcherImpl(
+            internalServiceClientManager, isGeneratedByPipe, originClusterId);
+    this.partitionFetcher = new DataPartitionBatchFetcher(partitionFetcher);
+    this.allReplicaSets = new HashSet<>();
+    this.isGeneratedByPipe = isGeneratedByPipe;
+    this.block = LoadTsFileMemoryManager.getInstance().allocateDataCacheMemoryBlock();
+    this.originClusterId = originClusterId;
 
     for (FragmentInstance fragmentInstance : distributedQueryPlan.getInstances()) {
       tsFileNodeList.add((LoadSingleTsFileNode) fragmentInstance.getFragment().getPlanNodeTree());
@@ -408,6 +438,7 @@ public class LoadTsFileScheduler implements IScheduler {
     try {
       loadCommandReq.setIsGeneratedByPipe(isGeneratedByPipe);
       loadCommandReq.setProgressIndex(assignProgressIndex(tsFileResource));
+      loadCommandReq.setOriginClusterId(originClusterId);
       Future<FragInstanceDispatchResult> dispatchResultFuture =
           dispatcher.dispatchCommand(loadCommandReq, allReplicaSets);
 
@@ -562,7 +593,7 @@ public class LoadTsFileScheduler implements IScheduler {
 
   private void convertFailedTsFilesToTabletsAndRetry() {
     final LoadTsFileDataTypeConverter loadTsFileDataTypeConverter =
-        new LoadTsFileDataTypeConverter(isGeneratedByPipe);
+        new LoadTsFileDataTypeConverter(isGeneratedByPipe, originClusterId);
 
     final Iterator<Integer> iterator = failedTsFileNodeIndexes.listIterator();
     while (iterator.hasNext()) {

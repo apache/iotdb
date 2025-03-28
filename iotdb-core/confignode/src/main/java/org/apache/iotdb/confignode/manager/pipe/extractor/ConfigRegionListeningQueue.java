@@ -29,7 +29,8 @@ import org.apache.iotdb.commons.pipe.event.SerializableEvent;
 import org.apache.iotdb.commons.snapshot.SnapshotProcessor;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeCreateTablePlan;
-import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeEnrichedPlan;
+import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeEnrichedPlanV1;
+import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeEnrichedPlanV2;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeUnsetSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.CommitCreateTablePlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.UnsetSchemaTemplatePlan;
@@ -64,12 +65,20 @@ public class ConfigRegionListeningQueue extends AbstractPipeListeningQueue
   /////////////////////////////// Function ///////////////////////////////
 
   public synchronized void tryListenToPlan(
-      final ConfigPhysicalPlan plan, final boolean isGeneratedByPipe) {
+      final ConfigPhysicalPlan plan,
+      final boolean isGeneratedByPipe,
+      final String originClusterId) {
     if (ConfigRegionListeningFilter.shouldPlanBeListened(plan)) {
       final PipeConfigRegionWritePlanEvent event;
       switch (plan.getType()) {
-        case PipeEnriched:
-          tryListenToPlan(((PipeEnrichedPlan) plan).getInnerPlan(), true);
+        case PipeEnrichedV1:
+          tryListenToPlan(((PipeEnrichedPlanV1) plan).getInnerPlan(), true, null);
+          return;
+        case PipeEnrichedV2:
+          tryListenToPlan(
+              ((PipeEnrichedPlanV2) plan).getInnerPlan(),
+              true,
+              (((PipeEnrichedPlanV2) plan).getOriginClusterId()));
           return;
         case UnsetTemplate:
           // Different clusters have different template ids, so we need to
@@ -85,7 +94,8 @@ public class ConfigRegionListeningQueue extends AbstractPipeListeningQueue
                             .getTemplate(((UnsetSchemaTemplatePlan) plan).getTemplateId())
                             .getName(),
                         ((UnsetSchemaTemplatePlan) plan).getPath().getFullPath()),
-                    isGeneratedByPipe);
+                    isGeneratedByPipe,
+                    originClusterId);
           } catch (final MetadataException e) {
             LOGGER.warn("Failed to collect UnsetTemplatePlan", e);
             return;
@@ -104,14 +114,15 @@ public class ConfigRegionListeningQueue extends AbstractPipeListeningQueue
                                 ((CommitCreateTablePlan) plan).getDatabase(),
                                 ((CommitCreateTablePlan) plan).getTableName())
                             .orElse(null)),
-                    isGeneratedByPipe);
+                    isGeneratedByPipe,
+                    originClusterId);
           } catch (final MetadataException e) {
             LOGGER.warn("Failed to collect CommitCreateTablePlan", e);
             return;
           }
           break;
         default:
-          event = new PipeConfigRegionWritePlanEvent(plan, isGeneratedByPipe);
+          event = new PipeConfigRegionWritePlanEvent(plan, isGeneratedByPipe, originClusterId);
       }
       tryListen(event);
     }

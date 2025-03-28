@@ -62,6 +62,7 @@ public class LoadTsFileStatement extends Statement {
   private long tabletConversionThresholdBytes = -1;
   private boolean autoCreateDatabase = true;
   private boolean isGeneratedByPipe = false;
+  private String originClusterId;
 
   private Map<String, String> loadAttributes;
 
@@ -222,6 +223,14 @@ public class LoadTsFileStatement extends Statement {
 
   public boolean isGeneratedByPipe() {
     return isGeneratedByPipe;
+  }
+
+  public String getOriginClusterId() {
+    return originClusterId;
+  }
+
+  public void setOriginClusterId(String originClusterId) {
+    this.originClusterId = originClusterId;
   }
 
   public List<File> getTsFiles() {

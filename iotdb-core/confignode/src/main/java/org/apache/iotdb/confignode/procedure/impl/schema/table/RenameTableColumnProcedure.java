@@ -64,6 +64,19 @@ public class RenameTableColumnProcedure
     this.newName = newName;
   }
 
+  public RenameTableColumnProcedure(
+      final String database,
+      final String tableName,
+      final String queryId,
+      final String oldName,
+      final String newName,
+      final boolean isGeneratedByPipe,
+      final String originClusterId) {
+    super(database, tableName, queryId, isGeneratedByPipe, originClusterId);
+    this.oldName = oldName;
+    this.newName = newName;
+  }
+
   @Override
   protected Flow executeFromState(
       final ConfigNodeProcedureEnv env, final RenameTableColumnState state)
@@ -129,7 +142,8 @@ public class RenameTableColumnProcedure
     final TSStatus status =
         env.getConfigManager()
             .getClusterSchemaManager()
-            .renameTableColumn(database, tableName, oldName, newName, isGeneratedByPipe);
+            .renameTableColumn(
+                database, tableName, oldName, newName, isGeneratedByPipe, originClusterId);
     if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       setFailure(new ProcedureException(new IoTDBException(status.getMessage(), status.getCode())));
     } else {
@@ -169,7 +183,8 @@ public class RenameTableColumnProcedure
     final TSStatus status =
         env.getConfigManager()
             .getClusterSchemaManager()
-            .renameTableColumn(database, tableName, newName, oldName, isGeneratedByPipe);
+            .renameTableColumn(
+                database, tableName, newName, oldName, isGeneratedByPipe, originClusterId);
     if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       setFailure(new ProcedureException(new IoTDBException(status.getMessage(), status.getCode())));
     }

@@ -30,7 +30,7 @@ import org.apache.iotdb.confignode.client.async.CnToDnAsyncRequestType;
 import org.apache.iotdb.confignode.client.async.CnToDnInternalServiceAsyncRequestManager;
 import org.apache.iotdb.confignode.client.async.handlers.DataNodeAsyncRequestContext;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeDeleteLogicalViewPlan;
-import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeEnrichedPlan;
+import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeEnrichedPlanV2;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureSuspendedException;
@@ -85,6 +85,16 @@ public class DeleteLogicalViewProcedure
   public DeleteLogicalViewProcedure(
       final String queryId, final PathPatternTree patternTree, final boolean isGeneratedByPipe) {
     super(isGeneratedByPipe);
+    this.queryId = queryId;
+    setPatternTree(patternTree);
+  }
+
+  public DeleteLogicalViewProcedure(
+      final String queryId,
+      final PathPatternTree patternTree,
+      final boolean isGeneratedByPipe,
+      final String originClusterId) {
+    super(isGeneratedByPipe, originClusterId);
     this.queryId = queryId;
     setPatternTree(patternTree);
   }
@@ -213,7 +223,8 @@ public class DeleteLogicalViewProcedure
             CnToDnAsyncRequestType.DELETE_VIEW,
             ((dataNodeLocation, consensusGroupIdList) ->
                 new TDeleteViewSchemaReq(consensusGroupIdList, patternTreeBytes)
-                    .setIsGeneratedByPipe(isGeneratedByPipe)));
+                    .setIsGeneratedByPipe(isGeneratedByPipe)
+                    .setOriginClusterId(originClusterId)));
     deleteTimeSeriesTask.execute();
   }
 
@@ -225,7 +236,8 @@ public class DeleteLogicalViewProcedure
               .getConsensusManager()
               .write(
                   isGeneratedByPipe
-                      ? new PipeEnrichedPlan(new PipeDeleteLogicalViewPlan(patternTreeBytes))
+                      ? new PipeEnrichedPlanV2(
+                          new PipeDeleteLogicalViewPlan(patternTreeBytes), originClusterId)
                       : new PipeDeleteLogicalViewPlan(patternTreeBytes));
     } catch (final ConsensusException e) {
       LOGGER.warn(CONSENSUS_WRITE_ERROR, e);
@@ -328,13 +340,19 @@ public class DeleteLogicalViewProcedure
         && this.getCurrentState().equals(that.getCurrentState())
         && this.getCycles() == that.getCycles()
         && isGeneratedByPipe == that.isGeneratedByPipe
-        && patternTree.equals(that.patternTree);
+        && patternTree.equals(that.patternTree)
+        && Objects.equals(originClusterId, that.originClusterId);
   }
 
   @Override
   public int hashCode() {
     return Objects.hash(
-        getProcId(), getCurrentState(), getCycles(), isGeneratedByPipe, patternTree);
+        getProcId(),
+        getCurrentState(),
+        getCycles(),
+        isGeneratedByPipe,
+        patternTree,
+        originClusterId);
   }
 
   private class DeleteLogicalViewRegionTaskExecutor<Q>

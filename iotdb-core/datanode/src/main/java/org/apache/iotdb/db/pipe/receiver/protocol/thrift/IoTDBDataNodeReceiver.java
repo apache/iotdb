@@ -944,7 +944,9 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
 
       return Coordinator.getInstance()
           .executeForTableModel(
-              shouldMarkAsPipeRequest.get() ? new PipeEnrichedStatement(statement) : statement,
+              shouldMarkAsPipeRequest.get()
+                  ? new PipeEnrichedStatement(statement, clusterIdFromHandshakeRequest)
+                  : statement,
               tableSqlParser,
               SESSION_MANAGER.getCurrSession(),
               SESSION_MANAGER.requestQueryId(),
@@ -968,7 +970,9 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
         // Retry after creating the database
         return Coordinator.getInstance()
             .executeForTableModel(
-                shouldMarkAsPipeRequest.get() ? new PipeEnrichedStatement(statement) : statement,
+                shouldMarkAsPipeRequest.get()
+                    ? new PipeEnrichedStatement(statement, clusterIdFromHandshakeRequest)
+                    : statement,
                 tableSqlParser,
                 SESSION_MANAGER.getCurrSession(),
                 SESSION_MANAGER.requestQueryId(),
@@ -1020,7 +1024,9 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
   private TSStatus executeStatementForTreeModel(final Statement statement) {
     return Coordinator.getInstance()
         .executeForTreeModel(
-            shouldMarkAsPipeRequest.get() ? new PipeEnrichedStatement(statement) : statement,
+            shouldMarkAsPipeRequest.get()
+                ? new PipeEnrichedStatement(statement, clusterIdFromHandshakeRequest)
+                : statement,
             SESSION_MANAGER.requestQueryId(),
             SESSION_MANAGER.getSessionInfo(SESSION_MANAGER.getCurrSession()),
             "",
@@ -1051,7 +1057,9 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
       final TSStatus result =
           Coordinator.getInstance()
               .executeForTableModel(
-                  shouldMarkAsPipeRequest.get() ? new PipeEnriched(statement) : statement,
+                  shouldMarkAsPipeRequest.get()
+                      ? new PipeEnriched(statement, clusterIdFromHandshakeRequest)
+                      : statement,
                   tableSqlParser,
                   SESSION_MANAGER.getCurrSession(),
                   SESSION_MANAGER.requestQueryId(),

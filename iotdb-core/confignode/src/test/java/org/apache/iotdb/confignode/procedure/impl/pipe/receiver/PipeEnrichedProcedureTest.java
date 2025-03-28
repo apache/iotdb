@@ -85,7 +85,9 @@ public class PipeEnrichedProcedureTest {
   public void deleteDatabaseTest() {
     PublicBAOS byteArrayOutputStream = new PublicBAOS();
     DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream);
-    DeleteDatabaseProcedure p1 = new DeleteDatabaseProcedure(new TDatabaseSchema("root.sg"), true);
+    DeleteDatabaseProcedure p1 =
+        new DeleteDatabaseProcedure(
+            new TDatabaseSchema("root.sg"), true, "a6670472-91a4-4194-9916-08236680b4d8");
 
     try {
       p1.serialize(outputStream);
@@ -109,7 +111,8 @@ public class PipeEnrichedProcedureTest {
     patternTree.appendPathPattern(new PartialPath("root.sg2.*.s1"));
     patternTree.constructTree();
     DeleteTimeSeriesProcedure deleteTimeSeriesProcedure =
-        new DeleteTimeSeriesProcedure(queryId, patternTree, true);
+        new DeleteTimeSeriesProcedure(
+            queryId, patternTree, true, "a6670472-91a4-4194-9916-08236680b4d8");
 
     ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
     DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream);
@@ -149,7 +152,8 @@ public class PipeEnrichedProcedureTest {
     templateSetInfo.put(new PartialPath("root.sg2.**"), Arrays.asList(t2, t1));
 
     DeactivateTemplateProcedure deactivateTemplateProcedure =
-        new DeactivateTemplateProcedure(queryId, templateSetInfo, true);
+        new DeactivateTemplateProcedure(
+            queryId, templateSetInfo, true, "a6670472-91a4-4194-9916-08236680b4d8");
 
     ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
     DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream);
@@ -176,7 +180,8 @@ public class PipeEnrichedProcedureTest {
         new CompressionType[] {CompressionType.UNCOMPRESSED, CompressionType.GZIP});
     PartialPath path = new PartialPath("root.sg");
     UnsetTemplateProcedure unsetTemplateProcedure =
-        new UnsetTemplateProcedure(queryId, template, path, true);
+        new UnsetTemplateProcedure(
+            queryId, template, path, true, "a6670472-91a4-4194-9916-08236680b4d8");
 
     ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
     DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream);
@@ -193,7 +198,8 @@ public class PipeEnrichedProcedureTest {
   @Test
   public void setTemplateTest() throws IOException {
     SetTemplateProcedure setTemplateProcedure =
-        new SetTemplateProcedure("1", "t1", "root.sg", true);
+        new SetTemplateProcedure(
+            "1", "t1", "root.sg", true, "a6670472-91a4-4194-9916-08236680b4d8");
 
     ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
     DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream);
@@ -219,7 +225,8 @@ public class PipeEnrichedProcedureTest {
                     new ConstantViewOperand(TSDataType.BOOLEAN, "true"));
               }
             },
-            true);
+            true,
+            "a6670472-91a4-4194-9916-08236680b4d8");
 
     ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
     DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream);
@@ -231,6 +238,8 @@ public class PipeEnrichedProcedureTest {
                 .create(ByteBuffer.wrap(byteArrayOutputStream.toByteArray()));
 
     Assert.assertEquals(alterLogicalViewProcedure.getQueryId(), deserializedProcedure.getQueryId());
+    Assert.assertEquals(
+        alterLogicalViewProcedure.getOriginClusterId(), deserializedProcedure.getOriginClusterId());
     // Currently skip the "equals" method since "equals" of ViewExpression is not implemented
   }
 
@@ -240,7 +249,7 @@ public class PipeEnrichedProcedureTest {
     tree.appendFullPath(new PartialPath("root.a.b"));
     tree.appendFullPath(new PartialPath("root.a.c"));
     DeleteLogicalViewProcedure deleteLogicalViewProcedure =
-        new DeleteLogicalViewProcedure("1", tree, true);
+        new DeleteLogicalViewProcedure("1", tree, true, "a6670472-91a4-4194-9916-08236680b4d8");
 
     ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
     DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream);
@@ -275,7 +284,11 @@ public class PipeEnrichedProcedureTest {
             FailureStrategy.OPTIMISTIC,
             "testMD5test");
     CreateTriggerProcedure p1 =
-        new CreateTriggerProcedure(triggerInformation, new Binary(new byte[] {1, 2, 3}), true);
+        new CreateTriggerProcedure(
+            triggerInformation,
+            new Binary(new byte[] {1, 2, 3}),
+            true,
+            "a6670472-91a4-4194-9916-08236680b4d8");
 
     try {
       p1.serialize(outputStream);
@@ -297,7 +310,8 @@ public class PipeEnrichedProcedureTest {
     PublicBAOS byteArrayOutputStream = new PublicBAOS();
     DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream);
 
-    DropTriggerProcedure p1 = new DropTriggerProcedure("test", true);
+    DropTriggerProcedure p1 =
+        new DropTriggerProcedure("test", true, "a6670472-91a4-4194-9916-08236680b4d8");
 
     try {
       p1.serialize(outputStream);
@@ -329,7 +343,8 @@ public class PipeEnrichedProcedureTest {
                 false,
                 Collections.emptyList()),
             Collections.emptyList(),
-            true);
+            true,
+            "a6670472-91a4-4194-9916-08236680b4d8");
 
     try {
       p1.serialize(outputStream);
@@ -352,7 +367,8 @@ public class PipeEnrichedProcedureTest {
     // test1
     PartialPath path = new PartialPath("root.test.sg1.group1.group1.**");
     SetTTLPlan setTTLPlan = new SetTTLPlan(Arrays.asList(path.getNodes()), 1928300234200L);
-    SetTTLProcedure proc = new SetTTLProcedure(setTTLPlan, true);
+    SetTTLProcedure proc =
+        new SetTTLProcedure(setTTLPlan, true, "a6670472-91a4-4194-9916-08236680b4d8");
 
     proc.serialize(outputStream);
     ByteBuffer buffer =
@@ -365,7 +381,7 @@ public class PipeEnrichedProcedureTest {
     // test2
     path = new PartialPath("root.**");
     setTTLPlan = new SetTTLPlan(Arrays.asList(path.getNodes()), -1);
-    proc = new SetTTLProcedure(setTTLPlan, true);
+    proc = new SetTTLProcedure(setTTLPlan, true, "a6670472-91a4-4194-9916-08236680b4d8");
 
     proc.serialize(outputStream);
     buffer = ByteBuffer.wrap(byteArrayOutputStream.getBuf(), 0, byteArrayOutputStream.size());
@@ -384,7 +400,7 @@ public class PipeEnrichedProcedureTest {
         new FieldColumnSchema(
             "Measurement", TSDataType.DOUBLE, TSEncoding.GORILLA, CompressionType.SNAPPY));
     final CreateTableProcedure createTableProcedure =
-        new CreateTableProcedure("database1", table, true);
+        new CreateTableProcedure("database1", table, true, "a6670472-91a4-4194-9916-08236680b4d8");
 
     final ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
     final DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream);
@@ -407,6 +423,8 @@ public class PipeEnrichedProcedureTest {
         deserializedProcedure.getTable().getColumnNum());
     Assert.assertEquals(
         createTableProcedure.getTable().getIdNums(), deserializedProcedure.getTable().getIdNums());
+    Assert.assertEquals(
+        createTableProcedure.getOriginClusterId(), deserializedProcedure.getOriginClusterId());
   }
 
   @Test
@@ -417,7 +435,8 @@ public class PipeEnrichedProcedureTest {
             "table1",
             "0",
             Collections.singletonList(new TagColumnSchema("Id", TSDataType.STRING)),
-            true);
+            true,
+            "a6670472-91a4-4194-9916-08236680b4d8");
 
     final ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
     final DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream);
@@ -435,6 +454,8 @@ public class PipeEnrichedProcedureTest {
     Assert.assertEquals(addTableColumnProcedure.getDatabase(), deserializedProcedure.getDatabase());
     Assert.assertEquals(
         addTableColumnProcedure.getTableName(), deserializedProcedure.getTableName());
+    Assert.assertEquals(
+        addTableColumnProcedure.getOriginClusterId(), deserializedProcedure.getOriginClusterId());
   }
 
   @Test
@@ -450,7 +471,8 @@ public class PipeEnrichedProcedureTest {
                 put("ttl", null);
               }
             },
-            true);
+            true,
+            "a6670472-91a4-4194-9916-08236680b4d8");
 
     final ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
     final DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream);
@@ -471,7 +493,14 @@ public class PipeEnrichedProcedureTest {
   @Test
   public void renameTableColumnTest() throws IOException {
     final RenameTableColumnProcedure renameTableColumnProcedure =
-        new RenameTableColumnProcedure("database1", "table1", "0", "oldName", "newName", true);
+        new RenameTableColumnProcedure(
+            "database1",
+            "table1",
+            "0",
+            "oldName",
+            "newName",
+            true,
+            "a6670472-91a4-4194-9916-08236680b4d8");
 
     final ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
     final DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream);
@@ -492,7 +521,8 @@ public class PipeEnrichedProcedureTest {
   @Test
   public void dropTableTest() throws IOException {
     final DropTableProcedure dropTableProcedure =
-        new DropTableProcedure("database1", "table1", "0", true);
+        new DropTableProcedure(
+            "database1", "table1", "0", true, "a6670472-91a4-4194-9916-08236680b4d8");
 
     final ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
     final DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream);
@@ -512,7 +542,8 @@ public class PipeEnrichedProcedureTest {
   @Test
   public void dropTableColumnTest() throws IOException {
     final DropTableColumnProcedure dropTableColumnProcedure =
-        new DropTableColumnProcedure("database1", "table1", "0", "columnName", true);
+        new DropTableColumnProcedure(
+            "database1", "table1", "0", "columnName", true, "a6670472-91a4-4194-9916-08236680b4d8");
 
     final ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
     final DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream);
@@ -540,7 +571,8 @@ public class PipeEnrichedProcedureTest {
             new byte[] {0, 1, 2},
             new byte[] {0, 1, 2},
             new byte[] {0, 1, 2},
-            true);
+            true,
+            "a6670472-91a4-4194-9916-08236680b4d8");
 
     final ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
     final DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream);

@@ -48,6 +48,7 @@ public class LoadTsFile extends Statement {
   private boolean verify = true;
 
   private boolean isGeneratedByPipe = false;
+  private String originClusterId;
 
   private final Map<String, String> loadAttributes;
 
@@ -144,6 +145,14 @@ public class LoadTsFile extends Statement {
 
   public boolean isGeneratedByPipe() {
     return isGeneratedByPipe;
+  }
+
+  public void setOriginClusterId(final String originClusterId) {
+    this.originClusterId = originClusterId;
+  }
+
+  public String getOriginClusterId() {
+    return originClusterId;
   }
 
   public List<Boolean> getIsTableModel() {

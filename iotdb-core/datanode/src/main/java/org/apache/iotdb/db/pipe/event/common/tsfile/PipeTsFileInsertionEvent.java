@@ -86,6 +86,8 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
   private final boolean isGeneratedByPipeConsensus;
   private final boolean isGeneratedByHistoricalExtractor;
 
+  private final String originClusterId;
+
   private final AtomicBoolean isClosed;
   private final AtomicReference<TsFileInsertionEventParser> eventParser;
 
@@ -100,7 +102,8 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
       final String databaseNameFromDataRegion,
       final TsFileResource resource,
       final boolean isLoaded,
-      final boolean isGeneratedByHistoricalExtractor) {
+      final boolean isGeneratedByHistoricalExtractor,
+      final String originClusterId) {
     // The modFile must be copied before the event is assigned to the listening pipes
     this(
         isTableModelEvent,
@@ -109,6 +112,7 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
         true,
         isLoaded,
         isGeneratedByHistoricalExtractor,
+        originClusterId,
         null,
         0,
         null,
@@ -127,6 +131,42 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
       final boolean isWithMod,
       final boolean isLoaded,
       final boolean isGeneratedByHistoricalExtractor,
+      final String pipeName,
+      final long creationTime,
+      final PipeTaskMeta pipeTaskMeta,
+      final TreePattern treePattern,
+      final TablePattern tablePattern,
+      final String userName,
+      final boolean skipIfNoPrivileges,
+      final long startTime,
+      final long endTime) {
+    this(
+        isTableModelEvent,
+        databaseNameFromDataRegion,
+        resource,
+        true,
+        isLoaded,
+        isGeneratedByHistoricalExtractor,
+        null,
+        pipeName,
+        creationTime,
+        pipeTaskMeta,
+        treePattern,
+        tablePattern,
+        userName,
+        skipIfNoPrivileges,
+        startTime,
+        endTime);
+  }
+
+  public PipeTsFileInsertionEvent(
+      final Boolean isTableModelEvent,
+      final String databaseNameFromDataRegion,
+      final TsFileResource resource,
+      final boolean isWithMod,
+      final boolean isLoaded,
+      final boolean isGeneratedByHistoricalExtractor,
+      final String originClusterId,
       final String pipeName,
       final long creationTime,
       final PipeTaskMeta pipeTaskMeta,
@@ -162,6 +202,8 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
     this.isGeneratedByPipe = resource.isGeneratedByPipe();
     this.isGeneratedByPipeConsensus = resource.isGeneratedByPipeConsensus();
     this.isGeneratedByHistoricalExtractor = isGeneratedByHistoricalExtractor;
+
+    this.originClusterId = originClusterId;
 
     isClosed = new AtomicBoolean(resource.isClosed());
     // Register close listener if TsFile is not closed
@@ -412,6 +454,7 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
         isWithMod,
         isLoaded,
         isGeneratedByHistoricalExtractor,
+        null,
         pipeName,
         creationTime,
         pipeTaskMeta,
@@ -426,6 +469,11 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
   @Override
   public boolean isGeneratedByPipe() {
     return isGeneratedByPipe;
+  }
+
+  @Override
+  public String getOriginClusterId() {
+    return originClusterId;
   }
 
   @Override
@@ -726,8 +774,14 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
   @Override
   public String toString() {
     return String.format(
-            "PipeTsFileInsertionEvent{resource=%s, tsFile=%s, isLoaded=%s, isGeneratedByPipe=%s, isClosed=%s, eventParser=%s}",
-            resource, tsFile, isLoaded, isGeneratedByPipe, isClosed.get(), eventParser)
+            "PipeTsFileInsertionEvent{resource=%s, tsFile=%s, isLoaded=%s, isGeneratedByPipe=%s, isClosed=%s, eventParser=%s, originClusterId=%s}",
+            resource,
+            tsFile,
+            isLoaded,
+            isGeneratedByPipe,
+            isClosed.get(),
+            eventParser,
+            originClusterId)
         + " - "
         + super.toString();
   }
@@ -735,8 +789,8 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
   @Override
   public String coreReportMessage() {
     return String.format(
-            "PipeTsFileInsertionEvent{resource=%s, tsFile=%s, isLoaded=%s, isGeneratedByPipe=%s, isClosed=%s}",
-            resource, tsFile, isLoaded, isGeneratedByPipe, isClosed.get())
+            "PipeTsFileInsertionEvent{resource=%s, tsFile=%s, isLoaded=%s, isGeneratedByPipe=%s, isClosed=%s, originClusterId=%s}",
+            resource, tsFile, isLoaded, isGeneratedByPipe, isClosed.get(), originClusterId)
         + " - "
         + super.coreReportMessage();
   }

@@ -1455,6 +1455,7 @@ public class DataRegion implements IDataRegionForQuery {
               if (insertRowNode.isGeneratedByRemoteConsensusLeader()) {
                 v.markAsGeneratedByRemoteConsensusLeader();
               }
+              v.setOriginClusterId(insertRowNode.getOriginClusterId());
             }
             if (v.isAligned() != insertRowNode.isAligned()) {
               v.setMixingAlignment(true);
@@ -2992,7 +2993,8 @@ public class DataRegion implements IDataRegionForQuery {
   public void loadNewTsFile(
       final TsFileResource newTsFileResource,
       final boolean deleteOriginFile,
-      final boolean isGeneratedByPipe)
+      final boolean isGeneratedByPipe,
+      final String originClusterId)
       throws LoadFileException {
     final File tsfileToBeInserted = newTsFileResource.getTsFile();
     final long newFilePartitionId = newTsFileResource.getTimePartitionWithCheck();
@@ -3025,7 +3027,8 @@ public class DataRegion implements IDataRegionForQuery {
           newTsFileResource,
           newFilePartitionId,
           deleteOriginFile,
-          isGeneratedByPipe);
+          isGeneratedByPipe,
+          originClusterId);
 
       FileMetrics.getInstance()
           .addTsFile(
@@ -3093,7 +3096,8 @@ public class DataRegion implements IDataRegionForQuery {
       final TsFileResource tsFileResource,
       final long filePartitionId,
       final boolean deleteOriginFile,
-      boolean isGeneratedByPipe)
+      boolean isGeneratedByPipe,
+      final String originClusterId)
       throws LoadFileException, DiskSpaceInsufficientException {
     final int targetTierLevel = 0;
     final File targetFile =
@@ -3192,7 +3196,8 @@ public class DataRegion implements IDataRegionForQuery {
 
     // Listen before the tsFile is added into tsFile manager to avoid it being compacted
     PipeInsertionDataNodeListener.getInstance()
-        .listenToTsFile(dataRegionId, databaseName, tsFileResource, true, isGeneratedByPipe);
+        .listenToTsFile(
+            dataRegionId, databaseName, tsFileResource, true, isGeneratedByPipe, originClusterId);
 
     tsFileManager.add(tsFileResource, false);
 
@@ -3471,6 +3476,7 @@ public class DataRegion implements IDataRegionForQuery {
                 if (insertRowNode.isGeneratedByRemoteConsensusLeader()) {
                   v.markAsGeneratedByRemoteConsensusLeader();
                 }
+                v.setOriginClusterId(insertRowNode.getOriginClusterId());
               }
               v.addOneInsertRowNode(insertRowNode, finalI);
               v.updateProgressIndex(insertRowNode.getProgressIndex());

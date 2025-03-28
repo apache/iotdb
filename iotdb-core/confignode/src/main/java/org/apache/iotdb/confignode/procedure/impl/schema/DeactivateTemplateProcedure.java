@@ -32,7 +32,7 @@ import org.apache.iotdb.confignode.client.async.CnToDnAsyncRequestType;
 import org.apache.iotdb.confignode.client.async.CnToDnInternalServiceAsyncRequestManager;
 import org.apache.iotdb.confignode.client.async.handlers.DataNodeAsyncRequestContext;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeDeactivateTemplatePlan;
-import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeEnrichedPlan;
+import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeEnrichedPlanV2;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureSuspendedException;
@@ -91,6 +91,16 @@ public class DeactivateTemplateProcedure
   public DeactivateTemplateProcedure(
       String queryId, Map<PartialPath, List<Template>> templateSetInfo, boolean isGeneratedByPipe) {
     super(isGeneratedByPipe);
+    this.queryId = queryId;
+    setTemplateSetInfo(templateSetInfo);
+  }
+
+  public DeactivateTemplateProcedure(
+      String queryId,
+      Map<PartialPath, List<Template>> templateSetInfo,
+      boolean isGeneratedByPipe,
+      String originClusterId) {
+    super(isGeneratedByPipe, originClusterId);
     this.queryId = queryId;
     setTemplateSetInfo(templateSetInfo);
   }
@@ -251,7 +261,8 @@ public class DeactivateTemplateProcedure
             CnToDnAsyncRequestType.DEACTIVATE_TEMPLATE,
             ((dataNodeLocation, consensusGroupIdList) ->
                 new TDeactivateTemplateReq(consensusGroupIdList, dataNodeRequest)
-                    .setIsGeneratedByPipe(isGeneratedByPipe)));
+                    .setIsGeneratedByPipe(isGeneratedByPipe)
+                    .setOriginClusterId(originClusterId)));
     deleteTimeSeriesTask.execute();
   }
 
@@ -263,7 +274,8 @@ public class DeactivateTemplateProcedure
               .getConsensusManager()
               .write(
                   isGeneratedByPipe
-                      ? new PipeEnrichedPlan(new PipeDeactivateTemplatePlan(templateSetInfo))
+                      ? new PipeEnrichedPlanV2(
+                          new PipeDeactivateTemplatePlan(templateSetInfo), originClusterId)
                       : new PipeDeactivateTemplatePlan(templateSetInfo));
     } catch (ConsensusException e) {
       LOGGER.warn(CONSENSUS_WRITE_ERROR, e);
@@ -421,13 +433,20 @@ public class DeactivateTemplateProcedure
         && Objects.equals(getCycles(), that.getCycles())
         && Objects.equals(isGeneratedByPipe, that.isGeneratedByPipe)
         && Objects.equals(queryId, that.queryId)
-        && Objects.equals(templateSetInfo, that.templateSetInfo);
+        && Objects.equals(templateSetInfo, that.templateSetInfo)
+        && Objects.equals(originClusterId, that.originClusterId);
   }
 
   @Override
   public int hashCode() {
     return Objects.hash(
-        getProcId(), getCurrentState(), getCycles(), isGeneratedByPipe, queryId, templateSetInfo);
+        getProcId(),
+        getCurrentState(),
+        getCycles(),
+        isGeneratedByPipe,
+        queryId,
+        templateSetInfo,
+        originClusterId);
   }
 
   private class DeactivateTemplateRegionTaskExecutor<Q>

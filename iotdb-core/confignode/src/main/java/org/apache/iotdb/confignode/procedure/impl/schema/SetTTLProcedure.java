@@ -29,7 +29,7 @@ import org.apache.iotdb.confignode.client.async.CnToDnInternalServiceAsyncReques
 import org.apache.iotdb.confignode.client.async.handlers.DataNodeAsyncRequestContext;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.SetTTLPlan;
-import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeEnrichedPlan;
+import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeEnrichedPlanV2;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureSuspendedException;
@@ -65,6 +65,12 @@ public class SetTTLProcedure extends StateMachineProcedure<ConfigNodeProcedureEn
     this.plan = plan;
   }
 
+  public SetTTLProcedure(
+      SetTTLPlan plan, final boolean isGeneratedByPipe, final String originClusterId) {
+    super(isGeneratedByPipe, originClusterId);
+    this.plan = plan;
+  }
+
   @Override
   protected Flow executeFromState(ConfigNodeProcedureEnv env, SetTTLState state)
       throws ProcedureSuspendedException, ProcedureYieldException, InterruptedException {
@@ -91,7 +97,10 @@ public class SetTTLProcedure extends StateMachineProcedure<ConfigNodeProcedureEn
       res =
           env.getConfigManager()
               .getConsensusManager()
-              .write(isGeneratedByPipe ? new PipeEnrichedPlan(this.plan) : this.plan);
+              .write(
+                  isGeneratedByPipe
+                      ? new PipeEnrichedPlanV2(this.plan, originClusterId)
+                      : this.plan);
     } catch (ConsensusException e) {
       LOGGER.warn("Failed in the write API executing the consensus layer due to: ", e);
       res = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
@@ -179,11 +188,12 @@ public class SetTTLProcedure extends StateMachineProcedure<ConfigNodeProcedureEn
       return false;
     }
     return this.plan.equals(((SetTTLProcedure) o).plan)
-        && this.isGeneratedByPipe == (((SetTTLProcedure) o).isGeneratedByPipe);
+        && this.isGeneratedByPipe == (((SetTTLProcedure) o).isGeneratedByPipe)
+        && Objects.equals(this.originClusterId, ((SetTTLProcedure) o).originClusterId);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(plan, isGeneratedByPipe);
+    return Objects.hash(plan, isGeneratedByPipe, originClusterId);
   }
 }

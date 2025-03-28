@@ -40,6 +40,8 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.write.Int
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.write.view.CreateLogicalViewNode;
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
 
+import org.apache.tsfile.utils.ReadWriteIOUtils;
+
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -81,6 +83,13 @@ public class PipeEnrichedWritePlanNode extends WritePlanNode {
     this.writePlanNode = schemaWriteNode;
   }
 
+  public PipeEnrichedWritePlanNode(
+      final WritePlanNode schemaWriteNode, final String originClusterId) {
+    super(schemaWriteNode.getPlanNodeId());
+    this.writePlanNode = schemaWriteNode;
+    this.originClusterId = originClusterId;
+  }
+
   public WritePlanNode getWritePlanNode() {
     return writePlanNode;
   }
@@ -93,6 +102,11 @@ public class PipeEnrichedWritePlanNode extends WritePlanNode {
   @Override
   public void markAsGeneratedByPipe() {
     writePlanNode.markAsGeneratedByPipe();
+  }
+
+  @Override
+  public void setOriginClusterId(final String originClusterId) {
+    writePlanNode.setOriginClusterId(originClusterId);
   }
 
   @Override
@@ -156,16 +170,20 @@ public class PipeEnrichedWritePlanNode extends WritePlanNode {
   protected void serializeAttributes(final ByteBuffer byteBuffer) {
     PlanNodeType.PIPE_ENRICHED_WRITE.serialize(byteBuffer);
     writePlanNode.serialize(byteBuffer);
+    ReadWriteIOUtils.write(originClusterId, byteBuffer);
   }
 
   @Override
   protected void serializeAttributes(final DataOutputStream stream) throws IOException {
     PlanNodeType.PIPE_ENRICHED_WRITE.serialize(stream);
     writePlanNode.serialize(stream);
+    ReadWriteIOUtils.write(originClusterId, stream);
   }
 
   public static PipeEnrichedWritePlanNode deserialize(final ByteBuffer buffer) {
-    return new PipeEnrichedWritePlanNode((WritePlanNode) PlanNodeType.deserialize(buffer));
+    return new PipeEnrichedWritePlanNode(
+        (WritePlanNode) PlanNodeType.deserialize(buffer),
+        buffer.hasRemaining() ? ReadWriteIOUtils.readString(buffer) : null);
   }
 
   @Override
@@ -191,7 +209,7 @@ public class PipeEnrichedWritePlanNode extends WritePlanNode {
             plan ->
                 plan instanceof PipeEnrichedWritePlanNode
                     ? plan
-                    : new PipeEnrichedWritePlanNode(plan))
+                    : new PipeEnrichedWritePlanNode(plan, originClusterId))
         .collect(Collectors.toList());
   }
 }

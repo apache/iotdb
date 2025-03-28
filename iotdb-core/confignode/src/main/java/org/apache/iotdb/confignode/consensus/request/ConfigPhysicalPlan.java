@@ -67,7 +67,8 @@ import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeDeac
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeDeleteDevicesPlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeDeleteLogicalViewPlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeDeleteTimeSeriesPlan;
-import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeEnrichedPlan;
+import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeEnrichedPlanV1;
+import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeEnrichedPlanV2;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeUnsetSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.plugin.CreatePipePluginPlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.plugin.DropPipePluginPlan;
@@ -457,8 +458,11 @@ public abstract class ConfigPhysicalPlan implements IConsensusRequest {
         case PipeHandleMetaChange:
           plan = new PipeHandleMetaChangePlan();
           break;
-        case PipeEnriched:
-          plan = new PipeEnrichedPlan();
+        case PipeEnrichedV1:
+          plan = new PipeEnrichedPlanV1();
+          break;
+        case PipeEnrichedV2:
+          plan = new PipeEnrichedPlanV2();
           break;
         case CreateTopic:
           plan = new CreateTopicPlan();

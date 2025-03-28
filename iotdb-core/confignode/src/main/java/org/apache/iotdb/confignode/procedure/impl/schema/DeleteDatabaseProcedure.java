@@ -75,6 +75,14 @@ public class DeleteDatabaseProcedure
     this.deleteDatabaseSchema = deleteDatabaseSchema;
   }
 
+  public DeleteDatabaseProcedure(
+      final TDatabaseSchema deleteDatabaseSchema,
+      final boolean isGeneratedByPipe,
+      final String originClusterId) {
+    super(isGeneratedByPipe, originClusterId);
+    this.deleteDatabaseSchema = deleteDatabaseSchema;
+  }
+
   public TDatabaseSchema getDeleteDatabaseSchema() {
     return deleteDatabaseSchema;
   }
@@ -205,7 +213,8 @@ public class DeleteDatabaseProcedure
 
           // Delete DatabasePartitionTable
           final TSStatus deleteConfigResult =
-              env.deleteDatabaseConfig(deleteDatabaseSchema.getName(), isGeneratedByPipe);
+              env.deleteDatabaseConfig(
+                  deleteDatabaseSchema.getName(), isGeneratedByPipe, originClusterId);
 
           if (deleteConfigResult.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
             LOG.info(
@@ -314,7 +323,8 @@ public class DeleteDatabaseProcedure
           && thatProc.getCurrentState().equals(this.getCurrentState())
           && thatProc.getCycles() == this.getCycles()
           && thatProc.isGeneratedByPipe == this.isGeneratedByPipe
-          && thatProc.deleteDatabaseSchema.equals(this.getDeleteDatabaseSchema());
+          && thatProc.deleteDatabaseSchema.equals(this.getDeleteDatabaseSchema())
+          && Objects.equals(thatProc.originClusterId, this.originClusterId);
     }
     return false;
   }
@@ -322,6 +332,11 @@ public class DeleteDatabaseProcedure
   @Override
   public int hashCode() {
     return Objects.hash(
-        getProcId(), getCurrentState(), getCycles(), isGeneratedByPipe, deleteDatabaseSchema);
+        getProcId(),
+        getCurrentState(),
+        getCycles(),
+        isGeneratedByPipe,
+        deleteDatabaseSchema,
+        originClusterId);
   }
 }

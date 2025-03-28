@@ -35,6 +35,7 @@ import org.apache.iotdb.db.trigger.executor.TriggerFireVisitor;
 
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.IDeviceID;
+import org.apache.tsfile.utils.ReadWriteIOUtils;
 import org.apache.tsfile.write.schema.MeasurementSchema;
 
 import java.io.DataOutputStream;
@@ -63,6 +64,12 @@ public class PipeEnrichedInsertNode extends InsertNode {
     this.insertNode = insertNode;
   }
 
+  public PipeEnrichedInsertNode(final InsertNode insertNode, final String originClusterId) {
+    super(insertNode.getPlanNodeId());
+    this.insertNode = insertNode;
+    this.originClusterId = originClusterId;
+  }
+
   public InsertNode getInsertNode() {
     return insertNode;
   }
@@ -75,6 +82,11 @@ public class PipeEnrichedInsertNode extends InsertNode {
   @Override
   public void markAsGeneratedByPipe() {
     insertNode.markAsGeneratedByPipe();
+  }
+
+  @Override
+  public void setOriginClusterId(final String originClusterId) {
+    insertNode.setOriginClusterId(originClusterId);
   }
 
   @Override
@@ -140,7 +152,7 @@ public class PipeEnrichedInsertNode extends InsertNode {
             plan ->
                 plan instanceof PipeEnrichedInsertNode
                     ? plan
-                    : new PipeEnrichedInsertNode((InsertNode) plan))
+                    : new PipeEnrichedInsertNode((InsertNode) plan, originClusterId))
         .collect(Collectors.toList());
   }
 
@@ -233,16 +245,20 @@ public class PipeEnrichedInsertNode extends InsertNode {
   protected void serializeAttributes(final ByteBuffer byteBuffer) {
     PlanNodeType.PIPE_ENRICHED_INSERT_DATA.serialize(byteBuffer);
     insertNode.serialize(byteBuffer);
+    ReadWriteIOUtils.write(originClusterId, byteBuffer);
   }
 
   @Override
   protected void serializeAttributes(final DataOutputStream stream) throws IOException {
     PlanNodeType.PIPE_ENRICHED_INSERT_DATA.serialize(stream);
     insertNode.serialize(stream);
+    ReadWriteIOUtils.write(originClusterId, stream);
   }
 
   public static PipeEnrichedInsertNode deserialize(final ByteBuffer buffer) {
-    return new PipeEnrichedInsertNode((InsertNode) PlanNodeType.deserialize(buffer));
+    return new PipeEnrichedInsertNode(
+        (InsertNode) PlanNodeType.deserialize(buffer),
+        buffer.hasRemaining() ? ReadWriteIOUtils.readString(buffer) : null);
   }
 
   @Override

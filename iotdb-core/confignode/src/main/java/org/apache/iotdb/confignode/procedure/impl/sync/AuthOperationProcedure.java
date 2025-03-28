@@ -29,7 +29,7 @@ import org.apache.iotdb.confignode.client.sync.CnToDnSyncRequestType;
 import org.apache.iotdb.confignode.client.sync.SyncDataNodeClientPool;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
 import org.apache.iotdb.confignode.consensus.request.write.auth.AuthorPlan;
-import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeEnrichedPlan;
+import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeEnrichedPlanV2;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
 import org.apache.iotdb.confignode.procedure.impl.node.AbstractNodeProcedure;
@@ -80,6 +80,19 @@ public class AuthOperationProcedure extends AbstractNodeProcedure<AuthOperationP
   public AuthOperationProcedure(
       AuthorPlan plan, List<TDataNodeConfiguration> alldns, boolean isGeneratedByPipe) {
     super(isGeneratedByPipe);
+    this.user = plan.getUserName();
+    this.role = plan.getRoleName();
+    this.plan = plan;
+    this.datanodes = alldns;
+    this.timeoutMS = commonConfig.getDatanodeTokenTimeoutMS();
+  }
+
+  public AuthOperationProcedure(
+      AuthorPlan plan,
+      List<TDataNodeConfiguration> alldns,
+      boolean isGeneratedByPipe,
+      String originClusterId) {
+    super(isGeneratedByPipe, originClusterId);
     this.user = plan.getUserName();
     this.role = plan.getRoleName();
     this.plan = plan;
@@ -147,7 +160,7 @@ public class AuthOperationProcedure extends AbstractNodeProcedure<AuthOperationP
       res =
           env.getConfigManager()
               .getConsensusManager()
-              .write(isGeneratedByPipe ? new PipeEnrichedPlan(plan) : plan);
+              .write(isGeneratedByPipe ? new PipeEnrichedPlanV2(plan, originClusterId) : plan);
     } catch (ConsensusException e) {
       LOGGER.warn(CONSENSUS_WRITE_ERROR, e);
       res = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
@@ -254,11 +267,13 @@ public class AuthOperationProcedure extends AbstractNodeProcedure<AuthOperationP
         && Objects.equals(plan, that.plan)
         && Objects.equals(dataNodesToInvalid, that.dataNodesToInvalid)
         && Objects.equals(datanodes, that.datanodes)
-        && Objects.equals(isGeneratedByPipe, that.isGeneratedByPipe);
+        && Objects.equals(isGeneratedByPipe, that.isGeneratedByPipe)
+        && Objects.equals(originClusterId, that.originClusterId);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(plan, timeoutMS, dataNodesToInvalid, datanodes, isGeneratedByPipe);
+    return Objects.hash(
+        plan, timeoutMS, dataNodesToInvalid, datanodes, isGeneratedByPipe, originClusterId);
   }
 }

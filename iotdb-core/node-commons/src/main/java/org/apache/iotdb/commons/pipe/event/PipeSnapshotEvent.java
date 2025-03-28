@@ -72,6 +72,11 @@ public abstract class PipeSnapshotEvent extends EnrichedEvent implements Seriali
   }
 
   @Override
+  public String getOriginClusterId() {
+    return null;
+  }
+
+  @Override
   public boolean mayEventTimeOverlappedWithTimeRange() {
     return true;
   }

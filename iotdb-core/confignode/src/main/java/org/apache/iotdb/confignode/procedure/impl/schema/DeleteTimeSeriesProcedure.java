@@ -30,7 +30,7 @@ import org.apache.iotdb.confignode.client.async.CnToDnAsyncRequestType;
 import org.apache.iotdb.confignode.client.async.CnToDnInternalServiceAsyncRequestManager;
 import org.apache.iotdb.confignode.client.async.handlers.DataNodeAsyncRequestContext;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeDeleteTimeSeriesPlan;
-import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeEnrichedPlan;
+import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeEnrichedPlanV2;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureSuspendedException;
@@ -90,6 +90,16 @@ public class DeleteTimeSeriesProcedure
   public DeleteTimeSeriesProcedure(
       final String queryId, final PathPatternTree patternTree, final boolean isGeneratedByPipe) {
     super(isGeneratedByPipe);
+    this.queryId = queryId;
+    setPatternTree(patternTree);
+  }
+
+  public DeleteTimeSeriesProcedure(
+      final String queryId,
+      final PathPatternTree patternTree,
+      final boolean isGeneratedByPipe,
+      final String originClusterId) {
+    super(isGeneratedByPipe, originClusterId);
     this.queryId = queryId;
     setPatternTree(patternTree);
   }
@@ -253,7 +263,8 @@ public class DeleteTimeSeriesProcedure
                 new TDeleteDataForDeleteSchemaReq(
                         new ArrayList<>(consensusGroupIdList),
                         preparePatternTreeBytesData(patternTree))
-                    .setIsGeneratedByPipe(isGeneratedByPipe)));
+                    .setIsGeneratedByPipe(isGeneratedByPipe)
+                    .setOriginClusterId(originClusterId)));
     deleteDataTask.execute();
   }
 
@@ -266,7 +277,8 @@ public class DeleteTimeSeriesProcedure
             CnToDnAsyncRequestType.DELETE_TIMESERIES,
             ((dataNodeLocation, consensusGroupIdList) ->
                 new TDeleteTimeSeriesReq(consensusGroupIdList, patternTreeBytes)
-                    .setIsGeneratedByPipe(isGeneratedByPipe)));
+                    .setIsGeneratedByPipe(isGeneratedByPipe)
+                    .setOriginCluster(originClusterId)));
     deleteTimeSeriesTask.execute();
   }
 
@@ -278,7 +290,8 @@ public class DeleteTimeSeriesProcedure
               .getConsensusManager()
               .write(
                   isGeneratedByPipe
-                      ? new PipeEnrichedPlan(new PipeDeleteTimeSeriesPlan(patternTreeBytes))
+                      ? new PipeEnrichedPlanV2(
+                          new PipeDeleteTimeSeriesPlan(patternTreeBytes), originClusterId)
                       : new PipeDeleteTimeSeriesPlan(patternTreeBytes));
     } catch (final ConsensusException e) {
       LOGGER.warn(CONSENSUS_WRITE_ERROR, e);
@@ -385,13 +398,19 @@ public class DeleteTimeSeriesProcedure
         && this.getCurrentState().equals(that.getCurrentState())
         && this.getCycles() == getCycles()
         && this.isGeneratedByPipe == that.isGeneratedByPipe
-        && this.patternTree.equals(that.patternTree);
+        && this.patternTree.equals(that.patternTree)
+        && Objects.equals(this.originClusterId, that.originClusterId);
   }
 
   @Override
   public int hashCode() {
     return Objects.hash(
-        getProcId(), getCurrentState(), getCycles(), isGeneratedByPipe, patternTree);
+        getProcId(),
+        getCurrentState(),
+        getCycles(),
+        isGeneratedByPipe,
+        patternTree,
+        originClusterId);
   }
 
   private class DeleteTimeSeriesRegionTaskExecutor<Q>

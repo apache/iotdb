@@ -623,6 +623,7 @@ public class StatementAnalyzer {
       // in the analyzer to execute the tsfile-tablet conversion in some cases.
       if (node.getInnerStatement() instanceof LoadTsFile) {
         ((LoadTsFile) node.getInnerStatement()).markIsGeneratedByPipe();
+        ((LoadTsFile) node.getInnerStatement()).setOriginClusterId(node.getOriginClusterId());
       }
 
       final Scope ret = node.getInnerStatement().accept(this, scope);
@@ -636,7 +637,8 @@ public class StatementAnalyzer {
       queryContext.setQueryType(QueryType.WRITE);
 
       try (final LoadTsFileAnalyzer loadTsFileAnalyzer =
-          new LoadTsFileAnalyzer(node, node.isGeneratedByPipe(), queryContext)) {
+          new LoadTsFileAnalyzer(
+              node, node.isGeneratedByPipe(), node.getOriginClusterId(), queryContext)) {
         loadTsFileAnalyzer.analyzeFileByFile(analysis);
       } catch (final Exception e) {
         final String exceptionMessage =

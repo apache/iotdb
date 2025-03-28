@@ -86,7 +86,7 @@ public class SchemaRegionListeningQueueTest {
         new PipeEnrichedWritePlanNode(
             new ActivateTemplateNode(
                 new PlanNodeId("ActivateTemplateNode"), new PartialPath("root.sg.d1.s1"), 2, 1));
-
+    node2.setOriginClusterId("a6670472-91a4-4194-9916-08236680b4d8");
     PipeDataNodeAgent.runtime().schemaListener(new SchemaRegionId(0)).tryListenToNode(node1);
     PipeDataNodeAgent.runtime().schemaListener(new SchemaRegionId(0)).tryListenToNode(node2);
 
@@ -108,6 +108,9 @@ public class SchemaRegionListeningQueueTest {
     Assert.assertEquals(
         node2.getWritePlanNode(), ((PipeSchemaRegionWritePlanEvent) event2).getPlanNode());
     Assert.assertTrue(((PipeSchemaRegionWritePlanEvent) event2).isGeneratedByPipe());
+    Assert.assertEquals(
+        "a6670472-91a4-4194-9916-08236680b4d8",
+        ((PipeSchemaRegionWritePlanEvent) event2).getOriginClusterId());
 
     Assert.assertNull(itr.next(0));
   }

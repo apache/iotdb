@@ -22,7 +22,7 @@ package org.apache.iotdb.confignode.procedure.impl.trigger;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.trigger.TriggerInformation;
 import org.apache.iotdb.commons.trigger.exception.TriggerManagementException;
-import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeEnrichedPlan;
+import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeEnrichedPlanV2;
 import org.apache.iotdb.confignode.consensus.request.write.trigger.AddTriggerInTablePlan;
 import org.apache.iotdb.confignode.consensus.request.write.trigger.DeleteTriggerInTablePlan;
 import org.apache.iotdb.confignode.consensus.request.write.trigger.UpdateTriggerStateInTablePlan;
@@ -66,6 +66,17 @@ public class CreateTriggerProcedure extends AbstractNodeProcedure<CreateTriggerS
     super(isGeneratedByPipe);
     this.triggerInformation = triggerInformation;
     this.jarFile = jarFile;
+  }
+
+  public CreateTriggerProcedure(
+      final TriggerInformation triggerInformation,
+      final Binary jarFile,
+      final boolean isGeneratedByPipe,
+      final String originClusterId) {
+    super(isGeneratedByPipe);
+    this.triggerInformation = triggerInformation;
+    this.jarFile = jarFile;
+    this.originClusterId = originClusterId;
   }
 
   @Override
@@ -152,9 +163,10 @@ public class CreateTriggerProcedure extends AbstractNodeProcedure<CreateTriggerS
               .getConsensusManager()
               .write(
                   isGeneratedByPipe
-                      ? new PipeEnrichedPlan(
+                      ? new PipeEnrichedPlanV2(
                           new UpdateTriggerStateInTablePlan(
-                              triggerInformation.getTriggerName(), TTriggerState.ACTIVE))
+                              triggerInformation.getTriggerName(), TTriggerState.ACTIVE),
+                          originClusterId)
                       : new UpdateTriggerStateInTablePlan(
                           triggerInformation.getTriggerName(), TTriggerState.ACTIVE));
           setNextState(CreateTriggerState.CONFIG_NODE_ACTIVE);
@@ -207,8 +219,9 @@ public class CreateTriggerProcedure extends AbstractNodeProcedure<CreateTriggerS
               .getConsensusManager()
               .write(
                   isGeneratedByPipe
-                      ? new PipeEnrichedPlan(
-                          new DeleteTriggerInTablePlan(triggerInformation.getTriggerName()))
+                      ? new PipeEnrichedPlanV2(
+                          new DeleteTriggerInTablePlan(triggerInformation.getTriggerName()),
+                          originClusterId)
                       : new DeleteTriggerInTablePlan(triggerInformation.getTriggerName()));
         } catch (ConsensusException e) {
           LOG.warn("Failed in the write API executing the consensus layer due to: ", e);
@@ -310,7 +323,8 @@ public class CreateTriggerProcedure extends AbstractNodeProcedure<CreateTriggerS
           && thatProc.getCurrentState().equals(this.getCurrentState())
           && thatProc.getCycles() == this.getCycles()
           && thatProc.isGeneratedByPipe == this.isGeneratedByPipe
-          && thatProc.triggerInformation.equals(this.triggerInformation);
+          && thatProc.triggerInformation.equals(this.triggerInformation)
+          && Objects.equals(thatProc.originClusterId, this.originClusterId);
     }
     return false;
   }
@@ -318,6 +332,11 @@ public class CreateTriggerProcedure extends AbstractNodeProcedure<CreateTriggerS
   @Override
   public int hashCode() {
     return Objects.hash(
-        getProcId(), getCurrentState(), getCycles(), isGeneratedByPipe, triggerInformation);
+        getProcId(),
+        getCurrentState(),
+        getCycles(),
+        isGeneratedByPipe,
+        triggerInformation,
+        originClusterId);
   }
 }

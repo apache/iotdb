@@ -202,4 +202,12 @@ public interface IMemTable extends WALEntryValue {
   void markAsNotGeneratedByPipe();
 
   boolean isTotallyGeneratedByPipe();
+
+  void markAsNotFromTheSameCluster();
+
+  boolean isTotallyFromTheSameCluster();
+
+  String getCurrentOriginClusterId();
+
+  void setCurrentOriginClusterId(String currentOriginClusterId);
 }

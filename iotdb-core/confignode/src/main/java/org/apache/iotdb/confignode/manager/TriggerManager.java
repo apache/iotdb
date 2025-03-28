@@ -129,14 +129,17 @@ public class TriggerManager {
         .createTrigger(
             triggerInformation,
             needToSaveJar ? new Binary(req.getJarFile()) : null,
-            req.isSetIsGeneratedByPipe() && req.isIsGeneratedByPipe());
+            req.isSetIsGeneratedByPipe() && req.isIsGeneratedByPipe(),
+            req.getOriginClusterId());
   }
 
   public TSStatus dropTrigger(TDropTriggerReq req) {
     return configManager
         .getProcedureManager()
         .dropTrigger(
-            req.getTriggerName(), req.isSetIsGeneratedByPipe() && req.isIsGeneratedByPipe());
+            req.getTriggerName(),
+            req.isSetIsGeneratedByPipe() && req.isIsGeneratedByPipe(),
+            req.getOriginClusterId());
   }
 
   public TGetTriggerTableResp getTriggerTable(boolean onlyStateful) {

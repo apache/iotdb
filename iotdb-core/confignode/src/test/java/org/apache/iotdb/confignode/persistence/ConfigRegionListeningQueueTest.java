@@ -24,7 +24,8 @@ import org.apache.iotdb.commons.pipe.datastructure.queue.ConcurrentIterableLinke
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
 import org.apache.iotdb.confignode.consensus.request.write.auth.AuthorTreePlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.DatabaseSchemaPlan;
-import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeEnrichedPlan;
+import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeEnrichedPlanV1;
+import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeEnrichedPlanV2;
 import org.apache.iotdb.confignode.manager.pipe.agent.PipeConfigNodeAgent;
 import org.apache.iotdb.confignode.manager.pipe.event.PipeConfigRegionWritePlanEvent;
 import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
@@ -69,8 +70,8 @@ public class ConfigRegionListeningQueueTest {
     final DatabaseSchemaPlan plan1 =
         new DatabaseSchemaPlan(
             ConfigPhysicalPlanType.CreateDatabase, new TDatabaseSchema("root.test1"));
-    final PipeEnrichedPlan plan2 =
-        new PipeEnrichedPlan(
+    final PipeEnrichedPlanV1 plan2 =
+        new PipeEnrichedPlanV2(
             new AuthorTreePlan(
                 ConfigPhysicalPlanType.CreateUser,
                 "user0",
@@ -79,10 +80,11 @@ public class ConfigRegionListeningQueueTest {
                 "",
                 new HashSet<>(),
                 false,
-                new ArrayList<>()));
+                new ArrayList<>()),
+            "a6670472-91a4-4194-9916-08236680b4d8");
 
-    PipeConfigNodeAgent.runtime().listener().tryListenToPlan(plan1, false);
-    PipeConfigNodeAgent.runtime().listener().tryListenToPlan(plan2, false);
+    PipeConfigNodeAgent.runtime().listener().tryListenToPlan(plan1, false, null);
+    PipeConfigNodeAgent.runtime().listener().tryListenToPlan(plan2, false, null);
 
     // tryListenToSnapshots() cannot be tested here since we cannot operate the reference count of
     // the original or deserialized events
@@ -102,7 +104,9 @@ public class ConfigRegionListeningQueueTest {
     Assert.assertEquals(
         plan2.getInnerPlan(), ((PipeConfigRegionWritePlanEvent) event2).getConfigPhysicalPlan());
     Assert.assertTrue(((PipeConfigRegionWritePlanEvent) event2).isGeneratedByPipe());
-
+    Assert.assertEquals(
+        "a6670472-91a4-4194-9916-08236680b4d8",
+        ((PipeConfigRegionWritePlanEvent) event2).getOriginClusterId());
     Assert.assertNull(itr.next(0));
   }
 }

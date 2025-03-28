@@ -25,6 +25,7 @@ import org.apache.iotdb.confignode.procedure.exception.ProcedureSuspendedExcepti
 import org.apache.iotdb.confignode.procedure.exception.ProcedureYieldException;
 
 import org.apache.thrift.annotation.Nullable;
+import org.apache.tsfile.utils.ReadWriteIOUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -64,6 +65,8 @@ public abstract class StateMachineProcedure<Env, TState> extends Procedure<Env> 
   /** Mark whether this procedure is called by a pipe forwarded request. */
   protected boolean isGeneratedByPipe;
 
+  protected String originClusterId;
+
   private boolean isStateDeserialized = false;
 
   protected StateMachineProcedure() {
@@ -72,6 +75,11 @@ public abstract class StateMachineProcedure<Env, TState> extends Procedure<Env> 
 
   protected StateMachineProcedure(final boolean isGeneratedByPipe) {
     this.isGeneratedByPipe = isGeneratedByPipe;
+  }
+
+  protected StateMachineProcedure(final boolean isGeneratedByPipe, final String originClusterId) {
+    this.isGeneratedByPipe = isGeneratedByPipe;
+    this.originClusterId = originClusterId;
   }
 
   public enum Flow {
@@ -275,6 +283,7 @@ public abstract class StateMachineProcedure<Env, TState> extends Procedure<Env> 
     for (int state : states) {
       stream.writeInt(state);
     }
+    ReadWriteIOUtils.write(originClusterId, stream);
   }
 
   @Override
@@ -290,7 +299,9 @@ public abstract class StateMachineProcedure<Env, TState> extends Procedure<Env> 
         stateFlow = Flow.NO_MORE_STATE;
       }
     }
-    this.setStateDeserialized(true);
+    if (byteBuffer.hasRemaining()) {
+      originClusterId = ReadWriteIOUtils.readString(byteBuffer);
+    }
   }
 
   /**
@@ -305,5 +316,9 @@ public abstract class StateMachineProcedure<Env, TState> extends Procedure<Env> 
 
   private void setStateDeserialized(boolean isDeserialized) {
     this.isStateDeserialized = isDeserialized;
+  }
+
+  public String getOriginClusterId() {
+    return originClusterId;
   }
 }

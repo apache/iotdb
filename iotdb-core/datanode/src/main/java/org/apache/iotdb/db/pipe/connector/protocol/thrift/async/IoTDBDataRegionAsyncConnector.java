@@ -72,6 +72,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.LinkedBlockingQueue;
@@ -686,6 +687,10 @@ public class IoTDBDataRegionAsyncConnector extends IoTDBConnector {
         ((EnrichedEvent) event).clearReferenceCount(IoTDBDataRegionAsyncConnector.class.getName());
       }
     }
+  }
+
+  public Set<String> getEndPointsClusterIds() {
+    return syncConnector.getEndPointsClusterIds();
   }
 
   //////////////////////// APIs provided for metric framework ////////////////////////

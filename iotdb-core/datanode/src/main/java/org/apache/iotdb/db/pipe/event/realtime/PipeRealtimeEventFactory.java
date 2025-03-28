@@ -51,10 +51,11 @@ public class PipeRealtimeEventFactory {
       final Boolean isTableModel,
       final String databaseNameFromDataRegion,
       final TsFileResource resource,
-      final boolean isLoaded) {
+      final boolean isLoaded,
+      final String originClusterId) {
     PipeTsFileInsertionEvent tsFileInsertionEvent =
         new PipeTsFileInsertionEvent(
-            isTableModel, databaseNameFromDataRegion, resource, isLoaded, false);
+            isTableModel, databaseNameFromDataRegion, resource, isLoaded, false, originClusterId);
 
     // if using IoTV2, assign a replicateIndex for this event
     if (DataRegionConsensusImpl.getInstance() instanceof PipeConsensus
@@ -96,7 +97,8 @@ public class PipeRealtimeEventFactory {
                 : null,
             insertNode.getProgressIndex(),
             insertNode.isAligned(),
-            insertNode.isGeneratedByPipe());
+            insertNode.isGeneratedByPipe(),
+            insertNode.getOriginClusterId());
 
     // if using IoTV2, assign a replicateIndex for this event
     if (DataRegionConsensusImpl.getInstance() instanceof PipeConsensus
@@ -123,7 +125,7 @@ public class PipeRealtimeEventFactory {
   public static PipeRealtimeEvent createRealtimeEvent(
       final String dataRegionId, final AbstractDeleteDataNode node) {
     PipeDeleteDataNodeEvent deleteDataNodeEvent =
-        new PipeDeleteDataNodeEvent(node, node.isGeneratedByPipe());
+        new PipeDeleteDataNodeEvent(node, node.isGeneratedByPipe(), node.getOriginClusterId());
 
     // if using IoTV2, assign a replicateIndex for this event
     if (DataRegionConsensusImpl.getInstance() instanceof PipeConsensus

@@ -96,7 +96,8 @@ import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeDeac
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeDeleteDevicesPlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeDeleteLogicalViewPlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeDeleteTimeSeriesPlan;
-import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeEnrichedPlan;
+import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeEnrichedPlanV1;
+import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeEnrichedPlanV2;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeUnsetSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.plugin.CreatePipePluginPlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.plugin.DropPipePluginPlan;
@@ -1668,8 +1669,8 @@ public class ConfigPhysicalPlanSerDeTest {
 
   @Test
   public void pipeEnrichedPlanTest() throws IOException {
-    final PipeEnrichedPlan plan =
-        new PipeEnrichedPlan(
+    final PipeEnrichedPlanV1 plan =
+        new PipeEnrichedPlanV2(
             new DatabaseSchemaPlan(
                 ConfigPhysicalPlanType.CreateDatabase,
                 new TDatabaseSchema()
@@ -1677,7 +1678,8 @@ public class ConfigPhysicalPlanSerDeTest {
                     .setTTL(Long.MAX_VALUE)
                     .setSchemaReplicationFactor(3)
                     .setDataReplicationFactor(3)
-                    .setTimePartitionInterval(604800)));
+                    .setTimePartitionInterval(604800)),
+            "a6670472-91a4-4194-9916-08236680b4d8");
     Assert.assertEquals(plan, ConfigPhysicalPlan.Factory.create(plan.serializeToByteBuffer()));
   }
 
