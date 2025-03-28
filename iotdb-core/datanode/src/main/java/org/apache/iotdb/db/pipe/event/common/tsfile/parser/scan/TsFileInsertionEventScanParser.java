@@ -454,13 +454,16 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
                     chunkHeader.getMeasurementID(),
                     (measurement, index) -> Objects.nonNull(index) ? index + 1 : 0);
 
-            // Emit when encountered non-sequential value chunk
+            // Emit when encountered non-sequential value chunk, or the chunk list size exceeds
+            // certain value to avoid OOM
             // Do not record or end current value chunks when there are empty chunks
             if (chunkHeader.getDataSize() == 0) {
               break;
             }
             boolean needReturn = false;
-            if (lastIndex >= 0 && valueIndex != lastIndex) {
+            if (lastIndex >= 0
+                && (valueIndex != lastIndex
+                    || valueChunkList.size() >= PIPE_MAX_ALIGNED_SERIES_NUM_IN_ONE_BATCH)) {
               needReturn = recordAlignedChunk(valueChunkList, marker);
             }
             lastIndex = valueIndex;
