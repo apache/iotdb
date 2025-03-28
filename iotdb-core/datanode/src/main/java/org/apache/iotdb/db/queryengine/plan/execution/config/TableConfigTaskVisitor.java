@@ -984,11 +984,12 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
 
     final String pipeName = node.getPipeName();
     final Map<String, String> extractorAttributes = node.getExtractorAttributes();
-    for (final String attributeKey : extractorAttributes.keySet()) {
-      if (attributeKey.startsWith(SystemConstant.SYSTEM_PREFIX_KEY)) {
+    for (final String extractorAttributeKey : extractorAttributes.keySet()) {
+      if (extractorAttributeKey.startsWith(SystemConstant.SYSTEM_PREFIX_KEY)) {
         throw new SemanticException(
             String.format(
-                "Failed to alter pipe %s, modifying %s is not allowed.", pipeName, attributeKey));
+                "Failed to alter pipe %s, modifying %s is not allowed.",
+                pipeName, extractorAttributeKey));
       }
     }
     // If the source is replaced, sql-dialect uses the current Alter Pipe sql-dialect. If it is
