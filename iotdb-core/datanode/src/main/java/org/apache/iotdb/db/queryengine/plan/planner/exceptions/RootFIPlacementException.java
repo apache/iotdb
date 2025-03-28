@@ -33,7 +33,7 @@ import java.util.Collection;
 public class RootFIPlacementException extends IoTDBRuntimeException {
   public RootFIPlacementException(Collection<TRegionReplicaSet> replicaSets) {
     super(
-        "root FragmentInstance placement error: " + replicaSets.toString(),
+        "Root FragmentInstance placement error: " + replicaSets.toString(),
         TSStatusCode.PLAN_FAILED_NETWORK_PARTITION.getStatusCode());
   }
 }
