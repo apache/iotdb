@@ -741,6 +741,7 @@ public class IoTDBTableIT {
       statement.execute("create timeSeries root.a.b.c.s1 int32");
       statement.execute("create timeSeries root.a.b.c.s2 string");
       statement.execute("create timeSeries root.a.b.s1 int32");
+      statement.execute("create timeSeries root.a.q.s1 boolean");
       statement.execute("create timeSeries root.a.b.c.f.g.h.s1 int32");
 
       // Put schema cache
@@ -769,7 +770,15 @@ public class IoTDBTableIT {
                                   new FieldColumnSchema("s1", TSDataType.INT32),
                                   new FieldColumnSchema("s2", TSDataType.STRING))))))
               .getCode());
+      statement.execute("create database tree_view_db");
       statement.execute("use tree_view_db");
+      try {
+        statement.execute(
+            "create or replace table view tree_table (tag1 tag, tag2 tag, s1 field, s2 field) as root.a.**");
+        fail();
+      } catch (final SQLException e) {
+
+      }
       TestUtils.assertResultSetEqual(
           statement.executeQuery("desc tree_table"),
           "ColumnName,DataType,Category,",
