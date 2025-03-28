@@ -794,6 +794,22 @@ public class IoTDBTableIT {
           statement.executeQuery("count devices from view_table"),
           "count(devices),",
           Collections.singleton("3,"));
+
+      // Test create & replace + restrict
+      statement.execute(
+          "create or replace table view tree_table (tag1 tag, tag2 tag, s11 int32 field, s3 from s2) as root.a.** restrict");
+      TestUtils.assertResultSetEqual(
+          statement.executeQuery("show devices from view_table where tag1 = 'b' and tag2 is null"),
+          "tag1,tag2,",
+          Collections.emptySet());
+
+      statement.execute("create table a ()");
+      try {
+        statement.execute("create or replace table view a ()");
+        fail();
+      } catch (final SQLException e) {
+        assertEquals("614: ", e.getMessage());
+      }
     }
   }
 }
