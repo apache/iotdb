@@ -25,7 +25,6 @@ import org.apache.iotdb.commons.pipe.agent.task.connection.EventSupplier;
 import org.apache.iotdb.commons.pipe.agent.task.connection.UnboundedBlockingPendingQueue;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeStaticMeta;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
-import org.apache.iotdb.commons.pipe.agent.task.meta.PipeType;
 import org.apache.iotdb.commons.pipe.agent.task.stage.PipeTaskStage;
 import org.apache.iotdb.commons.pipe.config.constant.PipeProcessorConstant;
 import org.apache.iotdb.commons.pipe.config.plugin.configuraion.PipeTaskRuntimeConfiguration;
@@ -78,7 +77,7 @@ public class PipeTaskProcessorStage extends PipeTaskStage {
                 pipeName, creationTime, regionId, pipeTaskMeta));
     final PipeProcessor pipeProcessor =
         StorageEngine.getInstance().getAllDataRegionIds().contains(new DataRegionId(regionId))
-                || PipeType.EXTERNAL.equals(PipeType.getPipeType(pipeName))
+                || regionId < 0
             ? PipeDataNodeAgent.plugin()
                 .dataRegion()
                 .getConfiguredProcessor(

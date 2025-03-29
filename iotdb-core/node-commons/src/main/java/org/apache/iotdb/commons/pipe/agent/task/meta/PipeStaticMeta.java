@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.commons.pipe.agent.task.meta;
 
+import org.apache.iotdb.commons.pipe.agent.plugin.builtin.BuiltinPipePlugin;
+import org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant;
 import org.apache.iotdb.commons.pipe.datastructure.visibility.Visibility;
 import org.apache.iotdb.commons.pipe.datastructure.visibility.VisibilityUtils;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
@@ -33,6 +35,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
@@ -87,6 +90,16 @@ public class PipeStaticMeta {
 
   public PipeType getPipeType() {
     return PipeType.getPipeType(pipeName);
+  }
+
+  public boolean isSourceExternal() {
+    return BuiltinPipePlugin.EXTERNAL_EXTRACTOR
+        .getPipePluginName()
+        .equals(
+            extractorParameters.getStringOrDefault(
+                Arrays.asList(
+                    PipeExtractorConstant.EXTRACTOR_KEY, PipeExtractorConstant.SOURCE_KEY),
+                BuiltinPipePlugin.IOTDB_EXTRACTOR.getPipePluginName()));
   }
 
   public ByteBuffer serialize() throws IOException {
@@ -224,7 +237,6 @@ public class PipeStaticMeta {
   public static final String SYSTEM_PIPE_PREFIX = "__";
   public static final String SUBSCRIPTION_PIPE_PREFIX = SYSTEM_PIPE_PREFIX + "subscription.";
   public static final String CONSENSUS_PIPE_PREFIX = SYSTEM_PIPE_PREFIX + "consensus.";
-  public static final String EXTERNAL_PIPE_PREFIX = "external";
 
   public static String generateSubscriptionPipeName(
       final String topicName, final String consumerGroupId) {

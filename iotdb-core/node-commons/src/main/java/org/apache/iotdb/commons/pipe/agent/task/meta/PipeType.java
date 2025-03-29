@@ -23,7 +23,6 @@ public enum PipeType {
   USER((byte) 0),
   SUBSCRIPTION((byte) 1),
   CONSENSUS((byte) 2),
-  EXTERNAL((byte) 3),
   ;
 
   private final byte type;
@@ -37,8 +36,6 @@ public enum PipeType {
       return SUBSCRIPTION;
     } else if (pipeName.startsWith(PipeStaticMeta.CONSENSUS_PIPE_PREFIX)) {
       return CONSENSUS;
-    } else if (pipeName.startsWith(PipeStaticMeta.EXTERNAL_PIPE_PREFIX)) {
-      return EXTERNAL;
     }
     return USER;
   }

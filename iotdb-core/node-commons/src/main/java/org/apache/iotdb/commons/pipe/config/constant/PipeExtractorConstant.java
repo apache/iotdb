@@ -147,6 +147,10 @@ public class PipeExtractorConstant {
   public static final String SOURCE_SKIP_IF_KEY = "source.skipif";
   public static final String EXTRACTOR_IOTDB_SKIP_IF_NO_PRIVILEGES = "no-privileges";
 
+  public static final String EXTERNAL_EXTRACTOR_PARALLELISM_KEY = "extractor.parallelism";
+  public static final String EXTERNAL_SOURCE_PARALLELISM_KEY = "source.parallelism";
+  public static final String EXTERNAL_EXTRACTOR_PARALLELISM_DEFAULT_VALUE = "1";
+
   ///////////////////// pipe consensus /////////////////////
 
   public static final String EXTRACTOR_CONSENSUS_GROUP_ID_KEY = "extractor.consensus.group-id";

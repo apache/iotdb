@@ -22,7 +22,6 @@ package org.apache.iotdb.db.pipe.agent.task.subtask.connector;
 import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.commons.pipe.agent.plugin.builtin.BuiltinPipePlugin;
 import org.apache.iotdb.commons.pipe.agent.task.connection.UnboundedBlockingPendingQueue;
-import org.apache.iotdb.commons.pipe.agent.task.meta.PipeType;
 import org.apache.iotdb.commons.pipe.agent.task.progress.PipeEventCommitManager;
 import org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant;
 import org.apache.iotdb.commons.pipe.config.constant.SystemConstant;
@@ -81,7 +80,7 @@ public class PipeConnectorSubtaskManager {
         StorageEngine.getInstance()
                 .getAllDataRegionIds()
                 .contains(new DataRegionId(environment.getRegionId()))
-            || PipeType.EXTERNAL.equals(PipeType.getPipeType(environment.getPipeName()));
+            || environment.getRegionId() < 0;
 
     final int connectorNum;
     boolean realTimeFirst = false;
