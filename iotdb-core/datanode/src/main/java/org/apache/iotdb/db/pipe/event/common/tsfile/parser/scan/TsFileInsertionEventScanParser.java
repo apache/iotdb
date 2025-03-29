@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.pipe.event.common.tsfile.parser.scan;
 
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
+import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.TreePattern;
 import org.apache.iotdb.db.pipe.event.common.PipeInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
@@ -63,6 +64,8 @@ import java.util.Objects;
 
 public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
 
+  private static final int PIPE_MAX_ALIGNED_SERIES_NUM_IN_ONE_BATCH =
+      PipeConfig.getInstance().getPipeMaxAlignedSeriesNumInOneBatch();
   private final long startTime;
   private final long endTime;
   private final Filter filter;
@@ -451,13 +454,16 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
                     chunkHeader.getMeasurementID(),
                     (measurement, index) -> Objects.nonNull(index) ? index + 1 : 0);
 
-            // Emit when encountered non-sequential value chunk
+            // Emit when encountered non-sequential value chunk, or the chunk list size exceeds
+            // certain value to avoid OOM
             // Do not record or end current value chunks when there are empty chunks
             if (chunkHeader.getDataSize() == 0) {
               break;
             }
             boolean needReturn = false;
-            if (lastIndex >= 0 && valueIndex != lastIndex) {
+            if (lastIndex >= 0
+                && (valueIndex != lastIndex
+                    || valueChunkList.size() >= PIPE_MAX_ALIGNED_SERIES_NUM_IN_ONE_BATCH)) {
               needReturn = recordAlignedChunk(valueChunkList, marker);
             }
             lastIndex = valueIndex;

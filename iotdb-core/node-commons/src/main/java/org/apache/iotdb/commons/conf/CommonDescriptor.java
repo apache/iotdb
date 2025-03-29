@@ -670,6 +670,11 @@ public class CommonDescriptor {
             properties.getProperty(
                 "pipe_leader_cache_memory_usage_percentage",
                 String.valueOf(config.getPipeLeaderCacheMemoryUsagePercentage()))));
+    config.setPipeMaxAlignedSeriesNumInOneBatch(
+        Integer.parseInt(
+            properties.getProperty(
+                "pipe_max_aligned_series_num_in_one_batch",
+                String.valueOf(config.getPipeMaxAlignedSeriesNumInOneBatch()))));
     config.setPipeListeningQueueTransferSnapshotThreshold(
         Long.parseLong(
             properties.getProperty(

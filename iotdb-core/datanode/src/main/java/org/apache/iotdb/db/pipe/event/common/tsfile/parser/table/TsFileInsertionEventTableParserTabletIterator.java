@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.pipe.event.common.tsfile.parser.table;
 
+import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
 import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryBlock;
 import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryWeightUtil;
@@ -53,12 +54,14 @@ import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
 public class TsFileInsertionEventTableParserTabletIterator implements Iterator<Tablet> {
-
+  private static final int PIPE_MAX_ALIGNED_SERIES_NUM_IN_ONE_BATCH =
+      PipeConfig.getInstance().getPipeMaxAlignedSeriesNumInOneBatch();
   private final long startTime;
   private final long endTime;
 
@@ -84,6 +87,10 @@ public class TsFileInsertionEventTableParserTabletIterator implements Iterator<T
   private Iterator<Pair<IDeviceID, MetadataIndexNode>> deviceMetaIterator;
   private Iterator<List<IChunkMetadata>> chunkMetadataList;
   private Iterator<IChunkMetadata> chunkMetadata;
+  private IChunkMetadata currentChunkMetadata;
+  private Chunk timeChunk;
+  private long timeChunkSize;
+  private int offset;
 
   // Record the information of the currently read Table
   private String tableName;
@@ -92,7 +99,7 @@ public class TsFileInsertionEventTableParserTabletIterator implements Iterator<T
   private List<String> measurementList;
   private List<TSDataType> dataTypeList;
 
-  private List<Pair<String, Integer>> measurementColumIndexList;
+  private List<Pair<String, Integer>> measurementColumnIndexList;
   private List<Integer> measurementIdIndexList;
 
   // Used to record whether the same Tablet is generated when parsing starts. Different table
@@ -161,8 +168,14 @@ public class TsFileInsertionEventTableParserTabletIterator implements Iterator<T
               break;
             }
           case INIT_CHUNK_READER:
-            if (chunkMetadata != null && chunkMetadata.hasNext()) {
-              initChunkReader((AbstractAlignedChunkMetadata) chunkMetadata.next());
+            if (Objects.nonNull(currentChunkMetadata)
+                || chunkMetadata != null && chunkMetadata.hasNext()) {
+              if (Objects.isNull(currentChunkMetadata)) {
+                currentChunkMetadata = chunkMetadata.next();
+                timeChunk = null;
+                offset = 0;
+              }
+              initChunkReader((AbstractAlignedChunkMetadata) currentChunkMetadata);
               state = State.INIT_DATA;
               break;
             }
@@ -229,7 +242,7 @@ public class TsFileInsertionEventTableParserTabletIterator implements Iterator<T
               measurementList = new ArrayList<>(columnSchemaSize);
               measurementNames = new HashSet<>();
 
-              measurementColumIndexList = new ArrayList<>(columnSchemaSize);
+              measurementColumnIndexList = new ArrayList<>(columnSchemaSize);
               measurementIdIndexList = new ArrayList<>(columnSchemaSize);
 
               for (int i = 0, j = 0; i < columnSchemaSize; i++) {
@@ -244,7 +257,7 @@ public class TsFileInsertionEventTableParserTabletIterator implements Iterator<T
                   dataTypeList.add(schema.getType());
                   if (!Tablet.ColumnCategory.TAG.equals(columnCategory)) {
                     measurementNames.add(measurementName);
-                    measurementColumIndexList.add(new Pair<>(measurementName, j));
+                    measurementColumnIndexList.add(new Pair<>(measurementName, j));
                   } else {
                     measurementIdIndexList.add(j);
                   }
@@ -327,26 +340,39 @@ public class TsFileInsertionEventTableParserTabletIterator implements Iterator<T
     return tablet;
   }
 
-  private void initChunkReader(AbstractAlignedChunkMetadata alignedChunkMetadata)
+  private void initChunkReader(final AbstractAlignedChunkMetadata alignedChunkMetadata)
       throws IOException {
-    final Chunk timeChunk =
-        reader.readMemChunk((ChunkMetadata) alignedChunkMetadata.getTimeChunkMetadata());
-    long size = PipeMemoryWeightUtil.calculateChunkRamBytesUsed(timeChunk);
-    PipeDataNodeResourceManager.memory().forceResize(allocatedMemoryBlockForChunk, size);
+    if (Objects.isNull(timeChunk)) {
+      timeChunk = reader.readMemChunk((ChunkMetadata) alignedChunkMetadata.getTimeChunkMetadata());
+      timeChunkSize = PipeMemoryWeightUtil.calculateChunkRamBytesUsed(timeChunk);
+      PipeDataNodeResourceManager.memory().forceResize(allocatedMemoryBlockForChunk, timeChunkSize);
+    }
+    timeChunk.getData().rewind();
+    long size = timeChunkSize;
 
     final List<Chunk> valueChunkList =
         new ArrayList<>(alignedChunkMetadata.getValueChunkMetadataList().size());
     final Map<String, ChunkMetadata> metadataMap = new HashMap<>();
-    for (IChunkMetadata metadata : alignedChunkMetadata.getValueChunkMetadataList()) {
+
+    final int startOffset = offset;
+    for (; offset < alignedChunkMetadata.getValueChunkMetadataList().size(); ++offset) {
+      final IChunkMetadata metadata = alignedChunkMetadata.getValueChunkMetadataList().get(offset);
       if (metadata != null) {
         metadataMap.put(metadata.getMeasurementUid(), (ChunkMetadata) metadata);
       }
+      if (offset - startOffset >= PIPE_MAX_ALIGNED_SERIES_NUM_IN_ONE_BATCH) {
+        break;
+      }
+    }
+
+    if (offset >= alignedChunkMetadata.getValueChunkMetadataList().size()) {
+      currentChunkMetadata = null;
     }
 
     // The metadata obtained by alignedChunkMetadata.getValueChunkMetadataList may not be continuous
     // when reading TSFile Chunks, so reordering the metadata here has little effect on the
     // efficiency of reading chunks.
-    for (Pair<String, Integer> m : measurementColumIndexList) {
+    for (Pair<String, Integer> m : measurementColumnIndexList) {
       final ChunkMetadata metadata = metadataMap.get(m.getLeft());
       if (metadata != null) {
         final Chunk chunk = reader.readMemChunk(metadata);
@@ -368,13 +394,13 @@ public class TsFileInsertionEventTableParserTabletIterator implements Iterator<T
     final TsPrimitiveType[] primitiveTypes = data.getVector();
     final List<IMeasurementSchema> measurementSchemas = tablet.getSchemas();
 
-    for (int i = 0, size = measurementColumIndexList.size(); i < size; i++) {
+    for (int i = 0, size = measurementColumnIndexList.size(); i < size; i++) {
       final TsPrimitiveType primitiveType = primitiveTypes[i];
       if (primitiveType == null) {
         continue;
       }
 
-      final int index = measurementColumIndexList.get(i).getRight();
+      final int index = measurementColumnIndexList.get(i).getRight();
       switch (measurementSchemas.get(index).getType()) {
         case BOOLEAN:
           tablet.addValue(rowIndex, index, primitiveType.getBoolean());
