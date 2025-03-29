@@ -22,6 +22,7 @@ package org.apache.iotdb.db.queryengine.plan.analyze.load;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.auth.AuthException;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
+import org.apache.iotdb.commons.utils.RetryUtils;
 import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.load.LoadAnalyzeException;
@@ -80,6 +81,8 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 
+import static org.apache.iotdb.commons.utils.FileUtils.copyFileWithMD5Check;
+import static org.apache.iotdb.commons.utils.FileUtils.moveFileWithMD5Check;
 import static org.apache.iotdb.db.queryengine.plan.execution.config.TableConfigTaskVisitor.DATABASE_NOT_SPECIFIED;
 import static org.apache.iotdb.db.queryengine.plan.execution.config.TableConfigTaskVisitor.validateDatabaseName;
 import static org.apache.iotdb.db.storageengine.load.metrics.LoadTsFileCostMetricsSet.ANALYSIS;
@@ -117,6 +120,7 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
   // User specified configs
   private final int databaseLevel;
   private String databaseForTableData;
+  private final boolean isAsyncLoad;
   private final boolean isVerifySchema;
   private final boolean isAutoCreateDatabase;
   private final boolean isDeleteAfterLoad;
@@ -143,6 +147,7 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
 
     this.databaseLevel = loadTsFileStatement.getDatabaseLevel();
     this.databaseForTableData = loadTsFileStatement.getDatabase();
+    this.isAsyncLoad = loadTsFileStatement.isAsyncLoad();
     this.isVerifySchema = loadTsFileStatement.isVerifySchema();
     this.isAutoCreateDatabase = loadTsFileStatement.isAutoCreateDatabase();
     this.isDeleteAfterLoad = loadTsFileStatement.isDeleteAfterLoad();
@@ -166,6 +171,7 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
 
     this.databaseLevel = loadTsFileTableStatement.getDatabaseLevel();
     this.databaseForTableData = loadTsFileTableStatement.getDatabase();
+    this.isAsyncLoad = loadTsFileTableStatement.isAsyncLoad();
     this.isVerifySchema = loadTsFileTableStatement.isVerifySchema();
     this.isAutoCreateDatabase = loadTsFileTableStatement.isAutoCreateDatabase();
     this.isDeleteAfterLoad = loadTsFileTableStatement.isDeleteAfterLoad();
@@ -196,6 +202,10 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
 
   public IAnalysis analyzeFileByFile(IAnalysis analysis) {
     if (!checkBeforeAnalyzeFileByFile(analysis)) {
+      return analysis;
+    }
+
+    if (isAsyncLoad && doAsyncLoad(analysis)) {
       return analysis;
     }
 
@@ -266,6 +276,72 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
     }
 
     return true;
+  }
+
+  private boolean doAsyncLoad(final IAnalysis analysis) {
+    final String[] loadActiveListeningDirs =
+        IoTDBDescriptor.getInstance().getConfig().getLoadActiveListeningDirs();
+    String targetFilePath = null;
+    for (int i = 0, size = loadActiveListeningDirs == null ? 0 : loadActiveListeningDirs.length;
+        i < size;
+        i++) {
+      if (loadActiveListeningDirs[i] != null) {
+        targetFilePath = loadActiveListeningDirs[i];
+        break;
+      }
+    }
+    if (targetFilePath == null) {
+      LOGGER.warn("Load active listening dir is not set. Will try sync load instead.");
+      return false;
+    }
+
+    try {
+      if (Objects.nonNull(databaseForTableData)) {
+        loadTsFilesAsyncToTargetDir(new File(targetFilePath, databaseForTableData), tsFiles);
+      } else {
+        loadTsFilesAsyncToTargetDir(new File(targetFilePath), tsFiles);
+      }
+    } catch (Exception e) {
+      LOGGER.warn(
+          "Failed to async load tsfiles {} to target dir {}. Will try sync load instead.",
+          tsFiles,
+          targetFilePath,
+          e);
+      return false;
+    }
+
+    analysis.setFinishQueryAfterAnalyze(true);
+    setRealStatement(analysis);
+    return true;
+  }
+
+  private void loadTsFilesAsyncToTargetDir(final File targetDir, final List<File> files)
+      throws IOException {
+    for (final File file : files) {
+      if (file == null) {
+        continue;
+      }
+
+      loadTsFileAsyncToTargetDir(targetDir, file);
+      loadTsFileAsyncToTargetDir(targetDir, new File(file.getAbsolutePath() + ".resource"));
+      loadTsFileAsyncToTargetDir(targetDir, new File(file.getAbsolutePath() + ".mods"));
+    }
+  }
+
+  private void loadTsFileAsyncToTargetDir(final File targetDir, final File file)
+      throws IOException {
+    if (!file.exists()) {
+      return;
+    }
+    RetryUtils.retryOnException(
+        () -> {
+          if (isDeleteAfterLoad) {
+            moveFileWithMD5Check(file, targetDir);
+          } else {
+            copyFileWithMD5Check(file, targetDir);
+          }
+          return null;
+        });
   }
 
   private boolean doAnalyzeFileByFile(IAnalysis analysis) {
@@ -350,8 +426,8 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
 
       // check whether the encrypt type of the tsfile is supported
       final EncryptParameter param = reader.getEncryptParam();
-      if (!Objects.equals(param.getType(), EncryptUtils.encryptParam.getType())
-          || !Arrays.equals(param.getKey(), EncryptUtils.encryptParam.getKey())) {
+      if (!Objects.equals(param.getType(), EncryptUtils.getEncryptParameter().getType())
+          || !Arrays.equals(param.getKey(), EncryptUtils.getEncryptParameter().getKey())) {
         throw new SemanticException("The encryption way of the TsFile is not supported.");
       }
 
@@ -567,6 +643,7 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
       return;
     }
 
+    accessControl.checkCanCreateDatabase(context.getSession().getUserName(), database);
     final CreateDBTask task =
         new CreateDBTask(new TDatabaseSchema(database).setIsTableModel(true), true);
     try {

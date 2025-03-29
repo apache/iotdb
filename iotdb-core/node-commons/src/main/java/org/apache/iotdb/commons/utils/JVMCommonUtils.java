@@ -71,7 +71,7 @@ public class JVMCommonUtils {
   }
 
   public static double getDiskFreeRatio(String dir) {
-    File dirFile = new File(dir);
+    File dirFile = FSFactoryProducer.getFSFactory().getFile(dir);
     if (!dirFile.mkdirs()) {
       // This may solve getFreeSpace() == 0?
       dirFile = new File(dir);

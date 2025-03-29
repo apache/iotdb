@@ -664,6 +664,8 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
       eventParser.compareAndSet(
           null,
           new TsFileInsertionEventParserProvider(
+                  pipeName,
+                  creationTime,
                   tsFile,
                   treePattern,
                   tablePattern,
