@@ -205,6 +205,7 @@ public class PipeTreeModelTsFileBuilder extends PipeTsFileBuilder {
     // Retrieve the first tablet to serve as the basis for the aggregation
     final Tablet firstTablet = tablets.peekFirst();
     final long[] aggregationTimestamps = firstTablet.getTimestamps();
+    final int aggregationRow = firstTablet.getRowSize();
     final int aggregationMaxRow = firstTablet.getMaxRowNumber();
 
     // Prepare lists to accumulate schemas, values, and bitMaps
@@ -217,6 +218,7 @@ public class PipeTreeModelTsFileBuilder extends PipeTsFileBuilder {
     while (!tablets.isEmpty()) {
       final Tablet tablet = tablets.peekFirst();
       if (Arrays.equals(tablet.getTimestamps(), aggregationTimestamps)
+          && tablet.getRowSize() == aggregationRow
           && tablet.getMaxRowNumber() == aggregationMaxRow) {
         // Aggregate the current tablet's data
         aggregatedSchemas.addAll(tablet.getSchemas());
@@ -237,7 +239,7 @@ public class PipeTreeModelTsFileBuilder extends PipeTsFileBuilder {
         aggregationTimestamps,
         aggregatedValues.toArray(),
         aggregatedBitMaps.toArray(new BitMap[0]),
-        aggregationMaxRow);
+        aggregationRow);
   }
 
   private void tryBestToWriteTabletsIntoOneFile(
