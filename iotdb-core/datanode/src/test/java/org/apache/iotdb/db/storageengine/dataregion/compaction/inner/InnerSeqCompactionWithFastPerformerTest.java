@@ -42,6 +42,8 @@ import org.apache.iotdb.db.storageengine.dataregion.compaction.utils.CompactionC
 import org.apache.iotdb.db.storageengine.dataregion.compaction.utils.CompactionFileGeneratorUtils;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.utils.CompactionTimeseriesType;
 import org.apache.iotdb.db.storageengine.dataregion.flush.TsFileFlushPolicy;
+import org.apache.iotdb.db.storageengine.dataregion.modification.ModFileManagement;
+import org.apache.iotdb.db.storageengine.dataregion.modification.PartitionLevelModFileManager;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceStatus;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.generator.TsFileNameGenerator;
@@ -92,6 +94,7 @@ public class InnerSeqCompactionWithFastPerformerTest {
   static final boolean[] compactionBeforeHasMods = new boolean[] {true, false};
   static final boolean[] compactionHasMods = new boolean[] {true, false};
   private static int prevMaxDegreeOfIndexNode;
+  private static final ModFileManagement testModFileManager = new PartitionLevelModFileManager();
 
   @Before
   public void setUp() throws MetadataException {
@@ -176,6 +179,7 @@ public class InnerSeqCompactionWithFastPerformerTest {
                 TsFileResource tsFileResource =
                     CompactionFileGeneratorUtils.generateTsFileResource(
                         true, i + 1, COMPACTION_TEST_SG);
+                tsFileResource.setModFileManagement(testModFileManager);
                 CompactionFileGeneratorUtils.writeTsFile(
                     fullPath, chunkPagePointsNum, i * 600L, tsFileResource);
                 sourceResources.add(tsFileResource);
@@ -214,6 +218,8 @@ public class InnerSeqCompactionWithFastPerformerTest {
               TsFileResource targetTsFileResource =
                   CompactionFileGeneratorUtils.getTargetTsFileResourceFromSourceResource(
                       sourceResources.get(0));
+              CompactionUtils.prepareCompactionModFiles(
+                  Collections.singletonList(targetTsFileResource), sourceResources);
               Map<String, List<TimeValuePair>> sourceData =
                   CompactionCheckerUtils.readFiles(sourceResources);
               if (compactionHasMod) {
@@ -474,6 +480,7 @@ public class InnerSeqCompactionWithFastPerformerTest {
               TsFileResource tsFileResource =
                   CompactionFileGeneratorUtils.generateTsFileResource(
                       true, i + 1, COMPACTION_TEST_SG);
+              tsFileResource.setModFileManagement(testModFileManager);
               CompactionFileGeneratorUtils.writeTsFile(
                   fullPath, chunkPagePointsNum, i * 600L, tsFileResource);
               toMergeResources.add(tsFileResource);
@@ -511,6 +518,8 @@ public class InnerSeqCompactionWithFastPerformerTest {
             TsFileResource targetTsFileResource =
                 CompactionFileGeneratorUtils.getTargetTsFileResourceFromSourceResource(
                     toMergeResources.get(0));
+            CompactionUtils.prepareCompactionModFiles(
+                Collections.singletonList(targetTsFileResource), toMergeResources);
             Map<String, List<TimeValuePair>> sourceData =
                 CompactionCheckerUtils.readFiles(toMergeResources);
             if (compactionHasMod) {
@@ -802,6 +811,7 @@ public class InnerSeqCompactionWithFastPerformerTest {
                 TsFileResource tsFileResource =
                     CompactionFileGeneratorUtils.generateTsFileResource(
                         true, i + 1, COMPACTION_TEST_SG);
+                tsFileResource.setModFileManagement(testModFileManager);
                 CompactionFileGeneratorUtils.writeTsFile(
                     fullPath, chunkPagePointsNum, i * 600L, tsFileResource);
                 toMergeResources.add(tsFileResource);
@@ -839,6 +849,8 @@ public class InnerSeqCompactionWithFastPerformerTest {
               TsFileResource targetTsFileResource =
                   CompactionFileGeneratorUtils.getTargetTsFileResourceFromSourceResource(
                       toMergeResources.get(0));
+              CompactionUtils.prepareCompactionModFiles(
+                  Collections.singletonList(targetTsFileResource), toMergeResources);
               Map<String, List<TimeValuePair>> sourceData =
                   CompactionCheckerUtils.readFiles(toMergeResources);
               if (compactionHasMod) {
@@ -1167,31 +1179,26 @@ public class InnerSeqCompactionWithFastPerformerTest {
     for (int i = 0; i < sourceResources.size() - 1; i++) {
       TsFileResource resource = sourceResources.get(i);
       resource.resetModFile();
-      Assert.assertTrue(resource.getCompactionModFile().exists());
+      Assert.assertNull(resource.getCompactionModFile());
       Assert.assertTrue(resource.anyModFileExists());
       if (i < 2) {
         Assert.assertEquals(3, resource.getAllModEntries().size());
-        Assert.assertEquals(2, resource.getCompactionModFile().getAllMods().size());
       } else if (i < 3) {
         Assert.assertEquals(2, resource.getAllModEntries().size());
-        Assert.assertEquals(2, resource.getCompactionModFile().getAllMods().size());
       } else {
         Assert.assertEquals(1, resource.getAllModEntries().size());
-        Assert.assertEquals(1, resource.getCompactionModFile().getAllMods().size());
       }
     }
     task.start();
     for (TsFileResource resource : sourceResources) {
       Assert.assertFalse(resource.getTsFile().exists());
       Assert.assertFalse(resource.anyModFileExists());
-      Assert.assertFalse(resource.getCompactionModFile().exists());
+      Assert.assertNull(resource.getCompactionModFile());
     }
 
     TsFileResource resource =
         TsFileNameGenerator.increaseInnerCompactionCnt(sourceResources.get(0));
     resource.resetModFile();
-    Assert.assertTrue(resource.anyModFileExists());
-    Assert.assertEquals(2, resource.getAllModEntries().size());
-    Assert.assertFalse(resource.getCompactionModFile().exists());
+    Assert.assertNull(resource.getCompactionModFile());
   }
 }

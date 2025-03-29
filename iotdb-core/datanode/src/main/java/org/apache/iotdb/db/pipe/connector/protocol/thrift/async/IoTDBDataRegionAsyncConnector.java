@@ -381,9 +381,12 @@ public class IoTDBDataRegionAsyncConnector extends IoTDBConnector {
               new AtomicInteger(1),
               new AtomicBoolean(false),
               pipeTsFileInsertionEvent.getTsFile(),
-              pipeTsFileInsertionEvent.getModFile(),
-              pipeTsFileInsertionEvent.isWithMod()
+              pipeTsFileInsertionEvent.getExclusiveModFile(),
+              pipeTsFileInsertionEvent.isWithExclusiveMod()
                   && clientManager.supportModsIfIsDataNodeReceiver(),
+              pipeTsFileInsertionEvent.getSharedModFile(),
+              pipeTsFileInsertionEvent.isWithSharedMod(),
+              pipeTsFileInsertionEvent.getSharedModFileOffset(),
               pipeTsFileInsertionEvent.isTableModelEvent()
                   ? pipeTsFileInsertionEvent.getTableModelDatabaseName()
                   : null);

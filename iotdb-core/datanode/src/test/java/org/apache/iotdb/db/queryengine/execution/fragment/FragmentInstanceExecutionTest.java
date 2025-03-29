@@ -20,6 +20,8 @@
 package org.apache.iotdb.db.queryengine.execution.fragment;
 
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
+import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.queryengine.common.FragmentInstanceId;
 import org.apache.iotdb.db.queryengine.common.PlanFragmentId;
 import org.apache.iotdb.db.queryengine.exception.CpuNotEnoughException;
@@ -30,12 +32,17 @@ import org.apache.iotdb.db.queryengine.execution.exchange.sink.ISink;
 import org.apache.iotdb.db.queryengine.execution.schedule.IDriverScheduler;
 import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
 
+import org.apache.tsfile.exception.write.WriteProcessException;
+import org.junit.After;
+import org.junit.Before;
 import org.junit.Test;
 import org.mockito.Mockito;
 
+import java.io.IOException;
 import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
+import java.util.concurrent.TimeUnit;
 
 import static org.apache.iotdb.db.queryengine.common.QueryId.MOCK_QUERY_ID;
 import static org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceContext.createFragmentInstanceContext;
@@ -45,8 +52,21 @@ import static org.junit.Assert.fail;
 
 public class FragmentInstanceExecutionTest {
 
+  private int dataNodeId;
+
+  @Before
+  public void setUp() throws MetadataException, IOException, WriteProcessException {
+    dataNodeId = IoTDBDescriptor.getInstance().getConfig().getDataNodeId();
+    IoTDBDescriptor.getInstance().getConfig().setDataNodeId(0);
+  }
+
+  @After
+  public void tearDown() throws IOException {
+    IoTDBDescriptor.getInstance().getConfig().setDataNodeId(dataNodeId);
+  }
+
   @Test
-  public void testFragmentInstanceExecution() {
+  public void testFragmentInstanceExecution() throws InterruptedException {
     ExecutorService instanceNotificationExecutor =
         IoTDBThreadPoolFactory.newFixedThreadPool(1, "test-instance-notification");
     try {
@@ -104,7 +124,9 @@ public class FragmentInstanceExecutionTest {
       e.printStackTrace();
       fail(e.getMessage());
     } finally {
-      instanceNotificationExecutor.shutdown();
+      instanceNotificationExecutor.shutdownNow();
+      // if the thread is not terminated, other tests may be affected
+      instanceNotificationExecutor.awaitTermination(1, TimeUnit.MINUTES);
     }
   }
 }

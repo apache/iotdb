@@ -148,7 +148,7 @@ public class AlignedSeriesBatchCompactionUtils {
       if (!lastPageStatus.equals(currentPageStatus)) {
         // there are at least two value pages, one is that all data is deleted, the other is that no
         // data is deleted
-        lastPageStatus = ModifiedStatus.NONE_DELETED;
+        lastPageStatus = ModifiedStatus.PARTIAL_DELETED;
       }
     }
 

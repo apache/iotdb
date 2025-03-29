@@ -22,6 +22,7 @@ import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModEntry;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFile;
+import org.apache.iotdb.db.storageengine.dataregion.modification.PartitionLevelModFileManager;
 import org.apache.iotdb.db.storageengine.dataregion.modification.TreeDeletionEntry;
 import org.apache.iotdb.db.storageengine.dataregion.modification.v1.Deletion;
 import org.apache.iotdb.db.storageengine.dataregion.modification.v1.Modification;
@@ -85,6 +86,7 @@ public class TsFileResourceTest {
             });
     tsFileResource.setTimeIndex(deviceTimeIndex);
     tsFileResource.setStatusForTest(TsFileResourceStatus.NORMAL);
+    tsFileResource.setModFileManagement(new PartitionLevelModFileManager());
   }
 
   @After
@@ -104,7 +106,7 @@ public class TsFileResourceTest {
     tsFileResource.serialize();
     TsFileResource derTsFileResource = new TsFileResource(file);
     derTsFileResource.deserialize();
-    Assert.assertEquals(tsFileResource, derTsFileResource);
+    Assert.assertEquals(tsFileResource.getTsFile(), derTsFileResource.getTsFile());
   }
 
   @Test

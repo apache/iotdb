@@ -99,7 +99,7 @@ public class TableDeviceSchemaCache {
    * {@link IDeviceID}(translated), Map{@literal <}Measurement, Schema{@literal
    * >}/templateInfo{@literal >}
    */
-  private final IDualKeyCache<TableId, IDeviceID, TableDeviceCacheEntry> dualKeyCache;
+  private IDualKeyCache<TableId, IDeviceID, TableDeviceCacheEntry> dualKeyCache;
 
   private final Map<String, String> treeModelDatabasePool = new ConcurrentHashMap<>();
 

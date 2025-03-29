@@ -33,6 +33,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalIn
 import org.apache.iotdb.db.storageengine.dataregion.memtable.IMemTable;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.ReadOnlyMemChunk;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFile;
+import org.apache.iotdb.db.storageengine.dataregion.modification.PartitionLevelModFileManager;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.TsFileUtilsForRecoverTest;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
@@ -597,6 +598,7 @@ public class TsFilePlanRedoerTest {
     tsFileResource.updateEndTime(DEVICE1_NAME, 2);
     tsFileResource.updateStartTime(DEVICE2_NAME, 3);
     tsFileResource.updateEndTime(DEVICE2_NAME, 4);
+    tsFileResource.setModFileManagement(new PartitionLevelModFileManager());
 
     // generate DeleteDataNode
     DeleteDataNode deleteDataNode =
@@ -607,11 +609,10 @@ public class TsFilePlanRedoerTest {
             Long.MAX_VALUE);
 
     // redo DeleteDataNode, vsg processor is used to test IdTable, don't test IdTable here
-    File modsFile = ModificationFile.getExclusiveMods(new File(FILE_NAME));
-    assertFalse(modsFile.exists());
+    assertFalse(tsFileResource.anyModFileExists());
     TsFilePlanRedoer planRedoer = new TsFilePlanRedoer(tsFileResource);
     planRedoer.redoDelete(deleteDataNode);
-    assertTrue(modsFile.exists());
+    assertTrue(tsFileResource.anyModFileExists());
   }
 
   @Test

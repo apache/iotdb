@@ -140,6 +140,12 @@ public class CompactionUtils {
       List<TsFileResource> targetResources)
       throws IOException {
     if (TsFileResource.useSharedModFile) {
+      for (TsFileResource seqResource : seqResources) {
+        seqResource.setCompactionModFile(null);
+      }
+      for (TsFileResource unseqResource : unseqResources) {
+        unseqResource.setCompactionModFile(null);
+      }
       // when using the shared mod file, modifications generated during compaction will be
       // directly written into shared mod file, so there is no need to concern the sources
       return;

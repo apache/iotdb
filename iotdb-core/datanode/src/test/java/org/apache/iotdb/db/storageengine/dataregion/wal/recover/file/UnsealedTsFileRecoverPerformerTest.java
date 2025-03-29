@@ -36,6 +36,7 @@ import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.IMemTable;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.PrimitiveMemTable;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFile;
+import org.apache.iotdb.db.storageengine.dataregion.modification.PartitionLevelModFileManager;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.WALEntry;
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.WALInfoEntry;
@@ -237,6 +238,7 @@ public class UnsealedTsFileRecoverPerformerTest {
     WALEntry walEntry = new WALInfoEntry(fakeMemTableId, deleteDataNode);
     // recover
     tsFileResource = new TsFileResource(file);
+    tsFileResource.setModFileManagement(new PartitionLevelModFileManager());
     // vsg processor is used to test IdTable, don't test IdTable here
     try (UnsealedTsFileRecoverPerformer recoverPerformer =
         new UnsealedTsFileRecoverPerformer(
@@ -273,7 +275,7 @@ public class UnsealedTsFileRecoverPerformerTest {
     // check file existence
     assertTrue(file.exists());
     assertTrue(new File(FILE_NAME.concat(TsFileResource.RESOURCE_SUFFIX)).exists());
-    assertTrue(ModificationFile.getExclusiveMods(new File(FILE_NAME)).exists());
+    assertTrue(tsFileResource.anyModFileExists());
   }
 
   private void generateCrashedFile(File tsFile) throws IOException, WriteProcessException {
