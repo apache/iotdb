@@ -34,17 +34,22 @@ import org.apache.iotdb.db.storageengine.dataregion.read.reader.common.DescPrior
 import org.apache.iotdb.db.storageengine.dataregion.read.reader.common.MergeReaderPriority;
 import org.apache.iotdb.db.storageengine.dataregion.read.reader.common.PriorityMergeReader;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
+import org.apache.iotdb.db.utils.CommonUtils;
 
+import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.file.metadata.AbstractAlignedTimeSeriesMetadata;
 import org.apache.tsfile.file.metadata.IChunkMetadata;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.file.metadata.IMetadata;
 import org.apache.tsfile.file.metadata.ITimeSeriesMetadata;
+import org.apache.tsfile.file.metadata.TimeseriesMetadata;
 import org.apache.tsfile.file.metadata.statistics.Statistics;
 import org.apache.tsfile.read.TimeValuePair;
 import org.apache.tsfile.read.common.block.TsBlock;
 import org.apache.tsfile.read.common.block.TsBlockBuilder;
 import org.apache.tsfile.read.common.block.TsBlockUtil;
+import org.apache.tsfile.read.common.block.column.TimeColumn;
 import org.apache.tsfile.read.filter.basic.Filter;
 import org.apache.tsfile.read.reader.IPageReader;
 import org.apache.tsfile.read.reader.IPointReader;
@@ -55,6 +60,8 @@ import org.apache.tsfile.utils.Accountable;
 import org.apache.tsfile.utils.RamUsageEstimator;
 import org.apache.tsfile.utils.TsPrimitiveType;
 import org.apache.tsfile.write.UnSupportedDataTypeException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.io.Serializable;
@@ -73,6 +80,7 @@ import static org.apache.iotdb.db.queryengine.metric.SeriesScanCostMetricSet.BUI
 
 public class SeriesScanUtil implements Accountable {
 
+  private static final Logger LOGGER = LoggerFactory.getLogger(SeriesScanUtil.class);
   protected final FragmentInstanceContext context;
 
   // The path of the target series which will be scanned.
@@ -1174,7 +1182,7 @@ public class SeriesScanUtil implements Accountable {
     ITimeSeriesMetadata timeseriesMetadata =
         loadTimeSeriesMetadata(orderUtils.getNextSeqFileResource(true), true);
     // skip if data type is mismatched which may be caused by delete
-    if (timeseriesMetadata != null && timeseriesMetadata.typeMatch(getTsDataTypeList())) {
+    if (timeseriesMetadata != null && typeCompatible(timeseriesMetadata)) {
       timeseriesMetadata.setSeq(true);
       seqTimeSeriesMetadata.add(timeseriesMetadata);
       return Optional.of(timeseriesMetadata);
@@ -1183,11 +1191,40 @@ public class SeriesScanUtil implements Accountable {
     }
   }
 
+  private boolean typeCompatible(ITimeSeriesMetadata timeseriesMetadata) {
+    if (timeseriesMetadata instanceof TimeseriesMetadata) {
+      return getTsDataTypeList()
+          .get(0)
+          .isCompatible(((TimeseriesMetadata) timeseriesMetadata).getTsDataType());
+    } else {
+      List<TimeseriesMetadata> valueTimeseriesMetadataList =
+          ((AbstractAlignedTimeSeriesMetadata) timeseriesMetadata).getValueTimeseriesMetadataList();
+      if (getTsDataTypeList().isEmpty()) {
+        return true;
+      }
+      if (valueTimeseriesMetadataList != null) {
+        int incompactibleCount = 0;
+        for (int i = 0, size = getTsDataTypeList().size(); i < size; i++) {
+          TimeseriesMetadata valueTimeSeriesMetadata = valueTimeseriesMetadataList.get(i);
+          if (valueTimeSeriesMetadata != null
+              && !getTsDataTypeList()
+                  .get(i)
+                  .isCompatible(valueTimeSeriesMetadata.getTsDataType())) {
+            valueTimeseriesMetadataList.set(i, null);
+            incompactibleCount++;
+          }
+        }
+        return incompactibleCount != getTsDataTypeList().size();
+      }
+      return true;
+    }
+  }
+
   private void unpackUnseqTsFileResource() throws IOException {
     ITimeSeriesMetadata timeseriesMetadata =
         loadTimeSeriesMetadata(orderUtils.getNextUnseqFileResource(true), false);
     // skip if data type is mismatched which may be caused by delete
-    if (timeseriesMetadata != null && timeseriesMetadata.typeMatch(getTsDataTypeList())) {
+    if (timeseriesMetadata != null && typeCompatible(timeseriesMetadata)) {
       timeseriesMetadata.setSeq(false);
       unSeqTimeSeriesMetadata.add(timeseriesMetadata);
     }
@@ -1268,6 +1305,21 @@ public class SeriesScanUtil implements Accountable {
         TsBlock tsBlock = data.getAllSatisfiedData();
         if (!ascending) {
           tsBlock.reverse();
+        }
+        StringBuilder tsBlockBuilder = new StringBuilder();
+        for (Column column : tsBlock.getAllColumns()) {
+          tsBlockBuilder.append("[");
+          for (int i = 0; i < column.getPositionCount(); i++) {
+            if (column instanceof TimeColumn) {
+              tsBlockBuilder.append(column.getLong(i)).append(",");
+            } else {
+              tsBlockBuilder.append(column.getTsPrimitiveType(i)).append(",");
+            }
+          }
+          tsBlockBuilder.append("] ");
+        }
+        if (LOGGER.isDebugEnabled()) {
+          LOGGER.debug("[getAllSatisfiedPageData] TsBlock:{}", CommonUtils.toString(tsBlock));
         }
         return tsBlock;
       } finally {

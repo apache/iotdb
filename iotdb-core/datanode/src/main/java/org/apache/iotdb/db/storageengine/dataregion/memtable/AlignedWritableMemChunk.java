@@ -22,6 +22,8 @@ package org.apache.iotdb.db.storageengine.dataregion.memtable;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.exception.DataTypeInconsistentException;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.IWALByteBufferView;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALWriteUtils;
 import org.apache.iotdb.db.utils.datastructure.AlignedTVList;
@@ -48,6 +50,7 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -60,7 +63,7 @@ import static org.apache.iotdb.db.utils.ModificationUtils.isPointDeleted;
 
 public class AlignedWritableMemChunk extends AbstractWritableMemChunk {
 
-  private final Map<String, Integer> measurementIndexMap;
+  private Map<String, Integer> measurementIndexMap;
   private List<TSDataType> dataTypes;
   private final List<IMeasurementSchema> schemaList;
   private AlignedTVList list;
@@ -432,8 +435,22 @@ public class AlignedWritableMemChunk extends AbstractWritableMemChunk {
     for (AlignedTVList alignedTvList : sortedList) {
       alignedTvList.deleteColumn(columnIndex);
     }
-    IMeasurementSchema schemaToBeRemoved = schemaList.get(columnIndex);
-    measurementIndexMap.remove(schemaToBeRemoved.getMeasurementName());
+    // notice: the mem chunk and TVList shares data type list,
+    // and list.deleteColumn will modify it. Therefore, do not modify it here again.
+    schemaList.remove(columnIndex);
+    measurementIndexMap.remove(measurementId);
+    if (columnIndex != measurementIndexMap.size()) {
+      Map<String, Integer> newIndexMap = new HashMap<>();
+      measurementIndexMap.forEach(
+          (k, v) -> {
+            if (v > columnIndex) {
+              newIndexMap.put(k, v - 1);
+            } else {
+              newIndexMap.put(k, v);
+            }
+          });
+      measurementIndexMap = newIndexMap;
+    }
   }
 
   @Override
@@ -886,5 +903,22 @@ public class AlignedWritableMemChunk extends AbstractWritableMemChunk {
           measurementIndexMap.getOrDefault(measurementSchema.getMeasurementName(), -1));
     }
     return columnIndexList;
+  }
+
+  public void checkDataType(InsertNode node) throws DataTypeInconsistentException {
+    for (MeasurementSchema incomingSchema : node.getMeasurementSchemas()) {
+      if (incomingSchema == null) {
+        continue;
+      }
+
+      Integer index = measurementIndexMap.get(incomingSchema.getMeasurementName());
+      if (index != null) {
+        IMeasurementSchema existingSchema = schemaList.get(index);
+        if (existingSchema.getType() != incomingSchema.getType()) {
+          throw new DataTypeInconsistentException(
+              existingSchema.getType(), incomingSchema.getType());
+        }
+      }
+    }
   }
 }

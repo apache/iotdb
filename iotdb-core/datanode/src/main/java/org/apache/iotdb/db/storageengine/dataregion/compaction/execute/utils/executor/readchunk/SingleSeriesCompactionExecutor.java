@@ -28,6 +28,7 @@ import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.tsfile.file.header.ChunkHeader;
 import org.apache.tsfile.file.metadata.ChunkMetadata;
 import org.apache.tsfile.file.metadata.IDeviceID;
+import org.apache.tsfile.file.metadata.statistics.Statistics;
 import org.apache.tsfile.read.TimeValuePair;
 import org.apache.tsfile.read.TsFileSequenceReader;
 import org.apache.tsfile.read.common.Chunk;
@@ -126,9 +127,15 @@ public class SingleSeriesCompactionExecutor {
       TsFileSequenceReader reader = readerListPair.left;
       List<ChunkMetadata> chunkMetadataList = readerListPair.right;
       for (ChunkMetadata chunkMetadata : chunkMetadataList) {
-        Chunk currentChunk = reader.readMemChunk(chunkMetadata);
+        Chunk currentChunk = reader.readMemChunk(chunkMetadata).rewrite(chunkMetadata.getNewType());
         summary.increaseProcessChunkNum(1);
         summary.increaseProcessPointNum(chunkMetadata.getNumOfPoints());
+        if (chunkMetadata.getNewType() != null) {
+          chunkMetadata.setTsDataType(chunkMetadata.getNewType());
+          Statistics<?> statistics = Statistics.getStatsByType(chunkMetadata.getNewType());
+          statistics.mergeStatistics(currentChunk.getChunkStatistic());
+          chunkMetadata.setStatistics(statistics);
+        }
         if (this.chunkWriter == null) {
           constructChunkWriterFromReadChunk(currentChunk);
         }

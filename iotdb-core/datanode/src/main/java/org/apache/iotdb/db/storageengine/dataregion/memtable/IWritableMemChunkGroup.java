@@ -20,6 +20,8 @@
 package org.apache.iotdb.db.storageengine.dataregion.memtable;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.db.exception.DataTypeInconsistentException;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModEntry;
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.WALEntryValue;
 
@@ -59,4 +61,6 @@ public interface IWritableMemChunkGroup extends WALEntryValue {
   IWritableMemChunk getWritableMemChunk(String measurement);
 
   long getMaxTime();
+
+  void checkDataType(InsertNode node) throws DataTypeInconsistentException;
 }
