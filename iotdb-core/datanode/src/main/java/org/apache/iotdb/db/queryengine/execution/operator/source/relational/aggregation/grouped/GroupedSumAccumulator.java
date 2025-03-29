@@ -48,6 +48,7 @@ public class GroupedSumAccumulator implements GroupedAccumulator {
 
   @Override
   public void setGroupCount(long groupCount) {
+    initResult.ensureCapacity(groupCount);
     sumValues.ensureCapacity(groupCount);
   }
 

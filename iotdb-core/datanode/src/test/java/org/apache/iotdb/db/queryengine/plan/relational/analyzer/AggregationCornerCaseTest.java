@@ -29,6 +29,7 @@ import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceStateM
 import org.apache.iotdb.db.queryengine.execution.operator.Operator;
 import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.TableScanOperator;
+import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.grouped.GroupedAggregator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.grouped.HashAggregationOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.grouped.StreamingHashAggregationOperator;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
@@ -49,10 +50,17 @@ import org.junit.Test;
 
 import java.util.Collections;
 import java.util.List;
+import java.util.OptionalInt;
 
+import static org.apache.iotdb.commons.udf.builtin.relational.TableBuiltinAggregationFunction.EXTREME;
+import static org.apache.iotdb.commons.udf.builtin.relational.TableBuiltinAggregationFunction.FIRST;
+import static org.apache.iotdb.commons.udf.builtin.relational.TableBuiltinAggregationFunction.LAST;
+import static org.apache.iotdb.commons.udf.builtin.relational.TableBuiltinAggregationFunction.SUM;
+import static org.apache.iotdb.commons.udf.builtin.relational.TableBuiltinAggregationFunction.getAggregationTypeByFuncName;
 import static org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceContext.createFragmentInstanceContext;
 import static org.apache.iotdb.db.queryengine.execution.operator.process.join.merge.MergeSortComparator.getComparatorForTable;
 import static org.apache.iotdb.db.queryengine.execution.operator.source.relational.AbstractTableScanOperator.TIME_COLUMN_TEMPLATE;
+import static org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.AccumulatorFactory.createGroupedAccumulator;
 import static org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.grouped.hash.GroupByHash.DEFAULT_GROUP_NUMBER;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
@@ -314,6 +322,177 @@ public class AggregationCornerCaseTest {
         Collections.singletonList(TimestampType.TIMESTAMP),
         Collections.singletonList(0),
         Collections.emptyList(),
+        AggregationNode.Step.SINGLE,
+        DEFAULT_GROUP_NUMBER,
+        Long.MAX_VALUE,
+        false,
+        Long.MAX_VALUE);
+  }
+
+  @Test
+  public void groupMoreThan1024Test() {
+    try (HashAggregationOperator aggregationOperator = genHashAggregationOperator2()) {
+      ListenableFuture<?> listenableFuture = aggregationOperator.isBlocked();
+      listenableFuture.get();
+      while (!aggregationOperator.isFinished() && aggregationOperator.hasNext()) {
+        aggregationOperator.next();
+        listenableFuture = aggregationOperator.isBlocked();
+        listenableFuture.get();
+      }
+
+    } catch (Exception e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
+  }
+
+  // construct a AggregationHashOperator has more than 1024 groups in input TsBlock
+  private HashAggregationOperator genHashAggregationOperator2() {
+
+    // Construct operator tree
+    QueryId queryId = new QueryId("stub_query");
+
+    FragmentInstanceId instanceId =
+        new FragmentInstanceId(new PlanFragmentId(queryId, 0), "stub-instance");
+    FragmentInstanceStateMachine stateMachine =
+        new FragmentInstanceStateMachine(
+            instanceId,
+            IoTDBThreadPoolFactory.newFixedThreadPool(
+                1, "aggregationHashOperator-test-instance-notification"));
+    FragmentInstanceContext fragmentInstanceContext =
+        createFragmentInstanceContext(instanceId, stateMachine);
+    DriverContext driverContext = new DriverContext(fragmentInstanceContext, 0);
+    PlanNodeId planNodeId1 = new PlanNodeId("1");
+    driverContext.addOperatorContext(1, planNodeId1, TableScanOperator.class.getSimpleName());
+    PlanNodeId planNodeId2 = new PlanNodeId("2");
+    driverContext.addOperatorContext(2, planNodeId2, HashAggregationOperator.class.getSimpleName());
+    Operator childOperator =
+        new Operator() {
+          boolean finished = false;
+
+          @Override
+          public OperatorContext getOperatorContext() {
+            return driverContext.getOperatorContexts().get(0);
+          }
+
+          @Override
+          public TsBlock next() {
+            TsBlockBuilder builder =
+                new TsBlockBuilder(ImmutableList.of(TSDataType.TIMESTAMP, TSDataType.INT32));
+            ColumnBuilder[] columnBuilders = builder.getValueColumnBuilders();
+            for (int i = 0; i < 1025; i++) {
+              columnBuilders[0].writeLong(i);
+            }
+            for (int i = 0; i < 1025; i++) {
+              columnBuilders[1].writeInt(i);
+            }
+            builder.declarePositions(1025);
+            TsBlock result =
+                builder.build(
+                    new RunLengthEncodedColumn(TIME_COLUMN_TEMPLATE, builder.getPositionCount()));
+            finished = true;
+            return result;
+          }
+
+          @Override
+          public boolean hasNext() {
+            return !finished;
+          }
+
+          @Override
+          public void close() {}
+
+          @Override
+          public boolean isFinished() {
+            return finished;
+          }
+
+          @Override
+          public long calculateMaxPeekMemory() {
+            return 0;
+          }
+
+          @Override
+          public long calculateMaxReturnSize() {
+            return 0;
+          }
+
+          @Override
+          public long calculateRetainedSizeAfterCallingNext() {
+            return 0;
+          }
+
+          @Override
+          public long ramBytesUsed() {
+            return 0;
+          }
+        };
+
+    OperatorContext operatorContext = driverContext.getOperatorContexts().get(1);
+
+    GroupedAggregator firstAggregator =
+        new GroupedAggregator(
+            createGroupedAccumulator(
+                FIRST.getFunctionName(),
+                getAggregationTypeByFuncName(FIRST.getFunctionName()),
+                ImmutableList.of(TSDataType.INT32, TSDataType.TIMESTAMP),
+                Collections.emptyList(),
+                Collections.emptyMap(),
+                true,
+                false),
+            AggregationNode.Step.SINGLE,
+            TSDataType.INT32,
+            ImmutableList.of(1, 0),
+            OptionalInt.empty());
+    GroupedAggregator lastAggregator =
+        new GroupedAggregator(
+            createGroupedAccumulator(
+                LAST.getFunctionName(),
+                getAggregationTypeByFuncName(LAST.getFunctionName()),
+                ImmutableList.of(TSDataType.INT32, TSDataType.TIMESTAMP),
+                Collections.emptyList(),
+                Collections.emptyMap(),
+                true,
+                false),
+            AggregationNode.Step.SINGLE,
+            TSDataType.INT32,
+            ImmutableList.of(1, 0),
+            OptionalInt.empty());
+    GroupedAggregator sumAggregator =
+        new GroupedAggregator(
+            createGroupedAccumulator(
+                SUM.getFunctionName(),
+                getAggregationTypeByFuncName(SUM.getFunctionName()),
+                ImmutableList.of(TSDataType.INT32),
+                Collections.emptyList(),
+                Collections.emptyMap(),
+                true,
+                false),
+            AggregationNode.Step.SINGLE,
+            TSDataType.DOUBLE,
+            ImmutableList.of(1),
+            OptionalInt.empty());
+    GroupedAggregator extremeAggregator =
+        new GroupedAggregator(
+            createGroupedAccumulator(
+                EXTREME.getFunctionName(),
+                getAggregationTypeByFuncName(EXTREME.getFunctionName()),
+                ImmutableList.of(TSDataType.INT32),
+                Collections.emptyList(),
+                Collections.emptyMap(),
+                true,
+                false),
+            AggregationNode.Step.SINGLE,
+            TSDataType.INT32,
+            ImmutableList.of(1),
+            OptionalInt.empty());
+
+    return new HashAggregationOperator(
+        operatorContext,
+        childOperator,
+        ImmutableList.of(IntType.INT32),
+        Collections.singletonList(1),
+        ImmutableList.of(firstAggregator, lastAggregator, sumAggregator, extremeAggregator),
         AggregationNode.Step.SINGLE,
         DEFAULT_GROUP_NUMBER,
         Long.MAX_VALUE,
