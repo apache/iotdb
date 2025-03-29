@@ -82,13 +82,17 @@ public class PipeRealtimeDataRegionHybridExtractor extends PipeRealtimeDataRegio
   }
 
   private void extractTabletInsertion(final PipeRealtimeEvent event) {
-    if (canNotUseTabletAnyMore(event)) {
+    TsFileEpoch.State state = event.getTsFileEpoch().getState(this);
+
+    if (state != TsFileEpoch.State.USING_TSFILE
+        && state != TsFileEpoch.State.USING_BOTH
+        && canNotUseTabletAnyMore(event)) {
       event
           .getTsFileEpoch()
           .migrateState(
               this,
-              state -> {
-                switch (state) {
+              curState -> {
+                switch (curState) {
                   case EMPTY:
                   case USING_TSFILE:
                     return TsFileEpoch.State.USING_TSFILE;
@@ -100,7 +104,7 @@ public class PipeRealtimeDataRegionHybridExtractor extends PipeRealtimeDataRegio
               });
     }
 
-    final TsFileEpoch.State state = event.getTsFileEpoch().getState(this);
+    state = event.getTsFileEpoch().getState(this);
     switch (state) {
       case USING_TSFILE:
         // Ignore the tablet event.

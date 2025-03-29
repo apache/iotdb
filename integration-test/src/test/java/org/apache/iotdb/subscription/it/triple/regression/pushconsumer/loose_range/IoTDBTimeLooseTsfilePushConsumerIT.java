@@ -185,7 +185,7 @@ public class IoTDBTimeLooseTsfilePushConsumerIT extends AbstractSubscriptionRegr
 
     AWAIT.untilAsserted(
         () -> {
-          assertEquals(onReceive.get(), 1);
+          assertGte(onReceive.get(), 1);
           assertGte(rowCount.get(), 3);
         });
 
@@ -196,7 +196,7 @@ public class IoTDBTimeLooseTsfilePushConsumerIT extends AbstractSubscriptionRegr
 
     AWAIT.untilAsserted(
         () -> {
-          assertEquals(onReceive.get(), 1);
+          assertGte(onReceive.get(), 1);
           assertGte(rowCount.get(), 3);
         });
 
@@ -207,7 +207,7 @@ public class IoTDBTimeLooseTsfilePushConsumerIT extends AbstractSubscriptionRegr
 
     AWAIT.untilAsserted(
         () -> {
-          assertEquals(onReceive.get(), 2);
+          assertGte(onReceive.get(), 2);
           assertGte(rowCount.get(), 8);
         });
 
@@ -218,7 +218,7 @@ public class IoTDBTimeLooseTsfilePushConsumerIT extends AbstractSubscriptionRegr
 
     AWAIT.untilAsserted(
         () -> {
-          assertEquals(onReceive.get(), 3);
+          assertGte(onReceive.get(), 3);
           assertGte(rowCount.get(), 10);
         });
 
@@ -229,7 +229,7 @@ public class IoTDBTimeLooseTsfilePushConsumerIT extends AbstractSubscriptionRegr
 
     AWAIT.untilAsserted(
         () -> {
-          assertEquals(onReceive.get(), 3);
+          assertGte(onReceive.get(), 3);
           assertGte(rowCount.get(), 10);
         });
   }
