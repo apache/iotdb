@@ -73,7 +73,7 @@ public class RelationalInsertTabletNode extends InsertTabletNode {
     super(
         id,
         devicePath,
-        isAligned,
+        true,
         measurements,
         dataTypes,
         measurementSchemas,
@@ -86,6 +86,7 @@ public class RelationalInsertTabletNode extends InsertTabletNode {
 
   public RelationalInsertTabletNode(PlanNodeId id) {
     super(id);
+    super.isAligned = true;
   }
 
   @TestOnly
@@ -100,7 +101,7 @@ public class RelationalInsertTabletNode extends InsertTabletNode {
       Object[] columns,
       int rowCount,
       TsTableColumnCategory[] columnCategories) {
-    super(id, devicePath, isAligned, measurements, dataTypes, times, bitMaps, columns, rowCount);
+    super(id, devicePath, true, measurements, dataTypes, times, bitMaps, columns, rowCount);
     setColumnCategories(columnCategories);
   }
 
@@ -110,6 +111,18 @@ public class RelationalInsertTabletNode extends InsertTabletNode {
 
   @Override
   public IDeviceID getDeviceID(int rowIdx) {
+    if (deviceIDs == null) {
+      cacheDeviceId();
+    }
+    if (singleDevice) {
+      return deviceIDs[0];
+    } else {
+      return deviceIDs[rowIdx];
+    }
+  }
+
+  @Override
+  public void cacheDeviceId() {
     if (singleDevice) {
       if (deviceIDs == null) {
         deviceIDs = new IDeviceID[1];
@@ -126,32 +139,32 @@ public class RelationalInsertTabletNode extends InsertTabletNode {
         }
         deviceIDs[0] = Factory.DEFAULT_FACTORY.create(deviceIdSegments);
       }
-      return deviceIDs[0];
-    }
-    if (deviceIDs == null) {
-      deviceIDs = new IDeviceID[rowCount];
-    }
-    if (deviceIDs[rowIdx] == null) {
-      String[] deviceIdSegments = new String[idColumnIndices.size() + 1];
-      deviceIdSegments[0] = this.getTableName();
-      for (int i = 0; i < idColumnIndices.size(); i++) {
-        final Integer columnIndex = idColumnIndices.get(i);
-        Object idSeg = ((Object[]) columns[columnIndex])[rowIdx];
-        boolean isNull =
-            bitMaps != null
-                && bitMaps[columnIndex] != null
-                && bitMaps[columnIndex].isMarked(rowIdx);
-        deviceIdSegments[i + 1] = !isNull && idSeg != null ? idSeg.toString() : null;
+    } else {
+      if (deviceIDs == null) {
+        deviceIDs = new IDeviceID[rowCount];
       }
-      IDeviceID currentDeviceId = Factory.DEFAULT_FACTORY.create(deviceIdSegments);
-      if (rowIdx > 0 && currentDeviceId.equals(deviceIDs[rowIdx - 1])) {
-        deviceIDs[rowIdx] = deviceIDs[rowIdx - 1];
-      } else {
-        deviceIDs[rowIdx] = currentDeviceId;
+      for (int rowIdx = 0; rowIdx < rowCount; rowIdx++) {
+        if (deviceIDs[rowIdx] == null) {
+          String[] deviceIdSegments = new String[idColumnIndices.size() + 1];
+          deviceIdSegments[0] = this.getTableName();
+          for (int i = 0; i < idColumnIndices.size(); i++) {
+            final Integer columnIndex = idColumnIndices.get(i);
+            Object idSeg = ((Object[]) columns[columnIndex])[rowIdx];
+            boolean isNull =
+                bitMaps != null
+                    && bitMaps[columnIndex] != null
+                    && bitMaps[columnIndex].isMarked(rowIdx);
+            deviceIdSegments[i + 1] = !isNull && idSeg != null ? idSeg.toString() : null;
+          }
+          IDeviceID currentDeviceId = Factory.DEFAULT_FACTORY.create(deviceIdSegments);
+          if (rowIdx > 0 && currentDeviceId.equals(deviceIDs[rowIdx - 1])) {
+            deviceIDs[rowIdx] = deviceIDs[rowIdx - 1];
+          } else {
+            deviceIDs[rowIdx] = currentDeviceId;
+          }
+        }
       }
     }
-
-    return deviceIDs[rowIdx];
   }
 
   @Override
@@ -221,13 +234,6 @@ public class RelationalInsertTabletNode extends InsertTabletNode {
     return splitMap;
   }
 
-  public static RelationalInsertTabletNode deserialize(ByteBuffer byteBuffer) {
-    RelationalInsertTabletNode insertNode = new RelationalInsertTabletNode(new PlanNodeId(""));
-    insertNode.subDeserialize(byteBuffer);
-    insertNode.setPlanNodeId(PlanNodeId.deserialize(byteBuffer));
-    return insertNode;
-  }
-
   @Override
   protected void serializeAttributes(ByteBuffer byteBuffer) {
     super.serializeAttributes(byteBuffer);
@@ -249,6 +255,23 @@ public class RelationalInsertTabletNode extends InsertTabletNode {
   }
 
   @Override
+  void writeTabletAttribute(ByteBuffer byteBuffer) {
+    ReadWriteIOUtils.write((byte) (singleDevice ? -1 : 0), byteBuffer);
+  }
+
+  @Override
+  void writeTabletAttribute(DataOutputStream stream) throws IOException {
+    ReadWriteIOUtils.write((byte) (singleDevice ? -1 : 0), stream);
+  }
+
+  public static RelationalInsertTabletNode deserialize(ByteBuffer byteBuffer) {
+    RelationalInsertTabletNode insertNode = new RelationalInsertTabletNode(new PlanNodeId(""));
+    insertNode.subDeserialize(byteBuffer);
+    insertNode.setPlanNodeId(PlanNodeId.deserialize(byteBuffer));
+    return insertNode;
+  }
+
+  @Override
   public void subDeserialize(ByteBuffer buffer) {
     super.subDeserialize(buffer);
     TsTableColumnCategory[] columnCategories = new TsTableColumnCategory[measurements.length];
@@ -259,6 +282,16 @@ public class RelationalInsertTabletNode extends InsertTabletNode {
   }
 
   @Override
+  void readTabletAttribute(ByteBuffer buffer) {
+    singleDevice = buffer.get() == -1;
+  }
+
+  @Override
+  void readTabletAttribute(DataInputStream stream) throws IOException {
+    singleDevice = stream.readByte() == -1;
+  }
+
+  @Override
   void subSerialize(IWALByteBufferView buffer, List<int[]> rangeList) {
     super.subSerialize(buffer, rangeList);
     for (int i = 0; i < measurements.length; i++) {
@@ -266,6 +299,11 @@ public class RelationalInsertTabletNode extends InsertTabletNode {
         buffer.put(columnCategories[i].getCategory());
       }
     }
+  }
+
+  @Override
+  void writeTabletAttribute(IWALByteBufferView buffer) {
+    buffer.put((byte) (singleDevice ? -1 : 0));
   }
 
   @Override
