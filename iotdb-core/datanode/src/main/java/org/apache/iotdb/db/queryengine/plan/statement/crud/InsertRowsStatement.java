@@ -28,12 +28,18 @@ import org.apache.iotdb.db.queryengine.plan.statement.StatementVisitor;
 
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.exception.NotImplementedException;
+import org.apache.tsfile.utils.RamUsageEstimator;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import java.util.stream.Collectors;
 
 public class InsertRowsStatement extends InsertBaseStatement {
+
+  public static final long LIST_SIZE = RamUsageEstimator.shallowSizeOfInstance(ArrayList.class);
+  private static final long INSTANCE_SIZE =
+      RamUsageEstimator.shallowSizeOfInstance(InsertRowsStatement.class);
 
   /** the InsertRowsStatement list */
   private List<InsertRowStatement> insertRowStatementList;
@@ -161,5 +167,16 @@ public class InsertRowsStatement extends InsertBaseStatement {
     InsertRowsStatement splitResult = new InsertRowsStatement();
     splitResult.setInsertRowStatementList(mergedList);
     return splitResult;
+  }
+
+  @Override
+  protected long calculateBytesUsed() {
+    return INSTANCE_SIZE
+        + (Objects.nonNull(insertRowStatementList)
+            ? LIST_SIZE
+                + insertRowStatementList.stream()
+                    .mapToLong(InsertRowStatement::calculateBytesUsed)
+                    .reduce(0L, Long::sum)
+            : 0);
   }
 }
