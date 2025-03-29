@@ -567,27 +567,31 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
 
   private TSStatus loadTsFileAsync(final String dataBaseName, final List<String> absolutePaths)
       throws IOException {
-    if (Objects.nonNull(dataBaseName)) {
-      throw new PipeException(
-          "Async load tsfile does not support table model tsfile. Given database name: "
-              + dataBaseName);
-    }
-
     final String loadActiveListeningPipeDir = IOTDB_CONFIG.getLoadActiveListeningPipeDir();
     if (Objects.isNull(loadActiveListeningPipeDir)) {
       throw new PipeException("Load active listening pipe dir is not set.");
     }
 
+    if (Objects.nonNull(dataBaseName)) {
+      final File targetDir = new File(loadActiveListeningPipeDir, dataBaseName);
+      return this.loadTsFileAsyncToTargetDir(targetDir, absolutePaths);
+    }
+
+    return loadTsFileAsyncToTargetDir(new File(loadActiveListeningPipeDir), absolutePaths);
+  }
+
+  private TSStatus loadTsFileAsyncToTargetDir(
+      final File targetDir, final List<String> absolutePaths) throws IOException {
     for (final String absolutePath : absolutePaths) {
       if (absolutePath == null) {
         continue;
       }
       final File sourceFile = new File(absolutePath);
       if (!Objects.equals(
-          loadActiveListeningPipeDir, sourceFile.getParentFile().getAbsolutePath())) {
+          targetDir.getAbsolutePath(), sourceFile.getParentFile().getAbsolutePath())) {
         RetryUtils.retryOnException(
             () -> {
-              FileUtils.moveFileWithMD5Check(sourceFile, new File(loadActiveListeningPipeDir));
+              FileUtils.moveFileWithMD5Check(sourceFile, targetDir);
               return null;
             });
       }
@@ -846,32 +850,6 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
           TSStatusCode.PIPE_TRANSFER_EXECUTE_STATEMENT_ERROR, "Execute null statement.");
     }
 
-    // Permission check
-    TSStatus permissionCheckStatus;
-    IClientSession clientSession = SESSION_MANAGER.getCurrSessionAndUpdateIdleTime();
-    if (clientSession == null
-        || !clientSession.isLogin()
-        || (LOGIN_PERIODIC_VERIFICATION_INTERVAL_MS >= 0
-            && lastSuccessfulLoginTime
-                < System.currentTimeMillis() - LOGIN_PERIODIC_VERIFICATION_INTERVAL_MS)) {
-      permissionCheckStatus = login();
-      if (permissionCheckStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-        return permissionCheckStatus;
-      }
-      clientSession = SESSION_MANAGER.getCurrSession();
-    }
-    permissionCheckStatus = AuthorityChecker.checkAuthority(statement, clientSession);
-    if (permissionCheckStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      LOGGER.warn(
-          "Receiver id = {}: Failed to check authority for statement {}, username = {}, response = {}.",
-          receiverId.get(),
-          statement.getType().name(),
-          username,
-          permissionCheckStatus);
-      return RpcUtils.getStatus(
-          permissionCheckStatus.getCode(), permissionCheckStatus.getMessage());
-    }
-
     // Judge which model the statement belongs to
     final boolean isTableModelStatement;
     final String databaseName;
@@ -889,6 +867,35 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
     } else {
       isTableModelStatement = false;
       databaseName = null;
+    }
+
+    // For table model, the authority check is done in inner execution. No need to check here
+    if (!isTableModelStatement) {
+      // Permission check
+      TSStatus permissionCheckStatus;
+      IClientSession clientSession = SESSION_MANAGER.getCurrSessionAndUpdateIdleTime();
+      if (clientSession == null
+          || !clientSession.isLogin()
+          || (LOGIN_PERIODIC_VERIFICATION_INTERVAL_MS >= 0
+              && lastSuccessfulLoginTime
+                  < System.currentTimeMillis() - LOGIN_PERIODIC_VERIFICATION_INTERVAL_MS)) {
+        permissionCheckStatus = login();
+        if (permissionCheckStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+          return permissionCheckStatus;
+        }
+        clientSession = SESSION_MANAGER.getCurrSession();
+      }
+      permissionCheckStatus = AuthorityChecker.checkAuthority(statement, clientSession);
+      if (permissionCheckStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        LOGGER.warn(
+            "Receiver id = {}: Failed to check authority for statement {}, username = {}, response = {}.",
+            receiverId.get(),
+            statement.getType().name(),
+            username,
+            permissionCheckStatus);
+        return RpcUtils.getStatus(
+            permissionCheckStatus.getCode(), permissionCheckStatus.getMessage());
+      }
     }
 
     // Real execution of the statement

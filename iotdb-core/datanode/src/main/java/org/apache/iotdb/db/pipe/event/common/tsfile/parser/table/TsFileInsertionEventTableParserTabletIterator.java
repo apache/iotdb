@@ -83,6 +83,7 @@ public class TsFileInsertionEventTableParserTabletIterator implements Iterator<T
   private Set<String> measurementNames;
   private Iterator<Pair<IDeviceID, MetadataIndexNode>> deviceMetaIterator;
   private Iterator<List<IChunkMetadata>> chunkMetadataList;
+  private Iterator<IChunkMetadata> chunkMetadata;
 
   // Record the information of the currently read Table
   private String tableName;
@@ -160,12 +161,18 @@ public class TsFileInsertionEventTableParserTabletIterator implements Iterator<T
               break;
             }
           case INIT_CHUNK_READER:
-            if (chunkMetadataList != null && chunkMetadataList.hasNext()) {
-              initChunkReader((AbstractAlignedChunkMetadata) chunkMetadataList.next().get(0));
+            if (chunkMetadata != null && chunkMetadata.hasNext()) {
+              initChunkReader((AbstractAlignedChunkMetadata) chunkMetadata.next());
               state = State.INIT_DATA;
               break;
             }
-          case INIT_CHUNK_METADATA:
+          case INIT_CHUNK_META:
+            if (chunkMetadataList != null && chunkMetadataList.hasNext()) {
+              chunkMetadata = chunkMetadataList.next().iterator();
+              state = State.INIT_CHUNK_READER;
+              break;
+            }
+          case INIT_CHUNK_META_LIST:
             if (deviceMetaIterator != null && deviceMetaIterator.hasNext()) {
               final Pair<IDeviceID, MetadataIndexNode> pair = deviceMetaIterator.next();
 
@@ -202,7 +209,7 @@ public class TsFileInsertionEventTableParserTabletIterator implements Iterator<T
               deviceID = pair.getLeft();
               chunkMetadataList = iChunkMetadataList.iterator();
 
-              state = State.INIT_CHUNK_READER;
+              state = State.INIT_CHUNK_META;
               break;
             }
           case INIT_DEVICE_META:
@@ -244,7 +251,7 @@ public class TsFileInsertionEventTableParserTabletIterator implements Iterator<T
                   j++;
                 }
               }
-              state = State.INIT_CHUNK_METADATA;
+              state = State.INIT_CHUNK_META_LIST;
               break;
             }
             return false;
@@ -259,7 +266,8 @@ public class TsFileInsertionEventTableParserTabletIterator implements Iterator<T
     CHECK_DATA,
     INIT_DATA,
     INIT_CHUNK_READER,
-    INIT_CHUNK_METADATA,
+    INIT_CHUNK_META,
+    INIT_CHUNK_META_LIST,
     INIT_DEVICE_META
   }
 

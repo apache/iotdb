@@ -19,15 +19,22 @@
 
 package org.apache.iotdb.pipe.it.dual.tablemodel.manual.basic;
 
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.client.sync.SyncConfigNodeIServiceClient;
+import org.apache.iotdb.confignode.rpc.thrift.TCreatePipeReq;
+import org.apache.iotdb.confignode.rpc.thrift.TStartPipeReq;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.db.it.utils.TestUtils;
 import org.apache.iotdb.it.env.MultiEnvFactory;
+import org.apache.iotdb.it.env.cluster.node.DataNodeWrapper;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.MultiClusterIT2DualTableManualBasic;
 import org.apache.iotdb.itbase.env.BaseEnv;
 import org.apache.iotdb.pipe.it.dual.tablemodel.TableModelUtils;
 import org.apache.iotdb.pipe.it.dual.tablemodel.manual.AbstractPipeTableModelDualManualIT;
+import org.apache.iotdb.rpc.TSStatusCode;
 
+import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
@@ -38,6 +45,8 @@ import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashMap;
+import java.util.Map;
 
 import static org.junit.Assert.fail;
 
@@ -176,7 +185,7 @@ public class IoTDBPipePermissionIT extends AbstractPipeTableModelDualManualIT {
 
     TableModelUtils.createDataBaseAndTable(senderEnv, "test1", "test1");
 
-    // Shall be transferred
+    // Shall not be transferred
     TestUtils.assertDataEventuallyOnEnv(
         receiverEnv,
         "show tables from test1",
@@ -222,5 +231,84 @@ public class IoTDBPipePermissionIT extends AbstractPipeTableModelDualManualIT {
           TestUtils.executeNonQueryWithRetry(senderEnv, "flush");
           TestUtils.executeNonQueryWithRetry(receiverEnv, "flush");
         });
+  }
+
+  @Test
+  public void testReceiverPermission() throws Exception {
+    final DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
+
+    final String receiverIp = receiverDataNode.getIp();
+    final int receiverPort = receiverDataNode.getPort();
+
+    try (final SyncConfigNodeIServiceClient client =
+        (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
+      if (!TestUtils.tryExecuteNonQueryWithRetry(receiverEnv, "create user testUser 'password'")) {
+        return;
+      }
+
+      final Map<String, String> extractorAttributes = new HashMap<>();
+      final Map<String, String> processorAttributes = new HashMap<>();
+      final Map<String, String> connectorAttributes = new HashMap<>();
+
+      final String dbName = "test";
+      final String tbName = "test";
+
+      extractorAttributes.put("extractor.inclusion", "all");
+      extractorAttributes.put("extractor.capture.tree", "false");
+      extractorAttributes.put("extractor.capture.table", "true");
+      extractorAttributes.put("user", "root");
+
+      connectorAttributes.put("connector", "iotdb-thrift-connector");
+      connectorAttributes.put("connector.ip", receiverIp);
+      connectorAttributes.put("connector.port", Integer.toString(receiverPort));
+      connectorAttributes.put("connector.user", "testUser");
+      connectorAttributes.put("connector.password", "password");
+
+      final TSStatus status =
+          client.createPipe(
+              new TCreatePipeReq("testPipe", connectorAttributes)
+                  .setExtractorAttributes(extractorAttributes)
+                  .setProcessorAttributes(processorAttributes));
+
+      Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
+
+      Assert.assertEquals(
+          TSStatusCode.SUCCESS_STATUS.getStatusCode(),
+          client.startPipeExtended(new TStartPipeReq("testPipe").setIsTableModel(true)).getCode());
+
+      TableModelUtils.createDataBaseAndTable(senderEnv, tbName, dbName);
+
+      // Write some data
+      if (!TableModelUtils.insertData(dbName, tbName, 0, 100, senderEnv)) {
+        return;
+      }
+
+      // Shall not be transferred
+      TestUtils.assertDataAlwaysOnEnv(
+          receiverEnv,
+          "show databases",
+          "Database,TTL(ms),SchemaReplicationFactor,DataReplicationFactor,TimePartitionInterval,",
+          Collections.singleton("information_schema,INF,null,null,null,"),
+          (String) null);
+
+      if (!TestUtils.tryExecuteNonQueryWithRetry(
+          "information_schema",
+          BaseEnv.TABLE_SQL_DIALECT,
+          receiverEnv,
+          "grant insert,create on database test to user testUser")) {
+        return;
+      }
+
+      // Will finally pass
+      TableModelUtils.assertCountData(
+          dbName,
+          tbName,
+          100,
+          receiverEnv,
+          o -> {
+            TestUtils.executeNonQueryWithRetry(senderEnv, "flush");
+            TestUtils.executeNonQueryWithRetry(receiverEnv, "flush");
+          });
+    }
   }
 }
