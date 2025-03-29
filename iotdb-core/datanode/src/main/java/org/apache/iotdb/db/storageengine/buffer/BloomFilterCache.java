@@ -31,6 +31,7 @@ import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileID;
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
 import com.github.benmanes.caffeine.cache.Weigher;
+import com.google.common.util.concurrent.AtomicDouble;
 import org.apache.tsfile.read.TsFileSequenceReader;
 import org.apache.tsfile.utils.BloomFilter;
 import org.apache.tsfile.utils.RamUsageEstimator;
@@ -52,6 +53,7 @@ public class BloomFilterCache {
   private static final DataNodeMemoryConfig MEMORY_CONFIG =
       IoTDBDescriptor.getInstance().getMemoryConfig();
   private static final IMemoryBlock CACHE_MEMORY_BLOCK;
+  private static final AtomicDouble memoryUsageCheatFactor = new AtomicDouble(1);
   private static final boolean CACHE_ENABLE = MEMORY_CONFIG.isMetaDataCacheEnable();
   private final AtomicLong entryAverageSize = new AtomicLong(0);
 
@@ -61,8 +63,16 @@ public class BloomFilterCache {
     CACHE_MEMORY_BLOCK =
         MEMORY_CONFIG
             .getBloomFilterCacheMemoryManager()
-            .exactAllocate("BloomFilterCache", MemoryBlockType.STATIC);
-    // TODO @spricoder: find a way to get the size of the BloomFilterCache
+            .exactAllocate("BloomFilterCache", MemoryBlockType.STATIC)
+            .setUpdateCallback(
+                (oldMemory, newMemory) -> {
+                  memoryUsageCheatFactor.updateAndGet(
+                      factor -> factor / ((double) newMemory / oldMemory));
+                  LOGGER.info(
+                      "[MemoryUsageCheatFactor]BloomFilterCache has updated from {} to {}.",
+                      oldMemory,
+                      newMemory);
+                });
     CACHE_MEMORY_BLOCK.allocate(CACHE_MEMORY_BLOCK.getTotalMemorySizeInBytes());
   }
 
@@ -76,7 +86,9 @@ public class BloomFilterCache {
             .weigher(
                 (Weigher<BloomFilterCacheKey, BloomFilter>)
                     (key, bloomFilter) ->
-                        (int) (key.getRetainedSizeInBytes() + bloomFilter.getRetainedSizeInBytes()))
+                        (int)
+                            ((key.getRetainedSizeInBytes() + bloomFilter.getRetainedSizeInBytes())
+                                * memoryUsageCheatFactor.get()))
             .recordStats()
             .build();
   }
