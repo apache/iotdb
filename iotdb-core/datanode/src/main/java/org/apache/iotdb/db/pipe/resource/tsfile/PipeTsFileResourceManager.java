@@ -374,7 +374,7 @@ public class PipeTsFileResourceManager {
     }
   }
 
-  public long getTotalLinkedButDeletedTsfileResourceRamSize() {
+  public long getTotalLinkedButDeletedTsFileResourceRamSize() {
     long totalLinkedButDeletedTsfileResourceRamSize = 0;
     try {
       for (final Map.Entry<String, PipeTsFileResource> resourceEntry :

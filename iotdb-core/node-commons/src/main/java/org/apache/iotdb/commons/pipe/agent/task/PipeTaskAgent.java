@@ -54,6 +54,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 
@@ -1077,6 +1078,18 @@ public abstract class PipeTaskAgent {
         ? new CommitterKey(pipeName, creationTime, regionId, restartTime)
         : ((PipeTemporaryMetaInAgent) pipeMeta.getTemporaryMeta())
             .getCommitterKey(pipeName, creationTime, regionId, restartTime);
+  }
+
+  public long getAllFloatingMemoryUsageInByte() {
+    final AtomicLong bytes = new AtomicLong(0);
+    pipeMetaKeeper
+        .getPipeMetaList()
+        .forEach(
+            pipeMeta ->
+                bytes.addAndGet(
+                    ((PipeTemporaryMetaInAgent) pipeMeta.getTemporaryMeta())
+                        .getFloatingMemoryUsageInByte()));
+    return bytes.get();
   }
 
   public long getFloatingMemoryUsageInByte(final String pipeName) {
