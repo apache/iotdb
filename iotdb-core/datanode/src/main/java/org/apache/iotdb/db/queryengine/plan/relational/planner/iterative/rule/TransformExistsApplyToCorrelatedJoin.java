@@ -116,6 +116,7 @@ public class TransformExistsApplyToCorrelatedJoin implements Rule<ApplyNode> {
     To support the latter case, the ApplyNode with empty correlation list is rewritten to default
     aggregation, which is inefficient in the rare case of uncorrelated EXISTS subquery,
     but currently allows to successfully decorrelate a correlated EXISTS subquery.
+
     Perhaps we can remove this condition when exploratory optimizer is implemented or support for decorrelating joins is implemented in PlanNodeDecorrelator
     */
     if (parent.getCorrelation().isEmpty()) {

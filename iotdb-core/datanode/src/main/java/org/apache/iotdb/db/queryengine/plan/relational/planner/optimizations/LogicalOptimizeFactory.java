@@ -77,6 +77,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.Tr
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.TransformCorrelatedGroupedAggregationWithProjection;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.TransformCorrelatedGroupedAggregationWithoutProjection;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.TransformCorrelatedJoinToJoin;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.TransformCorrelatedScalarSubquery;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.TransformExistsApplyToCorrelatedJoin;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.TransformUncorrelatedInPredicateSubqueryToSemiJoin;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.TransformUncorrelatedSubqueryToJoin;
@@ -264,8 +265,8 @@ public class LogicalOptimizeFactory {
                 new RemoveUnreferencedScalarApplyNodes(),
                 //                            new TransformCorrelatedInPredicateToJoin(metadata), //
                 // must be run after columnPruningOptimizer
-                //                            new TransformCorrelatedScalarSubquery(metadata), //
-                // must be run after TransformCorrelatedAggregation rules
+                new TransformCorrelatedScalarSubquery(
+                    metadata), // must be run after TransformCorrelatedAggregation rules
                 new TransformCorrelatedJoinToJoin(plannerContext))),
         new IterativeOptimizer(
             plannerContext,
