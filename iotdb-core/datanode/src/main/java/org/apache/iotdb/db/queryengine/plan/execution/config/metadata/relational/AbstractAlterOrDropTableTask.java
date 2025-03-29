@@ -24,14 +24,17 @@ abstract class AbstractAlterOrDropTableTask extends AbstractTableTask {
   protected final String queryId;
 
   protected final boolean tableIfExists;
+  protected final boolean view;
 
   protected AbstractAlterOrDropTableTask(
       final String database,
       final String tableName,
       final String queryId,
-      final boolean tableIfExists) {
+      final boolean tableIfExists,
+      final boolean view) {
     super(database, tableName);
     this.queryId = queryId;
     this.tableIfExists = tableIfExists;
+    this.view = view;
   }
 }

@@ -401,7 +401,8 @@ public class IoTDBDatabaseIT {
                   "table_name,STRING,TAG,",
                   "ttl(ms),STRING,ATTRIBUTE,",
                   "status,STRING,ATTRIBUTE,",
-                  "comment,STRING,ATTRIBUTE,")));
+                  "comment,STRING,ATTRIBUTE,",
+                  "table_type,STRING,ATTRIBUTE,")));
       TestUtils.assertResultSetEqual(
           statement.executeQuery("desc columns"),
           "ColumnName,DataType,Category,",
@@ -489,19 +490,19 @@ public class IoTDBDatabaseIT {
                   "test,INF,1,1,604800000,0,0,")));
       TestUtils.assertResultSetEqual(
           statement.executeQuery("show devices from tables where status = 'USING'"),
-          "database,table_name,ttl(ms),status,comment,",
+          "database,table_name,ttl(ms),status,comment,table_type,",
           new HashSet<>(
               Arrays.asList(
-                  "information_schema,databases,INF,USING,null,",
-                  "information_schema,tables,INF,USING,null,",
-                  "information_schema,columns,INF,USING,null,",
-                  "information_schema,queries,INF,USING,null,",
-                  "information_schema,regions,INF,USING,null,",
-                  "information_schema,topics,INF,USING,null,",
-                  "information_schema,pipe_plugins,INF,USING,null,",
-                  "information_schema,pipes,INF,USING,null,",
-                  "information_schema,subscriptions,INF,USING,null,",
-                  "test,test,INF,USING,test,")));
+                  "information_schema,databases,INF,USING,null,SYSTEM VIEW,",
+                  "information_schema,tables,INF,USING,null,SYSTEM VIEW,",
+                  "information_schema,columns,INF,USING,null,SYSTEM VIEW,",
+                  "information_schema,queries,INF,USING,null,SYSTEM VIEW,",
+                  "information_schema,regions,INF,USING,null,SYSTEM VIEW,",
+                  "information_schema,topics,INF,USING,null,SYSTEM VIEW,",
+                  "information_schema,pipe_plugins,INF,USING,null,SYSTEM VIEW,",
+                  "information_schema,pipes,INF,USING,null,SYSTEM VIEW,",
+                  "information_schema,subscriptions,INF,USING,null,SYSTEM VIEW,",
+                  "test,test,INF,USING,test,BASE TABLE,")));
       TestUtils.assertResultSetEqual(
           statement.executeQuery("count devices from tables where status = 'USING'"),
           "count(devices),",

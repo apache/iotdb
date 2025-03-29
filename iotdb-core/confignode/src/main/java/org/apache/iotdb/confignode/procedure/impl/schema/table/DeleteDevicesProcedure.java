@@ -269,7 +269,7 @@ public class DeleteDevicesProcedure extends AbstractAlterOrDropTableProcedure<De
 
   private void deleteDeviceSchema(final ConfigNodeProcedureEnv env) {
     new TableRegionTaskExecutor<>(
-            "roll back table device black list",
+            "delete table device in black list",
             env,
             env.getConfigManager().getRelatedSchemaRegionGroup4TableModel(database),
             CnToDnAsyncRequestType.DELETE_TABLE_DEVICE_IN_BLACK_LIST,

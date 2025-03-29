@@ -35,11 +35,11 @@ public class TimeseriesSchemaInfo implements ITimeSeriesSchemaInfo {
   private final boolean isUnderAlignedDevice;
 
   public TimeseriesSchemaInfo(
-      IMeasurementMNode<?> node,
-      PartialPath fullPath,
-      Map<String, String> tags,
-      Map<String, String> attributes,
-      boolean isUnderAlignedDevice) {
+      final IMeasurementMNode<?> node,
+      final PartialPath fullPath,
+      final Map<String, String> tags,
+      final Map<String, String> attributes,
+      final boolean isUnderAlignedDevice) {
     this.node = node;
     this.fullPath = fullPath;
     this.tags = tags;

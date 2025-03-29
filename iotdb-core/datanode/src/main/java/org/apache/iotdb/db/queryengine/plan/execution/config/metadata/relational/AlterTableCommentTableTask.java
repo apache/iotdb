@@ -34,8 +34,9 @@ public class AlterTableCommentTableTask extends AbstractAlterOrDropTableTask {
       final String tableName,
       final String queryId,
       final boolean ifExists,
-      final @Nullable String comment) {
-    super(database, tableName, queryId, ifExists);
+      final @Nullable String comment,
+      final boolean view) {
+    super(database, tableName, queryId, ifExists, view);
     this.comment = comment;
   }
 
@@ -43,6 +44,6 @@ public class AlterTableCommentTableTask extends AbstractAlterOrDropTableTask {
   public ListenableFuture<ConfigTaskResult> execute(final IConfigTaskExecutor configTaskExecutor)
       throws InterruptedException {
     return configTaskExecutor.alterTableCommentTable(
-        database, tableName, queryId, tableIfExists, comment);
+        database, tableName, queryId, tableIfExists, comment, view);
   }
 }

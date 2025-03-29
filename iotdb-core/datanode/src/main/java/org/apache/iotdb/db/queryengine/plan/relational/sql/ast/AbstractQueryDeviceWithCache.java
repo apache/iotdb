@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
 
 import org.apache.iotdb.commons.schema.column.ColumnHeader;
+import org.apache.iotdb.commons.schema.table.TreeViewSchema;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
@@ -59,6 +60,7 @@ public abstract class AbstractQueryDeviceWithCache extends AbstractTraverseDevic
       return true;
     }
     final List<DeviceEntry> entries = new ArrayList<>();
+
     final boolean needFetch =
         super.parseRawExpression(entries, tableInstance, attributeColumns, context);
     if (!needFetch) {
@@ -69,7 +71,11 @@ public abstract class AbstractQueryDeviceWithCache extends AbstractTraverseDevic
               .map(
                   deviceEntry ->
                       ShowDevicesResult.convertDeviceEntry2ShowDeviceResult(
-                          deviceEntry, attributeColumns))
+                          deviceEntry,
+                          attributeColumns,
+                          TreeViewSchema.isTreeViewTable(tableInstance)
+                              ? TreeViewSchema.getPrefixPattern(tableInstance).getNodeLength() - 1
+                              : 0))
               .collect(Collectors.toList());
     }
     return needFetch;

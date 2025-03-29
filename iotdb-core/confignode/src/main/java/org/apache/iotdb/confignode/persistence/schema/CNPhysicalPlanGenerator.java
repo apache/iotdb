@@ -35,7 +35,7 @@ import org.apache.iotdb.confignode.consensus.request.write.auth.AuthorRelational
 import org.apache.iotdb.confignode.consensus.request.write.auth.AuthorTreePlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.DatabaseSchemaPlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.SetTTLPlan;
-import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeCreateTablePlan;
+import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeCreateTableOrViewPlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.CommitSetSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.CreateSchemaTemplatePlan;
 import org.apache.iotdb.confignode.persistence.schema.mnode.IConfigMNode;
@@ -458,7 +458,7 @@ public class CNPhysicalPlanGenerator
             stack.push(new Pair<>(databaseMNode, true));
             name = databaseMNode.getName();
             for (final TsTable table : tableSet) {
-              planDeque.add(new PipeCreateTablePlan(name, table));
+              planDeque.add(new PipeCreateTableOrViewPlan(name, table));
             }
             tableSet.clear();
             break;

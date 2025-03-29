@@ -306,8 +306,8 @@ public class PipePlanToStatementVisitor extends PlanVisitor<Object, Void> {
             new Table(QualifiedName.of(node.getDatabase(), node.getTableName())),
             node.getAssignments(),
             null);
-    update.setIdDeterminedFilterList(node.getIdDeterminedFilterList());
-    update.setIdFuzzyPredicate(node.getIdFuzzyPredicate());
+    update.setTagDeterminedFilterList(node.getTagDeterminedFilterList());
+    update.setTagFuzzyPredicate(node.getTagFuzzyPredicate());
     update.setDatabase(node.getDatabase());
     update.setTableName(node.getTableName());
     return update;

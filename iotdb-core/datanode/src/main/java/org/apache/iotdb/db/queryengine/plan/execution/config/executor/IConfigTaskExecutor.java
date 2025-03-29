@@ -325,7 +325,8 @@ public interface IConfigTaskExecutor {
       final String sourceName,
       final String targetName,
       final String queryId,
-      final boolean tableIfExists);
+      final boolean tableIfExists,
+      final boolean isView);
 
   SettableFuture<ConfigTaskResult> alterTableAddColumn(
       final String database,
@@ -333,7 +334,8 @@ public interface IConfigTaskExecutor {
       final List<TsTableColumnSchema> columnSchemaList,
       final String queryId,
       final boolean tableIfExists,
-      final boolean columnIfExists);
+      final boolean columnIfExists,
+      final boolean isView);
 
   SettableFuture<ConfigTaskResult> alterTableRenameColumn(
       final String database,
@@ -342,7 +344,8 @@ public interface IConfigTaskExecutor {
       final String newName,
       final String queryId,
       final boolean tableIfExists,
-      final boolean columnIfExists);
+      final boolean columnIfExists,
+      final boolean isView);
 
   SettableFuture<ConfigTaskResult> alterTableDropColumn(
       final String database,
@@ -350,21 +353,24 @@ public interface IConfigTaskExecutor {
       final String columnName,
       final String queryId,
       final boolean tableIfExists,
-      final boolean columnIfExists);
+      final boolean columnIfExists,
+      final boolean isView);
 
   SettableFuture<ConfigTaskResult> alterTableSetProperties(
       final String database,
       final String tableName,
       final Map<String, String> properties,
       final String queryId,
-      final boolean ifExists);
+      final boolean ifExists,
+      final boolean isView);
 
   SettableFuture<ConfigTaskResult> alterTableCommentTable(
       final String database,
       final String tableName,
       final String queryId,
       final boolean ifExists,
-      final String comment);
+      final String comment,
+      final boolean isView);
 
   SettableFuture<ConfigTaskResult> alterTableCommentColumn(
       final String database,
@@ -373,13 +379,21 @@ public interface IConfigTaskExecutor {
       final String queryId,
       final boolean tableIfExists,
       final boolean columnIfExists,
-      final String comment);
+      final String comment,
+      final boolean isView);
 
   SettableFuture<ConfigTaskResult> dropTable(
-      final String database, final String tableName, final String queryId, final boolean ifExists);
+      final String database,
+      final String tableName,
+      final String queryId,
+      final boolean ifExists,
+      final boolean isView);
 
   SettableFuture<ConfigTaskResult> deleteDevice(
       final DeleteDevice deleteDevice, final String queryId, final SessionInfo sessionInfo);
+
+  SettableFuture<ConfigTaskResult> createTableView(
+      final TsTable table, final String database, final boolean replace);
 
   SettableFuture<ConfigTaskResult> showVersion();
 

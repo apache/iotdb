@@ -96,7 +96,7 @@ public class PipeConfigRegionSnapshotEvent extends PipeSnapshotEvent
                     ConfigPhysicalPlanType.CreateDatabase.getPlanType(),
                     ConfigPhysicalPlanType.CreateSchemaTemplate.getPlanType(),
                     ConfigPhysicalPlanType.CommitSetSchemaTemplate.getPlanType(),
-                    ConfigPhysicalPlanType.PipeCreateTable.getPlanType()))));
+                    ConfigPhysicalPlanType.PipeCreateTableOrView.getPlanType()))));
     SNAPSHOT_FILE_TYPE_2_CONFIG_PHYSICAL_PLAN_TYPE_MAP.put(
         CNSnapshotFileType.TTL, Collections.singleton(ConfigPhysicalPlanType.SetTTL.getPlanType()));
   }

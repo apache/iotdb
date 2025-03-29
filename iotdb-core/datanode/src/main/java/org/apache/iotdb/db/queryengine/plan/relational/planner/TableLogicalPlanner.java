@@ -20,8 +20,11 @@
 package org.apache.iotdb.db.queryengine.plan.relational.planner;
 
 import org.apache.iotdb.commons.partition.SchemaPartition;
+import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.schema.column.ColumnHeader;
 import org.apache.iotdb.commons.schema.column.ColumnHeaderConstant;
+import org.apache.iotdb.commons.schema.table.TreeViewSchema;
+import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.QueryId;
@@ -29,6 +32,7 @@ import org.apache.iotdb.db.queryengine.common.SessionInfo;
 import org.apache.iotdb.db.queryengine.common.header.DatasetHeader;
 import org.apache.iotdb.db.queryengine.execution.warnings.WarningCollector;
 import org.apache.iotdb.db.queryengine.metric.QueryPlanCostMetricSet;
+import org.apache.iotdb.db.queryengine.plan.analyze.ClusterPartitionFetcher;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.LogicalQueryPlan;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.WritePlanNode;
@@ -68,6 +72,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Table;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Update;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.WrappedStatement;
 import org.apache.iotdb.db.queryengine.plan.relational.type.InternalTypeManager;
+import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
@@ -376,11 +381,12 @@ public class TableLogicalPlanner {
             queryId.genPlanNodeId(),
             statement.getDatabase(),
             statement.getTableName(),
-            statement.getIdDeterminedFilterList(),
+            statement.getTagDeterminedFilterList(),
             null,
             statement.getColumnHeaderList(),
             null,
-            Objects.isNull(statement.getIdFuzzyPredicate()) ? pushDownLimit : -1);
+            Objects.isNull(statement.getTagFuzzyPredicate()) ? pushDownLimit : -1,
+            statement.needAligned());
 
     // put the column type info into symbolAllocator to generate TypeProvider
     statement
@@ -392,9 +398,9 @@ public class TableLogicalPlanner {
                     TypeFactory.getType(columnHeader.getColumnType())));
 
     // Filter
-    if (Objects.nonNull(statement.getIdFuzzyPredicate())) {
+    if (Objects.nonNull(statement.getTagFuzzyPredicate())) {
       currentNode =
-          new FilterNode(queryId.genPlanNodeId(), currentNode, statement.getIdFuzzyPredicate());
+          new FilterNode(queryId.genPlanNodeId(), currentNode, statement.getTagFuzzyPredicate());
     }
 
     // Limit
@@ -418,8 +424,8 @@ public class TableLogicalPlanner {
             queryContext.getQueryId().genPlanNodeId(),
             statement.getDatabase(),
             statement.getTableName(),
-            statement.getIdDeterminedFilterList(),
-            statement.getIdFuzzyPredicate(),
+            statement.getTagDeterminedFilterList(),
+            statement.getTagFuzzyPredicate(),
             statement.getColumnHeaderList());
 
     // put the column type info into symbolAllocator to generate TypeProvider
@@ -453,8 +459,8 @@ public class TableLogicalPlanner {
         queryContext.getQueryId().genPlanNodeId(),
         statement.getDatabase(),
         statement.getTableName(),
-        statement.getIdDeterminedFilterList(),
-        statement.getIdFuzzyPredicate(),
+        statement.getTagDeterminedFilterList(),
+        statement.getTagFuzzyPredicate(),
         statement.getColumnHeaderList(),
         null,
         statement.getAssignments(),
@@ -464,13 +470,24 @@ public class TableLogicalPlanner {
   private void planTraverseDevice(final AbstractTraverseDevice statement, final Analysis analysis) {
     final String database = statement.getDatabase();
 
-    final SchemaPartition schemaPartition =
-        statement.isIdDetermined()
-            ? metadata.getSchemaPartition(database, statement.getPartitionKeyList())
-            : metadata.getSchemaPartition(database);
-    analysis.setSchemaPartitionInfo(schemaPartition);
+    final TsTable table =
+        DataNodeTableCache.getInstance().getTable(database, statement.getTableName());
 
-    if (schemaPartition.isEmpty()) {
+    if (TreeViewSchema.isTreeViewTable(table)) {
+      final PathPatternTree tree = new PathPatternTree();
+      tree.appendPathPattern(TreeViewSchema.getPrefixPattern(table));
+      tree.constructTree();
+
+      analysis.setSchemaPartitionInfo(
+          ClusterPartitionFetcher.getInstance().getSchemaPartition(tree));
+    } else {
+      analysis.setSchemaPartitionInfo(
+          statement.isIdDetermined()
+              ? metadata.getSchemaPartition(database, statement.getPartitionKeyList())
+              : metadata.getSchemaPartition(database));
+    }
+
+    if (analysis.getSchemaPartitionInfo().isEmpty()) {
       analysis.setFinishQueryAfterAnalyze();
     }
   }
