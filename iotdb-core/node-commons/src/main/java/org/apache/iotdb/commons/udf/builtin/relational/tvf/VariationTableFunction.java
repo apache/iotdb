@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.commons.udf.builtin.relational.tvf;
 
+import org.apache.iotdb.udf.api.exception.UDFException;
 import org.apache.iotdb.udf.api.relational.TableFunction;
 import org.apache.iotdb.udf.api.relational.access.Record;
 import org.apache.iotdb.udf.api.relational.table.TableFunctionAnalysis;
@@ -33,8 +34,10 @@ import org.apache.iotdb.udf.api.relational.table.specification.ScalarParameterSp
 import org.apache.iotdb.udf.api.relational.table.specification.TableParameterSpecification;
 import org.apache.iotdb.udf.api.type.Type;
 
+import com.google.common.collect.ImmutableSet;
 import org.apache.tsfile.block.column.ColumnBuilder;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
@@ -42,49 +45,37 @@ import java.util.Map;
 
 import static org.apache.iotdb.commons.udf.builtin.relational.tvf.WindowTVFUtils.findColumnIndex;
 
-public class HOPTableFunction implements TableFunction {
-
+public class VariationTableFunction implements TableFunction {
   private static final String DATA_PARAMETER_NAME = "DATA";
-  private static final String TIMECOL_PARAMETER_NAME = "TIMECOL";
-  private static final String SIZE_PARAMETER_NAME = "SIZE";
-  private static final String SLIDE_PARAMETER_NAME = "SLIDE";
-  private static final String ORIGIN_PARAMETER_NAME = "ORIGIN";
+  private static final String COL_PARAMETER_NAME = "COL";
+  private static final String DELTA_PARAMETER_NAME = "DELTA";
 
   @Override
   public List<ParameterSpecification> getArgumentsSpecifications() {
     return Arrays.asList(
         TableParameterSpecification.builder()
             .name(DATA_PARAMETER_NAME)
-            .rowSemantics()
             .passThroughColumns()
             .build(),
+        ScalarParameterSpecification.builder().name(COL_PARAMETER_NAME).type(Type.STRING).build(),
         ScalarParameterSpecification.builder()
-            .name(TIMECOL_PARAMETER_NAME)
-            .type(Type.STRING)
-            .defaultValue("time")
-            .build(),
-        ScalarParameterSpecification.builder().name(SIZE_PARAMETER_NAME).type(Type.INT64).build(),
-        ScalarParameterSpecification.builder().name(SLIDE_PARAMETER_NAME).type(Type.INT64).build(),
-        ScalarParameterSpecification.builder()
-            .name(ORIGIN_PARAMETER_NAME)
-            .type(Type.TIMESTAMP)
-            .defaultValue(0L)
+            .name(DELTA_PARAMETER_NAME)
+            .type(Type.DOUBLE)
             .build());
   }
 
   @Override
-  public TableFunctionAnalysis analyze(Map<String, Argument> arguments) {
+  public TableFunctionAnalysis analyze(Map<String, Argument> arguments) throws UDFException {
     TableArgument tableArgument = (TableArgument) arguments.get(DATA_PARAMETER_NAME);
     String expectedFieldName =
-        (String) ((ScalarArgument) arguments.get(TIMECOL_PARAMETER_NAME)).getValue();
+        (String) ((ScalarArgument) arguments.get(COL_PARAMETER_NAME)).getValue();
     int requiredIndex =
-        findColumnIndex(tableArgument, expectedFieldName, Collections.singleton(Type.TIMESTAMP));
+        findColumnIndex(
+            tableArgument,
+            expectedFieldName,
+            ImmutableSet.of(Type.INT32, Type.INT64, Type.FLOAT, Type.DOUBLE));
     DescribedSchema properColumnSchema =
-        new DescribedSchema.Builder()
-            .addField("window_start", Type.TIMESTAMP)
-            .addField("window_end", Type.TIMESTAMP)
-            .build();
-
+        new DescribedSchema.Builder().addField("window_index", Type.INT64).build();
     // outputColumnSchema
     return TableFunctionAnalysis.builder()
         .properColumnSchema(properColumnSchema)
@@ -95,28 +86,25 @@ public class HOPTableFunction implements TableFunction {
 
   @Override
   public TableFunctionProcessorProvider getProcessorProvider(Map<String, Argument> arguments) {
+    double delta = (double) ((ScalarArgument) arguments.get(DELTA_PARAMETER_NAME)).getValue();
     return new TableFunctionProcessorProvider() {
       @Override
       public TableFunctionDataProcessor getDataProcessor() {
-        return new HOPDataProcessor(
-            (Long) ((ScalarArgument) arguments.get(ORIGIN_PARAMETER_NAME)).getValue(),
-            (Long) ((ScalarArgument) arguments.get(SLIDE_PARAMETER_NAME)).getValue(),
-            (Long) ((ScalarArgument) arguments.get(SIZE_PARAMETER_NAME)).getValue());
+        return new VariationDataProcessor(delta);
       }
     };
   }
 
-  private static class HOPDataProcessor implements TableFunctionDataProcessor {
+  private static class VariationDataProcessor implements TableFunctionDataProcessor {
 
-    private final long slide;
-    private final long size;
-    private final long start;
+    private final double gap;
+    private final List<Long> currentRowIndexes = new ArrayList<>();
+    private double baseValue = 0;
     private long curIndex = 0;
+    private long windowIndex = 0;
 
-    public HOPDataProcessor(long startTime, long slide, long size) {
-      this.slide = slide;
-      this.size = size;
-      this.start = startTime;
+    public VariationDataProcessor(double delta) {
+      this.gap = delta;
     }
 
     @Override
@@ -124,17 +112,33 @@ public class HOPTableFunction implements TableFunction {
         Record input,
         List<ColumnBuilder> properColumnBuilders,
         ColumnBuilder passThroughIndexBuilder) {
-      // find the first windows that satisfy the condition: start + n*slide <= time < start +
-      // n*slide + size
-      long timeValue = input.getLong(0);
-      long window_start = (timeValue - start - size + slide) / slide * slide;
-      while (window_start <= timeValue && window_start + size > timeValue) {
-        properColumnBuilders.get(0).writeLong(window_start);
-        properColumnBuilders.get(1).writeLong(window_start + size);
-        passThroughIndexBuilder.writeLong(curIndex);
-        window_start += slide;
+      double value = input.getDouble(0);
+      if (!currentRowIndexes.isEmpty() && Math.abs(value - baseValue) > gap) {
+        outputWindow(properColumnBuilders, passThroughIndexBuilder);
       }
+      if (currentRowIndexes.isEmpty()) {
+        // use the first value in the window as the base value
+        baseValue = value;
+      }
+      currentRowIndexes.add(curIndex);
       curIndex++;
+    }
+
+    @Override
+    public void finish(List<ColumnBuilder> columnBuilders, ColumnBuilder passThroughIndexBuilder) {
+      if (!currentRowIndexes.isEmpty()) {
+        outputWindow(columnBuilders, passThroughIndexBuilder);
+      }
+    }
+
+    private void outputWindow(
+        List<ColumnBuilder> properColumnBuilders, ColumnBuilder passThroughIndexBuilder) {
+      for (Long currentRowIndex : currentRowIndexes) {
+        properColumnBuilders.get(0).writeLong(windowIndex);
+        passThroughIndexBuilder.writeLong(currentRowIndex);
+      }
+      currentRowIndexes.clear();
+      windowIndex++;
     }
   }
 }

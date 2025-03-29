@@ -61,7 +61,11 @@ public class TableFunctionProcessorNode extends SingleChildProcessNode {
   // partitioning and ordering combined from sources
   private final Optional<DataOrganizationSpecification> dataOrganizationSpecification;
 
+  private final boolean rowSemantic;
+
   private final Map<String, Argument> arguments;
+
+  private final boolean requireRecordSnapshot;
 
   public TableFunctionProcessorNode(
       PlanNodeId id,
@@ -71,7 +75,9 @@ public class TableFunctionProcessorNode extends SingleChildProcessNode {
       Optional<TableFunctionNode.PassThroughSpecification> passThroughSpecification,
       List<Symbol> requiredSymbols,
       Optional<DataOrganizationSpecification> dataOrganizationSpecification,
-      Map<String, Argument> arguments) {
+      boolean rowSemantic,
+      Map<String, Argument> arguments,
+      boolean requireRecordSnapshot) {
     super(id, source.orElse(null));
     this.name = requireNonNull(name, "name is null");
     this.properOutputs = ImmutableList.copyOf(properOutputs);
@@ -79,7 +85,9 @@ public class TableFunctionProcessorNode extends SingleChildProcessNode {
     this.requiredSymbols = ImmutableList.copyOf(requiredSymbols);
     this.dataOrganizationSpecification =
         requireNonNull(dataOrganizationSpecification, "specification is null");
+    this.rowSemantic = rowSemantic;
     this.arguments = ImmutableMap.copyOf(arguments);
+    this.requireRecordSnapshot = requireRecordSnapshot;
   }
 
   public TableFunctionProcessorNode(
@@ -89,7 +97,9 @@ public class TableFunctionProcessorNode extends SingleChildProcessNode {
       Optional<TableFunctionNode.PassThroughSpecification> passThroughSpecification,
       List<Symbol> requiredSymbols,
       Optional<DataOrganizationSpecification> dataOrganizationSpecification,
-      Map<String, Argument> arguments) {
+      boolean rowSemantic,
+      Map<String, Argument> arguments,
+      boolean requireRecordSnapshot) {
     super(id);
     this.name = requireNonNull(name, "name is null");
     this.properOutputs = ImmutableList.copyOf(properOutputs);
@@ -97,7 +107,9 @@ public class TableFunctionProcessorNode extends SingleChildProcessNode {
     this.requiredSymbols = ImmutableList.copyOf(requiredSymbols);
     this.dataOrganizationSpecification =
         requireNonNull(dataOrganizationSpecification, "specification is null");
+    this.rowSemantic = rowSemantic;
     this.arguments = ImmutableMap.copyOf(arguments);
+    this.requireRecordSnapshot = requireRecordSnapshot;
   }
 
   public String getName() {
@@ -106,6 +118,10 @@ public class TableFunctionProcessorNode extends SingleChildProcessNode {
 
   public List<Symbol> getProperOutputs() {
     return properOutputs;
+  }
+
+  public boolean isRowSemantic() {
+    return rowSemantic;
   }
 
   public Optional<TableFunctionNode.PassThroughSpecification> getPassThroughSpecification() {
@@ -124,6 +140,10 @@ public class TableFunctionProcessorNode extends SingleChildProcessNode {
     return arguments;
   }
 
+  public boolean isRequireRecordSnapshot() {
+    return requireRecordSnapshot;
+  }
+
   @Override
   public PlanNode clone() {
     return new TableFunctionProcessorNode(
@@ -133,7 +153,9 @@ public class TableFunctionProcessorNode extends SingleChildProcessNode {
         passThroughSpecification,
         requiredSymbols,
         dataOrganizationSpecification,
-        arguments);
+        rowSemantic,
+        arguments,
+        requireRecordSnapshot);
   }
 
   @Override
@@ -181,12 +203,14 @@ public class TableFunctionProcessorNode extends SingleChildProcessNode {
     if (dataOrganizationSpecification.isPresent()) {
       dataOrganizationSpecification.get().serialize(byteBuffer);
     }
+    ReadWriteIOUtils.write(rowSemantic, byteBuffer);
     ReadWriteIOUtils.write(arguments.size(), byteBuffer);
     arguments.forEach(
         (key, value) -> {
           ReadWriteIOUtils.write(key, byteBuffer);
           value.serialize(byteBuffer);
         });
+    ReadWriteIOUtils.write(requireRecordSnapshot, byteBuffer);
   }
 
   @Override
@@ -209,11 +233,13 @@ public class TableFunctionProcessorNode extends SingleChildProcessNode {
     if (dataOrganizationSpecification.isPresent()) {
       dataOrganizationSpecification.get().serialize(stream);
     }
+    ReadWriteIOUtils.write(rowSemantic, stream);
     ReadWriteIOUtils.write(arguments.size(), stream);
     for (Map.Entry<String, Argument> entry : arguments.entrySet()) {
       ReadWriteIOUtils.write(entry.getKey(), stream);
       entry.getValue().serialize(stream);
     }
+    ReadWriteIOUtils.write(requireRecordSnapshot, stream);
   }
 
   public static TableFunctionProcessorNode deserialize(ByteBuffer byteBuffer) {
@@ -238,6 +264,7 @@ public class TableFunctionProcessorNode extends SingleChildProcessNode {
         hasDataOrganizationSpecification
             ? Optional.of(DataOrganizationSpecification.deserialize(byteBuffer))
             : Optional.empty();
+    boolean rowSemantic = ReadWriteIOUtils.readBoolean(byteBuffer);
     size = ReadWriteIOUtils.readInt(byteBuffer);
     Map<String, Argument> arguments = new HashMap<>(size);
     while (size-- > 0) {
@@ -245,6 +272,7 @@ public class TableFunctionProcessorNode extends SingleChildProcessNode {
       Argument value = Argument.deserialize(byteBuffer);
       arguments.put(key, value);
     }
+    boolean requireRecordSnapshot = ReadWriteIOUtils.readBoolean(byteBuffer);
 
     PlanNodeId planNodeId = PlanNodeId.deserialize(byteBuffer);
     return new TableFunctionProcessorNode(
@@ -254,7 +282,9 @@ public class TableFunctionProcessorNode extends SingleChildProcessNode {
         passThroughSpecification,
         requiredSymbols,
         dataOrganizationSpecification,
-        arguments);
+        rowSemantic,
+        arguments,
+        requireRecordSnapshot);
   }
 
   @Override
@@ -269,6 +299,8 @@ public class TableFunctionProcessorNode extends SingleChildProcessNode {
         passThroughSpecification,
         requiredSymbols,
         dataOrganizationSpecification,
-        arguments);
+        rowSemantic,
+        arguments,
+        requireRecordSnapshot);
   }
 }

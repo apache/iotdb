@@ -36,6 +36,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.node.EnforceSingl
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ExchangeNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ExplainAnalyzeNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.FilterNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.GroupNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.InformationSchemaTableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.JoinNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.LimitNode;
@@ -537,6 +538,10 @@ public final class PlanMatchPattern {
 
   public static PlanMatchPattern streamSort(PlanMatchPattern source) {
     return node(StreamSortNode.class, source);
+  }
+
+  public static PlanMatchPattern group(PlanMatchPattern source) {
+    return node(GroupNode.class, source);
   }
 
   public static PlanMatchPattern sort(PlanMatchPattern source) {

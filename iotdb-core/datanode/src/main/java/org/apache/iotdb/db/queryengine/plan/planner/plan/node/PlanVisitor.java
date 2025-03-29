@@ -124,6 +124,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.GroupRe
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationTreeDeviceViewScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.DeviceTableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.GapFillNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.GroupNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.InformationSchemaTableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.LinearFillNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.MarkDistinctNode;
@@ -750,6 +751,10 @@ public abstract class PlanVisitor<R, C> {
 
   public R visitStreamSort(
       org.apache.iotdb.db.queryengine.plan.relational.planner.node.StreamSortNode node, C context) {
+    return visitSingleChildProcess(node, context);
+  }
+
+  public R visitGroup(GroupNode node, C context) {
     return visitSingleChildProcess(node, context);
   }
 

@@ -152,9 +152,12 @@ public class TableFunctionNode extends MultiChildProcessNode {
           properties.getPassThroughSpecification().serialize(byteBuffer);
           ReadWriteIOUtils.write(properties.getRequiredColumns().size(), byteBuffer);
           properties.getRequiredColumns().forEach(symbol -> Symbol.serialize(symbol, byteBuffer));
+          ReadWriteIOUtils.write(
+              properties.getDataOrganizationSpecification().isPresent(), byteBuffer);
           properties
               .getDataOrganizationSpecification()
               .ifPresent(specification -> specification.serialize(byteBuffer));
+          ReadWriteIOUtils.write(properties.isRequireRecordSnapshot(), byteBuffer);
         });
   }
 
@@ -180,9 +183,11 @@ public class TableFunctionNode extends MultiChildProcessNode {
       for (Symbol symbol : properties.getRequiredColumns()) {
         Symbol.serialize(symbol, stream);
       }
+      ReadWriteIOUtils.write(properties.getDataOrganizationSpecification().isPresent(), stream);
       if (properties.getDataOrganizationSpecification().isPresent()) {
         properties.getDataOrganizationSpecification().get().serialize(stream);
       }
+      ReadWriteIOUtils.write(properties.isRequireRecordSnapshot(), stream);
     }
   }
 
@@ -214,17 +219,19 @@ public class TableFunctionNode extends MultiChildProcessNode {
         requiredColumns.add(Symbol.deserialize(byteBuffer));
       }
       Optional<DataOrganizationSpecification> dataOrganizationSpecification = Optional.empty();
-      if (byteBuffer.hasRemaining()) {
+      if (ReadWriteIOUtils.readBoolean(byteBuffer)) {
         dataOrganizationSpecification =
             Optional.of(DataOrganizationSpecification.deserialize(byteBuffer));
       }
+      boolean requireRecordSnapshot = ReadWriteIOUtils.readBoolean(byteBuffer);
       tableArgumentProperties.add(
           new TableArgumentProperties(
               argumentName,
               rowSemantics,
               passThroughSpecification,
               requiredColumns.build(),
-              dataOrganizationSpecification));
+              dataOrganizationSpecification,
+              requireRecordSnapshot));
     }
     PlanNodeId planNodeId = PlanNodeId.deserialize(byteBuffer);
     return new TableFunctionNode(
@@ -246,13 +253,15 @@ public class TableFunctionNode extends MultiChildProcessNode {
     private final PassThroughSpecification passThroughSpecification;
     private final List<Symbol> requiredColumns;
     private final Optional<DataOrganizationSpecification> dataOrganizationSpecification;
+    private final boolean requireRecordSnapshot;
 
     public TableArgumentProperties(
         String argumentName,
         boolean rowSemantics,
         PassThroughSpecification passThroughSpecification,
         List<Symbol> requiredColumns,
-        Optional<DataOrganizationSpecification> dataOrganizationSpecification) {
+        Optional<DataOrganizationSpecification> dataOrganizationSpecification,
+        boolean requireRecordSnapshot) {
       this.argumentName = requireNonNull(argumentName, "argumentName is null");
       this.rowSemantics = rowSemantics;
       this.passThroughSpecification =
@@ -260,6 +269,7 @@ public class TableFunctionNode extends MultiChildProcessNode {
       this.requiredColumns = ImmutableList.copyOf(requiredColumns);
       this.dataOrganizationSpecification =
           requireNonNull(dataOrganizationSpecification, "specification is null");
+      this.requireRecordSnapshot = requireRecordSnapshot;
     }
 
     public String getArgumentName() {
@@ -280,6 +290,10 @@ public class TableFunctionNode extends MultiChildProcessNode {
 
     public Optional<DataOrganizationSpecification> getDataOrganizationSpecification() {
       return dataOrganizationSpecification;
+    }
+
+    public boolean isRequireRecordSnapshot() {
+      return requireRecordSnapshot;
     }
   }
 

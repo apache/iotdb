@@ -215,14 +215,34 @@ public class StreamingAggregationOperator extends AbstractOperator {
   }
 
   private int findNextGroupStart(int startPosition, TsBlock page) {
-    int positionCount = page.getPositionCount();
-    for (int i = startPosition + 1; i < positionCount; i++) {
-      if (groupKeyComparator.compare(new SortKey(page, startPosition), new SortKey(page, i)) != 0) {
-        return i;
+    SortKey currentKey = new SortKey(page, startPosition);
+    // 1. check if all rows have the same group key
+    SortKey compareKey = new SortKey(page, page.getPositionCount() - 1);
+    if (groupKeyComparator.compare(currentKey, compareKey) == 0) {
+      return page.getPositionCount();
+    }
+    // 2. check the first row
+    compareKey.rowIndex = startPosition + 1;
+    if (groupKeyComparator.compare(currentKey, compareKey) != 0) {
+      return startPosition + 1;
+    }
+    // 3. binary search to find the next different group key
+    int low = startPosition + 1;
+    int high = page.getPositionCount() - 1;
+    int firstDiff = high;
+    while (low <= high) {
+      int mid = low + (high - low) / 2;
+      compareKey.rowIndex = mid;
+      int cmp = groupKeyComparator.compare(currentKey, compareKey);
+      if (cmp == 0) {
+        low = mid + 1;
+      } else {
+        // try to find earlier different row
+        high = mid - 1;
+        firstDiff = compareKey.rowIndex;
       }
     }
-
-    return positionCount;
+    return firstDiff;
   }
 
   @Override

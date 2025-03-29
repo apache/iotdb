@@ -119,8 +119,8 @@ public class LogicalOptimizeFactory {
             new PruneExplainAnalyzeColumns(),
             new PruneProjectColumns(),
             new PruneSortColumns(),
-            new PruneTableFunctionProcessorSourceColumns(),
             new PruneTableFunctionProcessorColumns(),
+            new PruneTableFunctionProcessorSourceColumns(),
             new PruneTableScanColumns(plannerContext.getMetadata()),
             new PruneTopKColumns(),
             new PruneJoinColumns(),
@@ -295,7 +295,8 @@ public class LogicalOptimizeFactory {
         new IterativeOptimizer(
             plannerContext,
             ruleStats,
-            ImmutableSet.of(new MergeLimitWithSort(), new MergeLimitOverProjectWithSort())));
+            ImmutableSet.of(new MergeLimitWithSort(), new MergeLimitOverProjectWithSort())),
+        new ParallelizeGrouping());
 
     this.planOptimizers = optimizerBuilder.build();
   }

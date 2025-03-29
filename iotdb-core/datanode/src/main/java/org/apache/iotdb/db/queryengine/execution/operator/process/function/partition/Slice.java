@@ -32,7 +32,6 @@ import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
-import java.util.NoSuchElementException;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -40,7 +39,7 @@ import java.util.stream.Collectors;
 public class Slice {
   private final Column[] requiredColumns;
   private final Column[] passThroughColumns;
-  private final List<Type> dataTypes;
+  private final List<Type> requiredDataTypes;
   private final long size;
   private final long estimatedSize;
 
@@ -58,9 +57,10 @@ public class Slice {
             .collect(Collectors.toList());
     this.requiredColumns =
         requiredChannels.stream().map(partitionColumns::get).toArray(Column[]::new);
+    this.requiredDataTypes =
+        requiredChannels.stream().map(dataTypes::get).collect(Collectors.toList());
     this.passThroughColumns =
         passThroughChannels.stream().map(partitionColumns::get).toArray(Column[]::new);
-    this.dataTypes = dataTypes;
 
     Set<Integer> channels = new HashSet<>();
     channels.addAll(requiredChannels);
@@ -79,36 +79,57 @@ public class Slice {
         .toArray(Column[]::new);
   }
 
-  public Iterator<Record> getRequiredRecordIterator() {
-    return new Iterator<Record>() {
-      private int curIndex = 0;
+  public Column[] getRequiredColumns() {
+    return requiredColumns;
+  }
 
-      @Override
-      public boolean hasNext() {
-        return curIndex < size;
-      }
+  public Iterator<Record> getRequiredRecordIterator(boolean requireSnapshot) {
+    if (!requireSnapshot) {
+      return new Iterator<Record>() {
+        private final RecordImpl record = new RecordImpl(-1, requiredColumns, requiredDataTypes);
 
-      @Override
-      public Record next() {
-        if (!hasNext()) {
-          throw new NoSuchElementException();
+        @Override
+        public boolean hasNext() {
+          record.offset++;
+          return record.offset < size;
         }
-        final int idx = curIndex++;
-        return getRecord(idx, requiredColumns);
-      }
-    };
+
+        @Override
+        public Record next() {
+          return record;
+        }
+      };
+    } else {
+      return new Iterator<Record>() {
+        private int curIndex = 0;
+
+        @Override
+        public boolean hasNext() {
+          return curIndex < size;
+        }
+
+        @Override
+        public Record next() {
+          if (!hasNext()) {
+            throw new java.util.NoSuchElementException();
+          }
+          final int idx = curIndex++;
+          return getRecord(idx, requiredColumns, requiredDataTypes);
+        }
+      };
+    }
   }
 
   public long getEstimatedSize() {
     return estimatedSize;
   }
 
-  private Record getRecord(int offset, Column[] originalColumns) {
+  private Record getRecord(int offset, Column[] originalColumns, List<Type> dataTypes) {
     return new RecordImpl(offset, originalColumns, dataTypes);
   }
 
   private static class RecordImpl implements Record {
-    private final int offset;
+    private int offset;
     private final Column[] originalColumns;
     private final List<Type> dataTypes;
 
