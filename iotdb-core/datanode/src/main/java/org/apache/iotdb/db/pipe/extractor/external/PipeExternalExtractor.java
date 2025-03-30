@@ -1,8 +1,10 @@
 package org.apache.iotdb.db.pipe.extractor.external;
 
+import org.apache.iotdb.commons.consensus.index.impl.IoTProgressIndex;
 import org.apache.iotdb.commons.pipe.agent.task.connection.UnboundedBlockingPendingQueue;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
 import org.apache.iotdb.commons.pipe.config.plugin.env.PipeTaskExtractorRuntimeEnvironment;
+import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.metric.source.PipeDataRegionEventCounter;
 import org.apache.iotdb.pipe.api.PipeExtractor;
@@ -22,8 +24,10 @@ import org.slf4j.LoggerFactory;
 
 import java.time.LocalDate;
 import java.util.Arrays;
+import java.util.Objects;
 import java.util.Random;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicLong;
 
 public class PipeExternalExtractor implements PipeExtractor {
 
@@ -32,7 +36,7 @@ public class PipeExternalExtractor implements PipeExtractor {
   protected String pipeName;
   protected long creationTime;
   protected PipeTaskMeta pipeTaskMeta;
-  protected final UnboundedBlockingPendingQueue<Event> pendingQueue =
+  protected final UnboundedBlockingPendingQueue<EnrichedEvent> pendingQueue =
       new UnboundedBlockingPendingQueue<>(new PipeDataRegionEventCounter());
 
   protected final AtomicBoolean hasBeenStarted = new AtomicBoolean(false);
@@ -64,6 +68,8 @@ public class PipeExternalExtractor implements PipeExtractor {
   Tablet tabletForInsertTabletNode;
 
   Thread pollingThread;
+
+  protected AtomicLong index = new AtomicLong(0);
 
   @Override
   public void validate(PipeParameterValidator validator) throws Exception {
@@ -172,7 +178,11 @@ public class PipeExternalExtractor implements PipeExtractor {
     if (isClosed.get()) {
       return null;
     }
-    return pendingQueue.directPoll();
+    EnrichedEvent event = pendingQueue.directPoll();
+    if (Objects.nonNull(event)) {
+      event.bindProgressIndex(new IoTProgressIndex(1, index.getAndIncrement()));
+    }
+    return event;
   }
 
   @Override

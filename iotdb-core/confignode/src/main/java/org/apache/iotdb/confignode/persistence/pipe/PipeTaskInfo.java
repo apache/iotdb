@@ -648,7 +648,12 @@ public class PipeTaskInfo implements SnapshotProcessor {
                                 EXTERNAL_SOURCE_PARALLELISM_KEY),
                             Integer.parseInt(EXTERNAL_EXTRACTOR_PARALLELISM_DEFAULT_VALUE));
                 loadBalancer
-                    .balance(parallelism, plan.getConsensusGroupId2NewLeaderIdMap())
+                    .balance(
+                        parallelism,
+                        ConfigNode.getInstance()
+                            .getConfigManager()
+                            .getLoadManager()
+                            .getRegionLeaderMap())
                     .forEach(
                         (taskIndex, newLeader) -> {
                           if (newLeader != -1) {

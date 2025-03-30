@@ -32,6 +32,7 @@ import org.apache.iotdb.commons.pipe.agent.plugin.builtin.connector.opcua.OpcUaC
 import org.apache.iotdb.commons.pipe.agent.plugin.builtin.connector.websocket.WebSocketConnector;
 import org.apache.iotdb.commons.pipe.agent.plugin.builtin.connector.writeback.WriteBackConnector;
 import org.apache.iotdb.commons.pipe.agent.plugin.builtin.extractor.donothing.DoNothingExtractor;
+import org.apache.iotdb.commons.pipe.agent.plugin.builtin.extractor.external.MqttExtractor;
 import org.apache.iotdb.commons.pipe.agent.plugin.builtin.extractor.external.PipeExternalExtractor;
 import org.apache.iotdb.commons.pipe.agent.plugin.builtin.extractor.iotdb.IoTDBExtractor;
 import org.apache.iotdb.commons.pipe.agent.plugin.builtin.processor.aggregate.AggregateProcessor;
@@ -61,7 +62,7 @@ public enum BuiltinPipePlugin {
   IOTDB_SOURCE("iotdb-source", IoTDBExtractor.class),
 
   EXTERNAL_EXTRACTOR("external-extractor", PipeExternalExtractor.class),
-
+  MQTT_EXTRACTOR("mqtt-extractor", MqttExtractor.class),
   // processors
   DO_NOTHING_PROCESSOR("do-nothing-processor", DoNothingProcessor.class),
   TUMBLING_TIME_SAMPLING_PROCESSOR(
@@ -131,6 +132,13 @@ public enum BuiltinPipePlugin {
   public String getClassName() {
     return className;
   }
+
+  public static final Set<String> EXTERNAL_EXTRACTORS =
+      Collections.unmodifiableSet(
+          new HashSet<>(
+              Arrays.asList(
+                  EXTERNAL_EXTRACTOR.getPipePluginName().toLowerCase(),
+                  MQTT_EXTRACTOR.getPipePluginName().toLowerCase())));
 
   public static final Set<String> SHOW_PIPE_PLUGINS_BLACKLIST =
       Collections.unmodifiableSet(
