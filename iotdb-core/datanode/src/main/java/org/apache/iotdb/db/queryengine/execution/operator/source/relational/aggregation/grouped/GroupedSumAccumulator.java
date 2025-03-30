@@ -76,7 +76,7 @@ public class GroupedSumAccumulator implements GroupedAccumulator {
       case TIMESTAMP:
       default:
         throw new UnSupportedDataTypeException(
-            String.format("Unsupported data type in aggregation AVG : %s", argumentDataType));
+            String.format("Unsupported data type in Sum Aggregation: %s", argumentDataType));
     }
   }
 
