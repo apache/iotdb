@@ -59,7 +59,11 @@ boost::optional<TEndPoint> DummyNodesSupplier::getQueryEndPoint() {
     }
 }
 
-DummyNodesSupplier::~DummyNodesSupplier() {}
+std::vector<TEndPoint> DummyNodesSupplier::getEndPointList() {
+    return availableNodes_;
+}
+
+DummyNodesSupplier::~DummyNodesSupplier() = default;
 
 std::shared_ptr<NodesSupplier> NodesSupplier::create(
     std::vector<TEndPoint> endpoints,
@@ -67,8 +71,7 @@ std::shared_ptr<NodesSupplier> NodesSupplier::create(
     int32_t thriftDefaultBufferSize, int32_t thriftMaxFrameSize,
     int32_t connectionTimeoutInMs, bool useSSL, bool enableRPCCompression,
     std::string version, std::chrono::milliseconds refreshInterval,
-    NodeSelectionPolicy policy
-) {
+    NodeSelectionPolicy policy) {
     if (endpoints.empty()) {
         return nullptr;
     }
@@ -92,7 +95,7 @@ NodesSupplier::NodesSupplier(
     deduplicateEndpoints();
 }
 
-std::vector<TEndPoint> NodesSupplier::getCurrentEndpoints() {
+std::vector<TEndPoint> NodesSupplier::getEndPointList() {
     std::lock_guard<std::mutex> lock(mutex);
     return endpoints;
 }

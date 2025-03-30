@@ -21,39 +21,36 @@
 #include "common_types.h"
 #include <thrift/protocol/TCompactProtocol.h>
 
+#include <utility>
+
 using namespace apache::thrift;
 using namespace apache::thrift::protocol;
 using namespace apache::thrift::transport;
 
-SessionConnection::SessionConnection(const TEndPoint& endpoint,
+SessionConnection::SessionConnection(Session* session_ptr, const TEndPoint& endpoint,
                      const std::string& zoneId,
-                     std::function<std::vector<TEndPoint>()> nodeSupplier,
+                     std::shared_ptr<INodesSupplier> nodeSupplier,
                      int maxRetries,
                      int64_t retryInterval,
                      std::string dialect,
-                     std::string db,
-                     std::string version,
-                     std::string username,
-                     std::string password,
-                     TSProtocolVersion::type protocolVersion)
-    : zoneId(zoneId),
+                     std::string db)
+    : session(session_ptr),
+      zoneId(zoneId),
       endPoint(endpoint),
       availableNodes(std::move(nodeSupplier)),
       maxRetryCount(maxRetries),
       retryIntervalMs(retryInterval),
-      sqlDialect(dialect),
-      database(db),
-      version(version),
-      userName(username),
-      password(password),
-      protocolVersion(protocolVersion){
+      sqlDialect(std::move(dialect)),
+      database(std::move(db)) {
     this->zoneId = zoneId.empty() ? getSystemDefaultZoneId() : zoneId;
     endPointList.push_back(endpoint);
+    init(endPoint);
 }
 
 void SessionConnection::close() {
     bool needThrowException = false;
     string errMsg;
+    session = nullptr;
     try {
         TSCloseSessionReq req;
         req.__set_sessionId(sessionId);
@@ -114,26 +111,25 @@ void SessionConnection::init(const TEndPoint& endpoint) {
     }
 
     std::map<std::string, std::string> configuration;
-    configuration["version"] = version;
-    // configuration["sql_dialect"] = sqlDialect;
-    // if (database != "") {
-    //     configuration["db"] = database;
-    // }
-
+    configuration["version"] = session->getVersionString(session->version);
+    configuration["sql_dialect"] = sqlDialect;
+    if (database != "") {
+        configuration["db"] = database;
+    }
     TSOpenSessionReq openReq;
-    openReq.__set_username(userName);
-    openReq.__set_password(password);
+    openReq.__set_username(session->username);
+    openReq.__set_password(session->password);
     openReq.__set_zoneId(zoneId);
     openReq.__set_configuration(configuration);
-    std::cout << endPoint << " " << userName << " " << password << " " << zoneId << std::endl;
     try {
         TSOpenSessionResp openResp;
         client->openSession(openResp, openReq);
         RpcUtils::verifySuccess(openResp.status);
-        if (protocolVersion != openResp.serverProtocolVersion) {
+        if (session->protocolVersion != openResp.serverProtocolVersion) {
             if (openResp.serverProtocolVersion == 0) {// less than 0.10
-                throw logic_error(string("Protocol not supported, Client version is ") + to_string(protocolVersion) +
-                                  ", but Server version is " + to_string(openResp.serverProtocolVersion));
+                throw logic_error(string("Protocol not supported, Client version is ") +
+                    to_string(session->protocolVersion) +
+                    ", but Server version is " + to_string(openResp.serverProtocolVersion));
             }
         }
 
@@ -143,7 +139,6 @@ void SessionConnection::init(const TEndPoint& endpoint) {
         if (!zoneId.empty()) {
             setTimeZone(zoneId);
         }
-        inited = true;
     } catch (const TTransportException &e) {
         log_debug(e.what());
         transport->close();
@@ -155,7 +150,7 @@ void SessionConnection::init(const TEndPoint& endpoint) {
     } catch (const exception &e) {
         log_debug(e.what());
         transport->close();
-        throw IoTDBException(e.what());
+        throw;
     }
 }
 
@@ -171,9 +166,19 @@ std::unique_ptr<SessionDataSet> SessionConnection::executeQueryStatement(const s
         client->executeStatement(resp, req);
         RpcUtils::verifySuccessWithRedirection(resp.status);
     } catch (const TException &e) {
-        throw IoTDBConnectionException(e.what());
+        log_debug(e.what());
+        if (reconnect()) {
+            try {
+                req.__set_sessionId(sessionId);
+                req.__set_statementId(statementId);
+                client->executeStatement(resp, req);
+            } catch (TException &e) {
+                throw IoTDBConnectionException(e.what());
+            }
+        } else {
+            throw IoTDBConnectionException(e.what());
+        }
     }
-
     std::shared_ptr<TSQueryDataSet> queryDataSet(new TSQueryDataSet(resp.queryDataSet));
     return std::unique_ptr<SessionDataSet>(new SessionDataSet(
             sql, resp.columns, resp.dataTypeList, resp.columnNameIndexMap, resp.ignoreTimeStamp, resp.queryId,
@@ -209,4 +214,43 @@ std::string SessionConnection::getSystemDefaultZoneId() {
     char zoneStr[32];
     strftime(zoneStr, sizeof(zoneStr), "%z", &tmv);
     return zoneStr;
+}
+
+bool SessionConnection::reconnect() {
+    bool reconnect = false;
+    for (int i = 1; i <= 3; i++) {
+        if (transport != nullptr) {
+            transport->close();
+            endPointList = std::move(availableNodes->getEndPointList());
+            int currHostIndex = rand() % endPointList.size();
+            int tryHostNum = 0;
+            for (int j = currHostIndex; j < endPointList.size(); j++) {
+                if (tryHostNum == endPointList.size()) {
+                    break;
+                }
+                this->endPoint = endPointList[j];
+                if (j == endPointList.size() - 1) {
+                    j = -1;
+                }
+                tryHostNum++;
+                try {
+                    init(this->endPoint);
+                    reconnect = true;
+                } catch (const IoTDBConnectionException &e) {
+                    log_warn("The current node may have been down, connection exception: %s", e.what());
+                    continue;
+                } catch (exception &e) {
+                    log_warn("login in failed, because  %s", e.what());
+                }
+                break;
+            }
+        }
+        if (reconnect) {
+            session->removeBrokenSessionConnection(shared_from_this());
+            session->defaultEndPoint = this->endPoint;
+            session->defaultSessionConnection = shared_from_this();
+            session->endPointToSessionConnection.insert(make_pair(this->endPoint, shared_from_this()));
+        }
+    }
+    return reconnect;
 }

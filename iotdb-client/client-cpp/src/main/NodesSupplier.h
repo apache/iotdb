@@ -42,7 +42,7 @@ class INodesSupplier {
 public:
     virtual ~INodesSupplier() = default;
     virtual boost::optional<TEndPoint> getQueryEndPoint() = 0;
-
+    virtual std::vector<TEndPoint> getEndPointList() = 0;
     using NodeSelectionPolicy = std::function<TEndPoint(const std::vector<TEndPoint>&)>;
 };
 
@@ -52,6 +52,8 @@ public:
                                 NodeSelectionPolicy policy = RoundRobinPolicy::select);
 
     boost::optional<TEndPoint> getQueryEndPoint() override;
+
+    std::vector<TEndPoint> getEndPointList() override;
 
     ~DummyNodesSupplier() override;
 
@@ -92,10 +94,7 @@ public:
         int32_t connectionTimeoutInMs, bool useSSL, bool enableRPCCompression,
         std::string version, std::vector<TEndPoint> endpoints, NodeSelectionPolicy policy
     );
-
-    std::vector<TEndPoint> getCurrentEndpoints();
-
-    TEndPoint selectQueryEndpoint();
+    std::vector<TEndPoint> getEndPointList() override;
 
     boost::optional<TEndPoint> getQueryEndPoint() override;
 
@@ -129,6 +128,8 @@ private:
     std::vector<TEndPoint> fetchLatestEndpoints();
 
     void refreshEndpointList();
+
+    TEndPoint selectQueryEndpoint();
 
     void stopBackgroundRefresh() noexcept;
 };

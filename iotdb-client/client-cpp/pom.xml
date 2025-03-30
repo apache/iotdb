@@ -180,8 +180,24 @@
                                     <destinationFile>${project.build.directory}/build/main/generated-sources-cpp/NodesSupplier.h</destinationFile>
                                 </fileSet>
                                 <fileSet>
+                                    <sourceFile>${project.basedir}/src/main/NodesSupplier.cpp</sourceFile>
+                                    <destinationFile>${project.build.directory}/build/main/generated-sources-cpp/NodesSupplier.cpp</destinationFile>
+                                </fileSet>
+                                <fileSet>
                                     <sourceFile>${project.basedir}/src/main/ThriftConnection.h</sourceFile>
                                     <destinationFile>${project.build.directory}/build/main/generated-sources-cpp/ThriftConnection.h</destinationFile>
+                                </fileSet>
+                                <fileSet>
+                                    <sourceFile>${project.basedir}/src/main/ThriftConnection.cpp</sourceFile>
+                                    <destinationFile>${project.build.directory}/build/main/generated-sources-cpp/ThriftConnection.cpp</destinationFile>
+                                </fileSet>
+                                <fileSet>
+                                    <sourceFile>${project.basedir}/src/main/SessionConnection.h</sourceFile>
+                                    <destinationFile>${project.build.directory}/build/main/generated-sources-cpp/SessionConnection.h</destinationFile>
+                                </fileSet>
+                                <fileSet>
+                                    <sourceFile>${project.basedir}/src/main/SessionConnection.cpp</sourceFile>
+                                    <destinationFile>${project.build.directory}/build/main/generated-sources-cpp/SessionConnection.cpp</destinationFile>
                                 </fileSet>
                                 <fileSet>
                                     <sourceFile>${project.basedir}/src/main/AbstractSessionBuilder.h</sourceFile>

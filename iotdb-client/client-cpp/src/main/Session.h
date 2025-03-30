@@ -707,6 +707,11 @@ public:
         }
     }
 
+    void addTimestamp(size_t rowIndex, int64_t timestamp) {
+        timestamps[rowIndex] = timestamp;
+        rowSize = max(rowSize, rowSize + 1);
+    }
+
     template<typename T>
     void addValue(size_t schemaId, size_t rowIndex, const T& value) {
         if (schemaId >= schemas.size()) {
@@ -1121,9 +1126,11 @@ private:
     std::string sqlDialect = "tree"; // default sql dialect
     std::string database;
     bool enableAutoFetch = true;
+    bool enableRedirection = true;
     std::shared_ptr<INodesSupplier> nodesSupplier;
     friend class SessionConnection;
-    SessionConnection defaultSessionConnection;
+    std::shared_ptr<SessionConnection> defaultSessionConnection;
+
     TEndPoint defaultEndPoint;
 
     struct TEndPointHash {
@@ -1136,10 +1143,12 @@ private:
             return lhs.ip == rhs.ip && lhs.port == rhs.port;
         }
     };
-    using EndPointSessionMap = std::unordered_map<TEndPoint, SessionConnection, TEndPointHash, TEndPointEqual>;
+    using EndPointSessionMap = std::unordered_map<TEndPoint, shared_ptr<SessionConnection>, TEndPointHash, TEndPointEqual>;
     EndPointSessionMap endPointToSessionConnection;
 
 private:
+    void removeBrokenSessionConnection(shared_ptr<SessionConnection> sessionConnection);
+
     static bool checkSorted(const Tablet &tablet);
 
     static bool checkSorted(const std::vector<int64_t> &times);
@@ -1176,7 +1185,6 @@ public:
         this->rpcPort = rpcPort;
         initZoneId();
         initNodesSupplier();
-        initDefaultSessionConnection();
     }
 
     Session(const std::string &host, int rpcPort, const std::string &username, const std::string &password)
@@ -1188,7 +1196,6 @@ public:
         this->version = Version::V_1_0;
         initZoneId();
         initNodesSupplier();
-        initDefaultSessionConnection();
     }
 
     Session(const std::string &host, int rpcPort, const std::string &username, const std::string &password,
@@ -1202,7 +1209,6 @@ public:
         this->version = Version::V_1_0;
         initZoneId();
         initNodesSupplier();
-        initDefaultSessionConnection();
     }
 
     Session(const std::string &host, const std::string &rpcPort, const std::string &username = "user",
@@ -1216,7 +1222,6 @@ public:
         this->version = Version::V_1_0;
         initZoneId();
         initNodesSupplier();
-        initDefaultSessionConnection();
     }
 
     Session(AbstractSessionBuilder* builder) {
@@ -1229,9 +1234,9 @@ public:
         this->version = Version::V_1_0;
         this->sqlDialect = builder->sqlDialect;
         this->database = builder->database;
+        this->enableRedirection = builder->enableRedirections;
         initZoneId();
         initNodesSupplier();
-        initDefaultSessionConnection();
     }
 
     ~Session();
@@ -1254,7 +1259,7 @@ public:
 
     int64_t getSessionId();
 
-    SessionConnection getQuerySessionConnection();
+    shared_ptr<SessionConnection> getQuerySessionConnection();
 
     void open();
 

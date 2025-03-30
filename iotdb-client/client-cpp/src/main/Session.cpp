@@ -63,7 +63,7 @@ void RpcUtils::verifySuccess(const TSStatus &status) {
 void RpcUtils::verifySuccessWithRedirection(const TSStatus &status) {
     verifySuccess(status);
     if (status.__isset.redirectNode) {
-        throw new RedirectException(to_string(status.code) + ": " + status.message, status.redirectNode);
+        throw RedirectException(to_string(status.code) + ": " + status.message, status.redirectNode);
     }
     if (status.__isset.subStatus) {
         auto statusSubStatus = status.subStatus;
@@ -78,7 +78,7 @@ void RpcUtils::verifySuccessWithRedirection(const TSStatus &status) {
             }
         }
         if (!endPointList.empty() && count > 0) {
-            throw new RedirectException(to_string(status.code) + ": " + status.message, endPointList);
+            throw RedirectException(to_string(status.code) + ": " + status.message, endPointList);
         }
     }
 }
@@ -301,7 +301,7 @@ string SessionUtils::getValue(const Tablet &tablet) {
                         valueBuffer.putInt(valueBuf[index]);
                     }
                     else {
-                        valueBuffer.putInt((numeric_limits<int>::min)());
+                        valueBuffer.putInt((numeric_limits<int32_t>::min)());
                     }
                 }
                 break;
@@ -345,7 +345,11 @@ string SessionUtils::getValue(const Tablet &tablet) {
             case TSDataType::TEXT: {
                 string* valueBuf = (string*)(tablet.values[i]);
                 for (size_t index = 0; index < tablet.rowSize; index++) {
-                    valueBuffer.putString(valueBuf[index]);
+                    if (!bitMap.isMarked(index)) {
+                        valueBuffer.putString(valueBuf[index]);
+                    } else {
+                        valueBuffer.putString("");
+                    }
                 }
                 break;
             }
@@ -359,8 +363,8 @@ string SessionUtils::getValue(const Tablet &tablet) {
         valueBuffer.putChar(columnHasNull ? (char) 1 : (char) 0);
         if (columnHasNull) {
             const vector<char>& bytes = bitMap.getByteArray();
-            for (const char byte: bytes) {
-                valueBuffer.putChar(byte);
+            for (size_t index = 0; index < tablet.rowSize / 8 + 1; index++) {
+                valueBuffer.putChar(bytes[index]);
             }
         }
     }
@@ -610,6 +614,12 @@ Session::~Session() {
     }
 }
 
+void Session::removeBrokenSessionConnection(shared_ptr<SessionConnection> sessionConnection) {
+    if (enableRedirection) {
+        this->endPointToSessionConnection.erase(sessionConnection->getEndPoint());
+    }
+}
+
 /**
    * check whether the batch has been sorted
    *
@@ -825,7 +835,7 @@ void Session::initNodesSupplier() {
     endPoint.__set_port(rpcPort);
     endPoints.emplace_back(endPoint);
     if (enableAutoFetch) {
-        nodesSupplier = NodesSupplier::create(endPoints, host, password);
+        nodesSupplier = NodesSupplier::create(endPoints, username, password);
     } else {
         nodesSupplier = make_shared<DummyNodesSupplier>(endPoints);
     }
@@ -834,16 +844,8 @@ void Session::initNodesSupplier() {
 void Session::initDefaultSessionConnection() {
     defaultEndPoint.__set_ip(host);
     defaultEndPoint.__set_port(rpcPort);
-    defaultSessionConnection.setEndpoint(defaultEndPoint);
-    defaultSessionConnection.setZoneId(zoneId);
-    defaultSessionConnection.setMaxRetries(60);
-    defaultSessionConnection.setRetryInterval(500);
-    defaultSessionConnection.setDialect(sqlDialect);
-    defaultSessionConnection.setDb(database);
-    defaultSessionConnection.setVersion(getVersionString(version));
-    defaultSessionConnection.setUsername(username);
-    defaultSessionConnection.setPassword(password);
-    defaultSessionConnection.setProtocolVersion(protocolVersion);
+    defaultSessionConnection = make_shared<SessionConnection>(this, defaultEndPoint, zoneId, nodesSupplier, 60, 500,
+            sqlDialect, database);
 }
 
 void Session::open() {
@@ -926,8 +928,15 @@ void Session::open(bool enableRPCCompression, int connectionTimeoutInMs) {
     }
 
     isClosed = false;
-    //defaultSessionConnection.init(defaultEndPoint);
-    //endPointToSessionConnection.insert(make_pair(defaultEndPoint, defaultSessionConnection));
+    try {
+        initDefaultSessionConnection();
+    } catch (const exception &e) {
+        log_debug(e.what());
+        throw IoTDBException(e.what());
+    }
+    if (enableRedirection) {
+        endPointToSessionConnection.insert(make_pair(defaultEndPoint, defaultSessionConnection));
+    }
 }
 
 
@@ -1889,7 +1898,7 @@ int64_t Session::getSessionId() {
     return sessionId;
 }
 
-SessionConnection Session::getQuerySessionConnection() {
+shared_ptr<SessionConnection> Session::getQuerySessionConnection() {
     auto endPoint = nodesSupplier->getQueryEndPoint();
     if (!endPoint.has_value() || endPointToSessionConnection.empty()) {
         return defaultSessionConnection;
@@ -1900,22 +1909,14 @@ SessionConnection Session::getQuerySessionConnection() {
         return it->second;
     }
 
-    SessionConnection newConnection;
+    shared_ptr<SessionConnection> newConnection;
     try {
-        newConnection.setEndpoint(endPoint.value());
-        newConnection.setZoneId(zoneId);
-        newConnection.setMaxRetries(60);
-        newConnection.setRetryInterval(500);
-        newConnection.setDialect(sqlDialect);
-        newConnection.setDb(database);
-        newConnection.setVersion(getVersionString(version));
-        newConnection.setUsername(username);
-        newConnection.setPassword(password);
-        newConnection.setProtocolVersion(protocolVersion);
-        newConnection.init(endPoint.value());
+        newConnection = make_shared<SessionConnection>(this, endPoint.value(), zoneId, nodesSupplier,
+        60, 500, sqlDialect, database);
         endPointToSessionConnection.emplace(endPoint.value(), newConnection);
         return newConnection;
-    } catch (...) {
+    } catch (exception &e) {
+        log_debug("Session::getQuerySessionConnection() exception: " + e.what());
         return newConnection;
     }
 }
@@ -1993,23 +1994,16 @@ unique_ptr<SessionDataSet> Session::executeQueryStatement(const string &sql, int
 }
 
 void Session::handleQueryRedirection(TEndPoint endPoint) {
-    SessionConnection newConnection;
+    if (!enableRedirection) return;
+    shared_ptr<SessionConnection> newConnection;
     auto it = endPointToSessionConnection.find(endPoint);
     if (it != endPointToSessionConnection.end()) {
         newConnection = it->second;
     } else {
         try {
-            newConnection.setEndpoint(endPoint);
-            newConnection.setZoneId(zoneId);
-            newConnection.setMaxRetries(60);
-            newConnection.setRetryInterval(500);
-            newConnection.setDialect(sqlDialect);
-            newConnection.setDb(database);
-            newConnection.setVersion(getVersionString(version));
-            newConnection.setUsername(username);
-            newConnection.setPassword(password);
-            newConnection.setProtocolVersion(protocolVersion);
-            newConnection.init(endPoint);
+            newConnection = make_shared<SessionConnection>(this, endPoint, zoneId, nodesSupplier,
+                    60, 500, sqlDialect, database);
+
             endPointToSessionConnection.emplace(endPoint, newConnection);
         } catch (exception &e) {
             throw IoTDBConnectionException(e.what());
@@ -2020,17 +2014,24 @@ void Session::handleQueryRedirection(TEndPoint endPoint) {
 
 std::unique_ptr<SessionDataSet> Session::executeQueryStatementMayRedirect(const std::string &sql, int64_t timeoutInMs) {
     auto sessionConnection = getQuerySessionConnection();
-    if (!sessionConnection.isInitialized()) { return nullptr; }
+    if (!sessionConnection) {
+        log_warn("Session connection not found");
+        return nullptr;
+    }
     try {
-        sessionConnection.executeQueryStatement(sql, timeoutInMs);
+        return sessionConnection->executeQueryStatement(sql, timeoutInMs);
     } catch (RedirectException& e) {
+        log_warn("Session connection redirect exception: " + e.what());
         handleQueryRedirection(e.endPoint);
         try {
-            defaultSessionConnection.executeQueryStatement(sql, timeoutInMs);
+            return defaultSessionConnection->executeQueryStatement(sql, timeoutInMs);
         } catch (exception& e) {
             log_error("Exception while executing redirected query statement: %s", e.what());
             throw ExecutionException(e.what());
         }
+    } catch (exception& e) {
+        log_error("Exception while executing query statement: %s", e.what());
+        throw e;
     }
 
 }
