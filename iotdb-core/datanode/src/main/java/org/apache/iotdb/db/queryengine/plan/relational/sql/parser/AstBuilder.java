@@ -3294,7 +3294,7 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
     return Optional.ofNullable(context).map(c -> (Identifier) visit(c));
   }
 
-  public static TsTableColumnCategory getColumnCategory(final Token category) {
+  private static TsTableColumnCategory getColumnCategory(final Token category) {
     if (category == null) {
       return FIELD;
     }

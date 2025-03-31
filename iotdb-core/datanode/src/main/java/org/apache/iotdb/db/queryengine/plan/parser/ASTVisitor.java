@@ -34,6 +34,7 @@ import org.apache.iotdb.commons.schema.cache.CacheClearOptions;
 import org.apache.iotdb.commons.schema.column.ColumnHeaderConstant;
 import org.apache.iotdb.commons.schema.filter.SchemaFilter;
 import org.apache.iotdb.commons.schema.filter.SchemaFilterFactory;
+import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
 import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.db.conf.IoTDBConfig;
@@ -287,10 +288,12 @@ import java.util.stream.Collectors;
 
 import static com.google.common.collect.ImmutableList.toImmutableList;
 import static org.apache.iotdb.commons.schema.SchemaConstant.ALL_RESULT_NODES;
+import static org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory.FIELD;
+import static org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory.TAG;
+import static org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory.TIME;
 import static org.apache.iotdb.db.queryengine.plan.expression.unary.LikeExpression.getEscapeCharacter;
 import static org.apache.iotdb.db.queryengine.plan.optimization.LimitOffsetPushDown.canPushDownLimitOffsetToGroupByTime;
 import static org.apache.iotdb.db.queryengine.plan.optimization.LimitOffsetPushDown.pushDownLimitOffsetToTimeParameter;
-import static org.apache.iotdb.db.queryengine.plan.relational.sql.parser.AstBuilder.getColumnCategory;
 import static org.apache.iotdb.db.queryengine.plan.relational.sql.parser.AstBuilder.lowerIdentifier;
 import static org.apache.iotdb.db.utils.TimestampPrecisionUtils.TIMESTAMP_PRECISION;
 import static org.apache.iotdb.db.utils.TimestampPrecisionUtils.currPrecision;
@@ -4694,7 +4697,24 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     return QualifiedName.of(
         context.identifier().stream()
             .map(identifierContext -> new Identifier(parseIdentifier(identifierContext.getText())))
-            .collect(Collectors.toSet()));
+            .collect(Collectors.toList()));
+  }
+
+  public static TsTableColumnCategory getColumnCategory(final Token category) {
+    if (category == null) {
+      return FIELD;
+    }
+    switch (category.getType()) {
+      case IoTDBSqlParser.TAG:
+        return TAG;
+      case IoTDBSqlParser.TIME:
+        return TIME;
+      case IoTDBSqlParser.FIELD:
+        return FIELD;
+      default:
+        throw new UnsupportedOperationException(
+            "Unsupported ColumnCategory: " + category.getText());
+    }
   }
 
   @Override
