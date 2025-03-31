@@ -168,7 +168,7 @@ public class IoTDBPipePermissionIT extends AbstractPipeSingleIT {
         BaseEnv.TABLE_SQL_DIALECT,
         env,
         Arrays.asList(
-            "create user `thulab` 'passwd'", "grant INSERT on test.test1 to user thulab"))) {
+            "create user thulab 'passwd'", "grant INSERT on test.test1 to user thulab"))) {
       return;
     }
 
