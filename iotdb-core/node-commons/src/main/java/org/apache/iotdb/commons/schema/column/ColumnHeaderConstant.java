@@ -272,6 +272,9 @@ public class ColumnHeaderConstant {
   public static final String COMMENT = "Comment";
   public static final String TABLE_TYPE = "TableType";
 
+  public static final String VIEW = "View";
+  public static final String CREATE_VIEW = "Create View";
+
   public static final String GRANT_OPTION = "GrantOption";
 
   public static final String CURRENT_USER = "CurrentUser";
@@ -624,6 +627,10 @@ public class ColumnHeaderConstant {
           new ColumnHeader(COLUMN_CATEGORY, TSDataType.TEXT),
           new ColumnHeader(STATUS, TSDataType.TEXT),
           new ColumnHeader(COMMENT, TSDataType.TEXT));
+
+  public static final List<ColumnHeader> showCreateViewColumnHeaders =
+      ImmutableList.of(
+          new ColumnHeader(VIEW, TSDataType.TEXT), new ColumnHeader(CREATE_VIEW, TSDataType.TEXT));
 
   public static final List<ColumnHeader> showTablesColumnHeaders =
       ImmutableList.of(
