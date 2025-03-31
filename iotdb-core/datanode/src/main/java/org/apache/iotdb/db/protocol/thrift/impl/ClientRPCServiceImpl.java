@@ -1070,7 +1070,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
               deviceId,
               measurementId,
               dataType,
-              false,
+              req.isAligned,
               req.getStartTime(),
               req.getEndTime(),
               req.getInterval(),
