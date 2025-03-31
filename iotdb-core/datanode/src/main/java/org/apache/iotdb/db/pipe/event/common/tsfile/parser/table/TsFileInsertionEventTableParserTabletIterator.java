@@ -169,10 +169,6 @@ public class TsFileInsertionEventTableParserTabletIterator implements Iterator<T
                 currentChunkMetadata = chunkMetadataList.next();
                 timeChunk = null;
                 offset = 0;
-
-                // To ensure that the Tablet has the same alignedChunk column as the current one,
-                // you need to create a new Tablet to fill in the data.
-                isSameDeviceID = false;
               }
               initChunkReader(currentChunkMetadata);
               state = State.INIT_DATA;
@@ -239,7 +235,7 @@ public class TsFileInsertionEventTableParserTabletIterator implements Iterator<T
                     && !schema.getMeasurementName().isEmpty()) {
                   final String measurementName = schema.getMeasurementName();
                   if (Tablet.ColumnCategory.TAG.equals(columnCategory)) {
-                    columnTypes.add(columnCategory);
+                    columnTypes.add(Tablet.ColumnCategory.TAG);
                     measurementList.add(measurementName);
                     dataTypeList.add(schema.getType());
                   }
@@ -332,8 +328,11 @@ public class TsFileInsertionEventTableParserTabletIterator implements Iterator<T
     timeChunk.getData().rewind();
     long size = timeChunkSize;
 
-    final List<Chunk> valueChunkList =
-        new ArrayList<>(alignedChunkMetadata.getValueChunkMetadataList().size());
+    final List<Chunk> valueChunkList = new ArrayList<>(PIPE_MAX_ALIGNED_SERIES_NUM_IN_ONE_BATCH);
+
+    // To ensure that the Tablet has the same alignedChunk column as the current one,
+    // you need to create a new Tablet to fill in the data.
+    isSameDeviceID = false;
 
     // Clean up the remaining non-DeviceID column information
     columnTypes.subList(deviceIdSize, columnTypes.size()).clear();
@@ -372,7 +371,7 @@ public class TsFileInsertionEventTableParserTabletIterator implements Iterator<T
     final TsPrimitiveType[] primitiveTypes = data.getVector();
 
     for (int i = deviceIdSize, size = dataTypeList.size(); i < size; i++) {
-      final TsPrimitiveType primitiveType = primitiveTypes[i];
+      final TsPrimitiveType primitiveType = primitiveTypes[i - deviceIdSize];
       if (primitiveType == null) {
         continue;
       }
