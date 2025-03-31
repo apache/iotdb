@@ -66,7 +66,7 @@ public abstract class AbstractImportData extends AbstractDataTool implements Run
       }
     } catch (Exception e) {
       ioTPrinter.println(
-          String.format("[%s] - Unexpected error occurred: " + e.getMessage(), file.getName()));
+          String.format("[%s] - Unexpected error occurred: %s", file.getName(), e.getMessage()));
     }
   }
 
