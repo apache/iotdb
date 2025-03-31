@@ -36,13 +36,17 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 public class PipeTreeModelTsFileBuilder extends PipeTsFileBuilder {
 
@@ -231,13 +235,25 @@ public class PipeTreeModelTsFileBuilder extends PipeTsFileBuilder {
       }
     }
 
-    // Construct a new aggregated Tablet using the collected data
+    // Remove duplicates from aggregatedSchemas, record the index of the first occurrence, and
+    // filter out the corresponding values in aggregatedValues and aggregatedBitMaps based on that
+    // index
+    final Set<IMeasurementSchema> seen = new HashSet<>();
+    final List<Integer> distinctIndices =
+        IntStream.range(0, aggregatedSchemas.size())
+            .filter(i -> seen.add(aggregatedSchemas.get(i))) // Only keep the first occurrence index
+            .boxed()
+            .collect(Collectors.toList());
+    final List<IMeasurementSchema> uniqueSchemas =
+        distinctIndices.stream().map(aggregatedSchemas::get).collect(Collectors.toList());
+
+    // Construct a new aggregated Tablet using the deduplicated data
     return new Tablet(
         deviceId,
-        aggregatedSchemas,
+        uniqueSchemas,
         aggregationTimestamps,
-        aggregatedValues.toArray(),
-        aggregatedBitMaps.toArray(new BitMap[0]),
+        distinctIndices.stream().map(aggregatedValues::get).toArray(),
+        distinctIndices.stream().map(aggregatedBitMaps::get).toArray(BitMap[]::new),
         aggregationRow);
   }
 
