@@ -53,6 +53,8 @@ import org.apache.iotdb.commons.pipe.agent.plugin.service.PipePluginExecutableMa
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeMeta;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeStaticMeta;
 import org.apache.iotdb.commons.pipe.connector.payload.airgap.AirGapPseudoTPipeTransferRequest;
+import org.apache.iotdb.commons.pipe.datastructure.visibility.Visibility;
+import org.apache.iotdb.commons.pipe.datastructure.visibility.VisibilityUtils;
 import org.apache.iotdb.commons.schema.cache.CacheClearOptions;
 import org.apache.iotdb.commons.schema.table.AlterOrDropTableOperationType;
 import org.apache.iotdb.commons.schema.table.TsTable;
@@ -969,9 +971,28 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
 
       // try to create instance, this request will fail if creation is not successful
       try (final PipePluginClassLoader classLoader = new PipePluginClassLoader(libRoot)) {
-        // ensure that jar file contains the class and the class is a pipe plugin
         final Class<?> clazz =
             Class.forName(createPipePluginStatement.getClassName(), true, classLoader);
+
+        final Visibility pluginVisibility = VisibilityUtils.calculateFromPluginClass(clazz);
+        final boolean isTableModel = createPipePluginStatement.isTableModel();
+        if (!VisibilityUtils.isCompatible(pluginVisibility, isTableModel)) {
+          LOGGER.warn(
+              "Failed to create PipePlugin({}) because this plugin is not designed for {} model.",
+              createPipePluginStatement.getPluginName(),
+              isTableModel ? "table" : "tree");
+          future.setException(
+              new IoTDBException(
+                  "Failed to create PipePlugin '"
+                      + createPipePluginStatement.getPluginName()
+                      + "', because this plugin is not designed for "
+                      + (isTableModel ? "table" : "tree")
+                      + " model.",
+                  TSStatusCode.PIPE_PLUGIN_LOAD_CLASS_ERROR.getStatusCode()));
+          return future;
+        }
+
+        // ensure that jar file contains the class and the class is a pipe plugin
         final PipePlugin ignored = (PipePlugin) clazz.getDeclaredConstructor().newInstance();
       } catch (final ClassNotFoundException
           | NoSuchMethodException

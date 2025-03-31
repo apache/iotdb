@@ -46,6 +46,7 @@ public class LoadTsFile extends Statement {
   private long tabletConversionThresholdBytes = -1;
   private boolean autoCreateDatabase = true;
   private boolean verify = true;
+  private boolean isAsyncLoad = false;
 
   private boolean isGeneratedByPipe = false;
 
@@ -138,6 +139,10 @@ public class LoadTsFile extends Statement {
     return this;
   }
 
+  public boolean isAsyncLoad() {
+    return isAsyncLoad;
+  }
+
   public void markIsGeneratedByPipe() {
     isGeneratedByPipe = true;
   }
@@ -183,6 +188,7 @@ public class LoadTsFile extends Statement {
     this.tabletConversionThresholdBytes =
         LoadTsFileConfigurator.parseOrGetDefaultTabletConversionThresholdBytes(loadAttributes);
     this.verify = LoadTsFileConfigurator.parseOrGetDefaultVerify(loadAttributes);
+    this.isAsyncLoad = LoadTsFileConfigurator.parseOrGetDefaultAsyncLoad(loadAttributes);
   }
 
   public boolean reconstructStatementIfMiniFileConverted(final List<Boolean> isMiniTsFile) {

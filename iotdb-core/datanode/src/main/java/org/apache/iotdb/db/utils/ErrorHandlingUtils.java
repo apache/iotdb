@@ -114,7 +114,8 @@ public class ErrorHandlingUtils {
             || status.getCode() == TSStatusCode.COLUMN_NOT_EXISTS.getStatusCode()
             || status.getCode() == TSStatusCode.COLUMN_ALREADY_EXISTS.getStatusCode()
             || status.getCode() == TSStatusCode.UDF_LOAD_CLASS_ERROR.getStatusCode()
-            || status.getCode() == TSStatusCode.PLAN_FAILED_NETWORK_PARTITION.getStatusCode()) {
+            || status.getCode() == TSStatusCode.PLAN_FAILED_NETWORK_PARTITION.getStatusCode()
+            || status.getCode() == TSStatusCode.SYNC_CONNECTION_ERROR.getStatusCode()) {
           LOGGER.info(message);
         } else {
           LOGGER.warn(message, e);
@@ -154,9 +155,8 @@ public class ErrorHandlingUtils {
     } else if (t instanceof QueryInBatchStatementException) {
       return RpcUtils.getStatus(
           TSStatusCode.QUERY_NOT_ALLOWED, INFO_NOT_ALLOWED_IN_BATCH_ERROR + rootCause.getMessage());
-    } else if (t instanceof RootFIPlacementException) {
-      return RpcUtils.getStatus(TSStatusCode.PLAN_FAILED_NETWORK_PARTITION, rootCause.getMessage());
-    } else if (t instanceof ReplicaSetUnreachableException) {
+    } else if (t instanceof RootFIPlacementException
+        || t instanceof ReplicaSetUnreachableException) {
       return RpcUtils.getStatus(TSStatusCode.PLAN_FAILED_NETWORK_PARTITION, rootCause.getMessage());
     } else if (t instanceof IoTDBException) {
       return RpcUtils.getStatus(((IoTDBException) t).getErrorCode(), rootCause.getMessage());

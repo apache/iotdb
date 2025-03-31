@@ -49,7 +49,6 @@ import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
@@ -142,6 +141,7 @@ public class TopologyService implements Runnable, IClusterStatusSubscriber {
       this.awaitForSignal.await(PROBING_INTERVAL_MS, TimeUnit.MILLISECONDS);
       return true;
     } catch (InterruptedException e) {
+      // we don't reset the interrupt flag here since we may reuse this thread again.
       return false;
     }
   }
@@ -219,23 +219,20 @@ public class TopologyService implements Runnable, IClusterStatusSubscriber {
     final Map<Integer, Set<Integer>> latestTopology =
         dataNodeLocations.stream()
             .collect(Collectors.toMap(TDataNodeLocation::getDataNodeId, k -> new HashSet<>()));
-    final Map<Integer, Set<Integer>> partitioned = new HashMap<>();
     for (final Map.Entry<Pair<Integer, Integer>, List<AbstractHeartbeatSample>> entry :
         heartbeats.entrySet()) {
       final int fromId = entry.getKey().getLeft();
       final int toId = entry.getKey().getRight();
+
       if (!entry.getValue().isEmpty()
           && !failureDetector.isAvailable(entry.getKey(), entry.getValue())) {
         LOGGER.debug("Connection from DataNode {} to DataNode {} is broken", fromId, toId);
-        partitioned.computeIfAbsent(fromId, id -> new HashSet<>()).add(toId);
       } else {
         latestTopology.get(fromId).add(toId);
       }
     }
 
-    if (!partitioned.isEmpty()) {
-      logAsymmetricPartition(partitioned);
-    }
+    logAsymmetricPartition(latestTopology);
 
     // 5. notify the listeners on topology change
     if (shouldRun.get()) {
@@ -243,11 +240,33 @@ public class TopologyService implements Runnable, IClusterStatusSubscriber {
     }
   }
 
-  private void logAsymmetricPartition(final Map<Integer, Set<Integer>> partitioned) {
-    for (final int fromId : partitioned.keySet()) {
-      for (final int toId : partitioned.get(fromId)) {
-        if (partitioned.get(toId) == null || !partitioned.get(toId).contains(fromId)) {
-          LOGGER.warn("[Topology] Asymmetric network partition from {} to {}", fromId, toId);
+  /**
+   * We only consider warning (one vs remaining) network partition. If we need to cover more
+   * complicated scenarios like (many vs many) network partition, we shall use graph algorithms
+   * then.
+   */
+  private void logAsymmetricPartition(final Map<Integer, Set<Integer>> topology) {
+    final Set<Integer> nodes = topology.keySet();
+    if (nodes.size() == 1) {
+      // 1 DataNode
+      return;
+    }
+
+    for (int from : nodes) {
+      for (int to : nodes) {
+        if (from >= to) {
+          continue;
+        }
+
+        // whether we have asymmetric partition [from -> to]
+        final Set<Integer> reachableFrom = topology.get(from);
+        final Set<Integer> reachableTo = topology.get(to);
+        if (reachableFrom.size() <= 1 || reachableTo.size() <= 1) {
+          // symmetric partition for (from) or (to)
+          continue;
+        }
+        if (!reachableTo.contains(from) && !reachableFrom.contains(to)) {
+          LOGGER.warn("[Topology] Asymmetric network partition from {} to {}", from, to);
         }
       }
     }
@@ -275,20 +294,23 @@ public class TopologyService implements Runnable, IClusterStatusSubscriber {
         startingDataNodes.remove(nodeId);
       }
 
+      final Set<Pair<Integer, Integer>> affectedPairs =
+          heartbeats.keySet().stream()
+              .filter(
+                  pair ->
+                      Objects.equals(pair.getLeft(), nodeId)
+                          || Objects.equals(pair.getRight(), nodeId))
+              .collect(Collectors.toSet());
+
       if (changeEvent.getRight() == null) {
         // datanode removed from cluster, clean up probing history
-        final Set<Pair<Integer, Integer>> toRemove =
-            heartbeats.keySet().stream()
-                .filter(
-                    pair ->
-                        Objects.equals(pair.getLeft(), nodeId)
-                            || Objects.equals(pair.getRight(), nodeId))
-                .collect(Collectors.toSet());
-        toRemove.forEach(heartbeats::remove);
+        affectedPairs.forEach(heartbeats::remove);
       } else {
         // we only trigger probing immediately if node comes around from UNKNOWN to RUNNING
         if (NodeStatus.Unknown.equals(changeEvent.getLeft().getStatus())
             && NodeStatus.Running.equals(changeEvent.getRight().getStatus())) {
+          // let's clear the history when a new node comes around
+          affectedPairs.forEach(pair -> heartbeats.put(pair, new ArrayList<>()));
           awaitForSignal.signal();
         }
       }
