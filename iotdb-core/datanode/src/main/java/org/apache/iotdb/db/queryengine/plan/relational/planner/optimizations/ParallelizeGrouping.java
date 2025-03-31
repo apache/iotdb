@@ -46,7 +46,6 @@ import java.util.stream.Collectors;
 
 import static org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory.TAG;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.ParallelizeGrouping.CanOptimized.ENABLE_PARALLEL;
-import static org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.ParallelizeGrouping.CanOptimized.KEEP_GROUP;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.ParallelizeGrouping.CanOptimized.PENDING;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.ParallelizeGrouping.CanOptimized.TO_SORT;
 
@@ -128,8 +127,6 @@ public class ParallelizeGrouping implements PlanOptimizer {
       PlanNode child = node.getChild().accept(this, newContext);
       switch (newContext.canOptimized) {
         case ENABLE_PARALLEL:
-          return child;
-        case KEEP_GROUP:
           GroupNode newNode = (GroupNode) node.clone();
           newNode.addChild(child);
           return newNode;
@@ -226,9 +223,9 @@ public class ParallelizeGrouping implements PlanOptimizer {
         }
         if (!tagSymbols.isEmpty()) {
           context.canOptimized = TO_SORT;
-          return node;
+        } else {
+          context.canOptimized = ENABLE_PARALLEL;
         }
-        context.canOptimized = KEEP_GROUP;
       }
       return node;
     }
@@ -262,7 +259,6 @@ public class ParallelizeGrouping implements PlanOptimizer {
   }
 
   protected enum CanOptimized {
-    KEEP_GROUP,
     ENABLE_PARALLEL,
     TO_SORT,
     PENDING
