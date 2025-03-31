@@ -195,37 +195,22 @@ public class RestApiServiceImpl extends RestApiService {
             .build();
       }
 
-      final ExecutionResult result;
-      queryId = SESSION_MANAGER.requestQueryId();
-      if (statement instanceof CreateTableViewStatement) {
-        result =
-            COORDINATOR.executeForTableModel(
-                ((CreateTableViewStatement) statement).getCreateTableView(),
-                new SqlParser(),
-                SESSION_MANAGER.getCurrSessionAndUpdateIdleTime(),
-                queryId,
-                SESSION_MANAGER.getSessionInfo(SESSION_MANAGER.getCurrSession()),
-                sql.getSql(),
-                LocalExecutionPlanner.getInstance().metadata,
-                config.getQueryTimeoutThreshold(),
-                false);
-      } else {
-        Response response = authorizationHandler.checkAuthority(securityContext, statement);
-        if (response != null) {
-          return response;
-        }
-        // create and cache dataset
-        result =
-            COORDINATOR.executeForTreeModel(
-                statement,
-                queryId,
-                SESSION_MANAGER.getSessionInfo(SESSION_MANAGER.getCurrSession()),
-                sql.getSql(),
-                partitionFetcher,
-                schemaFetcher,
-                config.getQueryTimeoutThreshold(),
-                true);
+      Response response = authorizationHandler.checkAuthority(securityContext, statement);
+      if (response != null) {
+        return response;
       }
+      queryId = SESSION_MANAGER.requestQueryId();
+      // create and cache dataset
+      ExecutionResult result =
+          COORDINATOR.executeForTreeModel(
+              statement,
+              queryId,
+              SESSION_MANAGER.getSessionInfo(SESSION_MANAGER.getCurrSession()),
+              sql.getSql(),
+              partitionFetcher,
+              schemaFetcher,
+              config.getQueryTimeoutThreshold(),
+              true);
       finish = true;
       if (result.status.code != TSStatusCode.SUCCESS_STATUS.getStatusCode()
           && result.status.code != TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode()) {
