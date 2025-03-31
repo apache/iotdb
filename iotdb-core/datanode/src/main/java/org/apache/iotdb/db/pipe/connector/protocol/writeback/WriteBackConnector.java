@@ -374,6 +374,9 @@ public class WriteBackConnector implements PipeConnector {
       return;
     }
 
+    Coordinator.getInstance()
+        .getAccessControl()
+        .checkCanCreateDatabase(session.getUsername(), database);
     final TDatabaseSchema schema = new TDatabaseSchema(new TDatabaseSchema(database));
     schema.setIsTableModel(true);
 

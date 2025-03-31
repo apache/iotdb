@@ -40,6 +40,16 @@ import static org.junit.Assert.fail;
 public class IoTDBPipePermissionIT extends AbstractPipeSingleIT {
   @Test
   public void testSinkPermission() {
+    // Prepare partial data
+    TableModelUtils.createDataBaseAndTable(env, "test", "test1");
+    TableModelUtils.createDataBaseAndTable(env, "test1", "test1");
+    TableModelUtils.createDataBaseAndTable(env, "test", "test");
+    TableModelUtils.createDataBaseAndTable(env, "test1", "test");
+
+    if (!TableModelUtils.insertData("test1", "test1", 0, 50, env)) {
+      return;
+    }
+
     if (!TestUtils.tryExecuteNonQueryWithRetry(env, "create user `thulab` 'passwd'")) {
       return;
     }
@@ -94,11 +104,6 @@ public class IoTDBPipePermissionIT extends AbstractPipeSingleIT {
       fail("Alter pipe shall not fail if user and password are specified");
     }
 
-    TableModelUtils.createDataBaseAndTable(env, "test", "test1");
-    TableModelUtils.createDataBaseAndTable(env, "test1", "test1");
-    TableModelUtils.createDataBaseAndTable(env, "test", "test");
-    TableModelUtils.createDataBaseAndTable(env, "test1", "test");
-
     // Write some data
     if (!TableModelUtils.insertData("test1", "test", 0, 100, env)) {
       return;
@@ -117,7 +122,7 @@ public class IoTDBPipePermissionIT extends AbstractPipeSingleIT {
         "test1", BaseEnv.TABLE_SQL_DIALECT, env, "grant INSERT on test.test1 to user thulab")) {
       return;
     }
-    if (!TableModelUtils.insertData("test1", "test1", 0, 100, env)) {
+    if (!TableModelUtils.insertData("test1", "test1", 50, 100, env)) {
       return;
     }
     TableModelUtils.assertCountData("test", "test1", 100, env);
