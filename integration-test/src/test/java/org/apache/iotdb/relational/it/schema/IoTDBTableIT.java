@@ -286,7 +286,7 @@ public class IoTDBTableIT {
           statement.executeQuery("show create table table2"),
           "Table,Create Table,",
           Collections.singleton(
-              "table2,CREATE TABLE VIEW \"table2\" (region_id STRING TAG,plant_id STRING TAG,color STRING ATTRIBUTE,temperature FLOAT FIELD,speed DOUBLE FIELD COMMENT fast) WITH (ttl=6600000),"));
+              "table2,CREATE TABLE \"table2\" (region_id STRING TAG,plant_id STRING TAG,color STRING ATTRIBUTE,temperature FLOAT FIELD,speed DOUBLE FIELD COMMENT fast) WITH (ttl=6600000),"));
 
       try {
         statement.execute("alter table table2 add column speed DOUBLE FIELD");
@@ -815,6 +815,8 @@ public class IoTDBTableIT {
     try (final Connection connection =
             EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
         final Statement statement = connection.createStatement()) {
+      statement.execute("use tree_view_db");
+
       TestUtils.assertResultSetEqual(
           statement.executeQuery("show devices from view_table where tag1 = 'b' and tag2 is null"),
           "tag1,tag2,",
