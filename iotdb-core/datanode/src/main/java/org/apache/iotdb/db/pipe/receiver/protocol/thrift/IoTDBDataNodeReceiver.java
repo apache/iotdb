@@ -682,7 +682,9 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
               estimatedMemory,
               PipeDataNodeResourceManager.memory().getUsedMemorySizeInBytes(),
               PipeDataNodeResourceManager.memory().getFreeMemorySizeInBytes());
-      LOGGER.debug("Receiver id = {}: {}", receiverId.get(), message, e);
+      if (LOGGER.isDebugEnabled()) {
+        LOGGER.debug("Receiver id = {}: {}", receiverId.get(), message, e);
+      }
       return new TSStatus(
               TSStatusCode.PIPE_RECEIVER_TEMPORARY_UNAVAILABLE_EXCEPTION.getStatusCode())
           .setMessage(message);
