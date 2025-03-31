@@ -61,6 +61,7 @@ statement
     | createTableViewStatement
     | alterViewStatement
     | dropViewStatement
+    | showCreateViewStatement
 
     // Index Statement
     | createIndexStatement
@@ -266,6 +267,10 @@ alterViewStatement
 
 dropViewStatement
     : DROP VIEW (IF EXISTS)? qualifiedName
+    ;
+
+showCreateViewStatement
+    : SHOW CREATE VIEW qualifiedName
     ;
 
 // IoTDB Objects
