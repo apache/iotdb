@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.schema.column.ColumnHeaderConstant;
 import org.apache.iotdb.commons.schema.table.TreeViewSchema;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
+import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.queryengine.common.header.DatasetHeader;
 import org.apache.iotdb.db.queryengine.common.header.DatasetHeaderFactory;
 import org.apache.iotdb.db.queryengine.plan.execution.config.ConfigTaskResult;
@@ -54,6 +55,12 @@ public class ShowCreateViewTask extends AbstractTableTask {
 
   public static void buildTsBlock(
       final TsTable table, final SettableFuture<ConfigTaskResult> future) {
+    if (!TreeViewSchema.isTreeViewTable(table)) {
+      throw new SemanticException(
+          "The table "
+              + table.getTableName()
+              + " is a base table, does not support show create view.");
+    }
     final List<TSDataType> outputDataTypes =
         ColumnHeaderConstant.showCreateViewColumnHeaders.stream()
             .map(ColumnHeader::getColumnType)

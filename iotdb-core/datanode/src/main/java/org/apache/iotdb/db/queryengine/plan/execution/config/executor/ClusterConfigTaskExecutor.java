@@ -201,6 +201,7 @@ import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.region.Rem
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.DeleteDeviceTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.DescribeTableDetailsTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.DescribeTableTask;
+import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.ShowCreateViewTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.ShowDBTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.ShowTablesDetailsTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.ShowTablesTask;
@@ -3604,7 +3605,9 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
         return future;
       }
       final TsTable table = TsTableInternalRPCUtil.deserializeSingleTsTable(resp.getTableInfo());
-      if (isDetails) {
+      if (Boolean.TRUE.equals(isShowCreateView)) {
+        ShowCreateViewTask.buildTsBlock(table, future);
+      } else if (isDetails) {
         DescribeTableDetailsTask.buildTsBlock(table, resp.getPreDeletedColumns(), future);
       } else {
         DescribeTableTask.buildTsBlock(table, future);
