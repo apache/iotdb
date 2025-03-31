@@ -250,6 +250,21 @@ public class PartitionManager {
         return resp;
       }
 
+      // Here we check if the related Databases exist again,
+      // due to we don't have a transaction mechanism.
+      for (final String database : req.getPartitionSlotsMap().keySet()) {
+        if (!isDatabaseExist(database)) {
+          return new SchemaPartitionResp(
+              new TSStatus(TSStatusCode.DATABASE_NOT_EXIST.getStatusCode())
+                  .setMessage(
+                      String.format(
+                          "Create SchemaPartition failed because the database: %s is not exists",
+                          database)),
+              false,
+              null);
+        }
+      }
+
       // Filter unassigned SchemaPartitionSlots
       final Map<String, List<TSeriesPartitionSlot>> unassignedSchemaPartitionSlotsMap =
           partitionInfo.filterUnassignedSchemaPartitionSlots(req.getPartitionSlotsMap());
@@ -378,6 +393,21 @@ public class PartitionManager {
       resp = getDataPartition(req);
       if (resp.isAllPartitionsExist()) {
         return resp;
+      }
+
+      // Here we check if the related Databases exist again,
+      // due to we don't have a transaction mechanism.
+      for (final String database : req.getPartitionSlotsMap().keySet()) {
+        if (!isDatabaseExist(database)) {
+          return new DataPartitionResp(
+              new TSStatus(TSStatusCode.DATABASE_NOT_EXIST.getStatusCode())
+                  .setMessage(
+                      String.format(
+                          "Create DataPartition failed because the database: %s is not exists",
+                          database)),
+              false,
+              null);
+        }
       }
 
       // Filter unassigned DataPartitionSlots
