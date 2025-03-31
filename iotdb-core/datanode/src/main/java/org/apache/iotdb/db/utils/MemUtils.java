@@ -115,7 +115,8 @@ public class MemUtils {
     return memSize;
   }
 
-  public static long getBinaryColumnSize(ValueView columns, int columnIndex, int start, int end, TSStatus[] results) {
+  public static long getBinaryColumnSize(
+      ValueView columns, int columnIndex, int start, int end, TSStatus[] results) {
     long memSize = 0;
     memSize += (long) (end - start) * RamUsageEstimator.NUM_BYTES_OBJECT_HEADER;
     for (int i = start; i < end; i++) {

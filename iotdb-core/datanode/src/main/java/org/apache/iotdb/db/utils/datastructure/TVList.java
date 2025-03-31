@@ -19,8 +19,6 @@
 
 package org.apache.iotdb.db.utils.datastructure;
 
-import java.lang.reflect.Array;
-import java.util.stream.IntStream;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.queryengine.execution.fragment.QueryContext;
@@ -41,6 +39,7 @@ import org.apache.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.DataInputStream;
 import java.io.IOException;
+import java.lang.reflect.Array;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -49,6 +48,7 @@ import java.util.List;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.ReentrantLock;
+import java.util.stream.IntStream;
 
 import static org.apache.iotdb.db.storageengine.rescon.memory.PrimitiveArrayManager.ARRAY_SIZE;
 import static org.apache.iotdb.db.utils.ModificationUtils.isPointDeleted;
@@ -301,8 +301,7 @@ public abstract class TVList implements WALEntryValue {
       time = clonedTime;
       timeIdxOffset = start;
       // drop null at the end of value array
-      int nullCnt =
-          dropNullThenUpdateMinMaxTimeAndSorted(time, bitMap, start, end, timeIdxOffset);
+      int nullCnt = dropNullThenUpdateMinMaxTimeAndSorted(time, bitMap, start, end, timeIdxOffset);
       end -= nullCnt;
     } else {
       updateMinMaxTimeAndSorted(time, start, end);
@@ -353,7 +352,8 @@ public abstract class TVList implements WALEntryValue {
     } else if (valueValueArray instanceof Binary[]) {
       return new Binary[valueValueArrayLength];
     } else {
-      throw new IllegalArgumentException("Unsupported array type: " + valueValueArray.getClass().getName());
+      throw new IllegalArgumentException(
+          "Unsupported array type: " + valueValueArray.getClass().getName());
     }
   }
 
@@ -369,8 +369,7 @@ public abstract class TVList implements WALEntryValue {
       System.arraycopy(valueArray, 0, clonedValue, 0, valueArrayLength);
       valueArray = clonedValue;
       // drop null at the end of value array
-      int nullCnt =
-          dropNullVal(valueArray, bitMap, start, end);
+      int nullCnt = dropNullVal(valueArray, bitMap, start, end);
       end -= nullCnt;
     }
 
@@ -427,7 +426,7 @@ public abstract class TVList implements WALEntryValue {
 
     if (sorted
         && (rowCount == 0
-        || (end - start > nullCnt) && time[start - tIdxOffset] >= getTime(rowCount - 1))) {
+            || (end - start > nullCnt) && time[start - tIdxOffset] >= getTime(rowCount - 1))) {
       seqRowCount += inputSeqRowCount;
     }
     sorted = sorted && inputSorted && (rowCount == 0 || inPutMinTime >= getTime(rowCount - 1));
@@ -435,8 +434,7 @@ public abstract class TVList implements WALEntryValue {
   }
 
   // move null values to the end of value array, then return number of null values
-  int dropNullVal(
-      Object values, BitMap bitMap, int start, int end) {
+  int dropNullVal(Object values, BitMap bitMap, int start, int end) {
     int nullCnt = 0;
     for (int vIdx = start; vIdx < end; vIdx++) {
       if (bitMap.isMarked(vIdx)) {
@@ -450,7 +448,6 @@ public abstract class TVList implements WALEntryValue {
     }
     return nullCnt;
   }
-
 
   public void putLong(long time, long value) {
     throw new UnsupportedOperationException(ERR_DATATYPE_NOT_CONSISTENT);
@@ -505,7 +502,13 @@ public abstract class TVList implements WALEntryValue {
   }
 
   public void putAlignedValues(
-      Object[] value, List<Integer> columnIndices, BitMap[] bitMaps, int start, int end, TSStatus[] results, int pos) {
+      Object[] value,
+      List<Integer> columnIndices,
+      BitMap[] bitMaps,
+      int start,
+      int end,
+      TSStatus[] results,
+      int pos) {
     throw new UnsupportedOperationException(ERR_DATATYPE_NOT_CONSISTENT);
   }
 

@@ -23,6 +23,7 @@ import org.apache.iotdb.db.exception.WriteProcessRejectException;
 import org.apache.iotdb.db.protocol.rest.v1.model.InsertTabletRequest;
 import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.DataNodeDevicePathCache;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertTabletStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertTabletStatement.TwoDArrayValueView;
 import org.apache.iotdb.db.utils.TimestampPrecisionUtils;
 
 import org.apache.tsfile.enums.TSDataType;
@@ -169,10 +170,10 @@ public class StatementConstructionHandler {
 
     insertStatement.setTimes(
         insertTabletRequest.getTimestamps().stream().mapToLong(Long::longValue).toArray());
-    insertStatement.setColumns(columns);
     insertStatement.setBitMaps(bitMaps);
     insertStatement.setRowCount(insertTabletRequest.getTimestamps().size());
     insertStatement.setDataTypes(dataTypes);
+    insertStatement.setColumns(new TwoDArrayValueView(columns, dataTypes, rowSize));
     insertStatement.setAligned(insertTabletRequest.getIsAligned());
     return insertStatement;
   }

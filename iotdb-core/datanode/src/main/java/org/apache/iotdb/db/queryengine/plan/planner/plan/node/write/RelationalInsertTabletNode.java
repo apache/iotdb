@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.queryengine.plan.planner.plan.node.write;
 
-import java.util.concurrent.atomic.AtomicInteger;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
@@ -53,6 +52,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicInteger;
 
 public class RelationalInsertTabletNode extends InsertTabletNode {
 

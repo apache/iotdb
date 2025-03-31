@@ -23,6 +23,7 @@ import org.apache.iotdb.db.exception.WriteProcessRejectException;
 import org.apache.iotdb.db.protocol.rest.table.v1.model.InsertTabletRequest;
 import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.DataNodeDevicePathCache;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertTabletStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertTabletStatement.TwoDArrayValueView;
 import org.apache.iotdb.db.utils.TimestampPrecisionUtils;
 
 import org.apache.tsfile.enums.TSDataType;
@@ -168,7 +169,7 @@ public class StatementConstructionHandler {
           throw new IllegalArgumentException("Invalid input: " + rawDataType.get(columnIndex));
       }
     }
-    insertStatement.setColumns(columns);
+    insertStatement.setColumns(new TwoDArrayValueView(columns, dataTypes, rowSize));
     insertStatement.setBitMaps(bitMaps);
     insertStatement.setRowCount(rowSize);
     insertStatement.setDataTypes(dataTypes);

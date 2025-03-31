@@ -154,9 +154,9 @@ public class TriggerFireVisitor extends PlanVisitor<TriggerFireResult, TriggerEv
     Map<String, Integer> measurementToSchemaIndexMap =
         constructMeasurementToSchemaIndexMap(node.getMeasurements(), measurementSchemas);
 
-    Object[] columns = node.getColumns();
+    Object[] columns = node.getColumns().toTwoDArray();
     BitMap[] bitMaps = node.getBitMaps();
-    long[] timestamps = node.getTimes();
+    long[] timestamps = node.getTimes().toSingleArray();
     int rowCount = node.getRowCount();
     boolean hasFailedTrigger = false;
     for (Map.Entry<String, List<String>> entry : triggerNameToMeasurementList.entrySet()) {

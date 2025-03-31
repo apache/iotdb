@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.pipe.receiver.transform.statement;
 
-import org.apache.iotdb.db.pipe.receiver.transform.converter.ArrayConverter;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertTabletStatement;
 
 import org.apache.tsfile.annotations.TableModel;
@@ -103,8 +102,7 @@ public class PipeConvertedInsertTabletStatement extends InsertTabletStatement {
         measurements[columnIndex],
         dataTypes[columnIndex],
         dataType);
-    columns[columnIndex] =
-        ArrayConverter.convert(dataTypes[columnIndex], dataType, columns[columnIndex]);
+    columns.castTo(columnIndex, dataType);
     dataTypes[columnIndex] = dataType;
     return true;
   }

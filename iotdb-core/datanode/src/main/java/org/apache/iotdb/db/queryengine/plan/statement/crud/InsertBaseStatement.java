@@ -430,8 +430,7 @@ public abstract class InsertBaseStatement extends Statement implements Accountab
     protected TSDataType dataType;
     protected Exception cause;
 
-    public FailedMeasurementInfo(
-        String measurement, TSDataType dataType, Exception cause) {
+    public FailedMeasurementInfo(String measurement, TSDataType dataType, Exception cause) {
       this.measurement = measurement;
       this.dataType = dataType;
       this.cause = cause;

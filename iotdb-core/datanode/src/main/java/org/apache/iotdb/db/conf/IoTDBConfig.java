@@ -1144,9 +1144,7 @@ public class IoTDBConfig {
 
   private CompressionType WALCompressionAlgorithm = CompressionType.LZ4;
 
-  /**
-   * Use PrimitiveArrayManager to create arrays for InsertTablet requests.
-   */
+  /** Use PrimitiveArrayManager to create arrays for InsertTablet requests. */
   private boolean usePamForInsertTablet = true;
 
   IoTDBConfig() {}

@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.queryengine.plan.parser;
 
-import java.util.concurrent.atomic.AtomicInteger;
 import org.apache.iotdb.common.rpc.thrift.TAggregationType;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
@@ -120,6 +119,7 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicInteger;
 
 /** Convert SQL and RPC requests to {@link Statement}. */
 public class StatementGenerator {
@@ -331,30 +331,42 @@ public class StatementGenerator {
     return insertStatement;
   }
 
-  private static void deserializeTimeValue(InsertTabletStatement insertTabletStatement,
-      ByteBuffer timeBuffer, ByteBuffer valueBuffer, int rowSize, TSDataType[] dataTypes) {
+  private static void deserializeTimeValue(
+      InsertTabletStatement insertTabletStatement,
+      ByteBuffer timeBuffer,
+      ByteBuffer valueBuffer,
+      int rowSize,
+      TSDataType[] dataTypes) {
     if (!IoTDBDescriptor.getInstance().getConfig().isUsePamForInsertTablet()) {
-      long[] timestamps =
-          QueryDataSetUtils.readTimesFromBuffer(timeBuffer, rowSize);
+      long[] timestamps = QueryDataSetUtils.readTimesFromBuffer(timeBuffer, rowSize);
       if (timestamps.length != 0) {
         TimestampPrecisionUtils.checkTimestampPrecision(timestamps[0]);
         TimestampPrecisionUtils.checkTimestampPrecision(timestamps[timestamps.length - 1]);
       }
       insertTabletStatement.setTimes(new SingleArrayTimeView(timestamps));
-      insertTabletStatement.setColumns(new TwoDArrayValueView(
-          QueryDataSetUtils.readTabletValuesFromBuffer(
-              valueBuffer,
+      insertTabletStatement.setColumns(
+          new TwoDArrayValueView(
+              QueryDataSetUtils.readTabletValuesFromBuffer(
+                  valueBuffer, dataTypes, dataTypes.length, rowSize),
               dataTypes,
-              dataTypes.length,
-              rowSize), dataTypes, rowSize));
+              rowSize));
     } else {
       long[][] timestamps = QueryDataSetUtils.readTimesFromBufferWithPam(timeBuffer, rowSize);
       if (timestamps.length != 0) {
         TimestampPrecisionUtils.checkTimestampPrecision(timestamps[0][0]);
-        TimestampPrecisionUtils.checkTimestampPrecision(timestamps[rowSize / PrimitiveArrayManager.ARRAY_SIZE][rowSize % PrimitiveArrayManager.ARRAY_SIZE]);
+        TimestampPrecisionUtils.checkTimestampPrecision(
+            timestamps[rowSize / PrimitiveArrayManager.ARRAY_SIZE][
+                rowSize % PrimitiveArrayManager.ARRAY_SIZE]);
       }
-      insertTabletStatement.setTimes(new MultiArrayTimeView(PrimitiveArrayManager.ARRAY_SIZE, timestamps, rowSize));
-      insertTabletStatement.setColumns(new ThreeDArrayValueView(QueryDataSetUtils.readTabletValuesFromBufferWithPam(valueBuffer, dataTypes, dataTypes.length, rowSize), dataTypes, rowSize, PrimitiveArrayManager.ARRAY_SIZE));
+      insertTabletStatement.setTimes(
+          new MultiArrayTimeView(PrimitiveArrayManager.ARRAY_SIZE, timestamps, rowSize));
+      insertTabletStatement.setColumns(
+          new ThreeDArrayValueView(
+              QueryDataSetUtils.readTabletValuesFromBufferWithPam(
+                  valueBuffer, dataTypes, dataTypes.length, rowSize),
+              dataTypes,
+              rowSize,
+              PrimitiveArrayManager.ARRAY_SIZE));
       insertTabletStatement.setRefCount(new AtomicInteger(1));
     }
   }
@@ -373,8 +385,12 @@ public class StatementGenerator {
       dataTypes[i] = TSDataType.deserialize((byte) insertTabletReq.types.get(i).intValue());
     }
 
-    deserializeTimeValue(insertStatement, insertTabletReq.timestamps, insertTabletReq.values,
-        insertTabletReq.size, dataTypes);
+    deserializeTimeValue(
+        insertStatement,
+        insertTabletReq.timestamps,
+        insertTabletReq.values,
+        insertTabletReq.size,
+        dataTypes);
 
     insertStatement.setBitMaps(
         QueryDataSetUtils.readBitMapsFromBuffer(
@@ -419,8 +435,12 @@ public class StatementGenerator {
         dataTypes[j] = TSDataType.deserialize((byte) req.typesList.get(i).get(j).intValue());
       }
 
-      deserializeTimeValue(insertTabletStatement, req.timestampsList.get(i), req.getValuesList().get(i),
-          req.sizeList.get(i), dataTypes);
+      deserializeTimeValue(
+          insertTabletStatement,
+          req.timestampsList.get(i),
+          req.getValuesList().get(i),
+          req.sizeList.get(i),
+          dataTypes);
 
       insertTabletStatement.setBitMaps(
           QueryDataSetUtils.readBitMapsFromBuffer(

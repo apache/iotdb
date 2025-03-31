@@ -646,13 +646,17 @@ public class QueryDataSetUtils {
   }
 
   public static long[][] readTimesFromBufferWithPam(ByteBuffer buffer, int size) {
-    int numOfArray = size / PrimitiveArrayManager.ARRAY_SIZE + size % PrimitiveArrayManager.ARRAY_SIZE > 0 ? 1 : 0;
+    int numOfArray =
+        size / PrimitiveArrayManager.ARRAY_SIZE + size % PrimitiveArrayManager.ARRAY_SIZE > 0
+            ? 1
+            : 0;
     long[][] times = new long[size][];
     for (int i = 0; i < numOfArray; i++) {
       times[i] = (long[]) PrimitiveArrayManager.allocate(TSDataType.INT64);
     }
     for (int i = 0; i < size; i++) {
-      times[i / PrimitiveArrayManager.ARRAY_SIZE][i % PrimitiveArrayManager.ARRAY_SIZE] = buffer.getLong();
+      times[i / PrimitiveArrayManager.ARRAY_SIZE][i % PrimitiveArrayManager.ARRAY_SIZE] =
+          buffer.getLong();
     }
     return times;
   }
@@ -787,7 +791,10 @@ public class QueryDataSetUtils {
   public static Object[][] readTabletValuesFromBufferWithPam(
       ByteBuffer buffer, TSDataType[] types, int columns, int size) {
     Object[][] values = new Object[columns][];
-    int arraySize = size / PrimitiveArrayManager.ARRAY_SIZE + size % PrimitiveArrayManager.ARRAY_SIZE == 0 ? 0 : 1;
+    int arraySize =
+        size / PrimitiveArrayManager.ARRAY_SIZE + size % PrimitiveArrayManager.ARRAY_SIZE == 0
+            ? 0
+            : 1;
     for (int i = 0; i < columns; i++) {
       values[i] = new Object[arraySize];
       for (int j = 0; j < arraySize; j++) {
@@ -796,29 +803,39 @@ public class QueryDataSetUtils {
       switch (types[i]) {
         case BOOLEAN:
           for (int index = 0; index < size; index++) {
-            ((boolean[]) values[i][index / PrimitiveArrayManager.ARRAY_SIZE])[index % PrimitiveArrayManager.ARRAY_SIZE] = BytesUtils.byteToBool(buffer.get());
+            ((boolean[]) values[i][index / PrimitiveArrayManager.ARRAY_SIZE])
+                    [index % PrimitiveArrayManager.ARRAY_SIZE] =
+                BytesUtils.byteToBool(buffer.get());
           }
           break;
         case INT32:
         case DATE:
           for (int index = 0; index < size; index++) {
-            ((int[]) values[i][index / PrimitiveArrayManager.ARRAY_SIZE])[index % PrimitiveArrayManager.ARRAY_SIZE] = buffer.getInt();
+            ((int[]) values[i][index / PrimitiveArrayManager.ARRAY_SIZE])
+                    [index % PrimitiveArrayManager.ARRAY_SIZE] =
+                buffer.getInt();
           }
           break;
         case INT64:
         case TIMESTAMP:
           for (int index = 0; index < size; index++) {
-            ((long[]) values[i][index / PrimitiveArrayManager.ARRAY_SIZE])[index % PrimitiveArrayManager.ARRAY_SIZE] = buffer.getLong();
+            ((long[]) values[i][index / PrimitiveArrayManager.ARRAY_SIZE])
+                    [index % PrimitiveArrayManager.ARRAY_SIZE] =
+                buffer.getLong();
           }
           break;
         case FLOAT:
           for (int index = 0; index < size; index++) {
-            ((float[]) values[i][index / PrimitiveArrayManager.ARRAY_SIZE])[index % PrimitiveArrayManager.ARRAY_SIZE] = buffer.getFloat();
+            ((float[]) values[i][index / PrimitiveArrayManager.ARRAY_SIZE])
+                    [index % PrimitiveArrayManager.ARRAY_SIZE] =
+                buffer.getFloat();
           }
           break;
         case DOUBLE:
           for (int index = 0; index < size; index++) {
-            ((double[]) values[i][index / PrimitiveArrayManager.ARRAY_SIZE])[index % PrimitiveArrayManager.ARRAY_SIZE] = buffer.getDouble();
+            ((double[]) values[i][index / PrimitiveArrayManager.ARRAY_SIZE])
+                    [index % PrimitiveArrayManager.ARRAY_SIZE] =
+                buffer.getDouble();
           }
           break;
         case TEXT:
@@ -828,7 +845,9 @@ public class QueryDataSetUtils {
             int binarySize = buffer.getInt();
             byte[] binaryValue = new byte[binarySize];
             buffer.get(binaryValue);
-            ((Binary[]) values[i][index / PrimitiveArrayManager.ARRAY_SIZE])[index % PrimitiveArrayManager.ARRAY_SIZE] = new Binary(binaryValue);
+            ((Binary[]) values[i][index / PrimitiveArrayManager.ARRAY_SIZE])
+                    [index % PrimitiveArrayManager.ARRAY_SIZE] =
+                new Binary(binaryValue);
           }
           break;
         default:

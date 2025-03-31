@@ -266,8 +266,7 @@ public class InsertRowStatement extends InsertBaseStatement implements ISchemaVa
     }
 
     InsertBaseStatement.FailedMeasurementInfo failedMeasurementInfo =
-        new InsertBaseStatement.FailedMeasurementInfo(
-            measurements[index], dataTypes[index], values[index], cause);
+        new InsertBaseStatement.FailedMeasurementInfo(measurements[index], dataTypes[index], cause);
     failedMeasurementIndex2Info.putIfAbsent(index, failedMeasurementInfo);
 
     measurements[index] = null;
@@ -288,10 +287,6 @@ public class InsertRowStatement extends InsertBaseStatement implements ISchemaVa
 
           if (dataTypes != null) {
             dataTypes[index] = info.getDataType();
-          }
-
-          if (values != null) {
-            values[index] = info.getValue();
           }
         });
     failedMeasurementIndex2Info.clear();

@@ -1106,7 +1106,7 @@ public class DataRegion implements IDataRegionForQuery {
       Map<Long, List<int[]>[]> splitInfo) {
     // before is first start point
     int before = loc;
-    long beforeTime = insertTabletNode.getTimes()[before];
+    long beforeTime = insertTabletNode.getTimes().get(before);
     // before time partition
     long beforeTimePartition = TimePartitionUtils.getTimePartitionId(beforeTime);
     // init flush time map
@@ -1115,7 +1115,7 @@ public class DataRegion implements IDataRegionForQuery {
     // if is sequence
     boolean isSequence = false;
     while (loc < endOffset) {
-      long time = insertTabletNode.getTimes()[loc];
+      long time = insertTabletNode.getTimes().get(loc);
       final long timePartitionId = TimePartitionUtils.getTimePartitionId(time);
 
       long lastFlushTime;

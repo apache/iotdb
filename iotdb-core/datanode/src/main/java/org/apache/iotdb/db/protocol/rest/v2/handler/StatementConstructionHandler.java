@@ -28,6 +28,7 @@ import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.DataNodeDeviceP
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowsStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertTabletStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertTabletStatement.TwoDArrayValueView;
 import org.apache.iotdb.db.utils.TimestampPrecisionUtils;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 
@@ -179,10 +180,10 @@ public class StatementConstructionHandler {
 
     insertStatement.setTimes(
         insertTabletRequest.getTimestamps().stream().mapToLong(Long::longValue).toArray());
-    insertStatement.setColumns(columns);
     insertStatement.setBitMaps(bitMaps);
     insertStatement.setRowCount(insertTabletRequest.getTimestamps().size());
     insertStatement.setDataTypes(dataTypes);
+    insertStatement.setColumns(new TwoDArrayValueView(columns, dataTypes, rowSize));
     insertStatement.setAligned(insertTabletRequest.getIsAligned());
     return insertStatement;
   }

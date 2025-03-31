@@ -1092,10 +1092,10 @@ public class IoTDBDescriptor {
                 "detail_container_min_degrade_memory_in_bytes",
                 String.valueOf(conf.getDetailContainerMinDegradeMemoryInBytes()))));
 
-    conf.setUsePamForInsertTablet(Boolean.parseBoolean(
-        properties.getProperty("use_pam_for_insert_tablet",
-            String.valueOf(conf.isUsePamForInsertTablet()))
-    ));
+    conf.setUsePamForInsertTablet(
+        Boolean.parseBoolean(
+            properties.getProperty(
+                "use_pam_for_insert_tablet", String.valueOf(conf.isUsePamForInsertTablet()))));
 
     loadIoTConsensusProps(properties);
     loadIoTConsensusV2Props(properties);
@@ -2065,10 +2065,10 @@ public class IoTDBDescriptor {
                   "tvlist_sort_threshold",
                   ConfigurationFileUtils.getConfigurationDefaultValue("tvlist_sort_threshold"))));
 
-      conf.setUsePamForInsertTablet(Boolean.parseBoolean(
-          properties.getProperty("use_pam_for_insert_tablet",
-              String.valueOf(conf.isUsePamForInsertTablet()))
-      ));
+      conf.setUsePamForInsertTablet(
+          Boolean.parseBoolean(
+              properties.getProperty(
+                  "use_pam_for_insert_tablet", String.valueOf(conf.isUsePamForInsertTablet()))));
     } catch (Exception e) {
       if (e instanceof InterruptedException) {
         Thread.currentThread().interrupt();

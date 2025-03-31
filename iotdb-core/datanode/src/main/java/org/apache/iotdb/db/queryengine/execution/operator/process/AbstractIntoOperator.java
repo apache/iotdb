@@ -30,6 +30,8 @@ import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.InputLocation;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertMultiTabletsStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertTabletStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertTabletStatement.SingleArrayTimeView;
+import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertTabletStatement.TwoDArrayValueView;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import com.google.common.util.concurrent.Futures;
@@ -538,9 +540,9 @@ public abstract class AbstractIntoOperator implements ProcessOperator {
         }
       }
 
-      insertTabletStatement.setTimes(times);
+      insertTabletStatement.setTimes(new SingleArrayTimeView(times));
       insertTabletStatement.setBitMaps(bitMaps);
-      insertTabletStatement.setColumns(columns);
+      insertTabletStatement.setColumns(new TwoDArrayValueView(columns, dataTypes, rowCount));
 
       return insertTabletStatement;
     }

@@ -136,7 +136,8 @@ public class PipeDataRegionAssigner implements Closeable {
     }
 
     if (innerEvent instanceof PipeInsertNodeTabletInsertionEvent) {
-      InsertNode insertNode = ((PipeInsertNodeTabletInsertionEvent) innerEvent).getInsertNodeViaCacheIfPossible();
+      InsertNode insertNode =
+          ((PipeInsertNodeTabletInsertionEvent) innerEvent).getInsertNodeViaCacheIfPossible();
       if (insertNode instanceof InsertTabletNode) {
         InsertTabletNode insertTabletNode = (InsertTabletNode) insertNode;
         synchronized (insertTabletNode) {

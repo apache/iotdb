@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.queryengine.plan.planner.plan.node.write;
 
-import java.util.concurrent.atomic.AtomicInteger;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
@@ -37,7 +36,6 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.WritePlanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache.TreeDeviceSchemaCacheManager;
-import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertTabletStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertTabletStatement.MultiArrayTimeView;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertTabletStatement.SingleArrayTimeView;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertTabletStatement.ThreeDArrayValueView;
@@ -80,6 +78,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Objects;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.apache.iotdb.db.utils.CommonUtils.isAlive;
 
@@ -189,6 +188,10 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
     this.times = times;
   }
 
+  public void setTimes(long[] times) {
+    this.times = new SingleArrayTimeView(times);
+  }
+
   public BitMap[] getBitMaps() {
     return bitMaps;
   }
@@ -203,6 +206,13 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
 
   public void setColumns(ValueView columns) {
     this.columns = columns;
+  }
+
+  public void setColumns(Object[] columns) {
+    if (dataTypes == null || rowCount == 0) {
+      throw new IllegalArgumentException("dataTypes and rowCount must be set first");
+    }
+    this.columns = new TwoDArrayValueView(columns, dataTypes, rowCount);
   }
 
   public int getRowCount() {
@@ -382,8 +392,7 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
           bitMaps,
           new ThreeDArrayValueView(values, dataTypes, count, PrimitiveArrayManager.ARRAY_SIZE),
           count,
-          new AtomicInteger(1)
-      );
+          new AtomicInteger(1));
     }
   }
 
@@ -473,7 +482,8 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
     return values;
   }
 
-  protected Object[][] initTabletValuesWithPam(int columnSize, int rowSize, TSDataType[] dataTypes) {
+  protected Object[][] initTabletValuesWithPam(
+      int columnSize, int rowSize, TSDataType[] dataTypes) {
     Object[][] values = new Object[columnSize][];
     int numOfArrays = PrimitiveArrayManager.numOfArrays(rowSize);
     for (int i = 0; i < values.length; i++) {
@@ -674,7 +684,6 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
     }
   }
 
-
   public static InsertTabletNode deserialize(ByteBuffer byteBuffer) {
     InsertTabletNode insertNode = new InsertTabletNode(new PlanNodeId(""));
     insertNode.subDeserialize(byteBuffer);
@@ -719,7 +728,11 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
           QueryDataSetUtils.readBitMapsFromBuffer(buffer, measurementSize, rowCount).orElse(null);
     }
     columns =
-        new TwoDArrayValueView(QueryDataSetUtils.readTabletValuesFromBuffer(buffer, dataTypes, measurementSize, rowCount), dataTypes, rowCount);
+        new TwoDArrayValueView(
+            QueryDataSetUtils.readTabletValuesFromBuffer(
+                buffer, dataTypes, measurementSize, rowCount),
+            dataTypes,
+            rowCount);
     isAligned = buffer.get() == 1;
   }
 
@@ -890,7 +903,11 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
           QueryDataSetUtils.readBitMapsFromStream(stream, measurementSize, rowCount).orElse(null);
     }
     columns =
-        new TwoDArrayValueView(QueryDataSetUtils.readTabletValuesFromStream(stream, dataTypes, measurementSize, rowCount), dataTypes, rowCount);
+        new TwoDArrayValueView(
+            QueryDataSetUtils.readTabletValuesFromStream(
+                stream, dataTypes, measurementSize, rowCount),
+            dataTypes,
+            rowCount);
     isAligned = stream.readByte() == 1;
   }
 
@@ -929,7 +946,11 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
           QueryDataSetUtils.readBitMapsFromBuffer(buffer, measurementSize, rowCount).orElse(null);
     }
     columns =
-        new TwoDArrayValueView(QueryDataSetUtils.readTabletValuesFromBuffer(buffer, dataTypes, measurementSize, rowCount), dataTypes, rowCount);
+        new TwoDArrayValueView(
+            QueryDataSetUtils.readTabletValuesFromBuffer(
+                buffer, dataTypes, measurementSize, rowCount),
+            dataTypes,
+            rowCount);
     isAligned = buffer.get() == 1;
   }
 
@@ -962,7 +983,6 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
         && Objects.equals(columns, that.columns)
         && Objects.equals(range, that.range);
   }
-
 
   @Override
   public <R, C> R accept(PlanVisitor<R, C> visitor, C context) {

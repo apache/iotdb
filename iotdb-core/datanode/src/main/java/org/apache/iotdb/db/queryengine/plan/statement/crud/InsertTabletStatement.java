@@ -19,12 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.plan.statement.crud;
 
-import java.io.DataOutputStream;
-import java.io.IOException;
-import java.io.OutputStream;
-import java.nio.ByteBuffer;
-import java.util.concurrent.atomic.AtomicInteger;
-import java.util.stream.Collectors;
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.schema.view.LogicalViewSchema;
@@ -47,9 +42,9 @@ import org.apache.iotdb.db.queryengine.plan.statement.StatementVisitor;
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.IWALByteBufferView;
 import org.apache.iotdb.db.storageengine.rescon.memory.PrimitiveArrayManager;
 import org.apache.iotdb.db.utils.CommonUtils;
-
 import org.apache.iotdb.db.utils.datastructure.AlignedTVList;
 import org.apache.iotdb.db.utils.datastructure.TVList;
+
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.file.metadata.IDeviceID.Factory;
@@ -64,6 +59,9 @@ import org.apache.tsfile.utils.ReadWriteIOUtils;
 import org.apache.tsfile.write.UnSupportedDataTypeException;
 import org.apache.tsfile.write.schema.MeasurementSchema;
 
+import java.io.DataOutputStream;
+import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -71,6 +69,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.stream.Collectors;
 
 public class InsertTabletStatement extends InsertBaseStatement implements ISchemaValidation {
 
@@ -139,6 +139,13 @@ public class InsertTabletStatement extends InsertBaseStatement implements ISchem
     this.columns = columns;
   }
 
+  public void setColumns(Object[] columns) {
+    if (dataTypes == null || rowCount == 0) {
+      throw new IllegalArgumentException("dataTypes and rowCount must be set first");
+    }
+    this.columns = new TwoDArrayValueView(columns, dataTypes, rowCount);
+  }
+
   public BitMap[] getBitMaps() {
     return nullBitMaps;
   }
@@ -153,6 +160,10 @@ public class InsertTabletStatement extends InsertBaseStatement implements ISchem
 
   public void setTimes(TimeView times) {
     this.times = times;
+  }
+
+  public void setTimes(long[] times) {
+    this.times = new SingleArrayTimeView(times);
   }
 
   @Override
@@ -231,8 +242,7 @@ public class InsertTabletStatement extends InsertBaseStatement implements ISchem
     }
 
     InsertBaseStatement.FailedMeasurementInfo failedMeasurementInfo =
-        new InsertBaseStatement.FailedMeasurementInfo(
-            measurements[index], dataTypes[index], cause);
+        new InsertBaseStatement.FailedMeasurementInfo(measurements[index], dataTypes[index], cause);
     failedMeasurementIndex2Info.putIfAbsent(index, failedMeasurementInfo);
 
     measurements[index] = null;
@@ -300,8 +310,9 @@ public class InsertTabletStatement extends InsertBaseStatement implements ISchem
           statement.setAligned(this.measurementIsAligned[realIndex]);
         }
       }
-      statement.setColumns(new ColumnMappedValueView(columns, pairList.stream().map(Pair::getRight).collect(
-          Collectors.toList())));
+      statement.setColumns(
+          new ColumnMappedValueView(
+              columns, pairList.stream().map(Pair::getRight).collect(Collectors.toList())));
       statement.setMeasurements(measurements);
       statement.setMeasurementSchemas(measurementSchemas);
       statement.setDataTypes(dataTypes);
@@ -444,8 +455,7 @@ public class InsertTabletStatement extends InsertBaseStatement implements ISchem
       for (int i = 0; i < getIdColumnIndices().size(); i++) {
         final Integer columnIndex = getIdColumnIndices().get(i);
         boolean isNull = isNull(rowIdx, i);
-        deviceIdSegments[i + 1] =
-            isNull ? null : columns.get(rowIdx, columnIndex).toString();
+        deviceIdSegments[i + 1] = isNull ? null : columns.get(rowIdx, columnIndex).toString();
       }
       deviceIDs[rowIdx] = Factory.DEFAULT_FACTORY.create(deviceIdSegments);
     }
@@ -508,10 +518,10 @@ public class InsertTabletStatement extends InsertBaseStatement implements ISchem
         + InsertNodeMemoryEstimator.sizeOfBitMapArray(nullBitMaps)
         + columns.ramSize(measurementSchemas)
         + (Objects.nonNull(deviceIDs)
-        ? Arrays.stream(deviceIDs)
-        .mapToLong(InsertNodeMemoryEstimator::sizeOfIDeviceID)
-        .reduce(0L, Long::sum)
-        : 0L);
+            ? Arrays.stream(deviceIDs)
+                .mapToLong(InsertNodeMemoryEstimator::sizeOfIDeviceID)
+                .reduce(0L, Long::sum)
+            : 0L);
   }
 
   public boolean isNull(int row, int col) {
@@ -575,6 +585,10 @@ public class InsertTabletStatement extends InsertBaseStatement implements ISchem
     void release();
 
     void putTo(TVList tvList, BitMap bitMap, int start, int end);
+
+    // for compatibility only, avoid using it
+    @Deprecated
+    long[] toSingleArray();
   }
 
   public static class SingleArrayTimeView implements TimeView {
@@ -609,8 +623,12 @@ public class InsertTabletStatement extends InsertBaseStatement implements ISchem
     public void copyTo(TimeView timeView, int thisFrom, int targetFrom, int copyLength) {
       if (timeView instanceof SingleArrayTimeView) {
         copyLength = Math.min(copyLength, this.length() - thisFrom);
-        System.arraycopy(this.timestamps, thisFrom, ((SingleArrayTimeView) timeView).timestamps,
-            targetFrom, copyLength);
+        System.arraycopy(
+            this.timestamps,
+            thisFrom,
+            ((SingleArrayTimeView) timeView).timestamps,
+            targetFrom,
+            copyLength);
       } else {
         TimeView.super.copyTo(timeView, thisFrom, targetFrom, copyLength);
       }
@@ -624,6 +642,11 @@ public class InsertTabletStatement extends InsertBaseStatement implements ISchem
     @Override
     public void putTo(TVList tvList, BitMap bitMap, int start, int end) {
       tvList.putTimes(timestamps, bitMap, start, end);
+    }
+
+    @Override
+    public long[] toSingleArray() {
+      return timestamps;
     }
   }
 
@@ -665,8 +688,8 @@ public class InsertTabletStatement extends InsertBaseStatement implements ISchem
           && this.singleArraySize == ((MultiArrayTimeView) timeView).singleArraySize) {
         copyLength = Math.min(copyLength, this.length() - thisFrom);
         while (copyLength > 0) {
-          int singleCopyLength = copyOneArrayTo(((MultiArrayTimeView) timeView), thisFrom,
-              targetFrom, copyLength);
+          int singleCopyLength =
+              copyOneArrayTo(((MultiArrayTimeView) timeView), thisFrom, targetFrom, copyLength);
           thisFrom += singleCopyLength;
           targetFrom += singleCopyLength;
           copyLength -= singleCopyLength;
@@ -676,8 +699,8 @@ public class InsertTabletStatement extends InsertBaseStatement implements ISchem
       }
     }
 
-    private int copyOneArrayTo(MultiArrayTimeView target, int thisFrom, int targetFrom,
-        int copyLength) {
+    private int copyOneArrayTo(
+        MultiArrayTimeView target, int thisFrom, int targetFrom, int copyLength) {
       int srcArrayPos = thisFrom % singleArraySize;
       int srcArrayRemaining = singleArraySize - srcArrayPos;
       copyLength = Math.min(copyLength, srcArrayRemaining);
@@ -689,7 +712,11 @@ public class InsertTabletStatement extends InsertBaseStatement implements ISchem
       if (copyLength > targetArrayRemaining) {
         System.arraycopy(srcArray, srcArrayPos, targetArray, targetArrayPos, targetArrayRemaining);
         long[] nextTargetArray = target.timestamps[targetFrom / singleArraySize + 1];
-        System.arraycopy(srcArray, srcArrayPos + targetArrayRemaining, nextTargetArray, 0,
+        System.arraycopy(
+            srcArray,
+            srcArrayPos + targetArrayRemaining,
+            nextTargetArray,
+            0,
             copyLength - targetArrayRemaining);
       } else {
         System.arraycopy(srcArray, srcArrayPos, targetArray, targetArrayPos, copyLength);
@@ -719,10 +746,31 @@ public class InsertTabletStatement extends InsertBaseStatement implements ISchem
 
         int arrayStart = current % singleArraySize;
         int arrayEnd = arrayStart + copyLength;
-        tvList.putTimes(timestamps[arrayIndex], bitMap.getRegion(current, current + copyLength), arrayStart, arrayEnd);
+        tvList.putTimes(
+            timestamps[arrayIndex],
+            bitMap.getRegion(current, current + copyLength),
+            arrayStart,
+            arrayEnd);
 
         current += copyLength;
       }
+    }
+
+    @Override
+    public long[] toSingleArray() {
+      long[] singleArray = new long[length];
+      int arrayIndex = 0;
+      for (; arrayIndex < timestamps.length - 1; arrayIndex++) {
+        System.arraycopy(
+            timestamps[arrayIndex], 0, singleArray, arrayIndex * singleArraySize, singleArraySize);
+      }
+      System.arraycopy(
+          timestamps[arrayIndex],
+          0,
+          singleArray,
+          arrayIndex * singleArraySize,
+          length % singleArraySize);
+      return singleArray;
     }
   }
 
@@ -738,8 +786,8 @@ public class InsertTabletStatement extends InsertBaseStatement implements ISchem
 
     TSDataType[] dataTypes();
 
-    default void copyTo(ValueView valueView, int colIndex, int thisFrom, int targetFrom,
-        int copyLength) {
+    default void copyTo(
+        ValueView valueView, int colIndex, int thisFrom, int targetFrom, int copyLength) {
       copyLength = Math.min(copyLength, this.rowLength() - thisFrom);
       for (int i = 0; i < copyLength; i++) {
         valueView.set(targetFrom + i, colIndex, get(thisFrom + i, colIndex));
@@ -747,7 +795,9 @@ public class InsertTabletStatement extends InsertBaseStatement implements ISchem
     }
 
     void serializeColumn(int colIndex, ByteBuffer buffer);
+
     void serializeColumn(int colIndex, DataOutputStream stream) throws IOException;
+
     void serializeColumn(int colIndex, IWALByteBufferView buffer, int start, int end);
 
     default long getColumnSize(int colIndex, int start, int end) {
@@ -787,15 +837,29 @@ public class InsertTabletStatement extends InsertBaseStatement implements ISchem
     void castTo(int colIndex, TSDataType newType);
 
     void insertColumn(int pos, ColumnSchema columnSchema);
+
     void swapColumn(int src, int target);
 
     long ramSize(MeasurementSchema[] measurementSchemas);
+
     void reserveColumns(List<Integer> columnsToReserve);
 
     void release();
 
     void putTo(TVList tvList, int columnIndex, BitMap bitMap, int start, int end, int pos);
-    void putTo(AlignedTVList tvList, List<Integer> columnIndices, BitMap[] bitMaps, int start, int end, int pos);
+
+    void putTo(
+        AlignedTVList tvList,
+        List<Integer> columnIndices,
+        BitMap[] bitMaps,
+        int start,
+        int end,
+        TSStatus[] results,
+        int pos);
+
+    // for compatibility only, do no use it in new code
+    @Deprecated
+    Object[] toTwoDArray();
   }
 
   public static class TwoDArrayValueView implements ValueView {
@@ -879,11 +943,16 @@ public class InsertTabletStatement extends InsertBaseStatement implements ISchem
     }
 
     @Override
-    public void copyTo(ValueView valueView, int colIndex, int thisFrom, int targetFrom,
-        int copyLength) {
+    public void copyTo(
+        ValueView valueView, int colIndex, int thisFrom, int targetFrom, int copyLength) {
       if (valueView instanceof TwoDArrayValueView) {
         copyLength = Math.min(copyLength, this.rowLength() - thisFrom);
-        System.arraycopy(values[colIndex], thisFrom, ((TwoDArrayValueView) valueView).values[colIndex], targetFrom, copyLength);
+        System.arraycopy(
+            values[colIndex],
+            thisFrom,
+            ((TwoDArrayValueView) valueView).values[colIndex],
+            targetFrom,
+            copyLength);
       } else {
         ValueView.super.copyTo(valueView, colIndex, thisFrom, targetFrom, copyLength);
       }
@@ -937,7 +1006,8 @@ public class InsertTabletStatement extends InsertBaseStatement implements ISchem
           }
           break;
         default:
-          throw new UnSupportedDataTypeException(String.format(DATATYPE_UNSUPPORTED, dataTypes[colIndex]));
+          throw new UnSupportedDataTypeException(
+              String.format(DATATYPE_UNSUPPORTED, dataTypes[colIndex]));
       }
     }
 
@@ -989,7 +1059,8 @@ public class InsertTabletStatement extends InsertBaseStatement implements ISchem
           }
           break;
         default:
-          throw new UnSupportedDataTypeException(String.format(DATATYPE_UNSUPPORTED, dataTypes[colIndex]));
+          throw new UnSupportedDataTypeException(
+              String.format(DATATYPE_UNSUPPORTED, dataTypes[colIndex]));
       }
     }
 
@@ -1042,7 +1113,8 @@ public class InsertTabletStatement extends InsertBaseStatement implements ISchem
           }
           break;
         default:
-          throw new UnSupportedDataTypeException(String.format(DATATYPE_UNSUPPORTED, dataTypes[colIndex]));
+          throw new UnSupportedDataTypeException(
+              String.format(DATATYPE_UNSUPPORTED, dataTypes[colIndex]));
       }
     }
 
@@ -1062,9 +1134,7 @@ public class InsertTabletStatement extends InsertBaseStatement implements ISchem
       System.arraycopy(values, 0, tmpColumns, 0, pos);
       tmpColumns[pos] =
           CommonUtils.createValueColumnOfDataType(
-              InternalTypeManager.getTSDataType(columnSchema.getType()),
-              columnSchema.getColumnCategory(),
-              rowLength);
+              InternalTypeManager.getTSDataType(columnSchema.getType()), rowLength);
       System.arraycopy(values, pos, tmpColumns, pos + 1, values.length - pos);
       values = tmpColumns;
     }
@@ -1093,8 +1163,26 @@ public class InsertTabletStatement extends InsertBaseStatement implements ISchem
     public void putTo(TVList tvList, int columnIndex, BitMap bitMap, int start, int end, int pos) {
       tvList.putValues(values[columnIndex], bitMap, start, end, pos, rowLength);
     }
+
+    @Override
+    public void putTo(
+        AlignedTVList tvList,
+        List<Integer> columnIndices,
+        BitMap[] bitMaps,
+        int start,
+        int end,
+        TSStatus[] results,
+        int pos) {
+      tvList.putAlignedValues(values, columnIndices, bitMaps, start, end, results, pos);
+    }
+
+    @Override
+    public Object[] toTwoDArray() {
+      return values;
+    }
   }
 
+  @SuppressWarnings("SuspiciousSystemArraycopy")
   public static class ThreeDArrayValueView implements ValueView {
 
     private final TSDataType[] dataTypes;
@@ -1102,7 +1190,8 @@ public class InsertTabletStatement extends InsertBaseStatement implements ISchem
     private final int rowLength;
     private final int singleArraySize;
 
-    public ThreeDArrayValueView(Object[][] values, TSDataType[] dataTypes, int rowLength, int singleArraySize) {
+    public ThreeDArrayValueView(
+        Object[][] values, TSDataType[] dataTypes, int rowLength, int singleArraySize) {
       this.values = values;
       this.dataTypes = dataTypes;
       this.rowLength = rowLength;
@@ -1127,17 +1216,22 @@ public class InsertTabletStatement extends InsertBaseStatement implements ISchem
           return ((int[]) values[colIndex][rowIndex / singleArraySize])[rowIndex % singleArraySize];
         case INT64:
         case TIMESTAMP:
-          return ((long[]) values[colIndex][rowIndex / singleArraySize])[rowIndex % singleArraySize];
+          return ((long[]) values[colIndex][rowIndex / singleArraySize])
+              [rowIndex % singleArraySize];
         case FLOAT:
-          return ((float[]) values[colIndex][rowIndex / singleArraySize])[rowIndex % singleArraySize];
+          return ((float[]) values[colIndex][rowIndex / singleArraySize])
+              [rowIndex % singleArraySize];
         case DOUBLE:
-          return ((double[]) values[colIndex][rowIndex / singleArraySize])[rowIndex % singleArraySize];
+          return ((double[]) values[colIndex][rowIndex / singleArraySize])
+              [rowIndex % singleArraySize];
         case TEXT:
         case BLOB:
         case STRING:
-          return ((Binary[]) values[colIndex][rowIndex / singleArraySize])[rowIndex % singleArraySize];
+          return ((Binary[]) values[colIndex][rowIndex / singleArraySize])
+              [rowIndex % singleArraySize];
         case BOOLEAN:
-          return ((boolean[]) values[colIndex][rowIndex / singleArraySize])[rowIndex % singleArraySize];
+          return ((boolean[]) values[colIndex][rowIndex / singleArraySize])
+              [rowIndex % singleArraySize];
         case VECTOR:
         case UNKNOWN:
         default:
@@ -1150,25 +1244,31 @@ public class InsertTabletStatement extends InsertBaseStatement implements ISchem
       switch (dataTypes[colIndex]) {
         case INT32:
         case DATE:
-          ((int[]) values[colIndex][rowIndex / singleArraySize])[rowIndex % singleArraySize] = ((int) value);
+          ((int[]) values[colIndex][rowIndex / singleArraySize])[rowIndex % singleArraySize] =
+              ((int) value);
           return;
         case INT64:
         case TIMESTAMP:
-          ((long[]) values[colIndex][rowIndex / singleArraySize])[rowIndex % singleArraySize] = ((long) value);
+          ((long[]) values[colIndex][rowIndex / singleArraySize])[rowIndex % singleArraySize] =
+              ((long) value);
           return;
         case FLOAT:
-          ((float[]) values[colIndex][rowIndex / singleArraySize])[rowIndex % singleArraySize] = ((float) value);
+          ((float[]) values[colIndex][rowIndex / singleArraySize])[rowIndex % singleArraySize] =
+              ((float) value);
           return;
         case DOUBLE:
-          ((double[]) values[colIndex][rowIndex / singleArraySize])[rowIndex % singleArraySize] = ((double) value);
+          ((double[]) values[colIndex][rowIndex / singleArraySize])[rowIndex % singleArraySize] =
+              ((double) value);
           return;
         case TEXT:
         case BLOB:
         case STRING:
-          ((Binary[]) values[colIndex][rowIndex / singleArraySize])[rowIndex % singleArraySize] = ((Binary) value);
+          ((Binary[]) values[colIndex][rowIndex / singleArraySize])[rowIndex % singleArraySize] =
+              ((Binary) value);
           return;
         case BOOLEAN:
-          ((boolean[]) values[colIndex][rowIndex / singleArraySize])[rowIndex % singleArraySize] = ((boolean) value);
+          ((boolean[]) values[colIndex][rowIndex / singleArraySize])[rowIndex % singleArraySize] =
+              ((boolean) value);
           return;
         case VECTOR:
         case UNKNOWN:
@@ -1178,13 +1278,15 @@ public class InsertTabletStatement extends InsertBaseStatement implements ISchem
     }
 
     @Override
-    public void copyTo(ValueView valueView, int colIndex, int thisFrom, int targetFrom,
-        int copyLength) {
-      if (valueView instanceof ThreeDArrayValueView && this.singleArraySize == ((ThreeDArrayValueView) valueView).singleArraySize) {
+    public void copyTo(
+        ValueView valueView, int colIndex, int thisFrom, int targetFrom, int copyLength) {
+      if (valueView instanceof ThreeDArrayValueView
+          && this.singleArraySize == ((ThreeDArrayValueView) valueView).singleArraySize) {
         copyLength = Math.min(copyLength, this.rowLength() - thisFrom);
         while (copyLength > 0) {
-          int singleCopyLength = copyOneArrayTo(((ThreeDArrayValueView) valueView), colIndex, thisFrom,
-              targetFrom, copyLength);
+          int singleCopyLength =
+              copyOneArrayTo(
+                  ((ThreeDArrayValueView) valueView), colIndex, thisFrom, targetFrom, copyLength);
           thisFrom += singleCopyLength;
           targetFrom += singleCopyLength;
           copyLength -= singleCopyLength;
@@ -1194,8 +1296,8 @@ public class InsertTabletStatement extends InsertBaseStatement implements ISchem
       }
     }
 
-    private int copyOneArrayTo(ThreeDArrayValueView target, int colIndex, int thisFrom, int targetFrom,
-        int copyLength) {
+    private int copyOneArrayTo(
+        ThreeDArrayValueView target, int colIndex, int thisFrom, int targetFrom, int copyLength) {
       int srcArrayPos = thisFrom % singleArraySize;
       int srcArrayRemaining = singleArraySize - srcArrayPos;
       copyLength = Math.min(copyLength, srcArrayRemaining);
@@ -1207,7 +1309,11 @@ public class InsertTabletStatement extends InsertBaseStatement implements ISchem
       if (copyLength > targetArrayRemaining) {
         System.arraycopy(srcArray, srcArrayPos, targetArray, targetArrayPos, targetArrayRemaining);
         Object nextTargetArray = target.values[colIndex][targetFrom / singleArraySize + 1];
-        System.arraycopy(srcArray, srcArrayPos + targetArrayRemaining, nextTargetArray, 0,
+        System.arraycopy(
+            srcArray,
+            srcArrayPos + targetArrayRemaining,
+            nextTargetArray,
+            0,
             copyLength - targetArrayRemaining);
       } else {
         System.arraycopy(srcArray, srcArrayPos, targetArray, targetArrayPos, copyLength);
@@ -1300,7 +1406,8 @@ public class InsertTabletStatement extends InsertBaseStatement implements ISchem
           }
           break;
         default:
-          throw new UnSupportedDataTypeException(String.format(DATATYPE_UNSUPPORTED, dataTypes[colIndex]));
+          throw new UnSupportedDataTypeException(
+              String.format(DATATYPE_UNSUPPORTED, dataTypes[colIndex]));
       }
     }
 
@@ -1389,7 +1496,8 @@ public class InsertTabletStatement extends InsertBaseStatement implements ISchem
           }
           break;
         default:
-          throw new UnSupportedDataTypeException(String.format(DATATYPE_UNSUPPORTED, dataTypes[colIndex]));
+          throw new UnSupportedDataTypeException(
+              String.format(DATATYPE_UNSUPPORTED, dataTypes[colIndex]));
       }
     }
 
@@ -1504,7 +1612,8 @@ public class InsertTabletStatement extends InsertBaseStatement implements ISchem
           }
           break;
         default:
-          throw new UnSupportedDataTypeException(String.format(DATATYPE_UNSUPPORTED, dataTypes[colIndex]));
+          throw new UnSupportedDataTypeException(
+              String.format(DATATYPE_UNSUPPORTED, dataTypes[colIndex]));
       }
     }
 
@@ -1529,7 +1638,9 @@ public class InsertTabletStatement extends InsertBaseStatement implements ISchem
       int arrayNum = rowLength / singleArraySize + rowLength % singleArraySize == 0 ? 0 : 1;
       tmpColumns[pos] = new Object[arrayNum];
       for (int i = 0; i < arrayNum; i++) {
-        tmpColumns[pos][i] = PrimitiveArrayManager.allocate(InternalTypeManager.getTSDataType(columnSchema.getType()));
+        tmpColumns[pos][i] =
+            PrimitiveArrayManager.allocate(
+                InternalTypeManager.getTSDataType(columnSchema.getType()));
       }
       System.arraycopy(values, pos, tmpColumns, pos + 1, values.length - pos);
       values = tmpColumns;
@@ -1554,7 +1665,8 @@ public class InsertTabletStatement extends InsertBaseStatement implements ISchem
       columnsToReserve.sort(null);
       int reserveColumnCursor = 0;
       for (int i = 0; i < values.length; i++) {
-        if (reserveColumnCursor < columnsToReserve.size() && i != columnsToReserve.get(reserveColumnCursor)) {
+        if (reserveColumnCursor < columnsToReserve.size()
+            && i != columnsToReserve.get(reserveColumnCursor)) {
           // i is a column to remove
           Object[] value = values[i];
           for (int j = 0, valueLength = value.length; j < valueLength; j++) {
@@ -1569,7 +1681,8 @@ public class InsertTabletStatement extends InsertBaseStatement implements ISchem
       }
 
       Object[][] tmpValue = new Object[columnsToReserve.size()][];
-      for (int j = 0, columnsToReserveSize = columnsToReserve.size(); j < columnsToReserveSize;
+      for (int j = 0, columnsToReserveSize = columnsToReserve.size();
+          j < columnsToReserveSize;
           j++) {
         Integer realPos = columnsToReserve.get(j);
         tmpValue[j] = values[realPos];
@@ -1603,10 +1716,109 @@ public class InsertTabletStatement extends InsertBaseStatement implements ISchem
 
         int arrayStart = current % singleArraySize;
         int arrayEnd = arrayStart + copyLength;
-        tvList.putValues(values[columnIndex][arrayIndex], bitMap.getRegion(current, current + copyLength), arrayStart, arrayEnd, pos, singleArraySize);
+        tvList.putValues(
+            values[columnIndex][arrayIndex],
+            bitMap.getRegion(current, current + copyLength),
+            arrayStart,
+            arrayEnd,
+            pos,
+            singleArraySize);
 
         current += copyLength;
       }
+    }
+
+    @Override
+    public void putTo(
+        AlignedTVList tvList,
+        List<Integer> columnIndices,
+        BitMap[] bitMaps,
+        int start,
+        int end,
+        TSStatus[] results,
+        int pos) {
+      if (end > rowLength) {
+        end = rowLength;
+      }
+
+      tvList.resetColumnInsertedMap();
+      for (int i = 0; i < columnIndices.size(); i++) {
+        int current = start;
+        while (current < end) {
+          // put one array to TVList
+          int arrayIndex = current / singleArraySize;
+          int arrayRemaining = singleArraySize - current % singleArraySize;
+          int copyLength = Math.min(arrayRemaining, end - current);
+
+          int arrayStart = current % singleArraySize;
+          int arrayEnd = arrayStart + copyLength;
+          tvList.putAlignedValues(
+              values[i][arrayIndex],
+              columnIndices.get(i),
+              bitMaps[i].getRegion(current, current + copyLength),
+              arrayStart,
+              arrayEnd,
+              results,
+              pos);
+
+          current += copyLength;
+        }
+      }
+      tvList.markNotInsertedColumns(start, end);
+    }
+
+    @Override
+    public Object[] toTwoDArray() {
+      Object[] twoDArray = new Object[values.length];
+      for (int i = 0; i < values.length; i++) {
+        if (dataTypes[i] == null) {
+          continue;
+        }
+        switch (dataTypes[i]) {
+          case INT32:
+          case DATE:
+            twoDArray[i] = new int[rowLength];
+            break;
+          case INT64:
+          case TIMESTAMP:
+            twoDArray[i] = new Long[rowLength];
+            break;
+          case FLOAT:
+            twoDArray[i] = new Float[rowLength];
+            break;
+          case DOUBLE:
+            twoDArray[i] = new double[rowLength];
+            break;
+          case STRING:
+          case BLOB:
+          case TEXT:
+            twoDArray[i] = new Binary[rowLength];
+            break;
+          case BOOLEAN:
+            twoDArray[i] = new Boolean[rowLength];
+            break;
+          case UNKNOWN:
+          case VECTOR:
+          default:
+            throw new UnSupportedDataTypeException(dataTypes[i].toString());
+        }
+        int arrayIndex = 0;
+        for (; arrayIndex < values[i].length - 1; arrayIndex++) {
+          System.arraycopy(
+              values[i][arrayIndex],
+              0,
+              twoDArray[i],
+              arrayIndex * singleArraySize,
+              singleArraySize);
+        }
+        System.arraycopy(
+            values[i][arrayIndex],
+            0,
+            twoDArray[i],
+            arrayIndex * singleArraySize,
+            rowLength % singleArraySize);
+      }
+      return twoDArray;
     }
   }
 
@@ -1647,8 +1859,8 @@ public class InsertTabletStatement extends InsertBaseStatement implements ISchem
     }
 
     @Override
-    public void copyTo(ValueView valueView, int colIndex, int thisFrom, int targetFrom,
-        int copyLength) {
+    public void copyTo(
+        ValueView valueView, int colIndex, int thisFrom, int targetFrom, int copyLength) {
       innerValue.copyTo(valueView, colIndex, thisFrom, targetFrom, copyLength);
     }
 
@@ -1690,9 +1902,11 @@ public class InsertTabletStatement extends InsertBaseStatement implements ISchem
     @Override
     public long ramSize(MeasurementSchema[] measurementSchemas) {
       if (innerValue instanceof TwoDArrayValueView) {
-        return InsertNodeMemoryEstimator.sizeOfColumns(((TwoDArrayValueView) innerValue).values, measurementSchemas, realIndexes);
+        return InsertNodeMemoryEstimator.sizeOfColumns(
+            ((TwoDArrayValueView) innerValue).values, measurementSchemas, realIndexes);
       } else if (innerValue instanceof ThreeDArrayValueView) {
-        return InsertNodeMemoryEstimator.sizeOfColumns(((ThreeDArrayValueView) innerValue).values, measurementSchemas, realIndexes);
+        return InsertNodeMemoryEstimator.sizeOfColumns(
+            ((ThreeDArrayValueView) innerValue).values, measurementSchemas, realIndexes);
       } else {
         return innerValue.ramSize(measurementSchemas);
       }
@@ -1711,6 +1925,46 @@ public class InsertTabletStatement extends InsertBaseStatement implements ISchem
     @Override
     public void putTo(TVList tvList, int columnIndex, BitMap bitMap, int start, int end, int pos) {
       innerValue.putTo(tvList, realIndexes.get(columnIndex), bitMap, start, end, pos);
+    }
+
+    @Override
+    public void putTo(
+        AlignedTVList tvList,
+        List<Integer> tvListColumnIndices,
+        BitMap[] bitMaps,
+        int start,
+        int end,
+        TSStatus[] results,
+        int pos) {
+      List<Integer> columnIndicesForInner = new ArrayList<>(innerValue.colLength());
+      // put tvListColumnIndices into the associated places for the inner columns
+      // if tvListColumnIndices = [0, 1, 2], realIndices = [1, 3, 4], innerValue.colLength = 5
+      // then columnIndicesForInner = [-1, 0, -1, 1, 2]
+      for (int i = 0; i < innerValue.colLength(); i++) {
+        columnIndicesForInner.add(-1);
+      }
+      for (int i = 0; i < tvListColumnIndices.size(); i++) {
+        columnIndicesForInner.set(realIndexes.get(i), tvListColumnIndices.get(i));
+      }
+      // similarly for bitmaps
+      BitMap[] bitmapsForInner = new BitMap[innerValue.colLength()];
+      for (int i = 0, realIndexesSize = realIndexes.size(); i < realIndexesSize; i++) {
+        Integer realIndex = realIndexes.get(i);
+        bitmapsForInner[realIndex] = bitMaps[i];
+      }
+
+      innerValue.putTo(tvList, columnIndicesForInner, bitmapsForInner, start, end, results, pos);
+    }
+
+    @Override
+    public Object[] toTwoDArray() {
+      Object[] twoDArrayInner = innerValue.toTwoDArray();
+      Object[] twoDArray = new Object[realIndexes.size()];
+      for (int i = 0; i < realIndexes.size(); i++) {
+        twoDArray[i] = twoDArrayInner[realIndexes.get(i)];
+      }
+
+      return twoDArray;
     }
   }
 }

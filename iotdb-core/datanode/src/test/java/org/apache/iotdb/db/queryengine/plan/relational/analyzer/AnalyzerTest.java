@@ -1155,8 +1155,9 @@ public class AnalyzerTest {
 
     // attr column should be removed
     columns = new Object[] {columns[0], columns[2]};
-    assertArrayEquals(columns, insertTabletNode.getColumns());
-    assertArrayEquals(StatementTestUtils.genTimestamps(), insertTabletNode.getTimes());
+    assertArrayEquals(columns, insertTabletNode.getColumns().toTwoDArray());
+    assertArrayEquals(
+        StatementTestUtils.genTimestamps(), insertTabletNode.getTimes().toSingleArray());
 
     distributionPlanner =
         new TableDistributedPlanner(

@@ -107,7 +107,6 @@ import java.util.stream.Collectors;
 
 import static org.apache.iotdb.db.schemaengine.template.TemplateQueryType.SHOW_MEASUREMENTS;
 import static org.apache.tsfile.file.metadata.enums.CompressionType.SNAPPY;
-import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNull;
@@ -260,9 +259,8 @@ public class StatementGeneratorTest {
         insertTabletStatement.getDataType(insertPos));
     assertEquals(
         columnSchema.getColumnCategory(), insertTabletStatement.getColumnCategories()[insertPos]);
-    final Object[] column1 = (Object[]) insertTabletStatement.getColumns()[insertPos];
-    for (Object o : column1) {
-      assertNull(o);
+    for (int i = 0; i < insertTabletStatement.getRowCount(); i++) {
+      assertNull(insertTabletStatement.getColumns().get(i, insertPos));
     }
 
     // insert at middle
@@ -278,9 +276,8 @@ public class StatementGeneratorTest {
         insertTabletStatement.getDataType(insertPos));
     assertEquals(
         columnSchema.getColumnCategory(), insertTabletStatement.getColumnCategories()[insertPos]);
-    final long[] column2 = (long[]) insertTabletStatement.getColumns()[insertPos];
-    for (long o : column2) {
-      assertEquals(0, o);
+    for (int i = 0; i < insertTabletStatement.getRowCount(); i++) {
+      assertEquals(0, insertTabletStatement.getColumns().get(i, insertPos));
     }
 
     // insert at last
@@ -296,9 +293,8 @@ public class StatementGeneratorTest {
         insertTabletStatement.getDataType(insertPos));
     assertEquals(
         columnSchema.getColumnCategory(), insertTabletStatement.getColumnCategories()[insertPos]);
-    final boolean[] column3 = (boolean[]) insertTabletStatement.getColumns()[insertPos];
-    for (boolean o : column3) {
-      assertFalse(o);
+    for (int i = 0; i < insertTabletStatement.getRowCount(); i++) {
+      assertFalse((Boolean) insertTabletStatement.getColumns().get(i, insertPos));
     }
 
     // illegal insertion
@@ -336,9 +332,13 @@ public class StatementGeneratorTest {
     assertEquals(tsDataTypes[2], insertTabletStatement.getDataType(0));
     assertEquals(columnCategories[0], insertTabletStatement.getColumnCategories()[2]);
     assertEquals(columnCategories[2], insertTabletStatement.getColumnCategories()[0]);
-    assertArrayEquals(
-        ((double[]) columns[2]), ((double[]) insertTabletStatement.getColumns()[0]), 0.0001);
-    assertArrayEquals(((Binary[]) columns[0]), ((Binary[]) insertTabletStatement.getColumns()[2]));
+    for (int i = 0; i < insertTabletStatement.getRowCount(); i++) {
+      assertEquals(
+          ((double[]) columns[2])[i],
+          (double) insertTabletStatement.getColumns().get(i, 0),
+          0.0001);
+      assertEquals(((Binary[]) columns[0])[i], insertTabletStatement.getColumns().get(i, 2));
+    }
     assertTrue(insertTabletStatement.getBitMaps()[0].isMarked(2));
     assertTrue(insertTabletStatement.getBitMaps()[2].isMarked(0));
 
@@ -351,9 +351,13 @@ public class StatementGeneratorTest {
     assertEquals(tsDataTypes[2], insertTabletStatement.getDataType(1));
     assertEquals(columnCategories[1], insertTabletStatement.getColumnCategories()[0]);
     assertEquals(columnCategories[2], insertTabletStatement.getColumnCategories()[1]);
-    assertArrayEquals(((Binary[]) columns[1]), ((Binary[]) insertTabletStatement.getColumns()[0]));
-    assertArrayEquals(
-        ((double[]) columns[2]), ((double[]) insertTabletStatement.getColumns()[1]), 0.0001);
+    for (int i = 0; i < insertTabletStatement.getRowCount(); i++) {
+      assertEquals(
+          ((double[]) columns[2])[i],
+          (double) insertTabletStatement.getColumns().get(i, 1),
+          0.0001);
+      assertEquals(((Binary[]) columns[1])[i], ((Binary[]) columns[0])[i]);
+    }
     assertTrue(insertTabletStatement.getBitMaps()[0].isMarked(1));
     assertTrue(insertTabletStatement.getBitMaps()[1].isMarked(2));
 
@@ -366,9 +370,13 @@ public class StatementGeneratorTest {
     assertEquals(tsDataTypes[2], insertTabletStatement.getDataType(1));
     assertEquals(columnCategories[1], insertTabletStatement.getColumnCategories()[0]);
     assertEquals(columnCategories[2], insertTabletStatement.getColumnCategories()[1]);
-    assertArrayEquals(((Binary[]) columns[1]), ((Binary[]) insertTabletStatement.getColumns()[0]));
-    assertArrayEquals(
-        ((double[]) columns[2]), ((double[]) insertTabletStatement.getColumns()[1]), 0.0001);
+    for (int i = 0; i < insertTabletStatement.getRowCount(); i++) {
+      assertEquals(
+          ((double[]) columns[2])[i],
+          (double) insertTabletStatement.getColumns().get(i, 1),
+          0.0001);
+      assertEquals(((Binary[]) columns[1])[i], ((Binary[]) columns[0])[i]);
+    }
     assertTrue(insertTabletStatement.getBitMaps()[0].isMarked(1));
     assertTrue(insertTabletStatement.getBitMaps()[1].isMarked(2));
 

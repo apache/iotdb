@@ -479,8 +479,8 @@ public class WALNode implements IWALNode {
           || WALManager.getInstance().shouldThrottle();
     }
 
-    /**.
-     * Snapshot or flush one memTable.
+    /**
+     * . Snapshot or flush one memTable.
      *
      * @return true if snapshot or flush is executed successfully
      */

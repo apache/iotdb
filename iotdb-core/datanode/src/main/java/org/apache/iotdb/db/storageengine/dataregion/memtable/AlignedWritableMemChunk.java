@@ -49,7 +49,6 @@ import java.io.DataInputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -179,10 +178,16 @@ public class AlignedWritableMemChunk extends AbstractWritableMemChunk {
 
   @Override
   public void putAlignedTablet(
-      TimeView t, ValueView v, List<Integer> columnIndices, BitMap[] bitMaps, int start, int end, TSStatus[] results) {
+      TimeView t,
+      ValueView v,
+      List<Integer> columnIndices,
+      BitMap[] bitMaps,
+      int start,
+      int end,
+      TSStatus[] results) {
     int currentRowCount = list.rowCount();
     t.putTo(list, null, start, end);
-    v.putTo(list, columnIndices, bitMaps, start, end);
+    v.putTo(list, columnIndices, bitMaps, start, end, results, currentRowCount);
   }
 
   @Override
@@ -192,7 +197,13 @@ public class AlignedWritableMemChunk extends AbstractWritableMemChunk {
 
   @Override
   public void writeNonAlignedTablet(
-      TimeView times, ValueView values, int columnIndex, BitMap bitMap, TSDataType dataType, int start, int end) {
+      TimeView times,
+      ValueView values,
+      int columnIndex,
+      BitMap bitMap,
+      TSDataType dataType,
+      int start,
+      int end) {
     throw new UnSupportedDataTypeException(UNSUPPORTED_TYPE + TSDataType.VECTOR);
   }
 
@@ -224,7 +235,7 @@ public class AlignedWritableMemChunk extends AbstractWritableMemChunk {
       int end,
       TSStatus[] results) {
     List<Integer> columnIndices = calculateColumnIndices(schemaList);
-    putAlignedTablet(times, valueList, bitMaps, columnIndices, start, end, results);
+    putAlignedTablet(times, valueList, columnIndices, bitMaps, start, end, results);
     if (TVLIST_SORT_THRESHOLD > 0 && list.rowCount() >= TVLIST_SORT_THRESHOLD) {
       handoverAlignedTvList();
     }
@@ -784,52 +795,6 @@ public class AlignedWritableMemChunk extends AbstractWritableMemChunk {
           measurementIndexMap.getOrDefault(measurementSchema.getMeasurementName(), -1));
     }
     return columnIndexList;
-  }
-
-  /**
-   * Check metadata of columns and return array that mapping existed metadata to index of data
-   * column.
-   *
-   * @param schemaListInInsertPlan Contains all existed schema in InsertPlan. If some timeseries
-   *     have been deleted, there will be null in its slot.
-   * @return columnIndexArray: schemaList[i] is schema of columns[columnIndexArray[i]]
-   */
-  private Pair<Object[], BitMap[]> checkAndReorderColumnValuesInInsertPlan(
-      List<IMeasurementSchema> schemaListInInsertPlan, ValueView columnValues, BitMap[] bitMaps) {
-    Object[] reorderedColumnValues = new Object[schemaList.size()];
-    BitMap[] reorderedBitMaps = bitMaps == null ? null : new BitMap[schemaList.size()];
-    for (int i = 0; i < schemaListInInsertPlan.size(); i++) {
-      IMeasurementSchema measurementSchema = schemaListInInsertPlan.get(i);
-      if (measurementSchema != null) {
-        Integer index = this.measurementIndexMap.get(measurementSchema.getMeasurementName());
-        // Index is null means this measurement was not in this AlignedTVList before.
-        // We need to extend a new column in AlignedMemChunk and AlignedTVList.
-        // And the reorderedColumnValues should extend one more column for the new measurement
-        if (index == null) {
-          index =
-              measurementIndexMap.isEmpty()
-                  ? 0
-                  : measurementIndexMap.values().stream()
-                          .mapToInt(Integer::intValue)
-                          .max()
-                          .getAsInt()
-                      + 1;
-          this.measurementIndexMap.put(schemaListInInsertPlan.get(i).getMeasurementName(), index);
-          this.schemaList.add(schemaListInInsertPlan.get(i));
-          this.list.extendColumn(schemaListInInsertPlan.get(i).getType());
-          reorderedColumnValues =
-              Arrays.copyOf(reorderedColumnValues, reorderedColumnValues.length + 1);
-          if (reorderedBitMaps != null) {
-            reorderedBitMaps = Arrays.copyOf(reorderedBitMaps, reorderedBitMaps.length + 1);
-          }
-        }
-        reorderedColumnValues[index] = columnValues[i];
-        if (bitMaps != null) {
-          reorderedBitMaps[index] = bitMaps[i];
-        }
-      }
-    }
-    return new Pair<>(reorderedColumnValues, reorderedBitMaps);
   }
 
   private List<Integer> calculateColumnIndices(List<IMeasurementSchema> schemaListInInsertPlan) {

@@ -87,8 +87,7 @@ public class InsertTablet extends WrappedInsertStatement {
       for (int attrColNum = 0; attrColNum < attrColumnIndices.size(); attrColNum++) {
         final int columnIndex = attrColumnIndices.get(attrColNum);
         if (!insertTabletStatement.isNull(rowIndex, columnIndex)) {
-          attrValues[attrColNum] =
-              ((Object[]) insertTabletStatement.getColumns()[columnIndex])[rowIndex];
+          attrValues[attrColNum] = insertTabletStatement.getColumns().get(rowIndex, columnIndex);
         }
       }
       result.add(attrValues);

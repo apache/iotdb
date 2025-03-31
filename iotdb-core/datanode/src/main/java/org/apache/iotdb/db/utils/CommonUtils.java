@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.utils;
 
-import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.commons.service.metric.enums.Metric;
 import org.apache.iotdb.commons.service.metric.enums.Tag;
@@ -357,8 +356,7 @@ public class CommonUtils {
     return dataTTL == Long.MAX_VALUE || (CommonDateTimeUtils.currentTime() - time) <= dataTTL;
   }
 
-  public static Object createValueColumnOfDataType(
-      TSDataType dataType, TsTableColumnCategory columnCategory, int rowNum) {
+  public static Object createValueColumnOfDataType(TSDataType dataType, int rowNum) {
     Object valueColumn;
     switch (dataType) {
       case INT32:

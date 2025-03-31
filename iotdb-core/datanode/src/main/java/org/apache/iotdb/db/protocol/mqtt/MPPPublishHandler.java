@@ -40,6 +40,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.parser.SqlParser;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertTabletStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertTabletStatement.TwoDArrayValueView;
 import org.apache.iotdb.db.utils.CommonUtils;
 import org.apache.iotdb.db.utils.TimestampPrecisionUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -232,7 +233,6 @@ public class MPPPublishHandler extends AbstractInterceptHandler {
         Stream.of(message.getValues(), message.getTagValues(), message.getAttributeValues())
             .flatMap(List::stream)
             .toArray(Object[]::new);
-    insertStatement.setColumns(columns);
     insertStatement.setBitMaps(bitMaps);
     insertStatement.setRowCount(rowSize);
     insertStatement.setAligned(false);
@@ -259,6 +259,7 @@ public class MPPPublishHandler extends AbstractInterceptHandler {
       columnCategories[i] = TsTableColumnCategory.ATTRIBUTE;
     }
     insertStatement.setDataTypes(dataTypes);
+    insertStatement.setColumns(new TwoDArrayValueView(columns, dataTypes, rowSize));
     insertStatement.setColumnCategories(columnCategories);
 
     return insertStatement;

@@ -152,7 +152,13 @@ public abstract class AbstractWritableMemChunk implements IWritableMemChunk {
 
   @Override
   public abstract void putAlignedTablet(
-      TimeView t, ValueView v, List<Integer> columnIndices, BitMap[] bitMaps, int start, int end, TSStatus[] results);
+      TimeView t,
+      ValueView v,
+      List<Integer> columnIndices,
+      BitMap[] bitMaps,
+      int start,
+      int end,
+      TSStatus[] results);
 
   @Override
   public abstract void writeNonAlignedPoint(long insertTime, Object objectValue);
@@ -163,7 +169,13 @@ public abstract class AbstractWritableMemChunk implements IWritableMemChunk {
 
   @Override
   public abstract void writeNonAlignedTablet(
-      TimeView times, ValueView values, int columnIndex, BitMap bitMap, TSDataType dataType, int start, int end);
+      TimeView times,
+      ValueView values,
+      int columnIndex,
+      BitMap bitMap,
+      TSDataType dataType,
+      int start,
+      int end);
 
   @Override
   public abstract void writeAlignedTablet(

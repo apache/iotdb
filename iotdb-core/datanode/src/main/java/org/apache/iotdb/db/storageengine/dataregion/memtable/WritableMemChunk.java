@@ -125,7 +125,13 @@ public class WritableMemChunk extends AbstractWritableMemChunk {
 
   @Override
   public void writeNonAlignedTablet(
-      TimeView times, ValueView valueList, int columnIndex, BitMap bitMap, TSDataType dataType, int start, int end) {
+      TimeView times,
+      ValueView valueList,
+      int columnIndex,
+      BitMap bitMap,
+      TSDataType dataType,
+      int start,
+      int end) {
     int currRowIndex = list.rowCount();
     times.putTo(list, bitMap, start, end);
     valueList.putTo(list, columnIndex, bitMap, start, end, currRowIndex);
@@ -137,8 +143,8 @@ public class WritableMemChunk extends AbstractWritableMemChunk {
 
   @Override
   public void writeAlignedTablet(
-      long[] times,
-      Object[] valueList,
+      TimeView times,
+      ValueView valueList,
       BitMap[] bitMaps,
       List<IMeasurementSchema> schemaList,
       int start,
@@ -214,7 +220,13 @@ public class WritableMemChunk extends AbstractWritableMemChunk {
 
   @Override
   public void putAlignedTablet(
-      long[] t, Object[] v, BitMap[] bitMaps, int start, int end, TSStatus[] results) {
+      TimeView t,
+      ValueView v,
+      List<Integer> tvListColumnIndices,
+      BitMap[] bitMaps,
+      int start,
+      int end,
+      TSStatus[] results) {
     throw new UnSupportedDataTypeException(UNSUPPORTED_TYPE + schema.getType());
   }
 
