@@ -37,7 +37,6 @@ import org.apache.iotdb.udf.api.type.Type;
 import com.google.common.collect.ImmutableSet;
 import org.apache.tsfile.block.column.ColumnBuilder;
 
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
@@ -98,7 +97,7 @@ public class VariationTableFunction implements TableFunction {
   private static class VariationDataProcessor implements TableFunctionDataProcessor {
 
     private final double gap;
-    private final List<Long> currentRowIndexes = new ArrayList<>();
+    private long currentStartIndex = -1;
     private double baseValue = 0;
     private long curIndex = 0;
     private long windowIndex = 0;
@@ -113,31 +112,30 @@ public class VariationTableFunction implements TableFunction {
         List<ColumnBuilder> properColumnBuilders,
         ColumnBuilder passThroughIndexBuilder) {
       double value = input.getDouble(0);
-      if (!currentRowIndexes.isEmpty() && Math.abs(value - baseValue) > gap) {
+      if (currentStartIndex == -1) {
+        // init the first window
+        currentStartIndex = curIndex;
+        baseValue = value;
+      } else if (Math.abs(value - baseValue) > gap) {
         outputWindow(properColumnBuilders, passThroughIndexBuilder);
-      }
-      if (currentRowIndexes.isEmpty()) {
+        currentStartIndex = curIndex;
         // use the first value in the window as the base value
         baseValue = value;
       }
-      currentRowIndexes.add(curIndex);
       curIndex++;
     }
 
     @Override
     public void finish(List<ColumnBuilder> columnBuilders, ColumnBuilder passThroughIndexBuilder) {
-      if (!currentRowIndexes.isEmpty()) {
-        outputWindow(columnBuilders, passThroughIndexBuilder);
-      }
+      outputWindow(columnBuilders, passThroughIndexBuilder);
     }
 
     private void outputWindow(
         List<ColumnBuilder> properColumnBuilders, ColumnBuilder passThroughIndexBuilder) {
-      for (Long currentRowIndex : currentRowIndexes) {
+      for (long i = currentStartIndex; i < curIndex; i++) {
         properColumnBuilders.get(0).writeLong(windowIndex);
-        passThroughIndexBuilder.writeLong(currentRowIndex);
+        passThroughIndexBuilder.writeLong(i);
       }
-      currentRowIndexes.clear();
       windowIndex++;
     }
   }

@@ -36,7 +36,6 @@ import org.apache.iotdb.udf.api.type.Type;
 
 import org.apache.tsfile.block.column.ColumnBuilder;
 
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
@@ -98,10 +97,10 @@ public class SessionTableFunction implements TableFunction {
   private static class SessionDataProcessor implements TableFunctionDataProcessor {
 
     private final long gap;
-    private final List<Long> currentRowIndexes = new ArrayList<>();
+    private long currentStartIndex = 0;
     private long curIndex = 0;
-    private long windowStart = -1;
-    private long windowEnd = -1;
+    private long windowStart = Long.MIN_VALUE;
+    private long windowEnd = Long.MIN_VALUE;
 
     public SessionDataProcessor(long gap) {
       this.gap = gap;
@@ -115,30 +114,26 @@ public class SessionTableFunction implements TableFunction {
       long timeValue = input.getLong(0);
       if (timeValue > windowEnd) {
         outputWindow(properColumnBuilders, passThroughIndexBuilder);
-      }
-      if (currentRowIndexes.isEmpty()) {
+        currentStartIndex = curIndex;
         windowStart = timeValue;
       }
-      currentRowIndexes.add(curIndex);
       windowEnd = timeValue + gap;
       curIndex++;
     }
 
     @Override
     public void finish(List<ColumnBuilder> columnBuilders, ColumnBuilder passThroughIndexBuilder) {
-      if (!currentRowIndexes.isEmpty()) {
-        outputWindow(columnBuilders, passThroughIndexBuilder);
-      }
+      outputWindow(columnBuilders, passThroughIndexBuilder);
     }
 
     private void outputWindow(
         List<ColumnBuilder> properColumnBuilders, ColumnBuilder passThroughIndexBuilder) {
-      for (Long currentRowIndex : currentRowIndexes) {
+      long currentWindowEnd = windowEnd - gap;
+      for (long i = currentStartIndex; i < curIndex; i++) {
         properColumnBuilders.get(0).writeLong(windowStart);
-        properColumnBuilders.get(1).writeLong(windowEnd - gap);
-        passThroughIndexBuilder.writeLong(currentRowIndex);
+        properColumnBuilders.get(1).writeLong(currentWindowEnd);
+        passThroughIndexBuilder.writeLong(i);
       }
-      currentRowIndexes.clear();
     }
   }
 }

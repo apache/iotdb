@@ -35,7 +35,6 @@ import org.apache.iotdb.udf.api.type.Type;
 
 import org.apache.tsfile.block.column.ColumnBuilder;
 
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
@@ -83,7 +82,7 @@ public class CapacityTableFunction implements TableFunction {
   private static class CountDataProcessor implements TableFunctionDataProcessor {
 
     private final long size;
-    private final List<Long> currentRowIndexes = new ArrayList<>();
+    private long currentStartIndex = 0;
     private long curIndex = 0;
     private long windowIndex = 0;
 
@@ -96,28 +95,25 @@ public class CapacityTableFunction implements TableFunction {
         Record input,
         List<ColumnBuilder> properColumnBuilders,
         ColumnBuilder passThroughIndexBuilder) {
-      if (currentRowIndexes.size() >= size) {
+      if (windowIndex - curIndex == size) {
         outputWindow(properColumnBuilders, passThroughIndexBuilder);
+        currentStartIndex = curIndex;
       }
-      currentRowIndexes.add(curIndex);
       curIndex++;
     }
 
     @Override
     public void finish(List<ColumnBuilder> columnBuilders, ColumnBuilder passThroughIndexBuilder) {
-      if (!currentRowIndexes.isEmpty()) {
-        outputWindow(columnBuilders, passThroughIndexBuilder);
-      }
+      outputWindow(columnBuilders, passThroughIndexBuilder);
     }
 
     private void outputWindow(
         List<ColumnBuilder> properColumnBuilders, ColumnBuilder passThroughIndexBuilder) {
-      for (Long currentRowIndex : currentRowIndexes) {
+      for (long i = currentStartIndex; i < curIndex; i++) {
         properColumnBuilders.get(0).writeLong(windowIndex);
-        passThroughIndexBuilder.writeLong(currentRowIndex);
+        passThroughIndexBuilder.writeLong(i);
       }
       windowIndex++;
-      currentRowIndexes.clear();
     }
   }
 }
