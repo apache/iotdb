@@ -33,6 +33,7 @@ public class CreatePipePluginTask implements IConfigTask {
 
   public CreatePipePluginTask(CreatePipePluginStatement createPipePluginStatement) {
     this.createPipePluginStatement = createPipePluginStatement;
+    this.createPipePluginStatement.markIsTableModel(false);
   }
 
   public CreatePipePluginTask(CreatePipePlugin node) {
@@ -42,6 +43,7 @@ public class CreatePipePluginTask implements IConfigTask {
             node.hasIfNotExistsCondition(),
             node.getClassName(),
             node.getUriString());
+    createPipePluginStatement.markIsTableModel(true);
   }
 
   @Override
