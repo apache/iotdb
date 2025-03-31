@@ -3092,52 +3092,56 @@ public class DataRegion implements IDataRegionForQuery {
 
     final File modFileToLoad =
         fsFactory.getFile(tsFileToLoad.getAbsolutePath() + ModificationFile.FILE_SUFFIX);
-    if (modFileToLoad.exists()) {
-      // when successfully loaded, the filepath of the resource will be changed to the IoTDB data
-      // dir, so we can add a suffix to find the old modification file.
-      final File targetModFile =
-          fsFactory.getFile(targetFile.getAbsolutePath() + ModificationFile.FILE_SUFFIX);
-      try {
-        RetryUtils.retryOnException(
-            () -> {
-              Files.deleteIfExists(targetModFile.toPath());
-              return null;
-            });
-      } catch (final IOException e) {
-        logger.warn("Cannot delete localModFile {}", targetModFile, e);
-      }
-      try {
-        final long modFileSize = modFileToLoad.length();
-        if (deleteOriginFile) {
+    try {
+      if (modFileToLoad.exists()) {
+        // when successfully loaded, the filepath of the resource will be changed to the IoTDB data
+        // dir, so we can add a suffix to find the old modification file.
+        final File targetModFile =
+            fsFactory.getFile(targetFile.getAbsolutePath() + ModificationFile.FILE_SUFFIX);
+        try {
           RetryUtils.retryOnException(
               () -> {
-                FileUtils.moveFile(modFileToLoad, targetModFile);
+                Files.deleteIfExists(targetModFile.toPath());
                 return null;
               });
-        } else {
-          RetryUtils.retryOnException(
-              () -> {
-                Files.copy(modFileToLoad.toPath(), targetModFile.toPath());
-                return null;
-              });
+        } catch (final IOException e) {
+          logger.warn("Cannot delete localModFile {}", targetModFile, e);
         }
+        try {
+          final long modFileSize = modFileToLoad.length();
+          if (deleteOriginFile) {
+            RetryUtils.retryOnException(
+                () -> {
+                  FileUtils.moveFile(modFileToLoad, targetModFile);
+                  return null;
+                });
+          } else {
+            RetryUtils.retryOnException(
+                () -> {
+                  Files.copy(modFileToLoad.toPath(), targetModFile.toPath());
+                  return null;
+                });
+          }
 
-        FileMetrics.getInstance().increaseModFileNum(1);
-        FileMetrics.getInstance().increaseModFileSize(modFileSize);
-      } catch (final IOException e) {
-        logger.warn(
-            "File renaming failed when loading .mod file. Origin: {}, Target: {}",
-            modFileToLoad.getAbsolutePath(),
-            targetModFile.getAbsolutePath(),
-            e);
-        throw new LoadFileException(
-            String.format(
-                "File renaming failed when loading .mod file. Origin: %s, Target: %s, because %s",
-                modFileToLoad.getAbsolutePath(), targetModFile.getAbsolutePath(), e.getMessage()));
-      } finally {
-        // ModFile will be updated during the next call to `getModFile`
-        tsFileResource.setModFile(null);
+          FileMetrics.getInstance().increaseModFileNum(1);
+          FileMetrics.getInstance().increaseModFileSize(modFileSize);
+        } catch (final IOException e) {
+          logger.warn(
+              "File renaming failed when loading .mod file. Origin: {}, Target: {}",
+              modFileToLoad.getAbsolutePath(),
+              targetModFile.getAbsolutePath(),
+              e);
+          throw new LoadFileException(
+              String.format(
+                  "File renaming failed when loading .mod file. Origin: %s, Target: %s, because %s",
+                  modFileToLoad.getAbsolutePath(),
+                  targetModFile.getAbsolutePath(),
+                  e.getMessage()));
+        }
       }
+    } finally {
+      // ModFile will be updated during the next call to `getModFile`
+      tsFileResource.setModFile(null);
     }
 
     // Listen before the tsFile is added into tsFile manager to avoid it being compacted
