@@ -3220,6 +3220,7 @@ public class DataRegion implements IDataRegionForQuery {
       moveModFile(newModFileToLoad, newTargetModFile, deleteOriginFile);
     }
     // force update mod file metrics
+    tsFileResource.setExclusiveModFile(null);
     tsFileResource.getExclusiveModFile();
   }
 
