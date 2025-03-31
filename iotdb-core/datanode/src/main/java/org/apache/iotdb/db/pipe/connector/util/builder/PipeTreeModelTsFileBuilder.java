@@ -244,13 +244,11 @@ public class PipeTreeModelTsFileBuilder extends PipeTsFileBuilder {
             .filter(i -> seen.add(aggregatedSchemas.get(i))) // Only keep the first occurrence index
             .boxed()
             .collect(Collectors.toList());
-    final List<IMeasurementSchema> uniqueSchemas =
-        distinctIndices.stream().map(aggregatedSchemas::get).collect(Collectors.toList());
 
     // Construct a new aggregated Tablet using the deduplicated data
     return new Tablet(
         deviceId,
-        uniqueSchemas,
+        distinctIndices.stream().map(aggregatedSchemas::get).collect(Collectors.toList()),
         aggregationTimestamps,
         distinctIndices.stream().map(aggregatedValues::get).toArray(),
         distinctIndices.stream().map(aggregatedBitMaps::get).toArray(BitMap[]::new),
