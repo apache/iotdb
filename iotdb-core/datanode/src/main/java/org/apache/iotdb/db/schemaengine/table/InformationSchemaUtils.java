@@ -40,6 +40,7 @@ import org.apache.tsfile.read.common.block.TsBlockBuilder;
 import org.apache.tsfile.utils.Binary;
 
 import java.util.List;
+import java.util.Objects;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
@@ -144,6 +145,7 @@ public class InformationSchemaUtils {
       final String database,
       final String tableName,
       final boolean isDetails,
+      final Boolean isShowOrCreateView,
       final SettableFuture<ConfigTaskResult> future) {
     if (!database.equals(INFORMATION_DATABASE)) {
       return false;
@@ -153,6 +155,9 @@ public class InformationSchemaUtils {
           new TableNotExistsException(INFORMATION_DATABASE, tableName);
       future.setException(new IoTDBException(exception.getMessage(), exception.getErrorCode()));
       return true;
+    }
+    if (Objects.nonNull(isShowOrCreateView)) {
+      throw new SemanticException("The system view does not support show create.");
     }
     final TsTable table = getSchemaTables().get(tableName);
 

@@ -3592,7 +3592,8 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
       final Boolean isShowCreateView) {
     final SettableFuture<ConfigTaskResult> future = SettableFuture.create();
 
-    if (InformationSchemaUtils.mayDescribeTable(database, tableName, isDetails, future)) {
+    if (InformationSchemaUtils.mayDescribeTable(
+        database, tableName, isDetails, isShowCreateView, future)) {
       return future;
     }
     try (final ConfigNodeClient configNodeClient =
