@@ -213,8 +213,7 @@ public class PipeTreeModelTsFileBuilder extends PipeTsFileBuilder {
     final List<Object> aggregatedValues = new ArrayList<>();
     final List<BitMap> aggregatedBitMaps = new ArrayList<>();
 
-    // Iterate and poll tablets from the head that satisfy the aggregation criteria.
-    // We only process consecutive tablets that have the same timestamps and maxRowNumber.
+    // Iterate and poll tablets from the head that satisfy the aggregation criteria
     while (!tablets.isEmpty()) {
       final Tablet tablet = tablets.peekFirst();
       if (Arrays.equals(tablet.getTimestamps(), aggregationTimestamps)
@@ -232,7 +231,7 @@ public class PipeTreeModelTsFileBuilder extends PipeTsFileBuilder {
       }
     }
 
-    // Construct a new aggregated Tablet using the collected data.
+    // Construct a new aggregated Tablet using the collected data
     return new Tablet(
         deviceId,
         aggregatedSchemas,
