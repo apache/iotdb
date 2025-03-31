@@ -158,17 +158,19 @@ public class IoTDBPipePermissionIT extends AbstractPipeSingleIT {
 
   @Test
   public void testSinkPermissionWithHistoricalDataAndTablePattern() {
+    TableModelUtils.createDataBaseAndTable(env, "test", "test1");
+    TableModelUtils.createDataBaseAndTable(env, "test1", "test1");
+    TableModelUtils.createDataBaseAndTable(env, "test", "test");
+    TableModelUtils.createDataBaseAndTable(env, "test1", "test");
+
     if (!TestUtils.tryExecuteNonQueriesWithRetry(
+        "test",
+        BaseEnv.TABLE_SQL_DIALECT,
         env,
         Arrays.asList(
             "create user `thulab` 'passwd'", "grant INSERT on test.test1 to user thulab"))) {
       return;
     }
-
-    TableModelUtils.createDataBaseAndTable(env, "test", "test1");
-    TableModelUtils.createDataBaseAndTable(env, "test1", "test1");
-    TableModelUtils.createDataBaseAndTable(env, "test", "test");
-    TableModelUtils.createDataBaseAndTable(env, "test1", "test");
 
     // Write some data
     if (!TableModelUtils.insertData("test1", "test", 0, 100, env)) {
