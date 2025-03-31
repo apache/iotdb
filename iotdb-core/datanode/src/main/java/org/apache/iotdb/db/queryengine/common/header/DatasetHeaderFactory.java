@@ -239,6 +239,10 @@ public class DatasetHeaderFactory {
     return new DatasetHeader(ColumnHeaderConstant.showCreateViewColumnHeaders, true);
   }
 
+  public static DatasetHeader getShowCreateTableColumnHeader() {
+    return new DatasetHeader(ColumnHeaderConstant.showCreateTableColumnHeaders, true);
+  }
+
   public static DatasetHeader getShowTablesHeader() {
     return new DatasetHeader(ColumnHeaderConstant.showTablesColumnHeaders, true);
   }
