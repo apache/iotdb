@@ -56,6 +56,7 @@ statement
     | descTableStatement
     | alterTableStatement
     | commentStatement
+    | showCreateTableStatement
 
     // Table View Statement
     | createTableViewStatement
@@ -239,6 +240,10 @@ commentStatement
     : COMMENT ON TABLE qualifiedName IS (string | NULL) #commentTable
     | COMMENT ON VIEW qualifiedName IS (string | NULL) #commentView
     | COMMENT ON COLUMN qualifiedName '.' column=identifier IS (string | NULL) #commentColumn
+    ;
+
+showCreateTableStatement
+    : SHOW CREATE TABLE qualifiedName
     ;
 
 // ------------------------------------------- Table View Statement ---------------------------------------------------------

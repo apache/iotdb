@@ -483,6 +483,13 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
   }
 
   @Override
+  public Node visitShowCreateTableStatement(
+      final RelationalSqlParser.ShowCreateTableStatementContext ctx) {
+    return new DescribeTable(
+        getLocation(ctx), getQualifiedName(ctx.qualifiedName()), false, Boolean.FALSE);
+  }
+
+  @Override
   public Node visitCommentTable(final RelationalSqlParser.CommentTableContext ctx) {
     return new SetTableComment(
         getLocation(ctx),
