@@ -647,7 +647,8 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
   @Override
   public Node visitShowCreateViewStatement(
       final RelationalSqlParser.ShowCreateViewStatementContext ctx) {
-    return null;
+    return new DescribeTable(
+        getLocation(ctx), getQualifiedName(ctx.qualifiedName()), false, Boolean.TRUE);
   }
 
   @Override
