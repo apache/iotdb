@@ -66,10 +66,7 @@ public abstract class AbstractImportData extends AbstractDataTool implements Run
       }
     } catch (Exception e) {
       ioTPrinter.println(
-          String.format(
-              "[%s] - Unexpected error occurred: Index for header 'c0017' is 18 but CSVRecord only has 15 values!"
-                  + e.getMessage(),
-              file.getName()));
+          String.format("[%s] - Unexpected error occurred: " + e.getMessage(), file.getName()));
     }
   }
 
