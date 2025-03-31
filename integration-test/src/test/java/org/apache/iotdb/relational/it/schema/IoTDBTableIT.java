@@ -801,7 +801,7 @@ public class IoTDBTableIT {
         final Statement statement = connection.createStatement()) {
       // Test create & replace + restrict
       statement.execute(
-          "create or replace table view view_table (tag1 tag, tag2 tag, s11 int32 field, s3 from s2) as root.a.** restrict");
+          "create or replace table view view_table (tag1 tag, tag2 tag, s11 int32 field, s3 from s2) as root.a.** with (ttl=100) restrict");
     } catch (SQLException e) {
       fail(e.getMessage());
     }
@@ -814,12 +814,33 @@ public class IoTDBTableIT {
           "tag1,tag2,",
           Collections.emptySet());
 
+      TestUtils.assertResultSetEqual(
+          statement.executeQuery("show create view view_table"),
+          "View,Create View,",
+          Collections.singleton(
+              "view_table,CREATE TABLE VIEW \"view_table\" (tag1 STRING TAG,tag2 STRING TAG,s11 INT32 FIELD,s3 INT32 FIELD FROM s2) AS root.a.** WITH (ttl=100) RESTRICT,"));
+
+      try {
+        statement.execute("show create view a");
+        fail();
+      } catch (final SQLException e) {
+        assertEquals(
+            "305: The table a is a base table, does not support show create view.", e.getMessage());
+      }
+
       statement.execute("create table a ()");
       try {
         statement.execute("show create view a");
         fail();
       } catch (final SQLException e) {
-        assertEquals("551: Table 'tree_view_db.a' already exists.", e.getMessage());
+        assertEquals(
+            "305: The table a is a base table, does not support show create view.", e.getMessage());
+      }
+      try {
+        statement.execute("show create view information_schema.tables");
+        fail();
+      } catch (final SQLException e) {
+        assertEquals("305: The system view does not support show create.", e.getMessage());
       }
       try {
         statement.execute("create or replace table view a () as root.b.**");

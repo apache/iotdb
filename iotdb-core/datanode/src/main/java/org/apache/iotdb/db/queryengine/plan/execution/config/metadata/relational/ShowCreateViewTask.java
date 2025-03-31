@@ -122,7 +122,7 @@ public class ShowCreateViewTask extends AbstractTableTask {
       builder.deleteCharAt(builder.length() - 1);
     }
 
-    builder.append(") AS ").append(table.getPropValue(TreeViewSchema.TREE_PATH_PATTERN));
+    builder.append(") AS ").append(table.getPropValue(TreeViewSchema.TREE_PATH_PATTERN).get());
 
     if (table.getPropValue(TsTable.COMMENT_KEY).isPresent()) {
       builder.append(" COMMENT '").append(table.getPropValue(TsTable.COMMENT_KEY)).append("'");
