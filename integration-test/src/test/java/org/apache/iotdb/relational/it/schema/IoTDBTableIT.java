@@ -794,10 +794,21 @@ public class IoTDBTableIT {
           statement.executeQuery("count devices from view_table"),
           "count(devices),",
           Collections.singleton("3,"));
+    }
 
+    // Test tree session
+    try (final Connection connection = EnvFactory.getEnv().getConnection();
+        final Statement statement = connection.createStatement()) {
       // Test create & replace + restrict
       statement.execute(
           "create or replace table view view_table (tag1 tag, tag2 tag, s11 int32 field, s3 from s2) as root.a.** restrict");
+    } catch (SQLException e) {
+      fail(e.getMessage());
+    }
+
+    try (final Connection connection =
+            EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        final Statement statement = connection.createStatement()) {
       TestUtils.assertResultSetEqual(
           statement.executeQuery("show devices from view_table where tag1 = 'b' and tag2 is null"),
           "tag1,tag2,",
