@@ -82,7 +82,7 @@ public class TsFileInsertionDataContainerProvider {
             / PipeDataNodeResourceManager.memory().getTotalMemorySizeInBytes()
         > PipeTsFileResource.MEMORY_SUFFICIENT_THRESHOLD) {
       return new TsFileInsertionScanDataContainer(
-          tsFile, pattern, startTime, endTime, pipeTaskMeta, sourceEvent);
+          pipeName, creationTime, tsFile, pattern, startTime, endTime, pipeTaskMeta, sourceEvent);
     }
 
     if (pattern instanceof IoTDBPipePattern
