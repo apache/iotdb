@@ -32,6 +32,7 @@ import org.junit.runner.RunWith;
 import java.sql.Connection;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.util.Arrays;
 
 import static org.junit.Assert.fail;
 
@@ -153,5 +154,47 @@ public class IoTDBPipePermissionIT extends AbstractPipeSingleIT {
     }
 
     TableModelUtils.assertCountData("test", "test", 100, env);
+  }
+
+  @Test
+  public void testSinkPermissionWithHistoricalDataAndTablePattern() {
+    TableModelUtils.createDataBaseAndTable(env, "test", "test1");
+    TableModelUtils.createDataBaseAndTable(env, "test1", "test1");
+    TableModelUtils.createDataBaseAndTable(env, "test", "test");
+    TableModelUtils.createDataBaseAndTable(env, "test1", "test");
+
+    if (!TestUtils.tryExecuteNonQueriesWithRetry(
+        "test",
+        BaseEnv.TABLE_SQL_DIALECT,
+        env,
+        Arrays.asList(
+            "create user thulab 'passwd'", "grant INSERT on test.test1 to user thulab"))) {
+      return;
+    }
+
+    // Write some data
+    if (!TableModelUtils.insertData("test1", "test", 0, 100, env)) {
+      return;
+    }
+
+    if (!TableModelUtils.insertData("test1", "test1", 0, 100, env)) {
+      return;
+    }
+
+    // Use current session, user is root
+    try (final Connection connection = env.getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        final Statement statement = connection.createStatement()) {
+      statement.execute(
+          "create pipe a2b "
+              + "with source ('database'='test1', 'table'='test1') "
+              + "with processor('processor'='rename-database-processor', 'processor.new-db-name'='test') "
+              + "with sink ('sink'='write-back-sink', 'username'='thulab', 'password'='passwd')");
+    } catch (final SQLException e) {
+      e.printStackTrace();
+      fail("Create pipe without user shall succeed if use the current session");
+    }
+
+    TableModelUtils.assertCountData("test", "test", 0, env);
+    TableModelUtils.assertCountData("test", "test1", 100, env);
   }
 }

@@ -374,6 +374,16 @@ public class WriteBackConnector implements PipeConnector {
       return;
     }
 
+    try {
+      Coordinator.getInstance()
+          .getAccessControl()
+          .checkCanCreateDatabase(session.getUsername(), database);
+    } catch (final AccessDeniedException e) {
+      // Auto create failed, we still check if there are existing databases
+      // If there are not, this will be removed by catching database not exists exception
+      ALREADY_CREATED_DATABASES.add(database);
+      return;
+    }
     final TDatabaseSchema schema = new TDatabaseSchema(new TDatabaseSchema(database));
     schema.setIsTableModel(true);
 
