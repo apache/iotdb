@@ -258,7 +258,7 @@ public class PartitionManager {
               new TSStatus(TSStatusCode.DATABASE_NOT_EXIST.getStatusCode())
                   .setMessage(
                       String.format(
-                          "Create SchemaPartition failed because the database: %s is not exists",
+                          "Create SchemaPartition failed because the database: %s does not exist",
                           database)),
               false,
               null);
