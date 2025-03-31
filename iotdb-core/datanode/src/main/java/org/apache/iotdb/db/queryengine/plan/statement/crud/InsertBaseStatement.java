@@ -30,13 +30,16 @@ import org.apache.iotdb.db.exception.metadata.DuplicateInsertException;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.exception.sql.SemanticException;
+import org.apache.iotdb.db.pipe.resource.memory.InsertNodeMemoryEstimator;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.plan.analyze.schema.ISchemaValidation;
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.utils.Accountable;
 import org.apache.tsfile.utils.Pair;
+import org.apache.tsfile.utils.RamUsageEstimator;
 import org.apache.tsfile.write.schema.MeasurementSchema;
 
 import java.util.ArrayList;
@@ -46,10 +49,11 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-public abstract class InsertBaseStatement extends Statement {
+public abstract class InsertBaseStatement extends Statement implements Accountable {
 
   /**
    * if use id table, this filed is id form of device path <br>
@@ -86,6 +90,8 @@ public abstract class InsertBaseStatement extends Statement {
 
   /** it is the end of current range. */
   protected int recordedEndOfLogicalViewSchemaList = 0;
+
+  protected long ramBytesUsed = Long.MIN_VALUE;
 
   // endregion
 
@@ -404,5 +410,37 @@ public abstract class InsertBaseStatement extends Statement {
       }
     }
   }
+
   // endregion
+  @Override
+  public long ramBytesUsed() {
+    if (ramBytesUsed > 0) {
+      return ramBytesUsed;
+    }
+    ramBytesUsed =
+        InsertNodeMemoryEstimator.sizeOfPartialPath(devicePath)
+            + InsertNodeMemoryEstimator.sizeOfMeasurementSchemas(measurementSchemas)
+            + InsertNodeMemoryEstimator.sizeOfStringArray(measurements)
+            + RamUsageEstimator.shallowSizeOf(dataTypes)
+            + shallowSizeOfList(logicalViewSchemaList)
+            + (Objects.nonNull(logicalViewSchemaList)
+                ? logicalViewSchemaList.stream()
+                    .mapToLong(LogicalViewSchema::ramBytesUsed)
+                    .reduce(0L, Long::sum)
+                : 0L)
+            + shallowSizeOfList(indexOfSourcePathsOfLogicalViews)
+            + calculateBytesUsed();
+    return ramBytesUsed;
+  }
+
+  private long shallowSizeOfList(List<?> list) {
+    return Objects.nonNull(list)
+        ? InsertRowsStatement.LIST_SIZE
+            + RamUsageEstimator.alignObjectSize(
+                RamUsageEstimator.NUM_BYTES_ARRAY_HEADER
+                    + (long) RamUsageEstimator.NUM_BYTES_OBJECT_REF * list.size())
+        : 0L;
+  }
+
+  protected abstract long calculateBytesUsed();
 }
