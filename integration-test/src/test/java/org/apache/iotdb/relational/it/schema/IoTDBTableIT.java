@@ -282,6 +282,12 @@ public class IoTDBTableIT {
 
       statement.execute("alter table table2 add column speed DOUBLE FIELD COMMENT 'fast'");
 
+      TestUtils.assertResultSetEqual(
+          statement.executeQuery("show create table table2"),
+          "Table,Create Table,",
+          Collections.singleton(
+              "table2,CREATE TABLE VIEW \"table2\" (region_id STRING TAG,plant_id STRING TAG,color STRING ATTRIBUTE,temperature FLOAT FIELD,speed DOUBLE FIELD COMMENT fast) WITH (ttl=6600000),"));
+
       try {
         statement.execute("alter table table2 add column speed DOUBLE FIELD");
       } catch (final SQLException e) {
@@ -816,6 +822,13 @@ public class IoTDBTableIT {
 
       TestUtils.assertResultSetEqual(
           statement.executeQuery("show create view view_table"),
+          "View,Create View,",
+          Collections.singleton(
+              "view_table,CREATE TABLE VIEW \"view_table\" (tag1 STRING TAG,tag2 STRING TAG,s11 INT32 FIELD,s3 INT32 FIELD FROM s2) AS root.a.** WITH (ttl=100) RESTRICT,"));
+
+      // Can also use "show create table"
+      TestUtils.assertResultSetEqual(
+          statement.executeQuery("show create table view_table"),
           "View,Create View,",
           Collections.singleton(
               "view_table,CREATE TABLE VIEW \"view_table\" (tag1 STRING TAG,tag2 STRING TAG,s11 INT32 FIELD,s3 INT32 FIELD FROM s2) AS root.a.** WITH (ttl=100) RESTRICT,"));

@@ -113,12 +113,12 @@ public class ShowCreateViewTask extends AbstractTableTask {
               "Unsupported column type: " + schema.getColumnCategory());
       }
       if (Objects.nonNull(schema.getProps().get(TsTable.COMMENT_KEY))) {
-        builder.append(" COMMENT").append(schema.getProps().get(TsTable.COMMENT_KEY));
+        builder.append(" COMMENT ").append(schema.getProps().get(TsTable.COMMENT_KEY));
       }
       builder.append(",");
     }
 
-    if (!table.getColumnList().isEmpty()) {
+    if (table.getColumnList().size() > 1) {
       builder.deleteCharAt(builder.length() - 1);
     }
 

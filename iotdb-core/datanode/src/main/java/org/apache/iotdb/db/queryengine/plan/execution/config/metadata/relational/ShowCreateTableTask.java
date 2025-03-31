@@ -108,20 +108,22 @@ public class ShowCreateTableTask extends AbstractTableTask {
               .append(schema.getDataType())
               .append(" ")
               .append("ATTRIBUTE");
+          break;
         default:
           throw new UnsupportedOperationException(
               "Unsupported column type: " + schema.getColumnCategory());
       }
       if (Objects.nonNull(schema.getProps().get(TsTable.COMMENT_KEY))) {
-        builder.append(" COMMENT").append(schema.getProps().get(TsTable.COMMENT_KEY));
+        builder.append(" COMMENT ").append(schema.getProps().get(TsTable.COMMENT_KEY));
       }
       builder.append(",");
     }
 
-    if (!table.getColumnList().isEmpty()) {
+    if (table.getColumnList().size() > 1) {
       builder.deleteCharAt(builder.length() - 1);
     }
 
+    builder.append(")");
     if (table.getPropValue(TsTable.COMMENT_KEY).isPresent()) {
       builder.append(" COMMENT '").append(table.getPropValue(TsTable.COMMENT_KEY)).append("'");
     }
