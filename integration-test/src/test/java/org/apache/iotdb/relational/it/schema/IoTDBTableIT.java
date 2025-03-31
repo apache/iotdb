@@ -801,7 +801,7 @@ public class IoTDBTableIT {
         final Statement statement = connection.createStatement()) {
       // Test create & replace + restrict
       statement.execute(
-          "create or replace table view view_table (tag1 tag, tag2 tag, s11 int32 field, s3 from s2) as root.a.** with (ttl=100) restrict");
+          "create or replace table view tree_view_db.view_table (tag1 tag, tag2 tag, s11 int32 field, s3 from s2) as root.a.** with (ttl=100) restrict");
     } catch (SQLException e) {
       fail(e.getMessage());
     }
