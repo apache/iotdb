@@ -313,7 +313,10 @@ public interface IConfigTaskExecutor {
       final TsTable table, final String database, final boolean ifNotExists);
 
   SettableFuture<ConfigTaskResult> describeTable(
-      final String database, final String tableName, final boolean isDetails);
+      final String database,
+      final String tableName,
+      final boolean isDetails,
+      final Boolean isShowCreateView);
 
   SettableFuture<ConfigTaskResult> showTables(
       final String database, final Predicate<String> canSeenDB, final boolean isDetails);

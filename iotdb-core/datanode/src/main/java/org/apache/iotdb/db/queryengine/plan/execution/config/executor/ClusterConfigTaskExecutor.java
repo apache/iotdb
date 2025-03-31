@@ -3585,7 +3585,10 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
 
   @Override
   public SettableFuture<ConfigTaskResult> describeTable(
-      final String database, final String tableName, final boolean isDetails) {
+      final String database,
+      final String tableName,
+      final boolean isDetails,
+      final Boolean isShowCreateView) {
     final SettableFuture<ConfigTaskResult> future = SettableFuture.create();
 
     if (InformationSchemaUtils.mayDescribeTable(database, tableName, isDetails, future)) {
