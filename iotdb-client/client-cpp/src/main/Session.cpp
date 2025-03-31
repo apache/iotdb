@@ -274,7 +274,7 @@ string SessionUtils::getValue(const Tablet &tablet) {
                         valueBuffer.putInt(valueBuf[index]);
                     }
                     else {
-                        valueBuffer.putInt((numeric_limits<int>::min)());
+                        valueBuffer.putInt((numeric_limits<int32_t>::min)());
                     }
                 }
                 break;
@@ -318,7 +318,11 @@ string SessionUtils::getValue(const Tablet &tablet) {
             case TSDataType::TEXT: {
                 string* valueBuf = (string*)(tablet.values[i]);
                 for (size_t index = 0; index < tablet.rowSize; index++) {
-                    valueBuffer.putString(valueBuf[index]);
+                    if (!bitMap.isMarked(index)) {
+                        valueBuffer.putString(valueBuf[index]);
+                    } else {
+                        valueBuffer.putString("");
+                    }
                 }
                 break;
             }
@@ -332,8 +336,8 @@ string SessionUtils::getValue(const Tablet &tablet) {
         valueBuffer.putChar(columnHasNull ? (char) 1 : (char) 0);
         if (columnHasNull) {
             const vector<char>& bytes = bitMap.getByteArray();
-            for (const char byte: bytes) {
-                valueBuffer.putChar(byte);
+            for (size_t index = 0; index < tablet.rowSize / 8 + 1; index++) {
+                valueBuffer.putChar(bytes[index]);
             }
         }
     }

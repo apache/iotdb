@@ -196,6 +196,7 @@ import org.apache.tsfile.exception.NotImplementedException;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 import static org.apache.iotdb.commons.executable.ExecutableManager.getUnTrustedUriErrorMsg;
 import static org.apache.iotdb.commons.executable.ExecutableManager.isUriTrusted;
@@ -545,23 +546,32 @@ public class TreeConfigTaskVisitor extends StatementVisitor<IConfigTask, MPPQuer
 
   @Override
   public IConfigTask visitAlterPipe(
-      AlterPipeStatement alterPipeStatement, MPPQueryContext context) {
+      final AlterPipeStatement alterPipeStatement, final MPPQueryContext context) {
 
-    for (String ExtractorAttribute : alterPipeStatement.getExtractorAttributes().keySet()) {
-      if (ExtractorAttribute.startsWith(SystemConstant.SYSTEM_PREFIX_KEY)) {
+    for (final String extractorAttributeKey :
+        alterPipeStatement.getExtractorAttributes().keySet()) {
+      if (extractorAttributeKey.startsWith(SystemConstant.SYSTEM_PREFIX_KEY)) {
         throw new SemanticException(
             String.format(
                 "Failed to alter pipe %s, modifying %s is not allowed.",
-                alterPipeStatement.getPipeName(), ExtractorAttribute));
+                alterPipeStatement.getPipeName(), extractorAttributeKey));
       }
     }
+
+    final String userName = context.getSession().getUserName();
+    final String pipeName = alterPipeStatement.getPipeName();
+    final Map<String, String> extractorAttributes = alterPipeStatement.getExtractorAttributes();
 
     // If the source is replaced, sql-dialect uses the current Alter Pipe sql-dialect. If it is
     // modified, the original sql-dialect is used.
     if (alterPipeStatement.isReplaceAllExtractorAttributes()) {
-      alterPipeStatement
-          .getExtractorAttributes()
-          .put(SystemConstant.SQL_DIALECT_KEY, SystemConstant.SQL_DIALECT_TREE_VALUE);
+      extractorAttributes.put(
+          SystemConstant.SQL_DIALECT_KEY, SystemConstant.SQL_DIALECT_TREE_VALUE);
+      checkAndEnrichSourceUserName(pipeName, extractorAttributes, userName);
+    }
+
+    if (alterPipeStatement.isReplaceAllConnectorAttributes()) {
+      checkAndEnrichSinkUserName(pipeName, alterPipeStatement.getConnectorAttributes(), userName);
     }
 
     return new AlterPipeTask(alterPipeStatement);
