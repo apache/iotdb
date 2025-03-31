@@ -24,10 +24,9 @@ import org.apache.iotdb.commons.consensus.index.impl.MinimumProgressIndex;
 import org.apache.iotdb.commons.consensus.index.impl.StateProgressIndex;
 
 import com.google.common.collect.ImmutableList;
+import jakarta.annotation.Nonnull;
 import org.apache.tsfile.utils.Accountable;
 import org.apache.tsfile.utils.RamUsageEstimator;
-
-import javax.annotation.Nonnull;
 
 import java.io.IOException;
 import java.io.OutputStream;

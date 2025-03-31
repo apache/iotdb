@@ -23,9 +23,8 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.schemaengine.schemaregion.ISchemaRegionPlan;
 
+import jakarta.annotation.Nonnull;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
-
-import javax.annotation.Nonnull;
 
 import java.io.DataOutputStream;
 import java.io.IOException;

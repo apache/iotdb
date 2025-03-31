@@ -26,9 +26,8 @@ import org.apache.iotdb.commons.partition.SchemaPartition;
 import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.mpp.rpc.thrift.TRegionRouteReq;
 
+import jakarta.annotation.Nullable;
 import org.apache.tsfile.file.metadata.IDeviceID;
-
-import javax.annotation.Nullable;
 
 import java.util.List;
 import java.util.Map;

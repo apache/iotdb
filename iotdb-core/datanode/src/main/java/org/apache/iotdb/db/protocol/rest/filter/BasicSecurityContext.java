@@ -17,7 +17,7 @@
 
 package org.apache.iotdb.db.protocol.rest.filter;
 
-import javax.ws.rs.core.SecurityContext;
+import jakarta.ws.rs.core.SecurityContext;
 
 import java.security.Principal;
 

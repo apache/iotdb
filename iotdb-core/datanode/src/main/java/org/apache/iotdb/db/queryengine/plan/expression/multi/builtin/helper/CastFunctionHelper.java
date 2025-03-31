@@ -30,6 +30,7 @@ import org.apache.iotdb.db.queryengine.transformation.dag.transformer.Transforme
 import org.apache.iotdb.db.queryengine.transformation.dag.transformer.unary.scalar.CastFunctionTransformer;
 import org.apache.iotdb.db.utils.DateTimeUtils;
 
+import jakarta.annotation.Nonnull;
 import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.type.Type;
@@ -37,8 +38,6 @@ import org.apache.tsfile.read.common.type.TypeFactory;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.BytesUtils;
 import org.apache.tsfile.utils.DateUtils;
-
-import javax.annotation.Nonnull;
 
 import java.time.ZoneId;
 import java.time.format.DateTimeParseException;

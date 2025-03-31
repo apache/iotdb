@@ -19,10 +19,9 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache;
 
+import jakarta.annotation.Nonnull;
+import jakarta.annotation.Nullable;
 import org.apache.tsfile.utils.RamUsageEstimator;
-
-import javax.annotation.Nonnull;
-import javax.annotation.Nullable;
 
 import java.util.Objects;
 

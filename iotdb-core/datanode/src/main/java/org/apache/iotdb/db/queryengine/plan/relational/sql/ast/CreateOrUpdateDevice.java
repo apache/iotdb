@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
 
-import javax.annotation.Nonnull;
+import jakarta.annotation.Nonnull;
 
 import java.util.Arrays;
 import java.util.Collections;

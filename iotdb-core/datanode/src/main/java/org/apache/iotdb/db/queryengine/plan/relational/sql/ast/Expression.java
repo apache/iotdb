@@ -21,9 +21,8 @@ package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
 
 import org.apache.iotdb.db.queryengine.plan.relational.sql.util.ExpressionFormatter;
 
+import jakarta.annotation.Nullable;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
-
-import javax.annotation.Nullable;
 
 import java.io.DataOutputStream;
 import java.io.IOException;

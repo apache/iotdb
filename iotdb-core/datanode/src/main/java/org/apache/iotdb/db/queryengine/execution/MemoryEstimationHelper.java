@@ -23,10 +23,9 @@ import org.apache.iotdb.commons.path.AlignedPath;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 
+import jakarta.annotation.Nullable;
 import org.apache.tsfile.utils.Accountable;
 import org.apache.tsfile.utils.RamUsageEstimator;
-
-import javax.annotation.Nullable;
 
 import java.util.Arrays;
 

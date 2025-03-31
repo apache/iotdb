@@ -43,6 +43,10 @@
             <groupId>org.slf4j</groupId>
             <artifactId>slf4j-api</artifactId>
         </dependency>
+        <dependency>
+            <groupId>jakarta.annotation</groupId>
+            <artifactId>jakarta.annotation-api</artifactId>
+        </dependency>
     </dependencies>
     <build>
         <plugins>
@@ -99,6 +103,16 @@
                         </configuration>
                     </execution>
                 </executions>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-dependency-plugin</artifactId>
+                <configuration>
+                    <usedDependencies>
+                        <!-- These are used at build -->
+                        <usedDependency>jakarta.annotation:jakarta.annotation-api</usedDependency>
+                    </usedDependencies>
+                </configuration>
             </plugin>
         </plugins>
     </build>

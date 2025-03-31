@@ -22,6 +22,7 @@ package org.apache.iotdb.db.storageengine.load.splitter;
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.utils.TimePartitionUtils;
 
+import jakarta.annotation.Nonnull;
 import org.apache.tsfile.exception.write.PageException;
 import org.apache.tsfile.file.header.ChunkHeader;
 import org.apache.tsfile.file.header.PageHeader;
@@ -38,8 +39,6 @@ import org.apache.tsfile.write.UnSupportedDataTypeException;
 import org.apache.tsfile.write.chunk.ChunkWriterImpl;
 import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.apache.tsfile.write.writer.TsFileIOWriter;
-
-import javax.annotation.Nonnull;
 
 import java.io.DataOutputStream;
 import java.io.IOException;

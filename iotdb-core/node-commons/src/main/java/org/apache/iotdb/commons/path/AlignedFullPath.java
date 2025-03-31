@@ -19,12 +19,11 @@
 
 package org.apache.iotdb.commons.path;
 
+import jakarta.annotation.Nullable;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.utils.RamUsageEstimator;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
-
-import javax.annotation.Nullable;
 
 import java.util.HashSet;
 import java.util.List;

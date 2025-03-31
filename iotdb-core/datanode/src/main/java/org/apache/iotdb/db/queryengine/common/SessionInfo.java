@@ -23,9 +23,8 @@ import org.apache.iotdb.commons.conf.IoTDBConstant.ClientVersion;
 import org.apache.iotdb.db.protocol.session.IClientSession;
 import org.apache.iotdb.db.queryengine.plan.relational.security.Identity;
 
+import jakarta.annotation.Nullable;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
-
-import javax.annotation.Nullable;
 
 import java.io.DataOutputStream;
 import java.io.IOException;

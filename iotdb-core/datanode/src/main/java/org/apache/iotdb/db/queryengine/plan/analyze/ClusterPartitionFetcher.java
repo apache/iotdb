@@ -50,10 +50,9 @@ import org.apache.iotdb.db.queryengine.plan.analyze.cache.partition.PartitionCac
 import org.apache.iotdb.mpp.rpc.thrift.TRegionRouteReq;
 import org.apache.iotdb.rpc.TSStatusCode;
 
+import jakarta.annotation.Nullable;
 import org.apache.thrift.TException;
 import org.apache.tsfile.file.metadata.IDeviceID;
-
-import javax.annotation.Nullable;
 
 import java.io.IOException;
 import java.util.ArrayList;

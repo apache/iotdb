@@ -20,8 +20,7 @@
 package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
 
 import com.google.common.collect.ImmutableList;
-
-import javax.annotation.Nonnull;
+import jakarta.annotation.Nonnull;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
