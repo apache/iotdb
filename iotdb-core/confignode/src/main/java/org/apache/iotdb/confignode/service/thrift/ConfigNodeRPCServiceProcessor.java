@@ -43,6 +43,7 @@ import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.confignode.conf.ConfigNodeConfig;
 import org.apache.iotdb.confignode.conf.ConfigNodeConstant;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
+import org.apache.iotdb.confignode.conf.ConfigNodeSystemPropertiesHandler;
 import org.apache.iotdb.confignode.conf.SystemPropertiesUtils;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
 import org.apache.iotdb.confignode.consensus.request.read.ainode.GetAINodeConfigurationPlan;
@@ -759,7 +760,10 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
     RemoveConfigNodePlan removeConfigNodePlan = new RemoveConfigNodePlan(configNodeLocation);
     TSStatus status = configManager.removeConfigNode(removeConfigNodePlan);
     // Print log to record the ConfigNode that performs the RemoveConfigNodeRequest
-    LOGGER.info("Execute RemoveConfigNodeRequest {} with result {}", configNodeLocation, status);
+    LOGGER.info(
+        "The result of submitting RemoveConfigNode job is {}. RemoveConfigNodeRequest: {}",
+        status,
+        configNodeLocation);
 
     return status;
   }
@@ -792,7 +796,7 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
 
   /** Stop ConfigNode */
   @Override
-  public TSStatus stopConfigNode(TConfigNodeLocation configNodeLocation) {
+  public TSStatus stopAndClearConfigNode(TConfigNodeLocation configNodeLocation) {
     new Thread(
             // TODO: Perhaps we should find some other way of shutting down the config node, adding
             // a hard dependency
@@ -801,18 +805,19 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
             //  instance is created feels cleaner.
             () -> {
               try {
-                // Sleep 1s before stop itself
-                TimeUnit.SECONDS.sleep(1);
+                // Sleep 5s before stop itself
+                TimeUnit.SECONDS.sleep(5);
               } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
                 LOGGER.warn(e.getMessage());
               } finally {
+                ConfigNodeSystemPropertiesHandler.getInstance().delete();
                 configNode.stop();
               }
             })
         .start();
     return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode())
-        .setMessage("Stop ConfigNode success.");
+        .setMessage("Stop And Clear ConfigNode Success.");
   }
 
   @Override

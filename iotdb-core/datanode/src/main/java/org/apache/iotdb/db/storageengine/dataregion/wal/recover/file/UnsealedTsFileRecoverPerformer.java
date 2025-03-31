@@ -180,6 +180,7 @@ public class UnsealedTsFileRecoverPerformer extends AbstractTsFileRecoverPerform
   }
 
   /** Redo log. */
+  @SuppressWarnings("OptionalGetWithoutIsPresent")
   public void redoLog(WALEntry walEntry) {
     // skip redo wal log when this TsFile is not crashed
     if (!hasCrashed()) {
@@ -194,11 +195,12 @@ public class UnsealedTsFileRecoverPerformer extends AbstractTsFileRecoverPerform
           if (!memTable.isSignalMemTable()) {
             if (tsFileResource != null) {
               for (IDeviceID device : tsFileResource.getDevices()) {
+                // iterating the index, must present
                 memTable.delete(
                     new PartialPath(device, "*"),
                     new PartialPath(device),
-                    tsFileResource.getStartTime(device),
-                    tsFileResource.getEndTime(device));
+                    tsFileResource.getStartTime(device).get(),
+                    tsFileResource.getEndTime(device).get());
               }
             }
             walRedoer.resetRecoveryMemTable(memTable);

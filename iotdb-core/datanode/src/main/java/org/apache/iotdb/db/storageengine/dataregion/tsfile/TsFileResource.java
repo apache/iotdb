@@ -272,6 +272,7 @@ public class TsFileResource {
       TsFileResourceBlockType.EMPTY_BLOCK.serialize(outputStream);
     }
 
+    TsFileResourceBlockType.PIPE_MARK.serialize(outputStream);
     ReadWriteIOUtils.write(isGeneratedByPipeConsensus, outputStream);
     ReadWriteIOUtils.write(isGeneratedByPipe, outputStream);
   }
@@ -296,14 +297,17 @@ public class TsFileResource {
       while (inputStream.available() > 0) {
         final TsFileResourceBlockType blockType =
             TsFileResourceBlockType.deserialize(ReadWriteIOUtils.readByte(inputStream));
-        if (blockType == TsFileResourceBlockType.PROGRESS_INDEX) {
-          maxProgressIndex = ProgressIndexType.deserializeFrom(inputStream);
+        switch (blockType) {
+          case PROGRESS_INDEX:
+            maxProgressIndex = ProgressIndexType.deserializeFrom(inputStream);
+            break;
+          case PIPE_MARK:
+            isGeneratedByPipeConsensus = ReadWriteIOUtils.readBoolean(inputStream);
+            isGeneratedByPipe = ReadWriteIOUtils.readBoolean(inputStream);
+            break;
+          default:
+            break;
         }
-      }
-
-      if (inputStream.available() > 0) {
-        isGeneratedByPipeConsensus = ReadWriteIOUtils.readBoolean(inputStream);
-        isGeneratedByPipe = ReadWriteIOUtils.readBoolean(inputStream);
       }
     }
   }
@@ -428,9 +432,9 @@ public class TsFileResource {
     }
   }
 
-  public long getStartTime(IDeviceID deviceId) {
+  public Optional<Long> getStartTime(IDeviceID deviceId) {
     try {
-      return deviceId == null ? getFileStartTime() : timeIndex.getStartTime(deviceId);
+      return deviceId == null ? Optional.of(getFileStartTime()) : timeIndex.getStartTime(deviceId);
     } catch (Exception e) {
       LOGGER.error(
           "meet error when getStartTime of {} in file {}", deviceId, file.getAbsolutePath(), e);
@@ -442,9 +446,9 @@ public class TsFileResource {
   }
 
   /** open file's end time is Long.MIN_VALUE */
-  public long getEndTime(IDeviceID deviceId) {
+  public Optional<Long> getEndTime(IDeviceID deviceId) {
     try {
-      return deviceId == null ? getFileEndTime() : timeIndex.getEndTime(deviceId);
+      return deviceId == null ? Optional.of(getFileEndTime()) : timeIndex.getEndTime(deviceId);
     } catch (Exception e) {
       LOGGER.error(
           "meet error when getEndTime of {} in file {}", deviceId, file.getAbsolutePath(), e);
@@ -458,7 +462,9 @@ public class TsFileResource {
   // cannot use FileTimeIndex
   public long getOrderTimeForSeq(IDeviceID deviceId, boolean ascending) {
     if (timeIndex instanceof DeviceTimeIndex) {
-      return ascending ? getStartTime(deviceId) : getEndTime(deviceId);
+      return ascending
+          ? timeIndex.getStartTime(deviceId).orElse(Long.MIN_VALUE)
+          : timeIndex.getEndTime(deviceId).orElse(Long.MAX_VALUE);
     } else {
       return ascending ? Long.MIN_VALUE : Long.MAX_VALUE;
     }
@@ -466,7 +472,16 @@ public class TsFileResource {
 
   // can use FileTimeIndex
   public long getOrderTimeForUnseq(IDeviceID deviceId, boolean ascending) {
-    return ascending ? getStartTime(deviceId) : getEndTime(deviceId);
+    if (timeIndex instanceof DeviceTimeIndex) {
+      if (ascending) {
+        return timeIndex.getStartTime(deviceId).orElse(Long.MIN_VALUE);
+      } else {
+        return timeIndex.getEndTime(deviceId).orElse(Long.MAX_VALUE);
+      }
+    } else {
+      // FileTimeIndex
+      return ascending ? getFileStartTime() : getFileEndTime();
+    }
   }
 
   public long getFileStartTime() {
@@ -792,6 +807,7 @@ public class TsFileResource {
   /**
    * @return true if the device is contained in the TsFile
    */
+  @SuppressWarnings("OptionalGetWithoutIsPresent")
   public boolean isSatisfied(IDeviceID deviceId, Filter timeFilter, boolean isSeq, boolean debug) {
     if (deviceId != null && definitelyNotContains(deviceId)) {
       if (debug) {
@@ -801,20 +817,21 @@ public class TsFileResource {
       return false;
     }
 
-    long startTime = getStartTime(deviceId);
-    long endTime = isClosed() || !isSeq ? getEndTime(deviceId) : Long.MAX_VALUE;
-    if (startTime > endTime) {
-      // startTime > endTime indicates that there is something wrong with this TsFile. Return false
-      // directly, or it may lead to infinite loop in GroupByMonthFilter#getTimePointPosition.
-      LOGGER.warn(
-          "startTime[{}] of TsFileResource[{}] is greater than its endTime[{}]",
-          startTime,
-          this,
-          endTime);
-      return false;
-    }
-
     if (timeFilter != null) {
+      // check above
+      long startTime = getStartTime(deviceId).get();
+      long endTime = isClosed() || !isSeq ? getEndTime(deviceId).get() : Long.MAX_VALUE;
+      if (startTime > endTime) {
+        // startTime > endTime indicates that there is something wrong with this TsFile. Return
+        // false
+        // directly, or it may lead to infinite loop in GroupByMonthFilter#getTimePointPosition.
+        LOGGER.warn(
+            "startTime[{}] of TsFileResource[{}] is greater than its endTime[{}]",
+            startTime,
+            this,
+            endTime);
+        return false;
+      }
       boolean res = timeFilter.satisfyStartEndTime(startTime, endTime);
       if (debug && !res) {
         DEBUG_LOGGER.info(
@@ -1149,8 +1166,13 @@ public class TsFileResource {
   public void deleteRemovedDeviceAndUpdateEndTime(Map<IDeviceID, Long> lastTimeForEachDevice) {
     ITimeIndex newTimeIndex = CONFIG.getTimeIndexLevel().getTimeIndex();
     for (Map.Entry<IDeviceID, Long> entry : lastTimeForEachDevice.entrySet()) {
-      newTimeIndex.updateStartTime(entry.getKey(), timeIndex.getStartTime(entry.getKey()));
-      newTimeIndex.updateEndTime(entry.getKey(), entry.getValue());
+      timeIndex
+          .getStartTime(entry.getKey())
+          .ifPresent(
+              startTime -> {
+                newTimeIndex.updateStartTime(entry.getKey(), startTime);
+                newTimeIndex.updateEndTime(entry.getKey(), entry.getValue());
+              });
     }
     timeIndex = newTimeIndex;
   }

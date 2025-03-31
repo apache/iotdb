@@ -240,7 +240,7 @@ public class PipeConfigPhysicalPlanPatternParseVisitor
           pattern.getIntersection(
               PathPatternTree.deserialize(pipeDeleteLogicalViewPlan.getPatternTreeBytes()));
       return !intersectedTree.isEmpty()
-          ? Optional.of(new PipeDeleteTimeSeriesPlan(intersectedTree.serialize()))
+          ? Optional.of(new PipeDeleteLogicalViewPlan(intersectedTree.serialize()))
           : Optional.empty();
     } catch (final IOException e) {
       LOGGER.warn(

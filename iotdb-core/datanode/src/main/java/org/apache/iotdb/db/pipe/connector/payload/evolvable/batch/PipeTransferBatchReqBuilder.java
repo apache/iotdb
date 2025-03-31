@@ -29,7 +29,6 @@ import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 
-import org.apache.tsfile.exception.write.WriteProcessException;
 import org.apache.tsfile.utils.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -128,8 +127,7 @@ public class PipeTransferBatchReqBuilder implements AutoCloseable {
    *     endpoint to transfer to (might be null), the second element is the batch to be transferred.
    */
   public synchronized Pair<TEndPoint, PipeTabletEventBatch> onEvent(
-      final TabletInsertionEvent event)
-      throws IOException, WALPipeException, WriteProcessException {
+      final TabletInsertionEvent event) throws IOException, WALPipeException {
     if (!(event instanceof EnrichedEvent)) {
       LOGGER.warn(
           "Unsupported event {} type {} when building transfer request", event, event.getClass());

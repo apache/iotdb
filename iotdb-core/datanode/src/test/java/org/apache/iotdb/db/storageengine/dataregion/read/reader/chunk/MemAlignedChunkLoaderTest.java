@@ -22,7 +22,8 @@ package org.apache.iotdb.db.storageengine.dataregion.read.reader.chunk;
 import org.apache.iotdb.db.queryengine.execution.fragment.QueryContext;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.AlignedReadOnlyMemChunk;
 import org.apache.iotdb.db.utils.datastructure.AlignedTVList;
-import org.apache.iotdb.db.utils.datastructure.MergeSortAlignedTVListIterator;
+import org.apache.iotdb.db.utils.datastructure.MemPointIterator;
+import org.apache.iotdb.db.utils.datastructure.MemPointIteratorFactory;
 import org.apache.iotdb.db.utils.datastructure.TVList;
 
 import org.apache.tsfile.common.conf.TSFileConfig;
@@ -103,8 +104,6 @@ public class MemAlignedChunkLoaderTest {
     Mockito.when(chunk.getValuesStatisticsList()).thenReturn(valuesStatitsticsList);
 
     // Mock AlignedReadOnlyMemChunk Getter
-    List<int[]> pageOffsets = Arrays.asList(new int[] {0, 0}, new int[] {2, 1});
-    Mockito.when(chunk.getPageOffsetsList()).thenReturn(pageOffsets);
     List<TSDataType> dataTypes = buildTsDataTypes();
     Mockito.when(chunk.getDataTypes()).thenReturn(dataTypes);
     Mockito.when(chunk.getValueColumnsDeletionList()).thenReturn(null);
@@ -114,9 +113,10 @@ public class MemAlignedChunkLoaderTest {
     Mockito.when(chunk.getAligendTvListQueryMap()).thenReturn(alignedTvListMap);
     List<AlignedTVList> alignedTvLists =
         alignedTvListMap.keySet().stream().map(x -> (AlignedTVList) x).collect(Collectors.toList());
-    MergeSortAlignedTVListIterator timeValuePairIterator =
-        new MergeSortAlignedTVListIterator(alignedTvLists, dataTypes, null, null, null);
-    Mockito.when(chunk.getMergeSortAlignedTVListIterator()).thenReturn(timeValuePairIterator);
+    MemPointIterator timeValuePairIterator =
+        MemPointIteratorFactory.create(dataTypes, null, alignedTvLists);
+    timeValuePairIterator.nextBatch();
+    Mockito.when(chunk.getMemPointIterator()).thenReturn(timeValuePairIterator);
 
     AlignedChunkMetadata chunkMetadata1 = Mockito.mock(AlignedChunkMetadata.class);
     Mockito.when(chunk.getChunkMetaData()).thenReturn(chunkMetadata1);

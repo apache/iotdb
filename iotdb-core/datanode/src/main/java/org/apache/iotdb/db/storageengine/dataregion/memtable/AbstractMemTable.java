@@ -577,7 +577,7 @@ public abstract class AbstractMemTable implements IMemTable {
     }
 
     List<BitMap> bitMaps = new ArrayList<>();
-    long[] timestamps = alignedMemChunk.getFilteredTimestamp(deletionList, bitMaps, true);
+    long[] timestamps = alignedMemChunk.getFilteredTimestamp(deletionList, bitMaps);
 
     buildAlignedMemChunkHandle(
         deviceID,
@@ -614,7 +614,7 @@ public abstract class AbstractMemTable implements IMemTable {
     }
 
     List<BitMap> bitMaps = new ArrayList<>();
-    long[] timestamps = memChunk.getFilteredTimestamp(deletionList, bitMaps, true);
+    long[] timestamps = memChunk.getFilteredTimestamp(deletionList, bitMaps);
     buildAlignedMemChunkHandle(
         deviceID,
         timestamps,
@@ -946,10 +946,8 @@ public abstract class AbstractMemTable implements IMemTable {
   public Map<IDeviceID, Long> getMaxTime() {
     Map<IDeviceID, Long> latestTimeForEachDevice = new HashMap<>();
     for (Entry<IDeviceID, IWritableMemChunkGroup> entry : memTableMap.entrySet()) {
-      // When insert null values in to IWritableMemChunkGroup, the maxTime will not be updated.
-      // In this scenario, the maxTime will be Long.MIN_VALUE. We shouldn't return this device.
       long maxTime = entry.getValue().getMaxTime();
-      if (maxTime != Long.MIN_VALUE) {
+      if (entry.getValue().count() > 0) {
         latestTimeForEachDevice.put(entry.getKey(), maxTime);
       }
     }

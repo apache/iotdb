@@ -85,6 +85,7 @@ public class FastCrossCompactionWriter extends AbstractCrossCompactionWriter {
     isDeviceExistedInTargetFiles[fileIndex] = true;
     isEmptyFile[fileIndex] = false;
     lastTime[subTaskId] = chunkMetadata.getEndTime();
+    lastTimeSet[subTaskId] = true;
     return true;
   }
 
@@ -123,6 +124,7 @@ public class FastCrossCompactionWriter extends AbstractCrossCompactionWriter {
     isDeviceExistedInTargetFiles[fileIndex] = true;
     isEmptyFile[fileIndex] = false;
     lastTime[subTaskId] = timeChunkMetadata.getEndTime();
+    lastTimeSet[subTaskId] = true;
     return true;
   }
 
@@ -159,6 +161,7 @@ public class FastCrossCompactionWriter extends AbstractCrossCompactionWriter {
     isDeviceExistedInTargetFiles[fileIndex] = true;
     isEmptyFile[fileIndex] = false;
     lastTime[subTaskId] = timeChunkMetadata.getEndTime();
+    lastTimeSet[subTaskId] = true;
     return true;
   }
 
@@ -199,6 +202,7 @@ public class FastCrossCompactionWriter extends AbstractCrossCompactionWriter {
 
     isDeviceExistedInTargetFiles[fileIndex] = true;
     isEmptyFile[fileIndex] = false;
+    lastTimeSet[subTaskId] = true;
     lastTime[subTaskId] = timePageHeader.getEndTime();
     return true;
   }
@@ -239,6 +243,7 @@ public class FastCrossCompactionWriter extends AbstractCrossCompactionWriter {
     isDeviceExistedInTargetFiles[fileIndex] = true;
     isEmptyFile[fileIndex] = false;
     lastTime[subTaskId] = timePageHeader.getEndTime();
+    lastTimeSet[subTaskId] = true;
     return true;
   }
 
@@ -270,6 +275,7 @@ public class FastCrossCompactionWriter extends AbstractCrossCompactionWriter {
     isDeviceExistedInTargetFiles[fileIndex] = true;
     isEmptyFile[fileIndex] = false;
     lastTime[subTaskId] = pageHeader.getEndTime();
+    lastTimeSet[subTaskId] = true;
     return true;
   }
 
@@ -279,6 +285,12 @@ public class FastCrossCompactionWriter extends AbstractCrossCompactionWriter {
         chunkWriters[subTaskId].checkIsChunkSizeOverThreshold(
             chunkSizeLowerBoundInCompaction, chunkPointNumLowerBoundInCompaction, true);
     // if unsealed chunk is not large enough or chunk.endTime > file.endTime, then return false
+    // isCurrentDeviceExistedInSourceSeqFiles[fileIndex] should be true when fileIndex !=
+    // targetFileWriters.size() - 1
+    if (!isCurrentDeviceExistedInSourceSeqFiles[fileIndex]
+        && fileIndex != targetFileWriters.size() - 1) {
+      throw new IllegalArgumentException("The device should exist in current seq file");
+    }
     return isUnsealedChunkLargeEnough
         && (chunkMetadata.getEndTime() <= currentDeviceEndTime[fileIndex]
             || fileIndex == targetFileWriters.size() - 1);
@@ -289,6 +301,12 @@ public class FastCrossCompactionWriter extends AbstractCrossCompactionWriter {
         chunkWriters[subTaskId].checkIsUnsealedPageOverThreshold(
             pageSizeLowerBoundInCompaction, pagePointNumLowerBoundInCompaction, true);
     // unsealed page is too small or page.endTime > file.endTime, then return false
+    // isCurrentDeviceExistedInSourceSeqFiles[fileIndex] should be true when fileIndex !=
+    // targetFileWriters.size() - 1
+    if (!isCurrentDeviceExistedInSourceSeqFiles[fileIndex]
+        && fileIndex != targetFileWriters.size() - 1) {
+      throw new IllegalArgumentException("The device should exist in current seq file");
+    }
     return isUnsealedPageLargeEnough
         && (pageHeader.getEndTime() <= currentDeviceEndTime[fileIndex]
             || fileIndex == targetFileWriters.size() - 1);

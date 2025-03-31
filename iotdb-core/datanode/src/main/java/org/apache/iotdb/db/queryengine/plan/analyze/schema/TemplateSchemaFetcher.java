@@ -142,12 +142,19 @@ class TemplateSchemaFetcher {
       measurements = schemaComputationWithAutoCreation.getMeasurements();
       for (int j = 0; j < measurements.length; j++) {
         if (!template.hasSchema(measurements[j])) {
+          TSDataType dataType = schemaComputationWithAutoCreation.getDataType(j);
+          if (dataType == null) {
+            // the data type is not provided and cannot be inferred (the value is also null),
+            // skip this measurement
+            continue;
+          }
+
           extensionMeasurementMap
               .computeIfAbsent(template.getName(), TemplateExtendInfo::new)
               .addMeasurement(
                   measurements[j],
-                  schemaComputationWithAutoCreation.getDataType(j),
-                  getDefaultEncoding(schemaComputationWithAutoCreation.getDataType(j)),
+                  dataType,
+                  getDefaultEncoding(dataType),
                   TSFileDescriptor.getInstance().getConfig().getCompressor());
         }
       }

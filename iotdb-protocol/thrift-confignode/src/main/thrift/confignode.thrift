@@ -1335,8 +1335,8 @@ service IConfigNodeRPCService {
    */
   common.TSStatus reportConfigNodeShutdown(common.TConfigNodeLocation configNodeLocation)
 
-  /** Stop the specific ConfigNode */
-  common.TSStatus stopConfigNode(common.TConfigNodeLocation configNodeLocation)
+  /** Stop the specific ConfigNode and clear data */
+  common.TSStatus stopAndClearConfigNode(common.TConfigNodeLocation configNodeLocation)
 
   /** The ConfigNode-leader will ping other ConfigNodes periodically */
   TConfigNodeHeartbeatResp getConfigNodeHeartBeat(TConfigNodeHeartbeatReq req)

@@ -576,7 +576,7 @@ public abstract class PipeTaskAgent {
     return true;
   }
 
-  private void startPipe(final String pipeName, final long creationTime) {
+  protected void startPipe(final String pipeName, final long creationTime) {
     final PipeMeta existedPipeMeta = pipeMetaKeeper.getPipeMeta(pipeName);
 
     if (!checkBeforeStartPipe(existedPipeMeta, pipeName, creationTime)) {

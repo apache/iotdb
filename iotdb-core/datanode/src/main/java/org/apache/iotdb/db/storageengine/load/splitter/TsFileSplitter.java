@@ -256,6 +256,10 @@ public class TsFileSplitter {
         int satisfiedLength = 0;
         long endTime =
             timePartitionSlot.getStartTime() + TimePartitionUtils.getTimePartitionInterval();
+        // beware of overflow
+        if (endTime <= timePartitionSlot.getStartTime()) {
+          endTime = Long.MAX_VALUE;
+        }
         for (int i = 0; i < times.length; i++) {
           if (times[i] >= endTime) {
             chunkData.writeDecodePage(times, values, satisfiedLength);
@@ -271,6 +275,9 @@ public class TsFileSplitter {
             satisfiedLength = 0;
             endTime =
                 timePartitionSlot.getStartTime() + TimePartitionUtils.getTimePartitionInterval();
+            if (endTime <= timePartitionSlot.getStartTime()) {
+              endTime = Long.MAX_VALUE;
+            }
             chunkData =
                 ChunkData.createChunkData(
                     isAligned, ((PlainDeviceID) curDevice).toStringID(), header, timePartitionSlot);
