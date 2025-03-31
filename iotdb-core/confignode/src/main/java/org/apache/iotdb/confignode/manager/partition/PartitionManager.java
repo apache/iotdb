@@ -403,7 +403,7 @@ public class PartitionManager {
               new TSStatus(TSStatusCode.DATABASE_NOT_EXIST.getStatusCode())
                   .setMessage(
                       String.format(
-                          "Create DataPartition failed because the database: %s is not exists",
+                          "Create DataPartition failed because the database: %s does not exist",
                           database)),
               false,
               null);
