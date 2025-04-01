@@ -61,17 +61,28 @@ public abstract class AbstractCompactionEstimator {
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
   static {
-    long fixedMemoryCost = config.getGlobalCompactionFileInfoCacheSize() * FileInfo.MEMORY_COST_OF_FILE_INFO_ENTRY_IN_CACHE + config.getGlobalCompactionRoughFileInfoCacheSize() * FileInfo.MEMORY_COST_OF_FILE_INFO_ENTRY_IN_CACHE;
-    isCacheMemoryCostAllocated = SystemInfo.getInstance().getCompactionMemoryBlock().allocateIfSufficient(fixedMemoryCost, 1.0);
+    long fixedMemoryCost =
+        config.getGlobalCompactionFileInfoCacheSize()
+                * FileInfo.MEMORY_COST_OF_FILE_INFO_ENTRY_IN_CACHE
+            + config.getGlobalCompactionRoughFileInfoCacheSize()
+                * FileInfo.MEMORY_COST_OF_FILE_INFO_ENTRY_IN_CACHE;
+    isCacheMemoryCostAllocated =
+        SystemInfo.getInstance()
+            .getCompactionMemoryBlock()
+            .allocateIfSufficient(fixedMemoryCost, 1.0);
     if (isCacheMemoryCostAllocated) {
-      globalRoughInfoCacheForCompaction = Collections.synchronizedMap(
-          new LRUMap<>(
-              IoTDBDescriptor.getInstance()
-                  .getConfig()
-                  .getGlobalCompactionRoughFileInfoCacheSize()));
-      globalFileInfoCacheForFailedCompaction = Collections.synchronizedMap(
-          new LRUMap<>(
-              IoTDBDescriptor.getInstance().getConfig().getGlobalCompactionFileInfoCacheSize()));
+      globalRoughInfoCacheForCompaction =
+          Collections.synchronizedMap(
+              new LRUMap<>(
+                  IoTDBDescriptor.getInstance()
+                      .getConfig()
+                      .getGlobalCompactionRoughFileInfoCacheSize()));
+      globalFileInfoCacheForFailedCompaction =
+          Collections.synchronizedMap(
+              new LRUMap<>(
+                  IoTDBDescriptor.getInstance()
+                      .getConfig()
+                      .getGlobalCompactionFileInfoCacheSize()));
     } else {
       globalRoughInfoCacheForCompaction = Collections.emptyMap();
       globalFileInfoCacheForFailedCompaction = Collections.emptyMap();
