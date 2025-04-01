@@ -248,6 +248,7 @@ public class PipePluginInfo implements SnapshotProcessor {
 
       try {
         pipePluginExecutableManager.removePluginFileUnderLibRoot(pluginName, jarName);
+        classLoaderManager.removePluginClassLoader(pluginName);
       } catch (IOException e) {
         final String errorMessage =
             String.format(
