@@ -35,7 +35,6 @@ import org.apache.tsfile.write.UnSupportedDataTypeException;
 
 import static com.google.common.base.Preconditions.checkArgument;
 import static org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.Utils.serializeTimeValue;
-import static org.apache.iotdb.db.utils.constant.SqlConstant.FIRST_BY_AGGREGATION;
 
 public class FirstByAccumulator implements TableAccumulator {
 
