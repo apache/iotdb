@@ -24,7 +24,7 @@ import org.apache.iotdb.commons.pipe.agent.plugin.builtin.extractor.donothing.Do
 import org.apache.iotdb.commons.pipe.agent.plugin.constructor.PipeExtractorConstructor;
 import org.apache.iotdb.commons.pipe.agent.plugin.meta.DataNodePipePluginMetaKeeper;
 import org.apache.iotdb.db.pipe.extractor.dataregion.IoTDBDataRegionExtractor;
-import org.apache.iotdb.db.pipe.extractor.external.MqttExtractor;
+import org.apache.iotdb.db.pipe.extractor.external.MQTT.MqttExtractor;
 import org.apache.iotdb.db.pipe.extractor.external.PipeExternalExtractor;
 
 class PipeDataRegionExtractorConstructor extends PipeExtractorConstructor {

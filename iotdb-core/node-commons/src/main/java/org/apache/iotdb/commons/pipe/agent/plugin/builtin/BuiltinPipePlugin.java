@@ -133,12 +133,14 @@ public enum BuiltinPipePlugin {
     return className;
   }
 
-  public static final Set<String> EXTERNAL_EXTRACTORS =
+  public static final Set<String> BUILTIN_SOURCES =
       Collections.unmodifiableSet(
           new HashSet<>(
               Arrays.asList(
-                  EXTERNAL_EXTRACTOR.getPipePluginName().toLowerCase(),
-                  MQTT_EXTRACTOR.getPipePluginName().toLowerCase())));
+                      DO_NOTHING_EXTRACTOR.getPipePluginName().toLowerCase(),
+                  IOTDB_EXTRACTOR.getPipePluginName().toLowerCase(),
+                  DO_NOTHING_SOURCE.getPipePluginName().toLowerCase(),
+                  IOTDB_SOURCE.getPipePluginName().toLowerCase())));
 
   public static final Set<String> SHOW_PIPE_PLUGINS_BLACKLIST =
       Collections.unmodifiableSet(

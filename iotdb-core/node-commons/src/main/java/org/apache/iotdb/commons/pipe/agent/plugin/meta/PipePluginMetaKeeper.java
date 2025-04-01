@@ -31,6 +31,7 @@ import java.io.OutputStream;
 import java.util.Collections;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
 public abstract class PipePluginMetaKeeper {
@@ -38,6 +39,7 @@ public abstract class PipePluginMetaKeeper {
   protected final Map<String, PipePluginMeta> pipePluginNameToMetaMap = new ConcurrentHashMap<>();
   protected final Map<String, Class<?>> builtinPipePluginNameToClassMap = new ConcurrentHashMap<>();
   protected final Map<String, Visibility> pipePluginNameToVisibilityMap = new ConcurrentHashMap<>();
+  protected final Set<String> externalSourcePluginSet = ConcurrentHashMap.newKeySet();
 
   public PipePluginMetaKeeper() {
     loadBuiltinPlugins();
@@ -113,6 +115,13 @@ public abstract class PipePluginMetaKeeper {
     return Collections.unmodifiableMap(pipePluginNameToVisibilityMap);
   }
 
+  public void addExternalSourcePlugin(String pluginName) {
+    externalSourcePluginSet.add(pluginName.toUpperCase());
+  }
+
+  public void removeExternalSourcePlugin(String pluginName) {
+    externalSourcePluginSet.remove(pluginName.toUpperCase());
+  }
   protected void processTakeSnapshot(OutputStream outputStream) throws IOException {
     ReadWriteIOUtils.write(
         (int)
@@ -143,6 +152,8 @@ public abstract class PipePluginMetaKeeper {
       addPipePluginMeta(pipePluginMeta.getPluginName().toUpperCase(), pipePluginMeta);
     }
   }
+
+
 
   @Override
   public boolean equals(Object o) {
