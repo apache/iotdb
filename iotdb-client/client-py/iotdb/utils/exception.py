@@ -15,6 +15,7 @@
 # specific language governing permissions and limitations
 # under the License.
 #
+from iotdb.thrift.common.ttypes import TEndPoint, TSStatus
 
 
 class IoTDBConnectionException(Exception):
@@ -27,3 +28,22 @@ class IoTDBConnectionException(Exception):
             super().__init__(message, cause)
         else:
             super().__init__()
+
+
+class StatementExecutionException(Exception):
+    def __init__(self, status: TSStatus = None, message=None):
+        if status is not None:
+            super().__init__(f"{status.code}: {status.message}")
+        elif message is not None:
+            super().__init__(message)
+        else:
+            super().__init__()
+
+
+class RedirectException(Exception):
+    def __init__(self, redirect_info):
+        Exception.__init__(self)
+        if isinstance(redirect_info, TEndPoint):
+            self.redirect_node = redirect_info
+        else:
+            self.device_to_endpoint = redirect_info
