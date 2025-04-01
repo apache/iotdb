@@ -21,6 +21,7 @@ package org.apache.iotdb.db.queryengine.execution.operator.source.relational;
 
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.commons.model.ModelType;
 import org.apache.iotdb.commons.pipe.agent.plugin.builtin.BuiltinPipePlugin;
 import org.apache.iotdb.commons.pipe.agent.plugin.meta.PipePluginMeta;
 import org.apache.iotdb.commons.schema.table.InformationSchema;
@@ -34,6 +35,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TDatabaseInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TDescTable4InformationSchemaResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetDatabaseReq;
 import org.apache.iotdb.confignode.rpc.thrift.TRegionInfo;
+import org.apache.iotdb.confignode.rpc.thrift.TShowModelReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipeInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowRegionReq;
@@ -62,7 +64,9 @@ import org.apache.tsfile.read.common.block.column.RunLengthEncodedColumn;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.BytesUtils;
 import org.apache.tsfile.utils.Pair;
+import org.apache.tsfile.utils.ReadWriteIOUtils;
 
+import java.nio.ByteBuffer;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.Iterator;
@@ -80,6 +84,10 @@ import static org.apache.iotdb.commons.schema.SchemaConstant.ALL_RESULT_NODES;
 import static org.apache.iotdb.commons.schema.table.TsTable.TTL_PROPERTY;
 import static org.apache.iotdb.db.queryengine.plan.execution.config.metadata.ShowPipePluginsTask.PIPE_PLUGIN_TYPE_BUILTIN;
 import static org.apache.iotdb.db.queryengine.plan.execution.config.metadata.ShowPipePluginsTask.PIPE_PLUGIN_TYPE_EXTERNAL;
+import static org.apache.iotdb.db.queryengine.plan.execution.config.metadata.ai.ShowModelsTask.INPUT_DATA_TYPE;
+import static org.apache.iotdb.db.queryengine.plan.execution.config.metadata.ai.ShowModelsTask.INPUT_SHAPE;
+import static org.apache.iotdb.db.queryengine.plan.execution.config.metadata.ai.ShowModelsTask.OUTPUT_DATA_TYPE;
+import static org.apache.iotdb.db.queryengine.plan.execution.config.metadata.ai.ShowModelsTask.OUTPUT_SHAPE;
 
 public class InformationSchemaContentSupplierFactory {
   private InformationSchemaContentSupplierFactory() {}
@@ -107,6 +115,8 @@ public class InformationSchemaContentSupplierFactory {
         return new SubscriptionSupplier(dataTypes);
       case InformationSchema.VIEWS:
         return new ViewsSupplier(dataTypes);
+      case InformationSchema.MODELS:
+        return new ModelsSupplier(dataTypes);
       default:
         throw new UnsupportedOperationException("Unknown table: " + tableName);
     }
@@ -665,6 +675,74 @@ public class InformationSchemaContentSupplierFactory {
         }
       }
       return true;
+    }
+  }
+
+  private static class ModelsSupplier extends TsBlockSupplier {
+    private Iterator<ByteBuffer> iterator;
+
+    private ModelsSupplier(final List<TSDataType> dataTypes) {
+      super(dataTypes);
+      try (final ConfigNodeClient client =
+          ConfigNodeClientManager.getInstance().borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
+        iterator = client.showModel(new TShowModelReq()).getModelInfoList().iterator();
+      } catch (final Exception e) {
+        lastException = e;
+      }
+    }
+
+    @Override
+    protected void constructLine() {
+      final ByteBuffer modelInfo = iterator.next();
+      columnBuilders[0].writeBinary(
+          new Binary(ReadWriteIOUtils.readString(modelInfo), TSFileConfig.STRING_CHARSET));
+
+      final String modelType = ReadWriteIOUtils.readString(modelInfo);
+      columnBuilders[1].writeBinary(new Binary(modelType, TSFileConfig.STRING_CHARSET));
+      columnBuilders[2].writeBinary(
+          new Binary(ReadWriteIOUtils.readString(modelInfo), TSFileConfig.STRING_CHARSET));
+
+      if (Objects.equals(modelType, ModelType.USER_DEFINED.toString())) {
+        columnBuilders[3].writeBinary(
+            new Binary(
+                INPUT_SHAPE
+                    + ReadWriteIOUtils.readString(modelInfo)
+                    + OUTPUT_SHAPE
+                    + ReadWriteIOUtils.readString(modelInfo)
+                    + INPUT_DATA_TYPE
+                    + ReadWriteIOUtils.readString(modelInfo)
+                    + OUTPUT_DATA_TYPE
+                    + ReadWriteIOUtils.readString(modelInfo),
+                TSFileConfig.STRING_CHARSET));
+        columnBuilders[4].writeBinary(
+            new Binary(ReadWriteIOUtils.readString(modelInfo), TSFileConfig.STRING_CHARSET));
+      } else {
+        columnBuilders[3].appendNull();
+        columnBuilders[4].writeBinary(
+            new Binary("Built-in model in IoTDB", TSFileConfig.STRING_CHARSET));
+      }
+
+      resultBuilder.declarePosition();
+    }
+
+    @Override
+    public boolean hasNext() {
+      return iterator.hasNext();
+    }
+  }
+
+  private static class FunctionsSupplier extends TsBlockSupplier {
+
+    private FunctionsSupplier(final List<TSDataType> dataTypes) {
+      super(dataTypes);
+    }
+
+    @Override
+    protected void constructLine() {}
+
+    @Override
+    public boolean hasNext() {
+      return false;
     }
   }
 

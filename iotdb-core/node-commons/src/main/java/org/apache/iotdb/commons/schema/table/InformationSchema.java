@@ -251,7 +251,7 @@ public class InformationSchema {
     modelTable.addColumnSchema(
         new TagColumnSchema(ColumnHeaderConstant.MODEL_ID_TABLE_MODEL, TSDataType.STRING));
     modelTable.addColumnSchema(
-        new AttributeColumnSchema(ColumnHeaderConstant.MODEL_TYPE, TSDataType.STRING));
+        new AttributeColumnSchema(ColumnHeaderConstant.MODEL_TYPE_TABLE_MODEL, TSDataType.STRING));
     modelTable.addColumnSchema(
         new AttributeColumnSchema(
             ColumnHeaderConstant.STATE.toLowerCase(Locale.ENGLISH), TSDataType.STRING));
