@@ -147,6 +147,7 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 public class ProcedureManager {
   private static final Logger LOGGER = LoggerFactory.getLogger(ProcedureManager.class);
@@ -661,15 +662,18 @@ public class ProcedureManager {
       TDataNodeLocation originalDataNode,
       TDataNodeLocation destDataNode,
       TDataNodeLocation coordinatorForAddPeer) {
-    String failMessage =
-        regionOperationCommonCheck(
-            regionGroupId,
-            destDataNode,
-            Arrays.asList(
-                new Pair<>("Original DataNode", originalDataNode),
-                new Pair<>("Destination DataNode", destDataNode),
-                new Pair<>("Coordinator for add peer", coordinatorForAddPeer)));
-    if (configManager
+    String failMessage;
+    if ((failMessage =
+            regionOperationCommonCheck(
+                regionGroupId,
+                destDataNode,
+                Arrays.asList(
+                    new Pair<>("Original DataNode", originalDataNode),
+                    new Pair<>("Destination DataNode", destDataNode),
+                    new Pair<>("Coordinator for add peer", coordinatorForAddPeer))))
+        != null) {
+      // do nothing
+    } else if (configManager
         .getPartitionManager()
         .getAllReplicaSets(originalDataNode.getDataNodeId())
         .stream()
@@ -901,10 +905,7 @@ public class ProcedureManager {
 
   private String checkRegionOperationDuplication(TConsensusGroupId regionId) {
     List<? extends RegionOperationProcedure<?>> otherRegionMemberChangeProcedures =
-        getExecutor().getProcedures().values().stream()
-            .filter(procedure -> !procedure.isFinished())
-            .filter(procedure -> procedure instanceof RegionOperationProcedure)
-            .map(procedure -> (RegionOperationProcedure<?>) procedure)
+        getRegionOperationProcedures()
             .filter(
                 regionMemberChangeProcedure ->
                     regionId.equals(regionMemberChangeProcedure.getRegionId()))
@@ -915,6 +916,20 @@ public class ProcedureManager {
           regionId, otherRegionMemberChangeProcedures);
     }
     return null;
+  }
+
+  public List<TConsensusGroupId> getRegionOperationConsensusIds() {
+    return getRegionOperationProcedures()
+        .map(RegionOperationProcedure::getRegionId)
+        .distinct()
+        .collect(Collectors.toList());
+  }
+
+  private Stream<RegionOperationProcedure<?>> getRegionOperationProcedures() {
+    return getExecutor().getProcedures().values().stream()
+        .filter(procedure -> !procedure.isFinished())
+        .filter(procedure -> procedure instanceof RegionOperationProcedure)
+        .map(procedure -> (RegionOperationProcedure<?>) procedure);
   }
 
   // end region
