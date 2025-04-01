@@ -25,6 +25,7 @@ import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.model.ModelType;
 import org.apache.iotdb.commons.pipe.agent.plugin.builtin.BuiltinPipePlugin;
 import org.apache.iotdb.commons.pipe.agent.plugin.meta.PipePluginMeta;
+import org.apache.iotdb.commons.schema.column.ColumnHeaderConstant;
 import org.apache.iotdb.commons.schema.table.InformationSchema;
 import org.apache.iotdb.commons.schema.table.TableNodeStatus;
 import org.apache.iotdb.commons.schema.table.TableType;
@@ -36,6 +37,7 @@ import org.apache.iotdb.commons.udf.UDFInformation;
 import org.apache.iotdb.commons.udf.builtin.relational.TableBuiltinAggregationFunction;
 import org.apache.iotdb.commons.udf.builtin.relational.TableBuiltinScalarFunction;
 import org.apache.iotdb.commons.udf.builtin.relational.TableBuiltinTableFunction;
+import org.apache.iotdb.confignode.rpc.thrift.TClusterParameters;
 import org.apache.iotdb.confignode.rpc.thrift.TDatabaseInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TDescTable4InformationSchemaResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetDatabaseReq;
@@ -133,6 +135,8 @@ public class InformationSchemaContentSupplierFactory {
         return new ModelsSupplier(dataTypes);
       case InformationSchema.FUNCTIONS:
         return new FunctionsSupplier(dataTypes);
+      case InformationSchema.CONFIGURATIONS:
+        return new ConfigurationsSupplier(dataTypes);
       default:
         throw new UnsupportedOperationException("Unknown table: " + tableName);
     }
@@ -807,6 +811,87 @@ public class InformationSchemaContentSupplierFactory {
         }
       }
       return true;
+    }
+  }
+
+  private static class ConfigurationsSupplier extends TsBlockSupplier {
+    private Iterator<Pair<Binary, Binary>> resultIterator;
+
+    private ConfigurationsSupplier(final List<TSDataType> dataTypes) {
+      super(dataTypes);
+      try (final ConfigNodeClient client =
+          ConfigNodeClientManager.getInstance().borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
+        final TClusterParameters parameters = client.showVariables().getClusterParameters();
+        resultIterator =
+            Arrays.asList(
+                    new Pair<>(
+                        BytesUtils.valueOf(ColumnHeaderConstant.COLUMN_CLUSTER_NAME),
+                        BytesUtils.valueOf(parameters.getClusterName())),
+                    new Pair<>(
+                        BytesUtils.valueOf(ColumnHeaderConstant.DATA_REPLICATION_FACTOR),
+                        BytesUtils.valueOf(String.valueOf(parameters.getDataReplicationFactor()))),
+                    new Pair<>(
+                        BytesUtils.valueOf(ColumnHeaderConstant.SCHEMA_REPLICATION_FACTOR),
+                        BytesUtils.valueOf(
+                            String.valueOf(parameters.getSchemaReplicationFactor()))),
+                    new Pair<>(
+                        BytesUtils.valueOf(
+                            ColumnHeaderConstant.DATA_REGION_CONSENSUS_PROTOCOL_CLASS),
+                        BytesUtils.valueOf(parameters.getDataRegionConsensusProtocolClass())),
+                    new Pair<>(
+                        BytesUtils.valueOf(
+                            ColumnHeaderConstant.SCHEMA_REGION_CONSENSUS_PROTOCOL_CLASS),
+                        BytesUtils.valueOf(parameters.getSchemaRegionConsensusProtocolClass())),
+                    new Pair<>(
+                        BytesUtils.valueOf(
+                            ColumnHeaderConstant.CONFIG_NODE_CONSENSUS_PROTOCOL_CLASS),
+                        BytesUtils.valueOf(parameters.getConfigNodeConsensusProtocolClass())),
+                    new Pair<>(
+                        BytesUtils.valueOf(ColumnHeaderConstant.TIME_PARTITION_ORIGIN),
+                        BytesUtils.valueOf(String.valueOf(parameters.getTimePartitionOrigin()))),
+                    new Pair<>(
+                        BytesUtils.valueOf(ColumnHeaderConstant.TIME_PARTITION_INTERVAL),
+                        BytesUtils.valueOf(String.valueOf(parameters.getTimePartitionInterval()))),
+                    new Pair<>(
+                        BytesUtils.valueOf(ColumnHeaderConstant.READ_CONSISTENCY_LEVEL),
+                        BytesUtils.valueOf(parameters.getReadConsistencyLevel())),
+                    new Pair<>(
+                        BytesUtils.valueOf(ColumnHeaderConstant.SCHEMA_REGION_PER_DATA_NODE),
+                        BytesUtils.valueOf(
+                            String.valueOf(parameters.getSchemaRegionPerDataNode()))),
+                    new Pair<>(
+                        BytesUtils.valueOf(ColumnHeaderConstant.DATA_REGION_PER_DATA_NODE),
+                        BytesUtils.valueOf(String.valueOf(parameters.getDataRegionPerDataNode()))),
+                    new Pair<>(
+                        BytesUtils.valueOf(ColumnHeaderConstant.SERIES_SLOT_NUM),
+                        BytesUtils.valueOf(String.valueOf(parameters.getSeriesPartitionSlotNum()))),
+                    new Pair<>(
+                        BytesUtils.valueOf(ColumnHeaderConstant.SERIES_SLOT_EXECUTOR_CLASS),
+                        BytesUtils.valueOf(parameters.getSeriesPartitionExecutorClass())),
+                    new Pair<>(
+                        BytesUtils.valueOf(ColumnHeaderConstant.DISK_SPACE_WARNING_THRESHOLD),
+                        BytesUtils.valueOf(
+                            String.valueOf(parameters.getDiskSpaceWarningThreshold()))),
+                    new Pair<>(
+                        BytesUtils.valueOf(ColumnHeaderConstant.TIMESTAMP_PRECISION),
+                        BytesUtils.valueOf(parameters.getTimestampPrecision())))
+                .iterator();
+      } catch (final Exception e) {
+        lastException = e;
+      }
+    }
+
+    @Override
+    protected void constructLine() {
+      final Pair<Binary, Binary> currentVariable = resultIterator.next();
+      columnBuilders[0].writeBinary(currentVariable.getLeft());
+      columnBuilders[1].writeBinary(currentVariable.getRight());
+      resultBuilder.declarePosition();
+    }
+
+    @Override
+    public boolean hasNext() {
+      return resultIterator.hasNext();
     }
   }
 

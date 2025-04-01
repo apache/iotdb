@@ -45,6 +45,7 @@ public class InformationSchema {
   public static final String VIEWS = "views";
   public static final String MODELS = "models";
   public static final String FUNCTIONS = "functions";
+  public static final String CONFIGURATIONS = "configurations";
 
   static {
     final TsTable queriesTable = new TsTable(QUERIES);
@@ -278,6 +279,16 @@ public class InformationSchema {
             ColumnHeaderConstant.STATE.toLowerCase(Locale.ENGLISH), TSDataType.STRING));
     functionTable.removeColumnSchema(TsTable.TIME_COLUMN_NAME);
     schemaTables.put(FUNCTIONS, functionTable);
+
+    final TsTable configurationsTable = new TsTable(CONFIGURATIONS);
+    configurationsTable.addColumnSchema(
+        new TagColumnSchema(
+            ColumnHeaderConstant.VARIABLE.toLowerCase(Locale.ENGLISH), TSDataType.STRING));
+    configurationsTable.addColumnSchema(
+        new AttributeColumnSchema(
+            ColumnHeaderConstant.VALUE.toLowerCase(Locale.ENGLISH), TSDataType.STRING));
+    configurationsTable.removeColumnSchema(TsTable.TIME_COLUMN_NAME);
+    schemaTables.put(CONFIGURATIONS, configurationsTable);
   }
 
   public static Map<String, TsTable> getSchemaTables() {
