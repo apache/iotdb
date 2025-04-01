@@ -173,6 +173,7 @@ import org.apache.iotdb.db.queryengine.plan.analyze.ClusterPartitionFetcher;
 import org.apache.iotdb.db.queryengine.plan.analyze.schema.ClusterSchemaFetcher;
 import org.apache.iotdb.db.queryengine.plan.execution.ExecutionResult;
 import org.apache.iotdb.db.queryengine.plan.execution.config.ConfigTaskResult;
+import org.apache.iotdb.db.queryengine.plan.execution.config.TableConfigTaskVisitor;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.CountDatabaseTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.CountTimeSlotListTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.DatabaseSchemaTask;
@@ -2080,6 +2081,12 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
                   new PipeParameters(alterPipeStatement.getExtractorAttributes()));
           extractorAttributes =
               pipeMetaFromCoordinator.getStaticMeta().getExtractorParameters().getAttribute();
+          TableConfigTaskVisitor.checkAndEnrichSourceUserName(
+              alterPipeStatement.getPipeName(),
+              extractorAttributes,
+              alterPipeStatement.getUserName(),
+              false,
+              true);
         }
       } else {
         extractorAttributes =
@@ -2114,6 +2121,12 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
                   new PipeParameters(alterPipeStatement.getConnectorAttributes()));
           connectorAttributes =
               pipeMetaFromCoordinator.getStaticMeta().getConnectorParameters().getAttribute();
+          TableConfigTaskVisitor.checkAndEnrichSinkUserName(
+              alterPipeStatement.getPipeName(),
+              extractorAttributes,
+              alterPipeStatement.getUserName(),
+              false,
+              false);
         }
       } else {
         connectorAttributes =

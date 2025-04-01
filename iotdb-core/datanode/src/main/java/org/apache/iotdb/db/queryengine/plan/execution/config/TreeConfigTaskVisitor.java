@@ -535,11 +535,15 @@ public class TreeConfigTaskVisitor extends StatementVisitor<IConfigTask, MPPQuer
     checkAndEnrichSourceUserName(
         createPipeStatement.getPipeName(),
         createPipeStatement.getExtractorAttributes(),
-        context.getSession().getUserName());
+        context.getSession().getUserName(),
+        true,
+        false);
     checkAndEnrichSinkUserName(
         createPipeStatement.getPipeName(),
         createPipeStatement.getConnectorAttributes(),
-        context.getSession().getUserName());
+        context.getSession().getUserName(),
+        true,
+        false);
 
     return new CreatePipeTask(createPipeStatement);
   }
@@ -559,6 +563,8 @@ public class TreeConfigTaskVisitor extends StatementVisitor<IConfigTask, MPPQuer
     }
 
     final String userName = context.getSession().getUserName();
+    alterPipeStatement.setUserName(userName);
+
     final String pipeName = alterPipeStatement.getPipeName();
     final Map<String, String> extractorAttributes = alterPipeStatement.getExtractorAttributes();
 
@@ -567,11 +573,12 @@ public class TreeConfigTaskVisitor extends StatementVisitor<IConfigTask, MPPQuer
     if (alterPipeStatement.isReplaceAllExtractorAttributes()) {
       extractorAttributes.put(
           SystemConstant.SQL_DIALECT_KEY, SystemConstant.SQL_DIALECT_TREE_VALUE);
-      checkAndEnrichSourceUserName(pipeName, extractorAttributes, userName);
+      checkAndEnrichSourceUserName(pipeName, extractorAttributes, userName, true, true);
     }
 
     if (alterPipeStatement.isReplaceAllConnectorAttributes()) {
-      checkAndEnrichSinkUserName(pipeName, alterPipeStatement.getConnectorAttributes(), userName);
+      checkAndEnrichSinkUserName(
+          pipeName, alterPipeStatement.getConnectorAttributes(), userName, true, true);
     }
 
     return new AlterPipeTask(alterPipeStatement);
