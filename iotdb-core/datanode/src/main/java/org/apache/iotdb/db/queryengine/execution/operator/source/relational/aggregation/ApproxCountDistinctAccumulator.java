@@ -47,7 +47,7 @@ public class ApproxCountDistinctAccumulator implements TableAccumulator {
 
   @Override
   public void addInput(Column[] arguments, AggregationMask mask) {
-    checkArgument(arguments.length == 1, "argument of ApproxCountDistinct should be one column");
+    checkArgument(arguments.length == 1, "argument of APPROX_COUNT_DISTINCT should be one column");
 
     switch (seriesDataType) {
       case INT32:
@@ -75,7 +75,7 @@ public class ApproxCountDistinctAccumulator implements TableAccumulator {
       default:
         throw new UnSupportedDataTypeException(
             String.format(
-                "Unsupported data type in Approx_count_distinct Aggregation: %s", seriesDataType));
+                "Unsupported data type in APPROX_COUNT_DISTINCT Aggregation: %s", seriesDataType));
     }
   }
 
@@ -112,7 +112,7 @@ public class ApproxCountDistinctAccumulator implements TableAccumulator {
         default:
           throw new UnSupportedDataTypeException(
               String.format(
-                  "Unsupported data type in Approx_count_distinct Aggregation: %s",
+                  "Unsupported data type in APPROX_COUNT_DISTINCT Aggregation: %s",
                   seriesDataType));
       }
     }
