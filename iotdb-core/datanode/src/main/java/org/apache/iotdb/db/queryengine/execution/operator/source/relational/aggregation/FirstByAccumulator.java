@@ -35,7 +35,6 @@ import org.apache.tsfile.write.UnSupportedDataTypeException;
 
 import static com.google.common.base.Preconditions.checkArgument;
 import static org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.Utils.serializeTimeValue;
-import static org.apache.iotdb.db.utils.constant.SqlConstant.FIRST_BY_AGGREGATION;
 
 public class FirstByAccumulator implements TableAccumulator {
 
@@ -105,7 +104,7 @@ public class FirstByAccumulator implements TableAccumulator {
         return;
       default:
         throw new UnSupportedDataTypeException(
-            String.format("Unsupported data type in FirstBy: %s", yDataType));
+            String.format("Unsupported data type in FirstBy Aggregation: %s", yDataType));
     }
   }
 
@@ -170,7 +169,7 @@ public class FirstByAccumulator implements TableAccumulator {
           break;
         default:
           throw new UnSupportedDataTypeException(
-              String.format("Unsupported data type in First Aggregation: %s", yDataType));
+              String.format("Unsupported data type in FirstBy Aggregation: %s", yDataType));
       }
     }
   }
@@ -221,7 +220,7 @@ public class FirstByAccumulator implements TableAccumulator {
         break;
       default:
         throw new UnSupportedDataTypeException(
-            String.format("Unsupported data type in FirstBy: %s", xDataType));
+            String.format("Unsupported data type in FirstBy Aggregation: %s", xDataType));
     }
   }
 
@@ -285,9 +284,7 @@ public class FirstByAccumulator implements TableAccumulator {
               break;
             default:
               throw new UnSupportedDataTypeException(
-                  String.format(
-                      "Unsupported data type: %s in Aggregation: %s",
-                      yDataType, FIRST_BY_AGGREGATION));
+                  String.format("Unsupported data type in FirstBy Aggregation: %s", yDataType));
           }
         }
       }
