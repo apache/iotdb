@@ -482,7 +482,7 @@ public class IoTDBDatabaseIT {
                   "model_type,STRING,ATTRIBUTE,",
                   "state,STRING,ATTRIBUTE,",
                   "configs,STRING,ATTRIBUTE,",
-                  "nodes,STRING,ATTRIBUTE,")));
+                  "notes,STRING,ATTRIBUTE,")));
       TestUtils.assertResultSetEqual(
           statement.executeQuery("desc functions"),
           "ColumnName,DataType,Category,",

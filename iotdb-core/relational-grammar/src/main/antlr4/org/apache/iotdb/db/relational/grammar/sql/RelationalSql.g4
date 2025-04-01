@@ -159,7 +159,7 @@ statement
     | createModelStatement
     | showModelsStatement
 
-    // View, Trigger, pipe, CQ, Quota are not supported yet
+    // View, Trigger, CQ, Quota are not supported yet
     ;
 
 
