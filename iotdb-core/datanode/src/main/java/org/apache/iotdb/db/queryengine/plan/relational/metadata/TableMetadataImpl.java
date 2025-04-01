@@ -582,6 +582,7 @@ public class TableMetadataImpl implements Metadata {
       case SqlConstant.MIN:
       case SqlConstant.MAX:
       case SqlConstant.MODE:
+      case SqlConstant.APPROX_COUNT_DISTINCT:
         if (argumentTypes.size() != 1) {
           throw new SemanticException(
               String.format(

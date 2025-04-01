@@ -57,6 +57,7 @@ public enum TableBuiltinAggregationFunction {
   VARIANCE("variance"),
   VAR_POP("var_pop"),
   VAR_SAMP("var_samp"),
+  APPROX_COUNT_DISTINCT("approx_count_distinct"),
   ;
 
   private final String functionName;
@@ -85,6 +86,7 @@ public enum TableBuiltinAggregationFunction {
       case "count":
       case "count_all":
       case "count_if":
+      case "approx_count_distinct":
         return INT64;
       case "sum":
         return DOUBLE;
