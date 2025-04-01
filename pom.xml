@@ -98,18 +98,13 @@
     -->
         <iotdb-tools-thrift.version>0.14.1.0</iotdb-tools-thrift.version>
         <jackson.version>2.18.3</jackson.version>
-        <!-- This is the last version to support the javax namespace -->
         <jakarta.servlet-api.version>6.1.0</jakarta.servlet-api.version>
-        <!-- This is the last version to support the javax namespace -->
         <jakarta.validation-api.version>3.1.1</jakarta.validation-api.version>
-        <!-- This is the last version to support the javax namespace -->
         <jakarta.ws.rs-api.version>3.1.0</jakarta.ws.rs-api.version>
         <jakarta.annotation.version>3.0.0</jakarta.annotation.version>
         <java-websocket.version>1.5.4</java-websocket.version>
         <jcip-annotations.version>1.0-1</jcip-annotations.version>
-        <!-- This is the last version to support the javax namespace -->
         <jersey.version>3.1.10</jersey.version>
-        <!-- This was the last version to support Java 8 -->
         <jetty.version>12.0.18</jetty.version>
         <jjwt.version>0.11.5</jjwt.version>
         <jline.version>3.26.2</jline.version>
@@ -133,7 +128,6 @@
         <netty.version>4.1.115.Final</netty.version>
         <nimbus-jose-jwt.version>9.37.3</nimbus-jose-jwt.version>
         <oauth2-oidc-sdk.version>10.15</oauth2-oidc-sdk.version>
-        <!-- This was the last version to support Java 8 -->
         <openapi.generator.version>7.12.0</openapi.generator.version>
         <osgi.version>7.0.0</osgi.version>
         <pax-jdbc-common.version>1.5.6</pax-jdbc-common.version>
