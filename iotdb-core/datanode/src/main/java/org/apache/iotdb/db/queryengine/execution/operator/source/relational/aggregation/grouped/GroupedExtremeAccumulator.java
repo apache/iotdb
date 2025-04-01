@@ -67,7 +67,7 @@ public class GroupedExtremeAccumulator implements GroupedAccumulator {
       case TIMESTAMP:
       default:
         throw new UnSupportedDataTypeException(
-            String.format("Unsupported data type Extreme Aggregation: %s", seriesDataType));
+            String.format("Unsupported data type EXTREME Aggregation: %s", seriesDataType));
     }
   }
 
@@ -97,7 +97,7 @@ public class GroupedExtremeAccumulator implements GroupedAccumulator {
         break;
       default:
         throw new UnSupportedDataTypeException(
-            String.format("Unsupported data type in Extreme Aggregation: %s", seriesDataType));
+            String.format("Unsupported data type in EXTREME Aggregation: %s", seriesDataType));
     }
 
     return INSTANCE_SIZE + valuesSize;
@@ -127,7 +127,7 @@ public class GroupedExtremeAccumulator implements GroupedAccumulator {
       case BOOLEAN:
       default:
         throw new UnSupportedDataTypeException(
-            String.format("Unsupported data type in Extreme Aggregation: %s", seriesDataType));
+            String.format("Unsupported data type in EXTREME Aggregation: %s", seriesDataType));
     }
   }
 
@@ -155,7 +155,7 @@ public class GroupedExtremeAccumulator implements GroupedAccumulator {
       case TIMESTAMP:
       default:
         throw new UnSupportedDataTypeException(
-            String.format("Unsupported data type Extreme Aggregation: %s", seriesDataType));
+            String.format("Unsupported data type EXTREME Aggregation: %s", seriesDataType));
     }
   }
 
@@ -188,7 +188,7 @@ public class GroupedExtremeAccumulator implements GroupedAccumulator {
         case TIMESTAMP:
         default:
           throw new UnSupportedDataTypeException(
-              String.format("Unsupported data type in Extreme Aggregation: %s", seriesDataType));
+              String.format("Unsupported data type in EXTREME Aggregation: %s", seriesDataType));
       }
     }
   }
@@ -219,7 +219,7 @@ public class GroupedExtremeAccumulator implements GroupedAccumulator {
         case TIMESTAMP:
         default:
           throw new UnSupportedDataTypeException(
-              String.format("Unsupported data type in Extreme Aggregation: %s", seriesDataType));
+              String.format("Unsupported data type in EXTREME Aggregation: %s", seriesDataType));
       }
     }
   }
@@ -250,7 +250,7 @@ public class GroupedExtremeAccumulator implements GroupedAccumulator {
         case TIMESTAMP:
         default:
           throw new UnSupportedDataTypeException(
-              String.format("Unsupported data type in Extreme Aggregation: %s", seriesDataType));
+              String.format("Unsupported data type in EXTREME Aggregation: %s", seriesDataType));
       }
     }
   }
@@ -282,7 +282,7 @@ public class GroupedExtremeAccumulator implements GroupedAccumulator {
       case TIMESTAMP:
       default:
         throw new UnSupportedDataTypeException(
-            String.format("Unsupported data type in Extreme Aggregation: %s", seriesDataType));
+            String.format("Unsupported data type in EXTREME Aggregation: %s", seriesDataType));
     }
   }
 

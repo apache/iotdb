@@ -101,7 +101,7 @@ public class LastByAccumulator implements TableAccumulator {
 
   @Override
   public void addInput(Column[] arguments, AggregationMask mask) {
-    checkArgument(arguments.length == 3, "Length of input Column[] for LastBy should be 3");
+    checkArgument(arguments.length == 3, "Length of input Column[] for LAST_BY should be 3");
 
     // arguments[0] is x column, arguments[1] is y column, arguments[2] is time column
     switch (xDataType) {
@@ -129,7 +129,7 @@ public class LastByAccumulator implements TableAccumulator {
         return;
       default:
         throw new UnSupportedDataTypeException(
-            String.format("Unsupported data type in LastBy Aggregation: %s", yDataType));
+            String.format("Unsupported data type in LAST_BY Aggregation: %s", yDataType));
     }
   }
 
@@ -139,7 +139,7 @@ public class LastByAccumulator implements TableAccumulator {
         argument instanceof BinaryColumn
             || (argument instanceof RunLengthEncodedColumn
                 && ((RunLengthEncodedColumn) argument).getValue() instanceof BinaryColumn),
-        "intermediate input and output of LastBy should be BinaryColumn");
+        "intermediate input and output of LAST_BY should be BinaryColumn");
 
     for (int i = 0; i < argument.getPositionCount(); i++) {
       if (argument.isNull(i)) {
@@ -194,7 +194,7 @@ public class LastByAccumulator implements TableAccumulator {
           break;
         default:
           throw new UnSupportedDataTypeException(
-              String.format("Unsupported data type in LastBy Aggregation: %s", yDataType));
+              String.format("Unsupported data type in LAST_BY Aggregation: %s", yDataType));
       }
     }
   }
@@ -203,7 +203,7 @@ public class LastByAccumulator implements TableAccumulator {
   public void evaluateIntermediate(ColumnBuilder columnBuilder) {
     checkArgument(
         columnBuilder instanceof BinaryColumnBuilder,
-        "intermediate input and output of LastBy should be BinaryColumn");
+        "intermediate input and output of LAST_BY should be BinaryColumn");
 
     if (!initResult) {
       columnBuilder.appendNull();
@@ -245,7 +245,7 @@ public class LastByAccumulator implements TableAccumulator {
         break;
       default:
         throw new UnSupportedDataTypeException(
-            String.format("Unsupported data type in LastBy Aggregation: %s", xDataType));
+            String.format("Unsupported data type in LAST_BY Aggregation: %s", xDataType));
     }
   }
 
@@ -310,8 +310,8 @@ public class LastByAccumulator implements TableAccumulator {
             default:
               throw new UnSupportedDataTypeException(
                   String.format(
-                      "Unsupported data type: %s in Aggregation: %s",
-                      yDataType, LAST_BY_AGGREGATION));
+                      "Unsupported data type in LAST_BY Aggregation: %s",
+                      yDataType));
           }
         }
       }

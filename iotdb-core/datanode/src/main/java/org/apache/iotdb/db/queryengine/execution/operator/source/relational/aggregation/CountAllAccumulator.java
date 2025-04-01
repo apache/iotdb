@@ -43,14 +43,14 @@ public class CountAllAccumulator implements TableAccumulator {
 
   @Override
   public void addInput(Column[] arguments, AggregationMask mask) {
-    checkArgument(arguments.length == 1, "argument of CountAll should be one column");
+    checkArgument(arguments.length == 1, "argument of COUNT should be one column");
     int count = mask.getSelectedPositionCount();
     countState += count;
   }
 
   @Override
   public void removeInput(Column[] arguments) {
-    checkArgument(arguments.length == 1, "argument of CountAll should be one column");
+    checkArgument(arguments.length == 1, "argument of COUNT should be one column");
     int count = arguments[0].getPositionCount();
     countState -= count;
   }
