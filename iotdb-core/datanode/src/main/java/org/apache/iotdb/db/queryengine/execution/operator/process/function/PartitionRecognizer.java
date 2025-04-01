@@ -37,22 +37,24 @@ import static org.apache.iotdb.db.queryengine.plan.relational.planner.SortOrder.
 
 public class PartitionRecognizer {
 
-  private SortKey partitionKey;
   private final Comparator<SortKey> partitionComparator;
   private final List<Integer> requiredChannels;
   private final List<Integer> passThroughChannels;
   private final List<Type> inputDataTypes;
-  private TsBlock currentTsBlock = null;
+
   private boolean noMoreData = false;
+
+  private SortKey currentPartitionKey;
+  private TsBlock currentTsBlock = null;
   private int currentIndex = 0;
-  private PartitionState state = PartitionState.INIT_STATE;
+  private PartitionState currentState = PartitionState.INIT_STATE;
 
   public PartitionRecognizer(
       List<Integer> partitionChannels,
       List<Integer> requiredChannels,
       List<Integer> passThroughChannels,
       List<TSDataType> inputDataTypes) {
-    this.partitionKey = null;
+    this.currentPartitionKey = null;
     if (partitionChannels.isEmpty()) {
       // always return 0
       this.partitionComparator = (o1, o2) -> 0;
@@ -84,37 +86,39 @@ public class PartitionRecognizer {
 
   public PartitionState nextState() {
     updateState();
-    return state;
+    return currentState;
   }
 
   private void updateState() {
-    switch (state.getStateType()) {
+    switch (currentState.getStateType()) {
       case INIT:
-        state = handleInitState();
+        currentState = handleInitState();
         break;
       case ITERATING:
       case NEW_PARTITION:
-        state = handleIteratingOrNewPartitionState();
+        currentState = handleIteratingOrNewPartitionState();
         break;
       case NEED_MORE_DATA:
-        state = handleNeedMoreDataState();
+        currentState = handleNeedMoreDataState();
         break;
       case FINISHED:
         // do nothing
         return;
     }
-    if (PartitionState.NEED_MORE_DATA_STATE.equals(state)) {
+    if (PartitionState.NEED_MORE_DATA_STATE.equals(currentState)) {
       currentIndex = 0;
       currentTsBlock = null;
     }
   }
 
   private PartitionState handleInitState() {
-    if (currentTsBlock == null || currentTsBlock.isEmpty()) {
+    if (noMoreData) {
+      return PartitionState.FINISHED_STATE;
+    } else if (currentTsBlock == null || currentTsBlock.isEmpty()) {
       return PartitionState.INIT_STATE;
     }
     // init the partition Key as the first row
-    partitionKey = new SortKey(currentTsBlock, currentIndex);
+    currentPartitionKey = new SortKey(currentTsBlock, currentIndex);
     int endPartitionIndex = findNextDifferentRowIndex();
     Slice slice = getSlice(currentIndex, endPartitionIndex);
     currentIndex = endPartitionIndex;
@@ -156,15 +160,39 @@ public class PartitionRecognizer {
    * all rows have the same partition values, return the position count of the current TsBlock.
    */
   private int findNextDifferentRowIndex() {
-    SortKey compareKey = new SortKey(currentTsBlock, currentIndex);
-    while (compareKey.rowIndex < currentTsBlock.getPositionCount()) {
-      if (partitionComparator.compare(partitionKey, compareKey) != 0) {
-        partitionKey = compareKey;
-        return compareKey.rowIndex;
-      }
-      compareKey.rowIndex++;
+    int totalRows = currentTsBlock.getPositionCount();
+
+    // check if all rows have the same partition values
+    SortKey compareKey = new SortKey(currentTsBlock, totalRows - 1);
+    if (partitionComparator.compare(currentPartitionKey, compareKey) == 0) {
+      return totalRows;
     }
-    return compareKey.rowIndex;
+
+    // check the first row
+    compareKey.rowIndex = currentIndex;
+    if (partitionComparator.compare(currentPartitionKey, compareKey) != 0) {
+      currentPartitionKey = compareKey;
+      return currentIndex;
+    }
+
+    // binary search to find the next different partition values
+    int low = currentIndex;
+    int high = totalRows - 1;
+    int firstDiff = totalRows;
+    while (low <= high) {
+      compareKey.rowIndex = low + (high - low) / 2;
+      int cmp = partitionComparator.compare(currentPartitionKey, compareKey);
+      if (cmp == 0) {
+        low = compareKey.rowIndex + 1;
+      } else {
+        // try to find earlier different row
+        firstDiff = compareKey.rowIndex;
+        high = compareKey.rowIndex - 1;
+      }
+    }
+    compareKey.rowIndex = firstDiff;
+    currentPartitionKey = compareKey;
+    return firstDiff;
   }
 
   private Slice getSlice(int startPartitionIndex, int endPartitionIndex) {
