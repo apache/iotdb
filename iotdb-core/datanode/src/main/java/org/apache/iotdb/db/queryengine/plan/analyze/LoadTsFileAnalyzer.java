@@ -65,7 +65,7 @@ import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.FileTimeInd
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.ITimeIndex;
 import org.apache.iotdb.db.storageengine.dataregion.utils.TsFileResourceUtils;
 import org.apache.iotdb.db.storageengine.load.converter.LoadTsFileDataTypeConverter;
-import org.apache.iotdb.db.storageengine.load.memory.LoadTsFileAnalyzeSchemaMemoryBlock;
+import org.apache.iotdb.db.storageengine.load.memory.LoadTsFileMemoryBlock;
 import org.apache.iotdb.db.storageengine.load.memory.LoadTsFileMemoryManager;
 import org.apache.iotdb.db.utils.ModificationUtils;
 import org.apache.iotdb.db.utils.TimestampPrecisionUtils;
@@ -740,7 +740,7 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
 
   private static class LoadTsFileAnalyzeSchemaCache {
 
-    private final LoadTsFileAnalyzeSchemaMemoryBlock block;
+    private final LoadTsFileMemoryBlock block;
 
     private Map<IDeviceID, Set<MeasurementSchema>> currentBatchDevice2TimeSeriesSchemas;
     private Map<IDeviceID, Boolean> tsFileDevice2IsAligned;
@@ -760,7 +760,7 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
     public LoadTsFileAnalyzeSchemaCache() throws LoadRuntimeOutOfMemoryException {
       this.block =
           LoadTsFileMemoryManager.getInstance()
-              .allocateAnalyzeSchemaMemoryBlock(ANALYZE_SCHEMA_MEMORY_SIZE_IN_BYTES);
+              .allocateMemoryBlock(ANALYZE_SCHEMA_MEMORY_SIZE_IN_BYTES);
       this.currentBatchDevice2TimeSeriesSchemas = new HashMap<>();
       this.tsFileDevice2IsAligned = new HashMap<>();
       this.alreadySetDatabases = new HashSet<>();
