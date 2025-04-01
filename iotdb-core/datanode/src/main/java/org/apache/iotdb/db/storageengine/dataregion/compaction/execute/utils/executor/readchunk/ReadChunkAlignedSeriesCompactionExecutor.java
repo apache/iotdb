@@ -387,7 +387,7 @@ public class ReadChunkAlignedSeriesCompactionExecutor {
                 valuePage.getUnCompressedData(),
                 schemaList.get(i).getType(),
                 Decoder.getDecoderByType(
-                    schemaList.get(i).getEncodingType(), schemaList.get(i).getType()));
+                    valuePage.getEncoding(), schemaList.get(i).getType()));
         valuePageReader.setDeleteIntervalList(valuePage.getDeleteIntervalList());
         nonEmptyPageNum++;
       }
