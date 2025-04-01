@@ -26,6 +26,7 @@ import org.apache.iotdb.commons.pipe.datastructure.pattern.PipePattern;
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tsfile.container.query.TsFileInsertionQueryDataContainer;
 import org.apache.iotdb.db.pipe.event.common.tsfile.container.scan.TsFileInsertionScanDataContainer;
+import org.apache.iotdb.db.pipe.metric.overview.PipeTsFileToTabletsMetrics;
 import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
 import org.apache.iotdb.db.pipe.resource.tsfile.PipeTsFileResource;
 
@@ -40,6 +41,9 @@ import java.util.stream.Collectors;
 
 public class TsFileInsertionDataContainerProvider {
 
+  private final String pipeName;
+  private final long creationTime;
+
   private final File tsFile;
   private final PipePattern pattern;
   private final long startTime;
@@ -49,12 +53,16 @@ public class TsFileInsertionDataContainerProvider {
   protected final PipeTsFileInsertionEvent sourceEvent;
 
   public TsFileInsertionDataContainerProvider(
+      final String pipeName,
+      final long creationTime,
       final File tsFile,
       final PipePattern pipePattern,
       final long startTime,
       final long endTime,
       final PipeTaskMeta pipeTaskMeta,
       final PipeTsFileInsertionEvent sourceEvent) {
+    this.pipeName = pipeName;
+    this.creationTime = creationTime;
     this.tsFile = tsFile;
     this.pattern = pipePattern;
     this.startTime = startTime;
@@ -64,12 +72,17 @@ public class TsFileInsertionDataContainerProvider {
   }
 
   public TsFileInsertionDataContainer provide() throws IOException {
+    if (pipeName != null) {
+      PipeTsFileToTabletsMetrics.getInstance()
+          .markTsFileToTabletInvocation(pipeName + "_" + creationTime);
+    }
+
     // Use scan container to save memory
     if ((double) PipeDataNodeResourceManager.memory().getUsedMemorySizeInBytes()
             / PipeDataNodeResourceManager.memory().getTotalMemorySizeInBytes()
         > PipeTsFileResource.MEMORY_SUFFICIENT_THRESHOLD) {
       return new TsFileInsertionScanDataContainer(
-          tsFile, pattern, startTime, endTime, pipeTaskMeta, sourceEvent);
+          pipeName, creationTime, tsFile, pattern, startTime, endTime, pipeTaskMeta, sourceEvent);
     }
 
     if (pattern instanceof IoTDBPipePattern
@@ -81,7 +94,7 @@ public class TsFileInsertionDataContainerProvider {
       // hard to know whether it only matches one timeseries, while matching multiple is often the
       // case.
       return new TsFileInsertionQueryDataContainer(
-          tsFile, pattern, startTime, endTime, pipeTaskMeta, sourceEvent);
+          pipeName, creationTime, tsFile, pattern, startTime, endTime, pipeTaskMeta, sourceEvent);
     }
 
     final Map<IDeviceID, Boolean> deviceIsAlignedMap =
@@ -90,7 +103,7 @@ public class TsFileInsertionDataContainerProvider {
       // If we failed to get from cache, it indicates that the memory usage is high.
       // We use scan data container because it requires less memory.
       return new TsFileInsertionScanDataContainer(
-          tsFile, pattern, startTime, endTime, pipeTaskMeta, sourceEvent);
+          pipeName, creationTime, tsFile, pattern, startTime, endTime, pipeTaskMeta, sourceEvent);
     }
 
     final int originalSize = deviceIsAlignedMap.size();
@@ -100,8 +113,10 @@ public class TsFileInsertionDataContainerProvider {
     return (double) filteredDeviceIsAlignedMap.size() / originalSize
             > PipeConfig.getInstance().getPipeTsFileScanParsingThreshold()
         ? new TsFileInsertionScanDataContainer(
-            tsFile, pattern, startTime, endTime, pipeTaskMeta, sourceEvent)
+            pipeName, creationTime, tsFile, pattern, startTime, endTime, pipeTaskMeta, sourceEvent)
         : new TsFileInsertionQueryDataContainer(
+            pipeName,
+            creationTime,
             tsFile,
             pattern,
             startTime,
