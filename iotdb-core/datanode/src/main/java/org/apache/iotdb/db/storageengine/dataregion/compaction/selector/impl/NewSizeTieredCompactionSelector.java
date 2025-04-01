@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.compaction.selector.impl;
 
+import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.commons.service.metric.enums.Tag;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.ICompactionPerformer;
@@ -37,6 +38,8 @@ import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.metrics.utils.SystemMetric;
 
 import org.apache.tsfile.file.metadata.IDeviceID;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -48,6 +51,8 @@ import java.util.stream.Stream;
 
 public class NewSizeTieredCompactionSelector extends SizeTieredCompactionSelector {
 
+  private static final Logger LOGGER =
+      LoggerFactory.getLogger(IoTDBConstant.COMPACTION_LOGGER_NAME);
   private List<TsFileResourceCandidate> tsFileResourceCandidateList = new ArrayList<>();
   private final long totalFileSizeThreshold;
   // the total file num in one task can not exceed this value
@@ -155,7 +160,7 @@ public class NewSizeTieredCompactionSelector extends SizeTieredCompactionSelecto
           levelTaskSelection.endCurrentTaskSelection();
           break;
         }
-        if (!levelTaskSelection.canSelectMoreFiles(currentFile)) {
+        if (!levelTaskSelection.canSelectMoreFilesInMemoryBudget(currentFile)) {
           levelTaskSelection.endCurrentTaskSelection();
           break;
         }
@@ -243,7 +248,9 @@ public class NewSizeTieredCompactionSelector extends SizeTieredCompactionSelecto
       return currentSelectedResources.isEmpty();
     }
 
-    private boolean canSelectMoreFiles(TsFileResourceCandidate currentFile) {
+    private boolean canSelectMoreFilesInMemoryBudget(TsFileResourceCandidate currentFile)
+        throws IOException {
+      // can not get enough information to estimate memory cost
       if (!estimateCompactionTaskMemoryDuringSelection) {
         return true;
       }
@@ -252,14 +259,10 @@ public class NewSizeTieredCompactionSelector extends SizeTieredCompactionSelecto
         return true;
       }
       long memoryCost;
-      try {
-        memoryCost =
-            estimator.roughEstimateInnerCompactionMemory(
-                Stream.concat(currentSelectedResources.stream(), Stream.of(currentFile.resource))
-                    .collect(Collectors.toList()));
-      } catch (IOException e) {
-        return false;
-      }
+      memoryCost =
+          estimator.roughEstimateInnerCompactionMemory(
+              Stream.concat(currentSelectedResources.stream(), Stream.of(currentFile.resource))
+                  .collect(Collectors.toList()));
       if (memoryCost < 0) {
         return false;
       }

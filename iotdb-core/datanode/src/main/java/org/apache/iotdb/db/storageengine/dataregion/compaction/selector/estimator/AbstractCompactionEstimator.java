@@ -59,7 +59,11 @@ public abstract class AbstractCompactionEstimator {
           new LRUMap<>(
               IoTDBDescriptor.getInstance().getConfig().getGlobalCompactionFileInfoCacheSize()));
   private static final Map<TsFileID, FileInfo.RoughFileInfo> globalRoughInfoCacheForCompaction =
-      Collections.synchronizedMap(new LRUMap<>(100000));
+      Collections.synchronizedMap(
+          new LRUMap<>(
+              IoTDBDescriptor.getInstance()
+                  .getConfig()
+                  .getGlobalCompactionRoughFileInfoCacheSize()));
   protected Map<TsFileResource, FileInfo> fileInfoCache = new HashMap<>();
   protected Map<TsFileResource, FileInfo.RoughFileInfo> roughInfoMap = new HashMap<>();
   protected Map<TsFileResource, ArrayDeviceTimeIndex> deviceTimeIndexCache = new HashMap<>();
