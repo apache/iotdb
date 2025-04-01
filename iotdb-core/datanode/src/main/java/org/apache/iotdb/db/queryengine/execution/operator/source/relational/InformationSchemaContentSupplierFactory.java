@@ -105,6 +105,8 @@ public class InformationSchemaContentSupplierFactory {
         return new TopicSupplier(dataTypes);
       case InformationSchema.SUBSCRIPTIONS:
         return new SubscriptionSupplier(dataTypes);
+      case InformationSchema.VIEWS:
+        return new ViewsSupplier(dataTypes);
       default:
         throw new UnsupportedOperationException("Unknown table: " + tableName);
     }
@@ -597,7 +599,6 @@ public class InformationSchemaContentSupplierFactory {
   }
 
   private static class ViewsSupplier extends TsBlockSupplier {
-
     private Iterator<Map.Entry<String, Map<String, Pair<TsTable, Set<String>>>>> dbIterator;
     private Iterator<Map.Entry<String, Pair<TsTable, Set<String>>>> tableInfoIterator;
     private String dbName;
