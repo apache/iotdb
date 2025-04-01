@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.execution.operator.source.relational;
 
+import org.apache.iotdb.common.rpc.thrift.Model;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.model.ModelType;
@@ -31,9 +32,14 @@ import org.apache.iotdb.commons.schema.table.TreeViewSchema;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.TsTableInternalRPCUtil;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
+import org.apache.iotdb.commons.udf.UDFInformation;
+import org.apache.iotdb.commons.udf.builtin.relational.TableBuiltinAggregationFunction;
+import org.apache.iotdb.commons.udf.builtin.relational.TableBuiltinScalarFunction;
+import org.apache.iotdb.commons.udf.builtin.relational.TableBuiltinTableFunction;
 import org.apache.iotdb.confignode.rpc.thrift.TDatabaseInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TDescTable4InformationSchemaResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetDatabaseReq;
+import org.apache.iotdb.confignode.rpc.thrift.TGetUdfTableReq;
 import org.apache.iotdb.confignode.rpc.thrift.TRegionInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TShowModelReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipeInfo;
@@ -69,6 +75,7 @@ import org.apache.tsfile.utils.ReadWriteIOUtils;
 import java.nio.ByteBuffer;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -78,10 +85,17 @@ import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
+import static org.apache.iotdb.commons.conf.IoTDBConstant.FUNCTION_STATE_AVAILABLE;
+import static org.apache.iotdb.commons.conf.IoTDBConstant.FUNCTION_TYPE_BUILTIN_AGG_FUNC;
+import static org.apache.iotdb.commons.conf.IoTDBConstant.FUNCTION_TYPE_BUILTIN_SCALAR_FUNC;
+import static org.apache.iotdb.commons.conf.IoTDBConstant.FUNCTION_TYPE_BUILTIN_TABLE_FUNC;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.TTL_INFINITE;
 import static org.apache.iotdb.commons.schema.SchemaConstant.ALL_MATCH_SCOPE;
 import static org.apache.iotdb.commons.schema.SchemaConstant.ALL_RESULT_NODES;
 import static org.apache.iotdb.commons.schema.table.TsTable.TTL_PROPERTY;
+import static org.apache.iotdb.db.queryengine.plan.execution.config.metadata.ShowFunctionsTask.BINARY_MAP;
+import static org.apache.iotdb.db.queryengine.plan.execution.config.metadata.ShowFunctionsTask.getFunctionState;
+import static org.apache.iotdb.db.queryengine.plan.execution.config.metadata.ShowFunctionsTask.getFunctionType;
 import static org.apache.iotdb.db.queryengine.plan.execution.config.metadata.ShowPipePluginsTask.PIPE_PLUGIN_TYPE_BUILTIN;
 import static org.apache.iotdb.db.queryengine.plan.execution.config.metadata.ShowPipePluginsTask.PIPE_PLUGIN_TYPE_EXTERNAL;
 import static org.apache.iotdb.db.queryengine.plan.execution.config.metadata.ai.ShowModelsTask.INPUT_DATA_TYPE;
@@ -117,6 +131,8 @@ public class InformationSchemaContentSupplierFactory {
         return new ViewsSupplier(dataTypes);
       case InformationSchema.MODELS:
         return new ModelsSupplier(dataTypes);
+      case InformationSchema.FUNCTIONS:
+        return new FunctionsSupplier(dataTypes);
       default:
         throw new UnsupportedOperationException("Unknown table: " + tableName);
     }
@@ -733,16 +749,64 @@ public class InformationSchemaContentSupplierFactory {
 
   private static class FunctionsSupplier extends TsBlockSupplier {
 
+    private Iterator<UDFInformation> udfIterator;
+    private Iterator<String> nameIterator;
+    private Binary functionType;
+    private Binary functionState;
+
     private FunctionsSupplier(final List<TSDataType> dataTypes) {
       super(dataTypes);
+      try (final ConfigNodeClient client =
+          ConfigNodeClientManager.getInstance().borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
+        udfIterator =
+            client.getUDFTable(new TGetUdfTableReq(Model.TABLE)).getAllUDFInformation().stream()
+                .map(UDFInformation::deserialize)
+                .sorted(Comparator.comparing(UDFInformation::getFunctionName))
+                .iterator();
+        nameIterator = TableBuiltinScalarFunction.getBuiltInScalarFunctionName().iterator();
+        functionType = BINARY_MAP.get(FUNCTION_TYPE_BUILTIN_SCALAR_FUNC);
+        functionState = BINARY_MAP.get(FUNCTION_STATE_AVAILABLE);
+      } catch (final Exception e) {
+        lastException = e;
+      }
     }
 
     @Override
-    protected void constructLine() {}
+    protected void constructLine() {
+      if (udfIterator.hasNext()) {
+        final UDFInformation udfInformation = udfIterator.next();
+        columnBuilders[0].writeBinary(BytesUtils.valueOf(udfInformation.getFunctionName()));
+        columnBuilders[1].writeBinary(getFunctionType(udfInformation));
+        columnBuilders[2].writeBinary(BytesUtils.valueOf(udfInformation.getClassName()));
+        columnBuilders[3].writeBinary(getFunctionState(udfInformation));
+      } else if (nameIterator.hasNext()) {
+        final String name = nameIterator.next();
+        columnBuilders[0].writeBinary(BytesUtils.valueOf(name.toUpperCase()));
+        columnBuilders[1].writeBinary(functionType);
+        columnBuilders[2].appendNull();
+        columnBuilders[3].writeBinary(functionState);
+      }
+      resultBuilder.declarePosition();
+    }
 
     @Override
     public boolean hasNext() {
-      return false;
+      if (udfIterator.hasNext()) {
+        return true;
+      }
+      while (!nameIterator.hasNext()) {
+        if (functionType.equals(BINARY_MAP.get(FUNCTION_TYPE_BUILTIN_SCALAR_FUNC))) {
+          functionType = BINARY_MAP.get(FUNCTION_TYPE_BUILTIN_AGG_FUNC);
+          nameIterator =
+              TableBuiltinAggregationFunction.getBuiltInAggregateFunctionName().iterator();
+        } else if (functionType.equals(BINARY_MAP.get(FUNCTION_TYPE_BUILTIN_AGG_FUNC))) {
+          functionType = BINARY_MAP.get(FUNCTION_TYPE_BUILTIN_TABLE_FUNC);
+          nameIterator = TableBuiltinTableFunction.getBuiltInTableFunctionName().iterator();
+        } else {
+          return false;
+        }
+      }
+      return true;
     }
   }
 
