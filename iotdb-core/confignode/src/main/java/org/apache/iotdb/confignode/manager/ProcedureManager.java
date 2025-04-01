@@ -670,8 +670,7 @@ public class ProcedureManager {
                 Arrays.asList(
                     new Pair<>("Original DataNode", originalDataNode),
                     new Pair<>("Destination DataNode", destDataNode),
-                    new Pair<>("Coordinator for add peer", coordinatorForAddPeer)),
-                migrateRegionReq.getModel()))
+                    new Pair<>("Coordinator for add peer", coordinatorForAddPeer))))
         != null) {
       // do nothing
     } else if (configManager
@@ -931,20 +930,6 @@ public class ProcedureManager {
         .filter(procedure -> !procedure.isFinished())
         .filter(procedure -> procedure instanceof RegionOperationProcedure)
         .map(procedure -> (RegionOperationProcedure<?>) procedure);
-  }
-
-  private String checkRegionOperationModelCorrectness(TConsensusGroupId regionId, Model model) {
-    String databaseName = configManager.getPartitionManager().getRegionDatabase(regionId);
-    boolean isTreeModelDatabase = databaseName.startsWith(SqlConstant.TREE_MODEL_DATABASE_PREFIX);
-    if (Model.TREE == model && isTreeModelDatabase
-        || Model.TABLE == model && !isTreeModelDatabase) {
-      return null;
-    }
-    return String.format(
-        "The region's database %s is belong to %s model, but the model you are operating is %s",
-        databaseName,
-        isTreeModelDatabase ? Model.TREE.toString() : Model.TABLE.toString(),
-        model.toString());
   }
 
   // end region
