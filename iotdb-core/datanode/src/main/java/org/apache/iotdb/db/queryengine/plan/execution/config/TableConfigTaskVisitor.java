@@ -906,15 +906,18 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
 
     // Inject table model into the extractor attributes
     extractorAttributes.put(SystemConstant.SQL_DIALECT_KEY, SystemConstant.SQL_DIALECT_TABLE_VALUE);
-    checkAndEnrichSourceUserName(pipeName, extractorAttributes, userName);
-    checkAndEnrichSinkUserName(pipeName, node.getConnectorAttributes(), userName);
+    checkAndEnrichSourceUserName(pipeName, extractorAttributes, userName, false);
+    checkAndEnrichSinkUserName(pipeName, node.getConnectorAttributes(), userName, false);
 
     return new CreatePipeTask(node);
   }
 
   public static void checkAndEnrichSourceUserName(
-      final String pipeName, final Map<String, String> extractorAttributes, final String userName) {
-    final PipeParameters extractorParameters = new PipeParameters(extractorAttributes);
+      final String pipeName,
+      final Map<String, String> replacedExtractorAttributes,
+      final String userName,
+      final boolean isAlter) {
+    final PipeParameters extractorParameters = new PipeParameters(replacedExtractorAttributes);
     final String pluginName =
         extractorParameters
             .getStringOrDefault(
@@ -933,19 +936,22 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
         PipeExtractorConstant.SOURCE_IOTDB_USER_KEY,
         PipeExtractorConstant.EXTRACTOR_IOTDB_USERNAME_KEY,
         PipeExtractorConstant.SOURCE_IOTDB_USERNAME_KEY)) {
-      extractorAttributes.put(PipeExtractorConstant.SOURCE_IOTDB_USERNAME_KEY, userName);
+      replacedExtractorAttributes.put(PipeExtractorConstant.SOURCE_IOTDB_USERNAME_KEY, userName);
     } else if (!extractorParameters.hasAnyAttributes(
         PipeExtractorConstant.EXTRACTOR_IOTDB_PASSWORD_KEY,
         PipeExtractorConstant.SOURCE_IOTDB_PASSWORD_KEY)) {
       throw new SemanticException(
           String.format(
-              "Failed to create pipe %s, in iotdb-source, password must be set when the username is specified.",
-              pipeName));
+              "Failed to %s pipe %s, in iotdb-source, password must be set when the username is specified.",
+              isAlter ? "alter" : "create", pipeName));
     }
   }
 
   public static void checkAndEnrichSinkUserName(
-      final String pipeName, final Map<String, String> connectorAttributes, final String userName) {
+      final String pipeName,
+      final Map<String, String> connectorAttributes,
+      final String userName,
+      final boolean isAlter) {
     final PipeParameters connectorParameters = new PipeParameters(connectorAttributes);
     final String pluginName =
         connectorParameters
@@ -970,8 +976,8 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
         PipeConnectorConstant.SINK_IOTDB_PASSWORD_KEY)) {
       throw new SemanticException(
           String.format(
-              "Failed to create pipe %s, in write-back-sink, password must be set when the username is specified.",
-              pipeName));
+              "Failed to %s pipe %s, in write-back-sink, password must be set when the username is specified.",
+              isAlter ? "alter" : "create", pipeName));
     }
   }
 
@@ -997,14 +1003,14 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
     if (node.isReplaceAllExtractorAttributes()) {
       extractorAttributes.put(
           SystemConstant.SQL_DIALECT_KEY, SystemConstant.SQL_DIALECT_TABLE_VALUE);
-      checkAndEnrichSourceUserName(pipeName, extractorAttributes, userName);
+      checkAndEnrichSourceUserName(pipeName, extractorAttributes, userName, true);
     }
 
     if (node.isReplaceAllConnectorAttributes()) {
-      checkAndEnrichSinkUserName(pipeName, node.getConnectorAttributes(), userName);
+      checkAndEnrichSinkUserName(pipeName, node.getConnectorAttributes(), userName, true);
     }
 
-    return new AlterPipeTask(node);
+    return new AlterPipeTask(node, userName);
   }
 
   @Override

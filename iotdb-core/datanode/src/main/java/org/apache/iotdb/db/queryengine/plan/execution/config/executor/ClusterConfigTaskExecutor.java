@@ -48,10 +48,13 @@ import org.apache.iotdb.commons.executable.ExecutableResource;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
+import org.apache.iotdb.commons.pipe.agent.plugin.builtin.BuiltinPipePlugin;
 import org.apache.iotdb.commons.pipe.agent.plugin.service.PipePluginClassLoader;
 import org.apache.iotdb.commons.pipe.agent.plugin.service.PipePluginExecutableManager;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeMeta;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeStaticMeta;
+import org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant;
+import org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant;
 import org.apache.iotdb.commons.pipe.connector.payload.airgap.AirGapPseudoTPipeTransferRequest;
 import org.apache.iotdb.commons.pipe.datastructure.visibility.Visibility;
 import org.apache.iotdb.commons.pipe.datastructure.visibility.VisibilityUtils;
@@ -156,6 +159,7 @@ import org.apache.iotdb.db.exception.BatchProcessException;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.exception.metadata.SchemaQuotaExceededException;
+import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
 import org.apache.iotdb.db.protocol.client.ConfigNodeClient;
 import org.apache.iotdb.db.protocol.client.ConfigNodeClientManager;
@@ -2073,6 +2077,8 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
         if (alterPipeStatement.isReplaceAllExtractorAttributes()) {
           extractorAttributes = alterPipeStatement.getExtractorAttributes();
         } else {
+          final boolean onlyContainsUser =
+              onlyContainsUser(alterPipeStatement.getExtractorAttributes());
           pipeMetaFromCoordinator
               .getStaticMeta()
               .getExtractorParameters()
@@ -2080,6 +2086,9 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
                   new PipeParameters(alterPipeStatement.getExtractorAttributes()));
           extractorAttributes =
               pipeMetaFromCoordinator.getStaticMeta().getExtractorParameters().getAttribute();
+          if (onlyContainsUser) {
+            checkSourceType(alterPipeStatement.getPipeName(), extractorAttributes);
+          }
         }
       } else {
         extractorAttributes =
@@ -2107,6 +2116,8 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
         if (alterPipeStatement.isReplaceAllConnectorAttributes()) {
           connectorAttributes = alterPipeStatement.getConnectorAttributes();
         } else {
+          final boolean onlyContainsUser =
+              onlyContainsUser(alterPipeStatement.getConnectorAttributes());
           pipeMetaFromCoordinator
               .getStaticMeta()
               .getConnectorParameters()
@@ -2114,6 +2125,9 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
                   new PipeParameters(alterPipeStatement.getConnectorAttributes()));
           connectorAttributes =
               pipeMetaFromCoordinator.getStaticMeta().getConnectorParameters().getAttribute();
+          if (onlyContainsUser) {
+            checkSinkType(alterPipeStatement.getPipeName(), connectorAttributes);
+          }
         }
       } else {
         connectorAttributes =
@@ -2151,6 +2165,59 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
       future.setException(e);
     }
     return future;
+  }
+
+  private static void checkSourceType(
+      final String pipeName, final Map<String, String> replacedExtractorAttributes) {
+    final PipeParameters extractorParameters = new PipeParameters(replacedExtractorAttributes);
+    final String pluginName =
+        extractorParameters
+            .getStringOrDefault(
+                Arrays.asList(
+                    PipeExtractorConstant.EXTRACTOR_KEY, PipeExtractorConstant.SOURCE_KEY),
+                BuiltinPipePlugin.IOTDB_EXTRACTOR.getPipePluginName())
+            .toLowerCase();
+
+    if (pluginName.equals(BuiltinPipePlugin.IOTDB_EXTRACTOR.getPipePluginName())
+        || pluginName.equals(BuiltinPipePlugin.IOTDB_SOURCE.getPipePluginName())) {
+      throw new SemanticException(
+          String.format(
+              "Failed to alter pipe %s, in iotdb-source, password must be set when the username is specified.",
+              pipeName));
+    }
+  }
+
+  private static boolean onlyContainsUser(
+      final Map<String, String> extractorOrConnectorAttributes) {
+    final PipeParameters extractorOrConnectorParameters =
+        new PipeParameters(extractorOrConnectorAttributes);
+    return extractorOrConnectorParameters.hasAnyAttributes(
+            PipeConnectorConstant.CONNECTOR_IOTDB_USER_KEY,
+            PipeConnectorConstant.SINK_IOTDB_USER_KEY,
+            PipeConnectorConstant.CONNECTOR_IOTDB_USERNAME_KEY,
+            PipeConnectorConstant.SINK_IOTDB_USERNAME_KEY)
+        && !extractorOrConnectorParameters.hasAnyAttributes(
+            PipeConnectorConstant.CONNECTOR_IOTDB_PASSWORD_KEY,
+            PipeConnectorConstant.SINK_IOTDB_PASSWORD_KEY);
+  }
+
+  private static void checkSinkType(
+      final String pipeName, final Map<String, String> connectorAttributes) {
+    final PipeParameters connectorParameters = new PipeParameters(connectorAttributes);
+    final String pluginName =
+        connectorParameters
+            .getStringOrDefault(
+                Arrays.asList(PipeConnectorConstant.CONNECTOR_KEY, PipeConnectorConstant.SINK_KEY),
+                BuiltinPipePlugin.IOTDB_THRIFT_SINK.getPipePluginName())
+            .toLowerCase();
+
+    if (pluginName.equals(BuiltinPipePlugin.WRITE_BACK_CONNECTOR.getPipePluginName())
+        || pluginName.equals(BuiltinPipePlugin.WRITE_BACK_SINK.getPipePluginName())) {
+      throw new SemanticException(
+          String.format(
+              "Failed to alter pipe %s, in write-back-sink, password must be set when the username is specified.",
+              pipeName));
+    }
   }
 
   @Override
