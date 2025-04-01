@@ -310,7 +310,7 @@ public class TsFileInsertionEventTableParserTabletIterator implements Iterator<T
     }
 
     if (isFirstRow) {
-      PipeDataNodeResourceManager.memory().forceResize(allocatedMemoryBlockForChunkMeta, 0);
+      PipeDataNodeResourceManager.memory().forceResize(allocatedMemoryBlockForTablet, 0);
       tablet = new Tablet(tableName, measurementList, dataTypeList, columnTypes, 0);
       tablet.initBitMaps();
     }
@@ -334,8 +334,15 @@ public class TsFileInsertionEventTableParserTabletIterator implements Iterator<T
     // you need to create a new Tablet to fill in the data.
     isSameDeviceID = false;
 
+    // Need to ensure that columnTypes recreates an array
+    final List<Tablet.ColumnCategory> categories =
+        new ArrayList<>(deviceIdSize + PIPE_MAX_ALIGNED_SERIES_NUM_IN_ONE_BATCH);
+    for (int i = 0; i < deviceIdSize; i++) {
+      categories.add(Tablet.ColumnCategory.TAG);
+    }
+    columnTypes = categories;
+
     // Clean up the remaining non-DeviceID column information
-    columnTypes.subList(deviceIdSize, columnTypes.size()).clear();
     measurementList.subList(deviceIdSize, measurementList.size()).clear();
     dataTypeList.subList(deviceIdSize, dataTypeList.size()).clear();
 
