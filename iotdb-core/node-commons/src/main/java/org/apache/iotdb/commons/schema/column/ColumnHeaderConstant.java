@@ -244,6 +244,15 @@ public class ColumnHeaderConstant {
   public static final String CONSUMER_GROUP_NAME_TABLE_MODEL = "consumer_group_name";
   public static final String SUBSCRIBED_CONSUMERS_TABLE_MODEL = "subscribed_consumers";
 
+  public static final String VIEW_DEFINITION_TABLE_MODEL = "view_definition";
+
+  public static final String MODEL_ID_TABLE_MODEL = "model_id";
+  public static final String MODEL_TYPE_TABLE_MODEL = "model_type";
+
+  public static final String FUNCTION_NAME_TABLE_MODEL = "function_table";
+  public static final String FUNCTION_TYPE_TABLE_MODEL = "function_type";
+  public static final String CLASS_NAME_UDF_TABLE_MODEL = "class_name(udf)";
+
   // column names for show space quota
   public static final String QUOTA_TYPE = "QuotaType";
   public static final String LIMIT = "Limit";
