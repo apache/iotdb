@@ -826,14 +826,14 @@ public class IoTDBTableIT {
           statement.executeQuery("show create view view_table"),
           "View,Create View,",
           Collections.singleton(
-              "view_table,CREATE TABLE VIEW \"view_table\" (tag1 STRING TAG,tag2 STRING TAG,s11 INT32 FIELD,s3 INT32 FIELD FROM s2) AS root.a.** WITH (ttl=100) RESTRICT,"));
+              "view_table,CREATE TABLE VIEW \"view_table\" (tag1 STRING TAG,tag2 STRING TAG,s11 INT32 FIELD,s3 STRING FIELD FROM s2) AS root.a.** WITH (ttl=100) RESTRICT,"));
 
       // Can also use "show create table"
       TestUtils.assertResultSetEqual(
           statement.executeQuery("show create table view_table"),
           "View,Create View,",
           Collections.singleton(
-              "view_table,CREATE TABLE VIEW \"view_table\" (tag1 STRING TAG,tag2 STRING TAG,s11 INT32 FIELD,s3 INT32 FIELD FROM s2) AS root.a.** WITH (ttl=100) RESTRICT,"));
+              "view_table,CREATE TABLE VIEW \"view_table\" (tag1 STRING TAG,tag2 STRING TAG,s11 INT32 FIELD,s3 STRING FIELD FROM s2) AS root.a.** WITH (ttl=100) RESTRICT,"));
 
       try {
         statement.execute("show create view a");
