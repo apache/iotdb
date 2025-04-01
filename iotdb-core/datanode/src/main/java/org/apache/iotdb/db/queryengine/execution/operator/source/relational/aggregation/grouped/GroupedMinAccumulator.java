@@ -76,7 +76,7 @@ public class GroupedMinAccumulator implements GroupedAccumulator {
         return;
       default:
         throw new UnSupportedDataTypeException(
-            String.format("Unsupported data type : %s", seriesDataType));
+            String.format("Unsupported data type in Min Aggregation: %s", seriesDataType));
     }
   }
 
@@ -108,7 +108,7 @@ public class GroupedMinAccumulator implements GroupedAccumulator {
         break;
       default:
         throw new UnSupportedDataTypeException(
-            String.format("Unsupported data type in : %s", seriesDataType));
+            String.format("Unsupported data type in Min Aggregation: %s", seriesDataType));
     }
 
     return INSTANCE_SIZE + valuesSize + inits.sizeOf();
@@ -142,7 +142,7 @@ public class GroupedMinAccumulator implements GroupedAccumulator {
         return;
       default:
         throw new UnSupportedDataTypeException(
-            String.format("Unsupported data type in : %s", seriesDataType));
+            String.format("Unsupported data type in Min Aggregation: %s", seriesDataType));
     }
   }
 
@@ -174,7 +174,7 @@ public class GroupedMinAccumulator implements GroupedAccumulator {
         return;
       default:
         throw new UnSupportedDataTypeException(
-            String.format("Unsupported data type : %s", seriesDataType));
+            String.format("Unsupported data type in Min Aggregation: %s", seriesDataType));
     }
   }
 
@@ -211,7 +211,7 @@ public class GroupedMinAccumulator implements GroupedAccumulator {
           break;
         default:
           throw new UnSupportedDataTypeException(
-              String.format("Unsupported data type: %s", seriesDataType));
+              String.format("Unsupported data type in Min Aggregation: %s", seriesDataType));
       }
     }
   }
@@ -247,7 +247,7 @@ public class GroupedMinAccumulator implements GroupedAccumulator {
           break;
         default:
           throw new UnSupportedDataTypeException(
-              String.format("Unsupported data type: %s", seriesDataType));
+              String.format("Unsupported data type in Min Aggregation: %s", seriesDataType));
       }
     }
   }
@@ -282,7 +282,7 @@ public class GroupedMinAccumulator implements GroupedAccumulator {
           break;
         default:
           throw new UnSupportedDataTypeException(
-              String.format("Unsupported data type: %s", seriesDataType));
+              String.format("Unsupported data type in Min Aggregation: %s", seriesDataType));
       }
     }
   }
@@ -318,7 +318,7 @@ public class GroupedMinAccumulator implements GroupedAccumulator {
         return;
       default:
         throw new UnSupportedDataTypeException(
-            String.format("Unsupported data type : %s", seriesDataType));
+            String.format("Unsupported data type in Min Aggregation: %s", seriesDataType));
     }
   }
 
