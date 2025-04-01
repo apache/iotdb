@@ -26,6 +26,7 @@ import org.apache.iotdb.commons.pipe.agent.plugin.meta.PipePluginMeta;
 import org.apache.iotdb.commons.schema.table.InformationSchema;
 import org.apache.iotdb.commons.schema.table.TableNodeStatus;
 import org.apache.iotdb.commons.schema.table.TableType;
+import org.apache.iotdb.commons.schema.table.TreeViewSchema;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.TsTableInternalRPCUtil;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
@@ -48,6 +49,7 @@ import org.apache.iotdb.db.protocol.client.ConfigNodeInfo;
 import org.apache.iotdb.db.protocol.session.IClientSession;
 import org.apache.iotdb.db.queryengine.plan.Coordinator;
 import org.apache.iotdb.db.queryengine.plan.execution.IQueryExecution;
+import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.ShowCreateViewTask;
 import org.apache.iotdb.db.schemaengine.table.InformationSchemaUtils;
 import org.apache.iotdb.db.utils.TimestampPrecisionUtils;
 
@@ -369,7 +371,7 @@ public class InformationSchemaContentSupplierFactory {
           tableInfoIterator = entry.getValue().entrySet().iterator();
         }
 
-        Map.Entry<String, Pair<TsTable, Set<String>>> tableEntry = tableInfoIterator.next();
+        final Map.Entry<String, Pair<TsTable, Set<String>>> tableEntry = tableInfoIterator.next();
         tableName = tableEntry.getKey();
         preDeletedColumns = tableEntry.getValue().getRight();
         columnSchemaIterator = tableEntry.getValue().getLeft().getColumnList().iterator();
@@ -591,6 +593,74 @@ public class InformationSchemaContentSupplierFactory {
     @Override
     public boolean hasNext() {
       return iterator.hasNext();
+    }
+  }
+
+  private static class ViewsSupplier extends TsBlockSupplier {
+
+    private Iterator<Map.Entry<String, Map<String, Pair<TsTable, Set<String>>>>> dbIterator;
+    private Iterator<Map.Entry<String, Pair<TsTable, Set<String>>>> tableInfoIterator;
+    private String dbName;
+    private TsTable currentTable;
+
+    private ViewsSupplier(final List<TSDataType> dataTypes) {
+      super(dataTypes);
+      try (final ConfigNodeClient client =
+          ConfigNodeClientManager.getInstance().borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
+        final TDescTable4InformationSchemaResp resp = client.descTables4InformationSchema();
+        final Map<String, Map<String, Pair<TsTable, Set<String>>>> resultMap =
+            resp.getTableColumnInfoMap().entrySet().stream()
+                .collect(
+                    Collectors.toMap(
+                        Map.Entry::getKey,
+                        entry ->
+                            entry.getValue().entrySet().stream()
+                                .collect(
+                                    Collectors.toMap(
+                                        Map.Entry::getKey,
+                                        tableEntry ->
+                                            new Pair<>(
+                                                TsTableInternalRPCUtil.deserializeSingleTsTable(
+                                                    tableEntry.getValue().getTableInfo()),
+                                                tableEntry.getValue().getPreDeletedColumns())))));
+        dbIterator = resultMap.entrySet().iterator();
+      } catch (final Exception e) {
+        lastException = e;
+      }
+    }
+
+    @Override
+    protected void constructLine() {
+      columnBuilders[0].writeBinary(new Binary(dbName, TSFileConfig.STRING_CHARSET));
+      columnBuilders[1].writeBinary(
+          new Binary(currentTable.getTableName(), TSFileConfig.STRING_CHARSET));
+      columnBuilders[2].writeBinary(
+          new Binary(
+              ShowCreateViewTask.getShowCreateViewSQL(currentTable), TSFileConfig.STRING_CHARSET));
+    }
+
+    @Override
+    public boolean hasNext() {
+      while (true) {
+        while (Objects.isNull(tableInfoIterator) || !tableInfoIterator.hasNext()) {
+          if (!dbIterator.hasNext()) {
+            return false;
+          }
+          final Map.Entry<String, Map<String, Pair<TsTable, Set<String>>>> entry =
+              dbIterator.next();
+          dbName = entry.getKey();
+          tableInfoIterator = entry.getValue().entrySet().iterator();
+        }
+
+        while (tableInfoIterator.hasNext()) {
+          final Map.Entry<String, Pair<TsTable, Set<String>>> tableEntry = tableInfoIterator.next();
+          if (!TreeViewSchema.isTreeViewTable(tableEntry.getValue().getLeft())) {
+            continue;
+          }
+          currentTable = tableEntry.getValue().getLeft();
+          return true;
+        }
+      }
     }
   }
 

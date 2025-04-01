@@ -80,7 +80,7 @@ public class ShowCreateViewTask extends AbstractTableTask {
     future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS, builder.build(), datasetHeader));
   }
 
-  private static String getShowCreateViewSQL(final TsTable table) {
+  public static String getShowCreateViewSQL(final TsTable table) {
     final StringBuilder builder =
         new StringBuilder("CREATE TABLE VIEW \"").append(table.getTableName()).append("\" (");
 
