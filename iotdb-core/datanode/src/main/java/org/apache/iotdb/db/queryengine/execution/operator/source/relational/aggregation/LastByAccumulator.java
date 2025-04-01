@@ -35,7 +35,6 @@ import org.apache.tsfile.write.UnSupportedDataTypeException;
 
 import static com.google.common.base.Preconditions.checkArgument;
 import static org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.Utils.serializeTimeValue;
-import static org.apache.iotdb.db.utils.constant.SqlConstant.LAST_BY_AGGREGATION;
 
 public class LastByAccumulator implements TableAccumulator {
 
@@ -309,9 +308,7 @@ public class LastByAccumulator implements TableAccumulator {
               break;
             default:
               throw new UnSupportedDataTypeException(
-                  String.format(
-                      "Unsupported data type in LAST_BY Aggregation: %s",
-                      yDataType));
+                  String.format("Unsupported data type in LAST_BY Aggregation: %s", yDataType));
           }
         }
       }
