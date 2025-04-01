@@ -835,14 +835,6 @@ public class IoTDBTableIT {
           Collections.singleton(
               "view_table,CREATE TABLE VIEW \"view_table\" (tag1 STRING TAG,tag2 STRING TAG,s11 INT32 FIELD,s3 STRING FIELD FROM s2) AS root.a.** WITH (ttl=100) RESTRICT,"));
 
-      try {
-        statement.execute("show create view a");
-        fail();
-      } catch (final SQLException e) {
-        assertEquals(
-            "305: The table a is a base table, does not support show create view.", e.getMessage());
-      }
-
       statement.execute("create table a ()");
       try {
         statement.execute("show create view a");
