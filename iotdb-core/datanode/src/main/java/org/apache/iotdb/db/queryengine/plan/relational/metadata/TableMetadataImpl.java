@@ -641,6 +641,7 @@ public class TableMetadataImpl implements Metadata {
       case SqlConstant.COUNT:
       case SqlConstant.COUNT_ALL:
       case SqlConstant.COUNT_IF:
+      case SqlConstant.APPROX_COUNT_DISTINCT:
         return INT64;
       case SqlConstant.FIRST_AGGREGATION:
       case SqlConstant.LAST_AGGREGATION:
