@@ -129,7 +129,7 @@ public class LastByAccumulator implements TableAccumulator {
         return;
       default:
         throw new UnSupportedDataTypeException(
-            String.format("Unsupported data type in LastBy: %s", yDataType));
+            String.format("Unsupported data type in LastBy Aggregation: %s", yDataType));
     }
   }
 
@@ -245,7 +245,7 @@ public class LastByAccumulator implements TableAccumulator {
         break;
       default:
         throw new UnSupportedDataTypeException(
-            String.format("Unsupported data type in LastBy: %s", xDataType));
+            String.format("Unsupported data type in LastBy Aggregation: %s", xDataType));
     }
   }
 

@@ -105,7 +105,7 @@ public class FirstByAccumulator implements TableAccumulator {
         return;
       default:
         throw new UnSupportedDataTypeException(
-            String.format("Unsupported data type in FirstBy: %s", yDataType));
+            String.format("Unsupported data type in FirstBy Aggregation: %s", yDataType));
     }
   }
 
@@ -221,7 +221,7 @@ public class FirstByAccumulator implements TableAccumulator {
         break;
       default:
         throw new UnSupportedDataTypeException(
-            String.format("Unsupported data type in FirstBy: %s", xDataType));
+            String.format("Unsupported data type in FirstBy Aggregation: %s", xDataType));
     }
   }
 
@@ -285,9 +285,7 @@ public class FirstByAccumulator implements TableAccumulator {
               break;
             default:
               throw new UnSupportedDataTypeException(
-                  String.format(
-                      "Unsupported data type: %s in Aggregation: %s",
-                      yDataType, FIRST_BY_AGGREGATION));
+                  String.format("Unsupported data type in FirstBy Aggregation: %s", yDataType));
           }
         }
       }
