@@ -5,31 +5,30 @@ on:
       - master
       - "rc/*"
     paths:
-      - 'pom.xml'
-      - 'iotdb-client/pom.xml'
-      - 'iotdb-client/client-py/**'
-      - 'iotdb-client/client-cpp/**'
-      - 'example/client-cpp-example/**'
-      - 'iotdb-protocol/thrift-datanode/src/main/thrift/client.thrift'
-      - 'iotdb-protocol/thrift-commons/src/main/thrift/common.thrift'
-      - '.github/workflows/multi-language-client.yml'
+      - "pom.xml"
+      - "iotdb-client/pom.xml"
+      - "iotdb-client/client-py/**"
+      - "iotdb-client/client-cpp/**"
+      - "example/client-cpp-example/**"
+      - "iotdb-protocol/thrift-datanode/src/main/thrift/client.thrift"
+      - "iotdb-protocol/thrift-commons/src/main/thrift/common.thrift"
+      - ".github/workflows/multi-language-client.yml"
   pull_request:
     branches:
       - master
       - "rc/*"
-      - 'force_ci/**'
+      - "force_ci/**"
     paths:
-      - 'pom.xml'
-      - 'iotdb-client/pom.xml'
-      - 'iotdb-client/client-py/**'
-      - 'iotdb-client/client-cpp/**'
-      - 'example/client-cpp-example/**'
-      - 'iotdb-protocol/thrift-datanode/src/main/thrift/client.thrift'
-      - 'iotdb-protocol/thrift-commons/src/main/thrift/common.thrift'
-      - '.github/workflows/multi-language-client.yml'
+      - "pom.xml"
+      - "iotdb-client/pom.xml"
+      - "iotdb-client/client-py/**"
+      - "iotdb-client/client-cpp/**"
+      - "example/client-cpp-example/**"
+      - "iotdb-protocol/thrift-datanode/src/main/thrift/client.thrift"
+      - "iotdb-protocol/thrift-commons/src/main/thrift/common.thrift"
+      - ".github/workflows/multi-language-client.yml"
   # allow manually run the action:
   workflow_dispatch:
-
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -45,7 +44,16 @@ jobs:
       fail-fast: false
       max-parallel: 15
       matrix:
-        os: [ubuntu-20.04, ubuntu-22.04, ubuntu-24.04, windows-2019, windows-2022, macos-latest]
+        java: [17]
+        os:
+          [
+            ubuntu-20.04,
+            ubuntu-22.04,
+            ubuntu-24.04,
+            windows-2019,
+            windows-2022,
+            macos-latest,
+          ]
     runs-on: ${{ matrix.os}}
 
     steps:
@@ -78,6 +86,11 @@ jobs:
           }
           $boost_path = (Get-ChildItem -Path 'C:\local\' -Filter 'boost_*').FullName
           echo $boost_path >> $env:GITHUB_PATH
+      - name: Set up JDK ${{ matrix.java }}
+        uses: actions/setup-java@v4
+        with:
+          distribution: liberica
+          java-version: ${{ matrix.java }}
       - name: Cache Maven packages
         uses: actions/cache@v4
         with:
@@ -109,6 +122,9 @@ jobs:
           retention-days: 1
 
   go:
+    strategy:
+      matrix:
+        java: [17]
     runs-on: ubuntu-latest
 
     steps:
@@ -116,6 +132,11 @@ jobs:
         with:
           token: ${{secrets.GITHUB_TOKEN}}
           submodules: recursive
+      - name: Set up JDK ${{ matrix.java }}
+        uses: actions/setup-java@v4
+        with:
+          distribution: liberica
+          java-version: ${{ matrix.java }}
       - name: Cache Maven packages
         uses: actions/cache@v4
         with:
@@ -137,7 +158,8 @@ jobs:
       fail-fast: false
       max-parallel: 15
       matrix:
-        python: [ '3.6', '3.x' ]
+        python: ["3.6", "3.x"]
+        java: [17]
     runs-on: ${{ (matrix.python == '3.6' && 'ubuntu-20.04') || 'ubuntu-latest' }}
 
     steps:
@@ -145,6 +167,11 @@ jobs:
         with:
           python-version: ${{ matrix.python }}
       - uses: actions/checkout@v4
+      - name: Set up JDK ${{ matrix.java }}
+        uses: actions/setup-java@v4
+        with:
+          distribution: liberica
+          java-version: ${{ matrix.java }}
       - name: Cache Maven packages
         uses: actions/cache@v4
         with:
