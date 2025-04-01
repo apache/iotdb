@@ -26,9 +26,8 @@ import org.apache.iotdb.db.schemaengine.schemaregion.attribute.update.UpdateCont
 import org.apache.iotdb.db.schemaengine.schemaregion.attribute.update.UpdateDetailContainer;
 import org.apache.iotdb.mpp.rpc.thrift.TAttributeUpdateReq;
 
+import jakarta.annotation.Nonnull;
 import org.apache.tsfile.utils.Pair;
-
-import javax.annotation.Nonnull;
 
 import java.util.Collections;
 import java.util.HashSet;

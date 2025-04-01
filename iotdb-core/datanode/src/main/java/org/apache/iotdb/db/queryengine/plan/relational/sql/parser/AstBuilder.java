@@ -218,6 +218,7 @@ import org.apache.iotdb.db.utils.DateTimeUtils;
 import org.apache.iotdb.db.utils.TimestampPrecisionUtils;
 
 import com.google.common.collect.ImmutableList;
+import jakarta.annotation.Nullable;
 import org.antlr.v4.runtime.ParserRuleContext;
 import org.antlr.v4.runtime.Token;
 import org.antlr.v4.runtime.tree.ParseTree;
@@ -226,8 +227,6 @@ import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.exception.write.NoTableException;
 import org.apache.tsfile.utils.TimeDuration;
 import org.apache.tsfile.write.schema.MeasurementSchema;
-
-import javax.annotation.Nullable;
 
 import java.net.URI;
 import java.net.URISyntaxException;

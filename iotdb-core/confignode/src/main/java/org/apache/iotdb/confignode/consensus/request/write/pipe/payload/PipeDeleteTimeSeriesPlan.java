@@ -22,9 +22,8 @@ package org.apache.iotdb.confignode.consensus.request.write.pipe.payload;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
 
+import jakarta.annotation.Nonnull;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
-
-import javax.annotation.Nonnull;
 
 import java.io.DataOutputStream;
 import java.io.IOException;

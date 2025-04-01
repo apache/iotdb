@@ -19,10 +19,10 @@
 
 package org.apache.iotdb.db.schemaengine.schemaregion.attribute.update;
 
+import jakarta.annotation.Nonnull;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.Pair;
 
-import javax.annotation.Nonnull;
 import javax.annotation.concurrent.ThreadSafe;
 
 import java.io.IOException;

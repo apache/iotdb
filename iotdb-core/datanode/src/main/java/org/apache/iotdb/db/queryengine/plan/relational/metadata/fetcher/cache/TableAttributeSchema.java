@@ -22,10 +22,9 @@ package org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache;
 import org.apache.iotdb.db.schemaengine.schemaregion.attribute.update.UpdateDetailContainer;
 import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
 
+import jakarta.annotation.Nonnull;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.RamUsageEstimator;
-
-import javax.annotation.Nonnull;
 
 import java.util.Map;
 import java.util.Objects;

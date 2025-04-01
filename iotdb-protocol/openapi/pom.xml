@@ -30,20 +30,24 @@
     <name>IoTDB: Protocol: OpenAPI</name>
     <dependencies>
         <dependency>
-            <groupId>io.swagger</groupId>
+            <groupId>io.swagger.core.v3</groupId>
+            <artifactId>swagger-integration-jakarta</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>io.swagger.core.v3</groupId>
             <artifactId>swagger-annotations</artifactId>
         </dependency>
         <dependency>
-            <groupId>io.swagger</groupId>
-            <artifactId>swagger-models</artifactId>
+            <groupId>io.swagger.core.v3</groupId>
+            <artifactId>swagger-models-jakarta</artifactId>
         </dependency>
         <dependency>
             <groupId>com.fasterxml.jackson.core</groupId>
             <artifactId>jackson-annotations</artifactId>
         </dependency>
         <dependency>
-            <groupId>com.fasterxml.jackson.jaxrs</groupId>
-            <artifactId>jackson-jaxrs-json-provider</artifactId>
+            <groupId>com.fasterxml.jackson.jakarta.rs</groupId>
+            <artifactId>jackson-jakarta-rs-json-provider</artifactId>
         </dependency>
         <dependency>
             <groupId>com.fasterxml.jackson.core</groupId>
@@ -62,8 +66,8 @@
             <artifactId>jakarta.ws.rs-api</artifactId>
         </dependency>
         <dependency>
-            <groupId>io.swagger</groupId>
-            <artifactId>swagger-jaxrs</artifactId>
+            <groupId>io.swagger.core.v3</groupId>
+            <artifactId>swagger-jaxrs2-jakarta</artifactId>
         </dependency>
         <!-- Just needed for unused import code -->
         <dependency>
@@ -106,6 +110,8 @@
                                 <artifactVersion>${project.version}</artifactVersion>
                                 <dateLibrary>java8</dateLibrary>
                                 <useGzipFeature>true</useGzipFeature>
+                                <library>jersey3</library>
+                                <useJakartaEe>true</useJakartaEe>
                             </configOptions>
                         </configuration>
                     </execution>
@@ -133,6 +139,8 @@
                                 <artifactVersion>${project.version}</artifactVersion>
                                 <dateLibrary>java8</dateLibrary>
                                 <useGzipFeature>true</useGzipFeature>
+                                <library>jersey3</library>
+                                <useJakartaEe>true</useJakartaEe>
                             </configOptions>
                         </configuration>
                     </execution>
@@ -160,6 +168,8 @@
                                 <artifactVersion>${project.version}</artifactVersion>
                                 <dateLibrary>java8</dateLibrary>
                                 <useGzipFeature>true</useGzipFeature>
+                                <library>jersey3</library>
+                                <useJakartaEe>true</useJakartaEe>
                             </configOptions>
                         </configuration>
                     </execution>
@@ -187,6 +197,8 @@
                                 <artifactVersion>${project.version}</artifactVersion>
                                 <dateLibrary>java8</dateLibrary>
                                 <useGzipFeature>true</useGzipFeature>
+                                <library>jersey3</library>
+                                <useJakartaEe>true</useJakartaEe>
                             </configOptions>
                         </configuration>
                     </execution>

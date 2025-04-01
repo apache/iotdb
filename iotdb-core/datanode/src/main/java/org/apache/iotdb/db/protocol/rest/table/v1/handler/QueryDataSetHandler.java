@@ -26,12 +26,11 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Query;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Statement;
 import org.apache.iotdb.rpc.TSStatusCode;
 
+import jakarta.ws.rs.core.Response;
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.block.TsBlock;
-
-import javax.ws.rs.core.Response;
 
 import java.util.ArrayList;
 import java.util.List;

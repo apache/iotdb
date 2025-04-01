@@ -22,9 +22,8 @@ package org.apache.iotdb.db.storageengine.load.config;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 
+import jakarta.annotation.Nullable;
 import org.apache.commons.lang3.StringUtils;
-
-import javax.annotation.Nullable;
 
 import java.util.Arrays;
 import java.util.Collections;

@@ -30,6 +30,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache.Tr
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.util.concurrent.ListenableFuture;
+import jakarta.annotation.Nullable;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.TimeValuePair;
 import org.apache.tsfile.read.common.block.TsBlock;
@@ -37,8 +38,6 @@ import org.apache.tsfile.read.common.block.TsBlockBuilder;
 import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.utils.TsPrimitiveType;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
-
-import javax.annotation.Nullable;
 
 import java.util.Objects;
 import java.util.concurrent.atomic.AtomicInteger;

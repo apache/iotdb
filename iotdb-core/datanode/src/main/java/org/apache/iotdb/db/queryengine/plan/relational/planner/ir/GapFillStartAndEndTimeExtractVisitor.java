@@ -30,7 +30,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LongLiteral;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Node;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SymbolReference;
 
-import javax.annotation.Nullable;
+import jakarta.annotation.Nullable;
 
 import java.time.ZoneId;
 

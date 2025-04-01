@@ -132,6 +132,10 @@
             <artifactId>jsr305</artifactId>
         </dependency>
         <dependency>
+            <groupId>jakarta.annotation</groupId>
+            <artifactId>jakarta.annotation-api</artifactId>
+        </dependency>
+        <dependency>
             <groupId>net.minidev</groupId>
             <artifactId>json-smart</artifactId>
         </dependency>
@@ -307,6 +311,16 @@
                     </execution>
                 </executions>
             </plugin>
+            <!--            <plugin>-->
+            <!--                <groupId>org.apache.maven.plugins</groupId>-->
+            <!--                <artifactId>maven-dependency-plugin</artifactId>-->
+            <!--                <configuration>-->
+            <!--                    <usedDependencies>-->
+            <!--                        &lt;!&ndash; These are used at build &ndash;&gt;-->
+            <!--                        <usedDependency>jakarta.annotation:jakarta.annotation-api</usedDependency>-->
+            <!--                    </usedDependencies>-->
+            <!--                </configuration>-->
+            <!--            </plugin>-->
         </plugins>
     </build>
     <profiles>

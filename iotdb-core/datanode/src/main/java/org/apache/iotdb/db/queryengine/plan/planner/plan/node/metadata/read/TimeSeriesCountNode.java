@@ -31,9 +31,8 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.schemaengine.template.Template;
 
+import jakarta.validation.constraints.NotNull;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
-
-import javax.validation.constraints.NotNull;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
