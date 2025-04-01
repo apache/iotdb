@@ -381,7 +381,8 @@ public class IoTDBDatabaseIT {
                   "subscriptions,INF,",
                   "views,INF,",
                   "models,INF,",
-                  "functions,INF,")));
+                  "functions,INF,",
+                  "configurations,INF,")));
 
       TestUtils.assertResultSetEqual(
           statement.executeQuery("desc databases"),
@@ -597,6 +598,12 @@ public class IoTDBDatabaseIT {
           "function_type,",
           new HashSet<>(
               Arrays.asList("built-in scalar function,", "built-in aggregate function,")));
+
+      TestUtils.assertResultSetEqual(
+          statement.executeQuery(
+              "select value from information_schema.configurations where variable = 'TimestampPrecision'"),
+          "value,",
+          Collections.singleton("ms,"));
     }
   }
 
