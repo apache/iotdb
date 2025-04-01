@@ -378,7 +378,10 @@ public class IoTDBDatabaseIT {
                   "topics,INF,",
                   "pipe_plugins,INF,",
                   "pipes,INF,",
-                  "subscriptions,INF,")));
+                  "subscriptions,INF,",
+                  "views,INF,",
+                  "models,INF,",
+                  "functions,INF,")));
 
       TestUtils.assertResultSetEqual(
           statement.executeQuery("desc databases"),
@@ -462,6 +465,33 @@ public class IoTDBDatabaseIT {
                   "topic_name,STRING,TAG,",
                   "consumer_group_name,STRING,TAG,",
                   "subscribed_consumers,STRING,ATTRIBUTE,")));
+      TestUtils.assertResultSetEqual(
+          statement.executeQuery("desc views"),
+          "ColumnName,DataType,Category,",
+          new HashSet<>(
+              Arrays.asList(
+                  "database,STRING,TAG,",
+                  "table_name,STRING,TAG,",
+                  "view_definition,STRING,ATTRIBUTE,")));
+      TestUtils.assertResultSetEqual(
+          statement.executeQuery("desc models"),
+          "ColumnName,DataType,Category,",
+          new HashSet<>(
+              Arrays.asList(
+                  "model_id,STRING,TAG,",
+                  "model_type,STRING,ATTRIBUTE,",
+                  "state,STRING,ATTRIBUTE,",
+                  "configs,STRING,ATTRIBUTE,",
+                  "nodes,STRING,ATTRIBUTE,")));
+      TestUtils.assertResultSetEqual(
+          statement.executeQuery("desc functions"),
+          "ColumnName,DataType,Category,",
+          new HashSet<>(
+              Arrays.asList(
+                  "function_table,STRING,TAG,",
+                  "function_type,STRING,ATTRIBUTE,",
+                  "class_name(udf),STRING,ATTRIBUTE,",
+                  "state,STRING,ATTRIBUTE,")));
 
       // Currently only root can query information_schema
       Assert.assertThrows(
@@ -480,6 +510,8 @@ public class IoTDBDatabaseIT {
       statement.execute("create database test");
       statement.execute(
           "create table test.test (a tag, b attribute, c int32 comment 'turbine') comment 'test'");
+      statement.execute(
+          "CREATE TABLE VIEW test.view_table (tag1 STRING TAG,tag2 STRING TAG,s11 INT32 FIELD,s3 INT32 FIELD FROM s2) AS root.a.** WITH (ttl=100) RESTRICT");
 
       TestUtils.assertResultSetEqual(
           statement.executeQuery("select * from databases"),
@@ -502,7 +534,8 @@ public class IoTDBDatabaseIT {
                   "information_schema,pipe_plugins,INF,USING,null,SYSTEM VIEW,",
                   "information_schema,pipes,INF,USING,null,SYSTEM VIEW,",
                   "information_schema,subscriptions,INF,USING,null,SYSTEM VIEW,",
-                  "test,test,INF,USING,test,BASE TABLE,")));
+                  "test,test,INF,USING,test,BASE TABLE,",
+                  "test,view_table,100,USING,null,TREE_TO_TABLE VIEW")));
       TestUtils.assertResultSetEqual(
           statement.executeQuery("count devices from tables where status = 'USING'"),
           "count(devices),",
@@ -534,9 +567,8 @@ public class IoTDBDatabaseIT {
           statement.executeQuery(
               "select * from pipe_plugins where plugin_name = 'IOTDB-THRIFT-SINK'"),
           "plugin_name,plugin_type,class_name,plugin_jar,",
-          new HashSet<>(
-              Arrays.asList(
-                  "IOTDB-THRIFT-SINK,Builtin,org.apache.iotdb.commons.pipe.agent.plugin.builtin.connector.iotdb.thrift.IoTDBThriftConnector,null,")));
+          Collections.singleton(
+              "IOTDB-THRIFT-SINK,Builtin,org.apache.iotdb.commons.pipe.agent.plugin.builtin.connector.iotdb.thrift.IoTDBThriftConnector,null,"));
 
       statement.execute("create topic tp with ('start-time'='2025-01-13T10:03:19.229+08:00')");
       TestUtils.assertResultSetEqual(
@@ -544,6 +576,27 @@ public class IoTDBDatabaseIT {
           "topic_name,topic_configs,",
           Collections.singleton(
               "tp,{__system.sql-dialect=table, start-time=2025-01-13T10:03:19.229+08:00},"));
+
+      TestUtils.assertResultSetEqual(
+          statement.executeQuery("select * from views"),
+          "database,table_name,view_definition,",
+          Collections.singleton(
+              "test,view_table,CREATE TABLE VIEW \"view_table\" (tag1 STRING TAG,tag2 STRING TAG,s11 INT32 FIELD,s3 INT32 FIELD FROM s2) AS root.a.** WITH (ttl=100) RESTRICT,"));
+
+      TestUtils.assertResultSetEqual(
+          statement.executeQuery(
+              "select model_id from information_schema.models where model_type = 'BUILT_IN_FORECAST'"),
+          "model_id,",
+          new HashSet<>(
+              Arrays.asList(
+                  "_STLForecaster,", "_NaiveForecaster,", "_ARIMA,", "_ExponentialSmoothing,")));
+
+      TestUtils.assertResultSetEqual(
+          statement.executeQuery(
+              "select distinct(function_type) from information_schema.functions"),
+          "function_type,",
+          new HashSet<>(
+              Arrays.asList("built-in scalar function,", "built-in aggregate function,")));
     }
   }
 
