@@ -179,6 +179,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertBaseStatement;
 import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
+import org.apache.iotdb.udf.api.exception.UDFException;
 import org.apache.iotdb.udf.api.relational.TableFunction;
 import org.apache.iotdb.udf.api.relational.table.TableFunctionAnalysis;
 import org.apache.iotdb.udf.api.relational.table.argument.Argument;
@@ -4019,8 +4020,13 @@ public class StatementAnalyzer {
       ArgumentsAnalysis argumentsAnalysis =
           analyzeArguments(
               function.getArgumentsSpecifications(), node.getArguments(), scope, errorLocation);
-      TableFunctionAnalysis functionAnalysis =
-          function.analyze(argumentsAnalysis.getPassedArguments());
+
+      TableFunctionAnalysis functionAnalysis;
+      try {
+        functionAnalysis = function.analyze(argumentsAnalysis.getPassedArguments());
+      } catch (UDFException e) {
+        throw new SemanticException(e.getMessage());
+      }
 
       // At most one table argument can be passed to a table function now
       if (argumentsAnalysis.getTableArgumentAnalyses().size() > 1) {

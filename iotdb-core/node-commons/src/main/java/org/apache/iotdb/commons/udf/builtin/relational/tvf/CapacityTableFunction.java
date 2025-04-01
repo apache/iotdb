@@ -95,7 +95,7 @@ public class CapacityTableFunction implements TableFunction {
         Record input,
         List<ColumnBuilder> properColumnBuilders,
         ColumnBuilder passThroughIndexBuilder) {
-      if (windowIndex - curIndex == size) {
+      if (curIndex - currentStartIndex == size) {
         outputWindow(properColumnBuilders, passThroughIndexBuilder);
         currentStartIndex = curIndex;
       }
