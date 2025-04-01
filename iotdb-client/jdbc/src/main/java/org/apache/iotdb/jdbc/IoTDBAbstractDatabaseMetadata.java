@@ -94,12 +94,12 @@ public abstract class IoTDBAbstractDatabaseMetadata implements DatabaseMetaData 
   protected static final String IS_AUTOINCREMENT = "IS_AUTOINCREMENT";
   private static final String IS_GRANTABLE = "IS_GRANTABLE";
   protected static final String IS_NULLABLE = "IS_NULLABLE";
-  private static final String KEY_SEQ = "KEY_SEQ";
+  protected static final String KEY_SEQ = "KEY_SEQ";
   private static final String LENGTH = "LENGTH";
   protected static final String NULLABLE = "NULLABLE";
   protected static final String NUM_PREC_RADIX = "NUM_PREC_RADIX";
   protected static final String ORDINAL_POSITION = "ORDINAL_POSITION";
-  private static final String PK_NAME = "PK_NAME";
+  protected static final String PK_NAME = "PK_NAME";
   private static final String PKCOLUMN_NAME = "PKCOLUMN_NAME";
   private static final String PKTABLE_CAT = "PKTABLE_CAT";
   private static final String PKTABLE_NAME = "PKTABLE_NAME";
@@ -577,7 +577,22 @@ public abstract class IoTDBAbstractDatabaseMetadata implements DatabaseMetaData 
 
   @Override
   public String getDatabaseProductVersion() throws SQLException {
-    return getDriverVersion();
+    String serverVersion = "";
+    Statement stmt = this.connection.createStatement();
+    ResultSet rs;
+    try {
+      String sql = "SHOW VERSION";
+      rs = stmt.executeQuery(sql);
+    } catch (SQLException e) {
+      stmt.close();
+      LOGGER.error("Get database product version error: {}", e.getMessage());
+      throw e;
+    }
+    while (rs.next()) {
+      serverVersion = rs.getString("Version");
+    }
+
+    return serverVersion;
   }
 
   @Override
@@ -834,10 +849,7 @@ public abstract class IoTDBAbstractDatabaseMetadata implements DatabaseMetaData 
     return true;
   }
 
-  @Override
-  public String getSchemaTerm() throws SQLException {
-    return "storage group";
-  }
+  public abstract String getSchemaTerm() throws SQLException;
 
   @Override
   public String getProcedureTerm() throws SQLException {
@@ -1713,69 +1725,8 @@ public abstract class IoTDBAbstractDatabaseMetadata implements DatabaseMetaData 
         zoneId);
   }
 
-  @Override
-  public ResultSet getPrimaryKeys(String catalog, String schema, String table) throws SQLException {
-    Statement stmt = connection.createStatement();
-    List<String> columnNameList = new ArrayList<>();
-    List<String> columnTypeList = new ArrayList<>();
-    Map<String, Integer> columnNameIndex = new HashMap<>();
-    List<TSDataType> tsDataTypeList =
-        Arrays.asList(
-            TSDataType.TEXT,
-            TSDataType.TEXT,
-            TSDataType.TEXT,
-            TSDataType.TEXT,
-            TSDataType.INT32,
-            TSDataType.TEXT);
-
-    String database = "";
-    if (catalog != null) {
-      database = catalog;
-    } else if (schema != null) {
-      database = schema;
-    }
-
-    Field[] fields = new Field[6];
-    fields[0] = new Field("", TABLE_CAT, "TEXT");
-    fields[1] = new Field("", TABLE_SCHEM, "TEXT");
-    fields[2] = new Field("", TABLE_NAME, "TEXT");
-    fields[3] = new Field("", COLUMN_NAME, "TEXT");
-    fields[4] = new Field("", KEY_SEQ, INT32);
-    fields[5] = new Field("", PK_NAME, "TEXT");
-
-    List<Object> listValSub1 = Arrays.asList(database, "", table, "time", 1, PRIMARY);
-    List<Object> listValSub2 = Arrays.asList(database, "", table, "deivce", 2, PRIMARY);
-    List<List<Object>> valuesList = Arrays.asList(listValSub1, listValSub2);
-    for (int i = 0; i < fields.length; i++) {
-      columnNameList.add(fields[i].getName());
-      columnTypeList.add(fields[i].getSqlType());
-      columnNameIndex.put(fields[i].getName(), i);
-    }
-
-    ByteBuffer tsBlock = null;
-    try {
-      tsBlock = convertTsBlock(valuesList, tsDataTypeList);
-    } catch (IOException e) {
-      LOGGER.error("Get primary keys error: {}", e.getMessage());
-    } finally {
-      close(null, stmt);
-    }
-    return new IoTDBJDBCResultSet(
-        stmt,
-        columnNameList,
-        columnTypeList,
-        columnNameIndex,
-        true,
-        client,
-        null,
-        -1,
-        sessionId,
-        Collections.singletonList(tsBlock),
-        null,
-        (long) 60 * 1000,
-        false,
-        zoneId);
-  }
+  public abstract ResultSet getPrimaryKeys(String catalog, String schema, String table)
+      throws SQLException;
 
   @Override
   public ResultSet getImportedKeys(String catalog, String schema, String table)

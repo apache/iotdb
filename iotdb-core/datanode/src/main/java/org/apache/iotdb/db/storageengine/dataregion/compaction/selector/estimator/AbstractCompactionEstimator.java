@@ -54,21 +54,34 @@ import java.util.stream.Collectors;
  */
 public abstract class AbstractCompactionEstimator {
 
-  private static final Map<TsFileID, FileInfo> globalFileInfoCacheForFailedCompaction =
-      Collections.synchronizedMap(
-          new LRUMap<>(
-              IoTDBDescriptor.getInstance().getConfig().getGlobalCompactionFileInfoCacheSize()));
-  private static final Map<TsFileID, FileInfo.RoughFileInfo> globalRoughInfoCacheForCompaction =
-      Collections.synchronizedMap(
+  private static final boolean isCacheMemoryCostAllocated;
+  private static final Map<TsFileID, FileInfo> globalFileInfoCacheForFailedCompaction;
+  private static final Map<TsFileID, FileInfo.RoughFileInfo> globalRoughInfoCacheForCompaction;
+
+  private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
+
+  static {
+    long fixedMemoryCost = config.getGlobalCompactionFileInfoCacheSize() * FileInfo.MEMORY_COST_OF_FILE_INFO_ENTRY_IN_CACHE + config.getGlobalCompactionRoughFileInfoCacheSize() * FileInfo.MEMORY_COST_OF_FILE_INFO_ENTRY_IN_CACHE;
+    isCacheMemoryCostAllocated = SystemInfo.getInstance().getCompactionMemoryBlock().allocateIfSufficient(fixedMemoryCost, 1.0);
+    if (isCacheMemoryCostAllocated) {
+      globalRoughInfoCacheForCompaction = Collections.synchronizedMap(
           new LRUMap<>(
               IoTDBDescriptor.getInstance()
                   .getConfig()
                   .getGlobalCompactionRoughFileInfoCacheSize()));
+      globalFileInfoCacheForFailedCompaction = Collections.synchronizedMap(
+          new LRUMap<>(
+              IoTDBDescriptor.getInstance().getConfig().getGlobalCompactionFileInfoCacheSize()));
+    } else {
+      globalRoughInfoCacheForCompaction = Collections.emptyMap();
+      globalFileInfoCacheForFailedCompaction = Collections.emptyMap();
+    }
+  }
+
   protected Map<TsFileResource, FileInfo> fileInfoCache = new HashMap<>();
   protected Map<TsFileResource, FileInfo.RoughFileInfo> roughInfoMap = new HashMap<>();
   protected Map<TsFileResource, ArrayDeviceTimeIndex> deviceTimeIndexCache = new HashMap<>();
 
-  protected IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
   protected TSFileConfig tsFileConfig = TSFileDescriptor.getInstance().getConfig();
   protected long fixedMemoryBudget =
       (long)
@@ -117,11 +130,13 @@ public abstract class AbstractCompactionEstimator {
     try (TsFileSequenceReader reader = getReader(resource.getTsFilePath())) {
       FileInfo fileInfo = CompactionEstimateUtils.calculateFileInfo(reader);
       fileInfoCache.put(resource, fileInfo);
-      synchronized (globalFileInfoCacheForFailedCompaction) {
-        globalFileInfoCacheForFailedCompaction.put(tsFileID, fileInfo);
-      }
-      synchronized (globalRoughInfoCacheForCompaction) {
-        globalRoughInfoCacheForCompaction.put(tsFileID, fileInfo.getSimpleFileInfo());
+      if (isCacheMemoryCostAllocated) {
+        synchronized (globalFileInfoCacheForFailedCompaction) {
+          globalFileInfoCacheForFailedCompaction.put(tsFileID, fileInfo);
+        }
+        synchronized (globalRoughInfoCacheForCompaction) {
+          globalRoughInfoCacheForCompaction.put(tsFileID, fileInfo.getSimpleFileInfo());
+        }
       }
       return fileInfo;
     }
@@ -216,8 +231,13 @@ public abstract class AbstractCompactionEstimator {
     if (resource == null || resource.getTsFile() == null) {
       return;
     }
-    synchronized (globalFileInfoCacheForFailedCompaction) {
-      globalFileInfoCacheForFailedCompaction.remove(resource.getTsFileID());
+    if (isCacheMemoryCostAllocated) {
+      synchronized (globalFileInfoCacheForFailedCompaction) {
+        globalFileInfoCacheForFailedCompaction.remove(resource.getTsFileID());
+      }
+      synchronized (globalRoughInfoCacheForCompaction) {
+        globalRoughInfoCacheForCompaction.remove(resource.getTsFileID());
+      }
     }
   }
 }

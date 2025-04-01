@@ -123,10 +123,8 @@ public class OpcUaNameSpace extends ManagedNamespaceWithLifecycle {
       final List<Object> values = new ArrayList<>();
 
       for (int i = 0; i < schemas.size(); ++i) {
-        for (int j = 0; j < tablet.getRowSize(); ++j) {
-          if (Objects.isNull(tablet.getBitMaps())
-              || Objects.isNull(tablet.getBitMaps()[i])
-              || !tablet.getBitMaps()[i].isMarked(j)) {
+        for (int j = tablet.getRowSize() - 1; j >= 0; --j) {
+          if (!tablet.isNull(j, i)) {
             newSchemas.add(schemas.get(i));
             timestamps.add(tablet.getTimestamp(j));
             values.add(
@@ -151,7 +149,7 @@ public class OpcUaNameSpace extends ManagedNamespaceWithLifecycle {
 
       for (int i = 0; i < tablet.getRowSize(); ++i) {
         final Object[] segments = tablet.getDeviceID(i).getSegments();
-        final String[] folderSegments = new String[segments.length + 2];
+        final String[] folderSegments = new String[segments.length + 1];
         folderSegments[0] = databaseName;
 
         for (int j = 0; j < segments.length; ++j) {
@@ -166,8 +164,10 @@ public class OpcUaNameSpace extends ManagedNamespaceWithLifecycle {
             columnIndexes.stream()
                 .map(
                     index ->
-                        getTabletObjectValue4Opc(
-                            tablet.getValues()[index], finalI, schemas.get(index).getType()))
+                        tablet.isNull(finalI, index)
+                            ? null
+                            : getTabletObjectValue4Opc(
+                                tablet.getValues()[index], finalI, schemas.get(index).getType()))
                 .collect(Collectors.toList()));
       }
     }
@@ -230,6 +230,9 @@ public class OpcUaNameSpace extends ManagedNamespaceWithLifecycle {
 
     final String currentFolder = currentStr.toString();
     for (int i = 0; i < measurementSchemas.size(); ++i) {
+      if (Objects.isNull(values.get(i))) {
+        continue;
+      }
       final String name = measurementSchemas.get(i).getMeasurementName();
       final TSDataType type = measurementSchemas.get(i).getType();
       final NodeId nodeId = newNodeId(currentFolder + name);

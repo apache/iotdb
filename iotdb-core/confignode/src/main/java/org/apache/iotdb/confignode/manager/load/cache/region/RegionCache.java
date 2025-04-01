@@ -19,39 +19,50 @@
 
 package org.apache.iotdb.confignode.manager.load.cache.region;
 
+import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.commons.cluster.RegionStatus;
+import org.apache.iotdb.confignode.manager.load.cache.AbstractHeartbeatSample;
 import org.apache.iotdb.confignode.manager.load.cache.AbstractLoadCache;
+
+import org.apache.tsfile.utils.Pair;
+
+import java.util.Collections;
+import java.util.List;
 
 /**
  * RegionCache caches the RegionHeartbeatSamples of a Region. Update and cache the current
  * statistics of the Region based on the latest RegionHeartbeatSample.
  */
 public class RegionCache extends AbstractLoadCache {
+  private final Pair<Integer, TConsensusGroupId> id;
 
-  public RegionCache() {
+  public RegionCache(int dataNodeId, TConsensusGroupId gid) {
     super();
+    this.id = new Pair<>(dataNodeId, gid);
     this.currentStatistics.set(RegionStatistics.generateDefaultRegionStatistics());
   }
 
   @Override
   public synchronized void updateCurrentStatistics(boolean forceUpdate) {
     RegionHeartbeatSample lastSample;
+    List<AbstractHeartbeatSample> history;
     synchronized (slidingWindow) {
       lastSample = (RegionHeartbeatSample) getLastSample();
-    }
+      history = Collections.unmodifiableList(slidingWindow);
 
-    RegionStatus status;
-    long currentNanoTime = System.nanoTime();
-    if (lastSample == null) {
-      status = RegionStatus.Unknown;
-    } else if (currentNanoTime - lastSample.getSampleLogicalTimestamp()
-        > HEARTBEAT_TIMEOUT_TIME_IN_NS) {
-      // TODO: Optimize Unknown judge logic
-      status = RegionStatus.Unknown;
-    } else {
-      status = lastSample.getStatus();
+      RegionStatus status;
+      long currentNanoTime = System.nanoTime();
+      if (lastSample == null) {
+        /* First heartbeat not received from this region, status is UNKNOWN */
+        status = RegionStatus.Unknown;
+      } else if (!failureDetector.isAvailable(id, history)) {
+        /* Failure detector decides that this region is UNKNOWN */
+        status = RegionStatus.Unknown;
+      } else {
+        status = lastSample.getStatus();
+      }
+      this.currentStatistics.set(new RegionStatistics(currentNanoTime, status));
     }
-    this.currentStatistics.set(new RegionStatistics(currentNanoTime, status));
   }
 
   public RegionStatistics getCurrentStatistics() {

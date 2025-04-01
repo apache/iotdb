@@ -64,7 +64,7 @@ public abstract class DoubleTVList extends TVList {
   }
 
   @Override
-  public DoubleTVList clone() {
+  public synchronized DoubleTVList clone() {
     DoubleTVList cloneList = DoubleTVList.newList();
     cloneAs(cloneList);
     cloneBitMap(cloneList);
@@ -89,7 +89,9 @@ public abstract class DoubleTVList extends TVList {
     minTime = Math.min(minTime, timestamp);
     timestamps.get(arrayIndex)[elementIndex] = timestamp;
     values.get(arrayIndex)[elementIndex] = value;
-    indices.get(arrayIndex)[elementIndex] = rowCount;
+    if (indices != null) {
+      indices.get(arrayIndex)[elementIndex] = rowCount;
+    }
     rowCount++;
     if (sorted) {
       if (rowCount > 1 && timestamp < getTime(rowCount - 2)) {
@@ -123,7 +125,9 @@ public abstract class DoubleTVList extends TVList {
 
   @Override
   protected void expandValues() {
-    indices.add((int[]) getPrimitiveArraysByType(TSDataType.INT32));
+    if (indices != null) {
+      indices.add((int[]) getPrimitiveArraysByType(TSDataType.INT32));
+    }
     values.add((double[]) getPrimitiveArraysByType(TSDataType.DOUBLE));
     if (bitMap != null) {
       bitMap.add(null);
@@ -167,11 +171,6 @@ public abstract class DoubleTVList extends TVList {
   }
 
   @Override
-  protected void releaseLastValueArray() {
-    PrimitiveArrayManager.release(values.remove(values.size() - 1));
-  }
-
-  @Override
   public synchronized void putDoubles(
       long[] time, double[] value, BitMap bitMap, int start, int end) {
     checkExpansion();
@@ -207,8 +206,10 @@ public abstract class DoubleTVList extends TVList {
         System.arraycopy(
             time, idx - timeIdxOffset, timestamps.get(arrayIdx), elementIdx, inputRemaining);
         System.arraycopy(value, idx, values.get(arrayIdx), elementIdx, inputRemaining);
-        int[] indexes = IntStream.range(rowCount, rowCount + inputRemaining).toArray();
-        System.arraycopy(indexes, 0, indices.get(arrayIdx), elementIdx, inputRemaining);
+        if (indices != null) {
+          int[] indexes = IntStream.range(rowCount, rowCount + inputRemaining).toArray();
+          System.arraycopy(indexes, 0, indices.get(arrayIdx), elementIdx, inputRemaining);
+        }
         rowCount += inputRemaining;
         break;
       } else {
@@ -217,8 +218,10 @@ public abstract class DoubleTVList extends TVList {
         System.arraycopy(
             time, idx - timeIdxOffset, timestamps.get(arrayIdx), elementIdx, internalRemaining);
         System.arraycopy(value, idx, values.get(arrayIdx), elementIdx, internalRemaining);
-        int[] indexes = IntStream.range(rowCount, rowCount + internalRemaining).toArray();
-        System.arraycopy(indexes, 0, indices.get(arrayIdx), elementIdx, internalRemaining);
+        if (indices != null) {
+          int[] indexes = IntStream.range(rowCount, rowCount + internalRemaining).toArray();
+          System.arraycopy(indexes, 0, indices.get(arrayIdx), elementIdx, internalRemaining);
+        }
         idx += internalRemaining;
         rowCount += internalRemaining;
         checkExpansion();
@@ -249,7 +252,6 @@ public abstract class DoubleTVList extends TVList {
       tIdx = tIdx - nullCnt;
       inPutMinTime = Math.min(inPutMinTime, time[tIdx]);
       maxTime = Math.max(maxTime, time[tIdx]);
-      minTime = Math.min(minTime, time[tIdx]);
       if (inputSorted) {
         if (tIdx > 0 && time[tIdx - 1] > time[tIdx]) {
           inputSorted = false;
@@ -258,6 +260,7 @@ public abstract class DoubleTVList extends TVList {
         }
       }
     }
+    minTime = Math.min(minTime, inPutMinTime);
 
     if (sorted
         && (rowCount == 0
@@ -303,6 +306,19 @@ public abstract class DoubleTVList extends TVList {
       }
     }
     tvList.putDoubles(times, values, bitMap, 0, rowCount);
+    return tvList;
+  }
+
+  public static DoubleTVList deserializeWithoutBitMap(DataInputStream stream) throws IOException {
+    DoubleTVList tvList = DoubleTVList.newList();
+    int rowCount = stream.readInt();
+    long[] times = new long[rowCount];
+    double[] values = new double[rowCount];
+    for (int rowIdx = 0; rowIdx < rowCount; ++rowIdx) {
+      times[rowIdx] = stream.readLong();
+      values[rowIdx] = stream.readDouble();
+    }
+    tvList.putDoubles(times, values, null, 0, rowCount);
     return tvList;
   }
 }

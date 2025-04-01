@@ -27,7 +27,6 @@ import org.apache.iotdb.commons.utils.ThriftCommonsSerDeUtils;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.env.RegionMaintainHandler;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
-import org.apache.iotdb.confignode.procedure.state.ProcedureLockState;
 import org.apache.iotdb.confignode.procedure.state.RegionTransitionState;
 import org.apache.iotdb.confignode.procedure.store.ProcedureType;
 import org.apache.iotdb.db.utils.DateTimeUtils;
@@ -82,8 +81,9 @@ public class RegionMigrateProcedure extends RegionOperationProcedure<RegionTrans
               "[pid{}][MigrateRegion] started, {} will be migrated from DataNode {} to {}.",
               getProcId(),
               regionId,
-              handler.simplifiedLocation(originalDataNode),
-              handler.simplifiedLocation(destDataNode));
+              RegionMaintainHandler.simplifiedLocation(originalDataNode),
+              RegionMaintainHandler.simplifiedLocation(destDataNode));
+          addChildProcedure(new NotifyRegionMigrationProcedure(regionId, true));
           setNextState(RegionTransitionState.ADD_REGION_PEER);
           break;
         case ADD_REGION_PEER:
@@ -120,11 +120,12 @@ public class RegionMigrateProcedure extends RegionOperationProcedure<RegionTrans
               getProcId(),
               cleanHint,
               regionId,
-              handler.simplifiedLocation(originalDataNode),
-              handler.simplifiedLocation(destDataNode),
+              RegionMaintainHandler.simplifiedLocation(originalDataNode),
+              RegionMaintainHandler.simplifiedLocation(destDataNode),
               CommonDateTimeUtils.convertMillisecondToDurationStr(
                   System.currentTimeMillis() - getSubmittedTime()),
               DateTimeUtils.convertLongToDate(getSubmittedTime(), "ms"));
+          addChildProcedure(new NotifyRegionMigrationProcedure(regionId, false));
           return Flow.NO_MORE_STATE;
         default:
           throw new ProcedureException("Unsupported state: " + state.name());
@@ -141,38 +142,6 @@ public class RegionMigrateProcedure extends RegionOperationProcedure<RegionTrans
   @Override
   protected void rollbackState(ConfigNodeProcedureEnv env, RegionTransitionState state)
       throws IOException, InterruptedException, ProcedureException {}
-
-  @Override
-  protected ProcedureLockState acquireLock(ConfigNodeProcedureEnv configNodeProcedureEnv) {
-    configNodeProcedureEnv.getSchedulerLock().lock();
-    try {
-      if (configNodeProcedureEnv.getRegionMigrateLock().tryLock(this)) {
-        LOGGER.info("procedureId {} acquire lock.", getProcId());
-        return ProcedureLockState.LOCK_ACQUIRED;
-      }
-      configNodeProcedureEnv.getRegionMigrateLock().waitProcedure(this);
-
-      LOGGER.info("procedureId {} wait for lock.", getProcId());
-      return ProcedureLockState.LOCK_EVENT_WAIT;
-    } finally {
-      configNodeProcedureEnv.getSchedulerLock().unlock();
-    }
-  }
-
-  @Override
-  protected void releaseLock(ConfigNodeProcedureEnv configNodeProcedureEnv) {
-    configNodeProcedureEnv.getSchedulerLock().lock();
-    try {
-      LOGGER.info("procedureId {} release lock.", getProcId());
-      if (configNodeProcedureEnv.getRegionMigrateLock().releaseLock(this)) {
-        configNodeProcedureEnv
-            .getRegionMigrateLock()
-            .wakeWaitingProcedures(configNodeProcedureEnv.getScheduler());
-      }
-    } finally {
-      configNodeProcedureEnv.getSchedulerLock().unlock();
-    }
-  }
 
   @Override
   protected RegionTransitionState getState(int stateId) {

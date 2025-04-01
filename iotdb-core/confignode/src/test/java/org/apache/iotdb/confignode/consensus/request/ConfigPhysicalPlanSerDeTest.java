@@ -137,6 +137,8 @@ import org.apache.iotdb.confignode.consensus.request.write.table.PreDeleteColumn
 import org.apache.iotdb.confignode.consensus.request.write.table.PreDeleteTablePlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.RenameTableColumnPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.RollbackCreateTablePlan;
+import org.apache.iotdb.confignode.consensus.request.write.table.SetTableColumnCommentPlan;
+import org.apache.iotdb.confignode.consensus.request.write.table.SetTableCommentPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.SetTablePropertiesPlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.CreateSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.DropSchemaTemplatePlan;
@@ -1286,7 +1288,7 @@ public class ConfigPhysicalPlanSerDeTest {
   @Test
   public void PreDeleteColumnPlanTest() throws IOException {
     final PreDeleteColumnPlan preDeleteColumnPlan =
-        new PreDeleteColumnPlan("database1", "table1", "measurement");
+        new PreDeleteColumnPlan("database1", "table1", "field");
     final PreDeleteColumnPlan preDeleteColumnPlan1 =
         (PreDeleteColumnPlan)
             ConfigPhysicalPlan.Factory.create(preDeleteColumnPlan.serializeToByteBuffer());
@@ -1298,7 +1300,7 @@ public class ConfigPhysicalPlanSerDeTest {
   @Test
   public void CommitDeleteColumnPlanTest() throws IOException {
     final CommitDeleteColumnPlan commitDeleteColumnPlan =
-        new CommitDeleteColumnPlan("database1", "table1", "measurement");
+        new CommitDeleteColumnPlan("database1", "table1", "field");
     final CommitDeleteColumnPlan commitDeleteColumnPlan1 =
         (CommitDeleteColumnPlan)
             ConfigPhysicalPlan.Factory.create(commitDeleteColumnPlan.serializeToByteBuffer());
@@ -1308,6 +1310,33 @@ public class ConfigPhysicalPlanSerDeTest {
         commitDeleteColumnPlan.getTableName(), commitDeleteColumnPlan1.getTableName());
     Assert.assertEquals(
         commitDeleteColumnPlan.getColumnName(), commitDeleteColumnPlan1.getColumnName());
+  }
+
+  @Test
+  public void SetTableCommentPlanTest() throws IOException {
+    final SetTableCommentPlan setTableCommentPlan =
+        new SetTableCommentPlan("database1", "table1", "comment");
+    final SetTableCommentPlan setTableCommentPlan1 =
+        (SetTableCommentPlan)
+            ConfigPhysicalPlan.Factory.create(setTableCommentPlan.serializeToByteBuffer());
+    Assert.assertEquals(setTableCommentPlan.getDatabase(), setTableCommentPlan1.getDatabase());
+    Assert.assertEquals(setTableCommentPlan.getTableName(), setTableCommentPlan1.getTableName());
+    Assert.assertEquals(setTableCommentPlan.getComment(), setTableCommentPlan1.getComment());
+  }
+
+  @Test
+  public void SetTableColumnCommentPlanTest() throws IOException {
+    final SetTableColumnCommentPlan setTableColumnCommentPlan =
+        new SetTableColumnCommentPlan("database1", "table1", "field", "comment");
+    final SetTableColumnCommentPlan setTableColumnCommentPlan1 =
+        (SetTableColumnCommentPlan)
+            ConfigPhysicalPlan.Factory.create(setTableColumnCommentPlan.serializeToByteBuffer());
+    Assert.assertEquals(
+        setTableColumnCommentPlan.getDatabase(), setTableColumnCommentPlan1.getDatabase());
+    Assert.assertEquals(
+        setTableColumnCommentPlan.getTableName(), setTableColumnCommentPlan1.getTableName());
+    Assert.assertEquals(
+        setTableColumnCommentPlan.getColumnName(), setTableColumnCommentPlan1.getColumnName());
   }
 
   @Test

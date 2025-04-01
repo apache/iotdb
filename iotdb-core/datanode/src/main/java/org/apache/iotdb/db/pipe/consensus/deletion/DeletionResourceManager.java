@@ -26,7 +26,7 @@ import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.consensus.pipe.PipeConsensus;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.consensus.DataRegionConsensusImpl;
-import org.apache.iotdb.db.pipe.consensus.ProgressIndexDataNodeManager;
+import org.apache.iotdb.db.pipe.consensus.ReplicateProgressDataNodeManager;
 import org.apache.iotdb.db.pipe.consensus.deletion.persist.DeletionBuffer;
 import org.apache.iotdb.db.pipe.consensus.deletion.persist.PageCacheDeletionBuffer;
 import org.apache.iotdb.db.pipe.consensus.deletion.recover.DeletionReader;
@@ -167,6 +167,12 @@ public class DeletionResourceManager implements AutoCloseable {
     }
   }
 
+  public void removeDAL() {
+    FileUtils.deleteFileOrDirectory(storageDir);
+    LOGGER.info(
+        "DeletionManager-{}: current DAL dir {} is deleted successfully", dataRegionId, storageDir);
+  }
+
   /**
    * This is a hook function, which will be automatically invoked when deletionResource's reference
    * count returns to 0.
@@ -176,7 +182,7 @@ public class DeletionResourceManager implements AutoCloseable {
     deleteNode2ResourcesMap.remove(deletionResource.getDeleteDataNode());
     // Clean disk
     ProgressIndex currentProgressIndex =
-        ProgressIndexDataNodeManager.extractLocalSimpleProgressIndex(
+        ReplicateProgressDataNodeManager.extractLocalSimpleProgressIndex(
             deletionResource.getProgressIndex());
 
     try (Stream<Path> pathStream = Files.walk(Paths.get(storageDir.getPath()), 1)) {

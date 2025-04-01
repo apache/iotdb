@@ -184,8 +184,14 @@ import org.apache.tsfile.read.common.type.Type;
 import org.apache.tsfile.utils.DateUtils;
 
 import java.time.ZoneId;
+<#if second.instance == "DATE">
+import java.time.format.DateTimeParseException;
+</#if>
 
 <#if first.dataType == "int" || second.dataType == "int" || first.dataType == "long" || second.dataType == "long">
+<#if second.instance == "DATE">
+import static org.apache.iotdb.rpc.TSStatusCode.DATE_OUT_OF_RANGE;
+</#if>
 import static org.apache.iotdb.rpc.TSStatusCode.NUMERIC_VALUE_OUT_OF_RANGE;
 </#if>
 
@@ -249,6 +255,11 @@ public class ${className} extends BinaryColumnTransformer {
       throw new IoTDBRuntimeException(
           String.format("long ${operator.name} overflow: %s + %s", left, right),
           NUMERIC_VALUE_OUT_OF_RANGE.getStatusCode(),
+          true);
+    }catch (DateTimeParseException e) {
+      throw new IoTDBRuntimeException(
+          "Year must be between 1000 and 9999.",
+          DATE_OUT_OF_RANGE.getStatusCode(),
           true);
     }
     <#else>

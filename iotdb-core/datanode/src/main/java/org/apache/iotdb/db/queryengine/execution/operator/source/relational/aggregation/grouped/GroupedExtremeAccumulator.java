@@ -105,6 +105,7 @@ public class GroupedExtremeAccumulator implements GroupedAccumulator {
 
   @Override
   public void setGroupCount(long groupCount) {
+    inits.ensureCapacity(groupCount);
     switch (seriesDataType) {
       case INT32:
       case DATE:

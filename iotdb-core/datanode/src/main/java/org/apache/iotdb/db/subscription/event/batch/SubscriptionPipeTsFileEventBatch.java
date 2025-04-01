@@ -59,7 +59,7 @@ public class SubscriptionPipeTsFileEventBatch extends SubscriptionPipeEventBatch
   }
 
   @Override
-  public synchronized void cleanUp() {
+  public synchronized void cleanUp(final boolean force) {
     // close batch, it includes clearing the reference count of events
     batch.close();
     enrichedEvents.clear();
@@ -96,13 +96,14 @@ public class SubscriptionPipeTsFileEventBatch extends SubscriptionPipeEventBatch
 
     final List<SubscriptionEvent> events = new ArrayList<>();
     final List<Pair<String, File>> dbTsFilePairs = batch.sealTsFiles();
-    final AtomicInteger referenceCount = new AtomicInteger(dbTsFilePairs.size());
+    final AtomicInteger ackReferenceCount = new AtomicInteger(dbTsFilePairs.size());
+    final AtomicInteger cleanReferenceCount = new AtomicInteger(dbTsFilePairs.size());
     for (final Pair<String, File> tsFile : dbTsFilePairs) {
       final SubscriptionCommitContext commitContext =
           prefetchingQueue.generateSubscriptionCommitContext();
       events.add(
           new SubscriptionEvent(
-              new SubscriptionPipeTsFileBatchEvents(this, referenceCount),
+              new SubscriptionPipeTsFileBatchEvents(this, ackReferenceCount, cleanReferenceCount),
               tsFile.right,
               commitContext));
     }

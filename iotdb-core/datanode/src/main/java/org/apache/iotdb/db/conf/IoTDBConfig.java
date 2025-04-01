@@ -25,7 +25,6 @@ import org.apache.iotdb.commons.client.property.ClientPoolProperty.DefaultProper
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.utils.FileUtils;
-import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.db.audit.AuditLogOperation;
 import org.apache.iotdb.db.audit.AuditLogStorage;
@@ -40,6 +39,7 @@ import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.constant
 import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.constant.InnerUnsequenceCompactionSelector;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.TimeIndexLevel;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALMode;
+import org.apache.iotdb.db.storageengine.load.disk.ILoadDiskSelector.LoadDiskSelectorType;
 import org.apache.iotdb.db.utils.datastructure.TVListSortAlgorithm;
 import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
 import org.apache.iotdb.metrics.metricsets.system.SystemMetrics;
@@ -113,7 +113,7 @@ public class IoTDBConfig {
   private int mqttHandlerPoolSize = 1;
 
   /** The mqtt message payload formatter. */
-  private String mqttPayloadFormatter = "tree-json";
+  private String mqttPayloadFormatter = "json";
 
   /** The mqtt save data path */
   private String mqttDataPath = "data/";
@@ -151,46 +151,15 @@ public class IoTDBConfig {
   /** Max concurrent client number */
   private int rpcMaxConcurrentClientNum = 65535;
 
-  /** Memory allocated for the write process */
-  private long allocateMemoryForStorageEngine = Runtime.getRuntime().maxMemory() * 3 / 10;
-
-  /** Memory allocated for the read process */
   private long allocateMemoryForRead = Runtime.getRuntime().maxMemory() * 3 / 10;
-
-  /** Memory allocated for the mtree */
-  private long allocateMemoryForSchema = Runtime.getRuntime().maxMemory() / 10;
-
-  /** Memory allocated for the consensus layer */
-  private long allocateMemoryForConsensus = Runtime.getRuntime().maxMemory() / 10;
-
-  /** Memory allocated for the pipe */
-  private long allocateMemoryForPipe = Runtime.getRuntime().maxMemory() / 10;
-
-  /** Ratio of memory allocated for buffered arrays */
-  private double bufferedArraysMemoryProportion = 0.6;
 
   /** Flush proportion for system */
   private double flushProportion = 0.4;
 
-  /** Reject proportion for system */
-  private double rejectProportion = 0.8;
-
-  /** The proportion of write memory for memtable */
-  private double writeProportionForMemtable = 0.76;
-
-  /** The proportion of write memory for compaction */
-  private double compactionProportion = 0.2;
-
-  /** The proportion of memtable memory for WAL queue */
-  private double walBufferQueueProportion = 0.1;
-
-  /** The proportion of memtable memory for device path cache */
-  private double devicePathCacheProportion = 0.05;
-
   /**
    * If memory cost of data region increased more than proportion of {@linkplain
-   * IoTDBConfig#getAllocateMemoryForStorageEngine()}*{@linkplain
-   * IoTDBConfig#getWriteProportionForMemtable()}, report to system.
+   * DataNodeMemoryConfig#getStorageEngineMemoryManager()} *{@linkplain
+   * DataNodeMemoryConfig#getMemtableMemoryManager()}, report to system.
    */
   private double writeMemoryVariationReportProportion = 0.001;
 
@@ -199,9 +168,6 @@ public class IoTDBConfig {
 
   /** When inserting rejected exceeds this, throw an exception. Unit: millisecond */
   private int maxWaitingTimeWhenInsertBlockedInMs = 10000;
-
-  /** off heap memory bytes from env */
-  private long maxOffHeapMemoryBytes = 0;
 
   // region Write Ahead Log Configuration
   /** Write mode of wal */
@@ -224,9 +190,6 @@ public class IoTDBConfig {
 
   /** Buffer size of each wal node. Unit: byte */
   private int walBufferSize = 32 * 1024 * 1024;
-
-  /** max total direct buffer off heap memory size proportion */
-  private double maxDirectBufferOffHeapMemorySizeProportion = 0.8;
 
   /** Blocking queue capacity of each delete ahead log buffer */
   private int deletionAheadLogBufferQueueCapacity = 500;
@@ -366,9 +329,6 @@ public class IoTDBConfig {
 
   /** How many threads can concurrently flush. When <= 0, use CPU core number. */
   private int flushThreadCount = Runtime.getRuntime().availableProcessors();
-
-  /** How many threads can concurrently execute query statement. When <= 0, use CPU core number. */
-  private int queryThreadCount = Runtime.getRuntime().availableProcessors();
 
   private int degreeOfParallelism = Math.max(1, Runtime.getRuntime().availableProcessors() / 2);
 
@@ -595,42 +555,6 @@ public class IoTDBConfig {
 
   /** The size of global compaction estimation rough file info cahce. */
   private int globalCompactionRoughFileInfoCacheSize = 100000;
-
-  /** whether to cache meta data(ChunkMetaData and TsFileMetaData) or not. */
-  private boolean metaDataCacheEnable = true;
-
-  /** Memory allocated for bloomFilter cache in read process */
-  private long allocateMemoryForBloomFilterCache = allocateMemoryForRead / 1001;
-
-  /** Memory allocated for timeSeriesMetaData cache in read process */
-  private long allocateMemoryForTimeSeriesMetaDataCache = allocateMemoryForRead * 200 / 1001;
-
-  /** Memory allocated for chunk cache in read process */
-  private long allocateMemoryForChunkCache = allocateMemoryForRead * 100 / 1001;
-
-  /** Memory allocated for operators */
-  private long allocateMemoryForCoordinator = allocateMemoryForRead * 50 / 1001;
-
-  /** Memory allocated for operators */
-  private long allocateMemoryForOperators = allocateMemoryForRead * 200 / 1001;
-
-  /** Memory allocated for operators */
-  private long allocateMemoryForDataExchange = allocateMemoryForRead * 200 / 1001;
-
-  /** Max bytes of each FragmentInstance for DataExchange */
-  private long maxBytesPerFragmentInstance = allocateMemoryForDataExchange / queryThreadCount;
-
-  /** Memory allocated proportion for timeIndex */
-  private long allocateMemoryForTimeIndex = allocateMemoryForRead * 200 / 1001;
-
-  /** Memory allocated proportion for time partition info */
-  private long allocateMemoryForTimePartitionInfo = allocateMemoryForStorageEngine * 8 / 10 / 20;
-
-  /**
-   * If true, we will estimate each query's possible memory footprint before executing it and deny
-   * it if its estimated memory exceeds current free memory
-   */
-  private boolean enableQueryMemoryEstimation = true;
 
   /** Cache size of {@code checkAndGetDataTypeCache}. */
   private int mRemoteSchemaCacheSize = 100000;
@@ -1040,17 +964,6 @@ public class IoTDBConfig {
   /** ThreadPool size for write operation in coordinator */
   private int coordinatorWriteExecutorSize = 50;
 
-  private int[] schemaMemoryProportion = new int[] {5, 4, 1};
-
-  /** Memory allocated for schemaRegion */
-  private long allocateMemoryForSchemaRegion = allocateMemoryForSchema * 5 / 10;
-
-  /** Memory allocated for SchemaCache */
-  private long allocateMemoryForSchemaCache = allocateMemoryForSchema * 4 / 10;
-
-  /** Memory allocated for PartitionCache */
-  private long allocateMemoryForPartitionCache = allocateMemoryForSchema / 10;
-
   /** Policy of DataNodeSchemaCache eviction */
   private String dataNodeSchemaCacheEvictionPolicy = "FIFO";
 
@@ -1168,10 +1081,13 @@ public class IoTDBConfig {
   /** Load related */
   private double maxAllocateMemoryRatioForLoad = 0.8;
 
+  private int loadTsFileAnalyzeSchemaBatchReadTimeSeriesMetadataCount = 4096;
   private int loadTsFileAnalyzeSchemaBatchFlushTimeSeriesNumber = 4096;
   private int loadTsFileAnalyzeSchemaBatchFlushTableDeviceNumber = 4096; // For table model
   private long loadTsFileAnalyzeSchemaMemorySizeInBytes =
       0L; // 0 means that the decision will be adaptive based on the number of sequences
+
+  private long loadTsFileTabletConversionBatchMemorySizeInBytes = 4096 * 1024;
 
   private int loadTsFileMaxDeviceCountToUseDeviceTimeIndex = 10000;
 
@@ -1185,6 +1101,8 @@ public class IoTDBConfig {
   private int loadTsFileRetryCountOnRegionChange = 10;
 
   private double loadWriteThroughputBytesPerSecond = -1; // Bytes/s
+
+  private long loadTabletConversionThresholdBytes = -1;
 
   private boolean loadActiveListeningEnable = true;
 
@@ -1215,6 +1133,11 @@ public class IoTDBConfig {
   private int loadActiveListeningMaxThreadNum = Runtime.getRuntime().availableProcessors();
 
   private boolean loadActiveListeningVerifyEnable = true;
+
+  private String loadDiskSelectStrategy = LoadDiskSelectorType.MIN_IO_FIRST.getValue();
+
+  private String loadDiskSelectStrategyForIoTV2AndPipe =
+      LoadDiskSelectorType.INHERIT_LOAD.getValue();
 
   /** Pipe related */
   /** initialized as empty, updated based on the latest `systemDir` during querying */
@@ -1784,18 +1707,6 @@ public class IoTDBConfig {
     this.flushThreadCount = flushThreadCount;
   }
 
-  public int getQueryThreadCount() {
-    return queryThreadCount;
-  }
-
-  public void setQueryThreadCount(int queryThreadCount) {
-    if (queryThreadCount <= 0) {
-      queryThreadCount = Runtime.getRuntime().availableProcessors();
-    }
-    this.queryThreadCount = queryThreadCount;
-    this.maxBytesPerFragmentInstance = allocateMemoryForDataExchange / queryThreadCount;
-  }
-
   public void setDegreeOfParallelism(int degreeOfParallelism) {
     if (degreeOfParallelism > 0) {
       this.degreeOfParallelism = degreeOfParallelism;
@@ -1820,15 +1731,6 @@ public class IoTDBConfig {
 
   public void setMaxAllowedConcurrentQueries(int maxAllowedConcurrentQueries) {
     this.maxAllowedConcurrentQueries = maxAllowedConcurrentQueries;
-  }
-
-  public long getMaxBytesPerFragmentInstance() {
-    return maxBytesPerFragmentInstance;
-  }
-
-  @TestOnly
-  public void setMaxBytesPerFragmentInstance(long maxBytesPerFragmentInstance) {
-    this.maxBytesPerFragmentInstance = maxBytesPerFragmentInstance;
   }
 
   public int getWindowEvaluationThreadCount() {
@@ -1989,15 +1891,6 @@ public class IoTDBConfig {
     this.walBufferSize = walBufferSize;
   }
 
-  public double getMaxDirectBufferOffHeapMemorySizeProportion() {
-    return maxDirectBufferOffHeapMemorySizeProportion;
-  }
-
-  public void setMaxDirectBufferOffHeapMemorySizeProportion(
-      double maxDirectBufferOffHeapMemorySizeProportion) {
-    this.maxDirectBufferOffHeapMemorySizeProportion = maxDirectBufferOffHeapMemorySizeProportion;
-  }
-
   public int getDeletionAheadLogBufferQueueCapacity() {
     return deletionAheadLogBufferQueueCapacity;
   }
@@ -2078,14 +1971,6 @@ public class IoTDBConfig {
     this.mergeIntervalSec = mergeIntervalSec;
   }
 
-  public double getBufferedArraysMemoryProportion() {
-    return bufferedArraysMemoryProportion;
-  }
-
-  public void setBufferedArraysMemoryProportion(double bufferedArraysMemoryProportion) {
-    this.bufferedArraysMemoryProportion = bufferedArraysMemoryProportion;
-  }
-
   public double getFlushProportion() {
     return flushProportion;
   }
@@ -2094,73 +1979,12 @@ public class IoTDBConfig {
     this.flushProportion = flushProportion;
   }
 
-  public double getRejectProportion() {
-    return rejectProportion;
-  }
-
-  public void setRejectProportion(double rejectProportion) {
-    this.rejectProportion = rejectProportion;
-  }
-
   public double getWriteMemoryVariationReportProportion() {
     return writeMemoryVariationReportProportion;
   }
 
   public void setWriteMemoryVariationReportProportion(double writeMemoryVariationReportProportion) {
     this.writeMemoryVariationReportProportion = writeMemoryVariationReportProportion;
-  }
-
-  public long getAllocateMemoryForStorageEngine() {
-    return allocateMemoryForStorageEngine;
-  }
-
-  public void setAllocateMemoryForStorageEngine(long allocateMemoryForStorageEngine) {
-    this.allocateMemoryForStorageEngine = allocateMemoryForStorageEngine;
-  }
-
-  public long getAllocateMemoryForSchema() {
-    return allocateMemoryForSchema;
-  }
-
-  public void setAllocateMemoryForSchema(long allocateMemoryForSchema) {
-    this.allocateMemoryForSchema = allocateMemoryForSchema;
-
-    this.allocateMemoryForSchemaRegion = allocateMemoryForSchema * 5 / 10;
-    this.allocateMemoryForSchemaCache = allocateMemoryForSchema * 4 / 10;
-    this.allocateMemoryForPartitionCache = allocateMemoryForSchema / 10;
-  }
-
-  public long getAllocateMemoryForConsensus() {
-    return allocateMemoryForConsensus;
-  }
-
-  public void setAllocateMemoryForConsensus(long allocateMemoryForConsensus) {
-    this.allocateMemoryForConsensus = allocateMemoryForConsensus;
-  }
-
-  public long getAllocateMemoryForRead() {
-    return allocateMemoryForRead;
-  }
-
-  void setAllocateMemoryForRead(long allocateMemoryForRead) {
-    this.allocateMemoryForRead = allocateMemoryForRead;
-
-    this.allocateMemoryForBloomFilterCache = allocateMemoryForRead / 1001;
-    this.allocateMemoryForTimeSeriesMetaDataCache = allocateMemoryForRead * 200 / 1001;
-    this.allocateMemoryForChunkCache = allocateMemoryForRead * 100 / 1001;
-    this.allocateMemoryForCoordinator = allocateMemoryForRead * 50 / 1001;
-    this.allocateMemoryForOperators = allocateMemoryForRead * 200 / 1001;
-    this.allocateMemoryForDataExchange = allocateMemoryForRead * 200 / 1001;
-    this.maxBytesPerFragmentInstance = allocateMemoryForDataExchange / queryThreadCount;
-    this.allocateMemoryForTimeIndex = allocateMemoryForRead * 200 / 1001;
-  }
-
-  public long getAllocateMemoryForPipe() {
-    return allocateMemoryForPipe;
-  }
-
-  public void setAllocateMemoryForPipe(long allocateMemoryForPipe) {
-    this.allocateMemoryForPipe = allocateMemoryForPipe;
   }
 
   public boolean isEnablePartialInsert() {
@@ -2330,88 +2154,6 @@ public class IoTDBConfig {
 
   public void setRpcThriftCompressionEnable(boolean rpcThriftCompressionEnable) {
     this.rpcThriftCompressionEnable = rpcThriftCompressionEnable;
-  }
-
-  public boolean isMetaDataCacheEnable() {
-    return metaDataCacheEnable;
-  }
-
-  public void setMetaDataCacheEnable(boolean metaDataCacheEnable) {
-    this.metaDataCacheEnable = metaDataCacheEnable;
-  }
-
-  public long getAllocateMemoryForBloomFilterCache() {
-    return allocateMemoryForBloomFilterCache;
-  }
-
-  public void setAllocateMemoryForBloomFilterCache(long allocateMemoryForBloomFilterCache) {
-    this.allocateMemoryForBloomFilterCache = allocateMemoryForBloomFilterCache;
-  }
-
-  public long getAllocateMemoryForTimeSeriesMetaDataCache() {
-    return allocateMemoryForTimeSeriesMetaDataCache;
-  }
-
-  public void setAllocateMemoryForTimeSeriesMetaDataCache(
-      long allocateMemoryForTimeSeriesMetaDataCache) {
-    this.allocateMemoryForTimeSeriesMetaDataCache = allocateMemoryForTimeSeriesMetaDataCache;
-  }
-
-  public long getAllocateMemoryForChunkCache() {
-    return allocateMemoryForChunkCache;
-  }
-
-  public void setAllocateMemoryForChunkCache(long allocateMemoryForChunkCache) {
-    this.allocateMemoryForChunkCache = allocateMemoryForChunkCache;
-  }
-
-  public long getAllocateMemoryForCoordinator() {
-    return allocateMemoryForCoordinator;
-  }
-
-  public void setAllocateMemoryForCoordinator(long allocateMemoryForCoordinator) {
-    this.allocateMemoryForCoordinator = allocateMemoryForCoordinator;
-  }
-
-  public long getAllocateMemoryForOperators() {
-    return allocateMemoryForOperators;
-  }
-
-  public void setAllocateMemoryForOperators(long allocateMemoryForOperators) {
-    this.allocateMemoryForOperators = allocateMemoryForOperators;
-  }
-
-  public long getAllocateMemoryForDataExchange() {
-    return allocateMemoryForDataExchange;
-  }
-
-  public void setAllocateMemoryForDataExchange(long allocateMemoryForDataExchange) {
-    this.allocateMemoryForDataExchange = allocateMemoryForDataExchange;
-    this.maxBytesPerFragmentInstance = allocateMemoryForDataExchange / queryThreadCount;
-  }
-
-  public long getAllocateMemoryForTimeIndex() {
-    return allocateMemoryForTimeIndex;
-  }
-
-  public void setAllocateMemoryForTimeIndex(long allocateMemoryForTimeIndex) {
-    this.allocateMemoryForTimeIndex = allocateMemoryForTimeIndex;
-  }
-
-  public long getAllocateMemoryForTimePartitionInfo() {
-    return allocateMemoryForTimePartitionInfo;
-  }
-
-  public void setAllocateMemoryForTimePartitionInfo(long allocateMemoryForTimePartitionInfo) {
-    this.allocateMemoryForTimePartitionInfo = allocateMemoryForTimePartitionInfo;
-  }
-
-  public boolean isEnableQueryMemoryEstimation() {
-    return enableQueryMemoryEstimation;
-  }
-
-  public void setEnableQueryMemoryEstimation(boolean enableQueryMemoryEstimation) {
-    this.enableQueryMemoryEstimation = enableQueryMemoryEstimation;
   }
 
   public boolean isAutoCreateSchemaEnabled() {
@@ -2796,14 +2538,6 @@ public class IoTDBConfig {
 
   public void setMaxWaitingTimeWhenInsertBlocked(int maxWaitingTimeWhenInsertBlocked) {
     this.maxWaitingTimeWhenInsertBlockedInMs = maxWaitingTimeWhenInsertBlocked;
-  }
-
-  public void setMaxOffHeapMemoryBytes(long maxOffHeapMemoryBytes) {
-    this.maxOffHeapMemoryBytes = maxOffHeapMemoryBytes;
-  }
-
-  public long getMaxOffHeapMemoryBytes() {
-    return maxOffHeapMemoryBytes;
   }
 
   public long getSlowQueryThreshold() {
@@ -3465,38 +3199,6 @@ public class IoTDBConfig {
     return new TEndPoint(rpcAddress, rpcPort);
   }
 
-  public int[] getSchemaMemoryProportion() {
-    return schemaMemoryProportion;
-  }
-
-  public void setSchemaMemoryProportion(int[] schemaMemoryProportion) {
-    this.schemaMemoryProportion = schemaMemoryProportion;
-  }
-
-  public long getAllocateMemoryForSchemaRegion() {
-    return allocateMemoryForSchemaRegion;
-  }
-
-  public void setAllocateMemoryForSchemaRegion(long allocateMemoryForSchemaRegion) {
-    this.allocateMemoryForSchemaRegion = allocateMemoryForSchemaRegion;
-  }
-
-  public long getAllocateMemoryForSchemaCache() {
-    return allocateMemoryForSchemaCache;
-  }
-
-  public void setAllocateMemoryForSchemaCache(long allocateMemoryForSchemaCache) {
-    this.allocateMemoryForSchemaCache = allocateMemoryForSchemaCache;
-  }
-
-  public long getAllocateMemoryForPartitionCache() {
-    return allocateMemoryForPartitionCache;
-  }
-
-  public void setAllocateMemoryForPartitionCache(long allocateMemoryForPartitionCache) {
-    this.allocateMemoryForPartitionCache = allocateMemoryForPartitionCache;
-  }
-
   public String getDataNodeSchemaCacheEvictionPolicy() {
     return dataNodeSchemaCacheEvictionPolicy;
   }
@@ -3578,34 +3280,6 @@ public class IoTDBConfig {
     this.driverTaskExecutionTimeSliceInMs = driverTaskExecutionTimeSliceInMs;
   }
 
-  public double getWriteProportionForMemtable() {
-    return writeProportionForMemtable;
-  }
-
-  public void setWriteProportionForMemtable(double writeProportionForMemtable) {
-    this.writeProportionForMemtable = writeProportionForMemtable;
-  }
-
-  public double getCompactionProportion() {
-    return compactionProportion;
-  }
-
-  public double getWalBufferQueueProportion() {
-    return walBufferQueueProportion;
-  }
-
-  public void setWalBufferQueueProportion(double walBufferQueueProportion) {
-    this.walBufferQueueProportion = walBufferQueueProportion;
-  }
-
-  public double getDevicePathCacheProportion() {
-    return devicePathCacheProportion;
-  }
-
-  public void setDevicePathCacheProportion(double devicePathCacheProportion) {
-    this.devicePathCacheProportion = devicePathCacheProportion;
-  }
-
   public static String getEnvironmentVariables() {
     return "\n\t"
         + IoTDBConstant.IOTDB_HOME
@@ -3622,10 +3296,6 @@ public class IoTDBConfig {
         + "="
         + System.getProperty(IoTDBConstant.IOTDB_DATA_HOME, "null")
         + ";";
-  }
-
-  public void setCompactionProportion(double compactionProportion) {
-    this.compactionProportion = compactionProportion;
   }
 
   public long getThrottleThreshold() {
@@ -4068,6 +3738,16 @@ public class IoTDBConfig {
     this.maxAllocateMemoryRatioForLoad = maxAllocateMemoryRatioForLoad;
   }
 
+  public int getLoadTsFileAnalyzeSchemaBatchReadTimeSeriesMetadataCount() {
+    return loadTsFileAnalyzeSchemaBatchReadTimeSeriesMetadataCount;
+  }
+
+  public void setLoadTsFileAnalyzeSchemaBatchReadTimeSeriesMetadataCount(
+      int loadTsFileAnalyzeSchemaBatchReadTimeSeriesMetadataCount) {
+    this.loadTsFileAnalyzeSchemaBatchReadTimeSeriesMetadataCount =
+        loadTsFileAnalyzeSchemaBatchReadTimeSeriesMetadataCount;
+  }
+
   public int getLoadTsFileAnalyzeSchemaBatchFlushTimeSeriesNumber() {
     return loadTsFileAnalyzeSchemaBatchFlushTimeSeriesNumber;
   }
@@ -4095,6 +3775,16 @@ public class IoTDBConfig {
   public void setLoadTsFileAnalyzeSchemaMemorySizeInBytes(
       long loadTsFileAnalyzeSchemaMemorySizeInBytes) {
     this.loadTsFileAnalyzeSchemaMemorySizeInBytes = loadTsFileAnalyzeSchemaMemorySizeInBytes;
+  }
+
+  public long getLoadTsFileTabletConversionBatchMemorySizeInBytes() {
+    return loadTsFileTabletConversionBatchMemorySizeInBytes;
+  }
+
+  public void setLoadTsFileTabletConversionBatchMemorySizeInBytes(
+      long loadTsFileTabletConversionBatchMemorySizeInBytes) {
+    this.loadTsFileTabletConversionBatchMemorySizeInBytes =
+        loadTsFileTabletConversionBatchMemorySizeInBytes;
   }
 
   public int getLoadTsFileMaxDeviceCountToUseDeviceTimeIndex() {
@@ -4156,6 +3846,14 @@ public class IoTDBConfig {
     this.loadWriteThroughputBytesPerSecond = loadWriteThroughputBytesPerSecond;
   }
 
+  public long getLoadTabletConversionThresholdBytes() {
+    return loadTabletConversionThresholdBytes;
+  }
+
+  public void setLoadTabletConversionThresholdBytes(long loadTabletConversionThresholdBytes) {
+    this.loadTabletConversionThresholdBytes = loadTabletConversionThresholdBytes;
+  }
+
   public int getLoadActiveListeningMaxThreadNum() {
     return loadActiveListeningMaxThreadNum;
   }
@@ -4170,6 +3868,23 @@ public class IoTDBConfig {
 
   public void setLoadActiveListeningVerifyEnable(boolean loadActiveListeningVerifyEnable) {
     this.loadActiveListeningVerifyEnable = loadActiveListeningVerifyEnable;
+  }
+
+  public String getLoadDiskSelectStrategy() {
+    return loadDiskSelectStrategy;
+  }
+
+  public void setLoadDiskSelectStrategy(String loadDiskSelectStrategy) {
+    this.loadDiskSelectStrategy = loadDiskSelectStrategy;
+  }
+
+  public String getLoadDiskSelectStrategyForIoTV2AndPipe() {
+    return loadDiskSelectStrategyForIoTV2AndPipe;
+  }
+
+  public void setLoadDiskSelectStrategyForIoTV2AndPipe(
+      String loadDiskSelectStrategyForIoTV2AndPipe) {
+    this.loadDiskSelectStrategyForIoTV2AndPipe = loadDiskSelectStrategyForIoTV2AndPipe;
   }
 
   public long getLoadActiveListeningCheckIntervalSeconds() {

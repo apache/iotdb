@@ -52,17 +52,13 @@ public class PipeTabletEventTsFileBatch extends PipeTabletEventBatch {
   private static final AtomicLong BATCH_ID_GENERATOR = new AtomicLong(0);
   private final AtomicLong currentBatchId = new AtomicLong(BATCH_ID_GENERATOR.incrementAndGet());
 
-  private final long maxSizeInBytes;
-
   private final PipeTsFileBuilder treeModeTsFileBuilder;
   private final PipeTsFileBuilder tableModeTsFileBuilder;
 
   private final Map<Pair<String, Long>, Double> pipeName2WeightMap = new HashMap<>();
 
   public PipeTabletEventTsFileBatch(final int maxDelayInMs, final long requestMaxBatchSizeInBytes) {
-    super(maxDelayInMs);
-
-    this.maxSizeInBytes = requestMaxBatchSizeInBytes;
+    super(maxDelayInMs, requestMaxBatchSizeInBytes);
 
     final AtomicLong tsFileIdGenerator = new AtomicLong(0);
     treeModeTsFileBuilder = new PipeTreeModelTsFileBuilder(currentBatchId, tsFileIdGenerator);
@@ -189,11 +185,6 @@ public class PipeTabletEventTsFileBatch extends PipeTabletEventBatch {
       list.addAll(tableModeTsFileBuilder.convertTabletToTsFileWithDBInfo());
     }
     return list;
-  }
-
-  @Override
-  protected long getMaxBatchSizeInBytes() {
-    return maxSizeInBytes;
   }
 
   @Override

@@ -29,6 +29,7 @@ import org.apache.iotdb.db.pipe.event.common.terminate.PipeTerminateEvent;
 import org.apache.iotdb.db.subscription.agent.SubscriptionAgent;
 import org.apache.iotdb.db.subscription.event.SubscriptionEvent;
 import org.apache.iotdb.db.subscription.event.batch.SubscriptionPipeEventBatches;
+import org.apache.iotdb.db.subscription.resource.SubscriptionDataNodeResourceManager;
 import org.apache.iotdb.db.subscription.task.subtask.SubscriptionReceiverSubtask;
 import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
@@ -97,9 +98,6 @@ public abstract class SubscriptionPrefetchingQueue {
 
   private final SubscriptionPrefetchingQueueStates states;
 
-  private static final long STATE_REPORT_INTERVAL_IN_MS = 10_000L;
-  private long lastStateReportTimestamp = System.currentTimeMillis();
-
   private volatile boolean isCompleted = false;
   private volatile boolean isClosed = false;
 
@@ -136,11 +134,11 @@ public abstract class SubscriptionPrefetchingQueue {
     batches.cleanUp();
 
     // clean up events in prefetchingQueue
-    prefetchingQueue.forEach(SubscriptionEvent::cleanUp);
+    prefetchingQueue.forEach(event -> event.cleanUp(true));
     prefetchingQueue.clear();
 
     // clean up events in inFlightEvents
-    inFlightEvents.values().forEach(SubscriptionEvent::cleanUp);
+    inFlightEvents.values().forEach(event -> event.cleanUp(true));
     inFlightEvents.clear();
 
     // no need to clean up events in inputPendingQueue, see
@@ -280,10 +278,9 @@ public abstract class SubscriptionPrefetchingQueue {
   }
 
   private void reportStateIfNeeded() {
-    if (System.currentTimeMillis() - lastStateReportTimestamp > STATE_REPORT_INTERVAL_IN_MS) {
-      LOGGER.info("Subscription: SubscriptionPrefetchingQueue state {}", this);
-      lastStateReportTimestamp = System.currentTimeMillis();
-    }
+    SubscriptionDataNodeResourceManager.log()
+        .schedule(SubscriptionPrefetchingQueue.class, brokerId, topicName)
+        .ifPresent(l -> l.info("Subscription: SubscriptionPrefetchingQueue state {}", this));
   }
 
   @SafeVarargs
@@ -447,7 +444,7 @@ public abstract class SubscriptionPrefetchingQueue {
                 commitContext,
                 this);
             // clean up committed event
-            ev.cleanUp();
+            ev.cleanUp(false);
             return null; // remove this entry
           }
 
@@ -477,7 +474,7 @@ public abstract class SubscriptionPrefetchingQueue {
           acked.set(true);
 
           // clean up committed event
-          ev.cleanUp();
+          ev.cleanUp(false);
           return null; // remove this entry
         });
 
@@ -668,7 +665,7 @@ public abstract class SubscriptionPrefetchingQueue {
   private final RemappingFunction<SubscriptionEvent> committedCleaner =
       (ev) -> {
         if (ev.isCommitted()) {
-          ev.cleanUp();
+          ev.cleanUp(false);
           return null; // remove this entry
         }
         return ev;

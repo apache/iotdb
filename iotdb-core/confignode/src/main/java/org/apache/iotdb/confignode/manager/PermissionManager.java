@@ -65,7 +65,9 @@ public class PermissionManager {
     LOGGER.info("Auth: run auth plan: {}", authorPlan.toString());
     try {
       if (authorPlan.getAuthorType() == ConfigPhysicalPlanType.CreateUser
+          || authorPlan.getAuthorType() == ConfigPhysicalPlanType.RCreateUser
           || authorPlan.getAuthorType() == ConfigPhysicalPlanType.CreateRole
+          || authorPlan.getAuthorType() == ConfigPhysicalPlanType.RCreateRole
           || authorPlan.getAuthorType() == ConfigPhysicalPlanType.CreateUserWithRawPassword) {
         tsStatus =
             getConsensusManager()
@@ -110,6 +112,10 @@ public class PermissionManager {
 
   public TPermissionInfoResp login(String username, String password) {
     return authorInfo.login(username, password);
+  }
+
+  public String login4Pipe(final String userName, final String password) {
+    return authorInfo.login4Pipe(userName, password);
   }
 
   public TPermissionInfoResp checkUserPrivileges(String username, PrivilegeUnion union) {

@@ -53,7 +53,6 @@ import org.apache.tsfile.write.schema.MeasurementSchema;
 
 import java.io.File;
 import java.io.IOException;
-import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -63,8 +62,6 @@ import java.util.NoSuchElementException;
 import java.util.Objects;
 
 public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
-
-  private static final LocalDate EMPTY_DATE = LocalDate.of(1000, 1, 1);
 
   private final long startTime;
   private final long endTime;
@@ -90,6 +87,8 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
   private byte lastMarker = Byte.MIN_VALUE;
 
   public TsFileInsertionEventScanParser(
+      final String pipeName,
+      final long creationTime,
       final File tsFile,
       final TreePattern pattern,
       final long startTime,
@@ -97,7 +96,7 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
       final PipeTaskMeta pipeTaskMeta,
       final PipeInsertionEvent sourceEvent)
       throws IOException {
-    super(pattern, null, startTime, endTime, pipeTaskMeta, sourceEvent);
+    super(pipeName, creationTime, pattern, null, startTime, endTime, pipeTaskMeta, sourceEvent);
 
     this.startTime = startTime;
     this.endTime = endTime;
@@ -116,6 +115,17 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
       close();
       throw e;
     }
+  }
+
+  public TsFileInsertionEventScanParser(
+      final File tsFile,
+      final TreePattern pattern,
+      final long startTime,
+      final long endTime,
+      final PipeTaskMeta pipeTaskMeta,
+      final PipeInsertionEvent sourceEvent)
+      throws IOException {
+    this(null, 0, tsFile, pattern, startTime, endTime, pipeTaskMeta, sourceEvent);
   }
 
   @Override

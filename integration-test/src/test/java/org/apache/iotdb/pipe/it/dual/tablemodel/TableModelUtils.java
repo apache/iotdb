@@ -100,11 +100,11 @@ public class TableModelUtils {
   public static boolean insertData(
       final String dataBaseName,
       final String tableName,
-      final int start,
-      final int end,
+      final int startInclusive,
+      final int endExclusive,
       final BaseEnv baseEnv) {
-    List<String> list = new ArrayList<>(end - start + 1);
-    for (int i = start; i < end; ++i) {
+    List<String> list = new ArrayList<>(endExclusive - startInclusive + 1);
+    for (int i = startInclusive; i < endExclusive; ++i) {
       list.add(
           String.format(
               "insert into %s (s0, s3, s2, s1, s4, s5, s6, s7, s8, s9, s10, s11, time) values ('t%s','t%s','t%s','t%s','%s', %s.0, %s, %s, %d, %d.0, '%s', '%s', %s)",
@@ -398,6 +398,12 @@ public class TableModelUtils {
   public static boolean hasDataBase(final String database, final BaseEnv baseEnv) {
     TestUtils.assertDataEventuallyOnEnv(baseEnv, "", "", Collections.emptySet(), database);
     return true;
+  }
+
+  public static void assertCountDataAlwaysOnEnv(
+      final String database, final String table, final int count, final BaseEnv baseEnv) {
+    TestUtils.assertDataAlwaysOnEnv(
+        baseEnv, getQueryCountSql(table), "_col0,", Collections.singleton(count + ","), database);
   }
 
   public static void assertCountData(

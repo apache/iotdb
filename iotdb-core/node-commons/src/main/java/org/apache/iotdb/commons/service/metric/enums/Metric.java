@@ -111,6 +111,7 @@ public enum Metric {
   MEMORY_USAGE_MONITOR("memory_usage_monitor"),
   METRIC_LOAD_TIME_SERIES_METADATA("metric_load_time_series_metadata"),
   METRIC_QUERY_CACHE("metric_query_cache"),
+  METRIC_QUERY_CACHE_TIMER("metric_query_cache_timer"),
   QUERY_METADATA_COST("query_metadata_cost"),
   DISPATCHER("dispatcher"),
   QUERY_EXECUTION("query_execution"),
@@ -176,6 +177,8 @@ public enum Metric {
   PIPE_CONFIGNODE_REMAINING_TIME("pipe_confignode_remaining_time"),
   PIPE_GLOBAL_REMAINING_EVENT_COUNT("pipe_global_remaining_event_count"),
   PIPE_GLOBAL_REMAINING_TIME("pipe_global_remaining_time"),
+  PIPE_TSFILE_TO_TABLETS_TIME("pipe_tsfile_to_tablets_time"),
+  PIPE_TSFILE_TO_TABLETS_RATE("pipe_tsfile_to_tablets_rate"),
   // subscription related
   SUBSCRIPTION_UNCOMMITTED_EVENT_COUNT("subscription_uncommitted_event_count"),
   SUBSCRIPTION_CURRENT_COMMIT_ID("subscription_current_commit_id"),

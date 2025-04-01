@@ -78,8 +78,12 @@ public class PipeConfig {
 
   /////////////////////////////// Subtask Connector ///////////////////////////////
 
-  public int getPipeRealTimeQueuePollHistoryThreshold() {
-    return COMMON_CONFIG.getPipeRealTimeQueuePollHistoryThreshold();
+  public int getPipeRealTimeQueuePollTsFileThreshold() {
+    return COMMON_CONFIG.getPipeRealTimeQueuePollTsFileThreshold();
+  }
+
+  public int getPipeRealTimeQueuePollHistoricalTsFileThreshold() {
+    return COMMON_CONFIG.getPipeRealTimeQueuePollHistoricalTsFileThreshold();
   }
 
   /////////////////////////////// Subtask Executor ///////////////////////////////
@@ -146,6 +150,22 @@ public class PipeConfig {
 
   public boolean isPipeConnectorRPCThriftCompressionEnabled() {
     return COMMON_CONFIG.isPipeConnectorRPCThriftCompressionEnabled();
+  }
+
+  public int getPipeAsyncConnectorForcedRetryTsFileEventQueueSizeThreshold() {
+    return COMMON_CONFIG.getPipeAsyncConnectorForcedRetryTsFileEventQueueSizeThreshold();
+  }
+
+  public int getPipeAsyncConnectorForcedRetryTabletEventQueueSizeThreshold() {
+    return COMMON_CONFIG.getPipeAsyncConnectorForcedRetryTabletEventQueueSizeThreshold();
+  }
+
+  public int getPipeAsyncConnectorForcedRetryTotalEventQueueSizeThreshold() {
+    return COMMON_CONFIG.getPipeAsyncConnectorForcedRetryTotalEventQueueSizeThreshold();
+  }
+
+  public long getPipeAsyncConnectorMaxRetryExecutionTimeMsPerCall() {
+    return COMMON_CONFIG.getPipeAsyncConnectorMaxRetryExecutionTimeMsPerCall();
   }
 
   public int getPipeAsyncConnectorSelectorNumber() {
@@ -234,6 +254,10 @@ public class PipeConfig {
     return COMMON_CONFIG.getPipeReceiverLoginPeriodicVerificationIntervalMs();
   }
 
+  public double getPipeReceiverActualToEstimatedMemoryRatio() {
+    return COMMON_CONFIG.getPipeReceiverActualToEstimatedMemoryRatio();
+  }
+
   /////////////////////////////// Hybrid Mode ///////////////////////////////
 
   public int getPipeMaxAllowedHistoricalTsFilePerDataRegion() {
@@ -262,6 +286,10 @@ public class PipeConfig {
 
   public long getPipeStuckRestartMinIntervalMs() {
     return COMMON_CONFIG.getPipeStuckRestartMinIntervalMs();
+  }
+
+  public boolean isPipeEpochKeepTsFileAfterStuckRestartEnabled() {
+    return COMMON_CONFIG.isPipeEpochKeepTsFileAfterStuckRestartEnabled();
   }
 
   public long getPipeStorageEngineFlushTimeIntervalMs() {
@@ -373,7 +401,10 @@ public class PipeConfig {
         getPipeDataStructureTsFileMemoryBlockAllocationRejectThreshold());
 
     LOGGER.info(
-        "PipeRealTimeQueuePollHistoryThreshold: {}", getPipeRealTimeQueuePollHistoryThreshold());
+        "PipeRealTimeQueuePollTsFileThreshold: {}", getPipeRealTimeQueuePollTsFileThreshold());
+    LOGGER.info(
+        "PipeRealTimeQueuePollHistoricalTsFileThreshold: {}",
+        getPipeRealTimeQueuePollHistoricalTsFileThreshold());
 
     LOGGER.info("PipeSubtaskExecutorMaxThreadNum: {}", getPipeSubtaskExecutorMaxThreadNum());
     LOGGER.info(
@@ -423,6 +454,18 @@ public class PipeConfig {
         "PipeRemainingTimeCommitRateAverageTime: {}", getPipeRemainingTimeCommitRateAverageTime());
     LOGGER.info("PipeTsFileScanParsingThreshold(): {}", getPipeTsFileScanParsingThreshold());
 
+    LOGGER.info(
+        "PipeAsyncConnectorForcedRetryTsFileEventQueueSizeThreshold: {}",
+        getPipeAsyncConnectorForcedRetryTsFileEventQueueSizeThreshold());
+    LOGGER.info(
+        "PipeAsyncConnectorForcedRetryTabletEventQueueSizeThreshold: {}",
+        getPipeAsyncConnectorForcedRetryTabletEventQueueSizeThreshold());
+    LOGGER.info(
+        "PipeAsyncConnectorForcedRetryTotalEventQueueSizeThreshold: {}",
+        getPipeAsyncConnectorForcedRetryTotalEventQueueSizeThreshold());
+    LOGGER.info(
+        "PipeAsyncConnectorMaxRetryExecutionTimeMsPerCall: {}",
+        getPipeAsyncConnectorMaxRetryExecutionTimeMsPerCall());
     LOGGER.info("PipeAsyncConnectorSelectorNumber: {}", getPipeAsyncConnectorSelectorNumber());
     LOGGER.info("PipeAsyncConnectorMaxClientNumber: {}", getPipeAsyncConnectorMaxClientNumber());
 
@@ -454,6 +497,9 @@ public class PipeConfig {
     LOGGER.info(
         "PipeReceiverLoginPeriodicVerificationIntervalMs: {}",
         getPipeReceiverLoginPeriodicVerificationIntervalMs());
+    LOGGER.info(
+        "PipeReceiverActualToEstimatedMemoryRatio: {}",
+        getPipeReceiverActualToEstimatedMemoryRatio());
 
     LOGGER.info(
         "PipeMaxAllowedHistoricalTsFilePerDataRegion: {}",
@@ -468,6 +514,9 @@ public class PipeConfig {
         getPipeMaxAllowedLinkedDeletedTsFileDiskUsagePercentage());
     LOGGER.info("PipeStuckRestartIntervalSeconds: {}", getPipeStuckRestartIntervalSeconds());
     LOGGER.info("PipeStuckRestartMinIntervalMs: {}", getPipeStuckRestartMinIntervalMs());
+    LOGGER.info(
+        "PipeEpochKeepTsFileAfterStuckRestartEnabled: {}",
+        isPipeEpochKeepTsFileAfterStuckRestartEnabled());
     LOGGER.info(
         "PipeStorageEngineFlushTimeIntervalMs: {}", getPipeStorageEngineFlushTimeIntervalMs());
 

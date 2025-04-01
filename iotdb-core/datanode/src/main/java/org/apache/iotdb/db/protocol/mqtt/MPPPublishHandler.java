@@ -81,7 +81,7 @@ public class MPPPublishHandler extends AbstractInterceptHandler {
     this.payloadFormat = PayloadFormatManager.getPayloadFormat(config.getMqttPayloadFormatter());
     partitionFetcher = ClusterPartitionFetcher.getInstance();
     schemaFetcher = ClusterSchemaFetcher.getInstance();
-    useTableInsert = (payloadFormat instanceof LinePayloadFormatter);
+    useTableInsert = PayloadFormatter.TABLE_TYPE.equals(this.payloadFormat.getType());
   }
 
   @Override
@@ -148,13 +148,18 @@ public class MPPPublishHandler extends AbstractInterceptHandler {
         if (useTableInsert) {
           TableMessage tableMessage = (TableMessage) message;
           // '/' previously defined as a database name
-          tableMessage.setDatabase(
-              msg.getTopicName().substring(0, msg.getTopicName().indexOf("/")));
+          String database =
+              !msg.getTopicName().contains("/")
+                  ? msg.getTopicName()
+                  : msg.getTopicName().substring(0, msg.getTopicName().indexOf("/"));
+          tableMessage.setDatabase(database);
           insertTable(tableMessage, session);
         } else {
           insertTree((TreeMessage) message, session);
         }
       }
+    } catch (Throwable t) {
+      LOG.warn("onPublish execution exception, msg is [{}], error is ", msg, t);
     } finally {
       // release the payload of the message
       super.onPublish(msg);

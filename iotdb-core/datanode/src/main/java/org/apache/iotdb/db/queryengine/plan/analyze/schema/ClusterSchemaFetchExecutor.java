@@ -77,9 +77,12 @@ class ClusterSchemaFetchExecutor {
   }
 
   private ExecutionResult executionStatement(
-      long queryId, Statement statement, MPPQueryContext context) {
+      final long queryId, final Statement statement, final MPPQueryContext context) {
 
-    long timeout = context == null ? config.getQueryTimeoutThreshold() : context.getTimeOut();
+    final long timeout =
+        context == null
+            ? config.getQueryTimeoutThreshold()
+            : context.getTimeOut() - (System.currentTimeMillis() - context.getStartTime());
     String sql = context == null ? "" : "Fetch Schema for " + context.getQueryType();
     if (context != null && context.getQueryType() == QueryType.READ) {
       sql += ", " + context.getQueryId() + " : " + context.getSql();
@@ -87,7 +90,9 @@ class ClusterSchemaFetchExecutor {
     return coordinator.executeForTreeModel(
         statement,
         queryId,
-        context == null ? null : context.getSession(),
+        context == null
+            ? null
+            : SessionManager.getInstance().copySessionInfoForTreeModel(context.getSession()),
         sql,
         ClusterPartitionFetcher.getInstance(),
         schemaFetcher,

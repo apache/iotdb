@@ -40,7 +40,6 @@ import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.BeforeClass;
-import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -60,8 +59,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
+import static org.apache.iotdb.commons.schema.column.ColumnHeaderConstant.showRegionColumnHeaders;
 import static org.apache.iotdb.db.it.utils.TestUtils.assertTableNonQueryTestFail;
-import static org.apache.iotdb.db.it.utils.TestUtils.resultSetEqualTest;
+import static org.apache.iotdb.db.it.utils.TestUtils.tableResultSetEqualTest;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
@@ -108,6 +108,44 @@ public class IoTDBInsertTableIT {
       statement.execute("insert into sg1(tag1,time,s1) values('d1',604800001,2)");
       statement.execute("flush");
     } catch (Exception e) {
+      fail(e.getMessage());
+    }
+  }
+
+  @Test
+  public void testShowRegion() {
+    try (final Connection connection =
+            EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        final Statement statement = connection.createStatement()) {
+      statement.execute("use \"test\"");
+      statement.execute("create table sg2 (tag1 string tag, s1 int32 field)");
+      statement.execute("insert into sg2(tag1,time,s1) values('d1',1,2)");
+      statement.execute("flush");
+      statement.execute("insert into sg2(tag1,time,s1) values('d1',2,2)");
+      statement.execute("insert into sg2(tag1,time,s1) values('d1',604800001,2)");
+      statement.execute("flush");
+
+      // Test show regions in table model
+      try (final ResultSet resultSet = statement.executeQuery("show regions")) {
+        final ResultSetMetaData metaData = resultSet.getMetaData();
+        assertEquals(showRegionColumnHeaders.size(), metaData.getColumnCount());
+        for (int i = 0; i < showRegionColumnHeaders.size(); i++) {
+          assertEquals(
+              showRegionColumnHeaders.get(i).getColumnName(), metaData.getColumnName(i + 1));
+        }
+        assertTrue(resultSet.next());
+      }
+
+      try (final ResultSet resultSet = statement.executeQuery("show regions from test")) {
+        final ResultSetMetaData metaData = resultSet.getMetaData();
+        assertEquals(showRegionColumnHeaders.size(), metaData.getColumnCount());
+        for (int i = 0; i < showRegionColumnHeaders.size(); i++) {
+          assertEquals(
+              showRegionColumnHeaders.get(i).getColumnName(), metaData.getColumnName(i + 1));
+        }
+        assertTrue(resultSet.next());
+      }
+    } catch (final Exception e) {
       fail(e.getMessage());
     }
   }
@@ -348,7 +386,7 @@ public class IoTDBInsertTableIT {
     }
   }
 
-  @Ignore // aggregation
+  // aggregation
   @Test
   public void testInsertWithoutTime() {
     try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
@@ -370,9 +408,10 @@ public class IoTDBInsertTableIT {
       fail(e.getMessage());
     }
 
-    String expectedHeader = "count(s1),count(s2),count(s3),";
+    String[] expectedHeader = new String[] {"_col0", "_col1", "_col2"};
     String[] retArray = new String[] {"4,4,4,"};
-    resultSetEqualTest("select count(s1), count(s2), count(s3) from sg9", expectedHeader, retArray);
+    tableResultSetEqualTest(
+        "select count(s1), count(s2), count(s3) from sg9", expectedHeader, retArray, "test");
   }
 
   @Test
@@ -399,7 +438,7 @@ public class IoTDBInsertTableIT {
         "test");
   }
 
-  @Ignore // aggregation
+  // aggregation
   @Test
   public void testInsertMultiRow2() throws SQLException {
     try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT)) {
@@ -884,13 +923,26 @@ public class IoTDBInsertTableIT {
       st1.execute(
           "create table if not exists sg21 (tag1 string tag, ss1 string attribute, ss2 int32 field)");
       // only tag
-      st1.execute("insert into sg21(tag1) values('1')");
+      try {
+        st1.execute("insert into sg21(tag1) values('1')");
+      } catch (SQLException e) {
+        assertEquals("507: No Field column present, please check the request", e.getMessage());
+      }
       // only time
-      st1.execute("insert into sg21(time) values(1)");
+      try {
+        st1.execute("insert into sg21(time) values(1)");
+      } catch (SQLException e) {
+        assertEquals(
+            "507: No column other than Time present, please check the request", e.getMessage());
+      }
       // sleep a while to avoid the same timestamp between two insertions
       Thread.sleep(10);
       // only attribute
-      st1.execute("insert into sg21(ss1) values('1')");
+      try {
+        st1.execute("insert into sg21(ss1) values('1')");
+      } catch (SQLException e) {
+        assertEquals("507: No Field column present, please check the request", e.getMessage());
+      }
       // sleep a while to avoid the same timestamp between two insertions
       Thread.sleep(10);
       // only field
@@ -900,28 +952,18 @@ public class IoTDBInsertTableIT {
       assertTrue(rs1.next());
       // from "insert into sg21(ss2) values(1)"
       assertEquals(null, rs1.getString("tag1"));
-      assertTrue(rs1.next());
+      assertFalse(rs1.next());
       // from "insert into sg21(tag1) values('1')"
-      assertEquals("1", rs1.getString("tag1"));
+      assertEquals(null, rs1.getString("tag1"));
       assertFalse(rs1.next());
 
       rs1 = st1.executeQuery("select time, ss1, ss2 from sg21 order by time");
       assertTrue(rs1.next());
-      assertEquals(1, rs1.getLong("time"));
-
-      assertTrue(rs1.next());
       rs1.getString("ss1");
       assertTrue(rs1.wasNull());
       rs1.getInt("ss2");
-      assertTrue(rs1.wasNull());
-
-      assertTrue(rs1.next());
-      assertEquals("1", rs1.getString("ss1"));
-      rs1.getInt("ss2");
-      assertTrue(rs1.wasNull());
-      assertTrue(rs1.next());
-      assertEquals("1", rs1.getString("ss1"));
       assertEquals(1, rs1.getInt("ss2"));
+
       assertFalse(rs1.next());
     }
   }

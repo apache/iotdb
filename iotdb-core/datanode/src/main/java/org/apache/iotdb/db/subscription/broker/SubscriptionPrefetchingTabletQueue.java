@@ -88,7 +88,7 @@ public class SubscriptionPrefetchingTabletQueue extends SubscriptionPrefetchingQ
           }
 
           if (ev.isCommitted()) {
-            ev.cleanUp();
+            ev.cleanUp(false);
             final String errorMessage =
                 String.format(
                     "outdated poll request after commit, consumer id: %s, commit context: %s, offset: %s, prefetching queue: %s",

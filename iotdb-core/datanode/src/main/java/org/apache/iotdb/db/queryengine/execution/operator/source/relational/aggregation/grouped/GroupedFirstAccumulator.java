@@ -125,6 +125,7 @@ public class GroupedFirstAccumulator implements GroupedAccumulator {
 
   @Override
   public void setGroupCount(long groupCount) {
+    minTimes.ensureCapacity(groupCount);
     switch (seriesDataType) {
       case INT32:
       case DATE:
@@ -246,7 +247,7 @@ public class GroupedFirstAccumulator implements GroupedAccumulator {
     checkArgument(
         columnBuilder instanceof BinaryColumnBuilder,
         "intermediate input and output of First should be BinaryColumn");
-    if (minTimes.get(groupId) == Long.MIN_VALUE) {
+    if (minTimes.get(groupId) == Long.MAX_VALUE) {
       columnBuilder.appendNull();
     } else {
       columnBuilder.writeBinary(new Binary(serializeTimeWithValue(groupId)));
@@ -255,7 +256,7 @@ public class GroupedFirstAccumulator implements GroupedAccumulator {
 
   @Override
   public void evaluateFinal(int groupId, ColumnBuilder columnBuilder) {
-    if (minTimes.get(groupId) == Long.MIN_VALUE) {
+    if (minTimes.get(groupId) == Long.MAX_VALUE) {
       columnBuilder.appendNull();
     } else {
       switch (seriesDataType) {
@@ -360,6 +361,7 @@ public class GroupedFirstAccumulator implements GroupedAccumulator {
         length += Integer.BYTES + values.length;
         bytes = new byte[length];
         longToBytes(minTimes.get(groupId), bytes, 0);
+        BytesUtils.intToBytes(values.length, bytes, Long.BYTES);
         System.arraycopy(values, 0, bytes, length - values.length, values.length);
         return bytes;
       case BOOLEAN:
@@ -474,7 +476,7 @@ public class GroupedFirstAccumulator implements GroupedAccumulator {
     if (mask.isSelectAll()) {
       for (int i = 0; i < positionCount; i++) {
         if (!valueColumn.isNull(i)) {
-          updateFloatValue(groupIds[i], valueColumn.getFloat(i), timeColumn.getLong(i));
+          updateDoubleValue(groupIds[i], valueColumn.getDouble(i), timeColumn.getLong(i));
         }
       }
     } else {
@@ -483,8 +485,8 @@ public class GroupedFirstAccumulator implements GroupedAccumulator {
       for (int i = 0; i < positionCount; i++) {
         position = selectedPositions[i];
         if (!valueColumn.isNull(position)) {
-          updateFloatValue(
-              groupIds[position], valueColumn.getFloat(position), timeColumn.getLong(position));
+          updateDoubleValue(
+              groupIds[position], valueColumn.getDouble(position), timeColumn.getLong(position));
         }
       }
     }

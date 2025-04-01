@@ -102,6 +102,7 @@ public class PipeInsertionDataNodeListener {
       final TsFileResource tsFileResource,
       final boolean isLoaded,
       final boolean isGeneratedByPipe) {
+    tsFileResource.setGeneratedByPipe(isGeneratedByPipe);
     // We don't judge whether listenToTsFileExtractorCount.get() == 0 here on purpose
     // because extractors may use tsfile events when some exceptions occur in the
     // insert nodes listening process.
@@ -115,7 +116,7 @@ public class PipeInsertionDataNodeListener {
 
     assigner.publishToAssign(
         PipeRealtimeEventFactory.createRealtimeEvent(
-            assigner.isTableModel(), databaseName, tsFileResource, isLoaded, isGeneratedByPipe));
+            dataRegionId, assigner.isTableModel(), databaseName, tsFileResource, isLoaded));
   }
 
   public void listenToInsertNode(
@@ -137,7 +138,12 @@ public class PipeInsertionDataNodeListener {
 
     assigner.publishToAssign(
         PipeRealtimeEventFactory.createRealtimeEvent(
-            assigner.isTableModel(), databaseName, walEntryHandler, insertNode, tsFileResource));
+            dataRegionId,
+            assigner.isTableModel(),
+            databaseName,
+            walEntryHandler,
+            insertNode,
+            tsFileResource));
   }
 
   public DeletionResource listenToDeleteData(
@@ -163,7 +169,7 @@ public class PipeInsertionDataNodeListener {
       deletionResource = null;
     }
 
-    assigner.publishToAssign(PipeRealtimeEventFactory.createRealtimeEvent(node));
+    assigner.publishToAssign(PipeRealtimeEventFactory.createRealtimeEvent(regionId, node));
 
     return deletionResource;
   }
@@ -173,6 +179,12 @@ public class PipeInsertionDataNodeListener {
         (key, value) ->
             value.publishToAssign(
                 PipeRealtimeEventFactory.createRealtimeEvent(key, shouldPrintMessage)));
+  }
+
+  //////////////////////////// Permission change ////////////////////////////
+
+  public void invalidateAllCache() {
+    dataRegionId2Assigner.values().forEach(PipeDataRegionAssigner::invalidateCache);
   }
 
   /////////////////////////////// singleton ///////////////////////////////
