@@ -638,11 +638,13 @@ public class InformationSchemaContentSupplierFactory {
       columnBuilders[2].writeBinary(
           new Binary(
               ShowCreateViewTask.getShowCreateViewSQL(currentTable), TSFileConfig.STRING_CHARSET));
+      resultBuilder.declarePosition();
+      currentTable = null;
     }
 
     @Override
     public boolean hasNext() {
-      while (true) {
+      while (Objects.isNull(currentTable)) {
         while (Objects.isNull(tableInfoIterator) || !tableInfoIterator.hasNext()) {
           if (!dbIterator.hasNext()) {
             return false;
@@ -662,6 +664,7 @@ public class InformationSchemaContentSupplierFactory {
           return true;
         }
       }
+      return true;
     }
   }
 
