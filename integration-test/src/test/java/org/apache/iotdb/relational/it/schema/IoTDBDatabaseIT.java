@@ -539,6 +539,9 @@ public class IoTDBDatabaseIT {
                   "information_schema,pipe_plugins,INF,USING,null,SYSTEM VIEW,",
                   "information_schema,pipes,INF,USING,null,SYSTEM VIEW,",
                   "information_schema,subscriptions,INF,USING,null,SYSTEM VIEW,",
+                  "information_schema,views,INF,USING,null,SYSTEM VIEW,",
+                  "information_schema,models,INF,USING,null,SYSTEM VIEW,",
+                  "information_schema,functions,INF,USING,null,SYSTEM VIEW,",
                   "information_schema,configurations,INF,USING,null,SYSTEM VIEW,",
                   "test,test,INF,USING,test,BASE TABLE,",
                   "test,view_table,100,USING,null,TREE_TO_TABLE VIEW")));
