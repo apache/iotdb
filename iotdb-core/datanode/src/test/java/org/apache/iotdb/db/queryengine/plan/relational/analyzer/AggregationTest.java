@@ -662,13 +662,46 @@ public class AggregationTest {
 
   @Test
   public void countConstantTest() {
-    // select count(1) from table
-    // select count(2) from table
-    // select count('a') from table
+    PlanTester planTester = new PlanTester();
 
-    // select count(pi()) from table
-    // select count(e()) from table
+    LogicalQueryPlan ret =
+        planTester.createPlan("SELECT count(*) FROM table1 where tag1='beijing' and tag2='A1'");
+    assertPlan(
+        ret,
+        output(
+            aggregationTableScan(
+                singleGroupingSet(),
+                ImmutableList.of(), // UnStreamable
+                Optional.empty(),
+                SINGLE,
+                "testdb.table1",
+                ImmutableList.of("count"),
+                ImmutableSet.of("time"))));
 
-    // select count(cast('a' as 'a')) from table
+    ret = planTester.createPlan("SELECT count(1) FROM table1 where tag1='beijing' and tag2='A1'");
+    assertPlan(
+        ret,
+        output(
+            aggregationTableScan(
+                singleGroupingSet(),
+                ImmutableList.of(), // UnStreamable
+                Optional.empty(),
+                SINGLE,
+                "testdb.table1",
+                ImmutableList.of("count"),
+                ImmutableSet.of("time"))));
+
+    ret = planTester.createPlan("SELECT count('a') FROM table1 where tag1='beijing' and tag2='A1'");
+    assertPlan(
+        ret,
+        output(
+            aggregationTableScan(
+                singleGroupingSet(),
+                ImmutableList.of(), // UnStreamable
+                Optional.empty(),
+                SINGLE,
+                "testdb.table1",
+                ImmutableList.of("count"),
+                ImmutableSet.of("time"))));
   }
 }

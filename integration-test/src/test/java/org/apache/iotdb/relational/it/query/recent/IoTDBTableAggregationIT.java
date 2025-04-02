@@ -142,7 +142,7 @@ public class IoTDBTableAggregationIT {
         retArray,
         DATABASE_NAME);
     tableResultSetEqualTest(
-        "select count(1) from table1 where device_id = 'd01'",
+        "select count('a') from table1 where device_id = 'd01'",
         expectedHeader,
         retArray,
         DATABASE_NAME);
