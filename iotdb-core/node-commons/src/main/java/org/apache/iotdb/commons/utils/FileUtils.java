@@ -405,6 +405,35 @@ public class FileUtils {
     }
   }
 
+  public static void copyFileWithMD5Check(final File sourceFile, final File targetDir)
+      throws IOException {
+    final String sourceFileName = sourceFile.getName();
+    final File targetFile = new File(targetDir, sourceFileName);
+    if (targetFile.exists()) {
+      if (!haveSameMD5(sourceFile, targetFile)) {
+        final String renameFile = copyFileRenameWithMD5(sourceFile, targetDir);
+        LOGGER.info(
+            "Copy file {} to {} because it already exists in the target directory: {}",
+            sourceFile.getName(),
+            renameFile,
+            targetDir.getAbsolutePath());
+      }
+    } else {
+      if (!(targetDir.exists() || targetDir.mkdirs())) {
+        final String log =
+            String.format("failed to create target directory: %s", targetDir.getAbsolutePath());
+        LOGGER.warn(log);
+        throw new IOException(log);
+      }
+
+      Files.copy(
+          sourceFile.toPath(),
+          targetFile.toPath(),
+          StandardCopyOption.REPLACE_EXISTING,
+          StandardCopyOption.COPY_ATTRIBUTES);
+    }
+  }
+
   private static boolean haveSameMD5(final File file1, final File file2) {
     try (final InputStream is1 = Files.newInputStream(file1.toPath());
         final InputStream is2 = Files.newInputStream(file2.toPath())) {
@@ -426,6 +455,26 @@ public class FileUtils {
 
       org.apache.commons.io.FileUtils.moveFile(
           sourceFile, targetFile, StandardCopyOption.REPLACE_EXISTING);
+    }
+  }
+
+  private static String copyFileRenameWithMD5(final File sourceFile, final File targetDir)
+      throws IOException {
+    try (final InputStream is = Files.newInputStream(sourceFile.toPath())) {
+      final String sourceFileBaseName = FilenameUtils.getBaseName(sourceFile.getName());
+      final String sourceFileExtension = FilenameUtils.getExtension(sourceFile.getName());
+      final String sourceFileMD5 = DigestUtils.md5Hex(is);
+
+      final String targetFileName =
+          sourceFileBaseName + "-" + sourceFileMD5.substring(0, 16) + "." + sourceFileExtension;
+      final File targetFile = new File(targetDir, targetFileName);
+
+      Files.copy(
+          sourceFile.toPath(),
+          targetFile.toPath(),
+          StandardCopyOption.REPLACE_EXISTING,
+          StandardCopyOption.COPY_ATTRIBUTES);
+      return targetFileName;
     }
   }
 }

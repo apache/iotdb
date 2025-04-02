@@ -196,9 +196,12 @@ import org.apache.tsfile.exception.NotImplementedException;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 import static org.apache.iotdb.commons.executable.ExecutableManager.getUnTrustedUriErrorMsg;
 import static org.apache.iotdb.commons.executable.ExecutableManager.isUriTrusted;
+import static org.apache.iotdb.db.queryengine.plan.execution.config.TableConfigTaskVisitor.checkAndEnrichSinkUserName;
+import static org.apache.iotdb.db.queryengine.plan.execution.config.TableConfigTaskVisitor.checkAndEnrichSourceUserName;
 
 public class TreeConfigTaskVisitor extends StatementVisitor<IConfigTask, MPPQueryContext> {
 
@@ -515,8 +518,8 @@ public class TreeConfigTaskVisitor extends StatementVisitor<IConfigTask, MPPQuer
 
   @Override
   public IConfigTask visitCreatePipe(
-      CreatePipeStatement createPipeStatement, MPPQueryContext context) {
-    for (String ExtractorAttribute : createPipeStatement.getExtractorAttributes().keySet()) {
+      final CreatePipeStatement createPipeStatement, final MPPQueryContext context) {
+    for (final String ExtractorAttribute : createPipeStatement.getExtractorAttributes().keySet()) {
       if (ExtractorAttribute.startsWith(SystemConstant.SYSTEM_PREFIX_KEY)) {
         throw new SemanticException(
             String.format(
@@ -529,29 +532,51 @@ public class TreeConfigTaskVisitor extends StatementVisitor<IConfigTask, MPPQuer
     createPipeStatement
         .getExtractorAttributes()
         .put(SystemConstant.SQL_DIALECT_KEY, SystemConstant.SQL_DIALECT_TREE_VALUE);
+    checkAndEnrichSourceUserName(
+        createPipeStatement.getPipeName(),
+        createPipeStatement.getExtractorAttributes(),
+        context.getSession().getUserName(),
+        false);
+    checkAndEnrichSinkUserName(
+        createPipeStatement.getPipeName(),
+        createPipeStatement.getConnectorAttributes(),
+        context.getSession().getUserName(),
+        false);
 
     return new CreatePipeTask(createPipeStatement);
   }
 
   @Override
   public IConfigTask visitAlterPipe(
-      AlterPipeStatement alterPipeStatement, MPPQueryContext context) {
+      final AlterPipeStatement alterPipeStatement, final MPPQueryContext context) {
 
-    for (String ExtractorAttribute : alterPipeStatement.getExtractorAttributes().keySet()) {
-      if (ExtractorAttribute.startsWith(SystemConstant.SYSTEM_PREFIX_KEY)) {
+    for (final String extractorAttributeKey :
+        alterPipeStatement.getExtractorAttributes().keySet()) {
+      if (extractorAttributeKey.startsWith(SystemConstant.SYSTEM_PREFIX_KEY)) {
         throw new SemanticException(
             String.format(
                 "Failed to alter pipe %s, modifying %s is not allowed.",
-                alterPipeStatement.getPipeName(), ExtractorAttribute));
+                alterPipeStatement.getPipeName(), extractorAttributeKey));
       }
     }
+
+    final String userName = context.getSession().getUserName();
+    alterPipeStatement.setUserName(userName);
+
+    final String pipeName = alterPipeStatement.getPipeName();
+    final Map<String, String> extractorAttributes = alterPipeStatement.getExtractorAttributes();
 
     // If the source is replaced, sql-dialect uses the current Alter Pipe sql-dialect. If it is
     // modified, the original sql-dialect is used.
     if (alterPipeStatement.isReplaceAllExtractorAttributes()) {
-      alterPipeStatement
-          .getExtractorAttributes()
-          .put(SystemConstant.SQL_DIALECT_KEY, SystemConstant.SQL_DIALECT_TREE_VALUE);
+      extractorAttributes.put(
+          SystemConstant.SQL_DIALECT_KEY, SystemConstant.SQL_DIALECT_TREE_VALUE);
+      checkAndEnrichSourceUserName(pipeName, extractorAttributes, userName, true);
+    }
+
+    if (alterPipeStatement.isReplaceAllConnectorAttributes()) {
+      checkAndEnrichSinkUserName(
+          pipeName, alterPipeStatement.getConnectorAttributes(), userName, true);
     }
 
     return new AlterPipeTask(alterPipeStatement);

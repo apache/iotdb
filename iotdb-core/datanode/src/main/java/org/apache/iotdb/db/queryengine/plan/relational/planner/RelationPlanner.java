@@ -911,7 +911,8 @@ public class RelationPlanner extends AstVisitor<RelationPlan, Void> {
               new TableFunctionNode.PassThroughSpecification(
                   tableArgument.isPassThroughColumns(), passThroughColumns.build()),
               requiredColumns,
-              specification));
+              specification,
+              functionAnalysis.isRequiredRecordSnapshot()));
     }
 
     PlanNode root =

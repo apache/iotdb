@@ -103,7 +103,7 @@ public class AsyncSendPlanNodeHandler implements AsyncMethodCallback<TSendBatchP
     }
   }
 
-  private boolean needRetry(Exception e) {
+  public static boolean needRetry(Exception e) {
     Throwable rootCause = ExceptionUtils.getRootCause(e);
     // 1. connection broken it means that the remote node may go offline
     // 2. or the method call is time out

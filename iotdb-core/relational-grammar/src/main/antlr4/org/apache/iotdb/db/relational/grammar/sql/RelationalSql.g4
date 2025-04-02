@@ -954,10 +954,6 @@ scalarArgument
     | timeDuration
     ;
 
-copartitionTables
-    : '(' qualifiedName ',' qualifiedName (',' qualifiedName)* ')'
-    ;
-
 expression
     : booleanExpression
     ;
