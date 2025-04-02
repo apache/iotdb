@@ -618,9 +618,12 @@ public abstract class TabletInsertionEventParser {
               valueColumns[i] = EMPTY_LOCALDATE;
               nullValueColumnBitmap.mark(i);
             } else {
-              valueColumns[i] =
-                  DateUtils.parseIntToLocalDate(
-                      ((int) originValueColumns.get(rowIndexList.get(i), columnIndex)));
+              Object o = originValueColumns.get(rowIndexList.get(i), columnIndex);
+              if (o instanceof LocalDate) {
+                valueColumns[i] = (LocalDate) o;
+              } else {
+                valueColumns[i] = DateUtils.parseIntToLocalDate(((int) o));
+              }
             }
           }
           return valueColumns;

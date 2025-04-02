@@ -826,6 +826,7 @@ public abstract class AlignedTVList extends TVList {
       BitMap bitMap,
       int start,
       int end,
+      int resultOffset,
       TSStatus[] results,
       int tvListPos) {
     if (columnIndex < 0 || column == null) {
@@ -849,8 +850,9 @@ public abstract class AlignedTVList extends TVList {
       for (int i = 0; i < copyLength; i++) {
         if (bitMap != null && bitMap.isMarked(current + i)
             || results != null
-                && results[current + i] != null
-                && results[current + i].code != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+                && results[current + i + resultOffset] != null
+                && results[current + i + resultOffset].code
+                    != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
           markNullValue(columnIndex, arrayIdx, elementIdx + i);
         }
       }
@@ -888,7 +890,14 @@ public abstract class AlignedTVList extends TVList {
 
     for (int i = 0; i < columnIndices.size(); i++) {
       putAlignedValues(
-          columns[i], columnIndices.get(i), bitMaps[i], start, end, results, tvListPos);
+          columns[i],
+          columnIndices.get(i),
+          bitMaps == null ? null : bitMaps[i],
+          start,
+          end,
+          0,
+          results,
+          tvListPos);
     }
     markNotInsertedColumns(start, end);
   }

@@ -190,6 +190,7 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
 
   public void setTimes(long[] times) {
     this.times = new SingleArrayTimeView(times);
+    this.rowCount = times.length;
   }
 
   public BitMap[] getBitMaps() {
@@ -495,6 +496,7 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
       if (dataTypes[i] == null) {
         continue;
       }
+      values[i] = new Object[numOfArrays];
       for (int j = 0; j < numOfArrays; j++) {
         values[i][j] = PrimitiveArrayManager.allocate(dataTypes[i]);
       }
@@ -967,9 +969,7 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
   @Override
   public int hashCode() {
     int result = Objects.hash(super.hashCode(), rowCount, range);
-    result = 31 * result + Objects.hashCode(times);
     result = 31 * result + Arrays.hashCode(bitMaps);
-    result = 31 * result + Objects.hashCode(columns);
     return result;
   }
 

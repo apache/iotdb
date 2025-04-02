@@ -277,7 +277,7 @@ public class StatementGeneratorTest {
     assertEquals(
         columnSchema.getColumnCategory(), insertTabletStatement.getColumnCategories()[insertPos]);
     for (int i = 0; i < insertTabletStatement.getRowCount(); i++) {
-      assertEquals(0, insertTabletStatement.getColumns().get(i, insertPos));
+      assertEquals(0L, insertTabletStatement.getColumns().get(i, insertPos));
     }
 
     // insert at last
@@ -356,7 +356,7 @@ public class StatementGeneratorTest {
           ((double[]) columns[2])[i],
           (double) insertTabletStatement.getColumns().get(i, 1),
           0.0001);
-      assertEquals(((Binary[]) columns[1])[i], ((Binary[]) columns[0])[i]);
+      assertEquals(((Binary[]) columns[1])[i], insertTabletStatement.getColumns().get(i, 0));
     }
     assertTrue(insertTabletStatement.getBitMaps()[0].isMarked(1));
     assertTrue(insertTabletStatement.getBitMaps()[1].isMarked(2));
@@ -375,7 +375,7 @@ public class StatementGeneratorTest {
           ((double[]) columns[2])[i],
           (double) insertTabletStatement.getColumns().get(i, 1),
           0.0001);
-      assertEquals(((Binary[]) columns[1])[i], ((Binary[]) columns[0])[i]);
+      assertEquals(((Binary[]) columns[1])[i], insertTabletStatement.getColumns().get(i, 0));
     }
     assertTrue(insertTabletStatement.getBitMaps()[0].isMarked(1));
     assertTrue(insertTabletStatement.getBitMaps()[1].isMarked(2));

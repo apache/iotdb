@@ -169,10 +169,10 @@ public class StatementTestUtils {
     insertTabletStatement.setMeasurements(measurements);
     insertTabletStatement.setDataTypes(dataTypes);
     insertTabletStatement.setColumnCategories(columnCategories);
+    insertTabletStatement.setRowCount(timestamps.length);
     insertTabletStatement.setColumns(columns);
     insertTabletStatement.setTimes(timestamps);
     insertTabletStatement.setWriteToTable(writeToTable);
-    insertTabletStatement.setRowCount(timestamps.length);
 
     return insertTabletStatement;
   }

@@ -44,6 +44,8 @@ import org.apache.tsfile.write.chunk.IChunkWriter;
 import org.apache.tsfile.write.chunk.ValueChunkWriter;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.apache.tsfile.write.schema.MeasurementSchema;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.DataInputStream;
 import java.io.IOException;
@@ -61,6 +63,7 @@ import static org.apache.iotdb.db.utils.ModificationUtils.isPointDeleted;
 
 public class AlignedWritableMemChunk extends AbstractWritableMemChunk {
 
+  private static final Logger LOGGER = LoggerFactory.getLogger(AlignedWritableMemChunk.class);
   private final Map<String, Integer> measurementIndexMap;
   private List<TSDataType> dataTypes;
   private final List<IMeasurementSchema> schemaList;
@@ -572,7 +575,9 @@ public class AlignedWritableMemChunk extends AbstractWritableMemChunk {
               case BLOB:
                 Binary value = list.getBinaryByValueIndex(originRowIndex, columnIndex);
                 if (!isNull && value == null) {
-                  System.out.println("");
+                  LOGGER.error(
+                      "Detected nullability inconsistency in list {}",
+                      System.identityHashCode(list));
                 }
                 alignedChunkWriter.writeByColumn(time, isNull ? null : value, isNull);
                 break;

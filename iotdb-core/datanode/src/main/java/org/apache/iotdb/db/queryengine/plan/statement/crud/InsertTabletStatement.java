@@ -58,10 +58,13 @@ import org.apache.tsfile.utils.RamUsageEstimator;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 import org.apache.tsfile.write.UnSupportedDataTypeException;
 import org.apache.tsfile.write.schema.MeasurementSchema;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -75,6 +78,7 @@ import java.util.stream.Collectors;
 
 public class InsertTabletStatement extends InsertBaseStatement implements ISchemaValidation {
 
+  private static final Logger LOGGER = LoggerFactory.getLogger(InsertTabletStatement.class);
   private static final long INSTANCE_SIZE =
       RamUsageEstimator.shallowSizeOfInstance(InsertTabletStatement.class);
 
@@ -649,6 +653,23 @@ public class InsertTabletStatement extends InsertBaseStatement implements ISchem
     public long[] toSingleArray() {
       return timestamps;
     }
+
+    @Override
+    public boolean equals(Object o) {
+      if (this == o) {
+        return true;
+      }
+      if (o == null || getClass() != o.getClass()) {
+        return false;
+      }
+      SingleArrayTimeView that = (SingleArrayTimeView) o;
+      return Objects.deepEquals(timestamps, that.timestamps);
+    }
+
+    @Override
+    public int hashCode() {
+      return Arrays.hashCode(timestamps);
+    }
   }
 
   public static class MultiArrayTimeView implements TimeView {
@@ -755,6 +776,8 @@ public class InsertTabletStatement extends InsertBaseStatement implements ISchem
 
         current += copyLength;
       }
+
+      LOGGER.info("Put {} values into list {}", end - start, System.identityHashCode(tvList));
     }
 
     @Override
@@ -772,6 +795,25 @@ public class InsertTabletStatement extends InsertBaseStatement implements ISchem
           arrayIndex * singleArraySize,
           length % singleArraySize);
       return singleArray;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+      if (this == o) {
+        return true;
+      }
+      if (o == null || getClass() != o.getClass()) {
+        return false;
+      }
+      MultiArrayTimeView that = (MultiArrayTimeView) o;
+      return singleArraySize == that.singleArraySize
+          && length == that.length
+          && Objects.deepEquals(timestamps, that.timestamps);
+    }
+
+    @Override
+    public int hashCode() {
+      return Objects.hash(singleArraySize, Arrays.deepHashCode(timestamps), length);
     }
   }
 
@@ -889,8 +931,16 @@ public class InsertTabletStatement extends InsertBaseStatement implements ISchem
     public Object get(int rowIndex, int colIndex) {
       switch (dataTypes.get()[colIndex]) {
         case INT32:
-        case DATE:
           return ((int[]) values[colIndex])[rowIndex];
+        case DATE:
+          if (values[colIndex] instanceof int[]) {
+            return ((int[]) values[colIndex])[rowIndex];
+          } else if (values[colIndex] instanceof LocalDate[]) {
+            return ((LocalDate[]) values[colIndex])[rowIndex];
+          } else {
+            throw new IllegalArgumentException(
+                values[colIndex].getClass() + " is not a legal array for INT32");
+          }
         case INT64:
         case TIMESTAMP:
           return ((long[]) values[colIndex])[rowIndex];
@@ -1180,6 +1230,36 @@ public class InsertTabletStatement extends InsertBaseStatement implements ISchem
     @Override
     public Object[] toTwoDArray() {
       return values;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+      if (this == o) {
+        return true;
+      }
+      if (o == null || getClass() != o.getClass()) {
+        return false;
+      }
+      TwoDArrayValueView that = (TwoDArrayValueView) o;
+      if (rowLength != that.rowLength) {
+        return false;
+      }
+      if (!Arrays.equals(dataTypes(), that.dataTypes())) {
+        return false;
+      }
+      for (int i = 0; i < colLength(); i++) {
+        for (int j = 0; j < rowLength(); j++) {
+          if (!Objects.equals(get(j, i), that.get(j, i))) {
+            return false;
+          }
+        }
+      }
+      return true;
+    }
+
+    @Override
+    public int hashCode() {
+      return Objects.hash(dataTypes, rowLength);
     }
   }
 
@@ -1736,38 +1816,46 @@ public class InsertTabletStatement extends InsertBaseStatement implements ISchem
         AlignedTVList tvList,
         List<Integer> columnIndices,
         BitMap[] bitMaps,
-        int start,
-        int end,
+        int tabletStart,
+        int tabletEnd,
         TSStatus[] results,
-        int pos) {
-      if (end > rowLength) {
-        end = rowLength;
+        int tvListPos) {
+      if (tabletEnd > rowLength) {
+        tabletEnd = rowLength;
       }
 
       tvList.resetColumnInsertedMap();
       for (int i = 0; i < columnIndices.size(); i++) {
-        int current = start;
-        while (current < end) {
+        int currentTabletPos = tabletStart;
+        int currentTVListPos = tvListPos;
+        while (currentTabletPos < tabletEnd) {
           // put one array to TVList
-          int arrayIndex = current / singleArraySize;
-          int arrayRemaining = singleArraySize - current % singleArraySize;
-          int copyLength = Math.min(arrayRemaining, end - current);
+          int arrayIndex = currentTabletPos / singleArraySize;
+          int arrayRemaining = singleArraySize - currentTabletPos % singleArraySize;
+          int copyLength = Math.min(arrayRemaining, tabletEnd - currentTabletPos);
 
-          int arrayStart = current % singleArraySize;
+          int arrayStart = currentTabletPos % singleArraySize;
           int arrayEnd = arrayStart + copyLength;
+          int resultOffset = currentTabletPos - arrayStart;
           tvList.putAlignedValues(
               values[i][arrayIndex],
               columnIndices.get(i),
-              bitMaps[i] == null ? null : bitMaps[i].getRegion(current, current + copyLength),
+              bitMaps[i] == null
+                  ? null
+                  : bitMaps[i].getRegion(currentTabletPos, currentTabletPos + copyLength),
               arrayStart,
               arrayEnd,
+              resultOffset,
               results,
-              pos);
+              currentTVListPos);
 
-          current += copyLength;
+          currentTabletPos += copyLength;
+          currentTVListPos += copyLength;
         }
       }
-      tvList.markNotInsertedColumns(start, end);
+      tvList.markNotInsertedColumns(tabletStart, tabletEnd);
+      LOGGER.info(
+          "Put {} values into list {}", tabletEnd - tabletStart, System.identityHashCode(tvList));
     }
 
     @Override
@@ -1822,6 +1910,36 @@ public class InsertTabletStatement extends InsertBaseStatement implements ISchem
             rowLength % singleArraySize);
       }
       return twoDArray;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+      if (this == o) {
+        return true;
+      }
+      if (o == null || getClass() != o.getClass()) {
+        return false;
+      }
+      ThreeDArrayValueView that = (ThreeDArrayValueView) o;
+      if (rowLength != that.rowLength) {
+        return false;
+      }
+      if (!Arrays.equals(dataTypes(), that.dataTypes())) {
+        return false;
+      }
+      for (int i = 0; i < colLength(); i++) {
+        for (int j = 0; j < rowLength(); j++) {
+          if (!Objects.equals(get(j, i), that.get(j, i))) {
+            return false;
+          }
+        }
+      }
+      return true;
+    }
+
+    @Override
+    public int hashCode() {
+      return Objects.hash(dataTypes, rowLength, singleArraySize);
     }
   }
 
