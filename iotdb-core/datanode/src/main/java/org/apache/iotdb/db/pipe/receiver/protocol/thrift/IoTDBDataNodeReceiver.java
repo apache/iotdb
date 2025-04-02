@@ -39,7 +39,6 @@ import org.apache.iotdb.commons.pipe.receiver.PipeReceiverStatusHandler;
 import org.apache.iotdb.commons.schema.column.ColumnHeaderConstant;
 import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.commons.utils.RetryUtils;
-import org.apache.iotdb.commons.utils.StatusUtils;
 import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
 import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.conf.IoTDBConfig;
@@ -178,9 +177,6 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
   private final SqlParser tableSqlParser = new SqlParser();
 
   private static final SessionManager SESSION_MANAGER = SessionManager.getInstance();
-  private static final long LOGIN_PERIODIC_VERIFICATION_INTERVAL_MS =
-      PipeConfig.getInstance().getPipeReceiverLoginPeriodicVerificationIntervalMs();
-  private long lastSuccessfulLoginTime = Long.MIN_VALUE;
 
   private static final double ACTUAL_TO_ESTIMATED_MEMORY_RATIO =
       PipeConfig.getInstance().getPipeReceiverActualToEstimatedMemoryRatio();
@@ -500,27 +496,9 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
   }
 
   @Override
-  protected TSStatus tryLogin() {
+  protected boolean shouldLogin() {
     final IClientSession clientSession = SESSION_MANAGER.getCurrSession();
-    if (clientSession == null
-        || !clientSession.isLogin()
-        || (LOGIN_PERIODIC_VERIFICATION_INTERVAL_MS >= 0
-            && lastSuccessfulLoginTime
-                < System.currentTimeMillis() - LOGIN_PERIODIC_VERIFICATION_INTERVAL_MS)) {
-      final TSStatus status =
-          SESSION_MANAGER.login(
-              SESSION_MANAGER.getCurrSession(),
-              username,
-              password,
-              ZoneId.systemDefault().toString(),
-              SessionManager.CURRENT_RPC_VERSION,
-              IoTDBConstant.ClientVersion.V_1_0);
-      if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-        lastSuccessfulLoginTime = System.currentTimeMillis();
-      }
-      return status;
-    }
-    return StatusUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
+    return clientSession == null || !clientSession.isLogin() || super.shouldLogin();
   }
 
   @Override
@@ -869,23 +847,18 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
       databaseName = null;
     }
 
+    // Permission check
+    final TSStatus loginStatus = loginIfNecessary();
+    if (loginStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      return loginStatus;
+    }
+
+    final IClientSession clientSession = SESSION_MANAGER.getCurrSessionAndUpdateIdleTime();
+
     // For table model, the authority check is done in inner execution. No need to check here
     if (!isTableModelStatement) {
-      // Permission check
-      TSStatus permissionCheckStatus;
-      IClientSession clientSession = SESSION_MANAGER.getCurrSessionAndUpdateIdleTime();
-      if (clientSession == null
-          || !clientSession.isLogin()
-          || (LOGIN_PERIODIC_VERIFICATION_INTERVAL_MS >= 0
-              && lastSuccessfulLoginTime
-                  < System.currentTimeMillis() - LOGIN_PERIODIC_VERIFICATION_INTERVAL_MS)) {
-        permissionCheckStatus = login();
-        if (permissionCheckStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-          return permissionCheckStatus;
-        }
-        clientSession = SESSION_MANAGER.getCurrSession();
-      }
-      permissionCheckStatus = AuthorityChecker.checkAuthority(statement, clientSession);
+      final TSStatus permissionCheckStatus =
+          AuthorityChecker.checkAuthority(statement, clientSession);
       if (permissionCheckStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         LOGGER.warn(
             "Receiver id = {}: Failed to check authority for statement {}, username = {}, response = {}.",
@@ -920,7 +893,8 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
         : status;
   }
 
-  private TSStatus login() {
+  @Override
+  protected TSStatus login() {
     final BasicOpenSessionResp openSessionResp =
         SESSION_MANAGER.login(
             SESSION_MANAGER.getCurrSession(),
@@ -929,16 +903,7 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
             ZoneId.systemDefault().toString(),
             SessionManager.CURRENT_RPC_VERSION,
             IoTDBConstant.ClientVersion.V_1_0);
-    if (openSessionResp.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      LOGGER.warn(
-          "Receiver id = {}: Failed to open session, username = {}, response = {}.",
-          receiverId.get(),
-          username,
-          openSessionResp);
-      return RpcUtils.getStatus(openSessionResp.getCode(), openSessionResp.getMessage());
-    }
-    lastSuccessfulLoginTime = System.currentTimeMillis();
-    return RpcUtils.SUCCESS_STATUS;
+    return RpcUtils.getStatus(openSessionResp.getCode(), openSessionResp.getMessage());
   }
 
   private TSStatus executeStatementForTableModel(
@@ -1039,17 +1004,9 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
       final org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Statement statement,
       final String databaseName) {
     try {
-      // Permission check
-      final IClientSession clientSession = SESSION_MANAGER.getCurrSessionAndUpdateIdleTime();
-      if (clientSession == null
-          || !clientSession.isLogin()
-          || (LOGIN_PERIODIC_VERIFICATION_INTERVAL_MS >= 0
-              && lastSuccessfulLoginTime
-                  < System.currentTimeMillis() - LOGIN_PERIODIC_VERIFICATION_INTERVAL_MS)) {
-        final TSStatus result = login();
-        if (result.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-          return result;
-        }
+      final TSStatus status = loginIfNecessary();
+      if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        return status;
       }
 
       final TSStatus result =
@@ -1057,7 +1014,7 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
               .executeForTableModel(
                   shouldMarkAsPipeRequest.get() ? new PipeEnriched(statement) : statement,
                   tableSqlParser,
-                  SESSION_MANAGER.getCurrSession(),
+                  SESSION_MANAGER.getCurrSessionAndUpdateIdleTime(),
                   SESSION_MANAGER.requestQueryId(),
                   SESSION_MANAGER.getSessionInfoOfPipeReceiver(
                       SESSION_MANAGER.getCurrSession(), databaseName),

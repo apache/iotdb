@@ -831,7 +831,12 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
   }
 
   @Override
-  protected TSStatus tryLogin() {
+  protected boolean shouldLogin() {
+    return lastSuccessfulLoginTime == Long.MIN_VALUE || super.shouldLogin();
+  }
+
+  @Override
+  protected TSStatus login() {
     return configManager.login(username, password).getStatus();
   }
 
