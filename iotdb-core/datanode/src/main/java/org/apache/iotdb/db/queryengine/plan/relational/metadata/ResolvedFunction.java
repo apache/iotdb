@@ -47,10 +47,10 @@ public class ResolvedFunction {
       boolean deterministic,
       FunctionNullability functionNullability) {
     this.signature = requireNonNull(signature, "signature is null");
-    this.functionId = functionId;
-    this.functionKind = functionKind;
+    this.functionId = requireNonNull(functionId, "functionId is null");
+    this.functionKind = requireNonNull(functionKind, "functionKind is null");
     this.deterministic = deterministic;
-    this.functionNullability = functionNullability;
+    this.functionNullability = requireNonNull(functionNullability, "functionNullability is null");
   }
 
   public BoundSignature getSignature() {
