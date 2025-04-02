@@ -568,6 +568,7 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
     autoCreateTableDatabaseIfAbsent(databaseForTableData);
 
     getOrCreateTableSchemaCache().setDatabase(databaseForTableData);
+    getOrCreateTableSchemaCache().setTableSchemaMap(tableSchemaMap);
     getOrCreateTableSchemaCache().setCurrentModificationsAndTimeIndex(tsFileResource, reader);
 
     for (Map.Entry<String, org.apache.tsfile.file.metadata.TableSchema> name2Schema :

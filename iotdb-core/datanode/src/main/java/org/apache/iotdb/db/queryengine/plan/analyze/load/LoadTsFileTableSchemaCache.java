@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.plan.analyze.load;
 
+import org.apache.iotdb.common.rpc.thrift.TFilesResp;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.db.conf.IoTDBConfig;
@@ -82,6 +83,7 @@ public class LoadTsFileTableSchemaCache {
   private final LoadTsFileMemoryBlock block;
 
   private String database;
+  private Map<String, org.apache.tsfile.file.metadata.TableSchema> tableSchemaMap;
   private final Metadata metadata;
   private final MPPQueryContext context;
 
@@ -111,8 +113,13 @@ public class LoadTsFileTableSchemaCache {
     this.currentModifications = new ArrayList<>();
   }
 
-  public void setDatabase(String database) {
+  public void setDatabase(final String database) {
     this.database = database;
+  }
+
+  public void setTableSchemaMap(
+      final Map<String, org.apache.tsfile.file.metadata.TableSchema> tableSchemaMap) {
+    this.tableSchemaMap = tableSchemaMap;
   }
 
   public void autoCreateAndVerify(IDeviceID device) {
@@ -245,8 +252,9 @@ public class LoadTsFileTableSchemaCache {
     return Arrays.copyOf(segments, lastNonNullIndex + 1);
   }
 
-  public void createTable(TableSchema fileSchema, MPPQueryContext context, Metadata metadata)
+  public void createTable(final String tableName, MPPQueryContext context, Metadata metadata)
       throws LoadAnalyzeException {
+    TFilesResp
     final TableSchema realSchema =
         metadata.validateTableHeaderSchema(database, fileSchema, context, true, true).orElse(null);
     if (Objects.isNull(realSchema)) {
