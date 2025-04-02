@@ -899,7 +899,7 @@ public abstract class AlignedTVList extends TVList {
           results,
           tvListPos);
     }
-    markNotInsertedColumns(start, end);
+    markNotInsertedColumns(tvListPos, tvListPos + (end - start));
   }
 
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning

@@ -229,7 +229,7 @@ public class InsertTabletStatement extends InsertBaseStatement implements ISchem
   @Override
   protected boolean checkAndCastDataType(int columnIndex, TSDataType dataType) {
     if (dataType.isCompatible(dataTypes[columnIndex])) {
-      columns.castTo(columnIndex, dataType);
+      columns.castTo(columnIndex, dataType, null);
       dataTypes[columnIndex] = dataType;
       return true;
     }
@@ -877,7 +877,7 @@ public class InsertTabletStatement extends InsertBaseStatement implements ISchem
       return size;
     }
 
-    void castTo(int colIndex, TSDataType newType);
+    void castTo(int colIndex, TSDataType newType, ArrayConvertor convertor);
 
     void insertColumn(int pos, ColumnSchema columnSchema);
 
@@ -903,6 +903,11 @@ public class InsertTabletStatement extends InsertBaseStatement implements ISchem
     // for compatibility only, do no use it in new code
     @Deprecated
     Object[] toTwoDArray();
+
+    @FunctionalInterface
+    interface ArrayConvertor {
+      Object convert(TSDataType from, TSDataType to, Object value);
+    }
   }
 
   public static class TwoDArrayValueView implements ValueView {
@@ -1175,8 +1180,14 @@ public class InsertTabletStatement extends InsertBaseStatement implements ISchem
     }
 
     @Override
-    public void castTo(int colIndex, TSDataType newType) {
-      values[colIndex] = newType.castFromArray(dataTypes.get()[colIndex], values[colIndex]);
+    public void castTo(int colIndex, TSDataType newType, ArrayConvertor arrayConvertor) {
+      if (arrayConvertor == null) {
+        values[colIndex] = newType.castFromArray(dataTypes.get()[colIndex], values[colIndex]);
+      } else {
+        values[colIndex] =
+            arrayConvertor.convert(dataTypes.get()[colIndex], newType, values[colIndex]);
+      }
+      dataTypes()[colIndex] = newType;
     }
 
     @Override
@@ -1704,14 +1715,20 @@ public class InsertTabletStatement extends InsertBaseStatement implements ISchem
     }
 
     @Override
-    public void castTo(int colIndex, TSDataType newType) {
+    public void castTo(int colIndex, TSDataType newType, ArrayConvertor arrayConvertor) {
       for (int i = 0; i < values[colIndex].length; i++) {
         Object originalArray = values[colIndex][i];
-        values[colIndex][i] = newType.castFromArray(dataTypes.get()[colIndex], originalArray);
+        if (arrayConvertor == null) {
+          values[colIndex][i] = newType.castFromArray(dataTypes.get()[colIndex], originalArray);
+        } else {
+          values[colIndex][i] =
+              arrayConvertor.convert(dataTypes()[colIndex], newType, originalArray);
+        }
         if (originalArray != values[colIndex][i]) {
           release(originalArray);
         }
       }
+      dataTypes()[colIndex] = newType;
     }
 
     @Override
@@ -1808,6 +1825,7 @@ public class InsertTabletStatement extends InsertBaseStatement implements ISchem
             singleArraySize);
 
         current += copyLength;
+        pos += copyLength;
       }
     }
 
@@ -1853,9 +1871,7 @@ public class InsertTabletStatement extends InsertBaseStatement implements ISchem
           currentTVListPos += copyLength;
         }
       }
-      tvList.markNotInsertedColumns(tabletStart, tabletEnd);
-      LOGGER.info(
-          "Put {} values into list {}", tabletEnd - tabletStart, System.identityHashCode(tvList));
+      tvList.markNotInsertedColumns(tvListPos, tvListPos + (tabletEnd - tabletStart));
     }
 
     @Override
@@ -1968,9 +1984,9 @@ public class InsertTabletStatement extends InsertBaseStatement implements ISchem
     }
 
     @Override
-    public void castTo(int colIndex, TSDataType newType) {
+    public void castTo(int colIndex, TSDataType newType, ArrayConvertor arrayConvertor) {
       synchronized (innerValue) {
-        innerValue.castTo(realIndexes.get(colIndex), newType);
+        innerValue.castTo(realIndexes.get(colIndex), newType, arrayConvertor);
       }
     }
 
