@@ -861,7 +861,6 @@ public class AlignedWritableMemChunk extends AbstractWritableMemChunk {
     return columnIndexList;
   }
 
-
   private List<Integer> calculateColumnIndices(List<IMeasurementSchema> schemaListInInsertPlan) {
     List<Integer> columnIndexList = new ArrayList<>();
     for (IMeasurementSchema measurementSchema : schemaListInInsertPlan) {
