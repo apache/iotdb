@@ -827,13 +827,17 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
 
   @Override
   protected String getClusterId() {
-    return ConfigNode.getInstance().getConfigManager().getClusterManager().getClusterId();
+    return configManager.getClusterManager().getClusterId();
   }
 
   @Override
-  protected TSStatus tryLogin() {
-    // Do nothing. Login check will be done in the data node receiver.
-    return StatusUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
+  protected boolean shouldLogin() {
+    return lastSuccessfulLoginTime == Long.MIN_VALUE || super.shouldLogin();
+  }
+
+  @Override
+  protected TSStatus login() {
+    return configManager.login(username, password).getStatus();
   }
 
   @Override
