@@ -576,7 +576,7 @@ public class AggregationTest {
   public void deviceWithNumerousRegionTest() {
     PlanTester planTester = new PlanTester();
     LogicalQueryPlan logicalQueryPlan =
-        planTester.createPlan("SELECT count(s1+1) FROM table1 where tag2='B2'");
+        planTester.createPlan("SELECT count(s1) FROM table1 where tag2='B2'");
     // complete push-down when do logical optimize
     assertPlan(
         logicalQueryPlan,
