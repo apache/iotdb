@@ -85,7 +85,7 @@ public class GroupedFirstAccumulator implements GroupedAccumulator {
         return;
       default:
         throw new UnSupportedDataTypeException(
-            String.format("Unsupported data type : %s", seriesDataType));
+            String.format("Unsupported data type in First Aggregation: %s", seriesDataType));
     }
   }
 
@@ -117,7 +117,7 @@ public class GroupedFirstAccumulator implements GroupedAccumulator {
         break;
       default:
         throw new UnSupportedDataTypeException(
-            String.format("Unsupported data type in : %s", seriesDataType));
+            String.format("Unsupported data type in First Aggregation: %s", seriesDataType));
     }
 
     return INSTANCE_SIZE + valuesSize;
@@ -151,7 +151,7 @@ public class GroupedFirstAccumulator implements GroupedAccumulator {
         return;
       default:
         throw new UnSupportedDataTypeException(
-            String.format("Unsupported data type in : %s", seriesDataType));
+            String.format("Unsupported data type in First Aggregation: %s", seriesDataType));
     }
   }
 
@@ -183,7 +183,7 @@ public class GroupedFirstAccumulator implements GroupedAccumulator {
         return;
       default:
         throw new UnSupportedDataTypeException(
-            String.format("Unsupported data type : %s", seriesDataType));
+            String.format("Unsupported data type in First Aggregation: %s", seriesDataType));
     }
   }
 
@@ -237,7 +237,7 @@ public class GroupedFirstAccumulator implements GroupedAccumulator {
           break;
         default:
           throw new UnSupportedDataTypeException(
-              String.format("Unsupported data type: %s", seriesDataType));
+              String.format("Unsupported data type in First Aggregation: %s", seriesDataType));
       }
     }
   }
@@ -284,7 +284,7 @@ public class GroupedFirstAccumulator implements GroupedAccumulator {
           break;
         default:
           throw new UnSupportedDataTypeException(
-              String.format("Unsupported data type: %s", seriesDataType));
+              String.format("Unsupported data type in First Aggregation: %s", seriesDataType));
       }
     }
   }
@@ -320,7 +320,7 @@ public class GroupedFirstAccumulator implements GroupedAccumulator {
         return;
       default:
         throw new UnSupportedDataTypeException(
-            String.format("Unsupported data type : %s", seriesDataType));
+            String.format("Unsupported data type in First Aggregation: %s", seriesDataType));
     }
   }
 
@@ -372,7 +372,7 @@ public class GroupedFirstAccumulator implements GroupedAccumulator {
         return bytes;
       default:
         throw new UnSupportedDataTypeException(
-            String.format("Unsupported data type: %s", seriesDataType));
+            String.format("Unsupported data type in First Aggregation: %s", seriesDataType));
     }
   }
 

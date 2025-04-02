@@ -95,7 +95,7 @@ public class GroupedLastByAccumulator implements GroupedAccumulator {
         break;
       default:
         throw new UnSupportedDataTypeException(
-            String.format("Unsupported data type : %s", xDataType));
+            String.format("Unsupported data type in LastBy Aggregation: %s", xDataType));
     }
   }
 
@@ -127,7 +127,7 @@ public class GroupedLastByAccumulator implements GroupedAccumulator {
         break;
       default:
         throw new UnSupportedDataTypeException(
-            String.format("Unsupported data type in : %s", xDataType));
+            String.format("Unsupported data type in LastBy Aggregation: %s", xDataType));
     }
 
     return INSTANCE_SIZE + valuesSize + yLastTimes.sizeOf() + inits.sizeOf() + xNulls.sizeOf();
@@ -163,7 +163,7 @@ public class GroupedLastByAccumulator implements GroupedAccumulator {
         return;
       default:
         throw new UnSupportedDataTypeException(
-            String.format("Unsupported data type in : %s", xDataType));
+            String.format("Unsupported data type in LastBy Aggregation: %s", xDataType));
     }
   }
 
@@ -200,7 +200,7 @@ public class GroupedLastByAccumulator implements GroupedAccumulator {
         break;
       default:
         throw new UnSupportedDataTypeException(
-            String.format("Unsupported data type : %s", xDataType));
+            String.format("Unsupported data type in LastBy Aggregation: %s", xDataType));
     }
   }
 
@@ -234,7 +234,7 @@ public class GroupedLastByAccumulator implements GroupedAccumulator {
         return;
       default:
         throw new UnSupportedDataTypeException(
-            String.format("Unsupported data type in LastBy: %s", yDataType));
+            String.format("Unsupported data type in LastBy Aggregation: %s", yDataType));
     }
   }
 
@@ -300,7 +300,7 @@ public class GroupedLastByAccumulator implements GroupedAccumulator {
           break;
         default:
           throw new UnSupportedDataTypeException(
-              String.format("Unsupported data type in Last Aggregation: %s", yDataType));
+              String.format("Unsupported data type in LastBy Aggregation: %s", yDataType));
       }
     }
   }
@@ -353,7 +353,7 @@ public class GroupedLastByAccumulator implements GroupedAccumulator {
           return bytes;
         default:
           throw new UnSupportedDataTypeException(
-              String.format("Unsupported data type: %s", yDataType));
+              String.format("Unsupported data type in LastBy Aggregation: %s", yDataType));
       }
     }
     return bytes;
@@ -379,7 +379,7 @@ public class GroupedLastByAccumulator implements GroupedAccumulator {
         return 1;
       default:
         throw new UnSupportedDataTypeException(
-            String.format("Unsupported data type: %s", xDataType));
+            String.format("Unsupported data type in LastBy Aggregation: %s", xDataType));
     }
   }
 
@@ -415,7 +415,7 @@ public class GroupedLastByAccumulator implements GroupedAccumulator {
         break;
       default:
         throw new UnSupportedDataTypeException(
-            String.format("Unsupported data type in LastBy: %s", xDataType));
+            String.format("Unsupported data type in LastBy Aggregation: %s", xDataType));
     }
   }
 

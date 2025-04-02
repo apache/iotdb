@@ -135,7 +135,6 @@ public class IoTDBUserDefinedAggregateFunctionIT {
     try (Connection connection = EnvFactory.getEnv().getTableConnection();
         Statement statement = connection.createStatement()) {
       for (String sql : sqls) {
-        System.out.println(sql + ";");
         statement.execute(sql);
       }
     } catch (Exception e) {

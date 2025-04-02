@@ -1710,6 +1710,10 @@ public class ProcedureManager {
     return waitingProcedureFinished(procedure);
   }
 
+  private TSStatus waitingProcedureFinished(final long procedureId) {
+    return waitingProcedureFinished(executor.getProcedures().get(procedureId));
+  }
+
   /**
    * Waiting until the specific procedure finished.
    *
@@ -1871,6 +1875,7 @@ public class ProcedureManager {
       final TDeleteTableDeviceReq req, final boolean isGeneratedByPipe) {
     long procedureId;
     DeleteDevicesProcedure procedure = null;
+    final TSStatus status;
     synchronized (this) {
       final Pair<Long, Boolean> procedureIdDuplicatePair =
           checkDuplicateTableTask(
@@ -1898,9 +1903,11 @@ public class ProcedureManager {
                 req.getModInfo(),
                 isGeneratedByPipe);
         this.executor.submitProcedure(procedure);
+        status = waitingProcedureFinished(procedure);
+      } else {
+        status = waitingProcedureFinished(procedureId);
       }
     }
-    TSStatus status = waitingProcedureFinished(procedure);
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       return new TDeleteTableDeviceResp(StatusUtils.OK)
           .setDeletedNum(
@@ -1932,6 +1939,8 @@ public class ProcedureManager {
               "Some other task is operating table with same name.");
         }
         this.executor.submitProcedure(procedure);
+      } else {
+        return waitingProcedureFinished(procedureId);
       }
     }
     return waitingProcedureFinished(procedure);
