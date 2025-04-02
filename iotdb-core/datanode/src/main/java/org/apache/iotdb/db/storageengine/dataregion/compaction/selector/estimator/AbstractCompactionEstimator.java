@@ -72,7 +72,7 @@ public abstract class AbstractCompactionEstimator {
   private static Map<TsFileID, FileInfo> globalFileInfoCacheForFailedCompaction;
   private static Map<TsFileID, FileInfo.RoughFileInfo> globalRoughInfoCacheForCompaction;
 
-  protected static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
+  protected IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
   public static long allocateMemoryCostForFileInfoCache(long compactionMemorySize) {
     isCacheMemoryCostAllocated =
