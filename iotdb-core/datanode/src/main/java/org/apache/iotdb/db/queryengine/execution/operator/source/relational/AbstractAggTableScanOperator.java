@@ -110,7 +110,7 @@ public abstract class AbstractAggTableScanOperator extends AbstractDataSourceOpe
 
   private boolean allAggregatorsHasFinalResult = false;
 
-  public AbstractAggTableScanOperator(AbstractAggTableScanOperatorParameter parameter) {
+  protected AbstractAggTableScanOperator(AbstractAggTableScanOperatorParameter parameter) {
 
     this.sourceId = parameter.sourceId;
     this.operatorContext = parameter.context;
