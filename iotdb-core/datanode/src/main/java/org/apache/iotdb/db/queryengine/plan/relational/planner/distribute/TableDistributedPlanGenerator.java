@@ -551,7 +551,6 @@ public class TableDistributedPlanGenerator
     }
     Map<Integer, List<TRegionReplicaSet>> cachedSeriesSlotWithRegions = new HashMap<>();
 
-    List<PlanNode> result = new ArrayList<>();
     List<DeviceEntry> crossRegionDevices = new ArrayList<>();
 
     final Map<TRegionReplicaSet, DeviceTableScanNode> tableScanNodeMap = new HashMap<>();
@@ -596,7 +595,7 @@ public class TableDistributedPlanGenerator
               });
       deviceTableScanNode.appendDeviceEntry(deviceEntry);
     }
-    result.addAll(tableScanNodeMap.values());
+    List<PlanNode> result = new ArrayList<>(tableScanNodeMap.values());
     if (context.hasSortProperty) {
       processSortProperty(node, result, context);
     }
