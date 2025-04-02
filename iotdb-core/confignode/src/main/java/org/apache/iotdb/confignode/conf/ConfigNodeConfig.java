@@ -121,7 +121,7 @@ public class ConfigNodeConfig {
       RegionBalancer.RegionGroupAllocatePolicy.GCR;
 
   /** Max concurrent client number. */
-  private int rpcMaxConcurrentClientNum = 65535;
+  private int rpcMaxConcurrentClientNum = 3000;
 
   /** just for test wait for 60 second by default. */
   private int thriftServerAwaitTimeForStopService = 60;

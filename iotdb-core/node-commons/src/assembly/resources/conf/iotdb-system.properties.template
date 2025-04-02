@@ -460,7 +460,7 @@ cn_rpc_thrift_compression_enable=false
 # The maximum number of concurrent clients that can be connected to the configNode.
 # effectiveMode: restart
 # Datatype: int
-cn_rpc_max_concurrent_client_num=65535
+cn_rpc_max_concurrent_client_num=3000
 
 # Thrift socket and connection timeout between raft nodes, in milliseconds.
 # effectiveMode: restart
@@ -510,7 +510,7 @@ dn_rpc_min_concurrent_client_num=1
 # The maximum number of concurrent clients that can be connected to the dataNode.
 # effectiveMode: restart
 # Datatype: int
-dn_rpc_max_concurrent_client_num=65535
+dn_rpc_max_concurrent_client_num=1000
 
 # thrift max frame size, 512MB by default
 # effectiveMode: restart
