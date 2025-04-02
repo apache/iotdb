@@ -223,46 +223,6 @@ public class TableDistributedPlanGenerator
   public List<PlanNode> visitProject(ProjectNode node, PlanContext context) {
     List<PlanNode> childrenNodes = node.getChild().accept(this, context);
     OrderingScheme childOrdering = nodeOrderingMap.get(childrenNodes.get(0).getPlanNodeId());
-    if (childOrdering != null) {
-      nodeOrderingMap.put(node.getPlanNodeId(), childOrdering);
-    }
-
-    if (childrenNodes.size() == 1) {
-      node.setChild(childrenNodes.get(0));
-      return Collections.singletonList(node);
-    }
-
-    boolean canCopyThis = true;
-    if (childOrdering != null) {
-      // the column used for order by has been pruned, we can't copy this node to sub nodeTrees.
-      canCopyThis =
-          ImmutableSet.copyOf(node.getOutputSymbols()).containsAll(childOrdering.getOrderBy());
-    }
-    canCopyThis =
-        canCopyThis
-            && node.getAssignments().getMap().values().stream()
-                .noneMatch(PushPredicateIntoTableScan::containsDiffFunction);
-
-    if (!canCopyThis) {
-      node.setChild(mergeChildrenViaCollectOrMergeSort(childOrdering, childrenNodes));
-      return Collections.singletonList(node);
-    }
-
-    List<PlanNode> resultNodeList = new ArrayList<>();
-    for (int i = 0; i < childrenNodes.size(); i++) {
-      PlanNode child = childrenNodes.get(i);
-      ProjectNode subProjectNode =
-          new ProjectNode(queryId.genPlanNodeId(), child, node.getAssignments());
-      resultNodeList.add(subProjectNode);
-      nodeOrderingMap.put(subProjectNode.getPlanNodeId(), childOrdering);
-    }
-    return resultNodeList;
-  }
-
-  // @Override
-  public List<PlanNode> visitProject2(ProjectNode node, PlanContext context) {
-    List<PlanNode> childrenNodes = node.getChild().accept(this, context);
-    OrderingScheme childOrdering = nodeOrderingMap.get(childrenNodes.get(0).getPlanNodeId());
     boolean containAllSortItem = false;
     if (childOrdering != null) {
       // the column used for order by has been pruned, we can't copy this node to sub nodeTrees.
