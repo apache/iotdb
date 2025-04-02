@@ -79,17 +79,9 @@ public abstract class AbstractCompactionEstimator {
         compactionMemorySize * maxRatioToAllocateFileInfoCache > fixedMemoryCost;
     if (isCacheMemoryCostAllocated) {
       globalRoughInfoCacheForCompaction =
-          Collections.synchronizedMap(
-              new LRUMap<>(
-                  IoTDBDescriptor.getInstance()
-                      .getConfig()
-                      .getGlobalCompactionRoughFileInfoCacheSize()));
+          Collections.synchronizedMap(new LRUMap<>(globalCompactionFileInfoCacheSize));
       globalFileInfoCacheForFailedCompaction =
-          Collections.synchronizedMap(
-              new LRUMap<>(
-                  IoTDBDescriptor.getInstance()
-                      .getConfig()
-                      .getGlobalCompactionFileInfoCacheSize()));
+          Collections.synchronizedMap(new LRUMap<>(globalCompactionRoughFileInfoCacheSize));
     } else {
       globalRoughInfoCacheForCompaction = Collections.emptyMap();
       globalFileInfoCacheForFailedCompaction = Collections.emptyMap();
