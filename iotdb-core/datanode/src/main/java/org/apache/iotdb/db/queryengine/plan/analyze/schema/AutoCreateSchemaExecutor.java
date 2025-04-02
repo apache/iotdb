@@ -22,6 +22,7 @@ package org.apache.iotdb.db.queryengine.plan.analyze.schema;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.commons.exception.IoTDBException;
+import org.apache.iotdb.commons.exception.IoTDBRuntimeException;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
@@ -205,7 +206,7 @@ class AutoCreateSchemaExecutor {
                 AuthorityChecker.checkSystemPermission(userName, PrivilegeType.EXTEND_TEMPLATE),
                 PrivilegeType.EXTEND_TEMPLATE);
         if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-          throw new RuntimeException(new IoTDBException(status.getMessage(), status.getCode()));
+          throw new IoTDBRuntimeException(status.getMessage(), status.getCode());
         }
       }
     } finally {
@@ -226,7 +227,7 @@ class AutoCreateSchemaExecutor {
                 AuthorityChecker.checkSystemPermission(userName, PrivilegeType.EXTEND_TEMPLATE),
                 PrivilegeType.EXTEND_TEMPLATE);
         if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-          throw new RuntimeException(new IoTDBException(status.getMessage(), status.getCode()));
+          throw new IoTDBRuntimeException(status.getMessage(), status.getCode());
         }
       }
     } finally {
@@ -501,7 +502,7 @@ class AutoCreateSchemaExecutor {
     final TSStatus status =
         AuthorityChecker.checkAuthority(statement, context.getSession().getUserName());
     if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      throw new RuntimeException(new IoTDBException(status.getMessage(), status.getCode()));
+      throw new IoTDBRuntimeException(status.getMessage(), status.getCode());
     }
 
     ExecutionResult executionResult = executeStatement(statement, context);
@@ -512,8 +513,7 @@ class AutoCreateSchemaExecutor {
     }
 
     if (statusCode != TSStatusCode.MULTIPLE_ERROR.getStatusCode()) {
-      throw new RuntimeException(
-          new IoTDBException(executionResult.status.getMessage(), statusCode));
+      throw new IoTDBRuntimeException(executionResult.status.getMessage(), statusCode);
     }
 
     final Set<TSStatus> failedCreationSet = new HashSet<>();
@@ -543,7 +543,7 @@ class AutoCreateSchemaExecutor {
     TSStatus status =
         AuthorityChecker.checkAuthority(statement, context.getSession().getUserName());
     if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      throw new RuntimeException(new IoTDBException(status.getMessage(), status.getCode()));
+      throw new IoTDBRuntimeException(status.getMessage(), status.getCode());
     }
     ExecutionResult executionResult = executeStatement(statement, context);
     status = executionResult.status;
@@ -561,7 +561,7 @@ class AutoCreateSchemaExecutor {
     TSStatus status =
         AuthorityChecker.checkAuthority(statement, context.getSession().getUserName());
     if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      throw new RuntimeException(new IoTDBException(status.getMessage(), status.getCode()));
+      throw new IoTDBRuntimeException(status.getMessage(), status.getCode());
     }
     ExecutionResult executionResult = executeStatement(statement, context);
     status = executionResult.status;
