@@ -376,6 +376,7 @@ public class StorageEngine implements IService {
                 }
                 dataRegion.clearAsyncTsFileResourceRecoverTaskList();
                 dataRegion.initCompactionSchedule();
+                dataRegion.getTsFileManager().clearUnusedModFile();
                 return null;
               };
           futures.add(cachedThreadPool.submit(taskOfRegion));

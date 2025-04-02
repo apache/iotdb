@@ -255,8 +255,8 @@ public class RewriteCrossSpaceCompactionWithFastPerformerTest extends AbstractCo
                   .getTsFilePath()
                   .replace(CROSS_COMPACTION_TMP_FILE_SUFFIX, TsFileConstant.TSFILE_SUFFIX)));
       resource.resetModFile();
-      Assert.assertTrue(resource.anyModFileExists());
-      Assert.assertEquals(4, resource.getAllModEntries().size());
+      Assert.assertFalse(resource.anyModFileExists());
+      Assert.assertEquals(0, resource.getAllModEntries().size());
     }
     FileReaderManager.getInstance().closeAndRemoveAllOpenedReaders();
     for (int i = TsFileGeneratorUtils.getAlignDeviceOffset();
@@ -484,8 +484,8 @@ public class RewriteCrossSpaceCompactionWithFastPerformerTest extends AbstractCo
       if (!resource.getTsFile().exists()) {
         continue;
       }
-      Assert.assertTrue(resource.anyModFileExists());
-      Assert.assertEquals(30, resource.getAllModEntries().size());
+      Assert.assertFalse(resource.anyModFileExists());
+      Assert.assertEquals(0, resource.getAllModEntries().size());
     }
     FileReaderManager.getInstance().closeAndRemoveAllOpenedReaders();
 
@@ -638,49 +638,43 @@ public class RewriteCrossSpaceCompactionWithFastPerformerTest extends AbstractCo
       TsFileResource resource = seqResources.get(i);
       resource.resetModFile();
       if (i < 2) {
-        Assert.assertFalse(resource.getCompactionModFile().exists());
+        Assert.assertNull(resource.getCompactionModFile());
         Assert.assertFalse(resource.anyModFileExists());
       } else if (i == 2) {
-        Assert.assertTrue(resource.getCompactionModFile().exists());
         Assert.assertTrue(resource.anyModFileExists());
         Assert.assertEquals(2, resource.getAllModEntries().size());
-        Assert.assertEquals(1, resource.getCompactionModFile().getAllMods().size());
+        ;
       } else {
-        Assert.assertTrue(resource.getCompactionModFile().exists());
         Assert.assertTrue(resource.anyModFileExists());
         Assert.assertEquals(1, resource.getAllModEntries().size());
-        Assert.assertEquals(1, resource.getCompactionModFile().getAllMods().size());
       }
     }
     for (TsFileResource resource : unseqResources) {
       resource.resetModFile();
-      Assert.assertFalse(resource.getCompactionModFile().exists());
+      Assert.assertNull(resource.getCompactionModFile());
       Assert.assertFalse(resource.anyModFileExists());
     }
     task.start();
     for (TsFileResource resource : seqResources) {
       Assert.assertFalse(resource.getTsFile().exists());
       Assert.assertFalse(resource.anyModFileExists());
-      Assert.assertFalse(resource.getCompactionModFile().exists());
+      Assert.assertNull(resource.getCompactionModFile());
     }
     for (TsFileResource resource : unseqResources) {
       Assert.assertFalse(resource.getTsFile().exists());
       Assert.assertFalse(resource.anyModFileExists());
-      Assert.assertFalse(resource.getCompactionModFile().exists());
+      Assert.assertNull(resource.getCompactionModFile());
     }
     for (int i = 0; i < seqResources.size(); i++) {
       TsFileResource seqResource = seqResources.get(i);
       TsFileResource resource =
           new TsFileResource(
               TsFileNameGenerator.increaseCrossCompactionCnt(seqResource.getTsFile()));
-      if (i < 2) {
-        Assert.assertFalse(resource.getCompactionModFile().exists());
-        Assert.assertFalse(resource.anyModFileExists());
-      } else {
-        Assert.assertFalse(resource.getCompactionModFile().exists());
-        Assert.assertTrue(resource.anyModFileExists());
-        Assert.assertEquals(1, resource.getAllModEntries().size());
-      }
+      resource.setModFileManagement(seqResource.getModFileManagement());
+      resource.deserialize();
+      Assert.assertNull(resource.getCompactionModFile());
+      Assert.assertTrue(resource.anyModFileExists());
+      Assert.assertEquals(0, resource.getAllModEntries().size());
     }
   }
 
@@ -781,49 +775,42 @@ public class RewriteCrossSpaceCompactionWithFastPerformerTest extends AbstractCo
       TsFileResource resource = seqResources.get(i);
       resource.resetModFile();
       if (i < 2) {
-        Assert.assertFalse(resource.getCompactionModFile().exists());
+        Assert.assertNull(resource.getCompactionModFile());
         Assert.assertFalse(resource.anyModFileExists());
       } else if (i == 2) {
-        Assert.assertTrue(resource.getCompactionModFile().exists());
         Assert.assertTrue(resource.anyModFileExists());
         Assert.assertEquals(3, resource.getAllModEntries().size());
-        Assert.assertEquals(2, resource.getCompactionModFile().getAllMods().size());
       } else {
-        Assert.assertTrue(resource.getCompactionModFile().exists());
         Assert.assertTrue(resource.anyModFileExists());
         Assert.assertEquals(2, resource.getAllModEntries().size());
-        Assert.assertEquals(2, resource.getCompactionModFile().getAllMods().size());
       }
     }
     for (TsFileResource resource : unseqResources) {
       resource.resetModFile();
-      Assert.assertFalse(resource.getCompactionModFile().exists());
+      Assert.assertNull(resource.getCompactionModFile());
       Assert.assertFalse(resource.anyModFileExists());
     }
     task.start();
     for (TsFileResource resource : seqResources) {
       Assert.assertFalse(resource.getTsFile().exists());
       Assert.assertFalse(resource.anyModFileExists());
-      Assert.assertFalse(resource.getCompactionModFile().exists());
+      Assert.assertNull(resource.getCompactionModFile());
     }
     for (TsFileResource resource : unseqResources) {
       Assert.assertFalse(resource.getTsFile().exists());
       Assert.assertFalse(resource.anyModFileExists());
-      Assert.assertFalse(resource.getCompactionModFile().exists());
+      Assert.assertNull(resource.getCompactionModFile());
     }
     for (int i = 0; i < seqResources.size(); i++) {
       TsFileResource seqResource = seqResources.get(i);
       TsFileResource resource =
           new TsFileResource(
               TsFileNameGenerator.increaseCrossCompactionCnt(seqResource.getTsFile()));
-      if (i < 2) {
-        Assert.assertFalse(resource.getCompactionModFile().exists());
-        Assert.assertFalse(resource.anyModFileExists());
-      } else {
-        Assert.assertFalse(resource.getCompactionModFile().exists());
-        Assert.assertTrue(resource.anyModFileExists());
-        Assert.assertEquals(2, resource.getAllModEntries().size());
-      }
+      resource.setModFileManagement(seqResource.getModFileManagement());
+      resource.deserialize();
+      Assert.assertNull(resource.getCompactionModFile());
+      Assert.assertTrue(resource.anyModFileExists());
+      Assert.assertEquals(0, resource.getAllModEntries().size());
     }
   }
 

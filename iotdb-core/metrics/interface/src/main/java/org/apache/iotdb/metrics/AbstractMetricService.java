@@ -83,6 +83,10 @@ public abstract class AbstractMetricService {
     }
   }
 
+  public void clear() {
+    metricSets.clear();
+  }
+
   /** Stop metric service. */
   public void stopService() {
     synchronized (this) {

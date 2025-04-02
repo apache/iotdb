@@ -27,7 +27,10 @@ import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
 import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.DataNodeTTLCache;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.io.CompactionTsFileReader;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.constant.CompactionType;
+import org.apache.iotdb.db.storageengine.dataregion.modification.DeletionPredicate;
+import org.apache.iotdb.db.storageengine.dataregion.modification.IDPredicate.FullExactMatch;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModEntry;
+import org.apache.iotdb.db.storageengine.dataregion.modification.TableDeletionEntry;
 import org.apache.iotdb.db.storageengine.dataregion.modification.TreeDeletionEntry;
 import org.apache.iotdb.db.storageengine.dataregion.read.control.FileReaderManager;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
@@ -42,6 +45,7 @@ import org.apache.tsfile.file.metadata.MetadataIndexNode;
 import org.apache.tsfile.file.metadata.TimeseriesMetadata;
 import org.apache.tsfile.read.TsFileDeviceIterator;
 import org.apache.tsfile.read.TsFileSequenceReader;
+import org.apache.tsfile.read.common.TimeRange;
 import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.write.schema.MeasurementSchema;
 
@@ -415,6 +419,20 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
     }
 
     return readerAndChunkMetadataList;
+  }
+
+  private ModEntry convertTtlToDeletion(IDeviceID deviceID, long timeLowerBound)
+      throws IllegalPathException {
+    if (!deviceID.isTableModel()) {
+      return new TreeDeletionEntry(
+          new MeasurementPath(deviceID, IoTDBConstant.ONE_LEVEL_PATH_WILDCARD),
+          Long.MIN_VALUE,
+          timeLowerBoundForCurrentDevice);
+    } else {
+      return new TableDeletionEntry(
+          new DeletionPredicate(deviceID.getTableName(), new FullExactMatch(deviceID)),
+          new TimeRange(Long.MIN_VALUE, timeLowerBound));
+    }
   }
 
   /**
