@@ -206,6 +206,8 @@ public class NewSizeTieredCompactionSelector extends SizeTieredCompactionSelecto
         estimator = new ReadChunkInnerCompactionEstimator();
       } else if (performer instanceof FastCompactionPerformer) {
         estimator = new FastCompactionInnerCompactionEstimator();
+      } else {
+        estimateCompactionTaskMemoryDuringSelection = false;
       }
       memoryCost = 0;
     }
