@@ -149,7 +149,7 @@ public class IoTDBConfig {
   private int rpcMinConcurrentClientNum = Runtime.getRuntime().availableProcessors();
 
   /** Max concurrent client number */
-  private int rpcMaxConcurrentClientNum = 65535;
+  private int rpcMaxConcurrentClientNum = 1000;
 
   private long allocateMemoryForRead = Runtime.getRuntime().maxMemory() * 3 / 10;
 
