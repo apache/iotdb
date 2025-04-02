@@ -147,8 +147,6 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
 
   private static final SessionManager SESSION_MANAGER = SessionManager.getInstance();
 
-  private long lastSuccessfulLoginTime = Long.MIN_VALUE;
-
   private PipeMemoryBlock allocatedMemoryBlock;
 
   static {
@@ -415,29 +413,10 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
   }
 
   @Override
-  protected TSStatus tryLogin() {
-    final IClientSession clientSession = SESSION_MANAGER.getCurrSession();
-    final long loginPeriodicVerificationIntervalMs =
-        PipeConfig.getInstance().getPipeReceiverLoginPeriodicVerificationIntervalMs();
-    if (clientSession == null
-        || !clientSession.isLogin()
-        || (loginPeriodicVerificationIntervalMs >= 0
-            && lastSuccessfulLoginTime
-                < System.currentTimeMillis() - loginPeriodicVerificationIntervalMs)) {
-      final TSStatus status =
-          SESSION_MANAGER.login(
-              SESSION_MANAGER.getCurrSession(),
-              username,
-              password,
-              ZoneId.systemDefault().toString(),
-              SessionManager.CURRENT_RPC_VERSION,
-              IoTDBConstant.ClientVersion.V_1_0);
-      if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-        lastSuccessfulLoginTime = System.currentTimeMillis();
-      }
-      return status;
-    }
-    return StatusUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
+  protected boolean shouldLogin() {
+    // The idle time is updated per request
+    final IClientSession clientSession = SESSION_MANAGER.getCurrSessionAndUpdateIdleTime();
+    return clientSession == null || !clientSession.isLogin() || super.shouldLogin();
   }
 
   @Override
@@ -714,7 +693,57 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
           TSStatusCode.PIPE_TRANSFER_EXECUTE_STATEMENT_ERROR, "Execute null statement.");
     }
 
-    final TSStatus status = executeStatement(statement);
+    // Judge which model the statement belongs to
+    final boolean isTableModelStatement;
+    final String databaseName;
+    if (statement instanceof LoadTsFileStatement
+        && ((LoadTsFileStatement) statement).getDatabase() != null) {
+      isTableModelStatement = true;
+      databaseName = ((LoadTsFileStatement) statement).getDatabase();
+    } else if (statement instanceof InsertBaseStatement
+        && ((InsertBaseStatement) statement).isWriteToTable()) {
+      isTableModelStatement = true;
+      databaseName =
+          ((InsertBaseStatement) statement).getDatabaseName().isPresent()
+              ? ((InsertBaseStatement) statement).getDatabaseName().get()
+              : null;
+    } else {
+      isTableModelStatement = false;
+      databaseName = null;
+    }
+
+    // Permission check
+    final TSStatus loginStatus = loginIfNecessary();
+    if (loginStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      return loginStatus;
+    }
+
+    final IClientSession clientSession = SESSION_MANAGER.getCurrSession();
+
+    // For table model, the authority check is done in inner execution. No need to check here
+    if (!isTableModelStatement) {
+      final TSStatus permissionCheckStatus =
+          AuthorityChecker.checkAuthority(statement, clientSession);
+      if (permissionCheckStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        LOGGER.warn(
+            "Receiver id = {}: Failed to check authority for statement {}, username = {}, response = {}.",
+            receiverId.get(),
+            statement.getType().name(),
+            username,
+            permissionCheckStatus);
+        return RpcUtils.getStatus(
+            permissionCheckStatus.getCode(), permissionCheckStatus.getMessage());
+      }
+    }
+
+    // Real execution of the statement
+    final TSStatus status =
+        isTableModelStatement
+            ? executeStatementForTableModel(statement, databaseName)
+            : executeStatementForTreeModel(statement);
+
+    // Try to convert data type if the statement is a tree model statement
+    // and the status code is not success
     return shouldConvertDataTypeOnTypeMismatch
             && ((statement instanceof InsertBaseStatement
                     && ((InsertBaseStatement) statement).hasFailedMeasurements())
@@ -724,57 +753,17 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
         : status;
   }
 
-  private TSStatus executeStatement(final Statement statement) {
-    IClientSession clientSession = SESSION_MANAGER.getCurrSessionAndUpdateIdleTime();
-    final long loginPeriodicVerificationIntervalMs =
-        PipeConfig.getInstance().getPipeReceiverLoginPeriodicVerificationIntervalMs();
-    if (clientSession == null
-        || !clientSession.isLogin()
-        || (loginPeriodicVerificationIntervalMs >= 0
-            && lastSuccessfulLoginTime
-                < System.currentTimeMillis() - loginPeriodicVerificationIntervalMs)) {
-      final BasicOpenSessionResp openSessionResp =
-          SESSION_MANAGER.login(
-              SESSION_MANAGER.getCurrSession(),
-              username,
-              password,
-              ZoneId.systemDefault().toString(),
-              SessionManager.CURRENT_RPC_VERSION,
-              IoTDBConstant.ClientVersion.V_1_0);
-      if (openSessionResp.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-        LOGGER.warn(
-            "Receiver id = {}: Failed to open session, username = {}, response = {}.",
-            receiverId.get(),
+  @Override
+  protected TSStatus login() {
+    final BasicOpenSessionResp openSessionResp =
+        SESSION_MANAGER.login(
+            SESSION_MANAGER.getCurrSession(),
             username,
-            openSessionResp);
-        return RpcUtils.getStatus(openSessionResp.getCode(), openSessionResp.getMessage());
-      }
-      lastSuccessfulLoginTime = System.currentTimeMillis();
-      clientSession = SESSION_MANAGER.getCurrSession();
-    }
-
-    final TSStatus status = AuthorityChecker.checkAuthority(statement, clientSession);
-    if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      LOGGER.warn(
-          "Receiver id = {}: Failed to check authority for statement {}, username = {}, response = {}.",
-          receiverId.get(),
-          statement.getType().name(),
-          username,
-          status);
-      return RpcUtils.getStatus(status.getCode(), status.getMessage());
-    }
-
-    return Coordinator.getInstance()
-        .executeForTreeModel(
-            shouldMarkAsPipeRequest.get() ? new PipeEnrichedStatement(statement) : statement,
-            SessionManager.getInstance().requestQueryId(),
-            SESSION_MANAGER.getSessionInfo(clientSession),
-            "",
-            ClusterPartitionFetcher.getInstance(),
-            ClusterSchemaFetcher.getInstance(),
-            IoTDBDescriptor.getInstance().getConfig().getQueryTimeoutThreshold(),
-            false)
-        .status;
+            password,
+            ZoneId.systemDefault().toString(),
+            SessionManager.CURRENT_RPC_VERSION,
+            IoTDBConstant.ClientVersion.V_1_0);
+    return RpcUtils.getStatus(openSessionResp.getCode(), openSessionResp.getMessage());
   }
 
   @Override
