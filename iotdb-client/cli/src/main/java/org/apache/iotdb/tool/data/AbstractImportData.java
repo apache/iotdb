@@ -89,7 +89,7 @@ public abstract class AbstractImportData extends AbstractDataTool implements Run
               ioTPrinter.println("ImportData thread join interrupted: " + e.getMessage());
             }
           });
-      ioTPrinter.println("Import completely!");
+      ioTPrinter.println(Constants.IMPORT_COMPLETELY);
     }
   }
 

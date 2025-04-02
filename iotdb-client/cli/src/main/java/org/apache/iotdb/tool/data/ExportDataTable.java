@@ -141,7 +141,7 @@ public class ExportDataTable extends AbstractExportData {
           exportToCsvFile(sessionDataSet, path);
         }
         sessionDataSet.closeOperationHandle();
-        ioTPrinter.println("Export completely!");
+        ioTPrinter.println(Constants.EXPORT_COMPLETELY);
       } catch (StatementExecutionException
           | IoTDBConnectionException
           | IOException
