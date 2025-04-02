@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.queryengine.plan.analyze.load;
 
-import org.apache.iotdb.common.rpc.thrift.TFilesResp;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.db.conf.IoTDBConfig;
@@ -29,9 +28,11 @@ import org.apache.iotdb.db.exception.load.LoadAnalyzeTypeMismatchException;
 import org.apache.iotdb.db.exception.load.LoadRuntimeOutOfMemoryException;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
+import org.apache.iotdb.db.queryengine.plan.Coordinator;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.ColumnSchema;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.ITableDeviceSchemaValidation;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.QualifiedObjectName;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.TableSchema;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModEntry;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFile;
@@ -254,7 +255,14 @@ public class LoadTsFileTableSchemaCache {
 
   public void createTable(final String tableName, MPPQueryContext context, Metadata metadata)
       throws LoadAnalyzeException {
-    TFilesResp
+    // Check on creation, do not auto-create tables that cannot be inserted
+    Coordinator.getInstance()
+        .getAccessControl()
+        .checkCanInsertIntoTable(
+            context.getSession().getUserName(), new QualifiedObjectName(database, tableName));
+    final org.apache.iotdb.db.queryengine.plan.relational.metadata.TableSchema fileSchema =
+        org.apache.iotdb.db.queryengine.plan.relational.metadata.TableSchema.fromTsFileTableSchema(
+            tableName, tableSchemaMap.get(tableName));
     final TableSchema realSchema =
         metadata.validateTableHeaderSchema(database, fileSchema, context, true, true).orElse(null);
     if (Objects.isNull(realSchema)) {

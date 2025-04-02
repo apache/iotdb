@@ -576,7 +576,7 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
       final org.apache.iotdb.db.queryengine.plan.relational.metadata.TableSchema fileSchema =
           org.apache.iotdb.db.queryengine.plan.relational.metadata.TableSchema
               .fromTsFileTableSchema(name2Schema.getKey(), name2Schema.getValue());
-      getOrCreateTableSchemaCache().createTable(fileSchema, context, metadata);
+      getOrCreateTableSchemaCache().createTable(fileSchema.getTableName(), context, metadata);
       accessControl.checkCanInsertIntoTable(
           context.getSession().getUserName(),
           new QualifiedObjectName(databaseForTableData, name2Schema.getKey()));
