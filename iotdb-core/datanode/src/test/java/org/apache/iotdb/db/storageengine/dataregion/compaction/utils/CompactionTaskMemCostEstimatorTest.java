@@ -23,28 +23,36 @@ import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.AbstractCompactionTest;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.InnerSpaceCompactionTask;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.CompactionScheduleContext;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.estimator.FastCompactionInnerCompactionEstimator;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.estimator.FastCrossSpaceCompactionEstimator;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.estimator.ReadChunkInnerCompactionEstimator;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.impl.NewSizeTieredCompactionSelector;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 
 import org.apache.tsfile.exception.write.WriteProcessException;
+import org.apache.tsfile.file.metadata.enums.CompressionType;
+import org.apache.tsfile.file.metadata.enums.TSEncoding;
+import org.apache.tsfile.read.common.TimeRange;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.List;
 
 public class CompactionTaskMemCostEstimatorTest extends AbstractCompactionTest {
 
-  int compactionBatchSize =
-      IoTDBDescriptor.getInstance().getConfig().getCompactionMaxAlignedSeriesNumInOneBatch();
+  int compactionBatchSize;
 
   @Before
   public void setUp()
       throws IOException, WriteProcessException, MetadataException, InterruptedException {
+    compactionBatchSize =
+        IoTDBDescriptor.getInstance().getConfig().getCompactionMaxAlignedSeriesNumInOneBatch();
     super.setUp();
   }
 
@@ -109,5 +117,50 @@ public class CompactionTaskMemCostEstimatorTest extends AbstractCompactionTest {
         new FastCrossSpaceCompactionEstimator()
             .estimateCrossCompactionMemory(seqResources, unseqResources);
     Assert.assertTrue(cost > 0);
+  }
+
+  @Test
+  public void testRoughEstimate() throws IOException {
+    for (int i = 0; i < 10; i++) {
+      TsFileResource resource = createEmptyFileAndResource(false);
+      try (CompactionTestFileWriter writer = new CompactionTestFileWriter(resource)) {
+        writer.startChunkGroup("d1");
+        List<String> measurements = new ArrayList<>();
+        for (int j = 0; j < 10; j++) {
+          measurements.add("s" + j);
+        }
+        writer.generateSimpleAlignedSeriesToCurrentDevice(
+            measurements,
+            new TimeRange[] {new TimeRange(0, 10000)},
+            TSEncoding.PLAIN,
+            CompressionType.UNCOMPRESSED);
+        writer.endChunkGroup();
+
+        writer.startChunkGroup("d2");
+        for (int j = 0; j < 10; j++) {
+          writer.generateSimpleNonAlignedSeriesToCurrentDevice(
+              "s" + j,
+              new TimeRange[] {new TimeRange(0, 10000)},
+              TSEncoding.PLAIN,
+              CompressionType.UNCOMPRESSED);
+        }
+        writer.endChunkGroup();
+        writer.endFile();
+      }
+      seqResources.add(resource);
+    }
+    NewSizeTieredCompactionSelector selector =
+        new NewSizeTieredCompactionSelector(
+            COMPACTION_TEST_SG, "0", 0, true, tsFileManager, new CompactionScheduleContext());
+    List<InnerSpaceCompactionTask> innerSpaceCompactionTasks =
+        selector.selectInnerSpaceTask(seqResources);
+    Assert.assertEquals(1, innerSpaceCompactionTasks.size());
+    Assert.assertEquals(-1, innerSpaceCompactionTasks.get(0).getRoughMemoryCost());
+    long estimatedMemoryCost = innerSpaceCompactionTasks.get(0).getEstimatedMemoryCost();
+    Assert.assertTrue(estimatedMemoryCost > 0);
+
+    innerSpaceCompactionTasks = selector.selectInnerSpaceTask(seqResources);
+    Assert.assertEquals(1, innerSpaceCompactionTasks.size());
+    Assert.assertTrue(innerSpaceCompactionTasks.get(0).getRoughMemoryCost() > 0);
   }
 }

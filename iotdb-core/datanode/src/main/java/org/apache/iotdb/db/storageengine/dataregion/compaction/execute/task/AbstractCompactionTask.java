@@ -256,6 +256,11 @@ public abstract class AbstractCompactionTask {
     }
   }
 
+  @TestOnly
+  public long getRoughMemoryCost() {
+    return roughMemoryCost;
+  }
+
   public void setRoughMemoryCost(long memoryCost) {
     this.roughMemoryCost = memoryCost;
   }

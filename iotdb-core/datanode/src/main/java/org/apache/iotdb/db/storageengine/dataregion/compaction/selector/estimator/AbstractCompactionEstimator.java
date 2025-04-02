@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.compaction.selector.estimator;
 
+import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.CompactionUtils;
@@ -58,15 +59,11 @@ import java.util.stream.Collectors;
 public abstract class AbstractCompactionEstimator {
 
   /** The size of global compaction estimation file info cahce. */
-  private static final int globalCompactionFileInfoCacheSize = 1000;
+  private static int globalCompactionFileInfoCacheSize = 1000;
 
   /** The size of global compaction estimation rough file info cahce. */
-  private static final int globalCompactionRoughFileInfoCacheSize = 100000;
+  private static int globalCompactionRoughFileInfoCacheSize = 100000;
 
-  private static final long fixedMemoryCost =
-      globalCompactionFileInfoCacheSize * FileInfo.MEMORY_COST_OF_FILE_INFO_ENTRY_IN_CACHE
-          + globalCompactionRoughFileInfoCacheSize
-              * FileInfo.MEMORY_COST_OF_ROUGH_FILE_INFO_ENTRY_IN_CACHE;
   private static final double maxRatioToAllocateFileInfoCache = 0.1;
   private static boolean isCacheMemoryCostAllocated;
   private static Map<TsFileID, FileInfo> globalFileInfoCacheForFailedCompaction;
@@ -75,6 +72,10 @@ public abstract class AbstractCompactionEstimator {
   protected IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
   public static long allocateMemoryCostForFileInfoCache(long compactionMemorySize) {
+    long fixedMemoryCost =
+        globalCompactionFileInfoCacheSize * FileInfo.MEMORY_COST_OF_FILE_INFO_ENTRY_IN_CACHE
+            + globalCompactionRoughFileInfoCacheSize
+                * FileInfo.MEMORY_COST_OF_ROUGH_FILE_INFO_ENTRY_IN_CACHE;
     isCacheMemoryCostAllocated =
         compactionMemorySize * maxRatioToAllocateFileInfoCache > fixedMemoryCost;
     if (isCacheMemoryCostAllocated) {
@@ -258,5 +259,17 @@ public abstract class AbstractCompactionEstimator {
         globalRoughInfoCacheForCompaction.remove(resource.getTsFileID());
       }
     }
+  }
+
+  public static void setGlobalCompactionRoughFileInfoCacheSize(
+      int globalCompactionRoughFileInfoCacheSize) {
+    AbstractCompactionEstimator.globalCompactionRoughFileInfoCacheSize =
+        globalCompactionRoughFileInfoCacheSize;
+  }
+
+  @TestOnly
+  public static void setGlobalCompactionFileInfoCacheSize(int globalCompactionFileInfoCacheSize) {
+    AbstractCompactionEstimator.globalCompactionFileInfoCacheSize =
+        globalCompactionFileInfoCacheSize;
   }
 }

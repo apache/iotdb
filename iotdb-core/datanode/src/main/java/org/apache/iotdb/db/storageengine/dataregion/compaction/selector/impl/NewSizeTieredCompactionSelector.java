@@ -258,7 +258,6 @@ public class NewSizeTieredCompactionSelector extends SizeTieredCompactionSelecto
         estimateCompactionTaskMemoryDuringSelection = false;
         return true;
       }
-      long memoryCost;
       memoryCost =
           estimator.roughEstimateInnerCompactionMemory(
               context,
