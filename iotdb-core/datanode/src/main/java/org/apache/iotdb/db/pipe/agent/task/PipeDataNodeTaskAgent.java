@@ -331,6 +331,13 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
     PipeTsFileToTabletsMetrics.getInstance().deregister(taskId);
     PipeDataNodeRemainingEventAndTimeMetrics.getInstance().deregister(taskId);
 
+    if (pipeName.startsWith(PipeStaticMeta.CONSENSUS_PIPE_PREFIX)) {
+      // Release corresponding receiver's resource
+      PipeDataNodeAgent.receiver()
+          .pipeConsensus()
+          .handleDropPipeConsensusTask(new ConsensusPipeName(pipeName));
+    }
+
     return true;
   }
 
@@ -348,6 +355,13 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
       final String taskId = pipeName + "_" + creationTime;
       PipeTsFileToTabletsMetrics.getInstance().deregister(taskId);
       PipeDataNodeRemainingEventAndTimeMetrics.getInstance().deregister(taskId);
+    }
+
+    if (pipeName.startsWith(PipeStaticMeta.CONSENSUS_PIPE_PREFIX)) {
+      // Release corresponding receiver's resource
+      PipeDataNodeAgent.receiver()
+          .pipeConsensus()
+          .handleDropPipeConsensusTask(new ConsensusPipeName(pipeName));
     }
 
     return true;
