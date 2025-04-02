@@ -85,7 +85,7 @@ public class GroupedLastAccumulator implements GroupedAccumulator {
         return;
       default:
         throw new UnSupportedDataTypeException(
-            String.format("Unsupported data type in Last Aggregation: %s", seriesDataType));
+            String.format("Unsupported data type in LAST Aggregation: %s", seriesDataType));
     }
   }
 
@@ -117,7 +117,7 @@ public class GroupedLastAccumulator implements GroupedAccumulator {
         break;
       default:
         throw new UnSupportedDataTypeException(
-            String.format("Unsupported data type in Last Aggregation: %s", seriesDataType));
+            String.format("Unsupported data type in LAST Aggregation: %s", seriesDataType));
     }
 
     return INSTANCE_SIZE + valuesSize;
@@ -151,7 +151,7 @@ public class GroupedLastAccumulator implements GroupedAccumulator {
         return;
       default:
         throw new UnSupportedDataTypeException(
-            String.format("Unsupported data type in Last Aggregation: %s", seriesDataType));
+            String.format("Unsupported data type in LAST Aggregation: %s", seriesDataType));
     }
   }
 
@@ -183,7 +183,7 @@ public class GroupedLastAccumulator implements GroupedAccumulator {
         return;
       default:
         throw new UnSupportedDataTypeException(
-            String.format("Unsupported data type in Last Aggregation: %s", seriesDataType));
+            String.format("Unsupported data type in LAST Aggregation: %s", seriesDataType));
     }
   }
 
@@ -193,7 +193,7 @@ public class GroupedLastAccumulator implements GroupedAccumulator {
         argument instanceof BinaryColumn
             || (argument instanceof RunLengthEncodedColumn
                 && ((RunLengthEncodedColumn) argument).getValue() instanceof BinaryColumn),
-        "intermediate input and output of Last should be BinaryColumn");
+        "intermediate input and output of LAST should be BinaryColumn");
 
     for (int i = 0; i < groupIds.length; i++) {
       if (argument.isNull(i)) {
@@ -237,7 +237,7 @@ public class GroupedLastAccumulator implements GroupedAccumulator {
           break;
         default:
           throw new UnSupportedDataTypeException(
-              String.format("Unsupported data type in Last Aggregation: %s", seriesDataType));
+              String.format("Unsupported data type in LAST Aggregation: %s", seriesDataType));
       }
     }
   }
@@ -246,7 +246,7 @@ public class GroupedLastAccumulator implements GroupedAccumulator {
   public void evaluateIntermediate(int groupId, ColumnBuilder columnBuilder) {
     checkArgument(
         columnBuilder instanceof BinaryColumnBuilder,
-        "intermediate input and output of Last should be BinaryColumn");
+        "intermediate input and output of LAST should be BinaryColumn");
     if (maxTimes.get(groupId) == Long.MIN_VALUE) {
       columnBuilder.appendNull();
     } else {
@@ -284,7 +284,7 @@ public class GroupedLastAccumulator implements GroupedAccumulator {
           break;
         default:
           throw new UnSupportedDataTypeException(
-              String.format("Unsupported data type in Last Aggregation: %s", seriesDataType));
+              String.format("Unsupported data type in LAST Aggregation: %s", seriesDataType));
       }
     }
   }
@@ -320,7 +320,7 @@ public class GroupedLastAccumulator implements GroupedAccumulator {
         return;
       default:
         throw new UnSupportedDataTypeException(
-            String.format("Unsupported data type in Last Aggregation: %s", seriesDataType));
+            String.format("Unsupported data type in LAST Aggregation: %s", seriesDataType));
     }
   }
 
@@ -372,7 +372,7 @@ public class GroupedLastAccumulator implements GroupedAccumulator {
         return bytes;
       default:
         throw new UnSupportedDataTypeException(
-            String.format("Unsupported data type in Last Aggregation: %s", seriesDataType));
+            String.format("Unsupported data type in LAST Aggregation: %s", seriesDataType));
     }
   }
 

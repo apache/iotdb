@@ -87,7 +87,7 @@ public class FirstAccumulator implements TableAccumulator {
         return;
       default:
         throw new UnSupportedDataTypeException(
-            String.format("Unsupported data type in First: %s", seriesDataType));
+            String.format("Unsupported data type in FIRST: %s", seriesDataType));
     }
   }
 
@@ -97,7 +97,7 @@ public class FirstAccumulator implements TableAccumulator {
         argument instanceof BinaryColumn
             || (argument instanceof RunLengthEncodedColumn
                 && ((RunLengthEncodedColumn) argument).getValue() instanceof BinaryColumn),
-        "intermediate input and output of First should be BinaryColumn");
+        "intermediate input and output of FIRST should be BinaryColumn");
 
     for (int i = 0; i < argument.getPositionCount(); i++) {
       if (argument.isNull(i)) {
@@ -141,7 +141,7 @@ public class FirstAccumulator implements TableAccumulator {
           break;
         default:
           throw new UnSupportedDataTypeException(
-              String.format("Unsupported data type in First Aggregation: %s", seriesDataType));
+              String.format("Unsupported data type in FIRST Aggregation: %s", seriesDataType));
       }
     }
   }
@@ -150,7 +150,7 @@ public class FirstAccumulator implements TableAccumulator {
   public void evaluateIntermediate(ColumnBuilder columnBuilder) {
     checkArgument(
         columnBuilder instanceof BinaryColumnBuilder,
-        "intermediate input and output of First should be BinaryColumn");
+        "intermediate input and output of FIRST should be BinaryColumn");
     if (!initResult) {
       columnBuilder.appendNull();
     } else {
@@ -189,7 +189,7 @@ public class FirstAccumulator implements TableAccumulator {
           break;
         default:
           throw new UnSupportedDataTypeException(
-              String.format("Unsupported data type in First aggregation: %s", seriesDataType));
+              String.format("Unsupported data type in FIRST aggregation: %s", seriesDataType));
       }
     }
   }
@@ -234,7 +234,7 @@ public class FirstAccumulator implements TableAccumulator {
         break;
       default:
         throw new UnSupportedDataTypeException(
-            String.format("Unsupported data type in First Aggregation: %s", seriesDataType));
+            String.format("Unsupported data type in FIRST Aggregation: %s", seriesDataType));
     }
   }
 

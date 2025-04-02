@@ -54,7 +54,7 @@ public class GroupedSumAccumulator implements GroupedAccumulator {
 
   @Override
   public void addInput(int[] groupIds, Column[] arguments, AggregationMask mask) {
-    checkArgument(arguments.length == 1, "argument of Sum should be one column");
+    checkArgument(arguments.length == 1, "argument of SUM should be one column");
     switch (argumentDataType) {
       case INT32:
         addIntInput(groupIds, arguments[0], mask);
@@ -76,7 +76,7 @@ public class GroupedSumAccumulator implements GroupedAccumulator {
       case TIMESTAMP:
       default:
         throw new UnSupportedDataTypeException(
-            String.format("Unsupported data type in Sum Aggregation: %s", argumentDataType));
+            String.format("Unsupported data type in SUM Aggregation: %s", argumentDataType));
     }
   }
 
