@@ -746,7 +746,7 @@ public class IoTDBDescriptor {
                 "dn_rpc_max_concurrent_client_num",
                 Integer.toString(conf.getRpcMaxConcurrentClientNum())));
     if (maxConcurrentClientNum <= 0) {
-      maxConcurrentClientNum = 65535;
+      maxConcurrentClientNum = 1000;
     }
 
     conf.setRpcMaxConcurrentClientNum(maxConcurrentClientNum);
