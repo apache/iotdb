@@ -70,6 +70,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
 public class InsertTabletStatement extends InsertBaseStatement implements ISchemaValidation {
@@ -143,7 +144,7 @@ public class InsertTabletStatement extends InsertBaseStatement implements ISchem
     if (dataTypes == null || rowCount == 0) {
       throw new IllegalArgumentException("dataTypes and rowCount must be set first");
     }
-    this.columns = new TwoDArrayValueView(columns, dataTypes, rowCount);
+    this.columns = new TwoDArrayValueView(columns, this::getDataTypes, rowCount);
   }
 
   public BitMap[] getBitMaps() {
@@ -748,7 +749,7 @@ public class InsertTabletStatement extends InsertBaseStatement implements ISchem
         int arrayEnd = arrayStart + copyLength;
         tvList.putTimes(
             timestamps[arrayIndex],
-            bitMap.getRegion(current, current + copyLength),
+            bitMap == null ? null : bitMap.getRegion(current, current + copyLength),
             arrayStart,
             arrayEnd);
 
@@ -864,11 +865,11 @@ public class InsertTabletStatement extends InsertBaseStatement implements ISchem
 
   public static class TwoDArrayValueView implements ValueView {
 
-    private final TSDataType[] dataTypes;
+    private final Supplier<TSDataType[]> dataTypes;
     private Object[] values;
     private final int rowLength;
 
-    public TwoDArrayValueView(Object[] values, TSDataType[] dataTypes, int rowLength) {
+    public TwoDArrayValueView(Object[] values, Supplier<TSDataType[]> dataTypes, int rowLength) {
       this.values = values;
       this.dataTypes = dataTypes;
       this.rowLength = rowLength;
@@ -886,7 +887,7 @@ public class InsertTabletStatement extends InsertBaseStatement implements ISchem
 
     @Override
     public Object get(int rowIndex, int colIndex) {
-      switch (dataTypes[colIndex]) {
+      switch (dataTypes.get()[colIndex]) {
         case INT32:
         case DATE:
           return ((int[]) values[colIndex])[rowIndex];
@@ -906,13 +907,13 @@ public class InsertTabletStatement extends InsertBaseStatement implements ISchem
         case VECTOR:
         case UNKNOWN:
         default:
-          throw new IllegalArgumentException(dataTypes[colIndex].toString());
+          throw new IllegalArgumentException(dataTypes.get()[colIndex].toString());
       }
     }
 
     @Override
     public void set(int rowIndex, int colIndex, Object value) {
-      switch (dataTypes[colIndex]) {
+      switch (dataTypes.get()[colIndex]) {
         case INT32:
         case DATE:
           ((int[]) values[colIndex])[rowIndex] = ((int) value);
@@ -938,7 +939,7 @@ public class InsertTabletStatement extends InsertBaseStatement implements ISchem
         case VECTOR:
         case UNKNOWN:
         default:
-          throw new IllegalArgumentException(dataTypes[colIndex].toString());
+          throw new IllegalArgumentException(dataTypes.get()[colIndex].toString());
       }
     }
 
@@ -960,7 +961,7 @@ public class InsertTabletStatement extends InsertBaseStatement implements ISchem
 
     @Override
     public void serializeColumn(int colIndex, ByteBuffer buffer) {
-      switch (dataTypes[colIndex]) {
+      switch (dataTypes.get()[colIndex]) {
         case INT32:
         case DATE:
           int[] intValues = (int[]) values[colIndex];
@@ -1007,13 +1008,13 @@ public class InsertTabletStatement extends InsertBaseStatement implements ISchem
           break;
         default:
           throw new UnSupportedDataTypeException(
-              String.format(DATATYPE_UNSUPPORTED, dataTypes[colIndex]));
+              String.format(DATATYPE_UNSUPPORTED, dataTypes.get()[colIndex]));
       }
     }
 
     @Override
     public void serializeColumn(int colIndex, DataOutputStream stream) throws IOException {
-      switch (dataTypes[colIndex]) {
+      switch (dataTypes.get()[colIndex]) {
         case INT32:
         case DATE:
           int[] intValues = (int[]) values[colIndex];
@@ -1060,13 +1061,13 @@ public class InsertTabletStatement extends InsertBaseStatement implements ISchem
           break;
         default:
           throw new UnSupportedDataTypeException(
-              String.format(DATATYPE_UNSUPPORTED, dataTypes[colIndex]));
+              String.format(DATATYPE_UNSUPPORTED, dataTypes.get()[colIndex]));
       }
     }
 
     @Override
     public void serializeColumn(int colIndex, IWALByteBufferView buffer, int start, int end) {
-      switch (dataTypes[colIndex]) {
+      switch (dataTypes.get()[colIndex]) {
         case INT32:
         case DATE:
           int[] intValues = (int[]) values[colIndex];
@@ -1114,18 +1115,18 @@ public class InsertTabletStatement extends InsertBaseStatement implements ISchem
           break;
         default:
           throw new UnSupportedDataTypeException(
-              String.format(DATATYPE_UNSUPPORTED, dataTypes[colIndex]));
+              String.format(DATATYPE_UNSUPPORTED, dataTypes.get()[colIndex]));
       }
     }
 
     @Override
     public TSDataType[] dataTypes() {
-      return dataTypes;
+      return dataTypes.get();
     }
 
     @Override
     public void castTo(int colIndex, TSDataType newType) {
-      values[colIndex] = newType.castFromArray(dataTypes[colIndex], values[colIndex]);
+      values[colIndex] = newType.castFromArray(dataTypes.get()[colIndex], values[colIndex]);
     }
 
     @Override
@@ -1185,13 +1186,13 @@ public class InsertTabletStatement extends InsertBaseStatement implements ISchem
   @SuppressWarnings("SuspiciousSystemArraycopy")
   public static class ThreeDArrayValueView implements ValueView {
 
-    private final TSDataType[] dataTypes;
+    private final Supplier<TSDataType[]> dataTypes;
     private Object[][] values;
     private final int rowLength;
     private final int singleArraySize;
 
     public ThreeDArrayValueView(
-        Object[][] values, TSDataType[] dataTypes, int rowLength, int singleArraySize) {
+        Object[][] values, Supplier<TSDataType[]> dataTypes, int rowLength, int singleArraySize) {
       this.values = values;
       this.dataTypes = dataTypes;
       this.rowLength = rowLength;
@@ -1210,7 +1211,7 @@ public class InsertTabletStatement extends InsertBaseStatement implements ISchem
 
     @Override
     public Object get(int rowIndex, int colIndex) {
-      switch (dataTypes[colIndex]) {
+      switch (dataTypes.get()[colIndex]) {
         case INT32:
         case DATE:
           return ((int[]) values[colIndex][rowIndex / singleArraySize])[rowIndex % singleArraySize];
@@ -1235,13 +1236,13 @@ public class InsertTabletStatement extends InsertBaseStatement implements ISchem
         case VECTOR:
         case UNKNOWN:
         default:
-          throw new IllegalArgumentException(dataTypes[colIndex].toString());
+          throw new IllegalArgumentException(dataTypes.get()[colIndex].toString());
       }
     }
 
     @Override
     public void set(int rowIndex, int colIndex, Object value) {
-      switch (dataTypes[colIndex]) {
+      switch (dataTypes.get()[colIndex]) {
         case INT32:
         case DATE:
           ((int[]) values[colIndex][rowIndex / singleArraySize])[rowIndex % singleArraySize] =
@@ -1273,7 +1274,7 @@ public class InsertTabletStatement extends InsertBaseStatement implements ISchem
         case VECTOR:
         case UNKNOWN:
         default:
-          throw new IllegalArgumentException(dataTypes[colIndex].toString());
+          throw new IllegalArgumentException(dataTypes.get()[colIndex].toString());
       }
     }
 
@@ -1324,7 +1325,7 @@ public class InsertTabletStatement extends InsertBaseStatement implements ISchem
     @Override
     public void serializeColumn(int colIndex, ByteBuffer buffer) {
       int rowIndex = 0;
-      switch (dataTypes[colIndex]) {
+      switch (dataTypes.get()[colIndex]) {
         case INT32:
         case DATE:
           for (Object o : values[colIndex]) {
@@ -1407,14 +1408,14 @@ public class InsertTabletStatement extends InsertBaseStatement implements ISchem
           break;
         default:
           throw new UnSupportedDataTypeException(
-              String.format(DATATYPE_UNSUPPORTED, dataTypes[colIndex]));
+              String.format(DATATYPE_UNSUPPORTED, dataTypes.get()[colIndex]));
       }
     }
 
     @Override
     public void serializeColumn(int colIndex, DataOutputStream stream) throws IOException {
       int rowIndex = 0;
-      switch (dataTypes[colIndex]) {
+      switch (dataTypes.get()[colIndex]) {
         case INT32:
         case DATE:
           for (Object o : values[colIndex]) {
@@ -1497,7 +1498,7 @@ public class InsertTabletStatement extends InsertBaseStatement implements ISchem
           break;
         default:
           throw new UnSupportedDataTypeException(
-              String.format(DATATYPE_UNSUPPORTED, dataTypes[colIndex]));
+              String.format(DATATYPE_UNSUPPORTED, dataTypes.get()[colIndex]));
       }
     }
 
@@ -1505,7 +1506,7 @@ public class InsertTabletStatement extends InsertBaseStatement implements ISchem
     public void serializeColumn(int colIndex, IWALByteBufferView buffer, int start, int end) {
       int serializedCnt = 0;
       Object[] column = values[colIndex];
-      switch (dataTypes[colIndex]) {
+      switch (dataTypes.get()[colIndex]) {
         case INT32:
         case DATE:
           for (int i = start / singleArraySize; i < column.length; i++) {
@@ -1613,21 +1614,23 @@ public class InsertTabletStatement extends InsertBaseStatement implements ISchem
           break;
         default:
           throw new UnSupportedDataTypeException(
-              String.format(DATATYPE_UNSUPPORTED, dataTypes[colIndex]));
+              String.format(DATATYPE_UNSUPPORTED, dataTypes.get()[colIndex]));
       }
     }
 
     @Override
     public TSDataType[] dataTypes() {
-      return dataTypes;
+      return dataTypes.get();
     }
 
     @Override
     public void castTo(int colIndex, TSDataType newType) {
       for (int i = 0; i < values[colIndex].length; i++) {
         Object originalArray = values[colIndex][i];
-        values[colIndex][i] = newType.castFromArray(dataTypes[colIndex], originalArray);
-        release(originalArray);
+        values[colIndex][i] = newType.castFromArray(dataTypes.get()[colIndex], originalArray);
+        if (originalArray != values[colIndex][i]) {
+          release(originalArray);
+        }
       }
     }
 
@@ -1718,7 +1721,7 @@ public class InsertTabletStatement extends InsertBaseStatement implements ISchem
         int arrayEnd = arrayStart + copyLength;
         tvList.putValues(
             values[columnIndex][arrayIndex],
-            bitMap.getRegion(current, current + copyLength),
+            bitMap == null ? null : bitMap.getRegion(current, current + copyLength),
             arrayStart,
             arrayEnd,
             pos,
@@ -1755,7 +1758,7 @@ public class InsertTabletStatement extends InsertBaseStatement implements ISchem
           tvList.putAlignedValues(
               values[i][arrayIndex],
               columnIndices.get(i),
-              bitMaps[i].getRegion(current, current + copyLength),
+              bitMaps[i] == null ? null : bitMaps[i].getRegion(current, current + copyLength),
               arrayStart,
               arrayEnd,
               results,
@@ -1771,10 +1774,10 @@ public class InsertTabletStatement extends InsertBaseStatement implements ISchem
     public Object[] toTwoDArray() {
       Object[] twoDArray = new Object[values.length];
       for (int i = 0; i < values.length; i++) {
-        if (dataTypes[i] == null) {
+        if (dataTypes.get()[i] == null) {
           continue;
         }
-        switch (dataTypes[i]) {
+        switch (dataTypes.get()[i]) {
           case INT32:
           case DATE:
             twoDArray[i] = new int[rowLength];
@@ -1800,7 +1803,7 @@ public class InsertTabletStatement extends InsertBaseStatement implements ISchem
           case UNKNOWN:
           case VECTOR:
           default:
-            throw new UnSupportedDataTypeException(dataTypes[i].toString());
+            throw new UnSupportedDataTypeException(dataTypes.get()[i].toString());
         }
         int arrayIndex = 0;
         for (; arrayIndex < values[i].length - 1; arrayIndex++) {

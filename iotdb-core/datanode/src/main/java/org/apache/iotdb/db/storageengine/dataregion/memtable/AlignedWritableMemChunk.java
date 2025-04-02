@@ -507,10 +507,11 @@ public class AlignedWritableMemChunk extends AbstractWritableMemChunk {
               case TEXT:
               case STRING:
               case BLOB:
-                alignedChunkWriter.writeByColumn(
-                    time,
-                    isNull ? null : list.getBinaryByValueIndex(originRowIndex, columnIndex),
-                    isNull);
+                Binary value = list.getBinaryByValueIndex(originRowIndex, columnIndex);
+                if (!isNull && value == null) {
+                  System.out.println("");
+                }
+                alignedChunkWriter.writeByColumn(time, isNull ? null : value, isNull);
                 break;
               default:
                 break;

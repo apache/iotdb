@@ -136,7 +136,7 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
     super(id, devicePath, isAligned, measurements, dataTypes);
     this.times = new SingleArrayTimeView(times);
     this.bitMaps = bitMaps;
-    this.columns = new TwoDArrayValueView(columns, dataTypes, rowCount);
+    this.columns = new TwoDArrayValueView(columns, this::getDataTypes, rowCount);
     this.rowCount = rowCount;
   }
 
@@ -155,7 +155,7 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
     this.measurementSchemas = measurementSchemas;
     this.times = new SingleArrayTimeView(times);
     this.bitMaps = bitMaps;
-    this.columns = new TwoDArrayValueView(columns, dataTypes, rowCount);
+    this.columns = new TwoDArrayValueView(columns, this::getDataTypes, rowCount);
     this.rowCount = rowCount;
   }
 
@@ -212,7 +212,7 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
     if (dataTypes == null || rowCount == 0) {
       throw new IllegalArgumentException("dataTypes and rowCount must be set first");
     }
-    this.columns = new TwoDArrayValueView(columns, dataTypes, rowCount);
+    this.columns = new TwoDArrayValueView(columns, this::getDataTypes, rowCount);
   }
 
   public int getRowCount() {
@@ -375,24 +375,29 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
           values,
           subTimes.length);
     } else {
-      int numOfArrays = PrimitiveArrayManager.numOfArrays(count);
+      int numOfArrays = PrimitiveArrayManager.getArrayRowCount(count);
       long[][] subTimes = new long[numOfArrays][];
       for (int i = 0; i < numOfArrays; i++) {
         subTimes[i] = (long[]) PrimitiveArrayManager.allocate(TSDataType.INT64);
       }
       Object[][] values = initTabletValuesWithPam(dataTypes.length, count, dataTypes);
-      return new InsertTabletNode(
-          getPlanNodeId(),
-          targetPath,
-          isAligned,
-          measurements,
-          dataTypes,
-          measurementSchemas,
-          new MultiArrayTimeView(PrimitiveArrayManager.ARRAY_SIZE, subTimes, count),
-          bitMaps,
-          new ThreeDArrayValueView(values, dataTypes, count, PrimitiveArrayManager.ARRAY_SIZE),
-          count,
-          new AtomicInteger(1));
+      InsertTabletNode insertTabletNode =
+          new InsertTabletNode(
+              getPlanNodeId(),
+              targetPath,
+              isAligned,
+              measurements,
+              dataTypes,
+              measurementSchemas,
+              new MultiArrayTimeView(PrimitiveArrayManager.ARRAY_SIZE, subTimes, count),
+              bitMaps,
+              null,
+              count,
+              new AtomicInteger(1));
+      insertTabletNode.setColumns(
+          new ThreeDArrayValueView(
+              values, insertTabletNode::getDataTypes, count, PrimitiveArrayManager.ARRAY_SIZE));
+      return insertTabletNode;
     }
   }
 
@@ -485,8 +490,11 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
   protected Object[][] initTabletValuesWithPam(
       int columnSize, int rowSize, TSDataType[] dataTypes) {
     Object[][] values = new Object[columnSize][];
-    int numOfArrays = PrimitiveArrayManager.numOfArrays(rowSize);
+    int numOfArrays = PrimitiveArrayManager.getArrayRowCount(rowSize);
     for (int i = 0; i < values.length; i++) {
+      if (dataTypes[i] == null) {
+        continue;
+      }
       for (int j = 0; j < numOfArrays; j++) {
         values[i][j] = PrimitiveArrayManager.allocate(dataTypes[i]);
       }
@@ -731,7 +739,7 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
         new TwoDArrayValueView(
             QueryDataSetUtils.readTabletValuesFromBuffer(
                 buffer, dataTypes, measurementSize, rowCount),
-            dataTypes,
+            this::getDataTypes,
             rowCount);
     isAligned = buffer.get() == 1;
   }
@@ -906,7 +914,7 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
         new TwoDArrayValueView(
             QueryDataSetUtils.readTabletValuesFromStream(
                 stream, dataTypes, measurementSize, rowCount),
-            dataTypes,
+            this::getDataTypes,
             rowCount);
     isAligned = stream.readByte() == 1;
   }
@@ -949,7 +957,7 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
         new TwoDArrayValueView(
             QueryDataSetUtils.readTabletValuesFromBuffer(
                 buffer, dataTypes, measurementSize, rowCount),
-            dataTypes,
+            this::getDataTypes,
             rowCount);
     isAligned = buffer.get() == 1;
   }

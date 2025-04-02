@@ -842,7 +842,7 @@ public abstract class AlignedTVList extends TVList {
       // the remaining inputs can fit the last array, copy all remaining inputs into last array
       arrayCopy(column, columnIndex, current, arrayIdx, elementIdx, copyLength);
       for (int i = 0; i < copyLength; i++) {
-        if (bitMap.isMarked(current + i)
+        if (bitMap != null && bitMap.isMarked(current + i)
             || results != null
                 && results[current + i] != null
                 && results[current + i].code != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
@@ -850,8 +850,8 @@ public abstract class AlignedTVList extends TVList {
         }
       }
 
-      current += internalRemaining;
-      tvListPos += internalRemaining;
+      current += copyLength;
+      tvListPos += copyLength;
     }
   }
 

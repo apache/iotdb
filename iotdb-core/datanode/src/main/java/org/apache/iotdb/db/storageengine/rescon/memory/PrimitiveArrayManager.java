@@ -126,10 +126,6 @@ public class PrimitiveArrayManager {
     // Empty constructor
   }
 
-  public static int numOfArrays(int numOfElements) {
-    return numOfElements / ARRAY_SIZE + numOfElements % ARRAY_SIZE > 0 ? 1 : 0;
-  }
-
   /**
    * Get or allocate primitive data lists according to type.
    *

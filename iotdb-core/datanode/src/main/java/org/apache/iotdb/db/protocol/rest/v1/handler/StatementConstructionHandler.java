@@ -173,7 +173,8 @@ public class StatementConstructionHandler {
     insertStatement.setBitMaps(bitMaps);
     insertStatement.setRowCount(insertTabletRequest.getTimestamps().size());
     insertStatement.setDataTypes(dataTypes);
-    insertStatement.setColumns(new TwoDArrayValueView(columns, dataTypes, rowSize));
+    insertStatement.setColumns(
+        new TwoDArrayValueView(columns, insertStatement::getDataTypes, rowSize));
     insertStatement.setAligned(insertTabletRequest.getIsAligned());
     return insertStatement;
   }

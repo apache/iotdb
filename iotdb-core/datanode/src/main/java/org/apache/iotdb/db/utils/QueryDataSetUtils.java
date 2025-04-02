@@ -646,11 +646,8 @@ public class QueryDataSetUtils {
   }
 
   public static long[][] readTimesFromBufferWithPam(ByteBuffer buffer, int size) {
-    int numOfArray =
-        size / PrimitiveArrayManager.ARRAY_SIZE + size % PrimitiveArrayManager.ARRAY_SIZE > 0
-            ? 1
-            : 0;
-    long[][] times = new long[size][];
+    int numOfArray = PrimitiveArrayManager.getArrayRowCount(size);
+    long[][] times = new long[numOfArray][];
     for (int i = 0; i < numOfArray; i++) {
       times[i] = (long[]) PrimitiveArrayManager.allocate(TSDataType.INT64);
     }
@@ -792,9 +789,8 @@ public class QueryDataSetUtils {
       ByteBuffer buffer, TSDataType[] types, int columns, int size) {
     Object[][] values = new Object[columns][];
     int arraySize =
-        size / PrimitiveArrayManager.ARRAY_SIZE + size % PrimitiveArrayManager.ARRAY_SIZE == 0
-            ? 0
-            : 1;
+        size / PrimitiveArrayManager.ARRAY_SIZE
+            + (size % PrimitiveArrayManager.ARRAY_SIZE == 0 ? 0 : 1);
     for (int i = 0; i < columns; i++) {
       values[i] = new Object[arraySize];
       for (int j = 0; j < arraySize; j++) {

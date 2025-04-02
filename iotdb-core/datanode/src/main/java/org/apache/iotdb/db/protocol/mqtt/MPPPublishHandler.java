@@ -259,7 +259,8 @@ public class MPPPublishHandler extends AbstractInterceptHandler {
       columnCategories[i] = TsTableColumnCategory.ATTRIBUTE;
     }
     insertStatement.setDataTypes(dataTypes);
-    insertStatement.setColumns(new TwoDArrayValueView(columns, dataTypes, rowSize));
+    insertStatement.setColumns(
+        new TwoDArrayValueView(columns, insertStatement::getDataTypes, rowSize));
     insertStatement.setColumnCategories(columnCategories);
 
     return insertStatement;

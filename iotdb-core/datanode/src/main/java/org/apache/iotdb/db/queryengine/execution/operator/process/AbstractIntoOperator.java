@@ -542,7 +542,8 @@ public abstract class AbstractIntoOperator implements ProcessOperator {
 
       insertTabletStatement.setTimes(new SingleArrayTimeView(times));
       insertTabletStatement.setBitMaps(bitMaps);
-      insertTabletStatement.setColumns(new TwoDArrayValueView(columns, dataTypes, rowCount));
+      insertTabletStatement.setColumns(
+          new TwoDArrayValueView(columns, insertTabletStatement::getDataTypes, rowCount));
 
       return insertTabletStatement;
     }

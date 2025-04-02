@@ -348,15 +348,15 @@ public class StatementGenerator {
           new TwoDArrayValueView(
               QueryDataSetUtils.readTabletValuesFromBuffer(
                   valueBuffer, dataTypes, dataTypes.length, rowSize),
-              dataTypes,
+              insertTabletStatement::getDataTypes,
               rowSize));
     } else {
       long[][] timestamps = QueryDataSetUtils.readTimesFromBufferWithPam(timeBuffer, rowSize);
       if (timestamps.length != 0) {
         TimestampPrecisionUtils.checkTimestampPrecision(timestamps[0][0]);
         TimestampPrecisionUtils.checkTimestampPrecision(
-            timestamps[rowSize / PrimitiveArrayManager.ARRAY_SIZE][
-                rowSize % PrimitiveArrayManager.ARRAY_SIZE]);
+            timestamps[(rowSize - 1) / PrimitiveArrayManager.ARRAY_SIZE][
+                (rowSize - 1) % PrimitiveArrayManager.ARRAY_SIZE]);
       }
       insertTabletStatement.setTimes(
           new MultiArrayTimeView(PrimitiveArrayManager.ARRAY_SIZE, timestamps, rowSize));
@@ -364,7 +364,7 @@ public class StatementGenerator {
           new ThreeDArrayValueView(
               QueryDataSetUtils.readTabletValuesFromBufferWithPam(
                   valueBuffer, dataTypes, dataTypes.length, rowSize),
-              dataTypes,
+              insertTabletStatement::getDataTypes,
               rowSize,
               PrimitiveArrayManager.ARRAY_SIZE));
       insertTabletStatement.setRefCount(new AtomicInteger(1));

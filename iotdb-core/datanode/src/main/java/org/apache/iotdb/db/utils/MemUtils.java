@@ -122,7 +122,8 @@ public class MemUtils {
     for (int i = start; i < end; i++) {
       if (results == null
           || results[i] == null
-          || results[i].code == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+          || results[i].code == TSStatusCode.SUCCESS_STATUS.getStatusCode()
+              && columns.get(i, columnIndex) != null) {
         memSize += RamUsageEstimator.sizeOf(((Binary) columns.get(i, columnIndex)).getValues());
       }
     }

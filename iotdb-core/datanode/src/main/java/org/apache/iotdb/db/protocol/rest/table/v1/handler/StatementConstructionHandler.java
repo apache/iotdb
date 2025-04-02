@@ -169,7 +169,8 @@ public class StatementConstructionHandler {
           throw new IllegalArgumentException("Invalid input: " + rawDataType.get(columnIndex));
       }
     }
-    insertStatement.setColumns(new TwoDArrayValueView(columns, dataTypes, rowSize));
+    insertStatement.setColumns(
+        new TwoDArrayValueView(columns, insertStatement::getDataTypes, rowSize));
     insertStatement.setBitMaps(bitMaps);
     insertStatement.setRowCount(rowSize);
     insertStatement.setDataTypes(dataTypes);
