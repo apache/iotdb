@@ -32,6 +32,7 @@ import org.apache.iotdb.commons.pipe.agent.plugin.builtin.connector.opcua.OpcUaC
 import org.apache.iotdb.commons.pipe.agent.plugin.builtin.connector.websocket.WebSocketConnector;
 import org.apache.iotdb.commons.pipe.agent.plugin.builtin.connector.writeback.WriteBackConnector;
 import org.apache.iotdb.commons.pipe.agent.plugin.builtin.extractor.donothing.DoNothingExtractor;
+import org.apache.iotdb.commons.pipe.agent.plugin.builtin.extractor.external.KafkaExtractor;
 import org.apache.iotdb.commons.pipe.agent.plugin.builtin.extractor.external.MqttExtractor;
 import org.apache.iotdb.commons.pipe.agent.plugin.builtin.extractor.external.PipeExternalExtractor;
 import org.apache.iotdb.commons.pipe.agent.plugin.builtin.extractor.iotdb.IoTDBExtractor;
@@ -63,6 +64,7 @@ public enum BuiltinPipePlugin {
 
   EXTERNAL_EXTRACTOR("external-extractor", PipeExternalExtractor.class),
   MQTT_EXTRACTOR("mqtt-extractor", MqttExtractor.class),
+  KAFKA_EXTRACTOR("kafka-extractor", KafkaExtractor.class),
   // processors
   DO_NOTHING_PROCESSOR("do-nothing-processor", DoNothingProcessor.class),
   TUMBLING_TIME_SAMPLING_PROCESSOR(
@@ -137,7 +139,7 @@ public enum BuiltinPipePlugin {
       Collections.unmodifiableSet(
           new HashSet<>(
               Arrays.asList(
-                      DO_NOTHING_EXTRACTOR.getPipePluginName().toLowerCase(),
+                  DO_NOTHING_EXTRACTOR.getPipePluginName().toLowerCase(),
                   IOTDB_EXTRACTOR.getPipePluginName().toLowerCase(),
                   DO_NOTHING_SOURCE.getPipePluginName().toLowerCase(),
                   IOTDB_SOURCE.getPipePluginName().toLowerCase())));

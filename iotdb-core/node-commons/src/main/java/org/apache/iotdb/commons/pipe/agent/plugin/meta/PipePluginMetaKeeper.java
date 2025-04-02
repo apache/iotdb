@@ -122,6 +122,7 @@ public abstract class PipePluginMetaKeeper {
   public void removeExternalSourcePlugin(String pluginName) {
     externalSourcePluginSet.remove(pluginName.toUpperCase());
   }
+
   protected void processTakeSnapshot(OutputStream outputStream) throws IOException {
     ReadWriteIOUtils.write(
         (int)
@@ -152,8 +153,6 @@ public abstract class PipePluginMetaKeeper {
       addPipePluginMeta(pipePluginMeta.getPluginName().toUpperCase(), pipePluginMeta);
     }
   }
-
-
 
   @Override
   public boolean equals(Object o) {

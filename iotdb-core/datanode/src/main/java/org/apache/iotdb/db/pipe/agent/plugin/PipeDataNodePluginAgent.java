@@ -151,10 +151,9 @@ public class PipeDataNodePluginAgent {
 
       @SuppressWarnings("unused") // ensure that it is a PipePlugin class
       final PipePlugin ignored = (PipePlugin) pluginClass.getDeclaredConstructor().newInstance();
-      if(ignored instanceof PipeExtractor){
+      if (ignored instanceof PipeExtractor) {
         pipePluginMetaKeeper.addExternalSourcePlugin(pluginName);
       }
-
 
       pipePluginMetaKeeper.addPipePluginMeta(pluginName, pipePluginMeta);
       pipePluginMetaKeeper.addPipePluginVisibility(

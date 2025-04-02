@@ -1,11 +1,5 @@
 package org.apache.iotdb.db.pipe.extractor.external.MQTT;
 
-import io.moquette.BrokerConstants;
-import io.moquette.broker.Server;
-import io.moquette.broker.config.IConfig;
-import io.moquette.broker.config.MemoryConfig;
-import io.moquette.broker.security.IAuthenticator;
-import io.moquette.interception.InterceptHandler;
 import org.apache.iotdb.commons.consensus.index.impl.IoTProgressIndex;
 import org.apache.iotdb.commons.pipe.agent.task.connection.UnboundedBlockingPendingQueue;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
@@ -19,6 +13,12 @@ import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameterValidator;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 import org.apache.iotdb.pipe.api.event.Event;
 
+import io.moquette.BrokerConstants;
+import io.moquette.broker.Server;
+import io.moquette.broker.config.IConfig;
+import io.moquette.broker.config.MemoryConfig;
+import io.moquette.broker.security.IAuthenticator;
+import io.moquette.interception.InterceptHandler;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -44,8 +44,6 @@ public class MqttExtractor implements PipeExtractor {
   protected List<InterceptHandler> handlers;
   protected IAuthenticator authenticator;
 
-
-
   protected final AtomicBoolean hasBeenStarted = new AtomicBoolean(false);
   protected final AtomicBoolean isClosed = new AtomicBoolean(false);
 
@@ -53,9 +51,7 @@ public class MqttExtractor implements PipeExtractor {
   private final Server server = new Server();
 
   @Override
-  public void validate(PipeParameterValidator validator) throws Exception {
-
-  }
+  public void validate(PipeParameterValidator validator) throws Exception {}
 
   @Override
   public void customize(PipeParameters parameters, PipeExtractorRuntimeConfiguration configuration)
@@ -67,7 +63,7 @@ public class MqttExtractor implements PipeExtractor {
     pipeTaskMeta = environment.getPipeTaskMeta();
     config = createBrokerConfig(parameters);
     handlers = new ArrayList<>(1);
-    handlers.add(new MQTTPublishHandler(parameters,environment,pendingQueue));
+    handlers.add(new MQTTPublishHandler(parameters, environment, pendingQueue));
     authenticator = new BrokerAuthenticator();
   }
 
@@ -79,18 +75,16 @@ public class MqttExtractor implements PipeExtractor {
       throw new RuntimeException("Exception while starting server", e);
     }
 
-    LOGGER.info(
-            "Start MQTT Extractor successfully"
-            );
+    LOGGER.info("Start MQTT Extractor successfully");
 
     Runtime.getRuntime()
-            .addShutdownHook(
-                    new Thread(
-                            () -> {
-                              LOGGER.info("Stopping IoTDB MQTT EXTRACTOR...");
-                              shutdown();
-                              LOGGER.info("MQTT EXTRACTOR stopped.");
-                            }));
+        .addShutdownHook(
+            new Thread(
+                () -> {
+                  LOGGER.info("Stopping IoTDB MQTT EXTRACTOR...");
+                  shutdown();
+                  LOGGER.info("MQTT EXTRACTOR stopped.");
+                }));
   }
 
   @Override
@@ -107,27 +101,30 @@ public class MqttExtractor implements PipeExtractor {
 
   @Override
   public void close() throws Exception {
-    if(!isClosed.get()){
+    if (!isClosed.get()) {
       shutdown();
       isClosed.set(true);
     }
   }
+
   private IConfig createBrokerConfig(PipeParameters pipeParameters) {
     Properties properties = new Properties();
-    properties.setProperty(BrokerConstants.HOST_PROPERTY_NAME, pipeParameters.getStringOrDefault("host","127.0.0.1"));
     properties.setProperty(
-            BrokerConstants.PORT_PROPERTY_NAME, pipeParameters.getStringOrDefault("port","1883"));
+        BrokerConstants.HOST_PROPERTY_NAME, pipeParameters.getStringOrDefault("host", "127.0.0.1"));
     properties.setProperty(
-            BrokerConstants.BROKER_INTERCEPTOR_THREAD_POOL_SIZE,
-            pipeParameters.getStringOrDefault("threadPoolSize","1"));
+        BrokerConstants.PORT_PROPERTY_NAME, pipeParameters.getStringOrDefault("port", "1883"));
     properties.setProperty(
-            BrokerConstants.DATA_PATH_PROPERTY_NAME,pipeParameters.getStringOrDefault("dataPath","C:/Users/22503/Desktop/mqtt/data"));
-    properties.setProperty(BrokerConstants.IMMEDIATE_BUFFER_FLUSH_PROPERTY_NAME,"true");
+        BrokerConstants.BROKER_INTERCEPTOR_THREAD_POOL_SIZE,
+        pipeParameters.getStringOrDefault("threadPoolSize", "1"));
+    properties.setProperty(
+        BrokerConstants.DATA_PATH_PROPERTY_NAME,
+        pipeParameters.getStringOrDefault("dataPath", "C:/Users/22503/Desktop/mqtt/data"));
+    properties.setProperty(BrokerConstants.IMMEDIATE_BUFFER_FLUSH_PROPERTY_NAME, "true");
     properties.setProperty(BrokerConstants.ALLOW_ANONYMOUS_PROPERTY_NAME, "true");
     properties.setProperty(BrokerConstants.ALLOW_ZERO_BYTE_CLIENT_ID_PROPERTY_NAME, "true");
     properties.setProperty(
-            BrokerConstants.NETTY_MAX_BYTES_PROPERTY_NAME,
-            String.valueOf(pipeParameters.getIntOrDefault("maxBytes",1048576)));
+        BrokerConstants.NETTY_MAX_BYTES_PROPERTY_NAME,
+        String.valueOf(pipeParameters.getIntOrDefault("maxBytes", 1048576)));
     return new MemoryConfig(properties);
   }
 

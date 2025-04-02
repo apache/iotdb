@@ -234,7 +234,7 @@ public class PipePluginInfo implements SnapshotProcessor {
           pipePluginMetaKeeper.addPipePluginVisibility(
               pluginName, VisibilityUtils.calculateFromPluginClass(pluginClass));
           classLoaderManager.addPluginAndClassLoader(pluginName, pipePluginClassLoader);
-          if (org.apache.iotdb.pipe.api.PipeExtractor.class.isAssignableFrom(pluginClass)){
+          if (org.apache.iotdb.pipe.api.PipeExtractor.class.isAssignableFrom(pluginClass)) {
             pipePluginMetaKeeper.addExternalSourcePlugin(pluginName);
           }
         } catch (final Exception e) {

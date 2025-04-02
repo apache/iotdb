@@ -21,6 +21,7 @@ package org.apache.iotdb.commons.consensus.index;
 
 import org.apache.iotdb.commons.consensus.index.impl.HybridProgressIndex;
 import org.apache.iotdb.commons.consensus.index.impl.IoTProgressIndex;
+import org.apache.iotdb.commons.consensus.index.impl.KafkaProgressIndex;
 import org.apache.iotdb.commons.consensus.index.impl.MetaProgressIndex;
 import org.apache.iotdb.commons.consensus.index.impl.MinimumProgressIndex;
 import org.apache.iotdb.commons.consensus.index.impl.RecoverProgressIndex;
@@ -43,7 +44,9 @@ public enum ProgressIndexType {
   HYBRID_PROGRESS_INDEX((short) 5),
   META_PROGRESS_INDEX((short) 6),
   TIME_WINDOW_STATE_PROGRESS_INDEX((short) 7),
-  STATE_PROGRESS_INDEX((short) 8);
+  STATE_PROGRESS_INDEX((short) 8),
+  KAFKA_PROGRESS_INDEX((short) 9);
+  ;
 
   private final short type;
 
@@ -82,6 +85,8 @@ public enum ProgressIndexType {
         return TimeWindowStateProgressIndex.deserializeFrom(byteBuffer);
       case 8:
         return StateProgressIndex.deserializeFrom(byteBuffer);
+      case 9:
+        return KafkaProgressIndex.deserializeFrom(byteBuffer);
       default:
         throw new UnsupportedOperationException(
             String.format("Unsupported progress index type %s.", indexType));
@@ -107,6 +112,8 @@ public enum ProgressIndexType {
         return TimeWindowStateProgressIndex.deserializeFrom(stream);
       case 8:
         return StateProgressIndex.deserializeFrom(stream);
+      case 9:
+        return KafkaProgressIndex.deserializeFrom(stream);
       default:
         throw new UnsupportedOperationException(
             String.format("Unsupported progress index type %s.", indexType));
