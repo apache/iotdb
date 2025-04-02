@@ -53,6 +53,8 @@ public class TsFileInsertionEventTableParser extends TsFileInsertionEventParser 
   private final PipeMemoryBlock allocatedMemoryBlockForTableSchemas;
 
   public TsFileInsertionEventTableParser(
+      final String pipeName,
+      final long creationTime,
       final File tsFile,
       final TablePattern pattern,
       final long startTime,
@@ -61,7 +63,7 @@ public class TsFileInsertionEventTableParser extends TsFileInsertionEventParser 
       final String userName,
       final PipeInsertionEvent sourceEvent)
       throws IOException {
-    super(null, pattern, startTime, endTime, pipeTaskMeta, sourceEvent);
+    super(pipeName, creationTime, null, pattern, startTime, endTime, pipeTaskMeta, sourceEvent);
 
     try {
       this.allocatedMemoryBlockForChunk =
@@ -83,6 +85,18 @@ public class TsFileInsertionEventTableParser extends TsFileInsertionEventParser 
       close();
       throw e;
     }
+  }
+
+  public TsFileInsertionEventTableParser(
+      final File tsFile,
+      final TablePattern pattern,
+      final long startTime,
+      final long endTime,
+      final PipeTaskMeta pipeTaskMeta,
+      final String userName,
+      final PipeInsertionEvent sourceEvent)
+      throws IOException {
+    this(null, 0, tsFile, pattern, startTime, endTime, pipeTaskMeta, userName, sourceEvent);
   }
 
   @Override

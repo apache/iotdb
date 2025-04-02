@@ -40,28 +40,27 @@ public class AINodeHeartbeatCache extends BaseNodeCache {
   public void updateCurrentStatistics(boolean forceUpdate) {
     NodeHeartbeatSample lastSample;
     final List<AbstractHeartbeatSample> heartbeatHistory;
-    synchronized (slidingWindow) {
-      lastSample = (NodeHeartbeatSample) getLastSample();
-      heartbeatHistory = Collections.unmodifiableList(slidingWindow);
-    }
-
-    /* Update load sample */
-    if (lastSample != null && lastSample.isSetLoadSample()) {
-      latestLoadSample.set((lastSample.getLoadSample()));
-    }
-
     /* Update Node status */
     NodeStatus status = null;
     String statusReason = null;
     long currentNanoTime = System.nanoTime();
-    if (lastSample != null && NodeStatus.Removing.equals(lastSample.getStatus())) {
-      status = NodeStatus.Removing;
-    } else if (!failureDetector.isAvailable(heartbeatHistory)) {
-      /* Failure detector decides that this AINode is UNKNOWN */
-      status = NodeStatus.Unknown;
-    } else if (lastSample != null) {
-      status = lastSample.getStatus();
-      statusReason = lastSample.getStatusReason();
+    synchronized (slidingWindow) {
+      lastSample = (NodeHeartbeatSample) getLastSample();
+      heartbeatHistory = Collections.unmodifiableList(slidingWindow);
+      /* Update load sample */
+      if (lastSample != null && lastSample.isSetLoadSample()) {
+        latestLoadSample.set((lastSample.getLoadSample()));
+      }
+
+      if (lastSample != null && NodeStatus.Removing.equals(lastSample.getStatus())) {
+        status = NodeStatus.Removing;
+      } else if (!failureDetector.isAvailable(nodeId, heartbeatHistory)) {
+        /* Failure detector decides that this AINode is UNKNOWN */
+        status = NodeStatus.Unknown;
+      } else if (lastSample != null) {
+        status = lastSample.getStatus();
+        statusReason = lastSample.getStatusReason();
+      }
     }
 
     long loadScore = NodeStatus.isNormalStatus(status) ? 0 : Long.MAX_VALUE;

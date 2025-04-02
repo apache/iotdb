@@ -35,6 +35,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.node.DeviceTableS
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.EnforceSingleRowNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ExchangeNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.FilterNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.GroupNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.InformationSchemaTableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.JoinNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.LimitNode;
@@ -530,6 +531,10 @@ public final class PlanMatchPattern {
     return node(StreamSortNode.class, source);
   }
 
+  public static PlanMatchPattern group(PlanMatchPattern source) {
+    return node(GroupNode.class, source);
+  }
+
   public static PlanMatchPattern sort(PlanMatchPattern source) {
     return node(SortNode.class, source);
   }
@@ -592,10 +597,6 @@ public final class PlanMatchPattern {
     return project(assignments, source)
         .withExactAssignedOutputs(assignments.values())
         .withExactAssignments(assignments.values());
-  }
-
-  public static PlanMatchPattern exchange(PlanMatchPattern... sources) {
-    return node(ExchangeNode.class, sources);
   }
 
   public static ExpectedValueProvider<JoinNode.EquiJoinClause> equiJoinClause(

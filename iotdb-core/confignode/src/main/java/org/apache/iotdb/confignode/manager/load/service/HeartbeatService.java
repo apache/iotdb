@@ -41,6 +41,7 @@ import org.apache.iotdb.confignode.manager.load.cache.LoadCache;
 import org.apache.iotdb.confignode.manager.load.cache.node.ConfigNodeHeartbeatCache;
 import org.apache.iotdb.confignode.manager.node.NodeManager;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeHeartbeatReq;
+import org.apache.iotdb.db.protocol.client.ConfigNodeInfo;
 import org.apache.iotdb.mpp.rpc.thrift.TDataNodeHeartbeatReq;
 
 import org.apache.tsfile.utils.Pair;
@@ -48,6 +49,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.Future;
@@ -140,6 +142,11 @@ public class HeartbeatService {
     /* Generate heartbeat request */
     TDataNodeHeartbeatReq heartbeatReq = new TDataNodeHeartbeatReq();
     heartbeatReq.setHeartbeatTimestamp(System.nanoTime());
+    heartbeatReq.setLogicalClock(
+        configManager
+            .getConsensusManager()
+            .getConsensusImpl()
+            .getLogicalClock(ConfigNodeInfo.CONFIG_REGION_ID));
     // Always sample RegionGroups' leadership as the Region heartbeat
     heartbeatReq.setNeedJudgeLeader(true);
     // We sample DataNode's load in every 10 heartbeat loop
@@ -159,6 +166,19 @@ public class HeartbeatService {
       heartbeatReq.setSchemaRegionIds(configManager.getClusterQuotaManager().getSchemaRegionIds());
       heartbeatReq.setDataRegionIds(configManager.getClusterQuotaManager().getDataRegionIds());
       heartbeatReq.setSpaceQuotaUsage(configManager.getClusterQuotaManager().getSpaceQuotaUsage());
+    }
+
+    final Map<Integer, Set<Integer>> topologyMap =
+        configManager.getLoadManager().getLoadCache().getTopology();
+    if (topologyMap != null) {
+      heartbeatReq.setTopology(topologyMap);
+      heartbeatReq.setDataNodes(configManager.getNodeManager().getRegisteredDataNodeLocations());
+    }
+
+    // We broadcast region operations list every 100 heartbeat loops
+    if (heartbeatCounter.get() % 100 == 0) {
+      heartbeatReq.setCurrentRegionOperations(
+          configManager.getProcedureManager().getRegionOperationConsensusIds());
     }
 
     /* Update heartbeat counter */

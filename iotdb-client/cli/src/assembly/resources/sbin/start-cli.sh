@@ -92,10 +92,6 @@ while true; do
             sql_dialect_param="-sql_dialect $2"
             shift 2
         ;;
-        --help)
-            echo "Usage: $0 [-h <ip>] [-p <port>] [-u <username>] [-pw <password>] [-D <name=value>] [-c] [-e sql]"
-            exit 0
-        ;;
         "")
               #if we do not use getopt, we then have to process the case that there is no argument.
               #in some systems, when there is no argument, shift command may throw error, so we skip directly

@@ -73,7 +73,7 @@ public class SumAccumulator implements TableAccumulator {
       case TIMESTAMP:
       default:
         throw new UnSupportedDataTypeException(
-            String.format("Unsupported data type in aggregation Sum : %s", argumentDataType));
+            String.format("Unsupported data type in Sum Aggregation: %s", argumentDataType));
     }
   }
 
@@ -101,7 +101,7 @@ public class SumAccumulator implements TableAccumulator {
       case TIMESTAMP:
       default:
         throw new UnSupportedDataTypeException(
-            String.format("Unsupported data type in aggregation Sum : %s", argumentDataType));
+            String.format("Unsupported data type in Sum Aggregation: %s", argumentDataType));
     }
   }
 

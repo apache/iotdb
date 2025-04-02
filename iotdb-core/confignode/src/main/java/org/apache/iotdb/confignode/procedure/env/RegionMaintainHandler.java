@@ -45,7 +45,6 @@ import org.apache.iotdb.confignode.consensus.request.write.partition.RemoveRegio
 import org.apache.iotdb.confignode.manager.ConfigManager;
 import org.apache.iotdb.confignode.manager.load.cache.consensus.ConsensusGroupHeartbeatSample;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
-import org.apache.iotdb.confignode.procedure.scheduler.LockQueue;
 import org.apache.iotdb.mpp.rpc.thrift.TCreatePeerReq;
 import org.apache.iotdb.mpp.rpc.thrift.TMaintainPeerReq;
 import org.apache.iotdb.mpp.rpc.thrift.TRegionLeaderChangeResp;
@@ -77,9 +76,6 @@ public class RegionMaintainHandler {
   private static final ConfigNodeConfig CONF = ConfigNodeDescriptor.getInstance().getConf();
 
   private final ConfigManager configManager;
-
-  /** region migrate lock */
-  private final LockQueue regionMigrateLock = new LockQueue();
 
   private final IClientManager<TEndPoint, SyncDataNodeInternalServiceClient> dataNodeClientManager;
 
@@ -447,10 +443,6 @@ public class RegionMaintainHandler {
 
   public boolean isFailed(TSStatus status) {
     return !isSucceed(status);
-  }
-
-  public LockQueue getRegionMigrateLock() {
-    return regionMigrateLock;
   }
 
   /**

@@ -90,9 +90,7 @@ public class WALEntryHandler {
   public InsertNode getInsertNodeViaCacheIfPossible() {
     try {
       final WALEntryValue finalValue = value;
-      return finalValue instanceof InsertNode
-          ? (InsertNode) finalValue
-          : walEntryPosition.readByteBufferOrInsertNodeViaCacheDirectly().getRight();
+      return finalValue instanceof InsertNode ? (InsertNode) finalValue : null;
     } catch (Exception e) {
       logger.warn("Fail to get insert node via cache. {}", this, e);
       throw e;

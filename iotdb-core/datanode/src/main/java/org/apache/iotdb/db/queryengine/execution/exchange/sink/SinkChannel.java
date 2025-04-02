@@ -417,7 +417,8 @@ public class SinkChannel implements ISinkChannel {
         localFragmentInstanceId.instanceId);
   }
 
-  private void checkState() {
+  @Override
+  public void checkState() {
     if (aborted) {
       throw new IllegalStateException("SinkChannel is aborted.");
     }

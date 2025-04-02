@@ -293,11 +293,6 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
   }
 
   @Override
-  public TRegionReplicaSet getRegionReplicaSet(TConsensusGroupId id) {
-    return partitionCache.getRegionReplicaSet(id);
-  }
-
-  @Override
   public void invalidAllCache() {
     partitionCache.invalidAllCache();
   }

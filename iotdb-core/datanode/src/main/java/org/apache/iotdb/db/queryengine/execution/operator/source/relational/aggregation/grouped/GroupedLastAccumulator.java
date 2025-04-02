@@ -85,7 +85,7 @@ public class GroupedLastAccumulator implements GroupedAccumulator {
         return;
       default:
         throw new UnSupportedDataTypeException(
-            String.format("Unsupported data type in : %s", seriesDataType));
+            String.format("Unsupported data type in Last Aggregation: %s", seriesDataType));
     }
   }
 
@@ -117,7 +117,7 @@ public class GroupedLastAccumulator implements GroupedAccumulator {
         break;
       default:
         throw new UnSupportedDataTypeException(
-            String.format("Unsupported data type in : %s", seriesDataType));
+            String.format("Unsupported data type in Last Aggregation: %s", seriesDataType));
     }
 
     return INSTANCE_SIZE + valuesSize;
@@ -125,6 +125,7 @@ public class GroupedLastAccumulator implements GroupedAccumulator {
 
   @Override
   public void setGroupCount(long groupCount) {
+    maxTimes.ensureCapacity(groupCount);
     switch (seriesDataType) {
       case INT32:
       case DATE:
@@ -150,7 +151,7 @@ public class GroupedLastAccumulator implements GroupedAccumulator {
         return;
       default:
         throw new UnSupportedDataTypeException(
-            String.format("Unsupported data type in : %s", seriesDataType));
+            String.format("Unsupported data type in Last Aggregation: %s", seriesDataType));
     }
   }
 
@@ -182,7 +183,7 @@ public class GroupedLastAccumulator implements GroupedAccumulator {
         return;
       default:
         throw new UnSupportedDataTypeException(
-            String.format("Unsupported data type : %s", seriesDataType));
+            String.format("Unsupported data type in Last Aggregation: %s", seriesDataType));
     }
   }
 
@@ -236,7 +237,7 @@ public class GroupedLastAccumulator implements GroupedAccumulator {
           break;
         default:
           throw new UnSupportedDataTypeException(
-              String.format("Unsupported data type Aggregation: %s", seriesDataType));
+              String.format("Unsupported data type in Last Aggregation: %s", seriesDataType));
       }
     }
   }
@@ -283,7 +284,7 @@ public class GroupedLastAccumulator implements GroupedAccumulator {
           break;
         default:
           throw new UnSupportedDataTypeException(
-              String.format("Unsupported data type: %s", seriesDataType));
+              String.format("Unsupported data type in Last Aggregation: %s", seriesDataType));
       }
     }
   }
@@ -319,7 +320,7 @@ public class GroupedLastAccumulator implements GroupedAccumulator {
         return;
       default:
         throw new UnSupportedDataTypeException(
-            String.format("Unsupported data type : %s", seriesDataType));
+            String.format("Unsupported data type in Last Aggregation: %s", seriesDataType));
     }
   }
 
@@ -371,7 +372,7 @@ public class GroupedLastAccumulator implements GroupedAccumulator {
         return bytes;
       default:
         throw new UnSupportedDataTypeException(
-            String.format("Unsupported data type: %s", seriesDataType));
+            String.format("Unsupported data type in Last Aggregation: %s", seriesDataType));
     }
   }
 
@@ -439,9 +440,23 @@ public class GroupedLastAccumulator implements GroupedAccumulator {
 
   private void addFloatInput(
       int[] groupIds, Column valueColumn, Column timeColumn, AggregationMask mask) {
-    for (int i = 0; i < groupIds.length; i++) {
-      if (!valueColumn.isNull(i)) {
-        updateFloatValue(groupIds[i], valueColumn.getFloat(i), timeColumn.getLong(i));
+    int positionCount = mask.getSelectedPositionCount();
+
+    if (mask.isSelectAll()) {
+      for (int i = 0; i < positionCount; i++) {
+        if (!valueColumn.isNull(i)) {
+          updateFloatValue(groupIds[i], valueColumn.getFloat(i), timeColumn.getLong(i));
+        }
+      }
+    } else {
+      int[] selectedPositions = mask.getSelectedPositions();
+      int position;
+      for (int i = 0; i < positionCount; i++) {
+        position = selectedPositions[i];
+        if (!valueColumn.isNull(position)) {
+          updateFloatValue(
+              groupIds[position], valueColumn.getFloat(position), timeColumn.getLong(position));
+        }
       }
     }
   }

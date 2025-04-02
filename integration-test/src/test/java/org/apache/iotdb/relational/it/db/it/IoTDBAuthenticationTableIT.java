@@ -90,8 +90,8 @@ public class IoTDBAuthenticationTableIT {
   public void testInsert() throws IoTDBConnectionException, StatementExecutionException {
 
     try (ITableSession sessionRoot = EnvFactory.getEnv().getTableSessionConnection()) {
-      sessionRoot.executeNonQueryStatement("CREATE DATABASE IF NOT EXISTS test");
-      sessionRoot.executeNonQueryStatement("USE test");
+      sessionRoot.executeNonQueryStatement("CREATE DATABASE IF NOT EXISTS \"汉化\"");
+      sessionRoot.executeNonQueryStatement("USE \"汉化\"");
 
       // insert by root
       Tablet tablet =
@@ -119,7 +119,7 @@ public class IoTDBAuthenticationTableIT {
             "803: Access Denied: Cannot grant/revoke privileges of admin user", e.getMessage());
       }
       try {
-        sessionRoot.executeNonQueryStatement("REVOKE INSERT ON DATABASE test FROM USER root");
+        sessionRoot.executeNonQueryStatement("REVOKE INSERT ON DATABASE \"汉化\" FROM USER root");
         fail("Should have thrown an exception");
       } catch (StatementExecutionException e) {
         assertEquals(
@@ -137,15 +137,15 @@ public class IoTDBAuthenticationTableIT {
       sessionRoot.executeNonQueryStatement("CREATE USER userA 'userA'");
       sessionRoot.executeNonQueryStatement("CREATE USER userB 'userB'");
       // grant an irrelevant privilege so that the new users can use database
-      sessionRoot.executeNonQueryStatement("GRANT SELECT ON DATABASE test TO USER userA");
-      sessionRoot.executeNonQueryStatement("GRANT SELECT ON DATABASE test TO USER userB");
+      sessionRoot.executeNonQueryStatement("GRANT SELECT ON DATABASE \"汉化\" TO USER userA");
+      sessionRoot.executeNonQueryStatement("GRANT SELECT ON DATABASE \"汉化\" TO USER userB");
 
       try (ITableSession sessionA =
               EnvFactory.getEnv().getTableSessionConnection("userA", "userA");
           ITableSession sessionB =
               EnvFactory.getEnv().getTableSessionConnection("userB", "userB")) {
-        sessionA.executeNonQueryStatement("USE test");
-        sessionB.executeNonQueryStatement("USE test");
+        sessionA.executeNonQueryStatement("USE \"汉化\"");
+        sessionB.executeNonQueryStatement("USE \"汉化\"");
         // userA no privilege
         try {
           sessionA.executeNonQueryStatement(
@@ -153,7 +153,7 @@ public class IoTDBAuthenticationTableIT {
           fail("Should have thrown an exception");
         } catch (StatementExecutionException e) {
           assertEquals(
-              "803: Access Denied: No permissions for this operation, please add privilege INSERT ON test.table1",
+              "803: Access Denied: No permissions for this operation, please add privilege INSERT ON 汉化.table1",
               e.getMessage());
         }
 
@@ -168,7 +168,7 @@ public class IoTDBAuthenticationTableIT {
           fail("Should have thrown an exception");
         } catch (StatementExecutionException e) {
           assertEquals(
-              "803: Access Denied: No permissions for this operation, please add privilege INSERT ON test.table1",
+              "803: Access Denied: No permissions for this operation, please add privilege INSERT ON 汉化.table1",
               e.getMessage());
         }
 
@@ -183,22 +183,22 @@ public class IoTDBAuthenticationTableIT {
           fail("Should have thrown an exception");
         } catch (StatementExecutionException e) {
           assertEquals(
-              "803: Access Denied: No permissions for this operation, please add privilege INSERT ON test.table1",
+              "803: Access Denied: No permissions for this operation, please add privilege INSERT ON 汉化.table1",
               e.getMessage());
         }
 
         // grant and revoke - database
-        sessionRoot.executeNonQueryStatement("GRANT INSERT ON DATABASE test TO USER userA");
+        sessionRoot.executeNonQueryStatement("GRANT INSERT ON DATABASE \"汉化\" TO USER userA");
         sessionA.executeNonQueryStatement(
             "INSERT INTO table1 (time, id, attr, measurement) VALUES (1, 'id2', 'attr2', 0.2)");
-        sessionRoot.executeNonQueryStatement("REVOKE INSERT ON DATABASE test FROM USER userA");
+        sessionRoot.executeNonQueryStatement("REVOKE INSERT ON DATABASE \"汉化\" FROM USER userA");
         try {
           sessionA.executeNonQueryStatement(
               "INSERT INTO table1 (time, id, attr, measurement) VALUES (1, 'id2', 'attr2', 0.2)");
           fail("Should have thrown an exception");
         } catch (StatementExecutionException e) {
           assertEquals(
-              "803: Access Denied: No permissions for this operation, please add privilege INSERT ON test.table1",
+              "803: Access Denied: No permissions for this operation, please add privilege INSERT ON 汉化.table1",
               e.getMessage());
         }
 
@@ -213,28 +213,28 @@ public class IoTDBAuthenticationTableIT {
           fail("Should have thrown an exception");
         } catch (StatementExecutionException e) {
           assertEquals(
-              "803: Access Denied: No permissions for this operation, please add privilege INSERT ON test.table1",
+              "803: Access Denied: No permissions for this operation, please add privilege INSERT ON 汉化.table1",
               e.getMessage());
         }
 
         // can write but cannot auto-create
-        sessionRoot.executeNonQueryStatement("GRANT INSERT ON DATABASE test TO USER userA");
+        sessionRoot.executeNonQueryStatement("GRANT INSERT ON DATABASE \"汉化\" TO USER userA");
         tablet.setTableName("table2");
         try {
           sessionA.insert(tablet);
           fail("Should have thrown an exception");
         } catch (StatementExecutionException e) {
           assertEquals(
-              "301: [EXECUTE_STATEMENT_ERROR(301)] Exception occurred: insertTablet failed. Access Denied: No permissions for this operation, please add privilege CREATE ON test.table2",
+              "803: Access Denied: No permissions for this operation, please add privilege CREATE ON 汉化.table2",
               e.getMessage());
         }
-        sessionRoot.executeNonQueryStatement("GRANT CREATE ON DATABASE test TO USER userA");
+        sessionRoot.executeNonQueryStatement("GRANT CREATE ON DATABASE \"汉化\" TO USER userA");
         sessionA.insert(tablet);
-        sessionRoot.executeNonQueryStatement("REVOKE CREATE ON DATABASE test FROM USER userA");
-        sessionRoot.executeNonQueryStatement("REVOKE INSERT ON DATABASE test FROM USER userA");
+        sessionRoot.executeNonQueryStatement("REVOKE CREATE ON DATABASE \"汉化\" FROM USER userA");
+        sessionRoot.executeNonQueryStatement("REVOKE INSERT ON DATABASE \"汉化\" FROM USER userA");
 
         // can write but cannot add column
-        sessionRoot.executeNonQueryStatement("GRANT INSERT ON DATABASE test TO USER userA");
+        sessionRoot.executeNonQueryStatement("GRANT INSERT ON DATABASE \"汉化\" TO USER userA");
         tablet =
             new Tablet(
                 "table2",
@@ -265,24 +265,24 @@ public class IoTDBAuthenticationTableIT {
           fail("Should have thrown an exception");
         } catch (StatementExecutionException e) {
           assertEquals(
-              "301: [EXECUTE_STATEMENT_ERROR(301)] Exception occurred: insertTablet failed. Access Denied: No permissions for this operation, please add privilege ALTER ON test.table2",
+              "803: Access Denied: No permissions for this operation, please add privilege ALTER ON 汉化.table2",
               e.getMessage());
         }
         sessionRoot.executeNonQueryStatement("GRANT ALTER ON TABLE table2 TO USER userA");
         sessionA.insert(tablet);
         sessionRoot.executeNonQueryStatement("REVOKE ALTER ON TABLE table2 FROM USER userA");
-        sessionRoot.executeNonQueryStatement("REVOKE INSERT ON DATABASE test FROM USER userA");
+        sessionRoot.executeNonQueryStatement("REVOKE INSERT ON DATABASE \"汉化\" FROM USER userA");
 
         // grant multiple and revoke one-by-one
         sessionRoot.executeNonQueryStatement("GRANT INSERT ON ANY TO USER userA");
-        sessionRoot.executeNonQueryStatement("GRANT INSERT ON DATABASE test TO USER userA");
+        sessionRoot.executeNonQueryStatement("GRANT INSERT ON DATABASE \"汉化\" TO USER userA");
         sessionRoot.executeNonQueryStatement("GRANT INSERT ON TABLE table1 TO USER userA");
         sessionA.executeNonQueryStatement(
             "INSERT INTO table1 (time, id, attr, measurement) VALUES (1, 'id2', 'attr2', 0.2)");
         sessionRoot.executeNonQueryStatement("REVOKE INSERT ON ANY FROM USER userA");
         sessionA.executeNonQueryStatement(
             "INSERT INTO table1 (time, id, attr, measurement) VALUES (1, 'id2', 'attr2', 0.2)");
-        sessionRoot.executeNonQueryStatement("REVOKE INSERT ON DATABASE test FROM USER userA");
+        sessionRoot.executeNonQueryStatement("REVOKE INSERT ON DATABASE \"汉化\" FROM USER userA");
         sessionA.executeNonQueryStatement(
             "INSERT INTO table1 (time, id, attr, measurement) VALUES (1, 'id2', 'attr2', 0.2)");
         sessionRoot.executeNonQueryStatement("REVOKE INSERT ON TABLE table1 FROM USER userA");
@@ -292,7 +292,7 @@ public class IoTDBAuthenticationTableIT {
           fail("Should have thrown an exception");
         } catch (StatementExecutionException e) {
           assertEquals(
-              "803: Access Denied: No permissions for this operation, please add privilege INSERT ON test.table1",
+              "803: Access Denied: No permissions for this operation, please add privilege INSERT ON 汉化.table1",
               e.getMessage());
         }
 
@@ -317,7 +317,7 @@ public class IoTDBAuthenticationTableIT {
           fail("Should have thrown an exception");
         } catch (StatementExecutionException e) {
           assertEquals(
-              "803: Access Denied: No permissions for this operation, please add privilege INSERT ON test.table1",
+              "803: Access Denied: No permissions for this operation, please add privilege INSERT ON 汉化.table1",
               e.getMessage());
         }
         // after revoked cannot revoke again
@@ -370,7 +370,7 @@ public class IoTDBAuthenticationTableIT {
           fail("Should have thrown an exception");
         } catch (StatementExecutionException e) {
           assertEquals(
-              "803: Access Denied: No permissions for this operation, please add privilege INSERT ON test.table1",
+              "803: Access Denied: No permissions for this operation, please add privilege INSERT ON 汉化.table1",
               e.getMessage());
         }
         // userB can revoke himself
@@ -398,10 +398,10 @@ public class IoTDBAuthenticationTableIT {
           ITableSession sessionD =
               EnvFactory.getEnv().getTableSessionConnection("userD", "userD")) {
         // grant an irrelevant privilege so that the new users can use database
-        sessionRoot.executeNonQueryStatement("GRANT SELECT ON DATABASE test TO USER userC");
-        sessionRoot.executeNonQueryStatement("GRANT SELECT ON DATABASE test TO USER userD");
-        sessionC.executeNonQueryStatement("USE test");
-        sessionD.executeNonQueryStatement("USE test");
+        sessionRoot.executeNonQueryStatement("GRANT SELECT ON DATABASE \"汉化\" TO USER userC");
+        sessionRoot.executeNonQueryStatement("GRANT SELECT ON DATABASE \"汉化\" TO USER userD");
+        sessionC.executeNonQueryStatement("USE \"汉化\"");
+        sessionD.executeNonQueryStatement("USE \"汉化\"");
         // userC no privilege
         try {
           sessionC.executeNonQueryStatement(
@@ -409,7 +409,7 @@ public class IoTDBAuthenticationTableIT {
           fail("Should have thrown an exception");
         } catch (StatementExecutionException e) {
           assertEquals(
-              "803: Access Denied: No permissions for this operation, please add privilege INSERT ON test.table1",
+              "803: Access Denied: No permissions for this operation, please add privilege INSERT ON 汉化.table1",
               e.getMessage());
         }
 
@@ -424,7 +424,7 @@ public class IoTDBAuthenticationTableIT {
           fail("Should have thrown an exception");
         } catch (StatementExecutionException e) {
           assertEquals(
-              "803: Access Denied: No permissions for this operation, please add privilege INSERT ON test.table1",
+              "803: Access Denied: No permissions for this operation, please add privilege INSERT ON 汉化.table1",
               e.getMessage());
         }
 
@@ -439,22 +439,22 @@ public class IoTDBAuthenticationTableIT {
           fail("Should have thrown an exception");
         } catch (StatementExecutionException e) {
           assertEquals(
-              "803: Access Denied: No permissions for this operation, please add privilege INSERT ON test.table1",
+              "803: Access Denied: No permissions for this operation, please add privilege INSERT ON 汉化.table1",
               e.getMessage());
         }
 
         // grant and revoke - database
-        sessionRoot.executeNonQueryStatement("GRANT INSERT ON DATABASE test TO ROLE role1");
+        sessionRoot.executeNonQueryStatement("GRANT INSERT ON DATABASE \"汉化\" TO ROLE role1");
         sessionC.executeNonQueryStatement(
             "INSERT INTO table1 (time, id, attr, measurement) VALUES (1, 'id2', 'attr2', 0.2)");
-        sessionRoot.executeNonQueryStatement("REVOKE INSERT ON DATABASE test FROM ROLE role1");
+        sessionRoot.executeNonQueryStatement("REVOKE INSERT ON DATABASE \"汉化\" FROM ROLE role1");
         try {
           sessionC.executeNonQueryStatement(
               "INSERT INTO table1 (time, id, attr, measurement) VALUES (1, 'id2', 'attr2', 0.2)");
           fail("Should have thrown an exception");
         } catch (StatementExecutionException e) {
           assertEquals(
-              "803: Access Denied: No permissions for this operation, please add privilege INSERT ON test.table1",
+              "803: Access Denied: No permissions for this operation, please add privilege INSERT ON 汉化.table1",
               e.getMessage());
         }
 
@@ -469,20 +469,20 @@ public class IoTDBAuthenticationTableIT {
           fail("Should have thrown an exception");
         } catch (StatementExecutionException e) {
           assertEquals(
-              "803: Access Denied: No permissions for this operation, please add privilege INSERT ON test.table1",
+              "803: Access Denied: No permissions for this operation, please add privilege INSERT ON 汉化.table1",
               e.getMessage());
         }
 
         // grant multiple and revoke one-by-one
         sessionRoot.executeNonQueryStatement("GRANT INSERT ON ANY TO ROLE role1");
-        sessionRoot.executeNonQueryStatement("GRANT INSERT ON DATABASE test TO ROLE role1");
+        sessionRoot.executeNonQueryStatement("GRANT INSERT ON DATABASE \"汉化\" TO ROLE role1");
         sessionRoot.executeNonQueryStatement("GRANT INSERT ON TABLE table1 TO ROLE role1");
         sessionC.executeNonQueryStatement(
             "INSERT INTO table1 (time, id, attr, measurement) VALUES (1, 'id2', 'attr2', 0.2)");
         sessionRoot.executeNonQueryStatement("REVOKE INSERT ON ANY FROM ROLE role1");
         sessionC.executeNonQueryStatement(
             "INSERT INTO table1 (time, id, attr, measurement) VALUES (1, 'id2', 'attr2', 0.2)");
-        sessionRoot.executeNonQueryStatement("REVOKE INSERT ON DATABASE test FROM ROLE role1");
+        sessionRoot.executeNonQueryStatement("REVOKE INSERT ON DATABASE \"汉化\" FROM ROLE role1");
         sessionC.executeNonQueryStatement(
             "INSERT INTO table1 (time, id, attr, measurement) VALUES (1, 'id2', 'attr2', 0.2)");
         sessionRoot.executeNonQueryStatement("REVOKE INSERT ON TABLE table1 FROM ROLE role1");
@@ -492,7 +492,7 @@ public class IoTDBAuthenticationTableIT {
           fail("Should have thrown an exception");
         } catch (StatementExecutionException e) {
           assertEquals(
-              "803: Access Denied: No permissions for this operation, please add privilege INSERT ON test.table1",
+              "803: Access Denied: No permissions for this operation, please add privilege INSERT ON 汉化.table1",
               e.getMessage());
         }
 
@@ -517,7 +517,7 @@ public class IoTDBAuthenticationTableIT {
           fail("Should have thrown an exception");
         } catch (StatementExecutionException e) {
           assertEquals(
-              "803: Access Denied: No permissions for this operation, please add privilege INSERT ON test.table1",
+              "803: Access Denied: No permissions for this operation, please add privilege INSERT ON 汉化.table1",
               e.getMessage());
         }
         // after revoked cannot revoke again
@@ -554,7 +554,7 @@ public class IoTDBAuthenticationTableIT {
           fail("Should have thrown an exception");
         } catch (StatementExecutionException e) {
           assertEquals(
-              "803: Access Denied: No permissions for this operation, please add privilege INSERT ON test.table1",
+              "803: Access Denied: No permissions for this operation, please add privilege INSERT ON 汉化.table1",
               e.getMessage());
         }
 
@@ -571,7 +571,7 @@ public class IoTDBAuthenticationTableIT {
           fail("Should have thrown an exception");
         } catch (StatementExecutionException e) {
           assertEquals(
-              "803: Access Denied: No permissions for this operation, please add privilege INSERT ON test.table1",
+              "803: Access Denied: No permissions for this operation, please add privilege INSERT ON 汉化.table1",
               e.getMessage());
         }
         // userD can revoke himself
@@ -594,7 +594,7 @@ public class IoTDBAuthenticationTableIT {
           fail("Should have thrown an exception");
         } catch (StatementExecutionException e) {
           assertEquals(
-              "803: Access Denied: No permissions for this operation, please add privilege INSERT ON test.table1",
+              "803: Access Denied: No permissions for this operation, please add privilege INSERT ON 汉化.table1",
               e.getMessage());
         }
       }

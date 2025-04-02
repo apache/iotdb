@@ -97,43 +97,21 @@ public class AggregationTest {
                     ImmutableList.of(), // UnStreamable
                     Optional.empty(),
                     FINAL,
-                    collect(
-                        exchange(),
-                        aggregation(
-                            singleGroupingSet("s1"),
-                            ImmutableMap.of(
-                                Optional.of("count_0"),
-                                aggregationFunction("count", ImmutableList.of("s2"))),
-                            ImmutableList.of(), // UnStreamable
-                            Optional.empty(),
-                            PARTIAL,
-                            tableScan(
-                                "testdb.table1",
-                                ImmutableList.of("s1", "s2"),
-                                ImmutableSet.of("s1", "s2"))),
-                        exchange())))));
+                    collect(exchange(), exchange(), exchange())))));
     // Agg(PARTIAL) - TableScan
-    assertPlan(
-        planTester.getFragmentPlan(1),
-        aggregation(
-            singleGroupingSet("s1"),
-            ImmutableMap.of(
-                Optional.of("count_0"), aggregationFunction("count", ImmutableList.of("s2"))),
-            ImmutableList.of(), // UnStreamable
-            Optional.empty(),
-            PARTIAL,
-            tableScan("testdb.table1", ImmutableList.of("s1", "s2"), ImmutableSet.of("s1", "s2"))));
-    // Agg(PARTIAL) - TableScan
-    assertPlan(
-        planTester.getFragmentPlan(2),
-        aggregation(
-            singleGroupingSet("s1"),
-            ImmutableMap.of(
-                Optional.of("count_0"), aggregationFunction("count", ImmutableList.of("s2"))),
-            ImmutableList.of(), // UnStreamable
-            Optional.empty(),
-            PARTIAL,
-            tableScan("testdb.table1", ImmutableList.of("s1", "s2"), ImmutableSet.of("s1", "s2"))));
+    for (int i = 1; i <= 3; i++) {
+      assertPlan(
+          planTester.getFragmentPlan(i),
+          aggregation(
+              singleGroupingSet("s1"),
+              ImmutableMap.of(
+                  Optional.of("count_0"), aggregationFunction("count", ImmutableList.of("s2"))),
+              ImmutableList.of(), // UnStreamable
+              Optional.empty(),
+              PARTIAL,
+              tableScan(
+                  "testdb.table1", ImmutableList.of("s1", "s2"), ImmutableSet.of("s1", "s2"))));
+    }
 
     // Output - Project - Aggregation - TableScan
     assertPlan(
@@ -167,47 +145,22 @@ public class AggregationTest {
                     ImmutableList.of("tag1", "tag2", "tag3"), // Streamable
                     Optional.empty(),
                     FINAL,
-                    mergeSort(
-                        exchange(),
-                        aggregation(
-                            singleGroupingSet("s1", "tag1", "tag2", "tag3", "time"),
-                            ImmutableMap.of(
-                                Optional.of("count_0"),
-                                aggregationFunction("count", ImmutableList.of("s2"))),
-                            ImmutableList.of("tag1", "tag2", "tag3"), // Streamable
-                            Optional.empty(),
-                            PARTIAL,
-                            tableScan(
-                                "testdb.table1",
-                                ImmutableList.of("time", "tag1", "tag2", "tag3", "s1", "s2"),
-                                ImmutableSet.of("time", "tag1", "tag2", "tag3", "s1", "s2"))),
-                        exchange())))));
-    assertPlan(
-        planTester.getFragmentPlan(1),
-        aggregation(
-            singleGroupingSet("s1", "tag1", "tag2", "tag3", "time"),
-            ImmutableMap.of(
-                Optional.of("count_0"), aggregationFunction("count", ImmutableList.of("s2"))),
-            ImmutableList.of("tag1", "tag2", "tag3"), // Streamable
-            Optional.empty(),
-            PARTIAL,
-            tableScan(
-                "testdb.table1",
-                ImmutableList.of("time", "tag1", "tag2", "tag3", "s1", "s2"),
-                ImmutableSet.of("time", "tag1", "tag2", "tag3", "s1", "s2"))));
-    assertPlan(
-        planTester.getFragmentPlan(2),
-        aggregation(
-            singleGroupingSet("s1", "tag1", "tag2", "tag3", "time"),
-            ImmutableMap.of(
-                Optional.of("count_0"), aggregationFunction("count", ImmutableList.of("s2"))),
-            ImmutableList.of("tag1", "tag2", "tag3"), // Streamable
-            Optional.empty(),
-            PARTIAL,
-            tableScan(
-                "testdb.table1",
-                ImmutableList.of("time", "tag1", "tag2", "tag3", "s1", "s2"),
-                ImmutableSet.of("time", "tag1", "tag2", "tag3", "s1", "s2"))));
+                    mergeSort(exchange(), exchange(), exchange())))));
+    for (int i = 1; i <= 3; i++) {
+      assertPlan(
+          planTester.getFragmentPlan(i),
+          aggregation(
+              singleGroupingSet("s1", "tag1", "tag2", "tag3", "time"),
+              ImmutableMap.of(
+                  Optional.of("count_0"), aggregationFunction("count", ImmutableList.of("s2"))),
+              ImmutableList.of("tag1", "tag2", "tag3"), // Streamable
+              Optional.empty(),
+              PARTIAL,
+              tableScan(
+                  "testdb.table1",
+                  ImmutableList.of("time", "tag1", "tag2", "tag3", "s1", "s2"),
+                  ImmutableSet.of("time", "tag1", "tag2", "tag3", "s1", "s2"))));
+    }
     // TODO Add more tests about streamable when develop subquery, especially when there is SortNode
 
     // Expr appears in groupingKeys, and it is not date_bin(time)
@@ -422,63 +375,29 @@ public class AggregationTest {
                 ImmutableList.of(),
                 Optional.empty(),
                 FINAL,
-                collect(
-                    exchange(),
-                    aggregation(
-                        singleGroupingSet(),
-                        ImmutableMap.of(
-                            Optional.of("count_1"),
-                            aggregationFunction("count", ImmutableList.of("count_0"))),
-                        ImmutableList.of(),
-                        Optional.empty(),
-                        INTERMEDIATE,
-                        aggregationTableScan(
-                            singleGroupingSet(),
-                            ImmutableList.of(), // UnStreamable
-                            Optional.empty(),
-                            PARTIAL,
-                            "testdb.table1",
-                            ImmutableList.of("count_0"),
-                            ImmutableSet.of("s2"))),
-                    exchange()))));
+                collect(exchange(), exchange(), exchange()))));
 
     // - Aggregation(INTERMEDIATE) - AggTableScan
-    assertPlan(
-        planTester.getFragmentPlan(1),
-        aggregation(
-            singleGroupingSet(),
-            ImmutableMap.of(
-                Optional.of("count_1"), aggregationFunction("count", ImmutableList.of("count_0"))),
-            ImmutableList.of(),
-            Optional.empty(),
-            INTERMEDIATE,
-            aggregationTableScan(
-                singleGroupingSet(),
-                ImmutableList.of(), // UnStreamable
-                Optional.empty(),
-                PARTIAL,
-                "testdb.table1",
-                ImmutableList.of("count_0"),
-                ImmutableSet.of("s2"))));
-
-    // - Aggregation(INTERMEDIATE) - AggTableScan
-    assertPlan(
-        planTester.getFragmentPlan(2),
-        aggregation(
-            singleGroupingSet(),
-            ImmutableMap.of(
-                Optional.of("count_1"), aggregationFunction("count", ImmutableList.of("count_0"))),
-            ImmutableList.of(),
-            Optional.empty(),
-            INTERMEDIATE,
-            aggregationTableScan(
-                singleGroupingSet(),
-                ImmutableList.of(), // UnStreamable
-                Optional.empty(),
-                PARTIAL,
-                "testdb.table1",
-                ImmutableList.of("count_0"),
-                ImmutableSet.of("s2"))));
+    for (int i = 1; i <= 3; i++) {
+      assertPlan(
+          planTester.getFragmentPlan(i),
+          aggregation(
+              singleGroupingSet(),
+              ImmutableMap.of(
+                  Optional.of("count_1"),
+                  aggregationFunction("count", ImmutableList.of("count_0"))),
+              ImmutableList.of(),
+              Optional.empty(),
+              INTERMEDIATE,
+              aggregationTableScan(
+                  singleGroupingSet(),
+                  ImmutableList.of(), // UnStreamable
+                  Optional.empty(),
+                  PARTIAL,
+                  "testdb.table1",
+                  ImmutableList.of("count_0"),
+                  ImmutableSet.of("s2"))));
+    }
   }
 
   @Test
@@ -504,33 +423,22 @@ public class AggregationTest {
                     ImmutableSet.of("tag1", "tag2", "tag3", "s2")))));
 
     // Output - Collect - Project - AggTableScan
-    assertPlan(
-        planTester.getFragmentPlan(0),
-        output(
-            collect(
-                project(
-                    aggregationTableScan(
-                        singleGroupingSet("tag1", "tag2", "tag3"),
-                        ImmutableList.of("tag1", "tag2", "tag3"), // Streamable
-                        Optional.empty(),
-                        SINGLE,
-                        "testdb.table1",
-                        ImmutableList.of("tag1", "tag2", "tag3", "count"),
-                        ImmutableSet.of("tag1", "tag2", "tag3", "s2"))),
-                exchange())));
+    assertPlan(planTester.getFragmentPlan(0), output(collect(exchange(), exchange())));
 
     // Project - AggTableScan
-    assertPlan(
-        planTester.getFragmentPlan(1),
-        project(
-            aggregationTableScan(
-                singleGroupingSet("tag1", "tag2", "tag3"),
-                ImmutableList.of("tag1", "tag2", "tag3"), // Streamable
-                Optional.empty(),
-                SINGLE,
-                "testdb.table1",
-                ImmutableList.of("tag1", "tag2", "tag3", "count"),
-                ImmutableSet.of("tag1", "tag2", "tag3", "s2"))));
+    for (int i = 1; i <= 2; i++) {
+      assertPlan(
+          planTester.getFragmentPlan(i),
+          project(
+              aggregationTableScan(
+                  singleGroupingSet("tag1", "tag2", "tag3"),
+                  ImmutableList.of("tag1", "tag2", "tag3"), // Streamable
+                  Optional.empty(),
+                  SINGLE,
+                  "testdb.table1",
+                  ImmutableList.of("tag1", "tag2", "tag3", "count"),
+                  ImmutableSet.of("tag1", "tag2", "tag3", "s2"))));
+    }
 
     // All ID columns appear in GroupingKeys, and Attribute columns , time or date_bin(time) also
     // appear
@@ -562,29 +470,20 @@ public class AggregationTest {
                     ImmutableList.of("tag1", "tag2", "tag3", "attr1"), // Streamable
                     Optional.empty(),
                     FINAL,
-                    mergeSort(
-                        exchange(),
-                        aggregationTableScan(
-                            singleGroupingSet("tag1", "tag2", "tag3", "attr1", "date_bin$gid"),
-                            ImmutableList.of("tag1", "tag2", "tag3", "attr1"), // Streamable
-                            Optional.empty(),
-                            PARTIAL,
-                            "testdb.table1",
-                            ImmutableList.of(
-                                "tag1", "tag2", "tag3", "attr1", "date_bin$gid", "count_0"),
-                            ImmutableSet.of("tag1", "tag2", "tag3", "attr1", "time", "s2")),
-                        exchange())))));
+                    mergeSort(exchange(), exchange(), exchange())))));
 
-    assertPlan(
-        planTester.getFragmentPlan(1),
-        aggregationTableScan(
-            singleGroupingSet("tag1", "tag2", "tag3", "attr1", "date_bin$gid"),
-            ImmutableList.of("tag1", "tag2", "tag3", "attr1"), // Streamable
-            Optional.empty(),
-            PARTIAL,
-            "testdb.table1",
-            ImmutableList.of("tag1", "tag2", "tag3", "attr1", "date_bin$gid", "count_0"),
-            ImmutableSet.of("tag1", "tag2", "tag3", "attr1", "time", "s2")));
+    for (int i = 1; i <= 3; i++) {
+      assertPlan(
+          planTester.getFragmentPlan(i),
+          aggregationTableScan(
+              singleGroupingSet("tag1", "tag2", "tag3", "attr1", "date_bin$gid"),
+              ImmutableList.of("tag1", "tag2", "tag3", "attr1"), // Streamable
+              Optional.empty(),
+              PARTIAL,
+              "testdb.table1",
+              ImmutableList.of("tag1", "tag2", "tag3", "attr1", "date_bin$gid", "count_0"),
+              ImmutableSet.of("tag1", "tag2", "tag3", "attr1", "time", "s2")));
+    }
 
     // Global Aggregation or partialPushDown Aggregation with only one deviceEntry
 
@@ -702,16 +601,19 @@ public class AggregationTest {
                     aggregationFunction("count", ImmutableList.of("count_0"))),
                 Optional.empty(),
                 FINAL,
-                collect(
-                    aggregationTableScan(
-                        singleGroupingSet(),
-                        ImmutableList.of(),
-                        Optional.empty(),
-                        PARTIAL,
-                        "testdb.table1",
-                        ImmutableList.of("count_0"),
-                        ImmutableSet.of("s1")),
-                    exchange()))));
+                collect(exchange(), exchange()))));
+    for (int i = 1; i <= 2; i++) {
+      assertPlan(
+          planTester.getFragmentPlan(i),
+          aggregationTableScan(
+              singleGroupingSet(),
+              ImmutableList.of(),
+              Optional.empty(),
+              PARTIAL,
+              "testdb.table1",
+              ImmutableList.of("count_0"),
+              ImmutableSet.of("s1")));
+    }
 
     logicalQueryPlan =
         planTester.createPlan(
@@ -743,16 +645,19 @@ public class AggregationTest {
                     ImmutableList.of("tag1", "tag2", "tag3"),
                     Optional.empty(),
                     FINAL,
-                    mergeSort(
-                        aggregationTableScan(
-                            singleGroupingSet("tag1", "tag2", "tag3"),
-                            ImmutableList.of("tag1", "tag2", "tag3"),
-                            Optional.empty(),
-                            PARTIAL,
-                            "testdb.table1",
-                            ImmutableList.of("tag1", "tag2", "tag3", "count_0"),
-                            ImmutableSet.of("tag1", "tag2", "tag3", "s1")),
-                        exchange())))));
+                    mergeSort(exchange(), exchange())))));
+    for (int i = 1; i <= 2; i++) {
+      assertPlan(
+          planTester.getFragmentPlan(i),
+          aggregationTableScan(
+              singleGroupingSet("tag1", "tag2", "tag3"),
+              ImmutableList.of("tag1", "tag2", "tag3"),
+              Optional.empty(),
+              PARTIAL,
+              "testdb.table1",
+              ImmutableList.of("tag1", "tag2", "tag3", "count_0"),
+              ImmutableSet.of("tag1", "tag2", "tag3", "s1")));
+    }
   }
 
   @Test

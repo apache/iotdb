@@ -561,7 +561,7 @@ public class BatchedAlignedSeriesReadChunkCompactionTest extends AbstractCompact
             "d0",
             Arrays.asList("s0", "s1", "s2"),
             new TimeRange[] {new TimeRange(100000, 200000), new TimeRange(300000, 500000)},
-            TSEncoding.PLAIN,
+            TSEncoding.RLE,
             CompressionType.LZ4,
             Arrays.asList(false, false, false),
             true);
