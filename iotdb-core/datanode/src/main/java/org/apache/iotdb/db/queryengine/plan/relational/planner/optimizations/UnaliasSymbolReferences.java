@@ -352,10 +352,21 @@ public class UnaliasSymbolReferences implements PlanOptimizer {
     @Override
     public PlanAndMappings visitExplainAnalyze(ExplainAnalyzeNode node, UnaliasContext context) {
       PlanAndMappings rewrittenSource = node.getChild().accept(this, context);
+      Map<Symbol, Symbol> mapping = new HashMap<>(rewrittenSource.getMappings());
+      SymbolMapper mapper = symbolMapper(mapping);
+
+      List<Symbol> newChildPermittedOutputs = mapper.map(node.getChildPermittedOutputs());
 
       return new PlanAndMappings(
-          node.replaceChildren(ImmutableList.of(rewrittenSource.getRoot())),
-          rewrittenSource.getMappings());
+          new ExplainAnalyzeNode(
+              node.getPlanNodeId(),
+              rewrittenSource.getRoot(),
+              node.isVerbose(),
+              node.getQueryId(),
+              node.getTimeout(),
+              node.getOutputSymbols().get(0),
+              newChildPermittedOutputs),
+          mapping);
     }
 
     @Override
