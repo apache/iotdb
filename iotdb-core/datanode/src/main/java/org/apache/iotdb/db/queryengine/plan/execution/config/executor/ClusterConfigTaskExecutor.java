@@ -3550,7 +3550,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
         } else {
           future.setException(
               new IoTDBException(
-                  String.format("Database %s doesn't exist", databaseSchema.getName().substring(5)),
+                  String.format("Database %s doesn't exist", databaseSchema.getName()),
                   TSStatusCode.DATABASE_NOT_EXIST.getStatusCode()));
         }
       } else {
