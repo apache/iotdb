@@ -259,6 +259,47 @@ public class TableDistributedPlanGenerator
     return resultNodeList;
   }
 
+  // @Override
+  public List<PlanNode> visitProject2(ProjectNode node, PlanContext context) {
+    List<PlanNode> childrenNodes = node.getChild().accept(this, context);
+    OrderingScheme childOrdering = nodeOrderingMap.get(childrenNodes.get(0).getPlanNodeId());
+    boolean containAllSortItem = false;
+    if (childOrdering != null) {
+      // the column used for order by has been pruned, we can't copy this node to sub nodeTrees.
+      containAllSortItem =
+          ImmutableSet.copyOf(node.getOutputSymbols()).containsAll(childOrdering.getOrderBy());
+    }
+    if (childrenNodes.size() == 1) {
+      if (containAllSortItem) {
+        nodeOrderingMap.put(node.getPlanNodeId(), childOrdering);
+      }
+      node.setChild(childrenNodes.get(0));
+      return Collections.singletonList(node);
+    }
+
+    boolean containsDiff =
+        node.getAssignments().getMap().values().stream()
+            .anyMatch(PushPredicateIntoTableScan::containsDiffFunction);
+    if (containsDiff) {
+      if (containAllSortItem) {
+        nodeOrderingMap.put(node.getPlanNodeId(), childOrdering);
+      }
+      node.setChild(mergeChildrenViaCollectOrMergeSort(childOrdering, childrenNodes));
+      return Collections.singletonList(node);
+    }
+
+    List<PlanNode> resultNodeList = new ArrayList<>(childrenNodes.size());
+    for (PlanNode child : childrenNodes) {
+      ProjectNode subProjectNode =
+          new ProjectNode(queryId.genPlanNodeId(), child, node.getAssignments());
+      resultNodeList.add(subProjectNode);
+      if (containAllSortItem) {
+        nodeOrderingMap.put(subProjectNode.getPlanNodeId(), childOrdering);
+      }
+    }
+    return resultNodeList;
+  }
+
   @Override
   public List<PlanNode> visitTopK(TopKNode node, PlanContext context) {
     context.setExpectedOrderingScheme(node.getOrderingScheme());
@@ -417,6 +458,7 @@ public class TableDistributedPlanGenerator
   public List<PlanNode> visitFilter(FilterNode node, PlanContext context) {
     List<PlanNode> childrenNodes = node.getChild().accept(this, context);
     OrderingScheme childOrdering = nodeOrderingMap.get(childrenNodes.get(0).getPlanNodeId());
+    // TODO examine allSortItem
     if (childOrdering != null) {
       nodeOrderingMap.put(node.getPlanNodeId(), childOrdering);
     }
