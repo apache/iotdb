@@ -139,7 +139,6 @@ public class IoTDBPartitionTableAutoCleanIT {
         final Statement statement = connection.createStatement()) {
       // Create databases and insert test data
       for (int i = 0; i < 2; i++) {
-        System.out.println(i);
         String databaseName = String.format("%s%d", TABLE_DATABASE_PREFIX, i);
         statement.execute(String.format("CREATE DATABASE IF NOT EXISTS %s", databaseName));
         statement.execute(String.format("USE DATABASE %s", databaseName));
