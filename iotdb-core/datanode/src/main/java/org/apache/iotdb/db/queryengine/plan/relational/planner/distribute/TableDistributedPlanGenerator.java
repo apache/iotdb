@@ -434,8 +434,7 @@ public class TableDistributedPlanGenerator
     }
 
     List<PlanNode> resultNodeList = new ArrayList<>();
-    for (int i = 0; i < childrenNodes.size(); i++) {
-      PlanNode child = childrenNodes.get(i);
+    for (PlanNode child : childrenNodes) {
       FilterNode subFilterNode =
           new FilterNode(queryId.genPlanNodeId(), child, node.getPredicate());
       resultNodeList.add(subFilterNode);
@@ -485,6 +484,7 @@ public class TableDistributedPlanGenerator
     return Collections.singletonList(node);
   }
 
+  @Override
   public List<PlanNode> visitDeviceTableScan(
       final DeviceTableScanNode node, final PlanContext context) {
     if (context.isPushDownGrouping()) {
