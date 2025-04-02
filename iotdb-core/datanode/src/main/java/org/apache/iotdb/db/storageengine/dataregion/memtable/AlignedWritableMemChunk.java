@@ -242,45 +242,6 @@ public class AlignedWritableMemChunk extends AbstractWritableMemChunk {
     }
   }
 
-  /**
-   * Check metadata of columns and return array that mapping existed metadata to index of data
-   * column.
-   *
-   * @param schemaListInInsertPlan Contains all existed schema in InsertPlan. If some timeseries
-   *     have been deleted, there will be null in its slot.
-   * @return columnIndexArray: schemaList[i] is schema of columns[columnIndexArray[i]]
-   */
-  private Pair<Object[], BitMap[]> checkAndReorderColumnValuesInInsertPlan(
-      List<IMeasurementSchema> schemaListInInsertPlan, Object[] columnValues, BitMap[] bitMaps) {
-    Object[] reorderedColumnValues = new Object[schemaList.size()];
-    BitMap[] reorderedBitMaps = bitMaps == null ? null : new BitMap[schemaList.size()];
-    for (int i = 0; i < schemaListInInsertPlan.size(); i++) {
-      IMeasurementSchema measurementSchema = schemaListInInsertPlan.get(i);
-      if (measurementSchema != null) {
-        Integer index = this.measurementIndexMap.get(measurementSchema.getMeasurementName());
-        // Index is null means this measurement was not in this AlignedTVList before.
-        // We need to extend a new column in AlignedMemChunk and AlignedTVList.
-        // And the reorderedColumnValues should extend one more column for the new measurement
-        if (index == null) {
-          index = this.list.getTsDataTypes().size();
-          this.measurementIndexMap.put(schemaListInInsertPlan.get(i).getMeasurementName(), index);
-          this.schemaList.add(schemaListInInsertPlan.get(i));
-          this.list.extendColumn(schemaListInInsertPlan.get(i).getType());
-          reorderedColumnValues =
-              Arrays.copyOf(reorderedColumnValues, reorderedColumnValues.length + 1);
-          if (reorderedBitMaps != null) {
-            reorderedBitMaps = Arrays.copyOf(reorderedBitMaps, reorderedBitMaps.length + 1);
-          }
-        }
-        reorderedColumnValues[index] = columnValues[i];
-        if (bitMaps != null) {
-          reorderedBitMaps[index] = bitMaps[i];
-        }
-      }
-    }
-    return new Pair<>(reorderedColumnValues, reorderedBitMaps);
-  }
-
   private void filterDeletedTimeStamp(
       AlignedTVList alignedTVList,
       List<List<TimeRange>> valueColumnsDeletionList,
