@@ -497,7 +497,8 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
 
   @Override
   protected boolean shouldLogin() {
-    final IClientSession clientSession = SESSION_MANAGER.getCurrSession();
+    // The idle time is updated per request
+    final IClientSession clientSession = SESSION_MANAGER.getCurrSessionAndUpdateIdleTime();
     return clientSession == null || !clientSession.isLogin() || super.shouldLogin();
   }
 
@@ -853,7 +854,7 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
       return loginStatus;
     }
 
-    final IClientSession clientSession = SESSION_MANAGER.getCurrSessionAndUpdateIdleTime();
+    final IClientSession clientSession = SESSION_MANAGER.getCurrSession();
 
     // For table model, the authority check is done in inner execution. No need to check here
     if (!isTableModelStatement) {
@@ -1014,7 +1015,7 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
               .executeForTableModel(
                   shouldMarkAsPipeRequest.get() ? new PipeEnriched(statement) : statement,
                   tableSqlParser,
-                  SESSION_MANAGER.getCurrSessionAndUpdateIdleTime(),
+                  SESSION_MANAGER.getCurrSession(),
                   SESSION_MANAGER.requestQueryId(),
                   SESSION_MANAGER.getSessionInfoOfPipeReceiver(
                       SESSION_MANAGER.getCurrSession(), databaseName),
