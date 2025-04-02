@@ -24,6 +24,8 @@ import java.util.Locale;
 import static java.util.Objects.requireNonNull;
 
 public class FunctionId {
+  public static final FunctionId NOOP_FUNCTION_ID = new FunctionId("noop");
+
   private final String id;
 
   public FunctionId(String id) {
