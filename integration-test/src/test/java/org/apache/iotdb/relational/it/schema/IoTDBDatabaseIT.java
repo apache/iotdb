@@ -86,7 +86,7 @@ public class IoTDBDatabaseIT {
 
       // alter non-exist
       try {
-        statement.execute("alter database test1 with (ttl='INF')");
+        statement.execute("alter database test1 set properties ttl='INF'");
         fail("alter database test1 shouldn't succeed because test does not exist");
       } catch (final SQLException e) {
         assertEquals("500: Database test1 doesn't exist", e.getMessage());
