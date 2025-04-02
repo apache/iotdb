@@ -23,6 +23,7 @@ import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.CompactionUtils;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.batch.utils.BatchCompactionPlan;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.CompactionScheduleContext;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileID;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceStatus;
@@ -36,6 +37,8 @@ import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.common.conf.TSFileDescriptor;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.read.TsFileSequenceReader;
+
+import javax.annotation.Nullable;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -54,22 +57,26 @@ import java.util.stream.Collectors;
  */
 public abstract class AbstractCompactionEstimator {
 
-  private static final boolean isCacheMemoryCostAllocated;
-  private static final Map<TsFileID, FileInfo> globalFileInfoCacheForFailedCompaction;
-  private static final Map<TsFileID, FileInfo.RoughFileInfo> globalRoughInfoCacheForCompaction;
+  /** The size of global compaction estimation file info cahce. */
+  private static final int globalCompactionFileInfoCacheSize = 1000;
 
-  private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
+  /** The size of global compaction estimation rough file info cahce. */
+  private static final int globalCompactionRoughFileInfoCacheSize = 100000;
 
-  static {
-    long fixedMemoryCost =
-        config.getGlobalCompactionFileInfoCacheSize()
-                * FileInfo.MEMORY_COST_OF_FILE_INFO_ENTRY_IN_CACHE
-            + config.getGlobalCompactionRoughFileInfoCacheSize()
-                * FileInfo.MEMORY_COST_OF_FILE_INFO_ENTRY_IN_CACHE;
+  private static final long fixedMemoryCost =
+      globalCompactionFileInfoCacheSize * FileInfo.MEMORY_COST_OF_FILE_INFO_ENTRY_IN_CACHE
+          + globalCompactionRoughFileInfoCacheSize
+              * FileInfo.MEMORY_COST_OF_ROUGH_FILE_INFO_ENTRY_IN_CACHE;
+  private static final double maxRatioToAllocateFileInfoCache = 0.1;
+  private static boolean isCacheMemoryCostAllocated;
+  private static Map<TsFileID, FileInfo> globalFileInfoCacheForFailedCompaction;
+  private static Map<TsFileID, FileInfo.RoughFileInfo> globalRoughInfoCacheForCompaction;
+
+  protected static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
+
+  public static long allocateMemoryCostForFileInfoCache(long compactionMemorySize) {
     isCacheMemoryCostAllocated =
-        SystemInfo.getInstance()
-            .getCompactionMemoryBlock()
-            .allocateIfSufficient(fixedMemoryCost, 1.0);
+        compactionMemorySize * maxRatioToAllocateFileInfoCache > fixedMemoryCost;
     if (isCacheMemoryCostAllocated) {
       globalRoughInfoCacheForCompaction =
           Collections.synchronizedMap(
@@ -87,6 +94,7 @@ public abstract class AbstractCompactionEstimator {
       globalRoughInfoCacheForCompaction = Collections.emptyMap();
       globalFileInfoCacheForFailedCompaction = Collections.emptyMap();
     }
+    return isCacheMemoryCostAllocated ? fixedMemoryCost : 0;
   }
 
   protected Map<TsFileResource, FileInfo> fileInfoCache = new HashMap<>();
@@ -154,12 +162,13 @@ public abstract class AbstractCompactionEstimator {
   }
 
   @SuppressWarnings("OptionalGetWithoutIsPresent")
-  protected int calculatingMaxOverlapFileNumInSubCompactionTask(List<TsFileResource> resources)
+  protected int calculatingMaxOverlapFileNumInSubCompactionTask(
+      @Nullable CompactionScheduleContext context, List<TsFileResource> resources)
       throws IOException {
     Set<IDeviceID> devices = new HashSet<>();
     List<ArrayDeviceTimeIndex> resourceDevices = new ArrayList<>(resources.size());
     for (TsFileResource resource : resources) {
-      ArrayDeviceTimeIndex deviceTimeIndex = getDeviceTimeIndexFromCache(resource);
+      ArrayDeviceTimeIndex deviceTimeIndex = getDeviceTimeIndexFromCache(context, resource);
       devices.addAll(deviceTimeIndex.getDevices());
       resourceDevices.add(deviceTimeIndex);
     }
@@ -202,10 +211,17 @@ public abstract class AbstractCompactionEstimator {
     return maxOverlapFileNumInSubCompactionTask;
   }
 
-  private ArrayDeviceTimeIndex getDeviceTimeIndexFromCache(TsFileResource resource)
-      throws IOException {
+  private ArrayDeviceTimeIndex getDeviceTimeIndexFromCache(
+      @Nullable CompactionScheduleContext context, TsFileResource resource) throws IOException {
     if (deviceTimeIndexCache.containsKey(resource)) {
       return deviceTimeIndexCache.get(resource);
+    }
+    if (context != null) {
+      ArrayDeviceTimeIndex timeIndex = context.getResourceDeviceInfo(resource);
+      if (timeIndex != null) {
+        deviceTimeIndexCache.put(resource, timeIndex);
+        return timeIndex;
+      }
     }
     ITimeIndex timeIndex = resource.getTimeIndex();
     if (timeIndex instanceof FileTimeIndex) {

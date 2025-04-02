@@ -261,6 +261,7 @@ public class NewSizeTieredCompactionSelector extends SizeTieredCompactionSelecto
       long memoryCost;
       memoryCost =
           estimator.roughEstimateInnerCompactionMemory(
+              context,
               Stream.concat(currentSelectedResources.stream(), Stream.of(currentFile.resource))
                   .collect(Collectors.toList()));
       if (memoryCost < 0) {

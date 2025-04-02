@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.compaction.selector.estimator;
 
+import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.CompactionScheduleContext;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 
 import java.util.List;
@@ -79,7 +80,8 @@ public class ReadChunkInnerCompactionEstimator extends AbstractInnerSpaceEstimat
   }
 
   @Override
-  public long roughEstimateInnerCompactionMemory(List<TsFileResource> resources) {
+  public long roughEstimateInnerCompactionMemory(
+      CompactionScheduleContext context, List<TsFileResource> resources) {
     if (config.getCompactionMaxAlignedSeriesNumInOneBatch() <= 0) {
       return -1L;
     }

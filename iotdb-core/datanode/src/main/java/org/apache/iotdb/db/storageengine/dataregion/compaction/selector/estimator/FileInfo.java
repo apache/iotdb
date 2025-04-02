@@ -29,11 +29,13 @@ public class FileInfo {
   public static final long MEMORY_COST_OF_FILE_INFO_ENTRY_IN_CACHE =
       RamUsageEstimator.shallowSizeOfInstance(FileInfo.class)
           + RamUsageEstimator.shallowSizeOfInstance(TsFileID.class)
-          + RamUsageEstimator.shallowSizeOfInstance(Map.Entry.class);
+          + RamUsageEstimator.shallowSizeOfInstance(Map.Entry.class)
+          + RamUsageEstimator.NUM_BYTES_OBJECT_REF * 2L;
   public static final long MEMORY_COST_OF_ROUGH_FILE_INFO_ENTRY_IN_CACHE =
       RamUsageEstimator.shallowSizeOfInstance(RoughFileInfo.class)
           + RamUsageEstimator.shallowSizeOfInstance(TsFileID.class)
-          + RamUsageEstimator.shallowSizeOfInstance(Map.Entry.class);
+          + RamUsageEstimator.shallowSizeOfInstance(Map.Entry.class)
+          + RamUsageEstimator.NUM_BYTES_OBJECT_REF * 2L;
   // total chunk num in this tsfile
   int totalChunkNum = 0;
   // max chunk num of one timeseries in this tsfile
