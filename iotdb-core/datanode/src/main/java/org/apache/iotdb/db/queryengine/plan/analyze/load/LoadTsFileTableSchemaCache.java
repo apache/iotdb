@@ -146,11 +146,7 @@ public class LoadTsFileTableSchemaCache {
           e);
     }
 
-    if (needToCreateDatabase) {
-      autoCreateTableDatabaseIfAbsent(database);
-      needToCreateDatabase = false;
-    }
-    createTable(device.getTableName());
+    createTableAndDatabaseIfNecessary(device.getTableName());
     // TODO: add permission check and record auth cost
     addDevice(device);
     if (shouldFlushDevices()) {
@@ -269,17 +265,23 @@ public class LoadTsFileTableSchemaCache {
     return Arrays.copyOf(segments, lastNonNullIndex + 1);
   }
 
-  public void createTable(final String tableName) throws LoadAnalyzeException {
+  public void createTableAndDatabaseIfNecessary(final String tableName)
+      throws LoadAnalyzeException {
     final org.apache.tsfile.file.metadata.TableSchema schema = tableSchemaMap.remove(tableName);
     if (Objects.isNull(schema)) {
       return;
     }
 
-    // Check on creation, do not auto-create tables that cannot be inserted
+    // Check on creation, do not auto-create tables or database that cannot be inserted
     Coordinator.getInstance()
         .getAccessControl()
         .checkCanInsertIntoTable(
             context.getSession().getUserName(), new QualifiedObjectName(database, tableName));
+
+    if (needToCreateDatabase) {
+      autoCreateTableDatabaseIfAbsent(database);
+      needToCreateDatabase = false;
+    }
     final org.apache.iotdb.db.queryengine.plan.relational.metadata.TableSchema fileSchema =
         org.apache.iotdb.db.queryengine.plan.relational.metadata.TableSchema.fromTsFileTableSchema(
             tableName, schema);

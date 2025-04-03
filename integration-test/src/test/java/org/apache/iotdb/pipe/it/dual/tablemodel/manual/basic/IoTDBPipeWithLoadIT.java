@@ -42,6 +42,7 @@ import org.junit.runner.RunWith;
 
 import java.sql.Connection;
 import java.sql.Statement;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
@@ -377,6 +378,65 @@ public class IoTDBPipeWithLoadIT extends AbstractPipeTableModelDualManualIT {
           expectedResSet,
           10,
           "db",
+          handleFailure);
+    }
+  }
+
+  @Test
+  public void testLoadAutoCreateWithMods() throws Exception {
+    final DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
+    final String receiverIp = receiverDataNode.getIp();
+    final int receiverPort = receiverDataNode.getPort();
+    final Consumer<String> handleFailure =
+        o -> {
+          TestUtils.executeNonQueryWithRetry(senderEnv, "flush");
+          TestUtils.executeNonQueryWithRetry(receiverEnv, "flush");
+        };
+
+    final Map<String, String> extractorAttributes = new HashMap<>();
+    final Map<String, String> processorAttributes = new HashMap<>();
+    final Map<String, String> connectorAttributes = new HashMap<>();
+
+    extractorAttributes.put("capture.table", "true");
+    extractorAttributes.put("extractor.realtime.mode", "file");
+    extractorAttributes.put("user", "root");
+
+    connectorAttributes.put("connector.batch.enable", "false");
+    connectorAttributes.put("connector.ip", receiverIp);
+    connectorAttributes.put("connector.port", Integer.toString(receiverPort));
+
+    try (final SyncConfigNodeIServiceClient client =
+        (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
+      try (final Connection connection = senderEnv.getConnection(BaseEnv.TABLE_SQL_DIALECT);
+          final Statement statement = connection.createStatement()) {
+        statement.execute("create database if not exists db");
+        statement.execute("use db");
+        statement.execute(
+            "create table if not exists t1(tag1 STRING TAG, tag2 STRING TAG, s1 TEXT FIELD, s2 INT32 FIELD)");
+        statement.execute("INSERT INTO t1(time,tag1,tag2,s1,s2) values(1, 'd1', 'd2', 'red', 1)");
+        statement.execute("INSERT INTO t1(time,tag1,tag2,s1,s2) values(2, 'd1', 'd2', 'blue', 2)");
+        statement.execute("flush");
+        statement.execute("drop table t1");
+      } catch (Exception e) {
+        fail(e.getMessage());
+      }
+
+      TSStatus status =
+          client.createPipe(
+              new TCreatePipeReq("p1", connectorAttributes)
+                  .setExtractorAttributes(extractorAttributes)
+                  .setProcessorAttributes(processorAttributes));
+      Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
+      Assert.assertEquals(
+          TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.startPipe("p1").getCode());
+
+      // Ensure the deleted table & database won't be created
+      TestUtils.assertDataEventuallyOnEnv(
+          receiverEnv,
+          "show databases",
+          "Database,TTL(ms),SchemaReplicationFactor,DataReplicationFactor,TimePartitionInterval,",
+          Collections.singleton("information_schema,INF,null,null,null,"),
+          null,
           handleFailure);
     }
   }
