@@ -432,12 +432,10 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
         return;
       }
 
-      if (isVerifySchema) {
-        if (isTableModelFile) {
-          doAnalyzeSingleTableFile(tsFile, reader, timeseriesMetadataIterator, tableSchemaMap);
-        } else {
-          doAnalyzeSingleTreeFile(tsFile, reader, timeseriesMetadataIterator);
-        }
+      if (isTableModelFile) {
+        doAnalyzeSingleTableFile(tsFile, reader, timeseriesMetadataIterator, tableSchemaMap);
+      } else {
+        doAnalyzeSingleTreeFile(tsFile, reader, timeseriesMetadataIterator);
       }
     } catch (final LoadEmptyFileException loadEmptyFileException) {
       LOGGER.warn("Empty file detected, will skip loading this file: {}", tsFile.getAbsolutePath());
