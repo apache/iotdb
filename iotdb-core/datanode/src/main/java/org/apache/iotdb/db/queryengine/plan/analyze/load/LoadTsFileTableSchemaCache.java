@@ -414,6 +414,10 @@ public class LoadTsFileTableSchemaCache {
     }
   }
 
+  public void setCurrentTimeIndex(final ITimeIndex timeIndex) {
+    this.currentTimeIndex = timeIndex;
+  }
+
   public void close() {
     clearDevices();
     clearIdColumnMapper();

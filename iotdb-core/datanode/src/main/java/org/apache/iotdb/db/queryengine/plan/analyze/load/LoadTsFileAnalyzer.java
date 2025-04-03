@@ -507,12 +507,13 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
       final Map<IDeviceID, List<TimeseriesMetadata>> device2TimeseriesMetadata =
           timeseriesMetadataIterator.next();
 
-      if (isAutoCreateSchemaOrVerifySchemaEnabled) {
-        getOrCreateTreeSchemaVerifier().autoCreateAndVerify(reader, device2TimeseriesMetadata);
-      }
-
       if (!tsFileResource.resourceFileExists()) {
         TsFileResourceUtils.updateTsFileResource(device2TimeseriesMetadata, tsFileResource);
+        getOrCreateTableSchemaCache().setCurrentTimeIndex(tsFileResource.getTimeIndex());
+      }
+
+      if (isAutoCreateSchemaOrVerifySchemaEnabled) {
+        getOrCreateTreeSchemaVerifier().autoCreateAndVerify(reader, device2TimeseriesMetadata);
       }
 
       // TODO: how to get the correct write point count when
@@ -565,12 +566,13 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
       final Map<IDeviceID, List<TimeseriesMetadata>> device2TimeseriesMetadata =
           timeseriesMetadataIterator.next();
 
-      for (IDeviceID deviceId : device2TimeseriesMetadata.keySet()) {
-        getOrCreateTableSchemaCache().autoCreateAndVerify(deviceId);
-      }
-
       if (!tsFileResource.resourceFileExists()) {
         TsFileResourceUtils.updateTsFileResource(device2TimeseriesMetadata, tsFileResource);
+        getOrCreateTableSchemaCache().setCurrentTimeIndex(tsFileResource.getTimeIndex());
+      }
+
+      for (IDeviceID deviceId : device2TimeseriesMetadata.keySet()) {
+        getOrCreateTableSchemaCache().autoCreateAndVerify(deviceId);
       }
 
       writePointCount += getWritePointCount(device2TimeseriesMetadata);
