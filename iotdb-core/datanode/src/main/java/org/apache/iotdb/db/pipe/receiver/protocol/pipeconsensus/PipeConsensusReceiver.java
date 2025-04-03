@@ -82,6 +82,7 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.TreeSet;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.Lock;
@@ -106,6 +107,7 @@ public class PipeConsensusReceiver {
   private final List<String> receiveDirs = new ArrayList<>();
   private final PipeConsensusReceiverMetrics pipeConsensusReceiverMetrics;
   private final FolderManager folderManager;
+  private final AtomicBoolean isClosed = new AtomicBoolean(false);
 
   public PipeConsensusReceiver(
       PipeConsensus pipeConsensus,
@@ -1043,6 +1045,8 @@ public class PipeConsensusReceiver {
   }
 
   public synchronized void handleExit() {
+    // only after closing request executor, we can clean receiver.
+    requestExecutor.tryClose();
     // Clear the tsFileWriters and receiver base dirs
     pipeConsensusTsFileWriterPool.handleExit(consensusPipeName);
     clearAllReceiverBaseDir();
@@ -1363,6 +1367,16 @@ public class PipeConsensusReceiver {
       }
     }
 
+    private void tryClose() {
+      // It will not be closed until all requests sent before closing are done.
+      lock.lock();
+      try {
+        isClosed.set(true);
+      } finally {
+        lock.unlock();
+      }
+    }
+
     private TPipeConsensusTransferResp onRequest(
         final TPipeConsensusTransferReq req,
         final boolean isTransferTsFilePiece,
@@ -1370,6 +1384,18 @@ public class PipeConsensusReceiver {
       long startAcquireLockNanos = System.nanoTime();
       lock.lock();
       try {
+        if (isClosed.get()) {
+          final TSStatus status =
+              new TSStatus(
+                  RpcUtils.getStatus(
+                      TSStatusCode.PIPE_CONSENSUS_CLOSE_ERROR,
+                      "PipeConsensus receiver received a request after it was closed."));
+          LOGGER.info(
+              "PipeConsensus-PipeName-{}: received a request after receiver was closed and pipe task was dropped.",
+              consensusPipeName);
+          return new TPipeConsensusTransferResp(status);
+        }
+
         long startDispatchNanos = System.nanoTime();
         metric.recordAcquireExecutorLockTimer(startDispatchNanos - startAcquireLockNanos);
 
