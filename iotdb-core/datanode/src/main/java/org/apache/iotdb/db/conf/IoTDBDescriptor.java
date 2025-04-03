@@ -2375,6 +2375,11 @@ public class IoTDBDescriptor {
                         String.valueOf(conf.getLoadTsFileAnalyzeSchemaMemorySizeInBytes())))
                 .map(String::trim)
                 .orElse(String.valueOf(conf.getLoadTsFileAnalyzeSchemaMemorySizeInBytes()))));
+    conf.setLoadTsFileTabletConversionBatchMemorySizeInBytes(
+        Long.parseLong(
+            properties.getProperty(
+                "load_tsfile_tablet_conversion_batch_memory_size_in_bytes",
+                String.valueOf(conf.getLoadTsFileTabletConversionBatchMemorySizeInBytes()))));
     conf.setLoadChunkMetadataMemorySizeInBytes(
         Long.parseLong(
             Optional.ofNullable(
