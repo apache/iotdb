@@ -431,13 +431,12 @@ public class IoTDBPipeWithLoadIT extends AbstractPipeTableModelDualManualIT {
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.startPipe("p1").getCode());
 
       // Ensure the deleted table & database won't be created
-      TestUtils.assertDataEventuallyOnEnv(
+      TestUtils.assertDataAlwaysOnEnv(
           receiverEnv,
           "show databases",
           "Database,TTL(ms),SchemaReplicationFactor,DataReplicationFactor,TimePartitionInterval,",
           Collections.singleton("information_schema,INF,null,null,null,"),
-          null,
-          handleFailure);
+          "information_schema");
     }
   }
 
@@ -499,13 +498,12 @@ public class IoTDBPipeWithLoadIT extends AbstractPipeTableModelDualManualIT {
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.startPipe("p1").getCode());
 
       // Ensure that the user without insertion privilege cannot auto-create
-      TestUtils.assertDataEventuallyOnEnv(
+      TestUtils.assertDataAlwaysOnEnv(
           receiverEnv,
           "show databases",
           "Database,TTL(ms),SchemaReplicationFactor,DataReplicationFactor,TimePartitionInterval,",
           Collections.singleton("information_schema,INF,null,null,null,"),
-          null,
-          handleFailure);
+          "information_schema");
     }
   }
 }
