@@ -86,6 +86,11 @@ public class PipeInclusionOptions {
       OPTIONS.add(new PartialPath("schema.timeseries.template.activate"));
       OPTIONS.add(new PartialPath("schema.timeseries.template.deactivate"));
 
+      // Table
+      OPTIONS.add(new PartialPath("schema.table.create"));
+      OPTIONS.add(new PartialPath("schema.table.alter"));
+      OPTIONS.add(new PartialPath("schema.table.drop"));
+
       OPTIONS.add(new PartialPath("schema.ttl"));
 
       OPTIONS.add(new PartialPath("auth.role.create"));
@@ -98,6 +103,13 @@ public class PipeInclusionOptions {
       OPTIONS.add(new PartialPath("auth.user.drop"));
       OPTIONS.add(new PartialPath("auth.user.grant"));
       OPTIONS.add(new PartialPath("auth.user.revoke"));
+
+      // Table auth
+      OPTIONS.add(new PartialPath("auth.role.grant.table"));
+      OPTIONS.add(new PartialPath("auth.role.revoke.table"));
+
+      OPTIONS.add(new PartialPath("auth.user.grant.table"));
+      OPTIONS.add(new PartialPath("auth.user.revoke.table"));
     } catch (final IllegalPathException e) {
       LOGGER.error("Illegal path encountered when initializing LEGAL_OPTIONS.", e);
     }
