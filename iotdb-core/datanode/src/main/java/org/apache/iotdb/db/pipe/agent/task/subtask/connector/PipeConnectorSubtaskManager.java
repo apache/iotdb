@@ -80,6 +80,7 @@ public class PipeConnectorSubtaskManager {
         StorageEngine.getInstance()
                 .getAllDataRegionIds()
                 .contains(new DataRegionId(environment.getRegionId()))
+                // regionId that is less than 0 means an external pipe source, use dataRegionConnector
             || environment.getRegionId() < 0;
 
     final int connectorNum;

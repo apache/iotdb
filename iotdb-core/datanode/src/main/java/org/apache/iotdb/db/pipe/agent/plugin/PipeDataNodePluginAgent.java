@@ -27,7 +27,6 @@ import org.apache.iotdb.commons.pipe.agent.plugin.service.PipePluginExecutableMa
 import org.apache.iotdb.commons.pipe.datastructure.visibility.VisibilityUtils;
 import org.apache.iotdb.db.pipe.agent.plugin.dataregion.PipeDataRegionPluginAgent;
 import org.apache.iotdb.db.pipe.agent.plugin.schemaregion.PipeSchemaRegionPluginAgent;
-import org.apache.iotdb.pipe.api.PipeExtractor;
 import org.apache.iotdb.pipe.api.PipePlugin;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 
@@ -151,9 +150,6 @@ public class PipeDataNodePluginAgent {
 
       @SuppressWarnings("unused") // ensure that it is a PipePlugin class
       final PipePlugin ignored = (PipePlugin) pluginClass.getDeclaredConstructor().newInstance();
-      if (ignored instanceof PipeExtractor) {
-        pipePluginMetaKeeper.addExternalSourcePlugin(pluginName);
-      }
 
       pipePluginMetaKeeper.addPipePluginMeta(pluginName, pipePluginMeta);
       pipePluginMetaKeeper.addPipePluginVisibility(
@@ -191,7 +187,6 @@ public class PipeDataNodePluginAgent {
       // remove anyway
       pipePluginMetaKeeper.removePipePluginMeta(pluginName);
       pipePluginMetaKeeper.removePipePluginVisibility(pluginName);
-      pipePluginMetaKeeper.removeExternalSourcePlugin(pluginName);
       PipePluginClassLoaderManager.getInstance().removePluginClassLoader(pluginName);
 
       // if it is needed to delete jar file of the pipe plugin, delete both jar file and md5

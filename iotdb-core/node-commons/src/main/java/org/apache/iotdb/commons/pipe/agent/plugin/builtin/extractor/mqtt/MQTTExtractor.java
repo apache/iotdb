@@ -1,4 +1,4 @@
-package org.apache.iotdb.commons.pipe.agent.plugin.builtin.extractor.external;
+package org.apache.iotdb.commons.pipe.agent.plugin.builtin.extractor.mqtt;
 
 import org.apache.iotdb.pipe.api.PipeExtractor;
 import org.apache.iotdb.pipe.api.customizer.configuration.PipeExtractorRuntimeConfiguration;
@@ -6,7 +6,7 @@ import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameterValidator;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 import org.apache.iotdb.pipe.api.event.Event;
 
-public class MqttExtractor implements PipeExtractor {
+public class MQTTExtractor implements PipeExtractor {
 
   private static final String PLACEHOLDER_ERROR_MSG =
       "This class is a placeholder and should not be used.";

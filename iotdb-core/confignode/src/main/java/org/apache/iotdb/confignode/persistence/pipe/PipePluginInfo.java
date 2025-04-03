@@ -234,9 +234,6 @@ public class PipePluginInfo implements SnapshotProcessor {
           pipePluginMetaKeeper.addPipePluginVisibility(
               pluginName, VisibilityUtils.calculateFromPluginClass(pluginClass));
           classLoaderManager.addPluginAndClassLoader(pluginName, pipePluginClassLoader);
-          if (org.apache.iotdb.pipe.api.PipeExtractor.class.isAssignableFrom(pluginClass)) {
-            pipePluginMetaKeeper.addExternalSourcePlugin(pluginName);
-          }
         } catch (final Exception e) {
           try {
             pipePluginClassLoader.close();
@@ -266,7 +263,6 @@ public class PipePluginInfo implements SnapshotProcessor {
       pipePluginMetaKeeper.removeJarNameAndMd5IfPossible(jarName);
       pipePluginMetaKeeper.removePipePluginMeta(pluginName);
       pipePluginMetaKeeper.removePipePluginVisibility(pluginName);
-      pipePluginMetaKeeper.removeExternalSourcePlugin(pluginName);
 
       try {
         pipePluginExecutableManager.removePluginFileUnderLibRoot(pluginName, jarName);

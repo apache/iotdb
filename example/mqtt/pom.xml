@@ -33,9 +33,5 @@
             <groupId>org.fusesource.mqtt-client</groupId>
             <artifactId>mqtt-client</artifactId>
         </dependency>
-        <dependency>
-            <groupId>com.github.moquette-io.moquette</groupId>
-            <artifactId>moquette-broker</artifactId>
-        </dependency>
     </dependencies>
 </project>

@@ -32,9 +32,7 @@ import org.apache.iotdb.commons.pipe.agent.plugin.builtin.connector.opcua.OpcUaC
 import org.apache.iotdb.commons.pipe.agent.plugin.builtin.connector.websocket.WebSocketConnector;
 import org.apache.iotdb.commons.pipe.agent.plugin.builtin.connector.writeback.WriteBackConnector;
 import org.apache.iotdb.commons.pipe.agent.plugin.builtin.extractor.donothing.DoNothingExtractor;
-import org.apache.iotdb.commons.pipe.agent.plugin.builtin.extractor.external.KafkaExtractor;
-import org.apache.iotdb.commons.pipe.agent.plugin.builtin.extractor.external.MqttExtractor;
-import org.apache.iotdb.commons.pipe.agent.plugin.builtin.extractor.external.PipeExternalExtractor;
+import org.apache.iotdb.commons.pipe.agent.plugin.builtin.extractor.mqtt.MQTTExtractor;
 import org.apache.iotdb.commons.pipe.agent.plugin.builtin.extractor.iotdb.IoTDBExtractor;
 import org.apache.iotdb.commons.pipe.agent.plugin.builtin.processor.aggregate.AggregateProcessor;
 import org.apache.iotdb.commons.pipe.agent.plugin.builtin.processor.aggregate.StandardStatisticsProcessor;
@@ -62,9 +60,8 @@ public enum BuiltinPipePlugin {
   DO_NOTHING_SOURCE("do-nothing-source", DoNothingExtractor.class),
   IOTDB_SOURCE("iotdb-source", IoTDBExtractor.class),
 
-  EXTERNAL_EXTRACTOR("external-extractor", PipeExternalExtractor.class),
-  MQTT_EXTRACTOR("mqtt-extractor", MqttExtractor.class),
-  KAFKA_EXTRACTOR("kafka-extractor", KafkaExtractor.class),
+  MQTT_EXTRACTOR("mqtt-extractor", MQTTExtractor.class),
+
   // processors
   DO_NOTHING_PROCESSOR("do-nothing-processor", DoNothingProcessor.class),
   TUMBLING_TIME_SAMPLING_PROCESSOR(
@@ -135,6 +132,7 @@ public enum BuiltinPipePlugin {
     return className;
   }
 
+  //used to distinguish between builtin and external sources
   public static final Set<String> BUILTIN_SOURCES =
       Collections.unmodifiableSet(
           new HashSet<>(

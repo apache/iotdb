@@ -521,7 +521,7 @@ public abstract class AbstractOperatePipeProcedureV2
         .removeIf(
             consensusGroupId2TaskMeta -> {
               if (consensusGroupId2TaskMeta.getKey() < 0) {
-                // keep the external source tasks
+                // region id that is less than 0 means an external source task should keep it
                 return false;
               }
               final String database;

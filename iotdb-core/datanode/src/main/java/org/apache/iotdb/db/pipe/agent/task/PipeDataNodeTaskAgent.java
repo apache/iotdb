@@ -195,6 +195,7 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
                   .isEmpty();
 
       // Advance the extractor parameters parsing logic to avoid creating un-relevant pipeTasks
+      // consensusGroupId < 0 means an external source task, should create it
       if (needConstructDataRegionTask || needConstructSchemaRegionTask || consensusGroupId < 0) {
         final PipeDataNodeTask pipeTask =
             new PipeDataNodeTaskBuilder(pipeStaticMeta, consensusGroupId, pipeTaskMeta).build();

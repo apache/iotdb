@@ -60,7 +60,6 @@ public abstract class PipeSubtaskExecutor {
     }
     subtaskWorkerThreadPoolExecutor = MoreExecutors.listeningDecorator(underlyingThreadPool);
 
-
     registeredIdSubtaskMapper = new ConcurrentHashMap<>();
 
     this.corePoolSize = corePoolSize;

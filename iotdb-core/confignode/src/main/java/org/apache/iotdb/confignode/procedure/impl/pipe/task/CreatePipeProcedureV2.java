@@ -319,6 +319,7 @@ public class CreatePipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
               // The leader of the config region is the config node itself
               ConfigNodeDescriptor.getInstance().getConf().getConfigNodeId()));
     }
+
     pipeRuntimeMeta = new PipeRuntimeMeta(consensusGroupIdToTaskMetaMap);
     if (!createPipeRequest.needManuallyStart) {
       pipeRuntimeMeta.getStatus().set(PipeStatus.RUNNING);

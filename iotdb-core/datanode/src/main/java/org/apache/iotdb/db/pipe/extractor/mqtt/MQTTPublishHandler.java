@@ -1,19 +1,18 @@
-package org.apache.iotdb.db.pipe.extractor.external.MQTT;
+package org.apache.iotdb.db.pipe.extractor.mqtt;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.conf.IoTDBConstant.ClientVersion;
-import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.pipe.agent.task.connection.UnboundedBlockingPendingQueue;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
+import org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant;
 import org.apache.iotdb.commons.pipe.config.plugin.env.PipeTaskExtractorRuntimeEnvironment;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
-import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
+import org.apache.iotdb.commons.service.metric.PerformanceOverviewMetrics;
 import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
-import org.apache.iotdb.db.pipe.extractor.external.PipeExternalExtractor;
 import org.apache.iotdb.db.protocol.mqtt.Message;
 import org.apache.iotdb.db.protocol.mqtt.PayloadFormatManager;
 import org.apache.iotdb.db.protocol.mqtt.PayloadFormatter;
@@ -23,16 +22,6 @@ import org.apache.iotdb.db.protocol.session.IClientSession;
 import org.apache.iotdb.db.protocol.session.MqttClientSession;
 import org.apache.iotdb.db.protocol.session.SessionManager;
 import org.apache.iotdb.db.queryengine.plan.Coordinator;
-import org.apache.iotdb.db.queryengine.plan.analyze.ClusterPartitionFetcher;
-import org.apache.iotdb.db.queryengine.plan.analyze.IPartitionFetcher;
-import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.DataNodeDevicePathCache;
-import org.apache.iotdb.db.queryengine.plan.analyze.schema.ClusterSchemaFetcher;
-import org.apache.iotdb.db.queryengine.plan.analyze.schema.ISchemaFetcher;
-import org.apache.iotdb.db.queryengine.plan.execution.ExecutionResult;
-import org.apache.iotdb.db.queryengine.plan.planner.LocalExecutionPlanner;
-import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.parser.SqlParser;
-import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertTabletStatement;
 import org.apache.iotdb.db.utils.CommonUtils;
 import org.apache.iotdb.db.utils.TimestampPrecisionUtils;
 import org.apache.iotdb.db.utils.TypeInferenceUtils;
@@ -60,6 +49,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+
 /** PublishHandler handle the messages from MQTT clients. */
 public class MQTTPublishHandler extends AbstractInterceptHandler {
 
@@ -71,8 +61,6 @@ public class MQTTPublishHandler extends AbstractInterceptHandler {
   private final ConcurrentHashMap<String, MqttClientSession> clientIdToSessionMap =
       new ConcurrentHashMap<>();
   private final PayloadFormatter payloadFormat;
-  private final IPartitionFetcher partitionFetcher;
-  private final ISchemaFetcher schemaFetcher;
   private final boolean useTableInsert;
   private final UnboundedBlockingPendingQueue<EnrichedEvent> pendingQueue;
   private final String pipeName;
@@ -85,9 +73,7 @@ public class MQTTPublishHandler extends AbstractInterceptHandler {
       UnboundedBlockingPendingQueue<EnrichedEvent> pendingQueue) {
     this.payloadFormat =
         PayloadFormatManager.getPayloadFormat(
-            pipeParameters.getStringOrDefault("payloadFormat", "json"));
-    partitionFetcher = ClusterPartitionFetcher.getInstance();
-    schemaFetcher = ClusterSchemaFetcher.getInstance();
+            pipeParameters.getStringOrDefault(PipeExtractorConstant.MQTT_PAYLOAD_FORMATTER_KEY, PipeExtractorConstant.MQTT_PAYLOAD_FORMATTER_DEFAULT_VALUE));
     useTableInsert = PayloadFormatter.TABLE_TYPE.equals(this.payloadFormat.getType());
     pipeName = environment.getPipeName();
     creationTime = environment.getCreationTime();
@@ -163,7 +149,7 @@ public class MQTTPublishHandler extends AbstractInterceptHandler {
               !msg.getTopicName().contains("/")
                   ? msg.getTopicName()
                   : msg.getTopicName().substring(0, msg.getTopicName().indexOf("/"));
-          tableMessage.setDatabase(database);
+          tableMessage.setDatabase(database.toLowerCase());
           ExtractTable(tableMessage, session);
         } else {
           ExtractTree((TreeMessage) message, session);
@@ -182,83 +168,68 @@ public class MQTTPublishHandler extends AbstractInterceptHandler {
     TSStatus tsStatus = null;
     try {
       TimestampPrecisionUtils.checkTimestampPrecision(message.getTimestamp());
-      InsertTabletStatement insertTabletStatement = constructInsertTabletStatement(message);
-      tsStatus = AuthorityChecker.checkAuthority(insertTabletStatement, session);
+      tsStatus = checkAuthority(session);
       if (tsStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         LOGGER.warn(tsStatus.message);
-      } else {
+      }else {
         session.setDatabaseName(message.getDatabase().toLowerCase());
         session.setSqlDialect(IClientSession.SqlDialect.TABLE);
-        long queryId = sessionManager.requestQueryId();
-        SqlParser relationSqlParser = new SqlParser();
-        Metadata metadata = LocalExecutionPlanner.getInstance().metadata;
-        ExecutionResult result =
-            Coordinator.getInstance()
-                .executeForTableModel(
-                    insertTabletStatement,
-                    relationSqlParser,
-                    session,
-                    queryId,
-                    sessionManager.getSessionInfo(session),
-                    "",
-                    metadata,
-                    config.getQueryTimeoutThreshold());
-
-        tsStatus = result.status;
-        LOGGER.debug("process result: {}", tsStatus);
-        if (tsStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-          LOGGER.warn("mqtt line insert error , message = {}", tsStatus.message);
+        EnrichedEvent event = generateEvent(message);
+        if (!event.increaseReferenceCount(MQTTPublishHandler.class.getName())) {
+          LOGGER.warn("The reference count of the event {} cannot be increased, skipping it.", event);
         }
+        pendingQueue.waitedOffer(event);
       }
     } catch (Exception e) {
       LOGGER.warn(
-          "meet error when inserting database {}, table {}, tags {}, attributes {}, fields {}, at time {}, because ",
-          message.getDatabase(),
-          message.getTable(),
-          message.getTagKeys(),
-          message.getAttributeKeys(),
-          message.getFields(),
-          message.getTimestamp(),
-          e);
+              "meet error when extracting message database {}, table {}, tags {}, attributes {}, fields {}, at time {}, because ",
+              message.getDatabase(),
+              message.getTable(),
+              message.getTagKeys(),
+              message.getAttributeKeys(),
+              message.getFields(),
+              message.getTimestamp(),
+              e);
     }
   }
 
-  private InsertTabletStatement constructInsertTabletStatement(TableMessage message)
-      throws IllegalPathException {
-    InsertTabletStatement insertStatement = new InsertTabletStatement();
-    insertStatement.setDevicePath(
-        DataNodeDevicePathCache.getInstance().getPartialPath(message.getTable()));
+  private static TSStatus checkAuthority(MqttClientSession session) {
+    TSStatus tsStatus;
+    long startTime = System.nanoTime();
+    try {
+      tsStatus = AuthorityChecker.getTSStatus(
+              AuthorityChecker.SUPER_USER.equals(session.getUsername()),
+              "Only the admin user can perform this operation");
+    } finally {
+      PerformanceOverviewMetrics.getInstance().recordAuthCost(System.nanoTime() - startTime);
+    }
+    return tsStatus;
+  }
+
+  private PipeRawTabletInsertionEvent generateEvent(TableMessage message) {
     List<String> measurements =
         Stream.of(message.getFields(), message.getTagKeys(), message.getAttributeKeys())
             .flatMap(List::stream)
             .collect(Collectors.toList());
-    insertStatement.setMeasurements(measurements.toArray(new String[0]));
     long[] timestamps = new long[] {message.getTimestamp()};
-    insertStatement.setTimes(timestamps);
     int columnSize = measurements.size();
-    int rowSize = 1;
 
     BitMap[] bitMaps = new BitMap[columnSize];
     Object[] columns =
         Stream.of(message.getValues(), message.getTagValues(), message.getAttributeValues())
             .flatMap(List::stream)
             .toArray(Object[]::new);
-    insertStatement.setColumns(columns);
-    insertStatement.setBitMaps(bitMaps);
-    insertStatement.setRowCount(rowSize);
-    insertStatement.setAligned(false);
-    insertStatement.setWriteToTable(true);
     TSDataType[] dataTypes = new TSDataType[measurements.size()];
-    TsTableColumnCategory[] columnCategories = new TsTableColumnCategory[measurements.size()];
+    Tablet.ColumnCategory[] columnCategories = new Tablet.ColumnCategory[measurements.size()];
     for (int i = 0; i < message.getFields().size(); i++) {
       dataTypes[i] = message.getDataTypes().get(i);
-      columnCategories[i] = TsTableColumnCategory.FIELD;
+      columnCategories[i] = Tablet.ColumnCategory.FIELD;
     }
     for (int i = message.getFields().size();
         i < message.getFields().size() + message.getTagKeys().size();
         i++) {
       dataTypes[i] = TSDataType.STRING;
-      columnCategories[i] = TsTableColumnCategory.TAG;
+      columnCategories[i] = Tablet.ColumnCategory.TAG;
     }
     for (int i = message.getFields().size() + message.getTagKeys().size();
         i
@@ -267,21 +238,51 @@ public class MQTTPublishHandler extends AbstractInterceptHandler {
                 + message.getAttributeKeys().size();
         i++) {
       dataTypes[i] = TSDataType.STRING;
-      columnCategories[i] = TsTableColumnCategory.ATTRIBUTE;
+      columnCategories[i] = Tablet.ColumnCategory.ATTRIBUTE;
     }
-    insertStatement.setDataTypes(dataTypes);
-    insertStatement.setColumnCategories(columnCategories);
+    final MeasurementSchema[] schemas = new MeasurementSchema[measurements.size()];
+    for (int i = 0; i < measurements.size(); i++) {
+      schemas[i] =  new MeasurementSchema(measurements.get(i), dataTypes[i]);
+    }
+    Tablet tabletForInsertRowNode =
+            new Tablet(
+                    message.getTable(),
+                    Arrays.asList(schemas),
+                    Arrays.asList(columnCategories),
+                    timestamps,
+                    columns,
+                    bitMaps,
+                    1);
 
-    return insertStatement;
+    return new PipeRawTabletInsertionEvent(
+            true,
+            message.getDatabase(),
+            null,
+            null,
+            tabletForInsertRowNode,
+            false,
+            pipeName,
+            creationTime,
+            pipeTaskMeta,
+            null,
+            false);
+
   }
 
   private void ExtractTree(TreeMessage message, MqttClientSession session) {
+    TSStatus tsStatus = null;
     try {
-      EnrichedEvent event = generateEvent((TreeMessage) message);
-      if (!event.increaseReferenceCount(PipeExternalExtractor.class.getName())) {
-        LOGGER.warn("The reference count of the event {} cannot be increased, skipping it.", event);
-      }
-      pendingQueue.waitedOffer(event);
+      TimestampPrecisionUtils.checkTimestampPrecision(message.getTimestamp());
+        tsStatus = checkAuthority(session);
+        if (tsStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+            LOGGER.warn(tsStatus.message);
+        }else {
+          EnrichedEvent event = generateEvent(message);
+          if (!event.increaseReferenceCount(MQTTPublishHandler.class.getName())) {
+            LOGGER.warn("The reference count of the event {} cannot be increased, skipping it.", event);
+          }
+          pendingQueue.waitedOffer(event);
+        }
     } catch (Exception e) {
       LOGGER.error("Error polling external source", e);
     }
