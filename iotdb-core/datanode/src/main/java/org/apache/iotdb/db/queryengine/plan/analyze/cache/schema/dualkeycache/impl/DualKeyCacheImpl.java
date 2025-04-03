@@ -110,12 +110,12 @@ class DualKeyCacheImpl<FK, SK, V, T extends ICacheEntry<SK, V>>
             if (!createIfNotExists) {
               return null;
             }
-            final T entry = cacheEntryManager.createCacheEntry(secondKey, value, cacheEntryGroup);
-            cacheEntryManager.put(entry);
+            cacheEntry = cacheEntryManager.createCacheEntry(secondKey, value, cacheEntryGroup);
+            cacheEntryManager.put(cacheEntry);
             cacheStats.increaseEntryCount();
             usedMemorySize.getAndAdd(
                 sizeComputer.computeSecondKeySize(sk)
-                    + sizeComputer.computeValueSize(entry.getValue()));
+                    + sizeComputer.computeValueSize(cacheEntry.getValue()));
           }
           usedMemorySize.getAndAdd(updater.applyAsInt(cacheEntry.getValue()));
           return cacheEntry;
