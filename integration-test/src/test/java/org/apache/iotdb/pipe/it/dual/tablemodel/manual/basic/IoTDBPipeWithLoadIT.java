@@ -41,8 +41,8 @@ import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 
 import java.sql.Connection;
+import java.sql.SQLException;
 import java.sql.Statement;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
@@ -430,13 +430,15 @@ public class IoTDBPipeWithLoadIT extends AbstractPipeTableModelDualManualIT {
       Assert.assertEquals(
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.startPipe("p1").getCode());
 
-      // Ensure the deleted table & database won't be created
-      TestUtils.assertDataAlwaysOnEnv(
-          receiverEnv,
-          "show databases",
-          "Database,TTL(ms),SchemaReplicationFactor,DataReplicationFactor,TimePartitionInterval,",
-          Collections.singleton("information_schema,INF,null,null,null,"),
-          "information_schema");
+      // Ensure the deleted table won't be created
+      // Now the database will also be created at receiver
+      try (final Connection connection = receiverEnv.getConnection(BaseEnv.TABLE_SQL_DIALECT);
+          final Statement statement = connection.createStatement()) {
+        statement.executeQuery("describe db.t1");
+        fail();
+      } catch (final SQLException ignore) {
+        // Expected
+      }
     }
   }
 
@@ -497,13 +499,15 @@ public class IoTDBPipeWithLoadIT extends AbstractPipeTableModelDualManualIT {
       Assert.assertEquals(
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.startPipe("p1").getCode());
 
-      // Ensure that the user without insertion privilege cannot auto-create
-      TestUtils.assertDataAlwaysOnEnv(
-          receiverEnv,
-          "show databases",
-          "Database,TTL(ms),SchemaReplicationFactor,DataReplicationFactor,TimePartitionInterval,",
-          Collections.singleton("information_schema,INF,null,null,null,"),
-          "information_schema");
+      // Ensure the table without insert privilege won't be created
+      // Now the database will also be created at receiver
+      try (final Connection connection = receiverEnv.getConnection(BaseEnv.TABLE_SQL_DIALECT);
+          final Statement statement = connection.createStatement()) {
+        statement.executeQuery("describe db.t1");
+        fail();
+      } catch (final SQLException ignore) {
+        // Expected
+      }
     }
   }
 }
