@@ -415,6 +415,6 @@ public class ModificationUtils {
             : currentTimeIndex.getStartTime(device).orElse(Long.MIN_VALUE),
         Objects.isNull(currentTimeIndex)
             ? Long.MAX_VALUE
-            : currentTimeIndex.getStartTime(device).orElse(Long.MAX_VALUE));
+            : currentTimeIndex.getEndTime(device).orElse(Long.MAX_VALUE));
   }
 }
