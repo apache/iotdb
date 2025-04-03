@@ -111,7 +111,7 @@ public class DataExecutionVisitor extends PlanVisitor<TSStatus, DataRegion> {
       LOGGER.warn(
           "Batch failure in executing a InsertTabletNode. device: {}, startTime: {}, measurements: {}, failing status: {}",
           node.getTargetPath(),
-          node.getTimes()[0],
+          node.getTimes().get(0),
           node.getMeasurements(),
           e.getFailingStatus());
       // For each error
@@ -184,7 +184,7 @@ public class DataExecutionVisitor extends PlanVisitor<TSStatus, DataRegion> {
         LOGGER.warn(
             "Insert tablet failed. device: {}, startTime: {}, measurements: {}, failing status: {}",
             insertTabletNode.getTargetPath(),
-            insertTabletNode.getTimes()[0],
+            insertTabletNode.getTimes().get(0),
             insertTabletNode.getMeasurements(),
             failedEntry.getValue());
         // Return WRITE_PROCESS_REJECT directly for the consensus retry logic

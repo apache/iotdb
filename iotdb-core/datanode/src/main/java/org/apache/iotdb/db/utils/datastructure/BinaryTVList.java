@@ -324,4 +324,9 @@ public abstract class BinaryTVList extends TVList {
     tvList.putBinaries(times, values, null, 0, rowCount);
     return tvList;
   }
+
+  @Override
+  protected Object getValueArray(int arrayIndex) {
+    return values.get(arrayIndex);
+  }
 }

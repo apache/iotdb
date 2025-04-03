@@ -21,6 +21,7 @@ package org.apache.iotdb.db.utils.datastructure;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
+import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.IWALByteBufferView;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALWriteUtils;
 import org.apache.iotdb.db.storageengine.rescon.memory.PrimitiveArrayManager;
@@ -61,6 +62,7 @@ import static org.apache.iotdb.db.utils.ModificationUtils.isPointDeleted;
 import static org.apache.tsfile.utils.RamUsageEstimator.NUM_BYTES_ARRAY_HEADER;
 import static org.apache.tsfile.utils.RamUsageEstimator.NUM_BYTES_OBJECT_REF;
 
+@SuppressWarnings("SuspiciousSystemArraycopy")
 public abstract class AlignedTVList extends TVList {
 
   // Data types of this aligned tvList
@@ -83,6 +85,9 @@ public abstract class AlignedTVList extends TVList {
   // constructed after deletion
   BitMap timeColDeletedMap;
 
+  // in one insertion which columns are updated
+  BitMap columnInsertedMap;
+
   protected int timeDeletedCnt = 0;
 
   private final AlignedTVList outer = this;
@@ -91,6 +96,7 @@ public abstract class AlignedTVList extends TVList {
     super();
     dataTypes = types;
     memoryBinaryChunkSize = new long[dataTypes.size()];
+    columnInsertedMap = new BitMap(dataTypes.size());
 
     values = new ArrayList<>(types.size());
     for (int i = 0; i < types.size(); i++) {
@@ -180,28 +186,57 @@ public abstract class AlignedTVList extends TVList {
     return cloneList;
   }
 
+  @TestOnly
+  public synchronized void putAlignedValue(long timestamp, Object[] value) {
+    putAlignedValue(timestamp, value, null);
+  }
+
+  /**
+   * Put a row of aligned values into this AlignedTVList
+   *
+   * @param timestamp the timestamp to put
+   * @param value the values to put
+   * @param columnIndices the association between the input 'value' and the columns in the
+   *     AlignedTVList, i.e., if columnIndices[i] = j, then values[i] should be put into the j-th
+   *     column in the TVList (time column excluded). If null, then values[i] will be put into the
+   *     i-th column. May put -1 in 'columnIndices' to skip some positions in 'values'.
+   */
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   @Override
-  public synchronized void putAlignedValue(long timestamp, Object[] value) {
+  public synchronized void putAlignedValue(
+      long timestamp, Object[] value, List<Integer> columnIndices) {
     checkExpansion();
     int arrayIndex = rowCount / ARRAY_SIZE;
     int elementIndex = rowCount % ARRAY_SIZE;
     maxTime = Math.max(maxTime, timestamp);
     minTime = Math.min(minTime, timestamp);
     timestamps.get(arrayIndex)[elementIndex] = timestamp;
-    for (int i = 0; i < values.size(); i++) {
-      Object columnValue = value[i];
-      List<Object> columnValues = values.get(i);
-      if (columnValue == null) {
-        markNullValue(i, arrayIndex, elementIndex);
+
+    if (columnIndices == null) {
+      columnIndices = IntStream.range(0, value.length).boxed().collect(Collectors.toList());
+    }
+
+    columnInsertedMap.reset();
+    for (int i = 0, columnIndicesSize = columnIndices.size(); i < columnIndicesSize; i++) {
+      Integer columnIndex = columnIndices.get(i);
+      if (columnIndex < 0) {
+        continue;
       }
-      switch (dataTypes.get(i)) {
+
+      Object columnValue = value[i];
+      columnInsertedMap.mark(columnIndex);
+
+      List<Object> columnValues = values.get(columnIndex);
+      if (columnValue == null) {
+        markNullValue(columnIndex, arrayIndex, elementIndex);
+      }
+      switch (dataTypes.get(columnIndex)) {
         case TEXT:
         case BLOB:
         case STRING:
           ((Binary[]) columnValues.get(arrayIndex))[elementIndex] =
               columnValue != null ? (Binary) columnValue : Binary.EMPTY_VALUE;
-          memoryBinaryChunkSize[i] +=
+          memoryBinaryChunkSize[columnIndex] +=
               columnValue != null
                   ? getBinarySize((Binary) columnValue)
                   : getBinarySize(Binary.EMPTY_VALUE);
@@ -232,6 +267,24 @@ public abstract class AlignedTVList extends TVList {
           break;
       }
     }
+
+    for (int i = 0; i < dataTypes.size(); i++) {
+      if (columnInsertedMap.isMarked(i)) {
+        continue;
+      }
+
+      markNullValue(i, arrayIndex, elementIndex);
+      List<Object> columnValues = values.get(i);
+      switch (dataTypes.get(i)) {
+        case TEXT:
+        case BLOB:
+        case STRING:
+          ((Binary[]) columnValues.get(arrayIndex))[elementIndex] = Binary.EMPTY_VALUE;
+          memoryBinaryChunkSize[i] += getBinarySize(Binary.EMPTY_VALUE);
+          break;
+      }
+    }
+
     if (indices != null) {
       indices.get(arrayIndex)[elementIndex] = rowCount;
     }
@@ -403,6 +456,7 @@ public abstract class AlignedTVList extends TVList {
     this.bitMaps.add(columnBitMaps);
     this.values.add(columnValue);
     this.dataTypes.add(dataType);
+    columnInsertedMap = new BitMap(dataTypes.size());
 
     long[] tmpValueChunkRawSize = memoryBinaryChunkSize;
     memoryBinaryChunkSize = new long[dataTypes.size()];
@@ -529,6 +583,10 @@ public abstract class AlignedTVList extends TVList {
 
   public List<TSDataType> getTsDataTypes() {
     return dataTypes;
+  }
+
+  public int getColumnSize() {
+    return dataTypes.size();
   }
 
   @Override
@@ -762,6 +820,88 @@ public abstract class AlignedTVList extends TVList {
         time, (TsPrimitiveType) getAlignedValueForQuery(index, floatPrecision, encodingList));
   }
 
+  public synchronized void putAlignedValues(
+      Object column,
+      int columnIndex,
+      BitMap bitMap,
+      int start,
+      int end,
+      int resultOffset,
+      TSStatus[] results,
+      int tvListPos) {
+    if (columnIndex < 0 || column == null) {
+      // non-exist/invalid column
+      return;
+    }
+
+    columnInsertedMap.mark(columnIndex);
+
+    int current = start;
+
+    while (current < end) {
+      int inputRemaining = end - current;
+      int arrayIdx = tvListPos / ARRAY_SIZE;
+      int elementIdx = tvListPos % ARRAY_SIZE;
+      int internalRemaining = ARRAY_SIZE - elementIdx;
+
+      int copyLength = Math.min(internalRemaining, inputRemaining);
+      // the remaining inputs can fit the last array, copy all remaining inputs into last array
+      arrayCopy(column, columnIndex, current, arrayIdx, elementIdx, copyLength);
+      for (int i = 0; i < copyLength; i++) {
+        if (bitMap != null && bitMap.isMarked(current + i)
+            || results != null
+                && results[current + i + resultOffset] != null
+                && results[current + i + resultOffset].code
+                    != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+          markNullValue(columnIndex, arrayIdx, elementIdx + i);
+        }
+      }
+
+      current += copyLength;
+      tvListPos += copyLength;
+    }
+  }
+
+  public void resetColumnInsertedMap() {
+    columnInsertedMap.reset();
+  }
+
+  public void markNotInsertedColumns(int start, int end) {
+    for (int columnIndex = 0; columnIndex < dataTypes.size(); columnIndex++) {
+      if (!columnInsertedMap.isMarked(columnIndex)) {
+        for (int i = start; i < end; i++) {
+          int arrayIdx = i / ARRAY_SIZE;
+          int elementIdx = i % ARRAY_SIZE;
+          markNullValue(columnIndex, arrayIdx, elementIdx);
+        }
+      }
+    }
+  }
+
+  public synchronized void putAlignedValues(
+      Object[] columns,
+      List<Integer> columnIndices,
+      BitMap[] bitMaps,
+      int start,
+      int end,
+      TSStatus[] results,
+      int tvListPos) {
+    columnInsertedMap.reset();
+
+    for (int i = 0; i < columnIndices.size(); i++) {
+      putAlignedValues(
+          columns[i],
+          columnIndices.get(i),
+          bitMaps == null ? null : bitMaps[i],
+          start,
+          end,
+          0,
+          results,
+          tvListPos);
+    }
+    markNotInsertedColumns(tvListPos, tvListPos + (end - start));
+  }
+
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   @Override
   public synchronized void putAlignedValues(
@@ -818,6 +958,106 @@ public abstract class AlignedTVList extends TVList {
         }
         idx += internalRemaining;
         checkExpansion();
+      }
+    }
+  }
+
+  private void arrayCopy(
+      Object column, int columnIndex, int idx, int arrayIndex, int elementIndex, int remaining) {
+    List<Object> columnValues = values.get(columnIndex);
+    switch (dataTypes.get(columnIndex)) {
+      case TEXT:
+      case BLOB:
+      case STRING:
+        Binary[] arrayT = ((Binary[]) columnValues.get(arrayIndex));
+        System.arraycopy(column, idx, arrayT, elementIndex, remaining);
+
+        // update raw size of Text chunk
+        for (int i1 = 0; i1 < remaining; i1++) {
+          memoryBinaryChunkSize[columnIndex] +=
+              arrayT[elementIndex + i1] != null ? getBinarySize(arrayT[elementIndex + i1]) : 0;
+        }
+        break;
+      case FLOAT:
+        float[] arrayF = ((float[]) columnValues.get(arrayIndex));
+        System.arraycopy(column, idx, arrayF, elementIndex, remaining);
+        break;
+      case INT32:
+      case DATE:
+        int[] arrayI = ((int[]) columnValues.get(arrayIndex));
+        System.arraycopy(column, idx, arrayI, elementIndex, remaining);
+        break;
+      case INT64:
+      case TIMESTAMP:
+        long[] arrayL = ((long[]) columnValues.get(arrayIndex));
+        System.arraycopy(column, idx, arrayL, elementIndex, remaining);
+        break;
+      case DOUBLE:
+        double[] arrayD = ((double[]) columnValues.get(arrayIndex));
+        System.arraycopy(column, idx, arrayD, elementIndex, remaining);
+        break;
+      case BOOLEAN:
+        boolean[] arrayB = ((boolean[]) columnValues.get(arrayIndex));
+        System.arraycopy(column, idx, arrayB, elementIndex, remaining);
+        break;
+      default:
+        break;
+    }
+  }
+
+  private void arrayCopy(
+      Object[] columns,
+      List<Integer> columnIndices,
+      int idx,
+      int arrayIndex,
+      int elementIndex,
+      int remaining) {
+    columnInsertedMap.reset();
+    for (int i = 0, columnIndicesSize = columnIndices.size(); i < columnIndicesSize; i++) {
+      Integer columnIndex = columnIndices.get(i);
+      columnInsertedMap.mark(columnIndex);
+      if (columns[i] == null) {
+        continue;
+      }
+
+      List<Object> columnValues = values.get(columnIndex);
+      switch (dataTypes.get(i)) {
+        case TEXT:
+        case BLOB:
+        case STRING:
+          Binary[] arrayT = ((Binary[]) columnValues.get(arrayIndex));
+          System.arraycopy(columns[i], idx, arrayT, elementIndex, remaining);
+
+          // update raw size of Text chunk
+          for (int i1 = 0; i1 < remaining; i1++) {
+            memoryBinaryChunkSize[i] +=
+                arrayT[elementIndex + i1] != null ? getBinarySize(arrayT[elementIndex + i1]) : 0;
+          }
+          break;
+        case FLOAT:
+          float[] arrayF = ((float[]) columnValues.get(arrayIndex));
+          System.arraycopy(columns[i], idx, arrayF, elementIndex, remaining);
+          break;
+        case INT32:
+        case DATE:
+          int[] arrayI = ((int[]) columnValues.get(arrayIndex));
+          System.arraycopy(columns[i], idx, arrayI, elementIndex, remaining);
+          break;
+        case INT64:
+        case TIMESTAMP:
+          long[] arrayL = ((long[]) columnValues.get(arrayIndex));
+          System.arraycopy(columns[i], idx, arrayL, elementIndex, remaining);
+          break;
+        case DOUBLE:
+          double[] arrayD = ((double[]) columnValues.get(arrayIndex));
+          System.arraycopy(columns[i], idx, arrayD, elementIndex, remaining);
+          break;
+        case BOOLEAN:
+          boolean[] arrayB = ((boolean[]) columnValues.get(arrayIndex));
+          System.arraycopy(columns[i], idx, arrayB, elementIndex, remaining);
+          break;
+        default:
+          break;
       }
     }
   }
@@ -1964,5 +2204,10 @@ public abstract class AlignedTVList extends TVList {
       }
       return outer.isNullValue(valueIndex, validColumnIndex);
     }
+  }
+
+  @Override
+  protected Object getValueArray(int arrayIndex) {
+    throw new UnsupportedOperationException("AlignedTVList does not support getValueArray");
   }
 }

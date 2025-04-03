@@ -523,30 +523,51 @@ public class ValueConverter {
   ///////////// TEXT //////////////
 
   public static boolean convertTextToBoolean(final Binary value) {
+    if (value == null) {
+      return false;
+    }
     return Boolean.parseBoolean(value.toString());
   }
 
   public static int convertTextToInt32(final Binary value) {
+    if (value == null) {
+      return 0;
+    }
     return (int) parseDouble(value.toString());
   }
 
   public static long convertTextToInt64(final Binary value) {
+    if (value == null) {
+      return 0L;
+    }
     return (long) parseDouble(value.toString());
   }
 
   public static float convertTextToFloat(final Binary value) {
+    if (value == null) {
+      return 0.0f;
+    }
     return parseFloat(value.toString());
   }
 
   public static double convertTextToDouble(final Binary value) {
+    if (value == null) {
+      return 0.0;
+    }
     return parseDouble(value.toString());
   }
 
   public static long convertTextToTimestamp(final Binary value) {
+    if (value == null) {
+      return 0L;
+    }
     return parseTimestamp(value.toString());
   }
 
   public static int convertTextToDate(final Binary value) {
+    if (value == null) {
+      return 0;
+    }
     return parseDate(value.toString());
   }
 
@@ -649,30 +670,51 @@ public class ValueConverter {
   ///////////// BLOB //////////////
 
   public static boolean convertBlobToBoolean(final Binary value) {
+    if (value == null) {
+      return false;
+    }
     return Boolean.parseBoolean(value.toString());
   }
 
   public static int convertBlobToInt32(final Binary value) {
+    if (value == null) {
+      return 0;
+    }
     return (int) parseDouble(value.toString());
   }
 
   public static long convertBlobToInt64(final Binary value) {
+    if (value == null) {
+      return 0L;
+    }
     return (long) parseDouble(value.toString());
   }
 
   public static float convertBlobToFloat(final Binary value) {
+    if (value == null) {
+      return 0.0f;
+    }
     return parseFloat(value.toString());
   }
 
   public static double convertBlobToDouble(final Binary value) {
+    if (value == null) {
+      return 0.0;
+    }
     return parseDouble(value.toString());
   }
 
   public static long convertBlobToTimestamp(final Binary value) {
+    if (value == null) {
+      return 0L;
+    }
     return parseTimestamp(value.toString());
   }
 
   public static int convertBlobToDate(final Binary value) {
+    if (value == null) {
+      return 0;
+    }
     return parseDate(value.toString());
   }
 
@@ -687,30 +729,51 @@ public class ValueConverter {
   ///////////// STRING //////////////
 
   public static boolean convertStringToBoolean(final Binary value) {
+    if (value == null) {
+      return false;
+    }
     return Boolean.parseBoolean(value.toString());
   }
 
   public static int convertStringToInt32(final Binary value) {
+    if (value == null) {
+      return 0;
+    }
     return (int) parseDouble(value.toString());
   }
 
   public static long convertStringToInt64(final Binary value) {
+    if (value == null) {
+      return 0L;
+    }
     return (long) parseDouble(value.toString());
   }
 
   public static float convertStringToFloat(final Binary value) {
+    if (value == null) {
+      return 0.0f;
+    }
     return parseFloat(value.toString());
   }
 
   public static double convertStringToDouble(final Binary value) {
+    if (value == null) {
+      return 0.0;
+    }
     return parseDouble(value.toString());
   }
 
   public static long convertStringToTimestamp(final Binary value) {
+    if (value == null) {
+      return 0L;
+    }
     return parseTimestamp(value.toString());
   }
 
   public static int convertStringToDate(final Binary value) {
+    if (value == null) {
+      return 0;
+    }
     return parseDate(value.toString());
   }
 

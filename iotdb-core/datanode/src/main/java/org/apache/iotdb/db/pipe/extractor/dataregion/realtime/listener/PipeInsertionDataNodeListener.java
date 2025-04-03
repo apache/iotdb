@@ -28,6 +28,7 @@ import org.apache.iotdb.db.pipe.extractor.dataregion.realtime.PipeRealtimeDataRe
 import org.apache.iotdb.db.pipe.extractor.dataregion.realtime.assigner.PipeDataRegionAssigner;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.AbstractDeleteDataNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertTabletNode;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALEntryHandler;
 
@@ -134,6 +135,17 @@ public class PipeInsertionDataNodeListener {
     // only events from registered data region will be extracted
     if (assigner == null) {
       return;
+    }
+
+    if (insertNode instanceof InsertTabletNode) {
+      synchronized (insertNode) {
+        // only increase reference count when the node is not flushed,
+        // otherwise, pipe will read from wal which creates another object
+        if (walEntryHandler.getInsertNodeViaCacheIfPossible() != null) {
+          ((InsertTabletNode) insertNode).incRefCount();
+          ((InsertTabletNode) insertNode).setReferencedByPipe(true);
+        }
+      }
     }
 
     assigner.publishToAssign(

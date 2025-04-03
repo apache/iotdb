@@ -20,6 +20,8 @@
 package org.apache.iotdb.db.storageengine.dataregion.memtable;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertTabletStatement.TimeView;
+import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertTabletStatement.ValueView;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModEntry;
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.IWALByteBufferView;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALWriteUtils;
@@ -46,21 +48,22 @@ public class WritableMemChunkGroup implements IWritableMemChunkGroup {
 
   @Override
   public void writeTablet(
-      long[] times,
-      Object[] columns,
+      TimeView times,
+      ValueView columns,
       BitMap[] bitMaps,
       List<IMeasurementSchema> schemaList,
       int start,
       int end,
       TSStatus[] results) {
-    for (int i = 0; i < columns.length; i++) {
-      if (columns[i] == null) {
+    for (int i = 0; i < schemaList.size(); i++) {
+      if (schemaList.get(i) == null) {
         continue;
       }
       IWritableMemChunk memChunk = createMemChunkIfNotExistAndGet(schemaList.get(i));
       memChunk.writeNonAlignedTablet(
           times,
-          columns[i],
+          columns,
+          i,
           bitMaps == null ? null : bitMaps[i],
           schemaList.get(i).getType(),
           start,

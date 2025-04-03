@@ -192,11 +192,11 @@ public class InsertMultiTabletsStatement extends InsertBaseStatement {
 
   @Override
   public void removeAttributeColumns() {
-    subRemoveAttributeColumns(Collections.emptyList());
+    reserveColumns(Collections.emptyList());
   }
 
   @Override
-  protected void subRemoveAttributeColumns(List<Integer> columnsToKeep) {
+  protected void reserveColumns(List<Integer> columnsToKeep) {
     insertTabletStatementList.forEach(InsertBaseStatement::removeAttributeColumns);
   }
 }

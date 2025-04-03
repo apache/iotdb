@@ -324,6 +324,9 @@ public class RegionWriteExecutor {
         }
         triggerCostTime += (System.nanoTime() - startTime);
       }
+      if (insertNode instanceof InsertTabletNode) {
+        ((InsertTabletNode) insertNode).decRefCount();
+      }
       PERFORMANCE_OVERVIEW_METRICS.recordScheduleTriggerCost(triggerCostTime);
       return status;
     }

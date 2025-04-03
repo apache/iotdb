@@ -53,6 +53,8 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 public class InsertNodeMemoryEstimator {
 
@@ -230,9 +232,9 @@ public class InsertNodeMemoryEstimator {
   private static long sizeOfInsertTabletNode(final InsertTabletNode node) {
     long size = INSERT_TABLET_NODE_SIZE;
     size += calculateFullInsertNodeSize(node);
-    size += RamUsageEstimator.sizeOf(node.getTimes());
+    size += node.getTimes().ramSize();
     size += sizeOfBitMapArray(node.getBitMaps());
-    size += sizeOfColumns(node.getColumns(), node.getMeasurementSchemas());
+    size += node.getColumns().ramSize(node.getMeasurementSchemas());
     final List<Integer> range = node.getRange();
     if (range != null) {
       size += NUM_BYTES_OBJECT_HEADER + SIZE_OF_INT * range.size();
@@ -245,11 +247,11 @@ public class InsertNodeMemoryEstimator {
 
     size += calculateInsertNodeSizeExcludingSchemas(node);
 
-    size += RamUsageEstimator.sizeOf(node.getTimes());
+    size += node.getTimes().ramSize();
 
     size += sizeOfBitMapArray(node.getBitMaps());
 
-    size += sizeOfColumns(node.getColumns(), node.getMeasurementSchemas());
+    size += node.getColumns().ramSize(node.getMeasurementSchemas());
 
     final List<Integer> range = node.getRange();
     if (range != null) {
@@ -388,11 +390,11 @@ public class InsertNodeMemoryEstimator {
 
     size += calculateFullInsertNodeSize(node);
 
-    size += RamUsageEstimator.sizeOf(node.getTimes());
+    size += node.getTimes().ramSize();
 
     size += sizeOfBitMapArray(node.getBitMaps());
 
-    size += sizeOfColumns(node.getColumns(), node.getMeasurementSchemas());
+    size += node.getColumns().ramSize(node.getMeasurementSchemas());
 
     final List<Integer> range = node.getRange();
     if (range != null) {
@@ -583,8 +585,11 @@ public class InsertNodeMemoryEstimator {
     return size;
   }
 
+  // if columnsToCalculate is null, all columns are calculated
   public static long sizeOfColumns(
-      final Object[] columns, final MeasurementSchema[] measurementSchemas) {
+      final Object[] columns,
+      final MeasurementSchema[] measurementSchemas,
+      List<Integer> columnsToCalculate) {
     // Directly calculate if measurementSchemas are absent
     if (Objects.isNull(measurementSchemas)) {
       return RamUsageEstimator.shallowSizeOf(columns)
@@ -592,46 +597,125 @@ public class InsertNodeMemoryEstimator {
               .mapToLong(InsertNodeMemoryEstimator::getNumBytesUnknownObject)
               .reduce(0L, Long::sum);
     }
+    if (columnsToCalculate == null) {
+      columnsToCalculate = IntStream.range(0, columns.length).boxed().collect(Collectors.toList());
+    }
     long size =
         RamUsageEstimator.alignObjectSize(
             NUM_BYTES_ARRAY_HEADER + NUM_BYTES_OBJECT_REF * columns.length);
-    for (int i = 0; i < columns.length; i++) {
-      if (measurementSchemas[i] == null || measurementSchemas[i].getType() == null) {
+    for (int columnIndex : columnsToCalculate) {
+      if (measurementSchemas[columnIndex] == null
+          || measurementSchemas[columnIndex].getType() == null) {
         continue;
       }
-      switch (measurementSchemas[i].getType()) {
+      switch (measurementSchemas[columnIndex].getType()) {
         case INT64:
         case TIMESTAMP:
           {
-            size += RamUsageEstimator.sizeOf((long[]) columns[i]);
+            size += RamUsageEstimator.sizeOf((long[]) columns[columnIndex]);
             break;
           }
         case DATE:
         case INT32:
           {
-            size += RamUsageEstimator.sizeOf((int[]) columns[i]);
+            size += RamUsageEstimator.sizeOf((int[]) columns[columnIndex]);
             break;
           }
         case DOUBLE:
           {
-            size += RamUsageEstimator.sizeOf((double[]) columns[i]);
+            size += RamUsageEstimator.sizeOf((double[]) columns[columnIndex]);
             break;
           }
         case FLOAT:
           {
-            size += RamUsageEstimator.sizeOf((float[]) columns[i]);
+            size += RamUsageEstimator.sizeOf((float[]) columns[columnIndex]);
             break;
           }
         case BOOLEAN:
           {
-            size += RamUsageEstimator.sizeOf((boolean[]) columns[i]);
+            size += RamUsageEstimator.sizeOf((boolean[]) columns[columnIndex]);
             break;
           }
         case STRING:
         case TEXT:
         case BLOB:
           {
-            size += getBinarySize((Binary[]) columns[i]);
+            size += getBinarySize((Binary[]) columns[columnIndex]);
+            break;
+          }
+      }
+    }
+    return size;
+  }
+
+  // if columnsToCalculate is null, all columns are calculated
+  public static long sizeOfColumns(
+      final Object[][] columns,
+      final MeasurementSchema[] measurementSchemas,
+      List<Integer> columnsToCalculate) {
+    // Directly calculate if measurementSchemas are absent
+    if (Objects.isNull(measurementSchemas)) {
+      return RamUsageEstimator.shallowSizeOf(columns)
+          + Arrays.stream(columns)
+              .mapToLong(InsertNodeMemoryEstimator::getNumBytesUnknownObject)
+              .reduce(0L, Long::sum);
+    }
+    if (columnsToCalculate == null) {
+      columnsToCalculate = IntStream.range(0, columns.length).boxed().collect(Collectors.toList());
+    }
+    long size =
+        RamUsageEstimator.alignObjectSize(
+            NUM_BYTES_ARRAY_HEADER * (columns.length + 1) + NUM_BYTES_OBJECT_REF * columns.length);
+    for (int columnIndex : columnsToCalculate) {
+      if (measurementSchemas[columnIndex] == null
+          || measurementSchemas[columnIndex].getType() == null) {
+        continue;
+      }
+      switch (measurementSchemas[columnIndex].getType()) {
+        case INT64:
+        case TIMESTAMP:
+          {
+            for (Object o : columns[columnIndex]) {
+              size += RamUsageEstimator.sizeOf((long[]) o);
+            }
+            break;
+          }
+        case DATE:
+        case INT32:
+          {
+            for (Object o : columns[columnIndex]) {
+              size += RamUsageEstimator.sizeOf((int[]) o);
+            }
+            break;
+          }
+        case DOUBLE:
+          {
+            for (Object o : columns[columnIndex]) {
+              size += RamUsageEstimator.sizeOf((double[]) o);
+            }
+            break;
+          }
+        case FLOAT:
+          {
+            for (Object o : columns[columnIndex]) {
+              size += RamUsageEstimator.sizeOf((float[]) o);
+            }
+            break;
+          }
+        case BOOLEAN:
+          {
+            for (Object o : columns[columnIndex]) {
+              size += RamUsageEstimator.sizeOf((boolean[]) o);
+            }
+            break;
+          }
+        case STRING:
+        case TEXT:
+        case BLOB:
+          {
+            for (Object o : columns[columnIndex]) {
+              size += RamUsageEstimator.sizeOf((Binary[]) o);
+            }
             break;
           }
       }

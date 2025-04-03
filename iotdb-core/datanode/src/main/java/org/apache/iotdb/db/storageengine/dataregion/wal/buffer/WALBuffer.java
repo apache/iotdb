@@ -324,6 +324,7 @@ public class WALBuffer extends AbstractWALBuffer {
         walEntry.getWalFlushListener().fail(e);
         return;
       }
+
       // parse search index
       long searchIndex = DEFAULT_SEARCH_INDEX;
       if (walEntry.getType().needSearch()) {

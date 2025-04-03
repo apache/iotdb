@@ -220,7 +220,7 @@ public class WritePlanNodeSplitTest {
     Assert.assertEquals(6, insertTabletNodeList.size());
     for (WritePlanNode insertNode : insertTabletNodeList) {
       InsertTabletNode tabletNode = (InsertTabletNode) insertNode;
-      Assert.assertEquals(tabletNode.getTimes().length, 2);
+      Assert.assertEquals(tabletNode.getTimes().length(), 2);
       TConsensusGroupId regionId = tabletNode.getDataRegionReplicaSet().getRegionId();
       Assert.assertEquals(getRegionIdByTime(tabletNode.getMinTime()), regionId.getId());
     }
@@ -245,7 +245,7 @@ public class WritePlanNodeSplitTest {
 
     Assert.assertEquals(1, insertTabletNodeList.size());
     for (WritePlanNode insertNode : insertTabletNodeList) {
-      Assert.assertEquals(((InsertTabletNode) insertNode).getTimes().length, 10);
+      Assert.assertEquals(((InsertTabletNode) insertNode).getTimes().length(), 10);
     }
   }
 
@@ -294,9 +294,9 @@ public class WritePlanNodeSplitTest {
     Assert.assertEquals(6, insertTabletNodeList.size());
     for (WritePlanNode insertNode : insertTabletNodeList) {
       InsertTabletNode tabletNode = (InsertTabletNode) insertNode;
-      Assert.assertEquals(2, tabletNode.getTimes().length);
+      Assert.assertEquals(2, tabletNode.getTimes().length());
       // keep the time order after split
-      Assert.assertTrue(tabletNode.getTimes()[0] < tabletNode.getTimes()[1]);
+      Assert.assertTrue(tabletNode.getTimes().get(0) < tabletNode.getTimes().get(1));
       TConsensusGroupId regionId = tabletNode.getDataRegionReplicaSet().getRegionId();
       Assert.assertEquals(getRegionIdByTime(tabletNode.getMinTime()), regionId.getId());
     }

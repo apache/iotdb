@@ -31,6 +31,8 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache.TableDeviceSchemaCache;
+import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertTabletStatement.TimeView;
+import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertTabletStatement.ValueView;
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.IWALByteBufferView;
 
 import org.apache.tsfile.enums.TSDataType;
@@ -50,6 +52,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicInteger;
 
 public class RelationalInsertTabletNode extends InsertTabletNode {
 
@@ -81,6 +84,34 @@ public class RelationalInsertTabletNode extends InsertTabletNode {
         bitMaps,
         columns,
         rowCount);
+    setColumnCategories(columnCategories);
+  }
+
+  public RelationalInsertTabletNode(
+      PlanNodeId id,
+      PartialPath devicePath,
+      boolean isAligned,
+      String[] measurements,
+      TSDataType[] dataTypes,
+      MeasurementSchema[] measurementSchemas,
+      TimeView times,
+      BitMap[] bitMaps,
+      ValueView columns,
+      int rowCount,
+      TsTableColumnCategory[] columnCategories,
+      AtomicInteger refCount) {
+    super(
+        id,
+        devicePath,
+        isAligned,
+        measurements,
+        dataTypes,
+        measurementSchemas,
+        times,
+        bitMaps,
+        columns,
+        rowCount,
+        refCount);
     setColumnCategories(columnCategories);
   }
 
@@ -119,7 +150,7 @@ public class RelationalInsertTabletNode extends InsertTabletNode {
         deviceIdSegments[0] = this.getTableName();
         for (int i = 0; i < idColumnIndices.size(); i++) {
           final Integer columnIndex = idColumnIndices.get(i);
-          Object idSeg = ((Object[]) columns[columnIndex])[0];
+          Object idSeg = columns.get(0, columnIndex);
           boolean isNull =
               bitMaps != null && bitMaps[columnIndex] != null && bitMaps[columnIndex].isMarked(0);
           deviceIdSegments[i + 1] = !isNull && idSeg != null ? idSeg.toString() : null;
@@ -136,7 +167,7 @@ public class RelationalInsertTabletNode extends InsertTabletNode {
       deviceIdSegments[0] = this.getTableName();
       for (int i = 0; i < idColumnIndices.size(); i++) {
         final Integer columnIndex = idColumnIndices.get(i);
-        Object idSeg = ((Object[]) columns[columnIndex])[rowIdx];
+        Object idSeg = columns.get(rowIdx, columnIndex);
         boolean isNull =
             bitMaps != null
                 && bitMaps[columnIndex] != null
@@ -212,8 +243,8 @@ public class RelationalInsertTabletNode extends InsertTabletNode {
         subRanges.add(splitInfo.ranges.get(2 * i + 1));
       }
     }
-    final List<TEndPoint> redirectNodeList = new ArrayList<>(times.length);
-    for (int i = 0; i < times.length; i++) {
+    final List<TEndPoint> redirectNodeList = new ArrayList<>(times.length());
+    for (int i = 0; i < times.length(); i++) {
       final IDeviceID deviceId = getDeviceID(i);
       redirectNodeList.add(endPointMap.get(deviceId));
     }

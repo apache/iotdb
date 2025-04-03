@@ -76,6 +76,7 @@ public class AsyncPlanNodeSender {
                   new TPlanNode(
                       instances.get(i).getFragment().getPlanNodeTree().serializeToByteBuffer()),
                   instances.get(i).getRegionReplicaSet().getRegionId()));
+      instances.get(i).getFragment().getPlanNodeTree().onDispatchStart();
     }
     this.instanceId2RespMap = new ConcurrentHashMap<>(instances.size() + 1, 1);
     this.needRetryInstanceIndex = Collections.synchronizedList(new ArrayList<>());

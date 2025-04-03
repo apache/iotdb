@@ -99,7 +99,7 @@ public class TsFilePlanRedoer {
       if (node instanceof InsertRowNode) {
         minTimeInNode = ((InsertRowNode) node).getTime();
       } else {
-        minTimeInNode = ((InsertTabletNode) node).getTimes()[0];
+        minTimeInNode = ((InsertTabletNode) node).getTimes().get(0);
       }
       if (lastEndTime.isPresent() && lastEndTime.get() >= minTimeInNode) {
         return;
@@ -123,7 +123,7 @@ public class TsFilePlanRedoer {
         IDeviceID deviceID = pair.getLeft();
         Optional<Long> endTimeInResource =
             tsFileResource == null ? Optional.empty() : tsFileResource.getEndTime(deviceID);
-        long minTimeOfDevice = relationalInsertTabletNode.getTimes()[start];
+        long minTimeOfDevice = relationalInsertTabletNode.getTimes().get(start);
         if (endTimeInResource.isPresent() && endTimeInResource.get() >= minTimeOfDevice) {
           start = pair.getRight();
           continue;

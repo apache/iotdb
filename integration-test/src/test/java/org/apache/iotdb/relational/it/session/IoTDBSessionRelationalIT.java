@@ -28,6 +28,7 @@ import org.apache.iotdb.isession.ITableSession;
 import org.apache.iotdb.isession.SessionDataSet;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.env.cluster.node.DataNodeWrapper;
+import org.apache.iotdb.it.env.remote.env.RemoteServerEnv;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.TableClusterIT;
 import org.apache.iotdb.itbase.category.TableLocalStandaloneIT;
@@ -1848,6 +1849,9 @@ public class IoTDBSessionRelationalIT {
           "INSERT INTO remove_attr_col (time, tag1, attr1, m1) VALUES (10, 'tag:1', 'attr:10', 10.0)");
 
       // check WAL
+      if (EnvFactory.getEnv() instanceof RemoteServerEnv) {
+        return;
+      }
       for (DataNodeWrapper dataNodeWrapper : EnvFactory.getEnv().getDataNodeWrapperList()) {
         String walNodeDir = dataNodeWrapper.getWalDir() + File.separator + "0";
         File[] walFiles = new File(walNodeDir).listFiles(f -> f.getName().endsWith(".wal"));

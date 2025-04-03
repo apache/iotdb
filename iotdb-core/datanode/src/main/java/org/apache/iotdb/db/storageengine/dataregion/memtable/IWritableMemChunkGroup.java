@@ -20,6 +20,8 @@
 package org.apache.iotdb.db.storageengine.dataregion.memtable;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertTabletStatement.TimeView;
+import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertTabletStatement.ValueView;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModEntry;
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.WALEntryValue;
 
@@ -34,8 +36,8 @@ public interface IWritableMemChunkGroup extends WALEntryValue {
   void writeRow(long insertTime, Object[] objectValue, List<IMeasurementSchema> schemaList);
 
   void writeTablet(
-      long[] times,
-      Object[] columns,
+      TimeView times,
+      ValueView columns,
       BitMap[] bitMaps,
       List<IMeasurementSchema> schemaList,
       int start,

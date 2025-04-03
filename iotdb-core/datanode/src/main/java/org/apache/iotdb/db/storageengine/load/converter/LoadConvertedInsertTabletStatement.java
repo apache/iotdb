@@ -54,8 +54,7 @@ public class LoadConvertedInsertTabletStatement extends PipeConvertedInsertTable
         measurements[columnIndex],
         dataTypes[columnIndex],
         dataType);
-    columns[columnIndex] =
-        ArrayConverter.convert(dataTypes[columnIndex], dataType, columns[columnIndex]);
+    columns.castTo(columnIndex, dataType, ArrayConverter::convert);
     dataTypes[columnIndex] = dataType;
     return true;
   }
