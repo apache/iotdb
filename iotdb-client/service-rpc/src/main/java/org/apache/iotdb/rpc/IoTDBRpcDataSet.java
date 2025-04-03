@@ -470,6 +470,7 @@ public class IoTDBRpcDataSet {
   public long getLong(String columnName) throws StatementExecutionException {
     checkRecord();
     if (columnName.equals(TIMESTAMP_STR)) {
+      lastReadWasNull = false;
       return curTsBlock.getTimeByIndex(tsBlockIndex);
     }
     int index = columnOrdinalMap.get(columnName) - START_INDEX;
@@ -524,23 +525,8 @@ public class IoTDBRpcDataSet {
   }
 
   public Timestamp getTimestamp(String columnName) throws StatementExecutionException {
-    checkRecord();
-    if (columnName.equals(TIMESTAMP_STR)) {
-      return new Timestamp(curTsBlock.getTimeByIndex(tsBlockIndex));
-    }
-    int index = columnOrdinalMap.get(columnName) - START_INDEX;
-    if (!isNull(index, tsBlockIndex)) {
-      lastReadWasNull = false;
-      TSDataType type = curTsBlock.getColumn(index).getDataType();
-      if (type == TSDataType.INT32) {
-        return new Timestamp(curTsBlock.getColumn(index).getInt(tsBlockIndex));
-      } else {
-        return new Timestamp(curTsBlock.getColumn(index).getLong(tsBlockIndex));
-      }
-    } else {
-      lastReadWasNull = true;
-      return null;
-    }
+    long longValue = getLong(columnName);
+    return lastReadWasNull ? null : new Timestamp(longValue);
   }
 
   public LocalDate getDate(int columnIndex) throws StatementExecutionException {
@@ -548,21 +534,8 @@ public class IoTDBRpcDataSet {
   }
 
   public LocalDate getDate(String columnName) throws StatementExecutionException {
-    checkRecord();
-    int index = columnOrdinalMap.get(columnName) - START_INDEX;
-    if (!isNull(index, tsBlockIndex)) {
-      lastReadWasNull = false;
-      TSDataType type = curTsBlock.getColumn(index).getDataType();
-      if (type == TSDataType.INT64) {
-        return DateUtils.parseIntToLocalDate(
-            (int) curTsBlock.getColumn(index).getLong(tsBlockIndex));
-      } else {
-        return DateUtils.parseIntToLocalDate(curTsBlock.getColumn(index).getInt(tsBlockIndex));
-      }
-    } else {
-      lastReadWasNull = true;
-      return null;
-    }
+    int intValue = getInt(columnName);
+    return lastReadWasNull ? null : DateUtils.parseIntToLocalDate(intValue);
   }
 
   public TSDataType getDataType(int columnIndex) throws StatementExecutionException {
@@ -586,6 +559,7 @@ public class IoTDBRpcDataSet {
   public String getValueByName(String columnName) throws StatementExecutionException {
     checkRecord();
     if (columnName.equals(TIMESTAMP_STR)) {
+      lastReadWasNull = false;
       return String.valueOf(curTsBlock.getTimeByIndex(tsBlockIndex));
     }
     int index = columnOrdinalMap.get(columnName) - START_INDEX;
@@ -629,6 +603,7 @@ public class IoTDBRpcDataSet {
   public Object getObjectByName(String columnName) throws StatementExecutionException {
     checkRecord();
     if (columnName.equals(TIMESTAMP_STR)) {
+      lastReadWasNull = false;
       return new Timestamp(curTsBlock.getTimeByIndex(tsBlockIndex));
     }
     int index = columnOrdinalMap.get(columnName) - START_INDEX;

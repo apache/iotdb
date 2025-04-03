@@ -2073,7 +2073,8 @@ public class IoTDBSessionSimpleIT {
                 new MeasurementSchema("s7", TSDataType.TIMESTAMP),
                 new MeasurementSchema("s8", TSDataType.BLOB),
                 new MeasurementSchema("s9", TSDataType.STRING),
-                new MeasurementSchema("s10", TSDataType.DATE)),
+                new MeasurementSchema("s10", TSDataType.DATE),
+                new MeasurementSchema("s11", TSDataType.TIMESTAMP)),
             10);
     tablet.addTimestamp(0, 0L);
     tablet.addValue("s1", 0, 1);
@@ -2086,6 +2087,8 @@ public class IoTDBSessionSimpleIT {
     tablet.addValue("s8", 0, new Binary(new byte[] {1}));
     tablet.addValue("s9", 0, "string_value");
     tablet.addValue("s10", 0, DateUtils.parseIntToLocalDate(20250403));
+    tablet.initBitMaps();
+    tablet.bitMaps[10].mark(0);
     tablet.rowSize = 1;
 
     try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
@@ -2096,8 +2099,6 @@ public class IoTDBSessionSimpleIT {
         int count = 0;
         while (iterator.next()) {
           count++;
-          Assert.assertFalse(iterator.isNull("Time"));
-          Assert.assertEquals(new Timestamp(0), iterator.getTimestamp("Time"));
           Assert.assertFalse(iterator.isNull("root.sg.d1.s1"));
           Assert.assertEquals(1, iterator.getInt("root.sg.d1.s1"));
           Assert.assertFalse(iterator.isNull("root.sg.d1.s2"));
@@ -2119,6 +2120,11 @@ public class IoTDBSessionSimpleIT {
           Assert.assertFalse(iterator.isNull("root.sg.d1.s10"));
           Assert.assertEquals(
               DateUtils.parseIntToLocalDate(20250403), iterator.getDate("root.sg.d1.s10"));
+          Assert.assertTrue(iterator.isNull("root.sg.d1.s11"));
+          Assert.assertNull(iterator.getTimestamp("root.sg.d1.s11"));
+
+          Assert.assertEquals(new Timestamp(0), iterator.getTimestamp("Time"));
+          Assert.assertFalse(iterator.isNull("Time"));
         }
         Assert.assertEquals(tablet.rowSize, count);
       }
