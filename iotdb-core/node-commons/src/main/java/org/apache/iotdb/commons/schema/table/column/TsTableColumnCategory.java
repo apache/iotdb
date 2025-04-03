@@ -35,7 +35,7 @@ public enum TsTableColumnCategory {
 
   private final byte category;
 
-  TsTableColumnCategory(byte category) {
+  TsTableColumnCategory(final byte category) {
     this.category = category;
   }
 
@@ -43,25 +43,23 @@ public enum TsTableColumnCategory {
     return category;
   }
 
-  public void serialize(OutputStream stream) throws IOException {
+  public void serialize(final OutputStream stream) throws IOException {
     ReadWriteIOUtils.write(category, stream);
   }
 
-  public void serialize(ByteBuffer byteBuffer) {
+  public void serialize(final ByteBuffer byteBuffer) {
     ReadWriteIOUtils.write(category, byteBuffer);
   }
 
-  public static TsTableColumnCategory deserialize(InputStream stream) throws IOException {
-    byte category = (byte) stream.read();
-    return deserialize(category);
+  public static TsTableColumnCategory deserialize(final InputStream stream) throws IOException {
+    return deserialize((byte) stream.read());
   }
 
-  public static TsTableColumnCategory deserialize(ByteBuffer stream) {
-    byte category = stream.get();
-    return deserialize(category);
+  public static TsTableColumnCategory deserialize(final ByteBuffer stream) {
+    return deserialize(stream.get());
   }
 
-  public static TsTableColumnCategory deserialize(byte category) {
+  public static TsTableColumnCategory deserialize(final byte category) {
     switch (category) {
       case 0:
         return TAG;

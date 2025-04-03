@@ -50,6 +50,12 @@ public class ConfigTableInfo extends BasicMNodeInfo {
     this.table = table;
   }
 
+  @Override
+  public void setName(final String name) {
+    super.setName(name);
+    table.renameTable(name);
+  }
+
   public TableNodeStatus getStatus() {
     return status;
   }

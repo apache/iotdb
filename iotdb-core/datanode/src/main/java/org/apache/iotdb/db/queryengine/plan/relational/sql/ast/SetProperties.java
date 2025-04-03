@@ -33,7 +33,8 @@ public class SetProperties extends Statement {
 
   public enum Type {
     TABLE,
-    MATERIALIZED_VIEW
+    MATERIALIZED_VIEW,
+    TREE_VIEW,
   }
 
   private final Type type;

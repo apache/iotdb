@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.commons.exception.table.TableNotExistsException;
 import org.apache.iotdb.commons.schema.column.ColumnHeader;
 import org.apache.iotdb.commons.schema.column.ColumnHeaderConstant;
+import org.apache.iotdb.commons.schema.table.TableType;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
 import org.apache.iotdb.db.exception.sql.SemanticException;
@@ -39,6 +40,7 @@ import org.apache.tsfile.read.common.block.TsBlockBuilder;
 import org.apache.tsfile.utils.Binary;
 
 import java.util.List;
+import java.util.Objects;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
@@ -121,6 +123,10 @@ public class InformationSchemaUtils {
       if (isDetails) {
         builder.getColumnBuilder(2).writeBinary(new Binary("USING", TSFileConfig.STRING_CHARSET));
         builder.getColumnBuilder(3).appendNull();
+        // Does not support comment
+        builder
+            .getColumnBuilder(4)
+            .writeBinary(new Binary(TableType.SYSTEM_VIEW.getName(), TSFileConfig.STRING_CHARSET));
       }
       builder.declarePosition();
     }
@@ -139,6 +145,7 @@ public class InformationSchemaUtils {
       final String database,
       final String tableName,
       final boolean isDetails,
+      final Boolean isShowOrCreateView,
       final SettableFuture<ConfigTaskResult> future) {
     if (!database.equals(INFORMATION_DATABASE)) {
       return false;
@@ -148,6 +155,9 @@ public class InformationSchemaUtils {
           new TableNotExistsException(INFORMATION_DATABASE, tableName);
       future.setException(new IoTDBException(exception.getMessage(), exception.getErrorCode()));
       return true;
+    }
+    if (Objects.nonNull(isShowOrCreateView)) {
+      throw new SemanticException("The system view does not support show create.");
     }
     final TsTable table = getSchemaTables().get(tableName);
 

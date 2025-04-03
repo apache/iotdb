@@ -26,13 +26,14 @@ import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanVisitor;
 import org.apache.iotdb.confignode.consensus.request.write.auth.AuthorRelationalPlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.DatabaseSchemaPlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.DeleteDatabasePlan;
-import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeCreateTablePlan;
+import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeCreateTableOrViewPlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeDeleteDevicesPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.AbstractTablePlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.AddTableColumnPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.CommitDeleteColumnPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.CommitDeleteTablePlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.RenameTableColumnPlan;
+import org.apache.iotdb.confignode.consensus.request.write.table.RenameTablePlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.SetTableColumnCommentPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.SetTableCommentPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.SetTablePropertiesPlan;
@@ -77,12 +78,12 @@ public class PipeConfigPhysicalPlanTablePatternParseVisitor
   }
 
   @Override
-  public Optional<ConfigPhysicalPlan> visitPipeCreateTable(
-      final PipeCreateTablePlan pipeCreateTablePlan, final TablePattern pattern) {
+  public Optional<ConfigPhysicalPlan> visitPipeCreateTableOrView(
+      final PipeCreateTableOrViewPlan pipeCreateTableOrViewPlan, final TablePattern pattern) {
     return pattern.matchesDatabase(
-                PathUtils.unQualifyDatabaseName(pipeCreateTablePlan.getDatabase()))
-            && pattern.matchesTable(pipeCreateTablePlan.getTable().getTableName())
-        ? Optional.of(pipeCreateTablePlan)
+                PathUtils.unQualifyDatabaseName(pipeCreateTableOrViewPlan.getDatabase()))
+            && pattern.matchesTable(pipeCreateTableOrViewPlan.getTable().getTableName())
+        ? Optional.of(pipeCreateTableOrViewPlan)
         : Optional.empty();
   }
 
@@ -132,6 +133,12 @@ public class PipeConfigPhysicalPlanTablePatternParseVisitor
   public Optional<ConfigPhysicalPlan> visitSetTableColumnComment(
       final SetTableColumnCommentPlan setTableColumnCommentPlan, final TablePattern pattern) {
     return visitAbstractTablePlan(setTableColumnCommentPlan, pattern);
+  }
+
+  @Override
+  public Optional<ConfigPhysicalPlan> visitRenameTable(
+      final RenameTablePlan renameTablePlan, final TablePattern pattern) {
+    return visitAbstractTablePlan(renameTablePlan, pattern);
   }
 
   private Optional<ConfigPhysicalPlan> visitAbstractTablePlan(

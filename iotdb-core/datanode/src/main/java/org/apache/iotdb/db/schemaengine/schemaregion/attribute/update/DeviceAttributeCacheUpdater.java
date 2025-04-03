@@ -256,7 +256,7 @@ public class DeviceAttributeCacheUpdater {
   public void afterUpdate() {
     version.incrementAndGet();
     degrade();
-    GeneralRegionAttributeSecurityService.getInstance().notifyBroadCast();
+    GeneralRegionAttributeSecurityService.getInstance().advanceExecution();
   }
 
   private void degrade() {

@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher;
 
 import org.apache.iotdb.commons.exception.IoTDBException;
+import org.apache.iotdb.commons.schema.table.TreeViewSchema;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.column.AttributeColumnSchema;
 import org.apache.iotdb.commons.schema.table.column.FieldColumnSchema;
@@ -298,7 +299,7 @@ public class TableHeaderSchemaValidator {
         throw new ColumnCreationFailException(
             "Cannot create column " + columnSchema.getName() + " datatype is not provided");
       }
-      tsTable.addColumnSchema(generateColumnSchema(category, columnName, dataType, null));
+      tsTable.addColumnSchema(generateColumnSchema(category, columnName, dataType, null, null));
     }
   }
 
@@ -306,7 +307,8 @@ public class TableHeaderSchemaValidator {
       final TsTableColumnCategory category,
       final String columnName,
       final TSDataType dataType,
-      final @Nullable String comment) {
+      final @Nullable String comment,
+      final String from) {
     final TsTableColumnSchema schema;
     switch (category) {
       case TAG:
@@ -328,11 +330,18 @@ public class TableHeaderSchemaValidator {
             "Create table or add column statement shall not specify column category TIME");
       case FIELD:
         schema =
-            new FieldColumnSchema(
-                columnName,
-                dataType,
-                getDefaultEncoding(dataType),
-                TSFileDescriptor.getInstance().getConfig().getCompressor());
+            dataType != TSDataType.UNKNOWN
+                ? new FieldColumnSchema(
+                    columnName,
+                    dataType,
+                    getDefaultEncoding(dataType),
+                    TSFileDescriptor.getInstance().getConfig().getCompressor())
+                // Unknown appears only for tree view field when the type needs auto-detection
+                // Skip encoding & compressors because view query does not need these
+                : new FieldColumnSchema(columnName, dataType);
+        if (Objects.nonNull(from)) {
+          TreeViewSchema.setOriginalName(schema, from);
+        }
         break;
       default:
         throw new IllegalArgumentException();
@@ -358,7 +367,8 @@ public class TableHeaderSchemaValidator {
             parseInputColumnSchema(inputColumnList),
             context.getQueryId().getId(),
             true,
-            true);
+            true,
+            false);
     try {
       final ListenableFuture<ConfigTaskResult> future = task.execute(configTaskExecutor);
       final ConfigTaskResult result = future.get();

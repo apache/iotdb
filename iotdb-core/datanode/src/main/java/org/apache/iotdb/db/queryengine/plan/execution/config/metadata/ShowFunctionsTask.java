@@ -72,7 +72,7 @@ import static org.apache.iotdb.commons.conf.IoTDBConstant.FUNCTION_TYPE_USER_DEF
 
 public class ShowFunctionsTask implements IConfigTask {
 
-  private static final Map<String, Binary> BINARY_MAP = new HashMap<>();
+  public static final Map<String, Binary> BINARY_MAP = new HashMap<>();
 
   static {
     BINARY_MAP.put(FUNCTION_TYPE_NATIVE, BytesUtils.valueOf(FUNCTION_TYPE_NATIVE));
@@ -257,7 +257,7 @@ public class ShowFunctionsTask implements IConfigTask {
     }
   }
 
-  private static Binary getFunctionType(UDFInformation udfInformation) {
+  public static Binary getFunctionType(UDFInformation udfInformation) {
     UDFType type = udfInformation.getUdfType();
     if (udfInformation.isAvailable()) {
       if (type.isTreeModel()) {
@@ -279,7 +279,7 @@ public class ShowFunctionsTask implements IConfigTask {
     return BINARY_MAP.get(FUNCTION_TYPE_UNKNOWN);
   }
 
-  private static Binary getFunctionState(UDFInformation udfInformation) {
+  public static Binary getFunctionState(UDFInformation udfInformation) {
     if (udfInformation.isAvailable()) {
       return BINARY_MAP.get(FUNCTION_STATE_AVAILABLE);
     } else {
