@@ -36,7 +36,7 @@ public abstract class AbstractDefaultAggTableScanOperator extends AbstractAggTab
   private static final long INSTANCE_SIZE =
       RamUsageEstimator.shallowSizeOfInstance(AbstractDefaultAggTableScanOperator.class);
 
-  public AbstractDefaultAggTableScanOperator(AbstractAggTableScanOperatorParameter parameter) {
+  protected AbstractDefaultAggTableScanOperator(AbstractAggTableScanOperatorParameter parameter) {
     super(parameter);
   }
 
