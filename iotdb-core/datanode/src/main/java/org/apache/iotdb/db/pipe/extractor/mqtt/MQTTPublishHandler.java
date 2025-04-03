@@ -9,8 +9,6 @@ import org.apache.iotdb.commons.pipe.config.plugin.env.PipeTaskExtractorRuntimeE
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.service.metric.PerformanceOverviewMetrics;
 import org.apache.iotdb.db.auth.AuthorityChecker;
-import org.apache.iotdb.db.conf.IoTDBConfig;
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
 import org.apache.iotdb.db.protocol.mqtt.Message;
@@ -36,6 +34,7 @@ import io.moquette.interception.messages.InterceptPublishMessage;
 import io.netty.buffer.ByteBuf;
 import io.netty.handler.codec.mqtt.MqttQoS;
 import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.BitMap;
 import org.apache.tsfile.write.record.Tablet;
 import org.apache.tsfile.write.schema.MeasurementSchema;
@@ -49,13 +48,11 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-
 /** PublishHandler handle the messages from MQTT clients. */
 public class MQTTPublishHandler extends AbstractInterceptHandler {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(MQTTPublishHandler.class);
 
-  private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
   private final SessionManager sessionManager = SessionManager.getInstance();
 
   private final ConcurrentHashMap<String, MqttClientSession> clientIdToSessionMap =
@@ -73,7 +70,9 @@ public class MQTTPublishHandler extends AbstractInterceptHandler {
       UnboundedBlockingPendingQueue<EnrichedEvent> pendingQueue) {
     this.payloadFormat =
         PayloadFormatManager.getPayloadFormat(
-            pipeParameters.getStringOrDefault(PipeExtractorConstant.MQTT_PAYLOAD_FORMATTER_KEY, PipeExtractorConstant.MQTT_PAYLOAD_FORMATTER_DEFAULT_VALUE));
+            pipeParameters.getStringOrDefault(
+                PipeExtractorConstant.MQTT_PAYLOAD_FORMATTER_KEY,
+                PipeExtractorConstant.MQTT_PAYLOAD_FORMATTER_DEFAULT_VALUE));
     useTableInsert = PayloadFormatter.TABLE_TYPE.equals(this.payloadFormat.getType());
     pipeName = environment.getPipeName();
     creationTime = environment.getCreationTime();
@@ -171,65 +170,54 @@ public class MQTTPublishHandler extends AbstractInterceptHandler {
       tsStatus = checkAuthority(session);
       if (tsStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         LOGGER.warn(tsStatus.message);
-      }else {
+      } else {
         session.setDatabaseName(message.getDatabase().toLowerCase());
         session.setSqlDialect(IClientSession.SqlDialect.TABLE);
         EnrichedEvent event = generateEvent(message);
         if (!event.increaseReferenceCount(MQTTPublishHandler.class.getName())) {
-          LOGGER.warn("The reference count of the event {} cannot be increased, skipping it.", event);
+          LOGGER.warn(
+              "The reference count of the event {} cannot be increased, skipping it.", event);
         }
         pendingQueue.waitedOffer(event);
       }
     } catch (Exception e) {
       LOGGER.warn(
-              "meet error when extracting message database {}, table {}, tags {}, attributes {}, fields {}, at time {}, because ",
-              message.getDatabase(),
-              message.getTable(),
-              message.getTagKeys(),
-              message.getAttributeKeys(),
-              message.getFields(),
-              message.getTimestamp(),
-              e);
+          "meet error when polling mqtt source message database {}, table {}, tags {}, attributes {}, fields {}, at time {}, because ",
+          message.getDatabase(),
+          message.getTable(),
+          message.getTagKeys(),
+          message.getAttributeKeys(),
+          message.getFields(),
+          message.getTimestamp(),
+          e);
     }
-  }
-
-  private static TSStatus checkAuthority(MqttClientSession session) {
-    TSStatus tsStatus;
-    long startTime = System.nanoTime();
-    try {
-      tsStatus = AuthorityChecker.getTSStatus(
-              AuthorityChecker.SUPER_USER.equals(session.getUsername()),
-              "Only the admin user can perform this operation");
-    } finally {
-      PerformanceOverviewMetrics.getInstance().recordAuthCost(System.nanoTime() - startTime);
-    }
-    return tsStatus;
   }
 
   private PipeRawTabletInsertionEvent generateEvent(TableMessage message) {
-    List<String> measurements =
+    final List<String> measurements =
         Stream.of(message.getFields(), message.getTagKeys(), message.getAttributeKeys())
             .flatMap(List::stream)
             .collect(Collectors.toList());
-    long[] timestamps = new long[] {message.getTimestamp()};
-    int columnSize = measurements.size();
-
-    BitMap[] bitMaps = new BitMap[columnSize];
-    Object[] columns =
+    final long[] timestamps = new long[] {message.getTimestamp()};
+    final BitMap[] bitMaps = new BitMap[measurements.size()];
+    final Object[] columns =
         Stream.of(message.getValues(), message.getTagValues(), message.getAttributeValues())
             .flatMap(List::stream)
             .toArray(Object[]::new);
-    TSDataType[] dataTypes = new TSDataType[measurements.size()];
-    Tablet.ColumnCategory[] columnCategories = new Tablet.ColumnCategory[measurements.size()];
+    final TSDataType[] dataTypes = new TSDataType[measurements.size()];
+    final Tablet.ColumnCategory[] columnCategories = new Tablet.ColumnCategory[measurements.size()];
+    final MeasurementSchema[] schemas = new MeasurementSchema[measurements.size()];
     for (int i = 0; i < message.getFields().size(); i++) {
       dataTypes[i] = message.getDataTypes().get(i);
       columnCategories[i] = Tablet.ColumnCategory.FIELD;
+      schemas[i] = new MeasurementSchema(measurements.get(i), dataTypes[i]);
     }
     for (int i = message.getFields().size();
         i < message.getFields().size() + message.getTagKeys().size();
         i++) {
       dataTypes[i] = TSDataType.STRING;
       columnCategories[i] = Tablet.ColumnCategory.TAG;
+      schemas[i] = new MeasurementSchema(measurements.get(i), dataTypes[i]);
     }
     for (int i = message.getFields().size() + message.getTagKeys().size();
         i
@@ -239,65 +227,69 @@ public class MQTTPublishHandler extends AbstractInterceptHandler {
         i++) {
       dataTypes[i] = TSDataType.STRING;
       columnCategories[i] = Tablet.ColumnCategory.ATTRIBUTE;
+      schemas[i] = new MeasurementSchema(measurements.get(i), dataTypes[i]);
     }
-    final MeasurementSchema[] schemas = new MeasurementSchema[measurements.size()];
-    for (int i = 0; i < measurements.size(); i++) {
-      schemas[i] =  new MeasurementSchema(measurements.get(i), dataTypes[i]);
-    }
-    Tablet tabletForInsertRowNode =
-            new Tablet(
-                    message.getTable(),
-                    Arrays.asList(schemas),
-                    Arrays.asList(columnCategories),
-                    timestamps,
-                    columns,
-                    bitMaps,
-                    1);
+
+    Tablet eventTablet =
+        new Tablet(
+            message.getTable(),
+            Arrays.asList(schemas),
+            Arrays.asList(columnCategories),
+            timestamps,
+            columns,
+            bitMaps,
+            1);
 
     return new PipeRawTabletInsertionEvent(
-            true,
-            message.getDatabase(),
-            null,
-            null,
-            tabletForInsertRowNode,
-            false,
-            pipeName,
-            creationTime,
-            pipeTaskMeta,
-            null,
-            false);
-
+        true,
+        message.getDatabase(),
+        null,
+        null,
+        eventTablet,
+        false,
+        pipeName,
+        creationTime,
+        pipeTaskMeta,
+        null,
+        false);
   }
 
   private void ExtractTree(TreeMessage message, MqttClientSession session) {
     TSStatus tsStatus = null;
     try {
       TimestampPrecisionUtils.checkTimestampPrecision(message.getTimestamp());
-        tsStatus = checkAuthority(session);
-        if (tsStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-            LOGGER.warn(tsStatus.message);
-        }else {
-          EnrichedEvent event = generateEvent(message);
-          if (!event.increaseReferenceCount(MQTTPublishHandler.class.getName())) {
-            LOGGER.warn("The reference count of the event {} cannot be increased, skipping it.", event);
-          }
-          pendingQueue.waitedOffer(event);
+      tsStatus = checkAuthority(session);
+      if (tsStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        LOGGER.warn(tsStatus.message);
+      } else {
+        EnrichedEvent event = generateEvent(message);
+        if (!event.increaseReferenceCount(MQTTPublishHandler.class.getName())) {
+          LOGGER.warn(
+              "The reference count of the event {} cannot be increased, skipping it.", event);
         }
+        pendingQueue.waitedOffer(event);
+      }
     } catch (Exception e) {
-      LOGGER.error("Error polling external source", e);
+      LOGGER.warn(
+          "meet error when polling mqtt source device {}, measurements {}, at time {}, because ",
+          message.getDevice(),
+          message.getMeasurements(),
+          message.getTimestamp(),
+          e);
     }
   }
 
   private EnrichedEvent generateEvent(TreeMessage message) throws QueryProcessException {
-    String deviceId = message.getDevice();
-    List<String> measurements = message.getMeasurements();
-    long timestamp = message.getTimestamp();
+    final String deviceId = message.getDevice();
+    final List<String> measurements = message.getMeasurements();
+    final long[] timestamps = new long[] {message.getTimestamp()};
     final MeasurementSchema[] schemas = new MeasurementSchema[measurements.size()];
-    TSDataType[] dataTypes =
+    final TSDataType[] dataTypes =
         message.getDataTypes() == null
             ? new TSDataType[message.getMeasurements().size()]
             : message.getDataTypes().toArray(new TSDataType[0]);
-    List<String> values = message.getValues();
+    final List<String> values = message.getValues();
+    final BitMap[] bitMaps = new BitMap[schemas.length];
     if (message.getDataTypes() == null) {
       for (int index = 0; index < values.size(); ++index) {
         dataTypes[index] = TypeInferenceUtils.getPredictedDataType(values.get(index), true);
@@ -307,7 +299,8 @@ public class MQTTPublishHandler extends AbstractInterceptHandler {
     for (int i = 0; i < schemas.length; i++) {
       schemas[i] = new MeasurementSchema(measurements.get(i), dataTypes[i]);
     }
-    Object[] inferredValues = new Object[values.size()];
+    final Object[] inferredValues = new Object[values.size()];
+
     // For each measurement value, parse it and then wrap it in a one-dimensional array.
     for (int i = 0; i < values.size(); ++i) {
       Object parsedValue = CommonUtils.parseValue(dataTypes[i], values.get(i));
@@ -324,34 +317,43 @@ public class MQTTPublishHandler extends AbstractInterceptHandler {
         inferredValues[i] = new boolean[] {(Boolean) parsedValue};
       } else if (parsedValue instanceof String) {
         inferredValues[i] = new String[] {(String) parsedValue};
+      } else if (parsedValue instanceof Binary) {
+        inferredValues[i] = new Binary[] {(Binary) parsedValue};
       } else {
         // For any other type, wrap it as an Object array.
         inferredValues[i] = new Object[] {parsedValue};
       }
     }
-    BitMap[] bitMapsForInsertRowNode = new BitMap[schemas.length];
 
-    Tablet tabletForInsertRowNode =
-        new Tablet(
-            deviceId,
-            Arrays.asList(schemas),
-            new long[] {timestamp},
-            inferredValues,
-            bitMapsForInsertRowNode,
-            1);
+    Tablet eventTablet =
+        new Tablet(deviceId, Arrays.asList(schemas), timestamps, inferredValues, bitMaps, 1);
 
     return new PipeRawTabletInsertionEvent(
         false,
         deviceId,
         null,
         null,
-        tabletForInsertRowNode,
+        eventTablet,
         false,
         pipeName,
         creationTime,
         pipeTaskMeta,
         null,
         false);
+  }
+
+  private static TSStatus checkAuthority(MqttClientSession session) {
+    TSStatus tsStatus;
+    long startTime = System.nanoTime();
+    try {
+      tsStatus =
+          AuthorityChecker.getTSStatus(
+              AuthorityChecker.SUPER_USER.equals(session.getUsername()),
+              "Only the admin user can perform this operation");
+    } finally {
+      PerformanceOverviewMetrics.getInstance().recordAuthCost(System.nanoTime() - startTime);
+    }
+    return tsStatus;
   }
 
   @Override

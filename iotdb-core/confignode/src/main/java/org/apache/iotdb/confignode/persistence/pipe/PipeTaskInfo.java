@@ -47,6 +47,7 @@ import org.apache.iotdb.confignode.consensus.request.write.pipe.task.DropPipePla
 import org.apache.iotdb.confignode.consensus.request.write.pipe.task.OperateMultiplePipesPlanV2;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.task.SetPipeStatusPlanV2;
 import org.apache.iotdb.confignode.consensus.response.pipe.task.PipeTableResp;
+import org.apache.iotdb.confignode.manager.ConfigManager;
 import org.apache.iotdb.confignode.manager.pipe.resource.PipeConfigNodeResourceManager;
 import org.apache.iotdb.confignode.procedure.impl.pipe.runtime.PipeHandleMetaChangeProcedure;
 import org.apache.iotdb.confignode.procedure.impl.pipe.util.ExternalLoadBalancer;
@@ -631,13 +632,13 @@ public class PipeTaskInfo implements SnapshotProcessor {
                             // the data region group has already been removed"
                           }
                         }));
+    final ConfigManager configManager = ConfigNode.getInstance().getConfigManager();
     pipeMetaKeeper
         .getPipeMetaList()
         .forEach(
             pipeMeta -> {
               if (pipeMeta.getStaticMeta().isSourceExternal()) {
-                final ExternalLoadBalancer loadBalancer =
-                    new ExternalLoadBalancer(ConfigNode.getInstance().getConfigManager());
+                final ExternalLoadBalancer loadBalancer = new ExternalLoadBalancer(configManager);
                 final int parallelism =
                     pipeMeta
                         .getStaticMeta()
@@ -646,14 +647,12 @@ public class PipeTaskInfo implements SnapshotProcessor {
                             Arrays.asList(
                                 EXTERNAL_EXTRACTOR_PARALLELISM_KEY,
                                 EXTERNAL_SOURCE_PARALLELISM_KEY),
-                            Integer.parseInt(EXTERNAL_EXTRACTOR_PARALLELISM_DEFAULT_VALUE));
+                            EXTERNAL_EXTRACTOR_PARALLELISM_DEFAULT_VALUE);
                 loadBalancer
                     .balance(
                         parallelism,
-                        ConfigNode.getInstance()
-                            .getConfigManager()
-                            .getLoadManager()
-                            .getRegionLeaderMap())
+                        configManager.getLoadManager().getRegionLeaderMap(),
+                        pipeMeta.getStaticMeta())
                     .forEach(
                         (taskIndex, newLeader) -> {
                           if (newLeader != -1) {

@@ -282,9 +282,12 @@ public class CreatePipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
               .getIntOrDefault(
                   Arrays.asList(
                       EXTERNAL_EXTRACTOR_PARALLELISM_KEY, EXTERNAL_SOURCE_PARALLELISM_KEY),
-                  Integer.parseInt(EXTERNAL_EXTRACTOR_PARALLELISM_DEFAULT_VALUE));
+                  EXTERNAL_EXTRACTOR_PARALLELISM_DEFAULT_VALUE);
       loadBalancer
-          .balance(parallelism, env.getConfigManager().getLoadManager().getRegionLeaderMap())
+          .balance(
+              parallelism,
+              env.getConfigManager().getLoadManager().getRegionLeaderMap(),
+              pipeStaticMeta)
           .forEach(
               (taskIndex, leaderNodeId) -> {
                 consensusGroupIdToTaskMetaMap.put(

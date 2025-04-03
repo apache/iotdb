@@ -49,7 +49,8 @@ public class PipeTaskExtractorStage extends PipeTaskStage {
       PipeTaskMeta pipeTaskMeta) {
     pipeExtractor =
         StorageEngine.getInstance().getAllDataRegionIds().contains(new DataRegionId(regionId))
-                // regionId that is less than 0 means an external pipe source, use dataRegionExtractor
+                // regionId that is less than 0 means an external pipe source, use
+                // dataRegionExtractor
                 || regionId < 0
             ? PipeDataNodeAgent.plugin().dataRegion().reflectExtractor(extractorParameters)
             : PipeDataNodeAgent.plugin().schemaRegion().reflectExtractor(extractorParameters);

@@ -150,7 +150,11 @@ public class PipeExtractorConstant {
   ////////////////// external sources ////////////////
   public static final String EXTERNAL_EXTRACTOR_PARALLELISM_KEY = "extractor.parallelism";
   public static final String EXTERNAL_SOURCE_PARALLELISM_KEY = "source.parallelism";
-  public static final String EXTERNAL_EXTRACTOR_PARALLELISM_DEFAULT_VALUE = "1";
+  public static final int EXTERNAL_EXTRACTOR_PARALLELISM_DEFAULT_VALUE = 1;
+  public static final String EXTERNAL_EXTRACTOR_SINGLE_INSTANCE_PER_NODE_KEY =
+      "extractor.single-mode";
+  public static final String EXTERNAL_SOURCE_SINGLE_INSTANCE_PER_NODE_KEY = "source.single-mode";
+  public static final boolean EXTERNAL_EXTRACTOR_SINGLE_INSTANCE_PER_NODE_DEFAULT_VALUE = false;
 
   public static final String MQTT_BROKER_HOST_KEY = "mqtt.host";
   public static final String MQTT_BROKER_HOST_DEFAULT_VALUE = "127.0.0.1";
@@ -161,10 +165,9 @@ public class PipeExtractorConstant {
   public static final String MQTT_DATA_PATH_PROPERTY_NAME_KEY = "mqtt.data-path";
   public static final String MQTT_DATA_PATH_PROPERTY_NAME_DEFAULT_VALUE = "data/";
   public static final String MQTT_NETTY_MAX_BYTES_PROPERTY_NAME_KEY = "mqtt.max-message-size";
-    public static final String MQTT_NETTY_MAX_BYTES_PROPERTY_NAME_DEFAULT_VALUE = "1048576";
-    public static final String MQTT_PAYLOAD_FORMATTER_KEY = "mqtt.payload-formatter";
-    public static final String MQTT_PAYLOAD_FORMATTER_DEFAULT_VALUE = "json";
-
+  public static final String MQTT_NETTY_MAX_BYTES_PROPERTY_NAME_DEFAULT_VALUE = "1048576";
+  public static final String MQTT_PAYLOAD_FORMATTER_KEY = "mqtt.payload-formatter";
+  public static final String MQTT_PAYLOAD_FORMATTER_DEFAULT_VALUE = "json";
 
   ///////////////////// pipe consensus /////////////////////
 

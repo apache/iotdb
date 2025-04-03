@@ -1,13 +1,10 @@
 package org.apache.iotdb.db.pipe.extractor.mqtt;
 
-import org.apache.iotdb.commons.consensus.index.impl.IoTProgressIndex;
 import org.apache.iotdb.commons.pipe.agent.task.connection.UnboundedBlockingPendingQueue;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
 import org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant;
 import org.apache.iotdb.commons.pipe.config.plugin.env.PipeTaskExtractorRuntimeEnvironment;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
-import org.apache.iotdb.db.conf.IoTDBConfig;
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.pipe.metric.source.PipeDataRegionEventCounter;
 import org.apache.iotdb.db.protocol.mqtt.BrokerAuthenticator;
 import org.apache.iotdb.pipe.api.PipeExtractor;
@@ -17,6 +14,7 @@ import org.apache.iotdb.pipe.api.customizer.configuration.PipeExtractorRuntimeCo
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameterValidator;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 import org.apache.iotdb.pipe.api.event.Event;
+import org.apache.iotdb.pipe.api.exception.PipeParameterNotValidException;
 
 import io.moquette.BrokerConstants;
 import io.moquette.broker.Server;
@@ -29,11 +27,10 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
-import java.util.Objects;
 import java.util.Properties;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicLong;
 
 @TreeModel
 @TableModel
@@ -54,9 +51,17 @@ public class MQTTExtractor implements PipeExtractor {
 
   protected final AtomicBoolean isClosed = new AtomicBoolean(false);
 
-
   @Override
   public void validate(PipeParameterValidator validator) throws Exception {
+    if (!validator
+        .getParameters()
+        .getBooleanOrDefault(
+            Arrays.asList(
+                PipeExtractorConstant.EXTERNAL_EXTRACTOR_SINGLE_INSTANCE_PER_NODE_KEY,
+                PipeExtractorConstant.EXTERNAL_SOURCE_SINGLE_INSTANCE_PER_NODE_KEY),
+            PipeExtractorConstant.EXTERNAL_EXTRACTOR_SINGLE_INSTANCE_PER_NODE_DEFAULT_VALUE)) {
+      throw new PipeParameterNotValidException("single mode should be true in MQTT extractor");
+    }
   }
 
   @Override
@@ -81,9 +86,10 @@ public class MQTTExtractor implements PipeExtractor {
       throw new RuntimeException("Exception while starting server", e);
     }
 
-    LOGGER.info("Start MQTT Extractor successfully,listening on ip {} port {}",
-            config.getProperty(BrokerConstants.HOST_PROPERTY_NAME),
-            config.getProperty(BrokerConstants.PORT_PROPERTY_NAME));
+    LOGGER.info(
+        "Start MQTT Extractor successfully,listening on ip {} port {}",
+        config.getProperty(BrokerConstants.HOST_PROPERTY_NAME),
+        config.getProperty(BrokerConstants.PORT_PROPERTY_NAME));
 
     Runtime.getRuntime()
         .addShutdownHook(
@@ -115,22 +121,35 @@ public class MQTTExtractor implements PipeExtractor {
   private IConfig createBrokerConfig(PipeParameters pipeParameters) {
     Properties properties = new Properties();
     properties.setProperty(
-        BrokerConstants.HOST_PROPERTY_NAME, pipeParameters.getStringOrDefault(PipeExtractorConstant.MQTT_BROKER_HOST_KEY, PipeExtractorConstant.MQTT_BROKER_HOST_DEFAULT_VALUE));
+        BrokerConstants.HOST_PROPERTY_NAME,
+        pipeParameters.getStringOrDefault(
+            PipeExtractorConstant.MQTT_BROKER_HOST_KEY,
+            PipeExtractorConstant.MQTT_BROKER_HOST_DEFAULT_VALUE));
     properties.setProperty(
-        BrokerConstants.PORT_PROPERTY_NAME, pipeParameters.getStringOrDefault(PipeExtractorConstant.MQTT_BROKER_PORT_KEY, PipeExtractorConstant.MQTT_BROKER_PORT_DEFAULT_VALUE));
+        BrokerConstants.PORT_PROPERTY_NAME,
+        pipeParameters.getStringOrDefault(
+            PipeExtractorConstant.MQTT_BROKER_PORT_KEY,
+            PipeExtractorConstant.MQTT_BROKER_PORT_DEFAULT_VALUE));
     properties.setProperty(
         BrokerConstants.BROKER_INTERCEPTOR_THREAD_POOL_SIZE,
-        pipeParameters.getStringOrDefault(PipeExtractorConstant.MQTT_BROKER_INTERCEPTOR_THREAD_POOL_SIZE_KEY,
+        pipeParameters.getStringOrDefault(
+            PipeExtractorConstant.MQTT_BROKER_INTERCEPTOR_THREAD_POOL_SIZE_KEY,
             PipeExtractorConstant.MQTT_BROKER_INTERCEPTOR_THREAD_POOL_SIZE_DEFAULT_VALUE));
     properties.setProperty(
         BrokerConstants.DATA_PATH_PROPERTY_NAME,
-        pipeParameters.getStringOrDefault(PipeExtractorConstant.MQTT_DATA_PATH_PROPERTY_NAME_KEY, PipeExtractorConstant.MQTT_DATA_PATH_PROPERTY_NAME_DEFAULT_VALUE));
+        pipeParameters.getStringOrDefault(
+            PipeExtractorConstant.MQTT_DATA_PATH_PROPERTY_NAME_KEY,
+            PipeExtractorConstant.MQTT_DATA_PATH_PROPERTY_NAME_DEFAULT_VALUE));
     properties.setProperty(BrokerConstants.IMMEDIATE_BUFFER_FLUSH_PROPERTY_NAME, "true");
     properties.setProperty(BrokerConstants.ALLOW_ANONYMOUS_PROPERTY_NAME, "true");
     properties.setProperty(BrokerConstants.ALLOW_ZERO_BYTE_CLIENT_ID_PROPERTY_NAME, "true");
     properties.setProperty(
         BrokerConstants.NETTY_MAX_BYTES_PROPERTY_NAME,
-        String.valueOf(pipeParameters.getIntOrDefault(PipeExtractorConstant.MQTT_NETTY_MAX_BYTES_PROPERTY_NAME_KEY, Integer.parseInt(PipeExtractorConstant.MQTT_NETTY_MAX_BYTES_PROPERTY_NAME_DEFAULT_VALUE))));
+        String.valueOf(
+            pipeParameters.getIntOrDefault(
+                PipeExtractorConstant.MQTT_NETTY_MAX_BYTES_PROPERTY_NAME_KEY,
+                Integer.parseInt(
+                    PipeExtractorConstant.MQTT_NETTY_MAX_BYTES_PROPERTY_NAME_DEFAULT_VALUE))));
     return new MemoryConfig(properties);
   }
 
