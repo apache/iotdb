@@ -610,7 +610,10 @@ public class IoTDBDatabaseIT {
               "select distinct(function_type) from information_schema.functions"),
           "function_type,",
           new HashSet<>(
-              Arrays.asList("built-in scalar function,", "built-in aggregate function,")));
+              Arrays.asList(
+                  "built-in scalar function,",
+                  "built-in aggregate function,",
+                  "built-in table function,")));
 
       TestUtils.assertResultSetEqual(
           statement.executeQuery(
