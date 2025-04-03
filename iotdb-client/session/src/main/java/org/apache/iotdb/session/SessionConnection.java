@@ -852,6 +852,45 @@ public class SessionConnection {
     return new RetryResult<>(status, lastTException, i);
   }
 
+  /**
+   *
+   * reconnect if the remote datanode is unreachable
+   * retry if the status is set to needRetry
+   */
+  private RetryResult<TSStatus> callWithRetryAndReconnect(TFunction<TSStatus> rpc) {
+    TException lastTException = null;
+    TSStatus status = null;
+    int retryAttempt;
+    for (retryAttempt = 0; retryAttempt <= maxRetryCount; retryAttempt++) {
+      // 1. try to execute the rpc
+      try {
+        status = rpc.run();
+      } catch (TException e) {
+        lastTException = e;
+      }
+
+      // success, return immediately
+      if (status != null && !status.isSetNeedRetry() && !status.isNeedRetry()) {
+        return new RetryResult<>(status, null, retryAttempt);
+      }
+
+      // prepare for the next retry
+      reconnect();
+      try {
+          TimeUnit.MILLISECONDS.sleep(retryIntervalInMs);
+        } catch (InterruptedException e) {
+          Thread.currentThread().interrupt();
+          logger.warn(
+              "Thread {} was interrupted during retry {} with wait time {} ms. Exiting retry loop.",
+              Thread.currentThread().getName(),
+              retryAttempt,
+              retryIntervalInMs);
+          break;
+        }
+    }
+    return new RetryResult<>(status, lastTException, retryAttempt);
+  }
+
   private TSStatus deleteDataInternal(TSDeleteDataReq request) throws TException {
     request.setSessionId(sessionId);
     return client.deleteData(request);
