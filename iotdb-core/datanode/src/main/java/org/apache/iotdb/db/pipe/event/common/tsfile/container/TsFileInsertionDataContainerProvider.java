@@ -79,7 +79,7 @@ public class TsFileInsertionDataContainerProvider {
 
     // Use scan container to save memory
     if ((double) PipeDataNodeResourceManager.memory().getUsedMemorySizeInBytes()
-            / PipeDataNodeResourceManager.memory().getTotalMemorySizeInBytes()
+            / PipeDataNodeResourceManager.memory().getTotalNonFloatingMemorySizeInBytes()
         > PipeTsFileResource.MEMORY_SUFFICIENT_THRESHOLD) {
       return new TsFileInsertionScanDataContainer(
           pipeName, creationTime, tsFile, pattern, startTime, endTime, pipeTaskMeta, sourceEvent);

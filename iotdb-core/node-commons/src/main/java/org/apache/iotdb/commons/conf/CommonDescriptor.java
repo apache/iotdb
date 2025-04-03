@@ -299,6 +299,11 @@ public class CommonDescriptor {
                 "pipe_data_structure_ts_file_memory_block_allocation_reject_threshold",
                 String.valueOf(
                     config.getPipeDataStructureTsFileMemoryBlockAllocationRejectThreshold()))));
+    config.setPipeTotalFloatingMemoryProportion(
+        Double.parseDouble(
+            properties.getProperty(
+                "pipe_total_floating_memory_proportion",
+                String.valueOf(config.getPipeTotalFloatingMemoryProportion()))));
 
     config.setPipeRealTimeQueuePollTsFileThreshold(
         Integer.parseInt(
