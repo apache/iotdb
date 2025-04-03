@@ -36,6 +36,7 @@ import org.apache.tsfile.utils.DateUtils;
 
 import java.nio.ByteBuffer;
 import java.sql.Timestamp;
+import java.time.LocalDate;
 import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.BitSet;
@@ -375,7 +376,7 @@ public class IoTDBRpcDataSet {
     int index = columnOrdinalMap.get(findColumnNameByIndex(columnIndex)) - START_INDEX;
     // time column will never be null
     if (index < 0) {
-      return true;
+      return false;
     }
     return isNull(index, tsBlockIndex);
   }
@@ -384,7 +385,7 @@ public class IoTDBRpcDataSet {
     int index = columnOrdinalMap.get(columnName) - START_INDEX;
     // time column will never be null
     if (index < 0) {
-      return true;
+      return false;
     }
     return isNull(index, tsBlockIndex);
   }
@@ -519,11 +520,49 @@ public class IoTDBRpcDataSet {
   }
 
   public Timestamp getTimestamp(int columnIndex) throws StatementExecutionException {
-    return new Timestamp(getLong(columnIndex));
+    return getTimestamp(findColumnNameByIndex(columnIndex));
   }
 
   public Timestamp getTimestamp(String columnName) throws StatementExecutionException {
-    return getTimestamp(findColumn(columnName));
+    checkRecord();
+    if (columnName.equals(TIMESTAMP_STR)) {
+      return new Timestamp(curTsBlock.getTimeByIndex(tsBlockIndex));
+    }
+    int index = columnOrdinalMap.get(columnName) - START_INDEX;
+    if (!isNull(index, tsBlockIndex)) {
+      lastReadWasNull = false;
+      TSDataType type = curTsBlock.getColumn(index).getDataType();
+      if (type == TSDataType.INT32) {
+        return new Timestamp(curTsBlock.getColumn(index).getInt(tsBlockIndex));
+      } else {
+        return new Timestamp(curTsBlock.getColumn(index).getLong(tsBlockIndex));
+      }
+    } else {
+      lastReadWasNull = true;
+      return null;
+    }
+  }
+
+  public LocalDate getDate(int columnIndex) throws StatementExecutionException {
+    return getDate(findColumnNameByIndex(columnIndex));
+  }
+
+  public LocalDate getDate(String columnName) throws StatementExecutionException {
+    checkRecord();
+    int index = columnOrdinalMap.get(columnName) - START_INDEX;
+    if (!isNull(index, tsBlockIndex)) {
+      lastReadWasNull = false;
+      TSDataType type = curTsBlock.getColumn(index).getDataType();
+      if (type == TSDataType.INT64) {
+        return DateUtils.parseIntToLocalDate(
+            (int) curTsBlock.getColumn(index).getLong(tsBlockIndex));
+      } else {
+        return DateUtils.parseIntToLocalDate(curTsBlock.getColumn(index).getInt(tsBlockIndex));
+      }
+    } else {
+      lastReadWasNull = true;
+      return null;
+    }
   }
 
   public TSDataType getDataType(int columnIndex) throws StatementExecutionException {
