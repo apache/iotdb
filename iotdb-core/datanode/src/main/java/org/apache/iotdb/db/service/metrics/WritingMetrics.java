@@ -447,6 +447,8 @@ public class WritingMetrics implements IMetricSet {
   private Counter manualFlushMemtableCounter = DoNothingMetricManager.DO_NOTHING_COUNTER;
   private Counter memControlFlushMemtableCounter = DoNothingMetricManager.DO_NOTHING_COUNTER;
 
+  private Histogram avgPointHistogram = DoNothingMetricManager.DO_NOTHING_HISTOGRAM;
+
   public void bindDataRegionMetrics() {
     List<DataRegion> allDataRegions = StorageEngine.getInstance().getAllDataRegions();
     List<DataRegionId> allDataRegionIds = StorageEngine.getInstance().getAllDataRegionIds();
@@ -563,13 +565,7 @@ public class WritingMetrics implements IMetricSet {
   }
 
   public void createFlushingMemTableStatusMetrics(DataRegionId dataRegionId) {
-    Arrays.asList(
-            MEM_TABLE_SIZE,
-            SERIES_NUM,
-            POINTS_NUM,
-            AVG_SERIES_POINT_NUM,
-            COMPRESSION_RATIO,
-            FLUSH_TSFILE_SIZE)
+    Arrays.asList(MEM_TABLE_SIZE, SERIES_NUM, POINTS_NUM, COMPRESSION_RATIO, FLUSH_TSFILE_SIZE)
         .forEach(
             name ->
                 MetricService.getInstance()
@@ -580,6 +576,15 @@ public class WritingMetrics implements IMetricSet {
                         name,
                         Tag.REGION.toString(),
                         dataRegionId.toString()));
+    avgPointHistogram =
+        MetricService.getInstance()
+            .getOrCreateHistogram(
+                Metric.FLUSHING_MEM_TABLE_STATUS.toString(),
+                MetricLevel.IMPORTANT,
+                Tag.NAME.toString(),
+                AVG_SERIES_POINT_NUM,
+                Tag.REGION.toString(),
+                dataRegionId.toString());
   }
 
   public Counter createWalFlushMemTableCounterMetrics() {
@@ -700,6 +705,7 @@ public class WritingMetrics implements IMetricSet {
                         name,
                         Tag.REGION.toString(),
                         dataRegionId.toString()));
+    avgPointHistogram = DoNothingMetricManager.DO_NOTHING_HISTOGRAM;
   }
 
   public void recordWALNodeEffectiveInfoRatio(String walNodeId, double ratio) {
@@ -785,15 +791,7 @@ public class WritingMetrics implements IMetricSet {
             POINTS_NUM,
             Tag.REGION.toString(),
             dataRegionId.toString());
-    MetricService.getInstance()
-        .histogram(
-            avgSeriesNum,
-            Metric.FLUSHING_MEM_TABLE_STATUS.toString(),
-            MetricLevel.IMPORTANT,
-            Tag.NAME.toString(),
-            AVG_SERIES_POINT_NUM,
-            Tag.REGION.toString(),
-            dataRegionId.toString());
+    avgPointHistogram.update(avgSeriesNum);
   }
 
   public void recordFlushTsFileSize(String storageGroup, long size) {
@@ -985,5 +983,9 @@ public class WritingMetrics implements IMetricSet {
 
   public static WritingMetrics getInstance() {
     return INSTANCE;
+  }
+
+  public Histogram getAvgPointHistogram() {
+    return avgPointHistogram;
   }
 }

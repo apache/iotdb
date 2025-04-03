@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.memory.MemoryBlockType;
 import org.apache.iotdb.db.conf.DataNodeMemoryConfig;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.service.metrics.memory.StorageEngineMemoryMetrics;
 import org.apache.iotdb.db.utils.datastructure.TVListSortAlgorithm;
 
 import org.apache.tsfile.enums.TSDataType;
@@ -85,6 +86,9 @@ public class PrimitiveArrayManager {
   }
 
   private static final AtomicLong TOTAL_ALLOCATION_REQUEST_COUNT = new AtomicLong(0);
+
+  // TODO remove
+  private static volatile long lastPrintTimeMs = 0;
 
   static {
     init();
@@ -153,8 +157,14 @@ public class PrimitiveArrayManager {
     synchronized (POOLED_ARRAYS[order]) {
       array = POOLED_ARRAYS[order].poll();
     }
+    StorageEngineMemoryMetrics.getInstance().incPamAllocation();
     if (array == null) {
       array = createPrimitiveArray(dataType);
+      StorageEngineMemoryMetrics.getInstance().incPamAllocationFailure();
+    }
+
+    if (System.currentTimeMillis() - lastPrintTimeMs > 10_000L) {
+      printStatus();
     }
     return array;
   }
@@ -278,11 +288,18 @@ public class PrimitiveArrayManager {
       throw new UnSupportedDataTypeException(array.getClass().toString());
     }
 
+    StorageEngineMemoryMetrics.getInstance().incPamRelease();
     synchronized (POOLED_ARRAYS[order]) {
       ArrayDeque<Object> arrays = POOLED_ARRAYS[order];
       if (arrays.size() < LIMITS[order]) {
         arrays.add(array);
+      } else {
+        StorageEngineMemoryMetrics.getInstance().incPamReleaseFailure();
       }
+    }
+
+    if (System.currentTimeMillis() - lastPrintTimeMs > 10_000L) {
+      printStatus();
     }
   }
 
@@ -347,5 +364,15 @@ public class PrimitiveArrayManager {
 
   public static int getArrayRowCount(int size) {
     return size / ARRAY_SIZE + (size % ARRAY_SIZE == 0 ? 0 : 1);
+  }
+
+  public static void printStatus() {
+    LOGGER.info(
+        "Allocation(failure): {}({}); Release(failure): {}({})",
+        StorageEngineMemoryMetrics.getInstance().getPamAllocation(),
+        StorageEngineMemoryMetrics.getInstance().getPamAllocationFailure(),
+        StorageEngineMemoryMetrics.getInstance().getPamRelease(),
+        StorageEngineMemoryMetrics.getInstance().getPamReleaseFailure());
+    lastPrintTimeMs = System.currentTimeMillis();
   }
 }
