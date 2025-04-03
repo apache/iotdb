@@ -548,7 +548,7 @@ public class IoTDBDatabaseIT {
       TestUtils.assertResultSetEqual(
           statement.executeQuery("count devices from tables where status = 'USING'"),
           "count(devices),",
-          Collections.singleton("10,"));
+          Collections.singleton("15,"));
       TestUtils.assertResultSetEqual(
           statement.executeQuery(
               "select * from columns where table_name = 'queries' or database = 'test'"),
@@ -564,7 +564,12 @@ public class IoTDBDatabaseIT {
                   "test,test,time,TIMESTAMP,TIME,USING,null,",
                   "test,test,a,STRING,TAG,USING,null,",
                   "test,test,b,STRING,ATTRIBUTE,USING,null,",
-                  "test,test,c,INT32,FIELD,USING,turbine,")));
+                  "test,test,c,INT32,FIELD,USING,turbine,",
+                  "test,view_table,time,TIMESTAMP,TIME,USING,null,",
+                  "test,view_table,tag1,STRING,TAG,USING,null,",
+                  "test,view_table,tag2,STRING,TAG,USING,null,",
+                  "test,view_table,s11,INT32,FIELD,USING,null,",
+                  "test,view_table,s3,INT32,FIELD,USING,null,")));
 
       statement.execute(
           "create pipe a2b with source('double-living'='true') with sink ('sink'='write-back-sink')");
