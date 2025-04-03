@@ -66,6 +66,8 @@ import static org.apache.tsfile.common.constant.TsFileConstant.PATH_SEPARATOR;
 
 public class FastNonAlignedCrossCompactionTest extends AbstractCompactionTest {
 
+  private boolean prevUseMultiType = false;
+
   @Before
   public void setUp()
       throws IOException, WriteProcessException, MetadataException, InterruptedException {
@@ -74,6 +76,8 @@ public class FastNonAlignedCrossCompactionTest extends AbstractCompactionTest {
     IoTDBDescriptor.getInstance().getConfig().setTargetChunkPointNum(100);
     TSFileDescriptor.getInstance().getConfig().setMaxNumberOfPointsInPage(30);
     TSFileDescriptor.getInstance().getConfig().setMaxDegreeOfIndexNode(3);
+    prevUseMultiType = org.apache.tsfile.utils.TsFileGeneratorUtils.useMultiType;
+    org.apache.tsfile.utils.TsFileGeneratorUtils.useMultiType = true;
   }
 
   @After
@@ -85,6 +89,7 @@ public class FastNonAlignedCrossCompactionTest extends AbstractCompactionTest {
     for (TsFileResource tsFileResource : unseqResources) {
       FileReaderManager.getInstance().closeFileAndRemoveReader(tsFileResource.getTsFilePath());
     }
+    org.apache.tsfile.utils.TsFileGeneratorUtils.useMultiType = prevUseMultiType;
   }
 
   @Test

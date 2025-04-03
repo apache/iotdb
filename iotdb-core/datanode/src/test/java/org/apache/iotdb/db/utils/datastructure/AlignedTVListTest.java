@@ -227,25 +227,25 @@ public class AlignedTVListTest {
     Assert.assertEquals(tvList.memoryBinaryChunkSize[1], 720);
 
     tvList.deleteColumn(0);
-    Assert.assertEquals(tvList.memoryBinaryChunkSize.length, 2);
-    Assert.assertEquals(tvList.memoryBinaryChunkSize[1], 720);
+    Assert.assertEquals(tvList.memoryBinaryChunkSize.length, 1);
+    Assert.assertEquals(tvList.memoryBinaryChunkSize[0], 720);
 
     tvList.extendColumn(TSDataType.INT32);
-    Assert.assertEquals(tvList.memoryBinaryChunkSize.length, 3);
-    Assert.assertEquals(tvList.memoryBinaryChunkSize[1], 720);
+    Assert.assertEquals(tvList.memoryBinaryChunkSize.length, 2);
+    Assert.assertEquals(tvList.memoryBinaryChunkSize[0], 720);
 
     tvList.extendColumn(TSDataType.TEXT);
-    Assert.assertEquals(tvList.memoryBinaryChunkSize.length, 4);
-    Assert.assertEquals(tvList.memoryBinaryChunkSize[1], 720);
-    Assert.assertEquals(tvList.memoryBinaryChunkSize[2], 0);
+    Assert.assertEquals(tvList.memoryBinaryChunkSize.length, 3);
+    Assert.assertEquals(tvList.memoryBinaryChunkSize[0], 720);
+    Assert.assertEquals(tvList.memoryBinaryChunkSize[1], 0);
 
     tvList.delete(4, 6);
-    Assert.assertEquals(tvList.memoryBinaryChunkSize.length, 4);
-    Assert.assertEquals(tvList.memoryBinaryChunkSize[1], 720);
-    Assert.assertEquals(tvList.memoryBinaryChunkSize[2], 0);
+    Assert.assertEquals(tvList.memoryBinaryChunkSize.length, 3);
+    Assert.assertEquals(tvList.memoryBinaryChunkSize[0], 720);
+    Assert.assertEquals(tvList.memoryBinaryChunkSize[1], 0);
 
     tvList.clear();
+    Assert.assertEquals(tvList.memoryBinaryChunkSize[0], 0);
     Assert.assertEquals(tvList.memoryBinaryChunkSize[1], 0);
-    Assert.assertEquals(tvList.memoryBinaryChunkSize[2], 0);
   }
 }
