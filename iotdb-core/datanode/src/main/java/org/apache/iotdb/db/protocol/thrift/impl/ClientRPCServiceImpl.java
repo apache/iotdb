@@ -53,9 +53,6 @@ import org.apache.iotdb.db.protocol.client.ConfigNodeInfo;
 import org.apache.iotdb.db.protocol.session.IClientSession;
 import org.apache.iotdb.db.protocol.session.SessionManager;
 import org.apache.iotdb.db.protocol.thrift.OperationType;
-import org.apache.iotdb.db.queryengine.common.FragmentInstanceId;
-import org.apache.iotdb.db.queryengine.common.PlanFragmentId;
-import org.apache.iotdb.db.queryengine.common.QueryId;
 import org.apache.iotdb.db.queryengine.common.SessionInfo;
 import org.apache.iotdb.db.queryengine.common.header.ColumnHeader;
 import org.apache.iotdb.db.queryengine.common.header.DatasetHeader;
@@ -63,14 +60,12 @@ import org.apache.iotdb.db.queryengine.common.header.DatasetHeaderFactory;
 import org.apache.iotdb.db.queryengine.execution.aggregation.AccumulatorFactory;
 import org.apache.iotdb.db.queryengine.execution.aggregation.Aggregator;
 import org.apache.iotdb.db.queryengine.execution.driver.DriverContext;
-import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceContext;
-import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceManager;
-import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceStateMachine;
+import org.apache.iotdb.db.queryengine.execution.fragment.FakedFragmentInstanceContext;
+import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
 import org.apache.iotdb.db.queryengine.execution.operator.process.last.LastQueryUtil;
 import org.apache.iotdb.db.queryengine.execution.operator.source.AbstractSeriesAggregationScanOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.AlignedSeriesAggregationScanOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.SeriesAggregationScanOperator;
-import org.apache.iotdb.db.queryengine.execution.operator.source.SeriesScanOperator;
 import org.apache.iotdb.db.queryengine.plan.Coordinator;
 import org.apache.iotdb.db.queryengine.plan.analyze.ClusterPartitionFetcher;
 import org.apache.iotdb.db.queryengine.plan.analyze.IPartitionFetcher;
@@ -109,6 +104,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.metadata.template.UnsetSch
 import org.apache.iotdb.db.schemaengine.template.TemplateQueryType;
 import org.apache.iotdb.db.storageengine.StorageEngine;
 import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
+import org.apache.iotdb.db.storageengine.dataregion.read.QueryDataSource;
 import org.apache.iotdb.db.storageengine.rescon.quotas.DataNodeThrottleQuotaManager;
 import org.apache.iotdb.db.storageengine.rescon.quotas.OperationQuota;
 import org.apache.iotdb.db.subscription.agent.SubscriptionAgent;
@@ -205,7 +201,6 @@ import java.util.concurrent.TimeUnit;
 
 import static org.apache.iotdb.commons.partition.DataPartition.NOT_ASSIGNED;
 import static org.apache.iotdb.db.queryengine.common.DataNodeEndPoints.isSameNode;
-import static org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceContext.createFragmentInstanceContext;
 import static org.apache.iotdb.db.queryengine.execution.operator.AggregationUtil.initTimeRangeIterator;
 import static org.apache.iotdb.db.utils.CommonUtils.getContentOfRequest;
 import static org.apache.iotdb.db.utils.CommonUtils.getContentOfTSFastLastDataQueryForOneDeviceReq;
@@ -244,7 +239,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
 
   private final DataNodeSchemaCache DATA_NODE_SCHEMA_CACHE = DataNodeSchemaCache.getInstance();
 
-  public static Duration DEFAULT_TIME_SLICE = new Duration(60_000, TimeUnit.MILLISECONDS);
+  public static final Duration DEFAULT_TIME_SLICE = new Duration(60_000, TimeUnit.MILLISECONDS);
 
   private static final int DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES =
       TSFileDescriptor.getInstance().getConfig().getMaxTsBlockSizeInBytes();
@@ -655,6 +650,9 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
     }
   }
 
+  private final List<InputLocation[]> inputLocationList =
+      Collections.singletonList(new InputLocation[] {new InputLocation(0, 0)});
+
   @SuppressWarnings("java:S2095") // close() do nothing
   private List<TsBlock> executeGroupByQueryInternal(
       SessionInfo sessionInfo,
@@ -677,21 +675,14 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
 
     Filter timeFilter = TimeFilterApi.between(startTime, endTime - 1);
 
-    QueryId queryId = new QueryId("stub_query");
-    FragmentInstanceId instanceId =
-        new FragmentInstanceId(new PlanFragmentId(queryId, 0), "stub-instance");
-    FragmentInstanceStateMachine stateMachine =
-        new FragmentInstanceStateMachine(
-            instanceId, FragmentInstanceManager.getInstance().instanceNotificationExecutor);
-    FragmentInstanceContext fragmentInstanceContext =
-        createFragmentInstanceContext(
-            instanceId, stateMachine, sessionInfo, dataRegionList.get(0), timeFilter);
+    FakedFragmentInstanceContext fragmentInstanceContext =
+        new FakedFragmentInstanceContext(timeFilter, dataRegionList.get(0));
+
     DriverContext driverContext = new DriverContext(fragmentInstanceContext, 0);
     PlanNodeId planNodeId = new PlanNodeId("1");
-    driverContext.addOperatorContext(1, planNodeId, SeriesScanOperator.class.getSimpleName());
-    driverContext
-        .getOperatorContexts()
-        .forEach(operatorContext -> operatorContext.setMaxRunTime(DEFAULT_TIME_SLICE));
+    OperatorContext operatorContext =
+        new OperatorContext(1, planNodeId, "SeriesAggregationScanOperator", driverContext);
+    operatorContext.setMaxRunTime(DEFAULT_TIME_SLICE);
 
     SeriesScanOptions.Builder scanOptionsBuilder = new SeriesScanOptions.Builder();
     scanOptionsBuilder.withAllSensors(Collections.singleton(measurement));
@@ -709,7 +700,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
                 true,
                 true),
             AggregationStep.SINGLE,
-            Collections.singletonList(new InputLocation[] {new InputLocation(0, 0)}));
+            inputLocationList);
 
     GroupByTimeParameter groupByTimeParameter =
         new GroupByTimeParameter(
@@ -717,11 +708,15 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
 
     IMeasurementSchema measurementSchema = new MeasurementSchema(measurement, dataType);
     AbstractSeriesAggregationScanOperator operator;
+    boolean canUseStatistics =
+        !TSDataType.BLOB.equals(dataType)
+            || (!TAggregationType.LAST_VALUE.equals(aggregationType)
+                && !TAggregationType.FIRST_VALUE.equals(aggregationType));
     PartialPath path;
     if (isAligned) {
       path =
           new AlignedPath(
-              device,
+              device.split("\\."),
               Collections.singletonList(measurement),
               Collections.singletonList(measurementSchema));
       operator =
@@ -730,36 +725,36 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
               (AlignedPath) path,
               Ordering.ASC,
               scanOptionsBuilder.build(),
-              driverContext.getOperatorContexts().get(0),
+              operatorContext,
               Collections.singletonList(aggregator),
               initTimeRangeIterator(groupByTimeParameter, true, true, sessionInfo.getZoneId()),
               groupByTimeParameter,
               DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES,
-              !TSDataType.BLOB.equals(dataType)
-                  || (!TAggregationType.LAST_VALUE.equals(aggregationType)
-                      && !TAggregationType.FIRST_VALUE.equals(aggregationType)));
+              canUseStatistics);
     } else {
-      path = new MeasurementPath(device, measurement, measurementSchema);
+      String[] splits = device.split("\\.");
+      String[] fullPaths = new String[splits.length + 1];
+      System.arraycopy(splits, 0, fullPaths, 0, splits.length);
+      fullPaths[splits.length] = measurement;
+      path = new MeasurementPath(fullPaths, measurementSchema);
       operator =
           new SeriesAggregationScanOperator(
               planNodeId,
               path,
               Ordering.ASC,
               scanOptionsBuilder.build(),
-              driverContext.getOperatorContexts().get(0),
+              operatorContext,
               Collections.singletonList(aggregator),
               initTimeRangeIterator(groupByTimeParameter, true, true, sessionInfo.getZoneId()),
               groupByTimeParameter,
               DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES,
-              !TSDataType.BLOB.equals(dataType)
-                  || (!TAggregationType.LAST_VALUE.equals(aggregationType)
-                      && !TAggregationType.FIRST_VALUE.equals(aggregationType)));
+              canUseStatistics);
     }
 
     try {
       List<TsBlock> result = new ArrayList<>();
-      fragmentInstanceContext.setSourcePaths(Collections.singletonList(path));
-      operator.initQueryDataSource(fragmentInstanceContext.getSharedQueryDataSource());
+      QueryDataSource dataSource = fragmentInstanceContext.getSharedQueryDataSource(path);
+      operator.initQueryDataSource(dataSource);
 
       while (operator.hasNext()) {
         result.add(operator.next());
@@ -769,7 +764,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
     } catch (Exception e) {
       throw new RuntimeException(e);
     } finally {
-      fragmentInstanceContext.releaseResource();
+      fragmentInstanceContext.releaseSharedQueryDataSource();
     }
   }
 
@@ -1075,7 +1070,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
               deviceId,
               measurementId,
               dataType,
-              true,
+              req.isAligned,
               req.getStartTime(),
               req.getEndTime(),
               req.getInterval(),
