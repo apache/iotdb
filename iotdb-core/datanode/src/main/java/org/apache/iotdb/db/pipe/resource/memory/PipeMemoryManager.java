@@ -244,8 +244,7 @@ public class PipeMemoryManager {
     }
 
     for (int i = 1; i <= MEMORY_ALLOCATE_MAX_RETRIES; i++) {
-      if (getTotalNonFloatingMemorySizeInBytes() - usedMemorySizeInBytes
-          >= sizeInBytes) {
+      if (getTotalNonFloatingMemorySizeInBytes() - usedMemorySizeInBytes >= sizeInBytes) {
         return registerMemoryBlock(sizeInBytes, type);
       }
 
@@ -307,9 +306,8 @@ public class PipeMemoryManager {
 
     long sizeInBytes = targetSize - oldSize;
     for (int i = 1; i <= MEMORY_ALLOCATE_MAX_RETRIES; i++) {
-      if (getTotalNonFloatingMemorySizeInBytes() - usedMemorySizeInBytes
-          >= sizeInBytes) {
-        memoryBlock.forceAllocateWithoutLimitation(sizeInBytes);
+      if (getTotalNonFloatingMemorySizeInBytes() - usedMemorySizeInBytes >= sizeInBytes) {
+        usedMemorySizeInBytes += sizeInBytes;
         if (block instanceof PipeTabletMemoryBlock) {
           usedMemorySizeInBytesOfTablets += sizeInBytes;
         }
@@ -382,15 +380,13 @@ public class PipeMemoryManager {
     }
 
     if (sizeInBytes == 0
-        || getTotalNonFloatingMemorySizeInBytes() - usedMemorySizeInBytes
-            >= sizeInBytes) {
+        || getTotalNonFloatingMemorySizeInBytes() - usedMemorySizeInBytes >= sizeInBytes) {
       return registerMemoryBlock(sizeInBytes);
     }
 
     long sizeToAllocateInBytes = sizeInBytes;
     while (sizeToAllocateInBytes > MEMORY_ALLOCATE_MIN_SIZE_IN_BYTES) {
-      if (getTotalNonFloatingMemorySizeInBytes() - usedMemorySizeInBytes
-          >= sizeToAllocateInBytes) {
+      if (getTotalNonFloatingMemorySizeInBytes() - usedMemorySizeInBytes >= sizeToAllocateInBytes) {
         LOGGER.info(
             "tryAllocate: allocated memory, "
                 + "total memory size {} bytes, used memory size {} bytes, "
@@ -437,10 +433,10 @@ public class PipeMemoryManager {
     if (!PIPE_MEMORY_MANAGEMENT_ENABLED || block == null || block.isReleased()) {
       return false;
     }
-    
+
     if (getTotalNonFloatingMemorySizeInBytes() - usedMemorySizeInBytes
         >= memoryInBytesNeededToBeAllocated) {
-      memoryBlock.forceAllocateWithoutLimitation(memoryInBytesNeededToBeAllocated);
+      usedMemorySizeInBytes += memoryInBytesNeededToBeAllocated;
       if (block instanceof PipeTabletMemoryBlock) {
         usedMemorySizeInBytesOfTablets += memoryInBytesNeededToBeAllocated;
       }
@@ -492,8 +488,7 @@ public class PipeMemoryManager {
       for (final PipeMemoryBlock block : shuffledBlocks) {
         if (block.shrink()) {
           hasAtLeastOneBlockShrinkable = true;
-          if (getTotalNonFloatingMemorySizeInBytes() - usedMemorySizeInBytes
-              >= sizeInBytes) {
+          if (getTotalNonFloatingMemorySizeInBytes() - usedMemorySizeInBytes >= sizeInBytes) {
             return true;
           }
         }
@@ -597,12 +592,11 @@ public class PipeMemoryManager {
     return TOTAL_MEMORY_SIZE_IN_BYTES - usedMemorySizeInBytes;
   }
 
-
-  public long getTotalNonFloatingMemorySizeInBytes() {
+  public static long getTotalNonFloatingMemorySizeInBytes() {
     return (long) (TOTAL_MEMORY_SIZE_IN_BYTES * (1 - FLOATING_MEMORY_RATIO));
   }
 
-  public long getTotalFloatingMemorySizeInBytes() {
+  public static long getTotalFloatingMemorySizeInBytes() {
     return (long) (TOTAL_MEMORY_SIZE_IN_BYTES * FLOATING_MEMORY_RATIO);
   }
 }

@@ -71,7 +71,7 @@ public class PipeResourceMetrics implements IMetricSet {
         Metric.PIPE_MEM.toString(),
         MetricLevel.IMPORTANT,
         PipeDataNodeResourceManager.memory(),
-        PipeMemoryManager::getTotalNonFloatingMemorySizeInBytes,
+        o -> PipeMemoryManager.getTotalNonFloatingMemorySizeInBytes(),
         Tag.NAME.toString(),
         PIPE_TOTAL_MEMORY);
     // resource reference count

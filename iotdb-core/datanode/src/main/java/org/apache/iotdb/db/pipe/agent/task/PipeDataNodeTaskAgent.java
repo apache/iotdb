@@ -51,6 +51,7 @@ import org.apache.iotdb.db.pipe.metric.overview.PipeDataNodeRemainingEventAndTim
 import org.apache.iotdb.db.pipe.metric.overview.PipeTsFileToTabletsMetrics;
 import org.apache.iotdb.db.pipe.metric.source.PipeDataRegionExtractorMetrics;
 import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
+import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryManager;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.pipe.PipeOperateSchemaQueueNode;
 import org.apache.iotdb.db.schemaengine.SchemaEngine;
@@ -615,7 +616,7 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
         PipeDataNodeResourceManager.tsfile().getTotalLinkedButDeletedTsFileResourceRamSize();
     final long totalInsertNodeFloatingMemoryUsageInBytes = getAllFloatingMemoryUsageInByte();
     final long totalFloatingMemorySizeInBytes =
-        PipeDataNodeResourceManager.memory().getTotalFloatingMemorySizeInBytes();
+        PipeMemoryManager.getTotalFloatingMemorySizeInBytes();
     if (totalInsertNodeFloatingMemoryUsageInBytes + totalLinkedButDeletedTsFileResourceRamSize
         >= totalFloatingMemorySizeInBytes) {
       for (final PipeMeta pipeMeta : pipeMetaKeeper.getPipeMetaList()) {
