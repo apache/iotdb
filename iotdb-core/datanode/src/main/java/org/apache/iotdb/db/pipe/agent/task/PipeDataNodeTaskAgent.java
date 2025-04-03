@@ -51,6 +51,7 @@ import org.apache.iotdb.db.pipe.metric.overview.PipeDataNodeRemainingEventAndTim
 import org.apache.iotdb.db.pipe.metric.overview.PipeTsFileToTabletsMetrics;
 import org.apache.iotdb.db.pipe.metric.source.PipeDataRegionExtractorMetrics;
 import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
+import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryManager;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.pipe.PipeOperateSchemaQueueNode;
 import org.apache.iotdb.db.schemaengine.SchemaEngine;
@@ -612,19 +613,22 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
     }
 
     final long totalLinkedButDeletedTsFileResourceRamSize =
-        PipeDataNodeResourceManager.tsfile().getTotalLinkedButDeletedTsfileResourceRamSize();
-    final long freeMemorySizeInBytes =
-        PipeDataNodeResourceManager.memory().getFreeMemorySizeInBytes();
-    if (3 * totalLinkedButDeletedTsFileResourceRamSize >= 2 * freeMemorySizeInBytes) {
+        PipeDataNodeResourceManager.tsfile().getTotalLinkedButDeletedTsFileResourceRamSize();
+    final long totalInsertNodeFloatingMemoryUsageInBytes = getAllFloatingMemoryUsageInByte();
+    final long totalFloatingMemorySizeInBytes =
+        PipeMemoryManager.getTotalFloatingMemorySizeInBytes();
+    if (totalInsertNodeFloatingMemoryUsageInBytes + totalLinkedButDeletedTsFileResourceRamSize
+        >= totalFloatingMemorySizeInBytes) {
       for (final PipeMeta pipeMeta : pipeMetaKeeper.getPipeMetaList()) {
         stuckPipes.add(pipeMeta);
       }
       if (!stuckPipes.isEmpty()) {
         LOGGER.warn(
-            "All {} pipe(s) will be restarted because linked tsfiles' resource size {} exceeds limit {}.",
+            "All {} pipe(s) will be restarted because linked but deleted tsFiles' resource size {} and all insertNode's size {} exceeds limit {}.",
             stuckPipes.size(),
             totalLinkedButDeletedTsFileResourceRamSize,
-            freeMemorySizeInBytes * 2.0 / 3);
+            totalInsertNodeFloatingMemoryUsageInBytes,
+            totalFloatingMemorySizeInBytes);
       }
       return stuckPipes;
     }
@@ -667,19 +671,6 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
               pipeMeta.getStaticMeta(),
               mayMemTablePinnedCountReachDangerousThreshold(),
               mayWalSizeReachThrottleThreshold());
-          stuckPipes.add(pipeMeta);
-        } else if (getFloatingMemoryUsageInByte(pipeName)
-            >= PipeDataNodeResourceManager.memory().getFreeMemorySizeInBytes()
-                / pipeMetaKeeper.getPipeMetaCount()) {
-          // Extractors of this pipe may have too many insert nodes
-          LOGGER.warn(
-              "Pipe {} needs to restart because too many insertNodes are extracted. "
-                  + "Floating memory usage for this pipe: {}, free memory size: {}, allowed free memory size for floating memory usage: {}",
-              pipeMeta.getStaticMeta(),
-              getFloatingMemoryUsageInByte(pipeName),
-              PipeDataNodeResourceManager.memory().getFreeMemorySizeInBytes(),
-              PipeDataNodeResourceManager.memory().getFreeMemorySizeInBytes()
-                  / pipeMetaKeeper.getPipeMetaCount());
           stuckPipes.add(pipeMeta);
         }
       }
