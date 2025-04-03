@@ -217,6 +217,7 @@ public class CommonConfig {
   private int pipeDataStructureTabletSizeInBytes = 2097152;
   private double pipeDataStructureTabletMemoryBlockAllocationRejectThreshold = 0.4;
   private double pipeDataStructureTsFileMemoryBlockAllocationRejectThreshold = 0.4;
+  private double pipeTotalFloatingMemoryProportion = 0.2;
 
   private int pipeSubtaskExecutorBasicCheckPointIntervalByConsumedEventCount = 10_000;
   private long pipeSubtaskExecutorBasicCheckPointIntervalByTimeDuration = 10 * 1000L;
@@ -782,6 +783,14 @@ public class CommonConfig {
       double pipeDataStructureTsFileMemoryBlockAllocationRejectThreshold) {
     this.pipeDataStructureTsFileMemoryBlockAllocationRejectThreshold =
         pipeDataStructureTsFileMemoryBlockAllocationRejectThreshold;
+  }
+
+  public double getPipeTotalFloatingMemoryProportion() {
+    return pipeTotalFloatingMemoryProportion;
+  }
+
+  public void setPipeTotalFloatingMemoryProportion(double pipeTotalFloatingMemoryProportion) {
+    this.pipeTotalFloatingMemoryProportion = pipeTotalFloatingMemoryProportion;
   }
 
   public int getPipeExtractorAssignerDisruptorRingBufferSize() {
