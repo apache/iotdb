@@ -520,8 +520,8 @@ public abstract class AbstractOperatePipeProcedureV2
         .entrySet()
         .removeIf(
             consensusGroupId2TaskMeta -> {
-              if (consensusGroupId2TaskMeta.getKey() < 0) {
-                // region id that is less than 0 means an external source task should keep it
+              if (originalPipeMeta.getStaticMeta().isSourceExternal()) {
+                // should keep the external source tasks
                 return false;
               }
               final String database;
