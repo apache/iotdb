@@ -56,8 +56,6 @@ import java.util.Map.Entry;
 import java.util.Objects;
 import java.util.concurrent.atomic.AtomicLong;
 
-import static java.lang.Math.min;
-
 public class PipeTreeModelTsFileBuilder extends PipeTsFileBuilder {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(PipeTreeModelTsFileBuilder.class);
@@ -142,7 +140,7 @@ public class PipeTreeModelTsFileBuilder extends PipeTsFileBuilder {
         if (Objects.equals(TSDataType.DATE, tablet.getSchemas().get(j).getType())) {
           final LocalDate[] dates = ((LocalDate[]) values[j]);
           final int[] dateValues = new int[dates.length];
-          for (int k = 0; k < min(dates.length, tablet.getRowSize()); k++) {
+          for (int k = 0; k < Math.min(dates.length, tablet.getRowSize()); k++) {
             dateValues[k] = DateUtils.parseDateExpressionToInt(dates[k]);
           }
           values[j] = dateValues;
