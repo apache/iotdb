@@ -159,4 +159,17 @@ public abstract class PipeTsFileBuilder {
                     + tsFileIdGenerator.getAndIncrement()
                     + TsFileConstant.TSFILE_SUFFIX));
   }
+
+  protected File createFile() throws IOException {
+    return new File(
+        batchFileBaseDir,
+        TS_FILE_PREFIX
+            + "_"
+            + IoTDBDescriptor.getInstance().getConfig().getDataNodeId()
+            + "_"
+            + currentBatchId.get()
+            + "_"
+            + tsFileIdGenerator.getAndIncrement()
+            + TsFileConstant.TSFILE_SUFFIX);
+  }
 }

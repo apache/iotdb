@@ -19,28 +19,44 @@
 
 package org.apache.iotdb.db.pipe.connector.util.builder;
 
-import org.apache.commons.io.FileUtils;
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.utils.TimePartitionUtils;
+import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.DataNodeTTLCache;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertTabletNode;
+import org.apache.iotdb.db.storageengine.dataregion.flush.MemTableFlushTask;
+import org.apache.iotdb.db.storageengine.dataregion.memtable.IMemTable;
+import org.apache.iotdb.db.storageengine.dataregion.memtable.PrimitiveMemTable;
+import org.apache.iotdb.rpc.RpcUtils;
+import org.apache.iotdb.rpc.TSStatusCode;
+
+import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.exception.write.WriteProcessException;
 import org.apache.tsfile.file.metadata.IDeviceID;
-import org.apache.tsfile.read.common.Path;
+import org.apache.tsfile.utils.DateUtils;
 import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.write.record.Tablet;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
+import org.apache.tsfile.write.schema.MeasurementSchema;
+import org.apache.tsfile.write.writer.RestorableTsFileIOWriter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
+import java.time.LocalDate;
 import java.util.ArrayList;
-import java.util.Comparator;
+import java.util.Arrays;
 import java.util.HashMap;
-import java.util.Iterator;
-import java.util.LinkedHashMap;
-import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Objects;
 import java.util.concurrent.atomic.AtomicLong;
+
+import static java.lang.Math.min;
 
 public class PipeTreeModelTsFileBuilder extends PipeTsFileBuilder {
 
@@ -91,178 +107,201 @@ public class PipeTreeModelTsFileBuilder extends PipeTsFileBuilder {
     isTabletAlignedList.clear();
   }
 
-  private List<Pair<String, File>> writeTabletsToTsFiles()
-      throws IOException, WriteProcessException {
-    final Map<String, List<Tablet>> device2Tablets = new HashMap<>();
-    final Map<String, Boolean> device2Aligned = new HashMap<>();
-
-    // Sort the tablets by device id
-    for (int i = 0, size = tabletList.size(); i < size; ++i) {
-      final Tablet tablet = tabletList.get(i);
-      final String deviceId = tablet.getDeviceId();
-      device2Tablets.computeIfAbsent(deviceId, k -> new ArrayList<>()).add(tablet);
-      device2Aligned.put(deviceId, isTabletAlignedList.get(i));
-    }
-
-    // Sort the tablets by start time in each device
-    for (final List<Tablet> tablets : device2Tablets.values()) {
-      tablets.sort(
-          // Each tablet has at least one timestamp
-          Comparator.comparingLong(tablet -> tablet.getTimestamp(0)));
-    }
-
-    // Sort the devices by device id
-    final List<String> devices = new ArrayList<>(device2Tablets.keySet());
-    devices.sort(Comparator.naturalOrder());
-
-    // Replace ArrayList with LinkedList to improve performance
-    final LinkedHashMap<String, LinkedList<Tablet>> device2TabletsLinkedList =
-        new LinkedHashMap<>();
-    for (final String device : devices) {
-      device2TabletsLinkedList.put(device, new LinkedList<>(device2Tablets.get(device)));
-    }
-
-    // Help GC
-    devices.clear();
-    device2Tablets.clear();
-
-    // Write the tablets to the tsfile device by device, and the tablets
-    // in the same device are written in order of start time. Tablets in
-    // the same device should not be written if their time ranges overlap.
-    // If overlapped, we try to write the tablets whose device id is not
-    // the same as the previous one. For the tablets not written in the
-    // previous round, we write them in a new tsfile.
+  private List<Pair<String, File>> writeTabletsToTsFiles() throws WriteProcessException {
     final List<Pair<String, File>> sealedFiles = new ArrayList<>();
-
-    // Try making the tsfile size as large as possible
-    while (!device2TabletsLinkedList.isEmpty()) {
-      if (Objects.isNull(fileWriter)) {
-        createFileWriter();
-      }
-      try {
-        tryBestToWriteTabletsIntoOneFile(device2TabletsLinkedList, device2Aligned);
-      } catch (final Exception e) {
-        LOGGER.warn(
-            "Batch id = {}: Failed to write tablets into tsfile, because {}",
-            currentBatchId.get(),
-            e.getMessage(),
-            e);
-
-        try {
-          fileWriter.close();
-        } catch (final Exception closeException) {
-          LOGGER.warn(
-              "Batch id = {}: Failed to close the tsfile {} after failed to write tablets into, because {}",
-              currentBatchId.get(),
-              fileWriter.getIOWriter().getFile().getPath(),
-              closeException.getMessage(),
-              closeException);
-        } finally {
-          // Add current writing file to the list and delete the file
-          sealedFiles.add(new Pair<>(null, fileWriter.getIOWriter().getFile()));
-        }
-
-        for (final Pair<String, File> sealedFile : sealedFiles) {
-          final boolean deleteSuccess = FileUtils.deleteQuietly(sealedFile.right);
-          LOGGER.warn(
-              "Batch id = {}: {} delete the tsfile {} after failed to write tablets into {}. {}",
-              currentBatchId.get(),
-              deleteSuccess ? "Successfully" : "Failed to",
-              sealedFile.right.getPath(),
-              fileWriter.getIOWriter().getFile().getPath(),
-              deleteSuccess ? "" : "Maybe the tsfile needs to be deleted manually.");
-        }
-        sealedFiles.clear();
-
-        fileWriter = null;
-
-        throw e;
-      }
-
-      fileWriter.close();
-      final File sealedFile = fileWriter.getIOWriter().getFile();
-      if (LOGGER.isDebugEnabled()) {
-        LOGGER.debug(
-            "Batch id = {}: Seal tsfile {} successfully.",
-            currentBatchId.get(),
-            sealedFile.getPath());
-      }
-      sealedFiles.add(new Pair<>(null, sealedFile));
-      fileWriter = null;
+    try (final RestorableTsFileIOWriter writer = new RestorableTsFileIOWriter(createFile())) {
+      writeTabletsIntoOneFile(writer);
+      sealedFiles.add(new Pair<>(null, writer.getFile()));
+    } catch (final Exception e) {
+      LOGGER.warn(
+          "Batch id = {}: Failed to write tablets into tsfile, because {}",
+          currentBatchId.get(),
+          e.getMessage(),
+          e);
+      // TODO: handle ex
+      throw new WriteProcessException(e);
     }
 
     return sealedFiles;
   }
 
-  private void tryBestToWriteTabletsIntoOneFile(
-      final LinkedHashMap<String, LinkedList<Tablet>> device2TabletsLinkedList,
-      final Map<String, Boolean> device2Aligned)
-      throws IOException, WriteProcessException {
-    final Iterator<Map.Entry<String, LinkedList<Tablet>>> iterator =
-        device2TabletsLinkedList.entrySet().iterator();
+  private void writeTabletsIntoOneFile(final RestorableTsFileIOWriter writer) throws Exception {
+    // TODO: database & region
+    final String database = "test_db";
+    final String dataRegionId = "test_dr";
+    final IMemTable memTable = new PrimitiveMemTable(database, dataRegionId);
 
-    while (iterator.hasNext()) {
-      final Map.Entry<String, LinkedList<Tablet>> entry = iterator.next();
-      final String deviceId = entry.getKey();
-      final LinkedList<Tablet> tablets = entry.getValue();
+    for (int i = 0, size = tabletList.size(); i < size; ++i) {
+      final Tablet tablet = tabletList.get(i);
 
-      final List<Tablet> tabletsToWrite = new ArrayList<>();
-
-      Tablet lastTablet = null;
-      while (!tablets.isEmpty()) {
-        final Tablet tablet = tablets.peekFirst();
-        if (Objects.isNull(lastTablet)
-            // lastTablet.rowSize is not 0
-            || lastTablet.getTimestamp(lastTablet.getRowSize() - 1) < tablet.getTimestamp(0)) {
-          tabletsToWrite.add(tablet);
-          lastTablet = tablet;
-          tablets.pollFirst();
-        } else {
-          break;
-        }
-      }
-
-      if (tablets.isEmpty()) {
-        iterator.remove();
-      }
-
-      final boolean isAligned = device2Aligned.get(deviceId);
-      if (isAligned) {
-        final Map<String, List<IMeasurementSchema>> deviceId2MeasurementSchemas = new HashMap<>();
-        tabletsToWrite.forEach(
-            tablet ->
-                deviceId2MeasurementSchemas.compute(
-                    tablet.getDeviceId(),
-                    (k, v) -> {
-                      if (Objects.isNull(v)) {
-                        return new ArrayList<>(tablet.getSchemas());
-                      }
-                      v.addAll(tablet.getSchemas());
-                      return v;
-                    }));
-        for (final Map.Entry<String, List<IMeasurementSchema>> deviceIdWithMeasurementSchemas :
-            deviceId2MeasurementSchemas.entrySet()) {
-          fileWriter.registerAlignedTimeseries(
-              new Path(deviceIdWithMeasurementSchemas.getKey()),
-              deviceIdWithMeasurementSchemas.getValue());
-        }
-        for (final Tablet tablet : tabletsToWrite) {
-          fileWriter.writeAligned(tablet);
-        }
-      } else {
-        for (final Tablet tablet : tabletsToWrite) {
-          for (final IMeasurementSchema schema : tablet.getSchemas()) {
-            try {
-              fileWriter.registerTimeseries(
-                  IDeviceID.Factory.DEFAULT_FACTORY.create(tablet.getDeviceId()), schema);
-            } catch (final WriteProcessException ignore) {
-              // Do nothing if the timeSeries has been registered
-            }
+      // convert date value to int
+      // refer to
+      // org.apache.iotdb.db.storageengine.dataregion.memtable.WritableMemChunk.writeNonAlignedTablet
+      final Object[] values = tablet.getValues();
+      for (int j = 0; j < tablet.getSchemas().size(); ++j) {
+        if (Objects.equals(TSDataType.DATE, tablet.getSchemas().get(j).getType())) {
+          final LocalDate[] dates = ((LocalDate[]) values[j]);
+          final int[] dateValues = new int[dates.length];
+          for (int k = 0; k < min(dates.length, tablet.getRowSize()); k++) {
+            dateValues[k] = DateUtils.parseDateExpressionToInt(dates[k]);
           }
-
-          fileWriter.writeTree(tablet);
+          values[j] = dateValues;
         }
+      }
+
+      final InsertTabletNode insertTabletNode =
+          new InsertTabletNode(
+              // TODO: plan node id
+              new PlanNodeId("test_id"),
+              new PartialPath(tablet.getDeviceId()),
+              isTabletAlignedList.get(i),
+              tablet.getSchemas().stream()
+                  .map(IMeasurementSchema::getMeasurementName)
+                  .toArray(String[]::new),
+              tablet.getSchemas().stream()
+                  .map(IMeasurementSchema::getType)
+                  .toArray(TSDataType[]::new),
+              // TODO: cast
+              tablet.getSchemas().stream()
+                  .map(schema -> (MeasurementSchema) schema)
+                  .toArray(MeasurementSchema[]::new),
+              tablet.getTimestamps(),
+              tablet.getBitMaps(),
+              tablet.getValues(),
+              tablet.getRowSize());
+
+      // TODO: unused results
+      final TSStatus[] results = new TSStatus[insertTabletNode.getRowCount()];
+      Arrays.fill(results, RpcUtils.SUCCESS_STATUS);
+
+      final int loc = insertTabletNode.checkTTL(results, getTTL(insertTabletNode));
+      final List<Pair<IDeviceID, Integer>> deviceEndOffsetPairs =
+          insertTabletNode.splitByDevice(loc, insertTabletNode.getRowCount());
+      int start = loc;
+      final Map<Long, List<int[]>[]> splitInfo = new HashMap<>();
+      for (final Pair<IDeviceID, Integer> deviceEndOffsetPair : deviceEndOffsetPairs) {
+        final int end = deviceEndOffsetPair.getRight();
+        split(insertTabletNode, start, end, splitInfo);
+        start = end;
+      }
+
+      doInsert(insertTabletNode, splitInfo, results, memTable);
+    }
+
+    final MemTableFlushTask memTableFlushTask =
+        new MemTableFlushTask(memTable, writer, database, dataRegionId);
+    memTableFlushTask.syncFlushMemTable();
+
+    writer.endFile();
+  }
+
+  private void split(
+      final InsertTabletNode insertTabletNode,
+      int loc,
+      final int endOffset,
+      final Map<Long, List<int[]>[]> splitInfo) {
+    // before is first start point
+    int before = loc;
+    final long beforeTime = insertTabletNode.getTimes()[before];
+    // before time partition
+    long beforeTimePartition = TimePartitionUtils.getTimePartitionId(beforeTime);
+
+    // if is sequence
+    // TODO: always un-sequence now
+    final boolean isSequence = false;
+    while (loc < endOffset) {
+      final long time = insertTabletNode.getTimes()[loc];
+      final long timePartitionId = TimePartitionUtils.getTimePartitionId(time);
+
+      // judge if we should insert sequence
+      if (timePartitionId != beforeTimePartition) {
+        updateSplitInfo(splitInfo, beforeTimePartition, isSequence, new int[] {before, loc});
+        before = loc;
+        beforeTimePartition = timePartitionId;
+      }
+      // else: the same partition and isSequence not changed, just move the cursor forward
+      loc++;
+    }
+
+    // do not forget last part
+    if (before < loc) {
+      updateSplitInfo(splitInfo, beforeTimePartition, isSequence, new int[] {before, loc});
+    }
+  }
+
+  private void updateSplitInfo(
+      final Map<Long, List<int[]>[]> splitInfo,
+      final long partitionId,
+      final boolean isSequence,
+      final int[] newRange) {
+    if (newRange[0] >= newRange[1]) {
+      return;
+    }
+
+    @SuppressWarnings("unchecked")
+    final List<int[]>[] rangeLists = splitInfo.computeIfAbsent(partitionId, k -> new List[2]);
+    List<int[]> rangeList = rangeLists[isSequence ? 1 : 0];
+    if (rangeList == null) {
+      rangeList = new ArrayList<>();
+      rangeLists[isSequence ? 1 : 0] = rangeList;
+    }
+    if (!rangeList.isEmpty()) {
+      final int[] lastRange = rangeList.get(rangeList.size() - 1);
+      if (lastRange[1] == newRange[0]) {
+        lastRange[1] = newRange[1];
+        return;
       }
     }
+    rangeList.add(newRange);
+  }
+
+  private void doInsert(
+      final InsertTabletNode insertTabletNode,
+      final Map<Long, List<int[]>[]> splitMap,
+      final TSStatus[] results,
+      final IMemTable memTable)
+      throws WriteProcessException {
+    for (final Entry<Long, List<int[]>[]> entry : splitMap.entrySet()) {
+      final List<int[]>[] rangeLists = entry.getValue();
+      final List<int[]> sequenceRangeList = rangeLists[1];
+      if (sequenceRangeList != null) {
+        insertTablet(insertTabletNode, sequenceRangeList, results, memTable);
+      }
+      final List<int[]> unSequenceRangeList = rangeLists[0];
+      if (unSequenceRangeList != null) {
+        insertTablet(insertTabletNode, unSequenceRangeList, results, memTable);
+      }
+    }
+  }
+
+  private void insertTablet(
+      final InsertTabletNode insertTabletNode,
+      final List<int[]> rangeList,
+      final TSStatus[] results,
+      final IMemTable memTable)
+      throws WriteProcessException {
+    for (final int[] rangePair : rangeList) {
+      final int start = rangePair[0];
+      final int end = rangePair[1];
+      try {
+        if (insertTabletNode.isAligned()) {
+          memTable.insertAlignedTablet(insertTabletNode, start, end, null);
+        } else {
+          memTable.insertTablet(insertTabletNode, start, end);
+        }
+      } catch (final org.apache.iotdb.db.exception.WriteProcessException e) {
+        for (int i = start; i < end; i++) {
+          results[i] = RpcUtils.getStatus(TSStatusCode.INTERNAL_SERVER_ERROR, e.getMessage());
+        }
+        throw new WriteProcessException(e);
+      }
+      for (int i = start; i < end; i++) {
+        results[i] = RpcUtils.SUCCESS_STATUS;
+      }
+    }
+  }
+
+  private long getTTL(final InsertNode insertNode) {
+    return DataNodeTTLCache.getInstance().getTTLForTree(insertNode.getTargetPath().getNodes());
   }
 }
