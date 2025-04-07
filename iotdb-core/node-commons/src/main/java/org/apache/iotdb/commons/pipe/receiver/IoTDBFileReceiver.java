@@ -78,8 +78,12 @@ public abstract class IoTDBFileReceiver implements IoTDBReceiver {
       PipeConfig.getInstance().getPipeReceiverLoginPeriodicVerificationIntervalMs();
   protected long lastSuccessfulLoginTime = Long.MIN_VALUE;
 
-  private static final boolean IS_FSYNC_ENABLED =
-      PipeConfig.getInstance().getPipeFileReceiverFsyncEnabled();
+  private static boolean IS_FSYNC_ENABLED =
+      PipeConfig.getInstance()
+          .registerPipeFileReceiverFsyncEnabled(
+              (config) ->
+                  IoTDBFileReceiver.IS_FSYNC_ENABLED = config.getPipeFileReceiverFsyncEnabled());
+
   private File writingFile;
   private RandomAccessFile writingFileWriter;
 

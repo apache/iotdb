@@ -36,6 +36,12 @@ public class PipeConfig {
     return COMMON_CONFIG.getPipeNonForwardingEventsProgressReportInterval();
   }
 
+  public int registerPipeNonForwardingEventsProgressReportInterval(
+      PipeDynamicConfigFunction function) {
+    PipeDynamicConfigLoader.instance().registerPipeConfigFunction(function);
+    return COMMON_CONFIG.getPipeNonForwardingEventsProgressReportInterval();
+  }
+
   /////////////////////////////// File ///////////////////////////////
 
   public String getPipeHardlinkBaseDirName() {
@@ -58,6 +64,11 @@ public class PipeConfig {
     return COMMON_CONFIG.getPipeFileReceiverFsyncEnabled();
   }
 
+  public boolean registerPipeFileReceiverFsyncEnabled(PipeDynamicConfigFunction function) {
+    PipeDynamicConfigLoader.instance().registerPipeConfigFunction(function);
+    return COMMON_CONFIG.getPipeFileReceiverFsyncEnabled();
+  }
+
   /////////////////////////////// Tablet ///////////////////////////////
 
   public int getPipeDataStructureTabletRowSize() {
@@ -72,11 +83,28 @@ public class PipeConfig {
     return COMMON_CONFIG.getPipeDataStructureTabletMemoryBlockAllocationRejectThreshold();
   }
 
+  public double registerPipeDataStructureTabletMemoryBlockAllocationRejectThreshold(
+      PipeDynamicConfigFunction function) {
+    PipeDynamicConfigLoader.instance().registerPipeConfigFunction(function);
+    return COMMON_CONFIG.getPipeDataStructureTabletMemoryBlockAllocationRejectThreshold();
+  }
+
   public double getPipeDataStructureTsFileMemoryBlockAllocationRejectThreshold() {
     return COMMON_CONFIG.getPipeDataStructureTsFileMemoryBlockAllocationRejectThreshold();
   }
 
+  public double registerPipeDataStructureTsFileMemoryBlockAllocationRejectThreshold(
+      PipeDynamicConfigFunction function) {
+    PipeDynamicConfigLoader.instance().registerPipeConfigFunction(function);
+    return COMMON_CONFIG.getPipeDataStructureTsFileMemoryBlockAllocationRejectThreshold();
+  }
+
   public double getPipeTotalFloatingMemoryProportion() {
+    return COMMON_CONFIG.getPipeTotalFloatingMemoryProportion();
+  }
+
+  public double registerPipeTotalFloatingMemoryProportion(PipeDynamicConfigFunction function) {
+    PipeDynamicConfigLoader.instance().registerPipeConfigFunction(function);
     return COMMON_CONFIG.getPipeTotalFloatingMemoryProportion();
   }
 
@@ -86,7 +114,18 @@ public class PipeConfig {
     return COMMON_CONFIG.getPipeRealTimeQueuePollTsFileThreshold();
   }
 
+  public int registerPipeRealTimeQueuePollTsFileThreshold(PipeDynamicConfigFunction function) {
+    PipeDynamicConfigLoader.instance().registerPipeConfigFunction(function);
+    return COMMON_CONFIG.getPipeRealTimeQueuePollTsFileThreshold();
+  }
+
   public int getPipeRealTimeQueuePollHistoricalTsFileThreshold() {
+    return COMMON_CONFIG.getPipeRealTimeQueuePollHistoricalTsFileThreshold();
+  }
+
+  public int registerPipeRealTimeQueuePollHistoricalTsFileThreshold(
+      PipeDynamicConfigFunction function) {
+    PipeDynamicConfigLoader.instance().registerPipeConfigFunction(function);
     return COMMON_CONFIG.getPipeRealTimeQueuePollHistoricalTsFileThreshold();
   }
 
@@ -100,11 +139,29 @@ public class PipeConfig {
     return COMMON_CONFIG.getPipeSubtaskExecutorBasicCheckPointIntervalByConsumedEventCount();
   }
 
+  public int registerPipeSubtaskExecutorBasicCheckPointIntervalByConsumedEventCount(
+      PipeDynamicConfigFunction function) {
+    PipeDynamicConfigLoader.instance().registerPipeConfigFunction(function);
+    return COMMON_CONFIG.getPipeSubtaskExecutorBasicCheckPointIntervalByConsumedEventCount();
+  }
+
   public long getPipeSubtaskExecutorBasicCheckPointIntervalByTimeDuration() {
     return COMMON_CONFIG.getPipeSubtaskExecutorBasicCheckPointIntervalByTimeDuration();
   }
 
+  public long registerPipeSubtaskExecutorBasicCheckPointIntervalByTimeDuration(
+      PipeDynamicConfigFunction function) {
+    PipeDynamicConfigLoader.instance().registerPipeConfigFunction(function);
+    return COMMON_CONFIG.getPipeSubtaskExecutorBasicCheckPointIntervalByTimeDuration();
+  }
+
   public long getPipeSubtaskExecutorPendingQueueMaxBlockingTimeMs() {
+    return COMMON_CONFIG.getPipeSubtaskExecutorPendingQueueMaxBlockingTimeMs();
+  }
+
+  public long registerPipeSubtaskExecutorPendingQueueMaxBlockingTimeMs(
+      PipeDynamicConfigFunction function) {
+    PipeDynamicConfigLoader.instance().registerPipeConfigFunction(function);
     return COMMON_CONFIG.getPipeSubtaskExecutorPendingQueueMaxBlockingTimeMs();
   }
 
@@ -193,6 +250,11 @@ public class PipeConfig {
   }
 
   public float getPipeLeaderCacheMemoryUsagePercentage() {
+    return COMMON_CONFIG.getPipeLeaderCacheMemoryUsagePercentage();
+  }
+
+  public float registerPipeLeaderCacheMemoryUsagePercentage(PipeDynamicConfigFunction function) {
+    PipeDynamicConfigLoader.instance().registerPipeConfigFunction(function);
     return COMMON_CONFIG.getPipeLeaderCacheMemoryUsagePercentage();
   }
 

@@ -27,14 +27,22 @@ public class PipeSubtaskScheduler {
 
   private boolean isFirstSchedule = true;
 
-  private static final int BASIC_CHECKPOINT_INTERVAL_BY_CONSUMED_EVENT_COUNT =
-      PipeConfig.getInstance().getPipeSubtaskExecutorBasicCheckPointIntervalByConsumedEventCount();
+  private static int BASIC_CHECKPOINT_INTERVAL_BY_CONSUMED_EVENT_COUNT =
+      PipeConfig.getInstance()
+          .registerPipeSubtaskExecutorBasicCheckPointIntervalByConsumedEventCount(
+              config ->
+                  BASIC_CHECKPOINT_INTERVAL_BY_CONSUMED_EVENT_COUNT =
+                      config.getPipeSubtaskExecutorBasicCheckPointIntervalByConsumedEventCount());
   private int consumedEventCountCheckpointInterval;
   private int consumedEventCount;
 
   // in ms
-  private static final long BASIC_CHECKPOINT_INTERVAL_BY_TIME_DURATION =
-      PipeConfig.getInstance().getPipeSubtaskExecutorBasicCheckPointIntervalByTimeDuration();
+  private static long BASIC_CHECKPOINT_INTERVAL_BY_TIME_DURATION =
+      PipeConfig.getInstance()
+          .registerPipeSubtaskExecutorBasicCheckPointIntervalByTimeDuration(
+              config ->
+                  BASIC_CHECKPOINT_INTERVAL_BY_TIME_DURATION =
+                      config.getPipeSubtaskExecutorBasicCheckPointIntervalByTimeDuration());
   private long timeDurationCheckpointInterval;
   private long lastCheckTime;
 

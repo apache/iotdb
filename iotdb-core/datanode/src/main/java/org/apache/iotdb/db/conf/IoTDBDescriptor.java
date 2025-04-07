@@ -1987,14 +1987,7 @@ public class IoTDBDescriptor {
       loadLoadTsFileHotModifiedProp(properties);
 
       // update pipe config
-      commonDescriptor
-          .getConfig()
-          .setPipeAllSinksRateLimitBytesPerSecond(
-              Double.parseDouble(
-                  properties.getProperty(
-                      "pipe_all_sinks_rate_limit_bytes_per_second",
-                      ConfigurationFileUtils.getConfigurationDefaultValue(
-                          "pipe_all_sinks_rate_limit_bytes_per_second"))));
+      loadPipeHotModifiedProp(properties);
 
       // update merge_threshold_of_explain_analyze
       conf.setMergeThresholdOfExplainAnalyze(
@@ -2303,6 +2296,10 @@ public class IoTDBDescriptor {
         properties.getProperty(
             "load_active_listening_fail_dir",
             ConfigurationFileUtils.getConfigurationDefaultValue("load_active_listening_fail_dir")));
+  }
+
+  private void loadPipeHotModifiedProp(TrimProperties properties) throws IOException {
+    commonDescriptor.loadPipeProps(properties, true);
   }
 
   @SuppressWarnings("squid:S3518") // "proportionSum" can't be zero

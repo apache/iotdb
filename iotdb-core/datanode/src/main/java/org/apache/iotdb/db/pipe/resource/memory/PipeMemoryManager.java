@@ -62,17 +62,29 @@ public class PipeMemoryManager {
 
   // To avoid too much parsed events causing OOM. If total tablet memory size exceeds this
   // threshold, allocations of memory block for tablets will be rejected.
-  private static final double TABLET_MEMORY_REJECT_THRESHOLD =
-      PipeConfig.getInstance().getPipeDataStructureTabletMemoryBlockAllocationRejectThreshold();
+  private static double TABLET_MEMORY_REJECT_THRESHOLD =
+      PipeConfig.getInstance()
+          .registerPipeDataStructureTabletMemoryBlockAllocationRejectThreshold(
+              (config) ->
+                  PipeMemoryManager.TABLET_MEMORY_REJECT_THRESHOLD =
+                      config.getPipeDataStructureTabletMemoryBlockAllocationRejectThreshold());
   private volatile long usedMemorySizeInBytesOfTablets;
 
   // Used to control the memory allocated for managing slice tsfile.
-  private static final double TS_FILE_MEMORY_REJECT_THRESHOLD =
-      PipeConfig.getInstance().getPipeDataStructureTsFileMemoryBlockAllocationRejectThreshold();
+  private static double TS_FILE_MEMORY_REJECT_THRESHOLD =
+      PipeConfig.getInstance()
+          .registerPipeDataStructureTsFileMemoryBlockAllocationRejectThreshold(
+              config ->
+                  PipeMemoryManager.TS_FILE_MEMORY_REJECT_THRESHOLD =
+                      config.getPipeDataStructureTsFileMemoryBlockAllocationRejectThreshold());
   private volatile long usedMemorySizeInBytesOfTsFiles;
 
-  private static final double FLOATING_MEMORY_RATIO =
-      PipeConfig.getInstance().getPipeTotalFloatingMemoryProportion();
+  private static double FLOATING_MEMORY_RATIO =
+      PipeConfig.getInstance()
+          .registerPipeTotalFloatingMemoryProportion(
+              (config) ->
+                  PipeMemoryManager.FLOATING_MEMORY_RATIO =
+                      config.getPipeTotalFloatingMemoryProportion());
 
   // Only non-zero memory blocks will be added to this set.
   private final Set<PipeMemoryBlock> allocatedBlocks = new HashSet<>();
