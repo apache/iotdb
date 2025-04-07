@@ -141,7 +141,7 @@ public class IoTDBPartitionTableAutoCleanIT {
       for (int i = 0; i < 2; i++) {
         String databaseName = String.format("%s%d", TABLE_DATABASE_PREFIX, i);
         statement.execute(String.format("CREATE DATABASE IF NOT EXISTS %s", databaseName));
-        statement.execute(String.format("USE DATABASE %s", databaseName));
+        statement.execute(String.format("USE %s", databaseName));
         statement.execute("CREATE TABLE tb (time TIMESTAMP TIME, s int64 FIELD)");
         // Insert expired data
         statement.execute(
@@ -157,12 +157,12 @@ public class IoTDBPartitionTableAutoCleanIT {
       // Let db0.TTL > table.TTL, the valid TTL should be the bigger one
       statement.execute(
           String.format("ALTER DATABASE %s0 WITH(TTL=%d)", TABLE_DATABASE_PREFIX, TEST_TTL));
-      statement.execute(String.format("USE DATABASE %s0", TABLE_DATABASE_PREFIX));
+      statement.execute(String.format("USE %s0", TABLE_DATABASE_PREFIX));
       statement.execute(String.format("ALTER TABLE tb SET PROPERTIES TTL=%d", 10));
       // Let db1.TTL < table.TTL, the valid TTL should be the bigger one
       statement.execute(
           String.format("ALTER DATABASE %s1 WITH(TTL=%d)", TABLE_DATABASE_PREFIX, 10));
-      statement.execute(String.format("USE DATABASE %s1", TABLE_DATABASE_PREFIX));
+      statement.execute(String.format("USE %s1", TABLE_DATABASE_PREFIX));
       statement.execute(String.format("ALTER TABLE tb SET PROPERTIES TTL=%d", TEST_TTL));
     }
 
