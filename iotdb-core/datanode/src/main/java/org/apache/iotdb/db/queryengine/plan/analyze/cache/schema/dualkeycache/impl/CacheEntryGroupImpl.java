@@ -36,7 +36,9 @@ public class CacheEntryGroupImpl<FK, SK, V, T extends ICacheEntry<SK, V>>
   private static final long INSTANCE_SIZE =
       RamUsageEstimator.shallowSizeOfInstance(CacheEntryGroupImpl.class)
           + RamUsageEstimator.shallowSizeOfInstance(AtomicLong.class)
-          + RamUsageEstimator.shallowSizeOfInstance(HashMap.class);
+          + RamUsageEstimator.shallowSizeOfInstance(HashMap.class)
+          // Calculate the outer entry of the "firstKeyMap" here
+          + RamUsageEstimator.HASHTABLE_RAM_BYTES_PER_ENTRY;
 
   private final FK firstKey;
 
