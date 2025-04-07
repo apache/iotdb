@@ -295,7 +295,12 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
     try (final TsFileSequenceReader reader = new TsFileSequenceReader(tsFile.getAbsolutePath())) {
       // can be reused when constructing tsfile resource
       final TsFileSequenceReaderTimeseriesMetadataIterator timeseriesMetadataIterator =
-          new TsFileSequenceReaderTimeseriesMetadataIterator(reader, true, 1);
+          new TsFileSequenceReaderTimeseriesMetadataIterator(
+              reader,
+              true,
+              IoTDBDescriptor.getInstance()
+                  .getConfig()
+                  .getLoadTsFileAnalyzeSchemaBatchReadTimeSeriesMetadataCount());
 
       // check if the tsfile is empty
       if (!timeseriesMetadataIterator.hasNext()) {
@@ -443,8 +448,7 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
     final LoadTsFileDataTypeConverter loadTsFileDataTypeConverter =
         new LoadTsFileDataTypeConverter(isGeneratedByPipe);
     final TSStatus status =
-        (!(e instanceof LoadAnalyzeTypeMismatchException)
-                || loadTsFileStatement.isConvertOnTypeMismatch())
+        loadTsFileStatement.isConvertOnTypeMismatch()
             ? loadTsFileDataTypeConverter.convertForTreeModel(loadTsFileStatement).orElse(null)
             : null;
 
