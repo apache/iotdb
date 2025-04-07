@@ -82,6 +82,19 @@ public class GreedyRegionGroupAllocator implements IRegionGroupAllocator {
         weightList.stream().limit(replicationFactor).collect(Collectors.toList()));
   }
 
+  @Override
+  public TDataNodeConfiguration selectDestDataNode(
+      Map<Integer, TDataNodeConfiguration> availableDataNodeMap,
+      Map<Integer, Double> freeDiskSpaceMap,
+      List<TRegionReplicaSet> allocatedRegionGroups,
+      List<TRegionReplicaSet> databaseAllocatedRegionGroups,
+      int replicationFactor,
+      TConsensusGroupId consensusGroupId,
+      TRegionReplicaSet remainReplicaSet) {
+    // TODO: Implement this method
+    return null;
+  }
+
   private List<TDataNodeLocation> buildWeightList(
       Map<Integer, TDataNodeConfiguration> availableDataNodeMap,
       Map<Integer, Double> freeDiskSpaceMap,

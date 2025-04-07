@@ -114,6 +114,19 @@ public class PartiteGraphPlacementRegionGroupAllocator implements IRegionGroupAl
     return result;
   }
 
+  @Override
+  public TDataNodeConfiguration selectDestDataNode(
+      Map<Integer, TDataNodeConfiguration> availableDataNodeMap,
+      Map<Integer, Double> freeDiskSpaceMap,
+      List<TRegionReplicaSet> allocatedRegionGroups,
+      List<TRegionReplicaSet> databaseAllocatedRegionGroups,
+      int replicationFactor,
+      TConsensusGroupId consensusGroupId,
+      TRegionReplicaSet remainReplicaSet) {
+    // TODO: Implement this method
+    return null;
+  }
+
   private void prepare(
       int replicationFactor,
       Map<Integer, TDataNodeConfiguration> availableDataNodeMap,

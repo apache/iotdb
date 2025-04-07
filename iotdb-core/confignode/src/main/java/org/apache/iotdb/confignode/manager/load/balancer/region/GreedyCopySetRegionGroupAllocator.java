@@ -28,9 +28,11 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 import static java.util.Map.Entry.comparingByValue;
@@ -50,6 +52,10 @@ public class GreedyCopySetRegionGroupAllocator implements IRegionGroupAllocator 
   private int[] databaseRegionCounter;
   // The number of 2-Region combinations in current cluster
   private int[][] combinationCounter;
+  // target destination datanode
+  private int targetDataNode = -1;
+  // remain replica set datanode
+  private Set<Integer> remainReplicaDataNodeIds;
 
   // First Key: the sum of Regions at the DataNodes in the allocation result is minimal
   int optimalRegionSum;
@@ -120,6 +126,51 @@ public class GreedyCopySetRegionGroupAllocator implements IRegionGroupAllocator 
       }
 
       return result;
+    } finally {
+      clear();
+    }
+  }
+
+  @Override
+  public TDataNodeConfiguration selectDestDataNode(
+      Map<Integer, TDataNodeConfiguration> availableDataNodeMap,
+      Map<Integer, Double> freeDiskSpaceMap,
+      List<TRegionReplicaSet> allocatedRegionGroups,
+      List<TRegionReplicaSet> databaseAllocatedRegionGroups,
+      int replicationFactor,
+      TConsensusGroupId consensusGroupId,
+      TRegionReplicaSet remainReplicaSet) {
+    try {
+      prepare(
+          replicationFactor,
+          availableDataNodeMap,
+          allocatedRegionGroups,
+          databaseAllocatedRegionGroups);
+      remainReplicaDataNodeIds = new HashSet<>();
+      int[] currentReplicaSet = new int[replicationFactor];
+      int databaseRegionSum = 0;
+      int regionSum = 0;
+      for (int i = 0; i < remainReplicaSet.getDataNodeLocations().size(); i++) {
+        int dataNodeId = remainReplicaSet.getDataNodeLocations().get(i).getDataNodeId();
+        currentReplicaSet[i] = dataNodeId;
+        databaseRegionSum += databaseRegionCounter[dataNodeId];
+        regionSum += regionCounter[dataNodeId];
+        remainReplicaDataNodeIds.add(dataNodeId);
+      }
+
+      dfs(-1, replicationFactor - 1, currentReplicaSet, databaseRegionSum, regionSum);
+      // Randomly pick one optimal plan as result
+      Collections.shuffle(optimalReplicaSets);
+      int[] optimalReplicaSet = optimalReplicaSets.get(0);
+      for (int i = 0; i < replicationFactor; i++) {
+        if (remainReplicaDataNodeIds.contains(optimalReplicaSet[i])) {
+          continue;
+        }
+        targetDataNode = optimalReplicaSet[i];
+      }
+
+      return availableDataNodeMap.get(targetDataNode);
+
     } finally {
       clear();
     }
@@ -211,6 +262,7 @@ public class GreedyCopySetRegionGroupAllocator implements IRegionGroupAllocator 
     optimalRegionSum = Integer.MAX_VALUE;
     optimalCombinationSum = Integer.MAX_VALUE;
     optimalReplicaSets = new ArrayList<>();
+    remainReplicaDataNodeIds = new HashSet<>();
   }
 
   /**
@@ -273,6 +325,9 @@ public class GreedyCopySetRegionGroupAllocator implements IRegionGroupAllocator 
 
     for (int i = lastIndex + 1; i < dataNodeIds.length; i++) {
       // Decide the next DataNodeId in the allocation plan
+      if (remainReplicaDataNodeIds.contains(dataNodeIds[i])) {
+        continue;
+      }
       currentReplicaSet[currentReplica] = dataNodeIds[i];
       dfs(
           i,
