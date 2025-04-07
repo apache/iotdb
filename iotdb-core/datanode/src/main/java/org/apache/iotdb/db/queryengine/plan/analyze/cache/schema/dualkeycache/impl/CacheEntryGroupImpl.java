@@ -23,6 +23,7 @@ import java.util.Iterator;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.BiFunction;
 
 public class CacheEntryGroupImpl<FK, SK, V, T extends ICacheEntry<SK, V>>
@@ -32,12 +33,12 @@ public class CacheEntryGroupImpl<FK, SK, V, T extends ICacheEntry<SK, V>>
 
   private final Map<SK, T> cacheEntryMap = new ConcurrentHashMap<>();
   private final ICacheSizeComputer<FK, SK, V> sizeComputer;
-  private long memory;
+  private AtomicLong memory;
 
   CacheEntryGroupImpl(final FK firstKey, final ICacheSizeComputer<FK, SK, V> sizeComputer) {
     this.firstKey = firstKey;
     this.sizeComputer = sizeComputer;
-    this.memory = sizeComputer.computeFirstKeySize(firstKey);
+    this.memory = new AtomicLong(sizeComputer.computeFirstKeySize(firstKey));
   }
 
   @Override
@@ -63,9 +64,9 @@ public class CacheEntryGroupImpl<FK, SK, V, T extends ICacheEntry<SK, V>>
   @Override
   public T removeCacheEntry(final SK secondKey) {
     final T result = cacheEntryMap.remove(secondKey);
-    memory -=
-        sizeComputer.computeSecondKeySize(result.getSecondKey())
-            + sizeComputer.computeValueSize(result.getValue());
+    memory.addAndGet(
+        -sizeComputer.computeSecondKeySize(result.getSecondKey())
+            - sizeComputer.computeValueSize(result.getValue()));
     return result;
   }
 
@@ -76,7 +77,7 @@ public class CacheEntryGroupImpl<FK, SK, V, T extends ICacheEntry<SK, V>>
 
   @Override
   public long getMemory() {
-    return memory;
+    return memory.get();
   }
 
   @Override
