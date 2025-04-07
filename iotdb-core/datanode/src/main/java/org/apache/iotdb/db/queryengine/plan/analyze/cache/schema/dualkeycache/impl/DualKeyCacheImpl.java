@@ -184,6 +184,8 @@ class DualKeyCacheImpl<FK, SK, V, T extends ICacheEntry<SK, V>>
     }
   }
 
+  // The returned delta may have some error, but it's OK
+  // Because the delta is only for loop round estimation
   private long evictOneCacheEntry() {
     final ICacheEntry<SK, V> evictCacheEntry = cacheEntryManager.evict();
     if (evictCacheEntry == null) {
