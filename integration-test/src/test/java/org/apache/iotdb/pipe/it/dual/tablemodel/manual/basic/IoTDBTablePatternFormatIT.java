@@ -92,8 +92,7 @@ public class IoTDBTablePatternFormatIT extends AbstractPipeTableModelDualManualI
       final Map<String, String> processorAttributes = new HashMap<>();
       final Map<String, String> connectorAttributes = new HashMap<>();
 
-      // The table name will be converted to lower case
-      extractorAttributes.put("extractor.table-name", "Test.*");
+      extractorAttributes.put("extractor.table-name", "test.*");
       extractorAttributes.put("extractor.inclusion", "data.insert");
       extractorAttributes.put("extractor.capture.table", "true");
       extractorAttributes.put("user", "root");
@@ -335,8 +334,7 @@ public class IoTDBTablePatternFormatIT extends AbstractPipeTableModelDualManualI
       final Map<String, String> processorAttributes = new HashMap<>();
       final Map<String, String> connectorAttributes = new HashMap<>();
 
-      // The database name will be converted to lower case
-      extractorAttributes.put("extractor.database-name", "Pattern.*");
+      extractorAttributes.put("extractor.database-name", "pattern.*");
       extractorAttributes.put("extractor.inclusion", "data.insert");
       extractorAttributes.put("extractor.capture.table", "true");
       extractorAttributes.put("user", "root");
