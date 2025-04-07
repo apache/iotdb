@@ -91,6 +91,8 @@ public abstract class InsertNode extends SearchNode {
 
   private static final DeviceIDFactory deviceIDFactory = DeviceIDFactory.getInstance();
 
+  private ByteBuffer byteBuffer;
+
   protected InsertNode(PlanNodeId id) {
     super(id);
   }
@@ -429,6 +431,18 @@ public abstract class InsertNode extends SearchNode {
       }
     }
     return rawMeasurements;
+  }
+
+  public void cachedByteBuffer() {
+    this.byteBuffer = this.serializeToByteBuffer();
+  }
+
+  @Override
+  public ByteBuffer serializeToByteBuffer() {
+    if (byteBuffer != null) {
+      return byteBuffer;
+    }
+    return super.serializeToByteBuffer();
   }
 
   protected PartialPath readTargetPath(ByteBuffer buffer) throws IllegalPathException {
