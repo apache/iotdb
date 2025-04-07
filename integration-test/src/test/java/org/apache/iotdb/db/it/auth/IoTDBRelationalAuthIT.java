@@ -460,7 +460,9 @@ public class IoTDBRelationalAuthIT {
     try (Connection adminCon = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
         Statement adminStmt = adminCon.createStatement()) {
       adminStmt.execute("create user test 'password'");
+      adminStmt.execute("create user test2 'password'");
       adminStmt.execute("grant all to user test");
+      adminStmt.execute("grant all to user test2 with grant option");
       adminStmt.execute("revoke SELECT ON ANY from user test");
       adminStmt.execute("create role role1");
       adminStmt.execute("grant all to role role1 with grant option");
@@ -506,6 +508,47 @@ public class IoTDBRelationalAuthIT {
           SQLException.class,
           () -> {
             userConStatement.execute("GRANT SELECT ON DATABASE TEST to role role1");
+          });
+
+      // Do not have grant option
+      Assert.assertThrows(
+          SQLException.class,
+          () -> {
+            userConStatement.execute("GRANT ALL to user test2");
+          });
+    }
+
+    try (Connection userCon =
+            EnvFactory.getEnv().getConnection("test2", "password", BaseEnv.TABLE_SQL_DIALECT);
+        Statement userConStatement = userCon.createStatement()) {
+      // user2 can grant all to user test
+      userConStatement.execute("GRANT ALL to user test");
+      // user2 can revoke all from user test
+      userConStatement.execute("REVOKE ALL from user test");
+
+      userConStatement.execute("GRANT ALL to user test");
+    }
+
+    try (Connection adminCon = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        Statement adminStmt = adminCon.createStatement()) {
+      adminStmt.execute("revoke MANAGE_USER from user test2");
+    }
+
+    try (Connection userCon =
+            EnvFactory.getEnv().getConnection("test2", "password", BaseEnv.TABLE_SQL_DIALECT);
+        Statement userConStatement = userCon.createStatement()) {
+      // user2 can not grant all to user test
+      Assert.assertThrows(
+          SQLException.class,
+          () -> {
+            userConStatement.execute("GRANT ALL to user test2");
+          });
+
+      // user2 can not revoke all from user test because does not hava all privileges
+      Assert.assertThrows(
+          SQLException.class,
+          () -> {
+            userConStatement.execute("REVOKE ALL to user test2");
           });
     }
 
