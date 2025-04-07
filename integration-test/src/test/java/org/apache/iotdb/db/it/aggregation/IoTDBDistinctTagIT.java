@@ -1,0 +1,239 @@
+package org.apache.iotdb.db.it.aggregation;
+
+import org.apache.iotdb.it.env.EnvFactory;
+import org.apache.iotdb.it.framework.IoTDBTestRunner;
+import org.apache.iotdb.itbase.category.ClusterIT;
+import org.apache.iotdb.itbase.category.LocalStandaloneIT;
+import org.apache.iotdb.itbase.env.BaseEnv;
+
+import org.junit.AfterClass;
+import org.junit.BeforeClass;
+import org.junit.Test;
+import org.junit.experimental.categories.Category;
+import org.junit.runner.RunWith;
+
+import java.sql.Connection;
+import java.sql.SQLException;
+import java.sql.Statement;
+
+import static org.apache.iotdb.db.it.utils.TestUtils.prepareData;
+import static org.apache.iotdb.db.it.utils.TestUtils.tableResultSetEqualTest;
+import static org.junit.Assert.fail;
+
+@RunWith(IoTDBTestRunner.class)
+@Category({LocalStandaloneIT.class, ClusterIT.class})
+public class IoTDBDistinctTagIT {
+  private static final String DATABASE_NAME = "test";
+
+  protected static final String[] SQLs =
+      new String[] {
+        "CREATE DATABASE IF NOT EXISTS test",
+        "USE test",
+        // test flush
+        "CREATE TABLE IF NOT EXISTS t1(deviceId STRING TAG, attr1 STRING ATTRIBUTE, s1 INT64 FIELD)",
+        "insert into t1(time, deviceId, attr1, s1) values(1000, 'd1', 'a1', 10)",
+        "insert into t1(time, deviceId, attr1, s1) values(1000, 'd2', 'a2', 11)",
+        "insert into t1(time, deviceId, attr1, s1) values(2000, 'd2', 'xx', 12)",
+        "insert into t1(time, deviceId, attr1, s1) values(4000, 'd1', 'a1', 13)",
+        "flush",
+        "insert into t1(time, deviceId, attr1, s1) values(5000, 'd3', 'a3', 10)",
+        "insert into t1(time, deviceId, attr1, s1) values(6000, 'd4', 'a4', 11)",
+        "insert into t1(time, deviceId, attr1, s1) values(3000, 'd2', 'a2', 12)",
+        "insert into t1(time, deviceId, attr1, s1) values(2000, 'd1', 'a1', 13)",
+        "flush",
+
+        // test memory
+        "CREATE TABLE IF NOT EXISTS t2(deviceId STRING TAG, attr1 STRING ATTRIBUTE, s1 INT64 FIELD)",
+        "insert into t2(time, deviceId, attr1, s1) values(1000, 'd1', 'a1', 10)",
+        "insert into t2(time, deviceId, attr1, s1) values(1000, 'd2', 'a2', 11)",
+        "insert into t2(time, deviceId, attr1, s1) values(2000, 'd2', 'xx', 12)",
+        "insert into t2(time, deviceId, attr1, s1) values(4000, 'd1', 'a1', 13)",
+        "insert into t2(time, deviceId, attr1, s1) values(5000, 'd3', 'a3', 10)",
+        "insert into t2(time, deviceId, attr1, s1) values(6000, 'd4', 'a4', 11)",
+        "insert into t2(time, deviceId, attr1, s1) values(3000, 'd2', 'a2', 12)",
+        "insert into t2(time, deviceId, attr1, s1) values(2000, 'd1', 'a1', 13)",
+      };
+
+  @BeforeClass
+  public static void setUp() throws Exception {
+    EnvFactory.getEnv().getConfig().getCommonConfig().setPartitionInterval(1000);
+    EnvFactory.getEnv().initClusterEnvironment();
+    prepareData();
+  }
+
+  @AfterClass
+  public static void tearDown() throws Exception {
+    EnvFactory.getEnv().cleanClusterEnvironment();
+  }
+
+  @Test
+  public void testDistinct() {
+    // distinct(deviceId)
+    String[] expectedHeader = new String[] {"deviceId"};
+    String[] retArray = new String[] {"d1,", "d2,", "d3,", "d4,"};
+    tableResultSetEqualTest(
+        "select distinct(deviceId) from test.t1 order by deviceId",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+
+    tableResultSetEqualTest(
+        "select distinct(deviceId) from test.t2 order by deviceId",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+
+    // distinct(attr1)
+    expectedHeader = new String[] {"attr1"};
+    retArray = new String[] {"a1,", "a2,", "a3,", "a4,"};
+    tableResultSetEqualTest(
+        "select distinct(attr1) from test.t1 order by attr1",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+
+    tableResultSetEqualTest(
+        "select distinct(attr1) from test.t2 order by attr1",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+  }
+
+  @Test
+  public void testDistinctWithTimeFilter() {
+    // distinct(deviceId) ... where time > 3000;
+    String[] expectedHeader = new String[] {"deviceId"};
+    String[] retArray = new String[] {"d1,", "d3,", "d4,"};
+    tableResultSetEqualTest(
+        "select distinct(deviceId) from test.t1 where time > 3000 order by deviceId",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+
+    tableResultSetEqualTest(
+        "select distinct(deviceId) from test.t2 where time > 3000 order by deviceId",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+
+    // distinct(attr1) ... where time = 5000;
+    expectedHeader = new String[] {"attr1"};
+    retArray = new String[] {"a3,"};
+    tableResultSetEqualTest(
+        "select distinct(attr1) from test.t1 where time = 5000 order by attr1",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+
+    tableResultSetEqualTest(
+        "select distinct(attr1) from test.t2 where time = 5000 order by attr1",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+  }
+
+  @Test
+  public void testDistinctWithPushDownFilter() {
+    // distinct(deviceId) ... where s1 = 11;
+    String[] expectedHeader = new String[] {"deviceId"};
+    String[] retArray = new String[] {"d2,", "d4,"};
+    tableResultSetEqualTest(
+        "select distinct(deviceId) from test.t1 where s1 = 11 order by deviceId",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+
+    tableResultSetEqualTest(
+        "select distinct(deviceId) from test.t2 where s1 = 11 order by deviceId",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+
+    // distinct(attr1) ... where s1 > 11;
+    expectedHeader = new String[] {"attr1"};
+    retArray = new String[] {"a1,", "a2,"};
+    tableResultSetEqualTest(
+        "select distinct(attr1) from test.t1 where s1 > 11 order by attr1",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+
+    tableResultSetEqualTest(
+        "select distinct(attr1) from test.t2 where s1 > 11 order by attr1",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+  }
+
+  @Test
+  public void testDistinctWithDelete() throws SQLException {
+    String[] sqls =
+        new String[] {
+          "USE test",
+          // test flush
+          "CREATE TABLE IF NOT EXISTS t3(deviceId STRING TAG, attr1 STRING ATTRIBUTE, s1 INT64 FIELD)",
+          "insert into t3(time, deviceId, attr1, s1) values(1000, 'd1', 'a1', 10)",
+          "insert into t3(time, deviceId, attr1, s1) values(1000, 'd2', 'a2', 11)",
+          "insert into t3(time, deviceId, attr1, s1) values(2000, 'd2', 'xx', 12)",
+          "insert into t3(time, deviceId, attr1, s1) values(4000, 'd1', 'a1', 13)",
+          "flush",
+          "delete from test.t3",
+
+          // test memory
+          "CREATE TABLE IF NOT EXISTS t4(deviceId STRING TAG, attr1 STRING ATTRIBUTE, s1 INT64 FIELD)",
+          "insert into t4(time, deviceId, attr1, s1) values(1000, 'd1', 'a1', 10)",
+          "insert into t4(time, deviceId, attr1, s1) values(1000, 'd2', 'a2', 11)",
+          "insert into t4(time, deviceId, attr1, s1) values(2000, 'd2', 'xx', 12)",
+          "insert into t4(time, deviceId, attr1, s1) values(4000, 'd1', 'a1', 13)",
+          "delete from test.t4",
+        };
+
+    try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        Statement statement = connection.createStatement()) {
+      for (String sql : sqls) {
+        statement.execute(sql);
+      }
+    }
+
+    // distinct(deviceId)
+    String[] expectedHeader = new String[] {"deviceId"};
+    String[] retArray = new String[] {};
+    tableResultSetEqualTest(
+        "select distinct(deviceId) from test.t3 order by deviceId",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+    tableResultSetEqualTest(
+        "select distinct(deviceId) from test.t4 order by deviceId",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+
+    // distinct(attr1)
+    expectedHeader = new String[] {"attr1"};
+    retArray = new String[] {};
+    tableResultSetEqualTest(
+        "select distinct(attr1) from test.t3 order by attr1",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+
+    tableResultSetEqualTest(
+        "select distinct(attr1) from test.t4 order by attr1",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+  }
+
+  private static void prepareData() {
+    try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        Statement statement = connection.createStatement()) {
+
+      for (String sql : SQLs) {
+        statement.execute(sql);
+      }
+    } catch (Exception e) {
+      fail(e.getMessage());
+    }
+  }
+}
