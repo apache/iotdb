@@ -22,6 +22,8 @@ package org.apache.iotdb.commons.pipe.extractor;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
 import org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant;
 import org.apache.iotdb.commons.pipe.config.plugin.env.PipeTaskExtractorRuntimeEnvironment;
+import org.apache.iotdb.commons.pipe.datastructure.pattern.TablePattern;
+import org.apache.iotdb.commons.pipe.datastructure.pattern.TreePattern;
 import org.apache.iotdb.pipe.api.PipeExtractor;
 import org.apache.iotdb.pipe.api.annotation.TableModel;
 import org.apache.iotdb.pipe.api.annotation.TreeModel;
@@ -70,17 +72,24 @@ public abstract class IoTDBExtractor implements PipeExtractor {
   public void validate(final PipeParameterValidator validator) throws Exception {
     final String inclusionString = getInclusionString(validator.getParameters());
     final String exclusionString = getExclusionString(validator.getParameters());
+    final boolean isTreeDataListened =
+        TreePattern.isTreeModelDataAllowToBeCaptured(validator.getParameters());
+    final boolean isTableDataListened =
+        TablePattern.isTableModelDataAllowToBeCaptured(validator.getParameters());
+
     validator
         .validate(
-            args -> optionsAreAllLegal((String) args),
+            args -> optionsAreAllLegal((String) args, isTreeDataListened, isTableDataListened),
             "The 'inclusion' string contains illegal path.",
             inclusionString)
         .validate(
-            args -> optionsAreAllLegal((String) args),
+            args -> optionsAreAllLegal((String) args, isTreeDataListened, isTableDataListened),
             "The 'inclusion.exclusion' string contains illegal path.",
             exclusionString)
         .validate(
-            args -> hasAtLeastOneOption((String) args[0], (String) args[1]),
+            args ->
+                hasAtLeastOneOption(
+                    (String) args[0], (String) args[1], isTreeDataListened, isTableDataListened),
             "The pipe inclusion content can't be empty.",
             inclusionString,
             exclusionString);
