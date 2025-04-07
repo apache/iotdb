@@ -906,15 +906,15 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
 
     // Inject table model into the extractor attributes
     extractorAttributes.put(SystemConstant.SQL_DIALECT_KEY, SystemConstant.SQL_DIALECT_TABLE_VALUE);
-    checkAndMayChangeSourceUserName(pipeName, extractorAttributes, userName, false);
-    checkAndMayChangeSinkUserName(pipeName, node.getConnectorAttributes(), userName, false);
+    checkAndEnrichSourceUserName(pipeName, extractorAttributes, userName, false);
+    checkAndEnrichSinkUserName(pipeName, node.getConnectorAttributes(), userName, false);
 
     mayChangeSourcePattern(extractorAttributes);
 
     return new CreatePipeTask(node);
   }
 
-  public static void checkAndMayChangeSourceUserName(
+  public static void checkAndEnrichSourceUserName(
       final String pipeName,
       final Map<String, String> replacedExtractorAttributes,
       final String userName,
@@ -981,7 +981,7 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
         PipeExtractorConstant.SOURCE_TABLE_NAME_KEY);
   }
 
-  public static void checkAndMayChangeSinkUserName(
+  public static void checkAndEnrichSinkUserName(
       final String pipeName,
       final Map<String, String> connectorAttributes,
       final String userName,
@@ -1037,12 +1037,12 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
     if (node.isReplaceAllExtractorAttributes()) {
       extractorAttributes.put(
           SystemConstant.SQL_DIALECT_KEY, SystemConstant.SQL_DIALECT_TABLE_VALUE);
-      checkAndMayChangeSourceUserName(pipeName, extractorAttributes, userName, true);
+      checkAndEnrichSourceUserName(pipeName, extractorAttributes, userName, true);
     }
     mayChangeSourcePattern(extractorAttributes);
 
     if (node.isReplaceAllConnectorAttributes()) {
-      checkAndMayChangeSinkUserName(pipeName, node.getConnectorAttributes(), userName, true);
+      checkAndEnrichSinkUserName(pipeName, node.getConnectorAttributes(), userName, true);
     }
 
     return new AlterPipeTask(node, userName);

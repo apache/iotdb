@@ -200,8 +200,8 @@ import java.util.Map;
 
 import static org.apache.iotdb.commons.executable.ExecutableManager.getUnTrustedUriErrorMsg;
 import static org.apache.iotdb.commons.executable.ExecutableManager.isUriTrusted;
-import static org.apache.iotdb.db.queryengine.plan.execution.config.TableConfigTaskVisitor.checkAndMayChangeSinkUserName;
-import static org.apache.iotdb.db.queryengine.plan.execution.config.TableConfigTaskVisitor.checkAndMayChangeSourceUserName;
+import static org.apache.iotdb.db.queryengine.plan.execution.config.TableConfigTaskVisitor.checkAndEnrichSinkUserName;
+import static org.apache.iotdb.db.queryengine.plan.execution.config.TableConfigTaskVisitor.checkAndEnrichSourceUserName;
 
 public class TreeConfigTaskVisitor extends StatementVisitor<IConfigTask, MPPQueryContext> {
 
@@ -532,12 +532,12 @@ public class TreeConfigTaskVisitor extends StatementVisitor<IConfigTask, MPPQuer
     createPipeStatement
         .getExtractorAttributes()
         .put(SystemConstant.SQL_DIALECT_KEY, SystemConstant.SQL_DIALECT_TREE_VALUE);
-    checkAndMayChangeSourceUserName(
+    checkAndEnrichSourceUserName(
         createPipeStatement.getPipeName(),
         createPipeStatement.getExtractorAttributes(),
         context.getSession().getUserName(),
         false);
-    checkAndMayChangeSinkUserName(
+    checkAndEnrichSinkUserName(
         createPipeStatement.getPipeName(),
         createPipeStatement.getConnectorAttributes(),
         context.getSession().getUserName(),
@@ -571,11 +571,11 @@ public class TreeConfigTaskVisitor extends StatementVisitor<IConfigTask, MPPQuer
     if (alterPipeStatement.isReplaceAllExtractorAttributes()) {
       extractorAttributes.put(
           SystemConstant.SQL_DIALECT_KEY, SystemConstant.SQL_DIALECT_TREE_VALUE);
-      checkAndMayChangeSourceUserName(pipeName, extractorAttributes, userName, true);
+      checkAndEnrichSourceUserName(pipeName, extractorAttributes, userName, true);
     }
 
     if (alterPipeStatement.isReplaceAllConnectorAttributes()) {
-      checkAndMayChangeSinkUserName(
+      checkAndEnrichSinkUserName(
           pipeName, alterPipeStatement.getConnectorAttributes(), userName, true);
     }
 
