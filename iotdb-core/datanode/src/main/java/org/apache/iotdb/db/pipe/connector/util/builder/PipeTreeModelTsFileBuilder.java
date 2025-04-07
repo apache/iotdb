@@ -137,7 +137,8 @@ public class PipeTreeModelTsFileBuilder extends PipeTsFileBuilder {
       // org.apache.iotdb.db.storageengine.dataregion.memtable.WritableMemChunk.writeNonAlignedTablet
       final Object[] values = tablet.getValues();
       for (int j = 0; j < tablet.getSchemas().size(); ++j) {
-        if (Objects.equals(TSDataType.DATE, tablet.getSchemas().get(j).getType())) {
+        final IMeasurementSchema schema = tablet.getSchemas().get(j);
+        if (Objects.nonNull(schema) && Objects.equals(TSDataType.DATE, schema.getType())) {
           final LocalDate[] dates = ((LocalDate[]) values[j]);
           final int[] dateValues = new int[dates.length];
           for (int k = 0; k < Math.min(dates.length, tablet.getRowSize()); k++) {
