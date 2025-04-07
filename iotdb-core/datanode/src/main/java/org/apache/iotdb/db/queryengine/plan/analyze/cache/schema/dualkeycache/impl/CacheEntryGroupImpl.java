@@ -24,7 +24,6 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.BiFunction;
-import java.util.function.Function;
 
 public class CacheEntryGroupImpl<FK, SK, V, T extends ICacheEntry<SK, V>>
     implements ICacheEntryGroup<FK, SK, V, T> {
@@ -32,9 +31,13 @@ public class CacheEntryGroupImpl<FK, SK, V, T extends ICacheEntry<SK, V>>
   private final FK firstKey;
 
   private final Map<SK, T> cacheEntryMap = new ConcurrentHashMap<>();
+  private final ICacheSizeComputer<FK, SK, V> sizeComputer;
+  private long memory;
 
-  CacheEntryGroupImpl(final FK firstKey) {
+  CacheEntryGroupImpl(final FK firstKey, final ICacheSizeComputer<FK, SK, V> sizeComputer) {
     this.firstKey = firstKey;
+    this.sizeComputer = sizeComputer;
+    this.memory = sizeComputer.computeFirstKeySize(firstKey);
   }
 
   @Override
@@ -58,13 +61,12 @@ public class CacheEntryGroupImpl<FK, SK, V, T extends ICacheEntry<SK, V>>
   }
 
   @Override
-  public T computeCacheEntryIfAbsent(final SK secondKey, final Function<SK, T> computation) {
-    return cacheEntryMap.computeIfAbsent(secondKey, computation);
-  }
-
-  @Override
   public T removeCacheEntry(final SK secondKey) {
-    return cacheEntryMap.remove(secondKey);
+    final T result = cacheEntryMap.remove(secondKey);
+    memory -=
+        sizeComputer.computeSecondKeySize(result.getSecondKey())
+            + sizeComputer.computeValueSize(result.getValue());
+    return result;
   }
 
   @Override
@@ -73,10 +75,19 @@ public class CacheEntryGroupImpl<FK, SK, V, T extends ICacheEntry<SK, V>>
   }
 
   @Override
+  public long getMemory() {
+    return memory;
+  }
+
+  @Override
   public boolean equals(final Object o) {
-    if (this == o) return true;
-    if (o == null || getClass() != o.getClass()) return false;
-    CacheEntryGroupImpl<?, ?, ?, ?> that = (CacheEntryGroupImpl<?, ?, ?, ?>) o;
+    if (this == o) {
+      return true;
+    }
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
+    final CacheEntryGroupImpl<?, ?, ?, ?> that = (CacheEntryGroupImpl<?, ?, ?, ?>) o;
     return Objects.equals(firstKey, that.firstKey);
   }
 

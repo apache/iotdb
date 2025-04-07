@@ -21,9 +21,8 @@ package org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.dualkeycache.i
 
 import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.dualkeycache.IDualKeyCacheStats;
 
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.function.Supplier;
 
 class CacheStats<FK> implements IDualKeyCacheStats {
 
@@ -32,30 +31,15 @@ class CacheStats<FK> implements IDualKeyCacheStats {
 
   private final long memoryThreshold;
 
-  private final Map<FK, Long> firstKeyMemoryUsageMap = new ConcurrentHashMap<>();
+  private final Supplier<Long> memoryComputation;
   private final AtomicLong entriesCount = new AtomicLong(0);
 
   private final AtomicLong requestCount = new AtomicLong(0);
   private final AtomicLong hitCount = new AtomicLong(0);
 
-  CacheStats(long memoryCapacity) {
+  CacheStats(long memoryCapacity, final Supplier<Long> memoryComputation) {
     this.memoryThreshold = (long) (memoryCapacity * MEMORY_THRESHOLD_RATIO);
-  }
-
-  void addFirstKeyMemory(final FK firstKey) {
-    firstKeyMemoryUsageMap.put(firstKey, 0L);
-  }
-
-  void increaseMemoryUsage(final FK firstKey, final int size) {
-    firstKeyMemoryUsageMap.computeIfPresent(firstKey, (fk, v) -> v + size);
-  }
-
-  void decreaseMemoryUsage(final FK firstKey, final int size) {
-    firstKeyMemoryUsageMap.computeIfPresent(firstKey, (fk, v) -> v - size);
-  }
-
-  void removeFirstKeyMemory(final FK firstKey) {
-    firstKeyMemoryUsageMap.remove(firstKey);
+    this.memoryComputation = memoryComputation;
   }
 
   boolean isExceedMemoryCapacity() {
@@ -112,7 +96,7 @@ class CacheStats<FK> implements IDualKeyCacheStats {
 
   @Override
   public long memoryUsage() {
-    return firstKeyMemoryUsageMap.values().stream().reduce(0L, Long::sum);
+    return memoryComputation.get();
   }
 
   @Override
@@ -126,13 +110,12 @@ class CacheStats<FK> implements IDualKeyCacheStats {
   }
 
   void reset() {
-    resetMemoryUsageAndEntriesCount();
+    resetEntriesCount();
     hitCount.set(0);
     requestCount.set(0);
   }
 
-  void resetMemoryUsageAndEntriesCount() {
-    memoryUsage.set(0);
+  void resetEntriesCount() {
     entriesCount.set(0);
   }
 }

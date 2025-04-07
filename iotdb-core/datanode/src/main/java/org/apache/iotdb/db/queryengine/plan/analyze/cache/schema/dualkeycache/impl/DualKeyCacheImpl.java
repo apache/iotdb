@@ -55,7 +55,7 @@ class DualKeyCacheImpl<FK, SK, V, T extends ICacheEntry<SK, V>>
       final long memoryCapacity) {
     this.cacheEntryManager = cacheEntryManager;
     this.sizeComputer = sizeComputer;
-    this.cacheStats = new CacheStats<>(memoryCapacity);
+    this.cacheStats = new CacheStats<>(memoryCapacity, this::getMemory);
   }
 
   @Override
@@ -86,18 +86,16 @@ class DualKeyCacheImpl<FK, SK, V, T extends ICacheEntry<SK, V>>
       final boolean createIfNotExists) {
     final AtomicInteger usedMemorySize = new AtomicInteger(0);
 
-    final ICacheEntryGroup<FK, SK, V, T> cacheEntryGroup =
-        createIfNotExists
-            ? firstKeyMap.compute(
-                firstKey,
-                (k, entryGroup) -> {
-                  if (entryGroup == null) {
-                    entryGroup = new CacheEntryGroupImpl<>(firstKey);
-                    usedMemorySize.getAndAdd(sizeComputer.computeFirstKeySize(firstKey));
-                  }
-                  return entryGroup;
-                })
-            : firstKeyMap.get(firstKey);
+    final ICacheEntryGroup<FK, SK, V, T> cacheEntryGroup = firstKeyMap.get(firstKey);
+    if (Objects.isNull(cacheEntryGroup) && createIfNotExists) {
+      firstKeyMap.compute(
+          firstKey,
+          (k, entryGroup) -> {
+            entryGroup = new CacheEntryGroupImpl<>(firstKey, sizeComputer);
+            usedMemorySize.getAndAdd(sizeComputer.computeFirstKeySize(firstKey));
+            return entryGroup;
+          });
+    }
 
     if (Objects.isNull(cacheEntryGroup)) {
       return;
@@ -121,7 +119,7 @@ class DualKeyCacheImpl<FK, SK, V, T extends ICacheEntry<SK, V>>
           return cacheEntry;
         });
 
-    increaseMemoryUsageAndMayEvict(firstKey, usedMemorySize.get());
+    mayEvict();
   }
 
   @Override
@@ -148,7 +146,7 @@ class DualKeyCacheImpl<FK, SK, V, T extends ICacheEntry<SK, V>>
                     });
               });
     }
-    increaseMemoryUsageAndMayEvict(firstKey, usedMemorySize.get());
+    mayEvict();
   }
 
   @Override
@@ -180,12 +178,11 @@ class DualKeyCacheImpl<FK, SK, V, T extends ICacheEntry<SK, V>>
                       });
                 });
       }
-      increaseMemoryUsageAndMayEvict(firstKey, usedMemorySize.get());
+      mayEvict();
     }
   }
 
-  private void increaseMemoryUsageAndMayEvict(final FK firstKey, final int memorySize) {
-    cacheStats.increaseMemoryUsage(firstKey, memorySize);
+  private void mayEvict() {
     while (cacheStats.isExceedMemoryCapacity()) {
       evictOneCacheEntry();
     }
@@ -231,7 +228,7 @@ class DualKeyCacheImpl<FK, SK, V, T extends ICacheEntry<SK, V>>
   private void executeInvalidateAll() {
     firstKeyMap.clear();
     cacheEntryManager.cleanUp();
-    cacheStats.resetMemoryUsageAndEntriesCount();
+    cacheStats.resetEntriesCount();
   }
 
   @Override
@@ -273,8 +270,6 @@ class DualKeyCacheImpl<FK, SK, V, T extends ICacheEntry<SK, V>>
 
   @Override
   public void invalidate(final FK firstKey, final SK secondKey) {
-    final AtomicInteger usedMemorySize = new AtomicInteger(0);
-
     firstKeyMap.compute(
         firstKey,
         (key, cacheEntryGroup) -> {
@@ -293,13 +288,11 @@ class DualKeyCacheImpl<FK, SK, V, T extends ICacheEntry<SK, V>>
           }
 
           if (cacheEntryGroup.isEmpty()) {
-            usedMemorySize.getAndAdd(sizeComputer.computeFirstKeySize(firstKey));
             return null;
           }
 
           return cacheEntryGroup;
         });
-    cacheStats.decreaseMemoryUsage(firstKey, usedMemorySize.get());
   }
 
   @Override
@@ -376,6 +369,13 @@ class DualKeyCacheImpl<FK, SK, V, T extends ICacheEntry<SK, V>>
             return cacheEntryGroup;
           });
     }
+  }
+
+  public long getMemory() {
+    return Arrays.stream(firstKeyMap.maps)
+        .flatMap(map -> map.values().stream())
+        .map(ICacheEntryGroup::getMemory)
+        .reduce(0L, Long::sum);
   }
 
   /**
