@@ -305,7 +305,7 @@ class DualKeyCacheImpl<FK, SK, V, T extends ICacheEntry<SK, V>>
     }
   }
 
-  public long getMemory() {
+  private long getMemory() {
     return Arrays.stream(firstKeyMap.maps)
         .flatMap(map -> map.values().stream())
         .map(ICacheEntryGroup::getMemory)
