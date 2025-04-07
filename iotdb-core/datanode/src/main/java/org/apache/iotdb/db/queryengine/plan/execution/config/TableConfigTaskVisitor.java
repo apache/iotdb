@@ -949,27 +949,15 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
 
     // Use lower case because database + table name are all in lower cases
     if (isTable) {
-      extractorParameters.replaceAttributeIfExists(
-          extractorParameters
-              .getStringByKeys(
-                  PipeExtractorConstant.EXTRACTOR_DATABASE_KEY,
-                  PipeExtractorConstant.SOURCE_DATABASE_KEY,
-                  PipeExtractorConstant.EXTRACTOR_DATABASE_NAME_KEY,
-                  PipeExtractorConstant.SOURCE_DATABASE_NAME_KEY)
-              .toLowerCase(Locale.ENGLISH),
+      extractorParameters.computeAttributeIfExists(
+          (k, v) -> v.toLowerCase(Locale.ENGLISH),
           PipeExtractorConstant.EXTRACTOR_DATABASE_KEY,
           PipeExtractorConstant.SOURCE_DATABASE_KEY,
           PipeExtractorConstant.EXTRACTOR_DATABASE_NAME_KEY,
           PipeExtractorConstant.SOURCE_DATABASE_NAME_KEY);
 
-      extractorParameters.replaceAttributeIfExists(
-          extractorParameters
-              .getStringByKeys(
-                  PipeExtractorConstant.EXTRACTOR_TABLE_KEY,
-                  PipeExtractorConstant.SOURCE_TABLE_KEY,
-                  PipeExtractorConstant.EXTRACTOR_TABLE_NAME_KEY,
-                  PipeExtractorConstant.SOURCE_TABLE_NAME_KEY)
-              .toLowerCase(Locale.ENGLISH),
+      extractorParameters.computeAttributeIfExists(
+          (k, v) -> v.toLowerCase(Locale.ENGLISH),
           PipeExtractorConstant.EXTRACTOR_TABLE_KEY,
           PipeExtractorConstant.SOURCE_TABLE_KEY,
           PipeExtractorConstant.EXTRACTOR_TABLE_NAME_KEY,

@@ -34,6 +34,7 @@ import java.util.Map.Entry;
 import java.util.Objects;
 import java.util.Set;
 import java.util.TreeMap;
+import java.util.function.BiFunction;
 import java.util.stream.Collectors;
 
 /**
@@ -75,15 +76,16 @@ public class PipeParameters {
     attributes.put(KeyReducer.reduce(key), values);
   }
 
-  public void replaceAttributeIfExists(final String value, final String... keys) {
+  public void computeAttributeIfExists(
+      final BiFunction<String, String, String> valueComputer, final String... keys) {
     for (String key : keys) {
       if (attributes.containsKey(key)) {
-        attributes.put(key, value);
+        attributes.compute(key, valueComputer);
         return;
       }
       key = KeyReducer.reduce(key);
       if (attributes.containsKey(key)) {
-        attributes.put(key, value);
+        attributes.compute(key, valueComputer);
         return;
       }
     }
