@@ -46,7 +46,7 @@ class DualKeyCacheImpl<FK, SK, V, T extends ICacheEntry<SK, V>>
 
   private final ICacheSizeComputer<FK, SK, V> sizeComputer;
 
-  private final CacheStats<FK> cacheStats;
+  private final CacheStats cacheStats;
 
   DualKeyCacheImpl(
       final ICacheEntryManager<FK, SK, V, T> cacheEntryManager,
@@ -54,7 +54,7 @@ class DualKeyCacheImpl<FK, SK, V, T extends ICacheEntry<SK, V>>
       final long memoryCapacity) {
     this.cacheEntryManager = cacheEntryManager;
     this.sizeComputer = sizeComputer;
-    this.cacheStats = new CacheStats<>(memoryCapacity, this::getMemory);
+    this.cacheStats = new CacheStats(memoryCapacity, this::getMemory);
   }
 
   @Override
