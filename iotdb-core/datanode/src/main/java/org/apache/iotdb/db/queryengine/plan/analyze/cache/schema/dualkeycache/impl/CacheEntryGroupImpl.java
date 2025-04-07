@@ -19,6 +19,9 @@
 
 package org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.dualkeycache.impl;
 
+import org.apache.tsfile.utils.RamUsageEstimator;
+
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.Objects;
@@ -30,6 +33,11 @@ import java.util.function.Function;
 public class CacheEntryGroupImpl<FK, SK, V, T extends ICacheEntry<SK, V>>
     implements ICacheEntryGroup<FK, SK, V, T> {
 
+  private static final long INSTANCE_SIZE =
+      RamUsageEstimator.shallowSizeOfInstance(CacheEntryGroupImpl.class)
+          + RamUsageEstimator.shallowSizeOfInstance(AtomicLong.class)
+          + RamUsageEstimator.shallowSizeOfInstance(HashMap.class);
+
   private final FK firstKey;
 
   private final Map<SK, T> cacheEntryMap = new ConcurrentHashMap<>();
@@ -39,7 +47,7 @@ public class CacheEntryGroupImpl<FK, SK, V, T extends ICacheEntry<SK, V>>
   CacheEntryGroupImpl(final FK firstKey, final ICacheSizeComputer<FK, SK, V> sizeComputer) {
     this.firstKey = firstKey;
     this.sizeComputer = sizeComputer;
-    this.memory = new AtomicLong(sizeComputer.computeFirstKeySize(firstKey));
+    this.memory = new AtomicLong(INSTANCE_SIZE + sizeComputer.computeFirstKeySize(firstKey));
   }
 
   @Override
@@ -69,7 +77,8 @@ public class CacheEntryGroupImpl<FK, SK, V, T extends ICacheEntry<SK, V>>
     if (Objects.nonNull(result)) {
       final long delta =
           sizeComputer.computeSecondKeySize(result.getSecondKey())
-              + sizeComputer.computeValueSize(result.getValue());
+              + sizeComputer.computeValueSize(result.getValue())
+              + RamUsageEstimator.HASHTABLE_RAM_BYTES_PER_ENTRY;
       memory.addAndGet(-delta);
       return delta;
     }
