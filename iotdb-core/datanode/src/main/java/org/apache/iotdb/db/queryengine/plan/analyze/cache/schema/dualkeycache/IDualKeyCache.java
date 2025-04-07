@@ -87,12 +87,6 @@ public interface IDualKeyCache<FK, SK, V> {
   @GuardedBy("DataNodeSchemaCache#writeLock")
   void invalidateAll();
 
-  /**
-   * Clean up all data and info of this cache, including cache keys, cache values and cache stats.
-   */
-  @GuardedBy("DataNodeSchemaCache#writeLock")
-  void cleanUp();
-
   /** Return all the current cache status and statistics. */
   IDualKeyCacheStats stats();
 

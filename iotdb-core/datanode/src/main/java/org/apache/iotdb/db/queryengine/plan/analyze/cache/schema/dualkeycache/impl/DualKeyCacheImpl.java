@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.dualkeycache.impl;
 
-import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.dualkeycache.IDualKeyCache;
 import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.dualkeycache.IDualKeyCacheStats;
 
@@ -204,30 +203,14 @@ class DualKeyCacheImpl<FK, SK, V, T extends ICacheEntry<SK, V>>
 
   @Override
   public void invalidateAll() {
-    executeInvalidateAll();
-  }
-
-  private void executeInvalidateAll() {
     firstKeyMap.clear();
     cacheEntryManager.cleanUp();
     cacheStats.resetEntriesCount();
   }
 
   @Override
-  public void cleanUp() {
-    executeInvalidateAll();
-    cacheStats.reset();
-  }
-
-  @Override
   public IDualKeyCacheStats stats() {
     return cacheStats;
-  }
-
-  @Override
-  @TestOnly
-  public void evictOneEntry() {
-    evictOneCacheEntry();
   }
 
   @Override
