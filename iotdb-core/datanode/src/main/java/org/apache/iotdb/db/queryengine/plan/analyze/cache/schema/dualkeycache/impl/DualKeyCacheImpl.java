@@ -21,9 +21,7 @@ package org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.dualkeycache.i
 
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.dualkeycache.IDualKeyCache;
-import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.dualkeycache.IDualKeyCacheComputation;
 import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.dualkeycache.IDualKeyCacheStats;
-import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.dualkeycache.IDualKeyCacheUpdating;
 
 import javax.annotation.Nonnull;
 
@@ -77,106 +75,6 @@ class DualKeyCacheImpl<FK, SK, V, T extends ICacheEntry<SK, V>>
         return cacheEntry.getValue();
       }
     }
-  }
-
-  @Override
-  public void compute(final IDualKeyCacheComputation<FK, SK, V> computation) {
-    final FK firstKey = computation.getFirstKey();
-    final ICacheEntryGroup<FK, SK, V, T> cacheEntryGroup = firstKeyMap.get(firstKey);
-    final SK[] secondKeyList = computation.getSecondKeyList();
-    if (cacheEntryGroup == null) {
-      for (int i = 0; i < secondKeyList.length; i++) {
-        computation.computeValue(i, null);
-      }
-      cacheStats.recordMiss(secondKeyList.length);
-    } else {
-      T cacheEntry;
-      int hitCount = 0;
-      for (int i = 0; i < secondKeyList.length; i++) {
-        cacheEntry = cacheEntryGroup.getCacheEntry(secondKeyList[i]);
-        if (cacheEntry == null) {
-          computation.computeValue(i, null);
-        } else {
-          computation.computeValue(i, cacheEntry.getValue());
-          cacheEntryManager.access(cacheEntry);
-          hitCount++;
-        }
-      }
-      cacheStats.recordHit(hitCount);
-      cacheStats.recordMiss(secondKeyList.length - hitCount);
-    }
-  }
-
-  @Override
-  public void updateWithLock(final IDualKeyCacheUpdating<FK, SK, V> updating) {
-    final FK firstKey = updating.getFirstKey();
-    final ICacheEntryGroup<FK, SK, V, T> cacheEntryGroup = firstKeyMap.get(firstKey);
-    final SK[] secondKeyList = updating.getSecondKeyList();
-    if (cacheEntryGroup == null) {
-      for (int i = 0; i < secondKeyList.length; i++) {
-        updating.updateValue(i, null);
-      }
-      cacheStats.recordMiss(secondKeyList.length);
-    } else {
-      T cacheEntry;
-      for (int i = 0; i < secondKeyList.length; i++) {
-        cacheEntry = cacheEntryGroup.getCacheEntry(secondKeyList[i]);
-        if (cacheEntry == null) {
-          updating.updateValue(i, null);
-        } else {
-          int changeSize = 0;
-          synchronized (cacheEntry) {
-            if (cacheEntry.getBelongedGroup() != null) {
-              // Only update the value when the cache entry is not evicted.
-              // If the cache entry is evicted, getBelongedGroup is null.
-              // Synchronized is to guarantee the cache entry is not evicted during the update.
-              changeSize = updating.updateValue(i, cacheEntry.getValue());
-              cacheEntryManager.access(cacheEntry);
-            }
-          }
-          if (changeSize > 0) {
-            increaseMemoryUsageAndMayEvict(changeSize);
-          }
-        }
-      }
-    }
-  }
-
-  @Override
-  public void put(final FK firstKey, final SK secondKey, final V value) {
-    final AtomicInteger usedMemorySize = new AtomicInteger(0);
-    firstKeyMap.compute(
-        firstKey,
-        (k, cacheEntryGroup) -> {
-          if (cacheEntryGroup == null) {
-            cacheEntryGroup = new CacheEntryGroupImpl<>(firstKey);
-            usedMemorySize.getAndAdd(sizeComputer.computeFirstKeySize(firstKey));
-          }
-          final ICacheEntryGroup<FK, SK, V, T> finalCacheEntryGroup = cacheEntryGroup;
-          cacheEntryGroup.computeCacheEntry(
-              secondKey,
-              (sk, cacheEntry) -> {
-                if (cacheEntry == null) {
-                  cacheEntry =
-                      cacheEntryManager.createCacheEntry(secondKey, value, finalCacheEntryGroup);
-                  cacheEntryManager.put(cacheEntry);
-                  cacheStats.increaseEntryCount();
-                  usedMemorySize.getAndAdd(sizeComputer.computeSecondKeySize(sk));
-                } else {
-                  final V existingValue = cacheEntry.getValue();
-                  if (existingValue != value && !existingValue.equals(value)) {
-                    cacheEntry.replaceValue(value);
-                    usedMemorySize.getAndAdd(-sizeComputer.computeValueSize(existingValue));
-                  }
-                  // update the cache status
-                  cacheEntryManager.access(cacheEntry);
-                }
-                usedMemorySize.getAndAdd(sizeComputer.computeValueSize(value));
-                return cacheEntry;
-              });
-          return cacheEntryGroup;
-        });
-    increaseMemoryUsageAndMayEvict(usedMemorySize.get());
   }
 
   @Override

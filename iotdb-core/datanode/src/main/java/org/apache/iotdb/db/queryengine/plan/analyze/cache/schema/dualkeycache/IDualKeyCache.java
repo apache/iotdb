@@ -40,21 +40,6 @@ public interface IDualKeyCache<FK, SK, V> {
   V get(FK firstKey, SK secondKey);
 
   /**
-   * Traverse target cache values via given first key and second keys provided in computation and
-   * execute the defined computation logic. The computation is read only.
-   */
-  void compute(IDualKeyCacheComputation<FK, SK, V> computation);
-
-  /**
-   * Traverse target cache values via given first key and second keys provided in computation and
-   * execute the defined computation logic. Value can be updated in this computation.
-   */
-  void updateWithLock(final IDualKeyCacheUpdating<FK, SK, V> updating);
-
-  /** put the cache value into cache */
-  void put(final FK firstKey, final SK secondKey, final V value);
-
-  /**
    * Update the existing value. The updater shall return the difference caused by the update,
    * because we do not want to call "valueSizeComputer" twice, which may include abundant useless
    * calculations.
