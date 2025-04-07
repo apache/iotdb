@@ -25,6 +25,7 @@ import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.BiFunction;
+import java.util.function.Function;
 
 public class CacheEntryGroupImpl<FK, SK, V, T extends ICacheEntry<SK, V>>
     implements ICacheEntryGroup<FK, SK, V, T> {
@@ -33,7 +34,7 @@ public class CacheEntryGroupImpl<FK, SK, V, T extends ICacheEntry<SK, V>>
 
   private final Map<SK, T> cacheEntryMap = new ConcurrentHashMap<>();
   private final ICacheSizeComputer<FK, SK, V> sizeComputer;
-  private AtomicLong memory;
+  private final AtomicLong memory;
 
   CacheEntryGroupImpl(final FK firstKey, final ICacheSizeComputer<FK, SK, V> sizeComputer) {
     this.firstKey = firstKey;
@@ -57,16 +58,19 @@ public class CacheEntryGroupImpl<FK, SK, V, T extends ICacheEntry<SK, V>>
   }
 
   @Override
-  public T computeCacheEntry(final SK secondKey, final BiFunction<SK, T, T> computation) {
-    return cacheEntryMap.compute(secondKey, computation);
+  public T computeCacheEntry(
+      final SK secondKey, final Function<AtomicLong, BiFunction<SK, T, T>> computation) {
+    return cacheEntryMap.compute(secondKey, computation.apply(memory));
   }
 
   @Override
   public T removeCacheEntry(final SK secondKey) {
     final T result = cacheEntryMap.remove(secondKey);
-    memory.addAndGet(
-        -sizeComputer.computeSecondKeySize(result.getSecondKey())
-            - sizeComputer.computeValueSize(result.getValue()));
+    if (Objects.nonNull(result)) {
+      memory.addAndGet(
+          -sizeComputer.computeSecondKeySize(result.getSecondKey())
+              - sizeComputer.computeValueSize(result.getValue()));
+    }
     return result;
   }
 

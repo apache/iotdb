@@ -103,21 +103,22 @@ class DualKeyCacheImpl<FK, SK, V, T extends ICacheEntry<SK, V>>
 
     cacheEntryGroup.computeCacheEntry(
         secondKey,
-        (sk, cacheEntry) -> {
-          if (Objects.isNull(cacheEntry)) {
-            if (!createIfNotExists) {
-              return null;
-            }
-            cacheEntry = cacheEntryManager.createCacheEntry(secondKey, value, cacheEntryGroup);
-            cacheEntryManager.put(cacheEntry);
-            cacheStats.increaseEntryCount();
-            usedMemorySize.getAndAdd(
-                sizeComputer.computeSecondKeySize(sk)
-                    + sizeComputer.computeValueSize(cacheEntry.getValue()));
-          }
-          usedMemorySize.getAndAdd(updater.applyAsInt(cacheEntry.getValue()));
-          return cacheEntry;
-        });
+        memory ->
+            (sk, cacheEntry) -> {
+              if (Objects.isNull(cacheEntry)) {
+                if (!createIfNotExists) {
+                  return null;
+                }
+                cacheEntry = cacheEntryManager.createCacheEntry(secondKey, value, cacheEntryGroup);
+                cacheEntryManager.put(cacheEntry);
+                cacheStats.increaseEntryCount();
+                memory.getAndAdd(
+                    sizeComputer.computeSecondKeySize(sk)
+                        + sizeComputer.computeValueSize(cacheEntry.getValue()));
+              }
+              usedMemorySize.getAndAdd(updater.applyAsInt(cacheEntry.getValue()));
+              return cacheEntry;
+            });
 
     mayEvict();
   }
@@ -125,8 +126,6 @@ class DualKeyCacheImpl<FK, SK, V, T extends ICacheEntry<SK, V>>
   @Override
   public void update(
       final FK firstKey, final Predicate<SK> secondKeyChecker, final ToIntFunction<V> updater) {
-    final AtomicInteger usedMemorySize = new AtomicInteger(0);
-
     final ICacheEntryGroup<FK, SK, V, T> entryGroup = firstKeyMap.get(firstKey);
     if (Objects.nonNull(entryGroup)) {
       entryGroup
@@ -138,12 +137,13 @@ class DualKeyCacheImpl<FK, SK, V, T extends ICacheEntry<SK, V>>
                 }
                 entryGroup.computeCacheEntry(
                     entry.getKey(),
-                    (secondKey, cacheEntry) -> {
-                      if (Objects.nonNull(cacheEntry)) {
-                        usedMemorySize.getAndAdd(updater.applyAsInt(cacheEntry.getValue()));
-                      }
-                      return cacheEntry;
-                    });
+                    memory ->
+                        (secondKey, cacheEntry) -> {
+                          if (Objects.nonNull(cacheEntry)) {
+                            memory.getAndAdd(updater.applyAsInt(cacheEntry.getValue()));
+                          }
+                          return cacheEntry;
+                        });
               });
     }
     mayEvict();
@@ -154,7 +154,6 @@ class DualKeyCacheImpl<FK, SK, V, T extends ICacheEntry<SK, V>>
       final Predicate<FK> firstKeyChecker,
       final Predicate<SK> secondKeyChecker,
       final ToIntFunction<V> updater) {
-    final AtomicInteger usedMemorySize = new AtomicInteger(0);
     for (final FK firstKey : firstKeyMap.getAllKeys()) {
       if (!firstKeyChecker.test(firstKey)) {
         continue;
@@ -170,12 +169,11 @@ class DualKeyCacheImpl<FK, SK, V, T extends ICacheEntry<SK, V>>
                   }
                   entryGroup.computeCacheEntry(
                       entry.getKey(),
-                      (secondKey, cacheEntry) -> {
-                        if (Objects.nonNull(cacheEntry)) {
-                          usedMemorySize.getAndAdd(updater.applyAsInt(cacheEntry.getValue()));
-                        }
-                        return cacheEntry;
-                      });
+                      memory ->
+                          (secondKey, cacheEntry) -> {
+                            updater.applyAsInt(cacheEntry.getValue());
+                            return cacheEntry;
+                          });
                 });
       }
       mayEvict();
@@ -194,20 +192,10 @@ class DualKeyCacheImpl<FK, SK, V, T extends ICacheEntry<SK, V>>
       return;
     }
 
-    final AtomicInteger evictedSize = new AtomicInteger(0);
-
     final ICacheEntryGroup<FK, SK, V, T> belongedGroup = evictCacheEntry.getBelongedGroup();
     evictCacheEntry.setBelongedGroup(null);
 
-    belongedGroup.computeCacheEntry(
-        evictCacheEntry.getSecondKey(),
-        (secondKey, cacheEntry) -> {
-          cacheStats.decreaseEntryCount();
-          evictedSize.getAndAdd(
-              sizeComputer.computeValueSize(cacheEntry.getValue())
-                  + sizeComputer.computeSecondKeySize(cacheEntry.getSecondKey()));
-          return null;
-        });
+    belongedGroup.removeCacheEntry(evictCacheEntry.getSecondKey());
 
     final ICacheEntryGroup<FK, SK, V, T> cacheEntryGroup =
         firstKeyMap.get(belongedGroup.getFirstKey());
