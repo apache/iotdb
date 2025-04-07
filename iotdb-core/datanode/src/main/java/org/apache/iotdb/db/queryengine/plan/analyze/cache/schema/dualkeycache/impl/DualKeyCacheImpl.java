@@ -175,7 +175,7 @@ class DualKeyCacheImpl<FK, SK, V, T extends ICacheEntry<SK, V>>
 
   private void mayEvict() {
     long exceedMemory;
-    while ((exceedMemory = cacheStats.getExceedNum()) > 0) {
+    while ((exceedMemory = cacheStats.getExceedMemory()) > 0) {
       // Not compute each time to save time when FK is too many
       // The hard-coded size is 100
       do {

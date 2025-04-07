@@ -42,7 +42,7 @@ class CacheStats implements IDualKeyCacheStats {
     this.memoryComputation = memoryComputation;
   }
 
-  long getExceedNum() {
+  long getExceedMemory() {
     return memoryUsage() - memoryThreshold;
   }
 
