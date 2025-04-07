@@ -21,16 +21,18 @@ package org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.dualkeycache.i
 
 import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.dualkeycache.IDualKeyCacheStats;
 
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
 
-class CacheStats implements IDualKeyCacheStats {
+class CacheStats<FK> implements IDualKeyCacheStats {
 
   // prepare some buffer for high load scenarios
   private static final double MEMORY_THRESHOLD_RATIO = 0.8;
 
   private final long memoryThreshold;
 
-  private final AtomicLong memoryUsage = new AtomicLong(0);
+  private final Map<FK, Long> firstKeyMemoryUsageMap = new ConcurrentHashMap<>();
   private final AtomicLong entriesCount = new AtomicLong(0);
 
   private final AtomicLong requestCount = new AtomicLong(0);
@@ -40,16 +42,24 @@ class CacheStats implements IDualKeyCacheStats {
     this.memoryThreshold = (long) (memoryCapacity * MEMORY_THRESHOLD_RATIO);
   }
 
-  void increaseMemoryUsage(int size) {
-    memoryUsage.getAndAdd(size);
+  void addFirstKeyMemory(final FK firstKey) {
+    firstKeyMemoryUsageMap.put(firstKey, 0L);
   }
 
-  void decreaseMemoryUsage(int size) {
-    memoryUsage.getAndAdd(-size);
+  void increaseMemoryUsage(final FK firstKey, final int size) {
+    firstKeyMemoryUsageMap.computeIfPresent(firstKey, (fk, v) -> v + size);
+  }
+
+  void decreaseMemoryUsage(final FK firstKey, final int size) {
+    firstKeyMemoryUsageMap.computeIfPresent(firstKey, (fk, v) -> v - size);
+  }
+
+  void removeFirstKeyMemory(final FK firstKey) {
+    firstKeyMemoryUsageMap.remove(firstKey);
   }
 
   boolean isExceedMemoryCapacity() {
-    return memoryUsage.get() > memoryThreshold;
+    return memoryUsage() > memoryThreshold;
   }
 
   void recordHit(int num) {
@@ -102,7 +112,7 @@ class CacheStats implements IDualKeyCacheStats {
 
   @Override
   public long memoryUsage() {
-    return memoryUsage.get();
+    return firstKeyMemoryUsageMap.values().stream().reduce(0L, Long::sum);
   }
 
   @Override
