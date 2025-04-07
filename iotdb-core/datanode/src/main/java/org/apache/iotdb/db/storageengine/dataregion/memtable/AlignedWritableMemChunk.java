@@ -513,15 +513,14 @@ public class AlignedWritableMemChunk extends AbstractWritableMemChunk {
   }
 
   @Override
-  public synchronized void encode(BlockingQueue<Object> ioTaskQueue) {
+  public synchronized void encode(
+      BlockingQueue<Object> ioTaskQueue, BatchEncodeInfo encodeInfo, long[] times) {
     if (TVLIST_SORT_THRESHOLD == 0) {
       encodeWorkingAlignedTVList(ioTaskQueue);
       return;
     }
 
     AlignedChunkWriterImpl alignedChunkWriter = new AlignedChunkWriterImpl(schemaList);
-    BatchEncodeInfo encodeInfo = new BatchEncodeInfo(0, 0, 0);
-    long[] times = new long[MAX_NUMBER_OF_POINTS_IN_PAGE];
 
     // create MergeSortAlignedTVListIterator.
     List<AlignedTVList> alignedTvLists = new ArrayList<>(sortedList);
@@ -562,6 +561,7 @@ public class AlignedWritableMemChunk extends AbstractWritableMemChunk {
       } catch (InterruptedException e) {
         Thread.currentThread().interrupt();
       }
+      encodeInfo.reset();
     }
   }
 

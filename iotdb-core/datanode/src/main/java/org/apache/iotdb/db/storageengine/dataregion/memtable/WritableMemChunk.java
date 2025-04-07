@@ -452,14 +452,14 @@ public class WritableMemChunk extends AbstractWritableMemChunk {
   }
 
   @Override
-  public synchronized void encode(BlockingQueue<Object> ioTaskQueue) {
+  public synchronized void encode(
+      BlockingQueue<Object> ioTaskQueue, BatchEncodeInfo encodeInfo, long[] times) {
     if (TVLIST_SORT_THRESHOLD == 0) {
       encodeWorkingTVList(ioTaskQueue);
       return;
     }
 
     ChunkWriterImpl chunkWriterImpl = createIChunkWriter();
-    BatchEncodeInfo encodeInfo = new BatchEncodeInfo(0, 0, 0);
     if (sortedList.isEmpty()) {
       encodeInfo.lastIterator = true;
     }
@@ -471,7 +471,7 @@ public class WritableMemChunk extends AbstractWritableMemChunk {
         MemPointIteratorFactory.create(schema.getType(), tvLists);
 
     while (timeValuePairIterator.hasNextBatch()) {
-      timeValuePairIterator.encodeBatch(chunkWriterImpl, encodeInfo, null);
+      timeValuePairIterator.encodeBatch(chunkWriterImpl, encodeInfo, times);
       if (encodeInfo.pointNumInChunk >= MAX_NUMBER_OF_POINTS_IN_CHUNK
           || encodeInfo.dataSizeInChunk >= TARGET_CHUNK_SIZE) {
         chunkWriterImpl.sealCurrentPage();
@@ -482,7 +482,7 @@ public class WritableMemChunk extends AbstractWritableMemChunk {
           Thread.currentThread().interrupt();
         }
         chunkWriterImpl = createIChunkWriter();
-        encodeInfo.reset();
+        encodeInfo.resetPointAndSize();
       }
     }
     if (encodeInfo.pointNumInChunk != 0) {
@@ -493,6 +493,7 @@ public class WritableMemChunk extends AbstractWritableMemChunk {
       } catch (InterruptedException e) {
         Thread.currentThread().interrupt();
       }
+      encodeInfo.reset();
     }
   }
 
