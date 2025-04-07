@@ -5133,6 +5133,14 @@ public class IoTDBTableAggregationIT {
         retArray,
         DATABASE_NAME);
 
+    expectedHeader = new String[] {"_col0"};
+    retArray = new String[] {"16,"};
+    tableResultSetEqualTest(
+        "select count(distinct device_id) from table1 group by date_bin(1d,time) order by 1",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+
     expectedHeader = new String[] {"province", "city", "region", "_col3", "_col4"};
     retArray =
         new String[] {
