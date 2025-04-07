@@ -34,9 +34,13 @@ public class BatchEncodeInfo {
   }
 
   public void reset() {
+    resetPointAndSize();
+    this.lastIterator = false;
+  }
+
+  public void resetPointAndSize() {
     this.pointNumInPage = 0;
     this.pointNumInChunk = 0;
     this.dataSizeInChunk = 0;
-    this.lastIterator = false;
   }
 }
