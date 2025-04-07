@@ -200,8 +200,8 @@ import java.util.Map;
 
 import static org.apache.iotdb.commons.executable.ExecutableManager.getUnTrustedUriErrorMsg;
 import static org.apache.iotdb.commons.executable.ExecutableManager.isUriTrusted;
-import static org.apache.iotdb.db.queryengine.plan.execution.config.TableConfigTaskVisitor.checkAndEnrichSinkUserName;
-import static org.apache.iotdb.db.queryengine.plan.execution.config.TableConfigTaskVisitor.checkAndEnrichSourceUserName;
+import static org.apache.iotdb.db.queryengine.plan.execution.config.TableConfigTaskVisitor.checkAndMayChangeSinkUserName;
+import static org.apache.iotdb.db.queryengine.plan.execution.config.TableConfigTaskVisitor.checkAndMayChangeSourceUserNameAndPattern;
 
 public class TreeConfigTaskVisitor extends StatementVisitor<IConfigTask, MPPQueryContext> {
 
@@ -532,12 +532,13 @@ public class TreeConfigTaskVisitor extends StatementVisitor<IConfigTask, MPPQuer
     createPipeStatement
         .getExtractorAttributes()
         .put(SystemConstant.SQL_DIALECT_KEY, SystemConstant.SQL_DIALECT_TREE_VALUE);
-    checkAndEnrichSourceUserName(
+    checkAndMayChangeSourceUserNameAndPattern(
         createPipeStatement.getPipeName(),
         createPipeStatement.getExtractorAttributes(),
         context.getSession().getUserName(),
+        false,
         false);
-    checkAndEnrichSinkUserName(
+    checkAndMayChangeSinkUserName(
         createPipeStatement.getPipeName(),
         createPipeStatement.getConnectorAttributes(),
         context.getSession().getUserName(),
@@ -571,11 +572,12 @@ public class TreeConfigTaskVisitor extends StatementVisitor<IConfigTask, MPPQuer
     if (alterPipeStatement.isReplaceAllExtractorAttributes()) {
       extractorAttributes.put(
           SystemConstant.SQL_DIALECT_KEY, SystemConstant.SQL_DIALECT_TREE_VALUE);
-      checkAndEnrichSourceUserName(pipeName, extractorAttributes, userName, true);
+      checkAndMayChangeSourceUserNameAndPattern(
+          pipeName, extractorAttributes, userName, true, false);
     }
 
     if (alterPipeStatement.isReplaceAllConnectorAttributes()) {
-      checkAndEnrichSinkUserName(
+      checkAndMayChangeSinkUserName(
           pipeName, alterPipeStatement.getConnectorAttributes(), userName, true);
     }
 

@@ -71,8 +71,22 @@ public class PipeParameters {
     return false;
   }
 
-  public void addAttribute(final String key, String values) {
+  public void addAttribute(final String key, final String values) {
     attributes.put(KeyReducer.reduce(key), values);
+  }
+
+  public void replaceAttributeIfExists(final String value, final String... keys) {
+    for (String key : keys) {
+      if (attributes.containsKey(key)) {
+        attributes.put(key, value);
+        return;
+      }
+      key = KeyReducer.reduce(key);
+      if (attributes.containsKey(key)) {
+        attributes.put(key, value);
+        return;
+      }
+    }
   }
 
   public String getString(final String key) {
