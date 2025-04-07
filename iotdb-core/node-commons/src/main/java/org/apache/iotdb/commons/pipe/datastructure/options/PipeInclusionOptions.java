@@ -129,7 +129,6 @@ public class PipeInclusionOptions {
                     "schema.timeseries.template.drop",
                     "schema.timeseries.template.unset",
                     "schema.timeseries.template.deactivate",
-                    "schema.table.drop",
                     "auth.role.drop",
                     "auth.role.revoke",
                     "auth.user.drop",
