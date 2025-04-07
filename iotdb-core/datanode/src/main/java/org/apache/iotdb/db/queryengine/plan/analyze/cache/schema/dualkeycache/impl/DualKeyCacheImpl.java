@@ -22,6 +22,8 @@ package org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.dualkeycache.i
 import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.dualkeycache.IDualKeyCache;
 import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.dualkeycache.IDualKeyCacheStats;
 
+import org.apache.tsfile.utils.RamUsageEstimator;
+
 import javax.annotation.Nonnull;
 
 import java.util.ArrayList;
@@ -104,7 +106,8 @@ class DualKeyCacheImpl<FK, SK, V, T extends ICacheEntry<SK, V>>
                 cacheStats.increaseEntryCount();
                 memory.getAndAdd(
                     sizeComputer.computeSecondKeySize(sk)
-                        + sizeComputer.computeValueSize(cacheEntry.getValue()));
+                        + sizeComputer.computeValueSize(cacheEntry.getValue())
+                        + RamUsageEstimator.HASHTABLE_RAM_BYTES_PER_ENTRY);
               }
               memory.getAndAdd(updater.applyAsInt(cacheEntry.getValue()));
               return cacheEntry;
