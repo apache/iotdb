@@ -241,54 +241,40 @@ class DualKeyCacheImpl<FK, SK, V, T extends ICacheEntry<SK, V>>
 
   @Override
   public void invalidate(final FK firstKey, final SK secondKey) {
-    firstKeyMap.compute(
-        firstKey,
-        (key, cacheEntryGroup) -> {
-          if (cacheEntryGroup == null) {
-            // has been removed by other threads
-            return null;
-          }
+    final ICacheEntryGroup<FK, SK, V, T> cacheEntryGroup = firstKeyMap.get(firstKey);
+    if (Objects.isNull(cacheEntryGroup)) {
+      return;
+    }
 
-          final T entry = cacheEntryGroup.getCacheEntry(secondKey);
-          if (Objects.nonNull(entry) && cacheEntryManager.invalidate(entry)) {
-            cacheStats.decreaseEntryCount();
-            cacheEntryGroup.removeCacheEntry(entry.getSecondKey());
-          }
+    final T entry = cacheEntryGroup.getCacheEntry(secondKey);
+    if (Objects.nonNull(entry) && cacheEntryManager.invalidate(entry)) {
+      cacheStats.decreaseEntryCount();
+      cacheEntryGroup.removeCacheEntry(entry.getSecondKey());
+    }
 
-          if (cacheEntryGroup.isEmpty()) {
-            return null;
-          }
-
-          return cacheEntryGroup;
-        });
+    if (cacheEntryGroup.isEmpty()) {
+      firstKeyMap.remove(firstKey);
+    }
   }
 
   @Override
   public void invalidate(final FK firstKey, final Predicate<SK> secondKeyChecker) {
-    firstKeyMap.compute(
-        firstKey,
-        (key, cacheEntryGroup) -> {
-          if (cacheEntryGroup == null) {
-            // has been removed by other threads
-            return null;
-          }
+    final ICacheEntryGroup<FK, SK, V, T> cacheEntryGroup = firstKeyMap.get(firstKey);
+    if (Objects.isNull(cacheEntryGroup)) {
+      return;
+    }
+    for (final Iterator<Map.Entry<SK, T>> it = cacheEntryGroup.getAllCacheEntries();
+        it.hasNext(); ) {
+      final Map.Entry<SK, T> entry = it.next();
+      if (secondKeyChecker.test(entry.getKey()) && cacheEntryManager.invalidate(entry.getValue())) {
+        cacheStats.decreaseEntryCount();
+        cacheEntryGroup.removeCacheEntry(entry.getKey());
+      }
+    }
 
-          for (final Iterator<Map.Entry<SK, T>> it = cacheEntryGroup.getAllCacheEntries();
-              it.hasNext(); ) {
-            final Map.Entry<SK, T> entry = it.next();
-            if (secondKeyChecker.test(entry.getKey())
-                && cacheEntryManager.invalidate(entry.getValue())) {
-              cacheStats.decreaseEntryCount();
-              cacheEntryGroup.removeCacheEntry(entry.getKey());
-            }
-          }
-
-          if (cacheEntryGroup.isEmpty()) {
-            return null;
-          }
-
-          return cacheEntryGroup;
-        });
+    if (cacheEntryGroup.isEmpty()) {
+      firstKeyMap.remove(firstKey);
+    }
   }
 
   @Override
@@ -299,27 +285,25 @@ class DualKeyCacheImpl<FK, SK, V, T extends ICacheEntry<SK, V>>
         continue;
       }
 
-      firstKeyMap.compute(
-          firstKey,
-          (fk, cacheEntryGroup) -> {
-            if (cacheEntryGroup == null) {
-              // has been removed by other threads
-              return null;
-            }
+      final ICacheEntryGroup<FK, SK, V, T> cacheEntryGroup = firstKeyMap.get(firstKey);
+      if (Objects.isNull(cacheEntryGroup)) {
+        return;
+      }
 
-            for (final Iterator<Map.Entry<SK, T>> it = cacheEntryGroup.getAllCacheEntries();
-                it.hasNext(); ) {
-              final Map.Entry<SK, T> entry = it.next();
+      for (final Iterator<Map.Entry<SK, T>> it = cacheEntryGroup.getAllCacheEntries();
+          it.hasNext(); ) {
+        final Map.Entry<SK, T> entry = it.next();
 
-              if (secondKeyChecker.test(entry.getKey())
-                  && cacheEntryManager.invalidate(entry.getValue())) {
-                cacheStats.decreaseEntryCount();
-                cacheEntryGroup.removeCacheEntry(entry.getKey());
-              }
-            }
+        if (secondKeyChecker.test(entry.getKey())
+            && cacheEntryManager.invalidate(entry.getValue())) {
+          cacheStats.decreaseEntryCount();
+          cacheEntryGroup.removeCacheEntry(entry.getKey());
+        }
+      }
 
-            return cacheEntryGroup.isEmpty() ? null : cacheEntryGroup;
-          });
+      if (cacheEntryGroup.isEmpty()) {
+        firstKeyMap.remove(firstKey);
+      }
     }
   }
 
