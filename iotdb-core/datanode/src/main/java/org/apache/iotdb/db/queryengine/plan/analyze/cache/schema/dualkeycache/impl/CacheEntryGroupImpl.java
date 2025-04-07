@@ -21,7 +21,6 @@ package org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.dualkeycache.i
 
 import org.apache.tsfile.utils.RamUsageEstimator;
 
-import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.Objects;
@@ -36,7 +35,7 @@ public class CacheEntryGroupImpl<FK, SK, V, T extends ICacheEntry<SK, V>>
   private static final long INSTANCE_SIZE =
       RamUsageEstimator.shallowSizeOfInstance(CacheEntryGroupImpl.class)
           + RamUsageEstimator.shallowSizeOfInstance(AtomicLong.class)
-          + RamUsageEstimator.shallowSizeOfInstance(HashMap.class)
+          + RamUsageEstimator.shallowSizeOfInstance(ConcurrentHashMap.class)
           // Calculate the outer entry of the "firstKeyMap" here
           + RamUsageEstimator.HASHTABLE_RAM_BYTES_PER_ENTRY;
 
