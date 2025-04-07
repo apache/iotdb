@@ -32,7 +32,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.BiFunction;
 import java.util.function.Predicate;
 import java.util.function.ToIntFunction;
@@ -84,17 +83,11 @@ class DualKeyCacheImpl<FK, SK, V, T extends ICacheEntry<SK, V>>
       final V value,
       final ToIntFunction<V> updater,
       final boolean createIfNotExists) {
-    final AtomicInteger usedMemorySize = new AtomicInteger(0);
 
     final ICacheEntryGroup<FK, SK, V, T> cacheEntryGroup = firstKeyMap.get(firstKey);
     if (Objects.isNull(cacheEntryGroup) && createIfNotExists) {
       firstKeyMap.compute(
-          firstKey,
-          (k, entryGroup) -> {
-            entryGroup = new CacheEntryGroupImpl<>(firstKey, sizeComputer);
-            usedMemorySize.getAndAdd(sizeComputer.computeFirstKeySize(firstKey));
-            return entryGroup;
-          });
+          firstKey, (k, entryGroup) -> new CacheEntryGroupImpl<>(firstKey, sizeComputer));
     }
 
     if (Objects.isNull(cacheEntryGroup)) {
@@ -116,7 +109,7 @@ class DualKeyCacheImpl<FK, SK, V, T extends ICacheEntry<SK, V>>
                     sizeComputer.computeSecondKeySize(sk)
                         + sizeComputer.computeValueSize(cacheEntry.getValue()));
               }
-              usedMemorySize.getAndAdd(updater.applyAsInt(cacheEntry.getValue()));
+              memory.getAndAdd(updater.applyAsInt(cacheEntry.getValue()));
               return cacheEntry;
             });
 
