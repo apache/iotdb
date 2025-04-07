@@ -175,9 +175,10 @@ class DualKeyCacheImpl<FK, SK, V, T extends ICacheEntry<SK, V>>
     long exceedMemory;
     while ((exceedMemory = cacheStats.getExceedNum()) > 0) {
       // Not compute each time to save time when FK is too many
-      while (exceedMemory > 0) {
+      // The hard-coded size is 100
+      do  {
         exceedMemory -= evictOneCacheEntry();
-      }
+      } while (exceedMemory > 0 && firstKeyMap.size() > 100);
     }
   }
 
@@ -374,6 +375,10 @@ class DualKeyCacheImpl<FK, SK, V, T extends ICacheEntry<SK, V>>
                 }
               });
       return res;
+    }
+
+    int size() {
+      return Arrays.stream(maps).map(Map::size).reduce(0, Integer::sum);
     }
   }
 }
