@@ -41,6 +41,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import static org.apache.iotdb.db.utils.ErrorHandlingUtils.onNpeOrUnexpectedException;
+import static org.apache.iotdb.db.utils.ErrorHandlingUtils.onQueryException;
 
 public class DataNodeInternalClient {
 
@@ -92,9 +93,9 @@ public class DataNodeInternalClient {
               partitionFetcher,
               schemaFetcher);
       return result.status;
-    } catch (Exception e) {
-      return onNpeOrUnexpectedException(
-          e, OperationType.INSERT_TABLETS, TSStatusCode.EXECUTE_STATEMENT_ERROR);
+    } catch (final Exception e) {
+      return onQueryException(
+          e, OperationType.INSERT_TABLETS.getName(), TSStatusCode.EXECUTE_STATEMENT_ERROR);
     }
   }
 
