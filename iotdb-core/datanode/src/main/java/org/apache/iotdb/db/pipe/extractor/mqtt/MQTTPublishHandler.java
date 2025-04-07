@@ -168,9 +168,9 @@ public class MQTTPublishHandler extends AbstractInterceptHandler {
                   ? msg.getTopicName()
                   : msg.getTopicName().substring(0, msg.getTopicName().indexOf("/"));
           tableMessage.setDatabase(database.toLowerCase());
-          ExtractTable(tableMessage, session);
+          extractTable(tableMessage, session);
         } else {
-          ExtractTree((TreeMessage) message, session);
+          extractTree((TreeMessage) message, session);
         }
       }
     } catch (Throwable t) {
@@ -182,7 +182,7 @@ public class MQTTPublishHandler extends AbstractInterceptHandler {
   }
 
   /** Inserting table using tablet */
-  private void ExtractTable(TableMessage message, MqttClientSession session) {
+  private void extractTable(TableMessage message, MqttClientSession session) {
     TSStatus tsStatus = null;
     try {
       TimestampPrecisionUtils.checkTimestampPrecision(message.getTimestamp());
@@ -273,7 +273,7 @@ public class MQTTPublishHandler extends AbstractInterceptHandler {
         false);
   }
 
-  private void ExtractTree(TreeMessage message, MqttClientSession session) {
+  private void extractTree(TreeMessage message, MqttClientSession session) {
     TSStatus tsStatus = null;
     try {
       TimestampPrecisionUtils.checkTimestampPrecision(message.getTimestamp());
