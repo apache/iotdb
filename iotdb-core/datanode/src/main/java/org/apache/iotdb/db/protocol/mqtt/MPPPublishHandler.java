@@ -71,7 +71,7 @@ public class MPPPublishHandler extends AbstractInterceptHandler {
   private final SessionManager sessionManager = SessionManager.getInstance();
 
   private final ConcurrentHashMap<String, MqttClientSession> clientIdToSessionMap =
-          new ConcurrentHashMap<>();
+      new ConcurrentHashMap<>();
   private final PayloadFormatter payloadFormat;
   private final IPartitionFetcher partitionFetcher;
   private final ISchemaFetcher schemaFetcher;
@@ -94,13 +94,13 @@ public class MPPPublishHandler extends AbstractInterceptHandler {
     if (!clientIdToSessionMap.containsKey(msg.getClientID())) {
       MqttClientSession session = new MqttClientSession(msg.getClientID());
       sessionManager.login(
-              session,
-              msg.getUsername(),
-              new String(msg.getPassword()),
-              ZoneId.systemDefault().toString(),
-              TSProtocolVersion.IOTDB_SERVICE_PROTOCOL_V3,
-              ClientVersion.V_1_0,
-              useTableInsert ? IClientSession.SqlDialect.TABLE : IClientSession.SqlDialect.TREE);
+          session,
+          msg.getUsername(),
+          new String(msg.getPassword()),
+          ZoneId.systemDefault().toString(),
+          TSProtocolVersion.IOTDB_SERVICE_PROTOCOL_V3,
+          ClientVersion.V_1_0,
+          useTableInsert ? IClientSession.SqlDialect.TABLE : IClientSession.SqlDialect.TREE);
       sessionManager.registerSession(session);
       clientIdToSessionMap.put(msg.getClientID(), session);
     }
@@ -129,12 +129,12 @@ public class MPPPublishHandler extends AbstractInterceptHandler {
       MqttQoS qos = msg.getQos();
 
       LOG.debug(
-              "Receive publish message. clientId: {}, username: {}, qos: {}, topic: {}, payload: {}",
-              clientId,
-              username,
-              qos,
-              topic,
-              payload);
+          "Receive publish message. clientId: {}, username: {}, qos: {}, topic: {}, payload: {}",
+          clientId,
+          username,
+          qos,
+          topic,
+          payload);
 
       List<Message> messages = payloadFormat.format(payload);
       if (messages == null) {
@@ -149,9 +149,9 @@ public class MPPPublishHandler extends AbstractInterceptHandler {
           TableMessage tableMessage = (TableMessage) message;
           // '/' previously defined as a database name
           String database =
-                  !msg.getTopicName().contains("/")
-                          ? msg.getTopicName()
-                          : msg.getTopicName().substring(0, msg.getTopicName().indexOf("/"));
+              !msg.getTopicName().contains("/")
+                  ? msg.getTopicName()
+                  : msg.getTopicName().substring(0, msg.getTopicName().indexOf("/"));
           tableMessage.setDatabase(database);
           insertTable(tableMessage, session);
         } else {
@@ -178,16 +178,16 @@ public class MPPPublishHandler extends AbstractInterceptHandler {
       SqlParser relationSqlParser = new SqlParser();
       Metadata metadata = LocalExecutionPlanner.getInstance().metadata;
       ExecutionResult result =
-              Coordinator.getInstance()
-                      .executeForTableModel(
-                              insertTabletStatement,
-                              relationSqlParser,
-                              session,
-                              queryId,
-                              sessionManager.getSessionInfo(session),
-                              "",
-                              metadata,
-                              config.getQueryTimeoutThreshold());
+          Coordinator.getInstance()
+              .executeForTableModel(
+                  insertTabletStatement,
+                  relationSqlParser,
+                  session,
+                  queryId,
+                  sessionManager.getSessionInfo(session),
+                  "",
+                  metadata,
+                  config.getQueryTimeoutThreshold());
 
       tsStatus = result.status;
       LOG.debug("process result: {}", tsStatus);
@@ -196,26 +196,26 @@ public class MPPPublishHandler extends AbstractInterceptHandler {
       }
     } catch (Exception e) {
       LOG.warn(
-              "meet error when inserting database {}, table {}, tags {}, attributes {}, fields {}, at time {}, because ",
-              message.getDatabase(),
-              message.getTable(),
-              message.getTagKeys(),
-              message.getAttributeKeys(),
-              message.getFields(),
-              message.getTimestamp(),
-              e);
+          "meet error when inserting database {}, table {}, tags {}, attributes {}, fields {}, at time {}, because ",
+          message.getDatabase(),
+          message.getTable(),
+          message.getTagKeys(),
+          message.getAttributeKeys(),
+          message.getFields(),
+          message.getTimestamp(),
+          e);
     }
   }
 
   private InsertTabletStatement constructInsertTabletStatement(TableMessage message)
-          throws IllegalPathException {
+      throws IllegalPathException {
     InsertTabletStatement insertStatement = new InsertTabletStatement();
     insertStatement.setDevicePath(
-            DataNodeDevicePathCache.getInstance().getPartialPath(message.getTable()));
+        DataNodeDevicePathCache.getInstance().getPartialPath(message.getTable()));
     List<String> measurements =
-            Stream.of(message.getFields(), message.getTagKeys(), message.getAttributeKeys())
-                    .flatMap(List::stream)
-                    .collect(Collectors.toList());
+        Stream.of(message.getFields(), message.getTagKeys(), message.getAttributeKeys())
+            .flatMap(List::stream)
+            .collect(Collectors.toList());
     insertStatement.setMeasurements(measurements.toArray(new String[0]));
     long[] timestamps = new long[] {message.getTimestamp()};
     insertStatement.setTimes(timestamps);
@@ -224,9 +224,9 @@ public class MPPPublishHandler extends AbstractInterceptHandler {
 
     BitMap[] bitMaps = new BitMap[columnSize];
     Object[] columns =
-            Stream.of(message.getValues(), message.getTagValues(), message.getAttributeValues())
-                    .flatMap(List::stream)
-                    .toArray(Object[]::new);
+        Stream.of(message.getValues(), message.getTagValues(), message.getAttributeValues())
+            .flatMap(List::stream)
+            .toArray(Object[]::new);
     insertStatement.setColumns(columns);
     insertStatement.setBitMaps(bitMaps);
     insertStatement.setRowCount(rowSize);
@@ -239,17 +239,17 @@ public class MPPPublishHandler extends AbstractInterceptHandler {
       columnCategories[i] = TsTableColumnCategory.FIELD;
     }
     for (int i = message.getFields().size();
-         i < message.getFields().size() + message.getTagKeys().size();
-         i++) {
+        i < message.getFields().size() + message.getTagKeys().size();
+        i++) {
       dataTypes[i] = TSDataType.STRING;
       columnCategories[i] = TsTableColumnCategory.TAG;
     }
     for (int i = message.getFields().size() + message.getTagKeys().size();
-         i
-                 < message.getFields().size()
-                 + message.getTagKeys().size()
-                 + message.getAttributeKeys().size();
-         i++) {
+        i
+            < message.getFields().size()
+                + message.getTagKeys().size()
+                + message.getAttributeKeys().size();
+        i++) {
       dataTypes[i] = TSDataType.STRING;
       columnCategories[i] = TsTableColumnCategory.ATTRIBUTE;
     }
@@ -264,7 +264,7 @@ public class MPPPublishHandler extends AbstractInterceptHandler {
     try {
       InsertRowStatement statement = new InsertRowStatement();
       statement.setDevicePath(
-              DataNodeDevicePathCache.getInstance().getPartialPath(message.getDevice()));
+          DataNodeDevicePathCache.getInstance().getPartialPath(message.getDevice()));
       TimestampPrecisionUtils.checkTimestampPrecision(message.getTimestamp());
       statement.setTime(message.getTimestamp());
       statement.setMeasurements(message.getMeasurements().toArray(new String[0]));
@@ -290,16 +290,16 @@ public class MPPPublishHandler extends AbstractInterceptHandler {
       } else {
         long queryId = sessionManager.requestQueryId();
         ExecutionResult result =
-                Coordinator.getInstance()
-                        .executeForTreeModel(
-                                statement,
-                                queryId,
-                                sessionManager.getSessionInfo(session),
-                                "",
-                                partitionFetcher,
-                                schemaFetcher,
-                                config.getQueryTimeoutThreshold(),
-                                false);
+            Coordinator.getInstance()
+                .executeForTreeModel(
+                    statement,
+                    queryId,
+                    sessionManager.getSessionInfo(session),
+                    "",
+                    partitionFetcher,
+                    schemaFetcher,
+                    config.getQueryTimeoutThreshold(),
+                    false);
         tsStatus = result.status;
         LOG.debug("process result: {}", tsStatus);
         if (tsStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
@@ -308,11 +308,11 @@ public class MPPPublishHandler extends AbstractInterceptHandler {
       }
     } catch (Exception e) {
       LOG.warn(
-              "meet error when inserting device {}, measurements {}, at time {}, because ",
-              message.getDevice(),
-              message.getMeasurements(),
-              message.getTimestamp(),
-              e);
+          "meet error when inserting device {}, measurements {}, at time {}, because ",
+          message.getDevice(),
+          message.getMeasurements(),
+          message.getTimestamp(),
+          e);
     }
   }
 
