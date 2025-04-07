@@ -32,7 +32,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.function.BiFunction;
 import java.util.function.Predicate;
 import java.util.function.ToIntFunction;
 
@@ -86,8 +85,7 @@ class DualKeyCacheImpl<FK, SK, V, T extends ICacheEntry<SK, V>>
 
     final ICacheEntryGroup<FK, SK, V, T> cacheEntryGroup = firstKeyMap.get(firstKey);
     if (Objects.isNull(cacheEntryGroup) && createIfNotExists) {
-      firstKeyMap.compute(
-          firstKey, (k, entryGroup) -> new CacheEntryGroupImpl<>(firstKey, sizeComputer));
+      firstKeyMap.put(firstKey, new CacheEntryGroupImpl<>(firstKey, sizeComputer));
     }
 
     if (Objects.isNull(cacheEntryGroup)) {
@@ -324,27 +322,25 @@ class DualKeyCacheImpl<FK, SK, V, T extends ICacheEntry<SK, V>>
 
     private final Map<K, V>[] maps = new ConcurrentHashMap[SLOT_NUM];
 
-    V get(K key) {
+    V get(final K key) {
       return getBelongedMap(key).get(key);
     }
 
-    V remove(K key) {
+    V remove(final K key) {
       return getBelongedMap(key).remove(key);
     }
 
-    V compute(K key, BiFunction<? super K, ? super V, ? extends V> remappingFunction) {
-      return getBelongedMap(key).compute(key, remappingFunction);
+    V put(final K key, final V value) {
+      return getBelongedMap(key).put(key, value);
     }
 
     void clear() {
       synchronized (maps) {
-        for (int i = 0; i < SLOT_NUM; i++) {
-          maps[i] = null;
-        }
+        Arrays.fill(maps, null);
       }
     }
 
-    Map<K, V> getBelongedMap(K key) {
+    Map<K, V> getBelongedMap(final K key) {
       int slotIndex = key.hashCode() % SLOT_NUM;
       slotIndex = slotIndex < 0 ? slotIndex + SLOT_NUM : slotIndex;
       Map<K, V> map = maps[slotIndex];
@@ -362,7 +358,7 @@ class DualKeyCacheImpl<FK, SK, V, T extends ICacheEntry<SK, V>>
 
     // Copied list, deletion-safe
     List<K> getAllKeys() {
-      List<K> res = new ArrayList<>();
+      final List<K> res = new ArrayList<>();
       Arrays.stream(maps)
           .iterator()
           .forEachRemaining(
