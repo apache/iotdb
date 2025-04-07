@@ -201,7 +201,7 @@ import java.util.Map;
 import static org.apache.iotdb.commons.executable.ExecutableManager.getUnTrustedUriErrorMsg;
 import static org.apache.iotdb.commons.executable.ExecutableManager.isUriTrusted;
 import static org.apache.iotdb.db.queryengine.plan.execution.config.TableConfigTaskVisitor.checkAndMayChangeSinkUserName;
-import static org.apache.iotdb.db.queryengine.plan.execution.config.TableConfigTaskVisitor.checkAndMayChangeSourceUserNameAndPattern;
+import static org.apache.iotdb.db.queryengine.plan.execution.config.TableConfigTaskVisitor.checkAndMayChangeSourceUserName;
 
 public class TreeConfigTaskVisitor extends StatementVisitor<IConfigTask, MPPQueryContext> {
 
@@ -532,11 +532,10 @@ public class TreeConfigTaskVisitor extends StatementVisitor<IConfigTask, MPPQuer
     createPipeStatement
         .getExtractorAttributes()
         .put(SystemConstant.SQL_DIALECT_KEY, SystemConstant.SQL_DIALECT_TREE_VALUE);
-    checkAndMayChangeSourceUserNameAndPattern(
+    checkAndMayChangeSourceUserName(
         createPipeStatement.getPipeName(),
         createPipeStatement.getExtractorAttributes(),
         context.getSession().getUserName(),
-        false,
         false);
     checkAndMayChangeSinkUserName(
         createPipeStatement.getPipeName(),
@@ -572,8 +571,7 @@ public class TreeConfigTaskVisitor extends StatementVisitor<IConfigTask, MPPQuer
     if (alterPipeStatement.isReplaceAllExtractorAttributes()) {
       extractorAttributes.put(
           SystemConstant.SQL_DIALECT_KEY, SystemConstant.SQL_DIALECT_TREE_VALUE);
-      checkAndMayChangeSourceUserNameAndPattern(
-          pipeName, extractorAttributes, userName, true, false);
+      checkAndMayChangeSourceUserName(pipeName, extractorAttributes, userName, true);
     }
 
     if (alterPipeStatement.isReplaceAllConnectorAttributes()) {

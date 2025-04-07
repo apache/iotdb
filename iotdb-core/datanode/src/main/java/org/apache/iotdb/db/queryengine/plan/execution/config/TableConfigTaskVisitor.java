@@ -906,18 +906,19 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
 
     // Inject table model into the extractor attributes
     extractorAttributes.put(SystemConstant.SQL_DIALECT_KEY, SystemConstant.SQL_DIALECT_TABLE_VALUE);
-    checkAndMayChangeSourceUserNameAndPattern(pipeName, extractorAttributes, userName, false, true);
+    checkAndMayChangeSourceUserName(pipeName, extractorAttributes, userName, false);
     checkAndMayChangeSinkUserName(pipeName, node.getConnectorAttributes(), userName, false);
+
+    mayChangeSourcePattern(extractorAttributes);
 
     return new CreatePipeTask(node);
   }
 
-  public static void checkAndMayChangeSourceUserNameAndPattern(
+  public static void checkAndMayChangeSourceUserName(
       final String pipeName,
       final Map<String, String> replacedExtractorAttributes,
       final String userName,
-      final boolean isAlter,
-      final boolean isTable) {
+      final boolean isAlter) {
     final PipeParameters extractorParameters = new PipeParameters(replacedExtractorAttributes);
     final String pluginName =
         extractorParameters
@@ -946,23 +947,38 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
               "Failed to %s pipe %s, in iotdb-source, password must be set when the username is specified.",
               isAlter ? "alter" : "create", pipeName));
     }
+  }
+
+  private static void mayChangeSourcePattern(final Map<String, String> extractorAttributes) {
+    final PipeParameters extractorParameters = new PipeParameters(extractorAttributes);
+
+    final String pluginName =
+        extractorParameters
+            .getStringOrDefault(
+                Arrays.asList(
+                    PipeExtractorConstant.EXTRACTOR_KEY, PipeExtractorConstant.SOURCE_KEY),
+                BuiltinPipePlugin.IOTDB_EXTRACTOR.getPipePluginName())
+            .toLowerCase();
+
+    if (!pluginName.equals(BuiltinPipePlugin.IOTDB_EXTRACTOR.getPipePluginName())
+        && !pluginName.equals(BuiltinPipePlugin.IOTDB_SOURCE.getPipePluginName())) {
+      return;
+    }
 
     // Use lower case because database + table name are all in lower cases
-    if (isTable) {
-      extractorParameters.computeAttributeIfExists(
-          (k, v) -> v.toLowerCase(Locale.ENGLISH),
-          PipeExtractorConstant.EXTRACTOR_DATABASE_KEY,
-          PipeExtractorConstant.SOURCE_DATABASE_KEY,
-          PipeExtractorConstant.EXTRACTOR_DATABASE_NAME_KEY,
-          PipeExtractorConstant.SOURCE_DATABASE_NAME_KEY);
+    extractorParameters.computeAttributeIfExists(
+        (k, v) -> v.toLowerCase(Locale.ENGLISH),
+        PipeExtractorConstant.EXTRACTOR_DATABASE_KEY,
+        PipeExtractorConstant.SOURCE_DATABASE_KEY,
+        PipeExtractorConstant.EXTRACTOR_DATABASE_NAME_KEY,
+        PipeExtractorConstant.SOURCE_DATABASE_NAME_KEY);
 
-      extractorParameters.computeAttributeIfExists(
-          (k, v) -> v.toLowerCase(Locale.ENGLISH),
-          PipeExtractorConstant.EXTRACTOR_TABLE_KEY,
-          PipeExtractorConstant.SOURCE_TABLE_KEY,
-          PipeExtractorConstant.EXTRACTOR_TABLE_NAME_KEY,
-          PipeExtractorConstant.SOURCE_TABLE_NAME_KEY);
-    }
+    extractorParameters.computeAttributeIfExists(
+        (k, v) -> v.toLowerCase(Locale.ENGLISH),
+        PipeExtractorConstant.EXTRACTOR_TABLE_KEY,
+        PipeExtractorConstant.SOURCE_TABLE_KEY,
+        PipeExtractorConstant.EXTRACTOR_TABLE_NAME_KEY,
+        PipeExtractorConstant.SOURCE_TABLE_NAME_KEY);
   }
 
   public static void checkAndMayChangeSinkUserName(
@@ -1021,9 +1037,9 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
     if (node.isReplaceAllExtractorAttributes()) {
       extractorAttributes.put(
           SystemConstant.SQL_DIALECT_KEY, SystemConstant.SQL_DIALECT_TABLE_VALUE);
-      checkAndMayChangeSourceUserNameAndPattern(
-          pipeName, extractorAttributes, userName, true, true);
+      checkAndMayChangeSourceUserName(pipeName, extractorAttributes, userName, true);
     }
+    mayChangeSourcePattern(extractorAttributes);
 
     if (node.isReplaceAllConnectorAttributes()) {
       checkAndMayChangeSinkUserName(pipeName, node.getConnectorAttributes(), userName, true);
