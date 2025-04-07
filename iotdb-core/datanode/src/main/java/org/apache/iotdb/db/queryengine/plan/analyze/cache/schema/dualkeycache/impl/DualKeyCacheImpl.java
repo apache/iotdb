@@ -199,7 +199,9 @@ class DualKeyCacheImpl<FK, SK, V, T extends ICacheEntry<SK, V>>
         firstKeyMap.get(belongedGroup.getFirstKey());
     if (Objects.nonNull(cacheEntryGroup) && cacheEntryGroup.isEmpty()) {
       firstKeyMap.remove(belongedGroup.getFirstKey());
-      memory += sizeComputer.computeFirstKeySize(belongedGroup.getFirstKey());
+      memory +=
+          sizeComputer.computeFirstKeySize(belongedGroup.getFirstKey())
+              + RamUsageEstimator.HASHTABLE_RAM_BYTES_PER_ENTRY;
     }
     return memory;
   }
