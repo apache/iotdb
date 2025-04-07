@@ -172,27 +172,32 @@ class DualKeyCacheImpl<FK, SK, V, T extends ICacheEntry<SK, V>>
   }
 
   private void mayEvict() {
-    while (cacheStats.isExceedMemoryCapacity()) {
-      evictOneCacheEntry();
+    long exceedMemory;
+    while ((exceedMemory = cacheStats.getExceedNum()) > 0) {
+      while (exceedMemory > 0) {
+        exceedMemory -= evictOneCacheEntry();
+      }
     }
   }
 
-  private void evictOneCacheEntry() {
+  private long evictOneCacheEntry() {
     final ICacheEntry<SK, V> evictCacheEntry = cacheEntryManager.evict();
     if (evictCacheEntry == null) {
-      return;
+      return 0;
     }
 
     final ICacheEntryGroup<FK, SK, V, T> belongedGroup = evictCacheEntry.getBelongedGroup();
     evictCacheEntry.setBelongedGroup(null);
 
-    belongedGroup.removeCacheEntry(evictCacheEntry.getSecondKey());
+    long memory = belongedGroup.removeCacheEntry(evictCacheEntry.getSecondKey());
 
     final ICacheEntryGroup<FK, SK, V, T> cacheEntryGroup =
         firstKeyMap.get(belongedGroup.getFirstKey());
-    if (Objects.nonNull(cacheEntryGroup) && !cacheEntryGroup.isEmpty()) {
+    if (Objects.nonNull(cacheEntryGroup) && cacheEntryGroup.isEmpty()) {
       firstKeyMap.remove(belongedGroup.getFirstKey());
+      memory += sizeComputer.computeFirstKeySize(belongedGroup.getFirstKey());
     }
+    return memory;
   }
 
   @Override

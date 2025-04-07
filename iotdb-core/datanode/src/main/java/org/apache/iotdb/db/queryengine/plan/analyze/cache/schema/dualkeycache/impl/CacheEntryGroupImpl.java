@@ -64,14 +64,16 @@ public class CacheEntryGroupImpl<FK, SK, V, T extends ICacheEntry<SK, V>>
   }
 
   @Override
-  public T removeCacheEntry(final SK secondKey) {
+  public long removeCacheEntry(final SK secondKey) {
     final T result = cacheEntryMap.remove(secondKey);
     if (Objects.nonNull(result)) {
-      memory.addAndGet(
-          -sizeComputer.computeSecondKeySize(result.getSecondKey())
-              - sizeComputer.computeValueSize(result.getValue()));
+      final long delta =
+          sizeComputer.computeSecondKeySize(result.getSecondKey())
+              + sizeComputer.computeValueSize(result.getValue());
+      memory.addAndGet(-delta);
+      return delta;
     }
-    return result;
+    return 0;
   }
 
   @Override

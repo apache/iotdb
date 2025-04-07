@@ -42,8 +42,8 @@ class CacheStats<FK> implements IDualKeyCacheStats {
     this.memoryComputation = memoryComputation;
   }
 
-  boolean isExceedMemoryCapacity() {
-    return memoryUsage() > memoryThreshold;
+  long getExceedNum() {
+    return memoryUsage() - memoryThreshold;
   }
 
   void recordHit(int num) {
