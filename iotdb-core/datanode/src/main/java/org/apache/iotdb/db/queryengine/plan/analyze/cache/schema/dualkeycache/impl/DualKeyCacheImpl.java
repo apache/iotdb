@@ -164,7 +164,7 @@ class DualKeyCacheImpl<FK, SK, V, T extends ICacheEntry<SK, V>>
                       entry.getKey(),
                       memory ->
                           (secondKey, cacheEntry) -> {
-                            updater.applyAsInt(cacheEntry.getValue());
+                            memory.getAndAdd(updater.applyAsInt(cacheEntry.getValue()));
                             return cacheEntry;
                           });
                 });
