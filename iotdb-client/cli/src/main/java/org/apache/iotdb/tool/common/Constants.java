@@ -299,6 +299,7 @@ public class Constants {
   public static final String EXPORT_SCHEMA_TABLES_SELECT =
       "select * from information_schema.tables where database = '%s'";
   public static final String EXPORT_SCHEMA_TABLES_SHOW = "show tables details from %s";
+  public static final String EXPORT_SCHEMA_TABLES_SHOW_DATABASES = "show databases";
   public static final String EXPORT_SCHEMA_COLUMNS_SELECT =
       "select * from information_schema.columns where database like '%s' and table_name like '%s'";
   public static final String EXPORT_SCHEMA_COLUMNS_DESC = "desc %s.%s details";

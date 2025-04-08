@@ -64,17 +64,13 @@ public class ExportSchemaTable extends AbstractExportSchema {
             .database(database)
             .build();
     SessionDataSet sessionDataSet = null;
-    try (ITableSession session = sessionPool.getSession()) {
-      sessionDataSet =
-          session.executeQueryStatement(
-              String.format(Constants.EXPORT_SCHEMA_TABLES_SELECT, database));
-      checkDataBaseAndParseTablesBySelectSchema(sessionDataSet);
+    try {
+      checkDataBaseAndParseTablesBySelectSchema(
+          String.format(Constants.EXPORT_SCHEMA_TABLES_SELECT, database));
     } catch (StatementExecutionException | IoTDBConnectionException e) {
       try {
-        sessionDataSet =
-            session.executeQueryStatement(
-                String.format(Constants.EXPORT_SCHEMA_TABLES_SHOW, database));
-        checkDataBaseAndParseTablesByShowSchema(sessionDataSet);
+        checkDataBaseAndParseTablesByShowSchema(
+            String.format(Constants.EXPORT_SCHEMA_TABLES_SHOW, database));
       } catch (IoTDBConnectionException | StatementExecutionException e1) {
         ioTPrinter.println(Constants.INSERT_SQL_MEET_ERROR_MSG + e.getMessage());
         System.exit(1);
@@ -89,20 +85,34 @@ public class ExportSchemaTable extends AbstractExportSchema {
     }
   }
 
-  private static void checkDataBaseAndParseTablesBySelectSchema(SessionDataSet sessionDataSet)
+  private static void checkDataBaseAndParseTablesBySelectSchema(String sql)
       throws StatementExecutionException, IoTDBConnectionException {
     Set<String> databases = new HashSet<>();
-    HashMap<String, String> tables = new HashMap<>();
-    while (sessionDataSet.hasNext()) {
-      RowRecord rowRecord = sessionDataSet.next();
-      databases.add(rowRecord.getField(0).getStringValue());
-      String comment = rowRecord.getField(4).getStringValue();
-      tables.putIfAbsent(
-          rowRecord.getField(1).getStringValue(), comment.equals("null") ? null : comment);
+    SessionDataSet sessionDataSet = null;
+    try (ITableSession session = sessionPool.getSession()) {
+      sessionDataSet = session.executeQueryStatement(Constants.EXPORT_SCHEMA_TABLES_SHOW_DATABASES);
+      while (sessionDataSet.hasNext()) {
+        RowRecord rowRecord = sessionDataSet.next();
+        databases.add(rowRecord.getField(0).getStringValue());
+      }
+    } catch (Exception e) {
+      throw e;
     }
     if (!databases.contains(database)) {
       ioTPrinter.println(String.format(Constants.TARGET_DATABASE_NOT_EXIST_MSG, database));
       System.exit(1);
+    }
+    HashMap<String, String> tables = new HashMap<>();
+    try (ITableSession session = sessionPool.getSession()) {
+      sessionDataSet = session.executeQueryStatement(sql);
+      while (sessionDataSet.hasNext()) {
+        RowRecord rowRecord = sessionDataSet.next();
+        String comment = rowRecord.getField(4).getStringValue();
+        tables.putIfAbsent(
+            rowRecord.getField(1).getStringValue(), comment.equals("null") ? null : comment);
+      }
+    } catch (Exception e) {
+      throw e;
     }
     if (StringUtils.isNotBlank(table)) {
       if (!tables.containsKey(table)) {
@@ -115,14 +125,34 @@ public class ExportSchemaTable extends AbstractExportSchema {
     }
   }
 
-  private static void checkDataBaseAndParseTablesByShowSchema(SessionDataSet sessionDataSet)
+  private static void checkDataBaseAndParseTablesByShowSchema(String sql)
       throws StatementExecutionException, IoTDBConnectionException {
+    Set<String> databases = new HashSet<>();
+    SessionDataSet sessionDataSet = null;
+    try (ITableSession session = sessionPool.getSession()) {
+      sessionDataSet = session.executeQueryStatement(Constants.EXPORT_SCHEMA_TABLES_SHOW_DATABASES);
+      while (sessionDataSet.hasNext()) {
+        RowRecord rowRecord = sessionDataSet.next();
+        databases.add(rowRecord.getField(0).getStringValue());
+      }
+    } catch (Exception e) {
+      throw e;
+    }
+    if (!databases.contains(database)) {
+      ioTPrinter.println(String.format(Constants.TARGET_DATABASE_NOT_EXIST_MSG, database));
+      System.exit(1);
+    }
     HashMap<String, String> tables = new HashMap<>();
-    while (sessionDataSet.hasNext()) {
-      RowRecord rowRecord = sessionDataSet.next();
-      String comment = rowRecord.getField(3).getStringValue();
-      tables.putIfAbsent(
-          rowRecord.getField(0).getStringValue(), comment.equals("null") ? null : comment);
+    try (ITableSession session = sessionPool.getSession()) {
+      session.executeQueryStatement(sql);
+      while (sessionDataSet.hasNext()) {
+        RowRecord rowRecord = sessionDataSet.next();
+        String comment = rowRecord.getField(3).getStringValue();
+        tables.putIfAbsent(
+            rowRecord.getField(0).getStringValue(), comment.equals("null") ? null : comment);
+      }
+    } catch (Exception e) {
+      throw e;
     }
     if (MapUtils.isNotEmpty(tables)) {
       if (!tables.containsKey(table)) {
