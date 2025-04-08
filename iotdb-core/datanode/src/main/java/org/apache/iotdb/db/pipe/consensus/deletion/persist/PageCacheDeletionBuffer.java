@@ -220,39 +220,34 @@ public class PageCacheDeletionBuffer implements DeletionBuffer {
   }
 
   private void switchLoggingFile() throws IOException {
-    try {
-      // PipeConsensus ensures that deleteDataNodes use recoverProgressIndex.
-      ProgressIndex curProgressIndex =
-          ReplicateProgressDataNodeManager.extractLocalSimpleProgressIndex(
-              maxProgressIndexInLastFile);
-      if (!(curProgressIndex instanceof SimpleProgressIndex)) {
-        throw new IOException("Invalid deletion progress index: " + curProgressIndex);
-      }
-      SimpleProgressIndex progressIndex = (SimpleProgressIndex) curProgressIndex;
-      // Deletion file name format: "_{rebootTimes}_{memTableFlushOrderId}.deletion"
-      this.logFile =
-          new File(
-              baseDirectory,
-              String.format(
-                  "_%d-%d%s",
-                  progressIndex.getRebootTimes(),
-                  progressIndex.getMemTableFlushOrderId(),
-                  DeletionResourceManager.DELETION_FILE_SUFFIX));
-      this.logStream = new FileOutputStream(logFile, true);
-      this.logChannel = logStream.getChannel();
-      // Create file && write magic string
-      if (!logFile.exists() || logFile.length() == 0) {
-        this.logChannel.write(
-            ByteBuffer.wrap(
-                DeletionResourceManager.MAGIC_VERSION_V1.getBytes(StandardCharsets.UTF_8)));
-      }
-      LOGGER.info(
-          "Deletion persist-{}: switching to a new file, current writing: {}",
-          dataRegionId,
-          logFile);
-    } finally {
-      resetFileAttribute();
+    resetFileAttribute();
+    ProgressIndex curProgressIndex =
+        ReplicateProgressDataNodeManager.extractLocalSimpleProgressIndex(
+            maxProgressIndexInLastFile);
+    // PipeConsensus ensures that deleteDataNodes use recoverProgressIndex.
+    if (!(curProgressIndex instanceof SimpleProgressIndex)) {
+      throw new IOException("Invalid deletion progress index: " + curProgressIndex);
     }
+    SimpleProgressIndex progressIndex = (SimpleProgressIndex) curProgressIndex;
+    // Deletion file name format: "_{rebootTimes}_{memTableFlushOrderId}.deletion"
+    this.logFile =
+        new File(
+            baseDirectory,
+            String.format(
+                "_%d-%d%s",
+                progressIndex.getRebootTimes(),
+                progressIndex.getMemTableFlushOrderId(),
+                DeletionResourceManager.DELETION_FILE_SUFFIX));
+    this.logStream = new FileOutputStream(logFile, true);
+    this.logChannel = logStream.getChannel();
+    // Create file && write magic string
+    if (!logFile.exists() || logFile.length() == 0) {
+      this.logChannel.write(
+          ByteBuffer.wrap(
+              DeletionResourceManager.MAGIC_VERSION_V1.getBytes(StandardCharsets.UTF_8)));
+    }
+    LOGGER.info(
+        "Deletion persist-{}: switching to a new file, current writing: {}", dataRegionId, logFile);
   }
 
   @Override
