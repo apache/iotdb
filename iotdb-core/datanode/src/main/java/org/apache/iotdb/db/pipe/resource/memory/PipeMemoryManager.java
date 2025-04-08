@@ -43,13 +43,25 @@ public class PipeMemoryManager {
   private static final boolean PIPE_MEMORY_MANAGEMENT_ENABLED =
       PipeConfig.getInstance().getPipeMemoryManagementEnabled();
 
-  private static final int MEMORY_ALLOCATE_MAX_RETRIES =
-      PipeConfig.getInstance().getPipeMemoryAllocateMaxRetries();
-  private static final long MEMORY_ALLOCATE_RETRY_INTERVAL_IN_MS =
-      PipeConfig.getInstance().getPipeMemoryAllocateRetryIntervalInMs();
+  private static int MEMORY_ALLOCATE_MAX_RETRIES =
+      PipeConfig.getInstance()
+          .registerPipeMemoryAllocateMaxRetries(
+              pipeConfig ->
+                  MEMORY_ALLOCATE_MAX_RETRIES = pipeConfig.getPipeMemoryAllocateMaxRetries());
 
-  private static final long MEMORY_ALLOCATE_MIN_SIZE_IN_BYTES =
-      PipeConfig.getInstance().getPipeMemoryAllocateMinSizeInBytes();
+  private static long MEMORY_ALLOCATE_RETRY_INTERVAL_IN_MS =
+      PipeConfig.getInstance()
+          .registerPipeMemoryAllocateRetryIntervalInMs(
+              pipeConfig ->
+                  MEMORY_ALLOCATE_RETRY_INTERVAL_IN_MS =
+                      pipeConfig.getPipeMemoryAllocateRetryIntervalInMs());
+
+  private static long MEMORY_ALLOCATE_MIN_SIZE_IN_BYTES =
+      PipeConfig.getInstance()
+          .registerPipeMemoryAllocateMinSizeInBytes(
+              pipeConfig ->
+                  MEMORY_ALLOCATE_MIN_SIZE_IN_BYTES =
+                      pipeConfig.getPipeMemoryAllocateMinSizeInBytes());
 
   // TODO @spricoder: consider combine memory block and used MemorySizeInBytes
   private IMemoryBlock memoryBlock =

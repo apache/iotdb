@@ -324,7 +324,19 @@ public class PipeConfig {
     return COMMON_CONFIG.getPipeReceiverLoginPeriodicVerificationIntervalMs();
   }
 
+  public long registerPipeReceiverLoginPeriodicVerificationIntervalMs(
+      PipeDynamicConfigFunction function) {
+    PipeDynamicConfigLoader.instance().registerPipeConfigFunction(function);
+    return COMMON_CONFIG.getPipeReceiverLoginPeriodicVerificationIntervalMs();
+  }
+
   public double getPipeReceiverActualToEstimatedMemoryRatio() {
+    return COMMON_CONFIG.getPipeReceiverActualToEstimatedMemoryRatio();
+  }
+
+  public double registerPipeReceiverActualToEstimatedMemoryRatio(
+      PipeDynamicConfigFunction function) {
+    PipeDynamicConfigLoader.instance().registerPipeConfigFunction(function);
     return COMMON_CONFIG.getPipeReceiverActualToEstimatedMemoryRatio();
   }
 
@@ -402,11 +414,26 @@ public class PipeConfig {
     return COMMON_CONFIG.getPipeMemoryAllocateMaxRetries();
   }
 
+  public int registerPipeMemoryAllocateMaxRetries(PipeDynamicConfigFunction function) {
+    PipeDynamicConfigLoader.instance().registerPipeConfigFunction(function);
+    return COMMON_CONFIG.getPipeMemoryAllocateMaxRetries();
+  }
+
   public long getPipeMemoryAllocateRetryIntervalInMs() {
     return COMMON_CONFIG.getPipeMemoryAllocateRetryIntervalInMs();
   }
 
+  public long registerPipeMemoryAllocateRetryIntervalInMs(PipeDynamicConfigFunction function) {
+    PipeDynamicConfigLoader.instance().registerPipeConfigFunction(function);
+    return COMMON_CONFIG.getPipeMemoryAllocateRetryIntervalInMs();
+  }
+
   public long getPipeMemoryAllocateMinSizeInBytes() {
+    return COMMON_CONFIG.getPipeMemoryAllocateMinSizeInBytes();
+  }
+
+  public long registerPipeMemoryAllocateMinSizeInBytes(PipeDynamicConfigFunction function) {
+    PipeDynamicConfigLoader.instance().registerPipeConfigFunction(function);
     return COMMON_CONFIG.getPipeMemoryAllocateMinSizeInBytes();
   }
 
@@ -425,6 +452,11 @@ public class PipeConfig {
   /////////////////////////////// TwoStage ///////////////////////////////
 
   public long getTwoStageAggregateMaxCombinerLiveTimeInMs() {
+    return COMMON_CONFIG.getTwoStageAggregateMaxCombinerLiveTimeInMs();
+  }
+
+  public long registerTwoStageAggregateMaxCombinerLiveTimeInMs(PipeDynamicConfigFunction function) {
+    PipeDynamicConfigLoader.instance().registerPipeConfigFunction(function);
     return COMMON_CONFIG.getTwoStageAggregateMaxCombinerLiveTimeInMs();
   }
 

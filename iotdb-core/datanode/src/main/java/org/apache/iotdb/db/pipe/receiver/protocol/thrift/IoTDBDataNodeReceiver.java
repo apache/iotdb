@@ -178,8 +178,13 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
 
   private static final SessionManager SESSION_MANAGER = SessionManager.getInstance();
 
-  private static final double ACTUAL_TO_ESTIMATED_MEMORY_RATIO =
-      PipeConfig.getInstance().getPipeReceiverActualToEstimatedMemoryRatio();
+  private static double ACTUAL_TO_ESTIMATED_MEMORY_RATIO =
+      PipeConfig.getInstance()
+          .registerPipeReceiverActualToEstimatedMemoryRatio(
+              pipeConfig ->
+                  ACTUAL_TO_ESTIMATED_MEMORY_RATIO =
+                      pipeConfig.getPipeReceiverActualToEstimatedMemoryRatio());
+
   private PipeMemoryBlock allocatedMemoryBlock;
 
   static {
