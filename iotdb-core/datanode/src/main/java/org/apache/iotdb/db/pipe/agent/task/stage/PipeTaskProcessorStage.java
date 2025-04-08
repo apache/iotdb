@@ -44,11 +44,14 @@ import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 
+import java.util.HashSet;
+import java.util.Set;
+
 public class PipeTaskProcessorStage extends PipeTaskStage {
 
   private final PipeProcessorSubtaskExecutor executor;
 
-  private final PipeProcessorSubtask pipeProcessorSubtask;
+  private final Set<PipeProcessorSubtask> pipeProcessorSubtasks = new HashSet<>();
 
   /**
    * @param pipeName pipe name
@@ -109,36 +112,39 @@ public class PipeTaskProcessorStage extends PipeTaskStage {
             forceTabletFormat,
             skipParsing,
             isUsedForConsensusPipe);
-    this.pipeProcessorSubtask =
-        new PipeProcessorSubtask(
-            taskId,
-            pipeName,
-            creationTime,
-            regionId,
-            pipeExtractorInputEventSupplier,
-            pipeProcessor,
-            pipeConnectorOutputEventCollector);
+
+    for (int i = 0; i < 5; ++i) {
+      this.pipeProcessorSubtasks.add(
+          new PipeProcessorSubtask(
+              taskId,
+              pipeName,
+              creationTime,
+              regionId,
+              pipeExtractorInputEventSupplier,
+              pipeProcessor,
+              pipeConnectorOutputEventCollector));
+    }
 
     this.executor = executor;
   }
 
   @Override
   public void createSubtask() throws PipeException {
-    executor.register(pipeProcessorSubtask);
+    pipeProcessorSubtasks.forEach(executor::register);
   }
 
   @Override
   public void startSubtask() throws PipeException {
-    executor.start(pipeProcessorSubtask.getTaskID());
+    pipeProcessorSubtasks.forEach(subtask -> executor.start(subtask.getTaskID()));
   }
 
   @Override
   public void stopSubtask() throws PipeException {
-    executor.stop(pipeProcessorSubtask.getTaskID());
+    pipeProcessorSubtasks.forEach(subtask -> executor.stop(subtask.getTaskID()));
   }
 
   @Override
   public void dropSubtask() throws PipeException {
-    executor.deregister(pipeProcessorSubtask.getTaskID());
+    pipeProcessorSubtasks.forEach(subtask -> executor.deregister(subtask.getTaskID()));
   }
 }
