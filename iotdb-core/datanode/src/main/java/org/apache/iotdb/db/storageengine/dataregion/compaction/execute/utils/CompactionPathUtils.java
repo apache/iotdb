@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils;
 
 import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.DataNodeDevicePathCache;
 
@@ -31,8 +32,22 @@ public class CompactionPathUtils {
 
   public static PartialPath getPath(IDeviceID device, String measurement)
       throws IllegalPathException {
-    return DataNodeDevicePathCache.getInstance()
-        .getPartialPath(device.toString())
-        .concatAsMeasurementPath(measurement);
+    if (device.isTableModel()) {
+      String[] tableNameSegments =
+          DataNodeDevicePathCache.getInstance().getPartialPath(device.getTableName()).getNodes();
+      String[] nodes = new String[device.segmentNum() + tableNameSegments.length];
+      System.arraycopy(tableNameSegments, 0, nodes, 0, tableNameSegments.length);
+      for (int i = 0; i < device.segmentNum() - 1; i++) {
+        nodes[i + tableNameSegments.length] = device.segment(i + 1).toString();
+      }
+      nodes[device.segmentNum() + tableNameSegments.length - 1] = measurement;
+      MeasurementPath path = new MeasurementPath(nodes);
+      path.setDevice(device);
+      return path;
+    } else {
+      return DataNodeDevicePathCache.getInstance()
+          .getPartialPath(device.toString())
+          .concatAsMeasurementPath(measurement);
+    }
   }
 }
