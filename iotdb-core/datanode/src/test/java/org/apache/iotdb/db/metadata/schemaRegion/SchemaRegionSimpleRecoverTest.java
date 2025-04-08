@@ -22,7 +22,7 @@ package org.apache.iotdb.db.metadata.schemaRegion;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.schema.column.ColumnHeader;
-import org.apache.iotdb.commons.schema.filter.impl.singlechild.IdFilter;
+import org.apache.iotdb.commons.schema.filter.impl.singlechild.TagFilter;
 import org.apache.iotdb.commons.schema.filter.impl.values.InFilter;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.column.AttributeColumnSchema;
@@ -295,7 +295,7 @@ public class SchemaRegionSimpleRecoverTest extends AbstractSchemaRegionTest {
             tableName,
             Collections.singletonList(
                 Collections.singletonList(
-                    new IdFilter(new InFilter(Collections.singleton("d_1")), 2))),
+                    new TagFilter(new InFilter(Collections.singleton("d_1")), 2))),
             null,
             columnHeaderList,
             null,

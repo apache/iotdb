@@ -49,10 +49,10 @@ public class ShowModelsTask implements IConfigTask {
     this.modelName = modelName;
   }
 
-  private static final String INPUT_SHAPE = "inputShape:";
-  private static final String OUTPUT_SHAPE = "outputShape:";
-  private static final String INPUT_DATA_TYPE = "inputDataType:";
-  private static final String OUTPUT_DATA_TYPE = "outputDataType:";
+  public static final String INPUT_SHAPE = "inputShape:";
+  public static final String OUTPUT_SHAPE = "outputShape:";
+  public static final String INPUT_DATA_TYPE = "inputDataType:";
+  public static final String OUTPUT_DATA_TYPE = "outputDataType:";
   private static final String EMPTY_STRING = "";
 
   @Override
