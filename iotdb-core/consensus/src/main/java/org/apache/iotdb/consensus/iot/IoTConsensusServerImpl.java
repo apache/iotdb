@@ -413,7 +413,7 @@ public class IoTConsensusServerImpl {
     R apply(T t) throws Exception;
   }
 
-  public void inactivePeer(Peer peer, boolean forDeletionPurpose)
+  public void inactivatePeer(Peer peer, boolean forDeletionPurpose)
       throws ConsensusGroupModifyPeerException {
     ConsensusGroupModifyPeerException lastException = null;
     // In region migration, if the target node restarts before the “addRegionPeer” phase within 1
@@ -430,7 +430,7 @@ public class IoTConsensusServerImpl {
                   new TInactivatePeerReq(peer.getGroupId().convertToTConsensusGroupId())
                       .setForDeletionPurpose(forDeletionPurpose));
           if (isSuccess(res.status)) {
-            break;
+            return;
           }
           lastException =
               new ConsensusGroupModifyPeerException(
@@ -444,9 +444,7 @@ public class IoTConsensusServerImpl {
         lastException = new ConsensusGroupModifyPeerException(e);
       }
     }
-    if (lastException != null) {
-      throw lastException;
-    }
+    throw lastException;
   }
 
   public void triggerSnapshotLoad(Peer peer) throws ConsensusGroupModifyPeerException {
