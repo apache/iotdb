@@ -415,23 +415,37 @@ public class IoTConsensusServerImpl {
 
   public void inactivePeer(Peer peer, boolean forDeletionPurpose)
       throws ConsensusGroupModifyPeerException {
-    try (SyncIoTConsensusServiceClient client =
-        syncClientManager.borrowClient(peer.getEndpoint())) {
-      try {
-        TInactivatePeerRes res =
-            client.inactivatePeer(
-                new TInactivatePeerReq(peer.getGroupId().convertToTConsensusGroupId())
-                    .setForDeletionPurpose(forDeletionPurpose));
-        if (!isSuccess(res.status)) {
-          throw new ConsensusGroupModifyPeerException(
-              String.format("error when inactivating %s. %s", peer, res.getStatus()));
+    ConsensusGroupModifyPeerException lastException = null;
+    // In region migration, if the target node restarts before the “addRegionPeer” phase within 1
+    // minutes,
+    // the client in the ClientManager will become invalid.
+    // This PR adds 1 retry at this point to ensure that region migration can still proceed
+    // correctly in such cases.
+    for (int i = 0; i < 2; i++) {
+      try (SyncIoTConsensusServiceClient client =
+          syncClientManager.borrowClient(peer.getEndpoint())) {
+        try {
+          TInactivatePeerRes res =
+              client.inactivatePeer(
+                  new TInactivatePeerReq(peer.getGroupId().convertToTConsensusGroupId())
+                      .setForDeletionPurpose(forDeletionPurpose));
+          if (isSuccess(res.status)) {
+            break;
+          }
+          lastException =
+              new ConsensusGroupModifyPeerException(
+                  String.format("error when inactivating %s. %s", peer, res.getStatus()));
+        } catch (Exception e) {
+          lastException =
+              new ConsensusGroupModifyPeerException(
+                  String.format("error when inactivating %s", peer), e);
         }
-      } catch (Exception e) {
-        throw new ConsensusGroupModifyPeerException(
-            String.format("error when inactivating %s", peer), e);
+      } catch (ClientManagerException e) {
+        lastException = new ConsensusGroupModifyPeerException(e);
       }
-    } catch (ClientManagerException e) {
-      throw new ConsensusGroupModifyPeerException(e);
+    }
+    if (lastException != null) {
+      throw lastException;
     }
   }
 
