@@ -78,6 +78,7 @@ public abstract class EnrichedEvent implements Event {
   protected List<Supplier<Void>> onCommittedHooks = new ArrayList<>();
   protected String userName;
   protected boolean skipIfNoPrivileges;
+  protected AtomicInteger sourceReferenceCount = new AtomicInteger(1);
 
   protected EnrichedEvent(
       final String pipeName,
@@ -457,6 +458,14 @@ public abstract class EnrichedEvent implements Event {
     return isReleased.get();
   }
 
+  public void increaseSourceReferenceCount() {
+    sourceReferenceCount.incrementAndGet();
+  }
+
+  public int decreaseSourceReferenceCount() {
+    return sourceReferenceCount.decrementAndGet();
+  }
+
   /**
    * Used for pipeConsensus. In PipeConsensus, we only need committerKey, commitId and rebootTimes
    * to uniquely identify an event
@@ -510,6 +519,8 @@ public abstract class EnrichedEvent implements Event {
         + userName
         + ", skipIfNoPrivileges="
         + skipIfNoPrivileges
+        + ", sourceReferenceCount="
+        + sourceReferenceCount
         + '}';
   }
 
@@ -545,6 +556,8 @@ public abstract class EnrichedEvent implements Event {
         + userName
         + ", skipIfNoPrivileges="
         + skipIfNoPrivileges
+        + ", sourceReferenceCount="
+        + sourceReferenceCount
         + '}';
   }
 }

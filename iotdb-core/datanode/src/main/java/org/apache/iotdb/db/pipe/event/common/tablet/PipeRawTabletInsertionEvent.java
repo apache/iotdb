@@ -107,6 +107,13 @@ public class PipeRawTabletInsertionEvent extends PipeInsertionEvent
     if (Objects.nonNull(sourceEvent)) {
       this.committerKey = sourceEvent.getCommitterKey();
       this.commitId = sourceEvent.getCommitId();
+      sourceEvent.increaseSourceReferenceCount();
+      // The source's reference count is initially 1 to avoid that all the converted raw event are
+      // transferred, but the conversion is incomplete.
+      // Decrease if all the raw events are generated to unpin the resource
+      if (needToReport) {
+        sourceEvent.decreaseSourceReferenceCount();
+      }
     }
 
     // Allocate empty memory block, will be resized later.
@@ -232,6 +239,7 @@ public class PipeRawTabletInsertionEvent extends PipeInsertionEvent
 
   @Override
   protected void reportProgress() {
+    int referenceCount = sourceEvent.decreaseSourceReferenceCount();
     if (needToReport) {
       super.reportProgress();
       if (sourceEvent instanceof PipeTsFileInsertionEvent) {
