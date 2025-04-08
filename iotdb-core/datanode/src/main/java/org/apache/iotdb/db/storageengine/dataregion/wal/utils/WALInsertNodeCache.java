@@ -224,6 +224,12 @@ public class WALInsertNodeCache {
     return pair;
   }
 
+  public Pair<ByteBuffer, InsertNode> getByteBufferOrInsertNodeIfPossible(
+      final WALEntryPosition position) {
+    hasPipeRunning = true;
+    return lruCache.getIfPresent(position);
+  }
+
   public void cacheInsertNodeIfNeeded(
       final WALEntryPosition walEntryPosition, final InsertNode insertNode) {
     // reduce memory usage

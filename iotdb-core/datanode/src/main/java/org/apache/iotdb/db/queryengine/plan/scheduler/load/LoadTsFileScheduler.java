@@ -229,9 +229,10 @@ public class LoadTsFileScheduler implements IScheduler {
             }
           }
 
-          if (RegionMigrateService.getInstance().getLastNotifyTime() > startTimeMs) {
+          if (RegionMigrateService.getInstance().getLastNotifyMigratingTime() > startTimeMs
+              || RegionMigrateService.getInstance().mayHaveMigratingRegions()) {
             LOGGER.warn(
-                "LoadTsFileScheduler: Region migration started or ended during loading TsFile {}, will convert to insertion to avoid data loss",
+                "LoadTsFileScheduler: Region migration was detected during loading TsFile {}, will convert to insertion to avoid data loss",
                 filePath);
             isLoadSingleTsFileSuccess = false;
           }
@@ -289,7 +290,7 @@ public class LoadTsFileScheduler implements IScheduler {
           convertFailedTsFilesToTabletsAndRetry();
         } finally {
           LOAD_TSFILE_COST_METRICS_SET.recordPhaseTimeCost(
-              LoadTsFileCostMetricsSet.CAST_TABLETS, System.nanoTime() - startTime);
+              LoadTsFileCostMetricsSet.SCHEDULER_CAST_TABLETS, System.nanoTime() - startTime);
         }
       }
     } finally {
@@ -543,7 +544,10 @@ public class LoadTsFileScheduler implements IScheduler {
       try {
         final TSStatus status =
             loadTsFileDataTypeConverter
-                .convertForTreeModel(new LoadTsFileStatement(filePath))
+                .convertForTreeModel(
+                    new LoadTsFileStatement(filePath)
+                        .setDeleteAfterLoad(failedNode.isDeleteAfterLoad())
+                        .setConvertOnTypeMismatch(true))
                 .orElse(null);
 
         if (loadTsFileDataTypeConverter.isSuccessful(status)) {

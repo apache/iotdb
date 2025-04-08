@@ -1137,6 +1137,7 @@ public class IoTDBConfig {
   /** Load related */
   private double maxAllocateMemoryRatioForLoad = 0.8;
 
+  private int loadTsFileAnalyzeSchemaBatchReadTimeSeriesMetadataCount = 4096;
   private int loadTsFileAnalyzeSchemaBatchFlushTimeSeriesNumber = 4096;
   private long loadTsFileAnalyzeSchemaMemorySizeInBytes =
       0L; // 0 means that the decision will be adaptive based on the number of sequences
@@ -1153,6 +1154,8 @@ public class IoTDBConfig {
   private int loadTsFileRetryCountOnRegionChange = 10;
 
   private double loadWriteThroughputBytesPerSecond = -1; // Bytes/s
+
+  private long loadTabletConversionThresholdBytes = -1;
 
   private boolean loadActiveListeningEnable = true;
 
@@ -3960,6 +3963,16 @@ public class IoTDBConfig {
     this.maxAllocateMemoryRatioForLoad = maxAllocateMemoryRatioForLoad;
   }
 
+  public int getLoadTsFileAnalyzeSchemaBatchReadTimeSeriesMetadataCount() {
+    return loadTsFileAnalyzeSchemaBatchReadTimeSeriesMetadataCount;
+  }
+
+  public void setLoadTsFileAnalyzeSchemaBatchReadTimeSeriesMetadataCount(
+      int loadTsFileAnalyzeSchemaBatchReadTimeSeriesMetadataCount) {
+    this.loadTsFileAnalyzeSchemaBatchReadTimeSeriesMetadataCount =
+        loadTsFileAnalyzeSchemaBatchReadTimeSeriesMetadataCount;
+  }
+
   public int getLoadTsFileAnalyzeSchemaBatchFlushTimeSeriesNumber() {
     return loadTsFileAnalyzeSchemaBatchFlushTimeSeriesNumber;
   }
@@ -4036,6 +4049,14 @@ public class IoTDBConfig {
 
   public void setLoadWriteThroughputBytesPerSecond(double loadWriteThroughputBytesPerSecond) {
     this.loadWriteThroughputBytesPerSecond = loadWriteThroughputBytesPerSecond;
+  }
+
+  public long getLoadTabletConversionThresholdBytes() {
+    return loadTabletConversionThresholdBytes;
+  }
+
+  public void setLoadTabletConversionThresholdBytes(long loadTabletConversionThresholdBytes) {
+    this.loadTabletConversionThresholdBytes = loadTabletConversionThresholdBytes;
   }
 
   public int getLoadActiveListeningMaxThreadNum() {

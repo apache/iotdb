@@ -87,6 +87,10 @@ jobs:
               echo "==================== BEGIN: ~/run-tests-$attempt.log ===================="          
               echo "$test_output"
               echo "==================== END: ~/run-tests-$attempt.log ======================"
+          
+              if ! mv ~/run-tests-$attempt.log integration-test/target/cluster-logs/ 2>/dev/null; then
+                echo "Failed to move log file ~/run-tests-$attempt.log to integration-test/target/cluster-logs/. Skipping..."
+              fi
 
               if echo "$test_output" | grep -q "Could not transfer artifact"; then
                 if [ $attempt -lt $max_attempts ]; then
@@ -172,13 +176,15 @@ jobs:
               -am -PMultiClusterIT2ManualCreateSchema \
               -ntp >> ~/run-tests-$attempt.log && return 0
               test_output=$(cat ~/run-tests-$attempt.log) 
-          
-              mv ~/run-tests-$attempt.log integration-test/target/cluster-logs/
 
               echo "==================== BEGIN: ~/run-tests-$attempt.log ===================="          
               echo "$test_output"
               echo "==================== END: ~/run-tests-$attempt.log ======================"
           
+              if ! mv ~/run-tests-$attempt.log integration-test/target/cluster-logs/ 2>/dev/null; then
+                echo "Failed to move log file ~/run-tests-$attempt.log to integration-test/target/cluster-logs/. Skipping..."
+              fi
+
               if echo "$test_output" | grep -q "Could not transfer artifact"; then
                 if [ $attempt -lt $max_attempts ]; then
                   echo "Test failed with artifact transfer issue, attempt $attempt. Retrying in $retry_sleep seconds..."
@@ -255,11 +261,13 @@ jobs:
               -ntp >> ~/run-tests-$attempt.log && return 0
               test_output=$(cat ~/run-tests-$attempt.log) 
 
-              mv ~/run-tests-$attempt.log integration-test/target/cluster-logs/
-
               echo "==================== BEGIN: ~/run-tests-$attempt.log ===================="          
               echo "$test_output"
               echo "==================== END: ~/run-tests-$attempt.log ======================"
+
+              if ! mv ~/run-tests-$attempt.log integration-test/target/cluster-logs/ 2>/dev/null; then
+                echo "Failed to move log file ~/run-tests-$attempt.log to integration-test/target/cluster-logs/. Skipping..."
+              fi
 
               if echo "$test_output" | grep -q "Could not transfer artifact"; then
                 if [ $attempt -lt $max_attempts ]; then
@@ -337,11 +345,13 @@ jobs:
               -ntp >> ~/run-tests-$attempt.log && return 0
               test_output=$(cat ~/run-tests-$attempt.log) 
 
-              mv ~/run-tests-$attempt.log integration-test/target/cluster-logs/
-
               echo "==================== BEGIN: ~/run-tests-$attempt.log ===================="          
               echo "$test_output"
               echo "==================== END: ~/run-tests-$attempt.log ======================"
+
+              if ! mv ~/run-tests-$attempt.log integration-test/target/cluster-logs/ 2>/dev/null; then
+                echo "Failed to move log file ~/run-tests-$attempt.log to integration-test/target/cluster-logs/. Skipping..."
+              fi
 
               if echo "$test_output" | grep -q "Could not transfer artifact"; then
                 if [ $attempt -lt $max_attempts ]; then
@@ -419,11 +429,13 @@ jobs:
               -ntp >> ~/run-tests-$attempt.log && return 0
               test_output=$(cat ~/run-tests-$attempt.log) 
 
-              mv ~/run-tests-$attempt.log integration-test/target/cluster-logs/
-
               echo "==================== BEGIN: ~/run-tests-$attempt.log ===================="          
               echo "$test_output"
               echo "==================== END: ~/run-tests-$attempt.log ======================"
+
+              if ! mv ~/run-tests-$attempt.log integration-test/target/cluster-logs/ 2>/dev/null; then
+                echo "Failed to move log file ~/run-tests-$attempt.log to integration-test/target/cluster-logs/. Skipping..."
+              fi
 
               if echo "$test_output" | grep -q "Could not transfer artifact"; then
                 if [ $attempt -lt $max_attempts ]; then
