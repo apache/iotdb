@@ -35,6 +35,7 @@ import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Predicate;
 import java.util.function.ToIntFunction;
+import java.util.stream.Stream;
 
 class DualKeyCacheImpl<FK, SK, V, T extends ICacheEntry<SK, V>>
     implements IDualKeyCache<FK, SK, V> {
@@ -84,15 +85,17 @@ class DualKeyCacheImpl<FK, SK, V, T extends ICacheEntry<SK, V>>
       final ToIntFunction<V> updater,
       final boolean createIfNotExists) {
 
-    final ICacheEntryGroup<FK, SK, V, T> cacheEntryGroup = firstKeyMap.get(firstKey);
+    ICacheEntryGroup<FK, SK, V, T> cacheEntryGroup = firstKeyMap.get(firstKey);
     if (Objects.isNull(cacheEntryGroup) && createIfNotExists) {
-      firstKeyMap.put(firstKey, new CacheEntryGroupImpl<>(firstKey, sizeComputer));
+      cacheEntryGroup = new CacheEntryGroupImpl<>(firstKey, sizeComputer);
+      firstKeyMap.put(firstKey, cacheEntryGroup);
     }
 
     if (Objects.isNull(cacheEntryGroup)) {
       return;
     }
 
+    final ICacheEntryGroup<FK, SK, V, T> finalCacheEntryGroup = cacheEntryGroup;
     cacheEntryGroup.computeCacheEntry(
         secondKey,
         memory ->
@@ -101,7 +104,8 @@ class DualKeyCacheImpl<FK, SK, V, T extends ICacheEntry<SK, V>>
                 if (!createIfNotExists) {
                   return null;
                 }
-                cacheEntry = cacheEntryManager.createCacheEntry(secondKey, value, cacheEntryGroup);
+                cacheEntry =
+                    cacheEntryManager.createCacheEntry(secondKey, value, finalCacheEntryGroup);
                 cacheEntryManager.put(cacheEntry);
                 cacheStats.increaseEntryCount();
                 memory.getAndAdd(
@@ -304,7 +308,7 @@ class DualKeyCacheImpl<FK, SK, V, T extends ICacheEntry<SK, V>>
 
   private long getMemory() {
     return Arrays.stream(firstKeyMap.maps)
-        .flatMap(map -> map.values().stream())
+        .flatMap(map -> Objects.nonNull(map) ? map.values().stream() : Stream.empty())
         .map(ICacheEntryGroup::getMemory)
         .reduce(0L, Long::sum);
   }
