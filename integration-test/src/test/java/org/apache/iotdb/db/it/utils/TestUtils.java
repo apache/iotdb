@@ -1709,12 +1709,7 @@ public class TestUtils {
     long retryIntervalMS = 1000;
     while (true) {
       try (Connection connection = EnvFactory.getEnv().getConnection()) {
-        final List<BaseNodeWrapper> allDataNodes =
-            new ArrayList<>(EnvFactory.getEnv().getDataNodeWrapperList());
-        EnvFactory.getEnv()
-            .ensureNodeStatus(
-                allDataNodes, Collections.nCopies(allDataNodes.size(), NodeStatus.Running));
-        break;
+       break;
       } catch (Exception e) {
         try {
           Thread.sleep(retryIntervalMS);
