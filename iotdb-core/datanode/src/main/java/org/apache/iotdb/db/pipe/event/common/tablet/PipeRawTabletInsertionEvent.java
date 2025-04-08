@@ -60,7 +60,6 @@ public class PipeRawTabletInsertionEvent extends PipeInsertionEvent
   private final boolean isAligned;
 
   private final EnrichedEvent sourceEvent;
-  private boolean needToReport;
 
   private final PipeTabletMemoryBlock allocatedMemoryBlock;
 
@@ -107,12 +106,12 @@ public class PipeRawTabletInsertionEvent extends PipeInsertionEvent
     if (Objects.nonNull(sourceEvent)) {
       this.committerKey = sourceEvent.getCommitterKey();
       this.commitId = sourceEvent.getCommitId();
-      sourceEvent.increaseSourceReferenceCount();
+      sourceEvent.incrementSourceReferenceCount();
       // The source's reference count is initially 1 to avoid that all the converted raw event are
       // transferred, but the conversion is incomplete.
       // Decrease if all the raw events are generated to unpin the resource
       if (needToReport) {
-        sourceEvent.decreaseSourceReferenceCount();
+        sourceEvent.decrementAndGetSourceReferenceCount();
       }
     }
 
@@ -239,8 +238,7 @@ public class PipeRawTabletInsertionEvent extends PipeInsertionEvent
 
   @Override
   protected void reportProgress() {
-    int referenceCount = sourceEvent.decreaseSourceReferenceCount();
-    if (needToReport) {
+    if (sourceEvent.decrementAndGetSourceReferenceCount() == 0) {
       super.reportProgress();
       if (sourceEvent instanceof PipeTsFileInsertionEvent) {
         ((PipeTsFileInsertionEvent) sourceEvent).eliminateProgressIndex();

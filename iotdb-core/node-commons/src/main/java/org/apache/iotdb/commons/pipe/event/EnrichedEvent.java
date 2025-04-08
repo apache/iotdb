@@ -458,11 +458,11 @@ public abstract class EnrichedEvent implements Event {
     return isReleased.get();
   }
 
-  public void increaseSourceReferenceCount() {
+  public void incrementSourceReferenceCount() {
     sourceReferenceCount.incrementAndGet();
   }
 
-  public int decreaseSourceReferenceCount() {
+  public int decrementAndGetSourceReferenceCount() {
     return sourceReferenceCount.decrementAndGet();
   }
 
