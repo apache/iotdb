@@ -321,6 +321,7 @@ public class PipeRawTabletInsertionEvent extends PipeInsertionEvent
 
   public void markAsNeedToReport() {
     this.needToReport = true;
+    sourceEvent.decrementAndGetSourceReferenceCount();
   }
 
   public String getDeviceId() {
