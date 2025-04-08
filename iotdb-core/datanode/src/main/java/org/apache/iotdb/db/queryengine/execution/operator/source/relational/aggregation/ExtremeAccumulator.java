@@ -30,7 +30,7 @@ import org.apache.tsfile.write.UnSupportedDataTypeException;
 public class ExtremeAccumulator implements TableAccumulator {
   private static final long INSTANCE_SIZE =
       RamUsageEstimator.shallowSizeOfInstance(ExtremeAccumulator.class);
-  private static final String UNSUPPORTED_DATA_TYPE = "Unsupported data type in Extreme: %s";
+  private static final String UNSUPPORTED_DATA_TYPE = "Unsupported data type in EXTREME: %s";
   private final TSDataType seriesDataType;
   private final TsPrimitiveType extremeResult;
   private boolean initResult;

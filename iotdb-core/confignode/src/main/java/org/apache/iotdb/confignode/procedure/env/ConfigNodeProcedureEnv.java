@@ -59,6 +59,7 @@ import org.apache.iotdb.confignode.procedure.scheduler.ProcedureScheduler;
 import org.apache.iotdb.confignode.rpc.thrift.TAddConsensusGroupReq;
 import org.apache.iotdb.confignode.rpc.thrift.TNodeVersionInfo;
 import org.apache.iotdb.consensus.exception.ConsensusException;
+import org.apache.iotdb.db.protocol.client.ConfigNodeInfo;
 import org.apache.iotdb.mpp.rpc.thrift.TActiveTriggerInstanceReq;
 import org.apache.iotdb.mpp.rpc.thrift.TCreateDataRegionReq;
 import org.apache.iotdb.mpp.rpc.thrift.TCreatePipePluginInstanceReq;
@@ -486,7 +487,15 @@ public class ConfigNodeProcedureEnv {
     final Map<Integer, TDataNodeLocation> dataNodeLocationMap =
         configManager.getNodeManager().getRegisteredDataNodeLocations();
     final TNotifyRegionMigrationReq request =
-        new TNotifyRegionMigrationReq(consensusGroupId, isStart);
+        new TNotifyRegionMigrationReq(
+            configManager
+                .getConsensusManager()
+                .getConsensusImpl()
+                .getLogicalClock(ConfigNodeInfo.CONFIG_REGION_ID),
+            System.nanoTime(),
+            configManager.getProcedureManager().getRegionOperationConsensusIds());
+    request.setRegionId(consensusGroupId);
+    request.setIsStart(isStart);
 
     final DataNodeAsyncRequestContext<TNotifyRegionMigrationReq, TSStatus> clientHandler =
         new DataNodeAsyncRequestContext<>(

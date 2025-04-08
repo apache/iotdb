@@ -21,6 +21,7 @@ package org.apache.iotdb.db.queryengine.plan.analyze.schema;
 
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.IoTDBException;
+import org.apache.iotdb.commons.exception.IoTDBRuntimeException;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
@@ -250,11 +251,9 @@ class ClusterSchemaFetchExecutor {
     try {
       ExecutionResult executionResult = executionStatement(queryId, fetchStatement, context);
       if (executionResult.status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-        throw new RuntimeException(
-            new IoTDBException(
-                String.format(
-                    "Fetch Schema failed, because %s", executionResult.status.getMessage()),
-                executionResult.status.getCode()));
+        throw new IoTDBRuntimeException(
+            String.format("Fetch Schema failed, because %s", executionResult.status.getMessage()),
+            executionResult.status.getCode());
       }
       try (SetThreadName threadName = new SetThreadName(executionResult.queryId.getId())) {
         ClusterSchemaTree result = new ClusterSchemaTree();

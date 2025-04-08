@@ -22,6 +22,7 @@ package org.apache.iotdb.commons.model;
 public enum ModelStatus {
   INACTIVE,
   LOADING,
+  TRAINING,
   ACTIVE,
   DROPPING,
   UNAVAILABLE

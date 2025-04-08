@@ -168,7 +168,7 @@ public class TableDistributedPlanner {
         mppQueryContext.getQueryType() == QueryType.READ
             ? new TableModelQueryFragmentPlanner(
                     subPlan, analysis, mppQueryContext, nodeDistributionMap)
-                .plan()
+                .parallelPlan()
             : new WriteFragmentParallelPlanner(
                     subPlan, analysis, mppQueryContext, WritePlanNode::splitByPartition)
                 .parallelPlan();

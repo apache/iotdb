@@ -26,6 +26,7 @@ import org.apache.iotdb.ainode.rpc.thrift.TInferenceReq;
 import org.apache.iotdb.ainode.rpc.thrift.TInferenceResp;
 import org.apache.iotdb.ainode.rpc.thrift.TRegisterModelReq;
 import org.apache.iotdb.ainode.rpc.thrift.TRegisterModelResp;
+import org.apache.iotdb.ainode.rpc.thrift.TTrainingReq;
 import org.apache.iotdb.ainode.rpc.thrift.TWindowParams;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
@@ -178,6 +179,18 @@ public class AINodeClient implements AutoCloseable, ThriftClient {
       return client.inference(inferenceReq);
     } catch (IOException e) {
       throw new TException("An exception occurred while serializing input tsblock", e);
+    } catch (TException e) {
+      logger.warn(
+          "Failed to connect to AINode from DataNode when executing {}: {}",
+          Thread.currentThread().getStackTrace()[1].getMethodName(),
+          e.getMessage());
+      throw new TException(MSG_CONNECTION_FAIL);
+    }
+  }
+
+  public TSStatus createTrainingTask(TTrainingReq req) throws TException {
+    try {
+      return client.createTrainingTask(req);
     } catch (TException e) {
       logger.warn(
           "Failed to connect to AINode from DataNode when executing {}: {}",

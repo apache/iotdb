@@ -153,14 +153,9 @@ public class TableDeviceSchemaCache {
 
   // The input deviceId shall have its tailing nulls trimmed
   public Map<String, Binary> getDeviceAttribute(final String database, final IDeviceID deviceId) {
-    readWriteLock.readLock().lock();
-    try {
-      final TableDeviceCacheEntry entry =
-          dualKeyCache.get(new TableId(database, deviceId.getTableName()), deviceId);
-      return entry == null ? null : entry.getAttributeMap();
-    } finally {
-      readWriteLock.readLock().unlock();
-    }
+    final TableDeviceCacheEntry entry =
+        dualKeyCache.get(new TableId(database, deviceId.getTableName()), deviceId);
+    return entry == null ? null : entry.getAttributeMap();
   }
 
   // The input deviceId shall have its tailing nulls trimmed

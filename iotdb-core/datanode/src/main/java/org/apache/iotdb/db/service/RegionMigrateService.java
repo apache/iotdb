@@ -49,12 +49,12 @@ import org.apache.iotdb.rpc.TSStatusCode;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
 
 public class RegionMigrateService implements IService {
@@ -75,9 +75,49 @@ public class RegionMigrateService implements IService {
   private static final ConcurrentHashMap<Long, TRegionMigrateResult> taskResultMap =
       new ConcurrentHashMap<>();
 
-  private static final AtomicLong lastNotifyTime = new AtomicLong(Long.MIN_VALUE);
-
   private static final TRegionMigrateResult unfinishedResult = new TRegionMigrateResult();
+
+  private static class RegionMigrationStatusCache {
+
+    private long logicalClock = -1;
+    private long timestamp = -1;
+
+    private List<TConsensusGroupId> currentMigratingConsensusGroupIds = Collections.emptyList();
+
+    private long lastNotifyMigratingTime = Long.MIN_VALUE;
+
+    public synchronized void update(
+        long newLogicalClock, long newTimestamp, List<TConsensusGroupId> currentRegionOperations) {
+      if (newLogicalClock < logicalClock
+          || (newLogicalClock == logicalClock && newTimestamp <= timestamp)) {
+        return;
+      }
+      logicalClock = newLogicalClock;
+      timestamp = newTimestamp;
+
+      currentMigratingConsensusGroupIds = currentRegionOperations;
+
+      if (currentRegionOperations != null && !currentRegionOperations.isEmpty()) {
+        lastNotifyMigratingTime = System.currentTimeMillis();
+      }
+    }
+
+    public synchronized void notifyMigrating() {
+      lastNotifyMigratingTime = System.currentTimeMillis();
+    }
+
+    public synchronized boolean hasMigratingRegions() {
+      return currentMigratingConsensusGroupIds != null
+          && !currentMigratingConsensusGroupIds.isEmpty();
+    }
+
+    public synchronized long getLastNotifyMigratingTime() {
+      return lastNotifyMigratingTime;
+    }
+  }
+
+  private final RegionMigrationStatusCache regionMigrationStatusCache =
+      new RegionMigrationStatusCache();
 
   private RegionMigrateService() {}
 
@@ -86,16 +126,25 @@ public class RegionMigrateService implements IService {
   }
 
   public void notifyRegionMigration(TNotifyRegionMigrationReq req) {
-    lastNotifyTime.set(System.currentTimeMillis());
-    if (req.isIsStart()) {
-      LOGGER.info("Region {} is notified to begin migrating", req.getRegionId());
-    } else {
-      LOGGER.info("Region {} is notified to finish migrating", req.getRegionId());
+    regionMigrationStatusCache.update(
+        req.getLogicalClock(), req.getTimestamp(), req.getCurrentRegionOperations());
+
+    if (req.isSetIsStart() && req.isSetRegionId()) {
+      regionMigrationStatusCache.notifyMigrating();
+      if (req.isIsStart()) {
+        LOGGER.info("Region {} is notified to begin migrating", req.getRegionId());
+      } else {
+        LOGGER.info("Region {} is notified to finish migrating", req.getRegionId());
+      }
     }
   }
 
-  public long getLastNotifyTime() {
-    return lastNotifyTime.get();
+  public long getLastNotifyMigratingTime() {
+    return regionMigrationStatusCache.getLastNotifyMigratingTime();
+  }
+
+  public boolean mayHaveMigratingRegions() {
+    return regionMigrationStatusCache.hasMigratingRegions();
   }
 
   /**

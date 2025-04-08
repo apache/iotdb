@@ -74,6 +74,10 @@ public abstract class IoTDBFileReceiver implements IoTDBReceiver {
   protected String username = CONNECTOR_IOTDB_USER_DEFAULT_VALUE;
   protected String password = CONNECTOR_IOTDB_PASSWORD_DEFAULT_VALUE;
 
+  private static final long LOGIN_PERIODIC_VERIFICATION_INTERVAL_MS =
+      PipeConfig.getInstance().getPipeReceiverLoginPeriodicVerificationIntervalMs();
+  protected long lastSuccessfulLoginTime = Long.MIN_VALUE;
+
   private static final boolean IS_FSYNC_ENABLED =
       PipeConfig.getInstance().getPipeFileReceiverFsyncEnabled();
   private File writingFile;
@@ -111,6 +115,10 @@ public abstract class IoTDBFileReceiver implements IoTDBReceiver {
     }
 
     receiverId.set(RECEIVER_ID_GENERATOR.incrementAndGet());
+    Thread.currentThread()
+        .setName(
+            String.format(
+                "Pipe-Receiver-%s-%s:%s", receiverId.get(), getSenderHost(), getSenderPort()));
 
     // Clear the original receiver file dir if exists
     if (receiverFileDirWithIdSuffix.get() != null) {
@@ -258,7 +266,7 @@ public abstract class IoTDBFileReceiver implements IoTDBReceiver {
     if (passwordString != null) {
       password = passwordString;
     }
-    final TSStatus status = tryLogin();
+    final TSStatus status = loginIfNecessary();
     if (status.code != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       LOGGER.warn(
           "Receiver id = {}: Handshake failed because login failed, response status = {}.",
@@ -311,7 +319,30 @@ public abstract class IoTDBFileReceiver implements IoTDBReceiver {
 
   protected abstract String getClusterId();
 
-  protected abstract TSStatus tryLogin();
+  protected boolean shouldLogin() {
+    return LOGIN_PERIODIC_VERIFICATION_INTERVAL_MS >= 0
+        && lastSuccessfulLoginTime
+            < System.currentTimeMillis() - LOGIN_PERIODIC_VERIFICATION_INTERVAL_MS;
+  }
+
+  protected TSStatus loginIfNecessary() {
+    if (shouldLogin()) {
+      final TSStatus permissionCheckStatus = login();
+      if (permissionCheckStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        LOGGER.warn(
+            "Receiver id = {}: Failed to login, username = {}, response = {}.",
+            receiverId.get(),
+            username,
+            permissionCheckStatus);
+        return permissionCheckStatus;
+      } else {
+        lastSuccessfulLoginTime = System.currentTimeMillis();
+      }
+    }
+    return StatusUtils.OK;
+  }
+
+  protected abstract TSStatus login();
 
   protected final TPipeTransferResp handleTransferFilePiece(
       final PipeTransferFilePieceReq req,

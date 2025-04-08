@@ -325,6 +325,11 @@ public class CommonDescriptor {
                 "pipe_data_structure_ts_file_memory_block_allocation_reject_threshold",
                 String.valueOf(
                     config.getPipeDataStructureTsFileMemoryBlockAllocationRejectThreshold()))));
+    config.setPipeTotalFloatingMemoryProportion(
+        Double.parseDouble(
+            properties.getProperty(
+                "pipe_total_floating_memory_proportion",
+                String.valueOf(config.getPipeTotalFloatingMemoryProportion()))));
 
     config.setPipeRealTimeQueuePollTsFileThreshold(
         Integer.parseInt(
@@ -692,6 +697,11 @@ public class CommonDescriptor {
             properties.getProperty(
                 "pipe_leader_cache_memory_usage_percentage",
                 String.valueOf(config.getPipeLeaderCacheMemoryUsagePercentage()))));
+    config.setPipeMaxAlignedSeriesNumInOneBatch(
+        Integer.parseInt(
+            properties.getProperty(
+                "pipe_max_aligned_series_num_in_one_batch",
+                String.valueOf(config.getPipeMaxAlignedSeriesNumInOneBatch()))));
     config.setPipeListeningQueueTransferSnapshotThreshold(
         Long.parseLong(
             properties.getProperty(
@@ -837,6 +847,16 @@ public class CommonDescriptor {
             properties.getProperty(
                 "subscription_max_allowed_event_count_in_tablet_batch",
                 String.valueOf(config.getSubscriptionMaxAllowedEventCountInTabletBatch()))));
+    config.setSubscriptionLogManagerWindowSeconds(
+        Long.parseLong(
+            properties.getProperty(
+                "subscription_log_manager_window_seconds",
+                String.valueOf(config.getSubscriptionLogManagerWindowSeconds()))));
+    config.setSubscriptionLogManagerBaseIntervalMs(
+        Long.parseLong(
+            properties.getProperty(
+                "subscription_log_manager_base_interval_ms",
+                String.valueOf(config.getSubscriptionLogManagerBaseIntervalMs()))));
 
     config.setSubscriptionPrefetchEnabled(
         Boolean.parseBoolean(

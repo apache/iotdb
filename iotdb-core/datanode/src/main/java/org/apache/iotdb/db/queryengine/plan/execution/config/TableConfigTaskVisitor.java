@@ -23,6 +23,7 @@ import org.apache.iotdb.common.rpc.thrift.Model;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.auth.AccessDeniedException;
 import org.apache.iotdb.commons.executable.ExecutableManager;
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.pipe.agent.plugin.builtin.BuiltinPipePlugin;
 import org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant;
 import org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant;
@@ -49,6 +50,8 @@ import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.ShowFuncti
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.ShowPipePluginsTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.ShowRegionTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.ShowVariablesTask;
+import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.ai.CreateTrainingTask;
+import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.ai.ShowModelsTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.region.ExtendRegionTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.region.MigrateRegionTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.region.ReconstructRegionTask;
@@ -118,6 +121,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreatePipe;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreatePipePlugin;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateTable;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateTopic;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateTraining;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DataType;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DatabaseStatement;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DeleteDevice;
@@ -164,6 +168,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowCurrentUser;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowDB;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowDataNodes;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowFunctions;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowModels;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowPipePlugins;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowPipes;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowRegions;
@@ -197,6 +202,7 @@ import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.Pair;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
@@ -379,7 +385,10 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
     // corresponding tree-model variant and execute that.
     final ShowRegionStatement treeStatement = new ShowRegionStatement();
     treeStatement.setRegionType(showRegions.getRegionType());
-    treeStatement.setStorageGroups(showRegions.getDatabases());
+    treeStatement.setDatabases(
+        Objects.nonNull(showRegions.getDatabase())
+            ? Collections.singletonList(new PartialPath(new String[] {showRegions.getDatabase()}))
+            : null);
     treeStatement.setNodeIds(showRegions.getNodeIds());
     return new ShowRegionTask(treeStatement, true);
   }
@@ -897,15 +906,18 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
 
     // Inject table model into the extractor attributes
     extractorAttributes.put(SystemConstant.SQL_DIALECT_KEY, SystemConstant.SQL_DIALECT_TABLE_VALUE);
-    checkAndEnrichSourceUserName(pipeName, extractorAttributes, userName);
-    checkAndEnrichSinkUserName(pipeName, node.getConnectorAttributes(), userName);
+    checkAndEnrichSourceUserName(pipeName, extractorAttributes, userName, false);
+    checkAndEnrichSinkUserName(pipeName, node.getConnectorAttributes(), userName, false);
 
     return new CreatePipeTask(node);
   }
 
-  private void checkAndEnrichSourceUserName(
-      final String pipeName, final Map<String, String> extractorAttributes, final String userName) {
-    final PipeParameters extractorParameters = new PipeParameters(extractorAttributes);
+  public static void checkAndEnrichSourceUserName(
+      final String pipeName,
+      final Map<String, String> replacedExtractorAttributes,
+      final String userName,
+      final boolean isAlter) {
+    final PipeParameters extractorParameters = new PipeParameters(replacedExtractorAttributes);
     final String pluginName =
         extractorParameters
             .getStringOrDefault(
@@ -924,19 +936,22 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
         PipeExtractorConstant.SOURCE_IOTDB_USER_KEY,
         PipeExtractorConstant.EXTRACTOR_IOTDB_USERNAME_KEY,
         PipeExtractorConstant.SOURCE_IOTDB_USERNAME_KEY)) {
-      extractorAttributes.put(PipeExtractorConstant.SOURCE_IOTDB_USERNAME_KEY, userName);
+      replacedExtractorAttributes.put(PipeExtractorConstant.SOURCE_IOTDB_USERNAME_KEY, userName);
     } else if (!extractorParameters.hasAnyAttributes(
         PipeExtractorConstant.EXTRACTOR_IOTDB_PASSWORD_KEY,
         PipeExtractorConstant.SOURCE_IOTDB_PASSWORD_KEY)) {
       throw new SemanticException(
           String.format(
-              "Failed to create pipe %s, in iotdb-source, password must be set when the username is specified.",
-              pipeName));
+              "Failed to %s pipe %s, in iotdb-source, password must be set when the username is specified.",
+              isAlter ? "alter" : "create", pipeName));
     }
   }
 
-  private void checkAndEnrichSinkUserName(
-      final String pipeName, final Map<String, String> connectorAttributes, final String userName) {
+  public static void checkAndEnrichSinkUserName(
+      final String pipeName,
+      final Map<String, String> connectorAttributes,
+      final String userName,
+      final boolean isAlter) {
     final PipeParameters connectorParameters = new PipeParameters(connectorAttributes);
     final String pluginName =
         connectorParameters
@@ -961,32 +976,41 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
         PipeConnectorConstant.SINK_IOTDB_PASSWORD_KEY)) {
       throw new SemanticException(
           String.format(
-              "Failed to create pipe %s, in write-back-sink, password must be set when the username is specified.",
-              pipeName));
+              "Failed to %s pipe %s, in write-back-sink, password must be set when the username is specified.",
+              isAlter ? "alter" : "create", pipeName));
     }
   }
 
   @Override
-  protected IConfigTask visitAlterPipe(AlterPipe node, MPPQueryContext context) {
+  protected IConfigTask visitAlterPipe(final AlterPipe node, final MPPQueryContext context) {
     context.setQueryType(QueryType.WRITE);
-    accessControl.checkUserIsAdmin(context.getSession().getUserName());
 
-    for (String ExtractorAttribute : node.getExtractorAttributes().keySet()) {
-      if (ExtractorAttribute.startsWith(SystemConstant.SYSTEM_PREFIX_KEY)) {
+    final String userName = context.getSession().getUserName();
+    accessControl.checkUserIsAdmin(userName);
+
+    final String pipeName = node.getPipeName();
+    final Map<String, String> extractorAttributes = node.getExtractorAttributes();
+    for (final String extractorAttributeKey : extractorAttributes.keySet()) {
+      if (extractorAttributeKey.startsWith(SystemConstant.SYSTEM_PREFIX_KEY)) {
         throw new SemanticException(
             String.format(
                 "Failed to alter pipe %s, modifying %s is not allowed.",
-                node.getPipeName(), ExtractorAttribute));
+                pipeName, extractorAttributeKey));
       }
     }
     // If the source is replaced, sql-dialect uses the current Alter Pipe sql-dialect. If it is
     // modified, the original sql-dialect is used.
     if (node.isReplaceAllExtractorAttributes()) {
-      node.getExtractorAttributes()
-          .put(SystemConstant.SQL_DIALECT_KEY, SystemConstant.SQL_DIALECT_TABLE_VALUE);
+      extractorAttributes.put(
+          SystemConstant.SQL_DIALECT_KEY, SystemConstant.SQL_DIALECT_TABLE_VALUE);
+      checkAndEnrichSourceUserName(pipeName, extractorAttributes, userName, true);
     }
 
-    return new AlterPipeTask(node);
+    if (node.isReplaceAllConnectorAttributes()) {
+      checkAndEnrichSinkUserName(pipeName, node.getConnectorAttributes(), userName, true);
+    }
+
+    return new AlterPipeTask(node, userName);
   }
 
   @Override
@@ -1209,5 +1233,36 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
     // As the implementation is identical, we'll simply translate to the
     // corresponding tree-model variant and execute that.
     return new RemoveRegionTask(removeRegion);
+  }
+
+  @Override
+  protected IConfigTask visitCreateTraining(CreateTraining node, MPPQueryContext context) {
+    context.setQueryType(QueryType.WRITE);
+
+    String curDatabase = clientSession.getDatabaseName();
+    List<String> tableList = new ArrayList<>();
+    for (QualifiedName tableName : node.getTargetTables()) {
+      List<String> parts = tableName.getParts();
+      if (parts.size() == 1) {
+        tableList.add(curDatabase + "." + parts.get(0));
+      } else {
+        tableList.add(parts.get(1) + "." + parts.get(0));
+      }
+    }
+
+    return new CreateTrainingTask(
+        node.getModelId(),
+        node.getModelType(),
+        node.getParameters(),
+        node.isUseAllData(),
+        node.getTargetTimeRanges(),
+        node.getExistingModelId(),
+        node.getTargetDbs(),
+        tableList);
+  }
+
+  @Override
+  protected IConfigTask visitShowModels(ShowModels node, MPPQueryContext context) {
+    return new ShowModelsTask(node.getModelId());
   }
 }

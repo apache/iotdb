@@ -25,6 +25,7 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.IWALByteBufferView;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALWriteUtils;
 import org.apache.iotdb.db.utils.datastructure.AlignedTVList;
+import org.apache.iotdb.db.utils.datastructure.BatchEncodeInfo;
 import org.apache.iotdb.db.utils.datastructure.MemPointIterator;
 import org.apache.iotdb.db.utils.datastructure.MemPointIteratorFactory;
 import org.apache.iotdb.db.utils.datastructure.TVList;
@@ -32,14 +33,12 @@ import org.apache.iotdb.db.utils.datastructure.TVList;
 import org.apache.tsfile.common.conf.TSFileDescriptor;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.TimeRange;
-import org.apache.tsfile.read.common.block.TsBlock;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.BitMap;
 import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.write.UnSupportedDataTypeException;
 import org.apache.tsfile.write.chunk.AlignedChunkWriterImpl;
 import org.apache.tsfile.write.chunk.IChunkWriter;
-import org.apache.tsfile.write.chunk.ValueChunkWriter;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.apache.tsfile.write.schema.MeasurementSchema;
 
@@ -61,10 +60,11 @@ import static org.apache.iotdb.db.utils.ModificationUtils.isPointDeleted;
 public class AlignedWritableMemChunk extends AbstractWritableMemChunk {
 
   private final Map<String, Integer> measurementIndexMap;
-  private final List<TSDataType> dataTypes;
+  private List<TSDataType> dataTypes;
   private final List<IMeasurementSchema> schemaList;
   private AlignedTVList list;
   private List<AlignedTVList> sortedList;
+  private long sortedRowCount = 0;
   private final boolean ignoreAllNullRows;
 
   private static final IoTDBConfig CONFIG = IoTDBDescriptor.getInstance().getConfig();
@@ -197,7 +197,9 @@ public class AlignedWritableMemChunk extends AbstractWritableMemChunk {
       list.sort();
     }
     sortedList.add(list);
-    this.list = AlignedTVList.newAlignedList(dataTypes);
+    this.sortedRowCount += list.rowCount();
+    this.list = AlignedTVList.newAlignedList(new ArrayList<>(dataTypes));
+    this.dataTypes = list.getTsDataTypes();
   }
 
   @Override
@@ -230,6 +232,107 @@ public class AlignedWritableMemChunk extends AbstractWritableMemChunk {
     }
   }
 
+  /**
+   * Check metadata of columns and return array that mapping existed metadata to index of data
+   * column.
+   *
+   * @param schemaListInInsertPlan Contains all existed schema in InsertPlan. If some timeseries
+   *     have been deleted, there will be null in its slot.
+   * @return columnIndexArray: schemaList[i] is schema of columns[columnIndexArray[i]]
+   */
+  private Pair<Object[], BitMap[]> checkAndReorderColumnValuesInInsertPlan(
+      List<IMeasurementSchema> schemaListInInsertPlan, Object[] columnValues, BitMap[] bitMaps) {
+    Object[] reorderedColumnValues = new Object[schemaList.size()];
+    BitMap[] reorderedBitMaps = bitMaps == null ? null : new BitMap[schemaList.size()];
+    for (int i = 0; i < schemaListInInsertPlan.size(); i++) {
+      IMeasurementSchema measurementSchema = schemaListInInsertPlan.get(i);
+      if (measurementSchema != null) {
+        Integer index = this.measurementIndexMap.get(measurementSchema.getMeasurementName());
+        // Index is null means this measurement was not in this AlignedTVList before.
+        // We need to extend a new column in AlignedMemChunk and AlignedTVList.
+        // And the reorderedColumnValues should extend one more column for the new measurement
+        if (index == null) {
+          index = this.list.getTsDataTypes().size();
+          this.measurementIndexMap.put(schemaListInInsertPlan.get(i).getMeasurementName(), index);
+          this.schemaList.add(schemaListInInsertPlan.get(i));
+          this.list.extendColumn(schemaListInInsertPlan.get(i).getType());
+          reorderedColumnValues =
+              Arrays.copyOf(reorderedColumnValues, reorderedColumnValues.length + 1);
+          if (reorderedBitMaps != null) {
+            reorderedBitMaps = Arrays.copyOf(reorderedBitMaps, reorderedBitMaps.length + 1);
+          }
+        }
+        reorderedColumnValues[index] = columnValues[i];
+        if (bitMaps != null) {
+          reorderedBitMaps[index] = bitMaps[i];
+        }
+      }
+    }
+    return new Pair<>(reorderedColumnValues, reorderedBitMaps);
+  }
+
+  private void filterDeletedTimeStamp(
+      AlignedTVList alignedTVList,
+      List<List<TimeRange>> valueColumnsDeletionList,
+      boolean ignoreAllNullRows,
+      Map<Long, BitMap> timestampWithBitmap) {
+    BitMap allValueColDeletedMap = alignedTVList.getAllValueColDeletedMap();
+
+    int rowCount = alignedTVList.rowCount();
+    List<int[]> valueColumnDeleteCursor = new ArrayList<>();
+    if (valueColumnsDeletionList != null) {
+      valueColumnsDeletionList.forEach(x -> valueColumnDeleteCursor.add(new int[] {0}));
+    }
+
+    for (int row = 0; row < rowCount; row++) {
+      // the row is deleted
+      if (allValueColDeletedMap != null && allValueColDeletedMap.isMarked(row)) {
+        continue;
+      }
+      long timestamp = alignedTVList.getTime(row);
+
+      BitMap bitMap = new BitMap(schemaList.size());
+      for (int column = 0; column < schemaList.size(); column++) {
+        if (alignedTVList.isNullValue(alignedTVList.getValueIndex(row), column)) {
+          bitMap.mark(column);
+        }
+
+        // skip deleted row
+        if (valueColumnsDeletionList != null
+            && !valueColumnsDeletionList.isEmpty()
+            && isPointDeleted(
+                timestamp,
+                valueColumnsDeletionList.get(column),
+                valueColumnDeleteCursor.get(column))) {
+          bitMap.mark(column);
+        }
+
+        // skip all-null row
+        if (ignoreAllNullRows && bitMap.isAllMarked()) {
+          continue;
+        }
+        timestampWithBitmap.put(timestamp, bitMap);
+      }
+    }
+  }
+
+  public long[] getFilteredTimestamp(
+      List<List<TimeRange>> deletionList, List<BitMap> bitMaps, boolean ignoreAllNullRows) {
+    Map<Long, BitMap> timestampWithBitmap = new TreeMap<>();
+
+    filterDeletedTimeStamp(list, deletionList, ignoreAllNullRows, timestampWithBitmap);
+    for (AlignedTVList alignedTVList : sortedList) {
+      filterDeletedTimeStamp(alignedTVList, deletionList, ignoreAllNullRows, timestampWithBitmap);
+    }
+
+    List<Long> filteredTimestamps = new ArrayList<>();
+    for (Map.Entry<Long, BitMap> entry : timestampWithBitmap.entrySet()) {
+      filteredTimestamps.add(entry.getKey());
+      bitMaps.add(entry.getValue());
+    }
+    return filteredTimestamps.stream().mapToLong(Long::valueOf).toArray();
+  }
+
   @Override
   public AlignedTVList getWorkingTVList() {
     return list;
@@ -250,15 +353,11 @@ public class AlignedWritableMemChunk extends AbstractWritableMemChunk {
 
   @Override
   public long rowCount() {
-    return alignedListSize();
+    return sortedRowCount + list.rowCount();
   }
 
   public int alignedListSize() {
-    int rowCount = list.rowCount();
-    for (AlignedTVList alignedTvList : sortedList) {
-      rowCount += alignedTvList.rowCount();
-    }
-    return rowCount;
+    return (int) rowCount();
   }
 
   @Override
@@ -536,107 +635,56 @@ public class AlignedWritableMemChunk extends AbstractWritableMemChunk {
   }
 
   @Override
-  public synchronized void encode(BlockingQueue<Object> ioTaskQueue) {
+  public synchronized void encode(
+      BlockingQueue<Object> ioTaskQueue, BatchEncodeInfo encodeInfo, long[] times) {
     if (TVLIST_SORT_THRESHOLD == 0) {
       encodeWorkingAlignedTVList(ioTaskQueue);
       return;
     }
 
     AlignedChunkWriterImpl alignedChunkWriter = new AlignedChunkWriterImpl(schemaList);
+
     // create MergeSortAlignedTVListIterator.
     List<AlignedTVList> alignedTvLists = new ArrayList<>(sortedList);
     alignedTvLists.add(list);
+    List<Integer> columnIndexList = buildColumnIndexList(schemaList);
     MemPointIterator timeValuePairIterator =
-        MemPointIteratorFactory.create(dataTypes, null, alignedTvLists, ignoreAllNullRows);
-
-    int pointNumInPage = 0;
-    int pointNumInChunk = 0;
-    long[] times = new long[MAX_NUMBER_OF_POINTS_IN_PAGE];
+        MemPointIteratorFactory.create(
+            dataTypes, columnIndexList, alignedTvLists, ignoreAllNullRows);
 
     while (timeValuePairIterator.hasNextBatch()) {
-      TsBlock tsBlock = timeValuePairIterator.nextBatch();
-      if (tsBlock == null) {
-        continue;
+      timeValuePairIterator.encodeBatch(alignedChunkWriter, encodeInfo, times);
+      if (encodeInfo.pointNumInPage >= MAX_NUMBER_OF_POINTS_IN_PAGE) {
+        alignedChunkWriter.write(times, encodeInfo.pointNumInPage, 0);
+        encodeInfo.pointNumInPage = 0;
       }
-      for (int rowIndex = 0; rowIndex < tsBlock.getPositionCount(); rowIndex++) {
-        long time = tsBlock.getTimeByIndex(rowIndex);
-        times[pointNumInPage] = time;
 
-        for (int columnIndex = 0; columnIndex < dataTypes.size(); columnIndex++) {
-          ValueChunkWriter valueChunkWriter =
-              alignedChunkWriter.getValueChunkWriterByIndex(columnIndex);
-          if (tsBlock.getColumn(columnIndex).isNull(rowIndex)) {
-            valueChunkWriter.write(time, null, true);
-            continue;
-          }
-          switch (schemaList.get(columnIndex).getType()) {
-            case BOOLEAN:
-              valueChunkWriter.write(
-                  time, tsBlock.getColumn(columnIndex).getBoolean(rowIndex), false);
-              break;
-            case INT32:
-            case DATE:
-              valueChunkWriter.write(time, tsBlock.getColumn(columnIndex).getInt(rowIndex), false);
-              break;
-            case INT64:
-            case TIMESTAMP:
-              valueChunkWriter.write(time, tsBlock.getColumn(columnIndex).getLong(rowIndex), false);
-              break;
-            case FLOAT:
-              valueChunkWriter.write(
-                  time, tsBlock.getColumn(columnIndex).getFloat(rowIndex), false);
-              break;
-            case DOUBLE:
-              valueChunkWriter.write(
-                  time, tsBlock.getColumn(columnIndex).getDouble(rowIndex), false);
-              break;
-            case TEXT:
-            case BLOB:
-            case STRING:
-              valueChunkWriter.write(
-                  time, tsBlock.getColumn(columnIndex).getBinary(rowIndex), false);
-              break;
-            default:
-              break;
-          }
+      if (encodeInfo.pointNumInChunk >= maxNumberOfPointsInChunk) {
+        alignedChunkWriter.sealCurrentPage();
+        alignedChunkWriter.clearPageWriter();
+        try {
+          ioTaskQueue.put(alignedChunkWriter);
+        } catch (InterruptedException e) {
+          Thread.currentThread().interrupt();
         }
-        pointNumInPage++;
-        pointNumInChunk++;
-
-        // new page
-        if (pointNumInPage == MAX_NUMBER_OF_POINTS_IN_PAGE
-            || pointNumInChunk >= maxNumberOfPointsInChunk) {
-          alignedChunkWriter.write(times, pointNumInPage, 0);
-          pointNumInPage = 0;
-        }
-
-        // new chunk
-        if (pointNumInChunk >= maxNumberOfPointsInChunk) {
-          alignedChunkWriter.sealCurrentPage();
-          alignedChunkWriter.clearPageWriter();
-          try {
-            ioTaskQueue.put(alignedChunkWriter);
-          } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-          }
-          alignedChunkWriter = new AlignedChunkWriterImpl(schemaList);
-          pointNumInChunk = 0;
-        }
+        alignedChunkWriter = new AlignedChunkWriterImpl(schemaList);
+        encodeInfo.reset();
       }
     }
 
     // last batch of points
-    if (pointNumInChunk > 0) {
-      if (pointNumInPage > 0) {
-        alignedChunkWriter.write(times, pointNumInPage, 0);
-        alignedChunkWriter.sealCurrentPage();
-        alignedChunkWriter.clearPageWriter();
+    if (encodeInfo.pointNumInChunk > 0) {
+      if (encodeInfo.pointNumInPage > 0) {
+        alignedChunkWriter.write(times, encodeInfo.pointNumInPage, 0);
       }
+      alignedChunkWriter.sealCurrentPage();
+      alignedChunkWriter.clearPageWriter();
       try {
         ioTaskQueue.put(alignedChunkWriter);
       } catch (InterruptedException e) {
         Thread.currentThread().interrupt();
       }
+      encodeInfo.reset();
     }
   }
 
@@ -784,113 +832,5 @@ public class AlignedWritableMemChunk extends AbstractWritableMemChunk {
           measurementIndexMap.getOrDefault(measurementSchema.getMeasurementName(), -1));
     }
     return columnIndexList;
-  }
-
-  /**
-   * Check metadata of columns and return array that mapping existed metadata to index of data
-   * column.
-   *
-   * @param schemaListInInsertPlan Contains all existed schema in InsertPlan. If some timeseries
-   *     have been deleted, there will be null in its slot.
-   * @return columnIndexArray: schemaList[i] is schema of columns[columnIndexArray[i]]
-   */
-  private Pair<Object[], BitMap[]> checkAndReorderColumnValuesInInsertPlan(
-      List<IMeasurementSchema> schemaListInInsertPlan, Object[] columnValues, BitMap[] bitMaps) {
-    Object[] reorderedColumnValues = new Object[schemaList.size()];
-    BitMap[] reorderedBitMaps = bitMaps == null ? null : new BitMap[schemaList.size()];
-    for (int i = 0; i < schemaListInInsertPlan.size(); i++) {
-      IMeasurementSchema measurementSchema = schemaListInInsertPlan.get(i);
-      if (measurementSchema != null) {
-        Integer index = this.measurementIndexMap.get(measurementSchema.getMeasurementName());
-        // Index is null means this measurement was not in this AlignedTVList before.
-        // We need to extend a new column in AlignedMemChunk and AlignedTVList.
-        // And the reorderedColumnValues should extend one more column for the new measurement
-        if (index == null) {
-          index =
-              measurementIndexMap.isEmpty()
-                  ? 0
-                  : measurementIndexMap.values().stream()
-                          .mapToInt(Integer::intValue)
-                          .max()
-                          .getAsInt()
-                      + 1;
-          this.measurementIndexMap.put(schemaListInInsertPlan.get(i).getMeasurementName(), index);
-          this.schemaList.add(schemaListInInsertPlan.get(i));
-          this.list.extendColumn(schemaListInInsertPlan.get(i).getType());
-          reorderedColumnValues =
-              Arrays.copyOf(reorderedColumnValues, reorderedColumnValues.length + 1);
-          if (reorderedBitMaps != null) {
-            reorderedBitMaps = Arrays.copyOf(reorderedBitMaps, reorderedBitMaps.length + 1);
-          }
-        }
-        reorderedColumnValues[index] = columnValues[i];
-        if (bitMaps != null) {
-          reorderedBitMaps[index] = bitMaps[i];
-        }
-      }
-    }
-    return new Pair<>(reorderedColumnValues, reorderedBitMaps);
-  }
-
-  private void filterDeletedTimeStamp(
-      AlignedTVList alignedTVList,
-      List<List<TimeRange>> valueColumnsDeletionList,
-      boolean ignoreAllNullRows,
-      Map<Long, BitMap> timestampWithBitmap) {
-    BitMap allValueColDeletedMap = alignedTVList.getAllValueColDeletedMap();
-
-    int rowCount = alignedTVList.rowCount();
-    List<int[]> valueColumnDeleteCursor = new ArrayList<>();
-    if (valueColumnsDeletionList != null) {
-      valueColumnsDeletionList.forEach(x -> valueColumnDeleteCursor.add(new int[] {0}));
-    }
-
-    for (int row = 0; row < rowCount; row++) {
-      // the row is deleted
-      if (allValueColDeletedMap != null && allValueColDeletedMap.isMarked(row)) {
-        continue;
-      }
-      long timestamp = alignedTVList.getTime(row);
-
-      BitMap bitMap = new BitMap(schemaList.size());
-      for (int column = 0; column < schemaList.size(); column++) {
-        if (alignedTVList.isNullValue(alignedTVList.getValueIndex(row), column)) {
-          bitMap.mark(column);
-        }
-
-        // skip deleted row
-        if (valueColumnsDeletionList != null
-            && !valueColumnsDeletionList.isEmpty()
-            && isPointDeleted(
-                timestamp,
-                valueColumnsDeletionList.get(column),
-                valueColumnDeleteCursor.get(column))) {
-          bitMap.mark(column);
-        }
-
-        // skip all-null row
-        if (ignoreAllNullRows && bitMap.isAllMarked()) {
-          continue;
-        }
-        timestampWithBitmap.put(timestamp, bitMap);
-      }
-    }
-  }
-
-  public long[] getFilteredTimestamp(
-      List<List<TimeRange>> deletionList, List<BitMap> bitMaps, boolean ignoreAllNullRows) {
-    Map<Long, BitMap> timestampWithBitmap = new TreeMap<>();
-
-    filterDeletedTimeStamp(list, deletionList, ignoreAllNullRows, timestampWithBitmap);
-    for (AlignedTVList alignedTVList : sortedList) {
-      filterDeletedTimeStamp(alignedTVList, deletionList, ignoreAllNullRows, timestampWithBitmap);
-    }
-
-    List<Long> filteredTimestamps = new ArrayList<>();
-    for (Map.Entry<Long, BitMap> entry : timestampWithBitmap.entrySet()) {
-      filteredTimestamps.add(entry.getKey());
-      bitMaps.add(entry.getValue());
-    }
-    return filteredTimestamps.stream().mapToLong(Long::valueOf).toArray();
   }
 }
