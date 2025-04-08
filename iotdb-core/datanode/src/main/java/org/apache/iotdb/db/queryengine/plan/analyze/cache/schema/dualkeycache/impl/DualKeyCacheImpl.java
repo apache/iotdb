@@ -78,6 +78,11 @@ class DualKeyCacheImpl<FK, SK, V, T extends ICacheEntry<SK, V>>
   }
 
   @Override
+  public boolean containsKey(final FK firstKey) {
+    return firstKeyMap.containsKey(firstKey);
+  }
+
+  @Override
   public void update(
       final FK firstKey,
       final @Nonnull SK secondKey,
@@ -329,6 +334,10 @@ class DualKeyCacheImpl<FK, SK, V, T extends ICacheEntry<SK, V>>
 
     V remove(final K key) {
       return getBelongedMap(key).remove(key);
+    }
+
+    boolean containsKey(final K key) {
+      return getBelongedMap(key).containsKey(key);
     }
 
     V put(final K key, final V value) {

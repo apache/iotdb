@@ -353,7 +353,11 @@ public class RelationalInsertTabletNode extends InsertTabletNode {
   }
 
   @Override
-  public void updateLastCache(String databaseName) {
+  public void updateLastCache(final String databaseName) {
+    // Trim if without last query
+    if (!TableDeviceSchemaCache.getInstance().containsTable(databaseName, getTableName())) {
+      return;
+    }
     String[] rawMeasurements = getRawMeasurements();
 
     List<Pair<IDeviceID, Integer>> deviceEndOffsetPairs = splitByDevice(0, rowCount);

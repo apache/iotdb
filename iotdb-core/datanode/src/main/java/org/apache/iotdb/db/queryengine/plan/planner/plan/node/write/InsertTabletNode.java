@@ -34,6 +34,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.WritePlanNode;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache.TableDeviceSchemaCache;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache.TreeDeviceSchemaCacheManager;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.DeviceIDFactory;
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.IWALByteBufferView;
@@ -1285,9 +1286,13 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
     return firstAliveLoc;
   }
 
-  public void updateLastCache(String databaseName) {
-    String[] rawMeasurements = getRawMeasurements();
-    TimeValuePair[] timeValuePairs = new TimeValuePair[rawMeasurements.length];
+  public void updateLastCache(final String databaseName) {
+    // Trim if without last query
+    if (!TableDeviceSchemaCache.getInstance().containsTable(null, getTableName())) {
+      return;
+    }
+    final String[] rawMeasurements = getRawMeasurements();
+    final TimeValuePair[] timeValuePairs = new TimeValuePair[rawMeasurements.length];
     for (int i = 0; i < rawMeasurements.length; i++) {
       timeValuePairs[i] = composeLastTimeValuePair(i);
     }

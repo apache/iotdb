@@ -1400,7 +1400,7 @@ public class DataRegion implements IDataRegionForQuery {
     }
   }
 
-  private void tryToUpdateInsertTabletLastCache(InsertTabletNode node) {
+  private void tryToUpdateInsertTabletLastCache(final InsertTabletNode node) {
     node.updateLastCache(getDatabaseName());
   }
 

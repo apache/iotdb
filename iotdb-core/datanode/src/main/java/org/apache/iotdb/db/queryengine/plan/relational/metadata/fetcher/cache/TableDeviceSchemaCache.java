@@ -251,12 +251,23 @@ public class TableDeviceSchemaCache {
   }
 
   /**
+   * Used to detect whether to put cache.
+   *
+   * @param database the device's database.
+   * @param tableName the device's tableName
+   * @return {@code true} iff the firstKey exists, and {@code false} otherwise.
+   */
+  public boolean containsTable(final String database, final String tableName) {
+    return dualKeyCache.containsKey(new TableId(database, tableName));
+  }
+
+  /**
    * Update the last cache in writing or the second push of last cache query. If a measurement is
    * with all {@code null}s or is a tag/attribute column, its {@link TimeValuePair}[] shall be
    * {@code null}. For correctness, this will put the cache lazily and only update the existing last
    * caches of measurements.
    *
-   * @param database the device's database, without "root"
+   * @param database the device's database.
    * @param deviceId {@link IDeviceID}
    * @param measurements the fetched measurements
    * @param timeValuePairs the {@link TimeValuePair}s with indexes corresponding to the measurements
