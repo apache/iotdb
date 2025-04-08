@@ -239,10 +239,6 @@ public class PipeEventCollector implements EventCollector {
     return collectInvocationCount.get();
   }
 
-  public boolean hasNoCollectInvocationAfterReset() {
-    return collectInvocationCount.get() == 0;
-  }
-
   public boolean hasNoGeneratedEvent() {
     return hasNoGeneratedEvent;
   }
