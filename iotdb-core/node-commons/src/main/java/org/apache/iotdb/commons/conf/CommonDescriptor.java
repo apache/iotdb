@@ -324,7 +324,14 @@ public class CommonDescriptor {
             properties.getProperty(
                 "pipe_realtime_queue_poll_historical_tsfile_threshold",
                 String.valueOf(config.getPipeRealTimeQueuePollHistoricalTsFileThreshold()))));
-
+    int pipeSubtaskExecutorMaxThreadNum =
+        Integer.parseInt(
+            properties.getProperty(
+                "pipe_subtask_executor_max_thread_num",
+                Integer.toString(config.getPipeSubtaskExecutorMaxThreadNum())));
+    if (pipeSubtaskExecutorMaxThreadNum > 0) {
+      config.setPipeSubtaskExecutorMaxThreadNum(pipeSubtaskExecutorMaxThreadNum);
+    }
     config.setPipeSubtaskExecutorBasicCheckPointIntervalByConsumedEventCount(
         Integer.parseInt(
             properties.getProperty(
@@ -497,6 +504,17 @@ public class CommonDescriptor {
         Boolean.parseBoolean(
             properties.getProperty(
                 "pipe_auto_restart_enabled", String.valueOf(config.getPipeAutoRestartEnabled()))));
+
+    config.setPipeAirGapReceiverEnabled(
+        Boolean.parseBoolean(
+            properties.getProperty(
+                "pipe_air_gap_receiver_enabled",
+                Boolean.toString(config.getPipeAirGapReceiverEnabled()))));
+    config.setPipeAirGapReceiverPort(
+        Integer.parseInt(
+            properties.getProperty(
+                "pipe_air_gap_receiver_port",
+                Integer.toString(config.getPipeAirGapReceiverPort()))));
 
     config.setPipeReceiverLoginPeriodicVerificationIntervalMs(
         Long.parseLong(
@@ -845,17 +863,6 @@ public class CommonDescriptor {
 
   public void loadPipeExternalConfig(TrimProperties properties, boolean isHotModify)
       throws IOException {
-    setIntegerConfig(
-        properties,
-        "pipe_subtask_executor_max_thread_num",
-        config::getPipeSubtaskExecutorMaxThreadNum,
-        (i) -> {
-          if (i > 0) {
-            config.setPipeSubtaskExecutorMaxThreadNum(i);
-          }
-        },
-        isHotModify);
-
     setLongConfig(
         properties,
         "pipe_sink_timeout_ms",
@@ -886,20 +893,6 @@ public class CommonDescriptor {
             config.setPipeAsyncConnectorSelectorNumber(i);
           }
         },
-        isHotModify);
-
-    setBooleanConfig(
-        properties,
-        "pipe_air_gap_receiver_enabled",
-        config::getPipeAirGapReceiverEnabled,
-        config::setPipeAirGapReceiverEnabled,
-        isHotModify);
-
-    setIntegerConfig(
-        properties,
-        "pipe_air_gap_receiver_port",
-        config::getPipeAirGapReceiverPort,
-        config::setPipeAirGapReceiverPort,
         isHotModify);
 
     setDoubleConfig(
