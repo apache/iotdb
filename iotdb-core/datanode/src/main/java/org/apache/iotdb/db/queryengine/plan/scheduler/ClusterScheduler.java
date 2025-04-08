@@ -72,7 +72,6 @@ public class ClusterScheduler implements IScheduler {
       List<FragmentInstance> instances,
       QueryType queryType,
       ExecutorService executor,
-      ExecutorService writeOperationExecutor,
       ScheduledExecutorService scheduledExecutor,
       IClientManager<TEndPoint, SyncDataNodeInternalServiceClient> syncInternalServiceClientManager,
       IClientManager<TEndPoint, AsyncDataNodeInternalServiceClient>
@@ -85,7 +84,6 @@ public class ClusterScheduler implements IScheduler {
             queryType,
             queryContext,
             executor,
-            writeOperationExecutor,
             syncInternalServiceClientManager,
             asyncInternalServiceClientManager);
     if (queryType == QueryType.READ) {
