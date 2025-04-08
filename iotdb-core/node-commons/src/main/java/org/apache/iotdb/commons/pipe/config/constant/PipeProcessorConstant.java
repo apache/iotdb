@@ -82,6 +82,9 @@ public class PipeProcessorConstant {
 
   public static final String PROCESSOR_RENAME_DATABASE_NEW_DB_NAME = "processor.new-db-name";
 
+  public static final String PROCESSOR_IOTDB_PARALLEL_TASKS_KEY = "processor.parallel.tasks";
+  public static final int PROCESSOR_IOTDB_PARALLEL_TASKS_DEFAULT_VALUE = 1;
+
   private PipeProcessorConstant() {
     throw new IllegalStateException("Utility class");
   }

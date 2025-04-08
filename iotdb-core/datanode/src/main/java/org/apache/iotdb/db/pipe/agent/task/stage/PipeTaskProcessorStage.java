@@ -26,7 +26,6 @@ import org.apache.iotdb.commons.pipe.agent.task.connection.UnboundedBlockingPend
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeStaticMeta;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
 import org.apache.iotdb.commons.pipe.agent.task.stage.PipeTaskStage;
-import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.config.constant.PipeProcessorConstant;
 import org.apache.iotdb.commons.pipe.config.plugin.configuraion.PipeTaskRuntimeConfiguration;
 import org.apache.iotdb.commons.pipe.config.plugin.env.PipeTaskProcessorRuntimeEnvironment;
@@ -106,11 +105,9 @@ public class PipeTaskProcessorStage extends PipeTaskStage {
     final String taskId = pipeName + "_" + regionId + "_" + creationTime;
     final boolean isUsedForConsensusPipe = pipeName.contains(PipeStaticMeta.CONSENSUS_PIPE_PREFIX);
     final int taskNum =
-        StorageEngine.getInstance().getAllDataRegionIds().contains(new DataRegionId(regionId))
-                && !pipeName.contains(PipeStaticMeta.SUBSCRIPTION_PIPE_PREFIX)
-                && !isUsedForConsensusPipe
-            ? PipeConfig.getInstance().getPipeSubtaskExecutorMaxThreadNum()
-            : 1;
+        pipeProcessorParameters.getIntOrDefault(
+            PipeProcessorConstant.PROCESSOR_IOTDB_PARALLEL_TASKS_KEY,
+            PipeProcessorConstant.PROCESSOR_IOTDB_PARALLEL_TASKS_DEFAULT_VALUE);
 
     for (int i = 0; i < taskNum; ++i) {
       final PipeEventCollector pipeConnectorOutputEventCollector =
