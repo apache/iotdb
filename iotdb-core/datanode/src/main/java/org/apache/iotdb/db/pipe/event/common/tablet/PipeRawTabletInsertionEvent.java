@@ -60,6 +60,7 @@ public class PipeRawTabletInsertionEvent extends PipeInsertionEvent
   private final boolean isAligned;
 
   private final EnrichedEvent sourceEvent;
+  private boolean needToReport;
 
   private final PipeTabletMemoryBlock allocatedMemoryBlock;
 
