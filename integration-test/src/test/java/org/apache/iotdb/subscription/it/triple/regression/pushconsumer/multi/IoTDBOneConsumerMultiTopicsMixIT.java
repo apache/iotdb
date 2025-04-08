@@ -176,8 +176,7 @@ public class IoTDBOneConsumerMultiTopicsMixIT extends AbstractSubscriptionRegres
                         }
                         break;
                       case TS_FILE_HANDLER:
-                        try {
-                          TsFileReader reader = message.getTsFileHandler().openReader();
+                        try (final TsFileReader reader = message.getTsFileHandler().openReader()) {
                           QueryDataSet dataset =
                               reader.query(
                                   QueryExpression.create(
