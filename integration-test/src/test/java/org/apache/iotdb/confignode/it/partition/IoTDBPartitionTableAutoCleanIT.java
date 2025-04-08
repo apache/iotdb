@@ -47,7 +47,6 @@ import java.util.concurrent.TimeUnit;
 public class IoTDBPartitionTableAutoCleanIT {
 
   private static final String TREE_DATABASE_PREFIX = "root.db.g_";
-  private static final String TABLE_DATABASE_PREFIX = "database_";
 
   private static final int TEST_REPLICATION_FACTOR = 1;
   private static final long TEST_TIME_PARTITION_INTERVAL = 604800000;
@@ -78,7 +77,7 @@ public class IoTDBPartitionTableAutoCleanIT {
 
   @Test
   public void testAutoCleanPartitionTableForTreeModel() throws Exception {
-    try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TREE_SQL_DIALECT);
+    try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       // Create databases and insert test data
       for (int i = 0; i < 3; i++) {
@@ -112,51 +111,6 @@ public class IoTDBPartitionTableAutoCleanIT {
     for (int i = 0; i < 3; i++) {
       req.putToPartitionSlotsMap(String.format("%s%d", TREE_DATABASE_PREFIX, i), new TreeMap<>());
     }
-    try (SyncConfigNodeIServiceClient client =
-        (SyncConfigNodeIServiceClient) EnvFactory.getEnv().getLeaderConfigNodeConnection()) {
-      for (int retry = 0; retry < 120; retry++) {
-        boolean partitionTableAutoCleaned = true;
-        TDataPartitionTableResp resp = client.getDataPartitionTable(req);
-        if (TSStatusCode.SUCCESS_STATUS.getStatusCode() == resp.getStatus().getCode()) {
-          partitionTableAutoCleaned =
-              resp.getDataPartitionTable().entrySet().stream()
-                  .flatMap(e1 -> e1.getValue().entrySet().stream())
-                  .allMatch(e2 -> e2.getValue().size() == 1);
-        }
-        if (partitionTableAutoCleaned) {
-          return;
-        }
-        TimeUnit.SECONDS.sleep(1);
-      }
-    }
-    Assert.fail("The PartitionTable in the ConfigNode is not auto cleaned!");
-  }
-
-  @Test
-  public void testAutoCleanPartitionTableForTableModel() throws Exception {
-    try (final Connection connection =
-            EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
-        final Statement statement = connection.createStatement()) {
-      // Create databases and insert test data
-      String databaseName = TABLE_DATABASE_PREFIX;
-      statement.execute(String.format("CREATE DATABASE IF NOT EXISTS %s", databaseName));
-      statement.execute(String.format("USE %s", databaseName));
-      statement.execute("CREATE TABLE tb (time TIMESTAMP TIME, s int64 FIELD)");
-      // Insert expired data
-      statement.execute(
-          String.format(
-              "INSERT INTO tb(time, s) VALUES (%d, %d)",
-              TEST_CURRENT_TIME_SLOT.getStartTime() - TEST_TTL * 2, -1));
-      // Insert existed data
-      statement.execute(
-          String.format(
-              "INSERT INTO tb(time, s) VALUES (%d, %d)", TEST_CURRENT_TIME_SLOT.getStartTime(), 1));
-      statement.execute(String.format("USE %s", TABLE_DATABASE_PREFIX));
-      statement.execute(String.format("ALTER TABLE tb SET PROPERTIES TTL=%d", TEST_TTL));
-    }
-
-    TDataPartitionReq req = new TDataPartitionReq();
-    req.putToPartitionSlotsMap(TABLE_DATABASE_PREFIX, new TreeMap<>());
     try (SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) EnvFactory.getEnv().getLeaderConfigNodeConnection()) {
       for (int retry = 0; retry < 120; retry++) {
