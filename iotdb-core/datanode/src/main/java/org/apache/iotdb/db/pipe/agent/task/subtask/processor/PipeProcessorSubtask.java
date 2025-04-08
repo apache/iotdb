@@ -189,18 +189,7 @@ public class PipeProcessorSubtask extends PipeReportableSubtask {
               && !outputEventCollector.isFailedToIncreaseReferenceCount()
               // Events generated from consensusPipe's transferred data should never be reported.
               && !(pipeProcessor instanceof PipeConsensusProcessor);
-      if (shouldReport
-          && event instanceof EnrichedEvent
-          && outputEventCollector.hasNoCollectInvocationAfterReset()) {
-        // An event should be reported here when it is not passed to the connector stage, and it
-        // does not generate any new events to be passed to the connector. In our system, before
-        // reporting an event, we need to enrich a commitKey and commitId, which is done in the
-        // collector stage. But for the event that not passed to the connector and not generate any
-        // new events, the collector stage is not triggered, so we need to enrich the commitKey and
-        // commitId here.
-        PipeEventCommitManager.getInstance()
-            .enrichWithCommitterKeyAndCommitId((EnrichedEvent) event, creationTime, regionId);
-      }
+
       decreaseReferenceCountAndReleaseLastEvent(event, shouldReport);
     } catch (final PipeRuntimeOutOfMemoryCriticalException e) {
       LOGGER.info(
