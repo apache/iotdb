@@ -104,16 +104,16 @@ public class PipeTaskProcessorStage extends PipeTaskStage {
     // old one, so we need creationTime to make their hash code different in the map.
     final String taskId = pipeName + "_" + regionId + "_" + creationTime;
     final boolean isUsedForConsensusPipe = pipeName.contains(PipeStaticMeta.CONSENSUS_PIPE_PREFIX);
-    final PipeEventCollector pipeConnectorOutputEventCollector =
-        new PipeEventCollector(
-            pipeConnectorOutputPendingQueue,
-            creationTime,
-            regionId,
-            forceTabletFormat,
-            skipParsing,
-            isUsedForConsensusPipe);
 
     for (int i = 0; i < 5; ++i) {
+      final PipeEventCollector pipeConnectorOutputEventCollector =
+          new PipeEventCollector(
+              pipeConnectorOutputPendingQueue,
+              creationTime,
+              regionId,
+              forceTabletFormat,
+              skipParsing,
+              isUsedForConsensusPipe);
       this.pipeProcessorSubtasks.add(
           new PipeProcessorSubtask(
               taskId,
