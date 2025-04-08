@@ -107,6 +107,8 @@ public class PipeTaskProcessorStage extends PipeTaskStage {
     final boolean isUsedForConsensusPipe = pipeName.contains(PipeStaticMeta.CONSENSUS_PIPE_PREFIX);
     final int taskNum =
         StorageEngine.getInstance().getAllDataRegionIds().contains(new DataRegionId(regionId))
+                && !pipeName.contains(PipeStaticMeta.SUBSCRIPTION_PIPE_PREFIX)
+                && !isUsedForConsensusPipe
             ? PipeConfig.getInstance().getPipeSubtaskExecutorMaxThreadNum()
             : 1;
 
