@@ -63,30 +63,20 @@ public class ExportSchemaTable extends AbstractExportSchema {
             .enableAutoFetch(false)
             .database(database)
             .build();
-    SessionDataSet sessionDataSet = null;
+    checkDataBase();
     try {
-      checkDataBaseAndParseTablesBySelectSchema(
-          String.format(Constants.EXPORT_SCHEMA_TABLES_SELECT, database));
+      parseTablesBySelectSchema(String.format(Constants.EXPORT_SCHEMA_TABLES_SELECT, database));
     } catch (StatementExecutionException | IoTDBConnectionException e) {
       try {
-        checkDataBaseAndParseTablesByShowSchema(
-            String.format(Constants.EXPORT_SCHEMA_TABLES_SHOW, database));
+        parseTablesByShowSchema(String.format(Constants.EXPORT_SCHEMA_TABLES_SHOW, database));
       } catch (IoTDBConnectionException | StatementExecutionException e1) {
         ioTPrinter.println(Constants.INSERT_SQL_MEET_ERROR_MSG + e.getMessage());
         System.exit(1);
       }
-    } finally {
-      if (ObjectUtils.isNotEmpty(sessionDataSet)) {
-        try {
-          sessionDataSet.close();
-        } catch (Exception e) {
-        }
-      }
     }
   }
 
-  private static void checkDataBaseAndParseTablesBySelectSchema(String sql)
-      throws StatementExecutionException, IoTDBConnectionException {
+  private void checkDataBase() {
     Set<String> databases = new HashSet<>();
     SessionDataSet sessionDataSet = null;
     try (ITableSession session = sessionPool.getSession()) {
@@ -96,12 +86,26 @@ public class ExportSchemaTable extends AbstractExportSchema {
         databases.add(rowRecord.getField(0).getStringValue());
       }
     } catch (Exception e) {
-      throw e;
+      ioTPrinter.println(Constants.INSERT_SQL_MEET_ERROR_MSG + e.getMessage());
+      System.exit(1);
+    } finally {
+      if (ObjectUtils.isNotEmpty(sessionDataSet)) {
+        try {
+          sessionDataSet.close();
+        } catch (IoTDBConnectionException | StatementExecutionException e) {
+          ;
+        }
+      }
     }
     if (!databases.contains(database)) {
       ioTPrinter.println(String.format(Constants.TARGET_DATABASE_NOT_EXIST_MSG, database));
       System.exit(1);
     }
+  }
+
+  private static void parseTablesBySelectSchema(String sql)
+      throws StatementExecutionException, IoTDBConnectionException {
+    SessionDataSet sessionDataSet = null;
     HashMap<String, String> tables = new HashMap<>();
     try (ITableSession session = sessionPool.getSession()) {
       sessionDataSet = session.executeQueryStatement(sql);
@@ -113,6 +117,14 @@ public class ExportSchemaTable extends AbstractExportSchema {
       }
     } catch (Exception e) {
       throw e;
+    } finally {
+      if (ObjectUtils.isNotEmpty(sessionDataSet)) {
+        try {
+          sessionDataSet.close();
+        } catch (IoTDBConnectionException | StatementExecutionException e) {
+          ;
+        }
+      }
     }
     if (StringUtils.isNotBlank(table)) {
       if (!tables.containsKey(table)) {
@@ -125,26 +137,12 @@ public class ExportSchemaTable extends AbstractExportSchema {
     }
   }
 
-  private static void checkDataBaseAndParseTablesByShowSchema(String sql)
+  private static void parseTablesByShowSchema(String sql)
       throws StatementExecutionException, IoTDBConnectionException {
-    Set<String> databases = new HashSet<>();
     SessionDataSet sessionDataSet = null;
-    try (ITableSession session = sessionPool.getSession()) {
-      sessionDataSet = session.executeQueryStatement(Constants.EXPORT_SCHEMA_TABLES_SHOW_DATABASES);
-      while (sessionDataSet.hasNext()) {
-        RowRecord rowRecord = sessionDataSet.next();
-        databases.add(rowRecord.getField(0).getStringValue());
-      }
-    } catch (Exception e) {
-      throw e;
-    }
-    if (!databases.contains(database)) {
-      ioTPrinter.println(String.format(Constants.TARGET_DATABASE_NOT_EXIST_MSG, database));
-      System.exit(1);
-    }
     HashMap<String, String> tables = new HashMap<>();
     try (ITableSession session = sessionPool.getSession()) {
-      session.executeQueryStatement(sql);
+      sessionDataSet = session.executeQueryStatement(sql);
       while (sessionDataSet.hasNext()) {
         RowRecord rowRecord = sessionDataSet.next();
         String comment = rowRecord.getField(3).getStringValue();
@@ -153,6 +151,14 @@ public class ExportSchemaTable extends AbstractExportSchema {
       }
     } catch (Exception e) {
       throw e;
+    } finally {
+      if (ObjectUtils.isNotEmpty(sessionDataSet)) {
+        try {
+          sessionDataSet.close();
+        } catch (IoTDBConnectionException | StatementExecutionException e) {
+          ;
+        }
+      }
     }
     if (MapUtils.isNotEmpty(tables)) {
       if (!tables.containsKey(table)) {
