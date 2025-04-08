@@ -160,6 +160,8 @@ public class PipeProcessorMetrics implements IMetricSet {
 
   public void register(@NonNull final PipeProcessorSubtask pipeProcessorSubtask) {
     final String taskID = pipeProcessorSubtask.getTaskID();
+
+    // Only reserve one of the subtasks to maintain processor information
     processorMap.putIfAbsent(taskID, pipeProcessorSubtask);
     if (Objects.nonNull(metricService)) {
       createMetrics(taskID);
