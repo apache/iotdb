@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-git
+
 package org.apache.iotdb.db.queryengine.plan.scheduler;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
