@@ -20,14 +20,12 @@
 package org.apache.iotdb.db.it.utils;
 
 import org.apache.iotdb.commons.auth.entity.PrivilegeType;
-import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.isession.SessionConfig;
 import org.apache.iotdb.isession.SessionDataSet;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.env.cluster.env.AbstractEnv;
 import org.apache.iotdb.it.env.cluster.node.DataNodeWrapper;
 import org.apache.iotdb.itbase.env.BaseEnv;
-import org.apache.iotdb.itbase.env.BaseNodeWrapper;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.StatementExecutionException;
@@ -45,7 +43,6 @@ import java.sql.Statement;
 import java.text.DateFormat;
 import java.time.ZoneId;
 import java.time.ZoneOffset;
-import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -1709,7 +1706,7 @@ public class TestUtils {
     long retryIntervalMS = 1000;
     while (true) {
       try (Connection connection = EnvFactory.getEnv().getConnection()) {
-       break;
+        break;
       } catch (Exception e) {
         try {
           Thread.sleep(retryIntervalMS);
