@@ -124,7 +124,6 @@ public class AtomicLongMemoryBlock extends IMemoryBlock {
   }
 
   @Override
-  /** Get the free memory in byte of this memory block */
   public long getFreeMemoryInBytes() {
     return totalMemorySizeInBytes - usedMemoryInBytes.get();
   }
