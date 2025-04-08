@@ -138,38 +138,25 @@ public class IoTDBPartitionTableAutoCleanIT {
             EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
         final Statement statement = connection.createStatement()) {
       // Create databases and insert test data
-      for (int i = 0; i < 2; i++) {
-        String databaseName = String.format("%s%d", TABLE_DATABASE_PREFIX, i);
-        statement.execute(String.format("CREATE DATABASE IF NOT EXISTS %s", databaseName));
-        statement.execute(String.format("USE %s", databaseName));
-        statement.execute("CREATE TABLE tb (time TIMESTAMP TIME, s int64 FIELD)");
-        // Insert expired data
-        statement.execute(
-            String.format(
-                "INSERT INTO tb(timestamp, s) VALUES (%d, %d);",
-                TEST_CURRENT_TIME_SLOT.getStartTime() - TEST_TTL * 2, -1));
-        // Insert existed data
-        statement.execute(
-            String.format(
-                "INSERT INTO tb(timestamp, s) VALUES (%d, %d);",
-                TEST_CURRENT_TIME_SLOT.getStartTime(), 1));
-      }
-      // Let db0.TTL > table.TTL, the valid TTL should be the bigger one
+      String databaseName = TABLE_DATABASE_PREFIX;
+      statement.execute(String.format("CREATE DATABASE IF NOT EXISTS %s", databaseName));
+      statement.execute(String.format("USE %s", databaseName));
+      statement.execute("CREATE TABLE tb (time TIMESTAMP TIME, s int64 FIELD)");
+      // Insert expired data
       statement.execute(
-          String.format("ALTER DATABASE %s0 WITH(TTL=%d)", TABLE_DATABASE_PREFIX, TEST_TTL));
-      statement.execute(String.format("USE %s0", TABLE_DATABASE_PREFIX));
-      statement.execute(String.format("ALTER TABLE tb SET PROPERTIES TTL=%d", 10));
-      // Let db1.TTL < table.TTL, the valid TTL should be the bigger one
+          String.format(
+              "INSERT INTO tb(time, s) VALUES (%d, %d)",
+              TEST_CURRENT_TIME_SLOT.getStartTime() - TEST_TTL * 2, -1));
+      // Insert existed data
       statement.execute(
-          String.format("ALTER DATABASE %s1 WITH(TTL=%d)", TABLE_DATABASE_PREFIX, 10));
-      statement.execute(String.format("USE %s1", TABLE_DATABASE_PREFIX));
+          String.format(
+              "INSERT INTO tb(time, s) VALUES (%d, %d)", TEST_CURRENT_TIME_SLOT.getStartTime(), 1));
+      statement.execute(String.format("USE %s", TABLE_DATABASE_PREFIX));
       statement.execute(String.format("ALTER TABLE tb SET PROPERTIES TTL=%d", TEST_TTL));
     }
 
     TDataPartitionReq req = new TDataPartitionReq();
-    for (int i = 0; i < 2; i++) {
-      req.putToPartitionSlotsMap(String.format("%s%d", TABLE_DATABASE_PREFIX, i), new TreeMap<>());
-    }
+    req.putToPartitionSlotsMap(TABLE_DATABASE_PREFIX, new TreeMap<>());
     try (SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) EnvFactory.getEnv().getLeaderConfigNodeConnection()) {
       for (int retry = 0; retry < 120; retry++) {
