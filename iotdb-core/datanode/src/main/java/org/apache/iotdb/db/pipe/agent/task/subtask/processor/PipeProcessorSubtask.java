@@ -291,15 +291,6 @@ public class PipeProcessorSubtask extends PipeReportableSubtask {
     return regionId;
   }
 
-  public int getEventCount(final boolean ignoreHeartbeat) {
-    // Avoid potential NPE in "getPipeName"
-    final EnrichedEvent event =
-        lastEvent instanceof EnrichedEvent ? (EnrichedEvent) lastEvent : null;
-    return Objects.nonNull(event) && !(ignoreHeartbeat && event instanceof PipeHeartbeatEvent)
-        ? 1
-        : 0;
-  }
-
   //////////////////////////// Error report ////////////////////////////
 
   @Override
