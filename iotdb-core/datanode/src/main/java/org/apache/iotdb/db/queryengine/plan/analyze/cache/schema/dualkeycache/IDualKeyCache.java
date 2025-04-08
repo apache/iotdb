@@ -35,10 +35,7 @@ import java.util.function.ToIntFunction;
 public interface IDualKeyCache<FK, SK, V> {
 
   /** Get the cache value with given first key and second key. */
-  V get(final FK firstKey, final SK secondKey);
-
-  /** Contains key checker, used to detect whether to put cache */
-  boolean containsKey(final FK firstKey);
+  V get(FK firstKey, SK secondKey);
 
   /**
    * Update the existing value. The updater shall return the difference caused by the update,
