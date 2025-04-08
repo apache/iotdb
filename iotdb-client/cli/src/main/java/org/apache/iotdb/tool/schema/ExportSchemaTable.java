@@ -74,6 +74,10 @@ public class ExportSchemaTable extends AbstractExportSchema {
         System.exit(1);
       }
     }
+    if (MapUtils.isEmpty(tableCommentList)) {
+      ioTPrinter.println(Constants.TARGET_TABLE_EMPTY_MSG);
+      System.exit(1);
+    }
   }
 
   private void checkDataBase() {
