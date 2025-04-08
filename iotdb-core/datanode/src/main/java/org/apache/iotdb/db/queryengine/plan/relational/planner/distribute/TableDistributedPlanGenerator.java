@@ -418,7 +418,6 @@ public class TableDistributedPlanGenerator
   public List<PlanNode> visitFilter(FilterNode node, PlanContext context) {
     List<PlanNode> childrenNodes = node.getChild().accept(this, context);
     OrderingScheme childOrdering = nodeOrderingMap.get(childrenNodes.get(0).getPlanNodeId());
-    // TODO examine allSortItem
     if (childOrdering != null) {
       nodeOrderingMap.put(node.getPlanNodeId(), childOrdering);
     }
