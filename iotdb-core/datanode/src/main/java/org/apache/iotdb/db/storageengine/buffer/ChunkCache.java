@@ -35,6 +35,7 @@ import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileID;
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
 import com.github.benmanes.caffeine.cache.Weigher;
+import com.google.common.util.concurrent.AtomicDouble;
 import org.apache.tsfile.file.metadata.statistics.Statistics;
 import org.apache.tsfile.read.TsFileSequenceReader;
 import org.apache.tsfile.read.common.Chunk;
@@ -63,7 +64,8 @@ public class ChunkCache {
   private static final Logger DEBUG_LOGGER = LoggerFactory.getLogger("QUERY_DEBUG");
   private static final DataNodeMemoryConfig MEMORY_CONFIG =
       IoTDBDescriptor.getInstance().getMemoryConfig();
-  private static final IMemoryBlock CACHE_MEMORY_BLOCK;
+  private static final IMemoryBlock cacheMemoryBlock;
+  private static final AtomicDouble memoryUsageCheatFactor = new AtomicDouble(1);
   private static final boolean CACHE_ENABLE = MEMORY_CONFIG.isMetaDataCacheEnable();
 
   private static final SeriesScanCostMetricSet SERIES_SCAN_COST_METRIC_SET =
@@ -73,25 +75,37 @@ public class ChunkCache {
   private final Cache<ChunkCacheKey, Chunk> lruCache;
 
   static {
-    CACHE_MEMORY_BLOCK =
+    cacheMemoryBlock =
         MEMORY_CONFIG
             .getChunkCacheMemoryManager()
-            .exactAllocate("ChunkCache", MemoryBlockType.STATIC);
+            .exactAllocate("ChunkCache", MemoryBlockType.STATIC)
+            .setMemoryUpdateCallback(
+                (oldMemory, newMemory) -> {
+                  memoryUsageCheatFactor.updateAndGet(
+                      factor -> factor / ((double) newMemory / oldMemory));
+                  LOGGER.info(
+                      "[MemoryUsageCheatFactor]ChunkCache has updated from {} to {}.",
+                      oldMemory,
+                      newMemory);
+                });
+    ;
     // TODO @spricoder: find a way to get the size of the ChunkCache
-    CACHE_MEMORY_BLOCK.allocate(CACHE_MEMORY_BLOCK.getTotalMemorySizeInBytes());
+    cacheMemoryBlock.allocate(cacheMemoryBlock.getTotalMemorySizeInBytes());
   }
 
   private ChunkCache() {
     if (CACHE_ENABLE) {
-      LOGGER.info("ChunkCache size = {}", CACHE_MEMORY_BLOCK.getTotalMemorySizeInBytes());
+      LOGGER.info("ChunkCache size = {}", cacheMemoryBlock.getTotalMemorySizeInBytes());
     }
     lruCache =
         Caffeine.newBuilder()
-            .maximumWeight(CACHE_MEMORY_BLOCK.getTotalMemorySizeInBytes())
+            .maximumWeight(cacheMemoryBlock.getTotalMemorySizeInBytes())
             .weigher(
                 (Weigher<ChunkCacheKey, Chunk>)
                     (key, chunk) ->
-                        (int) (key.getRetainedSizeInBytes() + chunk.getRetainedSizeInBytes()))
+                        (int)
+                            ((key.getRetainedSizeInBytes() + chunk.getRetainedSizeInBytes())
+                                * memoryUsageCheatFactor.get()))
             .recordStats()
             .build();
 
@@ -202,7 +216,7 @@ public class ChunkCache {
   }
 
   public long getMaxMemory() {
-    return CACHE_MEMORY_BLOCK.getTotalMemorySizeInBytes();
+    return cacheMemoryBlock.getTotalMemorySizeInBytes();
   }
 
   public double getAverageLoadPenalty() {

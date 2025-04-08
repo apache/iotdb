@@ -52,11 +52,11 @@ public class PipeMemoryManager {
       PipeConfig.getInstance().getPipeMemoryAllocateMinSizeInBytes();
 
   // TODO @spricoder: consider combine memory block and used MemorySizeInBytes
-  private IMemoryBlock memoryBlock =
+  private final IMemoryBlock memoryBlock =
       IoTDBDescriptor.getInstance()
           .getMemoryConfig()
           .getPipeMemoryManager()
-          .exactAllocate("Stream", MemoryBlockType.DYNAMIC);
+          .exactAllocate("Stream", MemoryBlockType.STATIC);
 
   private static final double EXCEED_PROTECT_THRESHOLD = 0.95;
 
