@@ -728,18 +728,6 @@ public class IoTDBDescriptor {
 
     conf.setRpcSelectorThreadCount(rpcSelectorThreadNum);
 
-    int minConcurrentClientNum =
-        Integer.parseInt(
-            properties.getProperty(
-                "dn_rpc_min_concurrent_client_num",
-                Integer.toString(conf.getRpcMinConcurrentClientNum())));
-
-    if (minConcurrentClientNum <= 0) {
-      minConcurrentClientNum = Runtime.getRuntime().availableProcessors();
-    }
-
-    conf.setRpcMinConcurrentClientNum(minConcurrentClientNum);
-
     int maxConcurrentClientNum =
         Integer.parseInt(
             properties.getProperty(
