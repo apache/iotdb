@@ -22,9 +22,9 @@ package org.apache.iotdb.db.queryengine.execution.operator.process;
 import org.apache.iotdb.db.queryengine.execution.MemoryEstimationHelper;
 import org.apache.iotdb.db.queryengine.execution.operator.Operator;
 import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
-import org.apache.iotdb.db.queryengine.execution.operator.process.rowpattern.LabelEvaluator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.rowpattern.LogicalIndexNavigation;
 import org.apache.iotdb.db.queryengine.execution.operator.process.rowpattern.PatternPartitionExecutor;
+import org.apache.iotdb.db.queryengine.execution.operator.process.rowpattern.PatternVariableRecognizer;
 import org.apache.iotdb.db.queryengine.execution.operator.process.rowpattern.expression.PatternExpressionComputation;
 import org.apache.iotdb.db.queryengine.execution.operator.process.rowpattern.matcher.Matcher;
 import org.apache.iotdb.db.queryengine.execution.operator.process.window.utils.RowComparator;
@@ -82,7 +82,8 @@ public class PatternRecognitionOperator implements ProcessOperator {
   private final SkipToPosition skipToPosition;
   private final Optional<LogicalIndexNavigation> skipToNavigation;
   private final Matcher matcher;
-  private final List<LabelEvaluator.Evaluation> labelEvaluations;
+  private final List<PatternVariableRecognizer.PatternVariableComputation>
+      labelPatternVariableComputations;
   private final List<PatternExpressionComputation> measureComputations;
   private final List<String> labelNames;
 
@@ -102,7 +103,7 @@ public class PatternRecognitionOperator implements ProcessOperator {
       SkipToPosition skipToPosition,
       Optional<LogicalIndexNavigation> skipToNavigation,
       Matcher matcher,
-      List<LabelEvaluator.Evaluation> labelEvaluations,
+      List<PatternVariableRecognizer.PatternVariableComputation> labelPatternVariableComputations,
       List<PatternExpressionComputation> measureComputations,
       List<String> labelNames) {
     this.operatorContext = operatorContext;
@@ -131,7 +132,7 @@ public class PatternRecognitionOperator implements ProcessOperator {
     this.skipToPosition = skipToPosition;
     this.skipToNavigation = skipToNavigation;
     this.matcher = matcher;
-    this.labelEvaluations = ImmutableList.copyOf(labelEvaluations);
+    this.labelPatternVariableComputations = ImmutableList.copyOf(labelPatternVariableComputations);
     this.measureComputations = ImmutableList.copyOf(measureComputations);
     this.labelNames = ImmutableList.copyOf(labelNames);
 
@@ -205,7 +206,7 @@ public class PatternRecognitionOperator implements ProcessOperator {
               skipToPosition,
               skipToNavigation,
               matcher,
-              labelEvaluations,
+              labelPatternVariableComputations,
               measureComputations,
               labelNames);
       cachedPartitionExecutors.addLast(partitionExecutor);
@@ -233,82 +234,6 @@ public class PatternRecognitionOperator implements ProcessOperator {
 
     return null;
   }
-
-  //  @Override
-  //  public TsBlock next() throws Exception {
-  //    TsBlock input = child.nextWithTimer();
-  //    if (input == null) {
-  //      return null;
-  //    }
-  //
-  //    tsBlockBuilder.reset();
-  //
-  //    // 获取输入 TsBlock 的列数和行数
-  //    int rowCount = input.getPositionCount();
-  //
-  //    // 遍历每一行
-  //    for (int row = 0; row < rowCount; row++) {
-  //      // 添加 timeColumn 的数据
-  //      tsBlockBuilder.getTimeColumnBuilder().writeLong(input.getTimeColumn().getLong(row));
-  //
-  //      // 添加 valueColumns 的数据
-  //      for (int col = 0; col < input.getValueColumns().length; col++) {
-  //        Column column = input.getValueColumns()[col];
-  //        TSDataType dataType = column.getDataType();
-  //
-  //        // 根据数据类型调用相应的方法获取值
-  //        switch (dataType) {
-  //          case BOOLEAN:
-  //            tsBlockBuilder.getColumnBuilder(col).writeBoolean(column.getBoolean(row));
-  //            break;
-  //          case INT32:
-  //            tsBlockBuilder.getColumnBuilder(col).writeInt(column.getInt(row));
-  //            break;
-  //          case INT64:
-  //            tsBlockBuilder.getColumnBuilder(col).writeLong(column.getLong(row));
-  //            break;
-  //          case FLOAT:
-  //            tsBlockBuilder.getColumnBuilder(col).writeFloat(column.getFloat(row));
-  //            break;
-  //          case DOUBLE:
-  //            tsBlockBuilder.getColumnBuilder(col).writeDouble(column.getDouble(row));
-  //            break;
-  //          case TEXT:
-  //          case BLOB:
-  //            tsBlockBuilder.getColumnBuilder(col).writeBinary(column.getBinary(row));
-  //            break;
-  //          default:
-  //            throw new UnsupportedOperationException("Unsupported data type: " + dataType);
-  //        }
-  //      }
-  //
-  //      // 模拟 MEASURES 中的 MATCH_NUMBER AS match
-  //      tsBlockBuilder.getColumnBuilder(input.getValueColumns().length).appendNull();
-  //
-  //      tsBlockBuilder.declarePosition();
-  //    }
-  //
-  //    return tsBlockBuilder.build();
-  //  }
-
-  //   TODO: 将子节点直接输出
-  //    public TsBlock next() throws Exception {
-  //      TsBlock input = child.nextWithTimer();
-  //      if (input == null) {
-  //        return null;
-  //      }
-  //      int sz = input.getValueColumns().length;
-  //      Column[] valueColumns = new Column[sz];
-  //      for (int i = 0; i < sz; i++) {
-  //        valueColumns[i] = input.getColumn(i);
-  //      }
-  //      return new TsBlock(input.getPositionCount(), input.getTimeColumn(), valueColumns);
-  //    }
-  //
-  //    public TsBlock next() throws Exception {
-  //      // 获取子节点的下一个数据块，并直接返回
-  //      return child.next();
-  //    }
 
   private LinkedList<PatternPartitionExecutor> partition(TsBlock tsBlock) {
     LinkedList<PatternPartitionExecutor> partitionExecutors = new LinkedList<>();
@@ -343,7 +268,7 @@ public class PatternRecognitionOperator implements ProcessOperator {
               skipToPosition,
               skipToNavigation,
               matcher,
-              labelEvaluations,
+              labelPatternVariableComputations,
               measureComputations,
               labelNames);
       partitionExecutors.add(partitionExecutor);
@@ -383,7 +308,7 @@ public class PatternRecognitionOperator implements ProcessOperator {
                 skipToPosition,
                 skipToNavigation,
                 matcher,
-                labelEvaluations,
+                labelPatternVariableComputations,
                 measureComputations,
                 labelNames);
 
@@ -421,7 +346,7 @@ public class PatternRecognitionOperator implements ProcessOperator {
                   skipToPosition,
                   skipToNavigation,
                   matcher,
-                  labelEvaluations,
+                  labelPatternVariableComputations,
                   measureComputations,
                   labelNames);
         } else {
@@ -440,7 +365,7 @@ public class PatternRecognitionOperator implements ProcessOperator {
                   skipToPosition,
                   skipToNavigation,
                   matcher,
-                  labelEvaluations,
+                  labelPatternVariableComputations,
                   measureComputations,
                   labelNames);
           // Clear TsBlock of last partition
@@ -477,7 +402,6 @@ public class PatternRecognitionOperator implements ProcessOperator {
       //          && partitionExecutor.hasNext()) {
       //        partitionExecutor.processNextRow(tsBlockBuilder);
       //      }
-
       while (!tsBlockBuilder.isFull() && partitionExecutor.hasNext()) {
         partitionExecutor.processNextRow(tsBlockBuilder);
       }
@@ -487,11 +411,10 @@ public class PatternRecognitionOperator implements ProcessOperator {
       }
 
       // TODO: 暂时修改一下
-      return getTsBlockFromTsBlockBuilder();
-
       //      if (System.nanoTime() - startTime >= maxRuntime || tsBlockBuilder.isFull()) {
       //        return getTsBlockFromTsBlockBuilder();
       //      }
+      return getTsBlockFromTsBlockBuilder();
     }
 
     // Reach partition end, but builder is not full yet

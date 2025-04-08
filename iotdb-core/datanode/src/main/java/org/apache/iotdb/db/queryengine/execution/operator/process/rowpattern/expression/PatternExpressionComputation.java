@@ -39,20 +39,13 @@ import static org.apache.iotdb.db.queryengine.execution.operator.process.rowpatt
 import static org.apache.iotdb.db.queryengine.execution.operator.process.rowpattern.PhysicalValuePointer.MATCH_NUMBER;
 import static org.apache.tsfile.enums.TSDataType.STRING;
 
-// TODO: 2.17 get 方法还未实现
-// 专门用于计算 RPR 中的表达式
 public class PatternExpressionComputation {
-
-  // 访问 Partition 中的一组数据。一个访问器访问一个数据。
-  // 如 B.value，访问当前行。
-  // 如 LAST(B.value)，访问上一行。
+  // Each valueAccessor points to the data in a specific row and column of the actual TsBlock, and
+  // then provides this data as a parameter to the `computation`.
   private final List<PhysicalValueAccessor> valueAccessors;
 
-  // 计算逻辑：用于表示多个访问器对应的数据之间应该如何计算。其实就是一个传统的表达式了。
-  // 如一共有两个参数，定义的运算可以为 #0 < #1
-  // 如一共有三个参数，定义的运算可以为 #0 + #1 + #2
-  // Computation 中存储计算逻辑。调用 evaluate 方法可以进行计算。
-  // 参数的个数由 valueAccessors 的大小决定。
+  // It stores the computation logic of parameterized expressions. The parts of the expression that
+  // depend on actual data in the TsBlock are delegated to the valueAccessor for positioning.
   private final Computation computation;
 
   public PatternExpressionComputation(

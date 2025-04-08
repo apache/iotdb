@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.execution.operator.process.rowpattern.matcher;
 
-import org.apache.iotdb.db.queryengine.execution.operator.process.rowpattern.LabelEvaluator;
+import org.apache.iotdb.db.queryengine.execution.operator.process.rowpattern.PatternVariableRecognizer;
 
 import org.apache.tsfile.utils.RamUsageEstimator;
 
@@ -116,12 +116,12 @@ public class Matcher {
     this.program = program;
   }
 
-  public MatchResult run(LabelEvaluator labelEvaluator) {
+  public MatchResult run(PatternVariableRecognizer patternVariableRecognizer) {
     IntList current = new IntList(program.size());
     IntList next = new IntList(program.size());
 
-    int inputLength = labelEvaluator.getInputLength();
-    boolean matchingAtPartitionStart = labelEvaluator.isMatchingAtPartitionStart();
+    int inputLength = patternVariableRecognizer.getInputLength();
+    boolean matchingAtPartitionStart = patternVariableRecognizer.isMatchingAtPartitionStart();
 
     Runtime runtime = new Runtime(program, inputLength, matchingAtPartitionStart);
 
@@ -158,7 +158,8 @@ public class Matcher {
             // so the
             // incorrectly saved label does not matter
             runtime.patternCaptures.saveLabel(threadId, label);
-            if (labelEvaluator.evaluateLabel(runtime.patternCaptures.getLabels(threadId))) {
+            if (patternVariableRecognizer.evaluateLabel(
+                runtime.patternCaptures.getLabels(threadId))) {
               advanceAndSchedule(next, threadId, pointer + 1, index + 1, runtime);
             } else {
               runtime.scheduleKill(threadId);
