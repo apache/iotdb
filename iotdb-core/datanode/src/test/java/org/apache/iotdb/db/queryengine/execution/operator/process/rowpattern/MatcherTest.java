@@ -24,6 +24,7 @@ import org.apache.iotdb.db.queryengine.execution.operator.process.rowpattern.mat
 import org.apache.iotdb.db.queryengine.execution.operator.process.rowpattern.matcher.MatchResult;
 import org.apache.iotdb.db.queryengine.execution.operator.process.rowpattern.matcher.Matcher;
 import org.apache.iotdb.db.queryengine.execution.operator.process.rowpattern.matcher.Program;
+import org.apache.iotdb.db.queryengine.execution.operator.process.window.partition.Partition;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.rowpattern.IrLabel;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.rowpattern.IrRowPattern;
 
@@ -160,14 +161,14 @@ public class MatcherTest {
       mappedInput[i] = LABEL_MAPPING.get(new IrLabel(String.valueOf(input.charAt(i))));
     }
 
-    return matcher.run(new testLabelEvaluator(mappedInput));
+    return matcher.run(new testPatternVariableRecognizer(mappedInput));
   }
 
-  private static class testLabelEvaluator extends LabelEvaluator {
+  private static class testPatternVariableRecognizer extends PatternVariableRecognizer {
     private final int[] input;
 
-    public testLabelEvaluator(int[] input) {
-      super(0, 0, 0, 0, 1, ImmutableList.of());
+    public testPatternVariableRecognizer(int[] input) {
+      super(0, 0, 0, 0, 1, ImmutableList.of(), new Partition(ImmutableList.of(), -1, -1));
       this.input = input;
     }
 
@@ -181,21 +182,17 @@ public class MatcherTest {
       return true;
     }
 
+    /**
+     * Determines whether identifying the current row as `label` is valid, where the `label` is the
+     * last pattern variable in matchedLabels.
+     *
+     * <p>In the Test, each row has an explicit label, i.e., input[position]. Therefore, it only
+     * needs to check whether input[position] equals the label. In the actual matching process of
+     * `evaluateLabel`, it is necessary to determine whether the current row can be recognized as
+     * the label based on the definition of the label in the DEFINE clause.
+     */
     @Override
     public boolean evaluateLabel(ArrayView matchedLabels) {
-      // 作用：判断将当前行识别为 label = matchedLabels.get(position) 是否合法
-      // 在 Test 中，每一行都有明确的标签，即 input[position]
-      // 所以只需要判断 input[position] 与 label 是否相等
-      // 在真实匹配的 evaluateLabel 中，需要根据 DEFINE 子句中对 label 的定义来判断能否将当前行识别为 label
-
-      // Purpose: Determine whether it is valid to recognize the current row as label =
-      // matchedLabels.get(position).
-
-      // In the Test, each row has an explicit label, i.e., input[position].
-      // Therefore, it only needs to check whether input[position] equals the label.
-      // In the actual matching process of evaluateLabel, it is necessary to determine whether the
-      // current row can be recognized as the label based on the definition of the label in the
-      // DEFINE clause.
       int position = matchedLabels.length() - 1;
       return input[position] == matchedLabels.get(position);
     }

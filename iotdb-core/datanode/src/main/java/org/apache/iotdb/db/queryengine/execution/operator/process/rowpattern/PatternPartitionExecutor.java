@@ -20,7 +20,7 @@
 package org.apache.iotdb.db.queryengine.execution.operator.process.rowpattern;
 
 import org.apache.iotdb.db.exception.sql.SemanticException;
-import org.apache.iotdb.db.queryengine.execution.operator.process.rowpattern.LabelEvaluator.Evaluation;
+import org.apache.iotdb.db.queryengine.execution.operator.process.rowpattern.PatternVariableRecognizer.PatternVariableComputation;
 import org.apache.iotdb.db.queryengine.execution.operator.process.rowpattern.expression.PatternExpressionComputation;
 import org.apache.iotdb.db.queryengine.execution.operator.process.rowpattern.matcher.ArrayView;
 import org.apache.iotdb.db.queryengine.execution.operator.process.rowpattern.matcher.MatchResult;
@@ -69,7 +69,7 @@ public final class PatternPartitionExecutor {
   private final SkipToPosition skipToPosition;
   private final Optional<LogicalIndexNavigation> skipToNavigation;
   private final Matcher matcher;
-  private final List<Evaluation> labelEvaluations;
+  private final List<PatternVariableComputation> patternVariableComputations;
   private final List<PatternExpressionComputation> measureComputations;
   private final List<String> labelNames;
 
@@ -88,7 +88,7 @@ public final class PatternPartitionExecutor {
       SkipToPosition skipToPosition,
       Optional<LogicalIndexNavigation> skipToNavigation,
       Matcher matcher,
-      List<Evaluation> labelEvaluations,
+      List<PatternVariableComputation> patternVariableComputations,
       List<PatternExpressionComputation> measureComputations,
       List<String> labelNames) {
     // Partition
@@ -104,7 +104,7 @@ public final class PatternPartitionExecutor {
     this.skipToPosition = skipToPosition;
     this.skipToNavigation = skipToNavigation;
     this.matcher = matcher;
-    this.labelEvaluations = ImmutableList.copyOf(labelEvaluations);
+    this.patternVariableComputations = ImmutableList.copyOf(patternVariableComputations);
     this.measureComputations = ImmutableList.copyOf(measureComputations);
     this.labelNames = ImmutableList.copyOf(labelNames);
 
@@ -123,13 +123,6 @@ public final class PatternPartitionExecutor {
 
     currentPosition = partitionStart;
     updatePeerGroup();
-    //    needPeerGroup =
-    //        windowFunctions.stream().anyMatch(WindowFunction::needPeerGroup)
-    //            || frameInfoList.stream()
-    //                .anyMatch(frameInfo -> frameInfo.getFrameType() != FrameInfo.FrameType.ROWS);
-    //    if (needPeerGroup) {
-    //      updatePeerGroup();
-    //    }
   }
 
   public boolean hasNext() {
@@ -150,17 +143,16 @@ public final class PatternPartitionExecutor {
       int patternStart = currentPosition;
 
       // 2. match pattern variables according to the DEFINE clause
-      // TODO: trino 中还传入了 labelEvaluationsIndex，这个的作用是什么呀？
-      LabelEvaluator labelEvaluator =
-          new LabelEvaluator(
+      PatternVariableRecognizer patternVariableRecognizer =
+          new PatternVariableRecognizer(
               matchNumber,
               patternStart,
               partitionStart,
               searchStart,
               searchEnd,
-              labelEvaluations,
+              patternVariableComputations,
               partition);
-      MatchResult matchResult = matcher.run(labelEvaluator);
+      MatchResult matchResult = matcher.run(patternVariableRecognizer);
 
       // 3. produce output depending on match and output mode (rowsPerMatch)
       if (!matchResult.isMatched()) { // unmatched
@@ -248,6 +240,7 @@ public final class PatternPartitionExecutor {
     // compute measures
     for (PatternExpressionComputation measureComputation : measureComputations) {
       // TODO: need to add a computeEmpty method in PatternExpressionComputation
+      //  对于空匹配的输出还没有完善
       // measureComputation.computeEmpty(builder.getColumnBuilder(channel), matchNumber);
       channel++;
     }
@@ -291,25 +284,20 @@ public final class PatternPartitionExecutor {
               matchNumber,
               labelNames,
               partition);
-      builder.getColumnBuilder(channel).writeObject(result);
+
+      if (result == null) {
+        builder.getColumnBuilder(channel).appendNull();
+      } else if (result instanceof String) { // special handling for CLASSIFIER()
+        String str = (String) result;
+        byte[] bytes = str.getBytes(StandardCharsets.UTF_8); // 指定字符编码
+        Binary binary = new Binary(bytes);
+        builder.getColumnBuilder(channel).writeBinary(binary);
+      } else {
+        builder.getColumnBuilder(channel).writeObject(result);
+      }
+
       channel++;
     }
-    // TODO: to be deleted
-    //    for (MeasureComputation measureComputation : measures) {
-    //      Block result =
-    //          measureComputation.compute(
-    //              // evaluate the MEASURES clause with the last row in the match
-    //              patternStart + labels.length() - 1,
-    //              labels,
-    //              partitionStart,
-    //              searchStart,
-    //              searchEnd,
-    //              patternStart,
-    //              matchNumber,
-    //              measureComputationsIndex);
-    //      measureComputation.getType().appendTo(result, 0, pageBuilder.getBlockBuilder(channel));
-    //      channel++;
-    //    }
 
     builder.declarePosition();
   }
@@ -317,8 +305,10 @@ public final class PatternPartitionExecutor {
   // output each row in the match, except for rows captured by exclusion
   private void outputAllRowsPerMatch(
       TsBlockBuilder builder, MatchResult matchResult, int searchStart, int searchEnd) {
-    ArrayView labels = matchResult.getLabels(); // 最终的匹配结果
-    ArrayView exclusions = matchResult.getExclusions(); // 哪些模式变量是不需要输出的
+    // the final matching result
+    ArrayView labels = matchResult.getLabels();
+    // provide the line ranges of pattern variables to be skipped in output
+    ArrayView exclusions = matchResult.getExclusions();
 
     int start = 0;
     for (int index = 0; index < exclusions.length(); index += 2) {
