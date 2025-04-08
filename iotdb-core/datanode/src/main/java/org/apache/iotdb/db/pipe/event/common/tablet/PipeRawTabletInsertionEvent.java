@@ -104,6 +104,10 @@ public class PipeRawTabletInsertionEvent extends PipeInsertionEvent
     this.isAligned = isAligned;
     this.sourceEvent = sourceEvent;
     this.needToReport = needToReport;
+    if (Objects.nonNull(sourceEvent)) {
+      this.committerKey = sourceEvent.getCommitterKey();
+      this.commitId = sourceEvent.getCommitId();
+    }
 
     // Allocate empty memory block, will be resized later.
     this.allocatedMemoryBlock =
