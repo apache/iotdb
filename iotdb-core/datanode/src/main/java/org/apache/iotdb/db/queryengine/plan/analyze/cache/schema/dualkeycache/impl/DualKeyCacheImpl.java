@@ -86,13 +86,13 @@ class DualKeyCacheImpl<FK, SK, V, T extends ICacheEntry<SK, V>>
       final boolean createIfNotExists) {
 
     ICacheEntryGroup<FK, SK, V, T> cacheEntryGroup = firstKeyMap.get(firstKey);
-    if (Objects.isNull(cacheEntryGroup) && createIfNotExists) {
-      cacheEntryGroup = new CacheEntryGroupImpl<>(firstKey, sizeComputer);
-      firstKeyMap.put(firstKey, cacheEntryGroup);
-    }
-
     if (Objects.isNull(cacheEntryGroup)) {
-      return;
+      if (createIfNotExists) {
+        cacheEntryGroup = new CacheEntryGroupImpl<>(firstKey, sizeComputer);
+        firstKeyMap.put(firstKey, cacheEntryGroup);
+      } else {
+        return;
+      }
     }
 
     final ICacheEntryGroup<FK, SK, V, T> finalCacheEntryGroup = cacheEntryGroup;
