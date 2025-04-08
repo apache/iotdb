@@ -42,6 +42,7 @@ public abstract class MultiTVListIterator implements MemPointIterator {
 
   protected boolean probeNext = false;
   protected boolean hasNext = false;
+  protected long currentTime = 0;
   protected int iteratorIndex = 0;
   protected int rowIndex = 0;
 
@@ -79,9 +80,7 @@ public abstract class MultiTVListIterator implements MemPointIterator {
     }
     TVList.TVListIterator iterator = tvListIterators.get(iteratorIndex);
     TimeValuePair currentTvPair =
-        iterator
-            .getTVList()
-            .getTimeValuePair(rowIndex, iterator.currentTime(), floatPrecision, encoding);
+        iterator.getTVList().getTimeValuePair(rowIndex, currentTime, floatPrecision, encoding);
     next();
     return currentTvPair;
   }
@@ -92,9 +91,7 @@ public abstract class MultiTVListIterator implements MemPointIterator {
       return null;
     }
     TVList.TVListIterator iterator = tvListIterators.get(iteratorIndex);
-    return iterator
-        .getTVList()
-        .getTimeValuePair(rowIndex, iterator.currentTime(), floatPrecision, encoding);
+    return iterator.getTVList().getTimeValuePair(rowIndex, currentTime, floatPrecision, encoding);
   }
 
   @Override
@@ -107,7 +104,7 @@ public abstract class MultiTVListIterator implements MemPointIterator {
     TsBlockBuilder builder = new TsBlockBuilder(Collections.singletonList(tsDataType));
     while (hasNextTimeValuePair() && builder.getPositionCount() < MAX_NUMBER_OF_POINTS_IN_PAGE) {
       TVList.TVListIterator iterator = tvListIterators.get(iteratorIndex);
-      builder.getTimeColumnBuilder().writeLong(iterator.currentTime());
+      builder.getTimeColumnBuilder().writeLong(currentTime);
       switch (tsDataType) {
         case BOOLEAN:
           builder.getColumnBuilder(0).writeBoolean(iterator.getTVList().getBoolean(rowIndex));
