@@ -195,7 +195,9 @@ public class PipeEventCollector implements EventCollector {
                     deleteDataEvent.getTablePattern(),
                     deleteDataEvent.getUserName(),
                     deleteDataEvent.isSkipIfNoPrivileges(),
-                    deleteDataEvent.isGeneratedByPipe()))
+                    deleteDataEvent.isGeneratedByPipe(),
+                    deleteDataEvent.getCommitterKey(),
+                    deleteDataEvent.getCommitId()))
         .ifPresent(
             event -> {
               hasNoGeneratedEvent = false;

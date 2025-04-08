@@ -22,6 +22,7 @@ package org.apache.iotdb.db.pipe.event.common.deletion;
 import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.commons.consensus.index.impl.MinimumProgressIndex;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
+import org.apache.iotdb.commons.pipe.agent.task.progress.CommitterKey;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.TablePattern;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.TreePattern;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
@@ -53,7 +54,7 @@ public class PipeDeleteDataNodeEvent extends EnrichedEvent implements Serializab
 
   public PipeDeleteDataNodeEvent(
       final AbstractDeleteDataNode deleteDataNode, final boolean isGeneratedByPipe) {
-    this(deleteDataNode, null, 0, null, null, null, null, true, isGeneratedByPipe);
+    this(deleteDataNode, null, 0, null, null, null, null, true, isGeneratedByPipe, null, 0);
   }
 
   public PipeDeleteDataNodeEvent(
@@ -65,7 +66,9 @@ public class PipeDeleteDataNodeEvent extends EnrichedEvent implements Serializab
       final TablePattern tablePattern,
       final String userName,
       final boolean skipIfNoPrivileges,
-      final boolean isGeneratedByPipe) {
+      final boolean isGeneratedByPipe,
+      final CommitterKey committerKey,
+      final long commitId) {
     super(
         pipeName,
         creationTime,
@@ -80,6 +83,8 @@ public class PipeDeleteDataNodeEvent extends EnrichedEvent implements Serializab
     this.deleteDataNode = deleteDataNode;
     Optional.ofNullable(deleteDataNode)
         .ifPresent(node -> this.progressIndex = deleteDataNode.getProgressIndex());
+    this.committerKey = committerKey;
+    this.commitId = commitId;
   }
 
   public AbstractDeleteDataNode getDeleteDataNode() {
@@ -137,7 +142,9 @@ public class PipeDeleteDataNodeEvent extends EnrichedEvent implements Serializab
         tablePattern,
         userName,
         skipIfNoPrivileges,
-        isGeneratedByPipe);
+        isGeneratedByPipe,
+        committerKey,
+        commitId);
   }
 
   @Override
