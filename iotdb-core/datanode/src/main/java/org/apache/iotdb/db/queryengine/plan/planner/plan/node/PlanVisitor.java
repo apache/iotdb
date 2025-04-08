@@ -130,6 +130,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.node.MarkDistinct
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.PatternRecognitionNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.PreviousFillNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.SemiJoinNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.SortBasedGroupNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TreeAlignedDeviceViewScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TreeDeviceViewScanNode;
@@ -803,6 +804,10 @@ public abstract class PlanVisitor<R, C> {
   }
 
   public R visitPatternRecognition(PatternRecognitionNode node, C context) {
+    return visitPlan(node, context);
+  }
+
+  public R visitSortBasedGroup(SortBasedGroupNode node, C context) {
     return visitPlan(node, context);
   }
 }

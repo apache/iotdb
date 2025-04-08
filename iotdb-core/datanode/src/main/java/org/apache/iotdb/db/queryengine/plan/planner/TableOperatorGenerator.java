@@ -70,8 +70,8 @@ import org.apache.iotdb.db.queryengine.execution.operator.process.gapfill.GapFil
 import org.apache.iotdb.db.queryengine.execution.operator.process.join.SimpleNestedLoopCrossJoinOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.join.merge.comparator.JoinKeyComparatorFactory;
 import org.apache.iotdb.db.queryengine.execution.operator.process.last.LastQueryUtil;
-import org.apache.iotdb.db.queryengine.execution.operator.process.rowpattern.LabelEvaluator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.rowpattern.LogicalIndexNavigation;
+import org.apache.iotdb.db.queryengine.execution.operator.process.rowpattern.PatternVariableRecognizer;
 import org.apache.iotdb.db.queryengine.execution.operator.process.rowpattern.PhysicalValueAccessor;
 import org.apache.iotdb.db.queryengine.execution.operator.process.rowpattern.PhysicalValuePointer;
 import org.apache.iotdb.db.queryengine.execution.operator.process.rowpattern.expression.Computation;
@@ -2436,11 +2436,10 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
     // 2. rewrite pattern to program
     Program program = IrRowPatternToProgramRewriter.rewrite(node.getPattern(), mapping);
 
-    // TODO:
-    // 3. prepare label evaluations (LabelEvaluator is to be instantiated once per Partition)
-    // TODO: to be deleted. List就够了，不需要 Map
-    // Map<String, PatternExpressionComputation> result = new HashMap<>();
-    ImmutableList.Builder<LabelEvaluator.Evaluation> evaluationsBuilder = ImmutableList.builder();
+    // 3. prepare patternVariableComputation (PatternVariableRecognizer is to be instantiated once
+    // per Partition)
+    ImmutableList.Builder<PatternVariableRecognizer.PatternVariableComputation> evaluationsBuilder =
+        ImmutableList.builder();
 
     for (Map.Entry<IrLabel, ExpressionAndValuePointers> entry :
         node.getVariableDefinitions().entrySet()) {
@@ -2480,10 +2479,11 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
           Computation.ComputationParser.parse(expressionAndValuePointers.getExpression());
 
       // 3c. 构造 Evaluation 对象
-      LabelEvaluator.Evaluation evaluation =
-          new LabelEvaluator.Evaluation(valueAccessors, computation, labelNames);
+      PatternVariableRecognizer.PatternVariableComputation patternVariableComputation =
+          new PatternVariableRecognizer.PatternVariableComputation(
+              valueAccessors, computation, labelNames);
 
-      evaluationsBuilder.add(evaluation);
+      evaluationsBuilder.add(patternVariableComputation);
     }
 
     // 4. prepare measures computations
