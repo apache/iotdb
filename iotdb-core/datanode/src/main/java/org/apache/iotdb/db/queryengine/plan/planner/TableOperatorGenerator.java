@@ -2348,7 +2348,7 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
         // last cache updateColumns need put "" as time column
         String[] updateColumns = new String[parameter.getMeasurementColumnNames().size() + 1];
         updateColumns[0] = "";
-        for (int j = 1; i < updateColumns.length; j++) {
+        for (int j = 1; j < updateColumns.length; j++) {
           updateColumns[j] = parameter.getMeasurementColumnNames().get(j - 1);
         }
         TableDeviceSchemaCache.getInstance()
