@@ -1142,6 +1142,8 @@ public class IoTDBConfig {
   private long loadTsFileAnalyzeSchemaMemorySizeInBytes =
       0L; // 0 means that the decision will be adaptive based on the number of sequences
 
+  private long loadTsFileTabletConversionBatchMemorySizeInBytes = 4096 * 1024;
+
   private long loadChunkMetadataMemorySizeInBytes = 33554432; // 32MB
 
   private long loadMemoryAllocateRetryIntervalMs = 1000L;
@@ -3988,6 +3990,16 @@ public class IoTDBConfig {
   public void setLoadTsFileAnalyzeSchemaMemorySizeInBytes(
       long loadTsFileAnalyzeSchemaMemorySizeInBytes) {
     this.loadTsFileAnalyzeSchemaMemorySizeInBytes = loadTsFileAnalyzeSchemaMemorySizeInBytes;
+  }
+
+  public long getLoadTsFileTabletConversionBatchMemorySizeInBytes() {
+    return loadTsFileTabletConversionBatchMemorySizeInBytes;
+  }
+
+  public void setLoadTsFileTabletConversionBatchMemorySizeInBytes(
+      long loadTsFileTabletConversionBatchMemorySizeInBytes) {
+    this.loadTsFileTabletConversionBatchMemorySizeInBytes =
+        loadTsFileTabletConversionBatchMemorySizeInBytes;
   }
 
   public long getLoadChunkMetadataMemorySizeInBytes() {
