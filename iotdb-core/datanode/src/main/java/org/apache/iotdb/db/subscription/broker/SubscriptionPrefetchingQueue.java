@@ -319,18 +319,20 @@ public abstract class SubscriptionPrefetchingQueue {
       return;
     }
 
-    if (peekedEvent instanceof PipeHeartbeatEvent) {
-      final Event polledEvent = inputPendingQueue.waitedPoll();
-      if (!Objects.equals(peekedEvent, polledEvent)) {
-        LOGGER.warn(
-            "Subscription: inconsistent event when {} peeking (broken invariant), expected {}, actual {}, do nothing",
-            this,
-            peekedEvent,
-            polledEvent);
-      } else {
-        ((EnrichedEvent) peekedEvent)
-            .decreaseReferenceCount(SubscriptionPrefetchingQueue.class.getName(), false);
-      }
+    if (!(peekedEvent instanceof PipeHeartbeatEvent)) {
+      return;
+    }
+
+    final Event polledEvent = inputPendingQueue.waitedPoll();
+    if (!Objects.equals(peekedEvent, polledEvent)) {
+      LOGGER.warn(
+          "Subscription: inconsistent heartbeat event when {} peeking (broken invariant), expected {}, actual {}, do nothing",
+          this,
+          peekedEvent,
+          polledEvent);
+    } else {
+      ((PipeHeartbeatEvent) peekedEvent)
+          .decreaseReferenceCount(SubscriptionPrefetchingQueue.class.getName(), false);
     }
   }
 
