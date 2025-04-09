@@ -25,6 +25,7 @@ import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -91,7 +92,7 @@ public class GreedyRegionGroupAllocator implements IRegionGroupAllocator {
       Map<String, List<TRegionReplicaSet>> databaseAllocatedRegionGroupMap,
       Map<TConsensusGroupId, TRegionReplicaSet> remainReplicasMap) {
     // TODO: Implement this method
-    return null;
+    return Collections.emptyMap();
   }
 
   private List<TDataNodeLocation> buildWeightList(

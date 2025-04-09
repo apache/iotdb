@@ -123,7 +123,7 @@ public class PartiteGraphPlacementRegionGroupAllocator implements IRegionGroupAl
       Map<String, List<TRegionReplicaSet>> databaseAllocatedRegionGroupMap,
       Map<TConsensusGroupId, TRegionReplicaSet> remainReplicasMap) {
     // TODO: Implement this method
-    return null;
+    return Collections.emptyMap();
   }
 
   private void prepare(
