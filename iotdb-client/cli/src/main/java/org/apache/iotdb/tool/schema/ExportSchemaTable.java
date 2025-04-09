@@ -63,7 +63,7 @@ public class ExportSchemaTable extends AbstractExportSchema {
             .enableAutoFetch(false)
             .database(database)
             .build();
-    checkDataBase();
+    checkDatabase();
     try {
       parseTablesBySelectSchema(String.format(Constants.EXPORT_SCHEMA_TABLES_SELECT, database));
     } catch (StatementExecutionException | IoTDBConnectionException e) {
