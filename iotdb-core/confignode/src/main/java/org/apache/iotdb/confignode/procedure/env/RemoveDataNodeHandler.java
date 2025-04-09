@@ -37,7 +37,6 @@ import org.apache.iotdb.confignode.conf.ConfigNodeConfig;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.consensus.request.write.datanode.RemoveDataNodePlan;
 import org.apache.iotdb.confignode.consensus.response.datanode.DataNodeToStatusResp;
-import org.apache.iotdb.confignode.exception.DatabaseNotExistsException;
 import org.apache.iotdb.confignode.manager.ConfigManager;
 import org.apache.iotdb.confignode.manager.load.balancer.region.GreedyCopySetRegionGroupAllocator;
 import org.apache.iotdb.confignode.manager.load.balancer.region.GreedyRegionGroupAllocator;
@@ -380,38 +379,6 @@ public class RemoveDataNodeHandler {
                     .getLoadManager()
                     .getFreeDiskSpace(dataNode.getLocation().getDataNodeId())));
     return freeDiskSpaceMap;
-  }
-
-  /**
-   * Retrieves the replication factor for the given database and consensus group type. If the
-   * database does not exist, a default value is returned.
-   */
-  private int getReplicationFactor(
-      String database, TConsensusGroupType consensusGroupType, TConsensusGroupId regionId) {
-    try {
-      return configManager
-          .getClusterSchemaManager()
-          .getReplicationFactor(database, consensusGroupType);
-    } catch (DatabaseNotExistsException e) {
-      LOGGER.warn(
-          "Region {}'s database: {} does not exist, using default value.", regionId, database, e);
-      return consensusGroupType.equals(TConsensusGroupType.DataRegion)
-          ? ConfigNodeDescriptor.getInstance().getConf().getDataReplicationFactor()
-          : ConfigNodeDescriptor.getInstance().getConf().getSchemaReplicationFactor();
-    }
-  }
-
-  /**
-   * Updates a single replica set by adding the new DataNode to its list and updating the
-   * allocatedReplicaSets.
-   */
-  private void updateReplicaSet(
-      List<TRegionReplicaSet> allocatedReplicaSets,
-      TRegionReplicaSet replicaSet,
-      TDataNodeLocation newDataNode) {
-    allocatedReplicaSets.remove(replicaSet);
-    replicaSet.getDataNodeLocations().add(newDataNode);
-    allocatedReplicaSets.add(replicaSet);
   }
 
   /**
