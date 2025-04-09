@@ -178,7 +178,7 @@ public class TTLCache {
    *     TTL is not set or the database does not exist.
    */
   public long getDatabaseMaxTTL(String database) {
-    CacheNode node = ttlCacheTree.getChild(database);
+    CacheNode node = ttlCacheTree.searchChild(database);
     if (node == null) {
       return NULL_TTL;
     }
@@ -294,6 +294,27 @@ public class TTLCache {
         name = name.substring("root.".length());
       }
       return children.get(name);
+    }
+
+    /**
+     * Search the child node by name.
+     *
+     * @param name the name corresponding to the child node, use '.' to separate each node
+     * @return the child node if it exists, otherwise return null
+     */
+    public CacheNode searchChild(String name) {
+      String[] nodeNames = name.split("\\.");
+      CacheNode current = this;
+      for (String nodeName : nodeNames) {
+        if (nodeName.equals("root")) {
+          continue;
+        }
+        current = current.getChild(nodeName);
+        if (current == null) {
+          return null;
+        }
+      }
+      return current;
     }
 
     public Map<String, CacheNode> getChildren() {
