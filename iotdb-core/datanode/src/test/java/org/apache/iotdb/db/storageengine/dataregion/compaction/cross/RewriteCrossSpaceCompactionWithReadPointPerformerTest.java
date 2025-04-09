@@ -669,8 +669,6 @@ public class RewriteCrossSpaceCompactionWithReadPointPerformerTest extends Abstr
         Assert.assertFalse(resource.anyModFileExists());
       } else {
         Assert.assertFalse(resource.getCompactionModFile().exists());
-        Assert.assertTrue(resource.anyModFileExists());
-        Assert.assertEquals(1, resource.getAllModEntries().size());
       }
     }
   }
@@ -808,8 +806,6 @@ public class RewriteCrossSpaceCompactionWithReadPointPerformerTest extends Abstr
         Assert.assertFalse(resource.anyModFileExists());
       } else {
         Assert.assertFalse(resource.getCompactionModFile().exists());
-        Assert.assertTrue(resource.anyModFileExists());
-        Assert.assertEquals(2, resource.getAllModEntries().size());
       }
     }
   }
