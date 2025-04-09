@@ -80,7 +80,7 @@ public class ExportSchemaTable extends AbstractExportSchema {
     }
   }
 
-  private void checkDataBase() {
+  private void checkDatabase() {
     Set<String> databases = new HashSet<>();
     SessionDataSet sessionDataSet = null;
     try (ITableSession session = sessionPool.getSession()) {
