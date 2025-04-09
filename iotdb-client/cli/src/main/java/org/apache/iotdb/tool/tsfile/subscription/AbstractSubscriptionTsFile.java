@@ -23,7 +23,9 @@ import org.apache.iotdb.cli.utils.IoTPrinter;
 import org.apache.iotdb.isession.SessionConfig;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
+import org.apache.iotdb.session.subscription.SubscriptionTableSessionBuilder;
 import org.apache.iotdb.session.subscription.SubscriptionTreeSessionBuilder;
+import org.apache.iotdb.tool.common.Constants;
 
 import java.util.concurrent.ExecutorService;
 
