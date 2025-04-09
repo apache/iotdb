@@ -191,7 +191,7 @@ public abstract class AbstractIntoOperator implements ProcessOperator {
             String.format(
                 "Error occurred while inserting tablets in SELECT INTO: %s",
                 executionStatus.getMessage());
-        throw new IntoProcessException(message);
+        throw new IntoProcessException(message, executionStatus.getCode());
       }
 
       for (InsertTabletStatementGenerator generator : insertTabletStatementGenerators) {
@@ -201,9 +201,9 @@ public abstract class AbstractIntoOperator implements ProcessOperator {
       writeOperationFuture = null;
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
-      throw new IntoProcessException(e.getMessage());
+      throw new IntoProcessException(e);
     } catch (ExecutionException e) {
-      throw new IntoProcessException(e.getMessage());
+      throw new IntoProcessException(e);
     }
   }
 
