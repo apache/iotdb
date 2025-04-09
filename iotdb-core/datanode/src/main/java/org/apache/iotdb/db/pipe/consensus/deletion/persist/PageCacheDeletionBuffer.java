@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.concurrent.ThreadName;
 import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.commons.consensus.index.impl.MinimumProgressIndex;
 import org.apache.iotdb.commons.consensus.index.impl.SimpleProgressIndex;
+import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.pipe.consensus.ReplicateProgressDataNodeManager;
@@ -63,7 +64,7 @@ public class PageCacheDeletionBuffer implements DeletionBuffer {
   private static final long MAX_WAIT_CLOSE_TIME_IN_MS = 10000;
 
   // Buffer config keep consistent with WAL.
-  public static final int DAL_BUFFER_SIZE = config.getWalBufferSize() / 3;
+  public static int DAL_BUFFER_SIZE = config.getWalBufferSize() / 3;
 
   // DeletionResources received from storage engine, which is waiting to be persisted.
   private final BlockingQueue<DeletionResource> deletionResources =
@@ -375,5 +376,10 @@ public class PageCacheDeletionBuffer implements DeletionBuffer {
         switchLoggingFile();
       }
     }
+  }
+
+  @TestOnly
+  public static void setDalBufferSize(int dalBufferSize) {
+    DAL_BUFFER_SIZE = dalBufferSize;
   }
 }
