@@ -135,7 +135,8 @@ public class SettleSelectorImpl implements ISettleSelector {
       for (TsFileResource resource : resources) {
         boolean shouldStop = false;
         FileDirtyInfo fileDirtyInfo;
-        if (resource.getStatus() != TsFileResourceStatus.NORMAL) {
+        if (resource.getStatus() != TsFileResourceStatus.NORMAL
+            || !resource.getTsFileRepairStatus().isNormalCompactionCandidate()) {
           fileDirtyInfo = new FileDirtyInfo(NOT_SATISFIED);
         } else {
           if (!heavySelect) {
