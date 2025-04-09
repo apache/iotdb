@@ -66,6 +66,9 @@ public class PipeConsensusReceiverAgent implements ConsensusPipeReceiver {
           ConsensusGroupId, Map<ConsensusPipeName, AtomicReference<PipeConsensusReceiver>>>
       replicaReceiverMap = new ConcurrentHashMap<>();
 
+  private final Map<ConsensusPipeName, AtomicBoolean> consensusPipeStatusMap =
+      new ConcurrentHashMap<>();
+
   private PipeConsensus pipeConsensus;
 
   public PipeConsensusReceiverAgent() {
@@ -192,9 +195,23 @@ public class PipeConsensusReceiverAgent implements ConsensusPipeReceiver {
         consensusPipe2ReciverMap.getOrDefault(pipeName, null);
     // 3. Release receiver
     if (receiverReference != null) {
+      consensusPipeStatusMap.get(pipeName).set(false);
       receiverReference.get().handleExit();
       receiverReference.set(null);
       consensusPipe2ReciverMap.remove(pipeName);
     }
+  }
+
+  public void markConsensusPipeAsCreated(ConsensusPipeName pipeName) {
+    consensusPipeStatusMap.compute(
+        pipeName,
+        (k, v) -> {
+          if (v == null) {
+            return new AtomicBoolean(true);
+          } else {
+            v.set(true);
+            return v;
+          }
+        });
   }
 }

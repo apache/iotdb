@@ -1047,6 +1047,7 @@ public class PipeConsensusReceiver {
   public synchronized void handleExit() {
     // only after closing request executor, can we clean receiver.
     requestExecutor.tryClose();
+    requestExecutor.clear();
     // Clear the tsFileWriters and receiver base dirs
     pipeConsensusTsFileWriterPool.handleExit(consensusPipeName);
     clearAllReceiverBaseDir();
