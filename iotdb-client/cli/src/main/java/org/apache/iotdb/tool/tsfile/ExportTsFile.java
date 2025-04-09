@@ -49,9 +49,9 @@ public class ExportTsFile {
     logger.setLevel(Level.ERROR);
     Options options = OptionsUtil.createSubscriptionTsFileOptions();
     parseParams(args, options);
-    //    if (StringUtils.isEmpty(commonParam.getPath())) {
-    //      commonParam.setSqlDialect(Constants.TABLE_MODEL);
-    //    }
+    if (StringUtils.isEmpty(commonParam.getPath())) {
+      commonParam.setSqlDialect(Constants.TABLE_MODEL);
+    }
     AbstractSubscriptionTsFile.setSubscriptionSession();
     String nowFormat = Constants.DATE_FORMAT_VIEW.format(System.currentTimeMillis());
     String topicName = Constants.TOPIC_NAME_PREFIX + nowFormat;
@@ -100,12 +100,12 @@ public class ExportTsFile {
       if (cli.hasOption(Constants.PATH_ARGS)) {
         commonParam.setPath(cli.getOptionValue(Constants.PATH_ARGS));
       }
-      //      if (cli.hasOption(Constants.DB_ARGS)) {
-      //        commonParam.setDatabase(cli.getOptionValue(Constants.DB_ARGS));
-      //      }
-      //      if (cli.hasOption(Constants.TABLE_ARGS)) {
-      //        commonParam.setTable(cli.getOptionValue(Constants.TABLE_ARGS));
-      //      }
+      if (cli.hasOption(Constants.DB_ARGS)) {
+        commonParam.setDatabase(cli.getOptionValue(Constants.DB_ARGS));
+      }
+      if (cli.hasOption(Constants.TABLE_ARGS)) {
+        commonParam.setTable(cli.getOptionValue(Constants.TABLE_ARGS));
+      }
       if (cli.hasOption(Constants.TARGET_DIR_ARGS)) {
         commonParam.setTargetDir(cli.getOptionValue(Constants.TARGET_DIR_ARGS));
       }

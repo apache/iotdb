@@ -33,31 +33,30 @@ public abstract class AbstractSubscriptionTsFile {
   protected static CommonParam commonParam = CommonParam.getInstance();
 
   public static void setSubscriptionSession() throws IoTDBConnectionException {
-    /* table mode is not currently(2.0.2) supported
-       if (Constants.TABLE_MODEL.equalsIgnoreCase(commonParam.getSqlDialect())) {
-         commonParam.setSubscriptionTsFile(new SubscriptionTableTsFile());
-         commonParam.setTableSubs(
-             new SubscriptionTableSessionBuilder()
-                 .host(commonParam.getSrcHost())
-                 .port(commonParam.getSrcPort())
-                 .username(commonParam.getSrcUserName())
-                 .password(commonParam.getSrcPassword())
-                 .thriftMaxFrameSize(SessionConfig.DEFAULT_MAX_FRAME_SIZE)
-                 .build());
-         commonParam.getTableSubs().open();
-       } else {
-    */
-    commonParam.setSubscriptionTsFile(new SubscriptionTreeTsFile());
-    commonParam.setTreeSubs(
-        new SubscriptionTreeSessionBuilder()
-            .host(commonParam.getSrcHost())
-            .port(commonParam.getSrcPort())
-            .username(commonParam.getSrcUserName())
-            .password(commonParam.getSrcPassword())
-            .thriftMaxFrameSize(SessionConfig.DEFAULT_MAX_FRAME_SIZE)
-            .build());
-    commonParam.getTreeSubs().open();
-    //    }
+    if (Constants.TABLE_MODEL.equalsIgnoreCase(commonParam.getSqlDialect())) {
+      commonParam.setSubscriptionTsFile(new SubscriptionTableTsFile());
+      commonParam.setTableSubs(
+          new SubscriptionTableSessionBuilder()
+              .host(commonParam.getSrcHost())
+              .port(commonParam.getSrcPort())
+              .username(commonParam.getSrcUserName())
+              .password(commonParam.getSrcPassword())
+              .thriftMaxFrameSize(SessionConfig.DEFAULT_MAX_FRAME_SIZE)
+              .build());
+      commonParam.getTableSubs().open();
+    } else {
+
+      commonParam.setSubscriptionTsFile(new SubscriptionTreeTsFile());
+      commonParam.setTreeSubs(
+          new SubscriptionTreeSessionBuilder()
+              .host(commonParam.getSrcHost())
+              .port(commonParam.getSrcPort())
+              .username(commonParam.getSrcUserName())
+              .password(commonParam.getSrcPassword())
+              .thriftMaxFrameSize(SessionConfig.DEFAULT_MAX_FRAME_SIZE)
+              .build());
+      commonParam.getTreeSubs().open();
+    }
   }
 
   public abstract void createTopics(String topicName)
