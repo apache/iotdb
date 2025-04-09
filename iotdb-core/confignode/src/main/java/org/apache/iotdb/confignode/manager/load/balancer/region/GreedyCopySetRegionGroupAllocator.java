@@ -27,6 +27,7 @@ import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -52,10 +53,6 @@ public class GreedyCopySetRegionGroupAllocator implements IRegionGroupAllocator 
   private int[] databaseRegionCounter;
   // The number of 2-Region combinations in current cluster
   private int[][] combinationCounter;
-  // target destination datanode
-  private int targetDataNode = -1;
-  // remain replica set datanode
-  private Set<Integer> remainReplicaDataNodeIds;
 
   // First Key: the sum of Regions at the DataNodes in the allocation result is minimal
   int optimalRegionSum;
@@ -109,12 +106,9 @@ public class GreedyCopySetRegionGroupAllocator implements IRegionGroupAllocator 
       int replicationFactor,
       TConsensusGroupId consensusGroupId) {
     try {
-      prepare(
-          replicationFactor,
-          availableDataNodeMap,
-          allocatedRegionGroups,
-          databaseAllocatedRegionGroups);
-      dfs(-1, 0, new int[replicationFactor], 0, 0);
+      this.replicationFactor = replicationFactor;
+      prepare(availableDataNodeMap, allocatedRegionGroups, databaseAllocatedRegionGroups);
+      dfsAllocateReplica(-1, 0, new int[replicationFactor], 0, 0);
 
       // Randomly pick one optimal plan as result
       Collections.shuffle(optimalReplicaSets);
@@ -132,65 +126,240 @@ public class GreedyCopySetRegionGroupAllocator implements IRegionGroupAllocator 
   }
 
   @Override
-  public TDataNodeConfiguration selectDestDataNode(
+  public Map<TConsensusGroupId, TDataNodeConfiguration> removeNodeReplicaSelect(
       Map<Integer, TDataNodeConfiguration> availableDataNodeMap,
       Map<Integer, Double> freeDiskSpaceMap,
       List<TRegionReplicaSet> allocatedRegionGroups,
-      List<TRegionReplicaSet> databaseAllocatedRegionGroups,
-      int replicationFactor,
-      TConsensusGroupId consensusGroupId,
-      TRegionReplicaSet remainReplicaSet) {
+      Map<TConsensusGroupId, String> regionDatabaseMap,
+      Map<String, List<TRegionReplicaSet>> databaseAllocatedRegionGroupMap,
+      Map<TConsensusGroupId, TRegionReplicaSet> remainReplicasMap) {
     try {
-      prepare(
-          replicationFactor,
-          availableDataNodeMap,
-          allocatedRegionGroups,
-          databaseAllocatedRegionGroups);
-      remainReplicaDataNodeIds = new HashSet<>();
-      int[] currentReplicaSet = new int[replicationFactor];
-      int databaseRegionSum = 0;
-      int regionSum = 0;
-      for (int i = 0; i < remainReplicaSet.getDataNodeLocations().size(); i++) {
-        int dataNodeId = remainReplicaSet.getDataNodeLocations().get(i).getDataNodeId();
-        currentReplicaSet[i] = dataNodeId;
-        databaseRegionSum += databaseRegionCounter[dataNodeId];
-        regionSum += regionCounter[dataNodeId];
-        remainReplicaDataNodeIds.add(dataNodeId);
-      }
+      // 1. prepare: compute regionCounter, databaseRegionCounter, and combinationCounter
 
-      dfs(-1, replicationFactor - 1, currentReplicaSet, databaseRegionSum, regionSum);
-      // Randomly pick one optimal plan as result
-      Collections.shuffle(optimalReplicaSets);
-      int[] optimalReplicaSet = optimalReplicaSets.get(0);
-      for (int i = 0; i < replicationFactor; i++) {
-        if (remainReplicaDataNodeIds.contains(optimalReplicaSet[i])) {
-          continue;
+      List<TRegionReplicaSet> databaseAllocatedRegionGroups =
+          new ArrayList<>(databaseAllocatedRegionGroupMap.values()).get(0);
+      prepare(availableDataNodeMap, allocatedRegionGroups, databaseAllocatedRegionGroups);
+
+      // 2. Build allowed candidate set for each region that needs to be migrated.
+      // For each region in remainReplicasMap, the candidate destination nodes are all nodes in
+      // availableDataNodeMap
+      // excluding those already in the remain replica set.
+      List<TConsensusGroupId> regionKeys = new ArrayList<>(remainReplicasMap.keySet());
+      Map<TConsensusGroupId, List<Integer>> allowedCandidatesMap = new HashMap<>();
+      for (TConsensusGroupId regionId : regionKeys) {
+        TRegionReplicaSet remainReplicaSet = remainReplicasMap.get(regionId);
+        Set<Integer> notAllowedNodes = new HashSet<>();
+
+        // Exclude nodes already present in the remain replica set
+        for (TDataNodeLocation location : remainReplicaSet.getDataNodeLocations()) {
+          notAllowedNodes.add(location.getDataNodeId());
         }
-        targetDataNode = optimalReplicaSet[i];
+
+        // Allowed candidates are the nodes not in the exclusion set
+        List<Integer> candidates =
+            availableDataNodeMap.keySet().stream()
+                .filter(nodeId -> !notAllowedNodes.contains(nodeId))
+                .sorted(
+                    (a, b) -> {
+                      int cmp = Integer.compare(regionCounter[a], regionCounter[b]);
+                      if (cmp == 0) {
+                        cmp = Integer.compare(databaseRegionCounter[a], databaseRegionCounter[b]);
+                      }
+                      return cmp;
+                    })
+                .collect(Collectors.toList());
+
+        // Sort candidates in ascending order of current global load (regionCounter)
+        allowedCandidatesMap.put(regionId, candidates);
       }
 
-      return availableDataNodeMap.get(targetDataNode);
+      // Optionally, sort regionKeys by the size of its candidate list (smaller candidate sets
+      // first)
+      regionKeys.sort(Comparator.comparingInt(id -> allowedCandidatesMap.get(id).size()));
 
+      int n = regionKeys.size();
+      // Each element holds the candidate nodeId chosen for the region at that index
+      int[] currentAssignment = new int[n];
+      // additionalLoad holds the number of extra regions assigned to each node in this migration
+      // solution.
+      int[] additionalLoad = new int[regionCounter.length];
+
+      // 3. Create a buffer for candidate solutions
+      List<int[]> optimalAssignments = new ArrayList<>();
+      // bestMetrics holds the best found metrics: [maxGlobalLoad, maxDatabaseLoad, scatterValue].
+      // Initialize to high values.
+      int[] bestMetrics = new int[] {Integer.MAX_VALUE, Integer.MAX_VALUE, Integer.MAX_VALUE};
+
+      dfsRemoveNodeReplica(
+          0,
+          regionKeys,
+          allowedCandidatesMap,
+          currentAssignment,
+          additionalLoad,
+          optimalAssignments,
+          bestMetrics,
+          remainReplicasMap);
+
+      // 4. Randomly select one solution from the candidate buffer
+      if (optimalAssignments.isEmpty()) {
+        // This should not happen if there is at least one valid assignment
+        return Collections.emptyMap();
+      }
+      Collections.shuffle(optimalAssignments);
+      int[] bestAssignment = optimalAssignments.get(0);
+
+      // 5. Build and return the result mapping: region -> chosen destination TDataNodeConfiguration
+      Map<TConsensusGroupId, TDataNodeConfiguration> result = new HashMap<>();
+      for (int i = 0; i < n; i++) {
+        TConsensusGroupId regionId = regionKeys.get(i);
+        int chosenNodeId = bestAssignment[i];
+        result.put(regionId, availableDataNodeMap.get(chosenNodeId));
+      }
+      return result;
     } finally {
+      // Clear any temporary state to avoid impacting subsequent calls
       clear();
     }
   }
 
   /**
+   * DFS method that searches for migration target assignments.
+   *
+   * <p>It enumerates all possible assignments (one candidate for each region) and collects
+   * candidate solutions in the optimalAssignments buffer. The evaluation metrics for each complete
+   * assignment (i.e. when index == regionKeys.size()) are:
+   *
+   * <p>1. Max global load: the maximum over nodes of (regionCounter[node] + additionalLoad[node])
+   * 2. Max database load: the maximum over nodes of (databaseRegionCounter[node] +
+   * additionalLoad[node]) 3. Scatter value: computed per region, summing the combinationCounter for
+   * every pair in the complete replica set. The complete replica set for a region includes nodes in
+   * its remain replica set plus the newly assigned node.
+   *
+   * <p>The candidates are compared lexicographically (first by global load, then by database load,
+   * then by scatter). When a better candidate is found, the optimalAssignments buffer is cleared
+   * and updated; if the new candidate matches the best found metrics, it is added to the buffer.
+   *
+   * <p>DFS search is pruned if the optimalAssignments buffer reaches CAPACITY.
+   *
+   * @param index Current DFS level, corresponding to regionKeys.get(index)
+   * @param regionKeys A list of regions that need to be migrated.
+   * @param allowedCandidatesMap For each region, the allowed candidate destination node IDs.
+   * @param currentAssignment Current partial assignment; its length equals the number of regions.
+   * @param additionalLoad Extra load currently assigned to each node.
+   * @param optimalAssignments Buffer holding candidate assignment arrays.
+   * @param bestMetrics An int array holding the best metrics found so far: [maxGlobalLoad,
+   *     maxDatabaseLoad, scatterValue].
+   * @param remainReplicasMap Mapping from region to its current remain replica set.
+   */
+  private void dfsRemoveNodeReplica(
+      int index,
+      List<TConsensusGroupId> regionKeys,
+      Map<TConsensusGroupId, List<Integer>> allowedCandidatesMap,
+      int[] currentAssignment,
+      int[] additionalLoad,
+      List<int[]> optimalAssignments,
+      int[] bestMetrics,
+      Map<TConsensusGroupId, TRegionReplicaSet> remainReplicasMap) {
+    int n = regionKeys.size();
+    if (index == n) {
+      // A complete assignment has been generated.
+      // Compute metrics for this complete migration assignment.
+
+      // Compute the scatter value for the complete assignment.
+      int currentScatter = 0;
+      // For each region, calculate the scatter based on the combinationCounter among all nodes
+      // in the full replica set (which includes the nodes in the remain replica and the new
+      // candidate).
+      for (int r = 0; r < n; r++) {
+        TConsensusGroupId regionId = regionKeys.get(r);
+        for (TDataNodeLocation location : remainReplicasMap.get(regionId).getDataNodeLocations()) {
+          int nodeA = currentAssignment[r];
+          int nodeB = location.getDataNodeId();
+          currentScatter += combinationCounter[nodeA][nodeB];
+        }
+      }
+
+      // Compute the maximum global load and maximum database load among all nodes that received
+      // additional load.
+      int[] currentMetrics = getCurrentMetrics(additionalLoad, currentScatter);
+
+      // Lexicographically compare currentMetrics with bestMetrics.
+      // If currentMetrics is better than bestMetrics, update bestMetrics and clear the candidate
+      // buffer.
+      boolean isBetter = false;
+      boolean isEqual = true;
+      for (int i = 0; i < 3; i++) {
+        if (currentMetrics[i] < bestMetrics[i]) {
+          isBetter = true;
+          isEqual = false;
+          break;
+        } else if (currentMetrics[i] > bestMetrics[i]) {
+          isEqual = false;
+          break;
+        }
+      }
+      if (isBetter) {
+        bestMetrics[0] = currentMetrics[0];
+        bestMetrics[1] = currentMetrics[1];
+        bestMetrics[2] = currentMetrics[2];
+        optimalAssignments.clear();
+        optimalAssignments.add(Arrays.copyOf(currentAssignment, n));
+      } else if (isEqual) {
+        optimalAssignments.add(Arrays.copyOf(currentAssignment, n));
+        // Prune search if we already have enough candidate solutions
+        if (optimalAssignments.size() >= GCR_MAX_OPTIMAL_PLAN_NUM) {
+          return;
+        }
+      }
+      return;
+    }
+
+    // Process the region at the current index.
+    TConsensusGroupId regionId = regionKeys.get(index);
+    List<Integer> candidates = allowedCandidatesMap.get(regionId);
+    for (Integer candidate : candidates) {
+      currentAssignment[index] = candidate;
+      additionalLoad[candidate]++;
+      dfsRemoveNodeReplica(
+          index + 1,
+          regionKeys,
+          allowedCandidatesMap,
+          currentAssignment,
+          additionalLoad,
+          optimalAssignments,
+          bestMetrics,
+          remainReplicasMap);
+      // Backtrack
+      additionalLoad[candidate]--;
+    }
+  }
+
+  private int[] getCurrentMetrics(int[] additionalLoad, int currentScatter) {
+    int currentMaxLoad = 0;
+    int currentMaxDBLoad = 0;
+    for (int nodeId = 0; nodeId < additionalLoad.length; nodeId++) {
+      if (additionalLoad[nodeId] > 0) {
+        currentMaxLoad = Math.max(currentMaxLoad, regionCounter[nodeId] + additionalLoad[nodeId]);
+        currentMaxDBLoad =
+            Math.max(currentMaxDBLoad, databaseRegionCounter[nodeId] + additionalLoad[nodeId]);
+      }
+    }
+    // Build current metrics in order [maxGlobalLoad, maxDatabaseLoad, scatterValue]
+    return new int[] {currentMaxLoad, currentMaxDBLoad, currentScatter};
+  }
+
+  /**
    * Prepare some statistics before dfs.
    *
-   * @param replicationFactor replication factor in the cluster
    * @param availableDataNodeMap currently available DataNodes, ensure size() >= replicationFactor
    * @param allocatedRegionGroups already allocated RegionGroups in the cluster
    * @param databaseAllocatedRegionGroups already allocated RegionGroups in the same Database
    */
   private void prepare(
-      int replicationFactor,
       Map<Integer, TDataNodeConfiguration> availableDataNodeMap,
       List<TRegionReplicaSet> allocatedRegionGroups,
       List<TRegionReplicaSet> databaseAllocatedRegionGroups) {
 
-    this.replicationFactor = replicationFactor;
     // Store the maximum DataNodeId
     int maxDataNodeId =
         Math.max(
@@ -262,7 +431,6 @@ public class GreedyCopySetRegionGroupAllocator implements IRegionGroupAllocator 
     optimalRegionSum = Integer.MAX_VALUE;
     optimalCombinationSum = Integer.MAX_VALUE;
     optimalReplicaSets = new ArrayList<>();
-    remainReplicaDataNodeIds = new HashSet<>();
   }
 
   /**
@@ -277,7 +445,7 @@ public class GreedyCopySetRegionGroupAllocator implements IRegionGroupAllocator 
    *     current allocation plan
    * @param regionSum the sum of Regions at the DataNodes in the current allocation plan
    */
-  private void dfs(
+  private void dfsAllocateReplica(
       int lastIndex,
       int currentReplica,
       int[] currentReplicaSet,
@@ -325,11 +493,8 @@ public class GreedyCopySetRegionGroupAllocator implements IRegionGroupAllocator 
 
     for (int i = lastIndex + 1; i < dataNodeIds.length; i++) {
       // Decide the next DataNodeId in the allocation plan
-      if (remainReplicaDataNodeIds.contains(dataNodeIds[i])) {
-        continue;
-      }
       currentReplicaSet[currentReplica] = dataNodeIds[i];
-      dfs(
+      dfsAllocateReplica(
           i,
           currentReplica + 1,
           currentReplicaSet,

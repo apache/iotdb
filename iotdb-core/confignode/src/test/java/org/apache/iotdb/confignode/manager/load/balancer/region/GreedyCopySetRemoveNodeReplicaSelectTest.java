@@ -41,10 +41,10 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-public class GreedyCopySetDestNodeSelectorTest {
+public class GreedyCopySetRemoveNodeReplicaSelectTest {
 
   private static final Logger LOGGER =
-      LoggerFactory.getLogger(GreedyCopySetDestNodeSelectorTest.class);
+      LoggerFactory.getLogger(GreedyCopySetRemoveNodeReplicaSelectTest.class);
 
   private static final IRegionGroupAllocator GCR_ALLOCATOR =
       new GreedyCopySetRegionGroupAllocator();
@@ -146,27 +146,30 @@ public class GreedyCopySetDestNodeSelectorTest {
         LOGGER.info("DataNode: {}", dataNodeLocation.getDataNodeId());
       }
     }
+    Map<TConsensusGroupId, TRegionReplicaSet> remainReplicasMap = new HashMap<>();
+    Map<TConsensusGroupId, String> regionDatabaseMap = new HashMap<>();
+    Map<String, List<TRegionReplicaSet>> databaseAllocatedRegionGroupMap = new HashMap<>();
+    databaseAllocatedRegionGroupMap.put("database", allocateResult);
 
     for (TRegionReplicaSet remainReplicaSet : remainReplicas) {
-      TDataNodeConfiguration selectedNode =
-          GCR_ALLOCATOR.selectDestDataNode(
-              AVAILABLE_DATA_NODE_MAP,
-              FREE_SPACE_MAP,
-              allocateResult,
-              allocateResult,
-              DATA_REPLICATION_FACTOR,
-              remainReplicaSet.regionId,
-              remainReplicaSet);
+      remainReplicasMap.put(remainReplicaSet.getRegionId(), remainReplicaSet);
+    }
+    Map<TConsensusGroupId, TDataNodeConfiguration> result =
+        GCR_ALLOCATOR.removeNodeReplicaSelect(
+            AVAILABLE_DATA_NODE_MAP,
+            FREE_SPACE_MAP,
+            allocateResult,
+            regionDatabaseMap,
+            databaseAllocatedRegionGroupMap,
+            remainReplicasMap);
+
+    for (TConsensusGroupId regionId : result.keySet()) {
+      TDataNodeConfiguration selectedNode = result.get(regionId);
 
       LOGGER.info(
           "GCR Selected DataNode {} for Region {}",
           selectedNode.getLocation().getDataNodeId(),
-          remainReplicaSet.regionId);
-
-      allocateResult.remove(remainReplicaSet);
-      List<TDataNodeLocation> dataNodeLocations = remainReplicaSet.getDataNodeLocations();
-      dataNodeLocations.add(selectedNode.getLocation());
-      allocateResult.add(remainReplicaSet);
+          regionId);
       PGPSelectedNodeIds.add(selectedNode.getLocation().getDataNodeId());
       PGPRegionCounter.put(
           selectedNode.getLocation().getDataNodeId(),
@@ -185,7 +188,7 @@ public class GreedyCopySetDestNodeSelectorTest {
       PGPMinRegionCount = Math.min(PGPMinRegionCount, value);
     }
 
-//    Assert.assertEquals(TEST_DATA_NODE_NUM - 1, PGPSelectedNodeIds.size());
+    Assert.assertEquals(TEST_DATA_NODE_NUM - 1, PGPSelectedNodeIds.size());
     Assert.assertTrue(PGPSelectedNodeIds.size() >= randomSelectedNodeIds.size());
     Assert.assertTrue(randomMaxRegionCount >= PGPMaxRegionCount);
     Assert.assertTrue(randomMinRegionCount <= PGPMinRegionCount);

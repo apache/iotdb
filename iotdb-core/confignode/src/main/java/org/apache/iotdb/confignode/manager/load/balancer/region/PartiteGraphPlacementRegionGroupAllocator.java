@@ -115,14 +115,13 @@ public class PartiteGraphPlacementRegionGroupAllocator implements IRegionGroupAl
   }
 
   @Override
-  public TDataNodeConfiguration selectDestDataNode(
+  public Map<TConsensusGroupId, TDataNodeConfiguration> removeNodeReplicaSelect(
       Map<Integer, TDataNodeConfiguration> availableDataNodeMap,
       Map<Integer, Double> freeDiskSpaceMap,
       List<TRegionReplicaSet> allocatedRegionGroups,
-      List<TRegionReplicaSet> databaseAllocatedRegionGroups,
-      int replicationFactor,
-      TConsensusGroupId consensusGroupId,
-      TRegionReplicaSet remainReplicaSet) {
+      Map<TConsensusGroupId, String> regionDatabaseMap,
+      Map<String, List<TRegionReplicaSet>> databaseAllocatedRegionGroupMap,
+      Map<TConsensusGroupId, TRegionReplicaSet> remainReplicasMap) {
     // TODO: Implement this method
     return null;
   }

@@ -276,35 +276,40 @@ public class RemoveDataNodeHandler {
     // Step 3: For each affected replica set, select a new destination DataNode and create a
     // migration plan
     List<RegionMigrationPlan> migrationPlans = new ArrayList<>();
+
+    Map<TConsensusGroupId, TRegionReplicaSet> remainReplicasMap = new HashMap<>();
+    Map<TConsensusGroupId, String> regionDatabaseMap = new HashMap<>();
+    Map<String, List<TRegionReplicaSet>> databaseAllocatedRegionGroupMap = new HashMap<>();
+
     for (TRegionReplicaSet replicaSet : affectedReplicaSets) {
+      remainReplicasMap.put(replicaSet.getRegionId(), replicaSet);
       String database =
           configManager.getPartitionManager().getRegionDatabase(replicaSet.getRegionId());
       List<TRegionReplicaSet> databaseAllocatedReplicaSets =
           configManager.getPartitionManager().getAllReplicaSets(database, consensusGroupType);
-      int replicationFactor =
-          getReplicationFactor(database, consensusGroupType, replicaSet.getRegionId());
+      regionDatabaseMap.put(replicaSet.getRegionId(), database);
+      databaseAllocatedRegionGroupMap.put(database, databaseAllocatedReplicaSets);
+    }
 
-      TDataNodeConfiguration selectedNode =
-          regionGroupAllocator.selectDestDataNode(
-              availableDataNodeMap,
-              freeDiskSpaceMap,
-              allocatedReplicaSets,
-              databaseAllocatedReplicaSets,
-              replicationFactor,
-              replicaSet.getRegionId(),
-              replicaSet);
+    Map<TConsensusGroupId, TDataNodeConfiguration> result =
+        regionGroupAllocator.removeNodeReplicaSelect(
+            availableDataNodeMap,
+            freeDiskSpaceMap,
+            allocatedReplicaSets,
+            regionDatabaseMap,
+            databaseAllocatedRegionGroupMap,
+            remainReplicasMap);
+
+    for (TConsensusGroupId regionId : result.keySet()) {
+
+      TDataNodeConfiguration selectedNode = result.get(regionId);
       LOGGER.info(
           "Selected DataNode {} for Region {}",
           selectedNode.getLocation().getDataNodeId(),
-          replicaSet.getRegionId());
-
-      // Update the replica set by adding the new DataNode
-      updateReplicaSet(allocatedReplicaSets, replicaSet, selectedNode.getLocation());
+          regionId);
 
       // Create the migration plan
-      RegionMigrationPlan plan =
-          RegionMigrationPlan.create(
-              replicaSet.getRegionId(), removedNodeMap.get(replicaSet.getRegionId()));
+      RegionMigrationPlan plan = RegionMigrationPlan.create(regionId, removedNodeMap.get(regionId));
       plan.setToDataNode(selectedNode.getLocation());
       migrationPlans.add(plan);
     }
