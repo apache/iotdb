@@ -25,7 +25,9 @@ import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.exception.DiskSpaceInsufficientException;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModEntry;
+import org.apache.iotdb.db.storageengine.dataregion.modification.ModFileManagement;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFile;
+import org.apache.iotdb.db.storageengine.dataregion.modification.PartitionLevelModFileManager;
 import org.apache.iotdb.db.storageengine.dataregion.modification.TreeDeletionEntry;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.generator.TsFileNameGenerator;
@@ -54,6 +56,8 @@ import java.util.Set;
 
 public class CompactionFileGeneratorUtils {
   private static Random random = new Random();
+  private static ModFileManagement modFileManagement =
+      new PartitionLevelModFileManager(Integer.MAX_VALUE, 0);
 
   public static TsFileResource getTargetTsFileResourceFromSourceResource(
       TsFileResource sourceResource) throws IOException {
@@ -92,52 +96,54 @@ public class CompactionFileGeneratorUtils {
       boolean sequence, int index, String storageGroupName) {
     if (sequence) {
       return new TsFileResource(
-          new File(
-              TestConstant.BASE_OUTPUT_PATH
-                  .concat(File.separator)
-                  .concat("data")
-                  .concat(File.separator)
-                  .concat("sequence")
-                  .concat(File.separator)
-                  .concat(storageGroupName)
-                  .concat(File.separator)
-                  .concat("0")
-                  .concat(File.separator)
-                  .concat("0")
-                  .concat(File.separator)
-                  .concat(
-                      index
-                          + IoTDBConstant.FILE_NAME_SEPARATOR
-                          + index
-                          + IoTDBConstant.FILE_NAME_SEPARATOR
-                          + 0
-                          + IoTDBConstant.FILE_NAME_SEPARATOR
-                          + 0
-                          + ".tsfile")));
+              new File(
+                  TestConstant.BASE_OUTPUT_PATH
+                      .concat(File.separator)
+                      .concat("data")
+                      .concat(File.separator)
+                      .concat("sequence")
+                      .concat(File.separator)
+                      .concat(storageGroupName)
+                      .concat(File.separator)
+                      .concat("0")
+                      .concat(File.separator)
+                      .concat("0")
+                      .concat(File.separator)
+                      .concat(
+                          index
+                              + IoTDBConstant.FILE_NAME_SEPARATOR
+                              + index
+                              + IoTDBConstant.FILE_NAME_SEPARATOR
+                              + 0
+                              + IoTDBConstant.FILE_NAME_SEPARATOR
+                              + 0
+                              + ".tsfile")))
+          .setModFileManagement(modFileManagement);
     } else {
       return new TsFileResource(
-          new File(
-              TestConstant.BASE_OUTPUT_PATH
-                  .concat(File.separator)
-                  .concat("data")
-                  .concat(File.separator)
-                  .concat("unsequence")
-                  .concat(File.separator)
-                  .concat(storageGroupName)
-                  .concat(File.separator)
-                  .concat("0")
-                  .concat(File.separator)
-                  .concat("0")
-                  .concat(File.separator)
-                  .concat(
-                      (index + 10000)
-                          + IoTDBConstant.FILE_NAME_SEPARATOR
-                          + (index + 10000)
-                          + IoTDBConstant.FILE_NAME_SEPARATOR
-                          + 0
-                          + IoTDBConstant.FILE_NAME_SEPARATOR
-                          + 0
-                          + ".tsfile")));
+              new File(
+                  TestConstant.BASE_OUTPUT_PATH
+                      .concat(File.separator)
+                      .concat("data")
+                      .concat(File.separator)
+                      .concat("unsequence")
+                      .concat(File.separator)
+                      .concat(storageGroupName)
+                      .concat(File.separator)
+                      .concat("0")
+                      .concat(File.separator)
+                      .concat("0")
+                      .concat(File.separator)
+                      .concat(
+                          (index + 10000)
+                              + IoTDBConstant.FILE_NAME_SEPARATOR
+                              + (index + 10000)
+                              + IoTDBConstant.FILE_NAME_SEPARATOR
+                              + 0
+                              + IoTDBConstant.FILE_NAME_SEPARATOR
+                              + 0
+                              + ".tsfile")))
+          .setModFileManagement(modFileManagement);
     }
   }
 
@@ -264,6 +270,16 @@ public class CompactionFileGeneratorUtils {
         .setMaxNumberOfPointsInPage(prevMaxNumberOfPointsInPage);
   }
 
+  public static void generateMods(
+      Map<String, Pair<Long, Long>> toDeleteTimeseriesAndTime,
+      List<TsFileResource> targetTsFileResources,
+      boolean isCompactionMods)
+      throws IllegalPathException, IOException {
+    for (TsFileResource targetTsFileResource : targetTsFileResources) {
+      generateMods(toDeleteTimeseriesAndTime, targetTsFileResource, isCompactionMods);
+    }
+  }
+
   /**
    * Generate mods files according to toDeleteTimeseriesAndTime for corresponding
    * targetTsFileResource
@@ -279,7 +295,7 @@ public class CompactionFileGeneratorUtils {
       boolean isCompactionMods)
       throws IllegalPathException, IOException {
     ModificationFile modificationFile;
-    if (isCompactionMods) {
+    if (isCompactionMods && targetTsFileResource.getCompactionModFile() != null) {
       modificationFile = targetTsFileResource.getCompactionModFile();
     } else {
       modificationFile = targetTsFileResource.getModFileForWrite();

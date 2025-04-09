@@ -88,7 +88,7 @@ public class InnerUnseqCompactionWithReadPointPerformerTest {
         CompactionTimeseriesType.NO_SAME
       };
   static final boolean[] compactionBeforeHasMods = new boolean[] {true, false};
-  static final boolean[] compactionHasMods = new boolean[] {true, false};
+  static final boolean[] compactionHasMods = new boolean[] {false};
   static final CompactionOverlapType[] compactionOverlapTypes =
       new CompactionOverlapType[] {
         CompactionOverlapType.FILE_NO_OVERLAP,

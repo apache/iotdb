@@ -81,7 +81,6 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.NoSuchElementException;
-import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
@@ -139,7 +138,7 @@ public class TsFileResource implements PersistentResource {
   private volatile ModificationFile sharedModFile;
   private long sharedModFileOffset;
 
-  public static final boolean useSharedModFile = false;
+  public static final boolean useSharedModFile = true;
 
   @SuppressWarnings("squid:S3077")
   private volatile ModificationFile compactionModFile;
@@ -282,7 +281,7 @@ public class TsFileResource implements PersistentResource {
     ReadWriteIOUtils.write(maxPlanIndex, outputStream);
     ReadWriteIOUtils.write(minPlanIndex, outputStream);
 
-    if (sharedModFile != null && sharedModFile.exists()) {
+    if (sharedModFile != null) {
       String modFilePath = sharedModFile.getFile().getAbsolutePath();
       ReadWriteIOUtils.write(modFilePath, outputStream);
       ReadWriteIOUtils.write(sharedModFileOffset, outputStream);
@@ -313,6 +312,18 @@ public class TsFileResource implements PersistentResource {
 
   /** deserialize from disk */
   public void deserialize() throws IOException {
+    deserialize(true);
+  }
+
+  /**
+   * Should only be called outside IoTDB, e.g., TsFileValidationTool, otherwise, please use {@code
+   * deserialize()}.
+   */
+  public void deserializeWithoutModFile() throws IOException {
+    deserialize(false);
+  }
+
+  private void deserialize(boolean initModFile) throws IOException {
     try (InputStream inputStream = fsFactory.getBufferedInputStream(file + RESOURCE_SUFFIX)) {
       // The first byte is VERSION_NUMBER, second byte is timeIndexType.
       ReadWriteIOUtils.readByte(inputStream);
@@ -320,8 +331,9 @@ public class TsFileResource implements PersistentResource {
       maxPlanIndex = ReadWriteIOUtils.readLong(inputStream);
       minPlanIndex = ReadWriteIOUtils.readLong(inputStream);
 
+      String modFilePath = null;
       if (inputStream.available() > 0) {
-        String modFilePath = ReadWriteIOUtils.readString(inputStream);
+        modFilePath = ReadWriteIOUtils.readString(inputStream);
         // ends with ".mods2" means it is a new version resource file
         if (modFilePath != null && modFilePath.endsWith(ModificationFile.FILE_SUFFIX)) {
           sharedModFileOffset = ReadWriteIOUtils.readLong(inputStream);
@@ -331,6 +343,14 @@ public class TsFileResource implements PersistentResource {
             sharedModFilePathFuture = CompletableFuture.completedFuture(modFilePath);
           }
         }
+      }
+      if (sharedModFilePathFuture != null) {
+        sharedModFilePathFuture.complete(modFilePath);
+      } else {
+        sharedModFilePathFuture = CompletableFuture.completedFuture(modFilePath);
+      }
+      if (modFilePath != null && initModFile) {
+        sharedModFile = modFileManagement.recover(modFilePath, this);
       }
 
       while (inputStream.available() > 0) {
@@ -392,7 +412,7 @@ public class TsFileResource implements PersistentResource {
   }
 
   public boolean sharedModFileExists() {
-    return getSharedModFile() != null && sharedModFile.exists();
+    return getSharedModFile() != null;
   }
 
   public boolean anyModFileExists() {
@@ -427,12 +447,13 @@ public class TsFileResource implements PersistentResource {
     target.setExclusiveModFile(targetModsFileObject);
     if (sharedModFileExists()) {
       modFileManagement.addReference(target, sharedModFile);
+      target.setModFileManagement(modFileManagement);
       target.setSharedModFile(this.getSharedModFile(), false);
     }
   }
 
   public boolean compactionModFileExists() {
-    return getCompactionModFile().exists();
+    return getCompactionModFile() != null && getCompactionModFile().exists();
   }
 
   public List<IChunkMetadata> getChunkMetadataList(IFullPath seriesPath) {
@@ -452,14 +473,25 @@ public class TsFileResource implements PersistentResource {
     serialize();
   }
 
-  public void setSharedModFile(ModificationFile modFile, boolean serializeNow) {
+  public void setSharedModFile(ModificationFile modFile, boolean serializeNow) throws IOException {
+    setSharedModFile(modFile, serializeNow, -1);
+  }
+
+  /**
+   * @param modFileOffset when < 0, will use the length of the mod file.
+   */
+  public void setSharedModFile(ModificationFile modFile, boolean serializeNow, long modFileOffset)
+      throws IOException {
     if (modFile == null) {
       return;
+    }
+    if (sharedModFile != null && modFileManagement != null) {
+      modFileManagement.releaseFor(this, sharedModFile);
     }
 
     sharedModFile = modFile;
     try {
-      sharedModFileOffset = sharedModFile.getFileLength();
+      sharedModFileOffset = modFileOffset < 0 ? sharedModFile.getFileLength() : modFileOffset;
       if (serializeNow) {
         serializedSharedModFile();
       }
@@ -502,8 +534,13 @@ public class TsFileResource implements PersistentResource {
     }
     if (sharedModFilePathFuture != null) {
       try {
-        if (modFileManagement != null) {
-          sharedModFile = modFileManagement.recover(sharedModFilePathFuture.get(), this);
+        String modFilePath = sharedModFilePathFuture.get();
+        if (modFilePath != null) {
+          if (modFileManagement != null) {
+            sharedModFile = modFileManagement.recover(modFilePath, this);
+          } else {
+            sharedModFile = new ModificationFile(modFilePath, true);
+          }
         }
       } catch (InterruptedException e) {
         Thread.currentThread().interrupt();
@@ -512,6 +549,10 @@ public class TsFileResource implements PersistentResource {
       }
     }
     return sharedModFile;
+  }
+
+  public long getSharedModFileOffset() {
+    return sharedModFileOffset;
   }
 
   @SuppressWarnings("java:S2886")
@@ -542,7 +583,7 @@ public class TsFileResource implements PersistentResource {
   }
 
   public ModificationFile getCompactionModFile() {
-    if (compactionModFile == null) {
+    if (compactionModFile == null && !TsFileResource.useSharedModFile) {
       synchronized (this) {
         if (compactionModFile == null) {
           compactionModFile = ModificationFile.getCompactionMods(this);
@@ -819,6 +860,7 @@ public class TsFileResource implements PersistentResource {
     if (getSharedModFile() != null && modFileManagement != null) {
       modFileManagement.releaseFor(this, sharedModFile);
     }
+    sharedModFile = null;
 
     // we either remove all mod files after successful compactions,
     // or remove compaction mod file only after failed compactions,
@@ -879,23 +921,6 @@ public class TsFileResource implements PersistentResource {
   @Override
   public String toString() {
     return String.format("{file: %s, status: %s}", file.toString(), getStatus());
-  }
-
-  @Override
-  public boolean equals(Object o) {
-    if (this == o) {
-      return true;
-    }
-    if (o == null || getClass() != o.getClass()) {
-      return false;
-    }
-    TsFileResource that = (TsFileResource) o;
-    return Objects.equals(file, that.file);
-  }
-
-  @Override
-  public int hashCode() {
-    return Objects.hash(file);
   }
 
   public boolean isDeleted() {
@@ -1554,8 +1579,9 @@ public class TsFileResource implements PersistentResource {
     return useSharedModFile;
   }
 
-  public void setModFileManagement(ModFileManagement modFileManagement) {
+  public TsFileResource setModFileManagement(ModFileManagement modFileManagement) {
     this.modFileManagement = modFileManagement;
+    return this;
   }
 
   public ModFileManagement getModFileManagement() {

@@ -37,7 +37,9 @@ import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.Compacti
 import org.apache.iotdb.db.storageengine.dataregion.compaction.utils.CompactionCheckerUtils;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.utils.CompactionTestFileWriter;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModEntry;
+import org.apache.iotdb.db.storageengine.dataregion.modification.ModFileManagement;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFile;
+import org.apache.iotdb.db.storageengine.dataregion.modification.PartitionLevelModFileManager;
 import org.apache.iotdb.db.storageengine.dataregion.modification.TreeDeletionEntry;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileRepairStatus;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
@@ -81,6 +83,8 @@ public class RepairUnsortedFileCompactionTest extends AbstractRepairDataTest {
       IoTDBDescriptor.getInstance().getConfig().isEnableUnseqSpaceCompaction();
   private boolean enableCrossSpaceCompaction =
       IoTDBDescriptor.getInstance().getConfig().isEnableCrossSpaceCompaction();
+  private ModFileManagement modFileManagement =
+      new PartitionLevelModFileManager(Integer.MAX_VALUE, 0);
 
   @Before
   public void setUp()
@@ -550,6 +554,7 @@ public class RepairUnsortedFileCompactionTest extends AbstractRepairDataTest {
   @Test
   public void testRepairOverlapBetweenFileWithModFile() throws IOException, IllegalPathException {
     TsFileResource seqResource1 = createEmptyFileAndResource(true);
+    seqResource1.setModFileManagement(modFileManagement);
     try (CompactionTestFileWriter writer = new CompactionTestFileWriter(seqResource1)) {
       writer.startChunkGroup("d1");
       writer.generateSimpleAlignedSeriesToCurrentDevice(
@@ -562,6 +567,7 @@ public class RepairUnsortedFileCompactionTest extends AbstractRepairDataTest {
     }
 
     TsFileResource seqResource2 = createEmptyFileAndResource(true);
+    seqResource2.setModFileManagement(modFileManagement);
     try (CompactionTestFileWriter writer = new CompactionTestFileWriter(seqResource2)) {
       writer.startChunkGroup("d1");
       writer.generateSimpleAlignedSeriesToCurrentDevice(

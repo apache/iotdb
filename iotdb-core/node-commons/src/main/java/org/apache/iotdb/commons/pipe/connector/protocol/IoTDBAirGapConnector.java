@@ -254,6 +254,59 @@ public abstract class IoTDBAirGapConnector extends IoTDBConnector {
   protected void transferFilePieces(
       final String pipeName,
       final long creationTime,
+      final File fileToTransfer,
+      final long srcFileOffset,
+      final File targetFileName,
+      final long targetFileOffset,
+      final AirGapSocket socket,
+      final boolean isMultiFile)
+      throws PipeException, IOException {
+    final int readFileBufferSize = PipeConfig.getInstance().getPipeConnectorReadFileBufferSize();
+    final byte[] readBuffer = new byte[readFileBufferSize];
+    long position = srcFileOffset;
+    try (final RandomAccessFile reader = new RandomAccessFile(fileToTransfer, "r")) {
+      reader.seek(srcFileOffset);
+      while (true) {
+        final int readLength = reader.read(readBuffer);
+        if (readLength == -1) {
+          break;
+        }
+
+        final byte[] payload =
+            readLength == readFileBufferSize
+                ? readBuffer
+                : Arrays.copyOfRange(readBuffer, 0, readLength);
+        if (!send(
+            pipeName,
+            creationTime,
+            socket,
+            isMultiFile
+                ? getTransferMultiFilePieceBytes(
+                    targetFileName.getName(), position + targetFileOffset, payload)
+                : getTransferSingleFilePieceBytes(
+                    targetFileName.getName(), position + targetFileOffset, payload))) {
+          final String errorMessage =
+              String.format("Transfer fileToTransfer %s error. Socket %s.", fileToTransfer, socket);
+          if (mayNeedHandshakeWhenFail()) {
+            // Send handshake because we don't know whether the receiver side configNode
+            // has set up a new one
+            sendHandshakeReq(socket);
+          }
+          receiverStatusHandler.handle(
+              new TSStatus(TSStatusCode.PIPE_RECEIVER_USER_CONFLICT_EXCEPTION.getStatusCode())
+                  .setMessage(errorMessage),
+              errorMessage,
+              fileToTransfer.toString());
+        } else {
+          position += readLength;
+        }
+      }
+    }
+  }
+
+  protected void transferFilePieces(
+      final String pipeName,
+      final long creationTime,
       final File file,
       final AirGapSocket socket,
       final boolean isMultiFile)

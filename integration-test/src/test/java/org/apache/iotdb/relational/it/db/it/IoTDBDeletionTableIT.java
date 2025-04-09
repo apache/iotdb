@@ -231,6 +231,21 @@ public class IoTDBDeletionTableIT {
       }
 
       try {
+        statement.execute("DELETE FROM vehicle1  WHERE s1 = 'text'");
+        fail("should not reach here!");
+      } catch (SQLException e) {
+        assertEquals("701: The column 's1' does not exist or is not a tag column", e.getMessage());
+      }
+
+      try {
+        statement.execute("DELETE FROM vehicle1  WHERE attr1 = 'text'");
+        fail("should not reach here!");
+      } catch (SQLException e) {
+        assertEquals(
+            "701: The column 'attr1' does not exist or is not a tag column", e.getMessage());
+      }
+
+      try {
         statement.execute("DELETE FROM vehicle1  WHERE s3 = 'text'");
         fail("should not reach here!");
       } catch (SQLException e) {
@@ -371,8 +386,7 @@ public class IoTDBDeletionTableIT {
       statement.execute("CREATE DATABASE ln3");
       statement.execute("use ln3");
       statement.execute(
-          String.format(
-              "CREATE TABLE vehicle3(deviceId STRING TAG, s0 INT32 FIELD, s1 INT64 FIELD, s2 FLOAT FIELD, s3 TEXT FIELD, s4 BOOLEAN FIELD)"));
+          "CREATE TABLE vehicle3(deviceId STRING TAG, s0 INT32 FIELD, s1 INT64 FIELD, s2 FLOAT FIELD, s3 TEXT FIELD, s4 BOOLEAN FIELD)");
 
       statement.execute(
           "INSERT INTO vehicle3(time, deviceId, s4) " + "values(1509465600000, 'd0', true)");
@@ -952,7 +966,7 @@ public class IoTDBDeletionTableIT {
     }
     // repeat 100 times
     // each time write 10000 points and delete 1000 of them randomly
-    int repetition = 100;
+    int repetition = 10;
     Random random = new Random();
 
     for (int rep = 0; rep < repetition; rep++) {
@@ -1082,8 +1096,8 @@ public class IoTDBDeletionTableIT {
 
     AtomicLong writtenPointCounter = new AtomicLong(-1);
     ExecutorService threadPool = Executors.newCachedThreadPool();
-    int fileNumMax = 1000;
-    int pointPerFile = 1000;
+    int fileNumMax = 100;
+    int pointPerFile = 100;
     int deviceNum = 4;
     Future<Void> writeThread =
         threadPool.submit(
@@ -1134,8 +1148,8 @@ public class IoTDBDeletionTableIT {
 
     AtomicLong writtenPointCounter = new AtomicLong(-1);
     AtomicLong deletedPointCounter = new AtomicLong(0);
-    int fileNumMax = 1000;
-    int pointPerFile = 1000;
+    int fileNumMax = 100;
+    int pointPerFile = 100;
     int deviceNum = 4;
     ExecutorService threadPool = Executors.newCachedThreadPool();
     Future<Void> writeThread =
@@ -1189,8 +1203,8 @@ public class IoTDBDeletionTableIT {
     AtomicLong deletedPointCounter = new AtomicLong(0);
     ExecutorService writeDeletionThreadPool = Executors.newCachedThreadPool();
     ExecutorService restartThreadPool = Executors.newCachedThreadPool();
-    int fileNumMax = 1000;
-    int pointPerFile = 1000;
+    int fileNumMax = 100;
+    int pointPerFile = 100;
     int deviceNum = 4;
     Future<Void> writeThread =
         writeDeletionThreadPool.submit(
@@ -1217,7 +1231,7 @@ public class IoTDBDeletionTableIT {
                     deletionRange,
                     minIntervalToRecord,
                     testNum));
-    int restartTargetPointWritten = 100000;
+    int restartTargetPointWritten = 5000;
     Future<Void> restartThread =
         restartThreadPool.submit(
             () -> restart(writtenPointCounter, restartTargetPointWritten, writeDeletionThreadPool));

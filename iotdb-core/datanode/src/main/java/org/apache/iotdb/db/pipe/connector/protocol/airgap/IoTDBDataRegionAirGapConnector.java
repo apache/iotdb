@@ -35,6 +35,7 @@ import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.terminate.PipeTerminateEvent;
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
+import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFile;
 import org.apache.iotdb.db.storageengine.dataregion.wal.exception.WALPipeException;
 import org.apache.iotdb.pipe.api.annotation.TableModel;
 import org.apache.iotdb.pipe.api.annotation.TreeModel;
@@ -45,6 +46,7 @@ import org.apache.iotdb.pipe.api.exception.PipeConnectionException;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 import org.apache.iotdb.rpc.TSStatusCode;
 
+import org.apache.tsfile.utils.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -297,6 +299,50 @@ public class IoTDBDataRegionAirGapConnector extends IoTDBDataNodeAirGapConnector
     }
   }
 
+  /**
+   * Combine the exclusive mod file and the shared mod file of the sender as the receiver's
+   * exclusive mod file.
+   *
+   * @return the combined mod file and its length
+   */
+  private Pair<File, Long> doTransferModFile(
+      final AirGapSocket socket, final PipeTsFileInsertionEvent pipeTsFileInsertionEvent)
+      throws IOException {
+    final String pipeName = pipeTsFileInsertionEvent.getPipeName();
+    final long creationTime = pipeTsFileInsertionEvent.getCreationTime();
+    final File tsFile = pipeTsFileInsertionEvent.getTsFile();
+    File targetModFile = ModificationFile.getExclusiveMods(tsFile);
+    long lengthSent = 0;
+    if (pipeTsFileInsertionEvent.isWithExclusiveMod()) {
+      transferFilePieces(
+          pipeName,
+          creationTime,
+          pipeTsFileInsertionEvent.getExclusiveModFile(),
+          0,
+          targetModFile,
+          0,
+          socket,
+          true);
+      lengthSent = pipeTsFileInsertionEvent.getExclusiveModFile().length();
+    }
+
+    if (pipeTsFileInsertionEvent.isWithSharedMod()) {
+      transferFilePieces(
+          pipeName,
+          creationTime,
+          pipeTsFileInsertionEvent.getSharedModFile(),
+          pipeTsFileInsertionEvent.getSharedModFileOffset(),
+          targetModFile,
+          lengthSent,
+          socket,
+          true);
+      lengthSent +=
+          pipeTsFileInsertionEvent.getSharedModFile().length()
+              - pipeTsFileInsertionEvent.getSharedModFileOffset();
+    }
+    return new Pair<>(targetModFile, lengthSent);
+  }
+
   private void doTransfer(
       final AirGapSocket socket, final PipeTsFileInsertionEvent pipeTsFileInsertionEvent)
       throws PipeException, IOException {
@@ -306,9 +352,10 @@ public class IoTDBDataRegionAirGapConnector extends IoTDBDataNodeAirGapConnector
     final String errorMessage = String.format("Seal file %s error. Socket %s.", tsFile, socket);
 
     // 1. Transfer file piece by piece, and mod if needed
-    if (pipeTsFileInsertionEvent.isWithMod() && supportModsIfIsDataNodeReceiver) {
-      final File modFile = pipeTsFileInsertionEvent.getModFile();
-      transferFilePieces(pipeName, creationTime, modFile, socket, true);
+    boolean modFileExists =
+        pipeTsFileInsertionEvent.isWithExclusiveMod() || pipeTsFileInsertionEvent.isWithSharedMod();
+    if (modFileExists && supportModsIfIsDataNodeReceiver) {
+      final Pair<File, Long> modFileAndLength = doTransferModFile(socket, pipeTsFileInsertionEvent);
       transferFilePieces(pipeName, creationTime, tsFile, socket, true);
       // 2. Transfer file seal signal with mod, which means the file is transferred completely
       if (!send(
@@ -316,8 +363,8 @@ public class IoTDBDataRegionAirGapConnector extends IoTDBDataNodeAirGapConnector
           creationTime,
           socket,
           PipeTransferTsFileSealWithModReq.toTPipeTransferBytes(
-              modFile.getName(),
-              modFile.length(),
+              modFileAndLength.getLeft().getName(),
+              modFileAndLength.getRight(),
               tsFile.getName(),
               tsFile.length(),
               pipeTsFileInsertionEvent.isTableModelEvent()

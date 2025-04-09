@@ -46,6 +46,7 @@ import org.apache.iotdb.db.pipe.event.common.deletion.PipeDeleteDataNodeEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeInsertNodeTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
+import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFile;
 import org.apache.iotdb.pipe.api.annotation.TableModel;
 import org.apache.iotdb.pipe.api.annotation.TreeModel;
 import org.apache.iotdb.pipe.api.customizer.configuration.PipeConnectorRuntimeConfiguration;
@@ -57,6 +58,7 @@ import org.apache.iotdb.pipe.api.exception.PipeConnectionException;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 import org.apache.iotdb.rpc.TSStatusCode;
 
+import org.apache.tsfile.utils.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -365,10 +367,52 @@ public class PipeConsensusSyncConnector extends IoTDBConnector {
     }
   }
 
+  /**
+   * Combine the exclusive mod file and the shared mod file of the sender as the receiver's
+   * exclusive mod file.
+   *
+   * @return the combined mod file
+   */
+  private Pair<File, Long> doTransferModFile(
+      final SyncPipeConsensusServiceClient syncPipeConsensusServiceClient,
+      final PipeTsFileInsertionEvent pipeTsFileInsertionEvent,
+      TCommitId tCommitId,
+      TConsensusGroupId tConsensusGroupId)
+      throws IOException {
+    final File tsFile = pipeTsFileInsertionEvent.getTsFile();
+    File targetModFile = ModificationFile.getExclusiveMods(tsFile);
+    if (pipeTsFileInsertionEvent.isWithExclusiveMod()) {
+      transferFilePieces(
+          pipeTsFileInsertionEvent.getExclusiveModFile(),
+          0,
+          targetModFile,
+          0,
+          syncPipeConsensusServiceClient,
+          true,
+          tCommitId,
+          tConsensusGroupId);
+    }
+    long lengthSent = pipeTsFileInsertionEvent.getExclusiveModFile().length();
+    if (pipeTsFileInsertionEvent.isWithSharedMod()) {
+      transferFilePieces(
+          pipeTsFileInsertionEvent.getSharedModFile(),
+          pipeTsFileInsertionEvent.getSharedModFileOffset(),
+          targetModFile,
+          lengthSent,
+          syncPipeConsensusServiceClient,
+          true,
+          tCommitId,
+          tConsensusGroupId);
+    }
+    lengthSent +=
+        pipeTsFileInsertionEvent.getSharedModFile().length()
+            - pipeTsFileInsertionEvent.getSharedModFileOffset();
+    return new Pair<>(targetModFile, lengthSent);
+  }
+
   private void doTransfer(final PipeTsFileInsertionEvent pipeTsFileInsertionEvent)
       throws PipeException {
     final File tsFile = pipeTsFileInsertionEvent.getTsFile();
-    final File modFile = pipeTsFileInsertionEvent.getModFile();
     final TPipeConsensusTransferResp resp;
 
     try (final SyncPipeConsensusServiceClient syncPipeConsensusServiceClient =
@@ -381,17 +425,22 @@ public class PipeConsensusSyncConnector extends IoTDBConnector {
           new TConsensusGroupId(TConsensusGroupType.DataRegion, consensusGroupId);
 
       // 1. Transfer tsFile, and mod file if exists
-      if (pipeTsFileInsertionEvent.isWithMod()) {
-        transferFilePieces(
-            modFile, syncPipeConsensusServiceClient, true, tCommitId, tConsensusGroupId);
+      if (pipeTsFileInsertionEvent.isWithExclusiveMod()
+          || pipeTsFileInsertionEvent.isWithSharedMod()) {
+        Pair<File, Long> modFileAndLength =
+            doTransferModFile(
+                syncPipeConsensusServiceClient,
+                pipeTsFileInsertionEvent,
+                tCommitId,
+                tConsensusGroupId);
         transferFilePieces(
             tsFile, syncPipeConsensusServiceClient, true, tCommitId, tConsensusGroupId);
         // 2. Transfer file seal signal with mod, which means the file is transferred completely
         resp =
             syncPipeConsensusServiceClient.pipeConsensusTransfer(
                 PipeConsensusTsFileSealWithModReq.toTPipeConsensusTransferReq(
-                    modFile.getName(),
-                    modFile.length(),
+                    modFileAndLength.getLeft().getName(),
+                    modFileAndLength.getRight(),
                     tsFile.getName(),
                     tsFile.length(),
                     pipeTsFileInsertionEvent.getFlushPointCount(),
@@ -436,6 +485,87 @@ public class PipeConsensusSyncConnector extends IoTDBConnector {
     }
 
     LOGGER.info("Successfully transferred file {}.", tsFile);
+  }
+
+  protected void transferFilePieces(
+      final File srcFile,
+      final long srcFileOffset,
+      final File targetFile,
+      final long targetFileOffset,
+      final SyncPipeConsensusServiceClient syncPipeConsensusServiceClient,
+      final boolean isMultiFile,
+      final TCommitId tCommitId,
+      final TConsensusGroupId tConsensusGroupId)
+      throws PipeException, IOException {
+    final int readFileBufferSize = PipeConfig.getInstance().getPipeConnectorReadFileBufferSize();
+    final byte[] readBuffer = new byte[readFileBufferSize];
+    long position = srcFileOffset;
+    try (final RandomAccessFile reader = new RandomAccessFile(srcFile, "r")) {
+      reader.seek(srcFileOffset);
+
+      while (true) {
+        final int readLength = reader.read(readBuffer);
+        if (readLength == -1) {
+          break;
+        }
+
+        final byte[] payLoad =
+            readLength == readFileBufferSize
+                ? readBuffer
+                : Arrays.copyOfRange(readBuffer, 0, readLength);
+        final PipeConsensusTransferFilePieceResp resp;
+        try {
+          resp =
+              PipeConsensusTransferFilePieceResp.fromTPipeConsensusTransferResp(
+                  syncPipeConsensusServiceClient.pipeConsensusTransfer(
+                      isMultiFile
+                          ? PipeConsensusTsFilePieceWithModReq.toTPipeConsensusTransferReq(
+                              targetFile.getName(),
+                              position + targetFileOffset,
+                              payLoad,
+                              tCommitId,
+                              tConsensusGroupId,
+                              thisDataNodeId)
+                          : PipeConsensusTsFilePieceReq.toTPipeConsensusTransferReq(
+                              targetFile.getName(),
+                              position + targetFileOffset,
+                              payLoad,
+                              tCommitId,
+                              tConsensusGroupId,
+                              thisDataNodeId)));
+        } catch (Exception e) {
+          throw new PipeConnectionException(
+              String.format(
+                  "Network error when transfer srcFile %s to %s, because %s.",
+                  srcFile, targetFile, e.getMessage()),
+              e);
+        }
+
+        position += readLength;
+
+        final TSStatus status = resp.getStatus();
+        // This case only happens when the connection is broken, and the connector is reconnected
+        // to the receiver, then the receiver will redirect the srcFile position to the last
+        // position
+        if (status.getCode()
+            == TSStatusCode.PIPE_CONSENSUS_TRANSFER_FILE_OFFSET_RESET.getStatusCode()) {
+          position = resp.getEndWritingOffset() - targetFileOffset;
+          reader.seek(position);
+          LOGGER.info("Redirect srcFile position to {}.", position);
+          continue;
+        }
+
+        // Only handle the failed statuses to avoid string format performance overhead
+        if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()
+            && status.getCode() != TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode()) {
+          receiverStatusHandler.handle(
+              resp.getStatus(),
+              String.format(
+                  "Transfer srcFile %s error, result status %s.", srcFile, resp.getStatus()),
+              srcFile.getName());
+        }
+      }
+    }
   }
 
   protected void transferFilePieces(

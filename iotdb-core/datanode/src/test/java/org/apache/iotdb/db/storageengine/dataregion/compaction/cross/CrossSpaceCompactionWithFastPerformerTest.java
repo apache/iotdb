@@ -38,6 +38,7 @@ import org.apache.iotdb.db.storageengine.dataregion.compaction.utils.CompactionC
 import org.apache.iotdb.db.storageengine.dataregion.compaction.utils.CompactionConfigRestorer;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.utils.CompactionFileGeneratorUtils;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.utils.CompactionTimeseriesType;
+import org.apache.iotdb.db.storageengine.dataregion.modification.PartitionLevelModFileManager;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileManager;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceList;
@@ -155,6 +156,7 @@ public class CrossSpaceCompactionWithFastPerformerTest {
           chunkPagePointsNum.add(pagePointsNum);
           TsFileResource tsFileResource =
               CompactionFileGeneratorUtils.generateTsFileResource(true, 1, COMPACTION_TEST_SG);
+          tsFileResource.setModFileManagement(new PartitionLevelModFileManager());
           CompactionFileGeneratorUtils.writeTsFile(
               fullPath, chunkPagePointsNum, 2000L, tsFileResource);
           // has mods files before compaction
@@ -386,13 +388,17 @@ public class CrossSpaceCompactionWithFastPerformerTest {
             // seq mods
             Map<String, Pair<Long, Long>> toDeleteTimeseriesAndTime = new HashMap<>();
             toDeleteTimeseriesAndTime.put(fullPaths[1], new Pair<>(250L, 300L));
-            CompactionFileGeneratorUtils.generateMods(
-                toDeleteTimeseriesAndTime, seqResources.get(0), true);
+            for (TsFileResource seqResource : seqResources) {
+              CompactionFileGeneratorUtils.generateMods(
+                  toDeleteTimeseriesAndTime, seqResource, true);
+            }
             // unseq mods
             toDeleteTimeseriesAndTime = new HashMap<>();
             toDeleteTimeseriesAndTime.put(fullPaths[1], new Pair<>(0L, 100L));
-            CompactionFileGeneratorUtils.generateMods(
-                toDeleteTimeseriesAndTime, unseqResources.get(5), true);
+            for (TsFileResource unseqResource : unseqResources) {
+              CompactionFileGeneratorUtils.generateMods(
+                  toDeleteTimeseriesAndTime, unseqResource, true);
+            }
 
             // remove data in source data list
             List<TimeValuePair> timeValuePairs = sourceData.get(fullPaths[1]);
@@ -433,6 +439,7 @@ public class CrossSpaceCompactionWithFastPerformerTest {
               TsFileResource targetResource =
                   new TsFileResource(
                       TsFileNameGenerator.increaseCrossCompactionCnt(seqResource).getTsFile());
+              targetResource.setModFileManagement(seqResource.getModFileManagement());
               targetResource.deserialize();
               targetResource.setStatusForTest(TsFileResourceStatus.NORMAL);
               targetTsfileResourceList.add(targetResource);
@@ -484,6 +491,7 @@ public class CrossSpaceCompactionWithFastPerformerTest {
           chunkPagePointsNum.add(pagePointsNum);
           TsFileResource tsFileResource =
               CompactionFileGeneratorUtils.generateTsFileResource(false, 1, COMPACTION_TEST_SG);
+          tsFileResource.setModFileManagement(new PartitionLevelModFileManager());
           CompactionFileGeneratorUtils.writeTsFile(
               fullPath, chunkPagePointsNum, 2000L, tsFileResource);
           // has mods files before compaction
@@ -690,6 +698,8 @@ public class CrossSpaceCompactionWithFastPerformerTest {
             toDeleteTimeseriesAndTime.put(fullPaths[1], new Pair<>(2500L, 2600L));
             CompactionFileGeneratorUtils.generateMods(
                 toDeleteTimeseriesAndTime, unseqResources.get(0), true);
+            CompactionFileGeneratorUtils.generateMods(
+                toDeleteTimeseriesAndTime, seqResources.get(1), true);
             // seq mods
             toDeleteTimeseriesAndTime = new HashMap<>();
             toDeleteTimeseriesAndTime.put(fullPaths[1], new Pair<>(0L, 100L));
@@ -734,6 +744,7 @@ public class CrossSpaceCompactionWithFastPerformerTest {
               TsFileResource targetResource =
                   new TsFileResource(
                       TsFileNameGenerator.increaseCrossCompactionCnt(seqResource).getTsFile());
+              targetResource.setModFileManagement(seqResource.getModFileManagement());
               targetResource.deserialize();
               targetResource.setStatusForTest(TsFileResourceStatus.NORMAL);
               targetTsfileResourceList.add(targetResource);
@@ -784,6 +795,7 @@ public class CrossSpaceCompactionWithFastPerformerTest {
           chunkPagePointsNum.add(pagePointsNum);
           TsFileResource tsFileResource =
               CompactionFileGeneratorUtils.generateTsFileResource(false, 1, COMPACTION_TEST_SG);
+          tsFileResource.setModFileManagement(new PartitionLevelModFileManager());
           CompactionFileGeneratorUtils.writeTsFile(
               fullPath, chunkPagePointsNum, 2000L, tsFileResource);
           // has mods files before compaction
@@ -990,6 +1002,8 @@ public class CrossSpaceCompactionWithFastPerformerTest {
             toDeleteTimeseriesAndTime.put(fullPaths[1], new Pair<>(2500L, 2600L));
             CompactionFileGeneratorUtils.generateMods(
                 toDeleteTimeseriesAndTime, unseqResources.get(0), true);
+            CompactionFileGeneratorUtils.generateMods(
+                toDeleteTimeseriesAndTime, seqResources.get(1), true);
             // seq mods
             toDeleteTimeseriesAndTime = new HashMap<>();
             toDeleteTimeseriesAndTime.put(fullPaths[1], new Pair<>(0L, 100L));
@@ -1034,6 +1048,7 @@ public class CrossSpaceCompactionWithFastPerformerTest {
               TsFileResource targetResource =
                   new TsFileResource(
                       TsFileNameGenerator.increaseCrossCompactionCnt(seqResource).getTsFile());
+              targetResource.setModFileManagement(seqResource.getModFileManagement());
               targetResource.deserialize();
               targetResource.setStatusForTest(TsFileResourceStatus.NORMAL);
               targetTsfileResourceList.add(targetResource);

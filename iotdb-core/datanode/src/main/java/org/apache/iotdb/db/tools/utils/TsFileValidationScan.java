@@ -102,7 +102,7 @@ public class TsFileValidationScan extends TsFileSequenceScan {
           "{} does not exist ,skip it.", file.getAbsolutePath() + TsFileResource.RESOURCE_SUFFIX);
       return false;
     } else {
-      resource.deserialize();
+      resource.deserializeWithoutModFile();
     }
     isBadFileMap.put(file.getName(), false);
     return true;

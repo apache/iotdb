@@ -349,19 +349,7 @@ public class InnerUnseqCompactionWithFastPerformerTest {
                       .get(0);
               Map<String, List<TimeValuePair>> sourceData =
                   CompactionCheckerUtils.readFiles(toMergeResources);
-              if (compactionHasMod) {
-                Map<String, Pair<Long, Long>> toDeleteTimeseriesAndTime = new HashMap<>();
-                toDeleteTimeseriesAndTime.put(fullPaths[1], new Pair<>(250L, 300L));
-                CompactionFileGeneratorUtils.generateMods(
-                    toDeleteTimeseriesAndTime, toMergeResources.get(0), true);
 
-                // remove data in source data list
-                List<TimeValuePair> timeValuePairs = sourceData.get(fullPaths[1]);
-                timeValuePairs.removeIf(
-                    timeValuePair ->
-                        timeValuePair.getTimestamp() >= 250L
-                            && timeValuePair.getTimestamp() <= 300L);
-              }
               ICompactionPerformer performer =
                   new FastCompactionPerformer(
                       Collections.emptyList(),

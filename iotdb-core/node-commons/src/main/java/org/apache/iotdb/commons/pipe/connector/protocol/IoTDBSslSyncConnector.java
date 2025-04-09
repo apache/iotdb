@@ -170,14 +170,28 @@ public abstract class IoTDBSslSyncConnector extends IoTDBConnector {
 
   protected void transferFilePieces(
       final Map<Pair<String, Long>, Double> pipe2WeightMap,
-      final File file,
+      File file,
+      final Pair<IoTDBSyncClient, Boolean> clientAndStatus,
+      final boolean isMultiFile)
+      throws PipeException, IOException {
+    transferFilePieces(pipe2WeightMap, file, 0, file, 0, clientAndStatus, isMultiFile);
+  }
+
+  protected void transferFilePieces(
+      final Map<Pair<String, Long>, Double> pipe2WeightMap,
+      File srcFile,
+      long srcFileOffset,
+      File targetFile,
+      long targetFileOffset,
       final Pair<IoTDBSyncClient, Boolean> clientAndStatus,
       final boolean isMultiFile)
       throws PipeException, IOException {
     final int readFileBufferSize = PipeConfig.getInstance().getPipeConnectorReadFileBufferSize();
     final byte[] readBuffer = new byte[readFileBufferSize];
     long position = 0;
-    try (final RandomAccessFile reader = new RandomAccessFile(file, "r")) {
+    try (final RandomAccessFile reader = new RandomAccessFile(srcFile, "r")) {
+      reader.seek(srcFileOffset);
+
       while (true) {
         final int readLength = reader.read(readBuffer);
         if (readLength == -1) {
@@ -193,8 +207,10 @@ public abstract class IoTDBSslSyncConnector extends IoTDBConnector {
           final TPipeTransferReq req =
               compressIfNeeded(
                   isMultiFile
-                      ? getTransferMultiFilePieceReq(file.getName(), position, payLoad)
-                      : getTransferSingleFilePieceReq(file.getName(), position, payLoad));
+                      ? getTransferMultiFilePieceReq(
+                          targetFile.getName(), position + targetFileOffset, payLoad)
+                      : getTransferSingleFilePieceReq(
+                          targetFile.getName(), position + targetFileOffset, payLoad));
           pipe2WeightMap.forEach(
               (namePair, weight) ->
                   rateLimitIfNeeded(
@@ -209,7 +225,8 @@ public abstract class IoTDBSslSyncConnector extends IoTDBConnector {
           clientAndStatus.setRight(false);
           throw new PipeConnectionException(
               String.format(
-                  "Network error when transfer file %s, because %s.", file, e.getMessage()),
+                  "Network error when transfer file %s to %s, because %s.",
+                  srcFile, targetFile, e.getMessage()),
               e);
         }
 
@@ -219,7 +236,7 @@ public abstract class IoTDBSslSyncConnector extends IoTDBConnector {
         // This case only happens when the connection is broken, and the connector is reconnected
         // to the receiver, then the receiver will redirect the file position to the last position
         if (status.getCode() == TSStatusCode.PIPE_TRANSFER_FILE_OFFSET_RESET.getStatusCode()) {
-          position = resp.getEndWritingOffset();
+          position = resp.getEndWritingOffset() - targetFileOffset;
           reader.seek(position);
           LOGGER.info("Redirect file position to {}.", position);
           continue;
@@ -235,8 +252,10 @@ public abstract class IoTDBSslSyncConnector extends IoTDBConnector {
             && status.getCode() != TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode()) {
           receiverStatusHandler.handle(
               resp.getStatus(),
-              String.format("Transfer file %s error, result status %s.", file, resp.getStatus()),
-              file.getName());
+              String.format(
+                  "Transfer file %s to %s error, result status %s.",
+                  srcFile, targetFile, resp.getStatus()),
+              srcFile.getName());
         }
       }
     }

@@ -78,6 +78,7 @@ public class TableDeviceSchemaCacheTest {
 
   @BeforeClass
   public static void prepareEnvironment() {
+
     final List<ColumnHeader> columnHeaderList =
         Arrays.asList(
             new ColumnHeader("hebei", TSDataType.STRING),

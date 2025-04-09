@@ -33,6 +33,8 @@ import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.Compacti
 import org.apache.iotdb.db.storageengine.dataregion.compaction.utils.CompactionCheckerUtils;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.utils.CompactionConfigRestorer;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.utils.CompactionFileGeneratorUtils;
+import org.apache.iotdb.db.storageengine.dataregion.modification.ModFileManagement;
+import org.apache.iotdb.db.storageengine.dataregion.modification.PartitionLevelModFileManager;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.generator.TsFileNameGenerator;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
@@ -70,6 +72,9 @@ public class FastCompactionPerformerAlignedTest {
               + storageGroup.concat(File.separator)
               + "0".concat(File.separator)
               + "0".concat(File.separator));
+
+  private final ModFileManagement modFileManagement =
+      new PartitionLevelModFileManager(Integer.MAX_VALUE, 0);
 
   @Before
   public void setUp() throws Exception {
@@ -184,6 +189,7 @@ public class FastCompactionPerformerAlignedTest {
     for (int i = 1; i < 31; i++) {
       TsFileResource resource =
           new TsFileResource(new File(dataDirectory, String.format("%d-%d-0-0.tsfile", i, i)));
+      resource.setModFileManagement(modFileManagement);
       TestUtilsForAlignedSeries.writeTsFile(
           devices.toArray(new String[] {}),
           schemas.toArray(new IMeasurementSchema[0]),
