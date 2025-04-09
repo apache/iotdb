@@ -270,6 +270,7 @@ public abstract class SubscriptionPrefetchingQueue {
             committedCleaner, pollableNacker, responsePrefetcher, responseSerializer);
         return true;
       } else {
+        peekOnce();
         remapInFlightEventsSnapshot(committedCleaner, pollableNacker);
         return false;
       }
