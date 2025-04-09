@@ -83,7 +83,7 @@ public class QueryContext {
     this.timeout = timeout;
   }
 
-  private boolean checkIfModificationExists(TsFileResource tsFileResource) {
+  protected boolean checkIfModificationExists(TsFileResource tsFileResource) {
     if (nonExistentModFiles.contains(tsFileResource.getTsFileID())) {
       return false;
     }
