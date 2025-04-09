@@ -33,6 +33,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.Symbol;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Literal;
 import org.apache.iotdb.db.queryengine.statistics.QueryPlanStatistics;
+
 import org.apache.tsfile.read.filter.basic.Filter;
 
 import java.time.ZoneId;
@@ -367,7 +368,6 @@ public class MPPQueryContext {
   List<String> attributeColumns;
   List<Literal> literalList;
   Map<Symbol, ColumnSchema> assignments;
-
 
   public void setAssignments(Map<Symbol, ColumnSchema> assignments) {
     this.assignments = assignments;

@@ -28,7 +28,6 @@ import org.apache.iotdb.commons.schema.column.ColumnHeaderConstant;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.protocol.client.ConfigNodeClient;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.QueryId;
 import org.apache.iotdb.db.queryengine.common.SessionInfo;
@@ -165,6 +164,7 @@ public class TableLogicalPlanner {
     sb.append(queryContext.getZoneId());
     return sb.toString();
   }
+
   private static final Logger logger = LoggerFactory.getLogger(TableLogicalPlanner.class);
   private static final IoTDBConfig CONFIG = IoTDBDescriptor.getInstance().getConfig();
 
@@ -223,7 +223,7 @@ public class TableLogicalPlanner {
 
     final long schemaFetchCost = System.nanoTime() - startTime;
     QueryPlanCostMetricSet.getInstance()
-            .recordPlanCost(TABLE_TYPE, SCHEMA_FETCHER, schemaFetchCost);
+        .recordPlanCost(TABLE_TYPE, SCHEMA_FETCHER, schemaFetchCost);
     queryContext.setFetchSchemaCost(schemaFetchCost);
 
     if (deviceEntries.isEmpty()) {
@@ -273,7 +273,7 @@ public class TableLogicalPlanner {
     }
   }
 
-  boolean enableCache = false;
+  boolean enableCache = true;
 
   public LogicalQueryPlan plan(final Analysis analysis) {
     long startTime = System.nanoTime();
@@ -300,9 +300,12 @@ public class TableLogicalPlanner {
           cachedValue.getLiteralReference().get(i).replace(literalList.get(i));
         }
 
-        logger.info("Logical plan is cached, adjustment cost time: {}", System.nanoTime() - curTime);
+        logger.info(
+            "Logical plan is cached, adjustment cost time: {}", System.nanoTime() - curTime);
         logger.info("Logical plan is cached, cost time: {}", System.nanoTime() - totalStartTime);
-        logger.info("Logical plan is cached, fetch schema cost time: {}", queryContext.getFetchPartitionCost() + queryContext.getFetchSchemaCost());
+        logger.info(
+            "Logical plan is cached, fetch schema cost time: {}",
+            queryContext.getFetchPartitionCost() + queryContext.getFetchSchemaCost());
         return new LogicalQueryPlan(queryContext, cachedValue.getPlanNode());
       }
       // Following implementation of plan should be based on the generalizedStatement
@@ -332,7 +335,8 @@ public class TableLogicalPlanner {
                     warningCollector,
                     PlanOptimizersStatsCollector.createPlanOptimizersStatsCollector()));
       }
-      logger.info("Logical plan is generated, optimization cost time: {}", System.nanoTime() - startTime);
+      logger.info(
+          "Logical plan is generated, optimization cost time: {}", System.nanoTime() - startTime);
       long logicalOptimizationCost =
           System.nanoTime()
               - startTime
@@ -353,7 +357,9 @@ public class TableLogicalPlanner {
               queryContext.getMetaDataExpressionList(),
               queryContext.getAttributeColumns());
     }
-    logger.info("Logical plan is generated, fetch schema cost time: {}", queryContext.getFetchPartitionCost() + queryContext.getFetchSchemaCost());
+    logger.info(
+        "Logical plan is generated, fetch schema cost time: {}",
+        queryContext.getFetchPartitionCost() + queryContext.getFetchSchemaCost());
     logger.info("Logical plan is generated, cost time: {}", System.nanoTime() - totalStartTime);
     return new LogicalQueryPlan(queryContext, planNode);
   }

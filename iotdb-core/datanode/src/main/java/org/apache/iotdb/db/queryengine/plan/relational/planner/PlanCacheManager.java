@@ -41,7 +41,13 @@ public class PlanCacheManager {
     planCache.put(
         cachedKey,
         new CachedValue(
-            planNodeTree, literalReference, header, symbolMap, assignments, expressionList, columnAttributes));
+            planNodeTree,
+            literalReference,
+            header,
+            symbolMap,
+            assignments,
+            expressionList,
+            columnAttributes));
   }
 
   public CachedValue getCachedValue(String cacheKey) {
