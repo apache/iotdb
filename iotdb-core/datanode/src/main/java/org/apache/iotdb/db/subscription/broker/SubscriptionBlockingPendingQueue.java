@@ -33,6 +33,8 @@ public abstract class SubscriptionBlockingPendingQueue {
 
   public abstract Event waitedPoll();
 
+  public abstract Event peek();
+
   public int size() {
     return inputPendingQueue.size();
   }
