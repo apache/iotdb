@@ -94,12 +94,10 @@ public class PageCacheDeletionBuffer implements DeletionBuffer {
   private volatile File logFile;
   private volatile FileOutputStream logStream;
   private volatile FileChannel logChannel;
-  // Max progressIndex among current .deletion file.
-  private ProgressIndex maxProgressIndexInCurrentFile = MinimumProgressIndex.INSTANCE;
-  // Max progressIndex among last .deletion file. Used by PersistTask for naming .deletion file.
+  // Max progressIndex among current .deletion file. Used by PersistTask for naming .deletion file.
   // Since deletions are written serially, DAL is also written serially. This ensures that the
   // maxProgressIndex of each batch increases in the same order as the physical time.
-  private volatile ProgressIndex maxProgressIndexInLastFile = MinimumProgressIndex.INSTANCE;
+  private ProgressIndex maxProgressIndexInCurrentFile = MinimumProgressIndex.INSTANCE;
 
   public PageCacheDeletionBuffer(String dataRegionId, String baseDirectory) {
     this.dataRegionId = dataRegionId;
@@ -202,7 +200,6 @@ public class PageCacheDeletionBuffer implements DeletionBuffer {
   private void resetFileAttribute() {
     // Reset file attributes.
     this.totalSize.set(0);
-    this.maxProgressIndexInLastFile = this.maxProgressIndexInCurrentFile;
     this.maxProgressIndexInCurrentFile = MinimumProgressIndex.INSTANCE;
   }
 
@@ -221,34 +218,40 @@ public class PageCacheDeletionBuffer implements DeletionBuffer {
   }
 
   private void switchLoggingFile() throws IOException {
-    resetFileAttribute();
-    ProgressIndex curProgressIndex =
-        ReplicateProgressDataNodeManager.extractLocalSimpleProgressIndex(
-            maxProgressIndexInLastFile);
-    // PipeConsensus ensures that deleteDataNodes use recoverProgressIndex.
-    if (!(curProgressIndex instanceof SimpleProgressIndex)) {
-      throw new IOException("Invalid deletion progress index: " + curProgressIndex);
+    try {
+      ProgressIndex curProgressIndex =
+          ReplicateProgressDataNodeManager.extractLocalSimpleProgressIndex(
+              maxProgressIndexInCurrentFile);
+      // PipeConsensus ensures that deleteDataNodes use recoverProgressIndex.
+      if (!(curProgressIndex instanceof SimpleProgressIndex)) {
+        throw new IOException("Invalid deletion progress index: " + curProgressIndex);
+      }
+      SimpleProgressIndex progressIndex = (SimpleProgressIndex) curProgressIndex;
+      // Deletion file name format:
+      // "_{lastFileMaxRebootTimes}_{lastFileMaxMemTableFlushOrderId}.deletion"
+      this.logFile =
+          new File(
+              baseDirectory,
+              String.format(
+                  "_%d-%d%s",
+                  progressIndex.getRebootTimes(),
+                  progressIndex.getMemTableFlushOrderId(),
+                  DeletionResourceManager.DELETION_FILE_SUFFIX));
+      this.logStream = new FileOutputStream(logFile, true);
+      this.logChannel = logStream.getChannel();
+      // Create file && write magic string
+      if (!logFile.exists() || logFile.length() == 0) {
+        this.logChannel.write(
+            ByteBuffer.wrap(
+                DeletionResourceManager.MAGIC_VERSION_V1.getBytes(StandardCharsets.UTF_8)));
+      }
+      LOGGER.info(
+          "Deletion persist-{}: switching to a new file, current writing: {}",
+          dataRegionId,
+          logFile);
+    } finally {
+      resetFileAttribute();
     }
-    SimpleProgressIndex progressIndex = (SimpleProgressIndex) curProgressIndex;
-    // Deletion file name format: "_{rebootTimes}_{memTableFlushOrderId}.deletion"
-    this.logFile =
-        new File(
-            baseDirectory,
-            String.format(
-                "_%d-%d%s",
-                progressIndex.getRebootTimes(),
-                progressIndex.getMemTableFlushOrderId(),
-                DeletionResourceManager.DELETION_FILE_SUFFIX));
-    this.logStream = new FileOutputStream(logFile, true);
-    this.logChannel = logStream.getChannel();
-    // Create file && write magic string
-    if (!logFile.exists() || logFile.length() == 0) {
-      this.logChannel.write(
-          ByteBuffer.wrap(
-              DeletionResourceManager.MAGIC_VERSION_V1.getBytes(StandardCharsets.UTF_8)));
-    }
-    LOGGER.info(
-        "Deletion persist-{}: switching to a new file, current writing: {}", dataRegionId, logFile);
   }
 
   @Override

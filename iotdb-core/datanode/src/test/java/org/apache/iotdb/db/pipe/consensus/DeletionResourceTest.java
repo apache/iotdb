@@ -105,17 +105,17 @@ public class DeletionResourceTest {
   @Test
   public void testAddBatchDeletionResource()
       throws IllegalPathException, IOException, InterruptedException {
-    addBatchDeletionResource(true);
-    addBatchDeletionResource(false);
+    addBatchDeletionResource(true, 0);
+    addBatchDeletionResource(false, 10);
   }
 
-  public void addBatchDeletionResource(boolean isRelational)
+  public void addBatchDeletionResource(final boolean isRelational, final int initialIndex)
       throws IllegalPathException, InterruptedException, IOException {
     deletionResourceManager = DeletionResourceManager.getInstance(FAKE_DATA_REGION_IDS[1]);
     int deletionCount = 10;
     int rebootTimes = 0;
     MeasurementPath path = new MeasurementPath("root.vehicle.d2.s0");
-    for (int i = 0; i < deletionCount; i++) {
+    for (int i = initialIndex; i < initialIndex + deletionCount; i++) {
       AbstractDeleteDataNode deleteDataNode;
       if (isRelational) {
         deleteDataNode =
@@ -180,11 +180,11 @@ public class DeletionResourceTest {
   @Test
   public void testDeletionRemove() throws IllegalPathException, InterruptedException, IOException {
     PageCacheDeletionBuffer.setDalBufferSize(TEST_DAL_FILE_SIZE);
-    deletionRemove(true);
-    //    deletionRemove(false);
+    deletionRemove(true, 0);
+    deletionRemove(false, 20);
   }
 
-  public void deletionRemove(final boolean isRelational)
+  public void deletionRemove(final boolean isRelational, final int initialIndex)
       throws IllegalPathException, InterruptedException, IOException {
     deletionResourceManager = DeletionResourceManager.getInstance(FAKE_DATA_REGION_IDS[3]);
     // new a deletion
@@ -192,7 +192,7 @@ public class DeletionResourceTest {
     final int deletionCount = 20;
     final MeasurementPath path = new MeasurementPath("root.vehicle.d2.s0");
     final List<PipeDeleteDataNodeEvent> deletionEvents = new ArrayList<>();
-    for (int i = 0; i < deletionCount; i++) {
+    for (int i = initialIndex; i < initialIndex + deletionCount; i++) {
       final AbstractDeleteDataNode deleteDataNode;
       if (isRelational) {
         deleteDataNode =
@@ -226,15 +226,18 @@ public class DeletionResourceTest {
     }
 
     // for event commit to invoke onCommit() to removeDAL
-    PipeEventCommitManager.getInstance()
-        .register("Test", 10, Integer.parseInt(FAKE_DATA_REGION_IDS[3]), "Test");
+    if (initialIndex == 0) {
+      PipeEventCommitManager.getInstance()
+          .register("Test", 10, Integer.parseInt(FAKE_DATA_REGION_IDS[3]), "Test");
+    }
     deletionEvents.forEach(deletionEvent -> deletionEvent.increaseReferenceCount("test"));
     final List<Path> paths =
         Files.list(Paths.get(DELETION_BASE_DIR + File.separator + FAKE_DATA_REGION_IDS[3]))
             .collect(Collectors.toList());
     Assert.assertTrue(paths.stream().anyMatch(Files::isRegularFile));
     final int beforeFileCount = paths.size();
-    if (beforeFileCount < 3) {
+    if (beforeFileCount < 2) {
+      // not generate enough DAL file
       return;
     }
     // Remove deletion
