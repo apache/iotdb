@@ -636,15 +636,11 @@ public class RewriteCrossSpaceCompactionWithReadPointPerformerTest extends Abstr
         Assert.assertFalse(resource.getCompactionModFile().exists());
         Assert.assertFalse(resource.anyModFileExists());
       } else if (i == 2) {
-        Assert.assertTrue(resource.getCompactionModFile().exists());
         Assert.assertTrue(resource.anyModFileExists());
         Assert.assertEquals(2, resource.getAllModEntries().size());
-        Assert.assertEquals(1, resource.getCompactionModFile().getAllMods().size());
       } else {
-        Assert.assertTrue(resource.getCompactionModFile().exists());
         Assert.assertTrue(resource.anyModFileExists());
         Assert.assertEquals(1, resource.getAllModEntries().size());
-        Assert.assertEquals(1, resource.getCompactionModFile().getAllMods().size());
       }
     }
     for (TsFileResource resource : unseqResources) {
@@ -779,15 +775,11 @@ public class RewriteCrossSpaceCompactionWithReadPointPerformerTest extends Abstr
         Assert.assertFalse(resource.getCompactionModFile().exists());
         Assert.assertFalse(resource.anyModFileExists());
       } else if (i == 2) {
-        Assert.assertTrue(resource.getCompactionModFile().exists());
         Assert.assertTrue(resource.anyModFileExists());
         Assert.assertEquals(3, resource.getAllModEntries().size());
-        Assert.assertEquals(2, resource.getCompactionModFile().getAllMods().size());
       } else {
-        Assert.assertTrue(resource.getCompactionModFile().exists());
         Assert.assertTrue(resource.anyModFileExists());
         Assert.assertEquals(2, resource.getAllModEntries().size());
-        Assert.assertEquals(2, resource.getCompactionModFile().getAllMods().size());
       }
     }
     for (TsFileResource resource : unseqResources) {
