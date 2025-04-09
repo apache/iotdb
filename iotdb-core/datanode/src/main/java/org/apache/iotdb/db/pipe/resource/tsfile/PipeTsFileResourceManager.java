@@ -252,15 +252,10 @@ public class PipeTsFileResourceManager {
    * @param hardlinkOrCopiedFile the copied or hardlinked file
    * @return the reference count of the file
    */
-  public int getFileReferenceCount(final File hardlinkOrCopiedFile) {
-    segmentLock.lock(hardlinkOrCopiedFile);
-    try {
-      final String filePath = hardlinkOrCopiedFile.getPath();
-      final PipeTsFileResource resource = hardlinkOrCopiedFileToPipeTsFileResourceMap.get(filePath);
-      return resource != null ? resource.getReferenceCount() : 0;
-    } finally {
-      segmentLock.unlock(hardlinkOrCopiedFile);
-    }
+  public int getFileReferenceCountWithoutLock(final File hardlinkOrCopiedFile) {
+    final PipeTsFileResource resource =
+        hardlinkOrCopiedFileToPipeTsFileResourceMap.get(hardlinkOrCopiedFile.getPath());
+    return resource != null ? resource.getReferenceCount() : 0;
   }
 
   /**
@@ -320,7 +315,10 @@ public class PipeTsFileResourceManager {
       throws IOException {
     increaseFileReference(resource.getTsFile(), true, resource);
     if (withMods && resource.getModFile().exists()) {
-      increaseFileReference(new File(resource.getModFile().getFilePath()), false, null);
+      // Avoid mod compaction
+      synchronized (resource.getModFile()) {
+        increaseFileReference(new File(resource.getModFile().getFilePath()), false, null);
+      }
     }
   }
 
