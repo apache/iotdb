@@ -94,7 +94,7 @@ public class PipeDataNodeRuntimeAgent implements IService {
     registerPeriodicalJob(
         "PipeDynamicConfigLoader#loadAllPipeConfigs",
         PipeDynamicConfigLoader.instance()::loadAllPipeConfigs,
-        60);
+        PipeConfig.getInstance().getPipeSubtaskExecutorCronHeartbeatEventIntervalSeconds());
 
     pipePeriodicalJobExecutor.start();
 

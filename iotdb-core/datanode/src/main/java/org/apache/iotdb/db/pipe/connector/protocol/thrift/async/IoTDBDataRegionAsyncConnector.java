@@ -102,15 +102,6 @@ public class IoTDBDataRegionAsyncConnector extends IoTDBConnector {
   private final PipeDataRegionEventCounter retryEventQueueEventCounter =
       new PipeDataRegionEventCounter();
 
-  //  private final int forcedRetryTsFileEventQueueSizeThreshold =
-  //      PipeConfig.getInstance().getPipeAsyncConnectorForcedRetryTsFileEventQueueSizeThreshold();
-  //  private final int forcedRetryTabletEventQueueSizeThreshold =
-  //      PipeConfig.getInstance().getPipeAsyncConnectorForcedRetryTabletEventQueueSizeThreshold();
-  //  private final int forcedRetryTotalEventQueueSizeThreshold =
-  //      PipeConfig.getInstance().getPipeAsyncConnectorForcedRetryTotalEventQueueSizeThreshold();
-  //  private final long maxRetryExecutionTimeMsPerCall =
-  //      PipeConfig.getInstance().getPipeAsyncConnectorMaxRetryExecutionTimeMsPerCall();
-
   private IoTDBDataNodeAsyncClientManager clientManager;
 
   private PipeTransferBatchReqBuilder tabletBatchBuilder;
