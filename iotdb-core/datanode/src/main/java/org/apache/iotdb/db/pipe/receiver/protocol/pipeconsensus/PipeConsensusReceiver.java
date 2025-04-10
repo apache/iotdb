@@ -1350,23 +1350,6 @@ public class PipeConsensusReceiver {
       this.tsFileWriterPool = tsFileWriterPool;
     }
 
-    private void onSuccess(TCommitId commitId, boolean isTransferTsFileSeal) {
-      LOGGER.info(
-          "PipeConsensus-PipeName-{}: process no.{} event successfully!",
-          consensusPipeName,
-          commitId);
-      RequestMeta curMeta = reqExecutionOrderBuffer.pollFirst();
-      onSyncedReplicateIndex = commitId.getReplicateIndex();
-      // update metric, notice that curMeta is never null.
-      if (isTransferTsFileSeal) {
-        tsFileEventCount.decrementAndGet();
-        metric.recordReceiveTsFileTimer(System.nanoTime() - curMeta.getStartApplyNanos());
-      } else {
-        WALEventCount.decrementAndGet();
-        metric.recordReceiveWALTimer(System.nanoTime() - curMeta.getStartApplyNanos());
-      }
-    }
-
     private TPipeConsensusTransferResp onRequest(
         final TPipeConsensusTransferReq req,
         final boolean isTransferTsFilePiece,
@@ -1566,6 +1549,23 @@ public class PipeConsensusReceiver {
       condition.signalAll();
       // sync the follower's connectorRebootTimes with connector's actual rebootTimes.
       this.connectorRebootTimes = connectorRebootTimes;
+    }
+
+    private void onSuccess(TCommitId commitId, boolean isTransferTsFileSeal) {
+      LOGGER.info(
+              "PipeConsensus-PipeName-{}: process no.{} event successfully!",
+              consensusPipeName,
+              commitId);
+      RequestMeta curMeta = reqExecutionOrderBuffer.pollFirst();
+      onSyncedReplicateIndex = commitId.getReplicateIndex();
+      // update metric, notice that curMeta is never null.
+      if (isTransferTsFileSeal) {
+        tsFileEventCount.decrementAndGet();
+        metric.recordReceiveTsFileTimer(System.nanoTime() - curMeta.getStartApplyNanos());
+      } else {
+        WALEventCount.decrementAndGet();
+        metric.recordReceiveWALTimer(System.nanoTime() - curMeta.getStartApplyNanos());
+      }
     }
 
     private void clear(boolean resetSyncIndex) {
