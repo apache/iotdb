@@ -30,7 +30,6 @@ import org.slf4j.LoggerFactory;
 import java.io.File;
 import java.io.IOException;
 import java.util.Optional;
-import java.util.Properties;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
 
@@ -568,7 +567,7 @@ public class CommonDescriptor {
                 String.valueOf(config.getPipeTsFileScanParsingThreshold()))));
   }
 
-  public void loadPipePropsStatic(Properties properties) {
+  public void loadPipePropsStatic(TrimProperties properties) {
     config.setPipeHardlinkBaseDirName(
         properties.getProperty("pipe_hardlink_base_dir_name", config.getPipeHardlinkBaseDirName()));
     config.setPipeHardlinkTsFileDirName(
