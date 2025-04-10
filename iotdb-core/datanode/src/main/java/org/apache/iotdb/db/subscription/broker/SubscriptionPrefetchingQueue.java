@@ -326,10 +326,11 @@ public abstract class SubscriptionPrefetchingQueue {
     final Event polledEvent = inputPendingQueue.waitedPoll();
     if (!Objects.equals(peekedEvent, polledEvent)) {
       LOGGER.warn(
-          "Subscription: inconsistent heartbeat event when {} peeking (broken invariant), expected {}, actual {}, do nothing",
+          "Subscription: inconsistent heartbeat event when {} peeking (broken invariant), expected {}, actual {}, offer back",
           this,
           peekedEvent,
           polledEvent);
+      inputPendingQueue.directOffer(polledEvent);
     } else {
       ((PipeHeartbeatEvent) peekedEvent)
           .decreaseReferenceCount(SubscriptionPrefetchingQueue.class.getName(), false);

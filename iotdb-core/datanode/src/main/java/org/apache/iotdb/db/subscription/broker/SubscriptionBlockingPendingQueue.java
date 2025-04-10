@@ -35,6 +35,8 @@ public abstract class SubscriptionBlockingPendingQueue {
 
   public abstract Event peek();
 
+  public abstract void directOffer(final Event event);
+
   public int size() {
     return inputPendingQueue.size();
   }
