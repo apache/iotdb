@@ -254,12 +254,13 @@ public class AccessControlImpl implements AccessControl {
         if (AuthorityChecker.SUPER_USER.equals(userName)) {
           return;
         }
-        for (PrivilegeType privilegeType : statement.getPrivilegeTypes()) {
+        for (TableModelPrivilege privilege : TableModelPrivilege.values()) {
+          PrivilegeType privilegeType = privilege.getPrivilegeType();
           if (privilegeType.isRelationalPrivilege()) {
-            AuthorityChecker.checkAnyScopePermissionGrantOption(userName, privilegeType);
+            authChecker.checkAnyScopePrivilegeGrantOption(userName, privilege);
           }
           if (privilegeType.forRelationalSys()) {
-            AuthorityChecker.checkSystemPermissionGrantOption(userName, privilegeType);
+            authChecker.checkGlobalPrivilegeGrantOption(userName, privilege);
           }
         }
         return;
