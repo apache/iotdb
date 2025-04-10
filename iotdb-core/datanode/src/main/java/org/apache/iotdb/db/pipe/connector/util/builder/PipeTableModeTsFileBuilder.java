@@ -210,10 +210,31 @@ public class PipeTableModeTsFileBuilder extends PipeTsFileBuilder {
 
       final List<T> tabletsToWrite = new ArrayList<>();
       final Map<IDeviceID, Long> deviceLastTimestampMap = new HashMap<>();
+      String tableName = null;
+
+      final List<IMeasurementSchema> columnSchemas = new ArrayList<>();
+      final List<Tablet.ColumnCategory> columnCategories = new ArrayList<>();
+      final Set<String> columnNames = new HashSet<>();
+
       while (!tablets.isEmpty()) {
         final T pair = tablets.peekFirst();
         if (timestampsAreNonOverlapping(
             (Pair<Tablet, List<Pair<IDeviceID, Integer>>>) pair, deviceLastTimestampMap)) {
+          final Tablet tablet = pair.left;
+          if (tableName == null) {
+            tableName = tablet.getTableName();
+          }
+
+          for (int i = 0, size = tablet.getSchemas().size(); i < size; i++) {
+            final IMeasurementSchema schema = tablet.getSchemas().get(i);
+            if (schema == null || columnNames.contains(schema.getMeasurementName())) {
+              continue;
+            }
+            columnNames.add(schema.getMeasurementName());
+            columnSchemas.add(schema);
+            columnCategories.add(tablet.getColumnTypes().get(i));
+          }
+
           tabletsToWrite.add(pair);
           tablets.pollFirst();
           continue;
@@ -225,7 +246,9 @@ public class PipeTableModeTsFileBuilder extends PipeTsFileBuilder {
         iterator.remove();
       }
 
-      registerTableSchemaFromTablets(tabletsToWrite);
+      if (tableName != null) {
+        fileWriter.registerTableSchema(new TableSchema(tableName, columnSchemas, columnCategories));
+      }
 
       for (final Pair<Tablet, List<Pair<IDeviceID, Integer>>> pair : tabletsToWrite) {
         final Tablet tablet = pair.left;
@@ -266,33 +289,5 @@ public class PipeTableModeTsFileBuilder extends PipeTsFileBuilder {
     }
 
     return true;
-  }
-
-  public <T extends Pair<Tablet, List<Pair<IDeviceID, Integer>>>>
-      void registerTableSchemaFromTablets(List<T> tabletsToWrite) {
-    String tableName = null;
-    final List<IMeasurementSchema> columnSchemas = new ArrayList<>();
-    final List<Tablet.ColumnCategory> columnCategories = new ArrayList<>();
-    final Set<String> columnNames = new HashSet<>();
-
-    for (final Pair<Tablet, List<Pair<IDeviceID, Integer>>> pair : tabletsToWrite) {
-      final Tablet tablet = pair.left;
-      if (tableName == null) {
-        tableName = tablet.getTableName();
-      }
-      for (int i = 0, size = tablet.getSchemas().size(); i < size; i++) {
-        final IMeasurementSchema schema = tablet.getSchemas().get(i);
-        if (schema == null || columnNames.contains(schema.getMeasurementName())) {
-          continue;
-        }
-        columnNames.add(schema.getMeasurementName());
-        columnSchemas.add(schema);
-        columnCategories.add(tablet.getColumnTypes().get(i));
-      }
-    }
-
-    if (tableName != null) {
-      fileWriter.registerTableSchema(new TableSchema(tableName, columnSchemas, columnCategories));
-    }
   }
 }
