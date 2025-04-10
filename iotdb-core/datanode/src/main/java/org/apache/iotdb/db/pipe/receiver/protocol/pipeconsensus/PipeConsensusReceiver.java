@@ -1553,9 +1553,9 @@ public class PipeConsensusReceiver {
 
     private void onSuccess(TCommitId commitId, boolean isTransferTsFileSeal) {
       LOGGER.info(
-              "PipeConsensus-PipeName-{}: process no.{} event successfully!",
-              consensusPipeName,
-              commitId);
+          "PipeConsensus-PipeName-{}: process no.{} event successfully!",
+          consensusPipeName,
+          commitId);
       RequestMeta curMeta = reqExecutionOrderBuffer.pollFirst();
       onSyncedReplicateIndex = commitId.getReplicateIndex();
       // update metric, notice that curMeta is never null.
