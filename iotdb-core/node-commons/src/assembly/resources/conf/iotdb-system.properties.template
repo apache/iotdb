@@ -1946,6 +1946,8 @@ deletion_ahead_log_buffer_queue_capacity=500
 zombie_tsfile_writer_check_interval=300000
 
 # Threshold for determining whether a TsFile writer is a zombie in iot consensus v2
+# The larger this value is, the longer the synchronization will be stuck when an unexpected situation occurs.
+# The smaller this value is, the greater the possibility of misjudgment, which may cause consistency loss.
 # time unit is milliseconds.
 # effectiveMode: restart
 # DataType: long
