@@ -974,7 +974,12 @@ public class PlanGraphPrinter extends PlanVisitor<List<String>, PlanGraphPrinter
       GraphContext context) {
     List<String> boxValue = new ArrayList<>();
     boxValue.add(String.format("Join-%s", node.getPlanNodeId().getId()));
-    boxValue.add(String.format("JoinType: %s", node.getJoinType()));
+    if (node.getAsofCriteria().isPresent()) {
+      boxValue.add(String.format("ASOF-JoinType: %s", node.getJoinType()));
+      boxValue.add(String.format("ASOF-JoinCriteria: %s", node.getAsofCriteria().get()));
+    } else {
+      boxValue.add(String.format("JoinType: %s", node.getJoinType()));
+    }
     boxValue.add(String.format("JoinCriteria: %s", node.getCriteria()));
     boxValue.add(String.format("LeftOutputSymbols: %s", node.getLeftOutputSymbols()));
     boxValue.add(String.format("RightOutputSymbols: %s", node.getRightOutputSymbols()));

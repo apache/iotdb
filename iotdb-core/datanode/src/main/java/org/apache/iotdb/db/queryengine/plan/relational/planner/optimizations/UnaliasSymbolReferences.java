@@ -762,6 +762,7 @@ public class UnaliasSymbolReferences implements PlanOptimizer {
               rewrittenLeft.getRoot(),
               rewrittenRight.getRoot(),
               newCriteria,
+              node.getAsofCriteria(),
               newLeftOutputSymbols,
               newRightOutputSymbols,
               newFilter,

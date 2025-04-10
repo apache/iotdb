@@ -1442,6 +1442,82 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
       joinKeyTypes.add(leftJoinKeyType);
     }
 
+    JoinNode.AsofJoinClause asofJoinClause = node.getAsofCriteria().orElse(null);
+    if (asofJoinClause != null) {
+      throw new UnsupportedOperationException("BE of ASOF Join is not supported!");
+      /*BiPredicate<Long, Long> asofPredicate;
+      switch (asofJoinClause.getOperator()) {
+        case LESS_THAN:
+          asofPredicate = (left, right) -> left < right;
+          break;
+        case LESS_THAN_OR_EQUAL:
+          asofPredicate = (left, right) -> left <= right;
+          break;
+        case GREATER_THAN:
+          asofPredicate = (left, right) -> left > right;
+          break;
+        case GREATER_THAN_OR_EQUAL:
+          asofPredicate = (left, right) -> left >= right;
+          break;
+        default:
+          throw new IllegalStateException(String.format("Unexpected ASOF Join criteria Operator: %s",asofJoinClause.getOperator()));
+      }
+
+      Integer leftAsofJoinKeyIndex = leftColumnNamesMap.get(asofJoinClause.getLeft());
+      if (leftAsofJoinKeyIndex == null) {
+        throw new IllegalStateException("Left child of JoinNode doesn't contain left ASOF main join key.");
+      }
+      Integer rightAsofJoinKeyIndex = rightColumnNamesMap.get(asofJoinClause.getRight());
+      if (rightAsofJoinKeyIndex == null) {
+        throw new IllegalStateException("Right child of JoinNode doesn't contain right ASOF main join key.");
+      }
+      if (requireNonNull(node.getJoinType()) == JoinNode.JoinType.INNER) {
+        OperatorContext operatorContext =
+                context
+                        .getDriverContext()
+                        .addOperatorContext(
+                                context.getNextOperatorId(),
+                                node.getPlanNodeId(),
+                                AsofMergeSortInnerJoinOperator.class.getSimpleName());
+        return new AsofMergeSortInnerJoinOperator(
+                operatorContext,
+                asofPredicate,
+                leftChild,
+                leftJoinKeyPositions,
+                leftAsofJoinKeyIndex,
+                leftOutputSymbolIdx,
+                rightChild,
+                rightJoinKeyPositions,
+                rightAsofJoinKeyIndex,
+                rightOutputSymbolIdx,
+                JoinKeyComparatorFactory.getComparators(joinKeyTypes, true),
+                dataTypes);
+      } else if(requireNonNull(node.getJoinType()) == JoinNode.JoinType.LEFT) {
+        OperatorContext operatorContext =
+                context
+                        .getDriverContext()
+                        .addOperatorContext(
+                                context.getNextOperatorId(),
+                                node.getPlanNodeId(),
+                                AsofMergeSortLeftJoinOperator.class.getSimpleName());
+        return new AsofMergeSortInnerJoinOperator(
+                operatorContext,
+                asofPredicate,
+                leftChild,
+                leftJoinKeyPositions,
+                leftAsofJoinKeyIndex,
+                leftOutputSymbolIdx,
+                rightChild,
+                rightJoinKeyPositions,
+                rightAsofJoinKeyIndex,
+                rightOutputSymbolIdx,
+                JoinKeyComparatorFactory.getComparators(joinKeyTypes, true),
+                dataTypes);
+      } else {
+        throw new IllegalStateException("Unsupported ASOF join type: " + node.getJoinType());
+      }*/
+    }
+
     if (requireNonNull(node.getJoinType()) == JoinNode.JoinType.INNER) {
       OperatorContext operatorContext =
           context
@@ -1510,7 +1586,7 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
               "Filter is not supported in %s. Filter is %s.",
               node.getJoinType(), node.getFilter().map(Expression::toString).orElse("null")));
       checkArgument(
-          !node.getCriteria().isEmpty(),
+          !node.getCriteria().isEmpty() || node.getAsofCriteria().isPresent(),
           String.format("%s must have join keys.", node.getJoinType()));
     } catch (IllegalArgumentException e) {
       throw new SemanticException(e.getMessage());

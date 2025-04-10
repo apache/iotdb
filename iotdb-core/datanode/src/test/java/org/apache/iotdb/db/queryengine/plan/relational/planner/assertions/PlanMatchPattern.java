@@ -51,6 +51,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TableFunctio
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TreeAlignedDeviceViewScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TreeDeviceViewScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TreeNonAlignedDeviceViewScanNode;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ComparisonExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DataType;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SortItem;
@@ -610,6 +611,11 @@ public final class PlanMatchPattern {
   public static ExpectedValueProvider<JoinNode.EquiJoinClause> equiJoinClause(
       String left, String right) {
     return new EquiJoinClauseProvider(new SymbolAlias(left), new SymbolAlias(right));
+  }
+
+  public static AsofJoinClauseProvider asofJoinClause(
+      ComparisonExpression.Operator operator, String left, String right) {
+    return new AsofJoinClauseProvider(operator, new SymbolAlias(left), new SymbolAlias(right));
   }
 
   public static SymbolAlias symbol(String alias) {

@@ -250,6 +250,7 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 
 import static com.google.common.collect.ImmutableList.toImmutableList;
+import static java.lang.Long.parseLong;
 import static java.util.Objects.requireNonNull;
 import static java.util.stream.Collectors.toList;
 import static org.apache.iotdb.commons.schema.table.TsTable.TIME_COLUMN_NAME;
@@ -260,6 +261,7 @@ import static org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory
 import static org.apache.iotdb.commons.udf.builtin.relational.TableBuiltinScalarFunction.DATE_BIN;
 import static org.apache.iotdb.db.queryengine.plan.execution.config.TableConfigTaskVisitor.DATABASE_NOT_SPECIFIED;
 import static org.apache.iotdb.db.queryengine.plan.parser.ASTVisitor.parseDateTimeFormat;
+import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AsofJoinOn.constructAsofJoinOn;
 import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.GroupingSets.Type.CUBE;
 import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.GroupingSets.Type.EXPLICIT;
 import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.GroupingSets.Type.ROLLUP;
@@ -2161,13 +2163,43 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
     }
 
     JoinCriteria criteria;
+
+    // This will be true if criteria is ASOF join criteria with tolerance
+    boolean hasTolerance = false;
+
     if (ctx.NATURAL() != null) {
       right = (Relation) visit(ctx.right);
       criteria = new NaturalJoin();
     } else {
       right = (Relation) visit(ctx.rightRelation);
       if (ctx.joinCriteria().ON() != null) {
-        criteria = new JoinOn((Expression) visit(ctx.joinCriteria().booleanExpression()));
+        if (ctx.ASOF() != null) {
+          TimeDuration timeDuration = null;
+          RelationalSqlParser.ToleranceParameterContext toleranceContext = ctx.toleranceParameter();
+          if (toleranceContext != null) {
+            if (toleranceContext.timeDuration() != null) {
+              timeDuration =
+                  DateTimeUtils.constructTimeDuration(toleranceContext.timeDuration().getText());
+
+              if (timeDuration.monthDuration != 0) {
+                throw new SemanticException(
+                    "Month or year interval in tolerance is not supported now.");
+              }
+            } else if (toleranceContext.INTEGER_VALUE() != null) {
+              timeDuration =
+                  new TimeDuration(0, parseLong(toleranceContext.INTEGER_VALUE().getText()));
+            } else {
+              throw new IllegalStateException("No time duration or time interval value appears!");
+            }
+
+            hasTolerance = true;
+          }
+          criteria =
+              constructAsofJoinOn(
+                  (Expression) visit(ctx.joinCriteria().booleanExpression()), timeDuration);
+        } else {
+          criteria = new JoinOn((Expression) visit(ctx.joinCriteria().booleanExpression()));
+        }
       } else if (ctx.joinCriteria().USING() != null) {
         criteria = new JoinUsing(visit(ctx.joinCriteria().identifier(), Identifier.class));
       } else {
@@ -2184,6 +2216,10 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
       joinType = Join.Type.FULL;
     } else {
       joinType = Join.Type.INNER;
+    }
+
+    if (joinType != Join.Type.INNER && hasTolerance) {
+      throw new SemanticException("Tolerance is only supported in ASOF INNER JOIN");
     }
 
     return new Join(getLocation(ctx), joinType, left, right, criteria);
@@ -2800,9 +2836,9 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
     if (ctx.INTEGER_VALUE() != null) {
       try {
         if (ctx.MINUS() != null) {
-          return -Long.parseLong(ctx.INTEGER_VALUE().getText());
+          return -parseLong(ctx.INTEGER_VALUE().getText());
         }
-        return Long.parseLong(ctx.INTEGER_VALUE().getText());
+        return parseLong(ctx.INTEGER_VALUE().getText());
       } catch (NumberFormatException e) {
         throw new SemanticException(
             String.format("Can not parse %s to long value", ctx.INTEGER_VALUE().getText()));
