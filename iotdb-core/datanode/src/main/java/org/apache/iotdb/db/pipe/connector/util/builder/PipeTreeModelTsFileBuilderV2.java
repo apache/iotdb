@@ -122,9 +122,10 @@ public class PipeTreeModelTsFileBuilderV2 extends PipeTsFileBuilder {
   }
 
   private List<Pair<String, File>> writeTabletsToTsFiles() throws WriteProcessException {
+    final IMemTable memTable = new PrimitiveMemTable(null, null);
     final List<Pair<String, File>> sealedFiles = new ArrayList<>();
     try (final RestorableTsFileIOWriter writer = new RestorableTsFileIOWriter(createFile())) {
-      writeTabletsIntoOneFile(writer);
+      writeTabletsIntoOneFile(memTable, writer);
       sealedFiles.add(new Pair<>(null, writer.getFile()));
     } catch (final Exception e) {
       LOGGER.warn(
@@ -134,14 +135,15 @@ public class PipeTreeModelTsFileBuilderV2 extends PipeTsFileBuilder {
           e);
       // TODO: handle ex
       throw new WriteProcessException(e);
+    } finally {
+      memTable.release();
     }
 
     return sealedFiles;
   }
 
-  private void writeTabletsIntoOneFile(final RestorableTsFileIOWriter writer) throws Exception {
-    final IMemTable memTable = new PrimitiveMemTable(null, null);
-
+  private void writeTabletsIntoOneFile(
+      final IMemTable memTable, final RestorableTsFileIOWriter writer) throws Exception {
     for (int i = 0, size = tabletList.size(); i < size; ++i) {
       final Tablet tablet = tabletList.get(i);
 
