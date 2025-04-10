@@ -36,6 +36,7 @@ import org.apache.tsfile.utils.DateUtils;
 
 import java.nio.ByteBuffer;
 import java.sql.Timestamp;
+import java.time.LocalDate;
 import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -574,7 +575,21 @@ public class IoTDBRpcDataSet {
   private Timestamp getTimestampByTsBlockColumnIndex(int tsBlockColumnIndex)
       throws StatementExecutionException {
     long timestamp = getLongByTsBlockColumnIndex(tsBlockColumnIndex);
-    return convertToTimestamp(timestamp, timeFactor);
+    return lastReadWasNull ? null : convertToTimestamp(timestamp, timeFactor);
+  }
+
+  public LocalDate getDate(int columnIndex) throws StatementExecutionException {
+    return getDateByTsBlockColumnIndex(getTsBlockColumnIndexForColumnIndex(columnIndex));
+  }
+
+  public LocalDate getDate(String columnName) throws StatementExecutionException {
+    return getDateByTsBlockColumnIndex(getTsBlockColumnIndexForColumnName(columnName));
+  }
+
+  public LocalDate getDateByTsBlockColumnIndex(int tsBlockColumnIndex)
+      throws StatementExecutionException {
+    int intValue = getIntByTsBlockColumnIndex(tsBlockColumnIndex);
+    return lastReadWasNull ? null : DateUtils.parseIntToLocalDate(intValue);
   }
 
   public TSDataType getDataType(int columnIndex) {
