@@ -50,7 +50,6 @@ import org.apache.iotdb.db.storageengine.dataregion.wal.WALManager;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALMode;
 import org.apache.iotdb.db.storageengine.load.disk.ILoadDiskSelector;
 import org.apache.iotdb.db.storageengine.rescon.disk.TierManager;
-import org.apache.iotdb.db.storageengine.rescon.memory.SystemInfo;
 import org.apache.iotdb.db.utils.DateTimeUtils;
 import org.apache.iotdb.db.utils.datastructure.TVListSortAlgorithm;
 import org.apache.iotdb.external.api.IPropertiesLoader;
@@ -2321,14 +2320,14 @@ public class IoTDBDescriptor {
       for (String proportion : proportions) {
         proportionSum += Integer.parseInt(proportion.trim());
       }
-      float maxMemoryAvailable = conf.getUdfMemoryBudgetInMB();
+      float memoryAvailable = conf.getUdfMemoryBudgetInMB();
       try {
         conf.setUdfReaderMemoryBudgetInMB(
-            maxMemoryAvailable * Integer.parseInt(proportions[0].trim()) / proportionSum);
+            memoryAvailable * Integer.parseInt(proportions[0].trim()) / proportionSum);
         conf.setUdfTransformerMemoryBudgetInMB(
-            maxMemoryAvailable * Integer.parseInt(proportions[1].trim()) / proportionSum);
+            memoryAvailable * Integer.parseInt(proportions[1].trim()) / proportionSum);
         conf.setUdfCollectorMemoryBudgetInMB(
-            maxMemoryAvailable * Integer.parseInt(proportions[2].trim()) / proportionSum);
+            memoryAvailable * Integer.parseInt(proportions[2].trim()) / proportionSum);
       } catch (Exception e) {
         throw new RuntimeException(
             "Each subsection of configuration item udf_reader_transformer_collector_memory_proportion"
@@ -2618,12 +2617,12 @@ public class IoTDBDescriptor {
     // first we need to release the memory allocated for consensus
     MemoryManager storageEngineMemoryManager = memoryConfig.getStorageEngineMemoryManager();
     MemoryManager consensusMemoryManager = memoryConfig.getConsensusMemoryManager();
+    long originSize = storageEngineMemoryManager.getInitialAllocatedMemorySizeInBytes();
     long newSize =
-        storageEngineMemoryManager.getTotalMemorySizeInBytes()
-            + consensusMemoryManager.getTotalMemorySizeInBytes();
-    consensusMemoryManager.setTotalMemorySizeInBytes(0);
-    storageEngineMemoryManager.setTotalMemorySizeInBytesWithReload(newSize);
-    SystemInfo.getInstance().loadWriteMemory();
+        storageEngineMemoryManager.getInitialAllocatedMemorySizeInBytes()
+            + consensusMemoryManager.getInitialAllocatedMemorySizeInBytes();
+    storageEngineMemoryManager.resizeByRatio((double) newSize / originSize);
+    consensusMemoryManager.resizeByRatio(0);
   }
 
   private static class IoTDBDescriptorHolder {

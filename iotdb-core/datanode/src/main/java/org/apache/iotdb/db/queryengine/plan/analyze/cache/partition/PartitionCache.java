@@ -62,6 +62,7 @@ import org.apache.iotdb.rpc.TSStatusCode;
 
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
+import com.google.common.util.concurrent.AtomicDouble;
 import org.apache.thrift.TException;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.slf4j.Logger;
@@ -120,12 +121,22 @@ public class PartitionCache {
 
   private final CacheMetrics cacheMetrics;
   private final IMemoryBlock memoryBlock;
+  private final AtomicDouble memoryUsageCheatFactor = new AtomicDouble(1);
 
   public PartitionCache() {
     this.memoryBlock =
         memoryConfig
             .getPartitionCacheMemoryManager()
-            .exactAllocate("PartitionCache", MemoryBlockType.STATIC);
+            .exactAllocate("PartitionCache", MemoryBlockType.STATIC)
+            .setUpdateCallback(
+                (oldMemory, newMemory) -> {
+                  memoryUsageCheatFactor.updateAndGet(
+                      factor -> factor / ((double) newMemory / oldMemory));
+                  logger.info(
+                      "[MemoryUsageCheatFactor]PartitionCache has updated from {} to {}.",
+                      oldMemory,
+                      newMemory);
+                });
     this.memoryBlock.allocate(this.memoryBlock.getTotalMemorySizeInBytes());
     // TODO @spricoder: PartitionCache need to be controlled according to memory
     this.schemaPartitionCache =

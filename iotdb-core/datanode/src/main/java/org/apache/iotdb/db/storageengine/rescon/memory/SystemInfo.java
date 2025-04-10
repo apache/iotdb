@@ -47,6 +47,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 
 public class SystemInfo {
+
   private static final Logger logger = LoggerFactory.getLogger(SystemInfo.class);
 
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
@@ -91,7 +92,7 @@ public class SystemInfo {
     directBufferMemoryBlock =
         memoryConfig
             .getDirectBufferMemoryManager()
-            .exactAllocate("DirectBuffer", MemoryBlockType.DYNAMIC);
+            .exactAllocate("DirectBuffer", MemoryBlockType.STATIC);
     loadWriteMemory();
   }
 
