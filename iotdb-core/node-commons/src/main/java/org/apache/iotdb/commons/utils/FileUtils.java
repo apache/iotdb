@@ -21,7 +21,6 @@ package org.apache.iotdb.commons.utils;
 
 import org.apache.iotdb.commons.file.SystemFileFactory;
 
-import org.apache.commons.codec.digest.DigestUtils;
 import org.apache.commons.io.FilenameUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -33,7 +32,6 @@ import java.io.FileFilter;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
-import java.io.InputStream;
 import java.nio.file.DirectoryNotEmptyException;
 import java.nio.file.FileSystems;
 import java.nio.file.Files;
@@ -380,43 +378,34 @@ public class FileUtils {
     return String.format("%.2f %cB", bytes / 1000.0, ci.current());
   }
 
-  public static void moveFileWithMD5Check(final File sourceFile, final File targetDir)
+  public static void moveFileWithSizeCheck(final File sourceFile, final File targetDir)
       throws IOException {
     final String sourceFileName = sourceFile.getName();
     final File targetFile = new File(targetDir, sourceFileName);
 
     if (targetFile.exists()) {
-      if (haveSameMD5(sourceFile, targetFile)) {
-        org.apache.commons.io.FileUtils.forceDelete(sourceFile);
-        LOGGER.info(
-            "Deleted the file {} because it already exists in the target directory: {}",
-            sourceFile.getName(),
-            targetDir.getAbsolutePath());
+      // Check if the file sizes are the same
+      if (sourceFile.length() == targetFile.length()) {
+        // If the file sizes are the same, throw an exception
+        throw new IOException(
+            "The file "
+                + sourceFileName
+                + " already exists in the target directory with the same size.");
       } else {
-        renameWithMD5(sourceFile, targetDir);
-        LOGGER.info(
-            "Renamed file {} to {} because it already exists in the target directory: {}",
-            sourceFile.getName(),
-            targetFile.getName(),
-            targetDir.getAbsolutePath());
+        moveFileRenameWithSize(sourceFile, targetDir);
       }
     } else {
       org.apache.commons.io.FileUtils.moveFileToDirectory(sourceFile, targetDir, true);
     }
   }
 
-  public static void copyFileWithMD5Check(final File sourceFile, final File targetDir)
+  public static void copyFileWithSizeCheck(final File sourceFile, final File targetDir)
       throws IOException {
     final String sourceFileName = sourceFile.getName();
     final File targetFile = new File(targetDir, sourceFileName);
     if (targetFile.exists()) {
-      if (!haveSameMD5(sourceFile, targetFile)) {
-        final String renameFile = copyFileRenameWithMD5(sourceFile, targetDir);
-        LOGGER.info(
-            "Copy file {} to {} because it already exists in the target directory: {}",
-            sourceFile.getName(),
-            renameFile,
-            targetDir.getAbsolutePath());
+      if (sourceFile.length() != targetFile.length()) {
+        copyFileRenameWithSize(sourceFile, targetDir);
       }
     } else {
       if (!(targetDir.exists() || targetDir.mkdirs())) {
@@ -434,47 +423,48 @@ public class FileUtils {
     }
   }
 
-  private static boolean haveSameMD5(final File file1, final File file2) {
-    try (final InputStream is1 = Files.newInputStream(file1.toPath());
-        final InputStream is2 = Files.newInputStream(file2.toPath())) {
-      return DigestUtils.md5Hex(is1).equals(DigestUtils.md5Hex(is2));
-    } catch (final Exception e) {
-      return false;
-    }
+  private static void moveFileRenameWithSize(File sourceFile, File targetDir) throws IOException {
+    final File targetFile = renameWithSize(sourceFile, targetDir);
+    org.apache.commons.io.FileUtils.moveFile(
+        sourceFile, targetFile, StandardCopyOption.REPLACE_EXISTING);
+
+    LOGGER.info(
+        "Renamed file {} to {} because it already exists in the target directory: {}",
+        sourceFile.getName(),
+        targetFile.getName(),
+        targetDir.getAbsolutePath());
   }
 
-  private static void renameWithMD5(File sourceFile, File targetDir) throws IOException {
-    try (final InputStream is = Files.newInputStream(sourceFile.toPath())) {
-      final String sourceFileBaseName = FilenameUtils.getBaseName(sourceFile.getName());
-      final String sourceFileExtension = FilenameUtils.getExtension(sourceFile.getName());
-      final String sourceFileMD5 = DigestUtils.md5Hex(is);
-
-      final String targetFileName =
-          sourceFileBaseName + "-" + sourceFileMD5.substring(0, 16) + "." + sourceFileExtension;
-      final File targetFile = new File(targetDir, targetFileName);
-
-      org.apache.commons.io.FileUtils.moveFile(
-          sourceFile, targetFile, StandardCopyOption.REPLACE_EXISTING);
-    }
-  }
-
-  private static String copyFileRenameWithMD5(final File sourceFile, final File targetDir)
+  private static void copyFileRenameWithSize(final File sourceFile, final File targetDir)
       throws IOException {
-    try (final InputStream is = Files.newInputStream(sourceFile.toPath())) {
-      final String sourceFileBaseName = FilenameUtils.getBaseName(sourceFile.getName());
-      final String sourceFileExtension = FilenameUtils.getExtension(sourceFile.getName());
-      final String sourceFileMD5 = DigestUtils.md5Hex(is);
+    final File targetFile = renameWithSize(sourceFile, targetDir);
+    Files.copy(
+        sourceFile.toPath(),
+        targetFile.toPath(),
+        StandardCopyOption.REPLACE_EXISTING,
+        StandardCopyOption.COPY_ATTRIBUTES);
 
-      final String targetFileName =
-          sourceFileBaseName + "-" + sourceFileMD5.substring(0, 16) + "." + sourceFileExtension;
-      final File targetFile = new File(targetDir, targetFileName);
+    LOGGER.info(
+        "Copy file {} to {} because it already exists in the target directory: {}",
+        sourceFile.getName(),
+        targetFile.getName(),
+        targetDir.getAbsolutePath());
+  }
 
-      Files.copy(
-          sourceFile.toPath(),
-          targetFile.toPath(),
-          StandardCopyOption.REPLACE_EXISTING,
-          StandardCopyOption.COPY_ATTRIBUTES);
-      return targetFileName;
-    }
+  private static File renameWithSize(final File sourceFile, final File targetDir) {
+    final String sourceFileBaseName = FilenameUtils.getBaseName(sourceFile.getName());
+    final String sourceFileExtension = FilenameUtils.getExtension(sourceFile.getName());
+
+    // If the file sizes are different, rename the source file by appending its size and the
+    // current timestamp
+    final String newFileName =
+        String.format(
+            "%s_%s_%s.%s",
+            sourceFileBaseName,
+            sourceFile.length(),
+            System.currentTimeMillis(),
+            sourceFileExtension);
+
+    return new File(targetDir, newFileName);
   }
 }
