@@ -408,11 +408,11 @@ public class FileUtils {
         copyFileRenameWithSize(sourceFile, targetDir);
       }
     } else {
-      if (!(targetDir.exists() || targetDir.mkdirs())) {
-        final String log =
-            String.format("failed to create target directory: %s", targetDir.getAbsolutePath());
-        LOGGER.warn(log);
-        throw new IOException(log);
+      try {
+        Files.createDirectories(targetDir.toPath());
+      } catch (IOException e) {
+        LOGGER.warn("failed to create target directory: {}", targetDir.getAbsolutePath());
+        throw e;
       }
 
       Files.copy(
