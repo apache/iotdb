@@ -381,6 +381,22 @@ public class PipeConsensusReceiver {
             status, PipeTransferFilePieceResp.ERROR_END_OFFSET);
       } catch (IOException ex) {
         return PipeConsensusTransferFilePieceResp.toTPipeConsensusTransferResp(status);
+      } finally {
+        // Exception may occur when disk system go wrong. At this time, we may reset all resource
+        // and receive this file from scratch when leader will try to resend this file from scratch
+        // as well.
+        closeCurrentWritingFileWriter(tsFileWriter, false);
+        deleteCurrentWritingFile(tsFileWriter);
+        // must return tsfileWriter after deleting its file.
+        try {
+          tsFileWriter.returnSelf(consensusPipeName);
+        } catch (IOException | DiskSpaceInsufficientException returnException) {
+          LOGGER.warn(
+              "PipeConsensus-PipeName-{}: Failed to return tsFileWriter {}.",
+              consensusPipeName,
+              tsFileWriter,
+              returnException);
+        }
       }
     }
   }
