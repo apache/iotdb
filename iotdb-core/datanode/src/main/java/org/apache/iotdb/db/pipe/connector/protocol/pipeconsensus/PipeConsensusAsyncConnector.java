@@ -147,7 +147,7 @@ public class PipeConsensusAsyncConnector extends IoTDBConnector implements Conse
             nodeUrls, consensusGroupId, thisDataNodeId, pipeConsensusConnectorMetrics);
     retryConnector.customize(parameters, configuration);
     asyncTransferClientManager =
-        PipeConsensusClientMgrContainer.getInstance().newAsyncClientManager();
+        PipeConsensusClientMgrContainer.getInstance().getGlobalAsyncClientManager();
 
     if (isTabletBatchModeEnabled) {
       tabletBatchBuilder =
