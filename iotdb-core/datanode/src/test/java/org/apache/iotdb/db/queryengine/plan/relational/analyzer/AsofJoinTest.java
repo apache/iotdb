@@ -22,7 +22,10 @@ package org.apache.iotdb.db.queryengine.plan.relational.analyzer;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.PlanTester;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.JoinNode;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ArithmeticBinaryExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ComparisonExpression;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LongLiteral;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SymbolReference;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
@@ -33,6 +36,7 @@ import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.TestUtils
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanAssert.assertPlan;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.equiJoinClause;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.exchange;
+import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.expression;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.filter;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.join;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.mergeSort;
@@ -105,6 +109,52 @@ public class AsofJoinTest {
                                                 "testdb.table2",
                                                 ImmutableMap.of(
                                                     "time_0", "time", "s1_6", "s1"))))))))));
+  }
+
+  @Test
+  public void projectInAsofCriteriaTest() {
+    PlanTester planTester = new PlanTester();
+
+    // 'table1.tag1 = table2.tag1 and table1.time + 1 > table2.time'
+    // => left: order by tag1, expr; right: order by tag1_1, time_0
+    assertPlan(
+        planTester.createPlan(
+            "select table1.time,table1.s1,table2.time,table2.s1 from table1 asof (tolerance 1ms) join table2 on table1.tag1=table2.tag1 and table1.time+1 > table2.time"),
+        output(
+            project(
+                filter(
+                    join(
+                        JoinNode.JoinType.INNER,
+                        builder ->
+                            builder
+                                .asofCriteria(
+                                    ComparisonExpression.Operator.GREATER_THAN, "expr", "time_0")
+                                .equiCriteria("tag1", "tag1_1")
+                                .left(
+                                    sort(
+                                        ImmutableList.of(
+                                            sort("tag1", ASCENDING, LAST),
+                                            sort("expr", ASCENDING, LAST)),
+                                        project(
+                                            ImmutableMap.of(
+                                                "expr",
+                                                expression(
+                                                    new ArithmeticBinaryExpression(
+                                                        ArithmeticBinaryExpression.Operator.ADD,
+                                                        new SymbolReference("time"),
+                                                        new LongLiteral("1")))),
+                                            tableScan(
+                                                "testdb.table1",
+                                                ImmutableList.of("time", "tag1", "s1"),
+                                                ImmutableSet.of("time", "tag1", "s1")))))
+                                .right(
+                                    sort(
+                                        project(
+                                            tableScan(
+                                                "testdb.table2",
+                                                ImmutableMap.of(
+                                                    "time_0", "time", "tag1_1", "tag1", "s1_6",
+                                                    "s1"))))))))));
   }
 
   @Test
