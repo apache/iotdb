@@ -140,7 +140,7 @@ public class PipeTreeModelTsFileBuilderV2 extends PipeTsFileBuilder {
   }
 
   private void writeTabletsIntoOneFile(final RestorableTsFileIOWriter writer) throws Exception {
-    final IMemTable memTable = new PrimitiveMemTable();
+    final IMemTable memTable = new PrimitiveMemTable(null, null);
 
     for (int i = 0, size = tabletList.size(); i < size; ++i) {
       final Tablet tablet = tabletList.get(i);
@@ -198,7 +198,7 @@ public class PipeTreeModelTsFileBuilderV2 extends PipeTsFileBuilder {
       doInsert(insertTabletNode, splitInfo, results, memTable);
     }
 
-    final MemTableFlushTask memTableFlushTask = new MemTableFlushTask(memTable, writer);
+    final MemTableFlushTask memTableFlushTask = new MemTableFlushTask(memTable, writer, null, null);
     memTableFlushTask.syncFlushMemTable();
 
     writer.endFile();

@@ -27,6 +27,7 @@ import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.file.metadata.TableSchema;
 import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.utils.WriteUtils;
+import org.apache.tsfile.write.TsFileWriter;
 import org.apache.tsfile.write.record.Tablet;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -139,7 +140,7 @@ public class PipeTableModeTsFileBuilder extends PipeTsFileBuilder {
     // Try making the tsfile size as large as possible
     while (!linkedHashSet.isEmpty()) {
       if (Objects.isNull(fileWriter)) {
-        createFileWriter();
+        fileWriter = new TsFileWriter(createFile());
       }
 
       try {
