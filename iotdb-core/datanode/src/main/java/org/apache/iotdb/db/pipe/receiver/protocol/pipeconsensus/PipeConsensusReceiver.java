@@ -43,6 +43,7 @@ import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.DiskSpaceInsufficientException;
 import org.apache.iotdb.db.exception.load.LoadFileException;
+import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
 import org.apache.iotdb.db.pipe.connector.protocol.pipeconsensus.payload.request.PipeConsensusDeleteNodeReq;
 import org.apache.iotdb.db.pipe.connector.protocol.pipeconsensus.payload.request.PipeConsensusTabletBinaryReq;
 import org.apache.iotdb.db.pipe.connector.protocol.pipeconsensus.payload.request.PipeConsensusTabletInsertNodeReq;
@@ -98,6 +99,7 @@ public class PipeConsensusReceiver {
           * IOTDB_CONFIG.getIotConsensusV2PipelineSize();
   private static final long CLOSE_TSFILE_WRITER_MAX_WAIT_TIME_IN_MS = 5000;
   private static final long RETRY_WAIT_TIME = 500;
+  private static final String TSFILE_WRITER_CHECKER_NAME = "Consensus-TsFile-Writer-Checker";
   private final RequestExecutor requestExecutor;
   private final PipeConsensus pipeConsensus;
   private final ConsensusGroupId consensusGroupId;
@@ -1060,6 +1062,7 @@ public class PipeConsensusReceiver {
     private final Lock lock = new ReentrantLock();
     private final List<PipeConsensusTsFileWriter> pipeConsensusTsFileWriterPool = new ArrayList<>();
     private final ConsensusPipeName consensusPipeName;
+    private boolean registeredTsFileWriterChecker = false;
 
     public PipeConsensusTsFileWriterPool(ConsensusPipeName consensusPipeName)
         throws DiskSpaceInsufficientException, IOException {
@@ -1070,6 +1073,20 @@ public class PipeConsensusReceiver {
         // initialize writing path
         tsFileWriter.rollToNextWritingPath();
         pipeConsensusTsFileWriterPool.add(tsFileWriter);
+      }
+
+      if (!registeredTsFileWriterChecker) {
+        LOGGER.info(
+            "Registering periodical job {} with interval in seconds {}.",
+            TSFILE_WRITER_CHECKER_NAME,
+            IOTDB_CONFIG.getTsFileWriterCheckInterval());
+
+        this.registeredTsFileWriterChecker = true;
+        PipeDataNodeAgent.runtime()
+            .registerPeriodicalJob(
+                TSFILE_WRITER_CHECKER_NAME,
+                this::checkZombieTsFileWriter,
+                IOTDB_CONFIG.getTsFileWriterCheckInterval());
       }
     }
 
@@ -1109,6 +1126,31 @@ public class PipeConsensusReceiver {
       }
 
       return tsFileWriter.get();
+    }
+
+    private void checkZombieTsFileWriter() {
+      pipeConsensusTsFileWriterPool.stream()
+          .filter(PipeConsensusTsFileWriter::isUsed)
+          .forEach(
+              writer -> {
+                if (System.currentTimeMillis() - writer.lastUsedTs
+                    >= IOTDB_CONFIG.getTsFileWriterZombieThreshold()) {
+                  try {
+                    writer.closeSelf(consensusPipeName);
+                    writer.returnSelf(consensusPipeName);
+                    LOGGER.info(
+                        "PipeConsensus-PipeName-{}: tsfile writer-{} is cleaned up because no new requests were received for too long.",
+                        consensusPipeName,
+                        writer.index);
+                  } catch (IOException | DiskSpaceInsufficientException e) {
+                    LOGGER.warn(
+                        "PipeConsensus-PipeName-{}: receiver watch dog failed to return tsFileWriter-{}.",
+                        consensusPipeName.toString(),
+                        writer.index,
+                        e);
+                  }
+                }
+              });
     }
 
     public void handleExit(ConsensusPipeName consensusPipeName) {
@@ -1156,6 +1198,7 @@ public class PipeConsensusReceiver {
     private volatile boolean isUsed = false;
     // If isUsed is true, this variable will be set to the TCommitId of holderEvent
     private volatile TCommitId commitIdOfCorrespondingHolderEvent;
+    private long lastUsedTs;
 
     public PipeConsensusTsFileWriter(int index, ConsensusPipeName consensusPipeName) {
       this.index = index;
@@ -1247,6 +1290,9 @@ public class PipeConsensusReceiver {
 
     public void setUsed(boolean used) {
       isUsed = used;
+      if (isUsed) {
+        lastUsedTs = System.currentTimeMillis();
+      }
     }
 
     public void returnSelf(ConsensusPipeName consensusPipeName)

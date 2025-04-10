@@ -1939,6 +1939,18 @@ iot_consensus_v2_mode=batch
 # Datatype: int
 deletion_ahead_log_buffer_queue_capacity=500
 
+# Interval for check zombie TsFile writer in iot consensus v2
+# time unit is milliseconds.
+# effectiveMode: restart
+# DataType: long
+zombie_tsfile_writer_check_interval=300000
+
+# Threshold for determining whether a TsFile writer is a zombie in iot consensus v2
+# time unit is milliseconds.
+# effectiveMode: restart
+# DataType: long
+zombie_tsfile_writer_threshold=600000
+
 ####################
 ### Procedure Configuration
 ####################
