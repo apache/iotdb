@@ -1047,9 +1047,8 @@ public class PipeConsensusReceiver {
   public synchronized void handleExit() {
     // only after closing request executor, can we clean receiver.
     requestExecutor.tryClose();
-    requestExecutor.clear();
-    // Clear the tsFileWriters and receiver base dirs
-    pipeConsensusTsFileWriterPool.handleExit(consensusPipeName);
+    // Clear the tsFileWriters, receiverBuffer and receiver base dirs
+    requestExecutor.clear(false);
     clearAllReceiverBaseDir();
     // remove metric
     MetricService.getInstance().removeMetricSet(pipeConsensusReceiverMetrics);
@@ -1378,6 +1377,18 @@ public class PipeConsensusReceiver {
       }
     }
 
+    private TPipeConsensusTransferResp closedResp() {
+      final TSStatus status =
+          new TSStatus(
+              RpcUtils.getStatus(
+                  TSStatusCode.PIPE_CONSENSUS_CLOSE_ERROR,
+                  "PipeConsensus receiver received a request after it was closed."));
+      LOGGER.info(
+          "PipeConsensus-PipeName-{}: received a request after receiver was closed and pipe task was dropped.",
+          consensusPipeName);
+      return new TPipeConsensusTransferResp(status);
+    }
+
     private TPipeConsensusTransferResp onRequest(
         final TPipeConsensusTransferReq req,
         final boolean isTransferTsFilePiece,
@@ -1385,16 +1396,9 @@ public class PipeConsensusReceiver {
       long startAcquireLockNanos = System.nanoTime();
       lock.lock();
       try {
+        // once thread gets lock, it will judge whether receiver is closed
         if (isClosed.get()) {
-          final TSStatus status =
-              new TSStatus(
-                  RpcUtils.getStatus(
-                      TSStatusCode.PIPE_CONSENSUS_CLOSE_ERROR,
-                      "PipeConsensus receiver received a request after it was closed."));
-          LOGGER.info(
-              "PipeConsensus-PipeName-{}: received a request after receiver was closed and pipe task was dropped.",
-              consensusPipeName);
-          return new TPipeConsensusTransferResp(status);
+          return closedResp();
         }
 
         long startDispatchNanos = System.nanoTime();
@@ -1507,6 +1511,11 @@ public class PipeConsensusReceiver {
                   !condition.await(
                       PIPE_CONSENSUS_RECEIVER_MAX_WAITING_TIME_IN_MS, TimeUnit.MILLISECONDS);
 
+              // once thread gets lock, it will judge whether receiver is closed
+              if (isClosed.get()) {
+                return closedResp();
+              }
+
               // If some reqs find the buffer no longer contains their requestMeta after jumping out
               // from condition.await, it may indicate that during their wait, some reqs with newer
               // pipeTaskStartTimes or rebootTimes came in and refreshed the requestBuffer. In that
@@ -1572,17 +1581,19 @@ public class PipeConsensusReceiver {
           consensusPipeName);
       // since pipe task will resend all data that hasn't synchronized after dataNode reboots, it's
       // safe to clear all events in buffer.
-      clear();
+      clear(true);
       // signal all deprecated requests that may wait on condition to expire them
       condition.signalAll();
       // sync the follower's connectorRebootTimes with connector's actual rebootTimes.
       this.connectorRebootTimes = connectorRebootTimes;
     }
 
-    private void clear() {
+    private void clear(boolean resetSyncIndex) {
       this.reqExecutionOrderBuffer.clear();
       this.tsFileWriterPool.handleExit(consensusPipeName);
-      this.onSyncedReplicateIndex = 0;
+      if (resetSyncIndex) {
+        this.onSyncedReplicateIndex = 0;
+      }
     }
   }
 

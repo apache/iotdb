@@ -94,7 +94,22 @@ public class PipeConsensusReceiverAgent implements ConsensusPipeReceiver {
     if (RECEIVER_CONSTRUCTORS.containsKey(reqVersion)) {
       final ConsensusGroupId consensusGroupId =
           ConsensusGroupId.Factory.createFromTConsensusGroupId(req.getConsensusGroupId());
-      return getReceiver(consensusGroupId, req.getDataNodeId(), reqVersion).receive(req);
+      final PipeConsensusReceiver receiver =
+          getReceiver(consensusGroupId, req.getDataNodeId(), reqVersion);
+
+      if (receiver == null) {
+        final TSStatus status =
+            new TSStatus(
+                RpcUtils.getStatus(
+                    TSStatusCode.PIPE_CONSENSUS_CLOSE_ERROR,
+                    "PipeConsensus receiver received a request after it was closed."));
+        LOGGER.info(
+            "PipeConsensus-{}: receive on-the-fly no.{} event after consensus pipe was dropped, discard it",
+            consensusGroupId,
+            req.getCommitId());
+        return new TPipeConsensusTransferResp(status);
+      }
+      return receiver.receive(req);
     } else {
       final TSStatus status =
           RpcUtils.getStatus(
@@ -114,6 +129,11 @@ public class PipeConsensusReceiverAgent implements ConsensusPipeReceiver {
     // 2. Route to given consensusPipeTask's receiver
     ConsensusPipeName consensusPipeName =
         new ConsensusPipeName(consensusGroupId, leaderDataNodeId, thisNodeId);
+    // 3. Judge whether pipe task was dropped
+    if (!consensusPipeStatusMap.getOrDefault(consensusPipeName, new AtomicBoolean(true)).get()) {
+      return null;
+    }
+
     AtomicBoolean isFirstGetReceiver = new AtomicBoolean(false);
     AtomicReference<PipeConsensusReceiver> receiverReference =
         consensusPipe2ReceiverMap.computeIfAbsent(
