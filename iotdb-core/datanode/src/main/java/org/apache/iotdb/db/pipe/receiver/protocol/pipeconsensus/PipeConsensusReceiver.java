@@ -1327,6 +1327,7 @@ public class PipeConsensusReceiver {
   private class RequestExecutor {
     private static final String THIS_NODE = "this node";
     private static final String PIPE_TASK = "pipe task";
+
     // An ordered set that buffers transfer requests' TCommitId, whose length is not larger than
     // PIPE_CONSENSUS_PIPELINE_SIZE.
     // Here we use set is to avoid duplicate events being received in some special cases
@@ -1428,11 +1429,11 @@ public class PipeConsensusReceiver {
         // Judge whether connector has rebooted or not, if the rebootTimes increases compared to
         // connectorRebootTimes, need to reset receiver because connector has been restarted.
         if (tCommitId.getDataNodeRebootTimes() > connectorRebootTimes) {
-          resetWithNewestRebootTime(tCommitId.getDataNodeRebootTimes(), condition);
+          resetWithNewestRebootTime(tCommitId.getDataNodeRebootTimes());
         }
         // Similarly, check pipeTask restartTimes
         if (tCommitId.getPipeTaskRestartTimes() > pipeTaskRestartTimes) {
-          resetWithNewestRestartTime(tCommitId.getPipeTaskRestartTimes(), condition);
+          resetWithNewestRestartTime(tCommitId.getPipeTaskRestartTimes());
         }
         // update metric
         if (isTransferTsFilePiece && !reqExecutionOrderBuffer.contains(requestMeta)) {
@@ -1480,8 +1481,6 @@ public class PipeConsensusReceiver {
             if (resp != null
                 && resp.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
               onSuccess(tCommitId, isTransferTsFileSeal);
-              // signal all other reqs to accelerate dispatch process.
-              condition.signalAll();
             }
             return resp;
           }
@@ -1497,8 +1496,6 @@ public class PipeConsensusReceiver {
             if (resp != null
                 && resp.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
               onSuccess(tCommitId, isTransferTsFileSeal);
-              // signal all other reqs that may wait for this event
-              condition.signalAll();
             }
             return resp;
           } else {
@@ -1515,15 +1512,7 @@ public class PipeConsensusReceiver {
               // pipeTaskStartTimes or rebootTimes came in and refreshed the requestBuffer. In that
               // cases we need to discard these requests.
               if (!reqExecutionOrderBuffer.contains(requestMeta)) {
-                final TSStatus status =
-                    new TSStatus(
-                        RpcUtils.getStatus(
-                            TSStatusCode.PIPE_CONSENSUS_DEPRECATED_REQUEST,
-                            "PipeConsensus receiver received a deprecated request, which may be sent before the connector restart or pipe task restart. Consider to discard it"));
-                LOGGER.info(
-                    "PipeConsensus-PipeName-{}: received a deprecated request, which may be sent before the connector restart or pipe task restart. Consider to discard it",
-                    consensusPipeName);
-                return new TPipeConsensusTransferResp(status);
+                return deprecatedResp(String.format("%s or %s", THIS_NODE, PIPE_TASK));
               }
               // If the buffer is not full after waiting timeout, we suppose that the sender will
               // not send any more events at this time, that is, the sender has sent all events. At
@@ -1540,8 +1529,6 @@ public class PipeConsensusReceiver {
                 if (resp != null
                     && resp.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
                   onSuccess(tCommitId, isTransferTsFileSeal);
-                  // signal all other reqs that may wait for this event
-                  condition.signalAll();
                 }
                 return resp;
               }
@@ -1561,6 +1548,9 @@ public class PipeConsensusReceiver {
           }
         }
       } finally {
+        // let all threads that may still await become active to acquire lock instead meaningless
+        // sleeping in the condition while lock is already released.
+        condition.signalAll();
         lock.unlock();
       }
     }
@@ -1569,29 +1559,25 @@ public class PipeConsensusReceiver {
      * Reset all data to initial status and set connectorRebootTimes properly. This method is called
      * when receiver identifies connector has rebooted.
      */
-    private void resetWithNewestRebootTime(int connectorRebootTimes, Condition condition) {
+    private void resetWithNewestRebootTime(int connectorRebootTimes) {
       LOGGER.info(
           "PipeConsensus-PipeName-{}: receiver detected an newer rebootTimes, which indicates the leader has rebooted. receiver will reset all its data.",
           consensusPipeName);
       // since pipe task will resend all data that hasn't synchronized after dataNode reboots, it's
       // safe to clear all events in buffer.
       clear();
-      // signal all deprecated requests that may wait on condition to expire them
-      condition.signalAll();
       // sync the follower's connectorRebootTimes with connector's actual rebootTimes.
       this.connectorRebootTimes = connectorRebootTimes;
       this.pipeTaskRestartTimes = 0;
     }
 
-    private void resetWithNewestRestartTime(int pipeTaskRestartTimes, Condition condition) {
+    private void resetWithNewestRestartTime(int pipeTaskRestartTimes) {
       LOGGER.info(
           "PipeConsensus-PipeName-{}: receiver detected an newer pipeTaskRestartTimes, which indicates the pipe task has restarted. receiver will reset all its data.",
           consensusPipeName);
       // since pipe task will resend all data that hasn't synchronized after restarts, it's safe to
       // clear all events in buffer.
       clear();
-      // signal all deprecated requests that may wait on condition to expire them
-      condition.signalAll();
       this.pipeTaskRestartTimes = pipeTaskRestartTimes;
     }
 
