@@ -1548,8 +1548,8 @@ public class PipeConsensusReceiver {
           }
         }
       } finally {
-        // let all threads that may still await become active to acquire lock instead meaningless
-        // sleeping in the condition while lock is already released.
+        // let all threads that may still await become active again to acquire lock instead of
+        // meaningless sleeping in the condition while lock is already released.
         condition.signalAll();
         lock.unlock();
       }
