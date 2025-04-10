@@ -49,7 +49,7 @@ public class PipeConsensusClientMgrContainer {
         PipeConsensusClientProperty.newBuilder()
             .setIsRpcThriftCompressionEnabled(CONF.isRpcThriftCompressionEnabled())
             .setMaxClientNumForEachNode(CONF.getMaxClientNumForEachNode())
-            .setSelectorNumOfClientManager(CONF.getSelectorNumOfClientManager())
+            .setSelectorNumOfClientManager(Math.max(3, CONF.getSelectorNumOfClientManager()))
             .build();
     this.asyncClientManager =
         new IClientManager.Factory<TEndPoint, AsyncPipeConsensusServiceClient>()
