@@ -1377,18 +1377,6 @@ public class PipeConsensusReceiver {
       }
     }
 
-    private TPipeConsensusTransferResp closedResp() {
-      final TSStatus status =
-          new TSStatus(
-              RpcUtils.getStatus(
-                  TSStatusCode.PIPE_CONSENSUS_CLOSE_ERROR,
-                  "PipeConsensus receiver received a request after it was closed."));
-      LOGGER.info(
-          "PipeConsensus-PipeName-{}: received a request after receiver was closed and pipe task was dropped.",
-          consensusPipeName);
-      return new TPipeConsensusTransferResp(status);
-    }
-
     private TPipeConsensusTransferResp onRequest(
         final TPipeConsensusTransferReq req,
         final boolean isTransferTsFilePiece,
@@ -1398,7 +1386,8 @@ public class PipeConsensusReceiver {
       try {
         // once thread gets lock, it will judge whether receiver is closed
         if (isClosed.get()) {
-          return closedResp();
+          return PipeConsensusReceiverAgent.closedResp(
+              consensusPipeName.toString(), req.getCommitId());
         }
 
         long startDispatchNanos = System.nanoTime();
@@ -1513,7 +1502,8 @@ public class PipeConsensusReceiver {
 
               // once thread gets lock, it will judge whether receiver is closed
               if (isClosed.get()) {
-                return closedResp();
+                return PipeConsensusReceiverAgent.closedResp(
+                    consensusPipeName.toString(), req.getCommitId());
               }
 
               // If some reqs find the buffer no longer contains their requestMeta after jumping out

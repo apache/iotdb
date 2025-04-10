@@ -26,6 +26,7 @@ import org.apache.iotdb.consensus.IConsensus;
 import org.apache.iotdb.consensus.pipe.PipeConsensus;
 import org.apache.iotdb.consensus.pipe.consensuspipe.ConsensusPipeName;
 import org.apache.iotdb.consensus.pipe.consensuspipe.ConsensusPipeReceiver;
+import org.apache.iotdb.consensus.pipe.thrift.TCommitId;
 import org.apache.iotdb.consensus.pipe.thrift.TPipeConsensusTransferReq;
 import org.apache.iotdb.consensus.pipe.thrift.TPipeConsensusTransferResp;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -88,6 +89,19 @@ public class PipeConsensusReceiverAgent implements ConsensusPipeReceiver {
     }
   }
 
+  public static TPipeConsensusTransferResp closedResp(String consensusInfo, TCommitId tCommitId) {
+    final TSStatus status =
+        new TSStatus(
+            RpcUtils.getStatus(
+                TSStatusCode.PIPE_CONSENSUS_CLOSE_ERROR,
+                "PipeConsensus receiver received a request after it was closed."));
+    LOGGER.info(
+        "PipeConsensus-{}: receive on-the-fly no.{} event after consensus pipe was dropped, discard it",
+        consensusInfo,
+        tCommitId);
+    return new TPipeConsensusTransferResp(status);
+  }
+
   @Override
   public TPipeConsensusTransferResp receive(TPipeConsensusTransferReq req) {
     final byte reqVersion = req.getVersion();
@@ -98,16 +112,7 @@ public class PipeConsensusReceiverAgent implements ConsensusPipeReceiver {
           getReceiver(consensusGroupId, req.getDataNodeId(), reqVersion);
 
       if (receiver == null) {
-        final TSStatus status =
-            new TSStatus(
-                RpcUtils.getStatus(
-                    TSStatusCode.PIPE_CONSENSUS_CLOSE_ERROR,
-                    "PipeConsensus receiver received a request after it was closed."));
-        LOGGER.info(
-            "PipeConsensus-{}: receive on-the-fly no.{} event after consensus pipe was dropped, discard it",
-            consensusGroupId,
-            req.getCommitId());
-        return new TPipeConsensusTransferResp(status);
+        return closedResp(consensusGroupId.toString(), req.getCommitId());
       }
       return receiver.receive(req);
     } else {
