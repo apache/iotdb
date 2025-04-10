@@ -104,6 +104,13 @@ public class MemTableFlushTask {
         writer.getFile().getName());
   }
 
+  public MemTableFlushTask(IMemTable memTable, RestorableTsFileIOWriter writer) {
+    this.memTable = memTable;
+    this.writer = writer;
+    this.encodingTaskFuture = SUB_TASK_POOL_MANAGER.submit(encodingTask);
+    this.ioTaskFuture = SUB_TASK_POOL_MANAGER.submit(ioTask);
+  }
+
   /** the function for flushing memtable. */
   @SuppressWarnings("squid:S3776")
   public void syncFlushMemTable() throws ExecutionException, InterruptedException {

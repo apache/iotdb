@@ -22,9 +22,7 @@ package org.apache.iotdb.db.pipe.connector.util.builder;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.utils.TimePartitionUtils;
-import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.DataNodeTTLCache;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertTabletNode;
 import org.apache.iotdb.db.storageengine.dataregion.flush.MemTableFlushTask;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.IMemTable;
@@ -59,6 +57,9 @@ import java.util.concurrent.atomic.AtomicLong;
 public class PipeTreeModelTsFileBuilder extends PipeTsFileBuilder {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(PipeTreeModelTsFileBuilder.class);
+
+  private static final PlanNodeId PLACEHOLDER_PLAN_NODE_ID =
+      new PlanNodeId("PipeTreeModelTsFileBuilder");
 
   private final List<Tablet> tabletList = new ArrayList<>();
   private final List<Boolean> isTabletAlignedList = new ArrayList<>();
@@ -124,10 +125,7 @@ public class PipeTreeModelTsFileBuilder extends PipeTsFileBuilder {
   }
 
   private void writeTabletsIntoOneFile(final RestorableTsFileIOWriter writer) throws Exception {
-    // TODO: database & region
-    final String database = "test_db";
-    final String dataRegionId = "test_dr";
-    final IMemTable memTable = new PrimitiveMemTable(database, dataRegionId);
+    final IMemTable memTable = new PrimitiveMemTable();
 
     for (int i = 0, size = tabletList.size(); i < size; ++i) {
       final Tablet tablet = tabletList.get(i);
@@ -150,8 +148,7 @@ public class PipeTreeModelTsFileBuilder extends PipeTsFileBuilder {
 
       final InsertTabletNode insertTabletNode =
           new InsertTabletNode(
-              // TODO: plan node id
-              new PlanNodeId("test_id"),
+              PLACEHOLDER_PLAN_NODE_ID,
               new PartialPath(tablet.getDeviceId()),
               isTabletAlignedList.get(i),
               tablet.getSchemas().stream()
@@ -173,10 +170,9 @@ public class PipeTreeModelTsFileBuilder extends PipeTsFileBuilder {
       final TSStatus[] results = new TSStatus[insertTabletNode.getRowCount()];
       Arrays.fill(results, RpcUtils.SUCCESS_STATUS);
 
-      final int loc = insertTabletNode.checkTTL(results, getTTL(insertTabletNode));
       final List<Pair<IDeviceID, Integer>> deviceEndOffsetPairs =
-          insertTabletNode.splitByDevice(loc, insertTabletNode.getRowCount());
-      int start = loc;
+          insertTabletNode.splitByDevice(0, insertTabletNode.getRowCount());
+      int start = 0;
       final Map<Long, List<int[]>[]> splitInfo = new HashMap<>();
       for (final Pair<IDeviceID, Integer> deviceEndOffsetPair : deviceEndOffsetPairs) {
         final int end = deviceEndOffsetPair.getRight();
@@ -187,8 +183,7 @@ public class PipeTreeModelTsFileBuilder extends PipeTsFileBuilder {
       doInsert(insertTabletNode, splitInfo, results, memTable);
     }
 
-    final MemTableFlushTask memTableFlushTask =
-        new MemTableFlushTask(memTable, writer, database, dataRegionId);
+    final MemTableFlushTask memTableFlushTask = new MemTableFlushTask(memTable, writer);
     memTableFlushTask.syncFlushMemTable();
 
     writer.endFile();
@@ -298,9 +293,5 @@ public class PipeTreeModelTsFileBuilder extends PipeTsFileBuilder {
         results[i] = RpcUtils.SUCCESS_STATUS;
       }
     }
-  }
-
-  private long getTTL(final InsertNode insertNode) {
-    return DataNodeTTLCache.getInstance().getTTLForTree(insertNode.getTargetPath().getNodes());
   }
 }

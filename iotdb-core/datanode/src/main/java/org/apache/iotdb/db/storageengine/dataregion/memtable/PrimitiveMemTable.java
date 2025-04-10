@@ -25,7 +25,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 public class PrimitiveMemTable extends AbstractMemTable {
-  // this constructor only used when deserialize
+
   public PrimitiveMemTable() {
     super();
   }

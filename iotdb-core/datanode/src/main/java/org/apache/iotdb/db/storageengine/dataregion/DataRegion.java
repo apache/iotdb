@@ -2954,6 +2954,9 @@ public class DataRegion implements IDataRegionForQuery {
   }
 
   public static Optional<String> getNonSystemDatabaseName(String databaseName) {
+    if (Objects.isNull(databaseName)) {
+      return Optional.empty();
+    }
     if (databaseName.startsWith(SchemaConstant.SYSTEM_DATABASE)) {
       return Optional.empty();
     }
