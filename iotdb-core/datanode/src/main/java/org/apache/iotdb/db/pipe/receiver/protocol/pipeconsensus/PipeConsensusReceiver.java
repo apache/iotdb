@@ -1325,6 +1325,8 @@ public class PipeConsensusReceiver {
    * although events can arrive receiver in a random sequence.
    */
   private class RequestExecutor {
+    private static final String THIS_NODE = "this node";
+    private static final String PIPE_TASK = "pipe task";
     // An ordered set that buffers transfer requests' TCommitId, whose length is not larger than
     // PIPE_CONSENSUS_PIPELINE_SIZE.
     // Here we use set is to avoid duplicate events being received in some special cases
@@ -1337,6 +1339,7 @@ public class PipeConsensusReceiver {
     private final AtomicInteger tsFileEventCount = new AtomicInteger(0);
     private volatile long onSyncedReplicateIndex = 0;
     private volatile int connectorRebootTimes = 0;
+    private volatile int pipeTaskRestartTimes = 0;
 
     public RequestExecutor(
         PipeConsensusReceiverMetrics metric, PipeConsensusTsFileWriterPool tsFileWriterPool) {
@@ -1415,20 +1418,21 @@ public class PipeConsensusReceiver {
         // the request with incremental rebootTimes, the {3} sent before the leader restart needs to
         // be discarded.
         if (tCommitId.getDataNodeRebootTimes() < connectorRebootTimes) {
-          final TSStatus status =
-              new TSStatus(
-                  RpcUtils.getStatus(
-                      TSStatusCode.PIPE_CONSENSUS_DEPRECATED_REQUEST,
-                      "PipeConsensus receiver received a deprecated request, which may be sent before the connector restart. Consider to discard it"));
-          LOGGER.info(
-              "PipeConsensus-PipeName-{}: received a deprecated request, which may be sent before the connector restart. Consider to discard it",
-              consensusPipeName);
-          return new TPipeConsensusTransferResp(status);
+          return deprecatedResp(THIS_NODE);
+        }
+        // Similarly, check pipeTask restartTimes
+        if (tCommitId.getDataNodeRebootTimes() == connectorRebootTimes
+            && tCommitId.getPipeTaskRestartTimes() < pipeTaskRestartTimes) {
+          return deprecatedResp(PIPE_TASK);
         }
         // Judge whether connector has rebooted or not, if the rebootTimes increases compared to
         // connectorRebootTimes, need to reset receiver because connector has been restarted.
         if (tCommitId.getDataNodeRebootTimes() > connectorRebootTimes) {
           resetWithNewestRebootTime(tCommitId.getDataNodeRebootTimes(), condition);
+        }
+        // Similarly, check pipeTask restartTimes
+        if (tCommitId.getPipeTaskRestartTimes() > pipeTaskRestartTimes) {
+          resetWithNewestRestartTime(tCommitId.getPipeTaskRestartTimes(), condition);
         }
         // update metric
         if (isTransferTsFilePiece && !reqExecutionOrderBuffer.contains(requestMeta)) {
@@ -1576,12 +1580,40 @@ public class PipeConsensusReceiver {
       condition.signalAll();
       // sync the follower's connectorRebootTimes with connector's actual rebootTimes.
       this.connectorRebootTimes = connectorRebootTimes;
+      this.pipeTaskRestartTimes = 0;
+    }
+
+    private void resetWithNewestRestartTime(int pipeTaskRestartTimes, Condition condition) {
+      LOGGER.info(
+          "PipeConsensus-PipeName-{}: receiver detected an newer pipeTaskRestartTimes, which indicates the pipe task has restarted. receiver will reset all its data.",
+          consensusPipeName);
+      // since pipe task will resend all data that hasn't synchronized after restarts, it's safe to
+      // clear all events in buffer.
+      clear();
+      // signal all deprecated requests that may wait on condition to expire them
+      condition.signalAll();
+      this.pipeTaskRestartTimes = pipeTaskRestartTimes;
     }
 
     private void clear() {
       this.reqExecutionOrderBuffer.clear();
       this.tsFileWriterPool.handleExit(consensusPipeName);
       this.onSyncedReplicateIndex = 0;
+    }
+
+    private TPipeConsensusTransferResp deprecatedResp(String msg) {
+      final TSStatus status =
+          new TSStatus(
+              RpcUtils.getStatus(
+                  TSStatusCode.PIPE_CONSENSUS_DEPRECATED_REQUEST,
+                  String.format(
+                      "PipeConsensus receiver received a deprecated request, which may be sent before %s restarts. Consider to discard it",
+                      msg)));
+      LOGGER.info(
+          "PipeConsensus-PipeName-{}: received a deprecated request, which may be sent before {} restarts. Consider to discard it",
+          consensusPipeName,
+          msg);
+      return new TPipeConsensusTransferResp(status);
     }
   }
 
