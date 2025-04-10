@@ -135,9 +135,7 @@ public class PipeEventCollector implements EventCollector {
       return;
     }
 
-    if (!forceTabletFormat
-        && !sourceEvent.shouldParse4Privilege()
-        && canSkipParsing4TsFileEvent(sourceEvent)) {
+    if (!forceTabletFormat && canSkipParsing4TsFileEvent(sourceEvent)) {
       collectEvent(sourceEvent);
       return;
     }

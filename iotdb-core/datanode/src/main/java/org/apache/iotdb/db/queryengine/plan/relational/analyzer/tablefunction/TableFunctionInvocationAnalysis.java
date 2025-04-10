@@ -32,18 +32,21 @@ public class TableFunctionInvocationAnalysis {
   private final List<TableArgumentAnalysis> tableArgumentAnalyses;
   private final Map<String, List<Integer>> requiredColumns;
   private final int properColumnsCount;
+  private final boolean requiredRecordSnapshot;
 
   public TableFunctionInvocationAnalysis(
       String name,
       Map<String, Argument> passedArguments,
       ImmutableList<TableArgumentAnalysis> tableArgumentAnalyses,
       Map<String, List<Integer>> requiredColumns,
-      int properColumnsCount) {
+      int properColumnsCount,
+      boolean requiredRecordSnapshot) {
     this.functionName = name;
     this.passedArguments = passedArguments;
     this.tableArgumentAnalyses = tableArgumentAnalyses;
     this.requiredColumns = requiredColumns;
     this.properColumnsCount = properColumnsCount;
+    this.requiredRecordSnapshot = requiredRecordSnapshot;
   }
 
   public Map<String, List<Integer>> getRequiredColumns() {
@@ -64,5 +67,9 @@ public class TableFunctionInvocationAnalysis {
 
   public int getProperColumnsCount() {
     return properColumnsCount;
+  }
+
+  public boolean isRequiredRecordSnapshot() {
+    return requiredRecordSnapshot;
   }
 }

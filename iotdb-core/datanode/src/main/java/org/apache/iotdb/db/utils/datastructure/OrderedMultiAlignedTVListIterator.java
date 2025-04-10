@@ -23,6 +23,7 @@ import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.tsfile.read.common.TimeRange;
 import org.apache.tsfile.utils.BitMap;
+import org.apache.tsfile.write.chunk.IChunkWriter;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -101,6 +102,20 @@ public class OrderedMultiAlignedTVListIterator extends MultiAlignedTVListIterato
     TVList.TVListIterator iterator = alignedTvListIterators.get(iteratorIndex);
     iterator.next();
     rowIndices = null;
+    probeNext = false;
+  }
+
+  @Override
+  public void encodeBatch(IChunkWriter chunkWriter, BatchEncodeInfo encodeInfo, long[] times) {
+    while (iteratorIndex < alignedTvListIterators.size()) {
+      TVList.TVListIterator iterator = alignedTvListIterators.get(iteratorIndex);
+      if (!iterator.hasNextBatch()) {
+        iteratorIndex++;
+        continue;
+      }
+      iterator.encodeBatch(chunkWriter, encodeInfo, times);
+      break;
+    }
     probeNext = false;
   }
 

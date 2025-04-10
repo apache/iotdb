@@ -664,13 +664,17 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
       eventParser.compareAndSet(
           null,
           new TsFileInsertionEventParserProvider(
+                  pipeName,
+                  creationTime,
                   tsFile,
                   treePattern,
                   tablePattern,
                   startTime,
                   endTime,
                   pipeTaskMeta,
-                  userName,
+                  // Do not parse privilege if it should not be parsed
+                  // To avoid renaming of the tsFile database
+                  shouldParse4Privilege ? userName : null,
                   this)
               .provide());
       return eventParser.get();

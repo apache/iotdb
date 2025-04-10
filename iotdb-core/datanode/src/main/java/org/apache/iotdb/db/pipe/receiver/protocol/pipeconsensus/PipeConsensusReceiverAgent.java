@@ -194,7 +194,7 @@ public class PipeConsensusReceiverAgent implements ConsensusPipeReceiver {
     if (receiverReference != null) {
       receiverReference.get().handleExit();
       receiverReference.set(null);
+      consensusPipe2ReciverMap.remove(pipeName);
     }
-    consensusPipe2ReciverMap.remove(pipeName);
   }
 }

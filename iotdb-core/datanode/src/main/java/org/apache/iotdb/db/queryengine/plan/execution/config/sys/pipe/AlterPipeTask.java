@@ -43,7 +43,7 @@ public class AlterPipeTask implements IConfigTask {
     this.alterPipeStatement = alterPipeStatement;
   }
 
-  public AlterPipeTask(final AlterPipe node) {
+  public AlterPipeTask(final AlterPipe node, final String userName) {
     alterPipeStatement = new AlterPipeStatement(StatementType.ALTER_PIPE);
     alterPipeStatement.setPipeName(node.getPipeName());
     alterPipeStatement.setIfExists(node.hasIfExistsCondition());
@@ -57,6 +57,7 @@ public class AlterPipeTask implements IConfigTask {
     alterPipeStatement.setReplaceAllExtractorAttributes(node.isReplaceAllExtractorAttributes());
     alterPipeStatement.setReplaceAllProcessorAttributes(node.isReplaceAllProcessorAttributes());
     alterPipeStatement.setReplaceAllConnectorAttributes(node.isReplaceAllConnectorAttributes());
+    alterPipeStatement.setUserName(userName);
 
     alterPipeStatement.setTableModel(true);
   }

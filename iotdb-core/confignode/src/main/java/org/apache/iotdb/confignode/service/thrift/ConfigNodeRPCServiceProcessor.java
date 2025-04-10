@@ -859,7 +859,10 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
     RemoveConfigNodePlan removeConfigNodePlan = new RemoveConfigNodePlan(configNodeLocation);
     TSStatus status = configManager.removeConfigNode(removeConfigNodePlan);
     // Print log to record the ConfigNode that performs the RemoveConfigNodeRequest
-    LOGGER.info("Execute RemoveConfigNodeRequest {} with result {}", configNodeLocation, status);
+    LOGGER.info(
+        "The result of submitting RemoveConfigNode job is {}. RemoveConfigNodeRequest: {}",
+        status,
+        configNodeLocation);
 
     return status;
   }

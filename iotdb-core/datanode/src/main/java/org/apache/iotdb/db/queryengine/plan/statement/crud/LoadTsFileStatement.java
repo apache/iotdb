@@ -43,6 +43,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import static org.apache.iotdb.db.storageengine.load.config.LoadTsFileConfigurator.ASYNC_LOAD_KEY;
 import static org.apache.iotdb.db.storageengine.load.config.LoadTsFileConfigurator.CONVERT_ON_TYPE_MISMATCH_KEY;
 import static org.apache.iotdb.db.storageengine.load.config.LoadTsFileConfigurator.DATABASE_LEVEL_KEY;
 import static org.apache.iotdb.db.storageengine.load.config.LoadTsFileConfigurator.DATABASE_NAME_KEY;
@@ -62,6 +63,7 @@ public class LoadTsFileStatement extends Statement {
   private long tabletConversionThresholdBytes = -1;
   private boolean autoCreateDatabase = true;
   private boolean isGeneratedByPipe = false;
+  private boolean isAsyncLoad = false;
 
   private Map<String, String> loadAttributes;
 
@@ -249,6 +251,10 @@ public class LoadTsFileStatement extends Statement {
     initAttributes();
   }
 
+  public boolean isAsyncLoad() {
+    return isAsyncLoad;
+  }
+
   private void initAttributes() {
     this.databaseLevel = LoadTsFileConfigurator.parseOrGetDefaultDatabaseLevel(loadAttributes);
     this.database = LoadTsFileConfigurator.parseDatabaseName(loadAttributes);
@@ -258,6 +264,7 @@ public class LoadTsFileStatement extends Statement {
     this.tabletConversionThresholdBytes =
         LoadTsFileConfigurator.parseOrGetDefaultTabletConversionThresholdBytes(loadAttributes);
     this.verifySchema = LoadTsFileConfigurator.parseOrGetDefaultVerify(loadAttributes);
+    this.isAsyncLoad = LoadTsFileConfigurator.parseOrGetDefaultAsyncLoad(loadAttributes);
   }
 
   public boolean reconstructStatementIfMiniFileConverted(final List<Boolean> isMiniTsFile) {
@@ -326,6 +333,7 @@ public class LoadTsFileStatement extends Statement {
     loadAttributes.put(CONVERT_ON_TYPE_MISMATCH_KEY, String.valueOf(convertOnTypeMismatch));
     loadAttributes.put(
         TABLET_CONVERSION_THRESHOLD_KEY, String.valueOf(tabletConversionThresholdBytes));
+    loadAttributes.put(ASYNC_LOAD_KEY, String.valueOf(isAsyncLoad));
 
     return new LoadTsFile(null, file.getAbsolutePath(), loadAttributes);
   }
@@ -350,6 +358,8 @@ public class LoadTsFileStatement extends Statement {
         + convertOnTypeMismatch
         + ", tablet-conversion-threshold="
         + tabletConversionThresholdBytes
+        + ", async-load="
+        + isAsyncLoad
         + ", tsFiles size="
         + tsFiles.size()
         + '}';
