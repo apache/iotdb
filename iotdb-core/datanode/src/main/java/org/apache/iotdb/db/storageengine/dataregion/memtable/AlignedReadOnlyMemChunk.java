@@ -140,7 +140,8 @@ public class AlignedReadOnlyMemChunk extends ReadOnlyMemChunk {
             alignedTvLists,
             valueColumnsDeletionList,
             floatPrecision,
-            encodingList);
+            encodingList,
+            MAX_NUMBER_OF_POINTS_IN_PAGE);
 
     while (timeValuePairIterator.hasNextBatch()) {
       // create pageTimeStatistics and pageValueStatistics for new page
@@ -314,7 +315,8 @@ public class AlignedReadOnlyMemChunk extends ReadOnlyMemChunk {
             alignedTvLists,
             valueColumnsDeletionList,
             floatPrecision,
-            encodingList);
+            encodingList,
+            MAX_NUMBER_OF_POINTS_IN_PAGE);
 
     while (timeValuePairIterator.hasNextTimeValuePair()) {
       TimeValuePair tvPair = timeValuePairIterator.nextTimeValuePair();

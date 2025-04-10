@@ -42,14 +42,16 @@ public class OrderedMultiAlignedTVListIterator extends MultiAlignedTVListIterato
       List<AlignedTVList> alignedTvLists,
       List<List<TimeRange>> valueColumnsDeletionList,
       Integer floatPrecision,
-      List<TSEncoding> encodingList) {
+      List<TSEncoding> encodingList,
+      int maxNumberOfPointsInPage) {
     super(
         tsDataTypes,
         columnIndexList,
         alignedTvLists,
         valueColumnsDeletionList,
         floatPrecision,
-        encodingList);
+        encodingList,
+        maxNumberOfPointsInPage);
     this.bitMap = new BitMap(tsDataTypeList.size());
     this.valueColumnDeleteCursor = new ArrayList<>();
     for (int i = 0; i < tsDataTypeList.size(); i++) {
