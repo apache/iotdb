@@ -19,14 +19,12 @@
 
 package org.apache.iotdb.db.utils.datastructure;
 
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.IWALByteBufferView;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALWriteUtils;
 import org.apache.iotdb.db.storageengine.rescon.memory.PrimitiveArrayManager;
 import org.apache.iotdb.db.utils.MathUtils;
 
 import org.apache.tsfile.block.column.ColumnBuilder;
-import org.apache.tsfile.common.conf.TSFileDescriptor;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.tsfile.read.TimeValuePair;
@@ -1335,9 +1333,15 @@ public abstract class AlignedTVList extends TVList {
       List<Integer> columnIndexList,
       List<List<TimeRange>> valueColumnsDeletionList,
       Integer floatPrecision,
-      List<TSEncoding> encodingList) {
+      List<TSEncoding> encodingList,
+      int maxNumberOfPointsInPage) {
     return new AlignedTVListIterator(
-        dataTypeList, columnIndexList, valueColumnsDeletionList, floatPrecision, encodingList);
+        dataTypeList,
+        columnIndexList,
+        valueColumnsDeletionList,
+        floatPrecision,
+        encodingList,
+        maxNumberOfPointsInPage);
   }
 
   /* AlignedTVList Iterator */
@@ -1355,18 +1359,14 @@ public abstract class AlignedTVList extends TVList {
 
     private final List<int[]> valueColumnDeleteCursor = new ArrayList<>();
 
-    private final int MAX_NUMBER_OF_POINTS_IN_PAGE =
-        TSFileDescriptor.getInstance().getConfig().getMaxNumberOfPointsInPage();
-    private long maxNumberOfPointsInChunk =
-        IoTDBDescriptor.getInstance().getConfig().getTargetChunkPointNum();
-
     public AlignedTVListIterator(
         List<TSDataType> dataTypeList,
         List<Integer> columnIndexList,
         List<List<TimeRange>> valueColumnsDeletionList,
         Integer floatPrecision,
-        List<TSEncoding> encodingList) {
-      super(null, null, null);
+        List<TSEncoding> encodingList,
+        int maxNumberOfPointsInPage) {
+      super(null, null, null, maxNumberOfPointsInPage);
       this.dataTypeList = dataTypeList;
       this.columnIndexList =
           (columnIndexList == null)
@@ -1380,10 +1380,6 @@ public abstract class AlignedTVList extends TVList {
       for (int i = 0; i < dataTypeList.size(); i++) {
         valueColumnDeleteCursor.add(new int[] {0});
       }
-      int avgPointSizeOfLargestColumn = getAvgPointSizeOfLargestColumn();
-      long TARGET_CHUNK_SIZE = IoTDBDescriptor.getInstance().getConfig().getTargetChunkSize();
-      maxNumberOfPointsInChunk =
-          Math.min(maxNumberOfPointsInChunk, (TARGET_CHUNK_SIZE / avgPointSizeOfLargestColumn));
     }
 
     @Override
@@ -1547,7 +1543,7 @@ public abstract class AlignedTVList extends TVList {
       int startIndex = index;
       // time column
       for (; index < rows; index++) {
-        if (validRowCount >= MAX_NUMBER_OF_POINTS_IN_PAGE) {
+        if (validRowCount >= maxNumberOfPointsInPage) {
           break;
         }
         // skip empty row
@@ -1691,8 +1687,8 @@ public abstract class AlignedTVList extends TVList {
       int startIndex = index;
       // time column
       for (; index < rows; index++) {
-        if (encodeInfo.pointNumInChunk >= maxNumberOfPointsInChunk
-            || encodeInfo.pointNumInPage >= MAX_NUMBER_OF_POINTS_IN_PAGE) {
+        if (encodeInfo.pointNumInChunk >= encodeInfo.maxNumberOfPointsInChunk
+            || encodeInfo.pointNumInPage >= encodeInfo.maxNumberOfPointsInPage) {
           break;
         }
         // skip empty row

@@ -61,8 +61,6 @@ public class WritableMemChunk extends AbstractWritableMemChunk {
   private static final Logger LOGGER = LoggerFactory.getLogger(WritableMemChunk.class);
 
   private static final IoTDBConfig CONFIG = IoTDBDescriptor.getInstance().getConfig();
-  private final long TARGET_CHUNK_SIZE = CONFIG.getTargetChunkSize();
-  private final long MAX_NUMBER_OF_POINTS_IN_CHUNK = CONFIG.getTargetChunkPointNum();
   private final int TVLIST_SORT_THRESHOLD = CONFIG.getTvListSortThreshold();
 
   public WritableMemChunk(IMeasurementSchema schema) {
@@ -368,7 +366,8 @@ public class WritableMemChunk extends AbstractWritableMemChunk {
     return out.toString();
   }
 
-  public void encodeWorkingTVList(BlockingQueue<Object> ioTaskQueue) {
+  public void encodeWorkingTVList(
+      BlockingQueue<Object> ioTaskQueue, long maxNumberOfPointsInChunk, long targetChunkSize) {
 
     TSDataType tsDataType = schema.getType();
     ChunkWriterImpl chunkWriterImpl = createIChunkWriter();
@@ -426,8 +425,8 @@ public class WritableMemChunk extends AbstractWritableMemChunk {
           break;
       }
       pointNumInCurrentChunk++;
-      if (pointNumInCurrentChunk > MAX_NUMBER_OF_POINTS_IN_CHUNK
-          || dataSizeInCurrentChunk > TARGET_CHUNK_SIZE) {
+      if (pointNumInCurrentChunk > maxNumberOfPointsInChunk
+          || dataSizeInCurrentChunk > targetChunkSize) {
         chunkWriterImpl.sealCurrentPage();
         chunkWriterImpl.clearPageWriter();
         try {
@@ -455,7 +454,8 @@ public class WritableMemChunk extends AbstractWritableMemChunk {
   public synchronized void encode(
       BlockingQueue<Object> ioTaskQueue, BatchEncodeInfo encodeInfo, long[] times) {
     if (TVLIST_SORT_THRESHOLD == 0) {
-      encodeWorkingTVList(ioTaskQueue);
+      encodeWorkingTVList(
+          ioTaskQueue, encodeInfo.maxNumberOfPointsInChunk, encodeInfo.targetChunkSize);
       return;
     }
 
@@ -468,12 +468,13 @@ public class WritableMemChunk extends AbstractWritableMemChunk {
     List<TVList> tvLists = new ArrayList<>(sortedList);
     tvLists.add(list);
     MemPointIterator timeValuePairIterator =
-        MemPointIteratorFactory.create(schema.getType(), tvLists);
+        MemPointIteratorFactory.create(
+            schema.getType(), tvLists, encodeInfo.maxNumberOfPointsInPage);
 
     while (timeValuePairIterator.hasNextBatch()) {
       timeValuePairIterator.encodeBatch(chunkWriterImpl, encodeInfo, times);
-      if (encodeInfo.pointNumInChunk >= MAX_NUMBER_OF_POINTS_IN_CHUNK
-          || encodeInfo.dataSizeInChunk >= TARGET_CHUNK_SIZE) {
+      if (encodeInfo.pointNumInChunk >= encodeInfo.maxNumberOfPointsInChunk
+          || encodeInfo.dataSizeInChunk >= encodeInfo.targetChunkSize) {
         chunkWriterImpl.sealCurrentPage();
         chunkWriterImpl.clearPageWriter();
         try {

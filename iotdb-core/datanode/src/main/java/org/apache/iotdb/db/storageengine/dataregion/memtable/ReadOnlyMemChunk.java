@@ -138,7 +138,13 @@ public class ReadOnlyMemChunk {
     Statistics<? extends Serializable> chunkStatistics = Statistics.getStatsByType(dataType);
     List<TVList> tvLists = new ArrayList<>(tvListQueryMap.keySet());
     timeValuePairIterator =
-        MemPointIteratorFactory.create(dataType, tvLists, deletionList, floatPrecision, encoding);
+        MemPointIteratorFactory.create(
+            dataType,
+            tvLists,
+            deletionList,
+            floatPrecision,
+            encoding,
+            MAX_NUMBER_OF_POINTS_IN_PAGE);
     while (timeValuePairIterator.hasNextBatch()) {
       // statistics for current batch
       Statistics<? extends Serializable> pageStatistics = Statistics.getStatsByType(dataType);
@@ -247,7 +253,12 @@ public class ReadOnlyMemChunk {
     List<TVList> tvLists = new ArrayList<>(tvListQueryMap.keySet());
     MemPointIterator timeValuePairIterator =
         MemPointIteratorFactory.create(
-            getDataType(), tvLists, deletionList, floatPrecision, encoding);
+            getDataType(),
+            tvLists,
+            deletionList,
+            floatPrecision,
+            encoding,
+            MAX_NUMBER_OF_POINTS_IN_PAGE);
 
     while (timeValuePairIterator.hasNextTimeValuePair()) {
       TimeValuePair tvPair = timeValuePairIterator.nextTimeValuePair();
@@ -321,9 +332,5 @@ public class ReadOnlyMemChunk {
 
   public MemPointIterator getMemPointIterator() {
     return timeValuePairIterator;
-  }
-
-  public int getMaxNumberOfPointsInPage() {
-    return MAX_NUMBER_OF_POINTS_IN_PAGE;
   }
 }

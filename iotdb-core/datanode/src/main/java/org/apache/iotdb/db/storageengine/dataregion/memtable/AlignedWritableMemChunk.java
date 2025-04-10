@@ -29,7 +29,6 @@ import org.apache.iotdb.db.utils.datastructure.MemPointIterator;
 import org.apache.iotdb.db.utils.datastructure.MemPointIteratorFactory;
 import org.apache.iotdb.db.utils.datastructure.TVList;
 
-import org.apache.tsfile.common.conf.TSFileDescriptor;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.TimeRange;
 import org.apache.tsfile.utils.Binary;
@@ -66,11 +65,7 @@ public class AlignedWritableMemChunk extends AbstractWritableMemChunk {
   private long sortedRowCount = 0;
 
   private static final IoTDBConfig CONFIG = IoTDBDescriptor.getInstance().getConfig();
-  private final long TARGET_CHUNK_SIZE = CONFIG.getTargetChunkSize();
-  private long maxNumberOfPointsInChunk = CONFIG.getTargetChunkPointNum();
   private final int TVLIST_SORT_THRESHOLD = CONFIG.getTvListSortThreshold();
-  private final int MAX_NUMBER_OF_POINTS_IN_PAGE =
-      TSFileDescriptor.getInstance().getConfig().getMaxNumberOfPointsInPage();
 
   private static final String UNSUPPORTED_TYPE = "Unsupported data type:";
 
@@ -320,11 +315,11 @@ public class AlignedWritableMemChunk extends AbstractWritableMemChunk {
   }
 
   @SuppressWarnings({"squid:S6541", "squid:S3776"})
-  public void encodeWorkingAlignedTVList(BlockingQueue<Object> ioTaskQueue) {
+  public void encodeWorkingAlignedTVList(
+      BlockingQueue<Object> ioTaskQueue,
+      long maxNumberOfPointsInChunk,
+      int maxNumberOfPointsInPage) {
     BitMap allValueColDeletedMap = list.getAllValueColDeletedMap();
-    int avgPointSizeOfLargestColumn = list.getAvgPointSizeOfLargestColumn();
-    maxNumberOfPointsInChunk =
-        Math.min(maxNumberOfPointsInChunk, (TARGET_CHUNK_SIZE / avgPointSizeOfLargestColumn));
 
     boolean[] timeDuplicateInfo = null;
 
@@ -343,7 +338,7 @@ public class AlignedWritableMemChunk extends AbstractWritableMemChunk {
       }
       pointNumInPage++;
       pointNumInChunk++;
-      if (pointNumInPage == MAX_NUMBER_OF_POINTS_IN_PAGE) {
+      if (pointNumInPage == maxNumberOfPointsInPage) {
         pageRange.add(sortedRowIndex);
         pointNumInPage = 0;
       }
@@ -379,14 +374,16 @@ public class AlignedWritableMemChunk extends AbstractWritableMemChunk {
       chunkRange.add(pageRange);
     }
 
-    handleEncoding(ioTaskQueue, chunkRange, timeDuplicateInfo, allValueColDeletedMap);
+    handleEncoding(
+        ioTaskQueue, chunkRange, timeDuplicateInfo, allValueColDeletedMap, maxNumberOfPointsInPage);
   }
 
   private void handleEncoding(
       BlockingQueue<Object> ioTaskQueue,
       List<List<Integer>> chunkRange,
       boolean[] timeDuplicateInfo,
-      BitMap allValueColDeletedMap) {
+      BitMap allValueColDeletedMap,
+      int maxNumberOfPointsInPage) {
     List<TSDataType> dataTypes = list.getTsDataTypes();
     Pair<Long, Integer>[] lastValidPointIndexForTimeDupCheck = new Pair[dataTypes.size()];
     for (List<Integer> pageRange : chunkRange) {
@@ -486,7 +483,7 @@ public class AlignedWritableMemChunk extends AbstractWritableMemChunk {
           alignedChunkWriter.nextColumn();
         }
 
-        long[] times = new long[Math.min(MAX_NUMBER_OF_POINTS_IN_PAGE, list.rowCount())];
+        long[] times = new long[Math.min(maxNumberOfPointsInPage, list.rowCount())];
         int pointsInPage = 0;
         for (int sortedRowIndex = pageRange.get(pageNum * 2);
             sortedRowIndex <= pageRange.get(pageNum * 2 + 1);
@@ -516,7 +513,8 @@ public class AlignedWritableMemChunk extends AbstractWritableMemChunk {
   public synchronized void encode(
       BlockingQueue<Object> ioTaskQueue, BatchEncodeInfo encodeInfo, long[] times) {
     if (TVLIST_SORT_THRESHOLD == 0) {
-      encodeWorkingAlignedTVList(ioTaskQueue);
+      encodeWorkingAlignedTVList(
+          ioTaskQueue, encodeInfo.maxNumberOfPointsInChunk, encodeInfo.maxNumberOfPointsInPage);
       return;
     }
 
@@ -527,16 +525,17 @@ public class AlignedWritableMemChunk extends AbstractWritableMemChunk {
     alignedTvLists.add(list);
     List<Integer> columnIndexList = buildColumnIndexList(schemaList);
     MemPointIterator timeValuePairIterator =
-        MemPointIteratorFactory.create(dataTypes, columnIndexList, alignedTvLists);
+        MemPointIteratorFactory.create(
+            dataTypes, columnIndexList, alignedTvLists, encodeInfo.maxNumberOfPointsInPage);
 
     while (timeValuePairIterator.hasNextBatch()) {
       timeValuePairIterator.encodeBatch(alignedChunkWriter, encodeInfo, times);
-      if (encodeInfo.pointNumInPage >= MAX_NUMBER_OF_POINTS_IN_PAGE) {
+      if (encodeInfo.pointNumInPage >= encodeInfo.maxNumberOfPointsInPage) {
         alignedChunkWriter.write(times, encodeInfo.pointNumInPage, 0);
         encodeInfo.pointNumInPage = 0;
       }
 
-      if (encodeInfo.pointNumInChunk >= maxNumberOfPointsInChunk) {
+      if (encodeInfo.pointNumInChunk >= encodeInfo.maxNumberOfPointsInChunk) {
         alignedChunkWriter.sealCurrentPage();
         alignedChunkWriter.clearPageWriter();
         try {
@@ -771,5 +770,16 @@ public class AlignedWritableMemChunk extends AbstractWritableMemChunk {
       bitMaps.add(entry.getValue());
     }
     return filteredTimestamps.stream().mapToLong(Long::valueOf).toArray();
+  }
+
+  // Choose maximum avgPointSizeOfLargestColumn among working and sorted AlignedTVList as
+  // approximate calculation
+  public int getAvgPointSizeOfLargestColumn() {
+    int avgPointSizeOfLargestColumn = list.getAvgPointSizeOfLargestColumn();
+    for (AlignedTVList alignedTVList : sortedList) {
+      avgPointSizeOfLargestColumn =
+          Math.max(avgPointSizeOfLargestColumn, alignedTVList.getAvgPointSizeOfLargestColumn());
+    }
+    return avgPointSizeOfLargestColumn;
   }
 }

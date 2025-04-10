@@ -20,7 +20,6 @@
 package org.apache.iotdb.db.utils.datastructure;
 
 import org.apache.tsfile.block.column.ColumnBuilder;
-import org.apache.tsfile.common.conf.TSFileDescriptor;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.tsfile.read.TimeValuePair;
@@ -49,8 +48,8 @@ public abstract class MultiAlignedTVListIterator implements MemPointIterator {
   protected List<TsBlock> tsBlocks;
   protected long currentTime;
 
-  protected final int MAX_NUMBER_OF_POINTS_IN_PAGE =
-      TSFileDescriptor.getInstance().getConfig().getMaxNumberOfPointsInPage();
+  // used by nextBatch during query
+  protected final int maxNumberOfPointsInPage;
 
   protected MultiAlignedTVListIterator(
       List<TSDataType> tsDataTypeList,
@@ -58,19 +57,26 @@ public abstract class MultiAlignedTVListIterator implements MemPointIterator {
       List<AlignedTVList> alignedTvLists,
       List<List<TimeRange>> valueColumnsDeletionList,
       Integer floatPrecision,
-      List<TSEncoding> encodingList) {
+      List<TSEncoding> encodingList,
+      int maxNumberOfPointsInPage) {
     this.tsDataTypeList = tsDataTypeList;
     this.columnIndexList = columnIndexList;
     this.alignedTvListIterators = new ArrayList<>(alignedTvLists.size());
     for (AlignedTVList alignedTvList : alignedTvLists) {
       alignedTvListIterators.add(
           alignedTvList.iterator(
-              tsDataTypeList, columnIndexList, null, floatPrecision, encodingList));
+              tsDataTypeList,
+              columnIndexList,
+              null,
+              floatPrecision,
+              encodingList,
+              maxNumberOfPointsInPage));
     }
     this.valueColumnsDeletionList = valueColumnsDeletionList;
     this.floatPrecision = floatPrecision != null ? floatPrecision : 0;
     this.encodingList = encodingList;
     this.tsBlocks = new ArrayList<>();
+    this.maxNumberOfPointsInPage = maxNumberOfPointsInPage;
   }
 
   @Override
@@ -125,7 +131,7 @@ public abstract class MultiAlignedTVListIterator implements MemPointIterator {
     // Time column
     TimeColumnBuilder timeBuilder = builder.getTimeColumnBuilder();
 
-    while (hasNextTimeValuePair() && builder.getPositionCount() < MAX_NUMBER_OF_POINTS_IN_PAGE) {
+    while (hasNextTimeValuePair() && builder.getPositionCount() < maxNumberOfPointsInPage) {
       timeBuilder.writeLong(currentTime);
       for (int columnIndex = 0; columnIndex < tsDataTypeList.size(); columnIndex++) {
         // Value column

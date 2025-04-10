@@ -19,9 +19,6 @@
 
 package org.apache.iotdb.db.utils.datastructure;
 
-import org.apache.iotdb.db.conf.IoTDBConfig;
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
-
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.tsfile.read.common.TimeRange;
@@ -44,17 +41,14 @@ public class MergeSortMultiTVListIterator extends MultiTVListIterator {
       new PriorityQueue<>(
           (a, b) -> a.left.equals(b.left) ? b.right.compareTo(a.right) : a.left.compareTo(b.left));
 
-  private static final IoTDBConfig CONFIG = IoTDBDescriptor.getInstance().getConfig();
-  private final long TARGET_CHUNK_SIZE = CONFIG.getTargetChunkSize();
-  private final long MAX_NUMBER_OF_POINTS_IN_CHUNK = CONFIG.getTargetChunkPointNum();
-
   public MergeSortMultiTVListIterator(
       TSDataType tsDataType,
       List<TVList> tvLists,
       List<TimeRange> deletionList,
       Integer floatPrecision,
-      TSEncoding encoding) {
-    super(tsDataType, tvLists, deletionList, floatPrecision, encoding);
+      TSEncoding encoding,
+      int maxNumberOfPointsInPage) {
+    super(tsDataType, tvLists, deletionList, floatPrecision, encoding, maxNumberOfPointsInPage);
     this.probeIterators =
         IntStream.range(0, tvListIterators.size()).boxed().collect(Collectors.toList());
   }
@@ -147,8 +141,8 @@ public class MergeSortMultiTVListIterator extends MultiTVListIterator {
       }
       encodeInfo.pointNumInChunk++;
 
-      if (encodeInfo.pointNumInChunk >= MAX_NUMBER_OF_POINTS_IN_CHUNK
-          || encodeInfo.dataSizeInChunk >= TARGET_CHUNK_SIZE) {
+      if (encodeInfo.pointNumInChunk >= encodeInfo.maxNumberOfPointsInChunk
+          || encodeInfo.dataSizeInChunk >= encodeInfo.targetChunkSize) {
         break;
       }
     }
