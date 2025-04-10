@@ -1367,16 +1367,6 @@ public class PipeConsensusReceiver {
       }
     }
 
-    private void tryClose() {
-      // It will not be closed until all requests sent before closing are done.
-      lock.lock();
-      try {
-        isClosed.set(true);
-      } finally {
-        lock.unlock();
-      }
-    }
-
     private TPipeConsensusTransferResp onRequest(
         final TPipeConsensusTransferReq req,
         final boolean isTransferTsFilePiece,
@@ -1583,6 +1573,16 @@ public class PipeConsensusReceiver {
       this.tsFileWriterPool.handleExit(consensusPipeName);
       if (resetSyncIndex) {
         this.onSyncedReplicateIndex = 0;
+      }
+    }
+
+    private void tryClose() {
+      // It will not be closed until all requests sent before closing are done.
+      lock.lock();
+      try {
+        isClosed.set(true);
+      } finally {
+        lock.unlock();
       }
     }
   }
