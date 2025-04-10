@@ -45,6 +45,8 @@ import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.BitSet;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
+import java.util.function.Function;
 
 import static org.apache.iotdb.jdbc.Constant.TABLE;
 import static org.apache.iotdb.jdbc.Constant.TREE;
@@ -274,18 +276,10 @@ public class IoTDBStatement implements Statement {
     try {
       return executeSQL(sql);
     } catch (TException e) {
-      if (reConnect()) {
-        try {
-          return executeSQL(sql);
-        } catch (TException e2) {
-          throw new SQLException(e2);
-        }
-      } else {
-        throw new SQLException(
-            String.format(
-                "Fail to reconnect to server when executing %s. please check server status", sql),
-            e);
-      }
+      throw new SQLException(
+          String.format(
+              "Fail to reconnect to server when executing %s. please check server status", sql),
+          e);
     }
   }
 
@@ -304,6 +298,56 @@ public class IoTDBStatement implements Statement {
     throw new SQLException(NOT_SUPPORT_EXECUTE);
   }
 
+  private interface TFunction<T> {
+    T run() throws TException;
+  }
+
+  private <T> T callWithRetryAndReconnect(TFunction<T> rpc, Function<T, TSStatus> statusGetter)
+      throws SQLException, TException {
+    TException lastTException = null;
+    T result = null;
+    int retryAttempt;
+    int maxRetryCount = 5;
+    int retryIntervalInMs = 1000;
+    for (retryAttempt = 0; retryAttempt <= maxRetryCount; retryAttempt++) {
+      // 1. try to execute the rpc
+      try {
+        result = rpc.run();
+        lastTException = null;
+      } catch (TException e) {
+        result = null;
+        lastTException = e;
+      }
+
+      TSStatus status = null;
+      if (result != null) {
+        status = statusGetter.apply(result);
+      }
+      // success, return immediately
+      if (status != null && !(status.isSetNeedRetry() && status.isNeedRetry())) {
+        return result;
+      }
+
+      // prepare for the next retry
+      if (lastTException != null
+          || (status != null
+              && status.getCode() == TSStatusCode.PLAN_FAILED_NETWORK_PARTITION.getStatusCode())) {
+        reConnect();
+      }
+      try {
+        TimeUnit.MILLISECONDS.sleep(retryIntervalInMs);
+      } catch (InterruptedException e) {
+        Thread.currentThread().interrupt();
+        break;
+      }
+    }
+
+    if (result == null && lastTException != null) {
+      throw lastTException;
+    }
+    return result;
+  }
+
   /**
    * There are two kinds of sql here: (1) query sql (2) update sql.
    *
@@ -318,7 +362,9 @@ public class IoTDBStatement implements Statement {
     }
     execReq.setFetchSize(rows);
     execReq.setTimeout((long) queryTimeout * 1000);
-    TSExecuteStatementResp execResp = client.executeStatementV2(execReq);
+    TSExecuteStatementResp execResp =
+        callWithRetryAndReconnect(
+            () -> client.executeStatementV2(execReq), TSExecuteStatementResp::getStatus);
     try {
       RpcUtils.verifySuccess(execResp.getStatus());
     } catch (StatementExecutionException e) {
@@ -370,26 +416,18 @@ public class IoTDBStatement implements Statement {
     try {
       return executeBatchSQL();
     } catch (TException e) {
-      if (reConnect()) {
-        try {
-          return executeBatchSQL();
-        } catch (TException e2) {
-          throw new SQLException(
-              "Fail to execute batch sqls after reconnecting. please check server status", e2);
-        }
-      } else {
-        throw new SQLException(
-            "Fail to reconnect to server when executing batch sqls. please check server status", e);
-      }
+      throw new SQLException(
+          "Fail to reconnect to server when executing batch sqls. please check server status", e);
     } finally {
       clearBatch();
     }
   }
 
-  private int[] executeBatchSQL() throws TException, BatchUpdateException {
+  private int[] executeBatchSQL() throws TException, BatchUpdateException, SQLException {
     isCancelled = false;
     TSExecuteBatchStatementReq execReq = new TSExecuteBatchStatementReq(sessionId, batchSQLList);
-    TSStatus execResp = client.executeBatchStatement(execReq);
+    TSStatus execResp =
+        callWithRetryAndReconnect(() -> client.executeBatchStatement(execReq), status -> status);
     int[] result = new int[batchSQLList.size()];
     boolean allSuccess = true;
     StringBuilder message = new StringBuilder(System.lineSeparator());
@@ -444,20 +482,9 @@ public class IoTDBStatement implements Statement {
     try {
       return executeQuerySQL(sql, timeoutInMS);
     } catch (TException e) {
-      if (reConnect()) {
-        try {
-          return executeQuerySQL(sql, timeoutInMS);
-        } catch (TException e2) {
-          throw new SQLException(
-              "Fail to executeQuery " + sql + "after reconnecting. please check server status", e2);
-        }
-      } else {
-        throw new SQLException(
-            "Fail to reconnect to server when execute query "
-                + sql
-                + ". please check server status",
-            e);
-      }
+      throw new SQLException(
+          "Fail to reconnect to server when execute query " + sql + ". please check server status",
+          e);
     }
   }
 
@@ -471,7 +498,9 @@ public class IoTDBStatement implements Statement {
     execReq.setFetchSize(rows);
     execReq.setTimeout(timeoutInMS);
     execReq.setJdbcQuery(true);
-    TSExecuteStatementResp execResp = client.executeQueryStatementV2(execReq);
+    TSExecuteStatementResp execResp =
+        callWithRetryAndReconnect(
+            () -> client.executeQueryStatementV2(execReq), TSExecuteStatementResp::getStatus);
     queryId = execResp.getQueryId();
     try {
       RpcUtils.verifySuccess(execResp.getStatus());
@@ -520,21 +549,9 @@ public class IoTDBStatement implements Statement {
     try {
       return executeUpdateSQL(sql);
     } catch (TException e) {
-      if (reConnect()) {
-        try {
-          return executeUpdateSQL(sql);
-        } catch (TException e2) {
-          throw new SQLException(
-              "Fail to execute update " + sql + "after reconnecting. please check server status",
-              e2);
-        }
-      } else {
-        throw new SQLException(
-            "Fail to reconnect to server when execute update "
-                + sql
-                + ". please check server status",
-            e);
-      }
+      throw new SQLException(
+          "Fail to reconnect to server when execute update " + sql + ". please check server status",
+          e);
     }
   }
 
@@ -553,9 +570,12 @@ public class IoTDBStatement implements Statement {
     throw new SQLException(NOT_SUPPORT_EXECUTE_UPDATE);
   }
 
-  private int executeUpdateSQL(final String sql) throws TException, IoTDBSQLException {
+  private int executeUpdateSQL(final String sql)
+      throws TException, IoTDBSQLException, SQLException {
     final TSExecuteStatementReq execReq = new TSExecuteStatementReq(sessionId, sql, stmtId);
-    final TSExecuteStatementResp execResp = client.executeUpdateStatement(execReq);
+    final TSExecuteStatementResp execResp =
+        callWithRetryAndReconnect(
+            () -> client.executeUpdateStatement(execReq), TSExecuteStatementResp::getStatus);
     if (execResp.isSetQueryId()) {
       queryId = execResp.getQueryId();
     }

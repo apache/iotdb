@@ -29,6 +29,7 @@ import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.RedirectException;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.StatementExecutionException;
+import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.IClientRPCService;
 import org.apache.iotdb.service.rpc.thrift.TCreateTimeseriesUsingSchemaTemplateReq;
 import org.apache.iotdb.service.rpc.thrift.TSAggregationQueryReq;
@@ -83,6 +84,7 @@ import java.util.List;
 import java.util.StringJoiner;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.function.Supplier;
 
@@ -393,7 +395,7 @@ public class SessionConnection {
               execReq.setStatementId(statementId);
               return client.executeQueryStatementV2(execReq);
             },
-            resp -> resp.getStatus().isSetNeedRetry() && resp.getStatus().isNeedRetry());
+            TSExecuteStatementResp::getStatus);
     TSExecuteStatementResp execResp = result.getResult();
     if (result.getRetryAttempts() == 0) {
       RpcUtils.verifySuccessWithRedirection(execResp.getStatus());
@@ -463,7 +465,7 @@ public class SessionConnection {
               execReq.setStatementId(statementId);
               return client.executeRawDataQueryV2(execReq);
             },
-            resp -> resp.getStatus().isSetNeedRetry() && resp.getStatus().isNeedRetry());
+            TSExecuteStatementResp::getStatus);
 
     TSExecuteStatementResp execResp = result.getResult();
     if (result.getRetryAttempts() == 0) {
@@ -508,7 +510,7 @@ public class SessionConnection {
               req.setStatementId(statementId);
               return client.executeFastLastDataQueryForOneDeviceV2(req);
             },
-            resp -> resp.getStatus().isSetNeedRetry() && resp.getStatus().isNeedRetry());
+            TSExecuteStatementResp::getStatus);
 
     TSExecuteStatementResp tsExecuteStatementResp = result.getResult();
     if (result.getRetryAttempts() == 0) {
@@ -556,7 +558,7 @@ public class SessionConnection {
               tsLastDataQueryReq.setStatementId(statementId);
               return client.executeLastDataQueryV2(tsLastDataQueryReq);
             },
-            resp -> resp.getStatus().isSetNeedRetry() && resp.getStatus().isNeedRetry());
+            TSExecuteStatementResp::getStatus);
     final TSExecuteStatementResp tsExecuteStatementResp = result.getResult();
 
     if (result.getRetryAttempts() == 0) {
@@ -638,7 +640,7 @@ public class SessionConnection {
               tsAggregationQueryReq.setStatementId(statementId);
               return client.executeAggregationQueryV2(tsAggregationQueryReq);
             },
-            resp -> resp.getStatus().isSetNeedRetry() && resp.getStatus().isNeedRetry());
+            TSExecuteStatementResp::getStatus);
 
     TSExecuteStatementResp tsExecuteStatementResp = result.getResult();
     if (result.getRetryAttempts() == 0) {
@@ -862,11 +864,27 @@ public class SessionConnection {
 
   private RetryResult<TSStatus> callWithRetryAndReconnect(TFunction<TSStatus> rpc) {
     return callWithRetryAndReconnect(
-        rpc, status -> status.isSetNeedRetry() && status.isNeedRetry());
+        rpc,
+        status -> status.isSetNeedRetry() && status.isNeedRetry(),
+        status -> status.getCode() == TSStatusCode.PLAN_FAILED_NETWORK_PARTITION.getStatusCode());
+  }
+
+  private <T> RetryResult<T> callWithRetryAndReconnect(
+      TFunction<T> rpc, Function<T, TSStatus> statusGetter) {
+    return callWithRetryAndReconnect(
+        rpc,
+        t -> {
+          final TSStatus status = statusGetter.apply(t);
+          return status.isSetNeedRetry() && status.isNeedRetry();
+        },
+        t ->
+            statusGetter.apply(t).getCode()
+                == TSStatusCode.PLAN_FAILED_NETWORK_PARTITION.getStatusCode());
   }
 
   /** reconnect if the remote datanode is unreachable retry if the status is set to needRetry */
-  private <T> RetryResult<T> callWithRetryAndReconnect(TFunction<T> rpc, Predicate<T> shouldRetry) {
+  private <T> RetryResult<T> callWithRetryAndReconnect(
+      TFunction<T> rpc, Predicate<T> shouldRetry, Predicate<T> forceReconnect) {
     TException lastTException = null;
     T result = null;
     int retryAttempt;
@@ -887,7 +905,7 @@ public class SessionConnection {
       }
 
       // prepare for the next retry
-      if (lastTException != null) {
+      if (lastTException != null || (result != null && forceReconnect.test(result))) {
         reconnect();
       }
       try {
@@ -1075,7 +1093,7 @@ public class SessionConnection {
                   req.setSessionId(sessionId);
                   return client.querySchemaTemplate(req);
                 },
-                resp -> resp.getStatus().isSetNeedRetry() && resp.getStatus().isNeedRetry())
+                TSQueryTemplateResp::getStatus)
             .getResult();
     RpcUtils.verifySuccess(execResp.getStatus());
     return execResp;
@@ -1134,8 +1152,7 @@ public class SessionConnection {
       throws IoTDBConnectionException, StatementExecutionException {
     final TSBackupConfigurationResp execResp =
         callWithRetryAndReconnect(
-                () -> client.getBackupConfiguration(),
-                resp -> resp.getStatus().isSetNeedRetry() && resp.getStatus().isNeedRetry())
+                () -> client.getBackupConfiguration(), TSBackupConfigurationResp::getStatus)
             .getResult();
     RpcUtils.verifySuccess(execResp.getStatus());
     return execResp;
@@ -1162,7 +1179,8 @@ public class SessionConnection {
   }
 
   public TSConnectionInfoResp fetchAllConnections() throws IoTDBConnectionException {
-    return callWithRetryAndReconnect(() -> client.fetchAllConnectionsInfo(), resp -> false)
+    return callWithRetryAndReconnect(
+            () -> client.fetchAllConnectionsInfo(), resp -> false, resp -> false)
         .getResult();
   }
 
