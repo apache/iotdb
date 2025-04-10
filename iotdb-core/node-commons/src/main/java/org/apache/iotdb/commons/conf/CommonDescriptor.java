@@ -251,6 +251,14 @@ public class CommonDescriptor {
             properties.getProperty(
                 "cluster_device_limit_threshold",
                 String.valueOf(config.getDeviceLimitThreshold()))));
+    config.setEnableMemoryAdapt(
+        Boolean.parseBoolean(
+            properties.getProperty(
+                "enable_memory_adapt", Boolean.toString(config.isEnableMemoryAdapt()))));
+    config.setMemoryAdaptIntervalInS(
+        Integer.parseInt(
+            properties.getProperty(
+                "memory_check_interval", String.valueOf(config.getMemoryAdaptIntervalInS()))));
 
     loadRetryProperties(properties);
     loadBinaryAllocatorProps(properties);

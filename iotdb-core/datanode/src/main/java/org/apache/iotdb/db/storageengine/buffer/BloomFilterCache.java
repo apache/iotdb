@@ -31,6 +31,7 @@ import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileID;
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
 import com.github.benmanes.caffeine.cache.Weigher;
+import com.google.common.util.concurrent.AtomicDouble;
 import org.apache.tsfile.read.TsFileSequenceReader;
 import org.apache.tsfile.utils.BloomFilter;
 import org.apache.tsfile.utils.RamUsageEstimator;
@@ -51,32 +52,44 @@ public class BloomFilterCache {
   private static final Logger DEBUG_LOGGER = LoggerFactory.getLogger("QUERY_DEBUG");
   private static final DataNodeMemoryConfig MEMORY_CONFIG =
       IoTDBDescriptor.getInstance().getMemoryConfig();
-  private static final IMemoryBlock CACHE_MEMORY_BLOCK;
+  private static final IMemoryBlock cacheMemoryBlock;
+  private static final AtomicDouble memoryUsageCheatFactor = new AtomicDouble(1);
   private static final boolean CACHE_ENABLE = MEMORY_CONFIG.isMetaDataCacheEnable();
   private final AtomicLong entryAverageSize = new AtomicLong(0);
 
   private final Cache<BloomFilterCacheKey, BloomFilter> lruCache;
 
   static {
-    CACHE_MEMORY_BLOCK =
+    cacheMemoryBlock =
         MEMORY_CONFIG
             .getBloomFilterCacheMemoryManager()
-            .exactAllocate("BloomFilterCache", MemoryBlockType.STATIC);
+            .exactAllocate("BloomFilterCache", MemoryBlockType.STATIC)
+            .setMemoryUpdateCallback(
+                (oldMemory, newMemory) -> {
+                  memoryUsageCheatFactor.updateAndGet(
+                      factor -> factor / ((double) newMemory / oldMemory));
+                  LOGGER.debug(
+                      "[MemoryUsageCheatFactor]BloomFilterCache has updated from {} to {}.",
+                      oldMemory,
+                      newMemory);
+                });
     // TODO @spricoder: find a way to get the size of the BloomFilterCache
-    CACHE_MEMORY_BLOCK.allocate(CACHE_MEMORY_BLOCK.getTotalMemorySizeInBytes());
+    cacheMemoryBlock.allocate(cacheMemoryBlock.getTotalMemorySizeInBytes());
   }
 
   private BloomFilterCache() {
     if (CACHE_ENABLE) {
-      LOGGER.info("BloomFilterCache size = {}", CACHE_MEMORY_BLOCK.getTotalMemorySizeInBytes());
+      LOGGER.info("BloomFilterCache size = {}", cacheMemoryBlock.getTotalMemorySizeInBytes());
     }
     lruCache =
         Caffeine.newBuilder()
-            .maximumWeight(CACHE_MEMORY_BLOCK.getTotalMemorySizeInBytes())
+            .maximumWeight(cacheMemoryBlock.getTotalMemorySizeInBytes())
             .weigher(
                 (Weigher<BloomFilterCacheKey, BloomFilter>)
                     (key, bloomFilter) ->
-                        (int) (key.getRetainedSizeInBytes() + bloomFilter.getRetainedSizeInBytes()))
+                        (int)
+                            ((key.getRetainedSizeInBytes() + bloomFilter.getRetainedSizeInBytes())
+                                * memoryUsageCheatFactor.get()))
             .recordStats()
             .build();
   }
@@ -131,7 +144,7 @@ public class BloomFilterCache {
   }
 
   public long getMaxMemory() {
-    return CACHE_MEMORY_BLOCK.getTotalMemorySizeInBytes();
+    return cacheMemoryBlock.getTotalMemorySizeInBytes();
   }
 
   public double getAverageLoadPenalty() {
