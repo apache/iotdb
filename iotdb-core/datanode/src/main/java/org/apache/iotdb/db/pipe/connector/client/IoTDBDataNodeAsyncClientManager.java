@@ -102,10 +102,12 @@ public class IoTDBDataNodeAsyncClientManager extends IoTDBClientManager
 
     receiverAttributes =
         String.format(
-            "%s-%s-%s",
+            "%s-%s-%s-%s-%s",
             Base64.getEncoder().encodeToString((username + ":" + password).getBytes()),
             shouldReceiverConvertOnTypeMismatch,
-            loadTsFileStrategy);
+            loadTsFileStrategy,
+            validateTsFile,
+            shouldMarkAsPipeRequest);
     synchronized (IoTDBDataNodeAsyncClientManager.class) {
       if (!ASYNC_PIPE_DATA_TRANSFER_CLIENT_MANAGER_HOLDER.containsKey(receiverAttributes)) {
         ASYNC_PIPE_DATA_TRANSFER_CLIENT_MANAGER_HOLDER.putIfAbsent(

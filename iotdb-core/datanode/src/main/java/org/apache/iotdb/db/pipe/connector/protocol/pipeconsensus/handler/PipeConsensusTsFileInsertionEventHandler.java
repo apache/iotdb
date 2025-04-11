@@ -58,6 +58,7 @@ public class PipeConsensusTsFileInsertionEventHandler
   private final PipeConsensusAsyncConnector connector;
   private final TCommitId commitId;
   private final TConsensusGroupId consensusGroupId;
+  private final String consensusPipeName;
   private final int thisDataNodeId;
   private final File tsFile;
   private final File modFile;
@@ -86,6 +87,7 @@ public class PipeConsensusTsFileInsertionEventHandler
       final PipeConsensusAsyncConnector connector,
       final TCommitId commitId,
       final TConsensusGroupId consensusGroupId,
+      final String consensusPipeName,
       final int thisDataNodeId,
       final PipeConsensusConnectorMetrics metric)
       throws FileNotFoundException {
@@ -93,6 +95,7 @@ public class PipeConsensusTsFileInsertionEventHandler
     this.connector = connector;
     this.commitId = commitId;
     this.consensusGroupId = consensusGroupId;
+    this.consensusPipeName = consensusPipeName;
     this.thisDataNodeId = thisDataNodeId;
 
     tsFile = event.getTsFile();
@@ -130,7 +133,10 @@ public class PipeConsensusTsFileInsertionEventHandler
         try {
           reader.close();
         } catch (final IOException e) {
-          LOGGER.warn("Failed to close file reader when successfully transferred mod file.", e);
+          LOGGER.warn(
+              "PipeConsensus-{}: Failed to close file reader when successfully transferred mod file.",
+              consensusPipeName,
+              e);
         }
         reader = new RandomAccessFile(tsFile, "r");
         transfer(client);
@@ -216,13 +222,17 @@ public class PipeConsensusTsFileInsertionEventHandler
           reader.close();
         }
       } catch (final IOException e) {
-        LOGGER.warn("Failed to close file reader when successfully transferred file.", e);
+        LOGGER.warn(
+            "PipeConsensus-{}: Failed to close file reader when successfully transferred file.",
+            consensusPipeName,
+            e);
       } finally {
         event.decreaseReferenceCount(
             PipeConsensusTsFileInsertionEventHandler.class.getName(), true);
 
         LOGGER.info(
-            "Successfully transferred file {} (committer key={}, replicate index={}).",
+            "PipeConsensus-{}: Successfully transferred file {} (committer key={}, replicate index={}).",
+            consensusPipeName,
             tsFile,
             event.getCommitterKey(),
             event.getReplicateIndexForIoTV2());
@@ -251,12 +261,13 @@ public class PipeConsensusTsFileInsertionEventHandler
       if (code == TSStatusCode.PIPE_CONSENSUS_TRANSFER_FILE_OFFSET_RESET.getStatusCode()) {
         position = resp.getEndWritingOffset();
         reader.seek(position);
-        LOGGER.info("Redirect file position to {}.", position);
+        LOGGER.info("PipeConsensus-{}: Redirect file position to {}.", consensusPipeName, position);
       } else {
         final TSStatus status = response.getStatus();
         // Only handle the failed statuses to avoid string format performance overhead
         if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()
             && status.getCode() != TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode()) {
+          // common error code will throw an exception here to enter onError()
           connector
               .statusHandler()
               .handle(status, response.getStatus().getMessage(), tsFile.getName());
@@ -274,7 +285,8 @@ public class PipeConsensusTsFileInsertionEventHandler
   @Override
   public void onError(final Exception exception) {
     LOGGER.warn(
-        "Failed to transfer TsFileInsertionEvent {} (committer key {}, replicate index {}).",
+        "PipeConsensus-{}: Failed to transfer TsFileInsertionEvent {} (committer key {}, replicate index {}).",
+        consensusPipeName,
         tsFile,
         event.getCommitterKey(),
         event.getReplicateIndexForIoTV2(),
@@ -285,7 +297,10 @@ public class PipeConsensusTsFileInsertionEventHandler
         reader.close();
       }
     } catch (final IOException e) {
-      LOGGER.warn("Failed to close file reader when failed to transfer file.", e);
+      LOGGER.warn(
+          "PipeConsensus-{}: Failed to close file reader when failed to transfer file.",
+          consensusPipeName,
+          e);
     } finally {
       connector.addFailureEventToRetryQueue(event);
       metric.recordRetryCounter();

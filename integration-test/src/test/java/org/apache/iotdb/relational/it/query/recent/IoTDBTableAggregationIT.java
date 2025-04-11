@@ -141,6 +141,11 @@ public class IoTDBTableAggregationIT {
         expectedHeader,
         retArray,
         DATABASE_NAME);
+    tableResultSetEqualTest(
+        "select count('a') from table1 where device_id = 'd01'",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
 
     expectedHeader = new String[] {"_col0", "end_time", "device_id", "_col3"};
     retArray =
@@ -153,6 +158,11 @@ public class IoTDBTableAggregationIT {
         };
     tableResultSetEqualTest(
         "select date_bin(5s, time), (date_bin(5s, time) + 5000) as end_time, device_id, count(*) from table1 where device_id = 'd01' group by 1,device_id",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+    tableResultSetEqualTest(
+        "select date_bin(5s, time), (date_bin(5s, time) + 5000) as end_time, device_id, count(1) from table1 where device_id = 'd01' group by 1,device_id",
         expectedHeader,
         retArray,
         DATABASE_NAME);
@@ -227,6 +237,11 @@ public class IoTDBTableAggregationIT {
         };
     tableResultSetEqualTest(
         "select date_bin(5s, time),province,city,region,device_id, count(*) from table1 group by 1,2,3,4,5 order by 2,3,4,5,1",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+    tableResultSetEqualTest(
+        "select date_bin(5s, time),province,city,region,device_id, count(1) from table1 group by 1,2,3,4,5 order by 2,3,4,5,1",
         expectedHeader,
         retArray,
         DATABASE_NAME);
@@ -389,6 +404,11 @@ public class IoTDBTableAggregationIT {
         expectedHeader,
         retArray,
         DATABASE_NAME);
+    tableResultSetEqualTest(
+        "select province,city,region,device_id,count(1) from table1 group by 1,2,3,4 order by 1,2,3,4",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
 
     expectedHeader = new String[] {"province", "city", "region", "_col3"};
     retArray =
@@ -403,6 +423,11 @@ public class IoTDBTableAggregationIT {
         expectedHeader,
         retArray,
         DATABASE_NAME);
+    tableResultSetEqualTest(
+        "select province,city,region,count(1) from table1 group by 1,2,3 order by 1,2,3",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
 
     expectedHeader = new String[] {"province", "city", "_col2"};
     retArray =
@@ -411,6 +436,11 @@ public class IoTDBTableAggregationIT {
         };
     tableResultSetEqualTest(
         "select province,city,count(*) from table1 group by 1,2 order by 1,2",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+    tableResultSetEqualTest(
+        "select province,city,count(1) from table1 group by 1,2 order by 1,2",
         expectedHeader,
         retArray,
         DATABASE_NAME);
@@ -425,6 +455,11 @@ public class IoTDBTableAggregationIT {
         expectedHeader,
         retArray,
         DATABASE_NAME);
+    tableResultSetEqualTest(
+        "select province,count(1) from table1 group by 1 order by 1",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
 
     expectedHeader = new String[] {"_col0"};
     retArray =
@@ -432,6 +467,7 @@ public class IoTDBTableAggregationIT {
           "64,",
         };
     tableResultSetEqualTest("select count(*) from table1", expectedHeader, retArray, DATABASE_NAME);
+    tableResultSetEqualTest("select count(1) from table1", expectedHeader, retArray, DATABASE_NAME);
   }
 
   @Test
@@ -3116,6 +3152,11 @@ public class IoTDBTableAggregationIT {
         expectedHeader,
         retArray,
         DATABASE_NAME);
+    tableResultSetEqualTest(
+        "select color,type, date_bin(5s, time), count(1) from table1 group by 1,2,3 order by 1,2,3",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
   }
 
   @Test
@@ -3486,6 +3527,11 @@ public class IoTDBTableAggregationIT {
         };
     tableResultSetEqualTest(
         "select province,city,region,device_id,s7,count(*) from table1 group by 1,2,3,4,5 order by 1,2,3,4,5",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+    tableResultSetEqualTest(
+        "select province,city,region,device_id,s7,count(1) from table1 group by 1,2,3,4,5 order by 1,2,3,4,5",
         expectedHeader,
         retArray,
         DATABASE_NAME);
@@ -3973,6 +4019,11 @@ public class IoTDBTableAggregationIT {
         expectedHeader,
         retArray,
         DATABASE_NAME);
+    tableResultSetEqualTest(
+        "SELECT color, device_id FROM (SELECT date_bin(5s, time), color, device_id, avg(s4) as avg_s4 FROM table1 WHERE type='A' AND (time >= 2024-09-24T06:15:30.000+00:00 AND time <= 2024-09-24T06:15:59.999+00:00) GROUP BY 1,2,3) WHERE avg_s4 > 1.0 GROUP BY color, device_id HAVING count(1) >= 2 ORDER BY color, device_id",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
 
     expectedHeader = new String[] {"_col0", "city", "type", "_col3"};
     retArray =
@@ -3993,6 +4044,11 @@ public class IoTDBTableAggregationIT {
 
     tableResultSetEqualTest(
         "SELECT date_bin(10s, five_seconds), city, type, sum(five_seconds_count) / 2 FROM (SELECT date_bin(5s, time) AS five_seconds, city, type, count(*) AS five_seconds_count FROM table1 WHERE (time >= 2024-09-24T06:15:30.000+00:00 AND time <= 2024-09-24T06:15:59.999+00:00) AND device_id IS NOT NULL GROUP BY 1, city, type, device_id HAVING avg(s1) > 1) GROUP BY 1, city, type order by 2,3,1",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+    tableResultSetEqualTest(
+        "SELECT date_bin(10s, five_seconds), city, type, sum(five_seconds_count) / 2 FROM (SELECT date_bin(5s, time) AS five_seconds, city, type, count(1) AS five_seconds_count FROM table1 WHERE (time >= 2024-09-24T06:15:30.000+00:00 AND time <= 2024-09-24T06:15:59.999+00:00) AND device_id IS NOT NULL GROUP BY 1, city, type, device_id HAVING avg(s1) > 1) GROUP BY 1, city, type order by 2,3,1",
         expectedHeader,
         retArray,
         DATABASE_NAME);
@@ -5073,6 +5129,14 @@ public class IoTDBTableAggregationIT {
 
     tableResultSetEqualTest(
         "select count(distinct s1), avg(distinct s1) from table1",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+
+    expectedHeader = new String[] {"_col0"};
+    retArray = new String[] {"16,"};
+    tableResultSetEqualTest(
+        "select count(distinct device_id) from table1 group by date_bin(1d,time) order by 1",
         expectedHeader,
         retArray,
         DATABASE_NAME);

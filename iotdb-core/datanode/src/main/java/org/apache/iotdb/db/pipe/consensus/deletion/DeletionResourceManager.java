@@ -168,9 +168,18 @@ public class DeletionResourceManager implements AutoCloseable {
   }
 
   public void removeDAL() {
-    FileUtils.deleteFileOrDirectory(storageDir);
-    LOGGER.info(
-        "DeletionManager-{}: current DAL dir {} is deleted successfully", dataRegionId, storageDir);
+    if (storageDir.exists()) {
+      FileUtils.deleteFileOrDirectory(storageDir);
+      LOGGER.info(
+          "DeletionManager-{}: current DAL dir {} is deleted successfully",
+          dataRegionId,
+          storageDir);
+    } else {
+      LOGGER.info(
+          "DeletionManager-{}: current DAL dir {} is not initialized, no need to delete.",
+          dataRegionId,
+          storageDir);
+    }
   }
 
   /**

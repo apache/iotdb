@@ -20,6 +20,9 @@
 package org.apache.iotdb.db.pipe.receiver.protocol.pipeconsensus;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
+import org.apache.iotdb.commons.concurrent.ThreadName;
+import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.commons.consensus.index.ProgressIndex;
@@ -81,7 +84,10 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.TreeSet;
+import java.util.concurrent.Future;
+import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.Lock;
@@ -103,9 +109,14 @@ public class PipeConsensusReceiver {
   private final ConsensusPipeName consensusPipeName;
   // Used to buffer TsFile when transfer TsFile asynchronously.
   private final PipeConsensusTsFileWriterPool pipeConsensusTsFileWriterPool;
+  private final ScheduledExecutorService scheduledTsFileWriterCheckerPool =
+      IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor(
+          ThreadName.PIPE_CONSENSUS_TSFILE_WRITER_CHECKER.getName());
+  private Future<?> tsFileWriterCheckerFuture;
   private final List<String> receiveDirs = new ArrayList<>();
   private final PipeConsensusReceiverMetrics pipeConsensusReceiverMetrics;
   private final FolderManager folderManager;
+  private final AtomicBoolean isClosed = new AtomicBoolean(false);
 
   public PipeConsensusReceiver(
       PipeConsensus pipeConsensus,
@@ -379,6 +390,22 @@ public class PipeConsensusReceiver {
             status, PipeTransferFilePieceResp.ERROR_END_OFFSET);
       } catch (IOException ex) {
         return PipeConsensusTransferFilePieceResp.toTPipeConsensusTransferResp(status);
+      } finally {
+        // Exception may occur when disk system go wrong. At this time, we may reset all resource
+        // and receive this file from scratch when leader will try to resend this file from scratch
+        // as well.
+        closeCurrentWritingFileWriter(tsFileWriter, false);
+        deleteCurrentWritingFile(tsFileWriter);
+        // must return tsfileWriter after deleting its file.
+        try {
+          tsFileWriter.returnSelf(consensusPipeName);
+        } catch (IOException | DiskSpaceInsufficientException returnException) {
+          LOGGER.warn(
+              "PipeConsensus-PipeName-{}: Failed to return tsFileWriter {}.",
+              consensusPipeName,
+              tsFileWriter,
+              returnException);
+        }
       }
     }
   }
@@ -1043,11 +1070,18 @@ public class PipeConsensusReceiver {
   }
 
   public synchronized void handleExit() {
+    // only after closing request executor, can we clean receiver.
+    requestExecutor.tryClose();
     // Clear the tsFileWriters and receiver base dirs
     pipeConsensusTsFileWriterPool.handleExit(consensusPipeName);
     clearAllReceiverBaseDir();
     // remove metric
     MetricService.getInstance().removeMetricSet(pipeConsensusReceiverMetrics);
+    // cancel periodic task
+    if (tsFileWriterCheckerFuture != null) {
+      tsFileWriterCheckerFuture.cancel(false);
+      tsFileWriterCheckerFuture = null;
+    }
     LOGGER.info(
         "PipeConsensus-PipeName-{}: Receiver exit: Receiver exited.", consensusPipeName.toString());
   }
@@ -1067,6 +1101,18 @@ public class PipeConsensusReceiver {
         tsFileWriter.rollToNextWritingPath();
         pipeConsensusTsFileWriterPool.add(tsFileWriter);
       }
+
+      tsFileWriterCheckerFuture =
+          ScheduledExecutorUtil.safelyScheduleWithFixedDelay(
+              scheduledTsFileWriterCheckerPool,
+              this::checkZombieTsFileWriter,
+              0,
+              IOTDB_CONFIG.getTsFileWriterCheckInterval(),
+              TimeUnit.MILLISECONDS);
+      LOGGER.info(
+          "Register {} with interval in seconds {} successfully.",
+          ThreadName.PIPE_CONSENSUS_TSFILE_WRITER_CHECKER.getName(),
+          IOTDB_CONFIG.getTsFileWriterCheckInterval());
     }
 
     @SuppressWarnings("java:S3655")
@@ -1105,6 +1151,31 @@ public class PipeConsensusReceiver {
       }
 
       return tsFileWriter.get();
+    }
+
+    private void checkZombieTsFileWriter() {
+      pipeConsensusTsFileWriterPool.stream()
+          .filter(PipeConsensusTsFileWriter::isUsed)
+          .forEach(
+              writer -> {
+                if (System.currentTimeMillis() - writer.lastUsedTs
+                    >= IOTDB_CONFIG.getTsFileWriterZombieThreshold()) {
+                  try {
+                    writer.closeSelf(consensusPipeName);
+                    writer.returnSelf(consensusPipeName);
+                    LOGGER.info(
+                        "PipeConsensus-PipeName-{}: tsfile writer-{} is cleaned up because no new requests were received for too long.",
+                        consensusPipeName,
+                        writer.index);
+                  } catch (IOException | DiskSpaceInsufficientException e) {
+                    LOGGER.warn(
+                        "PipeConsensus-PipeName-{}: receiver watch dog failed to return tsFileWriter-{}.",
+                        consensusPipeName.toString(),
+                        writer.index,
+                        e);
+                  }
+                }
+              });
     }
 
     public void handleExit(ConsensusPipeName consensusPipeName) {
@@ -1152,6 +1223,7 @@ public class PipeConsensusReceiver {
     private volatile boolean isUsed = false;
     // If isUsed is true, this variable will be set to the TCommitId of holderEvent
     private volatile TCommitId commitIdOfCorrespondingHolderEvent;
+    private long lastUsedTs;
 
     public PipeConsensusTsFileWriter(int index, ConsensusPipeName consensusPipeName) {
       this.index = index;
@@ -1243,6 +1315,9 @@ public class PipeConsensusReceiver {
 
     public void setUsed(boolean used) {
       isUsed = used;
+      if (isUsed) {
+        lastUsedTs = System.currentTimeMillis();
+      }
     }
 
     public void returnSelf(ConsensusPipeName consensusPipeName)
@@ -1321,6 +1396,9 @@ public class PipeConsensusReceiver {
    * although events can arrive receiver in a random sequence.
    */
   private class RequestExecutor {
+    private static final String THIS_NODE = "this node";
+    private static final String PIPE_TASK = "pipe task";
+
     // An ordered set that buffers transfer requests' TCommitId, whose length is not larger than
     // PIPE_CONSENSUS_PIPELINE_SIZE.
     // Here we use set is to avoid duplicate events being received in some special cases
@@ -1333,6 +1411,7 @@ public class PipeConsensusReceiver {
     private final AtomicInteger tsFileEventCount = new AtomicInteger(0);
     private volatile long onSyncedReplicateIndex = 0;
     private volatile int connectorRebootTimes = 0;
+    private volatile int pipeTaskRestartTimes = 0;
 
     public RequestExecutor(
         PipeConsensusReceiverMetrics metric, PipeConsensusTsFileWriterPool tsFileWriterPool) {
@@ -1363,6 +1442,16 @@ public class PipeConsensusReceiver {
       }
     }
 
+    private void tryClose() {
+      // It will not be closed until all requests sent before closing are done.
+      lock.lock();
+      try {
+        isClosed.set(true);
+      } finally {
+        lock.unlock();
+      }
+    }
+
     private TPipeConsensusTransferResp onRequest(
         final TPipeConsensusTransferReq req,
         final boolean isTransferTsFilePiece,
@@ -1370,6 +1459,18 @@ public class PipeConsensusReceiver {
       long startAcquireLockNanos = System.nanoTime();
       lock.lock();
       try {
+        if (isClosed.get()) {
+          final TSStatus status =
+              new TSStatus(
+                  RpcUtils.getStatus(
+                      TSStatusCode.PIPE_CONSENSUS_CLOSE_ERROR,
+                      "PipeConsensus receiver received a request after it was closed."));
+          LOGGER.info(
+              "PipeConsensus-PipeName-{}: received a request after receiver was closed and pipe task was dropped.",
+              consensusPipeName);
+          return new TPipeConsensusTransferResp(status);
+        }
+
         long startDispatchNanos = System.nanoTime();
         metric.recordAcquireExecutorLockTimer(startDispatchNanos - startAcquireLockNanos);
 
@@ -1389,20 +1490,21 @@ public class PipeConsensusReceiver {
         // the request with incremental rebootTimes, the {3} sent before the leader restart needs to
         // be discarded.
         if (tCommitId.getDataNodeRebootTimes() < connectorRebootTimes) {
-          final TSStatus status =
-              new TSStatus(
-                  RpcUtils.getStatus(
-                      TSStatusCode.PIPE_CONSENSUS_DEPRECATED_REQUEST,
-                      "PipeConsensus receiver received a deprecated request, which may be sent before the connector restart. Consider to discard it"));
-          LOGGER.info(
-              "PipeConsensus-PipeName-{}: received a deprecated request, which may be sent before the connector restart. Consider to discard it",
-              consensusPipeName);
-          return new TPipeConsensusTransferResp(status);
+          return deprecatedResp(THIS_NODE);
+        }
+        // Similarly, check pipeTask restartTimes
+        if (tCommitId.getDataNodeRebootTimes() == connectorRebootTimes
+            && tCommitId.getPipeTaskRestartTimes() < pipeTaskRestartTimes) {
+          return deprecatedResp(PIPE_TASK);
         }
         // Judge whether connector has rebooted or not, if the rebootTimes increases compared to
         // connectorRebootTimes, need to reset receiver because connector has been restarted.
         if (tCommitId.getDataNodeRebootTimes() > connectorRebootTimes) {
-          resetWithNewestRebootTime(tCommitId.getDataNodeRebootTimes(), condition);
+          resetWithNewestRebootTime(tCommitId.getDataNodeRebootTimes());
+        }
+        // Similarly, check pipeTask restartTimes
+        if (tCommitId.getPipeTaskRestartTimes() > pipeTaskRestartTimes) {
+          resetWithNewestRestartTime(tCommitId.getPipeTaskRestartTimes());
         }
         // update metric
         if (isTransferTsFilePiece && !reqExecutionOrderBuffer.contains(requestMeta)) {
@@ -1450,14 +1552,19 @@ public class PipeConsensusReceiver {
             if (resp != null
                 && resp.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
               onSuccess(tCommitId, isTransferTsFileSeal);
-              // signal all other reqs to accelerate dispatch process.
-              condition.signalAll();
             }
             return resp;
           }
 
           if (reqExecutionOrderBuffer.size() >= IOTDB_CONFIG.getIotConsensusV2PipelineSize()
               && reqExecutionOrderBuffer.first().equals(requestMeta)) {
+            // TODO: Turn it to debug after GA
+            LOGGER.info(
+                "PipeConsensus-PipeName-{}: no.{} event get executed because receiver buffer's len >= pipeline, current receiver syncIndex {}, current buffer len {}",
+                consensusPipeName,
+                tCommitId,
+                onSyncedReplicateIndex,
+                reqExecutionOrderBuffer.size());
             long startApplyNanos = System.nanoTime();
             metric.recordDispatchWaitingTimer(startApplyNanos - startDispatchNanos);
             requestMeta.setStartApplyNanos(startApplyNanos);
@@ -1467,8 +1574,6 @@ public class PipeConsensusReceiver {
             if (resp != null
                 && resp.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
               onSuccess(tCommitId, isTransferTsFileSeal);
-              // signal all other reqs that may wait for this event
-              condition.signalAll();
             }
             return resp;
           } else {
@@ -1485,15 +1590,7 @@ public class PipeConsensusReceiver {
               // pipeTaskStartTimes or rebootTimes came in and refreshed the requestBuffer. In that
               // cases we need to discard these requests.
               if (!reqExecutionOrderBuffer.contains(requestMeta)) {
-                final TSStatus status =
-                    new TSStatus(
-                        RpcUtils.getStatus(
-                            TSStatusCode.PIPE_CONSENSUS_DEPRECATED_REQUEST,
-                            "PipeConsensus receiver received a deprecated request, which may be sent before the connector restart or pipe task restart. Consider to discard it"));
-                LOGGER.info(
-                    "PipeConsensus-PipeName-{}: received a deprecated request, which may be sent before the connector restart or pipe task restart. Consider to discard it",
-                    consensusPipeName);
-                return new TPipeConsensusTransferResp(status);
+                return deprecatedResp(String.format("%s or %s", THIS_NODE, PIPE_TASK));
               }
               // If the buffer is not full after waiting timeout, we suppose that the sender will
               // not send any more events at this time, that is, the sender has sent all events. At
@@ -1502,6 +1599,12 @@ public class PipeConsensusReceiver {
                   && reqExecutionOrderBuffer.size() < IOTDB_CONFIG.getIotConsensusV2PipelineSize()
                   && reqExecutionOrderBuffer.first() != null
                   && reqExecutionOrderBuffer.first().equals(requestMeta)) {
+                // TODO: Turn it to debug after GA
+                LOGGER.info(
+                    "PipeConsensus-PipeName-{}: no.{} event get executed after awaiting timeout, current receiver syncIndex: {}",
+                    consensusPipeName,
+                    tCommitId,
+                    onSyncedReplicateIndex);
                 long startApplyNanos = System.nanoTime();
                 metric.recordDispatchWaitingTimer(startApplyNanos - startDispatchNanos);
                 requestMeta.setStartApplyNanos(startApplyNanos);
@@ -1510,8 +1613,6 @@ public class PipeConsensusReceiver {
                 if (resp != null
                     && resp.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
                   onSuccess(tCommitId, isTransferTsFileSeal);
-                  // signal all other reqs that may wait for this event
-                  condition.signalAll();
                 }
                 return resp;
               }
@@ -1531,6 +1632,9 @@ public class PipeConsensusReceiver {
           }
         }
       } finally {
+        // let all threads that may still await become active again to acquire lock instead of
+        // meaningless sleeping in the condition while lock is already released.
+        condition.signalAll();
         lock.unlock();
       }
     }
@@ -1539,23 +1643,47 @@ public class PipeConsensusReceiver {
      * Reset all data to initial status and set connectorRebootTimes properly. This method is called
      * when receiver identifies connector has rebooted.
      */
-    private void resetWithNewestRebootTime(int connectorRebootTimes, Condition condition) {
+    private void resetWithNewestRebootTime(int connectorRebootTimes) {
       LOGGER.info(
           "PipeConsensus-PipeName-{}: receiver detected an newer rebootTimes, which indicates the leader has rebooted. receiver will reset all its data.",
           consensusPipeName);
       // since pipe task will resend all data that hasn't synchronized after dataNode reboots, it's
       // safe to clear all events in buffer.
       clear();
-      // signal all deprecated requests that may wait on condition to expire them
-      condition.signalAll();
       // sync the follower's connectorRebootTimes with connector's actual rebootTimes.
       this.connectorRebootTimes = connectorRebootTimes;
+      this.pipeTaskRestartTimes = 0;
+    }
+
+    private void resetWithNewestRestartTime(int pipeTaskRestartTimes) {
+      LOGGER.info(
+          "PipeConsensus-PipeName-{}: receiver detected an newer pipeTaskRestartTimes, which indicates the pipe task has restarted. receiver will reset all its data.",
+          consensusPipeName);
+      // since pipe task will resend all data that hasn't synchronized after restarts, it's safe to
+      // clear all events in buffer.
+      clear();
+      this.pipeTaskRestartTimes = pipeTaskRestartTimes;
     }
 
     private void clear() {
       this.reqExecutionOrderBuffer.clear();
       this.tsFileWriterPool.handleExit(consensusPipeName);
       this.onSyncedReplicateIndex = 0;
+    }
+
+    private TPipeConsensusTransferResp deprecatedResp(String msg) {
+      final TSStatus status =
+          new TSStatus(
+              RpcUtils.getStatus(
+                  TSStatusCode.PIPE_CONSENSUS_DEPRECATED_REQUEST,
+                  String.format(
+                      "PipeConsensus receiver received a deprecated request, which may be sent before %s restarts. Consider to discard it",
+                      msg)));
+      LOGGER.info(
+          "PipeConsensus-PipeName-{}: received a deprecated request, which may be sent before {} restarts. Consider to discard it",
+          consensusPipeName,
+          msg);
+      return new TPipeConsensusTransferResp(status);
     }
   }
 

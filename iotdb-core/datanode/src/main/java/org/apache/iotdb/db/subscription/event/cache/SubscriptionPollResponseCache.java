@@ -105,10 +105,10 @@ public class SubscriptionPollResponseCache {
 
   private SubscriptionPollResponseCache() {
     final long initMemorySizeInBytes =
-        PipeDataNodeResourceManager.memory().getTotalMemorySizeInBytes() / 5;
+        PipeDataNodeResourceManager.memory().getTotalNonFloatingMemorySizeInBytes() / 5;
     final long maxMemorySizeInBytes =
         (long)
-            (PipeDataNodeResourceManager.memory().getTotalMemorySizeInBytes()
+            (PipeDataNodeResourceManager.memory().getTotalNonFloatingMemorySizeInBytes()
                 * SubscriptionConfig.getInstance().getSubscriptionCacheMemoryUsagePercentage());
 
     // properties required by pipe memory control framework

@@ -37,11 +37,17 @@ import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 
+import java.sql.Connection;
+import java.sql.SQLException;
+import java.sql.Statement;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
+
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.fail;
 
 @RunWith(IoTDBTestRunner.class)
 @Category({MultiClusterIT2DualTableManualEnhanced.class})
@@ -377,6 +383,52 @@ public class IoTDBPipeMetaIT extends AbstractPipeTableModelDualManualIT {
                   ",*.*,ALTER,true,",
                   ",test.*,DROP,false,")),
           dbName);
+    }
+  }
+
+  @Test
+  public void testValidation() throws Exception {
+    final DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
+
+    final String receiverIp = receiverDataNode.getIp();
+    final int receiverPort = receiverDataNode.getPort();
+
+    try (final Connection connection = senderEnv.getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        final Statement statement = connection.createStatement()) {
+      statement.execute(
+          String.format(
+              "create pipe test1 with source ('inclusion'='schema.table') with sink ('ip'='%s', 'port'='%s')",
+              receiverIp, receiverPort));
+
+      // Test tree parameters
+      try {
+        statement.execute(
+            String.format(
+                "create pipe test2 with source ('inclusion'='auth, schema.timeseries') with sink ('ip'='%s', 'port'='%s')",
+                receiverIp, receiverPort));
+        fail();
+      } catch (final SQLException e) {
+        assertEquals("1107: The 'inclusion' string contains illegal path.", e.getMessage());
+      }
+    }
+
+    try (final Connection connection = senderEnv.getConnection();
+        final Statement statement = connection.createStatement()) {
+      statement.execute(
+          String.format(
+              "create pipe test3 with source ('inclusion'='schema.timeseries') with sink ('ip'='%s', 'port'='%s')",
+              receiverIp, receiverPort));
+
+      // Test tree parameters
+      try {
+        statement.execute(
+            String.format(
+                "create pipe test4 with source ('inclusion'='auth, schema.table') with sink ('ip'='%s', 'port'='%s')",
+                receiverIp, receiverPort));
+        fail();
+      } catch (final SQLException e) {
+        assertEquals("1107: The 'inclusion' string contains illegal path.", e.getMessage());
+      }
     }
   }
 }

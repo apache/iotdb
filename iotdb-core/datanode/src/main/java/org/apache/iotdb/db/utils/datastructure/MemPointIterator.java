@@ -21,6 +21,7 @@ package org.apache.iotdb.db.utils.datastructure;
 
 import org.apache.tsfile.read.common.block.TsBlock;
 import org.apache.tsfile.read.reader.IPointReader;
+import org.apache.tsfile.write.chunk.IChunkWriter;
 
 public interface MemPointIterator extends IPointReader {
   TsBlock getBatch(int tsBlockIndex);
@@ -28,4 +29,6 @@ public interface MemPointIterator extends IPointReader {
   boolean hasNextBatch();
 
   TsBlock nextBatch();
+
+  void encodeBatch(IChunkWriter chunkWriter, BatchEncodeInfo encodeInfo, long[] times);
 }

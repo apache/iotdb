@@ -25,6 +25,7 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
 import org.apache.iotdb.db.pipe.agent.task.execution.PipeSubtaskExecutorManager;
 import org.apache.iotdb.db.pipe.event.UserDefinedEnrichedEvent;
+import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
 import org.apache.iotdb.db.pipe.event.common.terminate.PipeTerminateEvent;
 import org.apache.iotdb.db.subscription.agent.SubscriptionAgent;
 import org.apache.iotdb.db.subscription.event.SubscriptionEvent;
@@ -269,6 +270,7 @@ public abstract class SubscriptionPrefetchingQueue {
             committedCleaner, pollableNacker, responsePrefetcher, responseSerializer);
         return true;
       } else {
+        peekOnce();
         remapInFlightEventsSnapshot(committedCleaner, pollableNacker);
         return false;
       }
@@ -311,6 +313,30 @@ public abstract class SubscriptionPrefetchingQueue {
     prefetchingQueue.add(thisEvent);
   }
 
+  private synchronized void peekOnce() {
+    final Event peekedEvent = UserDefinedEnrichedEvent.maybeOf(inputPendingQueue.peek());
+    if (Objects.isNull(peekedEvent)) {
+      return;
+    }
+
+    if (!(peekedEvent instanceof PipeHeartbeatEvent)) {
+      return;
+    }
+
+    final Event polledEvent = inputPendingQueue.waitedPoll();
+    if (!Objects.equals(peekedEvent, polledEvent)) {
+      LOGGER.warn(
+          "Subscription: inconsistent heartbeat event when {} peeking (broken invariant), expected {}, actual {}, offer back",
+          this,
+          peekedEvent,
+          polledEvent);
+      inputPendingQueue.directOffer(polledEvent);
+    } else {
+      ((PipeHeartbeatEvent) peekedEvent)
+          .decreaseReferenceCount(SubscriptionPrefetchingQueue.class.getName(), false);
+    }
+  }
+
   /**
    * Prefetch at most one {@link SubscriptionEvent} from {@link
    * SubscriptionPrefetchingQueue#inputPendingQueue} to {@link
@@ -319,7 +345,7 @@ public abstract class SubscriptionPrefetchingQueue {
    * <p>It will continuously attempt to prefetch and generate a {@link SubscriptionEvent} until
    * {@link SubscriptionPrefetchingQueue#inputPendingQueue} is empty.
    */
-  private void tryPrefetch() {
+  private synchronized void tryPrefetch() {
     while (!inputPendingQueue.isEmpty()) {
       final Event event = UserDefinedEnrichedEvent.maybeOf(inputPendingQueue.waitedPoll());
       if (Objects.isNull(event)) {

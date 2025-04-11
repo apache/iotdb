@@ -460,9 +460,6 @@ public class IoTDBDataRegionAsyncConnector extends IoTDBConnector {
   /**
    * Transfer queued {@link Event}s which are waiting for retry.
    *
-   * @throws Exception if an error occurs. The error will be handled by pipe framework, which will
-   *     retry the {@link Event} and mark the {@link Event} as failure and stop the pipe if the
-   *     retry times exceeds the threshold.
    * @see PipeConnector#transfer(Event) for more details.
    * @see PipeConnector#transfer(TabletInsertionEvent) for more details.
    * @see PipeConnector#transfer(TsFileInsertionEvent) for more details.
@@ -528,7 +525,14 @@ public class IoTDBDataRegionAsyncConnector extends IoTDBConnector {
         }
 
         if (remainingEvents <= retryEventQueue.size()) {
-          throw new PipeException("Failed to transfer events in retry queue.");
+          throw new PipeException(
+              "Failed to retry transferring events in the retry queue. Remaining events: "
+                  + retryEventQueue.size()
+                  + " (tablet events: "
+                  + retryEventQueueEventCounter.getTabletInsertionEventCount()
+                  + ", tsfile events: "
+                  + retryEventQueueEventCounter.getTsFileInsertionEventCount()
+                  + ").");
         }
       }
     }
