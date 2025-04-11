@@ -52,6 +52,8 @@ public class IoTDBGreatestLeastTableIT {
         "INSERT INTO number_table(time, device_id, int1, int2, long1, long2, float1, float2, double1, double2) VALUES (10, 'd1', 1000000, 2000000, 1000000, 2000000, 10.1, 20.2, 10.1, 20.2)",
         "INSERT INTO string_table(time, device_id, string1, string2, text1, text2) VALUES(10, 'd1', 'aaa', 'bbb', 'aaa', 'bbb')",
         "INSERT INTO boolean_table(time, device_id, bool1, bool2) VALUES(10, 'd1', true, false)",
+        "INSERT INTO boolean_table(time, device_id, bool1, bool2) VALUES(20, 'd1', false, true)",
+        "INSERT INTO boolean_table(time, device_id, bool1, bool2) VALUES(30, 'd1', true, true)",
         "INSERT INTO mix_type_table(time, device_id, s1, s2, s3, s4, s5, s6, s7) VALUES(10, 'd1', 1, 1, 1.0, 1.0, true, 'a', 'a')",
         "INSERT INTO null_table(time, device_id, string1, string2) VALUES(10, 'd1', null, null)",
         "INSERT INTO any_null_table(time, device_id, string2, int2, double2, timestamp2) VALUES(10, 'd1', 'test', 10, 10.0, 10)",
@@ -170,7 +172,7 @@ public class IoTDBGreatestLeastTableIT {
     tableResultSetEqualTest(
         "SELECT GREATEST(bool1, bool2) FROM boolean_table",
         new String[] {"_col0"},
-        new String[] {"true,"},
+        new String[] {"true,", "true,", "true,"},
         DATABASE_NAME);
   }
 
@@ -179,7 +181,7 @@ public class IoTDBGreatestLeastTableIT {
     tableResultSetEqualTest(
         "SELECT LEAST(bool1, bool2) FROM boolean_table",
         new String[] {"_col0"},
-        new String[] {"false,"},
+        new String[] {"false,", "false,", "true,"},
         DATABASE_NAME);
   }
 
