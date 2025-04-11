@@ -909,6 +909,8 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
     checkAndEnrichSourceUserName(pipeName, extractorAttributes, userName, false);
     checkAndEnrichSinkUserName(pipeName, node.getConnectorAttributes(), userName, false);
 
+    mayChangeSourcePattern(extractorAttributes);
+
     return new CreatePipeTask(node);
   }
 
@@ -945,6 +947,38 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
               "Failed to %s pipe %s, in iotdb-source, password must be set when the username is specified.",
               isAlter ? "alter" : "create", pipeName));
     }
+  }
+
+  private static void mayChangeSourcePattern(final Map<String, String> extractorAttributes) {
+    final PipeParameters extractorParameters = new PipeParameters(extractorAttributes);
+
+    final String pluginName =
+        extractorParameters
+            .getStringOrDefault(
+                Arrays.asList(
+                    PipeExtractorConstant.EXTRACTOR_KEY, PipeExtractorConstant.SOURCE_KEY),
+                BuiltinPipePlugin.IOTDB_EXTRACTOR.getPipePluginName())
+            .toLowerCase();
+
+    if (!pluginName.equals(BuiltinPipePlugin.IOTDB_EXTRACTOR.getPipePluginName())
+        && !pluginName.equals(BuiltinPipePlugin.IOTDB_SOURCE.getPipePluginName())) {
+      return;
+    }
+
+    // Use lower case because database + table name are all in lower cases
+    extractorParameters.computeAttributeIfExists(
+        (k, v) -> v.toLowerCase(Locale.ENGLISH),
+        PipeExtractorConstant.EXTRACTOR_DATABASE_KEY,
+        PipeExtractorConstant.SOURCE_DATABASE_KEY,
+        PipeExtractorConstant.EXTRACTOR_DATABASE_NAME_KEY,
+        PipeExtractorConstant.SOURCE_DATABASE_NAME_KEY);
+
+    extractorParameters.computeAttributeIfExists(
+        (k, v) -> v.toLowerCase(Locale.ENGLISH),
+        PipeExtractorConstant.EXTRACTOR_TABLE_KEY,
+        PipeExtractorConstant.SOURCE_TABLE_KEY,
+        PipeExtractorConstant.EXTRACTOR_TABLE_NAME_KEY,
+        PipeExtractorConstant.SOURCE_TABLE_NAME_KEY);
   }
 
   public static void checkAndEnrichSinkUserName(
@@ -1005,6 +1039,7 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
           SystemConstant.SQL_DIALECT_KEY, SystemConstant.SQL_DIALECT_TABLE_VALUE);
       checkAndEnrichSourceUserName(pipeName, extractorAttributes, userName, true);
     }
+    mayChangeSourcePattern(extractorAttributes);
 
     if (node.isReplaceAllConnectorAttributes()) {
       checkAndEnrichSinkUserName(pipeName, node.getConnectorAttributes(), userName, true);

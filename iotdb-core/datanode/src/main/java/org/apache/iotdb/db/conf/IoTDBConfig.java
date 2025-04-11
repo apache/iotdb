@@ -1062,6 +1062,8 @@ public class IoTDBConfig {
   // IoTConsensusV2 Config
   private int iotConsensusV2PipelineSize = 5;
   private String iotConsensusV2Mode = ConsensusFactory.IOT_CONSENSUS_V2_BATCH_MODE;
+  private long tsFileWriterCheckInterval = TimeUnit.MINUTES.toMillis(5);
+  private long tsFileWriterZombieThreshold = TimeUnit.MINUTES.toMillis(10);
   private String[] iotConsensusV2ReceiverFileDirs = new String[0];
   private String iotConsensusV2DeletionFileDir =
       systemDir
@@ -1186,6 +1188,22 @@ public class IoTDBConfig {
 
   public void setIotConsensusV2PipelineSize(int iotConsensusV2PipelineSize) {
     this.iotConsensusV2PipelineSize = iotConsensusV2PipelineSize;
+  }
+
+  public long getTsFileWriterCheckInterval() {
+    return tsFileWriterCheckInterval;
+  }
+
+  public void setTsFileWriterCheckInterval(long tsFileWriterCheckInterval) {
+    this.tsFileWriterCheckInterval = tsFileWriterCheckInterval;
+  }
+
+  public long getTsFileWriterZombieThreshold() {
+    return tsFileWriterZombieThreshold;
+  }
+
+  public void setTsFileWriterZombieThreshold(long tsFileWriterZombieThreshold) {
+    this.tsFileWriterZombieThreshold = tsFileWriterZombieThreshold;
   }
 
   public void setMaxSizePerBatch(int maxSizePerBatch) {
