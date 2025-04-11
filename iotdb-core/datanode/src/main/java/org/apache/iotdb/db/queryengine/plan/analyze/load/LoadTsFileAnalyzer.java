@@ -86,7 +86,7 @@ import static org.apache.iotdb.commons.utils.FileUtils.moveFileWithMD5Check;
 import static org.apache.iotdb.db.queryengine.plan.execution.config.TableConfigTaskVisitor.DATABASE_NOT_SPECIFIED;
 import static org.apache.iotdb.db.queryengine.plan.execution.config.TableConfigTaskVisitor.validateDatabaseName;
 import static org.apache.iotdb.db.storageengine.load.metrics.LoadTsFileCostMetricsSet.ANALYSIS;
-import static org.apache.iotdb.db.storageengine.load.metrics.LoadTsFileCostMetricsSet.ANALYSIS_CAST_ASYNC;
+import static org.apache.iotdb.db.storageengine.load.metrics.LoadTsFileCostMetricsSet.ANALYSIS_ASYNC_MOVE;
 
 public class LoadTsFileAnalyzer implements AutoCloseable {
 
@@ -318,7 +318,7 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
       return true;
     } finally {
       LoadTsFileCostMetricsSet.getInstance()
-          .recordPhaseTimeCost(ANALYSIS_CAST_ASYNC, System.nanoTime() - startTime);
+          .recordPhaseTimeCost(ANALYSIS_ASYNC_MOVE, System.nanoTime() - startTime);
     }
   }
 

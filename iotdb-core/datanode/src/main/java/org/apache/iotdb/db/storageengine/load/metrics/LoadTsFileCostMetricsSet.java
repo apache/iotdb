@@ -42,7 +42,7 @@ public class LoadTsFileCostMetricsSet implements IMetricSet {
   public static final String LOAD_LOCALLY = "load_locally";
   public static final String SCHEDULER_CAST_TABLETS = "scheduler_cast_tablets";
   public static final String ANALYSIS_CAST_TABLETS = "analysis_cast_tablets";
-  public static final String ANALYSIS_CAST_ASYNC = "analysis_cast_async";
+  public static final String ANALYSIS_ASYNC_MOVE = "analysis_async_move";
 
   private LoadTsFileCostMetricsSet() {
     // empty constructor
@@ -54,7 +54,7 @@ public class LoadTsFileCostMetricsSet implements IMetricSet {
   private Timer loadLocallyTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
   private Timer schedulerCastTabletsTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
   private Timer analysisCastTabletsTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
-  private Timer analysisCastAsyncTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
+  private Timer analysisAsyncMoveTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
 
   private Counter diskIOCounter = DoNothingMetricManager.DO_NOTHING_COUNTER;
 
@@ -78,8 +78,8 @@ public class LoadTsFileCostMetricsSet implements IMetricSet {
       case ANALYSIS_CAST_TABLETS:
         analysisCastTabletsTimer.updateNanos(costTimeInNanos);
         break;
-      case ANALYSIS_CAST_ASYNC:
-        analysisCastAsyncTimer.updateNanos(costTimeInNanos);
+      case ANALYSIS_ASYNC_MOVE:
+        analysisAsyncMoveTimer.updateNanos(costTimeInNanos);
       default:
         throw new UnsupportedOperationException("Unsupported stage: " + stage);
     }
@@ -124,12 +124,12 @@ public class LoadTsFileCostMetricsSet implements IMetricSet {
             MetricLevel.IMPORTANT,
             Tag.NAME.toString(),
             ANALYSIS_CAST_TABLETS);
-    analysisCastAsyncTimer =
+    analysisAsyncMoveTimer =
         metricService.getOrCreateTimer(
             Metric.LOAD_TIME_COST.toString(),
             MetricLevel.IMPORTANT,
             Tag.NAME.toString(),
-            ANALYSIS_CAST_ASYNC);
+            ANALYSIS_ASYNC_MOVE);
 
     diskIOCounter =
         metricService.getOrCreateCounter(
@@ -148,7 +148,7 @@ public class LoadTsFileCostMetricsSet implements IMetricSet {
             LOAD_LOCALLY,
             SCHEDULER_CAST_TABLETS,
             ANALYSIS_CAST_TABLETS,
-            ANALYSIS_CAST_ASYNC)
+            ANALYSIS_ASYNC_MOVE)
         .forEach(
             stage ->
                 metricService.remove(
