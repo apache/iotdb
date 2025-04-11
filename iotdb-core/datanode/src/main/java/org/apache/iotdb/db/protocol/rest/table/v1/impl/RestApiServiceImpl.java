@@ -74,7 +74,7 @@ public class RestApiServiceImpl extends RestApiService {
     Statement statement = null;
     long startTime = System.nanoTime();
     try {
-      RequestValidationHandler.validateQuerySQL(sql);
+      RequestValidationHandler.validateSQL(sql);
       IClientSession clientSession = SESSION_MANAGER.getCurrSessionAndUpdateIdleTime();
       clientSession.setDatabaseName(sql.getDatabase());
       clientSession.setSqlDialect(IClientSession.SqlDialect.TABLE);
