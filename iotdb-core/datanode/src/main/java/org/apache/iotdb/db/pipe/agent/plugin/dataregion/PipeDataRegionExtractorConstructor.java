@@ -46,5 +46,6 @@ class PipeDataRegionExtractorConstructor extends PipeExtractorConstructor {
 
     pluginConstructors.put(
         BuiltinPipePlugin.MQTT_EXTRACTOR.getPipePluginName(), MQTTExtractor::new);
+    pluginConstructors.put(BuiltinPipePlugin.MQTT_SOURCE.getPipePluginName(), MQTTExtractor::new);
   }
 }

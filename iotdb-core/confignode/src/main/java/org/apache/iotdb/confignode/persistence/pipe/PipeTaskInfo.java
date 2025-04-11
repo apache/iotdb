@@ -47,7 +47,6 @@ import org.apache.iotdb.confignode.consensus.request.write.pipe.task.DropPipePla
 import org.apache.iotdb.confignode.consensus.request.write.pipe.task.OperateMultiplePipesPlanV2;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.task.SetPipeStatusPlanV2;
 import org.apache.iotdb.confignode.consensus.response.pipe.task.PipeTableResp;
-import org.apache.iotdb.confignode.manager.ConfigManager;
 import org.apache.iotdb.confignode.manager.pipe.resource.PipeConfigNodeResourceManager;
 import org.apache.iotdb.confignode.procedure.impl.pipe.runtime.PipeHandleMetaChangeProcedure;
 import org.apache.iotdb.confignode.procedure.impl.pipe.util.ExternalLoadBalancer;
@@ -632,13 +631,23 @@ public class PipeTaskInfo implements SnapshotProcessor {
                             // the data region group has already been removed"
                           }
                         }));
-    final ConfigManager configManager = ConfigNode.getInstance().getConfigManager();
     pipeMetaKeeper
         .getPipeMetaList()
         .forEach(
             pipeMeta -> {
               if (pipeMeta.getStaticMeta().isSourceExternal()) {
-                final ExternalLoadBalancer loadBalancer = new ExternalLoadBalancer(configManager);
+                final ExternalLoadBalancer loadBalancer =
+                    new ExternalLoadBalancer(
+                        pipeMeta
+                            .getStaticMeta()
+                            .getExtractorParameters()
+                            .getStringOrDefault(
+                                Arrays.asList(
+                                    PipeExtractorConstant.EXTERNAL_EXTRACTOR_BALANCE_STRATEGY_KEY,
+                                    PipeExtractorConstant.EXTERNAL_SOURCE_BALANCE_STRATEGY_KEY),
+                                PipeExtractorConstant
+                                    .EXTERNAL_EXTRACTOR_BALANCE_PROPORTION_STRATEGY));
+
                 final int parallelism =
                     pipeMeta
                         .getStaticMeta()
@@ -651,8 +660,8 @@ public class PipeTaskInfo implements SnapshotProcessor {
                 loadBalancer
                     .balance(
                         parallelism,
-                        configManager.getLoadManager().getRegionLeaderMap(),
-                        pipeMeta.getStaticMeta())
+                        pipeMeta.getStaticMeta(),
+                        ConfigNode.getInstance().getConfigManager())
                     .forEach(
                         (taskIndex, newLeader) -> {
                           if (newLeader != -1) {

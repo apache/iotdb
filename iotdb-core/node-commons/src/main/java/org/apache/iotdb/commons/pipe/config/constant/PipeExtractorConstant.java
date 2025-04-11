@@ -19,6 +19,11 @@
 
 package org.apache.iotdb.commons.pipe.config.constant;
 
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.Set;
+
 public class PipeExtractorConstant {
 
   public static final String EXTRACTOR_KEY = "extractor";
@@ -148,6 +153,12 @@ public class PipeExtractorConstant {
   public static final String EXTRACTOR_IOTDB_SKIP_IF_NO_PRIVILEGES = "no-privileges";
 
   ////////////////// external sources ////////////////
+  public static final String EXTERNAL_EXTRACTOR_BALANCE_STRATEGY_KEY = "extractor.balance-strategy";
+  public static final String EXTERNAL_SOURCE_BALANCE_STRATEGY_KEY = "source.balance-strategy";
+  public static final String EXTERNAL_EXTRACTOR_BALANCE_PROPORTION_STRATEGY = "proportion";
+  public static final Set<String> CONNECTOR_LOAD_BALANCE_STRATEGY_SET =
+      Collections.unmodifiableSet(
+          new HashSet<>(Arrays.asList(EXTERNAL_EXTRACTOR_BALANCE_PROPORTION_STRATEGY)));
   public static final String EXTERNAL_EXTRACTOR_PARALLELISM_KEY = "extractor.parallelism";
   public static final String EXTERNAL_SOURCE_PARALLELISM_KEY = "source.parallelism";
   public static final int EXTERNAL_EXTRACTOR_PARALLELISM_DEFAULT_VALUE = 1;

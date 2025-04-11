@@ -275,7 +275,15 @@ public class CreatePipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
               senderDataNodeId));
     } else if (pipeStaticMeta.isSourceExternal()) {
       // external source
-      final ExternalLoadBalancer loadBalancer = new ExternalLoadBalancer(env.getConfigManager());
+      final ExternalLoadBalancer loadBalancer =
+          new ExternalLoadBalancer(
+              pipeStaticMeta
+                  .getExtractorParameters()
+                  .getStringOrDefault(
+                      Arrays.asList(
+                          PipeExtractorConstant.EXTERNAL_EXTRACTOR_BALANCE_STRATEGY_KEY,
+                          PipeExtractorConstant.EXTERNAL_SOURCE_BALANCE_STRATEGY_KEY),
+                      PipeExtractorConstant.EXTERNAL_EXTRACTOR_BALANCE_PROPORTION_STRATEGY));
       final int parallelism =
           pipeStaticMeta
               .getExtractorParameters()
@@ -284,10 +292,7 @@ public class CreatePipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
                       EXTERNAL_EXTRACTOR_PARALLELISM_KEY, EXTERNAL_SOURCE_PARALLELISM_KEY),
                   EXTERNAL_EXTRACTOR_PARALLELISM_DEFAULT_VALUE);
       loadBalancer
-          .balance(
-              parallelism,
-              env.getConfigManager().getLoadManager().getRegionLeaderMap(),
-              pipeStaticMeta)
+          .balance(parallelism, pipeStaticMeta, env.getConfigManager())
           .forEach(
               (taskIndex, leaderNodeId) -> {
                 consensusGroupIdToTaskMetaMap.put(
