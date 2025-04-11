@@ -124,6 +124,7 @@ public class PipeTreeModelTsFileBuilderV2 extends PipeTsFileBuilder {
           currentBatchId.get(),
           e.getMessage(),
           e);
+      // TODO: handle ex
       throw new WriteProcessException(e);
     } finally {
       memTable.release();
