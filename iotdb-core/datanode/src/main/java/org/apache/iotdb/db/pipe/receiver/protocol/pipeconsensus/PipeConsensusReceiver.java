@@ -1634,7 +1634,7 @@ public class PipeConsensusReceiver {
           consensusPipeName);
       // since pipe task will resend all data that hasn't synchronized after restarts, it's safe to
       // clear all events in buffer.
-      clear();
+      clear(false);
       this.pipeTaskRestartTimes = pipeTaskRestartTimes;
     }
 
@@ -1658,9 +1658,19 @@ public class PipeConsensusReceiver {
     private void clear(boolean resetSyncIndex) {
       this.reqExecutionOrderBuffer.clear();
       this.tsFileWriterPool.handleExit(consensusPipeName);
-        if (resetSyncIndex) {
-            this.onSyncedReplicateIndex = 0;
-        }
+      if (resetSyncIndex) {
+        this.onSyncedReplicateIndex = 0;
+      }
+    }
+
+    private void tryClose() {
+      // It will not be closed until all requests sent before closing are done.
+      lock.lock();
+      try {
+        isClosed.set(true);
+      } finally {
+        lock.unlock();
+      }
     }
 
     private TPipeConsensusTransferResp deprecatedResp(String msg) {
@@ -1676,17 +1686,6 @@ public class PipeConsensusReceiver {
           consensusPipeName,
           msg);
       return new TPipeConsensusTransferResp(status);
-    }
-  }
-
-    private void tryClose() {
-      // It will not be closed until all requests sent before closing are done.
-      lock.lock();
-      try {
-        isClosed.set(true);
-      } finally {
-        lock.unlock();
-      }
     }
   }
 

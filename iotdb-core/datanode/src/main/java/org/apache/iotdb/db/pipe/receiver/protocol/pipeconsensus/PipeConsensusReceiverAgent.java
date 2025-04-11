@@ -135,7 +135,7 @@ public class PipeConsensusReceiverAgent implements ConsensusPipeReceiver {
     ConsensusPipeName consensusPipeName =
         new ConsensusPipeName(consensusGroupId, leaderDataNodeId, thisNodeId);
     // 3. Judge whether pipe task was dropped
-    if (!consensusPipeStatusMap.getOrDefault(consensusPipeName, new AtomicBoolean(true)).get()) {
+    if (!consensusPipeStatusMap.containsKey(consensusPipeName)) {
       return null;
     }
 
@@ -220,7 +220,7 @@ public class PipeConsensusReceiverAgent implements ConsensusPipeReceiver {
         consensusPipe2ReciverMap.getOrDefault(pipeName, null);
     // 3. Release receiver
     if (receiverReference != null) {
-      consensusPipeStatusMap.get(pipeName).set(false);
+      consensusPipeStatusMap.remove(pipeName);
       receiverReference.get().handleExit();
       receiverReference.set(null);
       consensusPipe2ReciverMap.remove(pipeName);
