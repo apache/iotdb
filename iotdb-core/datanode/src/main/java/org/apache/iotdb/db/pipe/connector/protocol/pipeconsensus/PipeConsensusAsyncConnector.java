@@ -377,6 +377,7 @@ public class PipeConsensusAsyncConnector extends IoTDBConnector implements Conse
               this,
               tCommitId,
               tConsensusGroupId,
+              consensusPipeName,
               thisDataNodeId,
               pipeConsensusConnectorMetrics);
 
