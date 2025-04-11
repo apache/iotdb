@@ -24,7 +24,6 @@ import org.apache.iotdb.commons.exception.pipe.PipeRuntimeException;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeOutOfMemoryCriticalException;
 import org.apache.iotdb.commons.pipe.agent.task.connection.EventSupplier;
 import org.apache.iotdb.commons.pipe.agent.task.execution.PipeSubtaskScheduler;
-import org.apache.iotdb.commons.pipe.agent.task.progress.PipeEventCommitManager;
 import org.apache.iotdb.commons.pipe.agent.task.subtask.PipeReportableSubtask;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
@@ -189,18 +188,7 @@ public class PipeProcessorSubtask extends PipeReportableSubtask {
               && !outputEventCollector.isFailedToIncreaseReferenceCount()
               // Events generated from consensusPipe's transferred data should never be reported.
               && !(pipeProcessor instanceof PipeConsensusProcessor);
-      if (shouldReport
-          && event instanceof EnrichedEvent
-          && outputEventCollector.hasNoCollectInvocationAfterReset()) {
-        // An event should be reported here when it is not passed to the connector stage, and it
-        // does not generate any new events to be passed to the connector. In our system, before
-        // reporting an event, we need to enrich a commitKey and commitId, which is done in the
-        // collector stage. But for the event that not passed to the connector and not generate any
-        // new events, the collector stage is not triggered, so we need to enrich the commitKey and
-        // commitId here.
-        PipeEventCommitManager.getInstance()
-            .enrichWithCommitterKeyAndCommitId((EnrichedEvent) event, creationTime, regionId);
-      }
+
       decreaseReferenceCountAndReleaseLastEvent(event, shouldReport);
     } catch (final PipeRuntimeOutOfMemoryCriticalException e) {
       LOGGER.info(
@@ -289,15 +277,6 @@ public class PipeProcessorSubtask extends PipeReportableSubtask {
 
   public int getRegionId() {
     return regionId;
-  }
-
-  public int getEventCount(final boolean ignoreHeartbeat) {
-    // Avoid potential NPE in "getPipeName"
-    final EnrichedEvent event =
-        lastEvent instanceof EnrichedEvent ? (EnrichedEvent) lastEvent : null;
-    return Objects.nonNull(event) && !(ignoreHeartbeat && event instanceof PipeHeartbeatEvent)
-        ? 1
-        : 0;
   }
 
   //////////////////////////// Error report ////////////////////////////

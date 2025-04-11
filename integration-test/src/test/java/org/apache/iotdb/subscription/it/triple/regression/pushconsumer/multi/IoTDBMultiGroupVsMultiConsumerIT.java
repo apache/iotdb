@@ -198,8 +198,7 @@ public class IoTDBMultiGroupVsMultiConsumerIT extends AbstractSubscriptionRegres
             .fileSaveDir("target/push-subscription")
             .consumeListener(
                 message -> {
-                  try {
-                    TsFileReader reader = message.getTsFileHandler().openReader();
+                  try (final TsFileReader reader = message.getTsFileHandler().openReader()) {
                     QueryDataSet dataset =
                         reader.query(
                             QueryExpression.create(
@@ -229,8 +228,7 @@ public class IoTDBMultiGroupVsMultiConsumerIT extends AbstractSubscriptionRegres
             .fileSaveDir("target/push-subscription")
             .consumeListener(
                 message -> {
-                  try {
-                    TsFileReader reader = message.getTsFileHandler().openReader();
+                  try (final TsFileReader reader = message.getTsFileHandler().openReader()) {
                     QueryDataSet dataset =
                         reader.query(
                             QueryExpression.create(
@@ -387,8 +385,7 @@ public class IoTDBMultiGroupVsMultiConsumerIT extends AbstractSubscriptionRegres
                         }
                         break;
                       case TS_FILE_HANDLER:
-                        try {
-                          TsFileReader reader = message.getTsFileHandler().openReader();
+                        try (final TsFileReader reader = message.getTsFileHandler().openReader()) {
                           QueryDataSet dataset =
                               reader.query(
                                   QueryExpression.create(
@@ -420,8 +417,7 @@ public class IoTDBMultiGroupVsMultiConsumerIT extends AbstractSubscriptionRegres
             .fileSaveDir("target/push-subscription")
             .consumeListener(
                 message -> {
-                  try {
-                    TsFileReader reader = message.getTsFileHandler().openReader();
+                  try (final TsFileReader reader = message.getTsFileHandler().openReader()) {
                     QueryDataSet dataset =
                         reader.query(
                             QueryExpression.create(
@@ -467,8 +463,7 @@ public class IoTDBMultiGroupVsMultiConsumerIT extends AbstractSubscriptionRegres
                         }
                         break;
                       case TS_FILE_HANDLER:
-                        try {
-                          TsFileReader reader = message.getTsFileHandler().openReader();
+                        try (final TsFileReader reader = message.getTsFileHandler().openReader()) {
                           QueryDataSet dataset =
                               reader.query(
                                   QueryExpression.create(

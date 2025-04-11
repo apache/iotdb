@@ -195,7 +195,9 @@ public class PipeEventCollector implements EventCollector {
                     deleteDataEvent.getTablePattern(),
                     deleteDataEvent.getUserName(),
                     deleteDataEvent.isSkipIfNoPrivileges(),
-                    deleteDataEvent.isGeneratedByPipe()))
+                    deleteDataEvent.isGeneratedByPipe(),
+                    deleteDataEvent.getCommitterKey(),
+                    deleteDataEvent.getCommitId()))
         .ifPresent(
             event -> {
               hasNoGeneratedEvent = false;
@@ -235,10 +237,6 @@ public class PipeEventCollector implements EventCollector {
 
   public long getCollectInvocationCount() {
     return collectInvocationCount.get();
-  }
-
-  public boolean hasNoCollectInvocationAfterReset() {
-    return collectInvocationCount.get() == 0;
   }
 
   public boolean hasNoGeneratedEvent() {
