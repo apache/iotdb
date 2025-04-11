@@ -76,7 +76,9 @@ public class RestApiServiceImpl extends RestApiService {
     try {
       RequestValidationHandler.validateSQL(sql);
       IClientSession clientSession = SESSION_MANAGER.getCurrSessionAndUpdateIdleTime();
-      clientSession.setDatabaseName(sql.getDatabase());
+      if (sql.getDatabase() != null && !sql.getDatabase().isEmpty()) {
+        clientSession.setDatabaseName(sql.getDatabase());
+      }
       clientSession.setSqlDialect(IClientSession.SqlDialect.TABLE);
       statement =
           relationSqlParser.createStatement(sql.getSql(), ZoneId.systemDefault(), clientSession);
@@ -198,7 +200,10 @@ public class RestApiServiceImpl extends RestApiService {
     try {
       IClientSession clientSession = SESSION_MANAGER.getCurrSessionAndUpdateIdleTime();
       RequestValidationHandler.validateSQL(sql);
-      clientSession.setDatabaseName(sql.getDatabase());
+      if (sql.getDatabase() != null && !sql.getDatabase().isEmpty()) {
+        clientSession.setDatabaseName(sql.getDatabase());
+      }
+
       clientSession.setSqlDialect(IClientSession.SqlDialect.TABLE);
       statement =
           relationSqlParser.createStatement(sql.getSql(), ZoneId.systemDefault(), clientSession);
