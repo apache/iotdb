@@ -80,6 +80,7 @@ public class LoadTsFileCostMetricsSet implements IMetricSet {
         break;
       case ANALYSIS_ASYNC_MOVE:
         analysisAsyncMoveTimer.updateNanos(costTimeInNanos);
+        break;
       default:
         throw new UnsupportedOperationException("Unsupported stage: " + stage);
     }
