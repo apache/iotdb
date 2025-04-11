@@ -36,8 +36,12 @@ public abstract class BlockingPendingQueue<E extends Event> {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(BlockingPendingQueue.class);
 
-  private static final long MAX_BLOCKING_TIME_MS =
-      PipeConfig.getInstance().getPipeSubtaskExecutorPendingQueueMaxBlockingTimeMs();
+  private static long MAX_BLOCKING_TIME_MS =
+      PipeConfig.getInstance()
+          .registerPipeSubtaskExecutorPendingQueueMaxBlockingTimeMs(
+              pipeConfig ->
+                  MAX_BLOCKING_TIME_MS =
+                      pipeConfig.getPipeSubtaskExecutorPendingQueueMaxBlockingTimeMs());
 
   protected final BlockingQueue<E> pendingQueue;
 

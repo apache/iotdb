@@ -54,8 +54,12 @@ public class PipeDataRegionAssigner implements Closeable {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(PipeDataRegionAssigner.class);
 
-  private static final int nonForwardingEventsProgressReportInterval =
-      PipeConfig.getInstance().getPipeNonForwardingEventsProgressReportInterval();
+  private static int nonForwardingEventsProgressReportInterval =
+      PipeConfig.getInstance()
+          .registerPipeNonForwardingEventsProgressReportInterval(
+              (config) ->
+                  PipeDataRegionAssigner.nonForwardingEventsProgressReportInterval =
+                      config.getPipeNonForwardingEventsProgressReportInterval());
 
   /**
    * The {@link PipeDataRegionMatcher} is used to match the event with the extractor based on the

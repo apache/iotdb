@@ -41,12 +41,19 @@ public class PipeRealtimePriorityBlockingQueue extends UnboundedBlockingPendingQ
   private final BlockingDeque<TsFileInsertionEvent> tsfileInsertEventDeque =
       new LinkedBlockingDeque<>();
 
-  private static final int POLL_TSFILE_THRESHOLD =
-      PipeConfig.getInstance().getPipeRealTimeQueuePollTsFileThreshold();
+  private static int POLL_TSFILE_THRESHOLD =
+      PipeConfig.getInstance()
+          .registerPipeRealTimeQueuePollTsFileThreshold(
+              pipeConfig ->
+                  POLL_TSFILE_THRESHOLD = pipeConfig.getPipeRealTimeQueuePollTsFileThreshold());
   private final AtomicInteger pollTsFileCounter = new AtomicInteger(0);
 
-  private static final int POLL_HISTORICAL_TSFILE_THRESHOLD =
-      Math.max(PipeConfig.getInstance().getPipeRealTimeQueuePollHistoricalTsFileThreshold(), 1);
+  private static int POLL_HISTORICAL_TSFILE_THRESHOLD =
+      PipeConfig.getInstance()
+          .registerPipeRealTimeQueuePollHistoricalTsFileThreshold(
+              pipeConfig ->
+                  POLL_HISTORICAL_TSFILE_THRESHOLD =
+                      Math.max(pipeConfig.getPipeRealTimeQueuePollHistoricalTsFileThreshold(), 1));
   private final AtomicLong pollHistoricalTsFileCounter = new AtomicLong(0);
 
   public PipeRealtimePriorityBlockingQueue() {

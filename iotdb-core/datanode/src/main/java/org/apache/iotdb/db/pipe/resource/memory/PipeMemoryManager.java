@@ -43,13 +43,25 @@ public class PipeMemoryManager {
   private static final boolean PIPE_MEMORY_MANAGEMENT_ENABLED =
       PipeConfig.getInstance().getPipeMemoryManagementEnabled();
 
-  private static final int MEMORY_ALLOCATE_MAX_RETRIES =
-      PipeConfig.getInstance().getPipeMemoryAllocateMaxRetries();
-  private static final long MEMORY_ALLOCATE_RETRY_INTERVAL_IN_MS =
-      PipeConfig.getInstance().getPipeMemoryAllocateRetryIntervalInMs();
+  private static int MEMORY_ALLOCATE_MAX_RETRIES =
+      PipeConfig.getInstance()
+          .registerPipeMemoryAllocateMaxRetries(
+              pipeConfig ->
+                  MEMORY_ALLOCATE_MAX_RETRIES = pipeConfig.getPipeMemoryAllocateMaxRetries());
 
-  private static final long MEMORY_ALLOCATE_MIN_SIZE_IN_BYTES =
-      PipeConfig.getInstance().getPipeMemoryAllocateMinSizeInBytes();
+  private static long MEMORY_ALLOCATE_RETRY_INTERVAL_IN_MS =
+      PipeConfig.getInstance()
+          .registerPipeMemoryAllocateRetryIntervalInMs(
+              pipeConfig ->
+                  MEMORY_ALLOCATE_RETRY_INTERVAL_IN_MS =
+                      pipeConfig.getPipeMemoryAllocateRetryIntervalInMs());
+
+  private static long MEMORY_ALLOCATE_MIN_SIZE_IN_BYTES =
+      PipeConfig.getInstance()
+          .registerPipeMemoryAllocateMinSizeInBytes(
+              pipeConfig ->
+                  MEMORY_ALLOCATE_MIN_SIZE_IN_BYTES =
+                      pipeConfig.getPipeMemoryAllocateMinSizeInBytes());
 
   // TODO @spricoder: consider combine memory block and used MemorySizeInBytes
   private IMemoryBlock memoryBlock =
@@ -62,17 +74,29 @@ public class PipeMemoryManager {
 
   // To avoid too much parsed events causing OOM. If total tablet memory size exceeds this
   // threshold, allocations of memory block for tablets will be rejected.
-  private static final double TABLET_MEMORY_REJECT_THRESHOLD =
-      PipeConfig.getInstance().getPipeDataStructureTabletMemoryBlockAllocationRejectThreshold();
+  private static double TABLET_MEMORY_REJECT_THRESHOLD =
+      PipeConfig.getInstance()
+          .registerPipeDataStructureTabletMemoryBlockAllocationRejectThreshold(
+              (config) ->
+                  PipeMemoryManager.TABLET_MEMORY_REJECT_THRESHOLD =
+                      config.getPipeDataStructureTabletMemoryBlockAllocationRejectThreshold());
   private volatile long usedMemorySizeInBytesOfTablets;
 
   // Used to control the memory allocated for managing slice tsfile.
-  private static final double TS_FILE_MEMORY_REJECT_THRESHOLD =
-      PipeConfig.getInstance().getPipeDataStructureTsFileMemoryBlockAllocationRejectThreshold();
+  private static double TS_FILE_MEMORY_REJECT_THRESHOLD =
+      PipeConfig.getInstance()
+          .registerPipeDataStructureTsFileMemoryBlockAllocationRejectThreshold(
+              config ->
+                  PipeMemoryManager.TS_FILE_MEMORY_REJECT_THRESHOLD =
+                      config.getPipeDataStructureTsFileMemoryBlockAllocationRejectThreshold());
   private volatile long usedMemorySizeInBytesOfTsFiles;
 
-  private static final double FLOATING_MEMORY_RATIO =
-      PipeConfig.getInstance().getPipeTotalFloatingMemoryProportion();
+  private static double FLOATING_MEMORY_RATIO =
+      PipeConfig.getInstance()
+          .registerPipeTotalFloatingMemoryProportion(
+              (config) ->
+                  PipeMemoryManager.FLOATING_MEMORY_RATIO =
+                      config.getPipeTotalFloatingMemoryProportion());
 
   // Only non-zero memory blocks will be added to this set.
   private final Set<PipeMemoryBlock> allocatedBlocks = new HashSet<>();

@@ -49,13 +49,20 @@ public interface IoTDBDataNodeCacheLeaderClientManager {
     // a hashmap to reuse the created endpoint
     private final ConcurrentHashMap<TEndPoint, TEndPoint> endPoints = new ConcurrentHashMap<>();
 
+    private static long maxMemorySizeInBytes =
+        (long)
+            (PipeDataNodeResourceManager.memory().getTotalNonFloatingMemorySizeInBytes()
+                * CONFIG.registerPipeLeaderCacheMemoryUsagePercentage(
+                    pipeConfig ->
+                        maxMemorySizeInBytes =
+                            (long)
+                                (PipeDataNodeResourceManager.memory()
+                                        .getTotalNonFloatingMemorySizeInBytes()
+                                    * CONFIG.getPipeLeaderCacheMemoryUsagePercentage())));
+
     public LeaderCacheManager() {
       final long initMemorySizeInBytes =
           PipeDataNodeResourceManager.memory().getTotalNonFloatingMemorySizeInBytes() / 10;
-      final long maxMemorySizeInBytes =
-          (long)
-              (PipeDataNodeResourceManager.memory().getTotalNonFloatingMemorySizeInBytes()
-                  * CONFIG.getPipeLeaderCacheMemoryUsagePercentage());
 
       // properties required by pipe memory control framework
       final PipeMemoryBlock allocatedMemoryBlock =
