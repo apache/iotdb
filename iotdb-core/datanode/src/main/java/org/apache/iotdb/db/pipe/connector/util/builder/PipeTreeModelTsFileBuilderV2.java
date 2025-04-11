@@ -50,7 +50,7 @@ public class PipeTreeModelTsFileBuilderV2 extends PipeTsFileBuilder {
   private static final Logger LOGGER = LoggerFactory.getLogger(PipeTreeModelTsFileBuilderV2.class);
 
   private static final PlanNodeId PLACEHOLDER_PLAN_NODE_ID =
-      new PlanNodeId("PipeTreeModelTsFileBuilder");
+      new PlanNodeId("PipeTreeModelTsFileBuilderV2");
 
   private final List<Tablet> tabletList = new ArrayList<>();
   private final List<Boolean> isTabletAlignedList = new ArrayList<>();
