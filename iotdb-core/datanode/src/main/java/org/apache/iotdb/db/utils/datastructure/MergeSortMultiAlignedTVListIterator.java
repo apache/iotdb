@@ -19,9 +19,6 @@
 
 package org.apache.iotdb.db.utils.datastructure;
 
-import org.apache.iotdb.db.conf.IoTDBConfig;
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
-
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.tsfile.read.common.TimeRange;
@@ -54,9 +51,6 @@ public class MergeSortMultiAlignedTVListIterator extends MultiAlignedTVListItera
       new PriorityQueue<>(
           (a, b) -> a.left.equals(b.left) ? b.right.compareTo(a.right) : a.left.compareTo(b.left));
 
-  private static final IoTDBConfig CONFIG = IoTDBDescriptor.getInstance().getConfig();
-  private long maxNumberOfPointsInChunk = CONFIG.getTargetChunkPointNum();
-
   public MergeSortMultiAlignedTVListIterator(
       List<TSDataType> tsDataTypes,
       List<Integer> columnIndexList,
@@ -65,7 +59,8 @@ public class MergeSortMultiAlignedTVListIterator extends MultiAlignedTVListItera
       List<List<TimeRange>> valueColumnsDeletionList,
       Integer floatPrecision,
       List<TSEncoding> encodingList,
-      boolean ignoreAllNullRows) {
+      boolean ignoreAllNullRows,
+      int maxNumberOfPointsInPage) {
     super(
         tsDataTypes,
         columnIndexList,
@@ -74,7 +69,8 @@ public class MergeSortMultiAlignedTVListIterator extends MultiAlignedTVListItera
         valueColumnsDeletionList,
         floatPrecision,
         encodingList,
-        ignoreAllNullRows);
+        ignoreAllNullRows,
+        maxNumberOfPointsInPage);
     this.probeIterators =
         IntStream.range(0, alignedTvListIterators.size()).boxed().collect(Collectors.toSet());
     this.bitMap = new BitMap(tsDataTypeList.size());
@@ -85,17 +81,6 @@ public class MergeSortMultiAlignedTVListIterator extends MultiAlignedTVListItera
       valueColumnDeleteCursor.add(new int[] {0});
     }
     this.ignoreAllNullRows = ignoreAllNullRows;
-
-    if (!alignedTvLists.isEmpty()) {
-      int avgPointSizeOfLargestColumn =
-          alignedTvLists.stream()
-              .mapToInt(AlignedTVList::getAvgPointSizeOfLargestColumn)
-              .max()
-              .getAsInt();
-      long TARGET_CHUNK_SIZE = CONFIG.getTargetChunkSize();
-      maxNumberOfPointsInChunk =
-          Math.min(maxNumberOfPointsInChunk, (TARGET_CHUNK_SIZE / avgPointSizeOfLargestColumn));
-    }
   }
 
   @Override
@@ -260,8 +245,8 @@ public class MergeSortMultiAlignedTVListIterator extends MultiAlignedTVListItera
       encodeInfo.pointNumInChunk++;
 
       // new page
-      if (encodeInfo.pointNumInPage >= MAX_NUMBER_OF_POINTS_IN_PAGE
-          || encodeInfo.pointNumInChunk >= maxNumberOfPointsInChunk) {
+      if (encodeInfo.pointNumInPage >= encodeInfo.maxNumberOfPointsInPage
+          || encodeInfo.pointNumInChunk >= encodeInfo.maxNumberOfPointsInChunk) {
         alignedChunkWriterImpl.write(times, encodeInfo.pointNumInPage, 0);
         encodeInfo.pointNumInPage = 0;
         break;
