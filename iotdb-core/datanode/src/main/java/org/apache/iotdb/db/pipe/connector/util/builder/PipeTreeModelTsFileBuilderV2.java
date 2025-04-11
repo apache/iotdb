@@ -19,20 +19,15 @@
 
 package org.apache.iotdb.db.pipe.connector.util.builder;
 
-import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.commons.utils.TimePartitionUtils;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertTabletNode;
 import org.apache.iotdb.db.storageengine.dataregion.flush.MemTableFlushTask;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.IMemTable;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.PrimitiveMemTable;
-import org.apache.iotdb.rpc.RpcUtils;
-import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.exception.write.WriteProcessException;
-import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.utils.DateUtils;
 import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.write.record.Tablet;
@@ -46,11 +41,7 @@ import java.io.File;
 import java.io.IOException;
 import java.time.LocalDate;
 import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
-import java.util.Map.Entry;
 import java.util.Objects;
 import java.util.concurrent.atomic.AtomicLong;
 
@@ -133,7 +124,6 @@ public class PipeTreeModelTsFileBuilderV2 extends PipeTsFileBuilder {
           currentBatchId.get(),
           e.getMessage(),
           e);
-      // TODO: handle ex
       throw new WriteProcessException(e);
     } finally {
       memTable.release();
@@ -183,117 +173,9 @@ public class PipeTreeModelTsFileBuilderV2 extends PipeTsFileBuilder {
               tablet.getValues(),
               tablet.getRowSize());
 
-      // TODO: unused results
-      final TSStatus[] results = new TSStatus[insertTabletNode.getRowCount()];
-      Arrays.fill(results, RpcUtils.SUCCESS_STATUS);
+      final int start = 0;
+      final int end = insertTabletNode.getRowCount();
 
-      final List<Pair<IDeviceID, Integer>> deviceEndOffsetPairs =
-          insertTabletNode.splitByDevice(0, insertTabletNode.getRowCount());
-      int start = 0;
-      final Map<Long, List<int[]>[]> splitInfo = new HashMap<>();
-      for (final Pair<IDeviceID, Integer> deviceEndOffsetPair : deviceEndOffsetPairs) {
-        final int end = deviceEndOffsetPair.getRight();
-        split(insertTabletNode, start, end, splitInfo);
-        start = end;
-      }
-
-      doInsert(insertTabletNode, splitInfo, results, memTable);
-    }
-
-    final MemTableFlushTask memTableFlushTask = new MemTableFlushTask(memTable, writer, null, null);
-    memTableFlushTask.syncFlushMemTable();
-
-    writer.endFile();
-  }
-
-  private void split(
-      final InsertTabletNode insertTabletNode,
-      int loc,
-      final int endOffset,
-      final Map<Long, List<int[]>[]> splitInfo) {
-    // before is first start point
-    int before = loc;
-    final long beforeTime = insertTabletNode.getTimes()[before];
-    // before time partition
-    long beforeTimePartition = TimePartitionUtils.getTimePartitionId(beforeTime);
-
-    // if is sequence
-    // TODO: always un-sequence now
-    final boolean isSequence = false;
-    while (loc < endOffset) {
-      final long time = insertTabletNode.getTimes()[loc];
-      final long timePartitionId = TimePartitionUtils.getTimePartitionId(time);
-
-      // judge if we should insert sequence
-      if (timePartitionId != beforeTimePartition) {
-        updateSplitInfo(splitInfo, beforeTimePartition, isSequence, new int[] {before, loc});
-        before = loc;
-        beforeTimePartition = timePartitionId;
-      }
-      // else: the same partition and isSequence not changed, just move the cursor forward
-      loc++;
-    }
-
-    // do not forget last part
-    if (before < loc) {
-      updateSplitInfo(splitInfo, beforeTimePartition, isSequence, new int[] {before, loc});
-    }
-  }
-
-  private void updateSplitInfo(
-      final Map<Long, List<int[]>[]> splitInfo,
-      final long partitionId,
-      final boolean isSequence,
-      final int[] newRange) {
-    if (newRange[0] >= newRange[1]) {
-      return;
-    }
-
-    @SuppressWarnings("unchecked")
-    final List<int[]>[] rangeLists = splitInfo.computeIfAbsent(partitionId, k -> new List[2]);
-    List<int[]> rangeList = rangeLists[isSequence ? 1 : 0];
-    if (rangeList == null) {
-      rangeList = new ArrayList<>();
-      rangeLists[isSequence ? 1 : 0] = rangeList;
-    }
-    if (!rangeList.isEmpty()) {
-      final int[] lastRange = rangeList.get(rangeList.size() - 1);
-      if (lastRange[1] == newRange[0]) {
-        lastRange[1] = newRange[1];
-        return;
-      }
-    }
-    rangeList.add(newRange);
-  }
-
-  private void doInsert(
-      final InsertTabletNode insertTabletNode,
-      final Map<Long, List<int[]>[]> splitMap,
-      final TSStatus[] results,
-      final IMemTable memTable)
-      throws WriteProcessException {
-    for (final Entry<Long, List<int[]>[]> entry : splitMap.entrySet()) {
-      final List<int[]>[] rangeLists = entry.getValue();
-      final List<int[]> sequenceRangeList = rangeLists[1];
-      if (sequenceRangeList != null) {
-        insertTablet(insertTabletNode, sequenceRangeList, results, memTable);
-      }
-      final List<int[]> unSequenceRangeList = rangeLists[0];
-      if (unSequenceRangeList != null) {
-        insertTablet(insertTabletNode, unSequenceRangeList, results, memTable);
-      }
-    }
-  }
-
-  private void insertTablet(
-      final InsertTabletNode insertTabletNode,
-      final List<int[]> rangeList,
-      final TSStatus[] results,
-      final IMemTable memTable)
-      throws WriteProcessException {
-    for (final int[] rangePair : rangeList) {
-      final int start = rangePair[0];
-      final int end = rangePair[1];
       try {
         if (insertTabletNode.isAligned()) {
           memTable.insertAlignedTablet(insertTabletNode, start, end, null);
@@ -301,14 +183,13 @@ public class PipeTreeModelTsFileBuilderV2 extends PipeTsFileBuilder {
           memTable.insertTablet(insertTabletNode, start, end);
         }
       } catch (final org.apache.iotdb.db.exception.WriteProcessException e) {
-        for (int i = start; i < end; i++) {
-          results[i] = RpcUtils.getStatus(TSStatusCode.INTERNAL_SERVER_ERROR, e.getMessage());
-        }
         throw new WriteProcessException(e);
       }
-      for (int i = start; i < end; i++) {
-        results[i] = RpcUtils.SUCCESS_STATUS;
-      }
     }
+
+    final MemTableFlushTask memTableFlushTask = new MemTableFlushTask(memTable, writer, null, null);
+    memTableFlushTask.syncFlushMemTable();
+
+    writer.endFile();
   }
 }
