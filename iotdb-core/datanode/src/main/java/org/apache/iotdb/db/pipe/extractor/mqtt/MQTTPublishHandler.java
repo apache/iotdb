@@ -183,22 +183,15 @@ public class MQTTPublishHandler extends AbstractInterceptHandler {
 
   /** Inserting table using tablet */
   private void extractTable(TableMessage message, MqttClientSession session) {
-    TSStatus tsStatus = null;
     try {
       TimestampPrecisionUtils.checkTimestampPrecision(message.getTimestamp());
-      tsStatus = checkAuthority(session);
-      if (tsStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-        LOGGER.warn(tsStatus.message);
-      } else {
-        session.setDatabaseName(message.getDatabase().toLowerCase());
-        session.setSqlDialect(IClientSession.SqlDialect.TABLE);
-        EnrichedEvent event = generateEvent(message);
-        if (!event.increaseReferenceCount(MQTTPublishHandler.class.getName())) {
-          LOGGER.warn(
-              "The reference count of the event {} cannot be increased, skipping it.", event);
-        }
-        pendingQueue.waitedOffer(event);
+      session.setDatabaseName(message.getDatabase().toLowerCase());
+      session.setSqlDialect(IClientSession.SqlDialect.TABLE);
+      EnrichedEvent event = generateEvent(message);
+      if (!event.increaseReferenceCount(MQTTPublishHandler.class.getName())) {
+        LOGGER.warn("The reference count of the event {} cannot be increased, skipping it.", event);
       }
+      pendingQueue.waitedOffer(event);
     } catch (Exception e) {
       LOGGER.warn(
           "meet error when polling mqtt source message database {}, table {}, tags {}, attributes {}, fields {}, at time {}, because ",
@@ -362,17 +355,14 @@ public class MQTTPublishHandler extends AbstractInterceptHandler {
   }
 
   private static TSStatus checkAuthority(MqttClientSession session) {
-    TSStatus tsStatus;
     long startTime = System.nanoTime();
     try {
-      tsStatus =
-          AuthorityChecker.getTSStatus(
-              AuthorityChecker.SUPER_USER.equals(session.getUsername()),
-              "Only the admin user can perform this operation");
+      return AuthorityChecker.getTSStatus(
+          AuthorityChecker.SUPER_USER.equals(session.getUsername()),
+          "Only the admin user can perform this operation");
     } finally {
       PerformanceOverviewMetrics.getInstance().recordAuthCost(System.nanoTime() - startTime);
     }
-    return tsStatus;
   }
 
   @Override
