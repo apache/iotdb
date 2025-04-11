@@ -14,6 +14,9 @@
 
 package org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation;
 
+import org.apache.iotdb.commons.exception.IoTDBRuntimeException;
+
+import com.google.common.base.Preconditions;
 import com.google.common.hash.HashFunction;
 import com.google.common.hash.Hashing;
 import org.apache.tsfile.common.conf.TSFileConfig;
@@ -21,6 +24,8 @@ import org.apache.tsfile.utils.Binary;
 
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
+
+import static org.apache.iotdb.rpc.TSStatusCode.NUMERIC_VALUE_OUT_OF_RANGE;
 
 public class HyperLogLog {
   private final int[] registers;
@@ -33,23 +38,24 @@ public class HyperLogLog {
 
   private static final HashFunction hashFunction = Hashing.murmur3_128();
 
+  public static final double DEFAULT_STANDARD_ERROR = 0.023;
+  private static final double LOWEST_MAX_STANDARD_ERROR = 0.0040625;
+  private static final double HIGHEST_MAX_STANDARD_ERROR = 0.26000;
+
   /**
    * Constructs a HyperLogLog with the given precision.
    *
    * @param precision The precision parameter (4 <= precision <= 16)
    */
-  public HyperLogLog(int precision) {
-    if (precision < 4 || precision > 16) {
-      throw new IllegalArgumentException("Precision must be between 4 and 16");
-    }
+  public HyperLogLog(double maxStandardError) {
+    int buckets = standardErrorToBuckets(maxStandardError);
+    int precision = indexBitLength(buckets);
 
     this.b = precision;
-    // 桶数量
-    // m = 2^precision
-    this.m = 1 << precision;
+    // m = 2^precision, buckets
+    this.m = buckets;
     this.registers = new int[m];
 
-    // 设置修正因子
     // Set alpha based on precision
     switch (precision) {
       case 4:
@@ -65,6 +71,36 @@ public class HyperLogLog {
         this.alpha = 0.7213 / (1 + 1.079 / m);
         break;
     }
+  }
+
+  public static boolean isPowerOf2(long value) {
+    Preconditions.checkArgument(value > 0L, "value must be positive");
+    return (value & value - 1L) == 0L;
+  }
+
+  public static int indexBitLength(int numberOfBuckets) {
+    Preconditions.checkArgument(
+        isPowerOf2((long) numberOfBuckets),
+        "numberOfBuckets must be a power of 2, actual: %s",
+        numberOfBuckets);
+    return Integer.numberOfTrailingZeros(numberOfBuckets);
+  }
+
+  private static int standardErrorToBuckets(double maxStandardError) {
+    if (maxStandardError <= LOWEST_MAX_STANDARD_ERROR
+        || maxStandardError >= HIGHEST_MAX_STANDARD_ERROR) {
+      throw new IoTDBRuntimeException(
+          String.format(
+              "Max Standard Error must be in [%s, %s]: %s",
+              LOWEST_MAX_STANDARD_ERROR, HIGHEST_MAX_STANDARD_ERROR, maxStandardError),
+          NUMERIC_VALUE_OUT_OF_RANGE.getStatusCode(),
+          true);
+    }
+    return log2Ceiling((int) Math.ceil(1.04 / (maxStandardError * maxStandardError)));
+  }
+
+  private static int log2Ceiling(int value) {
+    return Integer.highestOneBit(value - 1) << 1;
   }
 
   public void add(boolean value) {
@@ -100,20 +136,16 @@ public class HyperLogLog {
    * @param value The value to add
    */
   public void offer(long hash) {
-    // 计算哈希值
     // Compute hash of the value
 
-    // 将哈希值的前 b 位用于分桶
     // Extract the first b bits for the register index
     int idx = (int) (hash & (m - 1));
 
-    // 统计剩余二进制串中前导零的最大数量 + 1
     // Count the number of leading zeros in the remaining bits
     // Add 1 to get the position of the leftmost 1
 
     int leadingZeros = Long.numberOfTrailingZeros(hash >>> b) + 1;
 
-    // 更新桶中最大的前导零数量
     // Update the register if the new value is larger
     registers[idx] = Math.max(registers[idx], leadingZeros);
   }
@@ -127,7 +159,6 @@ public class HyperLogLog {
     double sum = 0;
     int zeros = 0;
 
-    // 计算所有桶的调和平均数
     // Compute the harmonic mean of 2^register[i]
     for (int i = 0; i < m; i++) {
       sum += 1.0 / (1 << registers[i]);
@@ -136,11 +167,9 @@ public class HyperLogLog {
       }
     }
 
-    // 基数估计值
     // Apply bias correction formula
     double estimate = alpha * m * m / sum;
 
-    // 小基数修正
     // Small range correction
     if (estimate <= 2.5 * m) {
       if (zeros > 0) {
@@ -149,7 +178,6 @@ public class HyperLogLog {
       }
     }
 
-    // 大基数修正
     // Large range correction (for values > 2^32 / 30)
     double maxCardinality = (double) (1L << 32);
     if (estimate > maxCardinality / 30) {
@@ -171,6 +199,7 @@ public class HyperLogLog {
    * @throws IllegalArgumentException if the precision doesn't match
    */
   public void merge(HyperLogLog other) {
+    // not use currently
     if (this.m != other.m) {
       throw new IllegalArgumentException(
           "Cannot merge HyperLogLog instances with different precision");

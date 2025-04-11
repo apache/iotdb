@@ -21,18 +21,15 @@ import org.apache.tsfile.file.metadata.statistics.Statistics;
 import org.apache.tsfile.utils.RamUsageEstimator;
 import org.apache.tsfile.write.UnSupportedDataTypeException;
 
-import static com.google.common.base.Preconditions.checkArgument;
-
 public class ApproxCountDistinctAccumulator implements TableAccumulator {
   private static final long INSTANCE_SIZE =
       RamUsageEstimator.shallowSizeOfInstance(ApproxCountDistinctAccumulator.class);
   private final TSDataType seriesDataType;
-
-  private final HyperLogLog hll;
+  private final HyperLogLogStateFactory.SingleHyperLogLogState state =
+      HyperLogLogStateFactory.createSingleState();
 
   public ApproxCountDistinctAccumulator(TSDataType seriesDataType) {
     this.seriesDataType = seriesDataType;
-    this.hll = new HyperLogLog(10);
   }
 
   @Override
@@ -47,30 +44,40 @@ public class ApproxCountDistinctAccumulator implements TableAccumulator {
 
   @Override
   public void addInput(Column[] arguments, AggregationMask mask) {
-    checkArgument(arguments.length == 1, "argument of APPROX_COUNT_DISTINCT should be one column");
+    HyperLogLog hll;
+
+    if (arguments.length == 1) {
+      hll = HyperLogLogStateFactory.getOrCreateHyperLogLog(state);
+    } else if (arguments.length == 2) {
+      double maxStandardError = arguments[1].getDouble(0);
+      hll = HyperLogLogStateFactory.getOrCreateHyperLogLog(state, maxStandardError);
+    } else {
+      throw new IllegalArgumentException(
+          "argument of APPROX_COUNT_DISTINCT should be one column with Max Standard Error");
+    }
 
     switch (seriesDataType) {
       case INT32:
       case DATE:
-        addIntInput(arguments[0], mask);
+        addIntInput(arguments[0], mask, hll);
         return;
       case INT64:
       case TIMESTAMP:
-        addLongInput(arguments[0], mask);
+        addLongInput(arguments[0], mask, hll);
         return;
       case FLOAT:
-        addFloatInput(arguments[0], mask);
+        addFloatInput(arguments[0], mask, hll);
         return;
       case DOUBLE:
-        addDoubleInput(arguments[0], mask);
+        addDoubleInput(arguments[0], mask, hll);
         return;
       case TEXT:
       case STRING:
       case BLOB:
-        addBinaryInput(arguments[0], mask);
+        addBinaryInput(arguments[0], mask, hll);
         return;
       case BOOLEAN:
-        addBooleanInput(arguments[0], mask);
+        addBooleanInput(arguments[0], mask, hll);
         return;
       default:
         throw new UnSupportedDataTypeException(
@@ -81,6 +88,7 @@ public class ApproxCountDistinctAccumulator implements TableAccumulator {
 
   @Override
   public void addIntermediate(Column argument) {
+    HyperLogLog hll = HyperLogLogStateFactory.getOrCreateHyperLogLog(state);
     for (int i = 0; i < argument.getPositionCount(); i++) {
       if (argument.isNull(i)) {
         continue;
@@ -103,10 +111,10 @@ public class ApproxCountDistinctAccumulator implements TableAccumulator {
           break;
         case STRING:
         case TEXT:
-        case BLOB:
           hll.add(argument.getBinary(i));
           break;
         case BOOLEAN:
+        case BLOB:
           hll.add(argument.getBoolean(i));
           break;
         default:
@@ -120,24 +128,18 @@ public class ApproxCountDistinctAccumulator implements TableAccumulator {
 
   @Override
   public void evaluateIntermediate(ColumnBuilder columnBuilder) {
+    HyperLogLog hll = state.getHyperLogLog();
     columnBuilder.writeLong(hll.cardinality());
   }
 
   @Override
   public void evaluateFinal(ColumnBuilder columnBuilder) {
+    HyperLogLog hll = state.getHyperLogLog();
     columnBuilder.writeLong(hll.cardinality());
   }
 
   @Override
   public boolean hasFinalResult() {
-    return false;
-  }
-
-  @Override
-  public void removeInput(Column[] arguments) {}
-
-  @Override
-  public boolean removable() {
     return false;
   }
 
@@ -149,10 +151,11 @@ public class ApproxCountDistinctAccumulator implements TableAccumulator {
 
   @Override
   public void reset() {
+    HyperLogLog hll = state.getHyperLogLog();
     hll.reset();
   }
 
-  public void addBooleanInput(Column valueColumn, AggregationMask mask) {
+  public void addBooleanInput(Column valueColumn, AggregationMask mask, HyperLogLog hll) {
     int positionCount = mask.getPositionCount();
 
     if (mask.isSelectAll()) {
@@ -173,7 +176,7 @@ public class ApproxCountDistinctAccumulator implements TableAccumulator {
     }
   }
 
-  public void addIntInput(Column valueColumn, AggregationMask mask) {
+  public void addIntInput(Column valueColumn, AggregationMask mask, HyperLogLog hll) {
     int positionCount = mask.getPositionCount();
 
     if (mask.isSelectAll()) {
@@ -194,7 +197,7 @@ public class ApproxCountDistinctAccumulator implements TableAccumulator {
     }
   }
 
-  public void addLongInput(Column valueColumn, AggregationMask mask) {
+  public void addLongInput(Column valueColumn, AggregationMask mask, HyperLogLog hll) {
     int positionCount = mask.getPositionCount();
 
     if (mask.isSelectAll()) {
@@ -215,7 +218,7 @@ public class ApproxCountDistinctAccumulator implements TableAccumulator {
     }
   }
 
-  public void addFloatInput(Column valueColumn, AggregationMask mask) {
+  public void addFloatInput(Column valueColumn, AggregationMask mask, HyperLogLog hll) {
     int positionCount = mask.getPositionCount();
 
     if (mask.isSelectAll()) {
@@ -236,7 +239,7 @@ public class ApproxCountDistinctAccumulator implements TableAccumulator {
     }
   }
 
-  public void addDoubleInput(Column valueColumn, AggregationMask mask) {
+  public void addDoubleInput(Column valueColumn, AggregationMask mask, HyperLogLog hll) {
     int positionCount = mask.getPositionCount();
 
     if (mask.isSelectAll()) {
@@ -257,7 +260,7 @@ public class ApproxCountDistinctAccumulator implements TableAccumulator {
     }
   }
 
-  public void addBinaryInput(Column valueColumn, AggregationMask mask) {
+  public void addBinaryInput(Column valueColumn, AggregationMask mask, HyperLogLog hll) {
     int positionCount = mask.getPositionCount();
 
     if (mask.isSelectAll()) {
