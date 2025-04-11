@@ -74,10 +74,15 @@ public class ExportTsFile {
 
   private static void parseParams(String[] args, Options options) {
     HelpFormatter hf = new HelpFormatter();
+    hf.setOptionComparator(null);
     CommandLine cli = null;
     CommandLineParser cliParser = new DefaultParser();
     try {
       cli = cliParser.parse(options, args);
+      if (cli.hasOption(Constants.HELP_ARGS) || args.length == 0) {
+        hf.printHelp(Constants.SUBSCRIPTION_CLI_PREFIX, options, true);
+        System.exit(0);
+      }
       if (cli.hasOption(Constants.SQL_DIALECT_ARGS)) {
         commonParam.setSqlDialect(cli.getOptionValue(Constants.SQL_DIALECT_ARGS));
       }

@@ -47,6 +47,7 @@ public abstract class AbstractSubscriptionTsFile {
               .build());
       commonParam.getTableSubs().open();
     } else {
+
       commonParam.setSubscriptionTsFile(new SubscriptionTreeTsFile());
       commonParam.setTreeSubs(
           new SubscriptionTreeSessionBuilder()
