@@ -570,7 +570,7 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
           targetDir.getAbsolutePath(), sourceFile.getParentFile().getAbsolutePath())) {
         RetryUtils.retryOnException(
             () -> {
-              FileUtils.moveFileWithSizeCheck(sourceFile, targetDir);
+              FileUtils.moveFileWithMD5Check(sourceFile, targetDir);
               return null;
             });
       }

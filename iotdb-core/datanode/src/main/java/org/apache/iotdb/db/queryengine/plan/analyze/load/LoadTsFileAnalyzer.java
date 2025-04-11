@@ -81,8 +81,8 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 
-import static org.apache.iotdb.commons.utils.FileUtils.copyFileWithSizeCheck;
-import static org.apache.iotdb.commons.utils.FileUtils.moveFileWithSizeCheck;
+import static org.apache.iotdb.commons.utils.FileUtils.copyFileWithMD5Check;
+import static org.apache.iotdb.commons.utils.FileUtils.moveFileWithMD5Check;
 import static org.apache.iotdb.db.queryengine.plan.execution.config.TableConfigTaskVisitor.DATABASE_NOT_SPECIFIED;
 import static org.apache.iotdb.db.queryengine.plan.execution.config.TableConfigTaskVisitor.validateDatabaseName;
 import static org.apache.iotdb.db.storageengine.load.metrics.LoadTsFileCostMetricsSet.ANALYSIS;
@@ -336,9 +336,9 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
     RetryUtils.retryOnException(
         () -> {
           if (isDeleteAfterLoad) {
-            moveFileWithSizeCheck(file, targetDir);
+            moveFileWithMD5Check(file, targetDir);
           } else {
-            copyFileWithSizeCheck(file, targetDir);
+            copyFileWithMD5Check(file, targetDir);
           }
           return null;
         });

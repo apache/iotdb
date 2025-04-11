@@ -296,7 +296,7 @@ public class ActiveLoadTsFileLoader {
     try {
       RetryUtils.retryOnException(
           () -> {
-            org.apache.iotdb.commons.utils.FileUtils.moveFileWithSizeCheck(sourceFile, targetDir);
+            org.apache.iotdb.commons.utils.FileUtils.moveFileWithMD5Check(sourceFile, targetDir);
             return null;
           });
     } catch (final IOException e) {
