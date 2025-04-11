@@ -366,7 +366,13 @@ public abstract class DefaultTraversalVisitor<C> extends AstVisitor<Void, C> {
 
     node.getCriteria()
         .filter(JoinOn.class::isInstance)
-        .ifPresent(criteria -> process(((JoinOn) criteria).getExpression(), context));
+        .ifPresent(
+            criteria -> {
+              Expression expression = ((JoinOn) criteria).getExpression();
+              if (expression != null) {
+                process(expression, context);
+              }
+            });
 
     return null;
   }
