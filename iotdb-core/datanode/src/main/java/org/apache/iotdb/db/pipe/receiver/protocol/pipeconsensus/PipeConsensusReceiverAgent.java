@@ -40,7 +40,9 @@ import org.slf4j.LoggerFactory;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CopyOnWriteArraySet;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -67,8 +69,7 @@ public class PipeConsensusReceiverAgent implements ConsensusPipeReceiver {
           ConsensusGroupId, Map<ConsensusPipeName, AtomicReference<PipeConsensusReceiver>>>
       replicaReceiverMap = new ConcurrentHashMap<>();
 
-  private final Map<ConsensusPipeName, AtomicBoolean> consensusPipeStatusMap =
-      new ConcurrentHashMap<>();
+  private final Set<ConsensusPipeName> createdConsensusPipes = new CopyOnWriteArraySet<>();
 
   private PipeConsensus pipeConsensus;
 
@@ -135,7 +136,7 @@ public class PipeConsensusReceiverAgent implements ConsensusPipeReceiver {
     ConsensusPipeName consensusPipeName =
         new ConsensusPipeName(consensusGroupId, leaderDataNodeId, thisNodeId);
     // 3. Judge whether pipe task was dropped
-    if (!consensusPipeStatusMap.containsKey(consensusPipeName)) {
+    if (!createdConsensusPipes.contains(consensusPipeName)) {
       return null;
     }
 
@@ -220,7 +221,7 @@ public class PipeConsensusReceiverAgent implements ConsensusPipeReceiver {
         consensusPipe2ReciverMap.getOrDefault(pipeName, null);
     // 3. Release receiver
     if (receiverReference != null) {
-      consensusPipeStatusMap.remove(pipeName);
+      createdConsensusPipes.remove(pipeName);
       receiverReference.get().handleExit();
       receiverReference.set(null);
       consensusPipe2ReciverMap.remove(pipeName);
@@ -228,15 +229,6 @@ public class PipeConsensusReceiverAgent implements ConsensusPipeReceiver {
   }
 
   public void markConsensusPipeAsCreated(ConsensusPipeName pipeName) {
-    consensusPipeStatusMap.compute(
-        pipeName,
-        (k, v) -> {
-          if (v == null) {
-            return new AtomicBoolean(true);
-          } else {
-            v.set(true);
-            return v;
-          }
-        });
+    createdConsensusPipes.add(pipeName);
   }
 }
