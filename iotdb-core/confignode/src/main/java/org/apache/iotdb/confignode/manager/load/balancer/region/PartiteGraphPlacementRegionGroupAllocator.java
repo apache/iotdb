@@ -114,6 +114,18 @@ public class PartiteGraphPlacementRegionGroupAllocator implements IRegionGroupAl
     return result;
   }
 
+  @Override
+  public Map<TConsensusGroupId, TDataNodeConfiguration> removeNodeReplicaSelect(
+      Map<Integer, TDataNodeConfiguration> availableDataNodeMap,
+      Map<Integer, Double> freeDiskSpaceMap,
+      List<TRegionReplicaSet> allocatedRegionGroups,
+      Map<TConsensusGroupId, String> regionDatabaseMap,
+      Map<String, List<TRegionReplicaSet>> databaseAllocatedRegionGroupMap,
+      Map<TConsensusGroupId, TRegionReplicaSet> remainReplicasMap) {
+    // TODO: Implement this method
+    return Collections.emptyMap();
+  }
+
   private void prepare(
       int replicationFactor,
       Map<Integer, TDataNodeConfiguration> availableDataNodeMap,

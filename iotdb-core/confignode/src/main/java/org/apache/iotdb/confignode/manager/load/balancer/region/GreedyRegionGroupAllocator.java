@@ -25,6 +25,7 @@ import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -80,6 +81,18 @@ public class GreedyRegionGroupAllocator implements IRegionGroupAllocator {
     return new TRegionReplicaSet(
         consensusGroupId,
         weightList.stream().limit(replicationFactor).collect(Collectors.toList()));
+  }
+
+  @Override
+  public Map<TConsensusGroupId, TDataNodeConfiguration> removeNodeReplicaSelect(
+      Map<Integer, TDataNodeConfiguration> availableDataNodeMap,
+      Map<Integer, Double> freeDiskSpaceMap,
+      List<TRegionReplicaSet> allocatedRegionGroups,
+      Map<TConsensusGroupId, String> regionDatabaseMap,
+      Map<String, List<TRegionReplicaSet>> databaseAllocatedRegionGroupMap,
+      Map<TConsensusGroupId, TRegionReplicaSet> remainReplicasMap) {
+    // TODO: Implement this method
+    return Collections.emptyMap();
   }
 
   private List<TDataNodeLocation> buildWeightList(
