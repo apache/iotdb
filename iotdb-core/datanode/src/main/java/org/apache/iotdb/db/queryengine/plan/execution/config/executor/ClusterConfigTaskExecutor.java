@@ -2074,6 +2074,16 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
     final Map<String, String> connectorAttributes;
     try {
       if (!alterPipeStatement.getExtractorAttributes().isEmpty()) {
+        // We simply don't allow to alter external sources
+        if (pipeMetaFromCoordinator.getStaticMeta().isSourceExternal()) {
+          future.setException(
+              new IoTDBException(
+                  String.format(
+                      "Failed to alter pipe %s, external source cannot be altered.",
+                      alterPipeStatement.getPipeName()),
+                  TSStatusCode.PIPE_ERROR.getStatusCode()));
+          return future;
+        }
         if (alterPipeStatement.isReplaceAllExtractorAttributes()) {
           extractorAttributes = alterPipeStatement.getExtractorAttributes();
         } else {

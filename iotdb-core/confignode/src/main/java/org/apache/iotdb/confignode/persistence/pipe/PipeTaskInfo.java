@@ -49,6 +49,7 @@ import org.apache.iotdb.confignode.consensus.request.write.pipe.task.SetPipeStat
 import org.apache.iotdb.confignode.consensus.response.pipe.task.PipeTableResp;
 import org.apache.iotdb.confignode.manager.pipe.resource.PipeConfigNodeResourceManager;
 import org.apache.iotdb.confignode.procedure.impl.pipe.runtime.PipeHandleMetaChangeProcedure;
+import org.apache.iotdb.confignode.procedure.impl.pipe.util.ExternalLoadBalancer;
 import org.apache.iotdb.confignode.rpc.thrift.TAlterPipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreatePipeReq;
 import org.apache.iotdb.confignode.service.ConfigNode;
@@ -78,6 +79,9 @@ import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 
 import static org.apache.iotdb.commons.pipe.agent.plugin.builtin.BuiltinPipePlugin.IOTDB_THRIFT_CONNECTOR;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTERNAL_EXTRACTOR_PARALLELISM_DEFAULT_VALUE;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTERNAL_EXTRACTOR_PARALLELISM_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTERNAL_SOURCE_PARALLELISM_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeRPCMessageConstant.PIPE_ALREADY_EXIST_MSG;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeRPCMessageConstant.PIPE_NOT_EXIST_MSG;
 
@@ -594,6 +598,10 @@ public class PipeTaskInfo implements SnapshotProcessor {
                             return; // pipe consensus pipe task will not change
                           }
 
+                          if (pipeMeta.getStaticMeta().isSourceExternal()) {
+                            return;
+                          }
+
                           final Map<Integer, PipeTaskMeta> consensusGroupIdToTaskMetaMap =
                               pipeMeta.getRuntimeMeta().getConsensusGroupId2TaskMetaMap();
 
@@ -623,7 +631,49 @@ public class PipeTaskInfo implements SnapshotProcessor {
                             // the data region group has already been removed"
                           }
                         }));
+    pipeMetaKeeper
+        .getPipeMetaList()
+        .forEach(
+            pipeMeta -> {
+              if (pipeMeta.getStaticMeta().isSourceExternal()) {
+                final ExternalLoadBalancer loadBalancer =
+                    new ExternalLoadBalancer(
+                        pipeMeta
+                            .getStaticMeta()
+                            .getExtractorParameters()
+                            .getStringOrDefault(
+                                Arrays.asList(
+                                    PipeExtractorConstant.EXTERNAL_EXTRACTOR_BALANCE_STRATEGY_KEY,
+                                    PipeExtractorConstant.EXTERNAL_SOURCE_BALANCE_STRATEGY_KEY),
+                                PipeExtractorConstant
+                                    .EXTERNAL_EXTRACTOR_BALANCE_PROPORTION_STRATEGY));
 
+                final int parallelism =
+                    pipeMeta
+                        .getStaticMeta()
+                        .getExtractorParameters()
+                        .getIntOrDefault(
+                            Arrays.asList(
+                                EXTERNAL_EXTRACTOR_PARALLELISM_KEY,
+                                EXTERNAL_SOURCE_PARALLELISM_KEY),
+                            EXTERNAL_EXTRACTOR_PARALLELISM_DEFAULT_VALUE);
+                loadBalancer
+                    .balance(
+                        parallelism,
+                        pipeMeta.getStaticMeta(),
+                        ConfigNode.getInstance().getConfigManager())
+                    .forEach(
+                        (taskIndex, newLeader) -> {
+                          if (newLeader != -1) {
+                            pipeMeta
+                                .getRuntimeMeta()
+                                .getConsensusGroupId2TaskMetaMap()
+                                .get(taskIndex)
+                                .setLeaderNodeId(newLeader);
+                          }
+                        });
+              }
+            });
     return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
   }
 

@@ -84,4 +84,23 @@ public class PipeDataNodeBuilder {
     }
     return consensusGroupIdToPipeTaskMap;
   }
+
+  public Map<Integer, PipeTask> buildExternalPipeTasks() {
+    final Map<Integer, PipeTask> consensusGroupIdToPipeTaskMap = new HashMap<>();
+    final PipeStaticMeta pipeStaticMeta = pipeMeta.getStaticMeta();
+    final PipeRuntimeMeta pipeRuntimeMeta = pipeMeta.getRuntimeMeta();
+
+    for (Map.Entry<Integer, PipeTaskMeta> consensusGroupIdToPipeTaskMeta :
+        pipeRuntimeMeta.getConsensusGroupId2TaskMetaMap().entrySet()) {
+      final int consensusGroupId = consensusGroupIdToPipeTaskMeta.getKey();
+      final PipeTaskMeta pipeTaskMeta = consensusGroupIdToPipeTaskMeta.getValue();
+      if (pipeTaskMeta.getLeaderNodeId() == CONFIG.getDataNodeId()) {
+        consensusGroupIdToPipeTaskMap.put(
+            consensusGroupId,
+            new PipeDataNodeTaskBuilder(pipeStaticMeta, consensusGroupId, pipeTaskMeta).build());
+      }
+    }
+
+    return consensusGroupIdToPipeTaskMap;
+  }
 }
