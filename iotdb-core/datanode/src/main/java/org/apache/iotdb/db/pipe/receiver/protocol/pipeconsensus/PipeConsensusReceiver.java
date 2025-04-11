@@ -1487,6 +1487,13 @@ public class PipeConsensusReceiver {
 
           if (reqExecutionOrderBuffer.size() >= IOTDB_CONFIG.getIotConsensusV2PipelineSize()
               && reqExecutionOrderBuffer.first().equals(requestMeta)) {
+            // TODO: Turn it to debug after GA
+            LOGGER.info(
+                "PipeConsensus-PipeName-{}: no.{} event get executed because receiver buffer's len >= pipeline, current receiver syncIndex {}, current buffer len {}",
+                consensusPipeName,
+                tCommitId,
+                onSyncedReplicateIndex,
+                reqExecutionOrderBuffer.size());
             long startApplyNanos = System.nanoTime();
             metric.recordDispatchWaitingTimer(startApplyNanos - startDispatchNanos);
             requestMeta.setStartApplyNanos(startApplyNanos);
@@ -1521,6 +1528,12 @@ public class PipeConsensusReceiver {
                   && reqExecutionOrderBuffer.size() < IOTDB_CONFIG.getIotConsensusV2PipelineSize()
                   && reqExecutionOrderBuffer.first() != null
                   && reqExecutionOrderBuffer.first().equals(requestMeta)) {
+                // TODO: Turn it to debug after GA
+                LOGGER.info(
+                    "PipeConsensus-PipeName-{}: no.{} event get executed after awaiting timeout, current receiver syncIndex: {}",
+                    consensusPipeName,
+                    tCommitId,
+                    onSyncedReplicateIndex);
                 long startApplyNanos = System.nanoTime();
                 metric.recordDispatchWaitingTimer(startApplyNanos - startDispatchNanos);
                 requestMeta.setStartApplyNanos(startApplyNanos);
