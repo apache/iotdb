@@ -22,6 +22,7 @@ package org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.dualkeycache.i
 import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.dualkeycache.IDualKeyCacheStats;
 
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.function.Supplier;
 
 class CacheStats implements IDualKeyCacheStats {
 
@@ -30,26 +31,19 @@ class CacheStats implements IDualKeyCacheStats {
 
   private final long memoryThreshold;
 
-  private final AtomicLong memoryUsage = new AtomicLong(0);
+  private final Supplier<Long> memoryComputation;
   private final AtomicLong entriesCount = new AtomicLong(0);
 
   private final AtomicLong requestCount = new AtomicLong(0);
   private final AtomicLong hitCount = new AtomicLong(0);
 
-  CacheStats(long memoryCapacity) {
+  CacheStats(long memoryCapacity, final Supplier<Long> memoryComputation) {
     this.memoryThreshold = (long) (memoryCapacity * MEMORY_THRESHOLD_RATIO);
+    this.memoryComputation = memoryComputation;
   }
 
-  void increaseMemoryUsage(int size) {
-    memoryUsage.getAndAdd(size);
-  }
-
-  void decreaseMemoryUsage(int size) {
-    memoryUsage.getAndAdd(-size);
-  }
-
-  boolean isExceedMemoryCapacity() {
-    return memoryUsage.get() > memoryThreshold;
+  long getExceedMemory() {
+    return memoryUsage() - memoryThreshold;
   }
 
   void recordHit(int num) {
@@ -102,7 +96,7 @@ class CacheStats implements IDualKeyCacheStats {
 
   @Override
   public long memoryUsage() {
-    return memoryUsage.get();
+    return memoryComputation.get();
   }
 
   @Override
@@ -116,13 +110,12 @@ class CacheStats implements IDualKeyCacheStats {
   }
 
   void reset() {
-    resetMemoryUsageAndEntriesCount();
+    resetEntriesCount();
     hitCount.set(0);
     requestCount.set(0);
   }
 
-  void resetMemoryUsageAndEntriesCount() {
-    memoryUsage.set(0);
+  void resetEntriesCount() {
     entriesCount.set(0);
   }
 }
