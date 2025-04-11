@@ -20,7 +20,7 @@
 package org.apache.iotdb.db.pipe.connector.payload.evolvable.batch;
 
 import org.apache.iotdb.db.pipe.connector.util.builder.PipeTableModeTsFileBuilder;
-import org.apache.iotdb.db.pipe.connector.util.builder.PipeTreeModelTsFileBuilder;
+import org.apache.iotdb.db.pipe.connector.util.builder.PipeTreeModelTsFileBuilderV2;
 import org.apache.iotdb.db.pipe.connector.util.builder.PipeTsFileBuilder;
 import org.apache.iotdb.db.pipe.connector.util.sorter.PipeTableModelTabletEventSorter;
 import org.apache.iotdb.db.pipe.connector.util.sorter.PipeTreeModelTabletEventSorter;
@@ -61,7 +61,7 @@ public class PipeTabletEventTsFileBatch extends PipeTabletEventBatch {
     super(maxDelayInMs, requestMaxBatchSizeInBytes);
 
     final AtomicLong tsFileIdGenerator = new AtomicLong(0);
-    treeModeTsFileBuilder = new PipeTreeModelTsFileBuilder(currentBatchId, tsFileIdGenerator);
+    treeModeTsFileBuilder = new PipeTreeModelTsFileBuilderV2(currentBatchId, tsFileIdGenerator);
     tableModeTsFileBuilder = new PipeTableModeTsFileBuilder(currentBatchId, tsFileIdGenerator);
   }
 
@@ -132,7 +132,10 @@ public class PipeTabletEventTsFileBatch extends PipeTabletEventBatch {
       final boolean isAligned) {
     new PipeTreeModelTabletEventSorter(tablet).deduplicateAndSortTimestampsIfNecessary();
 
-    totalBufferSize += PipeMemoryWeightUtil.calculateTabletSizeInBytes(tablet);
+    // TODO: Currently, PipeTreeModelTsFileBuilderV2 still uses PipeTreeModelTsFileBuilder as a
+    // fallback builder, so memory table writing and storing temporary tablets require double the
+    // memory.
+    totalBufferSize += PipeMemoryWeightUtil.calculateTabletSizeInBytes(tablet) * 2;
 
     pipeName2WeightMap.compute(
         new Pair<>(pipeName, creationTime),

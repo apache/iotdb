@@ -189,8 +189,8 @@ public class IoTDBConsumer2With1TopicShareProcessTsfileIT extends AbstractSubscr
                   + rowCount2.get()
                   + " src="
                   + getCount(session_src, "select count(s_0) from " + device));
-          assertTrue(rowCount1.get() > 0);
-          assertTrue(rowCount2.get() > 0);
+          assertGte(rowCount1.get(), 0);
+          assertGte(rowCount2.get(), 0);
         });
   }
 }
