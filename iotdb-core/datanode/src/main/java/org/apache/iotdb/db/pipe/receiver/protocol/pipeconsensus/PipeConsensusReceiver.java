@@ -20,6 +20,9 @@
 package org.apache.iotdb.db.pipe.receiver.protocol.pipeconsensus;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
+import org.apache.iotdb.commons.concurrent.ThreadName;
+import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.commons.consensus.index.ProgressIndex;
@@ -81,6 +84,8 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.TreeSet;
+import java.util.concurrent.Future;
+import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -104,6 +109,10 @@ public class PipeConsensusReceiver {
   private final ConsensusPipeName consensusPipeName;
   // Used to buffer TsFile when transfer TsFile asynchronously.
   private final PipeConsensusTsFileWriterPool pipeConsensusTsFileWriterPool;
+  private final ScheduledExecutorService scheduledTsFileWriterCheckerPool =
+      IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor(
+          ThreadName.PIPE_CONSENSUS_TSFILE_WRITER_CHECKER.getName());
+  private Future<?> tsFileWriterCheckerFuture;
   private final List<String> receiveDirs = new ArrayList<>();
   private final PipeConsensusReceiverMetrics pipeConsensusReceiverMetrics;
   private final FolderManager folderManager;
@@ -1068,6 +1077,11 @@ public class PipeConsensusReceiver {
     clearAllReceiverBaseDir();
     // remove metric
     MetricService.getInstance().removeMetricSet(pipeConsensusReceiverMetrics);
+    // cancel periodic task
+    if (tsFileWriterCheckerFuture != null) {
+      tsFileWriterCheckerFuture.cancel(false);
+      tsFileWriterCheckerFuture = null;
+    }
     LOGGER.info(
         "PipeConsensus-PipeName-{}: Receiver exit: Receiver exited.", consensusPipeName.toString());
   }
@@ -1087,6 +1101,18 @@ public class PipeConsensusReceiver {
         tsFileWriter.rollToNextWritingPath();
         pipeConsensusTsFileWriterPool.add(tsFileWriter);
       }
+
+      tsFileWriterCheckerFuture =
+          ScheduledExecutorUtil.safelyScheduleWithFixedDelay(
+              scheduledTsFileWriterCheckerPool,
+              this::checkZombieTsFileWriter,
+              0,
+              IOTDB_CONFIG.getTsFileWriterCheckInterval(),
+              TimeUnit.MILLISECONDS);
+      LOGGER.info(
+          "Register {} with interval in seconds {} successfully.",
+          ThreadName.PIPE_CONSENSUS_TSFILE_WRITER_CHECKER.getName(),
+          IOTDB_CONFIG.getTsFileWriterCheckInterval());
     }
 
     @SuppressWarnings("java:S3655")
@@ -1125,6 +1151,31 @@ public class PipeConsensusReceiver {
       }
 
       return tsFileWriter.get();
+    }
+
+    private void checkZombieTsFileWriter() {
+      pipeConsensusTsFileWriterPool.stream()
+          .filter(PipeConsensusTsFileWriter::isUsed)
+          .forEach(
+              writer -> {
+                if (System.currentTimeMillis() - writer.lastUsedTs
+                    >= IOTDB_CONFIG.getTsFileWriterZombieThreshold()) {
+                  try {
+                    writer.closeSelf(consensusPipeName);
+                    writer.returnSelf(consensusPipeName);
+                    LOGGER.info(
+                        "PipeConsensus-PipeName-{}: tsfile writer-{} is cleaned up because no new requests were received for too long.",
+                        consensusPipeName,
+                        writer.index);
+                  } catch (IOException | DiskSpaceInsufficientException e) {
+                    LOGGER.warn(
+                        "PipeConsensus-PipeName-{}: receiver watch dog failed to return tsFileWriter-{}.",
+                        consensusPipeName.toString(),
+                        writer.index,
+                        e);
+                  }
+                }
+              });
     }
 
     public void handleExit(ConsensusPipeName consensusPipeName) {
@@ -1172,6 +1223,7 @@ public class PipeConsensusReceiver {
     private volatile boolean isUsed = false;
     // If isUsed is true, this variable will be set to the TCommitId of holderEvent
     private volatile TCommitId commitIdOfCorrespondingHolderEvent;
+    private long lastUsedTs;
 
     public PipeConsensusTsFileWriter(int index, ConsensusPipeName consensusPipeName) {
       this.index = index;
@@ -1263,6 +1315,9 @@ public class PipeConsensusReceiver {
 
     public void setUsed(boolean used) {
       isUsed = used;
+      if (isUsed) {
+        lastUsedTs = System.currentTimeMillis();
+      }
     }
 
     public void returnSelf(ConsensusPipeName consensusPipeName)
