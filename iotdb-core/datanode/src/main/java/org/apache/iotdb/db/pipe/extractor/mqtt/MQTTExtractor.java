@@ -71,7 +71,7 @@ public class MQTTExtractor implements PipeExtractor {
   protected final AtomicBoolean isClosed = new AtomicBoolean(false);
 
   @Override
-  public void validate(PipeParameterValidator validator) throws Exception {
+  public void validate(final PipeParameterValidator validator) throws Exception {
     if (!validator
         .getParameters()
         .getBooleanOrDefault(
@@ -84,7 +84,8 @@ public class MQTTExtractor implements PipeExtractor {
   }
 
   @Override
-  public void customize(PipeParameters parameters, PipeExtractorRuntimeConfiguration configuration)
+  public void customize(
+      final PipeParameters parameters, final PipeExtractorRuntimeConfiguration configuration)
       throws Exception {
     final PipeTaskExtractorRuntimeEnvironment environment =
         (PipeTaskExtractorRuntimeEnvironment) configuration.getRuntimeEnvironment();
@@ -137,8 +138,8 @@ public class MQTTExtractor implements PipeExtractor {
     }
   }
 
-  private IConfig createBrokerConfig(PipeParameters pipeParameters) {
-    Properties properties = new Properties();
+  private IConfig createBrokerConfig(final PipeParameters pipeParameters) {
+    final Properties properties = new Properties();
     properties.setProperty(
         BrokerConstants.HOST_PROPERTY_NAME,
         pipeParameters.getStringOrDefault(

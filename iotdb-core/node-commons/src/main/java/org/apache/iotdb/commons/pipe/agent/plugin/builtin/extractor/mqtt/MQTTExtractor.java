@@ -20,11 +20,15 @@
 package org.apache.iotdb.commons.pipe.agent.plugin.builtin.extractor.mqtt;
 
 import org.apache.iotdb.pipe.api.PipeExtractor;
+import org.apache.iotdb.pipe.api.annotation.TableModel;
+import org.apache.iotdb.pipe.api.annotation.TreeModel;
 import org.apache.iotdb.pipe.api.customizer.configuration.PipeExtractorRuntimeConfiguration;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameterValidator;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 import org.apache.iotdb.pipe.api.event.Event;
 
+@TreeModel
+@TableModel
 public class MQTTExtractor implements PipeExtractor {
 
   private static final String PLACEHOLDER_ERROR_MSG =

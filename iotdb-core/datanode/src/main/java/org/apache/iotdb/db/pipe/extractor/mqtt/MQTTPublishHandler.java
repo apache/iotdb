@@ -84,9 +84,9 @@ public class MQTTPublishHandler extends AbstractInterceptHandler {
   private final PipeTaskMeta pipeTaskMeta;
 
   public MQTTPublishHandler(
-      PipeParameters pipeParameters,
-      PipeTaskExtractorRuntimeEnvironment environment,
-      UnboundedBlockingPendingQueue<EnrichedEvent> pendingQueue) {
+      final PipeParameters pipeParameters,
+      final PipeTaskExtractorRuntimeEnvironment environment,
+      final UnboundedBlockingPendingQueue<EnrichedEvent> pendingQueue) {
     this.payloadFormat =
         PayloadFormatManager.getPayloadFormat(
             pipeParameters.getStringOrDefault(
@@ -107,7 +107,7 @@ public class MQTTPublishHandler extends AbstractInterceptHandler {
   @Override
   public void onConnect(InterceptConnectMessage msg) {
     if (!clientIdToSessionMap.containsKey(msg.getClientID())) {
-      MqttClientSession session = new MqttClientSession(msg.getClientID());
+      final MqttClientSession session = new MqttClientSession(msg.getClientID());
       sessionManager.login(
           session,
           msg.getUsername(),
@@ -123,7 +123,7 @@ public class MQTTPublishHandler extends AbstractInterceptHandler {
 
   @Override
   public void onDisconnect(InterceptDisconnectMessage msg) {
-    MqttClientSession session = clientIdToSessionMap.remove(msg.getClientID());
+    final MqttClientSession session = clientIdToSessionMap.remove(msg.getClientID());
     if (null != session) {
       sessionManager.removeCurrSession();
       sessionManager.closeSession(session, Coordinator.getInstance()::cleanupQueryExecution);
@@ -133,15 +133,15 @@ public class MQTTPublishHandler extends AbstractInterceptHandler {
   @Override
   public void onPublish(InterceptPublishMessage msg) {
     try {
-      String clientId = msg.getClientID();
+      final String clientId = msg.getClientID();
       if (!clientIdToSessionMap.containsKey(clientId)) {
         return;
       }
-      MqttClientSession session = clientIdToSessionMap.get(msg.getClientID());
-      ByteBuf payload = msg.getPayload();
-      String topic = msg.getTopicName();
-      String username = msg.getUsername();
-      MqttQoS qos = msg.getQos();
+      final MqttClientSession session = clientIdToSessionMap.get(msg.getClientID());
+      final ByteBuf payload = msg.getPayload();
+      final String topic = msg.getTopicName();
+      final String username = msg.getUsername();
+      final MqttQoS qos = msg.getQos();
 
       LOGGER.debug(
           "Receive publish message. clientId: {}, username: {}, qos: {}, topic: {}, payload: {}",
@@ -151,7 +151,7 @@ public class MQTTPublishHandler extends AbstractInterceptHandler {
           topic,
           payload);
 
-      List<Message> messages = payloadFormat.format(payload);
+      final List<Message> messages = payloadFormat.format(payload);
       if (messages == null) {
         return;
       }
@@ -161,9 +161,9 @@ public class MQTTPublishHandler extends AbstractInterceptHandler {
           continue;
         }
         if (useTableInsert) {
-          TableMessage tableMessage = (TableMessage) message;
+          final TableMessage tableMessage = (TableMessage) message;
           // '/' previously defined as a database name
-          String database =
+          final String database =
               !msg.getTopicName().contains("/")
                   ? msg.getTopicName()
                   : msg.getTopicName().substring(0, msg.getTopicName().indexOf("/"));
@@ -182,12 +182,12 @@ public class MQTTPublishHandler extends AbstractInterceptHandler {
   }
 
   /** Inserting table using tablet */
-  private void extractTable(TableMessage message, MqttClientSession session) {
+  private void extractTable(final TableMessage message, final MqttClientSession session) {
     try {
       TimestampPrecisionUtils.checkTimestampPrecision(message.getTimestamp());
       session.setDatabaseName(message.getDatabase().toLowerCase());
       session.setSqlDialect(IClientSession.SqlDialect.TABLE);
-      EnrichedEvent event = generateEvent(message);
+      final EnrichedEvent event = generateEvent(message);
       if (!event.increaseReferenceCount(MQTTPublishHandler.class.getName())) {
         LOGGER.warn("The reference count of the event {} cannot be increased, skipping it.", event);
       }
@@ -205,7 +205,7 @@ public class MQTTPublishHandler extends AbstractInterceptHandler {
     }
   }
 
-  private PipeRawTabletInsertionEvent generateEvent(TableMessage message) {
+  private PipeRawTabletInsertionEvent generateEvent(final TableMessage message) {
     final List<String> measurements =
         Stream.of(message.getFields(), message.getTagKeys(), message.getAttributeKeys())
             .flatMap(List::stream)
@@ -242,7 +242,7 @@ public class MQTTPublishHandler extends AbstractInterceptHandler {
       schemas[i] = new MeasurementSchema(measurements.get(i), dataTypes[i]);
     }
 
-    Tablet eventTablet =
+    final Tablet eventTablet =
         new Tablet(
             message.getTable(),
             Arrays.asList(schemas),
@@ -266,7 +266,7 @@ public class MQTTPublishHandler extends AbstractInterceptHandler {
         false);
   }
 
-  private void extractTree(TreeMessage message, MqttClientSession session) {
+  private void extractTree(final TreeMessage message, final MqttClientSession session) {
     TSStatus tsStatus = null;
     try {
       TimestampPrecisionUtils.checkTimestampPrecision(message.getTimestamp());
@@ -274,7 +274,7 @@ public class MQTTPublishHandler extends AbstractInterceptHandler {
       if (tsStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         LOGGER.warn(tsStatus.message);
       } else {
-        EnrichedEvent event = generateEvent(message);
+        final EnrichedEvent event = generateEvent(message);
         if (!event.increaseReferenceCount(MQTTPublishHandler.class.getName())) {
           LOGGER.warn(
               "The reference count of the event {} cannot be increased, skipping it.", event);
@@ -291,7 +291,7 @@ public class MQTTPublishHandler extends AbstractInterceptHandler {
     }
   }
 
-  private EnrichedEvent generateEvent(TreeMessage message) throws QueryProcessException {
+  private EnrichedEvent generateEvent(final TreeMessage message) throws QueryProcessException {
     final String deviceId = message.getDevice();
     final List<String> measurements = message.getMeasurements();
     final long[] timestamps = new long[] {message.getTimestamp()};
@@ -337,7 +337,7 @@ public class MQTTPublishHandler extends AbstractInterceptHandler {
       }
     }
 
-    Tablet eventTablet =
+    final Tablet eventTablet =
         new Tablet(deviceId, Arrays.asList(schemas), timestamps, inferredValues, bitMaps, 1);
 
     return new PipeRawTabletInsertionEvent(
@@ -354,8 +354,8 @@ public class MQTTPublishHandler extends AbstractInterceptHandler {
         false);
   }
 
-  private static TSStatus checkAuthority(MqttClientSession session) {
-    long startTime = System.nanoTime();
+  private static TSStatus checkAuthority(final MqttClientSession session) {
+    final long startTime = System.nanoTime();
     try {
       return AuthorityChecker.getTSStatus(
           AuthorityChecker.SUPER_USER.equals(session.getUsername()),

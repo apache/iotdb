@@ -60,18 +60,25 @@ public class ExternalLoadBalancer {
    * @return a mapping from task index to leader node id
    */
   public Map<Integer, Integer> balance(
-      int parallelCount, PipeStaticMeta pipeStaticMeta, ConfigManager configManager) {
+      final int parallelCount,
+      final PipeStaticMeta pipeStaticMeta,
+      final ConfigManager configManager) {
     return strategy.balance(parallelCount, pipeStaticMeta, configManager);
   }
 
   public interface BalanceStrategy {
     Map<Integer, Integer> balance(
-        int parallelCount, PipeStaticMeta pipeStaticMeta, ConfigManager configManager);
+        final int parallelCount,
+        final PipeStaticMeta pipeStaticMeta,
+        final ConfigManager configManager);
   }
 
   public static class ProportionalBalanceStrategy implements BalanceStrategy {
+    @Override
     public Map<Integer, Integer> balance(
-        int parallelCount, PipeStaticMeta pipeStaticMeta, ConfigManager configManager) {
+        final int parallelCount,
+        final PipeStaticMeta pipeStaticMeta,
+        final ConfigManager configManager) {
       final Map<TConsensusGroupId, Integer> regionLeaderMap =
           configManager.getLoadManager().getRegionLeaderMap();
       final Map<Integer, Integer> parallelAssignment = new HashMap<>();
@@ -135,7 +142,7 @@ public class ExternalLoadBalancer {
       final Map<Integer, Double> leaderRegionId2ExactShareMap = new HashMap<>();
       final Map<Integer, Integer> leaderRegionId2AssignedCountMap = new HashMap<>();
       for (Map.Entry<Integer, Integer> entry : leaderRegionId2DataRegionCountMap.entrySet()) {
-        double share = (parallelCount * entry.getValue()) / (double) totalRegions;
+        final double share = (parallelCount * entry.getValue()) / (double) totalRegions;
         leaderRegionId2ExactShareMap.put(entry.getKey(), share);
         leaderRegionId2AssignedCountMap.put(entry.getKey(), (int) Math.floor(share));
       }
@@ -149,7 +156,7 @@ public class ExternalLoadBalancer {
           leaderRegionId2ExactShareMap.keySet().stream()
               .sorted(
                   (l1, l2) -> {
-                    double diff =
+                    final double diff =
                         (leaderRegionId2ExactShareMap.get(l2)
                                 - Math.floor(leaderRegionId2ExactShareMap.get(l2)))
                             - (leaderRegionId2ExactShareMap.get(l1)
@@ -163,11 +170,11 @@ public class ExternalLoadBalancer {
             leaderId, leaderRegionId2AssignedCountMap.get(leaderId) + 1);
       }
 
-      List<Integer> stableLeaders = new ArrayList<>(leaderRegionId2AssignedCountMap.keySet());
+      final List<Integer> stableLeaders = new ArrayList<>(leaderRegionId2AssignedCountMap.keySet());
       Collections.sort(stableLeaders);
       int taskIndex = 1;
       for (final Integer leader : stableLeaders) {
-        int count = leaderRegionId2AssignedCountMap.get(leader);
+        final int count = leaderRegionId2AssignedCountMap.get(leader);
         for (int i = 0; i < count; i++) {
           parallelAssignment.put(-taskIndex, leader);
           taskIndex++;
