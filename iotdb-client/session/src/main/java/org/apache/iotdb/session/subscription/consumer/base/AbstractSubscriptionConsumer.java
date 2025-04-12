@@ -1022,6 +1022,10 @@ abstract class AbstractSubscriptionConsumer implements AutoCloseable {
 
             final String errorMessage = ((ErrorPayload) payload).getErrorMessage();
             final boolean critical = ((ErrorPayload) payload).isCritical();
+            if (Objects.equals(payload, ErrorPayload.OUTDATED_ERROR_PAYLOAD)) {
+              // suppress warn log when poll outdated subscription event
+              return Optional.empty();
+            }
             LOGGER.warn(
                 "Error occurred when SubscriptionConsumer {} polling tablets with commit context {}: {}, critical: {}",
                 this,
