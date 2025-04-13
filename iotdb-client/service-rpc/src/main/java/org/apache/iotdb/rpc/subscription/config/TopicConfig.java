@@ -97,11 +97,11 @@ public class TopicConfig extends PipeParameters {
   }
 
   public Optional<String> getTopicDatabaseName() {
-    if (!isTableTopic()) {
-      return Optional.empty();
-    }
-    return Optional.of(
-        attributes.getOrDefault(TopicConstant.DATABASE_KEY, TopicConstant.DATABASE_DEFAULT_VALUE));
+    return isTableTopic()
+        ? Optional.of(
+            attributes.getOrDefault(
+                TopicConstant.DATABASE_KEY, TopicConstant.DATABASE_DEFAULT_VALUE))
+        : Optional.empty();
   }
 
   /////////////////////////////// extractor attributes mapping ///////////////////////////////
