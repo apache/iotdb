@@ -131,6 +131,7 @@ public class TableModelSubscriptionSessionExample {
           }
         }
         for (final SubscriptionMessage message : messages) {
+          System.out.println(message.getDatabaseName());
           for (final SubscriptionSessionDataSet dataSet : message.getSessionDataSetsHandler()) {
             System.out.println(dataSet.getColumnNames());
             System.out.println(dataSet.getColumnTypes());

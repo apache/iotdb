@@ -21,6 +21,7 @@ package org.apache.iotdb.session.subscription.payload;
 
 import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionCommitContext;
 
+import org.apache.thrift.annotation.Nullable;
 import org.apache.tsfile.write.record.Tablet;
 
 import java.util.List;
@@ -35,18 +36,26 @@ public class SubscriptionMessage
 
   private final SubscriptionMessageHandler handler;
 
+  @Nullable private final String databaseName;
+
   public SubscriptionMessage(
-      final SubscriptionCommitContext commitContext, final List<Tablet> tablets) {
+      final SubscriptionCommitContext commitContext,
+      final List<Tablet> tablets,
+      @Nullable final String databaseName) {
     this.commitContext = commitContext;
     this.messageType = SubscriptionMessageType.SESSION_DATA_SETS_HANDLER.getType();
     this.handler = new SubscriptionSessionDataSetsHandler(tablets);
+    this.databaseName = databaseName;
   }
 
   public SubscriptionMessage(
-      final SubscriptionCommitContext commitContext, final String absolutePath) {
+      final SubscriptionCommitContext commitContext,
+      final String absolutePath,
+      @Nullable final String databaseName) {
     this.commitContext = commitContext;
     this.messageType = SubscriptionMessageType.TS_FILE_HANDLER.getType();
     this.handler = new SubscriptionTsFileHandler(absolutePath);
+    this.databaseName = databaseName;
   }
 
   public SubscriptionCommitContext getCommitContext() {
@@ -55,6 +64,11 @@ public class SubscriptionMessage
 
   public short getMessageType() {
     return messageType;
+  }
+
+  @Nullable
+  public String getDatabaseName() {
+    return databaseName;
   }
 
   /////////////////////////////// override ///////////////////////////////

@@ -30,6 +30,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -88,11 +89,19 @@ public class TopicConfig extends PipeParameters {
     return new TopicConfig(ReadWriteIOUtils.readMap(buffer));
   }
 
-  /////////////////////////////// utilities ///////////////////////////////
+  /////////////////////////////// table model ///////////////////////////////
 
   public boolean isTableTopic() {
     return SQL_DIALECT_TABLE_VALUE.equalsIgnoreCase(
         attributes.getOrDefault(SQL_DIALECT_KEY, SQL_DIALECT_TREE_VALUE));
+  }
+
+  public Optional<String> getTopicDatabaseName() {
+    if (!isTableTopic()) {
+      return Optional.empty();
+    }
+    return Optional.of(
+        attributes.getOrDefault(TopicConstant.DATABASE_KEY, TopicConstant.DATABASE_DEFAULT_VALUE));
   }
 
   /////////////////////////////// extractor attributes mapping ///////////////////////////////

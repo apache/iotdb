@@ -146,6 +146,13 @@ abstract class AbstractSubscriptionConsumer implements AutoCloseable {
     return consumerGroupId;
   }
 
+  /////////////////////////////// table model ///////////////////////////////
+
+  public Optional<String> getTopicDatabaseName(final String topicName) {
+    return Optional.ofNullable(subscribedTopics.get(topicName))
+        .flatMap(TopicConfig::getTopicDatabaseName);
+  }
+
   /////////////////////////////// ctor ///////////////////////////////
 
   protected AbstractSubscriptionConsumer(final AbstractSubscriptionConsumerBuilder builder) {
@@ -735,7 +742,7 @@ abstract class AbstractSubscriptionConsumer implements AutoCloseable {
       // construct temporary message to nack
       nack(
           Collections.singletonList(
-              new SubscriptionMessage(commitContext, file.getAbsolutePath())));
+              new SubscriptionMessage(commitContext, file.getAbsolutePath(), null)));
       throw new SubscriptionRuntimeNonCriticalException(e.getMessage(), e);
     }
   }
@@ -888,7 +895,10 @@ abstract class AbstractSubscriptionConsumer implements AutoCloseable {
 
             // generate subscription message
             inFlightFilesCommitContextSet.remove(commitContext);
-            return new SubscriptionMessage(commitContext, file.getAbsolutePath());
+            return new SubscriptionMessage(
+                commitContext,
+                file.getAbsolutePath(),
+                getTopicDatabaseName(commitContext.getTopicName()).orElse(null));
           }
         case ERROR:
           {
@@ -938,7 +948,7 @@ abstract class AbstractSubscriptionConsumer implements AutoCloseable {
       // construct temporary message to nack
       nack(
           Collections.singletonList(
-              new SubscriptionMessage(response.getCommitContext(), Collections.emptyList())));
+              new SubscriptionMessage(response.getCommitContext(), Collections.emptyList(), null)));
       throw new SubscriptionRuntimeNonCriticalException(e.getMessage(), e);
     }
   }
@@ -959,7 +969,11 @@ abstract class AbstractSubscriptionConsumer implements AutoCloseable {
           LOGGER.warn(errorMessage);
           throw new SubscriptionRuntimeNonCriticalException(errorMessage);
         }
-        return Optional.of(new SubscriptionMessage(commitContext, tablets));
+        return Optional.of(
+            new SubscriptionMessage(
+                commitContext,
+                tablets,
+                getTopicDatabaseName(commitContext.getTopicName()).orElse(null)));
       }
 
       timer.update();
