@@ -52,6 +52,10 @@ public:
 
     std::unique_ptr<SessionDataSet> executeQueryStatement(const std::string& sql, int64_t timeoutInMs = -1);
 
+    std::shared_ptr<IClientRPCServiceClient> getSessionClient() {
+        return client;
+    }
+
 private:
     void close();
     std::string getSystemDefaultZoneId();
@@ -63,7 +67,7 @@ private:
     int64_t sessionId;
     int64_t statementId;
     int64_t connectionTimeoutInMs;
-    bool enableRPCCompression;
+    bool enableRPCCompression = false;
     std::string zoneId;
     TEndPoint endPoint;
     std::vector<TEndPoint> endPointList;

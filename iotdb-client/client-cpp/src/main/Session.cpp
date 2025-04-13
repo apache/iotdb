@@ -991,8 +991,20 @@ void Session::insertRecord(const string &deviceId, int64_t time,
     req.__set_isAligned(false);
     TSStatus respStatus;
     try {
-        client->insertStringRecord(respStatus, req);
+        getSessionConnection(deviceId)->getSessionClient()->insertStringRecord(respStatus, req);
         RpcUtils::verifySuccess(respStatus);
+    } catch (RedirectException& e) {
+        handleRedirection(deviceId, e.endPoint);
+    } catch (const IoTDBConnectionException &e) {
+        if (enableRedirection && deviceIdToEndpoint.find(deviceId) != deviceIdToEndpoint.end()) {
+            deviceIdToEndpoint.erase(deviceId);
+            try {
+                defaultSessionConnection->getSessionClient()->insertStringRecord(respStatus, req);
+            } catch (RedirectException& e) {
+            }
+        } else {
+            throw IoTDBConnectionException(e.what());
+        }
     } catch (const TTransportException &e) {
         log_debug(e.what());
         throw IoTDBConnectionException(e.what());
@@ -1921,6 +1933,15 @@ shared_ptr<SessionConnection> Session::getQuerySessionConnection() {
     }
 }
 
+shared_ptr<SessionConnection> Session::getSessionConnection(std::string deviceId) {
+    if (!enableRedirection ||
+            deviceIdToEndpoint.find(deviceId) == deviceIdToEndpoint.end() ||
+            endPointToSessionConnection.find(deviceIdToEndpoint[deviceId]) == endPointToSessionConnection.end()) {
+        return defaultSessionConnection;
+    }
+    return endPointToSessionConnection.find(deviceIdToEndpoint[deviceId])->second;
+}
+
 string Session::getTimeZone() {
     if (!zoneId.empty()) {
         return zoneId;
@@ -2010,6 +2031,27 @@ void Session::handleQueryRedirection(TEndPoint endPoint) {
         }
     }
     defaultSessionConnection = newConnection;
+}
+
+void Session::handleRedirection(const std::string& deviceId, TEndPoint endPoint) {
+    if (!enableRedirection) return;
+    if (endPoint.ip == "127.0.0.1") return;
+    deviceIdToEndpoint[deviceId] = endPoint;
+
+    shared_ptr<SessionConnection> newConnection;
+    auto it = endPointToSessionConnection.find(endPoint);
+    if (it != endPointToSessionConnection.end()) {
+        newConnection = it->second;
+    } else {
+        try {
+            newConnection = make_shared<SessionConnection>(this, endPoint, zoneId, nodesSupplier,
+                    60, 500, sqlDialect, database);
+            endPointToSessionConnection.emplace(endPoint, newConnection);
+        } catch (exception &e) {
+            deviceIdToEndpoint.erase(deviceId);
+            throw IoTDBConnectionException(e.what());
+        }
+    }
 }
 
 std::unique_ptr<SessionDataSet> Session::executeQueryStatementMayRedirect(const std::string &sql, int64_t timeoutInMs) {

@@ -1145,6 +1145,7 @@ private:
     };
     using EndPointSessionMap = std::unordered_map<TEndPoint, shared_ptr<SessionConnection>, TEndPointHash, TEndPointEqual>;
     EndPointSessionMap endPointToSessionConnection;
+    std::unordered_map<std::string, TEndPoint> deviceIdToEndpoint;
 
 private:
     void removeBrokenSessionConnection(shared_ptr<SessionConnection> sessionConnection);
@@ -1234,6 +1235,7 @@ public:
         this->version = Version::V_1_0;
         this->sqlDialect = builder->sqlDialect;
         this->database = builder->database;
+        this->enableAutoFetch = builder->enableAutoFetch;
         this->enableRedirection = builder->enableRedirections;
         initZoneId();
         initNodesSupplier();
@@ -1261,6 +1263,8 @@ public:
 
     shared_ptr<SessionConnection> getQuerySessionConnection();
 
+    shared_ptr<SessionConnection> getSessionConnection(std::string deviceId);
+
     void open();
 
     void open(bool enableRPCCompression);
@@ -1274,6 +1278,8 @@ public:
     std::string getTimeZone();
 
     void handleQueryRedirection(TEndPoint endPoint);
+
+    void handleRedirection(const std::string& deviceId, TEndPoint endPoint);
 
     void insertRecord(const std::string &deviceId, int64_t time, const std::vector<std::string> &measurements,
                       const std::vector<std::string> &values);
