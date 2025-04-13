@@ -2462,12 +2462,15 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
 
     boolean distinct = isDistinct(ctx.setQuantifier());
 
+    RelationalSqlParser.NullTreatmentContext nullTreatment = ctx.nullTreatment();
+
     if (name.toString().equalsIgnoreCase("if")) {
       check(
           ctx.expression().size() == 2 || ctx.expression().size() == 3,
           "Invalid number of arguments for 'if' function",
           ctx);
       check(!distinct, "DISTINCT not valid for 'if' function", ctx);
+      check(nullTreatment == null, "Null treatment clause not valid for 'if' function", ctx);
 
       Expression elseExpression = null;
       if (ctx.expression().size() == 3) {
@@ -2484,6 +2487,7 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
     if (name.toString().equalsIgnoreCase("nullif")) {
       check(ctx.expression().size() == 2, "Invalid number of arguments for 'nullif' function", ctx);
       check(!distinct, "DISTINCT not valid for 'nullif' function", ctx);
+      check(nullTreatment == null, "Null treatment clause not valid for 'nullif' function", ctx);
 
       return new NullIfExpression(
           getLocation(ctx),
@@ -2497,8 +2501,19 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
           "The 'coalesce' function must have at least two arguments",
           ctx);
       check(!distinct, "DISTINCT not valid for 'coalesce' function", ctx);
+      check(nullTreatment == null, "Null treatment clause not valid for 'coalesce' function", ctx);
 
       return new CoalesceExpression(getLocation(ctx), visit(ctx.expression(), Expression.class));
+    }
+
+    Optional<FunctionCall.NullTreatment> nulls = Optional.empty();
+    if (nullTreatment != null) {
+      if (nullTreatment.IGNORE() != null) {
+        nulls = Optional.of(FunctionCall.NullTreatment.IGNORE);
+      }
+      else if (nullTreatment.RESPECT() != null) {
+        nulls = Optional.of(FunctionCall.NullTreatment.RESPECT);
+      }
     }
 
     List<Expression> arguments = visit(ctx.expression(), Expression.class);
@@ -2542,7 +2557,7 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
       }
     }
 
-    return new FunctionCall(getLocation(ctx), name, window, distinct, arguments);
+    return new FunctionCall(getLocation(ctx), name, window, nulls, distinct, arguments);
   }
 
   @Override

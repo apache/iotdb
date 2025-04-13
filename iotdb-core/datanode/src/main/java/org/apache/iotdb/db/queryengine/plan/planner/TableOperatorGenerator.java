@@ -2578,7 +2578,7 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
       } else if (functionKind == FunctionKind.WINDOW) {
         String functionName = function.getResolvedFunction().getSignature().getName();
         windowFunction =
-            WindowFunctionFactory.createBuiltinWindowFunction(functionName, argumentChannels);
+            WindowFunctionFactory.createBuiltinWindowFunction(functionName, argumentChannels, function.isIgnoreNulls());
       } else {
         throw new UnsupportedOperationException("Unsupported function kind: " + functionKind);
       }

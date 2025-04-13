@@ -37,11 +37,13 @@ public class FunctionCall extends Expression {
   private final Optional<Window> window;
   private final boolean distinct;
   private final List<Expression> arguments;
+  private final Optional<NullTreatment> nullTreatment;
 
   public FunctionCall(QualifiedName name, List<Expression> arguments) {
     super(null);
     this.name = requireNonNull(name, "name is null");
     this.window = Optional.empty();
+    this.nullTreatment = Optional.empty();
     this.distinct = false;
     this.arguments = requireNonNull(arguments, "arguments is null");
   }
@@ -50,6 +52,7 @@ public class FunctionCall extends Expression {
     super(null);
     this.name = requireNonNull(name, "name is null");
     this.window = Optional.empty();
+    this.nullTreatment = Optional.empty();
     this.distinct = distinct;
     this.arguments = requireNonNull(arguments, "arguments is null");
   }
@@ -63,6 +66,7 @@ public class FunctionCall extends Expression {
     super(requireNonNull(location, "location is null"));
     this.name = requireNonNull(name, "name is null");
     this.window = Optional.empty();
+    this.nullTreatment = Optional.empty();
     this.distinct = distinct;
     this.arguments = requireNonNull(arguments, "arguments is null");
   }
@@ -71,12 +75,14 @@ public class FunctionCall extends Expression {
       NodeLocation location,
       QualifiedName name,
       Optional<Window> window,
+      Optional<NullTreatment> nullTreatment,
       boolean distinct,
       List<Expression> arguments) {
     super(requireNonNull(location, "location is null"));
 
     this.name = name;
     this.window = window;
+    this.nullTreatment = nullTreatment;
     this.distinct = distinct;
     this.arguments = arguments;
   }
@@ -95,6 +101,10 @@ public class FunctionCall extends Expression {
 
   public Optional<Window> getWindow() {
     return window;
+  }
+
+  public Optional<NullTreatment> getNullTreatment() {
+    return nullTreatment;
   }
 
   @Override
@@ -126,6 +136,10 @@ public class FunctionCall extends Expression {
   @Override
   public int hashCode() {
     return Objects.hash(name, distinct, arguments);
+  }
+
+  public enum NullTreatment {
+    IGNORE, RESPECT
   }
 
   @Override
@@ -167,5 +181,6 @@ public class FunctionCall extends Expression {
 
     // TODO: serialize window
     this.window = Optional.empty();
+    this.nullTreatment = Optional.empty();
   }
 }

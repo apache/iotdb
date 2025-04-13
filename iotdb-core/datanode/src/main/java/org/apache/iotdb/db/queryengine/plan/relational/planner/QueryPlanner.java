@@ -475,6 +475,9 @@ public class QueryPlanner {
       Symbol newSymbol =
           symbolAllocator.newSymbol(windowFunction, analysis.getType(windowFunction));
 
+      FunctionCall.NullTreatment nullTreatment = windowFunction.getNullTreatment()
+          .orElse(FunctionCall.NullTreatment.RESPECT);
+
       WindowNode.Function function =
           new WindowNode.Function(
               analysis.getResolvedFunction(windowFunction),
@@ -483,7 +486,7 @@ public class QueryPlanner {
                   .collect(toImmutableList()),
               frame,
               // TODO: remove ignore null
-              false);
+              nullTreatment == FunctionCall.NullTreatment.IGNORE);
 
       functions.put(newSymbol, function);
       mappings.put(scopeAwareKey(windowFunction, analysis, subPlan.getScope()), newSymbol);
