@@ -49,3 +49,5 @@ github:
     - Wei-hao-Li
     - Colinleeo
     - Caideyipi
+notifications:
+  discussions: dev@iotdb.apache.org
