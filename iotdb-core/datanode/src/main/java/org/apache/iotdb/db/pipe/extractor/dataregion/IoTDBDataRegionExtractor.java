@@ -21,6 +21,7 @@ package org.apache.iotdb.db.pipe.extractor.dataregion;
 
 import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.pipe.agent.task.meta.PipeStaticMeta;
 import org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant;
 import org.apache.iotdb.commons.pipe.config.constant.SystemConstant;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.IoTDBTreePattern;
@@ -144,6 +145,21 @@ public class IoTDBDataRegionExtractor extends IoTDBExtractor {
   @Override
   public void validate(final PipeParameterValidator validator) throws Exception {
     super.validate(validator);
+
+    final boolean forwardingPipeRequests =
+        validator
+            .getParameters()
+            .getBooleanOrDefault(
+                Arrays.asList(
+                    PipeExtractorConstant.EXTRACTOR_FORWARDING_PIPE_REQUESTS_KEY,
+                    PipeExtractorConstant.SOURCE_FORWARDING_PIPE_REQUESTS_KEY),
+                PipeExtractorConstant.EXTRACTOR_FORWARDING_PIPE_REQUESTS_DEFAULT_VALUE);
+    if (!forwardingPipeRequests) {
+      throw new PipeParameterNotValidException(
+          String.format(
+              "The parameter %s cannot be set to false.",
+              PipeExtractorConstant.SOURCE_FORWARDING_PIPE_REQUESTS_KEY));
+    }
 
     final boolean isTreeDialect =
         validator
@@ -462,6 +478,11 @@ public class IoTDBDataRegionExtractor extends IoTDBExtractor {
     if (isSnapshotMode) {
       realtimeExtractor = new PipeRealtimeDataRegionHeartbeatExtractor();
       LOGGER.info("Pipe: snapshot mode is enabled, use heartbeat realtime extractor.");
+      return;
+    }
+
+    if (pipeName == null || !pipeName.startsWith(PipeStaticMeta.CONSENSUS_PIPE_PREFIX)) {
+      realtimeExtractor = new PipeRealtimeDataRegionTsFileExtractor();
       return;
     }
 
