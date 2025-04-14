@@ -108,6 +108,20 @@ public class TableSessionWrapper implements ITableSession {
 
   @Override
   public void close() throws IoTDBConnectionException {
+    if (!Objects.equals(session.getSqlDialect(), sessionPool.sqlDialect)) {
+      try {
+        session.executeNonQueryStatement("set sql_dialect=" + sessionPool.sqlDialect);
+      } catch (StatementExecutionException e) {
+        LOGGER.warn(
+            "Failed to change back sql_dialect by executing: set sql_dialect={}",
+            sessionPool.sqlDialect,
+            e);
+        session.close();
+        session = null;
+        return;
+      }
+    }
+
     if (closed.compareAndSet(false, true)) {
       if (!Objects.equals(session.getDatabase(), sessionPool.database)
           && sessionPool.database != null) {
@@ -121,6 +135,7 @@ public class TableSessionWrapper implements ITableSession {
           return;
         }
       }
+
       sessionPool.putBack(session);
       session = null;
     }

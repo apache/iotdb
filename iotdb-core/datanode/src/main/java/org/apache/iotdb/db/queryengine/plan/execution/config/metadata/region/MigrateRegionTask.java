@@ -19,9 +19,11 @@
 
 package org.apache.iotdb.db.queryengine.plan.execution.config.metadata.region;
 
+import org.apache.iotdb.common.rpc.thrift.Model;
 import org.apache.iotdb.db.queryengine.plan.execution.config.ConfigTaskResult;
 import org.apache.iotdb.db.queryengine.plan.execution.config.IConfigTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.executor.IConfigTaskExecutor;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.MigrateRegion;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.region.MigrateRegionStatement;
 
 import com.google.common.util.concurrent.ListenableFuture;
@@ -29,15 +31,32 @@ import com.google.common.util.concurrent.ListenableFuture;
 public class MigrateRegionTask implements IConfigTask {
 
   protected final MigrateRegionStatement statement;
+  private final Model model;
 
   public MigrateRegionTask(MigrateRegionStatement migrateRegionStatement) {
     this.statement = migrateRegionStatement;
+    this.model = Model.TREE;
+  }
+
+  public MigrateRegionTask(MigrateRegion migrateRegion) {
+    this.statement =
+        new MigrateRegionStatement(
+            migrateRegion.getRegionId(), migrateRegion.getFromId(), migrateRegion.getToId());
+    this.model = Model.TABLE;
   }
 
   @Override
   public ListenableFuture<ConfigTaskResult> execute(IConfigTaskExecutor configTaskExecutor) {
     // If the action is executed successfully, return the Future.
     // If your operation is async, you can return the corresponding future directly.
-    return configTaskExecutor.migrateRegion(statement);
+    return configTaskExecutor.migrateRegion(this);
+  }
+
+  public Model getModel() {
+    return this.model;
+  }
+
+  public MigrateRegionStatement getStatement() {
+    return statement;
   }
 }

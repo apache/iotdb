@@ -34,7 +34,7 @@ import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.utils.ModificationUtils;
 
 import org.apache.tsfile.enums.TSDataType;
-import org.apache.tsfile.file.metadata.AlignedChunkMetadata;
+import org.apache.tsfile.file.metadata.AbstractAlignedChunkMetadata;
 import org.apache.tsfile.file.metadata.ChunkMetadata;
 import org.apache.tsfile.file.metadata.IChunkMetadata;
 import org.apache.tsfile.file.metadata.IDeviceID;
@@ -54,6 +54,7 @@ import java.util.LinkedHashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.TreeMap;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
@@ -224,7 +225,10 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
     } else {
       ttlForCurrentDevice = DataNodeTTLCache.getInstance().getTTLForTree(deviceID);
     }
-    timeLowerBoundForCurrentDevice = CommonDateTimeUtils.currentTime() - ttlForCurrentDevice;
+    timeLowerBoundForCurrentDevice =
+        ttlForCurrentDevice == Long.MAX_VALUE
+            ? Long.MIN_VALUE
+            : CommonDateTimeUtils.currentTime() - ttlForCurrentDevice;
     return currentDevice;
   }
 
@@ -384,14 +388,14 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
    * @throws IOException if io errors occurred
    */
   @SuppressWarnings({"squid:S1319", "squid:S135"})
-  public LinkedList<Pair<TsFileSequenceReader, List<AlignedChunkMetadata>>>
+  public LinkedList<Pair<TsFileSequenceReader, List<AbstractAlignedChunkMetadata>>>
       getReaderAndChunkMetadataForCurrentAlignedSeries() throws IOException, IllegalPathException {
     if (currentDevice == null || !currentDevice.right) {
       return new LinkedList<>();
     }
 
-    LinkedList<Pair<TsFileSequenceReader, List<AlignedChunkMetadata>>> readerAndChunkMetadataList =
-        new LinkedList<>();
+    LinkedList<Pair<TsFileSequenceReader, List<AbstractAlignedChunkMetadata>>>
+        readerAndChunkMetadataList = new LinkedList<>();
     for (TsFileResource tsFileResource : tsFileResourcesSortedByAsc) {
       if (!deviceIteratorMap.containsKey(tsFileResource)) {
         continue;
@@ -403,7 +407,7 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
       MetadataIndexNode firstMeasurementNodeOfCurrentDevice =
           iterator.getFirstMeasurementNodeOfCurrentDevice();
       TsFileSequenceReader reader = readerMap.get(tsFileResource);
-      List<AlignedChunkMetadata> alignedChunkMetadataList =
+      List<AbstractAlignedChunkMetadata> alignedChunkMetadataList =
           reader.getAlignedChunkMetadataByMetadataIndexNode(
               currentDevice.left, firstMeasurementNodeOfCurrentDevice, ignoreAllNullRows);
       applyModificationForAlignedChunkMetadataList(tsFileResource, alignedChunkMetadataList);
@@ -420,7 +424,7 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
    * @param alignedChunkMetadataList list of aligned chunk metadata
    */
   private void applyModificationForAlignedChunkMetadataList(
-      TsFileResource tsFileResource, List<AlignedChunkMetadata> alignedChunkMetadataList)
+      TsFileResource tsFileResource, List<AbstractAlignedChunkMetadata> alignedChunkMetadataList)
       throws IllegalPathException {
     if (alignedChunkMetadataList.isEmpty()) {
       // all the value chunks is empty chunk
@@ -428,7 +432,8 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
     }
     IDeviceID device = currentDevice.getLeft();
     ModEntry ttlDeletion = null;
-    if (tsFileResource.getStartTime(device) < timeLowerBoundForCurrentDevice) {
+    Optional<Long> startTime = tsFileResource.getStartTime(device);
+    if (startTime.isPresent() && startTime.get() < timeLowerBoundForCurrentDevice) {
       ttlDeletion = CompactionUtils.convertTtlToDeletion(device, timeLowerBoundForCurrentDevice);
     }
 
@@ -437,7 +442,7 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
             tsFileResource, r -> new ArrayList<>(tsFileResource.getAllModEntries()));
 
     // construct the input params List<List<Modification>> for QueryUtils.modifyAlignedChunkMetaData
-    AlignedChunkMetadata alignedChunkMetadata = alignedChunkMetadataList.get(0);
+    AbstractAlignedChunkMetadata alignedChunkMetadata = alignedChunkMetadataList.get(0);
     List<IChunkMetadata> valueChunkMetadataList = alignedChunkMetadata.getValueChunkMetadataList();
 
     // match time column modifications
@@ -665,7 +670,8 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
         Map<String, List<ChunkMetadata>> chunkMetadataListMap = chunkMetadataCacheMap.get(reader);
 
         ModEntry ttlDeletion = null;
-        if (resource.getStartTime(device) < timeLowerBoundForCurrentDevice) {
+        Optional<Long> startTime = resource.getStartTime(device);
+        if (startTime.isPresent() && startTime.get() < timeLowerBoundForCurrentDevice) {
           ttlDeletion =
               new TreeDeletionEntry(
                   new MeasurementPath(device, IoTDBConstant.ONE_LEVEL_PATH_WILDCARD),

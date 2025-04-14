@@ -62,7 +62,7 @@ public interface CommonConfig {
 
   CommonConfig setPrimitiveArraySize(int primitiveArraySize);
 
-  CommonConfig setAvgSeriesPointNumberThreshold(int avgSeriesPointNumberThreshold);
+  CommonConfig setTargetChunkPointNum(int targetChunkPointNum);
 
   CommonConfig setMaxTsBlockLineNumber(int maxTsBlockLineNumber);
 
@@ -88,6 +88,8 @@ public interface CommonConfig {
 
   CommonConfig setTimePartitionInterval(long timePartitionInterval);
 
+  CommonConfig setTTLCheckInterval(long ttlCheckInterval);
+
   CommonConfig setTimePartitionOrigin(long timePartitionOrigin);
 
   CommonConfig setTimestampPrecision(String timestampPrecision);
@@ -101,6 +103,8 @@ public interface CommonConfig {
   CommonConfig setMaxDegreeOfIndexNode(int maxDegreeOfIndexNode);
 
   CommonConfig setEnableMQTTService(boolean enableMQTTService);
+
+  CommonConfig setMqttPayloadFormatter(String mqttPayloadFormatter);
 
   CommonConfig setSchemaEngineMode(String schemaEngineMode);
 
@@ -121,6 +125,8 @@ public interface CommonConfig {
   CommonConfig setDataRatisTriggerSnapshotThreshold(long threshold);
 
   CommonConfig setSeriesSlotNum(int seriesSlotNum);
+
+  CommonConfig setSeriesPartitionExecutorClass(String seriesPartitionExecutorClass);
 
   CommonConfig setSchemaMemoryAllocate(String schemaMemoryAllocate);
 

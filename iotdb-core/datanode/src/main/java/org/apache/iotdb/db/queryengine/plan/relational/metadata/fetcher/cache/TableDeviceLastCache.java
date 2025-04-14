@@ -160,7 +160,7 @@ public class TableDeviceLastCache {
         "",
         (time, tvPair) ->
             tvPair.getTimestamp() < finalLastTime
-                ? new TimeValuePair(finalLastTime, null)
+                ? new TimeValuePair(finalLastTime, EMPTY_PRIMITIVE_TYPE)
                 : tvPair);
     return diff.get();
   }
@@ -173,9 +173,8 @@ public class TableDeviceLastCache {
         measurement,
         (s, timeValuePair) -> {
           diff.set(
-              isTableModel
-                  ? 0
-                  : (int) RamUsageEstimator.sizeOf(s) + getTVPairEntrySize(timeValuePair));
+              (isTableModel ? 0 : (int) RamUsageEstimator.sizeOf(s))
+                  + getTVPairEntrySize(timeValuePair));
           time.set(timeValuePair.getTimestamp());
           return null;
         });

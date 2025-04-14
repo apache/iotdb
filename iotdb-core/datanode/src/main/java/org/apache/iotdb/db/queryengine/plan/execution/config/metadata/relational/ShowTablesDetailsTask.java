@@ -86,6 +86,14 @@ public class ShowTablesDetailsTask implements IConfigTask {
                       new Binary(
                           TableNodeStatus.values()[tableInfo.getState()].toString(),
                           TSFileConfig.STRING_CHARSET));
+              if (tableInfo.isSetComment()) {
+                builder
+                    .getColumnBuilder(3)
+                    .writeBinary(new Binary(tableInfo.getComment(), TSFileConfig.STRING_CHARSET));
+              } else {
+                builder.getColumnBuilder(3).appendNull();
+              }
+
               builder.declarePosition();
             });
 

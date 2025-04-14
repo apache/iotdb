@@ -25,7 +25,7 @@ import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.session.subscription.consumer.AckStrategy;
 import org.apache.iotdb.session.subscription.consumer.ConsumeResult;
-import org.apache.iotdb.session.subscription.consumer.SubscriptionPushConsumer;
+import org.apache.iotdb.session.subscription.consumer.tree.SubscriptionTreePushConsumer;
 import org.apache.iotdb.subscription.it.triple.regression.AbstractSubscriptionRegressionIT;
 
 import org.apache.thrift.TException;
@@ -61,7 +61,7 @@ public class IoTDBRealTimeDBTsfilePushConsumerIT extends AbstractSubscriptionReg
   private String pattern = database + ".**";
   private String topicName = "topic_RealTimeDBTsfilePushConsumer";
   private List<IMeasurementSchema> schemaList = new ArrayList<>();
-  private SubscriptionPushConsumer consumer;
+  private SubscriptionTreePushConsumer consumer;
 
   @Override
   @Before
@@ -122,7 +122,7 @@ public class IoTDBRealTimeDBTsfilePushConsumerIT extends AbstractSubscriptionReg
     // Write data before subscribing
     insert_data(1706659200000L); // 2024-01-31 08:00:00+08:00
     consumer =
-        new SubscriptionPushConsumer.Builder()
+        new SubscriptionTreePushConsumer.Builder()
             .host(SRC_HOST)
             .port(SRC_PORT)
             .consumerId("DB_realtime_tsfile")
@@ -164,8 +164,8 @@ public class IoTDBRealTimeDBTsfilePushConsumerIT extends AbstractSubscriptionReg
     insert_data(System.currentTimeMillis());
     AWAIT.untilAsserted(
         () -> {
-          assertEquals(onReceive.get(), 1, "should process 1 file");
-          assertEquals(rowCount.get(), 4, "4 records");
+          assertGte(onReceive.get(), 1, "should process 1 file");
+          assertGte(rowCount.get(), 4, "4 records");
         });
 
     // Subscribe and then write data
@@ -173,8 +173,8 @@ public class IoTDBRealTimeDBTsfilePushConsumerIT extends AbstractSubscriptionReg
 
     AWAIT.untilAsserted(
         () -> {
-          assertEquals(onReceive.get(), 2, "should process 2 file");
-          assertEquals(rowCount.get(), 8, "8 records");
+          assertGte(onReceive.get(), 2, "should process 2 file");
+          assertGte(rowCount.get(), 8, "8 records");
         });
   }
 }

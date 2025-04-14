@@ -27,6 +27,7 @@ import org.apache.iotdb.itbase.category.TableLocalStandaloneIT;
 import org.apache.iotdb.itbase.env.BaseEnv;
 
 import org.junit.After;
+import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
@@ -82,6 +83,17 @@ public class IoTDBDatabaseIT {
 
       // create duplicated database with IF NOT EXISTS
       statement.execute("create database IF NOT EXISTS test");
+
+      // alter non-exist
+      try {
+        statement.execute("alter database test1 set properties ttl='INF'");
+        fail("alter database test1 shouldn't succeed because test does not exist");
+      } catch (final SQLException e) {
+        assertEquals("500: Database test1 doesn't exist", e.getMessage());
+      }
+
+      statement.execute("alter database if exists test1 set properties ttl='INF'");
+      statement.execute("alter database test set properties ttl=default");
 
       String[] databaseNames = new String[] {"test"};
       String[] TTLs = new String[] {"INF"};
@@ -327,8 +339,14 @@ public class IoTDBDatabaseIT {
 
   @Test
   public void testInformationSchema() throws SQLException {
+    // Use a normal user to test visibility
+    try (final Connection adminCon = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        final Statement adminStmt = adminCon.createStatement()) {
+      adminStmt.execute("create user test 'password'");
+    }
+
     try (final Connection connection =
-            EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+            EnvFactory.getEnv().getConnection("test", "password", BaseEnv.TABLE_SQL_DIALECT);
         final Statement statement = connection.createStatement()) {
       // Test unsupported write plans
       final Set<String> writeSQLs =
@@ -362,7 +380,16 @@ public class IoTDBDatabaseIT {
           statement.executeQuery("show tables"),
           "TableName,TTL(ms),",
           new HashSet<>(
-              Arrays.asList("databases,INF,", "tables,INF,", "columns,INF,", "queries,INF,")));
+              Arrays.asList(
+                  "databases,INF,",
+                  "tables,INF,",
+                  "columns,INF,",
+                  "queries,INF,",
+                  "regions,INF,",
+                  "topics,INF,",
+                  "pipe_plugins,INF,",
+                  "pipes,INF,",
+                  "subscriptions,INF,")));
 
       TestUtils.assertResultSetEqual(
           statement.executeQuery("desc databases"),
@@ -384,7 +411,8 @@ public class IoTDBDatabaseIT {
                   "database,STRING,TAG,",
                   "table_name,STRING,TAG,",
                   "ttl(ms),STRING,ATTRIBUTE,",
-                  "status,STRING,ATTRIBUTE,")));
+                  "status,STRING,ATTRIBUTE,",
+                  "comment,STRING,ATTRIBUTE,")));
       TestUtils.assertResultSetEqual(
           statement.executeQuery("desc columns"),
           "ColumnName,DataType,Category,",
@@ -395,7 +423,8 @@ public class IoTDBDatabaseIT {
                   "column_name,STRING,TAG,",
                   "datatype,STRING,ATTRIBUTE,",
                   "category,STRING,ATTRIBUTE,",
-                  "status,STRING,ATTRIBUTE,")));
+                  "status,STRING,ATTRIBUTE,",
+                  "comment,STRING,ATTRIBUTE,")));
       TestUtils.assertResultSetEqual(
           statement.executeQuery("desc queries"),
           "ColumnName,DataType,Category,",
@@ -405,11 +434,62 @@ public class IoTDBDatabaseIT {
                   "start_time,TIMESTAMP,ATTRIBUTE,",
                   "datanode_id,INT32,ATTRIBUTE,",
                   "elapsed_time,FLOAT,ATTRIBUTE,",
-                  "statement,STRING,ATTRIBUTE,")));
+                  "statement,STRING,ATTRIBUTE,",
+                  "user,STRING,ATTRIBUTE,")));
+      TestUtils.assertResultSetEqual(
+          statement.executeQuery("desc pipes"),
+          "ColumnName,DataType,Category,",
+          new HashSet<>(
+              Arrays.asList(
+                  "id,STRING,TAG,",
+                  "creation_time,TIMESTAMP,ATTRIBUTE,",
+                  "state,STRING,ATTRIBUTE,",
+                  "pipe_source,STRING,ATTRIBUTE,",
+                  "pipe_processor,STRING,ATTRIBUTE,",
+                  "pipe_sink,STRING,ATTRIBUTE,",
+                  "exception_message,STRING,ATTRIBUTE,",
+                  "remaining_event_count,INT64,ATTRIBUTE,",
+                  "estimated_remaining_seconds,DOUBLE,ATTRIBUTE,")));
+      TestUtils.assertResultSetEqual(
+          statement.executeQuery("desc pipe_plugins"),
+          "ColumnName,DataType,Category,",
+          new HashSet<>(
+              Arrays.asList(
+                  "plugin_name,STRING,TAG,",
+                  "plugin_type,STRING,ATTRIBUTE,",
+                  "class_name,STRING,ATTRIBUTE,",
+                  "plugin_jar,STRING,ATTRIBUTE,")));
+      TestUtils.assertResultSetEqual(
+          statement.executeQuery("desc topics"),
+          "ColumnName,DataType,Category,",
+          new HashSet<>(
+              Arrays.asList("topic_name,STRING,TAG,", "topic_configs,STRING,ATTRIBUTE,")));
+      TestUtils.assertResultSetEqual(
+          statement.executeQuery("desc subscriptions"),
+          "ColumnName,DataType,Category,",
+          new HashSet<>(
+              Arrays.asList(
+                  "topic_name,STRING,TAG,",
+                  "consumer_group_name,STRING,TAG,",
+                  "subscribed_consumers,STRING,ATTRIBUTE,")));
 
+      // Currently only root can query information_schema
+      Assert.assertThrows(
+          SQLException.class,
+          () -> {
+            statement.execute("select * from databases");
+          });
+    }
+
+    try (final Connection connection =
+            EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        final Statement statement = connection.createStatement()) {
       // Test table query
+      statement.execute("use information_schema");
+
       statement.execute("create database test");
-      statement.execute("create table test.test (a tag, b attribute, c int32)");
+      statement.execute(
+          "create table test.test (a tag, b attribute, c int32 comment 'turbine') comment 'test'");
 
       TestUtils.assertResultSetEqual(
           statement.executeQuery("select * from databases"),
@@ -420,33 +500,60 @@ public class IoTDBDatabaseIT {
                   "test,INF,1,1,604800000,0,0,")));
       TestUtils.assertResultSetEqual(
           statement.executeQuery("show devices from tables where status = 'USING'"),
-          "database,table_name,ttl(ms),status,",
+          "database,table_name,ttl(ms),status,comment,",
           new HashSet<>(
               Arrays.asList(
-                  "information_schema,databases,INF,USING,",
-                  "information_schema,tables,INF,USING,",
-                  "information_schema,columns,INF,USING,",
-                  "information_schema,queries,INF,USING,",
-                  "test,test,INF,USING,")));
+                  "information_schema,databases,INF,USING,null,",
+                  "information_schema,tables,INF,USING,null,",
+                  "information_schema,columns,INF,USING,null,",
+                  "information_schema,queries,INF,USING,null,",
+                  "information_schema,regions,INF,USING,null,",
+                  "information_schema,topics,INF,USING,null,",
+                  "information_schema,pipe_plugins,INF,USING,null,",
+                  "information_schema,pipes,INF,USING,null,",
+                  "information_schema,subscriptions,INF,USING,null,",
+                  "test,test,INF,USING,test,")));
       TestUtils.assertResultSetEqual(
           statement.executeQuery("count devices from tables where status = 'USING'"),
           "count(devices),",
-          Collections.singleton("5,"));
+          Collections.singleton("10,"));
       TestUtils.assertResultSetEqual(
           statement.executeQuery(
               "select * from columns where table_name = 'queries' or database = 'test'"),
-          "database,table_name,column_name,datatype,category,status,",
+          "database,table_name,column_name,datatype,category,status,comment,",
           new HashSet<>(
               Arrays.asList(
-                  "information_schema,queries,query_id,STRING,TAG,USING,",
-                  "information_schema,queries,start_time,TIMESTAMP,ATTRIBUTE,USING,",
-                  "information_schema,queries,datanode_id,INT32,ATTRIBUTE,USING,",
-                  "information_schema,queries,elapsed_time,FLOAT,ATTRIBUTE,USING,",
-                  "information_schema,queries,statement,STRING,ATTRIBUTE,USING,",
-                  "test,test,time,TIMESTAMP,TIME,USING,",
-                  "test,test,a,STRING,TAG,USING,",
-                  "test,test,b,STRING,ATTRIBUTE,USING,",
-                  "test,test,c,INT32,FIELD,USING,")));
+                  "information_schema,queries,query_id,STRING,TAG,USING,null,",
+                  "information_schema,queries,start_time,TIMESTAMP,ATTRIBUTE,USING,null,",
+                  "information_schema,queries,datanode_id,INT32,ATTRIBUTE,USING,null,",
+                  "information_schema,queries,elapsed_time,FLOAT,ATTRIBUTE,USING,null,",
+                  "information_schema,queries,statement,STRING,ATTRIBUTE,USING,null,",
+                  "information_schema,queries,user,STRING,ATTRIBUTE,USING,null,",
+                  "test,test,time,TIMESTAMP,TIME,USING,null,",
+                  "test,test,a,STRING,TAG,USING,null,",
+                  "test,test,b,STRING,ATTRIBUTE,USING,null,",
+                  "test,test,c,INT32,FIELD,USING,turbine,")));
+
+      statement.execute(
+          "create pipe a2b with source('double-living'='true') with sink ('sink'='write-back-sink')");
+      TestUtils.assertResultSetEqual(
+          statement.executeQuery("select id from pipes where creation_time > 0"),
+          "id,",
+          Collections.singleton("a2b,"));
+      TestUtils.assertResultSetEqual(
+          statement.executeQuery(
+              "select * from pipe_plugins where plugin_name = 'IOTDB-THRIFT-SINK'"),
+          "plugin_name,plugin_type,class_name,plugin_jar,",
+          new HashSet<>(
+              Arrays.asList(
+                  "IOTDB-THRIFT-SINK,Builtin,org.apache.iotdb.commons.pipe.agent.plugin.builtin.connector.iotdb.thrift.IoTDBThriftConnector,null,")));
+
+      statement.execute("create topic tp with ('start-time'='2025-01-13T10:03:19.229+08:00')");
+      TestUtils.assertResultSetEqual(
+          statement.executeQuery("select * from topics where topic_name = 'tp'"),
+          "topic_name,topic_configs,",
+          Collections.singleton(
+              "tp,{__system.sql-dialect=table, start-time=2025-01-13T10:03:19.229+08:00},"));
     }
   }
 
@@ -456,6 +563,9 @@ public class IoTDBDatabaseIT {
             EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
         final Statement statement = connection.createStatement()) {
       statement.execute("create database test");
+      statement.execute("use test");
+      statement.execute("create table table1(id1 tag, s1 string)");
+      statement.execute("insert into table1 values(0, 'd1', null), (1,'d1', 1)");
     }
 
     try (final Connection connection = EnvFactory.getEnv().getConnection();
@@ -463,6 +573,7 @@ public class IoTDBDatabaseIT {
       statement.execute("create database root.test");
       statement.execute(
           "alter database root.test WITH SCHEMA_REGION_GROUP_NUM=2, DATA_REGION_GROUP_NUM=3");
+      statement.execute("insert into root.test.d1 (s1) values(1)");
       statement.execute("drop database root.test");
     }
 
@@ -475,8 +586,6 @@ public class IoTDBDatabaseIT {
           assertTrue(resultSet.next());
         }
         assertEquals("test", resultSet.getString(1));
-        assertEquals(0, resultSet.getInt(6));
-        assertEquals(0, resultSet.getInt(7));
         assertFalse(resultSet.next());
       }
 
@@ -504,6 +613,83 @@ public class IoTDBDatabaseIT {
     try (final Connection connection = EnvFactory.getEnv().getConnection();
         final Statement statement = connection.createStatement()) {
       TestUtils.assertResultSetSize(statement.executeQuery("show databases"), 1);
+    }
+  }
+
+  @Test
+  public void testDBAuth() throws SQLException {
+    try (final Connection adminCon = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        final Statement adminStmt = adminCon.createStatement()) {
+      adminStmt.execute("create user test 'password'");
+      adminStmt.execute("create database db");
+    }
+
+    try (final Connection userCon =
+            EnvFactory.getEnv().getConnection("test", "password", BaseEnv.TABLE_SQL_DIALECT);
+        final Statement userStmt = userCon.createStatement()) {
+      TestUtils.assertResultSetEqual(
+          userStmt.executeQuery("show databases"),
+          "Database,TTL(ms),SchemaReplicationFactor,DataReplicationFactor,TimePartitionInterval,",
+          Collections.singleton("information_schema,INF,null,null,null,"));
+    }
+
+    try (final Connection adminCon = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        final Statement adminStmt = adminCon.createStatement()) {
+      adminStmt.execute("GRANT SELECT ON DATABASE DB to user test");
+
+      // Information_schema does not support grant & revoke
+      Assert.assertThrows(
+          SQLException.class,
+          () -> {
+            adminStmt.execute("GRANT SELECT ON DATABASE information_schema to user test");
+          });
+
+      Assert.assertThrows(
+          SQLException.class,
+          () -> {
+            adminStmt.execute("REVOKE SELECT ON information_schema.tables from user test");
+          });
+    }
+
+    try (final Connection userCon =
+            EnvFactory.getEnv().getConnection("test", "password", BaseEnv.TABLE_SQL_DIALECT);
+        final Statement userStmt = userCon.createStatement()) {
+      try (final ResultSet resultSet = userStmt.executeQuery("SHOW DATABASES")) {
+        final ResultSetMetaData metaData = resultSet.getMetaData();
+        assertEquals(showDBColumnHeaders.size(), metaData.getColumnCount());
+        for (int i = 0; i < showDBColumnHeaders.size(); i++) {
+          assertEquals(showDBColumnHeaders.get(i).getColumnName(), metaData.getColumnName(i + 1));
+        }
+        Assert.assertTrue(resultSet.next());
+        if (resultSet.getString(1).equals("information_schema")) {
+          assertTrue(resultSet.next());
+        }
+        assertEquals("db", resultSet.getString(1));
+        Assert.assertFalse(resultSet.next());
+      }
+
+      Assert.assertThrows(
+          SQLException.class,
+          () -> {
+            userStmt.execute("alter database db set properties ttl=6600000");
+          });
+
+      Assert.assertThrows(
+          SQLException.class,
+          () -> {
+            userStmt.execute("drop database db");
+          });
+    }
+
+    try (final Connection adminCon = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        final Statement adminStmt = adminCon.createStatement()) {
+      adminStmt.execute("GRANT DROP ON ANY to user test");
+    }
+
+    try (final Connection userCon =
+            EnvFactory.getEnv().getConnection("test", "password", BaseEnv.TABLE_SQL_DIALECT);
+        final Statement userStmt = userCon.createStatement()) {
+      userStmt.execute("drop database db");
     }
   }
 }

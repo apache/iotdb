@@ -59,6 +59,8 @@ import org.apache.iotdb.confignode.consensus.request.write.database.SetTimeParti
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeEnrichedPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.AddTableColumnPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.RenameTableColumnPlan;
+import org.apache.iotdb.confignode.consensus.request.write.table.SetTableColumnCommentPlan;
+import org.apache.iotdb.confignode.consensus.request.write.table.SetTableCommentPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.SetTablePropertiesPlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.CreateSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.DropSchemaTemplatePlan;
@@ -105,6 +107,7 @@ import org.apache.iotdb.mpp.rpc.thrift.TUpdateTemplateReq;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
+import org.apache.tsfile.annotations.TableModel;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.utils.Pair;
 import org.slf4j.Logger;
@@ -142,9 +145,9 @@ public class ClusterSchemaManager {
       "Failed in the write API executing the consensus layer due to: ";
 
   public ClusterSchemaManager(
-      IManager configManager,
-      ClusterSchemaInfo clusterSchemaInfo,
-      ClusterSchemaQuotaStatistics schemaQuotaStatistics) {
+      final IManager configManager,
+      final ClusterSchemaInfo clusterSchemaInfo,
+      final ClusterSchemaQuotaStatistics schemaQuotaStatistics) {
     this.configManager = configManager;
     this.clusterSchemaInfo = clusterSchemaInfo;
     this.schemaQuotaStatistics = schemaQuotaStatistics;
@@ -932,7 +935,6 @@ public class ClusterSchemaManager {
   }
 
   public synchronized TSStatus dropSchemaTemplate(String templateName) {
-
     // check template existence
     GetSchemaTemplatePlan getSchemaTemplatePlan = new GetSchemaTemplatePlan(templateName);
     TemplateInfoResp templateInfoResp;
@@ -1344,6 +1346,43 @@ public class ClusterSchemaManager {
     }
   }
 
+  public synchronized TSStatus setTableComment(
+      final String database,
+      final String tableName,
+      final String comment,
+      final boolean isGeneratedByPipe) {
+    final SetTableCommentPlan setTableCommentPlan =
+        new SetTableCommentPlan(database, tableName, comment);
+    try {
+      return getConsensusManager()
+          .write(
+              isGeneratedByPipe ? new PipeEnrichedPlan(setTableCommentPlan) : setTableCommentPlan);
+    } catch (final ConsensusException e) {
+      LOGGER.warn(e.getMessage(), e);
+      return RpcUtils.getStatus(TSStatusCode.INTERNAL_SERVER_ERROR, e.getMessage());
+    }
+  }
+
+  public synchronized TSStatus setTableColumnComment(
+      final String database,
+      final String tableName,
+      final String columnName,
+      final String comment,
+      final boolean isGeneratedByPipe) {
+    final SetTableColumnCommentPlan setTableColumnCommentPlan =
+        new SetTableColumnCommentPlan(database, tableName, columnName, comment);
+    try {
+      return getConsensusManager()
+          .write(
+              isGeneratedByPipe
+                  ? new PipeEnrichedPlan(setTableColumnCommentPlan)
+                  : setTableColumnCommentPlan);
+    } catch (final ConsensusException e) {
+      LOGGER.warn(e.getMessage(), e);
+      return RpcUtils.getStatus(TSStatusCode.INTERNAL_SERVER_ERROR, e.getMessage());
+    }
+  }
+
   public synchronized Pair<TSStatus, TsTable> updateTableProperties(
       final String database,
       final String tableName,
@@ -1382,6 +1421,11 @@ public class ClusterSchemaManager {
         });
 
     return new Pair<>(RpcUtils.SUCCESS_STATUS, updatedTable);
+  }
+
+  @TableModel
+  public long getDatabaseMaxTTL(final String database) {
+    return clusterSchemaInfo.getDatabaseMaxTTL(database);
   }
 
   public void clearSchemaQuotaCache() {

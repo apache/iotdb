@@ -22,20 +22,25 @@ package org.apache.iotdb.db.queryengine.plan.relational.planner.assertions;
 import org.apache.iotdb.db.queryengine.common.SessionInfo;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.DataOrganizationSpecification;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.SortOrder;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.Symbol;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.GroupReference;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationTableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationTreeDeviceViewScanNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AssignUniqueId;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.CollectNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.DeviceTableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.EnforceSingleRowNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ExchangeNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ExplainAnalyzeNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.FilterNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.GroupNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.InformationSchemaTableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.JoinNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.LimitNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.MarkDistinctNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.MergeSortNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.OffsetNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.OutputNode;
@@ -43,6 +48,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ProjectNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.SemiJoinNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.SortNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.StreamSortNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TableFunctionProcessorNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TreeAlignedDeviceViewScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TreeDeviceViewScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TreeNonAlignedDeviceViewScanNode;
@@ -68,6 +74,7 @@ import java.util.function.Predicate;
 import static com.google.common.base.MoreObjects.toStringHelper;
 import static com.google.common.base.Preconditions.checkState;
 import static com.google.common.collect.ImmutableList.toImmutableList;
+import static com.google.common.collect.ImmutableMap.toImmutableMap;
 import static java.util.Collections.nCopies;
 import static java.util.Objects.requireNonNull;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.SortOrder.ASC_NULLS_FIRST;
@@ -212,6 +219,23 @@ public final class PlanMatchPattern {
     return result.addColumnReferences(expectedTableName, columnReferences);
   }
 
+  public static PlanMatchPattern tableFunctionProcessor(
+      Consumer<TableFunctionProcessorMatcher.Builder> handler, PlanMatchPattern... source) {
+    TableFunctionProcessorMatcher.Builder builder = new TableFunctionProcessorMatcher.Builder();
+    handler.accept(builder);
+    return node(TableFunctionProcessorNode.class, source).with(builder.build());
+  }
+
+  public static ExpectedValueProvider<DataOrganizationSpecification> specification(
+      List<String> partitionBy, List<String> orderBy, Map<String, SortOrder> orderings) {
+    return new SpecificationProvider(
+        partitionBy.stream().map(SymbolAlias::new).collect(toImmutableList()),
+        orderBy.stream().map(SymbolAlias::new).collect(toImmutableList()),
+        orderings.entrySet().stream()
+            .collect(
+                toImmutableMap(entry -> new SymbolAlias(entry.getKey()), Map.Entry::getValue)));
+  }
+
   public static PlanMatchPattern strictTableScan(
       String expectedTableName, Map<String, String> columnReferences, List<String> outputs) {
     return tableScan(expectedTableName, columnReferences).withExactOutputs(outputs);
@@ -226,6 +250,10 @@ public final class PlanMatchPattern {
                 withAlias(
                     reference.getKey(), columnReference(expectedTableName, reference.getValue())));
     return this;
+  }
+
+  public static PlanMatchPattern aggregation(PlanMatchPattern source) {
+    return node(AggregationNode.class, source);
   }
 
   public static PlanMatchPattern aggregation(
@@ -393,6 +421,31 @@ public final class PlanMatchPattern {
     return result;
   }
 
+  public static PlanMatchPattern aggregationTableScan() {
+    return node(AggregationTableScanNode.class);
+  }
+
+  public static PlanMatchPattern markDistinct(
+      String markerSymbol, List<String> distinctSymbols, PlanMatchPattern source) {
+    return node(MarkDistinctNode.class, source)
+        .with(
+            new MarkDistinctMatcher(
+                new SymbolAlias(markerSymbol), toSymbolAliases(distinctSymbols), Optional.empty()));
+  }
+
+  public static PlanMatchPattern markDistinct(
+      String markerSymbol,
+      List<String> distinctSymbols,
+      String hashSymbol,
+      PlanMatchPattern source) {
+    return node(MarkDistinctNode.class, source)
+        .with(
+            new MarkDistinctMatcher(
+                new SymbolAlias(markerSymbol),
+                toSymbolAliases(distinctSymbols),
+                Optional.of(new SymbolAlias(hashSymbol))));
+  }
+
   /*
   public static PlanMatchPattern distinctLimit(long limit, List<String> distinctSymbols, PlanMatchPattern source)
   {
@@ -478,8 +531,17 @@ public final class PlanMatchPattern {
         .with(new SemiJoinMatcher(sourceSymbolAlias, filteringSymbolAlias, outputAlias));
   }
 
+  public static PlanMatchPattern assignUniqueId(String uniqueSymbolAlias, PlanMatchPattern source) {
+    return node(AssignUniqueId.class, source)
+        .withAlias(uniqueSymbolAlias, new AssignUniqueIdMatcher());
+  }
+
   public static PlanMatchPattern streamSort(PlanMatchPattern source) {
     return node(StreamSortNode.class, source);
+  }
+
+  public static PlanMatchPattern group(PlanMatchPattern source) {
+    return node(GroupNode.class, source);
   }
 
   public static PlanMatchPattern sort(PlanMatchPattern source) {
@@ -518,6 +580,10 @@ public final class PlanMatchPattern {
     return output(outputs, source).withExactOutputs(outputs);
   }
 
+  public static PlanMatchPattern explainAnalyze(PlanMatchPattern source) {
+    return node(ExplainAnalyzeNode.class, source);
+  }
+
   public static PlanMatchPattern project(PlanMatchPattern source) {
     return node(ProjectNode.class, source);
   }
@@ -544,10 +610,6 @@ public final class PlanMatchPattern {
     return project(assignments, source)
         .withExactAssignedOutputs(assignments.values())
         .withExactAssignments(assignments.values());
-  }
-
-  public static PlanMatchPattern exchange(PlanMatchPattern... sources) {
-    return node(ExchangeNode.class, sources);
   }
 
   public static ExpectedValueProvider<JoinNode.EquiJoinClause> equiJoinClause(

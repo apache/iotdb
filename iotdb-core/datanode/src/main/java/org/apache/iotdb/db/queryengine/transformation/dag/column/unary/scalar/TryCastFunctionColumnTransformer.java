@@ -64,8 +64,10 @@ public class TryCastFunctionColumnTransformer extends AbstractCastFunctionColumn
           break;
         case TEXT:
         case STRING:
+          castString(columnBuilder, childType.getBinary(column, i));
+          break;
         case BLOB:
-          cast(columnBuilder, childType.getBinary(column, i));
+          castBlob(columnBuilder, childType.getBinary(column, i));
           break;
         default:
           throw new UnsupportedOperationException(

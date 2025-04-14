@@ -19,12 +19,15 @@
 
 package org.apache.iotdb.db.utils;
 
+import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.impl.SettleSelectorImpl;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.IMemTable;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModEntry;
 import org.apache.iotdb.db.storageengine.dataregion.modification.TableDeletionEntry;
 import org.apache.iotdb.db.storageengine.dataregion.modification.TreeDeletionEntry;
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.ITimeIndex;
 
+import org.apache.tsfile.file.metadata.AbstractAlignedChunkMetadata;
 import org.apache.tsfile.file.metadata.AlignedChunkMetadata;
 import org.apache.tsfile.file.metadata.IChunkMetadata;
 import org.apache.tsfile.file.metadata.IDeviceID;
@@ -37,6 +40,7 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Objects;
+import java.util.Optional;
 
 public class ModificationUtils {
 
@@ -101,7 +105,7 @@ public class ModificationUtils {
   }
 
   private static void modifyValueColumns(
-      AlignedChunkMetadata metaData, List<List<ModEntry>> valueColumnsModifications) {
+      AbstractAlignedChunkMetadata metaData, List<List<ModEntry>> valueColumnsModifications) {
     List<IChunkMetadata> valueChunkMetadataList = metaData.getValueChunkMetadataList();
     // deal with each sub sensor
     for (int j = 0; j < valueChunkMetadataList.size(); j++) {
@@ -116,7 +120,7 @@ public class ModificationUtils {
   }
 
   private static boolean areAllValueColumnsDeleted(
-      AlignedChunkMetadata alignedChunkMetadata, boolean modified) {
+      AbstractAlignedChunkMetadata alignedChunkMetadata, boolean modified) {
 
     // the whole aligned path need to be removed, only set to be true if all the sub sensors
     // are deleted and ignoreAllNullRows is true
@@ -156,11 +160,11 @@ public class ModificationUtils {
   }
 
   public static void modifyAlignedChunkMetaData(
-      List<AlignedChunkMetadata> chunkMetaData,
+      List<? extends AbstractAlignedChunkMetadata> chunkMetaData,
       List<ModEntry> timeColumnModifications,
       List<List<ModEntry>> valueColumnsModifications,
       boolean ignoreAllNullRows) {
-    for (AlignedChunkMetadata metaData : chunkMetaData) {
+    for (AbstractAlignedChunkMetadata metaData : chunkMetaData) {
       IChunkMetadata timeColumnChunkMetadata = metaData.getTimeChunkMetadata();
 
       for (ModEntry modification : timeColumnModifications) {
@@ -397,5 +401,19 @@ public class ModificationUtils {
       result.add(current);
     }
     return result;
+  }
+
+  public static boolean isDeviceDeletedByMods(
+      Collection<ModEntry> currentModifications, ITimeIndex currentTimeIndex, IDeviceID device)
+      throws IllegalPathException {
+    if (currentTimeIndex == null) {
+      return false;
+    }
+    Optional<Long> startTime = currentTimeIndex.getStartTime(device);
+    Optional<Long> endTime = currentTimeIndex.getEndTime(device);
+    if (startTime.isPresent() && endTime.isPresent()) {
+      return isAllDeletedByMods(currentModifications, device, startTime.get(), endTime.get());
+    }
+    return false;
   }
 }

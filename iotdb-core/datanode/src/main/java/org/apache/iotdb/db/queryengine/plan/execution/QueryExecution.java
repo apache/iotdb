@@ -60,6 +60,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.nio.ByteBuffer;
+import java.time.format.DateTimeParseException;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.CancellationException;
@@ -72,9 +73,8 @@ import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Throwables.throwIfUnchecked;
 import static org.apache.iotdb.db.queryengine.common.DataNodeEndPoints.isSameNode;
 import static org.apache.iotdb.db.queryengine.metric.QueryExecutionMetricSet.WAIT_FOR_RESULT;
-import static org.apache.iotdb.db.queryengine.metric.QueryPlanCostMetricSet.DISTRIBUTION_PLANNER;
-import static org.apache.iotdb.db.queryengine.metric.QueryPlanCostMetricSet.TREE_TYPE;
 import static org.apache.iotdb.db.utils.ErrorHandlingUtils.getRootCause;
+import static org.apache.iotdb.rpc.TSStatusCode.DATE_OUT_OF_RANGE;
 
 /**
  * QueryExecution stores all the status of a query which is being prepared or running inside the MPP
@@ -133,8 +133,6 @@ public class QueryExecution implements IQueryExecution {
             if (!state.isDone()) {
               return;
             }
-            // TODO: (xingtanzjr) If the query is in abnormal state, the releaseResource() should be
-            // invoked
             if (state == QueryState.FAILED
                 || state == QueryState.ABORTED
                 || state == QueryState.CANCELED) {
@@ -185,10 +183,6 @@ public class QueryExecution implements IQueryExecution {
     }
 
     doDistributedPlan();
-
-    // update timeout after finishing plan stage, notice the time unit is ms
-    context.setTimeOut(
-        context.getTimeOut() - (System.currentTimeMillis() - context.getStartTime()));
 
     stateMachine.transitionToPlanned();
     if (context.getQueryType() == QueryType.READ) {
@@ -290,15 +284,7 @@ public class QueryExecution implements IQueryExecution {
 
   // Generate the distributed plan and split it into fragments
   public void doDistributedPlan() {
-    final long startTime = System.nanoTime();
-    this.distributedPlan = planner.doDistributionPlan(analysis, logicalPlan);
-
-    if (analysis.isQuery()) {
-      final long distributionPlanCost = System.nanoTime() - startTime;
-      context.setDistributionPlanCost(distributionPlanCost);
-      QUERY_PLAN_COST_METRIC_SET.recordPlanCost(
-          TREE_TYPE, DISTRIBUTION_PLANNER, distributionPlanCost);
-    }
+    this.distributedPlan = planner.doDistributionPlan(analysis, logicalPlan, context);
 
     // if is this Statement is ShowQueryStatement, set its instances to the highest priority, so
     // that the sub-tasks of the ShowQueries instances could be executed first.
@@ -306,7 +292,7 @@ public class QueryExecution implements IQueryExecution {
       distributedPlan.getInstances().forEach(instance -> instance.setHighestPriority(true));
     }
 
-    if (isQuery() && LOGGER.isDebugEnabled()) {
+    if (LOGGER.isDebugEnabled() && isQuery()) {
       LOGGER.debug(
           "distribution plan done. Fragment instance count is {}, details is: \n {}",
           distributedPlan.getInstances().size(),
@@ -485,6 +471,9 @@ public class QueryExecution implements IQueryExecution {
         throw (IoTDBRuntimeException) rootCause;
       } else if (rootCause instanceof IoTDBException) {
         throw (IoTDBException) rootCause;
+      } else if (rootCause instanceof DateTimeParseException) {
+        throw new IoTDBRuntimeException(
+            rootCause.getMessage(), DATE_OUT_OF_RANGE.getStatusCode(), true);
       }
       throw new IoTDBException(rootCause, TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
     } else {
@@ -693,6 +682,11 @@ public class QueryExecution implements IQueryExecution {
   @Override
   public IClientSession.SqlDialect getSQLDialect() {
     return context.getSession().getSqlDialect();
+  }
+
+  @Override
+  public String getUser() {
+    return context.getSession().getUserName();
   }
 
   public MPPQueryContext getContext() {

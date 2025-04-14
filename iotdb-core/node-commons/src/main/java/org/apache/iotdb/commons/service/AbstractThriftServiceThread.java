@@ -113,7 +113,6 @@ public abstract class AbstractThriftServiceThread extends Thread {
       String bindAddress,
       int port,
       int selectorThreads,
-      int minWorkerThreads,
       int maxWorkerThreads,
       int timeoutSecond,
       TServerEventHandler serverEventHandler,
@@ -134,7 +133,6 @@ public abstract class AbstractThriftServiceThread extends Thread {
                   processor,
                   threadsName,
                   selectorThreads,
-                  minWorkerThreads,
                   maxWorkerThreads,
                   timeoutSecond,
                   maxReadBufferBytes);
@@ -143,12 +141,7 @@ public abstract class AbstractThriftServiceThread extends Thread {
         case HSHA:
           THsHaServer.Args poolArgs1 =
               initAsyncedHshaPoolArgs(
-                  processor,
-                  threadsName,
-                  minWorkerThreads,
-                  maxWorkerThreads,
-                  timeoutSecond,
-                  maxReadBufferBytes);
+                  processor, threadsName, maxWorkerThreads, timeoutSecond, maxReadBufferBytes);
           poolServer = new THsHaServer(poolArgs1);
           break;
         default:
@@ -228,10 +221,7 @@ public abstract class AbstractThriftServiceThread extends Thread {
   private TThreadPoolServer.Args initSyncedPoolArgs(
       TProcessor processor, String threadsName, int maxWorkerThreads, int timeoutSecond) {
     TThreadPoolServer.Args poolArgs = new TThreadPoolServer.Args(serverTransport);
-    poolArgs
-        .maxWorkerThreads(maxWorkerThreads)
-        .minWorkerThreads(Runtime.getRuntime().availableProcessors())
-        .stopTimeoutVal(timeoutSecond);
+    poolArgs.maxWorkerThreads(maxWorkerThreads).minWorkerThreads(0).stopTimeoutVal(timeoutSecond);
     executorService = IoTDBThreadPoolFactory.createThriftRpcClientThreadPool(poolArgs, threadsName);
     poolArgs.executorService = executorService;
     poolArgs.processor(processor);
@@ -244,7 +234,6 @@ public abstract class AbstractThriftServiceThread extends Thread {
       TBaseAsyncProcessor<?> processor,
       String threadsName,
       int selectorThreads,
-      int minWorkerThreads,
       int maxWorkerThreads,
       int timeoutSecond,
       int maxReadBufferBytes) {
@@ -254,7 +243,7 @@ public abstract class AbstractThriftServiceThread extends Thread {
     poolArgs.selectorThreads(selectorThreads);
     executorService =
         IoTDBThreadPoolFactory.createThriftRpcClientThreadPool(
-            minWorkerThreads, maxWorkerThreads, timeoutSecond, TimeUnit.SECONDS, threadsName);
+            0, maxWorkerThreads, timeoutSecond, TimeUnit.SECONDS, threadsName);
     poolArgs.executorService(executorService);
     poolArgs.processor(processor);
     poolArgs.protocolFactory(protocolFactory);
@@ -265,7 +254,6 @@ public abstract class AbstractThriftServiceThread extends Thread {
   private THsHaServer.Args initAsyncedHshaPoolArgs(
       TBaseAsyncProcessor<?> processor,
       String threadsName,
-      int minWorkerThreads,
       int maxWorkerThreads,
       int timeoutSecond,
       int maxReadBufferBytes) {
@@ -273,7 +261,7 @@ public abstract class AbstractThriftServiceThread extends Thread {
     poolArgs.maxReadBufferBytes = maxReadBufferBytes;
     executorService =
         IoTDBThreadPoolFactory.createThriftRpcClientThreadPool(
-            minWorkerThreads, maxWorkerThreads, timeoutSecond, TimeUnit.SECONDS, threadsName);
+            0, maxWorkerThreads, timeoutSecond, TimeUnit.SECONDS, threadsName);
     poolArgs.executorService(executorService);
     poolArgs.processor(processor);
     poolArgs.protocolFactory(protocolFactory);

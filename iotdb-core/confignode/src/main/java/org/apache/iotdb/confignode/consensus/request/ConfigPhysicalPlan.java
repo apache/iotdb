@@ -27,7 +27,8 @@ import org.apache.iotdb.confignode.consensus.request.read.subscription.ShowTopic
 import org.apache.iotdb.confignode.consensus.request.write.ainode.RegisterAINodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.ainode.RemoveAINodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.ainode.UpdateAINodePlan;
-import org.apache.iotdb.confignode.consensus.request.write.auth.AuthorPlan;
+import org.apache.iotdb.confignode.consensus.request.write.auth.AuthorRelationalPlan;
+import org.apache.iotdb.confignode.consensus.request.write.auth.AuthorTreePlan;
 import org.apache.iotdb.confignode.consensus.request.write.confignode.ApplyConfigNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.confignode.RemoveConfigNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.confignode.UpdateClusterIdPlan;
@@ -56,6 +57,7 @@ import org.apache.iotdb.confignode.consensus.request.write.model.DropModelInNode
 import org.apache.iotdb.confignode.consensus.request.write.model.DropModelPlan;
 import org.apache.iotdb.confignode.consensus.request.write.model.UpdateModelInfoPlan;
 import org.apache.iotdb.confignode.consensus.request.write.partition.AddRegionLocationPlan;
+import org.apache.iotdb.confignode.consensus.request.write.partition.AutoCleanPartitionTablePlan;
 import org.apache.iotdb.confignode.consensus.request.write.partition.CreateDataPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.write.partition.CreateSchemaPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.write.partition.RemoveRegionLocationPlan;
@@ -107,6 +109,8 @@ import org.apache.iotdb.confignode.consensus.request.write.table.PreDeleteColumn
 import org.apache.iotdb.confignode.consensus.request.write.table.PreDeleteTablePlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.RenameTableColumnPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.RollbackCreateTablePlan;
+import org.apache.iotdb.confignode.consensus.request.write.table.SetTableColumnCommentPlan;
+import org.apache.iotdb.confignode.consensus.request.write.table.SetTableCommentPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.SetTablePropertiesPlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.CommitSetSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.CreateSchemaTemplatePlan;
@@ -246,6 +250,9 @@ public abstract class ConfigPhysicalPlan implements IConsensusRequest {
         case CreateDataPartition:
           plan = new CreateDataPartitionPlan();
           break;
+        case AutoCleanPartitionTable:
+          plan = new AutoCleanPartitionTablePlan();
+          break;
         case DeleteProcedure:
           plan = new DeleteProcedurePlan();
           break;
@@ -281,7 +288,36 @@ public abstract class ConfigPhysicalPlan implements IConsensusRequest {
         case RevokeRoleFromUser:
         case UpdateUser:
         case CreateUserWithRawPassword:
-          plan = new AuthorPlan(configPhysicalPlanType);
+          plan = new AuthorTreePlan(configPhysicalPlanType);
+          break;
+        case RCreateUser:
+        case RCreateRole:
+        case RUpdateUser:
+        case RDropRole:
+        case RDropUser:
+        case RGrantUserRole:
+        case RRevokeUserRole:
+        case RGrantRoleAny:
+        case RGrantUserAny:
+        case RGrantUserAll:
+        case RGrantRoleAll:
+        case RGrantUserDBPriv:
+        case RGrantUserTBPriv:
+        case RGrantRoleDBPriv:
+        case RGrantRoleTBPriv:
+        case RRevokeRoleAny:
+        case RRevokeUserAny:
+        case RRevokeUserAll:
+        case RRevokeRoleAll:
+        case RRevokeUserDBPriv:
+        case RRevokeUserTBPriv:
+        case RRevokeRoleDBPriv:
+        case RRevokeRoleTBPriv:
+        case RGrantUserSysPri:
+        case RGrantRoleSysPri:
+        case RRevokeUserSysPri:
+        case RRevokeRoleSysPri:
+          plan = new AuthorRelationalPlan(configPhysicalPlanType);
           break;
         case ApplyConfigNode:
           plan = new ApplyConfigNodePlan();
@@ -372,6 +408,12 @@ public abstract class ConfigPhysicalPlan implements IConsensusRequest {
           break;
         case CommitDeleteColumn:
           plan = new CommitDeleteColumnPlan();
+          break;
+        case SetTableComment:
+          plan = new SetTableCommentPlan();
+          break;
+        case SetTableColumnComment:
+          plan = new SetTableColumnCommentPlan();
           break;
         case CreatePipeSinkV1:
           plan = new CreatePipeSinkPlanV1();

@@ -89,7 +89,7 @@ public class GroupedVarianceAccumulator implements GroupedAccumulator {
       case TIMESTAMP:
       default:
         throw new UnSupportedDataTypeException(
-            String.format("Unsupported data type in aggregation variance : %s", seriesDataType));
+            String.format("Unsupported data type in VARIANCE Aggregation: %s", seriesDataType));
     }
   }
 
@@ -313,7 +313,7 @@ public class GroupedVarianceAccumulator implements GroupedAccumulator {
           continue;
         }
 
-        double value = column.getDouble(i);
+        double value = column.getDouble(position);
         counts.increment(groupIds[position]);
         double delta = value - means.get(groupIds[position]);
         means.add(groupIds[position], delta / counts.get(groupIds[position]));

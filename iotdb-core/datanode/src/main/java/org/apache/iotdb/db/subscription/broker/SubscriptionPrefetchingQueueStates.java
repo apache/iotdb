@@ -19,14 +19,18 @@
 
 package org.apache.iotdb.db.subscription.broker;
 
+import org.apache.iotdb.commons.subscription.config.SubscriptionConfig;
 import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
 import org.apache.iotdb.db.subscription.agent.SubscriptionAgent;
 import org.apache.iotdb.metrics.core.utils.IoTDBMovingAverage;
 
 import com.codahale.metrics.Clock;
+import com.codahale.metrics.Counter;
 import com.codahale.metrics.Meter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import static com.google.common.base.MoreObjects.toStringHelper;
 
 /**
  * The {@link SubscriptionPrefetchingQueueStates} manages the state of a {@link
@@ -40,16 +44,21 @@ public class SubscriptionPrefetchingQueueStates {
 
   private static final double EPSILON = 1e-6;
 
-  // TODO: config
-  private static final double PREFETCH_MEMORY_THRESHOLD = 0.6;
-  private static final double MISSING_RATE_THRESHOLD = 0.9;
-  private static final int PREFETCHED_EVENT_COUNT_CONTROL_PARAMETER = 100;
+  private static final double PREFETCH_MEMORY_THRESHOLD =
+      SubscriptionConfig.getInstance().getSubscriptionPrefetchMemoryThreshold();
+  private static final double PREFETCH_MISSING_RATE_THRESHOLD =
+      SubscriptionConfig.getInstance().getSubscriptionPrefetchMissingRateThreshold();
+  private static final int PREFETCH_EVENT_LOCAL_COUNT_THRESHOLD =
+      SubscriptionConfig.getInstance().getSubscriptionPrefetchEventLocalCountThreshold();
+  private static final int PREFETCH_EVENT_GLOBAL_COUNT_THRESHOLD =
+      SubscriptionConfig.getInstance().getSubscriptionPrefetchEventGlobalCountThreshold();
 
   private final SubscriptionPrefetchingQueue prefetchingQueue;
 
   private volatile long lastPollRequestTimestamp;
   private final Meter pollRequestMeter;
   private final Meter missingPrefechMeter;
+  private final Counter disorderCauseCounter; // TODO: use meter
 
   public SubscriptionPrefetchingQueueStates(final SubscriptionPrefetchingQueue prefetchingQueue) {
     this.prefetchingQueue = prefetchingQueue;
@@ -57,6 +66,7 @@ public class SubscriptionPrefetchingQueueStates {
     this.lastPollRequestTimestamp = -1;
     this.pollRequestMeter = new Meter(new IoTDBMovingAverage(), Clock.defaultClock());
     this.missingPrefechMeter = new Meter(new IoTDBMovingAverage(), Clock.defaultClock());
+    this.disorderCauseCounter = new Counter();
   }
 
   public void markPollRequest() {
@@ -68,28 +78,8 @@ public class SubscriptionPrefetchingQueueStates {
     missingPrefechMeter.mark();
   }
 
-  public boolean shouldPrefetch() {
-    if (!isMemoryEnough()) {
-      return false;
-    }
-
-    if (missingRate() > MISSING_RATE_THRESHOLD) {
-      return true;
-    }
-
-    if (hasTooManyPrefetchedEvents()) {
-      return false;
-    }
-
-    // the delta between the prefetch timestamp and the timestamp of the last poll request > poll
-    // request frequency
-    return (System.currentTimeMillis() - lastPollRequestTimestamp) * pollRate() > 1000;
-  }
-
-  private boolean isMemoryEnough() {
-    return PipeDataNodeResourceManager.memory().getTotalMemorySizeInBytes()
-            * PREFETCH_MEMORY_THRESHOLD
-        > PipeDataNodeResourceManager.memory().getUsedMemorySizeInBytes();
+  public void markDisorderCause() {
+    disorderCauseCounter.inc();
   }
 
   private double pollRate() {
@@ -103,12 +93,69 @@ public class SubscriptionPrefetchingQueueStates {
     return missingPrefechMeter.getOneMinuteRate() / pollRate();
   }
 
-  private boolean hasTooManyPrefetchedEvents() {
+  public boolean shouldPrefetch() {
+    // 1. reject conditions
+    // 1.1. option
+    if (!SubscriptionConfig.getInstance().getSubscriptionPrefetchEnabled()) {
+      return false;
+    }
+
+    // 1.2. memory usage
+    if (!isMemoryEnough()) {
+      return false;
+    }
+
+    // 1.3. local event count
+    if (hasTooManyPrefetchedLocalEvent()) {
+      return false;
+    }
+
+    // 1.4. global event count
+    if (hasTooManyPrefetchedGlobalEvent()) {
+      return false;
+    }
+
+    // 1.5. disorder history
+    if (hasDisorderCause()) {
+      return false;
+    }
+
+    // 2. permissive conditions
+    // 2.1. missing rate
+    if (isMissingRateTooHigh()) {
+      return true;
+    }
+
+    // 2.2. prefetch statistics
+    // the delta between the prefetch timestamp and the timestamp of the last poll request > poll
+    // request frequency
+    return (System.currentTimeMillis() - lastPollRequestTimestamp) * pollRate() > 1000;
+  }
+
+  private boolean isMemoryEnough() {
+    return PipeDataNodeResourceManager.memory().getTotalNonFloatingMemorySizeInBytes()
+            * PREFETCH_MEMORY_THRESHOLD
+        > PipeDataNodeResourceManager.memory().getUsedMemorySizeInBytes();
+  }
+
+  private boolean hasTooManyPrefetchedLocalEvent() {
+    return prefetchingQueue.getPrefetchedEventCount() > PREFETCH_EVENT_LOCAL_COUNT_THRESHOLD;
+  }
+
+  private boolean hasTooManyPrefetchedGlobalEvent() {
     // The number of prefetched events in the current prefetching queue > floor(t / number of
     // prefetching queues), where t is an adjustable parameter.
     return prefetchingQueue.getPrefetchedEventCount()
             * SubscriptionAgent.broker().getPrefetchingQueueCount()
-        > PREFETCHED_EVENT_COUNT_CONTROL_PARAMETER;
+        > PREFETCH_EVENT_GLOBAL_COUNT_THRESHOLD;
+  }
+
+  private boolean isMissingRateTooHigh() {
+    return missingRate() > PREFETCH_MISSING_RATE_THRESHOLD;
+  }
+
+  private boolean hasDisorderCause() {
+    return disorderCauseCounter.getCount() > 0;
   }
 
   private static boolean isApproximatelyZero(final double value) {
@@ -117,12 +164,11 @@ public class SubscriptionPrefetchingQueueStates {
 
   @Override
   public String toString() {
-    return "PollPrefetchStates{lastPollRequestTimestamp="
-        + lastPollRequestTimestamp
-        + ", pollRate="
-        + pollRate()
-        + ", missingRate="
-        + missingRate()
-        + "}";
+    return toStringHelper(this)
+        .add("lastPollRequestTimestamp", lastPollRequestTimestamp)
+        .add("pollRate", pollRate())
+        .add("missingRate", missingRate())
+        .add("disorderCause", disorderCauseCounter.getCount())
+        .toString();
   }
 }

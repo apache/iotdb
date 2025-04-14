@@ -27,6 +27,7 @@ import org.apache.iotdb.commons.partition.SchemaPartition;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.udf.builtin.relational.TableBuiltinAggregationFunction;
 import org.apache.iotdb.commons.udf.builtin.relational.TableBuiltinScalarFunction;
+import org.apache.iotdb.commons.udf.builtin.relational.TableBuiltinTableFunction;
 import org.apache.iotdb.commons.udf.utils.TableUDFUtils;
 import org.apache.iotdb.commons.udf.utils.UDFDataTypeTransformer;
 import org.apache.iotdb.db.exception.load.LoadAnalyzeTableColumnDisorderException;
@@ -58,6 +59,7 @@ import org.apache.iotdb.udf.api.customizer.analysis.ScalarFunctionAnalysis;
 import org.apache.iotdb.udf.api.customizer.parameter.FunctionArguments;
 import org.apache.iotdb.udf.api.relational.AggregateFunction;
 import org.apache.iotdb.udf.api.relational.ScalarFunction;
+import org.apache.iotdb.udf.api.relational.TableFunction;
 
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.read.common.type.BlobType;
@@ -538,9 +540,18 @@ public class TableMetadataImpl implements Metadata {
         throw new SemanticException(
             "Scalar function "
                 + functionName.toLowerCase(Locale.ENGLISH)
-                + " must have at least two arguments, and first argument must be char type.");
+                + " must have at least two arguments, and first argument pattern must be TEXT or STRING type.");
       }
       return STRING;
+    } else if (TableBuiltinScalarFunction.GREATEST.getFunctionName().equalsIgnoreCase(functionName)
+        || TableBuiltinScalarFunction.LEAST.getFunctionName().equalsIgnoreCase(functionName)) {
+      if (argumentTypes.size() < 2 || !areAllTypesSameAndComparable(argumentTypes)) {
+        throw new SemanticException(
+            "Scalar function "
+                + functionName.toLowerCase(Locale.ENGLISH)
+                + " must have at least two arguments, and all type must be the same.");
+      }
+      return argumentTypes.get(0);
     }
 
     // builtin aggregation function
@@ -628,6 +639,7 @@ public class TableMetadataImpl implements Metadata {
     // get return type
     switch (functionName.toLowerCase(Locale.ENGLISH)) {
       case SqlConstant.COUNT:
+      case SqlConstant.COUNT_ALL:
       case SqlConstant.COUNT_IF:
         return INT64;
       case SqlConstant.FIRST_AGGREGATION:
@@ -789,6 +801,17 @@ public class TableMetadataImpl implements Metadata {
         Collections.singletonMap(database, sgNameToQueryParamsMap));
   }
 
+  @Override
+  public TableFunction getTableFunction(String functionName) {
+    if (TableBuiltinTableFunction.isBuiltInTableFunction(functionName)) {
+      return TableBuiltinTableFunction.getBuiltinTableFunction(functionName);
+    } else if (TableUDFUtils.isTableFunction(functionName)) {
+      return TableUDFUtils.getTableFunction(functionName);
+    } else {
+      throw new SemanticException("Unknown function: " + functionName);
+    }
+  }
+
   public static boolean isTwoNumericType(List<? extends Type> argumentTypes) {
     return argumentTypes.size() == 2
         && isNumericType(argumentTypes.get(0))
@@ -881,6 +904,17 @@ public class TableMetadataImpl implements Metadata {
         || (isCharType(left) && isCharType(right))
         || (isUnknownType(left) && (isNumericType(right) || isCharType(right)))
         || ((isNumericType(left) || isCharType(left)) && isUnknownType(right));
+  }
+
+  public static boolean areAllTypesSameAndComparable(List<? extends Type> argumentTypes) {
+    if (argumentTypes == null || argumentTypes.isEmpty()) {
+      return true;
+    }
+    Type firstType = argumentTypes.get(0);
+    if (!firstType.isComparable()) {
+      return false;
+    }
+    return argumentTypes.stream().allMatch(type -> type.equals(firstType));
   }
 
   public static boolean isArithmeticType(Type type) {

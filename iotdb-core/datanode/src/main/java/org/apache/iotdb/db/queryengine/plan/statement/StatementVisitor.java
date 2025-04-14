@@ -55,6 +55,8 @@ import org.apache.iotdb.db.queryengine.plan.statement.metadata.DropTriggerStatem
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.GetRegionIdStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.GetSeriesSlotListStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.GetTimeSlotListStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.RemoveConfigNodeStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.RemoveDataNodeStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.SetTTLStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowChildNodesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowChildPathsStatement;
@@ -74,6 +76,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowTriggersState
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowVariablesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.UnSetTTLStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.model.CreateModelStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.model.CreateTrainingStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.model.DropModelStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.model.ShowAINodesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.model.ShowModelsStatement;
@@ -121,7 +124,10 @@ import org.apache.iotdb.db.queryengine.plan.statement.sys.KillQueryStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.LoadConfigurationStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.MergeStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.SetConfigurationStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.sys.SetSqlDialectStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.SetSystemStatusStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowCurrentSqlDialectStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowCurrentUserStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowQueriesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowVersionStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.StartRepairDataStatement;
@@ -593,6 +599,14 @@ public abstract class StatementVisitor<R, C> {
     return visitStatement(removeRegionStatement, context);
   }
 
+  public R visitRemoveDataNode(RemoveDataNodeStatement removeDataNodeStatement, C context) {
+    return visitStatement(removeDataNodeStatement, context);
+  }
+
+  public R visitRemoveConfigNode(RemoveConfigNodeStatement removeConfigNodeStatement, C context) {
+    return visitStatement(removeConfigNodeStatement, context);
+  }
+
   public R visitDeactivateTemplate(
       DeactivateTemplateStatement deactivateTemplateStatement, C context) {
     return visitStatement(deactivateTemplateStatement, context);
@@ -653,5 +667,22 @@ public abstract class StatementVisitor<R, C> {
   public R visitShowCurrentTimestamp(
       ShowCurrentTimestampStatement showCurrentTimestampStatement, C context) {
     return visitStatement(showCurrentTimestampStatement, context);
+  }
+
+  public R visitSetSqlDialect(SetSqlDialectStatement setSqlDialectStatement, C context) {
+    return visitStatement(setSqlDialectStatement, context);
+  }
+
+  public R visitShowCurrentSqlDialect(
+      ShowCurrentSqlDialectStatement showCurrentSqlDialectStatement, C context) {
+    return visitStatement(showCurrentSqlDialectStatement, context);
+  }
+
+  public R visitShowCurrentUser(ShowCurrentUserStatement showCurrentUserStatement, C context) {
+    return visitStatement(showCurrentUserStatement, context);
+  }
+
+  public R visitCreateTraining(CreateTrainingStatement createTrainingStatement, C context) {
+    return visitStatement(createTrainingStatement, context);
   }
 }

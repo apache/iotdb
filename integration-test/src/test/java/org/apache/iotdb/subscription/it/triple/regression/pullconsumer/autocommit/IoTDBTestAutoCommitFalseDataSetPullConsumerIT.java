@@ -24,7 +24,7 @@ import org.apache.iotdb.itbase.category.MultiClusterIT2SubscriptionRegressionCon
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.session.Session;
-import org.apache.iotdb.session.subscription.consumer.SubscriptionPullConsumer;
+import org.apache.iotdb.session.subscription.consumer.tree.SubscriptionTreePullConsumer;
 import org.apache.iotdb.session.subscription.payload.SubscriptionMessage;
 import org.apache.iotdb.subscription.it.triple.regression.AbstractSubscriptionRegressionIT;
 
@@ -65,7 +65,7 @@ public class IoTDBTestAutoCommitFalseDataSetPullConsumerIT
   private static final String device = database + ".d_0";
   private static final String topicName = "Topic_auto_commit_false";
   private String pattern = device + ".**";
-  private static SubscriptionPullConsumer consumer;
+  private static SubscriptionTreePullConsumer consumer;
   private static List<IMeasurementSchema> schemaList = new ArrayList<>();
 
   @Override
@@ -119,7 +119,7 @@ public class IoTDBTestAutoCommitFalseDataSetPullConsumerIT
     session_src.insertTablet(tablet);
   }
 
-  private void consume_data_noCommit(SubscriptionPullConsumer consumer, Session session)
+  private void consume_data_noCommit(SubscriptionTreePullConsumer consumer, Session session)
       throws InterruptedException,
           TException,
           IOException,

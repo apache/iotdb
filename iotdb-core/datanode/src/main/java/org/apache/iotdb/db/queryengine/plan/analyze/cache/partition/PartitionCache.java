@@ -29,7 +29,10 @@ import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.exception.ClientManagerException;
 import org.apache.iotdb.commons.consensus.ConfigRegionId;
 import org.apache.iotdb.commons.exception.IoTDBException;
+import org.apache.iotdb.commons.exception.IoTDBRuntimeException;
 import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.commons.memory.IMemoryBlock;
+import org.apache.iotdb.commons.memory.MemoryBlockType;
 import org.apache.iotdb.commons.partition.DataPartition;
 import org.apache.iotdb.commons.partition.DataPartitionQueryParam;
 import org.apache.iotdb.commons.partition.DataPartitionTable;
@@ -46,6 +49,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchemaResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetDatabaseReq;
 import org.apache.iotdb.confignode.rpc.thrift.TRegionRouteMapResp;
 import org.apache.iotdb.db.auth.AuthorityChecker;
+import org.apache.iotdb.db.conf.DataNodeMemoryConfig;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.sql.StatementAnalyzeException;
@@ -79,6 +83,8 @@ public class PartitionCache {
 
   private static final Logger logger = LoggerFactory.getLogger(PartitionCache.class);
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
+  private static final DataNodeMemoryConfig memoryConfig =
+      IoTDBDescriptor.getInstance().getMemoryConfig();
   private static final List<String> ROOT_PATH = Arrays.asList("root", "**");
 
   /** calculate slotId by device */
@@ -113,8 +119,15 @@ public class PartitionCache {
       ConfigNodeClientManager.getInstance();
 
   private final CacheMetrics cacheMetrics;
+  private final IMemoryBlock memoryBlock;
 
   public PartitionCache() {
+    this.memoryBlock =
+        memoryConfig
+            .getPartitionCacheMemoryManager()
+            .exactAllocate("PartitionCache", MemoryBlockType.STATIC);
+    this.memoryBlock.allocate(this.memoryBlock.getTotalMemorySizeInBytes());
+    // TODO @spricoder: PartitionCache need to be controlled according to memory
     this.schemaPartitionCache =
         Caffeine.newBuilder().maximumSize(config.getPartitionCacheSize()).build();
     this.dataPartitionCache =
@@ -197,8 +210,8 @@ public class PartitionCache {
    * @return {@code true} if this database exists
    */
   private boolean containsDatabase(final String database) {
+    databaseCacheLock.readLock().lock();
     try {
-      databaseCacheLock.readLock().lock();
       return databaseCache.contains(database);
     } finally {
       databaseCacheLock.readLock().unlock();
@@ -297,7 +310,7 @@ public class PartitionCache {
               final TSStatus status =
                   AuthorityChecker.getTSStatus(
                       AuthorityChecker.checkSystemPermission(
-                          userName, PrivilegeType.MANAGE_DATABASE.ordinal()),
+                          userName, PrivilegeType.MANAGE_DATABASE),
                       PrivilegeType.MANAGE_DATABASE);
               if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
                 throw new RuntimeException(
@@ -326,7 +339,7 @@ public class PartitionCache {
                 "[{} Cache] failed to create database {}",
                 CacheMetrics.DATABASE_CACHE_NAME,
                 databaseName);
-            throw new RuntimeException(new IoTDBException(tsStatus.message, tsStatus.code));
+            throw new IoTDBRuntimeException(tsStatus.message, tsStatus.code);
           }
         }
         // Try to update database cache when all databases have already been created
@@ -355,11 +368,10 @@ public class PartitionCache {
         if (!AuthorityChecker.SUPER_USER.equals(userName)) {
           final TSStatus status =
               AuthorityChecker.getTSStatus(
-                  AuthorityChecker.checkSystemPermission(
-                      userName, PrivilegeType.MANAGE_DATABASE.ordinal()),
+                  AuthorityChecker.checkSystemPermission(userName, PrivilegeType.MANAGE_DATABASE),
                   PrivilegeType.MANAGE_DATABASE);
           if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-            throw new RuntimeException(new IoTDBException(status.getMessage(), status.getCode()));
+            throw new IoTDBRuntimeException(status.getMessage(), status.getCode());
           }
         }
       } finally {
@@ -376,7 +388,7 @@ public class PartitionCache {
       } else {
         logger.warn(
             "[{} Cache] failed to create database {}", CacheMetrics.DATABASE_CACHE_NAME, database);
-        throw new RuntimeException(new IoTDBException(tsStatus.message, tsStatus.code));
+        throw new IoTDBRuntimeException(tsStatus.message, tsStatus.code);
       }
     } finally {
       databaseCacheLock.writeLock().unlock();
@@ -395,8 +407,8 @@ public class PartitionCache {
       final DatabaseCacheResult<?, ?> result,
       final List<IDeviceID> deviceIDs,
       final boolean failFast) {
+    databaseCacheLock.readLock().lock();
     try {
-      databaseCacheLock.readLock().lock();
       // reset result before try
       result.reset();
       boolean status = true;
@@ -550,6 +562,11 @@ public class PartitionCache {
             TRegionRouteMapResp resp = client.getLatestRegionRouteMap();
             if (TSStatusCode.SUCCESS_STATUS.getStatusCode() == resp.getStatus().getCode()) {
               updateGroupIdToReplicaSetMap(resp.getTimestamp(), resp.getRegionRouteMap());
+            } else {
+              logger.warn(
+                  "Unexpected error when getRegionReplicaSet: status {}， regionMap: {}",
+                  resp.getStatus(),
+                  resp.getRegionRouteMap());
             }
             // if configNode don't have then will throw RuntimeException
             if (!groupIdToReplicaSetMap.containsKey(consensusGroupId)) {

@@ -52,6 +52,8 @@ import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.exception.quota.ExceedQuotaException;
 import org.apache.iotdb.db.pipe.consensus.deletion.DeletionResource;
 import org.apache.iotdb.db.pipe.consensus.deletion.DeletionResource.Status;
+import org.apache.iotdb.db.pipe.consensus.deletion.DeletionResourceManager;
+import org.apache.iotdb.db.pipe.consensus.deletion.persist.PageCacheDeletionBuffer;
 import org.apache.iotdb.db.pipe.extractor.dataregion.realtime.listener.PipeInsertionDataNodeListener;
 import org.apache.iotdb.db.queryengine.common.DeviceContext;
 import org.apache.iotdb.db.queryengine.execution.fragment.QueryContext;
@@ -117,12 +119,16 @@ import org.apache.iotdb.db.storageengine.dataregion.utils.fileTimeIndexCache.Fil
 import org.apache.iotdb.db.storageengine.dataregion.utils.validate.TsFileValidator;
 import org.apache.iotdb.db.storageengine.dataregion.wal.WALManager;
 import org.apache.iotdb.db.storageengine.dataregion.wal.node.IWALNode;
+import org.apache.iotdb.db.storageengine.dataregion.wal.node.WALNode;
 import org.apache.iotdb.db.storageengine.dataregion.wal.recover.WALRecoverManager;
 import org.apache.iotdb.db.storageengine.dataregion.wal.recover.file.SealedTsFileRecoverPerformer;
 import org.apache.iotdb.db.storageengine.dataregion.wal.recover.file.UnsealedTsFileRecoverPerformer;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALMode;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.listener.WALFlushListener;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.listener.WALRecoverListener;
+import org.apache.iotdb.db.storageengine.load.disk.ILoadDiskSelector;
+import org.apache.iotdb.db.storageengine.load.disk.InheritSystemMultiDisksStrategySelector;
+import org.apache.iotdb.db.storageengine.load.disk.MinIOSelector;
 import org.apache.iotdb.db.storageengine.load.limiter.LoadTsFileRateLimiter;
 import org.apache.iotdb.db.storageengine.rescon.disk.TierManager;
 import org.apache.iotdb.db.storageengine.rescon.memory.SystemInfo;
@@ -324,6 +330,9 @@ public class DataRegion implements IDataRegionForQuery {
 
   private final DataRegionMetrics metrics;
 
+  private ILoadDiskSelector ordinaryLoadDiskSelector;
+  private ILoadDiskSelector pipeAndIoTV2LoadDiskSelector;
+
   /**
    * Construct a database processor.
    *
@@ -387,6 +396,8 @@ public class DataRegion implements IDataRegionForQuery {
       recover();
     }
 
+    initDiskSelector();
+
     this.metrics = new DataRegionMetrics(this);
     MetricService.getInstance().addMetricSet(metrics);
   }
@@ -400,6 +411,32 @@ public class DataRegion implements IDataRegionForQuery {
     partitionMaxFileVersions.put(0L, 0L);
     upgradeModFileThreadPool = null;
     this.metrics = new DataRegionMetrics(this);
+
+    initDiskSelector();
+  }
+
+  private void initDiskSelector() {
+    switch (ILoadDiskSelector.LoadDiskSelectorType.fromValue(config.getLoadDiskSelectStrategy())) {
+      case INHERIT_SYSTEM_MULTI_DISKS_SELECT_STRATEGY:
+        ordinaryLoadDiskSelector = new InheritSystemMultiDisksStrategySelector();
+        break;
+      case MIN_IO_FIRST:
+      default:
+        ordinaryLoadDiskSelector = new MinIOSelector();
+    }
+
+    switch (ILoadDiskSelector.LoadDiskSelectorType.fromValue(
+        config.getLoadDiskSelectStrategyForIoTV2AndPipe())) {
+      case MIN_IO_FIRST:
+        pipeAndIoTV2LoadDiskSelector = new MinIOSelector();
+        break;
+      case INHERIT_SYSTEM_MULTI_DISKS_SELECT_STRATEGY:
+        pipeAndIoTV2LoadDiskSelector = new InheritSystemMultiDisksStrategySelector();
+        break;
+      case INHERIT_LOAD:
+      default:
+        pipeAndIoTV2LoadDiskSelector = ordinaryLoadDiskSelector;
+    }
   }
 
   @Override
@@ -501,7 +538,12 @@ public class DataRegion implements IDataRegionForQuery {
                     resource.getTsFile().length(),
                     true,
                     resource.getTsFile().getName());
-            resource.upgradeModFile(upgradeModFileThreadPool);
+            if (ModificationFile.getExclusiveMods(resource.getTsFile()).exists()) {
+              // update mods file metrics
+              resource.getExclusiveModFile();
+            } else {
+              resource.upgradeModFile(upgradeModFileThreadPool);
+            }
           }
         }
         while (!value.isEmpty()) {
@@ -530,7 +572,12 @@ public class DataRegion implements IDataRegionForQuery {
                     false,
                     resource.getTsFile().getName());
           }
-          resource.upgradeModFile(upgradeModFileThreadPool);
+          if (ModificationFile.getExclusiveMods(resource.getTsFile()).exists()) {
+            // update mods file metrics
+            resource.getExclusiveModFile();
+          } else {
+            resource.upgradeModFile(upgradeModFileThreadPool);
+          }
         }
         while (!value.isEmpty()) {
           TsFileResource tsFileResource = value.get(value.size() - 1);
@@ -649,6 +696,14 @@ public class DataRegion implements IDataRegionForQuery {
     }
 
     if (StorageEngine.getInstance().isReadyForReadAndWrite()) {
+      if (config.getDataRegionConsensusProtocolClass().equals(ConsensusFactory.IOT_CONSENSUS_V2)) {
+        IWALNode walNode =
+            WALManager.getInstance()
+                .applyForWALNode(databaseName + FILE_NAME_SEPARATOR + dataRegionId);
+        if (walNode instanceof WALNode) {
+          walNode.setSafelyDeletedSearchIndex(Long.MAX_VALUE);
+        }
+      }
       logger.info("The data region {}[{}] is created successfully", databaseName, dataRegionId);
     } else {
       logger.info("The data region {}[{}] is recovered successfully", databaseName, dataRegionId);
@@ -666,7 +721,8 @@ public class DataRegion implements IDataRegionForQuery {
     long timePartitionId = resource.getTimePartition();
     Map<IDeviceID, Long> endTimeMap = new HashMap<>();
     for (IDeviceID deviceId : resource.getDevices()) {
-      long endTime = resource.getEndTime(deviceId);
+      @SuppressWarnings("OptionalGetWithoutIsPresent") // checked above
+      long endTime = resource.getEndTime(deviceId).get();
       endTimeMap.put(deviceId, endTime);
     }
     if (config.isEnableSeparateData()) {
@@ -682,7 +738,9 @@ public class DataRegion implements IDataRegionForQuery {
     Map<IDeviceID, Long> endTimeMap = new HashMap<>();
     for (TsFileResource resource : resources) {
       for (IDeviceID deviceId : resource.getDevices()) {
-        long endTime = resource.getEndTime(deviceId);
+        // checked above
+        //noinspection OptionalGetWithoutIsPresent
+        long endTime = resource.getEndTime(deviceId).get();
         endTimeMap.put(deviceId, endTime);
       }
     }
@@ -1680,6 +1738,15 @@ public class DataRegion implements IDataRegionForQuery {
     }
   }
 
+  public void deleteDALFolderAndClose() {
+    Optional.ofNullable(DeletionResourceManager.getInstance(dataRegionId))
+        .ifPresent(
+            manager -> {
+              manager.close();
+              manager.removeDAL();
+            });
+  }
+
   /** close all tsfile resource */
   public void closeAllResources() {
     for (TsFileResource tsFileResource : tsFileManager.getTsFileList(false)) {
@@ -2162,7 +2229,9 @@ public class DataRegion implements IDataRegionForQuery {
         if (tsFileResource.isClosed()) {
           tsfileResourcesForQuery.add(tsFileResource);
         } else {
-          tsFileResource.getProcessor().query(pathList, context, tsfileResourcesForQuery);
+          tsFileResource
+              .getProcessor()
+              .query(pathList, context, tsfileResourcesForQuery, globalTimeFilter);
         }
       } catch (IOException e) {
         throw new MetadataException(e);
@@ -2455,6 +2524,7 @@ public class DataRegion implements IDataRegionForQuery {
     }
   }
 
+  @SuppressWarnings("OptionalGetWithoutIsPresent")
   private boolean canSkipDelete(TsFileResource tsFileResource, ModEntry deletion) {
     long fileStartTime = tsFileResource.getTimeIndex().getMinStartTime();
     long fileEndTime =
@@ -2478,10 +2548,11 @@ public class DataRegion implements IDataRegionForQuery {
     }
 
     for (IDeviceID device : tsFileResource.getDevices()) {
-      long startTime = tsFileResource.getTimeIndex().getStartTime(device);
+      // we are iterating the time index so the times are definitely present
+      long startTime = tsFileResource.getTimeIndex().getStartTime(device).get();
       long endTime =
           tsFileResource.isClosed()
-              ? tsFileResource.getTimeIndex().getEndTime(device)
+              ? tsFileResource.getTimeIndex().getEndTime(device).get()
               : Long.MAX_VALUE;
       if (deletion.affects(device, startTime, endTime)) {
         return false;
@@ -2505,17 +2576,22 @@ public class DataRegion implements IDataRegionForQuery {
       if (tsFileResource.isClosed()) {
         sealedTsFiles.add(tsFileResource);
       } else {
-        tsFileResource.getProcessor().getFlushQueryLock().writeLock().lock();
-        if (tsFileResource.isClosed()) {
+        TsFileProcessor tsFileProcessor = tsFileResource.getProcessor();
+        if (tsFileProcessor == null) {
           sealedTsFiles.add(tsFileResource);
-          tsFileResource.getProcessor().getFlushQueryLock().writeLock().unlock();
         } else {
-          try {
-            if (!tsFileResource.getProcessor().deleteDataInMemory(deletion)) {
-              sealedTsFiles.add(tsFileResource);
-            } // else do nothing
-          } finally {
-            tsFileResource.getProcessor().getFlushQueryLock().writeLock().unlock();
+          tsFileProcessor.getFlushQueryLock().writeLock().lock();
+          if (tsFileResource.isClosed()) {
+            sealedTsFiles.add(tsFileResource);
+            tsFileProcessor.getFlushQueryLock().writeLock().unlock();
+          } else {
+            try {
+              if (!tsFileProcessor.deleteDataInMemory(deletion)) {
+                sealedTsFiles.add(tsFileResource);
+              } // else do nothing
+            } finally {
+              tsFileProcessor.getFlushQueryLock().writeLock().unlock();
+            }
           }
         }
       }
@@ -2530,9 +2606,6 @@ public class DataRegion implements IDataRegionForQuery {
         continue;
       }
 
-      if (sealedTsFile.isCompacting()) {
-        involvedModificationFiles.add(sealedTsFile.getCompactionModFile());
-      }
       involvedModificationFiles.add(sealedTsFile.getModFileForWrite());
     }
 
@@ -2582,9 +2655,6 @@ public class DataRegion implements IDataRegionForQuery {
     for (TsFileResource tsFileResource : deletedByMods) {
       if (tsFileResource.isClosed()
           || !tsFileResource.getProcessor().deleteDataInMemory(modEntry)) {
-        if (tsFileResource.isCompacting()) {
-          involvedModificationFiles.add(tsFileResource.getCompactionModFile());
-        }
         involvedModificationFiles.add(tsFileResource.getModFileForWrite());
       } // else do nothing
     }
@@ -3022,16 +3092,24 @@ public class DataRegion implements IDataRegionForQuery {
       final boolean deleteOriginFile,
       boolean isGeneratedByPipe)
       throws LoadFileException, DiskSpaceInsufficientException {
+    final int targetTierLevel = 0;
     final File targetFile =
-        fsFactory.getFile(
-            TierManager.getInstance().getNextFolderForTsFile(0, false),
-            databaseName
-                + File.separatorChar
-                + dataRegionId
-                + File.separatorChar
-                + filePartitionId
-                + File.separator
-                + tsFileResource.getTsFile().getName());
+        (tsFileResource.isGeneratedByPipeConsensus() || tsFileResource.isGeneratedByPipe())
+            ? pipeAndIoTV2LoadDiskSelector.getTargetFile(
+                tsFileToLoad,
+                databaseName,
+                dataRegionId,
+                filePartitionId,
+                tsFileResource.getTsFile().getName(),
+                targetTierLevel)
+            : ordinaryLoadDiskSelector.getTargetFile(
+                tsFileToLoad,
+                databaseName,
+                dataRegionId,
+                filePartitionId,
+                tsFileResource.getTsFile().getName(),
+                targetTierLevel);
+
     tsFileResource.setFile(targetFile);
     if (tsFileManager.contains(tsFileResource, false)) {
       logger.warn("The file {} has already been loaded in unsequence list", tsFileResource);
@@ -3800,6 +3878,9 @@ public class DataRegion implements IDataRegionForQuery {
         .getDataRegionConsensusProtocolClass()
         .equals(ConsensusFactory.RATIS_CONSENSUS)) {
       acquireDirectBufferMemCost = config.getDataRatisConsensusLogAppenderBufferSizeMax();
+    }
+    if (config.getDataRegionConsensusProtocolClass().equals(ConsensusFactory.IOT_CONSENSUS_V2)) {
+      acquireDirectBufferMemCost += PageCacheDeletionBuffer.DAL_BUFFER_SIZE;
     }
     return acquireDirectBufferMemCost;
   }

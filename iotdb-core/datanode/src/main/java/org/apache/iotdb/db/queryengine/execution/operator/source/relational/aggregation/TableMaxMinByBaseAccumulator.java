@@ -53,7 +53,8 @@ public abstract class TableMaxMinByBaseAccumulator implements TableAccumulator {
 
   private boolean initResult;
 
-  public static final String UNSUPPORTED_TYPE_MESSAGE = "Unsupported data type in MaxBy/MinBy: %s";
+  public static final String UNSUPPORTED_TYPE_MESSAGE =
+      "Unsupported data type in MAX_BY/MIN_BY: %s";
 
   protected TableMaxMinByBaseAccumulator(TSDataType xDataType, TSDataType yDataType) {
     this.xDataType = xDataType;
@@ -65,7 +66,7 @@ public abstract class TableMaxMinByBaseAccumulator implements TableAccumulator {
   // Column should be like: | x | y |
   @Override
   public void addInput(Column[] arguments, AggregationMask mask) {
-    checkArgument(arguments.length == 2, "Length of input Column[] for MaxBy/MinBy should be 2");
+    checkArgument(arguments.length == 2, "Length of input Column[] for MAX_BY/MIN_BY should be 2");
     switch (yDataType) {
       case INT32:
       case DATE:
@@ -100,7 +101,7 @@ public abstract class TableMaxMinByBaseAccumulator implements TableAccumulator {
         argument instanceof BinaryColumn
             || (argument instanceof RunLengthEncodedColumn
                 && ((RunLengthEncodedColumn) argument).getValue() instanceof BinaryColumn),
-        "intermediate input and output of max_by/min_by should be BinaryColumn");
+        "intermediate input and output of MAX_BY/MIN_BY should be BinaryColumn");
 
     for (int i = 0; i < argument.getPositionCount(); i++) {
       if (argument.isNull(i)) {
@@ -121,7 +122,7 @@ public abstract class TableMaxMinByBaseAccumulator implements TableAccumulator {
   public void evaluateIntermediate(ColumnBuilder columnBuilder) {
     checkArgument(
         columnBuilder instanceof BinaryColumnBuilder,
-        "intermediate input and output of Max_By/Min_By should be BinaryColumn");
+        "intermediate input and output of MAX_BY/MIN_BY should be BinaryColumn");
 
     if (!initResult) {
       columnBuilder.appendNull();

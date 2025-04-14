@@ -57,6 +57,9 @@ public class CachedSubscriptionPollResponse extends SubscriptionPollResponse {
   public void invalidateByteBuffer() {
     // maybe friendly for gc
     byteBuffer = null;
+  }
+
+  public void closeMemoryBlock() {
     if (Objects.nonNull(memoryBlock)) {
       memoryBlock.close();
     }
@@ -88,6 +91,8 @@ public class CachedSubscriptionPollResponse extends SubscriptionPollResponse {
         Objects.isNull(byteBuffer)
             ? "<unknown>"
             : String.valueOf(byteBuffer.limit() - byteBuffer.position()));
+    coreReportMessage.put(
+        "memoryBlock", Objects.isNull(memoryBlock) ? "<unknown>" : memoryBlock.toString());
     return coreReportMessage;
   }
 }

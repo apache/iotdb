@@ -21,10 +21,13 @@ package org.apache.iotdb.confignode.manager.load.cache.node;
 
 import org.apache.iotdb.common.rpc.thrift.TLoadSample;
 import org.apache.iotdb.commons.cluster.NodeStatus;
+import org.apache.iotdb.confignode.manager.load.cache.AbstractHeartbeatSample;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.Collections;
+import java.util.List;
 import java.util.concurrent.atomic.AtomicReference;
 
 /** Heartbeat cache for cluster DataNodes. */
@@ -49,28 +52,29 @@ public class DataNodeHeartbeatCache extends BaseNodeCache {
     }
 
     NodeHeartbeatSample lastSample;
-    synchronized (slidingWindow) {
-      lastSample = (NodeHeartbeatSample) getLastSample();
-    }
-    long lastSendTime = lastSample == null ? 0 : lastSample.getSampleLogicalTimestamp();
-
-    /* Update load sample */
-    if (lastSample != null && lastSample.isSetLoadSample()) {
-      latestLoadSample.set(lastSample.getLoadSample());
-    }
-
+    final List<AbstractHeartbeatSample> heartbeatHistory;
     /* Update Node status */
     NodeStatus status;
     String statusReason = null;
     long currentNanoTime = System.nanoTime();
-    if (lastSample == null) {
-      status = NodeStatus.Unknown;
-    } else if (currentNanoTime - lastSendTime > HEARTBEAT_TIMEOUT_TIME_IN_NS) {
-      // TODO: Optimize Unknown judge logic
-      status = NodeStatus.Unknown;
-    } else {
-      status = lastSample.getStatus();
-      statusReason = lastSample.getStatusReason();
+    synchronized (slidingWindow) {
+      lastSample = (NodeHeartbeatSample) getLastSample();
+      heartbeatHistory = Collections.unmodifiableList(slidingWindow);
+      /* Update load sample */
+      if (lastSample != null && lastSample.isSetLoadSample()) {
+        latestLoadSample.set(lastSample.getLoadSample());
+      }
+
+      if (lastSample == null) {
+        /* First heartbeat not received from this DataNode, status is UNKNOWN */
+        status = NodeStatus.Unknown;
+      } else if (!failureDetector.isAvailable(nodeId, heartbeatHistory)) {
+        /* Failure detector decides that this DataNode is UNKNOWN */
+        status = NodeStatus.Unknown;
+      } else {
+        status = lastSample.getStatus();
+        statusReason = lastSample.getStatusReason();
+      }
     }
 
     /* Update loadScore */

@@ -23,30 +23,36 @@ import org.apache.iotdb.db.subscription.event.batch.SubscriptionPipeTsFileEventB
 
 import java.util.concurrent.atomic.AtomicInteger;
 
+import static com.google.common.base.MoreObjects.toStringHelper;
+
 public class SubscriptionPipeTsFileBatchEvents implements SubscriptionPipeEvents {
 
   private final SubscriptionPipeTsFileEventBatch batch;
-  private final AtomicInteger referenceCount; // shared between the same batch
+  private final AtomicInteger ackReferenceCount; // shared between the same batch
+  private final AtomicInteger cleanReferenceCount; // shared between the same batch
   private final int count; // snapshot the initial reference count, used for event count calculation
 
   public SubscriptionPipeTsFileBatchEvents(
-      final SubscriptionPipeTsFileEventBatch batch, final AtomicInteger referenceCount) {
+      final SubscriptionPipeTsFileEventBatch batch,
+      final AtomicInteger ackReferenceCount,
+      final AtomicInteger cleanReferenceCount) {
     this.batch = batch;
-    this.referenceCount = referenceCount;
-    this.count = Math.max(1, referenceCount.get());
+    this.ackReferenceCount = ackReferenceCount;
+    this.cleanReferenceCount = cleanReferenceCount;
+    this.count = Math.max(1, ackReferenceCount.get());
   }
 
   @Override
   public void ack() {
-    if (referenceCount.decrementAndGet() == 0) {
+    if (ackReferenceCount.decrementAndGet() == 0) {
       batch.ack();
     }
   }
 
   @Override
-  public void cleanUp() {
-    if (referenceCount.decrementAndGet() == 0) {
-      batch.cleanUp();
+  public void cleanUp(final boolean force) {
+    if (cleanReferenceCount.decrementAndGet() == 0) {
+      batch.cleanUp(force);
     }
   }
 
@@ -54,11 +60,7 @@ public class SubscriptionPipeTsFileBatchEvents implements SubscriptionPipeEvents
 
   @Override
   public String toString() {
-    return "SubscriptionPipeTsFileBatchEvents{batch="
-        + batch
-        + ", referenceCount="
-        + referenceCount
-        + "}";
+    return toStringHelper(this).add("batch", batch).add("count", count).toString();
   }
 
   //////////////////////////// APIs provided for metric framework ////////////////////////////

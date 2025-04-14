@@ -70,6 +70,7 @@ import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.UncheckedIOException;
 import java.nio.ByteBuffer;
 import java.nio.file.Files;
 import java.util.ArrayList;
@@ -84,6 +85,7 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
@@ -182,7 +184,8 @@ public class TsFileResource implements PersistentResource {
   private Map<IFullPath, List<ReadOnlyMemChunk>> pathToReadOnlyMemChunkMap = new HashMap<>();
 
   /** used for unsealed file to get TimeseriesMetadata */
-  private Map<IFullPath, ITimeSeriesMetadata> pathToTimeSeriesMetadataMap = new HashMap<>();
+  private Map<IFullPath, ITimeSeriesMetadata> pathToTimeSeriesMetadataMap =
+      new ConcurrentHashMap<>();
 
   /**
    * If it is not null, it indicates that the current tsfile resource is a snapshot of the
@@ -195,6 +198,9 @@ public class TsFileResource implements PersistentResource {
 
   /** used to prevent circular replication in PipeConsensus */
   private boolean isGeneratedByPipeConsensus = false;
+
+  /** used to prevent circular replication in Pipe */
+  private boolean isGeneratedByPipe = false;
 
   private InsertionCompactionCandidateStatus insertionCompactionCandidateStatus =
       InsertionCompactionCandidateStatus.NOT_CHECKED;
@@ -243,7 +249,6 @@ public class TsFileResource implements PersistentResource {
     this.timeIndex = originTsFileResource.timeIndex;
     this.pathToReadOnlyMemChunkMap = pathToReadOnlyMemChunkMap;
     this.pathToChunkMetadataListMap = pathToChunkMetadataListMap;
-    generatePathToTimeSeriesMetadataMap();
     this.originTsFileResource = originTsFileResource;
     this.tsFileID = originTsFileResource.tsFileID;
     this.isSeq = originTsFileResource.isSeq;
@@ -300,6 +305,10 @@ public class TsFileResource implements PersistentResource {
     } else {
       TsFileResourceBlockType.EMPTY_BLOCK.serialize(outputStream);
     }
+
+    TsFileResourceBlockType.PIPE_MARK.serialize(outputStream);
+    ReadWriteIOUtils.write(isGeneratedByPipeConsensus, outputStream);
+    ReadWriteIOUtils.write(isGeneratedByPipe, outputStream);
   }
 
   /** deserialize from disk */
@@ -327,8 +336,16 @@ public class TsFileResource implements PersistentResource {
       while (inputStream.available() > 0) {
         final TsFileResourceBlockType blockType =
             TsFileResourceBlockType.deserialize(ReadWriteIOUtils.readByte(inputStream));
-        if (blockType == TsFileResourceBlockType.PROGRESS_INDEX) {
-          maxProgressIndex = ProgressIndexType.deserializeFrom(inputStream);
+        switch (blockType) {
+          case PROGRESS_INDEX:
+            maxProgressIndex = ProgressIndexType.deserializeFrom(inputStream);
+            break;
+          case PIPE_MARK:
+            isGeneratedByPipeConsensus = ReadWriteIOUtils.readBoolean(inputStream);
+            isGeneratedByPipe = ReadWriteIOUtils.readBoolean(inputStream);
+            break;
+          default:
+            break;
         }
       }
     }
@@ -391,13 +408,23 @@ public class TsFileResource implements PersistentResource {
   }
 
   public void linkModFile(TsFileResource target) throws IOException {
-    if (exclusiveModFileExists()) {
-      File modsFileForTargetResource = ModificationFile.getExclusiveMods(target.getTsFile());
-      Files.createLink(
-          modsFileForTargetResource.toPath(),
-          ModificationFile.getExclusiveMods(getTsFile()).toPath());
-      target.setExclusiveModFile(new ModificationFile(modsFileForTargetResource, true));
+    File targetModsFile = ModificationFile.getExclusiveMods(target.getTsFile());
+    ModificationFile sourceModFile = this.getExclusiveModFile();
+    ModificationFile targetModsFileObject;
+    sourceModFile.writeLock();
+    try {
+      if (sourceModFile.exists()) {
+        // inherit modifications from the source file
+        Files.createLink(
+            targetModsFile.toPath(), ModificationFile.getExclusiveMods(getTsFile()).toPath());
+      }
+      // ensure that new modifications will be written into the target file
+      targetModsFileObject = new ModificationFile(targetModsFile, true);
+      sourceModFile.setCascadeFile(Collections.singleton(targetModsFileObject));
+    } finally {
+      sourceModFile.writeUnlock();
     }
+    target.setExclusiveModFile(targetModsFileObject);
     if (sharedModFileExists()) {
       modFileManagement.addReference(target, sharedModFile);
       target.setSharedModFile(this.getSharedModFile(), false);
@@ -578,9 +605,9 @@ public class TsFileResource implements PersistentResource {
     }
   }
 
-  public long getStartTime(IDeviceID deviceId) {
+  public Optional<Long> getStartTime(IDeviceID deviceId) {
     try {
-      return deviceId == null ? getFileStartTime() : timeIndex.getStartTime(deviceId);
+      return deviceId == null ? Optional.of(getFileStartTime()) : timeIndex.getStartTime(deviceId);
     } catch (Exception e) {
       LOGGER.error(
           "meet error when getStartTime of {} in file {}", deviceId, file.getAbsolutePath(), e);
@@ -592,9 +619,9 @@ public class TsFileResource implements PersistentResource {
   }
 
   /** open file's end time is Long.MIN_VALUE */
-  public long getEndTime(IDeviceID deviceId) {
+  public Optional<Long> getEndTime(IDeviceID deviceId) {
     try {
-      return deviceId == null ? getFileEndTime() : timeIndex.getEndTime(deviceId);
+      return deviceId == null ? Optional.of(getFileEndTime()) : timeIndex.getEndTime(deviceId);
     } catch (Exception e) {
       LOGGER.error(
           "meet error when getEndTime of {} in file {}", deviceId, file.getAbsolutePath(), e);
@@ -608,7 +635,9 @@ public class TsFileResource implements PersistentResource {
   // cannot use FileTimeIndex
   public long getOrderTimeForSeq(IDeviceID deviceId, boolean ascending) {
     if (timeIndex instanceof ArrayDeviceTimeIndex) {
-      return ascending ? getStartTime(deviceId) : getEndTime(deviceId);
+      return ascending
+          ? timeIndex.getStartTime(deviceId).orElse(Long.MIN_VALUE)
+          : timeIndex.getEndTime(deviceId).orElse(Long.MAX_VALUE);
     } else {
       return ascending ? Long.MIN_VALUE : Long.MAX_VALUE;
     }
@@ -616,7 +645,16 @@ public class TsFileResource implements PersistentResource {
 
   // can use FileTimeIndex
   public long getOrderTimeForUnseq(IDeviceID deviceId, boolean ascending) {
-    return ascending ? getStartTime(deviceId) : getEndTime(deviceId);
+    if (timeIndex instanceof ArrayDeviceTimeIndex) {
+      if (ascending) {
+        return timeIndex.getStartTime(deviceId).orElse(Long.MIN_VALUE);
+      } else {
+        return timeIndex.getEndTime(deviceId).orElse(Long.MAX_VALUE);
+      }
+    } else {
+      // FileTimeIndex
+      return ascending ? getFileStartTime() : getFileEndTime();
+    }
   }
 
   @Override
@@ -696,7 +734,6 @@ public class TsFileResource implements PersistentResource {
   public void closeWithoutSettingStatus() throws IOException {
     if (exclusiveModFile != null) {
       exclusiveModFile.close();
-      exclusiveModFile = null;
     }
     if (compactionModFile != null) {
       compactionModFile.close();
@@ -719,6 +756,14 @@ public class TsFileResource implements PersistentResource {
 
   public void setGeneratedByPipeConsensus(boolean generatedByPipeConsensus) {
     isGeneratedByPipeConsensus = generatedByPipeConsensus;
+  }
+
+  public boolean isGeneratedByPipe() {
+    return isGeneratedByPipe;
+  }
+
+  public void setGeneratedByPipe(boolean generatedByPipe) {
+    isGeneratedByPipe = generatedByPipe;
   }
 
   public void writeLock() {
@@ -770,7 +815,6 @@ public class TsFileResource implements PersistentResource {
     if (getExclusiveModFile().exists()) {
       getExclusiveModFile().remove();
     }
-    exclusiveModFile = null;
 
     if (getSharedModFile() != null && modFileManagement != null) {
       modFileManagement.releaseFor(this, sharedModFile);
@@ -948,6 +992,7 @@ public class TsFileResource implements PersistentResource {
   /**
    * @return true if the device is contained in the TsFile
    */
+  @SuppressWarnings("OptionalGetWithoutIsPresent")
   public boolean isSatisfied(IDeviceID deviceId, Filter timeFilter, boolean isSeq, boolean debug) {
     if (deviceId != null && definitelyNotContains(deviceId)) {
       if (debug) {
@@ -957,20 +1002,22 @@ public class TsFileResource implements PersistentResource {
       return false;
     }
 
-    long startTime = getStartTime(deviceId);
-    long endTime = isClosed() || !isSeq ? getEndTime(deviceId) : Long.MAX_VALUE;
-    if (startTime > endTime) {
-      // startTime > endTime indicates that there is something wrong with this TsFile. Return false
-      // directly, or it may lead to infinite loop in GroupByMonthFilter#getTimePointPosition.
-      LOGGER.warn(
-          "startTime[{}] of TsFileResource[{}] is greater than its endTime[{}]",
-          startTime,
-          this,
-          endTime);
-      return false;
-    }
-
     if (timeFilter != null) {
+      // check above
+      long startTime = getStartTime(deviceId).get();
+      long endTime = isClosed() || !isSeq ? getEndTime(deviceId).get() : Long.MAX_VALUE;
+      if (startTime > endTime) {
+        // startTime > endTime indicates that there is something wrong with this TsFile. Return
+        // false
+        // directly, or it may lead to infinite loop in GroupByMonthFilter#getTimePointPosition.
+        LOGGER.warn(
+            "startTime[{}] of TsFileResource[{}] is greater than its endTime[{}]",
+            startTime,
+            this,
+            endTime);
+        return false;
+      }
+
       boolean res = timeFilter.satisfyStartEndTime(startTime, endTime);
       if (debug && !res) {
         DEBUG_LOGGER.info(
@@ -1010,8 +1057,27 @@ public class TsFileResource implements PersistentResource {
    *
    * @return TimeseriesMetadata or the first ValueTimeseriesMetadata in VectorTimeseriesMetadata
    */
-  public ITimeSeriesMetadata getTimeSeriesMetadata(IFullPath seriesPath) {
-    return pathToTimeSeriesMetadataMap.get(seriesPath);
+  public ITimeSeriesMetadata getTimeSeriesMetadata(IFullPath seriesPath) throws IOException {
+    try {
+      return pathToTimeSeriesMetadataMap.computeIfAbsent(
+          seriesPath,
+          k -> {
+            if (pathToChunkMetadataListMap.containsKey(k)) {
+              try {
+                return ResourceByPathUtils.getResourceInstance(seriesPath)
+                    .generateTimeSeriesMetadata(
+                        pathToReadOnlyMemChunkMap.get(seriesPath),
+                        pathToChunkMetadataListMap.get(seriesPath));
+              } catch (IOException e) {
+                throw new UncheckedIOException(e);
+              }
+            } else {
+              return null;
+            }
+          });
+    } catch (UncheckedIOException e) {
+      throw e.getCause();
+    }
   }
 
   public DataRegion.SettleTsFileCallBack getSettleTsFileCallBack() {
@@ -1286,21 +1352,16 @@ public class TsFileResource implements PersistentResource {
     return deviceTimeIndexRamSize - timeIndex.calculateRamSize();
   }
 
-  private void generatePathToTimeSeriesMetadataMap() throws IOException {
-    for (IFullPath path : pathToChunkMetadataListMap.keySet()) {
-      pathToTimeSeriesMetadataMap.put(
-          path,
-          ResourceByPathUtils.getResourceInstance(path)
-              .generateTimeSeriesMetadata(
-                  pathToReadOnlyMemChunkMap.get(path), pathToChunkMetadataListMap.get(path)));
-    }
-  }
-
   public void deleteRemovedDeviceAndUpdateEndTime(Map<IDeviceID, Long> lastTimeForEachDevice) {
     ITimeIndex newTimeIndex = CONFIG.getTimeIndexLevel().getTimeIndex();
     for (Map.Entry<IDeviceID, Long> entry : lastTimeForEachDevice.entrySet()) {
-      newTimeIndex.updateStartTime(entry.getKey(), timeIndex.getStartTime(entry.getKey()));
-      newTimeIndex.updateEndTime(entry.getKey(), entry.getValue());
+      timeIndex
+          .getStartTime(entry.getKey())
+          .ifPresent(
+              startTime -> {
+                newTimeIndex.updateStartTime(entry.getKey(), startTime);
+                newTimeIndex.updateEndTime(entry.getKey(), entry.getValue());
+              });
     }
     timeIndex = newTimeIndex;
   }

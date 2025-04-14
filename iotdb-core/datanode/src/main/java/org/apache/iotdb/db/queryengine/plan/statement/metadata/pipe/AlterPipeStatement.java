@@ -37,6 +37,7 @@ import java.util.Map;
 public class AlterPipeStatement extends Statement implements IConfigStatement {
 
   private String pipeName;
+  private String userName;
   private boolean ifExistsCondition;
   private Map<String, String> extractorAttributes;
   private Map<String, String> processorAttributes;
@@ -86,6 +87,10 @@ public class AlterPipeStatement extends Statement implements IConfigStatement {
     return isTableModel;
   }
 
+  public String getUserName() {
+    return userName;
+  }
+
   public void setPipeName(final String pipeName) {
     this.pipeName = pipeName;
   }
@@ -122,6 +127,10 @@ public class AlterPipeStatement extends Statement implements IConfigStatement {
     this.isTableModel = tableModel;
   }
 
+  public void setUserName(String userName) {
+    this.userName = userName;
+  }
+
   @Override
   public QueryType getQueryType() {
     return QueryType.WRITE;
@@ -138,7 +147,7 @@ public class AlterPipeStatement extends Statement implements IConfigStatement {
       return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     }
     return AuthorityChecker.getTSStatus(
-        AuthorityChecker.checkSystemPermission(userName, PrivilegeType.USE_PIPE.ordinal()),
+        AuthorityChecker.checkSystemPermission(userName, PrivilegeType.USE_PIPE),
         PrivilegeType.USE_PIPE);
   }
 

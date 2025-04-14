@@ -38,6 +38,7 @@ public class MemSchemaRegionStatistics implements ISchemaRegionStatistics {
   private final AtomicLong measurementNumber = new AtomicLong(0);
   private final AtomicLong devicesNumber = new AtomicLong(0);
   private final ConcurrentMap<String, Long> tableDeviceNumber = new ConcurrentHashMap<>();
+  private final ConcurrentMap<String, Long> tableAttributeMemory = new ConcurrentHashMap<>();
   private final AtomicLong viewNumber = new AtomicLong(0);
   private final ConcurrentMap<Integer, Integer> templateUsage = new ConcurrentHashMap<>();
 
@@ -107,6 +108,21 @@ public class MemSchemaRegionStatistics implements ISchemaRegionStatistics {
   public long getTableDevicesNumber(final String table) {
     final Long deviceNumber = tableDeviceNumber.get(table);
     return Objects.nonNull(deviceNumber) ? deviceNumber : 0;
+  }
+
+  @Override
+  public long getTableAttributeMemory(final String table) {
+    final Long memorySize = tableAttributeMemory.get(table);
+    return Objects.nonNull(memorySize) ? memorySize : 0;
+  }
+
+  public void addTableAttributeMemory(final String table, final long num) {
+    tableAttributeMemory.compute(
+        table, (tableName, size) -> Objects.nonNull(size) ? size + num : num);
+  }
+
+  public void decreaseTableAttributeMemory(final String table, final long num) {
+    tableAttributeMemory.computeIfPresent(table, (tableName, size) -> size - num);
   }
 
   public void addTableDevice(final String table) {

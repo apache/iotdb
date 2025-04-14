@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.confignode.manager;
 
+import org.apache.iotdb.common.rpc.thrift.Model;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeConfiguration;
@@ -51,6 +52,7 @@ import org.apache.iotdb.confignode.consensus.request.write.procedure.UpdateProce
 import org.apache.iotdb.confignode.consensus.request.write.region.CreateRegionGroupsPlan;
 import org.apache.iotdb.confignode.manager.partition.PartitionManager;
 import org.apache.iotdb.confignode.persistence.ProcedureInfo;
+import org.apache.iotdb.confignode.procedure.PartitionTableAutoCleaner;
 import org.apache.iotdb.confignode.procedure.Procedure;
 import org.apache.iotdb.confignode.procedure.ProcedureExecutor;
 import org.apache.iotdb.confignode.procedure.ProcedureMetrics;
@@ -139,6 +141,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TUnsubscribeReq;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.db.exception.BatchProcessException;
 import org.apache.iotdb.db.schemaengine.template.Template;
+import org.apache.iotdb.db.utils.constant.SqlConstant;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
@@ -164,6 +167,7 @@ import java.util.Set;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 public class ProcedureManager {
   private static final Logger LOGGER = LoggerFactory.getLogger(ProcedureManager.class);
@@ -186,6 +190,8 @@ public class ProcedureManager {
   private final long planSizeLimit;
   private ProcedureMetrics procedureMetrics;
 
+  private final PartitionTableAutoCleaner partitionTableCleaner;
+
   private final ReentrantLock tableLock = new ReentrantLock();
 
   public ProcedureManager(ConfigManager configManager, ProcedureInfo procedureInfo) {
@@ -200,6 +206,7 @@ public class ProcedureManager {
                 .getConfigNodeRatisConsensusLogAppenderBufferSize()
             - IoTDBConstant.RAFT_LOG_BASIC_SIZE;
     this.procedureMetrics = new ProcedureMetrics(this);
+    this.partitionTableCleaner = new PartitionTableAutoCleaner<>(configManager);
   }
 
   public void startExecutor() {
@@ -209,6 +216,7 @@ public class ProcedureManager {
       executor.startCompletedCleaner(
           CONFIG_NODE_CONFIG.getProcedureCompletedCleanInterval(),
           CONFIG_NODE_CONFIG.getProcedureCompletedEvictTTL());
+      executor.addInternalProcedure(partitionTableCleaner);
       store.start();
       LOGGER.info("ProcedureManager is started successfully.");
     }
@@ -222,6 +230,7 @@ public class ProcedureManager {
         store.stop();
         LOGGER.info("ProcedureManager is stopped successfully.");
       }
+      executor.removeInternalProcedure(partitionTableCleaner);
     }
   }
 
@@ -563,7 +572,7 @@ public class ProcedureManager {
     this.executor.submitProcedure(
         new RemoveDataNodesProcedure(removeDataNodePlan.getDataNodeLocations(), nodeStatusMap));
     LOGGER.info(
-        "Submit RemoveDataNodeProcedure successfully, {}",
+        "Submit RemoveDataNodesProcedure successfully, {}",
         removeDataNodePlan.getDataNodeLocations());
     return true;
   }
@@ -701,15 +710,19 @@ public class ProcedureManager {
       TDataNodeLocation originalDataNode,
       TDataNodeLocation destDataNode,
       TDataNodeLocation coordinatorForAddPeer) {
-    String failMessage =
-        regionOperationCommonCheck(
-            regionGroupId,
-            destDataNode,
-            Arrays.asList(
-                new Pair<>("Original DataNode", originalDataNode),
-                new Pair<>("Destination DataNode", destDataNode),
-                new Pair<>("Coordinator for add peer", coordinatorForAddPeer)));
-    if (configManager
+    String failMessage;
+    if ((failMessage =
+            regionOperationCommonCheck(
+                regionGroupId,
+                destDataNode,
+                Arrays.asList(
+                    new Pair<>("Original DataNode", originalDataNode),
+                    new Pair<>("Destination DataNode", destDataNode),
+                    new Pair<>("Coordinator for add peer", coordinatorForAddPeer)),
+                migrateRegionReq.getModel()))
+        != null) {
+      // do nothing
+    } else if (configManager
         .getPartitionManager()
         .getAllReplicaSets(originalDataNode.getDataNodeId())
         .stream()
@@ -749,7 +762,8 @@ public class ProcedureManager {
             targetDataNode,
             Arrays.asList(
                 new Pair<>("Target DataNode", targetDataNode),
-                new Pair<>("Coordinator", coordinator)));
+                new Pair<>("Coordinator", coordinator)),
+            req.getModel());
 
     ConfigNodeConfig conf = ConfigNodeDescriptor.getInstance().getConf();
     if (configManager
@@ -790,7 +804,8 @@ public class ProcedureManager {
             targetDataNode,
             Arrays.asList(
                 new Pair<>("Target DataNode", targetDataNode),
-                new Pair<>("Coordinator", coordinator)));
+                new Pair<>("Coordinator", coordinator)),
+            req.getModel());
     if (configManager
         .getPartitionManager()
         .getAllReplicaSets(targetDataNode.getDataNodeId())
@@ -822,9 +837,9 @@ public class ProcedureManager {
             targetDataNode,
             Arrays.asList(
                 new Pair<>("Target DataNode", targetDataNode),
-                new Pair<>("Coordinator", coordinator)));
+                new Pair<>("Coordinator", coordinator)),
+            req.getModel());
 
-    ConfigNodeConfig conf = ConfigNodeDescriptor.getInstance().getConf();
     if (configManager
             .getPartitionManager()
             .getAllReplicaSetsMap(regionId.getType())
@@ -863,10 +878,11 @@ public class ProcedureManager {
   private String regionOperationCommonCheck(
       TConsensusGroupId regionId,
       TDataNodeLocation targetDataNode,
-      List<Pair<String, TDataNodeLocation>> relatedDataNodes) {
+      List<Pair<String, TDataNodeLocation>> relatedDataNodes,
+      Model model) {
     String failMessage;
-
     ConfigNodeConfig conf = ConfigNodeDescriptor.getInstance().getConf();
+
     if (TConsensusGroupType.DataRegion == regionId.getType()
         && ConsensusFactory.SIMPLE_CONSENSUS.equals(conf.getDataRegionConsensusProtocolClass())) {
       failMessage = "SimpleConsensus not supports region operation.";
@@ -892,6 +908,8 @@ public class ProcedureManager {
               "Target DataNode %s is not in Running status.", targetDataNode.getDataNodeId());
     } else if ((failMessage = checkRegionOperationWithRemoveDataNode(regionId, targetDataNode))
         != null) {
+      // need to do nothing more
+    } else if ((failMessage = checkRegionOperationModelCorrectness(regionId, model)) != null) {
       // need to do nothing more
     }
 
@@ -941,10 +959,7 @@ public class ProcedureManager {
 
   private String checkRegionOperationDuplication(TConsensusGroupId regionId) {
     List<? extends RegionOperationProcedure<?>> otherRegionMemberChangeProcedures =
-        getExecutor().getProcedures().values().stream()
-            .filter(procedure -> !procedure.isFinished())
-            .filter(procedure -> procedure instanceof RegionOperationProcedure)
-            .map(procedure -> (RegionOperationProcedure<?>) procedure)
+        getRegionOperationProcedures()
             .filter(
                 regionMemberChangeProcedure ->
                     regionId.equals(regionMemberChangeProcedure.getRegionId()))
@@ -955,6 +970,34 @@ public class ProcedureManager {
           regionId, otherRegionMemberChangeProcedures);
     }
     return null;
+  }
+
+  public List<TConsensusGroupId> getRegionOperationConsensusIds() {
+    return getRegionOperationProcedures()
+        .map(RegionOperationProcedure::getRegionId)
+        .distinct()
+        .collect(Collectors.toList());
+  }
+
+  private Stream<RegionOperationProcedure<?>> getRegionOperationProcedures() {
+    return getExecutor().getProcedures().values().stream()
+        .filter(procedure -> !procedure.isFinished())
+        .filter(procedure -> procedure instanceof RegionOperationProcedure)
+        .map(procedure -> (RegionOperationProcedure<?>) procedure);
+  }
+
+  private String checkRegionOperationModelCorrectness(TConsensusGroupId regionId, Model model) {
+    String databaseName = configManager.getPartitionManager().getRegionDatabase(regionId);
+    boolean isTreeModelDatabase = databaseName.startsWith(SqlConstant.TREE_MODEL_DATABASE_PREFIX);
+    if (Model.TREE == model && isTreeModelDatabase
+        || Model.TABLE == model && !isTreeModelDatabase) {
+      return null;
+    }
+    return String.format(
+        "The region's database %s is belong to %s model, but the model you are operating is %s",
+        databaseName,
+        isTreeModelDatabase ? Model.TREE.toString() : Model.TABLE.toString(),
+        model.toString());
   }
 
   // end region
@@ -1667,6 +1710,10 @@ public class ProcedureManager {
     return waitingProcedureFinished(procedure);
   }
 
+  private TSStatus waitingProcedureFinished(final long procedureId) {
+    return waitingProcedureFinished(executor.getProcedures().get(procedureId));
+  }
+
   /**
    * Waiting until the specific procedure finished.
    *
@@ -1828,6 +1875,7 @@ public class ProcedureManager {
       final TDeleteTableDeviceReq req, final boolean isGeneratedByPipe) {
     long procedureId;
     DeleteDevicesProcedure procedure = null;
+    final TSStatus status;
     synchronized (this) {
       final Pair<Long, Boolean> procedureIdDuplicatePair =
           checkDuplicateTableTask(
@@ -1855,9 +1903,11 @@ public class ProcedureManager {
                 req.getModInfo(),
                 isGeneratedByPipe);
         this.executor.submitProcedure(procedure);
+        status = waitingProcedureFinished(procedure);
+      } else {
+        status = waitingProcedureFinished(procedureId);
       }
     }
-    TSStatus status = waitingProcedureFinished(procedure);
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       return new TDeleteTableDeviceResp(StatusUtils.OK)
           .setDeletedNum(
@@ -1889,6 +1939,8 @@ public class ProcedureManager {
               "Some other task is operating table with same name.");
         }
         this.executor.submitProcedure(procedure);
+      } else {
+        return waitingProcedureFinished(procedureId);
       }
     }
     return waitingProcedureFinished(procedure);

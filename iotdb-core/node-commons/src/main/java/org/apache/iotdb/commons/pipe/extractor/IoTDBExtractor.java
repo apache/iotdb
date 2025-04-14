@@ -22,6 +22,8 @@ package org.apache.iotdb.commons.pipe.extractor;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
 import org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant;
 import org.apache.iotdb.commons.pipe.config.plugin.env.PipeTaskExtractorRuntimeEnvironment;
+import org.apache.iotdb.commons.pipe.datastructure.pattern.TablePattern;
+import org.apache.iotdb.commons.pipe.datastructure.pattern.TreePattern;
 import org.apache.iotdb.pipe.api.PipeExtractor;
 import org.apache.iotdb.pipe.api.annotation.TableModel;
 import org.apache.iotdb.pipe.api.annotation.TreeModel;
@@ -32,8 +34,17 @@ import org.apache.iotdb.pipe.api.exception.PipeParameterNotValidException;
 
 import java.util.Arrays;
 import java.util.Objects;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.stream.Collectors;
 
+import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_IOTDB_SKIP_IF_NO_PRIVILEGES;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_IOTDB_USERNAME_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_IOTDB_USER_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_SKIP_IF_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.SOURCE_IOTDB_USERNAME_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.SOURCE_IOTDB_USER_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.SOURCE_SKIP_IF_KEY;
 import static org.apache.iotdb.commons.pipe.datastructure.options.PipeInclusionOptions.getExclusionString;
 import static org.apache.iotdb.commons.pipe.datastructure.options.PipeInclusionOptions.getInclusionString;
 import static org.apache.iotdb.commons.pipe.datastructure.options.PipeInclusionOptions.hasAtLeastOneOption;
@@ -54,25 +65,39 @@ public abstract class IoTDBExtractor implements PipeExtractor {
 
   // The value is always true after the first start even the extractor is closed
   protected final AtomicBoolean hasBeenStarted = new AtomicBoolean(false);
+  protected String userName;
+  protected boolean skipIfNoPrivileges = true;
 
   @Override
   public void validate(final PipeParameterValidator validator) throws Exception {
     final String inclusionString = getInclusionString(validator.getParameters());
     final String exclusionString = getExclusionString(validator.getParameters());
+    final boolean isTreeDataListened =
+        TreePattern.isTreeModelDataAllowToBeCaptured(validator.getParameters());
+    final boolean isTableDataListened =
+        TablePattern.isTableModelDataAllowToBeCaptured(validator.getParameters());
+
     validator
         .validate(
-            args -> optionsAreAllLegal((String) args),
+            args -> optionsAreAllLegal((String) args, isTreeDataListened, isTableDataListened),
             "The 'inclusion' string contains illegal path.",
             inclusionString)
         .validate(
-            args -> optionsAreAllLegal((String) args),
+            args -> optionsAreAllLegal((String) args, isTreeDataListened, isTableDataListened),
             "The 'inclusion.exclusion' string contains illegal path.",
             exclusionString)
         .validate(
-            args -> hasAtLeastOneOption((String) args[0], (String) args[1]),
+            args ->
+                hasAtLeastOneOption(
+                    (String) args[0], (String) args[1], isTreeDataListened, isTableDataListened),
             "The pipe inclusion content can't be empty.",
             inclusionString,
             exclusionString);
+
+    validator.validateSynonymAttributes(
+        Arrays.asList(EXTRACTOR_IOTDB_USER_KEY, SOURCE_IOTDB_USER_KEY),
+        Arrays.asList(EXTRACTOR_IOTDB_USERNAME_KEY, SOURCE_IOTDB_USERNAME_KEY),
+        false);
 
     // Validate double living
     validateDoubleLiving(validator.getParameters());
@@ -148,6 +173,36 @@ public abstract class IoTDBExtractor implements PipeExtractor {
                   PipeExtractorConstant.SOURCE_FORWARDING_PIPE_REQUESTS_KEY),
               PipeExtractorConstant.EXTRACTOR_FORWARDING_PIPE_REQUESTS_DEFAULT_VALUE);
     }
+
+    userName =
+        parameters.getStringByKeys(
+            PipeExtractorConstant.EXTRACTOR_IOTDB_USER_KEY,
+            PipeExtractorConstant.SOURCE_IOTDB_USER_KEY,
+            PipeExtractorConstant.EXTRACTOR_IOTDB_USERNAME_KEY,
+            PipeExtractorConstant.SOURCE_IOTDB_USERNAME_KEY);
+
+    skipIfNoPrivileges = getSkipIfNoPrivileges(parameters);
+  }
+
+  public static boolean getSkipIfNoPrivileges(final PipeParameters extractorParameters) {
+    final String extractorSkipIfValue =
+        extractorParameters
+            .getStringOrDefault(
+                Arrays.asList(EXTRACTOR_SKIP_IF_KEY, SOURCE_SKIP_IF_KEY),
+                EXTRACTOR_IOTDB_SKIP_IF_NO_PRIVILEGES)
+            .trim();
+    final Set<String> skipIfOptionSet =
+        Arrays.stream(extractorSkipIfValue.split(","))
+            .map(String::trim)
+            .filter(s -> !s.isEmpty())
+            .map(String::toLowerCase)
+            .collect(Collectors.toSet());
+    boolean skipIfNoPrivileges = skipIfOptionSet.remove(EXTRACTOR_IOTDB_SKIP_IF_NO_PRIVILEGES);
+    if (!skipIfOptionSet.isEmpty()) {
+      throw new PipeParameterNotValidException(
+          String.format("Parameters in set %s are not allowed in 'skipif'", skipIfOptionSet));
+    }
+    return skipIfNoPrivileges;
   }
 
   @Override

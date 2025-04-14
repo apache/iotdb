@@ -39,6 +39,7 @@ import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.sql.SemanticException;
+import org.apache.iotdb.db.protocol.session.IClientSession;
 import org.apache.iotdb.db.qp.sql.IoTDBSqlParser;
 import org.apache.iotdb.db.qp.sql.IoTDBSqlParser.ConnectorAttributeClauseContext;
 import org.apache.iotdb.db.qp.sql.IoTDBSqlParser.ConstantContext;
@@ -150,6 +151,8 @@ import org.apache.iotdb.db.queryengine.plan.statement.metadata.DropTriggerStatem
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.GetRegionIdStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.GetSeriesSlotListStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.GetTimeSlotListStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.RemoveConfigNodeStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.RemoveDataNodeStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.SetTTLStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowChildNodesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowChildPathsStatement;
@@ -169,6 +172,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowTriggersState
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowVariablesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.UnSetTTLStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.model.CreateModelStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.model.CreateTrainingStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.model.DropModelStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.model.ShowAINodesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.model.ShowModelsStatement;
@@ -212,7 +216,10 @@ import org.apache.iotdb.db.queryengine.plan.statement.sys.FlushStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.KillQueryStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.LoadConfigurationStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.SetConfigurationStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.sys.SetSqlDialectStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.SetSystemStatusStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowCurrentSqlDialectStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowCurrentUserStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowQueriesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowVersionStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.StartRepairDataStatement;
@@ -1338,9 +1345,49 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
 
   @Override
   public Statement visitCreateModel(IoTDBSqlParser.CreateModelContext ctx) {
-    CreateModelStatement createModelStatement = new CreateModelStatement();
+    if (ctx.modelName == null) {
+      String modelId = ctx.modelId.getText();
+      String modelType = ctx.modelType.getText();
+      CreateTrainingStatement createTrainingStatement =
+          new CreateTrainingStatement(modelId, modelType);
+      if (ctx.hparamPair() != null) {
+        Map<String, String> parameterList = new HashMap<>();
+        for (IoTDBSqlParser.HparamPairContext hparamPairContext : ctx.hparamPair()) {
+          parameterList.put(
+              hparamPairContext.hparamKey.getText(), hparamPairContext.hparamValue().getText());
+        }
+        createTrainingStatement.setParameters(parameterList);
+      }
+
+      if (ctx.existingModelId != null) {
+        createTrainingStatement.setExistingModelId(ctx.existingModelId.getText());
+      }
+
+      if (ctx.trainingData() == null) {
+        throw new UnsupportedOperationException("data should not be set for model training");
+      }
+
+      List<PartialPath> targetPath = new ArrayList<>();
+      List<List<Long>> timeRanges = new ArrayList<>();
+      for (IoTDBSqlParser.DataElementContext dataElementContext :
+          ctx.trainingData().dataElement()) {
+        if (dataElementContext.timeRange() != null) {
+          long currentTime = CommonDateTimeUtils.currentTime();
+          long startTime = parseTimeValue(dataElementContext.timeRange().timeValue(0), currentTime);
+          long endTime = parseTimeValue(dataElementContext.timeRange().timeValue(1), currentTime);
+          timeRanges.add(Arrays.asList(startTime, endTime));
+        } else {
+          timeRanges.add(Collections.emptyList());
+        }
+        targetPath.add(parsePrefixPath(dataElementContext.pathPatternElement().prefixPath()));
+      }
+      createTrainingStatement.setTargetTimeRanges(timeRanges);
+      createTrainingStatement.setTargetPathPatterns(targetPath);
+      return createTrainingStatement;
+    }
     String modelName = ctx.modelName.getText();
     validateModelName(modelName);
+    CreateModelStatement createModelStatement = new CreateModelStatement();
     createModelStatement.setModelName(parseIdentifier(modelName));
     createModelStatement.setUri(parseAndValidateURI(ctx.uriClause()));
     return createModelStatement;
@@ -1520,10 +1567,16 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     Map<String, Expression> aliasToColumnMap = new HashMap<>();
     for (IoTDBSqlParser.ResultColumnContext resultColumnContext : ctx.resultColumn()) {
       ResultColumn resultColumn = parseResultColumn(resultColumnContext);
+      String columnName = resultColumn.getExpression().getExpressionString();
       // __endTime shouldn't be included in resultColumns
-      if (resultColumn.getExpression().getExpressionString().equals(ColumnHeaderConstant.ENDTIME)) {
+      if (columnName.equals(ColumnHeaderConstant.ENDTIME)) {
         queryStatement.setOutputEndTime(true);
         continue;
+      }
+      // don't support pure time in select
+      if (columnName.equals(ColumnHeaderConstant.TIME)) {
+        throw new SemanticException(
+            "Time column is no need to appear in SELECT Clause explicitly, it will always be returned if possible");
       }
       if (resultColumn.hasAlias()) {
         String alias = resultColumn.getAlias();
@@ -2006,15 +2059,18 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     if (constant.INTEGER_LITERAL() != null) {
       try {
         if (constant.MINUS() != null) {
-          return -Long.parseLong(constant.INTEGER_LITERAL().getText());
+          return Long.parseLong("-" + constant.INTEGER_LITERAL().getText());
         }
         return Long.parseLong(constant.INTEGER_LITERAL().getText());
       } catch (NumberFormatException e) {
         throw new SemanticException(
             String.format(
-                "Current system timestamp precision is %s, "
+                "Failed to parse the timestamp: "
+                    + e.getMessage()
+                    + "Current system timestamp precision is %s, "
                     + "please check whether the timestamp %s is correct.",
-                TIMESTAMP_PRECISION, constant.INTEGER_LITERAL().getText()));
+                TIMESTAMP_PRECISION,
+                constant.INTEGER_LITERAL().getText()));
       }
     } else if (constant.dateExpression() != null) {
       return parseDateExpression(constant.dateExpression(), CommonDateTimeUtils.currentTime());
@@ -2076,10 +2132,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     } else if (ctx.SGLEVEL() != null) {
       loadTsFileStatement.setDatabaseLevel(Integer.parseInt(ctx.INTEGER_LITERAL().getText()));
     } else if (ctx.VERIFY() != null) {
-      if (!Boolean.parseBoolean(ctx.boolean_literal().getText())) {
-        throw new SemanticException("Load option VERIFY can only be set to true.");
-      }
-      loadTsFileStatement.setVerifySchema(true);
+      loadTsFileStatement.setVerifySchema(Boolean.parseBoolean(ctx.boolean_literal().getText()));
     } else {
       throw new SemanticException(
           String.format(
@@ -2489,7 +2542,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
       if ("ALL".equalsIgnoreCase(privilege)
           || (!"READ".equalsIgnoreCase(privilege)
               && !"WRITE".equalsIgnoreCase(privilege)
-              && !PrivilegeType.valueOf(privilege.toUpperCase()).isPathRelevant())) {
+              && !PrivilegeType.valueOf(privilege.toUpperCase()).isPathPrivilege())) {
         hasSystemPri = true;
         errorPrivilegeName = privilege.toUpperCase();
         break;
@@ -2516,6 +2569,9 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
         continue;
       } else if (priv.equalsIgnoreCase("ALL")) {
         for (PrivilegeType type : PrivilegeType.values()) {
+          if (type.isRelationalPrivilege()) {
+            continue;
+          }
           privSet.add(type.toString());
         }
         continue;
@@ -3516,9 +3572,9 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
           storageGroups.add(parsePrefixPath(prefixPathContext));
         }
       }
-      showRegionStatement.setStorageGroups(storageGroups);
+      showRegionStatement.setDatabases(storageGroups);
     } else {
-      showRegionStatement.setStorageGroups(null);
+      showRegionStatement.setDatabases(null);
     }
 
     if (ctx.ON() != null) {
@@ -3801,27 +3857,10 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     return new DropSchemaTemplateStatement(parseIdentifier(ctx.templateName.getText()));
   }
 
-  public Map<String, String> parseSyncAttributeClauses(
-      IoTDBSqlParser.SyncAttributeClausesContext ctx) {
-
-    Map<String, String> attributes = new HashMap<>();
-
-    List<IoTDBSqlParser.AttributePairContext> attributePairs = ctx.attributePair();
-    if (ctx.attributePair(0) != null) {
-      for (IoTDBSqlParser.AttributePairContext attributePair : attributePairs) {
-        attributes.put(
-            parseAttributeKey(attributePair.attributeKey()).toLowerCase(),
-            parseAttributeValue(attributePair.attributeValue()).toLowerCase());
-      }
-    }
-
-    return attributes;
-  }
-
   // PIPE
 
   @Override
-  public Statement visitCreatePipe(IoTDBSqlParser.CreatePipeContext ctx) {
+  public Statement visitCreatePipe(final IoTDBSqlParser.CreatePipeContext ctx) {
     final CreatePipeStatement createPipeStatement =
         new CreatePipeStatement(StatementType.CREATE_PIPE);
 
@@ -4212,6 +4251,19 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
   }
 
   @Override
+  public Statement visitRemoveDataNode(IoTDBSqlParser.RemoveDataNodeContext ctx) {
+    List<Integer> nodeIds =
+        Collections.singletonList(Integer.parseInt(ctx.INTEGER_LITERAL().getText()));
+    return new RemoveDataNodeStatement(nodeIds);
+  }
+
+  @Override
+  public Statement visitRemoveConfigNode(IoTDBSqlParser.RemoveConfigNodeContext ctx) {
+    Integer nodeId = Integer.parseInt(ctx.INTEGER_LITERAL().getText());
+    return new RemoveConfigNodeStatement(nodeId);
+  }
+
+  @Override
   public Statement visitVerifyConnection(IoTDBSqlParser.VerifyConnectionContext ctx) {
     return new TestConnectionStatement(ctx.DETAILS() != null);
   }
@@ -4499,6 +4551,9 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
                 "Window Function(e.g. HEAD, TAIL, COUNT) should be set in value when key is 'WINDOW' in CALL INFERENCE");
           }
           parseWindowFunctionInInference(valueContext.windowFunction(), statement);
+        } else if (paramKey.equalsIgnoreCase("GENERATETIME")) {
+          statement.setGenerateTime(
+              Boolean.parseBoolean(parseAttributeValue(valueContext.attributeValue())));
         } else {
           statement.addInferenceAttribute(
               paramKey, parseAttributeValue(valueContext.attributeValue()));
@@ -4530,5 +4585,21 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
   @Override
   public Statement visitShowCurrentTimestamp(IoTDBSqlParser.ShowCurrentTimestampContext ctx) {
     return new ShowCurrentTimestampStatement();
+  }
+
+  @Override
+  public Statement visitSetSqlDialect(IoTDBSqlParser.SetSqlDialectContext ctx) {
+    return new SetSqlDialectStatement(
+        ctx.TABLE() == null ? IClientSession.SqlDialect.TREE : IClientSession.SqlDialect.TABLE);
+  }
+
+  @Override
+  public Statement visitShowCurrentSqlDialect(IoTDBSqlParser.ShowCurrentSqlDialectContext ctx) {
+    return new ShowCurrentSqlDialectStatement();
+  }
+
+  @Override
+  public Statement visitShowCurrentUser(IoTDBSqlParser.ShowCurrentUserContext ctx) {
+    return new ShowCurrentUserStatement();
   }
 }

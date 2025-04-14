@@ -14,6 +14,7 @@
 
 package org.apache.iotdb.relational.it.query.old.builtinfunction.scalar;
 
+import org.apache.iotdb.db.utils.DateTimeUtils;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.TableClusterIT;
@@ -22,23 +23,26 @@ import org.apache.iotdb.itbase.env.BaseEnv;
 
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
-import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 
 import java.sql.Connection;
 import java.sql.Statement;
+import java.time.LocalDate;
+import java.time.ZoneId;
 
+import static java.lang.String.format;
 import static org.apache.iotdb.db.it.utils.TestUtils.tableAssertTestFail;
 import static org.apache.iotdb.db.it.utils.TestUtils.tableResultSetEqualTest;
 
-@Ignore
 @RunWith(IoTDBTestRunner.class)
 @Category({TableLocalStandaloneIT.class, TableClusterIT.class})
 public class IoTDBFormatFunctionTableIT {
 
   private static final String DATABASE_NAME = "db";
+
+  private static final ZoneId zoneId = ZoneId.of("Z");
 
   private static final String[] SQLs =
       new String[] {
@@ -70,13 +74,17 @@ public class IoTDBFormatFunctionTableIT {
         // data for date series
         "INSERT INTO date_table(time, device_id, s1) VALUES (10, 'd1', '2024-01-01')",
         "INSERT INTO date_table(time, device_id, s1) VALUES (20, 'd1', '2006-07-04')",
+        "INSERT INTO date_table(time, device_id, s1) VALUES (30, 'd2', '1970-01-01')",
+        "INSERT INTO date_table(time, device_id, s1) VALUES (40, 'd2', '9999-12-31')",
+        "INSERT INTO date_table(time, device_id, s1) VALUES (50, 'd2', '1900-01-01')",
 
         // data for special series
-        "INSERT INTO null_table(time, device_id) VALUES (10, 'd1')",
+        "INSERT INTO null_table(time, device_id, s1) VALUES (10, 'd1', null)",
       };
 
   @BeforeClass
   public static void setUp() throws Exception {
+    EnvFactory.getEnv().getConfig().getCommonConfig().setTimestampPrecision("ns");
     EnvFactory.getEnv().initClusterEnvironment();
     insertData();
   }
@@ -146,29 +154,39 @@ public class IoTDBFormatFunctionTableIT {
     tableResultSetEqualTest(
         "SELECT FORMAT('%1$tF %1$tT.%1tL', s1) FROM timestamp_table",
         new String[] {"_col0"},
-        new String[] {"1970-01-01 00:00:00.010,", "1970-01-01 00:00:00.020,"},
+        new String[] {"1970-01-01 00:00:00.000,", "1970-01-01 00:00:00.000,"},
         DATABASE_NAME);
 
     tableResultSetEqualTest(
         "SELECT FORMAT('%tc', s1) FROM timestamp_table",
         new String[] {"_col0"},
-        new String[] {"周四 1月 01 00:00:00 Z 1970,", "周四 1月 01 00:00:00 Z 1970,"},
+        new String[] {
+          format("%tc,", DateTimeUtils.convertToZonedDateTime(10, zoneId)),
+          format("%tc,", DateTimeUtils.convertToZonedDateTime(20, zoneId)),
+        },
         DATABASE_NAME);
   }
 
   @Test
   public void testDateFormat() {
     tableResultSetEqualTest(
-        "SELECT FORMAT('%1$tA, %1$tB %1$te, %1$tY', s1) FROM date_table",
+        "SELECT FORMAT('%1$tA, %1$tB %1$te, %1$tY', s1) FROM date_table where device_id = 'd1'",
         new String[] {"_col0"},
-        new String[] {"星期一, 一月 1, 2024,", "星期二, 七月 4, 2006,"},
+        new String[] {
+          format("%1$tA, %1$tB %1$te, %1$tY,", LocalDate.of(2024, 1, 1)),
+          format("%1$tA, %1$tB %1$te, %1$tY,", LocalDate.of(2006, 7, 4))
+        },
         DATABASE_NAME);
 
     tableResultSetEqualTest(
-        "SELECT FORMAT('%1$s %1$tF %1$tY-%1$tm-%1$td', s1) FROM date_table",
+        "SELECT FORMAT('%1$s %1$tF %1$tY-%1$tm-%1$td', s1) FROM date_table where device_id = 'd1'",
         new String[] {"_col0"},
         new String[] {"2024-01-01 2024-01-01 2024-01-01,", "2006-07-04 2006-07-04 2006-07-04,"},
         DATABASE_NAME);
+
+    tableResultSetEqualTest(
+        "SELECT FORMAT('%1$tY', s1) FROM date_table where device_id = 'd2'",
+        new String[] {"_col0"}, new String[] {"1970,", "9999,", "1900,"}, DATABASE_NAME);
   }
 
   @Test
@@ -193,7 +211,7 @@ public class IoTDBFormatFunctionTableIT {
 
     tableAssertTestFail(
         "SELECT FORMAT('%s') FROM string_table",
-        "701: Scalar function format must have at least two arguments, and first argument must be char type.",
+        "701: Scalar function format must have at least two arguments, and first argument pattern must be TEXT or STRING type.",
         DATABASE_NAME);
   }
 }

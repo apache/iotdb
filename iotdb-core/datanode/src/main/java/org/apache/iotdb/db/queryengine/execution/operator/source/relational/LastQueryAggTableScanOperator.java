@@ -191,10 +191,8 @@ public class LastQueryAggTableScanOperator extends AbstractAggTableScanOperator 
           break;
         case ATTRIBUTE:
           Binary attribute =
-              cachedDeviceEntries
-                  .get(currentHitCacheIndex)
-                  .getAttributeColumnValues()
-                  .get(aggColumnsIndexArray[columnIdx]);
+              cachedDeviceEntries.get(currentHitCacheIndex)
+                  .getAttributeColumnValues()[aggColumnsIndexArray[columnIdx]];
           if (attribute == null) {
             if (aggregator.getStep().isOutputPartial()) {
               columnBuilder.writeBinary(
@@ -354,8 +352,6 @@ public class LastQueryAggTableScanOperator extends AbstractAggTableScanOperator 
       TimeValuePair[] updateTimeValuePairArray =
           updateTimeValuePairList.toArray(new TimeValuePair[0]);
       currentDeviceEntry = deviceEntries.get(currentDeviceIndex);
-      TABLE_DEVICE_SCHEMA_CACHE.initOrInvalidateLastCache(
-          dbName, currentDeviceEntry.getDeviceID(), updateMeasurementArray, false);
       TABLE_DEVICE_SCHEMA_CACHE.updateLastCacheIfExists(
           dbName,
           currentDeviceEntry.getDeviceID(),

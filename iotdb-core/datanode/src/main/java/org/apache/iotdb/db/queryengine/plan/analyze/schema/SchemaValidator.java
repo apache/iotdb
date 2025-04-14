@@ -25,6 +25,8 @@ import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.schematree.ISchemaTree;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.QualifiedObjectName;
+import org.apache.iotdb.db.queryengine.plan.relational.security.AccessControl;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.WrappedInsertStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertBaseStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertMultiTabletsStatement;
@@ -38,6 +40,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.List;
+
+import static org.apache.iotdb.commons.utils.PathUtils.unQualifyDatabaseName;
 
 public class SchemaValidator {
 
@@ -64,12 +68,18 @@ public class SchemaValidator {
   public static void validate(
       final Metadata metadata,
       final WrappedInsertStatement insertStatement,
-      final MPPQueryContext context) {
+      final MPPQueryContext context,
+      AccessControl accessControl) {
     try {
-      insertStatement.toLowerCase();
+      accessControl.checkCanInsertIntoTable(
+          context.getSession().getUserName(),
+          new QualifiedObjectName(
+              unQualifyDatabaseName(insertStatement.getDatabase()),
+              insertStatement.getTableName()));
       insertStatement.validateTableSchema(metadata, context);
       insertStatement.updateAfterSchemaValidation(context);
       insertStatement.validateDeviceSchema(metadata, context);
+      insertStatement.removeAttributeColumns();
     } catch (final QueryProcessException e) {
       throw new SemanticException(e.getMessage());
     }

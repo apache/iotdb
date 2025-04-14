@@ -33,6 +33,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.Objects;
 import java.util.Optional;
 
 /**
@@ -49,6 +50,9 @@ public class SubscriptionPollResponseCache {
 
   public ByteBuffer serialize(final CachedSubscriptionPollResponse response) throws IOException {
     try {
+      if (Objects.isNull(response)) {
+        throw new IOException("null response when serializing");
+      }
       return this.cache.get(response);
     } catch (final Exception e) {
       LOGGER.warn(
@@ -61,6 +65,9 @@ public class SubscriptionPollResponseCache {
 
   public Optional<ByteBuffer> trySerialize(final CachedSubscriptionPollResponse response) {
     try {
+      if (Objects.isNull(response)) {
+        throw new IOException("null response when serializing");
+      }
       return Optional.of(serialize(response));
     } catch (final IOException e) {
       LOGGER.warn(
@@ -72,6 +79,10 @@ public class SubscriptionPollResponseCache {
   }
 
   public void invalidate(final CachedSubscriptionPollResponse response) {
+    if (Objects.isNull(response)) {
+      LOGGER.warn("null response when invalidating, skip it");
+      return;
+    }
     this.cache.invalidate(response);
     response.invalidateByteBuffer();
   }
@@ -94,10 +105,10 @@ public class SubscriptionPollResponseCache {
 
   private SubscriptionPollResponseCache() {
     final long initMemorySizeInBytes =
-        PipeDataNodeResourceManager.memory().getTotalMemorySizeInBytes() / 5;
+        PipeDataNodeResourceManager.memory().getTotalNonFloatingMemorySizeInBytes() / 5;
     final long maxMemorySizeInBytes =
         (long)
-            (PipeDataNodeResourceManager.memory().getTotalMemorySizeInBytes()
+            (PipeDataNodeResourceManager.memory().getTotalNonFloatingMemorySizeInBytes()
                 * SubscriptionConfig.getInstance().getSubscriptionCacheMemoryUsagePercentage());
 
     // properties required by pipe memory control framework

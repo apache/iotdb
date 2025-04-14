@@ -20,7 +20,6 @@
 package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
 
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
-import org.apache.iotdb.commons.path.PartialPath;
 
 import com.google.common.collect.ImmutableList;
 
@@ -28,39 +27,27 @@ import java.util.List;
 import java.util.Objects;
 
 import static com.google.common.base.MoreObjects.toStringHelper;
-import static java.util.Objects.requireNonNull;
 
 public class ShowRegions extends Statement {
 
   private final TConsensusGroupType regionType;
-  private final List<PartialPath> databases;
+  private final String database;
   private final List<Integer> nodeIds;
 
   public ShowRegions(
-      TConsensusGroupType regionType, List<PartialPath> databases, List<Integer> nodeIds) {
+      final TConsensusGroupType regionType, final String database, final List<Integer> nodeIds) {
     super(null);
     this.regionType = regionType;
-    this.databases = databases;
+    this.database = database;
     this.nodeIds = nodeIds;
-  }
-
-  public ShowRegions(
-      NodeLocation location,
-      TConsensusGroupType regionType,
-      List<PartialPath> storageGroups,
-      List<Integer> nodeIds) {
-    super(requireNonNull(location, "location is null"));
-    this.regionType = regionType;
-    this.databases = requireNonNull(storageGroups, "databases is null");
-    this.nodeIds = requireNonNull(nodeIds, "nodeIds is null");
   }
 
   public TConsensusGroupType getRegionType() {
     return regionType;
   }
 
-  public List<PartialPath> getDatabases() {
-    return databases;
+  public String getDatabase() {
+    return database;
   }
 
   public List<Integer> getNodeIds() {
@@ -68,7 +55,7 @@ public class ShowRegions extends Statement {
   }
 
   @Override
-  public <R, C> R accept(AstVisitor<R, C> visitor, C context) {
+  public <R, C> R accept(final AstVisitor<R, C> visitor, final C context) {
     return visitor.visitShowRegions(this, context);
   }
 
@@ -78,25 +65,29 @@ public class ShowRegions extends Statement {
   }
 
   @Override
-  public boolean equals(Object o) {
-    if (this == o) return true;
-    if (o == null || getClass() != o.getClass()) return false;
-    ShowRegions that = (ShowRegions) o;
+  public boolean equals(final Object o) {
+    if (this == o) {
+      return true;
+    }
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
+    final ShowRegions that = (ShowRegions) o;
     return regionType == that.regionType
-        && Objects.equals(databases, that.databases)
+        && Objects.equals(database, that.database)
         && Objects.equals(nodeIds, that.nodeIds);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(regionType, databases, nodeIds);
+    return Objects.hash(regionType, database, nodeIds);
   }
 
   @Override
   public String toString() {
     return toStringHelper(this)
         .add("regionType", regionType)
-        .add("databases", databases)
+        .add("database", database)
         .add("nodeIds", nodeIds)
         .toString();
   }

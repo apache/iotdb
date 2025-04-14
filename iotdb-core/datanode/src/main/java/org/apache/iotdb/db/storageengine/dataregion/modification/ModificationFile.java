@@ -73,6 +73,7 @@ public class ModificationFile implements AutoCloseable {
   private boolean hasCompacted = false;
   private boolean fileExists = false;
   private final boolean updateMetrics;
+  private boolean removed = false;
 
   private Set<ModificationFile> cascadeFiles = null;
 
@@ -89,31 +90,41 @@ public class ModificationFile implements AutoCloseable {
     }
   }
 
+  public void writeLock() {
+    this.lock.writeLock().lock();
+  }
+
+  public void writeUnlock() {
+    this.lock.writeLock().unlock();
+  }
+
   @SuppressWarnings("java:S2093") // cannot use try-with-resource, should not close here
   public void write(ModEntry entry) throws IOException {
     int updateFileNum = 0;
     lock.writeLock().lock();
     long size = 0;
     try {
-      if (fileOutputStream == null) {
-        fileOutputStream =
-            new BufferedOutputStream(Files.newOutputStream(file.toPath(), CREATE, APPEND));
-        channel = FileChannel.open(file.toPath(), CREATE, APPEND);
+      if (!removed) {
+        if (fileOutputStream == null) {
+          fileOutputStream =
+              new BufferedOutputStream(Files.newOutputStream(file.toPath(), CREATE, APPEND));
+          channel = FileChannel.open(file.toPath(), CREATE, APPEND);
+        }
+        size += entry.serialize(fileOutputStream);
+        fileOutputStream.flush();
       }
-      size += entry.serialize(fileOutputStream);
-      fileOutputStream.flush();
 
       if (cascadeFiles != null) {
         for (ModificationFile cascadeFile : cascadeFiles) {
           cascadeFile.write(entry);
         }
       }
+      if (!fileExists) {
+        fileExists = true;
+        updateFileNum = 1;
+      }
     } finally {
       lock.writeLock().unlock();
-    }
-    if (!fileExists) {
-      fileExists = true;
-      updateFileNum = 1;
     }
     updateModFileMetric(updateFileNum, size);
   }
@@ -124,33 +135,35 @@ public class ModificationFile implements AutoCloseable {
     lock.writeLock().lock();
     long size = 0;
     try {
-      if (fileOutputStream == null) {
-        fileOutputStream =
-            new BufferedOutputStream(Files.newOutputStream(file.toPath(), CREATE, APPEND));
-        channel = FileChannel.open(file.toPath(), CREATE, APPEND);
+      if (!removed) {
+        if (fileOutputStream == null) {
+          fileOutputStream =
+              new BufferedOutputStream(Files.newOutputStream(file.toPath(), CREATE, APPEND));
+          channel = FileChannel.open(file.toPath(), CREATE, APPEND);
+        }
+        for (ModEntry entry : entries) {
+          size += entry.serialize(fileOutputStream);
+        }
+        fileOutputStream.flush();
       }
-      for (ModEntry entry : entries) {
-        size += entry.serialize(fileOutputStream);
-      }
-      fileOutputStream.flush();
 
       if (cascadeFiles != null) {
         for (ModificationFile cascadeFile : cascadeFiles) {
           cascadeFile.write(entries);
         }
       }
+      if (!fileExists) {
+        updateFileNum = 1;
+        fileExists = true;
+      }
     } finally {
       lock.writeLock().unlock();
-    }
-    if (!fileExists) {
-      updateFileNum = 1;
-      fileExists = true;
     }
     updateModFileMetric(updateFileNum, size);
   }
 
   private void updateModFileMetric(int num, long size) {
-    if (updateMetrics) {
+    if (!removed && updateMetrics) {
       FileMetrics.getInstance().increaseModFileNum(num);
       FileMetrics.getInstance().increaseModFileSize(size);
     }
@@ -212,6 +225,16 @@ public class ModificationFile implements AutoCloseable {
     long levelNum = Long.parseLong(split[0]);
     long modNum = Long.parseLong(split[1]);
     return new long[] {levelNum, modNum};
+  }
+
+  public static List<ModEntry> readAllCompactionModifications(File tsfile) throws IOException {
+    try (ModificationFile modificationFile =
+        new ModificationFile(ModificationFile.getCompactionMods(tsfile), false)) {
+      if (modificationFile.exists()) {
+        return modificationFile.getAllMods();
+      }
+    }
+    return Collections.emptyList();
   }
 
   public static List<ModEntry> readAllModifications(
@@ -313,12 +336,18 @@ public class ModificationFile implements AutoCloseable {
   }
 
   public void remove() throws IOException {
-    close();
-    FileUtils.deleteFileOrDirectory(file);
-    if (fileExists) {
-      updateModFileMetric(-1, -getFileLength());
+    lock.writeLock().lock();
+    try {
+      close();
+      FileUtils.deleteFileOrDirectory(file);
+      if (fileExists) {
+        updateModFileMetric(-1, -getFileLength());
+      }
+      fileExists = false;
+      removed = true;
+    } finally {
+      lock.writeLock().unlock();
     }
-    fileExists = false;
   }
 
   public static ModificationFile getExclusiveMods(TsFileResource tsFileResource) {

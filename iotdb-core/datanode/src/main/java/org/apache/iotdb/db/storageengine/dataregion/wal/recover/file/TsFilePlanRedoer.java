@@ -30,6 +30,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowNod
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowsNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertTabletNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalDeleteDataNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalInsertTabletNode;
 import org.apache.iotdb.db.service.metrics.WritingMetrics;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.IMemTable;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.PrimitiveMemTable;
@@ -39,9 +40,13 @@ import org.apache.iotdb.db.storageengine.dataregion.modification.TreeDeletionEnt
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.metrics.utils.MetricLevel;
 
+import org.apache.tsfile.file.metadata.IDeviceID;
+import org.apache.tsfile.utils.Pair;
+
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 
 /**
  * This class helps redo wal logs into a TsFile. Notice: You should update time map in {@link
@@ -85,17 +90,18 @@ public class TsFilePlanRedoer {
     if (!node.hasValidMeasurements()) {
       return;
     }
-    if (tsFileResource != null) {
+    boolean isSingleDevice = !(node instanceof RelationalInsertTabletNode);
+    if (tsFileResource != null && isSingleDevice) {
       // orders of insert node is guaranteed by storage engine, just check time in the file
       // the last chunk group may contain the same data with the logs, ignore such logs in seq file
-      long lastEndTime = tsFileResource.getEndTime(node.getDeviceID());
+      Optional<Long> lastEndTime = tsFileResource.getEndTime(node.getDeviceID());
       long minTimeInNode;
       if (node instanceof InsertRowNode) {
         minTimeInNode = ((InsertRowNode) node).getTime();
       } else {
         minTimeInNode = ((InsertTabletNode) node).getTimes()[0];
       }
-      if (lastEndTime != Long.MIN_VALUE && lastEndTime >= minTimeInNode) {
+      if (lastEndTime.isPresent() && lastEndTime.get() >= minTimeInNode) {
         return;
       }
     }
@@ -106,6 +112,26 @@ public class TsFilePlanRedoer {
         pointsInserted = recoveryMemTable.insertAlignedRow((InsertRowNode) node);
       } else {
         pointsInserted = recoveryMemTable.insert((InsertRowNode) node);
+      }
+    } else if (node instanceof RelationalInsertTabletNode) {
+      pointsInserted = 0;
+      RelationalInsertTabletNode relationalInsertTabletNode = (RelationalInsertTabletNode) node;
+      List<Pair<IDeviceID, Integer>> deviceIndexPairs =
+          relationalInsertTabletNode.splitByDevice(0, relationalInsertTabletNode.getRowCount());
+      int start = 0;
+      for (Pair<IDeviceID, Integer> pair : deviceIndexPairs) {
+        IDeviceID deviceID = pair.getLeft();
+        Optional<Long> endTimeInResource =
+            tsFileResource == null ? Optional.empty() : tsFileResource.getEndTime(deviceID);
+        long minTimeOfDevice = relationalInsertTabletNode.getTimes()[start];
+        if (endTimeInResource.isPresent() && endTimeInResource.get() >= minTimeOfDevice) {
+          start = pair.getRight();
+          continue;
+        }
+        pointsInserted =
+            recoveryMemTable.insertAlignedTablet(
+                relationalInsertTabletNode, start, pair.getRight(), null);
+        start = pair.getRight();
       }
     } else {
       if (node.isAligned()) {
@@ -131,10 +157,10 @@ public class TsFilePlanRedoer {
         // orders of insert node is guaranteed by storage engine, just check time in the file
         // the last chunk group may contain the same data with the logs, ignore such logs in seq
         // file
-        long lastEndTime = tsFileResource.getEndTime(node.getDeviceID());
+        Optional<Long> lastEndTime = tsFileResource.getEndTime(node.getDeviceID());
         long minTimeInNode;
         minTimeInNode = node.getTime();
-        if (lastEndTime != Long.MIN_VALUE && lastEndTime >= minTimeInNode) {
+        if (lastEndTime.isPresent() && lastEndTime.get() >= minTimeInNode) {
           continue;
         }
       }

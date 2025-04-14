@@ -30,6 +30,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicReference;
@@ -45,52 +46,71 @@ import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstan
 public class PipeInclusionOptions {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(PipeInclusionOptions.class);
-  public static final PartialPath treeOnlySyncPrefix =
-      new PartialPath(new String[] {"schema", "timeseries"});
-  public static final PartialPath tableOnlySyncPrefix =
-      new PartialPath(new String[] {"schema", "table"});
+  public static final List<PartialPath> treeOnlySyncPrefixes =
+      Collections.singletonList(new PartialPath(new String[] {"schema", "timeseries"}));
+  public static final List<PartialPath> tableOnlySyncPrefixes =
+      Collections.unmodifiableList(
+          Arrays.asList(
+              new PartialPath(new String[] {"schema", "table"}),
+              new PartialPath(new String[] {"auth", "role", "grant", "table"}),
+              new PartialPath(new String[] {"auth", "role", "revoke", "table"}),
+              new PartialPath(new String[] {"auth", "user", "grant", "table"}),
+              new PartialPath(new String[] {"auth", "user", "revoke", "table"})));
   public static final String ALL = "all";
 
-  private static final Set<PartialPath> OPTIONS = new HashSet<>();
+  private static final Set<PartialPath> TREE_OPTIONS = new HashSet<>();
+  private static final Set<PartialPath> TABLE_OPTIONS = new HashSet<>();
   private static final Map<String, Set<String>> ALIAS_OPTIONS_MAP = new HashMap<>();
 
   static {
     try {
-      OPTIONS.add(new PartialPath("data.insert"));
-      OPTIONS.add(new PartialPath("data.delete"));
+      final Set<PartialPath> commonOptions = new HashSet<>();
 
-      OPTIONS.add(new PartialPath("schema.database.create"));
-      OPTIONS.add(new PartialPath("schema.database.alter"));
-      OPTIONS.add(new PartialPath("schema.database.drop"));
+      commonOptions.add(new PartialPath("data.insert"));
+      commonOptions.add(new PartialPath("data.delete"));
 
-      OPTIONS.add(new PartialPath("schema.timeseries.view.create"));
-      OPTIONS.add(new PartialPath("schema.timeseries.view.alter"));
-      OPTIONS.add(new PartialPath("schema.timeseries.view.drop"));
+      commonOptions.add(new PartialPath("schema.database.create"));
+      commonOptions.add(new PartialPath("schema.database.alter"));
+      commonOptions.add(new PartialPath("schema.database.drop"));
 
-      OPTIONS.add(new PartialPath("schema.timeseries.ordinary.create"));
-      OPTIONS.add(new PartialPath("schema.timeseries.ordinary.alter"));
-      OPTIONS.add(new PartialPath("schema.timeseries.ordinary.drop"));
+      commonOptions.add(new PartialPath("schema.ttl"));
 
-      OPTIONS.add(new PartialPath("schema.timeseries.template.create"));
-      OPTIONS.add(new PartialPath("schema.timeseries.template.set"));
-      OPTIONS.add(new PartialPath("schema.timeseries.template.unset"));
-      OPTIONS.add(new PartialPath("schema.timeseries.template.alter"));
-      OPTIONS.add(new PartialPath("schema.timeseries.template.drop"));
-      OPTIONS.add(new PartialPath("schema.timeseries.template.activate"));
-      OPTIONS.add(new PartialPath("schema.timeseries.template.deactivate"));
+      commonOptions.add(new PartialPath("auth.role.create"));
+      commonOptions.add(new PartialPath("auth.role.drop"));
+      commonOptions.add(new PartialPath("auth.role.grant"));
+      commonOptions.add(new PartialPath("auth.role.revoke"));
 
-      OPTIONS.add(new PartialPath("schema.ttl"));
+      commonOptions.add(new PartialPath("auth.user.create"));
+      commonOptions.add(new PartialPath("auth.user.alter"));
+      commonOptions.add(new PartialPath("auth.user.drop"));
+      commonOptions.add(new PartialPath("auth.user.grant"));
+      commonOptions.add(new PartialPath("auth.user.revoke"));
 
-      OPTIONS.add(new PartialPath("auth.role.create"));
-      OPTIONS.add(new PartialPath("auth.role.drop"));
-      OPTIONS.add(new PartialPath("auth.role.grant"));
-      OPTIONS.add(new PartialPath("auth.role.revoke"));
+      TREE_OPTIONS.addAll(commonOptions);
+      TABLE_OPTIONS.addAll(commonOptions);
 
-      OPTIONS.add(new PartialPath("auth.user.create"));
-      OPTIONS.add(new PartialPath("auth.user.alter"));
-      OPTIONS.add(new PartialPath("auth.user.drop"));
-      OPTIONS.add(new PartialPath("auth.user.grant"));
-      OPTIONS.add(new PartialPath("auth.user.revoke"));
+      // Tree
+      TREE_OPTIONS.add(new PartialPath("schema.timeseries.view.create"));
+      TREE_OPTIONS.add(new PartialPath("schema.timeseries.view.alter"));
+      TREE_OPTIONS.add(new PartialPath("schema.timeseries.view.drop"));
+
+      TREE_OPTIONS.add(new PartialPath("schema.timeseries.ordinary.create"));
+      TREE_OPTIONS.add(new PartialPath("schema.timeseries.ordinary.alter"));
+      TREE_OPTIONS.add(new PartialPath("schema.timeseries.ordinary.drop"));
+
+      TREE_OPTIONS.add(new PartialPath("schema.timeseries.template.create"));
+      TREE_OPTIONS.add(new PartialPath("schema.timeseries.template.set"));
+      TREE_OPTIONS.add(new PartialPath("schema.timeseries.template.unset"));
+      TREE_OPTIONS.add(new PartialPath("schema.timeseries.template.alter"));
+      TREE_OPTIONS.add(new PartialPath("schema.timeseries.template.drop"));
+      TREE_OPTIONS.add(new PartialPath("schema.timeseries.template.activate"));
+      TREE_OPTIONS.add(new PartialPath("schema.timeseries.template.deactivate"));
+
+      // Table
+      TABLE_OPTIONS.add(new PartialPath("schema.table.create"));
+      TABLE_OPTIONS.add(new PartialPath("schema.table.alter"));
+      TABLE_OPTIONS.add(new PartialPath("schema.table.drop"));
+
     } catch (final IllegalPathException e) {
       LOGGER.error("Illegal path encountered when initializing LEGAL_OPTIONS.", e);
     }
@@ -133,22 +153,26 @@ public class PipeInclusionOptions {
   }
 
   public static boolean hasAtLeastOneOption(
-      final String inclusionString, final String exclusionString) {
+      final String inclusionString,
+      final String exclusionString,
+      final boolean isTreeModelListened,
+      final boolean isTableModelListened) {
     try {
       final Set<PartialPath> inclusion = parseOptions(inclusionString);
       final Set<PartialPath> exclusion = parseOptions(exclusionString);
 
+      final Set<PartialPath> allOptions = getOptions(isTreeModelListened, isTableModelListened);
       final Set<PartialPath> options = new HashSet<>();
       inclusion.forEach(
           option ->
               options.addAll(
-                  OPTIONS.stream()
+                  allOptions.stream()
                       .filter(path -> path.overlapWithFullPathPrefix(option))
                       .collect(Collectors.toSet())));
       exclusion.forEach(
           option ->
               options.removeAll(
-                  OPTIONS.stream()
+                  allOptions.stream()
                       .filter(path -> path.overlapWithFullPathPrefix(option))
                       .collect(Collectors.toSet())));
       return !options.isEmpty();
@@ -164,11 +188,14 @@ public class PipeInclusionOptions {
     }
   }
 
-  public static boolean optionsAreAllLegal(final String options) {
+  public static boolean optionsAreAllLegal(
+      final String options, final boolean isTreeModelListened, final boolean isTableModelListened) {
     try {
       return parseOptions(options).stream()
           .allMatch(
-              prefix -> OPTIONS.stream().anyMatch(path -> path.overlapWithFullPathPrefix(prefix)));
+              prefix ->
+                  getOptions(isTreeModelListened, isTableModelListened).stream()
+                      .anyMatch(path -> path.overlapWithFullPathPrefix(prefix)));
     } catch (final IllegalPathException e) {
       LOGGER.warn(
           "Illegal options {} parsed when checking if all options are legal: {}",
@@ -177,6 +204,21 @@ public class PipeInclusionOptions {
           e);
       return false;
     }
+  }
+
+  private static Set<PartialPath> getOptions(
+      final boolean isTreeModelListened, final boolean isTableModelListened) {
+    if (isTreeModelListened) {
+      if (isTableModelListened) {
+        final Set<PartialPath> allOptions = new HashSet<>(TREE_OPTIONS);
+        allOptions.addAll(TABLE_OPTIONS);
+        return allOptions;
+      } else {
+        return TREE_OPTIONS;
+      }
+    }
+    // If tree is not captured, table must be captured
+    return TABLE_OPTIONS;
   }
 
   public static String getInclusionString(final PipeParameters parameters) {

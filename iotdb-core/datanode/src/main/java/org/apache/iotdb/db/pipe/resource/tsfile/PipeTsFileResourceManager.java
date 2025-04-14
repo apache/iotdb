@@ -166,6 +166,7 @@ public class PipeTsFileResourceManager {
           isTsFile
               ? FileUtils.createHardLink(file, hardlinkOrCopiedFile)
               : FileUtils.copyFile(file, hardlinkOrCopiedFile);
+
       // If the file is not a hardlink or copied file, and there is no related hardlink or copied
       // file in pipe dir, create a hardlink or copy it to pipe dir, maintain a reference count for
       // the hardlink or copied file, and return the hardlink or copied file.
@@ -335,6 +336,20 @@ public class PipeTsFileResourceManager {
     return hardlinkOrCopiedFileToPipeTsFileResourceMap.size();
   }
 
+  public long getTotalLinkedTsfileSize() {
+    return hardlinkOrCopiedFileToPipeTsFileResourceMap.values().stream()
+        .mapToLong(
+            resource -> {
+              try {
+                return resource.getFileSize();
+              } catch (Exception e) {
+                LOGGER.warn("failed to get file size of linked TsFile {}: ", resource, e);
+                return 0;
+              }
+            })
+        .sum();
+  }
+
   /**
    * Get the total size of linked TsFiles whose original TsFile is deleted (by compaction or else)
    */
@@ -359,7 +374,7 @@ public class PipeTsFileResourceManager {
     }
   }
 
-  public long getTotalLinkedButDeletedTsfileResourceRamSize() {
+  public long getTotalLinkedButDeletedTsFileResourceRamSize() {
     long totalLinkedButDeletedTsfileResourceRamSize = 0;
     try {
       for (final Map.Entry<String, PipeTsFileResource> resourceEntry :

@@ -67,14 +67,24 @@ public class PipeConfigRegionSnapshotEvent extends PipeSnapshotEvent
             new HashSet<>(
                 Arrays.asList(
                     ConfigPhysicalPlanType.CreateRole.getPlanType(),
-                    ConfigPhysicalPlanType.GrantRole.getPlanType()))));
+                    ConfigPhysicalPlanType.GrantRole.getPlanType(),
+                    ConfigPhysicalPlanType.RGrantRoleDBPriv.getPlanType(),
+                    ConfigPhysicalPlanType.RGrantRoleTBPriv.getPlanType(),
+                    ConfigPhysicalPlanType.RGrantRoleAny.getPlanType(),
+                    ConfigPhysicalPlanType.RGrantRoleSysPri.getPlanType(),
+                    ConfigPhysicalPlanType.RGrantRoleAll.getPlanType()))));
     SNAPSHOT_FILE_TYPE_2_CONFIG_PHYSICAL_PLAN_TYPE_MAP.put(
         CNSnapshotFileType.USER,
         Collections.unmodifiableSet(
             new HashSet<>(
                 Arrays.asList(
                     ConfigPhysicalPlanType.CreateUserWithRawPassword.getPlanType(),
-                    ConfigPhysicalPlanType.GrantUser.getPlanType()))));
+                    ConfigPhysicalPlanType.GrantUser.getPlanType(),
+                    ConfigPhysicalPlanType.RGrantUserDBPriv.getPlanType(),
+                    ConfigPhysicalPlanType.RGrantUserTBPriv.getPlanType(),
+                    ConfigPhysicalPlanType.RGrantUserAny.getPlanType(),
+                    ConfigPhysicalPlanType.RGrantUserSysPri.getPlanType(),
+                    ConfigPhysicalPlanType.RGrantUserAll.getPlanType()))));
     SNAPSHOT_FILE_TYPE_2_CONFIG_PHYSICAL_PLAN_TYPE_MAP.put(
         CNSnapshotFileType.USER_ROLE,
         Collections.singleton(ConfigPhysicalPlanType.GrantRoleToUser.getPlanType()));
@@ -98,7 +108,7 @@ public class PipeConfigRegionSnapshotEvent extends PipeSnapshotEvent
 
   public PipeConfigRegionSnapshotEvent(
       final String snapshotPath, final String templateFilePath, final CNSnapshotFileType type) {
-    this(snapshotPath, templateFilePath, type, null, 0, null, null, null);
+    this(snapshotPath, templateFilePath, type, null, 0, null, null, null, null, true);
   }
 
   public PipeConfigRegionSnapshotEvent(
@@ -109,13 +119,17 @@ public class PipeConfigRegionSnapshotEvent extends PipeSnapshotEvent
       final long creationTime,
       final PipeTaskMeta pipeTaskMeta,
       final TreePattern treePattern,
-      final TablePattern tablePattern) {
+      final TablePattern tablePattern,
+      final String userName,
+      final boolean skipIfNoPrivileges) {
     super(
         pipeName,
         creationTime,
         pipeTaskMeta,
         treePattern,
         tablePattern,
+        userName,
+        skipIfNoPrivileges,
         PipeConfigNodeResourceManager.snapshot());
     this.snapshotPath = snapshotPath;
     this.templateFilePath = Objects.nonNull(templateFilePath) ? templateFilePath : "";
@@ -177,6 +191,8 @@ public class PipeConfigRegionSnapshotEvent extends PipeSnapshotEvent
       final PipeTaskMeta pipeTaskMeta,
       final TreePattern treePattern,
       final TablePattern tablePattern,
+      final String userName,
+      final boolean skipIfNoPrivileges,
       final long startTime,
       final long endTime) {
     return new PipeConfigRegionSnapshotEvent(
@@ -187,7 +203,9 @@ public class PipeConfigRegionSnapshotEvent extends PipeSnapshotEvent
         creationTime,
         pipeTaskMeta,
         treePattern,
-        tablePattern);
+        tablePattern,
+        userName,
+        skipIfNoPrivileges);
   }
 
   @Override
@@ -310,8 +328,7 @@ public class PipeConfigRegionSnapshotEvent extends PipeSnapshotEvent
           resourceManager.decreaseSnapshotReference(templateFilePath);
         }
       } catch (final Exception e) {
-        LOGGER.warn(
-            String.format("Decrease reference count for snapshot %s error.", snapshotPath), e);
+        LOGGER.warn("Decrease reference count for snapshot {} error.", snapshotPath, e);
       }
     }
   }

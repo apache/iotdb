@@ -65,18 +65,28 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.AggregationDe
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.CrossSeriesAggregationDescriptor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.DeviceViewIntoPathDescriptor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.IntoPathDescriptor;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.Symbol;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationTreeDeviceViewScanNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AssignUniqueId;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.DeviceTableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.EnforceSingleRowNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ExchangeNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ExplainAnalyzeNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.GapFillNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.GroupNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.LinearFillNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.MarkDistinctNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.PreviousFillNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.SemiJoinNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TableFunctionProcessorNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TreeDeviceViewScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ValueFillNode;
+import org.apache.iotdb.udf.api.relational.table.argument.Argument;
+import org.apache.iotdb.udf.api.relational.table.argument.ScalarArgument;
+import org.apache.iotdb.udf.api.relational.table.argument.TableArgument;
 
+import com.google.common.base.Joiner;
 import org.apache.commons.lang3.Validate;
 import org.apache.tsfile.utils.Pair;
 import org.eclipse.jetty.util.StringUtil;
@@ -89,6 +99,7 @@ import java.util.Map.Entry;
 import java.util.Optional;
 
 import static com.google.common.base.Preconditions.checkArgument;
+import static java.lang.String.format;
 import static org.apache.iotdb.db.utils.DateTimeUtils.TIMESTAMP_PRECISION;
 
 public class PlanGraphPrinter extends PlanVisitor<List<String>, PlanGraphPrinter.GraphContext> {
@@ -684,8 +695,18 @@ public class PlanGraphPrinter extends PlanVisitor<List<String>, PlanGraphPrinter
     int i = 0;
     for (org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationNode.Aggregation
         aggregation : node.getAggregations().values()) {
-      boxValue.add(
-          String.format("Aggregator-%d: %s", i++, aggregation.getResolvedFunction().toString()));
+      StringBuilder aggregator =
+          new StringBuilder(
+              String.format(
+                  "Aggregator-%d: %s", i++, aggregation.getResolvedFunction().toString()));
+      if (aggregation.hasMask()) {
+        aggregator.append(String.format("  mask: %s", aggregation.getMask().get()));
+      }
+
+      if (aggregation.isDistinct()) {
+        aggregator.append("  distinct: true");
+      }
+      boxValue.add(aggregator.toString());
     }
     boxValue.add(String.format("GroupingKeys: %s", node.getGroupingKeys()));
     if (node.isStreamable()) {
@@ -707,8 +728,18 @@ public class PlanGraphPrinter extends PlanVisitor<List<String>, PlanGraphPrinter
     int i = 0;
     for (org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationNode.Aggregation
         aggregation : node.getAggregations().values()) {
-      boxValue.add(
-          String.format("Aggregator-%d: %s", i++, aggregation.getResolvedFunction().toString()));
+      StringBuilder aggregator =
+          new StringBuilder(
+              String.format(
+                  "Aggregator-%d: %s", i++, aggregation.getResolvedFunction().toString()));
+      if (aggregation.hasMask()) {
+        aggregator.append(String.format("  mask: %s", aggregation.getMask().get()));
+      }
+
+      if (aggregation.isDistinct()) {
+        aggregator.append("  distinct: true");
+      }
+      boxValue.add(aggregator.toString());
     }
     boxValue.add(String.format("GroupingKeys: %s", node.getGroupingKeys()));
     if (node.isStreamable()) {
@@ -750,6 +781,17 @@ public class PlanGraphPrinter extends PlanVisitor<List<String>, PlanGraphPrinter
   }
 
   @Override
+  public List<String> visitMarkDistinct(MarkDistinctNode node, GraphContext context) {
+    List<String> boxValue = new ArrayList<>();
+    boxValue.add(String.format("MarkDistinct-%s", node.getPlanNodeId()));
+    boxValue.add(String.format("MarkerSymbol-%s", node.getMarkerSymbol()));
+    boxValue.add(String.format("DistinctSymbols-%s", node.getDistinctSymbols()));
+    Optional<Symbol> hashSymbol = node.getHashSymbol();
+    hashSymbol.ifPresent(symbol -> boxValue.add(String.format("HashSymbol-%s", symbol)));
+    return render(node, boxValue, context);
+  }
+
+  @Override
   public List<String> visitFilter(
       org.apache.iotdb.db.queryengine.plan.relational.planner.node.FilterNode node,
       GraphContext context) {
@@ -778,6 +820,14 @@ public class PlanGraphPrinter extends PlanVisitor<List<String>, PlanGraphPrinter
     boxValue.add(String.format("OutputNode-%s", node.getPlanNodeId().getId()));
     boxValue.add(String.format("OutputColumns-%s", node.getOutputColumnNames()));
     boxValue.add(String.format("OutputSymbols: %s", node.getOutputSymbols()));
+    return render(node, boxValue, context);
+  }
+
+  @Override
+  public List<String> visitExplainAnalyze(ExplainAnalyzeNode node, GraphContext context) {
+    List<String> boxValue = new ArrayList<>();
+    boxValue.add(String.format("ExplainAnalyze-%s", node.getPlanNodeId().getId()));
+    boxValue.add(String.format("ChildPermittedOutputs: %s", node.getChildPermittedOutputs()));
     return render(node, boxValue, context);
   }
 
@@ -888,6 +938,25 @@ public class PlanGraphPrinter extends PlanVisitor<List<String>, PlanGraphPrinter
   }
 
   @Override
+  public List<String> visitGroup(GroupNode node, GraphContext context) {
+    List<String> boxValue = new ArrayList<>();
+    boxValue.add(String.format("GroupNode-%s", node.getPlanNodeId().getId()));
+    boxValue.add(
+        String.format(
+            "PartitionKey: %s",
+            node.getOrderingScheme().getOrderBy().subList(0, node.getPartitionKeyCount())));
+    List<String> orderKey = new ArrayList<>();
+    for (int i = node.getPartitionKeyCount();
+        i < node.getOrderingScheme().getOrderBy().size();
+        i++) {
+      Symbol symbol = node.getOrderingScheme().getOrderBy().get(i);
+      orderKey.add(symbol + " " + node.getOrderingScheme().getOrdering(symbol));
+    }
+    boxValue.add(String.format("OrderKey: %s", orderKey));
+    return render(node, boxValue, context);
+  }
+
+  @Override
   public List<String> visitMergeSort(
       org.apache.iotdb.db.queryengine.plan.relational.planner.node.MergeSortNode node,
       GraphContext context) {
@@ -945,6 +1014,63 @@ public class PlanGraphPrinter extends PlanVisitor<List<String>, PlanGraphPrinter
     boxValue.add(
         String.format("FilteringSourceJoinSymbol: %s", node.getFilteringSourceJoinSymbol()));
     return render(node, boxValue, context);
+  }
+
+  @Override
+  public List<String> visitAssignUniqueId(AssignUniqueId node, GraphContext context) {
+    List<String> boxValue = new ArrayList<>();
+    boxValue.add(String.format("AssignUniqueId-%s", node.getPlanNodeId().getId()));
+    boxValue.add(String.format("OutputSymbols: %s", node.getOutputSymbols()));
+    boxValue.add(String.format("IdColumnSymbol: %s", node.getIdColumn()));
+    return render(node, boxValue, context);
+  }
+
+  @Override
+  public List<String> visitTableFunctionProcessor(
+      TableFunctionProcessorNode node, GraphContext context) {
+    List<String> boxValue = new ArrayList<>();
+    boxValue.add(String.format("TableFunctionProcessor-%s", node.getPlanNodeId().getId()));
+    boxValue.add(String.format("Function: %s", node.getName()));
+    boxValue.add(String.format("ProperOutputs: %s", node.getProperOutputs()));
+    boxValue.add(String.format("OutputSymbols: %s", node.getOutputSymbols()));
+    boxValue.add(String.format("RequiredSymbols: %s", node.getRequiredSymbols()));
+    node.getDataOrganizationSpecification()
+        .ifPresent(
+            specification -> {
+              if (!specification.getPartitionBy().isEmpty()) {
+                boxValue.add(
+                    "Partition by: [" + Joiner.on(", ").join(specification.getPartitionBy()) + "]");
+              }
+              specification
+                  .getOrderingScheme()
+                  .ifPresent(orderingScheme -> boxValue.add("Order by: " + orderingScheme));
+            });
+    if (!node.getArguments().isEmpty()) {
+      node.getArguments().forEach((key, value) -> boxValue.add(formatArgument(key, value)));
+    }
+    return render(node, boxValue, context);
+  }
+
+  private String formatArgument(String argumentName, Argument argument) {
+    if (argument instanceof ScalarArgument) {
+      return formatScalarArgument(argumentName, (ScalarArgument) argument);
+    } else if (argument instanceof TableArgument) {
+      return formatTableArgument(argumentName, (TableArgument) argument);
+    } else {
+      return argumentName + " => " + argument;
+    }
+  }
+
+  private String formatScalarArgument(String argumentName, ScalarArgument argument) {
+    return format(
+        "%s => ScalarArgument{type=%s, value=%s}",
+        argumentName, argument.getType(), argument.getValue());
+  }
+
+  private String formatTableArgument(String argumentName, TableArgument argument) {
+    return format(
+        "%s => TableArgument{%s}",
+        argumentName, argument.isRowSemantics() ? "row semantics" : "set semantics");
   }
 
   private String printRegion(TRegionReplicaSet regionReplicaSet) {

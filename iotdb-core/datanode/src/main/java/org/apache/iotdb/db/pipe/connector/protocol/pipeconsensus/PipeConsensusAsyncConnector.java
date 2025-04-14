@@ -33,6 +33,7 @@ import org.apache.iotdb.commons.pipe.connector.protocol.IoTDBConnector;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.consensus.pipe.consensuspipe.ConsensusPipeConnector;
+import org.apache.iotdb.consensus.pipe.consensuspipe.ConsensusPipeName;
 import org.apache.iotdb.consensus.pipe.metric.PipeConsensusSyncLagManager;
 import org.apache.iotdb.consensus.pipe.thrift.TCommitId;
 import org.apache.iotdb.consensus.pipe.thrift.TPipeConsensusTransferReq;
@@ -135,7 +136,7 @@ public class PipeConsensusAsyncConnector extends IoTDBConnector implements Conse
     // initialize metric components
     pipeConsensusConnectorMetrics = new PipeConsensusConnectorMetrics(this);
     PipeConsensusSyncLagManager.getInstance(getConsensusGroupIdStr())
-        .addConsensusPipeConnector(this);
+        .addConsensusPipeConnector(new ConsensusPipeName(consensusPipeName), this);
     MetricService.getInstance().addMetricSet(this.pipeConsensusConnectorMetrics);
 
     // In PipeConsensus, one pipeConsensusTask corresponds to a pipeConsensusConnector. Thus,
@@ -146,7 +147,7 @@ public class PipeConsensusAsyncConnector extends IoTDBConnector implements Conse
             nodeUrls, consensusGroupId, thisDataNodeId, pipeConsensusConnectorMetrics);
     retryConnector.customize(parameters, configuration);
     asyncTransferClientManager =
-        PipeConsensusClientMgrContainer.getInstance().newAsyncClientManager();
+        PipeConsensusClientMgrContainer.getInstance().getGlobalAsyncClientManager();
 
     if (isTabletBatchModeEnabled) {
       tabletBatchBuilder =
@@ -169,7 +170,7 @@ public class PipeConsensusAsyncConnector extends IoTDBConnector implements Conse
         LOGGER.debug(
             "PipeConsensus-ConsensusGroup-{}: no.{} event-{} added to connector buffer",
             consensusGroupId,
-            event.getCommitId(),
+            event.getReplicateIndexForIoTV2(),
             event);
       }
       // Special judge to avoid transfer stuck when re-transfer events that will not be put in
@@ -227,7 +228,8 @@ public class PipeConsensusAsyncConnector extends IoTDBConnector implements Conse
     }
     iterator.remove();
     // update replicate progress
-    currentReplicateProgress = Math.max(currentReplicateProgress, event.getCommitId());
+    currentReplicateProgress =
+        Math.max(currentReplicateProgress, event.getReplicateIndexForIoTV2());
     // decrease reference count
     event.decreaseReferenceCount(PipeConsensusAsyncConnector.class.getName(), true);
   }
@@ -273,7 +275,7 @@ public class PipeConsensusAsyncConnector extends IoTDBConnector implements Conse
           (PipeInsertNodeTabletInsertionEvent) tabletInsertionEvent;
       tCommitId =
           new TCommitId(
-              pipeInsertNodeTabletInsertionEvent.getCommitId(),
+              pipeInsertNodeTabletInsertionEvent.getReplicateIndexForIoTV2(),
               pipeInsertNodeTabletInsertionEvent.getCommitterKey().getRestartTimes(),
               pipeInsertNodeTabletInsertionEvent.getRebootTimes());
 
@@ -352,7 +354,7 @@ public class PipeConsensusAsyncConnector extends IoTDBConnector implements Conse
         (PipeTsFileInsertionEvent) tsFileInsertionEvent;
     TCommitId tCommitId =
         new TCommitId(
-            pipeTsFileInsertionEvent.getCommitId(),
+            pipeTsFileInsertionEvent.getReplicateIndexForIoTV2(),
             pipeTsFileInsertionEvent.getCommitterKey().getRestartTimes(),
             pipeTsFileInsertionEvent.getRebootTimes());
     TConsensusGroupId tConsensusGroupId =
@@ -375,6 +377,7 @@ public class PipeConsensusAsyncConnector extends IoTDBConnector implements Conse
               this,
               tCommitId,
               tConsensusGroupId,
+              consensusPipeName,
               thisDataNodeId,
               pipeConsensusConnectorMetrics);
 
@@ -588,7 +591,7 @@ public class PipeConsensusAsyncConnector extends IoTDBConnector implements Conse
     }
 
     PipeConsensusSyncLagManager.getInstance(getConsensusGroupIdStr())
-        .removeConsensusPipeConnector(this);
+        .removeConsensusPipeConnector(new ConsensusPipeName(consensusPipeName));
     MetricService.getInstance().removeMetricSet(this.pipeConsensusConnectorMetrics);
   }
 

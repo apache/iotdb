@@ -56,24 +56,38 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.Dis
 import org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.LogicalOptimizeFactory;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.PlanOptimizer;
 import org.apache.iotdb.db.queryengine.plan.relational.security.AccessControl;
-import org.apache.iotdb.db.queryengine.plan.relational.security.AllowAllAccessControl;
+import org.apache.iotdb.db.queryengine.plan.relational.security.AccessControlImpl;
+import org.apache.iotdb.db.queryengine.plan.relational.security.ITableAuthCheckerImpl;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AddColumn;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AlterDB;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ClearCache;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateDB;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateFunction;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateTable;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateTraining;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DeleteDevice;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DescribeTable;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropColumn;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropDB;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropFunction;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropTable;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ExtendRegion;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Flush;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.KillQuery;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LoadConfiguration;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.MigrateRegion;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.PipeStatement;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ReconstructRegion;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.RelationalAuthorStatement;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.RemoveConfigNode;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.RemoveDataNode;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.RemoveRegion;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SetColumnComment;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SetConfiguration;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SetProperties;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SetSqlDialect;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SetSystemStatus;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SetTableComment;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowAINodes;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowCluster;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowClusterId;
@@ -85,6 +99,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowCurrentUser;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowDB;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowDataNodes;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowFunctions;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowModels;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowRegions;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowTables;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowVariables;
@@ -167,8 +182,9 @@ public class Coordinator {
     this.executor = getQueryExecutor();
     this.writeOperationExecutor = getWriteExecutor();
     this.scheduledExecutor = getScheduledExecutor();
+    this.accessControl = new AccessControlImpl(new ITableAuthCheckerImpl());
     this.statementRewrite =
-        new StatementRewriteFactory(LocalExecutionPlanner.getInstance().metadata)
+        new StatementRewriteFactory(LocalExecutionPlanner.getInstance().metadata, accessControl)
             .getStatementRewrite();
     this.logicalPlanOptimizers =
         new LogicalOptimizeFactory(
@@ -180,7 +196,6 @@ public class Coordinator {
                 new PlannerContext(
                     LocalExecutionPlanner.getInstance().metadata, new InternalTypeManager()))
             .getPlanOptimizers();
-    this.accessControl = new AllowAllAccessControl();
     this.dataNodeLocationSupplier = DataNodeLocationSupplierFactory.getSupplier();
   }
 
@@ -395,6 +410,8 @@ public class Coordinator {
         || statement instanceof SetProperties
         || statement instanceof DropColumn
         || statement instanceof DropTable
+        || statement instanceof SetTableComment
+        || statement instanceof SetColumnComment
         || statement instanceof DeleteDevice
         || statement instanceof ShowCluster
         || statement instanceof ShowRegions
@@ -404,11 +421,16 @@ public class Coordinator {
         || statement instanceof Flush
         || statement instanceof ClearCache
         || statement instanceof SetConfiguration
+        || statement instanceof LoadConfiguration
+        || statement instanceof SetSystemStatus
         || statement instanceof StartRepairData
         || statement instanceof StopRepairData
         || statement instanceof PipeStatement
+        || statement instanceof RemoveDataNode
+        || statement instanceof RemoveConfigNode
         || statement instanceof SubscriptionStatement
         || statement instanceof ShowCurrentSqlDialect
+        || statement instanceof SetSqlDialect
         || statement instanceof ShowCurrentUser
         || statement instanceof ShowCurrentDatabase
         || statement instanceof ShowVersion
@@ -418,7 +440,14 @@ public class Coordinator {
         || statement instanceof KillQuery
         || statement instanceof CreateFunction
         || statement instanceof DropFunction
-        || statement instanceof ShowFunctions) {
+        || statement instanceof ShowFunctions
+        || statement instanceof RelationalAuthorStatement
+        || statement instanceof MigrateRegion
+        || statement instanceof ReconstructRegion
+        || statement instanceof ExtendRegion
+        || statement instanceof CreateTraining
+        || statement instanceof ShowModels
+        || statement instanceof RemoveRegion) {
       return new ConfigExecution(
           queryContext,
           null,
@@ -459,7 +488,6 @@ public class Coordinator {
     return queryExecutionMap.size();
   }
 
-  // TODO: (xingtanzjr) need to redo once we have a concrete policy for the threadPool management
   private ExecutorService getQueryExecutor() {
     int coordinatorReadExecutorSize = CONFIG.getCoordinatorReadExecutorSize();
     return IoTDBThreadPoolFactory.newFixedThreadPool(
@@ -472,7 +500,6 @@ public class Coordinator {
         coordinatorWriteExecutorSize, ThreadName.MPP_COORDINATOR_WRITE_EXECUTOR.getName());
   }
 
-  // TODO: (xingtanzjr) need to redo once we have a concrete policy for the threadPool management
   private ScheduledExecutorService getScheduledExecutor() {
     return IoTDBThreadPoolFactory.newScheduledThreadPool(
         COORDINATOR_SCHEDULED_EXECUTOR_SIZE,

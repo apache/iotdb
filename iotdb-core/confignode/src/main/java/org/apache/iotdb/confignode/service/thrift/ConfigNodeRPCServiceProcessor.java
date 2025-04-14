@@ -32,6 +32,9 @@ import org.apache.iotdb.common.rpc.thrift.TSetThrottleQuotaReq;
 import org.apache.iotdb.common.rpc.thrift.TShowConfigurationResp;
 import org.apache.iotdb.common.rpc.thrift.TShowTTLReq;
 import org.apache.iotdb.common.rpc.thrift.TTestConnectionResp;
+import org.apache.iotdb.commons.auth.entity.PrivilegeModelType;
+import org.apache.iotdb.commons.auth.entity.PrivilegeType;
+import org.apache.iotdb.commons.auth.entity.PrivilegeUnion;
 import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
@@ -44,10 +47,10 @@ import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.confignode.conf.ConfigNodeConfig;
 import org.apache.iotdb.confignode.conf.ConfigNodeConstant;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
+import org.apache.iotdb.confignode.conf.ConfigNodeSystemPropertiesHandler;
 import org.apache.iotdb.confignode.conf.SystemPropertiesUtils;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
 import org.apache.iotdb.confignode.consensus.request.read.ainode.GetAINodeConfigurationPlan;
-import org.apache.iotdb.confignode.consensus.request.read.auth.AuthorReadPlan;
 import org.apache.iotdb.confignode.consensus.request.read.database.CountDatabasePlan;
 import org.apache.iotdb.confignode.consensus.request.read.database.GetDatabasePlan;
 import org.apache.iotdb.confignode.consensus.request.read.datanode.GetDataNodeConfigurationPlan;
@@ -56,7 +59,8 @@ import org.apache.iotdb.confignode.consensus.request.read.partition.GetOrCreateD
 import org.apache.iotdb.confignode.consensus.request.read.region.GetRegionInfoListPlan;
 import org.apache.iotdb.confignode.consensus.request.read.ttl.ShowTTLPlan;
 import org.apache.iotdb.confignode.consensus.request.write.ainode.RemoveAINodePlan;
-import org.apache.iotdb.confignode.consensus.request.write.auth.AuthorPlan;
+import org.apache.iotdb.confignode.consensus.request.write.auth.AuthorRelationalPlan;
+import org.apache.iotdb.confignode.consensus.request.write.auth.AuthorTreePlan;
 import org.apache.iotdb.confignode.consensus.request.write.confignode.RemoveConfigNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.DatabaseSchemaPlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.SetDataReplicationFactorPlan;
@@ -90,6 +94,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TAlterOrDropTableReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAlterPipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAlterSchemaTemplateReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAuthizedPatternTreeResp;
+import org.apache.iotdb.confignode.rpc.thrift.TAuthorizerRelationalReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAuthorizerReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAuthorizerResp;
 import org.apache.iotdb.confignode.rpc.thrift.TCheckUserPrivilegesReq;
@@ -109,6 +114,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TCreatePipePluginReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreatePipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateSchemaTemplateReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateTopicReq;
+import org.apache.iotdb.confignode.rpc.thrift.TCreateTrainingReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateTriggerReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeConfigurationResp;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRegisterReq;
@@ -212,8 +218,10 @@ import org.apache.iotdb.confignode.rpc.thrift.TTestOperation;
 import org.apache.iotdb.confignode.rpc.thrift.TThrottleQuotaResp;
 import org.apache.iotdb.confignode.rpc.thrift.TUnsetSchemaTemplateReq;
 import org.apache.iotdb.confignode.rpc.thrift.TUnsubscribeReq;
+import org.apache.iotdb.confignode.rpc.thrift.TUpdateModelInfoReq;
 import org.apache.iotdb.confignode.service.ConfigNode;
 import org.apache.iotdb.consensus.exception.ConsensusException;
+import org.apache.iotdb.db.queryengine.plan.relational.type.AuthorRType;
 import org.apache.iotdb.db.queryengine.plan.statement.AuthorType;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -683,7 +691,7 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
       throw new IndexOutOfBoundsException("Invalid Author Type ordinal");
     }
     return configManager.operatePermission(
-        new AuthorPlan(
+        new AuthorTreePlan(
             ConfigPhysicalPlanType.values()[
                 req.getAuthorType() + ConfigPhysicalPlanType.CreateUser.ordinal()],
             req.getUserName(),
@@ -703,7 +711,7 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
     final PermissionInfoResp dataSet =
         (PermissionInfoResp)
             configManager.queryPermission(
-                new AuthorReadPlan(
+                new AuthorTreePlan(
                     ConfigPhysicalPlanType.values()[
                         req.getAuthorType() + ConfigPhysicalPlanType.CreateUser.ordinal()],
                     req.getUserName(),
@@ -721,28 +729,91 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
   }
 
   @Override
+  public TSStatus operateRPermission(final TAuthorizerRelationalReq req) {
+    if (req.getAuthorType() < 0 || req.getAuthorType() >= AuthorRType.values().length) {
+      throw new IndexOutOfBoundsException("Invalid Author Type ordinal");
+    }
+    return configManager.operatePermission(
+        new AuthorRelationalPlan(
+            ConfigPhysicalPlanType.values()[
+                req.getAuthorType() + ConfigPhysicalPlanType.RCreateUser.ordinal()],
+            req.getUserName(),
+            req.getRoleName(),
+            req.getDatabase(),
+            req.getTable(),
+            req.getPermissions(),
+            req.isGrantOpt(),
+            req.getPassword()));
+  }
+
+  @Override
+  public TAuthorizerResp queryRPermission(final TAuthorizerRelationalReq req) {
+    if (req.getAuthorType() < 0 || req.getAuthorType() >= AuthorRType.values().length) {
+      throw new IndexOutOfBoundsException("Invalid Author Type ordinal");
+    }
+    final PermissionInfoResp dataSet =
+        (PermissionInfoResp)
+            configManager.queryPermission(
+                new AuthorRelationalPlan(
+                    ConfigPhysicalPlanType.values()[
+                        req.getAuthorType() + ConfigPhysicalPlanType.RCreateUser.ordinal()],
+                    req.getUserName(),
+                    req.getRoleName(),
+                    req.getDatabase(),
+                    req.getTable(),
+                    req.getPermissions(),
+                    req.isGrantOpt(),
+                    req.getPassword()));
+    final TAuthorizerResp resp = new TAuthorizerResp(dataSet.getStatus());
+    resp.setMemberInfo(dataSet.getMemberList());
+    resp.setPermissionInfo(dataSet.getPermissionInfoResp());
+    resp.setTag(dataSet.getTag());
+    return resp;
+  }
+
+  @Override
   public TPermissionInfoResp login(TLoginReq req) {
     return configManager.login(req.getUserrname(), req.getPassword());
   }
 
   @Override
   public TPermissionInfoResp checkUserPrivileges(TCheckUserPrivilegesReq req) {
-    List<PartialPath> partialPaths =
-        AuthUtils.deserializePartialPathList(ByteBuffer.wrap(req.getPaths()));
-    return configManager.checkUserPrivileges(req.getUsername(), partialPaths, req.getPermission());
+    PrivilegeModelType reqType = PrivilegeModelType.values()[req.getReqtype()];
+    PrivilegeType permission;
+    // permission = -1. check object's visible.
+    if (req.getPermission() == -1) {
+      permission = null;
+    } else {
+      permission = PrivilegeType.values()[req.getPermission()];
+    }
+    switch (reqType) {
+      case TREE:
+        List<PartialPath> partialPaths =
+            AuthUtils.deserializePartialPathList(ByteBuffer.wrap(req.getPaths()));
+        return configManager.checkUserPrivileges(
+            req.getUsername(), new PrivilegeUnion(partialPaths, permission, req.isGrantOpt()));
+      case SYSTEM:
+        return configManager.checkUserPrivileges(
+            req.getUsername(), new PrivilegeUnion(permission, req.isGrantOpt()));
+      case RELATIONAL:
+        PrivilegeUnion union;
+        if (!req.isSetDatabase() && !req.isSetTable()) {
+          union = new PrivilegeUnion(permission, req.isGrantOpt(), true);
+        } else if (req.isSetTable()) {
+          union =
+              new PrivilegeUnion(req.getDatabase(), req.getTable(), permission, req.isGrantOpt());
+        } else {
+          union = new PrivilegeUnion(req.getDatabase(), permission, req.isGrantOpt());
+        }
+        return configManager.checkUserPrivileges(req.getUsername(), union);
+      default:
+        return AuthUtils.generateEmptyPermissionInfoResp();
+    }
   }
 
   @Override
   public TAuthizedPatternTreeResp fetchAuthizedPatternTree(TCheckUserPrivilegesReq req) {
     return configManager.fetchAuthizedPatternTree(req.getUsername(), req.getPermission());
-  }
-
-  @Override
-  public TPermissionInfoResp checkUserPrivilegeGrantOpt(TCheckUserPrivilegesReq req) {
-    List<PartialPath> partialPath =
-        AuthUtils.deserializePartialPathList(ByteBuffer.wrap(req.getPaths()));
-    return configManager.checkUserPrivilegeGrantOpt(
-        req.getUsername(), partialPath, req.getPermission());
   }
 
   @Override
@@ -788,7 +859,10 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
     RemoveConfigNodePlan removeConfigNodePlan = new RemoveConfigNodePlan(configNodeLocation);
     TSStatus status = configManager.removeConfigNode(removeConfigNodePlan);
     // Print log to record the ConfigNode that performs the RemoveConfigNodeRequest
-    LOGGER.info("Execute RemoveConfigNodeRequest {} with result {}", configNodeLocation, status);
+    LOGGER.info(
+        "The result of submitting RemoveConfigNode job is {}. RemoveConfigNodeRequest: {}",
+        status,
+        configNodeLocation);
 
     return status;
   }
@@ -821,7 +895,7 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
 
   /** Stop ConfigNode */
   @Override
-  public TSStatus stopConfigNode(TConfigNodeLocation configNodeLocation) {
+  public TSStatus stopAndClearConfigNode(TConfigNodeLocation configNodeLocation) {
     new Thread(
             // TODO: Perhaps we should find some other way of shutting down the config node, adding
             // a hard dependency
@@ -830,18 +904,19 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
             //  instance is created feels cleaner.
             () -> {
               try {
-                // Sleep 1s before stop itself
-                TimeUnit.SECONDS.sleep(1);
+                // Sleep 5s before stop itself
+                TimeUnit.SECONDS.sleep(5);
               } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
                 LOGGER.warn(e.getMessage());
               } finally {
+                ConfigNodeSystemPropertiesHandler.getInstance().delete();
                 configNode.stop();
               }
             })
         .start();
     return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode())
-        .setMessage("Stop ConfigNode success.");
+        .setMessage("Stop And Clear ConfigNode Success.");
   }
 
   @Override
@@ -1302,6 +1377,16 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
   @Override
   public TGetModelInfoResp getModelInfo(TGetModelInfoReq req) {
     return configManager.getModelInfo(req);
+  }
+
+  @Override
+  public TSStatus updateModelInfo(TUpdateModelInfoReq req) throws TException {
+    return configManager.updateModelInfo(req);
+  }
+
+  @Override
+  public TSStatus createTraining(TCreateTrainingReq req) throws TException {
+    return configManager.createTraining(req);
   }
 
   @Override

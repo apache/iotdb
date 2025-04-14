@@ -20,30 +20,54 @@
 package org.apache.iotdb.db.storageengine.dataregion.read.reader.chunk;
 
 import org.apache.iotdb.db.storageengine.dataregion.memtable.AlignedReadOnlyMemChunk;
+import org.apache.iotdb.db.utils.datastructure.MemPointIterator;
 
-import org.apache.tsfile.file.metadata.AlignedChunkMetadata;
+import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.file.metadata.statistics.Statistics;
 import org.apache.tsfile.read.common.BatchData;
+import org.apache.tsfile.read.common.block.TsBlock;
 import org.apache.tsfile.read.filter.basic.Filter;
 import org.apache.tsfile.read.reader.IChunkReader;
 import org.apache.tsfile.read.reader.IPageReader;
 
 import java.io.IOException;
-import java.util.Collections;
+import java.io.Serializable;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.function.Supplier;
 
 /** To read aligned chunk data in memory. */
 public class MemAlignedChunkReader implements IChunkReader {
-
+  private final MemPointIterator timeValuePairIterator;
+  private final Filter globalTimeFilter;
   private final List<IPageReader> pageReaderList;
 
   public MemAlignedChunkReader(AlignedReadOnlyMemChunk readableChunk, Filter globalTimeFilter) {
-    // we treat one ReadOnlyMemChunk as one Page
-    this.pageReaderList =
-        Collections.singletonList(
-            new MemAlignedPageReader(
-                readableChunk.getTsBlock(),
-                (AlignedChunkMetadata) readableChunk.getChunkMetaData(),
-                globalTimeFilter));
+    timeValuePairIterator = readableChunk.getMemPointIterator();
+    this.globalTimeFilter = globalTimeFilter;
+    this.pageReaderList = new ArrayList<>();
+    initAllPageReaders(
+        readableChunk.getDataTypes(),
+        readableChunk.getTimeStatisticsList(),
+        readableChunk.getValuesStatisticsList());
+  }
+
+  private void initAllPageReaders(
+      List<TSDataType> tsDataTypes,
+      List<Statistics<? extends Serializable>> timeStatistics,
+      List<Statistics<? extends Serializable>[]> valuesStatistics) {
+    Supplier<TsBlock> tsBlockSupplier = new MemAlignedChunkReader.TsBlockSupplier();
+    for (int pageIndex = 0; pageIndex < timeStatistics.size(); pageIndex++) {
+      MemAlignedPageReader pageReader =
+          new MemAlignedPageReader(
+              tsBlockSupplier,
+              pageIndex,
+              tsDataTypes,
+              timeStatistics.get(pageIndex),
+              valuesStatistics.get(pageIndex),
+              globalTimeFilter);
+      this.pageReaderList.add(pageReader);
+    }
   }
 
   @Override
@@ -64,5 +88,20 @@ public class MemAlignedChunkReader implements IChunkReader {
   @Override
   public List<IPageReader> loadPageReaderList() {
     return this.pageReaderList;
+  }
+
+  class TsBlockSupplier implements Supplier<TsBlock> {
+    private int tsBlockIndex;
+
+    public TsBlockSupplier() {}
+
+    public void setTsBlockIndex(int tsBlockIndex) {
+      this.tsBlockIndex = tsBlockIndex;
+    }
+
+    @Override
+    public TsBlock get() {
+      return timeValuePairIterator.getBatch(tsBlockIndex);
+    }
   }
 }

@@ -29,6 +29,7 @@ import org.apache.iotdb.db.exception.metadata.DataTypeMismatchException;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.exception.sql.SemanticException;
+import org.apache.iotdb.db.pipe.resource.memory.InsertNodeMemoryEstimator;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.schematree.IMeasurementSchemaInfo;
 import org.apache.iotdb.db.queryengine.plan.analyze.schema.ISchemaValidation;
@@ -49,6 +50,7 @@ import org.apache.tsfile.file.metadata.enums.CompressionType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.Pair;
+import org.apache.tsfile.utils.RamUsageEstimator;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.slf4j.Logger;
@@ -62,10 +64,14 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
 public class InsertRowStatement extends InsertBaseStatement implements ISchemaValidation {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(InsertRowStatement.class);
+
+  private static final long INSTANCE_SIZE =
+      RamUsageEstimator.shallowSizeOfInstance(InsertRowStatement.class);
 
   protected static final byte TYPE_RAW_STRING = -1;
   protected static final byte TYPE_NULL = -2;
@@ -333,7 +339,8 @@ public class InsertRowStatement extends InsertBaseStatement implements ISchemaVa
       for (int i = 0; i < pairList.size(); i++) {
         int realIndex = pairList.get(i).right;
         copiedValues[i] = this.values[realIndex];
-        measurements[i] = pairList.get(i).left;
+        measurements[i] =
+            Objects.nonNull(this.measurements[realIndex]) ? pairList.get(i).left : null;
         measurementSchemas[i] = this.measurementSchemas[realIndex];
         dataTypes[i] = this.dataTypes[realIndex];
         if (this.measurementIsAligned != null) {
@@ -525,5 +532,20 @@ public class InsertRowStatement extends InsertBaseStatement implements ISchemaVa
   public void swapColumn(int src, int target) {
     super.swapColumn(src, target);
     CommonUtils.swapArray(values, src, target);
+  }
+
+  @Override
+  protected long calculateBytesUsed() {
+    return INSTANCE_SIZE
+        + InsertNodeMemoryEstimator.sizeOfValues(values, measurementSchemas)
+        + RamUsageEstimator.sizeOf(measurementIsAligned)
+        + InsertNodeMemoryEstimator.sizeOfIDeviceID(deviceID);
+  }
+
+  @Override
+  protected void subRemoveAttributeColumns(List<Integer> columnsToKeep) {
+    if (values != null) {
+      values = columnsToKeep.stream().map(i -> values[i]).toArray();
+    }
   }
 }

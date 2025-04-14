@@ -34,6 +34,9 @@ public class TimePartitionUtils {
   private static long timePartitionOrigin =
       CommonDescriptor.getInstance().getConfig().getTimePartitionOrigin();
 
+  private static String timestampPrecision =
+      CommonDescriptor.getInstance().getConfig().getTimestampPrecision();
+
   /** Time range for dividing database, the time unit is the same with IoTDB's TimestampPrecision */
   private static long timePartitionInterval =
       CommonDescriptor.getInstance().getConfig().getTimePartitionInterval();
@@ -68,6 +71,16 @@ public class TimePartitionUtils {
           maxPartitionEndTime.subtract(bigTimePartitionInterval).longValue();
     } else {
       timePartitionUpperBoundWithoutOverflow = maxPartitionEndTime.longValue();
+    }
+  }
+
+  public static TTimePartitionSlot getCurrentTimePartitionSlot() {
+    if ("ms".equals(timestampPrecision)) {
+      return getTimePartitionSlot(System.currentTimeMillis());
+    } else if ("us".equals(timestampPrecision)) {
+      return getTimePartitionSlot(System.currentTimeMillis() * 1000);
+    } else {
+      return getTimePartitionSlot(System.currentTimeMillis() * 1000_000);
     }
   }
 
@@ -135,12 +148,15 @@ public class TimePartitionUtils {
   }
 
   public static boolean satisfyPartitionStartTime(Filter timeFilter, long partitionStartTime) {
+    if (timeFilter == null) {
+      return true;
+    }
+
     long partitionEndTime =
         partitionStartTime >= timePartitionLowerBoundWithoutOverflow
             ? Long.MAX_VALUE
             : (partitionStartTime + timePartitionInterval - 1);
-    return timeFilter == null
-        || timeFilter.satisfyStartEndTime(partitionStartTime, partitionEndTime);
+    return timeFilter.satisfyStartEndTime(partitionStartTime, partitionEndTime);
   }
 
   public static boolean satisfyTimePartition(Filter timeFilter, long partitionId) {

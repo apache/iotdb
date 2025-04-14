@@ -310,21 +310,25 @@ struct TMigrateRegionReq {
     1: required i32 regionId
     2: required i32 fromId
     3: required i32 toId
+    4: required common.Model model
 }
 
 struct TReconstructRegionReq {
     1: required list<i32> regionIds
     2: required i32 dataNodeId
+    3: required common.Model model
 }
 
 struct TExtendRegionReq {
     1: required i32 regionId
     2: required i32 dataNodeId
+    3: required common.Model model
 }
 
 struct TRemoveRegionReq {
     1: required i32 regionId
     2: required i32 dataNodeId
+    3: required common.Model model
 }
 
 // Authorize
@@ -339,6 +343,17 @@ struct TAuthorizerReq {
   8: required binary nodeNameList
 }
 
+struct TAuthorizerRelationalReq {
+   1: required i32 authorType
+   2: required string userName
+   3: required string roleName
+   4: required string password
+   5: required string database
+   6: required string table
+   7: required set<i32> permissions
+   8: required bool grantOpt
+}
+
 struct TAuthorizerResp {
   1: required common.TSStatus status
   2: optional string tag
@@ -347,26 +362,39 @@ struct TAuthorizerResp {
 }
 
 struct TUserResp {
-  1: required string username
+  1: required TRoleResp permissionInfo
   2: required string password
-  3: required list<TPathPrivilege> privilegeList
-  4: required set<i32> sysPriSet
-  5: required set<i32> sysPriSetGrantOpt
-  6: required list<string> roleList
-  7: required bool isOpenIdUser
+  3: required set<string> roleSet
+  4: required bool isOpenIdUser
 }
 
 struct TRoleResp {
-  1: required string roleName
+  1: required string name
   2: required list<TPathPrivilege> privilegeList
   3: required set<i32> sysPriSet
   4: required set<i32> sysPriSetGrantOpt
+  5: required map<string, TDBPrivilege> dbPrivilegeMap
+  6: required set<i32> anyScopeSet
+  7: required set<i32> anyScopeGrantSet
 }
 
 struct TPathPrivilege {
   1: required string path
   2: required set<i32> priSet
   3: required set<i32> priGrantOpt
+}
+
+struct TTablePrivilege {
+    1: required string tableName
+    2: required set<i32> privileges
+    3: required set<i32> grantOption
+}
+
+struct TDBPrivilege {
+    1: required string databaseName
+    2: required set<i32> privileges
+    3: required set<i32> grantOpt
+    4: required map<string, TTablePrivilege> tablePrivilegeMap
 }
 
 struct TPermissionInfoResp {
@@ -389,11 +417,22 @@ struct TLoginReq {
   2: required string password
 }
 
+// reqtype : tree, relational, system
+// to check tree privilege, paths is required
+// to check relational privilege, database or table is required
+// to check system privilege, just spec permission
+
+// if grant opt is true, check grant option of spec permission.
+// if permission is -1, means check visible.
+
 struct TCheckUserPrivilegesReq {
   1: required string username
-  2: required binary paths
-  3: required i32 permission
-  4: optional bool grantOpt
+  2: required i32 reqtype
+  3: optional binary paths
+  4: optional string database
+  5: optional string table
+  6: required i32 permission
+  7: required bool grantOpt
 }
 
 // ConfigNode
@@ -996,6 +1035,37 @@ struct TGetModelInfoResp {
   3: optional common.TEndPoint aiNodeAddress
 }
 
+struct TUpdateModelInfoReq {
+    1: required string modelId
+    2: required i32 modelStatus
+    3: optional string attributes
+    4: optional list<i32> aiNodeIds
+    5: optional i32 inputLength
+    6: optional i32 outputLength
+}
+
+struct TDataSchemaForTable{
+    1: required list<string> databaseList
+    2: required list<string> tableList
+    3: required string curDatabase
+}
+
+struct TDataSchemaForTree{
+    1: required list<string> path
+}
+
+struct TCreateTrainingReq {
+    1: required string modelId
+    2: required string modelType
+    3: required bool isTableModel
+    4: optional TDataSchemaForTable dataSchemaForTable
+    5: optional TDataSchemaForTree dataSchemaForTree
+    6: optional bool useAllData
+    7: optional map<string, string> parameters
+    8: optional string existingModelId
+    9: optional list<list<i64>> timeRanges
+}
+
 // ====================================================
 // Quota
 // ====================================================
@@ -1135,6 +1205,7 @@ struct TTableInfo {
    // TTL is stored as string in table props
    2: required string TTL
    3: optional i32 state
+   4: optional string comment
 }
 
 service IConfigNodeRPCService {
@@ -1359,6 +1430,7 @@ service IConfigNodeRPCService {
    *         INTERNAL_SERVER_ERROR if the permission type does not exist
    */
   common.TSStatus operatePermission(TAuthorizerReq req)
+  common.TSStatus operateRPermission(TAuthorizerRelationalReq req)
 
   /**
    * Execute permission read operations such as list user
@@ -1369,6 +1441,7 @@ service IConfigNodeRPCService {
    *         INTERNAL_SERVER_ERROR if the permission type does not exist
    */
   TAuthorizerResp queryPermission(TAuthorizerReq req)
+  TAuthorizerResp queryRPermission(TAuthorizerRelationalReq req)
 
   /**
    * Authenticate user login
@@ -1388,8 +1461,6 @@ service IConfigNodeRPCService {
   TPermissionInfoResp checkUserPrivileges(TCheckUserPrivilegesReq req)
 
   TAuthizedPatternTreeResp fetchAuthizedPatternTree(TCheckUserPrivilegesReq req)
-
-  TPermissionInfoResp checkUserPrivilegeGrantOpt(TCheckUserPrivilegesReq req)
 
   TPermissionInfoResp checkRoleOfUser(TAuthorizerReq req)
 
@@ -1441,8 +1512,8 @@ service IConfigNodeRPCService {
    */
   common.TSStatus reportConfigNodeShutdown(common.TConfigNodeLocation configNodeLocation)
 
-  /** Stop the specific ConfigNode */
-  common.TSStatus stopConfigNode(common.TConfigNodeLocation configNodeLocation)
+  /** Stop the specific ConfigNode and clear data */
+  common.TSStatus stopAndClearConfigNode(common.TConfigNodeLocation configNodeLocation)
 
   /** The ConfigNode-leader will ping other ConfigNodes periodically */
   TConfigNodeHeartbeatResp getConfigNodeHeartBeat(TConfigNodeHeartbeatReq req)
@@ -1858,6 +1929,10 @@ service IConfigNodeRPCService {
    * Return the model info by model_id
    */
   TGetModelInfoResp getModelInfo(TGetModelInfoReq req)
+
+  common.TSStatus updateModelInfo(TUpdateModelInfoReq req)
+
+  common.TSStatus createTraining(TCreateTrainingReq req)
 
   // ======================================================
   // Quota

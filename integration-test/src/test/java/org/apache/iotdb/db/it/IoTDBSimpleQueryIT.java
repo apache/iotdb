@@ -1185,4 +1185,42 @@ public class IoTDBSimpleQueryIT {
       fail();
     }
   }
+
+  @Test
+  public void testIllegalDateType() {
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+
+      statement.execute("CREATE DATABASE root.sg1");
+      statement.execute(
+          "CREATE TIMESERIES root.sg1.d1.s4 WITH DATATYPE=DATE, ENCODING=PLAIN, COMPRESSOR=SNAPPY");
+      statement.execute(
+          "CREATE TIMESERIES root.sg1.d1.s5 WITH DATATYPE=TIMESTAMP, ENCODING=PLAIN, COMPRESSOR=SNAPPY");
+      try {
+        statement.execute("insert into root.sg1.d1(timestamp, s4) values(1, '2022-04-31')");
+        fail();
+      } catch (Exception e) {
+        assertEquals(
+            TSStatusCode.METADATA_ERROR.getStatusCode()
+                + ": Fail to insert measurements [s4] caused by [data type is not consistent, "
+                + "input '2022-04-31', registered DATE because Invalid date format. "
+                + "Please use YYYY-MM-DD format.]",
+            e.getMessage());
+      }
+      try {
+        statement.execute(
+            "insert into root.sg1.d1(timestamp, s5) values(1999-04-31T00:00:00.000+08:00, 1999-04-31T00:00:00.000+08:00)");
+        fail();
+      } catch (Exception e) {
+        assertEquals(
+            TSStatusCode.SEMANTIC_ERROR.getStatusCode()
+                + ": Input time format 1999-04-31T00:00:00.000+08:00 error. "
+                + "Input like yyyy-MM-dd HH:mm:ss, yyyy-MM-ddTHH:mm:ss "
+                + "or refer to user document for more info.",
+            e.getMessage());
+      }
+    } catch (SQLException e) {
+      fail();
+    }
+  }
 }

@@ -35,8 +35,10 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.Queue;
 
 /** TTL Cache Tree, which is a prefix B+ tree with each node storing TTL. */
 @NotThreadSafe
@@ -173,6 +175,31 @@ public class TTLCache {
   }
 
   /**
+   * Get the maximum ttl of the subtree of the corresponding database.
+   *
+   * @param database the path of the database.
+   * @return the maximum ttl of the subtree of the corresponding database. return NULL_TTL if the
+   *     TTL is not set or the database does not exist.
+   */
+  public long getDatabaseMaxTTL(String database) {
+    CacheNode node = ttlCacheTree.searchChild(database);
+    if (node == null) {
+      return NULL_TTL;
+    }
+    Queue<CacheNode> queue = new LinkedList<>();
+    queue.add(node);
+    long maxTTL = node.ttl;
+    while (!queue.isEmpty()) {
+      CacheNode current = queue.poll();
+      for (CacheNode child : current.getChildren().values()) {
+        queue.add(child);
+        maxTTL = Math.max(maxTTL, child.ttl);
+      }
+    }
+    return maxTTL;
+  }
+
+  /**
    * @return key is path contains wildcard between each node
    */
   public Map<String, Long> getAllPathTTL() {
@@ -271,6 +298,27 @@ public class TTLCache {
         name = name.substring("root.".length());
       }
       return children.get(name);
+    }
+
+    /**
+     * Search the child node by name.
+     *
+     * @param name the name corresponding to the child node, use '.' to separate each node
+     * @return the child node if it exists, otherwise return null
+     */
+    public CacheNode searchChild(String name) {
+      String[] nodeNames = name.split("\\.");
+      CacheNode current = this;
+      for (String nodeName : nodeNames) {
+        if (nodeName.equals("root")) {
+          continue;
+        }
+        current = current.getChild(nodeName);
+        if (current == null) {
+          return null;
+        }
+      }
+      return current;
     }
 
     public Map<String, CacheNode> getChildren() {

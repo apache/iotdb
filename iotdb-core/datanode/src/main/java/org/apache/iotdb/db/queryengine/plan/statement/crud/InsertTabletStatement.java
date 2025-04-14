@@ -26,6 +26,7 @@ import org.apache.iotdb.commons.utils.TimePartitionUtils;
 import org.apache.iotdb.db.exception.metadata.DataTypeMismatchException;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.exception.sql.SemanticException;
+import org.apache.iotdb.db.pipe.resource.memory.InsertNodeMemoryEstimator;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.schematree.IMeasurementSchemaInfo;
 import org.apache.iotdb.db.queryengine.plan.analyze.schema.ISchemaValidation;
@@ -47,6 +48,7 @@ import org.apache.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.BitMap;
 import org.apache.tsfile.utils.Pair;
+import org.apache.tsfile.utils.RamUsageEstimator;
 import org.apache.tsfile.write.UnSupportedDataTypeException;
 import org.apache.tsfile.write.schema.MeasurementSchema;
 
@@ -56,8 +58,12 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
 public class InsertTabletStatement extends InsertBaseStatement implements ISchemaValidation {
+
+  private static final long INSTANCE_SIZE =
+      RamUsageEstimator.shallowSizeOfInstance(InsertTabletStatement.class);
 
   private static final String DATATYPE_UNSUPPORTED = "Data type %s is not supported.";
 
@@ -272,7 +278,8 @@ public class InsertTabletStatement extends InsertBaseStatement implements ISchem
       for (int i = 0; i < pairList.size(); i++) {
         int realIndex = pairList.get(i).right;
         copiedColumns[i] = this.columns[realIndex];
-        measurements[i] = pairList.get(i).left;
+        measurements[i] =
+            Objects.nonNull(this.measurements[realIndex]) ? pairList.get(i).left : null;
         measurementSchemas[i] = this.measurementSchemas[realIndex];
         dataTypes[i] = this.dataTypes[realIndex];
         if (this.nullBitMaps != null) {
@@ -524,10 +531,33 @@ public class InsertTabletStatement extends InsertBaseStatement implements ISchem
     deviceIDs = null;
   }
 
+  @Override
+  protected long calculateBytesUsed() {
+    return INSTANCE_SIZE
+        + RamUsageEstimator.sizeOf(times)
+        + InsertNodeMemoryEstimator.sizeOfBitMapArray(nullBitMaps)
+        + InsertNodeMemoryEstimator.sizeOfColumns(columns, measurementSchemas)
+        + (Objects.nonNull(deviceIDs)
+            ? Arrays.stream(deviceIDs)
+                .mapToLong(InsertNodeMemoryEstimator::sizeOfIDeviceID)
+                .reduce(0L, Long::sum)
+            : 0L);
+  }
+
   public boolean isNull(int row, int col) {
     if (nullBitMaps == null || nullBitMaps[col] == null) {
       return false;
     }
     return nullBitMaps[col].isMarked(row);
+  }
+
+  @Override
+  protected void subRemoveAttributeColumns(List<Integer> columnsToKeep) {
+    if (columns != null) {
+      columns = columnsToKeep.stream().map(i -> columns[i]).toArray();
+    }
+    if (nullBitMaps != null) {
+      nullBitMaps = columnsToKeep.stream().map(i -> nullBitMaps[i]).toArray(BitMap[]::new);
+    }
   }
 }

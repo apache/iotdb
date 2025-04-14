@@ -63,7 +63,7 @@ ddlStatement
     // Cluster
     | showVariables | showCluster | showRegions | showDataNodes | showConfigNodes | showClusterId
     | getRegionId | getTimeSlotList | countTimeSlotList | getSeriesSlotList
-    | migrateRegion | reconstructRegion | extendRegion | removeRegion
+    | migrateRegion | reconstructRegion | extendRegion | removeRegion  | removeDataNode | removeConfigNode
     | verifyConnection
     // AINode
     | showAINodes | createModel | dropModel | showModels | callInference
@@ -88,7 +88,7 @@ utilityStatement
     | setSystemStatus | showVersion | showFlushInfo | showLockInfo | showQueryResource
     | showQueries | showCurrentTimestamp | killQuery | grantWatermarkEmbedding
     | revokeWatermarkEmbedding | loadConfiguration | loadTimeseries | loadFile
-    | removeFile | unloadFile
+    | removeFile | unloadFile | setSqlDialect | showCurrentSqlDialect | showCurrentUser
     ;
 
 /**
@@ -550,6 +550,16 @@ verifyConnection
     : VERIFY CONNECTION (DETAILS)?
     ;
 
+// ---- Remove DataNode
+removeDataNode
+    : REMOVE DATANODE dataNodeId=INTEGER_LITERAL
+    ;
+
+// ---- Remove ConfigNode
+removeConfigNode
+    : REMOVE CONFIGNODE configNodeId=INTEGER_LITERAL
+    ;
+
 // Pipe Task =========================================================================================
 createPipe
     : CREATE PIPE  (IF NOT EXISTS)? pipeName=identifier
@@ -684,6 +694,19 @@ showSubscriptions
 // ---- Create Model
 createModel
     : CREATE MODEL modelName=identifier uriClause
+    | CREATE MODEL modelType=identifier modelId=identifier (WITH HYPERPARAMETERS LR_BRACKET hparamPair (COMMA hparamPair)* RR_BRACKET)? (FROM MODEL existingModelId=identifier)? ON DATASET LR_BRACKET trainingData RR_BRACKET
+    ;
+
+trainingData
+    : dataElement(COMMA dataElement)*
+    ;
+
+dataElement
+    : pathPatternElement (LR_BRACKET timeRange RR_BRACKET)?
+    ;
+
+pathPatternElement
+    : PATH path=prefixPath
     ;
 
 windowFunction
@@ -1176,6 +1199,18 @@ removeFile
 // Unload TsFile
 unloadFile
     : UNLOAD srcFileName=STRING_LITERAL dstFileDir=STRING_LITERAL
+    ;
+
+setSqlDialect
+    : SET SQL_DIALECT OPERATOR_SEQ (TABLE | TREE)
+    ;
+
+showCurrentSqlDialect
+    : SHOW CURRENT_SQL_DIALECT
+    ;
+
+showCurrentUser
+    : SHOW CURRENT_USER
     ;
 
 // attribute clauses

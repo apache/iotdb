@@ -30,6 +30,8 @@ import org.apache.iotdb.commons.cluster.RegionRoleType;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.ThreadName;
 import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
+import org.apache.iotdb.commons.conf.CommonConfig;
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.partition.DataPartitionTable;
 import org.apache.iotdb.commons.partition.SchemaPartitionTable;
 import org.apache.iotdb.commons.partition.executor.SeriesPartitionExecutor;
@@ -69,6 +71,7 @@ import org.apache.iotdb.confignode.exception.NoAvailableRegionGroupException;
 import org.apache.iotdb.confignode.exception.NotEnoughDataNodeException;
 import org.apache.iotdb.confignode.manager.IManager;
 import org.apache.iotdb.confignode.manager.ProcedureManager;
+import org.apache.iotdb.confignode.manager.TTLManager;
 import org.apache.iotdb.confignode.manager.consensus.ConsensusManager;
 import org.apache.iotdb.confignode.manager.load.LoadManager;
 import org.apache.iotdb.confignode.manager.node.NodeManager;
@@ -107,10 +110,12 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.Queue;
 import java.util.Set;
+import java.util.StringJoiner;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Future;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
@@ -124,6 +129,7 @@ public class PartitionManager {
       CONF.getSchemaRegionGroupExtensionPolicy();
   private static final RegionGroupExtensionPolicy DATA_REGION_GROUP_EXTENSION_POLICY =
       CONF.getDataRegionGroupExtensionPolicy();
+  private static final CommonConfig COMMON_CONFIG = CommonDescriptor.getInstance().getConfig();
 
   private final IManager configManager;
   private final PartitionInfo partitionInfo;
@@ -133,15 +139,16 @@ public class PartitionManager {
   private static final String CONSENSUS_READ_ERROR =
       "Failed in the read API executing the consensus layer due to: ";
 
-  private static final String CONSENSUS_WRITE_ERROR =
+  public static final String CONSENSUS_WRITE_ERROR =
       "Failed in the write API executing the consensus layer due to: ";
 
-  /** Region cleaner. */
   // Monitor for leadership change
   private final Object scheduleMonitor = new Object();
 
+  /** Region cleaner. */
   // Try to delete Regions in every 10s
   private static final int REGION_MAINTAINER_WORK_INTERVAL = 10;
+
   private final ScheduledExecutorService regionMaintainer;
   private Future<?> currentRegionMaintainerFuture;
 
@@ -243,6 +250,21 @@ public class PartitionManager {
         return resp;
       }
 
+      // Here we check if the related Databases exist again,
+      // due to we don't have a transaction mechanism.
+      for (final String database : req.getPartitionSlotsMap().keySet()) {
+        if (!isDatabaseExist(database)) {
+          return new SchemaPartitionResp(
+              new TSStatus(TSStatusCode.DATABASE_NOT_EXIST.getStatusCode())
+                  .setMessage(
+                      String.format(
+                          "Create SchemaPartition failed because the database: %s does not exist",
+                          database)),
+              false,
+              null);
+        }
+      }
+
       // Filter unassigned SchemaPartitionSlots
       final Map<String, List<TSeriesPartitionSlot>> unassignedSchemaPartitionSlotsMap =
           partitionInfo.filterUnassignedSchemaPartitionSlots(req.getPartitionSlotsMap());
@@ -306,14 +328,19 @@ public class PartitionManager {
       final AtomicInteger unassignedSlotNum = new AtomicInteger();
       final Map<String, List<TSeriesPartitionSlot>> unassignedSchemaPartitionSlotsMap =
           partitionInfo.filterUnassignedSchemaPartitionSlots(req.getPartitionSlotsMap());
+      StringJoiner errDatabases = new StringJoiner(", ", "[", "]");
       unassignedSchemaPartitionSlotsMap.forEach(
-          (database, unassignedSchemaPartitionSlots) ->
-              unassignedSlotNum.addAndGet(unassignedSchemaPartitionSlots.size()));
+          (database, unassignedSchemaPartitionSlots) -> {
+            if (!unassignedSchemaPartitionSlots.isEmpty()) {
+              errDatabases.add(database);
+              unassignedSlotNum.addAndGet(unassignedSchemaPartitionSlots.size());
+            }
+          });
 
       final String errMsg =
           String.format(
-              "Lacked %d/%d SchemaPartition allocation result in the response of getOrCreateSchemaPartition method",
-              unassignedSlotNum.get(), totalSlotNum.get());
+              "Lacked %d/%d SchemaPartition allocation result when get or create schema partitions for databases: %s",
+              unassignedSlotNum.get(), totalSlotNum.get(), errDatabases);
       LOGGER.error(errMsg);
       resp.setStatus(
           new TSStatus(TSStatusCode.LACK_PARTITION_ALLOCATION.getStatusCode()).setMessage(errMsg));
@@ -366,6 +393,21 @@ public class PartitionManager {
       resp = getDataPartition(req);
       if (resp.isAllPartitionsExist()) {
         return resp;
+      }
+
+      // Here we check if the related Databases exist again,
+      // due to we don't have a transaction mechanism.
+      for (final String database : req.getPartitionSlotsMap().keySet()) {
+        if (!isDatabaseExist(database)) {
+          return new DataPartitionResp(
+              new TSStatus(TSStatusCode.DATABASE_NOT_EXIST.getStatusCode())
+                  .setMessage(
+                      String.format(
+                          "Create DataPartition failed because the database: %s does not exist",
+                          database)),
+              false,
+              null);
+        }
       }
 
       // Filter unassigned DataPartitionSlots
@@ -441,16 +483,26 @@ public class PartitionManager {
       AtomicInteger unassignedSlotNum = new AtomicInteger();
       Map<String, Map<TSeriesPartitionSlot, TTimeSlotList>> unassignedDataPartitionSlotsMap =
           partitionInfo.filterUnassignedDataPartitionSlots(req.getPartitionSlotsMap());
+      StringJoiner errDatabases = new StringJoiner(", ", "[", "]");
       unassignedDataPartitionSlotsMap.forEach(
-          (database, unassignedDataPartitionSlots) ->
-              unassignedDataPartitionSlots.forEach(
-                  (seriesPartitionSlot, timeSlotList) ->
-                      unassignedSlotNum.addAndGet(timeSlotList.getTimePartitionSlots().size())));
+          (database, unassignedDataPartitionSlots) -> {
+            AtomicBoolean hasUnassignedSlot = new AtomicBoolean(false);
+            unassignedDataPartitionSlots.forEach(
+                (seriesPartitionSlot, timeSlotList) -> {
+                  if (!timeSlotList.getTimePartitionSlots().isEmpty()) {
+                    hasUnassignedSlot.set(true);
+                    unassignedSlotNum.addAndGet(timeSlotList.getTimePartitionSlots().size());
+                  }
+                });
+            if (hasUnassignedSlot.get()) {
+              errDatabases.add(database);
+            }
+          });
 
       String errMsg =
           String.format(
-              "Lacked %d/%d DataPartition allocation result in the response of getOrCreateDataPartition method",
-              unassignedSlotNum.get(), totalSlotNum.get());
+              "Lacked %d/%d DataPartition allocation result when get or create data partitions for databases: %s",
+              unassignedSlotNum.get(), totalSlotNum.get(), errDatabases);
       LOGGER.error(errMsg);
       resp.setStatus(
           new TSStatus(TSStatusCode.LACK_PARTITION_ALLOCATION.getStatusCode()).setMessage(errMsg));
@@ -1514,5 +1566,9 @@ public class PartitionManager {
 
   private NodeManager getNodeManager() {
     return configManager.getNodeManager();
+  }
+
+  private TTLManager getTTLManager() {
+    return configManager.getTTLManager();
   }
 }

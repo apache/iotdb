@@ -144,6 +144,7 @@ public abstract class IClientSession {
 
   public abstract void addQueryId(Long statementId, long queryId);
 
+  // statementId could be null
   public abstract void removeQueryId(Long statementId, Long queryId);
 
   public SqlDialect getSqlDialect() {
@@ -152,6 +153,12 @@ public abstract class IClientSession {
 
   public void setSqlDialect(SqlDialect sqlDialect) {
     this.sqlDialect = sqlDialect;
+  }
+
+  public void setSqlDialectAndClean(SqlDialect sqlDialect) {
+    this.sqlDialect = sqlDialect;
+    // clean database to avoid misuse of it between different SqlDialect
+    this.databaseName = null;
   }
 
   @Nullable

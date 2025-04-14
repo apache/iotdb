@@ -23,9 +23,10 @@ import org.apache.iotdb.commons.concurrent.ThreadName;
 import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.commons.consensus.index.impl.MinimumProgressIndex;
 import org.apache.iotdb.commons.consensus.index.impl.SimpleProgressIndex;
+import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.pipe.consensus.ProgressIndexDataNodeManager;
+import org.apache.iotdb.db.pipe.consensus.ReplicateProgressDataNodeManager;
 import org.apache.iotdb.db.pipe.consensus.deletion.DeletionResource;
 import org.apache.iotdb.db.pipe.consensus.deletion.DeletionResourceManager;
 import org.apache.iotdb.db.utils.MmapUtil;
@@ -39,10 +40,10 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 import java.nio.charset.StandardCharsets;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.PriorityBlockingQueue;
 import java.util.concurrent.TimeUnit;
@@ -58,11 +59,12 @@ import java.util.concurrent.locks.ReentrantLock;
 public class PageCacheDeletionBuffer implements DeletionBuffer {
   private static final Logger LOGGER = LoggerFactory.getLogger(PageCacheDeletionBuffer.class);
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
-  // Buffer config keep consistent with WAL.
-  private static final int ONE_THIRD_WAL_BUFFER_SIZE = config.getWalBufferSize() / 3;
   private static final double FSYNC_BUFFER_RATIO = 0.95;
   private static final int QUEUE_CAPACITY = config.getDeletionAheadLogBufferQueueCapacity();
   private static final long MAX_WAIT_CLOSE_TIME_IN_MS = 10000;
+
+  // Buffer config keep consistent with WAL.
+  public static int DAL_BUFFER_SIZE = config.getWalBufferSize() / 3;
 
   // DeletionResources received from storage engine, which is waiting to be persisted.
   private final BlockingQueue<DeletionResource> deletionResources =
@@ -82,7 +84,7 @@ public class PageCacheDeletionBuffer implements DeletionBuffer {
   // Total size of this batch.
   private final AtomicInteger totalSize = new AtomicInteger(0);
   // All deletions that will be handled in a single persist task
-  private final List<DeletionResource> pendingDeletionsInOneTask = new ArrayList<>();
+  private final List<DeletionResource> pendingDeletionsInOneTask = new CopyOnWriteArrayList<>();
 
   // whether close method is called
   private volatile boolean isClosed = false;
@@ -92,12 +94,10 @@ public class PageCacheDeletionBuffer implements DeletionBuffer {
   private volatile File logFile;
   private volatile FileOutputStream logStream;
   private volatile FileChannel logChannel;
-  // Max progressIndex among current .deletion file.
-  private ProgressIndex maxProgressIndexInCurrentFile = MinimumProgressIndex.INSTANCE;
-  // Max progressIndex among last .deletion file. Used by PersistTask for naming .deletion file.
+  // Max progressIndex among current .deletion file. Used by PersistTask for naming .deletion file.
   // Since deletions are written serially, DAL is also written serially. This ensures that the
   // maxProgressIndex of each batch increases in the same order as the physical time.
-  private volatile ProgressIndex maxProgressIndexInLastFile = MinimumProgressIndex.INSTANCE;
+  private ProgressIndex maxProgressIndexInCurrentFile = MinimumProgressIndex.INSTANCE;
 
   public PageCacheDeletionBuffer(String dataRegionId, String baseDirectory) {
     this.dataRegionId = dataRegionId;
@@ -152,7 +152,7 @@ public class PageCacheDeletionBuffer implements DeletionBuffer {
 
   private void allocateBuffers() {
     try {
-      serializeBuffer = ByteBuffer.allocate(ONE_THIRD_WAL_BUFFER_SIZE);
+      serializeBuffer = ByteBuffer.allocateDirect(DAL_BUFFER_SIZE);
     } catch (OutOfMemoryError e) {
       LOGGER.error(
           "Fail to allocate deletionBuffer-group-{}'s buffer because out of memory.",
@@ -200,7 +200,6 @@ public class PageCacheDeletionBuffer implements DeletionBuffer {
   private void resetFileAttribute() {
     // Reset file attributes.
     this.totalSize.set(0);
-    this.maxProgressIndexInLastFile = this.maxProgressIndexInCurrentFile;
     this.maxProgressIndexInCurrentFile = MinimumProgressIndex.INSTANCE;
   }
 
@@ -220,14 +219,16 @@ public class PageCacheDeletionBuffer implements DeletionBuffer {
 
   private void switchLoggingFile() throws IOException {
     try {
-      // PipeConsensus ensures that deleteDataNodes use recoverProgressIndex.
       ProgressIndex curProgressIndex =
-          ProgressIndexDataNodeManager.extractLocalSimpleProgressIndex(maxProgressIndexInLastFile);
+          ReplicateProgressDataNodeManager.extractLocalSimpleProgressIndex(
+              maxProgressIndexInCurrentFile);
+      // PipeConsensus ensures that deleteDataNodes use recoverProgressIndex.
       if (!(curProgressIndex instanceof SimpleProgressIndex)) {
         throw new IOException("Invalid deletion progress index: " + curProgressIndex);
       }
       SimpleProgressIndex progressIndex = (SimpleProgressIndex) curProgressIndex;
-      // Deletion file name format: "_{rebootTimes}_{memTableFlushOrderId}.deletion"
+      // Deletion file name format:
+      // "_{lastFileMaxRebootTimes}_{lastFileMaxMemTableFlushOrderId}.deletion"
       this.logFile =
           new File(
               baseDirectory,
@@ -333,7 +334,7 @@ public class PageCacheDeletionBuffer implements DeletionBuffer {
 
       // For further deletion, we use non-blocking poll() method to persist existing deletion of
       // current batch in time.
-      while (totalSize.get() < ONE_THIRD_WAL_BUFFER_SIZE * FSYNC_BUFFER_RATIO) {
+      while (totalSize.get() < DAL_BUFFER_SIZE * FSYNC_BUFFER_RATIO) {
         DeletionResource deletionResource = null;
         try {
           // Timeout config keep consistent with WAL async mode.
@@ -378,5 +379,10 @@ public class PageCacheDeletionBuffer implements DeletionBuffer {
         switchLoggingFile();
       }
     }
+  }
+
+  @TestOnly
+  public static void setDalBufferSize(int dalBufferSize) {
+    DAL_BUFFER_SIZE = dalBufferSize;
   }
 }

@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.queryengine.plan.relational.security;
 
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.QualifiedObjectName;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.RelationalAuthorStatement;
 
 public class AllowAllAccessControl implements AccessControl {
   @Override
@@ -68,6 +69,16 @@ public class AllowAllAccessControl implements AccessControl {
   }
 
   @Override
+  public void checkCanSelectFromDatabase4Pipe(String userName, String databaseName) {
+    // allow anything
+  }
+
+  @Override
+  public boolean checkCanSelectFromTable4Pipe(String userName, QualifiedObjectName tableName) {
+    return true;
+  }
+
+  @Override
   public void checkCanDeleteFromTable(String userName, QualifiedObjectName tableName) {
     // allow anything
   }
@@ -78,7 +89,13 @@ public class AllowAllAccessControl implements AccessControl {
   }
 
   @Override
-  public void checkUserHasMaintainPrivilege(String userName) {
+  public void checkUserCanRunRelationalAuthorStatement(
+      String userName, RelationalAuthorStatement statement) {
+    // allow anything
+  }
+
+  @Override
+  public void checkUserIsAdmin(String userName) {
     // allow anything
   }
 }

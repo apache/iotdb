@@ -31,6 +31,7 @@ import org.apache.iotdb.db.exception.load.LoadAnalyzeTableColumnDisorderExceptio
 import org.apache.iotdb.db.exception.sql.ColumnCreationFailException;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
+import org.apache.iotdb.db.queryengine.plan.Coordinator;
 import org.apache.iotdb.db.queryengine.plan.analyze.lock.DataNodeSchemaLockManager;
 import org.apache.iotdb.db.queryengine.plan.analyze.lock.SchemaLockType;
 import org.apache.iotdb.db.queryengine.plan.execution.config.ConfigTaskResult;
@@ -38,11 +39,12 @@ import org.apache.iotdb.db.queryengine.plan.execution.config.executor.ClusterCon
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.AlterTableAddColumnTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.CreateTableTask;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.ColumnSchema;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.QualifiedObjectName;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.TableMetadataImpl;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.TableSchema;
+import org.apache.iotdb.db.queryengine.plan.relational.security.AccessControl;
 import org.apache.iotdb.db.queryengine.plan.relational.type.InternalTypeManager;
 import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
-import org.apache.iotdb.db.schemaengine.table.InformationSchemaUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import com.google.common.util.concurrent.ListenableFuture;
@@ -52,6 +54,8 @@ import org.apache.tsfile.read.common.type.StringType;
 import org.apache.tsfile.read.common.type.TypeFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import javax.annotation.Nullable;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -69,6 +73,7 @@ public class TableHeaderSchemaValidator {
 
   private final ClusterConfigTaskExecutor configTaskExecutor =
       ClusterConfigTaskExecutor.getInstance();
+  private final AccessControl accessControl = Coordinator.getInstance().getAccessControl();
 
   private TableHeaderSchemaValidator() {
     // do nothing
@@ -90,17 +95,14 @@ public class TableHeaderSchemaValidator {
       final boolean allowCreateTable,
       final boolean isStrictIdColumn)
       throws LoadAnalyzeTableColumnDisorderException {
-    InformationSchemaUtils.checkDBNameInWrite(database);
-
     // The schema cache R/W and fetch operation must be locked together thus the cache clean
     // operation executed by delete timeSeries will be effective.
     DataNodeSchemaLockManager.getInstance()
-        .takeReadLock(context, SchemaLockType.VALIDATE_VS_DELETION);
+        .takeReadLock(context, SchemaLockType.VALIDATE_VS_DELETION_TABLE);
 
     final List<ColumnSchema> inputColumnList = tableSchema.getColumns();
     if (inputColumnList == null || inputColumnList.isEmpty()) {
-      throw new IllegalArgumentException(
-          "No column other than Time present, please check the request");
+      throw new SemanticException("No column other than Time present, please check the request");
     }
     // Get directly if there is a table because we do not want "addColumn" to affect
     // original writings
@@ -117,7 +119,7 @@ public class TableHeaderSchemaValidator {
       // it's ok that many write requests concurrently auto create same table, the thread safety
       // will be guaranteed by ProcedureManager.createTable in CN
       if (allowCreateTable && isAutoCreateSchemaEnabled) {
-        autoCreateTable(database, tableSchema);
+        autoCreateTable(context, database, tableSchema);
         table = DataNodeTableCache.getInstance().getTable(database, tableSchema.getTableName());
         if (table == null) {
           throw new IllegalStateException(
@@ -167,6 +169,7 @@ public class TableHeaderSchemaValidator {
     }
 
     boolean refreshed = false;
+    boolean noField = true;
     for (final ColumnSchema columnSchema : inputColumnList) {
       TsTableColumnSchema existingColumn = table.getColumnSchema(columnSchema.getName());
       if (Objects.isNull(existingColumn)) {
@@ -196,6 +199,11 @@ public class TableHeaderSchemaValidator {
           }
           missingColumnList.add(columnSchema);
         }
+        if (noField
+            && columnSchema.getColumnCategory() != null
+            && columnSchema.getColumnCategory() == TsTableColumnCategory.FIELD) {
+          noField = false;
+        }
       } else {
         // leave measurement columns' dataType checking to the caller, then the caller can decide
         // whether to do partial insert
@@ -207,7 +215,13 @@ public class TableHeaderSchemaValidator {
               String.format("Wrong category at column %s.", columnSchema.getName()),
               TSStatusCode.COLUMN_CATEGORY_MISMATCH.getStatusCode());
         }
+        if (noField && existingColumn.getColumnCategory() == TsTableColumnCategory.FIELD) {
+          noField = false;
+        }
       }
+    }
+    if (noField) {
+      throw new SemanticException("No Field column present, please check the request");
     }
 
     final List<ColumnSchema> resultColumnList = new ArrayList<>();
@@ -238,9 +252,15 @@ public class TableHeaderSchemaValidator {
     return Optional.of(new TableSchema(tableSchema.getTableName(), resultColumnList));
   }
 
-  private void autoCreateTable(final String database, final TableSchema tableSchema) {
+  private void autoCreateTable(
+      final MPPQueryContext context, final String database, final TableSchema tableSchema) {
+    // Release to avoid deadlock
+    DataNodeSchemaLockManager.getInstance().releaseReadLock(context);
     final TsTable tsTable = new TsTable(tableSchema.getTableName());
     addColumnSchema(tableSchema.getColumns(), tsTable);
+    accessControl.checkCanCreateTable(
+        context.getSession().getUserName(),
+        new QualifiedObjectName(database, tableSchema.getTableName()));
     final CreateTableTask createTableTask = new CreateTableTask(tsTable, database, true);
     try {
       final ListenableFuture<ConfigTaskResult> future = createTableTask.execute(configTaskExecutor);
@@ -250,9 +270,11 @@ public class TableHeaderSchemaValidator {
             new IoTDBException(
                 "Auto create table column failed.", result.getStatusCode().getStatusCode()));
       }
-    } catch (ExecutionException e) {
+      DataNodeSchemaLockManager.getInstance()
+          .takeReadLock(context, SchemaLockType.VALIDATE_VS_DELETION_TABLE);
+    } catch (final ExecutionException e) {
       throw new RuntimeException(e);
-    } catch (InterruptedException e) {
+    } catch (final InterruptedException e) {
       /* Clean up whatever needs to be handled before interrupting  */
       Thread.currentThread().interrupt();
       throw new RuntimeException(e);
@@ -276,37 +298,49 @@ public class TableHeaderSchemaValidator {
         throw new ColumnCreationFailException(
             "Cannot create column " + columnSchema.getName() + " datatype is not provided");
       }
-      tsTable.addColumnSchema(generateColumnSchema(category, columnName, dataType));
+      tsTable.addColumnSchema(generateColumnSchema(category, columnName, dataType, null));
     }
   }
 
   public static TsTableColumnSchema generateColumnSchema(
-      final TsTableColumnCategory category, final String columnName, final TSDataType dataType) {
+      final TsTableColumnCategory category,
+      final String columnName,
+      final TSDataType dataType,
+      final @Nullable String comment) {
+    final TsTableColumnSchema schema;
     switch (category) {
       case TAG:
         if (!TSDataType.STRING.equals(dataType)) {
           throw new SemanticException(
               "DataType of TAG Column should only be STRING, current is " + dataType);
         }
-        return new TagColumnSchema(columnName, dataType);
+        schema = new TagColumnSchema(columnName, dataType);
+        break;
       case ATTRIBUTE:
         if (!TSDataType.STRING.equals(dataType)) {
           throw new SemanticException(
               "DataType of ATTRIBUTE Column should only be STRING, current is " + dataType);
         }
-        return new AttributeColumnSchema(columnName, dataType);
+        schema = new AttributeColumnSchema(columnName, dataType);
+        break;
       case TIME:
         throw new SemanticException(
             "Create table or add column statement shall not specify column category TIME");
       case FIELD:
-        return new FieldColumnSchema(
-            columnName,
-            dataType,
-            getDefaultEncoding(dataType),
-            TSFileDescriptor.getInstance().getConfig().getCompressor());
+        schema =
+            new FieldColumnSchema(
+                columnName,
+                dataType,
+                getDefaultEncoding(dataType),
+                TSFileDescriptor.getInstance().getConfig().getCompressor());
+        break;
       default:
         throw new IllegalArgumentException();
     }
+    if (Objects.nonNull(comment)) {
+      schema.getProps().put(TsTable.COMMENT_KEY, comment);
+    }
+    return schema;
   }
 
   private void autoCreateColumn(
@@ -314,6 +348,9 @@ public class TableHeaderSchemaValidator {
       final String tableName,
       final List<ColumnSchema> inputColumnList,
       final MPPQueryContext context) {
+    DataNodeSchemaLockManager.getInstance().releaseReadLock(context);
+    accessControl.checkCanAlterTable(
+        context.getSession().getUserName(), new QualifiedObjectName(database, tableName));
     final AlterTableAddColumnTask task =
         new AlterTableAddColumnTask(
             database,
@@ -333,6 +370,8 @@ public class TableHeaderSchemaValidator {
                     database, tableName, inputColumnList),
                 result.getStatusCode().getStatusCode()));
       }
+      DataNodeSchemaLockManager.getInstance()
+          .takeReadLock(context, SchemaLockType.VALIDATE_VS_DELETION_TABLE);
     } catch (final ExecutionException | InterruptedException e) {
       LOGGER.warn("Auto add table column failed.", e);
       throw new RuntimeException(e);

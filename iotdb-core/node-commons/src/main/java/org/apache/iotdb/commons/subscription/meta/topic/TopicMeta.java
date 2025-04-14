@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.commons.subscription.meta.topic;
 
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.rpc.subscription.config.TopicConfig;
@@ -186,6 +187,8 @@ public class TopicMeta {
     extractorAttributes.put("source", "iotdb-source");
     extractorAttributes.put("inclusion", "data.insert");
     extractorAttributes.put("inclusion.exclusion", "data.delete");
+    // Currently use root in subscription pipes
+    extractorAttributes.put("username", CommonDescriptor.getInstance().getConfig().getAdminName());
     // sql dialect
     extractorAttributes.putAll(config.getAttributeWithSqlDialect());
     if (config.isTableTopic()) {
@@ -203,6 +206,8 @@ public class TopicMeta {
     extractorAttributes.putAll(config.getAttributesWithSourceMode());
     // loose range or strict
     extractorAttributes.putAll(config.getAttributesWithSourceLooseRangeOrStrict());
+    // backdoor configs
+    extractorAttributes.putAll(config.getAttributesWithSourcePrefix());
     return extractorAttributes;
   }
 
@@ -216,6 +221,8 @@ public class TopicMeta {
     connectorAttributes.put(PipeConnectorConstant.SINK_TOPIC_KEY, topicName);
     connectorAttributes.put(PipeConnectorConstant.SINK_CONSUMER_GROUP_KEY, consumerGroupId);
     connectorAttributes.putAll(config.getAttributesWithSinkFormat());
+    // backdoor configs
+    connectorAttributes.putAll(config.getAttributesWithSinkPrefix());
     return connectorAttributes;
   }
 

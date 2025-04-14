@@ -27,12 +27,15 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.service.metrics.WritingMetrics;
 import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
 import org.apache.iotdb.db.storageengine.dataregion.flush.pool.FlushSubTaskPoolManager;
+import org.apache.iotdb.db.storageengine.dataregion.memtable.AlignedWritableMemChunk;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.IMemTable;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.IWritableMemChunk;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.IWritableMemChunkGroup;
 import org.apache.iotdb.db.storageengine.rescon.memory.SystemInfo;
+import org.apache.iotdb.db.utils.datastructure.BatchEncodeInfo;
 import org.apache.iotdb.metrics.utils.MetricLevel;
 
+import org.apache.tsfile.common.conf.TSFileDescriptor;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.write.chunk.IChunkWriter;
 import org.apache.tsfile.write.writer.RestorableTsFileIOWriter;
@@ -44,6 +47,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
@@ -61,14 +65,17 @@ public class MemTableFlushTask {
       FlushSubTaskPoolManager.getInstance();
   private static final WritingMetrics WRITING_METRICS = WritingMetrics.getInstance();
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
+  private final int MAX_NUMBER_OF_POINTS_IN_PAGE =
+      TSFileDescriptor.getInstance().getConfig().getMaxNumberOfPointsInPage();
+
   /* storage group name -> last time */
   private static final Map<String, Long> flushPointsCache = new ConcurrentHashMap<>();
   private final Future<?> encodingTaskFuture;
   private final Future<?> ioTaskFuture;
   private RestorableTsFileIOWriter writer;
 
-  private final LinkedBlockingQueue<Object> encodingTaskQueue = new LinkedBlockingQueue<>();
-  private final LinkedBlockingQueue<Object> ioTaskQueue =
+  private final BlockingQueue<Object> encodingTaskQueue = new LinkedBlockingQueue<>();
+  private final BlockingQueue<Object> ioTaskQueue =
       (SystemInfo.getInstance().isEncodingFasterThanIo())
           ? new LinkedBlockingQueue<>(config.getIoTaskQueueSizeForFlushing())
           : new LinkedBlockingQueue<>();
@@ -80,6 +87,9 @@ public class MemTableFlushTask {
 
   private volatile long memSerializeTime = 0L;
   private volatile long ioTime = 0L;
+
+  private final BatchEncodeInfo encodeInfo;
+  private long[] times;
 
   /**
    * @param memTable the memTable to flush
@@ -97,6 +107,7 @@ public class MemTableFlushTask {
     this.dataRegionId = dataRegionId;
     this.encodingTaskFuture = SUB_TASK_POOL_MANAGER.submit(encodingTask);
     this.ioTaskFuture = SUB_TASK_POOL_MANAGER.submit(ioTask);
+    this.encodeInfo = new BatchEncodeInfo(0, 0, 0);
     LOGGER.debug(
         "flush task of database {} memtable is created, flushing to file {}.",
         storageGroup,
@@ -138,7 +149,7 @@ public class MemTableFlushTask {
     for (IDeviceID deviceID : deviceIDList) {
       final Map<String, IWritableMemChunk> value = memTableMap.get(deviceID).getMemChunkMap();
       // skip the empty device/chunk group
-      if (memTableMap.get(deviceID).count() == 0 || value.isEmpty()) {
+      if (memTableMap.get(deviceID).isEmpty() || value.isEmpty()) {
         continue;
       }
       encodingTaskQueue.put(new StartFlushGroupIOTask(deviceID));
@@ -247,16 +258,10 @@ public class MemTableFlushTask {
             } else {
               long starTime = System.currentTimeMillis();
               IWritableMemChunk writableMemChunk = (IWritableMemChunk) task;
-              IChunkWriter seriesWriter = writableMemChunk.createIChunkWriter();
-              writableMemChunk.encode(seriesWriter);
-              seriesWriter.sealCurrentPage();
-              seriesWriter.clearPageWriter();
-              try {
-                ioTaskQueue.put(seriesWriter);
-              } catch (InterruptedException e) {
-                LOGGER.error("Put task into ioTaskQueue Interrupted");
-                Thread.currentThread().interrupt();
+              if (writableMemChunk instanceof AlignedWritableMemChunk && times == null) {
+                times = new long[MAX_NUMBER_OF_POINTS_IN_PAGE];
               }
+              writableMemChunk.encode(ioTaskQueue, encodeInfo, times);
               long subTaskTime = System.currentTimeMillis() - starTime;
               WRITING_METRICS.recordFlushSubTaskCost(WritingMetrics.ENCODING_TASK, subTaskTime);
               memSerializeTime += subTaskTime;

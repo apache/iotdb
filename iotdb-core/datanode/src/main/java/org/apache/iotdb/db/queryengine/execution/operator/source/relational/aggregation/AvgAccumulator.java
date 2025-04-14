@@ -57,7 +57,7 @@ public class AvgAccumulator implements TableAccumulator {
 
   @Override
   public void addInput(Column[] arguments, AggregationMask mask) {
-    checkArgument(arguments.length == 1, "argument of Avg should be one column");
+    checkArgument(arguments.length == 1, "argument of AVG should be one column");
     switch (argumentDataType) {
       case INT32:
         addIntInput(arguments[0], mask);
@@ -85,7 +85,7 @@ public class AvgAccumulator implements TableAccumulator {
 
   @Override
   public void removeInput(Column[] arguments) {
-    checkArgument(arguments.length == 1, "argument of Avg should be one column");
+    checkArgument(arguments.length == 1, "argument of AVG should be one column");
     switch (argumentDataType) {
       case INT32:
         removeIntInput(arguments[0]);
@@ -117,7 +117,7 @@ public class AvgAccumulator implements TableAccumulator {
         argument instanceof BinaryColumn
             || (argument instanceof RunLengthEncodedColumn
                 && ((RunLengthEncodedColumn) argument).getValue() instanceof BinaryColumn),
-        "intermediate input and output of Avg should be BinaryColumn");
+        "intermediate input and output of AVG should be BinaryColumn");
 
     for (int i = 0; i < argument.getPositionCount(); i++) {
       if (argument.isNull(i)) {
@@ -136,7 +136,7 @@ public class AvgAccumulator implements TableAccumulator {
   public void evaluateIntermediate(ColumnBuilder columnBuilder) {
     checkArgument(
         columnBuilder instanceof BinaryColumnBuilder,
-        "intermediate input and output of Avg should be BinaryColumn");
+        "intermediate input and output of AVG should be BinaryColumn");
     if (!initResult) {
       columnBuilder.appendNull();
     } else {
@@ -319,7 +319,7 @@ public class AvgAccumulator implements TableAccumulator {
     for (int i = 0; i < count; i++) {
       if (!column.isNull(i)) {
         countValue--;
-        sumValue += column.getFloat(i);
+        sumValue -= column.getFloat(i);
       }
     }
   }

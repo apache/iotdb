@@ -28,6 +28,7 @@ import org.apache.tsfile.file.metadata.TableSchema;
 import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.utils.WriteUtils;
 import org.apache.tsfile.write.record.Tablet;
+import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -36,12 +37,14 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedHashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicLong;
 
 public class PipeTableModeTsFileBuilder extends PipeTsFileBuilder {
@@ -70,7 +73,7 @@ public class PipeTableModeTsFileBuilder extends PipeTsFileBuilder {
     if (dataBase2TabletList.isEmpty()) {
       return new ArrayList<>(0);
     }
-    List<Pair<String, File>> pairList = new ArrayList<>();
+    final List<Pair<String, File>> pairList = new ArrayList<>();
     for (Map.Entry<String, List<Tablet>> entry : dataBase2TabletList.entrySet()) {
       final LinkedHashSet<LinkedList<Pair<Tablet, List<Pair<IDeviceID, Integer>>>>> linkedHashSet =
           new LinkedHashSet<>();
@@ -112,9 +115,6 @@ public class PipeTableModeTsFileBuilder extends PipeTsFileBuilder {
           .computeIfAbsent(tablet.getTableName(), k -> new ArrayList<>())
           .add((T) new Pair<>(tablet, WriteUtils.splitTabletByDevice(tablet)));
     }
-
-    // Replace ArrayList with LinkedList to improve performance
-    final LinkedHashSet<LinkedList<T>> table2Tablets = new LinkedHashSet<>();
 
     // Sort the tablets by start time in first device
     for (final List<T> tablets : tableName2Tablets.values()) {
@@ -210,10 +210,31 @@ public class PipeTableModeTsFileBuilder extends PipeTsFileBuilder {
 
       final List<T> tabletsToWrite = new ArrayList<>();
       final Map<IDeviceID, Long> deviceLastTimestampMap = new HashMap<>();
+      String tableName = null;
+
+      final List<IMeasurementSchema> columnSchemas = new ArrayList<>();
+      final List<Tablet.ColumnCategory> columnCategories = new ArrayList<>();
+      final Set<String> columnNames = new HashSet<>();
+
       while (!tablets.isEmpty()) {
         final T pair = tablets.peekFirst();
         if (timestampsAreNonOverlapping(
             (Pair<Tablet, List<Pair<IDeviceID, Integer>>>) pair, deviceLastTimestampMap)) {
+          final Tablet tablet = pair.left;
+          if (tableName == null) {
+            tableName = tablet.getTableName();
+          }
+
+          for (int i = 0, size = tablet.getSchemas().size(); i < size; i++) {
+            final IMeasurementSchema schema = tablet.getSchemas().get(i);
+            if (schema == null || columnNames.contains(schema.getMeasurementName())) {
+              continue;
+            }
+            columnNames.add(schema.getMeasurementName());
+            columnSchemas.add(schema);
+            columnCategories.add(tablet.getColumnTypes().get(i));
+          }
+
           tabletsToWrite.add(pair);
           tablets.pollFirst();
           continue;
@@ -224,14 +245,13 @@ public class PipeTableModeTsFileBuilder extends PipeTsFileBuilder {
       if (tablets.isEmpty()) {
         iterator.remove();
       }
-      boolean schemaNotRegistered = true;
+
+      if (tableName != null) {
+        fileWriter.registerTableSchema(new TableSchema(tableName, columnSchemas, columnCategories));
+      }
+
       for (final Pair<Tablet, List<Pair<IDeviceID, Integer>>> pair : tabletsToWrite) {
         final Tablet tablet = pair.left;
-        if (schemaNotRegistered) {
-          fileWriter.registerTableSchema(
-              new TableSchema(tablet.getTableName(), tablet.getSchemas(), tablet.getColumnTypes()));
-          schemaNotRegistered = false;
-        }
         try {
           fileWriter.writeTable(tablet, pair.right);
         } catch (WriteProcessException e) {

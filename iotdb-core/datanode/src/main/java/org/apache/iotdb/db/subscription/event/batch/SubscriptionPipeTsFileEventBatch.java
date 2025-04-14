@@ -35,7 +35,6 @@ import org.slf4j.LoggerFactory;
 import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
 
 public class SubscriptionPipeTsFileEventBatch extends SubscriptionPipeEventBatch {
@@ -60,7 +59,7 @@ public class SubscriptionPipeTsFileEventBatch extends SubscriptionPipeEventBatch
   }
 
   @Override
-  public synchronized void cleanUp() {
+  public synchronized void cleanUp(final boolean force) {
     // close batch, it includes clearing the reference count of events
     batch.close();
     enrichedEvents.clear();
@@ -97,13 +96,14 @@ public class SubscriptionPipeTsFileEventBatch extends SubscriptionPipeEventBatch
 
     final List<SubscriptionEvent> events = new ArrayList<>();
     final List<Pair<String, File>> dbTsFilePairs = batch.sealTsFiles();
-    final AtomicInteger referenceCount = new AtomicInteger(dbTsFilePairs.size());
+    final AtomicInteger ackReferenceCount = new AtomicInteger(dbTsFilePairs.size());
+    final AtomicInteger cleanReferenceCount = new AtomicInteger(dbTsFilePairs.size());
     for (final Pair<String, File> tsFile : dbTsFilePairs) {
       final SubscriptionCommitContext commitContext =
           prefetchingQueue.generateSubscriptionCommitContext();
       events.add(
           new SubscriptionEvent(
-              new SubscriptionPipeTsFileBatchEvents(this, referenceCount),
+              new SubscriptionPipeTsFileBatchEvents(this, ackReferenceCount, cleanReferenceCount),
               tsFile.right,
               commitContext));
     }
@@ -113,19 +113,5 @@ public class SubscriptionPipeTsFileEventBatch extends SubscriptionPipeEventBatch
   @Override
   protected boolean shouldEmit() {
     return batch.shouldEmit();
-  }
-
-  /////////////////////////////// stringify ///////////////////////////////
-
-  @Override
-  public String toString() {
-    return "SubscriptionPipeTsFileEventBatch" + this.coreReportMessage();
-  }
-
-  @Override
-  protected Map<String, String> coreReportMessage() {
-    final Map<String, String> coreReportMessage = super.coreReportMessage();
-    coreReportMessage.put("batch", batch.toString());
-    return coreReportMessage;
   }
 }

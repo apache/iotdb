@@ -21,7 +21,7 @@ include "common.thrift"
 namespace java org.apache.iotdb.consensus.pipe.thrift
 
 struct TCommitId {
-  1:required i64 commitIndex
+  1:required i64 replicateIndex
   2:required i32 pipeTaskRestartTimes
   3:required i32 dataNodeRebootTimes
 }

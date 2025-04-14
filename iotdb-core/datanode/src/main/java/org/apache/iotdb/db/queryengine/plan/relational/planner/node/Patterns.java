@@ -42,10 +42,10 @@ public final class Patterns {
     return typeOf(AggregationNode.class);
   }
 
-  //  public static Pattern<AssignUniqueId> assignUniqueId()
-  //  {
-  //      return typeOf(AssignUniqueId.class);
-  //  }
+  public static Pattern<AssignUniqueId> assignUniqueId() {
+    return typeOf(AssignUniqueId.class);
+  }
+
   //
   //  public static Pattern<GroupIdNode> groupId()
   //  {
@@ -125,13 +125,16 @@ public final class Patterns {
     return typeOf(LimitNode.class);
   }
 
-  /*public static Pattern<MarkDistinctNode> markDistinct()
-  {
-      return typeOf(MarkDistinctNode.class);
-  }*/
+  public static Pattern<MarkDistinctNode> markDistinct() {
+    return typeOf(MarkDistinctNode.class);
+  }
 
   public static Pattern<OutputNode> output() {
     return typeOf(OutputNode.class);
+  }
+
+  public static Pattern<ExplainAnalyzeNode> explainAnalyze() {
+    return typeOf(ExplainAnalyzeNode.class);
   }
 
   public static Pattern<ProjectNode> project() {
@@ -212,16 +215,17 @@ public final class Patterns {
   {
       return typeOf(PatternRecognitionNode.class);
   }
+  */
 
-  public static Pattern<TableFunctionNode> tableFunction()
-  {
-      return typeOf(TableFunctionNode.class);
+  public static Pattern<TableFunctionNode> tableFunction() {
+    return typeOf(TableFunctionNode.class);
   }
 
-  public static Pattern<TableFunctionProcessorNode> tableFunctionProcessor()
-  {
-      return typeOf(TableFunctionProcessorNode.class);
+  public static Pattern<TableFunctionProcessorNode> tableFunctionProcessor() {
+    return typeOf(TableFunctionProcessorNode.class);
   }
+
+  /*
 
   public static Pattern<RowNumberNode> rowNumber()
   {
@@ -272,18 +276,15 @@ public final class Patterns {
             node.getChildren().stream().map(lookup::resolve).collect(toImmutableList()));
   }
 
-  /*public static final class Aggregation
-  {
-      public static Property<AggregationNode, Lookup, List<Symbol>> groupingColumns()
-      {
-          return property("groupingKeys", AggregationNode::getGroupingKeys);
-      }
+  public static final class Aggregation {
+    public static Property<AggregationNode, Lookup, List<Symbol>> groupingColumns() {
+      return property("groupingKeys", AggregationNode::getGroupingKeys);
+    }
 
-      public static Property<AggregationNode, Lookup, AggregationNode.Step> step()
-      {
-          return property("step", AggregationNode::getStep);
-      }
-  }*/
+    public static Property<AggregationNode, Lookup, AggregationNode.Step> step() {
+      return property("step", AggregationNode::getStep);
+    }
+  }
 
   public static final class Apply {
     public static Property<ApplyNode, Lookup, List<Symbol>> correlation() {

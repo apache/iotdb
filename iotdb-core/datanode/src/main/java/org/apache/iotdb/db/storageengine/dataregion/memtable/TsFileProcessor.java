@@ -80,11 +80,13 @@ import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.file.metadata.AbstractAlignedChunkMetadata;
 import org.apache.tsfile.file.metadata.AlignedChunkMetadata;
 import org.apache.tsfile.file.metadata.ChunkMetadata;
 import org.apache.tsfile.file.metadata.IChunkMetadata;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.file.metadata.TableSchema;
+import org.apache.tsfile.read.filter.basic.Filter;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.write.writer.RestorableTsFileIOWriter;
@@ -104,6 +106,7 @@ import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentLinkedDeque;
 import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.ReadWriteLock;
@@ -649,17 +652,17 @@ public class TsFileProcessor {
       if (dataTypes[i] == null || measurements[i] == null) {
         continue;
       }
-      if (workMemTable.chunkNotExist(deviceId, measurements[i])) {
+      IWritableMemChunk memChunk = workMemTable.getWritableMemChunk(deviceId, measurements[i]);
+      if (memChunk == null) {
         // ChunkMetadataIncrement
         chunkMetadataIncrement += ChunkMetadata.calculateRamSize(measurements[i], dataTypes[i]);
         memTableIncrement += TVList.tvListArrayMemCost(dataTypes[i]);
       } else {
         // here currentChunkPointNum >= 1
-        long currentChunkPointNum = workMemTable.getCurrentTVListSize(deviceId, measurements[i]);
-        memTableIncrement +=
-            (currentChunkPointNum % PrimitiveArrayManager.ARRAY_SIZE) == 0
-                ? TVList.tvListArrayMemCost(dataTypes[i])
-                : 0;
+        long currentChunkPointNum = memChunk.rowCount();
+        if (currentChunkPointNum % PrimitiveArrayManager.ARRAY_SIZE == 0) {
+          memTableIncrement += memChunk.getWorkingTVList().tvListArrayMemCost();
+        }
       }
       // TEXT data mem size
       if (dataTypes[i].isBinary() && values[i] != null) {
@@ -689,7 +692,8 @@ public class TsFileProcessor {
         if (dataTypes[i] == null || measurements[i] == null) {
           continue;
         }
-        if (workMemTable.chunkNotExist(deviceId, measurements[i])
+        IWritableMemChunk memChunk = workMemTable.getWritableMemChunk(deviceId, measurements[i]);
+        if (memChunk == null
             && (!increasingMemTableInfo.containsKey(deviceId)
                 || !increasingMemTableInfo.get(deviceId).containsKey(measurements[i]))) {
           // ChunkMetadataIncrement
@@ -700,15 +704,17 @@ public class TsFileProcessor {
               .putIfAbsent(measurements[i], 1);
         } else {
           // here currentChunkPointNum >= 1
-          long currentChunkPointNum = workMemTable.getCurrentTVListSize(deviceId, measurements[i]);
           int addingPointNum =
               increasingMemTableInfo
                   .computeIfAbsent(deviceId, k -> new HashMap<>())
                   .computeIfAbsent(measurements[i], k -> 0);
-          memTableIncrement +=
-              ((currentChunkPointNum + addingPointNum) % PrimitiveArrayManager.ARRAY_SIZE) == 0
-                  ? TVList.tvListArrayMemCost(dataTypes[i])
-                  : 0;
+          long currentChunkPointNum = memChunk != null ? memChunk.rowCount() : 0;
+          if ((currentChunkPointNum + addingPointNum) % PrimitiveArrayManager.ARRAY_SIZE == 0) {
+            memTableIncrement +=
+                memChunk != null
+                    ? memChunk.getWorkingTVList().tvListArrayMemCost()
+                    : TVList.tvListArrayMemCost(dataTypes[i]);
+          }
           increasingMemTableInfo.get(deviceId).computeIfPresent(measurements[i], (k, v) -> v + 1);
         }
         // TEXT data mem size
@@ -734,7 +740,9 @@ public class TsFileProcessor {
     long textDataIncrement = 0L;
     long chunkMetadataIncrement = 0L;
 
-    if (workMemTable.chunkNotExist(deviceId, AlignedPath.VECTOR_PLACEHOLDER)) {
+    IWritableMemChunk memChunk =
+        workMemTable.getWritableMemChunk(deviceId, AlignedPath.VECTOR_PLACEHOLDER);
+    if (memChunk == null) {
       // For new device of this mem table
       // ChunkMetadataIncrement
       chunkMetadataIncrement +=
@@ -743,9 +751,7 @@ public class TsFileProcessor {
       memTableIncrement += AlignedTVList.alignedTvListArrayMemCost(dataTypes, columnCategories);
     } else {
       // For existed device of this mem table
-      AlignedWritableMemChunk alignedMemChunk =
-          ((AlignedWritableMemChunkGroup) workMemTable.getMemTableMap().get(deviceId))
-              .getAlignedMemChunk();
+      AlignedWritableMemChunk alignedMemChunk = (AlignedWritableMemChunk) memChunk;
       List<TSDataType> dataTypesInTVList = new ArrayList<>();
       for (int i = 0; i < dataTypes.length; i++) {
         // Skip failed Measurements
@@ -768,8 +774,8 @@ public class TsFileProcessor {
       }
       // this insertion will result in a new array
       if ((alignedMemChunk.alignedListSize() % PrimitiveArrayManager.ARRAY_SIZE) == 0) {
-        dataTypesInTVList.addAll(((AlignedTVList) alignedMemChunk.getTVList()).getTsDataTypes());
-        memTableIncrement += AlignedTVList.alignedTvListArrayMemCost(dataTypesInTVList);
+        dataTypesInTVList.addAll(alignedMemChunk.getWorkingTVList().getTsDataTypes());
+        memTableIncrement += alignedMemChunk.getWorkingTVList().alignedTvListArrayMemCost();
       }
     }
 
@@ -797,8 +803,10 @@ public class TsFileProcessor {
       TSDataType[] dataTypes = insertRowNode.getDataTypes();
       Object[] values = insertRowNode.getValues();
       String[] measurements = insertRowNode.getMeasurements();
-      if (workMemTable.chunkNotExist(deviceId, AlignedPath.VECTOR_PLACEHOLDER)
-          && !increasingMemTableInfo.containsKey(deviceId)) {
+
+      IWritableMemChunk memChunk =
+          workMemTable.getWritableMemChunk(deviceId, AlignedPath.VECTOR_PLACEHOLDER);
+      if (memChunk == null && !increasingMemTableInfo.containsKey(deviceId)) {
         // For new device of this mem table
         // ChunkMetadataIncrement
         chunkMetadataIncrement +=
@@ -821,10 +829,7 @@ public class TsFileProcessor {
 
       } else {
         // For existed device of this mem table
-        AlignedWritableMemChunkGroup memChunkGroup =
-            (AlignedWritableMemChunkGroup) workMemTable.getMemTableMap().get(deviceId);
-        AlignedWritableMemChunk alignedMemChunk =
-            memChunkGroup == null ? null : memChunkGroup.getAlignedMemChunk();
+        AlignedWritableMemChunk alignedMemChunk = (AlignedWritableMemChunk) memChunk;
         int currentChunkPointNum = alignedMemChunk == null ? 0 : alignedMemChunk.alignedListSize();
         List<TSDataType> dataTypesInTVList = new ArrayList<>();
         Pair<Map<String, TSDataType>, Integer> addingPointNumInfo =
@@ -859,11 +864,14 @@ public class TsFileProcessor {
         // Here currentChunkPointNum + addingPointNum >= 1
         if (((currentChunkPointNum + addingPointNum) % PrimitiveArrayManager.ARRAY_SIZE) == 0) {
           if (alignedMemChunk != null) {
-            dataTypesInTVList.addAll(
-                ((AlignedTVList) alignedMemChunk.getTVList()).getTsDataTypes());
+            dataTypesInTVList.addAll(alignedMemChunk.getWorkingTVList().getTsDataTypes());
           }
           dataTypesInTVList.addAll(addingPointNumInfo.left.values());
-          memTableIncrement += AlignedTVList.alignedTvListArrayMemCost(dataTypesInTVList);
+          memTableIncrement +=
+              alignedMemChunk != null
+                  ? alignedMemChunk.getWorkingTVList().alignedTvListArrayMemCost()
+                  : AlignedTVList.alignedTvListArrayMemCost(
+                      dataTypesInTVList.toArray(new TSDataType[0]), null);
         }
         addingPointNumInfo.setRight(addingPointNum + 1);
       }
@@ -957,24 +965,25 @@ public class TsFileProcessor {
       Object column) {
     // memIncrements = [memTable, text, chunk metadata] respectively
 
-    if (workMemTable.chunkNotExist(deviceId, measurement)) {
+    IWritableMemChunk memChunk = workMemTable.getWritableMemChunk(deviceId, measurement);
+    if (memChunk == null) {
       // ChunkMetadataIncrement
       memIncrements[2] += ChunkMetadata.calculateRamSize(measurement, dataType);
       memIncrements[0] +=
           ((end - start) / PrimitiveArrayManager.ARRAY_SIZE + 1)
               * TVList.tvListArrayMemCost(dataType);
     } else {
-      long currentChunkPointNum = workMemTable.getCurrentTVListSize(deviceId, measurement);
+      long currentChunkPointNum = memChunk.rowCount();
       if (currentChunkPointNum % PrimitiveArrayManager.ARRAY_SIZE == 0) {
         memIncrements[0] +=
             ((end - start) / PrimitiveArrayManager.ARRAY_SIZE + 1)
-                * TVList.tvListArrayMemCost(dataType);
+                * memChunk.getWorkingTVList().tvListArrayMemCost();
       } else {
         long acquireArray =
             (end - start - 1 + (currentChunkPointNum % PrimitiveArrayManager.ARRAY_SIZE))
                 / PrimitiveArrayManager.ARRAY_SIZE;
         if (acquireArray != 0) {
-          memIncrements[0] += acquireArray * TVList.tvListArrayMemCost(dataType);
+          memIncrements[0] += acquireArray * memChunk.getWorkingTVList().tvListArrayMemCost();
         }
       }
     }
@@ -1020,7 +1029,9 @@ public class TsFileProcessor {
     }
 
     // memIncrements = [memTable, text, chunk metadata] respectively
-    if (workMemTable.chunkNotExist(deviceId, AlignedPath.VECTOR_PLACEHOLDER)) {
+    IWritableMemChunk memChunk =
+        workMemTable.getWritableMemChunk(deviceId, AlignedPath.VECTOR_PLACEHOLDER);
+    if (memChunk == null) {
       // new devices introduce new ChunkMetadata
       // ChunkMetadata memory Increment
       memIncrements[2] +=
@@ -1034,9 +1045,7 @@ public class TsFileProcessor {
       memIncrements[0] +=
           numArraysToAdd * AlignedTVList.alignedTvListArrayMemCost(dataTypes, columnCategories);
     } else {
-      AlignedWritableMemChunk alignedMemChunk =
-          ((AlignedWritableMemChunkGroup) workMemTable.getMemTableMap().get(deviceId))
-              .getAlignedMemChunk();
+      AlignedWritableMemChunk alignedMemChunk = (AlignedWritableMemChunk) memChunk;
       List<TSDataType> dataTypesInTVList = new ArrayList<>();
       int currentPointNum = alignedMemChunk.alignedListSize();
       int newPointNum = currentPointNum + incomingPointNum;
@@ -1071,9 +1080,9 @@ public class TsFileProcessor {
 
       if (acquireArray != 0) {
         // memory of extending the TVList
-        dataTypesInTVList.addAll(((AlignedTVList) alignedMemChunk.getTVList()).getTsDataTypes());
+        dataTypesInTVList.addAll(alignedMemChunk.getWorkingTVList().getTsDataTypes());
         memIncrements[0] +=
-            acquireArray * AlignedTVList.alignedTvListArrayMemCost(dataTypesInTVList);
+            acquireArray * alignedMemChunk.getWorkingTVList().alignedTvListArrayMemCost();
       }
     }
 
@@ -1201,45 +1210,28 @@ public class TsFileProcessor {
       WritingMetrics.getInstance().recordMemControlFlushMemTableCount(1);
       return true;
     }
-    if (workMemTable.reachChunkSizeOrPointNumThreshold()) {
-      WritingMetrics.getInstance().recordSeriesFullFlushMemTableCount(1);
-      return true;
-    }
     return false;
   }
 
-  public void syncClose() {
+  @TestOnly
+  public void syncClose() throws ExecutionException {
     logger.info(
         "Sync close file: {}, will firstly async close it",
         tsFileResource.getTsFile().getAbsolutePath());
     if (shouldClose) {
       return;
     }
-    synchronized (flushingMemTables) {
-      try {
-        asyncClose();
-        logger.info("Start to wait until file {} is closed", tsFileResource);
-        long startTime = System.currentTimeMillis();
-        while (!flushingMemTables.isEmpty()) {
-          flushingMemTables.wait(60_000);
-          if (System.currentTimeMillis() - startTime > 60_000 && !flushingMemTables.isEmpty()) {
-            logger.warn(
-                "{} has spent {}s for waiting flushing one memtable; {} left (first: {}). FlushingManager info: {}",
-                this.tsFileResource.getTsFile().getAbsolutePath(),
-                (System.currentTimeMillis() - startTime) / 1000,
-                flushingMemTables.size(),
-                flushingMemTables.getFirst(),
-                FlushManager.getInstance());
-          }
-        }
-      } catch (InterruptedException e) {
-        logger.error(
-            "{}: {} wait close interrupted",
-            dataRegionName,
-            tsFileResource.getTsFile().getName(),
-            e);
-        Thread.currentThread().interrupt();
+    try {
+      asyncClose().get();
+      logger.info("Start to wait until file {} is closed", tsFileResource);
+      // if this TsFileProcessor is closing, asyncClose().get() of this thread will return quickly,
+      // but the TsFileProcessor may be not closed. Therefore, we need to check whether the writer
+      // is null.
+      while (writer != null) {
+        TimeUnit.MILLISECONDS.sleep(10);
       }
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
     }
     logger.info("File {} is closed synchronously", tsFileResource.getTsFile().getAbsolutePath());
   }
@@ -1788,7 +1780,7 @@ public class TsFileProcessor {
 
   private void processAlignedChunkMetaDataFromFlushedMemTable(
       IDeviceID deviceID,
-      AlignedChunkMetadata alignedChunkMetadata,
+      AbstractAlignedChunkMetadata alignedChunkMetadata,
       Map<String, List<IChunkMetadata>> measurementToChunkMetaMap,
       Map<String, List<IChunkHandle>> measurementToChunkHandleMap,
       String filePath) {
@@ -1841,10 +1833,10 @@ public class TsFileProcessor {
       Map<String, List<IChunkMetadata>> measurementToChunkMetaList,
       Map<String, List<IChunkHandle>> measurementToChunkHandleList) {
     for (IChunkMetadata chunkMetadata : chunkMetadataList) {
-      if (chunkMetadata instanceof AlignedChunkMetadata) {
+      if (chunkMetadata instanceof AbstractAlignedChunkMetadata) {
         processAlignedChunkMetaDataFromFlushedMemTable(
             deviceID,
-            (AlignedChunkMetadata) chunkMetadata,
+            (AbstractAlignedChunkMetadata) chunkMetadata,
             measurementToChunkMetaList,
             measurementToChunkHandleList,
             this.tsFileResource.getTsFilePath());
@@ -2119,7 +2111,8 @@ public class TsFileProcessor {
   public void query(
       List<IFullPath> seriesPaths,
       QueryContext context,
-      List<TsFileResource> tsfileResourcesForQuery)
+      List<TsFileResource> tsfileResourcesForQuery,
+      Filter globalTimeFilter)
       throws IOException {
     long startTime = System.nanoTime();
     try {
@@ -2136,14 +2129,15 @@ public class TsFileProcessor {
               continue;
             }
             ReadOnlyMemChunk memChunk =
-                flushingMemTable.query(context, seriesPath, timeLowerBound, modsToMemtable);
+                flushingMemTable.query(
+                    context, seriesPath, timeLowerBound, modsToMemtable, globalTimeFilter);
             if (memChunk != null) {
               readOnlyMemChunks.add(memChunk);
             }
           }
           if (workMemTable != null) {
             ReadOnlyMemChunk memChunk =
-                workMemTable.query(context, seriesPath, timeLowerBound, null);
+                workMemTable.query(context, seriesPath, timeLowerBound, null, globalTimeFilter);
             if (memChunk != null) {
               readOnlyMemChunks.add(memChunk);
             }

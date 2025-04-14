@@ -36,6 +36,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.nio.ByteBuffer;
+import java.util.Optional;
 import java.util.concurrent.ExecutionException;
 
 import static com.google.common.util.concurrent.Futures.nonCancellationPropagating;
@@ -124,9 +125,7 @@ public class LocalSourceHandle implements ISourceHandle {
       if (tsBlock != null) {
         if (LOGGER.isDebugEnabled()) {
           LOGGER.debug(
-              "[GetTsBlockFromQueue] TsBlock:{} size:{}",
-              currSequenceId,
-              tsBlock.getRetainedSizeInBytes());
+              "[GetTsBlockFromQueue] TsBlock:{} size:{}", currSequenceId, tsBlock.getSizeInBytes());
         }
         currSequenceId++;
       }
@@ -254,7 +253,11 @@ public class LocalSourceHandle implements ISourceHandle {
   }
 
   private void checkState() {
-    if (aborted) {
+    if (aborted || closed) {
+      Optional<Throwable> abortedCause = queue.getAbortedCause();
+      if (abortedCause.isPresent()) {
+        throw new IllegalStateException(abortedCause.get());
+      }
       if (queue.isBlocked().isDone()) {
         // try throw underlying exception instead of "Source handle is aborted."
         try {
@@ -266,9 +269,8 @@ public class LocalSourceHandle implements ISourceHandle {
           throw new IllegalStateException(e.getCause() == null ? e : e.getCause());
         }
       }
-      throw new IllegalStateException("Source handle is aborted.");
-    } else if (closed) {
-      throw new IllegalStateException("Source Handle is closed.");
+      throw new IllegalStateException(
+          "LocalSinkChannel state is ." + (aborted ? "ABORTED" : "CLOSED"));
     }
   }
 
