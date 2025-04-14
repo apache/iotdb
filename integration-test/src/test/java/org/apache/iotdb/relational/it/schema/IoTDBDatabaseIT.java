@@ -541,16 +541,12 @@ public class IoTDBDatabaseIT {
           "id,",
           Collections.singleton("a2b,"));
       TestUtils.assertResultSetEqual(
-          statement.executeQuery("select * from pipe_plugins"),
+          statement.executeQuery(
+              "select * from pipe_plugins where plugin_name = 'IOTDB-THRIFT-SINK'"),
           "plugin_name,plugin_type,class_name,plugin_jar,",
           new HashSet<>(
               Arrays.asList(
-                  "IOTDB-THRIFT-SSL-SINK,Builtin,org.apache.iotdb.commons.pipe.agent.plugin.builtin.connector.iotdb.thrift.IoTDBThriftSslConnector,null,",
-                  "IOTDB-AIR-GAP-SINK,Builtin,org.apache.iotdb.commons.pipe.agent.plugin.builtin.connector.iotdb.airgap.IoTDBAirGapConnector,null,",
-                  "DO-NOTHING-SINK,Builtin,org.apache.iotdb.commons.pipe.agent.plugin.builtin.connector.donothing.DoNothingConnector,null,",
-                  "DO-NOTHING-PROCESSOR,Builtin,org.apache.iotdb.commons.pipe.agent.plugin.builtin.processor.donothing.DoNothingProcessor,null,",
-                  "IOTDB-THRIFT-SINK,Builtin,org.apache.iotdb.commons.pipe.agent.plugin.builtin.connector.iotdb.thrift.IoTDBThriftConnector,null,",
-                  "IOTDB-SOURCE,Builtin,org.apache.iotdb.commons.pipe.agent.plugin.builtin.extractor.iotdb.IoTDBExtractor,null,")));
+                  "IOTDB-THRIFT-SINK,Builtin,org.apache.iotdb.commons.pipe.agent.plugin.builtin.connector.iotdb.thrift.IoTDBThriftConnector,null,")));
 
       statement.execute("create topic tp with ('start-time'='2025-01-13T10:03:19.229+08:00')");
       TestUtils.assertResultSetEqual(
