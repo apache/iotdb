@@ -855,7 +855,7 @@ public class CommonConfig {
 
   public void setPipeExtractorAssignerDisruptorRingBufferEntrySizeInBytes(
       long pipeExtractorAssignerDisruptorRingBufferEntrySize) {
-    if (pipeExtractorAssignerDisruptorRingBufferSize
+    if (pipeExtractorAssignerDisruptorRingBufferEntrySizeInBytes
         == pipeExtractorAssignerDisruptorRingBufferEntrySize) {
       return;
     }
@@ -891,7 +891,7 @@ public class CommonConfig {
       logger.warn(
           "Given pipe connector handshake timeout is too large, set to {} ms.", Integer.MAX_VALUE);
     } finally {
-      if (fPipeConnectorHandshakeTimeoutMs != this.pipeConnectorTransferTimeoutMs) {
+      if (fPipeConnectorHandshakeTimeoutMs != this.pipeConnectorHandshakeTimeoutMs) {
         logger.info(
             "pipeConnectorTransferTimeoutMs is set to {}.", fPipeConnectorHandshakeTimeoutMs);
       }
