@@ -272,6 +272,10 @@ public class ColumnHeaderConstant {
   // column names for show current timestamp
   public static final String CURRENT_TIMESTAMP = "CurrentTimestamp";
 
+  // column names for keywords
+  public static final String WORD = "word";
+  public static final String RESERVED = "reserved";
+
   // column names for table query
   public static final String COLUMN_NAME = "ColumnName";
   public static final String COLUMN_DATA_TYPE = "DataType";

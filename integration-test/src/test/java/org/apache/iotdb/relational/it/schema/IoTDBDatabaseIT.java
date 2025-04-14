@@ -393,7 +393,8 @@ public class IoTDBDatabaseIT {
                   "views,INF,",
                   "models,INF,",
                   "functions,INF,",
-                  "configurations,INF,")));
+                  "configurations,INF,",
+                  "keywords,INF,")));
 
       TestUtils.assertResultSetEqual(
           statement.executeQuery("desc databases"),
@@ -508,6 +509,10 @@ public class IoTDBDatabaseIT {
           statement.executeQuery("desc configurations"),
           "ColumnName,DataType,Category,",
           new HashSet<>(Arrays.asList("variable,STRING,TAG,", "value,STRING,ATTRIBUTE,")));
+      TestUtils.assertResultSetEqual(
+          statement.executeQuery("desc keywords"),
+          "ColumnName,DataType,Category,",
+          new HashSet<>(Arrays.asList("word,STRING,TAG,", "reserved,INT32,ATTRIBUTE,")));
 
       // Currently only root can query information_schema
       Assert.assertThrows(
@@ -631,6 +636,12 @@ public class IoTDBDatabaseIT {
               "select value from information_schema.configurations where variable = 'TimestampPrecision'"),
           "value,",
           Collections.singleton("ms,"));
+
+      TestUtils.assertResultSetEqual(
+          statement.executeQuery(
+              "select * from information_schema.keywords limit 1 where reserved > 0"),
+          "word,reserved,",
+          Collections.singleton("AINODES,1,"));
     }
   }
 
