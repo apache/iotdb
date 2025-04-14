@@ -111,7 +111,7 @@ public abstract class PipeRealtimeDataRegionExtractor implements PipeExtractor {
   private final AtomicReference<Pair<Long, Long>> dataRegionTimePartitionIdBound =
       new AtomicReference<>();
 
-  protected boolean isForwardingPipeRequests;
+  protected boolean isForwardingPipeRequests = true;
 
   private boolean shouldTransferModFile; // Whether to transfer mods
 
@@ -241,22 +241,7 @@ public abstract class PipeRealtimeDataRegionExtractor implements PipeExtractor {
             ? TimePartitionUtils.getTimePartitionId(realtimeDataExtractionEndTime)
             : TimePartitionUtils.getTimePartitionId(realtimeDataExtractionEndTime) - 1;
 
-    final boolean isDoubleLiving =
-        parameters.getBooleanOrDefault(
-            Arrays.asList(
-                PipeExtractorConstant.EXTRACTOR_MODE_DOUBLE_LIVING_KEY,
-                PipeExtractorConstant.SOURCE_MODE_DOUBLE_LIVING_KEY),
-            PipeExtractorConstant.EXTRACTOR_MODE_DOUBLE_LIVING_DEFAULT_VALUE);
-    if (isDoubleLiving) {
-      isForwardingPipeRequests = false;
-    } else {
-      isForwardingPipeRequests =
-          parameters.getBooleanOrDefault(
-              Arrays.asList(
-                  PipeExtractorConstant.EXTRACTOR_FORWARDING_PIPE_REQUESTS_KEY,
-                  PipeExtractorConstant.SOURCE_FORWARDING_PIPE_REQUESTS_KEY),
-              PipeExtractorConstant.EXTRACTOR_FORWARDING_PIPE_REQUESTS_DEFAULT_VALUE);
-    }
+    isForwardingPipeRequests = true;
 
     if (parameters.hasAnyAttributes(EXTRACTOR_MODS_KEY, SOURCE_MODS_KEY)) {
       shouldTransferModFile =
