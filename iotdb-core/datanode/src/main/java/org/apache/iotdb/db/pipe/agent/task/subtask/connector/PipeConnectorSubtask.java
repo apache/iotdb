@@ -220,13 +220,23 @@ public class PipeConnectorSubtask extends PipeAbstractConnectorSubtask {
     }
   }
 
+  public void deregister(final String pipeNameToDrop, int regionId) {
+    isDeregistering = true;
+    discardEventsOfPipe(pipeNameToDrop, regionId);
+  }
+
   /**
    * When a pipe is dropped, the connector maybe reused and will not be closed. So we just discard
    * its queued events in the output pipe connector.
    */
-  public void discardEventsOfPipe(final String pipeNameToDrop, int regionId) {
+  private void discardEventsOfPipe(final String pipeNameToDrop, int regionId) {
     // Try to remove the events as much as possible
     inputPendingQueue.discardEventsOfPipe(pipeNameToDrop, regionId);
+
+    // If there are retrying events, notify the retry thread to fail fast.
+    synchronized (deregisterLock) {
+      deregisterLock.notify();
+    }
 
     // synchronized to use the lastEvent & lastExceptionEvent
     synchronized (this) {
