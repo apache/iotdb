@@ -98,24 +98,38 @@ public class SettleSelectorImpl implements ISettleSelector {
     }
   }
 
-  static class PartiallyDirtyResource {
-    List<TsFileResource> resources = new ArrayList<>();
-    long totalFileSize = 0;
+  static class SettleTaskResource {
 
-    public boolean add(TsFileResource resource, long dirtyDataSize) {
-      resources.add(resource);
-      totalFileSize += resource.getTsFileSize();
-      totalFileSize -= dirtyDataSize;
+    List<TsFileResource> fullyDirtyResources = new ArrayList<>();
+    List<TsFileResource> partiallyDirtyResources = new ArrayList<>();
+    long totalPartiallyDirtyFileSize = 0;
+
+    public void addFullyDirtyResource(TsFileResource resource) {
+      fullyDirtyResources.add(resource);
+    }
+
+    public boolean addPartiallyDirtyResource(TsFileResource resource, long dirtyDataSize) {
+      partiallyDirtyResources.add(resource);
+      totalPartiallyDirtyFileSize += resource.getTsFileSize();
+      totalPartiallyDirtyFileSize -= dirtyDataSize;
       return checkHasReachedThreshold();
     }
 
-    public List<TsFileResource> getResources() {
-      return resources;
+    public List<TsFileResource> getFullyDirtyResources() {
+      return fullyDirtyResources;
+    }
+
+    public List<TsFileResource> getPartiallyDirtyResources() {
+      return partiallyDirtyResources;
     }
 
     public boolean checkHasReachedThreshold() {
-      return resources.size() >= config.getInnerCompactionCandidateFileNum()
-          || totalFileSize >= config.getTargetCompactionFileSize();
+      return partiallyDirtyResources.size() >= config.getInnerCompactionCandidateFileNum()
+          || totalPartiallyDirtyFileSize >= config.getTargetCompactionFileSize();
+    }
+
+    public boolean isEmpty() {
+      return fullyDirtyResources.isEmpty() && partiallyDirtyResources.isEmpty();
     }
   }
 
@@ -129,9 +143,8 @@ public class SettleSelectorImpl implements ISettleSelector {
   }
 
   private List<SettleCompactionTask> selectTasks(List<TsFileResource> resources) {
-    List<TsFileResource> fullyDirtyResource = new ArrayList<>();
-    List<PartiallyDirtyResource> partiallyDirtyResourceList = new ArrayList<>();
-    PartiallyDirtyResource partiallyDirtyResource = new PartiallyDirtyResource();
+    List<SettleTaskResource> partiallyDirtyResourceList = new ArrayList<>();
+    SettleTaskResource settleTaskResource = new SettleTaskResource();
     try {
       for (TsFileResource resource : resources) {
         boolean shouldStop = false;
@@ -148,21 +161,22 @@ public class SettleSelectorImpl implements ISettleSelector {
 
         switch (fileDirtyInfo.status) {
           case FULLY_DIRTY:
-            fullyDirtyResource.add(resource);
+            settleTaskResource.addFullyDirtyResource(resource);
             break;
           case PARTIALLY_DIRTY:
-            shouldStop = partiallyDirtyResource.add(resource, fileDirtyInfo.dirtyDataSize);
+            shouldStop =
+                settleTaskResource.addPartiallyDirtyResource(resource, fileDirtyInfo.dirtyDataSize);
             break;
           case NOT_SATISFIED:
-            shouldStop = !partiallyDirtyResource.getResources().isEmpty();
+            shouldStop = !settleTaskResource.getPartiallyDirtyResources().isEmpty();
             break;
           default:
             // do nothing
         }
 
         if (shouldStop) {
-          partiallyDirtyResourceList.add(partiallyDirtyResource);
-          partiallyDirtyResource = new PartiallyDirtyResource();
+          partiallyDirtyResourceList.add(settleTaskResource);
+          settleTaskResource = new SettleTaskResource();
           if (!heavySelect) {
             // Non-heavy selection is triggered more frequently. In order to avoid selecting too
             // many files containing mods for compaction when the disk is insufficient, the number
@@ -171,8 +185,8 @@ public class SettleSelectorImpl implements ISettleSelector {
           }
         }
       }
-      partiallyDirtyResourceList.add(partiallyDirtyResource);
-      return createTask(fullyDirtyResource, partiallyDirtyResourceList);
+      partiallyDirtyResourceList.add(settleTaskResource);
+      return createTask(partiallyDirtyResourceList);
     } catch (Exception e) {
       LOGGER.error(
           "{}-{} cannot select file for settle compaction", storageGroupName, dataRegionId, e);
@@ -278,39 +292,22 @@ public class SettleSelectorImpl implements ISettleSelector {
     return false;
   }
 
-  private List<SettleCompactionTask> createTask(
-      List<TsFileResource> fullyDirtyResources,
-      List<PartiallyDirtyResource> partiallyDirtyResourceList) {
+  private List<SettleCompactionTask> createTask(List<SettleTaskResource> settleTaskResourceList) {
     List<SettleCompactionTask> tasks = new ArrayList<>();
-    for (int i = 0; i < partiallyDirtyResourceList.size(); i++) {
-      if (i == 0) {
-        if (fullyDirtyResources.isEmpty()
-            && partiallyDirtyResourceList.get(i).getResources().isEmpty()) {
-          continue;
-        }
-        tasks.add(
-            new SettleCompactionTask(
-                timePartition,
-                tsFileManager,
-                fullyDirtyResources,
-                partiallyDirtyResourceList.get(i).getResources(),
-                isSeq,
-                createCompactionPerformer(),
-                tsFileManager.getNextCompactionTaskId()));
-      } else {
-        if (partiallyDirtyResourceList.get(i).getResources().isEmpty()) {
-          continue;
-        }
-        tasks.add(
-            new SettleCompactionTask(
-                timePartition,
-                tsFileManager,
-                Collections.emptyList(),
-                partiallyDirtyResourceList.get(i).getResources(),
-                isSeq,
-                createCompactionPerformer(),
-                tsFileManager.getNextCompactionTaskId()));
+    for (SettleTaskResource settleTaskResource : settleTaskResourceList) {
+      if (settleTaskResource.isEmpty()) {
+        continue;
       }
+      SettleCompactionTask task =
+          new SettleCompactionTask(
+              timePartition,
+              tsFileManager,
+              settleTaskResource.getFullyDirtyResources(),
+              settleTaskResource.getPartiallyDirtyResources(),
+              isSeq,
+              createCompactionPerformer(),
+              tsFileManager.getNextCompactionTaskId());
+      tasks.add(task);
     }
     return tasks;
   }
