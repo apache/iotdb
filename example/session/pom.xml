@@ -24,7 +24,7 @@
     <parent>
         <groupId>org.apache.iotdb</groupId>
         <artifactId>iotdb-examples</artifactId>
-        <version>1.3.4-SNAPSHOT</version>
+        <version>1.3.4</version>
     </parent>
     <artifactId>client-example</artifactId>
     <name>IoTDB: Example: Session Client</name>
