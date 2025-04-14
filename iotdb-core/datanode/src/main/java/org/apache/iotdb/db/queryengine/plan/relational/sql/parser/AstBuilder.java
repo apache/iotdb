@@ -2228,6 +2228,12 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
   }
 
   @Override
+  public Node visitTableFunctionInvocationWithTableKeyWord(
+      RelationalSqlParser.TableFunctionInvocationWithTableKeyWordContext ctx) {
+    return visit(ctx.tableFunctionCall());
+  }
+
+  @Override
   public Node visitTableFunctionCall(RelationalSqlParser.TableFunctionCallContext context) {
     QualifiedName name = getQualifiedName(context.qualifiedName());
     List<TableFunctionArgument> arguments =
@@ -2269,7 +2275,8 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
   }
 
   @Override
-  public Node visitTableArgumentTable(RelationalSqlParser.TableArgumentTableContext context) {
+  public Node visitTableArgumentTableWithTableKeyWord(
+      RelationalSqlParser.TableArgumentTableWithTableKeyWordContext context) {
     Relation relation =
         new Table(getLocation(context.TABLE()), getQualifiedName(context.qualifiedName()));
 
@@ -2289,7 +2296,29 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
   }
 
   @Override
-  public Node visitTableArgumentQuery(RelationalSqlParser.TableArgumentQueryContext context) {
+  public Node visitTableArgumentTable(RelationalSqlParser.TableArgumentTableContext context) {
+    Relation relation =
+        new Table(getLocation(context.qualifiedName()), getQualifiedName(context.qualifiedName()));
+
+    if (context.identifier() != null) {
+      Identifier alias = (Identifier) visit(context.identifier());
+      if (context.AS() == null) {
+        validateArgumentAlias(alias, context.identifier());
+      }
+      List<Identifier> columnNames = null;
+      if (context.columnAliases() != null) {
+        columnNames = visit(context.columnAliases().identifier(), Identifier.class);
+      }
+      relation =
+          new AliasedRelation(getLocation(context.qualifiedName()), relation, alias, columnNames);
+    }
+
+    return relation;
+  }
+
+  @Override
+  public Node visitTableArgumentQueryWithTableKeyWord(
+      RelationalSqlParser.TableArgumentQueryWithTableKeyWordContext context) {
     Relation relation =
         new TableSubquery(getLocation(context.TABLE()), (Query) visit(context.query()));
 
@@ -2303,6 +2332,26 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
         columnNames = visit(context.columnAliases().identifier(), Identifier.class);
       }
       relation = new AliasedRelation(getLocation(context.TABLE()), relation, alias, columnNames);
+    }
+
+    return relation;
+  }
+
+  @Override
+  public Node visitTableArgumentQuery(RelationalSqlParser.TableArgumentQueryContext context) {
+    Relation relation =
+        new TableSubquery(getLocation(context.query()), (Query) visit(context.query()));
+
+    if (context.identifier() != null) {
+      Identifier alias = (Identifier) visit(context.identifier());
+      if (context.AS() == null) {
+        validateArgumentAlias(alias, context.identifier());
+      }
+      List<Identifier> columnNames = null;
+      if (context.columnAliases() != null) {
+        columnNames = visit(context.columnAliases().identifier(), Identifier.class);
+      }
+      relation = new AliasedRelation(getLocation(context.query()), relation, alias, columnNames);
     }
 
     return relation;
