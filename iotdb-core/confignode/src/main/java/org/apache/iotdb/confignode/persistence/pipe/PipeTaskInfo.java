@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.confignode.persistence.pipe;
 
+import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.consensus.index.impl.MinimumProgressIndex;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeCriticalException;
@@ -631,49 +632,53 @@ public class PipeTaskInfo implements SnapshotProcessor {
                             // the data region group has already been removed"
                           }
                         }));
-    pipeMetaKeeper
-        .getPipeMetaList()
-        .forEach(
-            pipeMeta -> {
-              if (pipeMeta.getStaticMeta().isSourceExternal()) {
-                final ExternalLoadBalancer loadBalancer =
-                    new ExternalLoadBalancer(
-                        pipeMeta
-                            .getStaticMeta()
-                            .getExtractorParameters()
-                            .getStringOrDefault(
-                                Arrays.asList(
-                                    PipeExtractorConstant.EXTERNAL_EXTRACTOR_BALANCE_STRATEGY_KEY,
-                                    PipeExtractorConstant.EXTERNAL_SOURCE_BALANCE_STRATEGY_KEY),
-                                PipeExtractorConstant
-                                    .EXTERNAL_EXTRACTOR_BALANCE_PROPORTION_STRATEGY));
+    if (plan.getConsensusGroupId2NewLeaderIdMap().keySet().stream()
+        .anyMatch(
+            consensusGroupId -> consensusGroupId.getType() == TConsensusGroupType.DataRegion)) {
+      pipeMetaKeeper
+          .getPipeMetaList()
+          .forEach(
+              pipeMeta -> {
+                if (pipeMeta.getStaticMeta().isSourceExternal()) {
+                  final ExternalLoadBalancer loadBalancer =
+                      new ExternalLoadBalancer(
+                          pipeMeta
+                              .getStaticMeta()
+                              .getExtractorParameters()
+                              .getStringOrDefault(
+                                  Arrays.asList(
+                                      PipeExtractorConstant.EXTERNAL_EXTRACTOR_BALANCE_STRATEGY_KEY,
+                                      PipeExtractorConstant.EXTERNAL_SOURCE_BALANCE_STRATEGY_KEY),
+                                  PipeExtractorConstant
+                                      .EXTERNAL_EXTRACTOR_BALANCE_PROPORTION_STRATEGY));
 
-                final int parallelism =
-                    pipeMeta
-                        .getStaticMeta()
-                        .getExtractorParameters()
-                        .getIntOrDefault(
-                            Arrays.asList(
-                                EXTERNAL_EXTRACTOR_PARALLELISM_KEY,
-                                EXTERNAL_SOURCE_PARALLELISM_KEY),
-                            EXTERNAL_EXTRACTOR_PARALLELISM_DEFAULT_VALUE);
-                loadBalancer
-                    .balance(
-                        parallelism,
-                        pipeMeta.getStaticMeta(),
-                        ConfigNode.getInstance().getConfigManager())
-                    .forEach(
-                        (taskIndex, newLeader) -> {
-                          if (newLeader != -1) {
-                            pipeMeta
-                                .getRuntimeMeta()
-                                .getConsensusGroupId2TaskMetaMap()
-                                .get(taskIndex)
-                                .setLeaderNodeId(newLeader);
-                          }
-                        });
-              }
-            });
+                  final int parallelism =
+                      pipeMeta
+                          .getStaticMeta()
+                          .getExtractorParameters()
+                          .getIntOrDefault(
+                              Arrays.asList(
+                                  EXTERNAL_EXTRACTOR_PARALLELISM_KEY,
+                                  EXTERNAL_SOURCE_PARALLELISM_KEY),
+                              EXTERNAL_EXTRACTOR_PARALLELISM_DEFAULT_VALUE);
+                  loadBalancer
+                      .balance(
+                          parallelism,
+                          pipeMeta.getStaticMeta(),
+                          ConfigNode.getInstance().getConfigManager())
+                      .forEach(
+                          (taskIndex, newLeader) -> {
+                            if (newLeader != -1) {
+                              pipeMeta
+                                  .getRuntimeMeta()
+                                  .getConsensusGroupId2TaskMetaMap()
+                                  .get(taskIndex)
+                                  .setLeaderNodeId(newLeader);
+                            }
+                          });
+                }
+              });
+    }
     return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
   }
 
