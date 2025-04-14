@@ -35,6 +35,7 @@ import org.apache.iotdb.commons.schema.node.utils.IMNodeIterator;
 import org.apache.iotdb.commons.schema.table.TableNodeStatus;
 import org.apache.iotdb.commons.schema.table.TreeViewSchema;
 import org.apache.iotdb.commons.schema.table.TsTable;
+import org.apache.iotdb.commons.schema.table.column.TimeColumnSchema;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
 import org.apache.iotdb.commons.utils.PathUtils;
@@ -56,10 +57,14 @@ import org.apache.iotdb.db.schemaengine.schemaregion.mtree.traverser.counter.Dat
 import org.apache.iotdb.db.schemaengine.schemaregion.utils.MetaFormatUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
+import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -91,6 +96,7 @@ import static org.apache.iotdb.commons.schema.SchemaConstant.NON_TEMPLATE;
 import static org.apache.iotdb.commons.schema.SchemaConstant.ROOT;
 import static org.apache.iotdb.commons.schema.SchemaConstant.STORAGE_GROUP_MNODE_TYPE;
 import static org.apache.iotdb.commons.schema.SchemaConstant.TABLE_MNODE_TYPE;
+import static org.apache.iotdb.commons.schema.table.TsTable.TIME_COLUMN_NAME;
 
 // Since the ConfigMTree is all stored in memory, thus it is not restricted to manage MNode through
 // MTreeStore.
@@ -784,20 +790,27 @@ public class ConfigMTree {
   }
 
   public void setTableColumnComment(
-      final PartialPath database,
-      final String tableName,
-      final String columnName,
-      final String comment)
+      final @Nonnull PartialPath database,
+      final @Nonnull String tableName,
+      final @Nonnull String columnName,
+      final @Nullable String comment)
       throws MetadataException {
     final TsTable table = getTable(database, tableName);
 
-    final TsTableColumnSchema columnSchema = table.getColumnSchema(columnName);
+    final TsTableColumnSchema columnSchema =
+        !columnName.equals(TIME_COLUMN_NAME) || Objects.isNull(comment)
+            ? table.getColumnSchema(columnName)
+            : new TimeColumnSchema(TIME_COLUMN_NAME, TSDataType.TIMESTAMP);
     if (Objects.isNull(columnSchema)) {
       throw new ColumnNotExistsException(
           PathUtils.unQualifyDatabaseName(database.getFullPath()), tableName, columnName);
     }
     if (Objects.nonNull(comment)) {
       columnSchema.getProps().put(TsTable.COMMENT_KEY, comment);
+      if (columnName.equals("time")) {
+        // Replace the original time column
+        table.addColumnSchema(columnSchema);
+      }
     } else {
       columnSchema.getProps().remove(TsTable.COMMENT_KEY);
     }

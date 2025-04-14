@@ -76,6 +76,10 @@ public class PipeConfig {
     return COMMON_CONFIG.getPipeDataStructureTsFileMemoryBlockAllocationRejectThreshold();
   }
 
+  public double getPipeTotalFloatingMemoryProportion() {
+    return COMMON_CONFIG.getPipeTotalFloatingMemoryProportion();
+  }
+
   /////////////////////////////// Subtask Connector ///////////////////////////////
 
   public int getPipeRealTimeQueuePollTsFileThreshold() {
@@ -190,6 +194,10 @@ public class PipeConfig {
 
   public float getPipeLeaderCacheMemoryUsagePercentage() {
     return COMMON_CONFIG.getPipeLeaderCacheMemoryUsagePercentage();
+  }
+
+  public int getPipeMaxAlignedSeriesNumInOneBatch() {
+    return COMMON_CONFIG.getPipeMaxAlignedSeriesNumInOneBatch();
   }
 
   public long getPipeListeningQueueTransferSnapshotThreshold() {
@@ -399,6 +407,7 @@ public class PipeConfig {
     LOGGER.info(
         "PipeDataStructureTsFileMemoryBlockAllocationRejectThreshold: {}",
         getPipeDataStructureTsFileMemoryBlockAllocationRejectThreshold());
+    LOGGER.info("PipeTotalFloatingMemoryProportion: {}", getPipeTotalFloatingMemoryProportion());
 
     LOGGER.info(
         "PipeRealTimeQueuePollTsFileThreshold: {}", getPipeRealTimeQueuePollTsFileThreshold());
@@ -443,6 +452,7 @@ public class PipeConfig {
         isPipeConnectorRPCThriftCompressionEnabled());
     LOGGER.info(
         "PipeLeaderCacheMemoryUsagePercentage: {}", getPipeLeaderCacheMemoryUsagePercentage());
+    LOGGER.info("PipeMaxAlignedSeriesNumInOneBatch: {}", getPipeMaxAlignedSeriesNumInOneBatch());
     LOGGER.info(
         "PipeListeningQueueTransferSnapshotThreshold: {}",
         getPipeListeningQueueTransferSnapshotThreshold());

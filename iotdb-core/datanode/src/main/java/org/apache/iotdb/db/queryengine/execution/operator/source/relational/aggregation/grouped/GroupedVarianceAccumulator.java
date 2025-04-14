@@ -89,7 +89,7 @@ public class GroupedVarianceAccumulator implements GroupedAccumulator {
       case TIMESTAMP:
       default:
         throw new UnSupportedDataTypeException(
-            String.format("Unsupported data type in Variance Aggregation: %s", seriesDataType));
+            String.format("Unsupported data type in VARIANCE Aggregation: %s", seriesDataType));
     }
   }
 

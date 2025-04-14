@@ -89,6 +89,7 @@ import java.util.Optional;
 import java.util.Properties;
 import java.util.ServiceLoader;
 import java.util.Set;
+import java.util.concurrent.TimeUnit;
 import java.util.regex.Pattern;
 
 public class IoTDBDescriptor {
@@ -728,25 +729,13 @@ public class IoTDBDescriptor {
 
     conf.setRpcSelectorThreadCount(rpcSelectorThreadNum);
 
-    int minConcurrentClientNum =
-        Integer.parseInt(
-            properties.getProperty(
-                "dn_rpc_min_concurrent_client_num",
-                Integer.toString(conf.getRpcMinConcurrentClientNum())));
-
-    if (minConcurrentClientNum <= 0) {
-      minConcurrentClientNum = Runtime.getRuntime().availableProcessors();
-    }
-
-    conf.setRpcMinConcurrentClientNum(minConcurrentClientNum);
-
     int maxConcurrentClientNum =
         Integer.parseInt(
             properties.getProperty(
                 "dn_rpc_max_concurrent_client_num",
                 Integer.toString(conf.getRpcMaxConcurrentClientNum())));
     if (maxConcurrentClientNum <= 0) {
-      maxConcurrentClientNum = 65535;
+      maxConcurrentClientNum = 1000;
     }
 
     conf.setRpcMaxConcurrentClientNum(maxConcurrentClientNum);
@@ -1162,6 +1151,24 @@ public class IoTDBDescriptor {
                 Integer.toString(conf.getDeletionAheadLogBufferQueueCapacity())));
     if (deletionAheadLogBufferQueueCapacity > 0) {
       conf.setDeletionAheadLogBufferQueueCapacity(deletionAheadLogBufferQueueCapacity);
+    }
+    conf.setTsFileWriterCheckInterval(
+        Integer.parseInt(
+            properties.getProperty(
+                "zombie_tsfile_writer_check_interval",
+                ConfigurationFileUtils.getConfigurationDefaultValue(
+                    "zombie_tsfile_writer_check_interval"))));
+    if (conf.getTsFileWriterCheckInterval() <= 0) {
+      conf.setTsFileWriterCheckInterval(TimeUnit.MINUTES.toMillis(5));
+    }
+    conf.setTsFileWriterZombieThreshold(
+        Integer.parseInt(
+            properties.getProperty(
+                "zombie_tsfile_writer_threshold",
+                ConfigurationFileUtils.getConfigurationDefaultValue(
+                    "zombie_tsfile_writer_threshold"))));
+    if (conf.getTsFileWriterZombieThreshold() <= 0) {
+      conf.setTsFileWriterZombieThreshold(TimeUnit.MINUTES.toMillis(10));
     }
   }
 

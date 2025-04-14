@@ -27,6 +27,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TDataPartitionTableResp;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
+import org.apache.iotdb.itbase.env.BaseEnv;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.junit.After;
@@ -44,6 +45,9 @@ import java.util.concurrent.TimeUnit;
 @RunWith(IoTDBTestRunner.class)
 @Category({ClusterIT.class})
 public class IoTDBPartitionTableAutoCleanIT {
+
+  private static final String TREE_DATABASE_PREFIX = "root.db.g_";
+  private static final String TABLE_DATABASE_PREFIX = "database_";
 
   private static final int TEST_REPLICATION_FACTOR = 1;
   private static final long TEST_TIME_PARTITION_INTERVAL = 604800000;
@@ -73,46 +77,86 @@ public class IoTDBPartitionTableAutoCleanIT {
   }
 
   @Test
-  public void testAutoCleanPartitionTable() throws Exception {
-    try (Connection connection = EnvFactory.getEnv().getConnection();
+  public void testAutoCleanPartitionTableForTreeModel() throws Exception {
+    try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TREE_SQL_DIALECT);
         Statement statement = connection.createStatement()) {
-      // Create db1
-      statement.execute("CREATE DATABASE root.db1");
-      statement.execute("CREATE TIMESERIES root.db1.s WITH DATATYPE=INT64,ENCODING=PLAIN");
-      // Insert expired data
-      statement.execute(
-          String.format(
-              "INSERT INTO root.db1(timestamp, s) VALUES (%d, %d)",
-              TEST_CURRENT_TIME_SLOT.getStartTime() - TEST_TTL * 2, -1));
-      // Insert existed data
-      statement.execute(
-          String.format(
-              "INSERT INTO root.db1(timestamp, s) VALUES (%d, %d)",
-              TEST_CURRENT_TIME_SLOT.getStartTime(), 1));
-      // Let db.TTL > device.TTL, the valid TTL should be the bigger one
-      statement.execute("SET TTL TO root.db1 " + TEST_TTL);
-      statement.execute("SET TTL TO root.db1.s " + 10);
-      // Create db2
-      statement.execute("CREATE DATABASE root.db2");
-      statement.execute("CREATE TIMESERIES root.db2.s WITH DATATYPE=INT64,ENCODING=PLAIN");
-      // Insert expired data
-      statement.execute(
-          String.format(
-              "INSERT INTO root.db2(timestamp, s) VALUES (%d, %d)",
-              TEST_CURRENT_TIME_SLOT.getStartTime() - TEST_TTL * 2, -1));
-      // Insert existed data
-      statement.execute(
-          String.format(
-              "INSERT INTO root.db2(timestamp, s) VALUES (%d, %d)",
-              TEST_CURRENT_TIME_SLOT.getStartTime(), 1));
-      // Let db.TTL < device.TTL, the valid TTL should be the bigger one
-      statement.execute("SET TTL TO root.db2 " + 10);
-      statement.execute("SET TTL TO root.db2.s " + TEST_TTL);
+      // Create databases and insert test data
+      for (int i = 0; i < 3; i++) {
+        String databaseName = String.format("%s%d", TREE_DATABASE_PREFIX, i);
+        statement.execute(String.format("CREATE DATABASE %s", databaseName));
+        statement.execute(
+            String.format(
+                "CREATE TIMESERIES %s.s WITH DATATYPE=INT64,ENCODING=PLAIN", databaseName));
+        // Insert expired data
+        statement.execute(
+            String.format(
+                "INSERT INTO %s(timestamp, s) VALUES (%d, %d)",
+                databaseName, TEST_CURRENT_TIME_SLOT.getStartTime() - TEST_TTL * 2, -1));
+        // Insert existed data
+        statement.execute(
+            String.format(
+                "INSERT INTO %s(timestamp, s) VALUES (%d, %d)",
+                databaseName, TEST_CURRENT_TIME_SLOT.getStartTime(), 1));
+      }
+      // Let db0.TTL > device.TTL, the valid TTL should be the bigger one
+      statement.execute(String.format("SET TTL TO %s0 %d", TREE_DATABASE_PREFIX, TEST_TTL));
+      statement.execute(String.format("SET TTL TO %s0.s %d", TREE_DATABASE_PREFIX, 10));
+      // Let db1.TTL < device.TTL, the valid TTL should be the bigger one
+      statement.execute(String.format("SET TTL TO %s1 %d", TREE_DATABASE_PREFIX, 10));
+      statement.execute(String.format("SET TTL TO %s1.s %d", TREE_DATABASE_PREFIX, TEST_TTL));
+      // Set TTL to path db2.**
+      statement.execute(String.format("SET TTL TO %s2.** %d", TREE_DATABASE_PREFIX, TEST_TTL));
     }
 
     TDataPartitionReq req = new TDataPartitionReq();
-    req.putToPartitionSlotsMap("root.db1", new TreeMap<>());
-    req.putToPartitionSlotsMap("root.db2", new TreeMap<>());
+    for (int i = 0; i < 3; i++) {
+      req.putToPartitionSlotsMap(String.format("%s%d", TREE_DATABASE_PREFIX, i), new TreeMap<>());
+    }
+    try (SyncConfigNodeIServiceClient client =
+        (SyncConfigNodeIServiceClient) EnvFactory.getEnv().getLeaderConfigNodeConnection()) {
+      for (int retry = 0; retry < 120; retry++) {
+        boolean partitionTableAutoCleaned = true;
+        TDataPartitionTableResp resp = client.getDataPartitionTable(req);
+        if (TSStatusCode.SUCCESS_STATUS.getStatusCode() == resp.getStatus().getCode()) {
+          partitionTableAutoCleaned =
+              resp.getDataPartitionTable().entrySet().stream()
+                  .flatMap(e1 -> e1.getValue().entrySet().stream())
+                  .allMatch(e2 -> e2.getValue().size() == 1);
+        }
+        if (partitionTableAutoCleaned) {
+          return;
+        }
+        TimeUnit.SECONDS.sleep(1);
+      }
+    }
+    Assert.fail("The PartitionTable in the ConfigNode is not auto cleaned!");
+  }
+
+  @Test
+  public void testAutoCleanPartitionTableForTableModel() throws Exception {
+    try (final Connection connection =
+            EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        final Statement statement = connection.createStatement()) {
+      // Create databases and insert test data
+      String databaseName = TABLE_DATABASE_PREFIX;
+      statement.execute(String.format("CREATE DATABASE IF NOT EXISTS %s", databaseName));
+      statement.execute(String.format("USE %s", databaseName));
+      statement.execute("CREATE TABLE tb (time TIMESTAMP TIME, s int64 FIELD)");
+      // Insert expired data
+      statement.execute(
+          String.format(
+              "INSERT INTO tb(time, s) VALUES (%d, %d)",
+              TEST_CURRENT_TIME_SLOT.getStartTime() - TEST_TTL * 2, -1));
+      // Insert existed data
+      statement.execute(
+          String.format(
+              "INSERT INTO tb(time, s) VALUES (%d, %d)", TEST_CURRENT_TIME_SLOT.getStartTime(), 1));
+      statement.execute(String.format("USE %s", TABLE_DATABASE_PREFIX));
+      statement.execute(String.format("ALTER TABLE tb SET PROPERTIES TTL=%d", TEST_TTL));
+    }
+
+    TDataPartitionReq req = new TDataPartitionReq();
+    req.putToPartitionSlotsMap(TABLE_DATABASE_PREFIX, new TreeMap<>());
     try (SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) EnvFactory.getEnv().getLeaderConfigNodeConnection()) {
       for (int retry = 0; retry < 120; retry++) {

@@ -303,6 +303,11 @@ public class CommonDescriptor {
                 "pipe_data_structure_ts_file_memory_block_allocation_reject_threshold",
                 String.valueOf(
                     config.getPipeDataStructureTsFileMemoryBlockAllocationRejectThreshold()))));
+    config.setPipeTotalFloatingMemoryProportion(
+        Double.parseDouble(
+            properties.getProperty(
+                "pipe_total_floating_memory_proportion",
+                String.valueOf(config.getPipeTotalFloatingMemoryProportion()))));
 
     config.setPipeRealTimeQueuePollTsFileThreshold(
         Integer.parseInt(
@@ -670,6 +675,11 @@ public class CommonDescriptor {
             properties.getProperty(
                 "pipe_leader_cache_memory_usage_percentage",
                 String.valueOf(config.getPipeLeaderCacheMemoryUsagePercentage()))));
+    config.setPipeMaxAlignedSeriesNumInOneBatch(
+        Integer.parseInt(
+            properties.getProperty(
+                "pipe_max_aligned_series_num_in_one_batch",
+                String.valueOf(config.getPipeMaxAlignedSeriesNumInOneBatch()))));
     config.setPipeListeningQueueTransferSnapshotThreshold(
         Long.parseLong(
             properties.getProperty(

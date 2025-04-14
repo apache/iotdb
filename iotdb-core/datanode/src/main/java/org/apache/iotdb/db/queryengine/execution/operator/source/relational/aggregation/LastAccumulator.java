@@ -105,7 +105,7 @@ public class LastAccumulator implements TableAccumulator {
         return;
       default:
         throw new UnSupportedDataTypeException(
-            String.format("Unsupported data type in Last: %s", seriesDataType));
+            String.format("Unsupported data type in LAST: %s", seriesDataType));
     }
   }
 
@@ -115,7 +115,7 @@ public class LastAccumulator implements TableAccumulator {
         argument instanceof BinaryColumn
             || (argument instanceof RunLengthEncodedColumn
                 && ((RunLengthEncodedColumn) argument).getValue() instanceof BinaryColumn),
-        "intermediate input and output of Last should be BinaryColumn");
+        "intermediate input and output of LAST should be BinaryColumn");
 
     for (int i = 0; i < argument.getPositionCount(); i++) {
       if (argument.isNull(i)) {
@@ -159,7 +159,7 @@ public class LastAccumulator implements TableAccumulator {
           break;
         default:
           throw new UnSupportedDataTypeException(
-              String.format("Unsupported data type in Last Aggregation: %s", seriesDataType));
+              String.format("Unsupported data type in LAST Aggregation: %s", seriesDataType));
       }
     }
   }
@@ -168,7 +168,7 @@ public class LastAccumulator implements TableAccumulator {
   public void evaluateIntermediate(ColumnBuilder columnBuilder) {
     checkArgument(
         columnBuilder instanceof BinaryColumnBuilder,
-        "intermediate input and output of Last should be BinaryColumn");
+        "intermediate input and output of LAST should be BinaryColumn");
 
     if (!initResult) {
       columnBuilder.appendNull();
@@ -207,7 +207,7 @@ public class LastAccumulator implements TableAccumulator {
           break;
         default:
           throw new UnSupportedDataTypeException(
-              String.format("Unsupported data type in Last aggregation: %s", seriesDataType));
+              String.format("Unsupported data type in LAST aggregation: %s", seriesDataType));
       }
     }
   }
@@ -250,7 +250,7 @@ public class LastAccumulator implements TableAccumulator {
         break;
       default:
         throw new UnSupportedDataTypeException(
-            String.format("Unsupported data type in Last Aggregation: %s", seriesDataType));
+            String.format("Unsupported data type in LAST Aggregation: %s", seriesDataType));
     }
   }
 

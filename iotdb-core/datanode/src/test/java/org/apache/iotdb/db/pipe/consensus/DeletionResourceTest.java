@@ -23,6 +23,8 @@ import org.apache.iotdb.commons.consensus.index.impl.RecoverProgressIndex;
 import org.apache.iotdb.commons.consensus.index.impl.SimpleProgressIndex;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.MeasurementPath;
+import org.apache.iotdb.commons.pipe.agent.task.progress.CommitterKey;
+import org.apache.iotdb.commons.pipe.agent.task.progress.PipeEventCommitManager;
 import org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant;
 import org.apache.iotdb.commons.pipe.config.plugin.configuraion.PipeTaskRuntimeConfiguration;
 import org.apache.iotdb.commons.pipe.config.plugin.env.PipeTaskExtractorRuntimeEnvironment;
@@ -31,6 +33,7 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.pipe.consensus.deletion.DeletionResource;
 import org.apache.iotdb.db.pipe.consensus.deletion.DeletionResource.Status;
 import org.apache.iotdb.db.pipe.consensus.deletion.DeletionResourceManager;
+import org.apache.iotdb.db.pipe.consensus.deletion.persist.PageCacheDeletionBuffer;
 import org.apache.iotdb.db.pipe.event.common.deletion.PipeDeleteDataNodeEvent;
 import org.apache.iotdb.db.pipe.extractor.dataregion.realtime.PipeRealtimeDataRegionExtractor;
 import org.apache.iotdb.db.pipe.extractor.dataregion.realtime.PipeRealtimeDataRegionHybridExtractor;
@@ -67,6 +70,7 @@ public class DeletionResourceTest {
   private static final String DELETION_BASE_DIR =
       IoTDBDescriptor.getInstance().getConfig().getIotConsensusV2DeletionFileDir();
   private static final int THIS_DATANODE_ID = 0;
+  private static final int TEST_DAL_FILE_SIZE = 1024;
   private DeletionResourceManager deletionResourceManager;
   private int previousDataNodeId;
 
@@ -101,17 +105,17 @@ public class DeletionResourceTest {
   @Test
   public void testAddBatchDeletionResource()
       throws IllegalPathException, IOException, InterruptedException {
-    addBatchDeletionResource(true);
-    addBatchDeletionResource(false);
+    addBatchDeletionResource(true, 0);
+    addBatchDeletionResource(false, 10);
   }
 
-  public void addBatchDeletionResource(boolean isRelational)
+  public void addBatchDeletionResource(final boolean isRelational, final int initialIndex)
       throws IllegalPathException, InterruptedException, IOException {
     deletionResourceManager = DeletionResourceManager.getInstance(FAKE_DATA_REGION_IDS[1]);
     int deletionCount = 10;
     int rebootTimes = 0;
     MeasurementPath path = new MeasurementPath("root.vehicle.d2.s0");
-    for (int i = 0; i < deletionCount; i++) {
+    for (int i = initialIndex; i < initialIndex + deletionCount; i++) {
       AbstractDeleteDataNode deleteDataNode;
       if (isRelational) {
         deleteDataNode =
@@ -175,11 +179,12 @@ public class DeletionResourceTest {
 
   @Test
   public void testDeletionRemove() throws IllegalPathException, InterruptedException, IOException {
-    deletionRemove(true);
-    deletionRemove(false);
+    PageCacheDeletionBuffer.setDalBufferSize(TEST_DAL_FILE_SIZE);
+    deletionRemove(true, 0);
+    deletionRemove(false, 20);
   }
 
-  public void deletionRemove(final boolean isRelational)
+  public void deletionRemove(final boolean isRelational, final int initialIndex)
       throws IllegalPathException, InterruptedException, IOException {
     deletionResourceManager = DeletionResourceManager.getInstance(FAKE_DATA_REGION_IDS[3]);
     // new a deletion
@@ -187,7 +192,7 @@ public class DeletionResourceTest {
     final int deletionCount = 20;
     final MeasurementPath path = new MeasurementPath("root.vehicle.d2.s0");
     final List<PipeDeleteDataNodeEvent> deletionEvents = new ArrayList<>();
-    for (int i = 0; i < deletionCount; i++) {
+    for (int i = initialIndex; i < initialIndex + deletionCount; i++) {
       final AbstractDeleteDataNode deleteDataNode;
       if (isRelational) {
         deleteDataNode =
@@ -204,15 +209,26 @@ public class DeletionResourceTest {
       deleteDataNode.setProgressIndex(
           new RecoverProgressIndex(THIS_DATANODE_ID, new SimpleProgressIndex(rebootTimes, i)));
       final PipeDeleteDataNodeEvent deletionEvent =
-          new PipeDeleteDataNodeEvent(deleteDataNode, true);
+          new PipeDeleteDataNodeEvent(
+              deleteDataNode, "Test", 10, null, null, null, null, true, true);
+      deletionEvent.setCommitterKeyAndCommitId(
+          new CommitterKey("Test", 10, Integer.parseInt(FAKE_DATA_REGION_IDS[3]), 0), i + 1);
       deletionEvents.add(deletionEvent);
+
       final DeletionResource deletionResource =
           deletionResourceManager.registerDeletionResource(deleteDataNode);
+      deletionResource.setPipeTaskReferenceCount(1);
       deletionEvent.setDeletionResource(
           deletionResourceManager.getDeletionResource(deleteDataNode));
       if (deletionResource.waitForResult() != Status.SUCCESS) {
         Assert.fail();
       }
+    }
+
+    // for event commit to invoke onCommit() to removeDAL
+    if (initialIndex == 0) {
+      PipeEventCommitManager.getInstance()
+          .register("Test", 10, Integer.parseInt(FAKE_DATA_REGION_IDS[3]), "Test");
     }
     deletionEvents.forEach(deletionEvent -> deletionEvent.increaseReferenceCount("test"));
     final List<Path> paths =
@@ -221,6 +237,7 @@ public class DeletionResourceTest {
     Assert.assertTrue(paths.stream().anyMatch(Files::isRegularFile));
     final int beforeFileCount = paths.size();
     if (beforeFileCount < 2) {
+      // not generate enough DAL file
       return;
     }
     // Remove deletion
@@ -231,7 +248,8 @@ public class DeletionResourceTest {
         Files.list(Paths.get(DELETION_BASE_DIR + File.separator + FAKE_DATA_REGION_IDS[3]))
             .collect(Collectors.toList());
     final int afterCount = newPaths.size();
-    Assert.assertTrue(afterCount < beforeFileCount);
+    // assume all DAL are deleted except for the last one.
+    Assert.assertTrue(afterCount < beforeFileCount && afterCount == 1);
   }
 
   @Test

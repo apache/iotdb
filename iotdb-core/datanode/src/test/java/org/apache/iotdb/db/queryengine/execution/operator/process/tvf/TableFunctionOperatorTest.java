@@ -203,7 +203,8 @@ public class TableFunctionOperatorTest {
               Collections.singletonList(1),
               Arrays.asList(0, 1, 3),
               Arrays.asList(0, 1, 2, 3),
-              Arrays.asList(TSDataType.TIMESTAMP, TSDataType.STRING, TSDataType.INT32));
+              Arrays.asList(
+                  TSDataType.TIMESTAMP, TSDataType.STRING, TSDataType.DOUBLE, TSDataType.INT32));
       PartitionState state = partitionRecognizer.nextState();
       Assert.assertEquals(PartitionState.INIT_STATE, state);
       Assert.assertEquals(PartitionState.INIT_STATE, partitionRecognizer.nextState());
@@ -281,12 +282,13 @@ public class TableFunctionOperatorTest {
       state = partitionRecognizer.nextState();
       Assert.assertEquals(PartitionState.StateType.FINISHED, state.getStateType());
     } catch (Exception e) {
+      e.printStackTrace();
       fail(e.getMessage());
     }
   }
 
   private void checkIteratorSimply(Slice slice, List<List<Object>> expected) {
-    Iterator<Record> recordIterable = slice.getRequiredRecordIterator();
+    Iterator<Record> recordIterable = slice.getRequiredRecordIterator(false);
     int i = 0;
     while (recordIterable.hasNext()) {
       Record record = recordIterable.next();
