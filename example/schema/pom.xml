@@ -24,7 +24,7 @@
     <parent>
         <artifactId>iotdb-examples</artifactId>
         <groupId>org.apache.iotdb</groupId>
-        <version>1.3.4</version>
+        <version>1.3.5-SNAPSHOT</version>
     </parent>
     <artifactId>schema-example</artifactId>
     <name>IoTDB: Example: Schema</name>
