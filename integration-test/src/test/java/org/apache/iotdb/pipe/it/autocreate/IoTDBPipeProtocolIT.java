@@ -342,11 +342,6 @@ public class IoTDBPipeProtocolIT extends AbstractPipeDualAutoIT {
     doTestUseNodeUrls(BuiltinPipePlugin.IOTDB_THRIFT_ASYNC_CONNECTOR.getPipePluginName());
   }
 
-  @Test
-  public void testAirGapConnectorUseNodeUrls() throws Exception {
-    doTestUseNodeUrls(BuiltinPipePlugin.IOTDB_AIR_GAP_CONNECTOR.getPipePluginName());
-  }
-
   private void doTestUseNodeUrls(String connectorName) throws Exception {
     senderEnv
         .getConfig()
@@ -381,16 +376,7 @@ public class IoTDBPipeProtocolIT extends AbstractPipeDualAutoIT {
 
     final StringBuilder nodeUrlsBuilder = new StringBuilder();
     for (final DataNodeWrapper wrapper : receiverEnv.getDataNodeWrapperList()) {
-      if (connectorName.equals(BuiltinPipePlugin.IOTDB_AIR_GAP_CONNECTOR.getPipePluginName())) {
-        // Use default port for convenience
-        nodeUrlsBuilder
-            .append(wrapper.getIp())
-            .append(":")
-            .append(wrapper.getPipeAirGapReceiverPort())
-            .append(",");
-      } else {
-        nodeUrlsBuilder.append(wrapper.getIpAndPortString()).append(",");
-      }
+      nodeUrlsBuilder.append(wrapper.getIpAndPortString()).append(",");
     }
 
     try (final SyncConfigNodeIServiceClient client =
