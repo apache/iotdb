@@ -108,7 +108,7 @@ public class IoTDBTableIT {
       // "FIELD" can be omitted when type is specified
       // "STRING" can be omitted when tag/attribute is specified
       statement.execute(
-          "create table test1.table1(region_id STRING TAG, plant_id STRING TAG, device_id TAG, model STRING ATTRIBUTE, temperature FLOAT FIELD, humidity DOUBLE) comment 'test' with (TTL='INF')");
+          "create table test1.table1(time TIMESTAMP TIME COMMENT 'column_comment', region_id STRING TAG, plant_id STRING TAG, device_id TAG, model STRING ATTRIBUTE, temperature FLOAT FIELD, humidity DOUBLE) comment 'test' with (TTL='INF')");
 
       try {
         statement.execute(
@@ -415,15 +415,39 @@ public class IoTDBTableIT {
       statement.execute("alter table table2 drop column color");
 
       // Test comment
+      // Before
+      columnNames = new String[] {"time", "region_id", "plant_id", "temperature", "speed"};
+      dataTypes = new String[] {"TIMESTAMP", "STRING", "STRING", "FLOAT", "DOUBLE"};
+      categories = new String[] {"TIME", "TAG", "TAG", "FIELD", "FIELD"};
+      statuses = new String[] {"USING", "USING", "USING", "USING", "USING"};
+
+      comments = new String[] {null, null, null, null, "fast"};
+      try (final ResultSet resultSet = statement.executeQuery("describe table2 details")) {
+        int cnt = 0;
+        ResultSetMetaData metaData = resultSet.getMetaData();
+        assertEquals(describeTableDetailsColumnHeaders.size(), metaData.getColumnCount());
+        for (int i = 0; i < describeTableDetailsColumnHeaders.size(); i++) {
+          assertEquals(
+              describeTableDetailsColumnHeaders.get(i).getColumnName(),
+              metaData.getColumnName(i + 1));
+        }
+        while (resultSet.next()) {
+          assertEquals(columnNames[cnt], resultSet.getString(1));
+          assertEquals(dataTypes[cnt], resultSet.getString(2));
+          assertEquals(categories[cnt], resultSet.getString(3));
+          assertEquals(statuses[cnt], resultSet.getString(4));
+          assertEquals(comments[cnt], resultSet.getString(5));
+          cnt++;
+        }
+        assertEquals(columnNames.length, cnt);
+      }
+
+      // After
       statement.execute("COMMENT ON COLUMN table2.region_id IS '重庆'");
       statement.execute("COMMENT ON COLUMN table2.region_id IS NULL");
       statement.execute("COMMENT ON COLUMN test2.table2.time IS 'recent'");
       statement.execute("COMMENT ON COLUMN test2.table2.region_id IS ''");
 
-      columnNames = new String[] {"time", "region_id", "plant_id", "temperature", "speed"};
-      dataTypes = new String[] {"TIMESTAMP", "STRING", "STRING", "FLOAT", "DOUBLE"};
-      categories = new String[] {"TIME", "TAG", "TAG", "FIELD", "FIELD"};
-      statuses = new String[] {"USING", "USING", "USING", "USING", "USING"};
       comments = new String[] {"recent", "", null, null, "fast"};
       try (final ResultSet resultSet = statement.executeQuery("describe table2 details")) {
         int cnt = 0;
