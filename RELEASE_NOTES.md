@@ -19,6 +19,39 @@
 
 -->
 
+# Apache IoTDB 1.3.4
+
+## Features & Improvements
+
+- Data Query: Users can now control the loading of JAR packages via URI for UDF, PipePlugin, Trigger, and AINode through configuration items.
+- Data Query:  Added monitoring for TimeIndex cached during the merge process.
+- System Management: Expanded UDF functions with the addition of the pattern_match function for pattern matching.
+- System Management:The Python session SDK now includes a parameter for connection timeout.
+- System Management:Introduced authorization for cluster management-related operations.
+- System Management:ConfigNode/DataNode now supports scaling down using SQL.
+- System Management:ConfigNode automatically cleans up partition information exceeding the TTL (cleans up every 2 hours).
+- Data Synchronization: Supports specifying authorization information for the receiver on the sender's end.
+- Ecosystem Integration: Supports Kubernetes Operator.
+- Scripts and Tools: The import-data/export-data scripts have been expanded to support new data types (strings, large binary objects, dates, timestamps).
+- Scripts and Tools:The import-data/export-data scripts have been iterated to support importing and exporting data in three formats: TsFile, CSV, and SQL.
+  ...
+
+## Bugs
+
+- Fixed the issue where an ArrayIndexOutOfBoundsException occurred when a column name did not exist in the HAVING clause of the tree model.
+- Fixed the issue where the target sequence in SELECT INTO contained backticks, resulting in incorrect sequences being written.
+- Fixed the issue where an empty iot-consensus file was generated after an abnormal power outage, causing the DataNode (dn) to fail to start.
+- Fixed the issue where the storage engine reported an error during asynchronous recovery after manually deleting the resource file, leading to Pipe startup failure.
+- Fixed the issue where data forwarded by external Pipe could not be synchronized between dual-lives.
+- Fixed the issue where the C# Session could not correctly fetch result sets when querying large amounts of data (exceeding fetch_size) on a cluster with more than one node.
+- Fixed the issue where the order of query results was incorrect in the C# client.
+- Fixed the issue where duplicate timestamps were included in query result sets.
+- Fixed the issue where query results were incorrect for single-device queries with sort+offset+limit+align by device.
+- Fixed the issue where data synchronization failed when a sequence S1 of data type A was deleted and then a sequence S1 of data type B was written, and a TTL existed.
+- Fixed the issue where MergeReader needed to consider memory allocation to avoid negative available memory during out-of-order and reverse queries.
+- Fixed the inconsistency in how ConfigNode and DataNode read the JDK environment variables on Windows.
+- ...
+
 # Apache IoTDB 1.3.3
 
 ## Features & Improvements
