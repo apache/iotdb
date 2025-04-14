@@ -22,6 +22,7 @@ import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggr
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.block.column.ColumnBuilder;
 import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.RamUsageEstimator;
 import org.apache.tsfile.write.UnSupportedDataTypeException;
 
@@ -98,36 +99,15 @@ public class GroupedApproxCountDistinctAccumulator implements GroupedAccumulator
       if (argument.isNull(i)) {
         continue;
       }
-      switch (seriesDataType) {
-        case BOOLEAN:
-          hlls.get(groupIds[i]).add(argument.getBoolean(i));
-        case INT32:
-        case DATE:
-          hlls.get(groupIds[i]).add(argument.getInt(i));
-        case INT64:
-        case TIMESTAMP:
-          hlls.get(groupIds[i]).add(argument.getLong(i));
-        case FLOAT:
-          hlls.get(groupIds[i]).add(argument.getFloat(i));
-        case DOUBLE:
-          hlls.get(groupIds[i]).add(argument.getDouble(i));
-        case TEXT:
-        case STRING:
-        case BLOB:
-          hlls.get(groupIds[i]).add(argument.getBinary(i));
-        default:
-          throw new UnSupportedDataTypeException(
-              String.format(
-                  "Unsupported data type in APPROX_COUNT_DISTINCT Aggregation: %s",
-                  seriesDataType));
-      }
+      HyperLogLog preHll = new HyperLogLog(argument.getBinary(i).getValues());
+      hlls.get(groupIds[i]).merge(preHll);
     }
   }
 
   @Override
   public void evaluateIntermediate(int groupId, ColumnBuilder columnBuilder) {
     ObjectBigArray<HyperLogLog> hlls = state.getHyperLogLogs();
-    columnBuilder.writeLong(hlls.get(groupId).cardinality());
+    columnBuilder.writeBinary(new Binary(hlls.get(groupId).serialize()));
   }
 
   @Override

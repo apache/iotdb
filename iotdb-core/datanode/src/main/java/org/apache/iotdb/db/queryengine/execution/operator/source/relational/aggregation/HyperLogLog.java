@@ -57,19 +57,45 @@ public class HyperLogLog {
     this.registers = new int[m];
 
     // Set alpha based on precision
+    this.alpha = getAlpha(precision, m);
+  }
+
+  public HyperLogLog(byte[] bytes) {
+    // 反序列化
+    this.b =
+        (bytes[0] & 0xFF)
+            | (bytes[1] & 0xFF) << 8
+            | (bytes[2] & 0xFF) << 16
+            | (bytes[3] & 0xFF) << 24;
+
+    this.m =
+        (bytes[4] & 0xFF)
+            | (bytes[5] & 0xFF) << 8
+            | (bytes[6] & 0xFF) << 16
+            | (bytes[7] & 0xFF) << 24;
+
+    this.registers = new int[m];
+    for (int i = 0; i < m; i++) {
+      int baseIndex = 8 + i * 4;
+      registers[i] =
+          (bytes[baseIndex] & 0xFF)
+              | (bytes[baseIndex + 1] & 0xFF) << 8
+              | (bytes[baseIndex + 2] & 0xFF) << 16
+              | (bytes[baseIndex + 3] & 0xFF) << 24;
+    }
+    this.alpha = getAlpha(b, m);
+  }
+
+  public static double getAlpha(int precision, int m) {
     switch (precision) {
       case 4:
-        this.alpha = 0.673;
-        break;
+        return 0.673;
       case 5:
-        this.alpha = 0.697;
-        break;
+        return 0.697;
       case 6:
-        this.alpha = 0.709;
-        break;
+        return 0.709;
       default:
-        this.alpha = 0.7213 / (1 + 1.079 / m);
-        break;
+        return 0.7213 / (1 + 1.079 / m);
     }
   }
 
@@ -208,5 +234,32 @@ public class HyperLogLog {
     for (int i = 0; i < m; i++) {
       registers[i] = Math.max(registers[i], other.registers[i]);
     }
+  }
+
+  // 序列化
+  public byte[] serialize() {
+    int totalBytes = Integer.BYTES * 2 + registers.length * Integer.BYTES;
+    byte[] result = new byte[totalBytes];
+
+    // 写入 b
+    result[0] = (byte) b;
+    result[1] = (byte) (b >> 8);
+    result[2] = (byte) (b >> 16);
+    result[3] = (byte) (b >> 24);
+
+    result[4] = (byte) m;
+    result[5] = (byte) (m >> 8);
+    result[6] = (byte) (m >> 16);
+    result[7] = (byte) (m >> 24);
+
+    for (int i = 0; i < m; i++) {
+      int baseIndex = 8 + i * 4;
+      int value = registers[i];
+      result[baseIndex] = (byte) value;
+      result[baseIndex + 1] = (byte) (value >> 8);
+      result[baseIndex + 2] = (byte) (value >> 16);
+      result[baseIndex + 3] = (byte) (value >> 24);
+    }
+    return result;
   }
 }

@@ -86,7 +86,6 @@ public enum TableBuiltinAggregationFunction {
       case "count":
       case "count_all":
       case "count_if":
-      case "approx_count_distinct":
         return INT64;
       case "sum":
         return DOUBLE;
@@ -104,6 +103,7 @@ public enum TableBuiltinAggregationFunction {
       case "variance":
       case "var_pop":
       case "var_samp":
+      case "approx_count_distinct":
         return RowType.anonymous(Collections.emptyList());
       case "extreme":
       case "max":

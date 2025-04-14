@@ -18,8 +18,12 @@ import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.block.column.ColumnBuilder;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.statistics.Statistics;
+import org.apache.tsfile.read.common.block.column.BinaryColumnBuilder;
+import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.RamUsageEstimator;
 import org.apache.tsfile.write.UnSupportedDataTypeException;
+
+import static com.google.common.base.Preconditions.checkArgument;
 
 public class ApproxCountDistinctAccumulator implements TableAccumulator {
   private static final long INSTANCE_SIZE =
@@ -93,43 +97,18 @@ public class ApproxCountDistinctAccumulator implements TableAccumulator {
       if (argument.isNull(i)) {
         continue;
       }
-
-      switch (seriesDataType) {
-        case INT32:
-        case DATE:
-          hll.add(argument.getInt(i));
-          break;
-        case INT64:
-        case TIMESTAMP:
-          hll.add(argument.getLong(i));
-          break;
-        case FLOAT:
-          hll.add(argument.getFloat(i));
-          break;
-        case DOUBLE:
-          hll.add(argument.getDouble(i));
-          break;
-        case STRING:
-        case TEXT:
-          hll.add(argument.getBinary(i));
-          break;
-        case BOOLEAN:
-        case BLOB:
-          hll.add(argument.getBoolean(i));
-          break;
-        default:
-          throw new UnSupportedDataTypeException(
-              String.format(
-                  "Unsupported data type in APPROX_COUNT_DISTINCT Aggregation: %s",
-                  seriesDataType));
-      }
+      HyperLogLog preHll = new HyperLogLog(argument.getBinary(i).getValues());
+      hll.merge(preHll);
     }
   }
 
   @Override
   public void evaluateIntermediate(ColumnBuilder columnBuilder) {
+    checkArgument(
+        columnBuilder instanceof BinaryColumnBuilder,
+        "intermediate input and output of APPROX_COUNT_DISTINCT should be BinaryColumn");
     HyperLogLog hll = state.getHyperLogLog();
-    columnBuilder.writeLong(hll.cardinality());
+    columnBuilder.writeBinary(new Binary(hll.serialize()));
   }
 
   @Override
