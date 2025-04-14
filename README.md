@@ -511,7 +511,7 @@ see [Frequent Questions when Compiling the Source Code](https://iotdb.apache.org
 
 ### Wechat Group
 
-* Add friend: `apache_iotdb` , and then we'll invite you to the group.
+* Add friend: `apache_iotdb`, and then we'll invite you to the group.
 
 ### Slack
 
