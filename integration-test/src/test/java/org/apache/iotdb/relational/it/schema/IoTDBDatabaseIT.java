@@ -559,12 +559,13 @@ public class IoTDBDatabaseIT {
                   "information_schema,models,INF,USING,null,SYSTEM VIEW,",
                   "information_schema,functions,INF,USING,null,SYSTEM VIEW,",
                   "information_schema,configurations,INF,USING,null,SYSTEM VIEW,",
+                  "information_schema,keywords,INF,USING,null,SYSTEM VIEW,",
                   "test,test,INF,USING,test,BASE TABLE,",
                   "test,view_table,100,USING,null,TREE_TO_TABLE VIEW,")));
       TestUtils.assertResultSetEqual(
           statement.executeQuery("count devices from tables where status = 'USING'"),
           "count(devices),",
-          Collections.singleton("15,"));
+          Collections.singleton("16,"));
       TestUtils.assertResultSetEqual(
           statement.executeQuery(
               "select * from columns where table_name = 'queries' or database = 'test'"),
