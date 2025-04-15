@@ -49,12 +49,6 @@
             <version>2.0.2-SNAPSHOT</version>
             <scope>provided</scope>
         </dependency>
-        <dependency>
-            <groupId>org.apache.iotdb</groupId>
-            <artifactId>iotdb-thrift-ainode</artifactId>
-            <version>2.0.2-SNAPSHOT</version>
-            <scope>provided</scope>
-        </dependency>
     </dependencies>
     <build>
         <resources>
@@ -133,9 +127,6 @@
                                 <resource>
                                     <directory>${basedir}/../../iotdb-protocol/thrift-confignode/target/generated-sources-python/iotdb/thrift/</directory>
                                 </resource>
-                                <resource>
-                                    <directory>${basedir}/../../iotdb-protocol/thrift-ainode/target/generated-sources-python/iotdb/thrift/</directory>
-                                </resource>
                             </resources>
                         </configuration>
                     </execution>
@@ -211,7 +202,6 @@
                         <usedDependency>org.apache.iotdb:iotdb-thrift-commons</usedDependency>
                         <usedDependency>org.apache.iotdb:iotdb-thrift</usedDependency>
                         <usedDependency>org.apache.iotdb:iotdb-thrift-confignode</usedDependency>
-                        <usedDependency>org.apache.iotdb:iotdb-thrift-ainode</usedDependency>
                     </usedDependencies>
                 </configuration>
             </plugin>
