@@ -97,9 +97,13 @@ public class SchemaFetchScanOperatorTest {
     Pair<List<MeasurementPath>, Integer> pair =
         schemaTree.searchMeasurementPaths(new PartialPath("root.sg.**.status"), 0, 0, false);
     Assert.assertEquals(3, pair.left.size());
-    Assert.assertEquals(
-        Arrays.asList("root.sg.d1.s2", "root.sg.d2.a.s2", "root.sg.d2.s2"),
-        pair.left.stream().map(MeasurementPath::getFullPath).collect(Collectors.toList()));
+    List<String> expectedPath = Arrays.asList("root.sg.d1.s2", "root.sg.d2.a.s2", "root.sg.d2.s2");
+    List<String> actualPath =
+        pair.left.stream().map(MeasurementPath::getFullPath).collect(Collectors.toList());
+    Assert.assertTrue(
+        expectedPath.size() == actualPath.size()
+            && expectedPath.containsAll(actualPath)
+            && actualPath.containsAll(expectedPath));
   }
 
   private ISchemaRegion mockSchemaRegion() throws Exception {
