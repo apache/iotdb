@@ -102,6 +102,6 @@ class CacheStats implements IDualKeyCacheStats {
 
   @Override
   public long entriesCount() {
-    return entriesCount.get();
+    return entriesComputation.get();
   }
 }
