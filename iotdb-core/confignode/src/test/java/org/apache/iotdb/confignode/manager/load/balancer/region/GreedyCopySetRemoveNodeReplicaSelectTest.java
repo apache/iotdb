@@ -147,12 +147,15 @@ public class GreedyCopySetRemoveNodeReplicaSelectTest {
       }
     }
     Map<TConsensusGroupId, TRegionReplicaSet> remainReplicasMap = new HashMap<>();
-    Map<TConsensusGroupId, String> regionDatabaseMap = new HashMap<>();
     Map<String, List<TRegionReplicaSet>> databaseAllocatedRegionGroupMap = new HashMap<>();
     databaseAllocatedRegionGroupMap.put("database", allocateResult);
 
     for (TRegionReplicaSet remainReplicaSet : remainReplicas) {
       remainReplicasMap.put(remainReplicaSet.getRegionId(), remainReplicaSet);
+    }
+    Map<TConsensusGroupId, String> regionDatabaseMap = new HashMap<>();
+    for (TRegionReplicaSet replicaSet : allocateResult) {
+      regionDatabaseMap.put(replicaSet.getRegionId(), "database");
     }
     Map<TConsensusGroupId, TDataNodeConfiguration> result =
         GCR_ALLOCATOR.removeNodeReplicaSelect(

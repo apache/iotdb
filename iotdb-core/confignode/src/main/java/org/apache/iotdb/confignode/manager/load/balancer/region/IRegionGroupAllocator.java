@@ -54,7 +54,8 @@ public interface IRegionGroupAllocator {
    * @param availableDataNodeMap DataNodes that can be used for allocation
    * @param freeDiskSpaceMap The free disk space of the DataNodes
    * @param allocatedRegionGroups Allocated RegionGroups
-   * @param regionDatabaseMap
+   * @param regionDatabaseMap A mapping from each region identifier to its corresponding database
+   *     name
    * @param databaseAllocatedRegionGroupMap Allocated RegionGroups within the same Database with the
    *     replica set
    * @param remainReplicasMap the remaining replica set excluding the removed DataNodes

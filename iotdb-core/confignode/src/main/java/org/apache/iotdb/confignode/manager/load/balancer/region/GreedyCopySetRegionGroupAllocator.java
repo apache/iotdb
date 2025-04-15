@@ -53,6 +53,8 @@ public class GreedyCopySetRegionGroupAllocator implements IRegionGroupAllocator 
   private int[] databaseRegionCounter;
   // The number of 2-Region combinations in current cluster
   private int[][] combinationCounter;
+  // The initial load for each database on each datanode
+  private Map<String, int[]> initialDbLoad;
 
   // First Key: the sum of Regions at the DataNodes in the allocation result is minimal
   int optimalRegionSum;
@@ -139,6 +141,7 @@ public class GreedyCopySetRegionGroupAllocator implements IRegionGroupAllocator 
       List<TRegionReplicaSet> databaseAllocatedRegionGroups =
           new ArrayList<>(databaseAllocatedRegionGroupMap.values()).get(0);
       prepare(availableDataNodeMap, allocatedRegionGroups, databaseAllocatedRegionGroups);
+      computeInitialDbLoad(databaseAllocatedRegionGroupMap);
 
       // 2. Build allowed candidate set for each region that needs to be migrated.
       // For each region in remainReplicasMap, the candidate destination nodes are all nodes in
@@ -198,7 +201,8 @@ public class GreedyCopySetRegionGroupAllocator implements IRegionGroupAllocator 
           additionalLoad,
           optimalAssignments,
           bestMetrics,
-          remainReplicasMap);
+          remainReplicasMap,
+          regionDatabaseMap);
 
       // 4. Randomly select one solution from the candidate buffer
       if (optimalAssignments.isEmpty()) {
@@ -259,7 +263,8 @@ public class GreedyCopySetRegionGroupAllocator implements IRegionGroupAllocator 
       int[] additionalLoad,
       List<int[]> optimalAssignments,
       int[] bestMetrics,
-      Map<TConsensusGroupId, TRegionReplicaSet> remainReplicasMap) {
+      Map<TConsensusGroupId, TRegionReplicaSet> remainReplicasMap,
+      Map<TConsensusGroupId, String> regionDatabaseMap) {
     int n = regionKeys.size();
     if (index == n) {
       // A complete assignment has been generated.
@@ -281,7 +286,9 @@ public class GreedyCopySetRegionGroupAllocator implements IRegionGroupAllocator 
 
       // Compute the maximum global load and maximum database load among all nodes that received
       // additional load.
-      int[] currentMetrics = getCurrentMetrics(additionalLoad, currentScatter);
+      int[] currentMetrics =
+          getCurrentMetrics(
+              additionalLoad, currentScatter, regionKeys, regionDatabaseMap, currentAssignment);
 
       // Lexicographically compare currentMetrics with bestMetrics.
       // If currentMetrics is better than bestMetrics, update bestMetrics and clear the candidate
@@ -328,24 +335,133 @@ public class GreedyCopySetRegionGroupAllocator implements IRegionGroupAllocator 
           additionalLoad,
           optimalAssignments,
           bestMetrics,
-          remainReplicasMap);
+          remainReplicasMap,
+          regionDatabaseMap);
       // Backtrack
       additionalLoad[candidate]--;
     }
   }
 
-  private int[] getCurrentMetrics(int[] additionalLoad, int currentScatter) {
-    int currentMaxLoad = 0;
-    int currentMaxDBLoad = 0;
-    for (int nodeId = 0; nodeId < additionalLoad.length; nodeId++) {
-      if (additionalLoad[nodeId] > 0) {
-        currentMaxLoad = Math.max(currentMaxLoad, regionCounter[nodeId] + additionalLoad[nodeId]);
-        currentMaxDBLoad =
-            Math.max(currentMaxDBLoad, databaseRegionCounter[nodeId] + additionalLoad[nodeId]);
-      }
+  /**
+   * Computes the squared sum of the maximum load for each database.
+   *
+   * <p>For each database, this method calculates the maximum load on any data node by summing the
+   * initial load (from {@code initialDbLoad}) with the additional load assigned during migration
+   * (accumulated in {@code currentAssignment}), and then squares this maximum load. Finally, it
+   * returns the sum of these squared maximum loads across all databases.
+   *
+   * @param currentAssignment an array where each element is the nodeId assigned for the
+   *     corresponding region in {@code regionKeys}.
+   * @param regionKeys a list of region identifiers (TConsensusGroupId) representing the regions
+   *     under migration.
+   * @param regionDatabaseMap a mapping from each region identifier to its corresponding database
+   *     name.
+   * @return the sum of the squares of the maximum loads computed for each database.
+   */
+  private int computeDatabaseLoadSquaredSum(
+      int[] currentAssignment,
+      List<TConsensusGroupId> regionKeys,
+      Map<TConsensusGroupId, String> regionDatabaseMap) {
+    Map<String, int[]> extraLoadPerDb = new HashMap<>();
+    // Initialize extra load counters for each database using the number of nodes from
+    // regionCounter.
+    for (String db : initialDbLoad.keySet()) {
+      extraLoadPerDb.put(db, new int[regionCounter.length]);
     }
+    // Accumulate extra load per database based on the current assignment.
+    for (int i = 0; i < regionKeys.size(); i++) {
+      TConsensusGroupId regionId = regionKeys.get(i);
+      String db = regionDatabaseMap.get(regionId);
+      int nodeId = currentAssignment[i];
+      extraLoadPerDb.get(db)[nodeId]++;
+    }
+    int sumSquared = 0;
+    // For each database, compute the maximum load across nodes and add its square to the sum.
+    for (String db : initialDbLoad.keySet()) {
+      int[] initLoads = initialDbLoad.get(db);
+      int[] extras = extraLoadPerDb.get(db);
+      int maxLoad = 0;
+      for (int nodeId = 0; nodeId < regionCounter.length; nodeId++) {
+        int load = initLoads[nodeId] + extras[nodeId];
+        if (load > maxLoad) {
+          maxLoad = load;
+        }
+      }
+      sumSquared += maxLoad * maxLoad;
+    }
+    return sumSquared;
+  }
+
+  /**
+   * Computes the current migration metrics.
+   *
+   * <p>This method calculates three key metrics:
+   *
+   * <ol>
+   *   <li><strong>Max Global Load:</strong> The maximum load among all nodes, computed as the sum
+   *       of the initial region load (from {@code regionCounter}) and the additional load (from
+   *       {@code additionalLoad}).
+   *   <li><strong>Database Load Squared Sum:</strong> The squared sum of the maximum load per
+   *       database, which is computed by {@link #computeDatabaseLoadSquaredSum(int[], List, Map)}.
+   *   <li><strong>Scatter Value:</strong> A provided metric that reflects additional balancing
+   *       criteria.
+   * </ol>
+   *
+   * The metrics are returned as an array of three integers in the order: [maxGlobalLoad,
+   * databaseLoadSquaredSum, scatterValue].
+   *
+   * @param additionalLoad an array representing the additional load assigned to each node during
+   *     migration.
+   * @param currentScatter the current scatter value metric.
+   * @param regionKeys a list of region identifiers (TConsensusGroupId) for which migration is being
+   *     computed.
+   * @param regionDatabaseMap a mapping from each region identifier to its corresponding database
+   *     name.
+   * @param currentAssignment an array where each element is the nodeId assigned for the
+   *     corresponding region in {@code regionKeys}.
+   * @return an integer array of size 3: [maxGlobalLoad, databaseLoadSquaredSum, scatterValue].
+   */
+  private int[] getCurrentMetrics(
+      int[] additionalLoad,
+      int currentScatter,
+      List<TConsensusGroupId> regionKeys,
+      Map<TConsensusGroupId, String> regionDatabaseMap,
+      int[] currentAssignment) {
+    int currentMaxGlobalLoad = 0;
+    // Calculate the maximum global load across all data nodes.
+    for (int nodeId = 0; nodeId < additionalLoad.length; nodeId++) {
+      int globalLoad = regionCounter[nodeId] + additionalLoad[nodeId];
+      currentMaxGlobalLoad = Math.max(currentMaxGlobalLoad, globalLoad);
+    }
+    // Compute the database load squared sum using the helper method.
+    int dbLoadSquaredSum =
+        computeDatabaseLoadSquaredSum(currentAssignment, regionKeys, regionDatabaseMap);
     // Build current metrics in order [maxGlobalLoad, maxDatabaseLoad, scatterValue]
-    return new int[] {currentMaxLoad, currentMaxDBLoad, currentScatter};
+    return new int[] {currentMaxGlobalLoad, dbLoadSquaredSum, currentScatter};
+  }
+
+  /**
+   * Compute the initial load for each database on each data node.
+   *
+   * @param databaseAllocatedRegionGroupMap Mapping of each database to its list of replica sets.
+   */
+  private void computeInitialDbLoad(
+      Map<String, List<TRegionReplicaSet>> databaseAllocatedRegionGroupMap) {
+    initialDbLoad = new HashMap<>();
+
+    // Iterate over each database and count the number of regions on each data node across all its
+    // replica sets.
+    for (String database : databaseAllocatedRegionGroupMap.keySet()) {
+      List<TRegionReplicaSet> replicaSets = databaseAllocatedRegionGroupMap.get(database);
+      int[] load = new int[regionCounter.length];
+      for (TRegionReplicaSet replicaSet : replicaSets) {
+        for (TDataNodeLocation location : replicaSet.getDataNodeLocations()) {
+          int nodeId = location.getDataNodeId();
+          load[nodeId]++;
+        }
+      }
+      initialDbLoad.put(database, load);
+    }
   }
 
   /**
