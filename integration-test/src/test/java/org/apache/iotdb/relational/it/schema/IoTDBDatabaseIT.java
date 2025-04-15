@@ -640,7 +640,7 @@ public class IoTDBDatabaseIT {
 
       TestUtils.assertResultSetEqual(
           statement.executeQuery(
-              "select * from information_schema.keywords limit 1 where reserved > 0"),
+              "select * from information_schema.keywords where reserved > 0 limit 1"),
           "word,reserved,",
           Collections.singleton("AINODES,1,"));
     }
