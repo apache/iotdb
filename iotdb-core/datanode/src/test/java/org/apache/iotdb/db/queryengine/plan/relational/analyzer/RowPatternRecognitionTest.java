@@ -452,7 +452,7 @@ public class RowPatternRecognitionTest {
             statementAnalyzerFactory,
             Collections.emptyList(),
             Collections.emptyMap(),
-            new StatementRewriteFactory(metadata).getStatementRewrite(),
+            new StatementRewriteFactory(metadata, nopAccessControl).getStatementRewrite(),
             NOOP);
     analyzer.analyze(statement);
   }

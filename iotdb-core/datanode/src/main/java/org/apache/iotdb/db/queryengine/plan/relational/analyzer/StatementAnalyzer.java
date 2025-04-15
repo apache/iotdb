@@ -3026,25 +3026,6 @@ public class StatementAnalyzer {
       return createAndAssignScope(relation, scope, outputFields);
     }
 
-    private Field validateAndGetInputField(Expression expression, Scope inputScope) {
-      QualifiedName qualifiedName;
-      if (expression instanceof Identifier) {
-        qualifiedName = QualifiedName.of(ImmutableList.of((Identifier) expression));
-      } else if (expression instanceof DereferenceExpression) {
-        qualifiedName = getQualifiedName((DereferenceExpression) expression);
-      } else {
-        throw new SemanticException(
-            String.format("Expected column reference. Actual: %s", expression));
-      }
-      Optional<ResolvedField> field = inputScope.tryResolveField(expression, qualifiedName);
-      if (!field.isPresent() || !field.get().isLocal()) {
-        throw new SemanticException(
-            String.format("Column %s is not present in the input relation", expression));
-      }
-
-      return field.get().getField();
-    }
-
     private Field unqualifiedVisible(Field field) {
       return new Field(
           Optional.empty(),
