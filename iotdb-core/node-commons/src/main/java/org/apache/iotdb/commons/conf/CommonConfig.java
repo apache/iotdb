@@ -1273,7 +1273,7 @@ public class CommonConfig {
 
   public void setPipeMaxAllowedHistoricalTsFilePerDataRegion(
       int pipeMaxAllowedPendingTsFileEpochPerDataRegion) {
-    if (this.pipeMaxAllowedPendingTsFileEpochPerDataRegion
+    if (this.pipeMaxAllowedHistoricalTsFilePerDataRegion
         == pipeMaxAllowedPendingTsFileEpochPerDataRegion) {
       return;
     }
