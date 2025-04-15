@@ -22,13 +22,16 @@ package org.apache.iotdb.confignode.procedure.impl.pipe.runtime;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeMeta;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
+import org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.runtime.PipeHandleMetaChangePlan;
 import org.apache.iotdb.confignode.persistence.pipe.PipeTaskInfo;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.impl.pipe.AbstractOperatePipeProcedureV2;
 import org.apache.iotdb.confignode.procedure.impl.pipe.PipeTaskOperation;
+import org.apache.iotdb.confignode.procedure.impl.pipe.util.ExternalLoadBalancer;
 import org.apache.iotdb.confignode.procedure.state.ProcedureLockState;
 import org.apache.iotdb.confignode.procedure.store.ProcedureType;
+import org.apache.iotdb.confignode.service.ConfigNode;
 import org.apache.iotdb.consensus.exception.ConsensusException;
 import org.apache.iotdb.mpp.rpc.thrift.TPushPipeMetaResp;
 import org.apache.iotdb.pipe.api.exception.PipeException;
@@ -40,10 +43,15 @@ import org.slf4j.LoggerFactory;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
+
+import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTERNAL_EXTRACTOR_PARALLELISM_DEFAULT_VALUE;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTERNAL_EXTRACTOR_PARALLELISM_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTERNAL_SOURCE_PARALLELISM_KEY;
 
 public class PipeMetaSyncProcedure extends AbstractOperatePipeProcedureV2 {
 
@@ -100,8 +108,49 @@ public class PipeMetaSyncProcedure extends AbstractOperatePipeProcedureV2 {
   @Override
   public void executeFromCalculateInfoForTask(ConfigNodeProcedureEnv env) {
     LOGGER.info("PipeMetaSyncProcedure: executeFromCalculateInfoForTask");
+    // Re-balance the external source tasks here in case of any changes in the dataRegion
+    pipeTaskInfo
+        .get()
+        .getPipeMetaList()
+        .forEach(
+            pipeMeta -> {
+              if (pipeMeta.getStaticMeta().isSourceExternal()) {
+                final ExternalLoadBalancer loadBalancer =
+                    new ExternalLoadBalancer(
+                        pipeMeta
+                            .getStaticMeta()
+                            .getExtractorParameters()
+                            .getStringOrDefault(
+                                Arrays.asList(
+                                    PipeExtractorConstant.EXTERNAL_EXTRACTOR_BALANCE_STRATEGY_KEY,
+                                    PipeExtractorConstant.EXTERNAL_SOURCE_BALANCE_STRATEGY_KEY),
+                                PipeExtractorConstant
+                                    .EXTERNAL_EXTRACTOR_BALANCE_PROPORTION_STRATEGY));
 
-    // Do nothing
+                final int parallelism =
+                    pipeMeta
+                        .getStaticMeta()
+                        .getExtractorParameters()
+                        .getIntOrDefault(
+                            Arrays.asList(
+                                EXTERNAL_EXTRACTOR_PARALLELISM_KEY,
+                                EXTERNAL_SOURCE_PARALLELISM_KEY),
+                            EXTERNAL_EXTRACTOR_PARALLELISM_DEFAULT_VALUE);
+                loadBalancer
+                    .balance(
+                        parallelism,
+                        pipeMeta.getStaticMeta(),
+                        ConfigNode.getInstance().getConfigManager())
+                    .forEach(
+                        (taskIndex, newLeader) -> {
+                          pipeMeta
+                              .getRuntimeMeta()
+                              .getConsensusGroupId2TaskMetaMap()
+                              .get(taskIndex)
+                              .setLeaderNodeId(newLeader);
+                        });
+              }
+            });
   }
 
   @Override
