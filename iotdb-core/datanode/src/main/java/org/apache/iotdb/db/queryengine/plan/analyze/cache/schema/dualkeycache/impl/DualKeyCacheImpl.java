@@ -35,7 +35,6 @@ import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Predicate;
 import java.util.function.ToIntFunction;
-import java.util.stream.Stream;
 
 class DualKeyCacheImpl<FK, SK, V, T extends ICacheEntry<SK, V>>
     implements IDualKeyCache<FK, SK, V> {
@@ -307,10 +306,15 @@ class DualKeyCacheImpl<FK, SK, V, T extends ICacheEntry<SK, V>>
   }
 
   private long getMemory() {
-    return Arrays.stream(firstKeyMap.maps)
-        .flatMap(map -> Objects.nonNull(map) ? map.values().stream() : Stream.empty())
-        .map(ICacheEntryGroup::getMemory)
-        .reduce(0L, Long::sum);
+    long memory = 0;
+    for (final Map<FK, ICacheEntryGroup<FK, SK, V, T>> map : firstKeyMap.maps) {
+      if (Objects.nonNull(map)) {
+        for (final ICacheEntryGroup<FK, SK, V, T> group : map.values()) {
+          memory += group.getMemory();
+        }
+      }
+    }
+    return memory;
   }
 
   /**
@@ -372,9 +376,13 @@ class DualKeyCacheImpl<FK, SK, V, T extends ICacheEntry<SK, V>>
     }
 
     int size() {
-      return Arrays.stream(maps)
-          .map(map -> Objects.nonNull(map) ? map.size() : 0)
-          .reduce(0, Integer::sum);
+      int size = 0;
+      for (final Map<K, V> map : maps) {
+        if (Objects.nonNull(map)) {
+          size += map.size();
+        }
+      }
+      return size;
     }
   }
 }

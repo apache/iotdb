@@ -109,12 +109,6 @@ class CacheStats implements IDualKeyCacheStats {
     return entriesCount.get();
   }
 
-  void reset() {
-    resetEntriesCount();
-    hitCount.set(0);
-    requestCount.set(0);
-  }
-
   void resetEntriesCount() {
     entriesCount.set(0);
   }
