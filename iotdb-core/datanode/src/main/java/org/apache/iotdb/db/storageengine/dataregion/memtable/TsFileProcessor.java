@@ -565,6 +565,7 @@ public class TsFileProcessor {
         }
       }
       rollbackMemoryInfo(memIncrements);
+      logger.warn("Exception during wal flush", e);
       throw new WriteProcessException(e);
     } finally {
       // recordScheduleWalCost

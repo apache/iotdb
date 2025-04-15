@@ -49,6 +49,16 @@ public class MemoryControlledWALEntryQueue {
     long elementSize = getElementSize(e);
     synchronized (nonFullCondition) {
       while (!SystemInfo.getInstance().getWalBufferQueueMemoryBlock().allocate(elementSize)) {
+        if (elementSize
+            > SystemInfo.getInstance().getWalBufferQueueMemoryBlock().getTotalMemorySizeInBytes()) {
+          throw new RuntimeException(
+              "The element size of WALEntry "
+                  + elementSize
+                  + " is larger than the total memory size of wal buffer queue "
+                  + SystemInfo.getInstance()
+                      .getWalBufferQueueMemoryBlock()
+                      .getTotalMemorySizeInBytes());
+        }
         nonFullCondition.wait();
       }
     }
