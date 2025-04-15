@@ -165,7 +165,7 @@ public class PipeExtractorConstant {
   public static final String EXTERNAL_EXTRACTOR_SINGLE_INSTANCE_PER_NODE_KEY =
       "extractor.single-mode";
   public static final String EXTERNAL_SOURCE_SINGLE_INSTANCE_PER_NODE_KEY = "source.single-mode";
-  public static final boolean EXTERNAL_EXTRACTOR_SINGLE_INSTANCE_PER_NODE_DEFAULT_VALUE = false;
+  public static final boolean EXTERNAL_EXTRACTOR_SINGLE_INSTANCE_PER_NODE_DEFAULT_VALUE = true;
 
   public static final String MQTT_BROKER_HOST_KEY = "mqtt.host";
   public static final String MQTT_BROKER_HOST_DEFAULT_VALUE = "127.0.0.1";

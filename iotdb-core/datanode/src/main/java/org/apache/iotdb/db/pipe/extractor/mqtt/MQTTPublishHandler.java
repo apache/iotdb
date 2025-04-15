@@ -304,9 +304,16 @@ public class MQTTPublishHandler extends AbstractInterceptHandler {
             : message.getDataTypes().toArray(new TSDataType[0]);
     final List<String> values = message.getValues();
     final BitMap[] bitMaps = new BitMap[schemas.length];
+    for (int i = 0; i < bitMaps.length; i++) {
+      bitMaps[i] = new BitMap(1);
+    }
     if (message.getDataTypes() == null) {
       for (int index = 0; index < values.size(); ++index) {
         dataTypes[index] = TypeInferenceUtils.getPredictedDataType(values.get(index), true);
+        if (dataTypes[index] == null) {
+          // we assume the default type is TEXT
+          dataTypes[index] = TSDataType.TEXT;
+        }
       }
     }
 
@@ -317,21 +324,25 @@ public class MQTTPublishHandler extends AbstractInterceptHandler {
 
     // For each measurement value, parse it and then wrap it in a one-dimensional array.
     for (int i = 0; i < values.size(); ++i) {
-      Object parsedValue = CommonUtils.parseValue(dataTypes[i], values.get(i));
+      Object parsedValue =
+          values.get(i) == null ? null : CommonUtils.parseValue(dataTypes[i], values.get(i));
+      if (parsedValue == null) {
+        bitMaps[i].mark(0);
+      }
       // Wrap the parsed value into a one-dimensional array based on its type.
-      if (parsedValue instanceof Integer) {
-        inferredValues[i] = new int[] {(Integer) parsedValue};
-      } else if (parsedValue instanceof Long) {
-        inferredValues[i] = new long[] {(Long) parsedValue};
-      } else if (parsedValue instanceof Float) {
-        inferredValues[i] = new float[] {(Float) parsedValue};
-      } else if (parsedValue instanceof Double) {
-        inferredValues[i] = new double[] {(Double) parsedValue};
-      } else if (parsedValue instanceof Boolean) {
-        inferredValues[i] = new boolean[] {(Boolean) parsedValue};
-      } else if (parsedValue instanceof String) {
+      if (dataTypes[i] == TSDataType.INT32) {
+        inferredValues[i] = new int[] {parsedValue == null ? 0 : (Integer) parsedValue};
+      } else if (dataTypes[i] == TSDataType.INT64) {
+        inferredValues[i] = new long[] {parsedValue == null ? 0 : (Long) parsedValue};
+      } else if (dataTypes[i] == TSDataType.FLOAT) {
+        inferredValues[i] = new float[] {parsedValue == null ? 0 : (Float) parsedValue};
+      } else if (dataTypes[i] == TSDataType.DOUBLE) {
+        inferredValues[i] = new double[] {parsedValue == null ? 0 : (Double) parsedValue};
+      } else if (dataTypes[i] == TSDataType.BOOLEAN) {
+        inferredValues[i] = new boolean[] {parsedValue == null ? false : (Boolean) parsedValue};
+      } else if (dataTypes[i] == TSDataType.STRING) {
         inferredValues[i] = new String[] {(String) parsedValue};
-      } else if (parsedValue instanceof Binary) {
+      } else if (dataTypes[i] == TSDataType.TEXT) {
         inferredValues[i] = new Binary[] {(Binary) parsedValue};
       } else {
         // For any other type, wrap it as an Object array.
@@ -348,7 +359,7 @@ public class MQTTPublishHandler extends AbstractInterceptHandler {
         null,
         null,
         eventTablet,
-        true,
+        false,
         pipeName,
         creationTime,
         pipeTaskMeta,

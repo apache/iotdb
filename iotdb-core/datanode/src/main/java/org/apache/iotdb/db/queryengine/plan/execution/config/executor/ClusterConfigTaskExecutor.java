@@ -2073,9 +2073,24 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
     final Map<String, String> processorAttributes;
     final Map<String, String> connectorAttributes;
     try {
+
       if (!alterPipeStatement.getExtractorAttributes().isEmpty()) {
         // We simply don't allow to alter external sources
-        if (pipeMetaFromCoordinator.getStaticMeta().isSourceExternal()) {
+        if (pipeMetaFromCoordinator.getStaticMeta().isSourceExternal()
+            || !BuiltinPipePlugin.BUILTIN_SOURCES.containsAll(
+                Arrays.asList(
+                    alterPipeStatement
+                        .getExtractorAttributes()
+                        .getOrDefault(
+                            PipeExtractorConstant.SOURCE_KEY,
+                            BuiltinPipePlugin.IOTDB_EXTRACTOR.getPipePluginName())
+                        .toLowerCase(),
+                    alterPipeStatement
+                        .getExtractorAttributes()
+                        .getOrDefault(
+                            PipeExtractorConstant.EXTRACTOR_KEY,
+                            BuiltinPipePlugin.IOTDB_EXTRACTOR.getPipePluginName())
+                        .toLowerCase()))) {
           future.setException(
               new IoTDBException(
                   String.format(

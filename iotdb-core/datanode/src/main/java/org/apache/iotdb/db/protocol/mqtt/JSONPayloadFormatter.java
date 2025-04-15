@@ -27,6 +27,7 @@ import com.google.gson.JsonObject;
 import com.google.gson.JsonParseException;
 import com.google.gson.reflect.TypeToken;
 import io.netty.buffer.ByteBuf;
+import org.apache.tsfile.enums.TSDataType;
 
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
@@ -45,6 +46,7 @@ public class JSONPayloadFormatter implements PayloadFormatter {
   private static final String JSON_KEY_TIMESTAMPS = "timestamps";
   private static final String JSON_KEY_MEASUREMENTS = "measurements";
   private static final String JSON_KEY_VALUES = "values";
+  private static final String JSON_KEY_DATATYPE = "datatypes";
   private static final Gson GSON = new GsonBuilder().create();
 
   @Override
@@ -88,6 +90,10 @@ public class JSONPayloadFormatter implements PayloadFormatter {
             jsonObject.get(JSON_KEY_MEASUREMENTS), new TypeToken<List<String>>() {}.getType()));
     message.setValues(
         GSON.fromJson(jsonObject.get(JSON_KEY_VALUES), new TypeToken<List<String>>() {}.getType()));
+    message.setDataTypes(
+        GSON.fromJson(
+            jsonObject.get(JSON_KEY_DATATYPE), new TypeToken<List<TSDataType>>() {}.getType()));
+
     return Lists.newArrayList(message);
   }
 
@@ -103,6 +109,9 @@ public class JSONPayloadFormatter implements PayloadFormatter {
     List<List<String>> values =
         GSON.fromJson(
             jsonObject.get(JSON_KEY_VALUES), new TypeToken<List<List<String>>>() {}.getType());
+    List<TSDataType> types =
+        GSON.fromJson(
+            jsonObject.get(JSON_KEY_DATATYPE), new TypeToken<List<TSDataType>>() {}.getType());
 
     List<Message> ret = new ArrayList<>(timestamps.size());
     for (int i = 0; i < timestamps.size(); i++) {
@@ -111,6 +120,7 @@ public class JSONPayloadFormatter implements PayloadFormatter {
       message.setTimestamp(timestamps.get(i));
       message.setMeasurements(measurements);
       message.setValues(values.get(i));
+      message.setDataTypes(types);
       ret.add(message);
     }
     return ret;

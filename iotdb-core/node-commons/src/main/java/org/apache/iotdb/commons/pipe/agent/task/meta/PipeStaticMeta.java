@@ -94,9 +94,12 @@ public class PipeStaticMeta {
 
   public boolean isSourceExternal() {
     return !BuiltinPipePlugin.BUILTIN_SOURCES.contains(
-        extractorParameters.getStringOrDefault(
-            Arrays.asList(PipeExtractorConstant.EXTRACTOR_KEY, PipeExtractorConstant.SOURCE_KEY),
-            BuiltinPipePlugin.IOTDB_EXTRACTOR.getPipePluginName()));
+        extractorParameters
+            .getStringOrDefault(
+                Arrays.asList(
+                    PipeExtractorConstant.EXTRACTOR_KEY, PipeExtractorConstant.SOURCE_KEY),
+                BuiltinPipePlugin.IOTDB_EXTRACTOR.getPipePluginName())
+            .toLowerCase());
   }
 
   public ByteBuffer serialize() throws IOException {
