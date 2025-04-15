@@ -53,7 +53,7 @@ import java.util.Map;
  *
  * <p>SELECT * FROM TABLE(split('1,2,3,4,5'));
  *
- * <p>SELECT * FROM TABLE(split('1、2、3、4、5', '、'));
+ * <p>SELECT * FROM split('1、2、3、4、5', '、');
  */
 public class SplitExample implements TableFunction {
   private final String INPUT_PARAMETER_NAME = "INPUT";
