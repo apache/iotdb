@@ -97,6 +97,11 @@ public class CacheEntryGroupImpl<FK, SK, V, T extends ICacheEntry<SK, V>>
   }
 
   @Override
+  public int getEntriesCount() {
+    return cacheEntryMap.size();
+  }
+
+  @Override
   public boolean equals(final Object o) {
     if (this == o) {
       return true;

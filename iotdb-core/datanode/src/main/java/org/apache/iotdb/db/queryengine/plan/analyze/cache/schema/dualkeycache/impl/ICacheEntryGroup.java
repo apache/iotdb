@@ -49,6 +49,8 @@ interface ICacheEntryGroup<FK, SK, V, T extends ICacheEntry<SK, V>> {
 
   boolean isEmpty();
 
-  // Memory
+  // Metric
   long getMemory();
+
+  int getEntriesCount();
 }

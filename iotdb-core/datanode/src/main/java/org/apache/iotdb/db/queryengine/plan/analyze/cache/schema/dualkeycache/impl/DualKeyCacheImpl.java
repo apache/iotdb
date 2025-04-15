@@ -54,7 +54,7 @@ class DualKeyCacheImpl<FK, SK, V, T extends ICacheEntry<SK, V>>
       final long memoryCapacity) {
     this.cacheEntryManager = cacheEntryManager;
     this.sizeComputer = sizeComputer;
-    this.cacheStats = new CacheStats(memoryCapacity, this::getMemory);
+    this.cacheStats = new CacheStats(memoryCapacity, this::getMemory, this::getEntriesCount);
   }
 
   @Override
@@ -106,7 +106,6 @@ class DualKeyCacheImpl<FK, SK, V, T extends ICacheEntry<SK, V>>
                 cacheEntry =
                     cacheEntryManager.createCacheEntry(secondKey, value, finalCacheEntryGroup);
                 cacheEntryManager.put(cacheEntry);
-                cacheStats.increaseEntryCount();
                 memory.getAndAdd(
                     sizeComputer.computeSecondKeySize(sk)
                         + sizeComputer.computeValueSize(cacheEntry.getValue())
@@ -216,7 +215,6 @@ class DualKeyCacheImpl<FK, SK, V, T extends ICacheEntry<SK, V>>
   public void invalidateAll() {
     firstKeyMap.clear();
     cacheEntryManager.cleanUp();
-    cacheStats.resetEntriesCount();
   }
 
   @Override
@@ -230,10 +228,7 @@ class DualKeyCacheImpl<FK, SK, V, T extends ICacheEntry<SK, V>>
     if (cacheEntryGroup != null) {
       for (final Iterator<Map.Entry<SK, T>> it = cacheEntryGroup.getAllCacheEntries();
           it.hasNext(); ) {
-        final Map.Entry<SK, T> entry = it.next();
-        if (cacheEntryManager.invalidate(entry.getValue())) {
-          cacheStats.decreaseEntryCount();
-        }
+        cacheEntryManager.invalidate(it.next().getValue());
       }
     }
   }
@@ -247,7 +242,6 @@ class DualKeyCacheImpl<FK, SK, V, T extends ICacheEntry<SK, V>>
 
     final T entry = cacheEntryGroup.getCacheEntry(secondKey);
     if (Objects.nonNull(entry) && cacheEntryManager.invalidate(entry)) {
-      cacheStats.decreaseEntryCount();
       cacheEntryGroup.removeCacheEntry(entry.getSecondKey());
     }
 
@@ -266,7 +260,6 @@ class DualKeyCacheImpl<FK, SK, V, T extends ICacheEntry<SK, V>>
         it.hasNext(); ) {
       final Map.Entry<SK, T> entry = it.next();
       if (secondKeyChecker.test(entry.getKey()) && cacheEntryManager.invalidate(entry.getValue())) {
-        cacheStats.decreaseEntryCount();
         cacheEntryGroup.removeCacheEntry(entry.getKey());
       }
     }
@@ -295,7 +288,6 @@ class DualKeyCacheImpl<FK, SK, V, T extends ICacheEntry<SK, V>>
 
         if (secondKeyChecker.test(entry.getKey())
             && cacheEntryManager.invalidate(entry.getValue())) {
-          cacheStats.decreaseEntryCount();
           cacheEntryGroup.removeCacheEntry(entry.getKey());
         }
       }
@@ -316,6 +308,18 @@ class DualKeyCacheImpl<FK, SK, V, T extends ICacheEntry<SK, V>>
       }
     }
     return memory;
+  }
+
+  private long getEntriesCount() {
+    long count = 0;
+    for (final Map<FK, ICacheEntryGroup<FK, SK, V, T>> map : firstKeyMap.maps) {
+      if (Objects.nonNull(map)) {
+        for (final ICacheEntryGroup<FK, SK, V, T> group : map.values()) {
+          count += group.getEntriesCount();
+        }
+      }
+    }
+    return count;
   }
 
   /**
