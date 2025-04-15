@@ -346,6 +346,18 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
   }
 
   @Override
+  protected boolean createPipe(final PipeMeta pipeMetaFromCoordinator) throws IllegalPathException {
+    String pipeName = pipeMetaFromCoordinator.getStaticMeta().getPipeName();
+    if (pipeName.startsWith(PipeStaticMeta.CONSENSUS_PIPE_PREFIX)) {
+      // Release corresponding receiver's resource
+      PipeDataNodeAgent.receiver()
+          .pipeConsensus()
+          .markConsensusPipeAsCreated(new ConsensusPipeName(pipeName));
+    }
+    return super.createPipe(pipeMetaFromCoordinator);
+  }
+
+  @Override
   protected boolean dropPipe(final String pipeName) {
     // Get the pipe meta first because it is removed after super#dropPipe(pipeName)
     final PipeMeta pipeMeta = pipeMetaKeeper.getPipeMeta(pipeName);
