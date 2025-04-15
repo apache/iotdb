@@ -2606,9 +2606,6 @@ public class DataRegion implements IDataRegionForQuery {
         continue;
       }
 
-      if (sealedTsFile.isCompacting()) {
-        involvedModificationFiles.add(sealedTsFile.getCompactionModFile());
-      }
       involvedModificationFiles.add(sealedTsFile.getModFileForWrite());
     }
 
@@ -2658,9 +2655,6 @@ public class DataRegion implements IDataRegionForQuery {
     for (TsFileResource tsFileResource : deletedByMods) {
       if (tsFileResource.isClosed()
           || !tsFileResource.getProcessor().deleteDataInMemory(modEntry)) {
-        if (tsFileResource.isCompacting()) {
-          involvedModificationFiles.add(tsFileResource.getCompactionModFile());
-        }
         involvedModificationFiles.add(tsFileResource.getModFileForWrite());
       } // else do nothing
     }
