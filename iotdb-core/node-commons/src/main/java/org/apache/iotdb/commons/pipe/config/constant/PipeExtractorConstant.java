@@ -156,7 +156,7 @@ public class PipeExtractorConstant {
   public static final String EXTERNAL_EXTRACTOR_BALANCE_STRATEGY_KEY = "extractor.balance-strategy";
   public static final String EXTERNAL_SOURCE_BALANCE_STRATEGY_KEY = "source.balance-strategy";
   public static final String EXTERNAL_EXTRACTOR_BALANCE_PROPORTION_STRATEGY = "proportion";
-  public static final Set<String> CONNECTOR_LOAD_BALANCE_STRATEGY_SET =
+  public static final Set<String> EXTERNAL_EXTRACTOR_BALANCE_STRATEGY_SET =
       Collections.unmodifiableSet(
           new HashSet<>(Arrays.asList(EXTERNAL_EXTRACTOR_BALANCE_PROPORTION_STRATEGY)));
   public static final String EXTERNAL_EXTRACTOR_PARALLELISM_KEY = "extractor.parallelism";

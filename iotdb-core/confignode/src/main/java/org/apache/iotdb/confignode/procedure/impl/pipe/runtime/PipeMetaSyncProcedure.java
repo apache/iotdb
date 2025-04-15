@@ -20,7 +20,9 @@
 package org.apache.iotdb.confignode.procedure.impl.pipe.runtime;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.consensus.index.impl.MinimumProgressIndex;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeMeta;
+import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.runtime.PipeHandleMetaChangePlan;
@@ -136,6 +138,8 @@ public class PipeMetaSyncProcedure extends AbstractOperatePipeProcedureV2 {
                                 EXTERNAL_EXTRACTOR_PARALLELISM_KEY,
                                 EXTERNAL_SOURCE_PARALLELISM_KEY),
                             EXTERNAL_EXTRACTOR_PARALLELISM_DEFAULT_VALUE);
+                final Map<Integer, PipeTaskMeta> consensusGroupIdToTaskMetaMap =
+                    pipeMeta.getRuntimeMeta().getConsensusGroupId2TaskMetaMap();
                 loadBalancer
                     .balance(
                         parallelism,
@@ -143,11 +147,13 @@ public class PipeMetaSyncProcedure extends AbstractOperatePipeProcedureV2 {
                         ConfigNode.getInstance().getConfigManager())
                     .forEach(
                         (taskIndex, newLeader) -> {
-                          pipeMeta
-                              .getRuntimeMeta()
-                              .getConsensusGroupId2TaskMetaMap()
-                              .get(taskIndex)
-                              .setLeaderNodeId(newLeader);
+                          if (consensusGroupIdToTaskMetaMap.containsKey(taskIndex)) {
+                            consensusGroupIdToTaskMetaMap.get(taskIndex).setLeaderNodeId(newLeader);
+                          } else {
+                            consensusGroupIdToTaskMetaMap.put(
+                                taskIndex,
+                                new PipeTaskMeta(MinimumProgressIndex.INSTANCE, newLeader));
+                          }
                         });
               }
             });

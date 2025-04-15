@@ -51,6 +51,11 @@ import java.util.List;
 import java.util.Properties;
 import java.util.concurrent.atomic.AtomicBoolean;
 
+/**
+ * MQTTExtractor is an external Extractor that uses the MQTT protocol to receive data. It starts an
+ * MQTT broker and listens for incoming messages, which are then processed and passed to the pending
+ * queue.
+ */
 @TreeModel
 @TableModel
 public class MQTTExtractor implements PipeExtractor {
@@ -161,7 +166,7 @@ public class MQTTExtractor implements PipeExtractor {
             PipeExtractorConstant.MQTT_DATA_PATH_PROPERTY_NAME_KEY,
             PipeExtractorConstant.MQTT_DATA_PATH_PROPERTY_NAME_DEFAULT_VALUE));
     properties.setProperty(BrokerConstants.IMMEDIATE_BUFFER_FLUSH_PROPERTY_NAME, "true");
-    properties.setProperty(BrokerConstants.ALLOW_ANONYMOUS_PROPERTY_NAME, "true");
+    properties.setProperty(BrokerConstants.ALLOW_ANONYMOUS_PROPERTY_NAME, "false");
     properties.setProperty(BrokerConstants.ALLOW_ZERO_BYTE_CLIENT_ID_PROPERTY_NAME, "true");
     properties.setProperty(
         BrokerConstants.NETTY_MAX_BYTES_PROPERTY_NAME,

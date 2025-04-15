@@ -86,21 +86,20 @@ public class PipeDataNodeBuilder {
   }
 
   public Map<Integer, PipeTask> buildExternalPipeTasks() {
-    final Map<Integer, PipeTask> consensusGroupIdToPipeTaskMap = new HashMap<>();
+    final Map<Integer, PipeTask> taskIdToPipeTaskMap = new HashMap<>();
     final PipeStaticMeta pipeStaticMeta = pipeMeta.getStaticMeta();
     final PipeRuntimeMeta pipeRuntimeMeta = pipeMeta.getRuntimeMeta();
 
-    for (Map.Entry<Integer, PipeTaskMeta> consensusGroupIdToPipeTaskMeta :
+    for (Map.Entry<Integer, PipeTaskMeta> taskIdToPipeTaskMeta :
         pipeRuntimeMeta.getConsensusGroupId2TaskMetaMap().entrySet()) {
-      final int consensusGroupId = consensusGroupIdToPipeTaskMeta.getKey();
-      final PipeTaskMeta pipeTaskMeta = consensusGroupIdToPipeTaskMeta.getValue();
+      final int taskId = taskIdToPipeTaskMeta.getKey();
+      final PipeTaskMeta pipeTaskMeta = taskIdToPipeTaskMeta.getValue();
       if (pipeTaskMeta.getLeaderNodeId() == CONFIG.getDataNodeId()) {
-        consensusGroupIdToPipeTaskMap.put(
-            consensusGroupId,
-            new PipeDataNodeTaskBuilder(pipeStaticMeta, consensusGroupId, pipeTaskMeta).build());
+        taskIdToPipeTaskMap.put(
+            taskId, new PipeDataNodeTaskBuilder(pipeStaticMeta, taskId, pipeTaskMeta).build());
       }
     }
 
-    return consensusGroupIdToPipeTaskMap;
+    return taskIdToPipeTaskMap;
   }
 }

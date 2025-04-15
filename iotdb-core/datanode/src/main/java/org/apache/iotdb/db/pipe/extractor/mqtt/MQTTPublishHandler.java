@@ -190,6 +190,7 @@ public class MQTTPublishHandler extends AbstractInterceptHandler {
       final EnrichedEvent event = generateEvent(message);
       if (!event.increaseReferenceCount(MQTTPublishHandler.class.getName())) {
         LOGGER.warn("The reference count of the event {} cannot be increased, skipping it.", event);
+        return;
       }
       pendingQueue.waitedOffer(event);
     } catch (Exception e) {
@@ -254,11 +255,11 @@ public class MQTTPublishHandler extends AbstractInterceptHandler {
 
     return new PipeRawTabletInsertionEvent(
         true,
-        message.getDatabase(),
+        message.getDatabase().toLowerCase(),
         null,
         null,
         eventTablet,
-        false,
+        true,
         pipeName,
         creationTime,
         pipeTaskMeta,
@@ -278,6 +279,7 @@ public class MQTTPublishHandler extends AbstractInterceptHandler {
         if (!event.increaseReferenceCount(MQTTPublishHandler.class.getName())) {
           LOGGER.warn(
               "The reference count of the event {} cannot be increased, skipping it.", event);
+          return;
         }
         pendingQueue.waitedOffer(event);
       }
@@ -346,7 +348,7 @@ public class MQTTPublishHandler extends AbstractInterceptHandler {
         null,
         null,
         eventTablet,
-        false,
+        true,
         pipeName,
         creationTime,
         pipeTaskMeta,

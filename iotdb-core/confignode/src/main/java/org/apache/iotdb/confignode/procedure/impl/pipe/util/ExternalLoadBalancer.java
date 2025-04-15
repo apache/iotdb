@@ -127,10 +127,16 @@ public class ExternalLoadBalancer {
           throw new RuntimeException("No available datanode to assign tasks");
         }
         final int numNodes = runningDataNodes.size();
-        for (int i = 1; i <= parallelCount; i++) {
-          final int nodeIndex = (i - 1) % numNodes;
-          final int datanodeId = runningDataNodes.get(nodeIndex);
-          parallelAssignment.put(-i, datanodeId);
+        final int quotient = parallelCount / numNodes;
+        final int remainder = parallelCount % numNodes;
+        int taskIndex = 1;
+        for (int i = 0; i < numNodes; i++) {
+          int tasksForNode = quotient + (i < remainder ? 1 : 0);
+          int datanodeId = runningDataNodes.get(i);
+          for (int j = 0; j < tasksForNode; j++) {
+            parallelAssignment.put(-taskIndex, datanodeId);
+            taskIndex++;
+          }
         }
         return parallelAssignment;
       }
