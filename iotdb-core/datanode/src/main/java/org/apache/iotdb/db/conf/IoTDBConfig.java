@@ -145,11 +145,8 @@ public class IoTDBConfig {
   /** Rpc Selector thread num */
   private int rpcSelectorThreadCount = 1;
 
-  /** Min concurrent client number */
-  private int rpcMinConcurrentClientNum = Runtime.getRuntime().availableProcessors();
-
   /** Max concurrent client number */
-  private int rpcMaxConcurrentClientNum = 65535;
+  private int rpcMaxConcurrentClientNum = 1000;
 
   private long allocateMemoryForRead = Runtime.getRuntime().maxMemory() * 3 / 10;
 
@@ -1065,6 +1062,8 @@ public class IoTDBConfig {
   // IoTConsensusV2 Config
   private int iotConsensusV2PipelineSize = 5;
   private String iotConsensusV2Mode = ConsensusFactory.IOT_CONSENSUS_V2_BATCH_MODE;
+  private long tsFileWriterCheckInterval = TimeUnit.MINUTES.toMillis(5);
+  private long tsFileWriterZombieThreshold = TimeUnit.MINUTES.toMillis(10);
   private String[] iotConsensusV2ReceiverFileDirs = new String[0];
   private String iotConsensusV2DeletionFileDir =
       systemDir
@@ -1083,6 +1082,8 @@ public class IoTDBConfig {
   private int loadTsFileAnalyzeSchemaBatchFlushTableDeviceNumber = 4096; // For table model
   private long loadTsFileAnalyzeSchemaMemorySizeInBytes =
       0L; // 0 means that the decision will be adaptive based on the number of sequences
+
+  private long loadTsFileTabletConversionBatchMemorySizeInBytes = 4096 * 1024;
 
   private int loadTsFileMaxDeviceCountToUseDeviceTimeIndex = 10000;
 
@@ -1187,6 +1188,22 @@ public class IoTDBConfig {
 
   public void setIotConsensusV2PipelineSize(int iotConsensusV2PipelineSize) {
     this.iotConsensusV2PipelineSize = iotConsensusV2PipelineSize;
+  }
+
+  public long getTsFileWriterCheckInterval() {
+    return tsFileWriterCheckInterval;
+  }
+
+  public void setTsFileWriterCheckInterval(long tsFileWriterCheckInterval) {
+    this.tsFileWriterCheckInterval = tsFileWriterCheckInterval;
+  }
+
+  public long getTsFileWriterZombieThreshold() {
+    return tsFileWriterZombieThreshold;
+  }
+
+  public void setTsFileWriterZombieThreshold(long tsFileWriterZombieThreshold) {
+    this.tsFileWriterZombieThreshold = tsFileWriterZombieThreshold;
   }
 
   public void setMaxSizePerBatch(int maxSizePerBatch) {
@@ -1766,14 +1783,6 @@ public class IoTDBConfig {
 
   public void setRpcSelectorThreadCount(int rpcSelectorThreadCount) {
     this.rpcSelectorThreadCount = rpcSelectorThreadCount;
-  }
-
-  public int getRpcMinConcurrentClientNum() {
-    return rpcMinConcurrentClientNum;
-  }
-
-  public void setRpcMinConcurrentClientNum(int rpcMinConcurrentClientNum) {
-    this.rpcMinConcurrentClientNum = rpcMinConcurrentClientNum;
   }
 
   public int getRpcMaxConcurrentClientNum() {
@@ -3770,6 +3779,16 @@ public class IoTDBConfig {
   public void setLoadTsFileAnalyzeSchemaMemorySizeInBytes(
       long loadTsFileAnalyzeSchemaMemorySizeInBytes) {
     this.loadTsFileAnalyzeSchemaMemorySizeInBytes = loadTsFileAnalyzeSchemaMemorySizeInBytes;
+  }
+
+  public long getLoadTsFileTabletConversionBatchMemorySizeInBytes() {
+    return loadTsFileTabletConversionBatchMemorySizeInBytes;
+  }
+
+  public void setLoadTsFileTabletConversionBatchMemorySizeInBytes(
+      long loadTsFileTabletConversionBatchMemorySizeInBytes) {
+    this.loadTsFileTabletConversionBatchMemorySizeInBytes =
+        loadTsFileTabletConversionBatchMemorySizeInBytes;
   }
 
   public int getLoadTsFileMaxDeviceCountToUseDeviceTimeIndex() {

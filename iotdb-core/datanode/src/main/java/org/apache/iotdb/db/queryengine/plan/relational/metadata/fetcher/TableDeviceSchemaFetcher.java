@@ -121,9 +121,8 @@ public class TableDeviceSchemaFetcher {
               false);
 
       if (executionResult.status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-        throw new RuntimeException(
-            new IoTDBException(
-                executionResult.status.getMessage(), executionResult.status.getCode()));
+        throw new IoTDBRuntimeException(
+            executionResult.status.getMessage(), executionResult.status.getCode());
       }
 
       final List<ColumnHeader> columnHeaderList =

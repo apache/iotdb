@@ -53,6 +53,7 @@ public abstract class TsFileInsertionEventParser implements AutoCloseable {
   protected final PipeInsertionEvent sourceEvent; // used to report progress
 
   protected final long initialTimeNano = System.nanoTime();
+  protected boolean timeUsageReported = false;
 
   protected final PipeMemoryBlock allocatedMemoryBlockForTablet;
 
@@ -95,10 +96,11 @@ public abstract class TsFileInsertionEventParser implements AutoCloseable {
   @Override
   public void close() {
     try {
-      if (pipeName != null) {
+      if (pipeName != null && !timeUsageReported) {
         PipeTsFileToTabletsMetrics.getInstance()
             .recordTsFileToTabletTime(
                 pipeName + "_" + creationTime, System.nanoTime() - initialTimeNano);
+        timeUsageReported = true;
       }
     } catch (final Exception e) {
       LOGGER.warn("Failed to report time usage for parsing tsfile for pipe {}", pipeName, e);

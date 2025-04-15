@@ -77,7 +77,7 @@ public class ImportSchemaTestIT extends AbstractScriptIT {
   @Override
   protected void testOnWindows() throws IOException {
     final String[] output = {
-      "The file name must end with \"csv\"!",
+      "Import completely!",
     };
     ProcessBuilder builder =
         new ProcessBuilder(
@@ -92,6 +92,8 @@ public class ImportSchemaTestIT extends AbstractScriptIT {
             "root",
             "-pw",
             "root",
+            "-db",
+            "test",
             "-s",
             "./",
             "&",
@@ -104,7 +106,7 @@ public class ImportSchemaTestIT extends AbstractScriptIT {
   @Override
   protected void testOnUnix() throws IOException {
     final String[] output = {
-      "The file name must end with \"csv\"!",
+      "Import completely!",
     };
     ProcessBuilder builder =
         new ProcessBuilder(
@@ -118,6 +120,8 @@ public class ImportSchemaTestIT extends AbstractScriptIT {
             "root",
             "-pw",
             "root",
+            "-db",
+            "test",
             "-s",
             "./");
     builder.environment().put("IOTDB_HOME", homePath);

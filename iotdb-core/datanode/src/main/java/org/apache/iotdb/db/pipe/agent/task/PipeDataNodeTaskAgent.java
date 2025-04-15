@@ -331,7 +331,26 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
     PipeTsFileToTabletsMetrics.getInstance().deregister(taskId);
     PipeDataNodeRemainingEventAndTimeMetrics.getInstance().deregister(taskId);
 
+    if (pipeName.startsWith(PipeStaticMeta.CONSENSUS_PIPE_PREFIX)) {
+      // Release corresponding receiver's resource
+      PipeDataNodeAgent.receiver()
+          .pipeConsensus()
+          .handleDropPipeConsensusTask(new ConsensusPipeName(pipeName));
+    }
+
     return true;
+  }
+
+  @Override
+  protected boolean createPipe(final PipeMeta pipeMetaFromCoordinator) throws IllegalPathException {
+    String pipeName = pipeMetaFromCoordinator.getStaticMeta().getPipeName();
+    if (pipeName.startsWith(PipeStaticMeta.CONSENSUS_PIPE_PREFIX)) {
+      // Release corresponding receiver's resource
+      PipeDataNodeAgent.receiver()
+          .pipeConsensus()
+          .markConsensusPipeAsCreated(new ConsensusPipeName(pipeName));
+    }
+    return super.createPipe(pipeMetaFromCoordinator);
   }
 
   @Override
@@ -348,6 +367,13 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
       final String taskId = pipeName + "_" + creationTime;
       PipeTsFileToTabletsMetrics.getInstance().deregister(taskId);
       PipeDataNodeRemainingEventAndTimeMetrics.getInstance().deregister(taskId);
+    }
+
+    if (pipeName.startsWith(PipeStaticMeta.CONSENSUS_PIPE_PREFIX)) {
+      // Release corresponding receiver's resource
+      PipeDataNodeAgent.receiver()
+          .pipeConsensus()
+          .handleDropPipeConsensusTask(new ConsensusPipeName(pipeName));
     }
 
     return true;
@@ -610,19 +636,22 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
     }
 
     final long totalLinkedButDeletedTsFileResourceRamSize =
-        PipeDataNodeResourceManager.tsfile().getTotalLinkedButDeletedTsfileResourceRamSize();
-    final long freeMemorySizeInBytes =
-        PipeDataNodeResourceManager.memory().getFreeMemorySizeInBytes();
-    if (3 * totalLinkedButDeletedTsFileResourceRamSize >= 2 * freeMemorySizeInBytes) {
+        PipeDataNodeResourceManager.tsfile().getTotalLinkedButDeletedTsFileResourceRamSize();
+    final long totalInsertNodeFloatingMemoryUsageInBytes = getAllFloatingMemoryUsageInByte();
+    final long totalFloatingMemorySizeInBytes =
+        PipeDataNodeResourceManager.memory().getTotalFloatingMemorySizeInBytes();
+    if (totalInsertNodeFloatingMemoryUsageInBytes + totalLinkedButDeletedTsFileResourceRamSize
+        >= totalFloatingMemorySizeInBytes) {
       for (final PipeMeta pipeMeta : pipeMetaKeeper.getPipeMetaList()) {
         stuckPipes.add(pipeMeta);
       }
       if (!stuckPipes.isEmpty()) {
         LOGGER.warn(
-            "All {} pipe(s) will be restarted because linked tsfiles' resource size {} exceeds limit {}.",
+            "All {} pipe(s) will be restarted because linked but deleted tsFiles' resource size {} and all insertNode's size {} exceeds limit {}.",
             stuckPipes.size(),
             totalLinkedButDeletedTsFileResourceRamSize,
-            freeMemorySizeInBytes * 2.0 / 3);
+            totalInsertNodeFloatingMemoryUsageInBytes,
+            totalFloatingMemorySizeInBytes);
       }
       return stuckPipes;
     }
@@ -665,19 +694,6 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
               pipeMeta.getStaticMeta(),
               mayMemTablePinnedCountReachDangerousThreshold(),
               mayWalSizeReachThrottleThreshold());
-          stuckPipes.add(pipeMeta);
-        } else if (getFloatingMemoryUsageInByte(pipeName)
-            >= PipeDataNodeResourceManager.memory().getFreeMemorySizeInBytes()
-                / pipeMetaKeeper.getPipeMetaCount()) {
-          // Extractors of this pipe may have too many insert nodes
-          LOGGER.warn(
-              "Pipe {} needs to restart because too many insertNodes are extracted. "
-                  + "Floating memory usage for this pipe: {}, free memory size: {}, allowed free memory size for floating memory usage: {}",
-              pipeMeta.getStaticMeta(),
-              getFloatingMemoryUsageInByte(pipeName),
-              PipeDataNodeResourceManager.memory().getFreeMemorySizeInBytes(),
-              PipeDataNodeResourceManager.memory().getFreeMemorySizeInBytes()
-                  / pipeMetaKeeper.getPipeMetaCount());
           stuckPipes.add(pipeMeta);
         }
       }

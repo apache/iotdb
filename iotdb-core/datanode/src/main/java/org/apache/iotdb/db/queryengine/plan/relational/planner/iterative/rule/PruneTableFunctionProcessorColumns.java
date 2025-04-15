@@ -81,6 +81,8 @@ public class PruneTableFunctionProcessorColumns
             prunedPassThroughSpecifications,
             node.getRequiredSymbols(),
             node.getDataOrganizationSpecification(),
-            node.getArguments()));
+            node.isRowSemantic(),
+            node.getArguments(),
+            node.isRequireRecordSnapshot()));
   }
 }
