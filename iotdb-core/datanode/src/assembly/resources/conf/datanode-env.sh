@@ -279,7 +279,7 @@ fi
 # threads number for io
 IO_THREADS_NUMBER="1000"
 # Max cached buffer size, Note: unit can only be B!
-# which equals OFF_HEAP_MEMORY / IO_THREADS_NUMBER 
+# which equals OFF_HEAP_MEMORY / IO_THREADS_NUMBER
 MAX_CACHED_BUFFER_SIZE=`expr $off_heap_memory_size_in_mb \* 1024 \* 1024 / $IO_THREADS_NUMBER`
 
 #true or false
