@@ -567,4 +567,8 @@ public class SystemInfo {
   public boolean cannotReserveMemoryForWalEntry(long walEntrySize) {
     return walBufferQueueMemoryCost.get() + walEntrySize > memorySizeForWalBufferQueue;
   }
+
+  public long getMemorySizeForWalBufferQueue() {
+    return memorySizeForWalBufferQueue;
+  }
 }
