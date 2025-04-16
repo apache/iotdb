@@ -417,12 +417,12 @@ public class WriteBackConnector implements PipeConnector {
     ALREADY_CREATED_DATABASES.add(database);
   }
 
-  private TSStatus executeStatementForTreeModel(final Statement statement, final String Username) {
+  private TSStatus executeStatementForTreeModel(final Statement statement, final String userName) {
     treeSession.setDatabaseName(null);
     treeSession.setSqlDialect(IClientSession.SqlDialect.TREE);
     final String originalUserName = treeSession.getUsername();
-    if (Username != null) {
-      treeSession.setUsername(Username);
+    if (userName != null) {
+      treeSession.setUsername(userName);
     }
     SESSION_MANAGER.registerSession(treeSession);
     try {
