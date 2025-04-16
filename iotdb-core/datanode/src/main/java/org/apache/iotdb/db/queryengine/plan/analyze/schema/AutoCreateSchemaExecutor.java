@@ -34,6 +34,7 @@ import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.protocol.session.SessionManager;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.schematree.ClusterSchemaTree;
+import org.apache.iotdb.db.queryengine.common.schematree.DeviceSchemaInfo;
 import org.apache.iotdb.db.queryengine.plan.Coordinator;
 import org.apache.iotdb.db.queryengine.plan.analyze.ClusterPartitionFetcher;
 import org.apache.iotdb.db.queryengine.plan.execution.ExecutionResult;
@@ -56,6 +57,8 @@ import org.apache.tsfile.file.metadata.enums.CompressionType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.write.schema.MeasurementSchema;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -70,6 +73,7 @@ import java.util.stream.Collectors;
 import static org.apache.iotdb.db.utils.EncodingInferenceUtils.getDefaultEncoding;
 
 class AutoCreateSchemaExecutor {
+  private static final Logger LOGGER = LoggerFactory.getLogger(AutoCreateSchemaExecutor.class);
   private final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
   private final Coordinator coordinator;
   private final ITemplateManager templateManager;
@@ -425,6 +429,11 @@ class AutoCreateSchemaExecutor {
         template = templateManager.getTemplate(entry.getValue().left.getId());
         schemaTree.appendTemplateDevice(
             devicePath, template.isDirectAligned(), template.getId(), template);
+        LOGGER.info(
+            "Schema tree updated by template, Devices: {}",
+            schemaTree.getAllDevices().stream()
+                .map(DeviceSchemaInfo::getAbbrString)
+                .collect(Collectors.toSet()));
       }
     }
 
@@ -595,6 +604,11 @@ class AutoCreateSchemaExecutor {
             new InternalCreateMultiTimeSeriesStatement(devicesNeedAutoCreateTimeSeries), context);
 
     schemaTree.appendMeasurementPaths(measurementPathList);
+    LOGGER.info(
+        "Schema tree updated by already existing, Devices: {}",
+        schemaTree.getAllDevices().stream()
+            .map(DeviceSchemaInfo::getAbbrString)
+            .collect(Collectors.toSet()));
 
     Map<PartialPath, Set<String>> alreadyExistingMeasurementMap = new HashMap<>();
     for (MeasurementPath measurementPath : measurementPathList) {
@@ -624,6 +638,11 @@ class AutoCreateSchemaExecutor {
             null,
             null,
             entry.getValue().left);
+        LOGGER.info(
+            "Schema tree updated by created, Devices: {}",
+            schemaTree.getAllDevices().stream()
+                .map(DeviceSchemaInfo::getAbbrString)
+                .collect(Collectors.toSet()));
       }
     }
   }

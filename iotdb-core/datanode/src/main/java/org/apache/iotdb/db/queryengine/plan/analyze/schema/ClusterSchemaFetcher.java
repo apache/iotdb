@@ -42,6 +42,8 @@ import org.apache.tsfile.file.metadata.enums.CompressionType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -53,7 +55,7 @@ import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
 public class ClusterSchemaFetcher implements ISchemaFetcher {
-
+  private static final Logger LOGGER = LoggerFactory.getLogger(ClusterSchemaFetcher.class);
   private final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
   private final Coordinator coordinator = Coordinator.getInstance();
@@ -285,6 +287,11 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
       final List<Integer> indexOfDevicesWithMissingMeasurements = new ArrayList<>();
       for (int i = 0; i < devicePathList.size(); i++) {
         schemaTree.mergeSchemaTree(schemaCache.get(devicePathList.get(i), measurementsList.get(i)));
+        LOGGER.info(
+            "Schema tree updated by cache, Devices: {}",
+            schemaTree.getAllDevices().stream()
+                .map(DeviceSchemaInfo::getAbbrString)
+                .collect(Collectors.toSet()));
         final List<Integer> indexOfMissingMeasurements =
             checkMissingMeasurements(schemaTree, devicePathList.get(i), measurementsList.get(i));
         if (!indexOfMissingMeasurements.isEmpty()) {
@@ -308,6 +315,11 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
               context);
       if (!remoteSchemaTree.isEmpty()) {
         schemaTree.mergeSchemaTree(remoteSchemaTree);
+        LOGGER.info(
+            "Schema tree updated by remote fetch, Devices: {}",
+            schemaTree.getAllDevices().stream()
+                .map(DeviceSchemaInfo::getAbbrString)
+                .collect(Collectors.toSet()));
       }
 
       if (!config.isAutoCreateSchemaEnabled()) {
