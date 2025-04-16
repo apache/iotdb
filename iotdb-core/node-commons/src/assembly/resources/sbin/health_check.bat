@@ -204,7 +204,7 @@ echo Requirement: Allocate sufficient memory for IoTDB
 set "totalMemory="
 
 REM Replace wmic with PowerShell for total visible memory size
-for /f %%i in ('powershell -Command "(Get-CimInstance -ClassName Win32_OperatingSystem).TotalVisibleMemorySize / 1MB"') do (
+for /f %%i in ('powershell -NoProfile -Command "$v=$host.Version.Major; $mem=if($v -lt 3){(Get-WmiObject Win32_OperatingSystem).TotalVisibleMemorySize} else{(Get-CimInstance -ClassName Win32_OperatingSystem).TotalVisibleMemorySize}; [math]::Round($mem/1024)"') do (
     set totalMemory=%%i
 )
 
@@ -618,7 +618,7 @@ setlocal enabledelayedexpansion
 echo Check: System Settings(Swap)
 echo Requirement: disabled
 
-set "check_swap_ps_cmd=if ((Get-CimInstance Win32_ComputerSystem).AutomaticManagedPagefile) { 'Enabled' } else { $page=Get-CimInstance Win32_PageFileSetting -EA 0; if (-not $page) { 'Disabled' } else { $disabled=$true; foreach ($f in $page) { if ($f.InitialSize -ne 0 -or $f.MaximumSize -ne 0) { $disabled=$false } }; if ($disabled) { 'Disabled' } else { 'Enabled' } } }"
+set "check_swap_ps_cmd=$v=$host.Version.Major; if($v -lt 3) { $sys=Get-WmiObject Win32_ComputerSystem; if($sys.AutomaticManagedPagefile) { 'Enabled' } else { $page=Get-WmiObject Win32_PageFileSetting -EA 0; if(!$page) { 'Disabled' } else { $page | %% { if($_.InitialSize -ne 0 -or $_.MaximumSize -ne 0) { 'Enabled'; exit } } 'Disabled' } } } else { $sys=Get-CimInstance Win32_ComputerSystem; if($sys.AutomaticManagedPagefile) { 'Enabled' } else { $page=Get-CimInstance Win32_PageFileSetting -EA 0; if(!$page) { 'Disabled' } else { $page | %% { if($_.InitialSize -ne 0 -or $_.MaximumSize -ne 0) { 'Enabled'; exit } } 'Disabled' } } }"
 for /f "delims=" %%a in ('powershell -NoProfile -Command "%check_swap_ps_cmd%"') do set "result=%%a"
 
 echo Result: !result!
@@ -631,7 +631,7 @@ setlocal
 set "pid_to_check=%~1"
 set "is_iotdb=0"
 
-set command_line=(powershell -Command "(Get-CimInstance Win32_Process -Filter ProcessId=%pid_to_check%).CommandLine")
+for /f "delims=" %%i in ('powershell -NoProfile -Command "$v=$host.Version.Major; if($v -lt 3) { (Get-WmiObject Win32_Process -Filter \"ProcessId='%pid_to_check%'\").CommandLine } else { (Get-CimInstance Win32_Process -Filter \"ProcessId='%pid_to_check%'\").CommandLine }"') do set "command_line=%%i"
 
 echo %command_line% | findstr /i /c:"iotdb" >nul && set is_iotdb=1
 endlocal & set "is_iotdb=%is_iotdb%"

@@ -50,14 +50,14 @@ if %JMX_LOCAL% == "false" (
 set IOTDB_JMX_OPTS=%IOTDB_JMX_OPTS% -Diotdb.jmx.local=%JMX_LOCAL%
 
 REM Replace wmic with PowerShell for CPU core count
-for /f %%b in ('powershell -Command "(Get-CimInstance -ClassName Win32_Processor).NumberOfCores"') do (
+for /f %%b in ('powershell -NoProfile -Command "$v=$host.Version.Major; if($v -lt 3) {(Get-WmiObject Win32_Processor).NumberOfCores} else {(Get-CimInstance -ClassName Win32_Processor).NumberOfCores}"') do (
     set system_cpu_cores=%%b
 )
 
 if %system_cpu_cores% LSS 1 set system_cpu_cores=1
 
 REM Replace wmic with PowerShell for total physical memory
-for /f %%b in ('powershell -Command "[int]((Get-CimInstance -ClassName Win32_ComputerSystem).TotalPhysicalMemory / 1MB)"') do (
+for /f %%b in ('powershell -NoProfile -Command "$v=$host.Version.Major; $mem=if($v -lt 3){(Get-WmiObject Win32_ComputerSystem).TotalPhysicalMemory} else{(Get-CimInstance -ClassName Win32_ComputerSystem).TotalPhysicalMemory}; [math]::Round($mem/1048576)"') do (
     set system_memory_in_mb=%%b
 )
 
