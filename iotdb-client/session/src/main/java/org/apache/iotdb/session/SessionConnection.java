@@ -883,12 +883,13 @@ public class SessionConnection {
   }
 
   /** reconnect if the remote datanode is unreachable retry if the status is set to needRetry */
+  // TODO(szywilliam): when shall we retry on the same node, when shall we reconnect before retry?
   private <T> RetryResult<T> callWithRetryAndReconnect(
       TFunction<T> rpc, Predicate<T> shouldRetry, Predicate<T> forceReconnect) {
     TException lastTException = null;
     T result = null;
     int retryAttempt;
-    int maxRetryCountRead = 5;
+    int maxRetryCountRead = 10;
     for (retryAttempt = 0; retryAttempt <= maxRetryCountRead; retryAttempt++) {
       // 1. try to execute the rpc
       try {
