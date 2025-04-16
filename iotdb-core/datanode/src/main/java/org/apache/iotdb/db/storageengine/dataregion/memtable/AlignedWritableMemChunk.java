@@ -50,7 +50,6 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -435,22 +434,8 @@ public class AlignedWritableMemChunk extends AbstractWritableMemChunk {
     for (AlignedTVList alignedTvList : sortedList) {
       alignedTvList.deleteColumn(columnIndex);
     }
-    // notice: the mem chunk and TVList shares data type list,
-    // and list.deleteColumn will modify it. Therefore, do not modify it here again.
-    schemaList.remove(columnIndex);
-    measurementIndexMap.remove(measurementId);
-    if (columnIndex != measurementIndexMap.size()) {
-      Map<String, Integer> newIndexMap = new HashMap<>();
-      measurementIndexMap.forEach(
-          (k, v) -> {
-            if (v > columnIndex) {
-              newIndexMap.put(k, v - 1);
-            } else {
-              newIndexMap.put(k, v);
-            }
-          });
-      measurementIndexMap = newIndexMap;
-    }
+    IMeasurementSchema schemaToBeRemoved = schemaList.get(columnIndex);
+    measurementIndexMap.remove(schemaToBeRemoved.getMeasurementName());
   }
 
   @Override
