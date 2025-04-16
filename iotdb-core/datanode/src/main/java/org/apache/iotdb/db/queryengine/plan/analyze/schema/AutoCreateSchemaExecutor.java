@@ -338,6 +338,9 @@ class AutoCreateSchemaExecutor {
                   encodingsList == null ? null : encodingsList.get(finalDeviceIndex);
               CompressionType[] compressionTypes =
                   compressionTypesList == null ? null : compressionTypesList.get(finalDeviceIndex);
+              LOGGER.info(
+                  "finalIndexOfMeasurementsNotInTemplate: {}",
+                  finalIndexOfMeasurementsNotInTemplate);
               for (int measurementIndex : finalIndexOfMeasurementsNotInTemplate) {
                 if (tsDataTypes[measurementIndex] == null) {
                   continue;
@@ -599,12 +602,14 @@ class AutoCreateSchemaExecutor {
       Map<PartialPath, Pair<Boolean, MeasurementGroup>> devicesNeedAutoCreateTimeSeries,
       MPPQueryContext context) {
 
+    LOGGER.info("devicesNeedAutoCreateTimeSeries: {}", devicesNeedAutoCreateTimeSeries);
     List<MeasurementPath> measurementPathList =
         executeInternalCreateTimeseriesStatement(
             new InternalCreateMultiTimeSeriesStatement(
                 new HashMap<>(devicesNeedAutoCreateTimeSeries)),
             context);
 
+    LOGGER.info("Already existing measurement paths: {}", measurementPathList);
     schemaTree.appendMeasurementPaths(measurementPathList);
     LOGGER.info(
         "Schema tree updated by already existing, Devices: {}",
