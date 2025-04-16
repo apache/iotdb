@@ -745,10 +745,10 @@ public class CommonDescriptor {
         properties,
         "pipe_sink_max_client_number",
         "pipe_async_connector_max_client_number",
-        config::getPipeAsyncConnectorSelectorNumber,
+        config::getPipeAsyncConnectorMaxClientNumber,
         (i) -> {
           if (i > 0) {
-            config.setPipeAsyncConnectorSelectorNumber(i);
+            config.setPipeAsyncConnectorMaxClientNumber(i);
           }
         },
         isHotModify);
