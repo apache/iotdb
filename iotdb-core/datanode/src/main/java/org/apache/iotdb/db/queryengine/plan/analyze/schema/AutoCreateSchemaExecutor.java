@@ -601,7 +601,9 @@ class AutoCreateSchemaExecutor {
 
     List<MeasurementPath> measurementPathList =
         executeInternalCreateTimeseriesStatement(
-            new InternalCreateMultiTimeSeriesStatement(new HashMap<>(devicesNeedAutoCreateTimeSeries)), context);
+            new InternalCreateMultiTimeSeriesStatement(
+                new HashMap<>(devicesNeedAutoCreateTimeSeries)),
+            context);
 
     schemaTree.appendMeasurementPaths(measurementPathList);
     LOGGER.info(

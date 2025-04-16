@@ -21,7 +21,6 @@ package org.apache.iotdb.db.queryengine.plan.analyze.schema;
 
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.IoTDBException;
-import org.apache.iotdb.commons.exception.IoTDBRuntimeException;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.exception.QuerySchemaFetchFailedException;
 import org.apache.iotdb.commons.path.MeasurementPath;
