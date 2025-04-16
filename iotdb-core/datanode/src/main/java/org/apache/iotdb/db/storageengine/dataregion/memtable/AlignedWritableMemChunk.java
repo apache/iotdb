@@ -634,6 +634,11 @@ public class AlignedWritableMemChunk extends AbstractWritableMemChunk {
   @Override
   public synchronized void encode(
       BlockingQueue<Object> ioTaskQueue, BatchEncodeInfo encodeInfo, long[] times) {
+    encodeInfo.maxNumberOfPointsInChunk =
+        Math.min(
+            encodeInfo.maxNumberOfPointsInChunk,
+            (encodeInfo.targetChunkSize / getAvgPointSizeOfLargestColumn()));
+
     if (TVLIST_SORT_THRESHOLD == 0) {
       encodeWorkingAlignedTVList(
           ioTaskQueue, encodeInfo.maxNumberOfPointsInChunk, encodeInfo.maxNumberOfPointsInPage);

@@ -110,13 +110,6 @@ public class MemTableFlushTask {
 
     long MAX_NUMBER_OF_POINTS_IN_CHUNK = config.getTargetChunkPointNum();
     long TARGET_CHUNK_SIZE = config.getTargetChunkSize();
-    if (memTable instanceof AlignedWritableMemChunk) {
-      int avgPointSizeOfLargestColumn =
-          ((AlignedWritableMemChunk) memTable).getAvgPointSizeOfLargestColumn();
-      MAX_NUMBER_OF_POINTS_IN_CHUNK =
-          Math.min(
-              MAX_NUMBER_OF_POINTS_IN_CHUNK, (TARGET_CHUNK_SIZE / avgPointSizeOfLargestColumn));
-    }
     this.encodeInfo =
         new BatchEncodeInfo(
             0,
