@@ -329,9 +329,7 @@ public class IoTDBStatement implements Statement {
       }
 
       // prepare for the next retry
-      if (lastTException != null
-          || (status != null
-              && status.getCode() == TSStatusCode.PLAN_FAILED_NETWORK_PARTITION.getStatusCode())) {
+      if (lastTException != null) {
         reConnect();
       }
       try {
