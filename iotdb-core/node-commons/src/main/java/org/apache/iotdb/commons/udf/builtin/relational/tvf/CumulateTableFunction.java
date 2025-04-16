@@ -56,6 +56,15 @@ public class CumulateTableFunction implements TableFunction {
 
   @Override
   public TableFunctionAnalysis analyze(Map<String, Argument> arguments) throws UDFException {
+    // size must be an integral multiple of step.
+    long size = (long) ((ScalarArgument) arguments.get(SIZE_PARAMETER_NAME)).getValue();
+    long step = (long) ((ScalarArgument) arguments.get(STEP_PARAMETER_NAME)).getValue();
+
+    if (step > size || size % step != 0) {
+      throw new UDFException(
+          "Cumulative table function requires size must be an integral multiple of step.");
+    }
+
     TableArgument tableArgument = (TableArgument) arguments.get(DATA_PARAMETER_NAME);
     String expectedFieldName =
         (String) ((ScalarArgument) arguments.get(TIMECOL_PARAMETER_NAME)).getValue();
