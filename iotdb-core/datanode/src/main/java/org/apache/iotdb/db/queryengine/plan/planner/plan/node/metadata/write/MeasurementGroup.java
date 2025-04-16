@@ -397,15 +397,17 @@ public class MeasurementGroup {
   // This won't be affected by "removeMeasurements"
   public MeasurementGroup deepCopy() {
     final MeasurementGroup result = new MeasurementGroup();
-    result.measurements = this.measurements;
-    result.dataTypes = this.dataTypes;
-    result.encodings = this.encodings;
-    result.compressors = this.compressors;
-    result.aliasList = this.aliasList;
-    result.propsList = this.propsList;
-    result.tagsList = this.attributesList;
-    result.attributesList = this.attributesList;
-    result.measurementSet = new HashSet<>(measurements);
+    if (Objects.nonNull(this.measurements)) {
+      result.measurements = new ArrayList<>(this.measurements);
+      result.dataTypes = new ArrayList<>(this.dataTypes);
+      result.encodings = new ArrayList<>(this.encodings);
+      result.compressors = new ArrayList<>(this.compressors);
+      result.aliasList = new ArrayList<>(this.aliasList);
+      result.propsList = new ArrayList<>(this.propsList);
+      result.tagsList = new ArrayList<>(this.attributesList);
+      result.attributesList = new ArrayList<>(this.attributesList);
+      result.measurementSet = new HashSet<>(measurements);
+    }
     return result;
   }
 
