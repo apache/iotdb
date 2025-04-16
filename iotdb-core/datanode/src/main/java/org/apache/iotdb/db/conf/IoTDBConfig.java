@@ -101,7 +101,7 @@ public class IoTDBConfig {
   public static final Pattern NODE_PATTERN = Pattern.compile(NODE_MATCHER);
 
   /** Whether to enable the mqtt service. */
-  private boolean enableMQTTService = true;
+  private boolean enableMQTTService = false;
 
   /** The mqtt service binding host. */
   private String mqttHost = "127.0.0.1";

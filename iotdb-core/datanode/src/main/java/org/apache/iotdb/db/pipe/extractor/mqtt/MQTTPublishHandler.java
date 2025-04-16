@@ -19,15 +19,12 @@
 
 package org.apache.iotdb.db.pipe.extractor.mqtt;
 
-import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.conf.IoTDBConstant.ClientVersion;
 import org.apache.iotdb.commons.pipe.agent.task.connection.UnboundedBlockingPendingQueue;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
 import org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant;
 import org.apache.iotdb.commons.pipe.config.plugin.env.PipeTaskExtractorRuntimeEnvironment;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
-import org.apache.iotdb.commons.service.metric.PerformanceOverviewMetrics;
-import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
 import org.apache.iotdb.db.protocol.mqtt.Message;
@@ -41,9 +38,8 @@ import org.apache.iotdb.db.protocol.session.SessionManager;
 import org.apache.iotdb.db.queryengine.plan.Coordinator;
 import org.apache.iotdb.db.utils.CommonUtils;
 import org.apache.iotdb.db.utils.TimestampPrecisionUtils;
-import org.apache.iotdb.db.utils.TypeInferenceUtils;
+import org.apache.iotdb.db.utils.constant.SqlConstant;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
-import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.TSProtocolVersion;
 
 import io.moquette.interception.AbstractInterceptHandler;
@@ -52,6 +48,7 @@ import io.moquette.interception.messages.InterceptDisconnectMessage;
 import io.moquette.interception.messages.InterceptPublishMessage;
 import io.netty.buffer.ByteBuf;
 import io.netty.handler.codec.mqtt.MqttQoS;
+import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.BitMap;
@@ -66,6 +63,8 @@ import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
+
+import static org.apache.iotdb.db.utils.CommonUtils.parseBlobStringToByteArray;
 
 /** PublishHandler handle the messages from MQTT clients. */
 public class MQTTPublishHandler extends AbstractInterceptHandler {
@@ -187,7 +186,7 @@ public class MQTTPublishHandler extends AbstractInterceptHandler {
       TimestampPrecisionUtils.checkTimestampPrecision(message.getTimestamp());
       session.setDatabaseName(message.getDatabase().toLowerCase());
       session.setSqlDialect(IClientSession.SqlDialect.TABLE);
-      final EnrichedEvent event = generateEvent(message);
+      final EnrichedEvent event = generateEvent(message, session.getUsername());
       if (!event.increaseReferenceCount(MQTTPublishHandler.class.getName())) {
         LOGGER.warn("The reference count of the event {} cannot be increased, skipping it.", event);
         return;
@@ -206,7 +205,8 @@ public class MQTTPublishHandler extends AbstractInterceptHandler {
     }
   }
 
-  private PipeRawTabletInsertionEvent generateEvent(final TableMessage message) {
+  private PipeRawTabletInsertionEvent generateEvent(
+      final TableMessage message, final String userName) {
     final List<String> measurements =
         Stream.of(message.getFields(), message.getTagKeys(), message.getAttributeKeys())
             .flatMap(List::stream)
@@ -264,25 +264,19 @@ public class MQTTPublishHandler extends AbstractInterceptHandler {
         creationTime,
         pipeTaskMeta,
         null,
-        false);
+        false,
+        userName);
   }
 
   private void extractTree(final TreeMessage message, final MqttClientSession session) {
-    TSStatus tsStatus = null;
     try {
       TimestampPrecisionUtils.checkTimestampPrecision(message.getTimestamp());
-      tsStatus = checkAuthority(session);
-      if (tsStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-        LOGGER.warn(tsStatus.message);
-      } else {
-        final EnrichedEvent event = generateEvent(message);
-        if (!event.increaseReferenceCount(MQTTPublishHandler.class.getName())) {
-          LOGGER.warn(
-              "The reference count of the event {} cannot be increased, skipping it.", event);
-          return;
-        }
-        pendingQueue.waitedOffer(event);
+      final EnrichedEvent event = generateEvent(message, session.getUsername());
+      if (!event.increaseReferenceCount(MQTTPublishHandler.class.getName())) {
+        LOGGER.warn("The reference count of the event {} cannot be increased, skipping it.", event);
+        return;
       }
+      pendingQueue.waitedOffer(event);
     } catch (Exception e) {
       LOGGER.warn(
           "meet error when polling mqtt source device {}, measurements {}, at time {}, because ",
@@ -293,7 +287,8 @@ public class MQTTPublishHandler extends AbstractInterceptHandler {
     }
   }
 
-  private EnrichedEvent generateEvent(final TreeMessage message) throws QueryProcessException {
+  private EnrichedEvent generateEvent(final TreeMessage message, final String userName)
+      throws QueryProcessException {
     final String deviceId = message.getDevice();
     final List<String> measurements = message.getMeasurements();
     final long[] timestamps = new long[] {message.getTimestamp()};
@@ -304,28 +299,20 @@ public class MQTTPublishHandler extends AbstractInterceptHandler {
             : message.getDataTypes().toArray(new TSDataType[0]);
     final List<String> values = message.getValues();
     final BitMap[] bitMaps = new BitMap[schemas.length];
+    final Object[] inferredValues = new Object[values.size()];
+
     for (int i = 0; i < bitMaps.length; i++) {
       bitMaps[i] = new BitMap(1);
     }
-    if (message.getDataTypes() == null) {
-      for (int index = 0; index < values.size(); ++index) {
-        dataTypes[index] = TypeInferenceUtils.getPredictedDataType(values.get(index), true);
-        if (dataTypes[index] == null) {
-          // we assume the default type is TEXT
-          dataTypes[index] = TSDataType.TEXT;
-        }
-      }
-    }
-
-    for (int i = 0; i < schemas.length; i++) {
-      schemas[i] = new MeasurementSchema(measurements.get(i), dataTypes[i]);
-    }
-    final Object[] inferredValues = new Object[values.size()];
-
     // For each measurement value, parse it and then wrap it in a one-dimensional array.
     for (int i = 0; i < values.size(); ++i) {
-      Object parsedValue =
-          values.get(i) == null ? null : CommonUtils.parseValue(dataTypes[i], values.get(i));
+      Object parsedValue;
+      if (message.getDataTypes() == null) {
+        parsedValue = parseValue(values.get(i), dataTypes, i);
+      } else {
+        parsedValue =
+            values.get(i) == null ? null : CommonUtils.parseValue(dataTypes[i], values.get(i));
+      }
       if (parsedValue == null) {
         bitMaps[i].mark(0);
       }
@@ -350,6 +337,9 @@ public class MQTTPublishHandler extends AbstractInterceptHandler {
       }
     }
 
+    for (int i = 0; i < schemas.length; i++) {
+      schemas[i] = new MeasurementSchema(measurements.get(i), dataTypes[i]);
+    }
     final Tablet eventTablet =
         new Tablet(deviceId, Arrays.asList(schemas), timestamps, inferredValues, bitMaps, 1);
 
@@ -364,18 +354,64 @@ public class MQTTPublishHandler extends AbstractInterceptHandler {
         creationTime,
         pipeTaskMeta,
         null,
-        false);
+        false,
+        userName);
   }
 
-  private static TSStatus checkAuthority(final MqttClientSession session) {
-    final long startTime = System.nanoTime();
-    try {
-      return AuthorityChecker.getTSStatus(
-          AuthorityChecker.SUPER_USER.equals(session.getUsername()),
-          "Only the admin user can perform this operation");
-    } finally {
-      PerformanceOverviewMetrics.getInstance().recordAuthCost(System.nanoTime() - startTime);
+  public Object parseValue(String value, TSDataType[] dataType, final int index) {
+    if (value == null) {
+      dataType[index] = TSDataType.TEXT;
+      return null;
     }
+    Double parsedValue = null;
+    if (value.equalsIgnoreCase("true") || value.equalsIgnoreCase("false")) {
+      dataType[index] = TSDataType.BOOLEAN;
+      return Boolean.parseBoolean(value);
+    }
+    try {
+      parsedValue = Double.parseDouble(value);
+      if (Double.isInfinite(parsedValue)) {
+        throw new NumberFormatException("The input double value is Infinity");
+      }
+    } catch (NumberFormatException e) {
+
+    }
+    if (parsedValue != null) {
+      if (!value.endsWith("F")
+          && !value.endsWith("f")
+          && !value.endsWith("D")
+          && !value.endsWith("d")) {
+        dataType[index] = TSDataType.DOUBLE;
+        return parsedValue;
+      }
+    }
+    if ("null".equals(value) || "NULL".equals(value)) {
+      dataType[index] = TSDataType.TEXT;
+      return null;
+      // "NaN" is returned if the NaN Literal is given in Parser
+    }
+    if ("NaN".equals(value)) {
+      dataType[index] = TSDataType.DOUBLE;
+      return Double.NaN;
+    }
+    if (value.length() >= 3 && value.startsWith("X'") && value.endsWith("'")) {
+      dataType[index] = TSDataType.BLOB;
+      if ((value.startsWith(SqlConstant.QUOTE) && value.endsWith(SqlConstant.QUOTE))
+          || (value.startsWith(SqlConstant.DQUOTE) && value.endsWith(SqlConstant.DQUOTE))) {
+        return new Binary(parseBlobStringToByteArray(value.substring(1, value.length() - 1)));
+      }
+      return new Binary(parseBlobStringToByteArray(value));
+    }
+    dataType[index] = TSDataType.TEXT;
+    if ((value.startsWith(SqlConstant.QUOTE) && value.endsWith(SqlConstant.QUOTE))
+        || (value.startsWith(SqlConstant.DQUOTE) && value.endsWith(SqlConstant.DQUOTE))) {
+      if (value.length() == 1) {
+        return new Binary(value, TSFileConfig.STRING_CHARSET);
+      } else {
+        return new Binary(value.substring(1, value.length() - 1), TSFileConfig.STRING_CHARSET);
+      }
+    }
+    return new Binary(value, TSFileConfig.STRING_CHARSET);
   }
 
   @Override

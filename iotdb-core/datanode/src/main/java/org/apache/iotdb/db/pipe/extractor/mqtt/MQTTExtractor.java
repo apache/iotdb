@@ -159,22 +159,37 @@ public class MQTTExtractor implements PipeExtractor {
         BrokerConstants.BROKER_INTERCEPTOR_THREAD_POOL_SIZE,
         pipeParameters.getStringOrDefault(
             PipeExtractorConstant.MQTT_BROKER_INTERCEPTOR_THREAD_POOL_SIZE_KEY,
-            PipeExtractorConstant.MQTT_BROKER_INTERCEPTOR_THREAD_POOL_SIZE_DEFAULT_VALUE));
+            String.valueOf(
+                PipeExtractorConstant.MQTT_BROKER_INTERCEPTOR_THREAD_POOL_SIZE_DEFAULT_VALUE)));
     properties.setProperty(
         BrokerConstants.DATA_PATH_PROPERTY_NAME,
         pipeParameters.getStringOrDefault(
             PipeExtractorConstant.MQTT_DATA_PATH_PROPERTY_NAME_KEY,
             PipeExtractorConstant.MQTT_DATA_PATH_PROPERTY_NAME_DEFAULT_VALUE));
-    properties.setProperty(BrokerConstants.IMMEDIATE_BUFFER_FLUSH_PROPERTY_NAME, "true");
-    properties.setProperty(BrokerConstants.ALLOW_ANONYMOUS_PROPERTY_NAME, "false");
-    properties.setProperty(BrokerConstants.ALLOW_ZERO_BYTE_CLIENT_ID_PROPERTY_NAME, "true");
+    properties.setProperty(
+        BrokerConstants.IMMEDIATE_BUFFER_FLUSH_PROPERTY_NAME,
+        pipeParameters.getStringOrDefault(
+            PipeExtractorConstant.MQTT_IMMEDIATE_BUFFER_FLUSH_PROPERTY_NAME_KEY,
+            String.valueOf(
+                PipeExtractorConstant.MQTT_IMMEDIATE_BUFFER_FLUSH_PROPERTY_NAME_DEFAULT_VALUE)));
+    properties.setProperty(
+        BrokerConstants.ALLOW_ZERO_BYTE_CLIENT_ID_PROPERTY_NAME,
+        pipeParameters.getStringOrDefault(
+            PipeExtractorConstant.MQTT_ALLOW_ANONYMOUS_PROPERTY_NAME_KEY,
+            String.valueOf(
+                PipeExtractorConstant.MQTT_ALLOW_ANONYMOUS_PROPERTY_NAME_DEFAULT_VALUE)));
+    properties.setProperty(
+        BrokerConstants.ALLOW_ZERO_BYTE_CLIENT_ID_PROPERTY_NAME,
+        pipeParameters.getStringOrDefault(
+            PipeExtractorConstant.MQTT_ALLOW_ZERO_BYTE_CLIENT_ID_PROPERTY_NAME_KEY,
+            String.valueOf(
+                PipeExtractorConstant.MQTT_ALLOW_ZERO_BYTE_CLIENT_ID_PROPERTY_NAME_DEFAULT_VALUE)));
     properties.setProperty(
         BrokerConstants.NETTY_MAX_BYTES_PROPERTY_NAME,
-        String.valueOf(
-            pipeParameters.getIntOrDefault(
-                PipeExtractorConstant.MQTT_NETTY_MAX_BYTES_PROPERTY_NAME_KEY,
-                Integer.parseInt(
-                    PipeExtractorConstant.MQTT_NETTY_MAX_BYTES_PROPERTY_NAME_DEFAULT_VALUE))));
+        pipeParameters.getStringOrDefault(
+            PipeExtractorConstant.MQTT_NETTY_MAX_BYTES_PROPERTY_NAME_KEY,
+            String.valueOf(
+                PipeExtractorConstant.MQTT_NETTY_MAX_BYTES_PROPERTY_NAME_DEFAULT_VALUE)));
     return new MemoryConfig(properties);
   }
 
