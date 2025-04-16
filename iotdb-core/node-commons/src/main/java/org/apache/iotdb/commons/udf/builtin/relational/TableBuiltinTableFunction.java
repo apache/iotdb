@@ -22,6 +22,7 @@ package org.apache.iotdb.commons.udf.builtin.relational;
 import org.apache.iotdb.commons.udf.builtin.relational.tvf.CapacityTableFunction;
 import org.apache.iotdb.commons.udf.builtin.relational.tvf.HOPTableFunction;
 import org.apache.iotdb.commons.udf.builtin.relational.tvf.SessionTableFunction;
+import org.apache.iotdb.commons.udf.builtin.relational.tvf.TumbleTableFunction;
 import org.apache.iotdb.commons.udf.builtin.relational.tvf.VariationTableFunction;
 import org.apache.iotdb.udf.api.relational.TableFunction;
 
@@ -31,6 +32,7 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 public enum TableBuiltinTableFunction {
+  TUMBLE("tumble"),
   HOP("hop"),
   SESSION("session"),
   VARIATION("variation"),
@@ -62,6 +64,8 @@ public enum TableBuiltinTableFunction {
 
   public static TableFunction getBuiltinTableFunction(String functionName) {
     switch (functionName.toLowerCase()) {
+      case "tumble":
+        return new TumbleTableFunction();
       case "hop":
         return new HOPTableFunction();
       case "session":

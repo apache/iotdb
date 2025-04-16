@@ -226,4 +226,52 @@ public class IoTDBWindowTVFIT {
         retArray,
         DATABASE_NAME);
   }
+
+  @Test
+  public void testTumbleFunction() {
+    // TUMBLE (10m)
+    String[] expectedHeader =
+        new String[] {"window_start", "window_end", "time", "stock_id", "price", "s1"};
+    String[] retArray =
+        new String[] {
+          "2021-01-01T09:00:00.000Z,2021-01-01T09:10:00.000Z,2021-01-01T09:05:00.000Z,AAPL,100.0,101.0,",
+          "2021-01-01T09:00:00.000Z,2021-01-01T09:10:00.000Z,2021-01-01T09:07:00.000Z,AAPL,103.0,101.0,",
+          "2021-01-01T09:00:00.000Z,2021-01-01T09:10:00.000Z,2021-01-01T09:09:00.000Z,AAPL,102.0,101.0,",
+          "2021-01-01T09:00:00.000Z,2021-01-01T09:10:00.000Z,2021-01-01T09:06:00.000Z,TESL,200.0,102.0,",
+          "2021-01-01T09:00:00.000Z,2021-01-01T09:10:00.000Z,2021-01-01T09:07:00.000Z,TESL,202.0,202.0,",
+          "2021-01-01T09:10:00.000Z,2021-01-01T09:20:00.000Z,2021-01-01T09:15:00.000Z,TESL,195.0,332.0,",
+        };
+    tableResultSetEqualTest(
+        "SELECT * FROM TUMBLE(DATA => bid, TIMECOL => 'time', SIZE => 10m) ORDER BY stock_id, time",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+
+    // TUMBLE (10m) + GROUP BY
+    expectedHeader = new String[] {"window_start", "window_end", "stock_id", "sum"};
+    retArray =
+        new String[] {
+          "2021-01-01T09:00:00.000Z,2021-01-01T09:10:00.000Z,AAPL,305.0,",
+          "2021-01-01T09:00:00.000Z,2021-01-01T09:10:00.000Z,TESL,402.0,",
+          "2021-01-01T09:10:00.000Z,2021-01-01T09:20:00.000Z,TESL,195.0,",
+        };
+    tableResultSetEqualTest(
+        "SELECT window_start, window_end, stock_id, sum(price) as sum FROM TUMBLE(DATA => bid, TIMECOL => 'time', SIZE => 10m) GROUP BY window_start, window_end, stock_id ORDER BY stock_id, window_start",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+
+    // TUMBLE (1h) + GROUP BY
+    expectedHeader = new String[] {"window_start", "window_end", "stock_id", "sum"};
+    retArray =
+        new String[] {
+          "2021-01-01T09:00:00.000Z,2021-01-01T10:00:00.000Z,AAPL,305.0,",
+          "2021-01-01T09:00:00.000Z,2021-01-01T10:00:00.000Z,TESL,597.0,",
+        };
+    tableResultSetEqualTest(
+        "SELECT window_start, window_end, stock_id, sum(price) as sum FROM TUMBLE(DATA => bid, TIMECOL => 'time', SIZE => 1h) GROUP BY window_start, window_end, stock_id ORDER BY stock_id, window_start",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+  }
 }
