@@ -603,6 +603,7 @@ class AutoCreateSchemaExecutor {
       MPPQueryContext context) {
 
     LOGGER.info("devicesNeedAutoCreateTimeSeries: {}", devicesNeedAutoCreateTimeSeries);
+    // Deep copy to avoid changes to the original map
     final Map<PartialPath, Pair<Boolean, MeasurementGroup>> copiedDevices =
         new HashMap<>(devicesNeedAutoCreateTimeSeries);
     for (final Pair<Boolean, MeasurementGroup> measurements : copiedDevices.values()) {
