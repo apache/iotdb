@@ -883,7 +883,6 @@ public class SessionConnection {
   }
 
   /** reconnect if the remote datanode is unreachable retry if the status is set to needRetry */
-  // TODO(szywilliam): when shall we retry on the same node, when shall we reconnect before retry?
   private <T> RetryResult<T> callWithRetryAndReconnect(
       TFunction<T> rpc, Predicate<T> shouldRetry, Predicate<T> forceReconnect) {
     TException lastTException = null;
@@ -906,7 +905,12 @@ public class SessionConnection {
       }
 
       // prepare for the next retry
-      if (lastTException != null || (result != null && forceReconnect.test(result))) {
+      if (lastTException != null
+          || !availableNodes.get().contains(this.endPoint)
+          || (result != null && forceReconnect.test(result))) {
+        // 1. the current datanode is unreachable (TException)
+        // 2. the current datanode is partitioned with other nodes (not in availableNodes)
+        // 3. asymmetric network partition
         reconnect();
       }
       try {
