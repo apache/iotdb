@@ -67,6 +67,8 @@ public class MemTableFlushTask {
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
   private final int MAX_NUMBER_OF_POINTS_IN_PAGE =
       TSFileDescriptor.getInstance().getConfig().getMaxNumberOfPointsInPage();
+  private final long MAX_NUMBER_OF_POINTS_IN_CHUNK = config.getTargetChunkPointNum();
+  private final long TARGET_CHUNK_SIZE = config.getTargetChunkSize();
 
   /* storage group name -> last time */
   private static final Map<String, Long> flushPointsCache = new ConcurrentHashMap<>();
@@ -108,15 +110,6 @@ public class MemTableFlushTask {
     this.encodingTaskFuture = SUB_TASK_POOL_MANAGER.submit(encodingTask);
     this.ioTaskFuture = SUB_TASK_POOL_MANAGER.submit(ioTask);
 
-    long MAX_NUMBER_OF_POINTS_IN_CHUNK = config.getTargetChunkPointNum();
-    long TARGET_CHUNK_SIZE = config.getTargetChunkSize();
-    if (memTable instanceof AlignedWritableMemChunk) {
-      int avgPointSizeOfLargestColumn =
-          ((AlignedWritableMemChunk) memTable).getAvgPointSizeOfLargestColumn();
-      MAX_NUMBER_OF_POINTS_IN_CHUNK =
-          Math.min(
-              MAX_NUMBER_OF_POINTS_IN_CHUNK, (TARGET_CHUNK_SIZE / avgPointSizeOfLargestColumn));
-    }
     this.encodeInfo =
         new BatchEncodeInfo(
             0,
@@ -276,6 +269,12 @@ public class MemTableFlushTask {
               long starTime = System.currentTimeMillis();
               IWritableMemChunk writableMemChunk = (IWritableMemChunk) task;
               if (writableMemChunk instanceof AlignedWritableMemChunk && times == null) {
+                encodeInfo.maxNumberOfPointsInChunk =
+                    Math.min(
+                        MAX_NUMBER_OF_POINTS_IN_CHUNK,
+                        (TARGET_CHUNK_SIZE
+                            / ((AlignedWritableMemChunk) writableMemChunk)
+                                .getAvgPointSizeOfLargestColumn()));
                 times = new long[MAX_NUMBER_OF_POINTS_IN_PAGE];
               }
               writableMemChunk.encode(ioTaskQueue, encodeInfo, times);
