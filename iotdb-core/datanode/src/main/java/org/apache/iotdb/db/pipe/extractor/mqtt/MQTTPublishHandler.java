@@ -317,26 +317,34 @@ public class MQTTPublishHandler extends AbstractInterceptHandler {
         bitMaps[i].mark(0);
       }
       // Wrap the parsed value into a one-dimensional array based on its type.
-      if (dataTypes[i] == TSDataType.INT32) {
-        inferredValues[i] = new int[] {parsedValue == null ? 0 : (Integer) parsedValue};
-      } else if (dataTypes[i] == TSDataType.INT64) {
-        inferredValues[i] = new long[] {parsedValue == null ? 0 : (Long) parsedValue};
-      } else if (dataTypes[i] == TSDataType.FLOAT) {
-        inferredValues[i] = new float[] {parsedValue == null ? 0 : (Float) parsedValue};
-      } else if (dataTypes[i] == TSDataType.DOUBLE) {
-        inferredValues[i] = new double[] {parsedValue == null ? 0 : (Double) parsedValue};
-      } else if (dataTypes[i] == TSDataType.BOOLEAN) {
-        inferredValues[i] = new boolean[] {parsedValue == null ? false : (Boolean) parsedValue};
-      } else if (dataTypes[i] == TSDataType.STRING) {
-        inferredValues[i] = new String[] {(String) parsedValue};
-      } else if (dataTypes[i] == TSDataType.TEXT) {
-        inferredValues[i] = new Binary[] {(Binary) parsedValue};
-      } else {
-        // For any other type, wrap it as an Object array.
-        inferredValues[i] = new Object[] {parsedValue};
+      switch (dataTypes[i]) {
+        case INT32:
+        case DATE:
+          inferredValues[i] = new int[] {parsedValue == null ? 0 : (Integer) parsedValue};
+          break;
+        case INT64:
+        case TIMESTAMP:
+          inferredValues[i] = new long[] {parsedValue == null ? 0 : (Long) parsedValue};
+          break;
+        case FLOAT:
+          inferredValues[i] = new float[] {parsedValue == null ? 0 : (Float) parsedValue};
+          break;
+        case DOUBLE:
+          inferredValues[i] = new double[] {parsedValue == null ? 0 : (Double) parsedValue};
+          break;
+        case BOOLEAN:
+          inferredValues[i] = new boolean[] {parsedValue == null ? false : (Boolean) parsedValue};
+          break;
+        case STRING:
+        case TEXT:
+        case BLOB:
+          inferredValues[i] = new Binary[] {(Binary) parsedValue};
+          break;
+        default:
+          // For any other type, wrap it as an Object array.
+          inferredValues[i] = new Object[] {parsedValue};
       }
     }
-
     for (int i = 0; i < schemas.length; i++) {
       schemas[i] = new MeasurementSchema(measurements.get(i), dataTypes[i]);
     }
@@ -396,10 +404,6 @@ public class MQTTPublishHandler extends AbstractInterceptHandler {
     }
     if (value.length() >= 3 && value.startsWith("X'") && value.endsWith("'")) {
       dataType[index] = TSDataType.BLOB;
-      if ((value.startsWith(SqlConstant.QUOTE) && value.endsWith(SqlConstant.QUOTE))
-          || (value.startsWith(SqlConstant.DQUOTE) && value.endsWith(SqlConstant.DQUOTE))) {
-        return new Binary(parseBlobStringToByteArray(value.substring(1, value.length() - 1)));
-      }
       return new Binary(parseBlobStringToByteArray(value));
     }
     dataType[index] = TSDataType.TEXT;

@@ -90,10 +90,11 @@ public class JSONPayloadFormatter implements PayloadFormatter {
             jsonObject.get(JSON_KEY_MEASUREMENTS), new TypeToken<List<String>>() {}.getType()));
     message.setValues(
         GSON.fromJson(jsonObject.get(JSON_KEY_VALUES), new TypeToken<List<String>>() {}.getType()));
-    message.setDataTypes(
-        GSON.fromJson(
-            jsonObject.get(JSON_KEY_DATATYPE), new TypeToken<List<TSDataType>>() {}.getType()));
-
+    if (jsonObject.has(JSON_KEY_DATATYPE)) {
+      message.setDataTypes(
+          GSON.fromJson(
+              jsonObject.get(JSON_KEY_DATATYPE), new TypeToken<List<TSDataType>>() {}.getType()));
+    }
     return Lists.newArrayList(message);
   }
 
@@ -110,8 +111,10 @@ public class JSONPayloadFormatter implements PayloadFormatter {
         GSON.fromJson(
             jsonObject.get(JSON_KEY_VALUES), new TypeToken<List<List<String>>>() {}.getType());
     List<TSDataType> types =
-        GSON.fromJson(
-            jsonObject.get(JSON_KEY_DATATYPE), new TypeToken<List<TSDataType>>() {}.getType());
+        jsonObject.has(JSON_KEY_DATATYPE)
+            ? GSON.fromJson(
+                jsonObject.get(JSON_KEY_DATATYPE), new TypeToken<List<TSDataType>>() {}.getType())
+            : null;
 
     List<Message> ret = new ArrayList<>(timestamps.size());
     for (int i = 0; i < timestamps.size(); i++) {
