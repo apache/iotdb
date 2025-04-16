@@ -203,15 +203,13 @@ echo Requirement: Allocate sufficient memory for IoTDB
 
 set "totalMemory="
 
-for /F "skip=1" %%i in ('wmic os get TotalVisibleMemorySize') do (
-  if not defined totalMemory (
-    set "totalMemory=%%i"
-  )
-
+REM Replace wmic with PowerShell for total visible memory size
+for /f %%i in ('powershell -Command "(Get-CimInstance -ClassName Win32_OperatingSystem).TotalVisibleMemorySize / 1MB"') do (
+    set totalMemory=%%i
 )
 
 set /A totalMemory=!totalMemory!
-set /A totalMemory=totalMemory / 1024 / 1024
+
 if "%confignode_mem%" == "" (
     if "%datanode_mem%" == "" (
         echo Result: Total Memory %totalMemory% GB
@@ -616,19 +614,15 @@ endlocal
 exit /b
 
 :system_settings_check
+setlocal enabledelayedexpansion
 echo Check: System Settings(Swap)
 echo Requirement: disabled
-for /f "skip=1" %%s in ('wmic pagefile list /format:list') do (
-    for /f "tokens=1,2 delims==" %%a in ("%%s") do (
-        if /i "%%a"=="AllocatedBaseSize" (
-            if "%%b"=="0" (
-                echo Result: disabled
-            ) else (
-                echo Result: enabled
-            )
-        )
-    )
-)
+
+set "check_swap_ps_cmd=if ((Get-CimInstance Win32_ComputerSystem).AutomaticManagedPagefile) { 'Enabled' } else { $page=Get-CimInstance Win32_PageFileSetting -EA 0; if (-not $page) { 'Disabled' } else { $disabled=$true; foreach ($f in $page) { if ($f.InitialSize -ne 0 -or $f.MaximumSize -ne 0) { $disabled=$false } }; if ($disabled) { 'Disabled' } else { 'Enabled' } } }"
+for /f "delims=" %%a in ('powershell -NoProfile -Command "%check_swap_ps_cmd%"') do set "result=%%a"
+
+echo Result: !result!
+endlocal
 exit /b
 
 :checkIfIOTDBProcess
@@ -637,9 +631,8 @@ setlocal
 set "pid_to_check=%~1"
 set "is_iotdb=0"
 
-for /f "usebackq tokens=*" %%i in (`wmic process where "ProcessId=%pid_to_check%" get CommandLine /format:list ^| findstr /c:"CommandLine="`) do (
-    set command_line=%%i
-)
+set command_line=(powershell -Command "(Get-CimInstance Win32_Process -Filter ProcessId=%pid_to_check%).CommandLine")
+
 echo %command_line% | findstr /i /c:"iotdb" >nul && set is_iotdb=1
 endlocal & set "is_iotdb=%is_iotdb%"
 exit /b

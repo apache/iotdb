@@ -49,19 +49,19 @@ if %JMX_LOCAL% == "false" (
 
 set CONFIGNODE_JMX_OPTS=%CONFIGNODE_JMX_OPTS% -Diotdb.jmx.local=%JMX_LOCAL%
 
-for /f %%b in ('wmic cpu get numberofcores ^| findstr "[0-9]"') do (
-	set system_cpu_cores=%%b
+REM Replace wmic with PowerShell for CPU core count
+for /f %%b in ('powershell -Command "(Get-CimInstance -ClassName Win32_Processor).NumberOfCores"') do (
+    set system_cpu_cores=%%b
 )
 
 if %system_cpu_cores% LSS 1 set system_cpu_cores=1
 
-for /f  %%b in ('wmic ComputerSystem get TotalPhysicalMemory ^| findstr "[0-9]"') do (
-	set system_memory=%%b
+REM Replace wmic with PowerShell for total physical memory
+for /f %%b in ('powershell -Command "[int]((Get-CimInstance -ClassName Win32_ComputerSystem).TotalPhysicalMemory / 1MB)"') do (
+    set system_memory_in_mb=%%b
 )
 
-echo wsh.echo FormatNumber(cdbl(%system_memory%)/(1024*1024), 0) > "%CONFIGNODE_HOME%\sbin\tmp.vbs"
-for /f "tokens=*" %%a in ('cscript //nologo "%CONFIGNODE_HOME%\sbin\tmp.vbs"') do set system_memory_in_mb=%%a
-del "%CONFIGNODE_HOME%\sbin\tmp.vbs"
+REM Remove VBScript usage for memory calculation
 set system_memory_in_mb=%system_memory_in_mb:,=%
 
 @REM suggest using memory, system memory 3 / 10
