@@ -45,7 +45,7 @@ public class MeasurementGroup {
   private List<Map<String, String>> tagsList;
   private List<Map<String, String>> attributesList;
 
-  private final transient Set<String> measurementSet = new HashSet<>();
+  private transient Set<String> measurementSet = new HashSet<>();
 
   public List<String> getMeasurements() {
     return measurements;
@@ -392,6 +392,21 @@ public class MeasurementGroup {
         }
       }
     }
+  }
+
+  // This won't be affected by "removeMeasurements"
+  public MeasurementGroup deepCopy() {
+    final MeasurementGroup result = new MeasurementGroup();
+    result.measurements = this.measurements;
+    result.dataTypes = this.dataTypes;
+    result.encodings = this.encodings;
+    result.compressors = this.compressors;
+    result.aliasList = this.aliasList;
+    result.propsList = this.propsList;
+    result.tagsList = this.attributesList;
+    result.attributesList = this.attributesList;
+    result.measurementSet = new HashSet<>(measurements);
+    return result;
   }
 
   @Override

@@ -603,11 +603,15 @@ class AutoCreateSchemaExecutor {
       MPPQueryContext context) {
 
     LOGGER.info("devicesNeedAutoCreateTimeSeries: {}", devicesNeedAutoCreateTimeSeries);
-    List<MeasurementPath> measurementPathList =
+    final Map<PartialPath, Pair<Boolean, MeasurementGroup>> copiedDevices =
+        new HashMap<>(devicesNeedAutoCreateTimeSeries);
+    for (final Pair<Boolean, MeasurementGroup> measurements : copiedDevices.values()) {
+      measurements.setRight(measurements.getRight().deepCopy());
+    }
+    final List<MeasurementPath> measurementPathList =
         executeInternalCreateTimeseriesStatement(
-            new InternalCreateMultiTimeSeriesStatement(
-                new HashMap<>(devicesNeedAutoCreateTimeSeries)),
-            context);
+            new InternalCreateMultiTimeSeriesStatement(copiedDevices), context);
+    LOGGER.info("devicesNeedAutoCreateTimeSeriesAfter: {}", devicesNeedAutoCreateTimeSeries);
 
     LOGGER.info("Already existing measurement paths: {}", measurementPathList);
     schemaTree.appendMeasurementPaths(measurementPathList);
