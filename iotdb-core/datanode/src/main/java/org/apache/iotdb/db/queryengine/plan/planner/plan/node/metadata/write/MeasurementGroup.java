@@ -395,6 +395,11 @@ public class MeasurementGroup {
   }
 
   @Override
+  public String toString() {
+    return Objects.nonNull(measurements) ? measurements.toString() : "null";
+  }
+
+  @Override
   public boolean equals(Object o) {
     if (this == o) return true;
     if (o == null || getClass() != o.getClass()) return false;
