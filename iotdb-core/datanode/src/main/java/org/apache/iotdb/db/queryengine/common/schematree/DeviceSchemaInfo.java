@@ -56,6 +56,16 @@ public class DeviceSchemaInfo {
     return devicePath;
   }
 
+  public String getAbbrString() {
+    return devicePath.toString()
+        + ", isAligned: "
+        + isAligned
+        + ", measurements: "
+        + measurementSchemaInfoList.stream()
+            .map(IMeasurementSchemaInfo::getName)
+            .collect(Collectors.toList());
+  }
+
   public boolean isAligned() {
     return isAligned;
   }
