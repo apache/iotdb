@@ -27,6 +27,12 @@ import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameterValidator;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 import org.apache.iotdb.pipe.api.event.Event;
 
+/**
+ * This class is a placeholder and should not be initialized. It represents an external Extractor
+ * that uses the MQTT protocol to receive data. There is a real implementation in the server module
+ * but cannot be imported here. The pipe agent in the server module will replace this class with the
+ * real implementation when initializing the MQTTExtractor.
+ */
 @TreeModel
 @TableModel
 public class MQTTExtractor implements PipeExtractor {
