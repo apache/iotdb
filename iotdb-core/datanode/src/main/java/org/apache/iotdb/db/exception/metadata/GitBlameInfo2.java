@@ -8,7 +8,6 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.util.Arrays;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -5045,12 +5044,7 @@ public class GitBlameInfo2 {
                     outdatedCode.incrementAndGet();
                   }
                   blankLines.compute(author, (k, v) -> Objects.isNull(v) ? 1 : v + 1);
-                } else if (line.trim().startsWith("//")
-                    || line.trim().startsWith("/*")
-                    || (line.trim().startsWith("#")
-                        && FilenameUtils.getExtension(currentDir.getName()).equals(".sh"))
-                    || (line.trim().startsWith("@REM")
-                        && FilenameUtils.getExtension(currentDir.getName()).equals(".bat"))
+                } else if (isComment(line.trim(), FilenameUtils.getExtension(currentDir.getName()))
                     || commentBlock) {
                   if (line.trim().contains("/*")) {
                     commentBlock = true;
@@ -5094,89 +5088,30 @@ public class GitBlameInfo2 {
 
         try (FileWriter writer = new FileWriter(outPutFile)) {
           // 输出结果
-          writeFile(writer, "");
-
-          writeFile(writer, "Code Lines: " + codeLines.values().stream().reduce(0, Integer::sum));
-          getSortedMap(codeLines).forEach((k, v) -> writeFile(writer, k + ": " + v));
-
-          writeFile(writer, "");
-          writeFile(
-              writer, "Comment Lines: " + commentLines.values().stream().reduce(0, Integer::sum));
-          getSortedMap(commentLines).forEach((k, v) -> writeFile(writer, k + ": " + v));
-          writeFile(writer, "");
-
-          writeFile(writer, "Blank Lines: " + blankLines.values().stream().reduce(0, Integer::sum));
-          getSortedMap(blankLines).forEach((k, v) -> writeFile(writer, k + ": " + v));
-          writeFile(writer, "");
-
-          writeFile(writer, "");
-
-          final Map<String, Integer> totalMap = new HashMap<>();
-          for (final String name : codeLines.keySet()) {
-            totalMap.put(
-                name,
-                codeLines.getOrDefault(name, 0)
-                    + commentLines.getOrDefault(name, 0)
-                    + blankLines.getOrDefault(name, 0));
-          }
-          for (final String name : commentLines.keySet()) {
-            if (!totalMap.containsKey(name)) {
-              totalMap.put(
-                  name,
-                  codeLines.getOrDefault(name, 0)
-                      + commentLines.getOrDefault(name, 0)
-                      + blankLines.getOrDefault(name, 0));
-            }
-          }
-          for (final String name : blankLines.keySet()) {
-            if (!totalMap.containsKey(name)) {
-              totalMap.put(
-                  name,
-                  codeLines.getOrDefault(name, 0)
-                      + commentLines.getOrDefault(name, 0)
-                      + blankLines.getOrDefault(name, 0));
-            }
-          }
-
-          writeFile(writer, "Total Lines: " + totalMap.values().stream().reduce(0, Integer::sum));
-          getSortedMap(totalMap).forEach((k, v) -> writeFile(writer, k + ": " + v));
-
-          writeFile(writer, "");
-          writeFile(writer, "Formal code: " + formalCode);
-          writeFile(writer, "Formal comment: " + formalComment);
-          writeFile(writer, "Formal blank: " + formalBlank);
+          System.out.println(path);
+          System.out.println("Code Lines: " + codeLines.values().stream().reduce(0, Integer::sum));
+          System.out.println("Formal code: " + formalCode);
           writeFile(
               writer,
-              "Formal total: " + (formalCode.get() + formalComment.get() + formalBlank.get()));
-
-          writeFile(writer, "");
-          writeFile(writer, "Formal code: " + employeeCode);
-          writeFile(writer, "Formal comment: " + employeeComment);
-          writeFile(writer, "Formal blank: " + employeeBlank);
-          writeFile(
-              writer,
-              "Formal total: " + (formalCode.get() + formalComment.get() + formalBlank.get()));
-
-          writeFile(writer, "");
-          writeFile(writer, "Formal code: " + internCode);
-          writeFile(writer, "Formal comment: " + internComment);
-          writeFile(writer, "Formal blank: " + internBlank);
-          writeFile(
-              writer,
-              "Formal total: " + (formalCode.get() + formalComment.get() + formalBlank.get()));
-
-          writeFile(writer, "");
-          writeFile(writer, "Previous code: " + outdatedCode);
-          writeFile(writer, "Previous comment: " + outdatedComment);
-          writeFile(writer, "Previous blank: " + outdatedBlank);
-          writeFile(
-              writer,
-              "Previous total: "
-                  + (outdatedCode.get() + outdatedComment.get() + outdatedBlank.get()));
+              String.valueOf(
+                  (double) formalCode.get() / codeLines.values().stream().reduce(0, Integer::sum)));
         }
       } catch (Exception e) {
         e.printStackTrace();
       }
+    }
+  }
+
+  private static boolean isComment(final String trimmed, final String extension) {
+    switch (extension) {
+      case ".py":
+      case ".pyx":
+      case ".sh":
+        return trimmed.startsWith("#");
+      case ".bat":
+        return trimmed.startsWith("@REM");
+      default:
+        return trimmed.startsWith("//") || trimmed.startsWith("/*");
     }
   }
 
