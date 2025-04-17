@@ -9,7 +9,6 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.util.Arrays;
 import java.util.HashSet;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -17,7 +16,6 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.regex.Pattern;
-import java.util.stream.Collectors;
 
 public class GitBlameInfo2 {
   public static void main(String[] args) throws IOException {
@@ -4928,176 +4926,175 @@ public class GitBlameInfo2 {
     final File outPutFile = new File("C:\\Users\\13361\\Downloads\\output\\fuck_everyone.txt");
     outPutFile.delete();
     outPutFile.createNewFile();
-    for (final String path : paths) {
-      System.out.println(path);
+    try (FileWriter writer = new FileWriter(outPutFile)) {
+      for (final String path : paths) {
+        System.out.println(path);
 
-      final AtomicInteger formalCode = new AtomicInteger(0);
-      final AtomicInteger formalComment = new AtomicInteger(0);
-      final AtomicInteger formalBlank = new AtomicInteger(0);
+        final AtomicInteger formalCode = new AtomicInteger(0);
+        final AtomicInteger formalComment = new AtomicInteger(0);
+        final AtomicInteger formalBlank = new AtomicInteger(0);
 
-      final AtomicInteger employeeCode = new AtomicInteger(0);
-      final AtomicInteger employeeComment = new AtomicInteger(0);
-      final AtomicInteger employeeBlank = new AtomicInteger(0);
+        final AtomicInteger employeeCode = new AtomicInteger(0);
+        final AtomicInteger employeeComment = new AtomicInteger(0);
+        final AtomicInteger employeeBlank = new AtomicInteger(0);
 
-      final AtomicInteger internCode = new AtomicInteger(0);
-      final AtomicInteger internComment = new AtomicInteger(0);
-      final AtomicInteger internBlank = new AtomicInteger(0);
+        final AtomicInteger internCode = new AtomicInteger(0);
+        final AtomicInteger internComment = new AtomicInteger(0);
+        final AtomicInteger internBlank = new AtomicInteger(0);
 
-      final AtomicInteger outdatedCode = new AtomicInteger(0);
-      final AtomicInteger outdatedComment = new AtomicInteger(0);
-      final AtomicInteger outdatedBlank = new AtomicInteger(0);
+        final AtomicInteger outdatedCode = new AtomicInteger(0);
+        final AtomicInteger outdatedComment = new AtomicInteger(0);
+        final AtomicInteger outdatedBlank = new AtomicInteger(0);
 
-      // Filter git hash
-      final Pattern matcher = Pattern.compile("^[0-9a-z]{40}");
-      final Set<String> keys =
-          new HashSet<>(
-              Arrays.asList(
-                  "author ",
-                  "author-mail ",
-                  "author-time ",
-                  "author-tz ",
-                  "committer ",
-                  "committer-mail ",
-                  "committer-time ",
-                  "committer-tz ",
-                  "summary ",
-                  "filename ",
-                  "previous ",
-                  "author-mail ",
-                  "committer-date ",
-                  "author-date ",
-                  "body ",
-                  "subject ",
-                  "email ",
-                  "score ",
-                  "lines ",
-                  "origin ",
-                  "incomplete",
-                  "boundary"));
-      Map<String, Integer> codeLines = new ConcurrentHashMap<>();
-      Map<String, Integer> commentLines = new ConcurrentHashMap<>();
-      Map<String, Integer> blankLines = new ConcurrentHashMap<>();
-      try {
-        final File file = new File(timechoDBPath + path);
+        // Filter git hash
+        final Pattern matcher = Pattern.compile("^[0-9a-z]{40}");
+        final Set<String> keys =
+            new HashSet<>(
+                Arrays.asList(
+                    "author ",
+                    "author-mail ",
+                    "author-time ",
+                    "author-tz ",
+                    "committer ",
+                    "committer-mail ",
+                    "committer-time ",
+                    "committer-tz ",
+                    "summary ",
+                    "filename ",
+                    "previous ",
+                    "author-mail ",
+                    "committer-date ",
+                    "author-date ",
+                    "body ",
+                    "subject ",
+                    "email ",
+                    "score ",
+                    "lines ",
+                    "origin ",
+                    "incomplete",
+                    "boundary"));
+        Map<String, Integer> codeLines = new ConcurrentHashMap<>();
+        Map<String, Integer> commentLines = new ConcurrentHashMap<>();
+        Map<String, Integer> blankLines = new ConcurrentHashMap<>();
+        try {
+          final File file = new File(timechoDBPath + path);
 
-        // 获取所有被 Git 追踪的文件
-        Process listFilesProcess =
-            file.isDirectory()
-                ? Runtime.getRuntime().exec("git ls-files", null, file)
-                : Runtime.getRuntime()
-                    .exec("git ls-files " + file.getName(), null, file.getParentFile());
+          // 获取所有被 Git 追踪的文件
+          Process listFilesProcess =
+              file.isDirectory()
+                  ? Runtime.getRuntime().exec("git ls-files", null, file)
+                  : Runtime.getRuntime()
+                      .exec("git ls-files " + file.getName(), null, file.getParentFile());
 
-        BufferedReader listFilesReader =
-            new BufferedReader(new InputStreamReader(listFilesProcess.getInputStream()));
+          BufferedReader listFilesReader =
+              new BufferedReader(new InputStreamReader(listFilesProcess.getInputStream()));
 
-        String filePath;
-        while ((filePath = listFilesReader.readLine()) != null) {
-          // 对每个文件调用 git blame
-          try {
-            final File currentDir = new File(timechoDBPath + path);
-            Process blameProcess =
-                Runtime.getRuntime()
-                    .exec(
-                        "git blame --line-porcelain " + filePath,
-                        null,
-                        currentDir.isDirectory() ? currentDir : currentDir.getParentFile());
-            BufferedReader blameReader =
-                new BufferedReader(new InputStreamReader(blameProcess.getInputStream()));
+          String filePath;
+          while ((filePath = listFilesReader.readLine()) != null) {
+            // 对每个文件调用 git blame
+            try {
+              final File currentDir = new File(timechoDBPath + path);
+              Process blameProcess =
+                  Runtime.getRuntime()
+                      .exec(
+                          "git blame --line-porcelain " + filePath,
+                          null,
+                          currentDir.isDirectory() ? currentDir : currentDir.getParentFile());
+              BufferedReader blameReader =
+                  new BufferedReader(new InputStreamReader(blameProcess.getInputStream()));
 
-            String line;
-            String author = null;
-            boolean commentBlock = false;
-            boolean isFormal = false;
-            boolean outdated = false;
-            while ((line = blameReader.readLine()) != null) {
-              boolean hitKey = false;
-              if (line.startsWith("author ")) {
-                author = line.substring(7);
-                isFormal = formal.contains(author);
-              } else if (line.startsWith("author-time ")) {
-                // Filter author-time earlier than 2021.10.20
-                if (Long.parseLong(line.split(" ")[1]) <= 1634659200) {
-                  isFormal = false;
-                  outdated = true;
+              String line;
+              String author = null;
+              boolean commentBlock = false;
+              boolean isFormal = false;
+              boolean outdated = false;
+              while ((line = blameReader.readLine()) != null) {
+                boolean hitKey = false;
+                if (line.startsWith("author ")) {
+                  author = line.substring(7);
+                  isFormal = formal.contains(author);
+                } else if (line.startsWith("author-time ")) {
+                  // Filter author-time earlier than 2021.10.20
+                  if (Long.parseLong(line.split(" ")[1]) <= 1634659200) {
+                    isFormal = false;
+                    outdated = true;
+                  } else {
+                    outdated = false;
+                  }
                 } else {
-                  outdated = false;
-                }
-              } else {
-                for (final String key : keys) {
-                  if (line.startsWith(key)) {
-                    hitKey = true;
-                    break;
-                  }
-                }
-                if (hitKey || matcher.matcher(line).find()) {
-                  continue;
-                }
-                if (line.trim().isEmpty()) {
-                  if (isFormal) {
-                    formalBlank.incrementAndGet();
-                    if (internship.contains(author)) {
-                      internBlank.incrementAndGet();
-                    } else {
-                      employeeBlank.incrementAndGet();
+                  for (final String key : keys) {
+                    if (line.startsWith(key)) {
+                      hitKey = true;
+                      break;
                     }
-                  } else if (outdated) {
-                    outdatedCode.incrementAndGet();
                   }
-                  blankLines.compute(author, (k, v) -> Objects.isNull(v) ? 1 : v + 1);
-                } else if (isComment(line.trim(), FilenameUtils.getExtension(currentDir.getName()))
-                    || commentBlock) {
-                  if (line.trim().contains("/*")) {
-                    commentBlock = true;
+                  if (hitKey || matcher.matcher(line).find()) {
+                    continue;
                   }
-                  if (line.trim().contains("*/")) {
-                    commentBlock = false;
-                  }
-                  if (isFormal) {
-                    formalComment.incrementAndGet();
-                    if (internship.contains(author)) {
-                      internComment.incrementAndGet();
-                    } else {
-                      employeeComment.incrementAndGet();
+                  if (line.trim().isEmpty()) {
+                    if (isFormal) {
+                      formalBlank.incrementAndGet();
+                      if (internship.contains(author)) {
+                        internBlank.incrementAndGet();
+                      } else {
+                        employeeBlank.incrementAndGet();
+                      }
+                    } else if (outdated) {
+                      outdatedCode.incrementAndGet();
                     }
-                  } else if (outdated) {
-                    outdatedCode.incrementAndGet();
-                  }
-                  commentLines.compute(author, (k, v) -> Objects.isNull(v) ? 1 : v + 1);
-                } else {
-                  if (isFormal) {
-                    formalCode.incrementAndGet();
-                    if (internship.contains(author)) {
-                      internCode.incrementAndGet();
-                    } else {
-                      employeeCode.incrementAndGet();
+                    blankLines.compute(author, (k, v) -> Objects.isNull(v) ? 1 : v + 1);
+                  } else if (isComment(
+                          line.trim(), FilenameUtils.getExtension(currentDir.getName()))
+                      || commentBlock) {
+                    if (line.trim().contains("/*")) {
+                      commentBlock = true;
                     }
-                  } else if (outdated) {
-                    outdatedCode.incrementAndGet();
+                    if (line.trim().contains("*/")) {
+                      commentBlock = false;
+                    }
+                    if (isFormal) {
+                      formalComment.incrementAndGet();
+                      if (internship.contains(author)) {
+                        internComment.incrementAndGet();
+                      } else {
+                        employeeComment.incrementAndGet();
+                      }
+                    } else if (outdated) {
+                      outdatedCode.incrementAndGet();
+                    }
+                    commentLines.compute(author, (k, v) -> Objects.isNull(v) ? 1 : v + 1);
+                  } else {
+                    if (isFormal) {
+                      formalCode.incrementAndGet();
+                      if (internship.contains(author)) {
+                        internCode.incrementAndGet();
+                      } else {
+                        employeeCode.incrementAndGet();
+                      }
+                    } else if (outdated) {
+                      outdatedCode.incrementAndGet();
+                    }
+                    codeLines.compute(author, (k, v) -> Objects.isNull(v) ? 1 : v + 1);
                   }
-                  codeLines.compute(author, (k, v) -> Objects.isNull(v) ? 1 : v + 1);
                 }
               }
+
+              // 等待 blame 进程结束
+              blameProcess.waitFor();
+            } catch (final Exception e) {
+              System.out.println(e);
             }
-
-            // 等待 blame 进程结束
-            blameProcess.waitFor();
-          } catch (final Exception e) {
-            System.out.println(e);
           }
-        }
 
-        try (FileWriter writer = new FileWriter(outPutFile)) {
           // 输出结果
-          System.out.println(path);
-          System.out.println("Code Lines: " + codeLines.values().stream().reduce(0, Integer::sum));
-          System.out.println("Formal code: " + formalCode);
           writeFile(
               writer,
               String.valueOf(
                   (double) formalCode.get() / codeLines.values().stream().reduce(0, Integer::sum)));
+
+        } catch (Exception e) {
+          e.printStackTrace();
         }
-      } catch (Exception e) {
-        e.printStackTrace();
       }
     }
   }
@@ -5116,7 +5113,6 @@ public class GitBlameInfo2 {
   }
 
   private static void writeFile(final FileWriter writer, final String s) {
-    // System.out.println(s);
     try {
       writer.write(s + "\n");
     } catch (Exception e) {
