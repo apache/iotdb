@@ -22,7 +22,6 @@ package org.apache.iotdb.db.queryengine.plan.analyze.load;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.auth.AuthException;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
-import org.apache.iotdb.commons.utils.RetryUtils;
 import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.load.LoadAnalyzeException;
@@ -50,6 +49,7 @@ import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceStatus;
 import org.apache.iotdb.db.storageengine.dataregion.utils.TsFileResourceUtils;
+import org.apache.iotdb.db.storageengine.load.active.ActiveLoadUtil;
 import org.apache.iotdb.db.storageengine.load.converter.LoadTsFileDataTypeConverter;
 import org.apache.iotdb.db.storageengine.load.metrics.LoadTsFileCostMetricsSet;
 import org.apache.iotdb.db.utils.TimestampPrecisionUtils;
@@ -81,8 +81,6 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 
-import static org.apache.iotdb.commons.utils.FileUtils.copyFileWithMD5Check;
-import static org.apache.iotdb.commons.utils.FileUtils.moveFileWithMD5Check;
 import static org.apache.iotdb.db.queryengine.plan.execution.config.TableConfigTaskVisitor.DATABASE_NOT_SPECIFIED;
 import static org.apache.iotdb.db.queryengine.plan.execution.config.TableConfigTaskVisitor.validateDatabaseName;
 import static org.apache.iotdb.db.storageengine.load.metrics.LoadTsFileCostMetricsSet.ANALYSIS;
@@ -279,69 +277,14 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
   }
 
   private boolean doAsyncLoad(final IAnalysis analysis) {
-    final String[] loadActiveListeningDirs =
-        IoTDBDescriptor.getInstance().getConfig().getLoadActiveListeningDirs();
-    String targetFilePath = null;
-    for (int i = 0, size = loadActiveListeningDirs == null ? 0 : loadActiveListeningDirs.length;
-        i < size;
-        i++) {
-      if (loadActiveListeningDirs[i] != null) {
-        targetFilePath = loadActiveListeningDirs[i];
-        break;
-      }
+    if (ActiveLoadUtil.loadTsFileAsyncToActiveDir(
+        tsFiles, databaseForTableData, isDeleteAfterLoad)) {
+      analysis.setFinishQueryAfterAnalyze(true);
+      setRealStatement(analysis);
+      return true;
     }
-    if (targetFilePath == null) {
-      LOGGER.warn("Load active listening dir is not set. Will try sync load instead.");
-      return false;
-    }
-
-    try {
-      if (Objects.nonNull(databaseForTableData)) {
-        loadTsFilesAsyncToTargetDir(new File(targetFilePath, databaseForTableData), tsFiles);
-      } else {
-        loadTsFilesAsyncToTargetDir(new File(targetFilePath), tsFiles);
-      }
-    } catch (Exception e) {
-      LOGGER.warn(
-          "Failed to async load tsfiles {} to target dir {}. Will try sync load instead.",
-          tsFiles,
-          targetFilePath,
-          e);
-      return false;
-    }
-
-    analysis.setFinishQueryAfterAnalyze(true);
-    setRealStatement(analysis);
-    return true;
-  }
-
-  private void loadTsFilesAsyncToTargetDir(final File targetDir, final List<File> files)
-      throws IOException {
-    for (final File file : files) {
-      if (file == null) {
-        continue;
-      }
-
-      loadTsFileAsyncToTargetDir(targetDir, file);
-      loadTsFileAsyncToTargetDir(targetDir, new File(file.getAbsolutePath() + ".resource"));
-      loadTsFileAsyncToTargetDir(targetDir, new File(file.getAbsolutePath() + ".mods"));
-    }
-  }
-
-  private void loadTsFileAsyncToTargetDir(final File targetDir, final File file)
-      throws IOException {
-    if (!file.exists()) {
-      return;
-    }
-    RetryUtils.retryOnException(
-        () -> {
-          if (isDeleteAfterLoad) {
-            moveFileWithMD5Check(file, targetDir);
-          } else {
-            copyFileWithMD5Check(file, targetDir);
-          }
-          return null;
-        });
+    LOGGER.info("Async Load has failed, and is now trying to load sync");
+    return false;
   }
 
   private boolean doAnalyzeFileByFile(IAnalysis analysis) {

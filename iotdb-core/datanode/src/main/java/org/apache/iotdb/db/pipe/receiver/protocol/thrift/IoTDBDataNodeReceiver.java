@@ -37,8 +37,6 @@ import org.apache.iotdb.commons.pipe.datastructure.pattern.TablePattern;
 import org.apache.iotdb.commons.pipe.receiver.IoTDBFileReceiver;
 import org.apache.iotdb.commons.pipe.receiver.PipeReceiverStatusHandler;
 import org.apache.iotdb.commons.schema.column.ColumnHeaderConstant;
-import org.apache.iotdb.commons.utils.FileUtils;
-import org.apache.iotdb.commons.utils.RetryUtils;
 import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
 import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.conf.IoTDBConfig;
@@ -95,6 +93,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowsStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertTabletStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.LoadTsFileStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.pipe.PipeEnrichedStatement;
+import org.apache.iotdb.db.storageengine.load.active.ActiveLoadUtil;
 import org.apache.iotdb.db.storageengine.rescon.disk.FolderManager;
 import org.apache.iotdb.db.storageengine.rescon.disk.strategy.DirectoryStrategyType;
 import org.apache.iotdb.db.tools.schema.SRStatementGenerator;
@@ -546,33 +545,10 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
 
   private TSStatus loadTsFileAsync(final String dataBaseName, final List<String> absolutePaths)
       throws IOException {
-    final String loadActiveListeningPipeDir = IOTDB_CONFIG.getLoadActiveListeningPipeDir();
-    if (Objects.isNull(loadActiveListeningPipeDir)) {
-      throw new PipeException("Load active listening pipe dir is not set.");
-    }
-
-    if (Objects.nonNull(dataBaseName)) {
-      final File targetDir = new File(loadActiveListeningPipeDir, dataBaseName);
-      return this.loadTsFileAsyncToTargetDir(targetDir, absolutePaths);
-    }
-
-    return loadTsFileAsyncToTargetDir(new File(loadActiveListeningPipeDir), absolutePaths);
-  }
-
-  private TSStatus loadTsFileAsyncToTargetDir(
-      final File targetDir, final List<String> absolutePaths) throws IOException {
-    for (final String absolutePath : absolutePaths) {
-      if (absolutePath == null) {
-        continue;
-      }
-      final File sourceFile = new File(absolutePath);
-      if (!Objects.equals(
-          targetDir.getAbsolutePath(), sourceFile.getParentFile().getAbsolutePath())) {
-        RetryUtils.retryOnException(
-            () -> {
-              FileUtils.moveFileWithMD5Check(sourceFile, targetDir);
-              return null;
-            });
+    for (String fileAbsolutePath : absolutePaths) {
+      if (!ActiveLoadUtil.loadTsFilesAsyncToActiveDir(
+          dataBaseName, new File(fileAbsolutePath), true)) {
+        throw new PipeException("Load active listening pipe dir is not set.");
       }
     }
     return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
