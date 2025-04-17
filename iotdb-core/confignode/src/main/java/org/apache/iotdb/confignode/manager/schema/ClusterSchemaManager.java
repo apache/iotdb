@@ -825,7 +825,7 @@ public class ClusterSchemaManager {
     if (databaseSchema.getTTL() < 0) {
       errorResp =
           new TSStatus(TSStatusCode.DATABASE_CONFIG_ERROR.getStatusCode())
-              .setMessage("Failed to create database. The TTL should be positive.");
+              .setMessage("Failed to create database. The TTL should be non-negative.");
     }
 
     if (!databaseSchema.isSetSchemaReplicationFactor()) {
