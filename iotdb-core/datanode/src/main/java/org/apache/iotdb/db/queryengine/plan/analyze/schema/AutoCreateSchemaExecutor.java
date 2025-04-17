@@ -604,14 +604,18 @@ class AutoCreateSchemaExecutor {
 
     LOGGER.info("devicesNeedAutoCreateTimeSeries: {}", devicesNeedAutoCreateTimeSeries);
     // Deep copy to avoid changes to the original map
-    final Map<PartialPath, Pair<Boolean, MeasurementGroup>> copiedDevices =
-        new HashMap<>(devicesNeedAutoCreateTimeSeries);
-    for (final Pair<Boolean, MeasurementGroup> measurements : copiedDevices.values()) {
-      measurements.setRight(measurements.getRight().deepCopy());
-    }
     final List<MeasurementPath> measurementPathList =
         executeInternalCreateTimeseriesStatement(
-            new InternalCreateMultiTimeSeriesStatement(copiedDevices), context);
+            new InternalCreateMultiTimeSeriesStatement(
+                devicesNeedAutoCreateTimeSeries.entrySet().stream()
+                    .collect(
+                        Collectors.toMap(
+                            Map.Entry::getKey,
+                            entry ->
+                                new Pair<>(
+                                    entry.getValue().getLeft(),
+                                    entry.getValue().getRight().deepCopy())))),
+            context);
     LOGGER.info("devicesNeedAutoCreateTimeSeriesAfter: {}", devicesNeedAutoCreateTimeSeries);
 
     LOGGER.info("Already existing measurement paths: {}", measurementPathList);

@@ -405,7 +405,7 @@ public class MeasurementGroup {
         Objects.nonNull(this.compressors) ? new ArrayList<>(this.compressors) : null;
     result.aliasList = Objects.nonNull(this.aliasList) ? new ArrayList<>(this.aliasList) : null;
     result.propsList = Objects.nonNull(this.propsList) ? new ArrayList<>(this.propsList) : null;
-    result.tagsList = Objects.nonNull(this.tagsList) ? new ArrayList<>(this.attributesList) : null;
+    result.tagsList = Objects.nonNull(this.tagsList) ? new ArrayList<>(this.tagsList) : null;
     result.attributesList =
         Objects.nonNull(this.attributesList) ? new ArrayList<>(this.attributesList) : null;
     result.measurementSet = new HashSet<>(measurementSet);
