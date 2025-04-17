@@ -92,13 +92,15 @@ public class ApproxCountDistinctAccumulator implements TableAccumulator {
 
   @Override
   public void addIntermediate(Column argument) {
-    HyperLogLog hll = HyperLogLogStateFactory.getOrCreateHyperLogLog(state);
     for (int i = 0; i < argument.getPositionCount(); i++) {
       if (argument.isNull(i)) {
         continue;
       }
-      HyperLogLog preHll = new HyperLogLog(argument.getBinary(i).getValues());
-      hll.merge(preHll);
+      HyperLogLog currentHll = new HyperLogLog(argument.getBinary(i).getValues());
+
+      HyperLogLog hll =
+          HyperLogLogStateFactory.getOrCreateHyperLogLog(state, currentHll.getMaxStandardError());
+      hll.merge(currentHll);
     }
   }
 
@@ -107,14 +109,12 @@ public class ApproxCountDistinctAccumulator implements TableAccumulator {
     checkArgument(
         columnBuilder instanceof BinaryColumnBuilder,
         "intermediate input and output of APPROX_COUNT_DISTINCT should be BinaryColumn");
-    HyperLogLog hll = state.getHyperLogLog();
-    columnBuilder.writeBinary(new Binary(hll.serialize()));
+    columnBuilder.writeBinary(new Binary(state.getHyperLogLog().serialize()));
   }
 
   @Override
   public void evaluateFinal(ColumnBuilder columnBuilder) {
-    HyperLogLog hll = state.getHyperLogLog();
-    columnBuilder.writeLong(hll.cardinality());
+    columnBuilder.writeLong(state.getHyperLogLog().cardinality());
   }
 
   @Override

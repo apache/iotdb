@@ -4106,6 +4106,23 @@ public class IoTDBTableAggregationIT {
   }
 
   @Test
+  public void approxCountDistinctTest() {
+    String[] expectedHeader = buildHeaders(17);
+    String[] retArray = new String[] {"10,2,2,4,16,2,2,5,5,5,5,2,24,32,5,10,1,"};
+    tableResultSetEqualTest(
+        "select approx_count_distinct(time), approx_count_distinct(province), approx_count_distinct(city), approx_count_distinct(region), approx_count_distinct(device_id), approx_count_distinct(color), approx_count_distinct(type), approx_count_distinct(s1), approx_count_distinct(s2), approx_count_distinct(s3), approx_count_distinct(s4), approx_count_distinct(s5), approx_count_distinct(s6), approx_count_distinct(s7), approx_count_distinct(s8), approx_count_distinct(s9), approx_count_distinct(s10) from table1",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+
+    tableResultSetEqualTest(
+        "select approx_count_distinct(time, 0.02), approx_count_distinct(province, 0.02), approx_count_distinct(city, 0.02), approx_count_distinct(region, 0.02), approx_count_distinct(device_id, 0.02), approx_count_distinct(color, 0.02), approx_count_distinct(type, 0.02), approx_count_distinct(s1, 0.02), approx_count_distinct(s2, 0.02), approx_count_distinct(s3, 0.02), approx_count_distinct(s4, 0.02), approx_count_distinct(s5, 0.02), approx_count_distinct(s6, 0.02), approx_count_distinct(s7, 0.02), approx_count_distinct(s8, 0.02), approx_count_distinct(s9, 0.02), approx_count_distinct(s10, 0.02) from table1",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+  }
+
+  @Test
   public void exceptionTest() {
     tableAssertTestFail(
         "select avg() from table1",
@@ -4134,6 +4151,22 @@ public class IoTDBTableAggregationIT {
     tableAssertTestFail(
         "select last_by() from table1",
         "701: Aggregate functions [last_by] should only have two or three arguments",
+        DATABASE_NAME);
+    tableAssertTestFail(
+        "select approx_count_distinct() from table1",
+        "701: Aggregate functions [approx_count_distinct] should only have two arguments",
+        DATABASE_NAME);
+    tableAssertTestFail(
+        "select approx_count_distinct(province, 0.3) from table1",
+        "750: Max Standard Error must be in [0.0040625, 0.26]: 0.3",
+        DATABASE_NAME);
+    tableAssertTestFail(
+        "select approx_count_distinct(province, 0.3) from table1",
+        "750: Max Standard Error must be in [0.0040625, 0.26]: 0.3",
+        DATABASE_NAME);
+    tableAssertTestFail(
+        "select approx_count_distinct(province, 'test') from table1",
+        "701: Second argument of Aggregate functions [approx_count_distinct] should be DOUBLE",
         DATABASE_NAME);
   }
 

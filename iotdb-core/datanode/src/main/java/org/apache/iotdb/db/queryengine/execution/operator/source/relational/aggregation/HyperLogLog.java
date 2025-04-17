@@ -21,6 +21,7 @@ import com.google.common.hash.HashFunction;
 import com.google.common.hash.Hashing;
 import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.utils.Binary;
+import org.apache.tsfile.utils.BytesUtils;
 
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
@@ -33,6 +34,7 @@ public class HyperLogLog {
   private final int m;
   // Number of bits used for register indexing
   private final int b;
+  private final double maxStandardError;
   // Alpha constant for bias correction
   private final double alpha;
 
@@ -51,6 +53,7 @@ public class HyperLogLog {
     int buckets = standardErrorToBuckets(maxStandardError);
     int precision = indexBitLength(buckets);
 
+    this.maxStandardError = maxStandardError;
     this.b = precision;
     // m = 2^precision, buckets
     this.m = buckets;
@@ -62,21 +65,14 @@ public class HyperLogLog {
 
   public HyperLogLog(byte[] bytes) {
     // 反序列化
-    this.b =
-        (bytes[0] & 0xFF)
-            | (bytes[1] & 0xFF) << 8
-            | (bytes[2] & 0xFF) << 16
-            | (bytes[3] & 0xFF) << 24;
 
-    this.m =
-        (bytes[4] & 0xFF)
-            | (bytes[5] & 0xFF) << 8
-            | (bytes[6] & 0xFF) << 16
-            | (bytes[7] & 0xFF) << 24;
+    this.b = BytesUtils.bytesToInt(bytes, 0);
+    this.m = BytesUtils.bytesToInt(bytes, 4);
+    this.maxStandardError = BytesUtils.bytesToDouble(bytes, 8);
 
     this.registers = new int[m];
     for (int i = 0; i < m; i++) {
-      int baseIndex = 8 + i * 4;
+      int baseIndex = 16 + i * 4;
       registers[i] =
           (bytes[baseIndex] & 0xFF)
               | (bytes[baseIndex + 1] & 0xFF) << 8
@@ -86,7 +82,11 @@ public class HyperLogLog {
     this.alpha = getAlpha(b, m);
   }
 
-  public static double getAlpha(int precision, int m) {
+  public double getMaxStandardError() {
+    return this.maxStandardError;
+  }
+
+  private static double getAlpha(int precision, int m) {
     switch (precision) {
       case 4:
         return 0.673;
@@ -99,12 +99,12 @@ public class HyperLogLog {
     }
   }
 
-  public static boolean isPowerOf2(long value) {
+  private static boolean isPowerOf2(long value) {
     Preconditions.checkArgument(value > 0L, "value must be positive");
     return (value & value - 1L) == 0L;
   }
 
-  public static int indexBitLength(int numberOfBuckets) {
+  private static int indexBitLength(int numberOfBuckets) {
     Preconditions.checkArgument(
         isPowerOf2((long) numberOfBuckets),
         "numberOfBuckets must be a power of 2, actual: %s",
@@ -238,22 +238,15 @@ public class HyperLogLog {
 
   // 序列化
   public byte[] serialize() {
-    int totalBytes = Integer.BYTES * 2 + registers.length * Integer.BYTES;
+    int totalBytes = Integer.BYTES * 2 + registers.length * Integer.BYTES + Double.BYTES;
     byte[] result = new byte[totalBytes];
 
-    // 写入 b
-    result[0] = (byte) b;
-    result[1] = (byte) (b >> 8);
-    result[2] = (byte) (b >> 16);
-    result[3] = (byte) (b >> 24);
-
-    result[4] = (byte) m;
-    result[5] = (byte) (m >> 8);
-    result[6] = (byte) (m >> 16);
-    result[7] = (byte) (m >> 24);
+    BytesUtils.intToBytes(b, result, 0);
+    BytesUtils.intToBytes(m, result, 4);
+    BytesUtils.doubleToBytes(maxStandardError, result, 8);
 
     for (int i = 0; i < m; i++) {
-      int baseIndex = 8 + i * 4;
+      int baseIndex = 16 + i * 4;
       int value = registers[i];
       result[baseIndex] = (byte) value;
       result[baseIndex + 1] = (byte) (value >> 8);
