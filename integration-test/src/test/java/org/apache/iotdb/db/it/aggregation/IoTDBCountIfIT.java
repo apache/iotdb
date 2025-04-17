@@ -212,7 +212,7 @@ public class IoTDBCountIfIT {
   public void testMultiAttributes() {
     String[] expectedHeader =
         new String[] {
-          "Count_if(root.db.d1.s3, 1, \"attr1\"=\"1\",\"attr2\"=\"2\",\"attr3\"=\"3\")"
+          "Count_if(root.db.d1.s3, 1, \"attr1\"=\"1\", \"attr2\"=\"2\", \"attr3\"=\"3\")"
         };
     String[] retArray = new String[] {"1,"};
     resultSetEqualTest(
