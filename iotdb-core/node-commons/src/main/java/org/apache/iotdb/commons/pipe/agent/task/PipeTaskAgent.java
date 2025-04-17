@@ -453,7 +453,7 @@ public abstract class PipeTaskAgent {
    *     if the pipe already exists or is created but should not be started
    * @throws IllegalStateException if the status is illegal
    */
-  private boolean createPipe(final PipeMeta pipeMetaFromCoordinator) throws IllegalPathException {
+  protected boolean createPipe(final PipeMeta pipeMetaFromCoordinator) throws IllegalPathException {
     final String pipeName = pipeMetaFromCoordinator.getStaticMeta().getPipeName();
     final long creationTime = pipeMetaFromCoordinator.getStaticMeta().getCreationTime();
 

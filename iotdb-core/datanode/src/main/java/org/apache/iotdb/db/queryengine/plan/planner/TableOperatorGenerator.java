@@ -2335,14 +2335,28 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
       }
 
       if (!allHitCache) {
+        DeviceEntry deviceEntry = node.getDeviceEntries().get(i);
         AlignedFullPath alignedPath =
             constructAlignedPath(
-                node.getDeviceEntries().get(i),
+                deviceEntry,
                 parameter.getMeasurementColumnNames(),
                 parameter.getMeasurementSchemas(),
                 parameter.getAllSensors());
         ((DataDriverContext) context.getDriverContext()).addPath(alignedPath);
-        unCachedDeviceEntries.add(node.getDeviceEntries().get(i));
+        unCachedDeviceEntries.add(deviceEntry);
+
+        // last cache updateColumns need put "" as time column
+        String[] updateColumns = new String[parameter.getMeasurementColumnNames().size() + 1];
+        updateColumns[0] = "";
+        for (int j = 1; j < updateColumns.length; j++) {
+          updateColumns[j] = parameter.getMeasurementColumnNames().get(j - 1);
+        }
+        TableDeviceSchemaCache.getInstance()
+            .initOrInvalidateLastCache(
+                node.getQualifiedObjectName().getDatabaseName(),
+                deviceEntry.getDeviceID(),
+                updateColumns,
+                false);
       } else {
         hitCachesIndexes.add(i);
         hitCachedResults.add(lastByResult.get());

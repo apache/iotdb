@@ -1400,7 +1400,7 @@ public class DataRegion implements IDataRegionForQuery {
     }
   }
 
-  private void tryToUpdateInsertTabletLastCache(InsertTabletNode node) {
+  private void tryToUpdateInsertTabletLastCache(final InsertTabletNode node) {
     node.updateLastCache(getDatabaseName());
   }
 
@@ -1424,7 +1424,7 @@ public class DataRegion implements IDataRegionForQuery {
     return tsFileProcessor;
   }
 
-  private void tryToUpdateInsertRowLastCache(InsertRowNode node) {
+  private void tryToUpdateInsertRowLastCache(final InsertRowNode node) {
     node.updateLastCache(databaseName);
   }
 
@@ -2606,9 +2606,6 @@ public class DataRegion implements IDataRegionForQuery {
         continue;
       }
 
-      if (sealedTsFile.isCompacting()) {
-        involvedModificationFiles.add(sealedTsFile.getCompactionModFile());
-      }
       involvedModificationFiles.add(sealedTsFile.getModFileForWrite());
     }
 
@@ -2658,9 +2655,6 @@ public class DataRegion implements IDataRegionForQuery {
     for (TsFileResource tsFileResource : deletedByMods) {
       if (tsFileResource.isClosed()
           || !tsFileResource.getProcessor().deleteDataInMemory(modEntry)) {
-        if (tsFileResource.isCompacting()) {
-          involvedModificationFiles.add(tsFileResource.getCompactionModFile());
-        }
         involvedModificationFiles.add(tsFileResource.getModFileForWrite());
       } // else do nothing
     }
