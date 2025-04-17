@@ -3736,7 +3736,7 @@ public class StatementAnalyzer {
           final Expression value = property.getNonDefaultValue();
           if (!(value instanceof LongLiteral)) {
             throw new SemanticException(
-                "TTL' value must be a LongLiteral, but now is: " + value.toString());
+                "TTL' value must be a 'INF' or a LongLiteral, but now is: " + value.toString());
           }
         }
       }

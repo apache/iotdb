@@ -37,9 +37,13 @@ import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.block.TsBlockBuilder;
 import org.apache.tsfile.utils.Binary;
 
+import javax.annotation.Nonnull;
+
 import java.util.List;
 import java.util.Objects;
 import java.util.stream.Collectors;
+
+import static org.apache.iotdb.commons.conf.IoTDBConstant.TTL_INFINITE;
 
 public class ShowCreateTableTask extends AbstractTableTask {
   public ShowCreateTableTask(final String database, final String tableName) {
@@ -79,13 +83,13 @@ public class ShowCreateTableTask extends AbstractTableTask {
 
   private static String getShowCreateTableSQL(final TsTable table) {
     final StringBuilder builder =
-        new StringBuilder("CREATE TABLE \"").append(table.getTableName()).append("\" (");
+        new StringBuilder("CREATE TABLE ").append(getIdentifier(table.getTableName())).append(" (");
 
     for (final TsTableColumnSchema schema : table.getColumnList()) {
       switch (schema.getColumnCategory()) {
         case TAG:
           builder
-              .append(schema.getColumnName())
+              .append(getIdentifier(schema.getColumnName()))
               .append(" ")
               .append(schema.getDataType())
               .append(" ")
@@ -95,7 +99,7 @@ public class ShowCreateTableTask extends AbstractTableTask {
           continue;
         case FIELD:
           builder
-              .append(schema.getColumnName())
+              .append(getIdentifier(schema.getColumnName()))
               .append(" ")
               .append(schema.getDataType())
               .append(" ")
@@ -103,7 +107,7 @@ public class ShowCreateTableTask extends AbstractTableTask {
           break;
         case ATTRIBUTE:
           builder
-              .append(schema.getColumnName())
+              .append(getIdentifier(schema.getColumnName()))
               .append(" ")
               .append(schema.getDataType())
               .append(" ")
@@ -114,7 +118,7 @@ public class ShowCreateTableTask extends AbstractTableTask {
               "Unsupported column type: " + schema.getColumnCategory());
       }
       if (Objects.nonNull(schema.getProps().get(TsTable.COMMENT_KEY))) {
-        builder.append(" COMMENT ").append(schema.getProps().get(TsTable.COMMENT_KEY));
+        builder.append(" COMMENT ").append(getString(schema.getProps().get(TsTable.COMMENT_KEY)));
       }
       builder.append(",");
     }
@@ -125,14 +129,21 @@ public class ShowCreateTableTask extends AbstractTableTask {
 
     builder.append(")");
     if (table.getPropValue(TsTable.COMMENT_KEY).isPresent()) {
-      builder.append(" COMMENT '").append(table.getPropValue(TsTable.COMMENT_KEY)).append("'");
+      builder.append(" COMMENT ").append(getString(table.getPropValue(TsTable.COMMENT_KEY).get()));
     }
-    if (table.getPropValue(TsTable.TTL_PROPERTY).isPresent()) {
-      builder
-          .append(" WITH (ttl=")
-          .append(table.getPropValue(TsTable.TTL_PROPERTY).get())
-          .append(")");
-    }
+    builder
+        .append(" WITH (ttl=")
+        .append(table.getPropValue(TsTable.TTL_PROPERTY).orElse("'" + TTL_INFINITE + "'"))
+        .append(")");
+
     return builder.toString();
+  }
+
+  public static String getIdentifier(@Nonnull final String identifier) {
+    return "\"" + identifier.replace("\"", "\"\"") + "\"";
+  }
+
+  public static String getString(@Nonnull final String string) {
+    return "'" + string.replace("'", "''") + "'";
   }
 }

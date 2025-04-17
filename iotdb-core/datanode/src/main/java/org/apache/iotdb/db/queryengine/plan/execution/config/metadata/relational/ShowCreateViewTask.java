@@ -42,6 +42,10 @@ import java.util.List;
 import java.util.Objects;
 import java.util.stream.Collectors;
 
+import static org.apache.iotdb.commons.conf.IoTDBConstant.TTL_INFINITE;
+import static org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.ShowCreateTableTask.getIdentifier;
+import static org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.ShowCreateTableTask.getString;
+
 public class ShowCreateViewTask extends AbstractTableTask {
   public ShowCreateViewTask(final String database, final String tableName) {
     super(database, tableName);
@@ -82,13 +86,15 @@ public class ShowCreateViewTask extends AbstractTableTask {
 
   public static String getShowCreateViewSQL(final TsTable table) {
     final StringBuilder builder =
-        new StringBuilder("CREATE TABLE VIEW \"").append(table.getTableName()).append("\" (");
+        new StringBuilder("CREATE TABLE VIEW ")
+            .append(getIdentifier(table.getTableName()))
+            .append(" (");
 
     for (final TsTableColumnSchema schema : table.getColumnList()) {
       switch (schema.getColumnCategory()) {
         case TAG:
           builder
-              .append(schema.getColumnName())
+              .append(getIdentifier(schema.getColumnName()))
               .append(" ")
               .append(schema.getDataType())
               .append(" ")
@@ -98,13 +104,13 @@ public class ShowCreateViewTask extends AbstractTableTask {
           continue;
         case FIELD:
           builder
-              .append(schema.getColumnName())
+              .append(getIdentifier(schema.getColumnName()))
               .append(" ")
               .append(schema.getDataType())
               .append(" ")
               .append("FIELD");
           if (Objects.nonNull(TreeViewSchema.getOriginalName(schema))) {
-            builder.append(" FROM ").append(TreeViewSchema.getOriginalName(schema));
+            builder.append(" FROM ").append(getIdentifier(TreeViewSchema.getOriginalName(schema)));
           }
           break;
         case ATTRIBUTE:
@@ -113,7 +119,7 @@ public class ShowCreateViewTask extends AbstractTableTask {
               "Unsupported column type: " + schema.getColumnCategory());
       }
       if (Objects.nonNull(schema.getProps().get(TsTable.COMMENT_KEY))) {
-        builder.append(" COMMENT ").append(schema.getProps().get(TsTable.COMMENT_KEY));
+        builder.append(" COMMENT ").append(getString(schema.getProps().get(TsTable.COMMENT_KEY)));
       }
       builder.append(",");
     }
@@ -125,14 +131,13 @@ public class ShowCreateViewTask extends AbstractTableTask {
     builder.append(") AS ").append(table.getPropValue(TreeViewSchema.TREE_PATH_PATTERN).get());
 
     if (table.getPropValue(TsTable.COMMENT_KEY).isPresent()) {
-      builder.append(" COMMENT '").append(table.getPropValue(TsTable.COMMENT_KEY)).append("'");
+      builder.append(" COMMENT ").append(getString(table.getPropValue(TsTable.COMMENT_KEY).get()));
     }
-    if (table.getPropValue(TsTable.TTL_PROPERTY).isPresent()) {
-      builder
-          .append(" WITH (ttl=")
-          .append(table.getPropValue(TsTable.TTL_PROPERTY).get())
-          .append(")");
-    }
+    builder
+        .append(" WITH (ttl=")
+        .append(table.getPropValue(TsTable.TTL_PROPERTY).orElse("'" + TTL_INFINITE + "'"))
+        .append(")");
+
     if (TreeViewSchema.isRestrict(table)) {
       builder.append(" RESTRICT");
     }
