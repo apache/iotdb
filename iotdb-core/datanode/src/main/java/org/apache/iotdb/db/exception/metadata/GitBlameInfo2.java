@@ -4822,7 +4822,7 @@ public class GitBlameInfo2 {
             "/../tsfile/java/tsfile/src/test/java/org/apache/tsfile/encrypt/AES128TsFileReadWriteTest.java",
             "/../tsfile/java/tsfile/src/test/java/org/apache/tsfile/read/UnClosedTsFileReaderTest.java");
 
-    final ConcurrentHashMap<Integer, Double> results = new ConcurrentHashMap<>(paths.size());
+    final ConcurrentHashMap<Integer, String> results = new ConcurrentHashMap<>(paths.size());
     final AtomicInteger token = new AtomicInteger(paths.size());
 
     final Set<String> formal =
@@ -5095,10 +5095,12 @@ public class GitBlameInfo2 {
                     blameProcess.waitFor();
                     token.decrementAndGet();
                     // 输出结果
-                    results.put(
-                        finalI,
-                        (double) formalCode.get()
-                            / codeLines.values().stream().reduce(0, Integer::sum));
+                    final int sum = codeLines.values().stream().reduce(0, Integer::sum);
+                    final String ans =
+                        String.format(
+                            "%.2f%%", (sum > 0 ? (double) formalCode.get() / sum : 1.0) * 100);
+                    System.out.println(ans);
+                    results.put(finalI, ans);
                   } catch (final Exception e) {
                     System.out.println(e);
                   }
