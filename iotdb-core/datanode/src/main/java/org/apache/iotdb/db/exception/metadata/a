@@ -1,0 +1,6 @@
+caffeine:
+com.github.benmanes.caffeine.cache.Cache 237
+com.github.benmanes.caffeine.cache.Caffeine 1320
+com.github.benmanes.caffeine.cache.LoadingCache 109
+com.github.benmanes.caffeine.cache.Weigher 102
+1768
