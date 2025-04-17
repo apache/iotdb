@@ -373,7 +373,6 @@ public abstract class AbstractEnv implements BaseEnv {
         if (showClusterResp.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
           flag = false;
         }
-
         // Check the number of nodes
         if (showClusterResp.getNodeStatus().size()
             != configNodeWrapperList.size()
