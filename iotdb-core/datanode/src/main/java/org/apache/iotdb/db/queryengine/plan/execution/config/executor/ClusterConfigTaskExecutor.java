@@ -2076,9 +2076,15 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
 
       if (!alterPipeStatement.getExtractorAttributes().isEmpty()) {
         // We don't allow to change the extractor type
-        checkIfSameSourceType(
-            new PipeParameters(alterPipeStatement.getExtractorAttributes()),
-            pipeMetaFromCoordinator.getStaticMeta().getExtractorParameters());
+        if (alterPipeStatement
+                .getExtractorAttributes()
+                .containsKey(PipeExtractorConstant.EXTRACTOR_KEY)
+            || alterPipeStatement
+                .getExtractorAttributes()
+                .containsKey(PipeExtractorConstant.SOURCE_KEY))
+          checkIfSameSourceType(
+              new PipeParameters(alterPipeStatement.getExtractorAttributes()),
+              pipeMetaFromCoordinator.getStaticMeta().getExtractorParameters());
         if (alterPipeStatement.isReplaceAllExtractorAttributes()) {
           extractorAttributes = alterPipeStatement.getExtractorAttributes();
         } else {
@@ -2226,7 +2232,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
   }
 
   private static void checkIfSameSourceType(
-      PipeParameters newPipeParameters, PipeParameters oldPipeParameters) throws IoTDBException {
+      PipeParameters newPipeParameters, PipeParameters oldPipeParameters) {
     final String newPluginName =
         newPipeParameters
             .getStringOrDefault(
@@ -2241,14 +2247,11 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
                     PipeExtractorConstant.EXTRACTOR_KEY, PipeExtractorConstant.SOURCE_KEY),
                 BuiltinPipePlugin.IOTDB_EXTRACTOR.getPipePluginName())
             .toLowerCase();
-
-    if (!BuiltinPipePlugin.BUILTIN_SOURCES.containsAll(Arrays.asList(newPluginName, oldPluginName))
-        && !newPluginName.equals(oldPluginName)) {
-      throw new IoTDBException(
+    if (!PipeDataNodeAgent.plugin().checkIfPluginSameType(newPluginName, oldPluginName)) {
+      throw new SemanticException(
           String.format(
               "Failed to alter pipe, the source type of the pipe cannot be changed from %s to %s",
-              oldPluginName, newPluginName),
-          TSStatusCode.PIPE_ERROR.getStatusCode());
+              oldPluginName, newPluginName));
     }
   }
 
