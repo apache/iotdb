@@ -49,6 +49,9 @@ public class DeviceIteratorScanOperator extends AbstractDataSourceOperator {
   private int currentDeviceIndex;
   private Operator currentDeviceRootOperator;
   private List<Operator> dataSourceOperators;
+  // For each device operator tree, isBlocked needs to be called once.
+  // Calling isBlocked will set this field to true.
+  // When isBlocked is not called for a device, hasNext will return true and next will return null.
   private boolean currentDeviceInit;
 
   public DeviceIteratorScanOperator(
