@@ -927,7 +927,8 @@ relationPrimary
     : qualifiedName                                                   #tableName
     | '(' query ')'                                                   #subqueryRelation
     | '(' relation ')'                                                #parenthesizedRelation
-    | TABLE '(' tableFunctionCall ')'                                 #tableFunctionInvocation
+    | TABLE '(' tableFunctionCall ')'                                 #tableFunctionInvocationWithTableKeyWord
+    | tableFunctionCall                                               #tableFunctionInvocation
     ;
 
 tableFunctionCall
@@ -945,8 +946,10 @@ tableArgument
     ;
 
 tableArgumentRelation
-    : TABLE '(' qualifiedName ')' (AS? identifier columnAliases?)?  #tableArgumentTable
-    | TABLE '(' query ')' (AS? identifier columnAliases?)?          #tableArgumentQuery
+    : TABLE '(' qualifiedName ')' (AS? identifier columnAliases?)?  #tableArgumentTableWithTableKeyWord
+    | qualifiedName (AS? identifier columnAliases?)?          #tableArgumentTable
+    | TABLE '(' query ')' (AS? identifier columnAliases?)?          #tableArgumentQueryWithTableKeyWord
+    | '(' query ')' (AS? identifier columnAliases?)?          #tableArgumentQuery
     ;
 
 scalarArgument

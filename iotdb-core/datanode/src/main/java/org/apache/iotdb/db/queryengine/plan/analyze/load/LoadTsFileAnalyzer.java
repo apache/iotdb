@@ -84,6 +84,7 @@ import java.util.Optional;
 import static org.apache.iotdb.db.queryengine.plan.execution.config.TableConfigTaskVisitor.DATABASE_NOT_SPECIFIED;
 import static org.apache.iotdb.db.queryengine.plan.execution.config.TableConfigTaskVisitor.validateDatabaseName;
 import static org.apache.iotdb.db.storageengine.load.metrics.LoadTsFileCostMetricsSet.ANALYSIS;
+import static org.apache.iotdb.db.storageengine.load.metrics.LoadTsFileCostMetricsSet.ANALYSIS_ASYNC_MOVE;
 
 public class LoadTsFileAnalyzer implements AutoCloseable {
 
@@ -277,14 +278,20 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
   }
 
   private boolean doAsyncLoad(final IAnalysis analysis) {
-    if (ActiveLoadUtil.loadTsFileAsyncToActiveDir(
-        tsFiles, databaseForTableData, isDeleteAfterLoad)) {
-      analysis.setFinishQueryAfterAnalyze(true);
-      setRealStatement(analysis);
-      return true;
-    }
+    final long startTime = System.nanoTime();
+    try {
+      if (ActiveLoadUtil.loadTsFileAsyncToActiveDir(
+          tsFiles, databaseForTableData, isDeleteAfterLoad)) {
+        analysis.setFinishQueryAfterAnalyze(true);
+        setRealStatement(analysis);
+        return true;
+      }
     LOGGER.info("Async Load has failed, and is now trying to load sync");
     return false;
+    } finally {
+      LoadTsFileCostMetricsSet.getInstance()
+          .recordPhaseTimeCost(ANALYSIS_ASYNC_MOVE, System.nanoTime() - startTime);
+    }
   }
 
   private boolean doAnalyzeFileByFile(IAnalysis analysis) {

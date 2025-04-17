@@ -31,6 +31,7 @@ import org.apache.iotdb.commons.pipe.config.constant.SystemConstant;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.column.TimeColumnSchema;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
+import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
 import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.exception.sql.SemanticException;
@@ -473,12 +474,7 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
       final String columnName = columnDefinition.getName().getValue();
       final TSDataType dataType = getDataType(columnDefinition.getType());
       final String comment = columnDefinition.getComment();
-      if (checkTimeColumnIdempotent(
-              category,
-              columnName,
-              dataType,
-              comment,
-              (TimeColumnSchema) table.getColumnSchema(TIME_COLUMN_NAME))
+      if (checkTimeColumnIdempotent(category, columnName, dataType, comment, table)
           && !hasTimeColumn) {
         hasTimeColumn = true;
         continue;
@@ -498,13 +494,16 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
       final String columnName,
       final TSDataType dataType,
       final String comment,
-      final TimeColumnSchema timeColumnSchema) {
+      final TsTable table) {
     if (category == TsTableColumnCategory.TIME || columnName.equals(TIME_COLUMN_NAME)) {
       if (category == TsTableColumnCategory.TIME
           && columnName.equals(TIME_COLUMN_NAME)
           && dataType == TSDataType.TIMESTAMP) {
         if (Objects.nonNull(comment)) {
-          timeColumnSchema.getProps().put(TsTable.COMMENT_KEY, comment);
+          final TsTableColumnSchema columnSchema =
+              new TimeColumnSchema(TIME_COLUMN_NAME, TSDataType.TIMESTAMP);
+          columnSchema.getProps().put(TsTable.COMMENT_KEY, comment);
+          table.addColumnSchema(columnSchema);
         }
         return true;
       } else if (dataType == TSDataType.TIMESTAMP) {
