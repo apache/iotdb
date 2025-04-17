@@ -5123,12 +5123,4 @@ public class GitBlameInfo2 {
       throw new RuntimeException(e);
     }
   }
-
-  private static Map<String, Integer> getSortedMap(final Map<String, Integer> map) {
-    return map.entrySet().stream()
-        .sorted((c1, c2) -> c2.getValue().compareTo(c1.getValue()))
-        .collect(
-            Collectors.toMap(
-                Map.Entry::getKey, Map.Entry::getValue, (e1, e2) -> e1, LinkedHashMap::new));
-  }
 }
