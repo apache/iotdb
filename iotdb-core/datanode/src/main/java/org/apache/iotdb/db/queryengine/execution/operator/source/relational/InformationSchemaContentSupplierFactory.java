@@ -76,6 +76,7 @@ import static org.apache.iotdb.commons.conf.IoTDBConstant.TTL_INFINITE;
 import static org.apache.iotdb.commons.schema.SchemaConstant.ALL_MATCH_SCOPE;
 import static org.apache.iotdb.commons.schema.SchemaConstant.ALL_RESULT_NODES;
 import static org.apache.iotdb.commons.schema.table.TsTable.TTL_PROPERTY;
+import static org.apache.iotdb.db.queryengine.plan.execution.config.TableConfigTaskVisitor.canShowDB;
 import static org.apache.iotdb.db.queryengine.plan.execution.config.metadata.ShowPipePluginsTask.PIPE_PLUGIN_TYPE_BUILTIN;
 import static org.apache.iotdb.db.queryengine.plan.execution.config.metadata.ShowPipePluginsTask.PIPE_PLUGIN_TYPE_EXTERNAL;
 
@@ -94,7 +95,7 @@ public class InformationSchemaContentSupplierFactory {
       case InformationSchema.TABLES:
         return new TableSupplier(dataTypes);
       case InformationSchema.COLUMNS:
-        return new ColumnSupplier(dataTypes);
+        return new ColumnSupplier(dataTypes, userName);
       case InformationSchema.REGIONS:
         return new RegionSupplier(dataTypes, userName);
       case InformationSchema.PIPES:
@@ -288,9 +289,11 @@ public class InformationSchemaContentSupplierFactory {
     private String dbName;
     private String tableName;
     private Set<String> preDeletedColumns;
+    private final String userName;
 
-    private ColumnSupplier(final List<TSDataType> dataTypes) {
+    private ColumnSupplier(final List<TSDataType> dataTypes, final String userName) {
       super(dataTypes);
+      this.userName = userName;
       try (final ConfigNodeClient client =
           ConfigNodeClientManager.getInstance().borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
         final TDescTable4InformationSchemaResp resp = client.descTables4InformationSchema();
@@ -357,6 +360,9 @@ public class InformationSchemaContentSupplierFactory {
           final Map.Entry<String, Map<String, Pair<TsTable, Set<String>>>> entry =
               dbIterator.next();
           dbName = entry.getKey();
+          if (!canShowDB(accessControl, userName, dbName)) {
+            continue;
+          }
           tableInfoIterator = entry.getValue().entrySet().iterator();
         }
 

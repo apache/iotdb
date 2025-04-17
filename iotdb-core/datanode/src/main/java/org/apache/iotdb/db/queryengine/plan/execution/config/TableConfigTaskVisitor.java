@@ -354,15 +354,17 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
     context.setQueryType(QueryType.READ);
     return new ShowDBTask(
         node,
-        databaseName -> {
-          try {
-            accessControl.checkCanShowOrUseDatabase(
-                context.getSession().getUserName(), databaseName);
-            return true;
-          } catch (final AccessDeniedException e) {
-            return false;
-          }
-        });
+        databaseName -> canShowDB(accessControl, context.getSession().getUserName(), databaseName));
+  }
+
+  public static boolean canShowDB(
+      final AccessControl accessControl, final String userName, final String databaseName) {
+    try {
+      accessControl.checkCanShowOrUseDatabase(userName, databaseName);
+      return true;
+    } catch (final AccessDeniedException e) {
+      return false;
+    }
   }
 
   @Override
