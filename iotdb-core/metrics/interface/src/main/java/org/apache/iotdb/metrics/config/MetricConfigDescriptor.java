@@ -112,6 +112,10 @@ public class MetricConfigDescriptor {
                 properties,
                 isConfigNode)));
 
+    loadConfig.setPrometheusReporterUsername(properties.getProperty("metric_prometheus_reporter_username", loadConfig.getPrometheusReporterUsername()));
+
+    loadConfig.setPrometheusReporterPassword(properties.getProperty("metric_prometheus_reporter_password", loadConfig.getPrometheusReporterPassword()));
+
     IoTDBReporterConfig reporterConfig = loadConfig.getIoTDBReporterConfig();
     reporterConfig.setHost(
         getProperty(

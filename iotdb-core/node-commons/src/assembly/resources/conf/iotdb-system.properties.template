@@ -394,6 +394,13 @@ cn_metric_async_collect_period=5
 # Datatype: int
 cn_metric_prometheus_reporter_port=9091
 
+# The username for the Prometheus port of both the ConfigNode and the DataNode.
+# If left unset, the Prometheus port can be accessed without authentication.
+metric_prometheus_reporter_username=
+
+# The password for the Prometheus port of both the ConfigNode and the DataNode.
+metric_prometheus_reporter_password=
+
 # The reporters of metric module to report metrics
 # If there are more than one reporter, please separate them by commas ",".
 # Options: [JMX, PROMETHEUS]

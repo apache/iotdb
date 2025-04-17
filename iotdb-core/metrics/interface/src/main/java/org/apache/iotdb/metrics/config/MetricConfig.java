@@ -49,6 +49,10 @@ public class MetricConfig {
   /** The export port for prometheus to get metrics. */
   private Integer prometheusReporterPort = 9091;
 
+  private String prometheusReporterUsername = "";
+
+  private String prometheusReporterPassword = "";
+
   /** The iotdb config for iotdb reporter to push metric data. */
   private final IoTDBReporterConfig iotdbReporterConfig = new IoTDBReporterConfig();
 
@@ -127,6 +131,26 @@ public class MetricConfig {
     this.prometheusReporterPort = prometheusReporterPort;
   }
 
+  public boolean prometheusNeedAuth() {
+    return !Objects.equals(prometheusReporterUsername, "") || !Objects.equals(prometheusReporterPassword, "");
+  }
+
+  public String getPrometheusReporterUsername() {
+    return prometheusReporterUsername;
+  }
+
+  public void setPrometheusReporterUsername(String prometheusReporterUsername) {
+    this.prometheusReporterUsername = prometheusReporterUsername;
+  }
+
+  public String getPrometheusReporterPassword() {
+    return prometheusReporterPassword;
+  }
+
+  public void setPrometheusReporterPassword(String prometheusReporterPassword) {
+    this.prometheusReporterPassword = prometheusReporterPassword;
+  }
+
   public IoTDBReporterConfig getIoTDBReporterConfig() {
     return iotdbReporterConfig;
   }
@@ -181,6 +205,8 @@ public class MetricConfig {
     metricLevel = newMetricConfig.getMetricLevel();
     asyncCollectPeriodInSecond = newMetricConfig.getAsyncCollectPeriodInSecond();
     prometheusReporterPort = newMetricConfig.getPrometheusReporterPort();
+    prometheusReporterUsername = newMetricConfig.getPrometheusReporterUsername();
+    prometheusReporterPassword = newMetricConfig.getPrometheusReporterPassword();
     internalReporterType = newMetricConfig.getInternalReportType();
 
     iotdbReporterConfig.copy(newMetricConfig.getIoTDBReporterConfig());
