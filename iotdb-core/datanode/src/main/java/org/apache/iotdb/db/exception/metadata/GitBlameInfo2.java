@@ -5108,8 +5108,10 @@ public class GitBlameInfo2 {
           e.printStackTrace();
         }
         ++i;
+        double speed = 1000.0 * i / (System.currentTimeMillis() - startTime);
         System.out.println("Process: " + i + "/" + paths.size());
-        System.out.println("Speed: " + 1000.0 * i / (System.currentTimeMillis() - startTime));
+        System.out.println("Speed: " + speed);
+        System.out.println("Remaining: " + (paths.size() - i) / speed);
       }
       while (token.get() != 0) {
         Thread.sleep(50);
