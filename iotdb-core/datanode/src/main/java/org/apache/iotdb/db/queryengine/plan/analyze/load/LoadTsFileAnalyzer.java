@@ -286,8 +286,8 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
         setRealStatement(analysis);
         return true;
       }
-    LOGGER.info("Async Load has failed, and is now trying to load sync");
-    return false;
+      LOGGER.info("Async Load has failed, and is now trying to load sync");
+      return false;
     } finally {
       LoadTsFileCostMetricsSet.getInstance()
           .recordPhaseTimeCost(ANALYSIS_ASYNC_MOVE, System.nanoTime() - startTime);
