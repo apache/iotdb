@@ -395,7 +395,9 @@ public class FileUtils {
     } else {
       if (!(targetDir.exists() || targetDir.mkdirs())) {
         final String log =
-            String.format("failed to create target directory: %s", targetDir.getAbsolutePath());
+            String.format(
+                "Failed to create target directory: %s. Please check permissions or disk space.",
+                targetDir.getAbsolutePath());
         LOGGER.warn(log);
         throw new IOException(log);
       }
