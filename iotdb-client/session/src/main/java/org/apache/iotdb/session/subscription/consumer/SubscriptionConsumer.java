@@ -188,12 +188,8 @@ abstract class SubscriptionConsumer implements AutoCloseable {
   protected SubscriptionConsumer(final Builder builder, final Properties properties) {
     this(
         builder
-            .host(
-                (String)
-                    properties.getOrDefault(ConsumerConstant.HOST_KEY, SessionConfig.DEFAULT_HOST))
-            .port(
-                (Integer)
-                    properties.getOrDefault(ConsumerConstant.PORT_KEY, SessionConfig.DEFAULT_PORT))
+            .host((String) properties.get(ConsumerConstant.HOST_KEY))
+            .port((Integer) properties.get(ConsumerConstant.PORT_KEY))
             .nodeUrls((List<String>) properties.get(ConsumerConstant.NODE_URLS_KEY))
             .username(
                 (String)
