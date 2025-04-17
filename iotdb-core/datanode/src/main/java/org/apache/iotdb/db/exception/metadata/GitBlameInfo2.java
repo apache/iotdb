@@ -21,6 +21,7 @@ import java.util.regex.Pattern;
 public class GitBlameInfo2 {
   public static void main(String[] args) throws Exception {
     final String timechoDBPath = "C:\\Users\\13361\\Documents\\GitHub\\timechodb\\";
+    // final List<String> paths = Arrays.asList("/../tsfile/python/setup.py");
     final List<String> paths =
         Arrays.asList(
             "/iotdb-api/pipe-api/src/main/java/org/apache/iotdb/pipe/api/access/Row.java",
@@ -4929,7 +4930,7 @@ public class GitBlameInfo2 {
                 "周沛辰"));
     formal.addAll(internship);
 
-    final File outPutFile = new File("C:\\Users\\13361\\Downloads\\output\\fuck_everyone_20.txt");
+    final File outPutFile = new File("C:\\Users\\13361\\Downloads\\output\\fuck_everyone_true.txt");
     outPutFile.delete();
     outPutFile.createNewFile();
     final long startTime = System.currentTimeMillis();
