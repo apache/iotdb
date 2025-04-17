@@ -21,6 +21,7 @@ package org.apache.iotdb.db.pipe.resource.memory;
 
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.db.pipe.event.common.row.PipeRow;
+import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertBaseStatement;
 import org.apache.iotdb.db.utils.MemUtils;
 
 import org.apache.tsfile.enums.TSDataType;
@@ -348,6 +349,11 @@ public class PipeMemoryWeightUtil {
     }
 
     return size;
+  }
+
+  public static long calculateInsertBaseStatementSizeInBytes(
+      InsertBaseStatement insertBaseStatement) {
+    return insertBaseStatement.ramBytesUsed();
   }
 
   /**

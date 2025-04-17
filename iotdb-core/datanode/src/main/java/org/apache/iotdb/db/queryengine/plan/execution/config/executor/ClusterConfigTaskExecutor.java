@@ -2075,30 +2075,10 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
     try {
 
       if (!alterPipeStatement.getExtractorAttributes().isEmpty()) {
-        // We simply don't allow to alter external sources
-        if (pipeMetaFromCoordinator.getStaticMeta().isSourceExternal()
-            || !BuiltinPipePlugin.BUILTIN_SOURCES.containsAll(
-                Arrays.asList(
-                    alterPipeStatement
-                        .getExtractorAttributes()
-                        .getOrDefault(
-                            PipeExtractorConstant.SOURCE_KEY,
-                            BuiltinPipePlugin.IOTDB_EXTRACTOR.getPipePluginName())
-                        .toLowerCase(),
-                    alterPipeStatement
-                        .getExtractorAttributes()
-                        .getOrDefault(
-                            PipeExtractorConstant.EXTRACTOR_KEY,
-                            BuiltinPipePlugin.IOTDB_EXTRACTOR.getPipePluginName())
-                        .toLowerCase()))) {
-          future.setException(
-              new IoTDBException(
-                  String.format(
-                      "Failed to alter pipe %s, external source cannot be altered.",
-                      alterPipeStatement.getPipeName()),
-                  TSStatusCode.PIPE_ERROR.getStatusCode()));
-          return future;
-        }
+        // We don't allow to change the extractor type
+        checkIfSameSourceType(
+            new PipeParameters(alterPipeStatement.getExtractorAttributes()),
+            pipeMetaFromCoordinator.getStaticMeta().getExtractorParameters());
         if (alterPipeStatement.isReplaceAllExtractorAttributes()) {
           extractorAttributes = alterPipeStatement.getExtractorAttributes();
         } else {
@@ -2242,6 +2222,33 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
           String.format(
               "Failed to alter pipe %s, in write-back-sink, password must be set when the username is specified.",
               pipeName));
+    }
+  }
+
+  private static void checkIfSameSourceType(
+      PipeParameters newPipeParameters, PipeParameters oldPipeParameters) throws IoTDBException {
+    final String newPluginName =
+        newPipeParameters
+            .getStringOrDefault(
+                Arrays.asList(
+                    PipeExtractorConstant.EXTRACTOR_KEY, PipeExtractorConstant.SOURCE_KEY),
+                BuiltinPipePlugin.IOTDB_EXTRACTOR.getPipePluginName())
+            .toLowerCase();
+    final String oldPluginName =
+        oldPipeParameters
+            .getStringOrDefault(
+                Arrays.asList(
+                    PipeExtractorConstant.EXTRACTOR_KEY, PipeExtractorConstant.SOURCE_KEY),
+                BuiltinPipePlugin.IOTDB_EXTRACTOR.getPipePluginName())
+            .toLowerCase();
+
+    if (!BuiltinPipePlugin.BUILTIN_SOURCES.containsAll(Arrays.asList(newPluginName, oldPluginName))
+        && !newPluginName.equals(oldPluginName)) {
+      throw new IoTDBException(
+          String.format(
+              "Failed to alter pipe, the source type of the pipe cannot be changed from %s to %s",
+              oldPluginName, newPluginName),
+          TSStatusCode.PIPE_ERROR.getStatusCode());
     }
   }
 

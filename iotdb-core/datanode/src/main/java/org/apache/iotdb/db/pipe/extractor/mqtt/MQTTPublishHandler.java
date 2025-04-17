@@ -20,13 +20,14 @@
 package org.apache.iotdb.db.pipe.extractor.mqtt;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant.ClientVersion;
+import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.pipe.agent.task.connection.UnboundedBlockingPendingQueue;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
 import org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant;
 import org.apache.iotdb.commons.pipe.config.plugin.env.PipeTaskExtractorRuntimeEnvironment;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
-import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
+import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
+import org.apache.iotdb.db.pipe.event.common.statement.PipeStatementInsertionEvent;
 import org.apache.iotdb.db.protocol.mqtt.Message;
 import org.apache.iotdb.db.protocol.mqtt.PayloadFormatManager;
 import org.apache.iotdb.db.protocol.mqtt.PayloadFormatter;
@@ -36,9 +37,11 @@ import org.apache.iotdb.db.protocol.session.IClientSession;
 import org.apache.iotdb.db.protocol.session.MqttClientSession;
 import org.apache.iotdb.db.protocol.session.SessionManager;
 import org.apache.iotdb.db.queryengine.plan.Coordinator;
+import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.DataNodeDevicePathCache;
+import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertTabletStatement;
 import org.apache.iotdb.db.utils.CommonUtils;
 import org.apache.iotdb.db.utils.TimestampPrecisionUtils;
-import org.apache.iotdb.db.utils.constant.SqlConstant;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 import org.apache.iotdb.service.rpc.thrift.TSProtocolVersion;
 
@@ -48,23 +51,16 @@ import io.moquette.interception.messages.InterceptDisconnectMessage;
 import io.moquette.interception.messages.InterceptPublishMessage;
 import io.netty.buffer.ByteBuf;
 import io.netty.handler.codec.mqtt.MqttQoS;
-import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.enums.TSDataType;
-import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.BitMap;
-import org.apache.tsfile.write.record.Tablet;
-import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.time.ZoneId;
-import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
-
-import static org.apache.iotdb.db.utils.CommonUtils.parseBlobStringToByteArray;
 
 /** PublishHandler handle the messages from MQTT clients. */
 public class MQTTPublishHandler extends AbstractInterceptHandler {
@@ -184,9 +180,21 @@ public class MQTTPublishHandler extends AbstractInterceptHandler {
   private void extractTable(final TableMessage message, final MqttClientSession session) {
     try {
       TimestampPrecisionUtils.checkTimestampPrecision(message.getTimestamp());
+      InsertTabletStatement insertTabletStatement = constructInsertTabletStatement(message);
       session.setDatabaseName(message.getDatabase().toLowerCase());
       session.setSqlDialect(IClientSession.SqlDialect.TABLE);
-      final EnrichedEvent event = generateEvent(message, session.getUsername());
+      final EnrichedEvent event =
+          new PipeStatementInsertionEvent(
+              pipeName,
+              creationTime,
+              pipeTaskMeta,
+              null,
+              null,
+              session.getUsername(),
+              true,
+              true,
+              session.getDatabaseName(),
+              insertTabletStatement);
       if (!event.increaseReferenceCount(MQTTPublishHandler.class.getName())) {
         LOGGER.warn("The reference count of the event {} cannot be increased, skipping it.", event);
         return;
@@ -205,32 +213,42 @@ public class MQTTPublishHandler extends AbstractInterceptHandler {
     }
   }
 
-  private PipeRawTabletInsertionEvent generateEvent(
-      final TableMessage message, final String userName) {
-    final List<String> measurements =
+  private InsertTabletStatement constructInsertTabletStatement(TableMessage message)
+      throws IllegalPathException {
+    InsertTabletStatement statement = new InsertTabletStatement();
+    statement.setDevicePath(
+        DataNodeDevicePathCache.getInstance().getPartialPath(message.getTable()));
+    List<String> measurements =
         Stream.of(message.getFields(), message.getTagKeys(), message.getAttributeKeys())
             .flatMap(List::stream)
             .collect(Collectors.toList());
-    final long[] timestamps = new long[] {message.getTimestamp()};
-    final BitMap[] bitMaps = new BitMap[measurements.size()];
-    final Object[] columns =
+    statement.setMeasurements(measurements.toArray(new String[0]));
+    long[] timestamps = new long[] {message.getTimestamp()};
+    statement.setTimes(timestamps);
+    int columnSize = measurements.size();
+    int rowSize = 1;
+
+    BitMap[] bitMaps = new BitMap[columnSize];
+    Object[] columns =
         Stream.of(message.getValues(), message.getTagValues(), message.getAttributeValues())
             .flatMap(List::stream)
             .toArray(Object[]::new);
-    final TSDataType[] dataTypes = new TSDataType[measurements.size()];
-    final Tablet.ColumnCategory[] columnCategories = new Tablet.ColumnCategory[measurements.size()];
-    final MeasurementSchema[] schemas = new MeasurementSchema[measurements.size()];
+    statement.setColumns(columns);
+    statement.setBitMaps(bitMaps);
+    statement.setRowCount(rowSize);
+    statement.setAligned(false);
+    statement.setWriteToTable(true);
+    TSDataType[] dataTypes = new TSDataType[measurements.size()];
+    TsTableColumnCategory[] columnCategories = new TsTableColumnCategory[measurements.size()];
     for (int i = 0; i < message.getFields().size(); i++) {
       dataTypes[i] = message.getDataTypes().get(i);
-      columnCategories[i] = Tablet.ColumnCategory.FIELD;
-      schemas[i] = new MeasurementSchema(measurements.get(i), dataTypes[i]);
+      columnCategories[i] = TsTableColumnCategory.FIELD;
     }
     for (int i = message.getFields().size();
         i < message.getFields().size() + message.getTagKeys().size();
         i++) {
       dataTypes[i] = TSDataType.STRING;
-      columnCategories[i] = Tablet.ColumnCategory.TAG;
-      schemas[i] = new MeasurementSchema(measurements.get(i), dataTypes[i]);
+      columnCategories[i] = TsTableColumnCategory.TAG;
     }
     for (int i = message.getFields().size() + message.getTagKeys().size();
         i
@@ -239,39 +257,52 @@ public class MQTTPublishHandler extends AbstractInterceptHandler {
                 + message.getAttributeKeys().size();
         i++) {
       dataTypes[i] = TSDataType.STRING;
-      columnCategories[i] = Tablet.ColumnCategory.ATTRIBUTE;
-      schemas[i] = new MeasurementSchema(measurements.get(i), dataTypes[i]);
+      columnCategories[i] = TsTableColumnCategory.ATTRIBUTE;
     }
+    statement.setDataTypes(dataTypes);
+    statement.setColumnCategories(columnCategories);
 
-    final Tablet eventTablet =
-        new Tablet(
-            message.getTable(),
-            Arrays.asList(schemas),
-            Arrays.asList(columnCategories),
-            timestamps,
-            columns,
-            bitMaps,
-            1);
-
-    return new PipeRawTabletInsertionEvent(
-        true,
-        message.getDatabase().toLowerCase(),
-        null,
-        null,
-        eventTablet,
-        true,
-        pipeName,
-        creationTime,
-        pipeTaskMeta,
-        null,
-        false,
-        userName);
+    return statement;
   }
 
   private void extractTree(final TreeMessage message, final MqttClientSession session) {
     try {
+      InsertRowStatement statement = new InsertRowStatement();
+      statement.setDevicePath(
+          DataNodeDevicePathCache.getInstance().getPartialPath(message.getDevice()));
       TimestampPrecisionUtils.checkTimestampPrecision(message.getTimestamp());
-      final EnrichedEvent event = generateEvent(message, session.getUsername());
+      statement.setTime(message.getTimestamp());
+      statement.setMeasurements(message.getMeasurements().toArray(new String[0]));
+      if (message.getDataTypes() == null) {
+        statement.setDataTypes(new TSDataType[message.getMeasurements().size()]);
+        statement.setValues(message.getValues().toArray(new Object[0]));
+        statement.setNeedInferType(true);
+      } else {
+        List<TSDataType> dataTypes = message.getDataTypes();
+        List<String> values = message.getValues();
+        Object[] inferredValues = new Object[values.size()];
+        for (int i = 0; i < values.size(); ++i) {
+          inferredValues[i] =
+              values.get(i) == null
+                  ? null
+                  : CommonUtils.parseValue(dataTypes.get(i), values.get(i));
+        }
+        statement.setDataTypes(dataTypes.toArray(new TSDataType[0]));
+        statement.setValues(inferredValues);
+      }
+      statement.setAligned(false);
+      final EnrichedEvent event =
+          new PipeStatementInsertionEvent(
+              pipeName,
+              creationTime,
+              pipeTaskMeta,
+              null,
+              null,
+              session.getUsername(),
+              true,
+              false,
+              message.getDevice(),
+              statement);
       if (!event.increaseReferenceCount(MQTTPublishHandler.class.getName())) {
         LOGGER.warn("The reference count of the event {} cannot be increased, skipping it.", event);
         return;
@@ -285,137 +316,6 @@ public class MQTTPublishHandler extends AbstractInterceptHandler {
           message.getTimestamp(),
           e);
     }
-  }
-
-  private EnrichedEvent generateEvent(final TreeMessage message, final String userName)
-      throws QueryProcessException {
-    final String deviceId = message.getDevice();
-    final List<String> measurements = message.getMeasurements();
-    final long[] timestamps = new long[] {message.getTimestamp()};
-    final MeasurementSchema[] schemas = new MeasurementSchema[measurements.size()];
-    final TSDataType[] dataTypes =
-        message.getDataTypes() == null
-            ? new TSDataType[message.getMeasurements().size()]
-            : message.getDataTypes().toArray(new TSDataType[0]);
-    final List<String> values = message.getValues();
-    final BitMap[] bitMaps = new BitMap[schemas.length];
-    final Object[] inferredValues = new Object[values.size()];
-
-    for (int i = 0; i < bitMaps.length; i++) {
-      bitMaps[i] = new BitMap(1);
-    }
-    // For each measurement value, parse it and then wrap it in a one-dimensional array.
-    for (int i = 0; i < values.size(); ++i) {
-      Object parsedValue;
-      if (message.getDataTypes() == null) {
-        parsedValue = parseValue(values.get(i), dataTypes, i);
-      } else {
-        parsedValue =
-            values.get(i) == null ? null : CommonUtils.parseValue(dataTypes[i], values.get(i));
-      }
-      if (parsedValue == null) {
-        bitMaps[i].mark(0);
-      }
-      // Wrap the parsed value into a one-dimensional array based on its type.
-      switch (dataTypes[i]) {
-        case INT32:
-        case DATE:
-          inferredValues[i] = new int[] {parsedValue == null ? 0 : (Integer) parsedValue};
-          break;
-        case INT64:
-        case TIMESTAMP:
-          inferredValues[i] = new long[] {parsedValue == null ? 0 : (Long) parsedValue};
-          break;
-        case FLOAT:
-          inferredValues[i] = new float[] {parsedValue == null ? 0 : (Float) parsedValue};
-          break;
-        case DOUBLE:
-          inferredValues[i] = new double[] {parsedValue == null ? 0 : (Double) parsedValue};
-          break;
-        case BOOLEAN:
-          inferredValues[i] = new boolean[] {parsedValue == null ? false : (Boolean) parsedValue};
-          break;
-        case STRING:
-        case TEXT:
-        case BLOB:
-          inferredValues[i] = new Binary[] {(Binary) parsedValue};
-          break;
-        default:
-          // For any other type, wrap it as an Object array.
-          inferredValues[i] = new Object[] {parsedValue};
-      }
-    }
-    for (int i = 0; i < schemas.length; i++) {
-      schemas[i] = new MeasurementSchema(measurements.get(i), dataTypes[i]);
-    }
-    final Tablet eventTablet =
-        new Tablet(deviceId, Arrays.asList(schemas), timestamps, inferredValues, bitMaps, 1);
-
-    return new PipeRawTabletInsertionEvent(
-        false,
-        deviceId,
-        null,
-        null,
-        eventTablet,
-        false,
-        pipeName,
-        creationTime,
-        pipeTaskMeta,
-        null,
-        false,
-        userName);
-  }
-
-  public Object parseValue(String value, TSDataType[] dataType, final int index) {
-    if (value == null) {
-      dataType[index] = TSDataType.TEXT;
-      return null;
-    }
-    Double parsedValue = null;
-    if (value.equalsIgnoreCase("true") || value.equalsIgnoreCase("false")) {
-      dataType[index] = TSDataType.BOOLEAN;
-      return Boolean.parseBoolean(value);
-    }
-    try {
-      parsedValue = Double.parseDouble(value);
-      if (Double.isInfinite(parsedValue)) {
-        throw new NumberFormatException("The input double value is Infinity");
-      }
-    } catch (NumberFormatException e) {
-
-    }
-    if (parsedValue != null) {
-      if (!value.endsWith("F")
-          && !value.endsWith("f")
-          && !value.endsWith("D")
-          && !value.endsWith("d")) {
-        dataType[index] = TSDataType.DOUBLE;
-        return parsedValue;
-      }
-    }
-    if ("null".equals(value) || "NULL".equals(value)) {
-      dataType[index] = TSDataType.TEXT;
-      return null;
-      // "NaN" is returned if the NaN Literal is given in Parser
-    }
-    if ("NaN".equals(value)) {
-      dataType[index] = TSDataType.DOUBLE;
-      return Double.NaN;
-    }
-    if (value.length() >= 3 && value.startsWith("X'") && value.endsWith("'")) {
-      dataType[index] = TSDataType.BLOB;
-      return new Binary(parseBlobStringToByteArray(value));
-    }
-    dataType[index] = TSDataType.TEXT;
-    if ((value.startsWith(SqlConstant.QUOTE) && value.endsWith(SqlConstant.QUOTE))
-        || (value.startsWith(SqlConstant.DQUOTE) && value.endsWith(SqlConstant.DQUOTE))) {
-      if (value.length() == 1) {
-        return new Binary(value, TSFileConfig.STRING_CHARSET);
-      } else {
-        return new Binary(value.substring(1, value.length() - 1), TSFileConfig.STRING_CHARSET);
-      }
-    }
-    return new Binary(value, TSFileConfig.STRING_CHARSET);
   }
 
   @Override
