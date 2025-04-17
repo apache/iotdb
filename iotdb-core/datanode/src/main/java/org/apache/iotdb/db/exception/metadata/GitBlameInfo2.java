@@ -4902,6 +4902,8 @@ public class GitBlameInfo2 {
                 "Rui,Lei",
                 "V_Galaxy",
                 "Colin Li",
+                "Colin Lee",
+                "colin",
                 "YangCaiyin",
                 "Zhenyu Luo",
                 "Xiangwei Wei",
