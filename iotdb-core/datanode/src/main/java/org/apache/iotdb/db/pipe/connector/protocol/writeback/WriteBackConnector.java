@@ -173,6 +173,7 @@ public class WriteBackConnector implements PipeConnector {
       throw new PipeParameterNotValidException(
           String.format("Parameters in set %s are not allowed in 'skipif'", skipIfOptionSet));
     }
+
     useEventUserName =
         parameters.getBooleanOrDefault(
             Arrays.asList(CONNECTOR_USE_EVENT_USER_NAME_KEY, SINK_USE_EVENT_USER_NAME_KEY),
@@ -294,7 +295,8 @@ public class WriteBackConnector implements PipeConnector {
         insertTabletStatement.isWriteToTable()
             ? executeStatementForTableModel(
                 insertTabletStatement, dataBaseName, pipeRawTabletInsertionEvent.getUserName())
-            : executeStatementForTreeModel(insertTabletStatement, null);
+            : executeStatementForTreeModel(
+                insertTabletStatement, pipeRawTabletInsertionEvent.getUserName());
     if (status.getCode() != TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode()
         && status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()
         && !(skipIfNoPrivileges
@@ -363,11 +365,11 @@ public class WriteBackConnector implements PipeConnector {
       Statement statement, String dataBaseName, final String userName) {
     session.setDatabaseName(dataBaseName);
     session.setSqlDialect(IClientSession.SqlDialect.TABLE);
-    SESSION_MANAGER.registerSession(session);
     final String originalUerName = session.getDatabaseName();
     if (useEventUserName && userName != null) {
       session.setUsername(userName);
     }
+    SESSION_MANAGER.registerSession(session);
     try {
       autoCreateDatabaseIfNecessary(dataBaseName);
       return Coordinator.getInstance()
@@ -421,7 +423,7 @@ public class WriteBackConnector implements PipeConnector {
     } finally {
       SESSION_MANAGER.removeCurrSession();
       if (useEventUserName) {
-        treeSession.setUsername(originalUerName);
+        session.setUsername(originalUerName);
       }
     }
   }
@@ -470,11 +472,11 @@ public class WriteBackConnector implements PipeConnector {
   private TSStatus executeStatementForTreeModel(final Statement statement, final String userName) {
     treeSession.setDatabaseName(null);
     treeSession.setSqlDialect(IClientSession.SqlDialect.TREE);
-    SESSION_MANAGER.registerSession(treeSession);
     final String originalUerName = treeSession.getUsername();
     if (useEventUserName && userName != null) {
       treeSession.setUsername(userName);
     }
+    SESSION_MANAGER.registerSession(treeSession);
     try {
       return Coordinator.getInstance()
           .executeForTreeModel(

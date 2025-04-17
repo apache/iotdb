@@ -223,6 +223,7 @@ public class PipeDataNodeTaskBuilder {
           "PipeDataNodeTaskBuilder: When 'inclusion' contains 'data.delete', 'realtime-first' is defaulted to 'false' to prevent sync issues after deletion.");
       return;
     }
+
     if (isRealtime) {
       LOGGER.warn(
           "PipeDataNodeTaskBuilder: When 'inclusion' includes 'data.delete', 'realtime-first' set to 'true' may result in data synchronization issues after deletion.");
