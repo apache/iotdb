@@ -86,6 +86,7 @@ import static org.apache.iotdb.commons.utils.FileUtils.moveFileWithMD5Check;
 import static org.apache.iotdb.db.queryengine.plan.execution.config.TableConfigTaskVisitor.DATABASE_NOT_SPECIFIED;
 import static org.apache.iotdb.db.queryengine.plan.execution.config.TableConfigTaskVisitor.validateDatabaseName;
 import static org.apache.iotdb.db.storageengine.load.metrics.LoadTsFileCostMetricsSet.ANALYSIS;
+import static org.apache.iotdb.db.storageengine.load.metrics.LoadTsFileCostMetricsSet.ANALYSIS_ASYNC_MOVE;
 
 public class LoadTsFileAnalyzer implements AutoCloseable {
 
@@ -279,40 +280,46 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
   }
 
   private boolean doAsyncLoad(final IAnalysis analysis) {
-    final String[] loadActiveListeningDirs =
-        IoTDBDescriptor.getInstance().getConfig().getLoadActiveListeningDirs();
-    String targetFilePath = null;
-    for (int i = 0, size = loadActiveListeningDirs == null ? 0 : loadActiveListeningDirs.length;
-        i < size;
-        i++) {
-      if (loadActiveListeningDirs[i] != null) {
-        targetFilePath = loadActiveListeningDirs[i];
-        break;
-      }
-    }
-    if (targetFilePath == null) {
-      LOGGER.warn("Load active listening dir is not set. Will try sync load instead.");
-      return false;
-    }
-
+    final long startTime = System.nanoTime();
     try {
-      if (Objects.nonNull(databaseForTableData)) {
-        loadTsFilesAsyncToTargetDir(new File(targetFilePath, databaseForTableData), tsFiles);
-      } else {
-        loadTsFilesAsyncToTargetDir(new File(targetFilePath), tsFiles);
+      final String[] loadActiveListeningDirs =
+          IoTDBDescriptor.getInstance().getConfig().getLoadActiveListeningDirs();
+      String targetFilePath = null;
+      for (int i = 0, size = loadActiveListeningDirs == null ? 0 : loadActiveListeningDirs.length;
+          i < size;
+          i++) {
+        if (loadActiveListeningDirs[i] != null) {
+          targetFilePath = loadActiveListeningDirs[i];
+          break;
+        }
       }
-    } catch (Exception e) {
-      LOGGER.warn(
-          "Failed to async load tsfiles {} to target dir {}. Will try sync load instead.",
-          tsFiles,
-          targetFilePath,
-          e);
-      return false;
-    }
+      if (targetFilePath == null) {
+        LOGGER.warn("Load active listening dir is not set. Will try sync load instead.");
+        return false;
+      }
 
-    analysis.setFinishQueryAfterAnalyze(true);
-    setRealStatement(analysis);
-    return true;
+      try {
+        if (Objects.nonNull(databaseForTableData)) {
+          loadTsFilesAsyncToTargetDir(new File(targetFilePath, databaseForTableData), tsFiles);
+        } else {
+          loadTsFilesAsyncToTargetDir(new File(targetFilePath), tsFiles);
+        }
+      } catch (Exception e) {
+        LOGGER.warn(
+            "Failed to async load tsfiles {} to target dir {}. Will try sync load instead.",
+            tsFiles,
+            targetFilePath,
+            e);
+        return false;
+      }
+
+      analysis.setFinishQueryAfterAnalyze(true);
+      setRealStatement(analysis);
+      return true;
+    } finally {
+      LoadTsFileCostMetricsSet.getInstance()
+          .recordPhaseTimeCost(ANALYSIS_ASYNC_MOVE, System.nanoTime() - startTime);
+    }
   }
 
   private void loadTsFilesAsyncToTargetDir(final File targetDir, final List<File> files)
