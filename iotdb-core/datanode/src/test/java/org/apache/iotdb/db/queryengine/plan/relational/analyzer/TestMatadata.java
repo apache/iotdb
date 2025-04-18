@@ -222,6 +222,15 @@ public class TestMatadata implements Metadata {
               argumentTypes,
               new IllegalArgumentException("Should have two numeric operands."));
         }
+        if (argumentTypes.get(0).equals(TIMESTAMP) && argumentTypes.get(1).equals(TIMESTAMP)) {
+          throw new OperatorNotFoundException(
+              operatorType,
+              argumentTypes,
+              new IllegalArgumentException("Cannot apply operator: TIMESTAMP - TIMESTAMP"));
+        }
+        if (argumentTypes.get(0).equals(TIMESTAMP) || argumentTypes.get(1).equals(TIMESTAMP)) {
+          return TIMESTAMP;
+        }
         return DOUBLE;
       case NEGATION:
         if (!isOneNumericType(argumentTypes)) {

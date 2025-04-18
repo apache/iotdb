@@ -811,6 +811,7 @@ public class PushPredicateIntoTableScan implements PlanOptimizer {
                 leftSource,
                 rightSource,
                 equiJoinClauses,
+                node.getAsofCriteria(),
                 leftSource.getOutputSymbols(),
                 rightSource.getOutputSymbols(),
                 newJoinFilter,
@@ -874,6 +875,10 @@ public class PushPredicateIntoTableScan implements PlanOptimizer {
 
     private void appendSortNodeForMergeSortJoin(JoinNode joinNode) {
       int size = joinNode.getCriteria().size();
+      JoinNode.AsofJoinClause asofJoinClause = joinNode.getAsofCriteria().orElse(null);
+      if (asofJoinClause != null) {
+        size++;
+      }
       List<Symbol> leftOrderBy = new ArrayList<>(size);
       List<Symbol> rightOrderBy = new ArrayList<>(size);
       Map<Symbol, SortOrder> leftOrderings = new HashMap<>(size);
@@ -883,6 +888,13 @@ public class PushPredicateIntoTableScan implements PlanOptimizer {
         leftOrderings.put(equiJoinClause.getLeft(), ASC_NULLS_LAST);
         rightOrderBy.add(equiJoinClause.getRight());
         rightOrderings.put(equiJoinClause.getRight(), ASC_NULLS_LAST);
+      }
+      if (asofJoinClause != null) {
+        leftOrderBy.add(asofJoinClause.getLeft());
+        leftOrderings.put(asofJoinClause.getLeft(), ASC_NULLS_LAST);
+        rightOrderBy.add(asofJoinClause.getRight());
+        rightOrderings.put(asofJoinClause.getRight(), ASC_NULLS_LAST);
+        ;
       }
       OrderingScheme leftOrderingScheme = new OrderingScheme(leftOrderBy, leftOrderings);
       OrderingScheme rightOrderingScheme = new OrderingScheme(rightOrderBy, rightOrderings);
@@ -1174,6 +1186,7 @@ public class PushPredicateIntoTableScan implements PlanOptimizer {
               node.getLeftChild(),
               node.getRightChild(),
               node.getCriteria(),
+              node.getAsofCriteria(),
               node.getLeftOutputSymbols(),
               node.getRightOutputSymbols(),
               node.getFilter(),
@@ -1186,6 +1199,7 @@ public class PushPredicateIntoTableScan implements PlanOptimizer {
               node.getLeftChild(),
               node.getRightChild(),
               node.getCriteria(),
+              node.getAsofCriteria(),
               node.getLeftOutputSymbols(),
               node.getRightOutputSymbols(),
               node.getFilter(),
@@ -1220,6 +1234,7 @@ public class PushPredicateIntoTableScan implements PlanOptimizer {
           node.getLeftChild(),
           node.getRightChild(),
           node.getCriteria(),
+          node.getAsofCriteria(),
           node.getLeftOutputSymbols(),
           node.getRightOutputSymbols(),
           node.getFilter(),

@@ -624,11 +624,6 @@ public class JoinTest {
   // ========== unsupported test ===============
   @Test
   public void unsupportedJoinTest() {
-    // LEFT JOIN
-    assertAnalyzeSemanticException(
-        "SELECT * FROM table1 t1 LEFT JOIN table1 t2 ON t1.time=t2.time",
-        "LEFT JOIN is not supported, only support INNER JOIN in current version");
-
     // RIGHT JOIN
     assertAnalyzeSemanticException(
         "SELECT * FROM table1 t1 RIGHT JOIN table1 t2 ON t1.time=t2.time",
