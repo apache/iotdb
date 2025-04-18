@@ -35,6 +35,7 @@ import org.apache.commons.io.FileUtils;
 import org.apache.tsfile.common.constant.TsFileConstant;
 import org.apache.tsfile.exception.write.WriteProcessException;
 import org.apache.tsfile.read.common.Path;
+import org.apache.tsfile.utils.BitMap;
 import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.write.TsFileWriter;
 import org.apache.tsfile.write.record.Tablet;
@@ -49,6 +50,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.LinkedList;
@@ -56,9 +58,11 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Objects;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 public class PipeTabletEventTsFileBatch extends PipeTabletEventBatch {
 
@@ -313,6 +317,61 @@ public class PipeTabletEventTsFileBatch extends PipeTabletEventBatch {
     return sealedFiles;
   }
 
+  private Tablet tryBestToAggregateTablets(
+      final String deviceId, final LinkedList<Tablet> tablets) {
+    if (tablets.isEmpty()) {
+      return null;
+    }
+
+    // Retrieve the first tablet to serve as the basis for the aggregation
+    final Tablet firstTablet = tablets.peekFirst();
+    final long[] aggregationTimestamps = firstTablet.timestamps;
+    final int aggregationRow = firstTablet.rowSize;
+    final int aggregationMaxRow = firstTablet.getMaxRowNumber();
+
+    // Prepare lists to accumulate schemas, values, and bitMaps
+    final List<MeasurementSchema> aggregatedSchemas = new ArrayList<>();
+    final List<Object> aggregatedValues = new ArrayList<>();
+    final List<BitMap> aggregatedBitMaps = new ArrayList<>();
+
+    // Iterate and poll tablets from the head that satisfy the aggregation criteria
+    while (!tablets.isEmpty()) {
+      final Tablet tablet = tablets.peekFirst();
+      if (Arrays.equals(tablet.timestamps, aggregationTimestamps)
+          && tablet.rowSize == aggregationRow
+          && tablet.getMaxRowNumber() == aggregationMaxRow) {
+        // Aggregate the current tablet's data
+        aggregatedSchemas.addAll(tablet.getSchemas());
+        aggregatedValues.addAll(Arrays.asList(tablet.values));
+        aggregatedBitMaps.addAll(Arrays.asList(tablet.bitMaps));
+        // Remove the aggregated tablet
+        tablets.pollFirst();
+      } else {
+        // Stop aggregating once a tablet does not meet the criteria
+        break;
+      }
+    }
+
+    // Remove duplicates from aggregatedSchemas, record the index of the first occurrence, and
+    // filter out the corresponding values in aggregatedValues and aggregatedBitMaps based on that
+    // index
+    final Set<MeasurementSchema> seen = new HashSet<>();
+    final List<Integer> distinctIndices =
+        IntStream.range(0, aggregatedSchemas.size())
+            .filter(i -> seen.add(aggregatedSchemas.get(i))) // Only keep the first occurrence index
+            .boxed()
+            .collect(Collectors.toList());
+
+    // Construct a new aggregated Tablet using the deduplicated data
+    return new Tablet(
+        deviceId,
+        distinctIndices.stream().map(aggregatedSchemas::get).collect(Collectors.toList()),
+        aggregationTimestamps,
+        distinctIndices.stream().map(aggregatedValues::get).toArray(),
+        distinctIndices.stream().map(aggregatedBitMaps::get).toArray(BitMap[]::new),
+        aggregationRow);
+  }
+
   private void tryBestToWriteTabletsIntoOneFile(
       final LinkedHashMap<String, LinkedList<Tablet>> device2TabletsLinkedList,
       final Map<String, Boolean> device2Aligned)
@@ -329,14 +388,14 @@ public class PipeTabletEventTsFileBatch extends PipeTabletEventBatch {
 
       Tablet lastTablet = null;
       while (!tablets.isEmpty()) {
-        final Tablet tablet = tablets.peekFirst();
+        final Tablet tablet = tryBestToAggregateTablets(deviceId, tablets);
         if (Objects.isNull(lastTablet)
             // lastTablet.rowSize is not 0
             || lastTablet.timestamps[lastTablet.rowSize - 1] < tablet.timestamps[0]) {
           tabletsToWrite.add(tablet);
           lastTablet = tablet;
-          tablets.pollFirst();
         } else {
+          tablets.addFirst(tablet);
           break;
         }
       }
