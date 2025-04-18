@@ -473,11 +473,11 @@ public class IoTDBDatabaseIT {
                   "consumer_group_name,STRING,TAG,",
                   "subscribed_consumers,STRING,ATTRIBUTE,")));
 
-      // Currently only root can query information_schema
+      // Only root user is allowed to query topics
       Assert.assertThrows(
           SQLException.class,
           () -> {
-            statement.execute("select * from databases");
+            statement.execute("select * from topics");
           });
     }
 
