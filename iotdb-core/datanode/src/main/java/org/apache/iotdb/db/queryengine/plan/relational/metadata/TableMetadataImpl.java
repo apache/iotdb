@@ -630,6 +630,19 @@ public class TableMetadataImpl implements Metadata {
         }
 
         break;
+      case SqlConstant.APPROX_COUNT_DISTINCT:
+        if (argumentTypes.size() != 1 && argumentTypes.size() != 2) {
+          throw new SemanticException(
+              String.format(
+                  "Aggregate functions [%s] should only have two arguments", functionName));
+        }
+
+        if (argumentTypes.size() == 2 && !DOUBLE.equals(argumentTypes.get(1))) {
+          throw new SemanticException(
+              String.format(
+                  "Second argument of Aggregate functions [%s] should be DOUBLE", functionName));
+        }
+
       case SqlConstant.COUNT:
         break;
       default:
@@ -641,6 +654,7 @@ public class TableMetadataImpl implements Metadata {
       case SqlConstant.COUNT:
       case SqlConstant.COUNT_ALL:
       case SqlConstant.COUNT_IF:
+      case SqlConstant.APPROX_COUNT_DISTINCT:
         return INT64;
       case SqlConstant.FIRST_AGGREGATION:
       case SqlConstant.LAST_AGGREGATION:

@@ -284,7 +284,8 @@ enum TAggregationType {
   LAST_BY,
   MIN,
   MAX,
-  COUNT_ALL
+  COUNT_ALL,
+  APPROX_COUNT_DISTINCT
 }
 
 struct TShowConfigurationTemplateResp {
