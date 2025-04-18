@@ -21,7 +21,6 @@ package org.apache.iotdb.db.schemaengine.schemaregion.read.resp.info.impl;
 
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.schema.table.TreeViewSchema;
-import org.apache.iotdb.db.queryengine.plan.relational.metadata.AlignedDeviceEntry;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.DeviceEntry;
 import org.apache.iotdb.db.schemaengine.schemaregion.read.resp.info.IDeviceSchemaInfo;
 
@@ -98,11 +97,10 @@ public class ShowDevicesResult extends ShowSchemaResult implements IDeviceSchema
                 : (String[]) entry.getDeviceID().getSegments());
     final Map<String, Binary> attributeProviderMap = new HashMap<>();
 
-    if (entry instanceof AlignedDeviceEntry) {
-      for (int i = 0; i < attributeColumns.size(); ++i) {
-        attributeProviderMap.put(attributeColumns.get(i), entry.getAttributeColumnValues()[i]);
-      }
+    for (int i = 0; i < attributeColumns.size(); ++i) {
+      attributeProviderMap.put(attributeColumns.get(i), entry.getAttributeColumnValues()[i]);
     }
+
     result.setAttributeProvider(attributeProviderMap::get);
     return result;
   }
