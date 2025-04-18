@@ -15,7 +15,7 @@ import org.apache.iotdb.udf.api.type.Type;
 import java.util.List;
 import java.util.Set;
 
-public class UDAFMKIdentify implements UDTF {
+public class UDTFMKIdentify implements UDTF {
   static final String MIN_CONFIDENCE_PARAM = "min_confidence";
   static final String MIN_SUPPORT_PARAM = "min_support";
   static final String LABEL_PARAM = "label";
@@ -141,8 +141,7 @@ public class UDAFMKIdentify implements UDTF {
     int mkIndex = 1;
     int size = Psi0.size();
     if (size == 0) {
-      String output =
-          "No matching keys meet the specified minimum support and confidence thresholds.";
+      String output = "Null";
       collector.putString(nowTime, output);
     } else {
       int index = 0;
