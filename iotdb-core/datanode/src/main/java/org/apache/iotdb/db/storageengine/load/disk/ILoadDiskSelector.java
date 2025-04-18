@@ -20,19 +20,33 @@
 package org.apache.iotdb.db.storageengine.load.disk;
 
 import org.apache.iotdb.db.exception.DiskSpaceInsufficientException;
+import org.apache.iotdb.db.storageengine.rescon.disk.FolderManager;
+import org.apache.iotdb.db.storageengine.rescon.disk.TierManager;
 
 import java.io.File;
 
 public interface ILoadDiskSelector {
 
-  File getTargetFile(
-      File fileToLoad,
-      String databaseName,
-      String dataRegionId,
-      long filePartitionId,
-      String tsfileName,
-      int tierLevel)
+  File getTargetDir(File fileToLoad, TierManager tierManager, String tsfileName, int tierLevel)
       throws DiskSpaceInsufficientException;
+
+  public String getTargetDir(File fileToLoad, FolderManager folderManager)
+      throws DiskSpaceInsufficientException;
+
+  public LoadDiskSelectorType getLoadDiskSelectorType();
+
+  public static ILoadDiskSelector initDiskSelector(String selectStrategy, String[] dirs) {
+    ILoadDiskSelector selector;
+    switch (ILoadDiskSelector.LoadDiskSelectorType.fromValue(selectStrategy)) {
+      case INHERIT_SYSTEM_MULTI_DISKS_SELECT_STRATEGY:
+        selector = new InheritSystemMultiDisksStrategySelector();
+        break;
+      case MIN_IO_FIRST:
+      default:
+        selector = new MinIOSelector(dirs);
+    }
+    return selector;
+  }
 
   enum LoadDiskSelectorType {
     MIN_IO_FIRST("MIN_IO_FIRST"),
