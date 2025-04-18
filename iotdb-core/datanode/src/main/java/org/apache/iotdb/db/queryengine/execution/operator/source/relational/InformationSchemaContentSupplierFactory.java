@@ -85,7 +85,7 @@ import static org.apache.iotdb.db.queryengine.plan.execution.config.metadata.Sho
 public class InformationSchemaContentSupplierFactory {
   private InformationSchemaContentSupplierFactory() {}
 
-  private static AccessControl accessControl = Coordinator.getInstance().getAccessControl();
+  private static final AccessControl accessControl = Coordinator.getInstance().getAccessControl();
 
   public static Iterator<TsBlock> getSupplier(
       final String tableName, final List<TSDataType> dataTypes, final String userName) {
