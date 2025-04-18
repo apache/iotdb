@@ -64,8 +64,8 @@ public class WALEntryPosition {
    * Try to read the wal entry directly from the cache. No need to check if the wal entry is ready
    * for read.
    */
-  public Pair<ByteBuffer, InsertNode> readByteBufferOrInsertNodeViaCacheDirectly() {
-    return cache.getByteBufferOrInsertNode(this);
+  public Pair<ByteBuffer, InsertNode> getByteBufferOrInsertNodeIfPossible() {
+    return cache.getByteBufferOrInsertNodeIfPossible(this);
   }
 
   /**

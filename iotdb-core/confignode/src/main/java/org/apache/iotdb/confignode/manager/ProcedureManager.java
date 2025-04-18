@@ -169,6 +169,7 @@ import java.util.Set;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 public class ProcedureManager {
   private static final Logger LOGGER = LoggerFactory.getLogger(ProcedureManager.class);
@@ -711,16 +712,19 @@ public class ProcedureManager {
       TDataNodeLocation originalDataNode,
       TDataNodeLocation destDataNode,
       TDataNodeLocation coordinatorForAddPeer) {
-    String failMessage =
-        regionOperationCommonCheck(
-            regionGroupId,
-            destDataNode,
-            Arrays.asList(
-                new Pair<>("Original DataNode", originalDataNode),
-                new Pair<>("Destination DataNode", destDataNode),
-                new Pair<>("Coordinator for add peer", coordinatorForAddPeer)),
-            migrateRegionReq.getModel());
-    if (configManager
+    String failMessage;
+    if ((failMessage =
+            regionOperationCommonCheck(
+                regionGroupId,
+                destDataNode,
+                Arrays.asList(
+                    new Pair<>("Original DataNode", originalDataNode),
+                    new Pair<>("Destination DataNode", destDataNode),
+                    new Pair<>("Coordinator for add peer", coordinatorForAddPeer)),
+                migrateRegionReq.getModel()))
+        != null) {
+      // do nothing
+    } else if (configManager
         .getPartitionManager()
         .getAllReplicaSets(originalDataNode.getDataNodeId())
         .stream()
@@ -957,10 +961,7 @@ public class ProcedureManager {
 
   private String checkRegionOperationDuplication(TConsensusGroupId regionId) {
     List<? extends RegionOperationProcedure<?>> otherRegionMemberChangeProcedures =
-        getExecutor().getProcedures().values().stream()
-            .filter(procedure -> !procedure.isFinished())
-            .filter(procedure -> procedure instanceof RegionOperationProcedure)
-            .map(procedure -> (RegionOperationProcedure<?>) procedure)
+        getRegionOperationProcedures()
             .filter(
                 regionMemberChangeProcedure ->
                     regionId.equals(regionMemberChangeProcedure.getRegionId()))
@@ -971,6 +972,20 @@ public class ProcedureManager {
           regionId, otherRegionMemberChangeProcedures);
     }
     return null;
+  }
+
+  public List<TConsensusGroupId> getRegionOperationConsensusIds() {
+    return getRegionOperationProcedures()
+        .map(RegionOperationProcedure::getRegionId)
+        .distinct()
+        .collect(Collectors.toList());
+  }
+
+  private Stream<RegionOperationProcedure<?>> getRegionOperationProcedures() {
+    return getExecutor().getProcedures().values().stream()
+        .filter(procedure -> !procedure.isFinished())
+        .filter(procedure -> procedure instanceof RegionOperationProcedure)
+        .map(procedure -> (RegionOperationProcedure<?>) procedure);
   }
 
   private String checkRegionOperationModelCorrectness(TConsensusGroupId regionId, Model model) {
@@ -1697,6 +1712,10 @@ public class ProcedureManager {
     return waitingProcedureFinished(procedure);
   }
 
+  private TSStatus waitingProcedureFinished(final long procedureId) {
+    return waitingProcedureFinished(executor.getProcedures().get(procedureId));
+  }
+
   /**
    * Waiting until the specific procedure finished.
    *
@@ -1874,6 +1893,7 @@ public class ProcedureManager {
       final TDeleteTableDeviceReq req, final boolean isGeneratedByPipe) {
     long procedureId;
     DeleteDevicesProcedure procedure = null;
+    final TSStatus status;
     synchronized (this) {
       final Pair<Long, Boolean> procedureIdDuplicatePair =
           checkDuplicateTableTask(
@@ -1901,9 +1921,11 @@ public class ProcedureManager {
                 req.getModInfo(),
                 isGeneratedByPipe);
         this.executor.submitProcedure(procedure);
+        status = waitingProcedureFinished(procedure);
+      } else {
+        status = waitingProcedureFinished(procedureId);
       }
     }
-    TSStatus status = waitingProcedureFinished(procedure);
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       return new TDeleteTableDeviceResp(StatusUtils.OK)
           .setDeletedNum(
@@ -1935,6 +1957,8 @@ public class ProcedureManager {
               "Some other task is operating table with same name.");
         }
         this.executor.submitProcedure(procedure);
+      } else {
+        return waitingProcedureFinished(procedureId);
       }
     }
     return waitingProcedureFinished(procedure);

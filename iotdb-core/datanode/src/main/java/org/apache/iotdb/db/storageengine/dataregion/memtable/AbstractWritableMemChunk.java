@@ -25,6 +25,7 @@ import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceContex
 import org.apache.iotdb.db.queryengine.execution.fragment.QueryContext;
 import org.apache.iotdb.db.queryengine.plan.planner.memory.MemoryReservationManager;
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.IWALByteBufferView;
+import org.apache.iotdb.db.utils.datastructure.BatchEncodeInfo;
 import org.apache.iotdb.db.utils.datastructure.TVList;
 
 import org.apache.tsfile.enums.TSDataType;
@@ -192,7 +193,8 @@ public abstract class AbstractWritableMemChunk implements IWritableMemChunk {
   public abstract IChunkWriter createIChunkWriter();
 
   @Override
-  public abstract void encode(BlockingQueue<Object> ioTaskQueue);
+  public abstract void encode(
+      BlockingQueue<Object> ioTaskQueue, BatchEncodeInfo encodeInfo, long[] times);
 
   @Override
   public abstract void release();

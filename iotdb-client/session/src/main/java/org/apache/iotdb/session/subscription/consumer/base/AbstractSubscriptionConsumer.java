@@ -189,12 +189,8 @@ abstract class AbstractSubscriptionConsumer implements AutoCloseable {
       final AbstractSubscriptionConsumerBuilder builder, final Properties properties) {
     this(
         builder
-            .host(
-                (String)
-                    properties.getOrDefault(ConsumerConstant.HOST_KEY, SessionConfig.DEFAULT_HOST))
-            .port(
-                (Integer)
-                    properties.getOrDefault(ConsumerConstant.PORT_KEY, SessionConfig.DEFAULT_PORT))
+            .host((String) properties.get(ConsumerConstant.HOST_KEY))
+            .port((Integer) properties.get(ConsumerConstant.PORT_KEY))
             .nodeUrls((List<String>) properties.get(ConsumerConstant.NODE_URLS_KEY))
             .username(
                 (String)
@@ -975,13 +971,10 @@ abstract class AbstractSubscriptionConsumer implements AutoCloseable {
       final List<SubscriptionPollResponse> responses =
           pollTabletsInternal(commitContext, nextOffset, timer.remainingMs());
 
-      // It's agreed that the server will always return at least one response, even in case of
-      // failure.
+      // If responses is empty, it means that some outdated subscription events may be being polled,
+      // so just return.
       if (responses.isEmpty()) {
-        final String errorMessage =
-            String.format("SubscriptionConsumer %s poll empty response", this);
-        LOGGER.warn(errorMessage);
-        throw new SubscriptionRuntimeNonCriticalException(errorMessage);
+        return Optional.empty();
       }
 
       // only one SubscriptionEvent polled currently
@@ -1022,6 +1015,10 @@ abstract class AbstractSubscriptionConsumer implements AutoCloseable {
 
             final String errorMessage = ((ErrorPayload) payload).getErrorMessage();
             final boolean critical = ((ErrorPayload) payload).isCritical();
+            if (Objects.equals(payload, ErrorPayload.OUTDATED_ERROR_PAYLOAD)) {
+              // suppress warn log when poll outdated subscription event
+              return Optional.empty();
+            }
             LOGGER.warn(
                 "Error occurred when SubscriptionConsumer {} polling tablets with commit context {}: {}, critical: {}",
                 this,

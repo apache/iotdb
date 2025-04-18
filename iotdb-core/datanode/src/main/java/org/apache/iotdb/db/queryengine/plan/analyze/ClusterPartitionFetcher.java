@@ -26,7 +26,7 @@ import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.exception.ClientManagerException;
 import org.apache.iotdb.commons.consensus.ConfigRegionId;
-import org.apache.iotdb.commons.exception.IoTDBException;
+import org.apache.iotdb.commons.exception.IoTDBRuntimeException;
 import org.apache.iotdb.commons.partition.DataPartition;
 import org.apache.iotdb.commons.partition.DataPartitionQueryParam;
 import org.apache.iotdb.commons.partition.SchemaNodeManagementPartition;
@@ -114,10 +114,9 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
           partitionCache.updateSchemaPartitionCache(
               schemaPartitionTableResp.getSchemaPartitionTable());
         } else {
-          throw new RuntimeException(
-              new IoTDBException(
-                  schemaPartitionTableResp.getStatus().getMessage(),
-                  schemaPartitionTableResp.getStatus().getCode()));
+          throw new IoTDBRuntimeException(
+              schemaPartitionTableResp.getStatus().getMessage(),
+              schemaPartitionTableResp.getStatus().getCode());
         }
       }
       return schemaPartition;
@@ -146,10 +145,9 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
           partitionCache.updateSchemaPartitionCache(
               schemaPartitionTableResp.getSchemaPartitionTable());
         } else {
-          throw new RuntimeException(
-              new IoTDBException(
-                  schemaPartitionTableResp.getStatus().getMessage(),
-                  schemaPartitionTableResp.getStatus().getCode()));
+          throw new IoTDBRuntimeException(
+              schemaPartitionTableResp.getStatus().getMessage(),
+              schemaPartitionTableResp.getStatus().getCode());
         }
       }
       return schemaPartition;
@@ -274,10 +272,9 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
           dataPartition = parseDataPartitionResp(dataPartitionTableResp);
           partitionCache.updateDataPartitionCache(dataPartitionTableResp.getDataPartitionTable());
         } else {
-          throw new RuntimeException(
-              new IoTDBException(
-                  dataPartitionTableResp.getStatus().getMessage(),
-                  dataPartitionTableResp.getStatus().getCode()));
+          throw new IoTDBRuntimeException(
+              dataPartitionTableResp.getStatus().getMessage(),
+              dataPartitionTableResp.getStatus().getCode());
         }
       }
     } catch (final ClientManagerException | TException e) {
@@ -343,10 +340,9 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
           partitionCache.updateSchemaPartitionCache(
               schemaPartitionTableResp.getSchemaPartitionTable());
         } else {
-          throw new RuntimeException(
-              new IoTDBException(
-                  schemaPartitionTableResp.getStatus().getMessage(),
-                  schemaPartitionTableResp.getStatus().getCode()));
+          throw new IoTDBRuntimeException(
+              schemaPartitionTableResp.getStatus().getMessage(),
+              schemaPartitionTableResp.getStatus().getCode());
         }
       }
       return schemaPartition;

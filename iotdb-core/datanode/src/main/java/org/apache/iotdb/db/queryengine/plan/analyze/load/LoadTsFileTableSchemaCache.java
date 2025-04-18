@@ -37,7 +37,7 @@ import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFil
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.FileTimeIndex;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.ITimeIndex;
-import org.apache.iotdb.db.storageengine.load.memory.LoadTsFileAnalyzeSchemaMemoryBlock;
+import org.apache.iotdb.db.storageengine.load.memory.LoadTsFileMemoryBlock;
 import org.apache.iotdb.db.storageengine.load.memory.LoadTsFileMemoryManager;
 import org.apache.iotdb.db.utils.ModificationUtils;
 
@@ -79,7 +79,7 @@ public class LoadTsFileTableSchemaCache {
             : CONFIG.getLoadTsFileAnalyzeSchemaMemorySizeInBytes();
   }
 
-  private final LoadTsFileAnalyzeSchemaMemoryBlock block;
+  private final LoadTsFileMemoryBlock block;
 
   private String database;
   private final Metadata metadata;
@@ -104,7 +104,7 @@ public class LoadTsFileTableSchemaCache {
       throws LoadRuntimeOutOfMemoryException {
     this.block =
         LoadTsFileMemoryManager.getInstance()
-            .allocateAnalyzeSchemaMemoryBlock(ANALYZE_SCHEMA_MEMORY_SIZE_IN_BYTES);
+            .allocateMemoryBlock(ANALYZE_SCHEMA_MEMORY_SIZE_IN_BYTES);
     this.metadata = metadata;
     this.context = context;
     this.currentBatchTable2Devices = new HashMap<>();

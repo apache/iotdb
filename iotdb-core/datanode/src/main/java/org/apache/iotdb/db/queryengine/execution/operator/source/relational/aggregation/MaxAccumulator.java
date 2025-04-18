@@ -54,7 +54,7 @@ public class MaxAccumulator implements TableAccumulator {
 
   @Override
   public void addInput(Column[] arguments, AggregationMask mask) {
-    checkArgument(arguments.length == 1, "argument of Max should be one column");
+    checkArgument(arguments.length == 1, "argument of MAX should be one column");
 
     switch (seriesDataType) {
       case INT32:
@@ -81,7 +81,7 @@ public class MaxAccumulator implements TableAccumulator {
         return;
       default:
         throw new UnSupportedDataTypeException(
-            String.format("Unsupported data type in LastValue: %s", seriesDataType));
+            String.format("Unsupported data type in MAX Aggregation: %s", seriesDataType));
     }
   }
 
@@ -117,7 +117,7 @@ public class MaxAccumulator implements TableAccumulator {
           break;
         default:
           throw new UnSupportedDataTypeException(
-              String.format("Unsupported data type in Max Aggregation: %s", seriesDataType));
+              String.format("Unsupported data type in MAX Aggregation: %s", seriesDataType));
       }
     }
   }
@@ -154,7 +154,7 @@ public class MaxAccumulator implements TableAccumulator {
         break;
       default:
         throw new UnSupportedDataTypeException(
-            String.format("Unsupported data type in Max Aggregation: %s", seriesDataType));
+            String.format("Unsupported data type in MAX Aggregation: %s", seriesDataType));
     }
   }
 
@@ -189,7 +189,7 @@ public class MaxAccumulator implements TableAccumulator {
         break;
       default:
         throw new UnSupportedDataTypeException(
-            String.format("Unsupported data type in MaxAggregation: %s", seriesDataType));
+            String.format("Unsupported data type in MAX Aggregation: %s", seriesDataType));
     }
   }
 
@@ -230,7 +230,7 @@ public class MaxAccumulator implements TableAccumulator {
         break;
       default:
         throw new UnSupportedDataTypeException(
-            String.format("Unsupported data type in Last Aggregation: %s", seriesDataType));
+            String.format("Unsupported data type in MAX Aggregation: %s", seriesDataType));
     }
   }
 

@@ -24,6 +24,7 @@ import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.IWALByteBufferView;
 import org.apache.iotdb.db.utils.ModificationUtils;
+import org.apache.iotdb.db.utils.datastructure.BatchEncodeInfo;
 import org.apache.iotdb.db.utils.datastructure.MemPointIterator;
 import org.apache.iotdb.db.utils.datastructure.MemPointIteratorFactory;
 import org.apache.iotdb.db.utils.datastructure.TVList;
@@ -31,7 +32,6 @@ import org.apache.iotdb.db.utils.datastructure.TVList;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.TimeValuePair;
 import org.apache.tsfile.read.common.TimeRange;
-import org.apache.tsfile.read.common.block.TsBlock;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.BitMap;
 import org.apache.tsfile.write.UnSupportedDataTypeException;
@@ -57,13 +57,12 @@ public class WritableMemChunk extends AbstractWritableMemChunk {
   private IMeasurementSchema schema;
   private TVList list;
   private List<TVList> sortedList;
+  private long sortedRowCount = 0;
   private static final String UNSUPPORTED_TYPE = "Unsupported data type:";
 
   private static final Logger LOGGER = LoggerFactory.getLogger(WritableMemChunk.class);
 
   private static final IoTDBConfig CONFIG = IoTDBDescriptor.getInstance().getConfig();
-  private final long TARGET_CHUNK_SIZE = CONFIG.getTargetChunkSize();
-  private final long MAX_NUMBER_OF_POINTS_IN_CHUNK = CONFIG.getTargetChunkPointNum();
   private final int TVLIST_SORT_THRESHOLD = CONFIG.getTvListSortThreshold();
 
   public WritableMemChunk(IMeasurementSchema schema) {
@@ -79,6 +78,7 @@ public class WritableMemChunk extends AbstractWritableMemChunk {
       list.sort();
     }
     sortedList.add(list);
+    this.sortedRowCount += list.rowCount();
     this.list = TVList.newList(schema.getType());
   }
 
@@ -272,11 +272,7 @@ public class WritableMemChunk extends AbstractWritableMemChunk {
 
   @Override
   public long rowCount() {
-    long rowCount = list.rowCount();
-    for (TVList tvList : sortedList) {
-      rowCount += tvList.rowCount();
-    }
-    return rowCount;
+    return sortedRowCount + list.rowCount();
   }
 
   @Override
@@ -374,7 +370,8 @@ public class WritableMemChunk extends AbstractWritableMemChunk {
     return out.toString();
   }
 
-  public void encodeWorkingTVList(BlockingQueue<Object> ioTaskQueue) {
+  public void encodeWorkingTVList(
+      BlockingQueue<Object> ioTaskQueue, long maxNumberOfPointsInChunk, long targetChunkSize) {
 
     TSDataType tsDataType = schema.getType();
     ChunkWriterImpl chunkWriterImpl = createIChunkWriter();
@@ -432,8 +429,8 @@ public class WritableMemChunk extends AbstractWritableMemChunk {
           break;
       }
       pointNumInCurrentChunk++;
-      if (pointNumInCurrentChunk > MAX_NUMBER_OF_POINTS_IN_CHUNK
-          || dataSizeInCurrentChunk > TARGET_CHUNK_SIZE) {
+      if (pointNumInCurrentChunk > maxNumberOfPointsInChunk
+          || dataSizeInCurrentChunk > targetChunkSize) {
         chunkWriterImpl.sealCurrentPage();
         chunkWriterImpl.clearPageWriter();
         try {
@@ -458,88 +455,42 @@ public class WritableMemChunk extends AbstractWritableMemChunk {
   }
 
   @Override
-  public synchronized void encode(BlockingQueue<Object> ioTaskQueue) {
+  public synchronized void encode(
+      BlockingQueue<Object> ioTaskQueue, BatchEncodeInfo encodeInfo, long[] times) {
     if (TVLIST_SORT_THRESHOLD == 0) {
-      encodeWorkingTVList(ioTaskQueue);
+      encodeWorkingTVList(
+          ioTaskQueue, encodeInfo.maxNumberOfPointsInChunk, encodeInfo.targetChunkSize);
       return;
     }
 
-    TSDataType tsDataType = schema.getType();
     ChunkWriterImpl chunkWriterImpl = createIChunkWriter();
-    long dataSizeInCurrentChunk = 0;
-    int pointNumInCurrentChunk = 0;
+    if (sortedList.isEmpty()) {
+      encodeInfo.lastIterator = true;
+    }
 
     // create MultiTvListIterator. It need not handle float/double precision here.
     List<TVList> tvLists = new ArrayList<>(sortedList);
     tvLists.add(list);
     MemPointIterator timeValuePairIterator =
-        MemPointIteratorFactory.create(schema.getType(), tvLists);
+        MemPointIteratorFactory.create(
+            schema.getType(), tvLists, encodeInfo.maxNumberOfPointsInPage);
 
     while (timeValuePairIterator.hasNextBatch()) {
-      TsBlock tsBlock = timeValuePairIterator.nextBatch();
-      if (tsBlock == null) {
-        continue;
-      }
-
-      for (int rowIndex = 0; rowIndex < tsBlock.getPositionCount(); rowIndex++) {
-        long time = tsBlock.getTimeByIndex(rowIndex);
-        // store last point for SDT
-        if (rowIndex + 1 == tsBlock.getPositionCount() && !timeValuePairIterator.hasNextBatch()) {
-          chunkWriterImpl.setLastPoint(true);
+      timeValuePairIterator.encodeBatch(chunkWriterImpl, encodeInfo, times);
+      if (encodeInfo.pointNumInChunk >= encodeInfo.maxNumberOfPointsInChunk
+          || encodeInfo.dataSizeInChunk >= encodeInfo.targetChunkSize) {
+        chunkWriterImpl.sealCurrentPage();
+        chunkWriterImpl.clearPageWriter();
+        try {
+          ioTaskQueue.put(chunkWriterImpl);
+        } catch (InterruptedException e) {
+          Thread.currentThread().interrupt();
         }
-
-        switch (tsDataType) {
-          case BOOLEAN:
-            chunkWriterImpl.write(time, tsBlock.getColumn(0).getBoolean(rowIndex));
-            dataSizeInCurrentChunk += 8L + 1L;
-            break;
-          case INT32:
-          case DATE:
-            chunkWriterImpl.write(time, tsBlock.getColumn(0).getInt(rowIndex));
-            dataSizeInCurrentChunk += 8L + 4L;
-            break;
-          case INT64:
-          case TIMESTAMP:
-            chunkWriterImpl.write(time, tsBlock.getColumn(0).getLong(rowIndex));
-            dataSizeInCurrentChunk += 8L + 8L;
-            break;
-          case FLOAT:
-            chunkWriterImpl.write(time, tsBlock.getColumn(0).getFloat(rowIndex));
-            dataSizeInCurrentChunk += 8L + 4L;
-            break;
-          case DOUBLE:
-            chunkWriterImpl.write(time, tsBlock.getColumn(0).getDouble(rowIndex));
-            dataSizeInCurrentChunk += 8L + 8L;
-            break;
-          case TEXT:
-          case BLOB:
-          case STRING:
-            Binary value = tsBlock.getColumn(0).getBinary(rowIndex);
-            chunkWriterImpl.write(time, value);
-            dataSizeInCurrentChunk += 8L + getBinarySize(value);
-            break;
-          default:
-            LOGGER.error("WritableMemChunk does not support data type: {}", tsDataType);
-            break;
-        }
-
-        pointNumInCurrentChunk++;
-        if (pointNumInCurrentChunk > MAX_NUMBER_OF_POINTS_IN_CHUNK
-            || dataSizeInCurrentChunk > TARGET_CHUNK_SIZE) {
-          chunkWriterImpl.sealCurrentPage();
-          chunkWriterImpl.clearPageWriter();
-          try {
-            ioTaskQueue.put(chunkWriterImpl);
-          } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-          }
-          chunkWriterImpl = createIChunkWriter();
-          dataSizeInCurrentChunk = 0;
-          pointNumInCurrentChunk = 0;
-        }
+        chunkWriterImpl = createIChunkWriter();
+        encodeInfo.resetPointAndSize();
       }
     }
-    if (pointNumInCurrentChunk != 0) {
+    if (encodeInfo.pointNumInChunk != 0) {
       chunkWriterImpl.sealCurrentPage();
       chunkWriterImpl.clearPageWriter();
       try {
@@ -547,6 +498,7 @@ public class WritableMemChunk extends AbstractWritableMemChunk {
       } catch (InterruptedException e) {
         Thread.currentThread().interrupt();
       }
+      encodeInfo.reset();
     }
   }
 

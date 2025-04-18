@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PatternTreeMap;
 import org.apache.iotdb.db.exception.WriteProcessException;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.subtask.FastCompactionTaskSummary;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.CompactionPathUtils;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.ModifiedStatus;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.fast.element.ChunkMetadataElement;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.fast.element.FileElement;
@@ -475,16 +476,16 @@ public abstract class SeriesCompactionExecutor {
   /**
    * Get the modifications of a timeseries in the ModificationFile of a TsFile. Create ttl
    * modification from ttl cache.
-   *
-   * @param path name of the time series
    */
   protected List<ModEntry> getModificationsFromCache(
-      TsFileResource tsFileResource, PartialPath path) {
+      TsFileResource tsFileResource, IDeviceID deviceId, String measurement)
+      throws IllegalPathException {
     PatternTreeMap<ModEntry, PatternTreeMapFactory.ModsSerializer> allModifications =
         modificationCacheMap.get(tsFileResource.getTsFile().getName());
     if (allModifications == null) {
       return Collections.emptyList();
     }
+    PartialPath path = CompactionPathUtils.getPath(deviceId, measurement);
     List<ModEntry> modEntries = allModifications.getOverlapped(path);
     if (path.getIDeviceID().isTableModel()) {
       modEntries =

@@ -356,16 +356,16 @@ public class RelationalInsertTabletNode extends InsertTabletNode {
   }
 
   @Override
-  public void updateLastCache(String databaseName) {
-    String[] rawMeasurements = getRawMeasurements();
+  public void updateLastCache(final String databaseName) {
+    final String[] rawMeasurements = getRawMeasurements();
 
-    List<Pair<IDeviceID, Integer>> deviceEndOffsetPairs = splitByDevice(0, rowCount);
+    final List<Pair<IDeviceID, Integer>> deviceEndOffsetPairs = splitByDevice(0, rowCount);
     int startOffset = 0;
-    for (Pair<IDeviceID, Integer> deviceEndOffsetPair : deviceEndOffsetPairs) {
-      IDeviceID deviceID = deviceEndOffsetPair.getLeft();
-      int endOffset = deviceEndOffsetPair.getRight();
+    for (final Pair<IDeviceID, Integer> deviceEndOffsetPair : deviceEndOffsetPairs) {
+      final IDeviceID deviceID = deviceEndOffsetPair.getLeft();
+      final int endOffset = deviceEndOffsetPair.getRight();
 
-      TimeValuePair[] timeValuePairs = new TimeValuePair[rawMeasurements.length];
+      final TimeValuePair[] timeValuePairs = new TimeValuePair[rawMeasurements.length];
       for (int i = 0; i < rawMeasurements.length; i++) {
         timeValuePairs[i] = composeLastTimeValuePair(i, startOffset, endOffset);
       }

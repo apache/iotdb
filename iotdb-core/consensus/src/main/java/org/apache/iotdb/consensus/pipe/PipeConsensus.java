@@ -120,8 +120,10 @@ public class PipeConsensus implements IConsensus {
             config.getPipeConsensusConfig().getReplicateMode());
     this.consensusPipeGuardian =
         config.getPipeConsensusConfig().getPipe().getConsensusPipeGuardian();
-    this.asyncClientManager = PipeConsensusClientMgrContainer.getInstance().newAsyncClientManager();
-    this.syncClientManager = PipeConsensusClientMgrContainer.getInstance().newSyncClientManager();
+    this.asyncClientManager =
+        PipeConsensusClientMgrContainer.getInstance().getGlobalAsyncClientManager();
+    this.syncClientManager =
+        PipeConsensusClientMgrContainer.getInstance().getGlobalSyncClientManager();
   }
 
   @Override

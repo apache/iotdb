@@ -231,7 +231,7 @@ public class Util {
     Type type = metadata.getFunctionReturnType(functionName, argumentTypes);
     return new ResolvedFunction(
         new BoundSignature(functionName.toLowerCase(Locale.ENGLISH), type, argumentTypes),
-        new FunctionId("noop"),
+        FunctionId.NOOP_FUNCTION_ID,
         FunctionKind.AGGREGATE,
         true,
         FunctionNullability.getAggregationFunctionNullability(argumentTypes.size()));

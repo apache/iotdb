@@ -69,7 +69,6 @@ import org.apache.iotdb.confignode.manager.UDFManager;
 import org.apache.iotdb.confignode.manager.consensus.ConsensusManager;
 import org.apache.iotdb.confignode.manager.load.LoadManager;
 import org.apache.iotdb.confignode.manager.load.cache.node.ConfigNodeHeartbeatCache;
-import org.apache.iotdb.confignode.manager.load.service.StatisticsService;
 import org.apache.iotdb.confignode.manager.partition.PartitionManager;
 import org.apache.iotdb.confignode.manager.partition.PartitionMetrics;
 import org.apache.iotdb.confignode.manager.pipe.coordinator.PipeManager;
@@ -814,8 +813,7 @@ public class NodeManager {
       final long deadline =
           System.nanoTime()
               + TimeUnit.MILLISECONDS.toNanos(
-                  (CONF.getHeartbeatIntervalInMs() + StatisticsService.STATISTICS_UPDATE_INTERVAL)
-                      * 3);
+                  CommonDescriptor.getInstance().getConfig().getDnConnectionTimeoutInMS() / 2);
       while (filterConfigNodeThroughStatus(NodeStatus.Running).size() <= 1) {
         if (System.nanoTime() > deadline) {
           return new TSStatus(TSStatusCode.REMOVE_CONFIGNODE_ERROR.getStatusCode())

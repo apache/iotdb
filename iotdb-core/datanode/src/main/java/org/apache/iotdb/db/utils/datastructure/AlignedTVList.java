@@ -29,7 +29,6 @@ import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.block.column.ColumnBuilder;
-import org.apache.tsfile.common.conf.TSFileDescriptor;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.tsfile.read.TimeValuePair;
@@ -44,6 +43,9 @@ import org.apache.tsfile.utils.ReadWriteForEncodingUtils;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 import org.apache.tsfile.utils.TsPrimitiveType;
 import org.apache.tsfile.write.UnSupportedDataTypeException;
+import org.apache.tsfile.write.chunk.AlignedChunkWriterImpl;
+import org.apache.tsfile.write.chunk.IChunkWriter;
+import org.apache.tsfile.write.chunk.ValueChunkWriter;
 
 import java.io.DataInputStream;
 import java.io.IOException;
@@ -1621,7 +1623,8 @@ public abstract class AlignedTVList extends TVList {
       List<List<TimeRange>> valueColumnsDeletionList,
       Integer floatPrecision,
       List<TSEncoding> encodingList,
-      boolean ignoreAllNullRows) {
+      boolean ignoreAllNullRows,
+      int maxNumberOfPointsInPage) {
     return new AlignedTVListIterator(
         dataTypeList,
         columnIndexList,
@@ -1629,7 +1632,8 @@ public abstract class AlignedTVList extends TVList {
         valueColumnsDeletionList,
         floatPrecision,
         encodingList,
-        ignoreAllNullRows);
+        ignoreAllNullRows,
+        maxNumberOfPointsInPage);
   }
 
   /* AlignedTVList Iterator */
@@ -1650,9 +1654,6 @@ public abstract class AlignedTVList extends TVList {
     private final int[] timeDeleteCursor = {0};
     private final List<int[]> valueColumnDeleteCursor = new ArrayList<>();
 
-    private final int MAX_NUMBER_OF_POINTS_IN_PAGE =
-        TSFileDescriptor.getInstance().getConfig().getMaxNumberOfPointsInPage();
-
     public AlignedTVListIterator(
         List<TSDataType> dataTypeList,
         List<Integer> columnIndexList,
@@ -1660,8 +1661,9 @@ public abstract class AlignedTVList extends TVList {
         List<List<TimeRange>> valueColumnsDeletionList,
         Integer floatPrecision,
         List<TSEncoding> encodingList,
-        boolean ignoreAllNullRows) {
-      super(null, null, null);
+        boolean ignoreAllNullRows,
+        int maxNumberOfPointsInPage) {
+      super(null, null, null, maxNumberOfPointsInPage);
       this.dataTypeList = dataTypeList;
       this.columnIndexList =
           (columnIndexList == null)
@@ -1842,7 +1844,7 @@ public abstract class AlignedTVList extends TVList {
       int startIndex = index;
       // time column
       for (; index < rows; index++) {
-        if (validRowCount > MAX_NUMBER_OF_POINTS_IN_PAGE) {
+        if (validRowCount >= maxNumberOfPointsInPage) {
           break;
         }
         // skip empty row
@@ -1859,10 +1861,10 @@ public abstract class AlignedTVList extends TVList {
                 || (isTimeDeleted(nextRowIndex)))) {
           nextRowIndex++;
         }
-        long timestamp = getTime(index);
-        if ((nextRowIndex == rows || timestamp != getTime(nextRowIndex))
-            && !isPointDeleted(timestamp, timeColumnDeletion, deleteCursor)) {
-          timeBuilder.writeLong(getTime(index));
+        long time = getTime(index);
+        if ((nextRowIndex == rows || time != getTime(nextRowIndex))
+            && !isPointDeleted(time, timeColumnDeletion, deleteCursor)) {
+          timeBuilder.writeLong(time);
           validRowCount++;
         } else {
           if (Objects.isNull(timeInvalidInfo)) {
@@ -2021,6 +2023,140 @@ public abstract class AlignedTVList extends TVList {
         }
       }
       return builder.build();
+    }
+
+    @Override
+    public void encodeBatch(IChunkWriter chunkWriter, BatchEncodeInfo encodeInfo, long[] times) {
+      AlignedChunkWriterImpl alignedChunkWriter = (AlignedChunkWriterImpl) chunkWriter;
+
+      // duplicated time or deleted time are all invalid, true if we don't need this row
+      BitMap timeDuplicateInfo = null;
+
+      int startIndex = index;
+      // time column
+      for (; index < rows; index++) {
+        if (encodeInfo.pointNumInChunk >= encodeInfo.maxNumberOfPointsInChunk
+            || encodeInfo.pointNumInPage >= encodeInfo.maxNumberOfPointsInPage) {
+          break;
+        }
+        // skip empty row
+        if (allValueColDeletedMap != null && allValueColDeletedMap.isMarked(getValueIndex(index))) {
+          continue;
+        }
+        if (isTimeDeleted(index)) {
+          continue;
+        }
+        int nextRowIndex = index + 1;
+        while (nextRowIndex < rows
+            && ((allValueColDeletedMap != null
+                    && allValueColDeletedMap.isMarked(getValueIndex(nextRowIndex)))
+                || (isTimeDeleted(nextRowIndex)))) {
+          nextRowIndex++;
+        }
+        long time = getTime(index);
+        if (nextRowIndex == rows || time != getTime(nextRowIndex)) {
+          times[encodeInfo.pointNumInPage++] = time;
+          encodeInfo.pointNumInChunk++;
+        } else {
+          if (Objects.isNull(timeDuplicateInfo)) {
+            timeDuplicateInfo = new BitMap(rows);
+          }
+          timeDuplicateInfo.mark(index);
+        }
+        index = nextRowIndex - 1;
+      }
+
+      int columnCount = dataTypeList.size();
+      // value columns
+      for (int columnIndex = 0; columnIndex < columnCount; columnIndex++) {
+        ValueChunkWriter valueChunkWriter =
+            alignedChunkWriter.getValueChunkWriterByIndex(columnIndex);
+        int validColumnIndex = columnIndexList.get(columnIndex);
+
+        // Pair of Time and Index
+        Pair<Long, Integer> lastValidPointIndexForTimeDupCheck = null;
+        if (Objects.nonNull(timeDuplicateInfo)) {
+          lastValidPointIndexForTimeDupCheck = new Pair<>(Long.MIN_VALUE, null);
+        }
+        for (int sortedRowIndex = startIndex; sortedRowIndex < index; sortedRowIndex++) {
+          // skip empty row
+          if ((allValueColDeletedMap != null
+                  && allValueColDeletedMap.isMarked(getValueIndex(sortedRowIndex)))
+              || (isTimeDeleted(sortedRowIndex))) {
+            continue;
+          }
+          long time = getTime(sortedRowIndex);
+          // skip time duplicated or totally deleted rows
+          if (Objects.nonNull(timeDuplicateInfo)) {
+            if (!outer.isNullValue(getValueIndex(sortedRowIndex), validColumnIndex)) {
+              lastValidPointIndexForTimeDupCheck.left = getTime(sortedRowIndex);
+              lastValidPointIndexForTimeDupCheck.right = getValueIndex(sortedRowIndex);
+            }
+            if (timeDuplicateInfo.isMarked(sortedRowIndex)) {
+              continue;
+            }
+          }
+
+          // The part of code solves the following problem:
+          // Time: 1,2,2,3
+          // Value: 1,2,null,null
+          // When rowIndex:1, pair(min,null), timeDuplicateInfo:false, write(T:1,V:1)
+          // When rowIndex:2, pair(2,2), timeDuplicateInfo:true, skip writing value
+          // When rowIndex:3, pair(2,2), timeDuplicateInfo:false, T:2==pair.left:2, write(T:2,V:2)
+          // When rowIndex:4, pair(2,2), timeDuplicateInfo:false, T:3!=pair.left:2,
+          // write(T:3,V:null)
+          int originRowIndex;
+          if (Objects.nonNull(lastValidPointIndexForTimeDupCheck)
+              && (getTime(sortedRowIndex) == lastValidPointIndexForTimeDupCheck.left)) {
+            originRowIndex = lastValidPointIndexForTimeDupCheck.right;
+          } else {
+            originRowIndex = getValueIndex(sortedRowIndex);
+          }
+
+          boolean isNull = outer.isNullValue(originRowIndex, validColumnIndex);
+          switch (dataTypeList.get(columnIndex)) {
+            case BOOLEAN:
+              valueChunkWriter.write(
+                  time,
+                  !isNull && getBooleanByValueIndex(originRowIndex, validColumnIndex),
+                  isNull);
+              break;
+            case INT32:
+            case DATE:
+              valueChunkWriter.write(
+                  time, isNull ? 0 : getIntByValueIndex(originRowIndex, validColumnIndex), isNull);
+              break;
+            case INT64:
+            case TIMESTAMP:
+              valueChunkWriter.write(
+                  time, isNull ? 0 : getLongByValueIndex(originRowIndex, validColumnIndex), isNull);
+              break;
+            case FLOAT:
+              valueChunkWriter.write(
+                  time,
+                  isNull ? 0 : getFloatByValueIndex(originRowIndex, validColumnIndex),
+                  isNull);
+              break;
+            case DOUBLE:
+              valueChunkWriter.write(
+                  time,
+                  isNull ? 0 : getDoubleByValueIndex(originRowIndex, validColumnIndex),
+                  isNull);
+              break;
+            case TEXT:
+            case BLOB:
+            case STRING:
+              valueChunkWriter.write(
+                  time,
+                  isNull ? null : getBinaryByValueIndex(originRowIndex, validColumnIndex),
+                  isNull);
+              break;
+            default:
+              break;
+          }
+        }
+      }
+      probeNext = false;
     }
 
     public int[] getSelectedIndices() {

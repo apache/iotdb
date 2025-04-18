@@ -23,6 +23,7 @@ import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.tsfile.read.common.TimeRange;
 import org.apache.tsfile.utils.BitMap;
+import org.apache.tsfile.write.chunk.IChunkWriter;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -43,7 +44,8 @@ public class OrderedMultiAlignedTVListIterator extends MultiAlignedTVListIterato
       List<List<TimeRange>> valueColumnsDeletionList,
       Integer floatPrecision,
       List<TSEncoding> encodingList,
-      boolean ignoreAllNullRows) {
+      boolean ignoreAllNullRows,
+      int maxNumberOfPointsInPage) {
     super(
         tsDataTypes,
         columnIndexList,
@@ -52,7 +54,8 @@ public class OrderedMultiAlignedTVListIterator extends MultiAlignedTVListIterato
         valueColumnsDeletionList,
         floatPrecision,
         encodingList,
-        ignoreAllNullRows);
+        ignoreAllNullRows,
+        maxNumberOfPointsInPage);
     this.bitMap = new BitMap(tsDataTypeList.size());
     this.valueColumnDeleteCursor = new ArrayList<>();
     for (int i = 0; i < tsDataTypeList.size(); i++) {
@@ -101,6 +104,20 @@ public class OrderedMultiAlignedTVListIterator extends MultiAlignedTVListIterato
     TVList.TVListIterator iterator = alignedTvListIterators.get(iteratorIndex);
     iterator.next();
     rowIndices = null;
+    probeNext = false;
+  }
+
+  @Override
+  public void encodeBatch(IChunkWriter chunkWriter, BatchEncodeInfo encodeInfo, long[] times) {
+    while (iteratorIndex < alignedTvListIterators.size()) {
+      TVList.TVListIterator iterator = alignedTvListIterators.get(iteratorIndex);
+      if (!iterator.hasNextBatch()) {
+        iteratorIndex++;
+        continue;
+      }
+      iterator.encodeBatch(chunkWriter, encodeInfo, times);
+      break;
+    }
     probeNext = false;
   }
 

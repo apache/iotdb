@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.commons.udf.builtin.relational.tvf;
 
-import org.apache.iotdb.udf.api.exception.UDFException;
 import org.apache.iotdb.udf.api.relational.TableFunction;
 import org.apache.iotdb.udf.api.relational.access.Record;
 import org.apache.iotdb.udf.api.relational.table.TableFunctionAnalysis;
@@ -40,14 +39,15 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
+
+import static org.apache.iotdb.commons.udf.builtin.relational.tvf.WindowTVFUtils.findColumnIndex;
 
 public class HOPTableFunction implements TableFunction {
 
   private static final String DATA_PARAMETER_NAME = "DATA";
   private static final String TIMECOL_PARAMETER_NAME = "TIMECOL";
-  private static final String SLIDE_PARAMETER_NAME = "SLIDE";
   private static final String SIZE_PARAMETER_NAME = "SIZE";
+  private static final String SLIDE_PARAMETER_NAME = "SLIDE";
   private static final String ORIGIN_PARAMETER_NAME = "ORIGIN";
 
   @Override
@@ -63,8 +63,8 @@ public class HOPTableFunction implements TableFunction {
             .type(Type.STRING)
             .defaultValue("time")
             .build(),
-        ScalarParameterSpecification.builder().name(SLIDE_PARAMETER_NAME).type(Type.INT64).build(),
         ScalarParameterSpecification.builder().name(SIZE_PARAMETER_NAME).type(Type.INT64).build(),
+        ScalarParameterSpecification.builder().name(SLIDE_PARAMETER_NAME).type(Type.INT64).build(),
         ScalarParameterSpecification.builder()
             .name(ORIGIN_PARAMETER_NAME)
             .type(Type.TIMESTAMP)
@@ -72,27 +72,13 @@ public class HOPTableFunction implements TableFunction {
             .build());
   }
 
-  private int findTimeColumnIndex(TableArgument tableArgument, String expectedFieldName) {
-    int requiredIndex = -1;
-    for (int i = 0; i < tableArgument.getFieldTypes().size(); i++) {
-      Optional<String> fieldName = tableArgument.getFieldNames().get(i);
-      if (fieldName.isPresent() && expectedFieldName.equalsIgnoreCase(fieldName.get())) {
-        requiredIndex = i;
-        break;
-      }
-    }
-    return requiredIndex;
-  }
-
   @Override
   public TableFunctionAnalysis analyze(Map<String, Argument> arguments) {
     TableArgument tableArgument = (TableArgument) arguments.get(DATA_PARAMETER_NAME);
     String expectedFieldName =
         (String) ((ScalarArgument) arguments.get(TIMECOL_PARAMETER_NAME)).getValue();
-    int requiredIndex = findTimeColumnIndex(tableArgument, expectedFieldName);
-    if (requiredIndex == -1) {
-      throw new UDFException("The required field is not found in the input table");
-    }
+    int requiredIndex =
+        findColumnIndex(tableArgument, expectedFieldName, Collections.singleton(Type.TIMESTAMP));
     DescribedSchema properColumnSchema =
         new DescribedSchema.Builder()
             .addField("window_start", Type.TIMESTAMP)
@@ -102,6 +88,7 @@ public class HOPTableFunction implements TableFunction {
     // outputColumnSchema
     return TableFunctionAnalysis.builder()
         .properColumnSchema(properColumnSchema)
+        .requireRecordSnapshot(false)
         .requiredColumns(DATA_PARAMETER_NAME, Collections.singletonList(requiredIndex))
         .build();
   }
@@ -143,7 +130,7 @@ public class HOPTableFunction implements TableFunction {
       long window_start = (timeValue - start - size + slide) / slide * slide;
       while (window_start <= timeValue && window_start + size > timeValue) {
         properColumnBuilders.get(0).writeLong(window_start);
-        properColumnBuilders.get(1).writeLong(window_start + size - 1);
+        properColumnBuilders.get(1).writeLong(window_start + size);
         passThroughIndexBuilder.writeLong(curIndex);
         window_start += slide;
       }

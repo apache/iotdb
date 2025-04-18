@@ -120,6 +120,7 @@ import org.apache.iotdb.db.storageengine.dataregion.utils.fileTimeIndexCache.Fil
 import org.apache.iotdb.db.storageengine.dataregion.utils.validate.TsFileValidator;
 import org.apache.iotdb.db.storageengine.dataregion.wal.WALManager;
 import org.apache.iotdb.db.storageengine.dataregion.wal.node.IWALNode;
+import org.apache.iotdb.db.storageengine.dataregion.wal.node.WALNode;
 import org.apache.iotdb.db.storageengine.dataregion.wal.recover.WALRecoverManager;
 import org.apache.iotdb.db.storageengine.dataregion.wal.recover.file.SealedTsFileRecoverPerformer;
 import org.apache.iotdb.db.storageengine.dataregion.wal.recover.file.UnsealedTsFileRecoverPerformer;
@@ -696,11 +697,13 @@ public class DataRegion implements IDataRegionForQuery {
     }
 
     if (StorageEngine.getInstance().isReadyForReadAndWrite()) {
-      if (config.getDataRegionConsensusProtocolClass().equals(ConsensusFactory.IOT_CONSENSUS)
-          || config
-              .getDataRegionConsensusProtocolClass()
-              .equals(ConsensusFactory.IOT_CONSENSUS_V2)) {
-        WALManager.getInstance().applyForWALNode(databaseName + FILE_NAME_SEPARATOR + dataRegionId);
+      if (config.getDataRegionConsensusProtocolClass().equals(ConsensusFactory.IOT_CONSENSUS_V2)) {
+        IWALNode walNode =
+            WALManager.getInstance()
+                .applyForWALNode(databaseName + FILE_NAME_SEPARATOR + dataRegionId);
+        if (walNode instanceof WALNode) {
+          walNode.setSafelyDeletedSearchIndex(Long.MAX_VALUE);
+        }
       }
       logger.info("The data region {}[{}] is created successfully", databaseName, dataRegionId);
     } else {
@@ -1470,7 +1473,7 @@ public class DataRegion implements IDataRegionForQuery {
     }
   }
 
-  private void tryToUpdateInsertTabletLastCache(InsertTabletNode node) {
+  private void tryToUpdateInsertTabletLastCache(final InsertTabletNode node) {
     node.updateLastCache(getDatabaseName());
   }
 
@@ -1494,7 +1497,7 @@ public class DataRegion implements IDataRegionForQuery {
     return tsFileProcessor;
   }
 
-  private void tryToUpdateInsertRowLastCache(InsertRowNode node) {
+  private void tryToUpdateInsertRowLastCache(final InsertRowNode node) {
     node.updateLastCache(databaseName);
   }
 
@@ -2707,9 +2710,6 @@ public class DataRegion implements IDataRegionForQuery {
         continue;
       }
 
-      if (sealedTsFile.isCompacting()) {
-        involvedModificationFiles.add(sealedTsFile.getCompactionModFile());
-      }
       involvedModificationFiles.add(sealedTsFile.getModFileForWrite());
     }
 
@@ -2759,9 +2759,6 @@ public class DataRegion implements IDataRegionForQuery {
     for (TsFileResource tsFileResource : deletedByMods) {
       if (tsFileResource.isClosed()
           || !tsFileResource.getProcessor().deleteDataInMemory(modEntry)) {
-        if (tsFileResource.isCompacting()) {
-          involvedModificationFiles.add(tsFileResource.getCompactionModFile());
-        }
         involvedModificationFiles.add(tsFileResource.getModFileForWrite());
       } // else do nothing
     }
@@ -3055,6 +3052,9 @@ public class DataRegion implements IDataRegionForQuery {
   }
 
   public static Optional<String> getNonSystemDatabaseName(String databaseName) {
+    if (Objects.isNull(databaseName)) {
+      return Optional.empty();
+    }
     if (databaseName.startsWith(SchemaConstant.SYSTEM_DATABASE)) {
       return Optional.empty();
     }
@@ -3108,6 +3108,12 @@ public class DataRegion implements IDataRegionForQuery {
 
     writeLock("loadNewTsFile");
     try {
+      if (deleted) {
+        logger.info(
+            "Won't load TsFile {}, because region is deleted",
+            tsfileToBeInserted.getAbsolutePath());
+        return;
+      }
       newTsFileResource.setSeq(false);
       final String newFileName =
           getNewTsFileName(
