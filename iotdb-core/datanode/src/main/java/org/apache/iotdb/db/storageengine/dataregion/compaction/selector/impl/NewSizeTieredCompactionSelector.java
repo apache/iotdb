@@ -22,14 +22,10 @@ package org.apache.iotdb.db.storageengine.dataregion.compaction.selector.impl;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.commons.service.metric.enums.Tag;
-import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.ICompactionPerformer;
-import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.impl.FastCompactionPerformer;
-import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.impl.ReadChunkCompactionPerformer;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.IInnerCompactionPerformer;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.InnerSpaceCompactionTask;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.CompactionScheduleContext;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.estimator.AbstractInnerSpaceEstimator;
-import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.estimator.FastCompactionInnerCompactionEstimator;
-import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.estimator.ReadChunkInnerCompactionEstimator;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.utils.TsFileResourceCandidate;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileManager;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
@@ -188,7 +184,7 @@ public class NewSizeTieredCompactionSelector extends SizeTieredCompactionSelecto
 
     boolean estimateCompactionTaskMemoryDuringSelection;
     boolean reachMemoryLimit = false;
-    ICompactionPerformer performer;
+    IInnerCompactionPerformer performer;
     AbstractInnerSpaceEstimator estimator;
     long memoryCost;
 
@@ -202,11 +198,8 @@ public class NewSizeTieredCompactionSelector extends SizeTieredCompactionSelecto
       reachMemoryLimit = false;
       performer =
           sequence ? context.getSeqCompactionPerformer() : context.getUnseqCompactionPerformer();
-      if (performer instanceof ReadChunkCompactionPerformer) {
-        estimator = new ReadChunkInnerCompactionEstimator();
-      } else if (performer instanceof FastCompactionPerformer) {
-        estimator = new FastCompactionInnerCompactionEstimator();
-      } else {
+      estimator = performer.getInnerSpaceEstimator().orElse(null);
+      if (estimator == null) {
         estimateCompactionTaskMemoryDuringSelection = false;
       }
       memoryCost = 0;
@@ -307,6 +300,9 @@ public class NewSizeTieredCompactionSelector extends SizeTieredCompactionSelecto
           if (totalFileSize + currentFileSize > singleFileSizeThreshold
               || totalFileNum + 1 > totalFileNumUpperBound
               || !isFileLevelSatisfied(resource.getTsFileID().getInnerCompactionCount())
+              // if estimateCompactionTaskMemoryDuringSelection is true, we have used the
+              // selected files for memory estimation. To ensure consistent results, we
+              // will not add other files for merging.
               || estimateCompactionTaskMemoryDuringSelection) {
             break;
           }
@@ -324,6 +320,9 @@ public class NewSizeTieredCompactionSelector extends SizeTieredCompactionSelecto
         boolean canCompactAllFiles =
             totalFileSize <= singleFileSizeThreshold
                 && totalFileNum <= totalFileNumUpperBound
+                // if estimateCompactionTaskMemoryDuringSelection is true, we have used the
+                // selected files for memory estimation. To ensure consistent results, we
+                // will not add other files for merging.
                 && !estimateCompactionTaskMemoryDuringSelection;
         if (canCompactAllFiles) {
           currentSelectedResources =

@@ -19,11 +19,12 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer;
 
-import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.estimator.AbstractInnerSpaceEstimator;
 
-import java.util.List;
+import java.util.Optional;
 
-public interface ISeqCompactionPerformer extends IInnerCompactionPerformer {
-  @Override
-  void setSourceFiles(List<TsFileResource> seqFiles);
+public interface IInnerCompactionPerformer extends ICompactionPerformer {
+  default Optional<AbstractInnerSpaceEstimator> getInnerSpaceEstimator() {
+    return Optional.empty();
+  }
 }

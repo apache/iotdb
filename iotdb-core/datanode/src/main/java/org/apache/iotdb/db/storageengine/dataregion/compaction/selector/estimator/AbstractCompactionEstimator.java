@@ -65,7 +65,7 @@ public abstract class AbstractCompactionEstimator {
   private static int globalCompactionRoughFileInfoCacheSize = 100000;
 
   private static final double maxRatioToAllocateFileInfoCache = 0.1;
-  private static boolean isCacheMemoryCostAllocated;
+  private static boolean globalFileInfoCacheEnabled;
   private static Map<TsFileID, FileInfo> globalFileInfoCacheForFailedCompaction;
   private static Map<TsFileID, FileInfo.RoughFileInfo> globalRoughInfoCacheForCompaction;
 
@@ -76,9 +76,9 @@ public abstract class AbstractCompactionEstimator {
         globalCompactionFileInfoCacheSize * FileInfo.MEMORY_COST_OF_FILE_INFO_ENTRY_IN_CACHE
             + globalCompactionRoughFileInfoCacheSize
                 * FileInfo.MEMORY_COST_OF_ROUGH_FILE_INFO_ENTRY_IN_CACHE;
-    isCacheMemoryCostAllocated =
+    globalFileInfoCacheEnabled =
         compactionMemorySize * maxRatioToAllocateFileInfoCache > fixedMemoryCost;
-    if (isCacheMemoryCostAllocated) {
+    if (globalFileInfoCacheEnabled) {
       globalRoughInfoCacheForCompaction =
           Collections.synchronizedMap(new LRUMap<>(globalCompactionFileInfoCacheSize));
       globalFileInfoCacheForFailedCompaction =
@@ -87,7 +87,7 @@ public abstract class AbstractCompactionEstimator {
       globalRoughInfoCacheForCompaction = Collections.emptyMap();
       globalFileInfoCacheForFailedCompaction = Collections.emptyMap();
     }
-    return isCacheMemoryCostAllocated ? fixedMemoryCost : 0;
+    return globalFileInfoCacheEnabled ? fixedMemoryCost : 0;
   }
 
   protected Map<TsFileResource, FileInfo> fileInfoCache = new HashMap<>();
@@ -142,7 +142,7 @@ public abstract class AbstractCompactionEstimator {
     try (TsFileSequenceReader reader = getReader(resource.getTsFilePath())) {
       FileInfo fileInfo = CompactionEstimateUtils.calculateFileInfo(reader);
       fileInfoCache.put(resource, fileInfo);
-      if (isCacheMemoryCostAllocated) {
+      if (globalFileInfoCacheEnabled) {
         synchronized (globalFileInfoCacheForFailedCompaction) {
           globalFileInfoCacheForFailedCompaction.put(tsFileID, fileInfo);
         }
@@ -251,7 +251,7 @@ public abstract class AbstractCompactionEstimator {
     if (resource == null || resource.getTsFile() == null) {
       return;
     }
-    if (isCacheMemoryCostAllocated) {
+    if (globalFileInfoCacheEnabled) {
       synchronized (globalFileInfoCacheForFailedCompaction) {
         globalFileInfoCacheForFailedCompaction.remove(resource.getTsFileID());
       }
@@ -261,6 +261,7 @@ public abstract class AbstractCompactionEstimator {
     }
   }
 
+  @TestOnly
   public static void setGlobalCompactionRoughFileInfoCacheSize(
       int globalCompactionRoughFileInfoCacheSize) {
     AbstractCompactionEstimator.globalCompactionRoughFileInfoCacheSize =
