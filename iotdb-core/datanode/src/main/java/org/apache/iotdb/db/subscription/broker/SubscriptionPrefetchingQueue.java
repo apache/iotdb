@@ -68,6 +68,8 @@ public abstract class SubscriptionPrefetchingQueue {
   private final SubscriptionBlockingPendingQueue inputPendingQueue;
 
   private final AtomicLong commitIdGenerator;
+  // record initial commit for outdated event detection
+  private final long initialCommitId;
 
   /** A queue containing a series of prefetched pollable {@link SubscriptionEvent}. */
   protected final PriorityBlockingQueue<SubscriptionEvent> prefetchingQueue;
@@ -113,6 +115,7 @@ public abstract class SubscriptionPrefetchingQueue {
     this.topicName = topicName;
     this.inputPendingQueue = inputPendingQueue;
     this.commitIdGenerator = commitIdGenerator;
+    this.initialCommitId = commitIdGenerator.get();
 
     this.prefetchingQueue = new PriorityBlockingQueue<>();
     this.inFlightEvents = new ConcurrentHashMap<>();
@@ -580,6 +583,24 @@ public abstract class SubscriptionPrefetchingQueue {
             topicName,
             brokerId,
             INVALID_COMMIT_ID));
+  }
+
+  protected SubscriptionEvent generateSubscriptionPollOutdatedErrorResponse() {
+    // consider non-critical by default, meaning the client can retry
+    return new SubscriptionEvent(
+        SubscriptionPollResponseType.ERROR.getType(),
+        ErrorPayload.OUTDATED_ERROR_PAYLOAD,
+        new SubscriptionCommitContext(
+            IoTDBDescriptor.getInstance().getConfig().getDataNodeId(),
+            PipeDataNodeAgent.runtime().getRebootTimes(),
+            topicName,
+            brokerId,
+            INVALID_COMMIT_ID));
+  }
+
+  public boolean isCommitContextOutdated(final SubscriptionCommitContext commitContext) {
+    return PipeDataNodeAgent.runtime().getRebootTimes() > commitContext.getRebootTimes()
+        || initialCommitId > commitContext.getCommitId();
   }
 
   //////////////////////////// APIs provided for metric framework ////////////////////////////
