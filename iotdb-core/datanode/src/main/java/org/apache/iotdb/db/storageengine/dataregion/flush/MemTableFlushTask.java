@@ -67,6 +67,8 @@ public class MemTableFlushTask {
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
   private final int MAX_NUMBER_OF_POINTS_IN_PAGE =
       TSFileDescriptor.getInstance().getConfig().getMaxNumberOfPointsInPage();
+  private final long MAX_NUMBER_OF_POINTS_IN_CHUNK = config.getTargetChunkPointNum();
+  private final long TARGET_CHUNK_SIZE = config.getTargetChunkSize();
 
   /* storage group name -> last time */
   private static final Map<String, Long> flushPointsCache = new ConcurrentHashMap<>();
@@ -107,7 +109,15 @@ public class MemTableFlushTask {
     this.dataRegionId = dataRegionId;
     this.encodingTaskFuture = SUB_TASK_POOL_MANAGER.submit(encodingTask);
     this.ioTaskFuture = SUB_TASK_POOL_MANAGER.submit(ioTask);
-    this.encodeInfo = new BatchEncodeInfo(0, 0, 0);
+
+    this.encodeInfo =
+        new BatchEncodeInfo(
+            0,
+            0,
+            0,
+            MAX_NUMBER_OF_POINTS_IN_PAGE,
+            MAX_NUMBER_OF_POINTS_IN_CHUNK,
+            TARGET_CHUNK_SIZE);
     LOGGER.debug(
         "flush task of database {} memtable is created, flushing to file {}.",
         storageGroup,
@@ -259,6 +269,12 @@ public class MemTableFlushTask {
               long starTime = System.currentTimeMillis();
               IWritableMemChunk writableMemChunk = (IWritableMemChunk) task;
               if (writableMemChunk instanceof AlignedWritableMemChunk && times == null) {
+                encodeInfo.maxNumberOfPointsInChunk =
+                    Math.min(
+                        MAX_NUMBER_OF_POINTS_IN_CHUNK,
+                        (TARGET_CHUNK_SIZE
+                            / ((AlignedWritableMemChunk) writableMemChunk)
+                                .getAvgPointSizeOfLargestColumn()));
                 times = new long[MAX_NUMBER_OF_POINTS_IN_PAGE];
               }
               writableMemChunk.encode(ioTaskQueue, encodeInfo, times);

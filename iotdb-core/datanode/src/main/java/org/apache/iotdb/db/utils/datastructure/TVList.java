@@ -20,13 +20,11 @@
 package org.apache.iotdb.db.utils.datastructure;
 
 import org.apache.iotdb.commons.utils.TestOnly;
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.queryengine.execution.fragment.QueryContext;
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.WALEntryValue;
 import org.apache.iotdb.db.storageengine.rescon.memory.PrimitiveArrayManager;
 import org.apache.iotdb.db.utils.MathUtils;
 
-import org.apache.tsfile.common.conf.TSFileDescriptor;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.tsfile.read.TimeValuePair;
@@ -645,8 +643,11 @@ public abstract class TVList implements WALEntryValue {
   }
 
   public TVListIterator iterator(
-      List<TimeRange> deletionList, Integer floatPrecision, TSEncoding encoding) {
-    return new TVListIterator(deletionList, floatPrecision, encoding);
+      List<TimeRange> deletionList,
+      Integer floatPrecision,
+      TSEncoding encoding,
+      int maxNumberOfPointsInPage) {
+    return new TVListIterator(deletionList, floatPrecision, encoding, maxNumberOfPointsInPage);
   }
 
   /* TVList Iterator */
@@ -661,15 +662,14 @@ public abstract class TVList implements WALEntryValue {
     private final int floatPrecision;
     private final TSEncoding encoding;
 
-    private final int MAX_NUMBER_OF_POINTS_IN_PAGE =
-        TSFileDescriptor.getInstance().getConfig().getMaxNumberOfPointsInPage();
-    private final long TARGET_CHUNK_SIZE =
-        IoTDBDescriptor.getInstance().getConfig().getTargetChunkSize();
-    private final long MAX_NUMBER_OF_POINTS_IN_CHUNK =
-        IoTDBDescriptor.getInstance().getConfig().getTargetChunkPointNum();
+    // used by nextBatch during query
+    protected final int maxNumberOfPointsInPage;
 
     public TVListIterator(
-        List<TimeRange> deletionList, Integer floatPrecision, TSEncoding encoding) {
+        List<TimeRange> deletionList,
+        Integer floatPrecision,
+        TSEncoding encoding,
+        int maxNumberOfPointsInPage) {
       this.deletionList = deletionList;
       this.floatPrecision = floatPrecision != null ? floatPrecision : 0;
       this.encoding = encoding;
@@ -677,6 +677,7 @@ public abstract class TVList implements WALEntryValue {
       this.rows = rowCount;
       this.probeNext = false;
       this.tsBlocks = new ArrayList<>();
+      this.maxNumberOfPointsInPage = maxNumberOfPointsInPage;
     }
 
     protected void prepareNext() {
@@ -739,7 +740,7 @@ public abstract class TVList implements WALEntryValue {
       TsBlockBuilder builder = new TsBlockBuilder(Collections.singletonList(dataType));
       switch (dataType) {
         case BOOLEAN:
-          while (index < rows && builder.getPositionCount() < MAX_NUMBER_OF_POINTS_IN_PAGE) {
+          while (index < rows && builder.getPositionCount() < maxNumberOfPointsInPage) {
             long time = getTime(index);
             if (!isNullValue(getValueIndex(index))
                 && !isPointDeleted(time, deletionList, deleteCursor)
@@ -753,7 +754,7 @@ public abstract class TVList implements WALEntryValue {
           break;
         case INT32:
         case DATE:
-          while (index < rows && builder.getPositionCount() < MAX_NUMBER_OF_POINTS_IN_PAGE) {
+          while (index < rows && builder.getPositionCount() < maxNumberOfPointsInPage) {
             long time = getTime(index);
             if (!isNullValue(getValueIndex(index))
                 && !isPointDeleted(time, deletionList, deleteCursor)
@@ -767,7 +768,7 @@ public abstract class TVList implements WALEntryValue {
           break;
         case INT64:
         case TIMESTAMP:
-          while (index < rows && builder.getPositionCount() < MAX_NUMBER_OF_POINTS_IN_PAGE) {
+          while (index < rows && builder.getPositionCount() < maxNumberOfPointsInPage) {
             long time = getTime(index);
             if (!isNullValue(getValueIndex(index))
                 && !isPointDeleted(time, deletionList, deleteCursor)
@@ -780,7 +781,7 @@ public abstract class TVList implements WALEntryValue {
           }
           break;
         case FLOAT:
-          while (index < rows && builder.getPositionCount() < MAX_NUMBER_OF_POINTS_IN_PAGE) {
+          while (index < rows && builder.getPositionCount() < maxNumberOfPointsInPage) {
             long time = getTime(index);
             if (!isNullValue(getValueIndex(index))
                 && !isPointDeleted(time, deletionList, deleteCursor)
@@ -796,7 +797,7 @@ public abstract class TVList implements WALEntryValue {
           }
           break;
         case DOUBLE:
-          while (index < rows && builder.getPositionCount() < MAX_NUMBER_OF_POINTS_IN_PAGE) {
+          while (index < rows && builder.getPositionCount() < maxNumberOfPointsInPage) {
             long time = getTime(index);
             if (!isNullValue(getValueIndex(index))
                 && !isPointDeleted(time, deletionList, deleteCursor)
@@ -814,7 +815,7 @@ public abstract class TVList implements WALEntryValue {
         case TEXT:
         case BLOB:
         case STRING:
-          while (index < rows && builder.getPositionCount() < MAX_NUMBER_OF_POINTS_IN_PAGE) {
+          while (index < rows && builder.getPositionCount() < maxNumberOfPointsInPage) {
             long time = getTime(index);
             if (!isNullValue(getValueIndex(index))
                 && !isPointDeleted(time, deletionList, deleteCursor)
@@ -893,8 +894,8 @@ public abstract class TVList implements WALEntryValue {
                 String.format("Data type %s is not supported.", dataType));
         }
         encodeInfo.pointNumInChunk++;
-        if (encodeInfo.pointNumInChunk >= MAX_NUMBER_OF_POINTS_IN_CHUNK
-            || encodeInfo.dataSizeInChunk >= TARGET_CHUNK_SIZE) {
+        if (encodeInfo.pointNumInChunk >= encodeInfo.maxNumberOfPointsInChunk
+            || encodeInfo.dataSizeInChunk >= encodeInfo.targetChunkSize) {
           break;
         }
       }

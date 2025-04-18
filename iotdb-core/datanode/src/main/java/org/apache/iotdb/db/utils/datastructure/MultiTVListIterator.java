@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.utils.datastructure;
 
-import org.apache.tsfile.common.conf.TSFileDescriptor;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.tsfile.read.TimeValuePair;
@@ -46,23 +45,25 @@ public abstract class MultiTVListIterator implements MemPointIterator {
   protected int iteratorIndex = 0;
   protected int rowIndex = 0;
 
-  protected final int MAX_NUMBER_OF_POINTS_IN_PAGE =
-      TSFileDescriptor.getInstance().getConfig().getMaxNumberOfPointsInPage();
+  // used by nextBatch during query
+  protected final int maxNumberOfPointsInPage;
 
   protected MultiTVListIterator(
       TSDataType tsDataType,
       List<TVList> tvLists,
       List<TimeRange> deletionList,
       Integer floatPrecision,
-      TSEncoding encoding) {
+      TSEncoding encoding,
+      int maxNumberOfPointsInPage) {
     this.tsDataType = tsDataType;
     this.tvListIterators = new ArrayList<>(tvLists.size());
     for (TVList tvList : tvLists) {
-      tvListIterators.add(tvList.iterator(deletionList, null, null));
+      tvListIterators.add(tvList.iterator(deletionList, null, null, maxNumberOfPointsInPage));
     }
     this.floatPrecision = floatPrecision != null ? floatPrecision : 0;
     this.encoding = encoding;
     this.tsBlocks = new ArrayList<>();
+    this.maxNumberOfPointsInPage = maxNumberOfPointsInPage;
   }
 
   @Override
@@ -102,7 +103,7 @@ public abstract class MultiTVListIterator implements MemPointIterator {
   @Override
   public TsBlock nextBatch() {
     TsBlockBuilder builder = new TsBlockBuilder(Collections.singletonList(tsDataType));
-    while (hasNextTimeValuePair() && builder.getPositionCount() < MAX_NUMBER_OF_POINTS_IN_PAGE) {
+    while (hasNextTimeValuePair() && builder.getPositionCount() < maxNumberOfPointsInPage) {
       TVList.TVListIterator iterator = tvListIterators.get(iteratorIndex);
       builder.getTimeColumnBuilder().writeLong(currentTime);
       switch (tsDataType) {
