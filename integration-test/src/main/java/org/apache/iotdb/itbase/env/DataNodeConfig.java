@@ -25,6 +25,10 @@ import java.util.List;
 public interface DataNodeConfig {
   DataNodeConfig setMetricReporterType(List<String> metricReporterTypes);
 
+  DataNodeConfig setMetricPrometheusReporterUsername(String username);
+
+  DataNodeConfig setMetricPrometheusReporterPassword(String password);
+
   DataNodeConfig setEnableRestService(boolean enableRestService);
 
   DataNodeConfig setConnectionTimeoutInMS(int connectionTimeoutInMS);
