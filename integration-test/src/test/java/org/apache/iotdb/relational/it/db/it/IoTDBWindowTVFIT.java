@@ -327,8 +327,8 @@ public class IoTDBWindowTVFIT {
     // test UDFException
     String errMsg = "Cumulative table function requires size must be an integral multiple of step.";
     tableAssertTestFail(
-            "SELECT window_start, window_end, stock_id, sum(price) as sum FROM CUMULATE(DATA => bid, TIMECOL => 'time', STEP => 4m, SIZE => 10m) GROUP BY window_start, window_end, stock_id ORDER BY stock_id, window_start",
-            errMsg,
-            DATABASE_NAME);
+        "SELECT window_start, window_end, stock_id, sum(price) as sum FROM CUMULATE(DATA => bid, TIMECOL => 'time', STEP => 4m, SIZE => 10m) GROUP BY window_start, window_end, stock_id ORDER BY stock_id, window_start",
+        errMsg,
+        DATABASE_NAME);
   }
 }
