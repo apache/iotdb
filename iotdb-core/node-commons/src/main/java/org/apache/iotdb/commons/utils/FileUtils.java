@@ -49,6 +49,11 @@ public class FileUtils {
 
   private static final int BUFFER_SIZE = 1024;
 
+  private static final String RENAME_FILE_MESSAGE =
+      "Renamed file {} to {} because it already exists in the target directory: {}";
+  private static final String COPY_FILE_MESSAGE =
+      "Copy file {} to {} because it already exists in the target directory: {}";
+
   private FileUtils() {}
 
   public static boolean deleteFileIfExist(File file) {
@@ -358,25 +363,97 @@ public class FileUtils {
       throws IOException {
     final String sourceFileName = sourceFile.getName();
     final File targetFile = new File(targetDir, sourceFileName);
-
     if (targetFile.exists()) {
-      if (haveSameMD5(sourceFile, targetFile)) {
-        org.apache.commons.io.FileUtils.forceDelete(sourceFile);
-        LOGGER.info(
-            "Deleted the file {} because it already exists in the fail directory: {}",
-            sourceFile.getName(),
-            targetDir.getAbsolutePath());
-      } else {
-        renameWithMD5(sourceFile, targetDir);
-        LOGGER.info(
-            "Renamed file {} to {} because it already exists in the fail directory: {}",
-            sourceFile.getName(),
-            targetFile.getName(),
-            targetDir.getAbsolutePath());
+      // Check if the file sizes are the same
+      if (sourceFile.length() == targetFile.length()) {
+        moveWithMD5Check(sourceFile, targetDir, targetFile);
+        return;
       }
+      moveFileRenameWithSize(sourceFile, targetDir);
     } else {
       org.apache.commons.io.FileUtils.moveFileToDirectory(sourceFile, targetDir, true);
     }
+  }
+
+  private static void moveWithMD5Check(
+      final File sourceFile, final File targetDir, final File targetFile) throws IOException {
+    if (haveSameMD5(sourceFile, targetFile)) {
+      org.apache.commons.io.FileUtils.forceDelete(sourceFile);
+      LOGGER.info(
+          "Deleted the file {} because it already exists in the target directory: {}",
+          sourceFile.getName(),
+          targetDir.getAbsolutePath());
+    } else {
+      renameWithMD5(sourceFile, targetDir);
+    }
+  }
+
+  private static void moveFileRenameWithSize(File sourceFile, File targetDir) throws IOException {
+    final File targetFile = renameWithSize(sourceFile, targetDir);
+    org.apache.commons.io.FileUtils.moveFile(
+        sourceFile, targetFile, StandardCopyOption.REPLACE_EXISTING);
+
+    LOGGER.info(
+        RENAME_FILE_MESSAGE,
+        sourceFile.getName(),
+        targetFile.getName(),
+        targetDir.getAbsolutePath());
+  }
+
+  public static void copyFileWithMD5Check(final File sourceFile, final File targetDir)
+      throws IOException {
+    final String sourceFileName = sourceFile.getName();
+    final File targetFile = new File(targetDir, sourceFileName);
+    if (targetFile.exists()) {
+      if (sourceFile.length() == targetFile.length()) {
+        copyWithMD5Check(sourceFile, targetDir, targetFile);
+        return;
+      }
+      copyFileRenameWithSize(sourceFile, targetDir);
+    } else {
+      try {
+        Files.createDirectories(targetDir.toPath());
+      } catch (IOException e) {
+        LOGGER.warn("failed to create target directory: {}", targetDir.getAbsolutePath());
+        throw e;
+      }
+
+      Files.copy(
+          sourceFile.toPath(),
+          targetFile.toPath(),
+          StandardCopyOption.REPLACE_EXISTING,
+          StandardCopyOption.COPY_ATTRIBUTES);
+    }
+  }
+
+  private static void copyFileRenameWithSize(final File sourceFile, final File targetDir)
+      throws IOException {
+    final File targetFile = renameWithSize(sourceFile, targetDir);
+    Files.copy(
+        sourceFile.toPath(),
+        targetFile.toPath(),
+        StandardCopyOption.REPLACE_EXISTING,
+        StandardCopyOption.COPY_ATTRIBUTES);
+
+    LOGGER.info(
+        COPY_FILE_MESSAGE, sourceFile.getName(), targetFile.getName(), targetDir.getAbsolutePath());
+  }
+
+  private static File renameWithSize(final File sourceFile, final File targetDir) {
+    final String sourceFileBaseName = FilenameUtils.getBaseName(sourceFile.getName());
+    final String sourceFileExtension = FilenameUtils.getExtension(sourceFile.getName());
+
+    // If the file sizes are different, rename the source file by appending its size and the
+    // current timestamp
+    final String newFileName =
+        String.format(
+            "%s_%s_%s.%s",
+            sourceFileBaseName,
+            sourceFile.length(),
+            System.currentTimeMillis(),
+            sourceFileExtension);
+
+    return new File(targetDir, newFileName);
   }
 
   private static boolean haveSameMD5(final File file1, final File file2) {
@@ -400,6 +477,40 @@ public class FileUtils {
 
       org.apache.commons.io.FileUtils.moveFile(
           sourceFile, targetFile, StandardCopyOption.REPLACE_EXISTING);
+
+      LOGGER.info(
+          RENAME_FILE_MESSAGE,
+          sourceFile.getName(),
+          targetFile.getName(),
+          targetDir.getAbsolutePath());
+    }
+  }
+
+  private static void copyWithMD5Check(
+      final File sourceFile, final File targetDir, final File targetFile) throws IOException {
+    if (!haveSameMD5(sourceFile, targetFile)) {
+      final String renameFile = copyFileRenameWithMD5(sourceFile, targetDir);
+      LOGGER.info(COPY_FILE_MESSAGE, sourceFile.getName(), renameFile, targetDir.getAbsolutePath());
+    }
+  }
+
+  private static String copyFileRenameWithMD5(final File sourceFile, final File targetDir)
+      throws IOException {
+    try (final InputStream is = Files.newInputStream(sourceFile.toPath())) {
+      final String sourceFileBaseName = FilenameUtils.getBaseName(sourceFile.getName());
+      final String sourceFileExtension = FilenameUtils.getExtension(sourceFile.getName());
+      final String sourceFileMD5 = DigestUtils.md5Hex(is);
+
+      final String targetFileName =
+          sourceFileBaseName + "-" + sourceFileMD5.substring(0, 16) + "." + sourceFileExtension;
+      final File targetFile = new File(targetDir, targetFileName);
+
+      Files.copy(
+          sourceFile.toPath(),
+          targetFile.toPath(),
+          StandardCopyOption.REPLACE_EXISTING,
+          StandardCopyOption.COPY_ATTRIBUTES);
+      return targetFileName;
     }
   }
 }
