@@ -1010,13 +1010,17 @@ public class IoTDBLoadTsFileIT {
         final Statement statement = connection.createStatement()) {
       statement.execute(String.format("use %s", SchemaConfig.DATABASE_0));
       statement.execute(String.format("load '%s'", file.getAbsolutePath()));
-      try (final ResultSet resultSet =
-          statement.executeQuery(String.format("select count(*) from %s", SchemaConfig.TABLE_0))) {
-        if (resultSet.next()) {
-          Assert.assertEquals(lineCount, resultSet.getLong(1));
-        } else {
-          Assert.fail("This ResultSet is empty.");
-        }
+    }
+
+    try (final Connection adminCon = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        final Statement adminStmt = adminCon.createStatement();
+        ResultSet resultSet =
+            adminStmt.executeQuery(
+                String.format("select count(*) from %s", SchemaConfig.TABLE_0))) {
+      if (resultSet.next()) {
+        Assert.assertEquals(lineCount, resultSet.getLong(1));
+      } else {
+        Assert.fail("This ResultSet is empty.");
       }
     }
   }
