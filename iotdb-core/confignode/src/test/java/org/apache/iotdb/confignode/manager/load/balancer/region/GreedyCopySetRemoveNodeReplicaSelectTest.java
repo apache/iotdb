@@ -26,7 +26,7 @@ import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 
 import org.junit.Assert;
-import org.junit.BeforeClass;
+import org.junit.Before;
 import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -63,9 +63,11 @@ public class GreedyCopySetRemoveNodeReplicaSelectTest {
 
   private static final Map<Integer, Double> FREE_SPACE_MAP = new HashMap<>();
 
-  @BeforeClass
-  public static void setUp() {
+  @Before
+  public void setUp() {
     // Construct TEST_DATA_NODE_NUM DataNodes
+    AVAILABLE_DATA_NODE_MAP.clear();
+    FREE_SPACE_MAP.clear();
     for (int i = 1; i <= TEST_DATA_NODE_NUM; i++) {
       AVAILABLE_DATA_NODE_MAP.put(
           i, new TDataNodeConfiguration().setLocation(new TDataNodeLocation().setDataNodeId(i)));
@@ -195,6 +197,135 @@ public class GreedyCopySetRemoveNodeReplicaSelectTest {
     Assert.assertTrue(PGPSelectedNodeIds.size() >= randomSelectedNodeIds.size());
     Assert.assertTrue(randomMaxRegionCount >= PGPMaxRegionCount);
     Assert.assertTrue(randomMinRegionCount <= PGPMinRegionCount);
+  }
+
+  @Test
+  public void testSelectDestNodeMultiDatabase() {
+    // Pre‑allocate RegionReplicaSets for multiple databases
+    final String[] DB_NAMES = {"db0", "db1", "db2"};
+    final int TOTAL_RG_NUM =
+        DATA_REGION_PER_DATA_NODE * TEST_DATA_NODE_NUM / DATA_REPLICATION_FACTOR;
+
+    int basePerDb = TOTAL_RG_NUM / DB_NAMES.length;
+    int remainder = TOTAL_RG_NUM % DB_NAMES.length; // first <remainder> DBs get one extra
+
+    Map<String, List<TRegionReplicaSet>> dbAllocatedMap = new HashMap<>();
+    List<TRegionReplicaSet> globalAllocatedList = new ArrayList<>();
+    int globalIndex = 0;
+
+    for (int dbIdx = 0; dbIdx < DB_NAMES.length; dbIdx++) {
+      String db = DB_NAMES[dbIdx];
+      int rgToCreate = basePerDb + (dbIdx < remainder ? 1 : 0);
+      List<TRegionReplicaSet> perDbList = new ArrayList<>();
+      dbAllocatedMap.put(db, perDbList);
+
+      for (int i = 0; i < rgToCreate; i++) {
+        TRegionReplicaSet rs =
+            GCR_ALLOCATOR.generateOptimalRegionReplicasDistribution(
+                AVAILABLE_DATA_NODE_MAP,
+                FREE_SPACE_MAP,
+                globalAllocatedList,
+                perDbList,
+                DATA_REPLICATION_FACTOR,
+                new TConsensusGroupId(TConsensusGroupType.DataRegion, globalIndex++));
+        globalAllocatedList.add(rs);
+        perDbList.add(rs);
+      }
+    }
+
+    // Identify the replica‑sets that contain the node to be removed
+    List<TRegionReplicaSet> impactedReplicas =
+        globalAllocatedList.stream()
+            .filter(rs -> rs.getDataNodeLocations().contains(REMOVE_DATANODE_LOCATION))
+            .collect(Collectors.toList());
+
+    // Simulate removing the faulty/offline node
+    AVAILABLE_DATA_NODE_MAP.remove(REMOVE_DATANODE_LOCATION.getDataNodeId());
+    FREE_SPACE_MAP.remove(REMOVE_DATANODE_LOCATION.getDataNodeId());
+
+    List<TRegionReplicaSet> remainReplicas = new ArrayList<>();
+    for (TRegionReplicaSet rs : impactedReplicas) {
+      globalAllocatedList.remove(rs);
+      rs.getDataNodeLocations().remove(REMOVE_DATANODE_LOCATION);
+      globalAllocatedList.add(rs);
+      remainReplicas.add(rs);
+    }
+
+    // Build helper maps for removeNodeReplicaSelect
+    Map<TConsensusGroupId, TRegionReplicaSet> remainMap = new HashMap<>();
+    remainReplicas.forEach(r -> remainMap.put(r.getRegionId(), r));
+
+    Map<TConsensusGroupId, String> regionDbMap = new HashMap<>();
+    dbAllocatedMap.forEach((db, list) -> list.forEach(r -> regionDbMap.put(r.getRegionId(), db)));
+
+    // Baseline: random selection for comparison
+    Map<Integer, Integer> rndCount = new HashMap<>();
+    Map<Integer, Integer> planCount = new HashMap<>();
+    Set<Integer> rndNodes = new HashSet<>();
+    Set<Integer> planNodes = new HashSet<>();
+    int rndMax = 0, rndMin = Integer.MAX_VALUE;
+    int planMax = 0, planMin = Integer.MAX_VALUE;
+
+    AVAILABLE_DATA_NODE_MAP
+        .keySet()
+        .forEach(
+            n -> {
+              rndCount.put(n, 0);
+              planCount.put(n, 0);
+            });
+
+    for (TRegionReplicaSet r : remainReplicas) {
+      TDataNodeLocation pick = randomSelectNodeForRegion(r.getDataNodeLocations()).get();
+      LOGGER.info("Random Selected DataNode {} for Region {}", pick.getDataNodeId(), r.regionId);
+      rndNodes.add(pick.getDataNodeId());
+      rndCount.merge(pick.getDataNodeId(), 1, Integer::sum);
+    }
+
+    LOGGER.info("Remain Replicas... :");
+    for (TRegionReplicaSet remainReplicaSet : remainReplicas) {
+      LOGGER.info("Region Group Id: {}", remainReplicaSet.regionId.id);
+      List<TDataNodeLocation> dataNodeLocations = remainReplicaSet.getDataNodeLocations();
+      for (TDataNodeLocation dataNodeLocation : dataNodeLocations) {
+        LOGGER.info("DataNode: {}", dataNodeLocation.getDataNodeId());
+      }
+    }
+
+    // Call the method under test
+    Map<TConsensusGroupId, TDataNodeConfiguration> result =
+        GCR_ALLOCATOR.removeNodeReplicaSelect(
+            AVAILABLE_DATA_NODE_MAP,
+            FREE_SPACE_MAP,
+            globalAllocatedList,
+            regionDbMap,
+            dbAllocatedMap,
+            remainMap);
+
+    for (TConsensusGroupId regionId : result.keySet()) {
+      TDataNodeConfiguration selectedNode = result.get(regionId);
+
+      LOGGER.info(
+          "GCR Selected DataNode {} for Region {}",
+          selectedNode.getLocation().getDataNodeId(),
+          regionId);
+      planNodes.add(selectedNode.getLocation().getDataNodeId());
+      planCount.merge(selectedNode.getLocation().getDataNodeId(), 1, Integer::sum);
+    }
+
+    // Calculate load distribution
+    for (int c : rndCount.values()) {
+      rndMax = Math.max(rndMax, c);
+      rndMin = Math.min(rndMin, c);
+    }
+    for (int c : planCount.values()) {
+      planMax = Math.max(planMax, c);
+      planMin = Math.min(planMin, c);
+    }
+
+    // Assertions
+    Assert.assertEquals(TEST_DATA_NODE_NUM - 1, planNodes.size());
+    Assert.assertTrue(planNodes.size() >= rndNodes.size());
+    Assert.assertTrue(rndMax >= planMax);
+    Assert.assertTrue(rndMin <= planMin);
   }
 
   private Optional<TDataNodeLocation> randomSelectNodeForRegion(
