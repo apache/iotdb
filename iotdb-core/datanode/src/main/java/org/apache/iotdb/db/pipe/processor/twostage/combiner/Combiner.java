@@ -38,8 +38,13 @@ public class Combiner {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(Combiner.class);
 
-  private static final long MAX_COMBINER_LIVE_TIME_IN_MS =
-      PipeConfig.getInstance().getTwoStageAggregateMaxCombinerLiveTimeInMs();
+  private static long MAX_COMBINER_LIVE_TIME_IN_MS =
+      PipeConfig.getInstance()
+          .registerTwoStageAggregateMaxCombinerLiveTimeInMs(
+              pipeConfig ->
+                  MAX_COMBINER_LIVE_TIME_IN_MS =
+                      PipeConfig.getInstance().getTwoStageAggregateMaxCombinerLiveTimeInMs());
+
   private final long creationTimeInMs;
 
   private final Operator operator;

@@ -74,12 +74,21 @@ public abstract class IoTDBFileReceiver implements IoTDBReceiver {
   protected String username = CONNECTOR_IOTDB_USER_DEFAULT_VALUE;
   protected String password = CONNECTOR_IOTDB_PASSWORD_DEFAULT_VALUE;
 
-  private static final long LOGIN_PERIODIC_VERIFICATION_INTERVAL_MS =
-      PipeConfig.getInstance().getPipeReceiverLoginPeriodicVerificationIntervalMs();
+  private static long LOGIN_PERIODIC_VERIFICATION_INTERVAL_MS =
+      PipeConfig.getInstance()
+          .registerPipeReceiverLoginPeriodicVerificationIntervalMs(
+              pipeConfig ->
+                  LOGIN_PERIODIC_VERIFICATION_INTERVAL_MS =
+                      pipeConfig.getPipeReceiverLoginPeriodicVerificationIntervalMs());
+
   protected long lastSuccessfulLoginTime = Long.MIN_VALUE;
 
-  private static final boolean IS_FSYNC_ENABLED =
-      PipeConfig.getInstance().getPipeFileReceiverFsyncEnabled();
+  private static boolean IS_FSYNC_ENABLED =
+      PipeConfig.getInstance()
+          .registerPipeFileReceiverFsyncEnabled(
+              (config) ->
+                  IoTDBFileReceiver.IS_FSYNC_ENABLED = config.getPipeFileReceiverFsyncEnabled());
+
   private File writingFile;
   private RandomAccessFile writingFileWriter;
 
