@@ -21,10 +21,12 @@ package org.apache.iotdb.db.pipe.agent.task.builder;
 
 import org.apache.iotdb.commons.consensus.index.impl.MinimumProgressIndex;
 import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.pipe.agent.plugin.builtin.BuiltinPipePlugin;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeStaticMeta;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeType;
 import org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant;
+import org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant;
 import org.apache.iotdb.commons.pipe.config.constant.SystemConstant;
 import org.apache.iotdb.db.pipe.agent.task.PipeDataNodeTask;
 import org.apache.iotdb.db.pipe.agent.task.execution.PipeConnectorSubtaskExecutor;
@@ -171,6 +173,31 @@ public class PipeDataNodeTaskBuilder {
 
   private void checkConflict(
       final PipeParameters extractorParameters, final PipeParameters connectorParameters) {
+
+    final boolean isExternalSource =
+        !BuiltinPipePlugin.BUILTIN_SOURCES.contains(
+            extractorParameters
+                .getStringOrDefault(
+                    Arrays.asList(
+                        PipeExtractorConstant.EXTRACTOR_KEY, PipeExtractorConstant.SOURCE_KEY),
+                    BuiltinPipePlugin.IOTDB_EXTRACTOR.getPipePluginName())
+                .toLowerCase());
+    final String pluginName =
+        connectorParameters
+            .getStringOrDefault(
+                Arrays.asList(PipeConnectorConstant.CONNECTOR_KEY, PipeConnectorConstant.SINK_KEY),
+                BuiltinPipePlugin.IOTDB_THRIFT_SINK.getPipePluginName())
+            .toLowerCase();
+    final boolean isWriteBackSink =
+        BuiltinPipePlugin.WRITE_BACK_CONNECTOR.getPipePluginName().equals(pluginName)
+            || BuiltinPipePlugin.WRITE_BACK_SINK.getPipePluginName().equals(pluginName);
+
+    if (isExternalSource && isWriteBackSink) {
+      connectorParameters.addAttribute(
+          PipeConnectorConstant.CONNECTOR_USE_EVENT_USER_NAME_KEY, "true");
+      LOGGER.info(
+          "PipeDataNodeTaskBuilder: When the extractor is an external source, the write-back sink will use the user name in the enriched event by default.");
+    }
 
     try {
       final Pair<Boolean, Boolean> insertionDeletionListeningOptionPair =

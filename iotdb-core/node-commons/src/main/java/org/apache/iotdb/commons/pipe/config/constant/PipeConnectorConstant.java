@@ -261,6 +261,10 @@ public class PipeConnectorConstant {
   public static final String CONNECTOR_OPC_DA_PROGID_KEY = "connector.opcda.progid";
   public static final String SINK_OPC_DA_PROGID_KEY = "sink.opcda.progid";
 
+  public static final String CONNECTOR_USE_EVENT_USER_NAME_KEY = "connector.use-event-user-name";
+  public static final String SINK_USE_EVENT_USER_NAME_KEY = "sink.use-event-user-name";
+  public static final boolean CONNECTOR_USE_EVENT_USER_NAME_DEFAULT_VALUE = false;
+
   private PipeConnectorConstant() {
     throw new IllegalStateException("Utility class");
   }

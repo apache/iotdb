@@ -215,4 +215,16 @@ public class PipeDataNodePluginAgent {
     schemaRegionAgent.validate(
         pipeName, extractorAttributes, processorAttributes, connectorAttributes);
   }
+
+  public boolean checkIfPluginSameType(final String newPluginName, final String oldPluginName) {
+    PipePluginMeta newPipePluginMeta = pipePluginMetaKeeper.getPipePluginMeta(newPluginName);
+    PipePluginMeta oldPipePluginMeta = pipePluginMetaKeeper.getPipePluginMeta(oldPluginName);
+    if (newPipePluginMeta == null) {
+      throw new PipeException(String.format("plugin %s is not registered.", newPluginName));
+    }
+    if (oldPipePluginMeta == null) {
+      throw new PipeException(String.format("plugin %s is not registered.", oldPluginName));
+    }
+    return newPipePluginMeta.getClassName().equals(oldPipePluginMeta.getClassName());
+  }
 }

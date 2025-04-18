@@ -118,6 +118,9 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
   @Override
   protected Map<Integer, PipeTask> buildPipeTasks(final PipeMeta pipeMetaFromConfigNode)
       throws IllegalPathException {
+    if (pipeMetaFromConfigNode.getStaticMeta().isSourceExternal()) {
+      return new PipeDataNodeBuilder(pipeMetaFromConfigNode).buildExternalPipeTasks();
+    }
     return new PipeDataNodeBuilder(pipeMetaFromConfigNode).build();
   }
 
@@ -192,7 +195,8 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
                   consensusGroupId, extractorParameters);
 
       // Advance the extractor parameters parsing logic to avoid creating un-relevant pipeTasks
-      if (needConstructDataRegionTask || needConstructSchemaRegionTask) {
+      // consensusGroupId < 0 means an external source task, should create it
+      if (needConstructDataRegionTask || needConstructSchemaRegionTask || consensusGroupId < 0) {
         final PipeDataNodeTask pipeTask =
             new PipeDataNodeTaskBuilder(pipeStaticMeta, consensusGroupId, pipeTaskMeta).build();
         pipeTask.create();

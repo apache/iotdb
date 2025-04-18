@@ -89,7 +89,9 @@ public class PipeProcessorSubtask extends PipeReportableSubtask {
     this.subtaskCreationTime = System.currentTimeMillis();
 
     // Only register dataRegions
-    if (StorageEngine.getInstance().getAllDataRegionIds().contains(new DataRegionId(regionId))) {
+    if (StorageEngine.getInstance().getAllDataRegionIds().contains(new DataRegionId(regionId))
+        // regionId that is less than 0 means an external pipe source, should register it
+        || regionId < 0) {
       PipeProcessorMetrics.getInstance().register(this);
     }
   }
