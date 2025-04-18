@@ -112,14 +112,16 @@ public class RemoteServerEnv implements BaseEnv {
   }
 
   @Override
-  public List<String> getMetricPrometheusReporterContents() {
+  public List<String> getMetricPrometheusReporterContents(String authHeader) {
     List<String> result = new ArrayList<>();
     result.add(
         getUrlContent(
-            Config.IOTDB_HTTP_URL_PREFIX + ip_addr + ":" + configNodeMetricPort + "/metrics"));
+            Config.IOTDB_HTTP_URL_PREFIX + ip_addr + ":" + configNodeMetricPort + "/metrics",
+            authHeader));
     result.add(
         getUrlContent(
-            Config.IOTDB_HTTP_URL_PREFIX + ip_addr + ":" + dataNodeMetricPort + "/metrics"));
+            Config.IOTDB_HTTP_URL_PREFIX + ip_addr + ":" + dataNodeMetricPort + "/metrics",
+            authHeader));
     return result;
   }
 

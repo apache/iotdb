@@ -132,7 +132,7 @@ public class MetricConfig {
   }
 
   public boolean prometheusNeedAuth() {
-    return !Objects.equals(prometheusReporterUsername, "") || !Objects.equals(prometheusReporterPassword, "");
+    return prometheusReporterUsername != null && !prometheusReporterUsername.isEmpty();
   }
 
   public String getPrometheusReporterUsername() {

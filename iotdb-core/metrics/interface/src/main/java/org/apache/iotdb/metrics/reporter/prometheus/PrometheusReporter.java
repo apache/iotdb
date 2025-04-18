@@ -19,8 +19,6 @@
 
 package org.apache.iotdb.metrics.reporter.prometheus;
 
-import io.netty.handler.codec.http.HttpHeaderNames;
-import io.netty.handler.codec.http.HttpResponseStatus;
 import org.apache.iotdb.metrics.AbstractMetricManager;
 import org.apache.iotdb.metrics.config.MetricConfig;
 import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
@@ -39,6 +37,8 @@ import org.apache.iotdb.metrics.utils.ReporterType;
 
 import io.netty.channel.ChannelOption;
 import io.netty.channel.group.DefaultChannelGroup;
+import io.netty.handler.codec.http.HttpHeaderNames;
+import io.netty.handler.codec.http.HttpResponseStatus;
 import io.netty.util.concurrent.GlobalEventExecutor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -66,6 +66,8 @@ public class PrometheusReporter implements Reporter {
   private DisposableServer httpServer;
 
   private static final String REALM = "metrics";
+  public static final String BASIC_AUTH_PREFIX = "Basic ";
+  public static final char DIVIDER_BETWEEN_USERNAME_AND_DIVIDER = ':';
 
   public PrometheusReporter(AbstractMetricManager metricManager) {
     this.metricManager = metricManager;
@@ -84,13 +86,18 @@ public class PrometheusReporter implements Reporter {
               .option(ChannelOption.CONNECT_TIMEOUT_MILLIS, 2000)
               .channelGroup(new DefaultChannelGroup(GlobalEventExecutor.INSTANCE))
               .port(METRIC_CONFIG.getPrometheusReporterPort())
-                  .route(routes -> routes.get("/metrics", (req, res) -> {
-                    if (!authenticate(req, res)) {
-                      return Mono.empty();    // authenticate not pass
-                    }
-                    return res.header(HttpHeaderNames.CONTENT_TYPE, "text/plain")
-                            .sendString(Mono.just(scrape()));
-                  }))
+              .route(
+                  routes ->
+                      routes.get(
+                          "/metrics",
+                          (req, res) -> {
+                            if (!authenticate(req, res)) {
+                              // authenticate not pass
+                              return Mono.empty();
+                            }
+                            return res.header(HttpHeaderNames.CONTENT_TYPE, "text/plain")
+                                .sendString(Mono.just(scrape()));
+                          }))
               .bindNow();
     } catch (Throwable e) {
       // catch Throwable rather than Exception here because the code above might cause a
@@ -110,31 +117,37 @@ public class PrometheusReporter implements Reporter {
     }
 
     String header = req.requestHeaders().get(HttpHeaderNames.AUTHORIZATION);
-    if (header == null || !header.startsWith("Basic ")) {
+    if (header == null || !header.startsWith(BASIC_AUTH_PREFIX)) {
       return authenticateFailed(res);
     }
 
-    // base64String is expected like "Basic dXNlcjpwYXNzd29yZA=="
-    String base64String = header.substring("Basic ".length());
-    // decodedString is expected like "user:123456"
-    String decodedString = new String(Base64.getDecoder().decode(base64String), StandardCharsets.UTF_8);
-    int idx = decodedString.indexOf(':');
-    if (idx < 0) {
-      LOGGER.info("Unexpected auth string: {}", decodedString);
+    // base64 decoding
+    // base64String is expected as "Basic dXNlcjpwYXNzd29yZA=="
+    String base64String = header.substring(BASIC_AUTH_PREFIX.length());
+    // decodedString is expected as "username:password"
+    String decodedString =
+        new String(Base64.getDecoder().decode(base64String), StandardCharsets.UTF_8);
+    int dividerIndex = decodedString.indexOf(DIVIDER_BETWEEN_USERNAME_AND_DIVIDER);
+    if (dividerIndex < 0) {
+      LOGGER.warn("Unexpected auth string: {}", decodedString);
       return authenticateFailed(res);
     }
 
-    String username = decodedString.substring(0, idx);
-    String password  = decodedString.substring(idx + 1);
-    if (!METRIC_CONFIG.getPrometheusReporterUsername().equals(username) || !METRIC_CONFIG.getPrometheusReporterPassword().equals(password)) {
+    // check username and password
+    String username = decodedString.substring(0, dividerIndex);
+    String password = decodedString.substring(dividerIndex + 1);
+    if (!METRIC_CONFIG.getPrometheusReporterUsername().equals(username)
+        || !METRIC_CONFIG.getPrometheusReporterPassword().equals(password)) {
       return authenticateFailed(res);
     }
+
     return true;
   }
 
   private boolean authenticateFailed(HttpServerResponse response) {
-    response.status(HttpResponseStatus.UNAUTHORIZED)
-            .addHeader(HttpHeaderNames.WWW_AUTHENTICATE, "Basic realm=\"" + REALM + "\"");
+    response
+        .status(HttpResponseStatus.UNAUTHORIZED)
+        .addHeader(HttpHeaderNames.WWW_AUTHENTICATE, "Basic realm=\"" + REALM + "\"");
     return false;
   }
 

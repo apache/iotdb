@@ -23,6 +23,7 @@ import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
 import org.apache.iotdb.itbase.category.LocalStandaloneIT;
+import org.apache.iotdb.metrics.reporter.prometheus.PrometheusReporter;
 
 import org.junit.AfterClass;
 import org.junit.Assert;
@@ -33,6 +34,8 @@ import org.junit.runner.RunWith;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.nio.charset.StandardCharsets;
+import java.util.Base64;
 import java.util.Collections;
 import java.util.List;
 import java.util.regex.Pattern;
@@ -64,6 +67,11 @@ public class IoTDBMetricIT {
 
   private static final String VALID_LOG_STRING =
       "This line {} is invalid in prometheus line protocol";
+
+  static final String TEST_USERNAME = "good";
+  static final String WRONG_USERNAME = "bad";
+  static final String TEST_PASSWORD = "??";
+  static final String WRONG_PASSWORD = "!!";
 
   public static boolean isValidPrometheusTextFormat(String metrics) {
     String[] lines = metrics.split("\\n");
@@ -113,12 +121,16 @@ public class IoTDBMetricIT {
     EnvFactory.getEnv()
         .getConfig()
         .getConfigNodeConfig()
-        .setMetricReporterType(Collections.singletonList("PROMETHEUS"));
+        .setMetricReporterType(Collections.singletonList("PROMETHEUS"))
+        .setMetricPrometheusReporterUsername(TEST_USERNAME)
+        .setMetricPrometheusReporterPassword(TEST_PASSWORD);
     // Start DataNode with Prometheus reporter up
     EnvFactory.getEnv()
         .getConfig()
         .getDataNodeConfig()
-        .setMetricReporterType(Collections.singletonList("PROMETHEUS"));
+        .setMetricReporterType(Collections.singletonList("PROMETHEUS"))
+        .setMetricPrometheusReporterUsername(TEST_USERNAME)
+        .setMetricPrometheusReporterPassword(TEST_PASSWORD);
     EnvFactory.getEnv().initClusterEnvironment();
   }
 
@@ -129,11 +141,49 @@ public class IoTDBMetricIT {
 
   @Test
   public void testPrometheusReporter() {
-    List<String> metricContents = EnvFactory.getEnv().getMetricPrometheusReporterContents();
+    wrongUsernameTest();
+    wrongPasswordTest();
+    correctUsernameAndPasswordTest();
+  }
+
+  private void wrongUsernameTest() {
+    List<String> metricContents =
+        EnvFactory.getEnv()
+            .getMetricPrometheusReporterContents(
+                buildPrometheusReporterAuthHeader(WRONG_USERNAME, TEST_PASSWORD));
+    for (String metricContent : metricContents) {
+      Assert.assertNull(metricContent);
+    }
+  }
+
+  private void wrongPasswordTest() {
+    List<String> metricContents =
+        EnvFactory.getEnv()
+            .getMetricPrometheusReporterContents(
+                buildPrometheusReporterAuthHeader(TEST_USERNAME, WRONG_PASSWORD));
+    for (String metricContent : metricContents) {
+      Assert.assertNull(metricContent);
+    }
+  }
+
+  private void correctUsernameAndPasswordTest() {
+    List<String> metricContents =
+        EnvFactory.getEnv()
+            .getMetricPrometheusReporterContents(
+                buildPrometheusReporterAuthHeader(TEST_USERNAME, TEST_PASSWORD));
     for (String metricContent : metricContents) {
       Assert.assertNotNull(metricContent);
       Assert.assertNotEquals(0, metricContent.length());
       Assert.assertTrue(isValidPrometheusTextFormat(metricContent));
     }
+  }
+
+  private String buildPrometheusReporterAuthHeader(String username, String password) {
+    if (username == null || username.isEmpty()) {
+      return null;
+    }
+    String raw = username + PrometheusReporter.DIVIDER_BETWEEN_USERNAME_AND_DIVIDER + password;
+    String base64 = Base64.getEncoder().encodeToString(raw.getBytes(StandardCharsets.UTF_8));
+    return PrometheusReporter.BASIC_AUTH_PREFIX + base64;
   }
 }
