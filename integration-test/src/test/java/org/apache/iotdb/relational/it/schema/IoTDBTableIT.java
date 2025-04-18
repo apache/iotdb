@@ -632,6 +632,14 @@ public class IoTDBTableIT {
           () -> {
             userStmt.execute("select * from db.test");
           });
+      TestUtils.assertResultSetEqual(
+          userStmt.executeQuery("select * from information_schema.tables where database = 'db'"),
+          "database,table_name,ttl(ms),status,comment,",
+          Collections.emptySet());
+      TestUtils.assertResultSetEqual(
+          userStmt.executeQuery("select * from information_schema.columns where database = 'db'"),
+          "database,table_name,column_name,datatype,category,status,comment,",
+          Collections.emptySet());
     }
 
     try (final Connection adminCon = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
