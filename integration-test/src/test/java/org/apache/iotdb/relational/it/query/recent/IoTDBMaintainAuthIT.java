@@ -35,6 +35,7 @@ import static org.apache.iotdb.db.auth.AuthorityChecker.ONLY_ADMIN_ALLOWED;
 import static org.apache.iotdb.db.it.utils.TestUtils.prepareTableData;
 import static org.apache.iotdb.db.it.utils.TestUtils.tableAssertTestFail;
 import static org.apache.iotdb.db.it.utils.TestUtils.tableQueryNoVerifyResultTest;
+import static org.apache.iotdb.db.it.utils.TestUtils.tableResultSetEqualTest;
 
 @RunWith(IoTDBTestRunner.class)
 @Category({TableLocalStandaloneIT.class, TableClusterIT.class})
@@ -165,16 +166,13 @@ public class IoTDBMaintainAuthIT {
         PASSWORD);
 
     // case 12: show queries
-    tableAssertTestFail(
-        "SHOW QUERIES",
-        TSStatusCode.NO_PERMISSION.getStatusCode()
-            + ": Access Denied: No permissions for this operation, only root user is allowed",
-        USER_1,
-        PASSWORD);
-    tableAssertTestFail(
-        "SHOW QUERIES",
-        TSStatusCode.NO_PERMISSION.getStatusCode()
-            + ": Access Denied: No permissions for this operation, only root user is allowed",
+    // non-root users can access its own queries
+    expectedHeader = new String[] {"_col0"};
+    String[] retArray = new String[] {"1,"};
+    tableResultSetEqualTest(
+        "select count(*) from information_schema.queries;",
+        expectedHeader,
+        retArray,
         USER_2,
         PASSWORD);
 
