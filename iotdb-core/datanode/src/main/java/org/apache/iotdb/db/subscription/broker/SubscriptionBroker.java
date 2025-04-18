@@ -329,6 +329,16 @@ public class SubscriptionBroker {
     return successfulCommitContexts;
   }
 
+  public boolean isCommitContextOutdated(final SubscriptionCommitContext commitContext) {
+    final String topicName = commitContext.getTopicName();
+    final SubscriptionPrefetchingQueue prefetchingQueue =
+        topicNameToPrefetchingQueue.get(topicName);
+    if (Objects.isNull(prefetchingQueue)) {
+      return true;
+    }
+    return prefetchingQueue.isCommitContextOutdated(commitContext);
+  }
+
   /////////////////////////////// prefetching queue ///////////////////////////////
 
   public void bindPrefetchingQueue(

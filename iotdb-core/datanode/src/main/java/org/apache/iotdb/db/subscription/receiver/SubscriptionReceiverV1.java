@@ -425,14 +425,20 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
                   final SubscriptionCommitContext commitContext = event.getCommitContext();
                   final SubscriptionPollResponse response = event.getCurrentResponse();
                   if (Objects.isNull(response)) {
+                    final boolean isOutdated =
+                        SubscriptionAgent.broker()
+                            .isCommitContextOutdated(event.getCommitContext());
                     LOGGER.warn(
-                        "Subscription: consumer {} poll null response for event {} with request: {}",
+                        "Subscription: consumer {} poll null response for event {} (outdated: {}) with request: {}",
                         consumerConfig,
                         event,
+                        isOutdated,
                         req.getRequest());
                     // nack
-                    SubscriptionAgent.broker()
-                        .commit(consumerConfig, Collections.singletonList(commitContext), true);
+                    if (!isOutdated) {
+                      SubscriptionAgent.broker()
+                          .commit(consumerConfig, Collections.singletonList(commitContext), true);
+                    }
                     return null;
                   }
 
@@ -462,24 +468,33 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
                         req.getRequest());
                     return byteBuffer;
                   } catch (final Exception e) {
+                    final boolean isOutdated =
+                        SubscriptionAgent.broker()
+                            .isCommitContextOutdated(event.getCommitContext());
                     if (e instanceof SubscriptionPayloadExceedException) {
                       LOGGER.error(
-                          "Subscription: consumer {} poll excessive payload {} with request: {}, something unexpected happened with parameter configuration or payload control...",
+                          "Subscription: consumer {} poll excessive payload {} for event {} (outdated: {}) with request: {}, something unexpected happened with parameter configuration or payload control...",
                           consumerConfig,
                           response,
+                          event,
+                          isOutdated,
                           req.getRequest(),
                           e);
                     } else {
                       LOGGER.warn(
-                          "Subscription: consumer {} poll {} failed with request: {}",
+                          "Subscription: consumer {} poll {} for event {} (outdated: {}) failed with request: {}",
                           consumerConfig,
                           response,
+                          event,
+                          isOutdated,
                           req.getRequest(),
                           e);
                     }
                     // nack
-                    SubscriptionAgent.broker()
-                        .commit(consumerConfig, Collections.singletonList(commitContext), true);
+                    if (!isOutdated) {
+                      SubscriptionAgent.broker()
+                          .commit(consumerConfig, Collections.singletonList(commitContext), true);
+                    }
                     return null;
                   }
                 })
