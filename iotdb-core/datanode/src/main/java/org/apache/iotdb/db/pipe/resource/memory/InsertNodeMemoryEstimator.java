@@ -646,6 +646,10 @@ public class InsertNodeMemoryEstimator {
   }
 
   private static long getBinarySize(final Binary[] binaries) {
+    if (binaries == null) {
+      return 0L;
+    }
+
     return RamUsageEstimator.shallowSizeOf(binaries)
         + Arrays.stream(binaries)
             .mapToLong(InsertNodeMemoryEstimator::sizeOfBinary)

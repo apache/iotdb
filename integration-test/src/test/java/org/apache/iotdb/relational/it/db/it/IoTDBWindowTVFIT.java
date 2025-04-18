@@ -97,7 +97,7 @@ public class IoTDBWindowTVFIT {
           "2021-01-01T09:15:00.000Z,2021-01-01T09:25:00.000Z,2021-01-01T09:15:00.000Z,TESL,195.0,332.0,",
         };
     tableResultSetEqualTest(
-        "SELECT * FROM TABLE(HOP(DATA => TABLE(bid), TIMECOL => 'time', SLIDE => 5m, SIZE => 10m)) ORDER BY stock_id, time",
+        "SELECT * FROM HOP(DATA => bid, TIMECOL => 'time', SLIDE => 5m, SIZE => 10m) ORDER BY stock_id, time",
         expectedHeader,
         retArray,
         DATABASE_NAME);
@@ -113,7 +113,7 @@ public class IoTDBWindowTVFIT {
           "2021-01-01T09:15:00.000Z,2021-01-01T09:25:00.000Z,TESL,195.0,",
         };
     tableResultSetEqualTest(
-        "SELECT window_start, window_end, stock_id, sum(price) as sum FROM TABLE(HOP(DATA => TABLE(bid), TIMECOL => 'time', SLIDE => 5m, SIZE => 10m)) GROUP BY window_start, window_end, stock_id ORDER BY stock_id, window_start",
+        "SELECT window_start, window_end, stock_id, sum(price) as sum FROM HOP(DATA => bid, TIMECOL => 'time', SLIDE => 5m, SIZE => 10m) GROUP BY window_start, window_end, stock_id ORDER BY stock_id, window_start",
         expectedHeader,
         retArray,
         DATABASE_NAME);
@@ -125,7 +125,7 @@ public class IoTDBWindowTVFIT {
           "2021-01-01T09:00:00.000Z,2021-01-01T10:00:00.000Z,TESL,597.0,",
         };
     tableResultSetEqualTest(
-        "SELECT window_start, window_end, stock_id, sum(price) as sum FROM TABLE(HOP(DATA => TABLE(bid), TIMECOL => 'time', SLIDE => 1h, SIZE => 1h)) GROUP BY window_start, window_end, stock_id ORDER BY stock_id, window_start",
+        "SELECT window_start, window_end, stock_id, sum(price) as sum FROM HOP(DATA => bid, TIMECOL => 'time', SLIDE => 1h, SIZE => 1h) GROUP BY window_start, window_end, stock_id ORDER BY stock_id, window_start",
         expectedHeader,
         retArray,
         DATABASE_NAME);
@@ -145,7 +145,7 @@ public class IoTDBWindowTVFIT {
           "2021-01-01T09:15:00.000Z,2021-01-01T09:15:00.000Z,2021-01-01T09:15:00.000Z,TESL,195.0,332.0,",
         };
     tableResultSetEqualTest(
-        "SELECT * FROM TABLE(SESSION(DATA => TABLE(bid) PARTITION BY stock_id ORDER BY time, TIMECOL => 'time', GAP => 2m)) ORDER BY stock_id, time",
+        "SELECT * FROM SESSION(DATA => bid PARTITION BY stock_id ORDER BY time, TIMECOL => 'time', GAP => 2m) ORDER BY stock_id, time",
         expectedHeader,
         retArray,
         DATABASE_NAME);
@@ -157,7 +157,7 @@ public class IoTDBWindowTVFIT {
           "2021-01-01T09:15:00.000Z,2021-01-01T09:15:00.000Z,TESL,195.0,",
         };
     tableResultSetEqualTest(
-        "SELECT window_start, window_end, stock_id, sum(price) as sum FROM TABLE(SESSION(DATA => TABLE(bid) PARTITION BY stock_id ORDER BY time, TIMECOL => 'time', GAP => 2m)) GROUP BY window_start, window_end, stock_id ORDER BY stock_id, window_start",
+        "SELECT window_start, window_end, stock_id, sum(price) as sum FROM SESSION(DATA => bid PARTITION BY stock_id ORDER BY time, TIMECOL => 'time', GAP => 2m) GROUP BY window_start, window_end, stock_id ORDER BY stock_id, window_start",
         expectedHeader,
         retArray,
         DATABASE_NAME);
@@ -176,7 +176,7 @@ public class IoTDBWindowTVFIT {
           "1,2021-01-01T09:15:00.000Z,TESL,195.0,332.0,",
         };
     tableResultSetEqualTest(
-        "SELECT * FROM TABLE(VARIATION(DATA => TABLE(bid) PARTITION BY stock_id ORDER BY time, COL => 'price', DELTA => 2.0)) ORDER BY stock_id, time",
+        "SELECT * FROM VARIATION(DATA => bid PARTITION BY stock_id ORDER BY time, COL => 'price', DELTA => 2.0) ORDER BY stock_id, time",
         expectedHeader,
         retArray,
         DATABASE_NAME);
@@ -189,7 +189,7 @@ public class IoTDBWindowTVFIT {
           "2021-01-01T09:15:00.000Z,2021-01-01T09:15:00.000Z,TESL,195.0,",
         };
     tableResultSetEqualTest(
-        "SELECT first(time) as start_time, last(time) as end_time, stock_id, avg(price) as avg FROM TABLE(VARIATION(DATA => TABLE(bid) PARTITION BY stock_id ORDER BY time, COL => 'price', DELTA => 2.0)) GROUP BY window_index, stock_id ORDER BY stock_id, window_index",
+        "SELECT first(time) as start_time, last(time) as end_time, stock_id, avg(price) as avg FROM VARIATION(DATA => bid PARTITION BY stock_id ORDER BY time, COL => 'price', DELTA => 2.0) GROUP BY window_index, stock_id ORDER BY stock_id, window_index",
         expectedHeader,
         retArray,
         DATABASE_NAME);
@@ -208,7 +208,7 @@ public class IoTDBWindowTVFIT {
           "1,2021-01-01T09:15:00.000Z,TESL,195.0,332.0,",
         };
     tableResultSetEqualTest(
-        "SELECT * FROM TABLE(CAPACITY(DATA => TABLE(bid) PARTITION BY stock_id ORDER BY time, SIZE => 2)) ORDER BY stock_id, time",
+        "SELECT * FROM CAPACITY(DATA => bid PARTITION BY stock_id ORDER BY time, SIZE => 2) ORDER BY stock_id, time",
         expectedHeader,
         retArray,
         DATABASE_NAME);
@@ -221,7 +221,7 @@ public class IoTDBWindowTVFIT {
           "2021-01-01T09:15:00.000Z,2021-01-01T09:15:00.000Z,TESL,195.0,",
         };
     tableResultSetEqualTest(
-        "SELECT first(time) as start_time, last(time) as end_time, stock_id, avg(price) as avg FROM TABLE(CAPACITY(DATA => TABLE(bid) PARTITION BY stock_id ORDER BY time, SIZE => 2)) GROUP BY window_index, stock_id ORDER BY stock_id, window_index",
+        "SELECT first(time) as start_time, last(time) as end_time, stock_id, avg(price) as avg FROM CAPACITY(DATA => bid PARTITION BY stock_id ORDER BY time, SIZE => 2) GROUP BY window_index, stock_id ORDER BY stock_id, window_index",
         expectedHeader,
         retArray,
         DATABASE_NAME);

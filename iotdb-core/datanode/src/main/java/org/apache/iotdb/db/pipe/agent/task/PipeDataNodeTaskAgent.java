@@ -188,8 +188,8 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
           SchemaEngine.getInstance()
                   .getAllSchemaRegionIds()
                   .contains(new SchemaRegionId(consensusGroupId))
-              && !SchemaRegionListeningFilter.parseListeningPlanTypeSet(extractorParameters)
-                  .isEmpty();
+              && SchemaRegionListeningFilter.shouldSchemaRegionBeListened(
+                  consensusGroupId, extractorParameters);
 
       // Advance the extractor parameters parsing logic to avoid creating un-relevant pipeTasks
       if (needConstructDataRegionTask || needConstructSchemaRegionTask) {

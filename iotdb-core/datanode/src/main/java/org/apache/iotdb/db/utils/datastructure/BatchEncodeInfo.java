@@ -21,15 +21,29 @@ package org.apache.iotdb.db.utils.datastructure;
 
 // BatchEncodeInfo struct
 public class BatchEncodeInfo {
+  // used by encode/encodeBatch during flush
+  public int maxNumberOfPointsInPage;
+  public long maxNumberOfPointsInChunk;
+  public long targetChunkSize;
+
   public int pointNumInPage;
   public int pointNumInChunk;
   public long dataSizeInChunk;
   public boolean lastIterator;
 
-  public BatchEncodeInfo(int pointNumInPage, int pointNumInChunk, long dataSizeInChunk) {
+  public BatchEncodeInfo(
+      int pointNumInPage,
+      int pointNumInChunk,
+      long dataSizeInChunk,
+      int maxNumberOfPointsInPage,
+      long maxNumberOfPointsInChunk,
+      long targetChunkSize) {
     this.pointNumInPage = pointNumInPage;
     this.pointNumInChunk = pointNumInChunk;
     this.dataSizeInChunk = dataSizeInChunk;
+    this.maxNumberOfPointsInPage = maxNumberOfPointsInPage;
+    this.maxNumberOfPointsInChunk = maxNumberOfPointsInChunk;
+    this.targetChunkSize = targetChunkSize;
     this.lastIterator = false;
   }
 

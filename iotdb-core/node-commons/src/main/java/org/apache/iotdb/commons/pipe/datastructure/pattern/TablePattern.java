@@ -151,6 +151,8 @@ public class TablePattern {
   @Override
   public String toString() {
     return "TablePattern{"
+        + "isTableModelDataAllowedToBeCaptured"
+        + isTableModelDataAllowedToBeCaptured
         + "databasePattern="
         + databasePattern
         + ", tablePattern="
