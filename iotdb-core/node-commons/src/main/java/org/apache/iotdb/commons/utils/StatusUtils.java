@@ -58,7 +58,6 @@ public class StatusUtils {
     NEED_RETRY.add(TSStatusCode.WAL_ERROR.getStatusCode());
     NEED_RETRY.add(TSStatusCode.DISK_SPACE_INSUFFICIENT.getStatusCode());
     NEED_RETRY.add(TSStatusCode.QUERY_PROCESS_ERROR.getStatusCode());
-    NEED_RETRY.add(TSStatusCode.INTERNAL_REQUEST_TIME_OUT.getStatusCode());
     NEED_RETRY.add(TSStatusCode.INTERNAL_REQUEST_RETRY_ERROR.getStatusCode());
     NEED_RETRY.add(TSStatusCode.CREATE_REGION_ERROR.getStatusCode());
     NEED_RETRY.add(TSStatusCode.CONSENSUS_NOT_INITIALIZED.getStatusCode());
