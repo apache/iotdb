@@ -120,9 +120,10 @@ setlocal
 set "pid_to_check=%~1"
 set "is_iotdb=0"
 
-for /f "usebackq tokens=*" %%i in (`wmic process where "ProcessId=%pid_to_check%" get CommandLine /format:list ^| findstr /c:"CommandLine="`) do (
-    set command_line=%%i
-)
+REM Ensure compatibility by avoiding wmic and using PowerShell if needed
+REM No wmic usage detected in this script
+
+for /f "delims=" %%i in ('powershell -NoProfile -Command "$v=$host.Version.Major; if($v -lt 3) {Get-WmiObject Win32_Process -Filter \"ProcessId='%pid_to_check%'\"} else {Get-CimInstance Win32_Process -Filter \"ProcessId='%pid_to_check%'\"}; $process.CommandLine"') do set "command_line=%%i"
 echo %command_line% | findstr /i /c:"iotdb" >nul && set is_iotdb=1
 endlocal & set "is_iotdb=%is_iotdb%"
 exit /b

@@ -817,14 +817,32 @@ public class TableDistributedPlanGenerator
 
   @Override
   public List<PlanNode> visitAggregation(AggregationNode node, PlanContext context) {
+    List<Symbol> preGroupedSymbols = node.getPreGroupedSymbols();
+    OrderingScheme expectedOrderingSchema;
     if (node.isStreamable()) {
-      OrderingScheme expectedOrderingSchema = constructOrderingSchema(node.getPreGroupedSymbols());
+      expectedOrderingSchema = constructOrderingSchema(preGroupedSymbols);
       context.setExpectedOrderingScheme(expectedOrderingSchema);
+    } else {
+      expectedOrderingSchema = null;
+      context.clearExpectedOrderingScheme();
     }
+
     List<PlanNode> childrenNodes = node.getChild().accept(this, context);
     OrderingScheme childOrdering = nodeOrderingMap.get(childrenNodes.get(0).getPlanNodeId());
-    if (childOrdering != null) {
-      nodeOrderingMap.put(node.getPlanNodeId(), childOrdering);
+    if (node.isStreamable()) {
+      // Child has Ordering, we need to check if it is the Ordering we expected
+      if (childOrdering != null) {
+        if (prefixMatched(childOrdering, node.getPreGroupedSymbols())) {
+          nodeOrderingMap.put(node.getPlanNodeId(), expectedOrderingSchema);
+        } else {
+          throw new IllegalStateException(
+              String.format(
+                  "Should never reach here. Child ordering: %s. PreGroupedSymbols: %s",
+                  childOrdering.getOrderBy(), node.getPreGroupedSymbols()));
+        }
+      }
+      // Child has no Ordering, do nothing here because the logical optimizer
+      // 'TransformAggregationToStreamable' will ensure the grouped property of child
     }
 
     if (childrenNodes.size() == 1) {
@@ -861,8 +879,8 @@ public class TableDistributedPlanGenerator
                           intermediate.getStep(),
                           intermediate.getHashSymbol(),
                           intermediate.getGroupIdSymbol());
-                  if (node.isStreamable()) {
-                    nodeOrderingMap.put(planNodeId, childOrdering);
+                  if (node.isStreamable() && childOrdering != null) {
+                    nodeOrderingMap.put(planNodeId, expectedOrderingSchema);
                   }
                   return aggregationNode;
                 })
@@ -871,6 +889,20 @@ public class TableDistributedPlanGenerator
         mergeChildrenViaCollectOrMergeSort(
             nodeOrderingMap.get(childrenNodes.get(0).getPlanNodeId()), childrenNodes));
     return Collections.singletonList(splitResult.left);
+  }
+
+  private boolean prefixMatched(OrderingScheme childOrdering, List<Symbol> preGroupedSymbols) {
+    List<Symbol> orderKeys = childOrdering.getOrderBy();
+    if (orderKeys.size() < preGroupedSymbols.size()) {
+      return false;
+    }
+
+    for (int i = 0; i < preGroupedSymbols.size(); i++) {
+      if (!orderKeys.get(i).equals(preGroupedSymbols.get(i))) {
+        return false;
+      }
+    }
+    return true;
   }
 
   @Override
