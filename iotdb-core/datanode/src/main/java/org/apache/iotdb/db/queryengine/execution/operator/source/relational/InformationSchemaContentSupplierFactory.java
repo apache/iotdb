@@ -21,6 +21,7 @@ package org.apache.iotdb.db.queryengine.execution.operator.source.relational;
 
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.commons.exception.auth.AccessDeniedException;
 import org.apache.iotdb.commons.pipe.agent.plugin.builtin.BuiltinPipePlugin;
 import org.apache.iotdb.commons.pipe.agent.plugin.meta.PipePluginMeta;
 import org.apache.iotdb.commons.schema.table.InformationSchema;
@@ -77,6 +78,7 @@ import static org.apache.iotdb.commons.schema.SchemaConstant.ALL_MATCH_SCOPE;
 import static org.apache.iotdb.commons.schema.SchemaConstant.ALL_RESULT_NODES;
 import static org.apache.iotdb.commons.schema.table.TsTable.TTL_PROPERTY;
 import static org.apache.iotdb.db.queryengine.plan.execution.config.TableConfigTaskVisitor.canShowDB;
+import static org.apache.iotdb.db.queryengine.plan.execution.config.TableConfigTaskVisitor.canShowTable;
 import static org.apache.iotdb.db.queryengine.plan.execution.config.metadata.ShowPipePluginsTask.PIPE_PLUGIN_TYPE_BUILTIN;
 import static org.apache.iotdb.db.queryengine.plan.execution.config.metadata.ShowPipePluginsTask.PIPE_PLUGIN_TYPE_EXTERNAL;
 
@@ -89,11 +91,11 @@ public class InformationSchemaContentSupplierFactory {
       final String tableName, final List<TSDataType> dataTypes, final String userName) {
     switch (tableName) {
       case InformationSchema.QUERIES:
-        return new QueriesSupplier(dataTypes);
+        return new QueriesSupplier(dataTypes, userName);
       case InformationSchema.DATABASES:
-        return new DatabaseSupplier(dataTypes);
+        return new DatabaseSupplier(dataTypes, userName);
       case InformationSchema.TABLES:
-        return new TableSupplier(dataTypes);
+        return new TableSupplier(dataTypes, userName);
       case InformationSchema.COLUMNS:
         return new ColumnSupplier(dataTypes, userName);
       case InformationSchema.REGIONS:
@@ -114,12 +116,22 @@ public class InformationSchemaContentSupplierFactory {
   private static class QueriesSupplier extends TsBlockSupplier {
     private final long currTime = System.currentTimeMillis();
     // We initialize it later for the convenience of data preparation
+    protected int totalSize;
     protected int nextConsumedIndex;
-    private final List<IQueryExecution> queryExecutions;
+    private List<IQueryExecution> queryExecutions;
 
-    private QueriesSupplier(final List<TSDataType> dataTypes) {
+    private QueriesSupplier(final List<TSDataType> dataTypes, final String userName) {
       super(dataTypes);
       queryExecutions = Coordinator.getInstance().getAllQueryExecutions();
+      try {
+        accessControl.checkUserIsAdmin(userName);
+      } catch (final AccessDeniedException e) {
+        queryExecutions =
+            queryExecutions.stream()
+                .filter(iQueryExecution -> userName.equals(iQueryExecution.getUser()))
+                .collect(Collectors.toList());
+      }
+      this.totalSize = queryExecutions.size();
     }
 
     @Override
@@ -155,9 +167,11 @@ public class InformationSchemaContentSupplierFactory {
     private Iterator<Map.Entry<String, TDatabaseInfo>> iterator;
     private TDatabaseInfo currentDatabase;
     private boolean hasShownInformationSchema;
+    private final String userName;
 
-    private DatabaseSupplier(final List<TSDataType> dataTypes) {
+    private DatabaseSupplier(final List<TSDataType> dataTypes, final String userName) {
       super(dataTypes);
+      this.userName = userName;
       try (final ConfigNodeClient client =
           ConfigNodeClientManager.getInstance().borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
         iterator =
@@ -203,10 +217,19 @@ public class InformationSchemaContentSupplierFactory {
     @Override
     public boolean hasNext() {
       if (!hasShownInformationSchema) {
-        return true;
+        if (!canShowDB(accessControl, userName, InformationSchema.INFORMATION_DATABASE)) {
+          hasShownInformationSchema = true;
+        } else {
+          return true;
+        }
       }
-      if (iterator.hasNext()) {
-        currentDatabase = iterator.next().getValue();
+      while (iterator.hasNext()) {
+        final Map.Entry<String, TDatabaseInfo> result = iterator.next();
+        if (!canShowDB(accessControl, userName, result.getKey())) {
+          continue;
+        }
+        currentDatabase = result.getValue();
+        break;
       }
       return Objects.nonNull(currentDatabase);
     }
@@ -217,9 +240,11 @@ public class InformationSchemaContentSupplierFactory {
     private Iterator<TTableInfo> tableInfoIterator = null;
     private TTableInfo currentTable;
     private String dbName;
+    private final String userName;
 
-    private TableSupplier(final List<TSDataType> dataTypes) {
+    private TableSupplier(final List<TSDataType> dataTypes, final String userName) {
       super(dataTypes);
+      this.userName = userName;
       try (final ConfigNodeClient client =
           ConfigNodeClientManager.getInstance().borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
         final Map<String, List<TTableInfo>> databaseTableInfoMap =
@@ -267,15 +292,21 @@ public class InformationSchemaContentSupplierFactory {
     public boolean hasNext() {
       // Get next table info iterator
       while (Objects.isNull(currentTable)) {
-        if (Objects.nonNull(tableInfoIterator) && tableInfoIterator.hasNext()) {
-          currentTable = tableInfoIterator.next();
-          return true;
+        while (Objects.nonNull(tableInfoIterator) && tableInfoIterator.hasNext()) {
+          final TTableInfo info = tableInfoIterator.next();
+          if (canShowTable(accessControl, userName, dbName, info.getTableName())) {
+            currentTable = info;
+            return true;
+          }
         }
         if (!dbIterator.hasNext()) {
           return false;
         }
         final Map.Entry<String, List<TTableInfo>> entry = dbIterator.next();
         dbName = entry.getKey();
+        if (!canShowDB(accessControl, userName, dbName)) {
+          continue;
+        }
         tableInfoIterator = entry.getValue().iterator();
       }
       return true;
@@ -366,11 +397,16 @@ public class InformationSchemaContentSupplierFactory {
           tableInfoIterator = entry.getValue().entrySet().iterator();
         }
 
-        Map.Entry<String, Pair<TsTable, Set<String>>> tableEntry = tableInfoIterator.next();
-        tableName = tableEntry.getKey();
-        preDeletedColumns = tableEntry.getValue().getRight();
-        columnSchemaIterator = tableEntry.getValue().getLeft().getColumnList().iterator();
-        break;
+        Map.Entry<String, Pair<TsTable, Set<String>>> tableEntry;
+        while (tableInfoIterator.hasNext()) {
+          tableEntry = tableInfoIterator.next();
+          if (canShowTable(accessControl, userName, dbName, tableEntry.getKey())) {
+            tableName = tableEntry.getKey();
+            preDeletedColumns = tableEntry.getValue().getRight();
+            columnSchemaIterator = tableEntry.getValue().getLeft().getColumnList().iterator();
+            break;
+          }
+        }
       }
       return true;
     }

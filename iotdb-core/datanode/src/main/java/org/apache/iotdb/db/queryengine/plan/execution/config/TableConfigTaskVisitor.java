@@ -772,19 +772,26 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
     }
     String finalDatabase = database;
     final Predicate<String> checkCanShowTable =
-        tableName -> {
-          try {
-            accessControl.checkCanShowOrDescTable(
-                context.getSession().getUserName(),
-                new QualifiedObjectName(finalDatabase, tableName));
-            return true;
-          } catch (final AccessDeniedException e) {
-            return false;
-          }
-        };
+        tableName ->
+            canShowTable(
+                accessControl, context.getSession().getUserName(), finalDatabase, tableName);
     return node.isDetails()
         ? new ShowTablesDetailsTask(database, checkCanShowTable)
         : new ShowTablesTask(database, checkCanShowTable);
+  }
+
+  public static boolean canShowTable(
+      final AccessControl accessControl,
+      final String userName,
+      final String databaseName,
+      final String tableName) {
+    try {
+      accessControl.checkCanShowOrDescTable(
+          userName, new QualifiedObjectName(databaseName, tableName));
+      return true;
+    } catch (final AccessDeniedException e) {
+      return false;
+    }
   }
 
   @Override
