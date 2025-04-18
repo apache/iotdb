@@ -132,7 +132,7 @@ public class ExportSchemaTable extends AbstractExportSchema {
     }
     if (StringUtils.isNotBlank(table)) {
       if (!tables.containsKey(table)) {
-        ioTPrinter.println(String.format(Constants.TARGET_TABLE_NOT_EXIST_MSG, database));
+        ioTPrinter.println(Constants.TARGET_TABLE_EMPTY_MSG);
         System.exit(1);
       }
       tableCommentList.put(table, tables.get(table));
@@ -164,12 +164,13 @@ public class ExportSchemaTable extends AbstractExportSchema {
         }
       }
     }
-    if (MapUtils.isNotEmpty(tables)) {
+    if (StringUtils.isNotBlank(table)) {
       if (!tables.containsKey(table)) {
-        ioTPrinter.println(String.format(Constants.TARGET_TABLE_NOT_EXIST_MSG, database));
+        ioTPrinter.println(Constants.TARGET_TABLE_EMPTY_MSG);
         System.exit(1);
+      } else {
+        tableCommentList.put(table, tables.get(table));
       }
-      tableCommentList.put(table, tables.get(table));
     } else {
       tableCommentList.putAll(tables);
     }
@@ -193,7 +194,7 @@ public class ExportSchemaTable extends AbstractExportSchema {
                 String.format(Constants.EXPORT_SCHEMA_COLUMNS_SELECT, database, tableName));
         exportSchemaBySelect(sessionDataSet, fileName, tableName, comment);
       } catch (IoTDBConnectionException | StatementExecutionException | IOException e) {
-        try {
+        try (ITableSession session = sessionPool.getSession()) {
           sessionDataSet =
               session.executeQueryStatement(
                   String.format(Constants.EXPORT_SCHEMA_COLUMNS_DESC, database, tableName));
@@ -219,7 +220,7 @@ public class ExportSchemaTable extends AbstractExportSchema {
     String dropSql = "DROP TABLE IF EXISTS " + tableName + ";\n";
     StringBuilder sb = new StringBuilder(dropSql);
     sb.append("CREATE TABLE " + tableName + "(\n");
-    try (FileWriter writer = new FileWriter(fileName)) {
+    try (FileWriter writer = new FileWriter(fileName, true)) {
       boolean hasNext = sessionDataSet.hasNext();
       while (hasNext) {
         RowRecord rowRecord = sessionDataSet.next();
@@ -239,12 +240,12 @@ public class ExportSchemaTable extends AbstractExportSchema {
         }
         sb.append("\n");
       }
-      sb.append("\n)");
+      sb.append(")");
       if (StringUtils.isNotBlank(tableComment)) {
-        sb.append(" COMMENT '" + tableComment + "'\n");
+        sb.append(" COMMENT '" + tableComment + "'");
       }
       sb.append(";\n");
-      writer.write(sb.toString());
+      writer.append(sb.toString());
       writer.flush();
     }
   }
