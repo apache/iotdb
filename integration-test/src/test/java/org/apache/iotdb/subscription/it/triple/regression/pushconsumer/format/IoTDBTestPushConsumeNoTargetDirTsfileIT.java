@@ -135,8 +135,7 @@ public class IoTDBTestPushConsumeNoTargetDirTsfileIT extends AbstractSubscriptio
             .consumeListener(
                 message -> {
                   onReceiveCount.incrementAndGet();
-                  try {
-                    TsFileReader reader = message.getTsFileHandler().openReader();
+                  try (final TsFileReader reader = message.getTsFileHandler().openReader()) {
                     Path path = new Path(device, "s_0", true);
                     QueryDataSet dataset =
                         reader.query(QueryExpression.create(Collections.singletonList(path), null));

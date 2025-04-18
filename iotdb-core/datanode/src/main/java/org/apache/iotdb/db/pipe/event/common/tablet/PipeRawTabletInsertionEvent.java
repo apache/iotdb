@@ -104,6 +104,17 @@ public class PipeRawTabletInsertionEvent extends PipeInsertionEvent
     this.isAligned = isAligned;
     this.sourceEvent = sourceEvent;
     this.needToReport = needToReport;
+    if (Objects.nonNull(sourceEvent)) {
+      this.committerKey = sourceEvent.getCommitterKey();
+      this.commitId = sourceEvent.getCommitId();
+      sourceEvent.incrementSourceReferenceCount();
+      // The source's reference count is initially 1 to avoid that all the converted raw event are
+      // transferred, but the conversion is incomplete.
+      // Decrease if all the raw events are generated to unpin the resource
+      if (needToReport) {
+        sourceEvent.decrementAndGetSourceReferenceCount();
+      }
+    }
 
     // Allocate empty memory block, will be resized later.
     this.allocatedMemoryBlock =
@@ -228,7 +239,7 @@ public class PipeRawTabletInsertionEvent extends PipeInsertionEvent
 
   @Override
   protected void reportProgress() {
-    if (needToReport) {
+    if (sourceEvent.decrementAndGetSourceReferenceCount() == 0) {
       super.reportProgress();
       if (sourceEvent instanceof PipeTsFileInsertionEvent) {
         ((PipeTsFileInsertionEvent) sourceEvent).eliminateProgressIndex();
@@ -310,6 +321,7 @@ public class PipeRawTabletInsertionEvent extends PipeInsertionEvent
 
   public void markAsNeedToReport() {
     this.needToReport = true;
+    sourceEvent.decrementAndGetSourceReferenceCount();
   }
 
   public String getDeviceId() {

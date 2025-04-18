@@ -169,9 +169,8 @@ public class IoTDBPathLooseDeviceTsfilePushConsumerIT extends AbstractSubscripti
             .fileSaveDir("target/push-subscription")
             .consumeListener(
                 message -> {
-                  try {
+                  try (final TsFileReader reader = message.getTsFileHandler().openReader()) {
                     onReceive.addAndGet(1);
-                    TsFileReader reader = message.getTsFileHandler().openReader();
                     for (int i = 0; i < 2; i++) {
                       QueryDataSet dataset =
                           reader.query(
