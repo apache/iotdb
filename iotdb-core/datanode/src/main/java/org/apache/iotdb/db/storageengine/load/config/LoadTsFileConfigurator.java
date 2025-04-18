@@ -48,6 +48,9 @@ public class LoadTsFileConfigurator {
       case VERIFY_KEY:
         validateVerifyParam(value);
         break;
+      case ASYNC_LOAD_KEY:
+        validateAsyncLoadParam(value);
+        break;
       default:
         throw new SemanticException("Invalid parameter '" + key + "' for LOAD TSFILE command.");
     }
@@ -150,6 +153,23 @@ public class LoadTsFileConfigurator {
   public static boolean parseOrGetDefaultVerify(final Map<String, String> loadAttributes) {
     return Boolean.parseBoolean(
         loadAttributes.getOrDefault(VERIFY_KEY, String.valueOf(VERIFY_DEFAULT_VALUE)));
+  }
+
+  public static final String ASYNC_LOAD_KEY = "async";
+  private static final boolean ASYNC_LOAD_DEFAULT_VALUE = false;
+
+  public static void validateAsyncLoadParam(final String asyncLoad) {
+    if (!"true".equalsIgnoreCase(asyncLoad) && !"false".equalsIgnoreCase(asyncLoad)) {
+      throw new SemanticException(
+          String.format(
+              "Given %s value '%s' is not supported, please input a valid boolean value.",
+              ASYNC_LOAD_KEY, asyncLoad));
+    }
+  }
+
+  public static boolean parseOrGetDefaultAsyncLoad(final Map<String, String> loadAttributes) {
+    return Boolean.parseBoolean(
+        loadAttributes.getOrDefault(ASYNC_LOAD_KEY, String.valueOf(ASYNC_LOAD_DEFAULT_VALUE)));
   }
 
   private LoadTsFileConfigurator() {
