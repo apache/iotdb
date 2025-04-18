@@ -170,7 +170,7 @@ public class IoTDBMaintainAuthIT {
     expectedHeader = new String[] {"_col0"};
     String[] retArray = new String[] {"1,"};
     tableResultSetEqualTest(
-        "select count(*) from information_schema.queries;",
+        "select count(*) from information_schema.queries",
         expectedHeader,
         retArray,
         USER_2,
