@@ -364,9 +364,7 @@ public class TableDeviceSchemaCache {
 
   /////////////////////////////// Tree model ///////////////////////////////
 
-  // Shall be accessed through "TreeDeviceSchemaCacheManager"
-
-  void putDeviceSchema(final String database, final DeviceSchemaInfo deviceSchemaInfo) {
+  public void putDeviceSchema(final String database, final DeviceSchemaInfo deviceSchemaInfo) {
     final PartialPath devicePath = deviceSchemaInfo.getDevicePath();
     final IDeviceID deviceID = devicePath.getIDeviceID();
     final String previousDatabase = treeModelDatabasePool.putIfAbsent(database, database);
@@ -381,10 +379,13 @@ public class TableDeviceSchemaCache {
         true);
   }
 
-  IDeviceSchema getDeviceSchema(final String[] devicePath) {
-    final IDeviceID deviceID =
+  public IDeviceSchema getDeviceSchema(final String[] devicePath) {
+    return getDeviceSchema(
         IDeviceID.Factory.DEFAULT_FACTORY.create(
-            StringArrayDeviceID.splitDeviceIdString(devicePath));
+            StringArrayDeviceID.splitDeviceIdString(devicePath)));
+  }
+
+  public IDeviceSchema getDeviceSchema(final IDeviceID deviceID) {
     final TableDeviceCacheEntry entry =
         dualKeyCache.get(new TableId(null, deviceID.getTableName()), deviceID);
     return Objects.nonNull(entry) ? entry.getDeviceSchema() : null;

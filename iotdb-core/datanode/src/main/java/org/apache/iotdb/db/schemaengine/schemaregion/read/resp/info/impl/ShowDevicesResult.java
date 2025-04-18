@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.schemaengine.schemaregion.read.resp.info.impl;
 
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.schema.table.TreeViewSchema;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.DeviceEntry;
 import org.apache.iotdb.db.schemaengine.schemaregion.read.resp.info.IDeviceSchemaInfo;
 
@@ -81,14 +82,25 @@ public class ShowDevicesResult extends ShowSchemaResult implements IDeviceSchema
   }
 
   public static ShowDevicesResult convertDeviceEntry2ShowDeviceResult(
-      final DeviceEntry entry, final List<String> attributeColumns) {
+      final DeviceEntry entry, final List<String> attributeColumns, final int databaseSegmentNum) {
+    final String deviceIdStr = entry.getDeviceID().toString();
     final ShowDevicesResult result =
         new ShowDevicesResult(
-            entry.getDeviceID().toString(), null, -1, (String[]) entry.getDeviceID().getSegments());
+            deviceIdStr,
+            null,
+            -1,
+            databaseSegmentNum > 0
+                ? Arrays.copyOfRange(
+                    TreeViewSchema.forceSeparateStringToPartialPath(deviceIdStr).getNodes(),
+                    databaseSegmentNum - 1,
+                    TreeViewSchema.forceSeparateStringToPartialPath(deviceIdStr).getNodeLength())
+                : (String[]) entry.getDeviceID().getSegments());
     final Map<String, Binary> attributeProviderMap = new HashMap<>();
+
     for (int i = 0; i < attributeColumns.size(); ++i) {
       attributeProviderMap.put(attributeColumns.get(i), entry.getAttributeColumnValues()[i]);
     }
+
     result.setAttributeProvider(attributeProviderMap::get);
     return result;
   }

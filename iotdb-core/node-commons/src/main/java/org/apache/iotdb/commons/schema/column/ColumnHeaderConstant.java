@@ -205,6 +205,7 @@ public class ColumnHeaderConstant {
   public static final String ELAPSED_TIME_TABLE_MODEL = "elapsed_time";
 
   public static final String TABLE_NAME_TABLE_MODEL = "table_name";
+  public static final String TABLE_TYPE_TABLE_MODEL = "table_type";
   public static final String COLUMN_NAME_TABLE_MODEL = "column_name";
 
   public static final String SCHEMA_REPLICATION_FACTOR_TABLE_MODEL = "schema_replication_factor";
@@ -243,6 +244,15 @@ public class ColumnHeaderConstant {
   public static final String CONSUMER_GROUP_NAME_TABLE_MODEL = "consumer_group_name";
   public static final String SUBSCRIBED_CONSUMERS_TABLE_MODEL = "subscribed_consumers";
 
+  public static final String VIEW_DEFINITION_TABLE_MODEL = "view_definition";
+
+  public static final String MODEL_ID_TABLE_MODEL = "model_id";
+  public static final String MODEL_TYPE_TABLE_MODEL = "model_type";
+
+  public static final String FUNCTION_NAME_TABLE_MODEL = "function_table";
+  public static final String FUNCTION_TYPE_TABLE_MODEL = "function_type";
+  public static final String CLASS_NAME_UDF_TABLE_MODEL = "class_name(udf)";
+
   // column names for show space quota
   public static final String QUOTA_TYPE = "QuotaType";
   public static final String LIMIT = "Limit";
@@ -262,6 +272,10 @@ public class ColumnHeaderConstant {
   // column names for show current timestamp
   public static final String CURRENT_TIMESTAMP = "CurrentTimestamp";
 
+  // column names for keywords
+  public static final String WORD = "word";
+  public static final String RESERVED = "reserved";
+
   // column names for table query
   public static final String COLUMN_NAME = "ColumnName";
   public static final String COLUMN_DATA_TYPE = "DataType";
@@ -269,6 +283,12 @@ public class ColumnHeaderConstant {
   public static final String TABLE_NAME = "TableName";
   public static final String PRIVILEGES = "Privileges";
   public static final String COMMENT = "Comment";
+  public static final String TABLE_TYPE = "TableType";
+
+  public static final String VIEW = "View";
+  public static final String CREATE_VIEW = "Create View";
+  public static final String TABLE = "Table";
+  public static final String CREATE_TABLE = "Create Table";
 
   public static final String GRANT_OPTION = "GrantOption";
 
@@ -623,6 +643,15 @@ public class ColumnHeaderConstant {
           new ColumnHeader(STATUS, TSDataType.TEXT),
           new ColumnHeader(COMMENT, TSDataType.TEXT));
 
+  public static final List<ColumnHeader> showCreateViewColumnHeaders =
+      ImmutableList.of(
+          new ColumnHeader(VIEW, TSDataType.TEXT), new ColumnHeader(CREATE_VIEW, TSDataType.TEXT));
+
+  public static final List<ColumnHeader> showCreateTableColumnHeaders =
+      ImmutableList.of(
+          new ColumnHeader(TABLE, TSDataType.TEXT),
+          new ColumnHeader(CREATE_TABLE, TSDataType.TEXT));
+
   public static final List<ColumnHeader> showTablesColumnHeaders =
       ImmutableList.of(
           new ColumnHeader(TABLE_NAME, TSDataType.TEXT),
@@ -633,7 +662,8 @@ public class ColumnHeaderConstant {
           new ColumnHeader(TABLE_NAME, TSDataType.TEXT),
           new ColumnHeader(COLUMN_TTL, TSDataType.TEXT),
           new ColumnHeader(STATUS, TSDataType.TEXT),
-          new ColumnHeader(COMMENT, TSDataType.TEXT));
+          new ColumnHeader(COMMENT, TSDataType.TEXT),
+          new ColumnHeader(TABLE_TYPE, TSDataType.TEXT));
 
   public static final List<ColumnHeader> LIST_USER_OR_ROLE_PRIVILEGES_COLUMN_HEADERS =
       ImmutableList.of(

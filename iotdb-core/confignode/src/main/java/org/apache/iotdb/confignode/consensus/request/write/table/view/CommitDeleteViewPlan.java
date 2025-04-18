@@ -17,26 +17,17 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.queryengine.plan.relational.metadata;
+package org.apache.iotdb.confignode.consensus.request.write.table.view;
 
-import org.apache.tsfile.file.metadata.IDeviceID;
-import org.apache.tsfile.utils.Binary;
+import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
+import org.apache.iotdb.confignode.consensus.request.write.table.CommitDeleteTablePlan;
 
-import java.util.Arrays;
-
-public class NonAlignedAlignedDeviceEntry extends DeviceEntry {
-
-  public NonAlignedAlignedDeviceEntry(IDeviceID deviceID, Binary[] attributeColumnValues) {
-    super(deviceID, attributeColumnValues);
+public class CommitDeleteViewPlan extends CommitDeleteTablePlan {
+  public CommitDeleteViewPlan() {
+    super(ConfigPhysicalPlanType.CommitDeleteView);
   }
 
-  @Override
-  public String toString() {
-    return "NonAlignedAlignedDeviceEntry{"
-        + "deviceID="
-        + deviceID
-        + ", attributeColumnValues="
-        + Arrays.toString(attributeColumnValues)
-        + '}';
+  public CommitDeleteViewPlan(final String database, final String tableName) {
+    super(ConfigPhysicalPlanType.CommitDeleteView, database, tableName);
   }
 }

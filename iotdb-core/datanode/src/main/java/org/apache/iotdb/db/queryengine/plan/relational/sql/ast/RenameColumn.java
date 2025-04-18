@@ -34,6 +34,7 @@ public final class RenameColumn extends Statement {
 
   private final boolean tableIfExists;
   private final boolean columnIfNotExists;
+  private final boolean view;
 
   public RenameColumn(
       final NodeLocation location,
@@ -41,13 +42,19 @@ public final class RenameColumn extends Statement {
       final Identifier source,
       final Identifier target,
       final boolean tableIfExists,
-      final boolean columnIfNotExists) {
+      final boolean columnIfNotExists,
+      final boolean view) {
     super(requireNonNull(location, "location is null"));
     this.table = requireNonNull(table, "table is null");
     this.source = requireNonNull(source, "source is null");
     this.target = requireNonNull(target, "target is null");
     this.tableIfExists = tableIfExists;
     this.columnIfNotExists = columnIfNotExists;
+    this.view = view;
+    if (!view) {
+      throw new UnsupportedOperationException(
+          "The renaming for base table column is currently unsupported");
+    }
   }
 
   public QualifiedName getTable() {
@@ -68,6 +75,10 @@ public final class RenameColumn extends Statement {
 
   public boolean columnIfExists() {
     return columnIfNotExists;
+  }
+
+  public boolean isView() {
+    return view;
   }
 
   @Override
@@ -93,12 +104,13 @@ public final class RenameColumn extends Statement {
         && columnIfNotExists == that.columnIfNotExists
         && Objects.equals(table, that.table)
         && Objects.equals(source, that.source)
-        && Objects.equals(target, that.target);
+        && Objects.equals(target, that.target)
+        && view == that.view;
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(table, source, target);
+    return Objects.hash(table, source, target, view);
   }
 
   @Override
@@ -109,6 +121,7 @@ public final class RenameColumn extends Statement {
         .add("target", target)
         .add("tableIfExists", tableIfExists)
         .add("columnIfExists", columnIfNotExists)
+        .add("view", view)
         .toString();
   }
 }

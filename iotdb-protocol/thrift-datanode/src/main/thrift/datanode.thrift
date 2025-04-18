@@ -409,6 +409,19 @@ struct TSchemaRegionAttributeInfo {
   3: required binary body
 }
 
+struct TDeviceViewReq {
+  1: required list<common.TConsensusGroupId> regionIds
+  2: required list<string> prefixPattern
+  3: required i32 tagNumber
+  4: required bool restrict
+  5: optional set<string> requiredMeasurements
+}
+
+struct TDeviceViewResp {
+  1: required common.TSStatus status
+  2: required map<string, byte> deviewViewFieldTypeMap
+}
+
 struct TLoadResp {
   1: required bool accepted
   2: optional string message
@@ -1181,6 +1194,12 @@ service IDataNodeRPCService {
    * Delete table devices in black list
    */
   common.TSStatus deleteTableDeviceInBlackList(TTableDeviceDeletionWithPatternOrModReq req)
+
+  /**
+   * Get tree device view info for device view
+   */
+  TDeviceViewResp detectTreeDeviceViewFieldType(TDeviceViewReq req)
+
 
   common.TTestConnectionResp submitTestConnectionTask(common.TNodeLocations nodeLocations)
 

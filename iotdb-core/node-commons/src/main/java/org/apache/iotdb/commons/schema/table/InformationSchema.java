@@ -42,6 +42,11 @@ public class InformationSchema {
   public static final String PIPE_PLUGINS = "pipe_plugins";
   public static final String TOPICS = "topics";
   public static final String SUBSCRIPTIONS = "subscriptions";
+  public static final String VIEWS = "views";
+  public static final String MODELS = "models";
+  public static final String FUNCTIONS = "functions";
+  public static final String CONFIGURATIONS = "configurations";
+  public static final String KEYWORDS = "keywords";
 
   static {
     final TsTable queriesTable = new TsTable(QUERIES);
@@ -103,6 +108,8 @@ public class InformationSchema {
     tableTable.addColumnSchema(
         new AttributeColumnSchema(
             ColumnHeaderConstant.COMMENT.toLowerCase(Locale.ENGLISH), TSDataType.STRING));
+    tableTable.addColumnSchema(
+        new AttributeColumnSchema(ColumnHeaderConstant.TABLE_TYPE_TABLE_MODEL, TSDataType.STRING));
     tableTable.removeColumnSchema(TsTable.TIME_COLUMN_NAME);
     schemaTables.put(TABLES, tableTable);
 
@@ -229,6 +236,68 @@ public class InformationSchema {
             ColumnHeaderConstant.SUBSCRIBED_CONSUMERS_TABLE_MODEL, TSDataType.STRING));
     subscriptionTable.removeColumnSchema(TsTable.TIME_COLUMN_NAME);
     schemaTables.put(SUBSCRIPTIONS, subscriptionTable);
+
+    final TsTable viewTable = new TsTable(VIEWS);
+    viewTable.addColumnSchema(
+        new TagColumnSchema(
+            ColumnHeaderConstant.DATABASE.toLowerCase(Locale.ENGLISH), TSDataType.STRING));
+    viewTable.addColumnSchema(
+        new TagColumnSchema(ColumnHeaderConstant.TABLE_NAME_TABLE_MODEL, TSDataType.STRING));
+    viewTable.addColumnSchema(
+        new AttributeColumnSchema(
+            ColumnHeaderConstant.VIEW_DEFINITION_TABLE_MODEL, TSDataType.STRING));
+    viewTable.removeColumnSchema(TsTable.TIME_COLUMN_NAME);
+    schemaTables.put(VIEWS, viewTable);
+
+    final TsTable modelTable = new TsTable(MODELS);
+    modelTable.addColumnSchema(
+        new TagColumnSchema(ColumnHeaderConstant.MODEL_ID_TABLE_MODEL, TSDataType.STRING));
+    modelTable.addColumnSchema(
+        new AttributeColumnSchema(ColumnHeaderConstant.MODEL_TYPE_TABLE_MODEL, TSDataType.STRING));
+    modelTable.addColumnSchema(
+        new AttributeColumnSchema(
+            ColumnHeaderConstant.STATE.toLowerCase(Locale.ENGLISH), TSDataType.STRING));
+    modelTable.addColumnSchema(
+        new AttributeColumnSchema(
+            ColumnHeaderConstant.CONFIGS.toLowerCase(Locale.ENGLISH), TSDataType.STRING));
+    modelTable.addColumnSchema(
+        new AttributeColumnSchema(
+            ColumnHeaderConstant.NOTES.toLowerCase(Locale.ENGLISH), TSDataType.STRING));
+    modelTable.removeColumnSchema(TsTable.TIME_COLUMN_NAME);
+    schemaTables.put(MODELS, modelTable);
+
+    final TsTable functionTable = new TsTable(FUNCTIONS);
+    functionTable.addColumnSchema(
+        new TagColumnSchema(ColumnHeaderConstant.FUNCTION_NAME_TABLE_MODEL, TSDataType.STRING));
+    functionTable.addColumnSchema(
+        new AttributeColumnSchema(
+            ColumnHeaderConstant.FUNCTION_TYPE_TABLE_MODEL, TSDataType.STRING));
+    functionTable.addColumnSchema(
+        new AttributeColumnSchema(
+            ColumnHeaderConstant.CLASS_NAME_UDF_TABLE_MODEL, TSDataType.STRING));
+    functionTable.addColumnSchema(
+        new AttributeColumnSchema(
+            ColumnHeaderConstant.STATE.toLowerCase(Locale.ENGLISH), TSDataType.STRING));
+    functionTable.removeColumnSchema(TsTable.TIME_COLUMN_NAME);
+    schemaTables.put(FUNCTIONS, functionTable);
+
+    final TsTable configurationsTable = new TsTable(CONFIGURATIONS);
+    configurationsTable.addColumnSchema(
+        new TagColumnSchema(
+            ColumnHeaderConstant.VARIABLE.toLowerCase(Locale.ENGLISH), TSDataType.STRING));
+    configurationsTable.addColumnSchema(
+        new AttributeColumnSchema(
+            ColumnHeaderConstant.VALUE.toLowerCase(Locale.ENGLISH), TSDataType.STRING));
+    configurationsTable.removeColumnSchema(TsTable.TIME_COLUMN_NAME);
+    schemaTables.put(CONFIGURATIONS, configurationsTable);
+
+    final TsTable keywordsTable = new TsTable(KEYWORDS);
+    keywordsTable.addColumnSchema(
+        new TagColumnSchema(ColumnHeaderConstant.WORD, TSDataType.STRING));
+    keywordsTable.addColumnSchema(
+        new AttributeColumnSchema(ColumnHeaderConstant.RESERVED, TSDataType.INT32));
+    keywordsTable.removeColumnSchema(TsTable.TIME_COLUMN_NAME);
+    schemaTables.put(KEYWORDS, keywordsTable);
   }
 
   public static Map<String, TsTable> getSchemaTables() {
