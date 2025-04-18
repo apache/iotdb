@@ -38,10 +38,8 @@ import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.consensus.request.write.datanode.RemoveDataNodePlan;
 import org.apache.iotdb.confignode.consensus.response.datanode.DataNodeToStatusResp;
 import org.apache.iotdb.confignode.manager.ConfigManager;
-import org.apache.iotdb.confignode.manager.load.balancer.region.GreedyCopySetRegionGroupAllocator;
 import org.apache.iotdb.confignode.manager.load.balancer.region.GreedyRegionGroupAllocator;
 import org.apache.iotdb.confignode.manager.load.balancer.region.IRegionGroupAllocator;
-import org.apache.iotdb.confignode.manager.load.balancer.region.PartiteGraphPlacementRegionGroupAllocator;
 import org.apache.iotdb.confignode.manager.load.cache.node.NodeHeartbeatSample;
 import org.apache.iotdb.confignode.manager.load.cache.region.RegionHeartbeatSample;
 import org.apache.iotdb.confignode.manager.partition.PartitionMetrics;
@@ -88,11 +86,11 @@ public class RemoveDataNodeHandler {
         this.regionGroupAllocator = new GreedyRegionGroupAllocator();
         break;
       case PGR:
-        this.regionGroupAllocator = new PartiteGraphPlacementRegionGroupAllocator();
+        this.regionGroupAllocator = new GreedyRegionGroupAllocator();
         break;
       case GCR:
       default:
-        this.regionGroupAllocator = new GreedyCopySetRegionGroupAllocator();
+        this.regionGroupAllocator = new GreedyRegionGroupAllocator();
     }
   }
 

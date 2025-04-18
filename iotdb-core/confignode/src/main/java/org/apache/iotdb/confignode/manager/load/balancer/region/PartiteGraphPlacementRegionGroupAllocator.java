@@ -123,7 +123,8 @@ public class PartiteGraphPlacementRegionGroupAllocator implements IRegionGroupAl
       Map<String, List<TRegionReplicaSet>> databaseAllocatedRegionGroupMap,
       Map<TConsensusGroupId, TRegionReplicaSet> remainReplicasMap) {
     // TODO: Implement this method
-    return Collections.emptyMap();
+    throw new UnsupportedOperationException(
+        "The removeNodeReplicaSelect method of PartiteGraphPlacementRegionGroupAllocator is yet to be implemented.");
   }
 
   private void prepare(
