@@ -38,10 +38,7 @@ session.open(False)
 
 # query:
 result = session.execute_query_statement(sql)
-
-start = time.time_ns()
 df = result.todf()
-
 print(df)
 
 t_online=df.iloc[:,0]
@@ -74,10 +71,7 @@ session.open(False)
 
 # query:
 result = session.execute_query_statement(sql)
-
-start = time.time_ns() 
 df = result.todf() 
-
 print(df)
 
 df = df.rename(columns={'root.sg.d6.pre_t': 't', 'root.sg.d6.pre_v': 'v'})
