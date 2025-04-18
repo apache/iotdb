@@ -250,6 +250,7 @@ import static org.apache.iotdb.db.queryengine.plan.planner.OperatorTreeGenerator
 import static org.apache.iotdb.db.queryengine.plan.planner.OperatorTreeGenerator.getLinearFill;
 import static org.apache.iotdb.db.queryengine.plan.planner.OperatorTreeGenerator.getPreviousFill;
 import static org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.SeriesScanOptions.updateFilterUsingTTL;
+import static org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache.TableDeviceLastCache.EMPTY_PRIMITIVE_TYPE;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.SortOrder.ASC_NULLS_LAST;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.ir.GlobalTimePredicateExtractVisitor.isTimeColumn;
 import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.BooleanLiteral.TRUE_LITERAL;
@@ -2317,6 +2318,7 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
         for (int j = 0; j < lastByResult.get().getRight().length; j++) {
           TsPrimitiveType tsPrimitiveType = lastByResult.get().getRight()[j];
           if (tsPrimitiveType == null
+              || tsPrimitiveType == EMPTY_PRIMITIVE_TYPE
               || (updateTimeFilter != null
                   && !LastQueryUtil.satisfyFilter(
                       updateTimeFilter,
