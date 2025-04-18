@@ -631,6 +631,10 @@ public class IoTDBDatabaseIT {
           userStmt.executeQuery("show databases"),
           "Database,TTL(ms),SchemaReplicationFactor,DataReplicationFactor,TimePartitionInterval,",
           Collections.singleton("information_schema,INF,null,null,null,"));
+      TestUtils.assertResultSetEqual(
+          userStmt.executeQuery("select * from information_schema.databases"),
+          "database,ttl(ms),schema_replication_factor,data_replication_factor,time_partition_interval,schema_region_group_num,data_region_group_num,",
+          Collections.singleton("information_schema,INF,null,null,null,null,null,"));
     }
 
     try (final Connection adminCon = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);

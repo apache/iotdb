@@ -165,14 +165,12 @@ public class IoTDBMaintainAuthIT {
         PASSWORD);
 
     // case 12: show queries
-    // user1 with select on information_schema.queries
     tableAssertTestFail(
         "SHOW QUERIES",
         TSStatusCode.NO_PERMISSION.getStatusCode()
             + ": Access Denied: No permissions for this operation, only root user is allowed",
         USER_1,
         PASSWORD);
-    // user2 without select on information_schema.queries
     tableAssertTestFail(
         "SHOW QUERIES",
         TSStatusCode.NO_PERMISSION.getStatusCode()
