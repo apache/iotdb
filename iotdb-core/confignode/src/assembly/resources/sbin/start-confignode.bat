@@ -19,7 +19,7 @@
 
 @echo off
 @REM set cmd format
-chcp 65001
+powershell -NoProfile -Command "$v=(Get-ItemProperty 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion').CurrentMajorVersionNumber; if($v -gt 6) { cmd /c 'chcp 65001' }"
 
 title IoTDB ConfigNode
 
