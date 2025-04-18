@@ -32,8 +32,9 @@ public class OrderedMultiTVListIterator extends MultiTVListIterator {
       List<TVList> tvLists,
       List<TimeRange> deletionList,
       Integer floatPrecision,
-      TSEncoding encoding) {
-    super(tsDataType, tvLists, deletionList, floatPrecision, encoding);
+      TSEncoding encoding,
+      int maxNumberOfPointsInPage) {
+    super(tsDataType, tvLists, deletionList, floatPrecision, encoding, maxNumberOfPointsInPage);
   }
 
   @Override
