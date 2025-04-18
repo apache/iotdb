@@ -53,6 +53,7 @@ import org.apache.iotdb.confignode.procedure.impl.schema.SetTTLProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.SetTemplateProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.UnsetTemplateProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.table.AddTableColumnProcedure;
+import org.apache.iotdb.confignode.procedure.impl.schema.table.AlterTableColumnDataTypeProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.table.CreateTableProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.table.DeleteDevicesProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.table.DropTableColumnProcedure;
@@ -215,6 +216,9 @@ public class ProcedureFactory implements IProcedureFactory {
       case DROP_TABLE_COLUMN_PROCEDURE:
         procedure = new DropTableColumnProcedure(false);
         break;
+      case ALTER_TABLE_COLUMN_DATATYPE_PROCEDURE:
+        procedure = new AlterTableColumnDataTypeProcedure(false);
+        break;
       case DROP_TABLE_PROCEDURE:
         procedure = new DropTableProcedure(false);
         break;
@@ -283,6 +287,9 @@ public class ProcedureFactory implements IProcedureFactory {
         break;
       case PIPE_ENRICHED_DROP_TABLE_COLUMN_PROCEDURE:
         procedure = new DropTableColumnProcedure(true);
+        break;
+      case PIPE_ENRICHED_ALTER_COLUMN_DATATYPE_PROCEDURE:
+        procedure = new AlterTableColumnDataTypeProcedure(true);
         break;
       case PIPE_ENRICHED_DELETE_DEVICES_PROCEDURE:
         procedure = new DeleteDevicesProcedure(true);
@@ -404,6 +411,8 @@ public class ProcedureFactory implements IProcedureFactory {
       return ProcedureType.RENAME_TABLE_COLUMN_PROCEDURE;
     } else if (procedure instanceof DropTableColumnProcedure) {
       return ProcedureType.DROP_TABLE_COLUMN_PROCEDURE;
+    } else if (procedure instanceof AlterTableColumnDataTypeProcedure) {
+      return ProcedureType.ALTER_TABLE_COLUMN_DATATYPE_PROCEDURE;
     } else if (procedure instanceof DropTableProcedure) {
       return ProcedureType.DROP_TABLE_PROCEDURE;
     } else if (procedure instanceof DeleteDevicesProcedure) {

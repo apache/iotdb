@@ -206,19 +206,19 @@ public class MinAccumulator implements TableAccumulator {
     switch (seriesDataType) {
       case INT32:
       case DATE:
-        updateIntMinValue((int) statistics[0].getMinValue());
+        updateIntMinValue(((Number) statistics[0].getMinValue()).intValue());
         break;
       case INT64:
-        updateLongMinValue((long) statistics[0].getMinValue());
+        updateLongMinValue(((Number) statistics[0].getMinValue()).longValue());
         break;
       case TIMESTAMP:
         updateLongMinValue(statistics[0].getStartTime());
         break;
       case FLOAT:
-        updateFloatMinValue((float) statistics[0].getMinValue());
+        updateFloatMinValue(((Number) statistics[0].getMinValue()).floatValue());
         break;
       case DOUBLE:
-        updateDoubleMinValue((double) statistics[0].getMinValue());
+        updateDoubleMinValue(((Number) statistics[0].getMinValue()).doubleValue());
         break;
       case TEXT:
       case BLOB:
