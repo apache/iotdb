@@ -612,7 +612,7 @@ public class IoTDBDatabaseIT {
           statement.executeQuery("select * from views"),
           "database,table_name,view_definition,",
           Collections.singleton(
-              "test,view_table,CREATE TABLE VIEW \"view_table\" (tag1 STRING TAG,tag2 STRING TAG,s11 INT32 FIELD,s3 INT32 FIELD FROM s2) AS root.a.** WITH (ttl=100) RESTRICT,"));
+              "test,view_table,CREATE TABLE VIEW \"view_table\" (\"tag1\" STRING TAG,\"tag2\" STRING TAG,\"s11\" INT32 FIELD,\"s3\" INT32 FIELD FROM \"s2\") AS root.a.** WITH (ttl=100) RESTRICT,"));
 
       TestUtils.assertResultSetEqual(
           statement.executeQuery(
