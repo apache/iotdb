@@ -19,15 +19,17 @@
 
 package org.apache.iotdb.session.subscription.payload;
 
+import org.apache.iotdb.rpc.subscription.exception.SubscriptionIncompatibleHandlerException;
 import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionCommitContext;
 
+import org.apache.thrift.annotation.Nullable;
 import org.apache.tsfile.write.record.Tablet;
 
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 
-public class SubscriptionMessage
-    implements Comparable<SubscriptionMessage>, SubscriptionMessageHandler {
+public class SubscriptionMessage implements Comparable<SubscriptionMessage> {
 
   private final SubscriptionCommitContext commitContext;
 
@@ -43,10 +45,29 @@ public class SubscriptionMessage
   }
 
   public SubscriptionMessage(
-      final SubscriptionCommitContext commitContext, final String absolutePath) {
+      final SubscriptionCommitContext commitContext, final Map<String, List<Tablet>> tablets) {
     this.commitContext = commitContext;
-    this.messageType = SubscriptionMessageType.TS_FILE_HANDLER.getType();
-    this.handler = new SubscriptionTsFileHandler(absolutePath);
+    if (tablets.size() == 1 && tablets.containsKey(null)) {
+      this.messageType = SubscriptionMessageType.SESSION_DATA_SETS_HANDLER.getType();
+      this.handler = new SubscriptionSessionDataSetsHandler(tablets.get(null));
+    } else {
+      this.messageType = SubscriptionMessageType.TABLE_SESSION_DATA_SETS_HANDLER.getType();
+      this.handler = new SubscriptionTableSessionDataSetsHandler(tablets);
+    }
+  }
+
+  public SubscriptionMessage(
+      final SubscriptionCommitContext commitContext,
+      final String absolutePath,
+      @Nullable final String databaseName) {
+    this.commitContext = commitContext;
+    if (Objects.isNull(databaseName)) {
+      this.messageType = SubscriptionMessageType.TS_FILE_HANDLER.getType();
+      this.handler = new SubscriptionTsFileHandler(absolutePath);
+    } else {
+      this.messageType = SubscriptionMessageType.TABLE_TS_FILE_HANDLER.getType();
+      this.handler = new SubscriptionTableTsFileHandler(absolutePath, databaseName);
+    }
   }
 
   public SubscriptionCommitContext getCommitContext() {
@@ -94,13 +115,39 @@ public class SubscriptionMessage
 
   /////////////////////////////// handlers ///////////////////////////////
 
-  @Override
   public SubscriptionSessionDataSetsHandler getSessionDataSetsHandler() {
-    return handler.getSessionDataSetsHandler();
+    if (handler instanceof SubscriptionSessionDataSetsHandler) {
+      return (SubscriptionSessionDataSetsHandler) handler;
+    }
+    throw new SubscriptionIncompatibleHandlerException(
+        String.format(
+            "%s do not support getSessionDataSetsHandler().", handler.getClass().getSimpleName()));
   }
 
-  @Override
   public SubscriptionTsFileHandler getTsFileHandler() {
-    return handler.getTsFileHandler();
+    if (handler instanceof SubscriptionTsFileHandler) {
+      return (SubscriptionTsFileHandler) handler;
+    }
+    throw new SubscriptionIncompatibleHandlerException(
+        String.format("%s do not support getTsFileHandler().", handler.getClass().getSimpleName()));
+  }
+
+  public SubscriptionTableSessionDataSetsHandler getTableSessionDataSetsHandler() {
+    if (handler instanceof SubscriptionTableSessionDataSetsHandler) {
+      return (SubscriptionTableSessionDataSetsHandler) handler;
+    }
+    throw new SubscriptionIncompatibleHandlerException(
+        String.format(
+            "%s do not support getTableSessionDataSetsHandler().",
+            handler.getClass().getSimpleName()));
+  }
+
+  public SubscriptionTableTsFileHandler getTableTsFileHandler() {
+    if (handler instanceof SubscriptionTableTsFileHandler) {
+      return (SubscriptionTableTsFileHandler) handler;
+    }
+    throw new SubscriptionIncompatibleHandlerException(
+        String.format(
+            "%s do not support getTableTsFileHandler().", handler.getClass().getSimpleName()));
   }
 }

@@ -19,4 +19,16 @@
 
 package org.apache.iotdb.session.subscription.payload;
 
-public interface SubscriptionMessageHandler {}
+public class SubscriptionTableTsFileHandler extends SubscriptionTsFileHandler {
+
+  private final String databaseName;
+
+  public SubscriptionTableTsFileHandler(final String absolutePath, final String databaseName) {
+    super(absolutePath);
+    this.databaseName = databaseName;
+  }
+
+  public String getDatabaseName() {
+    return databaseName;
+  }
+}
