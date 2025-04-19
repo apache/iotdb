@@ -52,45 +52,45 @@ public class AtomicLongMemoryBlock extends IMemoryBlock {
   }
 
   @Override
-  public long forceAllocateWithoutLimitation(long sizeInByte) {
-    return usedMemoryInBytes.addAndGet(sizeInByte);
+  public long forceAllocateWithoutLimitation(long sizeInBytes) {
+    return usedMemoryInBytes.addAndGet(sizeInBytes);
   }
 
   @Override
-  public boolean allocate(long sizeInByte) {
+  public boolean allocate(long sizeInBytes) {
     AtomicBoolean result = new AtomicBoolean(false);
     usedMemoryInBytes.updateAndGet(
         memCost -> {
-          if (memCost + sizeInByte > totalMemorySizeInBytes) {
+          if (memCost + sizeInBytes > totalMemorySizeInBytes) {
             return memCost;
           }
           result.set(true);
-          return memCost + sizeInByte;
+          return memCost + sizeInBytes;
         });
     return result.get();
   }
 
   @Override
-  public boolean allocateIfSufficient(final long sizeInByte, final double maxRatio) {
+  public boolean allocateIfSufficient(final long sizeInBytes, final double maxRatio) {
     AtomicBoolean result = new AtomicBoolean(false);
     usedMemoryInBytes.updateAndGet(
         memCost -> {
-          if (memCost + sizeInByte > totalMemorySizeInBytes * maxRatio) {
+          if (memCost + sizeInBytes > totalMemorySizeInBytes * maxRatio) {
             return memCost;
           }
           result.set(true);
-          return memCost + sizeInByte;
+          return memCost + sizeInBytes;
         });
     return result.get();
   }
 
   @Override
-  public boolean allocateUntilAvailable(long sizeInByte, long retryIntervalInMillis)
+  public boolean allocateUntilAvailable(long sizeInBytes, long retryIntervalInMillis)
       throws InterruptedException {
     long originSize = usedMemoryInBytes.get();
     while (true) {
-      boolean canUpdate = originSize + sizeInByte <= totalMemorySizeInBytes;
-      if (canUpdate && usedMemoryInBytes.compareAndSet(originSize, originSize + sizeInByte)) {
+      boolean canUpdate = originSize + sizeInBytes <= totalMemorySizeInBytes;
+      if (canUpdate && usedMemoryInBytes.compareAndSet(originSize, originSize + sizeInBytes)) {
         break;
       }
       Thread.sleep(TimeUnit.MILLISECONDS.toMillis(retryIntervalInMillis));
@@ -100,16 +100,16 @@ public class AtomicLongMemoryBlock extends IMemoryBlock {
   }
 
   @Override
-  public long release(long sizeInByte) {
+  public long release(long sizeInBytes) {
     return usedMemoryInBytes.updateAndGet(
         memCost -> {
-          if (sizeInByte > memCost) {
+          if (sizeInBytes > memCost) {
             LOGGER.warn(
                 "The memory cost to be released is larger than the memory cost of memory block {}",
                 this);
             return 0;
           }
-          return memCost - sizeInByte;
+          return memCost - sizeInBytes;
         });
   }
 
@@ -118,10 +118,12 @@ public class AtomicLongMemoryBlock extends IMemoryBlock {
     this.usedMemoryInBytes.set(usedMemoryInBytes);
   }
 
+  @Override
   public long getUsedMemoryInBytes() {
     return usedMemoryInBytes.get();
   }
 
+  @Override
   /** Get the free memory in byte of this memory block */
   public long getFreeMemoryInBytes() {
     return totalMemorySizeInBytes - usedMemoryInBytes.get();

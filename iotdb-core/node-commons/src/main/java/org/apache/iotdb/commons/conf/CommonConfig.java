@@ -385,6 +385,10 @@ public class CommonConfig {
 
   private volatile Pattern trustedUriPattern = Pattern.compile("file:.*");
 
+  // Whtether to enable memory adaption
+  private boolean enableMemoryAdapt = false;
+  private long memoryAdaptIntervalInS = 20;
+
   CommonConfig() {
     // Empty constructor
   }
@@ -1820,5 +1824,21 @@ public class CommonConfig {
 
   public void setTrustedUriPattern(Pattern trustedUriPattern) {
     this.trustedUriPattern = trustedUriPattern;
+  }
+
+  public long getMemoryAdaptIntervalInS() {
+    return memoryAdaptIntervalInS;
+  }
+
+  public void setMemoryAdaptIntervalInS(long memoryAdaptIntervalInS) {
+    this.memoryAdaptIntervalInS = memoryAdaptIntervalInS;
+  }
+
+  public boolean isEnableMemoryAdapt() {
+    return enableMemoryAdapt;
+  }
+
+  public void setEnableMemoryAdapt(boolean enableMemoryAdapt) {
+    this.enableMemoryAdapt = enableMemoryAdapt;
   }
 }
