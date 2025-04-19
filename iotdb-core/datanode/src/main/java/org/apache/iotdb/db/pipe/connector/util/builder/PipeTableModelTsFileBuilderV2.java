@@ -130,7 +130,7 @@ public class PipeTableModelTsFileBuilderV2 extends PipeTsFileBuilder {
     final List<Pair<String, File>> sealedFiles = new ArrayList<>();
     try (final RestorableTsFileIOWriter writer = new RestorableTsFileIOWriter(createFile())) {
       writeTabletsIntoOneFile(dataBase, memTable, writer);
-      sealedFiles.add(new Pair<>(null, writer.getFile()));
+      sealedFiles.add(new Pair<>(dataBase, writer.getFile()));
     } catch (final Exception e) {
       LOGGER.warn(
           "Batch id = {}: Failed to write tablets into tsfile, because {}",
