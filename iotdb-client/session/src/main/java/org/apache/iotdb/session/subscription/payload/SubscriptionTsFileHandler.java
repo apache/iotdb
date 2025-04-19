@@ -33,9 +33,4 @@ public class SubscriptionTsFileHandler extends SubscriptionFileHandler {
   public TsFileReader openReader() throws IOException {
     return new TsFileReader(new TsFileSequenceReader(absolutePath));
   }
-
-  @Override
-  public SubscriptionTsFileHandler getTsFileHandler() {
-    return this;
-  }
 }

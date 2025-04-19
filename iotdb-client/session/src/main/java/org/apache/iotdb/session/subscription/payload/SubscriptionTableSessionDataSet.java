@@ -19,4 +19,18 @@
 
 package org.apache.iotdb.session.subscription.payload;
 
-public interface SubscriptionMessageHandler {}
+import org.apache.tsfile.write.record.Tablet;
+
+public class SubscriptionTableSessionDataSet extends SubscriptionSessionDataSet {
+
+  private final String databaseName;
+
+  public SubscriptionTableSessionDataSet(final Tablet tablet, final String databaseName) {
+    super(tablet);
+    this.databaseName = databaseName;
+  }
+
+  public String getDatabaseName() {
+    return databaseName;
+  }
+}

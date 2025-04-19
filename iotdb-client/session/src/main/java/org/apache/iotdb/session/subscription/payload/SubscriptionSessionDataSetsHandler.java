@@ -19,8 +19,6 @@
 
 package org.apache.iotdb.session.subscription.payload;
 
-import org.apache.iotdb.rpc.subscription.exception.SubscriptionIncompatibleHandlerException;
-
 import org.apache.tsfile.write.record.Tablet;
 
 import java.util.Iterator;
@@ -54,16 +52,5 @@ public class SubscriptionSessionDataSetsHandler
 
   public Iterator<Tablet> tabletIterator() {
     return tablets.iterator();
-  }
-
-  @Override
-  public SubscriptionSessionDataSetsHandler getSessionDataSetsHandler() {
-    return this;
-  }
-
-  @Override
-  public SubscriptionTsFileHandler getTsFileHandler() {
-    throw new SubscriptionIncompatibleHandlerException(
-        "SubscriptionSessionDataSetsHandler do not support getSessionDataSetsHandler().");
   }
 }
