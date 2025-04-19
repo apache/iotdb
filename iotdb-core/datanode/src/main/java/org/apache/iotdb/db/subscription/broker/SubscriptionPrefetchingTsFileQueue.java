@@ -250,7 +250,9 @@ public class SubscriptionPrefetchingTsFileQueue extends SubscriptionPrefetchingQ
         new SubscriptionEvent(
             new SubscriptionPipeTsFilePlainEvent((PipeTsFileInsertionEvent) event),
             ((PipeTsFileInsertionEvent) event).getTsFile(),
-            ((PipeTsFileInsertionEvent) event).getTableModelDatabaseName(),
+            ((PipeTsFileInsertionEvent) event).isTableModelEvent()
+                ? ((PipeTsFileInsertionEvent) event).getTableModelDatabaseName()
+                : null,
             commitContext);
     super.prefetchEvent(ev);
     return true;

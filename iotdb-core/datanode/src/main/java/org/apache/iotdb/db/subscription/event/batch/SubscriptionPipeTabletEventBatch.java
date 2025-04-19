@@ -174,14 +174,19 @@ public class SubscriptionPipeTabletEventBatch extends SubscriptionPipeEventBatch
               .reduce(Long::sum)
               .orElse(0L));
       return new Pair<>(
-          ((PipeInsertNodeTabletInsertionEvent) tabletInsertionEvent).getTableModelDatabaseName(),
+          ((PipeInsertNodeTabletInsertionEvent) tabletInsertionEvent).isTableModelEvent()
+              ? ((PipeInsertNodeTabletInsertionEvent) tabletInsertionEvent)
+                  .getTableModelDatabaseName()
+              : null,
           tablets);
     } else if (tabletInsertionEvent instanceof PipeRawTabletInsertionEvent) {
       final Tablet tablet = ((PipeRawTabletInsertionEvent) tabletInsertionEvent).convertToTablet();
       updateEstimatedRawTabletInsertionEventSize(
           PipeMemoryWeightUtil.calculateTabletSizeInBytes(tablet));
       return new Pair<>(
-          ((PipeRawTabletInsertionEvent) tabletInsertionEvent).getTableModelDatabaseName(),
+          ((PipeRawTabletInsertionEvent) tabletInsertionEvent).isTableModelEvent()
+              ? ((PipeRawTabletInsertionEvent) tabletInsertionEvent).getTableModelDatabaseName()
+              : null,
           Collections.singletonList(tablet));
     }
 
