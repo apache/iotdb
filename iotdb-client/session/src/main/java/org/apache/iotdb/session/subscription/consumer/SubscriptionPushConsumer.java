@@ -234,7 +234,7 @@ public class SubscriptionPushConsumer extends SubscriptionConsumer {
     }
 
     @Override
-    public Builder port(final int port) {
+    public Builder port(final Integer port) {
       super.port(port);
       return this;
     }
