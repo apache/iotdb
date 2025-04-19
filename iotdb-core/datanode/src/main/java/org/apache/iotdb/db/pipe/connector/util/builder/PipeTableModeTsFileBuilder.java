@@ -237,6 +237,8 @@ public class PipeTableModeTsFileBuilder extends PipeTsFileBuilder {
           }
 
           tabletsToWrite.add(pair);
+          // NOTE: mutating a LinkedList that lives inside a Set violates the contract that the
+          // element’s hashCode must remain stable while it’s in the set
           tablets.pollFirst();
           continue;
         }
@@ -244,8 +246,6 @@ public class PipeTableModeTsFileBuilder extends PipeTsFileBuilder {
       }
 
       if (tablets.isEmpty()) {
-        // NOTE: mutating a LinkedList that lives inside a Set violates the contract that the
-        // element’s hashCode must remain stable while it’s in the set
         iterator.remove();
       }
 
