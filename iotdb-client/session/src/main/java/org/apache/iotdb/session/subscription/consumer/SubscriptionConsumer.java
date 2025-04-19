@@ -1402,7 +1402,7 @@ abstract class SubscriptionConsumer implements AutoCloseable {
       return this;
     }
 
-    public Builder port(final int port) {
+    public Builder port(final Integer port) {
       this.port = port;
       return this;
     }
