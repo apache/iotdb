@@ -104,7 +104,7 @@ public abstract class PipeTsFileBuilder {
     return baseDir;
   }
 
-  public abstract void bufferTableModelTablet(String dataBase, Tablet tablet);
+  public abstract void bufferTableModelTablet(String dataBase, Tablet tablet, Boolean isAligned);
 
   public abstract void bufferTreeModelTablet(Tablet tablet, Boolean isAligned);
 

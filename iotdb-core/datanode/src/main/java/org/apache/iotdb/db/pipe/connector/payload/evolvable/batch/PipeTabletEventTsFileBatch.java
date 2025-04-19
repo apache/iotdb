@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.pipe.connector.payload.evolvable.batch;
 
-import org.apache.iotdb.db.pipe.connector.util.builder.PipeTableModeTsFileBuilder;
+import org.apache.iotdb.db.pipe.connector.util.builder.PipeTableModelTsFileBuilderV2;
 import org.apache.iotdb.db.pipe.connector.util.builder.PipeTreeModelTsFileBuilderV2;
 import org.apache.iotdb.db.pipe.connector.util.builder.PipeTsFileBuilder;
 import org.apache.iotdb.db.pipe.connector.util.sorter.PipeTableModelTabletEventSorter;
@@ -62,7 +62,7 @@ public class PipeTabletEventTsFileBatch extends PipeTabletEventBatch {
 
     final AtomicLong tsFileIdGenerator = new AtomicLong(0);
     treeModeTsFileBuilder = new PipeTreeModelTsFileBuilderV2(currentBatchId, tsFileIdGenerator);
-    tableModeTsFileBuilder = new PipeTableModeTsFileBuilder(currentBatchId, tsFileIdGenerator);
+    tableModeTsFileBuilder = new PipeTableModelTsFileBuilderV2(currentBatchId, tsFileIdGenerator);
   }
 
   @Override
@@ -83,7 +83,8 @@ public class PipeTabletEventTsFileBatch extends PipeTabletEventBatch {
               insertNodeTabletInsertionEvent.getPipeName(),
               insertNodeTabletInsertionEvent.getCreationTime(),
               tablet,
-              insertNodeTabletInsertionEvent.getTableModelDatabaseName());
+              insertNodeTabletInsertionEvent.getTableModelDatabaseName(),
+              insertNodeTabletInsertionEvent.isAligned(i));
         } else {
           // tree Model
           bufferTreeModelTablet(
@@ -106,7 +107,8 @@ public class PipeTabletEventTsFileBatch extends PipeTabletEventBatch {
             rawTabletInsertionEvent.getPipeName(),
             rawTabletInsertionEvent.getCreationTime(),
             tablet,
-            rawTabletInsertionEvent.getTableModelDatabaseName());
+            rawTabletInsertionEvent.getTableModelDatabaseName(),
+            rawTabletInsertionEvent.isAligned());
       } else {
         // tree Model
         bufferTreeModelTablet(
@@ -145,16 +147,23 @@ public class PipeTabletEventTsFileBatch extends PipeTabletEventBatch {
   }
 
   private void bufferTableModelTablet(
-      final String pipeName, final long creationTime, final Tablet tablet, final String dataBase) {
+      final String pipeName,
+      final long creationTime,
+      final Tablet tablet,
+      final String dataBase,
+      final boolean isAligned) {
     new PipeTableModelTabletEventSorter(tablet).sortAndDeduplicateByDevIdTimestamp();
 
-    totalBufferSize += PipeMemoryWeightUtil.calculateTabletSizeInBytes(tablet);
+    // TODO: Currently, PipeTableModelTsFileBuilderV2 still uses PipeTableModelTsFileBuilder as a
+    // fallback builder, so memory table writing and storing temporary tablets require double the
+    // memory.
+    totalBufferSize += PipeMemoryWeightUtil.calculateTabletSizeInBytes(tablet) * 2;
 
     pipeName2WeightMap.compute(
         new Pair<>(pipeName, creationTime),
         (pipe, weight) -> Objects.nonNull(weight) ? ++weight : 1);
 
-    tableModeTsFileBuilder.bufferTableModelTablet(dataBase, tablet);
+    tableModeTsFileBuilder.bufferTableModelTablet(dataBase, tablet, isAligned);
   }
 
   public Map<Pair<String, Long>, Double> deepCopyPipe2WeightMap() {

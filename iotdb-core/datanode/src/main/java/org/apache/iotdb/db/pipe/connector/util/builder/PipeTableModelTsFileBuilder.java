@@ -48,18 +48,18 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicLong;
 
-public class PipeTableModeTsFileBuilder extends PipeTsFileBuilder {
+public class PipeTableModelTsFileBuilder extends PipeTsFileBuilder {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(PipeTableModeTsFileBuilder.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(PipeTableModelTsFileBuilder.class);
 
   private final Map<String, List<Tablet>> dataBase2TabletList = new HashMap<>();
 
-  public PipeTableModeTsFileBuilder(AtomicLong currentBatchId, AtomicLong tsFileIdGenerator) {
+  public PipeTableModelTsFileBuilder(AtomicLong currentBatchId, AtomicLong tsFileIdGenerator) {
     super(currentBatchId, tsFileIdGenerator);
   }
 
   @Override
-  public void bufferTableModelTablet(String dataBase, Tablet tablet) {
+  public void bufferTableModelTablet(String dataBase, Tablet tablet, Boolean isAligned) {
     dataBase2TabletList.computeIfAbsent(dataBase, db -> new ArrayList<>()).add(tablet);
   }
 
