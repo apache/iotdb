@@ -43,7 +43,12 @@ import java.util.regex.Pattern;
 public class GitBlameInfo3 {
   public static void main(String[] args) throws Exception {
     final String timechoDBPath = "C:\\Users\\13361\\Documents\\GitHub\\timechodb\\";
-    // final List<String> paths = Arrays.asList("/../tsfile/python/setup.py");
+    // final List<String> paths =
+    //     Arrays.asList(
+    //
+    // "/iotdb-core/datanode/src/main/java/org/apache/iotdb/db/queryengine/plan/parser/ASTVisitor.java",
+    //
+    // "/iotdb-core/datanode/src/test/java/org/apache/iotdb/db/storageengine/dataregion/compaction/ReadPointCompactionPerformerTest.java");
     final List<String> paths =
         Arrays.asList(
             "/timecho-confignode/src/main/java/com/timecho/iotdb/manager/activation/limit/CheckedStringParser.java",
@@ -5407,6 +5412,7 @@ public class GitBlameInfo3 {
             put("hunter hou", "侯昊男");
             put("陈 哲涵", "陈哲涵");
             put("旋 王", "王旋");
+            put("majialin", "马嘉琳");
             put("chang xue", "常雪");
             put("shu wenwei", "舒文炜");
             put("JackieTien97", "田原");
@@ -5462,6 +5468,7 @@ public class GitBlameInfo3 {
             put("Colin Li", "李烁麟");
             put("Colin Lee", "李烁麟");
             put("colin", "李烁麟");
+            put("Li Shuolin", "李烁麟");
             put("YangCaiyin", "杨蔡胤");
             put("Zhenyu Luo", "罗振宇");
             put("Xiangwei Wei", "魏祥威");
@@ -5491,7 +5498,7 @@ public class GitBlameInfo3 {
     formal.putAll(internship);
 
     final File outPutFile =
-        new File("C:\\Users\\13361\\Downloads\\output\\fuck_everyone_new_year.txt");
+        new File("C:\\Users\\13361\\Downloads\\output\\fuck_everyone_old_year.txt");
     outPutFile.delete();
     outPutFile.createNewFile();
     final long startTime = System.currentTimeMillis();
@@ -5708,7 +5715,7 @@ public class GitBlameInfo3 {
       }
       // Code Summary.md
       int limit = 0;
-      while (token.get() > 1 && limit < 1000) {
+      while (token.get() > 0 && limit < 1000) {
         int done = paths.size() - token.get();
         double speed = 1000.0 * done / (System.currentTimeMillis() - startTime);
         System.out.println("Token Process: " + done + "/" + paths.size());

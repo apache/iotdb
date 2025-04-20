@@ -4881,6 +4881,7 @@ public class GitBlameInfo2 {
             put("hunter hou", "侯昊男");
             put("陈 哲涵", "陈哲涵");
             put("旋 王", "王旋");
+            put("majialin", "马嘉琳");
             put("chang xue", "常雪");
             put("shu wenwei", "舒文炜");
             put("JackieTien97", "田原");
@@ -4936,6 +4937,7 @@ public class GitBlameInfo2 {
             put("Colin Li", "李烁麟");
             put("Colin Lee", "李烁麟");
             put("colin", "李烁麟");
+            put("Li Shuolin", "李烁麟");
             put("YangCaiyin", "杨蔡胤");
             put("Zhenyu Luo", "罗振宇");
             put("Xiangwei Wei", "魏祥威");
