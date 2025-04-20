@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.conf.ConfigurationFileUtils;
 import org.apache.iotdb.commons.conf.TrimProperties;
 import org.apache.iotdb.commons.memory.MemoryConfig;
 import org.apache.iotdb.commons.memory.MemoryManager;
+import org.apache.iotdb.db.storageengine.rescon.memory.SystemInfo;
 import org.apache.iotdb.db.utils.MemUtils;
 
 import org.slf4j.Logger;
@@ -151,18 +152,18 @@ public class DataNodeMemoryConfig {
       }
     }
 
-    long storageEngineMemorySize = Runtime.getRuntime().maxMemory() * 3 / 10;
-    long queryEngineMemorySize = Runtime.getRuntime().maxMemory() * 3 / 10;
-    long schemaEngineMemorySize = Runtime.getRuntime().maxMemory() / 10;
-    long consensusMemorySize = Runtime.getRuntime().maxMemory() / 10;
-    long pipeMemorySize = Runtime.getRuntime().maxMemory() / 10;
+    long storageEngineMemorySize = Runtime.getRuntime().totalMemory() * 3 / 10;
+    long queryEngineMemorySize = Runtime.getRuntime().totalMemory() * 3 / 10;
+    long schemaEngineMemorySize = Runtime.getRuntime().totalMemory() / 10;
+    long consensusMemorySize = Runtime.getRuntime().totalMemory() / 10;
+    long pipeMemorySize = Runtime.getRuntime().totalMemory() / 10;
     if (memoryAllocateProportion != null) {
       String[] proportions = memoryAllocateProportion.split(":");
       int proportionSum = 0;
       for (String proportion : proportions) {
         proportionSum += Integer.parseInt(proportion.trim());
       }
-      long maxMemoryAvailable = Runtime.getRuntime().maxMemory();
+      long maxMemoryAvailable = Runtime.getRuntime().totalMemory();
 
       if (proportionSum != 0) {
         storageEngineMemorySize =
@@ -189,9 +190,16 @@ public class DataNodeMemoryConfig {
       }
     }
     onHeapMemoryManager =
-        MemoryConfig.global().getOrCreateMemoryManager("OnHeap", Runtime.getRuntime().maxMemory());
+        MemoryConfig.global()
+            .getOrCreateMemoryManager("OnHeap", Runtime.getRuntime().totalMemory());
     storageEngineMemoryManager =
-        onHeapMemoryManager.getOrCreateMemoryManager("StorageEngine", storageEngineMemorySize);
+        onHeapMemoryManager
+            .getOrCreateMemoryManager("StorageEngine", storageEngineMemorySize)
+            .setUpdateCallback(
+                (before, after) -> {
+                  LOGGER.info("StorageEngine memory size changed from {} to {}", before, after);
+                  SystemInfo.getInstance().loadWriteMemory();
+                });
     queryEngineMemoryManager =
         onHeapMemoryManager.getOrCreateMemoryManager("QueryEngine", queryEngineMemorySize);
     schemaEngineMemoryManager =
