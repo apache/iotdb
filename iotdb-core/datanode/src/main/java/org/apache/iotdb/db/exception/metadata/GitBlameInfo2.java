@@ -5034,7 +5034,6 @@ public class GitBlameInfo2 {
                     boolean isFormal = false;
                     boolean outdated = false;
                     while ((line = blameReader.readLine()) != null) {
-                      System.out.println(line);
                       boolean hitKey = false;
                       if (line.startsWith("author ")) {
                         author = line.substring(7);
