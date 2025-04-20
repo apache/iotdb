@@ -5100,12 +5100,12 @@ public class GitBlameInfo2 {
                           }
                           commentLines.compute(author, (k, v) -> Objects.isNull(v) ? 1 : v + 1);
                         } else {
+                          filter.add("summary " + summary);
                           if (isFormal) {
                             formalCode.incrementAndGet();
                             people.get(finalI).put(author, formal.get(author));
                             if (Objects.nonNull(summary)) {
                               summaries.get(finalI).add(summary);
-                              filter.add("summary " + summary);
                             }
                             if (internship.containsKey(author)) {
                               internCode.incrementAndGet();
