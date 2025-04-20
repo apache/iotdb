@@ -14,6 +14,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -4824,7 +4825,9 @@ public class GitBlameInfo2 {
             "/../tsfile/java/tsfile/src/test/java/org/apache/tsfile/encrypt/AES128TsFileReadWriteTest.java",
             "/../tsfile/java/tsfile/src/test/java/org/apache/tsfile/read/UnClosedTsFileReaderTest.java");
 
-    final ConcurrentHashMap<Integer, String> results = new ConcurrentHashMap<>(paths.size());
+    final ConcurrentMap<Integer, String> results = new ConcurrentHashMap<>(paths.size());
+    final ConcurrentMap<Integer, Map<String, String>> people =
+        new ConcurrentHashMap<>(paths.size());
     final AtomicInteger token = new AtomicInteger(paths.size());
 
     final Map<String, String> formal =
@@ -5032,7 +5035,7 @@ public class GitBlameInfo2 {
                       boolean hitKey = false;
                       if (line.startsWith("author ")) {
                         author = line.substring(7);
-                        isFormal = formal.contains(author);
+                        isFormal = formal.containsKey(author);
                       } else if (line.startsWith("author-time ")) {
                         // Filter author-time earlier than 2021.10.20
                         if (Long.parseLong(line.split(" ")[1]) <= 1634659200) {
@@ -5054,7 +5057,7 @@ public class GitBlameInfo2 {
                         if (line.trim().isEmpty()) {
                           if (isFormal) {
                             formalBlank.incrementAndGet();
-                            if (internship.contains(author)) {
+                            if (internship.containsKey(author)) {
                               internBlank.incrementAndGet();
                             } else {
                               employeeBlank.incrementAndGet();
@@ -5074,7 +5077,7 @@ public class GitBlameInfo2 {
                           }
                           if (isFormal) {
                             formalComment.incrementAndGet();
-                            if (internship.contains(author)) {
+                            if (internship.containsKey(author)) {
                               internComment.incrementAndGet();
                             } else {
                               employeeComment.incrementAndGet();
@@ -5086,7 +5089,10 @@ public class GitBlameInfo2 {
                         } else {
                           if (isFormal) {
                             formalCode.incrementAndGet();
-                            if (internship.contains(author)) {
+                            people
+                                .computeIfAbsent(finalI, k -> new HashMap<>())
+                                .put(author, formal.get(author));
+                            if (internship.containsKey(author)) {
                               internCode.incrementAndGet();
                             } else {
                               employeeCode.incrementAndGet();
