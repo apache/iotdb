@@ -188,6 +188,8 @@ public class TopicMeta {
     extractorAttributes.put("inclusion.exclusion", "data.delete");
     // user
     extractorAttributes.put("username", username);
+    // TODO: currently set skipif to no-privileges
+    extractorAttributes.put("skipif", "no-privileges");
     // sql dialect
     extractorAttributes.putAll(config.getAttributeWithSqlDialect());
     if (config.isTableTopic()) {
