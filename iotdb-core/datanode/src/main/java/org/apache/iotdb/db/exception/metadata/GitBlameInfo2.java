@@ -4828,6 +4828,7 @@ public class GitBlameInfo2 {
     final ConcurrentMap<Integer, String> results = new ConcurrentHashMap<>(paths.size());
     final ConcurrentMap<Integer, Map<String, String>> people =
         new ConcurrentHashMap<>(paths.size());
+    final ConcurrentMap<Integer, Set<String>> summaries = new ConcurrentHashMap<>(paths.size());
     final AtomicInteger token = new AtomicInteger(paths.size());
 
     final Map<String, String> formal =
@@ -5028,10 +5029,12 @@ public class GitBlameInfo2 {
 
                     String line;
                     String author = null;
+                    String summary = null;
                     boolean commentBlock = false;
                     boolean isFormal = false;
                     boolean outdated = false;
                     while ((line = blameReader.readLine()) != null) {
+                      System.out.println(line);
                       boolean hitKey = false;
                       if (line.startsWith("author ")) {
                         author = line.substring(7);
@@ -5048,6 +5051,9 @@ public class GitBlameInfo2 {
                         for (final String key : keys) {
                           if (line.startsWith(key)) {
                             hitKey = true;
+                            if (key.equals("summary ")) {
+                              summary = line.substring(8);
+                            }
                             break;
                           }
                         }
@@ -5092,6 +5098,9 @@ public class GitBlameInfo2 {
                             people
                                 .computeIfAbsent(finalI, k -> new HashMap<>())
                                 .put(author, formal.get(author));
+                            if (Objects.nonNull(summary)) {
+                              summaries.computeIfAbsent(finalI, k -> new HashSet<>()).add(summary);
+                            }
                             if (internship.containsKey(author)) {
                               internCode.incrementAndGet();
                             } else {
@@ -5113,8 +5122,22 @@ public class GitBlameInfo2 {
                     final String ans =
                         String.format(
                             "%.2f%%", (sum > 0 ? (double) formalCode.get() / sum : 1.0) * 100);
-                    System.out.println(ans);
                     results.put(finalI, ans);
+
+                    final String[] accountList = people.get(finalI).keySet().toArray(new String[0]);
+                    final String[] nameList =
+                        Arrays.stream(accountList)
+                            .map(people.get(finalI)::get)
+                            .toArray(String[]::new);
+
+                    System.out.println(
+                        ans
+                            + "\t"
+                            + String.join(", ", accountList)
+                            + "\t"
+                            + String.join(", ", nameList)
+                            + "\t"
+                            + String.join(", ", summaries.get(finalI)));
                   } catch (final Exception e) {
                     System.out.println(e);
                   }
@@ -5143,7 +5166,9 @@ public class GitBlameInfo2 {
                 + "\t"
                 + String.join(", ", accountList)
                 + "\t"
-                + String.join(", ", nameList));
+                + String.join(", ", nameList)
+                + "\t"
+                + String.join(", ", summaries.get(j)));
       }
     }
     executorService.shutdown();
