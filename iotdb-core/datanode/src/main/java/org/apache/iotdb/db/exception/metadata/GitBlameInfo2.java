@@ -23,8 +23,8 @@ import java.util.regex.Pattern;
 public class GitBlameInfo2 {
   public static void main(String[] args) throws Exception {
     final String timechoDBPath = "C:\\Users\\13361\\Documents\\GitHub\\timechodb\\";
-    final List<String> paths = Arrays.asList("/../tsfile/python/setup.py");
-    final List<String> shit_paths =
+    // final List<String> paths = Arrays.asList("/../tsfile/python/setup.py");
+    final List<String> paths =
         Arrays.asList(
             "/iotdb-api/pipe-api/src/main/java/org/apache/iotdb/pipe/api/access/Row.java",
             "/iotdb-core/antlr/src/main/antlr4/org/apache/iotdb/db/qp/sql/IdentifierParser.g4",
