@@ -5055,7 +5055,6 @@ public class GitBlameInfo2 {
                               if (!filter.contains(line)) {
                                 summary = line.substring(8);
                               }
-                              filter.add(line);
                             }
                             break;
                           }
@@ -5103,6 +5102,7 @@ public class GitBlameInfo2 {
                                 .put(author, formal.get(author));
                             if (Objects.nonNull(summary)) {
                               summaries.computeIfAbsent(finalI, k -> new HashSet<>()).add(summary);
+                              filter.add(line);
                             }
                             if (internship.containsKey(author)) {
                               internCode.incrementAndGet();
