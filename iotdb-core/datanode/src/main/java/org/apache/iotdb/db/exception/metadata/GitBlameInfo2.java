@@ -5033,6 +5033,7 @@ public class GitBlameInfo2 {
                     boolean commentBlock = false;
                     boolean isFormal = false;
                     boolean outdated = false;
+                    Set<String> filter = new HashSet<>();
                     while ((line = blameReader.readLine()) != null) {
                       boolean hitKey = false;
                       if (line.startsWith("author ")) {
@@ -5051,7 +5052,10 @@ public class GitBlameInfo2 {
                           if (line.startsWith(key)) {
                             hitKey = true;
                             if (key.equals("summary ")) {
-                              summary = line.substring(8);
+                              if (!filter.contains(line)) {
+                                summary = line.substring(8);
+                              }
+                              filter.add(line);
                             }
                             break;
                           }
