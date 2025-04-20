@@ -4831,6 +4831,11 @@ public class GitBlameInfo2 {
     final ConcurrentMap<Integer, Set<String>> summaries = new ConcurrentHashMap<>(paths.size());
     final AtomicInteger token = new AtomicInteger(paths.size());
 
+    for (int i = 0; i < paths.size(); ++i) {
+      people.put(i, new HashMap<>());
+      summaries.put(i, new HashSet<>());
+    }
+
     final Map<String, String> formal =
         new HashMap<String, String>() {
           {
@@ -5097,11 +5102,9 @@ public class GitBlameInfo2 {
                         } else {
                           if (isFormal) {
                             formalCode.incrementAndGet();
-                            people
-                                .computeIfAbsent(finalI, k -> new HashMap<>())
-                                .put(author, formal.get(author));
+                            people.get(finalI).put(author, formal.get(author));
                             if (Objects.nonNull(summary)) {
-                              summaries.computeIfAbsent(finalI, k -> new HashSet<>()).add(summary);
+                              summaries.get(finalI).add(summary);
                               filter.add("summary " + summary);
                             }
                             if (internship.containsKey(author)) {
