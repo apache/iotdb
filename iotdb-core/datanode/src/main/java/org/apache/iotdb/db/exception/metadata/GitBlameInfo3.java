@@ -5708,7 +5708,7 @@ public class GitBlameInfo3 {
       }
       // Code Summary.md
       int limit = 0;
-      while (token.get() >= 1 && limit < 100) {
+      while (token.get() > 1 && limit < 100) {
         int done = paths.size() - token.get();
         double speed = 1000.0 * done / (System.currentTimeMillis() - startTime);
         System.out.println("Token Process: " + done + "/" + paths.size());
@@ -5725,13 +5725,15 @@ public class GitBlameInfo3 {
 
         writeFile(
             writer,
-            results.containsKey(j) ? results.get(j) : "0.00%"
-                + "\t"
-                + String.join(", ", accountList)
-                + "\t"
-                + String.join(", ", nameList)
-                + "\t"
-                + String.join(", ", summaries.get(j)));
+            results.containsKey(j)
+                ? results.get(j)
+                : "0.00%"
+                    + "\t"
+                    + String.join(", ", accountList)
+                    + "\t"
+                    + String.join(", ", nameList)
+                    + "\t"
+                    + String.join(", ", summaries.get(j)));
       }
     }
     executorService.shutdown();
