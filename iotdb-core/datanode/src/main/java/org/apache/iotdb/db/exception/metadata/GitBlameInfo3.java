@@ -5366,6 +5366,8 @@ public class GitBlameInfo3 {
             "/iotdb-core/datanode/src/main/java/org/apache/iotdb/db/queryengine/plan/parser/ASTVisitor.java",
             "/iotdb-core/datanode/src/test/java/org/apache/iotdb/db/storageengine/dataregion/compaction/ReadPointCompactionPerformerTest.java");
 
+    final Set<String> pathSet = new HashSet<>(paths);
+
     final ConcurrentMap<Integer, String> results = new ConcurrentHashMap<>(paths.size());
     final ConcurrentMap<Integer, Map<String, String>> people =
         new ConcurrentHashMap<>(paths.size());
@@ -5666,6 +5668,7 @@ public class GitBlameInfo3 {
                     // 等待 blame 进程结束
                     blameProcess.waitFor();
                     token.decrementAndGet();
+                    pathSet.remove(path);
                     // 输出结果
                     final int sum = codeLines.values().stream().reduce(0, Integer::sum);
                     final String ans =
@@ -5707,6 +5710,7 @@ public class GitBlameInfo3 {
         System.out.println("Token Process: " + done + "/" + paths.size());
         System.out.println("Token Speed: " + speed);
         System.out.println("Token Remaining: " + token.get() / speed);
+        System.out.println("Remaining paths: " + pathSet);
         Thread.sleep(50);
       }
       for (int j = 0; j < paths.size(); ++j) {
