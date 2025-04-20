@@ -24,7 +24,7 @@ public class GitBlameInfo2 {
   public static void main(String[] args) throws Exception {
     final String timechoDBPath = "C:\\Users\\13361\\Documents\\GitHub\\timechodb\\";
     // final List<String> paths = Arrays.asList("/../tsfile/python/setup.py");
-    final List<String> allPaths =
+    final List<String> paths =
         Arrays.asList(
             "/timecho-confignode/src/main/java/com/timecho/iotdb/manager/activation/limit/CheckedStringParser.java",
             "/iotdb-core/datanode/src/main/java/org/apache/iotdb/db/protocol/thrift/impl/IInfluxDBServiceWithHandler.java",
@@ -5346,7 +5346,7 @@ public class GitBlameInfo2 {
             "/iotdb-core/datanode/src/test/java/org/apache/iotdb/db/storageengine/dataregion/compaction/FastCrossCompactionPerformerTest.java",
             "/iotdb-core/datanode/src/main/java/org/apache/iotdb/db/queryengine/plan/parser/ASTVisitor.java",
             "/iotdb-core/datanode/src/test/java/org/apache/iotdb/db/storageengine/dataregion/compaction/ReadPointCompactionPerformerTest.java");
-    final List<String> paths =
+    final List<String> old_paths =
         Arrays.asList(
             "/iotdb-api/pipe-api/src/main/java/org/apache/iotdb/pipe/api/access/Row.java",
             "/iotdb-core/antlr/src/main/antlr4/org/apache/iotdb/db/qp/sql/IdentifierParser.g4",
