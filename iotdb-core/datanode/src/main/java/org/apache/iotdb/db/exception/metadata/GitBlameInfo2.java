@@ -5133,7 +5133,17 @@ public class GitBlameInfo2 {
         Thread.sleep(50);
       }
       for (int j = 0; j < paths.size(); ++j) {
-        writeFile(writer, String.valueOf(results.get(j)));
+        final Map<String, String> cur = people.get(j);
+        final String[] accountList = cur.keySet().toArray(new String[0]);
+        final String[] nameList = Arrays.stream(accountList).map(cur::get).toArray(String[]::new);
+
+        writeFile(
+            writer,
+            results.get(j)
+                + "\t"
+                + String.join(", ", accountList)
+                + "\t"
+                + String.join(", ", nameList));
       }
     }
     executorService.shutdown();
