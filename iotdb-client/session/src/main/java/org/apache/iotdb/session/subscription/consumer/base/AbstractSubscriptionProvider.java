@@ -88,6 +88,9 @@ public abstract class AbstractSubscriptionProvider {
   private final TEndPoint endPoint;
   private int dataNodeId;
 
+  private final String username;
+  private final String password;
+
   protected abstract AbstractSessionBuilder constructSubscriptionSessionBuilder(
       final String host,
       final int port,
@@ -109,6 +112,8 @@ public abstract class AbstractSubscriptionProvider {
     this.endPoint = endPoint;
     this.consumerId = consumerId;
     this.consumerGroupId = consumerGroupId;
+    this.username = username;
+    this.password = password;
   }
 
   SubscriptionSessionConnection getSessionConnection() {
@@ -156,6 +161,8 @@ public abstract class AbstractSubscriptionProvider {
     final Map<String, String> consumerAttributes = new HashMap<>();
     consumerAttributes.put(ConsumerConstant.CONSUMER_GROUP_ID_KEY, consumerGroupId);
     consumerAttributes.put(ConsumerConstant.CONSUMER_ID_KEY, consumerId);
+    consumerAttributes.put(ConsumerConstant.USERNAME_KEY, username);
+    consumerAttributes.put(ConsumerConstant.PASSWORD_KEY, password);
 
     final PipeSubscribeHandshakeResp resp =
         handshake(new ConsumerConfig(consumerAttributes)); // throw SubscriptionException
