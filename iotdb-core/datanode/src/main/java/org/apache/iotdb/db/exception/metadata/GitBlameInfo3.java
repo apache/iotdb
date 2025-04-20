@@ -5707,7 +5707,8 @@ public class GitBlameInfo3 {
         System.out.println("Remaining: " + (paths.size() - i) / speed);
       }
       // Code Summary.md
-      while (token.get() >= 1) {
+      int limit = 0;
+      while (token.get() >= 1 && limit < 100) {
         int done = paths.size() - token.get();
         double speed = 1000.0 * done / (System.currentTimeMillis() - startTime);
         System.out.println("Token Process: " + done + "/" + paths.size());
@@ -5715,6 +5716,7 @@ public class GitBlameInfo3 {
         System.out.println("Token Remaining: " + token.get() / speed);
         System.out.println("Remaining paths: " + pathSet);
         Thread.sleep(50);
+        ++limit;
       }
       for (int j = 0; j < paths.size(); ++j) {
         final Map<String, String> cur = people.get(j);
