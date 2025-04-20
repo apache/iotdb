@@ -5102,7 +5102,7 @@ public class GitBlameInfo2 {
                                 .put(author, formal.get(author));
                             if (Objects.nonNull(summary)) {
                               summaries.computeIfAbsent(finalI, k -> new HashSet<>()).add(summary);
-                              filter.add(line);
+                              filter.add("summary " + summary);
                             }
                             if (internship.containsKey(author)) {
                               internCode.incrementAndGet();
