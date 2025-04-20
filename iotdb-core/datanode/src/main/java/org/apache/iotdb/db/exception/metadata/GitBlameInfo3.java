@@ -64,8 +64,9 @@ public class GitBlameInfo3 {
             "/iotdb-core/consensus/src/main/java/org/apache/iotdb/consensus/pipe/consensuspipe/ConsensusPipeReceiver.java",
             "/iotdb-core/datanode/src/main/java/org/apache/iotdb/db/storageengine/dataregion/compaction/selector/ISettleSelector.java",
             "/iotdb-client/session/src/main/java/org/apache/iotdb/session/subscription/consumer/AsyncCommitCallback.java",
-            "/iotdb-core/datanode/src/main/java/org/apache/iotdb/db/storageengine/dataregion/tsfile/TsFileResourceStatus.java",
-            "/iotdb-core/node-commons/src/main/java/org/apache/iotdb/commons/pipe/agent/plugin/builtin/connector/writeback/WriteBackConnector.java",
+            "/iotdb-core/datanode/src/main/java/org/apache/iotdb/db/storageengine/dataregion/tsfile/TsFileResourceStatus.java"
+                );
+            /*"/iotdb-core/node-commons/src/main/java/org/apache/iotdb/commons/pipe/agent/plugin/builtin/connector/writeback/WriteBackConnector.java",
             "/iotdb-core/node-commons/src/main/java/org/apache/iotdb/commons/pipe/agent/plugin/builtin/connector/websocket/WebSocketConnector.java",
             "/iotdb-core/node-commons/src/main/java/org/apache/iotdb/commons/pipe/agent/plugin/builtin/processor/aggregate/AggregateProcessor.java",
             "/iotdb-core/node-commons/src/main/java/org/apache/iotdb/commons/pipe/agent/plugin/builtin/connector/iotdb/thrift/IoTDBThriftSslConnector.java",
@@ -5365,7 +5366,7 @@ public class GitBlameInfo3 {
             "/iotdb-core/datanode/src/main/java/org/apache/iotdb/db/conf/IoTDBConfig.java",
             "/iotdb-core/datanode/src/test/java/org/apache/iotdb/db/storageengine/dataregion/compaction/FastCrossCompactionPerformerTest.java",
             "/iotdb-core/datanode/src/main/java/org/apache/iotdb/db/queryengine/plan/parser/ASTVisitor.java",
-            "/iotdb-core/datanode/src/test/java/org/apache/iotdb/db/storageengine/dataregion/compaction/ReadPointCompactionPerformerTest.java");
+            "/iotdb-core/datanode/src/test/java/org/apache/iotdb/db/storageengine/dataregion/compaction/ReadPointCompactionPerformerTest.java");*/
 
     final Set<String> pathSet = Collections.newSetFromMap(new ConcurrentHashMap<>());
     pathSet.addAll(paths);
@@ -5489,9 +5490,9 @@ public class GitBlameInfo3 {
         };
 
     formal.putAll(internship);
-    formal.putAll(internship);
 
-    final File outPutFile = new File("C:\\Users\\13361\\Downloads\\output\\fuck_everyone_new.txt");
+    final File outPutFile =
+        new File("C:\\Users\\13361\\Downloads\\output\\fuck_everyone_new_year.txt");
     outPutFile.delete();
     outPutFile.createNewFile();
     final long startTime = System.currentTimeMillis();
@@ -5708,7 +5709,7 @@ public class GitBlameInfo3 {
       }
       // Code Summary.md
       int limit = 0;
-      while (token.get() > 1 && limit < 100) {
+      while (token.get() > 1 && limit < 1000) {
         int done = paths.size() - token.get();
         double speed = 1000.0 * done / (System.currentTimeMillis() - startTime);
         System.out.println("Token Process: " + done + "/" + paths.size());
@@ -5725,15 +5726,13 @@ public class GitBlameInfo3 {
 
         writeFile(
             writer,
-            results.containsKey(j)
-                ? results.get(j)
-                : "0.00%"
-                    + "\t"
-                    + String.join(", ", accountList)
-                    + "\t"
-                    + String.join(", ", nameList)
-                    + "\t"
-                    + String.join(", ", summaries.get(j)));
+            results.getOrDefault(j, "0.00%")
+                + "\t"
+                + String.join(", ", accountList)
+                + "\t"
+                + String.join(", ", nameList)
+                + "\t"
+                + String.join(", ", summaries.get(j)));
       }
     }
     executorService.shutdown();
