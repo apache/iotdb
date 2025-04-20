@@ -145,9 +145,7 @@ public class PipeTreeModelTsFileBuilderV2 extends PipeTsFileBuilder {
       final Object[] values = tablet.getValues();
       for (int j = 0; j < tablet.getSchemas().size(); ++j) {
         final IMeasurementSchema schema = tablet.getSchemas().get(j);
-        if (Objects.nonNull(schema)
-            && Objects.equals(TSDataType.DATE, schema.getType())
-            && values[j] instanceof LocalDate[]) {
+        if (Objects.nonNull(schema) && Objects.equals(TSDataType.DATE, schema.getType())) {
           final LocalDate[] dates = ((LocalDate[]) values[j]);
           final int[] dateValues = new int[dates.length];
           for (int k = 0; k < Math.min(dates.length, tablet.getRowSize()); k++) {
