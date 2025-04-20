@@ -7,6 +7,7 @@ import java.io.File;
 import java.io.FileWriter;
 import java.io.InputStreamReader;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -4826,109 +4827,113 @@ public class GitBlameInfo2 {
     final ConcurrentHashMap<Integer, String> results = new ConcurrentHashMap<>(paths.size());
     final AtomicInteger token = new AtomicInteger(paths.size());
 
-    final Set<String> formal =
-        new HashSet<>(
-            Arrays.asList(
-                "Jackie Tien",
-                "Caideyipi",
-                "shuwenwei",
-                "Steve Yurong Su",
-                "Haonan",
-                "Beyyes",
-                "Weihao Li",
-                "Zhijia Cao",
-                "Li Yu Heng",
-                "Potato",
-                "Zhang.Jinrui",
-                "Yuheng Li",
-                "Jinrui Zhang",
-                "Jialin Qiao",
-                "CritasWang",
-                "Gaofei Cao",
-                "changxue2022",
-                "曹志佳",
-                "Yuan Tian",
-                "cao zhijia",
-                "hunter hou",
-                "陈 哲涵",
-                "旋 王",
-                "chang xue",
-                "shu wenwei",
-                "JackieTien97",
-                "Tan xinyu",
-                "liyuheng",
-                "HTHou",
-                "张正明",
-                "Jinrui.Zhang",
-                "qiaojialin",
-                "OneSizeFitQuorum",
-                "Summer",
-                "Steve Yurong Su (宇荣)",
-                "YuFengLiu",
-                "Xuan Ronaldo",
-                "xiaoyekanren",
-                "ppppoooo",
-                "xingtanzjr",
-                "CloudWise-Lukemiao",
-                "yufeng liu",
-                "Christofer Dutz"));
-    final Set<String> internship =
-        new HashSet<>(
-            Arrays.asList(
-                "Lin Xintao",
-                "YongzaoDan",
-                "Alima777",
-                "Caiyin Yang",
-                "ZhangHongYin",
-                "JiaXin Zhang",
-                "Jiang Tian",
-                "Da Rui Lei",
-                "MarcosZyk",
-                "Marcos_Zyk",
-                "CRZbulabula",
-                "Liao Lanyu",
-                "CRZbulabula",
-                "Liao Lanyu",
-                "江天",
-                "张凌哲",
-                "Itami Sho",
-                "Peng Junzhi",
-                "zyk990424",
-                "Lei Rui",
-                "lancelly",
-                "WilliamSong11",
-                "linxt20",
-                "DESKTOP-L0L5GPJ\\jt",
-                "YC27",
-                "Rui,Lei",
-                "V_Galaxy",
-                "Colin Li",
-                "Colin Lee",
-                "colin",
-                "YangCaiyin",
-                "Zhenyu Luo",
-                "Xiangwei Wei",
-                "RuiLei",
-                "yuyong",
-                "jt",
-                "chen yanze",
-                "Zhihao Shen",
-                "zhanglingzhe0820",
-                "Mrquan",
-                "SzyWilliam",
-                "William Song",
-                "Tian Jiang",
-                "jt2594838",
-                "Zikun Ma",
-                "马子坤",
-                "Xiangpeng Hu",
-                "Chen YZ",
-                "Yongzao",
-                "ZhaoXin",
-                "liuminghui233",
-                "choubenson",
-                "周沛辰"));
-    formal.addAll(internship);
+    final Map<String, String> formal =
+        new HashMap<String, String>() {
+          {
+            put("Jackie Tien", "田原");
+            put("Caideyipi", "陈哲涵");
+            put("shuwenwei", "舒文炜");
+            put("Steve Yurong Su", "苏宇荣");
+            put("Haonan", "侯昊男");
+            put("Beyyes", "曹高飞");
+            put("Weihao Li", "李伟豪");
+            put("Zhijia Cao", "曹志佳");
+            put("Li Yu Heng", "李宇衡");
+            put("Potato", "谭新宇");
+            put("Zhang.Jinrui", "张金瑞");
+            put("Yuheng Li", "李宇衡");
+            put("Jinrui Zhang", "张金瑞");
+            put("Jialin Qiao", "乔嘉林");
+            put("CritasWang", "王旋");
+            put("Gaofei Cao", "曹高飞");
+            put("changxue2022", "常雪");
+            put("曹志佳", "曹志佳");
+            put("Yuan Tian", "田原");
+            put("cao zhijia", "曹志佳");
+            put("hunter hou", "侯昊男");
+            put("陈 哲涵", "陈哲涵");
+            put("旋 王", "王旋");
+            put("chang xue", "常雪");
+            put("shu wenwei", "舒文炜");
+            put("JackieTien97", "田原");
+            put("Tan xinyu", "谭新宇");
+            put("liyuheng", "李宇衡");
+            put("HTHou", "侯昊男");
+            put("张正明", "张正明");
+            put("Jinrui.Zhang", "张金瑞");
+            put("qiaojialin", "乔嘉林");
+            put("OneSizeFitQuorum", "谭新宇");
+            put("Summer", "李蓉");
+            put("Steve Yurong Su (宇荣)", "苏宇荣");
+            put("YuFengLiu", "李宇衡");
+            put("Xuan Ronaldo", "罗炫");
+            put("xiaoyekanren", "张正明");
+            put("ppppoooo", "孟祥志");
+            put("xingtanzjr", "张金瑞");
+            put("CloudWise-Lukemiao", "苗红闪");
+            put("yufeng liu", "刘雨峰");
+            put("Christofer Dutz", "Christofer Dutz");
+            put("Steve Yurong", "苏宇荣");
+          }
+        };
+
+    final Map<String, String> internship =
+        new HashMap<String, String>() {
+          {
+            put("Lin Xintao", "林欣涛");
+            put("YongzaoDan", "陈荣钊");
+            put("Alima777", "魏祥威");
+            put("Caiyin Yang", "杨蔡胤");
+            put("ZhangHongYin", "张洪胤");
+            put("JiaXin Zhang", "张金瑞");
+            put("Jiang Tian", "江天");
+            put("Da Rui Lei", "芮蕾");
+            put("MarcosZyk", "周钰坤");
+            put("Marcos_Zyk", "周钰坤");
+            put("CRZbulabula", "陈荣钊");
+            put("Liao Lanyu", "廖兰宇");
+            put("江天", "江天");
+            put("张凌哲", "张凌哲");
+            put("Itami Sho", "伊丹翔");
+            put("Peng Junzhi", "彭俊值");
+            put("zyk990424", "周钰坤");
+            put("Lei Rui", "芮蕾");
+            put("lancelly", "廖兰宇");
+            put("WilliamSong11", "宋子阳");
+            put("linxt20", "林欣涛");
+            put("DESKTOP-L0L5GPJ\\jt", "江天");
+            put("YC27", "杨晨");
+            put("Rui,Lei", "芮蕾");
+            put("V_Galaxy", "丁宇辰");
+            put("Colin Li", "李烁麟");
+            put("YangCaiyin", "杨蔡胤");
+            put("Zhenyu Luo", "罗振宇");
+            put("Xiangwei Wei", "魏祥威");
+            put("RuiLei", "芮蕾");
+            put("yuyong", "喻勇");
+            put("jt", "江天");
+            put("chen yanze", "陈彦泽");
+            put("Zhihao Shen", "沈之豪");
+            put("zhanglingzhe0820", "张凌哲");
+            put("Mrquan", "权思屹");
+            put("SzyWilliam", "宋子阳");
+            put("William Song", "宋子阳");
+            put("Tian Jiang", "江天");
+            put("jt2594838", "江天");
+            put("Zikun Ma", "马子坤");
+            put("马子坤", "马子坤");
+            put("Xiangpeng Hu", "胡湘鹏");
+            put("Chen YZ", "陈彦泽");
+            put("Yongzao", "陈荣钊");
+            put("ZhaoXin", "赵鑫");
+            put("liuminghui233", "刘明辉");
+            put("choubenson", "周沛辰");
+            put("周沛辰", "周沛辰");
+          }
+        };
+
+    formal.putAll(internship);
+    formal.putAll(internship);
 
     final File outPutFile = new File("C:\\Users\\13361\\Downloads\\output\\fuck_everyone_true.txt");
     outPutFile.delete();
