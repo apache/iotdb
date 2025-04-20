@@ -26,6 +26,7 @@ import java.io.File;
 import java.io.FileWriter;
 import java.io.InputStreamReader;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -5366,7 +5367,8 @@ public class GitBlameInfo3 {
             "/iotdb-core/datanode/src/main/java/org/apache/iotdb/db/queryengine/plan/parser/ASTVisitor.java",
             "/iotdb-core/datanode/src/test/java/org/apache/iotdb/db/storageengine/dataregion/compaction/ReadPointCompactionPerformerTest.java");
 
-    final Set<String> pathSet = new HashSet<>(paths);
+    final Set<String> pathSet = Collections.newSetFromMap(new ConcurrentHashMap<>());
+    pathSet.addAll(paths);
 
     final ConcurrentMap<Integer, String> results = new ConcurrentHashMap<>(paths.size());
     final ConcurrentMap<Integer, Map<String, String>> people =
