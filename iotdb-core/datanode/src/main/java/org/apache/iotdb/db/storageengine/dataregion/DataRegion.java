@@ -2980,7 +2980,10 @@ public class DataRegion implements IDataRegionForQuery {
       throw new LoadFileException(e);
     } finally {
       writeUnlock();
-      DataNodeSchemaCache.getInstance().invalidateAll();
+      // TODO: do more precise control
+      if (CommonDescriptor.getInstance().getConfig().isLastCacheEnable()) {
+        DataNodeSchemaCache.getInstance().invalidateAll();
+      }
     }
   }
 
