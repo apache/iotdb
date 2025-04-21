@@ -340,14 +340,16 @@ public class ImportDataTree extends AbstractImportData {
                   }
                   typeQueriedDevice.add(deviceName.get());
                 }
-                type = typeInfer(value);
-                if (type != null) {
-                  headerTypeMap.put(headerNameWithoutType, type);
-                } else {
-                  ioTPrinter.printf(
-                      "Line '%s', column '%s': '%s' unknown type%n",
-                      recordObj.getRecordNumber(), headerNameWithoutType, value);
-                  isFail.set(true);
+                if(!headerTypeMap.containsKey(headerNameWithoutType)) {
+                  type = typeInfer(value);
+                  if (type != null) {
+                    headerTypeMap.put(headerNameWithoutType, type);
+                  } else {
+                    ioTPrinter.printf(
+                        "Line '%s', column '%s': '%s' unknown type%n",
+                        recordObj.getRecordNumber(), headerNameWithoutType, value);
+                    isFail.set(true);
+                  }
                 }
               }
               type = headerTypeMap.get(headerNameWithoutType);
