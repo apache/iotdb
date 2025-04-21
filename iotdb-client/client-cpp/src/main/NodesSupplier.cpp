@@ -44,11 +44,11 @@ TEndPoint RoundRobinPolicy::select(const std::vector<TEndPoint>& nodes) {
     return nodes[index++ % nodes.size()];
 }
 
-DummyNodesSupplier::DummyNodesSupplier(const std::vector<TEndPoint>& nodes,
+StaticNodesSupplier::StaticNodesSupplier(const std::vector<TEndPoint>& nodes,
                                        NodeSelectionPolicy policy)
     : availableNodes_(nodes), policy_(std::move(policy)) {}
 
-boost::optional<TEndPoint> DummyNodesSupplier::getQueryEndPoint() {
+boost::optional<TEndPoint> StaticNodesSupplier::getQueryEndPoint() {
     try {
         if (availableNodes_.empty()) {
             return boost::none;
@@ -59,11 +59,11 @@ boost::optional<TEndPoint> DummyNodesSupplier::getQueryEndPoint() {
     }
 }
 
-std::vector<TEndPoint> DummyNodesSupplier::getEndPointList() {
+std::vector<TEndPoint> StaticNodesSupplier::getEndPointList() {
     return availableNodes_;
 }
 
-DummyNodesSupplier::~DummyNodesSupplier() = default;
+StaticNodesSupplier::~StaticNodesSupplier() = default;
 
 std::shared_ptr<NodesSupplier> NodesSupplier::create(
     std::vector<TEndPoint> endpoints,

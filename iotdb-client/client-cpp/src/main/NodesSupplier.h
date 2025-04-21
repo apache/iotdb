@@ -46,16 +46,16 @@ public:
     using NodeSelectionPolicy = std::function<TEndPoint(const std::vector<TEndPoint>&)>;
 };
 
-class DummyNodesSupplier : public INodesSupplier {
+class StaticNodesSupplier : public INodesSupplier {
 public:
-    explicit DummyNodesSupplier(const std::vector<TEndPoint>& nodes, 
+    explicit StaticNodesSupplier(const std::vector<TEndPoint>& nodes, 
                                 NodeSelectionPolicy policy = RoundRobinPolicy::select);
 
     boost::optional<TEndPoint> getQueryEndPoint() override;
 
     std::vector<TEndPoint> getEndPointList() override;
 
-    ~DummyNodesSupplier() override;
+    ~StaticNodesSupplier() override;
 
 private:
     const std::vector<TEndPoint> availableNodes_;

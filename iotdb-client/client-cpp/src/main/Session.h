@@ -709,7 +709,7 @@ public:
 
     void addTimestamp(size_t rowIndex, int64_t timestamp) {
         timestamps[rowIndex] = timestamp;
-        rowSize = max(rowSize, rowSize + 1);
+        rowSize = max(rowSize, rowIndex + 1);
     }
 
     template<typename T>

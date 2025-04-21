@@ -51,9 +51,6 @@ void RpcUtils::verifySuccess(const TSStatus &status) {
         verifySuccess(status.subStatus);
         return;
     }
-    if (status.code == TSStatusCode::REDIRECTION_RECOMMEND) {
-        return;
-    }
     if (status.code != TSStatusCode::SUCCESS_STATUS
         && status.code != TSStatusCode::REDIRECTION_RECOMMEND) {
         throw ExecutionException(to_string(status.code) + ": " + status.message, status);
@@ -77,7 +74,7 @@ void RpcUtils::verifySuccessWithRedirection(const TSStatus &status) {
                 endPointList[count++] = endPoint;
             }
         }
-        if (!endPointList.empty() && count > 0) {
+        if (!endPointList.empty()) {
             throw RedirectException(to_string(status.code) + ": " + status.message, endPointList);
         }
     }
@@ -837,7 +834,7 @@ void Session::initNodesSupplier() {
     if (enableAutoFetch) {
         nodesSupplier = NodesSupplier::create(endPoints, username, password);
     } else {
-        nodesSupplier = make_shared<DummyNodesSupplier>(endPoints);
+        nodesSupplier = make_shared<StaticNodesSupplier>(endPoints);
     }
 }
 
