@@ -22,6 +22,7 @@ package org.apache.iotdb.db.storageengine.dataregion.memtable;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.exception.IoTDBRuntimeException;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.AlignedPath;
 import org.apache.iotdb.commons.path.PartialPath;
@@ -297,11 +298,16 @@ public class TsFileProcessor {
     } catch (Exception e) {
       rollbackMemoryInfo(memIncrements);
       logger.warn("Exception during wal flush", e);
-      throw new WriteProcessException(
-          String.format(
-              "%s: %s write WAL failed: %s",
-              storageGroupName, tsFileResource.getTsFile().getAbsolutePath(), e.getMessage()),
-          e);
+      if (e instanceof IoTDBRuntimeException) {
+        throw new WriteProcessException(
+            e.getMessage(), ((IoTDBRuntimeException) e).getErrorCode(), true);
+      } else {
+        throw new WriteProcessException(
+            String.format(
+                "%s: %s write WAL failed: %s",
+                storageGroupName, tsFileResource.getTsFile().getAbsolutePath(), e.getMessage()),
+            e);
+      }
     } finally {
       // recordScheduleWalCost
       costsForMetrics[2] += System.nanoTime() - startTime;
@@ -393,11 +399,16 @@ public class TsFileProcessor {
     } catch (Exception e) {
       rollbackMemoryInfo(memIncrements);
       logger.warn("Exception during wal flush", e);
-      throw new WriteProcessException(
-          String.format(
-              "%s: %s write WAL failed: %s",
-              storageGroupName, tsFileResource.getTsFile().getAbsolutePath(), e.getMessage()),
-          e);
+      if (e instanceof IoTDBRuntimeException) {
+        throw new WriteProcessException(
+            e.getMessage(), ((IoTDBRuntimeException) e).getErrorCode(), true);
+      } else {
+        throw new WriteProcessException(
+            String.format(
+                "%s: %s write WAL failed: %s",
+                storageGroupName, tsFileResource.getTsFile().getAbsolutePath(), e.getMessage()),
+            e);
+      }
     } finally {
       // recordScheduleWalCost
       costsForMetrics[2] += System.nanoTime() - startTime;
@@ -508,7 +519,12 @@ public class TsFileProcessor {
       }
     } catch (Exception e) {
       for (int i = start; i < end; i++) {
-        results[i] = RpcUtils.getStatus(TSStatusCode.INTERNAL_SERVER_ERROR, e.getMessage());
+        if (e instanceof IoTDBRuntimeException) {
+          results[i] =
+              RpcUtils.getStatus(((IoTDBRuntimeException) e).getErrorCode(), e.getMessage());
+        } else {
+          results[i] = RpcUtils.getStatus(TSStatusCode.INTERNAL_SERVER_ERROR, e.getMessage());
+        }
       }
       rollbackMemoryInfo(memIncrements);
       throw new WriteProcessException(e);
