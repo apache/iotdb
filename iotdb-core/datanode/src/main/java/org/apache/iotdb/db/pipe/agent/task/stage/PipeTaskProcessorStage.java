@@ -104,6 +104,11 @@ public class PipeTaskProcessorStage extends PipeTaskStage {
     // old one, so we need creationTime to make their hash code different in the map.
     final String taskId = pipeName + "_" + regionId + "_" + creationTime;
     final boolean isUsedForConsensusPipe = pipeName.contains(PipeStaticMeta.CONSENSUS_PIPE_PREFIX);
+
+    // We allow users to specify subtask num that is larger than thread num
+    // to enable the control of cpu time amongst different pipes
+    // i.e. 5 threads, pipeA ->  7 tasks, pipeB -> 3 tasks, then the pipeA
+    // runs on approximately 3.5 cpus, pipeB 1.5 cpus
     final int taskNum =
         pipeProcessorParameters.getIntOrDefault(
             PipeProcessorConstant.PROCESSOR_IOTDB_PARALLEL_TASKS_KEY,
