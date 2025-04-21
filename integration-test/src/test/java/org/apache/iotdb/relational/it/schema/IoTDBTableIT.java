@@ -865,19 +865,19 @@ public class IoTDBTableIT {
         fail();
       } catch (final SQLException e) {
         assertEquals(
-            "305: The table a is a base table, does not support show create view.", e.getMessage());
+            "701: The table a is a base table, does not support show create view.", e.getMessage());
       }
       try {
         statement.execute("show create view information_schema.tables");
         fail();
       } catch (final SQLException e) {
-        assertEquals("305: The system view does not support show create.", e.getMessage());
+        assertEquals("701: The system view does not support show create.", e.getMessage());
       }
       try {
         statement.execute("create or replace table view a () as root.b.**");
         fail();
       } catch (final SQLException e) {
-        assertEquals("551: Table 'tree_view_db.a' already exists.", e.getMessage());
+        assertEquals("701: Table 'tree_view_db.a' already exists.", e.getMessage());
       }
     }
   }
