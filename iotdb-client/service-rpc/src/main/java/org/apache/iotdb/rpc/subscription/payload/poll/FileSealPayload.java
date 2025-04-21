@@ -46,7 +46,6 @@ public class FileSealPayload implements SubscriptionPollPayload {
     return fileLength;
   }
 
-  @Nullable
   public String getDatabaseName() {
     return databaseName;
   }

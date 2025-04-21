@@ -29,7 +29,7 @@ import org.apache.iotdb.session.subscription.SubscriptionTableSessionBuilder;
 import org.apache.iotdb.session.subscription.consumer.ISubscriptionTablePullConsumer;
 import org.apache.iotdb.session.subscription.consumer.table.SubscriptionTablePullConsumerBuilder;
 import org.apache.iotdb.session.subscription.payload.SubscriptionMessage;
-import org.apache.iotdb.session.subscription.payload.SubscriptionTableSessionDataSet;
+import org.apache.iotdb.session.subscription.payload.SubscriptionSessionDataSet;
 
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
@@ -131,8 +131,7 @@ public class TableModelSubscriptionSessionExample {
           }
         }
         for (final SubscriptionMessage message : messages) {
-          for (final SubscriptionTableSessionDataSet dataSet :
-              message.getTableSessionDataSetsHandler()) {
+          for (final SubscriptionSessionDataSet dataSet : message.getSessionDataSetsHandler()) {
             System.out.println(dataSet.getDatabaseName());
             System.out.println(dataSet.getColumnNames());
             System.out.println(dataSet.getColumnTypes());

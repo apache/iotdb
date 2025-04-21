@@ -937,7 +937,7 @@ abstract class AbstractSubscriptionConsumer implements AutoCloseable {
       // construct temporary message to nack
       nack(
           Collections.singletonList(
-              new SubscriptionMessage(response.getCommitContext(), Collections.emptyList())));
+              new SubscriptionMessage(response.getCommitContext(), Collections.emptyMap())));
       throw new SubscriptionRuntimeNonCriticalException(e.getMessage(), e);
     }
   }

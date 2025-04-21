@@ -17,18 +17,17 @@
  * under the License.
  */
 
-package org.apache.iotdb.session.subscription.payload;
+package org.apache.iotdb.rpc.subscription.annotation;
 
-public class SubscriptionTableTsFileHandler extends SubscriptionTsFileHandler {
+import java.lang.annotation.ElementType;
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
+import java.lang.annotation.Target;
 
-  private final String databaseName;
-
-  public SubscriptionTableTsFileHandler(final String absolutePath, final String databaseName) {
-    super(absolutePath);
-    this.databaseName = databaseName;
-  }
-
-  public String getDatabaseName() {
-    return databaseName;
-  }
-}
+/**
+ * Indicates that the method is valid only within the subscription module under the tree model
+ * namespace. Otherwise, the behavior is undefined.
+ */
+@Target(ElementType.METHOD)
+@Retention(RetentionPolicy.RUNTIME)
+public @interface TableModel {}

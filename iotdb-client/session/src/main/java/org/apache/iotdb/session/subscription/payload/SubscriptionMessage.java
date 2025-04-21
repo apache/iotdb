@@ -38,22 +38,10 @@ public class SubscriptionMessage implements Comparable<SubscriptionMessage> {
   private final SubscriptionMessageHandler handler;
 
   public SubscriptionMessage(
-      final SubscriptionCommitContext commitContext, final List<Tablet> tablets) {
+      final SubscriptionCommitContext commitContext, final Map<String, List<Tablet>> tablets) {
     this.commitContext = commitContext;
     this.messageType = SubscriptionMessageType.SESSION_DATA_SETS_HANDLER.getType();
     this.handler = new SubscriptionSessionDataSetsHandler(tablets);
-  }
-
-  public SubscriptionMessage(
-      final SubscriptionCommitContext commitContext, final Map<String, List<Tablet>> tablets) {
-    this.commitContext = commitContext;
-    if (tablets.size() == 1 && tablets.containsKey(null)) {
-      this.messageType = SubscriptionMessageType.SESSION_DATA_SETS_HANDLER.getType();
-      this.handler = new SubscriptionSessionDataSetsHandler(tablets.get(null));
-    } else {
-      this.messageType = SubscriptionMessageType.TABLE_SESSION_DATA_SETS_HANDLER.getType();
-      this.handler = new SubscriptionTableSessionDataSetsHandler(tablets);
-    }
   }
 
   public SubscriptionMessage(
@@ -61,13 +49,8 @@ public class SubscriptionMessage implements Comparable<SubscriptionMessage> {
       final String absolutePath,
       @Nullable final String databaseName) {
     this.commitContext = commitContext;
-    if (Objects.isNull(databaseName)) {
-      this.messageType = SubscriptionMessageType.TS_FILE_HANDLER.getType();
-      this.handler = new SubscriptionTsFileHandler(absolutePath);
-    } else {
-      this.messageType = SubscriptionMessageType.TABLE_TS_FILE_HANDLER.getType();
-      this.handler = new SubscriptionTableTsFileHandler(absolutePath, databaseName);
-    }
+    this.messageType = SubscriptionMessageType.TS_FILE_HANDLER.getType();
+    this.handler = new SubscriptionTsFileHandler(absolutePath, databaseName);
   }
 
   public SubscriptionCommitContext getCommitContext() {
@@ -130,24 +113,5 @@ public class SubscriptionMessage implements Comparable<SubscriptionMessage> {
     }
     throw new SubscriptionIncompatibleHandlerException(
         String.format("%s do not support getTsFileHandler().", handler.getClass().getSimpleName()));
-  }
-
-  public SubscriptionTableSessionDataSetsHandler getTableSessionDataSetsHandler() {
-    if (handler instanceof SubscriptionTableSessionDataSetsHandler) {
-      return (SubscriptionTableSessionDataSetsHandler) handler;
-    }
-    throw new SubscriptionIncompatibleHandlerException(
-        String.format(
-            "%s do not support getTableSessionDataSetsHandler().",
-            handler.getClass().getSimpleName()));
-  }
-
-  public SubscriptionTableTsFileHandler getTableTsFileHandler() {
-    if (handler instanceof SubscriptionTableTsFileHandler) {
-      return (SubscriptionTableTsFileHandler) handler;
-    }
-    throw new SubscriptionIncompatibleHandlerException(
-        String.format(
-            "%s do not support getTableTsFileHandler().", handler.getClass().getSimpleName()));
   }
 }
