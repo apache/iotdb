@@ -563,7 +563,9 @@ public class PipeTabletEventTsFileBatch extends PipeTabletEventBatch {
         final Object[] values = tablet.values;
         for (int j = 0; j < tablet.getSchemas().size(); ++j) {
           final MeasurementSchema schema = tablet.getSchemas().get(j);
-          if (Objects.nonNull(schema) && Objects.equals(TSDataType.DATE, schema.getType())) {
+          if (Objects.nonNull(schema)
+              && Objects.equals(TSDataType.DATE, schema.getType())
+              && values[j] instanceof LocalDate[]) {
             final LocalDate[] dates = ((LocalDate[]) values[j]);
             final int[] dateValues = new int[dates.length];
             for (int k = 0; k < Math.min(dates.length, tablet.rowSize); k++) {
