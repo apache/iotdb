@@ -140,13 +140,7 @@ public class IoTDBSubscriptionPermissionIT extends AbstractSubscriptionLocalIT {
     // create user
     if (!TestUtils.tryExecuteNonQueriesWithRetry(
         EnvFactory.getEnv(),
-        Arrays.asList(
-            "create role `admin`",
-            "grant MAINTAIN on root.** to role `admin`",
-            "create user `thulab` 'passwd'",
-            "grant role `admin` to `thulab`",
-            "create user `hacker` 'qwerty123'",
-            "grant role `admin` to `hacker`"))) {
+        Arrays.asList("create user `thulab` 'passwd'", "create user `hacker` 'qwerty123'"))) {
       return;
     }
 
