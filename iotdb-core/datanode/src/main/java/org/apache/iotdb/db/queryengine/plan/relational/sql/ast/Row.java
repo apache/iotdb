@@ -39,6 +39,11 @@ public class Row extends Expression {
     this.items = ImmutableList.copyOf(requireNonNull(items, "items is null"));
   }
 
+  @Override
+  public TableExpressionType getExpressionType() {
+    return TableExpressionType.ROW;
+  }
+
   public List<Expression> getItems() {
     return items;
   }
