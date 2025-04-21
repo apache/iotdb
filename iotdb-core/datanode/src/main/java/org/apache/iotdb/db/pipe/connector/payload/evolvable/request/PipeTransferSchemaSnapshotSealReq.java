@@ -22,7 +22,6 @@ package org.apache.iotdb.db.pipe.connector.payload.evolvable.request;
 import org.apache.iotdb.commons.pipe.connector.payload.thrift.request.PipeRequestType;
 import org.apache.iotdb.commons.pipe.connector.payload.thrift.request.PipeTransferFileSealReqV2;
 import org.apache.iotdb.commons.schema.column.ColumnHeaderConstant;
-import org.apache.iotdb.db.protocol.session.IClientSession;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferReq;
 
 import java.io.IOException;
@@ -66,10 +65,10 @@ public class PipeTransferSchemaSnapshotSealReq extends PipeTransferFileSealReqV2
     parameters.put(DATABASE_PATTERN, tablePatternDatabase);
     parameters.put(ColumnHeaderConstant.TABLE_NAME, tablePatternTable);
     if (isTreeCaptured) {
-      parameters.put(IClientSession.SqlDialect.TREE.toString(), "");
+      parameters.put(TREE, "");
     }
     if (isTableCaptured) {
-      parameters.put(IClientSession.SqlDialect.TABLE.toString(), "");
+      parameters.put(TABLE, "");
     }
     parameters.put(ColumnHeaderConstant.DATABASE, databaseName);
     parameters.put(ColumnHeaderConstant.TYPE, typeString);

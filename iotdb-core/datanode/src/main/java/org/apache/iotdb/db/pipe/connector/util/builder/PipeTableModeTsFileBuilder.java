@@ -25,24 +25,34 @@ import org.apache.commons.io.FileUtils;
 import org.apache.tsfile.exception.write.WriteProcessException;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.file.metadata.TableSchema;
+import org.apache.tsfile.utils.BitMap;
 import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.utils.WriteUtils;
+import org.apache.tsfile.write.TsFileWriter;
 import org.apache.tsfile.write.record.Tablet;
+import org.apache.tsfile.write.record.Tablet.ColumnCategory;
+import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.HashSet;
+import java.util.IdentityHashMap;
 import java.util.Iterator;
-import java.util.LinkedHashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 public class PipeTableModeTsFileBuilder extends PipeTsFileBuilder {
 
@@ -72,10 +82,7 @@ public class PipeTableModeTsFileBuilder extends PipeTsFileBuilder {
     }
     final List<Pair<String, File>> pairList = new ArrayList<>();
     for (Map.Entry<String, List<Tablet>> entry : dataBase2TabletList.entrySet()) {
-      final LinkedHashSet<LinkedList<Pair<Tablet, List<Pair<IDeviceID, Integer>>>>> linkedHashSet =
-          new LinkedHashSet<>();
-      pairList.addAll(
-          writeTableModelTabletsToTsFiles(entry.getValue(), entry.getKey(), linkedHashSet));
+      pairList.addAll(writeTableModelTabletsToTsFiles(entry.getValue(), entry.getKey()));
     }
     return pairList;
   }
@@ -99,10 +106,7 @@ public class PipeTableModeTsFileBuilder extends PipeTsFileBuilder {
 
   private <T extends Pair<Tablet, List<Pair<IDeviceID, Integer>>>>
       List<Pair<String, File>> writeTableModelTabletsToTsFiles(
-          final List<Tablet> tabletList,
-          final String dataBase,
-          LinkedHashSet<LinkedList<T>> linkedHashSet)
-          throws IOException {
+          final List<Tablet> tabletList, final String dataBase) throws IOException {
 
     final Map<String, List<T>> tableName2Tablets = new HashMap<>();
 
@@ -126,10 +130,15 @@ public class PipeTableModeTsFileBuilder extends PipeTsFileBuilder {
           });
     }
 
+    // Create a Set backed by an IdentityHashMap, so elements are compared by reference (==) rather
+    // than equals()/hashCode()
+    final Set<LinkedList<T>> device2TabletsLinkedList =
+        Collections.newSetFromMap(new IdentityHashMap<>());
+
     // Sort the tables by table name
     tableName2Tablets.entrySet().stream()
         .sorted(Map.Entry.comparingByKey(Comparator.naturalOrder()))
-        .forEach(entry -> linkedHashSet.add(new LinkedList<>(entry.getValue())));
+        .forEach(entry -> device2TabletsLinkedList.add(new LinkedList<>(entry.getValue())));
 
     // Help GC
     tableName2Tablets.clear();
@@ -137,13 +146,13 @@ public class PipeTableModeTsFileBuilder extends PipeTsFileBuilder {
     final List<Pair<String, File>> sealedFiles = new ArrayList<>();
 
     // Try making the tsfile size as large as possible
-    while (!linkedHashSet.isEmpty()) {
+    while (!device2TabletsLinkedList.isEmpty()) {
       if (Objects.isNull(fileWriter)) {
-        createFileWriter();
+        fileWriter = new TsFileWriter(createFile());
       }
 
       try {
-        tryBestToWriteTabletsIntoOneFile(linkedHashSet);
+        tryBestToWriteTabletsIntoOneFile(device2TabletsLinkedList);
       } catch (final Exception e) {
         LOGGER.warn(
             "Batch id = {}: Failed to write tablets into tsfile, because {}",
@@ -197,9 +206,79 @@ public class PipeTableModeTsFileBuilder extends PipeTsFileBuilder {
     return sealedFiles;
   }
 
+  private <T extends Pair<Tablet, List<Pair<IDeviceID, Integer>>>> T tryBestToAggregateTablets(
+      final LinkedList<T> tablets) {
+    if (tablets.isEmpty()) {
+      return null;
+    }
+
+    // Retrieve the first tablet to serve as the basis for the aggregation
+    final Pair<Tablet, List<Pair<IDeviceID, Integer>>> firstPair = tablets.peekFirst();
+    final Tablet firstTablet = firstPair.left;
+    final List<Pair<IDeviceID, Integer>> aggregationDeviceTimestampIndexList = firstPair.right;
+    final String aggregationTableName = firstTablet.getTableName();
+    final long[] aggregationTimestamps = firstTablet.getTimestamps();
+    final int aggregationRow = firstTablet.getRowSize();
+    final int aggregationMaxRow = firstTablet.getMaxRowNumber();
+
+    // Prepare lists to accumulate schemas, columnCategories, values, and bitMaps
+    final List<IMeasurementSchema> aggregatedSchemas = new ArrayList<>();
+    final List<ColumnCategory> aggregatedColumnCategories = new ArrayList<>();
+    final List<Object> aggregatedValues = new ArrayList<>();
+    final List<BitMap> aggregatedBitMaps = new ArrayList<>();
+
+    // Iterate and poll tablets from the head that satisfy the aggregation criteria
+    while (!tablets.isEmpty()) {
+      final Pair<Tablet, List<Pair<IDeviceID, Integer>>> pair = tablets.peekFirst();
+      final Tablet tablet = pair.left;
+      final List<Pair<IDeviceID, Integer>> deviceTimestampIndexList = pair.right;
+      if (Objects.equals(deviceTimestampIndexList, aggregationDeviceTimestampIndexList)
+          && Objects.equals(firstTablet.getTableName(), aggregationTableName)
+          && Arrays.equals(tablet.getTimestamps(), aggregationTimestamps)
+          && tablet.getRowSize() == aggregationRow
+          && tablet.getMaxRowNumber() == aggregationMaxRow) {
+        // Aggregate the current tablet's data
+        aggregatedSchemas.addAll(tablet.getSchemas());
+        aggregatedColumnCategories.addAll(tablet.getColumnTypes());
+        aggregatedValues.addAll(Arrays.asList(tablet.getValues()));
+        aggregatedBitMaps.addAll(Arrays.asList(tablet.getBitMaps()));
+        // Remove the aggregated tablet
+        tablets.pollFirst();
+      } else {
+        // Stop aggregating once a tablet does not meet the criteria
+        break;
+      }
+    }
+
+    // Remove duplicates from aggregatedSchemas, record the index of the first occurrence, and
+    // filter out the corresponding values in aggregatedValues and aggregatedBitMaps based on that
+    // index
+    final Set<IMeasurementSchema> seen = new HashSet<>();
+    final List<Integer> distinctIndices =
+        IntStream.range(0, aggregatedSchemas.size())
+            .filter(i -> seen.add(aggregatedSchemas.get(i))) // Only keep the first occurrence index
+            .boxed()
+            .collect(Collectors.toList());
+
+    // Construct a new aggregated Tablet using the deduplicated data
+    return (T)
+        new Pair<>(
+            new Tablet(
+                aggregationTableName,
+                distinctIndices.stream().map(aggregatedSchemas::get).collect(Collectors.toList()),
+                distinctIndices.stream()
+                    .map(aggregatedColumnCategories::get)
+                    .collect(Collectors.toList()),
+                aggregationTimestamps,
+                distinctIndices.stream().map(aggregatedValues::get).toArray(),
+                distinctIndices.stream().map(aggregatedBitMaps::get).toArray(BitMap[]::new),
+                aggregationRow),
+            aggregationDeviceTimestampIndexList);
+  }
+
   private <T extends Pair<Tablet, List<Pair<IDeviceID, Integer>>>>
-      void tryBestToWriteTabletsIntoOneFile(
-          final LinkedHashSet<LinkedList<T>> device2TabletsLinkedList) throws IOException {
+      void tryBestToWriteTabletsIntoOneFile(final Set<LinkedList<T>> device2TabletsLinkedList)
+          throws IOException {
     final Iterator<LinkedList<T>> iterator = device2TabletsLinkedList.iterator();
 
     while (iterator.hasNext()) {
@@ -207,13 +286,37 @@ public class PipeTableModeTsFileBuilder extends PipeTsFileBuilder {
 
       final List<T> tabletsToWrite = new ArrayList<>();
       final Map<IDeviceID, Long> deviceLastTimestampMap = new HashMap<>();
+      String tableName = null;
+
+      final List<IMeasurementSchema> columnSchemas = new ArrayList<>();
+      final List<Tablet.ColumnCategory> columnCategories = new ArrayList<>();
+      final Set<String> columnNames = new HashSet<>();
+
       while (!tablets.isEmpty()) {
-        final T pair = tablets.peekFirst();
+        final T pair = tryBestToAggregateTablets(tablets);
         if (timestampsAreNonOverlapping(
             (Pair<Tablet, List<Pair<IDeviceID, Integer>>>) pair, deviceLastTimestampMap)) {
+          final Tablet tablet = pair.left;
+          if (tableName == null) {
+            tableName = tablet.getTableName();
+          }
+
+          for (int i = 0, size = tablet.getSchemas().size(); i < size; i++) {
+            final IMeasurementSchema schema = tablet.getSchemas().get(i);
+            if (schema == null || columnNames.contains(schema.getMeasurementName())) {
+              continue;
+            }
+            columnNames.add(schema.getMeasurementName());
+            columnSchemas.add(schema);
+            columnCategories.add(tablet.getColumnTypes().get(i));
+          }
+
           tabletsToWrite.add(pair);
-          tablets.pollFirst();
           continue;
+        } else {
+          // NOTE: mutating a LinkedList that lives inside a Set violates the contract that the
+          // element’s hashCode must remain stable while it’s in the set
+          tablets.addFirst(pair);
         }
         break;
       }
@@ -221,14 +324,13 @@ public class PipeTableModeTsFileBuilder extends PipeTsFileBuilder {
       if (tablets.isEmpty()) {
         iterator.remove();
       }
-      boolean schemaNotRegistered = true;
+
+      if (tableName != null) {
+        fileWriter.registerTableSchema(new TableSchema(tableName, columnSchemas, columnCategories));
+      }
+
       for (final Pair<Tablet, List<Pair<IDeviceID, Integer>>> pair : tabletsToWrite) {
         final Tablet tablet = pair.left;
-        if (schemaNotRegistered) {
-          fileWriter.registerTableSchema(
-              new TableSchema(tablet.getTableName(), tablet.getSchemas(), tablet.getColumnTypes()));
-          schemaNotRegistered = false;
-        }
         try {
           fileWriter.writeTable(tablet, pair.right);
         } catch (WriteProcessException e) {

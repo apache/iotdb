@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.plan.planner;
 
+import org.apache.iotdb.commons.exception.IoTDBRuntimeException;
 import org.apache.iotdb.commons.memory.IMemoryBlock;
 import org.apache.iotdb.commons.memory.MemoryBlockType;
 import org.apache.iotdb.commons.path.IFullPath;
@@ -42,6 +43,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.metadata.TableMetadataImp
 import org.apache.iotdb.db.schemaengine.schemaregion.ISchemaRegion;
 import org.apache.iotdb.db.storageengine.dataregion.read.QueryDataSourceType;
 import org.apache.iotdb.db.utils.SetThreadName;
+import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.slf4j.Logger;
@@ -50,6 +52,7 @@ import org.slf4j.LoggerFactory;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
 import static org.apache.iotdb.db.protocol.session.IClientSession.SqlDialect.TREE;
 
@@ -98,6 +101,11 @@ public class LocalExecutionPlanner {
       FragmentInstanceContext instanceContext,
       DataNodeQueryContext dataNodeQueryContext)
       throws MemoryNotEnoughException {
+    if (Objects.isNull(plan)) {
+      throw new IoTDBRuntimeException(
+          "The planNode is null during local execution, maybe caused by closing of the current dataNode",
+          TSStatusCode.CLOSE_OPERATION_ERROR.getStatusCode());
+    }
     LocalExecutionPlanContext context =
         new LocalExecutionPlanContext(types, instanceContext, dataNodeQueryContext);
 
@@ -132,6 +140,11 @@ public class LocalExecutionPlanner {
       FragmentInstanceContext instanceContext,
       ISchemaRegion schemaRegion)
       throws MemoryNotEnoughException {
+    if (Objects.isNull(plan)) {
+      throw new IoTDBRuntimeException(
+          "The planNode is null during local execution, maybe caused by closing of the current dataNode",
+          TSStatusCode.CLOSE_OPERATION_ERROR.getStatusCode());
+    }
     LocalExecutionPlanContext context =
         new LocalExecutionPlanContext(types, instanceContext, schemaRegion);
 

@@ -249,14 +249,8 @@ public class LastQueryAggTableScanOperator extends AbstractAggTableScanOperator 
               hitCachedResults.get(currentHitCacheIndex).getRight()[measurementIdx];
           long lastByTime = hitCachedResults.get(currentHitCacheIndex).getLeft().getAsLong();
           if (tsPrimitiveType == EMPTY_PRIMITIVE_TYPE) {
-            // there is no data for this time series
-            if (aggregator.getStep().isOutputPartial()) {
-              columnBuilder.writeBinary(
-                  new Binary(
-                      serializeTimeValue(getTSDataType(schema.getType()), lastByTime, true, null)));
-            } else {
-              columnBuilder.appendNull();
-            }
+            throw new IllegalStateException(
+                "If the read value is [EMPTY_PRIMITIVE_TYPE], we should never reach here");
           } else {
             if (aggregator.getStep().isOutputPartial()) {
               columnBuilder.writeBinary(
@@ -352,8 +346,6 @@ public class LastQueryAggTableScanOperator extends AbstractAggTableScanOperator 
       TimeValuePair[] updateTimeValuePairArray =
           updateTimeValuePairList.toArray(new TimeValuePair[0]);
       currentDeviceEntry = deviceEntries.get(currentDeviceIndex);
-      TABLE_DEVICE_SCHEMA_CACHE.initOrInvalidateLastCache(
-          dbName, currentDeviceEntry.getDeviceID(), updateMeasurementArray, false);
       TABLE_DEVICE_SCHEMA_CACHE.updateLastCacheIfExists(
           dbName,
           currentDeviceEntry.getDeviceID(),
