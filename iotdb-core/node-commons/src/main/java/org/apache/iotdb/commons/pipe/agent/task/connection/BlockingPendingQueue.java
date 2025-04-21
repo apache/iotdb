@@ -107,6 +107,10 @@ public abstract class BlockingPendingQueue<E extends Event> {
     return event;
   }
 
+  public E peek() {
+    return pendingQueue.peek();
+  }
+
   public void clear() {
     isClosed.set(true);
     pendingQueue.clear();

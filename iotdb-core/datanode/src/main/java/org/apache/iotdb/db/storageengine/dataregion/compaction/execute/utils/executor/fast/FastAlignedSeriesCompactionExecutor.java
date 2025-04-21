@@ -24,7 +24,6 @@ import org.apache.iotdb.commons.path.AlignedPath;
 import org.apache.iotdb.commons.path.PatternTreeMap;
 import org.apache.iotdb.db.exception.WriteProcessException;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.subtask.FastCompactionTaskSummary;
-import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.CompactionPathUtils;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.ModifiedStatus;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.batch.utils.AlignedSeriesBatchCompactionUtils;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.fast.element.AlignedPageElement;
@@ -241,8 +240,7 @@ public class FastAlignedSeriesCompactionExecutor extends SeriesCompactionExecuto
 
       // get time modifications of this file
       List<ModEntry> timeModifications =
-          getModificationsFromCache(
-              resource, CompactionPathUtils.getPath(deviceId, AlignedPath.VECTOR_PLACEHOLDER));
+          getModificationsFromCache(resource, deviceId, AlignedPath.VECTOR_PLACEHOLDER);
       // get value modifications of this file
       List<List<ModEntry>> valueModifications = new ArrayList<>();
       alignedChunkMetadataList
@@ -255,9 +253,7 @@ public class FastAlignedSeriesCompactionExecutor extends SeriesCompactionExecuto
                     valueModifications.add(null);
                   } else {
                     valueModifications.add(
-                        getModificationsFromCache(
-                            resource,
-                            CompactionPathUtils.getPath(deviceId, x.getMeasurementUid())));
+                        getModificationsFromCache(resource, deviceId, x.getMeasurementUid()));
                   }
                 } catch (IllegalPathException e) {
                   throw new RuntimeException(e);

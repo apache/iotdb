@@ -129,8 +129,6 @@ public class DataRegionConsensusImpl {
                   .setRpc(
                       RPC.newBuilder()
                           .setConnectionTimeoutInMs(CONF.getConnectionTimeoutInMS())
-                          .setRpcSelectorThreadNum(CONF.getRpcSelectorThreadCount())
-                          .setRpcMinConcurrentClientNum(CONF.getRpcMinConcurrentClientNum())
                           .setRpcMaxConcurrentClientNum(CONF.getRpcMaxConcurrentClientNum())
                           .setRpcThriftCompressionEnabled(CONF.isRpcThriftCompressionEnable())
                           .setSelectorNumOfClientManager(CONF.getSelectorNumOfClientManager())
@@ -157,8 +155,6 @@ public class DataRegionConsensusImpl {
                       PipeConsensusConfig.RPC
                           .newBuilder()
                           .setConnectionTimeoutInMs(CONF.getConnectionTimeoutInMS())
-                          .setRpcSelectorThreadNum(CONF.getRpcSelectorThreadCount())
-                          .setRpcMinConcurrentClientNum(CONF.getRpcMinConcurrentClientNum())
                           .setRpcMaxConcurrentClientNum(CONF.getRpcMaxConcurrentClientNum())
                           .setIsRpcThriftCompressionEnabled(CONF.isRpcThriftCompressionEnable())
                           .setThriftServerAwaitTimeForStopService(

@@ -502,11 +502,6 @@ dn_rpc_advanced_compression_enable=false
 # Datatype: int
 dn_rpc_selector_thread_count=1
 
-# The min number of concurrent clients that can be connected to the dataNode.
-# effectiveMode: restart
-# Datatype: int
-dn_rpc_min_concurrent_client_num=1
-
 # The maximum number of concurrent clients that can be connected to the dataNode.
 # effectiveMode: restart
 # Datatype: int
@@ -1943,6 +1938,20 @@ iot_consensus_v2_mode=batch
 # effectiveMode: restart
 # Datatype: int
 deletion_ahead_log_buffer_queue_capacity=500
+
+# Interval for check zombie TsFile writer in iot consensus v2
+# time unit is milliseconds.
+# effectiveMode: restart
+# DataType: long
+zombie_tsfile_writer_check_interval=300000
+
+# Threshold for determining whether a TsFile writer is a zombie in iot consensus v2
+# The larger this value is, the longer the synchronization will be stuck when an unexpected situation occurs.
+# The smaller this value is, the greater the possibility of misjudgment, which may cause consistency loss.
+# time unit is milliseconds.
+# effectiveMode: restart
+# DataType: long
+zombie_tsfile_writer_threshold=600000
 
 ####################
 ### Procedure Configuration

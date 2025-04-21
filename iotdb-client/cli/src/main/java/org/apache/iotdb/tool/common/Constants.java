@@ -228,6 +228,8 @@ public class Constants {
       "The target database %s does not exist";
   public static final String TARGET_TABLE_NOT_EXIST_MSG =
       "There are no tables or the target table %s does not exist";
+  public static final String TARGET_TABLE_EMPTY_MSG =
+      "There are no tables to export. Please check if the tables in the target database exist and if you have permission to access them.";
 
   public static final String[] TIME_FORMAT =
       new String[] {"default", "long", "number", "timestamp"};
@@ -299,6 +301,7 @@ public class Constants {
   public static final String EXPORT_SCHEMA_TABLES_SELECT =
       "select * from information_schema.tables where database = '%s'";
   public static final String EXPORT_SCHEMA_TABLES_SHOW = "show tables details from %s";
+  public static final String EXPORT_SCHEMA_TABLES_SHOW_DATABASES = "show databases";
   public static final String EXPORT_SCHEMA_COLUMNS_SELECT =
       "select * from information_schema.columns where database like '%s' and table_name like '%s'";
   public static final String EXPORT_SCHEMA_COLUMNS_DESC = "desc %s.%s details";

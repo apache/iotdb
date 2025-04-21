@@ -209,6 +209,10 @@ public class MeasurementPath extends PartialPath {
     return isUnderAlignedEntity;
   }
 
+  public void setDevice(IDeviceID device) {
+    this.device = device;
+  }
+
   public void setUnderAlignedEntity(Boolean underAlignedEntity) {
     isUnderAlignedEntity = underAlignedEntity;
   }
