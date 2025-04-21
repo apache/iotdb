@@ -20,7 +20,11 @@
 package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
 
 import com.google.common.collect.ImmutableList;
+import org.apache.tsfile.utils.ReadWriteIOUtils;
 
+import java.io.DataOutputStream;
+import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.util.List;
 import java.util.Objects;
 
@@ -37,6 +41,30 @@ public class Row extends Expression {
   public Row(NodeLocation location, List<Expression> items) {
     super(requireNonNull(location, "location is null"));
     this.items = ImmutableList.copyOf(requireNonNull(items, "items is null"));
+  }
+
+  public Row(ByteBuffer byteBuffer) {
+    super(null);
+    int size = ReadWriteIOUtils.readInt(byteBuffer);
+    ImmutableList.Builder<Expression> builder = new ImmutableList.Builder<>();
+    while (size-- > 0) {
+      builder.add(Expression.deserialize(byteBuffer));
+    }
+    this.items = builder.build();
+  }
+
+  protected void serialize(ByteBuffer byteBuffer) {
+    ReadWriteIOUtils.write(items.size(), byteBuffer);
+    for (Expression expression : items) {
+      Expression.serialize(expression, byteBuffer);
+    }
+  }
+
+  protected void serialize(DataOutputStream stream) throws IOException {
+    ReadWriteIOUtils.write(items.size(), stream);
+    for (Expression expression : items) {
+      Expression.serialize(expression, stream);
+    }
   }
 
   @Override
