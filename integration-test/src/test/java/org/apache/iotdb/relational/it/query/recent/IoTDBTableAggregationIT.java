@@ -5164,9 +5164,11 @@ public class IoTDBTableAggregationIT {
         "mismatched input '*'. Expecting: <expression>",
         DATABASE_NAME);
 
-    tableAssertTestFail(
-        "select distinct(s1,s2) from table1",
-        TSStatusCode.SEMANTIC_ERROR.getStatusCode() + ": Unsupported expression: Row",
-        DATABASE_NAME);
+    String errMsg = TSStatusCode.SEMANTIC_ERROR.getStatusCode() + ": Unsupported expression: Row";
+    tableAssertTestFail("select distinct (s1,s2) from table1", errMsg, DATABASE_NAME);
+
+    tableAssertTestFail("select (s1,s2) from table1", errMsg, DATABASE_NAME);
+
+    tableAssertTestFail("select * from table1 where (s1,s2) is not null", errMsg, DATABASE_NAME);
   }
 }
