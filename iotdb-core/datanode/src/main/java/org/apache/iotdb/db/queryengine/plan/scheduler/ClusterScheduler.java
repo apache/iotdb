@@ -37,7 +37,6 @@ import org.slf4j.LoggerFactory;
 
 import java.util.List;
 import java.util.concurrent.ExecutionException;
-import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
 import java.util.concurrent.ScheduledExecutorService;
 
@@ -71,7 +70,6 @@ public class ClusterScheduler implements IScheduler {
       QueryStateMachine stateMachine,
       List<FragmentInstance> instances,
       QueryType queryType,
-      ExecutorService executor,
       ScheduledExecutorService scheduledExecutor,
       IClientManager<TEndPoint, SyncDataNodeInternalServiceClient> syncInternalServiceClientManager,
       IClientManager<TEndPoint, AsyncDataNodeInternalServiceClient>
@@ -83,7 +81,6 @@ public class ClusterScheduler implements IScheduler {
         new FragmentInstanceDispatcherImpl(
             queryType,
             queryContext,
-            executor,
             syncInternalServiceClientManager,
             asyncInternalServiceClientManager);
     if (queryType == QueryType.READ) {
