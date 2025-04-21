@@ -56,7 +56,7 @@ import java.util.Optional;
  *
  * <p>SHOW FUNCTIONS;
  *
- * <p>SELECT * FROM TABLE(exclude_column(TABLE(t1), 's2'));
+ * <p>SELECT * FROM exclude_column(t1, 's2');
  */
 public class ExcludeColumnExample implements TableFunction {
   private final String TBL_PARAM = "DATA";
