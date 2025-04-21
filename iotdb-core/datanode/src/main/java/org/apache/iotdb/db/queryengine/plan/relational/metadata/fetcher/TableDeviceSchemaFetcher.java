@@ -553,11 +553,11 @@ public class TableDeviceSchemaFetcher {
       final List<DeviceEntry> deviceEntryList) {
     final Column[] columns = tsBlock.getValueColumns();
     for (int i = 0; i < tsBlock.getPositionCount(); i++) {
-      final String[] nodes = new String[tableInstance.getIdNums() + 1];
+      final String[] nodes = new String[tableInstance.getIdNums()];
       constructNodsArrayAndAttributeMap(
           Collections.emptyMap(),
           nodes,
-          tableInstance.getTableName(),
+          null,
           columnHeaderList,
           columns,
           tableInstance,
@@ -581,8 +581,13 @@ public class TableDeviceSchemaFetcher {
       final Column[] columns,
       final TsTable tableInstance,
       final int rowIndex) {
-    nodes[0] = tableName;
-    int currentIndex = 1;
+    int currentIndex;
+    if (Objects.nonNull(tableName)) {
+      nodes[0] = tableName;
+      currentIndex = 1;
+    } else {
+      currentIndex = 0;
+    }
     for (int j = 0; j < columnHeaderList.size(); j++) {
       final TsTableColumnSchema columnSchema =
           tableInstance.getColumnSchema(columnHeaderList.get(j).getColumnName());
