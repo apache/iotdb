@@ -191,7 +191,8 @@ public class FragmentInstanceDispatcherImpl implements IFragInstanceDispatcher {
 
     try {
       // 2. try the dispatch
-      final List<FailedFragmentInstance> failedInstances = dispatchWriteOnce(shouldDispatch);
+      final List<FailedFragmentInstanceWithStatus> failedInstances =
+          dispatchWriteOnce(shouldDispatch);
 
       // 3. decide if we need retry (we may decide the retry condition instance-wise, if needed)
       final boolean shouldRetry =
@@ -202,10 +203,10 @@ public class FragmentInstanceDispatcherImpl implements IFragInstanceDispatcher {
         // 4. retry the instance on other replicas
         final List<FragmentInstance> retryInstances =
             failedInstances.stream()
-                .map(FailedFragmentInstance::getInstance)
+                .map(FailedFragmentInstanceWithStatus::getInstance)
                 .collect(Collectors.toList());
         // here we only retry over each replica once
-        final List<FailedFragmentInstance> failedAfterRetry =
+        final List<FailedFragmentInstanceWithStatus> failedAfterRetry =
             dispatchRetryWrite(retryInstances, replicaNum);
         failedAfterRetry.forEach(fi -> dispatchFailures.add(fi.getFailureStatus()));
       }
@@ -240,7 +241,7 @@ public class FragmentInstanceDispatcherImpl implements IFragInstanceDispatcher {
    * Dispatch the given write instances once. It will dispatch the given instances locally or
    * remotely, give the host datanode.
    */
-  private List<FailedFragmentInstance> dispatchWriteOnce(List<FragmentInstance> instances)
+  private List<FailedFragmentInstanceWithStatus> dispatchWriteOnce(List<FragmentInstance> instances)
       throws InterruptedException {
     if (instances.isEmpty()) {
       return Collections.emptyList();
@@ -256,7 +257,8 @@ public class FragmentInstanceDispatcherImpl implements IFragInstanceDispatcher {
       }
     }
 
-    final List<FailedFragmentInstance> failedFragmentInstances = new ArrayList<>();
+    final List<FailedFragmentInstanceWithStatus> failedFragmentInstanceWithStatuses =
+        new ArrayList<>();
 
     // 1. async dispatch to remote
     final AsyncPlanNodeSender asyncPlanNodeSender =
@@ -270,12 +272,12 @@ public class FragmentInstanceDispatcherImpl implements IFragInstanceDispatcher {
         try (SetThreadName ignored = new SetThreadName(localInstance.getId().getFullId())) {
           dispatchLocally(localInstance);
         } catch (FragmentInstanceDispatchException e) {
-          failedFragmentInstances.add(
-              new FailedFragmentInstance(localInstance, e.getFailureStatus()));
+          failedFragmentInstanceWithStatuses.add(
+              new FailedFragmentInstanceWithStatus(localInstance, e.getFailureStatus()));
         } catch (Throwable t) {
           LOGGER.warn(DISPATCH_FAILED, t);
-          failedFragmentInstances.add(
-              new FailedFragmentInstance(
+          failedFragmentInstanceWithStatuses.add(
+              new FailedFragmentInstanceWithStatus(
                   localInstance,
                   RpcUtils.getStatus(
                       TSStatusCode.INTERNAL_SERVER_ERROR, UNEXPECTED_ERRORS + t.getMessage())));
@@ -289,30 +291,31 @@ public class FragmentInstanceDispatcherImpl implements IFragInstanceDispatcher {
     asyncPlanNodeSender.waitUntilCompleted();
 
     // 4. collect remote dispatch results
-    failedFragmentInstances.addAll(asyncPlanNodeSender.getFailedInstances());
+    failedFragmentInstanceWithStatuses.addAll(asyncPlanNodeSender.getFailedInstancesWithStatuses());
 
-    return failedFragmentInstances;
+    return failedFragmentInstanceWithStatuses;
   }
 
-  private List<FailedFragmentInstance> dispatchRetryWrite(
+  private List<FailedFragmentInstanceWithStatus> dispatchRetryWrite(
       List<FragmentInstance> retriedInstances, int maxRetryAttempts) throws InterruptedException {
     Preconditions.checkArgument(maxRetryAttempts > 0);
 
     final long retryStartTime = System.nanoTime();
     int retryAttempt = 0;
     List<FragmentInstance> nextDispatch = new ArrayList<>(retriedInstances);
-    List<FailedFragmentInstance> failedFragmentInstances = Collections.emptyList();
+    List<FailedFragmentInstanceWithStatus> failedFragmentInstanceWithStatuses =
+        Collections.emptyList();
 
     while (retryAttempt < maxRetryAttempts) {
       // 1. let's retry on next replica location
       nextDispatch.forEach(FragmentInstance::getNextRetriedHostDataNode);
 
       // 2. dispatch the instances
-      failedFragmentInstances = dispatchWriteOnce(nextDispatch);
+      failedFragmentInstanceWithStatuses = dispatchWriteOnce(nextDispatch);
 
       // 3. decide if to continue the retry
       final long waitMillis = getRetrySleepTime(retryAttempt);
-      if (failedFragmentInstances.isEmpty()
+      if (failedFragmentInstanceWithStatuses.isEmpty()
           || waitMillis + System.nanoTime() >= retryStartTime + maxRetryDurationInNs) {
         break;
       }
@@ -322,12 +325,12 @@ public class FragmentInstanceDispatcherImpl implements IFragInstanceDispatcher {
       PERFORMANCE_OVERVIEW_METRICS.recordRemoteRetrySleepCost(waitMillis * 1_000_000L);
       retryAttempt++;
       nextDispatch =
-          failedFragmentInstances.stream()
-              .map(FailedFragmentInstance::getInstance)
+          failedFragmentInstanceWithStatuses.stream()
+              .map(FailedFragmentInstanceWithStatus::getInstance)
               .collect(Collectors.toList());
     }
 
-    return failedFragmentInstances;
+    return failedFragmentInstanceWithStatuses;
   }
 
   private long getRetrySleepTime(int retryTimes) {
