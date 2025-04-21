@@ -112,7 +112,7 @@ public class PipeTransferBatchReqBuilder implements AutoCloseable {
                 ? CONNECTOR_IOTDB_TS_FILE_BATCH_SIZE_DEFAULT_VALUE
                 : CONNECTOR_IOTDB_PLAIN_BATCH_SIZE_DEFAULT_VALUE);
     this.defaultBatch =
-        new PipeTabletEventTsFileBatch(requestMaxDelayInMillis, requestMaxBatchSizeInBytes);
+        new PipeTabletEventTsFileBatch(requestMaxDelayInMs, requestMaxBatchSizeInBytes);
   }
 
   /**
