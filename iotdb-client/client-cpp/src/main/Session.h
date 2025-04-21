@@ -41,7 +41,9 @@
 #include <thrift/transport/TTransportException.h>
 #include <thrift/transport/TBufferTransports.h>
 #include "IClientRPCService.h"
+#include "NodesSupplier.h"
 #include "AbstractSessionBuilder.h"
+#include "SessionConnection.h"
 
 //== For compatible with Windows OS ==
 #ifndef LONG_LONG_MIN
@@ -72,7 +74,6 @@ extern LogLevelType LOG_LEVEL;
 #define log_info(fmt,...)  do {if(LOG_LEVEL <= LEVEL_INFO)  {string s=string("[INFO]  %s:%d (%s) - ") + fmt + "\n"; printf(s.c_str(), __FILE__, __LINE__, __FUNCTION__, ##__VA_ARGS__);}} while(0)
 #define log_warn(fmt,...)  do {if(LOG_LEVEL <= LEVEL_WARN)  {string s=string("[WARN]  %s:%d (%s) - ") + fmt + "\n"; printf(s.c_str(), __FILE__, __LINE__, __FUNCTION__, ##__VA_ARGS__);}} while(0)
 #define log_error(fmt,...) do {if(LOG_LEVEL <= LEVEL_ERROR) {string s=string("[ERROR] %s:%d (%s) - ") + fmt + "\n"; printf(s.c_str(), __FILE__, __LINE__, __FUNCTION__, ##__VA_ARGS__);}} while(0)
-
 
 class IoTDBException : public std::exception {
 public:
@@ -124,6 +125,25 @@ public:
     BatchExecutionException(const std::string &m, const std::vector <TSStatus> &statusList) : IoTDBException(m), statusList(statusList) {}
 
     std::vector<TSStatus> statusList;
+};
+
+class RedirectException : public IoTDBException {
+public:
+    RedirectException() {}
+
+    explicit RedirectException(const char *m) : IoTDBException(m) {}
+
+    explicit RedirectException(const std::string &m) : IoTDBException(m) {}
+
+    RedirectException(const std::string &m, const TEndPoint& endPoint) : IoTDBException(m), endPoint(endPoint) {}
+
+    RedirectException(const std::string &m, const map<string, TEndPoint>& deviceEndPointMap) : IoTDBException(m), deviceEndPointMap(deviceEndPointMap) {}
+
+    RedirectException(const std::string &m, const vector<TEndPoint> endPointList) : IoTDBException(m), endPointList(endPointList) {}
+
+    TEndPoint endPoint;
+    map<string, TEndPoint> deviceEndPointMap;
+    vector<TEndPoint> endPointList;
 };
 
 class UnSupportedDataTypeException : public IoTDBException {
@@ -261,6 +281,8 @@ public:
     }
 
     static void verifySuccess(const TSStatus &status);
+
+    static void verifySuccessWithRedirection(const TSStatus &status);
 
     static void verifySuccess(const std::vector<TSStatus> &statuses);
 
@@ -685,6 +707,11 @@ public:
         }
     }
 
+    void addTimestamp(size_t rowIndex, int64_t timestamp) {
+        timestamps[rowIndex] = timestamp;
+        rowSize = max(rowSize, rowIndex + 1);
+    }
+
     template<typename T>
     void addValue(size_t schemaId, size_t rowIndex, const T& value) {
         if (schemaId >= schemas.size()) {
@@ -1098,8 +1125,31 @@ private:
     Version::Version version;
     std::string sqlDialect = "tree"; // default sql dialect
     std::string database;
+    bool enableAutoFetch = true;
+    bool enableRedirection = true;
+    std::shared_ptr<INodesSupplier> nodesSupplier;
+    friend class SessionConnection;
+    std::shared_ptr<SessionConnection> defaultSessionConnection;
+
+    TEndPoint defaultEndPoint;
+
+    struct TEndPointHash {
+        size_t operator()(const TEndPoint& endpoint) const {
+            return std::hash<std::string>()(endpoint.ip) ^ std::hash<int>()(endpoint.port);
+        }
+    };
+    struct TEndPointEqual {
+        bool operator()(const TEndPoint& lhs, const TEndPoint& rhs) const {
+            return lhs.ip == rhs.ip && lhs.port == rhs.port;
+        }
+    };
+    using EndPointSessionMap = std::unordered_map<TEndPoint, shared_ptr<SessionConnection>, TEndPointHash, TEndPointEqual>;
+    EndPointSessionMap endPointToSessionConnection;
+    std::unordered_map<std::string, TEndPoint> deviceIdToEndpoint;
 
 private:
+    void removeBrokenSessionConnection(shared_ptr<SessionConnection> sessionConnection);
+
     static bool checkSorted(const Tablet &tablet);
 
     static bool checkSorted(const std::vector<int64_t> &times);
@@ -1127,12 +1177,15 @@ private:
     std::string getVersionString(Version::Version version);
 
     void initZoneId();
+    void initNodesSupplier();
+    void initDefaultSessionConnection();
 
 public:
     Session(const std::string &host, int rpcPort) : username("root"), password("root"), version(Version::V_1_0) {
         this->host = host;
         this->rpcPort = rpcPort;
         initZoneId();
+        initNodesSupplier();
     }
 
     Session(const std::string &host, int rpcPort, const std::string &username, const std::string &password)
@@ -1143,6 +1196,7 @@ public:
         this->password = password;
         this->version = Version::V_1_0;
         initZoneId();
+        initNodesSupplier();
     }
 
     Session(const std::string &host, int rpcPort, const std::string &username, const std::string &password,
@@ -1155,6 +1209,7 @@ public:
         this->fetchSize = fetchSize;
         this->version = Version::V_1_0;
         initZoneId();
+        initNodesSupplier();
     }
 
     Session(const std::string &host, const std::string &rpcPort, const std::string &username = "user",
@@ -1167,6 +1222,7 @@ public:
         this->fetchSize = fetchSize;
         this->version = Version::V_1_0;
         initZoneId();
+        initNodesSupplier();
     }
 
     Session(AbstractSessionBuilder* builder) {
@@ -1179,7 +1235,10 @@ public:
         this->version = Version::V_1_0;
         this->sqlDialect = builder->sqlDialect;
         this->database = builder->database;
+        this->enableAutoFetch = builder->enableAutoFetch;
+        this->enableRedirection = builder->enableRedirections;
         initZoneId();
+        initNodesSupplier();
     }
 
     ~Session();
@@ -1202,6 +1261,10 @@ public:
 
     int64_t getSessionId();
 
+    shared_ptr<SessionConnection> getQuerySessionConnection();
+
+    shared_ptr<SessionConnection> getSessionConnection(std::string deviceId);
+
     void open();
 
     void open(bool enableRPCCompression);
@@ -1213,6 +1276,10 @@ public:
     void setTimeZone(const std::string &zoneId);
 
     std::string getTimeZone();
+
+    void handleQueryRedirection(TEndPoint endPoint);
+
+    void handleRedirection(const std::string& deviceId, TEndPoint endPoint);
 
     void insertRecord(const std::string &deviceId, int64_t time, const std::vector<std::string> &measurements,
                       const std::vector<std::string> &values);
@@ -1358,6 +1425,8 @@ public:
     std::unique_ptr<SessionDataSet> executeQueryStatement(const std::string &sql) ;
 
     std::unique_ptr<SessionDataSet> executeQueryStatement(const std::string &sql, int64_t timeoutInMs) ;
+
+    std::unique_ptr<SessionDataSet> executeQueryStatementMayRedirect(const std::string &sql, int64_t timeoutInMs);
 
     void executeNonQueryStatement(const std::string &sql);
 
