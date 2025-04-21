@@ -205,7 +205,9 @@ public class PipeTableModelTsFileBuilderV2 extends PipeTsFileBuilder {
           final LocalDate[] dates = ((LocalDate[]) values[j]);
           final int[] dateValues = new int[dates.length];
           for (int k = 0; k < Math.min(dates.length, tablet.getRowSize()); k++) {
-            dateValues[k] = DateUtils.parseDateExpressionToInt(dates[k]);
+            if (Objects.nonNull(dates[k])) {
+              dateValues[k] = DateUtils.parseDateExpressionToInt(dates[k]);
+            }
           }
           values[j] = dateValues;
         }
