@@ -43,7 +43,8 @@ public interface TableFunctionDataProcessor {
    * @param properColumnBuilders A list of {@link ColumnBuilder} for each column in the output
    *     table.
    * @param passThroughIndexBuilder A {@link ColumnBuilder} for pass through columns. Index is
-   *     started from 0 of the whole partition.
+   *     started from 0 of the whole partition. It will be null if table argument is not declared
+   *     with PASS_THROUGH_COLUMNS.
    */
   void process(
       Record input,
@@ -56,7 +57,8 @@ public interface TableFunctionDataProcessor {
    *
    * @param columnBuilders A list of {@link ColumnBuilder} for each column in the output table.
    * @param passThroughIndexBuilder A {@link ColumnBuilder} for pass through columns. Index is
-   *     started from 0 of the whole partition.
+   *     started from 0 of the whole partition. It will be null if table argument is not declared
+   *     with PASS_THROUGH_COLUMNS.
    */
   default void finish(List<ColumnBuilder> columnBuilders, ColumnBuilder passThroughIndexBuilder) {
     // do nothing
