@@ -83,8 +83,7 @@ public class PipeTabletEventTsFileBatch extends PipeTabletEventBatch {
               insertNodeTabletInsertionEvent.getPipeName(),
               insertNodeTabletInsertionEvent.getCreationTime(),
               tablet,
-              insertNodeTabletInsertionEvent.getTableModelDatabaseName(),
-              insertNodeTabletInsertionEvent.isAligned(i));
+              insertNodeTabletInsertionEvent.getTableModelDatabaseName());
         } else {
           // tree Model
           bufferTreeModelTablet(
@@ -107,8 +106,7 @@ public class PipeTabletEventTsFileBatch extends PipeTabletEventBatch {
             rawTabletInsertionEvent.getPipeName(),
             rawTabletInsertionEvent.getCreationTime(),
             tablet,
-            rawTabletInsertionEvent.getTableModelDatabaseName(),
-            rawTabletInsertionEvent.isAligned());
+            rawTabletInsertionEvent.getTableModelDatabaseName());
       } else {
         // tree Model
         bufferTreeModelTablet(
@@ -147,11 +145,7 @@ public class PipeTabletEventTsFileBatch extends PipeTabletEventBatch {
   }
 
   private void bufferTableModelTablet(
-      final String pipeName,
-      final long creationTime,
-      final Tablet tablet,
-      final String dataBase,
-      final boolean isAligned) {
+      final String pipeName, final long creationTime, final Tablet tablet, final String dataBase) {
     new PipeTableModelTabletEventSorter(tablet).sortAndDeduplicateByDevIdTimestamp();
 
     // TODO: Currently, PipeTableModelTsFileBuilderV2 still uses PipeTableModelTsFileBuilder as a
@@ -163,7 +157,7 @@ public class PipeTabletEventTsFileBatch extends PipeTabletEventBatch {
         new Pair<>(pipeName, creationTime),
         (pipe, weight) -> Objects.nonNull(weight) ? ++weight : 1);
 
-    tableModeTsFileBuilder.bufferTableModelTablet(dataBase, tablet, isAligned);
+    tableModeTsFileBuilder.bufferTableModelTablet(dataBase, tablet);
   }
 
   public Map<Pair<String, Long>, Double> deepCopyPipe2WeightMap() {

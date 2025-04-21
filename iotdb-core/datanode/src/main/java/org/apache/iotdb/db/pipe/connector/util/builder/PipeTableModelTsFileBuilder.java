@@ -59,7 +59,7 @@ public class PipeTableModelTsFileBuilder extends PipeTsFileBuilder {
   }
 
   @Override
-  public void bufferTableModelTablet(String dataBase, Tablet tablet, Boolean isAligned) {
+  public void bufferTableModelTablet(String dataBase, Tablet tablet) {
     dataBase2TabletList.computeIfAbsent(dataBase, db -> new ArrayList<>()).add(tablet);
   }
 

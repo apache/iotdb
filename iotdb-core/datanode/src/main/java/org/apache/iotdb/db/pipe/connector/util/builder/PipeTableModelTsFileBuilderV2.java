@@ -62,7 +62,6 @@ public class PipeTableModelTsFileBuilderV2 extends PipeTsFileBuilder {
       new PlanNodeId("PipeTableModelTsFileBuilderV2");
 
   private final Map<String, List<Tablet>> dataBase2TabletList = new HashMap<>();
-  private final Map<Tablet, Boolean> tablet2IsAligned = new HashMap<>();
 
   // TODO: remove me later if stable
   private final PipeTableModelTsFileBuilder fallbackBuilder;
@@ -74,9 +73,8 @@ public class PipeTableModelTsFileBuilderV2 extends PipeTsFileBuilder {
   }
 
   @Override
-  public void bufferTableModelTablet(String dataBase, Tablet tablet, Boolean isAligned) {
+  public void bufferTableModelTablet(String dataBase, Tablet tablet) {
     dataBase2TabletList.computeIfAbsent(dataBase, db -> new ArrayList<>()).add(tablet);
-    tablet2IsAligned.put(tablet, isAligned);
   }
 
   @Override
@@ -217,7 +215,8 @@ public class PipeTableModelTsFileBuilderV2 extends PipeTsFileBuilder {
           new RelationalInsertTabletNode(
               PLACEHOLDER_PLAN_NODE_ID,
               new PartialPath(tablet.getTableName()),
-              Objects.requireNonNull(tablet2IsAligned.get(tablet)),
+              // the data of the table model is aligned
+              true,
               tablet.getSchemas().stream()
                   .map(IMeasurementSchema::getMeasurementName)
                   .toArray(String[]::new),
