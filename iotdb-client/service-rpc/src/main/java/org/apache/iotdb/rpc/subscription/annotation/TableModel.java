@@ -25,7 +25,7 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
 /**
- * Indicates that the method is valid only within the subscription module under the tree model
+ * Indicates that the method is valid only within the subscription module under the table model
  * namespace. Otherwise, the behavior is undefined.
  */
 @Target(ElementType.METHOD)
