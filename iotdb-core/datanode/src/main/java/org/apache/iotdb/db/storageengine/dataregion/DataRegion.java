@@ -2920,6 +2920,12 @@ public class DataRegion implements IDataRegionForQuery {
 
     writeLock("loadNewTsFile");
     try {
+      if (deleted) {
+        logger.info(
+            "Won't load TsFile {}, because region is deleted",
+            tsfileToBeInserted.getAbsolutePath());
+        return;
+      }
       newTsFileResource.setSeq(false);
       final String newFileName =
           getNewTsFileName(
