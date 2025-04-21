@@ -555,13 +555,7 @@ public class TableDeviceSchemaFetcher {
     for (int i = 0; i < tsBlock.getPositionCount(); i++) {
       final String[] nodes = new String[tableInstance.getIdNums()];
       constructNodsArrayAndAttributeMap(
-          Collections.emptyMap(),
-          nodes,
-          null,
-          columnHeaderList,
-          columns,
-          tableInstance,
-          i);
+          Collections.emptyMap(), nodes, null, columnHeaderList, columns, tableInstance, i);
       final IDeviceID deviceID =
           DataNodeTreeViewSchemaUtils.convertToIDeviceID(tableInstance, nodes);
       final DeviceEntry deviceEntry =
