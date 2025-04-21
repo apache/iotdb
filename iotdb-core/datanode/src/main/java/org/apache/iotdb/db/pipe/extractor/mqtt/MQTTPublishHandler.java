@@ -181,7 +181,6 @@ public class MQTTPublishHandler extends AbstractInterceptHandler {
     try {
       TimestampPrecisionUtils.checkTimestampPrecision(message.getTimestamp());
       InsertTabletStatement insertTabletStatement = constructInsertTabletStatement(message);
-      session.setDatabaseName(message.getDatabase().toLowerCase());
       session.setSqlDialect(IClientSession.SqlDialect.TABLE);
       final EnrichedEvent event =
           new PipeStatementInsertionEvent(
@@ -193,7 +192,7 @@ public class MQTTPublishHandler extends AbstractInterceptHandler {
               session.getUsername(),
               true,
               true,
-              session.getDatabaseName(),
+              message.getDatabase(),
               insertTabletStatement);
       if (!event.increaseReferenceCount(MQTTPublishHandler.class.getName())) {
         LOGGER.warn("The reference count of the event {} cannot be increased, skipping it.", event);

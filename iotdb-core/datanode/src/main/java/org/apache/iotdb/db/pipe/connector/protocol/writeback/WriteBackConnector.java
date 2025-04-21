@@ -365,7 +365,7 @@ public class WriteBackConnector implements PipeConnector {
       Statement statement, String dataBaseName, final String userName) {
     session.setDatabaseName(dataBaseName);
     session.setSqlDialect(IClientSession.SqlDialect.TABLE);
-    final String originalUerName = session.getDatabaseName();
+    final String originalUserName = session.getUsername();
     if (useEventUserName && userName != null) {
       session.setUsername(userName);
     }
@@ -423,7 +423,7 @@ public class WriteBackConnector implements PipeConnector {
     } finally {
       SESSION_MANAGER.removeCurrSession();
       if (useEventUserName) {
-        session.setUsername(originalUerName);
+        session.setUsername(originalUserName);
       }
     }
   }
@@ -472,7 +472,7 @@ public class WriteBackConnector implements PipeConnector {
   private TSStatus executeStatementForTreeModel(final Statement statement, final String userName) {
     treeSession.setDatabaseName(null);
     treeSession.setSqlDialect(IClientSession.SqlDialect.TREE);
-    final String originalUerName = treeSession.getUsername();
+    final String originalUserName = treeSession.getUsername();
     if (useEventUserName && userName != null) {
       treeSession.setUsername(userName);
     }
@@ -492,7 +492,7 @@ public class WriteBackConnector implements PipeConnector {
     } finally {
       SESSION_MANAGER.removeCurrSession();
       if (useEventUserName) {
-        treeSession.setUsername(originalUerName);
+        treeSession.setUsername(originalUserName);
       }
     }
   }
