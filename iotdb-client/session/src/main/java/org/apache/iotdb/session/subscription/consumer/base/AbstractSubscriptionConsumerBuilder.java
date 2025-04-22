@@ -132,11 +132,11 @@ public class AbstractSubscriptionConsumerBuilder {
     return this;
   }
 
-  public ISubscriptionTreePullConsumer buildPullConsumer() {
+  public ISubscriptionTreePullConsumer buildTreePullConsumer() {
     throw new UnsupportedOperationException();
   }
 
-  public ISubscriptionTreePushConsumer buildPushConsumer() {
+  public ISubscriptionTreePushConsumer buildTreePushConsumer() {
     throw new UnsupportedOperationException();
   }
 
