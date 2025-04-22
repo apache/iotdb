@@ -333,7 +333,7 @@ class IoTDBRpcDataSet(object):
 
                     if data_type == 1:
                         tmp_array = pd.Series(tmp_array).astype("Int32")
-                    elif data_type == 2 or data_type == 8:
+                    elif data_type == 2:
                         tmp_array = pd.Series(tmp_array).astype("Int64")
                     elif data_type == 0:
                         tmp_array = pd.Series(tmp_array).astype("boolean")

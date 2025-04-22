@@ -135,7 +135,9 @@ def session_test(use_session_pool=False):
                     2024, 1, timestamp
                 )
                 assert (
-                    row_record.get_fields()[1].get_object_value(TSDataType.TIMESTAMP)
+                    row_record.get_fields()[1]
+                    .get_object_value(TSDataType.TIMESTAMP)
+                    .value
                     == timestamp
                 )
                 assert row_record.get_fields()[2].get_binary_value() == b"\x12\x34"
