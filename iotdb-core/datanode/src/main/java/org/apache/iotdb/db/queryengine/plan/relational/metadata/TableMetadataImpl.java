@@ -104,7 +104,7 @@ public class TableMetadataImpl implements Metadata {
     final String databaseName = name.getDatabaseName();
     final String tableName = name.getObjectName();
 
-    TsTable table = tableCache.getTable(databaseName, tableName);
+    final TsTable table = tableCache.getTable(databaseName, tableName);
     if (table == null) {
       return Optional.empty();
     }
@@ -123,7 +123,7 @@ public class TableMetadataImpl implements Metadata {
                 })
             .collect(Collectors.toList());
     return Optional.of(
-        databaseName.equals(TreeViewSchema.TREE_PATH_PATTERN)
+        TreeViewSchema.isTreeViewTable(table)
             ? new TreeDeviceViewSchema(table.getTableName(), columnSchemaList, table.getProps())
             : new TableSchema(table.getTableName(), columnSchemaList));
   }
