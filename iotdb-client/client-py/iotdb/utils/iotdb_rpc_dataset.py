@@ -302,12 +302,11 @@ class IoTDBRpcDataSet(object):
                     data_type == 0 and null_indicator is not None
                 ):
                     tmp_array = []
-                    # BOOLEAN, INT32, INT64, TIMESTAMP
+                    # BOOLEAN, INT32, INT64
                     if (
                         data_type == 0
                         or data_type == 1
                         or data_type == 2
-                        or data_type == 8
                     ):
                         tmp_array = np.full(array_length, pd.NA, dtype=object)
                     # FLOAT, DOUBLE
@@ -315,12 +314,13 @@ class IoTDBRpcDataSet(object):
                         tmp_array = np.full(
                             array_length, np.nan, dtype=data_type.np_dtype()
                         )
-                    # TEXT, STRING, BLOB, DATE
+                    # TEXT, STRING, BLOB, DATE, TIMESTAMP
                     elif (
                         data_type == 5
                         or data_type == 11
                         or data_type == 10
                         or data_type == 9
+                        or data_type == 8
                     ):
                         tmp_array = np.full(array_length, None, dtype=object)
 
