@@ -17,8 +17,6 @@
 #
 import logging
 
-import numpy as np
-
 from iotdb.utils.Field import Field
 
 # for package
