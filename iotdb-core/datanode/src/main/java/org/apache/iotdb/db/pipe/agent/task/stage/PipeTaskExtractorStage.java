@@ -114,6 +114,8 @@ public class PipeTaskExtractorStage extends PipeTaskStage {
 
   public EventSupplier getEventSupplier() {
     return () -> {
+      // We synchronize here to ensure the commit id is in order in multiple processors, and to
+      // block the complexity from user defined extractors
       synchronized (this) {
         final Event event = pipeExtractor.supply();
         if (event instanceof EnrichedEvent) {
