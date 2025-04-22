@@ -20,7 +20,6 @@
 package org.apache.iotdb.db.pipe.agent.task.connection;
 
 import org.apache.iotdb.commons.pipe.agent.task.connection.UnboundedBlockingPendingQueue;
-import org.apache.iotdb.commons.pipe.agent.task.progress.PipeEventCommitManager;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.IoTDBTreePattern;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.pipe.event.ProgressReportEvent;
@@ -212,10 +211,6 @@ public class PipeEventCollector implements EventCollector {
         isFailedToIncreaseReferenceCount = true;
         return;
       }
-
-      // Assign a commit id for this event in order to report progress in order.
-      PipeEventCommitManager.getInstance()
-          .enrichWithCommitterKeyAndCommitId((EnrichedEvent) event, creationTime, regionId);
 
       // Assign a rebootTime for pipeConsensus
       ((EnrichedEvent) event).setRebootTimes(PipeDataNodeAgent.runtime().getRebootTimes());

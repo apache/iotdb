@@ -24,7 +24,6 @@ import org.apache.iotdb.commons.consensus.index.impl.MetaProgressIndex;
 import org.apache.iotdb.commons.consensus.index.impl.MinimumProgressIndex;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.auth.AccessDeniedException;
-import org.apache.iotdb.commons.pipe.agent.task.progress.PipeEventCommitManager;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.IoTDBTreePattern;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.TablePattern;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.TreePattern;
@@ -197,8 +196,6 @@ public abstract class IoTDBNonDataRegionExtractor extends IoTDBExtractor {
         // We allow to send the events with empty transferred types to make the last
         // event commit and report its progress
         confineHistoricalEventTransferTypes(historicalEvent);
-        PipeEventCommitManager.getInstance()
-            .enrichWithCommitterKeyAndCommitId(historicalEvent, creationTime, regionId);
         return historicalEvent;
       }
 
@@ -262,8 +259,6 @@ public abstract class IoTDBNonDataRegionExtractor extends IoTDBExtractor {
       realtimeEvent.bindProgressIndex(new MetaProgressIndex(iterator.getNextIndex() - 1));
     }
     realtimeEvent.increaseReferenceCount(IoTDBNonDataRegionExtractor.class.getName());
-    PipeEventCommitManager.getInstance()
-        .enrichWithCommitterKeyAndCommitId(realtimeEvent, creationTime, regionId);
     return realtimeEvent;
   }
 
