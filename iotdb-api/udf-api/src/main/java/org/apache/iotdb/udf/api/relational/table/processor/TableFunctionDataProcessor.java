@@ -55,12 +55,14 @@ public interface TableFunctionDataProcessor {
    * This method is called after all data is processed. It is used to finalize the output table and
    * close resource. All remaining data should be written to the columnBuilders.
    *
-   * @param columnBuilders A list of {@link ColumnBuilder} for each column in the output table.
+   * @param properColumnBuilders A list of {@link ColumnBuilder} for each column in the output
+   *     table.
    * @param passThroughIndexBuilder A {@link ColumnBuilder} for pass through columns. Index is
    *     started from 0 of the whole partition. It will be null if table argument is not declared
    *     with PASS_THROUGH_COLUMNS.
    */
-  default void finish(List<ColumnBuilder> columnBuilders, ColumnBuilder passThroughIndexBuilder) {
+  default void finish(
+      List<ColumnBuilder> properColumnBuilders, ColumnBuilder passThroughIndexBuilder) {
     // do nothing
   }
 }
