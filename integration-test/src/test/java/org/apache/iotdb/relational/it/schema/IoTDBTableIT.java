@@ -952,7 +952,7 @@ public class IoTDBTableIT {
         statement.execute("create or replace table view a () as root.b.**");
         fail();
       } catch (final SQLException e) {
-        assertEquals("701: Table 'tree_view_db.a' already exists.", e.getMessage());
+        assertEquals("551: Table 'tree_view_db.a' already exists.", e.getMessage());
       }
     }
   }
