@@ -92,6 +92,16 @@ public class FileMetrics implements IMetricSet {
     MODS_FILE_METRICS.decreaseModFileSize(size);
   }
 
+  @TestOnly
+  public int getModFileNum() {
+    return MODS_FILE_METRICS.getModFileNum();
+  }
+
+  @TestOnly
+  public long getModFileSize() {
+    return MODS_FILE_METRICS.getModFileSize();
+  }
+
   // endregion
 
   public Map<Integer, Long> getRegionSizeMap() {

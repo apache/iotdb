@@ -23,6 +23,7 @@ import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.TableClusterIT;
 import org.apache.iotdb.itbase.category.TableLocalStandaloneIT;
+import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
@@ -5133,6 +5134,14 @@ public class IoTDBTableAggregationIT {
         retArray,
         DATABASE_NAME);
 
+    expectedHeader = new String[] {"_col0"};
+    retArray = new String[] {"16,"};
+    tableResultSetEqualTest(
+        "select count(distinct device_id) from table1 group by date_bin(1d,time) order by 1",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+
     expectedHeader = new String[] {"province", "city", "region", "_col3", "_col4"};
     retArray =
         new String[] {
@@ -5154,5 +5163,12 @@ public class IoTDBTableAggregationIT {
         "select count(distinct *) from table1",
         "mismatched input '*'. Expecting: <expression>",
         DATABASE_NAME);
+
+    String errMsg = TSStatusCode.SEMANTIC_ERROR.getStatusCode() + ": Unsupported expression: Row";
+    tableAssertTestFail("select distinct (s1,s2) from table1", errMsg, DATABASE_NAME);
+
+    tableAssertTestFail("select (s1,s2) from table1", errMsg, DATABASE_NAME);
+
+    tableAssertTestFail("select * from table1 where (s1,s2) is not null", errMsg, DATABASE_NAME);
   }
 }

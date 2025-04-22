@@ -81,8 +81,6 @@ public class PipeConsensusConfig {
   }
 
   public static class RPC {
-    private final int rpcSelectorThreadNum;
-    private final int rpcMinConcurrentClientNum;
     private final int rpcMaxConcurrentClientNum;
     private final int thriftServerAwaitTimeForStopService;
     private final boolean isRpcThriftCompressionEnabled;
@@ -90,28 +88,16 @@ public class PipeConsensusConfig {
     private final int thriftMaxFrameSize;
 
     public RPC(
-        int rpcSelectorThreadNum,
-        int rpcMinConcurrentClientNum,
         int rpcMaxConcurrentClientNum,
         int thriftServerAwaitTimeForStopService,
         boolean isRpcThriftCompressionEnabled,
         int connectionTimeoutInMs,
         int thriftMaxFrameSize) {
-      this.rpcSelectorThreadNum = rpcSelectorThreadNum;
-      this.rpcMinConcurrentClientNum = rpcMinConcurrentClientNum;
       this.rpcMaxConcurrentClientNum = rpcMaxConcurrentClientNum;
       this.thriftServerAwaitTimeForStopService = thriftServerAwaitTimeForStopService;
       this.isRpcThriftCompressionEnabled = isRpcThriftCompressionEnabled;
       this.connectionTimeoutInMs = connectionTimeoutInMs;
       this.thriftMaxFrameSize = thriftMaxFrameSize;
-    }
-
-    public int getRpcSelectorThreadNum() {
-      return rpcSelectorThreadNum;
-    }
-
-    public int getRpcMinConcurrentClientNum() {
-      return rpcMinConcurrentClientNum;
     }
 
     public int getRpcMaxConcurrentClientNum() {
@@ -139,23 +125,11 @@ public class PipeConsensusConfig {
     }
 
     public static class Builder {
-      private int rpcSelectorThreadNum = 1;
-      private int rpcMinConcurrentClientNum = Runtime.getRuntime().availableProcessors();
       private int rpcMaxConcurrentClientNum = 65535;
       private int thriftServerAwaitTimeForStopService = 60;
       private boolean isRpcThriftCompressionEnabled = false;
       private int connectionTimeoutInMs = (int) TimeUnit.SECONDS.toMillis(60);
       private int thriftMaxFrameSize = 536870912;
-
-      public RPC.Builder setRpcSelectorThreadNum(int rpcSelectorThreadNum) {
-        this.rpcSelectorThreadNum = rpcSelectorThreadNum;
-        return this;
-      }
-
-      public RPC.Builder setRpcMinConcurrentClientNum(int rpcMinConcurrentClientNum) {
-        this.rpcMinConcurrentClientNum = rpcMinConcurrentClientNum;
-        return this;
-      }
 
       public RPC.Builder setRpcMaxConcurrentClientNum(int rpcMaxConcurrentClientNum) {
         this.rpcMaxConcurrentClientNum = rpcMaxConcurrentClientNum;
@@ -185,8 +159,6 @@ public class PipeConsensusConfig {
 
       public RPC build() {
         return new RPC(
-            rpcSelectorThreadNum,
-            rpcMinConcurrentClientNum,
             rpcMaxConcurrentClientNum,
             thriftServerAwaitTimeForStopService,
             isRpcThriftCompressionEnabled,

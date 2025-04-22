@@ -24,6 +24,10 @@ import org.apache.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.tsfile.read.common.TimeRange;
 import org.apache.tsfile.utils.BitMap;
 import org.apache.tsfile.utils.Pair;
+import org.apache.tsfile.write.UnSupportedDataTypeException;
+import org.apache.tsfile.write.chunk.AlignedChunkWriterImpl;
+import org.apache.tsfile.write.chunk.IChunkWriter;
+import org.apache.tsfile.write.chunk.ValueChunkWriter;
 
 import java.util.ArrayList;
 import java.util.Iterator;
@@ -55,7 +59,8 @@ public class MergeSortMultiAlignedTVListIterator extends MultiAlignedTVListItera
       List<List<TimeRange>> valueColumnsDeletionList,
       Integer floatPrecision,
       List<TSEncoding> encodingList,
-      boolean ignoreAllNullRows) {
+      boolean ignoreAllNullRows,
+      int maxNumberOfPointsInPage) {
     super(
         tsDataTypes,
         columnIndexList,
@@ -64,7 +69,8 @@ public class MergeSortMultiAlignedTVListIterator extends MultiAlignedTVListItera
         valueColumnsDeletionList,
         floatPrecision,
         encodingList,
-        ignoreAllNullRows);
+        ignoreAllNullRows,
+        maxNumberOfPointsInPage);
     this.probeIterators =
         IntStream.range(0, alignedTvListIterators.size()).boxed().collect(Collectors.toSet());
     this.bitMap = new BitMap(tsDataTypeList.size());
@@ -162,6 +168,90 @@ public class MergeSortMultiAlignedTVListIterator extends MultiAlignedTVListItera
       alignedTvListIterators.get(index).next();
     }
     probeNext = false;
+  }
+
+  @Override
+  public void encodeBatch(IChunkWriter chunkWriter, BatchEncodeInfo encodeInfo, long[] times) {
+    AlignedChunkWriterImpl alignedChunkWriterImpl = (AlignedChunkWriterImpl) chunkWriter;
+    while (hasNextTimeValuePair()) {
+      times[encodeInfo.pointNumInPage] = currentTime;
+      for (int columnIndex = 0; columnIndex < tsDataTypeList.size(); columnIndex++) {
+        ValueChunkWriter valueChunkWriter =
+            alignedChunkWriterImpl.getValueChunkWriterByIndex(columnIndex);
+        AlignedTVList alignedTVList =
+            alignedTvListIterators.get(currentIteratorIndex(columnIndex)).getAlignedTVList();
+
+        // sanity check
+        int validColumnIndex =
+            columnIndexList != null ? columnIndexList.get(columnIndex) : columnIndex;
+        if (validColumnIndex < 0 || validColumnIndex >= alignedTVList.dataTypes.size()) {
+          valueChunkWriter.write(currentTime, null, true);
+          continue;
+        }
+        int valueIndex = alignedTVList.getValueIndex(currentRowIndex(columnIndex));
+
+        // null value
+        if (alignedTVList.isNullValue(valueIndex, validColumnIndex)) {
+          valueChunkWriter.write(currentTime, null, true);
+          continue;
+        }
+
+        switch (tsDataTypeList.get(columnIndex)) {
+          case BOOLEAN:
+            valueChunkWriter.write(
+                currentTime,
+                alignedTVList.getBooleanByValueIndex(valueIndex, validColumnIndex),
+                false);
+            break;
+          case INT32:
+          case DATE:
+            valueChunkWriter.write(
+                currentTime, alignedTVList.getIntByValueIndex(valueIndex, validColumnIndex), false);
+            break;
+          case INT64:
+          case TIMESTAMP:
+            valueChunkWriter.write(
+                currentTime,
+                alignedTVList.getLongByValueIndex(valueIndex, validColumnIndex),
+                false);
+            break;
+          case FLOAT:
+            valueChunkWriter.write(
+                currentTime,
+                alignedTVList.getFloatByValueIndex(valueIndex, validColumnIndex),
+                false);
+            break;
+          case DOUBLE:
+            valueChunkWriter.write(
+                currentTime,
+                alignedTVList.getDoubleByValueIndex(valueIndex, validColumnIndex),
+                false);
+            break;
+          case TEXT:
+          case BLOB:
+          case STRING:
+            valueChunkWriter.write(
+                currentTime,
+                alignedTVList.getBinaryByValueIndex(valueIndex, validColumnIndex),
+                false);
+            break;
+          default:
+            throw new UnSupportedDataTypeException(
+                String.format("Data type %s is not supported.", tsDataTypeList.get(columnIndex)));
+        }
+      }
+      next();
+      encodeInfo.pointNumInPage++;
+      encodeInfo.pointNumInChunk++;
+
+      // new page
+      if (encodeInfo.pointNumInPage >= encodeInfo.maxNumberOfPointsInPage
+          || encodeInfo.pointNumInChunk >= encodeInfo.maxNumberOfPointsInChunk) {
+        alignedChunkWriterImpl.write(times, encodeInfo.pointNumInPage, 0);
+        encodeInfo.pointNumInPage = 0;
+        break;
+      }
+    }
   }
 
   @Override

@@ -27,7 +27,6 @@ import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.WALEntryValue;
 import org.apache.iotdb.db.storageengine.rescon.memory.PrimitiveArrayManager;
 import org.apache.iotdb.db.utils.MathUtils;
 
-import org.apache.tsfile.common.conf.TSFileDescriptor;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.tsfile.read.TimeValuePair;
@@ -37,6 +36,9 @@ import org.apache.tsfile.read.common.block.TsBlockBuilder;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.BitMap;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
+import org.apache.tsfile.write.UnSupportedDataTypeException;
+import org.apache.tsfile.write.chunk.ChunkWriterImpl;
+import org.apache.tsfile.write.chunk.IChunkWriter;
 
 import java.io.DataInputStream;
 import java.io.IOException;
@@ -50,6 +52,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.ReentrantLock;
 
 import static org.apache.iotdb.db.storageengine.rescon.memory.PrimitiveArrayManager.ARRAY_SIZE;
+import static org.apache.iotdb.db.utils.MemUtils.getBinarySize;
 import static org.apache.iotdb.db.utils.ModificationUtils.isPointDeleted;
 import static org.apache.tsfile.utils.RamUsageEstimator.NUM_BYTES_ARRAY_HEADER;
 import static org.apache.tsfile.utils.RamUsageEstimator.NUM_BYTES_OBJECT_REF;
@@ -646,8 +649,11 @@ public abstract class TVList implements WALEntryValue {
   }
 
   public TVListIterator iterator(
-      List<TimeRange> deletionList, Integer floatPrecision, TSEncoding encoding) {
-    return new TVListIterator(deletionList, floatPrecision, encoding);
+      List<TimeRange> deletionList,
+      Integer floatPrecision,
+      TSEncoding encoding,
+      int maxNumberOfPointsInPage) {
+    return new TVListIterator(deletionList, floatPrecision, encoding, maxNumberOfPointsInPage);
   }
 
   /* TVList Iterator */
@@ -662,11 +668,14 @@ public abstract class TVList implements WALEntryValue {
     private final int floatPrecision;
     private final TSEncoding encoding;
 
-    private final int MAX_NUMBER_OF_POINTS_IN_PAGE =
-        TSFileDescriptor.getInstance().getConfig().getMaxNumberOfPointsInPage();
+    // used by nextBatch during query
+    protected final int maxNumberOfPointsInPage;
 
     public TVListIterator(
-        List<TimeRange> deletionList, Integer floatPrecision, TSEncoding encoding) {
+        List<TimeRange> deletionList,
+        Integer floatPrecision,
+        TSEncoding encoding,
+        int maxNumberOfPointsInPage) {
       this.deletionList = deletionList;
       this.floatPrecision = floatPrecision != null ? floatPrecision : 0;
       this.encoding = encoding;
@@ -674,6 +683,7 @@ public abstract class TVList implements WALEntryValue {
       this.rows = rowCount;
       this.probeNext = false;
       this.tsBlocks = new ArrayList<>();
+      this.maxNumberOfPointsInPage = maxNumberOfPointsInPage;
     }
 
     protected void prepareNext() {
@@ -736,11 +746,12 @@ public abstract class TVList implements WALEntryValue {
       TsBlockBuilder builder = new TsBlockBuilder(Collections.singletonList(dataType));
       switch (dataType) {
         case BOOLEAN:
-          while (index < rows && builder.getPositionCount() < MAX_NUMBER_OF_POINTS_IN_PAGE) {
+          while (index < rows && builder.getPositionCount() < maxNumberOfPointsInPage) {
+            long time = getTime(index);
             if (!isNullValue(getValueIndex(index))
-                && !isPointDeleted(getTime(index), deletionList, deleteCursor)
-                && (index == rows - 1 || getTime(index) != getTime(index + 1))) {
-              builder.getTimeColumnBuilder().writeLong(getTime(index));
+                && !isPointDeleted(time, deletionList, deleteCursor)
+                && (index == rows - 1 || time != getTime(index + 1))) {
+              builder.getTimeColumnBuilder().writeLong(time);
               builder.getColumnBuilder(0).writeBoolean(getBoolean(index));
               builder.declarePosition();
             }
@@ -749,11 +760,12 @@ public abstract class TVList implements WALEntryValue {
           break;
         case INT32:
         case DATE:
-          while (index < rows && builder.getPositionCount() < MAX_NUMBER_OF_POINTS_IN_PAGE) {
+          while (index < rows && builder.getPositionCount() < maxNumberOfPointsInPage) {
+            long time = getTime(index);
             if (!isNullValue(getValueIndex(index))
-                && !isPointDeleted(getTime(index), deletionList, deleteCursor)
-                && (index == rows - 1 || getTime(index) != getTime(index + 1))) {
-              builder.getTimeColumnBuilder().writeLong(getTime(index));
+                && !isPointDeleted(time, deletionList, deleteCursor)
+                && (index == rows - 1 || time != getTime(index + 1))) {
+              builder.getTimeColumnBuilder().writeLong(time);
               builder.getColumnBuilder(0).writeInt(getInt(index));
               builder.declarePosition();
             }
@@ -762,11 +774,12 @@ public abstract class TVList implements WALEntryValue {
           break;
         case INT64:
         case TIMESTAMP:
-          while (index < rows && builder.getPositionCount() < MAX_NUMBER_OF_POINTS_IN_PAGE) {
+          while (index < rows && builder.getPositionCount() < maxNumberOfPointsInPage) {
+            long time = getTime(index);
             if (!isNullValue(getValueIndex(index))
-                && !isPointDeleted(getTime(index), deletionList, deleteCursor)
-                && (index == rows - 1 || getTime(index) != getTime(index + 1))) {
-              builder.getTimeColumnBuilder().writeLong(getTime(index));
+                && !isPointDeleted(time, deletionList, deleteCursor)
+                && (index == rows - 1 || time != getTime(index + 1))) {
+              builder.getTimeColumnBuilder().writeLong(time);
               builder.getColumnBuilder(0).writeLong(getLong(index));
               builder.declarePosition();
             }
@@ -774,11 +787,12 @@ public abstract class TVList implements WALEntryValue {
           }
           break;
         case FLOAT:
-          while (index < rows && builder.getPositionCount() < MAX_NUMBER_OF_POINTS_IN_PAGE) {
+          while (index < rows && builder.getPositionCount() < maxNumberOfPointsInPage) {
+            long time = getTime(index);
             if (!isNullValue(getValueIndex(index))
-                && !isPointDeleted(getTime(index), deletionList, deleteCursor)
-                && (index == rows - 1 || getTime(index) != getTime(index + 1))) {
-              builder.getTimeColumnBuilder().writeLong(getTime(index));
+                && !isPointDeleted(time, deletionList, deleteCursor)
+                && (index == rows - 1 || time != getTime(index + 1))) {
+              builder.getTimeColumnBuilder().writeLong(time);
               builder
                   .getColumnBuilder(0)
                   .writeFloat(
@@ -789,11 +803,12 @@ public abstract class TVList implements WALEntryValue {
           }
           break;
         case DOUBLE:
-          while (index < rows && builder.getPositionCount() < MAX_NUMBER_OF_POINTS_IN_PAGE) {
+          while (index < rows && builder.getPositionCount() < maxNumberOfPointsInPage) {
+            long time = getTime(index);
             if (!isNullValue(getValueIndex(index))
-                && !isPointDeleted(getTime(index), deletionList, deleteCursor)
-                && (index == rows - 1 || getTime(index) != getTime(index + 1))) {
-              builder.getTimeColumnBuilder().writeLong(getTime(index));
+                && !isPointDeleted(time, deletionList, deleteCursor)
+                && (index == rows - 1 || time != getTime(index + 1))) {
+              builder.getTimeColumnBuilder().writeLong(time);
               builder
                   .getColumnBuilder(0)
                   .writeDouble(
@@ -806,21 +821,90 @@ public abstract class TVList implements WALEntryValue {
         case TEXT:
         case BLOB:
         case STRING:
-          while (index < rows && builder.getPositionCount() < MAX_NUMBER_OF_POINTS_IN_PAGE) {
+          while (index < rows && builder.getPositionCount() < maxNumberOfPointsInPage) {
+            long time = getTime(index);
             if (!isNullValue(getValueIndex(index))
-                && !isPointDeleted(getTime(index), deletionList, deleteCursor)
-                && (index == rows - 1 || getTime(index) != getTime(index + 1))) {
-              builder.getTimeColumnBuilder().writeLong(getTime(index));
+                && !isPointDeleted(time, deletionList, deleteCursor)
+                && (index == rows - 1 || time != getTime(index + 1))) {
+              builder.getTimeColumnBuilder().writeLong(time);
               builder.getColumnBuilder(0).writeBinary(getBinary(index));
               builder.declarePosition();
             }
             index++;
           }
           break;
+        default:
+          throw new UnSupportedDataTypeException(
+              String.format("Data type %s is not supported.", dataType));
       }
       TsBlock tsBlock = builder.build();
       tsBlocks.add(tsBlock);
       return tsBlock;
+    }
+
+    @Override
+    public void encodeBatch(IChunkWriter chunkWriter, BatchEncodeInfo encodeInfo, long[] times) {
+      TSDataType dataType = getDataType();
+      ChunkWriterImpl chunkWriterImpl = (ChunkWriterImpl) chunkWriter;
+      for (; index < rows; index++) {
+        if (isNullValue(getValueIndex(index))) {
+          continue;
+        }
+        long time = getTime(index);
+        while (index + 1 < rows && time == getTime(index + 1)) {
+          index++;
+        }
+        // store last point for SDT
+        if (encodeInfo.lastIterator) {
+          // skip deleted rows
+          while (index < rows && isNullValue(getValueIndex(index))) {
+            index++;
+          }
+          if (index == rows || index == rows - 1) {
+            chunkWriterImpl.setLastPoint(true);
+          }
+        }
+
+        switch (dataType) {
+          case BOOLEAN:
+            chunkWriterImpl.write(time, getBoolean(index));
+            encodeInfo.dataSizeInChunk += 8L + 1L;
+            break;
+          case INT32:
+          case DATE:
+            chunkWriterImpl.write(time, getInt(index));
+            encodeInfo.dataSizeInChunk += 8L + 4L;
+            break;
+          case INT64:
+          case TIMESTAMP:
+            chunkWriterImpl.write(time, getLong(index));
+            encodeInfo.dataSizeInChunk += 8L + 8L;
+            break;
+          case FLOAT:
+            chunkWriterImpl.write(time, getFloat(index));
+            encodeInfo.dataSizeInChunk += 8L + 4L;
+            break;
+          case DOUBLE:
+            chunkWriterImpl.write(time, getDouble(index));
+            encodeInfo.dataSizeInChunk += 8L + 8L;
+            break;
+          case TEXT:
+          case BLOB:
+          case STRING:
+            Binary value = getBinary(index);
+            chunkWriterImpl.write(time, value);
+            encodeInfo.dataSizeInChunk += 8L + getBinarySize(value);
+            break;
+          default:
+            throw new UnSupportedDataTypeException(
+                String.format("Data type %s is not supported.", dataType));
+        }
+        encodeInfo.pointNumInChunk++;
+        if (encodeInfo.pointNumInChunk >= encodeInfo.maxNumberOfPointsInChunk
+            || encodeInfo.dataSizeInChunk >= encodeInfo.targetChunkSize) {
+          break;
+        }
+      }
     }
 
     @Override

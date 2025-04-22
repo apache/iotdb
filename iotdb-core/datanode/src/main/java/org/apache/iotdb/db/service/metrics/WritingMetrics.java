@@ -42,6 +42,7 @@ import org.apache.iotdb.metrics.utils.MetricType;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.Objects;
 
 public class WritingMetrics implements IMetricSet {
   private static final WritingMetrics INSTANCE = new WritingMetrics();
@@ -811,6 +812,9 @@ public class WritingMetrics implements IMetricSet {
   }
 
   private DataRegionId getDataRegionIdFromStorageGroupStr(String storageGroup) {
+    if (Objects.isNull(storageGroup)) {
+      return null;
+    }
     int idx = storageGroup.lastIndexOf('-');
     if (idx == -1) {
       return null;

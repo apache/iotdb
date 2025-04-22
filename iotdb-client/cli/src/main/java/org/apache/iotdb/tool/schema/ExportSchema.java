@@ -36,10 +36,7 @@ import org.apache.commons.cli.ParseException;
 import org.apache.commons.lang3.StringUtils;
 import org.jline.reader.LineReader;
 
-import java.io.BufferedReader;
 import java.io.File;
-import java.io.FileReader;
-import java.io.IOException;
 
 /** Export Schema CSV file. */
 public class ExportSchema extends AbstractSchemaTool {
@@ -121,6 +118,7 @@ public class ExportSchema extends AbstractSchemaTool {
         exportSchema.init();
         exportSchema.exportSchemaToSqlFile();
       }
+      ioTPrinter.println(Constants.EXPORT_COMPLETELY);
       return Constants.CODE_OK;
     } catch (InterruptedException e) {
       ioTPrinter.println(String.format("Export schema fail: %s", e.getMessage()));
@@ -129,18 +127,6 @@ public class ExportSchema extends AbstractSchemaTool {
     } catch (Exception e) {
       ioTPrinter.println(String.format("Export schema fail: %s", e.getMessage()));
       return Constants.CODE_ERROR;
-    }
-  }
-
-  private static void dumpFromPathFile(AbstractExportSchema exportSchema, String pathFile)
-      throws IOException {
-    try (BufferedReader reader = new BufferedReader(new FileReader(pathFile))) {
-      String path;
-      int index = 0;
-      while ((path = reader.readLine()) != null) {
-        exportSchema.exportSchemaToCsvFile(path, index);
-        index++;
-      }
     }
   }
 

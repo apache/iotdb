@@ -58,7 +58,7 @@ import java.util.Map;
  *
  * <p>SHOW FUNCTIONS;
  *
- * <p>SELECT * FROM TABLE(repeat(TABLE(t1), 2));
+ * <p>SELECT * FROM repeat(t1, 2);
  */
 public class RepeatExample implements TableFunction {
   private final String TBL_PARAM = "DATA";
