@@ -98,7 +98,7 @@ struct TForecastReq {
 
 struct TForecastResp {
   1: required common.TSStatus status
-  2: required binary inferenceResult
+  2: required binary forecastResult
 }
 
 service IAINodeRPCService {
