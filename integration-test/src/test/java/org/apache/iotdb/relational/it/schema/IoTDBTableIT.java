@@ -836,6 +836,82 @@ public class IoTDBTableIT {
       fail(e.getMessage());
     }
 
+    // Test permission
+    try (final Connection connection = EnvFactory.getEnv().getConnection();
+        final Statement statement = connection.createStatement()) {
+      // Test create & replace + restrict
+      statement.execute("create user testUser 'testUser'");
+    } catch (final SQLException e) {
+      fail(e.getMessage());
+    }
+
+    try (final Connection connection =
+            EnvFactory.getEnv().getConnection("testUser", "testUser", BaseEnv.TABLE_SQL_DIALECT);
+        final Statement statement = connection.createStatement()) {
+      statement.execute(
+          "create or replace table view tree_view_db.view_table (tag1 tag, tag2 tag, s11 int32 field, s3 from s2) as root.a.** with (ttl=100) restrict");
+      fail();
+    } catch (final SQLException e) {
+      assertEquals(
+          "803: Access Denied: No permissions for this operation, please add privilege CREATE ON tree_view_db.view_table.",
+          e.getMessage());
+    }
+
+    try (final Connection connection =
+            EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        final Statement statement = connection.createStatement()) {
+      statement.execute("grant create on tree_view_db.view_table to testUser");
+    } catch (final SQLException e) {
+      fail(e.getMessage());
+    }
+
+    try (final Connection connection =
+            EnvFactory.getEnv().getConnection("testUser", "testUser", BaseEnv.TABLE_SQL_DIALECT);
+        final Statement statement = connection.createStatement()) {
+      statement.execute(
+          "create or replace table view tree_view_db.view_table (tag1 tag, tag2 tag, s11 int32 field, s3 from s2) as root.a.** with (ttl=100) restrict");
+      fail();
+    } catch (final SQLException e) {
+      assertEquals(
+          "803: Access Denied: No permissions for this operation, please add privilege READ_SCHEMA",
+          e.getMessage());
+    }
+
+    try (final Connection connection = EnvFactory.getEnv().getConnection();
+        final Statement statement = connection.createStatement()) {
+      statement.execute("grant read_schema on root.a.** to user testUser");
+    } catch (final SQLException e) {
+      fail(e.getMessage());
+    }
+
+    try (final Connection connection =
+            EnvFactory.getEnv().getConnection("testUser", "testUser", BaseEnv.TABLE_SQL_DIALECT);
+        final Statement statement = connection.createStatement()) {
+      statement.execute(
+          "create or replace table view tree_view_db.view_table (tag1 tag, tag2 tag, s11 int32 field, s3 from s2) as root.a.** with (ttl=100) restrict");
+      fail();
+    } catch (final SQLException e) {
+      assertEquals(
+          "803: Access Denied: No permissions for this operation, please add privilege READ_DATA",
+          e.getMessage());
+    }
+
+    try (final Connection connection = EnvFactory.getEnv().getConnection();
+        final Statement statement = connection.createStatement()) {
+      statement.execute("grant read_data on root.a.** to user testUser");
+    } catch (final SQLException e) {
+      fail(e.getMessage());
+    }
+
+    try (final Connection connection =
+            EnvFactory.getEnv().getConnection("testUser", "testUser", BaseEnv.TABLE_SQL_DIALECT);
+        final Statement statement = connection.createStatement()) {
+      statement.execute(
+          "create or replace table view tree_view_db.view_table (tag1 tag, tag2 tag, s11 int32 field, s3 from s2) as root.a.** with (ttl=100) restrict");
+    } catch (final SQLException e) {
+      fail();
+    }
+
     try (final Connection connection =
             EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
         final Statement statement = connection.createStatement()) {
