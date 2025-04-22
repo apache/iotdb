@@ -114,12 +114,14 @@ public class PipeTaskExtractorStage extends PipeTaskStage {
 
   public EventSupplier getEventSupplier() {
     return () -> {
-      final Event event = pipeExtractor.supply();
-      if (event instanceof EnrichedEvent) {
-        PipeEventCommitManager.getInstance()
-            .enrichWithCommitterKeyAndCommitId((EnrichedEvent) event, creationTime, regionId);
+      synchronized (this) {
+        final Event event = pipeExtractor.supply();
+        if (event instanceof EnrichedEvent) {
+          PipeEventCommitManager.getInstance()
+              .enrichWithCommitterKeyAndCommitId((EnrichedEvent) event, creationTime, regionId);
+        }
+        return event;
       }
-      return event;
     };
   }
 }
