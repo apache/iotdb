@@ -205,7 +205,7 @@ public class ColumnTransformerBuilder
 
   @Override
   public ColumnTransformer visitExpression(Expression expression, Context context) {
-    throw new IllegalArgumentException(
+    throw new SemanticException(
         String.format(UNSUPPORTED_EXPRESSION, expression.getClass().getSimpleName()));
   }
 
