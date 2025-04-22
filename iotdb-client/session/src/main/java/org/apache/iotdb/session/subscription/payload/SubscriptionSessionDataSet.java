@@ -20,7 +20,9 @@
 package org.apache.iotdb.session.subscription.payload;
 
 import org.apache.iotdb.isession.ISessionDataSet;
+import org.apache.iotdb.rpc.subscription.annotation.TableModel;
 
+import org.apache.thrift.annotation.Nullable;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.Field;
 import org.apache.tsfile.read.common.RowRecord;
@@ -44,12 +46,20 @@ public class SubscriptionSessionDataSet implements ISessionDataSet {
 
   private Tablet tablet;
 
+  @Nullable private final String databaseName;
+
   public Tablet getTablet() {
     return tablet;
   }
 
-  public SubscriptionSessionDataSet(final Tablet tablet) {
+  @TableModel
+  public String getDatabaseName() {
+    return databaseName;
+  }
+
+  public SubscriptionSessionDataSet(final Tablet tablet, @Nullable final String databaseName) {
     this.tablet = tablet;
+    this.databaseName = databaseName;
     generateRowIterator();
   }
 
