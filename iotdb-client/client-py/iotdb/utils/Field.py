@@ -19,6 +19,7 @@
 # for package
 from iotdb.utils.IoTDBConstants import TSDataType
 from iotdb.tsfile.utils.date_utils import parse_int_to_date
+from iotdb.utils.rpc_utils import convert_to_timestamp
 import numpy as np
 import pandas as pd
 
@@ -168,7 +169,7 @@ class Field(object):
             or self.value is pd.NA
         ):
             return None
-        return pd.Timestamp(self.value, unit=self.__precision, tz=self.__timezone)
+        return convert_to_timestamp(self.value, self.__precision, self.__timezone)
 
     def get_date_value(self):
         if self.__data_type is None:
@@ -214,7 +215,7 @@ class Field(object):
         elif data_type == 4:
             return np.float64(self.value)
         elif data_type == 8:
-            return pd.Timestamp(self.value, unit=self.__precision, tz=self.__timezone)
+            return convert_to_timestamp(self.value, self.__precision, self.__timezone)
         elif data_type == 9:
             return parse_int_to_date(self.value)
         elif data_type == 5 or data_type == 11:

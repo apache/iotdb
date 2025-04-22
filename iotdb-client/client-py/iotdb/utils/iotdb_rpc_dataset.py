@@ -28,7 +28,7 @@ from iotdb.tsfile.utils.date_utils import parse_int_to_date
 from iotdb.tsfile.utils.tsblock_serde import deserialize
 from iotdb.utils.exception import IoTDBConnectionException
 from iotdb.utils.IoTDBConstants import TSDataType
-from iotdb.utils.rpc_utils import verify_success
+from iotdb.utils.rpc_utils import verify_success, convert_to_timestamp
 
 logger = logging.getLogger("IoTDB")
 TIMESTAMP_STR = "Time"
@@ -285,8 +285,8 @@ class IoTDBRpcDataSet(object):
                 elif data_type == 8:
                     data_array = pd.Series(
                         [
-                            pd.Timestamp(
-                                x, unit=self.__time_precision, tz=self.__zone_id
+                            convert_to_timestamp(
+                                x, self.__time_precision, self.__zone_id
                             )
                             for x in column_array
                         ]

@@ -15,11 +15,15 @@
 # specific language governing permissions and limitations
 # under the License.
 #
+import logging
+
 import pandas as pd
 from tzlocal import get_localzone_name
 
 from iotdb.thrift.common.ttypes import TSStatus
 from iotdb.utils.exception import RedirectException, StatementExecutionException
+
+logger = logging.getLogger("IoTDB")
 
 SUCCESS_STATUS = 200
 MULTIPLE_ERROR = 302
@@ -76,4 +80,8 @@ def convert_to_timestamp(time: int, precision: str, timezone: str):
     try:
         return pd.Timestamp(time, unit=precision, tz=timezone)
     except ValueError:
+        logger.warning(
+            f"Timezone string '{timezone}' cannot be recognized by pandas. "
+            f"Falling back to local timezone: '{get_localzone_name()}'."
+        )
         return pd.Timestamp(time, unit=precision, tz=get_localzone_name())
