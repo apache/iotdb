@@ -91,14 +91,14 @@ struct TTrainingReq {
 
 struct TForecastReq {
   1: required string modelId
-  2: required list<list<double>> inputData
+  2: required binary inputData
   3: required i32 outputLength
   4: optional map<string, string> options
 }
 
 struct TForecastResp {
   1: required common.TSStatus status
-  2: required list<list<double>> inferenceResult
+  2: required binary inferenceResult
 }
 
 service IAINodeRPCService {
