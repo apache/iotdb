@@ -1670,7 +1670,8 @@ public class ProcedureManager {
         return new TSStatus(TSStatusCode.SUBSCRIPTION_PIPE_TIMEOUT_ERROR.getStatusCode())
             .setMessage(wrapTimeoutMessageForPipeProcedure(status.getMessage()));
       } else {
-        return new TSStatus(TSStatusCode.SUBSCRIPTION_SUBSCRIBE_ERROR.getStatusCode());
+        return new TSStatus(TSStatusCode.SUBSCRIPTION_SUBSCRIBE_ERROR.getStatusCode())
+            .setMessage(wrapTimeoutMessageForPipeProcedure(status.getMessage()));
       }
     } catch (Exception e) {
       return new TSStatus(TSStatusCode.SUBSCRIPTION_SUBSCRIBE_ERROR.getStatusCode())
@@ -1691,7 +1692,8 @@ public class ProcedureManager {
         return new TSStatus(TSStatusCode.SUBSCRIPTION_PIPE_TIMEOUT_ERROR.getStatusCode())
             .setMessage(wrapTimeoutMessageForPipeProcedure(status.getMessage()));
       } else {
-        return new TSStatus(TSStatusCode.SUBSCRIPTION_UNSUBSCRIBE_ERROR.getStatusCode());
+        return new TSStatus(TSStatusCode.SUBSCRIPTION_UNSUBSCRIBE_ERROR.getStatusCode())
+            .setMessage(wrapTimeoutMessageForPipeProcedure(status.getMessage()));
       }
     } catch (Exception e) {
       return new TSStatus(TSStatusCode.SUBSCRIPTION_UNSUBSCRIBE_ERROR.getStatusCode())

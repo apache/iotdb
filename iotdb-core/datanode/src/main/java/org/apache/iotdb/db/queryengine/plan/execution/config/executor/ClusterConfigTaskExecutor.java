@@ -2417,7 +2417,9 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
       PipeDataNodeAgent.plugin()
           .validate(
               "fakePipeName",
-              temporaryTopicMeta.generateExtractorAttributes(),
+              // TODO: currently use root to create topic
+              temporaryTopicMeta.generateExtractorAttributes(
+                  CommonDescriptor.getInstance().getConfig().getAdminName()),
               temporaryTopicMeta.generateProcessorAttributes(),
               temporaryTopicMeta.generateConnectorAttributes("fakeConsumerGroupId"));
     } catch (final Exception e) {
