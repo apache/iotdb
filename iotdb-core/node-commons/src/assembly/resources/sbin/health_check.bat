@@ -203,15 +203,13 @@ echo Requirement: Allocate sufficient memory for IoTDB
 
 set "totalMemory="
 
-for /F "skip=1" %%i in ('wmic os get TotalVisibleMemorySize') do (
-  if not defined totalMemory (
-    set "totalMemory=%%i"
-  )
-
+REM Replace wmic with PowerShell for total visible memory size
+for /f %%i in ('powershell -NoProfile -Command "$v=$host.Version.Major; $mem=if($v -lt 3){(Get-WmiObject Win32_OperatingSystem).TotalVisibleMemorySize} else{(Get-CimInstance -ClassName Win32_OperatingSystem).TotalVisibleMemorySize}; [math]::Round($mem/1024)"') do (
+    set totalMemory=%%i
 )
 
 set /A totalMemory=!totalMemory!
-set /A totalMemory=totalMemory / 1024 / 1024
+
 if "%confignode_mem%" == "" (
     if "%datanode_mem%" == "" (
         echo Result: Total Memory %totalMemory% GB
@@ -616,19 +614,15 @@ endlocal
 exit /b
 
 :system_settings_check
+setlocal enabledelayedexpansion
 echo Check: System Settings(Swap)
 echo Requirement: disabled
-for /f "skip=1" %%s in ('wmic pagefile list /format:list') do (
-    for /f "tokens=1,2 delims==" %%a in ("%%s") do (
-        if /i "%%a"=="AllocatedBaseSize" (
-            if "%%b"=="0" (
-                echo Result: disabled
-            ) else (
-                echo Result: enabled
-            )
-        )
-    )
-)
+
+set "check_swap_ps_cmd=$v=$host.Version.Major; if($v -lt 3) { $sys=Get-WmiObject Win32_ComputerSystem; if($sys.AutomaticManagedPagefile) { 'Enabled' } else { $page=Get-WmiObject Win32_PageFileSetting -EA 0; if(!$page) { 'Disabled' } else { $page | %% { if($_.InitialSize -ne 0 -or $_.MaximumSize -ne 0) { 'Enabled'; exit } } 'Disabled' } } } else { $sys=Get-CimInstance Win32_ComputerSystem; if($sys.AutomaticManagedPagefile) { 'Enabled' } else { $page=Get-CimInstance Win32_PageFileSetting -EA 0; if(!$page) { 'Disabled' } else { $page | %% { if($_.InitialSize -ne 0 -or $_.MaximumSize -ne 0) { 'Enabled'; exit } } 'Disabled' } } }"
+for /f "delims=" %%a in ('powershell -NoProfile -Command "%check_swap_ps_cmd%"') do set "result=%%a"
+
+echo Result: !result!
+endlocal
 exit /b
 
 :checkIfIOTDBProcess
@@ -637,9 +631,8 @@ setlocal
 set "pid_to_check=%~1"
 set "is_iotdb=0"
 
-for /f "usebackq tokens=*" %%i in (`wmic process where "ProcessId=%pid_to_check%" get CommandLine /format:list ^| findstr /c:"CommandLine="`) do (
-    set command_line=%%i
-)
+for /f "delims=" %%i in ('powershell -NoProfile -Command "$v=$host.Version.Major; if($v -lt 3) { (Get-WmiObject Win32_Process -Filter \"ProcessId='%pid_to_check%'\").CommandLine } else { (Get-CimInstance Win32_Process -Filter \"ProcessId='%pid_to_check%'\").CommandLine }"') do set "command_line=%%i"
+
 echo %command_line% | findstr /i /c:"iotdb" >nul && set is_iotdb=1
 endlocal & set "is_iotdb=%is_iotdb%"
 exit /b

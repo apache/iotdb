@@ -210,8 +210,8 @@ public class PipeSchemaRegionSnapshotEvent extends PipeSnapshotEvent
       final long endTime) {
     return new PipeSchemaRegionSnapshotEvent(
         mTreeSnapshotPath,
-        treePattern.isTreeModelDataAllowedToBeCaptured() ? tagLogSnapshotPath : null,
-        tablePattern.isTableModelDataAllowedToBeCaptured() ? attributeSnapshotPath : null,
+        tagLogSnapshotPath,
+        attributeSnapshotPath,
         databaseName,
         pipeName,
         creationTime,

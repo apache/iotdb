@@ -89,6 +89,10 @@ public class ClusterTopology {
     if (!isPartitioned.get() || all == null || all.isEmpty()) {
       return all;
     }
+    if (all.stream().anyMatch(set -> set.getDataNodeLocationsSize() == 0)) {
+      // some TRegionReplicaSet is unreachable since all DataNodes are down
+      return Collections.emptyList();
+    }
     final Map<Integer, Set<Integer>> topologyMapCurrent =
         Collections.unmodifiableMap(this.topologyMap.get());
 
