@@ -779,8 +779,7 @@ public class IoTDBTableIT {
       statement.execute("create database tree_view_db");
       statement.execute("use tree_view_db");
       try {
-        statement.execute(
-            "create or replace table view tree_table (tag1 tag, tag2 tag) as root.a.**");
+        statement.execute("create table view tree_table (tag1 tag, tag2 tag) as root.a.**");
         fail();
       } catch (final SQLException e) {
         assertEquals(
