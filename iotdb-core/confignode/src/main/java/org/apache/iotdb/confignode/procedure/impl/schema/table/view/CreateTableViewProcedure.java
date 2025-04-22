@@ -73,46 +73,45 @@ public class CreateTableViewProcedure extends CreateTableProcedure {
   protected void checkTableExistence(final ConfigNodeProcedureEnv env) {
     if (!replace) {
       super.checkTableExistence(env);
-      return;
-    }
-    try {
-      final Optional<Pair<TsTable, TableNodeStatus>> oldTableAndStatus =
-          env.getConfigManager()
-              .getClusterSchemaManager()
-              .getTableAndStatusIfExists(database, table.getTableName());
-      if (oldTableAndStatus.isPresent()) {
-        if (!TreeViewSchema.isTreeViewTable(oldTableAndStatus.get().getLeft())) {
-          setFailure(
-              new ProcedureException(
-                  new IoTDBException(
-                      String.format(
-                          "Table '%s.%s' already exists.", database, table.getTableName()),
-                      TABLE_ALREADY_EXISTS.getStatusCode())));
-          return;
+    } else {
+      try {
+        final Optional<Pair<TsTable, TableNodeStatus>> oldTableAndStatus =
+            env.getConfigManager()
+                .getClusterSchemaManager()
+                .getTableAndStatusIfExists(database, table.getTableName());
+        if (oldTableAndStatus.isPresent()) {
+          if (!TreeViewSchema.isTreeViewTable(oldTableAndStatus.get().getLeft())) {
+            setFailure(
+                new ProcedureException(
+                    new IoTDBException(
+                        String.format(
+                            "Table '%s.%s' already exists.", database, table.getTableName()),
+                        TABLE_ALREADY_EXISTS.getStatusCode())));
+            return;
+          } else {
+            oldView = oldTableAndStatus.get().getLeft();
+            oldStatus = oldTableAndStatus.get().getRight();
+            setNextState(CreateTableState.PRE_CREATE);
+          }
         } else {
-          oldView = oldTableAndStatus.get().getLeft();
-          oldStatus = oldTableAndStatus.get().getRight();
+          final TDatabaseSchema schema =
+              env.getConfigManager().getClusterSchemaManager().getDatabaseSchemaByName(database);
+          if (!table.getPropValue(TsTable.TTL_PROPERTY).isPresent()
+              && schema.isSetTTL()
+              && schema.getTTL() != Long.MAX_VALUE) {
+            table.addProp(TsTable.TTL_PROPERTY, String.valueOf(schema.getTTL()));
+          }
           setNextState(CreateTableState.PRE_CREATE);
         }
-      } else {
-        final TDatabaseSchema schema =
-            env.getConfigManager().getClusterSchemaManager().getDatabaseSchemaByName(database);
-        if (!table.getPropValue(TsTable.TTL_PROPERTY).isPresent()
-            && schema.isSetTTL()
-            && schema.getTTL() != Long.MAX_VALUE) {
-          table.addProp(TsTable.TTL_PROPERTY, String.valueOf(schema.getTTL()));
-        }
-        setNextState(CreateTableState.PRE_CREATE);
+      } catch (final MetadataException | DatabaseNotExistsException e) {
+        setFailure(new ProcedureException(e));
       }
-      final TSStatus status =
-          new TreeDeviceViewFieldDetector(env.getConfigManager(), table, null)
-              .detectMissingFieldTypes();
-      if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-        setFailure(
-            new ProcedureException(new IoTDBException(status.getMessage(), status.getCode())));
-      }
-    } catch (final MetadataException | DatabaseNotExistsException e) {
-      setFailure(new ProcedureException(e));
+    }
+    final TSStatus status =
+        new TreeDeviceViewFieldDetector(env.getConfigManager(), table, null)
+            .detectMissingFieldTypes();
+    if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      setFailure(new ProcedureException(new IoTDBException(status.getMessage(), status.getCode())));
     }
   }
 
