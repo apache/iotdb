@@ -20,35 +20,29 @@
 package org.apache.iotdb.db.storageengine.load.disk;
 
 import org.apache.iotdb.db.exception.DiskSpaceInsufficientException;
-import org.apache.iotdb.db.storageengine.rescon.disk.FolderManager;
-import org.apache.iotdb.db.storageengine.rescon.disk.TierManager;
 
 import org.apache.tsfile.fileSystem.FSFactoryProducer;
 import org.apache.tsfile.fileSystem.fsFactory.FSFactory;
 
 import java.io.File;
 
-public class InheritSystemMultiDisksStrategySelector implements ILoadDiskSelector {
+public class InheritSystemMultiDisksStrategySelector<U> implements ILoadDiskSelector<U> {
 
   protected static final FSFactory fsFactory = FSFactoryProducer.getFSFactory();
 
-  public InheritSystemMultiDisksStrategySelector() {}
+  DiskDirectorySelector<U> directorySelector;
+
+  public InheritSystemMultiDisksStrategySelector(DiskDirectorySelector<U> selector) {
+    this.directorySelector = selector;
+  }
+
+  public File diskDirectorySelector(File file, boolean createTargetFile, U u)
+      throws DiskSpaceInsufficientException {
+    return directorySelector.selectDirectory(file, u);
+  }
 
   @Override
   public LoadDiskSelectorType getLoadDiskSelectorType() {
     return LoadDiskSelectorType.INHERIT_SYSTEM_MULTI_DISKS_SELECT_STRATEGY;
-  }
-
-  @Override
-  public File getTargetDir(
-      File fileToLoad, TierManager tierManager, String tsfileName, int tierLevel)
-      throws DiskSpaceInsufficientException {
-    // inherit system multi-disks select strategy, see configuration `dn_multi_dir_strategy`
-    return fsFactory.getFile(tierManager.getNextFolderForTsFile(tierLevel, false), tsfileName);
-  }
-
-  public String getTargetDir(File fileToLoad, FolderManager folderManager)
-      throws DiskSpaceInsufficientException {
-    return folderManager.getNextFolder();
   }
 }

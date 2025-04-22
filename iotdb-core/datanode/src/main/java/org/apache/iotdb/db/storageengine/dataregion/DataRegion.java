@@ -328,8 +328,8 @@ public class DataRegion implements IDataRegionForQuery {
 
   private final DataRegionMetrics metrics;
 
-  private ILoadDiskSelector ordinaryLoadDiskSelector;
-  private ILoadDiskSelector pipeAndIoTV2LoadDiskSelector;
+  private ILoadDiskSelector<Integer> ordinaryLoadDiskSelector;
+  private ILoadDiskSelector<Integer> pipeAndIoTV2LoadDiskSelector;
 
   /**
    * Construct a database processor.
@@ -414,12 +414,24 @@ public class DataRegion implements IDataRegionForQuery {
   }
 
   private void initDiskSelector() {
+    final ILoadDiskSelector.DiskDirectorySelector<Integer> selector =
+        new ILoadDiskSelector.DiskDirectorySelector<Integer>() {
+          @Override
+          public File selectDirectory(File file, Integer level)
+              throws DiskSpaceInsufficientException {
+            return fsFactory.getFile(
+                TierManager.getInstance().getNextFolderForTsFile(level, false), file.getName());
+          }
+        };
+
     ordinaryLoadDiskSelector =
         ILoadDiskSelector.initDiskSelector(
-            config.getLoadDiskSelectStrategy(), config.getTierDataDirs()[0]);
+            config.getLoadDiskSelectStrategy(), config.getTierDataDirs()[0], selector);
     pipeAndIoTV2LoadDiskSelector =
         ILoadDiskSelector.initDiskSelector(
-            config.getLoadDiskSelectStrategyForIoTV2AndPipe(), config.getTierDataDirs()[0]);
+            config.getLoadDiskSelectStrategyForIoTV2AndPipe(),
+            config.getTierDataDirs()[0],
+            selector);
   }
 
   @Override
@@ -3095,10 +3107,10 @@ public class DataRegion implements IDataRegionForQuery {
             + tsFileResource.getTsFile().getName();
     final File targetFile =
         (tsFileResource.isGeneratedByPipeConsensus() || tsFileResource.isGeneratedByPipe())
-            ? pipeAndIoTV2LoadDiskSelector.getTargetDir(
-                tsFileToLoad, TierManager.getInstance(), fileName, targetTierLevel)
-            : ordinaryLoadDiskSelector.getTargetDir(
-                tsFileToLoad, TierManager.getInstance(), fileName, targetTierLevel);
+            ? pipeAndIoTV2LoadDiskSelector.diskDirectorySelector(
+                new File(tsFileToLoad, fileName), true, targetTierLevel)
+            : ordinaryLoadDiskSelector.diskDirectorySelector(
+                new File(tsFileToLoad, fileName), true, targetTierLevel);
 
     tsFileResource.setFile(targetFile);
     if (tsFileManager.contains(tsFileResource, false)) {

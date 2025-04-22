@@ -178,6 +178,7 @@ public class ActiveLoadDirScanner extends ActiveLoadScheduledExecutorService {
 
               listeningDirsConfig.set(IOTDB_CONFIG.getLoadActiveListeningDirs());
               listeningDirs.addAll(Arrays.asList(IOTDB_CONFIG.getLoadActiveListeningDirs()));
+              ActiveLoadUtil.updateLoadDisLoad();
             }
           }
         }

@@ -21,8 +21,6 @@ package org.apache.iotdb.db.storageengine.load.disk;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.db.exception.DiskSpaceInsufficientException;
-import org.apache.iotdb.db.storageengine.rescon.disk.FolderManager;
-import org.apache.iotdb.db.storageengine.rescon.disk.TierManager;
 import org.apache.iotdb.metrics.utils.FileStoreUtils;
 
 import org.slf4j.Logger;
@@ -37,13 +35,14 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 
-public class MinIOSelector extends InheritSystemMultiDisksStrategySelector {
+public class MinIOSelector<U> extends InheritSystemMultiDisksStrategySelector<U> {
 
   private static final Logger logger = LoggerFactory.getLogger(MinIOSelector.class);
 
   private final Map<String, String> rootDisks2DataDirsMapForLoad;
 
-  public MinIOSelector(String[] dirs) {
+  public MinIOSelector(String[] dirs, DiskDirectorySelector<U> selector) {
+    super(selector);
     if (dirs == null || dirs.length == 0) {
       rootDisks2DataDirsMapForLoad = Collections.emptyMap();
       logger.warn("MinIO selector requires at least one directory");
@@ -75,60 +74,38 @@ public class MinIOSelector extends InheritSystemMultiDisksStrategySelector {
   }
 
   @Override
-  public File getTargetDir(
-      File fileToLoad, TierManager tierManager, String tsfileName, int tierLevel)
+  public File diskDirectorySelector(File file, boolean createTargetFile, U u)
       throws DiskSpaceInsufficientException {
-    File targetFile;
+    final File targetDir = file.getParentFile();
+    final String fileName = file.getName();
     String fileDirRoot = null;
     try {
       fileDirRoot =
-          Optional.ofNullable(FileStoreUtils.getFileStore(fileToLoad.getCanonicalPath()))
+          Optional.ofNullable(FileStoreUtils.getFileStore(targetDir.getCanonicalPath()))
               .map(Object::toString)
               .orElse(null);
     } catch (Exception e) {
       logger.warn(
           "Exception occurs when reading target file's mount point {}",
-          fileToLoad.getAbsoluteFile(),
+          targetDir.getAbsoluteFile(),
           e);
     }
 
+    File targetFile = null;
     if (rootDisks2DataDirsMapForLoad.containsKey(fileDirRoot)) {
-      // if there is an overlap between firDirRoot and data directories' disk roots, try to get
-      // targetFile in the same disk
-      targetFile = fsFactory.getFile(rootDisks2DataDirsMapForLoad.get(fileDirRoot), tsfileName);
+      if (createTargetFile) {
+        // if there is an overlap between firDirRoot and data directories' disk roots, try to get
+        // targetFile in the same disk
+        targetFile = fsFactory.getFile(rootDisks2DataDirsMapForLoad.get(fileDirRoot), fileName);
+      } else {
+        targetFile = new File(rootDisks2DataDirsMapForLoad.get(fileDirRoot));
+      }
 
       return targetFile;
     }
 
     // if there isn't an overlap, downgrade to storage balance(sequence) strategy.
-    return super.getTargetDir(fileToLoad, tierManager, tsfileName, tierLevel);
-  }
-
-  @Override
-  public String getTargetDir(File fileToLoad, FolderManager folderManager)
-      throws DiskSpaceInsufficientException {
-    File targetFile;
-    String fileDirRoot = null;
-    try {
-      fileDirRoot =
-          Optional.ofNullable(FileStoreUtils.getFileStore(fileToLoad.getCanonicalPath()))
-              .map(Object::toString)
-              .orElse(null);
-    } catch (Exception e) {
-      logger.warn(
-          "Exception occurs when reading target file's mount point {}",
-          fileToLoad.getAbsoluteFile(),
-          e);
-    }
-
-    if (rootDisks2DataDirsMapForLoad.containsKey(fileDirRoot)) {
-      // if there is an overlap between firDirRoot and data directories' disk roots, try to get
-      // targetFile in the same disk
-      return rootDisks2DataDirsMapForLoad.get(fileDirRoot);
-    }
-
-    // if there isn't an overlap, downgrade to storage balance(sequence) strategy.
-    return super.getTargetDir(fileToLoad, folderManager);
+    return super.diskDirectorySelector(file, createTargetFile, u);
   }
 
   @Override

@@ -42,25 +42,7 @@ public class ActiveLoadUtil {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(ActiveLoadUtil.class);
 
-  private static volatile ILoadDiskSelector loadDiskSelector =
-      ILoadDiskSelector.initDiskSelector(
-          IoTDBDescriptor.getInstance().getConfig().getLoadDiskSelectStrategy(),
-          IoTDBDescriptor.getInstance().getConfig().getLoadActiveListeningDirs());
-
-  private static volatile FolderManager folderManager;
-
-  static {
-    try {
-      folderManager =
-          new FolderManager(
-              Arrays.asList(IoTDBDescriptor.getInstance().getConfig().getLoadActiveListeningDirs()),
-              DirectoryStrategyType.SEQUENCE_STRATEGY);
-    } catch (final DiskSpaceInsufficientException e) {
-      LOGGER.error(
-          "Fail to create pipe receiver file folders allocation strategy because all disks of folders are full.",
-          e);
-    }
-  }
+  private static volatile ILoadDiskSelector<Void> loadDiskSelector = updateLoadDisLoad();
 
   public static boolean loadTsFileAsyncToActiveDir(
       final List<File> tsFiles, final String dataBaseName, final boolean isDeleteAfterLoad) {
@@ -89,9 +71,9 @@ public class ActiveLoadUtil {
       return true;
     }
 
-    final String targetFilePath;
+    final File targetFilePath;
     try {
-      targetFilePath = loadDiskSelector.getTargetDir(file, folderManager);
+      targetFilePath = loadDiskSelector.diskDirectorySelector(file, false, null);
     } catch (DiskSpaceInsufficientException e) {
       LOGGER.warn("Fail to load disk space of file {}", file.getAbsolutePath(), e);
       return false;
@@ -105,7 +87,7 @@ public class ActiveLoadUtil {
     if (Objects.nonNull(dataBaseName)) {
       targetDir = new File(targetFilePath, dataBaseName);
     } else {
-      targetDir = new File(targetFilePath);
+      targetDir = targetFilePath;
     }
 
     loadTsFileAsyncToTargetDir(targetDir, file, isDeleteAfterLoad);
@@ -130,5 +112,41 @@ public class ActiveLoadUtil {
           }
           return null;
         });
+  }
+
+  public static ILoadDiskSelector<Void> updateLoadDisLoad() {
+    ILoadDiskSelector<Void> loadDiskSelector =
+        ILoadDiskSelector.initDiskSelector(
+            IoTDBDescriptor.getInstance().getConfig().getLoadDiskSelectStrategy(),
+            IoTDBDescriptor.getInstance().getConfig().getLoadActiveListeningDirs(),
+            new ILoadDiskSelector.DiskDirectorySelector<Void>() {
+              private FolderManager folderManager;
+
+              @Override
+              public File selectDirectory(File file, Void unused)
+                  throws DiskSpaceInsufficientException {
+                initFolderManager();
+                return new File(folderManager.getNextFolder());
+              }
+
+              private void initFolderManager() throws DiskSpaceInsufficientException {
+                if (folderManager == null) {
+                  synchronized (this) {
+                    if (folderManager != null) {
+                      return;
+                    }
+                    final String[] loadActiveListeningDirs =
+                        IoTDBDescriptor.getInstance().getConfig().getLoadActiveListeningDirs();
+                    folderManager =
+                        new FolderManager(
+                            Arrays.asList(loadActiveListeningDirs),
+                            DirectoryStrategyType.SEQUENCE_STRATEGY);
+                  }
+                }
+              }
+            });
+
+    ActiveLoadUtil.loadDiskSelector = loadDiskSelector;
+    return loadDiskSelector;
   }
 }
