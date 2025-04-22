@@ -468,6 +468,8 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
       final CreateTableView node, final MPPQueryContext context) {
     final Pair<String, TsTable> databaseTablePair = parseTable4CreateTableOrView(node, context);
     final TsTable table = databaseTablePair.getRight();
+    accessControl.checkCanCreateViewFromTreePath(
+        context.getSession().getUserName(), node.getPrefixPath());
     final String msg = TreeViewSchema.setPathPattern(table, node.getPrefixPath());
     if (Objects.nonNull(msg)) {
       throw new SemanticException(msg);
