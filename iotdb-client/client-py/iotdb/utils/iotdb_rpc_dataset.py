@@ -41,7 +41,6 @@ class IoTDBRpcDataSet(object):
         sql,
         column_name_list,
         column_type_list,
-        column_name_index,
         ignore_timestamp,
         more_data,
         query_id,
@@ -51,6 +50,8 @@ class IoTDBRpcDataSet(object):
         query_result,
         fetch_size,
         time_out,
+        zone_id,
+        time_precision,
         column_index_2_tsblock_column_index_list,
     ):
         self.__statement_id = statement_id
@@ -117,6 +118,8 @@ class IoTDBRpcDataSet(object):
         self.__empty_resultSet = False
         self.has_cached_data_frame = False
         self.data_frame = None
+        self.__zone_id = zone_id
+        self.__time_precision = time_precision
 
     def close(self):
         if self.__is_closed:
@@ -155,7 +158,7 @@ class IoTDBRpcDataSet(object):
 
     def construct_one_data_frame(self):
         if self.has_cached_data_frame or self.__query_result is None:
-            return True
+            return
         result = {}
         has_pd_series = []
         for i in range(len(self.__column_index_2_tsblock_column_index_list)):
@@ -264,8 +267,8 @@ class IoTDBRpcDataSet(object):
                     continue
                 data_type = self.__data_type_for_tsblock_column[location]
                 column_array = column_arrays[location]
-                # BOOLEAN, INT32, INT64, FLOAT, DOUBLE, TIMESTAMP, BLOB
-                if data_type in (0, 1, 2, 3, 4, 8, 10):
+                # BOOLEAN, INT32, INT64, FLOAT, DOUBLE, BLOB
+                if data_type in (0, 1, 2, 3, 4, 10):
                     data_array = column_array
                     if (
                         data_type != 10
@@ -278,6 +281,16 @@ class IoTDBRpcDataSet(object):
                 # TEXT, STRING
                 elif data_type in (5, 11):
                     data_array = np.array([x.decode("utf-8") for x in column_array])
+                # TIMESTAMP
+                elif data_type == 8:
+                    data_array = pd.Series(
+                        [
+                            pd.Timestamp(
+                                x, unit=self.__time_precision, tz=self.__zone_id
+                            )
+                            for x in column_array
+                        ]
+                    )
                 # DATE
                 elif data_type == 9:
                     data_array = pd.Series(column_array).apply(parse_int_to_date)

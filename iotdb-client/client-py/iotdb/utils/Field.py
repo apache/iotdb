@@ -24,12 +24,14 @@ import pandas as pd
 
 
 class Field(object):
-    def __init__(self, data_type, value=None):
+    def __init__(self, data_type, value=None, timezone=None, precision=None):
         """
         :param data_type: TSDataType
         """
         self.__data_type = data_type
         self.value = value
+        self.__timezone = timezone
+        self.__precision = precision
 
     @staticmethod
     def copy(field):
@@ -157,6 +159,17 @@ class Field(object):
             return None
         return self.value
 
+    def get_timestamp_value(self):
+        if self.__data_type is None:
+            raise Exception("Null Field Exception!")
+        if (
+            self.__data_type != TSDataType.TIMESTAMP
+            or self.value is None
+            or self.value is pd.NA
+        ):
+            return None
+        return pd.Timestamp(self.value, unit=self.__precision, tz=self.__timezone)
+
     def get_date_value(self):
         if self.__data_type is None:
             raise Exception("Null Field Exception!")
@@ -172,11 +185,12 @@ class Field(object):
         if self.__data_type is None or self.value is None or self.value is pd.NA:
             return "None"
         # TEXT, STRING
-        elif self.__data_type == 5 or self.__data_type == 11:
+        if self.__data_type == 5 or self.__data_type == 11:
             return self.value.decode("utf-8")
         # BLOB
         elif self.__data_type == 10:
             return str(hex(int.from_bytes(self.value, byteorder="big")))
+        # Others
         else:
             return str(self.get_object_value(self.__data_type))
 
@@ -193,17 +207,19 @@ class Field(object):
             return bool(self.value)
         elif data_type == 1:
             return np.int32(self.value)
-        elif data_type == 2 or data_type == 8:
+        elif data_type == 2:
             return np.int64(self.value)
         elif data_type == 3:
             return np.float32(self.value)
         elif data_type == 4:
             return np.float64(self.value)
+        elif data_type == 8:
+            return pd.Timestamp(self.value, unit=self.__precision, tz=self.__timezone)
         elif data_type == 9:
             return parse_int_to_date(self.value)
         elif data_type == 5 or data_type == 11:
             return self.value.decode("utf-8")
-        elif data_type == 10:
+        elif data_type == 10 or data_type == 8:
             return self.value
         else:
             raise RuntimeError("Unsupported data type:" + str(data_type))

@@ -15,6 +15,9 @@
 # specific language governing permissions and limitations
 # under the License.
 #
+import pandas as pd
+from tzlocal import get_localzone_name
+
 from iotdb.thrift.common.ttypes import TSStatus
 from iotdb.utils.exception import RedirectException, StatementExecutionException
 
@@ -67,3 +70,10 @@ def verify_success_with_redirection_for_multi_devices(status: TSStatus, devices:
             if status.subStatus[i].redirectNode is not None:
                 device_to_endpoint[devices[i]] = status.subStatus[i].redirectNode
         raise RedirectException(device_to_endpoint)
+
+
+def convert_to_timestamp(time: int, precision: str, timezone: str):
+    try:
+        return pd.Timestamp(time, unit=precision, tz=timezone)
+    except ValueError:
+        return pd.Timestamp(time, unit=precision, tz=get_localzone_name())
