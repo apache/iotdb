@@ -7,7 +7,7 @@
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
  *
- *     http://www.apache.org/licenses/LICENSE-2.0
+ *      http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
@@ -17,6 +17,14 @@
  * under the License.
  */
 
-package org.apache.iotdb.session.subscription.payload;
+package org.apache.iotdb.commons.exception;
 
-public interface SubscriptionMessageHandler {}
+/**
+ * Failed to fetch schema via Coordinator during query execution. This is likely caused by network
+ * partition.
+ */
+public class QuerySchemaFetchFailedException extends IoTDBRuntimeException {
+  public QuerySchemaFetchFailedException(String message, int errorCode) {
+    super(message, errorCode);
+  }
+}

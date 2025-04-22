@@ -7,7 +7,7 @@
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
  *
- *     http://www.apache.org/licenses/LICENSE-2.0
+ *      http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
@@ -17,6 +17,25 @@
  * under the License.
  */
 
-package org.apache.iotdb.session.subscription.payload;
+package org.apache.iotdb.db.queryengine.plan.scheduler;
 
-public interface SubscriptionMessageHandler {}
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.FragmentInstance;
+
+public class FailedFragmentInstanceWithStatus {
+  private final FragmentInstance instance;
+  private final TSStatus failureStatus;
+
+  public FailedFragmentInstanceWithStatus(FragmentInstance instance, TSStatus failureStatus) {
+    this.instance = instance;
+    this.failureStatus = failureStatus;
+  }
+
+  public FragmentInstance getInstance() {
+    return instance;
+  }
+
+  public TSStatus getFailureStatus() {
+    return failureStatus;
+  }
+}
