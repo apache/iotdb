@@ -209,7 +209,7 @@ public abstract class IoTDBConnector implements PipeConnector {
         Arrays.asList(CONNECTOR_IOTDB_USERNAME_KEY, SINK_IOTDB_USERNAME_KEY),
         false);
 
-    // Check coexistence of user and username
+    // Check coexistence of batch.max-delay-ms and batch.max-delay-seconds
     validator.validateSynonymAttributes(
         Arrays.asList(CONNECTOR_IOTDB_BATCH_DELAY_MS_KEY, SINK_IOTDB_BATCH_DELAY_MS_KEY),
         Arrays.asList(CONNECTOR_IOTDB_BATCH_DELAY_KEY, SINK_IOTDB_BATCH_DELAY_KEY),
