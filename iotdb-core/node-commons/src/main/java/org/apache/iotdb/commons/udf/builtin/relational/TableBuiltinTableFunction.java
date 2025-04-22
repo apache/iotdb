@@ -20,8 +20,8 @@
 package org.apache.iotdb.commons.udf.builtin.relational;
 
 import org.apache.iotdb.commons.udf.builtin.relational.tvf.CapacityTableFunction;
-import org.apache.iotdb.commons.udf.builtin.relational.tvf.ForecastTableFunction;
 import org.apache.iotdb.commons.udf.builtin.relational.tvf.CumulateTableFunction;
+import org.apache.iotdb.commons.udf.builtin.relational.tvf.ForecastTableFunction;
 import org.apache.iotdb.commons.udf.builtin.relational.tvf.HOPTableFunction;
 import org.apache.iotdb.commons.udf.builtin.relational.tvf.SessionTableFunction;
 import org.apache.iotdb.commons.udf.builtin.relational.tvf.TumbleTableFunction;

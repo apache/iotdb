@@ -41,6 +41,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -130,12 +131,6 @@ public class ForecastTableFunction implements TableFunction {
               MODEL_ID_PARAMETER_NAME, modelId));
     }
 
-    int inputLength =
-        (int) ((ScalarArgument) arguments.get(INPUT_LENGTH_PARAMETER_NAME)).getValue();
-    if (inputLength <= 0) {
-      throw new UDFException(
-          String.format("%s should be greater than 0", INPUT_LENGTH_PARAMETER_NAME));
-    }
     int outputLength =
         (int) ((ScalarArgument) arguments.get(OUTPUT_LENGTH_PARAMETER_NAME)).getValue();
     if (outputLength <= 0) {
@@ -209,7 +204,6 @@ public class ForecastTableFunction implements TableFunction {
     // outputColumnSchema
     return TableFunctionAnalysis.builder()
         .properColumnSchema(properColumnSchemaBuilder.build())
-        .requireRecordSnapshot(false)
         .requiredColumns(INPUT_PARAMETER_NAME, requiredIndexList)
         .build();
   }
@@ -247,24 +241,29 @@ public class ForecastTableFunction implements TableFunction {
 
   private static class ForecastDataProcessor implements TableFunctionDataProcessor {
 
-    private final int inputLength;
+    private final int maxInputLength;
     private final int outputLength;
     private final boolean keepInput;
     private final String options;
 
+    private final List<Record> inputRecords;
+
     public ForecastDataProcessor(
-        int inputLength, int outputLength, boolean keepInput, String options) {
-      this.inputLength = inputLength;
+        int maxInputLength, int outputLength, boolean keepInput, String options) {
+      this.maxInputLength = maxInputLength;
       this.outputLength = outputLength;
       this.keepInput = keepInput;
       this.options = options;
+      this.inputRecords = new LinkedList<>();
     }
 
     @Override
     public void process(
         Record input,
         List<ColumnBuilder> properColumnBuilders,
-        ColumnBuilder passThroughIndexBuilder) {}
+        ColumnBuilder passThroughIndexBuilder) {
+      inputRecords.add(input);
+    }
 
     @Override
     public void finish(List<ColumnBuilder> columnBuilders, ColumnBuilder passThroughIndexBuilder) {
