@@ -303,11 +303,7 @@ class IoTDBRpcDataSet(object):
                 ):
                     tmp_array = []
                     # BOOLEAN, INT32, INT64
-                    if (
-                        data_type == 0
-                        or data_type == 1
-                        or data_type == 2
-                    ):
+                    if data_type == 0 or data_type == 1 or data_type == 2:
                         tmp_array = np.full(array_length, pd.NA, dtype=object)
                     # FLOAT, DOUBLE
                     elif data_type == 3 or data_type == 4:
