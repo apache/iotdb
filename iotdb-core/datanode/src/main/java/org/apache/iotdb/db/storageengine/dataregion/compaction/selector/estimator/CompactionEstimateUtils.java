@@ -26,12 +26,15 @@ import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.constant
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.rescon.memory.SystemInfo;
 
+import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.ChunkMetadata;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.file.metadata.MetadataIndexNode;
+import org.apache.tsfile.file.metadata.statistics.BinaryStatistics;
 import org.apache.tsfile.read.TsFileDeviceIterator;
 import org.apache.tsfile.read.TsFileSequenceReader;
 import org.apache.tsfile.utils.Pair;
+import org.apache.tsfile.utils.RamUsageEstimator;
 
 import java.io.IOException;
 import java.util.HashMap;
@@ -63,6 +66,7 @@ public class CompactionEstimateUtils {
     long maxMemCostToReadAlignedSeriesMetadata = 0;
     long maxMemCostToReadNonAlignedSeriesMetadata = 0;
     TsFileDeviceIterator deviceIterator = reader.getAllDevicesIteratorWithIsAligned();
+    long totalMetadataSize = 0;
     while (deviceIterator.hasNext()) {
       int deviceChunkNum = 0;
       int alignedSeriesNumInDevice = 0;
@@ -84,16 +88,29 @@ public class CompactionEstimateUtils {
         for (Map.Entry<String, List<ChunkMetadata>> measurementChunkMetadataList :
             measurementChunkMetadataListMap.entrySet()) {
           int currentChunkMetadataListSize = measurementChunkMetadataList.getValue().size();
+          long measurementNameRamSize =
+              RamUsageEstimator.sizeOf(measurementChunkMetadataList.getKey());
           long chunkMetadataMemCost = 0;
+          long currentSeriesRamSize = measurementNameRamSize;
           for (ChunkMetadata chunkMetadata : measurementChunkMetadataList.getValue()) {
             if (chunkMetadata != null) {
+              TSDataType dataType = chunkMetadata.getDataType();
               chunkMetadataMemCost =
-                  ChunkMetadata.calculateRamSize(
-                      chunkMetadata.getMeasurementUid(), chunkMetadata.getDataType());
-              break;
+                  chunkMetadataMemCost != 0
+                      ? chunkMetadataMemCost
+                      : (ChunkMetadata.calculateRamSize(chunkMetadata.getMeasurementUid(), dataType)
+                          - measurementNameRamSize);
+              if (dataType == TSDataType.TEXT) {
+                // add ram size for first value and last value
+                currentSeriesRamSize +=
+                    chunkMetadata.getStatistics().getRetainedSizeInBytes()
+                        - BinaryStatistics.INSTANCE_SIZE;
+              } else {
+                break;
+              }
             }
           }
-          long currentSeriesRamSize = chunkMetadataMemCost * currentChunkMetadataListSize;
+          currentSeriesRamSize += chunkMetadataMemCost * currentChunkMetadataListSize;
           if (isAlignedDevice) {
             memCostToReadMetadata += currentSeriesRamSize;
           } else {
@@ -103,6 +120,7 @@ public class CompactionEstimateUtils {
           deviceChunkNum += currentChunkMetadataListSize;
           totalChunkNum += currentChunkMetadataListSize;
           maxChunkNum = Math.max(maxChunkNum, currentChunkMetadataListSize);
+          totalMetadataSize += currentSeriesRamSize;
         }
       }
       if (isAlignedDevice) {
@@ -113,8 +131,7 @@ public class CompactionEstimateUtils {
       maxMemCostToReadAlignedSeriesMetadata =
           Math.max(maxMemCostToReadAlignedSeriesMetadata, memCostToReadMetadata);
     }
-    long averageChunkMetadataSize =
-        totalChunkNum == 0 ? 0 : reader.getAllMetadataSize() / totalChunkNum;
+    long averageChunkMetadataSize = totalChunkNum == 0 ? 0 : totalMetadataSize / totalChunkNum;
     return new FileInfo(
         totalChunkNum,
         maxChunkNum,
