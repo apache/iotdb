@@ -301,6 +301,8 @@ public abstract class AbstractDataTool {
     }
     if (isBoolean(strValue)) {
       return Constants.TYPE_INFER_KEY_DICT.get(Constants.DATATYPE_BOOLEAN);
+    } else if (isTimeStamp(strValue)) {
+      return Constants.TYPE_INFER_KEY_DICT.get(Constants.DATATYPE_TIMESTAMP);
     } else if (isNumber(strValue)) {
       if (!strValue.contains(TsFileConstant.PATH_SEPARATOR)) {
         if (isConvertFloatPrecisionLack(StringUtils.trim(strValue))) {
@@ -316,6 +318,8 @@ public abstract class AbstractDataTool {
       // "NaN" is returned if the NaN Literal is given in Parser
     } else if (Constants.DATATYPE_NAN.equals(strValue)) {
       return Constants.TYPE_INFER_KEY_DICT.get(Constants.DATATYPE_NAN);
+    } else if (isDate(strValue)) {
+      return Constants.TYPE_INFER_KEY_DICT.get(Constants.DATATYPE_DATE);
     } else if (isBlob(strValue)) {
       return Constants.TYPE_INFER_KEY_DICT.get(Constants.DATATYPE_BLOB);
     } else if (strValue.length() <= 512) {
@@ -323,6 +327,14 @@ public abstract class AbstractDataTool {
     } else {
       return TEXT;
     }
+  }
+
+  private static boolean isDate(String s) {
+    return s.equalsIgnoreCase(Constants.DATATYPE_DATE);
+  }
+
+  private static boolean isTimeStamp(String s) {
+    return s.equalsIgnoreCase(Constants.DATATYPE_TIMESTAMP);
   }
 
   static boolean isNumber(String s) {
