@@ -122,7 +122,10 @@ public class CompactionTaskMemCostEstimatorTest extends AbstractCompactionTest {
 
   @Test
   public void testRoughEstimate() throws IOException {
-    AbstractCompactionEstimator.enableFileInfoCacheForTest(100, 100);
+    boolean cacheEnabled = AbstractCompactionEstimator.isGlobalFileInfoCacheEnabled();
+    if (!cacheEnabled) {
+      AbstractCompactionEstimator.enableFileInfoCacheForTest(100, 100);
+    }
     try {
       for (int i = 0; i < 10; i++) {
         TsFileResource resource = createEmptyFileAndResource(false);
@@ -166,7 +169,9 @@ public class CompactionTaskMemCostEstimatorTest extends AbstractCompactionTest {
       Assert.assertEquals(1, innerSpaceCompactionTasks.size());
       Assert.assertTrue(innerSpaceCompactionTasks.get(0).getRoughMemoryCost() > 0);
     } finally {
-      AbstractCompactionEstimator.disableFileInfoCacheForTest();
+      if (!cacheEnabled) {
+        AbstractCompactionEstimator.disableFileInfoCacheForTest();
+      }
     }
   }
 }
