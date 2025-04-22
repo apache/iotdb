@@ -1151,6 +1151,9 @@ public class IoTDBConfig {
 
   private CompressionType WALCompressionAlgorithm = CompressionType.LZ4;
 
+  private boolean enableGCThrottle = false;
+  private int gcThrottleTimeMs = 1000;
+
   IoTDBConfig() {}
 
   public int getMaxLogEntriesNumPerBatch() {
@@ -4078,5 +4081,21 @@ public class IoTDBConfig {
 
   public void setWALCompressionAlgorithm(CompressionType WALCompressionAlgorithm) {
     this.WALCompressionAlgorithm = WALCompressionAlgorithm;
+  }
+
+  public int getGcThrottleTimeMs() {
+    return gcThrottleTimeMs;
+  }
+
+  public void setGcThrottleTimeMs(int gcThrottleTimeMs) {
+    this.gcThrottleTimeMs = gcThrottleTimeMs;
+  }
+
+  public boolean isEnableGCThrottle() {
+    return enableGCThrottle;
+  }
+
+  public void setEnableGCThrottle(boolean enableGCThrottle) {
+    this.enableGCThrottle = enableGCThrottle;
   }
 }

@@ -686,8 +686,8 @@ public abstract class AlignedTVList extends TVList {
         }
         columnValues.clear();
       }
-      memoryBinaryChunkSize[i] = 0;
     }
+    Arrays.fill(memoryBinaryChunkSize, 0);
   }
 
   @Override

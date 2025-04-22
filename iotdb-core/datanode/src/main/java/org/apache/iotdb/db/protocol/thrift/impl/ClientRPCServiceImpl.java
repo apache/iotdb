@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.protocol.thrift.impl;
 
+import java.util.Random;
 import org.apache.iotdb.common.rpc.thrift.TAggregationType;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
@@ -42,6 +43,7 @@ import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.NonAlignedFullPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.schema.column.ColumnHeader;
+import org.apache.iotdb.commons.service.metric.JvmGcMonitorMetrics;
 import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.commons.utils.TimePartitionUtils;
 import org.apache.iotdb.db.audit.AuditLogger;
@@ -338,6 +340,8 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
         quota =
             DataNodeThrottleQuotaManager.getInstance()
                 .checkQuota(SESSION_MANAGER.getCurrSession().getUsername(), s);
+        gcThrottle();
+
         statementType = s.getType();
         if (ENABLE_AUDIT_LOG) {
           AuditLogger.log(statement, s);
@@ -496,6 +500,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       quota =
           DataNodeThrottleQuotaManager.getInstance()
               .checkQuota(SESSION_MANAGER.getCurrSession().getUsername(), s);
+      gcThrottle();
 
       if (ENABLE_AUDIT_LOG) {
         AuditLogger.log(String.format("execute Raw Data Query: %s", req), s);
@@ -588,6 +593,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       quota =
           DataNodeThrottleQuotaManager.getInstance()
               .checkQuota(SESSION_MANAGER.getCurrSession().getUsername(), s);
+      gcThrottle();
 
       if (ENABLE_AUDIT_LOG) {
         AuditLogger.log(String.format("Last Data Query: %s", req), s);
@@ -682,6 +688,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       quota =
           DataNodeThrottleQuotaManager.getInstance()
               .checkQuota(SESSION_MANAGER.getCurrSession().getUsername(), s);
+      gcThrottle();
 
       queryId = SESSION_MANAGER.requestQueryId(clientSession, req.statementId);
       // create and cache dataset
@@ -1022,6 +1029,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       quota =
           DataNodeThrottleQuotaManager.getInstance()
               .checkQuota(SESSION_MANAGER.getCurrSession().getUsername(), s);
+      gcThrottle();
 
       if (ENABLE_AUDIT_LOG) {
         AuditLogger.log(String.format("Last Data Query: %s", req), s);
@@ -1713,6 +1721,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
             quota =
                 DataNodeThrottleQuotaManager.getInstance()
                     .checkQuota(SESSION_MANAGER.getCurrSession().getUsername(), s);
+            gcThrottle();
 
             if (ENABLE_AUDIT_LOG) {
               AuditLogger.log(statement, s);
@@ -1916,6 +1925,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       quota =
           DataNodeThrottleQuotaManager.getInstance()
               .checkQuota(SESSION_MANAGER.getCurrSession().getUsername(), statement);
+      gcThrottle();
 
       // Step 2: call the coordinator
       long queryId = SESSION_MANAGER.requestQueryId();
@@ -1985,6 +1995,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       quota =
           DataNodeThrottleQuotaManager.getInstance()
               .checkQuota(SESSION_MANAGER.getCurrSession().getUsername(), statement);
+      gcThrottle();
 
       // Step 2: call the coordinator
       long queryId = SESSION_MANAGER.requestQueryId();
@@ -2055,6 +2066,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       quota =
           DataNodeThrottleQuotaManager.getInstance()
               .checkQuota(SESSION_MANAGER.getCurrSession().getUsername(), statement);
+      gcThrottle();
 
       // Step 2: call the coordinator
       long queryId = SESSION_MANAGER.requestQueryId();
@@ -2127,6 +2139,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       quota =
           DataNodeThrottleQuotaManager.getInstance()
               .checkQuota(SESSION_MANAGER.getCurrSession().getUsername(), statement);
+      gcThrottle();
 
       // Step 2: call the coordinator
       long queryId = SESSION_MANAGER.requestQueryId();
@@ -2197,6 +2210,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       quota =
           DataNodeThrottleQuotaManager.getInstance()
               .checkQuota(SESSION_MANAGER.getCurrSession().getUsername(), statement);
+      gcThrottle();
 
       // Step 2: call the coordinator
       long queryId = SESSION_MANAGER.requestQueryId();
@@ -2261,6 +2275,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       quota =
           DataNodeThrottleQuotaManager.getInstance()
               .checkQuota(SESSION_MANAGER.getCurrSession().getUsername(), statement);
+      gcThrottle();
 
       // Step 2: call the coordinator
       long queryId = SESSION_MANAGER.requestQueryId();
@@ -2340,6 +2355,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       quota =
           DataNodeThrottleQuotaManager.getInstance()
               .checkQuota(SESSION_MANAGER.getCurrSession().getUsername(), statement);
+      gcThrottle();
 
       long queryId = SESSION_MANAGER.requestQueryId();
       ExecutionResult result =
@@ -2657,6 +2673,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       quota =
           DataNodeThrottleQuotaManager.getInstance()
               .checkQuota(SESSION_MANAGER.getCurrSession().getUsername(), statement);
+      gcThrottle();
 
       if (ENABLE_AUDIT_LOG) {
         AuditLogger.log(String.format("execute Query: %s", statement), statement);
@@ -2979,6 +2996,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       quota =
           DataNodeThrottleQuotaManager.getInstance()
               .checkQuota(SESSION_MANAGER.getCurrSession().getUsername(), statement);
+      gcThrottle();
 
       // Step 2: Call the coordinator
       final long queryId = SESSION_MANAGER.requestQueryId();
@@ -3044,5 +3062,23 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
     PipeDataNodeAgent.receiver().thrift().handleClientExit();
     PipeDataNodeAgent.receiver().legacy().handleClientExit();
     SubscriptionAgent.receiver().handleClientExit();
+  }
+
+  private static final Random throttleRandom = new Random();
+  public static void gcThrottle() {
+    if (!IoTDBDescriptor.getInstance().getConfig().isEnableGCThrottle()) {
+      return;
+    }
+    int minimumGcTimePercentToThrottle = 20;
+    long gcTimePercentage = JvmGcMonitorMetrics.getInstance().getGcData().getGcTimePercentage();
+    // if gc time is above 20%, pause the request with the probability equals to gc time percent
+    if (gcTimePercentage > minimumGcTimePercentToThrottle && throttleRandom.nextInt(100) < gcTimePercentage) {
+        try {
+          Thread.sleep(IoTDBDescriptor.getInstance().getConfig().getGcThrottleTimeMs());
+        } catch (InterruptedException e) {
+          Thread.currentThread().interrupt();
+        }
+      }
+
   }
 }
