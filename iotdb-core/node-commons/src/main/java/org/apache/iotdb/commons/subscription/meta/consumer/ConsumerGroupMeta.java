@@ -127,6 +127,10 @@ public class ConsumerGroupMeta {
     return consumerIdToConsumerMeta.isEmpty();
   }
 
+  public ConsumerMeta getConsumerMeta(final String consumerId) {
+    return consumerIdToConsumerMeta.get(consumerId);
+  }
+
   ////////////////////////// subscription //////////////////////////
 
   /**
@@ -157,6 +161,23 @@ public class ConsumerGroupMeta {
       return false;
     }
     return !subscribedConsumerIdSet.isEmpty();
+  }
+
+  public boolean allowSubscribeTopicForConsumer(final String topic, final String consumerId) {
+    if (!consumerIdToConsumerMeta.containsKey(consumerId)) {
+      return false;
+    }
+    final Set<String> subscribedConsumerIdSet = topicNameToSubscribedConsumerIdSet.get(topic);
+    if (Objects.isNull(subscribedConsumerIdSet)) {
+      return true;
+    }
+    if (subscribedConsumerIdSet.isEmpty()) {
+      return true;
+    }
+    final String subscribedConsumerId = subscribedConsumerIdSet.iterator().next();
+    return Objects.equals(
+        Objects.requireNonNull(consumerIdToConsumerMeta.get(subscribedConsumerId)).getUsername(),
+        Objects.requireNonNull(consumerIdToConsumerMeta.get(consumerId)).getUsername());
   }
 
   public void addSubscription(final String consumerId, final Set<String> topics) {
