@@ -973,6 +973,60 @@ public class IoTDBLoadTsFileIT {
   }
 
   @Test
+  public void testLoadWithEmptyDatabaseForTableModel() throws Exception {
+    final int lineCount = 10000;
+
+    final List<Pair<MeasurementSchema, MeasurementSchema>> measurementSchemas =
+        generateMeasurementSchemasForDataTypeConvertion();
+    final List<Tablet.ColumnCategory> columnCategories =
+        generateTabletColumnCategory(0, measurementSchemas.size());
+
+    final File file = new File(tmpDir, "1-0-0-0.tsfile");
+
+    final List<IMeasurementSchema> schemaList =
+        measurementSchemas.stream().map(pair -> pair.right).collect(Collectors.toList());
+
+    try (final TsFileTableGenerator generator = new TsFileTableGenerator(file)) {
+      generator.registerTable(SchemaConfig.TABLE_0, schemaList, columnCategories);
+
+      generator.generateData(SchemaConfig.TABLE_0, lineCount, PARTITION_INTERVAL / 10_000);
+    }
+
+    // Prepare normal user
+    try (final Connection adminCon = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        final Statement adminStmt = adminCon.createStatement()) {
+      adminStmt.execute("create user test 'password'");
+      adminStmt.execute(
+          String.format(
+              "grant create, insert on %s.%s to user test",
+              SchemaConfig.DATABASE_0, SchemaConfig.TABLE_0));
+
+      // auto-create table
+      adminStmt.execute(String.format("create database if not exists %s", SchemaConfig.DATABASE_0));
+    }
+
+    try (final Connection connection =
+            EnvFactory.getEnv().getConnection("test", "password", BaseEnv.TABLE_SQL_DIALECT);
+        final Statement statement = connection.createStatement()) {
+      statement.execute(String.format("use %s", SchemaConfig.DATABASE_0));
+      statement.execute(String.format("load '%s'", file.getAbsolutePath()));
+    }
+
+    try (final Connection adminCon = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        final Statement adminStmt = adminCon.createStatement()) {
+      adminStmt.execute(String.format("use %s", SchemaConfig.DATABASE_0));
+      try (final ResultSet resultSet =
+          adminStmt.executeQuery(String.format("select count(*) from %s", SchemaConfig.TABLE_0))) {
+        if (resultSet.next()) {
+          Assert.assertEquals(lineCount, resultSet.getLong(1));
+        } else {
+          Assert.fail("This ResultSet is empty.");
+        }
+      }
+    }
+  }
+
+  @Test
   public void testLoadWithConvertOnTypeMismatchForTableModel() throws Exception {
     final int lineCount = 10000;
 
