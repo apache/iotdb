@@ -29,7 +29,6 @@ import org.apache.iotdb.commons.pipe.agent.runtime.PipePeriodicalJobExecutor;
 import org.apache.iotdb.commons.pipe.agent.runtime.PipePeriodicalPhantomReferenceCleaner;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
-import org.apache.iotdb.commons.pipe.config.PipeDynamicConfigLoader;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.service.IService;
 import org.apache.iotdb.commons.service.ServiceType;
@@ -90,11 +89,6 @@ public class PipeDataNodeRuntimeAgent implements IService {
         "PipeTaskAgent#restartAllStuckPipes",
         PipeDataNodeAgent.task()::restartAllStuckPipes,
         PipeConfig.getInstance().getPipeStuckRestartIntervalSeconds());
-
-    registerPeriodicalJob(
-        "PipeDynamicConfigLoader#loadAllPipeConfigs",
-        PipeDynamicConfigLoader.instance()::loadAllPipeConfigs,
-        PipeConfig.getInstance().getPipeSubtaskExecutorCronHeartbeatEventIntervalSeconds());
 
     pipePeriodicalJobExecutor.start();
 

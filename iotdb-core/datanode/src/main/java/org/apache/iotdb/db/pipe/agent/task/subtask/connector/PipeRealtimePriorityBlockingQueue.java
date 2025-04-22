@@ -38,22 +38,13 @@ import java.util.function.Consumer;
 
 public class PipeRealtimePriorityBlockingQueue extends UnboundedBlockingPendingQueue<Event> {
 
+  private static final PipeConfig config = PipeConfig.getInstance();
+
   private final BlockingDeque<TsFileInsertionEvent> tsfileInsertEventDeque =
       new LinkedBlockingDeque<>();
 
-  private static int POLL_TSFILE_THRESHOLD =
-      PipeConfig.getInstance()
-          .registerPipeRealTimeQueuePollTsFileThreshold(
-              pipeConfig ->
-                  POLL_TSFILE_THRESHOLD = pipeConfig.getPipeRealTimeQueuePollTsFileThreshold());
   private final AtomicInteger pollTsFileCounter = new AtomicInteger(0);
 
-  private static int POLL_HISTORICAL_TSFILE_THRESHOLD =
-      PipeConfig.getInstance()
-          .registerPipeRealTimeQueuePollHistoricalTsFileThreshold(
-              pipeConfig ->
-                  POLL_HISTORICAL_TSFILE_THRESHOLD =
-                      Math.max(pipeConfig.getPipeRealTimeQueuePollHistoricalTsFileThreshold(), 1));
   private final AtomicLong pollHistoricalTsFileCounter = new AtomicLong(0);
 
   public PipeRealtimePriorityBlockingQueue() {
@@ -91,8 +82,11 @@ public class PipeRealtimePriorityBlockingQueue extends UnboundedBlockingPendingQ
 
   @Override
   public Event directPoll() {
+    final int POLL_HISTORICAL_TSFILE_THRESHOLD =
+        config.getPipeRealTimeQueuePollHistoricalTsFileThreshold();
     Event event = null;
-    if (pollTsFileCounter.get() >= POLL_TSFILE_THRESHOLD) {
+
+    if (pollTsFileCounter.get() >= config.getPipeRealTimeQueuePollTsFileThreshold()) {
       event =
           pollHistoricalTsFileCounter.incrementAndGet() % POLL_HISTORICAL_TSFILE_THRESHOLD == 0
               ? tsfileInsertEventDeque.pollFirst()
@@ -129,8 +123,11 @@ public class PipeRealtimePriorityBlockingQueue extends UnboundedBlockingPendingQ
    */
   @Override
   public Event waitedPoll() {
+    final int POLL_HISTORICAL_TSFILE_THRESHOLD =
+        config.getPipeRealTimeQueuePollHistoricalTsFileThreshold();
     Event event = null;
-    if (pollTsFileCounter.get() >= POLL_TSFILE_THRESHOLD) {
+
+    if (pollTsFileCounter.get() >= config.getPipeRealTimeQueuePollTsFileThreshold()) {
       event =
           pollHistoricalTsFileCounter.incrementAndGet() % POLL_HISTORICAL_TSFILE_THRESHOLD == 0
               ? tsfileInsertEventDeque.pollFirst()

@@ -49,17 +49,6 @@ public interface IoTDBDataNodeCacheLeaderClientManager {
     // a hashmap to reuse the created endpoint
     private final ConcurrentHashMap<TEndPoint, TEndPoint> endPoints = new ConcurrentHashMap<>();
 
-    private static long maxMemorySizeInBytes =
-        (long)
-            (PipeDataNodeResourceManager.memory().getTotalNonFloatingMemorySizeInBytes()
-                * CONFIG.registerPipeLeaderCacheMemoryUsagePercentage(
-                    pipeConfig ->
-                        maxMemorySizeInBytes =
-                            (long)
-                                (PipeDataNodeResourceManager.memory()
-                                        .getTotalNonFloatingMemorySizeInBytes()
-                                    * CONFIG.getPipeLeaderCacheMemoryUsagePercentage())));
-
     public LeaderCacheManager() {
       final long initMemorySizeInBytes =
           PipeDataNodeResourceManager.memory().getTotalNonFloatingMemorySizeInBytes() / 10;
@@ -79,7 +68,7 @@ public interface IoTDBDataNodeCacheLeaderClientManager {
                         newMemory);
                   })
               .setExpandMethod(
-                  oldMemory -> Math.min(Math.max(oldMemory, 1) * 2, maxMemorySizeInBytes))
+                  oldMemory -> Math.min(Math.max(oldMemory, 1) * 2, getMaxMemorySizeInBytes()))
               .setExpandCallback(
                   (oldMemory, newMemory) -> {
                     memoryUsageCheatFactor.updateAndGet(
@@ -123,6 +112,12 @@ public interface IoTDBDataNodeCacheLeaderClientManager {
       } else {
         device2endpoint.put(deviceId, endPoint);
       }
+    }
+
+    public long getMaxMemorySizeInBytes() {
+      return (long)
+          (PipeDataNodeResourceManager.memory().getTotalNonFloatingMemorySizeInBytes()
+              * CONFIG.getPipeLeaderCacheMemoryUsagePercentage());
     }
   }
 }

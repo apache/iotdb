@@ -36,12 +36,6 @@ public class PipeConfig {
     return COMMON_CONFIG.getPipeNonForwardingEventsProgressReportInterval();
   }
 
-  public int registerPipeNonForwardingEventsProgressReportInterval(
-      PipeDynamicConfigFunction function) {
-    PipeDynamicConfigLoader.instance().registerPipeConfigFunction(function);
-    return COMMON_CONFIG.getPipeNonForwardingEventsProgressReportInterval();
-  }
-
   /////////////////////////////// File ///////////////////////////////
 
   public String getPipeHardlinkBaseDirName() {
@@ -64,11 +58,6 @@ public class PipeConfig {
     return COMMON_CONFIG.getPipeFileReceiverFsyncEnabled();
   }
 
-  public boolean registerPipeFileReceiverFsyncEnabled(PipeDynamicConfigFunction function) {
-    PipeDynamicConfigLoader.instance().registerPipeConfigFunction(function);
-    return COMMON_CONFIG.getPipeFileReceiverFsyncEnabled();
-  }
-
   /////////////////////////////// Tablet ///////////////////////////////
 
   public int getPipeDataStructureTabletRowSize() {
@@ -80,31 +69,17 @@ public class PipeConfig {
   }
 
   public double getPipeDataStructureTabletMemoryBlockAllocationRejectThreshold() {
-    return COMMON_CONFIG.getPipeDataStructureTabletMemoryBlockAllocationRejectThreshold();
-  }
-
-  public double registerPipeDataStructureTabletMemoryBlockAllocationRejectThreshold(
-      PipeDynamicConfigFunction function) {
-    PipeDynamicConfigLoader.instance().registerPipeConfigFunction(function);
+    // To avoid too much parsed events causing OOM. If total tablet memory size exceeds this
+    // threshold, allocations of memory block for tablets will be rejected.
     return COMMON_CONFIG.getPipeDataStructureTabletMemoryBlockAllocationRejectThreshold();
   }
 
   public double getPipeDataStructureTsFileMemoryBlockAllocationRejectThreshold() {
-    return COMMON_CONFIG.getPipeDataStructureTsFileMemoryBlockAllocationRejectThreshold();
-  }
-
-  public double registerPipeDataStructureTsFileMemoryBlockAllocationRejectThreshold(
-      PipeDynamicConfigFunction function) {
-    PipeDynamicConfigLoader.instance().registerPipeConfigFunction(function);
+    // Used to control the memory allocated for managing slice tsfile.
     return COMMON_CONFIG.getPipeDataStructureTsFileMemoryBlockAllocationRejectThreshold();
   }
 
   public double getPipeTotalFloatingMemoryProportion() {
-    return COMMON_CONFIG.getPipeTotalFloatingMemoryProportion();
-  }
-
-  public double registerPipeTotalFloatingMemoryProportion(PipeDynamicConfigFunction function) {
-    PipeDynamicConfigLoader.instance().registerPipeConfigFunction(function);
     return COMMON_CONFIG.getPipeTotalFloatingMemoryProportion();
   }
 
@@ -114,19 +89,8 @@ public class PipeConfig {
     return COMMON_CONFIG.getPipeRealTimeQueuePollTsFileThreshold();
   }
 
-  public int registerPipeRealTimeQueuePollTsFileThreshold(PipeDynamicConfigFunction function) {
-    PipeDynamicConfigLoader.instance().registerPipeConfigFunction(function);
-    return COMMON_CONFIG.getPipeRealTimeQueuePollTsFileThreshold();
-  }
-
   public int getPipeRealTimeQueuePollHistoricalTsFileThreshold() {
-    return COMMON_CONFIG.getPipeRealTimeQueuePollHistoricalTsFileThreshold();
-  }
-
-  public int registerPipeRealTimeQueuePollHistoricalTsFileThreshold(
-      PipeDynamicConfigFunction function) {
-    PipeDynamicConfigLoader.instance().registerPipeConfigFunction(function);
-    return COMMON_CONFIG.getPipeRealTimeQueuePollHistoricalTsFileThreshold();
+    return Math.max(COMMON_CONFIG.getPipeRealTimeQueuePollHistoricalTsFileThreshold(), 1);
   }
 
   /////////////////////////////// Subtask Executor ///////////////////////////////
@@ -139,29 +103,11 @@ public class PipeConfig {
     return COMMON_CONFIG.getPipeSubtaskExecutorBasicCheckPointIntervalByConsumedEventCount();
   }
 
-  public int registerPipeSubtaskExecutorBasicCheckPointIntervalByConsumedEventCount(
-      PipeDynamicConfigFunction function) {
-    PipeDynamicConfigLoader.instance().registerPipeConfigFunction(function);
-    return COMMON_CONFIG.getPipeSubtaskExecutorBasicCheckPointIntervalByConsumedEventCount();
-  }
-
   public long getPipeSubtaskExecutorBasicCheckPointIntervalByTimeDuration() {
     return COMMON_CONFIG.getPipeSubtaskExecutorBasicCheckPointIntervalByTimeDuration();
   }
 
-  public long registerPipeSubtaskExecutorBasicCheckPointIntervalByTimeDuration(
-      PipeDynamicConfigFunction function) {
-    PipeDynamicConfigLoader.instance().registerPipeConfigFunction(function);
-    return COMMON_CONFIG.getPipeSubtaskExecutorBasicCheckPointIntervalByTimeDuration();
-  }
-
   public long getPipeSubtaskExecutorPendingQueueMaxBlockingTimeMs() {
-    return COMMON_CONFIG.getPipeSubtaskExecutorPendingQueueMaxBlockingTimeMs();
-  }
-
-  public long registerPipeSubtaskExecutorPendingQueueMaxBlockingTimeMs(
-      PipeDynamicConfigFunction function) {
-    PipeDynamicConfigLoader.instance().registerPipeConfigFunction(function);
     return COMMON_CONFIG.getPipeSubtaskExecutorPendingQueueMaxBlockingTimeMs();
   }
 
@@ -253,11 +199,6 @@ public class PipeConfig {
     return COMMON_CONFIG.getPipeLeaderCacheMemoryUsagePercentage();
   }
 
-  public float registerPipeLeaderCacheMemoryUsagePercentage(PipeDynamicConfigFunction function) {
-    PipeDynamicConfigLoader.instance().registerPipeConfigFunction(function);
-    return COMMON_CONFIG.getPipeLeaderCacheMemoryUsagePercentage();
-  }
-
   public int getPipeMaxAlignedSeriesNumInOneBatch() {
     return COMMON_CONFIG.getPipeMaxAlignedSeriesNumInOneBatch();
   }
@@ -324,19 +265,7 @@ public class PipeConfig {
     return COMMON_CONFIG.getPipeReceiverLoginPeriodicVerificationIntervalMs();
   }
 
-  public long registerPipeReceiverLoginPeriodicVerificationIntervalMs(
-      PipeDynamicConfigFunction function) {
-    PipeDynamicConfigLoader.instance().registerPipeConfigFunction(function);
-    return COMMON_CONFIG.getPipeReceiverLoginPeriodicVerificationIntervalMs();
-  }
-
   public double getPipeReceiverActualToEstimatedMemoryRatio() {
-    return COMMON_CONFIG.getPipeReceiverActualToEstimatedMemoryRatio();
-  }
-
-  public double registerPipeReceiverActualToEstimatedMemoryRatio(
-      PipeDynamicConfigFunction function) {
-    PipeDynamicConfigLoader.instance().registerPipeConfigFunction(function);
     return COMMON_CONFIG.getPipeReceiverActualToEstimatedMemoryRatio();
   }
 
@@ -414,26 +343,11 @@ public class PipeConfig {
     return COMMON_CONFIG.getPipeMemoryAllocateMaxRetries();
   }
 
-  public int registerPipeMemoryAllocateMaxRetries(PipeDynamicConfigFunction function) {
-    PipeDynamicConfigLoader.instance().registerPipeConfigFunction(function);
-    return COMMON_CONFIG.getPipeMemoryAllocateMaxRetries();
-  }
-
   public long getPipeMemoryAllocateRetryIntervalInMs() {
     return COMMON_CONFIG.getPipeMemoryAllocateRetryIntervalInMs();
   }
 
-  public long registerPipeMemoryAllocateRetryIntervalInMs(PipeDynamicConfigFunction function) {
-    PipeDynamicConfigLoader.instance().registerPipeConfigFunction(function);
-    return COMMON_CONFIG.getPipeMemoryAllocateRetryIntervalInMs();
-  }
-
   public long getPipeMemoryAllocateMinSizeInBytes() {
-    return COMMON_CONFIG.getPipeMemoryAllocateMinSizeInBytes();
-  }
-
-  public long registerPipeMemoryAllocateMinSizeInBytes(PipeDynamicConfigFunction function) {
-    PipeDynamicConfigLoader.instance().registerPipeConfigFunction(function);
     return COMMON_CONFIG.getPipeMemoryAllocateMinSizeInBytes();
   }
 
@@ -452,11 +366,6 @@ public class PipeConfig {
   /////////////////////////////// TwoStage ///////////////////////////////
 
   public long getTwoStageAggregateMaxCombinerLiveTimeInMs() {
-    return COMMON_CONFIG.getTwoStageAggregateMaxCombinerLiveTimeInMs();
-  }
-
-  public long registerTwoStageAggregateMaxCombinerLiveTimeInMs(PipeDynamicConfigFunction function) {
-    PipeDynamicConfigLoader.instance().registerPipeConfigFunction(function);
     return COMMON_CONFIG.getTwoStageAggregateMaxCombinerLiveTimeInMs();
   }
 

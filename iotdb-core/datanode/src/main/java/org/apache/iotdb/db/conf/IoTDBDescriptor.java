@@ -26,6 +26,7 @@ import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.conf.TrimProperties;
 import org.apache.iotdb.commons.exception.BadNodeUrlException;
 import org.apache.iotdb.commons.memory.MemoryManager;
+import org.apache.iotdb.commons.pipe.config.PipeDescriptor;
 import org.apache.iotdb.commons.schema.SchemaConstant;
 import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.commons.utils.NodeUrlUtils;
@@ -2287,7 +2288,7 @@ public class IoTDBDescriptor {
   }
 
   private void loadPipeHotModifiedProp(TrimProperties properties) throws IOException {
-    commonDescriptor.loadPipeProps(properties, true);
+    PipeDescriptor.loadPipeProps(commonDescriptor.getConfig(), properties, true);
   }
 
   @SuppressWarnings("squid:S3518") // "proportionSum" can't be zero

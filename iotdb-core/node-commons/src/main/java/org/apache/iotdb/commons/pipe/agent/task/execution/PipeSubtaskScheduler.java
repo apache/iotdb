@@ -23,26 +23,15 @@ import org.apache.iotdb.commons.pipe.config.PipeConfig;
 
 public class PipeSubtaskScheduler {
 
+  private static final PipeConfig config = PipeConfig.getInstance();
+
   private final PipeSubtaskExecutor executor;
 
   private boolean isFirstSchedule = true;
 
-  private static int BASIC_CHECKPOINT_INTERVAL_BY_CONSUMED_EVENT_COUNT =
-      PipeConfig.getInstance()
-          .registerPipeSubtaskExecutorBasicCheckPointIntervalByConsumedEventCount(
-              config ->
-                  BASIC_CHECKPOINT_INTERVAL_BY_CONSUMED_EVENT_COUNT =
-                      config.getPipeSubtaskExecutorBasicCheckPointIntervalByConsumedEventCount());
   private int consumedEventCountCheckpointInterval;
   private int consumedEventCount;
 
-  // in ms
-  private static long BASIC_CHECKPOINT_INTERVAL_BY_TIME_DURATION =
-      PipeConfig.getInstance()
-          .registerPipeSubtaskExecutorBasicCheckPointIntervalByTimeDuration(
-              config ->
-                  BASIC_CHECKPOINT_INTERVAL_BY_TIME_DURATION =
-                      config.getPipeSubtaskExecutorBasicCheckPointIntervalByTimeDuration());
   private long timeDurationCheckpointInterval;
   private long lastCheckTime;
 
@@ -81,13 +70,15 @@ public class PipeSubtaskScheduler {
         Math.max(
             1,
             (int)
-                (((float) BASIC_CHECKPOINT_INTERVAL_BY_CONSUMED_EVENT_COUNT / runningSubtaskNumber)
+                (((float) config.getPipeSubtaskExecutorBasicCheckPointIntervalByConsumedEventCount()
+                        / runningSubtaskNumber)
                     * corePoolSize));
     timeDurationCheckpointInterval =
         Math.max(
             1,
             (long)
-                (((float) BASIC_CHECKPOINT_INTERVAL_BY_TIME_DURATION / runningSubtaskNumber)
+                (((float) config.getPipeSubtaskExecutorBasicCheckPointIntervalByTimeDuration()
+                        / runningSubtaskNumber)
                     * corePoolSize));
   }
 

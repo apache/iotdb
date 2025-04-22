@@ -178,12 +178,7 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
 
   private static final SessionManager SESSION_MANAGER = SessionManager.getInstance();
 
-  private static double ACTUAL_TO_ESTIMATED_MEMORY_RATIO =
-      PipeConfig.getInstance()
-          .registerPipeReceiverActualToEstimatedMemoryRatio(
-              pipeConfig ->
-                  ACTUAL_TO_ESTIMATED_MEMORY_RATIO =
-                      pipeConfig.getPipeReceiverActualToEstimatedMemoryRatio());
+  private static final PipeConfig config = PipeConfig.getInstance();
 
   private PipeMemoryBlock allocatedMemoryBlock;
 
@@ -782,7 +777,9 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
         estimatedMemory = ((InsertBaseStatement) statement).ramBytesUsed();
         allocatedMemoryBlock =
             PipeDataNodeResourceManager.memory()
-                .forceAllocate((long) (estimatedMemory * ACTUAL_TO_ESTIMATED_MEMORY_RATIO));
+                .forceAllocate(
+                    (long)
+                        (estimatedMemory * config.getPipeReceiverActualToEstimatedMemoryRatio()));
       }
 
       final TSStatus result =
@@ -803,7 +800,7 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
           String.format(
               "Temporarily out of memory when executing statement %s, Requested memory: %s, used memory: %s, total memory: %s",
               statement,
-              estimatedMemory * ACTUAL_TO_ESTIMATED_MEMORY_RATIO,
+              estimatedMemory * config.getPipeReceiverActualToEstimatedMemoryRatio(),
               PipeDataNodeResourceManager.memory().getUsedMemorySizeInBytes(),
               PipeDataNodeResourceManager.memory().getFreeMemorySizeInBytes());
       if (LOGGER.isDebugEnabled()) {

@@ -54,12 +54,7 @@ public class PipeDataRegionAssigner implements Closeable {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(PipeDataRegionAssigner.class);
 
-  private static int nonForwardingEventsProgressReportInterval =
-      PipeConfig.getInstance()
-          .registerPipeNonForwardingEventsProgressReportInterval(
-              (config) ->
-                  PipeDataRegionAssigner.nonForwardingEventsProgressReportInterval =
-                      config.getPipeNonForwardingEventsProgressReportInterval());
+  private static final PipeConfig config = PipeConfig.getInstance();
 
   /**
    * The {@link PipeDataRegionMatcher} is used to match the event with the extractor based on the
@@ -154,7 +149,7 @@ public class PipeDataRegionAssigner implements Closeable {
                 // The frequency of progress reports is limited by the counter, while progress
                 // reports to TsFileInsertionEvent are not limited.
                 if (!(event.getEvent() instanceof TsFileInsertionEvent)) {
-                  if (counter < nonForwardingEventsProgressReportInterval) {
+                  if (counter < config.getPipeNonForwardingEventsProgressReportInterval()) {
                     counter++;
                     return;
                   }
