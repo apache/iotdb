@@ -262,15 +262,18 @@ public abstract class AbstractCompactionEstimator {
   }
 
   @TestOnly
-  public static void setGlobalCompactionRoughFileInfoCacheSize(
-      int globalCompactionRoughFileInfoCacheSize) {
-    AbstractCompactionEstimator.globalCompactionRoughFileInfoCacheSize =
-        globalCompactionRoughFileInfoCacheSize;
+  public static void enableFileInfoCacheForTest(
+      int globalCompactionFileInfoCacheSize, int globalCompactionRoughFileInfoCacheSize) {
+    globalFileInfoCacheEnabled = true;
+    globalRoughInfoCacheForCompaction =
+        Collections.synchronizedMap(new LRUMap<>(globalCompactionFileInfoCacheSize));
+    globalFileInfoCacheForFailedCompaction =
+        Collections.synchronizedMap(new LRUMap<>(globalCompactionRoughFileInfoCacheSize));
   }
 
-  @TestOnly
-  public static void setGlobalCompactionFileInfoCacheSize(int globalCompactionFileInfoCacheSize) {
-    AbstractCompactionEstimator.globalCompactionFileInfoCacheSize =
-        globalCompactionFileInfoCacheSize;
+  public static void disableFileInfoCacheForTest() {
+    globalFileInfoCacheEnabled = false;
+    globalRoughInfoCacheForCompaction = null;
+    globalFileInfoCacheForFailedCompaction = null;
   }
 }

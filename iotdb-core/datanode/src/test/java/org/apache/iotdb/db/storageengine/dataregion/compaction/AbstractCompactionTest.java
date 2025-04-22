@@ -38,7 +38,6 @@ import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.Mul
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.reader.IDataBlockReader;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.reader.SeriesDataBlockReader;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.CompactionTaskManager;
-import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.estimator.AbstractCompactionEstimator;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.utils.CompactionConfigRestorer;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.utils.CompactionFileGeneratorUtils;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.utils.CompactionTestFileWriter;
@@ -112,11 +111,6 @@ public class AbstractCompactionTest {
   private int[] unseqVersion = {
     20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39
   };
-
-  static {
-    AbstractCompactionEstimator.setGlobalCompactionRoughFileInfoCacheSize(100);
-    AbstractCompactionEstimator.setGlobalCompactionFileInfoCacheSize(100);
-  }
 
   private static final long oldTargetChunkSize =
       IoTDBDescriptor.getInstance().getConfig().getTargetChunkSize();
