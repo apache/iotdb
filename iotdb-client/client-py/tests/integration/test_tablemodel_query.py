@@ -18,6 +18,7 @@
 import math
 
 import pandas as pd
+from tzlocal import get_localzone_name
 
 from iotdb.table_session import TableSession, TableSessionConfig
 from iotdb.utils.IoTDBConstants import TSDataType
@@ -352,6 +353,12 @@ def test_query_data():
                             values[row][i],
                             rel_tol=1e-6,
                         )
+                    elif data_types[i] == TSDataType.TIMESTAMP:
+                        assert row_record.get_fields()[i].get_object_value(
+                            data_types[i]
+                        ) == pd.Timestamp(
+                            values[row][i], unit="ms", tz=get_localzone_name()
+                        )
                     else:
                         assert (
                             row_record.get_fields()[i].get_object_value(data_types[i])
@@ -378,6 +385,10 @@ def test_query_data():
                             df.iloc[i, j],
                             values[i][j],
                             rel_tol=1e-6,
+                        )
+                    elif isinstance(values[i][j], pd.Timestamp):
+                        assert df.iloc[i, j] == pd.Timestamp(
+                            values[i][j], unit="ms", tz=get_localzone_name()
                         )
                     else:
                         assert df.iloc[i, j] == values[i][j]
