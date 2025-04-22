@@ -266,7 +266,8 @@ class ClusterSchemaFetchExecutor {
             tsBlock = coordinator.getQueryExecution(queryId).getBatchResult();
           } catch (IoTDBException e) {
             t = e;
-            throw new RuntimeException("Fetch Schema failed. ", e);
+            throw new QuerySchemaFetchFailedException(
+                String.format("Fetch Schema failed: %s", e.getMessage()), e.getErrorCode());
           }
           if (!tsBlock.isPresent() || tsBlock.get().isEmpty()) {
             break;
