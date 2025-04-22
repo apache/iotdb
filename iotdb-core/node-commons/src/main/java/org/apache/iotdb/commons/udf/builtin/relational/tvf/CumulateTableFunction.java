@@ -22,7 +22,9 @@ package org.apache.iotdb.commons.udf.builtin.relational.tvf;
 import org.apache.iotdb.udf.api.exception.UDFException;
 import org.apache.iotdb.udf.api.relational.TableFunction;
 import org.apache.iotdb.udf.api.relational.access.Record;
+import org.apache.iotdb.udf.api.relational.table.MapTableFunctionHandle;
 import org.apache.iotdb.udf.api.relational.table.TableFunctionAnalysis;
+import org.apache.iotdb.udf.api.relational.table.TableFunctionHandle;
 import org.apache.iotdb.udf.api.relational.table.TableFunctionProcessorProvider;
 import org.apache.iotdb.udf.api.relational.table.argument.Argument;
 import org.apache.iotdb.udf.api.relational.table.argument.DescribedSchema;
@@ -94,24 +96,36 @@ public class CumulateTableFunction implements TableFunction {
             .addField("window_start", Type.TIMESTAMP)
             .addField("window_end", Type.TIMESTAMP)
             .build();
-
+    MapTableFunctionHandle handle = new MapTableFunctionHandle();
+    handle.addProperty(STEP_PARAMETER_NAME, step);
+    handle.addProperty(SIZE_PARAMETER_NAME, size);
+    handle.addProperty(
+        ORIGIN_PARAMETER_NAME, ((ScalarArgument) arguments.get(ORIGIN_PARAMETER_NAME)).getValue());
     // outputColumnSchema
     return TableFunctionAnalysis.builder()
         .properColumnSchema(properColumnSchema)
         .requireRecordSnapshot(false)
         .requiredColumns(DATA_PARAMETER_NAME, Collections.singletonList(requiredIndex))
+        .handle(handle)
         .build();
   }
 
   @Override
-  public TableFunctionProcessorProvider getProcessorProvider(Map<String, Argument> arguments) {
+  public TableFunctionHandle createTableFunctionHandle() {
+    return new MapTableFunctionHandle();
+  }
+
+  @Override
+  public TableFunctionProcessorProvider getProcessorProvider(
+      TableFunctionHandle tableFunctionHandle) {
     return new TableFunctionProcessorProvider() {
       @Override
       public TableFunctionDataProcessor getDataProcessor() {
         return new CumulateDataProcessor(
-            (Long) ((ScalarArgument) arguments.get(ORIGIN_PARAMETER_NAME)).getValue(),
-            (Long) ((ScalarArgument) arguments.get(STEP_PARAMETER_NAME)).getValue(),
-            (Long) ((ScalarArgument) arguments.get(SIZE_PARAMETER_NAME)).getValue());
+            (Long)
+                ((MapTableFunctionHandle) tableFunctionHandle).getProperty(ORIGIN_PARAMETER_NAME),
+            (Long) ((MapTableFunctionHandle) tableFunctionHandle).getProperty(STEP_PARAMETER_NAME),
+            (Long) ((MapTableFunctionHandle) tableFunctionHandle).getProperty(SIZE_PARAMETER_NAME));
       }
     };
   }

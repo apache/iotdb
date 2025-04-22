@@ -24,8 +24,10 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.SingleChildProcessNode;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.TableMetadataImpl;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.DataOrganizationSpecification;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.Symbol;
+import org.apache.iotdb.udf.api.relational.table.TableFunctionHandle;
 import org.apache.iotdb.udf.api.relational.table.argument.Argument;
 
 import com.google.common.collect.ImmutableList;
@@ -65,6 +67,8 @@ public class TableFunctionProcessorNode extends SingleChildProcessNode {
 
   private final Map<String, Argument> arguments;
 
+  private final TableFunctionHandle tableFunctionHandle;
+
   private final boolean requireRecordSnapshot;
 
   public TableFunctionProcessorNode(
@@ -77,6 +81,7 @@ public class TableFunctionProcessorNode extends SingleChildProcessNode {
       Optional<DataOrganizationSpecification> dataOrganizationSpecification,
       boolean rowSemantic,
       Map<String, Argument> arguments,
+      TableFunctionHandle tableFunctionHandle,
       boolean requireRecordSnapshot) {
     super(id, source.orElse(null));
     this.name = requireNonNull(name, "name is null");
@@ -87,6 +92,7 @@ public class TableFunctionProcessorNode extends SingleChildProcessNode {
         requireNonNull(dataOrganizationSpecification, "specification is null");
     this.rowSemantic = rowSemantic;
     this.arguments = ImmutableMap.copyOf(arguments);
+    this.tableFunctionHandle = tableFunctionHandle;
     this.requireRecordSnapshot = requireRecordSnapshot;
   }
 
@@ -99,6 +105,7 @@ public class TableFunctionProcessorNode extends SingleChildProcessNode {
       Optional<DataOrganizationSpecification> dataOrganizationSpecification,
       boolean rowSemantic,
       Map<String, Argument> arguments,
+      TableFunctionHandle tableFunctionHandle,
       boolean requireRecordSnapshot) {
     super(id);
     this.name = requireNonNull(name, "name is null");
@@ -109,6 +116,7 @@ public class TableFunctionProcessorNode extends SingleChildProcessNode {
         requireNonNull(dataOrganizationSpecification, "specification is null");
     this.rowSemantic = rowSemantic;
     this.arguments = ImmutableMap.copyOf(arguments);
+    this.tableFunctionHandle = tableFunctionHandle;
     this.requireRecordSnapshot = requireRecordSnapshot;
   }
 
@@ -140,6 +148,10 @@ public class TableFunctionProcessorNode extends SingleChildProcessNode {
     return arguments;
   }
 
+  public TableFunctionHandle getTableFunctionHandle() {
+    return tableFunctionHandle;
+  }
+
   public boolean isRequireRecordSnapshot() {
     return requireRecordSnapshot;
   }
@@ -155,6 +167,7 @@ public class TableFunctionProcessorNode extends SingleChildProcessNode {
         dataOrganizationSpecification,
         rowSemantic,
         arguments,
+        tableFunctionHandle,
         requireRecordSnapshot);
   }
 
@@ -210,6 +223,9 @@ public class TableFunctionProcessorNode extends SingleChildProcessNode {
           ReadWriteIOUtils.write(key, byteBuffer);
           value.serialize(byteBuffer);
         });
+    byte[] bytes = tableFunctionHandle.serialize();
+    ReadWriteIOUtils.write(bytes.length, byteBuffer);
+    ReadWriteIOUtils.write(ByteBuffer.wrap(bytes), byteBuffer);
     ReadWriteIOUtils.write(requireRecordSnapshot, byteBuffer);
   }
 
@@ -239,6 +255,9 @@ public class TableFunctionProcessorNode extends SingleChildProcessNode {
       ReadWriteIOUtils.write(entry.getKey(), stream);
       entry.getValue().serialize(stream);
     }
+    byte[] bytes = tableFunctionHandle.serialize();
+    ReadWriteIOUtils.write(bytes.length, stream);
+    ReadWriteIOUtils.write(ByteBuffer.wrap(bytes), stream);
     ReadWriteIOUtils.write(requireRecordSnapshot, stream);
   }
 
@@ -272,6 +291,11 @@ public class TableFunctionProcessorNode extends SingleChildProcessNode {
       Argument value = Argument.deserialize(byteBuffer);
       arguments.put(key, value);
     }
+    byte[] bytes = ReadWriteIOUtils.readBytes(byteBuffer, size);
+    TableFunctionHandle tableFunctionHandle =
+        new TableMetadataImpl().getTableFunction(name).createTableFunctionHandle();
+    tableFunctionHandle.deserialize(bytes);
+    // TODO: how to get table function handle instance more elegantly?
     boolean requireRecordSnapshot = ReadWriteIOUtils.readBoolean(byteBuffer);
 
     PlanNodeId planNodeId = PlanNodeId.deserialize(byteBuffer);
@@ -284,6 +308,7 @@ public class TableFunctionProcessorNode extends SingleChildProcessNode {
         dataOrganizationSpecification,
         rowSemantic,
         arguments,
+        tableFunctionHandle,
         requireRecordSnapshot);
   }
 
@@ -301,6 +326,7 @@ public class TableFunctionProcessorNode extends SingleChildProcessNode {
         dataOrganizationSpecification,
         rowSemantic,
         arguments,
+        tableFunctionHandle,
         requireRecordSnapshot);
   }
 }

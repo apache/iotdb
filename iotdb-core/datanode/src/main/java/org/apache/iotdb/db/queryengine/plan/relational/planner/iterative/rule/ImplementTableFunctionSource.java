@@ -74,6 +74,7 @@ public class ImplementTableFunctionSource implements Rule<TableFunctionNode> {
               Optional.empty(),
               false,
               node.getArguments(),
+              node.getTableFunctionHandle(),
               false));
     } else if (node.getChildren().size() == 1) {
       // Single source does not require pre-processing.
@@ -126,6 +127,7 @@ public class ImplementTableFunctionSource implements Rule<TableFunctionNode> {
               sourceProperties.getDataOrganizationSpecification(),
               sourceProperties.isRowSemantics(),
               node.getArguments(),
+              node.getTableFunctionHandle(),
               sourceProperties.isRequireRecordSnapshot()));
     } else {
       // we don't support multiple source now.

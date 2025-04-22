@@ -22,7 +22,9 @@ package org.apache.iotdb.db.query.udf.example.relational;
 import org.apache.iotdb.udf.api.exception.UDFArgumentNotValidException;
 import org.apache.iotdb.udf.api.exception.UDFException;
 import org.apache.iotdb.udf.api.relational.TableFunction;
+import org.apache.iotdb.udf.api.relational.table.MapTableFunctionHandle;
 import org.apache.iotdb.udf.api.relational.table.TableFunctionAnalysis;
+import org.apache.iotdb.udf.api.relational.table.TableFunctionHandle;
 import org.apache.iotdb.udf.api.relational.table.TableFunctionProcessorProvider;
 import org.apache.iotdb.udf.api.relational.table.argument.Argument;
 import org.apache.iotdb.udf.api.relational.table.argument.DescribedSchema;
@@ -95,13 +97,20 @@ public class MyErrorTableFunction implements TableFunction {
           .properColumnSchema(
               DescribedSchema.builder().addField("proper_column", Type.INT32).build())
           .requiredColumns("TIMECHO", Collections.singletonList(1))
+          .handle(new MapTableFunctionHandle())
           .build();
     }
     throw new UDFArgumentNotValidException("unexpected argument value");
   }
 
   @Override
-  public TableFunctionProcessorProvider getProcessorProvider(Map<String, Argument> arguments) {
+  public TableFunctionHandle createTableFunctionHandle() {
+    return new MapTableFunctionHandle();
+  }
+
+  @Override
+  public TableFunctionProcessorProvider getProcessorProvider(
+      TableFunctionHandle tableFunctionHandle) {
     return new TableFunctionProcessorProvider() {
       @Override
       public TableFunctionDataProcessor getDataProcessor() {

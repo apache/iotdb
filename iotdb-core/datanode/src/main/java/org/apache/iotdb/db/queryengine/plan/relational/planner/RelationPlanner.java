@@ -919,6 +919,7 @@ public class RelationPlanner extends AstVisitor<RelationPlan, Void> {
             idAllocator.genPlanNodeId(),
             functionAnalysis.getFunctionName(),
             functionAnalysis.getPassedArguments(),
+            functionAnalysis.getTableFunctionHandle(),
             properOutputs,
             sources.build(),
             sourceProperties.build());
