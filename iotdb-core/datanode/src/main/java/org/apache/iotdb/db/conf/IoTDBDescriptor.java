@@ -1074,23 +1074,20 @@ public class IoTDBDescriptor {
                 "detail_container_min_degrade_memory_in_bytes",
                 String.valueOf(conf.getDetailContainerMinDegradeMemoryInBytes()))));
 
-    conf.setEnableGCThrottle(
-        Boolean.parseBoolean(
-            properties.getProperty(
-                "enable_gc_throttle", String.valueOf(conf.isEnableGCThrottle()))));
+    conf.setEnableGCThrottle(Boolean.parseBoolean(
+        properties.getProperty(
+            "enable_gc_throttle",
+            String.valueOf(conf.isEnableGCThrottle())
+        )
+    ));
     conf.setGcThrottleTimeMs(
         Integer.parseInt(
             properties.getProperty(
-                "gc_throttle_time_ms", String.valueOf(conf.getGcThrottleTimeMs()))));
-
-    conf.setEnableMemTableCache(
-        Boolean.parseBoolean(
-            properties.getProperty(
-                "enable_memtable_cache", String.valueOf(conf.isEnableGCThrottle()))));
-    conf.setMaxCachedMemTablePerRegion(
-        Integer.parseInt(
-            properties.getProperty(
-                "max_cached_memtable_per_region", String.valueOf(conf.getGcThrottleTimeMs()))));
+                "gc_throttle_time_ms",
+                String.valueOf(conf.getGcThrottleTimeMs())
+            )
+        )
+    );
 
     loadIoTConsensusProps(properties);
     loadIoTConsensusV2Props(properties);

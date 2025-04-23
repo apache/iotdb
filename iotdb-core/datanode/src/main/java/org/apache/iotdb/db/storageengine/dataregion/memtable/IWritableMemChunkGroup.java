@@ -44,9 +44,6 @@ public interface IWritableMemChunkGroup extends WALEntryValue {
 
   void release();
 
-  /** Prepare the chunk group for the next round of insertion. */
-  void reset();
-
   long count();
 
   boolean contains(String measurement);

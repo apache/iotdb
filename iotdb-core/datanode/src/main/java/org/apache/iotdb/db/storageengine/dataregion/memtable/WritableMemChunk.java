@@ -504,22 +504,9 @@ public class WritableMemChunk extends AbstractWritableMemChunk {
 
   @Override
   public void release() {
-    boolean listCleared = maybeReleaseTvList(list);
-    if (!listCleared) {
-      // the list cannot be reused if not cleared
-      list = null;
-    }
+    maybeReleaseTvList(list);
     for (TVList tvList : sortedList) {
       maybeReleaseTvList(tvList);
-    }
-  }
-
-  @Override
-  public void reset() {
-    sortedRowCount = 0;
-    sortedList.clear();
-    if (list == null) {
-      list = TVList.newList(schema.getType());
     }
   }
 

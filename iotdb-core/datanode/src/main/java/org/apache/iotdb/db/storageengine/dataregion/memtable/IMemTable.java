@@ -140,9 +140,6 @@ public interface IMemTable extends WALEntryValue {
   /** putBack all the memory resources. */
   void clear();
 
-  /** Prepare the memtable for new insertions, keeping the inner structures for reuse. */
-  void reset();
-
   boolean isEmpty();
 
   /**

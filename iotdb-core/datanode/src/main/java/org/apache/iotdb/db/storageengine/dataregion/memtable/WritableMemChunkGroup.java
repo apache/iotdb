@@ -81,13 +81,6 @@ public class WritableMemChunkGroup implements IWritableMemChunkGroup {
   }
 
   @Override
-  public void reset() {
-    for (IWritableMemChunk memChunk : memChunkMap.values()) {
-      memChunk.reset();
-    }
-  }
-
-  @Override
   public long count() {
     long count = 0;
     for (IWritableMemChunk memChunk : memChunkMap.values()) {

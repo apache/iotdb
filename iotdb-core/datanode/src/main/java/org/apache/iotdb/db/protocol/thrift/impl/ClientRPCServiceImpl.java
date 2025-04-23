@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.protocol.thrift.impl;
 
+import java.util.Random;
 import org.apache.iotdb.common.rpc.thrift.TAggregationType;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
@@ -214,7 +215,6 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
-import java.util.Random;
 import java.util.concurrent.TimeUnit;
 
 import static org.apache.iotdb.commons.partition.DataPartition.NOT_ASSIGNED;
@@ -3065,7 +3065,6 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
   }
 
   private static final Random throttleRandom = new Random();
-
   public static void gcThrottle() {
     if (!IoTDBDescriptor.getInstance().getConfig().isEnableGCThrottle()) {
       return;
@@ -3073,13 +3072,13 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
     int minimumGcTimePercentToThrottle = 20;
     long gcTimePercentage = JvmGcMonitorMetrics.getInstance().getGcData().getGcTimePercentage();
     // if gc time is above 20%, pause the request with the probability equals to gc time percent
-    if (gcTimePercentage > minimumGcTimePercentToThrottle
-        && throttleRandom.nextInt(100) < gcTimePercentage) {
-      try {
-        Thread.sleep(IoTDBDescriptor.getInstance().getConfig().getGcThrottleTimeMs());
-      } catch (InterruptedException e) {
-        Thread.currentThread().interrupt();
+    if (gcTimePercentage > minimumGcTimePercentToThrottle && throttleRandom.nextInt(100) < gcTimePercentage) {
+        try {
+          Thread.sleep(IoTDBDescriptor.getInstance().getConfig().getGcThrottleTimeMs());
+        } catch (InterruptedException e) {
+          Thread.currentThread().interrupt();
+        }
       }
-    }
+
   }
 }
