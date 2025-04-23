@@ -60,7 +60,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.LinkedList;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -490,16 +490,17 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
         new HashMap<>();
     for (final Map.Entry<String, Map<TSeriesPartitionSlot, TConsensusGroupId>> entry1 :
         schemaPartitionTableResp.getSchemaPartitionTable().entrySet()) {
+      String database = entry1.getKey();
       final Map<TSeriesPartitionSlot, TRegionReplicaSet> result1 =
-          regionReplicaMap.computeIfAbsent(entry1.getKey(), k -> new HashMap<>());
+          regionReplicaMap.computeIfAbsent(database, k -> new HashMap<>());
+      List<TRegionReplicaSet> regionReplicaSets =
+          partitionCache.getRegionReplicaSet(new ArrayList<>(entry1.getValue().values()));
+      Iterator<TRegionReplicaSet> iterator = regionReplicaSets.iterator();
       for (final Map.Entry<TSeriesPartitionSlot, TConsensusGroupId> entry2 :
           entry1.getValue().entrySet()) {
-        final TSeriesPartitionSlot seriesPartitionSlot = entry2.getKey();
-        final TConsensusGroupId consensusGroupId = entry2.getValue();
-        result1.put(seriesPartitionSlot, partitionCache.getRegionReplicaSet(consensusGroupId));
+        result1.put(entry2.getKey(), iterator.next());
       }
     }
-
     return new SchemaPartition(
         regionReplicaMap,
         IoTDBDescriptor.getInstance().getConfig().getSeriesPartitionExecutorClass(),
@@ -530,10 +531,8 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
             result1.computeIfAbsent(entry2.getKey(), k -> new HashMap<>());
         for (final Map.Entry<TTimePartitionSlot, List<TConsensusGroupId>> entry3 :
             entry2.getValue().entrySet()) {
-          final List<TRegionReplicaSet> regionReplicaSets = new LinkedList<>();
-          for (final TConsensusGroupId consensusGroupId : entry3.getValue()) {
-            regionReplicaSets.add(partitionCache.getRegionReplicaSet(consensusGroupId));
-          }
+          final List<TRegionReplicaSet> regionReplicaSets =
+              partitionCache.getRegionReplicaSet(entry3.getValue());
           result2.put(entry3.getKey(), regionReplicaSets);
         }
       }
