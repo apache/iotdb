@@ -1154,6 +1154,9 @@ public class IoTDBConfig {
   private boolean enableGCThrottle = false;
   private int gcThrottleTimeMs = 1000;
 
+  private boolean enableMemTableCache = true;
+  private int maxCachedMemTablePerRegion = 1;
+
   IoTDBConfig() {}
 
   public int getMaxLogEntriesNumPerBatch() {
@@ -4097,5 +4100,21 @@ public class IoTDBConfig {
 
   public void setEnableGCThrottle(boolean enableGCThrottle) {
     this.enableGCThrottle = enableGCThrottle;
+  }
+
+  public boolean isEnableMemTableCache() {
+    return enableMemTableCache;
+  }
+
+  public void setEnableMemTableCache(boolean enableMemTableCache) {
+    this.enableMemTableCache = enableMemTableCache;
+  }
+
+  public int getMaxCachedMemTablePerRegion() {
+    return maxCachedMemTablePerRegion;
+  }
+
+  public void setMaxCachedMemTablePerRegion(int maxCachedMemTablePerRegion) {
+    this.maxCachedMemTablePerRegion = maxCachedMemTablePerRegion;
   }
 }

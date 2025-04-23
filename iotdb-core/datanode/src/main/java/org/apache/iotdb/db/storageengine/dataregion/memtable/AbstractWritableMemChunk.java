@@ -50,14 +50,13 @@ public abstract class AbstractWritableMemChunk implements IWritableMemChunk {
    * method must ensure success because it's part of flushing.
    *
    * @param tvList
+   * @return whether the TvList is cleared (exclusively held by the MemTable)
    */
-  protected void maybeReleaseTvList(TVList tvList) {
+  protected boolean maybeReleaseTvList(TVList tvList) {
     long startTimeInMs = System.currentTimeMillis();
-    boolean succeed = false;
-    while (!succeed) {
+    while (true) {
       try {
-        tryReleaseTvList(tvList);
-        succeed = true;
+        return tryReleaseTvList(tvList);
       } catch (MemoryNotEnoughException ex) {
         long waitQueryInMs = System.currentTimeMillis() - startTimeInMs;
         if (waitQueryInMs > MAX_WAIT_QUERY_MS) {
@@ -88,11 +87,15 @@ public abstract class AbstractWritableMemChunk implements IWritableMemChunk {
     }
   }
 
-  private void tryReleaseTvList(TVList tvList) {
+  /**
+   * @return whether the list is cleared.
+   */
+  private boolean tryReleaseTvList(TVList tvList) {
     tvList.lockQueryList();
     try {
       if (tvList.getQueryContextSet().isEmpty()) {
         tvList.clear();
+        return true;
       } else {
         QueryContext firstQuery = tvList.getQueryContextSet().iterator().next();
         // transfer memory from write process to read process. Here it reserves read memory and
@@ -104,6 +107,7 @@ public abstract class AbstractWritableMemChunk implements IWritableMemChunk {
         }
         // update current TVList owner to first query in the list
         tvList.setOwnerQuery(firstQuery);
+        return false;
       }
     } finally {
       tvList.unlockQueryList();

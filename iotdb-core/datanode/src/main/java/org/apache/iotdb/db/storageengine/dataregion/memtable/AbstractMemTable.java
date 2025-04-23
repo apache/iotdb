@@ -411,6 +411,14 @@ public abstract class AbstractMemTable implements IMemTable {
   @Override
   public void clear() {
     memTableMap.clear();
+    reset();
+  }
+
+  @Override
+  public void reset() {
+    for (IWritableMemChunkGroup value : memTableMap.values()) {
+      value.reset();
+    }
     memSize = 0;
     seriesNumber = 0;
     totalPointsNum = 0;

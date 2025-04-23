@@ -116,6 +116,9 @@ public interface IWritableMemChunk extends WALEntryValue {
 
   void release();
 
+  /** Prepare the chunk for the next round of insertion. */
+  void reset();
+
   long getFirstPoint();
 
   long getLastPoint();

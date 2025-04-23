@@ -453,11 +453,14 @@ public class TsFileProcessor {
   }
 
   private void createNewWorkingMemTable() {
-    workMemTable =
-        MemTableManager.getInstance()
-            .getAvailableMemTable(
-                dataRegionInfo.getDataRegion().getDatabaseName(),
-                dataRegionInfo.getDataRegion().getDataRegionId());
+    workMemTable = dataRegionInfo.getDataRegion().getCachedMemTable();
+    if (workMemTable == null) {
+      workMemTable =
+          MemTableManager.getInstance()
+              .getAvailableMemTable(
+                  dataRegionInfo.getDataRegion().getDatabaseName(),
+                  dataRegionInfo.getDataRegion().getDataRegionId());
+    }
     walNode.onMemTableCreated(workMemTable, tsFileResource.getTsFilePath());
   }
 
@@ -1632,6 +1635,8 @@ public class TsFileProcessor {
     for (FlushListener flushListener : flushListeners) {
       flushListener.onMemTableFlushed(memTableToFlush);
     }
+    memTableToFlush.reset();
+    dataRegionInfo.getDataRegion().cacheMemTable(memTableToFlush);
     // Retry to avoid unnecessary read-only mode
     int retryCnt = 0;
     while (shouldClose && flushingMemTables.isEmpty() && writer != null) {

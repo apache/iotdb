@@ -176,6 +176,8 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.TreeMap;
+import java.util.concurrent.ArrayBlockingQueue;
+import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.Callable;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
@@ -332,6 +334,10 @@ public class DataRegion implements IDataRegionForQuery {
 
   private ILoadDiskSelector ordinaryLoadDiskSelector;
   private ILoadDiskSelector pipeAndIoTV2LoadDiskSelector;
+
+  private BlockingQueue<IMemTable> memTableCache =
+      new ArrayBlockingQueue<>(
+          IoTDBDescriptor.getInstance().getConfig().getMaxCachedMemTablePerRegion());
 
   /**
    * Construct a database processor.
@@ -3940,6 +3946,21 @@ public class DataRegion implements IDataRegionForQuery {
       return DataNodeTTLCache.getInstance().getTTLForTree(insertNode.getTargetPath().getNodes());
     } else {
       return DataNodeTTLCache.getInstance().getTTLForTable(databaseName, insertNode.getTableName());
+    }
+  }
+
+  public IMemTable getCachedMemTable() {
+    if (IoTDBDescriptor.getInstance().getConfig().isEnableMemTableCache()) {
+      return memTableCache.poll();
+    } else {
+      return null;
+    }
+  }
+
+  @SuppressWarnings({"ResultOfMethodCallIgnored", "java:S899"})
+  public void cacheMemTable(IMemTable memTable) {
+    if (IoTDBDescriptor.getInstance().getConfig().isEnableMemTableCache()) {
+      memTableCache.offer(memTable);
     }
   }
 }

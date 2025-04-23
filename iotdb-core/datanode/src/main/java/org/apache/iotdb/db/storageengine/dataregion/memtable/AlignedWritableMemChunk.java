@@ -697,10 +697,23 @@ public class AlignedWritableMemChunk extends AbstractWritableMemChunk {
 
   @Override
   public void release() {
-    maybeReleaseTvList(list);
+    boolean listCleared = maybeReleaseTvList(list);
+    if (!listCleared) {
+      // if the list is not cleared, we cannot reuse it
+      list = null;
+    }
     for (AlignedTVList alignedTvList : sortedList) {
       maybeReleaseTvList(alignedTvList);
     }
+  }
+
+  @Override
+  public void reset() {
+    sortedList.clear();
+    if (list == null) {
+      list = AlignedTVList.newAlignedList(dataTypes);
+    }
+    sortedRowCount = 0;
   }
 
   @Override

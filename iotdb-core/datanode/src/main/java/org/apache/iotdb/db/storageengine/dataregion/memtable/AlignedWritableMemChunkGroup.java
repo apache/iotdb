@@ -73,6 +73,11 @@ public class AlignedWritableMemChunkGroup implements IWritableMemChunkGroup {
   }
 
   @Override
+  public void reset() {
+    memChunk.reset();
+  }
+
+  @Override
   public long count() {
     return memChunk.count();
   }
