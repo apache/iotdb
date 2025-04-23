@@ -36,6 +36,19 @@ public class JoinKeyComparatorFactory {
     return comparators;
   }
 
+  public static List<JoinKeyComparator> getAsofComparators(
+      List<Type> joinKeyTypes, boolean ignoreEqual) {
+    List<JoinKeyComparator> comparators = new ArrayList<>(joinKeyTypes.size());
+    for (Type joinKeyType : joinKeyTypes) {
+      comparators.add(getComparator(joinKeyType, true));
+    }
+    comparators.add(
+        ignoreEqual
+            ? AscLongTypeIgnoreEqualJoinKeyComparator.getInstance()
+            : AscLongTypeJoinKeyComparator.getInstance());
+    return comparators;
+  }
+
   public static JoinKeyComparator getComparator(Type type, boolean isAscending) {
     switch (type.getTypeEnum()) {
       case INT32:
