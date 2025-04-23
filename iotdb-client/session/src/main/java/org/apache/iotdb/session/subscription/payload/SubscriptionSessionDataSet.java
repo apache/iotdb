@@ -31,16 +31,19 @@ import org.apache.tsfile.utils.BitMap;
 import org.apache.tsfile.utils.DateUtils;
 import org.apache.tsfile.write.UnSupportedDataTypeException;
 import org.apache.tsfile.write.record.Tablet;
+import org.apache.tsfile.write.record.Tablet.ColumnCategory;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
 
 import java.time.LocalDate;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.TreeMap;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 public class SubscriptionSessionDataSet implements ISessionDataSet {
 
@@ -52,15 +55,59 @@ public class SubscriptionSessionDataSet implements ISessionDataSet {
     return tablet;
   }
 
+  public SubscriptionSessionDataSet(final Tablet tablet, @Nullable final String databaseName) {
+    this.tablet = tablet;
+    this.databaseName = databaseName;
+    generateRowIterator();
+  }
+
+  /////////////////////////////// table model ///////////////////////////////
+
   @TableModel
   public String getDatabaseName() {
     return databaseName;
   }
 
-  public SubscriptionSessionDataSet(final Tablet tablet, @Nullable final String databaseName) {
-    this.tablet = tablet;
-    this.databaseName = databaseName;
-    generateRowIterator();
+  @TableModel
+  public String getTableName() {
+    return tablet.getTableName();
+  }
+
+  @TableModel
+  public List<ColumnCategory> getColumnCategories() {
+    if (!isTableData()) {
+      return Collections.emptyList();
+    }
+    return Stream.concat(
+            Stream.of(ColumnCategory.TIME),
+            tablet.getColumnTypes().stream()
+                .map(
+                    columnCategory -> {
+                      switch (columnCategory) {
+                        case FIELD:
+                          return ColumnCategory.FIELD;
+                        case TAG:
+                          return ColumnCategory.TAG;
+                        case ATTRIBUTE:
+                          return ColumnCategory.ATTRIBUTE;
+                        default:
+                          throw new IllegalArgumentException(
+                              "Unknown column category: " + columnCategory);
+                      }
+                    }))
+        .collect(Collectors.toList());
+  }
+
+  @TableModel
+  public enum ColumnCategory {
+    TIME,
+    TAG,
+    FIELD,
+    ATTRIBUTE
+  }
+
+  private boolean isTableData() {
+    return Objects.nonNull(databaseName);
   }
 
   /////////////////////////////// override ///////////////////////////////
@@ -75,14 +122,21 @@ public class SubscriptionSessionDataSet implements ISessionDataSet {
     }
 
     columnNameList = new ArrayList<>();
-    columnNameList.add("Time");
-
-    String deviceId = tablet.getDeviceId();
     List<IMeasurementSchema> schemas = tablet.getSchemas();
-    columnNameList.addAll(
-        schemas.stream()
-            .map((schema) -> deviceId + "." + schema.getMeasurementName())
-            .collect(Collectors.toList()));
+    if (isTableData()) {
+      columnNameList.add("time");
+      columnNameList.addAll(
+          schemas.stream()
+              .map(IMeasurementSchema::getMeasurementName)
+              .collect(Collectors.toList()));
+    } else {
+      String deviceId = tablet.getDeviceId();
+      columnNameList.add("Time");
+      columnNameList.addAll(
+          schemas.stream()
+              .map((schema) -> deviceId + "." + schema.getMeasurementName())
+              .collect(Collectors.toList()));
+    }
     return columnNameList;
   }
 
