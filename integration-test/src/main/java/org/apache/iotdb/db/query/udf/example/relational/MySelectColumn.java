@@ -17,86 +17,69 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.queryengine.plan.function;
+package org.apache.iotdb.db.query.udf.example.relational;
 
-import org.apache.iotdb.udf.api.exception.UDFArgumentNotValidException;
 import org.apache.iotdb.udf.api.exception.UDFException;
 import org.apache.iotdb.udf.api.relational.TableFunction;
-import org.apache.iotdb.udf.api.relational.access.Record;
 import org.apache.iotdb.udf.api.relational.table.TableFunctionAnalysis;
 import org.apache.iotdb.udf.api.relational.table.TableFunctionProcessorProvider;
 import org.apache.iotdb.udf.api.relational.table.argument.Argument;
 import org.apache.iotdb.udf.api.relational.table.argument.DescribedSchema;
 import org.apache.iotdb.udf.api.relational.table.argument.ScalarArgument;
+import org.apache.iotdb.udf.api.relational.table.argument.TableArgument;
 import org.apache.iotdb.udf.api.relational.table.processor.TableFunctionDataProcessor;
 import org.apache.iotdb.udf.api.relational.table.specification.ParameterSpecification;
 import org.apache.iotdb.udf.api.relational.table.specification.ScalarParameterSpecification;
 import org.apache.iotdb.udf.api.relational.table.specification.TableParameterSpecification;
 import org.apache.iotdb.udf.api.type.Type;
 
-import org.apache.tsfile.block.column.ColumnBuilder;
-
+import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
-public class Repeat implements TableFunction {
+public class MySelectColumn implements TableFunction {
   private final String TBL_PARAM = "DATA";
-  private final String N_PARAM = "N";
+  private final String COL_PARAM = "SELECT";
 
   @Override
   public List<ParameterSpecification> getArgumentsSpecifications() {
     return Arrays.asList(
-        TableParameterSpecification.builder().name(TBL_PARAM).passThroughColumns().build(),
-        ScalarParameterSpecification.builder().name(N_PARAM).type(Type.INT32).build());
+        TableParameterSpecification.builder().name(TBL_PARAM).build(),
+        ScalarParameterSpecification.builder().name(COL_PARAM).type(Type.STRING).build());
   }
 
   @Override
   public TableFunctionAnalysis analyze(Map<String, Argument> arguments) throws UDFException {
-
-    ScalarArgument count = (ScalarArgument) arguments.get("N");
-    if (count == null) {
-      throw new UDFArgumentNotValidException("count argument for function repeat() is missing");
-    } else if ((int) count.getValue() <= 0) {
-      throw new UDFArgumentNotValidException(
-          "count argument for function repeat() must be positive");
+    TableArgument tableArgument = (TableArgument) arguments.get(TBL_PARAM);
+    String selectColumn = (String) ((ScalarArgument) arguments.get(COL_PARAM)).getValue();
+    List<Integer> requiredColumns = new ArrayList<>();
+    DescribedSchema.Builder schemaBuilder = DescribedSchema.builder();
+    for (int i = 0; i < tableArgument.getFieldNames().size(); i++) {
+      Optional<String> fieldName = tableArgument.getFieldNames().get(i);
+      if (fieldName.isPresent() && fieldName.get().equalsIgnoreCase(selectColumn)) {
+        requiredColumns.add(i);
+        schemaBuilder.addField(fieldName, tableArgument.getFieldTypes().get(i));
+      }
     }
     return TableFunctionAnalysis.builder()
-        .properColumnSchema(DescribedSchema.builder().addField("repeat_index", Type.INT32).build())
-        .requiredColumns(
-            TBL_PARAM,
-            Collections.singletonList(0)) // per spec, function must require at least one column
+        .properColumnSchema(schemaBuilder.build())
+        .requiredColumns(TBL_PARAM, requiredColumns)
         .build();
   }
 
   @Override
   public TableFunctionProcessorProvider getProcessorProvider(Map<String, Argument> arguments) {
-    ScalarArgument count = (ScalarArgument) arguments.get("N");
     return new TableFunctionProcessorProvider() {
       @Override
       public TableFunctionDataProcessor getDataProcessor() {
-        return new TableFunctionDataProcessor() {
-          private final int n = (int) count.getValue();
-          private long recordIndex = 0;
-
-          @Override
-          public void process(
-              Record input,
-              List<ColumnBuilder> properColumnBuilders,
-              ColumnBuilder passThroughIndexBuilder) {
-            properColumnBuilders.get(0).writeInt(0);
-            passThroughIndexBuilder.writeLong(recordIndex++);
-          }
-
-          @Override
-          public void finish(
-              List<ColumnBuilder> properColumnBuilders, ColumnBuilder passThroughIndexBuilder) {
-            for (int i = 1; i < n; i++) {
-              for (int j = 0; j < recordIndex; j++) {
-                properColumnBuilders.get(0).writeInt(i);
-                passThroughIndexBuilder.writeLong(j);
-              }
+        return (input, properColumnBuilders, passThroughIndexBuilder) -> {
+          for (int i = 0; i < input.size(); i++) {
+            if (input.isNull(i)) {
+              properColumnBuilders.get(i).appendNull();
+            } else {
+              properColumnBuilders.get(i).writeObject(input.getObject(i));
             }
           }
         };
