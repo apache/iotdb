@@ -398,7 +398,6 @@ def test_query_data():
                                 values[i][j], "ms", get_localzone_name()
                             )
                         )[0]
-                        print(expected, actual)
                         assert actual == expected
                     else:
                         assert df.iloc[i, j] == values[i][j]
