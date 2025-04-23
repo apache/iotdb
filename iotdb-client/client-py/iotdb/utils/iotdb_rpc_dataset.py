@@ -289,7 +289,8 @@ class IoTDBRpcDataSet(object):
                                 x, self.__time_precision, self.__zone_id
                             )
                             for x in column_array
-                        ]
+                        ],
+                        dtype=object,
                     )
                 # DATE
                 elif data_type == 9:

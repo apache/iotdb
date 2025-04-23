@@ -24,6 +24,8 @@ from iotdb.table_session import TableSession, TableSessionConfig
 from iotdb.utils.IoTDBConstants import TSDataType
 from iotdb.utils.Tablet import Tablet, ColumnType
 from datetime import date
+
+from iotdb.utils.rpc_utils import convert_to_timestamp
 from .iotdb_container import IoTDBContainer
 
 
@@ -354,11 +356,14 @@ def test_query_data():
                             rel_tol=1e-6,
                         )
                     elif data_types[i] == TSDataType.TIMESTAMP:
-                        assert row_record.get_fields()[i].get_object_value(
-                            data_types[i]
-                        ) == pd.Timestamp(
-                            values[row][i], unit="ms", tz=get_localzone_name()
+                        actual = row_record.get_fields()[i].get_timestamp_value()
+                        expected = convert_to_timestamp(
+                            values[row][i], "ms", get_localzone_name()
                         )
+                        if pd.isnull(actual):
+                            assert pd.isnull(expected)
+                        else:
+                            assert actual == expected
                     else:
                         assert (
                             row_record.get_fields()[i].get_object_value(data_types[i])
@@ -386,10 +391,15 @@ def test_query_data():
                             values[i][j],
                             rel_tol=1e-6,
                         )
-                    elif isinstance(values[i][j], pd.Timestamp):
-                        assert df.iloc[i, j] == pd.Timestamp(
-                            values[i][j], unit="ms", tz=get_localzone_name()
-                        )
+                    elif isinstance(df.iloc[i, j], pd.Timestamp):
+                        actual = df.iloc[i, j]
+                        expected = pd.Series(
+                            convert_to_timestamp(
+                                values[i][j], "ms", get_localzone_name()
+                            )
+                        )[0]
+                        print(expected, actual)
+                        assert actual == expected
                     else:
                         assert df.iloc[i, j] == values[i][j]
 

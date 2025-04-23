@@ -18,6 +18,7 @@
 import logging
 
 import pandas as pd
+from pandas._libs import OutOfBoundsDatetime
 from tzlocal import get_localzone_name
 
 from iotdb.thrift.common.ttypes import TSStatus
@@ -79,6 +80,8 @@ def verify_success_with_redirection_for_multi_devices(status: TSStatus, devices:
 def convert_to_timestamp(time: int, precision: str, timezone: str):
     try:
         return pd.Timestamp(time, unit=precision, tz=timezone)
+    except OutOfBoundsDatetime:
+        return pd.Timestamp(time, unit=precision).tz_localize(timezone)
     except ValueError:
         logger.warning(
             f"Timezone string '{timezone}' cannot be recognized by pandas. "
