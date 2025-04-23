@@ -37,6 +37,7 @@ import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
 import java.nio.ByteBuffer;
 import java.util.Map;
+import java.util.Objects;
 import java.util.concurrent.locks.ReentrantLock;
 
 public class PipeDataNodePluginAgent {
@@ -225,6 +226,6 @@ public class PipeDataNodePluginAgent {
     if (oldPipePluginMeta == null) {
       throw new PipeException(String.format("plugin %s is not registered.", oldPluginName));
     }
-    return newPipePluginMeta.getClassName().equals(oldPipePluginMeta.getClassName());
+    return Objects.equals(newPipePluginMeta.getClassName(), (oldPipePluginMeta.getClassName()));
   }
 }
