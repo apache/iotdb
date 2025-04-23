@@ -67,6 +67,9 @@ public class CreateConsumerProcedure extends AlterConsumerGroupProcedure {
             createConsumerReq.getConsumerId(),
             creationTime,
             createConsumerReq.getConsumerAttributes());
+
+    existingConsumerGroupMeta.checkAuthorityBeforeJoinConsumerGroup(newConsumerMeta);
+
     if (existingConsumerGroupMeta == null) {
       updatedConsumerGroupMeta =
           new ConsumerGroupMeta(
