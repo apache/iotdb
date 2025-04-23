@@ -28,6 +28,6 @@ import java.lang.annotation.Target;
  * Indicates that the method is valid only within the subscription module under the table model
  * namespace. Otherwise, the behavior is undefined.
  */
-@Target({ElementType.METHOD, ElementType.TYPE})
+@Target({ElementType.METHOD, ElementType.TYPE, ElementType.FIELD})
 @Retention(RetentionPolicy.RUNTIME)
 public @interface TableModel {}

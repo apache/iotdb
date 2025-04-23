@@ -63,6 +63,8 @@ public class SubscriptionSessionDataSet implements ISessionDataSet {
 
   /////////////////////////////// table model ///////////////////////////////
 
+  @TableModel private List<ColumnCategory> columnCategoryList;
+
   @TableModel
   public String getDatabaseName() {
     return databaseName;
@@ -75,27 +77,33 @@ public class SubscriptionSessionDataSet implements ISessionDataSet {
 
   @TableModel
   public List<ColumnCategory> getColumnCategories() {
+    if (Objects.nonNull(columnCategoryList)) {
+      return columnCategoryList;
+    }
+
     if (!isTableData()) {
       return Collections.emptyList();
     }
-    return Stream.concat(
-            Stream.of(ColumnCategory.TIME),
-            tablet.getColumnTypes().stream()
-                .map(
-                    columnCategory -> {
-                      switch (columnCategory) {
-                        case FIELD:
-                          return ColumnCategory.FIELD;
-                        case TAG:
-                          return ColumnCategory.TAG;
-                        case ATTRIBUTE:
-                          return ColumnCategory.ATTRIBUTE;
-                        default:
-                          throw new IllegalArgumentException(
-                              "Unknown column category: " + columnCategory);
-                      }
-                    }))
-        .collect(Collectors.toList());
+
+    return columnCategoryList =
+        Stream.concat(
+                Stream.of(ColumnCategory.TIME),
+                tablet.getColumnTypes().stream()
+                    .map(
+                        columnCategory -> {
+                          switch (columnCategory) {
+                            case FIELD:
+                              return ColumnCategory.FIELD;
+                            case TAG:
+                              return ColumnCategory.TAG;
+                            case ATTRIBUTE:
+                              return ColumnCategory.ATTRIBUTE;
+                            default:
+                              throw new IllegalArgumentException(
+                                  "Unknown column category: " + columnCategory);
+                          }
+                        }))
+            .collect(Collectors.toList());
   }
 
   @TableModel
@@ -121,23 +129,17 @@ public class SubscriptionSessionDataSet implements ISessionDataSet {
       return columnNameList;
     }
 
-    columnNameList = new ArrayList<>();
     List<IMeasurementSchema> schemas = tablet.getSchemas();
-    if (isTableData()) {
-      columnNameList.add("time");
-      columnNameList.addAll(
-          schemas.stream()
-              .map(IMeasurementSchema::getMeasurementName)
-              .collect(Collectors.toList()));
-    } else {
-      String deviceId = tablet.getDeviceId();
-      columnNameList.add("Time");
-      columnNameList.addAll(
-          schemas.stream()
-              .map((schema) -> deviceId + "." + schema.getMeasurementName())
-              .collect(Collectors.toList()));
-    }
-    return columnNameList;
+    String deviceId = tablet.getDeviceId();
+    return columnNameList =
+        isTableData()
+            ? Stream.concat(
+                    Stream.of("time"), schemas.stream().map(IMeasurementSchema::getMeasurementName))
+                .collect(Collectors.toList())
+            : Stream.concat(
+                    Stream.of("Time"),
+                    schemas.stream().map(schema -> deviceId + "." + schema.getMeasurementName()))
+                .collect(Collectors.toList());
   }
 
   @Override
@@ -146,13 +148,12 @@ public class SubscriptionSessionDataSet implements ISessionDataSet {
       return columnTypeList;
     }
 
-    columnTypeList = new ArrayList<>();
-    columnTypeList.add(TSDataType.INT64.toString());
-
     List<IMeasurementSchema> schemas = tablet.getSchemas();
-    columnTypeList.addAll(
-        schemas.stream().map(schema -> schema.getType().toString()).collect(Collectors.toList()));
-    return columnTypeList;
+    return columnTypeList =
+        Stream.concat(
+                Stream.of(TSDataType.INT64.toString()),
+                schemas.stream().map(schema -> schema.getType().toString()))
+            .collect(Collectors.toList());
   }
 
   public boolean hasNext() {
