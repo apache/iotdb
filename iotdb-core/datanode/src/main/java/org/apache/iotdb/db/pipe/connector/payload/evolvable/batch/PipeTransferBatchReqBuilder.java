@@ -45,6 +45,7 @@ import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstan
 import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.CONNECTOR_FORMAT_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.CONNECTOR_FORMAT_TS_FILE_VALUE;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.CONNECTOR_IOTDB_BATCH_DELAY_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.CONNECTOR_IOTDB_BATCH_DELAY_MS_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.CONNECTOR_IOTDB_BATCH_SIZE_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.CONNECTOR_IOTDB_PLAIN_BATCH_DELAY_DEFAULT_VALUE;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.CONNECTOR_IOTDB_PLAIN_BATCH_SIZE_DEFAULT_VALUE;
@@ -54,6 +55,7 @@ import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstan
 import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.CONNECTOR_LEADER_CACHE_ENABLE_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.SINK_FORMAT_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.SINK_IOTDB_BATCH_DELAY_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.SINK_IOTDB_BATCH_DELAY_MS_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.SINK_IOTDB_BATCH_SIZE_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.SINK_LEADER_CACHE_ENABLE_KEY;
 
@@ -87,34 +89,30 @@ public class PipeTransferBatchReqBuilder implements AutoCloseable {
                 Arrays.asList(SINK_LEADER_CACHE_ENABLE_KEY, CONNECTOR_LEADER_CACHE_ENABLE_KEY),
                 CONNECTOR_LEADER_CACHE_ENABLE_DEFAULT_VALUE);
 
-    final int requestMaxDelayInSeconds;
-    if (usingTsFileBatch) {
-      requestMaxDelayInSeconds =
+    final Integer requestMaxDelayInMillis =
+        parameters.getIntByKeys(CONNECTOR_IOTDB_BATCH_DELAY_MS_KEY, SINK_IOTDB_BATCH_DELAY_MS_KEY);
+    if (Objects.isNull(requestMaxDelayInMillis)) {
+      final int requestMaxDelayInSeconds =
           parameters.getIntOrDefault(
               Arrays.asList(CONNECTOR_IOTDB_BATCH_DELAY_KEY, SINK_IOTDB_BATCH_DELAY_KEY),
-              CONNECTOR_IOTDB_TS_FILE_BATCH_DELAY_DEFAULT_VALUE);
+              usingTsFileBatch
+                  ? CONNECTOR_IOTDB_TS_FILE_BATCH_DELAY_DEFAULT_VALUE
+                  : CONNECTOR_IOTDB_PLAIN_BATCH_DELAY_DEFAULT_VALUE);
       requestMaxDelayInMs =
           requestMaxDelayInSeconds < 0 ? Integer.MAX_VALUE : requestMaxDelayInSeconds * 1000;
-      requestMaxBatchSizeInBytes =
-          parameters.getLongOrDefault(
-              Arrays.asList(CONNECTOR_IOTDB_BATCH_SIZE_KEY, SINK_IOTDB_BATCH_SIZE_KEY),
-              CONNECTOR_IOTDB_TS_FILE_BATCH_SIZE_DEFAULT_VALUE);
-      this.defaultBatch =
-          new PipeTabletEventTsFileBatch(requestMaxDelayInMs, requestMaxBatchSizeInBytes);
     } else {
-      requestMaxDelayInSeconds =
-          parameters.getIntOrDefault(
-              Arrays.asList(CONNECTOR_IOTDB_BATCH_DELAY_KEY, SINK_IOTDB_BATCH_DELAY_KEY),
-              CONNECTOR_IOTDB_PLAIN_BATCH_DELAY_DEFAULT_VALUE);
       requestMaxDelayInMs =
-          requestMaxDelayInSeconds < 0 ? Integer.MAX_VALUE : requestMaxDelayInSeconds * 1000;
-      requestMaxBatchSizeInBytes =
-          parameters.getLongOrDefault(
-              Arrays.asList(CONNECTOR_IOTDB_BATCH_SIZE_KEY, SINK_IOTDB_BATCH_SIZE_KEY),
-              CONNECTOR_IOTDB_PLAIN_BATCH_SIZE_DEFAULT_VALUE);
-      this.defaultBatch =
-          new PipeTabletEventPlainBatch(requestMaxDelayInMs, requestMaxBatchSizeInBytes);
+          requestMaxDelayInMillis < 0 ? Integer.MAX_VALUE : requestMaxDelayInMillis;
     }
+
+    requestMaxBatchSizeInBytes =
+        parameters.getLongOrDefault(
+            Arrays.asList(CONNECTOR_IOTDB_BATCH_SIZE_KEY, SINK_IOTDB_BATCH_SIZE_KEY),
+            usingTsFileBatch
+                ? CONNECTOR_IOTDB_TS_FILE_BATCH_SIZE_DEFAULT_VALUE
+                : CONNECTOR_IOTDB_PLAIN_BATCH_SIZE_DEFAULT_VALUE);
+    this.defaultBatch =
+        new PipeTabletEventTsFileBatch(requestMaxDelayInMs, requestMaxBatchSizeInBytes);
   }
 
   /**
