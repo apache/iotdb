@@ -67,6 +67,7 @@ public class StatusUtils {
     NEED_RETRY.add(TSStatusCode.TOO_MANY_CONCURRENT_QUERIES_ERROR.getStatusCode());
     NEED_RETRY.add(TSStatusCode.SYNC_CONNECTION_ERROR.getStatusCode());
     NEED_RETRY.add(TSStatusCode.QUERY_EXECUTION_MEMORY_NOT_ENOUGH.getStatusCode());
+    NEED_RETRY.add(TSStatusCode.PLAN_FAILED_NETWORK_PARTITION.getStatusCode());
   }
 
   /**
