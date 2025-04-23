@@ -85,3 +85,23 @@ def convert_to_timestamp(time: int, precision: str, timezone: str):
             f"Falling back to local timezone: '{get_localzone_name()}'."
         )
         return pd.Timestamp(time, unit=precision, tz=get_localzone_name())
+
+
+unit_map = {
+    "ms": "milliseconds",
+    "us": "microseconds",
+    "ns": "nanoseconds",
+}
+
+
+def isoformat(ts: pd.Timestamp, unit: str):
+    if unit not in unit_map:
+        raise ValueError(f"Unsupported unit: {unit}")
+    try:
+        return ts.isoformat(timespec=unit_map[unit])
+    except ValueError:
+        logger.warning(
+            f"Timezone string '{unit_map[unit]}' cannot be recognized by old version pandas. "
+            f"Falling back to use auto timespec'."
+        )
+        return ts.isoformat()

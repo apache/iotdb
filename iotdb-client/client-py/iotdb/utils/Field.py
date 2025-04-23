@@ -19,7 +19,7 @@
 # for package
 from iotdb.utils.IoTDBConstants import TSDataType
 from iotdb.tsfile.utils.date_utils import parse_int_to_date
-from iotdb.utils.rpc_utils import convert_to_timestamp
+from iotdb.utils.rpc_utils import convert_to_timestamp, isoformat
 import numpy as np
 import pandas as pd
 
@@ -191,6 +191,12 @@ class Field(object):
         # BLOB
         elif self.__data_type == 10:
             return str(hex(int.from_bytes(self.value, byteorder="big")))
+        # TIMESTAMP
+        elif self.__data_type == 8:
+            return isoformat(
+                convert_to_timestamp(self.value, self.__precision, self.__timezone),
+                self.__precision,
+            )
         # Others
         else:
             return str(self.get_object_value(self.__data_type))
