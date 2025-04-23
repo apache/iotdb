@@ -25,6 +25,7 @@ import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.StorageEngineException;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.batch.utils.BatchCompactionPlan;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.CompactionScheduleContext;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.impl.RewriteCrossSpaceCompactionSelector;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.utils.CrossCompactionTaskResource;
@@ -335,6 +336,8 @@ public class CrossSpaceCompactionWithUnusualCasesTest extends AbstractCompaction
   @Test
   public void testMultiUnSeqFileOverlapWithSeqFilesButOneDeviceNotExistInOverlapSeqFiles()
       throws IOException, IllegalPathException {
+    BatchCompactionPlan.setMaxCachedTimeChunksSize(2 * 1024 * 1024 / 20);
+    TSFileDescriptor.getInstance().getConfig().setPageSizeInByte(1024);
     // seq file 1
     // device: d1, time: [150, 400]
     TsFileResource seqTsFileResource1 = createEmptyFileAndResource(true);
