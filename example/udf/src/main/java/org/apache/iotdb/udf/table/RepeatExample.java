@@ -83,8 +83,8 @@ public class RepeatExample implements TableFunction {
       throw new UDFArgumentNotValidException(
           "count argument for function repeat() must be positive");
     }
-    MapTableFunctionHandle handle = new MapTableFunctionHandle();
-    handle.addProperty(N_PARAM, count.getValue());
+    MapTableFunctionHandle handle =
+        new MapTableFunctionHandle.Builder().addProperty(N_PARAM, count.getValue()).build();
     return TableFunctionAnalysis.builder()
         .properColumnSchema(DescribedSchema.builder().addField("repeat_index", Type.INT32).build())
         .requiredColumns(

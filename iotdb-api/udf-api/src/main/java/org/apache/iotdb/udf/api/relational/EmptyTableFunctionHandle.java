@@ -29,4 +29,9 @@ public class EmptyTableFunctionHandle implements TableFunctionHandle {
 
   @Override
   public void deserialize(byte[] bytes) {}
+
+  @Override
+  public boolean equals(Object o) {
+    return o != null && getClass() == o.getClass();
+  }
 }

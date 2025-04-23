@@ -73,7 +73,6 @@ public class ImplementTableFunctionSource implements Rule<TableFunctionNode> {
               ImmutableList.of(),
               Optional.empty(),
               false,
-              node.getArguments(),
               node.getTableFunctionHandle(),
               false));
     } else if (node.getChildren().size() == 1) {
@@ -126,7 +125,6 @@ public class ImplementTableFunctionSource implements Rule<TableFunctionNode> {
               sourceProperties.getRequiredColumns(),
               sourceProperties.getDataOrganizationSpecification(),
               sourceProperties.isRowSemantics(),
-              node.getArguments(),
               node.getTableFunctionHandle(),
               sourceProperties.isRequireRecordSnapshot()));
     } else {

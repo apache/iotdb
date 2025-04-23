@@ -86,13 +86,18 @@ public class HOPTableFunction implements TableFunction {
             .addField("window_start", Type.TIMESTAMP)
             .addField("window_end", Type.TIMESTAMP)
             .build();
-    MapTableFunctionHandle handle = new MapTableFunctionHandle();
-    handle.addProperty(
-        ORIGIN_PARAMETER_NAME, ((ScalarArgument) arguments.get(ORIGIN_PARAMETER_NAME)).getValue());
-    handle.addProperty(
-        SLIDE_PARAMETER_NAME, ((ScalarArgument) arguments.get(SLIDE_PARAMETER_NAME)).getValue());
-    handle.addProperty(
-        SIZE_PARAMETER_NAME, ((ScalarArgument) arguments.get(SIZE_PARAMETER_NAME)).getValue());
+    MapTableFunctionHandle handle =
+        new MapTableFunctionHandle.Builder()
+            .addProperty(
+                ORIGIN_PARAMETER_NAME,
+                ((ScalarArgument) arguments.get(ORIGIN_PARAMETER_NAME)).getValue())
+            .addProperty(
+                SLIDE_PARAMETER_NAME,
+                ((ScalarArgument) arguments.get(SLIDE_PARAMETER_NAME)).getValue())
+            .addProperty(
+                SIZE_PARAMETER_NAME,
+                ((ScalarArgument) arguments.get(SIZE_PARAMETER_NAME)).getValue())
+            .build();
     // outputColumnSchema
     return TableFunctionAnalysis.builder()
         .properColumnSchema(properColumnSchema)

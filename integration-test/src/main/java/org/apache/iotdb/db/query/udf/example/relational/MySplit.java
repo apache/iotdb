@@ -59,11 +59,15 @@ public class MySplit implements TableFunction {
   @Override
   public TableFunctionAnalysis analyze(Map<String, Argument> arguments) throws UDFException {
     DescribedSchema schema = DescribedSchema.builder().addField("output", Type.STRING).build();
-    MapTableFunctionHandle handle = new MapTableFunctionHandle();
-    handle.addProperty(
-        INPUT_PARAMETER_NAME, ((ScalarArgument) arguments.get(INPUT_PARAMETER_NAME)).getValue());
-    handle.addProperty(
-        SPLIT_PARAMETER_NAME, ((ScalarArgument) arguments.get(SPLIT_PARAMETER_NAME)).getValue());
+    MapTableFunctionHandle handle =
+        new MapTableFunctionHandle.Builder()
+            .addProperty(
+                INPUT_PARAMETER_NAME,
+                ((ScalarArgument) arguments.get(INPUT_PARAMETER_NAME)).getValue())
+            .addProperty(
+                SPLIT_PARAMETER_NAME,
+                ((ScalarArgument) arguments.get(SPLIT_PARAMETER_NAME)).getValue())
+            .build();
     return TableFunctionAnalysis.builder().properColumnSchema(schema).handle(handle).build();
   }
 

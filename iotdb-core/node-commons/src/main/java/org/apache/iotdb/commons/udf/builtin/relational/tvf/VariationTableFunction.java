@@ -78,9 +78,12 @@ public class VariationTableFunction implements TableFunction {
     DescribedSchema properColumnSchema =
         new DescribedSchema.Builder().addField("window_index", Type.INT64).build();
     // outputColumnSchema
-    MapTableFunctionHandle handle = new MapTableFunctionHandle();
-    handle.addProperty(
-        DELTA_PARAMETER_NAME, ((ScalarArgument) arguments.get(DELTA_PARAMETER_NAME)).getValue());
+    MapTableFunctionHandle handle =
+        new MapTableFunctionHandle.Builder()
+            .addProperty(
+                DELTA_PARAMETER_NAME,
+                ((ScalarArgument) arguments.get(DELTA_PARAMETER_NAME)).getValue())
+            .build();
     return TableFunctionAnalysis.builder()
         .properColumnSchema(properColumnSchema)
         .requireRecordSnapshot(false)

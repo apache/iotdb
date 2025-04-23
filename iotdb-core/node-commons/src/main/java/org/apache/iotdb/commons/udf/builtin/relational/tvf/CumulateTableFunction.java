@@ -96,11 +96,14 @@ public class CumulateTableFunction implements TableFunction {
             .addField("window_start", Type.TIMESTAMP)
             .addField("window_end", Type.TIMESTAMP)
             .build();
-    MapTableFunctionHandle handle = new MapTableFunctionHandle();
-    handle.addProperty(STEP_PARAMETER_NAME, step);
-    handle.addProperty(SIZE_PARAMETER_NAME, size);
-    handle.addProperty(
-        ORIGIN_PARAMETER_NAME, ((ScalarArgument) arguments.get(ORIGIN_PARAMETER_NAME)).getValue());
+    MapTableFunctionHandle handle =
+        new MapTableFunctionHandle.Builder()
+            .addProperty(STEP_PARAMETER_NAME, step)
+            .addProperty(SIZE_PARAMETER_NAME, size)
+            .addProperty(
+                ORIGIN_PARAMETER_NAME,
+                ((ScalarArgument) arguments.get(ORIGIN_PARAMETER_NAME)).getValue())
+            .build();
     // outputColumnSchema
     return TableFunctionAnalysis.builder()
         .properColumnSchema(properColumnSchema)

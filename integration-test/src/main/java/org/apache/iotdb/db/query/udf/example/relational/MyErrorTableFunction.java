@@ -69,6 +69,7 @@ public class MyErrorTableFunction implements TableFunction {
       return TableFunctionAnalysis.builder()
           .properColumnSchema(
               DescribedSchema.builder().addField("proper_column", Type.INT32).build())
+          .handle(new MapTableFunctionHandle())
           .build();
     } else if (nValue == 1) {
       // set empty required columns
@@ -76,6 +77,7 @@ public class MyErrorTableFunction implements TableFunction {
           .properColumnSchema(
               DescribedSchema.builder().addField("proper_column", Type.INT32).build())
           .requiredColumns(TBL_PARAM, Collections.emptyList())
+          .handle(new MapTableFunctionHandle())
           .build();
     } else if (nValue == 2) {
       // set negative required columns
@@ -83,6 +85,7 @@ public class MyErrorTableFunction implements TableFunction {
           .properColumnSchema(
               DescribedSchema.builder().addField("proper_column", Type.INT32).build())
           .requiredColumns(TBL_PARAM, Collections.singletonList(-1))
+          .handle(new MapTableFunctionHandle())
           .build();
     } else if (nValue == 3) {
       // set required columns out of bound (0~10)
@@ -90,6 +93,7 @@ public class MyErrorTableFunction implements TableFunction {
           .properColumnSchema(
               DescribedSchema.builder().addField("proper_column", Type.INT32).build())
           .requiredColumns(TBL_PARAM, IntStream.range(0, 11).boxed().collect(Collectors.toList()))
+          .handle(new MapTableFunctionHandle())
           .build();
     } else if (nValue == 4) {
       // specify required columns to unknown table

@@ -67,8 +67,8 @@ public class MyRepeatWithoutIndex implements TableFunction {
       throw new UDFArgumentNotValidException(
           "count argument for function repeat() must be positive");
     }
-    MapTableFunctionHandle handle = new MapTableFunctionHandle();
-    handle.addProperty(N_PARAM, count.getValue());
+    MapTableFunctionHandle handle =
+        new MapTableFunctionHandle.Builder().addProperty(N_PARAM, count.getValue()).build();
     return TableFunctionAnalysis.builder()
         .requiredColumns(
             TBL_PARAM,

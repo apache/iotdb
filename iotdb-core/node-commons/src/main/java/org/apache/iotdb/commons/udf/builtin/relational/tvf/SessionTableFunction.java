@@ -77,9 +77,11 @@ public class SessionTableFunction implements TableFunction {
             .addField("window_end", Type.TIMESTAMP)
             .build();
 
-    MapTableFunctionHandle handle = new MapTableFunctionHandle();
-    handle.addProperty(
-        GAP_PARAMETER_NAME, ((ScalarArgument) arguments.get(GAP_PARAMETER_NAME)).getValue());
+    MapTableFunctionHandle handle =
+        new MapTableFunctionHandle.Builder()
+            .addProperty(
+                GAP_PARAMETER_NAME, ((ScalarArgument) arguments.get(GAP_PARAMETER_NAME)).getValue())
+            .build();
     // outputColumnSchema
     return TableFunctionAnalysis.builder()
         .properColumnSchema(properColumnSchema)

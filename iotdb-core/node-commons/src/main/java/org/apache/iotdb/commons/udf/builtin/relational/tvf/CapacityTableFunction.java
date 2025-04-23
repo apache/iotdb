@@ -62,8 +62,8 @@ public class CapacityTableFunction implements TableFunction {
     if (size <= 0) {
       throw new UDFException("Size must be greater than 0");
     }
-    MapTableFunctionHandle handle = new MapTableFunctionHandle();
-    handle.addProperty(SIZE_PARAMETER_NAME, size);
+    MapTableFunctionHandle handle =
+        new MapTableFunctionHandle.Builder().addProperty(SIZE_PARAMETER_NAME, size).build();
     return TableFunctionAnalysis.builder()
         .properColumnSchema(
             new DescribedSchema.Builder().addField("window_index", Type.INT64).build())

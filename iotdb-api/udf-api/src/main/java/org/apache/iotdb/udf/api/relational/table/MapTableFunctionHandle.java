@@ -27,6 +27,7 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 
 public class MapTableFunctionHandle implements TableFunctionHandle {
@@ -128,5 +129,36 @@ public class MapTableFunctionHandle implements TableFunctionHandle {
     }
     sb.append('}');
     return sb.toString();
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) return true;
+    if (o == null || getClass() != o.getClass()) return false;
+    MapTableFunctionHandle handle = (MapTableFunctionHandle) o;
+    return Objects.equals(map, handle.map);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hashCode(map);
+  }
+
+  public static class Builder {
+    private final Map<String, Object> map = new HashMap<>();
+
+    public Builder addProperty(String key, Object value) {
+      if (!SUPPORT_VALUE_TYPE.contains(value.getClass())) {
+        throw new IllegalArgumentException("Unsupported value type.");
+      }
+      map.put(key, value);
+      return this;
+    }
+
+    public MapTableFunctionHandle build() {
+      MapTableFunctionHandle handle = new MapTableFunctionHandle();
+      handle.map.putAll(map);
+      return handle;
+    }
   }
 }
