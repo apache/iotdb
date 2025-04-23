@@ -106,10 +106,10 @@ public class ConsumerGroupMeta {
 
   /////////////////////////////// consumer ///////////////////////////////
 
-  public boolean checkAuthorityBeforeJoinConsumerGroup(final ConsumerMeta consumerMeta)
+  public void checkAuthorityBeforeJoinConsumerGroup(final ConsumerMeta consumerMeta)
       throws SubscriptionException {
     if (isEmpty()) {
-      return true;
+      return;
     }
     final ConsumerMeta existedConsumerMeta = consumerIdToConsumerMeta.values().iterator().next();
     final boolean match =
@@ -127,7 +127,7 @@ public class ConsumerGroupMeta {
       LOGGER.warn(exceptionMessage);
       throw new SubscriptionException(exceptionMessage);
     }
-    return true;
+    return;
   }
 
   public void addConsumer(final ConsumerMeta consumerMeta) {

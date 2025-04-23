@@ -37,8 +37,6 @@ import org.junit.Before;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.util.Arrays;
 import java.util.Optional;
@@ -51,8 +49,6 @@ import static org.junit.Assert.fail;
 @RunWith(IoTDBTestRunner.class)
 @Category({LocalStandaloneIT.class})
 public class IoTDBSubscriptionPermissionIT extends AbstractSubscriptionLocalIT {
-
-  private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBSubscriptionPermissionIT.class);
 
   @Override
   @Before
@@ -131,6 +127,21 @@ public class IoTDBSubscriptionPermissionIT extends AbstractSubscriptionLocalIT {
     }
   }
 
+  /**
+   * Tests runtime access control in the same consumer group.
+   *
+   * <p>In IoTDB subscriptions, all consumers in one group must use identical credentials when
+   * subscribing to the same topic. This test creates a topic and three consumers:
+   *
+   * <p>
+   *
+   * <ul>
+   *   <li>consumer1 and consumer2 use "thulab:passwd".
+   *   <li>consumer3 uses "hacker:qwerty123".
+   * </ul>
+   *
+   * <p>Since consumer3 uses different credentials, it should be rejected.
+   */
   @Test
   public void testRuntimeAccessControl() {
     final String host = EnvFactory.getEnv().getIP();
@@ -223,12 +234,104 @@ public class IoTDBSubscriptionPermissionIT extends AbstractSubscriptionLocalIT {
 
       consumer1.open();
       consumer1.subscribe(topicName);
-
       consumer2.open();
       consumer2.subscribe(topicName);
-
       consumer3.open();
       consumer3.subscribe(topicName);
+
+      fail();
+    } catch (final Exception e) {
+    }
+  }
+
+  /**
+   * Tests strict runtime access control in the same consumer group.
+   *
+   * <p>In IoTDB subscriptions, all consumers in one group must use identical credentials. This test
+   * creates two consumers with "thulab:passwd" and one with "hacker:qwerty123". Since the latter
+   * does not match the required credentials, it should be rejected.
+   */
+  @Test
+  public void testStrictRuntimeAccessControl() {
+    final String host = EnvFactory.getEnv().getIP();
+    final int port = Integer.parseInt(EnvFactory.getEnv().getPort());
+
+    // create user
+    if (!TestUtils.tryExecuteNonQueriesWithRetry(
+        EnvFactory.getEnv(),
+        Arrays.asList("create user `thulab` 'passwd'", "create user `hacker` 'qwerty123'"))) {
+      return;
+    }
+
+    final AtomicInteger rowCount = new AtomicInteger();
+    try (final SubscriptionTreePushConsumer consumer1 =
+            new SubscriptionTreePushConsumer.Builder()
+                .host(host)
+                .port(port)
+                .username("thulab")
+                .password("passwd")
+                .consumerId("thulab_consumer_1")
+                .consumerGroupId("thulab_consumer_group")
+                .ackStrategy(AckStrategy.AFTER_CONSUME)
+                .consumeListener(
+                    message -> {
+                      for (final SubscriptionSessionDataSet dataSet :
+                          message.getSessionDataSetsHandler()) {
+                        while (dataSet.hasNext()) {
+                          dataSet.next();
+                          rowCount.addAndGet(1);
+                        }
+                      }
+                      return ConsumeResult.SUCCESS;
+                    })
+                .buildPushConsumer();
+        final SubscriptionTreePushConsumer consumer2 =
+            new SubscriptionTreePushConsumer.Builder()
+                .host(host)
+                .port(port)
+                .username("thulab")
+                .password("passwd")
+                .consumerId("thulab_consumer_2")
+                .consumerGroupId("thulab_consumer_group")
+                .ackStrategy(AckStrategy.AFTER_CONSUME)
+                .consumeListener(
+                    message -> {
+                      for (final SubscriptionSessionDataSet dataSet :
+                          message.getSessionDataSetsHandler()) {
+                        while (dataSet.hasNext()) {
+                          dataSet.next();
+                          rowCount.addAndGet(1);
+                        }
+                      }
+                      return ConsumeResult.SUCCESS;
+                    })
+                .buildPushConsumer();
+        final SubscriptionTreePushConsumer consumer3 =
+            new SubscriptionTreePushConsumer.Builder()
+                .host(host)
+                .port(port)
+                .username("hacker")
+                .password("qwerty123")
+                .consumerId("hacker_consumer")
+                .consumerGroupId("thulab_consumer_group")
+                .ackStrategy(AckStrategy.AFTER_CONSUME)
+                .consumeListener(
+                    message -> {
+                      for (final SubscriptionSessionDataSet dataSet :
+                          message.getSessionDataSetsHandler()) {
+                        while (dataSet.hasNext()) {
+                          dataSet.next();
+                          rowCount.addAndGet(1);
+                        }
+                      }
+                      return ConsumeResult.SUCCESS;
+                    })
+                .buildPushConsumer()) {
+
+      consumer1.open();
+      consumer2.open();
+      consumer3.open();
+
       fail();
     } catch (final Exception e) {
     }
