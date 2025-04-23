@@ -2081,10 +2081,12 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
                 .containsKey(PipeExtractorConstant.EXTRACTOR_KEY)
             || alterPipeStatement
                 .getExtractorAttributes()
-                .containsKey(PipeExtractorConstant.SOURCE_KEY))
+                .containsKey(PipeExtractorConstant.SOURCE_KEY)
+            || alterPipeStatement.isReplaceAllExtractorAttributes()) {
           checkIfSameSourceType(
               new PipeParameters(alterPipeStatement.getExtractorAttributes()),
               pipeMetaFromCoordinator.getStaticMeta().getExtractorParameters());
+        }
         if (alterPipeStatement.isReplaceAllExtractorAttributes()) {
           extractorAttributes = alterPipeStatement.getExtractorAttributes();
         } else {
