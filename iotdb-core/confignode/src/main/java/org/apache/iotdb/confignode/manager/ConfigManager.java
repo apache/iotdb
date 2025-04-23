@@ -2885,7 +2885,7 @@ public class ConfigManager implements IManager {
                                       .checkDuplicateTableTask(
                                           entry.getKey(), null, table, null, null)
                                       .getRight());
-                      return !entry.getValue().isEmpty();
+                      return true;
                     })
                 .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue)))
         : new TFetchTableResp(status);
