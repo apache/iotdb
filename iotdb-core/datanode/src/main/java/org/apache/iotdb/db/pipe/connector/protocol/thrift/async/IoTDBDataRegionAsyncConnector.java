@@ -698,6 +698,14 @@ public class IoTDBDataRegionAsyncConnector extends IoTDBConnector {
     return retryEventQueue.size();
   }
 
+  public int getBatchSize() {
+    return tabletBatchBuilder.size();
+  }
+
+  public int getPendingHandlersSize() {
+    return pendingHandlers.size();
+  }
+
   //////////////////////// APIs provided for PipeTransferTrackableHandler ////////////////////////
 
   public boolean isClosed() {

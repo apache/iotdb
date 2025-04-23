@@ -582,6 +582,10 @@ public class IoTDBDataRegionSyncConnector extends IoTDBDataNodeSyncConnector {
     tabletBatchBuilder.discardEventsOfPipe(pipeNameToDrop, regionId);
   }
 
+  public int getBatchSize() {
+    return tabletBatchBuilder.size();
+  }
+
   @Override
   public void close() {
     if (tabletBatchBuilder != null) {
