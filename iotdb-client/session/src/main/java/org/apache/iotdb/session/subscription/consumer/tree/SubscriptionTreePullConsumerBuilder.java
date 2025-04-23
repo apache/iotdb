@@ -117,8 +117,7 @@ public class SubscriptionTreePullConsumerBuilder extends AbstractSubscriptionPul
     return this;
   }
 
-  @Override
-  public ISubscriptionTreePullConsumer buildTreePullConsumer() {
+  public ISubscriptionTreePullConsumer build() {
     return new SubscriptionTreePullConsumer(this);
   }
 }
