@@ -852,7 +852,7 @@ public class IoTDBTableIT {
       fail();
     } catch (final SQLException e) {
       assertEquals(
-          "803: Access Denied: No permissions for this operation, please add privilege CREATE ON tree_view_db.view_table.",
+          "803: Access Denied: No permissions for this operation, please add privilege CREATE ON tree_view_db.view_table",
           e.getMessage());
     }
 
