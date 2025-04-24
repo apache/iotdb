@@ -44,7 +44,7 @@ public final class HyperLogLogBigArray {
   public HyperLogLog get(long index, HyperLogLog hll) {
     HyperLogLog result = array.get(index);
     if (result == null) {
-      array.set(index, hll);
+      set(index, hll);
       return hll;
     }
     return result;

@@ -129,11 +129,9 @@ public class GroupedApproxCountDistinctAccumulator implements GroupedAccumulator
     if (mask.isSelectAll()) {
       for (int i = 0; i < positionCount; i++) {
         int groupId = groupIds[i];
+        HyperLogLog hll = hlls.get(groupId, maxStandardError);
         if (!column.isNull(i)) {
-          hlls.get(groupId).add(column.getBoolean(i));
-        } else {
-          // init a hyperloglog if the groupId's position is null
-          hlls.get(groupId, maxStandardError);
+          hll.add(column.getBoolean(i));
         }
       }
     } else {
@@ -143,10 +141,9 @@ public class GroupedApproxCountDistinctAccumulator implements GroupedAccumulator
       for (int i = 0; i < positionCount; i++) {
         position = selectedPositions[i];
         groupId = groupIds[position];
+        HyperLogLog hll = hlls.get(groupId, maxStandardError);
         if (!column.isNull(position)) {
-          hlls.get(groupId, maxStandardError).add(column.getBoolean(i));
-        } else {
-          hlls.get(groupId, maxStandardError);
+          hll.add(column.getBoolean(i));
         }
       }
     }
@@ -163,11 +160,9 @@ public class GroupedApproxCountDistinctAccumulator implements GroupedAccumulator
     if (mask.isSelectAll()) {
       for (int i = 0; i < positionCount; i++) {
         int groupId = groupIds[i];
+        HyperLogLog hll = hlls.get(groupId, maxStandardError);
         if (!column.isNull(i)) {
-          hlls.get(groupId).add(column.getInt(i));
-        } else {
-          // init a hyperloglog if the groupId's position is null
-          hlls.get(groupId, maxStandardError);
+          hll.add(column.getInt(i));
         }
       }
     } else {
@@ -177,10 +172,9 @@ public class GroupedApproxCountDistinctAccumulator implements GroupedAccumulator
       for (int i = 0; i < positionCount; i++) {
         position = selectedPositions[i];
         groupId = groupIds[position];
+        HyperLogLog hll = hlls.get(groupId, maxStandardError);
         if (!column.isNull(position)) {
-          hlls.get(groupId, maxStandardError).add(column.getInt(i));
-        } else {
-          hlls.get(groupId, maxStandardError);
+          hll.add(column.getInt(i));
         }
       }
     }
@@ -197,11 +191,9 @@ public class GroupedApproxCountDistinctAccumulator implements GroupedAccumulator
     if (mask.isSelectAll()) {
       for (int i = 0; i < positionCount; i++) {
         int groupId = groupIds[i];
+        HyperLogLog hll = hlls.get(groupId, maxStandardError);
         if (!column.isNull(i)) {
-          hlls.get(groupId).add(column.getLong(i));
-        } else {
-          // init a hyperloglog if the groupId's position is null
-          hlls.get(groupId, maxStandardError);
+          hll.add(column.getLong(i));
         }
       }
     } else {
@@ -211,10 +203,9 @@ public class GroupedApproxCountDistinctAccumulator implements GroupedAccumulator
       for (int i = 0; i < positionCount; i++) {
         position = selectedPositions[i];
         groupId = groupIds[position];
+        HyperLogLog hll = hlls.get(groupId, maxStandardError);
         if (!column.isNull(position)) {
-          hlls.get(groupId, maxStandardError).add(column.getLong(i));
-        } else {
-          hlls.get(groupId, maxStandardError);
+          hll.add(column.getLong(i));
         }
       }
     }
@@ -231,11 +222,9 @@ public class GroupedApproxCountDistinctAccumulator implements GroupedAccumulator
     if (mask.isSelectAll()) {
       for (int i = 0; i < positionCount; i++) {
         int groupId = groupIds[i];
+        HyperLogLog hll = hlls.get(groupId, maxStandardError);
         if (!column.isNull(i)) {
-          hlls.get(groupId).add(column.getFloat(i));
-        } else {
-          // init a hyperloglog if the groupId's position is null
-          hlls.get(groupId, maxStandardError);
+          hll.add(column.getFloat(i));
         }
       }
     } else {
@@ -245,10 +234,9 @@ public class GroupedApproxCountDistinctAccumulator implements GroupedAccumulator
       for (int i = 0; i < positionCount; i++) {
         position = selectedPositions[i];
         groupId = groupIds[position];
+        HyperLogLog hll = hlls.get(groupId, maxStandardError);
         if (!column.isNull(position)) {
-          hlls.get(groupId, maxStandardError).add(column.getFloat(i));
-        } else {
-          hlls.get(groupId, maxStandardError);
+          hll.add(column.getFloat(i));
         }
       }
     }
@@ -265,11 +253,9 @@ public class GroupedApproxCountDistinctAccumulator implements GroupedAccumulator
     if (mask.isSelectAll()) {
       for (int i = 0; i < positionCount; i++) {
         int groupId = groupIds[i];
+        HyperLogLog hll = hlls.get(groupId, maxStandardError);
         if (!column.isNull(i)) {
-          hlls.get(groupId).add(column.getDouble(i));
-        } else {
-          // init a hyperloglog if the groupId's position is null
-          hlls.get(groupId, maxStandardError);
+          hll.add(column.getDouble(i));
         }
       }
     } else {
@@ -279,10 +265,9 @@ public class GroupedApproxCountDistinctAccumulator implements GroupedAccumulator
       for (int i = 0; i < positionCount; i++) {
         position = selectedPositions[i];
         groupId = groupIds[position];
+        HyperLogLog hll = hlls.get(groupId, maxStandardError);
         if (!column.isNull(position)) {
-          hlls.get(groupId, maxStandardError).add(column.getDouble(i));
-        } else {
-          hlls.get(groupId, maxStandardError);
+          hll.add(column.getDouble(i));
         }
       }
     }
@@ -299,11 +284,9 @@ public class GroupedApproxCountDistinctAccumulator implements GroupedAccumulator
     if (mask.isSelectAll()) {
       for (int i = 0; i < positionCount; i++) {
         int groupId = groupIds[i];
+        HyperLogLog hll = hlls.get(groupId, maxStandardError);
         if (!column.isNull(i)) {
-          hlls.get(groupId).add(column.getBinary(i));
-        } else {
-          // init a hyperloglog if the groupId's position is null
-          hlls.get(groupId, maxStandardError);
+          hll.add(column.getBinary(i));
         }
       }
     } else {
@@ -313,10 +296,9 @@ public class GroupedApproxCountDistinctAccumulator implements GroupedAccumulator
       for (int i = 0; i < positionCount; i++) {
         position = selectedPositions[i];
         groupId = groupIds[position];
+        HyperLogLog hll = hlls.get(groupId, maxStandardError);
         if (!column.isNull(position)) {
-          hlls.get(groupId, maxStandardError).add(column.getBinary(i));
-        } else {
-          hlls.get(groupId, maxStandardError);
+          hll.add(column.getBinary(i));
         }
       }
     }
