@@ -106,8 +106,8 @@ public class TableModelSubscriptionSessionExample {
             .password("root")
             .build()) {
       final Properties config = new Properties();
-      config.put(TopicConstant.DATABASE_KEY, "db");
-      config.put(TopicConstant.TABLE_KEY, "test");
+      config.put(TopicConstant.DATABASE_KEY, "db.*");
+      config.put(TopicConstant.TABLE_KEY, "test.*");
       config.put(TopicConstant.START_TIME_KEY, 25);
       config.put(TopicConstant.END_TIME_KEY, 75);
       config.put(TopicConstant.STRICT_KEY, "true");
@@ -133,8 +133,10 @@ public class TableModelSubscriptionSessionExample {
         for (final SubscriptionMessage message : messages) {
           for (final SubscriptionSessionDataSet dataSet : message.getSessionDataSetsHandler()) {
             System.out.println(dataSet.getDatabaseName());
+            System.out.println(dataSet.getTableName());
             System.out.println(dataSet.getColumnNames());
             System.out.println(dataSet.getColumnTypes());
+            System.out.println(dataSet.getColumnCategories());
             while (dataSet.hasNext()) {
               System.out.println(dataSet.next());
             }
@@ -166,8 +168,14 @@ public class TableModelSubscriptionSessionExample {
             .username("root")
             .password("root")
             .build()) {
-      createDataBaseAndTable(session, "db", "test");
-      insertData(session, "db", "test", 0, 100);
+      createDataBaseAndTable(session, "db1", "test1");
+      createDataBaseAndTable(session, "db1", "test2");
+      createDataBaseAndTable(session, "db2", "test1");
+      createDataBaseAndTable(session, "db2", "test2");
+      insertData(session, "db1", "test1", 0, 100);
+      insertData(session, "db1", "test2", 0, 100);
+      insertData(session, "db2", "test1", 0, 100);
+      insertData(session, "db2", "test2", 0, 100);
       dataSubscription();
     }
   }
