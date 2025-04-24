@@ -422,6 +422,19 @@ public class JoinNode extends TwoChildProcessNode {
       return new AsofJoinClause(operator.flip(), right, left);
     }
 
+    public boolean isOperatorContainsGreater() {
+      switch (operator) {
+        case GREATER_THAN:
+        case GREATER_THAN_OR_EQUAL:
+          return true;
+        case LESS_THAN:
+        case LESS_THAN_OR_EQUAL:
+          return false;
+        default:
+          throw new IllegalArgumentException("Invalid operator type: " + operator);
+      }
+    }
+
     @Override
     public boolean equals(Object obj) {
       if (this == obj) {

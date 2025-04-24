@@ -37,15 +37,22 @@ public class JoinKeyComparatorFactory {
   }
 
   public static List<JoinKeyComparator> getAsofComparators(
-      List<Type> joinKeyTypes, boolean ignoreEqual) {
+      List<Type> joinKeyTypes, boolean ignoreEqual, boolean asofAscending) {
     List<JoinKeyComparator> comparators = new ArrayList<>(joinKeyTypes.size());
     for (Type joinKeyType : joinKeyTypes) {
       comparators.add(getComparator(joinKeyType, true));
     }
-    comparators.add(
-        ignoreEqual
-            ? AscLongTypeIgnoreEqualJoinKeyComparator.getInstance()
-            : AscLongTypeJoinKeyComparator.getInstance());
+    if (asofAscending) {
+      comparators.add(
+          ignoreEqual
+              ? AscLongTypeIgnoreEqualJoinKeyComparator.getInstance()
+              : AscLongTypeJoinKeyComparator.getInstance());
+    } else {
+      comparators.add(
+          ignoreEqual
+              ? DescLongTypeIgnoreEqualJoinKeyComparator.getInstance()
+              : DescLongTypeJoinKeyComparator.getInstance());
+    }
     return comparators;
   }
 

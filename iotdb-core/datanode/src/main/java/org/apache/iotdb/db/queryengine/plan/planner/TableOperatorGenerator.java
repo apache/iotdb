@@ -1482,11 +1482,6 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
       }
 
       ComparisonExpression.Operator asofOperator = asofJoinClause.getOperator();
-      if (asofOperator != ComparisonExpression.Operator.LESS_THAN
-          && asofOperator != ComparisonExpression.Operator.LESS_THAN_OR_EQUAL) {
-        throw new IllegalStateException(
-            String.format("Unexpected asofOperator here: %s", asofOperator));
-      }
 
       if (requireNonNull(node.getJoinType()) == JoinNode.JoinType.INNER) {
         OperatorContext operatorContext =
@@ -1505,7 +1500,10 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
             rightJoinKeyPositions,
             rightOutputSymbolIdx,
             JoinKeyComparatorFactory.getAsofComparators(
-                joinKeyTypes, asofOperator == ComparisonExpression.Operator.LESS_THAN_OR_EQUAL),
+                joinKeyTypes,
+                asofOperator == ComparisonExpression.Operator.LESS_THAN_OR_EQUAL
+                    || asofOperator == ComparisonExpression.Operator.GREATER_THAN_OR_EQUAL,
+                !asofJoinClause.isOperatorContainsGreater()),
             dataTypes);
       } else {
         throw new IllegalStateException("Unsupported ASOF join type: " + node.getJoinType());

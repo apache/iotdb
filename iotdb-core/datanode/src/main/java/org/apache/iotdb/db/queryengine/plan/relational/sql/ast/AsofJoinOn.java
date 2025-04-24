@@ -36,8 +36,8 @@ public class AsofJoinOn extends JoinOn {
 
   // record main expression of ASOF join
   // .e.g 'ASOF (tolerance 1) JOIN ON t1.device = t2.device and t1.time > t2.time' =>
-  // asofExpression:
-  // 't1.time > t2.time', expression in super Class: 't1.device = t2.device and t1.time <= t2.time +
+  // asofExpression:'t1.time > t2.time', expression in super Class: 't1.device = t2.device and
+  // t1.time <= t2.time +
   // 1'
   private final Expression asofExpression;
 
@@ -131,10 +131,6 @@ public class AsofJoinOn extends JoinOn {
     } else {
       return new AsofJoinOn(and(newTermList), asofExpression);
     }
-  }
-
-  private JoinCriteria constructAsofJoinOn(Expression joinExpression, long timeInterval) {
-    return null;
   }
 
   @Override

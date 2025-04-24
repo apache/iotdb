@@ -2164,9 +2164,6 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
 
     JoinCriteria criteria;
 
-    // This will be true if criteria is ASOF join criteria with tolerance
-    boolean hasTolerance = false;
-
     if (ctx.NATURAL() != null) {
       right = (Relation) visit(ctx.right);
       criteria = new NaturalJoin();
@@ -2191,8 +2188,6 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
             } else {
               throw new IllegalStateException("No time duration or time interval value appears!");
             }
-
-            hasTolerance = true;
           }
           criteria =
               constructAsofJoinOn(
@@ -2218,8 +2213,8 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
       joinType = Join.Type.INNER;
     }
 
-    if (joinType != Join.Type.INNER && hasTolerance) {
-      throw new SemanticException("Tolerance is only supported in ASOF INNER JOIN");
+    if (joinType != Join.Type.INNER) {
+      throw new SemanticException("ASOF JOIN is only support INNER type now");
     }
 
     return new Join(getLocation(ctx), joinType, left, right, criteria);

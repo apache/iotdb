@@ -46,12 +46,37 @@ import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.tableScan;
 import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SortItem.NullOrdering.LAST;
 import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SortItem.Ordering.ASCENDING;
+import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SortItem.Ordering.DESCENDING;
 
 public class AsofJoinTest {
   @Test
   public void simpleTest() {
     PlanTester planTester = new PlanTester();
 
+    assertPlan(
+        planTester.createPlan(
+            "select table1.time,table1.s1,table2.time,table2.s1 from table1 asof join table2 on table1.time < table2.time"),
+        output(
+            join(
+                JoinNode.JoinType.INNER,
+                builder ->
+                    builder
+                        .asofCriteria(ComparisonExpression.Operator.LESS_THAN, "time", "time_0")
+                        .left(
+                            sort(
+                                ImmutableList.of(sort("time", ASCENDING, LAST)),
+                                tableScan(
+                                    "testdb.table1",
+                                    ImmutableList.of("time", "s1"),
+                                    ImmutableSet.of("time", "s1"))))
+                        .right(
+                            sort(
+                                ImmutableList.of(sort("time_0", ASCENDING, LAST)),
+                                tableScan(
+                                    "testdb.table2",
+                                    ImmutableMap.of("time_0", "time", "s1_6", "s1")))))));
+
+    // Asof operator is '>', appended ordering is DESC
     assertPlan(
         planTester.createPlan(
             "select table1.time,table1.s1,table2.time,table2.s1 from table1 asof join table2 on table1.time > table2.time"),
@@ -63,14 +88,14 @@ public class AsofJoinTest {
                         .asofCriteria(ComparisonExpression.Operator.GREATER_THAN, "time", "time_0")
                         .left(
                             sort(
-                                ImmutableList.of(sort("time", ASCENDING, LAST)),
+                                ImmutableList.of(sort("time", DESCENDING, LAST)),
                                 tableScan(
                                     "testdb.table1",
                                     ImmutableList.of("time", "s1"),
                                     ImmutableSet.of("time", "s1"))))
                         .right(
                             sort(
-                                ImmutableList.of(sort("time_0", ASCENDING, LAST)),
+                                ImmutableList.of(sort("time_0", DESCENDING, LAST)),
                                 tableScan(
                                     "testdb.table2",
                                     ImmutableMap.of("time_0", "time", "s1_6", "s1")))))));
@@ -96,14 +121,14 @@ public class AsofJoinTest {
                                     ComparisonExpression.Operator.GREATER_THAN, "time", "time_0")
                                 .left(
                                     sort(
-                                        ImmutableList.of(sort("time", ASCENDING, LAST)),
+                                        ImmutableList.of(sort("time", DESCENDING, LAST)),
                                         tableScan(
                                             "testdb.table1",
                                             ImmutableList.of("time", "s1"),
                                             ImmutableSet.of("time", "s1"))))
                                 .right(
                                     sort(
-                                        ImmutableList.of(sort("time_0", ASCENDING, LAST)),
+                                        ImmutableList.of(sort("time_0", DESCENDING, LAST)),
                                         project(
                                             tableScan(
                                                 "testdb.table2",
@@ -134,7 +159,7 @@ public class AsofJoinTest {
                                     sort(
                                         ImmutableList.of(
                                             sort("tag1", ASCENDING, LAST),
-                                            sort("expr", ASCENDING, LAST)),
+                                            sort("expr", DESCENDING, LAST)),
                                         project(
                                             ImmutableMap.of(
                                                 "expr",
@@ -250,11 +275,8 @@ public class AsofJoinTest {
     assertAnalyzeSemanticException(
         "select * from table1 asof (tolerance 1ms) join table2 on table1.tag1 = table2.tag1 and table1.time > table2.s1",
         "right child type of ASOF main JOIN expression must be TIMESTAMP: actual type INT64");
-
-    // ASOF left join doesn't support tolerance, because 'For now, FullOuterJoin and LeftJoin only
-    // support EquiJoinClauses'
     assertAnalyzeSemanticException(
         "select * from table1 asof (tolerance 1ms) left join table2 on table1.time > table2.time",
-        "Tolerance is only supported in ASOF INNER JOIN");
+        "ASOF JOIN is only support INNER type now");
   }
 }
