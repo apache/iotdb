@@ -4202,7 +4202,7 @@ public class IoTDBTableAggregationIT {
         DATABASE_NAME);
     tableAssertTestFail(
         "select approx_count_distinct(province, 'test') from table1",
-        "701: Second argument of Aggregate functions [approx_count_distinct] should be DOUBLE",
+        "701: Second argument of Aggregate functions [approx_count_distinct] should be numberic type and do not use expression",
         DATABASE_NAME);
   }
 

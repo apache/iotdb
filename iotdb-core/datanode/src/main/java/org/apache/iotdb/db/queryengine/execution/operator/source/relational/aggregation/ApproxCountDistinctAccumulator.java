@@ -24,6 +24,7 @@ import org.apache.tsfile.utils.RamUsageEstimator;
 import org.apache.tsfile.write.UnSupportedDataTypeException;
 
 import static com.google.common.base.Preconditions.checkArgument;
+import static org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.HyperLogLog.DEFAULT_STANDARD_ERROR;
 
 public class ApproxCountDistinctAccumulator implements TableAccumulator {
   private static final long INSTANCE_SIZE =
@@ -53,16 +54,9 @@ public class ApproxCountDistinctAccumulator implements TableAccumulator {
   @Override
   public void addInput(Column[] arguments, AggregationMask mask) {
     HyperLogLog hll;
-
-    if (arguments.length == 1) {
-      hll = HyperLogLogStateFactory.getOrCreateHyperLogLog(state);
-    } else if (arguments.length == 2) {
-      double maxStandardError = arguments[1].getDouble(0);
-      hll = HyperLogLogStateFactory.getOrCreateHyperLogLog(state, maxStandardError);
-    } else {
-      throw new IllegalArgumentException(
-          "argument of APPROX_COUNT_DISTINCT should be one column with Max Standard Error");
-    }
+    double maxStandardError =
+        arguments.length == 1 ? DEFAULT_STANDARD_ERROR : arguments[1].getDouble(0);
+    hll = getOrCreateHyperLogLog(state, maxStandardError);
 
     switch (seriesDataType) {
       case INT32:
@@ -103,28 +97,6 @@ public class ApproxCountDistinctAccumulator implements TableAccumulator {
         HyperLogLog current = new HyperLogLog(argument.getBinary(i).getValues());
         state.merge(current);
       }
-    }
-    HyperLogLog merged = null;
-    for (int i = 0; i < argument.getPositionCount(); i++) {
-      if (!argument.isNull(i)) {
-        HyperLogLog current = new HyperLogLog(argument.getBinary(i).getValues());
-        if (merged == null) {
-          merged = current;
-        } else {
-          merged.merge(current);
-        }
-      }
-    }
-
-    if (merged == null) {
-      // No intermediate value to merge
-      return;
-    }
-
-    if (state.getHyperLogLog() == null) {
-      state.setHyperLogLog(merged);
-    } else {
-      state.getHyperLogLog().merge(merged);
     }
   }
 
@@ -282,5 +254,15 @@ public class ApproxCountDistinctAccumulator implements TableAccumulator {
         }
       }
     }
+  }
+
+  public static HyperLogLog getOrCreateHyperLogLog(
+      HyperLogLogStateFactory.SingleHyperLogLogState state, double maxStandardError) {
+    HyperLogLog hll = state.getHyperLogLog();
+    if (hll == null) {
+      hll = new HyperLogLog(maxStandardError);
+      state.setHyperLogLog(hll);
+    }
+    return hll;
   }
 }

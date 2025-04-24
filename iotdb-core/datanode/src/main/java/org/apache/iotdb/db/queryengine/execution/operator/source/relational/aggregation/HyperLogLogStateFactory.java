@@ -19,7 +19,6 @@ import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggr
 import org.apache.tsfile.utils.RamUsageEstimator;
 
 import static java.util.Objects.requireNonNull;
-import static org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.HyperLogLog.DEFAULT_STANDARD_ERROR;
 
 public class HyperLogLogStateFactory {
   public static SingleHyperLogLogState createSingleState() {
@@ -28,27 +27,6 @@ public class HyperLogLogStateFactory {
 
   public static GroupedHyperLogLogState createGroupedState() {
     return new GroupedHyperLogLogState();
-  }
-
-  public static HyperLogLog getOrCreateHyperLogLog(SingleHyperLogLogState state) {
-    return getOrCreateHyperLogLog(state, DEFAULT_STANDARD_ERROR);
-  }
-
-  public static HyperLogLog getOrCreateHyperLogLog(
-      SingleHyperLogLogState state, double maxStandardError) {
-    HyperLogLog hll = state.getHyperLogLog();
-    if (hll == null) {
-      hll = new HyperLogLog(maxStandardError);
-      state.setHyperLogLog(hll);
-    }
-    return hll;
-  }
-
-  public static HyperLogLogBigArray getOrCreateHyperLogLog(GroupedHyperLogLogState state) {
-    if (state.isEmpty()) {
-      state.setHyperLogLogs(new HyperLogLogBigArray());
-    }
-    return state.getHyperLogLogs();
   }
 
   public static class SingleHyperLogLogState {

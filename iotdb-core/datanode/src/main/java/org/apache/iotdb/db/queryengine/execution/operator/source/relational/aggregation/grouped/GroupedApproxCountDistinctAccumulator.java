@@ -55,7 +55,7 @@ public class GroupedApproxCountDistinctAccumulator implements GroupedAccumulator
   public void addInput(int[] groupIds, Column[] arguments, AggregationMask mask) {
     double maxStandardError =
         arguments.length == 1 ? DEFAULT_STANDARD_ERROR : arguments[1].getDouble(0);
-    HyperLogLogBigArray hlls = HyperLogLogStateFactory.getOrCreateHyperLogLog(state);
+    HyperLogLogBigArray hlls = getOrCreateHyperLogLog(state);
 
     switch (seriesDataType) {
       case BOOLEAN:
@@ -303,5 +303,13 @@ public class GroupedApproxCountDistinctAccumulator implements GroupedAccumulator
         }
       }
     }
+  }
+
+  public static HyperLogLogBigArray getOrCreateHyperLogLog(
+      HyperLogLogStateFactory.GroupedHyperLogLogState state) {
+    if (state.isEmpty()) {
+      state.setHyperLogLogs(new HyperLogLogBigArray());
+    }
+    return state.getHyperLogLogs();
   }
 }
