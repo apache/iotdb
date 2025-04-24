@@ -23,6 +23,7 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.auth.AuthException;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.utils.RetryUtils;
+import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.load.LoadAnalyzeException;
 import org.apache.iotdb.db.exception.load.LoadAnalyzeTypeMismatchException;
@@ -36,11 +37,16 @@ import org.apache.iotdb.db.queryengine.plan.analyze.IAnalysis;
 import org.apache.iotdb.db.queryengine.plan.analyze.IPartitionFetcher;
 import org.apache.iotdb.db.queryengine.plan.analyze.schema.ClusterSchemaFetcher;
 import org.apache.iotdb.db.queryengine.plan.analyze.schema.ISchemaFetcher;
+import org.apache.iotdb.db.queryengine.plan.execution.config.ConfigTaskResult;
+import org.apache.iotdb.db.queryengine.plan.execution.config.executor.ClusterConfigTaskExecutor;
+import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.CreateDBTask;
 import org.apache.iotdb.db.queryengine.plan.planner.LocalExecutionPlanner;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.QualifiedObjectName;
 import org.apache.iotdb.db.queryengine.plan.relational.security.AccessControl;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LoadTsFile;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.LoadTsFileStatement;
+import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceStatus;
 import org.apache.iotdb.db.storageengine.dataregion.utils.TsFileResourceUtils;
@@ -50,6 +56,7 @@ import org.apache.iotdb.db.utils.TimestampPrecisionUtils;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
+import com.google.common.util.concurrent.ListenableFuture;
 import org.apache.commons.io.FileUtils;
 import org.apache.tsfile.common.conf.TSFileDescriptor;
 import org.apache.tsfile.encrypt.EncryptParameter;
@@ -77,6 +84,7 @@ import java.util.Optional;
 import static org.apache.iotdb.commons.utils.FileUtils.copyFileWithMD5Check;
 import static org.apache.iotdb.commons.utils.FileUtils.moveFileWithMD5Check;
 import static org.apache.iotdb.db.queryengine.plan.execution.config.TableConfigTaskVisitor.DATABASE_NOT_SPECIFIED;
+import static org.apache.iotdb.db.queryengine.plan.execution.config.TableConfigTaskVisitor.validateDatabaseName;
 import static org.apache.iotdb.db.storageengine.load.metrics.LoadTsFileCostMetricsSet.ANALYSIS;
 import static org.apache.iotdb.db.storageengine.load.metrics.LoadTsFileCostMetricsSet.ANALYSIS_ASYNC_MOVE;
 
@@ -514,13 +522,12 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
       final Map<IDeviceID, List<TimeseriesMetadata>> device2TimeseriesMetadata =
           timeseriesMetadataIterator.next();
 
-      if (!tsFileResource.resourceFileExists()) {
-        TsFileResourceUtils.updateTsFileResource(device2TimeseriesMetadata, tsFileResource);
-        getOrCreateTableSchemaCache().setCurrentTimeIndex(tsFileResource.getTimeIndex());
-      }
-
       if (isAutoCreateSchemaOrVerifySchemaEnabled) {
         getOrCreateTreeSchemaVerifier().autoCreateAndVerify(reader, device2TimeseriesMetadata);
+      }
+
+      if (!tsFileResource.resourceFileExists()) {
+        TsFileResourceUtils.updateTsFileResource(device2TimeseriesMetadata, tsFileResource);
       }
 
       // TODO: how to get the correct write point count when
@@ -565,21 +572,32 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
       }
     }
 
+    autoCreateTableDatabaseIfAbsent(databaseForTableData);
+
     getOrCreateTableSchemaCache().setDatabase(databaseForTableData);
-    getOrCreateTableSchemaCache().setTableSchemaMap(tableSchemaMap);
     getOrCreateTableSchemaCache().setCurrentModificationsAndTimeIndex(tsFileResource, reader);
+
+    for (Map.Entry<String, org.apache.tsfile.file.metadata.TableSchema> name2Schema :
+        tableSchemaMap.entrySet()) {
+      final org.apache.iotdb.db.queryengine.plan.relational.metadata.TableSchema fileSchema =
+          org.apache.iotdb.db.queryengine.plan.relational.metadata.TableSchema
+              .fromTsFileTableSchema(name2Schema.getKey(), name2Schema.getValue());
+      getOrCreateTableSchemaCache().createTable(fileSchema, context, metadata);
+      accessControl.checkCanInsertIntoTable(
+          context.getSession().getUserName(),
+          new QualifiedObjectName(databaseForTableData, name2Schema.getKey()));
+    }
 
     while (timeseriesMetadataIterator.hasNext()) {
       final Map<IDeviceID, List<TimeseriesMetadata>> device2TimeseriesMetadata =
           timeseriesMetadataIterator.next();
 
-      if (!tsFileResource.resourceFileExists()) {
-        TsFileResourceUtils.updateTsFileResource(device2TimeseriesMetadata, tsFileResource);
-        getOrCreateTableSchemaCache().setCurrentTimeIndex(tsFileResource.getTimeIndex());
-      }
-
       for (IDeviceID deviceId : device2TimeseriesMetadata.keySet()) {
         getOrCreateTableSchemaCache().autoCreateAndVerify(deviceId);
+      }
+
+      if (!tsFileResource.resourceFileExists()) {
+        TsFileResourceUtils.updateTsFileResource(device2TimeseriesMetadata, tsFileResource);
       }
 
       writePointCount += getWritePointCount(device2TimeseriesMetadata);
@@ -621,9 +639,33 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
 
   private LoadTsFileTableSchemaCache getOrCreateTableSchemaCache() {
     if (tableSchemaCache == null) {
-      tableSchemaCache = new LoadTsFileTableSchemaCache(metadata, context, isAutoCreateDatabase);
+      tableSchemaCache = new LoadTsFileTableSchemaCache(metadata, context);
     }
     return tableSchemaCache;
+  }
+
+  private void autoCreateTableDatabaseIfAbsent(final String database) throws LoadAnalyzeException {
+    validateDatabaseName(database);
+    if (DataNodeTableCache.getInstance().isDatabaseExist(database)) {
+      return;
+    }
+
+    accessControl.checkCanCreateDatabase(context.getSession().getUserName(), database);
+    final CreateDBTask task =
+        new CreateDBTask(new TDatabaseSchema(database).setIsTableModel(true), true);
+    try {
+      final ListenableFuture<ConfigTaskResult> future =
+          task.execute(ClusterConfigTaskExecutor.getInstance());
+      final ConfigTaskResult result = future.get();
+      if (result.getStatusCode().getStatusCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        throw new LoadAnalyzeException(
+            String.format(
+                "Auto create database failed: %s, status code: %s",
+                database, result.getStatusCode()));
+      }
+    } catch (final Exception e) {
+      throw new LoadAnalyzeException("Auto create database failed because: " + e.getMessage());
+    }
   }
 
   private void addTsFileResource(TsFileResource tsFileResource) {

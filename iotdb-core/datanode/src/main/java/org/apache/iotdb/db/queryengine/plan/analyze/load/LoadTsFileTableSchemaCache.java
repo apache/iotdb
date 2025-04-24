@@ -21,7 +21,6 @@ package org.apache.iotdb.db.queryengine.plan.analyze.load;
 
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
-import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.load.LoadAnalyzeException;
@@ -29,16 +28,10 @@ import org.apache.iotdb.db.exception.load.LoadAnalyzeTypeMismatchException;
 import org.apache.iotdb.db.exception.load.LoadRuntimeOutOfMemoryException;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
-import org.apache.iotdb.db.queryengine.plan.Coordinator;
-import org.apache.iotdb.db.queryengine.plan.execution.config.ConfigTaskResult;
-import org.apache.iotdb.db.queryengine.plan.execution.config.executor.ClusterConfigTaskExecutor;
-import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.CreateDBTask;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.ColumnSchema;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.ITableDeviceSchemaValidation;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
-import org.apache.iotdb.db.queryengine.plan.relational.metadata.QualifiedObjectName;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.TableSchema;
-import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModEntry;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFile;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
@@ -47,9 +40,7 @@ import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.ITimeIndex;
 import org.apache.iotdb.db.storageengine.load.memory.LoadTsFileMemoryBlock;
 import org.apache.iotdb.db.storageengine.load.memory.LoadTsFileMemoryManager;
 import org.apache.iotdb.db.utils.ModificationUtils;
-import org.apache.iotdb.rpc.TSStatusCode;
 
-import com.google.common.util.concurrent.ListenableFuture;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.read.TsFileSequenceReader;
 import org.apache.tsfile.utils.Pair;
@@ -71,7 +62,6 @@ import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.apache.iotdb.commons.schema.MemUsageUtil.computeStringMemUsage;
-import static org.apache.iotdb.db.queryengine.plan.execution.config.TableConfigTaskVisitor.validateDatabaseName;
 
 public class LoadTsFileTableSchemaCache {
   private static final Logger LOGGER = LoggerFactory.getLogger(LoadTsFileTableSchemaCache.class);
@@ -92,8 +82,6 @@ public class LoadTsFileTableSchemaCache {
   private final LoadTsFileMemoryBlock block;
 
   private String database;
-  private boolean needToCreateDatabase;
-  private Map<String, org.apache.tsfile.file.metadata.TableSchema> tableSchemaMap;
   private final Metadata metadata;
   private final MPPQueryContext context;
 
@@ -112,8 +100,7 @@ public class LoadTsFileTableSchemaCache {
 
   private int currentBatchDevicesCount = 0;
 
-  public LoadTsFileTableSchemaCache(
-      final Metadata metadata, final MPPQueryContext context, final boolean needToCreateDatabase)
+  public LoadTsFileTableSchemaCache(Metadata metadata, MPPQueryContext context)
       throws LoadRuntimeOutOfMemoryException {
     this.block =
         LoadTsFileMemoryManager.getInstance()
@@ -122,31 +109,24 @@ public class LoadTsFileTableSchemaCache {
     this.context = context;
     this.currentBatchTable2Devices = new HashMap<>();
     this.currentModifications = new ArrayList<>();
-    this.needToCreateDatabase = needToCreateDatabase;
   }
 
-  public void setDatabase(final String database) {
+  public void setDatabase(String database) {
     this.database = database;
   }
 
-  public void setTableSchemaMap(
-      final Map<String, org.apache.tsfile.file.metadata.TableSchema> tableSchemaMap) {
-    this.tableSchemaMap = tableSchemaMap;
-  }
-
-  public void autoCreateAndVerify(final IDeviceID device) throws LoadAnalyzeException {
+  public void autoCreateAndVerify(IDeviceID device) {
     try {
       if (ModificationUtils.isDeviceDeletedByMods(currentModifications, currentTimeIndex, device)) {
         return;
       }
-    } catch (final IllegalPathException e) {
+    } catch (IllegalPathException e) {
       LOGGER.warn(
           "Failed to check if device {} is deleted by mods. Will see it as not deleted.",
           device,
           e);
     }
 
-    createTableAndDatabaseIfNecessary(device.getTableName());
     // TODO: add permission check and record auth cost
     addDevice(device);
     if (shouldFlushDevices()) {
@@ -265,26 +245,8 @@ public class LoadTsFileTableSchemaCache {
     return Arrays.copyOf(segments, lastNonNullIndex + 1);
   }
 
-  public void createTableAndDatabaseIfNecessary(final String tableName)
+  public void createTable(TableSchema fileSchema, MPPQueryContext context, Metadata metadata)
       throws LoadAnalyzeException {
-    final org.apache.tsfile.file.metadata.TableSchema schema = tableSchemaMap.remove(tableName);
-    if (Objects.isNull(schema)) {
-      return;
-    }
-
-    // Check on creation, do not auto-create tables or database that cannot be inserted
-    Coordinator.getInstance()
-        .getAccessControl()
-        .checkCanInsertIntoTable(
-            context.getSession().getUserName(), new QualifiedObjectName(database, tableName));
-
-    if (needToCreateDatabase) {
-      autoCreateTableDatabaseIfAbsent(database);
-      needToCreateDatabase = false;
-    }
-    final org.apache.iotdb.db.queryengine.plan.relational.metadata.TableSchema fileSchema =
-        org.apache.iotdb.db.queryengine.plan.relational.metadata.TableSchema.fromTsFileTableSchema(
-            tableName, schema);
     final TableSchema realSchema =
         metadata.validateTableHeaderSchema(database, fileSchema, context, true, true).orElse(null);
     if (Objects.isNull(realSchema)) {
@@ -294,32 +256,6 @@ public class LoadTsFileTableSchemaCache {
               fileSchema.getTableName(), fileSchema));
     }
     verifyTableDataTypeAndGenerateIdColumnMapper(fileSchema, realSchema);
-  }
-
-  private void autoCreateTableDatabaseIfAbsent(final String database) throws LoadAnalyzeException {
-    validateDatabaseName(database);
-    if (DataNodeTableCache.getInstance().isDatabaseExist(database)) {
-      return;
-    }
-
-    Coordinator.getInstance()
-        .getAccessControl()
-        .checkCanCreateDatabase(context.getSession().getUserName(), database);
-    final CreateDBTask task =
-        new CreateDBTask(new TDatabaseSchema(database).setIsTableModel(true), true);
-    try {
-      final ListenableFuture<ConfigTaskResult> future =
-          task.execute(ClusterConfigTaskExecutor.getInstance());
-      final ConfigTaskResult result = future.get();
-      if (result.getStatusCode().getStatusCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-        throw new LoadAnalyzeException(
-            String.format(
-                "Auto create database failed: %s, status code: %s",
-                database, result.getStatusCode()));
-      }
-    } catch (final Exception e) {
-      throw new LoadAnalyzeException("Auto create database failed because: " + e.getMessage());
-    }
   }
 
   private void verifyTableDataTypeAndGenerateIdColumnMapper(
@@ -414,10 +350,6 @@ public class LoadTsFileTableSchemaCache {
       currentTimeIndexMemoryUsageSizeInBytes = currentTimeIndex.calculateRamSize();
       block.addMemoryUsage(currentTimeIndexMemoryUsageSizeInBytes);
     }
-  }
-
-  public void setCurrentTimeIndex(final ITimeIndex timeIndex) {
-    this.currentTimeIndex = timeIndex;
   }
 
   public void close() {
