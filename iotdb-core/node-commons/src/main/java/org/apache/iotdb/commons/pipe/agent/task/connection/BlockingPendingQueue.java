@@ -36,7 +36,7 @@ public abstract class BlockingPendingQueue<E extends Event> {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(BlockingPendingQueue.class);
 
-  private static final PipeConfig config = PipeConfig.getInstance();
+  private static final PipeConfig PIPE_CONFIG = PipeConfig.getInstance();
 
   protected final BlockingQueue<E> pendingQueue;
 
@@ -56,7 +56,7 @@ public abstract class BlockingPendingQueue<E extends Event> {
       final boolean offered =
           pendingQueue.offer(
               event,
-              config.getPipeSubtaskExecutorPendingQueueMaxBlockingTimeMs(),
+              PIPE_CONFIG.getPipeSubtaskExecutorPendingQueueMaxBlockingTimeMs(),
               TimeUnit.MILLISECONDS);
       if (offered) {
         eventCounter.increaseEventCount(event);
@@ -102,7 +102,8 @@ public abstract class BlockingPendingQueue<E extends Event> {
     try {
       event =
           pendingQueue.poll(
-              config.getPipeSubtaskExecutorPendingQueueMaxBlockingTimeMs(), TimeUnit.MILLISECONDS);
+              PIPE_CONFIG.getPipeSubtaskExecutorPendingQueueMaxBlockingTimeMs(),
+              TimeUnit.MILLISECONDS);
       eventCounter.decreaseEventCount(event);
     } catch (final InterruptedException e) {
       LOGGER.info("pending queue poll is interrupted.", e);

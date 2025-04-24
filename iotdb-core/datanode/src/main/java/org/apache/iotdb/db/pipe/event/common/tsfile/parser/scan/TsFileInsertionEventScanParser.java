@@ -64,11 +64,12 @@ import java.util.Objects;
 
 public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
 
-  private final int PIPE_MAX_ALIGNED_SERIES_NUM_IN_ONE_BATCH =
-      PipeConfig.getInstance().getPipeMaxAlignedSeriesNumInOneBatch();
   private final long startTime;
   private final long endTime;
   private final Filter filter;
+
+  private final int pipeMaxAlignedSeriesNumInOneBatch =
+      PipeConfig.getInstance().getPipeMaxAlignedSeriesNumInOneBatch();
 
   private IChunkReader chunkReader;
   private BatchData data;
@@ -463,7 +464,7 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
             boolean needReturn = false;
             if (lastIndex >= 0
                 && (valueIndex != lastIndex
-                    || valueChunkList.size() >= PIPE_MAX_ALIGNED_SERIES_NUM_IN_ONE_BATCH)) {
+                    || valueChunkList.size() >= pipeMaxAlignedSeriesNumInOneBatch)) {
               needReturn = recordAlignedChunk(valueChunkList, marker);
             }
             lastIndex = valueIndex;

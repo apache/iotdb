@@ -38,7 +38,7 @@ import java.util.function.Consumer;
 
 public class PipeRealtimePriorityBlockingQueue extends UnboundedBlockingPendingQueue<Event> {
 
-  private static final PipeConfig config = PipeConfig.getInstance();
+  private static final PipeConfig PIPE_CONFIG = PipeConfig.getInstance();
 
   private final BlockingDeque<TsFileInsertionEvent> tsfileInsertEventDeque =
       new LinkedBlockingDeque<>();
@@ -82,13 +82,13 @@ public class PipeRealtimePriorityBlockingQueue extends UnboundedBlockingPendingQ
 
   @Override
   public Event directPoll() {
-    final int POLL_HISTORICAL_TSFILE_THRESHOLD =
-        config.getPipeRealTimeQueuePollHistoricalTsFileThreshold();
     Event event = null;
+    final int pollHistoricalTsFileThreshold =
+        PIPE_CONFIG.getPipeRealTimeQueuePollHistoricalTsFileThreshold();
 
-    if (pollTsFileCounter.get() >= config.getPipeRealTimeQueuePollTsFileThreshold()) {
+    if (pollTsFileCounter.get() >= PIPE_CONFIG.getPipeRealTimeQueuePollTsFileThreshold()) {
       event =
-          pollHistoricalTsFileCounter.incrementAndGet() % POLL_HISTORICAL_TSFILE_THRESHOLD == 0
+          pollHistoricalTsFileCounter.incrementAndGet() % pollHistoricalTsFileThreshold == 0
               ? tsfileInsertEventDeque.pollFirst()
               : tsfileInsertEventDeque.pollLast();
       pollTsFileCounter.set(0);
@@ -98,7 +98,7 @@ public class PipeRealtimePriorityBlockingQueue extends UnboundedBlockingPendingQ
       event = super.directPoll();
       if (Objects.isNull(event)) {
         event =
-            pollHistoricalTsFileCounter.incrementAndGet() % POLL_HISTORICAL_TSFILE_THRESHOLD == 0
+            pollHistoricalTsFileCounter.incrementAndGet() % pollHistoricalTsFileThreshold == 0
                 ? tsfileInsertEventDeque.pollFirst()
                 : tsfileInsertEventDeque.pollLast();
       }
@@ -123,13 +123,13 @@ public class PipeRealtimePriorityBlockingQueue extends UnboundedBlockingPendingQ
    */
   @Override
   public Event waitedPoll() {
-    final int POLL_HISTORICAL_TSFILE_THRESHOLD =
-        config.getPipeRealTimeQueuePollHistoricalTsFileThreshold();
     Event event = null;
+    final int pollHistoricalTsFileThreshold =
+        PIPE_CONFIG.getPipeRealTimeQueuePollHistoricalTsFileThreshold();
 
-    if (pollTsFileCounter.get() >= config.getPipeRealTimeQueuePollTsFileThreshold()) {
+    if (pollTsFileCounter.get() >= PIPE_CONFIG.getPipeRealTimeQueuePollTsFileThreshold()) {
       event =
-          pollHistoricalTsFileCounter.incrementAndGet() % POLL_HISTORICAL_TSFILE_THRESHOLD == 0
+          pollHistoricalTsFileCounter.incrementAndGet() % pollHistoricalTsFileThreshold == 0
               ? tsfileInsertEventDeque.pollFirst()
               : tsfileInsertEventDeque.pollLast();
       pollTsFileCounter.set(0);
@@ -139,7 +139,7 @@ public class PipeRealtimePriorityBlockingQueue extends UnboundedBlockingPendingQ
       event = super.directPoll();
       if (event == null && !tsfileInsertEventDeque.isEmpty()) {
         event =
-            pollHistoricalTsFileCounter.incrementAndGet() % POLL_HISTORICAL_TSFILE_THRESHOLD == 0
+            pollHistoricalTsFileCounter.incrementAndGet() % pollHistoricalTsFileThreshold == 0
                 ? tsfileInsertEventDeque.pollFirst()
                 : tsfileInsertEventDeque.pollLast();
       }
@@ -153,7 +153,7 @@ public class PipeRealtimePriorityBlockingQueue extends UnboundedBlockingPendingQ
       event = super.waitedPoll();
       if (Objects.isNull(event)) {
         event =
-            pollHistoricalTsFileCounter.incrementAndGet() % POLL_HISTORICAL_TSFILE_THRESHOLD == 0
+            pollHistoricalTsFileCounter.incrementAndGet() % pollHistoricalTsFileThreshold == 0
                 ? tsfileInsertEventDeque.pollFirst()
                 : tsfileInsertEventDeque.pollLast();
       }

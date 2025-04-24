@@ -76,7 +76,7 @@ public abstract class IoTDBFileReceiver implements IoTDBReceiver {
 
   protected long lastSuccessfulLoginTime = Long.MIN_VALUE;
 
-  private static final PipeConfig config = PipeConfig.getInstance();
+  private static final PipeConfig PIPE_CONFIG = PipeConfig.getInstance();
 
   private File writingFile;
   private RandomAccessFile writingFileWriter;
@@ -319,7 +319,7 @@ public abstract class IoTDBFileReceiver implements IoTDBReceiver {
 
   protected boolean shouldLogin() {
     final long LOGIN_PERIODIC_VERIFICATION_INTERVAL_MS =
-        config.getPipeReceiverLoginPeriodicVerificationIntervalMs();
+        PIPE_CONFIG.getPipeReceiverLoginPeriodicVerificationIntervalMs();
     return LOGIN_PERIODIC_VERIFICATION_INTERVAL_MS >= 0
         && lastSuccessfulLoginTime
             < System.currentTimeMillis() - LOGIN_PERIODIC_VERIFICATION_INTERVAL_MS;
@@ -449,7 +449,7 @@ public abstract class IoTDBFileReceiver implements IoTDBReceiver {
   private void closeCurrentWritingFileWriter(final boolean fsyncBeforeClose) {
     if (writingFileWriter != null) {
       try {
-        if (config.getPipeFileReceiverFsyncEnabled() && fsyncBeforeClose) {
+        if (PIPE_CONFIG.getPipeFileReceiverFsyncEnabled() && fsyncBeforeClose) {
           writingFileWriter.getFD().sync();
         }
         writingFileWriter.close();
@@ -549,7 +549,7 @@ public abstract class IoTDBFileReceiver implements IoTDBReceiver {
       // Sync here is necessary to ensure that the data is written to the disk. Or data region may
       // load the file before the data is written to the disk and cause unexpected behavior after
       // system restart. (e.g., empty file in data region's data directory)
-      if (config.getPipeFileReceiverFsyncEnabled()) {
+      if (PIPE_CONFIG.getPipeFileReceiverFsyncEnabled()) {
         writingFileWriter.getFD().sync();
       }
       // 1. The writing file writer must be closed, otherwise it may cause concurrent errors during
@@ -639,7 +639,7 @@ public abstract class IoTDBFileReceiver implements IoTDBReceiver {
       // Sync here is necessary to ensure that the data is written to the disk. Or data region may
       // load the file before the data is written to the disk and cause unexpected behavior after
       // system restart. (e.g., empty file in data region's data directory)
-      if (config.getPipeFileReceiverFsyncEnabled()) {
+      if (PIPE_CONFIG.getPipeFileReceiverFsyncEnabled()) {
         writingFileWriter.getFD().sync();
       }
       // 1. The writing file writer must be closed, otherwise it may cause concurrent errors during

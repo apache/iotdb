@@ -68,7 +68,13 @@ public interface IoTDBDataNodeCacheLeaderClientManager {
                         newMemory);
                   })
               .setExpandMethod(
-                  oldMemory -> Math.min(Math.max(oldMemory, 1) * 2, getMaxMemorySizeInBytes()))
+                  oldMemory ->
+                      Math.min(
+                          Math.max(oldMemory, 1) * 2,
+                          (long)
+                              (PipeDataNodeResourceManager.memory()
+                                      .getTotalNonFloatingMemorySizeInBytes()
+                                  * CONFIG.getPipeLeaderCacheMemoryUsagePercentage())))
               .setExpandCallback(
                   (oldMemory, newMemory) -> {
                     memoryUsageCheatFactor.updateAndGet(
@@ -112,12 +118,6 @@ public interface IoTDBDataNodeCacheLeaderClientManager {
       } else {
         device2endpoint.put(deviceId, endPoint);
       }
-    }
-
-    public long getMaxMemorySizeInBytes() {
-      return (long)
-          (PipeDataNodeResourceManager.memory().getTotalNonFloatingMemorySizeInBytes()
-              * CONFIG.getPipeLeaderCacheMemoryUsagePercentage());
     }
   }
 }

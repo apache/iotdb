@@ -498,7 +498,6 @@ public class PipeDescriptor {
 
   public static void loadPipeExternalConfig(
       CommonConfig config, TrimProperties properties, boolean isHotModify) throws IOException {
-    // todo fix non
     String value =
         parserPipeConfig(
             properties, "pipe_sink_timeout_ms", "pipe_connector_timeout_ms", isHotModify);

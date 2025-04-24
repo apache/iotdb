@@ -23,7 +23,7 @@ import org.apache.iotdb.commons.pipe.config.PipeConfig;
 
 public class PipeSubtaskScheduler {
 
-  private static final PipeConfig config = PipeConfig.getInstance();
+  private static final PipeConfig PIPE_CONFIG = PipeConfig.getInstance();
 
   private final PipeSubtaskExecutor executor;
 
@@ -70,14 +70,16 @@ public class PipeSubtaskScheduler {
         Math.max(
             1,
             (int)
-                (((float) config.getPipeSubtaskExecutorBasicCheckPointIntervalByConsumedEventCount()
+                (((float)
+                            PIPE_CONFIG
+                                .getPipeSubtaskExecutorBasicCheckPointIntervalByConsumedEventCount()
                         / runningSubtaskNumber)
                     * corePoolSize));
     timeDurationCheckpointInterval =
         Math.max(
             1,
             (long)
-                (((float) config.getPipeSubtaskExecutorBasicCheckPointIntervalByTimeDuration()
+                (((float) PIPE_CONFIG.getPipeSubtaskExecutorBasicCheckPointIntervalByTimeDuration()
                         / runningSubtaskNumber)
                     * corePoolSize));
   }

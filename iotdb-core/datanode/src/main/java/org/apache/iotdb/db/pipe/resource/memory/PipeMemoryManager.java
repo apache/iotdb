@@ -40,7 +40,7 @@ public class PipeMemoryManager {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(PipeMemoryManager.class);
 
-  private static final PipeConfig config = PipeConfig.getInstance();
+  private static final PipeConfig PIPE_CONFIG = PipeConfig.getInstance();
 
   private static final boolean PIPE_MEMORY_MANAGEMENT_ENABLED =
       PipeConfig.getInstance().getPipeMemoryManagementEnabled();
@@ -57,6 +57,9 @@ public class PipeMemoryManager {
   private volatile long usedMemorySizeInBytesOfTablets;
 
   private volatile long usedMemorySizeInBytesOfTsFiles;
+
+  private static final double FLOATING_MEMORY_RATIO =
+      PipeConfig.getInstance().getPipeTotalFloatingMemoryProportion();
 
   // Only non-zero memory blocks will be added to this set.
   private final Set<PipeMemoryBlock> allocatedBlocks = new HashSet<>();
@@ -80,20 +83,20 @@ public class PipeMemoryManager {
   // block does not exceed TABLET_MEMORY_REJECT_THRESHOLD + TS_FILE_MEMORY_REJECT_THRESHOLD
 
   private double allowedMaxMemorySizeInBytesOfTabletsAndTsFiles() {
-    return (config.getPipeDataStructureTabletMemoryBlockAllocationRejectThreshold()
-            + config.getPipeDataStructureTsFileMemoryBlockAllocationRejectThreshold())
+    return (PIPE_CONFIG.getPipeDataStructureTabletMemoryBlockAllocationRejectThreshold()
+            + PIPE_CONFIG.getPipeDataStructureTsFileMemoryBlockAllocationRejectThreshold())
         * getTotalNonFloatingMemorySizeInBytes();
   }
 
   private double allowedMaxMemorySizeInBytesOfTablets() {
-    return (config.getPipeDataStructureTabletMemoryBlockAllocationRejectThreshold()
-            + config.getPipeDataStructureTsFileMemoryBlockAllocationRejectThreshold() / 2)
+    return (PIPE_CONFIG.getPipeDataStructureTabletMemoryBlockAllocationRejectThreshold()
+            + PIPE_CONFIG.getPipeDataStructureTsFileMemoryBlockAllocationRejectThreshold() / 2)
         * getTotalNonFloatingMemorySizeInBytes();
   }
 
   private double allowedMaxMemorySizeInBytesOfTsTiles() {
-    return (config.getPipeDataStructureTsFileMemoryBlockAllocationRejectThreshold()
-            + config.getPipeDataStructureTabletMemoryBlockAllocationRejectThreshold() / 2)
+    return (PIPE_CONFIG.getPipeDataStructureTsFileMemoryBlockAllocationRejectThreshold()
+            + PIPE_CONFIG.getPipeDataStructureTabletMemoryBlockAllocationRejectThreshold() / 2)
         * getTotalNonFloatingMemorySizeInBytes();
   }
 
@@ -148,13 +151,13 @@ public class PipeMemoryManager {
       return (PipeTabletMemoryBlock) registerMemoryBlock(0, PipeMemoryBlockType.TABLET);
     }
 
-    for (int i = 1; i <= config.getPipeMemoryAllocateMaxRetries(); i++) {
+    for (int i = 1, size = PIPE_CONFIG.getPipeMemoryAllocateMaxRetries(); i <= size; i++) {
       if (isHardEnough4TabletParsing()) {
         break;
       }
 
       try {
-        Thread.sleep(config.getPipeMemoryAllocateRetryIntervalInMs());
+        Thread.sleep(PIPE_CONFIG.getPipeMemoryAllocateRetryIntervalInMs());
       } catch (InterruptedException ex) {
         Thread.currentThread().interrupt();
         LOGGER.warn("forceAllocateWithRetry: interrupted while waiting for available memory", ex);
@@ -190,13 +193,13 @@ public class PipeMemoryManager {
       return (PipeTsFileMemoryBlock) registerMemoryBlock(0, PipeMemoryBlockType.TS_FILE);
     }
 
-    for (int i = 1; i <= config.getPipeMemoryAllocateMaxRetries(); i++) {
+    for (int i = 1, size = PIPE_CONFIG.getPipeMemoryAllocateMaxRetries(); i <= size; i++) {
       if (isHardEnough4TsFileSlicing()) {
         break;
       }
 
       try {
-        Thread.sleep(config.getPipeMemoryAllocateRetryIntervalInMs());
+        Thread.sleep(PIPE_CONFIG.getPipeMemoryAllocateRetryIntervalInMs());
       } catch (InterruptedException ex) {
         Thread.currentThread().interrupt();
         LOGGER.warn("forceAllocateWithRetry: interrupted while waiting for available memory", ex);
@@ -235,7 +238,8 @@ public class PipeMemoryManager {
       }
     }
 
-    for (int i = 1; i <= config.getPipeMemoryAllocateMaxRetries(); i++) {
+    final int memoryAllocateMaxRetries = PIPE_CONFIG.getPipeMemoryAllocateMaxRetries();
+    for (int i = 1; i <= memoryAllocateMaxRetries; i++) {
       if (getTotalNonFloatingMemorySizeInBytes() - memoryBlock.getUsedMemoryInBytes()
           >= sizeInBytes) {
         return registerMemoryBlock(sizeInBytes, type);
@@ -243,7 +247,7 @@ public class PipeMemoryManager {
 
       try {
         tryShrinkUntilFreeMemorySatisfy(sizeInBytes);
-        this.wait(config.getPipeMemoryAllocateRetryIntervalInMs());
+        this.wait(PIPE_CONFIG.getPipeMemoryAllocateRetryIntervalInMs());
       } catch (InterruptedException e) {
         Thread.currentThread().interrupt();
         LOGGER.warn("forceAllocate: interrupted while waiting for available memory", e);
@@ -255,7 +259,7 @@ public class PipeMemoryManager {
             "forceAllocate: failed to allocate memory after %d retries, "
                 + "total memory size %d bytes, used memory size %d bytes, "
                 + "requested memory size %d bytes",
-            config.getPipeMemoryAllocateMaxRetries(),
+            memoryAllocateMaxRetries,
             getTotalNonFloatingMemorySizeInBytes(),
             memoryBlock.getUsedMemoryInBytes(),
             sizeInBytes));
@@ -298,7 +302,8 @@ public class PipeMemoryManager {
     }
 
     long sizeInBytes = targetSize - oldSize;
-    for (int i = 1; i <= config.getPipeMemoryAllocateMaxRetries(); i++) {
+    final int memoryAllocateMaxRetries = PIPE_CONFIG.getPipeMemoryAllocateMaxRetries();
+    for (int i = 1; i <= memoryAllocateMaxRetries; i++) {
       if (getTotalNonFloatingMemorySizeInBytes() - memoryBlock.getUsedMemoryInBytes()
           >= sizeInBytes) {
         memoryBlock.forceAllocateWithoutLimitation(sizeInBytes);
@@ -314,7 +319,7 @@ public class PipeMemoryManager {
 
       try {
         tryShrinkUntilFreeMemorySatisfy(sizeInBytes);
-        this.wait(config.getPipeMemoryAllocateRetryIntervalInMs());
+        this.wait(PIPE_CONFIG.getPipeMemoryAllocateRetryIntervalInMs());
       } catch (InterruptedException e) {
         Thread.currentThread().interrupt();
         LOGGER.warn("forceResize: interrupted while waiting for available memory", e);
@@ -326,7 +331,7 @@ public class PipeMemoryManager {
             "forceResize: failed to allocate memory after %d retries, "
                 + "total memory size %d bytes, used memory size %d bytes, "
                 + "requested memory size %d bytes",
-            config.getPipeMemoryAllocateMaxRetries(),
+            memoryAllocateMaxRetries,
             getTotalNonFloatingMemorySizeInBytes(),
             memoryBlock.getUsedMemoryInBytes(),
             sizeInBytes));
@@ -380,9 +385,9 @@ public class PipeMemoryManager {
     }
 
     long sizeToAllocateInBytes = sizeInBytes;
-    final long MEMORY_ALLOCATE_MIN_SIZE_IN_BYTES = config.getPipeMemoryAllocateMinSizeInBytes();
+    final long memoryAllocateMinSizeInBytes = PIPE_CONFIG.getPipeMemoryAllocateMinSizeInBytes();
 
-    while (sizeToAllocateInBytes > MEMORY_ALLOCATE_MIN_SIZE_IN_BYTES) {
+    while (sizeToAllocateInBytes > memoryAllocateMinSizeInBytes) {
       if (getTotalNonFloatingMemorySizeInBytes() - memoryBlock.getUsedMemoryInBytes()
           >= sizeToAllocateInBytes) {
         LOGGER.info(
@@ -400,7 +405,7 @@ public class PipeMemoryManager {
       sizeToAllocateInBytes =
           Math.max(
               customAllocateStrategy.applyAsLong(sizeToAllocateInBytes),
-              MEMORY_ALLOCATE_MIN_SIZE_IN_BYTES);
+              memoryAllocateMinSizeInBytes);
     }
 
     if (tryShrinkUntilFreeMemorySatisfy(sizeToAllocateInBytes)) {
@@ -592,13 +597,10 @@ public class PipeMemoryManager {
   }
 
   public long getTotalNonFloatingMemorySizeInBytes() {
-    return (long)
-        (memoryBlock.getTotalMemorySizeInBytes()
-            * (1 - config.getPipeTotalFloatingMemoryProportion()));
+    return (long) (memoryBlock.getTotalMemorySizeInBytes() * (1 - FLOATING_MEMORY_RATIO));
   }
 
   public long getTotalFloatingMemorySizeInBytes() {
-    return (long)
-        (memoryBlock.getTotalMemorySizeInBytes() * config.getPipeTotalFloatingMemoryProportion());
+    return (long) (memoryBlock.getTotalMemorySizeInBytes() * FLOATING_MEMORY_RATIO);
   }
 }
