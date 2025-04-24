@@ -1909,7 +1909,7 @@ int64_t Session::getSessionId() {
 
 shared_ptr<SessionConnection> Session::getQuerySessionConnection() {
     auto endPoint = nodesSupplier->getQueryEndPoint();
-    if (!endPoint.is_initialized()() || endPointToSessionConnection.empty()) {
+    if (!endPoint.is_initialized() || endPointToSessionConnection.empty()) {
         return defaultSessionConnection;
     }
 
