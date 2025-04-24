@@ -64,7 +64,7 @@ public class ActiveLoadUtil {
     return true;
   }
 
-  public static boolean loadTsFilesToActiveDir(
+  private static boolean loadTsFilesToActiveDir(
       final String dataBaseName, final File file, final boolean isDeleteAfterLoad)
       throws IOException {
     if (file == null) {
