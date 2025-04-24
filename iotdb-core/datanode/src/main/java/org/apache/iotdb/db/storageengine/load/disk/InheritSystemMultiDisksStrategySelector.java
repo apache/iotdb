@@ -30,7 +30,7 @@ public class InheritSystemMultiDisksStrategySelector<U> implements ILoadDiskSele
 
   protected static final FSFactory fsFactory = FSFactoryProducer.getFSFactory();
 
-  DiskDirectorySelector<U> directorySelector;
+  protected final DiskDirectorySelector<U> directorySelector;
 
   public InheritSystemMultiDisksStrategySelector(DiskDirectorySelector<U> selector) {
     this.directorySelector = selector;
