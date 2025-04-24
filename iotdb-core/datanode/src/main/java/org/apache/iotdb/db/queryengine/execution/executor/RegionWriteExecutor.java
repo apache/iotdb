@@ -49,11 +49,13 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.write.Bat
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.write.CreateAlignedTimeSeriesNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.write.CreateMultiTimeSeriesNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.write.CreateTimeSeriesNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.write.DeleteTimeSeriesNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.write.InternalBatchActivateTemplateNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.write.InternalCreateMultiTimeSeriesNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.write.InternalCreateTimeSeriesNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.write.MeasurementGroup;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.write.view.CreateLogicalViewNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.write.view.DeleteLogicalViewNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.pipe.PipeEnrichedDeleteDataNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.pipe.PipeEnrichedInsertNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.pipe.PipeEnrichedWritePlanNode;
@@ -367,6 +369,28 @@ public class RegionWriteExecutor {
     }
 
     @Override
+    public RegionExecutionResult visitDeleteTimeseries(
+        final DeleteTimeSeriesNode node, final WritePlanNodeExecutionContext context) {
+      context.getRegionWriteValidationRWLock().writeLock().lock();
+      try {
+        return super.visitDeleteTimeseries(node, context);
+      } finally {
+        context.getRegionWriteValidationRWLock().writeLock().unlock();
+      }
+    }
+
+    @Override
+    public RegionExecutionResult visitDeleteLogicalView(
+        final DeleteLogicalViewNode node, final WritePlanNodeExecutionContext context) {
+      context.getRegionWriteValidationRWLock().writeLock().lock();
+      try {
+        return super.visitDeleteLogicalView(node, context);
+      } finally {
+        context.getRegionWriteValidationRWLock().writeLock().unlock();
+      }
+    }
+
+    @Override
     public RegionExecutionResult visitCreateTimeSeries(
         final CreateTimeSeriesNode node, final WritePlanNodeExecutionContext context) {
       return executeCreateTimeSeries(node, context, false);
@@ -407,9 +431,17 @@ public class RegionWriteExecutor {
           context.getRegionWriteValidationRWLock().writeLock().unlock();
         }
       } else {
-        return receivedFromPipe
-            ? super.visitPipeEnrichedWritePlanNode(new PipeEnrichedWritePlanNode(node), context)
-            : super.visitCreateTimeSeries(node, context);
+        if (receivedFromPipe) {
+          context.getRegionWriteValidationRWLock().writeLock().lock();
+          try {
+            return super.visitPipeEnrichedWritePlanNode(
+                new PipeEnrichedWritePlanNode(node), context);
+          } finally {
+            context.getRegionWriteValidationRWLock().writeLock().unlock();
+          }
+        } else {
+          return super.visitCreateTimeSeries(node, context);
+        }
       }
     }
 
@@ -454,9 +486,17 @@ public class RegionWriteExecutor {
           context.getRegionWriteValidationRWLock().writeLock().unlock();
         }
       } else {
-        return receivedFromPipe
-            ? super.visitPipeEnrichedWritePlanNode(new PipeEnrichedWritePlanNode(node), context)
-            : super.visitCreateAlignedTimeSeries(node, context);
+        if (receivedFromPipe) {
+          context.getRegionWriteValidationRWLock().writeLock().lock();
+          try {
+            return super.visitPipeEnrichedWritePlanNode(
+                new PipeEnrichedWritePlanNode(node), context);
+          } finally {
+            context.getRegionWriteValidationRWLock().writeLock().unlock();
+          }
+        } else {
+          return super.visitCreateAlignedTimeSeries(node, context);
+        }
       }
     }
 
@@ -511,9 +551,17 @@ public class RegionWriteExecutor {
           context.getRegionWriteValidationRWLock().writeLock().unlock();
         }
       } else {
-        return receivedFromPipe
-            ? super.visitPipeEnrichedWritePlanNode(new PipeEnrichedWritePlanNode(node), context)
-            : super.visitCreateMultiTimeSeries(node, context);
+        if (receivedFromPipe) {
+          context.getRegionWriteValidationRWLock().writeLock().lock();
+          try {
+            return super.visitPipeEnrichedWritePlanNode(
+                new PipeEnrichedWritePlanNode(node), context);
+          } finally {
+            context.getRegionWriteValidationRWLock().writeLock().unlock();
+          }
+        } else {
+          return super.visitCreateMultiTimeSeries(node, context);
+        }
       }
     }
 
@@ -641,9 +689,17 @@ public class RegionWriteExecutor {
           context.getRegionWriteValidationRWLock().writeLock().unlock();
         }
       } else {
-        return receivedFromPipe
-            ? super.visitPipeEnrichedWritePlanNode(new PipeEnrichedWritePlanNode(node), context)
-            : super.visitInternalCreateTimeSeries(node, context);
+        if (receivedFromPipe) {
+          context.getRegionWriteValidationRWLock().writeLock().lock();
+          try {
+            return super.visitPipeEnrichedWritePlanNode(
+                new PipeEnrichedWritePlanNode(node), context);
+          } finally {
+            context.getRegionWriteValidationRWLock().writeLock().unlock();
+          }
+        } else {
+          return super.visitInternalCreateTimeSeries(node, context);
+        }
       }
     }
 
@@ -731,9 +787,17 @@ public class RegionWriteExecutor {
           context.getRegionWriteValidationRWLock().writeLock().unlock();
         }
       } else {
-        return receivedFromPipe
-            ? super.visitPipeEnrichedWritePlanNode(new PipeEnrichedWritePlanNode(node), context)
-            : super.visitInternalCreateMultiTimeSeries(node, context);
+        if (receivedFromPipe) {
+          context.getRegionWriteValidationRWLock().writeLock().lock();
+          try {
+            return super.visitPipeEnrichedWritePlanNode(
+                new PipeEnrichedWritePlanNode(node), context);
+          } finally {
+            context.getRegionWriteValidationRWLock().writeLock().unlock();
+          }
+        } else {
+          return super.visitInternalCreateMultiTimeSeries(node, context);
+        }
       }
     }
 

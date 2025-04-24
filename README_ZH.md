@@ -392,7 +392,7 @@ server 可以使用 "ctrl-C" 或者执行下面的脚本:
 
 ### Wechat Group
 
-* 添加好友 `tietouqiao` 或者 `liutaohua001`，我们会邀请您进群
+* 添加好友 `apache_iotdb`，我们会邀请您进群
 
 ### Slack
 

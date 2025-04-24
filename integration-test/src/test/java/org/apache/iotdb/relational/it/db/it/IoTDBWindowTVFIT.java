@@ -33,6 +33,7 @@ import org.junit.runner.RunWith;
 import java.sql.Connection;
 import java.sql.Statement;
 
+import static org.apache.iotdb.db.it.utils.TestUtils.tableAssertTestFail;
 import static org.apache.iotdb.db.it.utils.TestUtils.tableResultSetEqualTest;
 import static org.junit.Assert.fail;
 
@@ -97,7 +98,7 @@ public class IoTDBWindowTVFIT {
           "2021-01-01T09:15:00.000Z,2021-01-01T09:25:00.000Z,2021-01-01T09:15:00.000Z,TESL,195.0,332.0,",
         };
     tableResultSetEqualTest(
-        "SELECT * FROM TABLE(HOP(DATA => TABLE(bid), TIMECOL => 'time', SLIDE => 5m, SIZE => 10m)) ORDER BY stock_id, time",
+        "SELECT * FROM HOP(DATA => bid, TIMECOL => 'time', SLIDE => 5m, SIZE => 10m) ORDER BY stock_id, time",
         expectedHeader,
         retArray,
         DATABASE_NAME);
@@ -113,7 +114,7 @@ public class IoTDBWindowTVFIT {
           "2021-01-01T09:15:00.000Z,2021-01-01T09:25:00.000Z,TESL,195.0,",
         };
     tableResultSetEqualTest(
-        "SELECT window_start, window_end, stock_id, sum(price) as sum FROM TABLE(HOP(DATA => TABLE(bid), TIMECOL => 'time', SLIDE => 5m, SIZE => 10m)) GROUP BY window_start, window_end, stock_id ORDER BY stock_id, window_start",
+        "SELECT window_start, window_end, stock_id, sum(price) as sum FROM HOP(DATA => bid, TIMECOL => 'time', SLIDE => 5m, SIZE => 10m) GROUP BY window_start, window_end, stock_id ORDER BY stock_id, window_start",
         expectedHeader,
         retArray,
         DATABASE_NAME);
@@ -125,9 +126,17 @@ public class IoTDBWindowTVFIT {
           "2021-01-01T09:00:00.000Z,2021-01-01T10:00:00.000Z,TESL,597.0,",
         };
     tableResultSetEqualTest(
-        "SELECT window_start, window_end, stock_id, sum(price) as sum FROM TABLE(HOP(DATA => TABLE(bid), TIMECOL => 'time', SLIDE => 1h, SIZE => 1h)) GROUP BY window_start, window_end, stock_id ORDER BY stock_id, window_start",
+        "SELECT window_start, window_end, stock_id, sum(price) as sum FROM HOP(DATA => bid, TIMECOL => 'time', SLIDE => 1h, SIZE => 1h) GROUP BY window_start, window_end, stock_id ORDER BY stock_id, window_start",
         expectedHeader,
         retArray,
+        DATABASE_NAME);
+    tableAssertTestFail(
+        "SELECT * FROM HOP(DATA => bid, TIMECOL => 'time', SLIDE => -300000, SIZE => 600000) ORDER BY stock_id, time",
+        "Invalid scalar argument SLIDE, should be a positive value",
+        DATABASE_NAME);
+    tableAssertTestFail(
+        "SELECT * FROM HOP(DATA => bid, TIMECOL => 'time', SLIDE => 300000, SIZE => -600000) ORDER BY stock_id, time",
+        "Invalid scalar argument SIZE, should be a positive value",
         DATABASE_NAME);
   }
 
@@ -145,7 +154,7 @@ public class IoTDBWindowTVFIT {
           "2021-01-01T09:15:00.000Z,2021-01-01T09:15:00.000Z,2021-01-01T09:15:00.000Z,TESL,195.0,332.0,",
         };
     tableResultSetEqualTest(
-        "SELECT * FROM TABLE(SESSION(DATA => TABLE(bid) PARTITION BY stock_id ORDER BY time, TIMECOL => 'time', GAP => 2m)) ORDER BY stock_id, time",
+        "SELECT * FROM SESSION(DATA => bid PARTITION BY stock_id ORDER BY time, TIMECOL => 'time', GAP => 2m) ORDER BY stock_id, time",
         expectedHeader,
         retArray,
         DATABASE_NAME);
@@ -157,7 +166,7 @@ public class IoTDBWindowTVFIT {
           "2021-01-01T09:15:00.000Z,2021-01-01T09:15:00.000Z,TESL,195.0,",
         };
     tableResultSetEqualTest(
-        "SELECT window_start, window_end, stock_id, sum(price) as sum FROM TABLE(SESSION(DATA => TABLE(bid) PARTITION BY stock_id ORDER BY time, TIMECOL => 'time', GAP => 2m)) GROUP BY window_start, window_end, stock_id ORDER BY stock_id, window_start",
+        "SELECT window_start, window_end, stock_id, sum(price) as sum FROM SESSION(DATA => bid PARTITION BY stock_id ORDER BY time, TIMECOL => 'time', GAP => 2m) GROUP BY window_start, window_end, stock_id ORDER BY stock_id, window_start",
         expectedHeader,
         retArray,
         DATABASE_NAME);
@@ -176,7 +185,7 @@ public class IoTDBWindowTVFIT {
           "1,2021-01-01T09:15:00.000Z,TESL,195.0,332.0,",
         };
     tableResultSetEqualTest(
-        "SELECT * FROM TABLE(VARIATION(DATA => TABLE(bid) PARTITION BY stock_id ORDER BY time, COL => 'price', DELTA => 2.0)) ORDER BY stock_id, time",
+        "SELECT * FROM VARIATION(DATA => bid PARTITION BY stock_id ORDER BY time, COL => 'price', DELTA => 2.0) ORDER BY stock_id, time",
         expectedHeader,
         retArray,
         DATABASE_NAME);
@@ -189,7 +198,7 @@ public class IoTDBWindowTVFIT {
           "2021-01-01T09:15:00.000Z,2021-01-01T09:15:00.000Z,TESL,195.0,",
         };
     tableResultSetEqualTest(
-        "SELECT first(time) as start_time, last(time) as end_time, stock_id, avg(price) as avg FROM TABLE(VARIATION(DATA => TABLE(bid) PARTITION BY stock_id ORDER BY time, COL => 'price', DELTA => 2.0)) GROUP BY window_index, stock_id ORDER BY stock_id, window_index",
+        "SELECT first(time) as start_time, last(time) as end_time, stock_id, avg(price) as avg FROM VARIATION(DATA => bid PARTITION BY stock_id ORDER BY time, COL => 'price', DELTA => 2.0) GROUP BY window_index, stock_id ORDER BY stock_id, window_index",
         expectedHeader,
         retArray,
         DATABASE_NAME);
@@ -208,7 +217,7 @@ public class IoTDBWindowTVFIT {
           "1,2021-01-01T09:15:00.000Z,TESL,195.0,332.0,",
         };
     tableResultSetEqualTest(
-        "SELECT * FROM TABLE(CAPACITY(DATA => TABLE(bid) PARTITION BY stock_id ORDER BY time, SIZE => 2)) ORDER BY stock_id, time",
+        "SELECT * FROM CAPACITY(DATA => bid PARTITION BY stock_id ORDER BY time, SIZE => 2) ORDER BY stock_id, time",
         expectedHeader,
         retArray,
         DATABASE_NAME);
@@ -221,9 +230,124 @@ public class IoTDBWindowTVFIT {
           "2021-01-01T09:15:00.000Z,2021-01-01T09:15:00.000Z,TESL,195.0,",
         };
     tableResultSetEqualTest(
-        "SELECT first(time) as start_time, last(time) as end_time, stock_id, avg(price) as avg FROM TABLE(CAPACITY(DATA => TABLE(bid) PARTITION BY stock_id ORDER BY time, SIZE => 2)) GROUP BY window_index, stock_id ORDER BY stock_id, window_index",
+        "SELECT first(time) as start_time, last(time) as end_time, stock_id, avg(price) as avg FROM CAPACITY(DATA => bid PARTITION BY stock_id ORDER BY time, SIZE => 2) GROUP BY window_index, stock_id ORDER BY stock_id, window_index",
         expectedHeader,
         retArray,
+        DATABASE_NAME);
+  }
+
+  @Test
+  public void testTumbleFunction() {
+    // TUMBLE (10m)
+    String[] expectedHeader =
+        new String[] {"window_start", "window_end", "time", "stock_id", "price", "s1"};
+    String[] retArray =
+        new String[] {
+          "2021-01-01T09:00:00.000Z,2021-01-01T09:10:00.000Z,2021-01-01T09:05:00.000Z,AAPL,100.0,101.0,",
+          "2021-01-01T09:00:00.000Z,2021-01-01T09:10:00.000Z,2021-01-01T09:07:00.000Z,AAPL,103.0,101.0,",
+          "2021-01-01T09:00:00.000Z,2021-01-01T09:10:00.000Z,2021-01-01T09:09:00.000Z,AAPL,102.0,101.0,",
+          "2021-01-01T09:00:00.000Z,2021-01-01T09:10:00.000Z,2021-01-01T09:06:00.000Z,TESL,200.0,102.0,",
+          "2021-01-01T09:00:00.000Z,2021-01-01T09:10:00.000Z,2021-01-01T09:07:00.000Z,TESL,202.0,202.0,",
+          "2021-01-01T09:10:00.000Z,2021-01-01T09:20:00.000Z,2021-01-01T09:15:00.000Z,TESL,195.0,332.0,",
+        };
+    tableResultSetEqualTest(
+        "SELECT * FROM TUMBLE(DATA => bid, TIMECOL => 'time', SIZE => 10m) ORDER BY stock_id, time",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+
+    // TUMBLE (10m) + GROUP BY
+    expectedHeader = new String[] {"window_start", "window_end", "stock_id", "sum"};
+    retArray =
+        new String[] {
+          "2021-01-01T09:00:00.000Z,2021-01-01T09:10:00.000Z,AAPL,305.0,",
+          "2021-01-01T09:00:00.000Z,2021-01-01T09:10:00.000Z,TESL,402.0,",
+          "2021-01-01T09:10:00.000Z,2021-01-01T09:20:00.000Z,TESL,195.0,",
+        };
+    tableResultSetEqualTest(
+        "SELECT window_start, window_end, stock_id, sum(price) as sum FROM TUMBLE(DATA => bid, TIMECOL => 'time', SIZE => 10m) GROUP BY window_start, window_end, stock_id ORDER BY stock_id, window_start",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+
+    // TUMBLE (1h) + GROUP BY
+    expectedHeader = new String[] {"window_start", "window_end", "stock_id", "sum"};
+    retArray =
+        new String[] {
+          "2021-01-01T09:00:00.000Z,2021-01-01T10:00:00.000Z,AAPL,305.0,",
+          "2021-01-01T09:00:00.000Z,2021-01-01T10:00:00.000Z,TESL,597.0,",
+        };
+    tableResultSetEqualTest(
+        "SELECT window_start, window_end, stock_id, sum(price) as sum FROM TUMBLE(DATA => bid, TIMECOL => 'time', SIZE => 1h) GROUP BY window_start, window_end, stock_id ORDER BY stock_id, window_start",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+    tableAssertTestFail(
+        "SELECT * FROM TUMBLE(DATA => bid, TIMECOL => 'time', SIZE => 0m) ORDER BY stock_id, time",
+        "Invalid scalar argument SIZE, should be a positive value",
+        DATABASE_NAME);
+  }
+
+  @Test
+  public void testCumulateFunction() {
+    String[] expectedHeader =
+        new String[] {"window_start", "window_end", "time", "stock_id", "price", "s1"};
+    String[] retArray =
+        new String[] {
+          "2021-01-01T09:00:00.000Z,2021-01-01T09:06:00.000Z,2021-01-01T09:05:00.000Z,AAPL,100.0,101.0,",
+          "2021-01-01T09:00:00.000Z,2021-01-01T09:12:00.000Z,2021-01-01T09:05:00.000Z,AAPL,100.0,101.0,",
+          "2021-01-01T09:00:00.000Z,2021-01-01T09:12:00.000Z,2021-01-01T09:07:00.000Z,AAPL,103.0,101.0,",
+          "2021-01-01T09:00:00.000Z,2021-01-01T09:12:00.000Z,2021-01-01T09:09:00.000Z,AAPL,102.0,101.0,",
+          "2021-01-01T09:00:00.000Z,2021-01-01T09:12:00.000Z,2021-01-01T09:06:00.000Z,TESL,200.0,102.0,",
+          "2021-01-01T09:00:00.000Z,2021-01-01T09:12:00.000Z,2021-01-01T09:07:00.000Z,TESL,202.0,202.0,",
+          "2021-01-01T09:12:00.000Z,2021-01-01T09:18:00.000Z,2021-01-01T09:15:00.000Z,TESL,195.0,332.0,",
+          "2021-01-01T09:12:00.000Z,2021-01-01T09:24:00.000Z,2021-01-01T09:15:00.000Z,TESL,195.0,332.0,",
+        };
+    tableResultSetEqualTest(
+        "SELECT * FROM CUMULATE(DATA => bid, TIMECOL => 'time', STEP => 6m, SIZE => 12m) ORDER BY stock_id, time",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+
+    expectedHeader = new String[] {"window_start", "window_end", "stock_id", "sum"};
+    retArray =
+        new String[] {
+          "2021-01-01T09:00:00.000Z,2021-01-01T09:06:00.000Z,AAPL,100.0,",
+          "2021-01-01T09:00:00.000Z,2021-01-01T09:12:00.000Z,AAPL,305.0,",
+          "2021-01-01T09:00:00.000Z,2021-01-01T09:12:00.000Z,TESL,402.0,",
+          "2021-01-01T09:12:00.000Z,2021-01-01T09:18:00.000Z,TESL,195.0,",
+          "2021-01-01T09:12:00.000Z,2021-01-01T09:24:00.000Z,TESL,195.0,",
+        };
+    tableResultSetEqualTest(
+        "SELECT window_start, window_end, stock_id, sum(price) as sum FROM CUMULATE(DATA => bid, TIMECOL => 'time', STEP => 6m, SIZE => 12m) GROUP BY window_start, window_end, stock_id ORDER BY stock_id, window_start",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+
+    expectedHeader = new String[] {"window_start", "window_end", "stock_id", "sum"};
+    retArray =
+        new String[] {
+          "2021-01-01T09:00:00.000Z,2021-01-01T10:00:00.000Z,AAPL,305.0,",
+          "2021-01-01T09:00:00.000Z,2021-01-01T10:00:00.000Z,TESL,597.0,",
+        };
+    tableResultSetEqualTest(
+        "SELECT window_start, window_end, stock_id, sum(price) as sum FROM CUMULATE(DATA => bid, TIMECOL => 'time', STEP => 1h, SIZE => 1h) GROUP BY window_start, window_end, stock_id ORDER BY stock_id, window_start",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+
+    // test UDFException
+    tableAssertTestFail(
+        "SELECT window_start, window_end, stock_id, sum(price) as sum FROM CUMULATE(DATA => bid, TIMECOL => 'time', STEP => 4m, SIZE => 10m) GROUP BY window_start, window_end, stock_id ORDER BY stock_id, window_start",
+        "Cumulative table function requires size must be an integral multiple of step.",
+        DATABASE_NAME);
+    tableAssertTestFail(
+        "SELECT * FROM CUMULATE(DATA => bid, TIMECOL => 'time', STEP => 0m, SIZE => 5m) ORDER BY stock_id, time",
+        "Invalid scalar argument STEP, should be a positive value",
+        DATABASE_NAME);
+    tableAssertTestFail(
+        "SELECT * FROM CUMULATE(DATA => bid, TIMECOL => 'time', STEP => 1m, SIZE => 0m) ORDER BY stock_id, time",
+        "Invalid scalar argument SIZE, should be a positive value",
         DATABASE_NAME);
   }
 }

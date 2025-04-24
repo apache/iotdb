@@ -58,7 +58,7 @@ import java.util.Map;
  *
  * <p>SHOW FUNCTIONS;
  *
- * <p>SELECT * FROM TABLE(repeat(TABLE(t1), 2));
+ * <p>SELECT * FROM repeat(t1, 2);
  */
 public class RepeatExample implements TableFunction {
   private final String TBL_PARAM = "DATA";
@@ -110,10 +110,10 @@ public class RepeatExample implements TableFunction {
 
           @Override
           public void finish(
-              List<ColumnBuilder> columnBuilders, ColumnBuilder passThroughIndexBuilder) {
+              List<ColumnBuilder> properColumnBuilders, ColumnBuilder passThroughIndexBuilder) {
             for (int i = 1; i < n; i++) {
               for (int j = 0; j < recordIndex; j++) {
-                columnBuilders.get(0).writeInt(i);
+                properColumnBuilders.get(0).writeInt(i);
                 passThroughIndexBuilder.writeLong(j);
               }
             }

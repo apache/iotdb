@@ -116,6 +116,15 @@ public class SubscriptionBrokerAgent {
     return broker.commit(consumerId, commitContexts, nack);
   }
 
+  public boolean isCommitContextOutdated(final SubscriptionCommitContext commitContext) {
+    final String consumerGroupId = commitContext.getConsumerGroupId();
+    final SubscriptionBroker broker = consumerGroupIdToSubscriptionBroker.get(consumerGroupId);
+    if (Objects.isNull(broker)) {
+      return true;
+    }
+    return broker.isCommitContextOutdated(commitContext);
+  }
+
   /////////////////////////////// broker ///////////////////////////////
 
   public boolean isBrokerExist(final String consumerGroupId) {

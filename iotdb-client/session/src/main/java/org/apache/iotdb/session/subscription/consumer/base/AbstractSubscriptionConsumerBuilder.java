@@ -21,10 +21,6 @@ package org.apache.iotdb.session.subscription.consumer.base;
 
 import org.apache.iotdb.isession.SessionConfig;
 import org.apache.iotdb.rpc.subscription.config.ConsumerConstant;
-import org.apache.iotdb.session.subscription.consumer.ISubscriptionTablePullConsumer;
-import org.apache.iotdb.session.subscription.consumer.ISubscriptionTablePushConsumer;
-import org.apache.iotdb.session.subscription.consumer.ISubscriptionTreePullConsumer;
-import org.apache.iotdb.session.subscription.consumer.ISubscriptionTreePushConsumer;
 import org.apache.iotdb.session.subscription.util.IdentifierUtils;
 
 import org.apache.thrift.annotation.Nullable;
@@ -130,21 +126,5 @@ public class AbstractSubscriptionConsumerBuilder {
     // achieving strict timeout.
     this.maxPollParallelism = Math.max(maxPollParallelism, 1);
     return this;
-  }
-
-  public ISubscriptionTreePullConsumer buildPullConsumer() {
-    throw new UnsupportedOperationException();
-  }
-
-  public ISubscriptionTreePushConsumer buildPushConsumer() {
-    throw new UnsupportedOperationException();
-  }
-
-  public ISubscriptionTablePullConsumer buildTablePullConsumer() {
-    throw new UnsupportedOperationException();
-  }
-
-  public ISubscriptionTablePushConsumer buildTablePushConsumer() {
-    throw new UnsupportedOperationException();
   }
 }
