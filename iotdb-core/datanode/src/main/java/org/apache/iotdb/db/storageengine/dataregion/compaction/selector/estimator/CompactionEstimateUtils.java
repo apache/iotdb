@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.compaction.selector.estimator;
 
+import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.exception.CompactionSourceFileDeletedException;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.io.CompactionTsFileReader;
@@ -35,6 +36,8 @@ import org.apache.tsfile.read.TsFileDeviceIterator;
 import org.apache.tsfile.read.TsFileSequenceReader;
 import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.utils.RamUsageEstimator;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.util.HashMap;
@@ -43,6 +46,9 @@ import java.util.List;
 import java.util.Map;
 
 public class CompactionEstimateUtils {
+
+  protected static final Logger LOGGER =
+      LoggerFactory.getLogger(IoTDBConstant.COMPACTION_LOGGER_NAME);
 
   /**
    * Get the details of the tsfile, the returned array contains the following elements in sequence:
@@ -93,6 +99,7 @@ public class CompactionEstimateUtils {
           long chunkMetadataMemCost = 0;
           long currentSeriesRamSize = measurementNameRamSize;
           for (ChunkMetadata chunkMetadata : measurementChunkMetadataList.getValue()) {
+            // chunkMetadata should not be a null value
             if (chunkMetadata != null) {
               TSDataType dataType = chunkMetadata.getDataType();
               chunkMetadataMemCost =
@@ -108,6 +115,11 @@ public class CompactionEstimateUtils {
               } else {
                 break;
               }
+            } else {
+              LOGGER.warn(
+                  "{} has null chunk metadata, file is {}",
+                  measurementChunkMetadataList.getKey(),
+                  reader.getFileName());
             }
           }
           currentSeriesRamSize += chunkMetadataMemCost * currentChunkMetadataListSize;
