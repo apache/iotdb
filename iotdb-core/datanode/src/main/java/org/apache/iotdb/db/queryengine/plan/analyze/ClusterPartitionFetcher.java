@@ -60,7 +60,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.Iterator;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -493,12 +493,16 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
       String database = entry1.getKey();
       final Map<TSeriesPartitionSlot, TRegionReplicaSet> result1 =
           regionReplicaMap.computeIfAbsent(database, k -> new HashMap<>());
+
+      Map<TSeriesPartitionSlot, TConsensusGroupId> orderedMap =
+          new LinkedHashMap<>(entry1.getValue());
+      List<TConsensusGroupId> orderedGroupIds = new ArrayList<>(orderedMap.values());
       List<TRegionReplicaSet> regionReplicaSets =
-          partitionCache.getRegionReplicaSet(new ArrayList<>(entry1.getValue().values()));
-      Iterator<TRegionReplicaSet> iterator = regionReplicaSets.iterator();
-      for (final Map.Entry<TSeriesPartitionSlot, TConsensusGroupId> entry2 :
-          entry1.getValue().entrySet()) {
-        result1.put(entry2.getKey(), iterator.next());
+          partitionCache.getRegionReplicaSet(orderedGroupIds);
+
+      int index = 0;
+      for (Map.Entry<TSeriesPartitionSlot, TConsensusGroupId> entry2 : orderedMap.entrySet()) {
+        result1.put(entry2.getKey(), regionReplicaSets.get(index++));
       }
     }
     return new SchemaPartition(
@@ -518,6 +522,29 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
 
   private DataPartition parseDataPartitionResp(
       final TDataPartitionTableResp dataPartitionTableResp) {
+    final Set<TConsensusGroupId> uniqueConsensusGroupIds = new HashSet<>();
+    for (final Map<
+            String, Map<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TConsensusGroupId>>>>
+        partitionTable : Collections.singleton(dataPartitionTableResp.getDataPartitionTable())) {
+      for (final Map<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TConsensusGroupId>>>
+          seriesPartitionMap : partitionTable.values()) {
+        for (final Map<TTimePartitionSlot, List<TConsensusGroupId>> timePartitionMap :
+            seriesPartitionMap.values()) {
+          for (final List<TConsensusGroupId> consensusGroupIds : timePartitionMap.values()) {
+            uniqueConsensusGroupIds.addAll(consensusGroupIds);
+          }
+        }
+      }
+    }
+
+    final List<TRegionReplicaSet> allRegionReplicaSets =
+        partitionCache.getRegionReplicaSet(new ArrayList<>(uniqueConsensusGroupIds));
+    final Map<TConsensusGroupId, TRegionReplicaSet> regionReplicaSetMap = new HashMap<>();
+    for (int i = 0; i < allRegionReplicaSets.size(); i++) {
+      regionReplicaSetMap.put(
+          new ArrayList<>(uniqueConsensusGroupIds).get(i), allRegionReplicaSets.get(i));
+    }
+
     final Map<String, Map<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TRegionReplicaSet>>>>
         regionReplicaSet = new HashMap<>();
     for (final Map.Entry<
@@ -531,8 +558,10 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
             result1.computeIfAbsent(entry2.getKey(), k -> new HashMap<>());
         for (final Map.Entry<TTimePartitionSlot, List<TConsensusGroupId>> entry3 :
             entry2.getValue().entrySet()) {
-          final List<TRegionReplicaSet> regionReplicaSets =
-              partitionCache.getRegionReplicaSet(entry3.getValue());
+          final List<TRegionReplicaSet> regionReplicaSets = new ArrayList<>();
+          for (TConsensusGroupId groupId : entry3.getValue()) {
+            regionReplicaSets.add(regionReplicaSetMap.get(groupId));
+          }
           result2.put(entry3.getKey(), regionReplicaSets);
         }
       }
