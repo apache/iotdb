@@ -53,10 +53,9 @@ public class ApproxCountDistinctAccumulator implements TableAccumulator {
 
   @Override
   public void addInput(Column[] arguments, AggregationMask mask) {
-    HyperLogLog hll;
     double maxStandardError =
         arguments.length == 1 ? DEFAULT_STANDARD_ERROR : arguments[1].getDouble(0);
-    hll = getOrCreateHyperLogLog(state, maxStandardError);
+    HyperLogLog hll = getOrCreateHyperLogLog(state, maxStandardError);
 
     switch (seriesDataType) {
       case INT32:

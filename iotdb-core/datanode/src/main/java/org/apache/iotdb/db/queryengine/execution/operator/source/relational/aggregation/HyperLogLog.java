@@ -50,7 +50,7 @@ public class HyperLogLog {
   /**
    * Constructs a HyperLogLog with the given precision.
    *
-   * @param precision The precision parameter (4 <= precision <= 16)
+   * <p>The precision parameter (4 <= precision <= 16)
    */
   public HyperLogLog(double maxStandardError) {
     int buckets = standardErrorToBuckets(maxStandardError);
@@ -148,7 +148,7 @@ public class HyperLogLog {
   /**
    * Adds a value to the estimator.
    *
-   * @param value The value to add
+   * <p>The value to add
    */
   public void offer(long hash) {
     // Compute hash of the value
