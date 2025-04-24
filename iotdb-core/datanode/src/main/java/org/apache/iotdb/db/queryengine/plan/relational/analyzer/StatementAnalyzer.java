@@ -2974,19 +2974,11 @@ public class StatementAnalyzer {
         return analyzeJoinUsing(node, ((JoinUsing) criteria).getColumns(), scope, left, right);
       }
 
-      if (criteria instanceof AsofJoinOn) {
-        if (node.getType() != LEFT && node.getType() != INNER) {
-          throw new SemanticException(
-              String.format(
-                  "ASOF [%s] JOIN is not supported, only support INNER and LEFT.", node.getType()));
-        }
-      }
-
       Scope output =
           createAndAssignScope(
               node, scope, left.getRelationType().joinWith(right.getRelationType()));
 
-      if (node.getType() == RIGHT) {
+      if (node.getType() == LEFT || node.getType() == RIGHT) {
         throw new SemanticException(
             String.format(
                 "%s JOIN is not supported, only support INNER JOIN in current version.",
