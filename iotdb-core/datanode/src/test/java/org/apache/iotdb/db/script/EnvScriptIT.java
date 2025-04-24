@@ -56,7 +56,7 @@ public class EnvScriptIT {
   private void testStartClientOnWindows(String suffix, String os) throws IOException {
     String dir = getServerPath();
     final String output =
-        "If you want to change this configuration, please check conf\\windows\\datanode-env.bat.";
+        "If you want to change this configuration, please check conf/windows/datanode-env.bat.";
     String cmd =
         dir
             + File.separator
