@@ -45,9 +45,8 @@ public class HyperLogLogStateFactory {
   }
 
   public static HyperLogLogBigArray getOrCreateHyperLogLog(GroupedHyperLogLogState state) {
-    if (state.isAllNull()) {
-      HyperLogLogBigArray hlls = new HyperLogLogBigArray();
-      state.setHyperLogLogs(hlls);
+    if (state.isEmpty()) {
+      state.setHyperLogLogs(new HyperLogLogBigArray());
     }
     return state.getHyperLogLogs();
   }
@@ -64,17 +63,25 @@ public class HyperLogLogStateFactory {
     public void setHyperLogLog(HyperLogLog value) {
       hll = value;
     }
+
+    public long getEstimatedSize() {
+      // not used
+      return INSTANCE_SIZE + hll.getEstimatedSize();
+    }
+
+    public void merge(HyperLogLog other) {
+      if (this.hll == null) {
+        setHyperLogLog(other);
+      } else {
+        hll.merge(other);
+      }
+    }
   }
 
   public static class GroupedHyperLogLogState {
     private static final long INSTANCE_SIZE =
         RamUsageEstimator.shallowSizeOfInstance(GroupedHyperLogLogState.class);
     private HyperLogLogBigArray hlls = new HyperLogLogBigArray();
-    private boolean allNull;
-
-    public GroupedHyperLogLogState() {
-      this.allNull = true;
-    }
 
     public HyperLogLogBigArray getHyperLogLogs() {
       return hlls;
@@ -82,12 +89,22 @@ public class HyperLogLogStateFactory {
 
     public void setHyperLogLogs(HyperLogLogBigArray value) {
       requireNonNull(value, "value is null");
-      this.allNull = false;
       this.hlls = value;
     }
 
-    public boolean isAllNull() {
-      return allNull;
+    public long getEstimatedSize() {
+      return INSTANCE_SIZE + hlls.sizeOf();
+    }
+
+    public void merge(int groupId, HyperLogLog hll) {
+      HyperLogLog existingHll = hlls.get(groupId, hll);
+      if (!existingHll.equals(hll)) {
+        existingHll.merge(hll);
+      }
+    }
+
+    public boolean isEmpty() {
+      return hlls.isEmpty();
     }
   }
 }

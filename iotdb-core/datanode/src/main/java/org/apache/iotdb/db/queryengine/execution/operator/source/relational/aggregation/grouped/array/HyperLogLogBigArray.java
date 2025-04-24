@@ -37,11 +37,14 @@ public final class HyperLogLogBigArray {
   }
 
   public HyperLogLog get(long index, double maxStandardError) {
+    return get(index, new HyperLogLog(maxStandardError));
+  }
+
+  public HyperLogLog get(long index, HyperLogLog hll) {
     HyperLogLog result = array.get(index);
     if (result == null) {
-      HyperLogLog previous = new HyperLogLog(maxStandardError);
-      array.set(index, previous);
-      return previous;
+      array.set(index, hll);
+      return hll;
     }
     return result;
   }
@@ -54,9 +57,12 @@ public final class HyperLogLogBigArray {
   public void setIfNull(long index, double maxStandardError) {
     if (array.get(index) == null) {
       HyperLogLog hll = new HyperLogLog(maxStandardError);
-      updateRetainedSize(index, hll);
-      array.set(index, hll);
+      set(index, hll);
     }
+  }
+
+  public boolean isEmpty() {
+    return sizeOfHyperLogLog == 0;
   }
 
   public void ensureCapacity(long length) {

@@ -97,6 +97,13 @@ public class ApproxCountDistinctAccumulator implements TableAccumulator {
 
   @Override
   public void addIntermediate(Column argument) {
+
+    for (int i = 0; i < argument.getPositionCount(); i++) {
+      if (!argument.isNull(i)) {
+        HyperLogLog current = new HyperLogLog(argument.getBinary(i).getValues());
+        state.merge(current);
+      }
+    }
     HyperLogLog merged = null;
     for (int i = 0; i < argument.getPositionCount(); i++) {
       if (!argument.isNull(i)) {

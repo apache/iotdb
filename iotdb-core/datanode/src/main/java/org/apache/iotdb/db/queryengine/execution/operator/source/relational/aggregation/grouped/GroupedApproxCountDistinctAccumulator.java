@@ -42,8 +42,7 @@ public class GroupedApproxCountDistinctAccumulator implements GroupedAccumulator
 
   @Override
   public long getEstimatedSize() {
-    HyperLogLogBigArray hlls = state.getHyperLogLogs();
-    return INSTANCE_SIZE + hlls.sizeOf();
+    return INSTANCE_SIZE + state.getEstimatedSize();
   }
 
   @Override
@@ -95,34 +94,12 @@ public class GroupedApproxCountDistinctAccumulator implements GroupedAccumulator
       return;
     }
 
-    HyperLogLogBigArray merged = new HyperLogLogBigArray();
     for (int i = 0; i < groupIds.length; i++) {
       int groupId = groupIds[i];
       if (!argument.isNull(i)) {
         HyperLogLog current = new HyperLogLog(argument.getBinary(i).getValues());
 
-        if (merged.get(groupId) == null) {
-          merged.set(groupId, current);
-        } else {
-          HyperLogLog hll = merged.get(groupId);
-          hll.merge(current);
-          merged.set(groupId, hll);
-        }
-      }
-    }
-
-    if (state.isAllNull()) {
-      state.setHyperLogLogs(merged);
-    } else {
-      HyperLogLogBigArray hlls = state.getHyperLogLogs();
-      for (int groupId : groupIds) {
-        if (hlls.get(groupId) == null) {
-          hlls.set(groupId, merged.get(groupId));
-        } else {
-          HyperLogLog hll = new HyperLogLog(hlls.get(groupId).serialize());
-          hll.merge(merged.get(groupId));
-          hlls.set(groupId, hll);
-        }
+        state.merge(groupId, current);
       }
     }
   }

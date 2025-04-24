@@ -214,7 +214,6 @@ public class HyperLogLog {
    * @throws IllegalArgumentException if the precision doesn't match
    */
   public void merge(HyperLogLog other) {
-    // not use currently
     if (this.m != other.m) {
       throw new IllegalArgumentException(
           "Cannot merge HyperLogLog instances with different precision");
@@ -235,6 +234,10 @@ public class HyperLogLog {
       ReadWriteIOUtils.write(registers[i], byteBuffer);
     }
     return byteBuffer.array();
+  }
+
+  public boolean equals(HyperLogLog hll) {
+    return this.serialize() == hll.serialize();
   }
 
   public long getEstimatedSize() {
