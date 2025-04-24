@@ -20,17 +20,20 @@
 package org.apache.iotdb.db.pipe.connector.util.builder;
 
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertTabletNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalInsertTabletNode;
 import org.apache.iotdb.db.storageengine.dataregion.flush.MemTableFlushTask;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.IMemTable;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.PrimitiveMemTable;
 
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.exception.write.WriteProcessException;
+import org.apache.tsfile.file.metadata.TableSchema;
 import org.apache.tsfile.utils.DateUtils;
 import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.write.record.Tablet;
+import org.apache.tsfile.write.record.Tablet.ColumnCategory;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.apache.tsfile.write.writer.RestorableTsFileIOWriter;
@@ -41,50 +44,59 @@ import java.io.File;
 import java.io.IOException;
 import java.time.LocalDate;
 import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
-public class PipeTreeModelTsFileBuilderV2 extends PipeTsFileBuilder {
+public class PipeTableModelTsFileBuilderV2 extends PipeTsFileBuilder {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(PipeTreeModelTsFileBuilderV2.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(PipeTableModelTsFileBuilderV2.class);
 
   private static final PlanNodeId PLACEHOLDER_PLAN_NODE_ID =
-      new PlanNodeId("PipeTreeModelTsFileBuilderV2");
+      new PlanNodeId("PipeTableModelTsFileBuilderV2");
 
-  private final List<Tablet> tabletList = new ArrayList<>();
-  private final List<Boolean> isTabletAlignedList = new ArrayList<>();
+  private final Map<String, List<Tablet>> dataBase2TabletList = new HashMap<>();
 
   // TODO: remove me later if stable
-  private final PipeTreeModelTsFileBuilder fallbackBuilder;
+  private final PipeTableModelTsFileBuilder fallbackBuilder;
 
-  public PipeTreeModelTsFileBuilderV2(
+  public PipeTableModelTsFileBuilderV2(
       final AtomicLong currentBatchId, final AtomicLong tsFileIdGenerator) {
     super(currentBatchId, tsFileIdGenerator);
-    fallbackBuilder = new PipeTreeModelTsFileBuilder(currentBatchId, tsFileIdGenerator);
+    fallbackBuilder = new PipeTableModelTsFileBuilder(currentBatchId, tsFileIdGenerator);
   }
 
   @Override
-  public void bufferTableModelTablet(final String dataBase, final Tablet tablet) {
+  public void bufferTableModelTablet(String dataBase, Tablet tablet) {
+    dataBase2TabletList.computeIfAbsent(dataBase, db -> new ArrayList<>()).add(tablet);
+  }
+
+  @Override
+  public void bufferTreeModelTablet(Tablet tablet, Boolean isAligned) {
     throw new UnsupportedOperationException(
-        "PipeTreeModelTsFileBuilderV2 does not support table model tablet to build TSFile");
+        "PipeTableModeTsFileBuilderV2 does not support tree model tablet to build TSFile");
   }
 
   @Override
-  public void bufferTreeModelTablet(final Tablet tablet, final Boolean isAligned) {
-    tabletList.add(tablet);
-    isTabletAlignedList.add(isAligned);
-    fallbackBuilder.bufferTreeModelTablet(tablet, isAligned);
-  }
-
-  @Override
-  public List<Pair<String, File>> convertTabletToTsFileWithDBInfo()
-      throws IOException, WriteProcessException {
+  public List<Pair<String, File>> convertTabletToTsFileWithDBInfo() throws IOException {
+    if (dataBase2TabletList.isEmpty()) {
+      return new ArrayList<>(0);
+    }
     try {
-      return writeTabletsToTsFiles();
+      final List<Pair<String, File>> pairList = new ArrayList<>();
+      for (final String dataBase : dataBase2TabletList.keySet()) {
+        pairList.addAll(writeTabletsToTsFiles(dataBase));
+      }
+      return pairList;
     } catch (final Exception e) {
       LOGGER.warn(
-          "Exception occurred when PipeTreeModelTsFileBuilderV2 writing tablets to tsfile, use fallback tsfile builder: {}",
+          "Exception occurred when PipeTableModelTsFileBuilderV2 writing tablets to tsfile, use fallback tsfile builder: {}",
           e.getMessage(),
           e);
       return fallbackBuilder.convertTabletToTsFileWithDBInfo();
@@ -93,31 +105,30 @@ public class PipeTreeModelTsFileBuilderV2 extends PipeTsFileBuilder {
 
   @Override
   public boolean isEmpty() {
-    return tabletList.isEmpty();
+    return dataBase2TabletList.isEmpty();
   }
 
   @Override
-  public void onSuccess() {
+  public synchronized void onSuccess() {
     super.onSuccess();
-    tabletList.clear();
-    isTabletAlignedList.clear();
+    dataBase2TabletList.clear();
     fallbackBuilder.onSuccess();
   }
 
   @Override
   public synchronized void close() {
     super.close();
-    tabletList.clear();
-    isTabletAlignedList.clear();
+    dataBase2TabletList.clear();
     fallbackBuilder.close();
   }
 
-  private List<Pair<String, File>> writeTabletsToTsFiles() throws WriteProcessException {
+  private List<Pair<String, File>> writeTabletsToTsFiles(final String dataBase)
+      throws WriteProcessException {
     final IMemTable memTable = new PrimitiveMemTable(null, null);
     final List<Pair<String, File>> sealedFiles = new ArrayList<>();
     try (final RestorableTsFileIOWriter writer = new RestorableTsFileIOWriter(createFile())) {
-      writeTabletsIntoOneFile(memTable, writer);
-      sealedFiles.add(new Pair<>(null, writer.getFile()));
+      writeTabletsIntoOneFile(dataBase, memTable, writer);
+      sealedFiles.add(new Pair<>(dataBase, writer.getFile()));
     } catch (final Exception e) {
       LOGGER.warn(
           "Batch id = {}: Failed to write tablets into tsfile, because {}",
@@ -134,7 +145,51 @@ public class PipeTreeModelTsFileBuilderV2 extends PipeTsFileBuilder {
   }
 
   private void writeTabletsIntoOneFile(
-      final IMemTable memTable, final RestorableTsFileIOWriter writer) throws Exception {
+      final String dataBase, final IMemTable memTable, final RestorableTsFileIOWriter writer)
+      throws Exception {
+    final List<Tablet> tabletList = Objects.requireNonNull(dataBase2TabletList.get(dataBase));
+
+    final Map<String, List<Tablet>> tableName2TabletList = new HashMap<>();
+    for (final Tablet tablet : tabletList) {
+      tableName2TabletList
+          .computeIfAbsent(tablet.getTableName(), k -> new ArrayList<>())
+          .add(tablet);
+    }
+
+    for (Map.Entry<String, List<Tablet>> entry : tableName2TabletList.entrySet()) {
+      final String tableName = entry.getKey();
+      final List<Tablet> tablets = entry.getValue();
+
+      List<IMeasurementSchema> aggregatedSchemas =
+          tablets.stream()
+              .flatMap(tablet -> tablet.getSchemas().stream())
+              .collect(Collectors.toList());
+      List<ColumnCategory> aggregatedColumnCategories =
+          tablets.stream()
+              .flatMap(tablet -> tablet.getColumnTypes().stream())
+              .collect(Collectors.toList());
+
+      final Set<IMeasurementSchema> seen = new HashSet<>();
+      final List<Integer> distinctIndices =
+          IntStream.range(0, aggregatedSchemas.size())
+              .filter(
+                  i -> seen.add(aggregatedSchemas.get(i))) // Only keep the first occurrence index
+              .boxed()
+              .collect(Collectors.toList());
+
+      writer
+          .getSchema()
+          .getTableSchemaMap()
+          .put(
+              tableName,
+              new TableSchema(
+                  tableName,
+                  distinctIndices.stream().map(aggregatedSchemas::get).collect(Collectors.toList()),
+                  distinctIndices.stream()
+                      .map(aggregatedColumnCategories::get)
+                      .collect(Collectors.toList())));
+    }
+
     for (int i = 0, size = tabletList.size(); i < size; ++i) {
       final Tablet tablet = tabletList.get(i);
 
@@ -150,17 +205,20 @@ public class PipeTreeModelTsFileBuilderV2 extends PipeTsFileBuilder {
           final LocalDate[] dates = ((LocalDate[]) values[j]);
           final int[] dateValues = new int[dates.length];
           for (int k = 0; k < Math.min(dates.length, tablet.getRowSize()); k++) {
-            dateValues[k] = DateUtils.parseDateExpressionToInt(dates[k]);
+            if (Objects.nonNull(dates[k])) {
+              dateValues[k] = DateUtils.parseDateExpressionToInt(dates[k]);
+            }
           }
           values[j] = dateValues;
         }
       }
 
-      final InsertTabletNode insertTabletNode =
-          new InsertTabletNode(
+      final RelationalInsertTabletNode insertTabletNode =
+          new RelationalInsertTabletNode(
               PLACEHOLDER_PLAN_NODE_ID,
-              new PartialPath(tablet.getDeviceId()),
-              isTabletAlignedList.get(i),
+              new PartialPath(tablet.getTableName()),
+              // the data of the table model is aligned
+              true,
               tablet.getSchemas().stream()
                   .map(IMeasurementSchema::getMeasurementName)
                   .toArray(String[]::new),
@@ -174,7 +232,10 @@ public class PipeTreeModelTsFileBuilderV2 extends PipeTsFileBuilder {
               tablet.getTimestamps(),
               tablet.getBitMaps(),
               tablet.getValues(),
-              tablet.getRowSize());
+              tablet.getRowSize(),
+              tablet.getColumnTypes().stream()
+                  .map(TsTableColumnCategory::fromTsFileColumnCategory)
+                  .toArray(TsTableColumnCategory[]::new));
 
       final int start = 0;
       final int end = insertTabletNode.getRowCount();

@@ -115,8 +115,9 @@ public class CapacityTableFunction implements TableFunction {
     }
 
     @Override
-    public void finish(List<ColumnBuilder> columnBuilders, ColumnBuilder passThroughIndexBuilder) {
-      outputWindow(columnBuilders, passThroughIndexBuilder);
+    public void finish(
+        List<ColumnBuilder> properColumnBuilders, ColumnBuilder passThroughIndexBuilder) {
+      outputWindow(properColumnBuilders, passThroughIndexBuilder);
     }
 
     private void outputWindow(

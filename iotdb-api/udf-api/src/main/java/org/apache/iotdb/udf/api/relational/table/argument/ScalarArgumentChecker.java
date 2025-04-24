@@ -17,6 +17,16 @@
  * under the License.
  */
 
-package org.apache.iotdb.session.subscription.payload;
+package org.apache.iotdb.udf.api.relational.table.argument;
 
-public interface SubscriptionMessageHandler {}
+import java.util.function.Function;
+
+public class ScalarArgumentChecker {
+  public static Function<Object, String> POSITIVE_LONG_CHECKER =
+      (value) -> {
+        if (value instanceof Long && (Long) value > 0) {
+          return null;
+        }
+        return "should be a positive value";
+      };
+}

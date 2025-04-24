@@ -23,6 +23,7 @@ import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.TableClusterIT;
 import org.apache.iotdb.itbase.category.TableLocalStandaloneIT;
+import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
@@ -5162,5 +5163,12 @@ public class IoTDBTableAggregationIT {
         "select count(distinct *) from table1",
         "mismatched input '*'. Expecting: <expression>",
         DATABASE_NAME);
+
+    String errMsg = TSStatusCode.SEMANTIC_ERROR.getStatusCode() + ": Unsupported expression: Row";
+    tableAssertTestFail("select distinct (s1,s2) from table1", errMsg, DATABASE_NAME);
+
+    tableAssertTestFail("select (s1,s2) from table1", errMsg, DATABASE_NAME);
+
+    tableAssertTestFail("select * from table1 where (s1,s2) is not null", errMsg, DATABASE_NAME);
   }
 }

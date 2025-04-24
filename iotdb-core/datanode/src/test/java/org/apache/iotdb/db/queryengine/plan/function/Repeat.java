@@ -103,10 +103,10 @@ public class Repeat implements TableFunction {
 
           @Override
           public void finish(
-              List<ColumnBuilder> columnBuilders, ColumnBuilder passThroughIndexBuilder) {
+              List<ColumnBuilder> properColumnBuilders, ColumnBuilder passThroughIndexBuilder) {
             for (int i = 1; i < n; i++) {
               for (int j = 0; j < recordIndex; j++) {
-                columnBuilders.get(0).writeInt(i);
+                properColumnBuilders.get(0).writeInt(i);
                 passThroughIndexBuilder.writeLong(j);
               }
             }

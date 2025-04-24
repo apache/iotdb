@@ -4418,6 +4418,14 @@ public class StatementAnalyzer {
                   argumentSpecification.getType(), constantValue.getClass().getSimpleName()));
         }
       }
+      for (Function<Object, String> checker : argumentSpecification.getCheckers()) {
+        String errMsg = checker.apply(constantValue);
+        if (errMsg != null) {
+          throw new SemanticException(
+              String.format(
+                  "Invalid scalar argument %s, %s", argumentSpecification.getName(), errMsg));
+        }
+      }
       return new ArgumentAnalysis(
           new ScalarArgument(argumentSpecification.getType(), constantValue), Optional.empty());
     }

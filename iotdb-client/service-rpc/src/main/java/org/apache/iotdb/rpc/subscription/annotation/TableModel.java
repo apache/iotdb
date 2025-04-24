@@ -17,6 +17,17 @@
  * under the License.
  */
 
-package org.apache.iotdb.session.subscription.payload;
+package org.apache.iotdb.rpc.subscription.annotation;
 
-public interface SubscriptionMessageHandler {}
+import java.lang.annotation.ElementType;
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
+import java.lang.annotation.Target;
+
+/**
+ * Indicates that the method is valid only within the subscription module under the table model
+ * namespace. Otherwise, the behavior is undefined.
+ */
+@Target({ElementType.METHOD, ElementType.TYPE, ElementType.FIELD})
+@Retention(RetentionPolicy.RUNTIME)
+public @interface TableModel {}

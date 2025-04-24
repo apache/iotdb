@@ -43,6 +43,7 @@ import java.util.List;
 import java.util.Map;
 
 import static org.apache.iotdb.commons.udf.builtin.relational.tvf.WindowTVFUtils.findColumnIndex;
+import static org.apache.iotdb.udf.api.relational.table.argument.ScalarArgumentChecker.POSITIVE_LONG_CHECKER;
 
 public class HOPTableFunction implements TableFunction {
 
@@ -65,8 +66,16 @@ public class HOPTableFunction implements TableFunction {
             .type(Type.STRING)
             .defaultValue("time")
             .build(),
-        ScalarParameterSpecification.builder().name(SIZE_PARAMETER_NAME).type(Type.INT64).build(),
-        ScalarParameterSpecification.builder().name(SLIDE_PARAMETER_NAME).type(Type.INT64).build(),
+        ScalarParameterSpecification.builder()
+            .name(SIZE_PARAMETER_NAME)
+            .addChecker(POSITIVE_LONG_CHECKER)
+            .type(Type.INT64)
+            .build(),
+        ScalarParameterSpecification.builder()
+            .name(SLIDE_PARAMETER_NAME)
+            .addChecker(POSITIVE_LONG_CHECKER)
+            .type(Type.INT64)
+            .build(),
         ScalarParameterSpecification.builder()
             .name(ORIGIN_PARAMETER_NAME)
             .type(Type.TIMESTAMP)

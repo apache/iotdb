@@ -2934,6 +2934,9 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
           properChannelCount,
           requiredChannels,
           passThroughChannels,
+          passThroughSpecification
+              .map(TableFunctionNode.PassThroughSpecification::isDeclaredAsPassThrough)
+              .orElse(false),
           partitionChannels,
           node.isRequireRecordSnapshot());
     }
