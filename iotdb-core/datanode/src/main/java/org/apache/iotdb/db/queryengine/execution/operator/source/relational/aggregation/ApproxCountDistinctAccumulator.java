@@ -32,13 +32,17 @@ public class ApproxCountDistinctAccumulator implements TableAccumulator {
   private final HyperLogLogStateFactory.SingleHyperLogLogState state =
       HyperLogLogStateFactory.createSingleState();
 
+  private static final int DEFAULT_HYPERLOGLOG_BUCKET_SIZE = 2048;
+
   public ApproxCountDistinctAccumulator(TSDataType seriesDataType) {
     this.seriesDataType = seriesDataType;
   }
 
   @Override
   public long getEstimatedSize() {
-    return INSTANCE_SIZE;
+    return INSTANCE_SIZE
+        + RamUsageEstimator.shallowSizeOfInstance(HyperLogLog.class)
+        + Integer.BYTES * DEFAULT_HYPERLOGLOG_BUCKET_SIZE;
   }
 
   @Override
@@ -79,6 +83,7 @@ public class ApproxCountDistinctAccumulator implements TableAccumulator {
       case STRING:
       case BLOB:
         addBinaryInput(arguments[0], mask, hll);
+        System.out.println(hll.cardinality() + this.toString());
         return;
       case BOOLEAN:
         addBooleanInput(arguments[0], mask, hll);
@@ -92,15 +97,27 @@ public class ApproxCountDistinctAccumulator implements TableAccumulator {
 
   @Override
   public void addIntermediate(Column argument) {
+    HyperLogLog merged = null;
     for (int i = 0; i < argument.getPositionCount(); i++) {
-      if (argument.isNull(i)) {
-        continue;
+      if (!argument.isNull(i)) {
+        HyperLogLog current = new HyperLogLog(argument.getBinary(i).getValues());
+        if (merged == null) {
+          merged = current;
+        } else {
+          merged.merge(current);
+        }
       }
-      HyperLogLog currentHll = new HyperLogLog(argument.getBinary(i).getValues());
+    }
 
-      HyperLogLog hll =
-          HyperLogLogStateFactory.getOrCreateHyperLogLog(state, currentHll.getMaxStandardError());
-      hll.merge(currentHll);
+    if (merged == null) {
+      // No intermediate value to merge
+      return;
+    }
+
+    if (state.getHyperLogLog() == null) {
+      state.setHyperLogLog(merged);
+    } else {
+      state.getHyperLogLog().merge(merged);
     }
   }
 

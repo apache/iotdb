@@ -19,10 +19,11 @@ import org.apache.iotdb.commons.exception.IoTDBRuntimeException;
 import com.google.common.base.Preconditions;
 import com.google.common.hash.HashFunction;
 import com.google.common.hash.Hashing;
-import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.utils.Binary;
-import org.apache.tsfile.utils.BytesUtils;
+import org.apache.tsfile.utils.RamUsageEstimator;
+import org.apache.tsfile.utils.ReadWriteIOUtils;
 
+import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 
@@ -34,7 +35,6 @@ public class HyperLogLog {
   private final int m;
   // Number of bits used for register indexing
   private final int b;
-  private final double maxStandardError;
   // Alpha constant for bias correction
   private final double alpha;
 
@@ -43,6 +43,9 @@ public class HyperLogLog {
   public static final double DEFAULT_STANDARD_ERROR = 0.023;
   private static final double LOWEST_MAX_STANDARD_ERROR = 0.0040625;
   private static final double HIGHEST_MAX_STANDARD_ERROR = 0.26000;
+
+  private static final long INSTANCE_SIZE =
+      RamUsageEstimator.shallowSizeOfInstance(HyperLogLog.class);
 
   /**
    * Constructs a HyperLogLog with the given precision.
@@ -53,7 +56,6 @@ public class HyperLogLog {
     int buckets = standardErrorToBuckets(maxStandardError);
     int precision = indexBitLength(buckets);
 
-    this.maxStandardError = maxStandardError;
     this.b = precision;
     // m = 2^precision, buckets
     this.m = buckets;
@@ -64,26 +66,16 @@ public class HyperLogLog {
   }
 
   public HyperLogLog(byte[] bytes) {
-    // 反序列化
-
-    this.b = BytesUtils.bytesToInt(bytes, 0);
-    this.m = BytesUtils.bytesToInt(bytes, 4);
-    this.maxStandardError = BytesUtils.bytesToDouble(bytes, 8);
+    // deserialize
+    ByteBuffer byteBuffer = ByteBuffer.wrap(bytes);
+    this.b = ReadWriteIOUtils.readInt(byteBuffer);
+    this.m = ReadWriteIOUtils.readInt(byteBuffer);
 
     this.registers = new int[m];
     for (int i = 0; i < m; i++) {
-      int baseIndex = 16 + i * 4;
-      registers[i] =
-          (bytes[baseIndex] & 0xFF)
-              | (bytes[baseIndex + 1] & 0xFF) << 8
-              | (bytes[baseIndex + 2] & 0xFF) << 16
-              | (bytes[baseIndex + 3] & 0xFF) << 24;
+      registers[i] = ReadWriteIOUtils.readInt(byteBuffer);
     }
     this.alpha = getAlpha(b, m);
-  }
-
-  public double getMaxStandardError() {
-    return this.maxStandardError;
   }
 
   private static double getAlpha(int precision, int m) {
@@ -106,7 +98,7 @@ public class HyperLogLog {
 
   private static int indexBitLength(int numberOfBuckets) {
     Preconditions.checkArgument(
-        isPowerOf2((long) numberOfBuckets),
+        isPowerOf2(numberOfBuckets),
         "numberOfBuckets must be a power of 2, actual: %s",
         numberOfBuckets);
     return Integer.numberOfTrailingZeros(numberOfBuckets);
@@ -150,10 +142,7 @@ public class HyperLogLog {
   }
 
   public void add(Binary value) {
-    offer(
-        hashFunction
-            .hashString(value.getStringValue(TSFileConfig.STRING_CHARSET), StandardCharsets.UTF_8)
-            .asLong());
+    offer(hashFunction.hashBytes(value.getValues()).asLong());
   }
 
   /**
@@ -236,23 +225,19 @@ public class HyperLogLog {
     }
   }
 
-  // 序列化
+  // serialize
   public byte[] serialize() {
-    int totalBytes = Integer.BYTES * 2 + registers.length * Integer.BYTES + Double.BYTES;
-    byte[] result = new byte[totalBytes];
-
-    BytesUtils.intToBytes(b, result, 0);
-    BytesUtils.intToBytes(m, result, 4);
-    BytesUtils.doubleToBytes(maxStandardError, result, 8);
-
+    int totalBytes = Integer.BYTES * 2 + registers.length * Integer.BYTES;
+    ByteBuffer byteBuffer = ByteBuffer.allocate(totalBytes);
+    ReadWriteIOUtils.write(b, byteBuffer);
+    ReadWriteIOUtils.write(m, byteBuffer);
     for (int i = 0; i < m; i++) {
-      int baseIndex = 16 + i * 4;
-      int value = registers[i];
-      result[baseIndex] = (byte) value;
-      result[baseIndex + 1] = (byte) (value >> 8);
-      result[baseIndex + 2] = (byte) (value >> 16);
-      result[baseIndex + 3] = (byte) (value >> 24);
+      ReadWriteIOUtils.write(registers[i], byteBuffer);
     }
-    return result;
+    return byteBuffer.array();
+  }
+
+  public long getEstimatedSize() {
+    return INSTANCE_SIZE + Math.toIntExact(registers.length * Integer.BYTES);
   }
 }

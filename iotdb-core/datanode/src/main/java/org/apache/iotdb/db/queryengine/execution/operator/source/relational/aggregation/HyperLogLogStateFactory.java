@@ -14,7 +14,7 @@
 
 package org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation;
 
-import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.grouped.array.ObjectBigArray;
+import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.grouped.array.HyperLogLogBigArray;
 
 import org.apache.tsfile.utils.RamUsageEstimator;
 
@@ -44,18 +44,12 @@ public class HyperLogLogStateFactory {
     return hll;
   }
 
-  public static ObjectBigArray<HyperLogLog> getOrCreateHyperLogLog(GroupedHyperLogLogState state) {
-    return getOrCreateHyperLogLog(state, DEFAULT_STANDARD_ERROR);
-  }
-
-  public static ObjectBigArray<HyperLogLog> getOrCreateHyperLogLog(
-      GroupedHyperLogLogState state, double maxStandardError) {
-    ObjectBigArray<HyperLogLog> hlls = state.getHyperLogLogs();
-    if (hlls == null) {
-      hlls = new ObjectBigArray<>(new HyperLogLog(maxStandardError));
+  public static HyperLogLogBigArray getOrCreateHyperLogLog(GroupedHyperLogLogState state) {
+    if (state.isAllNull()) {
+      HyperLogLogBigArray hlls = new HyperLogLogBigArray();
       state.setHyperLogLogs(hlls);
     }
-    return hlls;
+    return state.getHyperLogLogs();
   }
 
   public static class SingleHyperLogLogState {
@@ -75,15 +69,25 @@ public class HyperLogLogStateFactory {
   public static class GroupedHyperLogLogState {
     private static final long INSTANCE_SIZE =
         RamUsageEstimator.shallowSizeOfInstance(GroupedHyperLogLogState.class);
-    private ObjectBigArray<HyperLogLog> hlls = new ObjectBigArray<>();
+    private HyperLogLogBigArray hlls = new HyperLogLogBigArray();
+    private boolean allNull;
 
-    public ObjectBigArray<HyperLogLog> getHyperLogLogs() {
+    public GroupedHyperLogLogState() {
+      this.allNull = true;
+    }
+
+    public HyperLogLogBigArray getHyperLogLogs() {
       return hlls;
     }
 
-    public void setHyperLogLogs(ObjectBigArray<HyperLogLog> value) {
+    public void setHyperLogLogs(HyperLogLogBigArray value) {
       requireNonNull(value, "value is null");
+      this.allNull = false;
       this.hlls = value;
+    }
+
+    public boolean isAllNull() {
+      return allNull;
     }
   }
 }

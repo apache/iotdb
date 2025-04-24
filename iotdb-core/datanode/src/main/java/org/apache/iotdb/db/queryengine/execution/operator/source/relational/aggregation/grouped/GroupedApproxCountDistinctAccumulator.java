@@ -17,7 +17,7 @@ package org.apache.iotdb.db.queryengine.execution.operator.source.relational.agg
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.AggregationMask;
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.HyperLogLog;
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.HyperLogLogStateFactory;
-import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.grouped.array.ObjectBigArray;
+import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.grouped.array.HyperLogLogBigArray;
 
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.block.column.ColumnBuilder;
@@ -25,6 +25,8 @@ import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.RamUsageEstimator;
 import org.apache.tsfile.write.UnSupportedDataTypeException;
+
+import static org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.HyperLogLog.DEFAULT_STANDARD_ERROR;
 
 public class GroupedApproxCountDistinctAccumulator implements GroupedAccumulator {
   private static final long INSTANCE_SIZE =
@@ -40,50 +42,44 @@ public class GroupedApproxCountDistinctAccumulator implements GroupedAccumulator
 
   @Override
   public long getEstimatedSize() {
-    ObjectBigArray<HyperLogLog> hlls = state.getHyperLogLogs();
+    HyperLogLogBigArray hlls = state.getHyperLogLogs();
     return INSTANCE_SIZE + hlls.sizeOf();
   }
 
   @Override
   public void setGroupCount(long groupCount) {
-    ObjectBigArray<HyperLogLog> hlls = state.getHyperLogLogs();
+    HyperLogLogBigArray hlls = state.getHyperLogLogs();
     hlls.ensureCapacity(groupCount);
   }
 
   @Override
   public void addInput(int[] groupIds, Column[] arguments, AggregationMask mask) {
-    ObjectBigArray<HyperLogLog> hlls;
-    if (arguments.length == 1) {
-      hlls = HyperLogLogStateFactory.getOrCreateHyperLogLog(state);
-    } else if (arguments.length == 2) {
-      double maxStandardError = arguments[1].getDouble(0);
-      hlls = HyperLogLogStateFactory.getOrCreateHyperLogLog(state, maxStandardError);
-    } else {
-      throw new IllegalArgumentException(
-          "argument of APPROX_COUNT_DISTINCT should be one column with Max Standard Error");
-    }
+    double maxStandardError =
+        arguments.length == 1 ? DEFAULT_STANDARD_ERROR : arguments[1].getDouble(0);
+    HyperLogLogBigArray hlls = HyperLogLogStateFactory.getOrCreateHyperLogLog(state);
+
     switch (seriesDataType) {
       case BOOLEAN:
-        addBooleanInput(groupIds, arguments[0], mask, hlls);
+        addBooleanInput(groupIds, arguments[0], mask, hlls, maxStandardError);
         return;
       case INT32:
       case DATE:
-        addIntInput(groupIds, arguments[0], mask, hlls);
+        addIntInput(groupIds, arguments[0], mask, hlls, maxStandardError);
         return;
       case INT64:
       case TIMESTAMP:
-        addLongInput(groupIds, arguments[0], mask, hlls);
+        addLongInput(groupIds, arguments[0], mask, hlls, maxStandardError);
         return;
       case FLOAT:
-        addFloatInput(groupIds, arguments[0], mask, hlls);
+        addFloatInput(groupIds, arguments[0], mask, hlls, maxStandardError);
         return;
       case DOUBLE:
-        addDoubleInput(groupIds, arguments[0], mask, hlls);
+        addDoubleInput(groupIds, arguments[0], mask, hlls, maxStandardError);
         return;
       case TEXT:
       case STRING:
       case BLOB:
-        addBinaryInput(groupIds, arguments[0], mask, hlls);
+        addBinaryInput(groupIds, arguments[0], mask, hlls, maxStandardError);
         return;
       default:
         throw new UnSupportedDataTypeException(
@@ -94,25 +90,52 @@ public class GroupedApproxCountDistinctAccumulator implements GroupedAccumulator
 
   @Override
   public void addIntermediate(int[] groupIds, Column argument) {
-    ObjectBigArray<HyperLogLog> hlls = HyperLogLogStateFactory.getOrCreateHyperLogLog(state);
+
+    if (groupIds.length == 0) {
+      return;
+    }
+
+    HyperLogLogBigArray merged = new HyperLogLogBigArray();
     for (int i = 0; i < groupIds.length; i++) {
-      if (argument.isNull(i)) {
-        continue;
+      int groupId = groupIds[i];
+      if (!argument.isNull(i)) {
+        HyperLogLog current = new HyperLogLog(argument.getBinary(i).getValues());
+
+        if (merged.get(groupId) == null) {
+          merged.set(groupId, current);
+        } else {
+          HyperLogLog hll = merged.get(groupId);
+          hll.merge(current);
+          merged.set(groupId, hll);
+        }
       }
-      HyperLogLog preHll = new HyperLogLog(argument.getBinary(i).getValues());
-      hlls.get(groupIds[i]).merge(preHll);
+    }
+
+    if (state.isAllNull()) {
+      state.setHyperLogLogs(merged);
+    } else {
+      HyperLogLogBigArray hlls = state.getHyperLogLogs();
+      for (int groupId : groupIds) {
+        if (hlls.get(groupId) == null) {
+          hlls.set(groupId, merged.get(groupId));
+        } else {
+          HyperLogLog hll = new HyperLogLog(hlls.get(groupId).serialize());
+          hll.merge(merged.get(groupId));
+          hlls.set(groupId, hll);
+        }
+      }
     }
   }
 
   @Override
   public void evaluateIntermediate(int groupId, ColumnBuilder columnBuilder) {
-    ObjectBigArray<HyperLogLog> hlls = state.getHyperLogLogs();
+    HyperLogLogBigArray hlls = state.getHyperLogLogs();
     columnBuilder.writeBinary(new Binary(hlls.get(groupId).serialize()));
   }
 
   @Override
   public void evaluateFinal(int groupId, ColumnBuilder columnBuilder) {
-    ObjectBigArray<HyperLogLog> hlls = state.getHyperLogLogs();
+    HyperLogLogBigArray hlls = state.getHyperLogLogs();
     columnBuilder.writeLong(hlls.get(groupId).cardinality());
   }
 
@@ -121,19 +144,24 @@ public class GroupedApproxCountDistinctAccumulator implements GroupedAccumulator
 
   @Override
   public void reset() {
-    ObjectBigArray<HyperLogLog> hlls = state.getHyperLogLogs();
-    hlls.forEach(HyperLogLog::reset);
+    HyperLogLogBigArray hlls = state.getHyperLogLogs();
     hlls.reset();
   }
 
   public void addBooleanInput(
-      int[] groupIds, Column column, AggregationMask mask, ObjectBigArray<HyperLogLog> hlls) {
+      int[] groupIds,
+      Column column,
+      AggregationMask mask,
+      HyperLogLogBigArray hlls,
+      double maxStandardError) {
     int positionCount = mask.getPositionCount();
 
     if (mask.isSelectAll()) {
       for (int i = 0; i < positionCount; i++) {
+        int groupId = groupIds[i];
+        hlls.setIfNull(groupId, maxStandardError);
         if (!column.isNull(i)) {
-          hlls.get(groupIds[i]).add(column.getBoolean(i));
+          hlls.get(groupId).add(column.getBoolean(i));
         }
       }
     } else {
@@ -144,20 +172,26 @@ public class GroupedApproxCountDistinctAccumulator implements GroupedAccumulator
         position = selectedPositions[i];
         groupId = groupIds[position];
         if (!column.isNull(position)) {
-          hlls.get(groupId).add(column.getBoolean(i));
+          hlls.get(groupId, maxStandardError).add(column.getBoolean(i));
         }
       }
     }
   }
 
   public void addIntInput(
-      int[] groupIds, Column column, AggregationMask mask, ObjectBigArray<HyperLogLog> hlls) {
+      int[] groupIds,
+      Column column,
+      AggregationMask mask,
+      HyperLogLogBigArray hlls,
+      double maxStandardError) {
     int positionCount = mask.getPositionCount();
 
     if (mask.isSelectAll()) {
       for (int i = 0; i < positionCount; i++) {
+        int groupId = groupIds[i];
+        hlls.setIfNull(groupId, maxStandardError);
         if (!column.isNull(i)) {
-          hlls.get(groupIds[i]).add(column.getInt(i));
+          hlls.get(groupId).add(column.getInt(i));
         }
       }
     } else {
@@ -168,20 +202,26 @@ public class GroupedApproxCountDistinctAccumulator implements GroupedAccumulator
         position = selectedPositions[i];
         groupId = groupIds[position];
         if (!column.isNull(position)) {
-          hlls.get(groupId).add(column.getInt(i));
+          hlls.get(groupId, maxStandardError).add(column.getInt(i));
         }
       }
     }
   }
 
   public void addLongInput(
-      int[] groupIds, Column column, AggregationMask mask, ObjectBigArray<HyperLogLog> hlls) {
+      int[] groupIds,
+      Column column,
+      AggregationMask mask,
+      HyperLogLogBigArray hlls,
+      double maxStandardError) {
     int positionCount = mask.getPositionCount();
 
     if (mask.isSelectAll()) {
       for (int i = 0; i < positionCount; i++) {
+        int groupId = groupIds[i];
+        hlls.setIfNull(groupId, maxStandardError);
         if (!column.isNull(i)) {
-          hlls.get(groupIds[i]).add(column.getLong(i));
+          hlls.get(groupId).add(column.getLong(i));
         }
       }
     } else {
@@ -192,20 +232,26 @@ public class GroupedApproxCountDistinctAccumulator implements GroupedAccumulator
         position = selectedPositions[i];
         groupId = groupIds[position];
         if (!column.isNull(position)) {
-          hlls.get(groupId).add(column.getLong(i));
+          hlls.get(groupId, maxStandardError).add(column.getLong(i));
         }
       }
     }
   }
 
   public void addFloatInput(
-      int[] groupIds, Column column, AggregationMask mask, ObjectBigArray<HyperLogLog> hlls) {
+      int[] groupIds,
+      Column column,
+      AggregationMask mask,
+      HyperLogLogBigArray hlls,
+      double maxStandardError) {
     int positionCount = mask.getPositionCount();
 
     if (mask.isSelectAll()) {
       for (int i = 0; i < positionCount; i++) {
+        int groupId = groupIds[i];
+        hlls.setIfNull(groupId, maxStandardError);
         if (!column.isNull(i)) {
-          hlls.get(groupIds[i]).add(column.getFloat(i));
+          hlls.get(groupId).add(column.getFloat(i));
         }
       }
     } else {
@@ -216,20 +262,26 @@ public class GroupedApproxCountDistinctAccumulator implements GroupedAccumulator
         position = selectedPositions[i];
         groupId = groupIds[position];
         if (!column.isNull(position)) {
-          hlls.get(groupId).add(column.getFloat(i));
+          hlls.get(groupId, maxStandardError).add(column.getFloat(i));
         }
       }
     }
   }
 
   public void addDoubleInput(
-      int[] groupIds, Column column, AggregationMask mask, ObjectBigArray<HyperLogLog> hlls) {
+      int[] groupIds,
+      Column column,
+      AggregationMask mask,
+      HyperLogLogBigArray hlls,
+      double maxStandardError) {
     int positionCount = mask.getPositionCount();
 
     if (mask.isSelectAll()) {
       for (int i = 0; i < positionCount; i++) {
+        int groupId = groupIds[i];
+        hlls.setIfNull(groupId, maxStandardError);
         if (!column.isNull(i)) {
-          hlls.get(groupIds[i]).add(column.getDouble(i));
+          hlls.get(groupId).add(column.getDouble(i));
         }
       }
     } else {
@@ -240,20 +292,26 @@ public class GroupedApproxCountDistinctAccumulator implements GroupedAccumulator
         position = selectedPositions[i];
         groupId = groupIds[position];
         if (!column.isNull(position)) {
-          hlls.get(groupId).add(column.getDouble(i));
+          hlls.get(groupId, maxStandardError).add(column.getDouble(i));
         }
       }
     }
   }
 
   public void addBinaryInput(
-      int[] groupIds, Column column, AggregationMask mask, ObjectBigArray<HyperLogLog> hlls) {
+      int[] groupIds,
+      Column column,
+      AggregationMask mask,
+      HyperLogLogBigArray hlls,
+      double maxStandardError) {
     int positionCount = mask.getPositionCount();
 
     if (mask.isSelectAll()) {
       for (int i = 0; i < positionCount; i++) {
+        int groupId = groupIds[i];
+        hlls.setIfNull(groupId, maxStandardError);
         if (!column.isNull(i)) {
-          hlls.get(groupIds[i]).add(column.getBinary(i));
+          hlls.get(groupId).add(column.getBinary(i));
         }
       }
     } else {
@@ -264,7 +322,7 @@ public class GroupedApproxCountDistinctAccumulator implements GroupedAccumulator
         position = selectedPositions[i];
         groupId = groupIds[position];
         if (!column.isNull(position)) {
-          hlls.get(groupId).add(column.getBinary(i));
+          hlls.get(groupId, maxStandardError).add(column.getBinary(i));
         }
       }
     }
