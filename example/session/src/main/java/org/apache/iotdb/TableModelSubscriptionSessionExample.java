@@ -119,7 +119,7 @@ public class TableModelSubscriptionSessionExample {
         new SubscriptionTablePullConsumerBuilder()
             .consumerId("c1")
             .consumerGroupId("cg1")
-            .buildTablePullConsumer()) {
+            .build()) {
       consumer1.open();
       consumer1.subscribe(TOPIC_1);
       while (true) {
