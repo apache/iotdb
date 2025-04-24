@@ -637,10 +637,11 @@ public class TableMetadataImpl implements Metadata {
                   "Aggregate functions [%s] should only have two arguments", functionName));
         }
 
-        if (argumentTypes.size() == 2 && !DOUBLE.equals(argumentTypes.get(1))) {
+        if (argumentTypes.size() == 2 && !isSupportedMathNumericType(argumentTypes.get(1))) {
           throw new SemanticException(
               String.format(
-                  "Second argument of Aggregate functions [%s] should be DOUBLE", functionName));
+                  "Second argument of Aggregate functions [%s] should be numberic type and do not use expression",
+                  functionName));
         }
 
       case SqlConstant.COUNT:
