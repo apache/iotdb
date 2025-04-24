@@ -48,17 +48,17 @@
         </fileSet>
         <fileSet>
             <outputDirectory>conf</outputDirectory>
-            <directory>${project.basedir}/../script/conf</directory>
+            <directory>${project.basedir}/../scripts/conf</directory>
             <fileMode>0755</fileMode>
         </fileSet>
         <fileSet>
             <outputDirectory>sbin</outputDirectory>
-            <directory>${project.basedir}/../script/sbin</directory>
+            <directory>${project.basedir}/../scripts/sbin</directory>
             <fileMode>0755</fileMode>
         </fileSet>
         <fileSet>
             <outputDirectory>tools</outputDirectory>
-            <directory>${project.basedir}/../script/tools</directory>
+            <directory>${project.basedir}/../scripts/tools</directory>
             <fileMode>0755</fileMode>
         </fileSet>
         <fileSet>
