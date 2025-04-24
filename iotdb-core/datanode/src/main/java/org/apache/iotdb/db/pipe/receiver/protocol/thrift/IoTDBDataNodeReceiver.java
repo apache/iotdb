@@ -109,7 +109,6 @@ import org.apache.tsfile.utils.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.nio.file.Paths;
@@ -545,11 +544,8 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
 
   private TSStatus loadTsFileAsync(final String dataBaseName, final List<String> absolutePaths)
       throws IOException {
-    for (String fileAbsolutePath : absolutePaths) {
-      if (!ActiveLoadUtil.loadTsFilesAsyncToActiveDir(
-          dataBaseName, new File(fileAbsolutePath), true)) {
-        throw new PipeException("Load active listening pipe dir is not set.");
-      }
+    if (!ActiveLoadUtil.loadFilesToActiveDir(dataBaseName, absolutePaths, true)) {
+      throw new PipeException("Load active listening pipe dir is not set.");
     }
     return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
   }

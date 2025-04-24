@@ -52,7 +52,7 @@ public class ActiveLoadUtil {
 
     try {
       for (File file : tsFiles) {
-        if (!loadTsFilesAsyncToActiveDir(dataBaseName, file, isDeleteAfterLoad)) {
+        if (!loadTsFilesToActiveDir(dataBaseName, file, isDeleteAfterLoad)) {
           return false;
         }
       }
@@ -64,7 +64,7 @@ public class ActiveLoadUtil {
     return true;
   }
 
-  public static boolean loadTsFilesAsyncToActiveDir(
+  public static boolean loadTsFilesToActiveDir(
       final String dataBaseName, final File file, final boolean isDeleteAfterLoad)
       throws IOException {
     if (file == null) {
@@ -95,6 +95,38 @@ public class ActiveLoadUtil {
         targetDir, new File(file.getAbsolutePath() + ".resource"), isDeleteAfterLoad);
     loadTsFileAsyncToTargetDir(
         targetDir, new File(file.getAbsolutePath() + ".mods"), isDeleteAfterLoad);
+    return true;
+  }
+
+  public static boolean loadFilesToActiveDir(
+      final String dataBaseName, final List<String> files, final boolean isDeleteAfterLoad)
+      throws IOException {
+    if (files == null || files.isEmpty()) {
+      return true;
+    }
+
+    final File targetFilePath;
+    try {
+      targetFilePath = loadDiskSelector.diskDirectorySelector(new File(files.get(0)), false, null);
+    } catch (DiskSpaceInsufficientException e) {
+      LOGGER.warn("Fail to load disk space of file {}", files.get(0), e);
+      return false;
+    }
+
+    if (targetFilePath == null) {
+      LOGGER.warn("Load active listening dir is not set.");
+      return false;
+    }
+    final File targetDir;
+    if (Objects.nonNull(dataBaseName)) {
+      targetDir = new File(targetFilePath, dataBaseName);
+    } else {
+      targetDir = targetFilePath;
+    }
+
+    for (final String file : files) {
+      loadTsFileAsyncToTargetDir(targetDir, new File(file), isDeleteAfterLoad);
+    }
     return true;
   }
 
