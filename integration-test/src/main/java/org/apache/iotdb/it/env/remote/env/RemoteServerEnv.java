@@ -395,6 +395,11 @@ public class RemoteServerEnv implements BaseEnv {
   }
 
   @Override
+  public void shutdownForciblyAllConfigNodes() {
+    throw new UnsupportedOperationException();
+  }
+
+  @Override
   public void ensureNodeStatus(List<BaseNodeWrapper> nodes, List<NodeStatus> targetStatus) {
     throw new UnsupportedOperationException();
   }

@@ -1050,6 +1050,11 @@ public abstract class AbstractEnv implements BaseEnv {
   }
 
   @Override
+  public void shutdownForciblyAllConfigNodes() {
+    configNodeWrapperList.forEach(AbstractNodeWrapper::stopForcibly);
+  }
+
+  @Override
   public ConfigNodeWrapper getConfigNodeWrapper(final int index) {
     return configNodeWrapperList.get(index);
   }

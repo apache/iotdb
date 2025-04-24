@@ -29,7 +29,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.lang.management.ManagementFactory;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.Base64;
 import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
@@ -139,12 +141,22 @@ public class MetricConfig {
     return prometheusReporterUsername;
   }
 
+  public String getDecodedPrometheusReporterUsername() {
+    return new String(
+        Base64.getDecoder().decode(prometheusReporterUsername), StandardCharsets.UTF_8);
+  }
+
   public void setPrometheusReporterUsername(String prometheusReporterUsername) {
     this.prometheusReporterUsername = prometheusReporterUsername;
   }
 
   public String getPrometheusReporterPassword() {
     return prometheusReporterPassword;
+  }
+
+  public String getDecodedPrometheusReporterPassword() {
+    return new String(
+        Base64.getDecoder().decode(prometheusReporterPassword), StandardCharsets.UTF_8);
   }
 
   public void setPrometheusReporterPassword(String prometheusReporterPassword) {

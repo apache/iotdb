@@ -136,8 +136,8 @@ public class PrometheusReporter implements Reporter {
     // check username and password
     String username = decodedString.substring(0, dividerIndex);
     String password = decodedString.substring(dividerIndex + 1);
-    if (!METRIC_CONFIG.getPrometheusReporterUsername().equals(username)
-        || !METRIC_CONFIG.getPrometheusReporterPassword().equals(password)) {
+    if (!METRIC_CONFIG.getDecodedPrometheusReporterUsername().equals(username)
+        || !METRIC_CONFIG.getDecodedPrometheusReporterPassword().equals(password)) {
       return authenticateFailed(res);
     }
 

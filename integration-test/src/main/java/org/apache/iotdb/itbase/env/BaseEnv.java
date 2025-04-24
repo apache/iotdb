@@ -248,6 +248,8 @@ public interface BaseEnv {
   /** Shutdown all existed ConfigNodes. */
   void shutdownAllConfigNodes();
 
+  void shutdownForciblyAllConfigNodes();
+
   /**
    * Ensure all the nodes being in the corresponding status.
    *

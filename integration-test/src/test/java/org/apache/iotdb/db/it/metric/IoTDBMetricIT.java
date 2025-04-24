@@ -25,9 +25,9 @@ import org.apache.iotdb.itbase.category.ClusterIT;
 import org.apache.iotdb.itbase.category.LocalStandaloneIT;
 import org.apache.iotdb.metrics.reporter.prometheus.PrometheusReporter;
 
-import org.junit.AfterClass;
+import org.junit.After;
 import org.junit.Assert;
-import org.junit.BeforeClass;
+import org.junit.Before;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -68,12 +68,13 @@ public class IoTDBMetricIT {
   private static final String VALID_LOG_STRING =
       "This line {} is invalid in prometheus line protocol";
 
-  static final String TEST_USERNAME = "good";
-  static final String WRONG_USERNAME = "bad";
-  static final String TEST_PASSWORD = "??";
-  static final String WRONG_PASSWORD = "!!";
+  private static final String TEST_USERNAME = "good";
+  private static final String TEST_PASSWORD = "??";
 
-  public static boolean isValidPrometheusTextFormat(String metrics) {
+  private static final String WRONG_USERNAME = "bad";
+  private static final String WRONG_PASSWORD = "!!";
+
+  private static boolean isValidPrometheusTextFormat(String metrics) {
     String[] lines = metrics.split("\\n");
     boolean valid = true;
 
@@ -115,32 +116,51 @@ public class IoTDBMetricIT {
     return Pattern.matches(TYPE_REGEX, line.trim());
   }
 
-  @BeforeClass
-  public static void setUp() throws Exception {
+  @Before
+  public void setUp() throws Exception {
     // Start ConfigNode with Prometheus reporter up
     EnvFactory.getEnv()
         .getConfig()
         .getConfigNodeConfig()
-        .setMetricReporterType(Collections.singletonList("PROMETHEUS"))
-        .setMetricPrometheusReporterUsername(TEST_USERNAME)
-        .setMetricPrometheusReporterPassword(TEST_PASSWORD);
+        .setMetricReporterType(Collections.singletonList("PROMETHEUS"));
     // Start DataNode with Prometheus reporter up
     EnvFactory.getEnv()
         .getConfig()
         .getDataNodeConfig()
-        .setMetricReporterType(Collections.singletonList("PROMETHEUS"))
-        .setMetricPrometheusReporterUsername(TEST_USERNAME)
-        .setMetricPrometheusReporterPassword(TEST_PASSWORD);
-    EnvFactory.getEnv().initClusterEnvironment();
+        .setMetricReporterType(Collections.singletonList("PROMETHEUS"));
   }
 
-  @AfterClass
-  public static void tearDown() throws Exception {
+  @After
+  public void tearDown() throws Exception {
     EnvFactory.getEnv().cleanClusterEnvironment();
   }
 
   @Test
+  public void testPrometheusReporterWithoutAuth() {
+    EnvFactory.getEnv().initClusterEnvironment();
+
+    List<String> metricContents = EnvFactory.getEnv().getMetricPrometheusReporterContents(null);
+    for (String metricContent : metricContents) {
+      Assert.assertNotNull(metricContent);
+      Assert.assertNotEquals(0, metricContent.length());
+      Assert.assertTrue(isValidPrometheusTextFormat(metricContent));
+    }
+  }
+
+  @Test
   public void testPrometheusReporter() {
+    EnvFactory.getEnv()
+        .getConfig()
+        .getConfigNodeConfig()
+        .setMetricPrometheusReporterUsername(base64Encode(TEST_USERNAME))
+        .setMetricPrometheusReporterPassword(base64Encode(TEST_PASSWORD));
+    EnvFactory.getEnv()
+        .getConfig()
+        .getDataNodeConfig()
+        .setMetricPrometheusReporterUsername(base64Encode(TEST_USERNAME))
+        .setMetricPrometheusReporterPassword(base64Encode(TEST_PASSWORD));
+    EnvFactory.getEnv().initClusterEnvironment();
+
     wrongUsernameTest();
     wrongPasswordTest();
     correctUsernameAndPasswordTest();
@@ -185,5 +205,9 @@ public class IoTDBMetricIT {
     String raw = username + PrometheusReporter.DIVIDER_BETWEEN_USERNAME_AND_DIVIDER + password;
     String base64 = Base64.getEncoder().encodeToString(raw.getBytes(StandardCharsets.UTF_8));
     return PrometheusReporter.BASIC_AUTH_PREFIX + base64;
+  }
+
+  private static String base64Encode(String raw) {
+    return Base64.getEncoder().encodeToString(raw.getBytes(StandardCharsets.UTF_8));
   }
 }
