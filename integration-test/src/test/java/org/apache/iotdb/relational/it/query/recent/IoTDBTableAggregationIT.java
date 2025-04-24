@@ -4120,6 +4120,42 @@ public class IoTDBTableAggregationIT {
         expectedHeader,
         retArray,
         DATABASE_NAME);
+
+    retArray =
+        new String[] {
+          "2024-09-24T06:15:30.000Z,beijing,2,2,",
+          "2024-09-24T06:15:30.000Z,shanghai,2,2,",
+          "2024-09-24T06:15:31.000Z,beijing,0,0,",
+          "2024-09-24T06:15:31.000Z,shanghai,0,0,",
+          "2024-09-24T06:15:35.000Z,beijing,2,2,",
+          "2024-09-24T06:15:35.000Z,shanghai,2,2,",
+          "2024-09-24T06:15:36.000Z,beijing,2,4,",
+          "2024-09-24T06:15:36.000Z,shanghai,2,4,",
+          "2024-09-24T06:15:40.000Z,beijing,0,4,",
+          "2024-09-24T06:15:40.000Z,shanghai,0,4,",
+          "2024-09-24T06:15:41.000Z,beijing,2,0,",
+          "2024-09-24T06:15:41.000Z,shanghai,2,0,",
+          "2024-09-24T06:15:46.000Z,beijing,0,2,",
+          "2024-09-24T06:15:46.000Z,shanghai,0,2,",
+          "2024-09-24T06:15:50.000Z,beijing,0,2,",
+          "2024-09-24T06:15:50.000Z,shanghai,0,2,",
+          "2024-09-24T06:15:51.000Z,beijing,2,0,",
+          "2024-09-24T06:15:51.000Z,shanghai,2,0,",
+          "2024-09-24T06:15:55.000Z,beijing,2,0,",
+          "2024-09-24T06:15:55.000Z,shanghai,2,0,",
+        };
+
+    tableResultSetEqualTest(
+        "select time,province,approx_count_distinct(s6),approx_count_distinct(s7) from table1 group by 1,2 order by time",
+        new String[] {"time", "province", "_col2", "_col3"},
+        retArray,
+        DATABASE_NAME);
+
+    tableResultSetEqualTest(
+        "select time,province,approx_count_distinct(s6,0.02),approx_count_distinct(s7,0.02) from table1 group by 1,2 order by time",
+        new String[] {"time", "province", "_col2", "_col3"},
+        retArray,
+        DATABASE_NAME);
   }
 
   @Test
