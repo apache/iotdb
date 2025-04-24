@@ -104,7 +104,6 @@ public class PipeTransferBatchReqBuilder implements AutoCloseable {
       requestMaxDelayInMs =
           requestMaxDelayInMillis < 0 ? Integer.MAX_VALUE : requestMaxDelayInMillis;
     }
-
     requestMaxBatchSizeInBytes =
         parameters.getLongOrDefault(
             Arrays.asList(CONNECTOR_IOTDB_BATCH_SIZE_KEY, SINK_IOTDB_BATCH_SIZE_KEY),
