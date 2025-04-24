@@ -41,6 +41,7 @@ import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 
 import java.sql.Connection;
+import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.HashMap;
 import java.util.Map;
@@ -378,6 +379,136 @@ public class IoTDBPipeWithLoadIT extends AbstractPipeTableModelDualManualIT {
           10,
           "db",
           handleFailure);
+    }
+  }
+
+  @Test
+  public void testLoadAutoCreateWithTableDeletion() throws Exception {
+    final DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
+    final String receiverIp = receiverDataNode.getIp();
+    final int receiverPort = receiverDataNode.getPort();
+    final Consumer<String> handleFailure =
+        o -> {
+          TestUtils.executeNonQueryWithRetry(senderEnv, "flush");
+          TestUtils.executeNonQueryWithRetry(receiverEnv, "flush");
+        };
+
+    final Map<String, String> extractorAttributes = new HashMap<>();
+    final Map<String, String> processorAttributes = new HashMap<>();
+    final Map<String, String> connectorAttributes = new HashMap<>();
+
+    extractorAttributes.put("capture.table", "true");
+    extractorAttributes.put("extractor.realtime.mode", "file");
+    extractorAttributes.put("user", "root");
+
+    connectorAttributes.put("connector.batch.enable", "false");
+    connectorAttributes.put("connector.ip", receiverIp);
+    connectorAttributes.put("connector.port", Integer.toString(receiverPort));
+
+    try (final SyncConfigNodeIServiceClient client =
+        (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
+      try (final Connection connection = senderEnv.getConnection(BaseEnv.TABLE_SQL_DIALECT);
+          final Statement statement = connection.createStatement()) {
+        statement.execute("create database if not exists db");
+        statement.execute("use db");
+        statement.execute(
+            "create table if not exists t1(tag1 STRING TAG, tag2 STRING TAG, s1 TEXT FIELD, s2 INT32 FIELD)");
+        statement.execute("INSERT INTO t1(time,tag1,tag2,s1,s2) values(1, 'd1', 'd2', 'red', 1)");
+        statement.execute("INSERT INTO t1(time,tag1,tag2,s1,s2) values(2, 'd1', 'd2', 'blue', 2)");
+        statement.execute("flush");
+        statement.execute("drop table t1");
+      } catch (Exception e) {
+        fail(e.getMessage());
+      }
+
+      TSStatus status =
+          client.createPipe(
+              new TCreatePipeReq("p1", connectorAttributes)
+                  .setExtractorAttributes(extractorAttributes)
+                  .setProcessorAttributes(processorAttributes));
+      Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
+      Assert.assertEquals(
+          TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.startPipe("p1").getCode());
+
+      // Ensure the deleted table won't be created
+      // Now the database will also be created at receiver
+      try (final Connection connection = receiverEnv.getConnection(BaseEnv.TABLE_SQL_DIALECT);
+          final Statement statement = connection.createStatement()) {
+        statement.executeQuery("describe db.t1");
+        fail();
+      } catch (final SQLException ignore) {
+        // Expected
+      }
+    }
+  }
+
+  @Test
+  @Ignore
+  public void testLoadAutoCreateWithoutInsertPermission() throws Exception {
+    final DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
+    final String receiverIp = receiverDataNode.getIp();
+    final int receiverPort = receiverDataNode.getPort();
+    final Consumer<String> handleFailure =
+        o -> {
+          TestUtils.executeNonQueryWithRetry(senderEnv, "flush");
+          TestUtils.executeNonQueryWithRetry(receiverEnv, "flush");
+        };
+
+    final Map<String, String> extractorAttributes = new HashMap<>();
+    final Map<String, String> processorAttributes = new HashMap<>();
+    final Map<String, String> connectorAttributes = new HashMap<>();
+
+    extractorAttributes.put("capture.table", "true");
+    extractorAttributes.put("extractor.realtime.mode", "file");
+    extractorAttributes.put("user", "root");
+
+    connectorAttributes.put("connector.batch.enable", "false");
+    connectorAttributes.put("connector.ip", receiverIp);
+    connectorAttributes.put("connector.port", Integer.toString(receiverPort));
+    connectorAttributes.put("connector.user", "user01");
+    connectorAttributes.put("connector.password", "1234");
+
+    try (final SyncConfigNodeIServiceClient client =
+        (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
+      try (final Connection connection = receiverEnv.getConnection(BaseEnv.TABLE_SQL_DIALECT);
+          final Statement statement = connection.createStatement()) {
+        statement.execute("create user user01 '1234'");
+        statement.execute("grant create on any to user user01");
+      } catch (final Exception e) {
+        fail(e.getMessage());
+      }
+
+      try (final Connection connection = senderEnv.getConnection(BaseEnv.TABLE_SQL_DIALECT);
+          final Statement statement = connection.createStatement()) {
+        statement.execute("create database if not exists db");
+        statement.execute("use db");
+        statement.execute(
+            "create table if not exists t1(tag1 STRING TAG, tag2 STRING TAG, s1 TEXT FIELD, s2 INT32 FIELD)");
+        statement.execute("INSERT INTO t1(time,tag1,tag2,s1,s2) values(1, 'd1', 'd2', 'red', 1)");
+        statement.execute("INSERT INTO t1(time,tag1,tag2,s1,s2) values(2, 'd1', 'd2', 'blue', 2)");
+        statement.execute("flush");
+      } catch (final Exception e) {
+        fail(e.getMessage());
+      }
+
+      final TSStatus status =
+          client.createPipe(
+              new TCreatePipeReq("p1", connectorAttributes)
+                  .setExtractorAttributes(extractorAttributes)
+                  .setProcessorAttributes(processorAttributes));
+      Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
+      Assert.assertEquals(
+          TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.startPipe("p1").getCode());
+
+      // Ensure the table without insert privilege won't be created
+      // Now the database will also be created at receiver
+      try (final Connection connection = receiverEnv.getConnection(BaseEnv.TABLE_SQL_DIALECT);
+          final Statement statement = connection.createStatement()) {
+        statement.executeQuery("describe db.t1");
+        fail();
+      } catch (final SQLException ignore) {
+        // Expected
+      }
     }
   }
 }

@@ -130,6 +130,14 @@ public class IoTDBWindowTVFIT {
         expectedHeader,
         retArray,
         DATABASE_NAME);
+    tableAssertTestFail(
+        "SELECT * FROM HOP(DATA => bid, TIMECOL => 'time', SLIDE => -300000, SIZE => 600000) ORDER BY stock_id, time",
+        "Invalid scalar argument SLIDE, should be a positive value",
+        DATABASE_NAME);
+    tableAssertTestFail(
+        "SELECT * FROM HOP(DATA => bid, TIMECOL => 'time', SLIDE => 300000, SIZE => -600000) ORDER BY stock_id, time",
+        "Invalid scalar argument SIZE, should be a positive value",
+        DATABASE_NAME);
   }
 
   @Test
@@ -274,6 +282,10 @@ public class IoTDBWindowTVFIT {
         expectedHeader,
         retArray,
         DATABASE_NAME);
+    tableAssertTestFail(
+        "SELECT * FROM TUMBLE(DATA => bid, TIMECOL => 'time', SIZE => 0m) ORDER BY stock_id, time",
+        "Invalid scalar argument SIZE, should be a positive value",
+        DATABASE_NAME);
   }
 
   @Test
@@ -325,10 +337,17 @@ public class IoTDBWindowTVFIT {
         DATABASE_NAME);
 
     // test UDFException
-    String errMsg = "Cumulative table function requires size must be an integral multiple of step.";
     tableAssertTestFail(
         "SELECT window_start, window_end, stock_id, sum(price) as sum FROM CUMULATE(DATA => bid, TIMECOL => 'time', STEP => 4m, SIZE => 10m) GROUP BY window_start, window_end, stock_id ORDER BY stock_id, window_start",
-        errMsg,
+        "Cumulative table function requires size must be an integral multiple of step.",
+        DATABASE_NAME);
+    tableAssertTestFail(
+        "SELECT * FROM CUMULATE(DATA => bid, TIMECOL => 'time', STEP => 0m, SIZE => 5m) ORDER BY stock_id, time",
+        "Invalid scalar argument STEP, should be a positive value",
+        DATABASE_NAME);
+    tableAssertTestFail(
+        "SELECT * FROM CUMULATE(DATA => bid, TIMECOL => 'time', STEP => 1m, SIZE => 0m) ORDER BY stock_id, time",
+        "Invalid scalar argument SIZE, should be a positive value",
         DATABASE_NAME);
   }
 }
