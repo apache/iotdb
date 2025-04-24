@@ -33,6 +33,7 @@ public final class HyperLogLogBigArray {
   }
 
   public HyperLogLog get(long index) {
+    // Only use if certain that the object exists.
     return array.get(index);
   }
 
@@ -52,13 +53,6 @@ public final class HyperLogLogBigArray {
   public void set(long index, HyperLogLog hll) {
     updateRetainedSize(index, hll);
     array.set(index, hll);
-  }
-
-  public void setIfNull(long index, double maxStandardError) {
-    if (array.get(index) == null) {
-      HyperLogLog hll = new HyperLogLog(maxStandardError);
-      set(index, hll);
-    }
   }
 
   public boolean isEmpty() {

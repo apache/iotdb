@@ -36,8 +36,6 @@ public final class ObjectBigArray<T> {
   private static final long INSTANCE_SIZE = shallowSizeOfInstance(ObjectBigArray.class);
   private static final long SIZE_OF_SEGMENT = sizeOfObjectArray(SEGMENT_SIZE);
 
-  //  private final Object initialValue;
-
   private Object[][] array;
   private long capacity;
   private int segments;
@@ -116,7 +114,7 @@ public final class ObjectBigArray<T> {
   }
 
   public void reset() {
-    fill((T) null);
+    fill(null);
   }
 
   public void forEach(Consumer<T> action) {

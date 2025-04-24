@@ -76,7 +76,6 @@ public class ApproxCountDistinctAccumulator implements TableAccumulator {
       case STRING:
       case BLOB:
         addBinaryInput(arguments[0], mask, hll);
-        System.out.println(hll.cardinality() + this.toString());
         return;
       case BOOLEAN:
         addBooleanInput(arguments[0], mask, hll);
@@ -125,8 +124,7 @@ public class ApproxCountDistinctAccumulator implements TableAccumulator {
 
   @Override
   public void reset() {
-    HyperLogLog hll = state.getHyperLogLog();
-    hll.reset();
+    state.getHyperLogLog().reset();
   }
 
   public void addBooleanInput(Column valueColumn, AggregationMask mask, HyperLogLog hll) {

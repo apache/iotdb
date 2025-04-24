@@ -237,7 +237,7 @@ public class HyperLogLog {
   }
 
   public boolean equals(HyperLogLog hll) {
-    return this.serialize() == hll.serialize();
+    return Arrays.equals(this.serialize(), hll.serialize());
   }
 
   public long getEstimatedSize() {
