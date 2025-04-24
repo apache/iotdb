@@ -417,10 +417,11 @@ public class DataRegion implements IDataRegionForQuery {
     final ILoadDiskSelector.DiskDirectorySelector<Integer> selector =
         new ILoadDiskSelector.DiskDirectorySelector<Integer>() {
           @Override
-          public File selectDirectory(File file, Integer level)
+          public File selectDirectory(
+              final File sourceDirectory, final String fileName, final Integer level)
               throws DiskSpaceInsufficientException {
             return fsFactory.getFile(
-                TierManager.getInstance().getNextFolderForTsFile(level, false), file.getName());
+                TierManager.getInstance().getNextFolderForTsFile(level, false), fileName);
           }
         };
 
@@ -3108,9 +3109,9 @@ public class DataRegion implements IDataRegionForQuery {
     final File targetFile =
         (tsFileResource.isGeneratedByPipeConsensus() || tsFileResource.isGeneratedByPipe())
             ? pipeAndIoTV2LoadDiskSelector.diskDirectorySelector(
-                new File(tsFileToLoad, fileName), true, targetTierLevel)
+                tsFileToLoad.getParentFile(), fileName, true, targetTierLevel)
             : ordinaryLoadDiskSelector.diskDirectorySelector(
-                new File(tsFileToLoad, fileName), true, targetTierLevel);
+                tsFileToLoad.getParentFile(), fileName, true, targetTierLevel);
 
     tsFileResource.setFile(targetFile);
     if (tsFileManager.contains(tsFileResource, false)) {

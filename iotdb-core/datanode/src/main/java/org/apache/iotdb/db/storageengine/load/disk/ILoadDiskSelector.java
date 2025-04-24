@@ -27,17 +27,22 @@ public interface ILoadDiskSelector<U> {
 
   @FunctionalInterface
   public interface DiskDirectorySelector<U> {
-    File selectDirectory(File file, U u) throws DiskSpaceInsufficientException;
+    File selectDirectory(final File sourceDirectory, final String fileName, final U u)
+        throws DiskSpaceInsufficientException;
   }
 
-  public File diskDirectorySelector(File file, boolean isNeedCreateTargetFile, U u)
+  public File diskDirectorySelector(
+      final File sourceDirectory,
+      final String fileName,
+      final boolean isNeedCreateTargetFile,
+      final U u)
       throws DiskSpaceInsufficientException;
 
   public LoadDiskSelectorType getLoadDiskSelectorType();
 
   public static <U> ILoadDiskSelector<U> initDiskSelector(
-      String selectStrategy, String[] dirs, DiskDirectorySelector<U> selector) {
-    ILoadDiskSelector<U> diskSelector;
+      final String selectStrategy, final String[] dirs, final DiskDirectorySelector<U> selector) {
+    final ILoadDiskSelector<U> diskSelector;
     switch (ILoadDiskSelector.LoadDiskSelectorType.fromValue(selectStrategy)) {
       case INHERIT_SYSTEM_MULTI_DISKS_SELECT_STRATEGY:
         diskSelector = new InheritSystemMultiDisksStrategySelector<U>(selector);
@@ -58,7 +63,7 @@ public interface ILoadDiskSelector<U> {
 
     private final String value;
 
-    LoadDiskSelectorType(String value) {
+    LoadDiskSelectorType(final String value) {
       this.value = value;
     }
 
@@ -66,7 +71,7 @@ public interface ILoadDiskSelector<U> {
       return value;
     }
 
-    public static LoadDiskSelectorType fromValue(String value) {
+    public static LoadDiskSelectorType fromValue(final String value) {
       if (value.equalsIgnoreCase(MIN_IO_FIRST.getValue())) {
         return MIN_IO_FIRST;
       } else if (value.equalsIgnoreCase(INHERIT_SYSTEM_MULTI_DISKS_SELECT_STRATEGY.getValue())) {

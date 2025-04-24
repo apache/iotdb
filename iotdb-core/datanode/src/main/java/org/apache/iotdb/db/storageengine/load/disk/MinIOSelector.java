@@ -41,7 +41,7 @@ public class MinIOSelector<U> extends InheritSystemMultiDisksStrategySelector<U>
 
   private final Map<String, String> rootDisks2DataDirsMapForLoad;
 
-  public MinIOSelector(String[] dirs, DiskDirectorySelector<U> selector) {
+  public MinIOSelector(final String[] dirs, final DiskDirectorySelector<U> selector) {
     super(selector);
     if (dirs == null || dirs.length == 0) {
       rootDisks2DataDirsMapForLoad = Collections.emptyMap();
@@ -74,20 +74,19 @@ public class MinIOSelector<U> extends InheritSystemMultiDisksStrategySelector<U>
   }
 
   @Override
-  public File diskDirectorySelector(File file, boolean createTargetFile, U u)
+  public File diskDirectorySelector(
+      final File sourceDirectory, final String fileName, final boolean createTargetFile, final U u)
       throws DiskSpaceInsufficientException {
-    final File targetDir = file.getParentFile();
-    final String fileName = file.getName();
     String fileDirRoot = null;
     try {
       fileDirRoot =
-          Optional.ofNullable(FileStoreUtils.getFileStore(targetDir.getCanonicalPath()))
+          Optional.ofNullable(FileStoreUtils.getFileStore(sourceDirectory.getCanonicalPath()))
               .map(Object::toString)
               .orElse(null);
     } catch (Exception e) {
       logger.warn(
           "Exception occurs when reading target file's mount point {}",
-          targetDir.getAbsoluteFile(),
+          sourceDirectory.getAbsoluteFile(),
           e);
     }
 
@@ -105,7 +104,7 @@ public class MinIOSelector<U> extends InheritSystemMultiDisksStrategySelector<U>
     }
 
     // if there isn't an overlap, downgrade to storage balance(sequence) strategy.
-    return super.diskDirectorySelector(file, createTargetFile, u);
+    return super.diskDirectorySelector(sourceDirectory, fileName, createTargetFile, u);
   }
 
   @Override

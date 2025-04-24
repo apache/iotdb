@@ -73,7 +73,8 @@ public class ActiveLoadUtil {
 
     final File targetFilePath;
     try {
-      targetFilePath = loadDiskSelector.diskDirectorySelector(file, false, null);
+      targetFilePath =
+          loadDiskSelector.diskDirectorySelector(file.getParentFile(), file.getName(), false, null);
     } catch (DiskSpaceInsufficientException e) {
       LOGGER.warn("Fail to load disk space of file {}", file.getAbsolutePath(), e);
       return false;
@@ -107,7 +108,9 @@ public class ActiveLoadUtil {
 
     final File targetFilePath;
     try {
-      targetFilePath = loadDiskSelector.diskDirectorySelector(new File(files.get(0)), false, null);
+      final File file = new File(files.get(0));
+      targetFilePath =
+          loadDiskSelector.diskDirectorySelector(file.getParentFile(), file.getName(), false, null);
     } catch (DiskSpaceInsufficientException e) {
       LOGGER.warn("Fail to load disk space of file {}", files.get(0), e);
       return false;
@@ -155,7 +158,8 @@ public class ActiveLoadUtil {
               private FolderManager folderManager;
 
               @Override
-              public File selectDirectory(File file, Void unused)
+              public File selectDirectory(
+                  final File sourceDir, final String fileName, final Void unused)
                   throws DiskSpaceInsufficientException {
                 initFolderManager();
                 return new File(folderManager.getNextFolder());
