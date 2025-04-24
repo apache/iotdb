@@ -241,6 +241,9 @@ public class PipeConsensusReceiver {
   }
 
   private TPipeConsensusTransferResp loadEvent(final TPipeConsensusTransferReq req) {
+    if (isClosed.get()) {
+      return PipeConsensusReceiverAgent.closedResp(consensusPipeName.toString(), req.getCommitId());
+    }
     // synchronized load event, ensured by upper caller's lock.
     try {
       final short rawRequestType = req.getType();
@@ -896,18 +899,28 @@ public class PipeConsensusReceiver {
     }
   }
 
-  private void deleteFile(File file) {
+  private void deleteFileOrDirectoryIfExists(File file, String reason) {
     if (file.exists()) {
       try {
-        RetryUtils.retryOnException(() -> FileUtils.delete(file));
+        if (file.isDirectory()) {
+          RetryUtils.retryOnException(
+              () -> {
+                FileUtils.deleteDirectory(file);
+                return null;
+              });
+        } else {
+          RetryUtils.retryOnException(() -> FileUtils.delete(file));
+        }
         LOGGER.info(
-            "PipeConsensus-PipeName-{}: Original writing file {} was deleted.",
+            "PipeConsensus-PipeName-{}: {} {} was deleted.",
             consensusPipeName,
+            reason,
             file.getPath());
       } catch (IOException e) {
         LOGGER.warn(
-            "PipeConsensus-PipeName-{}: Failed to delete original writing file {}, because {}.",
+            "PipeConsensus-PipeName-{}: {} Failed to delete {}, because {}.",
             consensusPipeName,
+            reason,
             file.getPath(),
             e.getMessage(),
             e);
@@ -915,8 +928,9 @@ public class PipeConsensusReceiver {
     } else {
       if (LOGGER.isDebugEnabled()) {
         LOGGER.debug(
-            "PipeConsensus-PipeName-{}: Original file {} is not existed. No need to delete.",
+            "PipeConsensus-PipeName-{}: {} {} is not existed. No need to delete.",
             consensusPipeName,
+            reason,
             file.getPath());
       }
     }
@@ -924,7 +938,9 @@ public class PipeConsensusReceiver {
 
   private void deleteCurrentWritingFile(PipeConsensusTsFileWriter tsFileWriter) {
     if (tsFileWriter.getWritingFile() != null) {
-      deleteFile(tsFileWriter.getWritingFile());
+      deleteFileOrDirectoryIfExists(
+          tsFileWriter.getWritingFile(),
+          String.format("TsFileWriter-%s delete current writing file", tsFileWriter.index));
     } else {
       if (LOGGER.isDebugEnabled()) {
         LOGGER.debug(
@@ -1007,17 +1023,8 @@ public class PipeConsensusReceiver {
                 consensusPipeName, newReceiverDir.getPath()));
       }
       // Remove exists dir
-      if (newReceiverDir.exists()) {
-        RetryUtils.retryOnException(
-            () -> {
-              FileUtils.deleteDirectory(newReceiverDir);
-              return null;
-            });
-        LOGGER.info(
-            "PipeConsensus-PipeName-{}: Origin receiver file dir {} was deleted.",
-            consensusPipeName,
-            newReceiverDir.getPath());
-      }
+      deleteFileOrDirectoryIfExists(newReceiverDir, "Initial Receiver: delete origin receive dir");
+
       if (!newReceiverDir.mkdirs()) {
         LOGGER.warn(
             "PipeConsensus-PipeName-{}: Failed to create receiver file dir {}. May because authority or dir already exists etc.",
@@ -1036,32 +1043,7 @@ public class PipeConsensusReceiver {
     // Clear the original receiver file dir if exists
     for (String receiverFileBaseDir : receiveDirs) {
       File receiverDir = new File(receiverFileBaseDir);
-      if (receiverDir.exists()) {
-        try {
-          RetryUtils.retryOnException(
-              () -> {
-                FileUtils.deleteDirectory(receiverDir);
-                return null;
-              });
-          LOGGER.info(
-              "PipeConsensus-PipeName-{}: Original receiver file dir {} was deleted successfully..",
-              consensusPipeName,
-              receiverDir.getPath());
-        } catch (IOException e) {
-          LOGGER.warn(
-              "PipeConsensus-PipeName-{}:  Failed to delete original receiver file dir {}",
-              consensusPipeName,
-              receiverDir.getPath(),
-              e);
-        }
-      } else {
-        if (LOGGER.isDebugEnabled()) {
-          LOGGER.debug(
-              "PipeConsensus-PipeName-{}: Receiver exit: Original receiver file dir {} does not exist. No need to delete.",
-              consensusPipeName,
-              receiverDir.getPath());
-        }
-      }
+      deleteFileOrDirectoryIfExists(receiverDir, "Clear receive dir manually");
     }
   }
 
@@ -1082,8 +1064,7 @@ public class PipeConsensusReceiver {
       tsFileWriterCheckerFuture.cancel(false);
       tsFileWriterCheckerFuture = null;
     }
-    LOGGER.info(
-        "PipeConsensus-PipeName-{}: Receiver exit: Receiver exited.", consensusPipeName.toString());
+    LOGGER.info("Receiver-{} exit successfully.", consensusPipeName.toString());
   }
 
   private class PipeConsensusTsFileWriterPool {
@@ -1120,7 +1101,9 @@ public class PipeConsensusReceiver {
       Optional<PipeConsensusTsFileWriter> tsFileWriter =
           pipeConsensusTsFileWriterPool.stream()
               .filter(
-                  item -> Objects.equals(commitId, item.getCommitIdOfCorrespondingHolderEvent()))
+                  item ->
+                      item.isUsed()
+                          && Objects.equals(commitId, item.getCommitIdOfCorrespondingHolderEvent()))
               .findFirst();
 
       // If the TsFileInsertionEvent is first using tsFileWriter, we will find the first available
@@ -1255,18 +1238,9 @@ public class PipeConsensusReceiver {
           localWritingDirPath);
       this.localWritingDir = new File(localWritingDirPath);
       // Remove exists dir
-      if (this.localWritingDir.exists()) {
-        RetryUtils.retryOnException(
-            () -> {
-              FileUtils.deleteDirectory(this.localWritingDir);
-              return null;
-            });
-        LOGGER.info(
-            "PipeConsensus-PipeName-{}: Origin receiver tsFileWriter-{} file dir {} was deleted.",
-            consensusPipeName,
-            index,
-            this.localWritingDir.getPath());
-      }
+      deleteFileOrDirectoryIfExists(
+          this.localWritingDir,
+          String.format("TsFileWriter-%s roll to new dir and delete last writing dir", index));
       if (!this.localWritingDir.mkdirs()) {
         LOGGER.warn(
             "PipeConsensus-PipeName-{}: Failed to create receiver tsFileWriter-{} file dir {}. May because authority or dir already exists etc.",
@@ -1367,19 +1341,8 @@ public class PipeConsensusReceiver {
 
       // close file
       if (writingFile != null) {
-        try {
-          RetryUtils.retryOnException(() -> FileUtils.delete(writingFile));
-          LOGGER.info(
-              "PipeConsensus-PipeName-{}: TsFileWriter exit: Writing file {} was deleted.",
-              consensusPipeName,
-              writingFile.getPath());
-        } catch (Exception e) {
-          LOGGER.warn(
-              "PipeConsensus-PipeName-{}: TsFileWriter exit: Delete writing file {} error.",
-              consensusPipeName,
-              writingFile.getPath(),
-              e);
-        }
+        deleteFileOrDirectoryIfExists(
+            writingFile, String.format("TsFileWriter-%s exit: delete writing file", this.index));
         setWritingFile(null);
       } else {
         if (LOGGER.isDebugEnabled()) {
@@ -1432,12 +1395,6 @@ public class PipeConsensusReceiver {
       long startAcquireLockNanos = System.nanoTime();
       lock.lock();
       try {
-        // once thread gets lock, it will judge whether receiver is closed
-        if (isClosed.get()) {
-          return PipeConsensusReceiverAgent.closedResp(
-              consensusPipeName.toString(), req.getCommitId());
-        }
-
         long startDispatchNanos = System.nanoTime();
         metric.recordAcquireExecutorLockTimer(startDispatchNanos - startAcquireLockNanos);
 
@@ -1551,12 +1508,6 @@ public class PipeConsensusReceiver {
               boolean timeout =
                   !condition.await(
                       PIPE_CONSENSUS_RECEIVER_MAX_WAITING_TIME_IN_MS, TimeUnit.MILLISECONDS);
-
-              // once thread gets lock, it will judge whether receiver is closed
-              if (isClosed.get()) {
-                return PipeConsensusReceiverAgent.closedResp(
-                    consensusPipeName.toString(), req.getCommitId());
-              }
 
               // If some reqs find the buffer no longer contains their requestMeta after jumping out
               // from condition.await, it may indicate that during their wait, some reqs with newer
