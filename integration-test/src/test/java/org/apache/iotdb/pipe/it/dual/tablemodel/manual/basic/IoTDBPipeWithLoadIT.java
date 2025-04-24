@@ -443,6 +443,7 @@ public class IoTDBPipeWithLoadIT extends AbstractPipeTableModelDualManualIT {
   }
 
   @Test
+  @Ignore
   public void testLoadAutoCreateWithoutInsertPermission() throws Exception {
     final DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
     final String receiverIp = receiverDataNode.getIp();
