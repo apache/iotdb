@@ -91,7 +91,9 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantLock;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.stream.Collectors;
 
 public class PipeConsensusReceiver {
@@ -117,6 +119,7 @@ public class PipeConsensusReceiver {
   private final PipeConsensusReceiverMetrics pipeConsensusReceiverMetrics;
   private final FolderManager folderManager;
   private final AtomicBoolean isClosed = new AtomicBoolean(false);
+  private final ReadWriteLock tsFilePieceWriteLock = new ReentrantReadWriteLock(true);
 
   public PipeConsensusReceiver(
       PipeConsensus pipeConsensus,
@@ -332,91 +335,97 @@ public class PipeConsensusReceiver {
 
   private TPipeConsensusTransferResp handleTransferFilePiece(
       final PipeConsensusTransferFilePieceReq req, final boolean isSingleFile) {
-    if (LOGGER.isDebugEnabled()) {
-      LOGGER.debug(
-          "PipeConsensus-PipeName-{}: starting to receive tsFile pieces", consensusPipeName);
-    }
-    long startBorrowTsFileWriterNanos = System.nanoTime();
-    PipeConsensusTsFileWriter tsFileWriter =
-        pipeConsensusTsFileWriterPool.borrowCorrespondingWriter(req.getCommitId());
-    long startPreCheckNanos = System.nanoTime();
-    pipeConsensusReceiverMetrics.recordBorrowTsFileWriterTimer(
-        startPreCheckNanos - startBorrowTsFileWriterNanos);
-
+    tsFilePieceWriteLock.readLock().lock();
     try {
-      updateWritingFileIfNeeded(tsFileWriter, req.getFileName(), isSingleFile);
-      final File writingFile = tsFileWriter.getWritingFile();
-      final RandomAccessFile writingFileWriter = tsFileWriter.getWritingFileWriter();
+      if (LOGGER.isDebugEnabled()) {
+        LOGGER.debug(
+            "PipeConsensus-PipeName-{}: starting to receive tsFile pieces", consensusPipeName);
+      }
+      long startBorrowTsFileWriterNanos = System.nanoTime();
+      PipeConsensusTsFileWriter tsFileWriter =
+          pipeConsensusTsFileWriterPool.borrowCorrespondingWriter(req.getCommitId());
+      long startPreCheckNanos = System.nanoTime();
+      pipeConsensusReceiverMetrics.recordBorrowTsFileWriterTimer(
+          startPreCheckNanos - startBorrowTsFileWriterNanos);
 
-      if (isWritingFileOffsetNonCorrect(tsFileWriter, req.getStartWritingOffset())) {
-        if (!writingFile.getName().endsWith(TsFileConstant.TSFILE_SUFFIX)) {
-          // If the file is a tsFile, then the content will not be changed for a specific
-          // filename. However, for other files (mod, snapshot, etc.) the content varies for the
-          // same name in different times, then we must rewrite the file to apply the newest
-          // version.
-          writingFileWriter.setLength(0);
+      try {
+        updateWritingFileIfNeeded(tsFileWriter, req.getFileName(), isSingleFile);
+        final File writingFile = tsFileWriter.getWritingFile();
+        final RandomAccessFile writingFileWriter = tsFileWriter.getWritingFileWriter();
+
+        if (isWritingFileOffsetNonCorrect(tsFileWriter, req.getStartWritingOffset())) {
+          if (!writingFile.getName().endsWith(TsFileConstant.TSFILE_SUFFIX)) {
+            // If the file is a tsFile, then the content will not be changed for a specific
+            // filename. However, for other files (mod, snapshot, etc.) the content varies for the
+            // same name in different times, then we must rewrite the file to apply the newest
+            // version.
+            writingFileWriter.setLength(0);
+          }
+
+          final TSStatus status =
+              RpcUtils.getStatus(
+                  TSStatusCode.PIPE_CONSENSUS_TRANSFER_FILE_OFFSET_RESET,
+                  String.format(
+                      "Request sender to reset file reader's offset from %s to %s.",
+                      req.getStartWritingOffset(), writingFileWriter.length()));
+          LOGGER.warn(
+              "PipeConsensus-PipeName-{}: File offset reset requested by receiver, response status = {}.",
+              consensusPipeName,
+              status);
+          return PipeConsensusTransferFilePieceResp.toTPipeConsensusTransferResp(
+              status, writingFileWriter.length());
         }
 
+        long endPreCheckNanos = System.nanoTime();
+        pipeConsensusReceiverMetrics.recordTsFilePiecePreCheckTime(
+            endPreCheckNanos - startPreCheckNanos);
+        writingFileWriter.write(req.getFilePiece());
+        pipeConsensusReceiverMetrics.recordTsFilePieceWriteTime(
+            System.nanoTime() - endPreCheckNanos);
+        return PipeConsensusTransferFilePieceResp.toTPipeConsensusTransferResp(
+            RpcUtils.SUCCESS_STATUS, writingFileWriter.length());
+      } catch (Exception e) {
+        LOGGER.warn(
+            "PipeConsensus-PipeName-{}: Failed to write file piece from req {}.",
+            consensusPipeName,
+            req,
+            e);
         final TSStatus status =
             RpcUtils.getStatus(
-                TSStatusCode.PIPE_CONSENSUS_TRANSFER_FILE_OFFSET_RESET,
-                String.format(
-                    "Request sender to reset file reader's offset from %s to %s.",
-                    req.getStartWritingOffset(), writingFileWriter.length()));
-        LOGGER.warn(
-            "PipeConsensus-PipeName-{}: File offset reset requested by receiver, response status = {}.",
-            consensusPipeName,
-            status);
-        return PipeConsensusTransferFilePieceResp.toTPipeConsensusTransferResp(
-            status, writingFileWriter.length());
-      }
-
-      long endPreCheckNanos = System.nanoTime();
-      pipeConsensusReceiverMetrics.recordTsFilePiecePreCheckTime(
-          endPreCheckNanos - startPreCheckNanos);
-      writingFileWriter.write(req.getFilePiece());
-      pipeConsensusReceiverMetrics.recordTsFilePieceWriteTime(System.nanoTime() - endPreCheckNanos);
-      return PipeConsensusTransferFilePieceResp.toTPipeConsensusTransferResp(
-          RpcUtils.SUCCESS_STATUS, writingFileWriter.length());
-    } catch (Exception e) {
-      LOGGER.warn(
-          "PipeConsensus-PipeName-{}: Failed to write file piece from req {}.",
-          consensusPipeName,
-          req,
-          e);
-      final TSStatus status =
-          RpcUtils.getStatus(
-              TSStatusCode.PIPE_CONSENSUS_TRANSFER_FILE_ERROR,
-              String.format("Failed to write file piece, because %s", e.getMessage()));
-      try {
-        return PipeConsensusTransferFilePieceResp.toTPipeConsensusTransferResp(
-            status, PipeTransferFilePieceResp.ERROR_END_OFFSET);
-      } catch (IOException ex) {
-        return PipeConsensusTransferFilePieceResp.toTPipeConsensusTransferResp(status);
-      } finally {
-        // Exception may occur when disk system go wrong. At this time, we may reset all resource
-        // and receive this file from scratch when leader will try to resend this file from scratch
-        // as well.
-        closeCurrentWritingFileWriter(tsFileWriter, false);
-        deleteCurrentWritingFile(tsFileWriter);
-        // must return tsfileWriter after deleting its file.
+                TSStatusCode.PIPE_CONSENSUS_TRANSFER_FILE_ERROR,
+                String.format("Failed to write file piece, because %s", e.getMessage()));
         try {
-          tsFileWriter.returnSelf(consensusPipeName);
-        } catch (IOException | DiskSpaceInsufficientException returnException) {
-          LOGGER.warn(
-              "PipeConsensus-PipeName-{}: Failed to return tsFileWriter {}.",
-              consensusPipeName,
-              tsFileWriter,
-              returnException);
+          return PipeConsensusTransferFilePieceResp.toTPipeConsensusTransferResp(
+              status, PipeTransferFilePieceResp.ERROR_END_OFFSET);
+        } catch (IOException ex) {
+          return PipeConsensusTransferFilePieceResp.toTPipeConsensusTransferResp(status);
+        } finally {
+          // Exception may occur when disk system go wrong. At this time, we may reset all resource
+          // and receive this file from scratch when leader will try to resend this file from
+          // scratch
+          // as well.
+          closeCurrentWritingFileWriter(tsFileWriter, false);
+          deleteCurrentWritingFile(tsFileWriter);
+          // must return tsfileWriter after deleting its file.
+          try {
+            tsFileWriter.returnSelf(consensusPipeName);
+          } catch (IOException | DiskSpaceInsufficientException returnException) {
+            LOGGER.warn(
+                "PipeConsensus-PipeName-{}: Failed to return tsFileWriter {}.",
+                consensusPipeName,
+                tsFileWriter,
+                returnException);
+          }
         }
       }
+    } finally {
+      tsFilePieceWriteLock.readLock().unlock();
     }
   }
 
   private TPipeConsensusTransferResp handleTransferFileSeal(final PipeConsensusTsFileSealReq req) {
-    if (LOGGER.isDebugEnabled()) {
-      LOGGER.debug("PipeConsensus-PipeName-{}: starting to receive tsFile seal", consensusPipeName);
-    }
+    // TODO: turn it to debug after GA
+    LOGGER.info("PipeConsensus-PipeName-{}: starting to receive tsFile seal", consensusPipeName);
     long startBorrowTsFileWriterNanos = System.nanoTime();
     PipeConsensusTsFileWriter tsFileWriter =
         pipeConsensusTsFileWriterPool.borrowCorrespondingWriter(req.getCommitId());
@@ -534,11 +543,9 @@ public class PipeConsensusReceiver {
 
   private TPipeConsensusTransferResp handleTransferFileSealWithMods(
       final PipeConsensusTsFileSealWithModReq req) {
-    if (LOGGER.isDebugEnabled()) {
-      LOGGER.debug(
-          "PipeConsensus-PipeName-{}: starting to receive tsFile seal with mods",
-          consensusPipeName);
-    }
+    // TODO: turn it to debug after GA
+    LOGGER.info(
+        "PipeConsensus-PipeName-{}: starting to receive tsFile seal with mods", consensusPipeName);
     long startBorrowTsFileWriterNanos = System.nanoTime();
     PipeConsensusTsFileWriter tsFileWriter =
         pipeConsensusTsFileWriterPool.borrowCorrespondingWriter(req.getCommitId());
@@ -1054,9 +1061,6 @@ public class PipeConsensusReceiver {
   public synchronized void handleExit() {
     // only after closing request executor, can we clean receiver.
     requestExecutor.tryClose();
-    // Clear the tsFileWriters, receiverBuffer and receiver base dirs
-    requestExecutor.clear(false);
-    clearAllReceiverBaseDir();
     // remove metric
     MetricService.getInstance().removeMetricSet(pipeConsensusReceiverMetrics);
     // cancel periodic task
@@ -1064,6 +1068,8 @@ public class PipeConsensusReceiver {
       tsFileWriterCheckerFuture.cancel(false);
       tsFileWriterCheckerFuture = null;
     }
+    // Clear the tsFileWriters, receiverBuffer and receiver base dirs
+    requestExecutor.clear(false, true);
     LOGGER.info("Receiver-{} exit successfully.", consensusPipeName.toString());
   }
 
@@ -1161,7 +1167,7 @@ public class PipeConsensusReceiver {
               });
     }
 
-    public void handleExit(ConsensusPipeName consensusPipeName) {
+    public void releaseAllWriters(ConsensusPipeName consensusPipeName) {
       pipeConsensusTsFileWriterPool.forEach(
           tsFileWriter -> {
             // Wait until tsFileWriter is not used by TsFileInsertionEvent or timeout.
@@ -1231,11 +1237,6 @@ public class PipeConsensusReceiver {
       }
 
       String localWritingDirPath = receiverBasePath + File.separator + index;
-      LOGGER.info(
-          "PipeConsensus-PipeName-{}: tsfileWriter-{} roll to writing path {}",
-          consensusPipeName,
-          index,
-          localWritingDirPath);
       this.localWritingDir = new File(localWritingDirPath);
       // Remove exists dir
       deleteFileOrDirectoryIfExists(
@@ -1252,6 +1253,11 @@ public class PipeConsensusReceiver {
                 "PipeConsensus-PipeName-%s: Failed to create tsFileWriter-%d receiver file dir %s. May because authority or dir already exists etc.",
                 consensusPipeName, index, this.localWritingDir.getPath()));
       }
+      LOGGER.info(
+          "PipeConsensus-PipeName-{}: tsfileWriter-{} roll to writing path {}",
+          consensusPipeName,
+          index,
+          localWritingDirPath);
     }
 
     public File getLocalWritingDir() {
@@ -1264,6 +1270,13 @@ public class PipeConsensusReceiver {
 
     public void setWritingFile(File writingFile) {
       this.writingFile = writingFile;
+      // TODO: remove it into debug after GA
+      if (writingFile == null) {
+        LOGGER.info(
+            "PipeConsensus-{}: TsFileWriter-{} set null writing file",
+            consensusPipeName.toString(),
+            index);
+      }
     }
 
     public RandomAccessFile getWritingFileWriter() {
@@ -1272,6 +1285,13 @@ public class PipeConsensusReceiver {
 
     public void setWritingFileWriter(RandomAccessFile writingFileWriter) {
       this.writingFileWriter = writingFileWriter;
+      // TODO: remove it into debug after GA
+      if (writingFileWriter == null) {
+        LOGGER.info(
+            "PipeConsensus-{}: TsFileWriter-{} set null writing file writer",
+            consensusPipeName.toString(),
+            index);
+      }
     }
 
     public TCommitId getCommitIdOfCorrespondingHolderEvent() {
@@ -1395,6 +1415,10 @@ public class PipeConsensusReceiver {
       long startAcquireLockNanos = System.nanoTime();
       lock.lock();
       try {
+        if (isClosed.get()) {
+          return PipeConsensusReceiverAgent.closedResp(
+              consensusPipeName.toString(), req.getCommitId());
+        }
         long startDispatchNanos = System.nanoTime();
         metric.recordAcquireExecutorLockTimer(startDispatchNanos - startAcquireLockNanos);
 
@@ -1509,6 +1533,10 @@ public class PipeConsensusReceiver {
                   !condition.await(
                       PIPE_CONSENSUS_RECEIVER_MAX_WAITING_TIME_IN_MS, TimeUnit.MILLISECONDS);
 
+              if (isClosed.get()) {
+                return PipeConsensusReceiverAgent.closedResp(
+                    consensusPipeName.toString(), req.getCommitId());
+              }
               // If some reqs find the buffer no longer contains their requestMeta after jumping out
               // from condition.await, it may indicate that during their wait, some reqs with newer
               // pipeTaskStartTimes or rebootTimes came in and refreshed the requestBuffer. In that
@@ -1573,7 +1601,7 @@ public class PipeConsensusReceiver {
           consensusPipeName);
       // since pipe task will resend all data that hasn't synchronized after dataNode reboots, it's
       // safe to clear all events in buffer.
-      clear(true);
+      clear(true, false);
       // sync the follower's connectorRebootTimes with connector's actual rebootTimes.
       this.connectorRebootTimes = connectorRebootTimes;
       this.pipeTaskRestartTimes = 0;
@@ -1585,7 +1613,7 @@ public class PipeConsensusReceiver {
           consensusPipeName);
       // since pipe task will resend all data that hasn't synchronized after restarts, it's safe to
       // clear all events in buffer.
-      clear(false);
+      clear(false, false);
       this.pipeTaskRestartTimes = pipeTaskRestartTimes;
     }
 
@@ -1606,11 +1634,21 @@ public class PipeConsensusReceiver {
       }
     }
 
-    private void clear(boolean resetSyncIndex) {
-      this.reqExecutionOrderBuffer.clear();
-      this.tsFileWriterPool.handleExit(consensusPipeName);
-      if (resetSyncIndex) {
-        this.onSyncedReplicateIndex = 0;
+    private void clear(boolean resetSyncIndex, boolean cleanBaseDir) {
+      // TsFilePiece Writing may out of RequestExecutor.lock, meaning that we must use additional
+      // lock here to ensure serial execution of cleanup and write piece
+      tsFilePieceWriteLock.writeLock().lock();
+      try {
+        this.reqExecutionOrderBuffer.clear();
+        this.tsFileWriterPool.releaseAllWriters(consensusPipeName);
+        if (resetSyncIndex) {
+          this.onSyncedReplicateIndex = 0;
+        }
+        if (cleanBaseDir) {
+          clearAllReceiverBaseDir();
+        }
+      } finally {
+        tsFilePieceWriteLock.writeLock().unlock();
       }
     }
 
