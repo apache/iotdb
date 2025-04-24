@@ -32,7 +32,7 @@ if not "%CLEAN_SERVICE%"=="y" if not "%CLEAN_SERVICE%"=="Y" (
   goto finally
 )
 
-start cmd /c "%IOTDB_HOME%\\sbin\\stop-confignode.bat -f"
+start cmd /c "%IOTDB_HOME%\\sbin\\windows\\stop-confignode.bat -f"
 timeout /t 3 > nul
 rmdir /s /q "%IOTDB_HOME%\data\confignode\" 2>nul
 if exist "%IOTDB_HOME%\conf\iotdb-system.properties" (

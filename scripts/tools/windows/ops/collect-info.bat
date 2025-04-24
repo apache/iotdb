@@ -38,7 +38,7 @@ set "COLLECTION_DIR_NAME=iotdb-info"
 set "COLLECTION_DIR=%IOTDB_HOME%\%COLLECTION_DIR_NAME%"
 set "COLLECTION_DIR_LOGS=%COLLECTION_DIR%\logs"
 set "COLLECTION_FILE=%COLLECTION_DIR%\collection.txt"
-set "START_CLI_PATH=%IOTDB_HOME%\sbin\start-cli.bat"
+set "START_CLI_PATH=%IOTDB_HOME%\sbin\windows\start-cli.bat"
 
 set "HELP=Usage: %0 [-h <ip>] [-p <port>] [-u <username>] [-pw <password>] [-dd <data_dir>]"
 set "user_param=root"

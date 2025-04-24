@@ -30,12 +30,12 @@ pushd %~dp0..\..\..
 if NOT DEFINED IOTDB_HOME set IOTDB_HOME=%cd%
 popd
 
-start cmd /c "%IOTDB_HOME%\\sbin\\stop-standalone.bat -f"
+start cmd /c "%IOTDB_HOME%\\sbin\\windows\\stop-standalone.bat -f"
 timeout /t 5 > nul
 rmdir /s /q "%IOTDB_HOME%\\data\\"
 
-start cmd /c "%IOTDB_HOME%\\sbin\\destroy-datanode.bat -f"
-start cmd /c "%IOTDB_HOME%\\sbin\\destroy-confignode.bat -f"
+start cmd /c "%IOTDB_HOME%\\tools\\windows\\ops\\destroy-datanode.bat -f"
+start cmd /c "%IOTDB_HOME%\\tools\\windows\\ops\\destroy-confignode.bat -f"
 
 ECHO "Cluster cleanup complete ..."
 :finally

@@ -31,7 +31,7 @@ if not "%CLEAN_SERVICE%"=="y" if not "%CLEAN_SERVICE%"=="Y" (
   echo "Exiting..."
   goto finally
 )
-start cmd /c "%IOTDB_HOME%\\sbin\\stop-datanode.bat -f"
+start cmd /c "%IOTDB_HOME%\\sbin\\windows\\stop-datanode.bat -f"
 timeout /t 3 > nul
 rmdir /s /q "%IOTDB_HOME%\data\datanode\" 2>nul
 if exist "%IOTDB_HOME%\conf\iotdb-system.properties" (
