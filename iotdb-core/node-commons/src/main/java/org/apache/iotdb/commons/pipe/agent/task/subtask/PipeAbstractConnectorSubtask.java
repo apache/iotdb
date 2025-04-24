@@ -35,10 +35,15 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.concurrent.ExecutorService;
+import java.util.concurrent.atomic.AtomicLong;
 
 public abstract class PipeAbstractConnectorSubtask extends PipeReportableSubtask {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(PipeAbstractConnectorSubtask.class);
+
+  // To ensure that high-priority tasks can obtain object locks first, a counter is now used to save
+  // the number of high-priority tasks.
+  protected final AtomicLong highPriorityLockTaskCount = new AtomicLong(0);
 
   // For output (transfer events to the target system in connector)
   protected PipeConnector outputPipeConnector;
@@ -71,68 +76,77 @@ public abstract class PipeAbstractConnectorSubtask extends PipeReportableSubtask
   }
 
   @Override
-  public synchronized void onSuccess(final Boolean hasAtLeastOneEventProcessed) {
-    isSubmitted = false;
+  public void onSuccess(final Boolean hasAtLeastOneEventProcessed) {
+    preScheduleLowPriorityTask(100);
 
-    super.onSuccess(hasAtLeastOneEventProcessed);
+    synchronized (this) {
+      isSubmitted = false;
+
+      super.onSuccess(hasAtLeastOneEventProcessed);
+    }
   }
 
   @Override
-  public synchronized void onFailure(final Throwable throwable) {
-    isSubmitted = false;
+  public void onFailure(final Throwable throwable) {
+    preScheduleLowPriorityTask(100);
 
-    if (isClosed.get()) {
-      LOGGER.info(
-          "onFailure in pipe transfer, ignored because the connector subtask is dropped.",
-          throwable);
-      clearReferenceCountAndReleaseLastEvent(null);
-      return;
-    }
+    synchronized (this) {
+      isSubmitted = false;
 
-    // We assume that the event is cleared as the "lastEvent" in processor subtask and reaches the
-    // connector subtask. Then, it may fail because of released resource and block the other pipes
-    // using the same connector. We simply discard it.
-    if (lastExceptionEvent instanceof EnrichedEvent
-        && ((EnrichedEvent) lastExceptionEvent).isReleased()) {
-      LOGGER.info(
-          "onFailure in pipe transfer, ignored because the failure event is released.", throwable);
-      submitSelf();
-      return;
-    }
-
-    // If lastExceptionEvent != lastEvent, it indicates that the lastEvent's reference has been
-    // changed because the pipe of it has been dropped. In that case, we just discard the event.
-    if (lastEvent != lastExceptionEvent) {
-      LOGGER.info(
-          "onFailure in pipe transfer, ignored because the failure event's pipe is dropped.",
-          throwable);
-      clearReferenceCountAndReleaseLastExceptionEvent();
-      submitSelf();
-      return;
-    }
-
-    if (throwable instanceof PipeConnectionException) {
-      // Retry to connect to the target system if the connection is broken
-      // We should reconstruct the client before re-submit the subtask
-      if (onPipeConnectionException(throwable)) {
-        // return if the pipe task should be stopped
+      if (isClosed.get()) {
+        LOGGER.info(
+            "onFailure in pipe transfer, ignored because the connector subtask is dropped.",
+            throwable);
+        clearReferenceCountAndReleaseLastEvent(null);
         return;
       }
-    }
 
-    // Handle exceptions if any available clients exist
-    // Notice that the PipeRuntimeConnectorCriticalException must be thrown here
-    // because the upper layer relies on this to stop all the related pipe tasks
-    // Other exceptions may cause the subtask to stop forever and can not be restarted
-    if (throwable instanceof PipeRuntimeConnectorCriticalException
-        || throwable instanceof PipeConsensusRetryWithIncreasingIntervalException) {
-      super.onFailure(throwable);
-    } else {
-      // Print stack trace for better debugging
-      LOGGER.warn(
-          "A non PipeRuntimeConnectorCriticalException occurred, will throw a PipeRuntimeConnectorCriticalException.",
-          throwable);
-      super.onFailure(new PipeRuntimeConnectorCriticalException(throwable.getMessage()));
+      // We assume that the event is cleared as the "lastEvent" in processor subtask and reaches the
+      // connector subtask. Then, it may fail because of released resource and block the other pipes
+      // using the same connector. We simply discard it.
+      if (lastExceptionEvent instanceof EnrichedEvent
+          && ((EnrichedEvent) lastExceptionEvent).isReleased()) {
+        LOGGER.info(
+            "onFailure in pipe transfer, ignored because the failure event is released.",
+            throwable);
+        submitSelf();
+        return;
+      }
+
+      // If lastExceptionEvent != lastEvent, it indicates that the lastEvent's reference has been
+      // changed because the pipe of it has been dropped. In that case, we just discard the event.
+      if (lastEvent != lastExceptionEvent) {
+        LOGGER.info(
+            "onFailure in pipe transfer, ignored because the failure event's pipe is dropped.",
+            throwable);
+        clearReferenceCountAndReleaseLastExceptionEvent();
+        submitSelf();
+        return;
+      }
+
+      if (throwable instanceof PipeConnectionException) {
+        // Retry to connect to the target system if the connection is broken
+        // We should reconstruct the client before re-submit the subtask
+        if (onPipeConnectionException(throwable)) {
+          // return if the pipe task should be stopped
+          return;
+        }
+      }
+
+      // Handle exceptions if any available clients exist
+      // Notice that the PipeRuntimeConnectorCriticalException must be thrown here
+      // because the upper layer relies on this to stop all the related pipe tasks
+      // Other exceptions may cause the subtask to stop forever and can not be restarted
+      if (throwable instanceof PipeRuntimeConnectorCriticalException
+          || throwable instanceof PipeConsensusRetryWithIncreasingIntervalException) {
+        super.onFailure(throwable);
+      } else {
+        // Print stack trace for better debugging
+        LOGGER.warn(
+            "A non PipeRuntimeConnectorCriticalException occurred, will throw a PipeRuntimeConnectorCriticalException.",
+            throwable);
+        super.onFailure(new PipeRuntimeConnectorCriticalException(throwable.getMessage()));
+      }
     }
   }
 
@@ -238,6 +252,12 @@ public abstract class PipeAbstractConnectorSubtask extends PipeReportableSubtask
         ((EnrichedEvent) lastExceptionEvent).clearReferenceCount(PipeSubtask.class.getName());
       }
       lastExceptionEvent = null;
+    }
+  }
+
+  private void preScheduleLowPriorityTask(int maxRetries) {
+    while (highPriorityLockTaskCount.get() != 0 && maxRetries != 0) {
+      maxRetries--;
     }
   }
 }
