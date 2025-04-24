@@ -220,6 +220,16 @@ public class JoinNode extends TwoChildProcessNode {
       Symbol.serialize(equiJoinClause.getRight(), byteBuffer);
     }
 
+    if (asofCriteria.isPresent()) {
+      ReadWriteIOUtils.write(true, byteBuffer);
+      AsofJoinClause asofJoinClause = asofCriteria.get();
+      ReadWriteIOUtils.write(asofJoinClause.getOperator().ordinal(), byteBuffer);
+      Symbol.serialize(asofJoinClause.getLeft(), byteBuffer);
+      Symbol.serialize(asofJoinClause.getRight(), byteBuffer);
+    } else {
+      ReadWriteIOUtils.write(false, byteBuffer);
+    }
+
     ReadWriteIOUtils.write(leftOutputSymbols.size(), byteBuffer);
     for (Symbol leftOutputSymbol : leftOutputSymbols) {
       Symbol.serialize(leftOutputSymbol, byteBuffer);
