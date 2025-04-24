@@ -118,7 +118,7 @@ public class CompactionEstimateUtils {
             } else {
               LOGGER.warn(
                   "{} has null chunk metadata, file is {}",
-                  measurementChunkMetadataList.getKey(),
+                  device.toString() + "." + measurementChunkMetadataList.getKey(),
                   reader.getFileName());
             }
           }
