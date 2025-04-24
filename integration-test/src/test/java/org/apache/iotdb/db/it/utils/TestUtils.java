@@ -1455,8 +1455,7 @@ public class TestUtils {
           .pollDelay(1L, TimeUnit.SECONDS)
           .pollInterval(1L, TimeUnit.SECONDS)
           .atMost(consistentSeconds, TimeUnit.SECONDS)
-          .failFast(
-              () -> Assert.assertThrows(Exception.class, () -> statement.executeQuery(sql)));
+          .failFast(() -> Assert.assertThrows(Exception.class, () -> statement.executeQuery(sql)));
     } catch (final Exception e) {
       fail(e.getMessage());
     }
