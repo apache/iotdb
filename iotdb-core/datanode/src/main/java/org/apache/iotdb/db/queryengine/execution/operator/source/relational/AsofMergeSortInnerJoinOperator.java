@@ -177,7 +177,7 @@ public class AsofMergeSortInnerJoinOperator extends MergeSortInnerJoinOperator {
     int tmpIdx = rightIndex;
     boolean hasMatched = false;
     long matchedTime = Long.MIN_VALUE;
-    while (equalsTo(
+    while (nonAsofEquals(
             leftBlock,
             leftJoinKeyPositions,
             leftIndex,
@@ -217,7 +217,7 @@ public class AsofMergeSortInnerJoinOperator extends MergeSortInnerJoinOperator {
     return hasMatched;
   }
 
-  protected boolean equalsTo(
+  protected boolean nonAsofEquals(
       TsBlock leftBlock,
       int[] leftPositions,
       int lIndex,
