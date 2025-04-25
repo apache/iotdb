@@ -372,6 +372,9 @@ public class IoTDBStatement implements Statement {
     if (execResp.isSetDatabase()) {
       connection.changeDefaultDatabase(execResp.getDatabase());
     }
+    if (execResp.isSetOperationType() && execResp.getOperationType().equals("dropDB")) {
+      connection.changeDefaultDatabase(null);
+    }
 
     if (execResp.isSetTableModel()) {
       connection.mayChangeDefaultSqlDialect(execResp.tableModel ? TABLE : TREE);
@@ -454,10 +457,7 @@ public class IoTDBStatement implements Statement {
     }
     if (execResp.isSetSubStatus() && execResp.getSubStatus() != null) {
       for (TSStatus status : execResp.getSubStatus()) {
-        if (status.getCode() == TSStatusCode.USE_OR_DROP_DB.getStatusCode()
-            && status.isSetMessage()
-            && status.getMessage() != null
-            && !status.getMessage().isEmpty()) {
+        if (status.getCode() == TSStatusCode.USE_OR_DROP_DB.getStatusCode()) {
           connection.changeDefaultDatabase(status.getMessage());
           break;
         }

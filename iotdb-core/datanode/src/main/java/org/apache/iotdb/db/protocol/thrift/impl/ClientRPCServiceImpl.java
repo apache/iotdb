@@ -213,6 +213,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.concurrent.TimeUnit;
 
@@ -413,7 +414,12 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
           resp = RpcUtils.getTSExecuteStatementResp(result.status);
           // set for use XX
           if (useOrDropDatabase) {
-            resp.setDatabase(clientSession.getDatabaseName());
+            if (Objects.nonNull(clientSession.getDatabaseName())) {
+              resp.setDatabase(clientSession.getDatabaseName());
+            } else {
+              // Previously unused
+              resp.setOperationType("dropDB");
+            }
           }
 
           if (setSqlDialect) {
