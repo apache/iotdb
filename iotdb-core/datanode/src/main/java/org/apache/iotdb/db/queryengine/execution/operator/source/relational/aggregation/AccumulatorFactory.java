@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.udf.utils.TableUDFUtils;
 import org.apache.iotdb.commons.udf.utils.UDFDataTypeTransformer;
 import org.apache.iotdb.db.queryengine.execution.aggregation.VarianceAccumulator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.grouped.GroupedAccumulator;
+import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.grouped.GroupedApproxCountDistinctAccumulator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.grouped.GroupedAvgAccumulator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.grouped.GroupedCountAccumulator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.grouped.GroupedCountIfAccumulator;
@@ -240,6 +241,8 @@ public class AccumulatorFactory {
       case VAR_POP:
         return new GroupedVarianceAccumulator(
             inputDataTypes.get(0), VarianceAccumulator.VarianceType.VAR_POP);
+      case APPROX_COUNT_DISTINCT:
+        return new GroupedApproxCountDistinctAccumulator(inputDataTypes.get(0));
       default:
         throw new IllegalArgumentException("Invalid Aggregation function: " + aggregationType);
     }
@@ -305,6 +308,8 @@ public class AccumulatorFactory {
       case VAR_POP:
         return new TableVarianceAccumulator(
             inputDataTypes.get(0), VarianceAccumulator.VarianceType.VAR_POP);
+      case APPROX_COUNT_DISTINCT:
+        return new ApproxCountDistinctAccumulator(inputDataTypes.get(0));
       default:
         throw new IllegalArgumentException("Invalid Aggregation function: " + aggregationType);
     }
