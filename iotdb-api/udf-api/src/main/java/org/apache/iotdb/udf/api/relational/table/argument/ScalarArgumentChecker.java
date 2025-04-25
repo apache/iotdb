@@ -17,17 +17,16 @@
  * under the License.
  */
 
-package org.apache.iotdb.rpc.subscription.annotation;
+package org.apache.iotdb.udf.api.relational.table.argument;
 
-import java.lang.annotation.ElementType;
-import java.lang.annotation.Retention;
-import java.lang.annotation.RetentionPolicy;
-import java.lang.annotation.Target;
+import java.util.function.Function;
 
-/**
- * Indicates that the method is valid only within the subscription module under the table model
- * namespace. Otherwise, the behavior is undefined.
- */
-@Target({ElementType.METHOD, ElementType.TYPE, ElementType.FIELD})
-@Retention(RetentionPolicy.RUNTIME)
-public @interface TableModel {}
+public class ScalarArgumentChecker {
+  public static Function<Object, String> POSITIVE_LONG_CHECKER =
+      (value) -> {
+        if (value instanceof Long && (Long) value > 0) {
+          return null;
+        }
+        return "should be a positive value";
+      };
+}

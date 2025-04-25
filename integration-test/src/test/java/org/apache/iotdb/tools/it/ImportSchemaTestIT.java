@@ -77,7 +77,7 @@ public class ImportSchemaTestIT extends AbstractScriptIT {
   @Override
   protected void testOnWindows() throws IOException {
     final String[] output = {
-      "Import completely!",
+      "Source file or directory ./sql/ does not exist",
     };
     ProcessBuilder builder =
         new ProcessBuilder(
@@ -101,18 +101,18 @@ public class ImportSchemaTestIT extends AbstractScriptIT {
             "-db",
             "test",
             "-s",
-            "./",
+            "./sql/",
             "&",
             "exit",
             "%^errorlevel%");
     builder.environment().put("IOTDB_HOME", homePath);
-    testOutput(builder, output, 0);
+    testOutput(builder, output, 1);
   }
 
   @Override
   protected void testOnUnix() throws IOException {
     final String[] output = {
-      "Import completely!",
+      "Source file or directory ./sql/ does not exist",
     };
     ProcessBuilder builder =
         new ProcessBuilder(
@@ -129,8 +129,8 @@ public class ImportSchemaTestIT extends AbstractScriptIT {
             "-db",
             "test",
             "-s",
-            "./");
+            "./sql/");
     builder.environment().put("IOTDB_HOME", homePath);
-    testOutput(builder, output, 0);
+    testOutput(builder, output, 1);
   }
 }
