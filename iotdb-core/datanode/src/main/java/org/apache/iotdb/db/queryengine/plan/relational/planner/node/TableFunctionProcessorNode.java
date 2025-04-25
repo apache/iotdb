@@ -203,7 +203,6 @@ public class TableFunctionProcessorNode extends SingleChildProcessNode {
     }
     ReadWriteIOUtils.write(rowSemantic, byteBuffer);
     byte[] bytes = tableFunctionHandle.serialize();
-    ReadWriteIOUtils.write(bytes.length, byteBuffer);
     ReadWriteIOUtils.write(ByteBuffer.wrap(bytes), byteBuffer);
     ReadWriteIOUtils.write(requireRecordSnapshot, byteBuffer);
   }
@@ -230,7 +229,6 @@ public class TableFunctionProcessorNode extends SingleChildProcessNode {
     }
     ReadWriteIOUtils.write(rowSemantic, stream);
     byte[] bytes = tableFunctionHandle.serialize();
-    ReadWriteIOUtils.write(bytes.length, stream);
     ReadWriteIOUtils.write(ByteBuffer.wrap(bytes), stream);
     ReadWriteIOUtils.write(requireRecordSnapshot, stream);
   }

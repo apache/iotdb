@@ -34,7 +34,7 @@ public class MapTableFunctionHandle implements TableFunctionHandle {
   private static final Set<Class<?>> SUPPORT_VALUE_TYPE =
       new HashSet<>(
           Arrays.asList(
-              Integer.class, Long.class, Double.class, Float.class, String.class, Double.class));
+              Integer.class, Long.class, Double.class, Float.class, String.class, Boolean.class));
   private final Map<String, Object> map = new HashMap<>();
 
   public void addProperty(String key, Object value) {
@@ -50,7 +50,7 @@ public class MapTableFunctionHandle implements TableFunctionHandle {
 
   @Override
   public byte[] serialize() {
-    ByteBuffer buffer = ByteBuffer.allocate(Long.BYTES);
+    ByteBuffer buffer = ByteBuffer.allocate(calculateSerializeSize());
     buffer.putInt(map.size());
     for (Map.Entry<String, Object> entry : map.entrySet()) {
       byte[] bytes = entry.getKey().getBytes(StandardCharsets.UTF_8);
@@ -79,6 +79,28 @@ public class MapTableFunctionHandle implements TableFunctionHandle {
       }
     }
     return buffer.array();
+  }
+
+  private int calculateSerializeSize() {
+    int size = Integer.SIZE;
+    for (Map.Entry<String, Object> entry : map.entrySet()) {
+      size += Integer.BYTES + entry.getKey().getBytes(StandardCharsets.UTF_8).length + Byte.BYTES;
+      if (entry.getValue() instanceof Long) {
+        size += Long.BYTES;
+      } else if (entry.getValue() instanceof Integer) {
+        size += Integer.BYTES;
+      } else if (entry.getValue() instanceof Double) {
+        size += Double.BYTES;
+      } else if (entry.getValue() instanceof Float) {
+        size += Float.BYTES;
+      } else if (entry.getValue() instanceof Boolean) {
+        size += Byte.BYTES;
+      } else if (entry.getValue() instanceof String) {
+        byte[] bytes = ((String) entry.getValue()).getBytes(StandardCharsets.UTF_8);
+        size += Integer.BYTES + bytes.length;
+      }
+    }
+    return size;
   }
 
   @Override

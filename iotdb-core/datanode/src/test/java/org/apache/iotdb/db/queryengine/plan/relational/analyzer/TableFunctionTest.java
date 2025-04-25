@@ -315,4 +315,21 @@ public class TableFunctionTest {
                 tableFunctionProcessor(
                     hopMatcher, project(tableFunctionProcessor(excludeMatcher, tableScan))))));
   }
+
+  @Test
+  public void testSerDeserializeMapTableFunctionHandle() {
+    MapTableFunctionHandle mapTableFunctionHandle =
+        new MapTableFunctionHandle.Builder()
+            .addProperty("key1", "value1")
+            .addProperty("key2", 2)
+            .addProperty("key3", 1L)
+            .addProperty("key4", 3.0)
+            .addProperty("key5", true)
+            .addProperty("key6", 2.3f)
+            .build();
+    byte[] serialized = mapTableFunctionHandle.serialize();
+    MapTableFunctionHandle deserialized = new MapTableFunctionHandle();
+    deserialized.deserialize(serialized);
+    assert mapTableFunctionHandle.equals(deserialized);
+  }
 }
