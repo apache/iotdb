@@ -117,7 +117,7 @@ public class ImportSchemaTestIT extends AbstractScriptIT {
     ProcessBuilder builder =
         new ProcessBuilder(
             "bash",
-            toolsPath + File.separator + "import-schema.sh",
+            toolsPath + File.separator + "schema" + File.separator + "import-schema.sh",
             "-h",
             ip,
             "-p",

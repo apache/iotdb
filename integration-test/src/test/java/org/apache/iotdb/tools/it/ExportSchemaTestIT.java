@@ -120,7 +120,7 @@ public class ExportSchemaTestIT extends AbstractScriptIT {
     ProcessBuilder builder =
         new ProcessBuilder(
             "bash",
-            toolsPath + File.separator + "export-schema.sh",
+            toolsPath + File.separator + "schema" + File.separator + "export-schema.sh",
             "-h",
             ip,
             "-p",
