@@ -213,6 +213,7 @@ public class PipeConsensusAsyncConnector extends IoTDBConnector implements Conse
       lock.lockInterruptibly();
     } catch (InterruptedException e) {
       LOGGER.info("PipeConsensusAsyncConnector try to lock interrupted. Will exit directly", e);
+      Thread.currentThread().interrupt();
       return;
     }
     try {
@@ -470,6 +471,7 @@ public class PipeConsensusAsyncConnector extends IoTDBConnector implements Conse
         lock.lockInterruptibly();
       } catch (InterruptedException e) {
         LOGGER.info("PipeConsensusAsyncConnector try to lock interrupted. Will exit directly", e);
+        Thread.currentThread().interrupt();
         return;
       }
       try {
@@ -567,6 +569,7 @@ public class PipeConsensusAsyncConnector extends IoTDBConnector implements Conse
       lock.lockInterruptibly();
     } catch (InterruptedException e) {
       LOGGER.info("PipeConsensusAsyncConnector try to lock interrupted.", e);
+      Thread.currentThread().interrupt();
       needUnLock = false;
     }
     try {
@@ -589,6 +592,7 @@ public class PipeConsensusAsyncConnector extends IoTDBConnector implements Conse
       lock.lockInterruptibly();
     } catch (InterruptedException e) {
       LOGGER.info("PipeConsensusAsyncConnector try to lock interrupted.", e);
+      Thread.currentThread().interrupt();
       needUnLock = false;
     }
     try {
@@ -631,6 +635,7 @@ public class PipeConsensusAsyncConnector extends IoTDBConnector implements Conse
       lock.lockInterruptibly();
     } catch (InterruptedException e) {
       LOGGER.info("PipeConsensusAsyncConnector try to lock interrupted.", e);
+      Thread.currentThread().interrupt();
       needUnLock = false;
     }
     try {
