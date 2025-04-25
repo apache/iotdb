@@ -19,9 +19,16 @@
 
 package org.apache.iotdb.confignode.exception;
 
+import org.apache.iotdb.db.protocol.session.IClientSession;
+import org.apache.iotdb.db.protocol.session.SessionManager;
+
 public class DatabaseNotExistsException extends ConfigNodeException {
 
-  public DatabaseNotExistsException(String database) {
+  public DatabaseNotExistsException(final String database) {
     super(String.format("Database: %s doesn't exist.", database));
+    final IClientSession session = SessionManager.getInstance().getCurrSession();
+    if (database.equals(session.getDatabaseName())) {
+      session.setDatabaseName(null);
+    }
   }
 }
