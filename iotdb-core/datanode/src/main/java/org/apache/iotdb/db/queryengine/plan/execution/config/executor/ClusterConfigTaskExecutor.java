@@ -3513,7 +3513,8 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
   }
 
   @Override
-  public SettableFuture<ConfigTaskResult> dropDatabase(final DropDB dropDB) {
+  public SettableFuture<ConfigTaskResult> dropDatabase(
+      final DropDB dropDB, final IClientSession session) {
     final SettableFuture<ConfigTaskResult> future = SettableFuture.create();
     final TDeleteDatabasesReq req =
         new TDeleteDatabasesReq(Collections.singletonList(dropDB.getDbName().getValue()))
@@ -3523,9 +3524,11 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
       final TSStatus tsStatus = client.deleteDatabases(req);
       if (TSStatusCode.SUCCESS_STATUS.getStatusCode() == tsStatus.getCode()) {
         future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
+        session.setDatabaseName(null);
       } else if (TSStatusCode.PATH_NOT_EXIST.getStatusCode() == tsStatus.getCode()) {
         if (dropDB.isExists()) {
           future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
+          session.setDatabaseName(null);
         } else {
           LOGGER.info(
               "Failed to DROP DATABASE {}, because it doesn't exist",
