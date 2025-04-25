@@ -314,7 +314,8 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
     long startTime = System.nanoTime();
     StatementType statementType = null;
     Throwable t = null;
-    boolean useOrDropDatabase = false;
+    boolean useDatabase = false;
+    final boolean isDatabaseSetBefore = Objects.nonNull(clientSession.getDatabaseName());
     boolean setSqlDialect = false;
     try {
       // create and cache dataset
@@ -361,8 +362,8 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
         org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Statement s =
             relationSqlParser.createStatement(statement, clientSession.getZoneId(), clientSession);
 
-        if (s instanceof Use || s instanceof DropDB) {
-          useOrDropDatabase = true;
+        if (s instanceof Use) {
+          useDatabase = true;
         }
 
         if (s instanceof SetSqlDialect) {
@@ -413,13 +414,12 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
           finished = true;
           resp = RpcUtils.getTSExecuteStatementResp(result.status);
           // set for use XX
-          if (useOrDropDatabase) {
-            if (Objects.nonNull(clientSession.getDatabaseName())) {
-              resp.setDatabase(clientSession.getDatabaseName());
-            } else {
-              // Previously unused
-              resp.setOperationType("dropDB");
-            }
+          if (useDatabase) {
+            resp.setDatabase(clientSession.getDatabaseName());
+          }
+          if (isDatabaseSetBefore && Objects.isNull(clientSession.getDatabaseName())) {
+            // Previously unused
+            resp.setOperationType("dropDB");
           }
 
           if (setSqlDialect) {
