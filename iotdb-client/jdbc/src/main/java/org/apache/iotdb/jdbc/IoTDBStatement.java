@@ -363,6 +363,10 @@ public class IoTDBStatement implements Statement {
     TSExecuteStatementResp execResp =
         callWithRetryAndReconnect(
             () -> client.executeStatementV2(execReq), TSExecuteStatementResp::getStatus);
+
+    if (execResp.isSetOperationType() && execResp.getOperationType().equals("dropDB")) {
+      connection.changeDefaultDatabase(null);
+    }
     try {
       RpcUtils.verifySuccess(execResp.getStatus());
     } catch (StatementExecutionException e) {
@@ -371,9 +375,6 @@ public class IoTDBStatement implements Statement {
 
     if (execResp.isSetDatabase()) {
       connection.changeDefaultDatabase(execResp.getDatabase());
-    }
-    if (execResp.isSetOperationType() && execResp.getOperationType().equals("dropDB")) {
-      connection.changeDefaultDatabase(null);
     }
 
     if (execResp.isSetTableModel()) {

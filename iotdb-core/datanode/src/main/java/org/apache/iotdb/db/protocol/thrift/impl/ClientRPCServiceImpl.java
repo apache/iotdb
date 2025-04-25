@@ -393,7 +393,12 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       if (result.status.code != TSStatusCode.SUCCESS_STATUS.getStatusCode()
           && result.status.code != TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode()) {
         finished = true;
-        return RpcUtils.getTSExecuteStatementResp(result.status);
+        final TSExecuteStatementResp resp = RpcUtils.getTSExecuteStatementResp(result.status);
+        if (isDatabaseSetBefore && Objects.isNull(clientSession.getDatabaseName())) {
+          // Previously unused
+          resp.setOperationType("dropDB");
+        }
+        return resp;
       }
 
       IQueryExecution queryExecution = COORDINATOR.getQueryExecution(queryId);
@@ -437,8 +442,14 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
     } catch (Exception e) {
       finished = true;
       t = e;
-      return RpcUtils.getTSExecuteStatementResp(
-          onQueryException(e, "\"" + statement + "\". " + OperationType.EXECUTE_STATEMENT));
+      final TSExecuteStatementResp resp =
+          RpcUtils.getTSExecuteStatementResp(
+              onQueryException(e, "\"" + statement + "\". " + OperationType.EXECUTE_STATEMENT));
+      if (isDatabaseSetBefore && Objects.isNull(clientSession.getDatabaseName())) {
+        // Previously unused
+        resp.setOperationType("dropDB");
+      }
+      return resp;
     } catch (Error error) {
       finished = true;
       t = error;
