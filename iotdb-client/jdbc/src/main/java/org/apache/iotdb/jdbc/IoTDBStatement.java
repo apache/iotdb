@@ -454,7 +454,7 @@ public class IoTDBStatement implements Statement {
     }
     if (execResp.isSetSubStatus() && execResp.getSubStatus() != null) {
       for (TSStatus status : execResp.getSubStatus()) {
-        if (status.getCode() == TSStatusCode.USE_DB.getStatusCode()
+        if (status.getCode() == TSStatusCode.USE_OR_DROP_DB.getStatusCode()
             && status.isSetMessage()
             && status.getMessage() != null
             && !status.getMessage().isEmpty()) {

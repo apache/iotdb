@@ -90,6 +90,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.InputLocation
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.SeriesScanOptions;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache.TreeDeviceSchemaCacheManager;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropDB;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SetSqlDialect;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Use;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.parser.ParsingException;
@@ -312,7 +313,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
     long startTime = System.nanoTime();
     StatementType statementType = null;
     Throwable t = null;
-    boolean useDatabase = false;
+    boolean useOrDropDatabase = false;
     boolean setSqlDialect = false;
     try {
       // create and cache dataset
@@ -359,8 +360,8 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
         org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Statement s =
             relationSqlParser.createStatement(statement, clientSession.getZoneId(), clientSession);
 
-        if (s instanceof Use) {
-          useDatabase = true;
+        if (s instanceof Use || s instanceof DropDB) {
+          useOrDropDatabase = true;
         }
 
         if (s instanceof SetSqlDialect) {
@@ -411,7 +412,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
           finished = true;
           resp = RpcUtils.getTSExecuteStatementResp(result.status);
           // set for use XX
-          if (useDatabase) {
+          if (useOrDropDatabase) {
             resp.setDatabase(clientSession.getDatabaseName());
           }
 
@@ -1688,7 +1689,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       return getNotLoggedInStatus();
     }
 
-    boolean useDatabase = false;
+    boolean useOrDropDatabase = false;
     try {
       for (int i = 0; i < req.getStatements().size(); i++) {
         String statement = req.getStatements().get(i);
@@ -1737,8 +1738,8 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
                 relationSqlParser.createStatement(
                     statement, clientSession.getZoneId(), clientSession);
 
-            if (s instanceof Use) {
-              useDatabase = true;
+            if (s instanceof Use || s instanceof DropDB) {
+              useOrDropDatabase = true;
             }
 
             if (s == null) {
@@ -1790,8 +1791,9 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
     if (isAllSuccessful) {
       TSStatus res =
           RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS, "Execute batch statements successfully");
-      if (useDatabase) {
-        TSStatus useDB = RpcUtils.getStatus(TSStatusCode.USE_DB, clientSession.getDatabaseName());
+      if (useOrDropDatabase) {
+        final TSStatus useDB =
+            RpcUtils.getStatus(TSStatusCode.USE_OR_DROP_DB, clientSession.getDatabaseName());
         res.setSubStatus(Collections.singletonList(useDB));
       }
       return res;
