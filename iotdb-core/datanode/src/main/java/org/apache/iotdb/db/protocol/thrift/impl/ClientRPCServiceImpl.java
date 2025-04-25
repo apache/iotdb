@@ -90,7 +90,6 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.InputLocation
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.SeriesScanOptions;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache.TreeDeviceSchemaCacheManager;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropDB;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SetSqlDialect;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Use;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.parser.ParsingException;
@@ -1695,7 +1694,8 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       return getNotLoggedInStatus();
     }
 
-    boolean useOrDropDatabase = false;
+    boolean useDatabase = false;
+    final boolean isDatabaseSetBefore = Objects.nonNull(clientSession.getDatabaseName());
     try {
       for (int i = 0; i < req.getStatements().size(); i++) {
         String statement = req.getStatements().get(i);
@@ -1744,8 +1744,8 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
                 relationSqlParser.createStatement(
                     statement, clientSession.getZoneId(), clientSession);
 
-            if (s instanceof Use || s instanceof DropDB) {
-              useOrDropDatabase = true;
+            if (s instanceof Use) {
+              useDatabase = true;
             }
 
             if (s == null) {
@@ -1797,7 +1797,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
     if (isAllSuccessful) {
       TSStatus res =
           RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS, "Execute batch statements successfully");
-      if (useOrDropDatabase) {
+      if (useDatabase || isDatabaseSetBefore && Objects.isNull(clientSession.getDatabaseName())) {
         final TSStatus useDB =
             RpcUtils.getStatus(TSStatusCode.USE_OR_DROP_DB, clientSession.getDatabaseName());
         res.setSubStatus(Collections.singletonList(useDB));
