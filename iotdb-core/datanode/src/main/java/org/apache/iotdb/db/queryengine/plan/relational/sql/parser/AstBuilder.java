@@ -2173,21 +2173,12 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
       if (ctx.joinCriteria().ON() != null) {
         if (ctx.ASOF() != null) {
           TimeDuration timeDuration = null;
-          RelationalSqlParser.ToleranceParameterContext toleranceContext = ctx.toleranceParameter();
-          if (toleranceContext != null) {
-            if (toleranceContext.timeDuration() != null) {
-              timeDuration =
-                  DateTimeUtils.constructTimeDuration(toleranceContext.timeDuration().getText());
+          if (ctx.timeDuration() != null) {
+            timeDuration = DateTimeUtils.constructTimeDuration(ctx.timeDuration().getText());
 
-              if (timeDuration.monthDuration != 0) {
-                throw new SemanticException(
-                    "Month or year interval in tolerance is not supported now.");
-              }
-            } else if (toleranceContext.INTEGER_VALUE() != null) {
-              timeDuration =
-                  new TimeDuration(0, parseLong(toleranceContext.INTEGER_VALUE().getText()));
-            } else {
-              throw new IllegalStateException("No time duration or time interval value appears!");
+            if (timeDuration.monthDuration != 0) {
+              throw new SemanticException(
+                  "Month or year interval in tolerance is not supported now.");
             }
           }
           criteria =
