@@ -859,7 +859,7 @@ public class IoTDBTableIT {
     try (final Connection connection =
             EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
         final Statement statement = connection.createStatement()) {
-      statement.execute("grant create on tree_view_db.view_table to testUser");
+      statement.execute("grant create on tree_view_db.view_table to user testUser");
     } catch (final SQLException e) {
       fail(e.getMessage());
     }
