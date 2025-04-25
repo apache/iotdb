@@ -113,7 +113,7 @@ public abstract class AbstractEnv implements BaseEnv {
   }
 
   @Override
-  public List<String> getMetricPrometheusReporterContents() {
+  public List<String> getMetricPrometheusReporterContents(String authHeader) {
     final List<String> result = new ArrayList<>();
     // get all report content of confignodes
     for (final ConfigNodeWrapper configNode : this.configNodeWrapperList) {
@@ -123,7 +123,8 @@ public abstract class AbstractEnv implements BaseEnv {
                   + configNode.getIp()
                   + ":"
                   + configNode.getMetricPort()
-                  + "/metrics");
+                  + "/metrics",
+              authHeader);
       result.add(configNodeMetricContent);
     }
     // get all report content of datanodes
@@ -134,7 +135,8 @@ public abstract class AbstractEnv implements BaseEnv {
                   + dataNode.getIp()
                   + ":"
                   + dataNode.getMetricPort()
-                  + "/metrics");
+                  + "/metrics",
+              authHeader);
       result.add(dataNodeMetricContent);
     }
     return result;
@@ -935,6 +937,11 @@ public abstract class AbstractEnv implements BaseEnv {
   @Override
   public void shutdownAllConfigNodes() {
     configNodeWrapperList.forEach(AbstractNodeWrapper::stop);
+  }
+
+  @Override
+  public void shutdownForciblyAllConfigNodes() {
+    configNodeWrapperList.forEach(AbstractNodeWrapper::stopForcibly);
   }
 
   @Override

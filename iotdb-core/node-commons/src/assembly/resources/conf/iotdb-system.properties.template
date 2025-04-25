@@ -357,6 +357,17 @@ pipe_consensus_receiver_file_dirs=data/datanode/system/pipe/consensus/receiver
 ### Metric Configuration
 ####################
 
+# The base64 encoded username for the prometheus port of both the ConfigNode and the DataNode.
+# If left unset, the prometheus port can be accessed without authentication.
+# effectiveMode: restart
+# Datatype: String
+metric_prometheus_reporter_username=
+
+# The base64 encoded password for the prometheus port of both the ConfigNode and the DataNode.
+# effectiveMode: restart
+# Datatype: String
+metric_prometheus_reporter_password=
+
 # The reporters of metric module to report metrics
 # If there are more than one reporter, please separate them by commas ",".
 # Options: [JMX, PROMETHEUS]
