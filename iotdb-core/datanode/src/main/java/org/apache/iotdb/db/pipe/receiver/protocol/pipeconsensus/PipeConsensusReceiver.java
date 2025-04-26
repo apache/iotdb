@@ -119,7 +119,7 @@ public class PipeConsensusReceiver {
   private final PipeConsensusReceiverMetrics pipeConsensusReceiverMetrics;
   private final FolderManager folderManager;
   private final AtomicBoolean isClosed = new AtomicBoolean(false);
-  private final ReadWriteLock tsFilePieceWriteLock = new ReentrantReadWriteLock(true);
+  private final ReadWriteLock tsFilePieceReadWriteLock = new ReentrantReadWriteLock(true);
 
   public PipeConsensusReceiver(
       PipeConsensus pipeConsensus,
@@ -335,7 +335,7 @@ public class PipeConsensusReceiver {
 
   private TPipeConsensusTransferResp handleTransferFilePiece(
       final PipeConsensusTransferFilePieceReq req, final boolean isSingleFile) {
-    tsFilePieceWriteLock.readLock().lock();
+    tsFilePieceReadWriteLock.readLock().lock();
     try {
       if (LOGGER.isDebugEnabled()) {
         LOGGER.debug(
@@ -419,7 +419,7 @@ public class PipeConsensusReceiver {
         }
       }
     } finally {
-      tsFilePieceWriteLock.readLock().unlock();
+      tsFilePieceReadWriteLock.readLock().unlock();
     }
   }
 
@@ -1637,7 +1637,7 @@ public class PipeConsensusReceiver {
     private void clear(boolean resetSyncIndex, boolean cleanBaseDir) {
       // TsFilePiece Writing may out of RequestExecutor.lock, meaning that we must use additional
       // lock here to ensure serial execution of cleanup and write piece
-      tsFilePieceWriteLock.writeLock().lock();
+      tsFilePieceReadWriteLock.writeLock().lock();
       try {
         this.reqExecutionOrderBuffer.clear();
         this.tsFileWriterPool.releaseAllWriters(consensusPipeName);
@@ -1648,7 +1648,7 @@ public class PipeConsensusReceiver {
           clearAllReceiverBaseDir();
         }
       } finally {
-        tsFilePieceWriteLock.writeLock().unlock();
+        tsFilePieceReadWriteLock.writeLock().unlock();
       }
     }
 
