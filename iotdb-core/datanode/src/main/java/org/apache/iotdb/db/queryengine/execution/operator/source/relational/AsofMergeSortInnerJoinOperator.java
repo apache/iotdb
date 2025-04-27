@@ -60,17 +60,17 @@ public class AsofMergeSortInnerJoinOperator extends MergeSortInnerJoinOperator {
 
   @Override
   protected boolean processFinished() {
+    // all the join keys in rightTsBlock are less or equal than leftTsBlock, just skip right
+    if (allRightLessOrEqualThanLeft()) {
+      resetRightBlockList();
+      return true;
+    }
+
     // skip all NULL values in left, because NULL value can not appear in the inner join result
     while (currentLeftHasNullValue()) {
       if (leftFinishedWithIncIndex()) {
         return true;
       }
-    }
-
-    // all the join keys in rightTsBlock are less or equal than leftTsBlock, just skip right
-    if (allRightLessOrEqualThanLeft()) {
-      resetRightBlockList();
-      return true;
     }
 
     // skip all NULL values in right, because NULL value can not appear in the inner join result
@@ -177,7 +177,7 @@ public class AsofMergeSortInnerJoinOperator extends MergeSortInnerJoinOperator {
     int tmpIdx = rightIndex;
     boolean hasMatched = false;
     long matchedTime = Long.MIN_VALUE;
-    while (nonAsofEquals(
+    while (equalsIgnoreAsof(
             leftBlock,
             leftJoinKeyPositions,
             leftIndex,
@@ -217,7 +217,7 @@ public class AsofMergeSortInnerJoinOperator extends MergeSortInnerJoinOperator {
     return hasMatched;
   }
 
-  protected boolean nonAsofEquals(
+  protected boolean equalsIgnoreAsof(
       TsBlock leftBlock,
       int[] leftPositions,
       int lIndex,
