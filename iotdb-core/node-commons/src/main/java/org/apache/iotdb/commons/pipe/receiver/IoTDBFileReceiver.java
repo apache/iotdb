@@ -318,11 +318,11 @@ public abstract class IoTDBFileReceiver implements IoTDBReceiver {
   protected abstract String getClusterId();
 
   protected boolean shouldLogin() {
-    final long LOGIN_PERIODIC_VERIFICATION_INTERVAL_MS =
+    final long pipeReceiverLoginPeriodicVerificationIntervalMs =
         PIPE_CONFIG.getPipeReceiverLoginPeriodicVerificationIntervalMs();
-    return LOGIN_PERIODIC_VERIFICATION_INTERVAL_MS >= 0
+    return pipeReceiverLoginPeriodicVerificationIntervalMs >= 0
         && lastSuccessfulLoginTime
-            < System.currentTimeMillis() - LOGIN_PERIODIC_VERIFICATION_INTERVAL_MS;
+            < System.currentTimeMillis() - pipeReceiverLoginPeriodicVerificationIntervalMs;
   }
 
   protected TSStatus loginIfNecessary() {
