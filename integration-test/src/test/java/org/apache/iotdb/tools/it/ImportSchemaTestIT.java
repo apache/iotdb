@@ -83,7 +83,13 @@ public class ImportSchemaTestIT extends AbstractScriptIT {
         new ProcessBuilder(
             "cmd.exe",
             "/c",
-            toolsPath + File.separator + "import-schema.bat",
+            toolsPath
+                + File.separator
+                + "windows"
+                + File.separator
+                + "schema"
+                + File.separator
+                + "import-schema.bat",
             "-h",
             ip,
             "-p",
@@ -111,7 +117,7 @@ public class ImportSchemaTestIT extends AbstractScriptIT {
     ProcessBuilder builder =
         new ProcessBuilder(
             "bash",
-            toolsPath + File.separator + "import-schema.sh",
+            toolsPath + File.separator + "schema" + File.separator + "import-schema.sh",
             "-h",
             ip,
             "-p",
