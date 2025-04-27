@@ -29,6 +29,16 @@ public class RemoteDataNodeConfig implements DataNodeConfig {
   }
 
   @Override
+  public DataNodeConfig setMetricPrometheusReporterUsername(String username) {
+    return this;
+  }
+
+  @Override
+  public DataNodeConfig setMetricPrometheusReporterPassword(String password) {
+    return this;
+  }
+
+  @Override
   public DataNodeConfig setEnableRestService(boolean enableRestService) {
     return this;
   }

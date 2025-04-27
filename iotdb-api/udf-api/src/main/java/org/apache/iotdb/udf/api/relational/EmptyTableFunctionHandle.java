@@ -17,16 +17,21 @@
  * under the License.
  */
 
-package org.apache.iotdb.itbase.env;
+package org.apache.iotdb.udf.api.relational;
 
-import java.util.List;
+import org.apache.iotdb.udf.api.relational.table.TableFunctionHandle;
 
-/** This interface is used to handle properties in iotdb-confignode.properties. */
-public interface ConfigNodeConfig {
+public class EmptyTableFunctionHandle implements TableFunctionHandle {
+  @Override
+  public byte[] serialize() {
+    return new byte[0];
+  }
 
-  ConfigNodeConfig setMetricReporterType(List<String> metricReporterTypes);
+  @Override
+  public void deserialize(byte[] bytes) {}
 
-  ConfigNodeConfig setMetricPrometheusReporterUsername(String username);
-
-  ConfigNodeConfig setMetricPrometheusReporterPassword(String password);
+  @Override
+  public boolean equals(Object o) {
+    return o != null && getClass() == o.getClass();
+  }
 }

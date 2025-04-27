@@ -17,16 +17,22 @@
  * under the License.
  */
 
-package org.apache.iotdb.itbase.env;
+package org.apache.iotdb.udf.api.relational.table;
 
-import java.util.List;
+/**
+ * An area to store all information necessary to execute the table function, gathered at analysis
+ * time
+ */
+public interface TableFunctionHandle {
+  /**
+   * Serialize your state into byte array. The order of serialization must be consistent with
+   * deserialization.
+   */
+  byte[] serialize();
 
-/** This interface is used to handle properties in iotdb-confignode.properties. */
-public interface ConfigNodeConfig {
-
-  ConfigNodeConfig setMetricReporterType(List<String> metricReporterTypes);
-
-  ConfigNodeConfig setMetricPrometheusReporterUsername(String username);
-
-  ConfigNodeConfig setMetricPrometheusReporterPassword(String password);
+  /**
+   * Deserialize byte array into your state. The order of deserialization must be consistent with
+   * serialization.
+   */
+  void deserialize(byte[] bytes);
 }
