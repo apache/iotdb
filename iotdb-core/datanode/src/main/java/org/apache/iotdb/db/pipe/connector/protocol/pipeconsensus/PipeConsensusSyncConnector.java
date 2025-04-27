@@ -524,9 +524,6 @@ public class PipeConsensusSyncConnector extends IoTDBConnector {
   @Override
   public synchronized void close() {
     super.close();
-    if (syncRetryClientManager != null) {
-      syncRetryClientManager.close();
-    }
 
     if (tabletBatchBuilder != null) {
       tabletBatchBuilder.close();
