@@ -338,6 +338,9 @@ public class PipeRawTabletInsertionEvent extends PipeInsertionEvent
     return sourceEvent;
   }
 
+  // If the source raw event has called "markAsNeedToReport"
+  // the first derivative event shall call this of the source event
+  // to avoid premature reporting
   @Override
   public void incrementSourceReferenceCount() {
     sourceEvent.incrementSourceReferenceCount();
