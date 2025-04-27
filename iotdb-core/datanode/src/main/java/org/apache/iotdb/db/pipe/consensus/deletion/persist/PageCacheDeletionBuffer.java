@@ -261,7 +261,15 @@ public class PageCacheDeletionBuffer implements DeletionBuffer {
     // first waiting serialize and sync tasks finished, then release all resources
     waitUntilFlushAllDeletionsOrTimeOut();
     if (persistThread != null) {
-      persistThread.shutdown();
+      persistThread.shutdownNow();
+      try {
+        if (!persistThread.awaitTermination(30, TimeUnit.SECONDS)) {
+          LOGGER.warn("persistThread did not terminate within {}s", 30);
+        }
+      } catch (InterruptedException e) {
+        LOGGER.warn("DAL Thread {} still doesn't exit after 30s", dataRegionId);
+        Thread.currentThread().interrupt();
+      }
     }
     // clean buffer
     MmapUtil.clean(serializeBuffer);
@@ -331,6 +339,7 @@ public class PageCacheDeletionBuffer implements DeletionBuffer {
         LOGGER.warn(
             "Interrupted when waiting for taking DeletionResource from blocking queue to serialize.");
         Thread.currentThread().interrupt();
+        return;
       }
 
       // For further deletion, we use non-blocking poll() method to persist existing deletion of
