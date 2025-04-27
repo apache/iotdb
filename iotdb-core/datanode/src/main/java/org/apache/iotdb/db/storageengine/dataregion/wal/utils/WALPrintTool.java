@@ -54,9 +54,11 @@ public class WALPrintTool {
   private void doPrint(File file) throws IOException {
     System.out.printf("-----------------%s---------------%n", file.getAbsoluteFile());
     try (WALReader reader = new WALReader(file)) {
+      long walCurrentReadOffset = reader.getWALCurrentReadOffset();
       while (reader.hasNext()) {
         WALEntry entry = reader.next();
-        System.out.printf("%d\t%s%n", reader.getWALCurrentReadOffset(), entry.toString());
+        System.out.printf("%d\t%s%n", walCurrentReadOffset, entry.toString());
+        walCurrentReadOffset = reader.getWALCurrentReadOffset();
       }
     }
   }
