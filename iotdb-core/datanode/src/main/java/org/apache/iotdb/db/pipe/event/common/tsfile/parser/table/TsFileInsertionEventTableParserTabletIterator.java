@@ -57,11 +57,12 @@ import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
 public class TsFileInsertionEventTableParserTabletIterator implements Iterator<Tablet> {
-  private final long startTime;
-  private final long endTime;
 
   private final int pipeMaxAlignedSeriesNumInOneBatch =
       PipeConfig.getInstance().getPipeMaxAlignedSeriesNumInOneBatch();
+
+  private final long startTime;
+  private final long endTime;
 
   // Used to read or record TSFileMeta tools or meta information
   private final TsFileSequenceReader reader;
