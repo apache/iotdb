@@ -338,6 +338,16 @@ public class PipeRawTabletInsertionEvent extends PipeInsertionEvent
     return sourceEvent;
   }
 
+  @Override
+  public void incrementSourceReferenceCount() {
+    sourceEvent.incrementSourceReferenceCount();
+  }
+
+  @Override
+  public int decrementAndGetSourceReferenceCount() {
+    return sourceEvent.decrementAndGetSourceReferenceCount();
+  }
+
   /////////////////////////// TabletInsertionEvent ///////////////////////////
 
   @Override
