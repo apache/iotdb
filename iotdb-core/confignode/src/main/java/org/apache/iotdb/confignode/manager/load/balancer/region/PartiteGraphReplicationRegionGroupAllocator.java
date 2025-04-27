@@ -113,6 +113,19 @@ public class PartiteGraphReplicationRegionGroupAllocator implements IRegionGroup
     return result;
   }
 
+  @Override
+  public Map<TConsensusGroupId, TDataNodeConfiguration> removeNodeReplicaSelect(
+      Map<Integer, TDataNodeConfiguration> availableDataNodeMap,
+      Map<Integer, Double> freeDiskSpaceMap,
+      List<TRegionReplicaSet> allocatedRegionGroups,
+      Map<TConsensusGroupId, String> regionDatabaseMap,
+      Map<String, List<TRegionReplicaSet>> databaseAllocatedRegionGroupMap,
+      Map<TConsensusGroupId, TRegionReplicaSet> remainReplicasMap) {
+    // TODO: Implement this method
+    throw new UnsupportedOperationException(
+        "The removeNodeReplicaSelect method of PartiteGraphPlacementRegionGroupAllocator is yet to be implemented.");
+  }
+
   private void prepare(
       int replicationFactor,
       Map<Integer, TDataNodeConfiguration> availableDataNodeMap,
