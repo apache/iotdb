@@ -155,7 +155,8 @@ public class ActiveLoadUtil {
             IoTDBDescriptor.getInstance().getConfig().getLoadDiskSelectStrategy(),
             IoTDBDescriptor.getInstance().getConfig().getLoadActiveListeningDirs(),
             new ILoadDiskSelector.DiskDirectorySelector<Void>() {
-              private FolderManager folderManager;
+
+              private volatile FolderManager folderManager;
 
               @Override
               public File selectDirectory(
