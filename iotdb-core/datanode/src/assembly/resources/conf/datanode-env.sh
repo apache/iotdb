@@ -20,6 +20,11 @@
 
 # You can set DataNode memory size, example '2G' or '2048M'
 MEMORY_SIZE=
+# on heap memory size
+#ON_HEAP_MEMORY="2G"
+# off heap memory size
+#OFF_HEAP_MEMORY="512M"
+
 
 # You can put your env variable here
 # export JAVA_HOME=$JAVA_HOME
@@ -261,12 +266,22 @@ else
 fi
 
 
-calculate_memory_sizes
-
-# on heap memory size
-#ON_HEAP_MEMORY="2G"
-# off heap memory size
-#OFF_HEAP_MEMORY="512M"
+if [[ "$IOTDB_JMX_OPTS" =~ -Xms ]];then
+    item_arr=(${IOTDB_JMX_OPTS})
+    for item in ${item_arr[@]};do
+        if [[ -n "$item" ]]; then
+            if [[ "$item" =~ -Xmx ]]; then
+                ON_HEAP_MEMORY=${item#*mx}
+            elif [[ "$item" =~ -XX:MaxDirectMemorySize= ]]; then
+                OFF_HEAP_MEMORY=${item#*=}
+            fi
+        fi
+    done
+elif [[ -n "$ON_HEAP_MEMORY" ]]; then
+    echo "ON_HEAP_MEMORY=$ON_HEAP_MEMORY"
+else
+    calculate_memory_sizes
+fi
 
 
 if [ "${OFF_HEAP_MEMORY%"G"}" != "$OFF_HEAP_MEMORY" ]
@@ -311,10 +326,11 @@ else
   echo "setting local JMX..."
 fi
 
+
 IOTDB_JMX_OPTS="$IOTDB_JMX_OPTS -Diotdb.jmx.local=$JMX_LOCAL"
-IOTDB_JMX_OPTS="$IOTDB_JMX_OPTS -Xms${ON_HEAP_MEMORY}"
-IOTDB_JMX_OPTS="$IOTDB_JMX_OPTS -Xmx${ON_HEAP_MEMORY}"
-IOTDB_JMX_OPTS="$IOTDB_JMX_OPTS -XX:MaxDirectMemorySize=${OFF_HEAP_MEMORY}"
+if [[ ! "$CONFIGNODE_JMX_OPTS" =~ -Xms ]]; then  IOTDB_JMX_OPTS="$IOTDB_JMX_OPTS -Xms${ON_HEAP_MEMORY}"; fi
+if [[ ! "$CONFIGNODE_JMX_OPTS" =~ -Xmx ]]; then IOTDB_JMX_OPTS="$IOTDB_JMX_OPTS -Xmx${ON_HEAP_MEMORY}"; fi
+if [[ ! "$CONFIGNODE_JMX_OPTS" =~ -XX:MaxDirectMemorySize= ]]; then IOTDB_JMX_OPTS="$IOTDB_JMX_OPTS -XX:MaxDirectMemorySize=${OFF_HEAP_MEMORY}"; fi
 IOTDB_JMX_OPTS="$IOTDB_JMX_OPTS -Djdk.nio.maxCachedBufferSize=${MAX_CACHED_BUFFER_SIZE}"
 IOTDB_JMX_OPTS="$IOTDB_JMX_OPTS -XX:+CrashOnOutOfMemoryError"
 IOTDB_JMX_OPTS="$IOTDB_JMX_OPTS -XX:+UseAdaptiveSizePolicy"
@@ -344,7 +360,6 @@ IOTDB_JMX_OPTS="$IOTDB_JMX_OPTS -XX:+SafepointTimeout"
 
 # if you want to dump the heap memory while OOM happening, you can use the following command, remember to replace ${heap_dump_dir}/datanode_heapdump.hprof with your own file path and the folder where this file is located needs to be created in advance
 # IOTDB_JMX_OPTS="$IOTDB_JMX_OPTS -XX:+HeapDumpOnOutOfMemoryError -XX:HeapDumpPath=${heap_dump_dir}/datanode_heapdump.hprof"
-
 
 echo "DataNode on heap memory size = ${ON_HEAP_MEMORY}B, off heap memory size = ${OFF_HEAP_MEMORY}B"
 echo "If you want to change this configuration, please check conf/datanode-env.sh."
