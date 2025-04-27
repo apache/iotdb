@@ -1379,7 +1379,7 @@ abstract class AbstractSubscriptionConsumer implements AutoCloseable {
     }
     for (final AbstractSubscriptionProvider provider : providers) {
       try {
-        return provider.getSessionConnection().fetchAllEndPoints();
+        return provider.heartbeat().getEndPoints();
       } catch (final Exception e) {
         LOGGER.warn(
             "{} failed to fetch all endpoints from subscription provider {}, try next subscription provider...",

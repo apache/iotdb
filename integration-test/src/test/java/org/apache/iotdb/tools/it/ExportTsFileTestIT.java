@@ -81,7 +81,7 @@ public class ExportTsFileTestIT extends AbstractScriptIT {
         new ProcessBuilder(
             "cmd.exe",
             "/c",
-            toolsPath + File.separator + "export-tsfile.bat",
+            toolsPath + File.separator + "windows" + File.separator + "export-tsfile.bat",
             "-h",
             ip,
             "-p",
@@ -105,7 +105,7 @@ public class ExportTsFileTestIT extends AbstractScriptIT {
         new ProcessBuilder(
             "cmd.exe",
             "/c",
-            toolsPath + File.separator + "export-tsfile.bat",
+            toolsPath + File.separator + "windows" + File.separator + "export-tsfile.bat",
             "-h",
             ip,
             "-p",
