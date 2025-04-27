@@ -22,17 +22,14 @@ package org.apache.iotdb.db.pipe.agent.task.stage;
 import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.commons.pipe.agent.task.connection.EventSupplier;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
-import org.apache.iotdb.commons.pipe.agent.task.progress.PipeEventCommitManager;
 import org.apache.iotdb.commons.pipe.agent.task.stage.PipeTaskStage;
 import org.apache.iotdb.commons.pipe.config.plugin.configuraion.PipeTaskRuntimeConfiguration;
 import org.apache.iotdb.commons.pipe.config.plugin.env.PipeTaskExtractorRuntimeEnvironment;
-import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
 import org.apache.iotdb.db.storageengine.StorageEngine;
 import org.apache.iotdb.pipe.api.PipeExtractor;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameterValidator;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
-import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 
 import org.slf4j.Logger;
@@ -113,17 +110,6 @@ public class PipeTaskExtractorStage extends PipeTaskStage {
   }
 
   public EventSupplier getEventSupplier() {
-    return () -> {
-      // We synchronize here to ensure the commit id is in order in multiple processors, and to
-      // block the complexity from user defined extractors
-      synchronized (this) {
-        final Event event = pipeExtractor.supply();
-        if (event instanceof EnrichedEvent) {
-          PipeEventCommitManager.getInstance()
-              .enrichWithCommitterKeyAndCommitId((EnrichedEvent) event, creationTime, regionId);
-        }
-        return event;
-      }
-    };
+    return pipeExtractor::supply;
   }
 }

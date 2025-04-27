@@ -46,11 +46,12 @@ import org.apache.iotdb.pipe.api.exception.PipeException;
 
 import java.util.HashSet;
 import java.util.Set;
+import java.util.concurrent.locks.ReentrantLock;
 
 public class PipeTaskProcessorStage extends PipeTaskStage {
 
   private final PipeProcessorSubtaskExecutor executor;
-
+  private final ReentrantLock multiProcessorLock = new ReentrantLock();
   private final Set<PipeProcessorSubtask> pipeProcessorSubtasks = new HashSet<>();
 
   /**
@@ -129,12 +130,27 @@ public class PipeTaskProcessorStage extends PipeTaskStage {
               pipeName,
               creationTime,
               regionId,
-              pipeExtractorInputEventSupplier,
+              getExtractorSupplier(pipeExtractorInputEventSupplier),
               pipeProcessor,
               pipeConnectorOutputEventCollector));
     }
 
     this.executor = executor;
+  }
+
+  private EventSupplier getExtractorSupplier(final EventSupplier extractorSupplier) {
+    return () -> {
+      if (pipeProcessorSubtasks.size() > 1) {
+        multiProcessorLock.lock();
+      }
+      try {
+        return extractorSupplier.supply();
+      } finally {
+        if (pipeProcessorSubtasks.size() > 1) {
+          multiProcessorLock.unlock();
+        }
+      }
+    };
   }
 
   @Override
