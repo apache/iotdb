@@ -33,10 +33,6 @@ public final class BinaryBigArray {
     array = new ObjectBigArray<>();
   }
 
-  public BinaryBigArray(Binary slice) {
-    array = new ObjectBigArray<>(slice);
-  }
-
   /** Returns the size of this big array in bytes. */
   public long sizeOf() {
     return INSTANCE_SIZE + array.sizeOf() + sizeOfBinarys;
