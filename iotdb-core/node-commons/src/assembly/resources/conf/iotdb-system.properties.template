@@ -371,6 +371,17 @@ iot_consensus_v2_deletion_file_dir=data/datanode/system/pipe/consensus/deletion
 ### Metric Configuration
 ####################
 
+# The base64 encoded username for the prometheus port of both the ConfigNode and the DataNode.
+# If left unset, the prometheus port can be accessed without authentication.
+# effectiveMode: restart
+# Datatype: String
+metric_prometheus_reporter_username=
+
+# The base64 encoded password for the prometheus port of both the ConfigNode and the DataNode.
+# effectiveMode: restart
+# Datatype: String
+metric_prometheus_reporter_password=
+
 # The reporters of metric module to report metrics
 # If there are more than one reporter, please separate them by commas ",".
 # Options: [JMX, PROMETHEUS]
@@ -1938,6 +1949,20 @@ iot_consensus_v2_mode=batch
 # effectiveMode: restart
 # Datatype: int
 deletion_ahead_log_buffer_queue_capacity=500
+
+# Interval for check zombie TsFile writer in iot consensus v2
+# time unit is milliseconds.
+# effectiveMode: restart
+# DataType: long
+zombie_tsfile_writer_check_interval=300000
+
+# Threshold for determining whether a TsFile writer is a zombie in iot consensus v2
+# The larger this value is, the longer the synchronization will be stuck when an unexpected situation occurs.
+# The smaller this value is, the greater the possibility of misjudgment, which may cause consistency loss.
+# time unit is milliseconds.
+# effectiveMode: restart
+# DataType: long
+zombie_tsfile_writer_threshold=600000
 
 ####################
 ### Procedure Configuration

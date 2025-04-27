@@ -118,8 +118,7 @@ public class SubscriptionTablePullConsumerBuilder extends AbstractSubscriptionPu
     return this;
   }
 
-  @Override
-  public ISubscriptionTablePullConsumer buildTablePullConsumer() {
+  public ISubscriptionTablePullConsumer build() {
     return new SubscriptionTablePullConsumer(this);
   }
 }

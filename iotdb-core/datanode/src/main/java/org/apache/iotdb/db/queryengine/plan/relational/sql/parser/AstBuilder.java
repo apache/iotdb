@@ -265,6 +265,7 @@ import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.GroupingSe
 import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.GroupingSets.Type.ROLLUP;
 import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.QualifiedName.mapIdentifier;
 import static org.apache.iotdb.db.utils.TimestampPrecisionUtils.currPrecision;
+import static org.apache.iotdb.db.utils.constant.SqlConstant.APPROX_COUNT_DISTINCT;
 import static org.apache.iotdb.db.utils.constant.SqlConstant.FIRST_AGGREGATION;
 import static org.apache.iotdb.db.utils.constant.SqlConstant.FIRST_BY_AGGREGATION;
 import static org.apache.iotdb.db.utils.constant.SqlConstant.LAST_AGGREGATION;
@@ -2228,6 +2229,12 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
   }
 
   @Override
+  public Node visitTableFunctionInvocationWithTableKeyWord(
+      RelationalSqlParser.TableFunctionInvocationWithTableKeyWordContext ctx) {
+    return visit(ctx.tableFunctionCall());
+  }
+
+  @Override
   public Node visitTableFunctionCall(RelationalSqlParser.TableFunctionCallContext context) {
     QualifiedName name = getQualifiedName(context.qualifiedName());
     List<TableFunctionArgument> arguments =
@@ -2268,44 +2275,74 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
     return new TableFunctionTableArgument(getLocation(context), table, partitionBy, orderBy);
   }
 
+  private Node visitTableArgumentAlias(
+      NodeLocation nodeLocation,
+      Relation relation,
+      RelationalSqlParser.IdentifierContext identifierContext,
+      TerminalNode as,
+      RelationalSqlParser.ColumnAliasesContext columnAliasesContext) {
+    if (identifierContext != null) {
+      Identifier alias = (Identifier) visit(identifierContext);
+      if (as == null) {
+        validateArgumentAlias(alias, identifierContext);
+      }
+      List<Identifier> columnNames = null;
+      if (columnAliasesContext != null) {
+        columnNames = visit(columnAliasesContext.identifier(), Identifier.class);
+      }
+      relation = new AliasedRelation(nodeLocation, relation, alias, columnNames);
+    }
+    return relation;
+  }
+
+  @Override
+  public Node visitTableArgumentTableWithTableKeyWord(
+      RelationalSqlParser.TableArgumentTableWithTableKeyWordContext context) {
+    Relation relation =
+        new Table(getLocation(context.TABLE()), getQualifiedName(context.qualifiedName()));
+    return visitTableArgumentAlias(
+        getLocation(context.TABLE()),
+        relation,
+        context.identifier(),
+        context.AS(),
+        context.columnAliases());
+  }
+
   @Override
   public Node visitTableArgumentTable(RelationalSqlParser.TableArgumentTableContext context) {
     Relation relation =
-        new Table(getLocation(context.TABLE()), getQualifiedName(context.qualifiedName()));
+        new Table(getLocation(context.qualifiedName()), getQualifiedName(context.qualifiedName()));
+    return visitTableArgumentAlias(
+        getLocation(context.qualifiedName()),
+        relation,
+        context.identifier(),
+        context.AS(),
+        context.columnAliases());
+  }
 
-    if (context.identifier() != null) {
-      Identifier alias = (Identifier) visit(context.identifier());
-      if (context.AS() == null) {
-        validateArgumentAlias(alias, context.identifier());
-      }
-      List<Identifier> columnNames = null;
-      if (context.columnAliases() != null) {
-        columnNames = visit(context.columnAliases().identifier(), Identifier.class);
-      }
-      relation = new AliasedRelation(getLocation(context.TABLE()), relation, alias, columnNames);
-    }
-
-    return relation;
+  @Override
+  public Node visitTableArgumentQueryWithTableKeyWord(
+      RelationalSqlParser.TableArgumentQueryWithTableKeyWordContext context) {
+    Relation relation =
+        new TableSubquery(getLocation(context.TABLE()), (Query) visit(context.query()));
+    return visitTableArgumentAlias(
+        getLocation(context.TABLE()),
+        relation,
+        context.identifier(),
+        context.AS(),
+        context.columnAliases());
   }
 
   @Override
   public Node visitTableArgumentQuery(RelationalSqlParser.TableArgumentQueryContext context) {
     Relation relation =
-        new TableSubquery(getLocation(context.TABLE()), (Query) visit(context.query()));
-
-    if (context.identifier() != null) {
-      Identifier alias = (Identifier) visit(context.identifier());
-      if (context.AS() == null) {
-        validateArgumentAlias(alias, context.identifier());
-      }
-      List<Identifier> columnNames = null;
-      if (context.columnAliases() != null) {
-        columnNames = visit(context.columnAliases().identifier(), Identifier.class);
-      }
-      relation = new AliasedRelation(getLocation(context.TABLE()), relation, alias, columnNames);
-    }
-
-    return relation;
+        new TableSubquery(getLocation(context.query()), (Query) visit(context.query()));
+    return visitTableArgumentAlias(
+        getLocation(context.query()),
+        relation,
+        context.identifier(),
+        context.AS(),
+        context.columnAliases());
   }
 
   @Override
@@ -2728,6 +2765,14 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
                 .equalsIgnoreCase(TimestampOperand.TIMESTAMP_EXPRESSION_STRING),
             "The third argument of 'first_by' or 'last_by' function must be 'time'",
             ctx);
+      }
+    } else if (name.toString().equalsIgnoreCase(APPROX_COUNT_DISTINCT)) {
+      if (arguments.size() == 2
+          && !(arguments.get(1) instanceof DoubleLiteral
+              || arguments.get(1) instanceof LongLiteral
+              || arguments.get(1) instanceof StringLiteral)) {
+        throw new SemanticException(
+            "The second argument of 'approx_count_distinct' function must be a literal");
       }
     }
 

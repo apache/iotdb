@@ -22,6 +22,7 @@ package org.apache.iotdb.confignode.procedure.impl.subscription.subscription;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeStaticMeta;
 import org.apache.iotdb.commons.subscription.meta.consumer.ConsumerGroupMeta;
+import org.apache.iotdb.commons.subscription.meta.consumer.ConsumerMeta;
 import org.apache.iotdb.commons.subscription.meta.topic.TopicMeta;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
@@ -88,8 +89,13 @@ public class CreateSubscriptionProcedure extends AbstractOperateSubscriptionAndP
 
     subscriptionInfo.get().validateBeforeSubscribe(subscribeReq);
 
-    // Construct AlterConsumerGroupProcedure
+    final String consumerId = subscribeReq.getConsumerId();
     final String consumerGroupId = subscribeReq.getConsumerGroupId();
+    final ConsumerGroupMeta consumerGroupMeta =
+        subscriptionInfo.get().getConsumerGroupMeta(consumerGroupId);
+    final ConsumerMeta consumerMeta = consumerGroupMeta.getConsumerMeta(consumerId);
+
+    // Construct AlterConsumerGroupProcedure
     final ConsumerGroupMeta updatedConsumerGroupMeta =
         subscriptionInfo.get().deepCopyConsumerGroupMeta(consumerGroupId);
     updatedConsumerGroupMeta.addSubscription(
@@ -101,6 +107,16 @@ public class CreateSubscriptionProcedure extends AbstractOperateSubscriptionAndP
     for (final String topicName : subscribeReq.getTopicNames()) {
       final String pipeName =
           PipeStaticMeta.generateSubscriptionPipeName(topicName, consumerGroupId);
+      // check username
+      if (!consumerGroupMeta.allowSubscribeTopicForConsumer(topicName, consumerId)) {
+        final String exceptionMessage =
+            String.format(
+                "Failed to subscribe topic %s for consumer %s because inconsistent username under the same consumer group",
+                topicName, consumerId);
+        LOGGER.warn(exceptionMessage);
+        throw new SubscriptionException(exceptionMessage);
+      }
+
       if (!subscriptionInfo.get().isTopicSubscribedByConsumerGroup(topicName, consumerGroupId)
           // even if there existed subscription meta, if there is no corresponding pipe meta, it
           // will try to create the pipe
@@ -110,7 +126,8 @@ public class CreateSubscriptionProcedure extends AbstractOperateSubscriptionAndP
             new CreatePipeProcedureV2(
                 new TCreatePipeReq()
                     .setPipeName(pipeName)
-                    .setExtractorAttributes(topicMeta.generateExtractorAttributes())
+                    .setExtractorAttributes(
+                        topicMeta.generateExtractorAttributes(consumerMeta.getUsername()))
                     .setProcessorAttributes(topicMeta.generateProcessorAttributes())
                     .setConnectorAttributes(topicMeta.generateConnectorAttributes(consumerGroupId)),
                 pipeTaskInfo));

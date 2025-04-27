@@ -21,6 +21,7 @@
 #include <algorithm>
 #include <memory>
 #include <time.h>
+#include "NodesSupplier.h"
 
 using namespace std;
 
@@ -53,6 +54,29 @@ void RpcUtils::verifySuccess(const TSStatus &status) {
     if (status.code != TSStatusCode::SUCCESS_STATUS
         && status.code != TSStatusCode::REDIRECTION_RECOMMEND) {
         throw ExecutionException(to_string(status.code) + ": " + status.message, status);
+    }
+}
+
+void RpcUtils::verifySuccessWithRedirection(const TSStatus &status) {
+    verifySuccess(status);
+    if (status.__isset.redirectNode) {
+        throw RedirectException(to_string(status.code) + ": " + status.message, status.redirectNode);
+    }
+    if (status.__isset.subStatus) {
+        auto statusSubStatus = status.subStatus;
+        vector<TEndPoint> endPointList(statusSubStatus.size());
+        int count = 0;
+        for (TSStatus subStatus : statusSubStatus) {
+            if (subStatus.__isset.redirectNode) {
+                endPointList[count++] = subStatus.redirectNode;
+            } else {
+                TEndPoint endPoint;
+                endPointList[count++] = endPoint;
+            }
+        }
+        if (!endPointList.empty()) {
+            throw RedirectException(to_string(status.code) + ": " + status.message, endPointList);
+        }
     }
 }
 
@@ -587,6 +611,12 @@ Session::~Session() {
     }
 }
 
+void Session::removeBrokenSessionConnection(shared_ptr<SessionConnection> sessionConnection) {
+    if (enableRedirection) {
+        this->endPointToSessionConnection.erase(sessionConnection->getEndPoint());
+    }
+}
+
 /**
    * check whether the batch has been sorted
    *
@@ -795,6 +825,26 @@ void Session::initZoneId() {
     zoneId = zoneStr;
 }
 
+void Session::initNodesSupplier() {
+    std::vector<TEndPoint> endPoints;
+    TEndPoint endPoint;
+    endPoint.__set_ip(host);
+    endPoint.__set_port(rpcPort);
+    endPoints.emplace_back(endPoint);
+    if (enableAutoFetch) {
+        nodesSupplier = NodesSupplier::create(endPoints, username, password);
+    } else {
+        nodesSupplier = make_shared<StaticNodesSupplier>(endPoints);
+    }
+}
+
+void Session::initDefaultSessionConnection() {
+    defaultEndPoint.__set_ip(host);
+    defaultEndPoint.__set_port(rpcPort);
+    defaultSessionConnection = make_shared<SessionConnection>(this, defaultEndPoint, zoneId, nodesSupplier, 60, 500,
+            sqlDialect, database);
+}
+
 void Session::open() {
     open(false, DEFAULT_TIMEOUT_MS);
 }
@@ -875,6 +925,15 @@ void Session::open(bool enableRPCCompression, int connectionTimeoutInMs) {
     }
 
     isClosed = false;
+    try {
+        initDefaultSessionConnection();
+    } catch (const exception &e) {
+        log_debug(e.what());
+        throw IoTDBException(e.what());
+    }
+    if (enableRedirection) {
+        endPointToSessionConnection.insert(make_pair(defaultEndPoint, defaultSessionConnection));
+    }
 }
 
 
@@ -929,8 +988,20 @@ void Session::insertRecord(const string &deviceId, int64_t time,
     req.__set_isAligned(false);
     TSStatus respStatus;
     try {
-        client->insertStringRecord(respStatus, req);
+        getSessionConnection(deviceId)->getSessionClient()->insertStringRecord(respStatus, req);
         RpcUtils::verifySuccess(respStatus);
+    } catch (RedirectException& e) {
+        handleRedirection(deviceId, e.endPoint);
+    } catch (const IoTDBConnectionException &e) {
+        if (enableRedirection && deviceIdToEndpoint.find(deviceId) != deviceIdToEndpoint.end()) {
+            deviceIdToEndpoint.erase(deviceId);
+            try {
+                defaultSessionConnection->getSessionClient()->insertStringRecord(respStatus, req);
+            } catch (RedirectException& e) {
+            }
+        } else {
+            throw IoTDBConnectionException(e.what());
+        }
     } catch (const TTransportException &e) {
         log_debug(e.what());
         throw IoTDBConnectionException(e.what());
@@ -1836,6 +1907,38 @@ int64_t Session::getSessionId() {
     return sessionId;
 }
 
+shared_ptr<SessionConnection> Session::getQuerySessionConnection() {
+    auto endPoint = nodesSupplier->getQueryEndPoint();
+    if (!endPoint.is_initialized() || endPointToSessionConnection.empty()) {
+        return defaultSessionConnection;
+    }
+
+    auto it = endPointToSessionConnection.find(endPoint.value());
+    if (it != endPointToSessionConnection.end()) {
+        return it->second;
+    }
+
+    shared_ptr<SessionConnection> newConnection;
+    try {
+        newConnection = make_shared<SessionConnection>(this, endPoint.value(), zoneId, nodesSupplier,
+        60, 500, sqlDialect, database);
+        endPointToSessionConnection.emplace(endPoint.value(), newConnection);
+        return newConnection;
+    } catch (exception &e) {
+        log_debug("Session::getQuerySessionConnection() exception: " + e.what());
+        return newConnection;
+    }
+}
+
+shared_ptr<SessionConnection> Session::getSessionConnection(std::string deviceId) {
+    if (!enableRedirection ||
+            deviceIdToEndpoint.find(deviceId) == deviceIdToEndpoint.end() ||
+            endPointToSessionConnection.find(deviceIdToEndpoint[deviceId]) == endPointToSessionConnection.end()) {
+        return defaultSessionConnection;
+    }
+    return endPointToSessionConnection.find(deviceIdToEndpoint[deviceId])->second;
+}
+
 string Session::getTimeZone() {
     if (!zoneId.empty()) {
         return zoneId;
@@ -1906,6 +2009,70 @@ unique_ptr<SessionDataSet> Session::executeQueryStatement(const string &sql, int
     return unique_ptr<SessionDataSet>(new SessionDataSet(
             sql, resp.columns, resp.dataTypeList, resp.columnNameIndexMap, resp.ignoreTimeStamp, resp.queryId,
             statementId, client, sessionId, queryDataSet));
+}
+
+void Session::handleQueryRedirection(TEndPoint endPoint) {
+    if (!enableRedirection) return;
+    shared_ptr<SessionConnection> newConnection;
+    auto it = endPointToSessionConnection.find(endPoint);
+    if (it != endPointToSessionConnection.end()) {
+        newConnection = it->second;
+    } else {
+        try {
+            newConnection = make_shared<SessionConnection>(this, endPoint, zoneId, nodesSupplier,
+                    60, 500, sqlDialect, database);
+
+            endPointToSessionConnection.emplace(endPoint, newConnection);
+        } catch (exception &e) {
+            throw IoTDBConnectionException(e.what());
+        }
+    }
+    defaultSessionConnection = newConnection;
+}
+
+void Session::handleRedirection(const std::string& deviceId, TEndPoint endPoint) {
+    if (!enableRedirection) return;
+    if (endPoint.ip == "127.0.0.1") return;
+    deviceIdToEndpoint[deviceId] = endPoint;
+
+    shared_ptr<SessionConnection> newConnection;
+    auto it = endPointToSessionConnection.find(endPoint);
+    if (it != endPointToSessionConnection.end()) {
+        newConnection = it->second;
+    } else {
+        try {
+            newConnection = make_shared<SessionConnection>(this, endPoint, zoneId, nodesSupplier,
+                    60, 500, sqlDialect, database);
+            endPointToSessionConnection.emplace(endPoint, newConnection);
+        } catch (exception &e) {
+            deviceIdToEndpoint.erase(deviceId);
+            throw IoTDBConnectionException(e.what());
+        }
+    }
+}
+
+std::unique_ptr<SessionDataSet> Session::executeQueryStatementMayRedirect(const std::string &sql, int64_t timeoutInMs) {
+    auto sessionConnection = getQuerySessionConnection();
+    if (!sessionConnection) {
+        log_warn("Session connection not found");
+        return nullptr;
+    }
+    try {
+        return sessionConnection->executeQueryStatement(sql, timeoutInMs);
+    } catch (RedirectException& e) {
+        log_warn("Session connection redirect exception: " + e.what());
+        handleQueryRedirection(e.endPoint);
+        try {
+            return defaultSessionConnection->executeQueryStatement(sql, timeoutInMs);
+        } catch (exception& e) {
+            log_error("Exception while executing redirected query statement: %s", e.what());
+            throw ExecutionException(e.what());
+        }
+    } catch (exception& e) {
+        log_error("Exception while executing query statement: %s", e.what());
+        throw e;
+    }
+
 }
 
 void Session::executeNonQueryStatement(const string &sql) {

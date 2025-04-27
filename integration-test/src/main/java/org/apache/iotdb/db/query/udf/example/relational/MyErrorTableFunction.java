@@ -22,7 +22,9 @@ package org.apache.iotdb.db.query.udf.example.relational;
 import org.apache.iotdb.udf.api.exception.UDFArgumentNotValidException;
 import org.apache.iotdb.udf.api.exception.UDFException;
 import org.apache.iotdb.udf.api.relational.TableFunction;
+import org.apache.iotdb.udf.api.relational.table.MapTableFunctionHandle;
 import org.apache.iotdb.udf.api.relational.table.TableFunctionAnalysis;
+import org.apache.iotdb.udf.api.relational.table.TableFunctionHandle;
 import org.apache.iotdb.udf.api.relational.table.TableFunctionProcessorProvider;
 import org.apache.iotdb.udf.api.relational.table.argument.Argument;
 import org.apache.iotdb.udf.api.relational.table.argument.DescribedSchema;
@@ -67,6 +69,7 @@ public class MyErrorTableFunction implements TableFunction {
       return TableFunctionAnalysis.builder()
           .properColumnSchema(
               DescribedSchema.builder().addField("proper_column", Type.INT32).build())
+          .handle(new MapTableFunctionHandle())
           .build();
     } else if (nValue == 1) {
       // set empty required columns
@@ -74,6 +77,7 @@ public class MyErrorTableFunction implements TableFunction {
           .properColumnSchema(
               DescribedSchema.builder().addField("proper_column", Type.INT32).build())
           .requiredColumns(TBL_PARAM, Collections.emptyList())
+          .handle(new MapTableFunctionHandle())
           .build();
     } else if (nValue == 2) {
       // set negative required columns
@@ -81,6 +85,7 @@ public class MyErrorTableFunction implements TableFunction {
           .properColumnSchema(
               DescribedSchema.builder().addField("proper_column", Type.INT32).build())
           .requiredColumns(TBL_PARAM, Collections.singletonList(-1))
+          .handle(new MapTableFunctionHandle())
           .build();
     } else if (nValue == 3) {
       // set required columns out of bound (0~10)
@@ -88,6 +93,7 @@ public class MyErrorTableFunction implements TableFunction {
           .properColumnSchema(
               DescribedSchema.builder().addField("proper_column", Type.INT32).build())
           .requiredColumns(TBL_PARAM, IntStream.range(0, 11).boxed().collect(Collectors.toList()))
+          .handle(new MapTableFunctionHandle())
           .build();
     } else if (nValue == 4) {
       // specify required columns to unknown table
@@ -95,13 +101,20 @@ public class MyErrorTableFunction implements TableFunction {
           .properColumnSchema(
               DescribedSchema.builder().addField("proper_column", Type.INT32).build())
           .requiredColumns("TIMECHO", Collections.singletonList(1))
+          .handle(new MapTableFunctionHandle())
           .build();
     }
     throw new UDFArgumentNotValidException("unexpected argument value");
   }
 
   @Override
-  public TableFunctionProcessorProvider getProcessorProvider(Map<String, Argument> arguments) {
+  public TableFunctionHandle createTableFunctionHandle() {
+    return new MapTableFunctionHandle();
+  }
+
+  @Override
+  public TableFunctionProcessorProvider getProcessorProvider(
+      TableFunctionHandle tableFunctionHandle) {
     return new TableFunctionProcessorProvider() {
       @Override
       public TableFunctionDataProcessor getDataProcessor() {

@@ -166,6 +166,15 @@ public class PipeRealtimePriorityBlockingQueue extends UnboundedBlockingPendingQ
   }
 
   @Override
+  public Event peek() {
+    final Event event = pendingQueue.peek();
+    if (Objects.nonNull(event)) {
+      return event;
+    }
+    return tsfileInsertEventDeque.peek();
+  }
+
+  @Override
   public void clear() {
     super.clear();
     tsfileInsertEventDeque.clear();

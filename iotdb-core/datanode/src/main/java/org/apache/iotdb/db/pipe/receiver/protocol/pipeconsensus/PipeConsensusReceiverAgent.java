@@ -26,6 +26,7 @@ import org.apache.iotdb.consensus.IConsensus;
 import org.apache.iotdb.consensus.pipe.PipeConsensus;
 import org.apache.iotdb.consensus.pipe.consensuspipe.ConsensusPipeName;
 import org.apache.iotdb.consensus.pipe.consensuspipe.ConsensusPipeReceiver;
+import org.apache.iotdb.consensus.pipe.thrift.TCommitId;
 import org.apache.iotdb.consensus.pipe.thrift.TPipeConsensusTransferReq;
 import org.apache.iotdb.consensus.pipe.thrift.TPipeConsensusTransferResp;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -39,7 +40,9 @@ import org.slf4j.LoggerFactory;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CopyOnWriteArraySet;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -66,6 +69,8 @@ public class PipeConsensusReceiverAgent implements ConsensusPipeReceiver {
           ConsensusGroupId, Map<ConsensusPipeName, AtomicReference<PipeConsensusReceiver>>>
       replicaReceiverMap = new ConcurrentHashMap<>();
 
+  private final Set<ConsensusPipeName> createdConsensusPipes = new CopyOnWriteArraySet<>();
+
   private PipeConsensus pipeConsensus;
 
   public PipeConsensusReceiverAgent() {
@@ -85,13 +90,32 @@ public class PipeConsensusReceiverAgent implements ConsensusPipeReceiver {
     }
   }
 
+  public static TPipeConsensusTransferResp closedResp(String consensusInfo, TCommitId tCommitId) {
+    final TSStatus status =
+        new TSStatus(
+            RpcUtils.getStatus(
+                TSStatusCode.PIPE_CONSENSUS_CLOSE_ERROR,
+                "PipeConsensus receiver received a request after it was closed."));
+    LOGGER.info(
+        "PipeConsensus-{}: receive on-the-fly no.{} event after consensus pipe was dropped, discard it",
+        consensusInfo,
+        tCommitId);
+    return new TPipeConsensusTransferResp(status);
+  }
+
   @Override
   public TPipeConsensusTransferResp receive(TPipeConsensusTransferReq req) {
     final byte reqVersion = req.getVersion();
     if (RECEIVER_CONSTRUCTORS.containsKey(reqVersion)) {
       final ConsensusGroupId consensusGroupId =
           ConsensusGroupId.Factory.createFromTConsensusGroupId(req.getConsensusGroupId());
-      return getReceiver(consensusGroupId, req.getDataNodeId(), reqVersion).receive(req);
+      final PipeConsensusReceiver receiver =
+          getReceiver(consensusGroupId, req.getDataNodeId(), reqVersion);
+
+      if (receiver == null) {
+        return closedResp(consensusGroupId.toString(), req.getCommitId());
+      }
+      return receiver.receive(req);
     } else {
       final TSStatus status =
           RpcUtils.getStatus(
@@ -111,6 +135,11 @@ public class PipeConsensusReceiverAgent implements ConsensusPipeReceiver {
     // 2. Route to given consensusPipeTask's receiver
     ConsensusPipeName consensusPipeName =
         new ConsensusPipeName(consensusGroupId, leaderDataNodeId, thisNodeId);
+    // 3. Judge whether pipe task was dropped
+    if (!createdConsensusPipes.contains(consensusPipeName)) {
+      return null;
+    }
+
     AtomicBoolean isFirstGetReceiver = new AtomicBoolean(false);
     AtomicReference<PipeConsensusReceiver> receiverReference =
         consensusPipe2ReceiverMap.computeIfAbsent(
@@ -192,9 +221,14 @@ public class PipeConsensusReceiverAgent implements ConsensusPipeReceiver {
         consensusPipe2ReciverMap.getOrDefault(pipeName, null);
     // 3. Release receiver
     if (receiverReference != null) {
+      createdConsensusPipes.remove(pipeName);
       receiverReference.get().handleExit();
       receiverReference.set(null);
       consensusPipe2ReciverMap.remove(pipeName);
     }
+  }
+
+  public void markConsensusPipeAsCreated(ConsensusPipeName pipeName) {
+    createdConsensusPipes.add(pipeName);
   }
 }

@@ -22,7 +22,9 @@ package org.apache.iotdb.commons.udf.builtin.relational.tvf;
 import org.apache.iotdb.udf.api.exception.UDFException;
 import org.apache.iotdb.udf.api.relational.TableFunction;
 import org.apache.iotdb.udf.api.relational.access.Record;
+import org.apache.iotdb.udf.api.relational.table.MapTableFunctionHandle;
 import org.apache.iotdb.udf.api.relational.table.TableFunctionAnalysis;
+import org.apache.iotdb.udf.api.relational.table.TableFunctionHandle;
 import org.apache.iotdb.udf.api.relational.table.TableFunctionProcessorProvider;
 import org.apache.iotdb.udf.api.relational.table.argument.Argument;
 import org.apache.iotdb.udf.api.relational.table.argument.DescribedSchema;
@@ -60,33 +62,43 @@ public class CapacityTableFunction implements TableFunction {
     if (size <= 0) {
       throw new UDFException("Size must be greater than 0");
     }
+    MapTableFunctionHandle handle =
+        new MapTableFunctionHandle.Builder().addProperty(SIZE_PARAMETER_NAME, size).build();
     return TableFunctionAnalysis.builder()
         .properColumnSchema(
             new DescribedSchema.Builder().addField("window_index", Type.INT64).build())
         .requireRecordSnapshot(false)
         .requiredColumns(DATA_PARAMETER_NAME, Collections.singletonList(0))
+        .handle(handle)
         .build();
   }
 
   @Override
-  public TableFunctionProcessorProvider getProcessorProvider(Map<String, Argument> arguments) {
-    long sz = (long) ((ScalarArgument) arguments.get(SIZE_PARAMETER_NAME)).getValue();
+  public TableFunctionHandle createTableFunctionHandle() {
+    return new MapTableFunctionHandle();
+  }
+
+  @Override
+  public TableFunctionProcessorProvider getProcessorProvider(
+      TableFunctionHandle tableFunctionHandle) {
+    long sz =
+        (long) ((MapTableFunctionHandle) tableFunctionHandle).getProperty(SIZE_PARAMETER_NAME);
     return new TableFunctionProcessorProvider() {
       @Override
       public TableFunctionDataProcessor getDataProcessor() {
-        return new CountDataProcessor(sz);
+        return new CapacityDataProcessor(sz);
       }
     };
   }
 
-  private static class CountDataProcessor implements TableFunctionDataProcessor {
+  private static class CapacityDataProcessor implements TableFunctionDataProcessor {
 
     private final long size;
     private long currentStartIndex = 0;
     private long curIndex = 0;
     private long windowIndex = 0;
 
-    public CountDataProcessor(long size) {
+    public CapacityDataProcessor(long size) {
       this.size = size;
     }
 
@@ -103,8 +115,9 @@ public class CapacityTableFunction implements TableFunction {
     }
 
     @Override
-    public void finish(List<ColumnBuilder> columnBuilders, ColumnBuilder passThroughIndexBuilder) {
-      outputWindow(columnBuilders, passThroughIndexBuilder);
+    public void finish(
+        List<ColumnBuilder> properColumnBuilders, ColumnBuilder passThroughIndexBuilder) {
+      outputWindow(properColumnBuilders, passThroughIndexBuilder);
     }
 
     private void outputWindow(

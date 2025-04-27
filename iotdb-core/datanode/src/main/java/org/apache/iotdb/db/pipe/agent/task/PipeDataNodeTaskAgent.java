@@ -188,8 +188,8 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
           SchemaEngine.getInstance()
                   .getAllSchemaRegionIds()
                   .contains(new SchemaRegionId(consensusGroupId))
-              && !SchemaRegionListeningFilter.parseListeningPlanTypeSet(extractorParameters)
-                  .isEmpty();
+              && SchemaRegionListeningFilter.shouldSchemaRegionBeListened(
+                  consensusGroupId, extractorParameters);
 
       // Advance the extractor parameters parsing logic to avoid creating un-relevant pipeTasks
       if (needConstructDataRegionTask || needConstructSchemaRegionTask) {
@@ -339,6 +339,18 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
     }
 
     return true;
+  }
+
+  @Override
+  protected boolean createPipe(final PipeMeta pipeMetaFromCoordinator) throws IllegalPathException {
+    String pipeName = pipeMetaFromCoordinator.getStaticMeta().getPipeName();
+    if (pipeName.startsWith(PipeStaticMeta.CONSENSUS_PIPE_PREFIX)) {
+      // Release corresponding receiver's resource
+      PipeDataNodeAgent.receiver()
+          .pipeConsensus()
+          .markConsensusPipeAsCreated(new ConsensusPipeName(pipeName));
+    }
+    return super.createPipe(pipeMetaFromCoordinator);
   }
 
   @Override

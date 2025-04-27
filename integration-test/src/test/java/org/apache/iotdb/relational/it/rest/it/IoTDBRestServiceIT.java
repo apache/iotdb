@@ -183,8 +183,10 @@ public class IoTDBRestServiceIT {
             httpClient,
             port,
             sqlHandler(null, "select tag1,s1,s2,s3,time from sg11 order by time"));
-    assertEquals(305, result.get("code").getAsInt());
-    assertEquals("database should not be null", result.get("message").getAsString());
+    assertEquals(701, result.get("code").getAsInt());
+    assertEquals(
+        "Database must be specified when session database is not set",
+        result.get("message").getAsString());
   }
 
   public void testQuery2() {
@@ -228,15 +230,15 @@ public class IoTDBRestServiceIT {
     String sql =
         "CREATE TABLE sg10(tag1 string tag, s1 int64 field, s2 float field, s3 string field)";
     JsonObject result = RestUtils.nonQuery(httpClient, port, sqlHandler(null, sql));
-    assertEquals(305, result.get("code").getAsInt());
-    assertEquals("database should not be null", result.get("message").getAsString());
+    assertEquals(701, result.get("code").getAsInt());
+    assertEquals("database is not specified", result.get("message").getAsString());
   }
 
   public void errorNonQuery2() {
     String sql = "create database test";
     JsonObject result = RestUtils.nonQuery(httpClient, port, sqlHandler(null, sql));
-    assertEquals(305, result.get("code").getAsInt());
-    assertEquals("database should not be null", result.get("message").getAsString());
+    assertEquals(701, result.get("code").getAsInt());
+    assertEquals("database is not specified", result.get("message").getAsString());
   }
 
   public void errorNonQuery3() {
