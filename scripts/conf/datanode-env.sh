@@ -20,10 +20,6 @@
 
 # You can set DataNode memory size, example '2G' or '2048M'
 MEMORY_SIZE=
-# on heap memory size
-#ON_HEAP_MEMORY="2G"
-# off heap memory size
-#OFF_HEAP_MEMORY="512M"
 
 
 # You can put your env variable here
@@ -265,8 +261,15 @@ else
     illegal_access_params="$illegal_access_params --add-opens=java.base/java.net=ALL-UNNAMED"
 fi
 
+calculate_memory_sizes
 
-if [[ "$IOTDB_JMX_OPTS" =~ -Xms ]];then
+# on heap memory size
+#ON_HEAP_MEMORY="2G"
+# off heap memory size
+#OFF_HEAP_MEMORY="512M"
+
+# configure JVM memory with set environment variable of IOTDB_JMX_OPTS
+if [[ "$IOTDB_JMX_OPTS" =~ -Xmx ]];then
     item_arr=(${IOTDB_JMX_OPTS})
     for item in ${item_arr[@]};do
         if [[ -n "$item" ]]; then
@@ -277,10 +280,6 @@ if [[ "$IOTDB_JMX_OPTS" =~ -Xms ]];then
             fi
         fi
     done
-elif [[ -n "$ON_HEAP_MEMORY" ]]; then
-    echo "ON_HEAP_MEMORY=$ON_HEAP_MEMORY"
-else
-    calculate_memory_sizes
 fi
 
 
