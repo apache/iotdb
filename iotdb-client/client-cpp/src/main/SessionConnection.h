@@ -22,11 +22,11 @@
 #include <memory>
 #include <vector>
 #include <string>
-#include <functional>
 #include <thrift/transport/TTransport.h>
 #include "IClientRPCService.h"
 #include "common_types.h"
 #include "NodesSupplier.h"
+#include "Enums.h"
 
 class SessionDataSet;
 class Session;
@@ -36,6 +36,7 @@ public:
     SessionConnection(Session* session_ptr, const TEndPoint& endpoint,
                      const std::string& zoneId,
                      std::shared_ptr<INodesSupplier> nodeSupplier,
+                     int fetchSize = 10000,
                      int maxRetries = 60,
                      int64_t retryInterval = 500,
                      std::string dialect = "tree",
@@ -49,6 +50,30 @@ public:
     const TEndPoint& getEndPoint();
 
     void init(const TEndPoint& endpoint);
+
+    void insertRecord(const std::string &deviceId, int64_t time,
+                           const std::vector<std::string> &measurements,
+                           const std::vector<std::string> &values);
+
+    void insertRecord(const std::string &prefixPath, int64_t time,
+                           const std::vector<std::string> &measurements,
+                           const std::vector<TSDataType::TSDataType> &types,
+                           const std::vector<char *> &values);
+
+    void insertAlignedRecord(const std::string &deviceId, int64_t time,
+                                  const std::vector<std::string> &measurements,
+                                  const std::vector<std::string> &values);
+
+    void insertAlignedRecord(const std::string &prefixPath, int64_t time,
+                                  const std::vector<std::string> &measurements,
+                                  const std::vector<TSDataType::TSDataType> &types,
+                                  const std::vector<char *> &values);
+
+    std::unique_ptr<SessionDataSet> executeRawDataQuery(const std::vector<std::string> &paths, int64_t startTime, int64_t endTime);
+
+    std::unique_ptr<SessionDataSet> executeLastDataQuery(const std::vector<std::string> &paths, int64_t lastTime);
+
+    void executeNonQueryStatement(const std::string &sql);
 
     std::unique_ptr<SessionDataSet> executeQueryStatement(const std::string& sql, int64_t timeoutInMs = -1);
 
@@ -72,6 +97,7 @@ private:
     TEndPoint endPoint;
     std::vector<TEndPoint> endPointList;
     std::shared_ptr<INodesSupplier> availableNodes;
+    int fetchSize;
     int maxRetryCount;
     int64_t retryIntervalMs;
     std::string sqlDialect;

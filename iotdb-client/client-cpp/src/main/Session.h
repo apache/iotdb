@@ -29,10 +29,7 @@
 #include <map>
 #include <unordered_map>
 #include <unordered_set>
-#include <stack>
-#include <new>
 #include <thread>
-#include <mutex>
 #include <stdexcept>
 #include <cstdlib>
 #include <thrift/protocol/TBinaryProtocol.h>
@@ -44,6 +41,8 @@
 #include "NodesSupplier.h"
 #include "AbstractSessionBuilder.h"
 #include "SessionConnection.h"
+#include "DeviceID.h"
+#include "Enums.h"
 
 //== For compatible with Windows OS ==
 #ifndef LONG_LONG_MIN
@@ -163,113 +162,6 @@ public:
 
     explicit SchemaNotFoundException(const std::string &m) : IoTDBException(m) {}
 };
-
-namespace Version {
-    enum Version {
-        V_0_12, V_0_13, V_1_0
-    };
-}
-
-namespace CompressionType {
-    enum CompressionType {
-        UNCOMPRESSED = (char) 0,
-        SNAPPY = (char) 1,
-        GZIP = (char) 2,
-        LZO = (char) 3,
-        SDT = (char) 4,
-        PAA = (char) 5,
-        PLA = (char) 6,
-        LZ4 = (char) 7,
-        ZSTD = (char) 8,
-        LZMA2 = (char) 9,
-    };
-}
-
-namespace TSDataType {
-    enum TSDataType {
-        BOOLEAN = (char) 0,
-        INT32 = (char) 1,
-        INT64 = (char) 2,
-        FLOAT = (char) 3,
-        DOUBLE = (char) 4,
-        TEXT = (char) 5,
-        VECTOR = (char) 6,
-        NULLTYPE = (char) 254,
-        INVALID_DATATYPE = (char) 255
-    };
-}
-
-namespace TSEncoding {
-    enum TSEncoding {
-        PLAIN = (char) 0,
-        DICTIONARY = (char) 1,
-        RLE = (char) 2,
-        DIFF = (char) 3,
-        TS_2DIFF = (char) 4,
-        BITMAP = (char) 5,
-        GORILLA_V1 = (char) 6,
-        REGULAR = (char) 7,
-        GORILLA = (char) 8,
-        ZIGZAG = (char) 9,
-	    FREQ = (char) 10,
-        INVALID_ENCODING = (char) 255
-    };
-}
-
-namespace TSStatusCode {
-    enum TSStatusCode {
-        SUCCESS_STATUS = 200,
-
-        // System level
-        INCOMPATIBLE_VERSION = 201,
-        CONFIGURATION_ERROR = 202,
-        START_UP_ERROR = 203,
-        SHUT_DOWN_ERROR = 204,
-
-        // General Error
-        UNSUPPORTED_OPERATION = 300,
-        EXECUTE_STATEMENT_ERROR = 301,
-        MULTIPLE_ERROR = 302,
-        ILLEGAL_PARAMETER = 303,
-        OVERLAP_WITH_EXISTING_TASK = 304,
-        INTERNAL_SERVER_ERROR = 305,
-
-        // Client,
-        REDIRECTION_RECOMMEND = 400,
-
-        // Schema Engine
-        DATABASE_NOT_EXIST = 500,
-        DATABASE_ALREADY_EXISTS = 501,
-        SERIES_OVERFLOW = 502,
-        TIMESERIES_ALREADY_EXIST = 503,
-        TIMESERIES_IN_BLACK_LIST = 504,
-        ALIAS_ALREADY_EXIST = 505,
-        PATH_ALREADY_EXIST = 506,
-        METADATA_ERROR = 507,
-        PATH_NOT_EXIST = 508,
-        ILLEGAL_PATH = 509,
-        CREATE_TEMPLATE_ERROR = 510,
-        DUPLICATED_TEMPLATE = 511,
-        UNDEFINED_TEMPLATE = 512,
-        TEMPLATE_NOT_SET = 513,
-        DIFFERENT_TEMPLATE = 514,
-        TEMPLATE_IS_IN_USE = 515,
-        TEMPLATE_INCOMPATIBLE = 516,
-        SEGMENT_NOT_FOUND = 517,
-        PAGE_OUT_OF_SPACE = 518,
-        RECORD_DUPLICATED=519,
-        SEGMENT_OUT_OF_SPACE = 520,
-        PBTREE_FILE_NOT_EXISTS = 521,
-        OVERSIZE_RECORD = 522,
-        PBTREE_FILE_REDO_LOG_BROKEN = 523,
-        TEMPLATE_NOT_ACTIVATED = 524,
-
-        // Storage Engine
-        SYSTEM_READ_ONLY = 600,
-        STORAGE_ENGINE_ERROR = 601,
-        STORAGE_ENGINE_NOT_READY = 602,
-    };
-}
 
 class RpcUtils {
 public:
@@ -644,6 +536,7 @@ public:
     size_t rowSize;    //the number of rows to include in this tablet
     size_t maxRowNumber;   // the maximum number of rows for this tablet
     bool isAligned;   // whether this tablet store data of aligned timeseries or not
+    std::vector<int> idColumnIndexes;
 
     Tablet() = default;
 
@@ -687,6 +580,12 @@ public:
         // create value columns
         values.resize(schemas.size());
         createColumns();
+        // init idColumnIndexs
+        for (size_t i = 0; i < this->columnTypes.size(); i++) {
+            if (this->columnTypes[i] == ColumnCategory::TAG) {
+                idColumnIndexes.push_back(i);
+            }
+        }
         // create bitMaps
         bitMaps.resize(schemas.size());
         for (size_t i = 0; i < schemas.size(); i++) {
@@ -733,7 +632,7 @@ public:
                 break;
             }
             case TSDataType::INT32: {
-                safe_cast<T, int>(value, ((int*)values[schemaId])[rowIndex]);
+                safe_cast<T, int32_t>(value, ((int*)values[schemaId])[rowIndex]);
                 break;
             }
             case TSDataType::INT64: {
@@ -766,6 +665,42 @@ public:
         addValue(schemaId, rowIndex, value);
     }
 
+
+    void* getValue(size_t schemaId, size_t rowIndex, TSDataType::TSDataType dataType) {
+        if (schemaId >= schemas.size()) {
+            throw std::out_of_range("Tablet::getValue schemaId out of range: "
+                                   + std::to_string(schemaId));
+        }
+        if (rowIndex >= rowSize) {
+            throw std::out_of_range("Tablet::getValue rowIndex out of range: "
+                                   + std::to_string(rowIndex));
+        }
+
+        switch (dataType) {
+            case TSDataType::BOOLEAN:
+                return &(reinterpret_cast<bool*>(values[schemaId])[rowIndex]);
+            case TSDataType::INT32:
+                return &(reinterpret_cast<int32_t*>(values[schemaId])[rowIndex]);
+            case TSDataType::INT64:
+                return &(reinterpret_cast<int64_t*>(values[schemaId])[rowIndex]);
+            case TSDataType::FLOAT:
+                return &(reinterpret_cast<float*>(values[schemaId])[rowIndex]);
+            case TSDataType::DOUBLE:
+                return &(reinterpret_cast<double*>(values[schemaId])[rowIndex]);
+            case TSDataType::TEXT:
+                return &(reinterpret_cast<std::string*>(values[schemaId])[rowIndex]);
+            default:
+                throw UnSupportedDataTypeException("Unsupported data type: "
+                                                   + std::to_string(dataType));
+        }
+    }
+
+    std::shared_ptr<storage::IDeviceID> getDeviceID(int i);
+
+    std::vector<std::pair<std::string, TSDataType::TSDataType>> getSchemas() const {
+        return schemas;
+    }
+
     void reset(); // Reset Tablet to the default state - set the rowSize to 0
 
     size_t getTimeBytesSize();
@@ -780,6 +715,8 @@ public:
     static std::string getTime(const Tablet &tablet);
 
     static std::string getValue(const Tablet &tablet);
+
+    static bool isTabletContainsSingleDevice(Tablet tablet);
 };
 
 class RowRecord {
@@ -1146,6 +1083,7 @@ private:
     using EndPointSessionMap = std::unordered_map<TEndPoint, shared_ptr<SessionConnection>, TEndPointHash, TEndPointEqual>;
     EndPointSessionMap endPointToSessionConnection;
     std::unordered_map<std::string, TEndPoint> deviceIdToEndpoint;
+    std::unordered_map<std::shared_ptr<storage::IDeviceID>, TEndPoint> tableModelDeviceIdToEndpoint;
 
 private:
     void removeBrokenSessionConnection(shared_ptr<SessionConnection> sessionConnection);
@@ -1265,6 +1203,8 @@ public:
 
     shared_ptr<SessionConnection> getSessionConnection(std::string deviceId);
 
+    shared_ptr<SessionConnection> getSessionConnection(std::shared_ptr<storage::IDeviceID> deviceId);
+
     void open();
 
     void open(bool enableRPCCompression);
@@ -1280,6 +1220,8 @@ public:
     void handleQueryRedirection(TEndPoint endPoint);
 
     void handleRedirection(const std::string& deviceId, TEndPoint endPoint);
+
+    void handleRedirection(const std::shared_ptr<storage::IDeviceID>& deviceId, TEndPoint endPoint);
 
     void insertRecord(const std::string &deviceId, int64_t time, const std::vector<std::string> &measurements,
                       const std::vector<std::string> &values);
@@ -1346,6 +1288,12 @@ public:
     void insertTablet(Tablet &tablet, bool sorted);
 
     void insertRelationalTablet(Tablet &tablet);
+
+    void insertRelationalTabletOnce(const std::unordered_map<std::shared_ptr<SessionConnection>, Tablet>& relationalTabletGroup,
+        bool sorted);
+
+    void insertRelationalTabletByGroup(const std::unordered_map<std::shared_ptr<SessionConnection>, Tablet>& relationalTabletGroup,
+        bool sorted);
 
     void insertRelationalTablet(Tablet &tablet, bool sorted);
 

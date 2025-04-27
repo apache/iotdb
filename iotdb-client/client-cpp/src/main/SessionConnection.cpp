@@ -30,6 +30,7 @@ using namespace apache::thrift::transport;
 SessionConnection::SessionConnection(Session* session_ptr, const TEndPoint& endpoint,
                      const std::string& zoneId,
                      std::shared_ptr<INodesSupplier> nodeSupplier,
+                     int fetchSize,
                      int maxRetries,
                      int64_t retryInterval,
                      std::string dialect,
@@ -38,6 +39,7 @@ SessionConnection::SessionConnection(Session* session_ptr, const TEndPoint& endp
       zoneId(zoneId),
       endPoint(endpoint),
       availableNodes(std::move(nodeSupplier)),
+      fetchSize(fetchSize),
       maxRetryCount(maxRetries),
       retryIntervalMs(retryInterval),
       sqlDialect(std::move(dialect)),
@@ -154,6 +156,72 @@ void SessionConnection::init(const TEndPoint& endpoint) {
     }
 }
 
+void SessionConnection::insertRecord(const std::string &deviceId, int64_t time,
+                       const std::vector<std::string> &measurements,
+                       const std::vector<std::string> &values) {
+    TSInsertStringRecordReq req;
+    req.__set_sessionId(sessionId);
+    req.__set_prefixPath(deviceId);
+    req.__set_timestamp(time);
+    req.__set_measurements(measurements);
+    req.__set_values(values);
+    req.__set_isAligned(false);
+    TSStatus respStatus;
+    client->insertStringRecord(respStatus, req);
+    RpcUtils::verifySuccess(respStatus);
+}
+
+void SessionConnection::insertRecord(const std::string &prefixPath, int64_t time,
+                       const std::vector<std::string> &measurements,
+                       const std::vector<TSDataType::TSDataType> &types,
+                       const std::vector<char *> &values) {
+    TSInsertRecordReq req;
+    req.__set_sessionId(sessionId);
+    req.__set_prefixPath(prefixPath);
+    req.__set_timestamp(time);
+    req.__set_measurements(measurements);
+    string buffer;
+    session->putValuesIntoBuffer(types, values, buffer);
+    req.__set_values(buffer);
+    req.__set_isAligned(false);
+    TSStatus respStatus;
+    client->insertRecord(respStatus, req);
+    RpcUtils::verifySuccess(respStatus);
+}
+
+void SessionConnection::insertAlignedRecord(const std::string &deviceId, int64_t time,
+                              const std::vector<std::string> &measurements,
+                              const std::vector<std::string> &values) {
+    TSInsertStringRecordReq req;
+    req.__set_sessionId(sessionId);
+    req.__set_prefixPath(deviceId);
+    req.__set_timestamp(time);
+    req.__set_measurements(measurements);
+    req.__set_values(values);
+    req.__set_isAligned(true);
+    TSStatus respStatus;
+    client->insertStringRecord(respStatus, req);
+    RpcUtils::verifySuccess(respStatus);
+}
+
+void SessionConnection::insertAlignedRecord(const std::string &prefixPath, int64_t time,
+                              const std::vector<std::string> &measurements,
+                              const std::vector<TSDataType::TSDataType> &types,
+                              const std::vector<char *> &values) {
+    TSInsertRecordReq req;
+    req.__set_sessionId(sessionId);
+    req.__set_prefixPath(prefixPath);
+    req.__set_timestamp(time);
+    req.__set_measurements(measurements);
+    string buffer;
+    session->putValuesIntoBuffer(types, values, buffer);
+    req.__set_values(buffer);
+    req.__set_isAligned(true);
+    TSStatus respStatus;
+    client->insertRecord(respStatus, req);
+    RpcUtils::verifySuccess(respStatus);
+}
+
 std::unique_ptr<SessionDataSet> SessionConnection::executeQueryStatement(const std::string& sql, int64_t timeoutInMs) {
     TSExecuteStatementReq req;
     req.__set_sessionId(sessionId);
@@ -183,6 +251,86 @@ std::unique_ptr<SessionDataSet> SessionConnection::executeQueryStatement(const s
     return std::unique_ptr<SessionDataSet>(new SessionDataSet(
             sql, resp.columns, resp.dataTypeList, resp.columnNameIndexMap, resp.ignoreTimeStamp, resp.queryId,
             statementId, client, sessionId, queryDataSet));
+}
+
+std::unique_ptr<SessionDataSet> SessionConnection::executeRawDataQuery(const std::vector<std::string> &paths,
+    int64_t startTime, int64_t endTime) {
+    TSRawDataQueryReq req;
+    req.__set_sessionId(sessionId);
+    req.__set_statementId(statementId);
+    req.__set_fetchSize(fetchSize);
+    req.__set_paths(paths);
+    req.__set_startTime(startTime);
+    req.__set_endTime(endTime);
+    TSExecuteStatementResp resp;
+    try {
+        client->executeRawDataQuery(resp, req);
+        RpcUtils::verifySuccess(resp.status);
+    } catch (const TTransportException &e) {
+        log_debug(e.what());
+        throw IoTDBConnectionException(e.what());
+    } catch (const IoTDBException &e) {
+        log_debug(e.what());
+        throw;
+    } catch (const exception &e) {
+        throw IoTDBException(e.what());
+    }
+    shared_ptr<TSQueryDataSet> queryDataSet(new TSQueryDataSet(resp.queryDataSet));
+    return unique_ptr<SessionDataSet>(
+            new SessionDataSet("", resp.columns, resp.dataTypeList, resp.columnNameIndexMap, resp.ignoreTimeStamp,
+                               resp.queryId, statementId, client, sessionId, queryDataSet));
+}
+
+std::unique_ptr<SessionDataSet> SessionConnection::executeLastDataQuery(const std::vector<std::string> &paths, int64_t lastTime) {
+    TSLastDataQueryReq req;
+    req.__set_sessionId(sessionId);
+    req.__set_statementId(statementId);
+    req.__set_fetchSize(fetchSize);
+    req.__set_paths(paths);
+    req.__set_time(lastTime);
+
+    TSExecuteStatementResp resp;
+    try {
+        client->executeLastDataQuery(resp, req);
+        RpcUtils::verifySuccess(resp.status);
+    } catch (const TTransportException &e) {
+        log_debug(e.what());
+        throw IoTDBConnectionException(e.what());
+    } catch (const IoTDBException &e) {
+        log_debug(e.what());
+        throw;
+    } catch (const exception &e) {
+        throw IoTDBException(e.what());
+    }
+    shared_ptr<TSQueryDataSet> queryDataSet(new TSQueryDataSet(resp.queryDataSet));
+    return unique_ptr<SessionDataSet>(
+            new SessionDataSet("", resp.columns, resp.dataTypeList, resp.columnNameIndexMap, resp.ignoreTimeStamp,
+                               resp.queryId, statementId, client, sessionId, queryDataSet));
+}
+
+void SessionConnection::executeNonQueryStatement(const string &sql) {
+    TSExecuteStatementReq req;
+    req.__set_sessionId(sessionId);
+    req.__set_statementId(statementId);
+    req.__set_statement(sql);
+    req.__set_timeout(0);  //0 means no timeout. This value keep consistent to JAVA SDK.
+    TSExecuteStatementResp resp;
+    try {
+        client->executeUpdateStatementV2(resp, req);
+        if (resp.database != "") {
+            database = resp.database;
+            session->database = database;
+        }
+        RpcUtils::verifySuccess(resp.status);
+    } catch (const TTransportException &e) {
+        log_debug(e.what());
+        throw IoTDBConnectionException(e.what());
+    } catch (const IoTDBException &e) {
+        log_debug(e.what());
+        throw;
+    } catch (const exception &e) {
+        throw IoTDBException(e.what());
+    }
 }
 
 const TEndPoint& SessionConnection::getEndPoint() {

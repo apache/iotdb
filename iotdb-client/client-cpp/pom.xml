@@ -203,6 +203,14 @@
                                     <sourceFile>${project.basedir}/src/main/AbstractSessionBuilder.h</sourceFile>
                                     <destinationFile>${project.build.directory}/build/main/generated-sources-cpp/AbstractSessionBuilder.h</destinationFile>
                                 </fileSet>
+                                <fileSet>
+                                    <sourceFile>${project.basedir}/src/main/Enums.h</sourceFile>
+                                    <destinationFile>${project.build.directory}/build/main/generated-sources-cpp/Enums.h</destinationFile>
+                                </fileSet>
+                                <fileSet>
+                                    <sourceFile>${project.basedir}/src/main/DeviceID.h</sourceFile>
+                                    <destinationFile>${project.build.directory}/build/main/generated-sources-cpp/DeviceID.h</destinationFile>
+                                </fileSet>
                             </fileSets>
                         </configuration>
                     </execution>

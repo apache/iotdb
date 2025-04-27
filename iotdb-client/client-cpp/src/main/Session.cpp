@@ -21,6 +21,7 @@
 #include <algorithm>
 #include <memory>
 #include <time.h>
+#include <future>
 #include "NodesSupplier.h"
 
 using namespace std;
@@ -167,6 +168,7 @@ void Tablet::createColumns() {
 
 void Tablet::deleteColumns() {
     for (size_t i = 0; i < schemas.size(); i++) {
+        if (values[i]) continue;
         TSDataType::TSDataType dataType = schemas[i].second;
         switch (dataType) {
             case TSDataType::BOOLEAN: {
@@ -202,6 +204,7 @@ void Tablet::deleteColumns() {
             default:
                 throw UnSupportedDataTypeException(string("Data type ") + to_string(dataType) + " is not supported.");
         }
+        values[i] = nullptr;
     }
 }
 
@@ -253,6 +256,20 @@ size_t Tablet::getValueByteSize() {
 
 void Tablet::setAligned(bool isAligned) {
     this->isAligned = isAligned;
+}
+
+std::shared_ptr<storage::IDeviceID> Tablet::getDeviceID(int row) {
+    std::vector<std::string> id_array(idColumnIndexes.size() + 1);
+    size_t idArrayIdx = 0;
+    id_array[idArrayIdx++] = this->deviceId;
+    for (auto idColumnIndex : idColumnIndexes) {
+        void *strPtr = getValue(idColumnIndex, row, TSDataType::TEXT);
+        if (!strPtr) {
+            throw std::runtime_error("Unsupported data type: " + std::to_string(TSDataType::TEXT));
+        }
+        id_array[idArrayIdx++] = *static_cast<std::string*>(strPtr);
+    }
+    return std::make_shared<storage::StringArrayDeviceID>(id_array);
 }
 
 string SessionUtils::getTime(const Tablet &tablet) {
@@ -366,6 +383,19 @@ string SessionUtils::getValue(const Tablet &tablet) {
         }
     }
     return valueBuffer.str;
+}
+
+bool SessionUtils::isTabletContainsSingleDevice(Tablet tablet) {
+    if (tablet.rowSize == 1) {
+        return true;
+    }
+    auto firstDeviceId = tablet.getDeviceID(0);
+    for (int i = 1; i < tablet.rowSize; ++i) {
+        if (*firstDeviceId != *tablet.getDeviceID(i)) {
+            return false;
+        }
+    }
+    return true;
 }
 
 int SessionDataSet::getFetchSize() {
@@ -615,6 +645,24 @@ void Session::removeBrokenSessionConnection(shared_ptr<SessionConnection> sessio
     if (enableRedirection) {
         this->endPointToSessionConnection.erase(sessionConnection->getEndPoint());
     }
+
+    auto it1 = deviceIdToEndpoint.begin();
+    while (it1 != deviceIdToEndpoint.end()) {
+        if (it1->second == sessionConnection->getEndPoint()) {
+            it1 = deviceIdToEndpoint.erase(it1);
+        } else {
+            ++it1;
+        }
+    }
+
+    auto it2 = tableModelDeviceIdToEndpoint.begin();
+    while (it2 != tableModelDeviceIdToEndpoint.end()) {
+        if (it2->second == sessionConnection->getEndPoint()) {
+            it2 = tableModelDeviceIdToEndpoint.erase(it2);
+        } else {
+            ++it2;
+        }
+    }
 }
 
 /**
@@ -841,7 +889,7 @@ void Session::initNodesSupplier() {
 void Session::initDefaultSessionConnection() {
     defaultEndPoint.__set_ip(host);
     defaultEndPoint.__set_port(rpcPort);
-    defaultSessionConnection = make_shared<SessionConnection>(this, defaultEndPoint, zoneId, nodesSupplier, 60, 500,
+    defaultSessionConnection = make_shared<SessionConnection>(this, defaultEndPoint, zoneId, nodesSupplier, fetchSize, 60, 500,
             sqlDialect, database);
 }
 
@@ -856,6 +904,16 @@ void Session::open(bool enableRPCCompression) {
 void Session::open(bool enableRPCCompression, int connectionTimeoutInMs) {
     if (!isClosed) {
         return;
+    }
+
+    try {
+        initDefaultSessionConnection();
+    } catch (const exception &e) {
+        log_debug(e.what());
+        throw IoTDBException(e.what());
+    }
+    if (enableRedirection) {
+        endPointToSessionConnection.insert(make_pair(defaultEndPoint, defaultSessionConnection));
     }
 
     shared_ptr<TSocket> socket(new TSocket(host, rpcPort));
@@ -925,15 +983,6 @@ void Session::open(bool enableRPCCompression, int connectionTimeoutInMs) {
     }
 
     isClosed = false;
-    try {
-        initDefaultSessionConnection();
-    } catch (const exception &e) {
-        log_debug(e.what());
-        throw IoTDBException(e.what());
-    }
-    if (enableRedirection) {
-        endPointToSessionConnection.insert(make_pair(defaultEndPoint, defaultSessionConnection));
-    }
 }
 
 
@@ -979,24 +1028,15 @@ void Session::close() {
 void Session::insertRecord(const string &deviceId, int64_t time,
                            const vector<string> &measurements,
                            const vector<string> &values) {
-    TSInsertStringRecordReq req;
-    req.__set_sessionId(sessionId);
-    req.__set_prefixPath(deviceId);
-    req.__set_timestamp(time);
-    req.__set_measurements(measurements);
-    req.__set_values(values);
-    req.__set_isAligned(false);
-    TSStatus respStatus;
     try {
-        getSessionConnection(deviceId)->getSessionClient()->insertStringRecord(respStatus, req);
-        RpcUtils::verifySuccess(respStatus);
+        getSessionConnection(deviceId)->insertRecord(deviceId, time, measurements, values);
     } catch (RedirectException& e) {
         handleRedirection(deviceId, e.endPoint);
     } catch (const IoTDBConnectionException &e) {
         if (enableRedirection && deviceIdToEndpoint.find(deviceId) != deviceIdToEndpoint.end()) {
             deviceIdToEndpoint.erase(deviceId);
             try {
-                defaultSessionConnection->getSessionClient()->insertStringRecord(respStatus, req);
+                defaultSessionConnection->insertRecord(deviceId, time, measurements, values);
             } catch (RedirectException& e) {
             }
         } else {
@@ -1018,19 +1058,20 @@ void Session::insertRecord(const string &prefixPath, int64_t time,
                            const vector<string> &measurements,
                            const vector<TSDataType::TSDataType> &types,
                            const vector<char *> &values) {
-    TSInsertRecordReq req;
-    req.__set_sessionId(sessionId);
-    req.__set_prefixPath(prefixPath);
-    req.__set_timestamp(time);
-    req.__set_measurements(measurements);
-    string buffer;
-    putValuesIntoBuffer(types, values, buffer);
-    req.__set_values(buffer);
-    req.__set_isAligned(false);
-    TSStatus respStatus;
     try {
-        client->insertRecord(respStatus, req);
-        RpcUtils::verifySuccess(respStatus);
+        getSessionConnection(prefixPath)->insertRecord(prefixPath, time, measurements, types, values);
+    } catch (RedirectException& e) {
+        handleRedirection(prefixPath, e.endPoint);
+    } catch (const IoTDBConnectionException &e) {
+        if (enableRedirection && deviceIdToEndpoint.find(prefixPath) != deviceIdToEndpoint.end()) {
+            deviceIdToEndpoint.erase(prefixPath);
+            try {
+                defaultSessionConnection->insertRecord(prefixPath, time, measurements, types, values);
+            } catch (RedirectException& e) {
+            }
+        } else {
+            throw IoTDBConnectionException(e.what());
+        }
     } catch (const TTransportException &e) {
         log_debug(e.what());
         throw IoTDBConnectionException(e.what());
@@ -1046,17 +1087,20 @@ void Session::insertRecord(const string &prefixPath, int64_t time,
 void Session::insertAlignedRecord(const string &deviceId, int64_t time,
                                   const vector<string> &measurements,
                                   const vector<string> &values) {
-    TSInsertStringRecordReq req;
-    req.__set_sessionId(sessionId);
-    req.__set_prefixPath(deviceId);
-    req.__set_timestamp(time);
-    req.__set_measurements(measurements);
-    req.__set_values(values);
-    req.__set_isAligned(true);
-    TSStatus respStatus;
     try {
-        client->insertStringRecord(respStatus, req);
-        RpcUtils::verifySuccess(respStatus);
+        getSessionConnection(deviceId)->insertAlignedRecord(deviceId, time, measurements, values);
+    } catch (RedirectException& e) {
+        handleRedirection(deviceId, e.endPoint);
+    } catch (const IoTDBConnectionException &e) {
+        if (enableRedirection && deviceIdToEndpoint.find(deviceId) != deviceIdToEndpoint.end()) {
+            deviceIdToEndpoint.erase(deviceId);
+            try {
+                defaultSessionConnection->insertAlignedRecord(deviceId, time, measurements, values);
+            } catch (RedirectException& e) {
+            }
+        } else {
+            throw IoTDBConnectionException(e.what());
+        }
     } catch (const TTransportException &e) {
         log_debug(e.what());
         throw IoTDBConnectionException(e.what());
@@ -1073,19 +1117,20 @@ void Session::insertAlignedRecord(const string &prefixPath, int64_t time,
                                   const vector<string> &measurements,
                                   const vector<TSDataType::TSDataType> &types,
                                   const vector<char *> &values) {
-    TSInsertRecordReq req;
-    req.__set_sessionId(sessionId);
-    req.__set_prefixPath(prefixPath);
-    req.__set_timestamp(time);
-    req.__set_measurements(measurements);
-    string buffer;
-    putValuesIntoBuffer(types, values, buffer);
-    req.__set_values(buffer);
-    req.__set_isAligned(true);
-    TSStatus respStatus;
     try {
-        client->insertRecord(respStatus, req);
-        RpcUtils::verifySuccess(respStatus);
+        getSessionConnection(prefixPath)->insertAlignedRecord(prefixPath, time, measurements, types, values);
+    } catch (RedirectException& e) {
+        handleRedirection(prefixPath, e.endPoint);
+    } catch (const IoTDBConnectionException &e) {
+        if (enableRedirection && deviceIdToEndpoint.find(prefixPath) != deviceIdToEndpoint.end()) {
+            deviceIdToEndpoint.erase(prefixPath);
+            try {
+                defaultSessionConnection->insertAlignedRecord(prefixPath, time, measurements, types, values);
+            } catch (RedirectException& e) {
+            }
+        } else {
+            throw IoTDBConnectionException(e.what());
+        }
     } catch (const TTransportException &e) {
         log_debug(e.what());
         throw IoTDBConnectionException(e.what());
@@ -1117,7 +1162,7 @@ void Session::insertRecords(const vector<string> &deviceIds,
 
     try {
         TSStatus respStatus;
-        client->insertStringRecords(respStatus, request);
+        defaultSessionConnection->getSessionClient()->insertStringRecords(respStatus, request);
         RpcUtils::verifySuccess(respStatus);
     } catch (const TTransportException &e) {
         log_debug(e.what());
@@ -1157,7 +1202,7 @@ void Session::insertRecords(const vector<string> &deviceIds,
 
     try {
         TSStatus respStatus;
-        client->insertRecords(respStatus, request);
+        defaultSessionConnection->getSessionClient()->insertRecords(respStatus, request);
         RpcUtils::verifySuccess(respStatus);
     } catch (const TTransportException &e) {
         log_debug(e.what());
@@ -1190,7 +1235,7 @@ void Session::insertAlignedRecords(const vector<string> &deviceIds,
 
     try {
         TSStatus respStatus;
-        client->insertStringRecords(respStatus, request);
+        defaultSessionConnection->getSessionClient()->insertStringRecords(respStatus, request);
         RpcUtils::verifySuccess(respStatus);
     } catch (const TTransportException &e) {
         log_debug(e.what());
@@ -1230,7 +1275,7 @@ void Session::insertAlignedRecords(const vector<string> &deviceIds,
 
     try {
         TSStatus respStatus;
-        client->insertRecords(respStatus, request);
+        defaultSessionConnection->getSessionClient()->insertRecords(respStatus, request);
         RpcUtils::verifySuccess(respStatus);
     } catch (const TTransportException &e) {
         log_debug(e.what());
@@ -1258,7 +1303,6 @@ void Session::insertRecordsOfOneDevice(const string &deviceId,
                                        vector<vector<TSDataType::TSDataType>> &typesList,
                                        vector<vector<char *>> &valuesList,
                                        bool sorted) {
-
     if (!checkSorted(times)) {
         int *index = new int[times.size()];
         for (size_t i = 0; i < times.size(); i++) {
@@ -1285,11 +1329,22 @@ void Session::insertRecordsOfOneDevice(const string &deviceId,
     }
     request.__set_valuesList(bufferList);
     request.__set_isAligned(false);
-
+    TSStatus respStatus;
     try {
-        TSStatus respStatus;
-        client->insertRecordsOfOneDevice(respStatus, request);
+        getSessionConnection(deviceId)->getSessionClient()->insertRecordsOfOneDevice(respStatus, request);
         RpcUtils::verifySuccess(respStatus);
+    } catch (RedirectException& e) {
+        handleRedirection(deviceId, e.endPoint);
+    } catch (const IoTDBConnectionException &e) {
+        if (enableRedirection && deviceIdToEndpoint.find(deviceId) != deviceIdToEndpoint.end()) {
+            deviceIdToEndpoint.erase(deviceId);
+            try {
+                defaultSessionConnection->getSessionClient()->insertRecordsOfOneDevice(respStatus, request);
+            } catch (RedirectException& e) {
+            }
+        } else {
+            throw IoTDBConnectionException(e.what());
+        }
     } catch (const TTransportException &e) {
         log_debug(e.what());
         throw IoTDBConnectionException(e.what());
@@ -1344,10 +1399,22 @@ void Session::insertAlignedRecordsOfOneDevice(const string &deviceId,
     request.__set_valuesList(bufferList);
     request.__set_isAligned(true);
 
+    TSStatus respStatus;
     try {
-        TSStatus respStatus;
-        client->insertRecordsOfOneDevice(respStatus, request);
+        getSessionConnection(deviceId)->getSessionClient()->insertRecordsOfOneDevice(respStatus, request);
         RpcUtils::verifySuccess(respStatus);
+    } catch (RedirectException& e) {
+        handleRedirection(deviceId, e.endPoint);
+    } catch (const IoTDBConnectionException &e) {
+        if (enableRedirection && deviceIdToEndpoint.find(deviceId) != deviceIdToEndpoint.end()) {
+            deviceIdToEndpoint.erase(deviceId);
+            try {
+                defaultSessionConnection->getSessionClient()->insertRecordsOfOneDevice(respStatus, request);
+            } catch (RedirectException& e) {
+            }
+        } else {
+            throw IoTDBConnectionException(e.what());
+        }
     } catch (const TTransportException &e) {
         log_debug(e.what());
         throw IoTDBConnectionException(e.what());
@@ -1393,10 +1460,23 @@ void Session::buildInsertTabletReq(TSInsertTabletReq &request, int64_t sessionId
 }
 
 void Session::insertTablet(const TSInsertTabletReq &request){
+    auto deviceId = request.prefixPath;
+    TSStatus respStatus;
     try {
-        TSStatus respStatus;
-        client->insertTablet(respStatus, request);
+        getSessionConnection(deviceId)->getSessionClient()->insertTablet(respStatus, request);
         RpcUtils::verifySuccess(respStatus);
+    } catch (RedirectException& e) {
+        handleRedirection(deviceId, e.endPoint);
+    } catch (const IoTDBConnectionException &e) {
+        if (enableRedirection && deviceIdToEndpoint.find(deviceId) != deviceIdToEndpoint.end()) {
+            deviceIdToEndpoint.erase(deviceId);
+            try {
+                defaultSessionConnection->getSessionClient()->insertTablet(respStatus, request);
+            } catch (RedirectException& e) {
+            }
+        } else {
+            throw IoTDBConnectionException(e.what());
+        }
     } catch (const TTransportException &e) {
         log_debug(e.what());
         throw IoTDBConnectionException(e.what());
@@ -1416,6 +1496,43 @@ void Session::insertTablet(Tablet &tablet, bool sorted) {
 }
 
 void Session::insertRelationalTablet(Tablet &tablet, bool sorted) {
+    std::unordered_map<std::shared_ptr<SessionConnection>, Tablet> relationalTabletGroup;
+    if (tableModelDeviceIdToEndpoint.empty()) {
+        relationalTabletGroup.insert(make_pair(defaultSessionConnection, tablet));
+    } else if (SessionUtils::isTabletContainsSingleDevice(tablet)) {
+        relationalTabletGroup.insert(make_pair(getSessionConnection(tablet.getDeviceID(0)), tablet));
+    } else {
+        for (int i = 0; i < tablet.rowSize; i++) {
+            auto iDeviceID = tablet.getDeviceID(i);
+            std::shared_ptr<SessionConnection> connection = getSessionConnection(iDeviceID);
+
+            auto it = relationalTabletGroup.find(connection);
+            if (it == relationalTabletGroup.end()) {
+                Tablet newTablet(tablet.deviceId, tablet.schemas, tablet.columnTypes);
+                it = relationalTabletGroup.insert(std::make_pair(connection, newTablet)).first;
+            }
+
+            Tablet& currentTablet = it->second;
+            currentTablet.values[currentTablet.rowSize] = tablet.values[i];
+            currentTablet.addTimestamp(currentTablet.rowSize, tablet.timestamps[i]);
+        }
+    }
+    if (relationalTabletGroup.size() == 1) {
+        insertRelationalTabletOnce(relationalTabletGroup, sorted);
+    } else {
+        insertRelationalTabletByGroup(relationalTabletGroup, sorted);
+    }
+}
+
+void Session::insertRelationalTablet(Tablet &tablet) {
+    insertRelationalTablet(tablet, false);
+}
+
+void Session::insertRelationalTabletOnce(const std::unordered_map<std::shared_ptr<SessionConnection>, Tablet>&
+    relationalTabletGroup, bool sorted) {
+    auto iter = relationalTabletGroup.begin();
+    auto connection = iter->first;
+    auto tablet = iter->second;
     TSInsertTabletReq request;
     buildInsertTabletReq(request, sessionId, tablet, sorted);
     request.__set_writeToTable(true);
@@ -1426,8 +1543,28 @@ void Session::insertRelationalTablet(Tablet &tablet, bool sorted) {
     request.__set_columnCategories(columnCategories);
     try {
         TSStatus respStatus;
-        client->insertTablet(respStatus, request);
+        connection->getSessionClient()->insertTablet(respStatus, request);
         RpcUtils::verifySuccess(respStatus);
+    }  catch (RedirectException& e) {
+        auto endPointList = e.endPointList;
+        //unordered_map<std::shared_ptr<storage::IDeviceID>, TEndPoint> endPointMap;
+        for (int i = 0; i < endPointList.size(); i++) {
+            auto deviceID = tablet.getDeviceID(i);
+            //endPointMap.insert(make_pair(deviceID, endPointList[i]));
+            handleRedirection(deviceID, endPointList[i]);
+        }
+    } catch (const IoTDBConnectionException &e) {
+        if (endPointToSessionConnection.size() > 1) {
+            removeBrokenSessionConnection(connection);
+            try {
+                TSStatus respStatus;
+                defaultSessionConnection->getSessionClient()->insertTablet(respStatus, request);
+                RpcUtils::verifySuccess(respStatus);
+            } catch (RedirectException& e) {
+            }
+        } else {
+            throw IoTDBConnectionException(e.what());
+        }
     } catch (const TTransportException &e) {
         log_debug(e.what());
         throw IoTDBConnectionException(e.what());
@@ -1440,8 +1577,47 @@ void Session::insertRelationalTablet(Tablet &tablet, bool sorted) {
     }
 }
 
-void Session::insertRelationalTablet(Tablet &tablet) {
-    insertRelationalTablet(tablet, false);
+void Session::insertRelationalTabletByGroup(const std::unordered_map<std::shared_ptr<SessionConnection>, Tablet>&
+    relationalTabletGroup, bool sorted) {
+    // Create a vector to store future objects for asynchronous operations
+    std::vector<std::future<void>> futures;
+
+    for (auto iter = relationalTabletGroup.begin(); iter != relationalTabletGroup.end(); iter++) {
+        auto connection = iter->first;
+        auto tablet = iter->second;
+
+        // Launch asynchronous task for each tablet insertion
+        futures.emplace_back(std::async(std::launch::async, [=]() mutable {
+            TSInsertTabletReq request;
+            buildInsertTabletReq(request, sessionId, tablet, sorted);
+            request.__set_writeToTable(true);
+
+            std::vector<int8_t> columnCategories;
+            for (auto &category: tablet.columnTypes) {
+                columnCategories.push_back(static_cast<int8_t>(category));
+            }
+            request.__set_columnCategories(columnCategories);
+
+            try {
+                TSStatus respStatus;
+                connection->getSessionClient()->insertTablet(respStatus, request);
+                RpcUtils::verifySuccess(respStatus);
+            } catch (const TTransportException &e) {
+                log_debug(e.what());
+                throw IoTDBConnectionException(e.what());
+            } catch (const IoTDBException &e) {
+                log_debug(e.what());
+                throw;
+            } catch (const exception &e) {
+                log_debug(e.what());
+                throw IoTDBException(e.what());
+            }
+        }));
+    }
+
+    for (auto &f : futures) {
+        f.get();
+    }
 }
 
 void Session::insertAlignedTablet(Tablet &tablet) {
@@ -1502,7 +1678,7 @@ void Session::insertTablets(unordered_map<string, Tablet *> &tablets, bool sorte
     request.__set_isAligned(isFirstTabletAligned);
     try {
         TSStatus respStatus;
-        client->insertTablets(respStatus, request);
+        defaultSessionConnection->getSessionClient()->insertTablets(respStatus, request);
         RpcUtils::verifySuccess(respStatus);
     } catch (const TTransportException &e) {
         log_debug(e.what());
@@ -1541,7 +1717,7 @@ void Session::testInsertRecord(const string &deviceId, int64_t time, const vecto
     req.__set_values(values);
     TSStatus tsStatus;
     try {
-        client->insertStringRecord(tsStatus, req);
+        defaultSessionConnection->getSessionClient()->insertStringRecord(tsStatus, req);
         RpcUtils::verifySuccess(tsStatus);
     } catch (const TTransportException &e) {
         log_debug(e.what());
@@ -1569,7 +1745,7 @@ void Session::testInsertTablet(const Tablet &tablet) {
 
     try {
         TSStatus tsStatus;
-        client->testInsertTablet(tsStatus, request);
+        defaultSessionConnection->getSessionClient()->testInsertTablet(tsStatus, request);
         RpcUtils::verifySuccess(tsStatus);
     } catch (const TTransportException &e) {
         log_debug(e.what());
@@ -1601,7 +1777,7 @@ void Session::testInsertRecords(const vector<string> &deviceIds,
 
     try {
         TSStatus tsStatus;
-        client->insertStringRecords(tsStatus, request);
+        defaultSessionConnection->getSessionClient()->insertStringRecords(tsStatus, request);
         RpcUtils::verifySuccess(tsStatus);
     } catch (const TTransportException &e) {
         log_debug(e.what());
@@ -1625,7 +1801,7 @@ void Session::deleteTimeseries(const vector<string> &paths) {
     TSStatus tsStatus;
 
     try {
-        client->deleteTimeseries(tsStatus, sessionId, paths);
+        defaultSessionConnection->getSessionClient()->deleteTimeseries(tsStatus, sessionId, paths);
         RpcUtils::verifySuccess(tsStatus);
     } catch (const TTransportException &e) {
         log_debug(e.what());
@@ -1657,7 +1833,7 @@ void Session::deleteData(const vector<string> &paths, int64_t startTime, int64_t
     req.__set_endTime(endTime);
     TSStatus tsStatus;
     try {
-        client->deleteData(tsStatus, req);
+        defaultSessionConnection->getSessionClient()->deleteData(tsStatus, req);
         RpcUtils::verifySuccess(tsStatus);
     } catch (const TTransportException &e) {
         log_debug(e.what());
@@ -1674,7 +1850,7 @@ void Session::deleteData(const vector<string> &paths, int64_t startTime, int64_t
 void Session::setStorageGroup(const string &storageGroupId) {
     TSStatus tsStatus;
     try {
-        client->setStorageGroup(tsStatus, sessionId, storageGroupId);
+        defaultSessionConnection->getSessionClient()->setStorageGroup(tsStatus, sessionId, storageGroupId);
         RpcUtils::verifySuccess(tsStatus);
     } catch (const TTransportException &e) {
         log_debug(e.what());
@@ -1697,7 +1873,7 @@ void Session::deleteStorageGroup(const string &storageGroup) {
 void Session::deleteStorageGroups(const vector<string> &storageGroups) {
     TSStatus tsStatus;
     try {
-        client->deleteStorageGroups(tsStatus, sessionId, storageGroups);
+        defaultSessionConnection->getSessionClient()->deleteStorageGroups(tsStatus, sessionId, storageGroups);
         RpcUtils::verifySuccess(tsStatus);
     } catch (const TTransportException &e) {
         log_debug(e.what());
@@ -1766,7 +1942,7 @@ void Session::createTimeseries(const string &path,
 
     TSStatus tsStatus;
     try {
-        client->createTimeseries(tsStatus, req);
+        defaultSessionConnection->getSessionClient()->createTimeseries(tsStatus, req);
         RpcUtils::verifySuccess(tsStatus);
     } catch (const TTransportException &e) {
         log_debug(e.what());
@@ -1829,7 +2005,7 @@ void Session::createMultiTimeseries(const vector<string> &paths,
 
     try {
         TSStatus tsStatus;
-        client->createMultiTimeseries(tsStatus, request);
+        defaultSessionConnection->getSessionClient()->createMultiTimeseries(tsStatus, request);
         RpcUtils::verifySuccess(tsStatus);
     } catch (const TTransportException &e) {
         log_debug(e.what());
@@ -1876,7 +2052,7 @@ void Session::createAlignedTimeseries(const std::string &deviceId,
 
     try {
         TSStatus tsStatus;
-        client->createAlignedTimeseries(tsStatus, request);
+        defaultSessionConnection->getSessionClient()->createAlignedTimeseries(tsStatus, request);
         RpcUtils::verifySuccess(tsStatus);
     } catch (const TTransportException &e) {
         log_debug(e.what());
@@ -1921,7 +2097,7 @@ shared_ptr<SessionConnection> Session::getQuerySessionConnection() {
     shared_ptr<SessionConnection> newConnection;
     try {
         newConnection = make_shared<SessionConnection>(this, endPoint.value(), zoneId, nodesSupplier,
-        60, 500, sqlDialect, database);
+        fetchSize, 60, 500, sqlDialect, database);
         endPointToSessionConnection.emplace(endPoint.value(), newConnection);
         return newConnection;
     } catch (exception &e) {
@@ -1939,13 +2115,22 @@ shared_ptr<SessionConnection> Session::getSessionConnection(std::string deviceId
     return endPointToSessionConnection.find(deviceIdToEndpoint[deviceId])->second;
 }
 
+shared_ptr<SessionConnection> Session::getSessionConnection(std::shared_ptr<storage::IDeviceID> deviceId) {
+    if (!enableRedirection ||
+        tableModelDeviceIdToEndpoint.find(deviceId) == tableModelDeviceIdToEndpoint.end() ||
+        endPointToSessionConnection.find(tableModelDeviceIdToEndpoint[deviceId]) == endPointToSessionConnection.end()) {
+        return defaultSessionConnection;
+        }
+    return endPointToSessionConnection.find(tableModelDeviceIdToEndpoint[deviceId])->second;
+}
+
 string Session::getTimeZone() {
     if (!zoneId.empty()) {
         return zoneId;
     }
     TSGetTimeZoneResp resp;
     try {
-        client->getTimeZone(resp, sessionId);
+        defaultSessionConnection->getSessionClient()->getTimeZone(resp, sessionId);
         RpcUtils::verifySuccess(resp.status);
     } catch (const TTransportException &e) {
         log_debug(e.what());
@@ -1966,7 +2151,7 @@ void Session::setTimeZone(const string &zoneId) {
     req.__set_timeZone(zoneId);
     TSStatus tsStatus;
     try {
-        client->setTimeZone(tsStatus, req);
+        defaultSessionConnection->getSessionClient()->setTimeZone(tsStatus, req);
         RpcUtils::verifySuccess(tsStatus);
         this->zoneId = zoneId;
     } catch (const TTransportException &e) {
@@ -1982,33 +2167,11 @@ void Session::setTimeZone(const string &zoneId) {
 }
 
 unique_ptr<SessionDataSet> Session::executeQueryStatement(const string &sql) {
-    return executeQueryStatement(sql, QUERY_TIMEOUT_MS);
+    return executeQueryStatementMayRedirect(sql, QUERY_TIMEOUT_MS);
 }
 
 unique_ptr<SessionDataSet> Session::executeQueryStatement(const string &sql, int64_t timeoutInMs) {
-    TSExecuteStatementReq req;
-    req.__set_sessionId(sessionId);
-    req.__set_statementId(statementId);
-    req.__set_statement(sql);
-    req.__set_timeout(timeoutInMs);
-    req.__set_fetchSize(fetchSize);
-    TSExecuteStatementResp resp;
-    try {
-        client->executeStatement(resp, req);
-        RpcUtils::verifySuccess(resp.status);
-    } catch (const TTransportException &e) {
-        log_debug(e.what());
-        throw IoTDBConnectionException(e.what());
-    } catch (const IoTDBException &e) {
-        log_debug(e.what());
-        throw;
-    }  catch (const exception &e) {
-        throw IoTDBException(e.what());
-    }
-    shared_ptr<TSQueryDataSet> queryDataSet(new TSQueryDataSet(resp.queryDataSet));
-    return unique_ptr<SessionDataSet>(new SessionDataSet(
-            sql, resp.columns, resp.dataTypeList, resp.columnNameIndexMap, resp.ignoreTimeStamp, resp.queryId,
-            statementId, client, sessionId, queryDataSet));
+    return executeQueryStatementMayRedirect(sql, timeoutInMs);
 }
 
 void Session::handleQueryRedirection(TEndPoint endPoint) {
@@ -2020,7 +2183,7 @@ void Session::handleQueryRedirection(TEndPoint endPoint) {
     } else {
         try {
             newConnection = make_shared<SessionConnection>(this, endPoint, zoneId, nodesSupplier,
-                    60, 500, sqlDialect, database);
+                    fetchSize, 60, 500, sqlDialect, database);
 
             endPointToSessionConnection.emplace(endPoint, newConnection);
         } catch (exception &e) {
@@ -2042,10 +2205,31 @@ void Session::handleRedirection(const std::string& deviceId, TEndPoint endPoint)
     } else {
         try {
             newConnection = make_shared<SessionConnection>(this, endPoint, zoneId, nodesSupplier,
-                    60, 500, sqlDialect, database);
+                    fetchSize, 60, 500, sqlDialect, database);
             endPointToSessionConnection.emplace(endPoint, newConnection);
         } catch (exception &e) {
             deviceIdToEndpoint.erase(deviceId);
+            throw IoTDBConnectionException(e.what());
+        }
+    }
+}
+
+void Session::handleRedirection(const std::shared_ptr<storage::IDeviceID>& deviceId, TEndPoint endPoint) {
+    if (!enableRedirection) return;
+    if (endPoint.ip == "127.0.0.1") return;
+    tableModelDeviceIdToEndpoint[deviceId] = endPoint;
+
+    shared_ptr<SessionConnection> newConnection;
+    auto it = endPointToSessionConnection.find(endPoint);
+    if (it != endPointToSessionConnection.end()) {
+        newConnection = it->second;
+    } else {
+        try {
+            newConnection = make_shared<SessionConnection>(this, endPoint, zoneId, nodesSupplier,
+                    fetchSize, 60, 500, sqlDialect, database);
+            endPointToSessionConnection.emplace(endPoint, newConnection);
+        } catch (exception &e) {
+            tableModelDeviceIdToEndpoint.erase(deviceId);
             throw IoTDBConnectionException(e.what());
         }
     }
@@ -2076,54 +2260,15 @@ std::unique_ptr<SessionDataSet> Session::executeQueryStatementMayRedirect(const 
 }
 
 void Session::executeNonQueryStatement(const string &sql) {
-    TSExecuteStatementReq req;
-    req.__set_sessionId(sessionId);
-    req.__set_statementId(statementId);
-    req.__set_statement(sql);
-    req.__set_timeout(0);  //0 means no timeout. This value keep consistent to JAVA SDK.
-    TSExecuteStatementResp resp;
     try {
-        client->executeUpdateStatementV2(resp, req);
-        if (resp.database != "") {
-            database = resp.database;
-        }
-        RpcUtils::verifySuccess(resp.status);
-    } catch (const TTransportException &e) {
-        log_debug(e.what());
-        throw IoTDBConnectionException(e.what());
-    } catch (const IoTDBException &e) {
-        log_debug(e.what());
-        throw;
+        defaultSessionConnection->executeNonQueryStatement(sql);
     } catch (const exception &e) {
         throw IoTDBException(e.what());
     }
 }
 
 unique_ptr<SessionDataSet> Session::executeRawDataQuery(const vector<string> &paths, int64_t startTime, int64_t endTime) {
-    TSRawDataQueryReq req;
-    req.__set_sessionId(sessionId);
-    req.__set_statementId(statementId);
-    req.__set_fetchSize(fetchSize);
-    req.__set_paths(paths);
-    req.__set_startTime(startTime);
-    req.__set_endTime(endTime);
-    TSExecuteStatementResp resp;
-    try {
-        client->executeRawDataQuery(resp, req);
-        RpcUtils::verifySuccess(resp.status);
-    } catch (const TTransportException &e) {
-        log_debug(e.what());
-        throw IoTDBConnectionException(e.what());
-    } catch (const IoTDBException &e) {
-        log_debug(e.what());
-        throw;
-    } catch (const exception &e) {
-        throw IoTDBException(e.what());
-    }
-    shared_ptr<TSQueryDataSet> queryDataSet(new TSQueryDataSet(resp.queryDataSet));
-    return unique_ptr<SessionDataSet>(
-            new SessionDataSet("", resp.columns, resp.dataTypeList, resp.columnNameIndexMap, resp.ignoreTimeStamp,
-                               resp.queryId, statementId, client, sessionId, queryDataSet));
+    return defaultSessionConnection->executeRawDataQuery(paths, startTime, endTime);
 }
 
 
@@ -2131,30 +2276,7 @@ unique_ptr<SessionDataSet> Session::executeLastDataQuery(const vector<string> &p
     return executeLastDataQuery(paths, LONG_LONG_MIN);
 }
 unique_ptr<SessionDataSet> Session::executeLastDataQuery(const vector<string> &paths, int64_t lastTime) {
-    TSLastDataQueryReq req;
-    req.__set_sessionId(sessionId);
-    req.__set_statementId(statementId);
-    req.__set_fetchSize(fetchSize);
-    req.__set_paths(paths);
-    req.__set_time(lastTime);
-
-    TSExecuteStatementResp resp;
-    try {
-        client->executeLastDataQuery(resp, req);
-        RpcUtils::verifySuccess(resp.status);
-    } catch (const TTransportException &e) {
-        log_debug(e.what());
-        throw IoTDBConnectionException(e.what());
-    } catch (const IoTDBException &e) {
-        log_debug(e.what());
-        throw;
-    } catch (const exception &e) {
-        throw IoTDBException(e.what());
-    }
-    shared_ptr<TSQueryDataSet> queryDataSet(new TSQueryDataSet(resp.queryDataSet));
-    return unique_ptr<SessionDataSet>(
-            new SessionDataSet("", resp.columns, resp.dataTypeList, resp.columnNameIndexMap, resp.ignoreTimeStamp,
-                               resp.queryId, statementId, client, sessionId, queryDataSet));
+    return defaultSessionConnection->executeLastDataQuery(paths, lastTime);
 }
 
 void Session::createSchemaTemplate(const Template &templ) {
@@ -2164,7 +2286,7 @@ void Session::createSchemaTemplate(const Template &templ) {
     req.__set_serializedTemplate(templ.serialize());
     TSStatus tsStatus;
     try {
-        client->createSchemaTemplate(tsStatus, req);
+        defaultSessionConnection->getSessionClient()->createSchemaTemplate(tsStatus, req);
         RpcUtils::verifySuccess(tsStatus);
     } catch (const TTransportException &e) {
         log_debug(e.what());
@@ -2185,7 +2307,7 @@ void Session::setSchemaTemplate(const string &template_name, const string &prefi
     req.__set_prefixPath(prefix_path);
     TSStatus tsStatus;
     try {
-        client->setSchemaTemplate(tsStatus, req);
+        defaultSessionConnection->getSessionClient()->setSchemaTemplate(tsStatus, req);
         RpcUtils::verifySuccess(tsStatus);
     } catch (const TTransportException &e) {
         log_debug(e.what());
@@ -2206,7 +2328,7 @@ void Session::unsetSchemaTemplate(const string &prefix_path, const string &templ
     req.__set_prefixPath(prefix_path);
     TSStatus tsStatus;
     try {
-        client->unsetSchemaTemplate(tsStatus, req);
+        defaultSessionConnection->getSessionClient()->unsetSchemaTemplate(tsStatus, req);
         RpcUtils::verifySuccess(tsStatus);
     } catch (const TTransportException &e) {
         log_debug(e.what());
@@ -2253,7 +2375,7 @@ void Session::addAlignedMeasurementsInTemplate(const string &template_name, cons
 
     TSStatus tsStatus;
     try {
-        client->appendSchemaTemplate(tsStatus, req);
+        defaultSessionConnection->getSessionClient()->appendSchemaTemplate(tsStatus, req);
         RpcUtils::verifySuccess(tsStatus);
     } catch (const TTransportException &e) {
         log_debug(e.what());
@@ -2310,7 +2432,7 @@ void Session::addUnalignedMeasurementsInTemplate(const string &template_name, co
 
     TSStatus tsStatus;
     try {
-        client->appendSchemaTemplate(tsStatus, req);
+        defaultSessionConnection->getSessionClient()->appendSchemaTemplate(tsStatus, req);
         RpcUtils::verifySuccess(tsStatus);
     } catch (const TTransportException &e) {
         log_debug(e.what());
@@ -2341,7 +2463,7 @@ void Session::deleteNodeInTemplate(const string &template_name, const string &pa
     req.__set_path(path);
     TSStatus tsStatus;
     try {
-        client->pruneSchemaTemplate(tsStatus, req);
+        defaultSessionConnection->getSessionClient()->pruneSchemaTemplate(tsStatus, req);
         RpcUtils::verifySuccess(tsStatus);
     } catch (const TTransportException &e) {
         log_debug(e.what());
@@ -2362,7 +2484,7 @@ int Session::countMeasurementsInTemplate(const string &template_name) {
     req.__set_queryType(TemplateQueryType::COUNT_MEASUREMENTS);
     TSQueryTemplateResp resp;
     try {
-        client->querySchemaTemplate(resp, req);
+        defaultSessionConnection->getSessionClient()->querySchemaTemplate(resp, req);
     } catch (const TTransportException &e) {
         log_debug(e.what());
         throw IoTDBConnectionException(e.what());
@@ -2381,7 +2503,7 @@ bool Session::isMeasurementInTemplate(const string &template_name, const string 
     req.__set_queryType(TemplateQueryType::IS_MEASUREMENT);
     TSQueryTemplateResp resp;
     try {
-        client->querySchemaTemplate(resp, req);
+        defaultSessionConnection->getSessionClient()->querySchemaTemplate(resp, req);
     } catch (const TTransportException &e) {
         log_debug(e.what());
         throw IoTDBConnectionException(e.what());
@@ -2400,7 +2522,7 @@ bool Session::isPathExistInTemplate(const string &template_name, const string &p
     req.__set_queryType(TemplateQueryType::PATH_EXIST);
     TSQueryTemplateResp resp;
     try {
-        client->querySchemaTemplate(resp, req);
+        defaultSessionConnection->getSessionClient()->querySchemaTemplate(resp, req);
     } catch (const TTransportException &e) {
         log_debug(e.what());
         throw IoTDBConnectionException(e.what());
@@ -2419,7 +2541,7 @@ std::vector<std::string> Session::showMeasurementsInTemplate(const string &templ
     req.__set_queryType(TemplateQueryType::SHOW_MEASUREMENTS);
     TSQueryTemplateResp resp;
     try {
-        client->querySchemaTemplate(resp, req);
+        defaultSessionConnection->getSessionClient()->querySchemaTemplate(resp, req);
     } catch (const TTransportException &e) {
         log_debug(e.what());
         throw IoTDBConnectionException(e.what());
@@ -2438,7 +2560,7 @@ std::vector<std::string> Session::showMeasurementsInTemplate(const string &templ
     req.__set_queryType(TemplateQueryType::SHOW_MEASUREMENTS);
     TSQueryTemplateResp resp;
     try {
-        client->querySchemaTemplate(resp, req);
+        defaultSessionConnection->getSessionClient()->querySchemaTemplate(resp, req);
     } catch (const TTransportException &e) {
         log_debug(e.what());
         throw IoTDBConnectionException(e.what());
