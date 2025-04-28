@@ -1143,25 +1143,25 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
 
   @Override
   public Node visitShowRegionIdStatement(RelationalSqlParser.ShowRegionIdStatementContext ctx) {
-    return super.visitShowRegionIdStatement(ctx);
+    throw new SemanticException("SHOW REGION ID is not supported yet.");
   }
 
   @Override
   public Node visitShowTimeSlotListStatement(
       RelationalSqlParser.ShowTimeSlotListStatementContext ctx) {
-    return super.visitShowTimeSlotListStatement(ctx);
+    throw new SemanticException("SHOW TIME SLOT is not supported yet.");
   }
 
   @Override
   public Node visitCountTimeSlotListStatement(
       RelationalSqlParser.CountTimeSlotListStatementContext ctx) {
-    return super.visitCountTimeSlotListStatement(ctx);
+    throw new SemanticException("COUNT TIME SLOT is not supported yet.");
   }
 
   @Override
   public Node visitShowSeriesSlotListStatement(
       RelationalSqlParser.ShowSeriesSlotListStatementContext ctx) {
-    return super.visitShowSeriesSlotListStatement(ctx);
+    throw new SemanticException("SHOW SERIES SLOT is not supported yet.");
   }
 
   @Override
