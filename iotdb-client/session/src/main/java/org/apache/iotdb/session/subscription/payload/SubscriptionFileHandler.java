@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.session.subscription.payload;
 
-import org.apache.iotdb.rpc.subscription.exception.SubscriptionIncompatibleHandlerException;
 import org.apache.iotdb.session.util.RetryUtils;
 
 import java.io.File;
@@ -111,11 +110,5 @@ public abstract class SubscriptionFileHandler implements SubscriptionMessageHand
                 target,
                 StandardCopyOption.REPLACE_EXISTING,
                 StandardCopyOption.COPY_ATTRIBUTES));
-  }
-
-  @Override
-  public SubscriptionSessionDataSetsHandler getSessionDataSetsHandler() {
-    throw new SubscriptionIncompatibleHandlerException(
-        "SubscriptionFileHandler do not support getSessionDataSetsHandler().");
   }
 }

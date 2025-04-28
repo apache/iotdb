@@ -191,8 +191,8 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
           SchemaEngine.getInstance()
                   .getAllSchemaRegionIds()
                   .contains(new SchemaRegionId(consensusGroupId))
-              && !SchemaRegionListeningFilter.parseListeningPlanTypeSet(extractorParameters)
-                  .isEmpty();
+              && SchemaRegionListeningFilter.shouldSchemaRegionBeListened(
+                  consensusGroupId, extractorParameters);
 
       // Advance the extractor parameters parsing logic to avoid creating un-relevant pipeTasks
       // consensusGroupId < 0 means an external source task, should create it
@@ -335,26 +335,7 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
     PipeTsFileToTabletsMetrics.getInstance().deregister(taskId);
     PipeDataNodeRemainingEventAndTimeMetrics.getInstance().deregister(taskId);
 
-    if (pipeName.startsWith(PipeStaticMeta.CONSENSUS_PIPE_PREFIX)) {
-      // Release corresponding receiver's resource
-      PipeDataNodeAgent.receiver()
-          .pipeConsensus()
-          .handleDropPipeConsensusTask(new ConsensusPipeName(pipeName));
-    }
-
     return true;
-  }
-
-  @Override
-  protected boolean createPipe(final PipeMeta pipeMetaFromCoordinator) throws IllegalPathException {
-    String pipeName = pipeMetaFromCoordinator.getStaticMeta().getPipeName();
-    if (pipeName.startsWith(PipeStaticMeta.CONSENSUS_PIPE_PREFIX)) {
-      // Release corresponding receiver's resource
-      PipeDataNodeAgent.receiver()
-          .pipeConsensus()
-          .markConsensusPipeAsCreated(new ConsensusPipeName(pipeName));
-    }
-    return super.createPipe(pipeMetaFromCoordinator);
   }
 
   @Override
@@ -371,13 +352,6 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
       final String taskId = pipeName + "_" + creationTime;
       PipeTsFileToTabletsMetrics.getInstance().deregister(taskId);
       PipeDataNodeRemainingEventAndTimeMetrics.getInstance().deregister(taskId);
-    }
-
-    if (pipeName.startsWith(PipeStaticMeta.CONSENSUS_PIPE_PREFIX)) {
-      // Release corresponding receiver's resource
-      PipeDataNodeAgent.receiver()
-          .pipeConsensus()
-          .handleDropPipeConsensusTask(new ConsensusPipeName(pipeName));
     }
 
     return true;

@@ -57,8 +57,10 @@ import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
 public class TsFileInsertionEventTableParserTabletIterator implements Iterator<Tablet> {
-  private static final int PIPE_MAX_ALIGNED_SERIES_NUM_IN_ONE_BATCH =
+
+  private final int pipeMaxAlignedSeriesNumInOneBatch =
       PipeConfig.getInstance().getPipeMaxAlignedSeriesNumInOneBatch();
+
   private final long startTime;
   private final long endTime;
 
@@ -223,9 +225,9 @@ public class TsFileInsertionEventTableParserTabletIterator implements Iterator<T
               deviceMetaIterator = metadataQuerier.deviceIterator(tableRoot, null);
 
               final int columnSchemaSize = tableSchema.getColumnSchemas().size();
-              dataTypeList = new ArrayList<>(PIPE_MAX_ALIGNED_SERIES_NUM_IN_ONE_BATCH);
-              columnTypes = new ArrayList<>(PIPE_MAX_ALIGNED_SERIES_NUM_IN_ONE_BATCH);
-              measurementList = new ArrayList<>(PIPE_MAX_ALIGNED_SERIES_NUM_IN_ONE_BATCH);
+              dataTypeList = new ArrayList<>(pipeMaxAlignedSeriesNumInOneBatch);
+              columnTypes = new ArrayList<>(pipeMaxAlignedSeriesNumInOneBatch);
+              measurementList = new ArrayList<>(pipeMaxAlignedSeriesNumInOneBatch);
 
               for (int i = 0; i < columnSchemaSize; i++) {
                 final IMeasurementSchema schema = tableSchema.getColumnSchemas().get(i);
@@ -328,7 +330,7 @@ public class TsFileInsertionEventTableParserTabletIterator implements Iterator<T
     timeChunk.getData().rewind();
     long size = timeChunkSize;
 
-    final List<Chunk> valueChunkList = new ArrayList<>(PIPE_MAX_ALIGNED_SERIES_NUM_IN_ONE_BATCH);
+    final List<Chunk> valueChunkList = new ArrayList<>(pipeMaxAlignedSeriesNumInOneBatch);
 
     // To ensure that the Tablet has the same alignedChunk column as the current one,
     // you need to create a new Tablet to fill in the data.
@@ -336,7 +338,7 @@ public class TsFileInsertionEventTableParserTabletIterator implements Iterator<T
 
     // Need to ensure that columnTypes recreates an array
     final List<Tablet.ColumnCategory> categories =
-        new ArrayList<>(deviceIdSize + PIPE_MAX_ALIGNED_SERIES_NUM_IN_ONE_BATCH);
+        new ArrayList<>(deviceIdSize + pipeMaxAlignedSeriesNumInOneBatch);
     for (int i = 0; i < deviceIdSize; i++) {
       categories.add(Tablet.ColumnCategory.TAG);
     }
@@ -361,7 +363,7 @@ public class TsFileInsertionEventTableParserTabletIterator implements Iterator<T
 
         valueChunkList.add(chunk);
       }
-      if (offset - startOffset >= PIPE_MAX_ALIGNED_SERIES_NUM_IN_ONE_BATCH) {
+      if (offset - startOffset >= pipeMaxAlignedSeriesNumInOneBatch) {
         break;
       }
     }

@@ -15,8 +15,16 @@
 # specific language governing permissions and limitations
 # under the License.
 #
+import logging
+
+import pandas as pd
+from pandas._libs import OutOfBoundsDatetime
+from tzlocal import get_localzone_name
+
 from iotdb.thrift.common.ttypes import TSStatus
 from iotdb.utils.exception import RedirectException, StatementExecutionException
+
+logger = logging.getLogger("IoTDB")
 
 SUCCESS_STATUS = 200
 MULTIPLE_ERROR = 302
@@ -67,3 +75,36 @@ def verify_success_with_redirection_for_multi_devices(status: TSStatus, devices:
             if status.subStatus[i].redirectNode is not None:
                 device_to_endpoint[devices[i]] = status.subStatus[i].redirectNode
         raise RedirectException(device_to_endpoint)
+
+
+def convert_to_timestamp(time: int, precision: str, timezone: str):
+    try:
+        return pd.Timestamp(time, unit=precision, tz=timezone)
+    except OutOfBoundsDatetime:
+        return pd.Timestamp(time, unit=precision).tz_localize(timezone)
+    except ValueError:
+        logger.warning(
+            f"Timezone string '{timezone}' cannot be recognized by pandas. "
+            f"Falling back to local timezone: '{get_localzone_name()}'."
+        )
+        return pd.Timestamp(time, unit=precision, tz=get_localzone_name())
+
+
+unit_map = {
+    "ms": "milliseconds",
+    "us": "microseconds",
+    "ns": "nanoseconds",
+}
+
+
+def isoformat(ts: pd.Timestamp, unit: str):
+    if unit not in unit_map:
+        raise ValueError(f"Unsupported unit: {unit}")
+    try:
+        return ts.isoformat(timespec=unit_map[unit])
+    except ValueError:
+        logger.warning(
+            f"Timezone string '{unit_map[unit]}' cannot be recognized by old version pandas. "
+            f"Falling back to use auto timespec'."
+        )
+        return ts.isoformat()

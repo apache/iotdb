@@ -19,51 +19,73 @@
 
 package org.apache.iotdb.session.subscription.payload;
 
-import org.apache.iotdb.rpc.subscription.exception.SubscriptionIncompatibleHandlerException;
-
 import org.apache.tsfile.write.record.Tablet;
 
+import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
+import java.util.NoSuchElementException;
 
 public class SubscriptionSessionDataSetsHandler
     implements Iterable<SubscriptionSessionDataSet>, SubscriptionMessageHandler {
 
-  private final List<Tablet> tablets;
+  private final Map<String, List<Tablet>> tablets;
 
-  public SubscriptionSessionDataSetsHandler(final List<Tablet> tablets) {
+  public SubscriptionSessionDataSetsHandler(final Map<String, List<Tablet>> tablets) {
     this.tablets = tablets;
   }
 
   @Override
   public Iterator<SubscriptionSessionDataSet> iterator() {
     return new Iterator<SubscriptionSessionDataSet>() {
-      final Iterator<Tablet> tabletsIterator = tablets.iterator();
+      // Iterator over map entries: databaseName -> list of tablets
+      private final Iterator<Map.Entry<String, List<Tablet>>> entryIterator =
+          tablets.entrySet().iterator();
+      // Current databaseName
+      private String currentDatabase;
+      // Iterator over the current list of tablets
+      private Iterator<Tablet> tabletIterator = Collections.emptyIterator();
 
       @Override
       public boolean hasNext() {
-        return tabletsIterator.hasNext();
+        // Advance to next non-empty tablet list if needed
+        while (!tabletIterator.hasNext() && entryIterator.hasNext()) {
+          Map.Entry<String, List<Tablet>> entry = entryIterator.next();
+          currentDatabase = entry.getKey();
+          List<Tablet> list = entry.getValue();
+          tabletIterator = (list != null ? list.iterator() : Collections.emptyIterator());
+        }
+        return tabletIterator.hasNext();
       }
 
       @Override
       public SubscriptionSessionDataSet next() {
-        return new SubscriptionSessionDataSet(tabletsIterator.next());
+        if (!hasNext()) {
+          throw new NoSuchElementException();
+        }
+        Tablet tablet = tabletIterator.next();
+        return new SubscriptionSessionDataSet(tablet, currentDatabase);
       }
     };
   }
 
   public Iterator<Tablet> tabletIterator() {
-    return tablets.iterator();
-  }
+    return new Iterator<Tablet>() {
+      final Iterator<SubscriptionSessionDataSet> iterator = iterator();
 
-  @Override
-  public SubscriptionSessionDataSetsHandler getSessionDataSetsHandler() {
-    return this;
-  }
+      @Override
+      public boolean hasNext() {
+        return iterator.hasNext();
+      }
 
-  @Override
-  public SubscriptionTsFileHandler getTsFileHandler() {
-    throw new SubscriptionIncompatibleHandlerException(
-        "SubscriptionSessionDataSetsHandler do not support getSessionDataSetsHandler().");
+      @Override
+      public Tablet next() {
+        if (!hasNext()) {
+          throw new NoSuchElementException();
+        }
+        return iterator.next().getTablet();
+      }
+    };
   }
 }

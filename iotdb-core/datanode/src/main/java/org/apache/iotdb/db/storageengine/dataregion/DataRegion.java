@@ -2948,6 +2948,9 @@ public class DataRegion implements IDataRegionForQuery {
   }
 
   public static Optional<String> getNonSystemDatabaseName(String databaseName) {
+    if (Objects.isNull(databaseName)) {
+      return Optional.empty();
+    }
     if (databaseName.startsWith(SchemaConstant.SYSTEM_DATABASE)) {
       return Optional.empty();
     }
@@ -3001,6 +3004,12 @@ public class DataRegion implements IDataRegionForQuery {
 
     writeLock("loadNewTsFile");
     try {
+      if (deleted) {
+        logger.info(
+            "Won't load TsFile {}, because region is deleted",
+            tsfileToBeInserted.getAbsolutePath());
+        return;
+      }
       newTsFileResource.setSeq(false);
       final String newFileName =
           getNewTsFileName(
@@ -3064,8 +3073,10 @@ public class DataRegion implements IDataRegionForQuery {
       throw new LoadFileException(e);
     } finally {
       writeUnlock();
-      // TODO: do more precise control and call "invalidateTableLastCache"
-      TreeDeviceSchemaCacheManager.getInstance().cleanUp();
+      // TODO: do more precise control
+      if (CommonDescriptor.getInstance().getConfig().isLastCacheEnable()) {
+        TreeDeviceSchemaCacheManager.getInstance().cleanUp();
+      }
     }
   }
 

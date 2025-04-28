@@ -78,6 +78,16 @@ public class SubscriptionPrefetchingTabletQueue extends SubscriptionPrefetchingQ
         (key, ev) -> {
           // 1. Extract current event and check it
           if (Objects.isNull(ev)) {
+            if (isCommitContextOutdated(commitContext)) {
+              LOGGER.warn(
+                  "SubscriptionPrefetchingTabletQueue {} detected outdated poll request, consumer {}, commit context {}, offset {}",
+                  this,
+                  consumerId,
+                  commitContext,
+                  offset);
+              eventRef.set(generateSubscriptionPollOutdatedErrorResponse());
+              return null;
+            }
             final String errorMessage =
                 String.format(
                     "SubscriptionPrefetchingTabletQueue %s is currently not transferring any tablet to consumer %s, commit context: %s, offset: %s",
