@@ -735,12 +735,12 @@ public class Subcolumn5Test {
     @Test
     public void testSubcolumn() throws IOException {
         // String parent_dir = "D:/github/xjz17/subcolumn/elf_resources/dataset/";
-        String parent_dir = "D:/github/xjz17/subcolumn/temp_dataset/";
+        String parent_dir = "D:/encoding-subcolumn/temp_dataset/";
         // String parent_dir = "D:/encoding-subcolumn/dataset/";
 
         String output_parent_dir = "D:/encoding-subcolumn/";
 
-        String outputPath = output_parent_dir + "subcolumn_temp.csv";
+        String outputPath = output_parent_dir + "subcolumn_test.csv";
 
         // int block_size = 1024;
         int block_size = 512;
@@ -783,8 +783,9 @@ public class Subcolumn5Test {
                     continue;
                 }
                 int cur_decimal = getDecimalPrecision(f_str);
-                if (cur_decimal > max_decimal)
+                if (cur_decimal > max_decimal) {
                     max_decimal = cur_decimal;
+                }
                 data1.add(Float.valueOf(f_str));
             }
             inputStream.close();
@@ -823,21 +824,24 @@ public class Subcolumn5Test {
 
             System.out.println("Decode");
 
+            int[] data2_arr_decoded = new int[data2_arr.length];
+
             s = System.nanoTime();
 
             for (int repeat = 0; repeat < repeatTime; repeat++) {
-                int[] data2_arr_decoded = Decoder(encoded_result);
-                for (int i = 0; i < data2_arr_decoded.length; i++) {
-                    // assert data2_arr[i] == data2_arr_decoded[i];
-                }
+                data2_arr_decoded = Decoder(encoded_result);
             }
 
             e = System.nanoTime();
             decodeTime += ((e - s) / repeatTime);
 
+            for (int i = 0; i < data2_arr_decoded.length; i++) {
+                // assert data2_arr[i] == data2_arr_decoded[i];
+            }
+
             String[] record = {
                     datasetName,
-                    "Subcolumn",
+                    "Sub-columns",
                     String.valueOf(encodeTime),
                     String.valueOf(decodeTime),
                     String.valueOf(data1.size()),

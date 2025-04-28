@@ -402,12 +402,12 @@ public class BPTest {
 
     @Test
     public void testBP() throws IOException {
-        String parent_dir = "D:/github/xjz17/subcolumn/elf_resources/dataset/";
-        // String parent_dir = "D:/compress-subcolumn/dataset/";
+        // String parent_dir = "D:/github/xjz17/subcolumn/elf_resources/dataset/";
+        String parent_dir = "D:/encoding-subcolumn/temp_dataset/";
 
-        String output_parent_dir = "D:/compress-subcolumn/";
+        String output_parent_dir = "D:/encoding-subcolumn/";
 
-        String outputPath = output_parent_dir + "test_bp2.csv";
+        String outputPath = output_parent_dir + "bp_test.csv";
 
         int block_size = 1024;
 
@@ -444,10 +444,9 @@ public class BPTest {
             int max_decimal = 0;
             while (loader.readRecord()) {
                 String f_str = loader.getValues()[0];
-                // System.out.println(f_str);
-                // if (f_str.equals("")) {
-                // continue;
-                // }
+                if (f_str.isEmpty()) {
+                    continue;
+                }
                 int cur_decimal = getDecimalPrecision(f_str);
                 if (cur_decimal > max_decimal)
                     max_decimal = cur_decimal;
@@ -481,7 +480,8 @@ public class BPTest {
             long e = System.nanoTime();
             encodeTime += ((e - s) / repeatTime);
             compressed_size += length;
-            double ratioTmp = compressed_size / (double) (data1.size() * Long.BYTES);
+            double ratioTmp = compressed_size / (double) (data1.size() * Integer.BYTES);
+            // double ratioTmp = compressed_size / (double) (data1.size() * Long.BYTES);
             ratio += ratioTmp;
 
             s = System.nanoTime();

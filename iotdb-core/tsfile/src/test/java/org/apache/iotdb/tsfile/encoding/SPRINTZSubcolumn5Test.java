@@ -246,17 +246,17 @@ public class SPRINTZSubcolumn5Test {
     @Test
     public void testSPRINTZ() throws IOException {
         // String parent_dir = "D:/github/xjz17/subcolumn/elf_resources/dataset/";
-        // String parent_dir = "D:/compress-subcolumn/dataset/";
-        String parent_dir = "D:/github/yoyo185644/camel/src/test/resources/ElfTestData/";
+        String parent_dir = "D:/encoding-subcolumn/temp_dataset/";
+        // String parent_dir = "D:/github/yoyo185644/camel/src/test/resources/ElfTestData/";
 
-        String output_parent_dir = "D:/compress-subcolumn/";
+        String output_parent_dir = "D:/encoding-subcolumn/";
 
-        String outputPath = output_parent_dir + "sprintz_subcolumn_new.csv";
+        String outputPath = output_parent_dir + "sprintz_subcolumn_test.csv";
 
         // int block_size = 1024;
         int block_size = 512;
 
-        int repeatTime = 500;
+        int repeatTime = 100;
         // TODO 真正计算时，记得注释掉将下面的内容
         // repeatTime = 1;
 
@@ -294,8 +294,9 @@ public class SPRINTZSubcolumn5Test {
                     continue;
                 }
                 int cur_decimal = getDecimalPrecision(f_str);
-                if (cur_decimal > max_decimal)
+                if (cur_decimal > max_decimal) {
                     max_decimal = cur_decimal;
+                }
                 data1.add(Float.valueOf(f_str));
             }
             inputStream.close();
@@ -328,26 +329,30 @@ public class SPRINTZSubcolumn5Test {
             encodeTime += ((e - s) / repeatTime);
             // compressed_size += length / 8;
             compressed_size += length;
-            double ratioTmp = compressed_size / (double) (data1.size() * Long.BYTES);
+            double ratioTmp = compressed_size / (double) (data1.size() * Integer.BYTES);
+            // double ratioTmp = compressed_size / (double) (data1.size() * Long.BYTES);
             ratio += ratioTmp;
+
+            int[] data2_arr_decoded = new int[data2_arr.length];
 
             s = System.nanoTime();
 
             for (int repeat = 0; repeat < repeatTime; repeat++) {
-                int[] data2_arr_decoded = Decoder(encoded_result);
-                for (int i = 0; i < data2_arr_decoded.length; i++) {
-                    // assert data2_arr[i] == data2_arr_decoded[i]
-                    //         || data2_arr[i] + Integer.MAX_VALUE + 1 == data2_arr_decoded[i];
-                    // assert data2_arr[i] == data2_arr_decoded[i];
-                }
+                data2_arr_decoded = Decoder(encoded_result);
             }
 
             e = System.nanoTime();
             decodeTime += ((e - s) / repeatTime);
 
+            for (int i = 0; i < data2_arr_decoded.length; i++) {
+                // assert data2_arr[i] == data2_arr_decoded[i]
+                //         || data2_arr[i] + Integer.MAX_VALUE + 1 == data2_arr_decoded[i];
+                // assert data2_arr[i] == data2_arr_decoded[i];
+            }
+
             String[] record = {
                     datasetName,
-                    "SPRINTZ+Subcolumn",
+                    "SPRINTZ+Sub-columns",
                     String.valueOf(encodeTime),
                     String.valueOf(decodeTime),
                     String.valueOf(data1.size()),

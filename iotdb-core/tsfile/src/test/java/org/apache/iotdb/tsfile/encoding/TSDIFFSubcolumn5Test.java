@@ -238,13 +238,13 @@ public class TSDIFFSubcolumn5Test {
 
     @Test
     public void testTSDIFF() throws IOException {
-        // String parent_dir = "D:/github/xjz17/subcolumn/elf_resources/dataset/";
-        // String parent_dir = "D:/compress-subcolumn/dataset/";
-        String parent_dir = "D:/github/yoyo185644/camel/src/test/resources/ElfTestData/";
+        // String parent_dir = "D:/github/xjz17/subcolumn/dataset/";
+        String parent_dir = "D:/encoding-subcolumn/temp_dataset/";
+        // String parent_dir = "D:/github/yoyo185644/camel/src/test/resources/ElfTestData/";
 
-        String output_parent_dir = "D:/compress-subcolumn/";
+        String output_parent_dir = "D:/encoding-subcolumn/";
 
-        String outputPath = output_parent_dir + "ts2diff_subcolumn_new.csv";
+        String outputPath = output_parent_dir + "ts2diff_subcolumn_test.csv";
 
         // int block_size = 1024;
         int block_size = 512;
@@ -287,8 +287,9 @@ public class TSDIFFSubcolumn5Test {
                     continue;
                 }
                 int cur_decimal = getDecimalPrecision(f_str);
-                if (cur_decimal > max_decimal)
+                if (cur_decimal > max_decimal) {
                     max_decimal = cur_decimal;
+                }
                 data1.add(Float.valueOf(f_str));
             }
             inputStream.close();
@@ -321,26 +322,30 @@ public class TSDIFFSubcolumn5Test {
             encodeTime += ((e - s) / repeatTime);
             // compressed_size += length / 8;
             compressed_size += length;
-            double ratioTmp = compressed_size / (double) (data1.size() * Long.BYTES);
+            double ratioTmp = compressed_size / (double) (data1.size() * Integer.BYTES);
+            // double ratioTmp = compressed_size / (double) (data1.size() * Long.BYTES);
             ratio += ratioTmp;
 
+            int[] data2_arr_decoded = new int[data2_arr.length];
+            
             s = System.nanoTime();
 
             for (int repeat = 0; repeat < repeatTime; repeat++) {
-                int[] data2_arr_decoded = Decoder(encoded_result);
-                for (int i = 0; i < data2_arr_decoded.length; i++) {
-                    // assert data2_arr[i] == data2_arr_decoded[i]
-                    //         || data2_arr[i] + Integer.MAX_VALUE + 1 == data2_arr_decoded[i];
-                    // assert data2_arr[i] == data2_arr_decoded[i];
-                }
+                data2_arr_decoded = Decoder(encoded_result);
             }
 
             e = System.nanoTime();
             decodeTime += ((e - s) / repeatTime);
 
+            for (int i = 0; i < data2_arr_decoded.length; i++) {
+                // assert data2_arr[i] == data2_arr_decoded[i]
+                //         || data2_arr[i] + Integer.MAX_VALUE + 1 == data2_arr_decoded[i];
+                // assert data2_arr[i] == data2_arr_decoded[i];
+            }
+
             String[] record = {
                     datasetName,
-                    "TS2DIFF+Subcolumn",
+                    "TS2DIFF+Sub-columns",
                     String.valueOf(encodeTime),
                     String.valueOf(decodeTime),
                     String.valueOf(data1.size()),
