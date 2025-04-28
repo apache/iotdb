@@ -173,6 +173,7 @@ public class WALInputStream extends InputStream implements AutoCloseable {
     MmapUtil.clean(dataBuffer);
     MmapUtil.clean(compressedBuffer);
     dataBuffer = null;
+    compressedBuffer = null;
   }
 
   @Override
@@ -306,6 +307,7 @@ public class WALInputStream extends InputStream implements AutoCloseable {
         dataBuffer = ByteBuffer.allocateDirect(segmentInfo.uncompressedSize);
         uncompressWALBuffer(compressedBuffer, dataBuffer, unCompressor);
         MmapUtil.clean(compressedBuffer);
+        compressedBuffer = null;
       } else {
         dataBuffer = ByteBuffer.allocateDirect(segmentInfo.dataInDiskSize);
         readWALBufferFromChannel(dataBuffer);
