@@ -32,6 +32,7 @@ import org.apache.iotdb.commons.pipe.agent.task.meta.PipeStatus;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeType;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
+import org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant;
 import org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant;
 import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.commons.service.metric.enums.Tag;
@@ -56,6 +57,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.pipe.PipeOperateSc
 import org.apache.iotdb.db.schemaengine.SchemaEngine;
 import org.apache.iotdb.db.storageengine.StorageEngine;
 import org.apache.iotdb.db.storageengine.dataregion.wal.WALManager;
+import org.apache.iotdb.db.subscription.agent.SubscriptionAgent;
 import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.metrics.utils.SystemMetric;
 import org.apache.iotdb.mpp.rpc.thrift.TDataNodeHeartbeatResp;
@@ -348,6 +350,21 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
       final String taskId = pipeName + "_" + creationTime;
       PipeTsFileToTabletsMetrics.getInstance().deregister(taskId);
       PipeDataNodeRemainingEventAndTimeMetrics.getInstance().deregister(taskId);
+      // When the pipe contains no pipe tasks, there is no corresponding prefetching queue for the
+      // subscribed pipe, so the subscription needs to be manually marked as completed.
+      if (PipeStaticMeta.isSubscriptionPipe(pipeName)) {
+        final String topicName =
+            pipeMeta
+                .getStaticMeta()
+                .getConnectorParameters()
+                .getString(PipeConnectorConstant.SINK_TOPIC_KEY);
+        final String consumerGroupId =
+            pipeMeta
+                .getStaticMeta()
+                .getConnectorParameters()
+                .getString(PipeConnectorConstant.SINK_CONSUMER_GROUP_KEY);
+        SubscriptionAgent.broker().updateCompletedTopicNames(consumerGroupId, topicName);
+      }
     }
 
     return true;
