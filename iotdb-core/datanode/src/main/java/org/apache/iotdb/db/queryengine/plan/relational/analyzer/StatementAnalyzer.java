@@ -4140,6 +4140,7 @@ public class StatementAnalyzer {
           new TableFunctionInvocationAnalysis(
               node.getName().toString(),
               argumentsAnalysis.getPassedArguments(),
+              functionAnalysis.getTableFunctionHandle(),
               orderedTableArguments.build(),
               requiredColumns,
               properSchema.map(describedSchema -> describedSchema.getFields().size()).orElse(0),
@@ -4415,6 +4416,14 @@ public class StatementAnalyzer {
               String.format(
                   "Invalid scalar argument value. Expected type %s, got %s",
                   argumentSpecification.getType(), constantValue.getClass().getSimpleName()));
+        }
+      }
+      for (Function<Object, String> checker : argumentSpecification.getCheckers()) {
+        String errMsg = checker.apply(constantValue);
+        if (errMsg != null) {
+          throw new SemanticException(
+              String.format(
+                  "Invalid scalar argument %s, %s", argumentSpecification.getName(), errMsg));
         }
       }
       return new ArgumentAnalysis(

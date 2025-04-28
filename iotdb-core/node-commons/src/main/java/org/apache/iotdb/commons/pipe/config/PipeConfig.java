@@ -69,10 +69,13 @@ public class PipeConfig {
   }
 
   public double getPipeDataStructureTabletMemoryBlockAllocationRejectThreshold() {
+    // To avoid too much parsed events causing OOM. If total tablet memory size exceeds this
+    // threshold, allocations of memory block for tablets will be rejected.
     return COMMON_CONFIG.getPipeDataStructureTabletMemoryBlockAllocationRejectThreshold();
   }
 
   public double getPipeDataStructureTsFileMemoryBlockAllocationRejectThreshold() {
+    // Used to control the memory allocated for managing slice tsfile.
     return COMMON_CONFIG.getPipeDataStructureTsFileMemoryBlockAllocationRejectThreshold();
   }
 
@@ -87,7 +90,7 @@ public class PipeConfig {
   }
 
   public int getPipeRealTimeQueuePollHistoricalTsFileThreshold() {
-    return COMMON_CONFIG.getPipeRealTimeQueuePollHistoricalTsFileThreshold();
+    return Math.max(COMMON_CONFIG.getPipeRealTimeQueuePollHistoricalTsFileThreshold(), 1);
   }
 
   /////////////////////////////// Subtask Executor ///////////////////////////////

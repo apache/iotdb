@@ -57,6 +57,7 @@ public enum TableBuiltinAggregationFunction {
   VARIANCE("variance"),
   VAR_POP("var_pop"),
   VAR_SAMP("var_samp"),
+  APPROX_COUNT_DISTINCT("approx_count_distinct"),
   ;
 
   private final String functionName;
@@ -102,6 +103,7 @@ public enum TableBuiltinAggregationFunction {
       case "variance":
       case "var_pop":
       case "var_samp":
+      case "approx_count_distinct":
         return RowType.anonymous(Collections.emptyList());
       case "extreme":
       case "max":

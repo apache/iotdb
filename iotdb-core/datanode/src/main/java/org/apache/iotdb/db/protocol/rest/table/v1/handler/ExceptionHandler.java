@@ -21,6 +21,7 @@ import org.apache.iotdb.commons.auth.AuthException;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.commons.exception.auth.AccessDeniedException;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.DatabaseNotSetException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
@@ -81,6 +82,9 @@ public class ExceptionHandler {
     } else if (e instanceof ParsingException || e instanceof IllegalArgumentException) {
       responseResult.setMessage(e.getMessage());
       responseResult.setCode(TSStatusCode.SQL_PARSE_ERROR.getStatusCode());
+    } else if (e instanceof AccessDeniedException) {
+      responseResult.setMessage(e.getMessage());
+      responseResult.setCode(TSStatusCode.NO_PERMISSION.getStatusCode());
     } else {
       responseResult.setMessage(e.getMessage());
       responseResult.setCode(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());

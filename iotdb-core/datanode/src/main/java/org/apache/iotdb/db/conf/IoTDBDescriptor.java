@@ -26,6 +26,7 @@ import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.conf.TrimProperties;
 import org.apache.iotdb.commons.exception.BadNodeUrlException;
 import org.apache.iotdb.commons.memory.MemoryManager;
+import org.apache.iotdb.commons.pipe.config.PipeDescriptor;
 import org.apache.iotdb.commons.schema.SchemaConstant;
 import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.commons.utils.NodeUrlUtils;
@@ -1993,14 +1994,7 @@ public class IoTDBDescriptor {
       loadLoadTsFileHotModifiedProp(properties);
 
       // update pipe config
-      commonDescriptor
-          .getConfig()
-          .setPipeAllSinksRateLimitBytesPerSecond(
-              Double.parseDouble(
-                  properties.getProperty(
-                      "pipe_all_sinks_rate_limit_bytes_per_second",
-                      ConfigurationFileUtils.getConfigurationDefaultValue(
-                          "pipe_all_sinks_rate_limit_bytes_per_second"))));
+      loadPipeHotModifiedProp(properties);
 
       // update merge_threshold_of_explain_analyze
       conf.setMergeThresholdOfExplainAnalyze(
@@ -2309,6 +2303,10 @@ public class IoTDBDescriptor {
         properties.getProperty(
             "load_active_listening_fail_dir",
             ConfigurationFileUtils.getConfigurationDefaultValue("load_active_listening_fail_dir")));
+  }
+
+  private void loadPipeHotModifiedProp(TrimProperties properties) throws IOException {
+    PipeDescriptor.loadPipeProps(commonDescriptor.getConfig(), properties, true);
   }
 
   @SuppressWarnings("squid:S3518") // "proportionSum" can't be zero

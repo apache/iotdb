@@ -24,12 +24,12 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.MultiChildProcessNode;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.TableMetadataImpl;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.DataOrganizationSpecification;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.Symbol;
-import org.apache.iotdb.udf.api.relational.table.argument.Argument;
+import org.apache.iotdb.udf.api.relational.table.TableFunctionHandle;
 
 import com.google.common.collect.ImmutableList;
-import com.google.common.collect.ImmutableMap;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.DataOutputStream;
@@ -37,7 +37,6 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Collection;
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
@@ -47,20 +46,20 @@ import static java.util.Objects.requireNonNull;
 public class TableFunctionNode extends MultiChildProcessNode {
 
   private final String name;
-  private final Map<String, Argument> arguments;
+  private final TableFunctionHandle tableFunctionHandle;
   private final List<Symbol> properOutputs;
   private final List<TableArgumentProperties> tableArgumentProperties;
 
   public TableFunctionNode(
       PlanNodeId id,
       String name,
-      Map<String, Argument> arguments,
+      TableFunctionHandle tableFunctionHandle,
       List<Symbol> properOutputs,
       List<PlanNode> children,
       List<TableArgumentProperties> tableArgumentProperties) {
     super(id, children);
     this.name = requireNonNull(name, "name is null");
-    this.arguments = ImmutableMap.copyOf(arguments);
+    this.tableFunctionHandle = tableFunctionHandle;
     this.properOutputs = ImmutableList.copyOf(properOutputs);
     this.tableArgumentProperties = ImmutableList.copyOf(tableArgumentProperties);
   }
@@ -68,12 +67,12 @@ public class TableFunctionNode extends MultiChildProcessNode {
   public TableFunctionNode(
       PlanNodeId id,
       String name,
-      Map<String, Argument> arguments,
+      TableFunctionHandle tableFunctionHandle,
       List<Symbol> properOutputs,
       List<TableArgumentProperties> tableArgumentProperties) {
     super(id);
     this.name = requireNonNull(name, "name is null");
-    this.arguments = ImmutableMap.copyOf(arguments);
+    this.tableFunctionHandle = tableFunctionHandle;
     this.properOutputs = ImmutableList.copyOf(properOutputs);
     this.tableArgumentProperties = ImmutableList.copyOf(tableArgumentProperties);
   }
@@ -82,8 +81,8 @@ public class TableFunctionNode extends MultiChildProcessNode {
     return name;
   }
 
-  public Map<String, Argument> getArguments() {
-    return arguments;
+  public TableFunctionHandle getTableFunctionHandle() {
+    return tableFunctionHandle;
   }
 
   public List<Symbol> getProperOutputs() {
@@ -96,7 +95,8 @@ public class TableFunctionNode extends MultiChildProcessNode {
 
   @Override
   public PlanNode clone() {
-    return new TableFunctionNode(id, name, arguments, properOutputs, tableArgumentProperties);
+    return new TableFunctionNode(
+        id, name, tableFunctionHandle, properOutputs, tableArgumentProperties);
   }
 
   @Override
@@ -130,18 +130,21 @@ public class TableFunctionNode extends MultiChildProcessNode {
   public PlanNode replaceChildren(List<PlanNode> newSources) {
     checkArgument(children.size() == newSources.size(), "wrong number of new children");
     return new TableFunctionNode(
-        getPlanNodeId(), name, arguments, properOutputs, newSources, tableArgumentProperties);
+        getPlanNodeId(),
+        name,
+        tableFunctionHandle,
+        properOutputs,
+        newSources,
+        tableArgumentProperties);
   }
 
   @Override
   protected void serializeAttributes(ByteBuffer byteBuffer) {
     PlanNodeType.TABLE_FUNCTION_NODE.serialize(byteBuffer);
     ReadWriteIOUtils.write(name, byteBuffer);
-    ReadWriteIOUtils.write(arguments.size(), byteBuffer);
-    for (Map.Entry<String, Argument> entry : arguments.entrySet()) {
-      ReadWriteIOUtils.write(entry.getKey(), byteBuffer);
-      entry.getValue().serialize(byteBuffer);
-    }
+    byte[] bytes = tableFunctionHandle.serialize();
+    ReadWriteIOUtils.write(bytes.length, byteBuffer);
+    ReadWriteIOUtils.write(ByteBuffer.wrap(bytes), byteBuffer);
     ReadWriteIOUtils.write(properOutputs.size(), byteBuffer);
     properOutputs.forEach(symbol -> Symbol.serialize(symbol, byteBuffer));
     ReadWriteIOUtils.write(tableArgumentProperties.size(), byteBuffer);
@@ -165,11 +168,9 @@ public class TableFunctionNode extends MultiChildProcessNode {
   protected void serializeAttributes(DataOutputStream stream) throws IOException {
     PlanNodeType.TABLE_FUNCTION_NODE.serialize(stream);
     ReadWriteIOUtils.write(name, stream);
-    ReadWriteIOUtils.write(arguments.size(), stream);
-    for (Map.Entry<String, Argument> entry : arguments.entrySet()) {
-      ReadWriteIOUtils.write(entry.getKey(), stream);
-      entry.getValue().serialize(stream);
-    }
+    byte[] bytes = tableFunctionHandle.serialize();
+    ReadWriteIOUtils.write(bytes.length, stream);
+    ReadWriteIOUtils.write(ByteBuffer.wrap(bytes), stream);
     ReadWriteIOUtils.write(properOutputs.size(), stream);
     for (Symbol symbol : properOutputs) {
       Symbol.serialize(symbol, stream);
@@ -194,12 +195,10 @@ public class TableFunctionNode extends MultiChildProcessNode {
   public static TableFunctionNode deserialize(ByteBuffer byteBuffer) {
     String name = ReadWriteIOUtils.readString(byteBuffer);
     int size = ReadWriteIOUtils.readInt(byteBuffer);
-    ImmutableMap.Builder<String, Argument> arguments = ImmutableMap.builder();
-    for (int i = 0; i < size; i++) {
-      String key = ReadWriteIOUtils.readString(byteBuffer);
-      Argument value = Argument.deserialize(byteBuffer);
-      arguments.put(key, value);
-    }
+    byte[] bytes = ReadWriteIOUtils.readBytes(byteBuffer, size);
+    TableFunctionHandle tableFunctionHandle =
+        new TableMetadataImpl().getTableFunction(name).createTableFunctionHandle();
+    tableFunctionHandle.deserialize(bytes);
     size = ReadWriteIOUtils.readInt(byteBuffer);
     ImmutableList.Builder<Symbol> properOutputs = ImmutableList.builder();
     for (int i = 0; i < size; i++) {
@@ -237,7 +236,7 @@ public class TableFunctionNode extends MultiChildProcessNode {
     return new TableFunctionNode(
         planNodeId,
         name,
-        arguments.build(),
+        tableFunctionHandle,
         properOutputs.build(),
         tableArgumentProperties.build());
   }

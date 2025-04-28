@@ -34,17 +34,18 @@ function process_single(){
     if [[ "${content:0:1}" != "#" ]]; then
       sed -i "${line_no}d" ${filename}
     fi
-    sed -i "${line_no} i${key_value}" ${filename}
+    sed -i "${line_no}a${key_value}" ${filename}
   else
-    echo "append  $key $filename"
-    line_no=$(wc -l $filename)
-    sed -i "${line_no} a${key_value}" ${filename}
+    echo "append $key $filename"
+    line_no=$(wc -l $filename|cut -d ' ' -f1)
+    sed -i "${line_no}a${key_value}" ${filename}
 	fi
 }
 
 function replace_configs(){
   for v in $(env); do
-    if [[ "${v}" =~ "=" && "${v}" =~ "_" && ! "${v}" =~ "JAVA_" ]]; then
+    key_name="${v%%=*}"
+    if [[ "${key_name}" == "${key_name,,}" && ! 2w$key_name =~ ^_ ]]; then
 #      echo "###### $v ####"
       for f in ${target_files}; do
           process_single $v ${conf_path}/$f
