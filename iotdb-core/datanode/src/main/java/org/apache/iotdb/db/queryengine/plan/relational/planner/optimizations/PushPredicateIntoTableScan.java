@@ -588,7 +588,9 @@ public class PushPredicateIntoTableScan implements PlanOptimizer {
       final String deviceDatabase =
           !deviceEntriesMap.isEmpty() ? deviceEntriesMap.keySet().iterator().next() : null;
       final List<DeviceEntry> deviceEntries =
-          Objects.nonNull(deviceDatabase) ? deviceEntriesMap.get(deviceDatabase) : Collections.emptyList();
+          Objects.nonNull(deviceDatabase)
+              ? deviceEntriesMap.get(deviceDatabase)
+              : Collections.emptyList();
 
       tableScanNode.setDeviceEntries(deviceEntries);
       if (deviceEntries.stream()
