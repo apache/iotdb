@@ -672,7 +672,7 @@ public class CompactionSchedulerTest {
    */
   @Test
   public void test6() throws IOException, MetadataException, InterruptedException {
-    BatchCompactionPlan.setMaxCachedTimeChunksSize(2 * 1024 * 1024 / 30);
+    BatchCompactionPlan.setMaxCachedTimeChunksSize(1024);
     TSFileDescriptor.getInstance().getConfig().setPageSizeInByte(100);
     logger.warn("Running test6");
     boolean prevEnableSeqSpaceCompaction =
