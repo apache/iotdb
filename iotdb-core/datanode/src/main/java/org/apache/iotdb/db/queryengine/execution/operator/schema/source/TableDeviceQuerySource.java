@@ -69,7 +69,6 @@ public class TableDeviceQuerySource implements ISchemaSource<IDeviceSchemaInfo> 
   private final DevicePredicateFilter filter;
   private final @Nonnull List<PartialPath> devicePatternList;
   private final boolean needAligned;
-  private boolean resetBuilder;
 
   public TableDeviceQuerySource(
       final String database,
@@ -298,15 +297,14 @@ public class TableDeviceQuerySource implements ISchemaSource<IDeviceSchemaInfo> 
     builder.getColumnBuilder(resultIndex).writeBoolean(schemaInfo.isAligned());
 
     // Use rle because the database is the same
-    if (!resetBuilder) {
+    if (builder.getPositionCount() == 0) {
       builder.getValueColumnBuilders()[resultIndex + 1] =
           new RleBinaryColumnBuilder(
               (BinaryColumnBuilder) builder.getColumnBuilder(resultIndex + 1));
-      builder
-          .getColumnBuilder(resultIndex + 1)
-          .writeBinary(new Binary(database, TSFileConfig.STRING_CHARSET));
-      resetBuilder = true;
     }
+    builder
+        .getColumnBuilder(resultIndex + 1)
+        .writeBinary(new Binary(database, TSFileConfig.STRING_CHARSET));
     builder.declarePosition();
   }
 
@@ -351,6 +349,7 @@ public class TableDeviceQuerySource implements ISchemaSource<IDeviceSchemaInfo> 
   private static class RleBinaryColumnBuilder extends BinaryColumnBuilder {
 
     private final BinaryColumnBuilder innerBuilder;
+    private int realPositionCount = 0;
 
     public RleBinaryColumnBuilder(final BinaryColumnBuilder innerBuilder) {
       super(null, 0);
@@ -359,12 +358,16 @@ public class TableDeviceQuerySource implements ISchemaSource<IDeviceSchemaInfo> 
 
     @Override
     public int getPositionCount() {
-      return innerBuilder.getPositionCount();
+      return realPositionCount;
     }
 
     @Override
     public ColumnBuilder writeBinary(final Binary value) {
-      return innerBuilder.writeBinary(value);
+      if (realPositionCount == 0) {
+        innerBuilder.writeBinary(value);
+      }
+      ++realPositionCount;
+      return this;
     }
 
     @Override
@@ -374,7 +377,7 @@ public class TableDeviceQuerySource implements ISchemaSource<IDeviceSchemaInfo> 
 
     @Override
     public Column build() {
-      return new RunLengthEncodedColumn(innerBuilder.build(), 1);
+      return new RunLengthEncodedColumn(innerBuilder.build(), realPositionCount);
     }
 
     @Override
