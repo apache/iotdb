@@ -33,7 +33,9 @@ import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
 import org.apache.tsfile.read.common.block.TsBlock;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -59,15 +61,16 @@ public abstract class AbstractQueryDeviceWithCache extends AbstractTraverseDevic
     if (Objects.isNull(where)) {
       return true;
     }
-    final List<DeviceEntry> entries = new ArrayList<>();
+    final Map<String, List<DeviceEntry>> entries = new HashMap<>();
+    entries.put(database, new ArrayList<>());
 
     final boolean needFetch =
         super.parseRawExpression(entries, tableInstance, attributeColumns, context);
     if (!needFetch) {
       context.reserveMemoryForFrontEnd(
-          entries.stream().map(DeviceEntry::ramBytesUsed).reduce(0L, Long::sum));
+          entries.get(database).stream().map(DeviceEntry::ramBytesUsed).reduce(0L, Long::sum));
       results =
-          entries.stream()
+          entries.get(database).stream()
               .map(
                   deviceEntry ->
                       ShowDevicesResult.convertDeviceEntry2ShowDeviceResult(

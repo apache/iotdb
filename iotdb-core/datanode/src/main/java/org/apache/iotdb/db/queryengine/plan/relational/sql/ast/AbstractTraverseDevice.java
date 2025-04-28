@@ -35,6 +35,7 @@ import org.apache.tsfile.file.metadata.IDeviceID;
 
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -128,7 +129,7 @@ public abstract class AbstractTraverseDevice extends Statement {
   }
 
   public boolean parseRawExpression(
-      final List<DeviceEntry> entries,
+      final Map<String, List<DeviceEntry>> entries,
       final TsTable tableInstance,
       final List<String> attributeColumns,
       final MPPQueryContext context) {

@@ -356,7 +356,7 @@ public class TableDeviceSchemaFetcher {
 
     return !TreeViewSchema.isTreeViewTable(tableInstance)
         ? tryGetTableDeviceInCache(
-            deviceEntryMap.get(database),
+            Objects.nonNull(deviceEntryMap) ? deviceEntryMap.get(database) : null,
             database,
             tableInstance,
             check,
