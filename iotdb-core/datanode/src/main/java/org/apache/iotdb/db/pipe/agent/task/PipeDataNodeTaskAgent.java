@@ -340,6 +340,9 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
   protected boolean dropPipe(final String pipeName) {
     // Get the pipe meta first because it is removed after super#dropPipe(pipeName)
     final PipeMeta pipeMeta = pipeMetaKeeper.getPipeMeta(pipeName);
+    final boolean hasPipeTasks =
+        Objects.nonNull(pipeMeta)
+            && !pipeTaskManager.getPipeTasks(pipeMeta.getStaticMeta()).isEmpty();
 
     if (!super.dropPipe(pipeName)) {
       return false;
@@ -352,7 +355,7 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
       PipeDataNodeRemainingEventAndTimeMetrics.getInstance().deregister(taskId);
       // When the pipe contains no pipe tasks, there is no corresponding prefetching queue for the
       // subscribed pipe, so the subscription needs to be manually marked as completed.
-      if (PipeStaticMeta.isSubscriptionPipe(pipeName)) {
+      if (!hasPipeTasks && PipeStaticMeta.isSubscriptionPipe(pipeName)) {
         final String topicName =
             pipeMeta
                 .getStaticMeta()
