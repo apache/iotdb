@@ -141,12 +141,14 @@ public class PipeStatementInsertionEvent extends PipeInsertionEvent
 
   @Override
   public boolean mayEventTimeOverlappedWithTimeRange() {
-    throw new UnsupportedOperationException("isGeneratedByPipe() is not supported!");
+    throw new UnsupportedOperationException(
+        "mayEventTimeOverlappedWithTimeRange() is not supported!");
   }
 
   @Override
   public boolean mayEventPathsOverlappedWithPattern() {
-    return false;
+    throw new UnsupportedOperationException(
+        "mayEventPathsOverlappedWithPattern() is not supported!");
   }
 
   public void markAsNeedToReport() {
