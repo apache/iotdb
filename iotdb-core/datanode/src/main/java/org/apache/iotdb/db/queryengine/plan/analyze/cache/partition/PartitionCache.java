@@ -75,6 +75,7 @@ import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
@@ -810,7 +811,7 @@ public class PartitionCache {
       }
 
       final Set<TConsensusGroupId> allConsensusGroupIds = new HashSet<>();
-      final Map<TConsensusGroupId, List<TimeSlotRegionInfo>> consensusGroupToTimeSlotMap =
+      final Map<TConsensusGroupId, HashSet<TimeSlotRegionInfo>> consensusGroupToTimeSlotMap =
           new HashMap<>();
 
       Map<String, Map<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TRegionReplicaSet>>>>
@@ -888,7 +889,7 @@ public class PartitionCache {
             for (TConsensusGroupId groupId : cacheConsensusGroupIds) {
               allConsensusGroupIds.add(groupId);
               consensusGroupToTimeSlotMap
-                  .computeIfAbsent(groupId, k -> new ArrayList<>())
+                  .computeIfAbsent(groupId, k -> new HashSet<>())
                   .add(
                       new TimeSlotRegionInfo(databaseName, seriesPartitionSlot, timePartitionSlot));
             }
@@ -932,6 +933,26 @@ public class PartitionCache {
       this.databaseName = databaseName;
       this.seriesPartitionSlot = seriesPartitionSlot;
       this.timePartitionSlot = timePartitionSlot;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+      if (o == null || getClass() != o.getClass()) {
+        return false;
+      }
+
+      TimeSlotRegionInfo that = (TimeSlotRegionInfo) o;
+      return Objects.equals(databaseName, that.databaseName)
+          && Objects.equals(seriesPartitionSlot, that.seriesPartitionSlot)
+          && Objects.equals(timePartitionSlot, that.timePartitionSlot);
+    }
+
+    @Override
+    public int hashCode() {
+      int result = Objects.hashCode(databaseName);
+      result = 31 * result + Objects.hashCode(seriesPartitionSlot);
+      result = 31 * result + Objects.hashCode(timePartitionSlot);
+      return result;
     }
   }
 
