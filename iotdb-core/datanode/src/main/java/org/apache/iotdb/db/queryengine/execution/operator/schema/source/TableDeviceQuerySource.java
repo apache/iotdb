@@ -302,11 +302,11 @@ public class TableDeviceQuerySource implements ISchemaSource<IDeviceSchemaInfo> 
       builder.getValueColumnBuilders()[resultIndex + 1] =
           new RleBinaryColumnBuilder(
               (BinaryColumnBuilder) builder.getColumnBuilder(resultIndex + 1));
+      builder
+          .getColumnBuilder(resultIndex + 1)
+          .writeBinary(new Binary(database, TSFileConfig.STRING_CHARSET));
       resetBuilder = true;
     }
-    builder
-        .getColumnBuilder(resultIndex + 1)
-        .writeBinary(new Binary(database, TSFileConfig.STRING_CHARSET));
     builder.declarePosition();
   }
 
@@ -374,7 +374,7 @@ public class TableDeviceQuerySource implements ISchemaSource<IDeviceSchemaInfo> 
 
     @Override
     public Column build() {
-      return new RunLengthEncodedColumn(innerBuilder.build(), getPositionCount());
+      return new RunLengthEncodedColumn(innerBuilder.build(), 1);
     }
 
     @Override

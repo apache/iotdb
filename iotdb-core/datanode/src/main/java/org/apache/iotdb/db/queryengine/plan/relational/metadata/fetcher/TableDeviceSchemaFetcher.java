@@ -578,7 +578,7 @@ public class TableDeviceSchemaFetcher {
       mppQueryContext.reserveMemoryForFrontEnd(deviceEntry.ramBytesUsed());
       deviceEntryMap
           .computeIfAbsent(
-              columns[columns.length - 1].getBinary(i).getStringValue(TSFileConfig.STRING_CHARSET),
+              columns[columns.length - 1].getBinary(0).getStringValue(TSFileConfig.STRING_CHARSET),
               k -> new ArrayList<>())
           .add(deviceEntry);
     }
