@@ -53,6 +53,7 @@ public abstract class IoTDBAbstractDatabaseMetadata implements DatabaseMetaData 
   private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBAbstractDatabaseMetadata.class);
   private static final String METHOD_NOT_SUPPORTED_STRING = "Method not supported";
   protected static final String CONVERT_ERROR_MSG = "Convert tsBlock error: {}";
+  protected static final String SHOW_DATABASES_ERROR_MSG = "Get databases error: {}";
 
   protected IoTDBConnection connection;
   protected IClientRPCService.Iface client;
@@ -107,16 +108,16 @@ public abstract class IoTDBAbstractDatabaseMetadata implements DatabaseMetaData 
   protected static final String PRECISION = "PRECISION";
   protected static final String PRIMARY = "PRIMARY";
   private static final String PRIVILEGE = "PRIVILEGE";
-  private static final String PROCEDURE_CAT = "PROCEDURE_CAT";
-  private static final String PROCEDURE_NAME = "PROCEDURE_NAME";
-  private static final String PROCEDURE_SCHEM = "PROCEDURE_SCHEM";
-  private static final String PROCEDURE_TYPE = "PROCEDURE_TYPE";
-  private static final String PSEUDO_COLUMN = "PSEUDO_COLUMN";
+  protected static final String PROCEDURE_CAT = "PROCEDURE_CAT";
+  protected static final String PROCEDURE_NAME = "PROCEDURE_NAME";
+  protected static final String PROCEDURE_SCHEM = "PROCEDURE_SCHEM";
+  protected static final String PROCEDURE_TYPE = "PROCEDURE_TYPE";
+  protected static final String PSEUDO_COLUMN = "PSEUDO_COLUMN";
   private static final String RADIX = "RADIX";
   protected static final String REMARKS = "REMARKS";
   private static final String SCALE = "SCALE";
   private static final String SCOPE = "SCOPE";
-  private static final String SPECIFIC_NAME = "SPECIFIC_NAME";
+  protected static final String SPECIFIC_NAME = "SPECIFIC_NAME";
   protected static final String SQL_DATA_TYPE = "SQL_DATA_TYPE";
   protected static final String SQL_DATETIME_SUB = "SQL_DATETIME_SUB";
   protected static final String TABLE_CAT = "TABLE_CAT";
@@ -129,7 +130,7 @@ public abstract class IoTDBAbstractDatabaseMetadata implements DatabaseMetaData 
   private static final String UPDATE_RULE = "UPDATE_RULE";
 
   private static final String SHOW_FUNCTIONS = "show functions";
-  private static final String SHOW_DATABASES_SQL = "SHOW DATABASES ";
+  protected static final String SHOW_DATABASES_SQL = "SHOW DATABASES ";
 
   private static TsBlockSerde serde = new TsBlockSerde();
 
@@ -858,12 +859,12 @@ public abstract class IoTDBAbstractDatabaseMetadata implements DatabaseMetaData 
 
   @Override
   public String getCatalogTerm() throws SQLException {
-    return "database";
+    return "database"; // 改回返回 "database"，这样可以正确识别数据库层级
   }
 
   @Override
   public boolean isCatalogAtStart() throws SQLException {
-    return false;
+    return true; // 改回 true，表示 catalog 在开始位置
   }
 
   @Override
@@ -1278,9 +1279,10 @@ public abstract class IoTDBAbstractDatabaseMetadata implements DatabaseMetaData 
     }
 
     while (rs.next()) {
+      String database = rs.getString(1);
       List<Object> valueInRow = new ArrayList<>();
       for (int i = 0; i < fields.length; i++) {
-        valueInRow.add(rs.getString(1));
+        valueInRow.add(database);
       }
       valuesList.add(valueInRow);
     }
@@ -1321,7 +1323,6 @@ public abstract class IoTDBAbstractDatabaseMetadata implements DatabaseMetaData 
       stmt.close();
       throw e;
     }
-
     List<String> columnNameList = new ArrayList<>();
     List<String> columnTypeList = new ArrayList<>();
     Map<String, Integer> columnNameIndex = new HashMap<>();
@@ -1329,14 +1330,20 @@ public abstract class IoTDBAbstractDatabaseMetadata implements DatabaseMetaData 
     List<List<Object>> valuesList = new ArrayList<>();
     tsDataTypeList.add(TSDataType.TEXT);
 
+    // 只添加一个catalog
+    //    List<Object> values = new ArrayList<>();
+    //    values.add(""); // 使用空字符串作为默认catalog
+    //    valuesList.add(values);
+
     while (rs.next()) {
       List<Object> values = new ArrayList<>();
       values.add(rs.getString(1));
       valuesList.add(values);
     }
-    columnNameList.add(TYPE_CAT);
+
+    columnNameList.add(TABLE_CAT);
     columnTypeList.add("TEXT");
-    columnNameIndex.put(TYPE_CAT, 0);
+    columnNameIndex.put(TABLE_CAT, 0);
 
     ByteBuffer tsBlock = null;
     try {
@@ -1346,7 +1353,6 @@ public abstract class IoTDBAbstractDatabaseMetadata implements DatabaseMetaData 
     } finally {
       close(rs, stmt);
     }
-
     return new IoTDBJDBCResultSet(
         stmt,
         columnNameList,
@@ -2541,11 +2547,20 @@ public abstract class IoTDBAbstractDatabaseMetadata implements DatabaseMetaData 
   public ResultSet getSchemas(String catalog, String schemaPattern) throws SQLException {
     Statement stmt = this.connection.createStatement();
     ResultSet rs;
+    String sql =
+        String.format(
+            "select * from information_schema.databases where database like '%s' escape '\\'",
+            schemaPattern != null ? schemaPattern : "%");
     try {
-      rs = stmt.executeQuery(SHOW_DATABASES_SQL);
+      rs = stmt.executeQuery(sql);
     } catch (SQLException e) {
-      stmt.close();
-      throw e;
+      LOGGER.error(SHOW_DATABASES_ERROR_MSG, e.getMessage());
+      try {
+        rs = stmt.executeQuery(SHOW_DATABASES_SQL);
+      } catch (SQLException e1) {
+        stmt.close();
+        throw e;
+      }
     }
     Field[] fields = new Field[2];
     fields[0] = new Field("", TABLE_SCHEM, "TEXT");
@@ -2562,10 +2577,10 @@ public abstract class IoTDBAbstractDatabaseMetadata implements DatabaseMetaData 
       columnNameIndex.put(fields[i].getName(), i);
     }
     while (rs.next()) {
+      String database = rs.getString("database");
       List<Object> valueInRow = new ArrayList<>();
-      for (int i = 0; i < fields.length; i++) {
-        valueInRow.add(rs.getString(1));
-      }
+      valueInRow.add(database); // schema name
+      valueInRow.add(""); // catalog name
       valuesList.add(valueInRow);
     }
 
