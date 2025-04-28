@@ -50,9 +50,11 @@ import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import io.airlift.concurrent.SetThreadName;
+import org.apache.tsfile.utils.PublicBAOS;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.DataOutputStream;
 import java.io.IOException;
 import java.net.SocketTimeoutException;
 import java.nio.ByteBuffer;
@@ -219,7 +221,11 @@ public class LoadTsFileDispatcherImpl implements IFragInstanceDispatcher {
   }
 
   public Future<FragInstanceDispatchResult> dispatchCommand(
-      TLoadCommandReq loadCommandReq, Set<TRegionReplicaSet> replicaSets) {
+      final Set<TRegionReplicaSet> replicaSets,
+      final boolean isFirstPhaseSuccess,
+      final String uuid,
+      final boolean isGeneratedByPipe)
+      throws IOException {
     Set<TEndPoint> allEndPoint = new HashSet<>();
     for (TRegionReplicaSet replicaSet : replicaSets) {
       for (TDataNodeLocation dataNodeLocation : replicaSet.getDataNodeLocations()) {
@@ -228,6 +234,16 @@ public class LoadTsFileDispatcherImpl implements IFragInstanceDispatcher {
     }
 
     for (TEndPoint endPoint : allEndPoint) {
+      final TLoadCommandReq loadCommandReq =
+          new TLoadCommandReq(
+              (isFirstPhaseSuccess
+                      ? LoadTsFileScheduler.LoadCommand.EXECUTE
+                      : LoadTsFileScheduler.LoadCommand.ROLLBACK)
+                  .ordinal(),
+              uuid);
+      loadCommandReq.setIsGeneratedByPipe(isGeneratedByPipe);
+      loadCommandReq.setProgressIndex(assignProgressIndex());
+
       try (SetThreadName threadName =
           new SetThreadName(
               "load-dispatcher"
@@ -252,6 +268,16 @@ public class LoadTsFileDispatcherImpl implements IFragInstanceDispatcher {
       }
     }
     return immediateFuture(new FragInstanceDispatchResult(true));
+  }
+
+  private ByteBuffer assignProgressIndex() throws IOException {
+    ProgressIndex progressIndex = PipeDataNodeAgent.runtime().getNextProgressIndexForTsFileLoad();
+
+    try (final PublicBAOS byteArrayOutputStream = new PublicBAOS();
+        final DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream)) {
+      progressIndex.serialize(dataOutputStream);
+      return ByteBuffer.wrap(byteArrayOutputStream.getBuf(), 0, byteArrayOutputStream.size());
+    }
   }
 
   private void dispatchLocally(TLoadCommandReq loadCommandReq)

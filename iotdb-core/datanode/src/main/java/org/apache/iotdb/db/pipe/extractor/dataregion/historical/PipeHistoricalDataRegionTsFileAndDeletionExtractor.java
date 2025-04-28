@@ -625,7 +625,8 @@ public class PipeHistoricalDataRegionTsFileAndDeletionExtractor
 
     // Some different tsFiles may share the same max progressIndex, thus tsFiles with an
     // "equals" max progressIndex must be transmitted to avoid data loss
-    return !startIndex.isAfter(resource.getMaxProgressIndexAfterClose());
+    return !startIndex.isAfter(resource.getMaxProgressIndexAfterClose())
+        && !startIndex.equals(resource.getMaxProgressIndexAfterClose());
   }
 
   private boolean mayTsFileResourceOverlappedWithPattern(final TsFileResource resource) {
