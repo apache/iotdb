@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.queryengine.plan.relational.function;
+package org.apache.iotdb.db.queryengine.plan.relational.function.tvf;
 
 import org.apache.iotdb.ainode.rpc.thrift.TForecastResp;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
@@ -393,7 +393,7 @@ public class ForecastTableFunction implements TableFunction {
     private final int outputLength;
     private final boolean keepInput;
     private final Map<String, String> options;
-    private final List<Record> inputRecords;
+    private final LinkedList<Record> inputRecords;
     private final List<ResultColumnAppender> resultColumnAppenderList;
     private final TsBlockBuilder inputTsBlockBuilder;
 
