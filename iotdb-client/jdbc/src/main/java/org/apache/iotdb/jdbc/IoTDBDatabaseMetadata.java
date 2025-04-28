@@ -668,11 +668,6 @@ public class IoTDBDatabaseMetadata extends IoTDBAbstractDatabaseMetadata {
     return "storage group";
   }
 
-  @Override
-  public String getSchemaTerm() throws SQLException {
-    return "storage group";
-  }
-
   /**
    * @deprecated recommend using getMetadataInJson() instead of toString()
    */
