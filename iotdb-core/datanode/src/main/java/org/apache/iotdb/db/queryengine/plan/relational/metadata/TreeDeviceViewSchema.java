@@ -33,10 +33,6 @@ public class TreeDeviceViewSchema extends TableSchema {
     setProps(props);
   }
 
-  public String getTreePathPatternName() {
-    return props.get(TreeViewSchema.TREE_PATH_PATTERN);
-  }
-
   public Map<String, String> getColumn2OriginalNameMap() {
     return columns.stream()
         .filter(

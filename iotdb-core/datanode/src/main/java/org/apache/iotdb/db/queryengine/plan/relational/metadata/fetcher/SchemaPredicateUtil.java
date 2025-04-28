@@ -167,7 +167,7 @@ public class SchemaPredicateUtil {
   private static boolean handleFilter(
       final AbstractSingleChildFilter filter,
       final Map<Integer, List<SchemaFilter>> index2FilterMap) {
-    // We assume that only "not" and "IdFilter" is possible here to be the root filter
+    // We assume that only "not" and "TagFilter" is possible here to be the root filter
     // There won't be any attribute filters here currently
 
     // First refactor the not filters

@@ -71,6 +71,7 @@ import org.apache.tsfile.read.common.type.TypeFactory;
 import java.util.Collections;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
@@ -756,7 +757,7 @@ public class TableMetadataImpl implements Metadata {
   }
 
   @Override
-  public List<DeviceEntry> indexScan(
+  public Map<String, List<DeviceEntry>> indexScan(
       final QualifiedObjectName tableName,
       final List<Expression> expressionList,
       final List<String> attributeColumns,

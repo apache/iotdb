@@ -570,7 +570,7 @@ public class PushPredicateIntoTableScan implements PlanOptimizer {
       }
 
       long startTime = System.nanoTime();
-      final List<DeviceEntry> deviceEntries =
+      final Map<String, List<DeviceEntry>> deviceEntries =
           metadata.indexScan(
               tableScanNode.getQualifiedObjectName(),
               metadataExpressions.stream()
