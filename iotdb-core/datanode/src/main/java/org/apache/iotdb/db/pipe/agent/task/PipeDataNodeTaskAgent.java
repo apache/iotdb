@@ -340,9 +340,16 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
   protected boolean dropPipe(final String pipeName) {
     // Get the pipe meta first because it is removed after super#dropPipe(pipeName)
     final PipeMeta pipeMeta = pipeMetaKeeper.getPipeMeta(pipeName);
-    final boolean hasPipeTasks =
-        Objects.nonNull(pipeMeta)
-            && !pipeTaskManager.getPipeTasks(pipeMeta.getStaticMeta()).isEmpty();
+
+    // Record whether there are pipe tasks before dropping the pipe
+    final boolean hasPipeTasks;
+    if (Objects.nonNull(pipeMeta)) {
+      final Map<Integer, PipeTask> pipeTaskMap =
+          pipeTaskManager.getPipeTasks(pipeMeta.getStaticMeta());
+      hasPipeTasks = Objects.nonNull(pipeTaskMap) && !pipeTaskMap.isEmpty();
+    } else {
+      hasPipeTasks = false;
+    }
 
     if (!super.dropPipe(pipeName)) {
       return false;
