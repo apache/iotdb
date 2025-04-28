@@ -320,8 +320,11 @@ public class PipeRawTabletInsertionEvent extends PipeInsertionEvent
   }
 
   public void markAsNeedToReport() {
-    this.needToReport = true;
-    sourceEvent.decrementAndGetSourceReferenceCount();
+    // Idempotent
+    if (!needToReport) {
+      needToReport = true;
+      sourceEvent.decrementAndGetSourceReferenceCount();
+    }
   }
 
   // This getter is reserved for user-defined plugins
