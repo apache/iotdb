@@ -614,19 +614,16 @@ public class PipeHistoricalDataRegionTsFileAndDeletionExtractor
       return ((TimeWindowStateProgressIndex) startIndex).getMinTime() <= resource.getFileEndTime();
     }
 
+    // It should be noted that in the current version, no two identical TsFiles have the same
+    // ProgressIndex. If you need the same TsFile to have the same ProgressIndex in some cases,
+    // please modify the call to the equal method.
+    ProgressIndex progressIndex = (ProgressIndex) startIndex;
     if (startIndex instanceof StateProgressIndex) {
-      // Some different tsFiles may share the same max progressIndex, thus tsFiles with an
-      // "equals" max progressIndex must be transmitted to avoid data loss
-      final ProgressIndex innerProgressIndex =
-          ((StateProgressIndex) startIndex).getInnerProgressIndex();
-      return !innerProgressIndex.isAfter(resource.getMaxProgressIndexAfterClose())
-          && !innerProgressIndex.equals(resource.getMaxProgressIndexAfterClose());
+      progressIndex = ((StateProgressIndex) startIndex).getInnerProgressIndex();
     }
 
-    // Some different tsFiles may share the same max progressIndex, thus tsFiles with an
-    // "equals" max progressIndex must be transmitted to avoid data loss
-    return !startIndex.isAfter(resource.getMaxProgressIndexAfterClose())
-        && !startIndex.equals(resource.getMaxProgressIndexAfterClose());
+    return !progressIndex.isAfter(resource.getMaxProgressIndexAfterClose())
+        && !progressIndex.equals(resource.getMaxProgressIndexAfterClose());
   }
 
   private boolean mayTsFileResourceOverlappedWithPattern(final TsFileResource resource) {
