@@ -476,12 +476,20 @@ public class DataNodeTableCache implements ITableCache {
   }
 
   public boolean isDatabaseExist(final String database) {
-    readWriteLock.readLock().lock();
-    try {
-      return databaseTableMap.containsKey(database);
-    } finally {
-      readWriteLock.readLock().unlock();
+    if (databaseTableMap.containsKey(database)) {
+      return true;
     }
+    if (getTablesInConfigNode(Collections.singletonMap(database, Collections.emptyMap()))
+        .containsKey(database)) {
+      readWriteLock.readLock().lock();
+      try {
+        databaseTableMap.computeIfAbsent(database, k -> new ConcurrentHashMap<>());
+        return true;
+      } finally {
+        readWriteLock.readLock().unlock();
+      }
+    }
+    return false;
   }
 
   // Database shall not start with "root"
