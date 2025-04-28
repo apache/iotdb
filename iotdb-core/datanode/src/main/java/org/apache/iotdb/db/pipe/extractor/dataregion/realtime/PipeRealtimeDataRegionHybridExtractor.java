@@ -48,9 +48,6 @@ public class PipeRealtimeDataRegionHybridExtractor extends PipeRealtimeDataRegio
   private static final Logger LOGGER =
       LoggerFactory.getLogger(PipeRealtimeDataRegionHybridExtractor.class);
 
-  private final boolean isPipeEpochKeepTsFileAfterStuckRestartEnabled =
-      PipeConfig.getInstance().isPipeEpochKeepTsFileAfterStuckRestartEnabled();
-
   @Override
   protected void doExtract(final PipeRealtimeEvent event) {
     final Event eventToExtract = event.getEvent();
@@ -230,7 +227,7 @@ public class PipeRealtimeDataRegionHybridExtractor extends PipeRealtimeDataRegio
   }
 
   private boolean isPipeTaskCurrentlyRestarted(final PipeRealtimeEvent event) {
-    if (!isPipeEpochKeepTsFileAfterStuckRestartEnabled) {
+    if (!PipeConfig.getInstance().isPipeEpochKeepTsFileAfterStuckRestartEnabled()) {
       return false;
     }
 
@@ -329,17 +326,17 @@ public class PipeRealtimeDataRegionHybridExtractor extends PipeRealtimeDataRegio
     final long floatingMemoryUsageInByte =
         PipeDataNodeAgent.task().getFloatingMemoryUsageInByte(pipeName);
     final long pipeCount = PipeDataNodeAgent.task().getPipeCount();
-    final long freeMemorySizeInBytes =
-        PipeDataNodeResourceManager.memory().getFreeMemorySizeInBytes();
+    final long totalFloatingMemorySizeInBytes =
+        PipeDataNodeResourceManager.memory().getTotalFloatingMemorySizeInBytes();
     final boolean mayInsertNodeMemoryReachDangerousThreshold =
-        3 * floatingMemoryUsageInByte * pipeCount >= 2 * freeMemorySizeInBytes;
+        3 * floatingMemoryUsageInByte * pipeCount >= 2 * totalFloatingMemorySizeInBytes;
     if (mayInsertNodeMemoryReachDangerousThreshold && event.mayExtractorUseTablets(this)) {
       LOGGER.info(
           "Pipe task {}@{} canNotUseTabletAnyMore7: The shallow memory usage of the insert node {} has reached the dangerous threshold {}",
           pipeName,
           dataRegionId,
           floatingMemoryUsageInByte * pipeCount,
-          2 * freeMemorySizeInBytes / 3.0d);
+          2 * totalFloatingMemorySizeInBytes / 3.0d);
     }
     return mayInsertNodeMemoryReachDangerousThreshold;
   }

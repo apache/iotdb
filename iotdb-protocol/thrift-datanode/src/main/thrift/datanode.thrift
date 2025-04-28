@@ -53,8 +53,11 @@ struct TRegionMigrateResult {
 }
 
 struct TNotifyRegionMigrationReq {
-  1: required common.TConsensusGroupId regionId
-  2: required bool isStart
+  1: required i64 logicalClock
+  2: required i64 timestamp
+  3: optional common.TConsensusGroupId regionId
+  4: optional bool isStart
+  5: required list<common.TConsensusGroupId> currentRegionOperations
 }
 
 struct TCreatePeerReq {
@@ -277,6 +280,10 @@ struct TDataNodeHeartbeatReq {
   9: optional i64 deviceQuotaRemain
   10: optional TDataNodeActivation activation
   11: optional set<common.TEndPoint> configNodeEndPoints
+  12: optional map<i32, common.TDataNodeLocation> dataNodes
+  13: optional map<i32, set<i32>> topology
+  14: required i64 logicalClock
+  15: optional list<common.TConsensusGroupId> currentRegionOperations
 }
 
 struct TDataNodeActivation {
@@ -1176,6 +1183,8 @@ service IDataNodeRPCService {
   common.TSStatus deleteTableDeviceInBlackList(TTableDeviceDeletionWithPatternOrModReq req)
 
   common.TTestConnectionResp submitTestConnectionTask(common.TNodeLocations nodeLocations)
+
+  common.TTestConnectionResp submitInternalTestConnectionTask(common.TNodeLocations nodeLocations)
 
   /** Empty rpc, only for connection test */
   common.TSStatus testConnectionEmptyRPC()

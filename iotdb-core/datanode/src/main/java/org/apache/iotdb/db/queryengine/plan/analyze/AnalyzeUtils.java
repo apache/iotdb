@@ -51,7 +51,6 @@ import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowsStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertTabletStatement;
 import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
-import org.apache.iotdb.db.schemaengine.table.InformationSchemaUtils;
 import org.apache.iotdb.db.storageengine.dataregion.modification.DeletionPredicate;
 import org.apache.iotdb.db.storageengine.dataregion.modification.IDPredicate;
 import org.apache.iotdb.db.storageengine.dataregion.modification.IDPredicate.And;
@@ -344,7 +343,6 @@ public class AnalyzeUtils {
   private static void validateSchema(final Delete node, final MPPQueryContext queryContext) {
     final String tableName = node.getTable().getName().getSuffix();
     final String databaseName = getDatabaseName(node, queryContext);
-    InformationSchemaUtils.checkDBNameInWrite(databaseName);
     node.setDatabaseName(databaseName);
 
     final TsTable table = DataNodeTableCache.getInstance().getTable(databaseName, tableName);

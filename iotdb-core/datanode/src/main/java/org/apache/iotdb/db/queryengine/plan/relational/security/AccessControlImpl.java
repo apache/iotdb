@@ -21,10 +21,13 @@ package org.apache.iotdb.db.queryengine.plan.relational.security;
 
 import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.commons.exception.auth.AccessDeniedException;
+import org.apache.iotdb.commons.schema.table.InformationSchema;
 import org.apache.iotdb.db.auth.AuthorityChecker;
+import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.QualifiedObjectName;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.RelationalAuthorStatement;
 import org.apache.iotdb.db.queryengine.plan.relational.type.AuthorRType;
+import org.apache.iotdb.db.schemaengine.table.InformationSchemaUtils;
 
 import java.util.Objects;
 
@@ -40,46 +43,62 @@ public class AccessControlImpl implements AccessControl {
 
   @Override
   public void checkCanCreateDatabase(String userName, String databaseName) {
+    InformationSchemaUtils.checkDBNameInWrite(databaseName);
     authChecker.checkDatabasePrivilege(userName, databaseName, TableModelPrivilege.CREATE);
   }
 
   @Override
   public void checkCanDropDatabase(String userName, String databaseName) {
+    InformationSchemaUtils.checkDBNameInWrite(databaseName);
     authChecker.checkDatabasePrivilege(userName, databaseName, TableModelPrivilege.DROP);
   }
 
   @Override
   public void checkCanAlterDatabase(String userName, String databaseName) {
+    InformationSchemaUtils.checkDBNameInWrite(databaseName);
     authChecker.checkDatabasePrivilege(userName, databaseName, TableModelPrivilege.ALTER);
   }
 
   @Override
   public void checkCanShowOrUseDatabase(String userName, String databaseName) {
+    // Information_schema is visible to any user
+    if (databaseName.equals(InformationSchema.INFORMATION_DATABASE)) {
+      return;
+    }
     authChecker.checkDatabaseVisibility(userName, databaseName);
   }
 
   @Override
   public void checkCanCreateTable(String userName, QualifiedObjectName tableName) {
+    InformationSchemaUtils.checkDBNameInWrite(tableName.getDatabaseName());
     authChecker.checkTablePrivilege(userName, tableName, TableModelPrivilege.CREATE);
   }
 
   @Override
   public void checkCanDropTable(String userName, QualifiedObjectName tableName) {
+    InformationSchemaUtils.checkDBNameInWrite(tableName.getDatabaseName());
     authChecker.checkTablePrivilege(userName, tableName, TableModelPrivilege.DROP);
   }
 
   @Override
   public void checkCanAlterTable(String userName, QualifiedObjectName tableName) {
+    InformationSchemaUtils.checkDBNameInWrite(tableName.getDatabaseName());
     authChecker.checkTablePrivilege(userName, tableName, TableModelPrivilege.ALTER);
   }
 
   @Override
   public void checkCanInsertIntoTable(String userName, QualifiedObjectName tableName) {
+    InformationSchemaUtils.checkDBNameInWrite(tableName.getDatabaseName());
     authChecker.checkTablePrivilege(userName, tableName, TableModelPrivilege.INSERT);
   }
 
   @Override
   public void checkCanSelectFromTable(String userName, QualifiedObjectName tableName) {
+    if (tableName.getDatabaseName().equals(InformationSchema.INFORMATION_DATABASE)) {
+      // Currently only root user can select from information schema
+      checkUserIsAdmin(userName);
+      return;
+    }
     authChecker.checkTablePrivilege(userName, tableName, TableModelPrivilege.SELECT);
   }
 
@@ -99,11 +118,16 @@ public class AccessControlImpl implements AccessControl {
 
   @Override
   public void checkCanDeleteFromTable(String userName, QualifiedObjectName tableName) {
+    InformationSchemaUtils.checkDBNameInWrite(tableName.getDatabaseName());
     authChecker.checkTablePrivilege(userName, tableName, TableModelPrivilege.DELETE);
   }
 
   @Override
   public void checkCanShowOrDescTable(String userName, QualifiedObjectName tableName) {
+    // Information_schema is visible to any user
+    if (tableName.getDatabaseName().equals(InformationSchema.INFORMATION_DATABASE)) {
+      return;
+    }
     authChecker.checkTableVisibility(userName, tableName);
   }
 
@@ -230,12 +254,13 @@ public class AccessControlImpl implements AccessControl {
         if (AuthorityChecker.SUPER_USER.equals(userName)) {
           return;
         }
-        for (PrivilegeType privilegeType : statement.getPrivilegeTypes()) {
+        for (TableModelPrivilege privilege : TableModelPrivilege.values()) {
+          PrivilegeType privilegeType = privilege.getPrivilegeType();
           if (privilegeType.isRelationalPrivilege()) {
-            AuthorityChecker.checkAnyScopePermissionGrantOption(userName, privilegeType);
+            authChecker.checkAnyScopePrivilegeGrantOption(userName, privilege);
           }
           if (privilegeType.forRelationalSys()) {
-            AuthorityChecker.checkSystemPermissionGrantOption(userName, privilegeType);
+            authChecker.checkGlobalPrivilegeGrantOption(userName, privilege);
           }
         }
         return;
@@ -245,6 +270,10 @@ public class AccessControlImpl implements AccessControl {
       case REVOKE_ROLE_DB:
         if (AuthorityChecker.SUPER_USER.equals(statement.getUserName())) {
           throw new AccessDeniedException("Cannot grant/revoke privileges of admin user");
+        }
+        if (InformationSchema.INFORMATION_DATABASE.equals(statement.getDatabase())) {
+          throw new SemanticException(
+              "Cannot grant or revoke any privileges to information_schema");
         }
         if (AuthorityChecker.SUPER_USER.equals(userName)) {
           return;
@@ -262,6 +291,10 @@ public class AccessControlImpl implements AccessControl {
       case REVOKE_ROLE_TB:
         if (AuthorityChecker.SUPER_USER.equals(statement.getUserName())) {
           throw new AccessDeniedException("Cannot grant/revoke privileges of admin user");
+        }
+        if (InformationSchema.INFORMATION_DATABASE.equals(statement.getDatabase())) {
+          throw new SemanticException(
+              "Cannot grant or revoke any privileges to information_schema");
         }
         if (AuthorityChecker.SUPER_USER.equals(userName)) {
           return;

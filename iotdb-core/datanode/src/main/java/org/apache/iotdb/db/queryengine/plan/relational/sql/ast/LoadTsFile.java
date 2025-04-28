@@ -41,11 +41,12 @@ public class LoadTsFile extends Statement {
 
   private int databaseLevel; // For loading to tree-model only
   private String database; // For loading to table-model only
-  private boolean deleteAfterLoad = false;
-  private boolean convertOnTypeMismatch = true;
-  private long tabletConversionThresholdBytes = -1;
-  private boolean autoCreateDatabase = true;
-  private boolean verify = true;
+  private boolean deleteAfterLoad;
+  private boolean convertOnTypeMismatch;
+  private long tabletConversionThresholdBytes;
+  private boolean autoCreateDatabase;
+  private boolean verify;
+  private boolean isAsyncLoad = false;
 
   private boolean isGeneratedByPipe = false;
 
@@ -138,6 +139,10 @@ public class LoadTsFile extends Statement {
     return this;
   }
 
+  public boolean isAsyncLoad() {
+    return isAsyncLoad;
+  }
+
   public void markIsGeneratedByPipe() {
     isGeneratedByPipe = true;
   }
@@ -183,6 +188,7 @@ public class LoadTsFile extends Statement {
     this.tabletConversionThresholdBytes =
         LoadTsFileConfigurator.parseOrGetDefaultTabletConversionThresholdBytes(loadAttributes);
     this.verify = LoadTsFileConfigurator.parseOrGetDefaultVerify(loadAttributes);
+    this.isAsyncLoad = LoadTsFileConfigurator.parseOrGetDefaultAsyncLoad(loadAttributes);
   }
 
   public boolean reconstructStatementIfMiniFileConverted(final List<Boolean> isMiniTsFile) {

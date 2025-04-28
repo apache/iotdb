@@ -31,6 +31,8 @@ import org.apache.iotdb.db.queryengine.execution.warnings.WarningCollector;
 import org.apache.iotdb.db.queryengine.plan.analyze.AnalyzeUtils;
 import org.apache.iotdb.db.queryengine.plan.analyze.QueryType;
 import org.apache.iotdb.db.queryengine.plan.analyze.load.LoadTsFileAnalyzer;
+import org.apache.iotdb.db.queryengine.plan.analyze.lock.DataNodeSchemaLockManager;
+import org.apache.iotdb.db.queryengine.plan.analyze.lock.SchemaLockType;
 import org.apache.iotdb.db.queryengine.plan.analyze.schema.SchemaValidator;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.tablefunction.ArgumentAnalysis;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.tablefunction.ArgumentsAnalysis;
@@ -175,9 +177,9 @@ import org.apache.iotdb.db.queryengine.plan.relational.type.TypeManager;
 import org.apache.iotdb.db.queryengine.plan.statement.component.FillPolicy;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertBaseStatement;
 import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
-import org.apache.iotdb.db.schemaengine.table.InformationSchemaUtils;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
+import org.apache.iotdb.udf.api.exception.UDFException;
 import org.apache.iotdb.udf.api.relational.TableFunction;
 import org.apache.iotdb.udf.api.relational.table.TableFunctionAnalysis;
 import org.apache.iotdb.udf.api.relational.table.argument.Argument;
@@ -467,7 +469,6 @@ public class StatementAnalyzer {
           sessionContext.getUserName(),
           new QualifiedObjectName(node.getDatabase(), node.getTableName()));
       final TranslationMap translationMap = analyzeTraverseDevice(node, context, true);
-      InformationSchemaUtils.checkDBNameInWrite(node.getDatabase());
       final TsTable table =
           DataNodeTableCache.getInstance().getTable(node.getDatabase(), node.getTableName());
       node.parseRawExpression(
@@ -523,7 +524,6 @@ public class StatementAnalyzer {
       accessControl.checkCanDeleteFromTable(
           sessionContext.getUserName(),
           new QualifiedObjectName(node.getDatabase(), node.getTableName()));
-      InformationSchemaUtils.checkDBNameInWrite(node.getDatabase());
       final TsTable table =
           DataNodeTableCache.getInstance().getTable(node.getDatabase(), node.getTableName());
       if (Objects.isNull(table)) {
@@ -3822,6 +3822,12 @@ public class StatementAnalyzer {
     protected Scope visitCreateOrUpdateDevice(
         final CreateOrUpdateDevice node, final Optional<Scope> context) {
       queryContext.setQueryType(QueryType.WRITE);
+      DataNodeSchemaLockManager.getInstance()
+          .takeReadLock(queryContext, SchemaLockType.VALIDATE_VS_DELETION_TABLE);
+      if (Objects.isNull(
+          DataNodeTableCache.getInstance().getTable(node.getDatabase(), node.getTable()))) {
+        TableMetadataImpl.throwTableNotExistsException(node.getDatabase(), node.getTable());
+      }
       return null;
     }
 
@@ -4014,8 +4020,13 @@ public class StatementAnalyzer {
       ArgumentsAnalysis argumentsAnalysis =
           analyzeArguments(
               function.getArgumentsSpecifications(), node.getArguments(), scope, errorLocation);
-      TableFunctionAnalysis functionAnalysis =
-          function.analyze(argumentsAnalysis.getPassedArguments());
+
+      TableFunctionAnalysis functionAnalysis;
+      try {
+        functionAnalysis = function.analyze(argumentsAnalysis.getPassedArguments());
+      } catch (UDFException e) {
+        throw new SemanticException(e.getMessage());
+      }
 
       // At most one table argument can be passed to a table function now
       if (argumentsAnalysis.getTableArgumentAnalyses().size() > 1) {
@@ -4129,9 +4140,11 @@ public class StatementAnalyzer {
           new TableFunctionInvocationAnalysis(
               node.getName().toString(),
               argumentsAnalysis.getPassedArguments(),
+              functionAnalysis.getTableFunctionHandle(),
               orderedTableArguments.build(),
               requiredColumns,
-              properSchema.map(describedSchema -> describedSchema.getFields().size()).orElse(0)));
+              properSchema.map(describedSchema -> describedSchema.getFields().size()).orElse(0),
+              functionAnalysis.isRequireRecordSnapshot()));
 
       return createAndAssignScope(node, scope, fields.build());
     }
@@ -4403,6 +4416,14 @@ public class StatementAnalyzer {
               String.format(
                   "Invalid scalar argument value. Expected type %s, got %s",
                   argumentSpecification.getType(), constantValue.getClass().getSimpleName()));
+        }
+      }
+      for (Function<Object, String> checker : argumentSpecification.getCheckers()) {
+        String errMsg = checker.apply(constantValue);
+        if (errMsg != null) {
+          throw new SemanticException(
+              String.format(
+                  "Invalid scalar argument %s, %s", argumentSpecification.getName(), errMsg));
         }
       }
       return new ArgumentAnalysis(

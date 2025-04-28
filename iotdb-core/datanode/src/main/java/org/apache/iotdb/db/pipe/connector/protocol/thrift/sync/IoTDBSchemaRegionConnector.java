@@ -209,8 +209,8 @@ public class IoTDBSchemaRegionConnector extends IoTDBDataNodeSyncConnector {
       clientAndStatus.setRight(false);
       throw new PipeConnectionException(
           String.format(
-              "Network error when seal snapshot file %s and %s, because %s.",
-              mTreeSnapshotFile, tagLogSnapshotFile, e.getMessage()),
+              "Network error when seal snapshot file %s, %s and %s, because %s.",
+              mTreeSnapshotFile, tagLogSnapshotFile, attributeSnapshotFile, e.getMessage()),
           e);
     }
 
@@ -220,8 +220,8 @@ public class IoTDBSchemaRegionConnector extends IoTDBDataNodeSyncConnector {
       receiverStatusHandler.handle(
           resp.getStatus(),
           String.format(
-              "Seal file %s and %s error, result status %s.",
-              mTreeSnapshotFile, tagLogSnapshotFile, resp.getStatus()),
+              "Seal file %s, %s and %s error, result status %s.",
+              mTreeSnapshotFile, tagLogSnapshotFile, attributeSnapshotFile, resp.getStatus()),
           snapshotEvent.toString());
     }
 

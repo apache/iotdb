@@ -910,14 +910,15 @@ public class RelationPlanner extends AstVisitor<RelationPlan, Void> {
               new TableFunctionNode.PassThroughSpecification(
                   tableArgument.isPassThroughColumns(), passThroughColumns.build()),
               requiredColumns,
-              specification));
+              specification,
+              functionAnalysis.isRequiredRecordSnapshot()));
     }
 
     PlanNode root =
         new TableFunctionNode(
             idAllocator.genPlanNodeId(),
             functionAnalysis.getFunctionName(),
-            functionAnalysis.getPassedArguments(),
+            functionAnalysis.getTableFunctionHandle(),
             properOutputs,
             sources.build(),
             sourceProperties.build());

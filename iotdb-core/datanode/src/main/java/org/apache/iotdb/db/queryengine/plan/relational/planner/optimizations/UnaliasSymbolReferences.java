@@ -39,6 +39,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.node.EnforceSingl
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ExplainAnalyzeNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.FilterNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.GapFillNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.GroupNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.InformationSchemaTableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.JoinNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.LimitNode;
@@ -351,10 +352,21 @@ public class UnaliasSymbolReferences implements PlanOptimizer {
     @Override
     public PlanAndMappings visitExplainAnalyze(ExplainAnalyzeNode node, UnaliasContext context) {
       PlanAndMappings rewrittenSource = node.getChild().accept(this, context);
+      Map<Symbol, Symbol> mapping = new HashMap<>(rewrittenSource.getMappings());
+      SymbolMapper mapper = symbolMapper(mapping);
+
+      List<Symbol> newChildPermittedOutputs = mapper.map(node.getChildPermittedOutputs());
 
       return new PlanAndMappings(
-          node.replaceChildren(ImmutableList.of(rewrittenSource.getRoot())),
-          rewrittenSource.getMappings());
+          new ExplainAnalyzeNode(
+              node.getPlanNodeId(),
+              rewrittenSource.getRoot(),
+              node.isVerbose(),
+              node.getQueryId(),
+              node.getTimeout(),
+              node.getOutputSymbols().get(0),
+              newChildPermittedOutputs),
+          mapping);
     }
 
     @Override
@@ -421,6 +433,23 @@ public class UnaliasSymbolReferences implements PlanOptimizer {
               newOrderingScheme,
               node.isPartial(),
               node.isOrderByAllIdsAndTime()),
+          mapping);
+    }
+
+    @Override
+    public PlanAndMappings visitGroup(GroupNode node, UnaliasContext context) {
+      PlanAndMappings rewrittenSource = node.getChild().accept(this, context);
+      Map<Symbol, Symbol> mapping = new HashMap<>(rewrittenSource.getMappings());
+      SymbolMapper mapper = symbolMapper(mapping);
+
+      OrderingScheme newOrderingScheme = mapper.map(node.getOrderingScheme());
+
+      return new PlanAndMappings(
+          new GroupNode(
+              node.getPlanNodeId(),
+              rewrittenSource.getRoot(),
+              newOrderingScheme,
+              node.getPartitionKeyCount()),
           mapping);
     }
 
@@ -833,14 +862,15 @@ public class UnaliasSymbolReferences implements PlanOptimizer {
                 properties.isRowSemantics(),
                 newPassThroughSpecification,
                 inputMapper.map(properties.getRequiredColumns()),
-                newSpecification));
+                newSpecification,
+                properties.isRequireRecordSnapshot()));
       }
 
       return new PlanAndMappings(
           new TableFunctionNode(
               node.getPlanNodeId(),
               node.getName(),
-              node.getArguments(),
+              node.getTableFunctionHandle(),
               newProperOutputs,
               newSources.build(),
               newTableArgumentProperties.build()),
@@ -862,7 +892,9 @@ public class UnaliasSymbolReferences implements PlanOptimizer {
                 Optional.empty(),
                 ImmutableList.of(),
                 Optional.empty(),
-                node.getArguments()),
+                node.isRowSemantic(),
+                node.getTableFunctionHandle(),
+                node.isRequireRecordSnapshot()),
             mapping);
       }
 
@@ -897,7 +929,9 @@ public class UnaliasSymbolReferences implements PlanOptimizer {
               newPassThroughSpecification,
               newRequiredSymbols,
               newSpecification,
-              node.getArguments());
+              node.isRowSemantic(),
+              node.getTableFunctionHandle(),
+              node.isRequireRecordSnapshot());
 
       return new PlanAndMappings(rewrittenTableFunctionProcessor, mapping);
     }

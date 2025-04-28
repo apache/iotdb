@@ -53,7 +53,6 @@ import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
 public class ClusterSchemaFetcher implements ISchemaFetcher {
-
   private final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
   private final Coordinator coordinator = Coordinator.getInstance();
@@ -193,7 +192,7 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
     // The schema cache R/W and fetch operation must be locked together thus the cache clean
     // operation executed by delete timeseries will be effective.
     DataNodeSchemaLockManager.getInstance()
-        .takeReadLock(context, SchemaLockType.VALIDATE_VS_DELETION);
+        .takeReadLock(context, SchemaLockType.VALIDATE_VS_DELETION_TREE);
     schemaCache.takeReadLock();
     try {
       final Pair<Template, PartialPath> templateSetInfo =
@@ -232,7 +231,7 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
     // The schema cache R/W and fetch operation must be locked together thus the cache clean
     // operation executed by delete timeSeries will be effective.
     DataNodeSchemaLockManager.getInstance()
-        .takeReadLock(context, SchemaLockType.VALIDATE_VS_DELETION);
+        .takeReadLock(context, SchemaLockType.VALIDATE_VS_DELETION_TREE);
     schemaCache.takeReadLock();
     try {
 
@@ -276,7 +275,7 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
     // The schema cache R/W and fetch operation must be locked together thus the cache clean
     // operation executed by delete timeSeries will be effective.
     DataNodeSchemaLockManager.getInstance()
-        .takeReadLock(context, SchemaLockType.VALIDATE_VS_DELETION);
+        .takeReadLock(context, SchemaLockType.VALIDATE_VS_DELETION_TREE);
     schemaCache.takeReadLock();
     try {
       final ClusterSchemaTree schemaTree = new ClusterSchemaTree();

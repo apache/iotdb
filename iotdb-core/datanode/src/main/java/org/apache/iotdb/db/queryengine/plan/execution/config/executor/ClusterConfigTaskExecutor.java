@@ -48,11 +48,16 @@ import org.apache.iotdb.commons.executable.ExecutableResource;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
+import org.apache.iotdb.commons.pipe.agent.plugin.builtin.BuiltinPipePlugin;
 import org.apache.iotdb.commons.pipe.agent.plugin.service.PipePluginClassLoader;
 import org.apache.iotdb.commons.pipe.agent.plugin.service.PipePluginExecutableManager;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeMeta;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeStaticMeta;
+import org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant;
+import org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant;
 import org.apache.iotdb.commons.pipe.connector.payload.airgap.AirGapPseudoTPipeTransferRequest;
+import org.apache.iotdb.commons.pipe.datastructure.visibility.Visibility;
+import org.apache.iotdb.commons.pipe.datastructure.visibility.VisibilityUtils;
 import org.apache.iotdb.commons.schema.cache.CacheClearOptions;
 import org.apache.iotdb.commons.schema.table.AlterOrDropTableOperationType;
 import org.apache.iotdb.commons.schema.table.TsTable;
@@ -82,9 +87,12 @@ import org.apache.iotdb.confignode.rpc.thrift.TCreateModelReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreatePipePluginReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreatePipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateTopicReq;
+import org.apache.iotdb.confignode.rpc.thrift.TCreateTrainingReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateTriggerReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRemoveReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRemoveResp;
+import org.apache.iotdb.confignode.rpc.thrift.TDataSchemaForTable;
+import org.apache.iotdb.confignode.rpc.thrift.TDataSchemaForTree;
 import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
 import org.apache.iotdb.confignode.rpc.thrift.TDeactivateSchemaTemplateReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDeleteDatabasesReq;
@@ -151,6 +159,7 @@ import org.apache.iotdb.db.exception.BatchProcessException;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.exception.metadata.SchemaQuotaExceededException;
+import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
 import org.apache.iotdb.db.protocol.client.ConfigNodeClient;
 import org.apache.iotdb.db.protocol.client.ConfigNodeClientManager;
@@ -187,7 +196,7 @@ import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.ShowRegion
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.ShowTTLTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.ShowTriggersTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.ShowVariablesTask;
-import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.model.ShowModelsTask;
+import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.ai.ShowModelsTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.region.ExtendRegionTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.region.MigrateRegionTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.region.ReconstructRegionTask;
@@ -965,9 +974,28 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
 
       // try to create instance, this request will fail if creation is not successful
       try (final PipePluginClassLoader classLoader = new PipePluginClassLoader(libRoot)) {
-        // ensure that jar file contains the class and the class is a pipe plugin
         final Class<?> clazz =
             Class.forName(createPipePluginStatement.getClassName(), true, classLoader);
+
+        final Visibility pluginVisibility = VisibilityUtils.calculateFromPluginClass(clazz);
+        final boolean isTableModel = createPipePluginStatement.isTableModel();
+        if (!VisibilityUtils.isCompatible(pluginVisibility, isTableModel)) {
+          LOGGER.warn(
+              "Failed to create PipePlugin({}) because this plugin is not designed for {} model.",
+              createPipePluginStatement.getPluginName(),
+              isTableModel ? "table" : "tree");
+          future.setException(
+              new IoTDBException(
+                  "Failed to create PipePlugin '"
+                      + createPipePluginStatement.getPluginName()
+                      + "', because this plugin is not designed for "
+                      + (isTableModel ? "table" : "tree")
+                      + " model.",
+                  TSStatusCode.PIPE_PLUGIN_LOAD_CLASS_ERROR.getStatusCode()));
+          return future;
+        }
+
+        // ensure that jar file contains the class and the class is a pipe plugin
         final PipePlugin ignored = (PipePlugin) clazz.getDeclaredConstructor().newInstance();
       } catch (final ClassNotFoundException
           | NoSuchMethodException
@@ -1470,7 +1498,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
   public SettableFuture<ConfigTaskResult> setSqlDialect(IClientSession.SqlDialect sqlDialect) {
     final SettableFuture<ConfigTaskResult> future = SettableFuture.create();
     try {
-      SessionManager.getInstance().getCurrSession().setSqlDialect(sqlDialect);
+      SessionManager.getInstance().getCurrSession().setSqlDialectAndClean(sqlDialect);
       future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
     } catch (Exception e) {
       future.setException(e);
@@ -1545,11 +1573,11 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
     TShowRegionResp showRegionResp = new TShowRegionResp();
     final TShowRegionReq showRegionReq = new TShowRegionReq().setIsTableModel(isTableModel);
     showRegionReq.setConsensusGroupType(showRegionStatement.getRegionType());
-    if (showRegionStatement.getStorageGroups() == null) {
+    if (showRegionStatement.getDatabases() == null) {
       showRegionReq.setDatabases(null);
     } else {
       showRegionReq.setDatabases(
-          showRegionStatement.getStorageGroups().stream()
+          showRegionStatement.getDatabases().stream()
               .map(PartialPath::getFullPath)
               .collect(Collectors.toList()));
     }
@@ -2049,6 +2077,8 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
         if (alterPipeStatement.isReplaceAllExtractorAttributes()) {
           extractorAttributes = alterPipeStatement.getExtractorAttributes();
         } else {
+          final boolean onlyContainsUser =
+              onlyContainsUser(alterPipeStatement.getExtractorAttributes());
           pipeMetaFromCoordinator
               .getStaticMeta()
               .getExtractorParameters()
@@ -2056,6 +2086,9 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
                   new PipeParameters(alterPipeStatement.getExtractorAttributes()));
           extractorAttributes =
               pipeMetaFromCoordinator.getStaticMeta().getExtractorParameters().getAttribute();
+          if (onlyContainsUser) {
+            checkSourceType(alterPipeStatement.getPipeName(), extractorAttributes);
+          }
         }
       } else {
         extractorAttributes =
@@ -2083,6 +2116,8 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
         if (alterPipeStatement.isReplaceAllConnectorAttributes()) {
           connectorAttributes = alterPipeStatement.getConnectorAttributes();
         } else {
+          final boolean onlyContainsUser =
+              onlyContainsUser(alterPipeStatement.getConnectorAttributes());
           pipeMetaFromCoordinator
               .getStaticMeta()
               .getConnectorParameters()
@@ -2090,6 +2125,9 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
                   new PipeParameters(alterPipeStatement.getConnectorAttributes()));
           connectorAttributes =
               pipeMetaFromCoordinator.getStaticMeta().getConnectorParameters().getAttribute();
+          if (onlyContainsUser) {
+            checkSinkType(alterPipeStatement.getPipeName(), connectorAttributes);
+          }
         }
       } else {
         connectorAttributes =
@@ -2127,6 +2165,59 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
       future.setException(e);
     }
     return future;
+  }
+
+  private static void checkSourceType(
+      final String pipeName, final Map<String, String> replacedExtractorAttributes) {
+    final PipeParameters extractorParameters = new PipeParameters(replacedExtractorAttributes);
+    final String pluginName =
+        extractorParameters
+            .getStringOrDefault(
+                Arrays.asList(
+                    PipeExtractorConstant.EXTRACTOR_KEY, PipeExtractorConstant.SOURCE_KEY),
+                BuiltinPipePlugin.IOTDB_EXTRACTOR.getPipePluginName())
+            .toLowerCase();
+
+    if (pluginName.equals(BuiltinPipePlugin.IOTDB_EXTRACTOR.getPipePluginName())
+        || pluginName.equals(BuiltinPipePlugin.IOTDB_SOURCE.getPipePluginName())) {
+      throw new SemanticException(
+          String.format(
+              "Failed to alter pipe %s, in iotdb-source, password must be set when the username is specified.",
+              pipeName));
+    }
+  }
+
+  private static boolean onlyContainsUser(
+      final Map<String, String> extractorOrConnectorAttributes) {
+    final PipeParameters extractorOrConnectorParameters =
+        new PipeParameters(extractorOrConnectorAttributes);
+    return extractorOrConnectorParameters.hasAnyAttributes(
+            PipeConnectorConstant.CONNECTOR_IOTDB_USER_KEY,
+            PipeConnectorConstant.SINK_IOTDB_USER_KEY,
+            PipeConnectorConstant.CONNECTOR_IOTDB_USERNAME_KEY,
+            PipeConnectorConstant.SINK_IOTDB_USERNAME_KEY)
+        && !extractorOrConnectorParameters.hasAnyAttributes(
+            PipeConnectorConstant.CONNECTOR_IOTDB_PASSWORD_KEY,
+            PipeConnectorConstant.SINK_IOTDB_PASSWORD_KEY);
+  }
+
+  private static void checkSinkType(
+      final String pipeName, final Map<String, String> connectorAttributes) {
+    final PipeParameters connectorParameters = new PipeParameters(connectorAttributes);
+    final String pluginName =
+        connectorParameters
+            .getStringOrDefault(
+                Arrays.asList(PipeConnectorConstant.CONNECTOR_KEY, PipeConnectorConstant.SINK_KEY),
+                BuiltinPipePlugin.IOTDB_THRIFT_SINK.getPipePluginName())
+            .toLowerCase();
+
+    if (pluginName.equals(BuiltinPipePlugin.WRITE_BACK_CONNECTOR.getPipePluginName())
+        || pluginName.equals(BuiltinPipePlugin.WRITE_BACK_SINK.getPipePluginName())) {
+      throw new SemanticException(
+          String.format(
+              "Failed to alter pipe %s, in write-back-sink, password must be set when the username is specified.",
+              pipeName));
+    }
   }
 
   @Override
@@ -2323,7 +2414,9 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
       PipeDataNodeAgent.plugin()
           .validate(
               "fakePipeName",
-              temporaryTopicMeta.generateExtractorAttributes(),
+              // TODO: currently use root to create topic
+              temporaryTopicMeta.generateExtractorAttributes(
+                  CommonDescriptor.getInstance().getConfig().getAdminName()),
               temporaryTopicMeta.generateProcessorAttributes(),
               temporaryTopicMeta.generateConnectorAttributes("fakeConsumerGroupId"));
     } catch (final Exception e) {
@@ -3165,6 +3258,49 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
   }
 
   @Override
+  public SettableFuture<ConfigTaskResult> createTraining(
+      String modelId,
+      String modelType,
+      boolean isTableModel,
+      Map<String, String> parameters,
+      boolean useAllData,
+      List<List<Long>> timeRanges,
+      String existingModelId,
+      @Nullable List<String> tableList,
+      @Nullable List<String> databaseList,
+      @Nullable List<String> pathList) {
+    final SettableFuture<ConfigTaskResult> future = SettableFuture.create();
+    try (final ConfigNodeClient client =
+        CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
+      final TCreateTrainingReq req = new TCreateTrainingReq(modelId, modelType, isTableModel);
+
+      if (isTableModel) {
+        TDataSchemaForTable dataSchemaForTable = new TDataSchemaForTable();
+        dataSchemaForTable.setTableList(tableList);
+        dataSchemaForTable.setDatabaseList(databaseList);
+        req.setDataSchemaForTable(dataSchemaForTable);
+      } else {
+        TDataSchemaForTree dataSchemaForTree = new TDataSchemaForTree();
+        dataSchemaForTree.setPath(pathList);
+        req.setDataSchemaForTree(dataSchemaForTree);
+      }
+      req.setParameters(parameters);
+      req.setUseAllData(useAllData);
+      req.setTimeRanges(timeRanges);
+      req.setExistingModelId(existingModelId);
+      final TSStatus executionStatus = client.createTraining(req);
+      if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != executionStatus.getCode()) {
+        future.setException(new IoTDBException(executionStatus.message, executionStatus.code));
+      } else {
+        future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
+      }
+    } catch (final ClientManagerException | TException e) {
+      future.setException(e);
+    }
+    return future;
+  }
+
+  @Override
   public SettableFuture<ConfigTaskResult> setSpaceQuota(
       final SetSpaceQuotaStatement setSpaceQuotaStatement) {
     final SettableFuture<ConfigTaskResult> future = SettableFuture.create();
@@ -3462,7 +3598,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
         } else {
           future.setException(
               new IoTDBException(
-                  String.format("Database %s doesn't exist", databaseSchema.getName().substring(5)),
+                  String.format("Database %s doesn't exist", databaseSchema.getName()),
                   TSStatusCode.DATABASE_NOT_EXIST.getStatusCode()));
         }
       } else {

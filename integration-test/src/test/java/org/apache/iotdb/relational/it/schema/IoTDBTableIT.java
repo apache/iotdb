@@ -20,12 +20,19 @@
 package org.apache.iotdb.relational.it.schema;
 
 import org.apache.iotdb.db.it.utils.TestUtils;
+import org.apache.iotdb.isession.ITableSession;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.TableClusterIT;
 import org.apache.iotdb.itbase.category.TableLocalStandaloneIT;
 import org.apache.iotdb.itbase.env.BaseEnv;
+import org.apache.iotdb.rpc.IoTDBConnectionException;
+import org.apache.iotdb.rpc.StatementExecutionException;
 
+import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.write.record.Tablet;
+import org.apache.tsfile.write.schema.IMeasurementSchema;
+import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.BeforeClass;
@@ -38,7 +45,10 @@ import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
+import java.util.List;
 
 import static org.apache.iotdb.commons.schema.column.ColumnHeaderConstant.describeTableColumnHeaders;
 import static org.apache.iotdb.commons.schema.column.ColumnHeaderConstant.describeTableDetailsColumnHeaders;
@@ -47,6 +57,7 @@ import static org.apache.iotdb.commons.schema.column.ColumnHeaderConstant.showTa
 import static org.apache.iotdb.commons.schema.column.ColumnHeaderConstant.showTablesDetailsColumnHeaders;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 @RunWith(IoTDBTestRunner.class)
@@ -97,7 +108,7 @@ public class IoTDBTableIT {
       // "FIELD" can be omitted when type is specified
       // "STRING" can be omitted when tag/attribute is specified
       statement.execute(
-          "create table test1.table1(region_id STRING TAG, plant_id STRING TAG, device_id TAG, model STRING ATTRIBUTE, temperature FLOAT FIELD, humidity DOUBLE) comment 'test' with (TTL='INF')");
+          "create table test1.table1(time TIMESTAMP TIME COMMENT 'column_comment', region_id STRING TAG, plant_id STRING TAG, device_id TAG, model STRING ATTRIBUTE, temperature FLOAT FIELD, humidity DOUBLE) comment 'test' with (TTL='INF')");
 
       try {
         statement.execute(
@@ -404,15 +415,40 @@ public class IoTDBTableIT {
       statement.execute("alter table table2 drop column color");
 
       // Test comment
-      statement.execute("COMMENT ON COLUMN table2.region_id IS '重庆'");
-      statement.execute("COMMENT ON COLUMN table2.region_id IS NULL");
-      statement.execute("COMMENT ON COLUMN test2.table2.time IS 'recent'");
-
+      // Before
       columnNames = new String[] {"time", "region_id", "plant_id", "temperature", "speed"};
       dataTypes = new String[] {"TIMESTAMP", "STRING", "STRING", "FLOAT", "DOUBLE"};
       categories = new String[] {"TIME", "TAG", "TAG", "FIELD", "FIELD"};
       statuses = new String[] {"USING", "USING", "USING", "USING", "USING"};
-      comments = new String[] {"recent", "", "", "", "fast"};
+
+      comments = new String[] {null, null, null, null, "fast"};
+      try (final ResultSet resultSet = statement.executeQuery("describe table2 details")) {
+        int cnt = 0;
+        ResultSetMetaData metaData = resultSet.getMetaData();
+        assertEquals(describeTableDetailsColumnHeaders.size(), metaData.getColumnCount());
+        for (int i = 0; i < describeTableDetailsColumnHeaders.size(); i++) {
+          assertEquals(
+              describeTableDetailsColumnHeaders.get(i).getColumnName(),
+              metaData.getColumnName(i + 1));
+        }
+        while (resultSet.next()) {
+          assertEquals(columnNames[cnt], resultSet.getString(1));
+          assertEquals(dataTypes[cnt], resultSet.getString(2));
+          assertEquals(categories[cnt], resultSet.getString(3));
+          assertEquals(statuses[cnt], resultSet.getString(4));
+          assertEquals(comments[cnt], resultSet.getString(5));
+          cnt++;
+        }
+        assertEquals(columnNames.length, cnt);
+      }
+
+      // After
+      statement.execute("COMMENT ON COLUMN table2.region_id IS '重庆'");
+      statement.execute("COMMENT ON COLUMN table2.region_id IS NULL");
+      statement.execute("COMMENT ON COLUMN test2.table2.time IS 'recent'");
+      statement.execute("COMMENT ON COLUMN test2.table2.region_id IS ''");
+
+      comments = new String[] {"recent", "", null, null, "fast"};
       try (final ResultSet resultSet = statement.executeQuery("describe table2 details")) {
         int cnt = 0;
         ResultSetMetaData metaData = resultSet.getMetaData();
@@ -613,6 +649,9 @@ public class IoTDBTableIT {
           assertEquals(showDBColumnHeaders.get(i).getColumnName(), metaData.getColumnName(i + 1));
         }
         Assert.assertTrue(resultSet.next());
+        if (resultSet.getString(1).equals("information_schema")) {
+          assertTrue(resultSet.next());
+        }
         assertEquals("db", resultSet.getString(1));
         Assert.assertFalse(resultSet.next());
       }
@@ -630,6 +669,83 @@ public class IoTDBTableIT {
         final Statement userStmt = userCon.createStatement()) {
       userStmt.execute("use db");
       userStmt.execute("drop table test");
+    }
+  }
+
+  // Test deadlock
+  @Test(timeout = 60000)
+  public void testConcurrentAutoCreateAndDropColumn() throws Exception {
+    try (final ITableSession session = EnvFactory.getEnv().getTableSessionConnection();
+        final Connection adminCon = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        final Statement adminStmt = adminCon.createStatement()) {
+      adminStmt.execute("create database db1");
+      session.executeNonQueryStatement("USE \"db1\"");
+
+      final StringBuilder sb = new StringBuilder("CREATE TABLE table8 (tag1 string tag");
+      for (int i = 0; i < 100; ++i) {
+        sb.append(String.format(", m%s string", i));
+      }
+      sb.append(")");
+      session.executeNonQueryStatement(sb.toString());
+
+      final Thread insertThread =
+          new Thread(
+              () -> {
+                for (int i = 0; i < 100; ++i) {
+                  final List<IMeasurementSchema> schemaList = new ArrayList<>();
+                  schemaList.add(new MeasurementSchema("tag1", TSDataType.STRING));
+                  schemaList.add(new MeasurementSchema("attr1", TSDataType.STRING));
+                  schemaList.add(
+                      new MeasurementSchema(String.format("m%s", 100 + i), TSDataType.DOUBLE));
+                  final List<Tablet.ColumnCategory> columnTypes =
+                      Arrays.asList(
+                          Tablet.ColumnCategory.TAG,
+                          Tablet.ColumnCategory.ATTRIBUTE,
+                          Tablet.ColumnCategory.FIELD);
+
+                  long timestamp = 0;
+                  final Tablet tablet =
+                      new Tablet(
+                          "table8",
+                          IMeasurementSchema.getMeasurementNameList(schemaList),
+                          IMeasurementSchema.getDataTypeList(schemaList),
+                          columnTypes,
+                          15);
+
+                  for (int row = 0; row < 15; row++) {
+                    tablet.addTimestamp(row, timestamp);
+                    tablet.addValue("tag1", row, "tag:" + timestamp);
+                    tablet.addValue("attr1", row, "attr:" + timestamp);
+                    tablet.addValue(String.format("m%s", 100 + i), row, timestamp * 1.0);
+                    timestamp++;
+                  }
+
+                  try {
+                    session.insert(tablet);
+                  } catch (final StatementExecutionException | IoTDBConnectionException e) {
+                    throw new RuntimeException(e);
+                  }
+                  tablet.reset();
+                }
+              });
+
+      final Thread deletionThread =
+          new Thread(
+              () -> {
+                for (int i = 0; i < 100; ++i) {
+                  try {
+                    adminStmt.execute(String.format("alter table db1.table8 drop column m%s", i));
+                  } catch (final SQLException e) {
+                    throw new RuntimeException(e);
+                  }
+                }
+              });
+
+      insertThread.start();
+      deletionThread.start();
+
+      insertThread.join();
+      deletionThread.join();
     }
   }
 }

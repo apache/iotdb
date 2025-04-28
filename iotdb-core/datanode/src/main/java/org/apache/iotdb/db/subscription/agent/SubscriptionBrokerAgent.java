@@ -21,6 +21,7 @@ package org.apache.iotdb.db.subscription.agent;
 
 import org.apache.iotdb.db.subscription.broker.SubscriptionBroker;
 import org.apache.iotdb.db.subscription.event.SubscriptionEvent;
+import org.apache.iotdb.db.subscription.resource.SubscriptionDataNodeResourceManager;
 import org.apache.iotdb.db.subscription.task.subtask.SubscriptionConnectorSubtask;
 import org.apache.iotdb.rpc.subscription.config.ConsumerConfig;
 import org.apache.iotdb.rpc.subscription.exception.SubscriptionException;
@@ -115,6 +116,15 @@ public class SubscriptionBrokerAgent {
     return broker.commit(consumerId, commitContexts, nack);
   }
 
+  public boolean isCommitContextOutdated(final SubscriptionCommitContext commitContext) {
+    final String consumerGroupId = commitContext.getConsumerGroupId();
+    final SubscriptionBroker broker = consumerGroupIdToSubscriptionBroker.get(consumerGroupId);
+    if (Objects.isNull(broker)) {
+      return true;
+    }
+    return broker.isCommitContextOutdated(commitContext);
+  }
+
   /////////////////////////////// broker ///////////////////////////////
 
   public boolean isBrokerExist(final String consumerGroupId) {
@@ -197,8 +207,13 @@ public class SubscriptionBrokerAgent {
   public boolean executePrefetch(final String consumerGroupId, final String topicName) {
     final SubscriptionBroker broker = consumerGroupIdToSubscriptionBroker.get(consumerGroupId);
     if (Objects.isNull(broker)) {
-      LOGGER.warn(
-          "Subscription: broker bound to consumer group [{}] does not exist", consumerGroupId);
+      SubscriptionDataNodeResourceManager.log()
+          .schedule(SubscriptionBrokerAgent.class, consumerGroupId, topicName)
+          .ifPresent(
+              l ->
+                  l.warn(
+                      "Subscription: broker bound to consumer group [{}] does not exist",
+                      consumerGroupId));
       return false;
     }
     return broker.executePrefetch(topicName);

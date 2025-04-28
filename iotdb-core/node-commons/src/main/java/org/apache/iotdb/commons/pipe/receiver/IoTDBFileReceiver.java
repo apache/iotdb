@@ -74,8 +74,10 @@ public abstract class IoTDBFileReceiver implements IoTDBReceiver {
   protected String username = CONNECTOR_IOTDB_USER_DEFAULT_VALUE;
   protected String password = CONNECTOR_IOTDB_PASSWORD_DEFAULT_VALUE;
 
-  private static final boolean IS_FSYNC_ENABLED =
-      PipeConfig.getInstance().getPipeFileReceiverFsyncEnabled();
+  protected long lastSuccessfulLoginTime = Long.MIN_VALUE;
+
+  private static final PipeConfig PIPE_CONFIG = PipeConfig.getInstance();
+
   private File writingFile;
   private RandomAccessFile writingFileWriter;
 
@@ -111,6 +113,10 @@ public abstract class IoTDBFileReceiver implements IoTDBReceiver {
     }
 
     receiverId.set(RECEIVER_ID_GENERATOR.incrementAndGet());
+    Thread.currentThread()
+        .setName(
+            String.format(
+                "Pipe-Receiver-%s-%s:%s", receiverId.get(), getSenderHost(), getSenderPort()));
 
     // Clear the original receiver file dir if exists
     if (receiverFileDirWithIdSuffix.get() != null) {
@@ -258,7 +264,7 @@ public abstract class IoTDBFileReceiver implements IoTDBReceiver {
     if (passwordString != null) {
       password = passwordString;
     }
-    final TSStatus status = tryLogin();
+    final TSStatus status = loginIfNecessary();
     if (status.code != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       LOGGER.warn(
           "Receiver id = {}: Handshake failed because login failed, response status = {}.",
@@ -311,7 +317,32 @@ public abstract class IoTDBFileReceiver implements IoTDBReceiver {
 
   protected abstract String getClusterId();
 
-  protected abstract TSStatus tryLogin();
+  protected boolean shouldLogin() {
+    final long pipeReceiverLoginPeriodicVerificationIntervalMs =
+        PIPE_CONFIG.getPipeReceiverLoginPeriodicVerificationIntervalMs();
+    return pipeReceiverLoginPeriodicVerificationIntervalMs >= 0
+        && lastSuccessfulLoginTime
+            < System.currentTimeMillis() - pipeReceiverLoginPeriodicVerificationIntervalMs;
+  }
+
+  protected TSStatus loginIfNecessary() {
+    if (shouldLogin()) {
+      final TSStatus permissionCheckStatus = login();
+      if (permissionCheckStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        LOGGER.warn(
+            "Receiver id = {}: Failed to login, username = {}, response = {}.",
+            receiverId.get(),
+            username,
+            permissionCheckStatus);
+        return permissionCheckStatus;
+      } else {
+        lastSuccessfulLoginTime = System.currentTimeMillis();
+      }
+    }
+    return StatusUtils.OK;
+  }
+
+  protected abstract TSStatus login();
 
   protected final TPipeTransferResp handleTransferFilePiece(
       final PipeTransferFilePieceReq req,
@@ -418,7 +449,7 @@ public abstract class IoTDBFileReceiver implements IoTDBReceiver {
   private void closeCurrentWritingFileWriter(final boolean fsyncBeforeClose) {
     if (writingFileWriter != null) {
       try {
-        if (IS_FSYNC_ENABLED && fsyncBeforeClose) {
+        if (PIPE_CONFIG.getPipeFileReceiverFsyncEnabled() && fsyncBeforeClose) {
           writingFileWriter.getFD().sync();
         }
         writingFileWriter.close();
@@ -518,7 +549,7 @@ public abstract class IoTDBFileReceiver implements IoTDBReceiver {
       // Sync here is necessary to ensure that the data is written to the disk. Or data region may
       // load the file before the data is written to the disk and cause unexpected behavior after
       // system restart. (e.g., empty file in data region's data directory)
-      if (IS_FSYNC_ENABLED) {
+      if (PIPE_CONFIG.getPipeFileReceiverFsyncEnabled()) {
         writingFileWriter.getFD().sync();
       }
       // 1. The writing file writer must be closed, otherwise it may cause concurrent errors during
@@ -608,7 +639,7 @@ public abstract class IoTDBFileReceiver implements IoTDBReceiver {
       // Sync here is necessary to ensure that the data is written to the disk. Or data region may
       // load the file before the data is written to the disk and cause unexpected behavior after
       // system restart. (e.g., empty file in data region's data directory)
-      if (IS_FSYNC_ENABLED) {
+      if (PIPE_CONFIG.getPipeFileReceiverFsyncEnabled()) {
         writingFileWriter.getFD().sync();
       }
       // 1. The writing file writer must be closed, otherwise it may cause concurrent errors during
@@ -648,7 +679,7 @@ public abstract class IoTDBFileReceiver implements IoTDBReceiver {
       return new TPipeTransferResp(
           RpcUtils.getStatus(
               TSStatusCode.PIPE_TRANSFER_FILE_ERROR,
-              String.format("Failed to seal file %s because %s", writingFile, e.getMessage())));
+              String.format("Failed to seal file %s because %s", files, e.getMessage())));
     } finally {
       // If the writing file is not sealed successfully, the writing file will be deleted.
       // All pieces of the writing file and its mod(if exists) should be retransmitted by the

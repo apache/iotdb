@@ -24,21 +24,19 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.SingleChildProcessNode;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.TableMetadataImpl;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.DataOrganizationSpecification;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.Symbol;
-import org.apache.iotdb.udf.api.relational.table.argument.Argument;
+import org.apache.iotdb.udf.api.relational.table.TableFunctionHandle;
 
 import com.google.common.collect.ImmutableList;
-import com.google.common.collect.ImmutableMap;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
@@ -61,7 +59,11 @@ public class TableFunctionProcessorNode extends SingleChildProcessNode {
   // partitioning and ordering combined from sources
   private final Optional<DataOrganizationSpecification> dataOrganizationSpecification;
 
-  private final Map<String, Argument> arguments;
+  private final boolean rowSemantic;
+
+  private final TableFunctionHandle tableFunctionHandle;
+
+  private final boolean requireRecordSnapshot;
 
   public TableFunctionProcessorNode(
       PlanNodeId id,
@@ -71,7 +73,9 @@ public class TableFunctionProcessorNode extends SingleChildProcessNode {
       Optional<TableFunctionNode.PassThroughSpecification> passThroughSpecification,
       List<Symbol> requiredSymbols,
       Optional<DataOrganizationSpecification> dataOrganizationSpecification,
-      Map<String, Argument> arguments) {
+      boolean rowSemantic,
+      TableFunctionHandle tableFunctionHandle,
+      boolean requireRecordSnapshot) {
     super(id, source.orElse(null));
     this.name = requireNonNull(name, "name is null");
     this.properOutputs = ImmutableList.copyOf(properOutputs);
@@ -79,7 +83,9 @@ public class TableFunctionProcessorNode extends SingleChildProcessNode {
     this.requiredSymbols = ImmutableList.copyOf(requiredSymbols);
     this.dataOrganizationSpecification =
         requireNonNull(dataOrganizationSpecification, "specification is null");
-    this.arguments = ImmutableMap.copyOf(arguments);
+    this.rowSemantic = rowSemantic;
+    this.tableFunctionHandle = tableFunctionHandle;
+    this.requireRecordSnapshot = requireRecordSnapshot;
   }
 
   public TableFunctionProcessorNode(
@@ -89,7 +95,9 @@ public class TableFunctionProcessorNode extends SingleChildProcessNode {
       Optional<TableFunctionNode.PassThroughSpecification> passThroughSpecification,
       List<Symbol> requiredSymbols,
       Optional<DataOrganizationSpecification> dataOrganizationSpecification,
-      Map<String, Argument> arguments) {
+      boolean rowSemantic,
+      TableFunctionHandle tableFunctionHandle,
+      boolean requireRecordSnapshot) {
     super(id);
     this.name = requireNonNull(name, "name is null");
     this.properOutputs = ImmutableList.copyOf(properOutputs);
@@ -97,7 +105,9 @@ public class TableFunctionProcessorNode extends SingleChildProcessNode {
     this.requiredSymbols = ImmutableList.copyOf(requiredSymbols);
     this.dataOrganizationSpecification =
         requireNonNull(dataOrganizationSpecification, "specification is null");
-    this.arguments = ImmutableMap.copyOf(arguments);
+    this.rowSemantic = rowSemantic;
+    this.tableFunctionHandle = tableFunctionHandle;
+    this.requireRecordSnapshot = requireRecordSnapshot;
   }
 
   public String getName() {
@@ -106,6 +116,10 @@ public class TableFunctionProcessorNode extends SingleChildProcessNode {
 
   public List<Symbol> getProperOutputs() {
     return properOutputs;
+  }
+
+  public boolean isRowSemantic() {
+    return rowSemantic;
   }
 
   public Optional<TableFunctionNode.PassThroughSpecification> getPassThroughSpecification() {
@@ -120,8 +134,12 @@ public class TableFunctionProcessorNode extends SingleChildProcessNode {
     return dataOrganizationSpecification;
   }
 
-  public Map<String, Argument> getArguments() {
-    return arguments;
+  public TableFunctionHandle getTableFunctionHandle() {
+    return tableFunctionHandle;
+  }
+
+  public boolean isRequireRecordSnapshot() {
+    return requireRecordSnapshot;
   }
 
   @Override
@@ -133,7 +151,9 @@ public class TableFunctionProcessorNode extends SingleChildProcessNode {
         passThroughSpecification,
         requiredSymbols,
         dataOrganizationSpecification,
-        arguments);
+        rowSemantic,
+        tableFunctionHandle,
+        requireRecordSnapshot);
   }
 
   @Override
@@ -181,12 +201,10 @@ public class TableFunctionProcessorNode extends SingleChildProcessNode {
     if (dataOrganizationSpecification.isPresent()) {
       dataOrganizationSpecification.get().serialize(byteBuffer);
     }
-    ReadWriteIOUtils.write(arguments.size(), byteBuffer);
-    arguments.forEach(
-        (key, value) -> {
-          ReadWriteIOUtils.write(key, byteBuffer);
-          value.serialize(byteBuffer);
-        });
+    ReadWriteIOUtils.write(rowSemantic, byteBuffer);
+    byte[] bytes = tableFunctionHandle.serialize();
+    ReadWriteIOUtils.write(ByteBuffer.wrap(bytes), byteBuffer);
+    ReadWriteIOUtils.write(requireRecordSnapshot, byteBuffer);
   }
 
   @Override
@@ -209,11 +227,10 @@ public class TableFunctionProcessorNode extends SingleChildProcessNode {
     if (dataOrganizationSpecification.isPresent()) {
       dataOrganizationSpecification.get().serialize(stream);
     }
-    ReadWriteIOUtils.write(arguments.size(), stream);
-    for (Map.Entry<String, Argument> entry : arguments.entrySet()) {
-      ReadWriteIOUtils.write(entry.getKey(), stream);
-      entry.getValue().serialize(stream);
-    }
+    ReadWriteIOUtils.write(rowSemantic, stream);
+    byte[] bytes = tableFunctionHandle.serialize();
+    ReadWriteIOUtils.write(ByteBuffer.wrap(bytes), stream);
+    ReadWriteIOUtils.write(requireRecordSnapshot, stream);
   }
 
   public static TableFunctionProcessorNode deserialize(ByteBuffer byteBuffer) {
@@ -238,13 +255,13 @@ public class TableFunctionProcessorNode extends SingleChildProcessNode {
         hasDataOrganizationSpecification
             ? Optional.of(DataOrganizationSpecification.deserialize(byteBuffer))
             : Optional.empty();
+    boolean rowSemantic = ReadWriteIOUtils.readBoolean(byteBuffer);
     size = ReadWriteIOUtils.readInt(byteBuffer);
-    Map<String, Argument> arguments = new HashMap<>(size);
-    while (size-- > 0) {
-      String key = ReadWriteIOUtils.readString(byteBuffer);
-      Argument value = Argument.deserialize(byteBuffer);
-      arguments.put(key, value);
-    }
+    byte[] bytes = ReadWriteIOUtils.readBytes(byteBuffer, size);
+    TableFunctionHandle tableFunctionHandle =
+        new TableMetadataImpl().getTableFunction(name).createTableFunctionHandle();
+    tableFunctionHandle.deserialize(bytes);
+    boolean requireRecordSnapshot = ReadWriteIOUtils.readBoolean(byteBuffer);
 
     PlanNodeId planNodeId = PlanNodeId.deserialize(byteBuffer);
     return new TableFunctionProcessorNode(
@@ -254,7 +271,9 @@ public class TableFunctionProcessorNode extends SingleChildProcessNode {
         passThroughSpecification,
         requiredSymbols,
         dataOrganizationSpecification,
-        arguments);
+        rowSemantic,
+        tableFunctionHandle,
+        requireRecordSnapshot);
   }
 
   @Override
@@ -269,6 +288,8 @@ public class TableFunctionProcessorNode extends SingleChildProcessNode {
         passThroughSpecification,
         requiredSymbols,
         dataOrganizationSpecification,
-        arguments);
+        rowSemantic,
+        tableFunctionHandle,
+        requireRecordSnapshot);
   }
 }

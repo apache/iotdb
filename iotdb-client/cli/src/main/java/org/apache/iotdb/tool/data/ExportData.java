@@ -220,7 +220,6 @@ public class ExportData extends AbstractDataTool {
         System.exit(Constants.CODE_ERROR);
       }
       AbstractExportData exportData;
-      // check timePrecision by session
       exportData = new ExportDataTree();
       exportData.init();
       if (!sqlDialectTree) {

@@ -23,6 +23,7 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.commons.auth.entity.PrivilegeUnion;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
+import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.pipe.connector.payload.airgap.AirGapPseudoTPipeTransferRequest;
@@ -264,11 +265,37 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
   private TSStatus checkPermission(final ConfigPhysicalPlan plan) {
     switch (plan.getType()) {
       case CreateDatabase:
+        return PathUtils.isTableModelDatabase(((DatabaseSchemaPlan) plan).getSchema().getName())
+            ? configManager
+                .checkUserPrivileges(
+                    username,
+                    new PrivilegeUnion(
+                        ((DatabaseSchemaPlan) plan).getSchema().getName(), PrivilegeType.CREATE))
+                .getStatus()
+            : configManager
+                .checkUserPrivileges(username, new PrivilegeUnion(PrivilegeType.MANAGE_DATABASE))
+                .getStatus();
       case AlterDatabase:
+        return PathUtils.isTableModelDatabase(((DatabaseSchemaPlan) plan).getSchema().getName())
+            ? configManager
+                .checkUserPrivileges(
+                    username,
+                    new PrivilegeUnion(
+                        ((DatabaseSchemaPlan) plan).getSchema().getName(), PrivilegeType.ALTER))
+                .getStatus()
+            : configManager
+                .checkUserPrivileges(username, new PrivilegeUnion(PrivilegeType.MANAGE_DATABASE))
+                .getStatus();
       case DeleteDatabase:
-        return configManager
-            .checkUserPrivileges(username, new PrivilegeUnion(PrivilegeType.MANAGE_DATABASE))
-            .getStatus();
+        return PathUtils.isTableModelDatabase(((DeleteDatabasePlan) plan).getName())
+            ? configManager
+                .checkUserPrivileges(
+                    username,
+                    new PrivilegeUnion(((DeleteDatabasePlan) plan).getName(), PrivilegeType.DROP))
+                .getStatus()
+            : configManager
+                .checkUserPrivileges(username, new PrivilegeUnion(PrivilegeType.MANAGE_DATABASE))
+                .getStatus();
       case ExtendSchemaTemplate:
         return configManager
             .checkUserPrivileges(username, new PrivilegeUnion(PrivilegeType.EXTEND_TEMPLATE))
@@ -312,14 +339,26 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
                     PrivilegeType.WRITE_SCHEMA))
             .getStatus();
       case SetTTL:
-        return configManager
-            .checkUserPrivileges(
-                username,
-                new PrivilegeUnion(
-                    Collections.singletonList(
-                        new PartialPath(((SetTTLPlan) plan).getPathPattern())),
-                    PrivilegeType.WRITE_SCHEMA))
-            .getStatus();
+        return Objects.equals(
+                configManager
+                    .getTTLManager()
+                    .getAllTTL()
+                    .get(
+                        String.join(
+                            String.valueOf(IoTDBConstant.PATH_SEPARATOR),
+                            ((SetTTLPlan) plan).getPathPattern())),
+                ((SetTTLPlan) plan).getTTL())
+            ? StatusUtils.OK
+            : configManager
+                .checkUserPrivileges(
+                    username,
+                    ((SetTTLPlan) plan).isDataBase()
+                        ? new PrivilegeUnion(PrivilegeType.MANAGE_DATABASE)
+                        : new PrivilegeUnion(
+                            Collections.singletonList(
+                                new PartialPath(((SetTTLPlan) plan).getPathPattern())),
+                            PrivilegeType.WRITE_SCHEMA))
+                .getStatus();
       case UpdateTriggerStateInTable:
       case DeleteTriggerInTable:
         return configManager
@@ -788,13 +827,17 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
 
   @Override
   protected String getClusterId() {
-    return ConfigNode.getInstance().getConfigManager().getClusterManager().getClusterId();
+    return configManager.getClusterManager().getClusterId();
   }
 
   @Override
-  protected TSStatus tryLogin() {
-    // Do nothing. Login check will be done in the data node receiver.
-    return StatusUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
+  protected boolean shouldLogin() {
+    return lastSuccessfulLoginTime == Long.MIN_VALUE || super.shouldLogin();
+  }
+
+  @Override
+  protected TSStatus login() {
+    return configManager.login(username, password).getStatus();
   }
 
   @Override

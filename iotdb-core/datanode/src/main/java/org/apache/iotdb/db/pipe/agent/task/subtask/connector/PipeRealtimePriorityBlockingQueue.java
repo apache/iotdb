@@ -38,15 +38,13 @@ import java.util.function.Consumer;
 
 public class PipeRealtimePriorityBlockingQueue extends UnboundedBlockingPendingQueue<Event> {
 
+  private static final PipeConfig PIPE_CONFIG = PipeConfig.getInstance();
+
   private final BlockingDeque<TsFileInsertionEvent> tsfileInsertEventDeque =
       new LinkedBlockingDeque<>();
 
-  private static final int POLL_TSFILE_THRESHOLD =
-      PipeConfig.getInstance().getPipeRealTimeQueuePollTsFileThreshold();
   private final AtomicInteger pollTsFileCounter = new AtomicInteger(0);
 
-  private static final int POLL_HISTORICAL_TSFILE_THRESHOLD =
-      Math.max(PipeConfig.getInstance().getPipeRealTimeQueuePollHistoricalTsFileThreshold(), 1);
   private final AtomicLong pollHistoricalTsFileCounter = new AtomicLong(0);
 
   public PipeRealtimePriorityBlockingQueue() {
@@ -85,9 +83,12 @@ public class PipeRealtimePriorityBlockingQueue extends UnboundedBlockingPendingQ
   @Override
   public Event directPoll() {
     Event event = null;
-    if (pollTsFileCounter.get() >= POLL_TSFILE_THRESHOLD) {
+    final int pollHistoricalTsFileThreshold =
+        PIPE_CONFIG.getPipeRealTimeQueuePollHistoricalTsFileThreshold();
+
+    if (pollTsFileCounter.get() >= PIPE_CONFIG.getPipeRealTimeQueuePollTsFileThreshold()) {
       event =
-          pollHistoricalTsFileCounter.incrementAndGet() % POLL_HISTORICAL_TSFILE_THRESHOLD == 0
+          pollHistoricalTsFileCounter.incrementAndGet() % pollHistoricalTsFileThreshold == 0
               ? tsfileInsertEventDeque.pollFirst()
               : tsfileInsertEventDeque.pollLast();
       pollTsFileCounter.set(0);
@@ -97,7 +98,7 @@ public class PipeRealtimePriorityBlockingQueue extends UnboundedBlockingPendingQ
       event = super.directPoll();
       if (Objects.isNull(event)) {
         event =
-            pollHistoricalTsFileCounter.incrementAndGet() % POLL_HISTORICAL_TSFILE_THRESHOLD == 0
+            pollHistoricalTsFileCounter.incrementAndGet() % pollHistoricalTsFileThreshold == 0
                 ? tsfileInsertEventDeque.pollFirst()
                 : tsfileInsertEventDeque.pollLast();
       }
@@ -123,9 +124,12 @@ public class PipeRealtimePriorityBlockingQueue extends UnboundedBlockingPendingQ
   @Override
   public Event waitedPoll() {
     Event event = null;
-    if (pollTsFileCounter.get() >= POLL_TSFILE_THRESHOLD) {
+    final int pollHistoricalTsFileThreshold =
+        PIPE_CONFIG.getPipeRealTimeQueuePollHistoricalTsFileThreshold();
+
+    if (pollTsFileCounter.get() >= PIPE_CONFIG.getPipeRealTimeQueuePollTsFileThreshold()) {
       event =
-          pollHistoricalTsFileCounter.incrementAndGet() % POLL_HISTORICAL_TSFILE_THRESHOLD == 0
+          pollHistoricalTsFileCounter.incrementAndGet() % pollHistoricalTsFileThreshold == 0
               ? tsfileInsertEventDeque.pollFirst()
               : tsfileInsertEventDeque.pollLast();
       pollTsFileCounter.set(0);
@@ -135,7 +139,7 @@ public class PipeRealtimePriorityBlockingQueue extends UnboundedBlockingPendingQ
       event = super.directPoll();
       if (event == null && !tsfileInsertEventDeque.isEmpty()) {
         event =
-            pollHistoricalTsFileCounter.incrementAndGet() % POLL_HISTORICAL_TSFILE_THRESHOLD == 0
+            pollHistoricalTsFileCounter.incrementAndGet() % pollHistoricalTsFileThreshold == 0
                 ? tsfileInsertEventDeque.pollFirst()
                 : tsfileInsertEventDeque.pollLast();
       }
@@ -149,7 +153,7 @@ public class PipeRealtimePriorityBlockingQueue extends UnboundedBlockingPendingQ
       event = super.waitedPoll();
       if (Objects.isNull(event)) {
         event =
-            pollHistoricalTsFileCounter.incrementAndGet() % POLL_HISTORICAL_TSFILE_THRESHOLD == 0
+            pollHistoricalTsFileCounter.incrementAndGet() % pollHistoricalTsFileThreshold == 0
                 ? tsfileInsertEventDeque.pollFirst()
                 : tsfileInsertEventDeque.pollLast();
       }
@@ -159,6 +163,15 @@ public class PipeRealtimePriorityBlockingQueue extends UnboundedBlockingPendingQ
     }
 
     return event;
+  }
+
+  @Override
+  public Event peek() {
+    final Event event = pendingQueue.peek();
+    if (Objects.nonNull(event)) {
+      return event;
+    }
+    return tsfileInsertEventDeque.peek();
   }
 
   @Override

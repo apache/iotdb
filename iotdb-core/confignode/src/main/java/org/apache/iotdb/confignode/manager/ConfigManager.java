@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.confignode.manager;
 
+import org.apache.iotdb.ainode.rpc.thrift.IDataSchema;
+import org.apache.iotdb.ainode.rpc.thrift.TTrainingReq;
 import org.apache.iotdb.common.rpc.thrift.TAINodeConfiguration;
 import org.apache.iotdb.common.rpc.thrift.TAINodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
@@ -37,6 +39,9 @@ import org.apache.iotdb.common.rpc.thrift.TShowConfigurationResp;
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.auth.AuthException;
 import org.apache.iotdb.commons.auth.entity.PrivilegeUnion;
+import org.apache.iotdb.commons.client.ainode.AINodeClient;
+import org.apache.iotdb.commons.client.ainode.AINodeClientManager;
+import org.apache.iotdb.commons.client.ainode.AINodeInfo;
 import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.commons.cluster.NodeType;
 import org.apache.iotdb.commons.conf.CommonConfig;
@@ -46,6 +51,7 @@ import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.conf.TrimProperties;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.commons.model.ModelStatus;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.path.PathPatternUtil;
@@ -83,6 +89,7 @@ import org.apache.iotdb.confignode.consensus.request.write.database.SetSchemaRep
 import org.apache.iotdb.confignode.consensus.request.write.database.SetTTLPlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.SetTimePartitionIntervalPlan;
 import org.apache.iotdb.confignode.consensus.request.write.datanode.RemoveDataNodePlan;
+import org.apache.iotdb.confignode.consensus.request.write.model.CreateModelPlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.CreateSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.response.ainode.AINodeRegisterResp;
 import org.apache.iotdb.confignode.consensus.response.auth.PermissionInfoResp;
@@ -151,11 +158,13 @@ import org.apache.iotdb.confignode.rpc.thrift.TCreatePipePluginReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreatePipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateSchemaTemplateReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateTopicReq;
+import org.apache.iotdb.confignode.rpc.thrift.TCreateTrainingReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateTriggerReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRegisterReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRestartReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRestartResp;
 import org.apache.iotdb.confignode.rpc.thrift.TDataPartitionTableResp;
+import org.apache.iotdb.confignode.rpc.thrift.TDataSchemaForTable;
 import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
 import org.apache.iotdb.confignode.rpc.thrift.TDeactivateSchemaTemplateReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDeleteDatabasesReq;
@@ -233,10 +242,12 @@ import org.apache.iotdb.confignode.rpc.thrift.TSpaceQuotaResp;
 import org.apache.iotdb.confignode.rpc.thrift.TStartPipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TStopPipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TSubscribeReq;
+import org.apache.iotdb.confignode.rpc.thrift.TTableInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TThrottleQuotaResp;
 import org.apache.iotdb.confignode.rpc.thrift.TTimeSlotList;
 import org.apache.iotdb.confignode.rpc.thrift.TUnsetSchemaTemplateReq;
 import org.apache.iotdb.confignode.rpc.thrift.TUnsubscribeReq;
+import org.apache.iotdb.confignode.rpc.thrift.TUpdateModelInfoReq;
 import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.consensus.exception.ConsensusException;
 import org.apache.iotdb.db.schemaengine.template.Template;
@@ -335,6 +346,8 @@ public class ConfigManager implements IManager {
   private final RetryFailedTasksThread retryFailedTasksThread;
 
   private static final String DATABASE = "\tDatabase=";
+
+  private static final String DOT = ".";
 
   public ConfigManager() throws IOException {
     // Build the persistence module
@@ -534,7 +547,7 @@ public class ConfigManager implements IManager {
               dataNodeLocation.getDataNodeId(),
               new NodeHeartbeatSample(NodeStatus.Unknown));
       LOGGER.info(
-          "[ShutdownHook] The DataNode-{} will be shutdown soon, mark it as Unknown",
+          "The DataNode-{} will be shutdown soon, mark it as Unknown",
           dataNodeLocation.getDataNodeId());
     }
     return status;
@@ -1181,6 +1194,11 @@ public class ConfigManager implements IManager {
   }
 
   protected TSStatus confirmLeader() {
+    if (NodeStatus.Removing == CommonDescriptor.getInstance().getConfig().getNodeStatus()) {
+      TSStatus status = new TSStatus(TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode());
+      status.setMessage("ConfigNode is Removing");
+      return status;
+    }
     // Make sure the consensus layer has been initialized
     if (getConsensusManager() == null) {
       return new TSStatus(TSStatusCode.CONSENSUS_NOT_INITIALIZED.getStatusCode())
@@ -1498,7 +1516,7 @@ public class ConfigManager implements IManager {
               configNodeLocation.getConfigNodeId(),
               new NodeHeartbeatSample(NodeStatus.Unknown));
       LOGGER.info(
-          "[ShutdownHook] The ConfigNode-{} will be shutdown soon, mark it as Unknown",
+          "The ConfigNode-{} will be shutdown soon, mark it as Unknown",
           configNodeLocation.getConfigNodeId());
     }
     return status;
@@ -2577,6 +2595,98 @@ public class ConfigManager implements IManager {
         : status;
   }
 
+  private List<IDataSchema> fetchSchemaForTreeModel(TCreateTrainingReq req) {
+    List<IDataSchema> dataSchemaList = new ArrayList<>();
+    if (req.useAllData) {
+      dataSchemaList.add(new IDataSchema("root.**"));
+      return dataSchemaList;
+    }
+    for (int i = 0; i < req.getDataSchemaForTree().getPathSize(); i++) {
+      IDataSchema dataSchema = new IDataSchema(req.getDataSchemaForTree().getPath().get(i));
+      dataSchema.setTimeRange(req.getTimeRanges().get(i));
+      dataSchemaList.add(dataSchema);
+    }
+    return dataSchemaList;
+  }
+
+  private List<IDataSchema> fetchSchemaForTableModel(TCreateTrainingReq req) {
+    List<IDataSchema> dataSchemaList = new ArrayList<>();
+    TDataSchemaForTable dataSchemaForTable = req.getDataSchemaForTable();
+    if (req.useAllData || !dataSchemaForTable.getDatabaseList().isEmpty()) {
+      List<String> databaseNameList = new ArrayList<>();
+      if (req.useAllData) {
+        TShowDatabaseResp resp = showDatabase(new TGetDatabaseReq());
+        databaseNameList.addAll(resp.getDatabaseInfoMap().keySet());
+      } else {
+        databaseNameList.addAll(dataSchemaForTable.getDatabaseList());
+      }
+
+      for (String database : databaseNameList) {
+        TShowTableResp resp = showTables(database, false);
+        for (TTableInfo tableInfo : resp.getTableInfoList()) {
+          dataSchemaList.add(new IDataSchema(database + DOT + tableInfo.tableName));
+        }
+      }
+    }
+    for (String tableName : dataSchemaForTable.getTableList()) {
+      dataSchemaList.add(new IDataSchema(dataSchemaForTable.curDatabase + DOT + tableName));
+    }
+    return dataSchemaList;
+  }
+
+  public TSStatus createTraining(TCreateTrainingReq req) {
+    TSStatus status = confirmLeader();
+    if (nodeManager.getRegisteredAINodes().isEmpty()) {
+      return new TSStatus(TSStatusCode.NO_REGISTERED_AI_NODE_ERROR.getStatusCode())
+          .setMessage("There is no available AINode! Try to start one.");
+    }
+
+    TTrainingReq trainingReq = new TTrainingReq();
+    trainingReq.setModelId(req.getModelId());
+    trainingReq.setModelType("timer_xl");
+    if (req.existingModelId != null) {
+      trainingReq.setExistingModelId(req.getExistingModelId());
+    }
+    if (!req.parameters.isEmpty()) {
+      trainingReq.setParameters(req.getParameters());
+    }
+
+    try {
+      status = getConsensusManager().write(new CreateModelPlan(req.getModelId()));
+      if (status.code != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        throw new MetadataException("Can't init model " + req.getModelId());
+      }
+
+      List<IDataSchema> dataSchema;
+      if (req.isTableModel) {
+        dataSchema = fetchSchemaForTableModel(req);
+        trainingReq.setDbType("iotdb.table");
+      } else {
+        dataSchema = fetchSchemaForTreeModel(req);
+        trainingReq.setDbType("iotdb.tree");
+      }
+      updateModelInfo(new TUpdateModelInfoReq(req.modelId, ModelStatus.TRAINING.ordinal()));
+      trainingReq.setTargetDataSchema(dataSchema);
+
+      try (AINodeClient client =
+          AINodeClientManager.getInstance().borrowClient(AINodeInfo.endPoint)) {
+        status = client.createTrainingTask(trainingReq);
+        if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+          throw new IllegalArgumentException(status.message);
+        }
+      }
+    } catch (final Exception e) {
+      status.setCode(TSStatusCode.CAN_NOT_CONNECT_CONFIGNODE.getStatusCode());
+      status.setMessage(e.getMessage());
+      try {
+        updateModelInfo(new TUpdateModelInfoReq(req.modelId, ModelStatus.UNAVAILABLE.ordinal()));
+      } catch (Exception e2) {
+        LOGGER.error(e2.getMessage());
+      }
+    }
+    return status;
+  }
+
   @Override
   public TSStatus dropModel(TDropModelReq req) {
     TSStatus status = confirmLeader();
@@ -2599,6 +2709,13 @@ public class ConfigManager implements IManager {
     return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
         ? modelManager.getModelInfo(req)
         : new TGetModelInfoResp(status);
+  }
+
+  public TSStatus updateModelInfo(TUpdateModelInfoReq req) {
+    TSStatus status = confirmLeader();
+    return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
+        ? modelManager.updateModelInfo(req)
+        : status;
   }
 
   @Override
@@ -2749,7 +2866,7 @@ public class ConfigManager implements IManager {
                                       .checkDuplicateTableTask(
                                           entry.getKey(), null, table, null, null)
                                       .getRight());
-                      return !entry.getValue().isEmpty();
+                      return true;
                     })
                 .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue)))
         : new TFetchTableResp(status);

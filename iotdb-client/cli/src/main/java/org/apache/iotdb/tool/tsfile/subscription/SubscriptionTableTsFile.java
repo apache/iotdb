@@ -109,7 +109,7 @@ public class SubscriptionTableTsFile extends AbstractSubscriptionTsFile {
                   .autoCommit(Constants.AUTO_COMMIT)
                   .autoCommitIntervalMs(Constants.AUTO_COMMIT_INTERVAL)
                   .fileSaveDir(commonParam.getTargetDir())
-                  .buildTablePullConsumer());
+                  .build());
     }
     commonParam
         .getPullTableConsumers()

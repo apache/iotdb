@@ -82,6 +82,7 @@ public enum ThreadName {
   CONFIG_NODE_SIMPLE_CONSENSUS_WAL_FLUSH("ConfigNode-Simple-Consensus-WAL-Flush-Thread"),
   // -------------------------- ConfigNode-Heartbeat --------------------------
   CONFIG_NODE_HEART_BEAT_SERVICE("Cluster-Heartbeat-Service"),
+  CONFIG_NODE_TOPOLOGY_SERVICE("Topology-Service"),
   ASYNC_CONFIGNODE_HEARTBEAT_CLIENT_POOL("AsyncConfigNodeHeartbeatServiceClientPool"),
   ASYNC_DATANODE_HEARTBEAT_CLIENT_POOL("AsyncDataNodeHeartbeatServiceClientPool"),
   // -------------------------- ConfigNode-LoadBalance --------------------------
@@ -102,8 +103,8 @@ public enum ThreadName {
   PIPE_CONSENSUS_RPC_SERVICE("PipeConsensusRPC-Service"),
   PIPE_CONSENSUS_RPC_PROCESSOR("PipeConsensusRPC-Processor"),
   ASYNC_DATANODE_PIPE_CONSENSUS_CLIENT_POOL("AsyncDataNodePipeConsensusServiceClientPool"),
-  PIPE_CONSENSUS_DELETION_SERIALIZE("WAL-Serialize"),
-  PIPE_CONSENSUS_DELETION_SYNC("WAL-Sync"),
+  PIPE_CONSENSUS_DELETION_SERIALIZE("DAL-Serialize"),
+  PIPE_CONSENSUS_TSFILE_WRITER_CHECKER("PipeConsensus-TsFileWriter-Checker"),
 
   // -------------------------- IoTConsensus --------------------------
   IOT_CONSENSUS_RPC_SERVICE("IoTConsensusRPC-Service"),
@@ -264,7 +265,9 @@ public enum ThreadName {
           Arrays.asList(
               PIPE_CONSENSUS_RPC_SERVICE,
               PIPE_CONSENSUS_RPC_PROCESSOR,
-              ASYNC_DATANODE_PIPE_CONSENSUS_CLIENT_POOL));
+              ASYNC_DATANODE_PIPE_CONSENSUS_CLIENT_POOL,
+              PIPE_CONSENSUS_DELETION_SERIALIZE,
+              PIPE_CONSENSUS_TSFILE_WRITER_CHECKER));
 
   private static final Set<ThreadName> ratisThreadNames =
       new HashSet<>(
@@ -340,6 +343,7 @@ public enum ThreadName {
       new HashSet<>(
           Arrays.asList(
               CONFIG_NODE_HEART_BEAT_SERVICE,
+              CONFIG_NODE_TOPOLOGY_SERVICE,
               ASYNC_CONFIGNODE_HEARTBEAT_CLIENT_POOL,
               ASYNC_DATANODE_HEARTBEAT_CLIENT_POOL));
 

@@ -71,12 +71,12 @@ public class SchemaValidator {
       final MPPQueryContext context,
       AccessControl accessControl) {
     try {
-      insertStatement.validateTableSchema(metadata, context);
       accessControl.checkCanInsertIntoTable(
           context.getSession().getUserName(),
           new QualifiedObjectName(
               unQualifyDatabaseName(insertStatement.getDatabase()),
               insertStatement.getTableName()));
+      insertStatement.validateTableSchema(metadata, context);
       insertStatement.updateAfterSchemaValidation(context);
       insertStatement.validateDeviceSchema(metadata, context);
       insertStatement.removeAttributeColumns();

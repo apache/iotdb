@@ -45,7 +45,7 @@ jobs:
       fail-fast: false
       max-parallel: 15
       matrix:
-        os: [ubuntu-20.04, ubuntu-22.04, ubuntu-24.04, windows-2019, windows-2022, macos-latest]
+        os: [ubuntu-22.04, ubuntu-24.04, windows-2019, windows-2022, macos-latest]
     runs-on: ${{ matrix.os}}
 
     steps:
@@ -97,7 +97,7 @@ jobs:
             ./mvnw clean verify -P with-cpp -pl iotdb-client/client-cpp,example/client-cpp-example -am -Diotdb-tools-thrift.version=0.14.1.1-glibc223-SNAPSHOT
           elif [[ "${{ matrix.os }}" == "windows-2019" ]]; then
             ./mvnw clean verify -P with-cpp -pl iotdb-client/client-cpp,example/client-cpp-example -am -Diotdb-tools-thrift.version=0.14.1.1-msvc142-SNAPSHOT -Dcmake.generator="Visual Studio 16 2019"
-          else  
+          else
             ./mvnw clean verify -P with-cpp -pl iotdb-client/client-cpp,example/client-cpp-example -am
           fi
       - name: Upload Artifact
@@ -127,9 +127,9 @@ jobs:
       - name: Integration test
         shell: bash
         run: |
-          cd iotdb-client 
-          git clone https://github.com/apache/iotdb-client-go.git 
-          cd iotdb-client-go 
+          cd iotdb-client
+          git clone https://github.com/apache/iotdb-client-go.git
+          cd iotdb-client-go
           make e2e_test_for_parent_git_repo e2e_test_clean_for_parent_git_repo
 
   python:
@@ -137,8 +137,8 @@ jobs:
       fail-fast: false
       max-parallel: 15
       matrix:
-        python: [ '3.6', '3.x' ]
-    runs-on: ${{ (matrix.python == '3.6' && 'ubuntu-20.04') || 'ubuntu-latest' }}
+        python: ['3.x']
+    runs-on: ${{ 'ubuntu-latest' }}
 
     steps:
       - uses: actions/setup-python@v5

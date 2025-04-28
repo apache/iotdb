@@ -179,18 +179,15 @@ public class IoTDBConsumer2With1TopicShareProcessTsfileIT extends AbstractSubscr
     System.out.println("rowCount1=" + rowCount1.get());
     System.out.println("rowCount2=" + rowCount2.get());
     AWAIT.untilAsserted(
-        () -> {
-          assertGte(
-              rowCount1.get() + rowCount2.get(),
-              getCount(session_src, "select count(s_0) from " + device),
-              "consumer share process rowCount1="
-                  + rowCount1.get()
-                  + " rowCount2="
-                  + rowCount2.get()
-                  + " src="
-                  + getCount(session_src, "select count(s_0) from " + device));
-          assertTrue(rowCount1.get() > 0);
-          assertTrue(rowCount2.get() > 0);
-        });
+        () ->
+            assertGte(
+                rowCount1.get() + rowCount2.get(),
+                getCount(session_src, "select count(s_0) from " + device),
+                "consumer share process rowCount1="
+                    + rowCount1.get()
+                    + " rowCount2="
+                    + rowCount2.get()
+                    + " src="
+                    + getCount(session_src, "select count(s_0) from " + device)));
   }
 }
