@@ -4148,6 +4148,7 @@ public class StatementAnalyzer {
           new TableFunctionInvocationAnalysis(
               node.getName().toString(),
               argumentsAnalysis.getPassedArguments(),
+              functionAnalysis.getTableFunctionHandle(),
               orderedTableArguments.build(),
               requiredColumns,
               properSchema.map(describedSchema -> describedSchema.getFields().size()).orElse(0),

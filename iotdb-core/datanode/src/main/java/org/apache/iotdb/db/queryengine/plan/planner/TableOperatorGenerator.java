@@ -2866,7 +2866,7 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
       TableFunctionProcessorNode node, LocalExecutionPlanContext context) {
     TableFunction tableFunction = metadata.getTableFunction(node.getName());
     TableFunctionProcessorProvider processorProvider =
-        tableFunction.getProcessorProvider(node.getArguments());
+        tableFunction.getProcessorProvider(node.getTableFunctionHandle());
     if (node.getChildren().isEmpty()) {
       List<TSDataType> outputDataTypes =
           node.getOutputSymbols().stream()

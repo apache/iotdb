@@ -81,7 +81,7 @@ public class ExportDataTestIT extends AbstractScriptIT {
         new ProcessBuilder(
             "cmd.exe",
             "/c",
-            toolsPath + File.separator + "export-data.bat",
+            toolsPath + File.separator + "windows" + File.separator + "export-data.bat",
             "-h",
             ip,
             "-p",
@@ -109,7 +109,7 @@ public class ExportDataTestIT extends AbstractScriptIT {
         new ProcessBuilder(
             "cmd.exe",
             "/c",
-            toolsPath + File.separator + "export-data.bat",
+            toolsPath + File.separator + "windows" + File.separator + "export-data.bat",
             "-h",
             ip,
             "-p",
@@ -137,7 +137,7 @@ public class ExportDataTestIT extends AbstractScriptIT {
         new ProcessBuilder(
             "cmd.exe",
             "/c",
-            toolsPath + File.separator + "export-data.bat",
+            toolsPath + File.separator + "windows" + File.separator + "export-data.bat",
             "-h",
             ip,
             "-p",

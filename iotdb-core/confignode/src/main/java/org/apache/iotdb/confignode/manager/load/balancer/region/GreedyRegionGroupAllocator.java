@@ -82,6 +82,19 @@ public class GreedyRegionGroupAllocator implements IRegionGroupAllocator {
         weightList.stream().limit(replicationFactor).collect(Collectors.toList()));
   }
 
+  @Override
+  public Map<TConsensusGroupId, TDataNodeConfiguration> removeNodeReplicaSelect(
+      Map<Integer, TDataNodeConfiguration> availableDataNodeMap,
+      Map<Integer, Double> freeDiskSpaceMap,
+      List<TRegionReplicaSet> allocatedRegionGroups,
+      Map<TConsensusGroupId, String> regionDatabaseMap,
+      Map<String, List<TRegionReplicaSet>> databaseAllocatedRegionGroupMap,
+      Map<TConsensusGroupId, TRegionReplicaSet> remainReplicasMap) {
+    // TODO: Implement this method
+    throw new UnsupportedOperationException(
+        "The removeNodeReplicaSelect method of GreedyRegionGroupAllocator is yet to be implemented.");
+  }
+
   private List<TDataNodeLocation> buildWeightList(
       Map<Integer, TDataNodeConfiguration> availableDataNodeMap,
       Map<Integer, Double> freeDiskSpaceMap,

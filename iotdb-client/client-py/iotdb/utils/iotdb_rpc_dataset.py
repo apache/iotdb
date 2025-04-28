@@ -28,7 +28,7 @@ from iotdb.tsfile.utils.date_utils import parse_int_to_date
 from iotdb.tsfile.utils.tsblock_serde import deserialize
 from iotdb.utils.exception import IoTDBConnectionException
 from iotdb.utils.IoTDBConstants import TSDataType
-from iotdb.utils.rpc_utils import verify_success
+from iotdb.utils.rpc_utils import verify_success, convert_to_timestamp
 
 logger = logging.getLogger("IoTDB")
 TIMESTAMP_STR = "Time"
@@ -41,7 +41,6 @@ class IoTDBRpcDataSet(object):
         sql,
         column_name_list,
         column_type_list,
-        column_name_index,
         ignore_timestamp,
         more_data,
         query_id,
@@ -51,6 +50,8 @@ class IoTDBRpcDataSet(object):
         query_result,
         fetch_size,
         time_out,
+        zone_id,
+        time_precision,
         column_index_2_tsblock_column_index_list,
     ):
         self.__statement_id = statement_id
@@ -117,6 +118,8 @@ class IoTDBRpcDataSet(object):
         self.__empty_resultSet = False
         self.has_cached_data_frame = False
         self.data_frame = None
+        self.__zone_id = zone_id
+        self.__time_precision = time_precision
 
     def close(self):
         if self.__is_closed:
@@ -155,7 +158,7 @@ class IoTDBRpcDataSet(object):
 
     def construct_one_data_frame(self):
         if self.has_cached_data_frame or self.__query_result is None:
-            return True
+            return
         result = {}
         has_pd_series = []
         for i in range(len(self.__column_index_2_tsblock_column_index_list)):
@@ -264,8 +267,8 @@ class IoTDBRpcDataSet(object):
                     continue
                 data_type = self.__data_type_for_tsblock_column[location]
                 column_array = column_arrays[location]
-                # BOOLEAN, INT32, INT64, FLOAT, DOUBLE, TIMESTAMP, BLOB
-                if data_type in (0, 1, 2, 3, 4, 8, 10):
+                # BOOLEAN, INT32, INT64, FLOAT, DOUBLE, BLOB
+                if data_type in (0, 1, 2, 3, 4, 10):
                     data_array = column_array
                     if (
                         data_type != 10
@@ -278,6 +281,17 @@ class IoTDBRpcDataSet(object):
                 # TEXT, STRING
                 elif data_type in (5, 11):
                     data_array = np.array([x.decode("utf-8") for x in column_array])
+                # TIMESTAMP
+                elif data_type == 8:
+                    data_array = pd.Series(
+                        [
+                            convert_to_timestamp(
+                                x, self.__time_precision, self.__zone_id
+                            )
+                            for x in column_array
+                        ],
+                        dtype=object,
+                    )
                 # DATE
                 elif data_type == 9:
                     data_array = pd.Series(column_array).apply(parse_int_to_date)
@@ -289,25 +303,21 @@ class IoTDBRpcDataSet(object):
                     data_type == 0 and null_indicator is not None
                 ):
                     tmp_array = []
-                    # BOOLEAN, INT32, INT64, TIMESTAMP
-                    if (
-                        data_type == 0
-                        or data_type == 1
-                        or data_type == 2
-                        or data_type == 8
-                    ):
+                    # BOOLEAN, INT32, INT64
+                    if data_type == 0 or data_type == 1 or data_type == 2:
                         tmp_array = np.full(array_length, pd.NA, dtype=object)
                     # FLOAT, DOUBLE
                     elif data_type == 3 or data_type == 4:
                         tmp_array = np.full(
                             array_length, np.nan, dtype=data_type.np_dtype()
                         )
-                    # TEXT, STRING, BLOB, DATE
+                    # TEXT, STRING, BLOB, DATE, TIMESTAMP
                     elif (
                         data_type == 5
                         or data_type == 11
                         or data_type == 10
                         or data_type == 9
+                        or data_type == 8
                     ):
                         tmp_array = np.full(array_length, None, dtype=object)
 
@@ -320,7 +330,7 @@ class IoTDBRpcDataSet(object):
 
                     if data_type == 1:
                         tmp_array = pd.Series(tmp_array).astype("Int32")
-                    elif data_type == 2 or data_type == 8:
+                    elif data_type == 2:
                         tmp_array = pd.Series(tmp_array).astype("Int64")
                     elif data_type == 0:
                         tmp_array = pd.Series(tmp_array).astype("boolean")

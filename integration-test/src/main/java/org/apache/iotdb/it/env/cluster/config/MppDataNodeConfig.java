@@ -57,6 +57,18 @@ public class MppDataNodeConfig extends MppBaseConfig implements DataNodeConfig {
   }
 
   @Override
+  public DataNodeConfig setMetricPrometheusReporterUsername(String username) {
+    properties.setProperty("metric_prometheus_reporter_username", username);
+    return this;
+  }
+
+  @Override
+  public DataNodeConfig setMetricPrometheusReporterPassword(String password) {
+    properties.setProperty("metric_prometheus_reporter_password", password);
+    return this;
+  }
+
+  @Override
   public DataNodeConfig setEnableRestService(boolean enableRestService) {
     properties.setProperty("enable_rest_service", String.valueOf(enableRestService));
     return this;
