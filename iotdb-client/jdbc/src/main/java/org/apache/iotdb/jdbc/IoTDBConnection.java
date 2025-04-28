@@ -339,9 +339,9 @@ public class IoTDBConnection implements Connection {
         logger.error("Use database error: {}", e.getMessage());
         throw e;
       }
-      return;
+      // return;
     }
-    throw new SQLException("Does not support setSchema");
+    // throw new SQLException("Does not support setSchema");
   }
 
   @Override
