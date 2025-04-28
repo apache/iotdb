@@ -21,11 +21,15 @@ package org.apache.iotdb.db.storageengine.dataregion.compaction.selector.estimat
 
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 
-class MetadataInfo {
+class CompactionTaskMetadataInfo {
   public long metadataMemCost;
   public boolean hasAlignedSeries;
 
-  public int getMaxConcurrentSeriesNum() {
+  public int getMaxConcurrentSeriesNum(boolean hasConcurrentSubTask) {
+    int subTaskNum =
+        hasConcurrentSubTask
+            ? IoTDBDescriptor.getInstance().getConfig().getSubCompactionTaskNum()
+            : 1;
     if (!hasAlignedSeries) {
       return IoTDBDescriptor.getInstance().getConfig().getSubCompactionTaskNum();
     }
@@ -35,8 +39,6 @@ class MetadataInfo {
         compactionMaxAlignedSeriesNumInOneBatch <= 0
             ? Integer.MAX_VALUE
             : compactionMaxAlignedSeriesNumInOneBatch;
-    return Math.max(
-        compactionMaxAlignedSeriesNumInOneBatch,
-        IoTDBDescriptor.getInstance().getConfig().getSubCompactionTaskNum());
+    return Math.max(compactionMaxAlignedSeriesNumInOneBatch, subTaskNum);
   }
 }
