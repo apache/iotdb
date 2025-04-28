@@ -79,24 +79,24 @@ public class PipeRealtimeDataRegionHybridExtractor extends PipeRealtimeDataRegio
   }
 
   private void extractTabletInsertion(final PipeRealtimeEvent event) {
-    TsFileEpoch.State state = event.getTsFileEpoch().getState(this);
+    TsFileEpoch.State state;
 
-    if (state != TsFileEpoch.State.USING_TSFILE
-        && state != TsFileEpoch.State.USING_BOTH
-        && canNotUseTabletAnyMore(event)) {
+    if (canNotUseTabletAnyMore(event)) {
+      event.getTsFileEpoch().migrateState(this, curState -> TsFileEpoch.State.USING_TSFILE);
+    } else {
       event
           .getTsFileEpoch()
           .migrateState(
               this,
               curState -> {
                 switch (curState) {
-                  case EMPTY:
-                  case USING_TSFILE:
-                    return TsFileEpoch.State.USING_TSFILE;
-                  case USING_TABLET:
                   case USING_BOTH:
-                  default:
+                  case USING_TSFILE:
                     return TsFileEpoch.State.USING_BOTH;
+                  case EMPTY:
+                  case USING_TABLET:
+                  default:
+                    return TsFileEpoch.State.USING_TABLET;
                 }
               });
     }
@@ -168,7 +168,9 @@ public class PipeRealtimeDataRegionHybridExtractor extends PipeRealtimeDataRegio
                   }
                 case USING_BOTH:
                 default:
-                  return TsFileEpoch.State.USING_BOTH;
+                  return canNotUseTabletAnyMore(event)
+                      ? TsFileEpoch.State.USING_TSFILE
+                      : TsFileEpoch.State.USING_BOTH;
               }
             });
 
@@ -386,13 +388,20 @@ public class PipeRealtimeDataRegionHybridExtractor extends PipeRealtimeDataRegio
         .migrateState(
             this,
             state -> {
-              if (!state.equals(TsFileEpoch.State.EMPTY)) {
-                return state;
+              switch (state) {
+                case EMPTY:
+                  return canNotUseTabletAnyMore(event)
+                      ? TsFileEpoch.State.USING_TSFILE
+                      : TsFileEpoch.State.USING_TABLET;
+                case USING_TSFILE:
+                  return canNotUseTabletAnyMore(event)
+                      ? TsFileEpoch.State.USING_TSFILE
+                      : TsFileEpoch.State.USING_BOTH;
+                case USING_TABLET:
+                case USING_BOTH:
+                default:
+                  return state;
               }
-
-              return canNotUseTabletAnyMore(event)
-                  ? TsFileEpoch.State.USING_TSFILE
-                  : TsFileEpoch.State.USING_TABLET;
             });
 
     final TsFileEpoch.State state = event.getTsFileEpoch().getState(this);
