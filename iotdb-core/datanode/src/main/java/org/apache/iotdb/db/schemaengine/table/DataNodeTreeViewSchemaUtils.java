@@ -38,7 +38,7 @@ public class DataNodeTreeViewSchemaUtils {
     return Arrays.copyOf(path.getNodes(), path.getNodeLength() - 1);
   }
 
-  public static IDeviceID convertToIDeviceID(final TsTable table, final String[] idValues) {
+  public static IDeviceID convertToTreeDeviceID(final TsTable table, final String[] idValues) {
     return IDeviceID.Factory.DEFAULT_FACTORY.create(
         StringArrayDeviceID.splitDeviceIdString(
             Stream.concat(

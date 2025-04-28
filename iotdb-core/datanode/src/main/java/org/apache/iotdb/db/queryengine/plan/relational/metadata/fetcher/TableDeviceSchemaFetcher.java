@@ -415,13 +415,14 @@ public class TableDeviceSchemaFetcher {
       final Predicate<AlignedDeviceEntry> check,
       final List<IDeviceID> fetchPaths,
       final String[] idValues) {
-    final IDeviceID deviceID =
-        DataNodeTreeViewSchemaUtils.convertToIDeviceID(tableInstance, idValues);
-    final IDeviceSchema schema = TableDeviceSchemaCache.getInstance().getDeviceSchema(deviceID);
+    final IDeviceID treeDeviceID =
+        DataNodeTreeViewSchemaUtils.convertToTreeDeviceID(tableInstance, idValues);
+    final IDeviceID viewDeviceID = IDeviceID.Factory.DEFAULT_FACTORY.create(idValues);
+    final IDeviceSchema schema = TableDeviceSchemaCache.getInstance().getDeviceSchema(treeDeviceID);
     final String database;
     if (!(schema instanceof TreeDeviceNormalSchema) || Objects.isNull(check)) {
       if (Objects.nonNull(fetchPaths)) {
-        fetchPaths.add(deviceID);
+        fetchPaths.add(treeDeviceID);
       }
       return false;
     }
@@ -430,8 +431,8 @@ public class TableDeviceSchemaFetcher {
         .computeIfAbsent(database, k -> new ArrayList<>())
         .add(
             ((TreeDeviceNormalSchema) schema).isAligned()
-                ? new AlignedDeviceEntry(deviceID, new Binary[0])
-                : new NonAlignedDeviceEntry(deviceID, new Binary[0]));
+                ? new AlignedDeviceEntry(viewDeviceID, new Binary[0])
+                : new NonAlignedDeviceEntry(viewDeviceID, new Binary[0]));
     return true;
   }
 
@@ -569,12 +570,11 @@ public class TableDeviceSchemaFetcher {
       final String[] nodes = new String[tableInstance.getIdNums()];
       constructNodsArrayAndAttributeMap(
           Collections.emptyMap(), nodes, null, columnHeaderList, columns, tableInstance, i);
-      final IDeviceID deviceID =
-          DataNodeTreeViewSchemaUtils.convertToIDeviceID(tableInstance, nodes);
+      final IDeviceID viewDeviceID = IDeviceID.Factory.DEFAULT_FACTORY.create(nodes);
       final DeviceEntry deviceEntry =
           columns[columns.length - 2].getBoolean(i)
-              ? new AlignedDeviceEntry(deviceID, new Binary[0])
-              : new NonAlignedDeviceEntry(deviceID, new Binary[0]);
+              ? new AlignedDeviceEntry(viewDeviceID, new Binary[0])
+              : new NonAlignedDeviceEntry(viewDeviceID, new Binary[0]);
       mppQueryContext.reserveMemoryForFrontEnd(deviceEntry.ramBytesUsed());
       deviceEntryMap
           .computeIfAbsent(
