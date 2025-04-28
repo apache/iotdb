@@ -50,6 +50,7 @@ import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import io.airlift.concurrent.SetThreadName;
+import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.utils.PublicBAOS;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -226,14 +227,8 @@ public class LoadTsFileDispatcherImpl implements IFragInstanceDispatcher {
       final String uuid,
       final boolean isGeneratedByPipe)
       throws IOException {
-    Set<TEndPoint> allEndPoint = new HashSet<>();
+    Set<Pair<TEndPoint, TLoadCommandReq>> pairs = new HashSet<>();
     for (TRegionReplicaSet replicaSet : replicaSets) {
-      for (TDataNodeLocation dataNodeLocation : replicaSet.getDataNodeLocations()) {
-        allEndPoint.add(dataNodeLocation.getInternalEndPoint());
-      }
-    }
-
-    for (TEndPoint endPoint : allEndPoint) {
       final TLoadCommandReq loadCommandReq =
           new TLoadCommandReq(
               (isFirstPhaseSuccess
@@ -243,7 +238,14 @@ public class LoadTsFileDispatcherImpl implements IFragInstanceDispatcher {
               uuid);
       loadCommandReq.setIsGeneratedByPipe(isGeneratedByPipe);
       loadCommandReq.setProgressIndex(assignProgressIndex());
+      for (TDataNodeLocation dataNodeLocation : replicaSet.getDataNodeLocations()) {
+        pairs.add(new Pair<>(dataNodeLocation.getInternalEndPoint(), loadCommandReq));
+      }
+    }
 
+    for (Pair<TEndPoint, TLoadCommandReq> pair : pairs) {
+      final TEndPoint endPoint = pair.left;
+      final TLoadCommandReq loadCommandReq = pair.right;
       try (SetThreadName threadName =
           new SetThreadName(
               "load-dispatcher"
