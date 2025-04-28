@@ -57,6 +57,7 @@ import org.apache.tsfile.utils.Binary;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -280,7 +281,7 @@ public class TSBSMetadata implements Metadata {
   }
 
   @Override
-  public List<DeviceEntry> indexScan(
+  public Map<String, List<DeviceEntry>> indexScan(
       QualifiedObjectName tableName,
       List<Expression> expressionList,
       List<String> attributeColumns,
@@ -290,43 +291,51 @@ public class TSBSMetadata implements Metadata {
         && expressionList.get(1).toString().equals("(NOT (\"name\" IS NULL))")
         && attributeColumns.isEmpty()) {
       // r01, r02
-      return ImmutableList.of(
-          new AlignedDeviceEntry(new StringArrayDeviceID(T1_DEVICE_1.split("\\.")), new Binary[0]),
-          new AlignedDeviceEntry(new StringArrayDeviceID(T1_DEVICE_2.split("\\.")), new Binary[0]));
+      return Collections.singletonMap(
+          DB1,
+          ImmutableList.of(
+              new AlignedDeviceEntry(
+                  new StringArrayDeviceID(T1_DEVICE_1.split("\\.")), new Binary[0]),
+              new AlignedDeviceEntry(
+                  new StringArrayDeviceID(T1_DEVICE_2.split("\\.")), new Binary[0])));
     } else if (expressionList.size() == 1
         && expressionList.get(0).toString().equals("(\"fleet\" = 'South')")
         && attributeColumns.size() == 1
         && attributeColumns.get(0).equals("load_capacity")) {
       // r03
-      return ImmutableList.of(
-          new AlignedDeviceEntry(
-              new StringArrayDeviceID(T1_DEVICE_1.split("\\.")),
-              new Binary[] {new Binary("2000", TSFileConfig.STRING_CHARSET)}),
-          new AlignedDeviceEntry(
-              new StringArrayDeviceID(T1_DEVICE_2.split("\\.")),
-              new Binary[] {new Binary("1000", TSFileConfig.STRING_CHARSET)}));
+      return Collections.singletonMap(
+          DB1,
+          ImmutableList.of(
+              new AlignedDeviceEntry(
+                  new StringArrayDeviceID(T1_DEVICE_1.split("\\.")),
+                  new Binary[] {new Binary("2000", TSFileConfig.STRING_CHARSET)}),
+              new AlignedDeviceEntry(
+                  new StringArrayDeviceID(T1_DEVICE_2.split("\\.")),
+                  new Binary[] {new Binary("1000", TSFileConfig.STRING_CHARSET)})));
     } else {
       // others (The return result maybe not correct in actual, but it is convenient for test of
       // DistributionPlan)
-      return Arrays.asList(
-          new AlignedDeviceEntry(
-              new StringArrayDeviceID(T1_DEVICE_1.split("\\.")),
-              new Binary[] {Binary.EMPTY_VALUE, Binary.EMPTY_VALUE}),
-          new AlignedDeviceEntry(
-              new StringArrayDeviceID(T1_DEVICE_2.split("\\.")),
-              new Binary[] {Binary.EMPTY_VALUE, Binary.EMPTY_VALUE}),
-          new AlignedDeviceEntry(
-              new StringArrayDeviceID(T1_DEVICE_3.split("\\.")),
-              new Binary[] {Binary.EMPTY_VALUE, Binary.EMPTY_VALUE}),
-          new AlignedDeviceEntry(
-              new StringArrayDeviceID(T2_DEVICE_1.split("\\.")),
-              new Binary[] {Binary.EMPTY_VALUE, Binary.EMPTY_VALUE}),
-          new AlignedDeviceEntry(
-              new StringArrayDeviceID(T2_DEVICE_2.split("\\.")),
-              new Binary[] {Binary.EMPTY_VALUE, Binary.EMPTY_VALUE}),
-          new AlignedDeviceEntry(
-              new StringArrayDeviceID(T2_DEVICE_3.split("\\.")),
-              new Binary[] {Binary.EMPTY_VALUE, Binary.EMPTY_VALUE}));
+      return Collections.singletonMap(
+          DB1,
+          Arrays.asList(
+              new AlignedDeviceEntry(
+                  new StringArrayDeviceID(T1_DEVICE_1.split("\\.")),
+                  new Binary[] {Binary.EMPTY_VALUE, Binary.EMPTY_VALUE}),
+              new AlignedDeviceEntry(
+                  new StringArrayDeviceID(T1_DEVICE_2.split("\\.")),
+                  new Binary[] {Binary.EMPTY_VALUE, Binary.EMPTY_VALUE}),
+              new AlignedDeviceEntry(
+                  new StringArrayDeviceID(T1_DEVICE_3.split("\\.")),
+                  new Binary[] {Binary.EMPTY_VALUE, Binary.EMPTY_VALUE}),
+              new AlignedDeviceEntry(
+                  new StringArrayDeviceID(T2_DEVICE_1.split("\\.")),
+                  new Binary[] {Binary.EMPTY_VALUE, Binary.EMPTY_VALUE}),
+              new AlignedDeviceEntry(
+                  new StringArrayDeviceID(T2_DEVICE_2.split("\\.")),
+                  new Binary[] {Binary.EMPTY_VALUE, Binary.EMPTY_VALUE}),
+              new AlignedDeviceEntry(
+                  new StringArrayDeviceID(T2_DEVICE_3.split("\\.")),
+                  new Binary[] {Binary.EMPTY_VALUE, Binary.EMPTY_VALUE})));
     }
   }
 
