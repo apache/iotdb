@@ -838,7 +838,9 @@ public class PartitionCache {
 
         Map<TSeriesPartitionSlot, SeriesPartitionTable> cachedDatabasePartitionMap =
             dataPartitionTable.getDataPartitionMap();
-        dataPartitionMap.put(databaseName, new HashMap<>());
+        Map<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TRegionReplicaSet>>>
+            seriesSlotToTimePartitionMap =
+                dataPartitionMap.computeIfAbsent(databaseName, k -> new HashMap<>());
 
         for (DataPartitionQueryParam param : params) {
           TSeriesPartitionSlot seriesPartitionSlot;
@@ -863,6 +865,8 @@ public class PartitionCache {
 
           Map<TTimePartitionSlot, List<TConsensusGroupId>> cachedTimePartitionSlot =
               cachedSeriesPartitionTable.getSeriesPartitionMap();
+          seriesSlotToTimePartitionMap.computeIfAbsent(seriesPartitionSlot, k -> new HashMap<>());
+
           if (param.getTimePartitionSlotList().isEmpty()) {
             return null;
           }
