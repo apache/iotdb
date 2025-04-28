@@ -25,10 +25,12 @@ import org.apache.iotdb.commons.pipe.agent.task.connection.EventSupplier;
 import org.apache.iotdb.commons.pipe.agent.task.connection.UnboundedBlockingPendingQueue;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeStaticMeta;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
+import org.apache.iotdb.commons.pipe.agent.task.progress.PipeEventCommitManager;
 import org.apache.iotdb.commons.pipe.agent.task.stage.PipeTaskStage;
 import org.apache.iotdb.commons.pipe.config.constant.PipeProcessorConstant;
 import org.apache.iotdb.commons.pipe.config.plugin.configuraion.PipeTaskRuntimeConfiguration;
 import org.apache.iotdb.commons.pipe.config.plugin.env.PipeTaskProcessorRuntimeEnvironment;
+import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
 import org.apache.iotdb.db.pipe.agent.task.connection.PipeEventCollector;
 import org.apache.iotdb.db.pipe.agent.task.execution.PipeProcessorSubtaskExecutor;
@@ -53,6 +55,8 @@ public class PipeTaskProcessorStage extends PipeTaskStage {
   private final PipeProcessorSubtaskExecutor executor;
   private final ReentrantLock multiProcessorLock = new ReentrantLock();
   private final Set<PipeProcessorSubtask> pipeProcessorSubtasks = new HashSet<>();
+  private final long creationTime;
+  private final int regionId;
 
   /**
    * @param pipeName pipe name
@@ -79,6 +83,8 @@ public class PipeTaskProcessorStage extends PipeTaskStage {
         new PipeTaskRuntimeConfiguration(
             new PipeTaskProcessorRuntimeEnvironment(
                 pipeName, creationTime, regionId, pipeTaskMeta));
+    this.creationTime = creationTime;
+    this.regionId = regionId;
     final PipeProcessor pipeProcessor =
         StorageEngine.getInstance().getAllDataRegionIds().contains(new DataRegionId(regionId))
             ? PipeDataNodeAgent.plugin()
@@ -144,7 +150,12 @@ public class PipeTaskProcessorStage extends PipeTaskStage {
         multiProcessorLock.lock();
       }
       try {
-        return extractorSupplier.supply();
+        final Event event = extractorSupplier.supply();
+        if (event instanceof EnrichedEvent) {
+          PipeEventCommitManager.getInstance()
+              .enrichWithCommitterKeyAndCommitId((EnrichedEvent) event, creationTime, regionId);
+        }
+        return event;
       } finally {
         if (pipeProcessorSubtasks.size() > 1) {
           multiProcessorLock.unlock();
