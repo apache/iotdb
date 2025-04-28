@@ -67,8 +67,9 @@ public class TsFileInsertionScanDataContainer extends TsFileInsertionDataContain
 
   private static final LocalDate EMPTY_DATE = LocalDate.of(1000, 1, 1);
 
-  private static final int PIPE_MAX_ALIGNED_SERIES_NUM_IN_ONE_BATCH =
+  private final int pipeMaxAlignedSeriesNumInOneBatch =
       PipeConfig.getInstance().getPipeMaxAlignedSeriesNumInOneBatch();
+
   private final long startTime;
   private final long endTime;
   private final Filter filter;
@@ -461,7 +462,7 @@ public class TsFileInsertionScanDataContainer extends TsFileInsertionDataContain
             boolean needReturn = false;
             if (lastIndex >= 0
                 && (valueIndex != lastIndex
-                    || valueChunkList.size() >= PIPE_MAX_ALIGNED_SERIES_NUM_IN_ONE_BATCH)) {
+                    || valueChunkList.size() >= pipeMaxAlignedSeriesNumInOneBatch)) {
               needReturn = recordAlignedChunk(valueChunkList, marker);
             }
             lastIndex = valueIndex;

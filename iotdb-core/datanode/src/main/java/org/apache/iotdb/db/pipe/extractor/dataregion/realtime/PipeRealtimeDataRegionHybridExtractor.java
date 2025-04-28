@@ -49,9 +49,6 @@ public class PipeRealtimeDataRegionHybridExtractor extends PipeRealtimeDataRegio
   private static final Logger LOGGER =
       LoggerFactory.getLogger(PipeRealtimeDataRegionHybridExtractor.class);
 
-  private final boolean isPipeEpochKeepTsFileAfterStuckRestartEnabled =
-      PipeConfig.getInstance().isPipeEpochKeepTsFileAfterStuckRestartEnabled();
-
   @Override
   protected void doExtract(final PipeRealtimeEvent event) {
     final Event eventToExtract = event.getEvent();
@@ -231,7 +228,7 @@ public class PipeRealtimeDataRegionHybridExtractor extends PipeRealtimeDataRegio
   }
 
   private boolean isPipeTaskCurrentlyRestarted(final PipeRealtimeEvent event) {
-    if (!isPipeEpochKeepTsFileAfterStuckRestartEnabled) {
+    if (!PipeConfig.getInstance().isPipeEpochKeepTsFileAfterStuckRestartEnabled()) {
       return false;
     }
 

@@ -146,12 +146,9 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
   private final PipeTransferSliceReqHandler sliceReqHandler = new PipeTransferSliceReqHandler();
 
   private static final SessionManager SESSION_MANAGER = SessionManager.getInstance();
-  private static final long LOGIN_PERIODIC_VERIFICATION_INTERVAL_MS =
-      PipeConfig.getInstance().getPipeReceiverLoginPeriodicVerificationIntervalMs();
+
   private long lastSuccessfulLoginTime = Long.MIN_VALUE;
 
-  private static final double ACTUAL_TO_ESTIMATED_MEMORY_RATIO =
-      PipeConfig.getInstance().getPipeReceiverActualToEstimatedMemoryRatio();
   private PipeMemoryBlock allocatedMemoryBlock;
 
   static {
@@ -420,11 +417,13 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
   @Override
   protected TSStatus tryLogin() {
     final IClientSession clientSession = SESSION_MANAGER.getCurrSession();
+    final long loginPeriodicVerificationIntervalMs =
+        PipeConfig.getInstance().getPipeReceiverLoginPeriodicVerificationIntervalMs();
     if (clientSession == null
         || !clientSession.isLogin()
-        || (LOGIN_PERIODIC_VERIFICATION_INTERVAL_MS >= 0
+        || (loginPeriodicVerificationIntervalMs >= 0
             && lastSuccessfulLoginTime
-                < System.currentTimeMillis() - LOGIN_PERIODIC_VERIFICATION_INTERVAL_MS)) {
+                < System.currentTimeMillis() - loginPeriodicVerificationIntervalMs)) {
       final TSStatus status =
           SESSION_MANAGER.login(
               SESSION_MANAGER.getCurrSession(),
@@ -660,7 +659,11 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
         estimatedMemory = ((InsertBaseStatement) statement).ramBytesUsed();
         allocatedMemoryBlock =
             PipeDataNodeResourceManager.memory()
-                .forceAllocate((long) (estimatedMemory * ACTUAL_TO_ESTIMATED_MEMORY_RATIO));
+                .forceAllocate(
+                    (long)
+                        (estimatedMemory
+                            * PipeConfig.getInstance()
+                                .getPipeReceiverActualToEstimatedMemoryRatio()));
       }
       final TSStatus result = executeStatementWithRetryOnDataTypeMismatch(statement);
       if (result.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
@@ -721,11 +724,13 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
 
   private TSStatus executeStatement(final Statement statement) {
     IClientSession clientSession = SESSION_MANAGER.getCurrSessionAndUpdateIdleTime();
+    final long loginPeriodicVerificationIntervalMs =
+        PipeConfig.getInstance().getPipeReceiverLoginPeriodicVerificationIntervalMs();
     if (clientSession == null
         || !clientSession.isLogin()
-        || (LOGIN_PERIODIC_VERIFICATION_INTERVAL_MS >= 0
+        || (loginPeriodicVerificationIntervalMs >= 0
             && lastSuccessfulLoginTime
-                < System.currentTimeMillis() - LOGIN_PERIODIC_VERIFICATION_INTERVAL_MS)) {
+                < System.currentTimeMillis() - loginPeriodicVerificationIntervalMs)) {
       final BasicOpenSessionResp openSessionResp =
           SESSION_MANAGER.login(
               SESSION_MANAGER.getCurrSession(),
