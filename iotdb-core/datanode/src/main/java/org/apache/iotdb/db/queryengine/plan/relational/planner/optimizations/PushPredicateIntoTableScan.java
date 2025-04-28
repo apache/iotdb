@@ -598,6 +598,10 @@ public class PushPredicateIntoTableScan implements PlanOptimizer {
         tableScanNode.setContainsNonAlignedDevice();
       }
 
+      if (tableScanNode instanceof TreeDeviceViewScanNode) {
+        ((TreeDeviceViewScanNode) tableScanNode).setTreeDBName(deviceDatabase);
+      }
+
       final long schemaFetchCost = System.nanoTime() - startTime;
       QueryPlanCostMetricSet.getInstance().recordTablePlanCost(SCHEMA_FETCHER, schemaFetchCost);
       queryContext.setFetchSchemaCost(schemaFetchCost);
