@@ -570,7 +570,7 @@ public class PushPredicateIntoTableScan implements PlanOptimizer {
       }
 
       long startTime = System.nanoTime();
-      final Map<String, List<DeviceEntry>> deviceEntries =
+      final Map<String, List<DeviceEntry>> deviceEntriesMap =
           metadata.indexScan(
               tableScanNode.getQualifiedObjectName(),
               metadataExpressions.stream()
@@ -581,6 +581,15 @@ public class PushPredicateIntoTableScan implements PlanOptimizer {
                   .collect(Collectors.toList()),
               attributeColumns,
               queryContext);
+      if (deviceEntriesMap.size() > 1) {
+        throw new UnsupportedOperationException(
+            "Tree device view with multiple databases is unsupported yet.");
+      }
+      final String deviceDatabase =
+          !deviceEntriesMap.isEmpty() ? deviceEntriesMap.keySet().iterator().next() : null;
+      final List<DeviceEntry> deviceEntries =
+          Objects.nonNull(deviceDatabase) ? deviceEntriesMap.get(deviceDatabase) : Collections.emptyList();
+
       tableScanNode.setDeviceEntries(deviceEntries);
       if (deviceEntries.stream()
           .anyMatch(deviceEntry -> deviceEntry instanceof NonAlignedDeviceEntry)) {
@@ -611,7 +620,7 @@ public class PushPredicateIntoTableScan implements PlanOptimizer {
             fetchDataPartitionByDevices(
                 // for tree view, we need to pass actual tree db name to this method
                 tableScanNode instanceof TreeDeviceViewScanNode
-                    ? ((TreeDeviceViewScanNode) tableScanNode).getTreeDBName()
+                    ? deviceDatabase
                     : tableScanNode.getQualifiedObjectName().getDatabaseName(),
                 deviceEntries,
                 timeFilter);

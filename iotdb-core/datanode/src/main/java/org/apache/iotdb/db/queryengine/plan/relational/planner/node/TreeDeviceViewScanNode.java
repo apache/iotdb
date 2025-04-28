@@ -39,38 +39,34 @@ import java.util.Map;
 import java.util.Objects;
 
 public class TreeDeviceViewScanNode extends DeviceTableScanNode {
-  protected String treeDBName;
   protected Map<String, String> measurementColumnNameMap;
 
   public TreeDeviceViewScanNode(
-      PlanNodeId id,
-      QualifiedObjectName qualifiedObjectName,
-      List<Symbol> outputSymbols,
-      Map<Symbol, ColumnSchema> assignments,
-      Map<Symbol, Integer> idAndAttributeIndexMap,
-      String treeDBName,
-      Map<String, String> measurementColumnNameMap) {
+      final PlanNodeId id,
+      final QualifiedObjectName qualifiedObjectName,
+      final List<Symbol> outputSymbols,
+      final Map<Symbol, ColumnSchema> assignments,
+      final Map<Symbol, Integer> idAndAttributeIndexMap,
+      final Map<String, String> measurementColumnNameMap) {
     super(id, qualifiedObjectName, outputSymbols, assignments, idAndAttributeIndexMap);
-    this.treeDBName = treeDBName;
     this.measurementColumnNameMap = measurementColumnNameMap;
   }
 
   public TreeDeviceViewScanNode(
-      PlanNodeId id,
-      QualifiedObjectName qualifiedObjectName,
-      List<Symbol> outputSymbols,
-      Map<Symbol, ColumnSchema> assignments,
-      List<DeviceEntry> deviceEntries,
-      Map<Symbol, Integer> idAndAttributeIndexMap,
-      Ordering scanOrder,
-      Expression timePredicate,
-      Expression pushDownPredicate,
-      long pushDownLimit,
-      long pushDownOffset,
-      boolean pushLimitToEachDevice,
-      boolean containsNonAlignedDevice,
-      String treeDBName,
-      Map<String, String> measurementColumnNameMap) {
+      final PlanNodeId id,
+      final QualifiedObjectName qualifiedObjectName,
+      final List<Symbol> outputSymbols,
+      final Map<Symbol, ColumnSchema> assignments,
+      final List<DeviceEntry> deviceEntries,
+      final Map<Symbol, Integer> idAndAttributeIndexMap,
+      final Ordering scanOrder,
+      final Expression timePredicate,
+      final Expression pushDownPredicate,
+      final long pushDownLimit,
+      final long pushDownOffset,
+      final boolean pushLimitToEachDevice,
+      final boolean containsNonAlignedDevice,
+      final Map<String, String> measurementColumnNameMap) {
     super(
         id,
         qualifiedObjectName,
@@ -85,15 +81,10 @@ public class TreeDeviceViewScanNode extends DeviceTableScanNode {
         pushDownOffset,
         pushLimitToEachDevice,
         containsNonAlignedDevice);
-    this.treeDBName = treeDBName;
     this.measurementColumnNameMap = measurementColumnNameMap;
   }
 
   public TreeDeviceViewScanNode() {}
-
-  public String getTreeDBName() {
-    return treeDBName;
-  }
 
   public Map<String, String> getMeasurementColumnNameMap() {
     return measurementColumnNameMap;
@@ -120,7 +111,6 @@ public class TreeDeviceViewScanNode extends DeviceTableScanNode {
         pushDownOffset,
         pushLimitToEachDevice,
         containsNonAlignedDevice,
-        treeDBName,
         measurementColumnNameMap);
   }
 
@@ -128,7 +118,6 @@ public class TreeDeviceViewScanNode extends DeviceTableScanNode {
       TreeDeviceViewScanNode node, ByteBuffer byteBuffer) {
     DeviceTableScanNode.serializeMemberVariables(node, byteBuffer, true);
 
-    ReadWriteIOUtils.write(node.treeDBName, byteBuffer);
     ReadWriteIOUtils.write(node.measurementColumnNameMap.size(), byteBuffer);
     for (Map.Entry<String, String> entry : node.measurementColumnNameMap.entrySet()) {
       ReadWriteIOUtils.write(entry.getKey(), byteBuffer);
@@ -140,7 +129,6 @@ public class TreeDeviceViewScanNode extends DeviceTableScanNode {
       TreeDeviceViewScanNode node, DataOutputStream stream) throws IOException {
     DeviceTableScanNode.serializeMemberVariables(node, stream, true);
 
-    ReadWriteIOUtils.write(node.treeDBName, stream);
     ReadWriteIOUtils.write(node.measurementColumnNameMap.size(), stream);
     for (Map.Entry<String, String> entry : node.measurementColumnNameMap.entrySet()) {
       ReadWriteIOUtils.write(entry.getKey(), stream);
@@ -152,7 +140,6 @@ public class TreeDeviceViewScanNode extends DeviceTableScanNode {
       ByteBuffer byteBuffer, TreeDeviceViewScanNode node) {
     DeviceTableScanNode.deserializeMemberVariables(byteBuffer, node, true);
 
-    node.treeDBName = ReadWriteIOUtils.readString(byteBuffer);
     int size = ReadWriteIOUtils.readInt(byteBuffer);
     Map<String, String> measurementColumnNameMap = new HashMap<>(size);
     for (int i = 0; i < size; i++) {
@@ -182,7 +169,7 @@ public class TreeDeviceViewScanNode extends DeviceTableScanNode {
   }
 
   @Override
-  public boolean equals(Object o) {
+  public boolean equals(final Object o) {
     if (this == o) {
       return true;
     }
@@ -192,14 +179,13 @@ public class TreeDeviceViewScanNode extends DeviceTableScanNode {
     if (!super.equals(o)) {
       return false;
     }
-    TreeDeviceViewScanNode that = (TreeDeviceViewScanNode) o;
-    return Objects.equals(treeDBName, that.treeDBName)
-        && Objects.equals(measurementColumnNameMap, that.measurementColumnNameMap);
+    final TreeDeviceViewScanNode that = (TreeDeviceViewScanNode) o;
+    return Objects.equals(measurementColumnNameMap, that.measurementColumnNameMap);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(super.hashCode(), treeDBName, measurementColumnNameMap);
+    return Objects.hash(super.hashCode(), measurementColumnNameMap);
   }
 
   public String toString() {
