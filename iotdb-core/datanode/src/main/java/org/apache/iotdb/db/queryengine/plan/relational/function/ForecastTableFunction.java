@@ -33,6 +33,7 @@ import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.udf.api.relational.TableFunction;
 import org.apache.iotdb.udf.api.relational.access.Record;
 import org.apache.iotdb.udf.api.relational.table.TableFunctionAnalysis;
+import org.apache.iotdb.udf.api.relational.table.TableFunctionHandle;
 import org.apache.iotdb.udf.api.relational.table.TableFunctionProcessorProvider;
 import org.apache.iotdb.udf.api.relational.table.argument.Argument;
 import org.apache.iotdb.udf.api.relational.table.argument.DescribedSchema;
@@ -72,7 +73,7 @@ import static org.apache.iotdb.rpc.TSStatusCode.CAN_NOT_CONNECT_AINODE;
 
 public class ForecastTableFunction implements TableFunction {
 
-  private static class ForecastTableFunctionHandle {
+  private static class ForecastTableFunctionHandle implements TableFunctionHandle {
     TEndPoint targetAINode;
     String modelId;
     int maxInputLength;
@@ -100,6 +101,7 @@ public class ForecastTableFunction implements TableFunction {
       this.types = types;
     }
 
+    @Override
     public byte[] serialize() {
       try (PublicBAOS publicBAOS = new PublicBAOS();
           DataOutputStream outputStream = new DataOutputStream(publicBAOS)) {
@@ -124,6 +126,7 @@ public class ForecastTableFunction implements TableFunction {
       }
     }
 
+    @Override
     public void deserialize(byte[] bytes) {
       ByteBuffer buffer = ByteBuffer.wrap(bytes);
       this.targetAINode =
@@ -311,7 +314,6 @@ public class ForecastTableFunction implements TableFunction {
 
     String options = (String) ((ScalarArgument) arguments.get(OPTIONS_PARAMETER_NAME)).getValue();
 
-    // TODO put functionHandle into TableFunctionAnalysis after after yanze's pr being merged
     ForecastTableFunctionHandle functionHandle =
         new ForecastTableFunctionHandle(
             keepInput,
@@ -325,8 +327,25 @@ public class ForecastTableFunction implements TableFunction {
     // outputColumnSchema
     return TableFunctionAnalysis.builder()
         .properColumnSchema(properColumnSchemaBuilder.build())
+        .handle(functionHandle)
         .requiredColumns(INPUT_PARAMETER_NAME, requiredIndexList)
         .build();
+  }
+
+  @Override
+  public TableFunctionHandle createTableFunctionHandle() {
+    return new ForecastTableFunctionHandle();
+  }
+
+  @Override
+  public TableFunctionProcessorProvider getProcessorProvider(
+      TableFunctionHandle tableFunctionHandle) {
+    return new TableFunctionProcessorProvider() {
+      @Override
+      public TableFunctionDataProcessor getDataProcessor() {
+        return new ForecastDataProcessor((ForecastTableFunctionHandle) tableFunctionHandle);
+      }
+    };
   }
 
   private ModelInferenceDescriptor getModelInfo(String modelId) {
@@ -341,18 +360,6 @@ public class ForecastTableFunction implements TableFunction {
               "The type of the column [%s] is [%s], only INT32, INT64, FLOAT, DOUBLE is allowed",
               columnName, type));
     }
-  }
-
-  @Override
-  public TableFunctionProcessorProvider getProcessorProvider(Map<String, Argument> arguments) {
-    // TODO use functionHandle in parameter after yanze's pr being merged
-    ForecastTableFunctionHandle functionHandle = new ForecastTableFunctionHandle();
-    return new TableFunctionProcessorProvider() {
-      @Override
-      public TableFunctionDataProcessor getDataProcessor() {
-        return new ForecastDataProcessor(functionHandle);
-      }
-    };
   }
 
   private static Map<String, String> parseOptions(String options) {
