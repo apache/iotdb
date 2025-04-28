@@ -672,6 +672,11 @@ public class CompactionSchedulerTest {
    */
   @Test
   public void test6() throws IOException, MetadataException, InterruptedException {
+    logger.error(
+        "Total:"
+            + Runtime.getRuntime().totalMemory()
+            + ", Max:"
+            + Runtime.getRuntime().maxMemory());
     BatchCompactionPlan.setMaxCachedTimeChunksSize(1024);
     TSFileDescriptor.getInstance().getConfig().setPageSizeInByte(100);
     logger.warn("Running test6");
