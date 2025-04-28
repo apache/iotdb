@@ -35,7 +35,8 @@ import java.util.Objects;
 import java.util.stream.Collectors;
 
 public class ShowDevice extends AbstractQueryDeviceWithCache {
-  protected static final String ALIGNED_HEADER = "__aligned";
+  private static final String ALIGNED_HEADER = "__aligned";
+  private static final String DATABASE_HEADER = "__database";
   private Offset offset;
   private Node limit;
 
@@ -74,6 +75,7 @@ public class ShowDevice extends AbstractQueryDeviceWithCache {
     super.setColumnHeaderList();
     if (needAligned()) {
       columnHeaderList.add(new ColumnHeader(ShowDevice.ALIGNED_HEADER, TSDataType.BOOLEAN));
+      columnHeaderList.add(new ColumnHeader(ShowDevice.DATABASE_HEADER, TSDataType.STRING));
     }
   }
 

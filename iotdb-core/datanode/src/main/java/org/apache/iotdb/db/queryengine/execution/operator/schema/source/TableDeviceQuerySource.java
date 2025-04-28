@@ -38,9 +38,13 @@ import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
 import org.apache.iotdb.db.schemaengine.table.DataNodeTreeViewSchemaUtils;
 
 import com.google.common.util.concurrent.ListenableFuture;
+import org.apache.tsfile.block.column.Column;
+import org.apache.tsfile.block.column.ColumnBuilder;
 import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.common.conf.TSFileDescriptor;
 import org.apache.tsfile.read.common.block.TsBlockBuilder;
+import org.apache.tsfile.read.common.block.column.BinaryColumnBuilder;
+import org.apache.tsfile.read.common.block.column.RunLengthEncodedColumn;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.RamUsageEstimator;
 
@@ -65,6 +69,7 @@ public class TableDeviceQuerySource implements ISchemaSource<IDeviceSchemaInfo> 
   private final DevicePredicateFilter filter;
   private final @Nonnull List<PartialPath> devicePatternList;
   private final boolean needAligned;
+  private boolean resetBuilder;
 
   public TableDeviceQuerySource(
       final String database,
@@ -230,7 +235,8 @@ public class TableDeviceQuerySource implements ISchemaSource<IDeviceSchemaInfo> 
     if (!needAligned) {
       transformToTableDeviceTsBlockColumns(schemaInfo, builder, columnSchemaList, tagIndex);
     } else {
-      transformToTreeDeviceTsBlockColumns(schemaInfo, builder, columnSchemaList, tagIndex);
+      transformToTreeDeviceTsBlockColumns(
+          schemaInfo, builder, columnSchemaList, tagIndex, database);
     }
   }
 
@@ -265,11 +271,12 @@ public class TableDeviceQuerySource implements ISchemaSource<IDeviceSchemaInfo> 
     builder.declarePosition();
   }
 
-  private static void transformToTreeDeviceTsBlockColumns(
+  private void transformToTreeDeviceTsBlockColumns(
       final IDeviceSchemaInfo schemaInfo,
       final TsBlockBuilder builder,
       final List<TsTableColumnSchema> columnSchemaList,
-      final int beginIndex) {
+      final int beginIndex,
+      final String database) {
     builder.getTimeColumnBuilder().writeLong(0L);
     int resultIndex = 0;
     final String[] pathNodes = schemaInfo.getRawNodes();
@@ -289,6 +296,17 @@ public class TableDeviceQuerySource implements ISchemaSource<IDeviceSchemaInfo> 
       }
     }
     builder.getColumnBuilder(resultIndex).writeBoolean(schemaInfo.isAligned());
+
+    // Use rle because the database is the same
+    if (!resetBuilder) {
+      builder.getValueColumnBuilders()[resultIndex + 1] =
+          new RleBinaryColumnBuilder(
+              (BinaryColumnBuilder) builder.getColumnBuilder(resultIndex + 1));
+      resetBuilder = true;
+    }
+    builder
+        .getColumnBuilder(resultIndex + 1)
+        .writeBinary(new Binary(database, TSFileConfig.STRING_CHARSET));
     builder.declarePosition();
   }
 
@@ -328,5 +346,40 @@ public class TableDeviceQuerySource implements ISchemaSource<IDeviceSchemaInfo> 
                         / devicesNumber
                     : 0))
         : TSFileDescriptor.getInstance().getConfig().getMaxTsBlockSizeInBytes();
+  }
+
+  private static class RleBinaryColumnBuilder extends BinaryColumnBuilder {
+
+    private final BinaryColumnBuilder innerBuilder;
+
+    public RleBinaryColumnBuilder(final BinaryColumnBuilder innerBuilder) {
+      super(null, 0);
+      this.innerBuilder = innerBuilder;
+    }
+
+    @Override
+    public int getPositionCount() {
+      return innerBuilder.getPositionCount();
+    }
+
+    @Override
+    public ColumnBuilder writeBinary(final Binary value) {
+      return innerBuilder.writeBinary(value);
+    }
+
+    @Override
+    public ColumnBuilder appendNull() {
+      return innerBuilder.appendNull();
+    }
+
+    @Override
+    public Column build() {
+      return new RunLengthEncodedColumn(innerBuilder.build(), getPositionCount());
+    }
+
+    @Override
+    public long getRetainedSizeInBytes() {
+      return innerBuilder.getRetainedSizeInBytes();
+    }
   }
 }
