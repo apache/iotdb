@@ -38,8 +38,6 @@ public class Combiner {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(Combiner.class);
 
-  private static final long MAX_COMBINER_LIVE_TIME_IN_MS =
-      PipeConfig.getInstance().getTwoStageAggregateMaxCombinerLiveTimeInMs();
   private final long creationTimeInMs;
 
   private final Operator operator;
@@ -98,7 +96,8 @@ public class Combiner {
   }
 
   public boolean isOutdated() {
-    return System.currentTimeMillis() - creationTimeInMs > MAX_COMBINER_LIVE_TIME_IN_MS;
+    return System.currentTimeMillis() - creationTimeInMs
+        > PipeConfig.getInstance().getTwoStageAggregateMaxCombinerLiveTimeInMs();
   }
 
   public boolean isComplete() {

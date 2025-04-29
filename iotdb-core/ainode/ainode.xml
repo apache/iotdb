@@ -58,5 +58,32 @@
                 <include>*.whl</include>
             </includes>
         </fileSet>
+        <fileSet>
+            <directory>${project.basedir}/../../scripts/conf</directory>
+            <outputDirectory>conf</outputDirectory>
+            <includes>
+                <include>ainode-env.*</include>
+                <include>**/ainode-env.*</include>
+            </includes>
+            <fileMode>0755</fileMode>
+        </fileSet>
+        <fileSet>
+            <directory>${project.basedir}/../../scripts/sbin</directory>
+            <outputDirectory>sbin</outputDirectory>
+            <includes>
+                <include>*ainode.*</include>
+                <include>**/*ainode.*</include>
+            </includes>
+            <fileMode>0755</fileMode>
+        </fileSet>
+        <fileSet>
+            <directory>${project.basedir}/../../scripts/tools</directory>
+            <outputDirectory>tools</outputDirectory>
+            <includes>
+                <include>*ainode.*</include>
+                <include>**/*ainode.*</include>
+            </includes>
+            <fileMode>0755</fileMode>
+        </fileSet>
     </fileSets>
 </assembly>

@@ -101,14 +101,6 @@ public class IoTDBDataRegionAsyncConnector extends IoTDBConnector {
   private final BlockingQueue<Event> retryEventQueue = new LinkedBlockingQueue<>();
   private final PipeDataRegionEventCounter retryEventQueueEventCounter =
       new PipeDataRegionEventCounter();
-  private final int forcedRetryTsFileEventQueueSizeThreshold =
-      PipeConfig.getInstance().getPipeAsyncConnectorForcedRetryTsFileEventQueueSizeThreshold();
-  private final int forcedRetryTabletEventQueueSizeThreshold =
-      PipeConfig.getInstance().getPipeAsyncConnectorForcedRetryTabletEventQueueSizeThreshold();
-  private final int forcedRetryTotalEventQueueSizeThreshold =
-      PipeConfig.getInstance().getPipeAsyncConnectorForcedRetryTotalEventQueueSizeThreshold();
-  private final long maxRetryExecutionTimeMsPerCall =
-      PipeConfig.getInstance().getPipeAsyncConnectorMaxRetryExecutionTimeMsPerCall();
 
   private IoTDBDataNodeAsyncClientManager clientManager;
 
@@ -468,10 +460,14 @@ public class IoTDBDataRegionAsyncConnector extends IoTDBConnector {
     if (retryEventQueue.isEmpty()
         || (!forced
             && retryEventQueueEventCounter.getTabletInsertionEventCount()
-                < forcedRetryTabletEventQueueSizeThreshold
+                < PipeConfig.getInstance()
+                    .getPipeAsyncConnectorForcedRetryTabletEventQueueSizeThreshold()
             && retryEventQueueEventCounter.getTsFileInsertionEventCount()
-                < forcedRetryTsFileEventQueueSizeThreshold
-            && retryEventQueue.size() < forcedRetryTotalEventQueueSizeThreshold)) {
+                < PipeConfig.getInstance()
+                    .getPipeAsyncConnectorForcedRetryTsFileEventQueueSizeThreshold()
+            && retryEventQueue.size()
+                < PipeConfig.getInstance()
+                    .getPipeAsyncConnectorForcedRetryTotalEventQueueSizeThreshold())) {
       return;
     }
 
@@ -515,12 +511,17 @@ public class IoTDBDataRegionAsyncConnector extends IoTDBConnector {
       }
 
       // Stop retrying if the execution time exceeds the threshold for better realtime performance
-      if (System.currentTimeMillis() - retryStartTime > maxRetryExecutionTimeMsPerCall) {
+      if (System.currentTimeMillis() - retryStartTime
+          > PipeConfig.getInstance().getPipeAsyncConnectorMaxRetryExecutionTimeMsPerCall()) {
         if (retryEventQueueEventCounter.getTabletInsertionEventCount()
-                < forcedRetryTabletEventQueueSizeThreshold
+                < PipeConfig.getInstance()
+                    .getPipeAsyncConnectorForcedRetryTabletEventQueueSizeThreshold()
             && retryEventQueueEventCounter.getTsFileInsertionEventCount()
-                < forcedRetryTsFileEventQueueSizeThreshold
-            && retryEventQueue.size() < forcedRetryTotalEventQueueSizeThreshold) {
+                < PipeConfig.getInstance()
+                    .getPipeAsyncConnectorForcedRetryTsFileEventQueueSizeThreshold()
+            && retryEventQueue.size()
+                < PipeConfig.getInstance()
+                    .getPipeAsyncConnectorForcedRetryTotalEventQueueSizeThreshold()) {
           return;
         }
 

@@ -22,7 +22,9 @@ package org.apache.iotdb.commons.udf.builtin.relational.tvf;
 import org.apache.iotdb.udf.api.exception.UDFException;
 import org.apache.iotdb.udf.api.relational.TableFunction;
 import org.apache.iotdb.udf.api.relational.access.Record;
+import org.apache.iotdb.udf.api.relational.table.MapTableFunctionHandle;
 import org.apache.iotdb.udf.api.relational.table.TableFunctionAnalysis;
+import org.apache.iotdb.udf.api.relational.table.TableFunctionHandle;
 import org.apache.iotdb.udf.api.relational.table.TableFunctionProcessorProvider;
 import org.apache.iotdb.udf.api.relational.table.argument.Argument;
 import org.apache.iotdb.udf.api.relational.table.argument.DescribedSchema;
@@ -42,6 +44,7 @@ import java.util.List;
 import java.util.Map;
 
 import static org.apache.iotdb.commons.udf.builtin.relational.tvf.WindowTVFUtils.findColumnIndex;
+import static org.apache.iotdb.udf.api.relational.table.argument.ScalarArgumentChecker.POSITIVE_LONG_CHECKER;
 
 public class TumbleTableFunction implements TableFunction {
   private static final String DATA_PARAMETER_NAME = "DATA";
@@ -62,7 +65,11 @@ public class TumbleTableFunction implements TableFunction {
             .type(Type.STRING)
             .defaultValue("time")
             .build(),
-        ScalarParameterSpecification.builder().name(SIZE_PARAMETER_NAME).type(Type.INT64).build(),
+        ScalarParameterSpecification.builder()
+            .name(SIZE_PARAMETER_NAME)
+            .addChecker(POSITIVE_LONG_CHECKER)
+            .type(Type.INT64)
+            .build(),
         ScalarParameterSpecification.builder()
             .name(ORIGIN_PARAMETER_NAME)
             .type(Type.TIMESTAMP)
@@ -83,22 +90,39 @@ public class TumbleTableFunction implements TableFunction {
             .addField("window_end", Type.TIMESTAMP)
             .build();
 
+    MapTableFunctionHandle handle =
+        new MapTableFunctionHandle.Builder()
+            .addProperty(
+                ORIGIN_PARAMETER_NAME,
+                ((ScalarArgument) arguments.get(ORIGIN_PARAMETER_NAME)).getValue())
+            .addProperty(
+                SIZE_PARAMETER_NAME,
+                ((ScalarArgument) arguments.get(SIZE_PARAMETER_NAME)).getValue())
+            .build();
     // outputColumnSchema
     return TableFunctionAnalysis.builder()
         .properColumnSchema(properColumnSchema)
         .requireRecordSnapshot(false)
         .requiredColumns(DATA_PARAMETER_NAME, Collections.singletonList(requiredIndex))
+        .handle(handle)
         .build();
   }
 
   @Override
-  public TableFunctionProcessorProvider getProcessorProvider(Map<String, Argument> arguments) {
+  public TableFunctionHandle createTableFunctionHandle() {
+    return new MapTableFunctionHandle();
+  }
+
+  @Override
+  public TableFunctionProcessorProvider getProcessorProvider(
+      TableFunctionHandle tableFunctionHandle) {
     return new TableFunctionProcessorProvider() {
       @Override
       public TableFunctionDataProcessor getDataProcessor() {
         return new TumbleDataProcessor(
-            (Long) ((ScalarArgument) arguments.get(ORIGIN_PARAMETER_NAME)).getValue(),
-            (Long) ((ScalarArgument) arguments.get(SIZE_PARAMETER_NAME)).getValue());
+            (Long)
+                ((MapTableFunctionHandle) tableFunctionHandle).getProperty(ORIGIN_PARAMETER_NAME),
+            (Long) ((MapTableFunctionHandle) tableFunctionHandle).getProperty(SIZE_PARAMETER_NAME));
       }
     };
   }
