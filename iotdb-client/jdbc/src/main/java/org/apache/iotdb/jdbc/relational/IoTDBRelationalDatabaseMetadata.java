@@ -378,18 +378,18 @@ public class IoTDBRelationalDatabaseMetadata extends IoTDBAbstractDatabaseMetada
     fields[9] = new Field("", NUM_PREC_RADIX, INT32);
     fields[10] = new Field("", NULLABLE, INT32);
     fields[11] = new Field("", REMARKS, "TEXT");
-    fields[12] = new Field("", "COLUMN_DEF", "TEXT");
+    fields[12] = new Field("", COLUMN_DEF, "TEXT");
     fields[13] = new Field("", SQL_DATA_TYPE, INT32);
     fields[14] = new Field("", SQL_DATETIME_SUB, INT32);
     fields[15] = new Field("", CHAR_OCTET_LENGTH, INT32);
     fields[16] = new Field("", ORDINAL_POSITION, INT32);
     fields[17] = new Field("", IS_NULLABLE, "TEXT");
-    fields[18] = new Field("", "SCOPE_CATALOG", "TEXT");
-    fields[19] = new Field("", "SCOPE_SCHEMA", "TEXT");
-    fields[20] = new Field("", "SCOPE_TABLE", "TEXT");
-    fields[21] = new Field("", "SOURCE_DATA_TYPE", "TEXT");
-    fields[22] = new Field("", "IS_AUTOINCREMENT", "TEXT");
-    fields[23] = new Field("", "IS_GENERATEDCOLUMN", "TEXT");
+    fields[18] = new Field("", SCOPE_CATALOG, "TEXT");
+    fields[19] = new Field("", SCOPE_SCHEMA, "TEXT");
+    fields[20] = new Field("", SCOPE_TABLE, "TEXT");
+    fields[21] = new Field("", SOURCE_DATA_TYPE, "TEXT");
+    fields[22] = new Field("", IS_AUTOINCREMENT, "TEXT");
+    fields[23] = new Field("", IS_GENERATEDCOLUMN, "TEXT");
 
     List<TSDataType> tsDataTypeList =
         Arrays.asList(
@@ -539,7 +539,7 @@ public class IoTDBRelationalDatabaseMetadata extends IoTDBAbstractDatabaseMetada
     try {
       String sql =
           String.format(
-              "select * from information_schema.columns where database like '%s' and table_name like '%s' escape '\\' and (category='TAG' or category='TIME')",
+              "select * from information_schema.columns where database like '%s'  escape '\\' and table_name like '%s' escape '\\' and (category='TAG' or category='TIME')",
               schemaPattern, tableNamePattern);
       rs = stmt.executeQuery(sql);
     } catch (SQLException e) {

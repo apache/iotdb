@@ -72,7 +72,7 @@ public class IoTDBConnection implements Connection {
       TSProtocolVersion.IOTDB_SERVICE_PROTOCOL_V3;
   private static final String NOT_SUPPORT_PREPARE_CALL = "Does not support prepareCall";
   private static final String NOT_SUPPORT_PREPARE_STATEMENT = "Does not support prepareStatement";
-  private static final String framework = "Apache IoTDB";
+  private static final String APACHE_IOTDB = "Apache IoTDB";
   private IClientRPCService.Iface client = null;
   private long sessionId = -1;
   private IoTDBConnectionParams params;
@@ -263,13 +263,13 @@ public class IoTDBConnection implements Connection {
 
   @Override
   public String getCatalog() {
-    return framework;
+    return APACHE_IOTDB;
   }
 
   @Override
   public void setCatalog(String arg0) throws SQLException {
     if (getSqlDialect().equals(Constant.TABLE_DIALECT)) {
-      if (framework.equals(arg0)) {
+      if (APACHE_IOTDB.equals(arg0)) {
         return;
       }
       for (String str : IoTDBRelationalDatabaseMetadata.allIotdbTableSQLKeywords) {

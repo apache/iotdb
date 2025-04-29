@@ -53,7 +53,6 @@ public abstract class IoTDBAbstractDatabaseMetadata implements DatabaseMetaData 
   private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBAbstractDatabaseMetadata.class);
   private static final String METHOD_NOT_SUPPORTED_STRING = "Method not supported";
   protected static final String CONVERT_ERROR_MSG = "Convert tsBlock error: {}";
-  protected static final String SHOW_DATABASES_ERROR_MSG = "Get databases error: {}";
 
   protected IoTDBConnection connection;
   protected IClientRPCService.Iface client;
@@ -115,6 +114,12 @@ public abstract class IoTDBAbstractDatabaseMetadata implements DatabaseMetaData 
   private static final String PSEUDO_COLUMN = "PSEUDO_COLUMN";
   private static final String RADIX = "RADIX";
   protected static final String REMARKS = "REMARKS";
+  protected static final String COLUMN_DEF = "COLUMN_DEF";
+  protected static final String SCOPE_CATALOG = "SCOPE_CATALOG";
+  protected static final String SCOPE_SCHEMA = "SCOPE_SCHEMA";
+  protected static final String SCOPE_TABLE = "SCOPE_TABLE";
+  protected static final String SOURCE_DATA_TYPE = "SOURCE_DATA_TYPE";
+  protected static final String IS_GENERATEDCOLUMN = "IS_GENERATEDCOLUMN";
   private static final String SCALE = "SCALE";
   private static final String SCOPE = "SCOPE";
   private static final String SPECIFIC_NAME = "SPECIFIC_NAME";
