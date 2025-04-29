@@ -34,6 +34,7 @@ import org.apache.iotdb.pipe.api.PipeConnector;
 import org.apache.iotdb.pipe.api.annotation.TableModel;
 import org.apache.iotdb.pipe.api.annotation.TreeModel;
 import org.apache.iotdb.pipe.api.customizer.configuration.PipeConnectorRuntimeConfiguration;
+import org.apache.iotdb.pipe.api.customizer.configuration.PipeRuntimeEnvironment;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameterValidator;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 import org.apache.iotdb.pipe.api.exception.PipeParameterNotValidException;
@@ -354,9 +355,11 @@ public abstract class IoTDBConnector implements PipeConnector {
   public void customize(
       final PipeParameters parameters, final PipeConnectorRuntimeConfiguration configuration)
       throws Exception {
-    attributeSortedString =
-        ((PipeTaskConnectorRuntimeEnvironment) configuration.getRuntimeEnvironment())
-            .getAttributeSortedString();
+    final PipeRuntimeEnvironment environment = configuration.getRuntimeEnvironment();
+    if (environment instanceof PipeTaskConnectorRuntimeEnvironment) {
+      attributeSortedString =
+          ((PipeTaskConnectorRuntimeEnvironment) environment).getAttributeSortedString();
+    }
     nodeUrls.clear();
     nodeUrls.addAll(parseNodeUrls(parameters));
     LOGGER.info("IoTDBConnector nodeUrls: {}", nodeUrls);
