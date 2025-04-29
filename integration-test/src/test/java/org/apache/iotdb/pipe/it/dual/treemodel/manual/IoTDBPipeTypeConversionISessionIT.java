@@ -33,6 +33,7 @@ import org.apache.iotdb.rpc.StatementExecutionException;
 
 import org.apache.commons.lang3.RandomStringUtils;
 import org.apache.tsfile.common.conf.TSFileConfig;
+import org.apache.tsfile.enums.ColumnCategory;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.Field;
 import org.apache.tsfile.read.common.RowRecord;
