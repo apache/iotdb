@@ -539,10 +539,10 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
 
     final List<TRegionReplicaSet> allRegionReplicaSets =
         partitionCache.getRegionReplicaSet(new ArrayList<>(uniqueConsensusGroupIds));
+    final List<TConsensusGroupId> consensusGroupIds = new ArrayList<>(uniqueConsensusGroupIds);
     final Map<TConsensusGroupId, TRegionReplicaSet> regionReplicaSetMap = new HashMap<>();
     for (int i = 0; i < allRegionReplicaSets.size(); i++) {
-      regionReplicaSetMap.put(
-          new ArrayList<>(uniqueConsensusGroupIds).get(i), allRegionReplicaSets.get(i));
+      regionReplicaSetMap.put(consensusGroupIds.get(i), allRegionReplicaSets.get(i));
     }
 
     final Map<String, Map<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TRegionReplicaSet>>>>
