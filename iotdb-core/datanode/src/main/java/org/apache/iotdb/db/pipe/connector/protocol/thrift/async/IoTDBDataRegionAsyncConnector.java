@@ -44,6 +44,7 @@ import org.apache.iotdb.db.pipe.event.common.tablet.PipeInsertNodeTabletInsertio
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.terminate.PipeTerminateEvent;
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
+import org.apache.iotdb.db.pipe.metric.sink.PipeDataRegionConnectorMetrics;
 import org.apache.iotdb.db.pipe.metric.source.PipeDataRegionEventCounter;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
 import org.apache.iotdb.pipe.api.PipeConnector;
@@ -681,6 +682,15 @@ public class IoTDBDataRegionAsyncConnector extends IoTDBConnector {
     clearRetryEventsReferenceCount();
 
     super.close();
+  }
+
+  @Override
+  protected TPipeTransferReq compressIfNeeded(final TPipeTransferReq req) throws IOException {
+    if (Objects.isNull(compressionTimer)) {
+      compressionTimer =
+          PipeDataRegionConnectorMetrics.getInstance().getCompressionTimer(attributeSortedString);
+    }
+    return super.compressIfNeeded(req);
   }
 
   public synchronized void clearRetryEventsReferenceCount() {

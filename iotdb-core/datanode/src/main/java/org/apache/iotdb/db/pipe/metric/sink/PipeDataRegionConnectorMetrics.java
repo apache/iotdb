@@ -361,6 +361,7 @@ public class PipeDataRegionConnectorMetrics implements IMetricSet {
         connector.getAttributeSortedString(),
         Tag.CREATION_TIME.toString(),
         String.valueOf(connector.getCreationTime()));
+    compressionTimerMap.remove(connector.getAttributeSortedString());
   }
 
   //////////////////////////// register & deregister (pipe integration) ////////////////////////////
@@ -424,6 +425,10 @@ public class PipeDataRegionConnectorMetrics implements IMetricSet {
       return;
     }
     rate.mark();
+  }
+
+  public Timer getCompressionTimer(final String attributeSortedString) {
+    return Objects.isNull(metricService) ? null : compressionTimerMap.get(attributeSortedString);
   }
 
   //////////////////////////// singleton ////////////////////////////

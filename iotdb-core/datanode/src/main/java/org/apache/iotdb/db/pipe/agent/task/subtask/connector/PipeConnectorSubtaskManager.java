@@ -84,6 +84,7 @@ public class PipeConnectorSubtaskManager {
     final int connectorNum;
     boolean realTimeFirst = false;
     String attributeSortedString = generateAttributeSortedString(pipeConnectorParameters);
+    environment.setAttributeSortedString(attributeSortedString);
     if (isDataRegionConnector) {
       connectorNum =
           pipeConnectorParameters.getIntOrDefault(
