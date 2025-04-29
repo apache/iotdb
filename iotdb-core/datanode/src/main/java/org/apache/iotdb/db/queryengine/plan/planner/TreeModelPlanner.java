@@ -148,8 +148,6 @@ public class TreeModelPlanner implements IPlanner {
               stateMachine,
               distributedPlan.getInstances(),
               context.getQueryType(),
-              executor,
-              writeOperationExecutor,
               scheduledExecutor,
               syncInternalServiceClientManager,
               asyncInternalServiceClientManager);
