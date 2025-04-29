@@ -84,7 +84,6 @@ public class PipeConnectorSubtaskManager {
     final int connectorNum;
     boolean realTimeFirst = false;
     String attributeSortedString = generateAttributeSortedString(pipeConnectorParameters);
-    environment.setAttributeSortedString(attributeSortedString);
     if (isDataRegionConnector) {
       connectorNum =
           pipeConnectorParameters.getIntOrDefault(
@@ -105,6 +104,7 @@ public class PipeConnectorSubtaskManager {
       connectorNum = 1;
       attributeSortedString = "schema_" + attributeSortedString;
     }
+    environment.setAttributeSortedString(attributeSortedString);
 
     if (!attributeSortedString2SubtaskLifeCycleMap.containsKey(attributeSortedString)) {
       final List<PipeConnectorSubtaskLifeCycle> pipeConnectorSubtaskLifeCycleList =
