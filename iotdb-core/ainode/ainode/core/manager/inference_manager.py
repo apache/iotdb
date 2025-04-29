@@ -65,11 +65,16 @@ class InferenceManager:
         model_id = req.modelId
         logger.info(f"start to forcast by model {model_id}")
         try:
-            # output_length
             data = deserialize(req.inputData)
             if model_id.startswith('_'):
-                # Currently built_in model is not supported in forecast for table model
-                raise UnsupportedError("Built-in model is not supported here.")
+                # built-in models
+                logger.info(f"start to forecast built-in model {model_id}")
+                # parse the inference attributes and create the built-in model
+                options = req.options
+                options['predict_length'] = req.outputLength
+                model = _get_built_in_model(model_id, model_manager, options)
+                inference_result = convert_to_binary(_inference_with_built_in_model(
+                    model, data))
             else:
                 # user-registered models
                 model = _get_model(model_id, model_manager, req.options)
@@ -98,8 +103,8 @@ class InferenceManager:
                 logger.info(f"start inference built-in model {model_id}")
                 # parse the inference attributes and create the built-in model
                 model = _get_built_in_model(model_id, model_manager, inference_attributes)
-                inference_results = _inference_with_built_in_model(
-                    model, full_data)
+                inference_results = [_inference_with_built_in_model(
+                    model, full_data)]
             else:
                 # user-registered models
                 model = _get_model(model_id, model_manager, inference_attributes)
@@ -196,8 +201,7 @@ def _inference_with_built_in_model(model, full_data):
     output = model.inference(data)
     # output: DataFrame, shape: (H', C')
     output = pd.DataFrame(output)
-    outputs = [output]
-    return outputs
+    return output
 
 
 def _get_model(model_id: str, model_manager: ModelManager, inference_attributes: {}):

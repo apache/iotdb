@@ -454,7 +454,7 @@ public class ForecastTableFunction implements TableFunction {
       }
 
       // only keep at most maxInputLength rows
-      if (inputRecords.size() == maxInputLength) {
+      if (maxInputLength != 0 && inputRecords.size() == maxInputLength) {
         inputRecords.removeFirst();
       }
       inputRecords.add(input);
