@@ -1075,21 +1075,6 @@ public class IoTDBDescriptor {
                 "detail_container_min_degrade_memory_in_bytes",
                 String.valueOf(conf.getDetailContainerMinDegradeMemoryInBytes()))));
 
-    conf.setEnableGCThrottle(Boolean.parseBoolean(
-        properties.getProperty(
-            "enable_gc_throttle",
-            String.valueOf(conf.isEnableGCThrottle())
-        )
-    ));
-    conf.setGcThrottleTimeMs(
-        Integer.parseInt(
-            properties.getProperty(
-                "gc_throttle_time_ms",
-                String.valueOf(conf.getGcThrottleTimeMs())
-            )
-        )
-    );
-
     loadIoTConsensusProps(properties);
     loadIoTConsensusV2Props(properties);
 
