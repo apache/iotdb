@@ -448,13 +448,13 @@ public class IoTDBRelationalDatabaseMetadata extends IoTDBAbstractDatabaseMetada
         } else if (i == 5) {
           valueInRow.add(type);
         } else if (i == 6) {
-          valueInRow.add(getTypePrecision(fields[i].getSqlType()));
+          valueInRow.add(0);
         } else if (i == 7) {
           valueInRow.add(65535);
         } else if (i == 8) {
           valueInRow.add(getTypeScale(fields[i].getSqlType()));
         } else if (i == 9) {
-          valueInRow.add(10);
+          valueInRow.add(0);
         } else if (i == 10) {
           if (!columnName.equals("time")) {
             valueInRow.add(ResultSetMetaData.columnNullableUnknown);
