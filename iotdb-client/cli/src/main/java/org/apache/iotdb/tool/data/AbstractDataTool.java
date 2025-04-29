@@ -45,11 +45,11 @@ import org.apache.commons.lang3.ObjectUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.thrift.annotation.Nullable;
 import org.apache.tsfile.common.constant.TsFileConstant;
+import org.apache.tsfile.enums.ColumnCategory;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.Field;
 import org.apache.tsfile.read.common.RowRecord;
 import org.apache.tsfile.utils.Binary;
-import org.apache.tsfile.write.record.Tablet;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -430,10 +430,10 @@ public abstract class AbstractDataTool {
    * @param typeStr
    * @return
    */
-  protected static Tablet.ColumnCategory getColumnCategory(String typeStr) {
+  protected static ColumnCategory getColumnCategory(String typeStr) {
     if (StringUtils.isNotBlank(typeStr)) {
       try {
-        return Tablet.ColumnCategory.valueOf(typeStr);
+        return ColumnCategory.valueOf(typeStr);
       } catch (Exception e) {
         return null;
       }
