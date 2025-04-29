@@ -19,10 +19,12 @@
 
 package org.apache.iotdb.db.storageengine.load;
 
+import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
+import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.commons.file.SystemFileFactory;
 import org.apache.iotdb.commons.service.metric.MetricService;
@@ -273,8 +275,12 @@ public class LoadTsFileManager {
     return FOLDER_MANAGER.get().getNextFolder();
   }
 
-  public boolean loadAll(String uuid, boolean isGeneratedByPipe, ProgressIndex progressIndex)
+  public boolean loadAll(
+      final String uuid,
+      final boolean isGeneratedByPipe,
+      final Map<TConsensusGroupId, ProgressIndex> groupIdProgressIndexMap)
       throws IOException, LoadFileException {
+    uuid2WriterManager.keySet().forEach(System.out::println);
     if (!uuid2WriterManager.containsKey(uuid)) {
       return false;
     }
@@ -282,7 +288,7 @@ public class LoadTsFileManager {
     final Optional<CleanupTask> cleanupTask = Optional.of(uuid2CleanupTask.get(uuid));
     cleanupTask.ifPresent(CleanupTask::markLoadTaskRunning);
     try {
-      uuid2WriterManager.get(uuid).loadAll(isGeneratedByPipe, progressIndex);
+      uuid2WriterManager.get(uuid).loadAll(isGeneratedByPipe, groupIdProgressIndexMap);
     } finally {
       cleanupTask.ifPresent(CleanupTask::markLoadTaskNotRunning);
     }
@@ -497,7 +503,9 @@ public class LoadTsFileManager {
       }
     }
 
-    private void loadAll(boolean isGeneratedByPipe, ProgressIndex progressIndex)
+    private void loadAll(
+        final boolean isGeneratedByPipe,
+        final Map<TConsensusGroupId, ProgressIndex> groupIdProgressIndexMap)
         throws IOException, LoadFileException {
       if (isClosed) {
         throw new IOException(String.format(MESSAGE_WRITER_MANAGER_HAS_BEEN_CLOSED, taskDir));
@@ -516,6 +524,10 @@ public class LoadTsFileManager {
 
         final DataRegion dataRegion = entry.getKey().getDataRegion();
         final TsFileResource tsFileResource = dataPartition2Resource.get(entry.getKey());
+        final ProgressIndex progressIndex =
+            groupIdProgressIndexMap.get(
+                new DataRegionId(Integer.parseInt(dataRegion.getDataRegionId()))
+                    .convertToTConsensusGroupId());
         endTsFileResource(writer, tsFileResource, progressIndex);
         dataRegion.loadNewTsFile(tsFileResource, true, isGeneratedByPipe);
 

@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.plan.scheduler.load;
 
+import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
@@ -50,7 +51,6 @@ import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import io.airlift.concurrent.SetThreadName;
-import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.utils.PublicBAOS;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -59,8 +59,9 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.net.SocketTimeoutException;
 import java.nio.ByteBuffer;
-import java.util.HashSet;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
@@ -227,25 +228,29 @@ public class LoadTsFileDispatcherImpl implements IFragInstanceDispatcher {
       final String uuid,
       final boolean isGeneratedByPipe)
       throws IOException {
-    Set<Pair<TEndPoint, TLoadCommandReq>> pairs = new HashSet<>();
+    Map<TEndPoint, TLoadCommandReq> tLoadCommandReqHashMap = new HashMap<>();
     for (TRegionReplicaSet replicaSet : replicaSets) {
-      final TLoadCommandReq loadCommandReq =
-          new TLoadCommandReq(
-              (isFirstPhaseSuccess
-                      ? LoadTsFileScheduler.LoadCommand.EXECUTE
-                      : LoadTsFileScheduler.LoadCommand.ROLLBACK)
-                  .ordinal(),
-              uuid);
-      loadCommandReq.setIsGeneratedByPipe(isGeneratedByPipe);
-      loadCommandReq.setProgressIndex(assignProgressIndex());
+      ByteBuffer progressIndex = assignProgressIndex();
       for (TDataNodeLocation dataNodeLocation : replicaSet.getDataNodeLocations()) {
-        pairs.add(new Pair<>(dataNodeLocation.getInternalEndPoint(), loadCommandReq));
+        TLoadCommandReq req = tLoadCommandReqHashMap.get(dataNodeLocation.getInternalEndPoint());
+        if (req == null) {
+          req =
+              new TLoadCommandReq(
+                  (isFirstPhaseSuccess
+                          ? LoadTsFileScheduler.LoadCommand.EXECUTE
+                          : LoadTsFileScheduler.LoadCommand.ROLLBACK)
+                      .ordinal(),
+                  uuid);
+          req.setIsGeneratedByPipe(isGeneratedByPipe);
+          tLoadCommandReqHashMap.put(dataNodeLocation.getInternalEndPoint(), req);
+        }
+        req.putToProgressIndex(replicaSet.regionId, progressIndex);
       }
     }
 
-    for (Pair<TEndPoint, TLoadCommandReq> pair : pairs) {
-      final TEndPoint endPoint = pair.left;
-      final TLoadCommandReq loadCommandReq = pair.right;
+    for (Map.Entry<TEndPoint, TLoadCommandReq> entry : tLoadCommandReqHashMap.entrySet()) {
+      final TEndPoint endPoint = entry.getKey();
+      final TLoadCommandReq loadCommandReq = entry.getValue();
       try (SetThreadName threadName =
           new SetThreadName(
               "load-dispatcher"
@@ -284,17 +289,19 @@ public class LoadTsFileDispatcherImpl implements IFragInstanceDispatcher {
 
   private void dispatchLocally(TLoadCommandReq loadCommandReq)
       throws FragmentInstanceDispatchException {
-    final ProgressIndex progressIndex;
+    final Map<TConsensusGroupId, ProgressIndex> groupIdProgressIndexMap;
     if (loadCommandReq.isSetProgressIndex()) {
-      progressIndex =
-          ProgressIndexType.deserializeFrom(ByteBuffer.wrap(loadCommandReq.getProgressIndex()));
+      groupIdProgressIndexMap = new HashMap<>(loadCommandReq.getProgressIndex().size());
+      for (Map.Entry<TConsensusGroupId, ByteBuffer> entry :
+          loadCommandReq.getProgressIndex().entrySet()) {
+        groupIdProgressIndexMap.put(
+            entry.getKey(), ProgressIndexType.deserializeFrom(entry.getValue()));
+      }
     } else {
-      // fallback to use local generated progress index for compatibility
-      progressIndex = PipeDataNodeAgent.runtime().getNextProgressIndexForTsFileLoad();
-      LOGGER.info(
-          "Use local generated load progress index {} for uuid {}.",
-          progressIndex,
-          loadCommandReq.uuid);
+      final TSStatus status = new TSStatus();
+      status.setCode(TSStatusCode.LOAD_FILE_ERROR.getStatusCode());
+      status.setMessage("Load command requires progress index");
+      throw new FragmentInstanceDispatchException(status);
     }
 
     final TSStatus resultStatus =
@@ -303,7 +310,7 @@ public class LoadTsFileDispatcherImpl implements IFragInstanceDispatcher {
                 LoadTsFileScheduler.LoadCommand.values()[loadCommandReq.commandType],
                 loadCommandReq.uuid,
                 loadCommandReq.isSetIsGeneratedByPipe() && loadCommandReq.isGeneratedByPipe,
-                progressIndex);
+                groupIdProgressIndexMap);
     if (!RpcUtils.SUCCESS_STATUS.equals(resultStatus)) {
       throw new FragmentInstanceDispatchException(resultStatus);
     }
