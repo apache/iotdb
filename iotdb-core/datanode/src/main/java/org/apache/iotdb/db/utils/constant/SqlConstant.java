@@ -97,6 +97,20 @@ public class SqlConstant {
   public static final String SUBSTRING_IS_STANDARD = "isStandard";
   public static final String SUBSTRING_FOR = "FOR";
 
+  // names of window functions
+  public static final String RANK = "rank";
+  public static final String DENSE_RANK = "dense_rank";
+  public static final String ROW_NUMBER = "row_number";
+  public static final String PERCENT_RANK = "percent_rank";
+  public static final String CUME_DIST = "cume_dist";
+  public static final String NTILE = "ntile";
+  // Duplicate with aggregation function
+  //  public static final String FIRST_VALUE = "first_value";
+  //  public static final String LAST_VALUE = "last_value";
+  public static final String NTH_VALUE = "nth_value";
+  public static final String LEAD = "lead";
+  public static final String LAG = "lag";
+
   public static String[] getSingleRootArray() {
     return SINGLE_ROOT_ARRAY;
   }

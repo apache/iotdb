@@ -475,8 +475,8 @@ public class QueryPlanner {
       Symbol newSymbol =
           symbolAllocator.newSymbol(windowFunction, analysis.getType(windowFunction));
 
-      FunctionCall.NullTreatment nullTreatment = windowFunction.getNullTreatment()
-          .orElse(FunctionCall.NullTreatment.RESPECT);
+      FunctionCall.NullTreatment nullTreatment =
+          windowFunction.getNullTreatment().orElse(FunctionCall.NullTreatment.RESPECT);
 
       WindowNode.Function function =
           new WindowNode.Function(

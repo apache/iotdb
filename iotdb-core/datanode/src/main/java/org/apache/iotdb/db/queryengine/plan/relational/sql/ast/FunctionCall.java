@@ -139,7 +139,8 @@ public class FunctionCall extends Expression {
   }
 
   public enum NullTreatment {
-    IGNORE, RESPECT
+    IGNORE,
+    RESPECT
   }
 
   @Override

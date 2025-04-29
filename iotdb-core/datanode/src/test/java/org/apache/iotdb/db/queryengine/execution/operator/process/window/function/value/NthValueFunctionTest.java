@@ -150,7 +150,8 @@ public class NthValueFunctionTest {
 
   private static TsBlock createTsBlock(int[] inputs, int startOffset, int endOffset, int value) {
     TsBlockBuilder tsBlockBuilder =
-        new TsBlockBuilder(Arrays.asList(TSDataType.INT32, TSDataType.INT32, TSDataType.INT32, TSDataType.INT32));
+        new TsBlockBuilder(
+            Arrays.asList(TSDataType.INT32, TSDataType.INT32, TSDataType.INT32, TSDataType.INT32));
     ColumnBuilder[] columnBuilders = tsBlockBuilder.getValueColumnBuilders();
     for (int input : inputs) {
       if (input >= 0) {

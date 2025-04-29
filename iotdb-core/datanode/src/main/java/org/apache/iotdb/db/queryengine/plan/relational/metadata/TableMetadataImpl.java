@@ -664,6 +664,58 @@ public class TableMetadataImpl implements Metadata {
         // ignore
     }
 
+    // builtin window function
+    // check argument type
+    switch (functionName.toLowerCase(Locale.ENGLISH)) {
+      case SqlConstant.NTILE:
+        if (argumentTypes.size() != 1) {
+          throw new SemanticException(
+              String.format("Window function [%s] should only have one argument", functionName));
+        }
+        break;
+      case SqlConstant.NTH_VALUE:
+        if (argumentTypes.size() != 2 || isIntegerNumber(argumentTypes.get(1))) {
+          throw new SemanticException(
+              "Window function [nth] should only have two argument, and second argument must be integer type");
+        }
+        break;
+        //      case SqlConstant.FIRST_VALUE:
+        //      case SqlConstant.LAST_VALUE:
+      case SqlConstant.LEAD:
+      case SqlConstant.LAG:
+        if (!(argumentTypes.size() >= 1 && argumentTypes.size() <= 3)) {
+          throw new SemanticException(
+              String.format(
+                  "Window function [%s] should only have one to three argument", functionName));
+        }
+        if (argumentTypes.size() >= 2 && !isIntegerNumber(argumentTypes.get(1))) {
+          throw new SemanticException(
+              String.format(
+                  "Window function [%s]'s second argument must be integer type", functionName));
+        }
+        break;
+      default:
+        // ignore
+    }
+
+    // get return type
+    switch (functionName.toLowerCase(Locale.ENGLISH)) {
+      case SqlConstant.RANK:
+      case SqlConstant.DENSE_RANK:
+      case SqlConstant.ROW_NUMBER:
+      case SqlConstant.NTILE:
+        return INT64;
+      case SqlConstant.PERCENT_RANK:
+      case SqlConstant.CUME_DIST:
+        return DOUBLE;
+      case SqlConstant.NTH_VALUE:
+      case SqlConstant.LEAD:
+      case SqlConstant.LAG:
+        return argumentTypes.get(0);
+      default:
+        // ignore
+    }
+
     // User-defined scalar function
     if (TableUDFUtils.isScalarFunction(functionName)) {
       ScalarFunction scalarFunction = TableUDFUtils.getScalarFunction(functionName);

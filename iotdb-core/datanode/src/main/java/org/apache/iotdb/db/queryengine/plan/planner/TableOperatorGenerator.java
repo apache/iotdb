@@ -248,7 +248,10 @@ import static org.apache.iotdb.db.queryengine.plan.planner.OperatorTreeGenerator
 import static org.apache.iotdb.db.queryengine.plan.planner.OperatorTreeGenerator.getLinearFill;
 import static org.apache.iotdb.db.queryengine.plan.planner.OperatorTreeGenerator.getPreviousFill;
 import static org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.SeriesScanOptions.updateFilterUsingTTL;
+import static org.apache.iotdb.db.queryengine.plan.relational.planner.SortOrder.ASC_NULLS_FIRST;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.SortOrder.ASC_NULLS_LAST;
+import static org.apache.iotdb.db.queryengine.plan.relational.planner.SortOrder.DESC_NULLS_FIRST;
+import static org.apache.iotdb.db.queryengine.plan.relational.planner.SortOrder.DESC_NULLS_LAST;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.ir.GlobalTimePredicateExtractVisitor.isTimeColumn;
 import static org.apache.iotdb.db.queryengine.plan.relational.type.InternalTypeManager.getTSDataType;
 import static org.apache.iotdb.db.utils.constant.SqlConstant.AVG;
@@ -2481,11 +2484,11 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
 
     // Sort channel
     List<Integer> sortChannels = ImmutableList.of();
-    //    List<SortOrder> sortOrder = ImmutableList.of();
+    List<SortOrder> sortOrder = ImmutableList.of();
     if (node.getSpecification().getOrderingScheme().isPresent()) {
       OrderingScheme orderingScheme = node.getSpecification().getOrderingScheme().get();
       sortChannels = getChannelsForSymbols(orderingScheme.getOrderBy(), childLayout);
-      //      sortOrder = orderingScheme.getOrderingList();
+      sortOrder = orderingScheme.getOrderingList();
     }
 
     // Output channel
@@ -2529,19 +2532,19 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
       Optional<SortOrder> ordering = Optional.empty();
       if (node.getSpecification().getOrderingScheme().isPresent()) {
         sortKeyChannel = Optional.of(sortChannels.get(0));
-        //        if (sortOrder.get(0).isNullsFirst()) {
-        //          if (sortOrder.get(0).isAscending()) {
-        //            ordering = Optional.of(ASC_NULLS_FIRST);
-        //          } else {
-        //            ordering = Optional.of(DESC_NULLS_FIRST);
-        //          }
-        //        } else {
-        //          if (sortOrder.get(0).isAscending()) {
-        //            ordering = Optional.of(ASC_NULLS_LAST);
-        //          } else {
-        //            ordering = Optional.of(DESC_NULLS_LAST);
-        //          }
-        //        }
+        if (sortOrder.get(0).isNullsFirst()) {
+          if (sortOrder.get(0).isAscending()) {
+            ordering = Optional.of(ASC_NULLS_FIRST);
+          } else {
+            ordering = Optional.of(DESC_NULLS_FIRST);
+          }
+        } else {
+          if (sortOrder.get(0).isAscending()) {
+            ordering = Optional.of(ASC_NULLS_LAST);
+          } else {
+            ordering = Optional.of(DESC_NULLS_LAST);
+          }
+        }
       }
       FrameInfo frameInfo =
           new FrameInfo(
@@ -2578,7 +2581,8 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
       } else if (functionKind == FunctionKind.WINDOW) {
         String functionName = function.getResolvedFunction().getSignature().getName();
         windowFunction =
-            WindowFunctionFactory.createBuiltinWindowFunction(functionName, argumentChannels, function.isIgnoreNulls());
+            WindowFunctionFactory.createBuiltinWindowFunction(
+                functionName, argumentChannels, function.isIgnoreNulls());
       } else {
         throw new UnsupportedOperationException("Unsupported function kind: " + functionKind);
       }

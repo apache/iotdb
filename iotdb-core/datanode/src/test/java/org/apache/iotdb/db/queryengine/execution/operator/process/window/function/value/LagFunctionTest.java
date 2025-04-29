@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.queryengine.execution.operator.process.window.function.value;
 
-import org.apache.iotdb.db.queryengine.execution.operator.process.window.TableWindowOperatorTestUtils;
 import org.apache.iotdb.db.queryengine.execution.operator.process.window.function.FunctionTestUtils;
 import org.apache.iotdb.db.queryengine.execution.operator.process.window.partition.PartitionExecutor;
 
@@ -80,7 +79,7 @@ public class LagFunctionTest {
     int[] expected = {10, 10, 10, 10, 0, 1, 1, 2, 3, 3, 4, 5, 5, 5, 5, 5};
 
     TsBlock tsBlock = createTsBlockWithDefault(inputs, 2, 10);
-    LagFunction function = new LagFunction(Arrays.asList(0 ,1, 2), true);
+    LagFunction function = new LagFunction(Arrays.asList(0, 1, 2), true);
     PartitionExecutor partitionExecutor =
         FunctionTestUtils.createPartitionExecutor(tsBlock, inputDataTypes, function);
 
@@ -159,7 +158,8 @@ public class LagFunctionTest {
   }
 
   private static TsBlock createTsBlockWithDefault(int[] inputs, int offset, int defaultValue) {
-    TsBlockBuilder tsBlockBuilder = new TsBlockBuilder(Arrays.asList(TSDataType.INT32, TSDataType.INT32, TSDataType.INT32));
+    TsBlockBuilder tsBlockBuilder =
+        new TsBlockBuilder(Arrays.asList(TSDataType.INT32, TSDataType.INT32, TSDataType.INT32));
     ColumnBuilder[] columnBuilders = tsBlockBuilder.getValueColumnBuilders();
     for (int input : inputs) {
       if (input >= 0) {
@@ -178,7 +178,8 @@ public class LagFunctionTest {
   }
 
   private static TsBlock createTsBlockWithoutDefault(int[] inputs, int offset) {
-    TsBlockBuilder tsBlockBuilder = new TsBlockBuilder(Arrays.asList(TSDataType.INT32, TSDataType.INT32));
+    TsBlockBuilder tsBlockBuilder =
+        new TsBlockBuilder(Arrays.asList(TSDataType.INT32, TSDataType.INT32));
     ColumnBuilder[] columnBuilders = tsBlockBuilder.getValueColumnBuilders();
     for (int input : inputs) {
       if (input >= 0) {

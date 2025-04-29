@@ -127,7 +127,8 @@ public class NTileFunctionTest {
   }
 
   private static TsBlock createTsBlockWithN(int[] inputs, int n) {
-    TsBlockBuilder tsBlockBuilder = new TsBlockBuilder(Arrays.asList(TSDataType.INT32, TSDataType.INT32));
+    TsBlockBuilder tsBlockBuilder =
+        new TsBlockBuilder(Arrays.asList(TSDataType.INT32, TSDataType.INT32));
     ColumnBuilder[] columnBuilders = tsBlockBuilder.getValueColumnBuilders();
     for (int input : inputs) {
       columnBuilders[0].writeInt(input);

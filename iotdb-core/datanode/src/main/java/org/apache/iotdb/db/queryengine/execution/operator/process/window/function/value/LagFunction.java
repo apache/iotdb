@@ -48,7 +48,7 @@ public class LagFunction extends ValueWindowFunction {
       return;
     }
 
-    int offset = offsetChannel >= 0? partition.getInt(offsetChannel, index) : 1;
+    int offset = offsetChannel >= 0 ? partition.getInt(offsetChannel, index) : 1;
 
     int pos;
     if (ignoreNull) {
@@ -81,7 +81,8 @@ public class LagFunction extends ValueWindowFunction {
     }
   }
 
-  private void writeDefaultValue(Partition partition, int defaultValChannel, int index, ColumnBuilder builder) {
+  private void writeDefaultValue(
+      Partition partition, int defaultValChannel, int index, ColumnBuilder builder) {
     TSDataType dataType = builder.getDataType();
     switch (dataType) {
       case INT32:
@@ -106,7 +107,8 @@ public class LagFunction extends ValueWindowFunction {
         builder.writeBinary(partition.getBinary(defaultValChannel, index));
         return;
       default:
-        throw new UnSupportedDataTypeException("Unsupported default value's data type in Lag: " + dataType);
+        throw new UnSupportedDataTypeException(
+            "Unsupported default value's data type in Lag: " + dataType);
     }
   }
 

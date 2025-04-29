@@ -66,6 +66,7 @@ public class RowComparator {
         }
         break;
       case INT64:
+      case TIMESTAMP:
         long long1 = column.getLong(offset1);
         long long2 = column.getLong(offset2);
         if (long1 != long2) {
@@ -134,6 +135,7 @@ public class RowComparator {
         }
         break;
       case INT64:
+      case TIMESTAMP:
         long long1 = column.getLong(offset1);
         long long2 = column.getLong(offset2);
         if (long1 != long2) {
@@ -190,6 +192,7 @@ public class RowComparator {
           }
           break;
         case INT64:
+        case TIMESTAMP:
           long long1 = column1.getLong(offset1);
           long long2 = column2.getLong(offset2);
           if (long1 != long2) {

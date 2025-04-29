@@ -2510,8 +2510,7 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
     if (nullTreatment != null) {
       if (nullTreatment.IGNORE() != null) {
         nulls = Optional.of(FunctionCall.NullTreatment.IGNORE);
-      }
-      else if (nullTreatment.RESPECT() != null) {
+      } else if (nullTreatment.RESPECT() != null) {
         nulls = Optional.of(FunctionCall.NullTreatment.RESPECT);
       }
     }
