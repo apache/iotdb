@@ -148,9 +148,8 @@ public class ForecastTableFunction implements TableFunction {
 
   private static final String INPUT_PARAMETER_NAME = "INPUT";
   private static final String MODEL_ID_PARAMETER_NAME = "MODEL_ID";
-  private static final String INPUT_LENGTH_PARAMETER_NAME = "INPUT_LENGTH";
   private static final String OUTPUT_LENGTH_PARAMETER_NAME = "OUTPUT_LENGTH";
-  private static final Long DEFAULT_OUTPUT_LENGTH = 96L;
+  private static final int DEFAULT_OUTPUT_LENGTH = 96;
   private static final String PREDICATED_COLUMNS_PARAMETER_NAME = "PREDICATED_COLUMNS";
   private static final String DEFAULT_PREDICATED_COLUMNS = "";
   private static final String TIMECOL_PARAMETER_NAME = "TIMECOL";
@@ -179,10 +178,6 @@ public class ForecastTableFunction implements TableFunction {
         ScalarParameterSpecification.builder()
             .name(MODEL_ID_PARAMETER_NAME)
             .type(Type.STRING)
-            .build(),
-        ScalarParameterSpecification.builder()
-            .name(INPUT_LENGTH_PARAMETER_NAME)
-            .type(Type.INT32)
             .build(),
         ScalarParameterSpecification.builder()
             .name(OUTPUT_LENGTH_PARAMETER_NAME)
@@ -363,6 +358,9 @@ public class ForecastTableFunction implements TableFunction {
   }
 
   private static Map<String, String> parseOptions(String options) {
+    if (options.isEmpty()) {
+      return Collections.emptyMap();
+    }
     String[] optionArray = options.split(",");
     if (optionArray.length == 0) {
       throw new SemanticException(String.format(INVALID_OPTIONS_FORMAT, options));
@@ -473,7 +471,7 @@ public class ForecastTableFunction implements TableFunction {
       long endTime = inputRecords.getLast().getLong(0);
       long interval = (endTime - startTime) / inputRecords.size();
       for (int i = 0; i < outputLength; i++) {
-        properColumnBuilders.get(0).writeLong(endTime + interval * i);
+        properColumnBuilders.get(0).writeLong(endTime + interval * (i + 1));
       }
 
       // predicated columns

@@ -16,49 +16,20 @@
 # under the License.
 #
 import pandas as pd
-from torch import tensor
-
+import torch
 from ainode.core.constant import TSStatusCode
 from ainode.core.exception import InvalidWindowArgumentError, InferenceModelInternalError, runtime_error_extractor
 from ainode.core.log import Logger
 from ainode.core.manager.model_manager import ModelManager
 from ainode.core.util.serde import convert_to_binary, convert_to_df
 from ainode.core.util.status import get_status
-from ainode.thrift.ainode.ttypes import TInferenceReq, TInferenceResp
+from ainode.thrift.ainode.ttypes import TInferenceReq, TInferenceResp, TForecastReq, TForecastResp
+
+from iotdb.tsfile.utils.tsblock_serde import deserialize
+
+from exception import UnsupportedError
 
 logger = Logger()
-
-
-class InferenceManager:
-    @staticmethod
-    def inference(req: TInferenceReq, model_manager: ModelManager):
-        logger.info(f"start inference registered model {req.modelId}")
-        try:
-            model_id, full_data, window_interval, window_step, inference_attributes = _parse_inference_request(req)
-
-            if model_id.startswith('_'):
-                # built-in models
-                logger.info(f"start inference built-in model {model_id}")
-                # parse the inference attributes and create the built-in model
-                model = _get_built_in_model(model_id, model_manager, inference_attributes)
-                inference_results = _inference_with_built_in_model(
-                    model, full_data)
-            else:
-                # user-registered models
-                model = _get_model(model_id, model_manager, inference_attributes)
-                inference_results = _inference_with_registered_model(
-                    model, full_data, window_interval, window_step)
-            for i in range(len(inference_results)):
-                inference_results[i] = convert_to_binary(inference_results[i])
-            return TInferenceResp(
-                get_status(
-                    TSStatusCode.SUCCESS_STATUS),
-                inference_results)
-        except Exception as e:
-            logger.warning(e)
-            inference_results = []
-            return TInferenceResp(get_status(TSStatusCode.AINODE_INTERNAL_ERROR, str(e)), inference_results)
-
 
 def _process_data(full_data):
     """
@@ -83,11 +54,70 @@ def _process_data(full_data):
             data[data.columns[i]] = 0
         elif type_list[i] == "BOOLEAN":
             data[data.columns[i]] = data[data.columns[i]].astype("int")
-    data = tensor(data.values).unsqueeze(0)
+    data = torch.tensor(data.values).unsqueeze(0)
     return data, data_length
 
 
-def _inference_with_registered_model(model, full_data, window_interval, window_step):
+class InferenceManager:
+
+    @staticmethod
+    def forecast(req: TForecastReq, model_manager:ModelManager):
+        model_id = req.modelId
+        logger.info(f"start to forcast by model {model_id}")
+        try:
+            # output_length
+            data = deserialize(req.inputData)
+            if model_id.startswith('_'):
+                # Currently built_in model is not supported in forecast for table model
+                raise UnsupportedError("Built-in model is not supported here.")
+            else:
+                # user-registered models
+                model = _get_model(model_id, model_manager, req.options)
+                _, dataset, _, dataset_length = data
+                dataset = torch.tensor(dataset, dtype=torch.float).unsqueeze(2)
+                inference_results = _inference_with_registered_model(
+                    model, dataset, dataset_length, dataset_length, float('inf'))
+                inference_result = convert_to_binary(inference_results[0])
+            return TForecastResp(
+                get_status(TSStatusCode.SUCCESS_STATUS),
+                inference_result
+            )
+        except Exception as e:
+            logger.warning(e)
+            inference_results = []
+            return TInferenceResp(get_status(TSStatusCode.AINODE_INTERNAL_ERROR, str(e)), inference_results)
+
+    @staticmethod
+    def inference(req: TInferenceReq, model_manager: ModelManager):
+        logger.info(f"start inference registered model {req.modelId}")
+        try:
+            model_id, full_data, window_interval, window_step, inference_attributes = _parse_inference_request(req)
+
+            if model_id.startswith('_'):
+                # built-in models
+                logger.info(f"start inference built-in model {model_id}")
+                # parse the inference attributes and create the built-in model
+                model = _get_built_in_model(model_id, model_manager, inference_attributes)
+                inference_results = _inference_with_built_in_model(
+                    model, full_data)
+            else:
+                # user-registered models
+                model = _get_model(model_id, model_manager, inference_attributes)
+                dataset, dataset_length = _process_data(full_data)
+                inference_results = _inference_with_registered_model(
+                    model, dataset, dataset_length, window_interval, window_step)
+            for i in range(len(inference_results)):
+                inference_results[i] = convert_to_binary(inference_results[i])
+            return TInferenceResp(
+                get_status(
+                    TSStatusCode.SUCCESS_STATUS),
+                inference_results)
+        except Exception as e:
+            logger.warning(e)
+            inference_results = []
+            return TInferenceResp(get_status(TSStatusCode.AINODE_INTERNAL_ERROR, str(e)), inference_results)
+
+def _inference_with_registered_model(model, dataset, dataset_length, window_interval, window_step):
     """
     Args:
         model: the user-defined model
@@ -108,8 +138,6 @@ def _inference_with_registered_model(model, full_data, window_interval, window_s
         of variables in the output DataFrame. Then the inference module will concatenate all the output DataFrames into
         a list.
     """
-
-    dataset, dataset_length = _process_data(full_data)
 
     # check the validity of window_interval and window_step, the two arguments must be positive integers, and the
     # window_interval should not be larger than the dataset length
