@@ -320,6 +320,18 @@ public class PipeConnectorSubtask extends PipeAbstractConnectorSubtask {
         : 0;
   }
 
+  public double getTotalUncompressedSize() {
+    return outputPipeConnector instanceof IoTDBConnector
+        ? ((IoTDBConnector) outputPipeConnector).getTotalUncompressedSize()
+        : 0;
+  }
+
+  public double getTotalCompressedSize() {
+    return outputPipeConnector instanceof IoTDBConnector
+        ? ((IoTDBConnector) outputPipeConnector).getTotalCompressedSize()
+        : 0;
+  }
+
   //////////////////////////// Error report ////////////////////////////
 
   @Override

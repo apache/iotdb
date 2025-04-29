@@ -164,6 +164,9 @@ public abstract class IoTDBConnector implements PipeConnector {
   protected boolean shouldReceiverConvertOnTypeMismatch =
       CONNECTOR_EXCEPTION_DATA_CONVERT_ON_TYPE_MISMATCH_DEFAULT_VALUE;
 
+  private long totalUncompressedSize;
+  private long totalCompressedSize;
+
   @Override
   public void validate(final PipeParameterValidator validator) throws Exception {
     final PipeParameters parameters = validator.getParameters();
@@ -496,16 +499,30 @@ public abstract class IoTDBConnector implements PipeConnector {
     PIPE_END_POINT_RATE_LIMITER_MAP.clear();
   }
 
-  protected TPipeTransferReq compressIfNeeded(final TPipeTransferReq req) throws IOException {
-    return isRpcCompressionEnabled
-        ? PipeTransferCompressedReq.toTPipeTransferReq(req, compressors)
-        : req;
+  protected TPipeTransferReq compressIfNeeded(TPipeTransferReq req) throws IOException {
+    totalUncompressedSize += req.body.array().length + 3;
+    if (isRpcCompressionEnabled) {
+      req = PipeTransferCompressedReq.toTPipeTransferReq(req, compressors);
+    }
+    totalCompressedSize += req.body.array().length + 3;
+    return req;
   }
 
-  protected byte[] compressIfNeeded(final byte[] reqInBytes) throws IOException {
-    return isRpcCompressionEnabled
-        ? PipeTransferCompressedReq.toTPipeTransferReqBytes(reqInBytes, compressors)
-        : reqInBytes;
+  protected byte[] compressIfNeeded(byte[] reqInBytes) throws IOException {
+    totalUncompressedSize += reqInBytes.length;
+    if (isRpcCompressionEnabled) {
+      reqInBytes = PipeTransferCompressedReq.toTPipeTransferReqBytes(reqInBytes, compressors);
+    }
+    totalCompressedSize += reqInBytes.length;
+    return reqInBytes;
+  }
+
+  public long getTotalCompressedSize() {
+    return totalCompressedSize;
+  }
+
+  public long getTotalUncompressedSize() {
+    return totalUncompressedSize;
   }
 
   public boolean isRpcCompressionEnabled() {

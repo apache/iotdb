@@ -143,6 +143,8 @@ public enum Metric {
   UNTRANSFERRED_HEARTBEAT_COUNT("untransferred_heartbeat_count"),
   BATCH_SIZE("batch_size"),
   PENDING_HANDLERS_SIZE("pending_handlers_size"),
+  TOTAL_UNCOMPRESSED_SIZE("total_uncompressed_size"),
+  TOTAL_COMPRESSED_SIZE("total_compressed_size"),
   PIPE_DATANODE_RECEIVER("pipe_datanode_receiver"),
   PIPE_CONFIGNODE_RECEIVER("pipe_confignode_receiver"),
   PIPE_EXTRACTOR_TABLET_SUPPLY("pipe_extractor_tablet_supply"),
