@@ -814,9 +814,6 @@ public class PartitionCache {
       final Map<TConsensusGroupId, HashSet<TimeSlotRegionInfo>> consensusGroupToTimeSlotMap =
           new HashMap<>();
 
-      Map<String, Map<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TRegionReplicaSet>>>>
-          dataPartitionMap = new HashMap<>();
-
       for (Map.Entry<String, List<DataPartitionQueryParam>> entry :
           databaseToQueryParamsMap.entrySet()) {
         String databaseName = entry.getKey();
@@ -839,9 +836,6 @@ public class PartitionCache {
 
         Map<TSeriesPartitionSlot, SeriesPartitionTable> cachedDatabasePartitionMap =
             dataPartitionTable.getDataPartitionMap();
-        Map<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TRegionReplicaSet>>>
-            seriesSlotToTimePartitionMap =
-                dataPartitionMap.computeIfAbsent(databaseName, k -> new HashMap<>());
 
         for (DataPartitionQueryParam param : params) {
           TSeriesPartitionSlot seriesPartitionSlot;
@@ -866,7 +860,6 @@ public class PartitionCache {
 
           Map<TTimePartitionSlot, List<TConsensusGroupId>> cachedTimePartitionSlot =
               cachedSeriesPartitionTable.getSeriesPartitionMap();
-          seriesSlotToTimePartitionMap.computeIfAbsent(seriesPartitionSlot, k -> new HashMap<>());
 
           if (param.getTimePartitionSlotList().isEmpty()) {
             return null;
@@ -900,13 +893,16 @@ public class PartitionCache {
       final List<TConsensusGroupId> consensusGroupIds = new ArrayList<>(allConsensusGroupIds);
       final List<TRegionReplicaSet> allRegionReplicaSets = getRegionReplicaSet(consensusGroupIds);
 
+      Map<String, Map<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TRegionReplicaSet>>>>
+          dataPartitionMap = new HashMap<>();
+
       for (int i = 0; i < allRegionReplicaSets.size(); i++) {
         TConsensusGroupId groupId = consensusGroupIds.get(i);
         TRegionReplicaSet replicaSet = allRegionReplicaSets.get(i);
 
         for (TimeSlotRegionInfo info : consensusGroupToTimeSlotMap.get(groupId)) {
           dataPartitionMap
-              .get(info.databaseName)
+              .computeIfAbsent(info.databaseName, k -> new HashMap<>())
               .computeIfAbsent(info.seriesPartitionSlot, k -> new HashMap<>())
               .computeIfAbsent(info.timePartitionSlot, k -> new ArrayList<>())
               .add(replicaSet);
