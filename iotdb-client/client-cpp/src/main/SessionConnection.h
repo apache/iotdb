@@ -26,7 +26,7 @@
 #include "IClientRPCService.h"
 #include "common_types.h"
 #include "NodesSupplier.h"
-#include "Enums.h"
+#include "Common.h"
 
 class SessionDataSet;
 class Session;
@@ -51,23 +51,150 @@ public:
 
     void init(const TEndPoint& endpoint);
 
-    void insertRecord(const std::string &deviceId, int64_t time,
-                           const std::vector<std::string> &measurements,
-                           const std::vector<std::string> &values);
+    void insertStringRecord(const TSInsertStringRecordReq& request) {
+        auto rpc = [this, request]() {
+            return this->insertStringRecordInternal(request);
+        };
+        callWithRetryAndVerifyWithRedirection<TSStatus>(rpc);
+    }
 
-    void insertRecord(const std::string &prefixPath, int64_t time,
-                           const std::vector<std::string> &measurements,
-                           const std::vector<TSDataType::TSDataType> &types,
-                           const std::vector<char *> &values);
+    TSStatus insertStringRecordInternal(TSInsertStringRecordReq request) {
+        request.sessionId = sessionId;
+        TSStatus ret;
+        client->insertStringRecord(ret, request);
+        return ret;
+    }
 
-    void insertAlignedRecord(const std::string &deviceId, int64_t time,
-                                  const std::vector<std::string> &measurements,
-                                  const std::vector<std::string> &values);
+    void insertRecord(const TSInsertRecordReq& request) {
+        auto rpc = [this, request]() {
+            return this->insertRecordInternal(request);
+        };
+        callWithRetryAndVerifyWithRedirection<TSStatus>(rpc);
+    }
 
-    void insertAlignedRecord(const std::string &prefixPath, int64_t time,
-                                  const std::vector<std::string> &measurements,
-                                  const std::vector<TSDataType::TSDataType> &types,
-                                  const std::vector<char *> &values);
+    TSStatus insertRecordInternal(TSInsertRecordReq request) {
+        request.sessionId = sessionId;
+        TSStatus ret;
+        client->insertRecord(ret, request);
+        return ret;
+    }
+
+    void insertStringRecords(const TSInsertStringRecordsReq& request) {
+        auto rpc = [this, request]() {
+            return this->insertStringRecordsInternal(request);
+        };
+        callWithRetryAndVerifyWithRedirection<TSStatus>(rpc);
+    }
+
+    TSStatus insertStringRecordsInternal(TSInsertStringRecordsReq request) {
+        request.sessionId = sessionId;
+        TSStatus ret;
+        client->insertStringRecords(ret, request);
+        return ret;
+    }
+
+    void insertRecords(const TSInsertRecordsReq& request) {
+        auto rpc = [this, request]() {
+            return this->insertRecordsInternal(request);
+        };
+        callWithRetryAndVerifyWithRedirection<TSStatus>(rpc);
+    }
+
+    TSStatus insertRecordsInternal(TSInsertRecordsReq request) {
+        request.sessionId = sessionId;
+        TSStatus ret;
+        client->insertRecords(ret, request);
+        return ret;
+    }
+
+    void insertRecordsOfOneDevice(TSInsertRecordsOfOneDeviceReq request) {
+        auto rpc = [this, request]() {
+            return this->insertRecordsOfOneDeviceInternal(request);
+        };
+        callWithRetryAndVerifyWithRedirection<TSStatus>(rpc);
+    }
+
+    TSStatus insertRecordsOfOneDeviceInternal(TSInsertRecordsOfOneDeviceReq request) {
+        request.sessionId = sessionId;
+        TSStatus ret;
+        client->insertRecordsOfOneDevice(ret, request);
+        return ret;
+    }
+
+    void insertStringRecordsOfOneDevice(TSInsertStringRecordsOfOneDeviceReq request) {
+        auto rpc = [this, request]() {
+            return this->insertStringRecordsOfOneDeviceInternal(request);
+        };
+        callWithRetryAndVerifyWithRedirection<TSStatus>(rpc);
+    }
+
+    TSStatus insertStringRecordsOfOneDeviceInternal(TSInsertStringRecordsOfOneDeviceReq request){
+        request.sessionId = sessionId;
+        TSStatus ret;
+        client->insertStringRecordsOfOneDevice(ret, request);
+        return ret;
+    }
+
+    void insertTablet(TSInsertTabletReq request) {
+        auto rpc = [this, request]() {
+            return this->insertTabletInternal(request);
+        };
+        callWithRetryAndVerifyWithRedirection<TSStatus>(rpc);
+    }
+
+    TSStatus insertTabletInternal(TSInsertTabletReq request) {
+        request.sessionId = sessionId;
+        TSStatus ret;
+        client->insertTablet(ret, request);
+        return ret;
+    }
+
+    void insertTablets(TSInsertTabletsReq request) {
+        auto rpc = [this, request]() {
+            return this->insertTabletsInternal(request);
+        };
+        callWithRetryAndVerifyWithRedirection<TSStatus>(rpc);
+    }
+
+    TSStatus insertTabletsInternal(TSInsertTabletsReq request) {
+        request.sessionId = sessionId;
+        TSStatus ret;
+        client->insertTablets(ret, request);
+        return ret;
+    }
+
+    void testInsertStringRecord(TSInsertStringRecordReq& request) {
+        auto rpc = [this, &request]() {
+            request.sessionId = sessionId;
+            TSStatus ret;
+            client->testInsertStringRecord(ret, request);
+            return ret;
+        };
+        auto status = callWithRetryAndReconnect<TSStatus>(rpc).getResult();
+        RpcUtils::verifySuccess(status);
+    }
+
+    void testInsertTablet(TSInsertTabletReq& request) {
+        auto rpc = [this, &request]() {
+            request.sessionId = sessionId;
+            TSStatus ret;
+            client->testInsertTablet(ret, request);
+            return ret;
+        };
+        auto status = callWithRetryAndReconnect<TSStatus>(rpc).getResult();
+        RpcUtils::verifySuccess(status);
+    }
+
+    void testInsertRecords(TSInsertRecordsReq& request) {
+        auto rpc = [this, &request]() {
+            request.sessionId = sessionId;
+            TSStatus ret;
+            client->testInsertRecords(ret, request);
+            return ret;
+        };
+        auto status = callWithRetryAndReconnect<TSStatus>(rpc).getResult();
+        RpcUtils::verifySuccess(status);
+    }
 
     std::unique_ptr<SessionDataSet> executeRawDataQuery(const std::vector<std::string> &paths, int64_t startTime, int64_t endTime);
 
@@ -81,12 +208,179 @@ public:
         return client;
     }
 
+    friend class Session;
+
 private:
     void close();
     std::string getSystemDefaultZoneId();
     bool reconnect();
 
-    std::shared_ptr<apache::thrift::transport::TTransport> transport;
+    template<typename T>
+    struct RetryResult {
+        T result;
+        std::exception_ptr exception;
+        int retryAttempts;
+
+        RetryResult(T r, std::exception_ptr e, int a)
+            : result(r), exception(e), retryAttempts(a) {}
+
+        int getRetryAttempts() const {return retryAttempts;}
+        T getResult() const { return result; }
+        std::exception_ptr getException() const { return exception; }
+    };
+
+    template<typename T>
+    void callWithRetryAndVerifyWithRedirection(std::function<T()> rpc) {
+        auto result = callWithRetry<T>(rpc);
+
+        auto status = result.getResult();
+        if (result.getRetryAttempts() == 0) {
+            RpcUtils::verifySuccessWithRedirection(status);
+        } else {
+            RpcUtils::verifySuccess(status);
+        }
+
+        if (result.getException()) {
+            try {
+                std::rethrow_exception(result.getException());
+            } catch (const std::exception& e) {
+                throw IoTDBConnectionException(e.what());
+            }
+        }
+    }
+
+    template<typename T>
+    void callWithRetryAndVerifyWithRedirectionForMultipleDevices(
+        std::function<T()> rpc, const vector<string>& deviceIds) {
+            auto result = callWithRetry<T>(rpc);
+
+            auto status = result.getResult();
+            if (result.getRetryAttempts() == 0) {
+                RpcUtils::verifySuccessWithRedirectionForMultiDevices(status, deviceIds);
+            } else {
+                RpcUtils::verifySuccess(status);
+            }
+
+            if (result.getException()) {
+                try {
+                    std::rethrow_exception(result.getException());
+                } catch (const std::exception& e) {
+                    throw IoTDBConnectionException(e.what());
+                }
+            }
+    }
+
+    template<typename T>
+    RetryResult<T> callWithRetryAndVerify(std::function<T()> rpc) {
+        auto result = callWithRetry<T>(rpc);
+        RpcUtils::verifySuccess(result.getResult());
+        if (result.getException()) {
+            try {
+                std::rethrow_exception(result.getException());
+            } catch (const std::exception& e) {
+                throw IoTDBConnectionException(e.what());
+            }
+        }
+    }
+
+    template<typename T>
+    RetryResult<T> callWithRetry(std::function<T()> rpc) {
+        std::exception_ptr lastException = nullptr;
+        TSStatus status;
+        int i;
+        for (i = 0; i <= maxRetryCount; i++) {
+            if (i > 0) {
+                lastException = nullptr;
+                status = TSStatus();
+                try {
+                    std::this_thread::sleep_for(
+                        std::chrono::milliseconds(retryIntervalMs));
+                } catch (const std::exception& e) {
+                    break;
+                }
+                if (!reconnect()) {
+                    continue;
+                }
+            }
+
+            try {
+                status = rpc();
+                if (status.__isset.needRetry && status.needRetry) {
+                    continue;
+                }
+                break;
+            } catch (...) {
+                lastException = std::current_exception();
+            }
+        }
+        return {status, lastException, i};
+    }
+
+    template <typename T, typename RpcFunc>
+    RetryResult<T> callWithRetryAndReconnect(RpcFunc rpc) {
+         return callWithRetryAndReconnect<T>(
+            std::move(rpc),
+            [](const TSStatus& status) { return status.__isset.needRetry && status.needRetry; },
+            [](const TSStatus& status) { return status.code == TSStatusCode::PLAN_FAILED_NETWORK_PARTITION; }
+        );
+    }
+
+    template <typename T, typename RpcFunc, typename StatusGetter>
+    RetryResult<T> callWithRetryAndReconnect(RpcFunc rpc, StatusGetter statusGetter) {
+        auto shouldRetry = [&statusGetter](const T& t) {
+            auto status = statusGetter(t);
+            return status.__isset.needRetry && status.needRetry;
+        };
+        auto forceReconnect = [&statusGetter](const T& t) {
+            auto status = statusGetter(t);
+            return status.code == TSStatusCode::PLAN_FAILED_NETWORK_PARTITION;;
+        };
+        return callWithRetryAndReconnect<T>(rpc, shouldRetry, forceReconnect);
+    }
+
+    template <typename T, typename RpcFunc, typename ShouldRetry, typename ForceReconnect>
+    RetryResult<T> callWithRetryAndReconnect(RpcFunc rpc,
+                                            ShouldRetry shouldRetry,
+                                            ForceReconnect forceReconnect) {
+        std::exception_ptr lastException = nullptr;
+        T result;
+        int retryAttempt;
+        for (retryAttempt = 0; retryAttempt <= maxRetryCount; retryAttempt++) {
+            try {
+                result = rpc();
+                lastException = nullptr;
+            } catch (...) {
+                result = T();
+                lastException = std::current_exception();
+            }
+
+            if (!shouldRetry(result)) {
+                return {result, lastException, retryAttempt};
+            }
+
+            if (lastException != nullptr ||
+                std::find(availableNodes->getEndPointList().begin(), availableNodes->getEndPointList().end(),
+                    this->endPoint) == availableNodes->getEndPointList().end() ||
+                    forceReconnect(result)) {
+                reconnect();
+                    }
+
+            try {
+                std::this_thread::sleep_for(std::chrono::milliseconds(retryIntervalMs));
+            } catch (const std::exception& e) {
+                log_debug("Thread was interrupted during retry " +
+                          std::to_string(retryAttempt) +
+                          " with wait time " +
+                          std::to_string(retryIntervalMs) +
+                          " ms. Exiting retry loop.");
+                break;
+            }
+        }
+
+        return {result, lastException, retryAttempt};
+    }
+
+    std::shared_ptr<TTransport> transport;
     std::shared_ptr<IClientRPCServiceClient> client;
     Session* session;
     int64_t sessionId;

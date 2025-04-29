@@ -204,8 +204,12 @@
                                     <destinationFile>${project.build.directory}/build/main/generated-sources-cpp/AbstractSessionBuilder.h</destinationFile>
                                 </fileSet>
                                 <fileSet>
-                                    <sourceFile>${project.basedir}/src/main/Enums.h</sourceFile>
-                                    <destinationFile>${project.build.directory}/build/main/generated-sources-cpp/Enums.h</destinationFile>
+                                    <sourceFile>${project.basedir}/src/main/Common.h</sourceFile>
+                                    <destinationFile>${project.build.directory}/build/main/generated-sources-cpp/Common.h</destinationFile>
+                                </fileSet>
+                                <fileSet>
+                                    <sourceFile>${project.basedir}/src/main/Common.cc</sourceFile>
+                                    <destinationFile>${project.build.directory}/build/main/generated-sources-cpp/Common.cc</destinationFile>
                                 </fileSet>
                                 <fileSet>
                                     <sourceFile>${project.basedir}/src/main/DeviceID.h</sourceFile>

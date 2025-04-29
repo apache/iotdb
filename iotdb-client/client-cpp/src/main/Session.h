@@ -32,6 +32,7 @@
 #include <thread>
 #include <stdexcept>
 #include <cstdlib>
+#include <future>
 #include <thrift/protocol/TBinaryProtocol.h>
 #include <thrift/protocol/TCompactProtocol.h>
 #include <thrift/transport/TSocket.h>
@@ -42,7 +43,7 @@
 #include "AbstractSessionBuilder.h"
 #include "SessionConnection.h"
 #include "DeviceID.h"
-#include "Enums.h"
+#include "Common.h"
 
 //== For compatible with Windows OS ==
 #ifndef LONG_LONG_MIN
@@ -60,142 +61,6 @@ using ::apache::thrift::transport::TBufferedTransport;
 using ::apache::thrift::transport::TFramedTransport;
 using ::apache::thrift::TException;
 
-
-enum LogLevelType {
-    LEVEL_DEBUG = 0,
-    LEVEL_INFO,
-    LEVEL_WARN,
-    LEVEL_ERROR
-};
-extern LogLevelType LOG_LEVEL;
-
-#define log_debug(fmt,...) do {if(LOG_LEVEL <= LEVEL_DEBUG) {string s=string("[DEBUG] %s:%d (%s) - ") + fmt + "\n"; printf(s.c_str(), __FILE__, __LINE__, __FUNCTION__, ##__VA_ARGS__);}} while(0)
-#define log_info(fmt,...)  do {if(LOG_LEVEL <= LEVEL_INFO)  {string s=string("[INFO]  %s:%d (%s) - ") + fmt + "\n"; printf(s.c_str(), __FILE__, __LINE__, __FUNCTION__, ##__VA_ARGS__);}} while(0)
-#define log_warn(fmt,...)  do {if(LOG_LEVEL <= LEVEL_WARN)  {string s=string("[WARN]  %s:%d (%s) - ") + fmt + "\n"; printf(s.c_str(), __FILE__, __LINE__, __FUNCTION__, ##__VA_ARGS__);}} while(0)
-#define log_error(fmt,...) do {if(LOG_LEVEL <= LEVEL_ERROR) {string s=string("[ERROR] %s:%d (%s) - ") + fmt + "\n"; printf(s.c_str(), __FILE__, __LINE__, __FUNCTION__, ##__VA_ARGS__);}} while(0)
-
-class IoTDBException : public std::exception {
-public:
-    IoTDBException() {}
-
-    explicit IoTDBException(const std::string &m) : message(m) {}
-
-    explicit IoTDBException(const char *m) : message(m) {}
-
-    virtual const char *what() const noexcept override {
-        return message.c_str();
-    }
-private:
-    std::string message;
-};
-
-class IoTDBConnectionException : public IoTDBException {
-public:
-    IoTDBConnectionException() {}
-
-    explicit IoTDBConnectionException(const char *m) : IoTDBException(m) {}
-
-    explicit IoTDBConnectionException(const std::string &m) : IoTDBException(m) {}
-};
-
-class ExecutionException : public IoTDBException {
-public:
-    ExecutionException() {}
-
-    explicit ExecutionException(const char *m) : IoTDBException(m) {}
-
-    explicit ExecutionException(const std::string &m) : IoTDBException(m) {}
-
-    explicit ExecutionException(const std::string &m, const TSStatus &tsStatus) : IoTDBException(m), status(tsStatus) {}
-
-    TSStatus status;
-};
-
-class BatchExecutionException : public IoTDBException {
-public:
-    BatchExecutionException() {}
-
-    explicit BatchExecutionException(const char *m) : IoTDBException(m) {}
-
-    explicit BatchExecutionException(const std::string &m) : IoTDBException(m) {}
-
-    explicit BatchExecutionException(const std::vector <TSStatus> &statusList) : statusList(statusList) {}
-
-    BatchExecutionException(const std::string &m, const std::vector <TSStatus> &statusList) : IoTDBException(m), statusList(statusList) {}
-
-    std::vector<TSStatus> statusList;
-};
-
-class RedirectException : public IoTDBException {
-public:
-    RedirectException() {}
-
-    explicit RedirectException(const char *m) : IoTDBException(m) {}
-
-    explicit RedirectException(const std::string &m) : IoTDBException(m) {}
-
-    RedirectException(const std::string &m, const TEndPoint& endPoint) : IoTDBException(m), endPoint(endPoint) {}
-
-    RedirectException(const std::string &m, const map<string, TEndPoint>& deviceEndPointMap) : IoTDBException(m), deviceEndPointMap(deviceEndPointMap) {}
-
-    RedirectException(const std::string &m, const vector<TEndPoint> endPointList) : IoTDBException(m), endPointList(endPointList) {}
-
-    TEndPoint endPoint;
-    map<string, TEndPoint> deviceEndPointMap;
-    vector<TEndPoint> endPointList;
-};
-
-class UnSupportedDataTypeException : public IoTDBException {
-public:
-    UnSupportedDataTypeException() {}
-
-    explicit UnSupportedDataTypeException(const char *m) : IoTDBException(m) {}
-
-    explicit UnSupportedDataTypeException(const std::string &m) : IoTDBException("UnSupported dataType: " + m) {}
-};
-
-class SchemaNotFoundException : public IoTDBException {
-public:
-    SchemaNotFoundException() {}
-
-    explicit SchemaNotFoundException(const char *m) : IoTDBException(m) {}
-
-    explicit SchemaNotFoundException(const std::string &m) : IoTDBException(m) {}
-};
-
-class RpcUtils {
-public:
-    std::shared_ptr<TSStatus> SUCCESS_STATUS;
-
-    RpcUtils() {
-        SUCCESS_STATUS = std::make_shared<TSStatus>();
-        SUCCESS_STATUS->__set_code(TSStatusCode::SUCCESS_STATUS);
-    }
-
-    static void verifySuccess(const TSStatus &status);
-
-    static void verifySuccessWithRedirection(const TSStatus &status);
-
-    static void verifySuccess(const std::vector<TSStatus> &statuses);
-
-    static TSStatus getStatus(TSStatusCode::TSStatusCode tsStatusCode);
-
-    static TSStatus getStatus(int code, const std::string &message);
-
-    static std::shared_ptr<TSExecuteStatementResp> getTSExecuteStatementResp(TSStatusCode::TSStatusCode tsStatusCode);
-
-    static std::shared_ptr<TSExecuteStatementResp>
-    getTSExecuteStatementResp(TSStatusCode::TSStatusCode tsStatusCode, const std::string &message);
-
-    static std::shared_ptr<TSExecuteStatementResp> getTSExecuteStatementResp(const TSStatus &status);
-
-    static std::shared_ptr<TSFetchResultsResp> getTSFetchResultsResp(TSStatusCode::TSStatusCode tsStatusCode);
-
-    static std::shared_ptr<TSFetchResultsResp>
-    getTSFetchResultsResp(TSStatusCode::TSStatusCode tsStatusCode, const std::string &appendMessage);
-
-    static std::shared_ptr<TSFetchResultsResp> getTSFetchResultsResp(const TSStatus &status);
-};
 
 // Simulate the ByteBuffer class in Java
 class MyStringBuffer {
@@ -1050,11 +915,7 @@ private:
     std::string username;
     std::string password;
     const TSProtocolVersion::type protocolVersion = TSProtocolVersion::IOTDB_SERVICE_PROTOCOL_V3;
-    std::shared_ptr<IClientRPCServiceIf> client;
-    std::shared_ptr<TTransport> transport;
     bool isClosed = true;
-    int64_t sessionId;
-    int64_t statementId;
     std::string zoneId;
     int fetchSize;
     const static int DEFAULT_FETCH_SIZE = 10000;
@@ -1117,6 +978,89 @@ private:
     void initZoneId();
     void initNodesSupplier();
     void initDefaultSessionConnection();
+
+    template <typename T, typename InsertConsumer>
+    void insertByGroup(std::unordered_map<std::shared_ptr<SessionConnection>, T>& insertGroup, InsertConsumer insertConsumer) {
+        std::vector<std::future<void>> futures;
+
+        for (auto& entry : insertGroup) {
+            auto connection = entry.first;
+            auto& req = entry.second;
+            futures.emplace_back(std::async(std::launch::async, [=, &req]() mutable {
+                try {
+                    insertConsumer(connection, req);
+                } catch (const RedirectException& e) {
+                    for (const auto& deviceEndPoint : e.deviceEndPointMap) {
+                        handleRedirection(deviceEndPoint.first, deviceEndPoint.second);
+                    }
+                } catch (const IoTDBConnectionException& e) {
+                    if (endPointToSessionConnection.size() > 1) {
+                        removeBrokenSessionConnection(connection);
+                        try {
+                            insertConsumer(defaultSessionConnection, req);
+                        } catch (const RedirectException&) {
+                        }
+                    } else {
+                        throw;
+                    }
+                } catch (const std::exception& e) {
+                    log_debug(e.what());
+                    throw IoTDBException(e.what());
+                }
+            }));
+        }
+
+        std::string errorMessages;
+        for (auto& f : futures) {
+            try {
+                f.get();
+            } catch (const IoTDBConnectionException& e) {
+                throw;
+            } catch (const std::exception& e) {
+                if (!errorMessages.empty()) {
+                    errorMessages += ";";
+                }
+                errorMessages += e.what();
+            }
+        }
+
+        // 如果有错误则抛出汇总异常
+        if (!errorMessages.empty()) {
+            throw StatementExecutionException(errorMessages);
+        }
+    }
+
+    template <typename T, typename InsertConsumer>
+    void insertOnce(std::unordered_map<std::shared_ptr<SessionConnection>, T>& insertGroup, InsertConsumer insertConsumer) {
+        auto connection = insertGroup.begin()->first;
+        auto req = insertGroup.begin()->second;
+        try {
+            insertConsumer(connection, req);
+        } catch (RedirectException e) {
+            for (const auto& deviceEndPoint : e.deviceEndPointMap) {
+                handleRedirection(deviceEndPoint.first, deviceEndPoint.second);
+            }
+        } catch (IoTDBConnectionException e) {
+            if (endPointToSessionConnection.size() > 1) {
+                removeBrokenSessionConnection(connection);
+                try {
+                    insertConsumer(defaultSessionConnection, req);
+                } catch (RedirectException e) {
+                }
+            } else {
+                throw e;
+            }
+        }
+    }
+
+    void insertStringRecordsWithLeaderCache(vector<string> deviceIds, vector<int64_t> times,
+        vector<vector<string>> measurementsList, vector<vector<string>> valuesList, bool isAligned);
+
+    void insertRecordsWithLeaderCache(vector<string> deviceIds, vector<int64_t> times,
+        vector<vector<string>> measurementsList, const vector<vector<TSDataType::TSDataType>> &typesList,
+                            vector<vector<char*>> valuesList, bool isAligned);
+
+    void insertTabletsWithLeaderCache(unordered_map<string, Tablet*> tablets, bool sorted, bool isAligned);
 
 public:
     Session(const std::string &host, int rpcPort) : username("root"), password("root"), version(Version::V_1_0) {
@@ -1196,8 +1140,6 @@ public:
     void changeDatabase(string database) {
         this->database = database;
     }
-
-    int64_t getSessionId();
 
     shared_ptr<SessionConnection> getQuerySessionConnection();
 
@@ -1297,9 +1239,9 @@ public:
 
     void insertRelationalTablet(Tablet &tablet, bool sorted);
 
-    static void buildInsertTabletReq(TSInsertTabletReq &request, int64_t sessionId, Tablet &tablet, bool sorted);
+    static void buildInsertTabletReq(TSInsertTabletReq &request, Tablet &tablet, bool sorted);
 
-    void insertTablet(const TSInsertTabletReq &request);
+    void insertTablet(TSInsertTabletReq request);
 
     void insertAlignedTablet(Tablet &tablet);
 
