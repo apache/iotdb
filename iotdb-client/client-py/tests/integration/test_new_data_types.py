@@ -18,6 +18,8 @@
 from datetime import date
 
 import numpy as np
+import pandas as pd
+from tzlocal import get_localzone_name
 
 from iotdb.Session import Session
 from iotdb.SessionPool import PoolConfig, create_session_pool
@@ -47,8 +49,7 @@ def session_test(use_session_pool=False):
                 "root",
                 None,
                 1024,
-                "Asia/Shanghai",
-                3,
+                max_retry=3,
             )
             session_pool = create_session_pool(pool_config, 1, 3000)
             session = session_pool.get_session()
@@ -134,10 +135,9 @@ def session_test(use_session_pool=False):
                 assert row_record.get_fields()[0].get_date_value() == date(
                     2024, 1, timestamp
                 )
-                assert (
-                    row_record.get_fields()[1].get_object_value(TSDataType.TIMESTAMP)
-                    == timestamp
-                )
+                assert row_record.get_fields()[1].get_object_value(
+                    TSDataType.TIMESTAMP
+                ) == pd.Timestamp(timestamp, unit="ms", tz=get_localzone_name())
                 assert row_record.get_fields()[2].get_binary_value() == b"\x12\x34"
                 assert row_record.get_fields()[3].get_string_value() == "test0" + str(
                     timestamp

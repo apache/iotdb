@@ -655,12 +655,12 @@ public class IoTDBDatabaseMetadata extends IoTDBAbstractDatabaseMetadata {
 
   @Override
   public boolean supportsSchemasInDataManipulation() throws SQLException {
-    return false;
+    return true;
   }
 
   @Override
   public String getIdentifierQuoteString() throws SQLException {
-    return "`";
+    return "";
   }
 
   @Override

@@ -85,6 +85,7 @@ import org.apache.iotdb.confignode.exception.DatabaseNotExistsException;
 import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
 import org.apache.iotdb.confignode.rpc.thrift.TTableColumnInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TTableInfo;
+import org.apache.iotdb.db.exception.metadata.DatabaseNotSetException;
 import org.apache.iotdb.db.exception.metadata.SchemaQuotaExceededException;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.schemaengine.template.Template;
@@ -1297,11 +1298,15 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
       final Map<String, Map<String, TsTable>> result = new HashMap<>();
       for (final Map.Entry<String, Set<String>> database2Tables :
           plan.getFetchTableMap().entrySet()) {
-        result.put(
-            database2Tables.getKey(),
-            tableModelMTree.getSpecificTablesUnderSpecificDatabase(
-                getQualifiedDatabasePartialPath(database2Tables.getKey()),
-                database2Tables.getValue()));
+        try {
+          result.put(
+              database2Tables.getKey(),
+              tableModelMTree.getSpecificTablesUnderSpecificDatabase(
+                  getQualifiedDatabasePartialPath(database2Tables.getKey()),
+                  database2Tables.getValue()));
+        } catch (final DatabaseNotSetException ignore) {
+          // continue
+        }
       }
       return new FetchTableResp(StatusUtils.OK, result);
     } catch (final MetadataException e) {

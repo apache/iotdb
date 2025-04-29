@@ -265,6 +265,7 @@ import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.GroupingSe
 import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.GroupingSets.Type.ROLLUP;
 import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.QualifiedName.mapIdentifier;
 import static org.apache.iotdb.db.utils.TimestampPrecisionUtils.currPrecision;
+import static org.apache.iotdb.db.utils.constant.SqlConstant.APPROX_COUNT_DISTINCT;
 import static org.apache.iotdb.db.utils.constant.SqlConstant.FIRST_AGGREGATION;
 import static org.apache.iotdb.db.utils.constant.SqlConstant.FIRST_BY_AGGREGATION;
 import static org.apache.iotdb.db.utils.constant.SqlConstant.LAST_AGGREGATION;
@@ -1142,25 +1143,25 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
 
   @Override
   public Node visitShowRegionIdStatement(RelationalSqlParser.ShowRegionIdStatementContext ctx) {
-    return super.visitShowRegionIdStatement(ctx);
+    throw new SemanticException("SHOW REGION ID is not supported yet.");
   }
 
   @Override
   public Node visitShowTimeSlotListStatement(
       RelationalSqlParser.ShowTimeSlotListStatementContext ctx) {
-    return super.visitShowTimeSlotListStatement(ctx);
+    throw new SemanticException("SHOW TIME SLOT is not supported yet.");
   }
 
   @Override
   public Node visitCountTimeSlotListStatement(
       RelationalSqlParser.CountTimeSlotListStatementContext ctx) {
-    return super.visitCountTimeSlotListStatement(ctx);
+    throw new SemanticException("COUNT TIME SLOT is not supported yet.");
   }
 
   @Override
   public Node visitShowSeriesSlotListStatement(
       RelationalSqlParser.ShowSeriesSlotListStatementContext ctx) {
-    return super.visitShowSeriesSlotListStatement(ctx);
+    throw new SemanticException("SHOW SERIES SLOT is not supported yet.");
   }
 
   @Override
@@ -2764,6 +2765,14 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
                 .equalsIgnoreCase(TimestampOperand.TIMESTAMP_EXPRESSION_STRING),
             "The third argument of 'first_by' or 'last_by' function must be 'time'",
             ctx);
+      }
+    } else if (name.toString().equalsIgnoreCase(APPROX_COUNT_DISTINCT)) {
+      if (arguments.size() == 2
+          && !(arguments.get(1) instanceof DoubleLiteral
+              || arguments.get(1) instanceof LongLiteral
+              || arguments.get(1) instanceof StringLiteral)) {
+        throw new SemanticException(
+            "The second argument of 'approx_count_distinct' function must be a literal");
       }
     }
 

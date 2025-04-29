@@ -121,7 +121,8 @@ public class RemoveDataNodesProcedure extends AbstractNodeProcedure<RemoveDataNo
           removedDataNodes.forEach(
               dataNode -> removedNodeStatusMap.put(dataNode.getDataNodeId(), NodeStatus.Removing));
           removeDataNodeHandler.changeDataNodeStatus(removedDataNodes, removedNodeStatusMap);
-          regionMigrationPlans = removeDataNodeHandler.getRegionMigrationPlans(removedDataNodes);
+          regionMigrationPlans =
+              removeDataNodeHandler.selectedRegionMigrationPlans(removedDataNodes);
           LOG.info(
               "{}, DataNode regions to be removed is {}",
               REMOVE_DATANODE_PROCESS,
@@ -165,8 +166,7 @@ public class RemoveDataNodesProcedure extends AbstractNodeProcedure<RemoveDataNo
         regionMigrationPlan -> {
           TConsensusGroupId regionId = regionMigrationPlan.getRegionId();
           TDataNodeLocation removedDataNode = regionMigrationPlan.getFromDataNode();
-          TDataNodeLocation destDataNode =
-              env.getRegionMaintainHandler().findDestDataNode(regionId);
+          TDataNodeLocation destDataNode = regionMigrationPlan.getToDataNode();
           // TODO: need to improve the coordinator selection method here, maybe through load
           // balancing and other means.
           final TDataNodeLocation coordinatorForAddPeer =
