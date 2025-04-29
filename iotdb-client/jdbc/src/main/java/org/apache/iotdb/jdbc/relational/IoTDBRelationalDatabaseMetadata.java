@@ -263,7 +263,6 @@ public class IoTDBRelationalDatabaseMetadata extends IoTDBAbstractDatabaseMetada
       List<Object> valueInRow = new ArrayList<>();
       for (int i = 0; i < fields.length; i++) {
         if (i == 0) {
-          // 设置 TABLE_CAT 字段为实际的数据库名称
           valueInRow.add(schemaPattern);
         } else if (i == 1) {
           // valueInRow.add(rs.getString(2));
@@ -360,6 +359,9 @@ public class IoTDBRelationalDatabaseMetadata extends IoTDBAbstractDatabaseMetada
         LOGGER.error(SHOW_TABLES_ERROR_MSG, e.getMessage());
         throw e;
       }
+
+    } finally {
+      stmt.close();
     }
 
     // Setup Fields
@@ -460,7 +462,12 @@ public class IoTDBRelationalDatabaseMetadata extends IoTDBAbstractDatabaseMetada
             valueInRow.add(ResultSetMetaData.columnNoNulls);
           }
         } else if (i == 11) {
-          valueInRow.add("");
+          String comment = legacyMode ? rs.getString("comment") : rs.getString("Comment");
+          if (comment != null && !comment.isEmpty()) {
+            valueInRow.add(comment);
+          } else {
+            valueInRow.add("");
+          }
         } else if (i == 12) {
           valueInRow.add("");
         } else if (i == 13) {
@@ -621,7 +628,8 @@ public class IoTDBRelationalDatabaseMetadata extends IoTDBAbstractDatabaseMetada
             valueInRow.add(ResultSetMetaData.columnNoNulls);
           }
         } else if (i == 7) {
-          valueInRow.add(getTypePrecision(fields[i].getSqlType()));
+          // valueInRow.add(getTypePrecision(fields[i].getSqlType()));
+          valueInRow.add(0);
         } else if (i == 8) {
           valueInRow.add(getTypeScale(fields[i].getSqlType()));
         } else if (i == 9) {
@@ -634,6 +642,15 @@ public class IoTDBRelationalDatabaseMetadata extends IoTDBAbstractDatabaseMetada
           // valueInRow.add(rs.getString("comment"));
         } else if (i == 10) {
           valueInRow.add("");
+        } else {
+          if (!columnName.equals("time")) {
+            valueInRow.add("YES");
+            valueInRow.add(ResultSetMetaData.columnNullableUnknown);
+          } else {
+            valueInRow.add("NO");
+            valueInRow.add(ResultSetMetaData.columnNoNulls);
+          }
+          break;
         }
       }
       valuesList.add(valueInRow);
@@ -796,7 +813,7 @@ public class IoTDBRelationalDatabaseMetadata extends IoTDBAbstractDatabaseMetada
 
   @Override
   public boolean isCatalogAtStart() throws SQLException {
-    return true; // Exception:index 0
+    return false;
   }
 
   @Override
@@ -816,11 +833,10 @@ public class IoTDBRelationalDatabaseMetadata extends IoTDBAbstractDatabaseMetada
     List<List<Object>> valuesList = new ArrayList<>();
     tsDataTypeList.add(TSDataType.TEXT);
 
-    // 添加所有数据库作为 catalogs
     while (rs.next()) {
       String dbName = rs.getString(1);
       List<Object> values = new ArrayList<>();
-      values.add(dbName); // 使用实际的数据库名称
+      values.add(dbName);
       valuesList.add(values);
     }
 

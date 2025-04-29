@@ -859,12 +859,12 @@ public abstract class IoTDBAbstractDatabaseMetadata implements DatabaseMetaData 
 
   @Override
   public String getCatalogTerm() throws SQLException {
-    return "database"; // 改回返回 "database"，这样可以正确识别数据库层级
+    return "database";
   }
 
   @Override
   public boolean isCatalogAtStart() throws SQLException {
-    return true; // 改回 true，表示 catalog 在开始位置
+    return false;
   }
 
   @Override
@@ -1323,6 +1323,7 @@ public abstract class IoTDBAbstractDatabaseMetadata implements DatabaseMetaData 
       stmt.close();
       throw e;
     }
+
     List<String> columnNameList = new ArrayList<>();
     List<String> columnTypeList = new ArrayList<>();
     Map<String, Integer> columnNameIndex = new HashMap<>();
@@ -1330,20 +1331,17 @@ public abstract class IoTDBAbstractDatabaseMetadata implements DatabaseMetaData 
     List<List<Object>> valuesList = new ArrayList<>();
     tsDataTypeList.add(TSDataType.TEXT);
 
-    // 只添加一个catalog
-    //    List<Object> values = new ArrayList<>();
-    //    values.add(""); // 使用空字符串作为默认catalog
-    //    valuesList.add(values);
-
     while (rs.next()) {
       List<Object> values = new ArrayList<>();
       values.add(rs.getString(1));
       valuesList.add(values);
     }
-
-    columnNameList.add(TABLE_CAT);
+    columnNameList.add(TYPE_CAT);
     columnTypeList.add("TEXT");
-    columnNameIndex.put(TABLE_CAT, 0);
+    columnNameIndex.put(TYPE_CAT, 0);
+    //    columnNameList.add(TABLE_CAT);
+    //    columnTypeList.add("TEXT");
+    //    columnNameIndex.put(TABLE_CAT, 0);
 
     ByteBuffer tsBlock = null;
     try {
@@ -1353,6 +1351,7 @@ public abstract class IoTDBAbstractDatabaseMetadata implements DatabaseMetaData 
     } finally {
       close(rs, stmt);
     }
+
     return new IoTDBJDBCResultSet(
         stmt,
         columnNameList,
@@ -2547,21 +2546,27 @@ public abstract class IoTDBAbstractDatabaseMetadata implements DatabaseMetaData 
   public ResultSet getSchemas(String catalog, String schemaPattern) throws SQLException {
     Statement stmt = this.connection.createStatement();
     ResultSet rs;
-    String sql =
-        String.format(
-            "select * from information_schema.databases where database like '%s' escape '\\'",
-            schemaPattern != null ? schemaPattern : "%");
     try {
-      rs = stmt.executeQuery(sql);
+      rs = stmt.executeQuery(SHOW_DATABASES_SQL);
     } catch (SQLException e) {
-      LOGGER.error(SHOW_DATABASES_ERROR_MSG, e.getMessage());
-      try {
-        rs = stmt.executeQuery(SHOW_DATABASES_SQL);
-      } catch (SQLException e1) {
-        stmt.close();
-        throw e;
-      }
+      stmt.close();
+      throw e;
     }
+    //    String sql =
+    //        String.format(
+    //            "select * from information_schema.databases where database like '%s' escape '\\'",
+    //            schemaPattern != null ? schemaPattern : "%");
+    //    try {
+    //      rs = stmt.executeQuery(sql);
+    //    } catch (SQLException e) {
+    //      LOGGER.error(SHOW_DATABASES_ERROR_MSG, e.getMessage());
+    //      try {
+    //        rs = stmt.executeQuery(SHOW_DATABASES_SQL);
+    //      } catch (SQLException e1) {
+    //        stmt.close();
+    //        throw e;
+    //      }
+    //    }
     Field[] fields = new Field[2];
     fields[0] = new Field("", TABLE_SCHEM, "TEXT");
     fields[1] = new Field("", "TABLE_CATALOG", "TEXT");
@@ -2579,8 +2584,8 @@ public abstract class IoTDBAbstractDatabaseMetadata implements DatabaseMetaData 
     while (rs.next()) {
       String database = rs.getString("database");
       List<Object> valueInRow = new ArrayList<>();
-      valueInRow.add(database); // schema name
-      valueInRow.add(""); // catalog name
+      valueInRow.add(database);
+      valueInRow.add("");
       valuesList.add(valueInRow);
     }
 
