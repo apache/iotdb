@@ -697,11 +697,11 @@ public class IoTDBTableIT {
                   schemaList.add(new MeasurementSchema("attr1", TSDataType.STRING));
                   schemaList.add(
                       new MeasurementSchema(String.format("m%s", 100 + i), TSDataType.DOUBLE));
-                  final List<Tablet.ColumnCategory> columnTypes =
+                  final List<ColumnCategory> columnTypes =
                       Arrays.asList(
-                          Tablet.ColumnCategory.TAG,
-                          Tablet.ColumnCategory.ATTRIBUTE,
-                          Tablet.ColumnCategory.FIELD);
+                          ColumnCategory.TAG,
+                          ColumnCategory.ATTRIBUTE,
+                          ColumnCategory.FIELD);
 
                   long timestamp = 0;
                   final Tablet tablet =

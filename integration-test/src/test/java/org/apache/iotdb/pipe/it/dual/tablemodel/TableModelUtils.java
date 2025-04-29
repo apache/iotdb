@@ -484,20 +484,20 @@ public class TableModelUtils {
     schemaList.add(new MeasurementSchema("s10", TSDataType.DATE));
     schemaList.add(new MeasurementSchema("s11", TSDataType.TEXT));
 
-    final List<Tablet.ColumnCategory> columnTypes =
+    final List<ColumnCategory> columnTypes =
         Arrays.asList(
-            Tablet.ColumnCategory.TAG,
-            Tablet.ColumnCategory.TAG,
-            Tablet.ColumnCategory.TAG,
-            Tablet.ColumnCategory.TAG,
-            Tablet.ColumnCategory.FIELD,
-            Tablet.ColumnCategory.FIELD,
-            Tablet.ColumnCategory.FIELD,
-            Tablet.ColumnCategory.FIELD,
-            Tablet.ColumnCategory.FIELD,
-            Tablet.ColumnCategory.FIELD,
-            Tablet.ColumnCategory.FIELD,
-            Tablet.ColumnCategory.FIELD);
+            ColumnCategory.TAG,
+            ColumnCategory.TAG,
+            ColumnCategory.TAG,
+            ColumnCategory.TAG,
+            ColumnCategory.FIELD,
+            ColumnCategory.FIELD,
+            ColumnCategory.FIELD,
+            ColumnCategory.FIELD,
+            ColumnCategory.FIELD,
+            ColumnCategory.FIELD,
+            ColumnCategory.FIELD,
+            ColumnCategory.FIELD);
     Tablet tablet =
         new Tablet(
             tableName,
@@ -566,20 +566,20 @@ public class TableModelUtils {
     schemaList.add(new MeasurementSchema("s10", TSDataType.DATE));
     schemaList.add(new MeasurementSchema("s11", TSDataType.TEXT));
 
-    final List<Tablet.ColumnCategory> columnTypes =
+    final List<ColumnCategory> columnTypes =
         Arrays.asList(
-            Tablet.ColumnCategory.TAG,
-            Tablet.ColumnCategory.TAG,
-            Tablet.ColumnCategory.TAG,
-            Tablet.ColumnCategory.TAG,
-            Tablet.ColumnCategory.FIELD,
-            Tablet.ColumnCategory.FIELD,
-            Tablet.ColumnCategory.FIELD,
-            Tablet.ColumnCategory.FIELD,
-            Tablet.ColumnCategory.FIELD,
-            Tablet.ColumnCategory.FIELD,
-            Tablet.ColumnCategory.FIELD,
-            Tablet.ColumnCategory.FIELD);
+            ColumnCategory.TAG,
+            ColumnCategory.TAG,
+            ColumnCategory.TAG,
+            ColumnCategory.TAG,
+            ColumnCategory.FIELD,
+            ColumnCategory.FIELD,
+            ColumnCategory.FIELD,
+            ColumnCategory.FIELD,
+            ColumnCategory.FIELD,
+            ColumnCategory.FIELD,
+            ColumnCategory.FIELD,
+            ColumnCategory.FIELD);
     Tablet tablet =
         new Tablet(
             tableName,
@@ -656,20 +656,20 @@ public class TableModelUtils {
     schemaList.add(new MeasurementSchema("s10", TSDataType.DATE));
     schemaList.add(new MeasurementSchema("s11", TSDataType.TEXT));
 
-    final List<Tablet.ColumnCategory> columnTypes =
+    final List<ColumnCategory> columnTypes =
         Arrays.asList(
-            Tablet.ColumnCategory.TAG,
-            Tablet.ColumnCategory.TAG,
-            Tablet.ColumnCategory.TAG,
-            Tablet.ColumnCategory.TAG,
-            Tablet.ColumnCategory.FIELD,
-            Tablet.ColumnCategory.FIELD,
-            Tablet.ColumnCategory.FIELD,
-            Tablet.ColumnCategory.FIELD,
-            Tablet.ColumnCategory.FIELD,
-            Tablet.ColumnCategory.FIELD,
-            Tablet.ColumnCategory.FIELD,
-            Tablet.ColumnCategory.FIELD);
+            ColumnCategory.TAG,
+            ColumnCategory.TAG,
+            ColumnCategory.TAG,
+            ColumnCategory.TAG,
+            ColumnCategory.FIELD,
+            ColumnCategory.FIELD,
+            ColumnCategory.FIELD,
+            ColumnCategory.FIELD,
+            ColumnCategory.FIELD,
+            ColumnCategory.FIELD,
+            ColumnCategory.FIELD,
+            ColumnCategory.FIELD);
     Tablet tablet =
         new Tablet(
             tableName,
@@ -748,20 +748,20 @@ public class TableModelUtils {
     schemaList.add(new MeasurementSchema("s10", TSDataType.DATE));
     schemaList.add(new MeasurementSchema("s11", TSDataType.TEXT));
 
-    final List<Tablet.ColumnCategory> columnTypes =
+    final List<ColumnCategory> columnTypes =
         Arrays.asList(
-            Tablet.ColumnCategory.TAG,
-            Tablet.ColumnCategory.TAG,
-            Tablet.ColumnCategory.TAG,
-            Tablet.ColumnCategory.TAG,
-            Tablet.ColumnCategory.FIELD,
-            Tablet.ColumnCategory.FIELD,
-            Tablet.ColumnCategory.FIELD,
-            Tablet.ColumnCategory.FIELD,
-            Tablet.ColumnCategory.FIELD,
-            Tablet.ColumnCategory.FIELD,
-            Tablet.ColumnCategory.FIELD,
-            Tablet.ColumnCategory.FIELD);
+            ColumnCategory.TAG,
+            ColumnCategory.TAG,
+            ColumnCategory.TAG,
+            ColumnCategory.TAG,
+            ColumnCategory.FIELD,
+            ColumnCategory.FIELD,
+            ColumnCategory.FIELD,
+            ColumnCategory.FIELD,
+            ColumnCategory.FIELD,
+            ColumnCategory.FIELD,
+            ColumnCategory.FIELD,
+            ColumnCategory.FIELD);
     Tablet tablet =
         new Tablet(
             tableName,

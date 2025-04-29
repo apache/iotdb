@@ -28,7 +28,7 @@ import org.apache.iotdb.session.pool.TableSessionPoolBuilder;
 
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.write.record.Tablet;
-import org.apache.tsfile.write.record.Tablet.ColumnCategory;
+import org.apache.tsfile.enums.ColumnCategory;
 
 import java.util.ArrayList;
 import java.util.Arrays;

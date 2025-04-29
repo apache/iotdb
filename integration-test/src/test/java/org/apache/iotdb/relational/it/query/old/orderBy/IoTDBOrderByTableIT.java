@@ -1475,15 +1475,15 @@ public class IoTDBOrderByTableIT {
       schemaList.add(new MeasurementSchema("floatNum", TSDataType.DOUBLE));
       schemaList.add(new MeasurementSchema("str", TSDataType.TEXT));
       schemaList.add(new MeasurementSchema("bool", TSDataType.BOOLEAN));
-      final List<Tablet.ColumnCategory> columnTypes =
+      final List<ColumnCategory> columnTypes =
           Arrays.asList(
-              Tablet.ColumnCategory.TAG,
-              Tablet.ColumnCategory.ATTRIBUTE,
-              Tablet.ColumnCategory.FIELD,
-              Tablet.ColumnCategory.FIELD,
-              Tablet.ColumnCategory.FIELD,
-              Tablet.ColumnCategory.FIELD,
-              Tablet.ColumnCategory.FIELD);
+              ColumnCategory.TAG,
+              ColumnCategory.ATTRIBUTE,
+              ColumnCategory.FIELD,
+              ColumnCategory.FIELD,
+              ColumnCategory.FIELD,
+              ColumnCategory.FIELD,
+              ColumnCategory.FIELD);
       List<String> fieldIds = IMeasurementSchema.getMeasurementNameList(schemaList);
       List<TSDataType> dataTypes = IMeasurementSchema.getDataTypeList(schemaList);
 
@@ -1530,15 +1530,15 @@ public class IoTDBOrderByTableIT {
       schemaList.add(new MeasurementSchema("floatNum", TSDataType.DOUBLE));
       schemaList.add(new MeasurementSchema("str", TSDataType.TEXT));
       schemaList.add(new MeasurementSchema("bool", TSDataType.BOOLEAN));
-      final List<Tablet.ColumnCategory> columnTypes =
+      final List<ColumnCategory> columnTypes =
           Arrays.asList(
-              Tablet.ColumnCategory.TAG,
-              Tablet.ColumnCategory.ATTRIBUTE,
-              Tablet.ColumnCategory.FIELD,
-              Tablet.ColumnCategory.FIELD,
-              Tablet.ColumnCategory.FIELD,
-              Tablet.ColumnCategory.FIELD,
-              Tablet.ColumnCategory.FIELD);
+              ColumnCategory.TAG,
+              ColumnCategory.ATTRIBUTE,
+              ColumnCategory.FIELD,
+              ColumnCategory.FIELD,
+              ColumnCategory.FIELD,
+              ColumnCategory.FIELD,
+              ColumnCategory.FIELD);
       List<String> fieldIds = IMeasurementSchema.getMeasurementNameList(schemaList);
       List<TSDataType> dataTypes = IMeasurementSchema.getDataTypeList(schemaList);
       List<Object[]> values =

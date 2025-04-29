@@ -45,7 +45,7 @@ public class TsFileTableGenerator implements AutoCloseable {
   private final TsFileWriter writer;
   private final Map<String, TreeSet<Long>> table2TimeSet;
   private final Map<String, List<IMeasurementSchema>> table2MeasurementSchema;
-  private final Map<String, List<Tablet.ColumnCategory>> table2ColumnCategory;
+  private final Map<String, List<ColumnCategory>> table2ColumnCategory;
   private Random random;
 
   public TsFileTableGenerator(final File tsFile) throws IOException {
@@ -60,7 +60,7 @@ public class TsFileTableGenerator implements AutoCloseable {
   public void registerTable(
       final String tableName,
       final List<IMeasurementSchema> columnSchemasList,
-      final List<Tablet.ColumnCategory> columnCategoryList) {
+      final List<ColumnCategory> columnCategoryList) {
     if (table2MeasurementSchema.containsKey(tableName)) {
       LOGGER.warn("Table {} already exists", tableName);
       return;
@@ -79,7 +79,7 @@ public class TsFileTableGenerator implements AutoCloseable {
         schemas.stream().map(IMeasurementSchema::getMeasurementName).collect(Collectors.toList());
     final List<TSDataType> dataTypeList =
         schemas.stream().map(IMeasurementSchema::getType).collect(Collectors.toList());
-    final List<Tablet.ColumnCategory> columnCategoryList = table2ColumnCategory.get(tableName);
+    final List<ColumnCategory> columnCategoryList = table2ColumnCategory.get(tableName);
     final TreeSet<Long> timeSet = table2TimeSet.get(tableName);
     final Tablet tablet = new Tablet(tableName, columnNameList, dataTypeList, columnCategoryList);
     final Object[] values = tablet.getValues();
