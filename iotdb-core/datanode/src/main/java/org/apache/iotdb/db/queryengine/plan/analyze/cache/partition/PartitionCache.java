@@ -897,11 +897,11 @@ public class PartitionCache {
         }
       }
 
-      final List<TRegionReplicaSet> allRegionReplicaSets =
-          getRegionReplicaSet(new ArrayList<>(allConsensusGroupIds));
+      final List<TConsensusGroupId> consensusGroupIds = new ArrayList<>(allConsensusGroupIds);
+      final List<TRegionReplicaSet> allRegionReplicaSets = getRegionReplicaSet(consensusGroupIds);
 
       for (int i = 0; i < allRegionReplicaSets.size(); i++) {
-        TConsensusGroupId groupId = new ArrayList<>(allConsensusGroupIds).get(i);
+        TConsensusGroupId groupId = consensusGroupIds.get(i);
         TRegionReplicaSet replicaSet = allRegionReplicaSets.get(i);
 
         for (TimeSlotRegionInfo info : consensusGroupToTimeSlotMap.get(groupId)) {
