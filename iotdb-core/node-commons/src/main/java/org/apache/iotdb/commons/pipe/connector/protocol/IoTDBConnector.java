@@ -53,6 +53,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicLong;
 
 import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.CONNECTOR_COMPRESSOR_DEFAULT_VALUE;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.CONNECTOR_COMPRESSOR_KEY;
@@ -167,8 +168,8 @@ public abstract class IoTDBConnector implements PipeConnector {
   protected boolean shouldReceiverConvertOnTypeMismatch =
       CONNECTOR_EXCEPTION_DATA_CONVERT_ON_TYPE_MISMATCH_DEFAULT_VALUE;
 
-  private long totalUncompressedSize;
-  private long totalCompressedSize;
+  private AtomicLong totalUncompressedSize;
+  private AtomicLong totalCompressedSize;
   protected String attributeSortedString;
   protected Timer compressionTimer;
 
@@ -508,8 +509,8 @@ public abstract class IoTDBConnector implements PipeConnector {
     PIPE_END_POINT_RATE_LIMITER_MAP.clear();
   }
 
-  protected TPipeTransferReq compressIfNeeded(TPipeTransferReq req) throws IOException {
-    totalUncompressedSize += req.body.array().length + 3;
+  public TPipeTransferReq compressIfNeeded(TPipeTransferReq req) throws IOException {
+    totalUncompressedSize.addAndGet(req.body.array().length + 3);
     if (isRpcCompressionEnabled) {
       final long time = System.nanoTime();
       req = PipeTransferCompressedReq.toTPipeTransferReq(req, compressors);
@@ -517,12 +518,12 @@ public abstract class IoTDBConnector implements PipeConnector {
         compressionTimer.updateNanos(System.nanoTime() - time);
       }
     }
-    totalCompressedSize += req.body.array().length + 3;
+    totalCompressedSize.addAndGet(req.body.array().length + 3);
     return req;
   }
 
   protected byte[] compressIfNeeded(byte[] reqInBytes) throws IOException {
-    totalUncompressedSize += reqInBytes.length;
+    totalUncompressedSize.addAndGet(reqInBytes.length);
     if (isRpcCompressionEnabled) {
       final long time = System.nanoTime();
       reqInBytes = PipeTransferCompressedReq.toTPipeTransferReqBytes(reqInBytes, compressors);
@@ -530,16 +531,16 @@ public abstract class IoTDBConnector implements PipeConnector {
         compressionTimer.updateNanos(System.nanoTime() - time);
       }
     }
-    totalCompressedSize += reqInBytes.length;
+    totalCompressedSize.addAndGet(reqInBytes.length);
     return reqInBytes;
   }
 
   public long getTotalCompressedSize() {
-    return totalCompressedSize;
+    return totalCompressedSize.get();
   }
 
   public long getTotalUncompressedSize() {
-    return totalUncompressedSize;
+    return totalUncompressedSize.get();
   }
 
   public boolean isRpcCompressionEnabled() {
