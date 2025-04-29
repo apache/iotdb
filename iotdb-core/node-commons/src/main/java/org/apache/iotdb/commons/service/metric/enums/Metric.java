@@ -145,6 +145,7 @@ public enum Metric {
   PENDING_HANDLERS_SIZE("pending_handlers_size"),
   TOTAL_UNCOMPRESSED_SIZE("total_uncompressed_size"),
   TOTAL_COMPRESSED_SIZE("total_compressed_size"),
+  COMPRESSION_TIME("compression_time"),
   PIPE_DATANODE_RECEIVER("pipe_datanode_receiver"),
   PIPE_CONFIGNODE_RECEIVER("pipe_confignode_receiver"),
   PIPE_EXTRACTOR_TABLET_SUPPLY("pipe_extractor_tablet_supply"),
