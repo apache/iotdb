@@ -87,9 +87,6 @@ public class PrimitiveArrayManager {
 
   private static final AtomicLong TOTAL_ALLOCATION_REQUEST_COUNT = new AtomicLong(0);
 
-  // TODO remove
-  private static volatile long lastPrintTimeMs = 0;
-
   static {
     init();
   }
@@ -163,9 +160,6 @@ public class PrimitiveArrayManager {
       StorageEngineMemoryMetrics.getInstance().incPamAllocationFailure();
     }
 
-    if (System.currentTimeMillis() - lastPrintTimeMs > 10_000L) {
-      printStatus();
-    }
     return array;
   }
 
@@ -297,10 +291,6 @@ public class PrimitiveArrayManager {
         StorageEngineMemoryMetrics.getInstance().incPamReleaseFailure();
       }
     }
-
-    if (System.currentTimeMillis() - lastPrintTimeMs > 10_000L) {
-      printStatus();
-    }
   }
 
   public static void close() {
@@ -364,15 +354,5 @@ public class PrimitiveArrayManager {
 
   public static int getArrayRowCount(int size) {
     return size / ARRAY_SIZE + (size % ARRAY_SIZE == 0 ? 0 : 1);
-  }
-
-  public static void printStatus() {
-    LOGGER.info(
-        "Allocation(failure): {}({}); Release(failure): {}({})",
-        StorageEngineMemoryMetrics.getInstance().getPamAllocation(),
-        StorageEngineMemoryMetrics.getInstance().getPamAllocationFailure(),
-        StorageEngineMemoryMetrics.getInstance().getPamRelease(),
-        StorageEngineMemoryMetrics.getInstance().getPamReleaseFailure());
-    lastPrintTimeMs = System.currentTimeMillis();
   }
 }
