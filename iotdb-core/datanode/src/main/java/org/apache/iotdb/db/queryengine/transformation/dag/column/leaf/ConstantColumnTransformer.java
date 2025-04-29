@@ -40,13 +40,17 @@ public class ConstantColumnTransformer extends LeafColumnTransformer {
 
   @Override
   public void evaluateWithSelection(boolean[] selection) {
+    Column wrappedValue =
+        value instanceof RunLengthEncodedColumn
+            ? value
+            : new RunLengthEncodedColumn(value, input.getPositionCount());
     int positionCount = input.getPositionCount();
     ColumnBuilder builder = returnType.createColumnBuilder(positionCount);
     for (int i = 0; i < positionCount; i++) {
-      if (!selection[i] || value.isNull(i)) {
+      if (!selection[i] || wrappedValue.isNull(i)) {
         builder.appendNull();
       } else {
-        builder.write(value, 0);
+        builder.write(wrappedValue, 0);
       }
     }
     initializeColumnCache(builder.build());
