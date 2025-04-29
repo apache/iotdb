@@ -263,7 +263,6 @@ public class IoTDBConnection implements Connection {
 
   @Override
   public String getCatalog() {
-    //    return getDatabase();
     return framework;
   }
 

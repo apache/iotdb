@@ -1339,9 +1339,6 @@ public abstract class IoTDBAbstractDatabaseMetadata implements DatabaseMetaData 
     columnNameList.add(TYPE_CAT);
     columnTypeList.add("TEXT");
     columnNameIndex.put(TYPE_CAT, 0);
-    //    columnNameList.add(TABLE_CAT);
-    //    columnTypeList.add("TEXT");
-    //    columnNameIndex.put(TABLE_CAT, 0);
 
     ByteBuffer tsBlock = null;
     try {
@@ -2552,21 +2549,6 @@ public abstract class IoTDBAbstractDatabaseMetadata implements DatabaseMetaData 
       stmt.close();
       throw e;
     }
-    //    String sql =
-    //        String.format(
-    //            "select * from information_schema.databases where database like '%s' escape '\\'",
-    //            schemaPattern != null ? schemaPattern : "%");
-    //    try {
-    //      rs = stmt.executeQuery(sql);
-    //    } catch (SQLException e) {
-    //      LOGGER.error(SHOW_DATABASES_ERROR_MSG, e.getMessage());
-    //      try {
-    //        rs = stmt.executeQuery(SHOW_DATABASES_SQL);
-    //      } catch (SQLException e1) {
-    //        stmt.close();
-    //        throw e;
-    //      }
-    //    }
     Field[] fields = new Field[2];
     fields[0] = new Field("", TABLE_SCHEM, "TEXT");
     fields[1] = new Field("", "TABLE_CATALOG", "TEXT");
