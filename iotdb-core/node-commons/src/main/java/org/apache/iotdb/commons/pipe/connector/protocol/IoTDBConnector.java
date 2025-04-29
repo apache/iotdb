@@ -168,8 +168,8 @@ public abstract class IoTDBConnector implements PipeConnector {
   protected boolean shouldReceiverConvertOnTypeMismatch =
       CONNECTOR_EXCEPTION_DATA_CONVERT_ON_TYPE_MISMATCH_DEFAULT_VALUE;
 
-  private AtomicLong totalUncompressedSize;
-  private AtomicLong totalCompressedSize;
+  private final AtomicLong totalUncompressedSize = new AtomicLong(0);
+  private final AtomicLong totalCompressedSize = new AtomicLong(0);
   protected String attributeSortedString;
   protected Timer compressionTimer;
 
