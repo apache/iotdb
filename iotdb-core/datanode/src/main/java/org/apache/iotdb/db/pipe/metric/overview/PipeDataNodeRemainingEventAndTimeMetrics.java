@@ -262,20 +262,6 @@ public class PipeDataNodeRemainingEventAndTimeMetrics implements IMetricSet {
     operator.markRegionCommit(event);
   }
 
-  public void markTsFileCollectInvocationCount(
-      final String pipeID, final long collectInvocationCount) {
-    if (Objects.isNull(metricService)) {
-      return;
-    }
-    final PipeDataNodeRemainingEventAndTimeOperator operator =
-        remainingEventAndTimeOperatorMap.get(pipeID);
-    if (Objects.isNull(operator)) {
-      return;
-    }
-
-    operator.markTsFileCollectInvocationCount(collectInvocationCount);
-  }
-
   //////////////////////////// Show pipes ////////////////////////////
 
   public Pair<Long, Double> getRemainingEventAndTime(
