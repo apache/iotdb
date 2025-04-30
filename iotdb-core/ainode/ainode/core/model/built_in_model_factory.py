@@ -398,8 +398,8 @@ timerxl_attribute_map = {
     ),
     AttributeName.TIMERXL_CKPT_PATH.value: StringAttribute(
         name=AttributeName.TIMERXL_CKPT_PATH.value,
-        default_value=os.path.join(os.path.dirname(os.path.abspath(__file__)), 'weights', 'timerxl', 'model.safetensors'),
-        value_choices=[os.path.join(os.path.dirname(os.path.abspath(__file__)), 'weights', 'timerxl', 'model.safetensors'), ""],
+        default_value="",
+        value_choices=[""],
     ),
 }
 
