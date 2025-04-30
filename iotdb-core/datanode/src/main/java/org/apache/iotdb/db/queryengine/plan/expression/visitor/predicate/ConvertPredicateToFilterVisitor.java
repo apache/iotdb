@@ -60,6 +60,7 @@ import java.util.Map;
 import java.util.Set;
 
 import static com.google.common.base.Preconditions.checkArgument;
+import static org.apache.iotdb.db.queryengine.plan.expression.binary.CompareBinaryExpression.flipType;
 import static org.apache.tsfile.read.filter.operator.Not.CONTAIN_NOT_ERR_MSG;
 
 public class ConvertPredicateToFilterVisitor
@@ -252,7 +253,8 @@ public class ConvertPredicateToFilterVisitor
     if (rightExpression.getExpressionType().equals(ExpressionType.CONSTANT)) {
       return constructCompareFilter(expressionType, leftExpression, rightExpression, context);
     } else {
-      return constructCompareFilter(expressionType, rightExpression, leftExpression, context);
+      return constructCompareFilter(
+          flipType(expressionType), rightExpression, leftExpression, context);
     }
   }
 
