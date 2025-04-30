@@ -258,6 +258,9 @@ public abstract class PipeAbstractConnectorSubtask extends PipeReportableSubtask
   private void preScheduleLowPriorityTask(int maxRetries) {
     while (highPriorityLockTaskCount.get() != 0L && maxRetries != 0) {
       maxRetries--;
+      if (maxRetries == 0) {
+        Thread.yield();
+      }
     }
   }
 }
