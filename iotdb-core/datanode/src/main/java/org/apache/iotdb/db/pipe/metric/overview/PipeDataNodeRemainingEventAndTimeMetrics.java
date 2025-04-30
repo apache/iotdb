@@ -199,28 +199,12 @@ public class PipeDataNodeRemainingEventAndTimeMetrics implements IMetricSet {
         .increaseTabletEventCount();
   }
 
-  public void decreaseTabletEventCount(final String pipeName, final long creationTime) {
-    remainingEventAndTimeOperatorMap
-        .computeIfAbsent(
-            pipeName + "_" + creationTime,
-            k -> new PipeDataNodeRemainingEventAndTimeOperator(pipeName, creationTime))
-        .decreaseTabletEventCount();
-  }
-
   public void increaseTsFileEventCount(final String pipeName, final long creationTime) {
     remainingEventAndTimeOperatorMap
         .computeIfAbsent(
             pipeName + "_" + creationTime,
             k -> new PipeDataNodeRemainingEventAndTimeOperator(pipeName, creationTime))
         .increaseTsFileEventCount();
-  }
-
-  public void decreaseTsFileEventCount(final String pipeName, final long creationTime) {
-    remainingEventAndTimeOperatorMap
-        .computeIfAbsent(
-            pipeName + "_" + creationTime,
-            k -> new PipeDataNodeRemainingEventAndTimeOperator(pipeName, creationTime))
-        .decreaseTsFileEventCount();
   }
 
   public void thawRate(final String pipeID) {

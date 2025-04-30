@@ -323,11 +323,6 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
               tsFile.getPath(), holderMessage),
           e);
       return false;
-    } finally {
-      if (Objects.nonNull(pipeName)) {
-        PipeDataNodeRemainingEventAndTimeMetrics.getInstance()
-            .decreaseTsFileEventCount(pipeName, creationTime);
-      }
     }
   }
 
