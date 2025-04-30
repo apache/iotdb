@@ -26,21 +26,18 @@ import java.io.File;
 public interface ILoadDiskSelector<U> {
 
   @FunctionalInterface
-  public interface DiskDirectorySelector<U> {
+  interface DiskDirectorySelector<U> {
     File selectDirectory(final File sourceDirectory, final String fileName, final U u)
         throws DiskSpaceInsufficientException;
   }
 
-  public File diskDirectorySelector(
-      final File sourceDirectory,
-      final String fileName,
-      final boolean isNeedCreateTargetFile,
-      final U u)
+  File selectTargetDirectory(
+      final File sourceDirectory, final String fileName, final boolean appendFileName, final U u)
       throws DiskSpaceInsufficientException;
 
-  public LoadDiskSelectorType getLoadDiskSelectorType();
+  LoadDiskSelectorType getLoadDiskSelectorType();
 
-  public static <U> ILoadDiskSelector<U> initDiskSelector(
+  static <U> ILoadDiskSelector<U> initDiskSelector(
       final String selectStrategy, final String[] dirs, final DiskDirectorySelector<U> selector) {
     final ILoadDiskSelector<U> diskSelector;
     switch (ILoadDiskSelector.LoadDiskSelectorType.fromValue(selectStrategy)) {

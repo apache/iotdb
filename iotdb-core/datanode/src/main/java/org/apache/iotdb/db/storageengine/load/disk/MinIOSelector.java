@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.storageengine.load.disk;
 
-import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.db.exception.DiskSpaceInsufficientException;
 import org.apache.iotdb.metrics.utils.FileStoreUtils;
 
@@ -52,7 +51,6 @@ public class MinIOSelector<U> extends InheritSystemMultiDisksStrategySelector<U>
     this.rootDisks2DataDirsMapForLoad = new HashMap<>(dirs.length);
     Arrays.stream(dirs)
         .filter(Objects::nonNull)
-        .map(v -> fsFactory.getFile(v, IoTDBConstant.UNSEQUENCE_FOLDER_NAME).getPath())
         .forEach(
             dataDirPath -> {
               File dataDirFile = new File(dataDirPath);
@@ -74,8 +72,8 @@ public class MinIOSelector<U> extends InheritSystemMultiDisksStrategySelector<U>
   }
 
   @Override
-  public File diskDirectorySelector(
-      final File sourceDirectory, final String fileName, final boolean createTargetFile, final U u)
+  public File selectTargetDirectory(
+      final File sourceDirectory, final String fileName, final boolean appendFileName, final U u)
       throws DiskSpaceInsufficientException {
     String fileDirRoot = null;
     try {
@@ -92,7 +90,7 @@ public class MinIOSelector<U> extends InheritSystemMultiDisksStrategySelector<U>
 
     File targetFile = null;
     if (rootDisks2DataDirsMapForLoad.containsKey(fileDirRoot)) {
-      if (createTargetFile) {
+      if (appendFileName) {
         // if there is an overlap between firDirRoot and data directories' disk roots, try to get
         // targetFile in the same disk
         targetFile = fsFactory.getFile(rootDisks2DataDirsMapForLoad.get(fileDirRoot), fileName);
@@ -104,7 +102,7 @@ public class MinIOSelector<U> extends InheritSystemMultiDisksStrategySelector<U>
     }
 
     // if there isn't an overlap, downgrade to storage balance(sequence) strategy.
-    return super.diskDirectorySelector(sourceDirectory, fileName, createTargetFile, u);
+    return super.selectTargetDirectory(sourceDirectory, fileName, appendFileName, u);
   }
 
   @Override

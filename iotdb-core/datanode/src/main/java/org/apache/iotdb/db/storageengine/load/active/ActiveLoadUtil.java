@@ -74,7 +74,7 @@ public class ActiveLoadUtil {
     final File targetFilePath;
     try {
       targetFilePath =
-          loadDiskSelector.diskDirectorySelector(file.getParentFile(), file.getName(), false, null);
+          loadDiskSelector.selectTargetDirectory(file.getParentFile(), file.getName(), false, null);
     } catch (DiskSpaceInsufficientException e) {
       LOGGER.warn("Fail to load disk space of file {}", file.getAbsolutePath(), e);
       return false;
@@ -110,7 +110,7 @@ public class ActiveLoadUtil {
     try {
       final File file = new File(files.get(0));
       targetFilePath =
-          loadDiskSelector.diskDirectorySelector(file.getParentFile(), file.getName(), false, null);
+          loadDiskSelector.selectTargetDirectory(file.getParentFile(), file.getName(), false, null);
     } catch (DiskSpaceInsufficientException e) {
       LOGGER.warn("Fail to load disk space of file {}", files.get(0), e);
       return false;
@@ -150,10 +150,11 @@ public class ActiveLoadUtil {
   }
 
   public static ILoadDiskSelector<Void> updateLoadDisLoad() {
+    final String[] dirs = IoTDBDescriptor.getInstance().getConfig().getLoadActiveListeningDirs();
     ILoadDiskSelector<Void> loadDiskSelector =
         ILoadDiskSelector.initDiskSelector(
             IoTDBDescriptor.getInstance().getConfig().getLoadDiskSelectStrategy(),
-            IoTDBDescriptor.getInstance().getConfig().getLoadActiveListeningDirs(),
+            dirs,
             new ILoadDiskSelector.DiskDirectorySelector<Void>() {
 
               private volatile FolderManager folderManager;
@@ -172,12 +173,10 @@ public class ActiveLoadUtil {
                     if (folderManager != null) {
                       return;
                     }
-                    final String[] loadActiveListeningDirs =
-                        IoTDBDescriptor.getInstance().getConfig().getLoadActiveListeningDirs();
+
                     folderManager =
                         new FolderManager(
-                            Arrays.asList(loadActiveListeningDirs),
-                            DirectoryStrategyType.SEQUENCE_STRATEGY);
+                            Arrays.asList(dirs), DirectoryStrategyType.SEQUENCE_STRATEGY);
                   }
                 }
               }

@@ -23,6 +23,7 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
+import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.file.SystemFileFactory;
@@ -425,14 +426,15 @@ public class DataRegion implements IDataRegionForQuery {
           }
         };
 
+    final String[] dirs =
+        Arrays.stream(config.getTierDataDirs()[0])
+            .map(v -> fsFactory.getFile(v, IoTDBConstant.UNSEQUENCE_FOLDER_NAME).getPath())
+            .toArray(String[]::new);
     ordinaryLoadDiskSelector =
-        ILoadDiskSelector.initDiskSelector(
-            config.getLoadDiskSelectStrategy(), config.getTierDataDirs()[0], selector);
+        ILoadDiskSelector.initDiskSelector(config.getLoadDiskSelectStrategy(), dirs, selector);
     pipeAndIoTV2LoadDiskSelector =
         ILoadDiskSelector.initDiskSelector(
-            config.getLoadDiskSelectStrategyForIoTV2AndPipe(),
-            config.getTierDataDirs()[0],
-            selector);
+            config.getLoadDiskSelectStrategyForIoTV2AndPipe(), dirs, selector);
   }
 
   @Override
@@ -3110,9 +3112,9 @@ public class DataRegion implements IDataRegionForQuery {
             + tsFileResource.getTsFile().getName();
     final File targetFile =
         (tsFileResource.isGeneratedByPipeConsensus() || tsFileResource.isGeneratedByPipe())
-            ? pipeAndIoTV2LoadDiskSelector.diskDirectorySelector(
+            ? pipeAndIoTV2LoadDiskSelector.selectTargetDirectory(
                 tsFileToLoad.getParentFile(), fileName, true, targetTierLevel)
-            : ordinaryLoadDiskSelector.diskDirectorySelector(
+            : ordinaryLoadDiskSelector.selectTargetDirectory(
                 tsFileToLoad.getParentFile(), fileName, true, targetTierLevel);
 
     tsFileResource.setFile(targetFile);

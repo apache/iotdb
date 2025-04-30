@@ -36,8 +36,8 @@ public class InheritSystemMultiDisksStrategySelector<U> implements ILoadDiskSele
     this.directorySelector = selector;
   }
 
-  public File diskDirectorySelector(
-      final File sourceDirectory, final String FileName, final boolean createTargetFile, final U u)
+  public File selectTargetDirectory(
+      final File sourceDirectory, final String FileName, final boolean appendFileName, final U u)
       throws DiskSpaceInsufficientException {
     return directorySelector.selectDirectory(sourceDirectory, FileName, u);
   }
