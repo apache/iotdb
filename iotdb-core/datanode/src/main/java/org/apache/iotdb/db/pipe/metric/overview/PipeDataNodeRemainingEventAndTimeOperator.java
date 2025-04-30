@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.enums.PipeRemainingTimeRateAverageTime;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.pipe.metric.PipeRemainingOperator;
+import org.apache.iotdb.db.pipe.event.common.tablet.PipeInsertNodeTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
 import org.apache.iotdb.db.pipe.extractor.schemaregion.IoTDBSchemaRegionExtractor;
 import org.apache.iotdb.pipe.api.event.Event;
@@ -206,7 +207,8 @@ class PipeDataNodeRemainingEventAndTimeOperator extends PipeRemainingOperator {
       return;
     }
 
-    if (Boolean.TRUE.equals(event.isTabletEvent())) {
+    final EnrichedEvent rootEvent = event.getRootEvent();
+    if (rootEvent instanceof PipeInsertNodeTabletInsertionEvent) {
       tabletEventCount.decrementAndGet();
       tabletCommitMeter.updateAndGet(
           meter -> {
@@ -215,8 +217,8 @@ class PipeDataNodeRemainingEventAndTimeOperator extends PipeRemainingOperator {
             }
             return meter;
           });
-    } else if (Boolean.FALSE.equals(event.isTabletEvent())) {
-      final long length = ((PipeTsFileInsertionEvent) event).getFileSize();
+    } else if (rootEvent instanceof PipeTsFileInsertionEvent) {
+      final long length = ((PipeTsFileInsertionEvent) rootEvent).getFileSize();
       tsfileEventCount.decrementAndGet();
       tsFileEventSize.addAndGet(-length);
       tsfileSizeCommitMeter.updateAndGet(

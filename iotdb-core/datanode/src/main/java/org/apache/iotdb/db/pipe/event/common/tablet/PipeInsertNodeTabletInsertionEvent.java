@@ -505,11 +505,6 @@ public class PipeInsertNodeTabletInsertionEvent extends PipeInsertionEvent
     return count;
   }
 
-  @Override
-  public Boolean isTabletEvent() {
-    return Boolean.TRUE;
-  }
-
   /////////////////////////// parsePatternOrTime ///////////////////////////
 
   public List<PipeRawTabletInsertionEvent> toRawTabletInsertionEvents() {

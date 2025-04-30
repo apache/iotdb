@@ -318,8 +318,8 @@ public class PipeRawTabletInsertionEvent extends PipeInsertionEvent
   }
 
   @Override
-  public Boolean isTabletEvent() {
-    return Objects.nonNull(sourceEvent) ? sourceEvent.isTabletEvent() : null;
+  public EnrichedEvent getRootEvent() {
+    return Objects.nonNull(sourceEvent) ? sourceEvent.getRootEvent() : null;
   }
 
   /////////////////////////// TabletInsertionEvent ///////////////////////////

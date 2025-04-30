@@ -457,8 +457,8 @@ public abstract class EnrichedEvent implements Event {
     return isReleased.get();
   }
 
-  public Boolean isTabletEvent() {
-    return null;
+  public EnrichedEvent getRootEvent() {
+    return this;
   }
 
   /**
