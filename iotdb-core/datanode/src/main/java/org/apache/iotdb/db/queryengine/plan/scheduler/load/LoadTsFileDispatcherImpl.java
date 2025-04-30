@@ -231,6 +231,7 @@ public class LoadTsFileDispatcherImpl implements IFragInstanceDispatcher {
     Map<TEndPoint, TLoadCommandReq> tLoadCommandReqHashMap = new HashMap<>();
     for (TRegionReplicaSet replicaSet : replicaSets) {
       ByteBuffer progressIndex = assignProgressIndex();
+
       for (TDataNodeLocation dataNodeLocation : replicaSet.getDataNodeLocations()) {
         TLoadCommandReq req = tLoadCommandReqHashMap.get(dataNodeLocation.getInternalEndPoint());
         if (req == null) {
@@ -244,7 +245,7 @@ public class LoadTsFileDispatcherImpl implements IFragInstanceDispatcher {
           req.setIsGeneratedByPipe(isGeneratedByPipe);
           tLoadCommandReqHashMap.put(dataNodeLocation.getInternalEndPoint(), req);
         }
-        req.putToProgressIndex(replicaSet.regionId, progressIndex);
+        req.putToProgressIndex(replicaSet.regionId, progressIndex.duplicate());
       }
     }
 
