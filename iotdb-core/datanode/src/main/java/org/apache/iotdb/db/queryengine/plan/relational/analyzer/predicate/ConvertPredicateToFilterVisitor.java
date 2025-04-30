@@ -269,7 +269,7 @@ public class ConvertPredicateToFilterVisitor
         && isSymbolReference(right)
         && context.isMeasurementColumn((SymbolReference) right)) {
       return constructCompareFilter(
-          node.getOperator(), (SymbolReference) right, (Literal) left, context);
+          node.getOperator().flip(), (SymbolReference) right, (Literal) left, context);
     } else {
       throw new IllegalStateException(
           String.format("%s is not supported in value push down", node));
