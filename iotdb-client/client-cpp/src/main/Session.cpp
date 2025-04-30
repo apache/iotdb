@@ -1919,7 +1919,8 @@ shared_ptr<SessionConnection> Session::getSessionConnection(std::shared_ptr<stor
 }
 
 string Session::getTimeZone() {
-    defaultSessionConnection->getTimeZone();
+    auto ret = defaultSessionConnection->getTimeZone();
+    return ret.timeZone;
 }
 
 void Session::setTimeZone(const string& zoneId) {
