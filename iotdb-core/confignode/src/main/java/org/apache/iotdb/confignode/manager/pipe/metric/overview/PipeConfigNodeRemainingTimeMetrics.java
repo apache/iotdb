@@ -20,6 +20,7 @@
 package org.apache.iotdb.confignode.manager.pipe.metric.overview;
 
 import org.apache.iotdb.commons.pipe.agent.task.progress.PipeEventCommitManager;
+import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.service.metric.enums.Metric;
 import org.apache.iotdb.commons.service.metric.enums.Tag;
 import org.apache.iotdb.confignode.manager.pipe.extractor.IoTDBConfigRegionExtractor;
@@ -142,11 +143,14 @@ public class PipeConfigNodeRemainingTimeMetrics implements IMetricSet {
     }
   }
 
-  public void markRegionCommit(
-      final String pipeID, final boolean isDataRegion, final Boolean isTabletEvent) {
+  public void markRegionCommit(final EnrichedEvent event) {
     if (Objects.isNull(metricService)) {
       return;
     }
+    final String pipeID =
+        PipeEventCommitManager.getInstance()
+            .getTaskAgent()
+            .getPipeNameWithCreationTime(event.getPipeName(), event.getCreationTime());
     final PipeConfigNodeRemainingTimeOperator operator = remainingTimeOperatorMap.get(pipeID);
     if (Objects.isNull(operator)) {
       LOGGER.info(

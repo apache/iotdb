@@ -94,6 +94,7 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
   private long flushPointCount = TsFileProcessor.FLUSH_POINT_COUNT_NOT_SET;
 
   private volatile ProgressIndex overridingProgressIndex;
+  private long fileSize;
 
   public PipeTsFileInsertionEvent(
       final Boolean isTableModelEvent,
@@ -288,8 +289,10 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
   public boolean internallyIncreaseResourceReferenceCount(final String holderMessage) {
     try {
       tsFile = PipeDataNodeResourceManager.tsfile().increaseFileReference(tsFile, true, resource);
+      fileSize = tsFile.length();
       if (isWithMod) {
         modFile = PipeDataNodeResourceManager.tsfile().increaseFileReference(modFile, false, null);
+        fileSize += modFile.length();
       }
       return true;
     } catch (final Exception e) {
@@ -302,7 +305,7 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
     } finally {
       if (Objects.nonNull(pipeName)) {
         PipeDataNodeRemainingEventAndTimeMetrics.getInstance()
-            .increaseTsFileEventCount(pipeName, creationTime);
+            .increaseTsFileEventCount(pipeName, creationTime, fileSize);
       }
     }
   }
@@ -324,6 +327,10 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
           e);
       return false;
     }
+  }
+
+  public long getFileSize() {
+    return fileSize;
   }
 
   @Override

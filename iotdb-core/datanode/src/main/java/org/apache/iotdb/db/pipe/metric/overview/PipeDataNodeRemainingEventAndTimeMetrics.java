@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.pipe.metric.overview;
 
 import org.apache.iotdb.commons.pipe.agent.task.progress.PipeEventCommitManager;
+import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.service.metric.enums.Metric;
 import org.apache.iotdb.commons.service.metric.enums.Tag;
 import org.apache.iotdb.db.pipe.extractor.dataregion.IoTDBDataRegionExtractor;
@@ -199,12 +200,13 @@ public class PipeDataNodeRemainingEventAndTimeMetrics implements IMetricSet {
         .increaseTabletEventCount();
   }
 
-  public void increaseTsFileEventCount(final String pipeName, final long creationTime) {
+  public void increaseTsFileEventCount(
+      final String pipeName, final long creationTime, final long size) {
     remainingEventAndTimeOperatorMap
         .computeIfAbsent(
             pipeName + "_" + creationTime,
             k -> new PipeDataNodeRemainingEventAndTimeOperator(pipeName, creationTime))
-        .increaseTsFileEventCount();
+        .increaseTsFileEventSize(size);
   }
 
   public void thawRate(final String pipeID) {
@@ -239,11 +241,15 @@ public class PipeDataNodeRemainingEventAndTimeMetrics implements IMetricSet {
     }
   }
 
-  public void markRegionCommit(
-      final String pipeID, final boolean isDataRegion, final Boolean isTabletEvent) {
+  public void markRegionCommit(final EnrichedEvent event) {
     if (Objects.isNull(metricService)) {
       return;
     }
+    final String pipeID =
+        PipeEventCommitManager.getInstance()
+            .getTaskAgent()
+            .getPipeNameWithCreationTime(event.getPipeName(), event.getCreationTime());
+
     final PipeDataNodeRemainingEventAndTimeOperator operator =
         remainingEventAndTimeOperatorMap.get(pipeID);
     if (Objects.isNull(operator)) {
@@ -253,11 +259,7 @@ public class PipeDataNodeRemainingEventAndTimeMetrics implements IMetricSet {
       return;
     }
 
-    if (isDataRegion) {
-      operator.markDataRegionCommit(isTabletEvent);
-    } else {
-      operator.markSchemaRegionCommit();
-    }
+    operator.markRegionCommit(event);
   }
 
   public void markTsFileCollectInvocationCount(

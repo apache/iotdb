@@ -21,7 +21,9 @@ package org.apache.iotdb.db.pipe.metric.overview;
 
 import org.apache.iotdb.commons.enums.PipeRemainingTimeRateAverageTime;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
+import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.pipe.metric.PipeRemainingOperator;
+import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
 import org.apache.iotdb.db.pipe.extractor.schemaregion.IoTDBSchemaRegionExtractor;
 import org.apache.iotdb.metrics.core.IoTDBMetricManager;
 import org.apache.iotdb.metrics.core.type.IoTDBHistogram;
@@ -36,6 +38,7 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 
 class PipeDataNodeRemainingEventAndTimeOperator extends PipeRemainingOperator {
@@ -46,8 +49,10 @@ class PipeDataNodeRemainingEventAndTimeOperator extends PipeRemainingOperator {
 
   private final AtomicInteger tabletEventCount = new AtomicInteger(0);
   private final AtomicInteger tsfileEventCount = new AtomicInteger(0);
+  private final AtomicLong tsFileEventSize = new AtomicLong(0L);
 
-  private final AtomicReference<Meter> dataRegionCommitMeter = new AtomicReference<>(null);
+  private final AtomicReference<Meter> tabletCommitMeter = new AtomicReference<>(null);
+  private final AtomicReference<Meter> tsfileSizeCommitMeter = new AtomicReference<>(null);
   private final AtomicReference<Meter> schemaRegionCommitMeter = new AtomicReference<>(null);
   private final IoTDBHistogram collectInvocationHistogram =
       (IoTDBHistogram) IoTDBMetricManager.getInstance().createHistogram();
@@ -65,8 +70,9 @@ class PipeDataNodeRemainingEventAndTimeOperator extends PipeRemainingOperator {
     tabletEventCount.incrementAndGet();
   }
 
-  void increaseTsFileEventCount() {
+  void increaseTsFileEventSize(final long size) {
     tsfileEventCount.incrementAndGet();
+    tsFileEventSize.addAndGet(size);
   }
 
   long getRemainingEvents() {
@@ -117,7 +123,7 @@ class PipeDataNodeRemainingEventAndTimeOperator extends PipeRemainingOperator {
     final double totalDataRegionWriteEventCount =
         tsfileEventCount.get() * Math.max(invocationValue, 1) + tabletEventCount.get();
 
-    dataRegionCommitMeter.updateAndGet(
+    tabletCommitMeter.updateAndGet(
         meter -> {
           if (Objects.nonNull(meter)) {
             lastDataRegionCommitSmoothingValue =
@@ -177,29 +183,39 @@ class PipeDataNodeRemainingEventAndTimeOperator extends PipeRemainingOperator {
 
   //////////////////////////// Rate ////////////////////////////
 
-  void markDataRegionCommit(final Boolean isTabletEvent) {
-    if (Boolean.TRUE.equals(isTabletEvent)) {
-      tabletEventCount.decrementAndGet();
-    } else if (Boolean.FALSE.equals(isTabletEvent)) {
-      tsfileEventCount.decrementAndGet();
+  void markRegionCommit(final EnrichedEvent event) {
+    if (!event.isDataRegionEvent()) {
+      schemaRegionCommitMeter.updateAndGet(
+          meter -> {
+            if (Objects.nonNull(meter)) {
+              meter.mark();
+            }
+            return meter;
+          });
+      return;
     }
-    dataRegionCommitMeter.updateAndGet(
-        meter -> {
-          if (Objects.nonNull(meter)) {
-            meter.mark();
-          }
-          return meter;
-        });
-  }
 
-  void markSchemaRegionCommit() {
-    schemaRegionCommitMeter.updateAndGet(
-        meter -> {
-          if (Objects.nonNull(meter)) {
-            meter.mark();
-          }
-          return meter;
-        });
+    if (Boolean.TRUE.equals(event.isTabletEvent())) {
+      tabletEventCount.decrementAndGet();
+      tabletCommitMeter.updateAndGet(
+          meter -> {
+            if (Objects.nonNull(meter)) {
+              meter.mark();
+            }
+            return meter;
+          });
+    } else if (Boolean.FALSE.equals(event.isTabletEvent())) {
+      final long length = ((PipeTsFileInsertionEvent) event).getFileSize();
+      tsfileEventCount.decrementAndGet();
+      tsFileEventSize.addAndGet(-length);
+      tsfileSizeCommitMeter.updateAndGet(
+          meter -> {
+            if (Objects.nonNull(meter)) {
+              meter.mark(length);
+            }
+            return meter;
+          });
+    }
   }
 
   void markTsFileCollectInvocationCount(final long collectInvocationCount) {
@@ -217,7 +233,7 @@ class PipeDataNodeRemainingEventAndTimeOperator extends PipeRemainingOperator {
     if (isStopped) {
       return;
     }
-    dataRegionCommitMeter.compareAndSet(
+    tabletCommitMeter.compareAndSet(
         null, new Meter(new ExponentialMovingAverages(), Clock.defaultClock()));
     schemaRegionCommitMeter.compareAndSet(
         null, new Meter(new ExponentialMovingAverages(), Clock.defaultClock()));
@@ -227,7 +243,7 @@ class PipeDataNodeRemainingEventAndTimeOperator extends PipeRemainingOperator {
   @Override
   public synchronized void freezeRate(final boolean isStopPipe) {
     super.freezeRate(isStopPipe);
-    dataRegionCommitMeter.set(null);
+    tabletCommitMeter.set(null);
     schemaRegionCommitMeter.set(null);
   }
 }
