@@ -235,6 +235,8 @@ class PipeDataNodeRemainingEventAndTimeOperator extends PipeRemainingOperator {
     }
     tabletCommitMeter.compareAndSet(
         null, new Meter(new ExponentialMovingAverages(), Clock.defaultClock()));
+    tsfileSizeCommitMeter.compareAndSet(
+        null, new Meter(new ExponentialMovingAverages(), Clock.defaultClock()));
     schemaRegionCommitMeter.compareAndSet(
         null, new Meter(new ExponentialMovingAverages(), Clock.defaultClock()));
   }
@@ -244,6 +246,7 @@ class PipeDataNodeRemainingEventAndTimeOperator extends PipeRemainingOperator {
   public synchronized void freezeRate(final boolean isStopPipe) {
     super.freezeRate(isStopPipe);
     tabletCommitMeter.set(null);
+    tsfileSizeCommitMeter.set(null);
     schemaRegionCommitMeter.set(null);
   }
 }
