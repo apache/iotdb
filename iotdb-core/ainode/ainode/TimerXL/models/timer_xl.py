@@ -8,6 +8,8 @@ from ainode.TimerXL.models.configuration_timer import TimerxlConfig
 from ainode.core.util.masking import prepare_4d_causal_attention_mask
 from ainode.core.util.huggingface_cache import Cache, DynamicCache
 
+from safetensors.torch import load_file
+
 @dataclass
 class Output:
     outputs: torch.Tensor
@@ -185,6 +187,8 @@ class Model(nn.Module):
         if config.ckpt_path is not None and config.ckpt_path != '':
             if config.ckpt_path.endswith('.pt') or config.ckpt_path.endswith('.pth'):
                 state_dict = torch.load(config.ckpt_path)
+            elif config.ckpt_path.endswith('.safetensors'):
+                state_dict = load_file(config.ckpt_path)
             else:
                 raise ValueError('unsupported model weight type')
             # 如果state_dict中没有'model.model'开头的key，则给所有key前面加上一个'model.'（这里的代码相比于huggingface上的代码多了一层）
