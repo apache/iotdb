@@ -259,7 +259,12 @@ public abstract class PipeAbstractConnectorSubtask extends PipeReportableSubtask
     while (highPriorityLockTaskCount.get() != 0L && maxRetries != 0) {
       maxRetries--;
       if (maxRetries == 0) {
-        Thread.yield();
+        try {
+          Thread.sleep(10);
+        } catch (InterruptedException e) {
+          Thread.currentThread().interrupt();
+          LOGGER.warn("Interrupted while waiting for the high priority lock task.", e);
+        }
       }
     }
   }
