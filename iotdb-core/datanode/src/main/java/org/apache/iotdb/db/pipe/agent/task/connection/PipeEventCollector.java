@@ -233,10 +233,6 @@ public class PipeEventCollector implements EventCollector {
     isFailedToIncreaseReferenceCount = false;
   }
 
-  public long getCollectInvocationCount() {
-    return collectInvocationCount.get();
-  }
-
   public boolean hasNoCollectInvocationAfterReset() {
     return collectInvocationCount.get() == 0;
   }

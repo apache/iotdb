@@ -25,8 +25,6 @@ import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.pipe.metric.PipeRemainingOperator;
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
 import org.apache.iotdb.db.pipe.extractor.schemaregion.IoTDBSchemaRegionExtractor;
-import org.apache.iotdb.metrics.core.IoTDBMetricManager;
-import org.apache.iotdb.metrics.core.type.IoTDBHistogram;
 import org.apache.iotdb.pipe.api.event.Event;
 
 import com.codahale.metrics.Clock;
@@ -54,11 +52,10 @@ class PipeDataNodeRemainingEventAndTimeOperator extends PipeRemainingOperator {
   private final AtomicReference<Meter> tabletCommitMeter = new AtomicReference<>(null);
   private final AtomicReference<Meter> tsfileSizeCommitMeter = new AtomicReference<>(null);
   private final AtomicReference<Meter> schemaRegionCommitMeter = new AtomicReference<>(null);
-  private final IoTDBHistogram collectInvocationHistogram =
-      (IoTDBHistogram) IoTDBMetricManager.getInstance().createHistogram();
 
-  private double lastDataRegionCommitSmoothingValue = Long.MAX_VALUE;
-  private double lastSchemaRegionCommitSmoothingValue = Long.MAX_VALUE;
+  private double lastTabletCommitSmoothingValue = Double.MAX_VALUE;
+  private double lastTsFileSizeCommitSmoothingValue = Double.MAX_VALUE;
+  private double lastSchemaRegionCommitSmoothingValue = Double.MAX_VALUE;
 
   PipeDataNodeRemainingEventAndTimeOperator(final String pipeName, final long creationTime) {
     super(pipeName, creationTime);
@@ -118,27 +115,40 @@ class PipeDataNodeRemainingEventAndTimeOperator extends PipeRemainingOperator {
     final PipeRemainingTimeRateAverageTime pipeRemainingTimeCommitRateAverageTime =
         PipeConfig.getInstance().getPipeRemainingTimeCommitRateAverageTime();
 
-    final double invocationValue = collectInvocationHistogram.getMean();
-    // Do not take heartbeat event into account
-    final double totalDataRegionWriteEventCount =
-        tsfileEventCount.get() * Math.max(invocationValue, 1) + tabletEventCount.get();
-
     tabletCommitMeter.updateAndGet(
         meter -> {
           if (Objects.nonNull(meter)) {
-            lastDataRegionCommitSmoothingValue =
+            lastTabletCommitSmoothingValue =
                 pipeRemainingTimeCommitRateAverageTime.getMeterRate(meter);
           }
           return meter;
         });
-    final double dataRegionRemainingTime;
-    if (totalDataRegionWriteEventCount <= 0) {
-      dataRegionRemainingTime = 0;
+    final double tabletRemainingTime;
+    if (tabletEventCount.get() <= 0) {
+      tabletRemainingTime = 0;
     } else {
-      dataRegionRemainingTime =
-          lastDataRegionCommitSmoothingValue <= 0
+      tabletRemainingTime =
+          lastTabletCommitSmoothingValue <= 0
               ? Double.MAX_VALUE
-              : totalDataRegionWriteEventCount / lastDataRegionCommitSmoothingValue;
+              : tabletEventCount.get() / lastTabletCommitSmoothingValue;
+    }
+
+    tsfileSizeCommitMeter.updateAndGet(
+        meter -> {
+          if (Objects.nonNull(meter)) {
+            lastTsFileSizeCommitSmoothingValue =
+                pipeRemainingTimeCommitRateAverageTime.getMeterRate(meter);
+          }
+          return meter;
+        });
+    final double tsFileRemainingTime;
+    if (tsFileEventSize.get() <= 0) {
+      tsFileRemainingTime = 0;
+    } else {
+      tsFileRemainingTime =
+          lastTsFileSizeCommitSmoothingValue <= 0
+              ? Double.MAX_VALUE
+              : tsFileEventSize.get() / lastTsFileSizeCommitSmoothingValue;
     }
 
     final long totalSchemaRegionWriteEventCount =
@@ -171,7 +181,8 @@ class PipeDataNodeRemainingEventAndTimeOperator extends PipeRemainingOperator {
       notifyNonEmpty();
     }
 
-    final double result = Math.max(dataRegionRemainingTime, schemaRegionRemainingTime);
+    final double result =
+        Math.max(tabletRemainingTime, Math.max(tsFileRemainingTime, schemaRegionRemainingTime));
     return result >= REMAINING_MAX_SECONDS ? REMAINING_MAX_SECONDS : result;
   }
 
@@ -216,11 +227,6 @@ class PipeDataNodeRemainingEventAndTimeOperator extends PipeRemainingOperator {
             return meter;
           });
     }
-  }
-
-  void markTsFileCollectInvocationCount(final long collectInvocationCount) {
-    // If collectInvocationCount == 0, the event will still be committed once
-    collectInvocationHistogram.update(Math.max(collectInvocationCount, 1));
   }
 
   //////////////////////////// Switch ////////////////////////////
