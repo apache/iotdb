@@ -72,6 +72,7 @@ public class IoTDBConnection implements Connection {
       TSProtocolVersion.IOTDB_SERVICE_PROTOCOL_V3;
   private static final String NOT_SUPPORT_PREPARE_CALL = "Does not support prepareCall";
   private static final String NOT_SUPPORT_PREPARE_STATEMENT = "Does not support prepareStatement";
+  private static final String APACHE_IOTDB = "Apache IoTDB";
   private IClientRPCService.Iface client = null;
   private long sessionId = -1;
   private IoTDBConnectionParams params;
@@ -262,12 +263,32 @@ public class IoTDBConnection implements Connection {
 
   @Override
   public String getCatalog() {
-    return "Apache IoTDB";
+    return APACHE_IOTDB;
   }
 
   @Override
   public void setCatalog(String arg0) throws SQLException {
-    throw new SQLException("Does not support setCatalog");
+    if (getSqlDialect().equals(Constant.TABLE_DIALECT)) {
+      if (APACHE_IOTDB.equals(arg0)) {
+        return;
+      }
+      for (String str : IoTDBRelationalDatabaseMetadata.allIotdbTableSQLKeywords) {
+        if (arg0.equalsIgnoreCase(str)) {
+          arg0 = "\"" + arg0 + "\"";
+        }
+      }
+
+      Statement stmt = this.createStatement();
+      String sql = "USE " + arg0;
+      boolean rs;
+      try {
+        rs = stmt.execute(sql);
+      } catch (SQLException e) {
+        stmt.close();
+        logger.error("Use database error: {}", e.getMessage());
+        throw e;
+      }
+    }
   }
 
   @Override
