@@ -68,11 +68,35 @@ public class PipeDataNodeRemainingEventAndTimeMetrics implements IMetricSet {
         Metric.PIPE_DATANODE_REMAINING_EVENT_COUNT.toString(),
         MetricLevel.IMPORTANT,
         operator,
-        PipeDataNodeRemainingEventAndTimeOperator::getRemainingEvents,
+        PipeDataNodeRemainingEventAndTimeOperator::getTsFileRemainingEvents,
         Tag.NAME.toString(),
         operator.getPipeName(),
         Tag.CREATION_TIME.toString(),
-        String.valueOf(operator.getCreationTime()));
+        String.valueOf(operator.getCreationTime()),
+        Tag.TYPE.toString(),
+        "TsFileEvent");
+    metricService.createAutoGauge(
+        Metric.PIPE_DATANODE_REMAINING_EVENT_COUNT.toString(),
+        MetricLevel.IMPORTANT,
+        operator,
+        PipeDataNodeRemainingEventAndTimeOperator::getTabletRemainingEvents,
+        Tag.NAME.toString(),
+        operator.getPipeName(),
+        Tag.CREATION_TIME.toString(),
+        String.valueOf(operator.getCreationTime()),
+        Tag.TYPE.toString(),
+        "TabletEvent");
+    metricService.createAutoGauge(
+        Metric.PIPE_DATANODE_REMAINING_EVENT_COUNT.toString(),
+        MetricLevel.IMPORTANT,
+        operator,
+        PipeDataNodeRemainingEventAndTimeOperator::getTabletRemainingEvents,
+        Tag.NAME.toString(),
+        operator.getPipeName(),
+        Tag.CREATION_TIME.toString(),
+        String.valueOf(operator.getCreationTime()),
+        Tag.TYPE.toString(),
+        "SchemaEvent");
     metricService.createAutoGauge(
         Metric.PIPE_DATANODE_REMAINING_TIME.toString(),
         MetricLevel.IMPORTANT,
@@ -106,7 +130,27 @@ public class PipeDataNodeRemainingEventAndTimeMetrics implements IMetricSet {
         Tag.NAME.toString(),
         operator.getPipeName(),
         Tag.CREATION_TIME.toString(),
-        String.valueOf(operator.getCreationTime()));
+        String.valueOf(operator.getCreationTime()),
+        Tag.TYPE.toString(),
+        "TsFileEvent");
+    metricService.remove(
+        MetricType.AUTO_GAUGE,
+        Metric.PIPE_DATANODE_REMAINING_EVENT_COUNT.toString(),
+        Tag.NAME.toString(),
+        operator.getPipeName(),
+        Tag.CREATION_TIME.toString(),
+        String.valueOf(operator.getCreationTime()),
+        Tag.TYPE.toString(),
+        "TabletEvent");
+    metricService.remove(
+        MetricType.AUTO_GAUGE,
+        Metric.PIPE_DATANODE_REMAINING_EVENT_COUNT.toString(),
+        Tag.NAME.toString(),
+        operator.getPipeName(),
+        Tag.CREATION_TIME.toString(),
+        String.valueOf(operator.getCreationTime()),
+        Tag.TYPE.toString(),
+        "SchemaEvent");
     metricService.remove(
         MetricType.AUTO_GAUGE,
         Metric.PIPE_DATANODE_REMAINING_TIME.toString(),
@@ -177,22 +221,6 @@ public class PipeDataNodeRemainingEventAndTimeMetrics implements IMetricSet {
             pipeName + "_" + creationTime,
             k -> new PipeDataNodeRemainingEventAndTimeOperator(pipeName, creationTime))
         .decreaseTsFileEventCount();
-  }
-
-  public void increaseHeartbeatEventCount(final String pipeName, final long creationTime) {
-    remainingEventAndTimeOperatorMap
-        .computeIfAbsent(
-            pipeName + "_" + creationTime,
-            k -> new PipeDataNodeRemainingEventAndTimeOperator(pipeName, creationTime))
-        .increaseHeartbeatEventCount();
-  }
-
-  public void decreaseHeartbeatEventCount(final String pipeName, final long creationTime) {
-    remainingEventAndTimeOperatorMap
-        .computeIfAbsent(
-            pipeName + "_" + creationTime,
-            k -> new PipeDataNodeRemainingEventAndTimeOperator(pipeName, creationTime))
-        .decreaseHeartbeatEventCount();
   }
 
   public void thawRate(final String pipeID) {

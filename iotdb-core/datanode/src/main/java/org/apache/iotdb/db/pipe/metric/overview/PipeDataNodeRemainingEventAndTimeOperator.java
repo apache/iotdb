@@ -46,7 +46,6 @@ class PipeDataNodeRemainingEventAndTimeOperator extends PipeRemainingOperator {
 
   private final AtomicInteger tabletEventCount = new AtomicInteger(0);
   private final AtomicInteger tsfileEventCount = new AtomicInteger(0);
-  private final AtomicInteger heartbeatEventCount = new AtomicInteger(0);
 
   private final AtomicReference<Meter> dataRegionCommitMeter = new AtomicReference<>(null);
   private final AtomicReference<Meter> schemaRegionCommitMeter = new AtomicReference<>(null);
@@ -78,19 +77,10 @@ class PipeDataNodeRemainingEventAndTimeOperator extends PipeRemainingOperator {
     tsfileEventCount.decrementAndGet();
   }
 
-  void increaseHeartbeatEventCount() {
-    heartbeatEventCount.incrementAndGet();
-  }
-
-  void decreaseHeartbeatEventCount() {
-    heartbeatEventCount.decrementAndGet();
-  }
-
   long getRemainingEvents() {
     final long remainingEvents =
         tsfileEventCount.get()
             + tabletEventCount.get()
-            + heartbeatEventCount.get()
             + schemaRegionExtractors.stream()
                 .map(IoTDBSchemaRegionExtractor::getUnTransferredEventCount)
                 .reduce(Long::sum)
@@ -100,6 +90,23 @@ class PipeDataNodeRemainingEventAndTimeOperator extends PipeRemainingOperator {
     // the Processor SubTask is still collecting Events, resulting in a negative count. This
     // situation cannot be avoided because the Pipe may be restarted internally.
     return remainingEvents >= 0 ? remainingEvents : 0;
+  }
+
+  long getTsFileRemainingEvents() {
+    final long value = tsfileEventCount.get();
+    return value > 0 ? value : 0;
+  }
+
+  long getTabletRemainingEvents() {
+    final long value = tabletEventCount.get();
+    return value > 0 ? value : 0;
+  }
+
+  long getSchemaRemainingEvents() {
+    return schemaRegionExtractors.stream()
+        .map(IoTDBSchemaRegionExtractor::getUnTransferredEventCount)
+        .reduce(Long::sum)
+        .orElse(0L);
   }
 
   /**
