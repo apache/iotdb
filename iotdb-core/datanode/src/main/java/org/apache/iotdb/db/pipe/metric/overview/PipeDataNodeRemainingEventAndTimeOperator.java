@@ -175,7 +175,7 @@ class PipeDataNodeRemainingEventAndTimeOperator extends PipeRemainingOperator {
               : totalSchemaRegionWriteEventCount / lastSchemaRegionCommitSmoothingValue;
     }
 
-    if (totalDataRegionWriteEventCount + totalSchemaRegionWriteEventCount == 0) {
+    if (tabletEventCount.get() + tsfileEventCount.get() + totalSchemaRegionWriteEventCount <= 0) {
       notifyEmpty();
     } else {
       notifyNonEmpty();
