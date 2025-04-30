@@ -42,7 +42,7 @@ public class ActiveLoadUtil {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(ActiveLoadUtil.class);
 
-  private static volatile ILoadDiskSelector<Void> loadDiskSelector = updateLoadDisLoad();
+  private static volatile ILoadDiskSelector<Void> loadDiskSelector = updateLoadDiskSelector();
 
   public static boolean loadTsFileAsyncToActiveDir(
       final List<File> tsFiles, final String dataBaseName, final boolean isDeleteAfterLoad) {
@@ -149,7 +149,7 @@ public class ActiveLoadUtil {
         });
   }
 
-  public static ILoadDiskSelector<Void> updateLoadDisLoad() {
+  public static ILoadDiskSelector<Void> updateLoadDiskSelector() {
     final String[] dirs = IoTDBDescriptor.getInstance().getConfig().getLoadActiveListeningDirs();
     ILoadDiskSelector<Void> loadDiskSelector =
         ILoadDiskSelector.initDiskSelector(
