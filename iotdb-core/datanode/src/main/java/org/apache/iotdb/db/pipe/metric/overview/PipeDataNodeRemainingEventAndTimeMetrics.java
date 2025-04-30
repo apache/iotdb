@@ -90,7 +90,7 @@ public class PipeDataNodeRemainingEventAndTimeMetrics implements IMetricSet {
         Metric.PIPE_DATANODE_REMAINING_EVENT_COUNT.toString(),
         MetricLevel.IMPORTANT,
         operator,
-        PipeDataNodeRemainingEventAndTimeOperator::getTabletRemainingEvents,
+        PipeDataNodeRemainingEventAndTimeOperator::getSchemaRemainingEvents,
         Tag.NAME.toString(),
         operator.getPipeName(),
         Tag.CREATION_TIME.toString(),
