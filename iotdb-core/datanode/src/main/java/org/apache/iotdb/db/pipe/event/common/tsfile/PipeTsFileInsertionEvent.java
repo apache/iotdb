@@ -706,6 +706,11 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
     }
   }
 
+  @Override
+  public Boolean isTabletEvent() {
+    return Boolean.FALSE;
+  }
+
   /** Release the resource of {@link TsFileInsertionEventParser}. */
   @Override
   public void close() {

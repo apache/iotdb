@@ -109,7 +109,7 @@ public class PipeEventCommitManager {
         commitRateMarker.accept(
             taskAgent.getPipeNameWithCreationTime(event.getPipeName(), event.getCreationTime()),
             event.isDataRegionEvent(),
-            true);
+            event.isTabletEvent());
       } catch (final Exception e) {
         if (LOGGER.isDebugEnabled()) {
           LOGGER.debug(

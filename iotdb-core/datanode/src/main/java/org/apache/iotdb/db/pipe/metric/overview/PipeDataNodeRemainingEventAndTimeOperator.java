@@ -177,10 +177,10 @@ class PipeDataNodeRemainingEventAndTimeOperator extends PipeRemainingOperator {
 
   //////////////////////////// Rate ////////////////////////////
 
-  void markDataRegionCommit(final boolean isTabletEvent) {
-    if (isTabletEvent) {
+  void markDataRegionCommit(final Boolean isTabletEvent) {
+    if (Boolean.TRUE.equals(isTabletEvent)) {
       tabletEventCount.decrementAndGet();
-    } else {
+    } else if (Boolean.FALSE.equals(isTabletEvent)) {
       tsfileEventCount.decrementAndGet();
     }
     dataRegionCommitMeter.updateAndGet(

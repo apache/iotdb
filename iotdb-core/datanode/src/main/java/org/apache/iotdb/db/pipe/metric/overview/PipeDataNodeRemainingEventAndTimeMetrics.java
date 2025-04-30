@@ -240,7 +240,7 @@ public class PipeDataNodeRemainingEventAndTimeMetrics implements IMetricSet {
   }
 
   public void markRegionCommit(
-      final String pipeID, final boolean isDataRegion, final boolean isTabletEvent) {
+      final String pipeID, final boolean isDataRegion, final Boolean isTabletEvent) {
     if (Objects.isNull(metricService)) {
       return;
     }
