@@ -37,8 +37,9 @@
 
 package org.apache.iotdb.udf.api.relational.table.specification;
 
-import java.util.Locale;
 import java.util.Optional;
+
+import static java.util.Locale.ENGLISH;
 
 /**
  * Abstract class to capture the three supported argument types for a table function: - Table
@@ -56,8 +57,7 @@ public abstract class ParameterSpecification {
   private final Optional<Object> defaultValue;
 
   ParameterSpecification(String name, boolean required, Optional<Object> defaultValue) {
-    // name will be stored in upper case to avoid case sensitivity issues
-    this.name = name.toUpperCase(Locale.ENGLISH);
+    this.name = name;
     this.required = required;
     this.defaultValue = defaultValue;
     if (required && defaultValue.isPresent()) {
@@ -67,6 +67,10 @@ public abstract class ParameterSpecification {
 
   public String getName() {
     return name;
+  }
+
+  public String getCanonicalName() {
+    return name.toUpperCase(ENGLISH);
   }
 
   public boolean isRequired() {
