@@ -304,7 +304,7 @@ public class PageReader implements IPageReader {
       // step 4: search unpruned intervals
       // also deal with normal delete intervals
       if (dataType == TSDataType.DOUBLE) {
-        double candidateTPvalue = -1;
+        double candidateTPvalue = -Double.MAX_VALUE;
         long candidateTPtime = -1;
         // note that idx&prune_interval&search_interval starting from 1, pos starting from 0
         for (int i = 0; i < prune_intervals_start.size(); i++) {
@@ -324,7 +324,7 @@ public class PageReader implements IPageReader {
         }
         chunkSuit4CPV.statistics.setMaxInfo(new MinMaxInfo(candidateTPvalue, candidateTPtime));
       } else if (dataType == TSDataType.INT64) {
-        long candidateTPvalue = -1; // NOTE for TP
+        long candidateTPvalue = -Long.MAX_VALUE; // NOTE for TP
         long candidateTPtime = -1;
         for (int i = 0; i < prune_intervals_start.size(); i++) {
           int search_interval_start = prune_intervals_end.get(i) + 1; // included
