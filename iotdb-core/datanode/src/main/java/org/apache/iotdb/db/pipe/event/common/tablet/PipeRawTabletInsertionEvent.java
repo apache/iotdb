@@ -201,19 +201,11 @@ public class PipeRawTabletInsertionEvent extends PipeInsertionEvent
         .forceResize(
             allocatedMemoryBlock,
             PipeMemoryWeightUtil.calculateTabletSizeInBytes(tablet) + INSTANCE_SIZE);
-    if (Objects.nonNull(pipeName)) {
-      PipeDataNodeRemainingEventAndTimeMetrics.getInstance()
-          .increaseTabletEventCount(pipeName, creationTime);
-    }
     return true;
   }
 
   @Override
   public boolean internallyDecreaseResourceReferenceCount(final String holderMessage) {
-    if (Objects.nonNull(pipeName)) {
-      PipeDataNodeRemainingEventAndTimeMetrics.getInstance()
-          .decreaseTabletEventCount(pipeName, creationTime);
-    }
     allocatedMemoryBlock.close();
 
     // Record the deviceId before the memory is released,
