@@ -4245,12 +4245,12 @@ public class StatementAnalyzer {
           }
         }
         Set<String> uniqueArgumentNames = new HashSet<>();
+        Set<String> specifiedArgumentNames = argumentSpecificationsByName.keySet();
         for (TableFunctionArgument argument : arguments) {
           // it has been checked that all arguments have different names
           String argumentName =
               castNameAsSpecification(
-                  argumentSpecificationsByName.keySet(),
-                  argument.getName().get().getCanonicalValue());
+                  specifiedArgumentNames, argument.getName().get().getCanonicalValue());
           if (argumentName == null) {
             throw new SemanticException(
                 String.format("Unexpected argument name: %s", argument.getName().get().getValue()));
