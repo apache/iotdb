@@ -163,6 +163,7 @@ public class Cli extends AbstractCli {
       password = commandLine.getOptionValue(PW_ARGS);
       constructProperties();
       if (hasExecuteSQL && password != null) {
+        ctx.getLineReader().getVariables().put(LineReader.DISABLE_HISTORY, Boolean.TRUE);
         executeSql(ctx);
       }
       if (password == null) {

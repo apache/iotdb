@@ -3069,8 +3069,10 @@ public class DataRegion implements IDataRegionForQuery {
       throw new LoadFileException(e);
     } finally {
       writeUnlock();
-      // TODO: do more precise control and call "invalidateTableLastCache"
-      TreeDeviceSchemaCacheManager.getInstance().cleanUp();
+      // TODO: do more precise control
+      if (CommonDescriptor.getInstance().getConfig().isLastCacheEnable()) {
+        TreeDeviceSchemaCacheManager.getInstance().cleanUp();
+      }
     }
   }
 

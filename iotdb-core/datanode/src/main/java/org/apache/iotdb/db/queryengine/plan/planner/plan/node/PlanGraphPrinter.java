@@ -82,9 +82,6 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TableFunctio
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TreeDeviceViewScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ValueFillNode;
-import org.apache.iotdb.udf.api.relational.table.argument.Argument;
-import org.apache.iotdb.udf.api.relational.table.argument.ScalarArgument;
-import org.apache.iotdb.udf.api.relational.table.argument.TableArgument;
 
 import com.google.common.base.Joiner;
 import org.apache.commons.lang3.Validate;
@@ -99,7 +96,6 @@ import java.util.Map.Entry;
 import java.util.Optional;
 
 import static com.google.common.base.Preconditions.checkArgument;
-import static java.lang.String.format;
 import static org.apache.iotdb.db.utils.DateTimeUtils.TIMESTAMP_PRECISION;
 
 public class PlanGraphPrinter extends PlanVisitor<List<String>, PlanGraphPrinter.GraphContext> {
@@ -1045,32 +1041,8 @@ public class PlanGraphPrinter extends PlanVisitor<List<String>, PlanGraphPrinter
                   .getOrderingScheme()
                   .ifPresent(orderingScheme -> boxValue.add("Order by: " + orderingScheme));
             });
-    if (!node.getArguments().isEmpty()) {
-      node.getArguments().forEach((key, value) -> boxValue.add(formatArgument(key, value)));
-    }
+    boxValue.add("TableFunctionHandle: " + node.getTableFunctionHandle());
     return render(node, boxValue, context);
-  }
-
-  private String formatArgument(String argumentName, Argument argument) {
-    if (argument instanceof ScalarArgument) {
-      return formatScalarArgument(argumentName, (ScalarArgument) argument);
-    } else if (argument instanceof TableArgument) {
-      return formatTableArgument(argumentName, (TableArgument) argument);
-    } else {
-      return argumentName + " => " + argument;
-    }
-  }
-
-  private String formatScalarArgument(String argumentName, ScalarArgument argument) {
-    return format(
-        "%s => ScalarArgument{type=%s, value=%s}",
-        argumentName, argument.getType(), argument.getValue());
-  }
-
-  private String formatTableArgument(String argumentName, TableArgument argument) {
-    return format(
-        "%s => TableArgument{%s}",
-        argumentName, argument.isRowSemantics() ? "row semantics" : "set semantics");
   }
 
   private String printRegion(TRegionReplicaSet regionReplicaSet) {

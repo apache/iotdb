@@ -23,6 +23,7 @@ import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.TableClusterIT;
 import org.apache.iotdb.itbase.category.TableLocalStandaloneIT;
+import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
@@ -4106,6 +4107,59 @@ public class IoTDBTableAggregationIT {
   }
 
   @Test
+  public void approxCountDistinctTest() {
+    String[] expectedHeader = buildHeaders(17);
+    String[] retArray = new String[] {"10,2,2,4,16,2,2,5,5,5,5,2,24,32,5,10,1,"};
+    tableResultSetEqualTest(
+        "select approx_count_distinct(time), approx_count_distinct(province), approx_count_distinct(city), approx_count_distinct(region), approx_count_distinct(device_id), approx_count_distinct(color), approx_count_distinct(type), approx_count_distinct(s1), approx_count_distinct(s2), approx_count_distinct(s3), approx_count_distinct(s4), approx_count_distinct(s5), approx_count_distinct(s6), approx_count_distinct(s7), approx_count_distinct(s8), approx_count_distinct(s9), approx_count_distinct(s10) from table1",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+
+    tableResultSetEqualTest(
+        "select approx_count_distinct(time, 0.02), approx_count_distinct(province, 0.02), approx_count_distinct(city, 0.02), approx_count_distinct(region, 0.02), approx_count_distinct(device_id, 0.02), approx_count_distinct(color, 0.02), approx_count_distinct(type, 0.02), approx_count_distinct(s1, 0.02), approx_count_distinct(s2, 0.02), approx_count_distinct(s3, 0.02), approx_count_distinct(s4, 0.02), approx_count_distinct(s5, 0.02), approx_count_distinct(s6, 0.02), approx_count_distinct(s7, 0.02), approx_count_distinct(s8, 0.02), approx_count_distinct(s9, 0.02), approx_count_distinct(s10, 0.02) from table1",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+
+    retArray =
+        new String[] {
+          "2024-09-24T06:15:30.000Z,beijing,2,2,",
+          "2024-09-24T06:15:31.000Z,beijing,0,0,",
+          "2024-09-24T06:15:35.000Z,beijing,2,2,",
+          "2024-09-24T06:15:36.000Z,beijing,2,4,",
+          "2024-09-24T06:15:40.000Z,beijing,0,4,",
+          "2024-09-24T06:15:41.000Z,beijing,2,0,",
+          "2024-09-24T06:15:46.000Z,beijing,0,2,",
+          "2024-09-24T06:15:50.000Z,beijing,0,2,",
+          "2024-09-24T06:15:51.000Z,beijing,2,0,",
+          "2024-09-24T06:15:55.000Z,beijing,2,0,",
+          "2024-09-24T06:15:30.000Z,shanghai,2,2,",
+          "2024-09-24T06:15:31.000Z,shanghai,0,0,",
+          "2024-09-24T06:15:35.000Z,shanghai,2,2,",
+          "2024-09-24T06:15:36.000Z,shanghai,2,4,",
+          "2024-09-24T06:15:40.000Z,shanghai,0,4,",
+          "2024-09-24T06:15:41.000Z,shanghai,2,0,",
+          "2024-09-24T06:15:46.000Z,shanghai,0,2,",
+          "2024-09-24T06:15:50.000Z,shanghai,0,2,",
+          "2024-09-24T06:15:51.000Z,shanghai,2,0,",
+          "2024-09-24T06:15:55.000Z,shanghai,2,0,",
+        };
+
+    tableResultSetEqualTest(
+        "select time,province,approx_count_distinct(s6),approx_count_distinct(s7) from table1 group by 1,2 order by 2,1",
+        new String[] {"time", "province", "_col2", "_col3"},
+        retArray,
+        DATABASE_NAME);
+
+    tableResultSetEqualTest(
+        "select time,province,approx_count_distinct(s6,0.02),approx_count_distinct(s7,0.02) from table1 group by 1,2 order by 2,1",
+        new String[] {"time", "province", "_col2", "_col3"},
+        retArray,
+        DATABASE_NAME);
+  }
+
+  @Test
   public void exceptionTest() {
     tableAssertTestFail(
         "select avg() from table1",
@@ -4134,6 +4188,22 @@ public class IoTDBTableAggregationIT {
     tableAssertTestFail(
         "select last_by() from table1",
         "701: Aggregate functions [last_by] should only have two or three arguments",
+        DATABASE_NAME);
+    tableAssertTestFail(
+        "select approx_count_distinct() from table1",
+        "701: Aggregate functions [approx_count_distinct] should only have two arguments",
+        DATABASE_NAME);
+    tableAssertTestFail(
+        "select approx_count_distinct(province, 0.3) from table1",
+        "750: Max Standard Error must be in [0.0040625, 0.26]: 0.3",
+        DATABASE_NAME);
+    tableAssertTestFail(
+        "select approx_count_distinct(province, 0.3) from table1",
+        "750: Max Standard Error must be in [0.0040625, 0.26]: 0.3",
+        DATABASE_NAME);
+    tableAssertTestFail(
+        "select approx_count_distinct(province, 'test') from table1",
+        "701: Second argument of Aggregate functions [approx_count_distinct] should be numberic type and do not use expression",
         DATABASE_NAME);
   }
 
@@ -5162,5 +5232,12 @@ public class IoTDBTableAggregationIT {
         "select count(distinct *) from table1",
         "mismatched input '*'. Expecting: <expression>",
         DATABASE_NAME);
+
+    String errMsg = TSStatusCode.SEMANTIC_ERROR.getStatusCode() + ": Unsupported expression: Row";
+    tableAssertTestFail("select distinct (s1,s2) from table1", errMsg, DATABASE_NAME);
+
+    tableAssertTestFail("select (s1,s2) from table1", errMsg, DATABASE_NAME);
+
+    tableAssertTestFail("select * from table1 where (s1,s2) is not null", errMsg, DATABASE_NAME);
   }
 }

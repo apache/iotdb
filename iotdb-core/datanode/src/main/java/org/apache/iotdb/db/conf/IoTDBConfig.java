@@ -547,9 +547,6 @@ public class IoTDBConfig {
    */
   private volatile double innerCompactionTaskSelectionDiskRedundancy = 0.05;
 
-  /** The size of global compaction estimation file info cahce. */
-  private int globalCompactionFileInfoCacheSize = 1000;
-
   /** Cache size of {@code checkAndGetDataTypeCache}. */
   private int mRemoteSchemaCacheSize = 100000;
 
@@ -3684,14 +3681,6 @@ public class IoTDBConfig {
 
   public void setCandidateCompactionTaskQueueSize(int candidateCompactionTaskQueueSize) {
     this.candidateCompactionTaskQueueSize = candidateCompactionTaskQueueSize;
-  }
-
-  public int getGlobalCompactionFileInfoCacheSize() {
-    return globalCompactionFileInfoCacheSize;
-  }
-
-  public void setGlobalCompactionFileInfoCacheSize(int globalCompactionFileInfoCacheSize) {
-    this.globalCompactionFileInfoCacheSize = globalCompactionFileInfoCacheSize;
   }
 
   public boolean isEnableAuditLog() {
