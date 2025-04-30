@@ -39,8 +39,6 @@ package org.apache.iotdb.udf.api.relational.table.specification;
 
 import java.util.Optional;
 
-import static java.util.Locale.ENGLISH;
-
 /**
  * Abstract class to capture the three supported argument types for a table function: - Table
  * arguments - Descriptor arguments - SQL scalar arguments
@@ -67,10 +65,6 @@ public abstract class ParameterSpecification {
 
   public String getName() {
     return name;
-  }
-
-  public String getCanonicalName() {
-    return name.toUpperCase(ENGLISH);
   }
 
   public boolean isRequired() {
