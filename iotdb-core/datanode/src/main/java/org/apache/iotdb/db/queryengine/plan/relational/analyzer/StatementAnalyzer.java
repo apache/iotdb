@@ -59,6 +59,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AlterDB;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AlterPipe;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ArithmeticBinaryExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ArithmeticUnaryExpression;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AsofJoinOn;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AstVisitor;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.BetweenPredicate;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Cast;
@@ -200,6 +201,7 @@ import com.google.common.collect.ListMultimap;
 import com.google.common.collect.Streams;
 import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.read.common.type.RowType;
+import org.apache.tsfile.read.common.type.TimestampType;
 import org.apache.tsfile.read.common.type.Type;
 import org.apache.tsfile.utils.Binary;
 
@@ -2985,36 +2987,77 @@ public class StatementAnalyzer {
         return output;
       }
       if (criteria instanceof JoinOn) {
-        Expression expression = ((JoinOn) criteria).getExpression();
-        verifyNoAggregateWindowOrGroupingFunctions(expression, "JOIN clause");
+        boolean isAsofJoin = criteria instanceof AsofJoinOn;
 
-        // Need to register coercions in case when join criteria requires coercion (e.g. join on
-        // char(1) = char(2))
-        // Correlations are only currently support in the join criteria for INNER joins
-        ExpressionAnalysis expressionAnalysis =
-            analyzeExpression(
-                expression,
-                output,
-                node.getType() == INNER
-                    ? CorrelationSupport.ALLOWED
-                    : CorrelationSupport.DISALLOWED);
-        Type clauseType = expressionAnalysis.getType(expression);
-        if (!clauseType.equals(BOOLEAN)) {
-          //          if (!clauseType.equals(UNKNOWN)) {
-          //            throw semanticException(
-          //                TYPE_MISMATCH,
-          //                expression,
-          //                "JOIN ON clause must evaluate to a boolean: actual type %s",
-          //                clauseType);
-          //          }
-          throw new SemanticException(
-              String.format(
-                  "JOIN ON clause must evaluate to a boolean: actual type %s", clauseType));
-          // coerce expression to boolean
-          //          analysis.addCoercion(expression, BOOLEAN, false);
+        Expression expression = ((JoinOn) criteria).getExpression();
+        if (expression != null) {
+          verifyNoAggregateWindowOrGroupingFunctions(expression, "JOIN clause");
+
+          // Need to register coercions in case when join criteria requires coercion (e.g. join on
+          // char(1) = char(2))
+          // Correlations are only currently support in the join criteria for INNER joins
+          ExpressionAnalysis expressionAnalysis =
+              analyzeExpression(
+                  expression,
+                  output,
+                  node.getType() == INNER && !isAsofJoin
+                      ? CorrelationSupport.ALLOWED
+                      : CorrelationSupport.DISALLOWED);
+          Type clauseType = expressionAnalysis.getType(expression);
+          if (!clauseType.equals(BOOLEAN)) {
+            //          if (!clauseType.equals(UNKNOWN)) {
+            //            throw semanticException(
+            //                TYPE_MISMATCH,
+            //                expression,
+            //                "JOIN ON clause must evaluate to a boolean: actual type %s",
+            //                clauseType);
+            //          }
+            throw new SemanticException(
+                String.format(
+                    "JOIN ON clause must evaluate to a boolean: actual type %s", clauseType));
+            // coerce expression to boolean
+            //          analysis.addCoercion(expression, BOOLEAN, false);
+          }
+
+          if (!isAsofJoin) {
+            analysis.recordSubqueries(node, expressionAnalysis);
+          }
         }
 
-        analysis.recordSubqueries(node, expressionAnalysis);
+        if (isAsofJoin) {
+          // The asofExpression must be ComparisonExpression, it has been checked in AstBuilder
+          ComparisonExpression asofExpression =
+              (ComparisonExpression) ((AsofJoinOn) criteria).getAsofExpression();
+
+          verifyNoAggregateWindowOrGroupingFunctions(asofExpression, "JOIN clause");
+
+          // ASOF Join does not support Correlation
+          ExpressionAnalysis expressionAnalysis =
+              analyzeExpression(asofExpression, output, CorrelationSupport.DISALLOWED);
+          Type clauseType = expressionAnalysis.getType(asofExpression);
+          if (!clauseType.equals(BOOLEAN)) {
+            throw new SemanticException(
+                String.format(
+                    "ASOF main JOIN expression must evaluate to a boolean: actual type %s",
+                    clauseType));
+          }
+
+          clauseType = expressionAnalysis.getType(asofExpression.getLeft());
+          if (!clauseType.equals(TimestampType.TIMESTAMP)) {
+            throw new SemanticException(
+                String.format(
+                    "left child type of ASOF main JOIN expression must be TIMESTAMP: actual type %s",
+                    clauseType));
+          }
+
+          clauseType = expressionAnalysis.getType(asofExpression.getRight());
+          if (!clauseType.equals(TimestampType.TIMESTAMP)) {
+            throw new SemanticException(
+                String.format(
+                    "right child type of ASOF main JOIN expression must be TIMESTAMP: actual type %s",
+                    clauseType));
+          }
+        }
         analysis.setJoinCriteria(node, expression);
       } else {
         throw new UnsupportedOperationException(
