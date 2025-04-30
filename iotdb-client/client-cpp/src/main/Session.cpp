@@ -1628,22 +1628,7 @@ void Session::deleteTimeseries(const string &path) {
 }
 
 void Session::deleteTimeseries(const vector<string> &paths) {
-    TSStatus tsStatus;
-
-    try {
-        defaultSessionConnection->getSessionClient()->deleteTimeseries(tsStatus,
-            defaultSessionConnection->sessionId, paths);
-        RpcUtils::verifySuccess(tsStatus);
-    } catch (const TTransportException &e) {
-        log_debug(e.what());
-        throw IoTDBConnectionException(e.what());
-    } catch (const IoTDBException &e) {
-        log_debug(e.what());
-        throw;
-    } catch (const exception &e) {
-        log_debug(e.what());
-        throw IoTDBException(e.what());
-    }
+    defaultSessionConnection->deleteTimeseries(paths);
 }
 
 void Session::deleteData(const string &path, int64_t endTime) {
@@ -1661,37 +1646,11 @@ void Session::deleteData(const vector<string> &paths, int64_t startTime, int64_t
     req.__set_paths(paths);
     req.__set_startTime(startTime);
     req.__set_endTime(endTime);
-    TSStatus tsStatus;
-    try {
-        defaultSessionConnection->getSessionClient()->deleteData(tsStatus, req);
-        RpcUtils::verifySuccess(tsStatus);
-    } catch (const TTransportException &e) {
-        log_debug(e.what());
-        throw IoTDBConnectionException(e.what());
-    } catch (const IoTDBException &e) {
-        log_debug(e.what());
-        throw;
-    } catch (const exception &e) {
-        log_debug(e.what());
-        throw IoTDBException(e.what());
-    }
+    defaultSessionConnection->deleteData(req);
 }
 
 void Session::setStorageGroup(const string &storageGroupId) {
-    TSStatus tsStatus;
-    try {
-        defaultSessionConnection->getSessionClient()->setStorageGroup(tsStatus, defaultSessionConnection->sessionId, storageGroupId);
-        RpcUtils::verifySuccess(tsStatus);
-    } catch (const TTransportException &e) {
-        log_debug(e.what());
-        throw IoTDBConnectionException(e.what());
-    } catch (const IoTDBException &e) {
-        log_debug(e.what());
-        throw;
-    } catch (const exception &e) {
-        log_debug(e.what());
-        throw IoTDBException(e.what());
-    }
+    defaultSessionConnection->setStorageGroup(storageGroupId);
 }
 
 void Session::deleteStorageGroup(const string &storageGroup) {
@@ -1701,20 +1660,7 @@ void Session::deleteStorageGroup(const string &storageGroup) {
 }
 
 void Session::deleteStorageGroups(const vector<string> &storageGroups) {
-    TSStatus tsStatus;
-    try {
-        defaultSessionConnection->getSessionClient()->deleteStorageGroups(tsStatus, defaultSessionConnection->sessionId, storageGroups);
-        RpcUtils::verifySuccess(tsStatus);
-    } catch (const TTransportException &e) {
-        log_debug(e.what());
-        throw IoTDBConnectionException(e.what());
-    } catch (const IoTDBException &e) {
-        log_debug(e.what());
-        throw;
-    } catch (const exception &e) {
-        log_debug(e.what());
-        throw IoTDBException(e.what());
-    }
+    defaultSessionConnection->deleteStorageGroups(storageGroups);
 }
 
 void Session::createDatabase(const string &database) {
@@ -1751,7 +1697,6 @@ void Session::createTimeseries(const string &path,
                                map<string, string> *attributes,
                                const string &measurementAlias) {
     TSCreateTimeseriesReq req;
-    req.__set_sessionId(defaultSessionConnection->sessionId);
     req.__set_path(path);
     req.__set_dataType(dataType);
     req.__set_encoding(encoding);
@@ -1769,21 +1714,7 @@ void Session::createTimeseries(const string &path,
     if (!measurementAlias.empty()) {
         req.__set_measurementAlias(measurementAlias);
     }
-
-    TSStatus tsStatus;
-    try {
-        defaultSessionConnection->getSessionClient()->createTimeseries(tsStatus, req);
-        RpcUtils::verifySuccess(tsStatus);
-    } catch (const TTransportException &e) {
-        log_debug(e.what());
-        throw IoTDBConnectionException(e.what());
-    } catch (const IoTDBException &e) {
-        log_debug(e.what());
-        throw;
-    } catch (const exception &e) {
-        log_debug(e.what());
-        throw IoTDBException(e.what());
-    }
+    defaultSessionConnection->createTimeseries(req);
 }
 
 void Session::createMultiTimeseries(const vector<string> &paths,
@@ -1795,7 +1726,6 @@ void Session::createMultiTimeseries(const vector<string> &paths,
                                     vector<map<string, string>> *attributesList,
                                     vector<string> *measurementAliasList) {
     TSCreateMultiTimeseriesReq request;
-    request.__set_sessionId(defaultSessionConnection->sessionId);
     request.__set_paths(paths);
 
     vector<int> dataTypesOrdinal;
@@ -1833,20 +1763,8 @@ void Session::createMultiTimeseries(const vector<string> &paths,
         request.__set_measurementAliasList(*measurementAliasList);
     }
 
-    try {
-        TSStatus tsStatus;
-        defaultSessionConnection->getSessionClient()->createMultiTimeseries(tsStatus, request);
-        RpcUtils::verifySuccess(tsStatus);
-    } catch (const TTransportException &e) {
-        log_debug(e.what());
-        throw IoTDBConnectionException(e.what());
-    } catch (const IoTDBException &e) {
-        log_debug(e.what());
-        throw;
-    } catch (const exception &e) {
-        log_debug(e.what());
-        throw IoTDBException(e.what());
-    }
+    defaultSessionConnection->createMultiTimeseries(request);
+
 }
 
 void Session::createAlignedTimeseries(const std::string &deviceId,
@@ -1855,7 +1773,6 @@ void Session::createAlignedTimeseries(const std::string &deviceId,
                                       const std::vector<TSEncoding::TSEncoding> &encodings,
                                       const std::vector<CompressionType::CompressionType> &compressors) {
     TSCreateAlignedTimeseriesReq request;
-    request.__set_sessionId(defaultSessionConnection->sessionId);
     request.__set_prefixPath(deviceId);
     request.__set_measurements(measurements);
 
@@ -1880,20 +1797,7 @@ void Session::createAlignedTimeseries(const std::string &deviceId,
     }
     request.__set_compressors(compressorsOrdinal);
 
-    try {
-        TSStatus tsStatus;
-        defaultSessionConnection->getSessionClient()->createAlignedTimeseries(tsStatus, request);
-        RpcUtils::verifySuccess(tsStatus);
-    } catch (const TTransportException &e) {
-        log_debug(e.what());
-        throw IoTDBConnectionException(e.what());
-    } catch (const IoTDBException &e) {
-        log_debug(e.what());
-        throw;
-    } catch (const exception &e) {
-        log_debug(e.what());
-        throw IoTDBException(e.what());
-    }
+    defaultSessionConnection->createAlignedTimeseries(request);
 }
 
 bool Session::checkTimeseriesExists(const string &path) {
@@ -1951,45 +1855,14 @@ shared_ptr<SessionConnection> Session::getSessionConnection(std::shared_ptr<stor
 }
 
 string Session::getTimeZone() {
-    if (!zoneId.empty()) {
-        return zoneId;
-    }
-    TSGetTimeZoneResp resp;
-    try {
-        defaultSessionConnection->getSessionClient()->getTimeZone(resp, defaultSessionConnection->sessionId);
-        RpcUtils::verifySuccess(resp.status);
-    } catch (const TTransportException &e) {
-        log_debug(e.what());
-        throw IoTDBConnectionException(e.what());
-    } catch (const IoTDBException &e) {
-        log_debug(e.what());
-        throw;
-    } catch (const exception &e) {
-        log_debug(e.what());
-        throw IoTDBException(e.what());
-    }
-    return resp.timeZone;
+    defaultSessionConnection->getTimeZone();
 }
 
 void Session::setTimeZone(const string &zoneId) {
     TSSetTimeZoneReq req;
     req.__set_sessionId(defaultSessionConnection->sessionId);
     req.__set_timeZone(zoneId);
-    TSStatus tsStatus;
-    try {
-        defaultSessionConnection->getSessionClient()->setTimeZone(tsStatus, req);
-        RpcUtils::verifySuccess(tsStatus);
-        this->zoneId = zoneId;
-    } catch (const TTransportException &e) {
-        log_debug(e.what());
-        throw IoTDBConnectionException(e.what());
-    } catch (const IoTDBException &e) {
-        log_debug(e.what());
-        throw;
-    } catch (const exception &e) {
-        log_debug(e.what());
-        throw IoTDBException(e.what());
-    }
+    defaultSessionConnection->setTimeZone(req);
 }
 
 unique_ptr<SessionDataSet> Session::executeQueryStatement(const string &sql) {
@@ -2107,65 +1980,23 @@ unique_ptr<SessionDataSet> Session::executeLastDataQuery(const vector<string> &p
 
 void Session::createSchemaTemplate(const Template &templ) {
     TSCreateSchemaTemplateReq req;
-    req.__set_sessionId(defaultSessionConnection->sessionId);
     req.__set_name(templ.getName());
     req.__set_serializedTemplate(templ.serialize());
-    TSStatus tsStatus;
-    try {
-        defaultSessionConnection->getSessionClient()->createSchemaTemplate(tsStatus, req);
-        RpcUtils::verifySuccess(tsStatus);
-    } catch (const TTransportException &e) {
-        log_debug(e.what());
-        throw IoTDBConnectionException(e.what());
-    } catch (const IoTDBException &e) {
-        log_debug(e.what());
-        throw;
-    } catch (const exception &e) {
-        log_debug(e.what());
-        throw IoTDBException(e.what());
-    }
+    defaultSessionConnection->createSchemaTemplate(req);
 }
 
 void Session::setSchemaTemplate(const string &template_name, const string &prefix_path) {
     TSSetSchemaTemplateReq req;
-    req.__set_sessionId(defaultSessionConnection->sessionId);
     req.__set_templateName(template_name);
     req.__set_prefixPath(prefix_path);
-    TSStatus tsStatus;
-    try {
-        defaultSessionConnection->getSessionClient()->setSchemaTemplate(tsStatus, req);
-        RpcUtils::verifySuccess(tsStatus);
-    } catch (const TTransportException &e) {
-        log_debug(e.what());
-        throw IoTDBConnectionException(e.what());
-    } catch (const IoTDBException &e) {
-        log_debug(e.what());
-        throw;
-    } catch (const exception &e) {
-        log_debug(e.what());
-        throw IoTDBException(e.what());
-    }
+    defaultSessionConnection->setSchemaTemplate(req);
 }
 
 void Session::unsetSchemaTemplate(const string &prefix_path, const string &template_name) {
     TSUnsetSchemaTemplateReq req;
-    req.__set_sessionId(defaultSessionConnection->sessionId);
     req.__set_templateName(template_name);
     req.__set_prefixPath(prefix_path);
-    TSStatus tsStatus;
-    try {
-        defaultSessionConnection->getSessionClient()->unsetSchemaTemplate(tsStatus, req);
-        RpcUtils::verifySuccess(tsStatus);
-    } catch (const TTransportException &e) {
-        log_debug(e.what());
-        throw IoTDBConnectionException(e.what());
-    } catch (const IoTDBException &e) {
-        log_debug(e.what());
-        throw;
-    } catch (const exception &e) {
-        log_debug(e.what());
-        throw IoTDBException(e.what());
-    }
+    defaultSessionConnection->unsetSchemaTemplate(req);
 }
 
 void Session::addAlignedMeasurementsInTemplate(const string &template_name, const vector<std::string> &measurements,
@@ -2173,7 +2004,6 @@ void Session::addAlignedMeasurementsInTemplate(const string &template_name, cons
                                                const vector<TSEncoding::TSEncoding> &encodings,
                                                const vector<CompressionType::CompressionType> &compressors) {
     TSAppendSchemaTemplateReq req;
-    req.__set_sessionId(defaultSessionConnection->sessionId);
     req.__set_name(template_name);
     req.__set_measurements(measurements);
     req.__set_isAligned(true);
@@ -2199,20 +2029,7 @@ void Session::addAlignedMeasurementsInTemplate(const string &template_name, cons
     }
     req.__set_compressors(compressorsOrdinal);
 
-    TSStatus tsStatus;
-    try {
-        defaultSessionConnection->getSessionClient()->appendSchemaTemplate(tsStatus, req);
-        RpcUtils::verifySuccess(tsStatus);
-    } catch (const TTransportException &e) {
-        log_debug(e.what());
-        throw IoTDBConnectionException(e.what());
-    } catch (const IoTDBException &e) {
-        log_debug(e.what());
-        throw;
-    } catch (const exception &e) {
-        log_debug(e.what());
-        throw IoTDBException(e.what());
-    }
+    defaultSessionConnection->appendSchemaTemplate(req);
 }
 
 void Session::addAlignedMeasurementsInTemplate(const string &template_name, const string &measurement,
@@ -2230,7 +2047,6 @@ void Session::addUnalignedMeasurementsInTemplate(const string &template_name, co
                                                  const vector<TSEncoding::TSEncoding> &encodings,
                                                  const vector<CompressionType::CompressionType> &compressors) {
     TSAppendSchemaTemplateReq req;
-    req.__set_sessionId(defaultSessionConnection->sessionId);
     req.__set_name(template_name);
     req.__set_measurements(measurements);
     req.__set_isAligned(false);
@@ -2256,20 +2072,7 @@ void Session::addUnalignedMeasurementsInTemplate(const string &template_name, co
     }
     req.__set_compressors(compressorsOrdinal);
 
-    TSStatus tsStatus;
-    try {
-        defaultSessionConnection->getSessionClient()->appendSchemaTemplate(tsStatus, req);
-        RpcUtils::verifySuccess(tsStatus);
-    } catch (const TTransportException &e) {
-        log_debug(e.what());
-        throw IoTDBConnectionException(e.what());
-    } catch (const IoTDBException &e) {
-        log_debug(e.what());
-        throw;
-    } catch (const exception &e) {
-        log_debug(e.what());
-        throw IoTDBException(e.what());
-    }
+    defaultSessionConnection->appendSchemaTemplate(req);
 }
 
 void Session::addUnalignedMeasurementsInTemplate(const string &template_name, const string &measurement,
@@ -2284,116 +2087,52 @@ void Session::addUnalignedMeasurementsInTemplate(const string &template_name, co
 
 void Session::deleteNodeInTemplate(const string &template_name, const string &path) {
     TSPruneSchemaTemplateReq req;
-    req.__set_sessionId(defaultSessionConnection->sessionId);
     req.__set_name(template_name);
     req.__set_path(path);
-    TSStatus tsStatus;
-    try {
-        defaultSessionConnection->getSessionClient()->pruneSchemaTemplate(tsStatus, req);
-        RpcUtils::verifySuccess(tsStatus);
-    } catch (const TTransportException &e) {
-        log_debug(e.what());
-        throw IoTDBConnectionException(e.what());
-    } catch (const IoTDBException &e) {
-        log_debug(e.what());
-        throw;
-    } catch (const exception &e) {
-        log_debug(e.what());
-        throw IoTDBException(e.what());
-    }
+    defaultSessionConnection->pruneSchemaTemplate(req);
 }
 
 int Session::countMeasurementsInTemplate(const string &template_name) {
     TSQueryTemplateReq req;
-    req.__set_sessionId(defaultSessionConnection->sessionId);
     req.__set_name(template_name);
     req.__set_queryType(TemplateQueryType::COUNT_MEASUREMENTS);
-    TSQueryTemplateResp resp;
-    try {
-        defaultSessionConnection->getSessionClient()->querySchemaTemplate(resp, req);
-    } catch (const TTransportException &e) {
-        log_debug(e.what());
-        throw IoTDBConnectionException(e.what());
-    } catch (const exception &e) {
-        log_debug(e.what());
-        throw IoTDBException(e.what());
-    }
+    TSQueryTemplateResp resp = defaultSessionConnection->querySchemaTemplate(req);
     return resp.count;
 }
 
 bool Session::isMeasurementInTemplate(const string &template_name, const string &path) {
     TSQueryTemplateReq req;
-    req.__set_sessionId(defaultSessionConnection->sessionId);
     req.__set_name(template_name);
     req.__set_measurement(path);
     req.__set_queryType(TemplateQueryType::IS_MEASUREMENT);
-    TSQueryTemplateResp resp;
-    try {
-        defaultSessionConnection->getSessionClient()->querySchemaTemplate(resp, req);
-    } catch (const TTransportException &e) {
-        log_debug(e.what());
-        throw IoTDBConnectionException(e.what());
-    } catch (const exception &e) {
-        log_debug(e.what());
-        throw IoTDBException(e.what());
-    }
+    TSQueryTemplateResp resp = defaultSessionConnection->querySchemaTemplate(req);
     return resp.result;
 }
 
 bool Session::isPathExistInTemplate(const string &template_name, const string &path) {
     TSQueryTemplateReq req;
-    req.__set_sessionId(defaultSessionConnection->sessionId);
     req.__set_name(template_name);
     req.__set_measurement(path);
     req.__set_queryType(TemplateQueryType::PATH_EXIST);
-    TSQueryTemplateResp resp;
-    try {
-        defaultSessionConnection->getSessionClient()->querySchemaTemplate(resp, req);
-    } catch (const TTransportException &e) {
-        log_debug(e.what());
-        throw IoTDBConnectionException(e.what());
-    } catch (const exception &e) {
-        log_debug(e.what());
-        throw IoTDBException(e.what());
-    }
+    TSQueryTemplateResp resp = defaultSessionConnection->querySchemaTemplate(req);
     return resp.result;
 }
 
 std::vector<std::string> Session::showMeasurementsInTemplate(const string &template_name) {
     TSQueryTemplateReq req;
-    req.__set_sessionId(defaultSessionConnection->sessionId);
     req.__set_name(template_name);
     req.__set_measurement("");
     req.__set_queryType(TemplateQueryType::SHOW_MEASUREMENTS);
-    TSQueryTemplateResp resp;
-    try {
-        defaultSessionConnection->getSessionClient()->querySchemaTemplate(resp, req);
-    } catch (const TTransportException &e) {
-        log_debug(e.what());
-        throw IoTDBConnectionException(e.what());
-    } catch (const exception &e) {
-        log_debug(e.what());
-        throw IoTDBException(e.what());
-    }
+    TSQueryTemplateResp resp = defaultSessionConnection->querySchemaTemplate(req);
     return resp.measurements;
 }
 
 std::vector<std::string> Session::showMeasurementsInTemplate(const string &template_name, const string &pattern) {
     TSQueryTemplateReq req;
-    req.__set_sessionId(defaultSessionConnection->sessionId);
     req.__set_name(template_name);
     req.__set_measurement(pattern);
     req.__set_queryType(TemplateQueryType::SHOW_MEASUREMENTS);
-    TSQueryTemplateResp resp;
-    try {
-        defaultSessionConnection->getSessionClient()->querySchemaTemplate(resp, req);
-    } catch (const TTransportException &e) {
-        log_debug(e.what());
-        throw IoTDBConnectionException(e.what());
-    } catch (const exception &e) {
-        log_debug(e.what());
-        throw IoTDBException(e.what());
-    }
+    TSQueryTemplateResp resp = defaultSessionConnection->querySchemaTemplate(req);
     return resp.measurements;
 }
 

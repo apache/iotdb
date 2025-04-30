@@ -196,6 +196,179 @@ public:
         RpcUtils::verifySuccess(status);
     }
 
+    void deleteTimeseries(const vector<string> &paths) {
+        auto rpc = [this, &paths]() {
+            TSStatus ret;
+            client->deleteTimeseries(ret, sessionId, paths);
+            return ret;
+        };
+        callWithRetryAndVerify<TSStatus>(rpc);
+    }
+
+    void deleteData(const TSDeleteDataReq& request) {
+        auto rpc = [this, request]() {
+            return this->deleteDataInternal(request);
+        };
+        callWithRetryAndVerify<TSStatus>(rpc);
+    }
+
+    TSStatus deleteDataInternal(TSDeleteDataReq request) {
+        request.sessionId = sessionId;
+        TSStatus ret;
+        client->deleteData(ret, request);
+        return ret;
+    }
+
+    void setStorageGroup(const string &storageGroupId) {
+        auto rpc = [this, &storageGroupId]() {
+            TSStatus ret;
+            client->setStorageGroup(ret, sessionId, storageGroupId);
+            return ret;
+        };
+        auto ret = callWithRetryAndReconnect<TSStatus>(rpc);
+        RpcUtils::verifySuccess(ret.getResult());
+    }
+
+    void deleteStorageGroups(const vector<string> &storageGroups) {
+        auto rpc = [this, &storageGroups]() {
+            TSStatus ret;
+            client->deleteStorageGroups(ret, sessionId, storageGroups);
+            return ret;
+        };
+        auto ret = callWithRetryAndReconnect<TSStatus>(rpc);
+        RpcUtils::verifySuccess(ret.getResult());
+    }
+
+    void createTimeseries(TSCreateTimeseriesReq& req) {
+        auto rpc = [this, &req]() {
+            TSStatus ret;
+            req.sessionId = sessionId;
+            client->createTimeseries(ret, req);
+            return ret;
+        };
+        auto ret = callWithRetryAndReconnect<TSStatus>(rpc);
+        RpcUtils::verifySuccess(ret.getResult());
+    }
+
+    void createMultiTimeseries(TSCreateMultiTimeseriesReq& req) {
+        auto rpc = [this, &req]() {
+            TSStatus ret;
+            req.sessionId = sessionId;
+            client->createMultiTimeseries(ret, req);
+            return ret;
+        };
+        auto ret = callWithRetryAndReconnect<TSStatus>(rpc);
+        RpcUtils::verifySuccess(ret.getResult());
+    }
+
+    void createAlignedTimeseries(TSCreateAlignedTimeseriesReq& req) {
+        auto rpc = [this, &req]() {
+            TSStatus ret;
+            req.sessionId = sessionId;
+            client->createAlignedTimeseries(ret, req);
+            return ret;
+        };
+        auto ret = callWithRetryAndReconnect<TSStatus>(rpc);
+        RpcUtils::verifySuccess(ret.getResult());
+    }
+
+    TSGetTimeZoneResp getTimeZone() {
+        auto rpc = [this]() {
+            TSGetTimeZoneResp resp;
+            client->getTimeZone(resp, sessionId);
+            zoneId = resp.timeZone;
+            return resp;
+        };
+        auto ret = callWithRetryAndReconnect<TSGetTimeZoneResp>(rpc,
+            [](const TSGetTimeZoneResp& resp) {
+            return resp.status;
+        });
+        RpcUtils::verifySuccess(ret.getResult().status);
+        return ret.result;
+    }
+
+    void setTimeZone(TSSetTimeZoneReq& req) {
+        auto rpc = [this, &req]() {
+            TSStatus ret;
+            req.sessionId = sessionId;
+            client->setTimeZone(ret, req);
+            zoneId = req.timeZone;
+            return ret;
+        };
+        auto ret = callWithRetryAndReconnect<TSStatus>(rpc);
+        RpcUtils::verifySuccess(ret.getResult());
+    }
+
+    void createSchemaTemplate(TSCreateSchemaTemplateReq req) {
+        auto rpc = [this, &req]() {
+            TSStatus ret;
+            req.sessionId = sessionId;
+            client->createSchemaTemplate(ret, req);
+            return ret;
+        };
+        auto ret = callWithRetryAndReconnect<TSStatus>(rpc);
+        RpcUtils::verifySuccess(ret.getResult());
+    }
+
+    void setSchemaTemplate(TSSetSchemaTemplateReq req) {
+        auto rpc = [this, &req]() {
+            TSStatus ret;
+            req.sessionId = sessionId;
+            client->setSchemaTemplate(ret, req);
+            return ret;
+        };
+        auto ret = callWithRetryAndReconnect<TSStatus>(rpc);
+        RpcUtils::verifySuccess(ret.getResult());
+    }
+
+    void unsetSchemaTemplate(TSUnsetSchemaTemplateReq req) {
+        auto rpc = [this, &req]() {
+            TSStatus ret;
+            req.sessionId = sessionId;
+            client->unsetSchemaTemplate(ret, req);
+            return ret;
+        };
+        auto ret = callWithRetryAndReconnect<TSStatus>(rpc);
+        RpcUtils::verifySuccess(ret.getResult());
+    }
+
+    void appendSchemaTemplate(TSAppendSchemaTemplateReq req) {
+        auto rpc = [this, &req]() {
+            TSStatus ret;
+            req.sessionId = sessionId;
+            client->appendSchemaTemplate(ret, req);
+            return ret;
+        };
+        auto ret = callWithRetryAndReconnect<TSStatus>(rpc);
+        RpcUtils::verifySuccess(ret.getResult());
+    }
+
+    void pruneSchemaTemplate(TSPruneSchemaTemplateReq req) {
+        auto rpc = [this, &req]() {
+            TSStatus ret;
+            req.sessionId = sessionId;
+            client->pruneSchemaTemplate(ret, req);
+            return ret;
+        };
+        auto ret = callWithRetryAndReconnect<TSStatus>(rpc);
+        RpcUtils::verifySuccess(ret.getResult());
+    }
+
+    TSQueryTemplateResp querySchemaTemplate(TSQueryTemplateReq req) {
+        auto rpc = [this, &req]() {
+            TSQueryTemplateResp  ret;
+            req.sessionId = sessionId;
+            client->querySchemaTemplate(ret, req);
+            return ret;
+        };
+        auto ret = callWithRetryAndReconnect<TSQueryTemplateResp>(rpc,
+        [](const TSQueryTemplateResp& resp) {
+            return resp.status;
+        });
+        RpcUtils::verifySuccess(ret.getResult().status);
+        return ret.getResult();
+    }
+
     std::unique_ptr<SessionDataSet> executeRawDataQuery(const std::vector<std::string> &paths, int64_t startTime, int64_t endTime);
 
     std::unique_ptr<SessionDataSet> executeLastDataQuery(const std::vector<std::string> &paths, int64_t lastTime);
@@ -252,22 +425,21 @@ private:
     template<typename T>
     void callWithRetryAndVerifyWithRedirectionForMultipleDevices(
         std::function<T()> rpc, const vector<string>& deviceIds) {
-            auto result = callWithRetry<T>(rpc);
-
-            auto status = result.getResult();
-            if (result.getRetryAttempts() == 0) {
-                RpcUtils::verifySuccessWithRedirectionForMultiDevices(status, deviceIds);
-            } else {
-                RpcUtils::verifySuccess(status);
+        auto result = callWithRetry<T>(rpc);
+        auto status = result.getResult();
+        if (result.getRetryAttempts() == 0) {
+            RpcUtils::verifySuccessWithRedirectionForMultiDevices(status, deviceIds);
+        } else {
+            RpcUtils::verifySuccess(status);
+        }
+        if (result.getException()) {
+            try {
+                std::rethrow_exception(result.getException());
+            } catch (const std::exception& e) {
+                throw IoTDBConnectionException(e.what());
             }
-
-            if (result.getException()) {
-                try {
-                    std::rethrow_exception(result.getException());
-                } catch (const std::exception& e) {
-                    throw IoTDBConnectionException(e.what());
-                }
-            }
+        }
+        result.exception = nullptr;
     }
 
     template<typename T>
@@ -281,6 +453,7 @@ private:
                 throw IoTDBConnectionException(e.what());
             }
         }
+        return result;
     }
 
     template<typename T>
@@ -318,8 +491,7 @@ private:
 
     template <typename T, typename RpcFunc>
     RetryResult<T> callWithRetryAndReconnect(RpcFunc rpc) {
-         return callWithRetryAndReconnect<T>(
-            std::move(rpc),
+         return callWithRetryAndReconnect<T>(rpc,
             [](const TSStatus& status) { return status.__isset.needRetry && status.needRetry; },
             [](const TSStatus& status) { return status.code == TSStatusCode::PLAN_FAILED_NETWORK_PARTITION; }
         );
