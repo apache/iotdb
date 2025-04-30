@@ -37,6 +37,7 @@
 
 package org.apache.iotdb.udf.api.relational.table.specification;
 
+import java.util.Locale;
 import java.util.Optional;
 
 /**
@@ -55,7 +56,8 @@ public abstract class ParameterSpecification {
   private final Optional<Object> defaultValue;
 
   ParameterSpecification(String name, boolean required, Optional<Object> defaultValue) {
-    this.name = name;
+    // name will be stored in upper case to avoid case sensitivity issues
+    this.name = name.toUpperCase(Locale.ENGLISH);
     this.required = required;
     this.defaultValue = defaultValue;
     if (required && defaultValue.isPresent()) {
