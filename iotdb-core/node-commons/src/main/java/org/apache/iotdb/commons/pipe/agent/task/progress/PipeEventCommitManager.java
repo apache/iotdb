@@ -23,13 +23,13 @@ import org.apache.iotdb.commons.pipe.agent.task.PipeTaskAgent;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.pipe.metric.PipeEventCommitMetrics;
 
+import org.apache.commons.lang3.function.TriConsumer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.function.BiConsumer;
 
 public class PipeEventCommitManager {
 
@@ -42,7 +42,7 @@ public class PipeEventCommitManager {
   private final Map<CommitterKey, Integer> eventCommitterRestartTimesMap =
       new ConcurrentHashMap<>();
 
-  private BiConsumer<String, Boolean> commitRateMarker;
+  private TriConsumer<String, Boolean, Boolean> commitRateMarker;
 
   public void register(
       final String pipeName,
@@ -108,7 +108,8 @@ public class PipeEventCommitManager {
       try {
         commitRateMarker.accept(
             taskAgent.getPipeNameWithCreationTime(event.getPipeName(), event.getCreationTime()),
-            event.isDataRegionEvent());
+            event.isDataRegionEvent(),
+            true);
       } catch (final Exception e) {
         if (LOGGER.isDebugEnabled()) {
           LOGGER.debug(
@@ -172,7 +173,7 @@ public class PipeEventCommitManager {
     this.taskAgent = taskAgent;
   }
 
-  public void setCommitRateMarker(final BiConsumer<String, Boolean> commitRateMarker) {
+  public void setCommitRateMarker(final TriConsumer<String, Boolean, Boolean> commitRateMarker) {
     this.commitRateMarker = commitRateMarker;
   }
 

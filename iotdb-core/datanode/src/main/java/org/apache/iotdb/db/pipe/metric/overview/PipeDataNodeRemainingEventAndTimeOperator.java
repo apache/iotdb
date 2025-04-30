@@ -65,16 +65,8 @@ class PipeDataNodeRemainingEventAndTimeOperator extends PipeRemainingOperator {
     tabletEventCount.incrementAndGet();
   }
 
-  void decreaseTabletEventCount() {
-    tabletEventCount.decrementAndGet();
-  }
-
   void increaseTsFileEventCount() {
     tsfileEventCount.incrementAndGet();
-  }
-
-  void decreaseTsFileEventCount() {
-    tsfileEventCount.decrementAndGet();
   }
 
   long getRemainingEvents() {
@@ -185,7 +177,12 @@ class PipeDataNodeRemainingEventAndTimeOperator extends PipeRemainingOperator {
 
   //////////////////////////// Rate ////////////////////////////
 
-  void markDataRegionCommit() {
+  void markDataRegionCommit(final boolean isTabletEvent) {
+    if (isTabletEvent) {
+      tabletEventCount.decrementAndGet();
+    } else {
+      tsfileEventCount.decrementAndGet();
+    }
     dataRegionCommitMeter.updateAndGet(
         meter -> {
           if (Objects.nonNull(meter)) {
