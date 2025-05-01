@@ -234,7 +234,7 @@ public class SPRINTZSubcolumn3Test {
         int block_size = 512;
 
         int repeatTime = 100;
-        // TODO 真正计算时，记得注释掉将下面的内容
+        
         // repeatTime = 1;
 
         CsvWriter writer = new CsvWriter(outputPath, ',', StandardCharsets.UTF_8);

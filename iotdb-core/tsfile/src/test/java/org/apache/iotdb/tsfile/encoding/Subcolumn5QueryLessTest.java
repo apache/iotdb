@@ -199,14 +199,6 @@ public class Subcolumn5QueryLessTest {
             }
         }
 
-        // if (upper_bound <= 0) {
-        // for (int i = 0; i < remainder; i++) {
-        // result[result_length[0]] = block_size * block_index + i;
-        // result_length[0]++;
-        // }
-        // return encode_pos;
-        // }
-
         return encode_pos;
     }
 
@@ -264,7 +256,7 @@ public class Subcolumn5QueryLessTest {
         queryRange.put("Wind-Speed", 60);
 
         int repeatTime = 200;
-        // TODO 真正计算时，记得注释掉将下面的内容
+
         // repeatTime = 1;
 
         for (int block_size : block_size_list) {
@@ -300,6 +292,9 @@ public class Subcolumn5QueryLessTest {
                 int max_decimal = 0;
                 while (loader.readRecord()) {
                     String f_str = loader.getValues()[0];
+                    if (f_str.isEmpty()) {
+                        continue;
+                    }
                     int cur_decimal = getDecimalPrecision(f_str);
                     if (cur_decimal > max_decimal)
                         max_decimal = cur_decimal;

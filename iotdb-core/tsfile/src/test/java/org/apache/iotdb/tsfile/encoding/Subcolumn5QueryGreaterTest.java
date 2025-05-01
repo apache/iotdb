@@ -86,7 +86,7 @@ public class Subcolumn5QueryGreaterTest {
         }
 
         if (m == 0) {
-            if (lower_bound <= 0) {
+            if (lower_bound < 0) {
                 for (int i = 0; i < remainder; i++) {
                     result[result_length[0]] = block_size * block_index + i;
                     result_length[0]++;
@@ -263,8 +263,8 @@ public class Subcolumn5QueryGreaterTest {
         queryRange.put("Stocks-USA", 5000);
         queryRange.put("Wind-Speed", 50);
 
-        int repeatTime = 200;
-        // TODO 真正计算时，记得注释掉将下面的内容
+        int repeatTime = 100;
+        
         // repeatTime = 1;
 
         for (int block_size : block_size_list) {

@@ -5,7 +5,11 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.ArrayList;
+import java.util.List;
+import java.util.stream.Stream;
 
 import org.junit.Test;
 
@@ -245,20 +249,21 @@ public class SPRINTZSubcolumn5Test {
 
     @Test
     public void testSPRINTZ() throws IOException {
-        // String parent_dir = "D:/github/xjz17/subcolumn/elf_resources/dataset/";
-        String parent_dir = "D:/encoding-subcolumn/temp_dataset/";
-        // String parent_dir = "D:/github/yoyo185644/camel/src/test/resources/ElfTestData/";
+        String parent_dir = "D:/github/xjz17/subcolumn/dataset/";
 
-        String output_parent_dir = "D:/encoding-subcolumn/";
+        String output_parent_dir = "D:/encoding-subcolumn/result/";
 
-        String outputPath = output_parent_dir + "sprintz_subcolumn_test.csv";
+        String outputPath = output_parent_dir + "sprintz.csv";
 
         // int block_size = 1024;
         int block_size = 512;
 
         int repeatTime = 100;
-        // TODO 真正计算时，记得注释掉将下面的内容
+        
         // repeatTime = 1;
+
+        List<String> integerDatasets = new ArrayList<>();
+        integerDatasets.add("Wine-Tasting");
 
         CsvWriter writer = new CsvWriter(outputPath, ',', StandardCharsets.UTF_8);
         writer.setRecordDelimiter('\n');
@@ -329,8 +334,15 @@ public class SPRINTZSubcolumn5Test {
             encodeTime += ((e - s) / repeatTime);
             // compressed_size += length / 8;
             compressed_size += length;
-            double ratioTmp = compressed_size / (double) (data1.size() * Integer.BYTES);
-            // double ratioTmp = compressed_size / (double) (data1.size() * Long.BYTES);
+            
+            double ratioTmp;
+
+            if (integerDatasets.contains(datasetName)) {
+                ratioTmp = compressed_size / (double) (data1.size() * Integer.BYTES);
+            } else {
+                ratioTmp = compressed_size / (double) (data1.size() * Long.BYTES);
+            }
+
             ratio += ratioTmp;
 
             int[] data2_arr_decoded = new int[data2_arr.length];
@@ -368,46 +380,44 @@ public class SPRINTZSubcolumn5Test {
 
     @Test
     public void testTransData() throws IOException {
-        String parent_dir = "D:/github/xjz17/subcolumn/";
-        // String parent_dir =
-        // "/Users/zihanguo/Downloads/R/outlier/outliier_code/encoding-outlier/";
-        String output_parent_dir = parent_dir + "trans_data_result/sprintz_subcolumn/";
+        // String parent_dir = "D:/github/xjz17/subcolumn/";
+
+        String parent_dir = "D:/encoding-subcolumn/";
+
+        String output_parent_dir = "D:/encoding-subcolumn/trans_data_result/";
+
         String input_parent_dir = parent_dir + "trans_data/";
+
         ArrayList<String> input_path_list = new ArrayList<>();
         ArrayList<String> output_path_list = new ArrayList<>();
         ArrayList<String> dataset_name = new ArrayList<>();
         ArrayList<Integer> dataset_block_size = new ArrayList<>();
 
-        dataset_name.add("CS-Sensors");
-        dataset_name.add("Metro-Traffic");
-        dataset_name.add("USGS-Earthquakes");
-        dataset_name.add("YZ-Electricity");
-        dataset_name.add("GW-Magnetic");
-        dataset_name.add("TY-Fuel");
-        dataset_name.add("Cyber-Vehicle");
-        dataset_name.add("Vehicle-Charge");
-        dataset_name.add("Nifty-Stocks");
-        dataset_name.add("TH-Climate");
-        dataset_name.add("TY-Transport");
-        dataset_name.add("EPM-Education");
-
-        for (String value : dataset_name) {
-            input_path_list.add(input_parent_dir + value);
-            dataset_block_size.add(1024);
+        try (Stream<Path> paths = Files.walk(Paths.get(input_parent_dir))) {
+            paths.filter(Files::isDirectory)
+                    .filter(path -> !path.equals(Paths.get(input_parent_dir)))
+                    .forEach(dir -> {
+                        String name = dir.getFileName().toString();
+                        dataset_name.add(name);
+                        input_path_list.add(dir.toString());
+                        dataset_block_size.add(1024);
+                    });
         }
 
-        output_path_list.add(output_parent_dir + "CS-Sensors_ratio.csv");
-        output_path_list.add(output_parent_dir + "Metro-Traffic_ratio.csv");
-        output_path_list.add(output_parent_dir + "USGS-Earthquakes_ratio.csv");
-        output_path_list.add(output_parent_dir + "YZ-Electricity_ratio.csv");
-        output_path_list.add(output_parent_dir + "GW-Magnetic_ratio.csv");
-        output_path_list.add(output_parent_dir + "TY-Fuel_ratio.csv");
-        output_path_list.add(output_parent_dir + "Cyber-Vehicle_ratio.csv");
-        output_path_list.add(output_parent_dir + "Vehicle-Charge_ratio.csv");
-        output_path_list.add(output_parent_dir + "Nifty-Stocks_ratio.csv");
-        output_path_list.add(output_parent_dir + "TH-Climate_ratio.csv");
-        output_path_list.add(output_parent_dir + "TY-Transport_ratio.csv");
-        output_path_list.add(output_parent_dir + "EPM-Education_ratio.csv");
+        String outputPath = output_parent_dir + "sprintz_subcolumn.csv";
+        CsvWriter writer = new CsvWriter(outputPath, ',', StandardCharsets.UTF_8);
+        writer.setRecordDelimiter('\n');
+
+        String[] head = {
+                "Dataset",
+                "Encoding Algorithm",
+                "Encoding Time",
+                "Decoding Time",
+                "Points",
+                "Compressed Size",
+                "Compression Ratio"
+        };
+        writer.writeRecord(head);
 
         int repeatTime = 100;
 
@@ -415,24 +425,14 @@ public class SPRINTZSubcolumn5Test {
 
             String inputPath = input_path_list.get(file_i);
             System.out.println(inputPath);
-            String Output = output_path_list.get(file_i);
 
             File file = new File(inputPath);
             File[] tempList = file.listFiles();
 
-            CsvWriter writer = new CsvWriter(Output, ',', StandardCharsets.UTF_8);
-            writer.setRecordDelimiter('\n');
-
-            String[] head = {
-                    "Input Direction",
-                    "Encoding Algorithm",
-                    "Encoding Time",
-                    "Decoding Time",
-                    "Points",
-                    "Compressed Size",
-                    "Compression Ratio"
-            };
-            writer.writeRecord(head);
+            long totalEncodeTime = 0;
+            long totalDecodeTime = 0;
+            double totalCompressedSize = 0;
+            int totalPoints = 0;
 
             for (File f : tempList) {
                 String datasetName = extractFileName(f.toString());
@@ -483,20 +483,29 @@ public class SPRINTZSubcolumn5Test {
                 e = System.nanoTime();
                 decodeTime += ((e - s) / repeatTime);
 
-                String[] record = {
-                        f.toString(),
-                        "SPRINTZ+Subcolumn",
-                        String.valueOf(encodeTime),
-                        String.valueOf(decodeTime),
-                        String.valueOf(data1.size()),
-                        String.valueOf(compressed_size),
-                        String.valueOf(ratio)
-                };
-                writer.writeRecord(record);
-                System.out.println(ratio);
+                totalEncodeTime += encodeTime;
+                totalDecodeTime += decodeTime;
+                totalCompressedSize += compressed_size;
+                totalPoints += data1.size();
+                
             }
-            writer.close();
+
+            double compressionRatio = totalCompressedSize / (totalPoints * Integer.BYTES);
+
+            String[] record = {
+                    dataset_name.get(file_i),
+                    "SPRINTZ+Sub-columns",
+                    String.valueOf(totalEncodeTime),
+                    String.valueOf(totalDecodeTime),
+                    String.valueOf(totalPoints),
+                    String.valueOf(totalCompressedSize),
+                    String.valueOf(compressionRatio)
+            };
+
+            writer.writeRecord(record);
+            System.out.println(compressionRatio);
         }
+        writer.close();
     }
 
 }
