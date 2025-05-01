@@ -16,8 +16,7 @@ import org.junit.Test;
 import com.csvreader.CsvReader;
 import com.csvreader.CsvWriter;
 
-public class SPRINTZSubcolumn5Test {
-    // SPRINTZ Subcolumn5Test
+public class TSDIFFSubcolumnTest {
 
     public static int Encoder(int[] data, int block_size, byte[] encoded_result) {
         int data_length = data.length;
@@ -40,7 +39,7 @@ public class SPRINTZSubcolumn5Test {
         int remainder = data_length % block_size;
 
         int[] beta = new int[1];
-        beta[0] = 2;
+        beta[0] = 3;
 
         for (int i = 0; i < num_blocks; i++) {
             encode_pos = BlockEncoder(data, i, block_size, block_size, encode_pos, encoded_result, beta);
@@ -60,13 +59,16 @@ public class SPRINTZSubcolumn5Test {
                     encoded_result, beta);
         }
 
+        // System.out.println("beta: " + beta[0]);
+
         return encode_pos;
     }
 
     public static int[] Decoder(byte[] encoded_result) {
         int encode_pos = 0;
 
-        int data_length = ((encoded_result[encode_pos] & 0xFF) << 24) | ((encoded_result[encode_pos + 1] & 0xFF) << 16) |
+        int data_length = ((encoded_result[encode_pos] & 0xFF) << 24) | ((encoded_result[encode_pos + 1] & 0xFF) << 16)
+                |
                 ((encoded_result[encode_pos + 2] & 0xFF) << 8) | (encoded_result[encode_pos + 3] & 0xFF);
         encode_pos += 4;
 
@@ -99,20 +101,6 @@ public class SPRINTZSubcolumn5Test {
         return data;
     }
 
-    public static int zigzag(int num) {
-        if (num < 0)
-            return ((-num) << 1) - 1;
-        else
-            return num << 1;
-    }
-
-    public static int deZigzag(int num) {
-        if (num % 2 == 0)
-            return num >> 1;
-        else
-            return -((num + 1) >> 1);
-    }
-
     public static int[] getAbsDeltaTsBlock(
             int[] ts_block,
             int i,
@@ -121,28 +109,37 @@ public class SPRINTZSubcolumn5Test {
             int[] min_delta) {
         int[] ts_block_delta = new int[remaining - 1];
 
-        int base = i * block_size + 1;
-        int end = i * block_size + remaining;
-        min_delta[0] = ts_block[base - 1];
         int value_delta_min = Integer.MAX_VALUE;
         int value_delta_max = Integer.MIN_VALUE;
-        for (int j = base; j < end; j++) {
-            int epsilon_v = ts_block[j] - ts_block[j - 1];
-            epsilon_v = zigzag(epsilon_v);
+        int base = i * block_size + 1;
+        int end = i * block_size + remaining;
+
+        int tmp_j_1 = ts_block[base - 1];
+        min_delta[0] = tmp_j_1;
+        int j = base;
+        int tmp_j;
+
+        while (j < end) {
+            tmp_j = ts_block[j];
+            int epsilon_v = tmp_j - tmp_j_1;
+            ts_block_delta[j - base] = epsilon_v;
             if (epsilon_v < value_delta_min) {
                 value_delta_min = epsilon_v;
             }
             if (epsilon_v > value_delta_max) {
                 value_delta_max = epsilon_v;
             }
-            ts_block_delta[j - base] = epsilon_v;
-
+            tmp_j_1 = tmp_j;
+            j++;
         }
-        for (int j = 0; j < remaining - 1; j++) {
+        j = 0;
+        end = remaining - 1;
+        while (j < end) {
             ts_block_delta[j] = ts_block_delta[j] - value_delta_min;
-
+            j++;
         }
-        min_delta[1] = (value_delta_min);
+
+        min_delta[1] = value_delta_min;
         min_delta[2] = (value_delta_max - value_delta_min);
 
         return ts_block_delta;
@@ -152,7 +149,7 @@ public class SPRINTZSubcolumn5Test {
             int encode_pos, byte[] encoded_result, int[] beta) {
         int[] min_delta = new int[3];
 
-        // data_delta 长度为 remainder - 1
+        // data_delta 的长度为 remainder - 1
         int[] data_delta = getAbsDeltaTsBlock(data, block_index, block_size, remainder, min_delta);
 
         encoded_result[encode_pos] = (byte) (min_delta[0] >> 24);
@@ -174,12 +171,12 @@ public class SPRINTZSubcolumn5Test {
                     maxValue = data_delta[j];
                 }
             }
-            int m = Subcolumn5Test.bitWidth(maxValue);
+            int m = SubcolumnTest.bitWidth(maxValue);
 
-            beta[0] = Subcolumn5Test.Subcolumn(data_delta, remainder - 1, m, block_size);
+            beta[0] = SubcolumnTest.Subcolumn(data_delta, remainder - 1, m, block_size);
         }
 
-        encode_pos = Subcolumn5Test.SubcolumnEncoder(data_delta, encode_pos, encoded_result, beta, block_size);
+        encode_pos = SubcolumnTest.SubcolumnEncoder(data_delta, encode_pos, encoded_result, beta, block_size);
 
         return encode_pos;
     }
@@ -198,14 +195,10 @@ public class SPRINTZSubcolumn5Test {
 
         int[] data_delta = new int[remainder - 1];
 
-        encode_pos = Subcolumn5Test.SubcolumnDecoder(encoded_result, encode_pos, data_delta, block_size);
+        encode_pos = SubcolumnTest.SubcolumnDecoder(encoded_result, encode_pos, data_delta, block_size);
 
         for (int i = 0; i < remainder - 1; i++) {
             data_delta[i] = data_delta[i] + min_delta[1];
-        }
-
-        for (int i = 0; i < remainder - 1; i++) {
-            data_delta[i] = deZigzag(data_delta[i]);
         }
 
         data[block_index * block_size] = min_delta[0];
@@ -239,7 +232,7 @@ public class SPRINTZSubcolumn5Test {
         String fileName = file.getName();
 
         int dotIndex = fileName.lastIndexOf('.');
-        
+
         if (dotIndex == -1 || dotIndex == 0) {
             return fileName;
         }
@@ -248,18 +241,20 @@ public class SPRINTZSubcolumn5Test {
     }
 
     @Test
-    public void testSPRINTZ() throws IOException {
-        String parent_dir = "D:/github/xjz17/subcolumn/dataset/";
+    public void testSubcolumn() throws IOException {
+        String parent_dir = "D:/github/xjz17/subcolumn/";
+
+        String input_parent_dir = parent_dir + "dataset/";
 
         String output_parent_dir = "D:/encoding-subcolumn/result/";
+        // String output_parent_dir = parent_dir + "result/";
 
-        String outputPath = output_parent_dir + "sprintz.csv";
+        String outputPath = output_parent_dir + "ts2diff_subcolumn.csv";
 
-        // int block_size = 1024;
         int block_size = 512;
 
-        int repeatTime = 100;
-        
+        int repeatTime = 200;
+
         // repeatTime = 1;
 
         List<String> integerDatasets = new ArrayList<>();
@@ -279,7 +274,7 @@ public class SPRINTZSubcolumn5Test {
         };
         writer.writeRecord(head);
 
-        File directory = new File(parent_dir);
+        File directory = new File(input_parent_dir);
         // File[] csvFiles = directory.listFiles();
         File[] csvFiles = directory.listFiles((dir, name) -> name.endsWith(".csv"));
 
@@ -307,9 +302,6 @@ public class SPRINTZSubcolumn5Test {
             inputStream.close();
             int[] data2_arr = new int[data1.size()];
 
-            // camel
-            // max_decimal = Math.min(7, max_decimal);
-
             int max_mul = (int) Math.pow(10, max_decimal);
             for (int i = 0; i < data1.size(); i++) {
                 data2_arr[i] = (int) (data1.get(i) * max_mul);
@@ -332,9 +324,8 @@ public class SPRINTZSubcolumn5Test {
 
             long e = System.nanoTime();
             encodeTime += ((e - s) / repeatTime);
-            // compressed_size += length / 8;
             compressed_size += length;
-            
+
             double ratioTmp;
 
             if (integerDatasets.contains(datasetName)) {
@@ -356,15 +347,9 @@ public class SPRINTZSubcolumn5Test {
             e = System.nanoTime();
             decodeTime += ((e - s) / repeatTime);
 
-            for (int i = 0; i < data2_arr_decoded.length; i++) {
-                // assert data2_arr[i] == data2_arr_decoded[i]
-                //         || data2_arr[i] + Integer.MAX_VALUE + 1 == data2_arr_decoded[i];
-                // assert data2_arr[i] == data2_arr_decoded[i];
-            }
-
             String[] record = {
                     datasetName,
-                    "SPRINTZ+Sub-columns",
+                    "TS2DIFF+Sub-columns",
                     String.valueOf(encodeTime),
                     String.valueOf(decodeTime),
                     String.valueOf(data1.size()),
@@ -380,11 +365,10 @@ public class SPRINTZSubcolumn5Test {
 
     @Test
     public void testTransData() throws IOException {
-        // String parent_dir = "D:/github/xjz17/subcolumn/";
-
-        String parent_dir = "D:/encoding-subcolumn/";
+        String parent_dir = "D:/github/xjz17/subcolumn/";
 
         String output_parent_dir = "D:/encoding-subcolumn/trans_data_result/";
+        // String output_parent_dir = parent_dir + "trans_data_result/";
 
         String input_parent_dir = parent_dir + "trans_data/";
 
@@ -404,7 +388,7 @@ public class SPRINTZSubcolumn5Test {
                     });
         }
 
-        String outputPath = output_parent_dir + "sprintz_subcolumn.csv";
+        String outputPath = output_parent_dir + "ts2diff_subcolumn.csv";
         CsvWriter writer = new CsvWriter(outputPath, ',', StandardCharsets.UTF_8);
         writer.setRecordDelimiter('\n');
 
@@ -487,14 +471,14 @@ public class SPRINTZSubcolumn5Test {
                 totalDecodeTime += decodeTime;
                 totalCompressedSize += compressed_size;
                 totalPoints += data1.size();
-                
+
             }
 
             double compressionRatio = totalCompressedSize / (totalPoints * Integer.BYTES);
 
             String[] record = {
                     dataset_name.get(file_i),
-                    "SPRINTZ+Sub-columns",
+                    "TS2DIFF+Sub-columns",
                     String.valueOf(totalEncodeTime),
                     String.valueOf(totalDecodeTime),
                     String.valueOf(totalPoints),

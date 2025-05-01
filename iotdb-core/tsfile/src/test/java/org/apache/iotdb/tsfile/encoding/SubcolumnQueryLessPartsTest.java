@@ -14,8 +14,7 @@ import org.junit.Test;
 import com.csvreader.CsvReader;
 import com.csvreader.CsvWriter;
 
-public class Subcolumn5QueryLessPartsTest {
-    // Subcolumn5Test Query Less
+public class SubcolumnQueryLessPartsTest {
 
     public static void QueryTwoColumns(byte[] encoded_result1, byte[] encoded_result2, int upper_bound1,
             int upper_bound2) {
@@ -156,7 +155,7 @@ public class Subcolumn5QueryLessPartsTest {
             return encode_pos;
         }
 
-        int bw = Subcolumn5Test.bitWidth(block_size);
+        int bw = SubcolumnTest.bitWidth(block_size);
 
         int beta = encoded_result[encode_pos];
         encode_pos += 1;
@@ -165,13 +164,13 @@ public class Subcolumn5QueryLessPartsTest {
 
         int[] bitWidthList = new int[l];
 
-        encode_pos = Subcolumn5Test.decodeBitPacking(encoded_result, encode_pos, 8, l, bitWidthList);
+        encode_pos = SubcolumnTest.decodeBitPacking(encoded_result, encode_pos, 8, l, bitWidthList);
 
         int[][] subcolumnList = new int[l][remainder];
 
         int[] encodingType = new int[l];
 
-        encode_pos = Subcolumn5Test.decodeBitPacking(encoded_result, encode_pos, 1, l, encodingType);
+        encode_pos = SubcolumnTest.decodeBitPacking(encoded_result, encode_pos, 1, l, encodingType);
 
         for (int i = l - 1; i >= 0; i--) {
             int type = encodingType[i];
@@ -189,7 +188,7 @@ public class Subcolumn5QueryLessPartsTest {
                 for (int j = 0; j < filtered_length; j++) {
                     int index = filtered_indices[j];
 
-                    subcolumnList[i][index] = Subcolumn5Test.bytesToInt(encoded_result,
+                    subcolumnList[i][index] = SubcolumnTest.bytesToInt(encoded_result,
                             encode_pos + index * bitWidthList[i], bitWidthList[i]);
                     int value = (upper_bound >> (i * beta)) & ((1 << beta) - 1);
                     if (subcolumnList[i][index] < value) {
@@ -225,8 +224,8 @@ public class Subcolumn5QueryLessPartsTest {
                 int[] run_length = new int[index];
                 int[] rle_values = new int[index];
 
-                encode_pos = Subcolumn5Test.decodeBitPacking(encoded_result, encode_pos, bw, index, run_length);
-                encode_pos = Subcolumn5Test.decodeBitPacking(encoded_result, encode_pos, bitWidthList[i], index,
+                encode_pos = SubcolumnTest.decodeBitPacking(encoded_result, encode_pos, bw, index, run_length);
+                encode_pos = SubcolumnTest.decodeBitPacking(encoded_result, encode_pos, bitWidthList[i], index,
                         rle_values);
 
                 int new_length = 0;
@@ -276,7 +275,7 @@ public class Subcolumn5QueryLessPartsTest {
             return encode_pos;
         }
 
-        int bw = Subcolumn5Test.bitWidth(block_size);
+        int bw = SubcolumnTest.bitWidth(block_size);
 
         int beta = encoded_result[encode_pos];
         encode_pos += 1;
@@ -285,11 +284,11 @@ public class Subcolumn5QueryLessPartsTest {
 
         int[] bitWidthList = new int[l];
 
-        encode_pos = Subcolumn5Test.decodeBitPacking(encoded_result, encode_pos, 8, l, bitWidthList);
+        encode_pos = SubcolumnTest.decodeBitPacking(encoded_result, encode_pos, 8, l, bitWidthList);
 
         int[] encodingType = new int[l];
 
-        encode_pos = Subcolumn5Test.decodeBitPacking(encoded_result, encode_pos, 1, l, encodingType);
+        encode_pos = SubcolumnTest.decodeBitPacking(encoded_result, encode_pos, 1, l, encodingType);
 
         for (int i = l - 1; i >= 0; i--) {
             int type = encodingType[i];
@@ -390,7 +389,7 @@ public class Subcolumn5QueryLessPartsTest {
             return encode_pos;
         }
 
-        int bw = Subcolumn5Test.bitWidth(block_size);
+        int bw = SubcolumnTest.bitWidth(block_size);
 
         int beta = encoded_result[encode_pos];
         encode_pos += 1;
@@ -399,13 +398,13 @@ public class Subcolumn5QueryLessPartsTest {
 
         int[] bitWidthList = new int[l];
 
-        encode_pos = Subcolumn5Test.decodeBitPacking(encoded_result, encode_pos, 8, l, bitWidthList);
+        encode_pos = SubcolumnTest.decodeBitPacking(encoded_result, encode_pos, 8, l, bitWidthList);
 
         int[][] subcolumnList = new int[l][remainder];
 
         int[] encodingType = new int[l];
 
-        encode_pos = Subcolumn5Test.decodeBitPacking(encoded_result, encode_pos, 1, l, encodingType);
+        encode_pos = SubcolumnTest.decodeBitPacking(encoded_result, encode_pos, 1, l, encodingType);
 
         for (int i = l - 1; i >= 0; i--) {
             int type = encodingType[i];
@@ -424,7 +423,7 @@ public class Subcolumn5QueryLessPartsTest {
                 for (int j = 0; j < candidate_length; j++) {
                     int index = candidate_indices[j];
 
-                    subcolumnList[i][index] = Subcolumn5Test.bytesToInt(encoded_result,
+                    subcolumnList[i][index] = SubcolumnTest.bytesToInt(encoded_result,
                             encode_pos + index * bitWidthList[i], bitWidthList[i]);
                     int value = (upper_bound >> (i * beta)) & ((1 << beta) - 1);
                     if (subcolumnList[i][index] < value) {
@@ -461,8 +460,8 @@ public class Subcolumn5QueryLessPartsTest {
                 int[] run_length = new int[index];
                 int[] rle_values = new int[index];
 
-                encode_pos = Subcolumn5Test.decodeBitPacking(encoded_result, encode_pos, bw, index, run_length);
-                encode_pos = Subcolumn5Test.decodeBitPacking(encoded_result, encode_pos, bitWidthList[i], index,
+                encode_pos = SubcolumnTest.decodeBitPacking(encoded_result, encode_pos, bw, index, run_length);
+                encode_pos = SubcolumnTest.decodeBitPacking(encoded_result, encode_pos, bitWidthList[i], index,
                         rle_values);
 
                 int new_length = 0;
@@ -529,10 +528,12 @@ public class Subcolumn5QueryLessPartsTest {
 
     @Test
     public void testQuery() throws IOException {
-        String parent_dir = "D:/github/xjz17/subcolumn/dataset/";
-        // String parent_dir = "D:/encoding-subcolumn/dataset/";
+        String parent_dir = "D:/github/xjz17/subcolumn/";
 
-        String output_parent_dir = "D:/encoding-subcolumn/";
+        String input_parent_dir = parent_dir + "dataset/";
+        
+        String output_parent_dir = "D:/encoding-subcolumn/result/query_vs_block/";
+        // String output_parent_dir = parent_dir + "result/query_vs_block/";
 
         int[] block_size_list = { 32, 64, 128, 256, 512, 1024, 2048, 4096, 8192 };
 
@@ -574,7 +575,7 @@ public class Subcolumn5QueryLessPartsTest {
             };
             writer.writeRecord(head);
 
-            File directory = new File(parent_dir);
+            File directory = new File(input_parent_dir);
             // File[] csvFiles = directory.listFiles();
             File[] csvFiles = directory.listFiles((dir, name) -> name.endsWith(".csv"));
 
@@ -636,7 +637,7 @@ public class Subcolumn5QueryLessPartsTest {
                 // 编码第一列
                 long s = System.nanoTime();
                 for (int repeat = 0; repeat < repeatTime; repeat++) {
-                    length1 = Subcolumn5Test.Encoder(col1_data, block_size, encoded_result1);
+                    length1 = SubcolumnTest.Encoder(col1_data, block_size, encoded_result1);
                 }
                 long e = System.nanoTime();
                 encodeTime += ((e - s) / repeatTime);
@@ -644,7 +645,7 @@ public class Subcolumn5QueryLessPartsTest {
                 // 编码第二列
                 s = System.nanoTime();
                 for (int repeat = 0; repeat < repeatTime; repeat++) {
-                    length2 = Subcolumn5Test.Encoder(col2_data, block_size, encoded_result2);
+                    length2 = SubcolumnTest.Encoder(col2_data, block_size, encoded_result2);
                 }
                 e = System.nanoTime();
                 encodeTime += ((e - s) / repeatTime);
@@ -675,7 +676,7 @@ public class Subcolumn5QueryLessPartsTest {
 
                 String[] record = {
                         datasetName,
-                        "Subcolumn",
+                        "Sub-columns",
                         String.valueOf(encodeTime),
                         String.valueOf(decodeTime),
                         String.valueOf(data1.size()),
@@ -695,10 +696,12 @@ public class Subcolumn5QueryLessPartsTest {
 
     @Test
     public void testQueryBeta() throws IOException {
-        String parent_dir = "D:/github/xjz17/subcolumn/dataset/";
-        // String parent_dir = "D:/encoding-subcolumn/dataset/";
+        String parent_dir = "D:/github/xjz17/subcolumn/";
 
-        String output_parent_dir = "D:/encoding-subcolumn/";
+        String input_parent_dir = parent_dir + "dataset/";
+        
+        String output_parent_dir = "D:/encoding-subcolumn/result/query_vs_beta/";
+        // String output_parent_dir = parent_dir + "result/query_vs_beta/";
 
         int[] beta_list = { 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23,
             24, 25, 26, 27, 28, 29, 30, 31 };
@@ -743,7 +746,7 @@ public class Subcolumn5QueryLessPartsTest {
             };
             writer.writeRecord(head);
 
-            File directory = new File(parent_dir);
+            File directory = new File(input_parent_dir);
             // File[] csvFiles = directory.listFiles();
             File[] csvFiles = directory.listFiles((dir, name) -> name.endsWith(".csv"));
 
@@ -805,7 +808,7 @@ public class Subcolumn5QueryLessPartsTest {
                 // 编码第一列
                 long s = System.nanoTime();
                 for (int repeat = 0; repeat < repeatTime; repeat++) {
-                    length1 = Subcolumn5BetaTest.Encoder(col1_data, block_size, encoded_result1, beta);
+                    length1 = SubcolumnBetaTest.Encoder(col1_data, block_size, encoded_result1, beta);
                 }
                 long e = System.nanoTime();
                 encodeTime += ((e - s) / repeatTime);
@@ -813,7 +816,7 @@ public class Subcolumn5QueryLessPartsTest {
                 // 编码第二列
                 s = System.nanoTime();
                 for (int repeat = 0; repeat < repeatTime; repeat++) {
-                    length2 = Subcolumn5BetaTest.Encoder(col2_data, block_size, encoded_result2, beta);
+                    length2 = SubcolumnBetaTest.Encoder(col2_data, block_size, encoded_result2, beta);
                 }
                 e = System.nanoTime();
                 encodeTime += ((e - s) / repeatTime);
@@ -844,7 +847,7 @@ public class Subcolumn5QueryLessPartsTest {
 
                 String[] record = {
                         datasetName,
-                        "Subcolumn",
+                        "Sub-columns",
                         String.valueOf(encodeTime),
                         String.valueOf(decodeTime),
                         String.valueOf(data1.size()),

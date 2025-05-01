@@ -8,7 +8,6 @@ import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.List;
 
-import org.apache.iotdb.tsfile.encoding.decoder.Decoder;
 import org.junit.Test;
 
 import com.csvreader.CsvReader;
@@ -16,20 +15,20 @@ import com.csvreader.CsvWriter;
 
 import static org.junit.Assert.assertEquals;
 
-public class Subcolumn5QuerySum2PartsTest {
+public class SubcolumnQuerySum2PartsTest {
 
     public static void Decoder(byte[] encoded_result1, byte[] encoded_result2) {
 
         int[] encode_pos = new int[2];
 
-        int data_length1 = Subcolumn5Test.bytes2Integer(encoded_result1, encode_pos[0], 4);
-        int data_length2 = Subcolumn5Test.bytes2Integer(encoded_result2, encode_pos[1], 4);
+        int data_length1 = SubcolumnTest.bytes2Integer(encoded_result1, encode_pos[0], 4);
+        int data_length2 = SubcolumnTest.bytes2Integer(encoded_result2, encode_pos[1], 4);
 
         encode_pos[0] += 4;
         encode_pos[1] += 4;
 
-        int block_size1 = Subcolumn5Test.bytes2Integer(encoded_result1, encode_pos[0], 4);
-        int block_size2 = Subcolumn5Test.bytes2Integer(encoded_result2, encode_pos[1], 4);
+        int block_size1 = SubcolumnTest.bytes2Integer(encoded_result1, encode_pos[0], 4);
+        int block_size2 = SubcolumnTest.bytes2Integer(encoded_result2, encode_pos[1], 4);
         encode_pos[0] += 4;
         encode_pos[1] += 4;
 
@@ -43,9 +42,9 @@ public class Subcolumn5QuerySum2PartsTest {
 
         if (remainder <= 3) {
             for (int i = 0; i < remainder; i++) {
-                int value1 = Subcolumn5Test.bytes2Integer(encoded_result1, encode_pos[0], 4);
+                int value1 = SubcolumnTest.bytes2Integer(encoded_result1, encode_pos[0], 4);
                 encode_pos[0] += 4;
-                int value2 = Subcolumn5Test.bytes2Integer(encoded_result2, encode_pos[1], 4);
+                int value2 = SubcolumnTest.bytes2Integer(encoded_result2, encode_pos[1], 4);
                 encode_pos[1] += 4;
             }
         } else {
@@ -63,41 +62,41 @@ public class Subcolumn5QuerySum2PartsTest {
         int[] min_delta1 = new int[3];
         int[] min_delta2 = new int[3];
 
-        min_delta1[0] = Subcolumn5Test.bytes2Integer(encoded_result1, encode_pos[0], 4);
+        min_delta1[0] = SubcolumnTest.bytes2Integer(encoded_result1, encode_pos[0], 4);
         encode_pos[0] += 4;
 
-        min_delta2[0] = Subcolumn5Test.bytes2Integer(encoded_result2, encode_pos[1], 4);
+        min_delta2[0] = SubcolumnTest.bytes2Integer(encoded_result2, encode_pos[1], 4);
         encode_pos[1] += 4;
 
-        int m1 = Subcolumn5Test.bytes2Integer(encoded_result1, encode_pos[0], 1);
+        int m1 = SubcolumnTest.bytes2Integer(encoded_result1, encode_pos[0], 1);
         encode_pos[0] += 1;
 
-        int m2 = Subcolumn5Test.bytes2Integer(encoded_result2, encode_pos[1], 1);
+        int m2 = SubcolumnTest.bytes2Integer(encoded_result2, encode_pos[1], 1);
         encode_pos[1] += 1;
 
         if (m1 == 0 || m2 == 0) {
             if (m1 != 0) {
-                int bw = Subcolumn5Test.bitWidth(block_size);
+                int bw = SubcolumnTest.bitWidth(block_size);
 
-                int beta = Subcolumn5Test.bytes2Integer(encoded_result1, encode_pos[0], 1);
+                int beta = SubcolumnTest.bytes2Integer(encoded_result1, encode_pos[0], 1);
                 encode_pos[0] += 1;
 
                 int l = (m1 + beta - 1) / beta;
 
                 int[] bitWidthList = new int[l];
 
-                encode_pos[0] = Subcolumn5Test.decodeBitPacking(encoded_result1, encode_pos[0], 8, l, bitWidthList);
+                encode_pos[0] = SubcolumnTest.decodeBitPacking(encoded_result1, encode_pos[0], 8, l, bitWidthList);
 
                 int[][] subcolumnList = new int[l][remainder];
 
                 int[] encodingType = new int[l];
-                encode_pos[0] = Subcolumn5Test.decodeBitPacking(encoded_result1, encode_pos[0], 1, l, encodingType);
+                encode_pos[0] = SubcolumnTest.decodeBitPacking(encoded_result1, encode_pos[0], 1, l, encodingType);
 
                 for (int i = l - 1; i >= 0; i--) {
                     int type = encodingType[i];
                     int bitWidth = bitWidthList[i];
                     if (type == 0) {
-                        encode_pos[0] = Subcolumn5Test.decodeBitPacking(encoded_result1, encode_pos[0], bitWidth,
+                        encode_pos[0] = SubcolumnTest.decodeBitPacking(encoded_result1, encode_pos[0], bitWidth,
                                 remainder, subcolumnList[i]);
                     } else {
                         int index = ((encoded_result1[encode_pos[0]] & 0xFF) << 8) |
@@ -107,9 +106,9 @@ public class Subcolumn5QuerySum2PartsTest {
                         int[] run_length = new int[index];
                         int[] rle_values = new int[index];
 
-                        encode_pos[0] = Subcolumn5Test.decodeBitPacking(encoded_result1, encode_pos[0], bw, index,
+                        encode_pos[0] = SubcolumnTest.decodeBitPacking(encoded_result1, encode_pos[0], bw, index,
                                 run_length);
-                        encode_pos[0] = Subcolumn5Test.decodeBitPacking(encoded_result1, encode_pos[0], bitWidth, index,
+                        encode_pos[0] = SubcolumnTest.decodeBitPacking(encoded_result1, encode_pos[0], bitWidth, index,
                                 rle_values);
 
                         int currentIndex = 0;
@@ -126,27 +125,27 @@ public class Subcolumn5QuerySum2PartsTest {
             }
 
             if (m2 != 0) {
-                int bw = Subcolumn5Test.bitWidth(block_size);
+                int bw = SubcolumnTest.bitWidth(block_size);
 
-                int beta = Subcolumn5Test.bytes2Integer(encoded_result2, encode_pos[1], 1);
+                int beta = SubcolumnTest.bytes2Integer(encoded_result2, encode_pos[1], 1);
                 encode_pos[1] += 1;
 
                 int l = (m2 + beta - 1) / beta;
 
                 int[] bitWidthList = new int[l];
 
-                encode_pos[1] = Subcolumn5Test.decodeBitPacking(encoded_result2, encode_pos[1], 8, l, bitWidthList);
+                encode_pos[1] = SubcolumnTest.decodeBitPacking(encoded_result2, encode_pos[1], 8, l, bitWidthList);
 
                 int[][] subcolumnList = new int[l][remainder];
 
                 int[] encodingType = new int[l];
-                encode_pos[1] = Subcolumn5Test.decodeBitPacking(encoded_result2, encode_pos[1], 1, l, encodingType);
+                encode_pos[1] = SubcolumnTest.decodeBitPacking(encoded_result2, encode_pos[1], 1, l, encodingType);
 
                 for (int i = l - 1; i >= 0; i--) {
                     int type = encodingType[i];
                     int bitWidth = bitWidthList[i];
                     if (type == 0) {
-                        encode_pos[1] = Subcolumn5Test.decodeBitPacking(encoded_result2, encode_pos[1], bitWidth,
+                        encode_pos[1] = SubcolumnTest.decodeBitPacking(encoded_result2, encode_pos[1], bitWidth,
                                 remainder, subcolumnList[i]);
                     } else {
                         int index = ((encoded_result2[encode_pos[1]] & 0xFF) << 8) |
@@ -156,9 +155,9 @@ public class Subcolumn5QuerySum2PartsTest {
                         int[] run_length = new int[index];
                         int[] rle_values = new int[index];
 
-                        encode_pos[1] = Subcolumn5Test.decodeBitPacking(encoded_result2, encode_pos[1], bw, index,
+                        encode_pos[1] = SubcolumnTest.decodeBitPacking(encoded_result2, encode_pos[1], bw, index,
                                 run_length);
-                        encode_pos[1] = Subcolumn5Test.decodeBitPacking(encoded_result2, encode_pos[1], bitWidth, index,
+                        encode_pos[1] = SubcolumnTest.decodeBitPacking(encoded_result2, encode_pos[1], bitWidth, index,
                                 rle_values);
 
                         int currentIndex = 0;
@@ -177,12 +176,12 @@ public class Subcolumn5QuerySum2PartsTest {
             return encode_pos;
         }
 
-        int bw = Subcolumn5Test.bitWidth(block_size);
+        int bw = SubcolumnTest.bitWidth(block_size);
 
-        int beta1 = Subcolumn5Test.bytes2Integer(encoded_result1, encode_pos[0], 1);
+        int beta1 = SubcolumnTest.bytes2Integer(encoded_result1, encode_pos[0], 1);
         encode_pos[0] += 1;
 
-        int beta2 = Subcolumn5Test.bytes2Integer(encoded_result2, encode_pos[1], 1);
+        int beta2 = SubcolumnTest.bytes2Integer(encoded_result2, encode_pos[1], 1);
         encode_pos[1] += 1;
 
         int l1 = (m1 + beta1 - 1) / beta1;
@@ -191,8 +190,8 @@ public class Subcolumn5QuerySum2PartsTest {
         int[] bitWidthList1 = new int[l1];
         int[] bitWidthList2 = new int[l2];
 
-        encode_pos[0] = Subcolumn5Test.decodeBitPacking(encoded_result1, encode_pos[0], 8, l1, bitWidthList1);
-        encode_pos[1] = Subcolumn5Test.decodeBitPacking(encoded_result2, encode_pos[1], 8, l2, bitWidthList2);
+        encode_pos[0] = SubcolumnTest.decodeBitPacking(encoded_result1, encode_pos[0], 8, l1, bitWidthList1);
+        encode_pos[1] = SubcolumnTest.decodeBitPacking(encoded_result2, encode_pos[1], 8, l2, bitWidthList2);
 
         int[][] subcolumnList1 = new int[l1][remainder];
         int[][] subcolumnList2 = new int[l2][remainder];
@@ -200,14 +199,14 @@ public class Subcolumn5QuerySum2PartsTest {
         int[] encodingType1 = new int[l1];
         int[] encodingType2 = new int[l2];
 
-        encode_pos[0] = Subcolumn5Test.decodeBitPacking(encoded_result1, encode_pos[0], 1, l1, encodingType1);
-        encode_pos[1] = Subcolumn5Test.decodeBitPacking(encoded_result2, encode_pos[1], 1, l2, encodingType2);
+        encode_pos[0] = SubcolumnTest.decodeBitPacking(encoded_result1, encode_pos[0], 1, l1, encodingType1);
+        encode_pos[1] = SubcolumnTest.decodeBitPacking(encoded_result2, encode_pos[1], 1, l2, encodingType2);
 
         for (int i = l1 - 1; i >= 0; i--) {
             int type = encodingType1[i];
             int bitWidth = bitWidthList1[i];
             if (type == 0) {
-                encode_pos[0] = Subcolumn5Test.decodeBitPacking(encoded_result1, encode_pos[0], bitWidth,
+                encode_pos[0] = SubcolumnTest.decodeBitPacking(encoded_result1, encode_pos[0], bitWidth,
                         remainder, subcolumnList1[i]);
             } else {
                 int index = ((encoded_result1[encode_pos[0]] & 0xFF) << 8) |
@@ -217,8 +216,8 @@ public class Subcolumn5QuerySum2PartsTest {
                 int[] run_length = new int[index];
                 int[] rle_values = new int[index];
 
-                encode_pos[0] = Subcolumn5Test.decodeBitPacking(encoded_result1, encode_pos[0], bw, index, run_length);
-                encode_pos[0] = Subcolumn5Test.decodeBitPacking(encoded_result1, encode_pos[0], bitWidth, index,
+                encode_pos[0] = SubcolumnTest.decodeBitPacking(encoded_result1, encode_pos[0], bw, index, run_length);
+                encode_pos[0] = SubcolumnTest.decodeBitPacking(encoded_result1, encode_pos[0], bitWidth, index,
                         rle_values);
 
                 int currentIndex = 0;
@@ -237,7 +236,7 @@ public class Subcolumn5QuerySum2PartsTest {
             int type = encodingType2[i];
             int bitWidth = bitWidthList2[i];
             if (type == 0) {
-                encode_pos[1] = Subcolumn5Test.decodeBitPacking(encoded_result2, encode_pos[1], bitWidth,
+                encode_pos[1] = SubcolumnTest.decodeBitPacking(encoded_result2, encode_pos[1], bitWidth,
                         remainder, subcolumnList2[i]);
             } else {
                 int index = ((encoded_result2[encode_pos[1]] & 0xFF) << 8) |
@@ -247,8 +246,8 @@ public class Subcolumn5QuerySum2PartsTest {
                 int[] run_length = new int[index];
                 int[] rle_values = new int[index];
 
-                encode_pos[1] = Subcolumn5Test.decodeBitPacking(encoded_result2, encode_pos[1], bw, index, run_length);
-                encode_pos[1] = Subcolumn5Test.decodeBitPacking(encoded_result2, encode_pos[1], bitWidth, index,
+                encode_pos[1] = SubcolumnTest.decodeBitPacking(encoded_result2, encode_pos[1], bw, index, run_length);
+                encode_pos[1] = SubcolumnTest.decodeBitPacking(encoded_result2, encode_pos[1], bitWidth, index,
                         rle_values);
 
                 int currentIndex = 0;
@@ -298,7 +297,7 @@ public class Subcolumn5QuerySum2PartsTest {
         long baseProduct = (long) min_delta1[0] * min_delta2[0];
         result += baseProduct * remainder;
 
-        // 方法2
+        // 另一种方法
 
         // // 计算 subcolumn 的贡献
         // for (int j = 0; j < remainder; j++) {
@@ -369,10 +368,12 @@ public class Subcolumn5QuerySum2PartsTest {
 
     @Test
     public void testQuery() throws IOException {
-        String parent_dir = "D:/github/xjz17/subcolumn/dataset/";
-        // String parent_dir = "D:/encoding-subcolumn/dataset/";
+        String parent_dir = "D:/github/xjz17/subcolumn/";
 
-        String output_parent_dir = "D:/encoding-subcolumn/";
+        String input_parent_dir = parent_dir + "dataset/";
+        
+        String output_parent_dir = "D:/encoding-subcolumn/result/query_vs_block/";
+        // String output_parent_dir = parent_dir + "result/query_vs_block/";
 
         int[] block_size_list = { 32, 64, 128, 256, 512, 1024, 2048, 4096, 8192 };
 
@@ -400,7 +401,7 @@ public class Subcolumn5QuerySum2PartsTest {
             };
             writer.writeRecord(head);
 
-            File directory = new File(parent_dir);
+            File directory = new File(input_parent_dir);
             // File[] csvFiles = directory.listFiles();
             File[] csvFiles = directory.listFiles((dir, name) -> name.endsWith(".csv"));
 
@@ -462,7 +463,7 @@ public class Subcolumn5QuerySum2PartsTest {
                 // 编码第一列
                 long s = System.nanoTime();
                 for (int repeat = 0; repeat < repeatTime; repeat++) {
-                    length1 = Subcolumn5Test.Encoder(col1_data, block_size, encoded_result1);
+                    length1 = SubcolumnTest.Encoder(col1_data, block_size, encoded_result1);
                 }
                 long e = System.nanoTime();
                 encodeTime += ((e - s) / repeatTime);
@@ -470,7 +471,7 @@ public class Subcolumn5QuerySum2PartsTest {
                 // 编码第二列
                 s = System.nanoTime();
                 for (int repeat = 0; repeat < repeatTime; repeat++) {
-                    length2 = Subcolumn5Test.Encoder(col2_data, block_size, encoded_result2);
+                    length2 = SubcolumnTest.Encoder(col2_data, block_size, encoded_result2);
                 }
                 e = System.nanoTime();
                 encodeTime += ((e - s) / repeatTime);
@@ -501,7 +502,7 @@ public class Subcolumn5QuerySum2PartsTest {
 
                 String[] record = {
                         datasetName,
-                        "Subcolumn",
+                        "Sub-columns",
                         String.valueOf(encodeTime),
                         String.valueOf(decodeTime),
                         String.valueOf(data1.size()),
@@ -521,10 +522,12 @@ public class Subcolumn5QuerySum2PartsTest {
 
     @Test
     public void testQueryBeta() throws IOException {
-        String parent_dir = "D:/github/xjz17/subcolumn/dataset/";
-        // String parent_dir = "D:/encoding-subcolumn/dataset/";
+        String parent_dir = "D:/github/xjz17/subcolumn/";
 
-        String output_parent_dir = "D:/encoding-subcolumn/";
+        String input_parent_dir = parent_dir + "dataset/";
+        
+        String output_parent_dir = "D:/encoding-subcolumn/result/query_vs_beta/";
+        // String output_parent_dir = parent_dir + "result/query_vs_beta/";
 
         int[] beta_list = { 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23,
                 24, 25, 26, 27, 28, 29, 30, 31 };
@@ -555,7 +558,7 @@ public class Subcolumn5QuerySum2PartsTest {
             };
             writer.writeRecord(head);
 
-            File directory = new File(parent_dir);
+            File directory = new File(input_parent_dir);
             // File[] csvFiles = directory.listFiles();
             File[] csvFiles = directory.listFiles((dir, name) -> name.endsWith(".csv"));
 
@@ -614,25 +617,28 @@ public class Subcolumn5QuerySum2PartsTest {
                 // 编码第一列
                 long s = System.nanoTime();
                 for (int repeat = 0; repeat < repeatTime; repeat++) {
-                    length1 = Subcolumn5Test.Encoder(col1_data, block_size, encoded_result1);
+                    length1 = SubcolumnTest.Encoder(col1_data, block_size, encoded_result1);
                 }
                 long e = System.nanoTime();
                 encodeTime += ((e - s) / repeatTime);
                 // 编码第二列
                 s = System.nanoTime();
                 for (int repeat = 0; repeat < repeatTime; repeat++) {
-                    length2 = Subcolumn5Test.Encoder(col2_data, block_size, encoded_result2);
+                    length2 = SubcolumnTest.Encoder(col2_data, block_size, encoded_result2);
                 }
                 e = System.nanoTime();
                 encodeTime += ((e - s) / repeatTime);
                 compressed_size = length1 + length2;
+
                 double ratioTmp;
                 if (integerDatasets.contains(datasetName)) {
                     ratioTmp = compressed_size / (double) (data1.size() * Integer.BYTES);
                 } else {
                     ratioTmp = compressed_size / (double) (data1.size() * Long.BYTES);
                 }
+
                 ratio += ratioTmp;
+                
                 System.out.println("Query");
 
                 s = System.nanoTime();
@@ -643,7 +649,7 @@ public class Subcolumn5QuerySum2PartsTest {
                 decodeTime += ((e - s) / repeatTime);
                 String[] record = {
                         datasetName,
-                        "Subcolumn",
+                        "Sub-columns",
                         String.valueOf(encodeTime),
                         String.valueOf(decodeTime),
                         String.valueOf(data1.size()),

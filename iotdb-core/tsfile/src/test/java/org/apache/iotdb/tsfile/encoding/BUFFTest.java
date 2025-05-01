@@ -496,57 +496,13 @@ public class BUFFTest {
     }
 
     @Test
-    public void test0() {
-        // float f = -6.1415f;
-        float f = 444804.97f;
-        int decimal = 4;
-        // float f = 23.1415f;
-        // int decimal = 4;
+    public void testSubcolumn() throws IOException {
+        String parent_dir = "D:/github/xjz17/subcolumn/";
 
-        int bits = Float.floatToIntBits(f);
+        String input_parent_dir = parent_dir + "dataset/";
 
-        int sign = (bits >> 31) & 1;
-        int exponent = (bits >> 23) & 0xFF;
-        int mantissa = bits & 0x7FFFFF;
-
-        int actualExponent = exponent - 127;
-
-        if (actualExponent >= 0) {
-            int mask = (1 << (23 - actualExponent)) - 1;
-            mantissa &= mask;
-        } else {
-            mantissa += 1 << 23;
-        }
-
-        int shift = 23 - actualExponent - bits_needed[decimal];
-
-        if (shift < 0) {
-            mantissa <<= -shift;
-        } else {
-            mantissa >>= shift;
-        }
-
-        if (exponent == 0) {
-            mantissa = 0;
-        }
-
-        System.out.println(mantissa);
-
-        double expectedFractionalPart = Math.abs(f) - Math.floor(Math.abs(f));
-        double calculatedFractionalPart = mantissa / Math.pow(2, bits_needed[decimal]);
-
-        System.out.println(expectedFractionalPart);
-        System.out.println(calculatedFractionalPart);
-
-        assert Math.abs(expectedFractionalPart - calculatedFractionalPart) < Math.pow(10, -decimal);
-    }
-
-    @Test
-    public void testBUFF() throws IOException {
-        String parent_dir = "D:/github/xjz17/subcolumn/dataset/";
-        // String parent_dir = "D:/encoding-subcolumn/dataset/";
-
-        String output_parent_dir = "D:/encoding-subcolumn/";
+        String output_parent_dir = "D:/encoding-subcolumn/result/";
+        // String output_parent_dir = parent_dir + "result/";
 
         String outputPath = output_parent_dir + "buff.csv";
 
@@ -573,7 +529,7 @@ public class BUFFTest {
         };
         writer.writeRecord(head);
 
-        File directory = new File(parent_dir);
+        File directory = new File(input_parent_dir);
         // File[] csvFiles = directory.listFiles();
         File[] csvFiles = directory.listFiles((dir, name) -> name.endsWith(".csv"));
 
@@ -624,7 +580,6 @@ public class BUFFTest {
 
             long e = System.nanoTime();
             encodeTime += ((e - s) / repeatTime);
-            // compressed_size += length / 8;
             compressed_size += length;
 
             double ratioTmp;
@@ -668,11 +623,10 @@ public class BUFFTest {
 
     @Test
     public void testTransData() throws IOException {
-        // String parent_dir = "D:/github/xjz17/subcolumn/";
+        String parent_dir = "D:/github/xjz17/subcolumn/";
 
-        String parent_dir = "D:/encoding-subcolumn/";
-
-        String output_parent_dir = "D:/encoding-subcolumn/";
+        String output_parent_dir = "D:/encoding-subcolumn/trans_data_result/";
+        // String output_parent_dir = parent_dir + "trans_data_result/";
 
         String input_parent_dir = parent_dir + "trans_data/";
 

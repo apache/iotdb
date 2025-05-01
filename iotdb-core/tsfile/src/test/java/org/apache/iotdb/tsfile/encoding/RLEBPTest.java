@@ -1037,11 +1037,13 @@ public class RLEBPTest {
     }
 
     @Test
-    public void testRLE() throws IOException {
-        String parent_dir = "D:/github/xjz17/subcolumn/dataset/";
-        // String parent_dir = "D:/encoding-subcolumn/";
+    public void testSubcolumn() throws IOException {
+        String parent_dir = "D:/github/xjz17/subcolumn/";
+
+        String input_parent_dir = parent_dir + "dataset/";
 
         String output_parent_dir = "D:/encoding-subcolumn/result/";
+        // String output_parent_dir = parent_dir + "result/";
 
         String outputPath = output_parent_dir + "rle.csv";
 
@@ -1067,7 +1069,7 @@ public class RLEBPTest {
                 "Compression Ratio"
         };
         writer.writeRecord(head); // write header to output file
-        File directory = new File(parent_dir);
+        File directory = new File(input_parent_dir);
         // File[] csvFiles = directory.listFiles();
         File[] csvFiles = directory.listFiles((dir, name) -> name.endsWith(".csv"));
 
@@ -1160,11 +1162,10 @@ public class RLEBPTest {
 
     @Test
     public void testTransData() throws IOException {
-        // String parent_dir = "D:/github/xjz17/subcolumn/";
-
-        String parent_dir = "D:/encoding-subcolumn/";
+        String parent_dir = "D:/github/xjz17/subcolumn/";
 
         String output_parent_dir = "D:/encoding-subcolumn/trans_data_result/";
+        // String output_parent_dir = parent_dir + "trans_data_result/";
 
         String input_parent_dir = parent_dir + "trans_data/";
 

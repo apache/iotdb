@@ -17,7 +17,6 @@ import com.csvreader.CsvReader;
 import com.csvreader.CsvWriter;
 
 public class BPTest {
-    // bitpacking
 
     public static int bitWidth(int value) {
         return 32 - Integer.numberOfLeadingZeros(value);
@@ -223,9 +222,6 @@ public class BPTest {
         return encode_pos;
     }
 
-    /**
-     * 仅将数据处理为非负数，也就是将 ts_block 中的数据都减去最小值
-     */
     public static int[] getAbsDeltaTsBlock(
             int[] ts_block,
             int i,
@@ -406,10 +402,13 @@ public class BPTest {
     }
 
     @Test
-    public void testBP() throws IOException {
-        String parent_dir = "D:/github/xjz17/subcolumn/dataset/";
+    public void testSubcolumn() throws IOException {
+        String parent_dir = "D:/github/xjz17/subcolumn/";
+
+        String input_parent_dir = parent_dir + "dataset/";
 
         String output_parent_dir = "D:/encoding-subcolumn/result/";
+        // String output_parent_dir = parent_dir + "result/";
 
         String outputPath = output_parent_dir + "bp.csv";
 
@@ -436,7 +435,7 @@ public class BPTest {
         };
         writer.writeRecord(head);
 
-        File directory = new File(parent_dir);
+        File directory = new File(input_parent_dir);
         // File[] csvFiles = directory.listFiles();
         File[] csvFiles = directory.listFiles((dir, name) -> name.endsWith(".csv"));
 
@@ -531,11 +530,10 @@ public class BPTest {
 
     @Test
     public void testTransData() throws IOException {
-        // String parent_dir = "D:/github/xjz17/subcolumn/";
-
-        String parent_dir = "D:/encoding-subcolumn/";
+        String parent_dir = "D:/github/xjz17/subcolumn/";
 
         String output_parent_dir = "D:/encoding-subcolumn/trans_data_result/";
+        // String output_parent_dir = parent_dir + "trans_data_result/";
 
         String input_parent_dir = parent_dir + "trans_data/";
 

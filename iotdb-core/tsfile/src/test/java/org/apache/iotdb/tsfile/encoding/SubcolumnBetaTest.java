@@ -18,12 +18,8 @@ import com.csvreader.CsvWriter;
 
 import static org.junit.Assert.assertEquals;
 
-public class Subcolumn5BetaTest {
-    // Subcolumn5Test 测试不同 beta 的影响
+public class SubcolumnBetaTest {
 
-    /**
-     * 仅将数据处理为非负数，也就是将 ts_block 中的数据都减去最小值
-     */
     public static int[] getAbsDeltaTsBlock(
             int[] ts_block,
             int i,
@@ -69,7 +65,7 @@ public class Subcolumn5BetaTest {
         encoded_result[encode_pos + 3] = (byte) min_delta[0];
         encode_pos += 4;
 
-        encode_pos = Subcolumn5Test.SubcolumnEncoder(data_delta, encode_pos,
+        encode_pos = SubcolumnTest.SubcolumnEncoder(data_delta, encode_pos,
                 encoded_result, beta, block_size);
 
         return encode_pos;
@@ -85,7 +81,7 @@ public class Subcolumn5BetaTest {
 
         int[] block_data = new int[remainder];
 
-        encode_pos = Subcolumn5Test.SubcolumnDecoder(encoded_result, encode_pos,
+        encode_pos = SubcolumnTest.SubcolumnDecoder(encoded_result, encode_pos,
                 block_data, block_size);
 
         for (int i = 0; i < remainder; i++) {
@@ -208,10 +204,12 @@ public class Subcolumn5BetaTest {
 
     @Test
     public void testSubcolumn() throws IOException {
-        String parent_dir = "D:/github/xjz17/subcolumn/dataset/";
-        // String parent_dir = "D:/encoding-subcolumn/dataset/";
+        String parent_dir = "D:/github/xjz17/subcolumn/";
 
+        String input_parent_dir = parent_dir + "dataset/";
+        
         String output_parent_dir = "D:/encoding-subcolumn/result/compression_vs_beta/";
+        // String output_parent_dir = parent_dir + "result/compression_vs_beta/";
 
         int[] beta_list = { 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23,
                 24, 25, 26, 27, 28, 29, 30, 31 };
@@ -244,7 +242,7 @@ public class Subcolumn5BetaTest {
             };
             writer.writeRecord(head);
 
-            File directory = new File(parent_dir);
+            File directory = new File(input_parent_dir);
             // File[] csvFiles = directory.listFiles();
             File[] csvFiles = directory.listFiles((dir, name) -> name.endsWith(".csv"));
 
@@ -343,15 +341,15 @@ public class Subcolumn5BetaTest {
 
     @Test
     public void testTransData() throws IOException {
-        // String parent_dir = "D:/github/xjz17/subcolumn/";
-        String parent_dir = "D:/encoding-subcolumn/";
+        String parent_dir = "D:/github/xjz17/subcolumn/";
 
         String output_parent_dir = "D:/encoding-subcolumn/trans_data_result/compression_vs_beta/";
+        // String output_parent_dir = parent_dir + "trans_data_result/compression_vs_beta/";
+        
+        String input_parent_dir = parent_dir + "trans_data/";
 
         int[] beta_list = { 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23,
                 24, 25, 26, 27, 28, 29, 30, 31 };
-
-        String input_parent_dir = parent_dir + "trans_data/";
 
         ArrayList<String> input_path_list = new ArrayList<>();
         ArrayList<String> output_path_list = new ArrayList<>();
@@ -476,17 +474,6 @@ public class Subcolumn5BetaTest {
                     for (int i = 0; i < data2_arr_decoded.length; i++) {
                         assertEquals(data2_arr[i], data2_arr_decoded[i]);
                     }
-
-                    // String[] record = {
-                    // f.toString(),
-                    // "Subcolumn",
-                    // String.valueOf(encodeTime),
-                    // String.valueOf(decodeTime),
-                    // String.valueOf(data1.size()),
-                    // String.valueOf(compressed_size),
-                    // String.valueOf(ratio)
-                    // };
-                    // writer.writeRecord(record);
 
                 }
 

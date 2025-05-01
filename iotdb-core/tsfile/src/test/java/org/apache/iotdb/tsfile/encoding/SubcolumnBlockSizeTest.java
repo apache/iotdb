@@ -18,8 +18,7 @@ import com.csvreader.CsvWriter;
 
 import static org.junit.Assert.assertEquals;
 
-public class Subcolumn5BlockSizeTest {
-    // Subcolumn5Test 测试不同 block size
+public class SubcolumnBlockSizeTest {
 
     public static int getDecimalPrecision(String str) {
         // 查找小数点的位置
@@ -53,10 +52,12 @@ public class Subcolumn5BlockSizeTest {
 
     @Test
     public void testSubcolumn() throws IOException {
-        String parent_dir = "D:/github/xjz17/subcolumn/dataset/";
-        // String parent_dir = "D:/encoding-subcolumn/dataset/";
+        String parent_dir = "D:/github/xjz17/subcolumn/";
 
+        String input_parent_dir = parent_dir + "dataset/";
+        
         String output_parent_dir = "D:/encoding-subcolumn/result/compression_vs_block/";
+        // String output_parent_dir = parent_dir + "result/compression_vs_block/";
 
         int[] block_size_list = { 32, 64, 128, 256, 512, 1024, 2048, 4096, 8192 };
 
@@ -85,7 +86,7 @@ public class Subcolumn5BlockSizeTest {
             };
             writer.writeRecord(head);
 
-            File directory = new File(parent_dir);
+            File directory = new File(input_parent_dir);
             // File[] csvFiles = directory.listFiles();
             File[] csvFiles = directory.listFiles((dir, name) -> name.endsWith(".csv"));
 
@@ -129,7 +130,7 @@ public class Subcolumn5BlockSizeTest {
 
                 long s = System.nanoTime();
                 for (int repeat = 0; repeat < repeatTime; repeat++) {
-                    length = Subcolumn5Test.Encoder(data2_arr, block_size, encoded_result);
+                    length = SubcolumnTest.Encoder(data2_arr, block_size, encoded_result);
                 }
 
                 long e = System.nanoTime();
@@ -153,7 +154,7 @@ public class Subcolumn5BlockSizeTest {
                 int[] data2_arr_decoded = new int[data2_arr.length];
 
                 for (int repeat = 0; repeat < repeatTime; repeat++) {
-                    data2_arr_decoded = Subcolumn5Test.Decoder(encoded_result);
+                    data2_arr_decoded = SubcolumnTest.Decoder(encoded_result);
                 }
 
                 e = System.nanoTime();
@@ -183,14 +184,14 @@ public class Subcolumn5BlockSizeTest {
 
     @Test
     public void testTransData() throws IOException {
-        // String parent_dir = "D:/github/xjz17/subcolumn/";
-        String parent_dir = "D:/encoding-subcolumn/";
+        String parent_dir = "D:/github/xjz17/subcolumn/";
 
         String output_parent_dir = "D:/encoding-subcolumn/trans_data_result/compression_vs_block/";
-
-        int[] block_size_list = { 32, 64, 128, 256, 512, 1024, 2048, 4096, 8192 };
+        // String output_parent_dir = parent_dir + "trans_data_result/compression_vs_block/";
 
         String input_parent_dir = parent_dir + "trans_data/";
+
+        int[] block_size_list = { 32, 64, 128, 256, 512, 1024, 2048, 4096, 8192 };
 
         ArrayList<String> input_path_list = new ArrayList<>();
         ArrayList<String> dataset_name = new ArrayList<>();
@@ -267,7 +268,7 @@ public class Subcolumn5BlockSizeTest {
 
                     long s = System.nanoTime();
                     for (int repeat = 0; repeat < repeatTime; repeat++) {
-                        length = Subcolumn5Test.Encoder(data2_arr, block_size, encoded_result);
+                        length = SubcolumnTest.Encoder(data2_arr, block_size, encoded_result);
                     }
 
                     long e = System.nanoTime();
@@ -280,7 +281,7 @@ public class Subcolumn5BlockSizeTest {
                     int[] data2_arr_decoded = new int[data1.size()];
 
                     for (int repeat = 0; repeat < repeatTime; repeat++) {
-                        data2_arr_decoded = Subcolumn5Test.Decoder(encoded_result);
+                        data2_arr_decoded = SubcolumnTest.Decoder(encoded_result);
                     }
 
                     e = System.nanoTime();

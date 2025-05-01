@@ -15,7 +15,7 @@ import com.csvreader.CsvWriter;
 
 import static org.junit.Assert.assertEquals;
 
-public class Subcolumn5QuerySumPartsTest {
+public class SubcolumnQuerySumPartsTest {
 
     public static int getDecimalPrecision(String str) {
         // 查找小数点的位置
@@ -49,10 +49,12 @@ public class Subcolumn5QuerySumPartsTest {
 
     @Test
     public void testQuery() throws IOException {
-        String parent_dir = "D:/github/xjz17/subcolumn/dataset/";
-        // String parent_dir = "D:/encoding-subcolumn/dataset/";
+        String parent_dir = "D:/github/xjz17/subcolumn/";
 
-        String output_parent_dir = "D:/encoding-subcolumn/";
+        String input_parent_dir = parent_dir + "dataset/";
+        
+        String output_parent_dir = "D:/encoding-subcolumn/result/query_vs_block/";
+        // String output_parent_dir = parent_dir + "result/query_vs_block/";
 
         int[] block_size_list = { 32, 64, 128, 256, 512, 1024, 2048, 4096, 8192 };
 
@@ -80,7 +82,7 @@ public class Subcolumn5QuerySumPartsTest {
             };
             writer.writeRecord(head);
 
-            File directory = new File(parent_dir);
+            File directory = new File(input_parent_dir);
             // File[] csvFiles = directory.listFiles();
             File[] csvFiles = directory.listFiles((dir, name) -> name.endsWith(".csv"));
 
@@ -142,7 +144,7 @@ public class Subcolumn5QuerySumPartsTest {
                 // 编码第一列
                 long s = System.nanoTime();
                 for (int repeat = 0; repeat < repeatTime; repeat++) {
-                    length1 = Subcolumn5Test.Encoder(col1_data, block_size, encoded_result1);
+                    length1 = SubcolumnTest.Encoder(col1_data, block_size, encoded_result1);
                 }
                 long e = System.nanoTime();
                 encodeTime += ((e - s) / repeatTime);
@@ -150,7 +152,7 @@ public class Subcolumn5QuerySumPartsTest {
                 // 编码第二列
                 s = System.nanoTime();
                 for (int repeat = 0; repeat < repeatTime; repeat++) {
-                    length2 = Subcolumn5Test.Encoder(col2_data, block_size, encoded_result2);
+                    length2 = SubcolumnTest.Encoder(col2_data, block_size, encoded_result2);
                 }
                 e = System.nanoTime();
                 encodeTime += ((e - s) / repeatTime);
@@ -177,8 +179,8 @@ public class Subcolumn5QuerySumPartsTest {
                 s = System.nanoTime();
 
                 for (int repeat = 0; repeat < repeatTime; repeat++) {
-                    col1_data_decoded = Subcolumn5Test.Decoder(encoded_result1);
-                    col2_data_decoded = Subcolumn5Test.Decoder(encoded_result2);
+                    col1_data_decoded = SubcolumnTest.Decoder(encoded_result1);
+                    col2_data_decoded = SubcolumnTest.Decoder(encoded_result2);
 
                     for (int i = 0; i < halfSize; i++) {
                         sum_result += col1_data_decoded[i] * col2_data_decoded[i];
@@ -190,7 +192,7 @@ public class Subcolumn5QuerySumPartsTest {
 
                 String[] record = {
                         datasetName,
-                        "Subcolumn",
+                        "Sub-columns",
                         String.valueOf(encodeTime),
                         String.valueOf(decodeTime),
                         String.valueOf(data1.size()),
@@ -210,10 +212,12 @@ public class Subcolumn5QuerySumPartsTest {
 
     @Test
     public void testQueryBeta() throws IOException {
-        String parent_dir = "D:/github/xjz17/subcolumn/dataset/";
-        // String parent_dir = "D:/encoding-subcolumn/dataset/";
+        String parent_dir = "D:/github/xjz17/subcolumn/";
 
-        String output_parent_dir = "D:/encoding-subcolumn/";
+        String input_parent_dir = parent_dir + "dataset/";
+        
+        String output_parent_dir = "D:/encoding-subcolumn/result/query_vs_beta/";
+        // String output_parent_dir = parent_dir + "result/query_vs_beta/";
 
         int[] beta_list = { 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23,
             24, 25, 26, 27, 28, 29, 30, 31 };
@@ -244,7 +248,7 @@ public class Subcolumn5QuerySumPartsTest {
             };
             writer.writeRecord(head);
 
-            File directory = new File(parent_dir);
+            File directory = new File(input_parent_dir);
             // File[] csvFiles = directory.listFiles();
             File[] csvFiles = directory.listFiles((dir, name) -> name.endsWith(".csv"));
 
@@ -303,14 +307,14 @@ public class Subcolumn5QuerySumPartsTest {
                 // 编码第一列
                 long s = System.nanoTime();
                 for (int repeat = 0; repeat < repeatTime; repeat++) {
-                    length1 = Subcolumn5Test.Encoder(col1_data, block_size, encoded_result1);
+                    length1 = SubcolumnTest.Encoder(col1_data, block_size, encoded_result1);
                 }
                 long e = System.nanoTime();
                 encodeTime += ((e - s) / repeatTime);
                 // 编码第二列
                 s = System.nanoTime();
                 for (int repeat = 0; repeat < repeatTime; repeat++) {
-                    length2 = Subcolumn5Test.Encoder(col2_data, block_size, encoded_result2);
+                    length2 = SubcolumnTest.Encoder(col2_data, block_size, encoded_result2);
                 }
                 e = System.nanoTime();
                 encodeTime += ((e - s) / repeatTime);
@@ -328,8 +332,8 @@ public class Subcolumn5QuerySumPartsTest {
                 long sum_result = 0;
                 s = System.nanoTime();
                 for (int repeat = 0; repeat < repeatTime; repeat++) {
-                    col1_data_decoded = Subcolumn5Test.Decoder(encoded_result1);
-                    col2_data_decoded = Subcolumn5Test.Decoder(encoded_result2);
+                    col1_data_decoded = SubcolumnTest.Decoder(encoded_result1);
+                    col2_data_decoded = SubcolumnTest.Decoder(encoded_result2);
 
                     for (int i = 0; i < halfSize; i++) {
                         sum_result += col1_data_decoded[i] * col2_data_decoded[i];
@@ -339,7 +343,7 @@ public class Subcolumn5QuerySumPartsTest {
                 decodeTime += ((e - s) / repeatTime);
                 String[] record = {
                         datasetName,
-                        "Subcolumn",
+                        "Sub-columns",
                         String.valueOf(encodeTime),
                         String.valueOf(decodeTime),
                         String.valueOf(data1.size()),

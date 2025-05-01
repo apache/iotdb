@@ -142,9 +142,8 @@ public class SubcolumnDivTest {
 
     @Test
     public void BOSOptimalTest() throws IOException {
-        String parent_dir = "/Users/xiaojinzhao/Documents/GitHub/"; // your data path
-        // String parent_dir =
-        // "/Users/zihanguo/Downloads/R/outlier/outliier_code/encoding-outlier/";
+        String parent_dir = "/Users/xiaojinzhao/Documents/GitHub/";
+
         String output_parent_dir = parent_dir + "subcolumn/compression_ratio";
         String input_parent_dir = parent_dir + "elf/src/test/resources/ElfData_Short";
         ArrayList<String> input_path_list = new ArrayList<>();

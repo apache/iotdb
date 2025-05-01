@@ -8,7 +8,6 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Stream;
 
@@ -19,11 +18,7 @@ import com.csvreader.CsvWriter;
 
 import static org.junit.Assert.assertEquals;
 
-public class Subcolumn5Test {
-    // 只对第一个 block 求最合适的 beta，之后的 block 都用同一个 beta
-    // 使用 intToBytes 等操作
-    // 对于 RLE 的分列，run_length 数组改为存累计长度
-    // 位相关操作按原先已有写法，主要单位改成字节
+public class SubcolumnTest {
 
     public static int bitWidth(int value) {
         return 32 - Integer.numberOfLeadingZeros(value);
@@ -535,9 +530,6 @@ public class Subcolumn5Test {
         return encode_pos;
     }
 
-    /**
-     * 仅将数据处理为非负数，也就是将 ts_block 中的数据都减去最小值
-     */
     public static int[] getAbsDeltaTsBlock(
             int[] ts_block,
             int i,
@@ -576,11 +568,7 @@ public class Subcolumn5Test {
 
         int[] data_delta = getAbsDeltaTsBlock(data, block_index, block_size,
                 remainder, min_delta);
-
-        // encoded_result[encode_pos] = (byte) (min_delta[0] >> 24);
-        // encoded_result[encode_pos + 1] = (byte) (min_delta[0] >> 16);
-        // encoded_result[encode_pos + 2] = (byte) (min_delta[0] >> 8);
-        // encoded_result[encode_pos + 3] = (byte) min_delta[0];
+                
         int2Bytes(min_delta[0], encode_pos, encoded_result);
         encode_pos += 4;
 
@@ -606,10 +594,6 @@ public class Subcolumn5Test {
             int encode_pos, int[] data) {
         int[] min_delta = new int[3];
 
-        // min_delta[0] = ((encoded_result[encode_pos] & 0xFF) << 24) |
-        // ((encoded_result[encode_pos + 1] & 0xFF) << 16) |
-        // ((encoded_result[encode_pos + 2] & 0xFF) << 8) | (encoded_result[encode_pos +
-        // 3] & 0xFF);
         min_delta[0] = bytes2Integer(encoded_result, encode_pos, 4);
         encode_pos += 4;
 
@@ -629,17 +613,9 @@ public class Subcolumn5Test {
         int data_length = data.length;
         int encode_pos = 0;
 
-        // encoded_result[0] = (byte) (data_length >> 24);
-        // encoded_result[1] = (byte) (data_length >> 16);
-        // encoded_result[2] = (byte) (data_length >> 8);
-        // encoded_result[3] = (byte) data_length;
         int2Bytes(data_length, encode_pos, encoded_result);
         encode_pos += 4;
 
-        // encoded_result[4] = (byte) (block_size >> 24);
-        // encoded_result[5] = (byte) (block_size >> 16);
-        // encoded_result[6] = (byte) (block_size >> 8);
-        // encoded_result[7] = (byte) block_size;
         int2Bytes(block_size, encode_pos, encoded_result);
         encode_pos += 4;
 
@@ -657,10 +633,6 @@ public class Subcolumn5Test {
         if (remainder <= 3) {
             for (int i = 0; i < remainder; i++) {
                 int value = data[num_blocks * block_size + i];
-                // encoded_result[encode_pos] = (byte) (value >> 24);
-                // encoded_result[encode_pos + 1] = (byte) (value >> 16);
-                // encoded_result[encode_pos + 2] = (byte) (value >> 8);
-                // encoded_result[encode_pos + 3] = (byte) value;
                 int2Bytes(value, encode_pos, encoded_result);
                 encode_pos += 4;
             }
@@ -677,18 +649,9 @@ public class Subcolumn5Test {
     public static int[] Decoder(byte[] encoded_result) {
         int encode_pos = 0;
 
-        // int data_length = ((encoded_result[encode_pos] & 0xFF) << 24) |
-        // ((encoded_result[encode_pos + 1] & 0xFF) << 16)
-        // |
-        // ((encoded_result[encode_pos + 2] & 0xFF) << 8) | (encoded_result[encode_pos +
-        // 3] & 0xFF);
         int data_length = bytes2Integer(encoded_result, encode_pos, 4);
         encode_pos += 4;
 
-        // int block_size = ((encoded_result[encode_pos] & 0xFF) << 24) |
-        // ((encoded_result[encode_pos + 1] & 0xFF) << 16) |
-        // ((encoded_result[encode_pos + 2] & 0xFF) << 8) | (encoded_result[encode_pos +
-        // 3] & 0xFF);
         int block_size = bytes2Integer(encoded_result, encode_pos, 4);
         encode_pos += 4;
 
@@ -704,11 +667,6 @@ public class Subcolumn5Test {
 
         if (remainder <= 3) {
             for (int i = 0; i < remainder; i++) {
-                // data[num_blocks * block_size + i] = ((encoded_result[encode_pos] & 0xFF) <<
-                // 24) |
-                // ((encoded_result[encode_pos + 1] & 0xFF) << 16) |
-                // ((encoded_result[encode_pos + 2] & 0xFF) << 8) | (encoded_result[encode_pos +
-                // 3] & 0xFF);
                 data[num_blocks * block_size + i] = bytes2Integer(encoded_result, encode_pos, 4);
                 encode_pos += 4;
             }
@@ -752,15 +710,15 @@ public class Subcolumn5Test {
 
     @Test
     public void testSubcolumn() throws IOException {
-        String parent_dir = "D:/github/xjz17/subcolumn/dataset/";
-        // String parent_dir = "D:/encoding-subcolumn/dataset/";
+        String parent_dir = "D:/github/xjz17/subcolumn/";
 
-        // String output_parent_dir = "D:/encoding-subcolumn/result/";
-        String output_parent_dir = "D:/github/xjz17/subcolumn/result/";
+        String input_parent_dir = parent_dir + "dataset/";
+
+        String output_parent_dir = "D:/encoding-subcolumn/result/";
+        // String output_parent_dir = parent_dir + "result/";
 
         String outputPath = output_parent_dir + "subcolumn.csv";
 
-        // int block_size = 1024;
         int block_size = 512;
 
         int repeatTime = 100;
@@ -784,7 +742,7 @@ public class Subcolumn5Test {
         };
         writer.writeRecord(head);
 
-        File directory = new File(parent_dir);
+        File directory = new File(input_parent_dir);
         // File[] csvFiles = directory.listFiles();
         File[] csvFiles = directory.listFiles((dir, name) -> name.endsWith(".csv"));
 
@@ -811,9 +769,6 @@ public class Subcolumn5Test {
             }
             inputStream.close();
             int[] data2_arr = new int[data1.size()];
-
-            // camel
-            // max_decimal = Math.min(8, max_decimal);
 
             int max_mul = (int) Math.pow(10, max_decimal);
             for (int i = 0; i < data1.size(); i++) {
@@ -884,11 +839,10 @@ public class Subcolumn5Test {
 
     @Test
     public void testTransData() throws IOException {
-        // String parent_dir = "D:/github/xjz17/subcolumn/";
+        String parent_dir = "D:/github/xjz17/subcolumn/";
 
-        String parent_dir = "D:/encoding-subcolumn/";
-
-        String output_parent_dir = "D:/encoding-subcolumn/";
+        String output_parent_dir = "D:/encoding-subcolumn/trans_data_result/";
+        // String output_parent_dir = parent_dir + "trans_data_result/";
 
         String input_parent_dir = parent_dir + "trans_data/";
 
@@ -1009,17 +963,6 @@ public class Subcolumn5Test {
                 for (int i = 0; i < data2_arr_decoded.length; i++) {
                     assertEquals(data2_arr[i], data2_arr_decoded[i]);
                 }
-
-                // String[] record = {
-                // f.toString(),
-                // "Subcolumn",
-                // String.valueOf(encodeTime),
-                // String.valueOf(decodeTime),
-                // String.valueOf(data1.size()),
-                // String.valueOf(compressed_size),
-                // String.valueOf(ratio)
-                // };
-                // writer.writeRecord(record);
                 
             }
 
