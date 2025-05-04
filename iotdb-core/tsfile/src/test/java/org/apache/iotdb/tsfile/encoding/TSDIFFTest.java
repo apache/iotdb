@@ -2,28 +2,37 @@ package org.apache.iotdb.tsfile.encoding;
 
 import com.csvreader.CsvReader;
 import com.csvreader.CsvWriter;
+import org.apache.commons.compress.archivers.sevenz.SevenZArchiveEntry;
+import org.apache.commons.compress.archivers.sevenz.SevenZOutputFile;
+import org.apache.commons.compress.compressors.bzip2.BZip2CompressorOutputStream;
+import org.apache.iotdb.tsfile.compress.ICompressor;
+import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.junit.Test;
 
-import java.io.File;
-import java.io.IOException;
-import java.io.InputStream;
+import java.io.*;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Stream;
 
 import static java.lang.Math.pow;
 
-public class SPRINTZBPTest {
+public class TSDIFFTest {
 
-    public static int getBitWith(int num) {
-        if (num == 0)
-            return 1;
-        else
-            return 32 - Integer.numberOfLeadingZeros(num);
+    public static long combine2Int(int int1, int int2) {
+        return ((long) int1 << 32) | (int2 & 0xFFFFFFFFL);
+    }
+
+    public static int getTime(long long1) {
+        return ((int) (long1 >> 32));
+    }
+
+    public static int getValue(long long1) {
+        return ((int) (long1));
     }
 
     public static int getCount(long long1, int mask) {
@@ -34,60 +43,11 @@ public class SPRINTZBPTest {
         return ((int) ((long1) >> left_shift));
     }
 
-    public static int findMedian(int[] arr) {
-        if (arr == null || arr.length == 0) {
-            throw new IllegalArgumentException("数组不能为空");
-        }
-        int n = arr.length;
-        return quickSelect(arr, 0, n - 1, n / 2);
-    }
-
-    private static int quickSelect(int[] arr, int left, int right, int k) {
-        if (left == right) {
-            return arr[left];
-        }
-
-        int pivotIndex = partition(arr, left, right);
-        if (k == pivotIndex) {
-            return arr[k];
-        } else if (k < pivotIndex) {
-            return quickSelect(arr, left, pivotIndex - 1, k);
-        } else {
-            return quickSelect(arr, pivotIndex + 1, right, k);
-        }
-    }
-
-    private static int partition(int[] arr, int left, int right) {
-        int pivot = arr[right];
-        int i = left;
-        for (int j = left; j < right; j++) {
-            if (arr[j] <= pivot) {
-                swap(arr, i, j);
-                i++;
-            }
-        }
-        swap(arr, i, right);
-        return i;
-    }
-
-    private static void swap(int[] arr, int i, int j) {
-        int temp = arr[i];
-        arr[i] = arr[j];
-        arr[j] = temp;
-    }
-
-    public static int zigzag(int num) {
-        if (num < 0)
-            return ((-num) << 1) - 1;
+    public static int getBitWith(int num) {
+        if (num == 0)
+            return 1;
         else
-            return num << 1;
-    }
-
-    public static int deZigzag(int num) {
-        if (num % 2 == 0)
-            return num >> 1;
-        else
-            return -((num + 1) >> 1);
+            return 32 - Integer.numberOfLeadingZeros(num);
     }
 
     public static void int2Bytes(int integer, int encode_pos, byte[] cur_byte) {
@@ -177,7 +137,7 @@ public class SPRINTZBPTest {
                 }
             }
         }
-
+        // return encode_pos;
     }
 
     public static void unpack8Values(byte[] encoded, int offset, int width, ArrayList<Integer> result_list) {
@@ -229,11 +189,10 @@ public class SPRINTZBPTest {
         for (int i = 0; i < block_num; i++) { // bitpacking
             unpack8Values(encoded, decode_pos, bit_width, result_list);
             decode_pos += bit_width;
+
         }
         return result_list;
     }
-
-    // -----------------------------------------------------------------
 
     public static int[] getAbsDeltaTsBlock(
             int[] ts_block,
@@ -243,28 +202,37 @@ public class SPRINTZBPTest {
             int[] min_delta) {
         int[] ts_block_delta = new int[remaining - 1];
 
-        int base = i * block_size + 1;
-        int end = i * block_size + remaining;
-        min_delta[0] = ts_block[base - 1];
         int value_delta_min = Integer.MAX_VALUE;
         int value_delta_max = Integer.MIN_VALUE;
-        for (int j = base; j < end; j++) {
-            int epsilon_v = ts_block[j] - ts_block[j - 1];
-            epsilon_v = zigzag(epsilon_v);
+        int base = i * block_size + 1;
+        int end = i * block_size + remaining;
+
+        int tmp_j_1 = ts_block[base - 1];
+        min_delta[0] = tmp_j_1;
+        int j = base;
+        int tmp_j;
+
+        while (j < end) {
+            tmp_j = ts_block[j];
+            int epsilon_v = tmp_j - tmp_j_1;
+            ts_block_delta[j - base] = epsilon_v;
             if (epsilon_v < value_delta_min) {
                 value_delta_min = epsilon_v;
             }
             if (epsilon_v > value_delta_max) {
                 value_delta_max = epsilon_v;
             }
-            ts_block_delta[j - base] = epsilon_v;
-
+            tmp_j_1 = tmp_j;
+            j++;
         }
-        for (int j = 0; j < remaining - 1; j++) {
+        j = 0;
+        end = remaining - 1;
+        while (j < end) {
             ts_block_delta[j] = ts_block_delta[j] - value_delta_min;
-
+            j++;
         }
-        min_delta[1] = (value_delta_min);
+
+        min_delta[1] = value_delta_min;
         min_delta[2] = (value_delta_max - value_delta_min);
 
         return ts_block_delta;
@@ -297,7 +265,7 @@ public class SPRINTZBPTest {
 
             cur_remaining <<= cur_bit_width;
             cur_number_bits += cur_bit_width;
-            cur_remaining += (((cur_value << (32 - cur_bit_width)) & 0xFFFFFFFFL) >> (32 - cur_bit_width));
+            cur_remaining += (((cur_value << (32 - cur_bit_width)) & 0xFFFFFFFFL) >> (32 - cur_bit_width)); //
         }
         cur_remaining <<= (32 - cur_number_bits);
         long2intBytes(cur_remaining, encode_pos, encoded_result);
@@ -343,7 +311,7 @@ public class SPRINTZBPTest {
 
                 cur_number = int_remaining.get(cur_number_i);
                 cur_number_i++;
-                tmp += (cur_number >> (32 - remain_bits));
+                tmp += (int) (cur_number >> (32 - remain_bits));
                 result_list.add(tmp);
                 cur_number <<= remain_bits;
                 cur_number &= 0xFFFFFFFFL;
@@ -354,164 +322,59 @@ public class SPRINTZBPTest {
         return result_list;
     }
 
-    private static int BOSEncodeBits(int[] ts_block_delta,
-            int final_k_start_value,
-            int final_x_l_plus,
-            int final_k_end_value,
-            int final_x_u_minus,
-            int max_delta_value,
-            int[] min_delta,
-            int encode_pos,
-            byte[] cur_byte) {
-        int block_size = ts_block_delta.length;
-
-        ArrayList<Integer> final_left_outlier_index = new ArrayList<>();
-        ArrayList<Integer> final_right_outlier_index = new ArrayList<>();
-        ArrayList<Integer> final_left_outlier = new ArrayList<>();
-        ArrayList<Integer> final_right_outlier = new ArrayList<>();
-        ArrayList<Integer> final_normal = new ArrayList<>();
-        int k1 = 0;
-        int k2 = 0;
-
-        ArrayList<Integer> bitmap_outlier = new ArrayList<>();
-        int index_bitmap_outlier = 0;
-        int cur_index_bitmap_outlier_bits = 0;
-        for (int i = 0; i < block_size; i++) {
-            int cur_value = ts_block_delta[i];
-            if (cur_value <= final_k_start_value) {
-                final_left_outlier.add(cur_value);
-                final_left_outlier_index.add(i);
-                if (cur_index_bitmap_outlier_bits % 8 != 7) {
-                    index_bitmap_outlier <<= 2;
-                    index_bitmap_outlier += 3;
-                    cur_index_bitmap_outlier_bits += 2;
-                } else {
-                    index_bitmap_outlier <<= 1;
-                    index_bitmap_outlier += 1;
-                    bitmap_outlier.add(index_bitmap_outlier);
-                    index_bitmap_outlier = 1;
-                    cur_index_bitmap_outlier_bits = 1;
-                }
-                k1++;
-
-            } else if (cur_value >= final_k_end_value) {
-                final_right_outlier.add(cur_value - final_k_end_value);
-                final_right_outlier_index.add(i);
-                if (cur_index_bitmap_outlier_bits % 8 != 7) {
-                    index_bitmap_outlier <<= 2;
-                    index_bitmap_outlier += 2;
-                    cur_index_bitmap_outlier_bits += 2;
-                } else {
-                    index_bitmap_outlier <<= 1;
-                    index_bitmap_outlier += 1;
-                    bitmap_outlier.add(index_bitmap_outlier);
-                    index_bitmap_outlier = 0;
-                    cur_index_bitmap_outlier_bits = 1;
-                }
-                k2++;
-
-            } else {
-                final_normal.add(cur_value - final_k_start_value - 1);
-                index_bitmap_outlier <<= 1;
-                cur_index_bitmap_outlier_bits += 1;
-            }
-            if (cur_index_bitmap_outlier_bits % 8 == 0) {
-                bitmap_outlier.add(index_bitmap_outlier);
-                index_bitmap_outlier = 0;
-            }
-        }
-        if (cur_index_bitmap_outlier_bits % 8 != 0) {
-
-            index_bitmap_outlier <<= (8 - cur_index_bitmap_outlier_bits % 8);
-            index_bitmap_outlier &= 0xFF;
-            bitmap_outlier.add(index_bitmap_outlier);
-        }
-
-        int final_alpha = ((k1 + k2) * getBitWith(block_size - 1)) <= (block_size + k1 + k2) ? 1 : 0;
-
-        int k_byte = (k1 << 1);
-        k_byte += final_alpha;
-        k_byte += (k2 << 16);
-
-        int2Bytes(k_byte, encode_pos, cur_byte);
-        encode_pos += 4;
-
-        int2Bytes(min_delta[0], encode_pos, cur_byte);
-        encode_pos += 4;
-        int2Bytes(min_delta[1], encode_pos, cur_byte);
-        encode_pos += 4;
-
-        int bit_width_final = getBitWith(final_x_u_minus - final_x_l_plus);
-        int left_bit_width = getBitWith(final_k_start_value);// final_left_max
-        int right_bit_width = getBitWith(max_delta_value - final_k_end_value);// final_right_min
-
-        if (k1 == 0 && k2 == 0) {
-            bit_width_final = getBitWith(max_delta_value);
-            intByte2Bytes(bit_width_final, encode_pos, cur_byte);
-            encode_pos += 1;
-
-            // encode_pos = encodeOutlier2Bytes(final_normal,
-            // bit_width_final,encode_pos,cur_byte);
-            // return encode_pos;
-        } else {
-            int2Bytes(final_x_l_plus, encode_pos, cur_byte);
-            encode_pos += 4;
-            int2Bytes(final_k_end_value, encode_pos, cur_byte);
-            encode_pos += 4;
-
-            bit_width_final = getBitWith(final_x_u_minus - final_x_l_plus);
-            intByte2Bytes(bit_width_final, encode_pos, cur_byte);
-            encode_pos += 1;
-            intByte2Bytes(left_bit_width, encode_pos, cur_byte);
-            encode_pos += 1;
-            intByte2Bytes(right_bit_width, encode_pos, cur_byte);
-            encode_pos += 1;
-            if (final_alpha == 0) { // 0
-
-                for (int i : bitmap_outlier) {
-
-                    intByte2Bytes(i, encode_pos, cur_byte);
-                    encode_pos += 1;
-                }
-            } else {
-                encode_pos = encodeOutlier2Bytes(final_left_outlier_index, getBitWith(block_size - 1), encode_pos,
-                        cur_byte);
-                encode_pos = encodeOutlier2Bytes(final_right_outlier_index, getBitWith(block_size - 1), encode_pos,
-                        cur_byte);
-            }
-        }
-
-        encode_pos = encodeOutlier2Bytes(final_normal, bit_width_final, encode_pos, cur_byte);
-        if (k1 != 0)
-            encode_pos = encodeOutlier2Bytes(final_left_outlier, left_bit_width, encode_pos, cur_byte);
-        if (k2 != 0)
-            encode_pos = encodeOutlier2Bytes(final_right_outlier, right_bit_width, encode_pos, cur_byte);
-        return encode_pos;
-
-    }
-
     private static int BOSBlockEncoder(int[] ts_block, int block_i, int block_size, int remaining, int encode_pos,
             byte[] cur_byte) {
 
         int[] min_delta = new int[3];
         int[] ts_block_delta = getAbsDeltaTsBlock(ts_block, block_i, block_size, remaining, min_delta);
 
-        block_size = remaining - 1;
-        int max_delta_value = min_delta[2];
-
         int2Bytes(min_delta[0], encode_pos, cur_byte);
         encode_pos += 4;
         int2Bytes(min_delta[1], encode_pos, cur_byte);
         encode_pos += 4;
-        int bit_width_final = getBitWith(max_delta_value);
+        int bit_width_final = getBitWith(min_delta[2]);
         intByte2Bytes(bit_width_final, encode_pos, cur_byte);
         encode_pos += 1;
-
         ArrayList<Integer> final_normal = new ArrayList<>();
-        for (int i : ts_block_delta) {
-            final_normal.add(i);
+        for (int value : ts_block_delta) {
+            final_normal.add(value);
         }
         encode_pos = encodeOutlier2Bytes(final_normal, bit_width_final, encode_pos, cur_byte);
+        return encode_pos;
+    }
+
+    public static int BOSEncoder(
+            int[] data, int block_size, byte[] encoded_result) {
+        block_size++;
+
+        int length_all = data.length;
+
+        int encode_pos = 0;
+        int2Bytes(length_all, encode_pos, encoded_result);
+        encode_pos += 4;
+
+        int block_num = length_all / block_size;
+        int2Bytes(block_size, encode_pos, encoded_result);
+        encode_pos += 4;
+
+        for (int i = 0; i < block_num; i++) {
+            encode_pos = BOSBlockEncoder(data, i, block_size, block_size, encode_pos, encoded_result);
+        }
+
+        int remaining_length = length_all - block_num * block_size;
+        if (remaining_length <= 3) {
+            for (int i = remaining_length; i > 0; i--) {
+                int2Bytes(data[data.length - i], encode_pos, encoded_result);
+                encode_pos += 4;
+            }
+
+        } else {
+
+            int start = block_num * block_size;
+            int remaining = length_all - start;
+            encode_pos = BOSBlockEncoder(data, block_num, block_size, remaining, encode_pos, encoded_result);
+
+        }
 
         return encode_pos;
     }
@@ -618,68 +481,9 @@ public class SPRINTZBPTest {
         return encode_pos;
     }
 
-    public static int BOSEncoder(
-            int[] data, int block_size, byte[] encoded_result) {
-        block_size++;
-
-        int length_all = data.length;
-
-        int encode_pos = 0;
-        int2Bytes(length_all, encode_pos, encoded_result);
-        encode_pos += 4;
-        int block_num = length_all / block_size;
-        int2Bytes(block_size, encode_pos, encoded_result);
-        encode_pos += 4;
-
-        for (int i = 0; i < block_num; i++) {
-
-            encode_pos = BOSBlockEncoder(data, i, block_size, block_size, encode_pos, encoded_result);
-
-        }
-
-        int remaining_length = length_all - block_num * block_size;
-        if (remaining_length <= 3) {
-            for (int i = remaining_length; i > 0; i--) {
-                int2Bytes(data[data.length - i], encode_pos, encoded_result);
-                encode_pos += 4;
-            }
-
-        } else {
-
-            int start = block_num * block_size;
-            int remaining = length_all - start;
-
-            encode_pos = BOSBlockEncoder(data, block_num, block_size, remaining, encode_pos, encoded_result);
-
-            // int[] ts_block = new int[length_all-start];
-            // if (length_all - start >= 0) System.arraycopy(data, start, ts_block, 0,
-            // length_all - start);
-            //
-            // int supple_length;
-            // if (remaining_length % 8 == 0) {
-            // supple_length = 1;
-            // } else if (remaining_length % 8 == 1) {
-            // supple_length = 0;
-            // } else {
-            // supple_length = 9 - remaining_length % 8;
-            // }
-            //
-            //
-            // encode_pos = BOSBlockEncoder(ts_block, supple_length,
-            // encode_pos,encoded_result);
-        }
-
-        return encode_pos;
-    }
-
     public static int BOSBlockDecoder(byte[] encoded, int decode_pos, int[] value_list, int block_size,
             int[] value_pos_arr) {
 
-        ArrayList<Integer> final_normal = new ArrayList<>();
-        ;
-        ArrayList<Integer> bitmap_outlier = new ArrayList<>();
-
-        int bit_width_final = 0;
         int value0 = bytes2Integer(encoded, decode_pos, 4);
         decode_pos += 4;
         value_list[value_pos_arr[0]] = value0;
@@ -688,22 +492,24 @@ public class SPRINTZBPTest {
         int min_delta = bytes2Integer(encoded, decode_pos, 4);
         decode_pos += 4;
 
-        bit_width_final = bytes2Integer(encoded, decode_pos, 1);
+        int bit_width_final = bytes2Integer(encoded, decode_pos, 1);
         decode_pos += 1;
+
         ArrayList<Integer> decode_pos_normal = new ArrayList<>();
-        final_normal = decodeOutlier2Bytes(encoded, decode_pos, bit_width_final, block_size, decode_pos_normal);
+        ArrayList<Integer> final_normal = decodeOutlier2Bytes(encoded, decode_pos, bit_width_final, block_size,
+                decode_pos_normal);
 
         decode_pos = decode_pos_normal.get(0);
-
         int normal_i = 0;
         int pre_v = value0;
 
         for (int i = 0; i < block_size; i++) {
-            int current_delta = final_normal.get(normal_i);
-            pre_v = deZigzag(current_delta + min_delta) + pre_v;
+            int current_delta = min_delta + final_normal.get(normal_i);
+            pre_v = current_delta + pre_v;
             value_list[value_pos_arr[0]] = pre_v;
             value_pos_arr[0]++;
         }
+
         return decode_pos;
     }
 
@@ -722,10 +528,8 @@ public class SPRINTZBPTest {
         block_size--;
 
         int[] value_pos_arr = new int[1];
-        // System.out.println(length_all);
-        // System.out.println(encoded.length);
         for (int k = 0; k < block_num; k++) {
-            // System.out.println(k);
+
             decode_pos = BOSBlockDecoder(encoded, decode_pos, value_list, block_size, value_pos_arr);
 
         }
@@ -795,7 +599,7 @@ public class SPRINTZBPTest {
         int pre_v = value0;
         for (int i = 0; i < block_size; i++) {
             int cur_delta = min_delta + DecodeBits(encoded, bit_width_final, decode_list);
-            pre_v += deZigzag(cur_delta);
+            pre_v += cur_delta;
             value_list[value_pos_arr[0]++] = pre_v;
         }
         if (decode_list[1] != 8) {
@@ -858,6 +662,46 @@ public class SPRINTZBPTest {
         }
     }
 
+    private static void addToArchiveCompression(SevenZOutputFile out, File file, String dir) {
+        String name = dir + File.separator + file.getName();
+        if (dir.equals(".")) {
+            name = file.getName();
+        }
+        if (file.isFile()) {
+            SevenZArchiveEntry entry = null;
+            FileInputStream in = null;
+            try {
+                entry = out.createArchiveEntry(file, name);
+                out.putArchiveEntry(entry);
+                in = new FileInputStream(file);
+                byte[] b = new byte[1024];
+                int count = 0;
+                while ((count = in.read(b)) > 0) {
+                    out.write(b, 0, count);
+                }
+            } catch (IOException e) {
+                e.printStackTrace();
+            } finally {
+                try {
+                    out.closeArchiveEntry();
+                    in.close();
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+
+            }
+        } else if (file.isDirectory()) {
+            File[] children = file.listFiles();
+            if (children != null) {
+                for (File child : children) {
+                    addToArchiveCompression(out, child, name);
+                }
+            }
+        } else {
+            System.out.println(file.getName() + " is not supported");
+        }
+    }
+
     public static int getDecimalPrecision(String str) {
         // 查找小数点的位置
         int decimalIndex = str.indexOf(".");
@@ -880,7 +724,7 @@ public class SPRINTZBPTest {
         String fileName = file.getName();
 
         int dotIndex = fileName.lastIndexOf('.');
-
+        
         if (dotIndex == -1 || dotIndex == 0) {
             return fileName;
         }
@@ -897,7 +741,7 @@ public class SPRINTZBPTest {
         String output_parent_dir = "D:/encoding-subcolumn/result/";
         // String output_parent_dir = parent_dir + "result/";
 
-        String outputPath = output_parent_dir + "sprintz.csv";
+        String outputPath = output_parent_dir + "ts2diff.csv";
 
         int block_size = 1024;
 
@@ -1000,7 +844,7 @@ public class SPRINTZBPTest {
 
             String[] record = {
                     datasetName,
-                    "SPRINTZ",
+                    "TS2DIFF",
                     String.valueOf(encodeTime),
                     String.valueOf(decodeTime),
                     String.valueOf(data1.size()),
@@ -1040,7 +884,7 @@ public class SPRINTZBPTest {
                     });
         }
 
-        String outputPath = output_parent_dir + "sprintz.csv";
+        String outputPath = output_parent_dir + "ts2diff.csv";
         CsvWriter writer = new CsvWriter(outputPath, ',', StandardCharsets.UTF_8);
         writer.setRecordDelimiter('\n');
 
@@ -1128,7 +972,7 @@ public class SPRINTZBPTest {
 
             String[] record = {
                     dataset_name.get(file_i),
-                    "SPRINTZ",
+                    "TS2DIFF",
                     String.valueOf(totalEncodeTime),
                     String.valueOf(totalDecodeTime),
                     String.valueOf(totalPoints),
