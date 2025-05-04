@@ -4245,7 +4245,8 @@ public class StatementAnalyzer {
           }
         }
         Set<String> uniqueArgumentNames = new HashSet<>();
-        Set<String> specifiedArgumentNames = argumentSpecificationsByName.keySet();
+        Set<String> specifiedArgumentNames =
+            ImmutableSet.copyOf(argumentSpecificationsByName.keySet());
         for (TableFunctionArgument argument : arguments) {
           // it has been checked that all arguments have different names
           String argumentName =
