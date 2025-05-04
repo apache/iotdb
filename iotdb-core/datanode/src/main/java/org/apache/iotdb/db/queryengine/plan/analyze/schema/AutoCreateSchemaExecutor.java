@@ -590,9 +590,19 @@ class AutoCreateSchemaExecutor {
       Map<PartialPath, Pair<Boolean, MeasurementGroup>> devicesNeedAutoCreateTimeSeries,
       MPPQueryContext context) {
 
-    List<MeasurementPath> measurementPathList =
+    // Deep copy to avoid changes to the original map
+    final List<MeasurementPath> measurementPathList =
         executeInternalCreateTimeseriesStatement(
-            new InternalCreateMultiTimeSeriesStatement(devicesNeedAutoCreateTimeSeries), context);
+            new InternalCreateMultiTimeSeriesStatement(
+                devicesNeedAutoCreateTimeSeries.entrySet().stream()
+                    .collect(
+                        Collectors.toMap(
+                            Map.Entry::getKey,
+                            entry ->
+                                new Pair<>(
+                                    entry.getValue().getLeft(),
+                                    entry.getValue().getRight().deepCopy())))),
+            context);
 
     schemaTree.appendMeasurementPaths(measurementPathList);
 

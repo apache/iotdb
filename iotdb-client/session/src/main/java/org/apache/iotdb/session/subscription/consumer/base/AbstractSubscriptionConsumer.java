@@ -189,12 +189,8 @@ abstract class AbstractSubscriptionConsumer implements AutoCloseable {
       final AbstractSubscriptionConsumerBuilder builder, final Properties properties) {
     this(
         builder
-            .host(
-                (String)
-                    properties.getOrDefault(ConsumerConstant.HOST_KEY, SessionConfig.DEFAULT_HOST))
-            .port(
-                (Integer)
-                    properties.getOrDefault(ConsumerConstant.PORT_KEY, SessionConfig.DEFAULT_PORT))
+            .host((String) properties.get(ConsumerConstant.HOST_KEY))
+            .port((Integer) properties.get(ConsumerConstant.PORT_KEY))
             .nodeUrls((List<String>) properties.get(ConsumerConstant.NODE_URLS_KEY))
             .username(
                 (String)
@@ -735,7 +731,7 @@ abstract class AbstractSubscriptionConsumer implements AutoCloseable {
       // construct temporary message to nack
       nack(
           Collections.singletonList(
-              new SubscriptionMessage(commitContext, file.getAbsolutePath())));
+              new SubscriptionMessage(commitContext, file.getAbsolutePath(), null)));
       throw new SubscriptionRuntimeNonCriticalException(e.getMessage(), e);
     }
   }
@@ -888,7 +884,10 @@ abstract class AbstractSubscriptionConsumer implements AutoCloseable {
 
             // generate subscription message
             inFlightFilesCommitContextSet.remove(commitContext);
-            return new SubscriptionMessage(commitContext, file.getAbsolutePath());
+            return new SubscriptionMessage(
+                commitContext,
+                file.getAbsolutePath(),
+                ((FileSealPayload) payload).getDatabaseName());
           }
         case ERROR:
           {
@@ -938,24 +937,26 @@ abstract class AbstractSubscriptionConsumer implements AutoCloseable {
       // construct temporary message to nack
       nack(
           Collections.singletonList(
-              new SubscriptionMessage(response.getCommitContext(), Collections.emptyList())));
+              new SubscriptionMessage(response.getCommitContext(), Collections.emptyMap())));
       throw new SubscriptionRuntimeNonCriticalException(e.getMessage(), e);
     }
   }
 
   private Optional<SubscriptionMessage> pollTabletsInternal(
       final SubscriptionPollResponse initialResponse, final PollTimer timer) {
-    final List<Tablet> tablets = ((TabletsPayload) initialResponse.getPayload()).getTablets();
+    final Map<String, List<Tablet>> tablets =
+        ((TabletsPayload) initialResponse.getPayload()).getTabletsWithDBInfo();
     final SubscriptionCommitContext commitContext = initialResponse.getCommitContext();
 
     int nextOffset = ((TabletsPayload) initialResponse.getPayload()).getNextOffset();
     while (true) {
       if (nextOffset <= 0) {
-        if (!Objects.equals(tablets.size(), -nextOffset)) {
+        final int tabletsSize = tablets.values().stream().mapToInt(List::size).sum();
+        if (!Objects.equals(tabletsSize, -nextOffset)) {
           final String errorMessage =
               String.format(
                   "inconsistent tablet size, current is %s, incoming is %s, consumer: %s",
-                  tablets.size(), -nextOffset, this);
+                  tabletsSize, -nextOffset, this);
           LOGGER.warn(errorMessage);
           throw new SubscriptionRuntimeNonCriticalException(errorMessage);
         }
@@ -1007,7 +1008,12 @@ abstract class AbstractSubscriptionConsumer implements AutoCloseable {
             }
 
             // update tablets
-            tablets.addAll(((TabletsPayload) response.getPayload()).getTablets());
+            for (Map.Entry<String, List<Tablet>> entry :
+                ((TabletsPayload) response.getPayload()).getTabletsWithDBInfo().entrySet()) {
+              tablets
+                  .computeIfAbsent(entry.getKey(), databaseName -> new ArrayList<>())
+                  .addAll(entry.getValue());
+            }
 
             // update offset
             nextOffset = ((TabletsPayload) payload).getNextOffset();
@@ -1373,7 +1379,7 @@ abstract class AbstractSubscriptionConsumer implements AutoCloseable {
     }
     for (final AbstractSubscriptionProvider provider : providers) {
       try {
-        return provider.getSessionConnection().fetchAllEndPoints();
+        return provider.heartbeat().getEndPoints();
       } catch (final Exception e) {
         LOGGER.warn(
             "{} failed to fetch all endpoints from subscription provider {}, try next subscription provider...",

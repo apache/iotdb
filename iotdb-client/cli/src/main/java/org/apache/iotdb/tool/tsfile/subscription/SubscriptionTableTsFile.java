@@ -37,7 +37,6 @@ import org.apache.commons.lang3.StringUtils;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Paths;
-import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Properties;
@@ -109,7 +108,7 @@ public class SubscriptionTableTsFile extends AbstractSubscriptionTsFile {
                   .autoCommit(Constants.AUTO_COMMIT)
                   .autoCommitIntervalMs(Constants.AUTO_COMMIT_INTERVAL)
                   .fileSaveDir(commonParam.getTargetDir())
-                  .buildTablePullConsumer());
+                  .build());
     }
     commonParam
         .getPullTableConsumers()
@@ -144,31 +143,22 @@ public class SubscriptionTableTsFile extends AbstractSubscriptionTsFile {
     for (int i = commonParam.getStartIndex(); i < pullTableConsumers.size(); i++) {
       SubscriptionTablePullConsumer consumer =
           (SubscriptionTablePullConsumer) pullTableConsumers.get(i);
-      final String consumerGroupId = consumer.getConsumerGroupId();
       executor.submit(
           new Runnable() {
             @Override
             public void run() {
-              int retryCount = 0;
-              while (true) {
+              final String consumerGroupId = consumer.getConsumerGroupId();
+              while (!consumer.allSnapshotTopicMessagesHaveBeenConsumed()) {
                 try {
-                  List<SubscriptionMessage> messages =
-                      consumer.poll(Duration.ofMillis(Constants.POLL_MESSAGE_TIMEOUT));
-                  consumer.commitSync(messages);
-                  if (messages.isEmpty()) {
-                    retryCount++;
-                    if (retryCount >= Constants.MAX_RETRY_TIMES) {
-                      break;
-                    }
-                  }
-                  for (final SubscriptionMessage message : messages) {
-                    SubscriptionTsFileHandler fp = message.getTsFileHandler();
-                    ioTPrinter.println(fp.getFile().getName());
+                  for (final SubscriptionMessage message :
+                      consumer.poll(Constants.POLL_MESSAGE_TIMEOUT)) {
+                    final SubscriptionTsFileHandler handler = message.getTsFileHandler();
+                    ioTPrinter.println(handler.getFile().getName());
                     try {
-                      fp.moveFile(
+                      handler.moveFile(
                           Paths.get(
                               commonParam.getTargetDir() + File.separator + consumerGroupId,
-                              fp.getPath().getFileName().toString()));
+                              handler.getPath().getFileName().toString()));
                     } catch (IOException e) {
                       throw new RuntimeException(e);
                     }

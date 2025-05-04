@@ -94,7 +94,7 @@ final class AbstractSubscriptionProviders {
 
       final Map<Integer, TEndPoint> allEndPoints;
       try {
-        allEndPoints = defaultProvider.getSessionConnection().fetchAllEndPoints();
+        allEndPoints = defaultProvider.heartbeat().getEndPoints();
       } catch (final Exception e) {
         LOGGER.warn(
             "{} failed to fetch all endpoints from {} because of {}", consumer, endPoint, e, e);
@@ -244,7 +244,7 @@ final class AbstractSubscriptionProviders {
   private void heartbeatInternal(final AbstractSubscriptionConsumer consumer) {
     for (final AbstractSubscriptionProvider provider : getAllProviders()) {
       try {
-        consumer.subscribedTopics = provider.heartbeat();
+        consumer.subscribedTopics = provider.heartbeat().getTopics();
         provider.setAvailable();
       } catch (final Exception e) {
         LOGGER.warn(
@@ -309,7 +309,7 @@ final class AbstractSubscriptionProviders {
       } else {
         // existing provider
         try {
-          consumer.subscribedTopics = provider.heartbeat();
+          consumer.subscribedTopics = provider.heartbeat().getTopics();
           provider.setAvailable();
         } catch (final Exception e) {
           LOGGER.warn(

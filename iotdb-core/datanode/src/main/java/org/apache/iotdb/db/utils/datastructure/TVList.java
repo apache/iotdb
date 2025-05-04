@@ -21,13 +21,12 @@ package org.apache.iotdb.db.utils.datastructure;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.utils.TestOnly;
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.queryengine.execution.fragment.QueryContext;
+import org.apache.iotdb.db.service.metrics.WritingMetrics;
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.WALEntryValue;
 import org.apache.iotdb.db.storageengine.rescon.memory.PrimitiveArrayManager;
 import org.apache.iotdb.db.utils.MathUtils;
 
-import org.apache.tsfile.common.conf.TSFileDescriptor;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.tsfile.read.TimeValuePair;
@@ -95,8 +94,11 @@ public abstract class TVList implements WALEntryValue {
 
   private final TVList outer = this;
 
+  protected static int defaultArrayNum = 0;
+  protected static volatile long defaultArrayNumLastUpdatedTimeMs = 0;
+
   protected TVList() {
-    timestamps = new ArrayList<>();
+    timestamps = new ArrayList<>(getDefaultArrayNum());
     rowCount = 0;
     seqRowCount = 0;
     maxTime = Long.MIN_VALUE;
@@ -215,7 +217,7 @@ public abstract class TVList implements WALEntryValue {
     timestamps.get(arrayIndex)[elementIndex] = timestamp;
     // prepare indices for sorting
     if (indices == null) {
-      indices = new ArrayList<>();
+      indices = new ArrayList<>(getDefaultArrayNum());
       for (int i = 0; i < timestamps.size(); i++) {
         indices.add((int[]) getPrimitiveArraysByType(TSDataType.INT32));
         int offset = i * ARRAY_SIZE;
@@ -250,7 +252,7 @@ public abstract class TVList implements WALEntryValue {
   protected void markNullValue(int arrayIndex, int elementIndex) {
     // init bitMap if doesn't have
     if (bitMap == null) {
-      List<BitMap> localBitMap = new ArrayList<>();
+      List<BitMap> localBitMap = new ArrayList<>(getDefaultArrayNum());
       for (int i = 0; i < timestamps.size(); i++) {
         localBitMap.add(new BitMap(ARRAY_SIZE));
       }
@@ -285,7 +287,7 @@ public abstract class TVList implements WALEntryValue {
 
   protected void cloneBitMap(TVList cloneList) {
     if (bitMap != null) {
-      cloneList.bitMap = new ArrayList<>();
+      cloneList.bitMap = new ArrayList<>(bitMap.size());
       for (BitMap bm : bitMap) {
         cloneList.bitMap.add(bm == null ? null : bm.clone());
       }
@@ -434,7 +436,7 @@ public abstract class TVList implements WALEntryValue {
     }
     // clone indices
     if (indices != null) {
-      cloneList.indices = new ArrayList<>();
+      cloneList.indices = new ArrayList<>(indices.size());
       for (int[] indicesArray : indices) {
         cloneList.indices.add(cloneIndex(indicesArray));
       }
@@ -647,8 +649,11 @@ public abstract class TVList implements WALEntryValue {
   }
 
   public TVListIterator iterator(
-      List<TimeRange> deletionList, Integer floatPrecision, TSEncoding encoding) {
-    return new TVListIterator(deletionList, floatPrecision, encoding);
+      List<TimeRange> deletionList,
+      Integer floatPrecision,
+      TSEncoding encoding,
+      int maxNumberOfPointsInPage) {
+    return new TVListIterator(deletionList, floatPrecision, encoding, maxNumberOfPointsInPage);
   }
 
   /* TVList Iterator */
@@ -663,15 +668,14 @@ public abstract class TVList implements WALEntryValue {
     private final int floatPrecision;
     private final TSEncoding encoding;
 
-    private final int MAX_NUMBER_OF_POINTS_IN_PAGE =
-        TSFileDescriptor.getInstance().getConfig().getMaxNumberOfPointsInPage();
-    private final long TARGET_CHUNK_SIZE =
-        IoTDBDescriptor.getInstance().getConfig().getTargetChunkSize();
-    private final long MAX_NUMBER_OF_POINTS_IN_CHUNK =
-        IoTDBDescriptor.getInstance().getConfig().getTargetChunkPointNum();
+    // used by nextBatch during query
+    protected final int maxNumberOfPointsInPage;
 
     public TVListIterator(
-        List<TimeRange> deletionList, Integer floatPrecision, TSEncoding encoding) {
+        List<TimeRange> deletionList,
+        Integer floatPrecision,
+        TSEncoding encoding,
+        int maxNumberOfPointsInPage) {
       this.deletionList = deletionList;
       this.floatPrecision = floatPrecision != null ? floatPrecision : 0;
       this.encoding = encoding;
@@ -679,6 +683,7 @@ public abstract class TVList implements WALEntryValue {
       this.rows = rowCount;
       this.probeNext = false;
       this.tsBlocks = new ArrayList<>();
+      this.maxNumberOfPointsInPage = maxNumberOfPointsInPage;
     }
 
     protected void prepareNext() {
@@ -741,7 +746,7 @@ public abstract class TVList implements WALEntryValue {
       TsBlockBuilder builder = new TsBlockBuilder(Collections.singletonList(dataType));
       switch (dataType) {
         case BOOLEAN:
-          while (index < rows && builder.getPositionCount() < MAX_NUMBER_OF_POINTS_IN_PAGE) {
+          while (index < rows && builder.getPositionCount() < maxNumberOfPointsInPage) {
             long time = getTime(index);
             if (!isNullValue(getValueIndex(index))
                 && !isPointDeleted(time, deletionList, deleteCursor)
@@ -755,7 +760,7 @@ public abstract class TVList implements WALEntryValue {
           break;
         case INT32:
         case DATE:
-          while (index < rows && builder.getPositionCount() < MAX_NUMBER_OF_POINTS_IN_PAGE) {
+          while (index < rows && builder.getPositionCount() < maxNumberOfPointsInPage) {
             long time = getTime(index);
             if (!isNullValue(getValueIndex(index))
                 && !isPointDeleted(time, deletionList, deleteCursor)
@@ -769,7 +774,7 @@ public abstract class TVList implements WALEntryValue {
           break;
         case INT64:
         case TIMESTAMP:
-          while (index < rows && builder.getPositionCount() < MAX_NUMBER_OF_POINTS_IN_PAGE) {
+          while (index < rows && builder.getPositionCount() < maxNumberOfPointsInPage) {
             long time = getTime(index);
             if (!isNullValue(getValueIndex(index))
                 && !isPointDeleted(time, deletionList, deleteCursor)
@@ -782,7 +787,7 @@ public abstract class TVList implements WALEntryValue {
           }
           break;
         case FLOAT:
-          while (index < rows && builder.getPositionCount() < MAX_NUMBER_OF_POINTS_IN_PAGE) {
+          while (index < rows && builder.getPositionCount() < maxNumberOfPointsInPage) {
             long time = getTime(index);
             if (!isNullValue(getValueIndex(index))
                 && !isPointDeleted(time, deletionList, deleteCursor)
@@ -798,7 +803,7 @@ public abstract class TVList implements WALEntryValue {
           }
           break;
         case DOUBLE:
-          while (index < rows && builder.getPositionCount() < MAX_NUMBER_OF_POINTS_IN_PAGE) {
+          while (index < rows && builder.getPositionCount() < maxNumberOfPointsInPage) {
             long time = getTime(index);
             if (!isNullValue(getValueIndex(index))
                 && !isPointDeleted(time, deletionList, deleteCursor)
@@ -816,7 +821,7 @@ public abstract class TVList implements WALEntryValue {
         case TEXT:
         case BLOB:
         case STRING:
-          while (index < rows && builder.getPositionCount() < MAX_NUMBER_OF_POINTS_IN_PAGE) {
+          while (index < rows && builder.getPositionCount() < maxNumberOfPointsInPage) {
             long time = getTime(index);
             if (!isNullValue(getValueIndex(index))
                 && !isPointDeleted(time, deletionList, deleteCursor)
@@ -895,8 +900,8 @@ public abstract class TVList implements WALEntryValue {
                 String.format("Data type %s is not supported.", dataType));
         }
         encodeInfo.pointNumInChunk++;
-        if (encodeInfo.pointNumInChunk >= MAX_NUMBER_OF_POINTS_IN_CHUNK
-            || encodeInfo.dataSizeInChunk >= TARGET_CHUNK_SIZE) {
+        if (encodeInfo.pointNumInChunk >= encodeInfo.maxNumberOfPointsInChunk
+            || encodeInfo.dataSizeInChunk >= encodeInfo.targetChunkSize) {
           break;
         }
       }
@@ -945,5 +950,15 @@ public abstract class TVList implements WALEntryValue {
     public TVList getTVList() {
       return outer;
     }
+  }
+
+  protected static int getDefaultArrayNum() {
+    if (System.currentTimeMillis() - defaultArrayNumLastUpdatedTimeMs > 10_000) {
+      defaultArrayNumLastUpdatedTimeMs = System.currentTimeMillis();
+      defaultArrayNum =
+          ((int) WritingMetrics.getInstance().getAvgPointHistogram().takeSnapshot().getMean()
+              / ARRAY_SIZE);
+    }
+    return defaultArrayNum;
   }
 }
