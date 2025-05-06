@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.library.match;
 
-import org.apache.iotdb.library.match.model.DTWMatchResult;
 import org.apache.iotdb.library.match.model.PatternContext;
 import org.apache.iotdb.library.match.model.PatternResult;
 import org.apache.iotdb.library.match.model.PatternState;
@@ -68,12 +67,12 @@ public class UDAFPatternMatch implements UDAF {
   }
 
   @Override
-  public void addInput(State state, Column[] columns, BitMap bitMap) {
-    PatternState matchState = (PatternState) state;
+  public void addInput(State state, Column[] columns, BitMap bitMap) { // TODO 类似于UDTF里面的process，接受一行输入，然后处理
+    PatternState matchState = (PatternState) state; // TODO 这里的state看起来像是传递了一个引用
 
-    int count = columns[0].getPositionCount();
+    int count = columns[0].getPositionCount();// TODO 这里应该只有1，所以只处理第一列和时间列。
     for (int i = 0; i < count; i++) {
-      if (bitMap != null && !bitMap.isMarked(i)) {
+      if (bitMap != null && !bitMap.isMarked(i)) { // TODO 这里的标记的意思是这个地方有数字？
         continue;
       }
       if (!columns[1].isNull(i)) {
@@ -85,7 +84,7 @@ public class UDAFPatternMatch implements UDAF {
   }
 
   @Override
-  public void combineState(State state, State state1) {
+  public void combineState(State state, State state1) { // 这里应该是因为分段聚合而产出的，多个中间结果合并成为最终结果的操作。
     PatternState matchState = (PatternState) state;
     PatternState newMatchState = (PatternState) state1;
 
@@ -98,34 +97,21 @@ public class UDAFPatternMatch implements UDAF {
   }
 
   @Override
-  public void outputFinal(State state, ResultValue resultValue) {
+  public void outputFinal(State state, ResultValue resultValue) { // 这里的state存储了所有的列数据
     PatternState matchState = (PatternState) state;
     PatternExecutor executor = new PatternExecutor();
 
     List<Point> sourcePointsExtract =
-        executor.scalePoint(matchState.getTimeBuffer(), matchState.getValueBuffer());
-    List<Point> queryPointsExtract = executor.extractPoints(timePattern, valuePattern);
+        executor.scalePoint(matchState.getTimeBuffer(), matchState.getValueBuffer()); // 对序列数据进行处理
+    List<Point> queryPointsExtract = executor.extractPoints(timePattern, valuePattern); // 对模板数据进行处理
 
-    executor.setPoints(queryPointsExtract);
+    executor.setPoints(queryPointsExtract); // 设置模板数据的处理结果
     PatternContext ctx = new PatternContext();
     ctx.setThreshold(threshold);
     ctx.setDataPoints(sourcePointsExtract);
     // State only records time and recorded values, and the final result is calculated
-    List<PatternResult> results = executor.executeQuery(ctx);
-    if (!results.isEmpty()) {
-      resultValue.setBinary(new Binary(results.toString(), Charset.defaultCharset()));
-    } else {
-      // If no results are found, use DTW
-      UDAFDTWMatch dtw = new UDAFDTWMatch();
-      List<DTWMatchResult> dtwMatchResult =
-          dtw.calcMatch(
-              matchState.getTimeBuffer(), matchState.getValueBuffer(), valuePattern, threshold);
-      if (!dtwMatchResult.isEmpty()) {
-        resultValue.setBinary(new Binary(dtwMatchResult.toString(), Charset.defaultCharset()));
-      } else {
-        resultValue.setNull();
-      }
-    }
+    List<PatternResult> results = executor.executeQuery(ctx); // 实际的匹配过程，计算误差并进行过滤
+    resultValue.setBinary(new Binary(results.toString(), Charset.defaultCharset())); // 传入的也是引用，记录了最后的结果的tostring结果
   }
 
   @Override

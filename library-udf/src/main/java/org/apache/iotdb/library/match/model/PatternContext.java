@@ -45,7 +45,7 @@ public class PatternContext {
     return datasetSize;
   }
 
-  public void setDatasetSize(Double datasetSize) {
+  public void setDatasetSize(Double datasetSize) { // 数据集的宽度？ 有什么用？
     this.datasetSize = datasetSize;
   }
 

@@ -25,17 +25,21 @@ public class LinearScale<T extends Number> {
   private final double rangeStart;
   private final double rangeEnd;
 
+  // 这个类的作用是一个线性映射，从一个范围映射到另一个范围
   public LinearScale(T domainStart, T domainEnd, double rangeStart, double rangeEnd) {
+    // 这里是输入域的范围
     this.domainStart = domainStart.doubleValue();
     this.domainEnd = domainEnd.doubleValue();
 
     if (this.domainStart >= this.domainEnd) {
       throw new IllegalArgumentException("domainStart must be less than domainEnd");
     }
+    // 这里是输出域的范围
     this.rangeStart = rangeStart;
     this.rangeEnd = rangeEnd;
   }
 
+  // 这里是将输入阈的一个值映射到输出域的值，公式容易看，写成代码就不太直观了
   public double scale(T value) {
     double val = value.doubleValue();
     if (val < domainStart || val > domainEnd) {
