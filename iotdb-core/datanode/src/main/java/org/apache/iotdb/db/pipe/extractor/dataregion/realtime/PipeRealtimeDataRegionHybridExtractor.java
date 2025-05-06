@@ -38,6 +38,8 @@ import org.apache.iotdb.pipe.api.event.dml.insertion.TsFileInsertionEvent;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.function.Consumer;
+
 public class PipeRealtimeDataRegionHybridExtractor extends PipeRealtimeDataRegionExtractor {
 
   private static final Logger LOGGER =
@@ -220,12 +222,14 @@ public class PipeRealtimeDataRegionHybridExtractor extends PipeRealtimeDataRegio
         3 * WALManager.getInstance().getTotalDiskUsage()
             > IoTDBDescriptor.getInstance().getConfig().getThrottleThreshold();
     if (mayWalSizeReachThrottleThreshold && event.mayExtractorUseTablets(this)) {
-      LOGGER.info(
-          "Pipe task {}@{} canNotUseTabletAnyMore2: Wal size {} has reached throttle threshold {}",
-          pipeName,
-          dataRegionId,
-          WALManager.getInstance().getTotalDiskUsage(),
-          IoTDBDescriptor.getInstance().getConfig().getThrottleThreshold() / 3.0d);
+      logByLogManager(
+          l ->
+              l.info(
+                  "Pipe task {}@{} canNotUseTabletAnyMore1: Wal size {} has reached throttle threshold {}",
+                  pipeName,
+                  dataRegionId,
+                  WALManager.getInstance().getTotalDiskUsage(),
+                  IoTDBDescriptor.getInstance().getConfig().getThrottleThreshold() / 3.0d));
     }
     return mayWalSizeReachThrottleThreshold;
   }
@@ -235,12 +239,14 @@ public class PipeRealtimeDataRegionHybridExtractor extends PipeRealtimeDataRegio
         PipeDataNodeResourceManager.tsfile().getLinkedTsfileCount()
             >= PipeConfig.getInstance().getPipeMaxAllowedLinkedTsFileCount();
     if (mayTsFileLinkedCountReachDangerousThreshold && event.mayExtractorUseTablets(this)) {
-      LOGGER.info(
-          "Pipe task {}@{} canNotUseTabletAnyMore6: The number of linked tsfiles {} has reached the dangerous threshold {}",
-          pipeName,
-          dataRegionId,
-          PipeDataNodeResourceManager.tsfile().getLinkedTsfileCount(),
-          PipeConfig.getInstance().getPipeMaxAllowedLinkedTsFileCount());
+      logByLogManager(
+          l ->
+              l.info(
+                  "Pipe task {}@{} canNotUseTabletAnyMore2: The number of linked tsfiles {} has reached the dangerous threshold {}",
+                  pipeName,
+                  dataRegionId,
+                  PipeDataNodeResourceManager.tsfile().getLinkedTsfileCount(),
+                  PipeConfig.getInstance().getPipeMaxAllowedLinkedTsFileCount()));
     }
     return mayTsFileLinkedCountReachDangerousThreshold;
   }
@@ -254,14 +260,23 @@ public class PipeRealtimeDataRegionHybridExtractor extends PipeRealtimeDataRegio
     final boolean mayInsertNodeMemoryReachDangerousThreshold =
         3 * floatingMemoryUsageInByte * pipeCount >= 2 * totalFloatingMemorySizeInBytes;
     if (mayInsertNodeMemoryReachDangerousThreshold && event.mayExtractorUseTablets(this)) {
-      LOGGER.info(
-          "Pipe task {}@{} canNotUseTabletAnyMore7: The shallow memory usage of the insert node {} has reached the dangerous threshold {}",
-          pipeName,
-          dataRegionId,
-          floatingMemoryUsageInByte * pipeCount,
-          2 * totalFloatingMemorySizeInBytes / 3.0d);
+      logByLogManager(
+          l ->
+              l.info(
+                  "Pipe task {}@{} canNotUseTabletAnyMore3: The shallow memory usage of the insert node {} has reached the dangerous threshold {}",
+                  pipeName,
+                  dataRegionId,
+                  floatingMemoryUsageInByte * pipeCount,
+                  2 * totalFloatingMemorySizeInBytes / 3.0d));
     }
     return mayInsertNodeMemoryReachDangerousThreshold;
+  }
+
+  private void logByLogManager(final Consumer<Logger> infoFunction) {
+    PipeDataNodeResourceManager.log()
+        .schedule(
+            PipeRealtimeDataRegionHybridExtractor.class, getTaskID(), Integer.MAX_VALUE, 100, 1)
+        .ifPresent(infoFunction);
   }
 
   @Override
