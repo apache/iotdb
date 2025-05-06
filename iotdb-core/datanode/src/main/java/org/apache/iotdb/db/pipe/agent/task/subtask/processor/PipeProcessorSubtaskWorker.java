@@ -98,7 +98,12 @@ public class PipeProcessorSubtaskWorker extends WrappedRunnable {
       try {
         Thread.sleep(sleepingTimeInMilliSecond);
       } catch (final InterruptedException e) {
-        LOGGER.warn("subtask worker is interrupted", e);
+        if (workerThreadPoolExecutor.isShutdown()) {
+          LOGGER.info(
+              "Subtask worker is interrupted because it has been shutdown, will exit gracefully.");
+        } else {
+          LOGGER.warn("subtask worker is interrupted", e);
+        }
         Thread.currentThread().interrupt();
       }
     } else {
