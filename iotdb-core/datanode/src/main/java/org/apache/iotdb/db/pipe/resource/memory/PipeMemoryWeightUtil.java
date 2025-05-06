@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.db.pipe.event.common.row.PipeRow;
 import org.apache.iotdb.db.utils.MemUtils;
 
+import org.apache.tsfile.enums.ColumnCategory;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.AbstractAlignedChunkMetadata;
 import org.apache.tsfile.file.metadata.ChunkMetadata;
@@ -279,7 +280,7 @@ public class PipeMemoryWeightUtil {
       }
     }
 
-    final List<Tablet.ColumnCategory> categories = tableSchema.getColumnTypes();
+    final List<ColumnCategory> categories = tableSchema.getColumnTypes();
     if (categories != null) {
       totalSizeInBytes +=
           alignObjectSize(

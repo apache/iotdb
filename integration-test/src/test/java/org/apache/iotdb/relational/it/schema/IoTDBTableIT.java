@@ -29,6 +29,7 @@ import org.apache.iotdb.itbase.env.BaseEnv;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
 
+import org.apache.tsfile.enums.ColumnCategory;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.write.record.Tablet;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
@@ -697,13 +698,12 @@ public class IoTDBTableIT {
                   schemaList.add(new MeasurementSchema("attr1", TSDataType.STRING));
                   schemaList.add(
                       new MeasurementSchema(String.format("m%s", 100 + i), TSDataType.DOUBLE));
-                  final List<Tablet.ColumnCategory> columnTypes =
+                  final List<ColumnCategory> columnTypes =
                       Arrays.asList(
-                          Tablet.ColumnCategory.TAG,
-                          Tablet.ColumnCategory.ATTRIBUTE,
-                          Tablet.ColumnCategory.FIELD);
+                          ColumnCategory.TAG, ColumnCategory.ATTRIBUTE, ColumnCategory.FIELD);
 
                   long timestamp = 0;
+
                   final Tablet tablet =
                       new Tablet(
                           "table8",
