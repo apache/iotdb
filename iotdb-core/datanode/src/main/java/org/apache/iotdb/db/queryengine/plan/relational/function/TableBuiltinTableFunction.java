@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.commons.udf.builtin.relational;
+package org.apache.iotdb.db.queryengine.plan.relational.function;
 
 import org.apache.iotdb.commons.udf.builtin.relational.tvf.CapacityTableFunction;
 import org.apache.iotdb.commons.udf.builtin.relational.tvf.CumulateTableFunction;
@@ -39,6 +39,7 @@ public enum TableBuiltinTableFunction {
   SESSION("session"),
   VARIATION("variation"),
   CAPACITY("capacity");
+  //  FORECAST("forecast");
 
   private final String functionName;
 
@@ -78,6 +79,8 @@ public enum TableBuiltinTableFunction {
         return new VariationTableFunction();
       case "capacity":
         return new CapacityTableFunction();
+        //      case "forecast":
+        //        return new ForecastTableFunction();
       default:
         throw new UnsupportedOperationException("Unsupported table function: " + functionName);
     }
