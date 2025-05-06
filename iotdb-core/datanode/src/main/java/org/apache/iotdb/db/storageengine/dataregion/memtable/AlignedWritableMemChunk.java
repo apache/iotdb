@@ -22,6 +22,8 @@ package org.apache.iotdb.db.storageengine.dataregion.memtable;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.exception.DataTypeInconsistentException;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.IWALByteBufferView;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALWriteUtils;
 import org.apache.iotdb.db.utils.datastructure.AlignedTVList;
@@ -58,7 +60,7 @@ import static org.apache.iotdb.db.utils.ModificationUtils.isPointDeleted;
 
 public class AlignedWritableMemChunk extends AbstractWritableMemChunk {
 
-  private final Map<String, Integer> measurementIndexMap;
+  private Map<String, Integer> measurementIndexMap;
   private List<TSDataType> dataTypes;
   private final List<IMeasurementSchema> schemaList;
   private AlignedTVList list;
@@ -839,6 +841,23 @@ public class AlignedWritableMemChunk extends AbstractWritableMemChunk {
           measurementIndexMap.getOrDefault(measurementSchema.getMeasurementName(), -1));
     }
     return columnIndexList;
+  }
+
+  public void checkDataType(InsertNode node) throws DataTypeInconsistentException {
+    for (MeasurementSchema incomingSchema : node.getMeasurementSchemas()) {
+      if (incomingSchema == null) {
+        continue;
+      }
+
+      Integer index = measurementIndexMap.get(incomingSchema.getMeasurementName());
+      if (index != null) {
+        IMeasurementSchema existingSchema = schemaList.get(index);
+        if (existingSchema.getType() != incomingSchema.getType()) {
+          throw new DataTypeInconsistentException(
+              existingSchema.getType(), incomingSchema.getType());
+        }
+      }
+    }
   }
 
   // Choose maximum avgPointSizeOfLargestColumn among working and sorted AlignedTVList as

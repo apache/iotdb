@@ -2788,6 +2788,8 @@ public class ConfigManager implements IManager {
           return procedureManager.alterTableDropColumn(req);
         case DROP_TABLE:
           return procedureManager.dropTable(req);
+        case ALTER_COLUMN_DATA_TYPE:
+          return procedureManager.alterTableColumnDataType(req);
         case COMMENT_TABLE:
           return clusterSchemaManager.setTableComment(
               req.getDatabase(),
@@ -2802,7 +2804,8 @@ public class ConfigManager implements IManager {
               ReadWriteIOUtils.readString(req.updateInfo),
               false);
         default:
-          throw new IllegalArgumentException();
+          throw new IllegalArgumentException(
+              AlterOrDropTableOperationType.getType(req.operationType).toString());
       }
     } else {
       return status;

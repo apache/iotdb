@@ -274,6 +274,8 @@ public class TsFileProcessor {
       throws WriteProcessException {
 
     ensureMemTable(infoForMetrics);
+    workMemTable.checkDataType(insertRowNode);
+
     long[] memIncrements;
 
     long memControlStartTime = System.nanoTime();
@@ -359,6 +361,7 @@ public class TsFileProcessor {
       throws WriteProcessException {
 
     ensureMemTable(infoForMetrics);
+    workMemTable.checkDataType(insertRowsNode);
 
     long[] memIncrements;
 
@@ -556,6 +559,7 @@ public class TsFileProcessor {
       throws WriteProcessException {
 
     ensureMemTable(infoForMetrics);
+    workMemTable.checkDataType(insertTabletNode);
 
     long[] memIncrements =
         scheduleMemoryBlock(insertTabletNode, rangeList, results, noFailure, infoForMetrics);
