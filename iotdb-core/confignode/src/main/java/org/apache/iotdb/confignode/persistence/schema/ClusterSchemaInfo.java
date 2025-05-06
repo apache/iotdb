@@ -631,7 +631,7 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
       return tableModelMTree
           .getAllTablesUnderSpecificDatabase(PartialPath.getQualifiedDatabasePartialPath(database))
           .stream()
-          .map(pair -> pair.getLeft().getTableTTLInMS())
+          .map(pair -> pair.getLeft().getTableTTL())
           .reduce(Long::max)
           .orElse(Long.MAX_VALUE);
     } catch (final MetadataException e) {
