@@ -182,8 +182,19 @@ class PipeDataNodeRemainingEventAndTimeOperator extends PipeRemainingOperator {
       notifyNonEmpty();
     }
 
-    final double result =
-        Math.max(tabletRemainingTime, Math.max(tsFileRemainingTime, schemaRegionRemainingTime));
+    double result;
+
+    // If tsFile / tablet rate does not exist, use another one
+    // If both exist, use the larger one
+    if (tsFileRemainingTime == Double.MAX_VALUE) {
+      result = tabletRemainingTime;
+    } else if (tabletRemainingTime == Double.MAX_VALUE) {
+      result = tsFileRemainingTime;
+    } else {
+      result = Math.max(tabletRemainingTime, tsFileRemainingTime);
+    }
+
+    result = Math.max(schemaRegionRemainingTime, result);
     return result >= REMAINING_MAX_SECONDS ? REMAINING_MAX_SECONDS : result;
   }
 
