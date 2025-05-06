@@ -674,9 +674,9 @@ public class TableMetadataImpl implements Metadata {
         }
         break;
       case SqlConstant.NTH_VALUE:
-        if (argumentTypes.size() != 2 || isIntegerNumber(argumentTypes.get(1))) {
+        if (argumentTypes.size() != 2 || !isIntegerNumber(argumentTypes.get(1))) {
           throw new SemanticException(
-              "Window function [nth] should only have two argument, and second argument must be integer type");
+              "Window function [nth_value] should only have two argument, and second argument must be integer type");
         }
         break;
         //      case SqlConstant.FIRST_VALUE:
