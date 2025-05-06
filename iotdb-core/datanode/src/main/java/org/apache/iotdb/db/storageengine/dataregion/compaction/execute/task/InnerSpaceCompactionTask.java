@@ -28,8 +28,8 @@ import org.apache.iotdb.db.storageengine.dataregion.compaction.constant.Compacti
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.exception.CompactionRecoverException;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.exception.CompactionSourceFileDeletedException;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.ICompactionPerformer;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.IInnerCompactionPerformer;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.impl.FastCompactionPerformer;
-import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.impl.ReadChunkCompactionPerformer;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.subtask.FastCompactionTaskSummary;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.CompactionUtils;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.log.CompactionLogAnalyzer;
@@ -39,8 +39,6 @@ import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.log
 import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.CompactionTaskManager;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.estimator.AbstractInnerSpaceEstimator;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.estimator.CompactionEstimateUtils;
-import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.estimator.FastCompactionInnerCompactionEstimator;
-import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.estimator.ReadChunkInnerCompactionEstimator;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileManager;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceStatus;
@@ -439,7 +437,7 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
   }
 
   protected void prepareTargetFiles() throws IOException {
-    CompactionUtils.updateProgressIndex(
+    CompactionUtils.updateProgressIndexAndMark(
         filesView.targetFilesInPerformer,
         filesView.sequence ? filesView.sourceFilesInCompactionPerformer : Collections.emptyList(),
         filesView.sequence ? Collections.emptyList() : filesView.sourceFilesInCompactionPerformer);
@@ -669,20 +667,14 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
   @Override
   public long getEstimatedMemoryCost() {
     if (innerSpaceEstimator == null) {
-      if (this.performer instanceof ReadChunkCompactionPerformer) {
-        innerSpaceEstimator = new ReadChunkInnerCompactionEstimator();
-      } else if (this.performer instanceof FastCompactionPerformer) {
-        innerSpaceEstimator = new FastCompactionInnerCompactionEstimator();
-      }
+      innerSpaceEstimator =
+          ((IInnerCompactionPerformer) this.performer).getInnerSpaceEstimator().orElse(null);
     }
     if (innerSpaceEstimator != null && memoryCost == 0L) {
       try {
-        long roughEstimatedMemoryCost =
-            innerSpaceEstimator.roughEstimateInnerCompactionMemory(
-                filesView.sourceFilesInCompactionPerformer);
         memoryCost =
-            CompactionEstimateUtils.shouldUseRoughEstimatedResult(roughEstimatedMemoryCost)
-                ? roughEstimatedMemoryCost
+            CompactionEstimateUtils.shouldUseRoughEstimatedResult(roughMemoryCost)
+                ? roughMemoryCost
                 : innerSpaceEstimator.estimateInnerCompactionMemory(
                     filesView.sourceFilesInCompactionPerformer);
       } catch (CompactionSourceFileDeletedException e) {

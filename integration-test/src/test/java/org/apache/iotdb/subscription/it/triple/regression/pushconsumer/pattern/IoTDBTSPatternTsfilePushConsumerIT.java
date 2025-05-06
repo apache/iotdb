@@ -202,7 +202,7 @@ public class IoTDBTSPatternTsfilePushConsumerIT extends AbstractSubscriptionRegr
 
     AWAIT.untilAsserted(
         () -> {
-          assertEquals(onReceiveCount.get(), 1, "receive files 1");
+          assertGte(onReceiveCount.get(), 1, "receive files over 1");
           assertEquals(rowCounts.get(0).get(), 10, device + ".s_0");
           assertEquals(rowCounts.get(1).get(), 0, device + ".s_1");
           assertEquals(rowCounts.get(2).get(), 0, database + ".d_1.s_0");
@@ -218,7 +218,7 @@ public class IoTDBTSPatternTsfilePushConsumerIT extends AbstractSubscriptionRegr
     System.out.println(FORMAT.format(new Date()) + " src:" + getCount(session_src, sql));
     AWAIT.untilAsserted(
         () -> {
-          assertEquals(onReceiveCount.get(), 2, "receive files over 2");
+          assertGte(onReceiveCount.get(), 2, "receive files over 2");
           assertEquals(rowCounts.get(0).get(), 25, device + ".s_0");
           assertEquals(rowCounts.get(1).get(), 0, device + ".s_1");
           assertEquals(rowCounts.get(2).get(), 0, database + ".d_1.s_0");

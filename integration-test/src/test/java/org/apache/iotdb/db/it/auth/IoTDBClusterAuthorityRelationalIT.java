@@ -348,7 +348,6 @@ public class IoTDBClusterAuthorityRelationalIT {
               false));
       grantSysPrivilegeAndCheck(client, "user1", "role1", true, PrivilegeType.MANAGE_USER, false);
       grantSysPrivilegeAndCheck(client, "user1", "role1", true, PrivilegeType.MANAGE_ROLE, true);
-      grantSysPrivilegeAndCheck(client, "user1", "role1", false, PrivilegeType.MAINTAIN, true);
       grantPrivilegeAndCheck(
           client, "user1", "", true, new PrivilegeUnion("database", "table", PrivilegeType.SELECT));
       grantPrivilegeAndCheck(

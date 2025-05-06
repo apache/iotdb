@@ -22,6 +22,7 @@ package org.apache.iotdb.confignode.procedure;
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
+import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.commons.utils.TimePartitionUtils;
 import org.apache.iotdb.confignode.consensus.request.write.partition.AutoCleanPartitionTablePlan;
 import org.apache.iotdb.confignode.manager.ConfigManager;
@@ -32,6 +33,7 @@ import org.slf4j.LoggerFactory;
 
 import java.util.List;
 import java.util.Map;
+import java.util.TreeMap;
 
 import static org.apache.iotdb.confignode.manager.partition.PartitionManager.CONSENSUS_WRITE_ERROR;
 
@@ -54,12 +56,18 @@ public class PartitionTableAutoCleaner<Env> extends InternalProcedure<Env> {
   @Override
   protected void periodicExecute(Env env) {
     List<String> databases = configManager.getClusterSchemaManager().getDatabaseNames(null);
-    Map<String, Long> databaseTTLMap =
-        configManager.getClusterSchemaManager().getTTLInfoForUpgrading();
+    Map<String, Long> databaseTTLMap = new TreeMap<>();
     for (String database : databases) {
-      long subTreeMaxTTL = configManager.getTTLManager().getDatabaseMaxTTL(database);
-      databaseTTLMap.put(
-          database, Math.max(subTreeMaxTTL, databaseTTLMap.getOrDefault(database, -1L)));
+      long databaseTTL =
+          PathUtils.isTableModelDatabase(database)
+              ? configManager.getClusterSchemaManager().getDatabaseMaxTTL(database)
+              : configManager.getTTLManager().getDatabaseMaxTTL(database);
+      databaseTTLMap.put(database, databaseTTL);
+    }
+    LOGGER.info(
+        "[PartitionTableCleaner] Periodically activate PartitionTableAutoCleaner, databaseTTL: {}",
+        databaseTTLMap);
+    for (String database : databases) {
       long databaseTTL = databaseTTLMap.get(database);
       if (!configManager.getPartitionManager().isDatabaseExist(database)
           || databaseTTL < 0
@@ -69,6 +77,9 @@ public class PartitionTableAutoCleaner<Env> extends InternalProcedure<Env> {
       }
     }
     if (!databaseTTLMap.isEmpty()) {
+      LOGGER.info(
+          "[PartitionTableCleaner] Periodically activate PartitionTableAutoCleaner for: {}",
+          databaseTTLMap);
       // Only clean the partition table when necessary
       TTimePartitionSlot currentTimePartitionSlot =
           TimePartitionUtils.getCurrentTimePartitionSlot();

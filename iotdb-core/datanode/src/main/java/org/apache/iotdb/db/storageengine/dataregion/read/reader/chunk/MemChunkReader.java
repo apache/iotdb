@@ -20,15 +20,13 @@
 package org.apache.iotdb.db.storageengine.dataregion.read.reader.chunk;
 
 import org.apache.iotdb.db.storageengine.dataregion.memtable.ReadOnlyMemChunk;
-import org.apache.iotdb.db.utils.datastructure.MergeSortTvListIterator;
+import org.apache.iotdb.db.utils.datastructure.MemPointIterator;
 
-import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.IChunkMetadata;
 import org.apache.tsfile.file.metadata.statistics.Statistics;
 import org.apache.tsfile.read.TimeValuePair;
 import org.apache.tsfile.read.common.BatchData;
 import org.apache.tsfile.read.common.block.TsBlock;
-import org.apache.tsfile.read.common.block.TsBlockBuilder;
 import org.apache.tsfile.read.filter.basic.Filter;
 import org.apache.tsfile.read.reader.IChunkReader;
 import org.apache.tsfile.read.reader.IPageReader;
@@ -37,17 +35,13 @@ import org.apache.tsfile.read.reader.IPointReader;
 import java.io.IOException;
 import java.io.Serializable;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 import java.util.function.Supplier;
-
-import static org.apache.iotdb.db.utils.ModificationUtils.isPointDeleted;
 
 /** To read chunk data in memory. */
 public class MemChunkReader implements IChunkReader, IPointReader {
 
-  private final ReadOnlyMemChunk readableChunk;
-  private final MergeSortTvListIterator timeValuePairIterator;
+  private final MemPointIterator timeValuePairIterator;
   private final Filter globalTimeFilter;
   private final List<IPageReader> pageReaderList;
 
@@ -55,31 +49,23 @@ public class MemChunkReader implements IChunkReader, IPointReader {
   private TimeValuePair cachedTimeValuePair;
 
   public MemChunkReader(ReadOnlyMemChunk readableChunk, Filter globalTimeFilter) {
-    this.readableChunk = readableChunk;
-    timeValuePairIterator = readableChunk.getMergeSortTVListIterator().clone();
+    this.timeValuePairIterator = readableChunk.getMemPointIterator();
     this.globalTimeFilter = globalTimeFilter;
     this.pageReaderList = new ArrayList<>();
-    initAllPageReaders(
-        readableChunk.getChunkMetaData(),
-        readableChunk.getPageStatisticsList(),
-        readableChunk.getPageOffsetsList());
+    initAllPageReaders(readableChunk.getChunkMetaData(), readableChunk.getPageStatisticsList());
   }
 
   private void initAllPageReaders(
-      IChunkMetadata metadata,
-      List<Statistics<? extends Serializable>> pageStats,
-      List<int[]> pageOffsetsList) {
+      IChunkMetadata metadata, List<Statistics<? extends Serializable>> pageStats) {
     Supplier<TsBlock> tsBlockSupplier = new TsBlockSupplier();
-    for (int i = 0; i < pageStats.size(); i++) {
+    for (int pageIndex = 0; pageIndex < pageStats.size(); pageIndex++) {
       MemPageReader pageReader =
           new MemPageReader(
               tsBlockSupplier,
-              timeValuePairIterator,
-              pageOffsetsList.get(i),
-              pageOffsetsList.get(i + 1),
+              pageIndex,
               metadata.getDataType(),
               metadata.getMeasurementUid(),
-              pageStats.get(i),
+              pageStats.get(pageIndex),
               globalTimeFilter);
       this.pageReaderList.add(pageReader);
     }
@@ -153,90 +139,17 @@ public class MemChunkReader implements IChunkReader, IPointReader {
    * TsBlockSupplier object.
    */
   class TsBlockSupplier implements Supplier<TsBlock> {
-    private int[] pageEndOffsets;
+    private int tsBlockIndex;
 
     public TsBlockSupplier() {}
 
-    public void setPageEndOffsets(int[] pageEndOffsets) {
-      this.pageEndOffsets = pageEndOffsets;
+    public void setTsBlockIndex(int tsBlockIndex) {
+      this.tsBlockIndex = tsBlockIndex;
     }
 
     @Override
     public TsBlock get() {
-      return buildTsBlock();
-    }
-
-    private TsBlock buildTsBlock() {
-      try {
-        TSDataType tsDataType = readableChunk.getDataType();
-        TsBlockBuilder builder = new TsBlockBuilder(Collections.singletonList(tsDataType));
-        writeValidValuesIntoTsBlock(builder);
-        return builder.build();
-      } catch (IOException e) {
-        throw new RuntimeException(e);
-      }
-    }
-
-    private boolean isOutOfMemPageBounds() {
-      if (pageEndOffsets == null) {
-        return false;
-      }
-      int[] currTvListOffsets = timeValuePairIterator.getTVListOffsets();
-      for (int i = 0; i < pageEndOffsets.length; i++) {
-        if (currTvListOffsets[i] < pageEndOffsets[i]) {
-          return false;
-        }
-      }
-      return true;
-    }
-
-    // read one page and write to tsblock
-    private synchronized void writeValidValuesIntoTsBlock(TsBlockBuilder builder)
-        throws IOException {
-      TSDataType tsDataType = readableChunk.getDataType();
-      int[] deleteCursor = {0};
-      while (timeValuePairIterator.hasNextTimeValuePair()) {
-        if (isOutOfMemPageBounds()) {
-          break;
-        }
-        TimeValuePair tvPair = timeValuePairIterator.nextTimeValuePair();
-        if (!isPointDeleted(tvPair.getTimestamp(), readableChunk.getDeletionList(), deleteCursor)) {
-          builder.getTimeColumnBuilder().writeLong(tvPair.getTimestamp());
-          switch (tsDataType) {
-            case BOOLEAN:
-              builder.getColumnBuilder(0).writeBoolean(tvPair.getValue().getBoolean());
-              break;
-            case INT32:
-            case DATE:
-              builder.getColumnBuilder(0).writeInt(tvPair.getValue().getInt());
-              break;
-            case INT64:
-            case TIMESTAMP:
-              builder.getColumnBuilder(0).writeLong(tvPair.getValue().getLong());
-              break;
-            case FLOAT:
-              builder.getColumnBuilder(0).writeFloat(tvPair.getValue().getFloat());
-              break;
-            case DOUBLE:
-              builder.getColumnBuilder(0).writeDouble(tvPair.getValue().getDouble());
-              break;
-            case TEXT:
-            case STRING:
-            case BLOB:
-              builder.getColumnBuilder(0).writeBinary(tvPair.getValue().getBinary());
-              break;
-            default:
-              break;
-          }
-          builder.declarePosition();
-        }
-      }
-      if (builder.getPositionCount() > readableChunk.getMaxNumberOfPointsInPage()) {
-        throw new RuntimeException(
-            String.format(
-                "Points in current page %d is larger than %d",
-                builder.getPositionCount(), readableChunk.getMaxNumberOfPointsInPage()));
-      }
+      return timeValuePairIterator.getBatch(tsBlockIndex);
     }
   }
 }

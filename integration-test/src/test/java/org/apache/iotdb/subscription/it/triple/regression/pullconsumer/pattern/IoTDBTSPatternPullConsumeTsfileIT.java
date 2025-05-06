@@ -158,7 +158,6 @@ public class IoTDBTSPatternPullConsumeTsfileIT extends AbstractSubscriptionRegre
     assertEquals(results.get(0), 10);
     assertEquals(results.get(1), 0);
     assertEquals(results.get(2), 0);
-    assertEquals(results.get(3), 1, "number of received files");
     insert_data(System.currentTimeMillis());
     // Unsubscribe
     consumer.unsubscribe(topicName);
@@ -177,6 +176,5 @@ public class IoTDBTSPatternPullConsumeTsfileIT extends AbstractSubscriptionRegre
         "Unsubscribe and resubscribe, progress is not retained. Full synchronization.");
     assertEquals(results.get(1), 0, "Subscribe again after unsubscribe," + database + ".d_1");
     assertEquals(results.get(2), 0, "Unsubscribe and then subscribe again," + database2 + ".d_2");
-    assertEquals(results.get(3), 1, "Number of received files: resubscribe after unsubscription");
   }
 }

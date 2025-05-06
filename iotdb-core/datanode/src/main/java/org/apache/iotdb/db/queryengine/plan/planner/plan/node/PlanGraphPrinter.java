@@ -67,18 +67,23 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.DeviceViewInt
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.IntoPathDescriptor;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.Symbol;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationTreeDeviceViewScanNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AssignUniqueId;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.DeviceTableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.EnforceSingleRowNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ExchangeNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ExplainAnalyzeNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.GapFillNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.GroupNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.LinearFillNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.MarkDistinctNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.PreviousFillNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.SemiJoinNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TableFunctionProcessorNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TreeDeviceViewScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ValueFillNode;
 
+import com.google.common.base.Joiner;
 import org.apache.commons.lang3.Validate;
 import org.apache.tsfile.utils.Pair;
 import org.eclipse.jetty.util.StringUtil;
@@ -815,6 +820,14 @@ public class PlanGraphPrinter extends PlanVisitor<List<String>, PlanGraphPrinter
   }
 
   @Override
+  public List<String> visitExplainAnalyze(ExplainAnalyzeNode node, GraphContext context) {
+    List<String> boxValue = new ArrayList<>();
+    boxValue.add(String.format("ExplainAnalyze-%s", node.getPlanNodeId().getId()));
+    boxValue.add(String.format("ChildPermittedOutputs: %s", node.getChildPermittedOutputs()));
+    return render(node, boxValue, context);
+  }
+
+  @Override
   public List<String> visitGapFill(GapFillNode node, GraphContext context) {
     List<String> boxValue = new ArrayList<>();
     boxValue.add(String.format("GapFill-%s", node.getPlanNodeId().getId()));
@@ -921,6 +934,25 @@ public class PlanGraphPrinter extends PlanVisitor<List<String>, PlanGraphPrinter
   }
 
   @Override
+  public List<String> visitGroup(GroupNode node, GraphContext context) {
+    List<String> boxValue = new ArrayList<>();
+    boxValue.add(String.format("GroupNode-%s", node.getPlanNodeId().getId()));
+    boxValue.add(
+        String.format(
+            "PartitionKey: %s",
+            node.getOrderingScheme().getOrderBy().subList(0, node.getPartitionKeyCount())));
+    List<String> orderKey = new ArrayList<>();
+    for (int i = node.getPartitionKeyCount();
+        i < node.getOrderingScheme().getOrderBy().size();
+        i++) {
+      Symbol symbol = node.getOrderingScheme().getOrderBy().get(i);
+      orderKey.add(symbol + " " + node.getOrderingScheme().getOrdering(symbol));
+    }
+    boxValue.add(String.format("OrderKey: %s", orderKey));
+    return render(node, boxValue, context);
+  }
+
+  @Override
   public List<String> visitMergeSort(
       org.apache.iotdb.db.queryengine.plan.relational.planner.node.MergeSortNode node,
       GraphContext context) {
@@ -958,7 +990,12 @@ public class PlanGraphPrinter extends PlanVisitor<List<String>, PlanGraphPrinter
       GraphContext context) {
     List<String> boxValue = new ArrayList<>();
     boxValue.add(String.format("Join-%s", node.getPlanNodeId().getId()));
-    boxValue.add(String.format("JoinType: %s", node.getJoinType()));
+    if (node.getAsofCriteria().isPresent()) {
+      boxValue.add(String.format("ASOF-JoinType: %s", node.getJoinType()));
+      boxValue.add(String.format("ASOF-JoinCriteria: %s", node.getAsofCriteria().get()));
+    } else {
+      boxValue.add(String.format("JoinType: %s", node.getJoinType()));
+    }
     boxValue.add(String.format("JoinCriteria: %s", node.getCriteria()));
     boxValue.add(String.format("LeftOutputSymbols: %s", node.getLeftOutputSymbols()));
     boxValue.add(String.format("RightOutputSymbols: %s", node.getRightOutputSymbols()));
@@ -977,6 +1014,39 @@ public class PlanGraphPrinter extends PlanVisitor<List<String>, PlanGraphPrinter
     boxValue.add(String.format("SourceJoinSymbol: %s", node.getSourceJoinSymbol()));
     boxValue.add(
         String.format("FilteringSourceJoinSymbol: %s", node.getFilteringSourceJoinSymbol()));
+    return render(node, boxValue, context);
+  }
+
+  @Override
+  public List<String> visitAssignUniqueId(AssignUniqueId node, GraphContext context) {
+    List<String> boxValue = new ArrayList<>();
+    boxValue.add(String.format("AssignUniqueId-%s", node.getPlanNodeId().getId()));
+    boxValue.add(String.format("OutputSymbols: %s", node.getOutputSymbols()));
+    boxValue.add(String.format("IdColumnSymbol: %s", node.getIdColumn()));
+    return render(node, boxValue, context);
+  }
+
+  @Override
+  public List<String> visitTableFunctionProcessor(
+      TableFunctionProcessorNode node, GraphContext context) {
+    List<String> boxValue = new ArrayList<>();
+    boxValue.add(String.format("TableFunctionProcessor-%s", node.getPlanNodeId().getId()));
+    boxValue.add(String.format("Function: %s", node.getName()));
+    boxValue.add(String.format("ProperOutputs: %s", node.getProperOutputs()));
+    boxValue.add(String.format("OutputSymbols: %s", node.getOutputSymbols()));
+    boxValue.add(String.format("RequiredSymbols: %s", node.getRequiredSymbols()));
+    node.getDataOrganizationSpecification()
+        .ifPresent(
+            specification -> {
+              if (!specification.getPartitionBy().isEmpty()) {
+                boxValue.add(
+                    "Partition by: [" + Joiner.on(", ").join(specification.getPartitionBy()) + "]");
+              }
+              specification
+                  .getOrderingScheme()
+                  .ifPresent(orderingScheme -> boxValue.add("Order by: " + orderingScheme));
+            });
+    boxValue.add("TableFunctionHandle: " + node.getTableFunctionHandle());
     return render(node, boxValue, context);
   }
 

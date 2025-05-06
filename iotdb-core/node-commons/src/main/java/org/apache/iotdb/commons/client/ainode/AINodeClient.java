@@ -22,10 +22,13 @@ package org.apache.iotdb.commons.client.ainode;
 import org.apache.iotdb.ainode.rpc.thrift.IAINodeRPCService;
 import org.apache.iotdb.ainode.rpc.thrift.TConfigs;
 import org.apache.iotdb.ainode.rpc.thrift.TDeleteModelReq;
+import org.apache.iotdb.ainode.rpc.thrift.TForecastReq;
+import org.apache.iotdb.ainode.rpc.thrift.TForecastResp;
 import org.apache.iotdb.ainode.rpc.thrift.TInferenceReq;
 import org.apache.iotdb.ainode.rpc.thrift.TInferenceResp;
 import org.apache.iotdb.ainode.rpc.thrift.TRegisterModelReq;
 import org.apache.iotdb.ainode.rpc.thrift.TRegisterModelResp;
+import org.apache.iotdb.ainode.rpc.thrift.TTrainingReq;
 import org.apache.iotdb.ainode.rpc.thrift.TWindowParams;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
@@ -52,9 +55,13 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+
+import static org.apache.iotdb.rpc.TSStatusCode.CAN_NOT_CONNECT_AINODE;
+import static org.apache.iotdb.rpc.TSStatusCode.INTERNAL_SERVER_ERROR;
 
 public class AINodeClient implements AutoCloseable, ThriftClient {
 
@@ -178,6 +185,39 @@ public class AINodeClient implements AutoCloseable, ThriftClient {
       return client.inference(inferenceReq);
     } catch (IOException e) {
       throw new TException("An exception occurred while serializing input tsblock", e);
+    } catch (TException e) {
+      logger.warn(
+          "Failed to connect to AINode from DataNode when executing {}: {}",
+          Thread.currentThread().getStackTrace()[1].getMethodName(),
+          e.getMessage());
+      throw new TException(MSG_CONNECTION_FAIL);
+    }
+  }
+
+  public TForecastResp forecast(
+      String modelId, TsBlock inputTsBlock, int outputLength, Map<String, String> options) {
+    try {
+      TForecastReq forecastReq =
+          new TForecastReq(modelId, tsBlockSerde.serialize(inputTsBlock), outputLength);
+      forecastReq.setOptions(options);
+      return client.forecast(forecastReq);
+    } catch (IOException e) {
+      TSStatus tsStatus = new TSStatus(INTERNAL_SERVER_ERROR.getStatusCode());
+      tsStatus.setMessage(String.format("Failed to serialize input tsblock %s", e.getMessage()));
+      return new TForecastResp(tsStatus, ByteBuffer.allocate(0));
+    } catch (TException e) {
+      TSStatus tsStatus = new TSStatus(CAN_NOT_CONNECT_AINODE.getStatusCode());
+      tsStatus.setMessage(
+          String.format(
+              "Failed to connect to AINode from DataNode when executing %s: %s",
+              Thread.currentThread().getStackTrace()[1].getMethodName(), e.getMessage()));
+      return new TForecastResp(tsStatus, ByteBuffer.allocate(0));
+    }
+  }
+
+  public TSStatus createTrainingTask(TTrainingReq req) throws TException {
+    try {
+      return client.createTrainingTask(req);
     } catch (TException e) {
       logger.warn(
           "Failed to connect to AINode from DataNode when executing {}: {}",

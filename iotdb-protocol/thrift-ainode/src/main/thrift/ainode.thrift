@@ -75,6 +75,32 @@ struct TInferenceResp {
   2: required list<binary> inferenceResult
 }
 
+struct IDataSchema {
+  1: required string schemaName
+  2: optional list<i64> timeRange
+}
+
+struct TTrainingReq {
+  1: required string dbType
+  2: required string modelId
+  3: required string modelType
+  4: optional list<IDataSchema> targetDataSchema;
+  5: optional map<string, string> parameters;
+  6: optional string existingModelId
+}
+
+struct TForecastReq {
+  1: required string modelId
+  2: required binary inputData
+  3: required i32 outputLength
+  4: optional map<string, string> options
+}
+
+struct TForecastResp {
+  1: required common.TSStatus status
+  2: required binary forecastResult
+}
+
 service IAINodeRPCService {
 
   // -------------- For Config Node --------------
@@ -85,7 +111,11 @@ service IAINodeRPCService {
 
   TAIHeartbeatResp getAIHeartbeat(TAIHeartbeatReq req)
 
+  common.TSStatus createTrainingTask(TTrainingReq req)
+
   // -------------- For Data Node --------------
 
   TInferenceResp inference(TInferenceReq req)
+
+  TForecastResp forecast(TForecastReq req)
 }

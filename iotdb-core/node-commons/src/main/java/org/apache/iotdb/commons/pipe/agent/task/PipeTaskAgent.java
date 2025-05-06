@@ -54,6 +54,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 
@@ -452,7 +453,7 @@ public abstract class PipeTaskAgent {
    *     if the pipe already exists or is created but should not be started
    * @throws IllegalStateException if the status is illegal
    */
-  private boolean createPipe(final PipeMeta pipeMetaFromCoordinator) throws IllegalPathException {
+  protected boolean createPipe(final PipeMeta pipeMetaFromCoordinator) throws IllegalPathException {
     final String pipeName = pipeMetaFromCoordinator.getStaticMeta().getPipeName();
     final long creationTime = pipeMetaFromCoordinator.getStaticMeta().getCreationTime();
 
@@ -578,7 +579,7 @@ public abstract class PipeTaskAgent {
     return true;
   }
 
-  private void startPipe(final String pipeName, final long creationTime) {
+  protected void startPipe(final String pipeName, final long creationTime) {
     final PipeMeta existedPipeMeta = pipeMetaKeeper.getPipeMeta(pipeName);
 
     if (!checkBeforeStartPipe(existedPipeMeta, pipeName, creationTime)) {
@@ -1077,6 +1078,18 @@ public abstract class PipeTaskAgent {
         ? new CommitterKey(pipeName, creationTime, regionId, restartTime)
         : ((PipeTemporaryMetaInAgent) pipeMeta.getTemporaryMeta())
             .getCommitterKey(pipeName, creationTime, regionId, restartTime);
+  }
+
+  public long getAllFloatingMemoryUsageInByte() {
+    final AtomicLong bytes = new AtomicLong(0);
+    pipeMetaKeeper
+        .getPipeMetaList()
+        .forEach(
+            pipeMeta ->
+                bytes.addAndGet(
+                    ((PipeTemporaryMetaInAgent) pipeMeta.getTemporaryMeta())
+                        .getFloatingMemoryUsageInByte()));
+    return bytes.get();
   }
 
   public long getFloatingMemoryUsageInByte(final String pipeName) {

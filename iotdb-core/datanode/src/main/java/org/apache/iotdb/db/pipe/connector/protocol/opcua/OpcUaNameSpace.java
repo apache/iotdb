@@ -29,6 +29,7 @@ import org.apache.iotdb.db.utils.TimestampPrecisionUtils;
 import org.apache.iotdb.pipe.api.event.Event;
 
 import org.apache.tsfile.common.constant.TsFileConstant;
+import org.apache.tsfile.enums.ColumnCategory;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.write.UnSupportedDataTypeException;
@@ -123,10 +124,8 @@ public class OpcUaNameSpace extends ManagedNamespaceWithLifecycle {
       final List<Object> values = new ArrayList<>();
 
       for (int i = 0; i < schemas.size(); ++i) {
-        for (int j = 0; j < tablet.getRowSize(); ++j) {
-          if (Objects.isNull(tablet.getBitMaps())
-              || Objects.isNull(tablet.getBitMaps()[i])
-              || !tablet.getBitMaps()[i].isMarked(j)) {
+        for (int j = tablet.getRowSize() - 1; j >= 0; --j) {
+          if (!tablet.isNull(j, i)) {
             newSchemas.add(schemas.get(i));
             timestamps.add(tablet.getTimestamp(j));
             values.add(
@@ -143,7 +142,7 @@ public class OpcUaNameSpace extends ManagedNamespaceWithLifecycle {
 
       final List<Integer> columnIndexes = new ArrayList<>();
       for (int i = 0; i < schemas.size(); ++i) {
-        if (tablet.getColumnTypes().get(i) == Tablet.ColumnCategory.FIELD) {
+        if (tablet.getColumnTypes().get(i) == ColumnCategory.FIELD) {
           columnIndexes.add(i);
           newSchemas.add(schemas.get(i));
         }
@@ -151,7 +150,7 @@ public class OpcUaNameSpace extends ManagedNamespaceWithLifecycle {
 
       for (int i = 0; i < tablet.getRowSize(); ++i) {
         final Object[] segments = tablet.getDeviceID(i).getSegments();
-        final String[] folderSegments = new String[segments.length + 2];
+        final String[] folderSegments = new String[segments.length + 1];
         folderSegments[0] = databaseName;
 
         for (int j = 0; j < segments.length; ++j) {
@@ -166,8 +165,10 @@ public class OpcUaNameSpace extends ManagedNamespaceWithLifecycle {
             columnIndexes.stream()
                 .map(
                     index ->
-                        getTabletObjectValue4Opc(
-                            tablet.getValues()[index], finalI, schemas.get(index).getType()))
+                        tablet.isNull(finalI, index)
+                            ? null
+                            : getTabletObjectValue4Opc(
+                                tablet.getValues()[index], finalI, schemas.get(index).getType()))
                 .collect(Collectors.toList()));
       }
     }
@@ -230,6 +231,9 @@ public class OpcUaNameSpace extends ManagedNamespaceWithLifecycle {
 
     final String currentFolder = currentStr.toString();
     for (int i = 0; i < measurementSchemas.size(); ++i) {
+      if (Objects.isNull(values.get(i))) {
+        continue;
+      }
       final String name = measurementSchemas.get(i).getMeasurementName();
       final TSDataType type = measurementSchemas.get(i).getType();
       final NodeId nodeId = newNodeId(currentFolder + name);
@@ -339,8 +343,7 @@ public class OpcUaNameSpace extends ManagedNamespaceWithLifecycle {
 
     // Use eventNode here because other nodes doesn't support values and times simultaneously
     for (int columnIndex = 0; columnIndex < tablet.getSchemas().size(); ++columnIndex) {
-      if (isTableModel
-          && !tablet.getColumnTypes().get(columnIndex).equals(Tablet.ColumnCategory.FIELD)) {
+      if (isTableModel && !tablet.getColumnTypes().get(columnIndex).equals(ColumnCategory.FIELD)) {
         continue;
       }
       final TSDataType dataType = tablet.getSchemas().get(columnIndex).getType();

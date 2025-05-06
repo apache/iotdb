@@ -84,6 +84,16 @@ public class SubscriptionPrefetchingTsFileQueue extends SubscriptionPrefetchingQ
         (key, ev) -> {
           // 1. Extract current event and check it
           if (Objects.isNull(ev)) {
+            if (isCommitContextOutdated(commitContext)) {
+              LOGGER.warn(
+                  "SubscriptionPrefetchingTsFileQueue {} detected outdated poll request, consumer {}, commit context {}, writing offset {}",
+                  this,
+                  consumerId,
+                  commitContext,
+                  writingOffset);
+              eventRef.set(generateSubscriptionPollOutdatedErrorResponse());
+              return null;
+            }
             final String errorMessage =
                 String.format(
                     "SubscriptionPrefetchingTsFileQueue %s is currently not transferring any file to consumer %s, commit context: %s, writing offset: %s",
@@ -94,7 +104,7 @@ public class SubscriptionPrefetchingTsFileQueue extends SubscriptionPrefetchingQ
           }
 
           if (ev.isCommitted()) {
-            ev.cleanUp();
+            ev.cleanUp(false);
             final String errorMessage =
                 String.format(
                     "outdated poll request after commit, consumer id: %s, commit context: %s, writing offset: %s, prefetching queue: %s",
@@ -240,6 +250,9 @@ public class SubscriptionPrefetchingTsFileQueue extends SubscriptionPrefetchingQ
         new SubscriptionEvent(
             new SubscriptionPipeTsFilePlainEvent((PipeTsFileInsertionEvent) event),
             ((PipeTsFileInsertionEvent) event).getTsFile(),
+            ((PipeTsFileInsertionEvent) event).isTableModelEvent()
+                ? ((PipeTsFileInsertionEvent) event).getTableModelDatabaseName()
+                : null,
             commitContext);
     super.prefetchEvent(ev);
     return true;

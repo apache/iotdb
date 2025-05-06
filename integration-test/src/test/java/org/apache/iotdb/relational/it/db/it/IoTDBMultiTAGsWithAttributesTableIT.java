@@ -23,6 +23,7 @@ import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.TableClusterIT;
 import org.apache.iotdb.itbase.category.TableLocalStandaloneIT;
+import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
@@ -36,7 +37,7 @@ import java.util.Arrays;
 
 import static org.apache.iotdb.db.it.utils.TestUtils.tableAssertTestFail;
 import static org.apache.iotdb.db.it.utils.TestUtils.tableResultSetEqualTest;
-import static org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.JoinUtils.FULL_JOIN_ONLY_SUPPORT_EQUI_JOIN;
+import static org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.JoinUtils.ONLY_SUPPORT_EQUI_JOIN;
 import static org.junit.Assert.fail;
 
 /** In this IT, table has more than one TAGs and Attributes. */
@@ -536,6 +537,16 @@ public class IoTDBMultiTAGsWithAttributesTableIT {
         expectedHeader,
         retArray,
         DATABASE_NAME);
+    tableResultSetEqualTest(
+        "select count(num) as count_num, count(1) as count_star, avg(num) as avg_num, count(num) as count_num,\n"
+            + "count(attr2) as count_attr2, avg(num) as avg_num, count(device) as count_device,\n"
+            + "count(attr1) as count_attr1, count(device) as count_device, \n"
+            + "round(avg(floatnum)) as avg_floatnum, count(date) as count_date, "
+            + "count(time) as count_time, count(1) as count_star "
+            + "from table0",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
 
     retArray =
         new String[] {
@@ -547,6 +558,17 @@ public class IoTDBMultiTAGsWithAttributesTableIT {
             + "count(attr1) as count_attr1, count(device) as count_device, \n"
             + "round(avg(floatnum)) as avg_floatnum, count(date) as count_date, "
             + "count(time) as count_time, count(*) as count_star "
+            + "from table0 "
+            + "where time<200 and num>1 ",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+    tableResultSetEqualTest(
+        "select count(num) as count_num, count(1) as count_star, avg(num) as avg_num, count(num) as count_num,\n"
+            + "count(attr2) as count_attr2, avg(num) as avg_num, count(device) as count_device,\n"
+            + "count(attr1) as count_attr1, count(device) as count_device, \n"
+            + "round(avg(floatnum)) as avg_floatnum, count(date) as count_date, "
+            + "count(time) as count_time, count(1) as count_star "
             + "from table0 "
             + "where time<200 and num>1 ",
         expectedHeader,
@@ -594,7 +616,7 @@ public class IoTDBMultiTAGsWithAttributesTableIT {
     String[] expectedHeader = new String[] {"_col0"};
     String[] retArray = new String[] {"30,"};
 
-    String sql = "SELECT count(num+1) from table0";
+    sql = "SELECT count(num+1) from table0";
     tableResultSetEqualTest(sql, expectedHeader, retArray, DATABASE_NAME);
   }
 
@@ -602,7 +624,9 @@ public class IoTDBMultiTAGsWithAttributesTableIT {
   public void countStarTest() {
     expectedHeader = new String[] {"_col0", "_col1"};
     retArray = new String[] {"1,1,"};
-    String sql = "select count(*),count(t1) from (select avg(num+1) as t1 from table0)";
+    sql = "select count(*),count(t1) from (select avg(num+1) as t1 from table0)";
+    tableResultSetEqualTest(sql, expectedHeader, retArray, DATABASE_NAME);
+    sql = "select count(1),count(t1) from (select avg(num+1) as t1 from table0)";
     tableResultSetEqualTest(sql, expectedHeader, retArray, DATABASE_NAME);
 
     expectedHeader = new String[] {"count_star"};
@@ -612,6 +636,8 @@ public class IoTDBMultiTAGsWithAttributesTableIT {
         };
     tableResultSetEqualTest(
         "select count(*) as count_star from table0", expectedHeader, retArray, DATABASE_NAME);
+    tableResultSetEqualTest(
+        "select count(1) as count_star from table0", expectedHeader, retArray, DATABASE_NAME);
 
     retArray =
         new String[] {
@@ -622,6 +648,11 @@ public class IoTDBMultiTAGsWithAttributesTableIT {
         expectedHeader,
         retArray,
         DATABASE_NAME);
+    tableResultSetEqualTest(
+        "select count(1) as count_star from (select count(1) from table0)",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
 
     retArray =
         new String[] {
@@ -629,6 +660,11 @@ public class IoTDBMultiTAGsWithAttributesTableIT {
         };
     tableResultSetEqualTest(
         "select count(*) as count_star from (select count(*), avg(num) from table0)",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+    tableResultSetEqualTest(
+        "select count(1) as count_star from (select count(1), avg(num) from table0)",
         expectedHeader,
         retArray,
         DATABASE_NAME);
@@ -643,6 +679,11 @@ public class IoTDBMultiTAGsWithAttributesTableIT {
         expectedHeader,
         retArray,
         DATABASE_NAME);
+    tableResultSetEqualTest(
+        "select count_star + avg_num as sum from (select count(1) as count_star, avg(num) as avg_num from table0)",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
 
     // TODO select count(*),count(t1) from (select avg(num+1) as t1 from table0) where time < 0
 
@@ -653,6 +694,11 @@ public class IoTDBMultiTAGsWithAttributesTableIT {
         };
     tableResultSetEqualTest(
         "select count(*) from (select device from table0 group by device, level)",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+    tableResultSetEqualTest(
+        "select count(1) from (select device from table0 group by device, level)",
         expectedHeader,
         retArray,
         DATABASE_NAME);
@@ -692,6 +738,12 @@ public class IoTDBMultiTAGsWithAttributesTableIT {
             + "count(attr1) as count_attr1, count(attr2) as count_attr2, count(time) as count_time, sum(num) as sum_num "
             + "from table0 group by device,level order by device, level";
     tableResultSetEqualTest(sql, expectedHeader, retArray, DATABASE_NAME);
+    sql =
+        "select device, level, "
+            + "count(num) as count_num, count(1) as count_star, count(device) as count_device, count(date) as count_date, "
+            + "count(attr1) as count_attr1, count(attr2) as count_attr2, count(time) as count_time, sum(num) as sum_num "
+            + "from table0 group by device,level order by device, level";
+    tableResultSetEqualTest(sql, expectedHeader, retArray, DATABASE_NAME);
 
     expectedHeader =
         new String[] {
@@ -712,6 +764,12 @@ public class IoTDBMultiTAGsWithAttributesTableIT {
     sql =
         "select device, "
             + "count(num) as count_num, count(*) as count_star, count(device) as count_device, count(date) as count_date, "
+            + "count(attr1) as count_attr1, count(attr2) as count_attr2, count(time) as count_time, sum(num) as sum_num "
+            + "from table0 where device='d1' and level='l1' group by device order by device";
+    tableResultSetEqualTest(sql, expectedHeader, retArray, DATABASE_NAME);
+    sql =
+        "select device, "
+            + "count(num) as count_num, count(1) as count_star, count(device) as count_device, count(date) as count_date, "
             + "count(attr1) as count_attr1, count(attr2) as count_attr2, count(time) as count_time, sum(num) as sum_num "
             + "from table0 where device='d1' and level='l1' group by device order by device";
     tableResultSetEqualTest(sql, expectedHeader, retArray, DATABASE_NAME);
@@ -815,6 +873,12 @@ public class IoTDBMultiTAGsWithAttributesTableIT {
             + "count(attr1) as count_attr1, count(attr2) as count_attr2, count(time) as count_time, avg(num) as avg_num "
             + "from table0 group by 3, device, level order by device, level, bin";
     tableResultSetEqualTest(sql, expectedHeader, retArray, DATABASE_NAME);
+    sql =
+        "select device, level, date_bin(1y, time) as bin,"
+            + "count(num) as count_num, count(1) as count_star, count(device) as count_device, count(date) as count_date, "
+            + "count(attr1) as count_attr1, count(attr2) as count_attr2, count(time) as count_time, avg(num) as avg_num "
+            + "from table0 group by 3, device, level order by device, level, bin";
+    tableResultSetEqualTest(sql, expectedHeader, retArray, DATABASE_NAME);
 
     retArray =
         new String[] {
@@ -850,6 +914,12 @@ public class IoTDBMultiTAGsWithAttributesTableIT {
     sql =
         "select device, level, date_bin(1d, time) as bin,"
             + "count(num) as count_num, count(*) as count_star, count(device) as count_device, count(date) as count_date, "
+            + "count(attr1) as count_attr1, count(attr2) as count_attr2, count(time) as count_time, avg(num) as avg_num "
+            + "from table0 group by 3, device, level order by device, level, bin";
+    tableResultSetEqualTest(sql, expectedHeader, retArray, DATABASE_NAME);
+    sql =
+        "select device, level, date_bin(1d, time) as bin,"
+            + "count(num) as count_num, count(1) as count_star, count(device) as count_device, count(date) as count_date, "
             + "count(attr1) as count_attr1, count(attr2) as count_attr2, count(time) as count_time, avg(num) as avg_num "
             + "from table0 group by 3, device, level order by device, level, bin";
     tableResultSetEqualTest(sql, expectedHeader, retArray, DATABASE_NAME);
@@ -893,6 +963,12 @@ public class IoTDBMultiTAGsWithAttributesTableIT {
             + "count(attr1) as count_attr1, count(attr2) as count_attr2, count(time) as count_time, avg(num) as avg_num "
             + "from table0 group by 3, device, level order by device, level, bin";
     tableResultSetEqualTest(sql, expectedHeader, retArray, DATABASE_NAME);
+    sql =
+        "select device, level, date_bin(1s, time) as bin,"
+            + "count(num) as count_num, count(1) as count_star, count(device) as count_device, count(date) as count_date, "
+            + "count(attr1) as count_attr1, count(attr2) as count_attr2, count(time) as count_time, avg(num) as avg_num "
+            + "from table0 group by 3, device, level order by device, level, bin";
+    tableResultSetEqualTest(sql, expectedHeader, retArray, DATABASE_NAME);
 
     // only group by date_bin
     expectedHeader = new String[] {"bin"};
@@ -927,6 +1003,12 @@ public class IoTDBMultiTAGsWithAttributesTableIT {
           "1971-01-01T00:00:00.000Z,1,1,1,0,1,1,1,10.0,",
           "1971-04-26T17:46:40.000Z,1,1,1,0,1,1,1,12.0,"
         };
+    tableResultSetEqualTest(sql, expectedHeader, retArray, DATABASE_NAME);
+    sql =
+        "select date_bin(1s, time) as bin,"
+            + "count(num) as count_num, count(1) as count_star, count(device) as count_device, count(date) as count_date, "
+            + "count(attr1) as count_attr1, count(attr2) as count_attr2, count(time) as count_time, avg(num) as avg_num "
+            + "from table0 where device='d1' and level='l2' group by 1";
     tableResultSetEqualTest(sql, expectedHeader, retArray, DATABASE_NAME);
 
     // flush multi times, generated multi tsfile
@@ -974,6 +1056,11 @@ public class IoTDBMultiTAGsWithAttributesTableIT {
             + "count(attr1) as count_attr1, count(attr2) as count_attr2, count(time) as count_time, sum(num) as sum_num,"
             + "avg(num) as avg_num from table0 where time=32";
     tableResultSetEqualTest(sql, expectedHeader, retArray, DATABASE_NAME);
+    sql =
+        "select count(num) as count_num, count(1) as count_star, count(device) as count_device, count(date) as count_date, "
+            + "count(attr1) as count_attr1, count(attr2) as count_attr2, count(time) as count_time, sum(num) as sum_num,"
+            + "avg(num) as avg_num from table0 where time=32";
+    tableResultSetEqualTest(sql, expectedHeader, retArray, DATABASE_NAME);
 
     retArray =
         new String[] {
@@ -981,6 +1068,11 @@ public class IoTDBMultiTAGsWithAttributesTableIT {
         };
     sql =
         "select count(num) as count_num, count(*) as count_star, count(device) as count_device, count(date) as count_date, "
+            + "count(attr1) as count_attr1, count(attr2) as count_attr2, count(time) as count_time, sum(num) as sum_num,"
+            + "avg(num) as avg_num from table0 where time=32 or time=1971-04-27T01:46:40.000+08:00";
+    tableResultSetEqualTest(sql, expectedHeader, retArray, DATABASE_NAME);
+    sql =
+        "select count(num) as count_num, count(1) as count_star, count(device) as count_device, count(date) as count_date, "
             + "count(attr1) as count_attr1, count(attr2) as count_attr2, count(time) as count_time, sum(num) as sum_num,"
             + "avg(num) as avg_num from table0 where time=32 or time=1971-04-27T01:46:40.000+08:00";
     tableResultSetEqualTest(sql, expectedHeader, retArray, DATABASE_NAME);
@@ -1005,9 +1097,19 @@ public class IoTDBMultiTAGsWithAttributesTableIT {
             + "count(attr1) as count_attr1, count(attr2) as count_attr2, count(time) as count_time, sum(num) as sum_num,"
             + "avg(num) as avg_num from table0 where time=32 group by device, level order by device, level";
     tableResultSetEqualTest(sql, expectedHeader, retArray, DATABASE_NAME);
+    sql =
+        "select device, level, count(num) as count_num, count(1) as count_star, count(device) as count_device, count(date) as count_date, "
+            + "count(attr1) as count_attr1, count(attr2) as count_attr2, count(time) as count_time, sum(num) as sum_num,"
+            + "avg(num) as avg_num from table0 where time=32 group by device, level order by device, level";
+    tableResultSetEqualTest(sql, expectedHeader, retArray, DATABASE_NAME);
     retArray = new String[] {"d1,l2,1,1,1,0,1,1,1,12.0,12.0,", "d2,l2,1,1,1,0,1,0,1,12.0,12.0,"};
     sql =
         "select device, level, count(num) as count_num, count(*) as count_star, count(device) as count_device, count(date) as count_date, "
+            + "count(attr1) as count_attr1, count(attr2) as count_attr2, count(time) as count_time, sum(num) as sum_num,"
+            + "avg(num) as avg_num from table0 where time=32 or time=1971-04-27T01:46:40.000+08:00 group by device, level order by device, level";
+    tableResultSetEqualTest(sql, expectedHeader, retArray, DATABASE_NAME);
+    sql =
+        "select device, level, count(num) as count_num, count(1) as count_star, count(device) as count_device, count(date) as count_date, "
             + "count(attr1) as count_attr1, count(attr2) as count_attr2, count(time) as count_time, sum(num) as sum_num,"
             + "avg(num) as avg_num from table0 where time=32 or time=1971-04-27T01:46:40.000+08:00 group by device, level order by device, level";
     tableResultSetEqualTest(sql, expectedHeader, retArray, DATABASE_NAME);
@@ -1034,6 +1136,12 @@ public class IoTDBMultiTAGsWithAttributesTableIT {
             + "count(attr1) as count_attr1, count(attr2) as count_attr2, count(time) as count_time, sum(num) as sum_num,"
             + "avg(num) as avg_num from table0 where time=32 group by 3, device, level order by device, level";
     tableResultSetEqualTest(sql, expectedHeader, retArray, DATABASE_NAME);
+    sql =
+        "select device, level, date_bin(1d, time) as bin, count(num) as count_num, count(1) as count_star, "
+            + "count(device) as count_device, count(date) as count_date, "
+            + "count(attr1) as count_attr1, count(attr2) as count_attr2, count(time) as count_time, sum(num) as sum_num,"
+            + "avg(num) as avg_num from table0 where time=32 group by 3, device, level order by device, level";
+    tableResultSetEqualTest(sql, expectedHeader, retArray, DATABASE_NAME);
     retArray =
         new String[] {
           "d1,l2,1971-04-26T00:00:00.000Z,1,1,1,0,1,1,1,12.0,12.0,",
@@ -1045,15 +1153,26 @@ public class IoTDBMultiTAGsWithAttributesTableIT {
             + "count(attr1) as count_attr1, count(attr2) as count_attr2, count(time) as count_time, sum(num) as sum_num,"
             + "avg(num) as avg_num from table0 where time=32 or time=1971-04-27T01:46:40.000+08:00 group by 3, device, level order by device, level";
     tableResultSetEqualTest(sql, expectedHeader, retArray, DATABASE_NAME);
+    sql =
+        "select device, level, date_bin(1d, time) as bin, count(num) as count_num, count(1) as count_star, "
+            + "count(device) as count_device, count(date) as count_date, "
+            + "count(attr1) as count_attr1, count(attr2) as count_attr2, count(time) as count_time, sum(num) as sum_num,"
+            + "avg(num) as avg_num from table0 where time=32 or time=1971-04-27T01:46:40.000+08:00 group by 3, device, level order by device, level";
+    tableResultSetEqualTest(sql, expectedHeader, retArray, DATABASE_NAME);
 
     // queried device is not exist
     expectedHeader = buildHeaders(3);
     sql = "select count(*), count(num), sum(num) from table0 where device='d_not_exist'";
     retArray = new String[] {"0,0,null,"};
     tableResultSetEqualTest(sql, expectedHeader, retArray, DATABASE_NAME);
+    sql = "select count(1), count(num), sum(num) from table0 where device='d_not_exist'";
+    tableResultSetEqualTest(sql, expectedHeader, retArray, DATABASE_NAME);
     sql =
         "select count(*), count(num), sum(num) from table0 where device='d_not_exist1' or device='d_not_exist2'";
     retArray = new String[] {"0,0,null,"};
+    tableResultSetEqualTest(sql, expectedHeader, retArray, DATABASE_NAME);
+    sql =
+        "select count(1), count(num), sum(num) from table0 where device='d_not_exist1' or device='d_not_exist2'";
     tableResultSetEqualTest(sql, expectedHeader, retArray, DATABASE_NAME);
 
     // no data in given time range (push-down)
@@ -2095,30 +2214,142 @@ public class IoTDBMultiTAGsWithAttributesTableIT {
   }
 
   @Test
-  public void exceptionTest() {
-    tableAssertTestFail(
-        "select * from table0 t0 full join table1 t1 on t0.num>t1.num",
-        FULL_JOIN_ONLY_SUPPORT_EQUI_JOIN,
+  public void asofJoinTest() {
+    expectedHeader = new String[] {"time", "device", "level", "time", "device", "level"};
+    retArray =
+        new String[] {
+          "1971-01-01T00:00:00.000Z,d1,l1,1970-01-01T00:00:00.100Z,d1,l5,",
+          "1971-01-01T00:01:40.000Z,d1,l1,1971-01-01T00:00:00.000Z,d1,l1,",
+          "1971-01-01T00:01:40.000Z,d1,l1,1971-01-01T00:00:00.000Z,d999,null,",
+          "1971-01-01T00:01:40.000Z,d1,l1,1971-01-01T00:00:00.000Z,null,l999,",
+          "1970-01-01T00:00:00.020Z,d1,l2,1970-01-01T00:00:00.010Z,d11,l11,",
+          "1971-01-01T00:00:00.100Z,d1,l2,1971-01-01T00:00:00.000Z,d1,l1,",
+          "1971-01-01T00:00:00.100Z,d1,l2,1971-01-01T00:00:00.000Z,d999,null,",
+          "1971-01-01T00:00:00.100Z,d1,l2,1971-01-01T00:00:00.000Z,null,l999,",
+          "1971-04-26T17:46:40.000Z,d1,l2,1971-01-01T00:00:00.000Z,d1,l1,",
+          "1971-04-26T17:46:40.000Z,d1,l2,1971-01-01T00:00:00.000Z,d999,null,"
+        };
+    // test single join condition
+    tableResultSetEqualTest(
+        "select table0.time,table0.device,table0.level,table1.time,table1.device,table1.level from table0 asof join table1 on "
+            + "table0.time>table1.time "
+            + "order by table0.device,table0.level,table0.time,table1.device,table1.level limit 10",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+    // test expr and '>=' in ASOF condition
+    tableResultSetEqualTest(
+        "select table0.time,table0.device,table0.level,table1.time,table1.device,table1.level from table0 asof join table1 on "
+            + "table0.time>=table1.time+1 "
+            + "order by table0.device,table0.level,table0.time,table1.device,table1.level limit 10",
+        expectedHeader,
+        retArray,
         DATABASE_NAME);
 
-    tableAssertTestFail(
-        "select * from table0 t0 full join table1 t1 on t0.num!=t1.num",
-        FULL_JOIN_ONLY_SUPPORT_EQUI_JOIN,
+    retArray =
+        new String[] {
+          "1971-01-01T00:00:00.000Z,d1,l1,1970-01-01T00:00:00.000Z,d1,l1,",
+          "1971-01-01T00:01:40.000Z,d1,l1,1971-01-01T00:00:00.000Z,d1,l1,",
+          "1971-01-01T00:00:00.100Z,d1,l2,1970-01-01T00:00:00.020Z,d1,l2,",
+          "1971-04-26T17:46:40.000Z,d1,l2,1970-01-01T00:00:00.020Z,d1,l2,",
+          "1971-01-01T00:00:00.500Z,d1,l3,1970-01-01T00:00:00.040Z,d1,l3,",
+          "1971-04-26T17:46:40.020Z,d1,l3,1970-01-01T00:00:00.040Z,d1,l3,",
+          "1971-01-01T00:00:01.000Z,d1,l4,1970-01-01T00:00:00.080Z,d1,l4,",
+          "1971-04-26T18:01:40.000Z,d1,l4,1970-01-01T00:00:00.080Z,d1,l4,",
+          "1971-01-01T00:00:10.000Z,d1,l5,1970-01-01T00:00:00.100Z,d1,l5,",
+          "1971-08-20T11:33:20.000Z,d1,l5,1970-01-01T00:00:00.100Z,d1,l5,"
+        };
+    // test multi join conditions
+    tableResultSetEqualTest(
+        "select table0.time,table0.device,table0.level,table1.time,table1.device,table1.level from table0 asof join table1 on "
+            + "table0.device=table1.device and table1.level=table0.level and table0.time>table1.time "
+            + "order by table0.device,table0.level,table0.time,table1.device,table1.level",
+        expectedHeader,
+        retArray,
         DATABASE_NAME);
+    // test expr and '>=' in ASOF condition
+    tableResultSetEqualTest(
+        "select table0.time,table0.device,table0.level,table1.time,table1.device,table1.level from table0 asof join table1 on "
+            + "table0.device=table1.device and table1.level=table0.level and table0.time>=table1.time+1 "
+            + "order by table0.device,table0.level,table0.time,table1.device,table1.level",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+
+    retArray =
+        new String[] {
+          "1970-01-01T00:00:00.000Z,d1,l1,1970-01-01T00:00:00.010Z,d11,l11,",
+          "1970-01-01T00:00:00.020Z,d1,l2,1970-01-01T00:00:00.030Z,d11,l11,",
+          "1970-01-01T00:00:00.040Z,d1,l3,1970-01-01T00:00:00.080Z,d1,l4,",
+          "1970-01-01T00:00:00.080Z,d1,l4,1970-01-01T00:00:00.100Z,d1,l5,",
+          "1970-01-01T00:00:00.100Z,d1,l5,1971-01-01T00:00:00.000Z,d1,l1,",
+          "1970-01-01T00:00:00.100Z,d1,l5,1971-01-01T00:00:00.000Z,d999,null,",
+          "1970-01-01T00:00:00.100Z,d1,l5,1971-01-01T00:00:00.000Z,null,l999,",
+          "1970-01-01T00:00:00.000Z,d2,l1,1970-01-01T00:00:00.010Z,d11,l11,",
+          "1970-01-01T00:00:00.020Z,d2,l2,1970-01-01T00:00:00.030Z,d11,l11,",
+          "1970-01-01T00:00:00.040Z,d2,l3,1970-01-01T00:00:00.080Z,d1,l4,"
+        };
+    // test single join condition
+    tableResultSetEqualTest(
+        "select table0.time,table0.device,table0.level,table1.time,table1.device,table1.level from table0 asof join table1 on "
+            + "table0.time<table1.time "
+            + "order by table0.device,table0.level,table0.time,table1.device,table1.level limit 10",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+    // test expr and '<=' in ASOF condition
+    tableResultSetEqualTest(
+        "select table0.time,table0.device,table0.level,table1.time,table1.device,table1.level from table0 asof join table1 on "
+            + "table0.time<=table1.time-1 "
+            + "order by table0.device,table0.level,table0.time,table1.device,table1.level limit 10",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+
+    retArray =
+        new String[] {
+          "1970-01-01T00:00:00.000Z,d1,l1,1971-01-01T00:00:00.000Z,d1,l1,",
+        };
+    // test multi join conditions
+    tableResultSetEqualTest(
+        "select table0.time,table0.device,table0.level,table1.time,table1.device,table1.level from table0 asof join table1 on "
+            + "table0.device=table1.device and table1.level=table0.level and table0.time<table1.time "
+            + "order by table0.device,table0.level,table0.time,table1.device,table1.level",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+    // test expr and '>=' in ASOF condition
+    tableResultSetEqualTest(
+        "select table0.time,table0.device,table0.level,table1.time,table1.device,table1.level from table0 asof join table1 on "
+            + "table0.device=table1.device and table1.level=table0.level and table0.time<=table1.time-1 "
+            + "order by table0.device,table0.level,table0.time,table1.device,table1.level",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+  }
+
+  @Test
+  public void exceptionTest() {
+    String errMsg = TSStatusCode.SEMANTIC_ERROR.getStatusCode() + ": " + ONLY_SUPPORT_EQUI_JOIN;
+    tableAssertTestFail(
+        "select * from table0 t0 full join table1 t1 on t0.num>t1.num", errMsg, DATABASE_NAME);
+
+    tableAssertTestFail(
+        "select * from table0 t0 full join table1 t1 on t0.num!=t1.num", errMsg, DATABASE_NAME);
 
     tableAssertTestFail(
         "select * from table0 t0 full join table1 t1 on t0.device=t1.device AND t0.num>t1.num",
-        FULL_JOIN_ONLY_SUPPORT_EQUI_JOIN,
+        errMsg,
         DATABASE_NAME);
 
     tableAssertTestFail(
         "select * from table0 t0 full join table1 t1 on t0.device=t1.device OR t0.num>t1.num",
-        FULL_JOIN_ONLY_SUPPORT_EQUI_JOIN,
+        errMsg,
         DATABASE_NAME);
 
     tableAssertTestFail(
         "select * from table0 t0 full join table1 t1 on t0.device=t1.device OR t0.time=t1.time",
-        FULL_JOIN_ONLY_SUPPORT_EQUI_JOIN,
+        errMsg,
         DATABASE_NAME);
   }
 

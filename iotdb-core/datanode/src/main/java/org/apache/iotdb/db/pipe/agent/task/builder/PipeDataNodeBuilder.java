@@ -71,8 +71,8 @@ public class PipeDataNodeBuilder {
                     extractorParameters, dataRegionId);
         final boolean needConstructSchemaRegionTask =
             schemaRegionIds.contains(new SchemaRegionId(consensusGroupId))
-                && !SchemaRegionListeningFilter.parseListeningPlanTypeSet(extractorParameters)
-                    .isEmpty();
+                && SchemaRegionListeningFilter.shouldSchemaRegionBeListened(
+                    consensusGroupId, extractorParameters);
 
         // Advance the extractor parameters parsing logic to avoid creating un-relevant pipeTasks
         if (needConstructDataRegionTask || needConstructSchemaRegionTask) {

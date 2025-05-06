@@ -19,10 +19,70 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.sql.util;
 
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.*;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AllColumns;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AllRows;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ArithmeticBinaryExpression;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ArithmeticUnaryExpression;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AstVisitor;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.BetweenPredicate;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.BinaryLiteral;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.BooleanLiteral;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Cast;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CoalesceExpression;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Columns;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ComparisonExpression;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CurrentDatabase;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CurrentTime;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CurrentUser;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DecimalLiteral;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DereferenceExpression;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DoubleLiteral;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ExistsPredicate;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.FieldReference;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.FrameBound;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.FunctionCall;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.GenericDataType;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.GenericLiteral;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.GroupingElement;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.GroupingSets;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Identifier;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.IfExpression;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.InListExpression;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.InPredicate;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.IsNotNullPredicate;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.IsNullPredicate;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LikePredicate;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Literal;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LogicalExpression;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LongLiteral;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Node;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.NotExpression;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.NullIfExpression;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.NullLiteral;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.NumericParameter;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.OrderBy;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Parameter;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.QualifiedName;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.QuantifiedComparisonExpression;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Row;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SearchedCaseExpression;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SimpleCaseExpression;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SimpleGroupBy;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SortItem;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.StringLiteral;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SubqueryExpression;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SymbolReference;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Trim;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.TypeParameter;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.WhenClause;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Window;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.WindowFrame;
 
 import com.google.common.base.Joiner;
 import com.google.common.collect.ImmutableList;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.WindowReference;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.WindowSpecification;
 
 import java.text.DecimalFormat;
 import java.text.DecimalFormatSymbols;
@@ -37,6 +97,7 @@ import static java.util.Objects.requireNonNull;
 import static java.util.stream.Collectors.joining;
 import static java.util.stream.Collectors.toList;
 import static org.apache.iotdb.commons.udf.builtin.relational.TableBuiltinScalarFunction.DATE_BIN;
+import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.FrameBound.Type.UNBOUNDED_PRECEDING;
 import static org.apache.iotdb.db.queryengine.plan.relational.sql.util.ReservedIdentifiers.reserved;
 import static org.apache.iotdb.db.queryengine.plan.relational.sql.util.SqlFormatter.formatName;
 import static org.apache.iotdb.db.queryengine.plan.relational.sql.util.SqlFormatter.formatSql;
@@ -491,6 +552,11 @@ public final class ExpressionFormatter {
     @Override
     protected String visitNumericTypeParameter(NumericParameter node, Void context) {
       return node.getValue();
+    }
+
+    @Override
+    protected String visitColumns(Columns node, Void context) {
+      return "COLUMNS(" + (node.isColumnsAsterisk() ? "*" : node.getPattern()) + ")";
     }
 
     private String formatBinaryExpression(String operator, Expression left, Expression right) {

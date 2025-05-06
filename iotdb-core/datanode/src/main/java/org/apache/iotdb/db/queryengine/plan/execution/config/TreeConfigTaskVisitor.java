@@ -21,6 +21,7 @@ package org.apache.iotdb.db.queryengine.plan.execution.config;
 
 import org.apache.iotdb.common.rpc.thrift.Model;
 import org.apache.iotdb.commons.executable.ExecutableManager;
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.pipe.config.constant.SystemConstant;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
@@ -58,9 +59,10 @@ import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.ShowTTLTas
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.ShowTriggersTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.ShowVariablesTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.UnSetTTLTask;
-import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.model.CreateModelTask;
-import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.model.DropModelTask;
-import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.model.ShowModelsTask;
+import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.ai.CreateModelTask;
+import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.ai.CreateTrainingTask;
+import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.ai.DropModelTask;
+import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.ai.ShowModelsTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.region.ExtendRegionTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.region.MigrateRegionTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.region.ReconstructRegionTask;
@@ -138,6 +140,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowTriggersState
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowVariablesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.UnSetTTLStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.model.CreateModelStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.model.CreateTrainingStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.model.DropModelStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.model.ShowAINodesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.model.ShowModelsStatement;
@@ -191,8 +194,14 @@ import org.apache.iotdb.db.queryengine.plan.statement.sys.quota.ShowThrottleQuot
 
 import org.apache.tsfile.exception.NotImplementedException;
 
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+
 import static org.apache.iotdb.commons.executable.ExecutableManager.getUnTrustedUriErrorMsg;
 import static org.apache.iotdb.commons.executable.ExecutableManager.isUriTrusted;
+import static org.apache.iotdb.db.queryengine.plan.execution.config.TableConfigTaskVisitor.checkAndEnrichSinkUserName;
+import static org.apache.iotdb.db.queryengine.plan.execution.config.TableConfigTaskVisitor.checkAndEnrichSourceUserName;
 
 public class TreeConfigTaskVisitor extends StatementVisitor<IConfigTask, MPPQueryContext> {
 
@@ -509,8 +518,8 @@ public class TreeConfigTaskVisitor extends StatementVisitor<IConfigTask, MPPQuer
 
   @Override
   public IConfigTask visitCreatePipe(
-      CreatePipeStatement createPipeStatement, MPPQueryContext context) {
-    for (String ExtractorAttribute : createPipeStatement.getExtractorAttributes().keySet()) {
+      final CreatePipeStatement createPipeStatement, final MPPQueryContext context) {
+    for (final String ExtractorAttribute : createPipeStatement.getExtractorAttributes().keySet()) {
       if (ExtractorAttribute.startsWith(SystemConstant.SYSTEM_PREFIX_KEY)) {
         throw new SemanticException(
             String.format(
@@ -523,29 +532,51 @@ public class TreeConfigTaskVisitor extends StatementVisitor<IConfigTask, MPPQuer
     createPipeStatement
         .getExtractorAttributes()
         .put(SystemConstant.SQL_DIALECT_KEY, SystemConstant.SQL_DIALECT_TREE_VALUE);
+    checkAndEnrichSourceUserName(
+        createPipeStatement.getPipeName(),
+        createPipeStatement.getExtractorAttributes(),
+        context.getSession().getUserName(),
+        false);
+    checkAndEnrichSinkUserName(
+        createPipeStatement.getPipeName(),
+        createPipeStatement.getConnectorAttributes(),
+        context.getSession().getUserName(),
+        false);
 
     return new CreatePipeTask(createPipeStatement);
   }
 
   @Override
   public IConfigTask visitAlterPipe(
-      AlterPipeStatement alterPipeStatement, MPPQueryContext context) {
+      final AlterPipeStatement alterPipeStatement, final MPPQueryContext context) {
 
-    for (String ExtractorAttribute : alterPipeStatement.getExtractorAttributes().keySet()) {
-      if (ExtractorAttribute.startsWith(SystemConstant.SYSTEM_PREFIX_KEY)) {
+    for (final String extractorAttributeKey :
+        alterPipeStatement.getExtractorAttributes().keySet()) {
+      if (extractorAttributeKey.startsWith(SystemConstant.SYSTEM_PREFIX_KEY)) {
         throw new SemanticException(
             String.format(
                 "Failed to alter pipe %s, modifying %s is not allowed.",
-                alterPipeStatement.getPipeName(), ExtractorAttribute));
+                alterPipeStatement.getPipeName(), extractorAttributeKey));
       }
     }
+
+    final String userName = context.getSession().getUserName();
+    alterPipeStatement.setUserName(userName);
+
+    final String pipeName = alterPipeStatement.getPipeName();
+    final Map<String, String> extractorAttributes = alterPipeStatement.getExtractorAttributes();
 
     // If the source is replaced, sql-dialect uses the current Alter Pipe sql-dialect. If it is
     // modified, the original sql-dialect is used.
     if (alterPipeStatement.isReplaceAllExtractorAttributes()) {
-      alterPipeStatement
-          .getExtractorAttributes()
-          .put(SystemConstant.SQL_DIALECT_KEY, SystemConstant.SQL_DIALECT_TREE_VALUE);
+      extractorAttributes.put(
+          SystemConstant.SQL_DIALECT_KEY, SystemConstant.SQL_DIALECT_TREE_VALUE);
+      checkAndEnrichSourceUserName(pipeName, extractorAttributes, userName, true);
+    }
+
+    if (alterPipeStatement.isReplaceAllConnectorAttributes()) {
+      checkAndEnrichSinkUserName(
+          pipeName, alterPipeStatement.getConnectorAttributes(), userName, true);
     }
 
     return new AlterPipeTask(alterPipeStatement);
@@ -757,5 +788,23 @@ public class TreeConfigTaskVisitor extends StatementVisitor<IConfigTask, MPPQuer
   public IConfigTask visitShowCurrentSqlDialect(
       ShowCurrentSqlDialectStatement node, MPPQueryContext context) {
     return new ShowCurrentSqlDialectTask(context.getSession().getSqlDialect().name());
+  }
+
+  @Override
+  public IConfigTask visitCreateTraining(
+      CreateTrainingStatement createTrainingStatement, MPPQueryContext context) {
+    List<PartialPath> partialPathList = createTrainingStatement.getTargetPathPatterns();
+    List<String> targetPathPatterns = new ArrayList<>();
+    for (PartialPath partialPath : partialPathList) {
+      targetPathPatterns.add(partialPath.getFullPath());
+    }
+    return new CreateTrainingTask(
+        createTrainingStatement.getModelId(),
+        createTrainingStatement.getModelType(),
+        createTrainingStatement.getParameters(),
+        false,
+        createTrainingStatement.getTargetTimeRanges(),
+        createTrainingStatement.getExistingModelId(),
+        targetPathPatterns);
   }
 }

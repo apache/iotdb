@@ -26,6 +26,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.Iterati
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.Rule;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.RuleStatsRecorder;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.CanonicalizeExpressions;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.ImplementTableFunctionSource;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.InlineProjections;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.MergeFilters;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.MergeLimitOverProjectWithSort;
@@ -37,10 +38,12 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.Pr
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.PruneApplyColumns;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.PruneApplyCorrelation;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.PruneApplySourceColumns;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.PruneAssignUniqueIdColumns;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.PruneCorrelatedJoinColumns;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.PruneCorrelatedJoinCorrelation;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.PruneDistinctAggregation;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.PruneEnforceSingleRowColumns;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.PruneExplainAnalyzeColumns;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.PruneFillColumns;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.PruneFilterColumns;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.PruneGapFillColumns;
@@ -52,17 +55,30 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.Pr
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.PruneOutputSourceColumns;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.PruneProjectColumns;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.PruneSortColumns;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.PruneTableFunctionProcessorColumns;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.PruneTableFunctionProcessorSourceColumns;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.PruneTableScanColumns;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.PruneTopKColumns;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.PushLimitThroughOffset;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.PushLimitThroughProject;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.RemoveDuplicateConditions;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.RemoveRedundantEnforceSingleRowNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.RemoveRedundantExists;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.RemoveRedundantIdentityProjections;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.RemoveTrivialFilters;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.RemoveUnreferencedScalarApplyNodes;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.RemoveUnreferencedScalarSubqueries;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.SimplifyCountOverConstant;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.SimplifyExpressions;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.SingleDistinctAggregationToGroupBy;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.TransformCorrelatedDistinctAggregationWithProjection;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.TransformCorrelatedDistinctAggregationWithoutProjection;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.TransformCorrelatedGlobalAggregationWithProjection;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.TransformCorrelatedGlobalAggregationWithoutProjection;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.TransformCorrelatedGroupedAggregationWithProjection;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.TransformCorrelatedGroupedAggregationWithoutProjection;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.TransformCorrelatedJoinToJoin;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.TransformExistsApplyToCorrelatedJoin;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.TransformUncorrelatedInPredicateSubqueryToSemiJoin;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.TransformUncorrelatedSubqueryToJoin;
 
@@ -90,6 +106,7 @@ public class LogicalOptimizeFactory {
             new PruneApplyColumns(),
             new PruneApplyCorrelation(),
             new PruneApplySourceColumns(),
+            new PruneAssignUniqueIdColumns(),
             new PruneCorrelatedJoinColumns(),
             new PruneCorrelatedJoinCorrelation(),
             new PruneEnforceSingleRowColumns(),
@@ -100,8 +117,11 @@ public class LogicalOptimizeFactory {
             new PruneMarkDistinctColumns(),
             new PruneOffsetColumns(),
             new PruneOutputSourceColumns(),
+            new PruneExplainAnalyzeColumns(),
             new PruneProjectColumns(),
             new PruneSortColumns(),
+            new PruneTableFunctionProcessorColumns(),
+            new PruneTableFunctionProcessorSourceColumns(),
             new PruneTableScanColumns(plannerContext.getMetadata()),
             new PruneTopKColumns(),
             new PruneJoinColumns(),
@@ -164,6 +184,7 @@ public class LogicalOptimizeFactory {
                 // addAll(new PushCastIntoRow().rules())
                 .addAll(
                     ImmutableSet.of(
+                        new ImplementTableFunctionSource(),
                         new MergeFilters(),
                         new InlineProjections(plannerContext),
                         new RemoveRedundantIdentityProjections(),
@@ -179,16 +200,16 @@ public class LogicalOptimizeFactory {
                         //                        new RemoveRedundantJoin(),
                         //                        new ReplaceRedundantJoinWithProject(),
                         new RemoveRedundantEnforceSingleRowNode(),
-                        //                        new RemoveRedundantExists(),
+                        new RemoveRedundantExists(),
                         //                        new RemoveRedundantWindow(),
                         new SingleDistinctAggregationToGroupBy(),
                         // Our AggregationPushDown does not support AggregationNode with distinct,
                         // so there is no need to put it after AggregationPushDown,
                         // put it here to avoid extra ColumnPruning.
-                        new MultipleDistinctAggregationToMarkDistinct()
+                        new MultipleDistinctAggregationToMarkDistinct(),
                         //                        new MergeLimitWithDistinct(),
                         //                        new PruneCountAggregationOverScalar(metadata),
-                        //                        new SimplifyCountOverConstant(plannerContext),
+                        new SimplifyCountOverConstant(plannerContext)
                         //                        new
                         // PreAggregateCaseAggregations(plannerContext, typeAnalyzer)))
                         ))
@@ -217,14 +238,36 @@ public class LogicalOptimizeFactory {
         new UnaliasSymbolReferences(plannerContext.getMetadata()),
         columnPruningOptimizer,
         inlineProjectionLimitFiltersOptimizer,
+        new IterativeOptimizer(
+            plannerContext,
+            ruleStats,
+            ImmutableSet.of(new TransformExistsApplyToCorrelatedJoin(plannerContext))),
         new TransformQuantifiedComparisonApplyToCorrelatedJoin(metadata),
         new IterativeOptimizer(
             plannerContext,
             ruleStats,
             ImmutableSet.of(
-                new RemoveRedundantEnforceSingleRowNode(), new RemoveUnreferencedScalarSubqueries(),
+                new RemoveRedundantEnforceSingleRowNode(),
+                new RemoveUnreferencedScalarSubqueries(),
                 new TransformUncorrelatedSubqueryToJoin(),
-                    new TransformUncorrelatedInPredicateSubqueryToSemiJoin())),
+                new TransformUncorrelatedInPredicateSubqueryToSemiJoin(),
+                new TransformCorrelatedJoinToJoin(plannerContext),
+                new TransformCorrelatedGlobalAggregationWithProjection(plannerContext),
+                new TransformCorrelatedGlobalAggregationWithoutProjection(plannerContext),
+                new TransformCorrelatedDistinctAggregationWithProjection(plannerContext),
+                new TransformCorrelatedDistinctAggregationWithoutProjection(plannerContext),
+                new TransformCorrelatedGroupedAggregationWithProjection(plannerContext),
+                new TransformCorrelatedGroupedAggregationWithoutProjection(plannerContext))),
+        new IterativeOptimizer(
+            plannerContext,
+            ruleStats,
+            ImmutableSet.of(
+                new RemoveUnreferencedScalarApplyNodes(),
+                //                            new TransformCorrelatedInPredicateToJoin(metadata), //
+                // must be run after columnPruningOptimizer
+                //                            new TransformCorrelatedScalarSubquery(metadata), //
+                // must be run after TransformCorrelatedAggregation rules
+                new TransformCorrelatedJoinToJoin(plannerContext))),
         new IterativeOptimizer(
             plannerContext,
             ruleStats,
@@ -253,7 +296,8 @@ public class LogicalOptimizeFactory {
         new IterativeOptimizer(
             plannerContext,
             ruleStats,
-            ImmutableSet.of(new MergeLimitWithSort(), new MergeLimitOverProjectWithSort())));
+            ImmutableSet.of(new MergeLimitWithSort(), new MergeLimitOverProjectWithSort())),
+        new ParallelizeGrouping());
 
     this.planOptimizers = optimizerBuilder.build();
   }

@@ -124,11 +124,14 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.GroupRe
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationTreeDeviceViewScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.DeviceTableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.GapFillNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.GroupNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.InformationSchemaTableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.LinearFillNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.MarkDistinctNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.PreviousFillNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.SemiJoinNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TableFunctionNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TableFunctionProcessorNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TreeAlignedDeviceViewScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TreeDeviceViewScanNode;
@@ -656,6 +659,11 @@ public abstract class PlanVisitor<R, C> {
     return visitTwoChildProcess(node, context);
   }
 
+  public R visitAssignUniqueId(
+      org.apache.iotdb.db.queryengine.plan.relational.planner.node.AssignUniqueId node, C context) {
+    return visitSingleChildProcess(node, context);
+  }
+
   public R visitEnforceSingleRow(
       org.apache.iotdb.db.queryengine.plan.relational.planner.node.EnforceSingleRowNode node,
       C context) {
@@ -747,6 +755,10 @@ public abstract class PlanVisitor<R, C> {
     return visitSingleChildProcess(node, context);
   }
 
+  public R visitGroup(GroupNode node, C context) {
+    return visitSingleChildProcess(node, context);
+  }
+
   public R visitTopK(
       org.apache.iotdb.db.queryengine.plan.relational.planner.node.TopKNode node, C context) {
     return visitMultiChildProcess(node, context);
@@ -803,6 +815,14 @@ public abstract class PlanVisitor<R, C> {
   }
 
   public R visitWindowFunction(WindowNode node, C context) {
+    return visitPlan(node, context);
+  }
+
+  public R visitTableFunction(TableFunctionNode node, C context) {
+    return visitPlan(node, context);
+  }
+
+  public R visitTableFunctionProcessor(TableFunctionProcessorNode node, C context) {
     return visitPlan(node, context);
   }
 }

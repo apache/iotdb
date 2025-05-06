@@ -454,18 +454,18 @@ public class IoTDBDatabaseMetadata extends IoTDBAbstractDatabaseMetadata {
     fields[9] = new Field("", NUM_PREC_RADIX, INT32);
     fields[10] = new Field("", NULLABLE, INT32);
     fields[11] = new Field("", REMARKS, "TEXT");
-    fields[12] = new Field("", "COLUMN_DEF", "TEXT");
+    fields[12] = new Field("", COLUMN_DEF, "TEXT");
     fields[13] = new Field("", SQL_DATA_TYPE, INT32);
     fields[14] = new Field("", SQL_DATETIME_SUB, INT32);
     fields[15] = new Field("", CHAR_OCTET_LENGTH, INT32);
     fields[16] = new Field("", ORDINAL_POSITION, INT32);
     fields[17] = new Field("", IS_NULLABLE, "TEXT");
-    fields[18] = new Field("", "SCOPE_CATALOG", "TEXT");
-    fields[19] = new Field("", "SCOPE_SCHEMA", "TEXT");
-    fields[20] = new Field("", "SCOPE_TABLE", "TEXT");
-    fields[21] = new Field("", "SOURCE_DATA_TYPE", INT32);
+    fields[18] = new Field("", SCOPE_CATALOG, "TEXT");
+    fields[19] = new Field("", SCOPE_SCHEMA, "TEXT");
+    fields[20] = new Field("", SCOPE_TABLE, "TEXT");
+    fields[21] = new Field("", SOURCE_DATA_TYPE, INT32);
     fields[22] = new Field("", IS_AUTOINCREMENT, "TEXT");
-    fields[23] = new Field("", "IS_GENERATEDCOLUMN", "TEXT");
+    fields[23] = new Field("", IS_GENERATEDCOLUMN, "TEXT");
 
     List<TSDataType> tsDataTypeList =
         Arrays.asList(
@@ -590,13 +590,82 @@ public class IoTDBDatabaseMetadata extends IoTDBAbstractDatabaseMetadata {
   }
 
   @Override
+  public ResultSet getPrimaryKeys(String catalog, String schema, String table) throws SQLException {
+    Statement stmt = connection.createStatement();
+    List<String> columnNameList = new ArrayList<>();
+    List<String> columnTypeList = new ArrayList<>();
+    Map<String, Integer> columnNameIndex = new HashMap<>();
+    List<TSDataType> tsDataTypeList =
+        Arrays.asList(
+            TSDataType.TEXT,
+            TSDataType.TEXT,
+            TSDataType.TEXT,
+            TSDataType.TEXT,
+            TSDataType.INT32,
+            TSDataType.TEXT);
+
+    String database = "";
+    if (catalog != null) {
+      database = catalog;
+    } else if (schema != null) {
+      database = schema;
+    }
+
+    Field[] fields = new Field[6];
+    fields[0] = new Field("", TABLE_CAT, "TEXT");
+    fields[1] = new Field("", TABLE_SCHEM, "TEXT");
+    fields[2] = new Field("", TABLE_NAME, "TEXT");
+    fields[3] = new Field("", COLUMN_NAME, "TEXT");
+    fields[4] = new Field("", KEY_SEQ, INT32);
+    fields[5] = new Field("", PK_NAME, "TEXT");
+
+    List<Object> listValSub1 = Arrays.asList(database, "", table, "time", 1, PRIMARY);
+    List<Object> listValSub2 = Arrays.asList(database, "", table, "deivce", 2, PRIMARY);
+    List<List<Object>> valuesList = Arrays.asList(listValSub1, listValSub2);
+    for (int i = 0; i < fields.length; i++) {
+      columnNameList.add(fields[i].getName());
+      columnTypeList.add(fields[i].getSqlType());
+      columnNameIndex.put(fields[i].getName(), i);
+    }
+
+    ByteBuffer tsBlock = null;
+    try {
+      tsBlock = convertTsBlock(valuesList, tsDataTypeList);
+    } catch (IOException e) {
+      LOGGER.error("Get primary keys error: {}", e.getMessage());
+    } finally {
+      close(null, stmt);
+    }
+    return new IoTDBJDBCResultSet(
+        stmt,
+        columnNameList,
+        columnTypeList,
+        columnNameIndex,
+        true,
+        client,
+        null,
+        -1,
+        sessionId,
+        Collections.singletonList(tsBlock),
+        null,
+        (long) 60 * 1000,
+        false,
+        zoneId);
+  }
+
+  @Override
   public boolean supportsSchemasInDataManipulation() throws SQLException {
-    return false;
+    return true;
   }
 
   @Override
   public String getIdentifierQuoteString() throws SQLException {
-    return "`";
+    return "";
+  }
+
+  @Override
+  public String getSchemaTerm() throws SQLException {
+    return "storage group";
   }
 
   /**

@@ -29,6 +29,8 @@ import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
 import org.apache.iotdb.db.pipe.agent.task.PipeDataNodeTask;
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
 
+import java.util.concurrent.CompletableFuture;
+
 /**
  * The {@link PipeTerminateEvent} is an {@link EnrichedEvent} that controls the termination of pipe,
  * that is, when the historical {@link PipeTsFileInsertionEvent}s are all processed, this will be
@@ -43,7 +45,16 @@ public class PipeTerminateEvent extends EnrichedEvent {
       final long creationTime,
       final PipeTaskMeta pipeTaskMeta,
       final int dataRegionId) {
-    super(pipeName, creationTime, pipeTaskMeta, null, null, Long.MIN_VALUE, Long.MAX_VALUE);
+    super(
+        pipeName,
+        creationTime,
+        pipeTaskMeta,
+        null,
+        null,
+        null,
+        true,
+        Long.MIN_VALUE,
+        Long.MAX_VALUE);
     this.dataRegionId = dataRegionId;
   }
 
@@ -69,6 +80,8 @@ public class PipeTerminateEvent extends EnrichedEvent {
       final PipeTaskMeta pipeTaskMeta,
       final TreePattern treePattern,
       final TablePattern tablePattern,
+      final String userName,
+      final boolean skipIfNoPrivileges,
       final long startTime,
       final long endTime) {
     // Should record PipeTaskMeta, for the terminateEvent shall report progress to
@@ -93,7 +106,9 @@ public class PipeTerminateEvent extends EnrichedEvent {
 
   @Override
   public void reportProgress() {
-    PipeDataNodeAgent.task().markCompleted(pipeName, dataRegionId);
+    // To avoid deadlock
+    CompletableFuture.runAsync(
+        () -> PipeDataNodeAgent.task().markCompleted(pipeName, dataRegionId));
   }
 
   @Override

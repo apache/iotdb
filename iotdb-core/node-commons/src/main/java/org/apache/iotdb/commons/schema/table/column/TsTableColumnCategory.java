@@ -19,8 +19,8 @@
 
 package org.apache.iotdb.commons.schema.table.column;
 
+import org.apache.tsfile.enums.ColumnCategory;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
-import org.apache.tsfile.write.record.Tablet.ColumnCategory;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -89,7 +89,7 @@ public enum TsTableColumnCategory {
     }
   }
 
-  public static TsTableColumnCategory fromTsFileColumnType(ColumnCategory columnType) {
+  public static TsTableColumnCategory fromTsFileColumnCategory(ColumnCategory columnType) {
     switch (columnType) {
       case FIELD:
         return FIELD;

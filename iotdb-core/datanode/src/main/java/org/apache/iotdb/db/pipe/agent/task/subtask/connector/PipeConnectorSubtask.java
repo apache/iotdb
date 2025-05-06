@@ -30,8 +30,8 @@ import org.apache.iotdb.db.pipe.connector.protocol.thrift.async.IoTDBDataRegionA
 import org.apache.iotdb.db.pipe.event.UserDefinedEnrichedEvent;
 import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
 import org.apache.iotdb.db.pipe.event.common.schema.PipeSchemaRegionWritePlanEvent;
-import org.apache.iotdb.db.pipe.metric.PipeDataRegionConnectorMetrics;
-import org.apache.iotdb.db.pipe.metric.PipeSchemaRegionConnectorMetrics;
+import org.apache.iotdb.db.pipe.metric.schema.PipeSchemaRegionConnectorMetrics;
+import org.apache.iotdb.db.pipe.metric.sink.PipeDataRegionConnectorMetrics;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.utils.ErrorHandlingUtils;
 import org.apache.iotdb.pipe.api.PipeConnector;
@@ -43,6 +43,8 @@ import org.apache.iotdb.pipe.api.exception.PipeException;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.util.Objects;
 
 public class PipeConnectorSubtask extends PipeAbstractConnectorSubtask {
 
@@ -102,11 +104,12 @@ public class PipeConnectorSubtask extends PipeAbstractConnectorSubtask {
     }
 
     try {
-      if (event == null) {
-        if (System.currentTimeMillis() - lastHeartbeatEventInjectTime
-            > CRON_HEARTBEAT_EVENT_INJECT_INTERVAL_MILLISECONDS) {
-          transferHeartbeatEvent(CRON_HEARTBEAT_EVENT);
-        }
+      if (System.currentTimeMillis() - lastHeartbeatEventInjectTime
+          > CRON_HEARTBEAT_EVENT_INJECT_INTERVAL_MILLISECONDS) {
+        transferHeartbeatEvent(CRON_HEARTBEAT_EVENT);
+      }
+
+      if (Objects.isNull(event)) {
         return false;
       }
 

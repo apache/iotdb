@@ -338,7 +338,8 @@ public abstract class InsertNode extends SearchNode {
 
   public boolean allMeasurementFailed() {
     if (measurements != null) {
-      return failedMeasurementNumber >= measurements.length;
+      return failedMeasurementNumber
+          >= measurements.length - (idColumnIndices == null ? 0 : idColumnIndices.size());
     }
     return true;
   }
@@ -403,8 +404,6 @@ public abstract class InsertNode extends SearchNode {
           idColumnIndices.add(i);
         }
       }
-    } else {
-      idColumnIndices = Collections.emptyList();
     }
   }
 
@@ -443,6 +442,7 @@ public abstract class InsertNode extends SearchNode {
         .getPartialPath(ReadWriteIOUtils.readString(stream));
   }
 
+  @Override
   public long getMemorySize() {
     if (memorySize == 0) {
       memorySize = InsertNodeMemoryEstimator.sizeOf(this);

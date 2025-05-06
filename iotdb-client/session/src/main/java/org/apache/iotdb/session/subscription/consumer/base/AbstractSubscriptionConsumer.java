@@ -63,6 +63,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -83,7 +84,6 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.BiFunction;
 import java.util.stream.Collectors;
 
-import static org.apache.iotdb.rpc.subscription.config.TopicConstant.MODE_SNAPSHOT_VALUE;
 import static org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionPollResponseType.ERROR;
 import static org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionPollResponseType.FILE_INIT;
 import static org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionPollResponseType.TABLETS;
@@ -124,9 +124,16 @@ abstract class AbstractSubscriptionConsumer implements AutoCloseable {
   protected volatile Map<String, TopicConfig> subscribedTopics = new HashMap<>();
 
   public boolean allSnapshotTopicMessagesHaveBeenConsumed() {
-    return subscribedTopics.values().stream()
-        .noneMatch(
-            (config) -> config.getAttributesWithSourceMode().containsValue(MODE_SNAPSHOT_VALUE));
+    return allTopicMessagesHaveBeenConsumed(subscribedTopics.keySet());
+  }
+
+  private boolean allTopicMessagesHaveBeenConsumed(final Collection<String> topicNames) {
+    // For the topic that needs to be detected, there are two scenarios to consider:
+    //   1. If configs as live, it cannot be determined whether the topic has been fully consumed.
+    //   2. If configs as snapshot, it means the topic has not been automatically unsubscribed.
+    // Therefore, the logic can be summarized as follows: if there is a matching topic in subscribed
+    // topics, then it has not been fully consumed.
+    return topicNames.stream().map(subscribedTopics::get).noneMatch(Objects::nonNull);
   }
 
   /////////////////////////////// getter ///////////////////////////////
@@ -182,12 +189,8 @@ abstract class AbstractSubscriptionConsumer implements AutoCloseable {
       final AbstractSubscriptionConsumerBuilder builder, final Properties properties) {
     this(
         builder
-            .host(
-                (String)
-                    properties.getOrDefault(ConsumerConstant.HOST_KEY, SessionConfig.DEFAULT_HOST))
-            .port(
-                (Integer)
-                    properties.getOrDefault(ConsumerConstant.PORT_KEY, SessionConfig.DEFAULT_PORT))
+            .host((String) properties.get(ConsumerConstant.HOST_KEY))
+            .port((Integer) properties.get(ConsumerConstant.PORT_KEY))
             .nodeUrls((List<String>) properties.get(ConsumerConstant.NODE_URLS_KEY))
             .username(
                 (String)
@@ -284,8 +287,11 @@ abstract class AbstractSubscriptionConsumer implements AutoCloseable {
 
     // close subscription providers
     providers.acquireWriteLock();
-    providers.closeProviders();
-    providers.releaseWriteLock();
+    try {
+      providers.closeProviders();
+    } finally {
+      providers.releaseWriteLock();
+    }
 
     isClosed.set(true);
 
@@ -495,7 +501,7 @@ abstract class AbstractSubscriptionConsumer implements AutoCloseable {
                         final String topicNameToUnsubscribe = commitContext.getTopicName();
                         LOGGER.info(
                             "Termination occurred when SubscriptionConsumer {} polling topics, unsubscribe topic {} automatically",
-                            this,
+                            coreReportMessage(),
                             topicNameToUnsubscribe);
                         unsubscribe(Collections.singleton(topicNameToUnsubscribe), false);
                         return Optional.empty();
@@ -669,6 +675,11 @@ abstract class AbstractSubscriptionConsumer implements AutoCloseable {
           break;
         }
 
+        // check if all topic messages have been consumed
+        if (allTopicMessagesHaveBeenConsumed(topicNames)) {
+          break;
+        }
+
         // update timer
         timer.update();
 
@@ -720,7 +731,7 @@ abstract class AbstractSubscriptionConsumer implements AutoCloseable {
       // construct temporary message to nack
       nack(
           Collections.singletonList(
-              new SubscriptionMessage(commitContext, file.getAbsolutePath())));
+              new SubscriptionMessage(commitContext, file.getAbsolutePath(), null)));
       throw new SubscriptionRuntimeNonCriticalException(e.getMessage(), e);
     }
   }
@@ -873,7 +884,10 @@ abstract class AbstractSubscriptionConsumer implements AutoCloseable {
 
             // generate subscription message
             inFlightFilesCommitContextSet.remove(commitContext);
-            return new SubscriptionMessage(commitContext, file.getAbsolutePath());
+            return new SubscriptionMessage(
+                commitContext,
+                file.getAbsolutePath(),
+                ((FileSealPayload) payload).getDatabaseName());
           }
         case ERROR:
           {
@@ -923,24 +937,26 @@ abstract class AbstractSubscriptionConsumer implements AutoCloseable {
       // construct temporary message to nack
       nack(
           Collections.singletonList(
-              new SubscriptionMessage(response.getCommitContext(), Collections.emptyList())));
+              new SubscriptionMessage(response.getCommitContext(), Collections.emptyMap())));
       throw new SubscriptionRuntimeNonCriticalException(e.getMessage(), e);
     }
   }
 
   private Optional<SubscriptionMessage> pollTabletsInternal(
       final SubscriptionPollResponse initialResponse, final PollTimer timer) {
-    final List<Tablet> tablets = ((TabletsPayload) initialResponse.getPayload()).getTablets();
+    final Map<String, List<Tablet>> tablets =
+        ((TabletsPayload) initialResponse.getPayload()).getTabletsWithDBInfo();
     final SubscriptionCommitContext commitContext = initialResponse.getCommitContext();
 
     int nextOffset = ((TabletsPayload) initialResponse.getPayload()).getNextOffset();
     while (true) {
       if (nextOffset <= 0) {
-        if (!Objects.equals(tablets.size(), -nextOffset)) {
+        final int tabletsSize = tablets.values().stream().mapToInt(List::size).sum();
+        if (!Objects.equals(tabletsSize, -nextOffset)) {
           final String errorMessage =
               String.format(
                   "inconsistent tablet size, current is %s, incoming is %s, consumer: %s",
-                  tablets.size(), -nextOffset, this);
+                  tabletsSize, -nextOffset, this);
           LOGGER.warn(errorMessage);
           throw new SubscriptionRuntimeNonCriticalException(errorMessage);
         }
@@ -960,13 +976,10 @@ abstract class AbstractSubscriptionConsumer implements AutoCloseable {
       final List<SubscriptionPollResponse> responses =
           pollTabletsInternal(commitContext, nextOffset, timer.remainingMs());
 
-      // It's agreed that the server will always return at least one response, even in case of
-      // failure.
+      // If responses is empty, it means that some outdated subscription events may be being polled,
+      // so just return.
       if (responses.isEmpty()) {
-        final String errorMessage =
-            String.format("SubscriptionConsumer %s poll empty response", this);
-        LOGGER.warn(errorMessage);
-        throw new SubscriptionRuntimeNonCriticalException(errorMessage);
+        return Optional.empty();
       }
 
       // only one SubscriptionEvent polled currently
@@ -995,7 +1008,12 @@ abstract class AbstractSubscriptionConsumer implements AutoCloseable {
             }
 
             // update tablets
-            tablets.addAll(((TabletsPayload) response.getPayload()).getTablets());
+            for (Map.Entry<String, List<Tablet>> entry :
+                ((TabletsPayload) response.getPayload()).getTabletsWithDBInfo().entrySet()) {
+              tablets
+                  .computeIfAbsent(entry.getKey(), databaseName -> new ArrayList<>())
+                  .addAll(entry.getValue());
+            }
 
             // update offset
             nextOffset = ((TabletsPayload) payload).getNextOffset();
@@ -1007,6 +1025,10 @@ abstract class AbstractSubscriptionConsumer implements AutoCloseable {
 
             final String errorMessage = ((ErrorPayload) payload).getErrorMessage();
             final boolean critical = ((ErrorPayload) payload).isCritical();
+            if (Objects.equals(payload, ErrorPayload.OUTDATED_ERROR_PAYLOAD)) {
+              // suppress warn log when poll outdated subscription event
+              return Optional.empty();
+            }
             LOGGER.warn(
                 "Error occurred when SubscriptionConsumer {} polling tablets with commit context {}: {}, critical: {}",
                 this,
@@ -1357,7 +1379,7 @@ abstract class AbstractSubscriptionConsumer implements AutoCloseable {
     }
     for (final AbstractSubscriptionProvider provider : providers) {
       try {
-        return provider.getSessionConnection().fetchAllEndPoints();
+        return provider.heartbeat().getEndPoints();
       } catch (final Exception e) {
         LOGGER.warn(
             "{} failed to fetch all endpoints from subscription provider {}, try next subscription provider...",

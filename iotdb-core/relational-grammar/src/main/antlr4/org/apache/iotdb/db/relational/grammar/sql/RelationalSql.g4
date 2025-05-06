@@ -55,6 +55,7 @@ statement
     | showTableStatement
     | descTableStatement
     | alterTableStatement
+    | commentStatement
 
     // Index Statement
     | createIndexStatement
@@ -147,6 +148,10 @@ statement
     | listUserStatement
     | listRoleStatement
 
+    // AI
+    | createModelStatement
+    | showModelsStatement
+
     // View, Trigger, pipe, CQ, Quota are not supported yet
     ;
 
@@ -179,6 +184,7 @@ createTableStatement
     : CREATE TABLE (IF NOT EXISTS)? qualifiedName
         '(' (columnDefinition (',' columnDefinition)*)? ')'
         charsetDesc?
+        comment?
         (WITH properties)?
      ;
 
@@ -187,14 +193,18 @@ charsetDesc
     ;
 
 columnDefinition
-    : identifier columnCategory=(TAG | ATTRIBUTE | TIME) charsetName?
-    | identifier type (columnCategory=(TAG | ATTRIBUTE | TIME | FIELD))? charsetName?
+    : identifier columnCategory=(TAG | ATTRIBUTE | TIME) charsetName? comment?
+    | identifier type (columnCategory=(TAG | ATTRIBUTE | TIME | FIELD))? charsetName? comment?
     ;
 
 charsetName
     : CHAR SET identifier
     | CHARSET identifier
     | CHARACTER SET identifier
+    ;
+
+comment
+    : COMMENT string
     ;
 
 dropTableStatement
@@ -219,7 +229,10 @@ alterTableStatement
     | ALTER TABLE (IF EXISTS)? tableName=qualifiedName SET PROPERTIES propertyAssignments                #setTableProperties
     ;
 
-
+commentStatement
+    : COMMENT ON TABLE qualifiedName IS (string | NULL) #commentTable
+    | COMMENT ON COLUMN qualifiedName '.' column=identifier IS (string | NULL) #commentColumn
+    ;
 
 // ------------------------------------------- Index Statement ---------------------------------------------------------
 createIndexStatement
@@ -604,7 +617,7 @@ dropRoleStatement
     ;
 
 alterUserStatement
-    : ALTER USER userName=identifier SET PASSWORD password=identifier
+    : ALTER USER userName=identifier SET PASSWORD password=string
     ;
 
 grantUserRoleStatement
@@ -664,7 +677,6 @@ objectScope
 systemPrivilege
     : MANAGE_USER
     | MANAGE_ROLE
-    | MAINTAIN
     ;
 
 objectPrivilege
@@ -692,6 +704,43 @@ grantOpt
 
 revokeGrantOpt
     : GRANT OPTION FOR
+    ;
+
+// ------------------------------------------- AI ---------------------------------------------------------
+
+createModelStatement
+    : CREATE MODEL modelType=identifier modelId=identifier (WITH HYPERPARAMETERS '(' hparamPair (',' hparamPair)* ')')? (FROM MODEL existingModelId=identifier)? ON DATASET '(' trainingData ')'
+    ;
+
+trainingData
+    : ALL
+    | dataElement(',' dataElement)*
+    ;
+
+dataElement
+    : databaseElement
+    | tableElement
+    ;
+
+databaseElement
+    : DATABASE database=identifier ('(' timeRange ')')?
+    ;
+
+tableElement
+    : TABLE tableName=qualifiedName ('(' timeRange ')')?
+    ;
+
+timeRange
+    : '[' startTime=timeValue ',' endTime=timeValue ']'
+    ;
+
+hparamPair
+    : hparamKey=identifier '=' hyparamValue=primaryExpression
+    ;
+
+showModelsStatement
+    : SHOW MODELS
+    | SHOW MODELS modelId=identifier
     ;
 
 // ------------------------------------------- Query Statement ---------------------------------------------------------
@@ -851,6 +900,7 @@ relation
       ( CROSS JOIN right=aliasedRelation
       | joinType JOIN rightRelation=relation joinCriteria
       | NATURAL joinType JOIN right=aliasedRelation
+      | ASOF ('(' TOLERANCE timeDuration ')')? joinType JOIN rightRelation=relation joinCriteria
       )                                                     #joinRelation
     | aliasedRelation                                       #relationDefault
     ;
@@ -879,6 +929,34 @@ relationPrimary
     : qualifiedName                                                   #tableName
     | '(' query ')'                                                   #subqueryRelation
     | '(' relation ')'                                                #parenthesizedRelation
+    | TABLE '(' tableFunctionCall ')'                                 #tableFunctionInvocationWithTableKeyWord
+    | tableFunctionCall                                               #tableFunctionInvocation
+    ;
+
+tableFunctionCall
+    : qualifiedName '(' (tableFunctionArgument (',' tableFunctionArgument)*)?')'
+    ;
+
+tableFunctionArgument
+    : (identifier '=>')? (tableArgument | scalarArgument) // descriptor before expression to avoid parsing descriptor as a function call
+    ;
+
+tableArgument
+    : tableArgumentRelation
+        (PARTITION BY ('(' (expression (',' expression)*)? ')' | expression))?
+        (ORDER BY ('(' sortItem (',' sortItem)* ')' | sortItem))?
+    ;
+
+tableArgumentRelation
+    : TABLE '(' qualifiedName ')' (AS? identifier columnAliases?)?  #tableArgumentTableWithTableKeyWord
+    | qualifiedName (AS? identifier columnAliases?)?          #tableArgumentTable
+    | TABLE '(' query ')' (AS? identifier columnAliases?)?          #tableArgumentQueryWithTableKeyWord
+    | '(' query ')' (AS? identifier columnAliases?)?          #tableArgumentQuery
+    ;
+
+scalarArgument
+    : expression
+    | timeDuration
     ;
 
 expression
@@ -917,6 +995,7 @@ primaryExpression
     | dateExpression                                                                      #dateTimeExpression
     | '(' expression (',' expression)+ ')'                                                #rowConstructor
     | ROW '(' expression (',' expression)* ')'                                            #rowConstructor
+    | COLUMNS '(' (ASTERISK | pattern=string) ')'                                         #columns
     | qualifiedName '(' (label=identifier '.')? ASTERISK ')' over?                        #functionCall
     | qualifiedName '(' (setQuantifier? expression (',' expression)*)?')'
       (nullTreatment? over)?                                                              #functionCall
@@ -1128,16 +1207,16 @@ nonReserved
     : ABSENT | ADD | ADMIN | AFTER | ALL | ANALYZE | ANY | ARRAY | ASC | AT | ATTRIBUTE | AUTHORIZATION
     | BEGIN | BERNOULLI | BOTH
     | CACHE | CALL | CALLED | CASCADE | CATALOG | CATALOGS | CHAR | CHARACTER | CHARSET | CLEAR | CLUSTER | CLUSTERID | COLUMN | COLUMNS | COMMENT | COMMIT | COMMITTED | CONDITION | CONDITIONAL | CONFIGNODES | CONFIGNODE | CONFIGURATION | CONNECTOR | CONSTANT | COPARTITION | COUNT | CURRENT
-    | DATA | DATABASE | DATABASES | DATANODE | DATANODES | DATE | DAY | DECLARE | DEFAULT | DEFINE | DEFINER | DENY | DESC | DESCRIPTOR | DETAILS| DETERMINISTIC | DEVICES | DISTRIBUTED | DO | DOUBLE
+    | DATA | DATABASE | DATABASES | DATANODE | DATANODES | DATASET | DATE | DAY | DECLARE | DEFAULT | DEFINE | DEFINER | DENY | DESC | DESCRIPTOR | DETAILS| DETERMINISTIC | DEVICES | DISTRIBUTED | DO | DOUBLE
     | ELSEIF | EMPTY | ENCODING | ERROR | EXCLUDING | EXPLAIN | EXTRACTOR
     | FETCH | FIELD | FILTER | FINAL | FIRST | FLUSH | FOLLOWING | FORMAT | FUNCTION | FUNCTIONS
     | GRACE | GRANT | GRANTED | GRANTS | GRAPHVIZ | GROUPS
-    | HOUR
+    | HOUR | HYPERPARAMETERS
     | INDEX | INDEXES | IF | IGNORE | IMMEDIATE | INCLUDING | INITIAL | INPUT | INTERVAL | INVOKER | IO | ITERATE | ISOLATION
     | JSON
     | KEEP | KEY | KEYS | KILL
     | LANGUAGE | LAST | LATERAL | LEADING | LEAVE | LEVEL | LIMIT | LINEAR | LOAD | LOCAL | LOGICAL | LOOP
-    | MAP | MATCH | MATCHED | MATCHES | MATCH_RECOGNIZE | MATERIALIZED | MEASURES | METHOD | MERGE | MICROSECOND | MIGRATE | MILLISECOND | MINUTE | MODIFY | MONTH
+    | MANAGE_ROLE | MANAGE_USER | MAP | MATCH | MATCHED | MATCHES | MATCH_RECOGNIZE | MATERIALIZED | MEASURES | METHOD | MERGE | MICROSECOND | MIGRATE | MILLISECOND | MINUTE | MODEL | MODELS | MODIFY | MONTH
     | NANOSECOND | NESTED | NEXT | NFC | NFD | NFKC | NFKD | NO | NODEID | NONE | NULLIF | NULLS
     | OBJECT | OF | OFFSET | OMIT | ONE | ONLY | OPTION | ORDINALITY | OUTPUT | OVER | OVERFLOW
     | PARTITION | PARTITIONS | PASSING | PAST | PATH | PATTERN | PER | PERIOD | PERMUTE | PIPE | PIPEPLUGIN | PIPEPLUGINS | PIPES | PLAN | POSITION | PRECEDING | PRECISION | PRIVILEGES | PREVIOUS | PROCESSLIST | PROCESSOR | PROPERTIES | PRUNE
@@ -1145,7 +1224,7 @@ nonReserved
     | RANGE | READ | READONLY | RECONSTRUCT | REFRESH | REGION | REGIONID | REGIONS | REMOVE | RENAME | REPAIR | REPEAT  | REPEATABLE | REPLACE | RESET | RESPECT | RESTRICT | RETURN | RETURNING | RETURNS | REVOKE | ROLE | ROLES | ROLLBACK | ROW | ROWS | RUNNING
     | SERIESSLOTID | SCALAR | SCHEMA | SCHEMAS | SECOND | SECURITY | SEEK | SERIALIZABLE | SESSION | SET | SETS
     | SHOW | SINK | SOME | SOURCE | START | STATS | STOP | SUBSCRIPTIONS | SUBSET | SUBSTRING | SYSTEM
-    | TABLES | TABLESAMPLE | TAG | TEXT | TEXT_STRING | TIES | TIME | TIMEPARTITION | TIMESERIES | TIMESLOTID | TIMESTAMP | TO | TOPIC | TOPICS | TRAILING | TRANSACTION | TRUNCATE | TRY_CAST | TYPE
+    | TABLES | TABLESAMPLE | TAG | TEXT | TEXT_STRING | TIES | TIME | TIMEPARTITION | TIMER | TIMER_XL | TIMESERIES | TIMESLOTID | TIMESTAMP | TO | TOPIC | TOPICS | TRAILING | TRANSACTION | TRUNCATE | TRY_CAST | TYPE
     | UNBOUNDED | UNCOMMITTED | UNCONDITIONAL | UNIQUE | UNKNOWN | UNMATCHED | UNTIL | UPDATE | URI | USE | USED | USER | UTF16 | UTF32 | UTF8
     | VALIDATE | VALUE | VARIABLES | VARIATION | VERBOSE | VERSION | VIEW
     | WEEK | WHILE | WINDOW | WITHIN | WITHOUT | WORK | WRAPPER | WRITE
@@ -1166,6 +1245,7 @@ ANY: 'ANY';
 ARRAY: 'ARRAY';
 AS: 'AS';
 ASC: 'ASC';
+ASOF: 'ASOF';
 AT: 'AT';
 ATTRIBUTE: 'ATTRIBUTE';
 AUTHORIZATION: 'AUTHORIZATION';
@@ -1223,6 +1303,7 @@ DATABASE: 'DATABASE';
 DATABASES: 'DATABASES';
 DATANODE: 'DATANODE';
 DATANODES: 'DATANODES';
+DATASET: 'DATASET';
 DATE: 'DATE';
 DATE_BIN: 'DATE_BIN';
 DATE_BIN_GAPFILL: 'DATE_BIN_GAPFILL';
@@ -1286,6 +1367,7 @@ GROUPING: 'GROUPING';
 GROUPS: 'GROUPS';
 HAVING: 'HAVING';
 HOUR: 'HOUR' | 'H';
+HYPERPARAMETERS: 'HYPERPARAMETERS';
 INDEX: 'INDEX';
 INDEXES: 'INDEXES';
 IF: 'IF';
@@ -1293,6 +1375,7 @@ IGNORE: 'IGNORE';
 IMMEDIATE: 'IMMEDIATE';
 IN: 'IN';
 INCLUDING: 'INCLUDING';
+INFERENCE: 'INFERENCE';
 INITIAL: 'INITIAL';
 INNER: 'INNER';
 INPUT: 'INPUT';
@@ -1335,7 +1418,6 @@ LOCALTIME: 'LOCALTIME';
 LOCALTIMESTAMP: 'LOCALTIMESTAMP';
 LOGICAL: 'LOGICAL';
 LOOP: 'LOOP';
-MAINTAIN: 'MAINTAIN';
 MANAGE_ROLE: 'MANAGE_ROLE';
 MANAGE_USER: 'MANAGE_USER';
 MAP: 'MAP';
@@ -1351,6 +1433,8 @@ MICROSECOND: 'US';
 MIGRATE: 'MIGRATE';
 MILLISECOND: 'MS';
 MINUTE: 'MINUTE' | 'M';
+MODEL: 'MODEL';
+MODELS: 'MODELS';
 MODIFY: 'MODIFY';
 MONTH: 'MONTH' | 'MO';
 NANOSECOND: 'NS';
@@ -1480,10 +1564,13 @@ TIME: 'TIME';
 TIME_BOUND: 'TIME_BOUND';
 TIME_COLUMN: 'TIME_COLUMN';
 TIMEPARTITION: 'TIMEPARTITION';
+TIMER: 'TIMER';
+TIMER_XL: 'TIMER_XL';
 TIMESERIES: 'TIMESERIES';
 TIMESLOTID: 'TIMESLOTID';
 TIMESTAMP: 'TIMESTAMP';
 TO: 'TO';
+TOLERANCE: 'TOLERANCE';
 TOPIC: 'TOPIC';
 TOPICS: 'TOPICS';
 TRAILING: 'TRAILING';

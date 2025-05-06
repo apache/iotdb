@@ -27,9 +27,13 @@ import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.commons.udf.builtin.BuiltinAggregationFunction;
+import org.apache.iotdb.commons.udf.builtin.relational.tvf.HOPTableFunction;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.SessionInfo;
 import org.apache.iotdb.db.queryengine.plan.analyze.IPartitionFetcher;
+import org.apache.iotdb.db.queryengine.plan.function.Exclude;
+import org.apache.iotdb.db.queryengine.plan.function.Repeat;
+import org.apache.iotdb.db.queryengine.plan.function.Split;
 import org.apache.iotdb.db.queryengine.plan.relational.function.OperatorType;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.AlignedDeviceEntry;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.ColumnMetadata;
@@ -53,6 +57,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.type.TypeNotFoundExceptio
 import org.apache.iotdb.db.queryengine.plan.relational.type.TypeSignature;
 import org.apache.iotdb.db.schemaengine.table.InformationSchemaUtils;
 import org.apache.iotdb.mpp.rpc.thrift.TRegionRouteReq;
+import org.apache.iotdb.udf.api.relational.TableFunction;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
@@ -61,6 +66,7 @@ import org.apache.tsfile.file.metadata.StringArrayDeviceID;
 import org.apache.tsfile.read.common.type.StringType;
 import org.apache.tsfile.read.common.type.Type;
 import org.apache.tsfile.read.common.type.TypeFactory;
+import org.apache.tsfile.utils.Binary;
 import org.mockito.Mockito;
 
 import java.util.Arrays;
@@ -216,6 +222,15 @@ public class TestMatadata implements Metadata {
               argumentTypes,
               new IllegalArgumentException("Should have two numeric operands."));
         }
+        if (argumentTypes.get(0).equals(TIMESTAMP) && argumentTypes.get(1).equals(TIMESTAMP)) {
+          throw new OperatorNotFoundException(
+              operatorType,
+              argumentTypes,
+              new IllegalArgumentException("Cannot apply operator: TIMESTAMP - TIMESTAMP"));
+        }
+        if (argumentTypes.get(0).equals(TIMESTAMP) || argumentTypes.get(1).equals(TIMESTAMP)) {
+          return TIMESTAMP;
+        }
         return DOUBLE;
       case NEGATION:
         if (!isOneNumericType(argumentTypes)) {
@@ -279,18 +294,17 @@ public class TestMatadata implements Metadata {
       if (expressionList.isEmpty()) {
         return ImmutableList.of(
             new AlignedDeviceEntry(
-                IDeviceID.Factory.DEFAULT_FACTORY.create(DEVICE_3), ImmutableList.of()),
+                IDeviceID.Factory.DEFAULT_FACTORY.create(DEVICE_3), new Binary[0]),
             new AlignedDeviceEntry(
-                IDeviceID.Factory.DEFAULT_FACTORY.create(DEVICE_6), ImmutableList.of()),
+                IDeviceID.Factory.DEFAULT_FACTORY.create(DEVICE_6), new Binary[0]),
             new NonAlignedAlignedDeviceEntry(
-                IDeviceID.Factory.DEFAULT_FACTORY.create(DEVICE_5), ImmutableList.of()));
+                IDeviceID.Factory.DEFAULT_FACTORY.create(DEVICE_5), new Binary[0]));
       }
 
       return ImmutableList.of(
+          new AlignedDeviceEntry(IDeviceID.Factory.DEFAULT_FACTORY.create(DEVICE_3), new Binary[0]),
           new AlignedDeviceEntry(
-              IDeviceID.Factory.DEFAULT_FACTORY.create(DEVICE_3), ImmutableList.of()),
-          new AlignedDeviceEntry(
-              IDeviceID.Factory.DEFAULT_FACTORY.create(DEVICE_6), ImmutableList.of()));
+              IDeviceID.Factory.DEFAULT_FACTORY.create(DEVICE_6), new Binary[0]));
     }
 
     if (expressionList.size() == 2) {
@@ -437,6 +451,21 @@ public class TestMatadata implements Metadata {
   public DataPartition getDataPartitionWithUnclosedTimeRange(
       final String database, final List<DataPartitionQueryParam> sgNameToQueryParamsMap) {
     return TREE_DB1.equals(database) ? TREE_VIEW_DATA_PARTITION : TABLE_DATA_PARTITION;
+  }
+
+  @Override
+  public TableFunction getTableFunction(String functionName) {
+    if ("HOP".equalsIgnoreCase(functionName)) {
+      return new HOPTableFunction();
+    } else if ("EXCLUDE".equalsIgnoreCase(functionName)) {
+      return new Exclude();
+    } else if ("REPEAT".equalsIgnoreCase(functionName)) {
+      return new Repeat();
+    } else if ("SPLIT".equalsIgnoreCase(functionName)) {
+      return new Split();
+    } else {
+      return null;
+    }
   }
 
   private static final DataPartition TABLE_DATA_PARTITION =

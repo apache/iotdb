@@ -19,9 +19,4 @@
 
 package org.apache.iotdb.session.subscription.payload;
 
-public interface SubscriptionMessageHandler {
-
-  SubscriptionSessionDataSetsHandler getSessionDataSetsHandler();
-
-  SubscriptionTsFileHandler getTsFileHandler();
-}
+public interface SubscriptionMessageHandler {}

@@ -81,7 +81,7 @@ public class MPPPublishHandler extends AbstractInterceptHandler {
     this.payloadFormat = PayloadFormatManager.getPayloadFormat(config.getMqttPayloadFormatter());
     partitionFetcher = ClusterPartitionFetcher.getInstance();
     schemaFetcher = ClusterSchemaFetcher.getInstance();
-    useTableInsert = (payloadFormat instanceof LinePayloadFormatter);
+    useTableInsert = PayloadFormatter.TABLE_TYPE.equals(this.payloadFormat.getType());
   }
 
   @Override
@@ -148,13 +148,18 @@ public class MPPPublishHandler extends AbstractInterceptHandler {
         if (useTableInsert) {
           TableMessage tableMessage = (TableMessage) message;
           // '/' previously defined as a database name
-          tableMessage.setDatabase(
-              msg.getTopicName().substring(0, msg.getTopicName().indexOf("/")));
+          String database =
+              !msg.getTopicName().contains("/")
+                  ? msg.getTopicName()
+                  : msg.getTopicName().substring(0, msg.getTopicName().indexOf("/"));
+          tableMessage.setDatabase(database);
           insertTable(tableMessage, session);
         } else {
           insertTree((TreeMessage) message, session);
         }
       }
+    } catch (Throwable t) {
+      LOG.warn("onPublish execution exception, msg is [{}], error is ", msg, t);
     } finally {
       // release the payload of the message
       super.onPublish(msg);
@@ -167,32 +172,27 @@ public class MPPPublishHandler extends AbstractInterceptHandler {
     try {
       TimestampPrecisionUtils.checkTimestampPrecision(message.getTimestamp());
       InsertTabletStatement insertTabletStatement = constructInsertTabletStatement(message);
-      tsStatus = AuthorityChecker.checkAuthority(insertTabletStatement, session);
-      if (tsStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-        LOG.warn(tsStatus.message);
-      } else {
-        session.setDatabaseName(message.getDatabase().toLowerCase());
-        session.setSqlDialect(IClientSession.SqlDialect.TABLE);
-        long queryId = sessionManager.requestQueryId();
-        SqlParser relationSqlParser = new SqlParser();
-        Metadata metadata = LocalExecutionPlanner.getInstance().metadata;
-        ExecutionResult result =
-            Coordinator.getInstance()
-                .executeForTableModel(
-                    insertTabletStatement,
-                    relationSqlParser,
-                    session,
-                    queryId,
-                    sessionManager.getSessionInfo(session),
-                    "",
-                    metadata,
-                    config.getQueryTimeoutThreshold());
+      session.setDatabaseName(message.getDatabase().toLowerCase());
+      session.setSqlDialect(IClientSession.SqlDialect.TABLE);
+      long queryId = sessionManager.requestQueryId();
+      SqlParser relationSqlParser = new SqlParser();
+      Metadata metadata = LocalExecutionPlanner.getInstance().metadata;
+      ExecutionResult result =
+          Coordinator.getInstance()
+              .executeForTableModel(
+                  insertTabletStatement,
+                  relationSqlParser,
+                  session,
+                  queryId,
+                  sessionManager.getSessionInfo(session),
+                  "",
+                  metadata,
+                  config.getQueryTimeoutThreshold());
 
-        tsStatus = result.status;
-        LOG.debug("process result: {}", tsStatus);
-        if (tsStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-          LOG.warn("mqtt line insert error , message = {}", tsStatus.message);
-        }
+      tsStatus = result.status;
+      LOG.debug("process result: {}", tsStatus);
+      if (tsStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        LOG.warn("mqtt line insert error , message = {}", tsStatus.message);
       }
     } catch (Exception e) {
       LOG.warn(

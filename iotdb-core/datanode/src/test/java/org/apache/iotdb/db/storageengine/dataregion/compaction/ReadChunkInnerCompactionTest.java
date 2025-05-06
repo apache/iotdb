@@ -25,11 +25,13 @@ import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.StorageEngineException;
+import org.apache.iotdb.db.service.metrics.FileMetrics;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.impl.FastCompactionPerformer;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.impl.ReadChunkCompactionPerformer;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.InnerSpaceCompactionTask;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.log.CompactionLogger;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.utils.CompactionTestFileWriter;
+import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFile;
 import org.apache.iotdb.db.storageengine.dataregion.modification.TreeDeletionEntry;
 import org.apache.iotdb.db.storageengine.dataregion.read.control.FileReaderManager;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
@@ -38,6 +40,7 @@ import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.common.conf.TSFileDescriptor;
 import org.apache.tsfile.common.constant.TsFileConstant;
 import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.exception.write.PageException;
 import org.apache.tsfile.exception.write.WriteProcessException;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.file.metadata.enums.CompressionType;
@@ -65,6 +68,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.concurrent.CountDownLatch;
 
 import static org.apache.iotdb.db.storageengine.dataregion.compaction.utils.TsFileGeneratorUtils.createChunkWriter;
 import static org.apache.iotdb.db.storageengine.dataregion.compaction.utils.TsFileGeneratorUtils.createCompressionType;
@@ -841,6 +845,72 @@ public class ReadChunkInnerCompactionTest extends AbstractCompactionTest {
     validateSeqFiles(true);
 
     validateTargetDatas(sourceDatas, tsDataTypes);
+  }
+
+  @Test
+  public void testCascadedDeletionDuringCompaction() throws IOException, InterruptedException {
+    TsFileResource source = createEmptyFileAndResource(true);
+    try (CompactionTestFileWriter writer = new CompactionTestFileWriter(source)) {
+      writer.startChunkGroup("d1");
+      writer.generateSimpleAlignedSeriesToCurrentDevice(
+          Arrays.asList("s1"),
+          new TimeRange[] {new TimeRange(10, 20)},
+          TSEncoding.PLAIN,
+          CompressionType.LZ4);
+      writer.endChunkGroup();
+      writer.endFile();
+    }
+    CountDownLatch latch1 = new CountDownLatch(1);
+    CountDownLatch latch2 = new CountDownLatch(1);
+    InnerSpaceCompactionTask task =
+        new InnerSpaceCompactionTask(
+            0,
+            tsFileManager,
+            Collections.singletonList(source),
+            true,
+            new TestReadChunkCompactionPerformer(latch1, latch2),
+            0);
+    new Thread(
+            () -> {
+              try {
+                latch1.await();
+                try (ModificationFile modificationFile = source.getModFileForWrite()) {
+                  modificationFile.write(
+                      new TreeDeletionEntry(new MeasurementPath("root.testsg.d1.s1"), 15));
+                }
+                latch2.countDown();
+              } catch (Exception e) {
+                throw new RuntimeException(e);
+              }
+            })
+        .start();
+    Assert.assertTrue(task.start());
+    Assert.assertEquals(1, tsFileManager.getTsFileList(true).size());
+    tsFileManager.getTsFileList(true).get(0).getExclusiveModFile();
+    Assert.assertEquals(1, FileMetrics.getInstance().getModFileNum());
+  }
+
+  private static class TestReadChunkCompactionPerformer extends ReadChunkCompactionPerformer {
+
+    private final CountDownLatch latch1;
+    private final CountDownLatch latch2;
+
+    public TestReadChunkCompactionPerformer(CountDownLatch latch1, CountDownLatch latch2) {
+      this.latch1 = latch1;
+      this.latch2 = latch2;
+    }
+
+    @Override
+    public void perform()
+        throws IOException,
+            MetadataException,
+            InterruptedException,
+            StorageEngineException,
+            PageException {
+      super.perform();
+      latch1.countDown();
+      latch2.await();
+    }
   }
 
   private void writeEmptyAlignedChunk(

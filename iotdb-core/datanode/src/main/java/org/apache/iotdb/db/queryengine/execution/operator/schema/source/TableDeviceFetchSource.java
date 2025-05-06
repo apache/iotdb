@@ -25,15 +25,19 @@ import org.apache.iotdb.commons.schema.column.ColumnHeader;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
+import org.apache.iotdb.db.schemaengine.rescon.ISchemaRegionStatistics;
 import org.apache.iotdb.db.schemaengine.schemaregion.ISchemaRegion;
 import org.apache.iotdb.db.schemaengine.schemaregion.read.resp.info.IDeviceSchemaInfo;
 import org.apache.iotdb.db.schemaengine.schemaregion.read.resp.reader.ISchemaReader;
 import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
 
 import org.apache.tsfile.common.conf.TSFileConfig;
+import org.apache.tsfile.common.conf.TSFileDescriptor;
 import org.apache.tsfile.read.common.block.TsBlockBuilder;
 import org.apache.tsfile.utils.Binary;
+import org.apache.tsfile.utils.RamUsageEstimator;
 
+import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
 
@@ -114,5 +118,22 @@ public class TableDeviceFetchSource implements ISchemaSource<IDeviceSchemaInfo> 
   @Override
   public long getSchemaStatistic(final ISchemaRegion schemaRegion) {
     return 0;
+  }
+
+  @Override
+  public long getMaxMemory(final ISchemaRegion schemaRegion) {
+    final ISchemaRegionStatistics statistics = schemaRegion.getSchemaRegionStatistics();
+    final long devicesNumber = statistics.getTableDevicesNumber(tableName);
+    return Math.min(
+        TSFileDescriptor.getInstance().getConfig().getMaxTsBlockSizeInBytes(),
+        deviceIdList.stream()
+                .flatMap(Arrays::stream)
+                .map(segment -> RamUsageEstimator.sizeOf(String.valueOf(segment)))
+                .reduce(0L, Long::sum)
+            + (devicesNumber > 0
+                ? deviceIdList.size()
+                    * statistics.getTableAttributeMemory(tableName)
+                    / devicesNumber
+                : 0));
   }
 }

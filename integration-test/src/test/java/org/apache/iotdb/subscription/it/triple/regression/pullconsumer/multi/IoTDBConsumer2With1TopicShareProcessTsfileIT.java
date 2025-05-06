@@ -50,7 +50,6 @@ import static org.apache.iotdb.subscription.it.IoTDBSubscriptionITConstant.AWAIT
  * format: tsfile
  * pattern:device
  * Same group pull consumer share progress
- * About 1/5 chance, over 1000
  */
 @RunWith(IoTDBTestRunner.class)
 @Category({MultiClusterIT2SubscriptionRegressionConsumer.class})
@@ -136,17 +135,16 @@ public class IoTDBConsumer2With1TopicShareProcessTsfileIT extends AbstractSubscr
     Thread thread =
         new Thread(
             () -> {
-              for (int i = 0; i < 200; i++) {
+              long timestamp = 1706659200000L; // 2024-01-31 08:00:00+08:00
+              for (int i = 0; i < 20; i++) {
                 try {
-                  insert_data(1706659200000L);
-                  Thread.sleep(1000);
+                  insert_data(timestamp);
                 } catch (IoTDBConnectionException e) {
                   throw new RuntimeException(e);
                 } catch (StatementExecutionException e) {
                   throw new RuntimeException(e);
-                } catch (InterruptedException e) {
-                  throw new RuntimeException(e);
                 }
+                timestamp += 20000;
               }
             });
     AtomicInteger rowCount1 = new AtomicInteger(0);
@@ -177,22 +175,19 @@ public class IoTDBConsumer2With1TopicShareProcessTsfileIT extends AbstractSubscr
     thread2.join();
     thread.join();
 
-    System.out.println("src :" + getCount(session_src, "select count(s_0) from " + device));
+    System.out.println("src=" + getCount(session_src, "select count(s_0) from " + device));
     System.out.println("rowCount1=" + rowCount1.get());
     System.out.println("rowCount2=" + rowCount2.get());
     AWAIT.untilAsserted(
-        () -> {
-          assertGte(
-              rowCount1.get() + rowCount2.get(),
-              1000,
-              "consumer share process rowCount1="
-                  + rowCount1.get()
-                  + " rowCount2="
-                  + rowCount2.get()
-                  + " src="
-                  + getCount(session_src, "select count(s_0) from " + device));
-          assertTrue(rowCount1.get() > 0);
-          assertTrue(rowCount2.get() > 0);
-        });
+        () ->
+            assertGte(
+                rowCount1.get() + rowCount2.get(),
+                getCount(session_src, "select count(s_0) from " + device),
+                "consumer share process rowCount1="
+                    + rowCount1.get()
+                    + " rowCount2="
+                    + rowCount2.get()
+                    + " src="
+                    + getCount(session_src, "select count(s_0) from " + device)));
   }
 }

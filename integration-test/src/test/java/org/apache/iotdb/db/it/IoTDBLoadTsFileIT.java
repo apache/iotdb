@@ -21,8 +21,6 @@ package org.apache.iotdb.db.it;
 
 import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.commons.schema.column.ColumnHeaderConstant;
-import org.apache.iotdb.db.storageengine.dataregion.compaction.tablemodel.CompactionTableModelTestFileWriter;
-import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.it.utils.TsFileGenerator;
@@ -32,13 +30,11 @@ import org.apache.iotdb.itbase.category.LocalStandaloneIT;
 import org.apache.iotdb.itbase.env.BaseEnv;
 import org.apache.iotdb.jdbc.IoTDBSQLException;
 
+import org.apache.tsfile.enums.ColumnCategory;
 import org.apache.tsfile.enums.TSDataType;
-import org.apache.tsfile.file.metadata.enums.CompressionType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.tsfile.read.common.Path;
-import org.apache.tsfile.read.common.TimeRange;
 import org.apache.tsfile.utils.Pair;
-import org.apache.tsfile.write.record.Tablet;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.junit.After;
@@ -498,75 +494,6 @@ public class IoTDBLoadTsFileIT {
 
     executeNonQuery(
         String.format("load \"%s\" sgLevel=2", tmpDir.getAbsolutePath()), "test", "test123");
-  }
-
-  @Test
-  public void testTableAuth() throws Exception {
-    createUser("test", "test123");
-
-    final TsFileResource resource4 = new TsFileResource(new File(tmpDir, "test1-0-0-0.tsfile"));
-    try (final CompactionTableModelTestFileWriter writer =
-        new CompactionTableModelTestFileWriter(resource4)) {
-      writer.registerTableSchema("t2", Arrays.asList("id1", "id2", "id3"));
-      writer.startChunkGroup("t2", Arrays.asList("id_field1", "id_field2", "id_field3"));
-      writer.generateSimpleNonAlignedSeriesToCurrentDevice(
-          "s1",
-          new TimeRange[][][] {new TimeRange[][] {new TimeRange[] {new TimeRange(20, 22)}}},
-          TSEncoding.PLAIN,
-          CompressionType.LZ4);
-      writer.generateSimpleNonAlignedSeriesToCurrentDevice(
-          "s2",
-          new TimeRange[][][] {new TimeRange[][] {new TimeRange[] {new TimeRange(20, 22)}}},
-          TSEncoding.PLAIN,
-          CompressionType.LZ4);
-      writer.endChunkGroup();
-      writer.endFile();
-    }
-
-    try (final Connection userCon =
-            EnvFactory.getEnv().getConnection("test", "test123", BaseEnv.TABLE_SQL_DIALECT);
-        final Statement userStmt = userCon.createStatement()) {
-      Assert.assertThrows(
-          SQLException.class,
-          () -> {
-            userStmt.execute(
-                String.format(
-                    "load '%s' with ('database-level'='2', 'database-name'='test')",
-                    tmpDir.getAbsolutePath()));
-          });
-    }
-
-    try (Connection adminCon = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
-        Statement adminStmt = adminCon.createStatement()) {
-      adminStmt.execute("grant create on database test to user test");
-    }
-
-    try (final Connection userCon =
-            EnvFactory.getEnv().getConnection("test", "test123", BaseEnv.TABLE_SQL_DIALECT);
-        final Statement userStmt = userCon.createStatement()) {
-      Assert.assertThrows(
-          SQLException.class,
-          () -> {
-            userStmt.execute(
-                String.format(
-                    "load '%s' with ('database-level'='2', 'database-name'='test')",
-                    tmpDir.getAbsolutePath()));
-          });
-    }
-
-    try (final Connection adminCon = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
-        final Statement adminStmt = adminCon.createStatement()) {
-      adminStmt.execute("grant insert on any to user test");
-    }
-
-    try (final Connection userCon =
-            EnvFactory.getEnv().getConnection("test", "test123", BaseEnv.TABLE_SQL_DIALECT);
-        final Statement userStmt = userCon.createStatement()) {
-      userStmt.execute(
-          String.format(
-              "load '%s' with ('database-level'='2', 'database-name'='test')",
-              tmpDir.getAbsolutePath()));
-    }
   }
 
   @Test
@@ -1046,12 +973,66 @@ public class IoTDBLoadTsFileIT {
   }
 
   @Test
+  public void testLoadWithEmptyDatabaseForTableModel() throws Exception {
+    final int lineCount = 10000;
+
+    final List<Pair<MeasurementSchema, MeasurementSchema>> measurementSchemas =
+        generateMeasurementSchemasForDataTypeConvertion();
+    final List<ColumnCategory> columnCategories =
+        generateTabletColumnCategory(0, measurementSchemas.size());
+
+    final File file = new File(tmpDir, "1-0-0-0.tsfile");
+
+    final List<IMeasurementSchema> schemaList =
+        measurementSchemas.stream().map(pair -> pair.right).collect(Collectors.toList());
+
+    try (final TsFileTableGenerator generator = new TsFileTableGenerator(file)) {
+      generator.registerTable(SchemaConfig.TABLE_0, schemaList, columnCategories);
+
+      generator.generateData(SchemaConfig.TABLE_0, lineCount, PARTITION_INTERVAL / 10_000);
+    }
+
+    // Prepare normal user
+    try (final Connection adminCon = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        final Statement adminStmt = adminCon.createStatement()) {
+      adminStmt.execute("create user test 'password'");
+      adminStmt.execute(
+          String.format(
+              "grant create, insert on %s.%s to user test",
+              SchemaConfig.DATABASE_0, SchemaConfig.TABLE_0));
+
+      // auto-create table
+      adminStmt.execute(String.format("create database if not exists %s", SchemaConfig.DATABASE_0));
+    }
+
+    try (final Connection connection =
+            EnvFactory.getEnv().getConnection("test", "password", BaseEnv.TABLE_SQL_DIALECT);
+        final Statement statement = connection.createStatement()) {
+      statement.execute(String.format("use %s", SchemaConfig.DATABASE_0));
+      statement.execute(String.format("load '%s'", file.getAbsolutePath()));
+    }
+
+    try (final Connection adminCon = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        final Statement adminStmt = adminCon.createStatement()) {
+      adminStmt.execute(String.format("use %s", SchemaConfig.DATABASE_0));
+      try (final ResultSet resultSet =
+          adminStmt.executeQuery(String.format("select count(*) from %s", SchemaConfig.TABLE_0))) {
+        if (resultSet.next()) {
+          Assert.assertEquals(lineCount, resultSet.getLong(1));
+        } else {
+          Assert.fail("This ResultSet is empty.");
+        }
+      }
+    }
+  }
+
+  @Test
   public void testLoadWithConvertOnTypeMismatchForTableModel() throws Exception {
     final int lineCount = 10000;
 
     List<Pair<MeasurementSchema, MeasurementSchema>> measurementSchemas =
         generateMeasurementSchemasForDataTypeConvertion();
-    List<Tablet.ColumnCategory> columnCategories =
+    List<ColumnCategory> columnCategories =
         generateTabletColumnCategory(0, measurementSchemas.size());
 
     final File file = new File(tmpDir, "1-0-0-0.tsfile");
@@ -1085,13 +1066,13 @@ public class IoTDBLoadTsFileIT {
     }
   }
 
-  private List<Tablet.ColumnCategory> generateTabletColumnCategory(int tagNum, int filedNum) {
-    List<Tablet.ColumnCategory> columnTypes = new ArrayList<>(tagNum + filedNum);
+  private List<ColumnCategory> generateTabletColumnCategory(int tagNum, int filedNum) {
+    List<ColumnCategory> columnTypes = new ArrayList<>(tagNum + filedNum);
     for (int i = 0; i < tagNum; i++) {
-      columnTypes.add(Tablet.ColumnCategory.TAG);
+      columnTypes.add(ColumnCategory.TAG);
     }
     for (int i = 0; i < filedNum; i++) {
-      columnTypes.add(Tablet.ColumnCategory.FIELD);
+      columnTypes.add(ColumnCategory.FIELD);
     }
     return columnTypes;
   }
@@ -1099,7 +1080,7 @@ public class IoTDBLoadTsFileIT {
   private String convert2TableSQL(
       final String tableName,
       final List<MeasurementSchema> schemaList,
-      final List<Tablet.ColumnCategory> columnCategoryList) {
+      final List<ColumnCategory> columnCategoryList) {
     List<String> columns = new ArrayList<>();
     for (int i = 0; i < schemaList.size(); i++) {
       final MeasurementSchema measurement = schemaList.get(i);

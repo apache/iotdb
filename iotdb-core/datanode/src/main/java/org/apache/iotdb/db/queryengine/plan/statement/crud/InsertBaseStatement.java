@@ -31,17 +31,21 @@ import org.apache.iotdb.db.exception.metadata.DuplicateInsertException;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.exception.sql.SemanticException;
+import org.apache.iotdb.db.pipe.resource.memory.InsertNodeMemoryEstimator;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.plan.analyze.schema.ISchemaValidation;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.ColumnSchema;
 import org.apache.iotdb.db.queryengine.plan.relational.type.InternalTypeManager;
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
+import org.apache.iotdb.db.schemaengine.schemaregion.attribute.update.UpdateDetailContainer;
 import org.apache.iotdb.db.utils.CommonUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.tsfile.annotations.TableModel;
 import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.utils.Accountable;
 import org.apache.tsfile.utils.Pair;
+import org.apache.tsfile.utils.RamUsageEstimator;
 import org.apache.tsfile.write.schema.MeasurementSchema;
 
 import java.util.ArrayList;
@@ -52,11 +56,12 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-public abstract class InsertBaseStatement extends Statement {
+public abstract class InsertBaseStatement extends Statement implements Accountable {
 
   /**
    * if use id table, this filed is id form of device path <br>
@@ -101,6 +106,8 @@ public abstract class InsertBaseStatement extends Statement {
   protected int recordedEndOfLogicalViewSchemaList = 0;
 
   @TableModel protected String databaseName;
+
+  protected long ramBytesUsed = Long.MIN_VALUE;
 
   // endregion
 
@@ -310,8 +317,6 @@ public abstract class InsertBaseStatement extends Statement {
           idColumnIndices.add(i);
         }
       }
-    } else if (columnCategories == null) {
-      return Collections.emptyList();
     }
     return idColumnIndices;
   }
@@ -544,18 +549,7 @@ public abstract class InsertBaseStatement extends Statement {
       throw new ArrayIndexOutOfBoundsException(pos);
     }
 
-    String[] tmpMeasurements = new String[measurements.length + 1];
-    System.arraycopy(measurements, 0, tmpMeasurements, 0, pos);
-    tmpMeasurements[pos] = columnSchema.getName();
-    System.arraycopy(measurements, pos, tmpMeasurements, pos + 1, measurements.length - pos);
-    measurements = tmpMeasurements;
-
-    if (measurementSchemas == null) {
-      measurementSchemas = new MeasurementSchema[measurements.length];
-      measurementSchemas[pos] =
-          new MeasurementSchema(
-              columnSchema.getName(), InternalTypeManager.getTSDataType(columnSchema.getType()));
-    } else {
+    if (measurementSchemas != null) {
       final MeasurementSchema[] tmp = new MeasurementSchema[measurementSchemas.length + 1];
       System.arraycopy(measurementSchemas, 0, tmp, 0, pos);
       tmp[pos] =
@@ -565,9 +559,15 @@ public abstract class InsertBaseStatement extends Statement {
       measurementSchemas = tmp;
     }
 
+    String[] tmpMeasurements = new String[measurements.length + 1];
+    System.arraycopy(measurements, 0, tmpMeasurements, 0, pos);
+    tmpMeasurements[pos] = columnSchema.getName();
+    System.arraycopy(measurements, pos, tmpMeasurements, pos + 1, measurements.length - pos);
+    measurements = tmpMeasurements;
+
     if (dataTypes == null) {
       // sql insertion
-      dataTypes = new TSDataType[measurements.length];
+      dataTypes = new TSDataType[measurements.length + 1];
       dataTypes[pos] = InternalTypeManager.getTSDataType(columnSchema.getType());
     } else {
       final TSDataType[] tmpTypes = new TSDataType[dataTypes.length + 1];
@@ -578,7 +578,7 @@ public abstract class InsertBaseStatement extends Statement {
     }
 
     if (columnCategories == null) {
-      columnCategories = new TsTableColumnCategory[measurements.length];
+      columnCategories = new TsTableColumnCategory[measurements.length + 1];
       columnCategories[pos] = columnSchema.getColumnCategory();
     } else {
       final TsTableColumnCategory[] tmpCategories =
@@ -656,9 +656,6 @@ public abstract class InsertBaseStatement extends Statement {
 
   @TableModel
   public List<String> getAttributeColumnNameList() {
-    if (getColumnCategories() == null) {
-      return Collections.emptyList();
-    }
     final List<String> attributeColumnNameList = new ArrayList<>();
     for (int i = 0; i < getColumnCategories().length; i++) {
       if (getColumnCategories()[i] == TsTableColumnCategory.ATTRIBUTE) {
@@ -678,4 +675,41 @@ public abstract class InsertBaseStatement extends Statement {
   public boolean isForceTypeConversion() {
     return false;
   }
+
+  @Override
+  public long ramBytesUsed() {
+    if (ramBytesUsed > 0) {
+      return ramBytesUsed;
+    }
+    ramBytesUsed =
+        InsertNodeMemoryEstimator.sizeOfPartialPath(devicePath)
+            + InsertNodeMemoryEstimator.sizeOfMeasurementSchemas(measurementSchemas)
+            + InsertNodeMemoryEstimator.sizeOfStringArray(measurements)
+            + RamUsageEstimator.shallowSizeOf(dataTypes)
+            + RamUsageEstimator.shallowSizeOf(columnCategories)
+            // We assume that the integers are all cached by JVM
+            + shallowSizeOfList(idColumnIndices)
+            + shallowSizeOfList(attrColumnIndices)
+            + shallowSizeOfList(logicalViewSchemaList)
+            + (Objects.nonNull(logicalViewSchemaList)
+                ? logicalViewSchemaList.stream()
+                    .mapToLong(LogicalViewSchema::ramBytesUsed)
+                    .reduce(0L, Long::sum)
+                : 0L)
+            + shallowSizeOfList(indexOfSourcePathsOfLogicalViews)
+            + RamUsageEstimator.sizeOf(databaseName)
+            + calculateBytesUsed();
+    return ramBytesUsed;
+  }
+
+  private long shallowSizeOfList(List<?> list) {
+    return Objects.nonNull(list)
+        ? UpdateDetailContainer.LIST_SIZE
+            + RamUsageEstimator.alignObjectSize(
+                RamUsageEstimator.NUM_BYTES_ARRAY_HEADER
+                    + (long) RamUsageEstimator.NUM_BYTES_OBJECT_REF * list.size())
+        : 0L;
+  }
+
+  protected abstract long calculateBytesUsed();
 }

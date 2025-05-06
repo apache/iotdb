@@ -20,6 +20,19 @@
 package org.apache.iotdb.db.pipe.metric;
 
 import org.apache.iotdb.commons.pipe.metric.PipeEventCommitMetrics;
+import org.apache.iotdb.db.pipe.metric.overview.PipeDataNodeRemainingEventAndTimeMetrics;
+import org.apache.iotdb.db.pipe.metric.overview.PipeHeartbeatEventMetrics;
+import org.apache.iotdb.db.pipe.metric.overview.PipeResourceMetrics;
+import org.apache.iotdb.db.pipe.metric.overview.PipeTsFileToTabletsMetrics;
+import org.apache.iotdb.db.pipe.metric.overview.PipeWALInsertNodeCacheMetrics;
+import org.apache.iotdb.db.pipe.metric.processor.PipeProcessorMetrics;
+import org.apache.iotdb.db.pipe.metric.receiver.PipeDataNodeReceiverMetrics;
+import org.apache.iotdb.db.pipe.metric.schema.PipeSchemaRegionConnectorMetrics;
+import org.apache.iotdb.db.pipe.metric.schema.PipeSchemaRegionExtractorMetrics;
+import org.apache.iotdb.db.pipe.metric.schema.PipeSchemaRegionListenerMetrics;
+import org.apache.iotdb.db.pipe.metric.sink.PipeDataRegionConnectorMetrics;
+import org.apache.iotdb.db.pipe.metric.source.PipeAssignerMetrics;
+import org.apache.iotdb.db.pipe.metric.source.PipeDataRegionExtractorMetrics;
 import org.apache.iotdb.metrics.AbstractMetricService;
 import org.apache.iotdb.metrics.metricsets.IMetricSet;
 
@@ -42,6 +55,7 @@ public class PipeDataNodeMetrics implements IMetricSet {
     PipeSchemaRegionConnectorMetrics.getInstance().bindTo(metricService);
     PipeDataNodeRemainingEventAndTimeMetrics.getInstance().bindTo(metricService);
     PipeDataNodeReceiverMetrics.getInstance().bindTo(metricService);
+    PipeTsFileToTabletsMetrics.getInstance().bindTo(metricService);
   }
 
   @Override
@@ -59,6 +73,7 @@ public class PipeDataNodeMetrics implements IMetricSet {
     PipeSchemaRegionConnectorMetrics.getInstance().unbindFrom(metricService);
     PipeDataNodeRemainingEventAndTimeMetrics.getInstance().unbindFrom(metricService);
     PipeDataNodeReceiverMetrics.getInstance().unbindFrom(metricService);
+    PipeTsFileToTabletsMetrics.getInstance().unbindFrom(metricService);
   }
 
   //////////////////////////// singleton ////////////////////////////

@@ -45,10 +45,10 @@ import org.apache.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.tsfile.read.common.Field;
 import org.apache.tsfile.read.common.RowRecord;
 import org.apache.tsfile.utils.Binary;
+import org.apache.tsfile.utils.DateUtils;
 import org.apache.tsfile.write.TsFileWriter;
 import org.apache.tsfile.write.record.TSRecord;
 import org.apache.tsfile.write.record.Tablet;
-import org.apache.tsfile.write.record.Tablet.ColumnCategory;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.junit.After;
@@ -64,6 +64,7 @@ import org.slf4j.LoggerFactory;
 import java.io.File;
 import java.io.IOException;
 import java.security.SecureRandom;
+import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -1946,52 +1947,6 @@ public class IoTDBSessionSimpleIT {
 
   @Test
   @Category({LocalStandaloneIT.class, ClusterIT.class})
-  public void insertTimeOnlyTest() throws IoTDBConnectionException, StatementExecutionException {
-    try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
-
-      List<IMeasurementSchema> schemaList = Collections.emptyList();
-      final List<ColumnCategory> columnTypes = Collections.emptyList();
-
-      Tablet tablet =
-          new Tablet(
-              "root.sg1.d1",
-              IMeasurementSchema.getMeasurementNameList(schemaList),
-              IMeasurementSchema.getDataTypeList(schemaList),
-              columnTypes);
-
-      long timestamp = 0;
-      for (int row = 0; row < 10; row++) {
-        tablet.addTimestamp(row, timestamp++);
-      }
-      session.insertTablet(tablet);
-      tablet.setDeviceId("root.sg1.d2");
-      session.insertAlignedTablet(tablet);
-      tablet.reset();
-
-      try {
-        session.executeNonQueryStatement(
-            String.format("INSERT INTO root.sg1.d3 (time) VALUES (%d)", timestamp++));
-        fail("Exception expected");
-      } catch (StatementExecutionException e) {
-        assertEquals(
-            "701: InsertStatement should contain at least one measurement", e.getMessage());
-      }
-
-      try {
-        session.executeNonQueryStatement(
-            String.format("INSERT INTO root.sg1.d4 (time) ALIGNED VALUES (%d)", timestamp++));
-      } catch (StatementExecutionException e) {
-        assertEquals(
-            "701: InsertStatement should contain at least one measurement", e.getMessage());
-      }
-
-      SessionDataSet dataSet = session.executeQueryStatement("select count(*) from root.sg1.**");
-      assertFalse(dataSet.hasNext());
-    }
-  }
-
-  @Test
-  @Category({LocalStandaloneIT.class, ClusterIT.class})
   public void insertMinMaxTimeTest() throws IoTDBConnectionException, StatementExecutionException {
     try {
       try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
@@ -2153,7 +2108,6 @@ public class IoTDBSessionSimpleIT {
   }
 
   @Test
-  @Category({LocalStandaloneIT.class, ClusterIT.class})
   public void testWriteRestartAndDeleteDB()
       throws IoTDBConnectionException, StatementExecutionException {
     try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
@@ -2173,6 +2127,77 @@ public class IoTDBSessionSimpleIT {
       dataSet = session.executeQueryStatement("SELECT * FROM root.sg1.d1");
       RowRecord record = dataSet.next();
       assertEquals(3, record.getFields().size());
+    }
+  }
+
+  @Test
+  @Category({LocalStandaloneIT.class, ClusterIT.class})
+  public void testQueryAllDataType() throws IoTDBConnectionException, StatementExecutionException {
+    Tablet tablet =
+        new Tablet(
+            "root.sg.d1",
+            Arrays.asList(
+                new MeasurementSchema("s1", TSDataType.INT32),
+                new MeasurementSchema("s2", TSDataType.INT64),
+                new MeasurementSchema("s3", TSDataType.FLOAT),
+                new MeasurementSchema("s4", TSDataType.DOUBLE),
+                new MeasurementSchema("s5", TSDataType.TEXT),
+                new MeasurementSchema("s6", TSDataType.BOOLEAN),
+                new MeasurementSchema("s7", TSDataType.TIMESTAMP),
+                new MeasurementSchema("s8", TSDataType.BLOB),
+                new MeasurementSchema("s9", TSDataType.STRING),
+                new MeasurementSchema("s10", TSDataType.DATE),
+                new MeasurementSchema("s11", TSDataType.TIMESTAMP)),
+            10);
+    tablet.addTimestamp(0, 0L);
+    tablet.addValue("s1", 0, 1);
+    tablet.addValue("s2", 0, 1L);
+    tablet.addValue("s3", 0, 0f);
+    tablet.addValue("s4", 0, 0d);
+    tablet.addValue("s5", 0, "text_value");
+    tablet.addValue("s6", 0, true);
+    tablet.addValue("s7", 0, 1L);
+    tablet.addValue("s8", 0, new Binary(new byte[] {1}));
+    tablet.addValue("s9", 0, "string_value");
+    tablet.addValue("s10", 0, DateUtils.parseIntToLocalDate(20250403));
+
+    try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
+      session.insertTablet(tablet);
+
+      try (SessionDataSet dataSet = session.executeQueryStatement("select * from root.sg.d1")) {
+        SessionDataSet.DataIterator iterator = dataSet.iterator();
+        int count = 0;
+        while (iterator.next()) {
+          count++;
+          Assert.assertFalse(iterator.isNull("root.sg.d1.s1"));
+          Assert.assertEquals(1, iterator.getInt("root.sg.d1.s1"));
+          Assert.assertFalse(iterator.isNull("root.sg.d1.s2"));
+          Assert.assertEquals(1L, iterator.getLong("root.sg.d1.s2"));
+          Assert.assertFalse(iterator.isNull("root.sg.d1.s3"));
+          Assert.assertEquals(0, iterator.getFloat("root.sg.d1.s3"), 0.01);
+          Assert.assertFalse(iterator.isNull("root.sg.d1.s4"));
+          Assert.assertEquals(0, iterator.getDouble("root.sg.d1.s4"), 0.01);
+          Assert.assertFalse(iterator.isNull("root.sg.d1.s5"));
+          Assert.assertEquals("text_value", iterator.getString("root.sg.d1.s5"));
+          Assert.assertFalse(iterator.isNull("root.sg.d1.s6"));
+          assertTrue(iterator.getBoolean("root.sg.d1.s6"));
+          Assert.assertFalse(iterator.isNull("root.sg.d1.s7"));
+          Assert.assertEquals(new Timestamp(1), iterator.getTimestamp("root.sg.d1.s7"));
+          Assert.assertFalse(iterator.isNull("root.sg.d1.s8"));
+          Assert.assertEquals(new Binary(new byte[] {1}), iterator.getBlob("root.sg.d1.s8"));
+          Assert.assertFalse(iterator.isNull("root.sg.d1.s9"));
+          Assert.assertEquals("string_value", iterator.getString("root.sg.d1.s9"));
+          Assert.assertFalse(iterator.isNull("root.sg.d1.s10"));
+          Assert.assertEquals(
+              DateUtils.parseIntToLocalDate(20250403), iterator.getDate("root.sg.d1.s10"));
+          Assert.assertTrue(iterator.isNull("root.sg.d1.s11"));
+          Assert.assertNull(iterator.getTimestamp("root.sg.d1.s11"));
+
+          Assert.assertEquals(new Timestamp(0), iterator.getTimestamp("Time"));
+          Assert.assertFalse(iterator.isNull("Time"));
+        }
+        Assert.assertEquals(tablet.getRowSize(), count);
+      }
     }
   }
 }

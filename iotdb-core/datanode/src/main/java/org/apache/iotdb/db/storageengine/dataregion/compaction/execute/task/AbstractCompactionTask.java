@@ -73,6 +73,7 @@ public abstract class AbstractCompactionTask {
   protected CompactionTaskSummary summary;
   protected long serialId;
   protected CompactionTaskStage taskStage;
+  protected long roughMemoryCost = -1L;
   protected long memoryCost = 0L;
 
   protected boolean recoverMemoryStatus;
@@ -253,6 +254,15 @@ public abstract class AbstractCompactionTask {
         throw new FileCannotTransitToCompactingException(f);
       }
     }
+  }
+
+  @TestOnly
+  public long getRoughMemoryCost() {
+    return roughMemoryCost;
+  }
+
+  public void setRoughMemoryCost(long memoryCost) {
+    this.roughMemoryCost = memoryCost;
   }
 
   public abstract long getEstimatedMemoryCost();
@@ -501,6 +511,9 @@ public abstract class AbstractCompactionTask {
           sourceSeqFiles,
           sourceUnseqFiles,
           targetFiles);
+      if (!IoTDBDescriptor.getInstance().getConfig().isEnableAutoRepairCompaction()) {
+        throw new CompactionValidationFailedException(overlapFilesInTimePartition);
+      }
       for (TsFileResource resource : overlapFilesInTimePartition) {
         if (resource.getTsFileRepairStatus() != TsFileRepairStatus.CAN_NOT_REPAIR) {
           resource.setTsFileRepairStatus(TsFileRepairStatus.NEED_TO_CHECK);

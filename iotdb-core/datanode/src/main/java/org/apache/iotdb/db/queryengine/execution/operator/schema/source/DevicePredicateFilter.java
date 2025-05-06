@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.execution.operator.schema.source;
 
-import org.apache.iotdb.commons.schema.column.ColumnHeader;
+import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.ColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.leaf.LeafColumnTransformer;
 import org.apache.iotdb.db.schemaengine.schemaregion.read.resp.info.IDeviceSchemaInfo;
@@ -37,15 +37,8 @@ public class DevicePredicateFilter extends DevicePredicateHandler
   public DevicePredicateFilter(
       final List<LeafColumnTransformer> filterLeafColumnTransformerList,
       final ColumnTransformer filterOutputTransformer,
-      final String database,
-      final String tableName,
-      final List<ColumnHeader> columnHeaderList) {
-    super(
-        filterLeafColumnTransformerList,
-        filterOutputTransformer,
-        database,
-        tableName,
-        columnHeaderList);
+      final List<TsTableColumnSchema> columnSchemaList) {
+    super(filterLeafColumnTransformerList, filterOutputTransformer, columnSchemaList);
     requireNonNull(filterOutputTransformer);
   }
 

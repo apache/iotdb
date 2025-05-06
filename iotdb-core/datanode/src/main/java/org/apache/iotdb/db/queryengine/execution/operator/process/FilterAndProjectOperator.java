@@ -100,6 +100,21 @@ public class FilterAndProjectOperator implements ProcessOperator {
     this.hasFilter = hasFilter;
   }
 
+  public FilterAndProjectOperator(
+      FilterAndProjectOperator filterAndProjectOperator, Operator inputOperator) {
+    this.operatorContext = filterAndProjectOperator.operatorContext;
+    this.filterLeafColumnTransformerList = filterAndProjectOperator.filterLeafColumnTransformerList;
+    this.filterOutputTransformer = filterAndProjectOperator.filterOutputTransformer;
+    this.commonTransformerList = filterAndProjectOperator.commonTransformerList;
+    this.projectLeafColumnTransformerList =
+        filterAndProjectOperator.projectLeafColumnTransformerList;
+    this.projectOutputTransformerList = filterAndProjectOperator.projectOutputTransformerList;
+    this.hasNonMappableUDF = filterAndProjectOperator.hasNonMappableUDF;
+    this.hasFilter = filterAndProjectOperator.hasFilter;
+    this.filterTsBlockBuilder = filterAndProjectOperator.filterTsBlockBuilder;
+    this.inputOperator = inputOperator;
+  }
+
   @Override
   public OperatorContext getOperatorContext() {
     return operatorContext;

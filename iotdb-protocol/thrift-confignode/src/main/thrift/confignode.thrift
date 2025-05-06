@@ -1035,6 +1035,37 @@ struct TGetModelInfoResp {
   3: optional common.TEndPoint aiNodeAddress
 }
 
+struct TUpdateModelInfoReq {
+    1: required string modelId
+    2: required i32 modelStatus
+    3: optional string attributes
+    4: optional list<i32> aiNodeIds
+    5: optional i32 inputLength
+    6: optional i32 outputLength
+}
+
+struct TDataSchemaForTable{
+    1: required list<string> databaseList
+    2: required list<string> tableList
+    3: required string curDatabase
+}
+
+struct TDataSchemaForTree{
+    1: required list<string> path
+}
+
+struct TCreateTrainingReq {
+    1: required string modelId
+    2: required string modelType
+    3: required bool isTableModel
+    4: optional TDataSchemaForTable dataSchemaForTable
+    5: optional TDataSchemaForTree dataSchemaForTree
+    6: optional bool useAllData
+    7: optional map<string, string> parameters
+    8: optional string existingModelId
+    9: optional list<list<i64>> timeRanges
+}
+
 // ====================================================
 // Quota
 // ====================================================
@@ -1174,6 +1205,7 @@ struct TTableInfo {
    // TTL is stored as string in table props
    2: required string TTL
    3: optional i32 state
+   4: optional string comment
 }
 
 service IConfigNodeRPCService {
@@ -1480,8 +1512,8 @@ service IConfigNodeRPCService {
    */
   common.TSStatus reportConfigNodeShutdown(common.TConfigNodeLocation configNodeLocation)
 
-  /** Stop the specific ConfigNode */
-  common.TSStatus stopConfigNode(common.TConfigNodeLocation configNodeLocation)
+  /** Stop the specific ConfigNode and clear data */
+  common.TSStatus stopAndClearConfigNode(common.TConfigNodeLocation configNodeLocation)
 
   /** The ConfigNode-leader will ping other ConfigNodes periodically */
   TConfigNodeHeartbeatResp getConfigNodeHeartBeat(TConfigNodeHeartbeatReq req)
@@ -1897,6 +1929,10 @@ service IConfigNodeRPCService {
    * Return the model info by model_id
    */
   TGetModelInfoResp getModelInfo(TGetModelInfoReq req)
+
+  common.TSStatus updateModelInfo(TUpdateModelInfoReq req)
+
+  common.TSStatus createTraining(TCreateTrainingReq req)
 
   // ======================================================
   // Quota

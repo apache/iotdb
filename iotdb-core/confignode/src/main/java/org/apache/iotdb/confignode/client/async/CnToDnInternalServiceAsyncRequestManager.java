@@ -75,6 +75,7 @@ import org.apache.iotdb.mpp.rpc.thrift.TInvalidateCacheReq;
 import org.apache.iotdb.mpp.rpc.thrift.TInvalidateColumnCacheReq;
 import org.apache.iotdb.mpp.rpc.thrift.TInvalidateMatchedSchemaCacheReq;
 import org.apache.iotdb.mpp.rpc.thrift.TInvalidateTableCacheReq;
+import org.apache.iotdb.mpp.rpc.thrift.TNotifyRegionMigrationReq;
 import org.apache.iotdb.mpp.rpc.thrift.TPipeHeartbeatReq;
 import org.apache.iotdb.mpp.rpc.thrift.TPushConsumerGroupMetaReq;
 import org.apache.iotdb.mpp.rpc.thrift.TPushMultiPipeMetaReq;
@@ -257,6 +258,11 @@ public class CnToDnInternalServiceAsyncRequestManager
         (req, client, handler) ->
             client.updateRegionCache((TRegionRouteReq) req, (DataNodeTSStatusRPCHandler) handler));
     actionMapBuilder.put(
+        CnToDnAsyncRequestType.NOTIFY_REGION_MIGRATION,
+        (req, client, handler) ->
+            client.notifyRegionMigration(
+                (TNotifyRegionMigrationReq) req, (DataNodeTSStatusRPCHandler) handler));
+    actionMapBuilder.put(
         CnToDnAsyncRequestType.CHANGE_REGION_LEADER,
         (req, client, handler) ->
             client.changeRegionLeader(
@@ -373,6 +379,11 @@ public class CnToDnInternalServiceAsyncRequestManager
         CnToDnAsyncRequestType.SUBMIT_TEST_CONNECTION_TASK,
         (req, client, handler) ->
             client.submitTestConnectionTask(
+                (TNodeLocations) req, (SubmitTestConnectionTaskRPCHandler) handler));
+    actionMapBuilder.put(
+        CnToDnAsyncRequestType.SUBMIT_TEST_DN_INTERNAL_CONNECTION_TASK,
+        (req, client, handler) ->
+            client.submitInternalTestConnectionTask(
                 (TNodeLocations) req, (SubmitTestConnectionTaskRPCHandler) handler));
     actionMapBuilder.put(
         CnToDnAsyncRequestType.TEST_CONNECTION,

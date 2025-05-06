@@ -59,6 +59,7 @@ import org.apache.iotdb.confignode.procedure.scheduler.ProcedureScheduler;
 import org.apache.iotdb.confignode.rpc.thrift.TAddConsensusGroupReq;
 import org.apache.iotdb.confignode.rpc.thrift.TNodeVersionInfo;
 import org.apache.iotdb.consensus.exception.ConsensusException;
+import org.apache.iotdb.db.protocol.client.ConfigNodeInfo;
 import org.apache.iotdb.mpp.rpc.thrift.TActiveTriggerInstanceReq;
 import org.apache.iotdb.mpp.rpc.thrift.TCreateDataRegionReq;
 import org.apache.iotdb.mpp.rpc.thrift.TCreatePipePluginInstanceReq;
@@ -68,6 +69,7 @@ import org.apache.iotdb.mpp.rpc.thrift.TDropPipePluginInstanceReq;
 import org.apache.iotdb.mpp.rpc.thrift.TDropTriggerInstanceReq;
 import org.apache.iotdb.mpp.rpc.thrift.TInactiveTriggerInstanceReq;
 import org.apache.iotdb.mpp.rpc.thrift.TInvalidateCacheReq;
+import org.apache.iotdb.mpp.rpc.thrift.TNotifyRegionMigrationReq;
 import org.apache.iotdb.mpp.rpc.thrift.TPushConsumerGroupMetaReq;
 import org.apache.iotdb.mpp.rpc.thrift.TPushConsumerGroupMetaResp;
 import org.apache.iotdb.mpp.rpc.thrift.TPushMultiPipeMetaReq;
@@ -183,35 +185,35 @@ public class ConfigNodeProcedureEnv {
         }
       }
 
-      if (nodeStatus == NodeStatus.Running) {
-        // Always invalidate PartitionCache first
-        final TSStatus invalidatePartitionStatus =
-            (TSStatus)
-                SyncDataNodeClientPool.getInstance()
-                    .sendSyncRequestToDataNodeWithRetry(
-                        dataNodeConfiguration.getLocation().getInternalEndPoint(),
-                        invalidateCacheReq,
-                        CnToDnSyncRequestType.INVALIDATE_PARTITION_CACHE);
-
-        final TSStatus invalidateSchemaStatus =
-            (TSStatus)
-                SyncDataNodeClientPool.getInstance()
-                    .sendSyncRequestToDataNodeWithRetry(
-                        dataNodeConfiguration.getLocation().getInternalEndPoint(),
-                        invalidateCacheReq,
-                        CnToDnSyncRequestType.INVALIDATE_SCHEMA_CACHE);
-
-        if (!verifySucceed(invalidatePartitionStatus, invalidateSchemaStatus)) {
-          LOG.error(
-              "Invalidate cache failed, invalidate partition cache status is {}, invalidate schemaengine cache status is {}",
-              invalidatePartitionStatus,
-              invalidateSchemaStatus);
-          return false;
-        }
-      } else if (nodeStatus == NodeStatus.Unknown) {
+      if (nodeStatus == NodeStatus.Unknown) {
         LOG.warn(
             "Invalidate cache failed, because DataNode {} is Unknown",
             dataNodeConfiguration.getLocation().getInternalEndPoint());
+        return false;
+      }
+
+      // Always invalidate PartitionCache first
+      final TSStatus invalidatePartitionStatus =
+          (TSStatus)
+              SyncDataNodeClientPool.getInstance()
+                  .sendSyncRequestToDataNodeWithRetry(
+                      dataNodeConfiguration.getLocation().getInternalEndPoint(),
+                      invalidateCacheReq,
+                      CnToDnSyncRequestType.INVALIDATE_PARTITION_CACHE);
+
+      final TSStatus invalidateSchemaStatus =
+          (TSStatus)
+              SyncDataNodeClientPool.getInstance()
+                  .sendSyncRequestToDataNodeWithRetry(
+                      dataNodeConfiguration.getLocation().getInternalEndPoint(),
+                      invalidateCacheReq,
+                      CnToDnSyncRequestType.INVALIDATE_SCHEMA_CACHE);
+
+      if (!verifySucceed(invalidatePartitionStatus, invalidateSchemaStatus)) {
+        LOG.error(
+            "Invalidate cache failed, invalidate partition cache status is {}, invalidate schemaengine cache status is {}",
+            invalidatePartitionStatus,
+            invalidateSchemaStatus);
         return false;
       }
     }
@@ -318,14 +320,15 @@ public class ConfigNodeProcedureEnv {
    * @param tConfigNodeLocation config node location
    * @throws ProcedureException if failed status
    */
-  public void stopConfigNode(TConfigNodeLocation tConfigNodeLocation) throws ProcedureException {
+  public void stopAndClearConfigNode(TConfigNodeLocation tConfigNodeLocation)
+      throws ProcedureException {
     TSStatus tsStatus =
         (TSStatus)
             SyncConfigNodeClientPool.getInstance()
                 .sendSyncRequestToConfigNodeWithRetry(
                     tConfigNodeLocation.getInternalEndPoint(),
                     tConfigNodeLocation,
-                    CnToCnNodeRequestType.STOP_CONFIG_NODE);
+                    CnToCnNodeRequestType.STOP_AND_CLEAR_CONFIG_NODE);
 
     if (tsStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       throw new ProcedureException(tsStatus.getMessage());
@@ -477,6 +480,28 @@ public class ConfigNodeProcedureEnv {
     req.setStorageGroup(storageGroup);
     req.setRegionReplicaSet(regionReplicaSet);
     return req;
+  }
+
+  public List<TSStatus> notifyRegionMigrationToAllDataNodes(
+      TConsensusGroupId consensusGroupId, boolean isStart) {
+    final Map<Integer, TDataNodeLocation> dataNodeLocationMap =
+        configManager.getNodeManager().getRegisteredDataNodeLocations();
+    final TNotifyRegionMigrationReq request =
+        new TNotifyRegionMigrationReq(
+            configManager
+                .getConsensusManager()
+                .getConsensusImpl()
+                .getLogicalClock(ConfigNodeInfo.CONFIG_REGION_ID),
+            System.nanoTime(),
+            configManager.getProcedureManager().getRegionOperationConsensusIds());
+    request.setRegionId(consensusGroupId);
+    request.setIsStart(isStart);
+
+    final DataNodeAsyncRequestContext<TNotifyRegionMigrationReq, TSStatus> clientHandler =
+        new DataNodeAsyncRequestContext<>(
+            CnToDnAsyncRequestType.NOTIFY_REGION_MIGRATION, request, dataNodeLocationMap);
+    CnToDnInternalServiceAsyncRequestManager.getInstance().sendAsyncRequestWithRetry(clientHandler);
+    return clientHandler.getResponseList();
   }
 
   public void persistRegionGroup(CreateRegionGroupsPlan createRegionGroupsPlan) {
@@ -829,10 +854,6 @@ public class ConfigNodeProcedureEnv {
 
   public ProcedureScheduler getScheduler() {
     return scheduler;
-  }
-
-  public LockQueue getRegionMigrateLock() {
-    return regionMaintainHandler.getRegionMigrateLock();
   }
 
   public ReentrantLock getSchedulerLock() {

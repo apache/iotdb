@@ -24,7 +24,7 @@
     <parent>
         <groupId>org.apache.iotdb</groupId>
         <artifactId>iotdb-core</artifactId>
-        <version>2.0.2-SNAPSHOT</version>
+        <version>2.0.4-SNAPSHOT</version>
     </parent>
     <artifactId>iotdb-server</artifactId>
     <name>IoTDB: Core: Data-Node (Server)</name>
@@ -37,12 +37,12 @@
         <dependency>
             <groupId>org.apache.iotdb</groupId>
             <artifactId>service-rpc</artifactId>
-            <version>2.0.2-SNAPSHOT</version>
+            <version>2.0.4-SNAPSHOT</version>
         </dependency>
         <dependency>
             <groupId>org.apache.iotdb</groupId>
             <artifactId>iotdb-consensus</artifactId>
-            <version>2.0.2-SNAPSHOT</version>
+            <version>2.0.4-SNAPSHOT</version>
         </dependency>
         <dependency>
             <groupId>org.apache.tsfile</groupId>
@@ -57,82 +57,82 @@
         <dependency>
             <groupId>org.apache.iotdb</groupId>
             <artifactId>external-api</artifactId>
-            <version>2.0.2-SNAPSHOT</version>
+            <version>2.0.4-SNAPSHOT</version>
         </dependency>
         <dependency>
             <groupId>org.apache.iotdb</groupId>
             <artifactId>openapi</artifactId>
-            <version>2.0.2-SNAPSHOT</version>
+            <version>2.0.4-SNAPSHOT</version>
         </dependency>
         <dependency>
             <groupId>org.apache.iotdb</groupId>
             <artifactId>node-commons</artifactId>
-            <version>2.0.2-SNAPSHOT</version>
+            <version>2.0.4-SNAPSHOT</version>
         </dependency>
         <dependency>
             <groupId>org.apache.iotdb</groupId>
             <artifactId>isession</artifactId>
-            <version>2.0.2-SNAPSHOT</version>
+            <version>2.0.4-SNAPSHOT</version>
         </dependency>
         <dependency>
             <groupId>org.apache.iotdb</groupId>
             <artifactId>iotdb-antlr</artifactId>
-            <version>2.0.2-SNAPSHOT</version>
+            <version>2.0.4-SNAPSHOT</version>
         </dependency>
         <dependency>
             <groupId>org.apache.iotdb</groupId>
             <artifactId>iotdb-relational-grammar</artifactId>
-            <version>2.0.2-SNAPSHOT</version>
+            <version>2.0.4-SNAPSHOT</version>
         </dependency>
         <dependency>
             <groupId>org.apache.iotdb</groupId>
             <artifactId>iotdb-thrift-commons</artifactId>
-            <version>2.0.2-SNAPSHOT</version>
+            <version>2.0.4-SNAPSHOT</version>
         </dependency>
         <dependency>
             <groupId>org.apache.iotdb</groupId>
             <artifactId>iotdb-thrift-consensus</artifactId>
-            <version>2.0.2-SNAPSHOT</version>
+            <version>2.0.4-SNAPSHOT</version>
         </dependency>
         <dependency>
             <groupId>org.apache.iotdb</groupId>
             <artifactId>udf-api</artifactId>
-            <version>2.0.2-SNAPSHOT</version>
+            <version>2.0.4-SNAPSHOT</version>
         </dependency>
         <dependency>
             <groupId>org.apache.iotdb</groupId>
             <artifactId>trigger-api</artifactId>
-            <version>2.0.2-SNAPSHOT</version>
+            <version>2.0.4-SNAPSHOT</version>
         </dependency>
         <dependency>
             <groupId>org.apache.iotdb</groupId>
             <artifactId>metrics-interface</artifactId>
-            <version>2.0.2-SNAPSHOT</version>
+            <version>2.0.4-SNAPSHOT</version>
         </dependency>
         <dependency>
             <groupId>org.apache.iotdb</groupId>
             <artifactId>iotdb-thrift</artifactId>
-            <version>2.0.2-SNAPSHOT</version>
+            <version>2.0.4-SNAPSHOT</version>
         </dependency>
         <dependency>
             <groupId>org.apache.iotdb</groupId>
             <artifactId>iotdb-thrift-confignode</artifactId>
-            <version>2.0.2-SNAPSHOT</version>
+            <version>2.0.4-SNAPSHOT</version>
         </dependency>
         <dependency>
             <groupId>org.apache.iotdb</groupId>
             <artifactId>iotdb-thrift-ainode</artifactId>
-            <version>2.0.2-SNAPSHOT</version>
+            <version>2.0.4-SNAPSHOT</version>
         </dependency>
         <dependency>
             <groupId>org.apache.iotdb</groupId>
             <artifactId>pipe-api</artifactId>
-            <version>2.0.2-SNAPSHOT</version>
+            <version>2.0.4-SNAPSHOT</version>
         </dependency>
         <dependency>
             <groupId>org.apache.iotdb</groupId>
             <artifactId>iotdb-session</artifactId>
-            <version>2.0.2-SNAPSHOT</version>
+            <version>2.0.4-SNAPSHOT</version>
         </dependency>
         <dependency>
             <groupId>org.apache.commons</groupId>
@@ -174,6 +174,14 @@
         <dependency>
             <groupId>org.slf4j</groupId>
             <artifactId>slf4j-api</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>net.java.dev.jna</groupId>
+            <artifactId>jna</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>net.java.dev.jna</groupId>
+            <artifactId>jna-platform</artifactId>
         </dependency>
         <dependency>
             <groupId>io.jsonwebtoken</groupId>
@@ -264,7 +272,7 @@
             <artifactId>jersey-container-servlet-core</artifactId>
         </dependency>
         <dependency>
-            <groupId>io.moquette</groupId>
+            <groupId>com.github.moquette-io.moquette</groupId>
             <artifactId>moquette-broker</artifactId>
         </dependency>
         <dependency>
@@ -314,7 +322,7 @@
         <dependency>
             <groupId>org.apache.iotdb</groupId>
             <artifactId>metrics-core</artifactId>
-            <version>2.0.2-SNAPSHOT</version>
+            <version>2.0.4-SNAPSHOT</version>
         </dependency>
         <dependency>
             <groupId>org.mockito</groupId>

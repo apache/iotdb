@@ -23,13 +23,13 @@ import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.Com
 import org.apache.iotdb.db.storageengine.dataregion.compaction.utils.CompactionTestFileWriter;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 
+import org.apache.tsfile.enums.ColumnCategory;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.file.metadata.StringArrayDeviceID;
 import org.apache.tsfile.file.metadata.TableSchema;
 import org.apache.tsfile.file.metadata.enums.CompressionType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
-import org.apache.tsfile.write.record.Tablet.ColumnCategory;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.apache.tsfile.write.schema.Schema;
@@ -59,6 +59,20 @@ public class CompactionTableModelTestFileWriter extends CompactionTestFileWriter
     }
     tableSchema.merge(new TableSchema(tableName, measurementSchemas, columnTypes));
     schema.registerTableSchema(tableSchema);
+  }
+
+  public void registerTableSchemaWithTagField(String tableName, List<String> columnNames) {
+    List<IMeasurementSchema> measurementSchemas = new ArrayList<>();
+    List<ColumnCategory> columnTypes = new ArrayList<>();
+    int cnt = 0;
+    for (String columnName : columnNames) {
+      measurementSchemas.add(
+          new MeasurementSchema(
+              columnName, TSDataType.STRING, TSEncoding.PLAIN, CompressionType.UNCOMPRESSED));
+      columnTypes.add(cnt % 2 == 0 ? ColumnCategory.FIELD : ColumnCategory.TAG);
+      cnt++;
+    }
+    schema.registerTableSchema(new TableSchema(tableName, measurementSchemas, columnTypes));
   }
 
   public IDeviceID startChunkGroup(String tableName, List<String> idColumnFields)
