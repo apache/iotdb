@@ -22,6 +22,7 @@ package org.apache.iotdb.db.pipe.connector.util.builder;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 
 import org.apache.commons.io.FileUtils;
+import org.apache.tsfile.enums.ColumnCategory;
 import org.apache.tsfile.exception.write.WriteProcessException;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.file.metadata.TableSchema;
@@ -30,7 +31,6 @@ import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.utils.WriteUtils;
 import org.apache.tsfile.write.TsFileWriter;
 import org.apache.tsfile.write.record.Tablet;
-import org.apache.tsfile.write.record.Tablet.ColumnCategory;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -289,7 +289,7 @@ public class PipeTableModelTsFileBuilder extends PipeTsFileBuilder {
       String tableName = null;
 
       final List<IMeasurementSchema> columnSchemas = new ArrayList<>();
-      final List<Tablet.ColumnCategory> columnCategories = new ArrayList<>();
+      final List<ColumnCategory> columnCategories = new ArrayList<>();
       final Set<String> columnNames = new HashSet<>();
 
       while (!tablets.isEmpty()) {

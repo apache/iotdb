@@ -63,6 +63,12 @@ public class PartitionTableAutoCleaner<Env> extends InternalProcedure<Env> {
               ? configManager.getClusterSchemaManager().getDatabaseMaxTTL(database)
               : configManager.getTTLManager().getDatabaseMaxTTL(database);
       databaseTTLMap.put(database, databaseTTL);
+    }
+    LOGGER.info(
+        "[PartitionTableCleaner] Periodically activate PartitionTableAutoCleaner, databaseTTL: {}",
+        databaseTTLMap);
+    for (String database : databases) {
+      long databaseTTL = databaseTTLMap.get(database);
       if (!configManager.getPartitionManager().isDatabaseExist(database)
           || databaseTTL < 0
           || databaseTTL == Long.MAX_VALUE) {

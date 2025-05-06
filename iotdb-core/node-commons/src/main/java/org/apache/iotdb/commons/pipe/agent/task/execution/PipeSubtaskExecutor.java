@@ -150,7 +150,7 @@ public abstract class PipeSubtaskExecutor {
       subtask.disallowSubmittingSelf();
     }
 
-    subtaskWorkerThreadPoolExecutor.shutdown();
+    subtaskWorkerThreadPoolExecutor.shutdownNow();
   }
 
   public final boolean isShutdown() {
