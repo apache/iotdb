@@ -48,16 +48,14 @@ public class RowsFrame implements Frame {
         frameStart = 0;
         break;
       case PRECEDING:
-        offset =
-            (int) getOffset(frameInfo.getStartOffsetChannel(), currentPosition);
+        offset = (int) getOffset(frameInfo.getStartOffsetChannel(), currentPosition);
         frameStart = currentPosition - offset;
         break;
       case CURRENT_ROW:
         frameStart = currentPosition;
         break;
       case FOLLOWING:
-        offset =
-            (int) getOffset(frameInfo.getStartOffsetChannel(), currentPosition);
+        offset = (int) getOffset(frameInfo.getStartOffsetChannel(), currentPosition);
         frameStart = currentPosition + offset;
         break;
       default:

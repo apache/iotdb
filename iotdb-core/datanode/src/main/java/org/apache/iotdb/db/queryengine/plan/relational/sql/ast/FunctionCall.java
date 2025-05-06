@@ -20,7 +20,6 @@
 package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
 
 import com.google.common.collect.ImmutableList;
-import org.apache.iotdb.consensus.config.RatisConfig;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.DataOutputStream;
@@ -200,7 +199,8 @@ public class FunctionCall extends Expression {
       arguments.add(Expression.deserialize(byteBuffer));
     }
     if (ReadWriteIOUtils.readByte(byteBuffer) == 1) {
-      this.nullTreatment = Optional.of(NullTreatment.values()[ReadWriteIOUtils.readByte(byteBuffer)]);
+      this.nullTreatment =
+          Optional.of(NullTreatment.values()[ReadWriteIOUtils.readByte(byteBuffer)]);
     } else {
       this.nullTreatment = Optional.empty();
     }

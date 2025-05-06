@@ -450,7 +450,8 @@ public class ExpressionAnalyzer {
       if (!resolvedField.isLocal()
           && context.getContext().getCorrelationSupport() != CorrelationSupport.ALLOWED) {
         throw new SemanticException(
-            String.format("Reference to column '%s' from outer scope not allowed in this context", node));
+            String.format(
+                "Reference to column '%s' from outer scope not allowed in this context", node));
       }
 
       FieldId fieldId = FieldId.from(resolvedField);
@@ -506,7 +507,8 @@ public class ExpressionAnalyzer {
 
       Type baseType = process(node.getBase(), context);
       if (!(baseType instanceof RowType)) {
-        throw new SemanticException(String.format("Expression %s is not of type ROW", node.getBase()));
+        throw new SemanticException(
+            String.format("Expression %s is not of type ROW", node.getBase()));
       }
 
       RowType rowType = (RowType) baseType;
@@ -520,7 +522,8 @@ public class ExpressionAnalyzer {
       for (RowType.Field rowField : rowType.getFields()) {
         if (fieldName.equalsIgnoreCase(rowField.getName().orElse(null))) {
           if (foundFieldName) {
-            throw new SemanticException(String.format("Ambiguous row field reference: %s", fieldName));
+            throw new SemanticException(
+                String.format("Ambiguous row field reference: %s", fieldName));
           }
           foundFieldName = true;
           rowFieldType = rowField.getType();
@@ -1429,12 +1432,14 @@ public class ExpressionAnalyzer {
 
     @Override
     protected Type visitExpression(Expression node, StackableAstVisitorContext<Context> context) {
-      throw new SemanticException(String.format("not yet implemented: %s", node.getClass().getName()));
+      throw new SemanticException(
+          String.format("not yet implemented: %s", node.getClass().getName()));
     }
 
     @Override
     protected Type visitNode(Node node, StackableAstVisitorContext<Context> context) {
-      throw new SemanticException(String.format("not yet implemented: %s", node.getClass().getName()));
+      throw new SemanticException(
+          String.format("not yet implemented: %s", node.getClass().getName()));
     }
 
     private Type getOperator(
@@ -1462,7 +1467,8 @@ public class ExpressionAnalyzer {
       if (!actualType.equals(expectedType)) {
         //        if (!typeCoercion.canCoerce(actualType, expectedType)) {
         throw new SemanticException(
-            String.format("%s must evaluate to a %s (actual: %s)", message, expectedType, actualType));
+            String.format(
+                "%s must evaluate to a %s (actual: %s)", message, expectedType, actualType));
         //        }
         //        addOrReplaceExpressionCoercion(expression, actualType, expectedType);
       }
