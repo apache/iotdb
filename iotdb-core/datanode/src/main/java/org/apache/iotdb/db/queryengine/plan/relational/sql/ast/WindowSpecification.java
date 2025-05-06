@@ -1,7 +1,12 @@
 package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
 
 import com.google.common.collect.ImmutableList;
+import org.apache.tsfile.utils.ReadWriteIOUtils;
 
+import java.io.DataOutputStream;
+import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
@@ -92,5 +97,62 @@ public class WindowSpecification extends Node implements Window {
   @Override
   public boolean shallowEquals(Node other) {
     return sameClass(this, other);
+  }
+
+  @Override
+  public void serialize(DataOutputStream stream) throws IOException {
+    if (existingWindowName.isPresent()) {
+      ReadWriteIOUtils.write((byte) 1, stream);
+      existingWindowName.get().serialize(stream);
+    } else {
+      ReadWriteIOUtils.write((byte) 0, stream);
+    }
+
+    ReadWriteIOUtils.write(partitionBy.size(), stream);
+    for (Expression expression : partitionBy) {
+      Expression.serialize(expression, stream);
+    }
+
+    if (orderBy.isPresent()) {
+      ReadWriteIOUtils.write((byte) 1, stream);
+      orderBy.get().serialize(stream);
+    } else {
+      ReadWriteIOUtils.write((byte) 0, stream);
+    }
+
+    if (frame.isPresent()) {
+      ReadWriteIOUtils.write((byte) 1, stream);
+      frame.get().serialize(stream);
+    } else {
+      ReadWriteIOUtils.write((byte) 0, stream);
+    }
+  }
+
+  public WindowSpecification(ByteBuffer byteBuffer) {
+    super(null);
+
+    if (ReadWriteIOUtils.readByte(byteBuffer) == 1) {
+      existingWindowName = Optional.of(new Identifier(byteBuffer));
+    } else {
+      existingWindowName = Optional.empty();
+    }
+
+    int size = ReadWriteIOUtils.readInt(byteBuffer);
+    partitionBy = new ArrayList<>(size);
+    for (int i = 0; i < size; i++) {
+      partitionBy.add(Expression.deserialize(byteBuffer));
+    }
+
+    if (ReadWriteIOUtils.readByte(byteBuffer) == 1) {
+      orderBy = Optional.of(new OrderBy(byteBuffer));
+    } else {
+      orderBy = Optional.empty();
+    }
+
+    if (ReadWriteIOUtils.readByte(byteBuffer) == 1) {
+      frame = Optional.of(new WindowFrame(byteBuffer));
+    } else {
+      frame = Optional.empty();
+    }
   }
 }

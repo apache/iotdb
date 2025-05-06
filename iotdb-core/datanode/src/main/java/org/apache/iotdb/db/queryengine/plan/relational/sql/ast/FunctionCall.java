@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
 
 import com.google.common.collect.ImmutableList;
+import org.apache.iotdb.consensus.config.RatisConfig;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.DataOutputStream;
@@ -168,6 +169,25 @@ public class FunctionCall extends Expression {
     for (Expression argument : arguments) {
       Expression.serialize(argument, stream);
     }
+    if (nullTreatment.isPresent()) {
+      ReadWriteIOUtils.write((byte) 1, stream);
+      ReadWriteIOUtils.write((byte) nullTreatment.get().ordinal(), stream);
+    } else {
+      ReadWriteIOUtils.write((byte) 0, stream);
+    }
+
+    if (window.isPresent()) {
+      ReadWriteIOUtils.write((byte) 1, stream);
+      // Window type
+      if (window.get() instanceof WindowReference) {
+        ReadWriteIOUtils.write((byte) 0, stream);
+      } else {
+        ReadWriteIOUtils.write((byte) 1, stream);
+      }
+      window.get().serialize(stream);
+    } else {
+      ReadWriteIOUtils.write((byte) 0, stream);
+    }
   }
 
   public FunctionCall(ByteBuffer byteBuffer) {
@@ -179,9 +199,21 @@ public class FunctionCall extends Expression {
     while (size-- > 0) {
       arguments.add(Expression.deserialize(byteBuffer));
     }
+    if (ReadWriteIOUtils.readByte(byteBuffer) == 1) {
+      this.nullTreatment = Optional.of(NullTreatment.values()[ReadWriteIOUtils.readByte(byteBuffer)]);
+    } else {
+      this.nullTreatment = Optional.empty();
+    }
 
-    // TODO: serialize window
-    this.window = Optional.empty();
-    this.nullTreatment = Optional.empty();
+    if (ReadWriteIOUtils.readByte(byteBuffer) == 1) {
+      // Window type
+      if (ReadWriteIOUtils.readByte(byteBuffer) == 0) {
+        this.window = Optional.of(new WindowReference(byteBuffer));
+      } else {
+        this.window = Optional.of(new WindowSpecification(byteBuffer));
+      }
+    } else {
+      this.window = Optional.empty();
+    }
   }
 }

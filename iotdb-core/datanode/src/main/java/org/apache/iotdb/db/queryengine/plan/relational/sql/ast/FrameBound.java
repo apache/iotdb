@@ -1,7 +1,12 @@
 package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
 
 import com.google.common.collect.ImmutableList;
+import org.apache.iotdb.consensus.config.RatisConfig;
+import org.apache.tsfile.utils.ReadWriteIOUtils;
 
+import java.io.DataOutputStream;
+import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
@@ -81,5 +86,26 @@ public class FrameBound extends Node {
 
     FrameBound otherNode = (FrameBound) other;
     return type == otherNode.type;
+  }
+
+  public void serialize(DataOutputStream stream) throws IOException {
+    ReadWriteIOUtils.write((byte) type.ordinal(), stream);
+    if (value.isPresent()) {
+      ReadWriteIOUtils.write((byte) 1, stream);
+      Expression.serialize(value.get(), stream);
+    } else {
+      ReadWriteIOUtils.write((byte) 0, stream);
+    }
+  }
+
+  public FrameBound(ByteBuffer byteBuffer) {
+    super(null);
+
+    type = Type.values()[ReadWriteIOUtils.readByte(byteBuffer)];
+    if (ReadWriteIOUtils.readByte(byteBuffer) == 1) {
+      this.value = Optional.of(Expression.deserialize(byteBuffer));
+    } else {
+      this.value = Optional.empty();
+    }
   }
 }

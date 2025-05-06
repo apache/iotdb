@@ -1,7 +1,11 @@
 package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
 
 import com.google.common.collect.ImmutableList;
+import org.apache.tsfile.utils.ReadWriteIOUtils;
 
+import java.io.DataOutputStream;
+import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
@@ -82,5 +86,28 @@ public class WindowFrame extends Node {
 
     WindowFrame otherNode = (WindowFrame) other;
     return type == otherNode.type;
+  }
+
+  public void serialize(DataOutputStream stream) throws IOException {
+    ReadWriteIOUtils.write((byte) type.ordinal(), stream);
+    start.serialize(stream);
+    if (end.isPresent()) {
+      ReadWriteIOUtils.write((byte) 1, stream);
+      end.get().serialize(stream);
+    } else {
+      ReadWriteIOUtils.write((byte) 0, stream);
+    }
+  }
+
+  public WindowFrame(ByteBuffer byteBuffer) {
+    super(null);
+    type = Type.values()[ReadWriteIOUtils.readByte(byteBuffer)];
+    start = new FrameBound(byteBuffer);
+
+    if (ReadWriteIOUtils.readByte(byteBuffer) == 1) {
+      end = Optional.of(new FrameBound(byteBuffer));
+    } else {
+      end = Optional.empty();
+    }
   }
 }

@@ -20,7 +20,12 @@
 package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
 
 import com.google.common.collect.ImmutableList;
+import org.apache.tsfile.utils.ReadWriteIOUtils;
 
+import java.io.DataOutputStream;
+import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 
@@ -85,5 +90,22 @@ public class OrderBy extends Node {
   @Override
   public boolean shallowEquals(Node other) {
     return sameClass(this, other);
+  }
+
+  public void serialize(DataOutputStream stream) throws IOException {
+    ReadWriteIOUtils.write(sortItems.size(), stream);
+    for (SortItem sortItem : sortItems) {
+      sortItem.serialize(stream);
+    }
+  }
+
+  public OrderBy(ByteBuffer byteBuffer) {
+    super(null);
+    int size = ReadWriteIOUtils.readInt(byteBuffer);
+    sortItems = new ArrayList<>(size);
+
+    for (int i = 0; i < size; i++) {
+      sortItems.add(new SortItem(byteBuffer));
+    }
   }
 }
