@@ -660,13 +660,11 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
       // Try to restart the stream mode pipes for releasing memTables.
       if (extractors.get(0).isStreamMode()) {
         if (extractors.stream().anyMatch(IoTDBDataRegionExtractor::hasConsumedAllHistoricalTsFiles)
-            && (mayMemTablePinnedCountReachDangerousThreshold()
-                || mayWalSizeReachThrottleThreshold())) {
+            && mayWalSizeReachThrottleThreshold()) {
           // Extractors of this pipe may be stuck and is pinning too many MemTables.
           LOGGER.warn(
-              "Pipe {} needs to restart because too many memtables are pinned. mayMemTablePinnedCountReachDangerousThreshold: {}, mayWalSizeReachThrottleThreshold: {}",
+              "Pipe {} needs to restart because the WAL size is too large. mayWalSizeReachThrottleThreshold: {}",
               pipeMeta.getStaticMeta(),
-              mayMemTablePinnedCountReachDangerousThreshold(),
               mayWalSizeReachThrottleThreshold());
           stuckPipes.add(pipeMeta);
         }
@@ -701,13 +699,6 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
     }
   }
 
-  private boolean mayMemTablePinnedCountReachDangerousThreshold() {
-    return PipeDataNodeResourceManager.wal().getPinnedWalCount()
-        >= 5
-            * PipeConfig.getInstance().getPipeMaxAllowedPinnedMemTableCount()
-            * StorageEngine.getInstance().getDataRegionNumber();
-  }
-
   private boolean mayWalSizeReachThrottleThreshold() {
     return 3 * WALManager.getInstance().getTotalDiskUsage() > 2 * CONFIG.getThrottleThreshold();
   }
@@ -737,10 +728,6 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
     } finally {
       releaseWriteLock();
     }
-  }
-
-  public boolean isPipeTaskCurrentlyRestarted(final String pipeName) {
-    return PIPE_NAME_TO_LAST_RESTART_TIME_MAP.containsKey(pipeName);
   }
 
   ///////////////////////// Terminate Logic /////////////////////////
