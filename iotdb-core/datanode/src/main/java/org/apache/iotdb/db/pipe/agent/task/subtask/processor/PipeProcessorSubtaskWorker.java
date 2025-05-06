@@ -21,6 +21,7 @@ package org.apache.iotdb.db.pipe.agent.task.subtask.processor;
 
 import org.apache.iotdb.commons.concurrent.WrappedRunnable;
 
+import com.google.common.util.concurrent.ListeningExecutorService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -40,10 +41,19 @@ public class PipeProcessorSubtaskWorker extends WrappedRunnable {
   private final Set<PipeProcessorSubtask> subtasks =
       Collections.newSetFromMap(new ConcurrentHashMap<>());
 
+  private final ListeningExecutorService workerThreadPoolExecutor;
+
+  public PipeProcessorSubtaskWorker(final ListeningExecutorService workerThreadPoolExecutor) {
+    this.workerThreadPoolExecutor = workerThreadPoolExecutor;
+  }
+
   @Override
   @SuppressWarnings("squid:S2189")
   public void runMayThrow() {
     while (true) {
+      if (workerThreadPoolExecutor.isShutdown()) {
+        return;
+      }
       cleanupClosedSubtasksIfNecessary();
       final boolean canSleepBeforeNextRound = runSubtasks();
       sleepIfNecessary(canSleepBeforeNextRound);
@@ -88,7 +98,12 @@ public class PipeProcessorSubtaskWorker extends WrappedRunnable {
       try {
         Thread.sleep(sleepingTimeInMilliSecond);
       } catch (final InterruptedException e) {
-        LOGGER.warn("subtask worker is interrupted", e);
+        if (workerThreadPoolExecutor.isShutdown()) {
+          LOGGER.info(
+              "Subtask worker is interrupted because it has been shutdown, will exit gracefully.");
+        } else {
+          LOGGER.warn("subtask worker is interrupted", e);
+        }
         Thread.currentThread().interrupt();
       }
     } else {

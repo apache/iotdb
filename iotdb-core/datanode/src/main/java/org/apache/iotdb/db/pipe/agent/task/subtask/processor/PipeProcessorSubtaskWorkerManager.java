@@ -37,7 +37,7 @@ public class PipeProcessorSubtaskWorkerManager {
   public PipeProcessorSubtaskWorkerManager(ListeningExecutorService workerThreadPoolExecutor) {
     workers = new PipeProcessorSubtaskWorker[MAX_THREAD_NUM];
     for (int i = 0; i < MAX_THREAD_NUM; i++) {
-      workers[i] = new PipeProcessorSubtaskWorker();
+      workers[i] = new PipeProcessorSubtaskWorker(workerThreadPoolExecutor);
       workerThreadPoolExecutor.submit(workers[i]);
     }
 

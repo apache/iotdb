@@ -106,7 +106,7 @@ public abstract class BlockingPendingQueue<E extends Event> {
               TimeUnit.MILLISECONDS);
       eventCounter.decreaseEventCount(event);
     } catch (final InterruptedException e) {
-      LOGGER.info("pending queue poll is interrupted.", e);
+      LOGGER.info("pending queue poll is interrupted.");
       Thread.currentThread().interrupt();
     }
     return event;

@@ -54,7 +54,7 @@ public class PipeProcessorSubtask extends PipeReportableSubtask {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(PipeProcessorSubtask.class);
 
-  private static final AtomicReference<PipeProcessorSubtaskWorkerManager> subtaskWorkerManager =
+  public static final AtomicReference<PipeProcessorSubtaskWorkerManager> subtaskWorkerManager =
       new AtomicReference<>();
 
   // Record these variables to provide corresponding value to tag key of monitoring metrics
