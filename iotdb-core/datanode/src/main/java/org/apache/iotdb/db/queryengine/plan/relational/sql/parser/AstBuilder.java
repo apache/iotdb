@@ -42,6 +42,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AlterDB;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AlterPipe;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ArithmeticBinaryExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ArithmeticUnaryExpression;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AsofJoinOn;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.BetweenPredicate;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.BinaryLiteral;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.BooleanLiteral;
@@ -250,6 +251,7 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 
 import static com.google.common.collect.ImmutableList.toImmutableList;
+import static java.lang.Long.parseLong;
 import static java.util.Objects.requireNonNull;
 import static java.util.stream.Collectors.toList;
 import static org.apache.iotdb.commons.schema.table.TsTable.TIME_COLUMN_NAME;
@@ -260,6 +262,7 @@ import static org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory
 import static org.apache.iotdb.commons.udf.builtin.relational.TableBuiltinScalarFunction.DATE_BIN;
 import static org.apache.iotdb.db.queryengine.plan.execution.config.TableConfigTaskVisitor.DATABASE_NOT_SPECIFIED;
 import static org.apache.iotdb.db.queryengine.plan.parser.ASTVisitor.parseDateTimeFormat;
+import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AsofJoinOn.constructAsofJoinOn;
 import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.GroupingSets.Type.CUBE;
 import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.GroupingSets.Type.EXPLICIT;
 import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.GroupingSets.Type.ROLLUP;
@@ -1143,25 +1146,25 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
 
   @Override
   public Node visitShowRegionIdStatement(RelationalSqlParser.ShowRegionIdStatementContext ctx) {
-    return super.visitShowRegionIdStatement(ctx);
+    throw new SemanticException("SHOW REGION ID is not supported yet.");
   }
 
   @Override
   public Node visitShowTimeSlotListStatement(
       RelationalSqlParser.ShowTimeSlotListStatementContext ctx) {
-    return super.visitShowTimeSlotListStatement(ctx);
+    throw new SemanticException("SHOW TIME SLOT is not supported yet.");
   }
 
   @Override
   public Node visitCountTimeSlotListStatement(
       RelationalSqlParser.CountTimeSlotListStatementContext ctx) {
-    return super.visitCountTimeSlotListStatement(ctx);
+    throw new SemanticException("COUNT TIME SLOT is not supported yet.");
   }
 
   @Override
   public Node visitShowSeriesSlotListStatement(
       RelationalSqlParser.ShowSeriesSlotListStatementContext ctx) {
-    return super.visitShowSeriesSlotListStatement(ctx);
+    throw new SemanticException("SHOW SERIES SLOT is not supported yet.");
   }
 
   @Override
@@ -2162,13 +2165,29 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
     }
 
     JoinCriteria criteria;
+
     if (ctx.NATURAL() != null) {
       right = (Relation) visit(ctx.right);
       criteria = new NaturalJoin();
     } else {
       right = (Relation) visit(ctx.rightRelation);
       if (ctx.joinCriteria().ON() != null) {
-        criteria = new JoinOn((Expression) visit(ctx.joinCriteria().booleanExpression()));
+        if (ctx.ASOF() != null) {
+          TimeDuration timeDuration = null;
+          if (ctx.timeDuration() != null) {
+            timeDuration = DateTimeUtils.constructTimeDuration(ctx.timeDuration().getText());
+
+            if (timeDuration.monthDuration != 0) {
+              throw new SemanticException(
+                  "Month or year interval in tolerance is not supported now.");
+            }
+          }
+          criteria =
+              constructAsofJoinOn(
+                  (Expression) visit(ctx.joinCriteria().booleanExpression()), timeDuration);
+        } else {
+          criteria = new JoinOn((Expression) visit(ctx.joinCriteria().booleanExpression()));
+        }
       } else if (ctx.joinCriteria().USING() != null) {
         criteria = new JoinUsing(visit(ctx.joinCriteria().identifier(), Identifier.class));
       } else {
@@ -2185,6 +2204,10 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
       joinType = Join.Type.FULL;
     } else {
       joinType = Join.Type.INNER;
+    }
+
+    if (criteria instanceof AsofJoinOn && joinType != Join.Type.INNER) {
+      throw new SemanticException("ASOF JOIN is only support INNER type now");
     }
 
     return new Join(getLocation(ctx), joinType, left, right, criteria);
@@ -2845,9 +2868,9 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
     if (ctx.INTEGER_VALUE() != null) {
       try {
         if (ctx.MINUS() != null) {
-          return -Long.parseLong(ctx.INTEGER_VALUE().getText());
+          return -parseLong(ctx.INTEGER_VALUE().getText());
         }
-        return Long.parseLong(ctx.INTEGER_VALUE().getText());
+        return parseLong(ctx.INTEGER_VALUE().getText());
       } catch (NumberFormatException e) {
         throw new SemanticException(
             String.format("Can not parse %s to long value", ctx.INTEGER_VALUE().getText()));

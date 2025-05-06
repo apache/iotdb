@@ -19,10 +19,11 @@
 
 @echo off
 
-@REM You can put your env variable here
-@REM set JAVA_HOME=%JAVA_HOME%
+title IoTDB Export
 
-title IoTDB Load
+echo ````````````````````````````````````````````````
+echo Starting IoTDB Client Export Script
+echo ````````````````````````````````````````````````
 
 if "%OS%" == "Windows_NT" setlocal
 
@@ -30,7 +31,7 @@ pushd %~dp0..\..
 if NOT DEFINED IOTDB_HOME set IOTDB_HOME=%CD%
 popd
 
-if NOT DEFINED MAIN_CLASS set MAIN_CLASS=org.apache.iotdb.tool.tsfile.ImportTsFile
+if NOT DEFINED MAIN_CLASS set MAIN_CLASS=org.apache.iotdb.tool.tsfile.ExportTsFile
 if NOT DEFINED JAVA_HOME goto :err
 
 @REM -----------------------------------------------------------------------------
@@ -38,13 +39,24 @@ if NOT DEFINED JAVA_HOME goto :err
 set JAVA_OPTS=-ea^
  -DIOTDB_HOME="%IOTDB_HOME%"
 
-REM For each jar in the IOTDB_HOME lib directory call append to build the CLASSPATH variable.
-if EXIST %IOTDB_HOME%\lib (set CLASSPATH="%IOTDB_HOME%\lib\*") else set CLASSPATH="%IOTDB_HOME%\..\lib\*"
+@REM ***** CLASSPATH library setting *****
+set CLASSPATH=%CLASSPATH%;"%IOTDB_HOME%\lib\*"
 
-set PARAMETERS=%*
+REM -----------------------------------------------------------------------------
 
-echo Starting...
-"%JAVA_HOME%\bin\java" %JAVA_OPTS% -cp %CLASSPATH% %MAIN_CLASS% %PARAMETERS%
+"%JAVA_HOME%\bin\java" -DIOTDB_HOME="%IOTDB_HOME%" %JAVA_OPTS% -cp %CLASSPATH% %MAIN_CLASS% %*
 set ret_code=%ERRORLEVEL%
+goto finally
+
+
+:err
+echo JAVA_HOME environment variable must be set!
+set ret_code=1
+pause
+
+@REM -----------------------------------------------------------------------------
+:finally
+
+ENDLOCAL
 
 EXIT /B %ret_code%

@@ -968,7 +968,6 @@ public class OptionsUtil extends Constants {
 
   public static Options createSubscriptionTsFileOptions() {
     Options options = new Options();
-
     Option opSqlDialect =
         Option.builder(SQL_DIALECT_ARGS)
             .longOpt(SQL_DIALECT_ARGS)
@@ -1036,7 +1035,6 @@ public class OptionsUtil extends Constants {
             .desc(TABLE_DESC)
             .build();
     options.addOption(opTable);
-
     Option opStartTime =
         Option.builder(START_TIME_ARGS)
             .longOpt(START_TIME_ARGS)
@@ -1073,7 +1071,8 @@ public class OptionsUtil extends Constants {
             .build();
     options.addOption(opThreadNum);
 
-    Option opHelp = Option.builder(HELP_ARGS).longOpt(HELP_ARGS).hasArg().desc(HELP_DESC).build();
+    Option opHelp =
+        Option.builder(HELP_ARGS).longOpt(HELP_ARGS).hasArg(false).desc(HELP_DESC).build();
     options.addOption(opHelp);
     return options;
   }

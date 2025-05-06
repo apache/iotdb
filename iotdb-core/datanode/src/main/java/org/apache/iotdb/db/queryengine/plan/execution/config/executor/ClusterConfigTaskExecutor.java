@@ -628,7 +628,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
             Set<String> argNames = new HashSet<>();
             for (ParameterSpecification specification :
                 tableFunction.getArgumentsSpecifications()) {
-              if (!argNames.add(specification.getName())) {
+              if (!argNames.add(specification.getName().toUpperCase())) {
                 future.setException(
                     new IoTDBException(
                         "Failed to create function '"
