@@ -29,6 +29,7 @@ import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
 import org.apache.iotdb.db.pipe.event.realtime.PipeRealtimeEvent;
 import org.apache.iotdb.db.pipe.extractor.dataregion.realtime.epoch.TsFileEpoch;
+import org.apache.iotdb.db.pipe.metric.overview.PipeDataNodeRemainingEventAndTimeMetrics;
 import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
 import org.apache.iotdb.db.storageengine.dataregion.wal.WALManager;
 import org.apache.iotdb.pipe.api.event.Event;
@@ -206,15 +207,36 @@ public class PipeRealtimeDataRegionHybridExtractor extends PipeRealtimeDataRegio
   }
 
   private boolean canNotUseTabletAnyMore(final PipeRealtimeEvent event) {
-    // In the following 7 cases, we should not extract any more tablet events. all the data
-    // represented by the tablet events should be carried by the following tsfile event:
+    // In the following 4 cases, we should not extract this tablet event. all the data
+    // represented by the tablet event should be carried by the following tsfile event:
+    //  0. If the latency is too large, we need to reduce the accumulated tablets.
     //  1. If Wal size > maximum size of wal buffer,
     //  the write operation will be throttled, so we should not extract any more tablet events.
     //  2. The number of linked tsfiles has reached the dangerous threshold.
     //  3. The shallow memory usage of the insert node has reached the dangerous threshold.
-    return mayWalSizeReachThrottleThreshold(event)
+    return mayLatencyTooLarge(event)
+        || mayWalSizeReachThrottleThreshold(event)
         || mayTsFileLinkedCountReachDangerousThreshold(event)
         || mayInsertNodeMemoryReachDangerousThreshold(event);
+  }
+
+  private boolean mayLatencyTooLarge(final PipeRealtimeEvent event) {
+    final double expectedLatency =
+        PipeDataNodeRemainingEventAndTimeMetrics.getInstance()
+            .getRemainingTimeSmoothingValue(pipeName, creationTime);
+    final boolean mayLatencyTooLarge =
+        expectedLatency > PipeConfig.getInstance().getPipeMaxAllowedLatencySeconds();
+    if (mayLatencyTooLarge && event.mayExtractorUseTablets(this)) {
+      logByLogManager(
+          l ->
+              l.info(
+                  "Pipe task {}@{} canNotUseTabletAnyMore0: The expected latency {} has reached the largest permitted latency {}",
+                  pipeName,
+                  dataRegionId,
+                  expectedLatency,
+                  PipeConfig.getInstance().getPipeMaxAllowedLatencySeconds()));
+    }
+    return mayLatencyTooLarge;
   }
 
   private boolean mayWalSizeReachThrottleThreshold(final PipeRealtimeEvent event) {

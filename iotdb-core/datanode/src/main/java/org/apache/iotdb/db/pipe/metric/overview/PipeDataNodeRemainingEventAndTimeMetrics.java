@@ -268,9 +268,21 @@ public class PipeDataNodeRemainingEventAndTimeMetrics implements IMetricSet {
       final String pipeName, final long creationTime) {
     final PipeDataNodeRemainingEventAndTimeOperator operator =
         remainingEventAndTimeOperatorMap.computeIfAbsent(
-            pipeName + "_" + creationTime,
+            PipeEventCommitManager.getInstance()
+                .getTaskAgent()
+                .getPipeNameWithCreationTime(pipeName, creationTime),
             k -> new PipeDataNodeRemainingEventAndTimeOperator(pipeName, creationTime));
     return new Pair<>(operator.getRemainingEvents(), operator.getRemainingTime());
+  }
+
+  public double getRemainingTimeSmoothingValue(final String pipeName, final long creationTime) {
+    return remainingEventAndTimeOperatorMap
+        .computeIfAbsent(
+            PipeEventCommitManager.getInstance()
+                .getTaskAgent()
+                .getPipeNameWithCreationTime(pipeName, creationTime),
+            k -> new PipeDataNodeRemainingEventAndTimeOperator(pipeName, creationTime))
+        .getRemainingTimeSmoothingValue();
   }
 
   //////////////////////////// singleton ////////////////////////////
