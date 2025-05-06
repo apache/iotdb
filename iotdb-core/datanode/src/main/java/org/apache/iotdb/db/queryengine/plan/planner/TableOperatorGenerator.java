@@ -2514,20 +2514,11 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
       if (frame.getStartValue().isPresent()) {
         frameStartChannel = Optional.ofNullable(childLayout.get(frame.getStartValue().get()));
       }
-      //      Optional<Integer> sortKeyChannelForStartComparison = Optional.empty();
-      //      if (frame.getSortKeyCoercedForFrameStartComparison().isPresent()) {
-      //        sortKeyChannelForStartComparison =
-      // Optional.ofNullable(childLayout.get(frame.getSortKeyCoercedForFrameStartComparison().get()));
-      //      }
       Optional<Integer> frameEndChannel = Optional.empty();
       if (frame.getEndValue().isPresent()) {
         frameEndChannel = Optional.ofNullable(childLayout.get(frame.getEndValue().get()));
       }
-      //      Optional<Integer> sortKeyChannelForEndComparison = Optional.empty();
-      //      if (frame.getSortKeyCoercedForFrameEndComparison().isPresent()) {
-      //        sortKeyChannelForEndComparison =
-      // Optional.ofNullable(childLayout.get(frame.getSortKeyCoercedForFrameEndComparison().get()));
-      //      }
+
       Optional<Integer> sortKeyChannel = Optional.empty();
       Optional<SortOrder> ordering = Optional.empty();
       if (node.getSpecification().getOrderingScheme().isPresent()) {
