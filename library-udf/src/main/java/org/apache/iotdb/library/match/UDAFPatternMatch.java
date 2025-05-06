@@ -19,10 +19,7 @@
 
 package org.apache.iotdb.library.match;
 
-import org.apache.iotdb.library.match.model.PatternContext;
-import org.apache.iotdb.library.match.model.PatternResult;
-import org.apache.iotdb.library.match.model.PatternState;
-import org.apache.iotdb.library.match.model.Point;
+import org.apache.iotdb.library.match.model.*;
 import org.apache.iotdb.udf.api.State;
 import org.apache.iotdb.udf.api.UDAF;
 import org.apache.iotdb.udf.api.customizer.config.UDAFConfigurations;
@@ -111,7 +108,20 @@ public class UDAFPatternMatch implements UDAF {
     ctx.setDataPoints(sourcePointsExtract);
     // State only records time and recorded values, and the final result is calculated
     List<PatternResult> results = executor.executeQuery(ctx); // 实际的匹配过程，计算误差并进行过滤
-    resultValue.setBinary(new Binary(results.toString(), Charset.defaultCharset())); // 传入的也是引用，记录了最后的结果的tostring结果
+    if (!results.isEmpty()) {
+      resultValue.setBinary(new Binary(results.toString(), Charset.defaultCharset())); // 传入的也是引用，记录了最后的结果的tostring结果
+    } else {
+      // If no results are found, use DTW
+      UDAFDTWMatch dtw = new UDAFDTWMatch();
+      List<DTWMatchResult> dtwMatchResult =
+              dtw.calcMatch(
+                      matchState.getTimeBuffer(), matchState.getValueBuffer(), valuePattern, threshold);
+      if (!dtwMatchResult.isEmpty()) {
+        resultValue.setBinary(new Binary(dtwMatchResult.toString(), Charset.defaultCharset()));
+      } else {
+        resultValue.setNull();
+      }
+    }
   }
 
   @Override
