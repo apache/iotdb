@@ -21,8 +21,8 @@ package org.apache.iotdb.db.pipe.agent.task;
 
 import org.apache.iotdb.commons.pipe.agent.task.execution.PipeSubtaskExecutor;
 import org.apache.iotdb.commons.pipe.agent.task.subtask.PipeSubtask;
-
 import org.apache.iotdb.db.pipe.agent.task.subtask.processor.PipeProcessorSubtask;
+
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Test;
