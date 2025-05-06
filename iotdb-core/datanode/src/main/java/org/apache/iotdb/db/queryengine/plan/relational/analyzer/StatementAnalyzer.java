@@ -4192,6 +4192,18 @@ public class StatementAnalyzer {
       return createAndAssignScope(node, scope, fields.build());
     }
 
+    private String castNameAsSpecification(Set<String> specifiedNames, String passedName) {
+      if (specifiedNames.contains(passedName)) {
+        return passedName;
+      }
+      for (String name : specifiedNames) {
+        if (name.equalsIgnoreCase(passedName)) {
+          return name;
+        }
+      }
+      return null;
+    }
+
     private ArgumentsAnalysis analyzeArguments(
         List<ParameterSpecification> parameterSpecifications,
         List<TableFunctionArgument> arguments,
@@ -4233,18 +4245,22 @@ public class StatementAnalyzer {
           }
         }
         Set<String> uniqueArgumentNames = new HashSet<>();
+        Set<String> specifiedArgumentNames =
+            ImmutableSet.copyOf(argumentSpecificationsByName.keySet());
         for (TableFunctionArgument argument : arguments) {
           // it has been checked that all arguments have different names
-          String argumentName = argument.getName().get().getCanonicalValue();
+          String argumentName =
+              castNameAsSpecification(
+                  specifiedArgumentNames, argument.getName().get().getCanonicalValue());
+          if (argumentName == null) {
+            throw new SemanticException(
+                String.format("Unexpected argument name: %s", argument.getName().get().getValue()));
+          }
           if (!uniqueArgumentNames.add(argumentName)) {
             throw new SemanticException(String.format("Duplicate argument name: %s", argumentName));
           }
           ParameterSpecification parameterSpecification =
               argumentSpecificationsByName.remove(argumentName);
-          if (parameterSpecification == null) {
-            throw new SemanticException(
-                String.format("Unexpected argument name: %s", argumentName));
-          }
           ArgumentAnalysis argumentAnalysis =
               analyzeArgument(parameterSpecification, argument, scope);
           passedArguments.put(argumentName, argumentAnalysis.getArgument());

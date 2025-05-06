@@ -42,8 +42,8 @@ import java.util.List;
 import java.util.Map;
 
 public class MySplit implements TableFunction {
-  private final String INPUT_PARAMETER_NAME = "INPUT";
-  private final String SPLIT_PARAMETER_NAME = "SPLIT";
+  private final String INPUT_PARAMETER_NAME = "input";
+  private final String SPLIT_PARAMETER_NAME = "split";
 
   @Override
   public List<ParameterSpecification> getArgumentsSpecifications() {
