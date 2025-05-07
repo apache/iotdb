@@ -145,7 +145,7 @@ public enum Metric {
   UNTRANSFERRED_TABLET_COUNT("untransferred_tablet_count"),
   UNTRANSFERRED_TSFILE_COUNT("untransferred_tsfile_count"),
   UNTRANSFERRED_HEARTBEAT_COUNT("untransferred_heartbeat_count"),
-  PIPE_BATCH_SIZE("pipe_batch_size"),
+  PIPE_CONNECTOR_BATCH_SIZE("pipe_connector_batch_size"),
   PIPE_PENDING_HANDLERS_SIZE("pipe_pending_handlers_size"),
   PIPE_TOTAL_UNCOMPRESSED_SIZE("pipe_total_uncompressed_size"),
   PIPE_TOTAL_COMPRESSED_SIZE("pipe_total_compressed_size"),

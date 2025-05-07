@@ -135,7 +135,7 @@ public class PipeDataRegionConnectorMetrics implements IMetricSet {
         String.valueOf(connector.getCreationTime()));
     // Metrics related to IoTDB connector
     metricService.createAutoGauge(
-        Metric.PIPE_BATCH_SIZE.toString(),
+        Metric.PIPE_CONNECTOR_BATCH_SIZE.toString(),
         MetricLevel.IMPORTANT,
         connector,
         PipeConnectorSubtask::getBatchSize,
@@ -290,7 +290,7 @@ public class PipeDataRegionConnectorMetrics implements IMetricSet {
     // Metrics related to IoTDB connector
     metricService.remove(
         MetricType.AUTO_GAUGE,
-        Metric.PIPE_BATCH_SIZE.toString(),
+        Metric.PIPE_CONNECTOR_BATCH_SIZE.toString(),
         Tag.NAME.toString(),
         connector.getAttributeSortedString(),
         Tag.INDEX.toString(),
