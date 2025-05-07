@@ -123,7 +123,7 @@ public class PipeDataRegionConnectorMetrics implements IMetricSet {
         Tag.CREATION_TIME.toString(),
         String.valueOf(connector.getCreationTime()));
     metricService.createAutoGauge(
-        Metric.PENDING_HANDLERS_SIZE.toString(),
+        Metric.PIPE_PENDING_HANDLERS_SIZE.toString(),
         MetricLevel.IMPORTANT,
         connector,
         PipeConnectorSubtask::getPendingHandlersSize,
@@ -135,7 +135,7 @@ public class PipeDataRegionConnectorMetrics implements IMetricSet {
         String.valueOf(connector.getCreationTime()));
     // Metrics related to IoTDB connector
     metricService.createAutoGauge(
-        Metric.BATCH_SIZE.toString(),
+        Metric.PIPE_BATCH_SIZE.toString(),
         MetricLevel.IMPORTANT,
         connector,
         PipeConnectorSubtask::getBatchSize,
@@ -146,7 +146,7 @@ public class PipeDataRegionConnectorMetrics implements IMetricSet {
         Tag.CREATION_TIME.toString(),
         String.valueOf(connector.getCreationTime()));
     metricService.createAutoGauge(
-        Metric.TOTAL_UNCOMPRESSED_SIZE.toString(),
+        Metric.PIPE_TOTAL_UNCOMPRESSED_SIZE.toString(),
         MetricLevel.IMPORTANT,
         connector,
         PipeConnectorSubtask::getTotalUncompressedSize,
@@ -157,7 +157,7 @@ public class PipeDataRegionConnectorMetrics implements IMetricSet {
         Tag.CREATION_TIME.toString(),
         String.valueOf(connector.getCreationTime()));
     metricService.createAutoGauge(
-        Metric.TOTAL_COMPRESSED_SIZE.toString(),
+        Metric.PIPE_TOTAL_COMPRESSED_SIZE.toString(),
         MetricLevel.IMPORTANT,
         connector,
         PipeConnectorSubtask::getTotalCompressedSize,
@@ -212,7 +212,7 @@ public class PipeDataRegionConnectorMetrics implements IMetricSet {
     compressionTimerMap.putIfAbsent(
         connector.getAttributeSortedString(),
         metricService.getOrCreateTimer(
-            Metric.COMPRESSION_TIME.toString(),
+            Metric.PIPE_COMPRESSION_TIME.toString(),
             MetricLevel.IMPORTANT,
             Tag.NAME.toString(),
             connector.getAttributeSortedString(),
@@ -280,7 +280,7 @@ public class PipeDataRegionConnectorMetrics implements IMetricSet {
         String.valueOf(connector.getCreationTime()));
     metricService.remove(
         MetricType.AUTO_GAUGE,
-        Metric.PENDING_HANDLERS_SIZE.toString(),
+        Metric.PIPE_PENDING_HANDLERS_SIZE.toString(),
         Tag.NAME.toString(),
         connector.getAttributeSortedString(),
         Tag.INDEX.toString(),
@@ -290,7 +290,7 @@ public class PipeDataRegionConnectorMetrics implements IMetricSet {
     // Metrics related to IoTDB connector
     metricService.remove(
         MetricType.AUTO_GAUGE,
-        Metric.BATCH_SIZE.toString(),
+        Metric.PIPE_BATCH_SIZE.toString(),
         Tag.NAME.toString(),
         connector.getAttributeSortedString(),
         Tag.INDEX.toString(),
@@ -299,7 +299,7 @@ public class PipeDataRegionConnectorMetrics implements IMetricSet {
         String.valueOf(connector.getCreationTime()));
     metricService.remove(
         MetricType.AUTO_GAUGE,
-        Metric.TOTAL_UNCOMPRESSED_SIZE.toString(),
+        Metric.PIPE_TOTAL_UNCOMPRESSED_SIZE.toString(),
         Tag.NAME.toString(),
         connector.getAttributeSortedString(),
         Tag.INDEX.toString(),
@@ -308,7 +308,7 @@ public class PipeDataRegionConnectorMetrics implements IMetricSet {
         String.valueOf(connector.getCreationTime()));
     metricService.remove(
         MetricType.AUTO_GAUGE,
-        Metric.TOTAL_COMPRESSED_SIZE.toString(),
+        Metric.PIPE_TOTAL_COMPRESSED_SIZE.toString(),
         Tag.NAME.toString(),
         connector.getAttributeSortedString(),
         Tag.INDEX.toString(),
@@ -356,7 +356,7 @@ public class PipeDataRegionConnectorMetrics implements IMetricSet {
     final PipeConnectorSubtask connector = connectorMap.get(taskID);
     metricService.remove(
         MetricType.TIMER,
-        Metric.COMPRESSION_TIME.toString(),
+        Metric.PIPE_COMPRESSION_TIME.toString(),
         Tag.NAME.toString(),
         connector.getAttributeSortedString(),
         Tag.CREATION_TIME.toString(),
