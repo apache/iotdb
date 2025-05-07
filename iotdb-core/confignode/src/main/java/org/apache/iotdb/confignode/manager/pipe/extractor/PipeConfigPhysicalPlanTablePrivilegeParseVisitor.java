@@ -26,13 +26,14 @@ import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanVisitor;
 import org.apache.iotdb.confignode.consensus.request.write.auth.AuthorRelationalPlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.DatabaseSchemaPlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.DeleteDatabasePlan;
-import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeCreateTablePlan;
+import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeCreateTableOrViewPlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeDeleteDevicesPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.AbstractTablePlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.AddTableColumnPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.CommitDeleteColumnPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.CommitDeleteTablePlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.RenameTableColumnPlan;
+import org.apache.iotdb.confignode.consensus.request.write.table.RenameTablePlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.SetTableColumnCommentPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.SetTableCommentPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.SetTablePropertiesPlan;
@@ -92,21 +93,21 @@ public class PipeConfigPhysicalPlanTablePrivilegeParseVisitor
   }
 
   @Override
-  public Optional<ConfigPhysicalPlan> visitPipeCreateTable(
-      final PipeCreateTablePlan pipeCreateTablePlan, final String userName) {
+  public Optional<ConfigPhysicalPlan> visitPipeCreateTableOrView(
+      final PipeCreateTableOrViewPlan pipeCreateTableOrViewPlan, final String userName) {
     return ConfigNode.getInstance()
                 .getConfigManager()
                 .getPermissionManager()
                 .checkUserPrivileges(
                     userName,
                     new PrivilegeUnion(
-                        pipeCreateTablePlan.getDatabase(),
-                        pipeCreateTablePlan.getTable().getTableName(),
+                        pipeCreateTableOrViewPlan.getDatabase(),
+                        pipeCreateTableOrViewPlan.getTable().getTableName(),
                         null))
                 .getStatus()
                 .getCode()
             == TSStatusCode.SUCCESS_STATUS.getStatusCode()
-        ? Optional.of(pipeCreateTablePlan)
+        ? Optional.of(pipeCreateTableOrViewPlan)
         : Optional.empty();
   }
 
@@ -156,6 +157,12 @@ public class PipeConfigPhysicalPlanTablePrivilegeParseVisitor
   public Optional<ConfigPhysicalPlan> visitSetTableColumnComment(
       final SetTableColumnCommentPlan setTableColumnCommentPlan, final String userName) {
     return visitAbstractTablePlan(setTableColumnCommentPlan, userName);
+  }
+
+  @Override
+  public Optional<ConfigPhysicalPlan> visitRenameTable(
+      final RenameTablePlan renameTablePlan, final String userName) {
+    return visitAbstractTablePlan(renameTablePlan, userName);
   }
 
   private Optional<ConfigPhysicalPlan> visitAbstractTablePlan(

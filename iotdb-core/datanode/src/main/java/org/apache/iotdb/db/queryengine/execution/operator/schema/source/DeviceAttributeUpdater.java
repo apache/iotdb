@@ -21,6 +21,7 @@ package org.apache.iotdb.db.queryengine.execution.operator.schema.source;
 
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.schema.node.role.IDeviceMNode;
+import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.ColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.leaf.LeafColumnTransformer;
@@ -67,12 +68,16 @@ public class DeviceAttributeUpdater extends DeviceUpdater {
       final List<ColumnTransformer> projectOutputTransformerList,
       final BiFunction<Integer, String, Binary> attributeProvider,
       final TriConsumer<String[], Integer, Object[]> attributeUpdater,
-      final List<String> attributeNames) {
+      final List<String> attributeNames,
+      final String database,
+      final TsTable table) {
     super(
         filterLeafColumnTransformerList,
         filterOutputTransformer,
         columnSchemaList,
-        attributeProvider);
+        attributeProvider,
+        database,
+        table);
     this.commonTransformerList = commonTransformerList;
     this.projectLeafColumnTransformerList = projectLeafColumnTransformerList;
     this.projectOutputTransformerList = projectOutputTransformerList;

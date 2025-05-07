@@ -224,7 +224,7 @@ public class AuthorityChecker {
     return new TSStatus(TSStatusCode.NO_PERMISSION.getStatusCode()).setMessage(prompt.toString());
   }
 
-  public static boolean checkFullPathPermission(
+  public static boolean checkFullPathOrPatternPermission(
       String userName, PartialPath fullPath, PrivilegeType permission) {
     return authorityFetcher
         .get()
@@ -232,12 +232,7 @@ public class AuthorityChecker {
         .isEmpty();
   }
 
-  public static List<Integer> checkFullPathListPermission(
-      String userName, List<? extends PartialPath> fullPaths, PrivilegeType permission) {
-    return authorityFetcher.get().checkUserPathPrivileges(userName, fullPaths, permission);
-  }
-
-  public static List<Integer> checkPatternPermission(
+  public static List<Integer> checkFullPathOrPatternListPermission(
       String userName, List<? extends PartialPath> pathPatterns, PrivilegeType permission) {
     return authorityFetcher.get().checkUserPathPrivileges(userName, pathPatterns, permission);
   }

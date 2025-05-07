@@ -1144,7 +1144,7 @@ enum TTestOperation {
 }
 
 // ====================================================
-// Table
+// Table Or View
 // ====================================================
 
 struct TAlterOrDropTableReq {
@@ -1153,6 +1153,7 @@ struct TAlterOrDropTableReq {
     3: required string queryId
     4: required byte operationType
     5: required binary updateInfo
+    6: optional bool isView
 }
 
 struct TDeleteTableDeviceReq {
@@ -1206,6 +1207,12 @@ struct TTableInfo {
    2: required string TTL
    3: optional i32 state
    4: optional string comment
+   5: optional i32 type
+}
+
+struct TCreateTableViewReq {
+    1: required binary tableInfo
+    2: required bool replace
 }
 
 service IConfigNodeRPCService {
@@ -1297,7 +1304,7 @@ service IConfigNodeRPCService {
   // ======================================================
 
   /**
-   * Set a new Databse, all fields in TDatabaseSchema can be customized
+   * Set a new Database, all fields in TDatabaseSchema can be customized
    * while the undefined fields will automatically use default values
    *
    * @return SUCCESS_STATUS if the new Database set successfully
@@ -1956,7 +1963,7 @@ service IConfigNodeRPCService {
   TThrottleQuotaResp getThrottleQuota()
 
   // ======================================================
-  // Table
+  // Table Or View
   // ======================================================
 
   common.TSStatus createTable(binary tableInfo)
@@ -1974,5 +1981,9 @@ service IConfigNodeRPCService {
   TFetchTableResp fetchTables(map<string, set<string>> fetchTableMap)
 
   TDeleteTableDeviceResp deleteDevice(TDeleteTableDeviceReq req)
+
+  // Table view
+
+  common.TSStatus createTableView(TCreateTableViewReq req)
 }
 
