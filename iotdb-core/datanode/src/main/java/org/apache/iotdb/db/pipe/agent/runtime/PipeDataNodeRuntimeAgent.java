@@ -104,9 +104,9 @@ public class PipeDataNodeRuntimeAgent implements IService {
               LOGGER.warn("Force flush all data regions because of progress report count exceed.");
             } catch (final Exception e) {
               LOGGER.warn(
-                      "Failed to flush all data regions, please check the error message: {}",
-                      e.getMessage(),
-                      e);
+                  "Failed to flush all data regions, please check the error message: {}",
+                  e.getMessage(),
+                  e);
             }
             return;
           }
