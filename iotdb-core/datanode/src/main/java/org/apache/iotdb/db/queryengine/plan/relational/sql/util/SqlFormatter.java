@@ -31,6 +31,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateFunction;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreatePipe;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreatePipePlugin;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateTable;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateTableView;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateTopic;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Delete;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropColumn;
@@ -661,10 +662,48 @@ public final class SqlFormatter {
 
       node.getCharsetName().ifPresent(charset -> builder.append(" CHARSET ").append(charset));
 
+      if (Objects.nonNull(node.getComment())) {
+        builder.append(" COMMENT '").append(node.getComment()).append("'");
+      }
+
       builder.append(formatPropertiesMultiLine(node.getProperties()));
+
+      return null;
+    }
+
+    @Override
+    protected Void visitCreateTableView(final CreateTableView node, final Integer indent) {
+      builder.append("CREATE ");
+      if (node.isReplace()) {
+        builder.append("OR REPLACE ");
+      }
+      builder.append("TABLE VIEW ");
+      final String tableName = formatName(node.getName());
+      builder.append(tableName).append(" (\n");
+
+      final String elementIndent = indentString(indent + 1);
+      final String columnList =
+          node.getElements().stream()
+              .map(
+                  element -> {
+                    if (element != null) {
+                      return elementIndent + formatColumnDefinition(element);
+                    }
+
+                    throw new UnsupportedOperationException("unknown table element: " + element);
+                  })
+              .collect(joining(",\n"));
+      builder.append(columnList);
+      builder.append("\n").append(")");
 
       if (Objects.nonNull(node.getComment())) {
         builder.append(" COMMENT '").append(node.getComment()).append("'");
+      }
+
+      builder.append(formatPropertiesMultiLine(node.getProperties()));
+
+      if (node.isRestrict()) {
+        builder.append(" RESTRICT");
       }
 
       return null;
@@ -719,7 +758,8 @@ public final class SqlFormatter {
 
     @Override
     protected Void visitDropTable(final DropTable node, final Integer indent) {
-      builder.append("DROP TABLE ");
+      builder.append("DROP");
+      builder.append(node.isView() ? " VIEW " : " TABLE ");
       if (node.isExists()) {
         builder.append("IF EXISTS ");
       }
@@ -730,7 +770,8 @@ public final class SqlFormatter {
 
     @Override
     protected Void visitRenameTable(final RenameTable node, final Integer indent) {
-      builder.append("ALTER TABLE ");
+      builder.append("ALTER");
+      builder.append(node.isView() ? " VIEW " : " TABLE ");
       if (node.tableIfExists()) {
         builder.append("IF EXISTS ");
       }
@@ -752,6 +793,8 @@ public final class SqlFormatter {
           builder.append("TABLE ");
         case MATERIALIZED_VIEW:
           builder.append("MATERIALIZED VIEW ");
+        case TREE_VIEW:
+          builder.append("VIEW ");
       }
       if (node.ifExists()) {
         builder.append("IF EXISTS ");
@@ -779,7 +822,8 @@ public final class SqlFormatter {
 
     @Override
     protected Void visitRenameColumn(RenameColumn node, Integer indent) {
-      builder.append("ALTER TABLE ");
+      builder.append("ALTER");
+      builder.append(node.isView() ? " VIEW " : " TABLE ");
       if (node.tableIfExists()) {
         builder.append("IF EXISTS ");
       }
@@ -799,7 +843,8 @@ public final class SqlFormatter {
 
     @Override
     protected Void visitDropColumn(final DropColumn node, final Integer indent) {
-      builder.append("ALTER TABLE ");
+      builder.append("ALTER");
+      builder.append(node.isView() ? " VIEW " : " TABLE ");
       if (node.tableIfExists()) {
         builder.append("IF EXISTS ");
       }
@@ -816,7 +861,8 @@ public final class SqlFormatter {
 
     @Override
     protected Void visitAddColumn(final AddColumn node, final Integer indent) {
-      builder.append("ALTER TABLE ");
+      builder.append("ALTER");
+      builder.append(node.isView() ? " VIEW " : " TABLE ");
       if (node.tableIfExists()) {
         builder.append("IF EXISTS ");
       }
@@ -834,7 +880,8 @@ public final class SqlFormatter {
     @Override
     protected Void visitSetTableComment(final SetTableComment node, final Integer indent) {
       builder
-          .append("COMMENT ON TABLE ")
+          .append("COMMENT ON")
+          .append(node.isView() ? " VIEW " : " TABLE ")
           .append(formatName(node.getTableName()))
           .append(" IS ")
           .append(node.getComment());

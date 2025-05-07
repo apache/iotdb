@@ -17,18 +17,11 @@
  * under the License.
  */
 
-package org.apache.iotdb.confignode.consensus.request.write.pipe.payload;
+package org.apache.iotdb.confignode.procedure.state.schema;
 
-import org.apache.iotdb.commons.schema.table.TsTable;
-import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
-import org.apache.iotdb.confignode.consensus.request.write.table.PreCreateTablePlan;
-
-public class PipeCreateTablePlan extends PreCreateTablePlan {
-  public PipeCreateTablePlan() {
-    super(ConfigPhysicalPlanType.PipeCreateTable);
-  }
-
-  public PipeCreateTablePlan(final String database, final TsTable table) {
-    super(ConfigPhysicalPlanType.PipeCreateTable, database, table);
-  }
+public enum RenameTableState {
+  COLUMN_CHECK,
+  PRE_RELEASE,
+  RENAME_TABLE,
+  COMMIT_RELEASE
 }

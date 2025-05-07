@@ -36,10 +36,10 @@ import org.apache.iotdb.db.queryengine.plan.analyze.TypeProvider;
 import org.apache.iotdb.db.queryengine.plan.planner.LocalExecutionPlanContext;
 import org.apache.iotdb.db.queryengine.plan.planner.TableOperatorGenerator;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
-import org.apache.iotdb.db.queryengine.plan.relational.analyzer.TestMatadata;
+import org.apache.iotdb.db.queryengine.plan.relational.analyzer.TestMetadata;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.ColumnSchema;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.DeviceEntry;
-import org.apache.iotdb.db.queryengine.plan.relational.metadata.NonAlignedAlignedDeviceEntry;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.NonAlignedDeviceEntry;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.QualifiedObjectName;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.Symbol;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.SymbolsExtractor;
@@ -88,7 +88,7 @@ public class NonAlignedTreeDeviceViewScanOperatorTreeTest {
   private static final String NON_ALIGNED_TREE_DEVICE_VIEW_SCAN_OPERATOR_TREE_TEST =
       "root.NonAlignedTreeDeviceViewScanOperatorTreeTest";
   private final TableOperatorGenerator tableOperatorGenerator =
-      new TableOperatorGenerator(new TestMatadata());
+      new TableOperatorGenerator(new TestMetadata());
   private final List<String> deviceIds = new ArrayList<>();
   private final List<IMeasurementSchema> measurementSchemas = new ArrayList<>();
 
@@ -608,15 +608,15 @@ public class NonAlignedTreeDeviceViewScanOperatorTreeTest {
 
     List<DeviceEntry> deviceEntries =
         Arrays.asList(
-            new NonAlignedAlignedDeviceEntry(
+            new NonAlignedDeviceEntry(
                 IDeviceID.Factory.DEFAULT_FACTORY.create(
                     NON_ALIGNED_TREE_DEVICE_VIEW_SCAN_OPERATOR_TREE_TEST + ".device0"),
                 new Binary[0]),
-            new NonAlignedAlignedDeviceEntry(
+            new NonAlignedDeviceEntry(
                 IDeviceID.Factory.DEFAULT_FACTORY.create(
                     NON_ALIGNED_TREE_DEVICE_VIEW_SCAN_OPERATOR_TREE_TEST + ".device1"),
                 new Binary[0]),
-            new NonAlignedAlignedDeviceEntry(
+            new NonAlignedDeviceEntry(
                 IDeviceID.Factory.DEFAULT_FACTORY.create(
                     NON_ALIGNED_TREE_DEVICE_VIEW_SCAN_OPERATOR_TREE_TEST + ".device1"),
                 new Binary[0]));

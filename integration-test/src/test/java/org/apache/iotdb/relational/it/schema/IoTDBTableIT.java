@@ -49,6 +49,7 @@ import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
 
 import static org.apache.iotdb.commons.schema.column.ColumnHeaderConstant.describeTableColumnHeaders;
@@ -281,6 +282,12 @@ public class IoTDBTableIT {
           "create table table2(region_id STRING TAG, plant_id STRING TAG, color STRING ATTRIBUTE, temperature FLOAT FIELD) with (TTL=6600000)");
 
       statement.execute("alter table table2 add column speed DOUBLE FIELD COMMENT 'fast'");
+
+      TestUtils.assertResultSetEqual(
+          statement.executeQuery("show create table table2"),
+          "Table,Create Table,",
+          Collections.singleton(
+              "table2,CREATE TABLE \"table2\" (\"region_id\" STRING TAG,\"plant_id\" STRING TAG,\"color\" STRING ATTRIBUTE,\"temperature\" FLOAT FIELD,\"speed\" DOUBLE FIELD COMMENT 'fast') WITH (ttl=6600000),"));
 
       try {
         statement.execute("alter table table2 add column speed DOUBLE FIELD");
@@ -746,6 +753,207 @@ public class IoTDBTableIT {
 
       insertThread.join();
       deletionThread.join();
+    }
+  }
+
+  @Test
+  public void testTreeViewTable() throws Exception {
+    try (final Connection connection = EnvFactory.getEnv().getConnection();
+        final Statement statement = connection.createStatement()) {
+      statement.execute("create database root.a.b");
+      statement.execute("create timeSeries root.a.b.c.s1 int32");
+      statement.execute("create timeSeries root.a.b.c.s2 string");
+      statement.execute("create timeSeries root.a.b.s1 int32");
+      statement.execute("create timeSeries root.a.b.d.s1 boolean");
+      statement.execute("create timeSeries root.a.b.c.f.g.h.s1 int32");
+
+      // Put schema cache
+      statement.execute("select s1, s2 from root.a.b.c");
+    } catch (SQLException e) {
+      fail(e.getMessage());
+    }
+
+    try (final Connection connection =
+            EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        final Statement statement = connection.createStatement()) {
+      statement.execute("create database tree_view_db");
+      statement.execute("use tree_view_db");
+      try {
+        statement.execute("create table view tree_table (tag1 tag, tag2 tag) as root.a.**");
+        fail();
+      } catch (final SQLException e) {
+        assertEquals(
+            "614: Multiple types encountered when auto detecting type of measurement 's1', please check",
+            e.getMessage());
+      }
+      statement.execute(
+          "create or replace table view tree_table (tag1 tag, tag2 tag, s1 int32 field, s3 from s2) as root.a.**");
+      statement.execute("alter view tree_table rename to view_table");
+      statement.execute("alter view view_table rename column s1 to s11");
+      statement.execute("alter view view_table set properties ttl=100");
+      statement.execute("comment on view view_table is 'comment'");
+
+      TestUtils.assertResultSetEqual(
+          statement.executeQuery("show tables details"),
+          "TableName,TTL(ms),Status,Comment,TableType,",
+          Collections.singleton("view_table,100,USING,comment,TREE_TO_TABLE VIEW,"));
+
+      TestUtils.assertResultSetEqual(
+          statement.executeQuery("desc view_table"),
+          "ColumnName,DataType,Category,",
+          new HashSet<>(
+              Arrays.asList(
+                  "time,TIMESTAMP,TIME,",
+                  "tag1,STRING,TAG,",
+                  "tag2,STRING,TAG,",
+                  "s11,INT32,FIELD,",
+                  "s3,STRING,FIELD,")));
+      // Currently we show the device even if all of its measurements does not match the type,
+      // the handling logic at query because validate it at fetching will potentially cause a
+      // lot of time
+      TestUtils.assertResultSetEqual(
+          statement.executeQuery("show devices from view_table where tag1 = 'b'"),
+          "tag1,tag2,",
+          new HashSet<>(Arrays.asList("b,c,", "b,null,", "b,d,")));
+      TestUtils.assertResultSetEqual(
+          statement.executeQuery("show devices from view_table where tag1 = 'b' and tag2 is null"),
+          "tag1,tag2,",
+          Collections.singleton("b,null,"));
+      TestUtils.assertResultSetEqual(
+          statement.executeQuery("count devices from view_table"),
+          "count(devices),",
+          Collections.singleton("3,"));
+    }
+
+    // Test tree session
+    try (final Connection connection = EnvFactory.getEnv().getConnection();
+        final Statement statement = connection.createStatement()) {
+      // Test create & replace + restrict
+      statement.execute(
+          "create or replace table view tree_view_db.view_table (tag1 tag, tag2 tag, s11 int32 field, s3 from s2) as root.a.** with (ttl=100) restrict");
+    } catch (SQLException e) {
+      fail(e.getMessage());
+    }
+
+    // Test permission
+    try (final Connection connection = EnvFactory.getEnv().getConnection();
+        final Statement statement = connection.createStatement()) {
+      // Test create & replace + restrict
+      statement.execute("create user testUser 'testUser'");
+    } catch (final SQLException e) {
+      fail(e.getMessage());
+    }
+
+    try (final Connection connection =
+            EnvFactory.getEnv().getConnection("testUser", "testUser", BaseEnv.TABLE_SQL_DIALECT);
+        final Statement statement = connection.createStatement()) {
+      statement.execute(
+          "create or replace table view tree_view_db.view_table (tag1 tag, tag2 tag, s11 int32 field, s3 from s2) as root.a.** with (ttl=100) restrict");
+      fail();
+    } catch (final SQLException e) {
+      assertEquals(
+          "803: Access Denied: No permissions for this operation, please add privilege CREATE ON tree_view_db.view_table",
+          e.getMessage());
+    }
+
+    try (final Connection connection =
+            EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        final Statement statement = connection.createStatement()) {
+      statement.execute("grant create on tree_view_db.view_table to user testUser");
+    } catch (final SQLException e) {
+      fail(e.getMessage());
+    }
+
+    try (final Connection connection =
+            EnvFactory.getEnv().getConnection("testUser", "testUser", BaseEnv.TABLE_SQL_DIALECT);
+        final Statement statement = connection.createStatement()) {
+      statement.execute(
+          "create or replace table view tree_view_db.view_table (tag1 tag, tag2 tag, s11 int32 field, s3 from s2) as root.a.** with (ttl=100) restrict");
+      fail();
+    } catch (final SQLException e) {
+      assertEquals(
+          "803: Access Denied: No permissions for this operation, please add privilege READ_SCHEMA",
+          e.getMessage());
+    }
+
+    try (final Connection connection = EnvFactory.getEnv().getConnection();
+        final Statement statement = connection.createStatement()) {
+      statement.execute("grant read_schema on root.a.** to user testUser");
+    } catch (final SQLException e) {
+      fail(e.getMessage());
+    }
+
+    try (final Connection connection =
+            EnvFactory.getEnv().getConnection("testUser", "testUser", BaseEnv.TABLE_SQL_DIALECT);
+        final Statement statement = connection.createStatement()) {
+      statement.execute(
+          "create or replace table view tree_view_db.view_table (tag1 tag, tag2 tag, s11 int32 field, s3 from s2) as root.a.** with (ttl=100) restrict");
+      fail();
+    } catch (final SQLException e) {
+      assertEquals(
+          "803: Access Denied: No permissions for this operation, please add privilege READ_DATA",
+          e.getMessage());
+    }
+
+    try (final Connection connection = EnvFactory.getEnv().getConnection();
+        final Statement statement = connection.createStatement()) {
+      statement.execute("grant read_data on root.a.** to user testUser");
+    } catch (final SQLException e) {
+      fail(e.getMessage());
+    }
+
+    try (final Connection connection =
+            EnvFactory.getEnv().getConnection("testUser", "testUser", BaseEnv.TABLE_SQL_DIALECT);
+        final Statement statement = connection.createStatement()) {
+      statement.execute(
+          "create or replace table view tree_view_db.view_table (tag1 tag, tag2 tag, s11 int32 field, s3 from s2) as root.a.** with (ttl=100) restrict");
+    } catch (final SQLException e) {
+      fail();
+    }
+
+    try (final Connection connection =
+            EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        final Statement statement = connection.createStatement()) {
+      statement.execute("use tree_view_db");
+
+      TestUtils.assertResultSetEqual(
+          statement.executeQuery("show devices from view_table where tag1 = 'b' and tag2 is null"),
+          "tag1,tag2,",
+          Collections.emptySet());
+
+      TestUtils.assertResultSetEqual(
+          statement.executeQuery("show create view view_table"),
+          "View,Create View,",
+          Collections.singleton(
+              "view_table,CREATE TABLE VIEW \"view_table\" (\"tag1\" STRING TAG,\"tag2\" STRING TAG,\"s11\" INT32 FIELD,\"s3\" STRING FIELD FROM \"s2\") AS root.a.** WITH (ttl=100) RESTRICT,"));
+
+      // Can also use "show create table"
+      TestUtils.assertResultSetEqual(
+          statement.executeQuery("show create table view_table"),
+          "View,Create View,",
+          Collections.singleton(
+              "view_table,CREATE TABLE VIEW \"view_table\" (\"tag1\" STRING TAG,\"tag2\" STRING TAG,\"s11\" INT32 FIELD,\"s3\" STRING FIELD FROM \"s2\") AS root.a.** WITH (ttl=100) RESTRICT,"));
+
+      statement.execute("create table a ()");
+      try {
+        statement.execute("show create view a");
+        fail();
+      } catch (final SQLException e) {
+        assertEquals(
+            "701: The table a is a base table, does not support show create view.", e.getMessage());
+      }
+      try {
+        statement.execute("show create view information_schema.tables");
+        fail();
+      } catch (final SQLException e) {
+        assertEquals("701: The system view does not support show create.", e.getMessage());
+      }
+      try {
+        statement.execute("create or replace table view a () as root.b.**");
+        fail();
+      } catch (final SQLException e) {
+        assertEquals("551: Table 'tree_view_db.a' already exists.", e.getMessage());
+      }
     }
   }
 }

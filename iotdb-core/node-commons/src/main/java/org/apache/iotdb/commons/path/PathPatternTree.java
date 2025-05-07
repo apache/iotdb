@@ -24,7 +24,7 @@ import org.apache.iotdb.commons.path.PathPatternNode.VoidSerializer;
 
 import org.apache.tsfile.common.constant.TsFileConstant;
 import org.apache.tsfile.file.metadata.IDeviceID;
-import org.apache.tsfile.file.metadata.IDeviceID.Factory;
+import org.apache.tsfile.file.metadata.StringArrayDeviceID;
 import org.apache.tsfile.utils.PublicBAOS;
 
 import java.io.DataOutputStream;
@@ -174,14 +174,16 @@ public class PathPatternTree {
   }
 
   public List<IDeviceID> getAllDevicePatterns() {
-    List<String> nodes = new ArrayList<>();
-    Set<List<String>> resultNodesSet = new HashSet<>();
+    final List<String> nodes = new ArrayList<>();
+    final Set<List<String>> resultNodesSet = new HashSet<>();
     searchDevicePath(root, nodes, resultNodesSet);
 
-    Set<IDeviceID> resultPaths = new HashSet<>();
-    for (List<String> resultNodes : resultNodesSet) {
+    final Set<IDeviceID> resultPaths = new HashSet<>();
+    for (final List<String> resultNodes : resultNodesSet) {
       if (resultNodes != null && !resultNodes.isEmpty()) {
-        resultPaths.add(Factory.DEFAULT_FACTORY.create(resultNodes.toArray(new String[0])));
+        resultPaths.add(
+            IDeviceID.Factory.DEFAULT_FACTORY.create(
+                StringArrayDeviceID.splitDeviceIdString(resultNodes.toArray(new String[0]))));
       }
     }
 

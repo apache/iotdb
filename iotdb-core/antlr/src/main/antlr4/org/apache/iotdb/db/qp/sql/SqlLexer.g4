@@ -153,6 +153,10 @@ CLUSTERID
     : C L U S T E R I D
     ;
 
+COMMENT
+    : C O M M E N T
+    ;
+
 CONCAT
     : C O N C A T
     ;
@@ -258,6 +262,10 @@ DELETE
     : D E L E T E
     ;
 
+DEFAULT
+    : D E F A U L T
+    ;
+
 DESC
     : D E S C
     ;
@@ -328,6 +336,10 @@ EXTRACTOR
 
 FALSE
     : F A L S E
+    ;
+
+FIELD
+    : F I E L D
     ;
 
 FILL
@@ -706,6 +718,10 @@ REPLACE
     : R E P L A C E
     ;
 
+RESTRICT
+    : R E S T R I C T
+    ;
+
 REVOKE
     : R E V O K E
     ;
@@ -824,6 +840,10 @@ SYSTEM
 
 TABLE
     : T A B L E
+    ;
+
+TAG
+    : T A G
     ;
 
 TAGS

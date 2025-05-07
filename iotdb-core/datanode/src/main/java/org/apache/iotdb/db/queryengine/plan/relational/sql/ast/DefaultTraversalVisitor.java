@@ -418,6 +418,15 @@ public abstract class DefaultTraversalVisitor<C> extends AstVisitor<Void, C> {
   }
 
   @Override
+  protected Void visitCreateTableView(final CreateTableView node, final C context) {
+    for (final Property property : node.getProperties()) {
+      process(property, context);
+    }
+
+    return null;
+  }
+
+  @Override
   protected Void visitProperty(Property node, C context) {
     process(node.getName(), context);
     if (!node.isSetToDefault()) {
