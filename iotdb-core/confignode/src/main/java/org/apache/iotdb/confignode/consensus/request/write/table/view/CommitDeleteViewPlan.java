@@ -17,28 +17,17 @@
  * under the License.
  */
 
-package org.apache.iotdb.commons.udf.utils;
+package org.apache.iotdb.confignode.consensus.request.write.table.view;
 
-import org.apache.iotdb.commons.udf.service.UDFManagementService;
-import org.apache.iotdb.udf.api.UDAF;
-import org.apache.iotdb.udf.api.UDTF;
+import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
+import org.apache.iotdb.confignode.consensus.request.write.table.CommitDeleteTablePlan;
 
-public class TreeUDFUtils {
-  public static boolean isUDTF(String functionName) {
-    try {
-      UDFManagementService.getInstance().reflect(functionName, UDTF.class);
-      return true;
-    } catch (Throwable e) {
-      return false;
-    }
+public class CommitDeleteViewPlan extends CommitDeleteTablePlan {
+  public CommitDeleteViewPlan() {
+    super(ConfigPhysicalPlanType.CommitDeleteView);
   }
 
-  public static boolean isUDAF(String functionName) {
-    try {
-      UDFManagementService.getInstance().reflect(functionName, UDAF.class);
-      return true;
-    } catch (Throwable e) {
-      return false;
-    }
+  public CommitDeleteViewPlan(final String database, final String tableName) {
+    super(ConfigPhysicalPlanType.CommitDeleteView, database, tableName);
   }
 }

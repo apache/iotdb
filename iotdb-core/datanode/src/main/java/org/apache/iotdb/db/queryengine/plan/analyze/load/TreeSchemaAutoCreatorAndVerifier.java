@@ -158,7 +158,7 @@ public class TreeSchemaAutoCreatorAndVerifier {
                         new MeasurementPath(device, timeseriesMetadata.getMeasurementId()));
                 status =
                     AuthorityChecker.getTSStatus(
-                        AuthorityChecker.checkFullPathListPermission(
+                        AuthorityChecker.checkFullPathOrPatternListPermission(
                             userName, paths, PrivilegeType.WRITE_DATA),
                         paths,
                         PrivilegeType.WRITE_DATA);

@@ -17,18 +17,17 @@
  * under the License.
  */
 
-package org.apache.iotdb.confignode.consensus.request.write.pipe.payload;
+package org.apache.iotdb.confignode.consensus.request.write.table.view;
 
-import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
-import org.apache.iotdb.confignode.consensus.request.write.table.PreCreateTablePlan;
+import org.apache.iotdb.confignode.consensus.request.write.table.PreDeleteTablePlan;
 
-public class PipeCreateTablePlan extends PreCreateTablePlan {
-  public PipeCreateTablePlan() {
-    super(ConfigPhysicalPlanType.PipeCreateTable);
+public class PreDeleteViewPlan extends PreDeleteTablePlan {
+  public PreDeleteViewPlan() {
+    super(ConfigPhysicalPlanType.PreDeleteView);
   }
 
-  public PipeCreateTablePlan(final String database, final TsTable table) {
-    super(ConfigPhysicalPlanType.PipeCreateTable, database, table);
+  public PreDeleteViewPlan(final String database, final String tableName) {
+    super(ConfigPhysicalPlanType.PreDeleteView, database, tableName);
   }
 }

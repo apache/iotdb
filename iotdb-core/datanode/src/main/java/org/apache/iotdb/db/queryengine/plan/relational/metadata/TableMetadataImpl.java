@@ -24,11 +24,10 @@ import org.apache.iotdb.commons.exception.table.TableNotExistsException;
 import org.apache.iotdb.commons.partition.DataPartition;
 import org.apache.iotdb.commons.partition.DataPartitionQueryParam;
 import org.apache.iotdb.commons.partition.SchemaPartition;
+import org.apache.iotdb.commons.schema.table.TreeViewSchema;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.udf.builtin.relational.TableBuiltinAggregationFunction;
 import org.apache.iotdb.commons.udf.builtin.relational.TableBuiltinScalarFunction;
-import org.apache.iotdb.commons.udf.builtin.relational.TableBuiltinTableFunction;
-import org.apache.iotdb.commons.udf.utils.TableUDFUtils;
 import org.apache.iotdb.commons.udf.utils.UDFDataTypeTransformer;
 import org.apache.iotdb.db.exception.load.LoadAnalyzeTableColumnDisorderException;
 import org.apache.iotdb.db.exception.sql.SemanticException;
@@ -37,6 +36,7 @@ import org.apache.iotdb.db.queryengine.common.SessionInfo;
 import org.apache.iotdb.db.queryengine.plan.analyze.ClusterPartitionFetcher;
 import org.apache.iotdb.db.queryengine.plan.analyze.IPartitionFetcher;
 import org.apache.iotdb.db.queryengine.plan.relational.function.OperatorType;
+import org.apache.iotdb.db.queryengine.plan.relational.function.TableBuiltinTableFunction;
 import org.apache.iotdb.db.queryengine.plan.relational.function.arithmetic.AdditionResolver;
 import org.apache.iotdb.db.queryengine.plan.relational.function.arithmetic.DivisionResolver;
 import org.apache.iotdb.db.queryengine.plan.relational.function.arithmetic.ModulusResolver;
@@ -51,6 +51,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.type.InternalTypeManager;
 import org.apache.iotdb.db.queryengine.plan.relational.type.TypeManager;
 import org.apache.iotdb.db.queryengine.plan.relational.type.TypeNotFoundException;
 import org.apache.iotdb.db.queryengine.plan.relational.type.TypeSignature;
+import org.apache.iotdb.db.queryengine.plan.udf.TableUDFUtils;
 import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
 import org.apache.iotdb.db.utils.constant.SqlConstant;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -70,7 +71,7 @@ import org.apache.tsfile.read.common.type.TypeFactory;
 import java.util.Collections;
 import java.util.List;
 import java.util.Locale;
-import java.util.Objects;
+import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
@@ -101,21 +102,31 @@ public class TableMetadataImpl implements Metadata {
   @Override
   public Optional<TableSchema> getTableSchema(
       final SessionInfo session, final QualifiedObjectName name) {
-    final TsTable table = tableCache.getTable(name.getDatabaseName(), name.getObjectName());
-    return Objects.isNull(table)
-        ? Optional.empty()
-        : Optional.of(
-            new TableSchema(
-                table.getTableName(),
-                table.getColumnList().stream()
-                    .map(
-                        o ->
-                            new ColumnSchema(
-                                o.getColumnName(),
-                                TypeFactory.getType(o.getDataType()),
-                                false,
-                                o.getColumnCategory()))
-                    .collect(Collectors.toList())));
+    final String databaseName = name.getDatabaseName();
+    final String tableName = name.getObjectName();
+
+    final TsTable table = tableCache.getTable(databaseName, tableName);
+    if (table == null) {
+      return Optional.empty();
+    }
+    final List<ColumnSchema> columnSchemaList =
+        table.getColumnList().stream()
+            .map(
+                o -> {
+                  final ColumnSchema schema =
+                      new ColumnSchema(
+                          o.getColumnName(),
+                          TypeFactory.getType(o.getDataType()),
+                          false,
+                          o.getColumnCategory());
+                  schema.setProps(o.getProps());
+                  return schema;
+                })
+            .collect(Collectors.toList());
+    return Optional.of(
+        TreeViewSchema.isTreeViewTable(table)
+            ? new TreeDeviceViewSchema(table.getTableName(), columnSchemaList, table.getProps())
+            : new TableSchema(table.getTableName(), columnSchemaList));
   }
 
   @Override
@@ -746,7 +757,7 @@ public class TableMetadataImpl implements Metadata {
   }
 
   @Override
-  public List<DeviceEntry> indexScan(
+  public Map<String, List<DeviceEntry>> indexScan(
       final QualifiedObjectName tableName,
       final List<Expression> expressionList,
       final List<String> attributeColumns,
