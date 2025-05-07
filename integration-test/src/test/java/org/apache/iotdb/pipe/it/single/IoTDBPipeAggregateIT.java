@@ -66,7 +66,8 @@ public class IoTDBPipeAggregateIT extends AbstractPipeSingleIT {
       processorAttributes.put("output.database", "root.testdb");
       processorAttributes.put(
           "output.measurements", "Avg1, peak1, rms1, var1, skew1, kurt1, ff1, cf1, pf1");
-      processorAttributes.put("operators", "avg, peak, rms, var, skew, kurt, ff, cf, pf, cE");
+      processorAttributes.put(
+          "operators", "avg, peak, rms, var, skew, kurt, ff, cf, pf, cE, max, min");
       processorAttributes.put("sliding.seconds", "60");
 
       connectorAttributes.put("sink", "write-back-sink");
