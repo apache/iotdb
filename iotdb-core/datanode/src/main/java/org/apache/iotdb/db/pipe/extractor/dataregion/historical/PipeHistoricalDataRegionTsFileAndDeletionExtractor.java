@@ -549,7 +549,7 @@ public class PipeHistoricalDataRegionTsFileAndDeletionExtractor
                           && (
                           // Some resource may not be closed due to the control of
                           // PIPE_MIN_FLUSH_INTERVAL_IN_MS. We simply ignore them.
-                          !resource.isClosed()
+                          !resource.isClosed() && !resource.getProcessor().alreadyMarkedClosing()
                               || mayTsFileContainUnprocessedData(resource)
                                   && isTsFileResourceOverlappedWithTimeRange(resource)
                                   && isTsFileGeneratedAfterExtractionTimeLowerBound(resource)
@@ -566,7 +566,7 @@ public class PipeHistoricalDataRegionTsFileAndDeletionExtractor
                           && (
                           // Some resource may not be closed due to the control of
                           // PIPE_MIN_FLUSH_INTERVAL_IN_MS. We simply ignore them.
-                          !resource.isClosed()
+                          !resource.isClosed() && !resource.getProcessor().alreadyMarkedClosing()
                               || mayTsFileContainUnprocessedData(resource)
                                   && isTsFileResourceOverlappedWithTimeRange(resource)
                                   && isTsFileGeneratedAfterExtractionTimeLowerBound(resource)
