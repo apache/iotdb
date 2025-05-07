@@ -85,6 +85,9 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ValueFillNod
 
 import com.google.common.base.Joiner;
 import org.apache.commons.lang3.Validate;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.WindowNode;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Trim;
+import org.apache.iotdb.db.queryengine.plan.relational.utils.DataOrganizationSpecification;
 import org.apache.tsfile.utils.Pair;
 import org.eclipse.jetty.util.StringUtil;
 
@@ -1047,6 +1050,22 @@ public class PlanGraphPrinter extends PlanVisitor<List<String>, PlanGraphPrinter
                   .ifPresent(orderingScheme -> boxValue.add("Order by: " + orderingScheme));
             });
     boxValue.add("TableFunctionHandle: " + node.getTableFunctionHandle());
+    return render(node, boxValue, context);
+  }
+
+  @Override
+  public List<String> visitWindowFunction(WindowNode node, GraphContext context) {
+    List<String> boxValue = new ArrayList<>();
+    boxValue.add(String.format("WindowFunction-%s", node.getPlanNodeId().getId()));
+    boxValue.add(String.format("OutputSymbols: %s", node.getOutputSymbols()));
+
+    DataOrganizationSpecification specification = node.getSpecification();
+    if (!specification.getPartitionBy().isEmpty()) {
+      boxValue.add(
+          "Partition by: [" + Joiner.on(", ").join(specification.getPartitionBy()) + "]");
+    }
+    specification.getOrderingScheme().ifPresent(orderingScheme -> boxValue.add("Order by: " + orderingScheme));
+
     return render(node, boxValue, context);
   }
 
