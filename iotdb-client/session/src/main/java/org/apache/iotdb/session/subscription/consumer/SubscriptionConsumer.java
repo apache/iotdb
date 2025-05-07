@@ -711,7 +711,7 @@ abstract class SubscriptionConsumer implements AutoCloseable {
     final Path filePath = getFilePath(commitContext, topicName, fileName, true, true);
     final File file = filePath.toFile();
     try (final RandomAccessFile fileWriter = new RandomAccessFile(file, "rw")) {
-      return Optional.of(pollFileInternal(commitContext, fileName, file, fileWriter, timer));
+      return pollFileInternal(commitContext, fileName, file, fileWriter, timer);
     } catch (final Exception e) {
       if (!(e instanceof SubscriptionPollTimeoutException)) {
         inFlightFilesCommitContextSet.remove(commitContext);
@@ -724,7 +724,7 @@ abstract class SubscriptionConsumer implements AutoCloseable {
     }
   }
 
-  private SubscriptionMessage pollFileInternal(
+  private Optional<SubscriptionMessage> pollFileInternal(
       final SubscriptionCommitContext commitContext,
       final String rawFileName,
       final File file,
@@ -757,13 +757,10 @@ abstract class SubscriptionConsumer implements AutoCloseable {
       final List<SubscriptionPollResponse> responses =
           pollFileInternal(commitContext, writingOffset, timer.remainingMs());
 
-      // It's agreed that the server will always return at least one response, even in case of
-      // failure.
+      // If responses is empty, it means that some outdated subscription events may be being polled,
+      // so just return.
       if (responses.isEmpty()) {
-        final String errorMessage =
-            String.format("SubscriptionConsumer %s poll empty response", this);
-        LOGGER.warn(errorMessage);
-        throw new SubscriptionRuntimeNonCriticalException(errorMessage);
+        return Optional.empty();
       }
 
       // only one SubscriptionEvent polled currently
@@ -872,7 +869,7 @@ abstract class SubscriptionConsumer implements AutoCloseable {
 
             // generate subscription message
             inFlightFilesCommitContextSet.remove(commitContext);
-            return new SubscriptionMessage(commitContext, file.getAbsolutePath());
+            return Optional.of(new SubscriptionMessage(commitContext, file.getAbsolutePath()));
           }
         case ERROR:
           {
