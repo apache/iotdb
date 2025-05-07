@@ -82,7 +82,6 @@ public class RenameTableColumnProcedure
           LOGGER.info("Pre release info of table {}.{} when renaming column", database, tableName);
           preRelease(env);
           break;
-          // TODO: Change data for base table
         case RENAME_COLUMN:
           LOGGER.info("Rename column to table {}.{} on config node", database, tableName);
           renameColumn(env);
