@@ -4,7 +4,6 @@ import org.apache.tsfile.encoding.encoder.Encoder;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
 
-import java.io.IOException;
 import java.util.List;
 
 public class Ts2DiffColumnEncoder implements ColumnEncoder {
@@ -17,14 +16,9 @@ public class Ts2DiffColumnEncoder implements ColumnEncoder {
   }
 
   @Override
-  public byte[] encode(List<?> data) throws IOException {
+  public byte[] encode(List<?> data) {
     return new byte[0];
   }
-
-  //  @Override
-  //  public List<?> decode(byte[] data) throws IOException {
-  //    return List.of();
-  //  }
 
   @Override
   public TSDataType getDataType() {
@@ -38,6 +32,11 @@ public class Ts2DiffColumnEncoder implements ColumnEncoder {
 
   @Override
   public Encoder getEncoder(TSDataType type, TSEncoding encodingType) {
+    return null;
+  }
+
+  @Override
+  public ColumnEntry getColumnEntry() {
     return null;
   }
 }

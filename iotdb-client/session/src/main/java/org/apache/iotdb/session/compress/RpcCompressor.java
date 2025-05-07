@@ -6,7 +6,6 @@ import org.apache.tsfile.file.metadata.enums.CompressionType;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 
-// 为后续的压缩器提供一个基础的实现
 public class RpcCompressor {
 
   public static ICompressor compressor;
@@ -28,7 +27,7 @@ public class RpcCompressor {
   }
 
   /**
-   * 压缩 ByteBuffer, 较长的数据使用这种方式更好
+   * Compress ByteBuffer, this method is better for longer data
    *
    * @return byte length of compressed data.
    */

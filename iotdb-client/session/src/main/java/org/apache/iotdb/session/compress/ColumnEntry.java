@@ -4,15 +4,16 @@ import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
 
 import java.io.Serializable;
+import java.nio.ByteBuffer;
 
 public class ColumnEntry implements Serializable {
 
-  // 用于申请内存时指定大小
+  /** Used to specify the size when applying for memory */
   private Integer compressedSize;
+
   private Integer unCompressedSize;
   private TSDataType dataType;
   private TSEncoding encodingType;
-  private Integer offset; // 偏移量
   private Integer size; // 列条目的总大小
 
   public ColumnEntry() {
@@ -29,13 +30,12 @@ public class ColumnEntry implements Serializable {
     this.unCompressedSize = unCompressedSize;
     this.dataType = dataType;
     this.encodingType = encodingType;
-    this.offset = offset;
     updateSize();
   }
 
   /**
-   * 更新列条目的总大小 总大小 = compressedSize(4字节) + unCompressedSize(4字节) + dataType(1字节) + encodingType(1字节)
-   * + offset(4字节)
+   * Update the total size of the column entry Total size = compressedSize (4 bytes) +
+   * unCompressedSize (4 bytes) + dataType (1 byte) + encodingType (1 byte) + offset (4 bytes)
    */
   public void updateSize() {
     int totalSize = 0;
@@ -54,10 +54,6 @@ public class ColumnEntry implements Serializable {
 
     if (encodingType != null) {
       totalSize += 1;
-    }
-
-    if (offset != null) {
-      totalSize += 4;
     }
 
     this.size = totalSize;
@@ -79,12 +75,28 @@ public class ColumnEntry implements Serializable {
     return encodingType;
   }
 
-  public Integer getOffset() {
-    return offset;
-  }
-
   public Integer getSize() {
     return size;
+  }
+
+  public void setCompressedSize(Integer compressedSize) {
+    this.compressedSize = compressedSize;
+  }
+
+  public void setUnCompressedSize(Integer unCompressedSize) {
+    this.unCompressedSize = unCompressedSize;
+  }
+
+  public void setDataType(TSDataType dataType) {
+    this.dataType = dataType;
+  }
+
+  public void setEncodingType(TSEncoding encodingType) {
+    this.encodingType = encodingType;
+  }
+
+  public void setSize(Integer size) {
+    this.size = size;
   }
 
   @Override
@@ -98,10 +110,31 @@ public class ColumnEntry implements Serializable {
         + dataType
         + ", encodingType="
         + encodingType
-        + ", offset="
-        + offset
         + ", size="
         + size
         + '}';
+  }
+
+  public byte[] toBytes() {
+    ByteBuffer buffer = ByteBuffer.allocate(getSize());
+    buffer.putInt(compressedSize != null ? compressedSize : 0);
+    buffer.putInt(unCompressedSize != null ? unCompressedSize : 0);
+    buffer.put((byte) (dataType != null ? dataType.ordinal() : 0));
+    buffer.put((byte) (encodingType != null ? encodingType.ordinal() : 0));
+    return buffer.array();
+  }
+
+  public static ColumnEntry fromBytes(ByteBuffer buffer) {
+    int compressedSize = buffer.getInt();
+    int unCompressedSize = buffer.getInt();
+    TSDataType dataType = TSDataType.values()[buffer.get()];
+    TSEncoding encodingType = TSEncoding.values()[buffer.get()];
+    ColumnEntry entry = new ColumnEntry();
+    entry.setCompressedSize(compressedSize);
+    entry.setUnCompressedSize(unCompressedSize);
+    entry.setDataType(dataType);
+    entry.setEncodingType(encodingType);
+    entry.updateSize();
+    return entry;
   }
 }
