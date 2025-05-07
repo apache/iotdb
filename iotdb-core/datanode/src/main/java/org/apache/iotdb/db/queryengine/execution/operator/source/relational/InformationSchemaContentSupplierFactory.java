@@ -61,9 +61,9 @@ import org.apache.iotdb.db.queryengine.plan.Coordinator;
 import org.apache.iotdb.db.queryengine.plan.execution.IQueryExecution;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.ShowCreateViewTask;
 import org.apache.iotdb.db.queryengine.plan.relational.function.TableBuiltinTableFunction;
+import org.apache.iotdb.db.queryengine.plan.relational.security.AccessControl;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.util.ReservedIdentifiers;
 import org.apache.iotdb.db.relational.grammar.sql.RelationalSqlKeywords;
-import org.apache.iotdb.db.queryengine.plan.relational.security.AccessControl;
 import org.apache.iotdb.db.schemaengine.table.InformationSchemaUtils;
 import org.apache.iotdb.db.utils.TimestampPrecisionUtils;
 
@@ -447,7 +447,7 @@ public class InformationSchemaContentSupplierFactory {
           tableInfoIterator = entry.getValue().entrySet().iterator();
         }
 
-        final Map.Entry<String, Pair<TsTable, Set<String>>> tableEntry;
+        Map.Entry<String, Pair<TsTable, Set<String>>> tableEntry;
         while (tableInfoIterator.hasNext()) {
           tableEntry = tableInfoIterator.next();
           if (canShowTable(accessControl, userName, dbName, tableEntry.getKey())) {
