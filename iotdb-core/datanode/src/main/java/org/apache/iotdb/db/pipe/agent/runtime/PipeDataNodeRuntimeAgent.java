@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.pipe.agent.runtime;
 
+import org.apache.iotdb.common.rpc.thrift.TFlushReq;
 import org.apache.iotdb.commons.consensus.SchemaRegionId;
 import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.commons.consensus.index.impl.RecoverProgressIndex;
@@ -35,10 +36,12 @@ import org.apache.iotdb.commons.service.ServiceType;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
+import org.apache.iotdb.db.pipe.event.common.terminate.PipeTerminateEvent;
 import org.apache.iotdb.db.pipe.extractor.schemaregion.SchemaRegionListeningQueue;
 import org.apache.iotdb.db.pipe.resource.PipeDataNodeHardlinkOrCopiedFileDirStartupCleaner;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
 import org.apache.iotdb.db.service.ResourcesInformationHolder;
+import org.apache.iotdb.db.storageengine.StorageEngine;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 
 import org.slf4j.Logger;
@@ -89,6 +92,30 @@ public class PipeDataNodeRuntimeAgent implements IService {
         "PipeTaskAgent#restartAllStuckPipes",
         PipeDataNodeAgent.task()::restartAllStuckPipes,
         PipeConfig.getInstance().getPipeStuckRestartIntervalSeconds());
+
+    registerPeriodicalJob(
+        "PipeTaskAgent#flushIfNecessary",
+        () -> {
+          if (PipeTerminateEvent.lastProgressReportTime.get() > 0) {
+            final long timeSinceLastReport =
+                System.currentTimeMillis() - PipeTerminateEvent.lastProgressReportTime.get();
+            if (timeSinceLastReport
+                > PipeConfig.getInstance().getPipeFlushAfterLastTerminateSeconds() * 1000L) {
+              try {
+                StorageEngine.getInstance().operateFlush(new TFlushReq());
+                PipeTerminateEvent.lastProgressReportTime.set(0);
+                LOGGER.warn("Force flush all data regions because of last progress report time.");
+              } catch (final Exception e) {
+                LOGGER.warn(
+                    "Failed to flush all data regions, please check the error message: {}",
+                    e.getMessage(),
+                    e);
+              }
+            }
+          }
+        },
+        PipeConfig.getInstance().getPipeStuckRestartIntervalSeconds());
+
     pipePeriodicalJobExecutor.start();
 
     if (PipeConfig.getInstance().getPipeEventReferenceTrackingEnabled()) {

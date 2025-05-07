@@ -30,6 +30,8 @@ import org.apache.iotdb.db.pipe.agent.task.PipeDataNodeTask;
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
 
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
 
 /**
  * The {@link PipeTerminateEvent} is an {@link EnrichedEvent} that controls the termination of pipe,
@@ -38,6 +40,10 @@ import java.util.concurrent.CompletableFuture;
  * be discarded.
  */
 public class PipeTerminateEvent extends EnrichedEvent {
+  public static final AtomicInteger progressReportCount = new AtomicInteger(0);
+
+  public static final AtomicLong lastProgressReportTime = new AtomicLong(0);
+
   private final int dataRegionId;
 
   public PipeTerminateEvent(
@@ -106,6 +112,8 @@ public class PipeTerminateEvent extends EnrichedEvent {
 
   @Override
   public void reportProgress() {
+    progressReportCount.incrementAndGet();
+    lastProgressReportTime.set(System.currentTimeMillis());
     // To avoid deadlock
     CompletableFuture.runAsync(
         () -> PipeDataNodeAgent.task().markCompleted(pipeName, dataRegionId));
