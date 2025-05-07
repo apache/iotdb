@@ -375,6 +375,15 @@ public class SubscriptionBroker {
         brokerId);
   }
 
+  public void updateCompletedTopicNames(final String topicName) {
+    // mark topic name completed only for topic of snapshot mode
+    if (SubscriptionAgent.topic()
+        .getTopicMode(topicName)
+        .equals(TopicConstant.MODE_SNAPSHOT_VALUE)) {
+      completedTopicNames.put(topicName, topicName);
+    }
+  }
+
   public void unbindPrefetchingQueue(final String topicName) {
     final SubscriptionPrefetchingQueue prefetchingQueue =
         topicNameToPrefetchingQueue.get(topicName);

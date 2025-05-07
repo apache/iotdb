@@ -19,21 +19,29 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.metadata;
 
-import java.util.Collections;
+import org.apache.iotdb.commons.schema.table.TreeViewSchema;
+
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
+import java.util.stream.Collectors;
 
 public class TreeDeviceViewSchema extends TableSchema {
-
-  public TreeDeviceViewSchema(String tableName, List<ColumnSchema> columns) {
+  public TreeDeviceViewSchema(
+      final String tableName, final List<ColumnSchema> columns, final Map<String, String> props) {
     super(tableName, columns);
+    setProps(props);
   }
 
-  public String getTreeDBName() {
-    return "root.tree";
-  }
-
-  public Map<String, String> getMeasurementColumnNameMap() {
-    return Collections.emptyMap();
+  public Map<String, String> getColumn2OriginalNameMap() {
+    return columns.stream()
+        .filter(
+            columnSchema ->
+                Objects.nonNull(columnSchema.getProps())
+                    && columnSchema.getProps().containsKey(TreeViewSchema.ORIGINAL_NAME))
+        .collect(
+            Collectors.toMap(
+                ColumnSchema::getName,
+                columnSchema -> columnSchema.getProps().get(TreeViewSchema.ORIGINAL_NAME)));
   }
 }

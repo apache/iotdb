@@ -17,26 +17,11 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.queryengine.plan.relational.metadata;
+package org.apache.iotdb.confignode.procedure.state.schema;
 
-import org.apache.tsfile.file.metadata.IDeviceID;
-import org.apache.tsfile.utils.Binary;
-
-import java.util.Arrays;
-
-public class NonAlignedAlignedDeviceEntry extends DeviceEntry {
-
-  public NonAlignedAlignedDeviceEntry(IDeviceID deviceID, Binary[] attributeColumnValues) {
-    super(deviceID, attributeColumnValues);
-  }
-
-  @Override
-  public String toString() {
-    return "NonAlignedAlignedDeviceEntry{"
-        + "deviceID="
-        + deviceID
-        + ", attributeColumnValues="
-        + Arrays.toString(attributeColumnValues)
-        + '}';
-  }
+public enum RenameTableState {
+  COLUMN_CHECK,
+  PRE_RELEASE,
+  RENAME_TABLE,
+  COMMIT_RELEASE
 }

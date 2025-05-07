@@ -69,7 +69,7 @@ public class TestUtils {
           IoTDBConstant.ClientVersion.V_1_0,
           "db",
           IClientSession.SqlDialect.TABLE);
-  public static final Metadata TEST_MATADATA = new TestMatadata();
+  public static final Metadata TEST_MATADATA = new TestMetadata();
   public static final MPPQueryContext QUERY_CONTEXT =
       new MPPQueryContext("only for test", QUERY_ID, SESSION_INFO, null, null);
 

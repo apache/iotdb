@@ -126,7 +126,7 @@ public class AnalyzerTest {
           IoTDBConstant.ClientVersion.V_1_0,
           "db",
           IClientSession.SqlDialect.TABLE);
-  Metadata metadata = new TestMatadata();
+  Metadata metadata = new TestMetadata();
   WarningCollector warningCollector = NOOP;
   String sql;
   Analysis analysis;
@@ -1039,7 +1039,7 @@ public class AnalyzerTest {
   }
 
   private Metadata mockMetadataForInsertion() {
-    return new TestMatadata() {
+    return new TestMetadata() {
       @Override
       public Optional<TableSchema> validateTableHeaderSchema(
           String database,

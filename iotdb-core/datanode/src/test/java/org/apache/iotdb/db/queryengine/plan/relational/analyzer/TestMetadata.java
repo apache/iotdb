@@ -41,7 +41,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.metadata.ColumnSchema;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.DeviceEntry;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.ITableDeviceSchemaValidation;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
-import org.apache.iotdb.db.queryengine.plan.relational.metadata.NonAlignedAlignedDeviceEntry;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.NonAlignedDeviceEntry;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.OperatorNotFoundException;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.QualifiedObjectName;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.TableSchema;
@@ -99,7 +99,7 @@ import static org.apache.tsfile.read.common.type.DoubleType.DOUBLE;
 import static org.apache.tsfile.read.common.type.LongType.INT64;
 import static org.apache.tsfile.read.common.type.TimestampType.TIMESTAMP;
 
-public class TestMatadata implements Metadata {
+public class TestMetadata implements Metadata {
 
   private final TypeManager typeManager = new InternalTypeManager();
 
@@ -160,8 +160,7 @@ public class TestMatadata implements Metadata {
                   ColumnSchema.builder(S2_CM)
                       .setColumnCategory(TsTableColumnCategory.FIELD)
                       .build()));
-      Mockito.when(treeDeviceViewSchema.getTreeDBName()).thenReturn(TREE_DB1);
-      Mockito.when(treeDeviceViewSchema.getMeasurementColumnNameMap())
+      Mockito.when(treeDeviceViewSchema.getColumn2OriginalNameMap())
           .thenReturn(ImmutableMap.of(TAG1, "province", TAG2, "city"));
       return Optional.of(treeDeviceViewSchema);
     }
@@ -222,6 +221,15 @@ public class TestMatadata implements Metadata {
               argumentTypes,
               new IllegalArgumentException("Should have two numeric operands."));
         }
+        if (argumentTypes.get(0).equals(TIMESTAMP) && argumentTypes.get(1).equals(TIMESTAMP)) {
+          throw new OperatorNotFoundException(
+              operatorType,
+              argumentTypes,
+              new IllegalArgumentException("Cannot apply operator: TIMESTAMP - TIMESTAMP"));
+        }
+        if (argumentTypes.get(0).equals(TIMESTAMP) || argumentTypes.get(1).equals(TIMESTAMP)) {
+          return TIMESTAMP;
+        }
         return DOUBLE;
       case NEGATION:
         if (!isOneNumericType(argumentTypes)) {
@@ -276,26 +284,31 @@ public class TestMatadata implements Metadata {
   }
 
   @Override
-  public List<DeviceEntry> indexScan(
+  public Map<String, List<DeviceEntry>> indexScan(
       final QualifiedObjectName tableName,
       final List<Expression> expressionList,
       final List<String> attributeColumns,
       final MPPQueryContext context) {
     if (tableName.getDatabaseName().equals(TREE_VIEW_DB)) {
       if (expressionList.isEmpty()) {
-        return ImmutableList.of(
-            new AlignedDeviceEntry(
-                IDeviceID.Factory.DEFAULT_FACTORY.create(DEVICE_3), new Binary[0]),
-            new AlignedDeviceEntry(
-                IDeviceID.Factory.DEFAULT_FACTORY.create(DEVICE_6), new Binary[0]),
-            new NonAlignedAlignedDeviceEntry(
-                IDeviceID.Factory.DEFAULT_FACTORY.create(DEVICE_5), new Binary[0]));
+        return Collections.singletonMap(
+            TREE_DB1,
+            ImmutableList.of(
+                new AlignedDeviceEntry(
+                    IDeviceID.Factory.DEFAULT_FACTORY.create(DEVICE_3), new Binary[0]),
+                new AlignedDeviceEntry(
+                    IDeviceID.Factory.DEFAULT_FACTORY.create(DEVICE_6), new Binary[0]),
+                new NonAlignedDeviceEntry(
+                    IDeviceID.Factory.DEFAULT_FACTORY.create(DEVICE_5), new Binary[0])));
       }
 
-      return ImmutableList.of(
-          new AlignedDeviceEntry(IDeviceID.Factory.DEFAULT_FACTORY.create(DEVICE_3), new Binary[0]),
-          new AlignedDeviceEntry(
-              IDeviceID.Factory.DEFAULT_FACTORY.create(DEVICE_6), new Binary[0]));
+      return Collections.singletonMap(
+          TREE_DB1,
+          ImmutableList.of(
+              new AlignedDeviceEntry(
+                  IDeviceID.Factory.DEFAULT_FACTORY.create(DEVICE_3), new Binary[0]),
+              new AlignedDeviceEntry(
+                  IDeviceID.Factory.DEFAULT_FACTORY.create(DEVICE_6), new Binary[0])));
     }
 
     if (expressionList.size() == 2) {
@@ -303,60 +316,79 @@ public class TestMatadata implements Metadata {
               && compareEqualsMatch(expressionList.get(1), "tag2", "A1")
           || compareEqualsMatch(expressionList.get(1), "tag1", "beijing")
               && compareEqualsMatch(expressionList.get(0), "tag2", "A1")) {
-        return Collections.singletonList(
-            new AlignedDeviceEntry(
-                new StringArrayDeviceID(DEVICE_1.split("\\.")), DEVICE_1_ATTRIBUTES));
+        return Collections.singletonMap(
+            DB1,
+            Collections.singletonList(
+                new AlignedDeviceEntry(
+                    new StringArrayDeviceID(DEVICE_1.split("\\.")), DEVICE_1_ATTRIBUTES)));
       }
       if (compareEqualsMatch(expressionList.get(0), "tag1", "shanghai")
               && compareEqualsMatch(expressionList.get(1), "tag2", "B3")
           || compareEqualsMatch(expressionList.get(1), "tag1", "shanghai")
               && compareEqualsMatch(expressionList.get(0), "tag2", "B3")) {
-        return Collections.singletonList(
-            new AlignedDeviceEntry(
-                new StringArrayDeviceID(DEVICE_4.split("\\.")), DEVICE_1_ATTRIBUTES));
+        return Collections.singletonMap(
+            DB1,
+            Collections.singletonList(
+                new AlignedDeviceEntry(
+                    new StringArrayDeviceID(DEVICE_4.split("\\.")), DEVICE_1_ATTRIBUTES)));
       }
 
     } else if (expressionList.size() == 1) {
       if (compareEqualsMatch(expressionList.get(0), "tag1", "shanghai")) {
-        return Arrays.asList(
-            new AlignedDeviceEntry(
-                new StringArrayDeviceID(DEVICE_4.split("\\.")), DEVICE_4_ATTRIBUTES),
-            new AlignedDeviceEntry(
-                new StringArrayDeviceID(DEVICE_3.split("\\.")), DEVICE_3_ATTRIBUTES));
+        return Collections.singletonMap(
+            DB1,
+            Arrays.asList(
+                new AlignedDeviceEntry(
+                    new StringArrayDeviceID(DEVICE_4.split("\\.")), DEVICE_4_ATTRIBUTES),
+                new AlignedDeviceEntry(
+                    new StringArrayDeviceID(DEVICE_3.split("\\.")), DEVICE_3_ATTRIBUTES)));
       }
       if (compareEqualsMatch(expressionList.get(0), "tag1", "shenzhen")) {
-        return Arrays.asList(
-            new AlignedDeviceEntry(
-                new StringArrayDeviceID(DEVICE_6.split("\\.")), DEVICE_6_ATTRIBUTES),
-            new AlignedDeviceEntry(
-                new StringArrayDeviceID(DEVICE_5.split("\\.")), DEVICE_5_ATTRIBUTES));
+        return Collections.singletonMap(
+            DB1,
+            Arrays.asList(
+                new AlignedDeviceEntry(
+                    new StringArrayDeviceID(DEVICE_6.split("\\.")), DEVICE_6_ATTRIBUTES),
+                new AlignedDeviceEntry(
+                    new StringArrayDeviceID(DEVICE_5.split("\\.")), DEVICE_5_ATTRIBUTES)));
       }
       if (compareNotEqualsMatch(expressionList.get(0), "tag1", "shenzhen")) {
-        return Arrays.asList(
+        return Collections.singletonMap(
+            DB1,
+            Arrays.asList(
+                new AlignedDeviceEntry(
+                    new StringArrayDeviceID(DEVICE_4.split("\\.")), DEVICE_4_ATTRIBUTES),
+                new AlignedDeviceEntry(
+                    new StringArrayDeviceID(DEVICE_1.split("\\.")), DEVICE_1_ATTRIBUTES),
+                new AlignedDeviceEntry(
+                    new StringArrayDeviceID(DEVICE_3.split("\\.")), DEVICE_3_ATTRIBUTES),
+                new AlignedDeviceEntry(
+                    new StringArrayDeviceID(DEVICE_2.split("\\.")), DEVICE_2_ATTRIBUTES)));
+      }
+      if (compareEqualsMatch(expressionList.get(0), "tag2", "B2")) {
+        return Collections.singletonMap(
+            DB1,
+            Collections.singletonList(
+                new AlignedDeviceEntry(
+                    new StringArrayDeviceID(DEVICE_5.split("\\.")), DEVICE_5_ATTRIBUTES)));
+      }
+    }
+
+    return Collections.singletonMap(
+        DB1,
+        Arrays.asList(
             new AlignedDeviceEntry(
                 new StringArrayDeviceID(DEVICE_4.split("\\.")), DEVICE_4_ATTRIBUTES),
             new AlignedDeviceEntry(
                 new StringArrayDeviceID(DEVICE_1.split("\\.")), DEVICE_1_ATTRIBUTES),
             new AlignedDeviceEntry(
+                new StringArrayDeviceID(DEVICE_6.split("\\.")), DEVICE_6_ATTRIBUTES),
+            new AlignedDeviceEntry(
+                new StringArrayDeviceID(DEVICE_5.split("\\.")), DEVICE_5_ATTRIBUTES),
+            new AlignedDeviceEntry(
                 new StringArrayDeviceID(DEVICE_3.split("\\.")), DEVICE_3_ATTRIBUTES),
             new AlignedDeviceEntry(
-                new StringArrayDeviceID(DEVICE_2.split("\\.")), DEVICE_2_ATTRIBUTES));
-      }
-      if (compareEqualsMatch(expressionList.get(0), "tag2", "B2")) {
-        return Collections.singletonList(
-            new AlignedDeviceEntry(
-                new StringArrayDeviceID(DEVICE_5.split("\\.")), DEVICE_5_ATTRIBUTES));
-      }
-    }
-
-    return Arrays.asList(
-        new AlignedDeviceEntry(new StringArrayDeviceID(DEVICE_4.split("\\.")), DEVICE_4_ATTRIBUTES),
-        new AlignedDeviceEntry(new StringArrayDeviceID(DEVICE_1.split("\\.")), DEVICE_1_ATTRIBUTES),
-        new AlignedDeviceEntry(new StringArrayDeviceID(DEVICE_6.split("\\.")), DEVICE_6_ATTRIBUTES),
-        new AlignedDeviceEntry(new StringArrayDeviceID(DEVICE_5.split("\\.")), DEVICE_5_ATTRIBUTES),
-        new AlignedDeviceEntry(new StringArrayDeviceID(DEVICE_3.split("\\.")), DEVICE_3_ATTRIBUTES),
-        new AlignedDeviceEntry(
-            new StringArrayDeviceID(DEVICE_2.split("\\.")), DEVICE_2_ATTRIBUTES));
+                new StringArrayDeviceID(DEVICE_2.split("\\.")), DEVICE_2_ATTRIBUTES)));
   }
 
   private boolean compareEqualsMatch(

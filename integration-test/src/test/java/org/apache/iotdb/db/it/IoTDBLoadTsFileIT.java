@@ -30,11 +30,11 @@ import org.apache.iotdb.itbase.category.LocalStandaloneIT;
 import org.apache.iotdb.itbase.env.BaseEnv;
 import org.apache.iotdb.jdbc.IoTDBSQLException;
 
+import org.apache.tsfile.enums.ColumnCategory;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.tsfile.read.common.Path;
 import org.apache.tsfile.utils.Pair;
-import org.apache.tsfile.write.record.Tablet;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.junit.After;
@@ -978,7 +978,7 @@ public class IoTDBLoadTsFileIT {
 
     final List<Pair<MeasurementSchema, MeasurementSchema>> measurementSchemas =
         generateMeasurementSchemasForDataTypeConvertion();
-    final List<Tablet.ColumnCategory> columnCategories =
+    final List<ColumnCategory> columnCategories =
         generateTabletColumnCategory(0, measurementSchemas.size());
 
     final File file = new File(tmpDir, "1-0-0-0.tsfile");
@@ -1032,7 +1032,7 @@ public class IoTDBLoadTsFileIT {
 
     List<Pair<MeasurementSchema, MeasurementSchema>> measurementSchemas =
         generateMeasurementSchemasForDataTypeConvertion();
-    List<Tablet.ColumnCategory> columnCategories =
+    List<ColumnCategory> columnCategories =
         generateTabletColumnCategory(0, measurementSchemas.size());
 
     final File file = new File(tmpDir, "1-0-0-0.tsfile");
@@ -1066,13 +1066,13 @@ public class IoTDBLoadTsFileIT {
     }
   }
 
-  private List<Tablet.ColumnCategory> generateTabletColumnCategory(int tagNum, int filedNum) {
-    List<Tablet.ColumnCategory> columnTypes = new ArrayList<>(tagNum + filedNum);
+  private List<ColumnCategory> generateTabletColumnCategory(int tagNum, int filedNum) {
+    List<ColumnCategory> columnTypes = new ArrayList<>(tagNum + filedNum);
     for (int i = 0; i < tagNum; i++) {
-      columnTypes.add(Tablet.ColumnCategory.TAG);
+      columnTypes.add(ColumnCategory.TAG);
     }
     for (int i = 0; i < filedNum; i++) {
-      columnTypes.add(Tablet.ColumnCategory.FIELD);
+      columnTypes.add(ColumnCategory.FIELD);
     }
     return columnTypes;
   }
@@ -1080,7 +1080,7 @@ public class IoTDBLoadTsFileIT {
   private String convert2TableSQL(
       final String tableName,
       final List<MeasurementSchema> schemaList,
-      final List<Tablet.ColumnCategory> columnCategoryList) {
+      final List<ColumnCategory> columnCategoryList) {
     List<String> columns = new ArrayList<>();
     for (int i = 0; i < schemaList.size(); i++) {
       final MeasurementSchema measurement = schemaList.get(i);

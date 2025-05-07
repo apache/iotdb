@@ -59,7 +59,7 @@ psutil = "^5.9.5"
 sktime = "^0.24.1"
 pmdarima = "^2.0.4"
 hmmlearn = "^0.3.0"
-apache-iotdb = "2.0.1b0"
+apache-iotdb = "2.0.4.dev0"
 
 [tool.poetry.scripts]
 ainode = "ainode.core.script:main"
