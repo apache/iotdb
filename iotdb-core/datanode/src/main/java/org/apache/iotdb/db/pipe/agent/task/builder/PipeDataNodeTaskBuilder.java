@@ -54,11 +54,8 @@ import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstan
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_MODE_DEFAULT_VALUE;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_MODE_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_MODE_QUERY_VALUE;
-import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_MODE_SNAPSHOT_DEFAULT_VALUE;
-import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_MODE_SNAPSHOT_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_MODE_SNAPSHOT_VALUE;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.SOURCE_MODE_KEY;
-import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.SOURCE_MODE_SNAPSHOT_KEY;
 
 public class PipeDataNodeTaskBuilder {
 
@@ -186,20 +183,12 @@ public class PipeDataNodeTaskBuilder {
       insertionDeletionListeningOptionPair =
           DataRegionListeningFilter.parseInsertionDeletionListeningOptionPair(extractorParameters);
 
-      if (extractorParameters.hasAnyAttributes(
-          EXTRACTOR_MODE_SNAPSHOT_KEY, SOURCE_MODE_SNAPSHOT_KEY)) {
-        shouldTerminatePipeOnAllHistoricalEventsConsumed =
-            extractorParameters.getBooleanOrDefault(
-                Arrays.asList(EXTRACTOR_MODE_SNAPSHOT_KEY, SOURCE_MODE_SNAPSHOT_KEY),
-                EXTRACTOR_MODE_SNAPSHOT_DEFAULT_VALUE);
-      } else {
-        final String extractorModeValue =
-            extractorParameters.getStringOrDefault(
-                Arrays.asList(EXTRACTOR_MODE_KEY, SOURCE_MODE_KEY), EXTRACTOR_MODE_DEFAULT_VALUE);
-        shouldTerminatePipeOnAllHistoricalEventsConsumed =
-            extractorModeValue.equalsIgnoreCase(EXTRACTOR_MODE_SNAPSHOT_VALUE)
-                || extractorModeValue.equalsIgnoreCase(EXTRACTOR_MODE_QUERY_VALUE);
-      }
+      final String extractorModeValue =
+          extractorParameters.getStringOrDefault(
+              Arrays.asList(EXTRACTOR_MODE_KEY, SOURCE_MODE_KEY), EXTRACTOR_MODE_DEFAULT_VALUE);
+      shouldTerminatePipeOnAllHistoricalEventsConsumed =
+          extractorModeValue.equalsIgnoreCase(EXTRACTOR_MODE_SNAPSHOT_VALUE)
+              || extractorModeValue.equalsIgnoreCase(EXTRACTOR_MODE_QUERY_VALUE);
 
       if (!insertionDeletionListeningOptionPair.right
           && !shouldTerminatePipeOnAllHistoricalEventsConsumed) {
