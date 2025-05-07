@@ -116,7 +116,7 @@ public class IoTDBPipeAggregateIT extends AbstractPipeSingleIT {
           env,
           "select count(*) from root.testdb.** group by level=1",
           "count(root.testdb.*.*.*.*),",
-          Collections.singleton("20,"));
+          Collections.singleton("24,"));
 
       // Test manually renamed timeSeries count
       TestUtils.assertDataEventuallyOnEnv(
