@@ -329,8 +329,8 @@ public class DataRegion implements IDataRegionForQuery {
 
   private final DataRegionMetrics metrics;
 
-  private ILoadDiskSelector<Integer> ordinaryLoadDiskSelector;
-  private ILoadDiskSelector<Integer> pipeAndIoTV2LoadDiskSelector;
+  private ILoadDiskSelector ordinaryLoadDiskSelector;
+  private ILoadDiskSelector pipeAndIoTV2LoadDiskSelector;
 
   /**
    * Construct a database processor.
@@ -415,16 +415,10 @@ public class DataRegion implements IDataRegionForQuery {
   }
 
   private void initDiskSelector() {
-    final ILoadDiskSelector.DiskDirectorySelector<Integer> selector =
-        new ILoadDiskSelector.DiskDirectorySelector<Integer>() {
-          @Override
-          public File selectDirectory(
-              final File sourceDirectory, final String fileName, final Integer level)
-              throws DiskSpaceInsufficientException {
-            return fsFactory.getFile(
-                TierManager.getInstance().getNextFolderForTsFile(level, false), fileName);
-          }
-        };
+    final ILoadDiskSelector.DiskDirectorySelector selector =
+        (sourceDirectory, fileName, tierLevel) ->
+            fsFactory.getFile(
+                TierManager.getInstance().getNextFolderForTsFile(tierLevel, false), fileName);
 
     final String[] dirs =
         Arrays.stream(config.getTierDataDirs()[0])

@@ -26,24 +26,22 @@ import org.apache.tsfile.fileSystem.fsFactory.FSFactory;
 
 import java.io.File;
 
-public class InheritSystemMultiDisksStrategySelector<U> implements ILoadDiskSelector<U> {
+public class InheritSystemMultiDisksStrategySelector implements ILoadDiskSelector {
 
   protected static final FSFactory fsFactory = FSFactoryProducer.getFSFactory();
 
-  protected final DiskDirectorySelector<U> directorySelector;
+  protected final DiskDirectorySelector directorySelector;
 
-  public InheritSystemMultiDisksStrategySelector(final DiskDirectorySelector<U> selector) {
+  public InheritSystemMultiDisksStrategySelector(final DiskDirectorySelector selector) {
     this.directorySelector = selector;
   }
 
   public File selectTargetDirectory(
-      final File sourceDirectory, final String FileName, final boolean appendFileName, final U u)
+      final File sourceDirectory,
+      final String FileName,
+      final boolean appendFileName,
+      final int tierLevel)
       throws DiskSpaceInsufficientException {
-    return directorySelector.selectDirectory(sourceDirectory, FileName, u);
-  }
-
-  @Override
-  public LoadDiskSelectorType getLoadDiskSelectorType() {
-    return LoadDiskSelectorType.INHERIT_SYSTEM_MULTI_DISKS_SELECT_STRATEGY;
+    return directorySelector.selectDirectory(sourceDirectory, FileName, tierLevel);
   }
 }

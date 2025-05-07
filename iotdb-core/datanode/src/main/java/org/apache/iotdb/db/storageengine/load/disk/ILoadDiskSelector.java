@@ -23,30 +23,31 @@ import org.apache.iotdb.db.exception.DiskSpaceInsufficientException;
 
 import java.io.File;
 
-public interface ILoadDiskSelector<U> {
+public interface ILoadDiskSelector {
 
   @FunctionalInterface
-  interface DiskDirectorySelector<U> {
-    File selectDirectory(final File sourceDirectory, final String fileName, final U u)
+  interface DiskDirectorySelector {
+    File selectDirectory(final File sourceDirectory, final String fileName, final int tierLevel)
         throws DiskSpaceInsufficientException;
   }
 
   File selectTargetDirectory(
-      final File sourceDirectory, final String fileName, final boolean appendFileName, final U u)
+      final File sourceDirectory,
+      final String fileName,
+      final boolean appendFileName,
+      final int tierLevel)
       throws DiskSpaceInsufficientException;
 
-  LoadDiskSelectorType getLoadDiskSelectorType();
-
-  static <U> ILoadDiskSelector<U> initDiskSelector(
-      final String selectStrategy, final String[] dirs, final DiskDirectorySelector<U> selector) {
-    final ILoadDiskSelector<U> diskSelector;
+  static ILoadDiskSelector initDiskSelector(
+      final String selectStrategy, final String[] dirs, final DiskDirectorySelector selector) {
+    final ILoadDiskSelector diskSelector;
     switch (ILoadDiskSelector.LoadDiskSelectorType.fromValue(selectStrategy)) {
       case INHERIT_SYSTEM_MULTI_DISKS_SELECT_STRATEGY:
-        diskSelector = new InheritSystemMultiDisksStrategySelector<U>(selector);
+        diskSelector = new InheritSystemMultiDisksStrategySelector(selector);
         break;
       case MIN_IO_FIRST:
       default:
-        diskSelector = new MinIOSelector<U>(dirs, selector);
+        diskSelector = new MinIOSelector(dirs, selector);
     }
     return diskSelector;
   }

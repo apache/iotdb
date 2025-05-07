@@ -34,13 +34,13 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 
-public class MinIOSelector<U> extends InheritSystemMultiDisksStrategySelector<U> {
+public class MinIOSelector extends InheritSystemMultiDisksStrategySelector {
 
   private static final Logger logger = LoggerFactory.getLogger(MinIOSelector.class);
 
   private final Map<String, String> rootDisks2DataDirsMapForLoad;
 
-  public MinIOSelector(final String[] dirs, final DiskDirectorySelector<U> selector) {
+  public MinIOSelector(final String[] dirs, final DiskDirectorySelector selector) {
     super(selector);
     if (dirs == null || dirs.length == 0) {
       rootDisks2DataDirsMapForLoad = Collections.emptyMap();
@@ -73,7 +73,10 @@ public class MinIOSelector<U> extends InheritSystemMultiDisksStrategySelector<U>
 
   @Override
   public File selectTargetDirectory(
-      final File sourceDirectory, final String fileName, final boolean appendFileName, final U u)
+      final File sourceDirectory,
+      final String fileName,
+      final boolean appendFileName,
+      final int tierLevel)
       throws DiskSpaceInsufficientException {
     String fileDirRoot = null;
     try {
@@ -102,11 +105,6 @@ public class MinIOSelector<U> extends InheritSystemMultiDisksStrategySelector<U>
     }
 
     // if there isn't an overlap, downgrade to storage balance(sequence) strategy.
-    return super.selectTargetDirectory(sourceDirectory, fileName, appendFileName, u);
-  }
-
-  @Override
-  public LoadDiskSelectorType getLoadDiskSelectorType() {
-    return LoadDiskSelectorType.MIN_IO_FIRST;
+    return super.selectTargetDirectory(sourceDirectory, fileName, appendFileName, tierLevel);
   }
 }

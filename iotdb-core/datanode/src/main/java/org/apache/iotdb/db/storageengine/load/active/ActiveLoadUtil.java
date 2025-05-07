@@ -42,7 +42,7 @@ public class ActiveLoadUtil {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(ActiveLoadUtil.class);
 
-  private static volatile ILoadDiskSelector<Void> loadDiskSelector = updateLoadDiskSelector();
+  private static volatile ILoadDiskSelector loadDiskSelector = updateLoadDiskSelector();
 
   public static boolean loadTsFileAsyncToActiveDir(
       final List<File> tsFiles, final String dataBaseName, final boolean isDeleteAfterLoad) {
@@ -74,7 +74,7 @@ public class ActiveLoadUtil {
     final File targetFilePath;
     try {
       targetFilePath =
-          loadDiskSelector.selectTargetDirectory(file.getParentFile(), file.getName(), false, null);
+          loadDiskSelector.selectTargetDirectory(file.getParentFile(), file.getName(), false, 0);
     } catch (DiskSpaceInsufficientException e) {
       LOGGER.warn("Fail to load disk space of file {}", file.getAbsolutePath(), e);
       return false;
@@ -110,7 +110,7 @@ public class ActiveLoadUtil {
     try {
       final File file = new File(files.get(0));
       targetFilePath =
-          loadDiskSelector.selectTargetDirectory(file.getParentFile(), file.getName(), false, null);
+          loadDiskSelector.selectTargetDirectory(file.getParentFile(), file.getName(), false, 0);
     } catch (DiskSpaceInsufficientException e) {
       LOGGER.warn("Fail to load disk space of file {}", files.get(0), e);
       return false;
@@ -149,38 +149,28 @@ public class ActiveLoadUtil {
         });
   }
 
-  public static ILoadDiskSelector<Void> updateLoadDiskSelector() {
+  public static ILoadDiskSelector updateLoadDiskSelector() {
     final String[] dirs = IoTDBDescriptor.getInstance().getConfig().getLoadActiveListeningDirs();
-    ILoadDiskSelector<Void> loadDiskSelector =
+    FolderManager folderManager = null;
+
+    try {
+      folderManager =
+          new FolderManager(Arrays.asList(dirs), DirectoryStrategyType.SEQUENCE_STRATEGY);
+    } catch (Exception e) {
+      // It should be noted that if this exception is not ignored, the entire process may fail to
+      // start.
+      LOGGER.warn("Failed to load active listening dirs", e);
+    }
+
+    final FolderManager finalFolderManager = folderManager;
+    ILoadDiskSelector loadDiskSelector =
         ILoadDiskSelector.initDiskSelector(
             IoTDBDescriptor.getInstance().getConfig().getLoadDiskSelectStrategy(),
             dirs,
-            new ILoadDiskSelector.DiskDirectorySelector<Void>() {
-
-              private volatile FolderManager folderManager;
-
-              @Override
-              public File selectDirectory(
-                  final File sourceDir, final String fileName, final Void unused)
-                  throws DiskSpaceInsufficientException {
-                initFolderManager();
-                return new File(folderManager.getNextFolder());
-              }
-
-              private void initFolderManager() throws DiskSpaceInsufficientException {
-                if (folderManager == null) {
-                  synchronized (this) {
-                    if (folderManager != null) {
-                      return;
-                    }
-
-                    folderManager =
-                        new FolderManager(
-                            Arrays.asList(dirs), DirectoryStrategyType.SEQUENCE_STRATEGY);
-                  }
-                }
-              }
-            });
+            (sourceDir, fileName, tierLevel) ->
+                finalFolderManager != null
+                    ? new File(finalFolderManager.getNextFolder())
+                    : new File(dirs[0]));
 
     ActiveLoadUtil.loadDiskSelector = loadDiskSelector;
     return loadDiskSelector;
