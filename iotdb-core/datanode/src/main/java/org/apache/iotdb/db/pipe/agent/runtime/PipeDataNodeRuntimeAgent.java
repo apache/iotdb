@@ -96,6 +96,21 @@ public class PipeDataNodeRuntimeAgent implements IService {
     registerPeriodicalJob(
         "PipeTaskAgent#flushIfNecessary",
         () -> {
+          if (PipeTerminateEvent.progressReportCount.get() > 40) {
+            PipeTerminateEvent.progressReportCount.set(0);
+            PipeTerminateEvent.lastProgressReportTime.set(0);
+            try {
+              StorageEngine.getInstance().operateFlush(new TFlushReq());
+              LOGGER.warn("Force flush all data regions because of progress report count exceed.");
+            } catch (final Exception e) {
+              LOGGER.warn(
+                      "Failed to flush all data regions, please check the error message: {}",
+                      e.getMessage(),
+                      e);
+            }
+            return;
+          }
+
           if (PipeTerminateEvent.lastProgressReportTime.get() > 0) {
             final long timeSinceLastReport =
                 System.currentTimeMillis() - PipeTerminateEvent.lastProgressReportTime.get();
