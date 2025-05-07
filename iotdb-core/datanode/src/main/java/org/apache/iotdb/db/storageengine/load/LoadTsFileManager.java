@@ -280,7 +280,6 @@ public class LoadTsFileManager {
       final boolean isGeneratedByPipe,
       final Map<TConsensusGroupId, ProgressIndex> groupIdProgressIndexMap)
       throws IOException, LoadFileException {
-    uuid2WriterManager.keySet().forEach(System.out::println);
     if (!uuid2WriterManager.containsKey(uuid)) {
       return false;
     }
