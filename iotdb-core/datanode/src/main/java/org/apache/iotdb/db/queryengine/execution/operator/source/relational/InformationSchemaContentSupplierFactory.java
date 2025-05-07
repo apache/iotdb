@@ -138,13 +138,13 @@ public class InformationSchemaContentSupplierFactory {
       case InformationSchema.SUBSCRIPTIONS:
         return new SubscriptionSupplier(dataTypes, userName);
       case InformationSchema.VIEWS:
-        return new ViewsSupplier(dataTypes);
+        return new ViewsSupplier(dataTypes, userName);
       case InformationSchema.MODELS:
         return new ModelsSupplier(dataTypes);
       case InformationSchema.FUNCTIONS:
         return new FunctionsSupplier(dataTypes);
       case InformationSchema.CONFIGURATIONS:
-        return new ConfigurationsSupplier(dataTypes);
+        return new ConfigurationsSupplier(dataTypes, userName);
       case InformationSchema.KEYWORDS:
         return new KeywordsSupplier(dataTypes);
       default:
@@ -686,9 +686,11 @@ public class InformationSchemaContentSupplierFactory {
     private Iterator<Map.Entry<String, Pair<TsTable, Set<String>>>> tableInfoIterator;
     private String dbName;
     private TsTable currentTable;
+    private final String userName;
 
-    private ViewsSupplier(final List<TSDataType> dataTypes) {
+    private ViewsSupplier(final List<TSDataType> dataTypes, final String userName) {
       super(dataTypes);
+      this.userName = userName;
       try (final ConfigNodeClient client =
           ConfigNodeClientManager.getInstance().borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
         final TDescTable4InformationSchemaResp resp = client.descTables4InformationSchema();
@@ -735,12 +737,16 @@ public class InformationSchemaContentSupplierFactory {
           final Map.Entry<String, Map<String, Pair<TsTable, Set<String>>>> entry =
               dbIterator.next();
           dbName = entry.getKey();
+          if (!canShowDB(accessControl, userName, dbName)) {
+            continue;
+          }
           tableInfoIterator = entry.getValue().entrySet().iterator();
         }
 
         while (tableInfoIterator.hasNext()) {
           final Map.Entry<String, Pair<TsTable, Set<String>>> tableEntry = tableInfoIterator.next();
-          if (!TreeViewSchema.isTreeViewTable(tableEntry.getValue().getLeft())) {
+          if (!TreeViewSchema.isTreeViewTable(tableEntry.getValue().getLeft())
+              || !canShowTable(accessControl, userName, dbName, tableEntry.getKey())) {
             continue;
           }
           currentTable = tableEntry.getValue().getLeft();
@@ -870,8 +876,9 @@ public class InformationSchemaContentSupplierFactory {
   private static class ConfigurationsSupplier extends TsBlockSupplier {
     private Iterator<Pair<Binary, Binary>> resultIterator;
 
-    private ConfigurationsSupplier(final List<TSDataType> dataTypes) {
+    private ConfigurationsSupplier(final List<TSDataType> dataTypes, final String userName) {
       super(dataTypes);
+      accessControl.checkUserIsAdmin(userName);
       try (final ConfigNodeClient client =
           ConfigNodeClientManager.getInstance().borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
         final TClusterParameters parameters = client.showVariables().getClusterParameters();
