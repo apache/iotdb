@@ -223,4 +223,8 @@ public class PipeStaticMeta {
       final String topicName, final String consumerGroupId) {
     return SUBSCRIPTION_PIPE_PREFIX + topicName + "_" + consumerGroupId;
   }
+
+  public static boolean isSubscriptionPipe(final String pipeName) {
+    return Objects.nonNull(pipeName) && pipeName.startsWith(SUBSCRIPTION_PIPE_PREFIX);
+  }
 }
