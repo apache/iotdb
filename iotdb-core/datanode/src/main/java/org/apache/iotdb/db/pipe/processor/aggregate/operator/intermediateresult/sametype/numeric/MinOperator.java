@@ -22,7 +22,7 @@ package org.apache.iotdb.db.pipe.processor.aggregate.operator.intermediateresult
 public class MinOperator extends AbstractSameTypeNumericOperator {
   @Override
   public String getName() {
-    return "max";
+    return "min";
   }
 
   @Override
