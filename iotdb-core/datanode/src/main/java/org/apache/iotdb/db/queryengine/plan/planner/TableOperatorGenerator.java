@@ -92,6 +92,7 @@ import org.apache.iotdb.db.queryengine.execution.operator.source.ExchangeOperato
 import org.apache.iotdb.db.queryengine.execution.operator.source.SeriesScanOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.AbstractAggTableScanOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.AbstractTableScanOperator;
+import org.apache.iotdb.db.queryengine.execution.operator.source.relational.AsofMergeSortInnerJoinOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.DefaultAggTableScanOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.DeviceIteratorScanOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.InformationSchemaTableScanOperator;
@@ -179,6 +180,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ValueFillNod
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.TableDeviceFetchNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.TableDeviceQueryCountNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.TableDeviceQueryScanNode;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ComparisonExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.FunctionCall;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Literal;
@@ -252,8 +254,8 @@ import static org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory
 import static org.apache.iotdb.commons.udf.builtin.relational.TableBuiltinAggregationFunction.getAggregationTypeByFuncName;
 import static org.apache.iotdb.db.queryengine.common.DataNodeEndPoints.isSameNode;
 import static org.apache.iotdb.db.queryengine.execution.operator.process.join.merge.MergeSortComparator.getComparatorForTable;
+import static org.apache.iotdb.db.queryengine.execution.operator.source.relational.AbstractTableScanOperator.constructAlignedPath;
 import static org.apache.iotdb.db.queryengine.execution.operator.source.relational.InformationSchemaContentSupplierFactory.getSupplier;
-import static org.apache.iotdb.db.queryengine.execution.operator.source.relational.TableScanOperator.constructAlignedPath;
 import static org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.AccumulatorFactory.createAccumulator;
 import static org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.AccumulatorFactory.createGroupedAccumulator;
 import static org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.grouped.hash.GroupByHash.DEFAULT_GROUP_NUMBER;
@@ -1865,9 +1867,11 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
 
     semanticCheckForJoin(node);
 
-    int size = node.getCriteria().size();
+    JoinNode.AsofJoinClause asofJoinClause = node.getAsofCriteria().orElse(null);
+    int equiSize = node.getCriteria().size();
+    int size = equiSize + (asofJoinClause == null ? 0 : 1);
     int[] leftJoinKeyPositions = new int[size];
-    for (int i = 0; i < size; i++) {
+    for (int i = 0; i < equiSize; i++) {
       Integer leftJoinKeyPosition = leftColumnNamesMap.get(node.getCriteria().get(i).getLeft());
       if (leftJoinKeyPosition == null) {
         throw new IllegalStateException("Left child of JoinNode doesn't contain left join key.");
@@ -1877,7 +1881,7 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
 
     List<Type> joinKeyTypes = new ArrayList<>(size);
     int[] rightJoinKeyPositions = new int[size];
-    for (int i = 0; i < size; i++) {
+    for (int i = 0; i < equiSize; i++) {
       Integer rightJoinKeyPosition = rightColumnNamesMap.get(node.getCriteria().get(i).getRight());
       if (rightJoinKeyPosition == null) {
         throw new IllegalStateException("Right child of JoinNode doesn't contain right join key.");
@@ -1890,6 +1894,56 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
           leftJoinKeyType,
           context.getTypeProvider().getTableModelType(node.getCriteria().get(i).getRight()));
       joinKeyTypes.add(leftJoinKeyType);
+    }
+
+    if (asofJoinClause != null) {
+      Integer leftAsofJoinKeyPosition = leftColumnNamesMap.get(asofJoinClause.getLeft());
+      if (leftAsofJoinKeyPosition == null) {
+        throw new IllegalStateException(
+            "Left child of JoinNode doesn't contain left ASOF main join key.");
+      }
+      leftJoinKeyPositions[equiSize] = leftAsofJoinKeyPosition;
+      Integer rightAsofJoinKeyPosition = rightColumnNamesMap.get(asofJoinClause.getRight());
+      if (rightAsofJoinKeyPosition == null) {
+        throw new IllegalStateException(
+            "Right child of JoinNode doesn't contain right ASOF main join key.");
+      }
+      rightJoinKeyPositions[equiSize] = rightAsofJoinKeyPosition;
+
+      if (context.getTypeProvider().getTableModelType(asofJoinClause.getLeft()) != TIMESTAMP) {
+        throw new IllegalStateException("Type of left ASOF Join key is not TIMESTAMP");
+      }
+      if (context.getTypeProvider().getTableModelType(asofJoinClause.getRight()) != TIMESTAMP) {
+        throw new IllegalStateException("Type of right ASOF Join key is not TIMESTAMP");
+      }
+
+      ComparisonExpression.Operator asofOperator = asofJoinClause.getOperator();
+
+      if (requireNonNull(node.getJoinType()) == JoinNode.JoinType.INNER) {
+        OperatorContext operatorContext =
+            context
+                .getDriverContext()
+                .addOperatorContext(
+                    context.getNextOperatorId(),
+                    node.getPlanNodeId(),
+                    AsofMergeSortInnerJoinOperator.class.getSimpleName());
+        return new AsofMergeSortInnerJoinOperator(
+            operatorContext,
+            leftChild,
+            leftJoinKeyPositions,
+            leftOutputSymbolIdx,
+            rightChild,
+            rightJoinKeyPositions,
+            rightOutputSymbolIdx,
+            JoinKeyComparatorFactory.getAsofComparators(
+                joinKeyTypes,
+                asofOperator == ComparisonExpression.Operator.LESS_THAN_OR_EQUAL
+                    || asofOperator == ComparisonExpression.Operator.GREATER_THAN_OR_EQUAL,
+                !asofJoinClause.isOperatorContainsGreater()),
+            dataTypes);
+      } else {
+        throw new IllegalStateException("Unsupported ASOF join type: " + node.getJoinType());
+      }
     }
 
     if (requireNonNull(node.getJoinType()) == JoinNode.JoinType.INNER) {
@@ -1960,7 +2014,7 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
               "Filter is not supported in %s. Filter is %s.",
               node.getJoinType(), node.getFilter().map(Expression::toString).orElse("null")));
       checkArgument(
-          !node.getCriteria().isEmpty(),
+          !node.getCriteria().isEmpty() || node.getAsofCriteria().isPresent(),
           String.format("%s must have join keys.", node.getJoinType()));
     } catch (IllegalArgumentException e) {
       throw new SemanticException(e.getMessage());
@@ -2144,13 +2198,14 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
                     SchemaQueryScanOperator.class.getSimpleName()),
             SchemaSourceFactory.getTableDeviceQuerySource(
                 node.getDatabase(),
-                node.getTableName(),
-                node.getIdDeterminedFilterList(),
+                table,
+                node.getTagDeterminedFilterList(),
                 node.getColumnHeaderList(),
                 node.getColumnHeaderList().stream()
                     .map(columnHeader -> table.getColumnSchema(columnHeader.getColumnName()))
                     .collect(Collectors.toList()),
-                null));
+                null,
+                node.isNeedAligned()));
     operator.setLimit(node.getLimit());
     return operator;
   }
@@ -2177,16 +2232,16 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
                 SchemaCountOperator.class.getSimpleName()),
         SchemaSourceFactory.getTableDeviceQuerySource(
             database,
-            node.getTableName(),
-            node.getIdDeterminedFilterList(),
+            table,
+            node.getTagDeterminedFilterList(),
             node.getColumnHeaderList(),
             columnSchemaList,
-            Objects.nonNull(node.getIdFuzzyPredicate())
+            Objects.nonNull(node.getTagFuzzyPredicate())
                 ? new DevicePredicateFilter(
                     filterLeafColumnTransformerList,
                     new ColumnTransformerBuilder()
                         .process(
-                            node.getIdFuzzyPredicate(),
+                            node.getTagFuzzyPredicate(),
                             new ColumnTransformerBuilder.Context(
                                 context
                                     .getDriverContext()
@@ -2201,8 +2256,11 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
                                 0,
                                 context.getTypeProvider(),
                                 metadata)),
-                    columnSchemaList)
-                : null));
+                    columnSchemaList,
+                    database,
+                    table)
+                : null,
+            false));
   }
 
   @Override

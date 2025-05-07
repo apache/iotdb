@@ -25,10 +25,13 @@ import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchemaUtil;
+import org.apache.iotdb.confignode.consensus.request.write.table.AddTableColumnPlan;
+import org.apache.iotdb.confignode.consensus.request.write.table.view.AddTableViewColumnPlan;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureSuspendedException;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureYieldException;
+import org.apache.iotdb.confignode.procedure.impl.schema.table.view.AddViewColumnProcedure;
 import org.apache.iotdb.confignode.procedure.state.schema.AddTableColumnState;
 import org.apache.iotdb.confignode.procedure.store.ProcedureType;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -47,7 +50,7 @@ public class AddTableColumnProcedure
     extends AbstractAlterOrDropTableProcedure<AddTableColumnState> {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(AddTableColumnProcedure.class);
-  private List<TsTableColumnSchema> addedColumnList;
+  protected List<TsTableColumnSchema> addedColumnList;
 
   public AddTableColumnProcedure(final boolean isGeneratedByPipe) {
     super(isGeneratedByPipe);
@@ -100,12 +103,13 @@ public class AddTableColumnProcedure
     }
   }
 
-  private void columnCheck(final ConfigNodeProcedureEnv env) {
+  protected void columnCheck(final ConfigNodeProcedureEnv env) {
     try {
       final Pair<TSStatus, TsTable> result =
           env.getConfigManager()
               .getClusterSchemaManager()
-              .tableColumnCheckForColumnExtension(database, tableName, addedColumnList);
+              .tableColumnCheckForColumnExtension(
+                  database, tableName, addedColumnList, this instanceof AddViewColumnProcedure);
       final TSStatus status = result.getLeft();
       if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         setFailure(
@@ -129,7 +133,11 @@ public class AddTableColumnProcedure
     final TSStatus status =
         env.getConfigManager()
             .getClusterSchemaManager()
-            .addTableColumn(database, tableName, addedColumnList, isGeneratedByPipe);
+            .executePlan(
+                this instanceof AddViewColumnProcedure
+                    ? new AddTableViewColumnPlan(database, tableName, addedColumnList, false)
+                    : new AddTableColumnPlan(database, tableName, addedColumnList, false),
+                isGeneratedByPipe);
     if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       setFailure(new ProcedureException(new IoTDBException(status.getMessage(), status.getCode())));
     } else {
@@ -174,7 +182,11 @@ public class AddTableColumnProcedure
     final TSStatus status =
         env.getConfigManager()
             .getClusterSchemaManager()
-            .rollbackAddTableColumn(database, tableName, addedColumnList);
+            .executePlan(
+                this instanceof AddViewColumnProcedure
+                    ? new AddTableViewColumnPlan(database, tableName, addedColumnList, true)
+                    : new AddTableColumnPlan(database, tableName, addedColumnList, true),
+                isGeneratedByPipe);
     if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       setFailure(new ProcedureException(new IoTDBException(status.getMessage(), status.getCode())));
     }
@@ -201,8 +213,11 @@ public class AddTableColumnProcedure
         isGeneratedByPipe
             ? ProcedureType.PIPE_ENRICHED_ADD_TABLE_COLUMN_PROCEDURE.getTypeCode()
             : ProcedureType.ADD_TABLE_COLUMN_PROCEDURE.getTypeCode());
-    super.serialize(stream);
+    innerSerialize(stream);
+  }
 
+  protected void innerSerialize(final DataOutputStream stream) throws IOException {
+    super.serialize(stream);
     TsTableColumnSchemaUtil.serialize(addedColumnList, stream);
   }
 

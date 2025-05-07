@@ -230,7 +230,7 @@ public class PipeDataRegionAssigner implements Closeable {
       final PipeTsFileInsertionEvent event) {
     if (PipeTimePartitionProgressIndexKeeper.getInstance()
         .isProgressIndexAfterOrEquals(
-            dataRegionId, event.getTimePartitionId(), event.getProgressIndex())) {
+            dataRegionId, event.getTimePartitionId(), event.forceGetProgressIndex())) {
       event.bindProgressIndex(maxProgressIndexForTsFileInsertionEvent.get());
       if (LOGGER.isDebugEnabled()) {
         LOGGER.debug(
@@ -241,7 +241,7 @@ public class PipeDataRegionAssigner implements Closeable {
       }
     } else {
       maxProgressIndexForTsFileInsertionEvent.updateAndGet(
-          index -> index.updateToMinimumEqualOrIsAfterProgressIndex(event.getProgressIndex()));
+          index -> index.updateToMinimumEqualOrIsAfterProgressIndex(event.forceGetProgressIndex()));
     }
   }
 

@@ -387,9 +387,7 @@ public class SchemaEngine {
                           .getTable(
                               PathUtils.unQualifyDatabaseName(schemaRegion.getDatabaseFullPath()),
                               tableEntry.getKey());
-                  return Objects.nonNull(table)
-                      ? table.getMeasurementNum() * tableEntry.getValue()
-                      : 0;
+                  return Objects.nonNull(table) ? table.getFieldNum() * tableEntry.getValue() : 0;
                 })
             .reduce(0L, Long::sum);
   }

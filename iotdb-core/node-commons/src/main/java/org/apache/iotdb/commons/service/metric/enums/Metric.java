@@ -82,6 +82,10 @@ public enum Metric {
   ACTIVE_MEMTABLE_COUNT("active_memtable_count"),
   ACTIVE_TIME_PARTITION_COUNT("active_time_partition_count"),
   MEMTABLE_LIVE_DURATION("memtable_live_duration"),
+  PAM_ALLOCATED_COUNT("primitive_array_manager_allocated_count"),
+  PAM_RELEASED_COUNT("primitive_array_manager_released_count"),
+  PAM_ALLOCATED_FAILURE_COUNT("primitive_array_manager_allocated_failure_count"),
+  PAM_RELEASED_FAILURE_COUNT("primitive_array_manager_released_failure_count"),
 
   // compaction related
   DATA_WRITTEN("data_written"),

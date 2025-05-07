@@ -89,6 +89,18 @@ struct TTrainingReq {
   6: optional string existingModelId
 }
 
+struct TForecastReq {
+  1: required string modelId
+  2: required binary inputData
+  3: required i32 outputLength
+  4: optional map<string, string> options
+}
+
+struct TForecastResp {
+  1: required common.TSStatus status
+  2: required binary forecastResult
+}
+
 service IAINodeRPCService {
 
   // -------------- For Config Node --------------
@@ -104,4 +116,6 @@ service IAINodeRPCService {
   // -------------- For Data Node --------------
 
   TInferenceResp inference(TInferenceReq req)
+
+  TForecastResp forecast(TForecastReq req)
 }
