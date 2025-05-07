@@ -549,11 +549,11 @@ public class PipeHistoricalDataRegionTsFileAndDeletionExtractor
                           && (
                           // Some resource may not be closed due to the control of
                           // PIPE_MIN_FLUSH_INTERVAL_IN_MS. We simply ignore them.
-                          !resource.isClosed() && resource.getProcessor().alreadyMarkedClosing()
-                              || mayTsFileContainUnprocessedData(resource)
-                                  && isTsFileResourceOverlappedWithTimeRange(resource)
-                                  && isTsFileGeneratedAfterExtractionTimeLowerBound(resource)
-                                  && mayTsFileResourceOverlappedWithPattern(resource)))
+                          resource.getProcessor().alreadyMarkedClosing()
+                              && mayTsFileContainUnprocessedData(resource)
+                              && isTsFileResourceOverlappedWithTimeRange(resource)
+                              && isTsFileGeneratedAfterExtractionTimeLowerBound(resource)
+                              && mayTsFileResourceOverlappedWithPattern(resource)))
               .collect(Collectors.toList());
       resourceList.addAll(sequenceTsFileResources);
 
@@ -566,11 +566,11 @@ public class PipeHistoricalDataRegionTsFileAndDeletionExtractor
                           && (
                           // Some resource may not be closed due to the control of
                           // PIPE_MIN_FLUSH_INTERVAL_IN_MS. We simply ignore them.
-                          !resource.isClosed() && resource.getProcessor().alreadyMarkedClosing()
-                              || mayTsFileContainUnprocessedData(resource)
-                                  && isTsFileResourceOverlappedWithTimeRange(resource)
-                                  && isTsFileGeneratedAfterExtractionTimeLowerBound(resource)
-                                  && mayTsFileResourceOverlappedWithPattern(resource)))
+                          resource.getProcessor().alreadyMarkedClosing()
+                              && mayTsFileContainUnprocessedData(resource)
+                              && isTsFileResourceOverlappedWithTimeRange(resource)
+                              && isTsFileGeneratedAfterExtractionTimeLowerBound(resource)
+                              && mayTsFileResourceOverlappedWithPattern(resource)))
               .collect(Collectors.toList());
       resourceList.addAll(unsequenceTsFileResources);
 
@@ -619,13 +619,13 @@ public class PipeHistoricalDataRegionTsFileAndDeletionExtractor
       // "equals" max progressIndex must be transmitted to avoid data loss
       final ProgressIndex innerProgressIndex =
           ((StateProgressIndex) startIndex).getInnerProgressIndex();
-      return !innerProgressIndex.isAfter(resource.getMaxProgressIndexAfterClose())
-          && !innerProgressIndex.equals(resource.getMaxProgressIndexAfterClose());
+      return !innerProgressIndex.isAfter(resource.getMaxProgressIndex())
+          && !innerProgressIndex.equals(resource.getMaxProgressIndex());
     }
 
     // Some different tsFiles may share the same max progressIndex, thus tsFiles with an
     // "equals" max progressIndex must be transmitted to avoid data loss
-    return !startIndex.isAfter(resource.getMaxProgressIndexAfterClose());
+    return !startIndex.isAfter(resource.getMaxProgressIndex());
   }
 
   private boolean mayTsFileResourceOverlappedWithPattern(final TsFileResource resource) {
