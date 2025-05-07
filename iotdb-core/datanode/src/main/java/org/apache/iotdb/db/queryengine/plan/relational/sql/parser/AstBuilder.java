@@ -264,8 +264,8 @@ import static org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory
 import static org.apache.iotdb.commons.udf.builtin.relational.TableBuiltinScalarFunction.DATE_BIN;
 import static org.apache.iotdb.db.queryengine.plan.execution.config.TableConfigTaskVisitor.DATABASE_NOT_SPECIFIED;
 import static org.apache.iotdb.db.queryengine.plan.parser.ASTVisitor.parseDateTimeFormat;
-import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AsofJoinOn.constructAsofJoinOn;
 import static org.apache.iotdb.db.queryengine.plan.parser.ASTVisitor.parseNodeString;
+import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AsofJoinOn.constructAsofJoinOn;
 import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.GroupingSets.Type.CUBE;
 import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.GroupingSets.Type.EXPLICIT;
 import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.GroupingSets.Type.ROLLUP;
