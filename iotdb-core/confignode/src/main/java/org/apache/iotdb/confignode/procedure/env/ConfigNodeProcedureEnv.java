@@ -185,35 +185,35 @@ public class ConfigNodeProcedureEnv {
         }
       }
 
-      if (nodeStatus == NodeStatus.Running) {
-        // Always invalidate PartitionCache first
-        final TSStatus invalidatePartitionStatus =
-            (TSStatus)
-                SyncDataNodeClientPool.getInstance()
-                    .sendSyncRequestToDataNodeWithRetry(
-                        dataNodeConfiguration.getLocation().getInternalEndPoint(),
-                        invalidateCacheReq,
-                        CnToDnSyncRequestType.INVALIDATE_PARTITION_CACHE);
-
-        final TSStatus invalidateSchemaStatus =
-            (TSStatus)
-                SyncDataNodeClientPool.getInstance()
-                    .sendSyncRequestToDataNodeWithRetry(
-                        dataNodeConfiguration.getLocation().getInternalEndPoint(),
-                        invalidateCacheReq,
-                        CnToDnSyncRequestType.INVALIDATE_SCHEMA_CACHE);
-
-        if (!verifySucceed(invalidatePartitionStatus, invalidateSchemaStatus)) {
-          LOG.error(
-              "Invalidate cache failed, invalidate partition cache status is {}, invalidate schemaengine cache status is {}",
-              invalidatePartitionStatus,
-              invalidateSchemaStatus);
-          return false;
-        }
-      } else if (nodeStatus == NodeStatus.Unknown) {
+      if (nodeStatus == NodeStatus.Unknown) {
         LOG.warn(
             "Invalidate cache failed, because DataNode {} is Unknown",
             dataNodeConfiguration.getLocation().getInternalEndPoint());
+        return false;
+      }
+
+      // Always invalidate PartitionCache first
+      final TSStatus invalidatePartitionStatus =
+          (TSStatus)
+              SyncDataNodeClientPool.getInstance()
+                  .sendSyncRequestToDataNodeWithRetry(
+                      dataNodeConfiguration.getLocation().getInternalEndPoint(),
+                      invalidateCacheReq,
+                      CnToDnSyncRequestType.INVALIDATE_PARTITION_CACHE);
+
+      final TSStatus invalidateSchemaStatus =
+          (TSStatus)
+              SyncDataNodeClientPool.getInstance()
+                  .sendSyncRequestToDataNodeWithRetry(
+                      dataNodeConfiguration.getLocation().getInternalEndPoint(),
+                      invalidateCacheReq,
+                      CnToDnSyncRequestType.INVALIDATE_SCHEMA_CACHE);
+
+      if (!verifySucceed(invalidatePartitionStatus, invalidateSchemaStatus)) {
+        LOG.error(
+            "Invalidate cache failed, invalidate partition cache status is {}, invalidate schemaengine cache status is {}",
+            invalidatePartitionStatus,
+            invalidateSchemaStatus);
         return false;
       }
     }

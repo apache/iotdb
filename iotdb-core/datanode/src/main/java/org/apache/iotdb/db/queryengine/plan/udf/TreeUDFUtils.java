@@ -17,9 +17,8 @@
  * under the License.
  */
 
-package org.apache.iotdb.commons.udf.utils;
+package org.apache.iotdb.db.queryengine.plan.udf;
 
-import org.apache.iotdb.commons.udf.service.UDFManagementService;
 import org.apache.iotdb.udf.api.UDAF;
 import org.apache.iotdb.udf.api.UDTF;
 

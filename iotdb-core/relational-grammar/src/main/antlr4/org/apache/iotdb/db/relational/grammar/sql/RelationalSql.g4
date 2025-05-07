@@ -963,6 +963,7 @@ relation
       ( CROSS JOIN right=aliasedRelation
       | joinType JOIN rightRelation=relation joinCriteria
       | NATURAL joinType JOIN right=aliasedRelation
+      | ASOF ('(' TOLERANCE timeDuration ')')? joinType JOIN rightRelation=relation joinCriteria
       )                                                     #joinRelation
     | aliasedRelation                                       #relationDefault
     ;
@@ -1266,6 +1267,7 @@ ANY: 'ANY';
 ARRAY: 'ARRAY';
 AS: 'AS';
 ASC: 'ASC';
+ASOF: 'ASOF';
 AT: 'AT';
 ATTRIBUTE: 'ATTRIBUTE';
 AUTHORIZATION: 'AUTHORIZATION';
@@ -1591,6 +1593,7 @@ TIMESERIES: 'TIMESERIES';
 TIMESLOTID: 'TIMESLOTID';
 TIMESTAMP: 'TIMESTAMP';
 TO: 'TO';
+TOLERANCE: 'TOLERANCE';
 TOPIC: 'TOPIC';
 TOPICS: 'TOPICS';
 TRAILING: 'TRAILING';

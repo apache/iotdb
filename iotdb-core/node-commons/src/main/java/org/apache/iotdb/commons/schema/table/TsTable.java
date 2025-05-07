@@ -247,23 +247,20 @@ public class TsTable {
 
   // This shall only be called on DataNode, where the tsTable is replaced completely thus an old
   // cache won't pollute the newest value
-  public long getTableTTL() {
+  public long getCachedTableTTL() {
     // Cache for performance
     if (ttlValue < 0) {
-      final long ttl = getTableTTLInMS();
-      ttlValue =
-          ttl == Long.MAX_VALUE
-              ? ttl
-              : CommonDateTimeUtils.convertMilliTimeWithPrecision(
-                  ttl, CommonDescriptor.getInstance().getConfig().getTimestampPrecision());
+      ttlValue = getTableTTL();
     }
     return ttlValue;
   }
 
-  private long getTableTTLInMS() {
+  public long getTableTTL() {
     final Optional<String> ttl = getPropValue(TTL_PROPERTY);
     return ttl.isPresent() && !ttl.get().equalsIgnoreCase(TTL_INFINITE)
-        ? Long.parseLong(ttl.get())
+        ? CommonDateTimeUtils.convertMilliTimeWithPrecision(
+            Long.parseLong(ttl.get()),
+            CommonDescriptor.getInstance().getConfig().getTimestampPrecision())
         : Long.MAX_VALUE;
   }
 

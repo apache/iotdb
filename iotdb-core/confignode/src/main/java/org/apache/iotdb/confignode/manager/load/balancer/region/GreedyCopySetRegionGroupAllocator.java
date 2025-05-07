@@ -138,9 +138,7 @@ public class GreedyCopySetRegionGroupAllocator implements IRegionGroupAllocator 
     try {
       // 1. prepare: compute regionCounter, databaseRegionCounter, and combinationCounter
 
-      List<TRegionReplicaSet> databaseAllocatedRegionGroups =
-          new ArrayList<>(databaseAllocatedRegionGroupMap.values()).get(0);
-      prepare(availableDataNodeMap, allocatedRegionGroups, databaseAllocatedRegionGroups);
+      prepare(availableDataNodeMap, allocatedRegionGroups, Collections.emptyList());
       computeInitialDbLoad(databaseAllocatedRegionGroupMap);
 
       // 2. Build allowed candidate set for each region that needs to be migrated.

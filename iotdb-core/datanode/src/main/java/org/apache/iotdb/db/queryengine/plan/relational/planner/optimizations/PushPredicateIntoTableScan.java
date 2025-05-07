@@ -106,6 +106,7 @@ import static org.apache.iotdb.db.queryengine.plan.analyze.AnalyzeVisitor.getTim
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.ExpressionSymbolInliner.inlineSymbols;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.SortOrder.ASC_NULLS_FIRST;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.SortOrder.ASC_NULLS_LAST;
+import static org.apache.iotdb.db.queryengine.plan.relational.planner.SortOrder.DESC_NULLS_LAST;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.SymbolsExtractor.extractUnique;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.ir.DeterminismEvaluator.isDeterministic;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.ir.GlobalTimePredicateExtractVisitor.extractGlobalTimeFilter;
@@ -826,6 +827,7 @@ public class PushPredicateIntoTableScan implements PlanOptimizer {
                 leftSource,
                 rightSource,
                 equiJoinClauses,
+                node.getAsofCriteria(),
                 leftSource.getOutputSymbols(),
                 rightSource.getOutputSymbols(),
                 newJoinFilter,
@@ -889,6 +891,10 @@ public class PushPredicateIntoTableScan implements PlanOptimizer {
 
     private void appendSortNodeForMergeSortJoin(JoinNode joinNode) {
       int size = joinNode.getCriteria().size();
+      JoinNode.AsofJoinClause asofJoinClause = joinNode.getAsofCriteria().orElse(null);
+      if (asofJoinClause != null) {
+        size++;
+      }
       List<Symbol> leftOrderBy = new ArrayList<>(size);
       List<Symbol> rightOrderBy = new ArrayList<>(size);
       Map<Symbol, SortOrder> leftOrderings = new HashMap<>(size);
@@ -898,6 +904,15 @@ public class PushPredicateIntoTableScan implements PlanOptimizer {
         leftOrderings.put(equiJoinClause.getLeft(), ASC_NULLS_LAST);
         rightOrderBy.add(equiJoinClause.getRight());
         rightOrderings.put(equiJoinClause.getRight(), ASC_NULLS_LAST);
+      }
+      if (asofJoinClause != null) {
+        // if operator of AsofJoinClause is '>' or '>=', use DESC ordering for convenience of
+        // process in BE
+        boolean needDesc = asofJoinClause.isOperatorContainsGreater();
+        leftOrderBy.add(asofJoinClause.getLeft());
+        leftOrderings.put(asofJoinClause.getLeft(), needDesc ? DESC_NULLS_LAST : ASC_NULLS_LAST);
+        rightOrderBy.add(asofJoinClause.getRight());
+        rightOrderings.put(asofJoinClause.getRight(), needDesc ? DESC_NULLS_LAST : ASC_NULLS_LAST);
       }
       OrderingScheme leftOrderingScheme = new OrderingScheme(leftOrderBy, leftOrderings);
       OrderingScheme rightOrderingScheme = new OrderingScheme(rightOrderBy, rightOrderings);
@@ -1189,6 +1204,7 @@ public class PushPredicateIntoTableScan implements PlanOptimizer {
               node.getLeftChild(),
               node.getRightChild(),
               node.getCriteria(),
+              node.getAsofCriteria(),
               node.getLeftOutputSymbols(),
               node.getRightOutputSymbols(),
               node.getFilter(),
@@ -1201,6 +1217,7 @@ public class PushPredicateIntoTableScan implements PlanOptimizer {
               node.getLeftChild(),
               node.getRightChild(),
               node.getCriteria(),
+              node.getAsofCriteria(),
               node.getLeftOutputSymbols(),
               node.getRightOutputSymbols(),
               node.getFilter(),
@@ -1235,6 +1252,7 @@ public class PushPredicateIntoTableScan implements PlanOptimizer {
           node.getLeftChild(),
           node.getRightChild(),
           node.getCriteria(),
+          node.getAsofCriteria(),
           node.getLeftOutputSymbols(),
           node.getRightOutputSymbols(),
           node.getFilter(),
