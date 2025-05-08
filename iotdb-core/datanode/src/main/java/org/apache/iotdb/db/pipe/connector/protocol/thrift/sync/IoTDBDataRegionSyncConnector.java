@@ -579,6 +579,15 @@ public class IoTDBDataRegionSyncConnector extends IoTDBDataNodeSyncConnector {
   }
 
   @Override
+  public TPipeTransferReq compressIfNeeded(final TPipeTransferReq req) throws IOException {
+    if (Objects.isNull(compressionTimer)) {
+      compressionTimer =
+          PipeDataRegionConnectorMetrics.getInstance().getCompressionTimer(attributeSortedString);
+    }
+    return super.compressIfNeeded(req);
+  }
+
+  @Override
   public synchronized void discardEventsOfPipe(final String pipeNameToDrop, final int regionId) {
     tabletBatchBuilder.discardEventsOfPipe(pipeNameToDrop, regionId);
   }
@@ -594,14 +603,5 @@ public class IoTDBDataRegionSyncConnector extends IoTDBDataNodeSyncConnector {
     }
 
     super.close();
-  }
-
-  @Override
-  public TPipeTransferReq compressIfNeeded(final TPipeTransferReq req) throws IOException {
-    if (Objects.isNull(compressionTimer)) {
-      compressionTimer =
-          PipeDataRegionConnectorMetrics.getInstance().getCompressionTimer(attributeSortedString);
-    }
-    return super.compressIfNeeded(req);
   }
 }

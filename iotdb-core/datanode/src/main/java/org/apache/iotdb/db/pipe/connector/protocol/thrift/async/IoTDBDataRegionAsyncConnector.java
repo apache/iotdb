@@ -431,6 +431,15 @@ public class IoTDBDataRegionAsyncConnector extends IoTDBConnector {
     }
   }
 
+  @Override
+  public TPipeTransferReq compressIfNeeded(final TPipeTransferReq req) throws IOException {
+    if (Objects.isNull(compressionTimer)) {
+      compressionTimer =
+          PipeDataRegionConnectorMetrics.getInstance().getCompressionTimer(attributeSortedString);
+    }
+    return super.compressIfNeeded(req);
+  }
+
   //////////////////////////// Leader cache update ////////////////////////////
 
   public void updateLeaderCache(final String deviceId, final TEndPoint endPoint) {
@@ -682,15 +691,6 @@ public class IoTDBDataRegionAsyncConnector extends IoTDBConnector {
     clearRetryEventsReferenceCount();
 
     super.close();
-  }
-
-  @Override
-  public TPipeTransferReq compressIfNeeded(final TPipeTransferReq req) throws IOException {
-    if (Objects.isNull(compressionTimer)) {
-      compressionTimer =
-          PipeDataRegionConnectorMetrics.getInstance().getCompressionTimer(attributeSortedString);
-    }
-    return super.compressIfNeeded(req);
   }
 
   public synchronized void clearRetryEventsReferenceCount() {

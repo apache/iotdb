@@ -543,14 +543,6 @@ public abstract class IoTDBConnector implements PipeConnector {
     return totalUncompressedSize.get();
   }
 
-  public boolean isRpcCompressionEnabled() {
-    return isRpcCompressionEnabled;
-  }
-
-  public List<PipeCompressor> getCompressors() {
-    return compressors;
-  }
-
   public void rateLimitIfNeeded(
       final String pipeName,
       final long creationTime,

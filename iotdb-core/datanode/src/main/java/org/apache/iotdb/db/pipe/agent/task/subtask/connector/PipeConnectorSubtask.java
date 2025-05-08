@@ -315,9 +315,10 @@ public class PipeConnectorSubtask extends PipeAbstractConnectorSubtask {
     if (outputPipeConnector instanceof IoTDBDataRegionAsyncConnector) {
       return ((IoTDBDataRegionAsyncConnector) outputPipeConnector).getBatchSize();
     }
-    return outputPipeConnector instanceof IoTDBDataRegionSyncConnector
-        ? ((IoTDBDataRegionSyncConnector) outputPipeConnector).getBatchSize()
-        : 0;
+    if (outputPipeConnector instanceof IoTDBDataRegionSyncConnector) {
+      return ((IoTDBDataRegionSyncConnector) outputPipeConnector).getBatchSize();
+    }
+    return 0;
   }
 
   public double getTotalUncompressedSize() {
