@@ -777,6 +777,7 @@ public class IoTDBTableIT {
       statement.execute("create database tree_view_db");
       statement.execute("use tree_view_db");
       statement.execute("create table view tree_table (tag1 tag, tag2 tag) as root.a.**");
+      statement.execute("drop view tree_table");
     }
 
     try (final Connection connection = EnvFactory.getEnv().getConnection();
@@ -793,6 +794,7 @@ public class IoTDBTableIT {
     try (final Connection connection =
             EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
         final Statement statement = connection.createStatement()) {
+      statement.execute("use tree_view_db");
 
       try {
         statement.execute("create table view tree_table (tag1 tag, tag2 tag) as root.a.**");
