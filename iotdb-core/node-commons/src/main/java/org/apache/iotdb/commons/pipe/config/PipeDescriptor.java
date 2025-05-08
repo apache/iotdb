@@ -436,6 +436,11 @@ public class PipeDescriptor {
             properties.getProperty(
                 "pipe_flush_after_last_terminate_seconds",
                 String.valueOf(config.getPipeFlushAfterLastTerminateSeconds()))));
+    config.setPipeFlushAfterTerminateCount(
+        Integer.parseInt(
+            properties.getProperty(
+                "pipe_flush_after_terminate_count",
+                String.valueOf(config.getPipeFlushAfterTerminateCount()))));
     config.setPipeEpochKeepTsFileAfterStuckRestartEnabled(
         Boolean.parseBoolean(
             properties.getProperty(

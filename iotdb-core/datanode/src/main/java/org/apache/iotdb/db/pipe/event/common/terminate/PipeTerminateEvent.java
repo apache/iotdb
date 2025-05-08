@@ -19,15 +19,21 @@
 
 package org.apache.iotdb.db.pipe.event.common.terminate;
 
+import org.apache.iotdb.common.rpc.thrift.TFlushReq;
 import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.commons.consensus.index.impl.MinimumProgressIndex;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
+import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.TablePattern;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.TreePattern;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
 import org.apache.iotdb.db.pipe.agent.task.PipeDataNodeTask;
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
+import org.apache.iotdb.db.storageengine.StorageEngine;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -40,9 +46,45 @@ import java.util.concurrent.atomic.AtomicLong;
  * be discarded.
  */
 public class PipeTerminateEvent extends EnrichedEvent {
-  public static final AtomicInteger progressReportCount = new AtomicInteger(0);
 
-  public static final AtomicLong lastProgressReportTime = new AtomicLong(0);
+  private static final Logger LOGGER = LoggerFactory.getLogger(PipeTerminateEvent.class);
+
+  private static final AtomicInteger PROGRESS_REPORT_COUNT = new AtomicInteger(0);
+  private static final AtomicLong LAST_PROGRESS_REPORT_TIME = new AtomicLong(0);
+
+  public static void flushDataRegionIfNeeded() {
+    if (PROGRESS_REPORT_COUNT.get() > PipeConfig.getInstance().getPipeFlushAfterTerminateCount()) {
+      PROGRESS_REPORT_COUNT.set(0);
+      LAST_PROGRESS_REPORT_TIME.set(0);
+      try {
+        StorageEngine.getInstance().operateFlush(new TFlushReq());
+        LOGGER.warn("Force flush all data regions because of progress report count exceed.");
+      } catch (final Exception e) {
+        LOGGER.warn(
+            "Failed to flush all data regions, please check the error message: {}",
+            e.getMessage(),
+            e);
+      }
+      return;
+    }
+
+    if (LAST_PROGRESS_REPORT_TIME.get() > 0) {
+      final long timeSinceLastReport = System.currentTimeMillis() - LAST_PROGRESS_REPORT_TIME.get();
+      if (timeSinceLastReport
+          > PipeConfig.getInstance().getPipeFlushAfterLastTerminateSeconds() * 1000L) {
+        try {
+          StorageEngine.getInstance().operateFlush(new TFlushReq());
+          LAST_PROGRESS_REPORT_TIME.set(0);
+          LOGGER.warn("Force flush all data regions because of last progress report time.");
+        } catch (final Exception e) {
+          LOGGER.warn(
+              "Failed to flush all data regions, please check the error message: {}",
+              e.getMessage(),
+              e);
+        }
+      }
+    }
+  }
 
   private final int dataRegionId;
 
@@ -112,8 +154,9 @@ public class PipeTerminateEvent extends EnrichedEvent {
 
   @Override
   public void reportProgress() {
-    progressReportCount.incrementAndGet();
-    lastProgressReportTime.set(System.currentTimeMillis());
+    PROGRESS_REPORT_COUNT.incrementAndGet();
+    LAST_PROGRESS_REPORT_TIME.set(System.currentTimeMillis());
+
     // To avoid deadlock
     CompletableFuture.runAsync(
         () -> PipeDataNodeAgent.task().markCompleted(pipeName, dataRegionId));
