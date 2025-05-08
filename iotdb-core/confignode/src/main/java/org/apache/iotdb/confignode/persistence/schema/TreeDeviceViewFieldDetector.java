@@ -44,7 +44,9 @@ import org.slf4j.LoggerFactory;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
@@ -54,13 +56,13 @@ import java.util.stream.Collectors;
 public class TreeDeviceViewFieldDetector {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(TreeDeviceViewFieldDetector.class);
-  private static final int MEASUREMENT_TRIMMING_THRESHOLD = 1000;
   private final ConfigManager configManager;
   private final PartialPath path;
   private final TsTable table;
   private final Map<String, FieldColumnSchema> fields;
 
   private TDeviceViewResp result = new TDeviceViewResp(StatusUtils.OK, new ConcurrentHashMap<>());
+  private final Map<String, String> lowerCase2OriginalMap = new HashMap<>();
 
   public TreeDeviceViewFieldDetector(
       final ConfigManager configManager,
@@ -86,9 +88,14 @@ public class TreeDeviceViewFieldDetector {
       result
           .getDeviewViewFieldTypeMap()
           .forEach(
-              (field, type) ->
-                  table.addColumnSchema(
-                      new FieldColumnSchema(field, TSDataType.getTsDataType(type))));
+              (field, type) -> {
+                final FieldColumnSchema columnSchema =
+                    new FieldColumnSchema(field, TSDataType.getTsDataType(type));
+                if (!field.equals(lowerCase2OriginalMap.get(field))) {
+                  TreeViewSchema.setOriginalName(columnSchema, lowerCase2OriginalMap.get(field));
+                }
+                table.addColumnSchema(columnSchema);
+              });
     } else {
       final Map<String, FieldColumnSchema> unknownFields =
           Objects.isNull(fields)
@@ -113,9 +120,7 @@ public class TreeDeviceViewFieldDetector {
               getLatestSchemaRegionMap(),
               table.getTagNum(),
               TreeViewSchema.isRestrict(table),
-              unknownFields.size() <= MEASUREMENT_TRIMMING_THRESHOLD
-                  ? unknownFields.keySet()
-                  : null)
+              unknownFields.keySet())
           .execute();
       if (result.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         return result.getStatus();
@@ -226,16 +231,31 @@ public class TreeDeviceViewFieldDetector {
       resp.getDeviewViewFieldTypeMap()
           .forEach(
               (measurement, type) -> {
-                if (!result.getDeviewViewFieldTypeMap().containsKey(measurement)) {
-                  result.getDeviewViewFieldTypeMap().put(measurement, type);
+                final String fieldName = measurement.toLowerCase(Locale.ENGLISH);
+
+                // Field type collection
+                if (!result.getDeviewViewFieldTypeMap().containsKey(fieldName)) {
+                  result.getDeviewViewFieldTypeMap().put(fieldName, type);
                 } else if (!Objects.equals(
-                    result.getDeviewViewFieldTypeMap().get(measurement), type)) {
+                    result.getDeviewViewFieldTypeMap().get(fieldName), type)) {
                   result.setStatus(
                       RpcUtils.getStatus(
                           TSStatusCode.DATA_TYPE_MISMATCH,
                           String.format(
                               "Multiple types encountered when auto detecting type of measurement '%s', please check",
-                              measurement)));
+                              fieldName)));
+                }
+
+                // Field name detection
+                if (!lowerCase2OriginalMap.containsKey(fieldName)) {
+                  lowerCase2OriginalMap.put(fieldName, measurement);
+                } else if (!Objects.equals(lowerCase2OriginalMap.get(fieldName), measurement)) {
+                  result.setStatus(
+                      RpcUtils.getStatus(
+                          TSStatusCode.MEASUREMENT_NAME_CONFLICT,
+                          String.format(
+                              "The measurements %s and %s share the same lower case when auto detecting type, please check",
+                              lowerCase2OriginalMap.get(fieldName), measurement)));
                 }
               });
     }
