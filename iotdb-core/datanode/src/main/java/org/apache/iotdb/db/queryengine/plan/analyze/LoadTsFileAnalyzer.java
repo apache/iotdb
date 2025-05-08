@@ -457,7 +457,7 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
           timeseriesMetadataIterator.next();
       if (!tsFileResource.resourceFileExists()) {
         TsFileResourceUtils.updateTsFileResource(device2TimeseriesMetadata, tsFileResource);
-        schemaAutoCreatorAndVerifier.setCurrentTimeIndex(tsFileResource);
+        schemaAutoCreatorAndVerifier.setCurrentTimeIndex(tsFileResource.getTimeIndex());
       }
 
       if (isAutoCreateSchemaOrVerifySchemaEnabled) {
@@ -573,8 +573,8 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
       schemaCache.setCurrentModificationsAndTimeIndex(resource);
     }
 
-    public void setCurrentTimeIndex(final TsFileResource resource) {
-      schemaCache.setCurrentTimeIndex(resource);
+    public void setCurrentTimeIndex(final ITimeIndex timeIndex) {
+      schemaCache.setCurrentTimeIndex(timeIndex);
     }
 
     public void autoCreateAndVerify(
@@ -1066,8 +1066,8 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
       }
     }
 
-    public void setCurrentTimeIndex(final TsFileResource resource) {
-      currentTimeIndex = resource.getTimeIndex();
+    public void setCurrentTimeIndex(final ITimeIndex timeIndex) {
+      currentTimeIndex = timeIndex;
     }
 
     public boolean isDeviceDeletedByMods(IDeviceID device) throws IllegalPathException {
