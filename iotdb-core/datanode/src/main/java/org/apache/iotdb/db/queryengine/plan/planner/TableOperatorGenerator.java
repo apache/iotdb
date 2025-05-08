@@ -254,8 +254,8 @@ import static org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory
 import static org.apache.iotdb.commons.udf.builtin.relational.TableBuiltinAggregationFunction.getAggregationTypeByFuncName;
 import static org.apache.iotdb.db.queryengine.common.DataNodeEndPoints.isSameNode;
 import static org.apache.iotdb.db.queryengine.execution.operator.process.join.merge.MergeSortComparator.getComparatorForTable;
+import static org.apache.iotdb.db.queryengine.execution.operator.source.relational.AbstractTableScanOperator.constructAlignedPath;
 import static org.apache.iotdb.db.queryengine.execution.operator.source.relational.InformationSchemaContentSupplierFactory.getSupplier;
-import static org.apache.iotdb.db.queryengine.execution.operator.source.relational.TableScanOperator.constructAlignedPath;
 import static org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.AccumulatorFactory.createAccumulator;
 import static org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.AccumulatorFactory.createGroupedAccumulator;
 import static org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.grouped.hash.GroupByHash.DEFAULT_GROUP_NUMBER;
@@ -2198,13 +2198,14 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
                     SchemaQueryScanOperator.class.getSimpleName()),
             SchemaSourceFactory.getTableDeviceQuerySource(
                 node.getDatabase(),
-                node.getTableName(),
-                node.getIdDeterminedFilterList(),
+                table,
+                node.getTagDeterminedFilterList(),
                 node.getColumnHeaderList(),
                 node.getColumnHeaderList().stream()
                     .map(columnHeader -> table.getColumnSchema(columnHeader.getColumnName()))
                     .collect(Collectors.toList()),
-                null));
+                null,
+                node.isNeedAligned()));
     operator.setLimit(node.getLimit());
     return operator;
   }
@@ -2231,16 +2232,16 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
                 SchemaCountOperator.class.getSimpleName()),
         SchemaSourceFactory.getTableDeviceQuerySource(
             database,
-            node.getTableName(),
-            node.getIdDeterminedFilterList(),
+            table,
+            node.getTagDeterminedFilterList(),
             node.getColumnHeaderList(),
             columnSchemaList,
-            Objects.nonNull(node.getIdFuzzyPredicate())
+            Objects.nonNull(node.getTagFuzzyPredicate())
                 ? new DevicePredicateFilter(
                     filterLeafColumnTransformerList,
                     new ColumnTransformerBuilder()
                         .process(
-                            node.getIdFuzzyPredicate(),
+                            node.getTagFuzzyPredicate(),
                             new ColumnTransformerBuilder.Context(
                                 context
                                     .getDriverContext()
@@ -2255,8 +2256,11 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
                                 0,
                                 context.getTypeProvider(),
                                 metadata)),
-                    columnSchemaList)
-                : null));
+                    columnSchemaList,
+                    database,
+                    table)
+                : null,
+            false));
   }
 
   @Override
