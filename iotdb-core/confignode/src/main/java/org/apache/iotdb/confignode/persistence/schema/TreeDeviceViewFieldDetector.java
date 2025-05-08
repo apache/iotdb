@@ -28,6 +28,7 @@ import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.schema.table.TreeViewSchema;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.column.FieldColumnSchema;
+import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
 import org.apache.iotdb.commons.utils.StatusUtils;
 import org.apache.iotdb.confignode.client.async.CnToDnAsyncRequestType;
 import org.apache.iotdb.confignode.manager.ConfigManager;
@@ -100,22 +101,25 @@ public class TreeDeviceViewFieldDetector {
       final Map<String, Set<FieldColumnSchema>> unknownFields;
       if (Objects.isNull(fields)) {
         unknownFields = new HashMap<>();
-        table.getColumnList().stream()
-            .filter(
-                columnSchema ->
-                    columnSchema instanceof FieldColumnSchema
-                        && columnSchema.getDataType() == TSDataType.UNKNOWN)
-            .forEach(
-                fieldColumnSchema -> {
-                  final String key =
-                      Objects.nonNull(TreeViewSchema.getOriginalName(fieldColumnSchema))
-                          ? TreeViewSchema.getOriginalName(fieldColumnSchema)
-                          : fieldColumnSchema.getColumnName();
-                  if (!unknownFields.containsKey(key)) {
-                    unknownFields.put(key, new HashSet<>());
-                  }
-                  unknownFields.get(key).add((FieldColumnSchema) fieldColumnSchema);
-                });
+        for (final TsTableColumnSchema schema : table.getColumnList()) {
+          if (!(schema instanceof FieldColumnSchema)
+              || schema.getDataType() != TSDataType.UNKNOWN) {
+            continue;
+          }
+          final String key =
+              Objects.nonNull(TreeViewSchema.getOriginalName(schema))
+                  ? TreeViewSchema.getOriginalName(schema)
+                  : schema.getColumnName();
+          if (!unknownFields.containsKey(key)) {
+            unknownFields.put(key, new HashSet<>());
+          } else {
+            // Query engine not support this yet
+            return RpcUtils.getStatus(
+                TSStatusCode.MEASUREMENT_NAME_CONFLICT.getStatusCode(),
+                String.format("The duplicated source measurement %s is unsupported yet.", key));
+          }
+          unknownFields.get(key).add((FieldColumnSchema) schema);
+        }
       } else {
         unknownFields = fields;
       }

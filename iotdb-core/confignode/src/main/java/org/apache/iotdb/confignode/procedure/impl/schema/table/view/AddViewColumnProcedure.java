@@ -61,22 +61,27 @@ public class AddViewColumnProcedure extends AddTableColumnProcedure {
     super.columnCheck(env);
 
     final Map<String, Set<FieldColumnSchema>> fields2Detect = new HashMap<>();
-    addedColumnList.stream()
-        .filter(
-            columnSchema ->
-                columnSchema instanceof FieldColumnSchema
-                    && columnSchema.getDataType() == TSDataType.UNKNOWN)
-        .forEach(
-            fieldColumnSchema -> {
-              final String key =
-                  Objects.nonNull(TreeViewSchema.getOriginalName(fieldColumnSchema))
-                      ? TreeViewSchema.getOriginalName(fieldColumnSchema)
-                      : fieldColumnSchema.getColumnName();
-              if (!fields2Detect.containsKey(key)) {
-                fields2Detect.put(key, new HashSet<>());
-              }
-              fields2Detect.get(key).add((FieldColumnSchema) fieldColumnSchema);
-            });
+    for (final TsTableColumnSchema schema : addedColumnList) {
+      if (!(schema instanceof FieldColumnSchema) || schema.getDataType() != TSDataType.UNKNOWN) {
+        continue;
+      }
+      final String key =
+          Objects.nonNull(TreeViewSchema.getOriginalName(schema))
+              ? TreeViewSchema.getOriginalName(schema)
+              : schema.getColumnName();
+      if (!fields2Detect.containsKey(key)) {
+        fields2Detect.put(key, new HashSet<>());
+      } else {
+        // Query engine not support this yet
+        setFailure(
+            new ProcedureException(
+                new IoTDBException(
+                    String.format("The duplicated source measurement %s is unsupported yet.", key),
+                    TSStatusCode.MEASUREMENT_NAME_CONFLICT.getStatusCode())));
+        return;
+      }
+      fields2Detect.get(key).add((FieldColumnSchema) schema);
+    }
 
     if (!fields2Detect.isEmpty()) {
       final TSStatus status =
