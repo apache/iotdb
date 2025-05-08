@@ -833,7 +833,7 @@ public class IoTDBSubscriptionTopicIT extends AbstractSubscriptionDualIT {
     final String topicName = "topic11";
     final String host = senderEnv.getIP();
     final int port = Integer.parseInt(senderEnv.getPort());
-    try (final SubscriptionTreeSession session = new SubscriptionTreeSession(host, port)) {
+    try (final SubscriptionSession session = new SubscriptionSession(host, port)) {
       session.open();
       final Properties config = new Properties();
       config.put(TopicConstant.MODE_KEY, TopicConstant.MODE_SNAPSHOT_VALUE);
@@ -848,8 +848,8 @@ public class IoTDBSubscriptionTopicIT extends AbstractSubscriptionDualIT {
     final Thread thread =
         new Thread(
             () -> {
-              try (final SubscriptionTreePullConsumer consumer =
-                  new SubscriptionTreePullConsumer.Builder()
+              try (final SubscriptionPullConsumer consumer =
+                  new SubscriptionPullConsumer.Builder()
                       .host(host)
                       .port(port)
                       .consumerId("c1")

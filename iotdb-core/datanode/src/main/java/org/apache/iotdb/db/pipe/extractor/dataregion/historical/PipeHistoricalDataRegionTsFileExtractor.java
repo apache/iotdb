@@ -26,7 +26,6 @@ import org.apache.iotdb.commons.consensus.index.impl.TimeWindowStateProgressInde
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeStaticMeta;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
-import org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant;
 import org.apache.iotdb.commons.pipe.config.constant.SystemConstant;
 import org.apache.iotdb.commons.pipe.config.plugin.env.PipeTaskExtractorRuntimeEnvironment;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.PipePattern;
@@ -118,7 +117,6 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
   private boolean shouldExtractInsertion;
   private boolean shouldTransferModFile; // Whether to transfer mods
 
-  private boolean shouldTerminatePipeOnAllHistoricalEventsConsumed;
   private boolean isTerminateSignalSent = false;
 
   private volatile boolean hasBeenStarted = false;
@@ -329,19 +327,9 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
                 || // Should extract deletion
                 listeningOptionPair.getRight());
 
-    final String extractorModeValue =
-        parameters.getStringOrDefault(
-            Arrays.asList(
-                PipeExtractorConstant.EXTRACTOR_MODE_KEY, PipeExtractorConstant.SOURCE_MODE_KEY),
-            PipeExtractorConstant.EXTRACTOR_MODE_DEFAULT_VALUE);
-    shouldTerminatePipeOnAllHistoricalEventsConsumed =
-        extractorModeValue.equalsIgnoreCase(PipeExtractorConstant.EXTRACTOR_MODE_QUERY_VALUE)
-            || extractorModeValue.equalsIgnoreCase(
-                PipeExtractorConstant.EXTRACTOR_MODE_SNAPSHOT_VALUE);
-
     if (LOGGER.isInfoEnabled()) {
       LOGGER.info(
-          "Pipe {}@{}: historical data extraction time range, start time {}({}), end time {}({}), sloppy pattern {}, sloppy time range {}, should transfer mod file {}, should terminate pipe on all historical events consumed {}",
+          "Pipe {}@{}: historical data extraction time range, start time {}({}), end time {}({}), sloppy pattern {}, sloppy time range {}, should transfer mod file {}",
           pipeName,
           dataRegionId,
           DateTimeUtils.convertLongToDate(historicalDataExtractionStartTime),
@@ -350,8 +338,7 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
           historicalDataExtractionEndTime,
           sloppyPattern,
           sloppyTimeRange,
-          shouldTransferModFile,
-          shouldTerminatePipeOnAllHistoricalEventsConsumed);
+          shouldTransferModFile);
     }
   }
 
@@ -672,9 +659,7 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
     // If the pendingQueue is null when the function is called, it implies that the extractor only
     // extracts deletion thus the historical event has nothing to consume.
     return hasBeenStarted
-        && (Objects.isNull(pendingQueue)
-            || pendingQueue.isEmpty()
-                && (!shouldTerminatePipeOnAllHistoricalEventsConsumed || isTerminateSignalSent));
+        && (Objects.isNull(pendingQueue) || pendingQueue.isEmpty() && isTerminateSignalSent);
   }
 
   @Override
