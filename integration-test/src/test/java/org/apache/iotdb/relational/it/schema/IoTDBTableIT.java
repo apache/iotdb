@@ -778,6 +778,7 @@ public class IoTDBTableIT {
         final Statement statement = connection.createStatement()) {
       statement.execute("create database tree_view_db");
       statement.execute("use tree_view_db");
+
       try {
         statement.execute("create table view tree_table (tag1 tag, tag2 tag) as root.a.**");
         fail();
@@ -786,6 +787,17 @@ public class IoTDBTableIT {
             "614: Multiple types encountered when auto detecting type of measurement 's1', please check",
             e.getMessage());
       }
+
+      try {
+        statement.execute(
+            "create table view tree_table (tag1 tag, tag2 tag, s1 field) as root.a.**");
+        fail();
+      } catch (final SQLException e) {
+        assertEquals(
+            "614: Multiple types encountered when auto detecting type of measurement 's1', please check",
+            e.getMessage());
+      }
+
       statement.execute(
           "create or replace table view tree_table (tag1 tag, tag2 tag, s1 int32 field, s3 from s2) as root.a.**");
       statement.execute("alter view tree_table rename to view_table");
