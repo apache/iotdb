@@ -38,11 +38,13 @@ import static org.apache.iotdb.db.queryengine.execution.operator.process.window.
 public class RangeFrame implements Frame {
   private final Partition partition;
   private final FrameInfo frameInfo;
-  private final ColumnList column;
-  private final TSDataType dataType;
+  private boolean noOrderBy = false;
 
-  private final int partitionSize;
-  private final RowComparator peerGroupComparator;
+  private ColumnList column;
+  private TSDataType dataType;
+
+  private int partitionSize;
+  private RowComparator peerGroupComparator;
   private Range recentRange;
 
   public RangeFrame(
@@ -52,11 +54,19 @@ public class RangeFrame implements Frame {
       RowComparator comparator) {
     this.partition = partition;
     this.frameInfo = frameInfo;
+    this.partitionSize = partition.getPositionCount();
+
+    if (frameInfo.getSortChannel() == -1) {
+      // No ORDER BY but uses RANGE frame
+      // Return whole partition
+      this.noOrderBy = true;
+      return;
+    }
+
     // Only one sort key is allowed in range frame
     checkArgument(sortedColumns.size() == 1);
     this.column = sortedColumns.get(0);
     this.dataType = column.getDataType();
-    this.partitionSize = partition.getPositionCount();
     this.peerGroupComparator = comparator;
     this.recentRange = new Range(0, 0);
   }
@@ -66,7 +76,7 @@ public class RangeFrame implements Frame {
       int currentPosition, int currentGroup, int peerGroupStart, int peerGroupEnd) {
     // Full partition
     if (frameInfo.getStartType() == UNBOUNDED_PRECEDING
-        && frameInfo.getEndType() == UNBOUNDED_FOLLOWING) {
+        && frameInfo.getEndType() == UNBOUNDED_FOLLOWING || noOrderBy) {
       return new Range(0, partitionSize - 1);
     }
 
