@@ -164,6 +164,7 @@ public class WALManager implements IService {
     logger.info("Start rebooting wal delete thread.");
     if (walDeleteThread != null) {
       shutdownThread(walDeleteThread, ThreadName.WAL_DELETE);
+      walDeleteThread = null;
     }
     logger.info("Stop wal delete thread successfully, and now restart it.");
     registerScheduleTask(0, config.getDeleteWalFilesPeriodInMs());
@@ -177,7 +178,7 @@ public class WALManager implements IService {
     // threshold, the system continues to delete expired files until the disk size is smaller than
     // the threshold.
     boolean firstLoop = true;
-    while (firstLoop || shouldThrottle()) {
+    while ((firstLoop || shouldThrottle()) && !Thread.interrupted()) {
       deleteOutdatedFilesInWALNodes();
       if (firstLoop && shouldThrottle()) {
         logger.warn(
@@ -280,7 +281,7 @@ public class WALManager implements IService {
   }
 
   private void shutdownThread(ExecutorService thread, ThreadName threadName) {
-    thread.shutdown();
+    thread.shutdownNow();
     try {
       if (!thread.awaitTermination(30, TimeUnit.SECONDS)) {
         logger.warn("Waiting thread {} to be terminated is timeout", threadName.getName());
