@@ -19,53 +19,53 @@
 
 package org.apache.iotdb.db.pipe.processor.aggregate.operator.intermediateresult.sametype.numeric;
 
-public class AbsoluteMaxOperator extends AbstractSameTypeNumericOperator {
+public class MaxOperator extends AbstractSameTypeNumericOperator {
   @Override
   public String getName() {
-    return "abs_max";
+    return "max";
   }
 
   @Override
-  public boolean initAndGetIsSupport(final int initialInput, final long initialTimestamp) {
-    intValue = Math.abs(initialInput);
+  public boolean initAndGetIsSupport(int initialInput, long initialTimestamp) {
+    intValue = initialInput;
     return super.initAndGetIsSupport(initialInput, initialTimestamp);
   }
 
   @Override
-  public boolean initAndGetIsSupport(final long initialInput, final long initialTimestamp) {
-    longValue = Math.abs(initialInput);
+  public boolean initAndGetIsSupport(long initialInput, long initialTimestamp) {
+    longValue = initialInput;
     return super.initAndGetIsSupport(initialInput, initialTimestamp);
   }
 
   @Override
   public boolean initAndGetIsSupport(final float initialInput, final long initialTimestamp) {
-    floatValue = Math.abs(initialInput);
+    floatValue = initialInput;
     return super.initAndGetIsSupport(initialInput, initialTimestamp);
   }
 
   @Override
   public boolean initAndGetIsSupport(final double initialInput, final long initialTimestamp) {
-    doubleValue = Math.abs(initialInput);
+    doubleValue = initialInput;
     return super.initAndGetIsSupport(initialInput, initialTimestamp);
   }
 
   @Override
   public void updateValue(final int input, final long timestamp) {
-    intValue = Math.max(intValue, Math.abs(input));
+    intValue = Math.max(intValue, input);
   }
 
   @Override
   public void updateValue(final long input, final long timestamp) {
-    longValue = Math.max(longValue, Math.abs(input));
+    longValue = Math.max(longValue, input);
   }
 
   @Override
   public void updateValue(final float input, final long timestamp) {
-    floatValue = Math.max(floatValue, Math.abs(input));
+    floatValue = Math.max(floatValue, input);
   }
 
   @Override
   public void updateValue(final double input, final long timestamp) {
-    doubleValue = Math.max(doubleValue, Math.abs(input));
+    doubleValue = Math.max(doubleValue, input);
   }
 }
