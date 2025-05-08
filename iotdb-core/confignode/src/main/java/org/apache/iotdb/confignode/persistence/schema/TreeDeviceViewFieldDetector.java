@@ -77,7 +77,7 @@ public class TreeDeviceViewFieldDetector {
       new TreeDeviceViewFieldDetectionTaskExecutor(
               configManager,
               getLatestSchemaRegionMap(),
-              table.getIdNums(),
+              table.getTagNum(),
               TreeViewSchema.isRestrict(table))
           .execute();
       if (result.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
@@ -111,7 +111,7 @@ public class TreeDeviceViewFieldDetector {
       new TreeDeviceViewFieldDetectionTaskExecutor(
               configManager,
               getLatestSchemaRegionMap(),
-              table.getIdNums(),
+              table.getTagNum(),
               TreeViewSchema.isRestrict(table),
               unknownFields.size() <= MEASUREMENT_TRIMMING_THRESHOLD
                   ? unknownFields.keySet()
@@ -228,7 +228,8 @@ public class TreeDeviceViewFieldDetector {
               (measurement, type) -> {
                 if (!result.getDeviewViewFieldTypeMap().containsKey(measurement)) {
                   result.getDeviewViewFieldTypeMap().put(measurement, type);
-                } else {
+                } else if (!Objects.equals(
+                    result.getDeviewViewFieldTypeMap().get(measurement), type)) {
                   result.setStatus(
                       RpcUtils.getStatus(
                           TSStatusCode.DATA_TYPE_MISMATCH,

@@ -223,7 +223,7 @@ public class SchemaPredicateUtil {
       final List<Map<Integer, List<SchemaFilter>>> index2FilterMapList,
       final TsTable tableInstance) {
     final List<Integer> selectedExpressionCases = new ArrayList<>();
-    final int idCount = tableInstance.getIdNums();
+    final int idCount = tableInstance.getTagNum();
     for (int i = 0; i < index2FilterMapList.size(); i++) {
       final Map<Integer, List<SchemaFilter>> filterMap = index2FilterMapList.get(i);
       if (filterMap.size() == idCount
