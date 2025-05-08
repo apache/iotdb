@@ -3884,7 +3884,7 @@ public class DataRegion implements IDataRegionForQuery {
     long acquireDirectBufferMemCost = 0;
     if (config.getDataRegionConsensusProtocolClass().equals(ConsensusFactory.IOT_CONSENSUS)
         || config.getDataRegionConsensusProtocolClass().equals(ConsensusFactory.IOT_CONSENSUS_V2)) {
-      acquireDirectBufferMemCost = config.getWalBufferSize();
+      acquireDirectBufferMemCost = config.getWalMode().equals(WALMode.DISABLE) ? 0 : config.getWalBufferSize();
     } else if (config
         .getDataRegionConsensusProtocolClass()
         .equals(ConsensusFactory.RATIS_CONSENSUS)) {
