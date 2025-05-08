@@ -60,6 +60,7 @@ sktime = "^0.24.1"
 pmdarima = "^2.0.4"
 hmmlearn = "^0.3.0"
 apache-iotdb = "2.0.4.dev0"
+einops = "^0.8.1"
 
 [tool.poetry.scripts]
 ainode = "ainode.core.script:main"
