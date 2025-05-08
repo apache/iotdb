@@ -696,11 +696,15 @@ public class TableMetadataImpl implements Metadata {
               "Window function [nth_value] should only have two argument, and second argument must be integer type");
         }
         break;
-        //      case SqlConstant.FIRST_VALUE:
-        //      case SqlConstant.LAST_VALUE:
+      case SqlConstant.TABLE_FIRST_VALUE:
+      case SqlConstant.TABLE_LAST_VALUE:
+        if (argumentTypes.size() != 1) {
+          throw  new SemanticException(
+              String.format("Window function [%s] should only have one argument", functionName));
+        }
       case SqlConstant.LEAD:
       case SqlConstant.LAG:
-        if (!(argumentTypes.size() >= 1 && argumentTypes.size() <= 3)) {
+        if (argumentTypes.isEmpty() || argumentTypes.size() > 3) {
           throw new SemanticException(
               String.format(
                   "Window function [%s] should only have one to three argument", functionName));
@@ -725,6 +729,8 @@ public class TableMetadataImpl implements Metadata {
       case SqlConstant.PERCENT_RANK:
       case SqlConstant.CUME_DIST:
         return DOUBLE;
+      case SqlConstant.TABLE_FIRST_VALUE:
+      case SqlConstant.TABLE_LAST_VALUE:
       case SqlConstant.NTH_VALUE:
       case SqlConstant.LEAD:
       case SqlConstant.LAG:

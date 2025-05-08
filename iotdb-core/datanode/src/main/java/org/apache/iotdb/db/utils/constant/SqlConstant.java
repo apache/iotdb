@@ -107,8 +107,8 @@ public class SqlConstant {
   public static final String CUME_DIST = "cume_dist";
   public static final String NTILE = "ntile";
   // Duplicate with aggregation function
-  //  public static final String FIRST_VALUE = "first_value";
-  //  public static final String LAST_VALUE = "last_value";
+  public static final String TABLE_FIRST_VALUE = "first_value";
+  public static final String TABLE_LAST_VALUE = "last_value";
   public static final String NTH_VALUE = "nth_value";
   public static final String LEAD = "lead";
   public static final String LAG = "lag";
