@@ -415,6 +415,7 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
     String treePrefixPath = DataNodeTreeViewSchemaUtils.getPrefixPath(tsTable);
     IDeviceID.TreeDeviceIdColumnValueExtractor extractor =
         TableOperatorGenerator.createTreeDeviceIdColumnValueExtractor(treePrefixPath);
+    long viewTTL = tsTable.getCachedTableTTL();
 
     DeviceIteratorScanOperator.TreeNonAlignedDeviceViewScanParameters parameter =
         constructTreeNonAlignedDeviceViewScanOperatorParameter(
@@ -422,7 +423,8 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
             context,
             TreeNonAlignedDeviceViewScanNode.class.getSimpleName(),
             node.getMeasurementColumnNameMap(),
-            extractor);
+            extractor,
+            viewTTL);
 
     DeviceIteratorScanOperator treeNonAlignedDeviceIteratorScanOperator =
         new DeviceIteratorScanOperator(
@@ -455,7 +457,8 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
           LocalExecutionPlanContext context,
           String className,
           Map<String, String> fieldColumnsRenameMap,
-          IDeviceID.TreeDeviceIdColumnValueExtractor extractor) {
+          IDeviceID.TreeDeviceIdColumnValueExtractor extractor,
+          long viewTTL) {
     if (node.isPushLimitToEachDevice() && node.getPushDownOffset() > 0) {
       throw new IllegalArgumentException(
           "PushDownOffset should not be set when isPushLimitToEachDevice is true.");
@@ -590,7 +593,9 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
                 builder.withPushDownOffset(
                     node.isPushLimitToEachDevice() ? 0 : node.getPushDownOffset());
               }
-              seriesScanOptionsList.add(builder.build());
+              SeriesScanOptions options = builder.build();
+              options.setTTLForTableView(viewTTL);
+              seriesScanOptionsList.add(options);
             }
           }
 
@@ -947,7 +952,8 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
             node,
             context,
             TreeAlignedDeviceViewScanOperator.class.getSimpleName(),
-            node.getMeasurementColumnNameMap());
+            node.getMeasurementColumnNameMap(),
+            tsTable.getCachedTableTTL());
 
     TreeAlignedDeviceViewScanOperator treeAlignedDeviceViewScanOperator =
         new TreeAlignedDeviceViewScanOperator(parameter, idColumnValueExtractor);
@@ -1003,7 +1009,8 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
           DeviceTableScanNode node,
           LocalExecutionPlanContext context,
           String className,
-          Map<String, String> fieldColumnsRenameMap) {
+          Map<String, String> fieldColumnsRenameMap,
+          long viewTTL) {
 
     CommonTableScanOperatorParameters commonParameter =
         new CommonTableScanOperatorParameters(node, fieldColumnsRenameMap, false);
@@ -1023,6 +1030,7 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
             node.getPushDownOffset(),
             node.isPushLimitToEachDevice(),
             node.getPushDownPredicate());
+    seriesScanOptions.setTTLForTableView(viewTTL);
 
     OperatorContext operatorContext =
         context
@@ -1060,7 +1068,11 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
       constructAbstractTableScanOperatorParameter(
           DeviceTableScanNode node, LocalExecutionPlanContext context) {
     return constructAbstractTableScanOperatorParameter(
-        node, context, TableScanOperator.class.getSimpleName(), Collections.emptyMap());
+        node,
+        context,
+        TableScanOperator.class.getSimpleName(),
+        Collections.emptyMap(),
+        Long.MAX_VALUE);
   }
 
   @Override

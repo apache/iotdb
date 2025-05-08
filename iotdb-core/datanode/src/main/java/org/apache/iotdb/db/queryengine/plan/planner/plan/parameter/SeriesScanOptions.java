@@ -122,6 +122,10 @@ public class SeriesScanOptions {
     }
   }
 
+  public void setTTLForTableView(long viewTTL) {
+    this.globalTimeFilter = updateFilterUsingTTL(globalTimeFilter, viewTTL);
+  }
+
   /**
    * @return an updated filter concerning TTL
    */
