@@ -16,8 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-
-package org.apache.iotdb.relational.it.query.view.old.alignbydevice;
+package org.apache.iotdb.relational.it.query.view.old.aligned;
 
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
@@ -31,18 +30,24 @@ import org.junit.runner.RunWith;
 
 @RunWith(IoTDBTestRunner.class)
 @Category({TableLocalStandaloneIT.class, TableClusterIT.class})
-public class IoTDBOrderByWithAlignByDeviceTableView3IT
-    extends IoTDBOrderByWithAlignByDeviceTableViewIT {
+public class IoTDBAlignedSeriesQueryTableView3IT extends IoTDBAlignedSeriesQueryTableViewIT {
+
   @BeforeClass
   public static void setUp() throws Exception {
-    EnvFactory.getEnv().getConfig().getCommonConfig().setSeriesSlotNum(1);
+    EnvFactory.getEnv()
+        .getConfig()
+        .getCommonConfig()
+        .setEnableSeqSpaceCompaction(false)
+        .setEnableUnseqSpaceCompaction(false)
+        .setEnableCrossSpaceCompaction(false)
+        .setMaxTsBlockLineNumber(3)
+        .setMaxNumberOfPointsInPage(3);
     EnvFactory.getEnv().initClusterEnvironment();
-    insertData();
-    insertData2();
+    TableViewUtils.insertData();
   }
 
   @AfterClass
-  public static void tearDown() throws Exception {
+  public static void tearDown() {
     EnvFactory.getEnv().cleanClusterEnvironment();
   }
 }
