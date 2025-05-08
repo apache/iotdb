@@ -71,7 +71,7 @@ public class PipeTerminateEvent extends EnrichedEvent {
       StorageEngine.getInstance().operateFlush(new TFlushReq());
       PROGRESS_REPORT_COUNT.set(0);
       LAST_PROGRESS_REPORT_TIME.set(0);
-      LOGGER.warn("Force flush all data regions because of last progress report time.");
+      LOGGER.info("Force flush all data regions because of last progress report time.");
     } catch (final Exception e) {
       LOGGER.warn(
           "Failed to flush all data regions, please check the error message: {}",
