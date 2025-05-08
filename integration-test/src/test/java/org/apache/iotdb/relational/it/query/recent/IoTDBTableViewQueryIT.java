@@ -284,6 +284,8 @@ public class IoTDBTableViewQueryIT {
       compareQueryResults(
           session, "select count(*) from view1", "select count(*) from table1", true);
       compareQueryResults(
+          session, "select count(battery) from view1", "select count(battery) from table1", true);
+      compareQueryResults(
           session,
           "select count(*) from view1 where time = 1",
           "select count(*) from table1 where time = 1",
