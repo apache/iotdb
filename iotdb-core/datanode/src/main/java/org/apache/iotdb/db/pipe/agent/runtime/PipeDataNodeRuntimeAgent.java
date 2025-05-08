@@ -93,7 +93,7 @@ public class PipeDataNodeRuntimeAgent implements IService {
     registerPeriodicalJob(
         "PipeTaskAgent#flushDataRegionIfNeeded",
         PipeTerminateEvent::flushDataRegionIfNeeded,
-        PipeConfig.getInstance().getPipeStuckRestartIntervalSeconds());
+        PipeConfig.getInstance().getPipeFlushAfterLastTerminateSeconds());
 
     pipePeriodicalJobExecutor.start();
 

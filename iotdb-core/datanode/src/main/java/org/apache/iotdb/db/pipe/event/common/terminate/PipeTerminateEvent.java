@@ -36,7 +36,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 
 /**
@@ -49,40 +48,35 @@ public class PipeTerminateEvent extends EnrichedEvent {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(PipeTerminateEvent.class);
 
-  private static final AtomicInteger PROGRESS_REPORT_COUNT = new AtomicInteger(0);
+  private static final AtomicLong PROGRESS_REPORT_COUNT = new AtomicLong(0);
   private static final AtomicLong LAST_PROGRESS_REPORT_TIME = new AtomicLong(0);
 
   public static void flushDataRegionIfNeeded() {
-    if (PROGRESS_REPORT_COUNT.get() > PipeConfig.getInstance().getPipeFlushAfterTerminateCount()) {
-      PROGRESS_REPORT_COUNT.set(0);
-      LAST_PROGRESS_REPORT_TIME.set(0);
-      try {
-        StorageEngine.getInstance().operateFlush(new TFlushReq());
-        LOGGER.warn("Force flush all data regions because of progress report count exceed.");
-      } catch (final Exception e) {
-        LOGGER.warn(
-            "Failed to flush all data regions, please check the error message: {}",
-            e.getMessage(),
-            e);
-      }
+    if (PROGRESS_REPORT_COUNT.get() > 0
+        && PROGRESS_REPORT_COUNT.get()
+            > PipeConfig.getInstance().getPipeFlushAfterTerminateCount()) {
+      flushDataRegion();
       return;
     }
 
-    if (LAST_PROGRESS_REPORT_TIME.get() > 0) {
-      final long timeSinceLastReport = System.currentTimeMillis() - LAST_PROGRESS_REPORT_TIME.get();
-      if (timeSinceLastReport
-          > PipeConfig.getInstance().getPipeFlushAfterLastTerminateSeconds() * 1000L) {
-        try {
-          StorageEngine.getInstance().operateFlush(new TFlushReq());
-          LAST_PROGRESS_REPORT_TIME.set(0);
-          LOGGER.warn("Force flush all data regions because of last progress report time.");
-        } catch (final Exception e) {
-          LOGGER.warn(
-              "Failed to flush all data regions, please check the error message: {}",
-              e.getMessage(),
-              e);
-        }
-      }
+    if (LAST_PROGRESS_REPORT_TIME.get() > 0
+        && System.currentTimeMillis() - LAST_PROGRESS_REPORT_TIME.get()
+            > PipeConfig.getInstance().getPipeFlushAfterLastTerminateSeconds() * 1000L) {
+      flushDataRegion();
+    }
+  }
+
+  private static void flushDataRegion() {
+    try {
+      StorageEngine.getInstance().operateFlush(new TFlushReq());
+      PROGRESS_REPORT_COUNT.set(0);
+      LAST_PROGRESS_REPORT_TIME.set(0);
+      LOGGER.warn("Force flush all data regions because of last progress report time.");
+    } catch (final Exception e) {
+      LOGGER.warn(
+          "Failed to flush all data regions, please check the error message: {}",
+          e.getMessage(),
+          e);
     }
   }
 
