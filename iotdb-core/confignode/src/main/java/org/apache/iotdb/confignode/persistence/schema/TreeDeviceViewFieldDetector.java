@@ -45,13 +45,13 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.stream.Collectors;
 
 public class TreeDeviceViewFieldDetector {
 
@@ -59,7 +59,7 @@ public class TreeDeviceViewFieldDetector {
   private final ConfigManager configManager;
   private final PartialPath path;
   private final TsTable table;
-  private final Map<String, FieldColumnSchema> fields;
+  private final Map<String, Set<FieldColumnSchema>> fields;
 
   private TDeviceViewResp result = new TDeviceViewResp(StatusUtils.OK, new ConcurrentHashMap<>());
   private final Map<String, String> lowerCase2OriginalMap = new HashMap<>();
@@ -67,7 +67,7 @@ public class TreeDeviceViewFieldDetector {
   public TreeDeviceViewFieldDetector(
       final ConfigManager configManager,
       final TsTable table,
-      final Map<String, FieldColumnSchema> fields) {
+      final Map<String, Set<FieldColumnSchema>> fields) {
     this.configManager = configManager;
     this.path = TreeViewSchema.getPrefixPattern(table);
     this.table = table;
@@ -97,21 +97,29 @@ public class TreeDeviceViewFieldDetector {
                 table.addColumnSchema(columnSchema);
               });
     } else {
-      final Map<String, FieldColumnSchema> unknownFields =
-          Objects.isNull(fields)
-              ? table.getColumnList().stream()
-                  .filter(
-                      columnSchema ->
-                          columnSchema instanceof FieldColumnSchema
-                              && columnSchema.getDataType() == TSDataType.UNKNOWN)
-                  .collect(
-                      Collectors.toMap(
-                          fieldColumnSchema ->
-                              Objects.nonNull(TreeViewSchema.getOriginalName(fieldColumnSchema))
-                                  ? TreeViewSchema.getOriginalName(fieldColumnSchema)
-                                  : fieldColumnSchema.getColumnName(),
-                          FieldColumnSchema.class::cast))
-              : fields;
+      final Map<String, Set<FieldColumnSchema>> unknownFields;
+      if (Objects.isNull(fields)) {
+        unknownFields = new HashMap<>();
+        table.getColumnList().stream()
+            .filter(
+                columnSchema ->
+                    columnSchema instanceof FieldColumnSchema
+                        && columnSchema.getDataType() == TSDataType.UNKNOWN)
+            .forEach(
+                fieldColumnSchema -> {
+                  final String key =
+                      Objects.nonNull(TreeViewSchema.getOriginalName(fieldColumnSchema))
+                          ? TreeViewSchema.getOriginalName(fieldColumnSchema)
+                          : fieldColumnSchema.getColumnName();
+                  if (!unknownFields.containsKey(key)) {
+                    unknownFields.put(key, new HashSet<>());
+                  }
+                  unknownFields.get(key).add((FieldColumnSchema) fieldColumnSchema);
+                });
+      } else {
+        unknownFields = fields;
+      }
+
       if (unknownFields.isEmpty()) {
         return StatusUtils.OK;
       }
@@ -125,13 +133,16 @@ public class TreeDeviceViewFieldDetector {
       if (result.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         return result.getStatus();
       }
-      for (final Map.Entry<String, FieldColumnSchema> unknownField : unknownFields.entrySet()) {
+      for (final Map.Entry<String, Set<FieldColumnSchema>> unknownField :
+          unknownFields.entrySet()) {
         if (result.getDeviewViewFieldTypeMap().containsKey(unknownField.getKey())) {
           unknownField
               .getValue()
-              .setDataType(
-                  TSDataType.getTsDataType(
-                      result.getDeviewViewFieldTypeMap().get(unknownField.getKey())));
+              .forEach(
+                  field ->
+                      field.setDataType(
+                          TSDataType.getTsDataType(
+                              result.getDeviewViewFieldTypeMap().get(unknownField.getKey()))));
         } else {
           return new TSStatus(TSStatusCode.TYPE_NOT_FOUND.getStatusCode())
               .setMessage(

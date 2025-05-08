@@ -23,7 +23,6 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.commons.schema.table.TreeViewSchema;
 import org.apache.iotdb.commons.schema.table.column.FieldColumnSchema;
-import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
 import org.apache.iotdb.confignode.persistence.schema.TreeDeviceViewFieldDetector;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
@@ -36,10 +35,12 @@ import org.apache.tsfile.enums.TSDataType;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.stream.Collectors;
+import java.util.Set;
 
 public class AddViewColumnProcedure extends AddTableColumnProcedure {
   public AddViewColumnProcedure(final boolean isGeneratedByPipe) {
@@ -58,19 +59,25 @@ public class AddViewColumnProcedure extends AddTableColumnProcedure {
   @Override
   protected void columnCheck(final ConfigNodeProcedureEnv env) {
     super.columnCheck(env);
-    final Map<String, FieldColumnSchema> fields2Detect =
-        addedColumnList.stream()
-            .filter(
-                columnSchema ->
-                    columnSchema.getColumnCategory() == TsTableColumnCategory.FIELD
-                        && columnSchema.getDataType() == TSDataType.UNKNOWN)
-            .collect(
-                Collectors.toMap(
-                    fieldColumnSchema ->
-                        Objects.nonNull(TreeViewSchema.getOriginalName(fieldColumnSchema))
-                            ? TreeViewSchema.getOriginalName(fieldColumnSchema)
-                            : fieldColumnSchema.getColumnName(),
-                    FieldColumnSchema.class::cast));
+
+    final Map<String, Set<FieldColumnSchema>> fields2Detect = new HashMap<>();
+    addedColumnList.stream()
+        .filter(
+            columnSchema ->
+                columnSchema instanceof FieldColumnSchema
+                    && columnSchema.getDataType() == TSDataType.UNKNOWN)
+        .forEach(
+            fieldColumnSchema -> {
+              final String key =
+                  Objects.nonNull(TreeViewSchema.getOriginalName(fieldColumnSchema))
+                      ? TreeViewSchema.getOriginalName(fieldColumnSchema)
+                      : fieldColumnSchema.getColumnName();
+              if (!fields2Detect.containsKey(key)) {
+                fields2Detect.put(key, new HashSet<>());
+              }
+              fields2Detect.get(key).add((FieldColumnSchema) fieldColumnSchema);
+            });
+
     if (!fields2Detect.isEmpty()) {
       final TSStatus status =
           new TreeDeviceViewFieldDetector(env.getConfigManager(), table, fields2Detect)
