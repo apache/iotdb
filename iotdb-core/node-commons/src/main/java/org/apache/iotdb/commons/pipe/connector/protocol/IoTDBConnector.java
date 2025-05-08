@@ -361,9 +361,11 @@ public abstract class IoTDBConnector implements PipeConnector {
       attributeSortedString =
           ((PipeTaskConnectorRuntimeEnvironment) environment).getAttributeSortedString();
     }
+
     nodeUrls.clear();
     nodeUrls.addAll(parseNodeUrls(parameters));
     LOGGER.info("IoTDBConnector nodeUrls: {}", nodeUrls);
+
     isTabletBatchModeEnabled =
         parameters.getBooleanOrDefault(
                 Arrays.asList(
@@ -510,6 +512,7 @@ public abstract class IoTDBConnector implements PipeConnector {
   }
 
   public TPipeTransferReq compressIfNeeded(TPipeTransferReq req) throws IOException {
+    // Explanation for +3: version 1 byte, type 2 bytes
     totalUncompressedSize.addAndGet(req.body.array().length + 3);
     if (isRpcCompressionEnabled) {
       final long time = System.nanoTime();
@@ -518,6 +521,7 @@ public abstract class IoTDBConnector implements PipeConnector {
         compressionTimer.updateNanos(System.nanoTime() - time);
       }
     }
+    // Explanation for +3: version 1 byte, type 2 bytes
     totalCompressedSize.addAndGet(req.body.array().length + 3);
     return req;
   }
