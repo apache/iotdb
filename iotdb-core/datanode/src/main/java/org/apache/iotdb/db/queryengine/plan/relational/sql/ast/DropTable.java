@@ -31,18 +31,17 @@ public class DropTable extends Statement {
 
   private final QualifiedName tableName;
   private final boolean exists;
-
-  public DropTable(final QualifiedName tableName, final boolean exists) {
-    super(null);
-    this.tableName = requireNonNull(tableName, "tableName is null");
-    this.exists = exists;
-  }
+  private final boolean isView;
 
   public DropTable(
-      final NodeLocation location, final QualifiedName tableName, final boolean exists) {
+      final NodeLocation location,
+      final QualifiedName tableName,
+      final boolean exists,
+      final boolean isView) {
     super(requireNonNull(location, "location is null"));
     this.tableName = requireNonNull(tableName, "tableName is null");
     this.exists = exists;
+    this.isView = isView;
   }
 
   public QualifiedName getTableName() {
@@ -51,6 +50,10 @@ public class DropTable extends Statement {
 
   public boolean isExists() {
     return exists;
+  }
+
+  public boolean isView() {
+    return isView;
   }
 
   @Override

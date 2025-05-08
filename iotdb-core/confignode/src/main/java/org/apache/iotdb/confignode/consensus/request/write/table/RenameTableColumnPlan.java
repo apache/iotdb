@@ -32,13 +32,22 @@ public class RenameTableColumnPlan extends AbstractTablePlan {
   private String oldName;
   private String newName;
 
-  public RenameTableColumnPlan() {
-    super(ConfigPhysicalPlanType.RenameTableColumn);
+  public RenameTableColumnPlan(final ConfigPhysicalPlanType type) {
+    super(type);
   }
 
   public RenameTableColumnPlan(
       final String database, final String tableName, final String oldName, final String newName) {
-    super(ConfigPhysicalPlanType.RenameTableColumn, database, tableName);
+    this(ConfigPhysicalPlanType.RenameTableColumn, database, tableName, oldName, newName);
+  }
+
+  protected RenameTableColumnPlan(
+      final ConfigPhysicalPlanType type,
+      final String database,
+      final String tableName,
+      final String oldName,
+      final String newName) {
+    super(type, database, tableName);
     this.oldName = oldName;
     this.newName = newName;
   }

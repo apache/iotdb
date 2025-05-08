@@ -31,19 +31,19 @@ import java.nio.ByteBuffer;
 import java.util.Objects;
 
 /**
- * {@link IdFilter} and {@link AttributeFilter} share the same values filter for query logic on
- * their values. {@link IdFilter} and {@link AttributeFilter} just indicates that how to get the
+ * {@link TagFilter} and {@link AttributeFilter} share the same values filter for query logic on
+ * their values. {@link TagFilter} and {@link AttributeFilter} just indicates that how to get the
  * id/attribute value from the device entry.
  */
-public class IdFilter extends AbstractSingleChildFilter {
+public class TagFilter extends AbstractSingleChildFilter {
   private final int index;
 
-  public IdFilter(final SchemaFilter child, final int index) {
+  public TagFilter(final SchemaFilter child, final int index) {
     super(child);
     this.index = index;
   }
 
-  public IdFilter(final ByteBuffer byteBuffer) {
+  public TagFilter(final ByteBuffer byteBuffer) {
     super(byteBuffer);
     index = ReadWriteIOUtils.readInt(byteBuffer);
   }
@@ -54,12 +54,12 @@ public class IdFilter extends AbstractSingleChildFilter {
 
   @Override
   public <C> Boolean accept(final SchemaFilterVisitor<C> visitor, final C node) {
-    return visitor.visitIdFilter(this, node);
+    return visitor.visitTagFilter(this, node);
   }
 
   @Override
   public SchemaFilterType getSchemaFilterType() {
-    return SchemaFilterType.ID;
+    return SchemaFilterType.TAG;
   }
 
   @Override
@@ -82,7 +82,7 @@ public class IdFilter extends AbstractSingleChildFilter {
     if (o == null || getClass() != o.getClass()) {
       return false;
     }
-    final IdFilter that = (IdFilter) o;
+    final TagFilter that = (TagFilter) o;
     return super.equals(o) && Objects.equals(index, that.index);
   }
 
