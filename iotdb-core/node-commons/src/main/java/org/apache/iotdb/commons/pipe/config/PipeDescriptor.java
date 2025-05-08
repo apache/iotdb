@@ -437,7 +437,7 @@ public class PipeDescriptor {
                 "pipe_flush_after_last_terminate_seconds",
                 String.valueOf(config.getPipeFlushAfterLastTerminateSeconds()))));
     config.setPipeFlushAfterTerminateCount(
-        Integer.parseInt(
+        Long.parseLong(
             properties.getProperty(
                 "pipe_flush_after_terminate_count",
                 String.valueOf(config.getPipeFlushAfterTerminateCount()))));
