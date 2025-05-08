@@ -764,8 +764,6 @@ public class IoTDBTableIT {
       statement.execute("create timeSeries root.a.b.c.s1 int32");
       statement.execute("create timeSeries root.a.b.c.s2 string");
       statement.execute("create timeSeries root.a.b.s1 int32");
-      statement.execute("create timeSeries root.a.b.d.s1 boolean");
-      statement.execute("create timeSeries root.a.b.c.f.g.h.s1 int32");
 
       // Put schema cache
       statement.execute("select s1, s2 from root.a.b.c");
@@ -778,6 +776,23 @@ public class IoTDBTableIT {
         final Statement statement = connection.createStatement()) {
       statement.execute("create database tree_view_db");
       statement.execute("use tree_view_db");
+      statement.execute("create table view tree_table (tag1 tag, tag2 tag) as root.a.**");
+    }
+
+    try (final Connection connection = EnvFactory.getEnv().getConnection();
+        final Statement statement = connection.createStatement()) {
+      statement.execute("create timeSeries root.a.b.d.s1 boolean");
+      statement.execute("create timeSeries root.a.b.c.f.g.h.s1 int32");
+
+      // Put schema cache
+      statement.execute("select s1, s2 from root.a.b.c");
+    } catch (SQLException e) {
+      fail(e.getMessage());
+    }
+
+    try (final Connection connection =
+            EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        final Statement statement = connection.createStatement()) {
 
       try {
         statement.execute("create table view tree_table (tag1 tag, tag2 tag) as root.a.**");
