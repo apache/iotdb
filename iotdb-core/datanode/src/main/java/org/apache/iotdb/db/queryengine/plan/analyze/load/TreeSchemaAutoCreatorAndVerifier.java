@@ -52,6 +52,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.Statement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.DatabaseSchemaStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowDatabaseStatement;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.ITimeIndex;
 import org.apache.iotdb.db.utils.constant.SqlConstant;
 import org.apache.iotdb.rpc.TSStatusCode;
 
@@ -100,6 +101,10 @@ public class TreeSchemaAutoCreatorAndVerifier {
   public void setCurrentModificationsAndTimeIndex(
       TsFileResource resource, TsFileSequenceReader reader) throws IOException {
     schemaCache.setCurrentModificationsAndTimeIndex(resource, reader);
+  }
+
+  public void setCurrentTimeIndex(final ITimeIndex timeIndex) {
+    schemaCache.setCurrentTimeIndex(timeIndex);
   }
 
   public void autoCreateAndVerify(
