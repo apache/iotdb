@@ -173,7 +173,7 @@ public class MQTTExtractor implements PipeExtractor {
             String.valueOf(
                 PipeExtractorConstant.MQTT_IMMEDIATE_BUFFER_FLUSH_PROPERTY_NAME_DEFAULT_VALUE)));
     properties.setProperty(
-        BrokerConstants.ALLOW_ZERO_BYTE_CLIENT_ID_PROPERTY_NAME,
+        BrokerConstants.ALLOW_ANONYMOUS_PROPERTY_NAME,
         pipeParameters.getStringOrDefault(
             PipeExtractorConstant.MQTT_ALLOW_ANONYMOUS_PROPERTY_NAME_KEY,
             String.valueOf(
