@@ -516,7 +516,7 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
 
       if (!tsFileResource.resourceFileExists()) {
         TsFileResourceUtils.updateTsFileResource(device2TimeseriesMetadata, tsFileResource);
-        getOrCreateTableSchemaCache().setCurrentTimeIndex(tsFileResource.getTimeIndex());
+        getOrCreateTreeSchemaVerifier().setCurrentTimeIndex(tsFileResource.getTimeIndex());
       }
 
       if (isAutoCreateSchemaOrVerifySchemaEnabled) {
