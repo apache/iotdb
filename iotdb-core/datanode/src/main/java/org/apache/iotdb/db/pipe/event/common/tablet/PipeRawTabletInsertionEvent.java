@@ -231,6 +231,11 @@ public class PipeRawTabletInsertionEvent extends EnrichedEvent
     this.needToReport = true;
   }
 
+  // This getter is reserved for user-defined plugins
+  public boolean isNeedToReport() {
+    return needToReport;
+  }
+
   public String getDeviceId() {
     // NonNull indicates that the internallyDecreaseResourceReferenceCount has not been called.
     return Objects.nonNull(tablet) ? tablet.deviceId : deviceId;

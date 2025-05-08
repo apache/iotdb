@@ -44,6 +44,8 @@ import org.apache.iotdb.pipe.api.exception.PipeException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.Objects;
+
 public class PipeConnectorSubtask extends PipeAbstractConnectorSubtask {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(PipeConnectorSubtask.class);
@@ -102,11 +104,12 @@ public class PipeConnectorSubtask extends PipeAbstractConnectorSubtask {
     }
 
     try {
-      if (event == null) {
-        if (System.currentTimeMillis() - lastHeartbeatEventInjectTime
-            > CRON_HEARTBEAT_EVENT_INJECT_INTERVAL_MILLISECONDS) {
-          transferHeartbeatEvent(CRON_HEARTBEAT_EVENT);
-        }
+      if (System.currentTimeMillis() - lastHeartbeatEventInjectTime
+          > CRON_HEARTBEAT_EVENT_INJECT_INTERVAL_MILLISECONDS) {
+        transferHeartbeatEvent(CRON_HEARTBEAT_EVENT);
+      }
+
+      if (Objects.isNull(event)) {
         return false;
       }
 
