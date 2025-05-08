@@ -78,11 +78,11 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.TypeParameter;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.WhenClause;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Window;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.WindowFrame;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.WindowReference;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.WindowSpecification;
 
 import com.google.common.base.Joiner;
 import com.google.common.collect.ImmutableList;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.WindowReference;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.WindowSpecification;
 
 import java.text.DecimalFormat;
 import java.text.DecimalFormatSymbols;

@@ -82,12 +82,11 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TableFunctio
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TreeDeviceViewScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ValueFillNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.WindowNode;
+import org.apache.iotdb.db.queryengine.plan.relational.utils.DataOrganizationSpecification;
 
 import com.google.common.base.Joiner;
 import org.apache.commons.lang3.Validate;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.node.WindowNode;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Trim;
-import org.apache.iotdb.db.queryengine.plan.relational.utils.DataOrganizationSpecification;
 import org.apache.tsfile.utils.Pair;
 import org.eclipse.jetty.util.StringUtil;
 
@@ -1061,10 +1060,11 @@ public class PlanGraphPrinter extends PlanVisitor<List<String>, PlanGraphPrinter
 
     DataOrganizationSpecification specification = node.getSpecification();
     if (!specification.getPartitionBy().isEmpty()) {
-      boxValue.add(
-          "Partition by: [" + Joiner.on(", ").join(specification.getPartitionBy()) + "]");
+      boxValue.add("Partition by: [" + Joiner.on(", ").join(specification.getPartitionBy()) + "]");
     }
-    specification.getOrderingScheme().ifPresent(orderingScheme -> boxValue.add("Order by: " + orderingScheme));
+    specification
+        .getOrderingScheme()
+        .ifPresent(orderingScheme -> boxValue.add("Order by: " + orderingScheme));
 
     return render(node, boxValue, context);
   }
