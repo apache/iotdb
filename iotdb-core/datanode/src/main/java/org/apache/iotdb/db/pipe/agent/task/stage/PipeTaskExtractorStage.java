@@ -40,6 +40,8 @@ public class PipeTaskExtractorStage extends PipeTaskStage {
   private static final Logger LOGGER = LoggerFactory.getLogger(PipeTaskExtractorStage.class);
 
   private final PipeExtractor pipeExtractor;
+  private final long creationTime;
+  private final int regionId;
 
   public PipeTaskExtractorStage(
       String pipeName,
@@ -51,6 +53,8 @@ public class PipeTaskExtractorStage extends PipeTaskStage {
         StorageEngine.getInstance().getAllDataRegionIds().contains(new DataRegionId(regionId))
             ? PipeDataNodeAgent.plugin().dataRegion().reflectExtractor(extractorParameters)
             : PipeDataNodeAgent.plugin().schemaRegion().reflectExtractor(extractorParameters);
+    this.creationTime = creationTime;
+    this.regionId = regionId;
 
     // Validate and customize should be called before createSubtask. this allows extractor exposing
     // exceptions in advance.

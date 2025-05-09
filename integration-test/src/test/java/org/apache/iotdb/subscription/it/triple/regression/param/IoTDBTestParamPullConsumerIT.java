@@ -481,15 +481,16 @@ public class IoTDBTestParamPullConsumerIT extends AbstractSubscriptionRegression
           break;
         }
         for (final SubscriptionMessage message : messages) {
-          TsFileReader reader = message.getTsFileHandler().openReader();
-          QueryDataSet dataset =
-              reader.query(
-                  QueryExpression.create(
-                      Collections.singletonList(new Path(device, "s_0", true)), null));
-          while (dataset.hasNext()) {
-            rowCount.addAndGet(1);
-            RowRecord next = dataset.next();
-            System.out.println(device + ":" + next.getTimestamp() + "," + next.getFields());
+          try (final TsFileReader reader = message.getTsFileHandler().openReader()) {
+            QueryDataSet dataset =
+                reader.query(
+                    QueryExpression.create(
+                        Collections.singletonList(new Path(device, "s_0", true)), null));
+            while (dataset.hasNext()) {
+              rowCount.addAndGet(1);
+              RowRecord next = dataset.next();
+              System.out.println(device + ":" + next.getTimestamp() + "," + next.getFields());
+            }
           }
         }
         consumer1.commitSync(messages);
@@ -526,15 +527,16 @@ public class IoTDBTestParamPullConsumerIT extends AbstractSubscriptionRegression
           break;
         }
         for (final SubscriptionMessage message : messages) {
-          TsFileReader reader = message.getTsFileHandler().openReader();
-          QueryDataSet dataset =
-              reader.query(
-                  QueryExpression.create(
-                      Collections.singletonList(new Path(device, "s_0", true)), null));
-          while (dataset.hasNext()) {
-            rowCount.addAndGet(1);
-            RowRecord next = dataset.next();
-            System.out.println(device + ":" + next.getTimestamp() + "," + next.getFields());
+          try (final TsFileReader reader = message.getTsFileHandler().openReader()) {
+            QueryDataSet dataset =
+                reader.query(
+                    QueryExpression.create(
+                        Collections.singletonList(new Path(device, "s_0", true)), null));
+            while (dataset.hasNext()) {
+              rowCount.addAndGet(1);
+              RowRecord next = dataset.next();
+              System.out.println(device + ":" + next.getTimestamp() + "," + next.getFields());
+            }
           }
         }
         consumer1.commitSync(messages);

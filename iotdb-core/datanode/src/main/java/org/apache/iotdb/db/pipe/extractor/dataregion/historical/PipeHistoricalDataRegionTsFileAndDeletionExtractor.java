@@ -846,7 +846,9 @@ public class PipeHistoricalDataRegionTsFileAndDeletionExtractor
             tablePattern,
             userName,
             skipIfNoPrivileges,
-            false);
+            false,
+            null,
+            0);
 
     if (sloppyPattern || isDbNameCoveredByPattern) {
       event.skipParsingPattern();

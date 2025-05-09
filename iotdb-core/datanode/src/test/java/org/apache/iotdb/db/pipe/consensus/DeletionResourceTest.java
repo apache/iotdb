@@ -210,7 +210,7 @@ public class DeletionResourceTest {
           new RecoverProgressIndex(THIS_DATANODE_ID, new SimpleProgressIndex(rebootTimes, i)));
       final PipeDeleteDataNodeEvent deletionEvent =
           new PipeDeleteDataNodeEvent(
-              deleteDataNode, "Test", 10, null, null, null, null, true, true);
+              deleteDataNode, "Test", 10, null, null, null, null, true, true, null, 0);
       deletionEvent.setCommitterKeyAndCommitId(
           new CommitterKey("Test", 10, Integer.parseInt(FAKE_DATA_REGION_IDS[3]), 0), i + 1);
       deletionEvents.add(deletionEvent);

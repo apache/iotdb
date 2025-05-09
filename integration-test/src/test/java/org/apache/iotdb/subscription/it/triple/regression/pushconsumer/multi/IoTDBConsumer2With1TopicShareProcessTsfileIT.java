@@ -148,8 +148,7 @@ public class IoTDBConsumer2With1TopicShareProcessTsfileIT extends AbstractSubscr
             .fileSaveDir("target/push-subscription")
             .consumeListener(
                 message -> {
-                  try {
-                    TsFileReader reader = message.getTsFileHandler().openReader();
+                  try (final TsFileReader reader = message.getTsFileHandler().openReader()) {
                     List<Path> paths = new ArrayList<>(2);
                     for (int i = 0; i < 2; i++) {
                       paths.add(new Path(device, "s_" + i, true));
@@ -179,8 +178,7 @@ public class IoTDBConsumer2With1TopicShareProcessTsfileIT extends AbstractSubscr
             .fileSaveDir("target/push-subscription")
             .consumeListener(
                 message -> {
-                  try {
-                    TsFileReader reader = message.getTsFileHandler().openReader();
+                  try (final TsFileReader reader = message.getTsFileHandler().openReader()) {
                     List<Path> paths = new ArrayList<>(2);
                     for (int i = 0; i < 2; i++) {
                       paths.add(new Path(device, "s_" + i, true));

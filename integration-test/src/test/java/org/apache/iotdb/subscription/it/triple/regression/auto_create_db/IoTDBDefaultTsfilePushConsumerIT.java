@@ -145,8 +145,7 @@ public class IoTDBDefaultTsfilePushConsumerIT extends AbstractSubscriptionRegres
                   onReceiveCount.incrementAndGet();
                   System.out.println(
                       FORMAT.format(new Date()) + " ######## onReceived: " + onReceiveCount.get());
-                  try {
-                    TsFileReader reader = message.getTsFileHandler().openReader();
+                  try (final TsFileReader reader = message.getTsFileHandler().openReader()) {
                     for (int i = 0; i < deviceCount; i++) {
                       QueryDataSet dataset =
                           reader.query(

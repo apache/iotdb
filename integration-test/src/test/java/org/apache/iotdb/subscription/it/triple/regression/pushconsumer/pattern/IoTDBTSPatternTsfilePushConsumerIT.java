@@ -163,8 +163,7 @@ public class IoTDBTSPatternTsfilePushConsumerIT extends AbstractSubscriptionRegr
                 message -> {
                   onReceiveCount.incrementAndGet();
                   System.out.println("onReceiveCount=" + onReceiveCount.get());
-                  try {
-                    TsFileReader reader = message.getTsFileHandler().openReader();
+                  try (final TsFileReader reader = message.getTsFileHandler().openReader()) {
                     Path path_d0s0 = new Path(device, "s_0", true);
                     Path path_d0s1 = new Path(device, "s_1", true);
                     Path path_d1s0 = new Path(database + ".d_1", "s_0", true);

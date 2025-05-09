@@ -139,7 +139,7 @@ schema_replication_factor=1
 # These consensus protocols are currently supported:
 # 1. org.apache.iotdb.consensus.ratis.RatisConsensus
 # 2. org.apache.iotdb.consensus.simple.SimpleConsensus   (The schema_replication_factor can only be set to 1)
-# effectiveMode: first_restart
+# effectiveMode: first_start
 # Datatype: string
 schema_region_consensus_protocol_class=org.apache.iotdb.consensus.ratis.RatisConsensus
 

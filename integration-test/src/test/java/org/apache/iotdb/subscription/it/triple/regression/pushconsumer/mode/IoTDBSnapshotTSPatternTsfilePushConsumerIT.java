@@ -182,8 +182,7 @@ public class IoTDBSnapshotTSPatternTsfilePushConsumerIT extends AbstractSubscrip
                 message -> {
                   onReceiveCount.incrementAndGet();
                   System.out.println("onReceiveCount=" + onReceiveCount.get());
-                  try {
-                    TsFileReader reader = message.getTsFileHandler().openReader();
+                  try (final TsFileReader reader = message.getTsFileHandler().openReader()) {
                     for (int i = 0; i < 4; i++) {
                       QueryDataSet dataset =
                           reader.query(
