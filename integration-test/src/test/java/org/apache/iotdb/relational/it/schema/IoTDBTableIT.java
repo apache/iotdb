@@ -51,6 +51,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 import static org.apache.iotdb.commons.schema.column.ColumnHeaderConstant.describeTableColumnHeaders;
 import static org.apache.iotdb.commons.schema.column.ColumnHeaderConstant.describeTableDetailsColumnHeaders;
@@ -761,12 +762,9 @@ public class IoTDBTableIT {
     try (final Connection connection = EnvFactory.getEnv().getConnection();
         final Statement statement = connection.createStatement()) {
       statement.execute("create database root.a.b");
-      statement.execute("create timeSeries root.a.b.c.s1 int32");
+      statement.execute("create timeSeries root.a.b.c.S1 int32");
       statement.execute("create timeSeries root.a.b.c.s2 string");
-      statement.execute("create timeSeries root.a.b.s1 int32");
-
-      // Put schema cache
-      statement.execute("select s1, s2 from root.a.b.c");
+      statement.execute("create timeSeries root.a.b.S1 int32");
     } catch (SQLException e) {
       fail(e.getMessage());
     }
@@ -782,11 +780,37 @@ public class IoTDBTableIT {
 
     try (final Connection connection = EnvFactory.getEnv().getConnection();
         final Statement statement = connection.createStatement()) {
-      statement.execute("create timeSeries root.a.b.d.s1 boolean");
-      statement.execute("create timeSeries root.a.b.c.f.g.h.s1 int32");
+      statement.execute("create timeSeries root.a.b.d.s1 int32");
+    } catch (SQLException e) {
+      fail(e.getMessage());
+    }
+
+    try (final Connection connection =
+            EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        final Statement statement = connection.createStatement()) {
+      statement.execute("use tree_view_db");
+
+      try {
+        statement.execute("create table view tree_table (tag1 tag, tag2 tag) as root.a.**");
+        fail();
+      } catch (final SQLException e) {
+        final Set<String> result =
+            new HashSet<>(
+                Arrays.asList(
+                    "617: The measurements s1 and S1 share the same lower case when auto detecting type, please check",
+                    "617: The measurements S1 and s1 share the same lower case when auto detecting type, please check"));
+        assertTrue(result.contains(e.getMessage()));
+      }
+    }
+
+    try (final Connection connection = EnvFactory.getEnv().getConnection();
+        final Statement statement = connection.createStatement()) {
+      statement.execute("drop timeSeries root.a.b.d.s1");
+      statement.execute("create timeSeries root.a.b.d.S1 boolean");
+      statement.execute("create timeSeries root.a.b.c.f.g.h.S1 int32");
 
       // Put schema cache
-      statement.execute("select s1, s2 from root.a.b.c");
+      statement.execute("select S1, s2 from root.a.b.c");
     } catch (SQLException e) {
       fail(e.getMessage());
     }
@@ -801,24 +825,35 @@ public class IoTDBTableIT {
         fail();
       } catch (final SQLException e) {
         assertEquals(
-            "614: Multiple types encountered when auto detecting type of measurement 's1', please check",
+            "614: Multiple types encountered when auto detecting type of measurement 'S1', please check",
             e.getMessage());
       }
 
       try {
         statement.execute(
-            "create table view tree_table (tag1 tag, tag2 tag, s1 field) as root.a.**");
+            "create table view tree_table (tag1 tag, tag2 tag, S1 field) as root.a.**");
         fail();
       } catch (final SQLException e) {
         assertEquals(
-            "614: Multiple types encountered when auto detecting type of measurement 's1', please check",
+            "614: Multiple types encountered when auto detecting type of measurement 'S1', please check",
             e.getMessage());
       }
+    }
 
+    try (final Connection connection = EnvFactory.getEnv().getConnection();
+        final Statement statement = connection.createStatement()) {
+      statement.execute("create timeSeries root.a.b.e.s1 int32");
+    } catch (SQLException e) {
+      fail(e.getMessage());
+    }
+
+    try (final Connection connection =
+            EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        final Statement statement = connection.createStatement()) {
       statement.execute(
-          "create or replace table view tree_table (tag1 tag, tag2 tag, s1 int32 field, s3 from s2) as root.a.**");
+          "create or replace table view tree_table (tag1 tag, tag2 tag, S1 int32 field, s3 from s2) as root.a.**");
       statement.execute("alter view tree_table rename to view_table");
-      statement.execute("alter view view_table rename column s1 to s11");
+      statement.execute("alter view view_table rename column S1 to s11");
       statement.execute("alter view view_table set properties ttl=100");
       statement.execute("comment on view view_table is 'comment'");
 

@@ -258,7 +258,7 @@ public class TreeDeviceViewFieldDetector {
                           TSStatusCode.DATA_TYPE_MISMATCH,
                           String.format(
                               "Multiple types encountered when auto detecting type of measurement '%s', please check",
-                              fieldName)));
+                              measurement)));
                 }
 
                 // Field name detection
