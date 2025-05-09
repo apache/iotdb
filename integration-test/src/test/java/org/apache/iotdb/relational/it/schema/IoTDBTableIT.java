@@ -850,6 +850,8 @@ public class IoTDBTableIT {
     try (final Connection connection =
             EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
         final Statement statement = connection.createStatement()) {
+      statement.execute("use tree_view_db");
+
       // Temporary
       try {
         statement.execute(
