@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational;
 
+import org.apache.iotdb.db.protocol.session.IClientSession;
 import org.apache.iotdb.db.queryengine.plan.execution.config.ConfigTaskResult;
 import org.apache.iotdb.db.queryengine.plan.execution.config.IConfigTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.executor.IConfigTaskExecutor;
@@ -29,14 +30,16 @@ import com.google.common.util.concurrent.ListenableFuture;
 public class DropDBTask implements IConfigTask {
 
   private final DropDB node;
+  private final IClientSession session;
 
-  public DropDBTask(final DropDB node) {
+  public DropDBTask(final DropDB node, final IClientSession session) {
     this.node = node;
+    this.session = session;
   }
 
   @Override
   public ListenableFuture<ConfigTaskResult> execute(final IConfigTaskExecutor configTaskExecutor)
       throws InterruptedException {
-    return configTaskExecutor.dropDatabase(node);
+    return configTaskExecutor.dropDatabase(node, session);
   }
 }

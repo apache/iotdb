@@ -573,8 +573,6 @@ public abstract class AbstractCli {
       statement.setFetchSize(fetchSize);
       boolean hasResultSet = statement.execute(cmd.trim());
       long costTime = System.currentTimeMillis() - startTime;
-      updateSqlDialectAndUsingDatabase(
-          connection.getParams().getSqlDialect(), connection.getParams().getDb().orElse(null));
       if (hasResultSet) {
         // print the result
         try (ResultSet resultSet = statement.getResultSet()) {
@@ -632,6 +630,8 @@ public abstract class AbstractCli {
       ctx.getPrinter().println("Msg: " + e);
       executeStatus = CODE_ERROR;
     } finally {
+      updateSqlDialectAndUsingDatabase(
+          connection.getParams().getSqlDialect(), connection.getParams().getDb().orElse(null));
       resetArgs();
     }
     return executeStatus;
