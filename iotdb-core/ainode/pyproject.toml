@@ -61,6 +61,8 @@ pmdarima = "^2.0.4"
 hmmlearn = "^0.3.0"
 apache-iotdb = "2.0.4.dev0"
 einops = "^0.8.1"
+safetensors = "^0.5.1"
+huggingface_hub = "^0.30.1"
 
 [tool.poetry.scripts]
 ainode = "ainode.core.script:main"
