@@ -101,8 +101,12 @@ class InferenceManager:
                 logger.info(f"start inference built-in model {model_id}")
                 # parse the inference attributes and create the built-in model
                 model = _get_built_in_model(model_id, model_manager, inference_attributes)
-                inference_results = [_inference_with_built_in_model(
-                    model, full_data)]
+                if model_id == '_timerxl':
+                    inference_results = [_inference_with_timerxl(
+                        model, full_data, inference_attributes.get("predict_length", 96))]
+                else:
+                    inference_results = [_inference_with_built_in_model(
+                        model, full_data)]
             else:
                 # user-registered models
                 model = _get_model(model_id, model_manager, inference_attributes)
@@ -197,6 +201,31 @@ def _inference_with_built_in_model(model, full_data):
 
     data, _, _, _ = full_data
     output = model.inference(data)
+    # output: DataFrame, shape: (H', C')
+    output = pd.DataFrame(output)
+    return output
+
+def _inference_with_timerxl(model, full_data, pred_len):
+    """
+    Args:
+        model: the built-in model
+        full_data: a tuple of (data, time_stamp, type_list, column_name_list), where the data is a DataFrame with shape
+            (L, C), time_stamp is a DataFrame with shape(L, 1), type_list is a list of data types with length C,
+            column_name_list is a list of column names with length C, where L is the number of data points, C is the
+            number of variables, the data and time_stamp are aligned by index
+    Returns:
+        outputs: a list of output DataFrames, where each DataFrame has shape (H', C'), where H' is the output window
+            interval, C' is the number of variables in the output DataFrame
+    Description:
+        the inference_with_built_in_model function will inference with built-in model, which does not
+        require user registration. This module will parse the inference attributes and create the built-in model, then
+        feed the input data into the model to get the output, the output is a DataFrame with shape (H', C'), where H'
+        is the output window interval, C' is the number of variables in the output DataFrame. Then the inference module
+        will concatenate all the output DataFrames into a list.
+    """
+
+    data, _, _, _ = full_data
+    output = model.inference(data, pred_len)
     # output: DataFrame, shape: (H', C')
     output = pd.DataFrame(output)
     return output
