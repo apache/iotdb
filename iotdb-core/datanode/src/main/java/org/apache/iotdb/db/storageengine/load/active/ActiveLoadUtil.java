@@ -152,25 +152,30 @@ public class ActiveLoadUtil {
   public static ILoadDiskSelector updateLoadDiskSelector() {
     final String[] dirs = IoTDBDescriptor.getInstance().getConfig().getLoadActiveListeningDirs();
     FolderManager folderManager = null;
+    DiskSpaceInsufficientException exception = null;
 
     try {
       folderManager =
           new FolderManager(Arrays.asList(dirs), DirectoryStrategyType.SEQUENCE_STRATEGY);
-    } catch (Exception e) {
+    } catch (DiskSpaceInsufficientException e) {
       // It should be noted that if this exception is not ignored, the entire process may fail to
       // start.
+      exception = e;
       LOGGER.warn("Failed to load active listening dirs", e);
     }
 
     final FolderManager finalFolderManager = folderManager;
+    final DiskSpaceInsufficientException finalException = exception;
     ILoadDiskSelector loadDiskSelector =
         ILoadDiskSelector.initDiskSelector(
             IoTDBDescriptor.getInstance().getConfig().getLoadDiskSelectStrategy(),
             dirs,
-            (sourceDir, fileName, tierLevel) ->
-                finalFolderManager != null
-                    ? new File(finalFolderManager.getNextFolder())
-                    : new File(dirs[0]));
+            (sourceDir, fileName, tierLevel) -> {
+              if (finalException != null) {
+                throw finalException;
+              }
+              return new File(finalFolderManager.getNextFolder());
+            });
 
     ActiveLoadUtil.loadDiskSelector = loadDiskSelector;
     return loadDiskSelector;
