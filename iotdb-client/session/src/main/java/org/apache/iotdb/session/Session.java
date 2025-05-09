@@ -56,6 +56,7 @@ import org.apache.iotdb.service.rpc.thrift.TSQueryTemplateReq;
 import org.apache.iotdb.service.rpc.thrift.TSQueryTemplateResp;
 import org.apache.iotdb.service.rpc.thrift.TSSetSchemaTemplateReq;
 import org.apache.iotdb.service.rpc.thrift.TSUnsetSchemaTemplateReq;
+import org.apache.iotdb.session.compress.RpcEncoder;
 import org.apache.iotdb.session.template.MeasurementNode;
 import org.apache.iotdb.session.template.TemplateQueryType;
 import org.apache.iotdb.session.util.SessionUtils;
@@ -217,6 +218,9 @@ public class Session implements ISession {
 
   protected static final String TABLE = "table";
   protected static final String TREE = "tree";
+
+  private CompressionType compressionType;
+  public Map<TSDataType, TSEncoding> columnEncodersMap;
 
   public Session(String host, int rpcPort) {
     this(
@@ -449,6 +453,9 @@ public class Session implements ISession {
       this.defaultEndPoint = new TEndPoint(builder.host, builder.rpcPort);
       this.enableQueryRedirection = builder.enableRedirection;
     }
+    this.enableRPCCompression = builder.isCompressed;
+    this.compressionType = builder.compressionType;
+    this.columnEncodersMap = builder.columnEncodersMap;
     this.enableRedirection = builder.enableRedirection;
     this.enableRecordsAutoConvertTablet = builder.enableRecordsAutoConvertTablet;
     this.username = builder.username;
@@ -2976,9 +2983,17 @@ public class Session implements ISession {
 
     request.setPrefixPath(tablet.getDeviceId());
     request.setIsAligned(isAligned);
-    request.setTimestamps(SessionUtils.getTimeBuffer(tablet));
-    request.setValues(SessionUtils.getValueBuffer(tablet));
-    request.setSize(tablet.getRowSize());
+    // 新增编码逻辑
+    if (this.enableRPCCompression) {
+      RpcEncoder rpcEncoder = new RpcEncoder(this.columnEncodersMap, this.compressionType);
+      request.setTimestamps(rpcEncoder.encodeTimestamps(tablet));
+      request.setValues(rpcEncoder.encodeValues(tablet));
+      request.setSize(tablet.getRowSize());
+    } else {
+      request.setTimestamps(SessionUtils.getTimeBuffer(tablet));
+      request.setValues(SessionUtils.getValueBuffer(tablet));
+      request.setSize(tablet.getRowSize());
+    }
     return request;
   }
 
