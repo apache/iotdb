@@ -42,7 +42,6 @@ import org.apache.iotdb.db.exception.load.LoadFileException;
 import org.apache.iotdb.db.exception.load.LoadReadOnlyException;
 import org.apache.iotdb.db.exception.load.RegionReplicaSetChangedException;
 import org.apache.iotdb.db.exception.mpp.FragmentInstanceDispatchException;
-import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.PlanFragmentId;
 import org.apache.iotdb.db.queryengine.execution.QueryStateMachine;
@@ -72,21 +71,17 @@ import org.apache.iotdb.db.storageengine.load.splitter.DeletionData;
 import org.apache.iotdb.db.storageengine.load.splitter.TsFileData;
 import org.apache.iotdb.db.storageengine.load.splitter.TsFileSplitter;
 import org.apache.iotdb.metrics.utils.MetricLevel;
-import org.apache.iotdb.mpp.rpc.thrift.TLoadCommandReq;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import io.airlift.units.Duration;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.file.metadata.StringArrayDeviceID;
 import org.apache.tsfile.utils.Pair;
-import org.apache.tsfile.utils.PublicBAOS;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.DataOutputStream;
 import java.io.File;
 import java.io.IOException;
-import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
@@ -402,23 +397,16 @@ public class LoadTsFileScheduler implements IScheduler {
       boolean isFirstPhaseSuccess, String uuid, TsFileResource tsFileResource) {
     LOGGER.info("Start dispatching Load command for uuid {}", uuid);
     final File tsFile = tsFileResource.getTsFile();
-    final TLoadCommandReq loadCommandReq =
-        new TLoadCommandReq(
-            (isFirstPhaseSuccess ? LoadCommand.EXECUTE : LoadCommand.ROLLBACK).ordinal(), uuid);
-
     try {
-      loadCommandReq.setIsGeneratedByPipe(isGeneratedByPipe);
-      loadCommandReq.setProgressIndex(assignProgressIndex(tsFileResource));
       Future<FragInstanceDispatchResult> dispatchResultFuture =
-          dispatcher.dispatchCommand(loadCommandReq, allReplicaSets);
+          dispatcher.dispatchCommand(allReplicaSets, isFirstPhaseSuccess, uuid, isGeneratedByPipe);
 
       FragInstanceDispatchResult result = dispatchResultFuture.get();
       if (!result.isSuccessful()) {
         // TODO: retry.
         LOGGER.warn(
-            "Dispatch load command {} of TsFile {} error to replicaSets {} error. "
+            "Dispatch load command of TsFile {} error to replicaSets {} error. "
                 + "Result status code {}. Result status message {}.",
-            loadCommandReq,
             tsFile,
             allReplicaSets,
             TSStatusCode.representOf(result.getFailureStatus().getCode()).name(),
@@ -450,16 +438,6 @@ public class LoadTsFileScheduler implements IScheduler {
       return false;
     }
     return true;
-  }
-
-  private ByteBuffer assignProgressIndex(TsFileResource tsFileResource) throws IOException {
-    PipeDataNodeAgent.runtime().assignProgressIndexForTsFileLoad(tsFileResource);
-
-    try (final PublicBAOS byteArrayOutputStream = new PublicBAOS();
-        final DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream)) {
-      tsFileResource.getMaxProgressIndex().serialize(dataOutputStream);
-      return ByteBuffer.wrap(byteArrayOutputStream.getBuf(), 0, byteArrayOutputStream.size());
-    }
   }
 
   private boolean loadLocally(LoadSingleTsFileNode node) throws IoTDBException {
