@@ -2602,15 +2602,20 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
   @Override
   public Operator visitAggregationTreeDeviceViewScan(
       AggregationTreeDeviceViewScanNode node, LocalExecutionPlanContext context) {
+    QualifiedObjectName qualifiedObjectName = node.getQualifiedObjectName();
+    TsTable tsTable =
+        DataNodeTableCache.getInstance()
+            .getTable(qualifiedObjectName.getDatabaseName(), qualifiedObjectName.getObjectName());
     IDeviceID.TreeDeviceIdColumnValueExtractor idColumnValueExtractor =
-        createTreeDeviceIdColumnValueExtractor(node.getTreeDBName());
+        createTreeDeviceIdColumnValueExtractor(DataNodeTreeViewSchemaUtils.getPrefixPath(tsTable));
 
     AbstractAggTableScanOperator.AbstractAggTableScanOperatorParameter parameter =
         constructAbstractAggTableScanOperatorParameter(
             node,
             context,
             TreeAlignedDeviceViewAggregationScanOperator.class.getSimpleName(),
-            node.getMeasurementColumnNameMap());
+            node.getMeasurementColumnNameMap(),
+            tsTable.getCachedTableTTL());
 
     TreeAlignedDeviceViewAggregationScanOperator treeAlignedDeviceViewAggregationScanOperator =
         new TreeAlignedDeviceViewAggregationScanOperator(parameter, idColumnValueExtractor);
@@ -2631,7 +2636,8 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
           AggregationTableScanNode node,
           LocalExecutionPlanContext context,
           String className,
-          Map<String, String> fieldColumnsRenameMap) {
+          Map<String, String> fieldColumnsRenameMap,
+          long tableViewTTL) {
 
     List<String> measurementColumnNames = new ArrayList<>();
     List<IMeasurementSchema> measurementSchemas = new ArrayList<>();
@@ -2791,6 +2797,7 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
             node.getPushDownOffset(),
             node.isPushLimitToEachDevice(),
             node.getPushDownPredicate());
+    seriesScanOptions.setTTLForTableView(tableViewTTL);
 
     Set<String> allSensors = new HashSet<>(measurementColumnNames);
     allSensors.add(""); // for time column
@@ -2822,7 +2829,11 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
       constructAbstractAggTableScanOperatorParameter(
           AggregationTableScanNode node, LocalExecutionPlanContext context) {
     return constructAbstractAggTableScanOperatorParameter(
-        node, context, AbstractAggTableScanOperator.class.getSimpleName(), Collections.emptyMap());
+        node,
+        context,
+        AbstractAggTableScanOperator.class.getSimpleName(),
+        Collections.emptyMap(),
+        Long.MAX_VALUE);
   }
 
   @Override

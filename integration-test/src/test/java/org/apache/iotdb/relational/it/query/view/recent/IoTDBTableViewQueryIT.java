@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.relational.it.query.recent;
+package org.apache.iotdb.relational.it.query.view.recent;
 
 import org.apache.iotdb.isession.ITableSession;
 import org.apache.iotdb.isession.SessionDataSet;
@@ -106,6 +106,7 @@ public class IoTDBTableViewQueryIT {
     "USE " + DATABASE_NAME,
     "CREATE TABLE VIEW view1 (battery TAG, voltage INT32 FIELD, current FLOAT FIELD) as root.db.battery.**",
     "CREATE TABLE VIEW view2 (battery TAG, voltage INT32 FIELD FROM voltage, current_rename FLOAT FIELD FROM current) as root.db.battery.**",
+    "CREATE TABLE VIEW view3 (battery TAG, voltage INT32 FIELD FROM voltage, current_rename FLOAT FIELD FROM current) as root.db.battery.** with (ttl=1)",
     "CREATE TABLE table1 (battery TAG, voltage INT32 FIELD, current FLOAT FIELD)",
     "INSERT INTO table1 (time, battery, voltage, current) values (1, 'b1', 1, 1)",
     "INSERT INTO table1 (time, battery, voltage, current) values (2, 'b1', 1, 1)",
@@ -335,6 +336,9 @@ public class IoTDBTableViewQueryIT {
           "select current from view1 where battery='b1' and current >= (select avg(current) from view1 where battery='b1')",
           "select current from table1 where battery='b1' and current >= (select avg(current) from table1 where battery='b1')",
           true);
+      // empty result
+      compareQueryResults(
+          session, "select * from view3 limit 1", "select * from table1 limit 0", true);
     }
   }
 

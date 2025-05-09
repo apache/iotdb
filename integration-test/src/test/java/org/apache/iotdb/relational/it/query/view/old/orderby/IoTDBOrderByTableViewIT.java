@@ -63,56 +63,56 @@ public class IoTDBOrderByTableViewIT {
       new String[] {
         "CREATE DATABASE root.sg",
         "CREATE TIMESERIES root.sg.d1.num WITH DATATYPE=INT32, ENCODING=RLE",
-        "CREATE TIMESERIES root.sg.d1.bigNum WITH DATATYPE=INT64, ENCODING=RLE",
-        "CREATE TIMESERIES root.sg.d1.floatNum WITH DATATYPE=DOUBLE, ENCODING=RLE, 'MAX_POINT_NUMBER'='5'",
+        "CREATE TIMESERIES root.sg.d1.bignum WITH DATATYPE=INT64, ENCODING=RLE",
+        "CREATE TIMESERIES root.sg.d1.floatnum WITH DATATYPE=DOUBLE, ENCODING=RLE, 'MAX_POINT_NUMBER'='5'",
         "CREATE TIMESERIES root.sg.d1.str WITH DATATYPE=TEXT, ENCODING=PLAIN",
         "CREATE TIMESERIES root.sg.d1.bool WITH DATATYPE=BOOLEAN, ENCODING=PLAIN",
-        "insert into root.sg.d1(timestamp,num,bigNum,floatNum,str,bool) values(0,3,2947483648,231.2121,\"coconut\",FALSE)",
-        "insert into root.sg.d1(timestamp,num,bigNum,floatNum,str,bool) values(20,2,2147483648,434.12,\"pineapple\",TRUE)",
-        "insert into root.sg.d1(timestamp,num,bigNum,floatNum,str,bool) values(40,1,2247483648,12.123,\"apricot\",TRUE)",
-        "insert into root.sg.d1(timestamp,num,bigNum,floatNum,str,bool) values(80,9,2147483646,43.12,\"apple\",FALSE)",
-        "insert into root.sg.d1(timestamp,num,bigNum,floatNum,str,bool) values(100,8,2147483964,4654.231,\"papaya\",TRUE)",
-        "insert into root.sg.d1(timestamp,num,bigNum,floatNum,str,bool) values(31536000000,6,2147483650,1231.21,\"banana\",TRUE)",
-        "insert into root.sg.d1(timestamp,num,bigNum,floatNum,str,bool) values(31536000100,10,3147483648,231.55,\"pumelo\",FALSE)",
-        "insert into root.sg.d1(timestamp,num,bigNum,floatNum,str,bool) values(31536000500,4,2147493648,213.1,\"peach\",FALSE)",
-        "insert into root.sg.d1(timestamp,num,bigNum,floatNum,str,bool) values(31536001000,5,2149783648,56.32,\"orange\",FALSE)",
-        "insert into root.sg.d1(timestamp,num,bigNum,floatNum,str,bool) values(31536010000,7,2147983648,213.112,\"lemon\",TRUE)",
-        "insert into root.sg.d1(timestamp,num,bigNum,floatNum,str,bool) values(31536100000,11,2147468648,54.121,\"pitaya\",FALSE)",
-        "insert into root.sg.d1(timestamp,num,bigNum,floatNum,str,bool) values(41536000000,12,2146483648,45.231,\"strawberry\",FALSE)",
-        "insert into root.sg.d1(timestamp,num,bigNum,floatNum,str,bool) values(41536000020,14,2907483648,231.34,\"cherry\",FALSE)",
-        "insert into root.sg.d1(timestamp,num,bigNum,floatNum,str,bool) values(41536900000,13,2107483648,54.12,\"lychee\",TRUE)",
-        "insert into root.sg.d1(timestamp,num,bigNum,floatNum,str,bool) values(51536000000,15,3147483648,235.213,\"watermelon\",TRUE)"
+        "insert into root.sg.d1(timestamp,num,bignum,floatnum,str,bool) values(0,3,2947483648,231.2121,\"coconut\",FALSE)",
+        "insert into root.sg.d1(timestamp,num,bignum,floatnum,str,bool) values(20,2,2147483648,434.12,\"pineapple\",TRUE)",
+        "insert into root.sg.d1(timestamp,num,bignum,floatnum,str,bool) values(40,1,2247483648,12.123,\"apricot\",TRUE)",
+        "insert into root.sg.d1(timestamp,num,bignum,floatnum,str,bool) values(80,9,2147483646,43.12,\"apple\",FALSE)",
+        "insert into root.sg.d1(timestamp,num,bignum,floatnum,str,bool) values(100,8,2147483964,4654.231,\"papaya\",TRUE)",
+        "insert into root.sg.d1(timestamp,num,bignum,floatnum,str,bool) values(31536000000,6,2147483650,1231.21,\"banana\",TRUE)",
+        "insert into root.sg.d1(timestamp,num,bignum,floatnum,str,bool) values(31536000100,10,3147483648,231.55,\"pumelo\",FALSE)",
+        "insert into root.sg.d1(timestamp,num,bignum,floatnum,str,bool) values(31536000500,4,2147493648,213.1,\"peach\",FALSE)",
+        "insert into root.sg.d1(timestamp,num,bignum,floatnum,str,bool) values(31536001000,5,2149783648,56.32,\"orange\",FALSE)",
+        "insert into root.sg.d1(timestamp,num,bignum,floatnum,str,bool) values(31536010000,7,2147983648,213.112,\"lemon\",TRUE)",
+        "insert into root.sg.d1(timestamp,num,bignum,floatnum,str,bool) values(31536100000,11,2147468648,54.121,\"pitaya\",FALSE)",
+        "insert into root.sg.d1(timestamp,num,bignum,floatnum,str,bool) values(41536000000,12,2146483648,45.231,\"strawberry\",FALSE)",
+        "insert into root.sg.d1(timestamp,num,bignum,floatnum,str,bool) values(41536000020,14,2907483648,231.34,\"cherry\",FALSE)",
+        "insert into root.sg.d1(timestamp,num,bignum,floatnum,str,bool) values(41536900000,13,2107483648,54.12,\"lychee\",TRUE)",
+        "insert into root.sg.d1(timestamp,num,bignum,floatnum,str,bool) values(51536000000,15,3147483648,235.213,\"watermelon\",TRUE)"
       };
 
   private static final String[] createTableViewSql = {
     "CREATE DATABASE db",
     "USE db",
-    "CREATE TABLE VIEW table0 (device string tag, num int32 field, bigNum int64 field, "
-        + "floatNum double field, str TEXT field, bool BOOLEAN field) as root.sg.**",
+    "CREATE TABLE VIEW table0 (device string tag, num int32 field, bignum int64 field, "
+        + "floatnum double field, str TEXT field, bool BOOLEAN field) as root.sg.**",
   };
 
   private static final String[] sql2 =
       new String[] {
         "CREATE TIMESERIES root.sg.d2.num WITH DATATYPE=INT32, ENCODING=RLE",
-        "CREATE TIMESERIES root.sg.d2.bigNum WITH DATATYPE=INT64, ENCODING=RLE",
-        "CREATE TIMESERIES root.sg.d2.floatNum WITH DATATYPE=DOUBLE, ENCODING=RLE, 'MAX_POINT_NUMBER'='5'",
+        "CREATE TIMESERIES root.sg.d2.bignum WITH DATATYPE=INT64, ENCODING=RLE",
+        "CREATE TIMESERIES root.sg.d2.floatnum WITH DATATYPE=DOUBLE, ENCODING=RLE, 'MAX_POINT_NUMBER'='5'",
         "CREATE TIMESERIES root.sg.d2.str WITH DATATYPE=TEXT, ENCODING=PLAIN",
         "CREATE TIMESERIES root.sg.d2.bool WITH DATATYPE=BOOLEAN, ENCODING=PLAIN",
-        "insert into root.sg.d2(timestamp,num,bigNum,floatNum,str,bool) values(0,3,2947483648,231.2121,\"coconut\",FALSE)",
-        "insert into root.sg.d2(timestamp,num,bigNum,floatNum,str,bool) values(20,2,2147483648,434.12,\"pineapple\",TRUE)",
-        "insert into root.sg.d2(timestamp,num,bigNum,floatNum,str,bool) values(40,1,2247483648,12.123,\"apricot\",TRUE)",
-        "insert into root.sg.d2(timestamp,num,bigNum,floatNum,str,bool) values(80,9,2147483646,43.12,\"apple\",FALSE)",
-        "insert into root.sg.d2(timestamp,num,bigNum,floatNum,str,bool) values(100,8,2147483964,4654.231,\"papaya\",TRUE)",
-        "insert into root.sg.d2(timestamp,num,bigNum,floatNum,str,bool) values(31536000000,6,2147483650,1231.21,\"banana\",TRUE)",
-        "insert into root.sg.d2(timestamp,num,bigNum,floatNum,str,bool) values(31536000100,10,3147483648,231.55,\"pumelo\",FALSE)",
-        "insert into root.sg.d2(timestamp,num,bigNum,floatNum,str,bool) values(31536000500,4,2147493648,213.1,\"peach\",FALSE)",
-        "insert into root.sg.d2(timestamp,num,bigNum,floatNum,str,bool) values(31536001000,5,2149783648,56.32,\"orange\",FALSE)",
-        "insert into root.sg.d2(timestamp,num,bigNum,floatNum,str,bool) values(31536010000,7,2147983648,213.112,\"lemon\",TRUE)",
-        "insert into root.sg.d2(timestamp,num,bigNum,floatNum,str,bool) values(31536100000,11,2147468648,54.121,\"pitaya\",FALSE)",
-        "insert into root.sg.d2(timestamp,num,bigNum,floatNum,str,bool) values(41536000000,12,2146483648,45.231,\"strawberry\",FALSE)",
-        "insert into root.sg.d2(timestamp,num,bigNum,floatNum,str,bool) values(41536000020,14,2907483648,231.34,\"cherry\",FALSE)",
-        "insert into root.sg.d2(timestamp,num,bigNum,floatNum,str,bool) values(41536900000,13,2107483648,54.12,\"lychee\",TRUE)",
-        "insert into root.sg.d2(timestamp,num,bigNum,floatNum,str,bool) values(51536000000,15,3147483648,235.213,\"watermelon\",TRUE)"
+        "insert into root.sg.d2(timestamp,num,bignum,floatnum,str,bool) values(0,3,2947483648,231.2121,\"coconut\",FALSE)",
+        "insert into root.sg.d2(timestamp,num,bignum,floatnum,str,bool) values(20,2,2147483648,434.12,\"pineapple\",TRUE)",
+        "insert into root.sg.d2(timestamp,num,bignum,floatnum,str,bool) values(40,1,2247483648,12.123,\"apricot\",TRUE)",
+        "insert into root.sg.d2(timestamp,num,bignum,floatnum,str,bool) values(80,9,2147483646,43.12,\"apple\",FALSE)",
+        "insert into root.sg.d2(timestamp,num,bignum,floatnum,str,bool) values(100,8,2147483964,4654.231,\"papaya\",TRUE)",
+        "insert into root.sg.d2(timestamp,num,bignum,floatnum,str,bool) values(31536000000,6,2147483650,1231.21,\"banana\",TRUE)",
+        "insert into root.sg.d2(timestamp,num,bignum,floatnum,str,bool) values(31536000100,10,3147483648,231.55,\"pumelo\",FALSE)",
+        "insert into root.sg.d2(timestamp,num,bignum,floatnum,str,bool) values(31536000500,4,2147493648,213.1,\"peach\",FALSE)",
+        "insert into root.sg.d2(timestamp,num,bignum,floatnum,str,bool) values(31536001000,5,2149783648,56.32,\"orange\",FALSE)",
+        "insert into root.sg.d2(timestamp,num,bignum,floatnum,str,bool) values(31536010000,7,2147983648,213.112,\"lemon\",TRUE)",
+        "insert into root.sg.d2(timestamp,num,bignum,floatnum,str,bool) values(31536100000,11,2147468648,54.121,\"pitaya\",FALSE)",
+        "insert into root.sg.d2(timestamp,num,bignum,floatnum,str,bool) values(41536000000,12,2146483648,45.231,\"strawberry\",FALSE)",
+        "insert into root.sg.d2(timestamp,num,bignum,floatnum,str,bool) values(41536000020,14,2907483648,231.34,\"cherry\",FALSE)",
+        "insert into root.sg.d2(timestamp,num,bignum,floatnum,str,bool) values(41536900000,13,2107483648,54.12,\"lychee\",TRUE)",
+        "insert into root.sg.d2(timestamp,num,bignum,floatnum,str,bool) values(51536000000,15,3147483648,235.213,\"watermelon\",TRUE)"
       };
 
   @BeforeClass

@@ -49,6 +49,7 @@ public class SeriesScanOptions {
 
   private final boolean pushLimitToEachDevice;
   private PaginationController paginationController;
+  private long ttlForTableView = Long.MAX_VALUE;
 
   public SeriesScanOptions(
       Filter globalTimeFilter,
@@ -118,12 +119,14 @@ public class SeriesScanOptions {
 
   public void setTTL(long dataTTL) {
     if (timeFilterUpdatedByTll.compareAndSet(false, true)) {
-      this.globalTimeFilter = updateFilterUsingTTL(globalTimeFilter, dataTTL);
+      // ttlForTableView should be set before calling setTTL
+      this.globalTimeFilter =
+          updateFilterUsingTTL(globalTimeFilter, Math.min(ttlForTableView, dataTTL));
     }
   }
 
-  public void setTTLForTableView(long viewTTL) {
-    this.globalTimeFilter = updateFilterUsingTTL(globalTimeFilter, viewTTL);
+  public void setTTLForTableView(long ttlForTableView) {
+    this.ttlForTableView = ttlForTableView;
   }
 
   /**
