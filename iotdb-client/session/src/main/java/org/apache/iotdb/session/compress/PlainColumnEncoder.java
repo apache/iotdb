@@ -121,7 +121,6 @@ public class PlainColumnEncoder implements ColumnEncoder {
       encoder.flush(outputStream);
       byte[] encodedData = outputStream.toByteArray();
 
-      // 创建 ColumnEntry 并设置大小信息
       ColumnEntry entry = new ColumnEntry();
       entry.setCompressedSize(encodedData.length);
       entry.setUnCompressedSize(originalSize);
@@ -132,7 +131,10 @@ public class PlainColumnEncoder implements ColumnEncoder {
     } catch (IOException e) {
       throw new RuntimeException(e);
     } finally {
-      outputStream.close();
+      try {
+        outputStream.close();
+      } catch (IOException e) {
+      }
     }
   }
 

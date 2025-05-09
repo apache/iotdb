@@ -7,6 +7,7 @@ import org.apache.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.PublicBAOS;
 
+import java.io.IOException;
 import java.util.List;
 
 public class RleColumnEncoder implements ColumnEncoder {
@@ -71,8 +72,13 @@ public class RleColumnEncoder implements ColumnEncoder {
       columnEntry.setDataType(dataType);
       columnEntry.updateSize();
       return encodedData;
+    } catch (IOException e) {
+      throw new RuntimeException(e);
     } finally {
-      outputStream.close();
+      try {
+        outputStream.close();
+      } catch (IOException e) {
+      }
     }
   }
 

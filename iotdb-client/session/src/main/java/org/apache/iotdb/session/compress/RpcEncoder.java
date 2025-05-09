@@ -54,10 +54,8 @@ public class RpcEncoder {
   /** 获取 tablet 中的值列，然后编码放入 encodedData2 中 TODO 还有很多考虑 */
   public ByteBuffer encodeValues(Tablet tablet) {
     // 1. 预估最大空间（假设每列最大为 rowSize * 16 字节）
-    int metaHeadReserveSize = 128;
-    int estimatedSize = metaHeadReserveSize + tablet.getRowSize() * 16 * tablet.getSchemas().size();
+    int estimatedSize = tablet.getRowSize() * 16 * tablet.getSchemas().size();
     ByteBuffer valueBuffer = ByteBuffer.allocate(estimatedSize);
-    valueBuffer.position(metaHeadReserveSize);
 
     // 2. 编码每一列
     for (int i = 0; i < tablet.getSchemas().size(); i++) {
@@ -66,12 +64,13 @@ public class RpcEncoder {
       valueBuffer.put(encoded);
     }
 
-    // 3.序列化
+    // 3. 序列化
     byte[] metaHeadEncoder = getMetaHead().toBytes();
-    valueBuffer.put(0, metaHeadEncoder, 0, metaHeadEncoder.length);
-    // 2. 调整 ByteBuffer 的 limit 为实际写入的数据长度
+    valueBuffer.put(metaHeadEncoder);
+    // 4. metaHead 长度
+    valueBuffer.putInt(metaHeadEncoder.length);
+    // 5. 调整 ByteBuffer 的 limit 为实际写入的数据长度
     valueBuffer.flip();
-    // 3. 返回只包含有效数据的 ByteBuffer
     return valueBuffer;
   }
 
