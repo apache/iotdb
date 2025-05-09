@@ -25,6 +25,7 @@ import org.apache.iotdb.db.pipe.agent.task.subtask.connector.PipeConnectorSubtas
 import org.apache.iotdb.metrics.AbstractMetricService;
 import org.apache.iotdb.metrics.metricsets.IMetricSet;
 import org.apache.iotdb.metrics.type.Rate;
+import org.apache.iotdb.metrics.type.Timer;
 import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.metrics.utils.MetricType;
 
@@ -54,6 +55,8 @@ public class PipeDataRegionConnectorMetrics implements IMetricSet {
 
   private final Map<String, Rate> pipeHeartbeatRateMap = new ConcurrentHashMap<>();
 
+  private final Map<String, Timer> compressionTimerMap = new ConcurrentHashMap<>();
+
   //////////////////////////// bindTo & unbindFrom (metric framework) ////////////////////////////
 
   @Override
@@ -68,6 +71,7 @@ public class PipeDataRegionConnectorMetrics implements IMetricSet {
   private void createMetrics(final String taskID) {
     createAutoGauge(taskID);
     createRate(taskID);
+    createTimer(taskID);
   }
 
   private void createAutoGauge(final String taskID) {
@@ -118,6 +122,51 @@ public class PipeDataRegionConnectorMetrics implements IMetricSet {
         String.valueOf(connector.getConnectorIndex()),
         Tag.CREATION_TIME.toString(),
         String.valueOf(connector.getCreationTime()));
+    metricService.createAutoGauge(
+        Metric.PIPE_PENDING_HANDLERS_SIZE.toString(),
+        MetricLevel.IMPORTANT,
+        connector,
+        PipeConnectorSubtask::getPendingHandlersSize,
+        Tag.NAME.toString(),
+        connector.getAttributeSortedString(),
+        Tag.INDEX.toString(),
+        String.valueOf(connector.getConnectorIndex()),
+        Tag.CREATION_TIME.toString(),
+        String.valueOf(connector.getCreationTime()));
+    // Metrics related to IoTDB connector
+    metricService.createAutoGauge(
+        Metric.PIPE_CONNECTOR_BATCH_SIZE.toString(),
+        MetricLevel.IMPORTANT,
+        connector,
+        PipeConnectorSubtask::getBatchSize,
+        Tag.NAME.toString(),
+        connector.getAttributeSortedString(),
+        Tag.INDEX.toString(),
+        String.valueOf(connector.getConnectorIndex()),
+        Tag.CREATION_TIME.toString(),
+        String.valueOf(connector.getCreationTime()));
+    metricService.createAutoGauge(
+        Metric.PIPE_TOTAL_UNCOMPRESSED_SIZE.toString(),
+        MetricLevel.IMPORTANT,
+        connector,
+        PipeConnectorSubtask::getTotalUncompressedSize,
+        Tag.NAME.toString(),
+        connector.getAttributeSortedString(),
+        Tag.INDEX.toString(),
+        String.valueOf(connector.getConnectorIndex()),
+        Tag.CREATION_TIME.toString(),
+        String.valueOf(connector.getCreationTime()));
+    metricService.createAutoGauge(
+        Metric.PIPE_TOTAL_COMPRESSED_SIZE.toString(),
+        MetricLevel.IMPORTANT,
+        connector,
+        PipeConnectorSubtask::getTotalCompressedSize,
+        Tag.NAME.toString(),
+        connector.getAttributeSortedString(),
+        Tag.INDEX.toString(),
+        String.valueOf(connector.getConnectorIndex()),
+        Tag.CREATION_TIME.toString(),
+        String.valueOf(connector.getCreationTime()));
   }
 
   private void createRate(final String taskID) {
@@ -158,6 +207,19 @@ public class PipeDataRegionConnectorMetrics implements IMetricSet {
             String.valueOf(connector.getCreationTime())));
   }
 
+  private void createTimer(final String taskID) {
+    final PipeConnectorSubtask connector = connectorMap.get(taskID);
+    compressionTimerMap.putIfAbsent(
+        connector.getAttributeSortedString(),
+        metricService.getOrCreateTimer(
+            Metric.PIPE_COMPRESSION_TIME.toString(),
+            MetricLevel.IMPORTANT,
+            Tag.NAME.toString(),
+            connector.getAttributeSortedString(),
+            Tag.CREATION_TIME.toString(),
+            String.valueOf(connector.getCreationTime())));
+  }
+
   @Override
   public void unbindFrom(final AbstractMetricService metricService) {
     final ImmutableSet<String> taskIDs = ImmutableSet.copyOf(connectorMap.keySet());
@@ -173,6 +235,7 @@ public class PipeDataRegionConnectorMetrics implements IMetricSet {
   private void removeMetrics(final String taskID) {
     removeAutoGauge(taskID);
     removeRate(taskID);
+    removeTimer(taskID);
   }
 
   private void removeAutoGauge(final String taskID) {
@@ -215,6 +278,43 @@ public class PipeDataRegionConnectorMetrics implements IMetricSet {
         String.valueOf(connector.getConnectorIndex()),
         Tag.CREATION_TIME.toString(),
         String.valueOf(connector.getCreationTime()));
+    metricService.remove(
+        MetricType.AUTO_GAUGE,
+        Metric.PIPE_PENDING_HANDLERS_SIZE.toString(),
+        Tag.NAME.toString(),
+        connector.getAttributeSortedString(),
+        Tag.INDEX.toString(),
+        String.valueOf(connector.getConnectorIndex()),
+        Tag.CREATION_TIME.toString(),
+        String.valueOf(connector.getCreationTime()));
+    // Metrics related to IoTDB connector
+    metricService.remove(
+        MetricType.AUTO_GAUGE,
+        Metric.PIPE_CONNECTOR_BATCH_SIZE.toString(),
+        Tag.NAME.toString(),
+        connector.getAttributeSortedString(),
+        Tag.INDEX.toString(),
+        String.valueOf(connector.getConnectorIndex()),
+        Tag.CREATION_TIME.toString(),
+        String.valueOf(connector.getCreationTime()));
+    metricService.remove(
+        MetricType.AUTO_GAUGE,
+        Metric.PIPE_TOTAL_UNCOMPRESSED_SIZE.toString(),
+        Tag.NAME.toString(),
+        connector.getAttributeSortedString(),
+        Tag.INDEX.toString(),
+        String.valueOf(connector.getConnectorIndex()),
+        Tag.CREATION_TIME.toString(),
+        String.valueOf(connector.getCreationTime()));
+    metricService.remove(
+        MetricType.AUTO_GAUGE,
+        Metric.PIPE_TOTAL_COMPRESSED_SIZE.toString(),
+        Tag.NAME.toString(),
+        connector.getAttributeSortedString(),
+        Tag.INDEX.toString(),
+        String.valueOf(connector.getConnectorIndex()),
+        Tag.CREATION_TIME.toString(),
+        String.valueOf(connector.getCreationTime()));
   }
 
   private void removeRate(final String taskID) {
@@ -250,6 +350,18 @@ public class PipeDataRegionConnectorMetrics implements IMetricSet {
     tabletRateMap.remove(taskID);
     tsFileRateMap.remove(taskID);
     pipeHeartbeatRateMap.remove(taskID);
+  }
+
+  private void removeTimer(final String taskID) {
+    final PipeConnectorSubtask connector = connectorMap.get(taskID);
+    metricService.remove(
+        MetricType.TIMER,
+        Metric.PIPE_COMPRESSION_TIME.toString(),
+        Tag.NAME.toString(),
+        connector.getAttributeSortedString(),
+        Tag.CREATION_TIME.toString(),
+        String.valueOf(connector.getCreationTime()));
+    compressionTimerMap.remove(connector.getAttributeSortedString());
   }
 
   //////////////////////////// register & deregister (pipe integration) ////////////////////////////
@@ -313,6 +425,10 @@ public class PipeDataRegionConnectorMetrics implements IMetricSet {
       return;
     }
     rate.mark();
+  }
+
+  public Timer getCompressionTimer(final String attributeSortedString) {
+    return Objects.isNull(metricService) ? null : compressionTimerMap.get(attributeSortedString);
   }
 
   //////////////////////////// singleton ////////////////////////////

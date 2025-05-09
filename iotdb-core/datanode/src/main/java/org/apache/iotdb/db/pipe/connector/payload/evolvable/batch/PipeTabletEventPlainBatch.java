@@ -46,7 +46,7 @@ import java.util.Objects;
 
 public class PipeTabletEventPlainBatch extends PipeTabletEventBatch {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(PipeTabletEventPlainBatch.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(PipeTabletEventBatch.class);
 
   private final List<ByteBuffer> binaryBuffers = new ArrayList<>();
   private final List<ByteBuffer> insertNodeBuffers = new ArrayList<>();

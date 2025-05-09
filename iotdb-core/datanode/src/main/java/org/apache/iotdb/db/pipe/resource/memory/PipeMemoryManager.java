@@ -40,7 +40,6 @@ public class PipeMemoryManager {
 
   private static final boolean PIPE_MEMORY_MANAGEMENT_ENABLED =
       PipeConfig.getInstance().getPipeMemoryManagementEnabled();
-
   private static final long TOTAL_MEMORY_SIZE_IN_BYTES =
       IoTDBDescriptor.getInstance().getConfig().getAllocateMemoryForPipe();
   private static final long MEMORY_ALLOCATE_MIN_SIZE_IN_BYTES =
