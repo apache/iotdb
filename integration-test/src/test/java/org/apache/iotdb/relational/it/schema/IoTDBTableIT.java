@@ -858,7 +858,8 @@ public class IoTDBTableIT {
             "create or replace table view tree_table (tag1 tag, tag2 tag, S1 int32 field, s3 boolean from S1) as root.a.**");
         fail();
       } catch (final SQLException e) {
-        assertEquals("The duplicated source measurement S1 is unsupported yet", e.getMessage());
+        assertEquals(
+            "701: The duplicated source measurement S1 is unsupported yet", e.getMessage());
       }
 
       statement.execute(

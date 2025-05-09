@@ -106,17 +106,9 @@ public class TreeDeviceViewFieldDetector {
               || schema.getDataType() != TSDataType.UNKNOWN) {
             continue;
           }
-          final String key =
-              Objects.nonNull(TreeViewSchema.getOriginalName(schema))
-                  ? TreeViewSchema.getOriginalName(schema)
-                  : schema.getColumnName();
+          final String key = TreeViewSchema.getSourceName(schema);
           if (!unknownFields.containsKey(key)) {
             unknownFields.put(key, new HashSet<>());
-          } else {
-            // Query engine not support this yet
-            return RpcUtils.getStatus(
-                TSStatusCode.MEASUREMENT_NAME_CONFLICT.getStatusCode(),
-                String.format("The duplicated source measurement %s is unsupported yet.", key));
           }
           unknownFields.get(key).add((FieldColumnSchema) schema);
         }

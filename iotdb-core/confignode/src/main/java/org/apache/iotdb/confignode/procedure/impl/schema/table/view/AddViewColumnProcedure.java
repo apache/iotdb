@@ -39,7 +39,6 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.Set;
 
 public class AddViewColumnProcedure extends AddTableColumnProcedure {
@@ -65,20 +64,9 @@ public class AddViewColumnProcedure extends AddTableColumnProcedure {
       if (!(schema instanceof FieldColumnSchema) || schema.getDataType() != TSDataType.UNKNOWN) {
         continue;
       }
-      final String key =
-          Objects.nonNull(TreeViewSchema.getOriginalName(schema))
-              ? TreeViewSchema.getOriginalName(schema)
-              : schema.getColumnName();
+      final String key = TreeViewSchema.getSourceName(schema);
       if (!fields2Detect.containsKey(key)) {
         fields2Detect.put(key, new HashSet<>());
-      } else {
-        // Query engine not support this yet
-        setFailure(
-            new ProcedureException(
-                new IoTDBException(
-                    String.format("The duplicated source measurement %s is unsupported yet.", key),
-                    TSStatusCode.MEASUREMENT_NAME_CONFLICT.getStatusCode())));
-        return;
       }
       fields2Detect.get(key).add((FieldColumnSchema) schema);
     }
