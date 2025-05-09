@@ -1139,7 +1139,7 @@ public class PipeConsensusReceiver {
         }
       }
 
-      return tsFileWriter.get();
+      return tsFileWriter.get().refreshLastUsedTs();
     }
 
     private void checkZombieTsFileWriter() {
@@ -1309,9 +1309,13 @@ public class PipeConsensusReceiver {
 
     public void setUsed(boolean used) {
       isUsed = used;
+    }
+
+    public PipeConsensusTsFileWriter refreshLastUsedTs() {
       if (isUsed) {
         lastUsedTs = System.currentTimeMillis();
       }
+      return this;
     }
 
     public void returnSelf(ConsensusPipeName consensusPipeName)
