@@ -178,12 +178,8 @@ public class PipeTransferTsFileHandler extends PipeTransferTrackableHandler {
         final TPipeTransferReq uncompressedReq =
             transferMod
                 ? PipeTransferTsFileSealWithModReq.toTPipeTransferReq(
-                    modFile.getName(),
-                    modFile.length(),
-                    tsFile.getName(),
-                    tsFile.length())
-                : PipeTransferTsFileSealReq.toTPipeTransferReq(
-                    tsFile.getName(), tsFile.length());
+                    modFile.getName(), modFile.length(), tsFile.getName(), tsFile.length())
+                : PipeTransferTsFileSealReq.toTPipeTransferReq(tsFile.getName(), tsFile.length());
         final TPipeTransferReq req = connector.compressIfNeeded(uncompressedReq);
 
         pipeName2WeightMap.forEach(
