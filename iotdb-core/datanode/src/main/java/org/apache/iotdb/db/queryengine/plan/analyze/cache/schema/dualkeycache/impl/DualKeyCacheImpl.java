@@ -217,7 +217,12 @@ class DualKeyCacheImpl<FK, SK, V, T extends ICacheEntry<SK, V>>
    * the new cache value occupied.
    */
   private void executeCacheEviction(int targetSize) {
-    // Do nothing
+    int evictedSize;
+    while (targetSize > 0 && cacheStats.memoryUsage() > 0) {
+      evictedSize = evictOneCacheEntry();
+      cacheStats.decreaseMemoryUsage(evictedSize);
+      targetSize -= evictedSize;
+    }
   }
 
   private int evictOneCacheEntry() {
@@ -407,7 +412,6 @@ class DualKeyCacheImpl<FK, SK, V, T extends ICacheEntry<SK, V>>
   private static class SegmentedConcurrentHashMap<K, V> {
 
     private static final int SLOT_NUM = 31;
-    private int size = 0;
     private final Map<K, V>[] maps = new ConcurrentHashMap[SLOT_NUM];
 
     V get(K key) {
@@ -419,12 +423,6 @@ class DualKeyCacheImpl<FK, SK, V, T extends ICacheEntry<SK, V>>
     }
 
     V compute(K key, BiFunction<? super K, ? super V, ? extends V> remappingFunction) {
-      size = 0;
-      for (final Map map : maps) {
-        if (map != null) {
-          size += map.size();
-        }
-      }
       return getBelongedMap(key).compute(key, remappingFunction);
     }
 
