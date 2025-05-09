@@ -850,6 +850,15 @@ public class IoTDBTableIT {
     try (final Connection connection =
             EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
         final Statement statement = connection.createStatement()) {
+      // Temporary
+      try {
+        statement.execute(
+            "create or replace table view tree_table (tag1 tag, tag2 tag, S1 int32 field, s3 from S1) as root.a.**");
+        fail();
+      } catch (final SQLException e) {
+        assertEquals("The duplicated source measurement S1 is unsupported yet", e.getMessage());
+      }
+
       statement.execute(
           "create or replace table view tree_table (tag1 tag, tag2 tag, S1 int32 field, s3 from s2) as root.a.**");
       statement.execute("alter view tree_table rename to view_table");
