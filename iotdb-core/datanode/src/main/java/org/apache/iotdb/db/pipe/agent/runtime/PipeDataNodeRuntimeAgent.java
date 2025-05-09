@@ -35,6 +35,7 @@ import org.apache.iotdb.commons.service.ServiceType;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
+import org.apache.iotdb.db.pipe.event.common.terminate.PipeTerminateEvent;
 import org.apache.iotdb.db.pipe.extractor.schemaregion.SchemaRegionListeningQueue;
 import org.apache.iotdb.db.pipe.resource.PipeDataNodeHardlinkOrCopiedFileDirStartupCleaner;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
@@ -89,6 +90,11 @@ public class PipeDataNodeRuntimeAgent implements IService {
         "PipeTaskAgent#restartAllStuckPipes",
         PipeDataNodeAgent.task()::restartAllStuckPipes,
         PipeConfig.getInstance().getPipeStuckRestartIntervalSeconds());
+    registerPeriodicalJob(
+        "PipeTaskAgent#flushDataRegionIfNeeded",
+        PipeTerminateEvent::flushDataRegionIfNeeded,
+        PipeConfig.getInstance().getPipeFlushAfterLastTerminateSeconds());
+
     pipePeriodicalJobExecutor.start();
 
     if (PipeConfig.getInstance().getPipeEventReferenceTrackingEnabled()) {
