@@ -271,6 +271,7 @@ public class PipeConfig {
 
   /////////////////////////////// Hybrid Mode ///////////////////////////////
 
+  // Only used to control the size of wal cache
   public int getPipeMaxAllowedPinnedMemTableCount() {
     return COMMON_CONFIG.getPipeMaxAllowedPinnedMemTableCount();
   }
