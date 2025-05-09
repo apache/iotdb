@@ -275,10 +275,6 @@ public class PipeConfig {
     return COMMON_CONFIG.getPipeMaxAllowedPinnedMemTableCount();
   }
 
-  public long getPipeMaxAllowedLinkedTsFileCount() {
-    return COMMON_CONFIG.getPipeMaxAllowedLinkedTsFileCount();
-  }
-
   public float getPipeMaxAllowedLinkedDeletedTsFileDiskUsagePercentage() {
     return COMMON_CONFIG.getPipeMaxAllowedLinkedDeletedTsFileDiskUsagePercentage();
   }
@@ -519,7 +515,6 @@ public class PipeConfig {
         getPipeReceiverActualToEstimatedMemoryRatio());
 
     LOGGER.info("PipeMaxAllowedPinnedMemTableCount: {}", getPipeMaxAllowedPinnedMemTableCount());
-    LOGGER.info("PipeMaxAllowedLinkedTsFileCount: {}", getPipeMaxAllowedLinkedTsFileCount());
     LOGGER.info(
         "PipeMaxAllowedLinkedDeletedTsFileDiskUsagePercentage: {}",
         getPipeMaxAllowedLinkedDeletedTsFileDiskUsagePercentage());

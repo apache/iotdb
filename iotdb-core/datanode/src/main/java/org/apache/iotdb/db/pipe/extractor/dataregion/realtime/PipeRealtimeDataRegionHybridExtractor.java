@@ -216,7 +216,6 @@ public class PipeRealtimeDataRegionHybridExtractor extends PipeRealtimeDataRegio
     //  3. The shallow memory usage of the insert node has reached the dangerous threshold.
     return mayLatencyTooLarge(event)
         || mayWalSizeReachThrottleThreshold(event)
-        || mayTsFileLinkedCountReachDangerousThreshold(event)
         || mayInsertNodeMemoryReachDangerousThreshold(event);
   }
 
@@ -254,23 +253,6 @@ public class PipeRealtimeDataRegionHybridExtractor extends PipeRealtimeDataRegio
                   IoTDBDescriptor.getInstance().getConfig().getThrottleThreshold() / 3.0d));
     }
     return mayWalSizeReachThrottleThreshold;
-  }
-
-  private boolean mayTsFileLinkedCountReachDangerousThreshold(final PipeRealtimeEvent event) {
-    final boolean mayTsFileLinkedCountReachDangerousThreshold =
-        PipeDataNodeResourceManager.tsfile().getLinkedTsfileCount()
-            >= PipeConfig.getInstance().getPipeMaxAllowedLinkedTsFileCount();
-    if (mayTsFileLinkedCountReachDangerousThreshold && event.mayExtractorUseTablets(this)) {
-      logByLogManager(
-          l ->
-              l.info(
-                  "Pipe task {}@{} canNotUseTabletAnyMore2: The number of linked tsfiles {} has reached the dangerous threshold {}",
-                  pipeName,
-                  dataRegionId,
-                  PipeDataNodeResourceManager.tsfile().getLinkedTsfileCount(),
-                  PipeConfig.getInstance().getPipeMaxAllowedLinkedTsFileCount()));
-    }
-    return mayTsFileLinkedCountReachDangerousThreshold;
   }
 
   private boolean mayInsertNodeMemoryReachDangerousThreshold(final PipeRealtimeEvent event) {

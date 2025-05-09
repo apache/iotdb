@@ -401,11 +401,6 @@ public class PipeDescriptor {
             properties.getProperty(
                 "pipe_max_allowed_pinned_memtable_count",
                 String.valueOf(config.getPipeMaxAllowedPinnedMemTableCount()))));
-    config.setPipeMaxAllowedLinkedTsFileCount(
-        Long.parseLong(
-            properties.getProperty(
-                "pipe_max_allowed_linked_tsfile_count",
-                String.valueOf(config.getPipeMaxAllowedLinkedTsFileCount()))));
     config.setPipeMaxAllowedLinkedDeletedTsFileDiskUsagePercentage(
         Float.parseFloat(
             properties.getProperty(
