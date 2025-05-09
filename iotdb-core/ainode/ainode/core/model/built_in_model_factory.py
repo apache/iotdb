@@ -36,6 +36,7 @@ from ainode.core.log import Logger
 
 from ainode.TimerXL.models import timer_xl
 from ainode.TimerXL.models.configuration_timer import TimerxlConfig
+from config import AINodeDescriptor
 
 logger = Logger()
 
@@ -82,7 +83,7 @@ def fetch_built_in_model(model_id, inference_attributes):
     # validate the inference attributes
     for attribute_name in inference_attributes:
         if attribute_name not in attribute_map:
-            raise AttributeNotSupportError(model_id, attribute_name)
+            logger.warning(f"{attribute_name} is not supported in {model_id}")
 
     # parse the inference attributes, attributes is a Dict[str, Any]
     attributes = parse_attribute(inference_attributes, attribute_map)
@@ -398,9 +399,9 @@ timerxl_attribute_map = {
     ),
     AttributeName.TIMERXL_CKPT_PATH.value: StringAttribute(
         name=AttributeName.TIMERXL_CKPT_PATH.value,
-        default_value=os.path.join(os.path.dirname(os.path.abspath(__file__)), 'weights', 'timerxl', 'model.safetensors'),
-        value_choices=[os.path.join(os.path.dirname(os.path.abspath(__file__)), 'weights', 'timerxl', 'model.safetensors'), ""],
-    ),
+        default_value=os.path.join(os.getcwd(), AINodeDescriptor().get_config().get_ain_models_dir(), 'weights', 'timerxl','model.safetensors'),
+        value_choices=['']
+    )
 }
 
 # built-in sktime model attributes

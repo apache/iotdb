@@ -71,8 +71,13 @@ class InferenceManager:
                 options = req.options
                 options['predict_length'] = req.outputLength
                 model = _get_built_in_model(model_id, model_manager, options)
-                inference_result = convert_to_binary(_inference_with_built_in_model(
-                    model, data))
+                if model_id == '_timerxl':
+                    inference_result = _inference_with_timerxl(
+                        model, data, options.get("predict_length", 96))
+                else:
+                    inference_result =_inference_with_built_in_model(
+                        model, data)
+                inference_result = convert_to_binary(inference_result)
             else:
                 # user-registered models
                 model = _get_model(model_id, model_manager, req.options)
@@ -199,8 +204,8 @@ def _inference_with_built_in_model(model, full_data):
         will concatenate all the output DataFrames into a list.
     """
 
-    data, _, _, _ = full_data
-    output = model.inference(data)
+    _, data, _, _ = full_data
+    output = model.inference(data[0])
     # output: DataFrame, shape: (H', C')
     output = pd.DataFrame(output)
     return output
@@ -224,10 +229,13 @@ def _inference_with_timerxl(model, full_data, pred_len):
         will concatenate all the output DataFrames into a list.
     """
 
-    data, _, _, _ = full_data
+    _, data, _, _ = full_data
+    data = data[0]
+    if data.dtype.byteorder not in ('=', '|'):
+        data = data.byteswap().newbyteorder()
     output = model.inference(data, pred_len)
     # output: DataFrame, shape: (H', C')
-    output = pd.DataFrame(output)
+    output = pd.DataFrame(output[0])
     return output
 
 
