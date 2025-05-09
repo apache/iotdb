@@ -33,6 +33,7 @@
 #include <stdexcept>
 #include <cstdlib>
 #include <future>
+#include <boost/date_time/gregorian/gregorian.hpp>
 #include <thrift/protocol/TBinaryProtocol.h>
 #include <thrift/protocol/TCompactProtocol.h>
 #include <thrift/transport/TSocket.h>
@@ -90,6 +91,10 @@ public:
         return *(int*)getOrderedByte(4);
     }
 
+    boost::gregorian::date getDate() {
+        return parseIntToDate(getInt());
+    }
+
     int64_t getInt64() {
 #ifdef ARCH32
         const char *buf_addr = getOrderedByte(8);
@@ -141,6 +146,10 @@ public:
 
     void putInt(int ins) {
         putOrderedByte((char*)&ins, 4);
+    }
+
+    void putDate(boost::gregorian::date date) {
+        putInt(parseDateExpressionToInt(date));
     }
 
     void putInt64(int64_t ins) {
@@ -315,6 +324,7 @@ public:
     TSDataType::TSDataType dataType;
     bool boolV;
     int intV;
+    boost::gregorian::date dateV;
     int64_t longV;
     float floatV;
     double doubleV;
@@ -479,6 +489,48 @@ public:
         this->rowSize = 0;
     }
 
+    Tablet(const Tablet& other)
+        : deviceId(other.deviceId),
+          schemas(other.schemas),
+          schemaNameIndex(other.schemaNameIndex),
+          columnTypes(other.columnTypes),
+          timestamps(other.timestamps),
+          maxRowNumber(other.maxRowNumber),
+          bitMaps(other.bitMaps),
+          rowSize(other.rowSize),
+          isAligned(other.isAligned),
+          idColumnIndexes(other.idColumnIndexes) {
+        values.resize(other.values.size());
+        for (size_t i = 0; i < other.values.size(); ++i) {
+            if (!other.values[i]) continue;
+            TSDataType::TSDataType type = schemas[i].second;
+            deepCopyTabletColValue(&(other.values[i]), &values[i], type, maxRowNumber);
+        }
+    }
+
+    Tablet& operator=(const Tablet& other) {
+        if (this != &other) {
+            deleteColumns();
+            deviceId = other.deviceId;
+            schemas = other.schemas;
+            schemaNameIndex = other.schemaNameIndex;
+            columnTypes = other.columnTypes;
+            timestamps = other.timestamps;
+            maxRowNumber = other.maxRowNumber;
+            rowSize = other.rowSize;
+            isAligned = other.isAligned;
+            idColumnIndexes = other.idColumnIndexes;
+            bitMaps = other.bitMaps;
+            values.resize(other.values.size());
+            for (size_t i = 0; i < other.values.size(); ++i) {
+                if (!other.values[i]) continue;
+                TSDataType::TSDataType type = schemas[i].second;
+                deepCopyTabletColValue(&(other.values[i]), &values[i], type, maxRowNumber);
+            }
+        }
+        return *this;
+    }
+
     ~Tablet() {
         try {
             deleteColumns();
@@ -492,6 +544,9 @@ public:
         timestamps[rowIndex] = timestamp;
         rowSize = max(rowSize, rowIndex + 1);
     }
+
+    static void deepCopyTabletColValue(void* const* srcPtr, void** destPtr,
+        TSDataType::TSDataType type, int maxRowNumber);
 
     template <typename T>
     void addValue(size_t schemaId, size_t rowIndex, const T& value) {
@@ -519,6 +574,11 @@ public:
             safe_cast<T, int32_t>(value, ((int*)values[schemaId])[rowIndex]);
             break;
         }
+        case TSDataType::DATE: {
+            safe_cast<T, boost::gregorian::date>(value, ((boost::gregorian::date*)values[schemaId])[rowIndex]);
+            break;
+        }
+        case TSDataType::TIMESTAMP:
         case TSDataType::INT64: {
             safe_cast<T, int64_t>(value, ((int64_t*)values[schemaId])[rowIndex]);
             break;
@@ -531,6 +591,8 @@ public:
             safe_cast<T, double>(value, ((double*)values[schemaId])[rowIndex]);
             break;
         }
+        case TSDataType::BLOB:
+        case TSDataType::STRING:
         case TSDataType::TEXT: {
             safe_cast<T, string>(value, ((string*)values[schemaId])[rowIndex]);
             break;
@@ -565,12 +627,17 @@ public:
             return &(reinterpret_cast<bool*>(values[schemaId])[rowIndex]);
         case TSDataType::INT32:
             return &(reinterpret_cast<int32_t*>(values[schemaId])[rowIndex]);
+        case TSDataType::DATE:
+            return &(reinterpret_cast<boost::gregorian::date*>(values[schemaId])[rowIndex]);
+        case TSDataType::TIMESTAMP:
         case TSDataType::INT64:
             return &(reinterpret_cast<int64_t*>(values[schemaId])[rowIndex]);
         case TSDataType::FLOAT:
             return &(reinterpret_cast<float*>(values[schemaId])[rowIndex]);
         case TSDataType::DOUBLE:
             return &(reinterpret_cast<double*>(values[schemaId])[rowIndex]);
+        case TSDataType::BLOB:
+        case TSDataType::STRING:
         case TSDataType::TEXT:
             return &(reinterpret_cast<std::string*>(values[schemaId])[rowIndex]);
         default:
@@ -646,6 +713,10 @@ public:
             case TSDataType::INT32:
                 ret.append(std::to_string(fields[i].intV));
                 break;
+            case TSDataType::DATE:
+                ret.append(boost::gregorian::to_simple_string(fields[i].dateV));
+                break;
+            case TSDataType::TIMESTAMP:
             case TSDataType::INT64:
                 ret.append(std::to_string(fields[i].longV));
                 break;
@@ -655,6 +726,8 @@ public:
             case TSDataType::DOUBLE:
                 ret.append(std::to_string(fields[i].doubleV));
                 break;
+            case TSDataType::BLOB:
+            case TSDataType::STRING:
             case TSDataType::TEXT:
                 ret.append(fields[i].stringV);
                 break;
@@ -890,9 +963,9 @@ private:
 };
 
 namespace TemplateQueryType {
-    enum TemplateQueryType {
-        COUNT_MEASUREMENTS, IS_MEASUREMENT, PATH_EXIST, SHOW_MEASUREMENTS
-    };
+enum TemplateQueryType {
+    COUNT_MEASUREMENTS, IS_MEASUREMENT, PATH_EXIST, SHOW_MEASUREMENTS
+};
 }
 
 class Template {

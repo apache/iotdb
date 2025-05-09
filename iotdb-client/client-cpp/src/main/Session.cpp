@@ -37,13 +37,29 @@ LogLevelType LOG_LEVEL = LEVEL_DEBUG;
 
 TSDataType::TSDataType getTSDataTypeFromString(const string& str) {
     // BOOLEAN, INT32, INT64, FLOAT, DOUBLE, TEXT, STRING, BLOB, TIMESTAMP, DATE, NULLTYPE
-    if (str == "BOOLEAN") return TSDataType::BOOLEAN;
-    else if (str == "INT32" || str == "DATE") return TSDataType::INT32;
-    else if (str == "INT64" || str == "TIMESTAMP") return TSDataType::INT64;
-    else if (str == "FLOAT") return TSDataType::FLOAT;
-    else if (str == "DOUBLE") return TSDataType::DOUBLE;
-    else if (str == "TEXT" || str == "STRING" || str == "BLOB") return TSDataType::TEXT;
-    else if (str == "NULLTYPE") return TSDataType::NULLTYPE;
+    if (str == "BOOLEAN") {
+        return TSDataType::BOOLEAN;
+    } else if (str == "INT32") {
+        return TSDataType::INT32;
+    } else if (str == "INT64") {
+        return TSDataType::INT64;
+    } else if (str == "FLOAT") {
+        return TSDataType::FLOAT;
+    } else if (str == "DOUBLE") {
+        return TSDataType::DOUBLE;
+    } else if (str == "TEXT") {
+        return TSDataType::TEXT;
+    } else if (str == "TIMESTAMP") {
+        return TSDataType::TIMESTAMP;
+    } else if (str == "DATE") {
+        return TSDataType::DATE;
+    } else if (str == "BLOB") {
+        return TSDataType::BLOB;
+    } else if (str == "STRING") {
+        return TSDataType::STRING;
+    } else if (str == "NULLTYPE") {
+        return TSDataType::NULLTYPE;
+    }
     return TSDataType::INVALID_DATATYPE;
 }
 
@@ -54,9 +70,13 @@ void Tablet::createColumns() {
         case TSDataType::BOOLEAN:
             values[i] = new bool[maxRowNumber];
             break;
+        case TSDataType::DATE:
+            values[i] = new boost::gregorian::date[maxRowNumber];
+            break;
         case TSDataType::INT32:
             values[i] = new int[maxRowNumber];
             break;
+        case TSDataType::TIMESTAMP:
         case TSDataType::INT64:
             values[i] = new int64_t[maxRowNumber];
             break;
@@ -66,6 +86,8 @@ void Tablet::createColumns() {
         case TSDataType::DOUBLE:
             values[i] = new double[maxRowNumber];
             break;
+        case TSDataType::STRING:
+        case TSDataType::BLOB:
         case TSDataType::TEXT:
             values[i] = new string[maxRowNumber];
             break;
@@ -77,7 +99,7 @@ void Tablet::createColumns() {
 
 void Tablet::deleteColumns() {
     for (size_t i = 0; i < schemas.size(); i++) {
-        if (values[i]) continue;
+        if (!values[i]) continue;
         TSDataType::TSDataType dataType = schemas[i].second;
         switch (dataType) {
         case TSDataType::BOOLEAN: {
@@ -90,6 +112,12 @@ void Tablet::deleteColumns() {
             delete[] valueBuf;
             break;
         }
+        case TSDataType::DATE: {
+            boost::gregorian::date* valueBuf = (boost::gregorian::date*)(values[i]);
+            delete[] valueBuf;
+            break;
+        }
+        case TSDataType::TIMESTAMP:
         case TSDataType::INT64: {
             int64_t* valueBuf = (int64_t*)(values[i]);
             delete[] valueBuf;
@@ -105,6 +133,8 @@ void Tablet::deleteColumns() {
             delete[] valueBuf;
             break;
         }
+        case TSDataType::STRING:
+        case TSDataType::BLOB:
         case TSDataType::TEXT: {
             string* valueBuf = (string*)(values[i]);
             delete[] valueBuf;
@@ -114,6 +144,55 @@ void Tablet::deleteColumns() {
             throw UnSupportedDataTypeException(string("Data type ") + to_string(dataType) + " is not supported.");
         }
         values[i] = nullptr;
+    }
+}
+
+void Tablet::deepCopyTabletColValue(void* const* srcPtr, void** destPtr, TSDataType::TSDataType type, int maxRowNumber) {
+    void *src = *srcPtr;
+    switch (type) {
+    case TSDataType::BOOLEAN:
+        *destPtr = new bool[maxRowNumber];
+        memcpy(*destPtr, src, maxRowNumber * sizeof(bool));
+        break;
+    case TSDataType::INT32:
+        *destPtr = new int32_t[maxRowNumber];
+        memcpy(*destPtr, src, maxRowNumber * sizeof(int32_t));
+        break;
+    case TSDataType::INT64:
+    case TSDataType::TIMESTAMP:
+        *destPtr = new int64_t[maxRowNumber];
+        memcpy(*destPtr, src, maxRowNumber * sizeof(int64_t));
+        break;
+    case TSDataType::FLOAT:
+        *destPtr = new float[maxRowNumber];
+        memcpy(*destPtr, src, maxRowNumber * sizeof(float));
+        break;
+    case TSDataType::DOUBLE:
+        *destPtr = new double[maxRowNumber];
+        memcpy(*destPtr, src, maxRowNumber * sizeof(double));
+        break;
+    case TSDataType::DATE: {
+        *destPtr = new boost::gregorian::date[maxRowNumber];
+        boost::gregorian::date* srcDate = static_cast<boost::gregorian::date*>(src);
+        boost::gregorian::date* destDate = static_cast<boost::gregorian::date*>(*destPtr);
+        for (size_t j = 0; j < maxRowNumber; ++j) {
+            destDate[j] = srcDate[j];
+        }
+        break;
+    }
+    case TSDataType::STRING:
+    case TSDataType::TEXT:
+    case TSDataType::BLOB: {
+        *destPtr = new std::string[maxRowNumber];
+        std::string* srcStr = static_cast<std::string*>(src);
+        std::string* destStr = static_cast<std::string*>(*destPtr);
+        for (size_t j = 0; j < maxRowNumber; ++j) {
+            destStr[j] = srcStr[j];
+        }
+        break;
+    }
+    default:
+        break;
     }
 }
 
@@ -138,6 +217,10 @@ size_t Tablet::getValueByteSize() {
         case TSDataType::INT32:
             valueOccupation += rowSize * 4;
             break;
+        case TSDataType::DATE:
+            valueOccupation += rowSize * 4;
+            break;
+        case TSDataType::TIMESTAMP:
         case TSDataType::INT64:
             valueOccupation += rowSize * 8;
             break;
@@ -147,6 +230,8 @@ size_t Tablet::getValueByteSize() {
         case TSDataType::DOUBLE:
             valueOccupation += rowSize * 8;
             break;
+        case TSDataType::STRING:
+        case TSDataType::BLOB:
         case TSDataType::TEXT: {
             valueOccupation += rowSize * 4;
             string* valueBuf = (string*)(values[i]);
@@ -173,9 +258,6 @@ std::shared_ptr<storage::IDeviceID> Tablet::getDeviceID(int row) {
     id_array[idArrayIdx++] = this->deviceId;
     for (auto idColumnIndex : idColumnIndexes) {
         void* strPtr = getValue(idColumnIndex, row, TSDataType::TEXT);
-        if (!strPtr) {
-            throw std::runtime_error("Unsupported data type: " + std::to_string(TSDataType::TEXT));
-        }
         id_array[idArrayIdx++] = *static_cast<std::string*>(strPtr);
     }
     return std::make_shared<storage::StringArrayDeviceID>(id_array);
@@ -200,7 +282,6 @@ string SessionUtils::getValue(const Tablet& tablet) {
     if (n > valueBuffer.str.capacity()) {
         valueBuffer.reserve(n);
     }
-
     for (size_t i = 0; i < tablet.schemas.size(); i++) {
         TSDataType::TSDataType dataType = tablet.schemas[i].second;
         const BitMap& bitMap = tablet.bitMaps[i];
@@ -229,6 +310,19 @@ string SessionUtils::getValue(const Tablet& tablet) {
             }
             break;
         }
+        case TSDataType::DATE: {
+            boost::gregorian::date* valueBuf = (boost::gregorian::date*)(tablet.values[i]);
+            for (size_t index = 0; index < tablet.rowSize; index++) {
+                if (!bitMap.isMarked(index)) {
+                    valueBuffer.putDate(valueBuf[index]);
+                }
+                else {
+                    valueBuffer.putInt(EMPTY_DATE_INT);
+                }
+            }
+            break;
+        }
+        case TSDataType::TIMESTAMP:
         case TSDataType::INT64: {
             int64_t* valueBuf = (int64_t*)(tablet.values[i]);
             for (size_t index = 0; index < tablet.rowSize; index++) {
@@ -265,6 +359,8 @@ string SessionUtils::getValue(const Tablet& tablet) {
             }
             break;
         }
+        case TSDataType::STRING:
+        case TSDataType::BLOB:
         case TSDataType::TEXT: {
             string* valueBuf = (string*)(tablet.values[i]);
             for (size_t index = 0; index < tablet.rowSize; index++) {
@@ -406,6 +502,12 @@ void SessionDataSet::constructOneRow() {
                     field.intV = intValue;
                     break;
                 }
+                case TSDataType::DATE: {
+                    boost::gregorian::date dateValue = valueBuffer->getDate();
+                    field.dateV = dateValue;
+                    break;
+                }
+                case TSDataType::TIMESTAMP:
                 case TSDataType::INT64: {
                     int64_t longValue = valueBuffer->getInt64();
                     field.longV = longValue;
@@ -421,6 +523,8 @@ void SessionDataSet::constructOneRow() {
                     field.doubleV = doubleValue;
                     break;
                 }
+                case TSDataType::STRING:
+                case TSDataType::BLOB:
                 case TSDataType::TEXT: {
                     string stringValue = valueBuffer->getString();
                     field.stringV = stringValue;
@@ -653,6 +757,11 @@ void Session::sortTablet(Tablet& tablet) {
             sortValuesList((int*)(tablet.values[i]), index, tablet.rowSize);
             break;
         }
+        case TSDataType::DATE: {
+            sortValuesList((boost::gregorian::date*)(tablet.values[i]), index, tablet.rowSize);
+            break;
+        }
+        case TSDataType::TIMESTAMP:
         case TSDataType::INT64: {
             sortValuesList((int64_t*)(tablet.values[i]), index, tablet.rowSize);
             break;
@@ -665,6 +774,8 @@ void Session::sortTablet(Tablet& tablet) {
             sortValuesList((double*)(tablet.values[i]), index, tablet.rowSize);
             break;
         }
+        case TSDataType::STRING:
+        case TSDataType::BLOB:
         case TSDataType::TEXT: {
             sortValuesList((string*)(tablet.values[i]), index, tablet.rowSize);
             break;
@@ -710,6 +821,7 @@ void Session::appendValues(string& buffer, const char* value, int size) {
 
 void
 Session::putValuesIntoBuffer(const vector<TSDataType::TSDataType>& types, const vector<char*>& values, string& buf) {
+    int32_t date;
     for (size_t i = 0; i < values.size(); i++) {
         int8_t typeNum = getDataTypeNumber(types[i]);
         buf.append((char*)(&typeNum), sizeof(int8_t));
@@ -720,6 +832,11 @@ Session::putValuesIntoBuffer(const vector<TSDataType::TSDataType>& types, const 
         case TSDataType::INT32:
             appendValues(buf, values[i], sizeof(int32_t));
             break;
+        case TSDataType::DATE:
+            date = parseDateExpressionToInt(*(boost::gregorian::date*)values[i]);
+            appendValues(buf, (char*)&date, sizeof(int32_t));
+            break;
+        case TSDataType::TIMESTAMP:
         case TSDataType::INT64:
             appendValues(buf, values[i], sizeof(int64_t));
             break;
@@ -729,6 +846,8 @@ Session::putValuesIntoBuffer(const vector<TSDataType::TSDataType>& types, const 
         case TSDataType::DOUBLE:
             appendValues(buf, values[i], sizeof(double));
             break;
+        case TSDataType::STRING:
+        case TSDataType::BLOB:
         case TSDataType::TEXT: {
             int32_t len = (uint32_t)strlen(values[i]);
             appendValues(buf, (char*)(&len), sizeof(uint32_t));
@@ -758,6 +877,14 @@ int8_t Session::getDataTypeNumber(TSDataType::TSDataType type) {
         return 4;
     case TSDataType::TEXT:
         return 5;
+    case TSDataType::TIMESTAMP:
+        return 8;
+    case TSDataType::DATE:
+        return 9;
+    case TSDataType::BLOB:
+        return 10;
+    case TSDataType::STRING:
+        return 11;
     default:
         return -1;
     }
@@ -822,14 +949,24 @@ void Session::insertStringRecordsWithLeaderCache(vector<string> deviceIds, vecto
     std::unordered_map<std::shared_ptr<SessionConnection>, TSInsertStringRecordsReq> recordsGroup;
     for (int i = 0; i < deviceIds.size(); i++) {
         auto connection = getSessionConnection(deviceIds[i]);
-        TSInsertStringRecordsReq request;
-        request.__set_sessionId(connection->sessionId);
-        request.__set_prefixPaths(deviceIds);
-        request.__set_timestamps(times);
-        request.__set_measurementsList(measurementsList);
-        request.__set_valuesList(valuesList);
-        request.__set_isAligned(isAligned);
-        recordsGroup.insert(make_pair(connection, request));
+        if (recordsGroup.find(connection) == recordsGroup.end()) {
+            TSInsertStringRecordsReq request;
+            std::vector<std::string> emptyPrefixPaths;
+            std::vector<std::vector<std::string>> emptyMeasurementsList;
+            vector<vector<string>> emptyValuesList;
+            std::vector<int64_t> emptyTimestamps;
+            request.__set_isAligned(isAligned);
+            request.__set_prefixPaths(emptyPrefixPaths);
+            request.__set_timestamps(emptyTimestamps);
+            request.__set_measurementsList(emptyMeasurementsList);
+            request.__set_valuesList(emptyValuesList);
+            recordsGroup.insert(make_pair(connection, request));
+        }
+        TSInsertStringRecordsReq& existingReq = recordsGroup[connection];
+        existingReq.prefixPaths.emplace_back(deviceIds[i]);
+        existingReq.timestamps.emplace_back(times[i]);
+        existingReq.measurementsList.emplace_back(measurementsList[i]);
+        existingReq.valuesList.emplace_back(valuesList[i]);
     }
     std::function<void(std::shared_ptr<SessionConnection>, const TSInsertStringRecordsReq&)> consumer =
         [](const std::shared_ptr<SessionConnection>& c, const TSInsertStringRecordsReq& r) {
@@ -850,19 +987,28 @@ void Session::insertRecordsWithLeaderCache(vector<string> deviceIds, vector<int6
     std::unordered_map<std::shared_ptr<SessionConnection>, TSInsertRecordsReq> recordsGroup;
     for (int i = 0; i < deviceIds.size(); i++) {
         auto connection = getSessionConnection(deviceIds[i]);
-        TSInsertRecordsReq request;
-        request.__set_prefixPaths(deviceIds);
-        request.__set_timestamps(times);
-        request.__set_measurementsList(measurementsList);
-        vector<string> bufferList;
-        for (size_t i = 0; i < valuesList.size(); i++) {
-            string buffer;
-            putValuesIntoBuffer(typesList[i], valuesList[i], buffer);
-            bufferList.push_back(buffer);
+        if (recordsGroup.find(connection) == recordsGroup.end()) {
+            TSInsertRecordsReq request;
+            std::vector<std::string> emptyPrefixPaths;
+            std::vector<std::vector<std::string>> emptyMeasurementsList;
+            std::vector<std::string> emptyValuesList;
+            std::vector<int64_t> emptyTimestamps;
+            request.__set_isAligned(isAligned);
+            request.__set_prefixPaths(emptyPrefixPaths);
+            request.__set_timestamps(emptyTimestamps);
+            request.__set_measurementsList(emptyMeasurementsList);
+            request.__set_valuesList(emptyValuesList);
+            recordsGroup.insert(make_pair(connection, request));
         }
-        request.__set_valuesList(bufferList);
-        request.__set_isAligned(false);
-        recordsGroup.insert(make_pair(connection, request));
+        TSInsertRecordsReq& existingReq = recordsGroup[connection];
+        existingReq.prefixPaths.emplace_back(deviceIds[i]);
+        existingReq.timestamps.emplace_back(times[i]);
+        existingReq.measurementsList.emplace_back(measurementsList[i]);
+        vector<string> bufferList;
+        string buffer;
+        putValuesIntoBuffer(typesList[i], valuesList[i], buffer);
+        existingReq.valuesList.emplace_back(buffer);
+        recordsGroup[connection] = existingReq;
     }
     std::function<void(std::shared_ptr<SessionConnection>, const TSInsertRecordsReq&)> consumer =
         [](const std::shared_ptr<SessionConnection>& c, const TSInsertRecordsReq& r) {
@@ -877,46 +1023,49 @@ void Session::insertRecordsWithLeaderCache(vector<string> deviceIds, vector<int6
 }
 
 void Session::insertTabletsWithLeaderCache(unordered_map<string, Tablet*> tablets, bool sorted, bool isAligned) {
-    std::unordered_map<std::shared_ptr<SessionConnection>, TSInsertTabletsReq> tabletGroup;
+    std::unordered_map<std::shared_ptr<SessionConnection>, TSInsertTabletsReq> tabletsGroup;
     if (tablets.empty()) {
         throw BatchExecutionException("No tablet is inserting!");
     }
-    auto beginIter = tablets.begin();
-    bool isFirstTabletAligned = ((*beginIter).second)->isAligned;
     for (const auto& item : tablets) {
-        TSInsertTabletsReq request;
-        if (isFirstTabletAligned != item.second->isAligned) {
+        if (isAligned != item.second->isAligned) {
             throw BatchExecutionException("The tablets should be all aligned or non-aligned!");
         }
         if (!checkSorted(*(item.second))) {
             sortTablet(*(item.second));
         }
-        request.prefixPaths.push_back(item.second->deviceId);
-        vector<string> measurements;
+        auto deviceId = item.first;
+        auto tablet = item.second;
+        auto connection = getSessionConnection(deviceId);
+        auto it = tabletsGroup.find(connection);
+        if (it == tabletsGroup.end()) {
+            TSInsertTabletsReq request;
+            tabletsGroup[connection] = request;
+        }
+        TSInsertTabletsReq& existingReq = tabletsGroup[connection];
+        existingReq.prefixPaths.emplace_back(tablet->deviceId);
+        existingReq.timestampsList.emplace_back(move(SessionUtils::getTime(*tablet)));
+        existingReq.valuesList.emplace_back(move(SessionUtils::getValue(*tablet)));
+        existingReq.sizeList.emplace_back(tablet->rowSize);
         vector<int> dataTypes;
-        for (pair<string, TSDataType::TSDataType> schema : item.second->schemas) {
+        vector<string> measurements;
+        for (pair<string, TSDataType::TSDataType> schema : tablet->schemas) {
             measurements.push_back(schema.first);
             dataTypes.push_back(schema.second);
         }
-        request.measurementsList.push_back(measurements);
-        request.typesList.push_back(dataTypes);
-        request.timestampsList.push_back(move(SessionUtils::getTime(*(item.second))));
-        request.valuesList.push_back(move(SessionUtils::getValue(*(item.second))));
-        request.sizeList.push_back(item.second->rowSize);
-        request.__set_isAligned(item.second->isAligned);
-        auto connection = getSessionConnection(item.first);
-        tabletGroup.insert(make_pair(connection, request));
+        existingReq.measurementsList.emplace_back(measurements);
+        existingReq.typesList.emplace_back(dataTypes);
     }
 
     std::function<void(std::shared_ptr<SessionConnection>, const TSInsertTabletsReq&)> consumer =
         [](const std::shared_ptr<SessionConnection>& c, const TSInsertTabletsReq& r) {
         c->insertTablets(r);
     };
-    if (tabletGroup.size() == 1) {
-        insertOnce(tabletGroup, consumer);
+    if (tabletsGroup.size() == 1) {
+        insertOnce(tabletsGroup, consumer);
     }
     else {
-        insertByGroup(tabletGroup, consumer);
+        insertByGroup(tabletsGroup, consumer);
     }
 }
 
@@ -1183,7 +1332,7 @@ void Session::insertAlignedRecords(const vector<string>& deviceIds,
     }
 
     if (enableRedirection) {
-        insertRecordsWithLeaderCache(deviceIds, times, measurementsList, typesList, valuesList, false);
+        insertRecordsWithLeaderCache(deviceIds, times, measurementsList, typesList, valuesList, true);
     }
     else {
         TSInsertRecordsReq request;
@@ -1350,7 +1499,6 @@ void Session::buildInsertTabletReq(TSInsertTabletReq& request, Tablet& tablet, b
         request.measurements.push_back(schema.first);
         request.types.push_back(schema.second);
     }
-
     request.values = move(SessionUtils::getValue(tablet));
     request.timestamps = move(SessionUtils::getTime(tablet));
     request.__set_size(tablet.rowSize);
@@ -1394,19 +1542,59 @@ void Session::insertRelationalTablet(Tablet& tablet, bool sorted) {
         relationalTabletGroup.insert(make_pair(getSessionConnection(tablet.getDeviceID(0)), tablet));
     }
     else {
-        for (int i = 0; i < tablet.rowSize; i++) {
-            auto iDeviceID = tablet.getDeviceID(i);
+        for (int row = 0; row < tablet.rowSize; row++) {
+            auto iDeviceID = tablet.getDeviceID(row);
             std::shared_ptr<SessionConnection> connection = getSessionConnection(iDeviceID);
 
             auto it = relationalTabletGroup.find(connection);
             if (it == relationalTabletGroup.end()) {
-                Tablet newTablet(tablet.deviceId, tablet.schemas, tablet.columnTypes);
+                Tablet newTablet(tablet.deviceId, tablet.schemas, tablet.columnTypes, tablet.rowSize);
                 it = relationalTabletGroup.insert(std::make_pair(connection, newTablet)).first;
             }
 
             Tablet& currentTablet = it->second;
-            currentTablet.values[currentTablet.rowSize] = tablet.values[i];
-            currentTablet.addTimestamp(currentTablet.rowSize, tablet.timestamps[i]);
+            int rowIndex = currentTablet.rowSize++;
+            currentTablet.timestamps[rowIndex] = tablet.timestamps[row];
+            for (int col = 0; col < tablet.schemas.size(); col++) {
+                switch (tablet.schemas[col].second) {
+                case TSDataType::BOOLEAN:
+                    currentTablet.addValue(tablet.schemas[col].first, rowIndex,
+                        *(bool*)tablet.getValue(col, row, tablet.schemas[col].second));
+                    break;
+                case TSDataType::INT32:
+                    currentTablet.addValue(tablet.schemas[col].first, rowIndex,
+                        *(int32_t*)tablet.getValue(col, row, tablet.schemas[col].second));
+                    break;
+                case TSDataType::INT64:
+                case TSDataType::TIMESTAMP:
+                    currentTablet.addValue(tablet.schemas[col].first, rowIndex,
+                        *(int64_t*)tablet.getValue(col, row, tablet.schemas[col].second));
+                    break;
+                case TSDataType::FLOAT:
+                    currentTablet.addValue(tablet.schemas[col].first, rowIndex,
+                        *(float*)tablet.getValue(col, row, tablet.schemas[col].second));
+                    break;
+                case TSDataType::DOUBLE:
+                    currentTablet.addValue(tablet.schemas[col].first, rowIndex,
+                        *(double*)tablet.getValue(col, row, tablet.schemas[col].second));
+                    break;
+                case TSDataType::DATE: {
+                    currentTablet.addValue(tablet.schemas[col].first, rowIndex,
+                        *(boost::gregorian::date*)tablet.getValue(col, row, tablet.schemas[col].second));
+                    break;
+                }
+                case TSDataType::STRING:
+                case TSDataType::TEXT:
+                case TSDataType::BLOB: {
+                    currentTablet.addValue(tablet.schemas[col].first, rowIndex,
+                        *(string*)tablet.getValue(col, row, tablet.schemas[col].second));
+                    break;
+                }
+                default:
+                    break;
+                }
+
+            }
         }
     }
     if (relationalTabletGroup.size() == 1) {
@@ -1543,47 +1731,44 @@ void Session::insertTablets(unordered_map<string, Tablet*>& tablets) {
 }
 
 void Session::insertTablets(unordered_map<string, Tablet*>& tablets, bool sorted) {
-    TSInsertTabletsReq request;
     if (tablets.empty()) {
         throw BatchExecutionException("No tablet is inserting!");
     }
     auto beginIter = tablets.begin();
-    bool isFirstTabletAligned = ((*beginIter).second)->isAligned;
-    for (const auto& item : tablets) {
-        if (isFirstTabletAligned != item.second->isAligned) {
-            throw BatchExecutionException("The tablets should be all aligned or non-aligned!");
-        }
-        if (!checkSorted(*(item.second))) {
-            sortTablet(*(item.second));
-        }
-        request.prefixPaths.push_back(item.second->deviceId);
-        vector<string> measurements;
-        vector<int> dataTypes;
-        for (pair<string, TSDataType::TSDataType> schema : item.second->schemas) {
-            measurements.push_back(schema.first);
-            dataTypes.push_back(schema.second);
-        }
-        request.measurementsList.push_back(measurements);
-        request.typesList.push_back(dataTypes);
-        request.timestampsList.push_back(move(SessionUtils::getTime(*(item.second))));
-        request.valuesList.push_back(move(SessionUtils::getValue(*(item.second))));
-        request.sizeList.push_back(item.second->rowSize);
+    bool isAligned = ((*beginIter).second)->isAligned;
+    if (enableRedirection) {
+        insertTabletsWithLeaderCache(tablets, sorted, isAligned);
     }
-    request.__set_isAligned(isFirstTabletAligned);
-    try {
-        TSStatus respStatus;
-        defaultSessionConnection->getSessionClient()->insertTablets(respStatus, request);
-        RpcUtils::verifySuccess(respStatus);
-    }
-    catch (const TTransportException& e) {
-        log_debug(e.what());
-        throw IoTDBConnectionException(e.what());
-    } catch (const IoTDBException& e) {
-        log_debug(e.what());
-        throw;
-    } catch (const exception& e) {
-        log_debug(e.what());
-        throw IoTDBException(e.what());
+    else {
+        TSInsertTabletsReq request;
+        for (const auto& item : tablets) {
+            if (isAligned != item.second->isAligned) {
+                throw BatchExecutionException("The tablets should be all aligned or non-aligned!");
+            }
+            if (!checkSorted(*(item.second))) {
+                sortTablet(*(item.second));
+            }
+            request.prefixPaths.push_back(item.second->deviceId);
+            vector<string> measurements;
+            vector<int> dataTypes;
+            for (pair<string, TSDataType::TSDataType> schema : item.second->schemas) {
+                measurements.push_back(schema.first);
+                dataTypes.push_back(schema.second);
+            }
+            request.measurementsList.push_back(measurements);
+            request.typesList.push_back(dataTypes);
+            request.timestampsList.push_back(move(SessionUtils::getTime(*(item.second))));
+            request.valuesList.push_back(move(SessionUtils::getValue(*(item.second))));
+            request.sizeList.push_back(item.second->rowSize);
+        }
+        request.__set_isAligned(isAligned);
+        try {
+            TSStatus respStatus;
+            defaultSessionConnection->insertTablets(request);
+            RpcUtils::verifySuccess(respStatus);
+        }
+        catch (RedirectException& e) {
+        }
     }
 }
 

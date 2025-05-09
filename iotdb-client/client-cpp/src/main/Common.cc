@@ -18,6 +18,36 @@
  */
 
 #include "Common.h"
+#include <boost/date_time/gregorian/gregorian.hpp>
+
+int32_t parseDateExpressionToInt(const boost::gregorian::date& date) {
+    if(date.is_not_a_date()) {
+        throw IoTDBException("Date expression is null or empty.");
+    }
+
+    const int year = date.year();
+    if(year < 1000 || year > 9999) {
+        throw IoTDBException("Year must be between 1000 and 9999.");
+    }
+
+    const int64_t result = static_cast<int64_t>(year) * 10000 +
+                          date.month() * 100 +
+                          date.day();
+    if(result > INT32_MAX || result < INT32_MIN) {
+        throw IoTDBException("Date value overflow");
+    }
+    return static_cast<int32_t>(result);
+}
+
+boost::gregorian::date parseIntToDate(int32_t dateInt) {
+    if (dateInt == EMPTY_DATE_INT) {
+        return boost::gregorian::date(boost::date_time::not_a_date_time);
+    }
+    int year = dateInt / 10000;
+    int month = (dateInt % 10000) / 100;
+    int day = dateInt % 100;
+    return boost::gregorian::date(year, month, day);
+}
 
 void RpcUtils::verifySuccess(const TSStatus &status) {
     if (status.code == TSStatusCode::MULTIPLE_ERROR) {
@@ -125,7 +155,7 @@ RpcUtils::getTSExecuteStatementResp(TSStatusCode::TSStatusCode tsStatusCode, con
 shared_ptr<TSExecuteStatementResp> RpcUtils::getTSExecuteStatementResp(const TSStatus &status) {
     shared_ptr<TSExecuteStatementResp> resp(new TSExecuteStatementResp());
     TSStatus tsStatus(status);
-    resp->status = tsStatus;
+    resp->__set_status(status);
     return resp;
 }
 
