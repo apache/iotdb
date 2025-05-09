@@ -594,6 +594,13 @@ public class PipeTaskInfo implements SnapshotProcessor {
                             return; // pipe consensus pipe task will not change
                           }
 
+                          if (pipeMeta.getStaticMeta().isSourceExternal()) {
+                            // external source pipe tasks are not balanced here since non-leaders
+                            // don't know about RegionLeader Map and will be balanced in the meta
+                            // sync procedure
+                            return;
+                          }
+
                           final Map<Integer, PipeTaskMeta> consensusGroupIdToTaskMetaMap =
                               pipeMeta.getRuntimeMeta().getConsensusGroupId2TaskMetaMap();
 

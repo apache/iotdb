@@ -78,8 +78,10 @@ public class PipeConnectorSubtaskManager {
 
     final boolean isDataRegionConnector =
         StorageEngine.getInstance()
-            .getAllDataRegionIds()
-            .contains(new DataRegionId(environment.getRegionId()));
+                .getAllDataRegionIds()
+                .contains(new DataRegionId(environment.getRegionId()))
+            // regionId that is less than 0 means an external pipe source, use dataRegionConnector
+            || environment.getRegionId() < 0;
 
     final int connectorNum;
     boolean realTimeFirst = false;
