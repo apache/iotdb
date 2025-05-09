@@ -1,5 +1,5 @@
 /**
- * Licensed to the Apache Software Foundation (ASF) under one
+* Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
  * regarding copyright ownership.  The ASF licenses this file
@@ -22,21 +22,29 @@
 #include <catch.hpp>
 #include "TableSessionBuilder.h"
 
-TableSession *session = (new TableSessionBuilder())->host("127.0.0.1")->rpcPort(6667)->username("root")->password("root")->build();
+auto builder = std::unique_ptr<TableSessionBuilder>(new TableSessionBuilder());
+std::shared_ptr<TableSession> session =
+    std::shared_ptr<TableSession>(
+        builder
+        ->host("127.0.0.1")
+        ->rpcPort(6667)
+        ->username("root")
+        ->password("root")
+        ->build()
+    );
 
 struct SessionListener : Catch::TestEventListenerBase {
-
     using TestEventListenerBase::TestEventListenerBase;
 
-    void testCaseStarting(Catch::TestCaseInfo const &testInfo) override {
+    void testCaseStarting(Catch::TestCaseInfo const& testInfo) override {
         // Perform some setup before a test case is run
         session->open();
     }
 
-    void testCaseEnded(Catch::TestCaseStats const &testCaseStats) override {
+    void testCaseEnded(Catch::TestCaseStats const& testCaseStats) override {
         // Tear-down after a test case is run
         session->close();
     }
 };
 
-CATCH_REGISTER_LISTENER( SessionListener )
+CATCH_REGISTER_LISTENER(SessionListener)

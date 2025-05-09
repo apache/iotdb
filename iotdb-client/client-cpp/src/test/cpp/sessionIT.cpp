@@ -22,7 +22,7 @@
 
 using namespace std;
 
-extern Session *session;
+extern std::shared_ptr<Session> session;
 
 static vector<string> testTimeseries = {"root.test.d1.s1", "root.test.d1.s2", "root.test.d1.s3"};
 
@@ -176,6 +176,50 @@ TEST_CASE("Test insertRecord with types ", "[testTypedInsertRecord]") {
     REQUIRE(count == 100);
 }
 
+
+TEST_CASE("Test insertRecord with new datatypes ", "[testTypedInsertRecordNewDatatype]") {
+    CaseReporter cr("testTypedInsertRecordNewDatatype");
+    vector<string> timeseries = {"root.test.d1.s1", "root.test.d1.s2", "root.test.d1.s3", "root.test.d1.s4"};
+    std::vector<TSDataType::TSDataType> types = {TSDataType::TIMESTAMP,
+        TSDataType::DATE, TSDataType::BLOB, TSDataType::STRING};
+
+    for (size_t i = 0; i < timeseries.size(); i++) {
+        if (session->checkTimeseriesExists(timeseries[i])) {
+            session->deleteTimeseries(timeseries[i]);
+        }
+        session->createTimeseries(timeseries[i], types[i], TSEncoding::PLAIN, CompressionType::SNAPPY);
+    }
+    string deviceId = "root.test.d1";
+    vector<string> measurements = {"s1", "s2", "s3", "s4"};
+    int64_t value1 = 20250507;
+    boost::gregorian::date value2 = boost::gregorian::date(2025, 5, 7);
+    string value3 = "20250507";
+    string value4 = "20250507";
+
+    for (long time = 0; time < 100; time++) {
+        vector<char *> values = {(char *) (&value1), (char *) (&value2),
+            const_cast<char*>(value3.c_str()), const_cast<char*>(value4.c_str())};
+        session->insertRecord(deviceId, time, measurements, types, values);
+    }
+
+    unique_ptr<SessionDataSet> sessionDataSet = session->executeQueryStatement("select s1,s2,s3,s4 from root.test.d1");
+    sessionDataSet->setFetchSize(1024);
+    long count = 0;
+    while (sessionDataSet->hasNext()) {
+        auto record = sessionDataSet->next();
+        REQUIRE(record->fields.size() == 4);
+        for (int i = 0; i < 4; i++) {
+            REQUIRE(types[i] == record->fields[i].dataType);
+        }
+        REQUIRE(record->fields[0].longV == value1);
+        REQUIRE(record->fields[1].dateV == value2);
+        REQUIRE(record->fields[2].stringV == value3);
+        REQUIRE(record->fields[3].stringV == value4);
+        count++;
+    }
+    REQUIRE(count == 100);
+}
+
 TEST_CASE("Test insertRecords with types ", "[testTypedInsertRecords]") {
     CaseReporter cr("testTypedInsertRecords");
     vector<string> timeseries = {"root.test.d1.s1", "root.test.d1.s2", "root.test.d1.s3"};
@@ -296,6 +340,116 @@ TEST_CASE("Test insertTablet ", "[testInsertTablet]") {
             REQUIRE(f.longV == index);
             index++;
         }
+    }
+    REQUIRE(count == 100);
+}
+
+TEST_CASE("Test insertTablets ", "[testInsertTablets]") {
+    CaseReporter cr("testInsertTablets");
+    vector<string> testTimeseries = {"root.test.d1.s1", "root.test.d1.s2", "root.test.d1.s3",
+        "root.test.d2.s1", "root.test.d2.s2", "root.test.d2.s3"};
+    for (const string &timeseries: testTimeseries) {
+        if (session->checkTimeseriesExists(timeseries)) {
+            session->deleteTimeseries(timeseries);
+        }
+        session->createTimeseries(timeseries, TSDataType::INT64, TSEncoding::RLE, CompressionType::SNAPPY);
+    }
+    vector<pair<string, TSDataType::TSDataType>> schemaList;
+    schemaList.emplace_back("s1", TSDataType::INT64);
+    schemaList.emplace_back("s2", TSDataType::INT64);
+    schemaList.emplace_back("s3", TSDataType::INT64);
+
+    int maxRowNumber = 100;
+    vector<string> deviceIds = {"root.test.d1", "root.test.d2"};
+    vector<Tablet> tablets;
+    for (const auto& deviceId: deviceIds) {
+        tablets.emplace_back(deviceId, schemaList, maxRowNumber);
+    }
+    for (auto& tablet : tablets) {
+        for (int64_t time = 0; time < maxRowNumber; time++) {
+            int row = tablet.rowSize++;
+            tablet.timestamps[row] = time;
+            for (int64_t i = 0; i < 3; i++) {
+                tablet.addValue(i, row, i);
+            }
+        }
+    }
+    unordered_map<string, Tablet*> tabletsMap;
+    for (auto& tablet : tablets) {
+        tabletsMap[tablet.deviceId] = &tablet;
+    }
+    session->insertTablets(tabletsMap);
+
+    unique_ptr<SessionDataSet> sessionDataSet = session->executeQueryStatement("select s1,s2,s3 from root.test.d2");
+    sessionDataSet->setFetchSize(1024);
+    int count = 0;
+    while (sessionDataSet->hasNext()) {
+        long index = 0;
+        count++;
+        for (const Field& f: sessionDataSet->next()->fields) {
+            REQUIRE(f.longV == index);
+            index++;
+        }
+    }
+    REQUIRE(count == 100);
+}
+
+TEST_CASE("Test insertTablet new datatype", "[testInsertTabletNewDatatype]") {
+    CaseReporter cr("testInsertTabletNewDatatype");
+    string deviceId = "root.test.d2";
+    vector<pair<string, TSDataType::TSDataType>> schemaList;
+    std::vector<std::string> measurements = {"s1", "s2", "s3", "s4"};
+    std::vector<TSDataType::TSDataType> dataTypes = {TSDataType::TIMESTAMP,
+        TSDataType::DATE, TSDataType::BLOB, TSDataType::STRING};
+    for (int i = 0; i < 4; i++) {
+        schemaList.emplace_back(measurements[i], dataTypes[i]);
+    }
+
+    for (int i = 0; i < 4; i++) {
+        auto timeseries = deviceId + "." + measurements[i];
+        if (session->checkTimeseriesExists(timeseries)) {
+            session->deleteTimeseries(timeseries);
+        }
+        session->createTimeseries(timeseries, dataTypes[i], TSEncoding::PLAIN, CompressionType::UNCOMPRESSED);
+    }
+
+    int64_t s1Value = 20250507;
+    boost::gregorian::date s2Value(2025, 5, 7);
+    std::string s3Value("20250507");
+    std::string s4Value("20250507");
+
+    Tablet tablet(deviceId, schemaList, 100);
+    for (int64_t time = 0; time < 100; time++) {
+        int row = tablet.rowSize++;
+        tablet.timestamps[row] = time;
+        tablet.addValue(0, row, s1Value);
+        tablet.addValue(1, row, s2Value);
+        tablet.addValue(2, row, s3Value);
+        tablet.addValue(3, row, s4Value);
+        if (tablet.rowSize == tablet.maxRowNumber) {
+            session->insertTablet(tablet);
+            tablet.reset();
+        }
+    }
+
+    if (tablet.rowSize != 0) {
+        session->insertTablet(tablet);
+        tablet.reset();
+    }
+    unique_ptr<SessionDataSet> sessionDataSet = session->executeQueryStatement("select s1,s2,s3,s4 from root.test.d2");
+    sessionDataSet->setFetchSize(1024);
+    int count = 0;
+    while (sessionDataSet->hasNext()) {
+        auto record = sessionDataSet->next();
+        REQUIRE(record->fields.size() == 4);
+        for (int i = 0; i < 4; i++) {
+            REQUIRE(dataTypes[i] == record->fields[i].dataType);
+        }
+        REQUIRE(record->fields[0].longV == s1Value);
+        REQUIRE(record->fields[1].dateV == s2Value);
+        REQUIRE(record->fields[2].stringV == s3Value);
+        REQUIRE(record->fields[3].stringV == s4Value);
+        count++;
     }
     REQUIRE(count == 100);
 }
