@@ -45,6 +45,7 @@ import org.apache.iotdb.service.rpc.thrift.TSDropSchemaTemplateReq;
 import org.apache.iotdb.service.rpc.thrift.TSExecuteStatementReq;
 import org.apache.iotdb.service.rpc.thrift.TSExecuteStatementResp;
 import org.apache.iotdb.service.rpc.thrift.TSFastLastDataQueryForOneDeviceReq;
+import org.apache.iotdb.service.rpc.thrift.TSFastLastDataQueryForOnePrefixPathReq;
 import org.apache.iotdb.service.rpc.thrift.TSInsertRecordReq;
 import org.apache.iotdb.service.rpc.thrift.TSInsertRecordsOfOneDeviceReq;
 import org.apache.iotdb.service.rpc.thrift.TSInsertRecordsReq;
@@ -442,6 +443,43 @@ public class SessionConnection {
         zoneId);
   }
 
+  protected SessionDataSet executeLastDataQueryForOnePrefixPath(final List<String> prefixes)
+      throws StatementExecutionException, IoTDBConnectionException, RedirectException {
+    TSFastLastDataQueryForOnePrefixPathReq req =
+        new TSFastLastDataQueryForOnePrefixPathReq(sessionId, prefixes, statementId);
+    req.setFetchSize(session.fetchSize);
+    req.setEnableRedirectQuery(enableRedirect);
+
+    RetryResult<TSExecuteStatementResp> result =
+        callWithReconnect(
+            () -> {
+              req.setSessionId(sessionId);
+              req.setStatementId(statementId);
+              return client.executeFastLastDataQueryForOnePrefixPath(req);
+            });
+    final TSExecuteStatementResp tsExecuteStatementResp = result.getResult();
+
+    if (result.getRetryAttempts() == 0) {
+      RpcUtils.verifySuccessWithRedirection(tsExecuteStatementResp.getStatus());
+    } else {
+      RpcUtils.verifySuccess(tsExecuteStatementResp.getStatus());
+    }
+
+    return new SessionDataSet(
+        "",
+        tsExecuteStatementResp.getColumns(),
+        tsExecuteStatementResp.getDataTypeList(),
+        tsExecuteStatementResp.columnNameIndexMap,
+        tsExecuteStatementResp.getQueryId(),
+        statementId,
+        client,
+        sessionId,
+        tsExecuteStatementResp.queryResult,
+        tsExecuteStatementResp.isIgnoreTimeStamp(),
+        tsExecuteStatementResp.moreData,
+        zoneId);
+  }
+
   protected Pair<SessionDataSet, TEndPoint> executeLastDataQueryForOneDevice(
       String db, String device, List<String> sensors, boolean isLegalPathNodes, long timeOut)
       throws StatementExecutionException, IoTDBConnectionException {
@@ -493,7 +531,7 @@ public class SessionConnection {
       throws StatementExecutionException, IoTDBConnectionException, RedirectException {
     TSLastDataQueryReq tsLastDataQueryReq =
         new TSLastDataQueryReq(sessionId, paths, time, statementId);
-    tsLastDataQueryReq.setFetchSize(session.fetchSize);
+    tsLastDataQueryReq.setFetchSize(60000);
     tsLastDataQueryReq.setEnableRedirectQuery(enableRedirect);
     tsLastDataQueryReq.setTimeout(timeOut);
 
