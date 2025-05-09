@@ -75,6 +75,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
+import static org.apache.iotdb.db.queryengine.transformation.dag.column.FailFunctionColumnTransformer.FAIL_FUNCTION_NAME;
 import static org.apache.tsfile.read.common.type.BinaryType.TEXT;
 import static org.apache.tsfile.read.common.type.BooleanType.BOOLEAN;
 import static org.apache.tsfile.read.common.type.DateType.DATE;
@@ -554,6 +555,8 @@ public class TableMetadataImpl implements Metadata {
                 + " must have at least two arguments, and first argument pattern must be TEXT or STRING type.");
       }
       return STRING;
+    } else if (FAIL_FUNCTION_NAME.equalsIgnoreCase(functionName)) {
+      return UNKNOWN;
     } else if (TableBuiltinScalarFunction.GREATEST.getFunctionName().equalsIgnoreCase(functionName)
         || TableBuiltinScalarFunction.LEAST.getFunctionName().equalsIgnoreCase(functionName)) {
       if (argumentTypes.size() < 2 || !areAllTypesSameAndComparable(argumentTypes)) {
