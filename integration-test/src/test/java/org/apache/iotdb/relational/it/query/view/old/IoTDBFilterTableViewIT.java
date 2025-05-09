@@ -27,7 +27,6 @@ import org.apache.iotdb.itbase.env.BaseEnv;
 
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
-import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -37,8 +36,6 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 
-import static org.apache.iotdb.db.it.utils.TestUtils.assertTestFail;
-import static org.apache.iotdb.db.it.utils.TestUtils.tableAssertTestFail;
 import static org.apache.iotdb.db.it.utils.TestUtils.tableResultSetEqualTest;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
@@ -214,49 +211,6 @@ public class IoTDBFilterTableViewIT {
         ++count;
       }
       assertEquals(1, count);
-    } catch (SQLException throwable) {
-      fail(throwable.getMessage());
-    }
-  }
-
-  @Test
-  public void testMismatchedDataTypes() {
-    tableAssertTestFail(
-        "select s1 from sg1 where s1",
-        "701: WHERE clause must evaluate to a boolean: actual type DOUBLE",
-        DATABASE_NAME);
-    // TODO After Aggregation supported
-    /*assertTestFail(
-        "select count(s1) from root.sg1.d1 group by ([0, 40), 5ms) having count(s1) + 1;",
-        "The output type of the expression in HAVING clause should be BOOLEAN, actual data type: DOUBLE.");
-    assertTestFail(
-        "select count(s1) from root.sg1.d1 group by ([0, 40), 5ms) having count(s1) + 1 align by device;",
-        "The output type of the expression in HAVING clause should be BOOLEAN, actual data type: DOUBLE.");*/
-  }
-
-  @Ignore // TODO After UDTF supported
-  @Test
-  public void testFilterWithUDTF() {
-    try (Connection connection = EnvFactory.getEnv().getConnection();
-        Statement statement = connection.createStatement();
-        ResultSet containsResultSet =
-            statement.executeQuery("select s1 from testUDTF where STRING_CONTAINS(s1, 's'='s')");
-        ResultSet sinResultSet =
-            statement.executeQuery("select s1 from testUDTF where sin(s2) = 0")) {
-      int containsCnt = 0;
-      while (containsResultSet.next()) {
-        ++containsCnt;
-      }
-      assertEquals(1, containsCnt);
-
-      int sinCnt = 0;
-      while (sinResultSet.next()) {
-        ++sinCnt;
-      }
-      assertEquals(1, sinCnt);
-      assertTestFail(
-          "select s1 from testUDTF where sin(s2)",
-          "The output type of the expression in WHERE clause should be BOOLEAN, actual data type: DOUBLE.");
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
     }

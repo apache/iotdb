@@ -129,7 +129,6 @@ public class IoTDBPredicatePushDownTableViewIT {
         database);
   }
 
-  // TODO fix it
   @Test
   public void testAlignedRawDataAlignByTime2() {
     String[] expectedHeader1 = new String[] {"Time", "s2", "_col2"};
