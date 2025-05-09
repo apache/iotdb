@@ -864,7 +864,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
             Collections.singletonList(String.join(".", req.getPrefixes()) + ".**"),
             Long.MIN_VALUE,
             req.statementId);
-    tsLastDataQueryReq.setFetchSize(60000);
+    tsLastDataQueryReq.setFetchSize(req.fetchSize);
     tsLastDataQueryReq.setEnableRedirectQuery(req.enableRedirectQuery);
     tsLastDataQueryReq.setLegalPathNodes(true);
     tsLastDataQueryReq.setTimeout(req.timeout);
