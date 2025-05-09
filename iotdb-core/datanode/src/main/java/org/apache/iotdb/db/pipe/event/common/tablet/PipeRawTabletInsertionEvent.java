@@ -33,7 +33,6 @@ import org.apache.iotdb.db.pipe.event.common.tablet.parser.TabletInsertionEventP
 import org.apache.iotdb.db.pipe.event.common.tablet.parser.TabletInsertionEventTablePatternParser;
 import org.apache.iotdb.db.pipe.event.common.tablet.parser.TabletInsertionEventTreePatternParser;
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
-import org.apache.iotdb.db.pipe.metric.overview.PipeDataNodeRemainingEventAndTimeMetrics;
 import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
 import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryWeightUtil;
 import org.apache.iotdb.db.pipe.resource.memory.PipeTabletMemoryBlock;
@@ -201,19 +200,11 @@ public class PipeRawTabletInsertionEvent extends PipeInsertionEvent
         .forceResize(
             allocatedMemoryBlock,
             PipeMemoryWeightUtil.calculateTabletSizeInBytes(tablet) + INSTANCE_SIZE);
-    if (Objects.nonNull(pipeName)) {
-      PipeDataNodeRemainingEventAndTimeMetrics.getInstance()
-          .increaseTabletEventCount(pipeName, creationTime);
-    }
     return true;
   }
 
   @Override
   public boolean internallyDecreaseResourceReferenceCount(final String holderMessage) {
-    if (Objects.nonNull(pipeName)) {
-      PipeDataNodeRemainingEventAndTimeMetrics.getInstance()
-          .decreaseTabletEventCount(pipeName, creationTime);
-    }
     allocatedMemoryBlock.close();
 
     // Record the deviceId before the memory is released,
@@ -324,6 +315,11 @@ public class PipeRawTabletInsertionEvent extends PipeInsertionEvent
 
   public EnrichedEvent getSourceEvent() {
     return sourceEvent;
+  }
+
+  @Override
+  public EnrichedEvent getRootEvent() {
+    return Objects.nonNull(sourceEvent) ? sourceEvent.getRootEvent() : null;
   }
 
   /////////////////////////// TabletInsertionEvent ///////////////////////////

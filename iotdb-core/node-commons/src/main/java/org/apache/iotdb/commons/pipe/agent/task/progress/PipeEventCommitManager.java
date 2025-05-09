@@ -29,7 +29,7 @@ import org.slf4j.LoggerFactory;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.function.BiConsumer;
+import java.util.function.Consumer;
 
 public class PipeEventCommitManager {
 
@@ -42,7 +42,7 @@ public class PipeEventCommitManager {
   private final Map<CommitterKey, Integer> eventCommitterRestartTimesMap =
       new ConcurrentHashMap<>();
 
-  private BiConsumer<String, Boolean> commitRateMarker;
+  private Consumer<EnrichedEvent> commitRateMarker;
 
   public void register(
       final String pipeName,
@@ -106,9 +106,7 @@ public class PipeEventCommitManager {
     }
     if (Objects.nonNull(commitRateMarker)) {
       try {
-        commitRateMarker.accept(
-            taskAgent.getPipeNameWithCreationTime(event.getPipeName(), event.getCreationTime()),
-            event.isDataRegionEvent());
+        commitRateMarker.accept(event);
       } catch (final Exception e) {
         if (LOGGER.isDebugEnabled()) {
           LOGGER.debug(
@@ -168,11 +166,15 @@ public class PipeEventCommitManager {
         committerKey.getPipeName(), committerKey.getCreationTime(), committerKey.getRegionId());
   }
 
+  public PipeTaskAgent getTaskAgent() {
+    return taskAgent;
+  }
+
   public void setTaskAgent(final PipeTaskAgent taskAgent) {
     this.taskAgent = taskAgent;
   }
 
-  public void setCommitRateMarker(final BiConsumer<String, Boolean> commitRateMarker) {
+  public void setCommitRateMarker(final Consumer<EnrichedEvent> commitRateMarker) {
     this.commitRateMarker = commitRateMarker;
   }
 

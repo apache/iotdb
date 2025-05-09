@@ -457,6 +457,10 @@ public abstract class EnrichedEvent implements Event {
     return isReleased.get();
   }
 
+  public EnrichedEvent getRootEvent() {
+    return this;
+  }
+
   /**
    * Used for pipeConsensus. In PipeConsensus, we only need committerKey, commitId and rebootTimes
    * to uniquely identify an event
