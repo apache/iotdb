@@ -28,6 +28,7 @@ import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.schema.table.TreeViewSchema;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.column.FieldColumnSchema;
+import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
 import org.apache.iotdb.commons.utils.StatusUtils;
 import org.apache.iotdb.confignode.client.async.CnToDnAsyncRequestType;
 import org.apache.iotdb.confignode.manager.ConfigManager;
@@ -44,28 +45,30 @@ import org.slf4j.LoggerFactory;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.stream.Collectors;
 
 public class TreeDeviceViewFieldDetector {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(TreeDeviceViewFieldDetector.class);
-  private static final int MEASUREMENT_TRIMMING_THRESHOLD = 1000;
   private final ConfigManager configManager;
   private final PartialPath path;
   private final TsTable table;
-  private final Map<String, FieldColumnSchema> fields;
+  private final Map<String, Set<FieldColumnSchema>> fields;
 
   private TDeviceViewResp result = new TDeviceViewResp(StatusUtils.OK, new ConcurrentHashMap<>());
+  private final Map<String, String> lowerCase2OriginalMap = new HashMap<>();
 
   public TreeDeviceViewFieldDetector(
       final ConfigManager configManager,
       final TsTable table,
-      final Map<String, FieldColumnSchema> fields) {
+      final Map<String, Set<FieldColumnSchema>> fields) {
     this.configManager = configManager;
     this.path = TreeViewSchema.getPrefixPattern(table);
     this.table = table;
@@ -77,7 +80,7 @@ public class TreeDeviceViewFieldDetector {
       new TreeDeviceViewFieldDetectionTaskExecutor(
               configManager,
               getLatestSchemaRegionMap(),
-              table.getIdNums(),
+              table.getTagNum(),
               TreeViewSchema.isRestrict(table))
           .execute();
       if (result.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
@@ -86,47 +89,56 @@ public class TreeDeviceViewFieldDetector {
       result
           .getDeviewViewFieldTypeMap()
           .forEach(
-              (field, type) ->
-                  table.addColumnSchema(
-                      new FieldColumnSchema(field, TSDataType.getTsDataType(type))));
+              (field, type) -> {
+                final FieldColumnSchema columnSchema =
+                    new FieldColumnSchema(field, TSDataType.getTsDataType(type));
+                if (!field.equals(lowerCase2OriginalMap.get(field))) {
+                  TreeViewSchema.setOriginalName(columnSchema, lowerCase2OriginalMap.get(field));
+                }
+                table.addColumnSchema(columnSchema);
+              });
     } else {
-      final Map<String, FieldColumnSchema> unknownFields =
-          Objects.isNull(fields)
-              ? table.getColumnList().stream()
-                  .filter(
-                      columnSchema ->
-                          columnSchema instanceof FieldColumnSchema
-                              && columnSchema.getDataType() == TSDataType.UNKNOWN)
-                  .collect(
-                      Collectors.toMap(
-                          fieldColumnSchema ->
-                              Objects.nonNull(TreeViewSchema.getOriginalName(fieldColumnSchema))
-                                  ? TreeViewSchema.getOriginalName(fieldColumnSchema)
-                                  : fieldColumnSchema.getColumnName(),
-                          FieldColumnSchema.class::cast))
-              : fields;
+      final Map<String, Set<FieldColumnSchema>> unknownFields;
+      if (Objects.isNull(fields)) {
+        unknownFields = new HashMap<>();
+        for (final TsTableColumnSchema schema : table.getColumnList()) {
+          if (!(schema instanceof FieldColumnSchema)
+              || schema.getDataType() != TSDataType.UNKNOWN) {
+            continue;
+          }
+          final String key = TreeViewSchema.getSourceName(schema);
+          if (!unknownFields.containsKey(key)) {
+            unknownFields.put(key, new HashSet<>());
+          }
+          unknownFields.get(key).add((FieldColumnSchema) schema);
+        }
+      } else {
+        unknownFields = fields;
+      }
+
       if (unknownFields.isEmpty()) {
         return StatusUtils.OK;
       }
       new TreeDeviceViewFieldDetectionTaskExecutor(
               configManager,
               getLatestSchemaRegionMap(),
-              table.getIdNums(),
+              table.getTagNum(),
               TreeViewSchema.isRestrict(table),
-              unknownFields.size() <= MEASUREMENT_TRIMMING_THRESHOLD
-                  ? unknownFields.keySet()
-                  : null)
+              unknownFields.keySet())
           .execute();
       if (result.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         return result.getStatus();
       }
-      for (final Map.Entry<String, FieldColumnSchema> unknownField : unknownFields.entrySet()) {
+      for (final Map.Entry<String, Set<FieldColumnSchema>> unknownField :
+          unknownFields.entrySet()) {
         if (result.getDeviewViewFieldTypeMap().containsKey(unknownField.getKey())) {
           unknownField
               .getValue()
-              .setDataType(
-                  TSDataType.getTsDataType(
-                      result.getDeviewViewFieldTypeMap().get(unknownField.getKey())));
+              .forEach(
+                  field ->
+                      field.setDataType(
+                          TSDataType.getTsDataType(
+                              result.getDeviewViewFieldTypeMap().get(unknownField.getKey()))));
         } else {
           return new TSStatus(TSStatusCode.TYPE_NOT_FOUND.getStatusCode())
               .setMessage(
@@ -226,15 +238,31 @@ public class TreeDeviceViewFieldDetector {
       resp.getDeviewViewFieldTypeMap()
           .forEach(
               (measurement, type) -> {
-                if (!result.getDeviewViewFieldTypeMap().containsKey(measurement)) {
-                  result.getDeviewViewFieldTypeMap().put(measurement, type);
-                } else {
+                final String fieldName = measurement.toLowerCase(Locale.ENGLISH);
+
+                // Field type collection
+                if (!result.getDeviewViewFieldTypeMap().containsKey(fieldName)) {
+                  result.getDeviewViewFieldTypeMap().put(fieldName, type);
+                } else if (!Objects.equals(
+                    result.getDeviewViewFieldTypeMap().get(fieldName), type)) {
                   result.setStatus(
                       RpcUtils.getStatus(
                           TSStatusCode.DATA_TYPE_MISMATCH,
                           String.format(
                               "Multiple types encountered when auto detecting type of measurement '%s', please check",
                               measurement)));
+                }
+
+                // Field name detection
+                if (!lowerCase2OriginalMap.containsKey(fieldName)) {
+                  lowerCase2OriginalMap.put(fieldName, measurement);
+                } else if (!Objects.equals(lowerCase2OriginalMap.get(fieldName), measurement)) {
+                  result.setStatus(
+                      RpcUtils.getStatus(
+                          TSStatusCode.MEASUREMENT_NAME_CONFLICT,
+                          String.format(
+                              "The measurements %s and %s share the same lower case when auto detecting type, please check",
+                              lowerCase2OriginalMap.get(fieldName), measurement)));
                 }
               });
     }

@@ -4627,10 +4627,22 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
 
   public ColumnDefinition parseViewColumnDefinition(
       final IoTDBSqlParser.ViewColumnDefinitionContext ctx) {
-    return Objects.nonNull(ctx.FROM())
+    final Identifier rawColumnName =
+        new Identifier(parseIdentifier(ctx.identifier().get(0).getText()));
+    final Identifier columnName = lowerIdentifier(rawColumnName);
+    final TsTableColumnCategory columnCategory = getColumnCategory(ctx.columnCategory);
+    Identifier originalMeasurement = null;
+
+    if (Objects.nonNull(ctx.FROM())) {
+      originalMeasurement = new Identifier(parseIdentifier(ctx.original_measurement.getText()));
+    } else if (columnCategory == FIELD && !columnName.equals(rawColumnName)) {
+      originalMeasurement = rawColumnName;
+    }
+
+    return columnCategory == FIELD
         ? new ViewFieldDefinition(
             null,
-            lowerIdentifier(new Identifier(parseIdentifier(ctx.identifier().get(0).getText()))),
+            columnName,
             Objects.nonNull(ctx.type())
                 ? parseGenericType((IoTDBSqlParser.GenericTypeContext) ctx.type())
                 : null,
@@ -4638,14 +4650,14 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
             ctx.comment() == null
                 ? null
                 : parseStringLiteral(ctx.comment().STRING_LITERAL().getText()),
-            lowerIdentifier(new Identifier(parseIdentifier(ctx.original_measurement.getText()))))
+            originalMeasurement)
         : new ColumnDefinition(
             null,
-            lowerIdentifier(new Identifier(parseIdentifier(ctx.identifier().get(0).getText()))),
+            columnName,
             Objects.nonNull(ctx.type())
                 ? parseGenericType((IoTDBSqlParser.GenericTypeContext) ctx.type())
                 : null,
-            getColumnCategory(ctx.columnCategory),
+            columnCategory,
             null,
             ctx.comment() == null
                 ? null

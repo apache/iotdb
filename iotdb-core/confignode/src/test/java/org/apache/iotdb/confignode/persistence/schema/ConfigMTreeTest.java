@@ -385,7 +385,7 @@ public class ConfigMTreeTest {
       assertEquals(1, tables.size());
       final TsTable table = tables.get(0);
       assertEquals("table" + i, table.getTableName());
-      assertEquals(1, table.getIdNums());
+      assertEquals(1, table.getTagNum());
       assertEquals(4, table.getColumnNum());
     }
   }

@@ -218,7 +218,7 @@ public class TableDeviceQuerySource implements ISchemaSource<IDeviceSchemaInfo> 
         !TreeViewSchema.isTreeViewTable(table)
             ? new String[] {PATH_ROOT, database, tableName}
             : DataNodeTreeViewSchemaUtils.getPatternNodes(table),
-        DataNodeTableCache.getInstance().getTable(database, tableName).getIdNums(),
+        DataNodeTableCache.getInstance().getTable(database, tableName).getTagNum(),
         tagDeterminedPredicateList,
         TreeViewSchema.isRestrict(table));
   }
