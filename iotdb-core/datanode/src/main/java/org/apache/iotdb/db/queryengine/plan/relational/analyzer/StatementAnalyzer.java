@@ -2986,12 +2986,7 @@ public class StatementAnalyzer {
           createAndAssignScope(
               node, scope, left.getRelationType().joinWith(right.getRelationType()));
 
-      if (node.getType() == LEFT || node.getType() == RIGHT) {
-        throw new SemanticException(
-            String.format(
-                "%s JOIN is not supported, only support INNER JOIN in current version.",
-                node.getType()));
-      } else if (node.getType() == Join.Type.CROSS || node.getType() == Join.Type.IMPLICIT) {
+      if (node.getType() == Join.Type.CROSS || node.getType() == Join.Type.IMPLICIT) {
         return output;
       }
       if (criteria instanceof JoinOn) {

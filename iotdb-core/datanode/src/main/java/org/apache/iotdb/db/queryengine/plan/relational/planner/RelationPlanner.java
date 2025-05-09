@@ -120,6 +120,8 @@ import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Join.Type.
 import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Join.Type.FULL;
 import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Join.Type.IMPLICIT;
 import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Join.Type.INNER;
+import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Join.Type.LEFT;
+import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Join.Type.RIGHT;
 
 public class RelationPlanner extends AstVisitor<RelationPlan, Void> {
 
@@ -384,6 +386,10 @@ public class RelationPlanner extends AstVisitor<RelationPlan, Void> {
             rightCoercion.getOutputSymbols(),
             Optional.empty(),
             Optional.empty());
+    // Transform RIGHT JOIN to LEFT
+    if (join.getJoinType() == JoinNode.JoinType.RIGHT) {
+      join = join.flip();
+    }
 
     // Add a projection to produce the outputs of the columns in the USING clause,
     // which are defined as coalesce(l.k, r.k)
@@ -393,7 +399,7 @@ public class RelationPlanner extends AstVisitor<RelationPlan, Void> {
     for (Identifier column : joinColumns) {
       Symbol output = symbolAllocator.newSymbol(column, analysis.getType(column));
       outputs.add(output);
-      if (node.getType() == INNER) {
+      if (node.getType() == INNER || node.getType() == LEFT) {
         assignments.put(output, leftJoinColumns.get(column).toSymbolReference());
       } else if (node.getType() == FULL) {
         assignments.put(
@@ -401,6 +407,10 @@ public class RelationPlanner extends AstVisitor<RelationPlan, Void> {
             new CoalesceExpression(
                 leftJoinColumns.get(column).toSymbolReference(),
                 rightJoinColumns.get(column).toSymbolReference()));
+      } else if (node.getType() == RIGHT) {
+        assignments.put(output, rightJoinColumns.get(column).toSymbolReference());
+      } else {
+        throw new IllegalStateException("Unexpected Join Type: " + node.getType());
       }
     }
 
@@ -593,6 +603,9 @@ public class RelationPlanner extends AstVisitor<RelationPlan, Void> {
             rightPlanBuilder.getRoot().getOutputSymbols(),
             Optional.empty(),
             Optional.empty());
+    if (type == RIGHT && asofCriteria == null) {
+      root = ((JoinNode) root).flip();
+    }
 
     if (type != INNER) {
       for (Expression complexExpression : complexJoinExpressions) {
@@ -645,6 +658,9 @@ public class RelationPlanner extends AstVisitor<RelationPlan, Void> {
                           .map(e -> coerceIfNecessary(analysis, e, translationMap.rewrite(e)))
                           .collect(Collectors.toList()))),
               Optional.empty());
+      if (type == RIGHT && asofCriteria == null) {
+        root = ((JoinNode) root).flip();
+      }
     }
 
     if (type == INNER) {
