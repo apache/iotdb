@@ -111,7 +111,7 @@ public final class PartitionExecutor {
             frame = new RangeFrame(partition, frameInfo, sortedColumns, peerGroupComparator);
             break;
           case ROWS:
-            frame = new RowsFrame(partition, frameInfo, partitionStart, partitionEnd);
+            frame = new RowsFrame(partition, frameInfo);
             break;
           case GROUPS:
             frame =

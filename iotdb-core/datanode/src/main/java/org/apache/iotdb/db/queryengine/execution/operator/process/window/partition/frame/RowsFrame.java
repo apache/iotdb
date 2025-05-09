@@ -28,23 +28,19 @@ import static com.google.common.base.Preconditions.checkArgument;
 public class RowsFrame implements Frame {
   private final Partition partition;
   private final FrameInfo frameInfo;
-  private final int partitionStart;
   private final int partitionSize;
 
-  public RowsFrame(Partition partition, FrameInfo frameInfo, int partitionStart, int partitionEnd) {
+  public RowsFrame(Partition partition, FrameInfo frameInfo) {
     checkArgument(frameInfo.getFrameType() == FrameInfo.FrameType.ROWS);
 
     this.partition = partition;
     this.frameInfo = frameInfo;
-    this.partitionStart = partitionStart;
-    this.partitionSize = partitionEnd - partitionStart;
+    this.partitionSize = partition.getPositionCount();
   }
 
   @Override
   public Range getRange(
       int currentPosition, int currentGroup, int peerGroupStart, int peerGroupEnd) {
-    int posInPartition = currentPosition - partitionStart;
-
     int offset;
     int frameStart;
     switch (frameInfo.getStartType()) {
@@ -53,14 +49,14 @@ public class RowsFrame implements Frame {
         break;
       case PRECEDING:
         offset = (int) getOffset(frameInfo.getStartOffsetChannel(), currentPosition);
-        frameStart = posInPartition - offset;
+        frameStart = currentPosition - offset;
         break;
       case CURRENT_ROW:
-        frameStart = posInPartition;
+        frameStart = currentPosition;
         break;
       case FOLLOWING:
         offset = (int) getOffset(frameInfo.getStartOffsetChannel(), currentPosition);
-        frameStart = posInPartition + offset;
+        frameStart = currentPosition + offset;
         break;
       default:
         // UNBOUND_FOLLOWING is not allowed in frame start
@@ -71,14 +67,14 @@ public class RowsFrame implements Frame {
     switch (frameInfo.getEndType()) {
       case PRECEDING:
         offset = (int) getOffset(frameInfo.getEndOffsetChannel(), currentPosition);
-        frameEnd = posInPartition - offset;
+        frameEnd = currentPosition - offset;
         break;
       case CURRENT_ROW:
-        frameEnd = posInPartition;
+        frameEnd = currentPosition;
         break;
       case FOLLOWING:
         offset = (int) getOffset(frameInfo.getEndOffsetChannel(), currentPosition);
-        frameEnd = posInPartition + offset;
+        frameEnd = currentPosition + offset;
         break;
       case UNBOUNDED_FOLLOWING:
         frameEnd = partitionSize - 1;
