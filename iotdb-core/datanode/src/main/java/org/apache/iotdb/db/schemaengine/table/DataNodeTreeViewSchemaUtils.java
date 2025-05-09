@@ -27,6 +27,7 @@ import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.file.metadata.StringArrayDeviceID;
 
 import java.util.Arrays;
+import java.util.StringJoiner;
 import java.util.stream.Stream;
 
 import static org.apache.iotdb.commons.schema.table.TreeViewSchema.getPrefixPattern;
@@ -36,6 +37,15 @@ public class DataNodeTreeViewSchemaUtils {
   public static String[] getPatternNodes(final TsTable table) {
     final PartialPath path = getPrefixPattern(table);
     return Arrays.copyOf(path.getNodes(), path.getNodeLength() - 1);
+  }
+
+  public static String getPrefixPath(final TsTable table) {
+    final PartialPath path = getPrefixPattern(table);
+    StringJoiner joiner = new StringJoiner(".");
+    for (int i = 0; i < path.getNodeLength() - 1; i++) {
+      joiner.add(path.getNodes()[i]);
+    }
+    return joiner.toString();
   }
 
   public static IDeviceID convertToIDeviceID(final TsTable table, final String[] idValues) {
