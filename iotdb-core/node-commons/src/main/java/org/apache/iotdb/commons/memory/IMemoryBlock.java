@@ -22,6 +22,9 @@ package org.apache.iotdb.commons.memory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.BiConsumer;
+
 public abstract class IMemoryBlock implements AutoCloseable {
   private static final Logger LOGGER = LoggerFactory.getLogger(IMemoryBlock.class);
 
@@ -40,46 +43,50 @@ public abstract class IMemoryBlock implements AutoCloseable {
   /** The total memory size in byte of this memory block */
   protected long totalMemorySizeInBytes;
 
+  /** Update related parameters when totalMemorySizeInBytes update */
+  protected final AtomicReference<BiConsumer<Long, Long>> memoryUpdateCallback =
+      new AtomicReference<>();
+
   /**
    * Forcibly allocate memory without the limit of totalMemorySizeInBytes
    *
-   * @param sizeInByte the size of memory to be allocated, should be positive
+   * @param sizeInBytes the size of memory to be allocated, should be positive
    * @return the number of bytes actually allocated
    */
-  public abstract long forceAllocateWithoutLimitation(final long sizeInByte);
+  public abstract long forceAllocateWithoutLimitation(final long sizeInBytes);
 
   /**
    * Allocate memory managed by this memory block
    *
-   * @param sizeInByte the size of memory to be allocated, should be positive
+   * @param sizeInBytes the size of memory to be allocated, should be positive
    */
-  public abstract boolean allocate(final long sizeInByte);
+  public abstract boolean allocate(final long sizeInBytes);
 
   /**
    * Allocate memory managed by this memory block. if the currently used ratio is already above
-   * maxRatio, the allocation will fail".
+   * maxRatio, the allocation will fail.
    *
-   * @param sizeInByte the size of memory to be allocated, should be positive
+   * @param sizeInBytes the size of memory to be allocated, should be positive
    * @param maxRatio the maximum ratio of memory can be allocated
    */
-  public abstract boolean allocateIfSufficient(final long sizeInByte, final double maxRatio);
+  public abstract boolean allocateIfSufficient(final long sizeInBytes, final double maxRatio);
 
   /**
    * Allocate memory managed by this memory block until the required memory is available
    *
-   * @param sizeInByte the size of memory to be allocated, should be positive
+   * @param sizeInBytes the size of memory to be allocated, should be positive
    * @param retryIntervalInMillis the time interval to wait after each allocation failure
    */
-  public abstract boolean allocateUntilAvailable(final long sizeInByte, long retryIntervalInMillis)
+  public abstract boolean allocateUntilAvailable(final long sizeInBytes, long retryIntervalInMillis)
       throws InterruptedException;
 
   /**
    * Try to release memory managed by this memory block
    *
-   * @param sizeInByte the size of memory to be released, should be positive
+   * @param sizeInBytes the size of memory to be released, should be positive
    * @return the used size after release, zero if the release fails
    */
-  public abstract long release(final long sizeInByte);
+  public abstract long release(final long sizeInBytes);
 
   /**
    * Try to set memory usage in byte of this memory block (for test only)
@@ -97,6 +104,25 @@ public abstract class IMemoryBlock implements AutoCloseable {
   /** Get the name of memory block */
   public String getName() {
     return name;
+  }
+
+  /** Update total memory size by ratio */
+  public long resizeByRatio(double ratio) {
+    long before = this.totalMemorySizeInBytes;
+    this.totalMemorySizeInBytes = (long) (before * ratio);
+    if (memoryUpdateCallback.get() != null) {
+      try {
+        memoryUpdateCallback.get().accept(before, totalMemorySizeInBytes);
+      } catch (Exception e) {
+        LOGGER.warn("Failed to execute the update callback.", e);
+      }
+    }
+    return this.totalMemorySizeInBytes - before;
+  }
+
+  public IMemoryBlock setMemoryUpdateCallback(BiConsumer<Long, Long> memoryUpdateCallback) {
+    this.memoryUpdateCallback.set(memoryUpdateCallback);
+    return this;
   }
 
   /** Update maximum memory size in byte of this memory block */

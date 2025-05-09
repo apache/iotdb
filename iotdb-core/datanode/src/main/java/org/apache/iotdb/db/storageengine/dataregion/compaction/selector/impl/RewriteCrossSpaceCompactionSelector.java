@@ -89,6 +89,7 @@ public class RewriteCrossSpaceCompactionSelector implements ICrossSpaceSelector 
     this.dataRegionId = dataRegionId;
     this.timePartition = timePartition;
     this.tsFileManager = tsFileManager;
+    // TODO @spricoder update this compaction param
     this.memoryBudget =
         (long)
             ((double) SystemInfo.getInstance().getMemorySizeForCompaction()
