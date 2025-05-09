@@ -4157,6 +4157,12 @@ public class IoTDBTableAggregationIT {
         new String[] {"time", "province", "_col2", "_col3"},
         retArray,
         DATABASE_NAME);
+
+    tableResultSetEqualTest(
+        "select approx_count_distinct(time,0.0040625),approx_count_distinct(time,0.26) from table1",
+        new String[] {"_col0", "_col1"},
+        new String[] {"10,11,"},
+        DATABASE_NAME);
   }
 
   @Test
