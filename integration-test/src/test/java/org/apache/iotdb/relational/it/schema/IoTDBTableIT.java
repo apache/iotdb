@@ -859,7 +859,7 @@ public class IoTDBTableIT {
         fail();
       } catch (final SQLException e) {
         assertEquals(
-            "701: The duplicated source measurement S1 is unsupported yet", e.getMessage());
+            "701: The duplicated source measurement S1 is unsupported yet.", e.getMessage());
       }
 
       statement.execute(
