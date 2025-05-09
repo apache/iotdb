@@ -2063,7 +2063,7 @@ bool Session::checkTimeseriesExists(const string& path) {
 
 shared_ptr<SessionConnection> Session::getQuerySessionConnection() {
     auto endPoint = nodesSupplier->getQueryEndPoint();
-    if (!endPoint.has_value() || endPointToSessionConnection.empty()) {
+    if (!endPoint.is_initialized() || endPointToSessionConnection.empty()) {
         return defaultSessionConnection;
     }
 

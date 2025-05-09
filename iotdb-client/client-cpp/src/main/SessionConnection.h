@@ -31,7 +31,7 @@
 class SessionDataSet;
 class Session;
 
-class SessionConnection : std::enable_shared_from_this<SessionConnection> {
+class SessionConnection : public std::enable_shared_from_this<SessionConnection> {
 public:
     SessionConnection(Session* session_ptr, const TEndPoint& endpoint,
                       const std::string& zoneId,
