@@ -25,14 +25,32 @@ import java.io.File;
 
 public interface ILoadDiskSelector {
 
-  File getTargetFile(
-      File fileToLoad,
-      String databaseName,
-      String dataRegionId,
-      long filePartitionId,
-      String tsfileName,
-      int tierLevel)
+  @FunctionalInterface
+  interface DiskDirectorySelector {
+    File selectDirectory(final File sourceDirectory, final String fileName, final int tierLevel)
+        throws DiskSpaceInsufficientException;
+  }
+
+  File selectTargetDirectory(
+      final File sourceDirectory,
+      final String fileName,
+      final boolean appendFileName,
+      final int tierLevel)
       throws DiskSpaceInsufficientException;
+
+  static ILoadDiskSelector initDiskSelector(
+      final String selectStrategy, final String[] dirs, final DiskDirectorySelector selector) {
+    final ILoadDiskSelector diskSelector;
+    switch (ILoadDiskSelector.LoadDiskSelectorType.fromValue(selectStrategy)) {
+      case INHERIT_SYSTEM_MULTI_DISKS_SELECT_STRATEGY:
+        diskSelector = new InheritSystemMultiDisksStrategySelector(selector);
+        break;
+      case MIN_IO_FIRST:
+      default:
+        diskSelector = new MinIOSelector(dirs, selector);
+    }
+    return diskSelector;
+  }
 
   enum LoadDiskSelectorType {
     MIN_IO_FIRST("MIN_IO_FIRST"),
@@ -43,7 +61,7 @@ public interface ILoadDiskSelector {
 
     private final String value;
 
-    LoadDiskSelectorType(String value) {
+    LoadDiskSelectorType(final String value) {
       this.value = value;
     }
 
@@ -51,7 +69,7 @@ public interface ILoadDiskSelector {
       return value;
     }
 
-    public static LoadDiskSelectorType fromValue(String value) {
+    public static LoadDiskSelectorType fromValue(final String value) {
       if (value.equalsIgnoreCase(MIN_IO_FIRST.getValue())) {
         return MIN_IO_FIRST;
       } else if (value.equalsIgnoreCase(INHERIT_SYSTEM_MULTI_DISKS_SELECT_STRATEGY.getValue())) {
