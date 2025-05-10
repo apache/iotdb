@@ -36,14 +36,10 @@ import org.junit.Before;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 @RunWith(IoTDBTestRunner.class)
 @Category({LocalStandaloneIT.class})
 public class IoTDBSubscriptionIsolationIT extends AbstractSubscriptionLocalIT {
-
-  private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBSubscriptionIsolationIT.class);
 
   @Override
   @Before
@@ -72,7 +68,7 @@ public class IoTDBSubscriptionIsolationIT extends AbstractSubscriptionLocalIT {
       session.createTopic(tableTopicName);
     }
 
-    // show tree topic on tree session
+    // show topic on tree session
     try (final ISubscriptionTreeSession session =
         new SubscriptionTreeSessionBuilder().host(host).port(port).build()) {
       session.open();
@@ -81,7 +77,7 @@ public class IoTDBSubscriptionIsolationIT extends AbstractSubscriptionLocalIT {
       Assert.assertFalse(session.getTopic(tableTopicName).isPresent());
     }
 
-    // show table topic on table session
+    // show topic on table session
     try (final ISubscriptionTableSession session =
         new SubscriptionTableSessionBuilder().host(host).port(port).build()) {
       Assert.assertEquals(1, session.getTopics().size());
@@ -164,17 +160,50 @@ public class IoTDBSubscriptionIsolationIT extends AbstractSubscriptionLocalIT {
     }
 
     // subscribe tree topic on tree consumer
-    try (final ISubscriptionTreePullConsumer consumer =
-        new SubscriptionTreePullConsumerBuilder().host(host).port(port).build()) {
-      consumer.open();
-      consumer.subscribe(treeTopicName);
-    }
+    final ISubscriptionTreePullConsumer treeConsumer =
+        new SubscriptionTreePullConsumerBuilder().host(host).port(port).build();
+    treeConsumer.open();
+    treeConsumer.subscribe(treeTopicName);
 
     // subscribe table topic on table consumer
-    try (final ISubscriptionTablePullConsumer consumer =
-        new SubscriptionTablePullConsumerBuilder().host(host).port(port).build()) {
-      consumer.open();
-      consumer.subscribe(tableTopicName);
+    final ISubscriptionTablePullConsumer tableConsumer =
+        new SubscriptionTablePullConsumerBuilder().host(host).port(port).build();
+    tableConsumer.open();
+    tableConsumer.subscribe(tableTopicName);
+
+    // show subscription on tree session
+    try (final ISubscriptionTreeSession session =
+        new SubscriptionTreeSessionBuilder().host(host).port(port).build()) {
+      session.open();
+      Assert.assertEquals(1, session.getSubscriptions().size());
+      Assert.assertEquals(1, session.getSubscriptions(treeTopicName).size());
+      Assert.assertEquals(0, session.getSubscriptions(tableTopicName).size());
     }
+
+    // show subscription on table session
+    try (final ISubscriptionTableSession session =
+        new SubscriptionTableSessionBuilder().host(host).port(port).build()) {
+      Assert.assertEquals(1, session.getSubscriptions().size());
+      Assert.assertEquals(1, session.getSubscriptions(tableTopicName).size());
+      Assert.assertEquals(0, session.getSubscriptions(treeTopicName).size());
+    }
+
+    // unsubscribe table topic on tree consumer
+    try {
+      treeConsumer.unsubscribe(tableTopicName);
+    } catch (final Exception ignored) {
+
+    }
+
+    // unsubscribe tree topic on table consumer
+    try {
+      tableConsumer.unsubscribe(treeTopicName);
+    } catch (final Exception ignored) {
+
+    }
+
+    // close consumers
+    treeConsumer.close();
+    tableConsumer.close();
   }
 }

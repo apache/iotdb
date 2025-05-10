@@ -672,8 +672,7 @@ public class SubscriptionInfo implements SnapshotProcessor {
                 consumerGroupId, topicMeta.getTopicName());
         if (!subscribedConsumerIDs.isEmpty()) {
           allSubscriptions.add(
-              new SubscriptionMeta(
-                  topicMeta.getTopicName(), consumerGroupId, subscribedConsumerIDs));
+              new SubscriptionMeta(topicMeta, consumerGroupId, subscribedConsumerIDs));
         }
       }
     }

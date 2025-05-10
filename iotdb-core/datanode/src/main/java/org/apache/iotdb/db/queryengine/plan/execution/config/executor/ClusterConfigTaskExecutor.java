@@ -2357,6 +2357,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
       if (showSubscriptionsStatement.getTopicName() != null) {
         showSubscriptionReq.setTopicName(showSubscriptionsStatement.getTopicName());
       }
+      showSubscriptionReq.setIsTableModel(showSubscriptionsStatement.isTableModel());
 
       final TShowSubscriptionResp showSubscriptionResp =
           configNodeClient.showSubscription(showSubscriptionReq);

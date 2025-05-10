@@ -247,7 +247,7 @@ public class SubscriptionCoordinator {
     try {
       return ((SubscriptionTableResp)
               configManager.getConsensusManager().read(new ShowSubscriptionPlan()))
-          .filter(req.getTopicName())
+          .filter(req.getTopicName(), req.isTableModel)
           .convertToTShowSubscriptionResp();
     } catch (Exception e) {
       LOGGER.warn("Failed to show subscription info.", e);
