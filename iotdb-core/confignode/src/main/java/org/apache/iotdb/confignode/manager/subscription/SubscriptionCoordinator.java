@@ -153,28 +153,23 @@ public class SubscriptionCoordinator {
 
   public TSStatus dropTopic(TDropTopicReq req) {
     final String topicName = req.getTopicName();
-    final boolean isTopicExistedBeforeDrop = subscriptionInfo.isTopicExisted(topicName);
-    final TSStatus status = configManager.getProcedureManager().dropTopic(topicName);
-    if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      LOGGER.warn("Failed to drop topic {}. Result status: {}.", topicName, status);
-    }
-
-    // If the `IF EXISTS` condition is not set and the topic does not exist before the drop
-    // operation, return an error status indicating that the topic does not exist.
-    final boolean isIfExistedConditionSet =
+    final boolean isSetIfExistsCondition =
         req.isSetIfExistsCondition() && req.isIfExistsCondition();
-    return isTopicExistedBeforeDrop || isIfExistedConditionSet
-        ? status
-        : RpcUtils.getStatus(
-            TSStatusCode.TOPIC_NOT_EXIST_ERROR,
-            String.format(
-                "Failed to drop topic %s. Failures: %s does not exist.", topicName, topicName));
+    if (!subscriptionInfo.isTopicExisted(topicName, req.isTableModel)) {
+      return isSetIfExistsCondition
+          ? RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS)
+          : RpcUtils.getStatus(
+              TSStatusCode.TOPIC_NOT_EXIST_ERROR,
+              String.format(
+                  "Failed to drop topic %s. Failures: %s does not exist.", topicName, topicName));
+    }
+    return configManager.getProcedureManager().dropTopic(topicName);
   }
 
   public TShowTopicResp showTopic(TShowTopicReq req) {
     try {
       return ((TopicTableResp) configManager.getConsensusManager().read(new ShowTopicPlan()))
-          .filter(req.getTopicName())
+          .filter(req.topicName, req.isTableModel)
           .convertToTShowTopicResp();
     } catch (Exception e) {
       LOGGER.warn("Failed to show topic info.", e);

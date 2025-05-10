@@ -888,10 +888,12 @@ struct TCreateTopicReq {
 struct TDropTopicReq {
     1: required string topicName
     2: optional bool ifExistsCondition
+    3: optional bool isTableModel
 }
 
 struct TShowTopicReq {
     1: optional string topicName
+    2: optional bool isTableModel
 }
 
 struct TShowTopicResp {

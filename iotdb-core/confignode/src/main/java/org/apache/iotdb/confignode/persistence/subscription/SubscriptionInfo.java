@@ -268,6 +268,15 @@ public class SubscriptionInfo implements SnapshotProcessor {
     }
   }
 
+  public boolean isTopicExisted(String topicName, boolean isTableModel) {
+    acquireReadLock();
+    try {
+      return topicMetaKeeper.containsTopicMeta(topicName, isTableModel);
+    } finally {
+      releaseReadLock();
+    }
+  }
+
   public TopicMeta getTopicMeta(String topicName) {
     acquireReadLock();
     try {
