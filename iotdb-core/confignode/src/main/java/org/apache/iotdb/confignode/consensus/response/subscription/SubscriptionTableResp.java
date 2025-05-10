@@ -31,6 +31,8 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
+import java.util.stream.Collectors;
 
 public class SubscriptionTableResp implements DataSet {
   private final TSStatus status;
@@ -46,19 +48,18 @@ public class SubscriptionTableResp implements DataSet {
     this.allConsumerGroupMeta = allConsumerGroupMeta;
   }
 
-  public SubscriptionTableResp filter(String topicName) {
-    if (topicName == null) {
-      return this;
-    } else {
-      final List<SubscriptionMeta> filteredSubscriptionMeta = new ArrayList<>();
-      for (SubscriptionMeta subscriptionMeta : allSubscriptionMeta) {
-        if (subscriptionMeta.getTopicName().equals(topicName)) {
-          filteredSubscriptionMeta.add(subscriptionMeta);
-          break;
-        }
-      }
-      return new SubscriptionTableResp(status, filteredSubscriptionMeta, allConsumerGroupMeta);
-    }
+  public SubscriptionTableResp filter(String topicName, boolean isTableModel) {
+    return new SubscriptionTableResp(
+        status,
+        allSubscriptionMeta.stream()
+            .filter(
+                subscriptionMeta ->
+                    (Objects.isNull(topicName)
+                            || Objects.equals(
+                                subscriptionMeta.getTopicMeta().getTopicName(), topicName))
+                        && subscriptionMeta.getTopicMeta().visibleUnder(isTableModel))
+            .collect(Collectors.toList()),
+        allConsumerGroupMeta);
   }
 
   public TShowSubscriptionResp convertToTShowSubscriptionResp() {
@@ -67,7 +68,7 @@ public class SubscriptionTableResp implements DataSet {
     for (SubscriptionMeta subscriptionMeta : allSubscriptionMeta) {
       showSubscriptionInfoList.add(
           new TShowSubscriptionInfo(
-              subscriptionMeta.getTopicName(),
+              subscriptionMeta.getTopicMeta().getTopicName(),
               subscriptionMeta.getConsumerGroupId(),
               subscriptionMeta.getConsumerIds()));
     }

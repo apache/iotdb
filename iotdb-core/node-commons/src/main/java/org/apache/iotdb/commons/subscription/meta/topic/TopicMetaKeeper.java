@@ -80,6 +80,14 @@ public class TopicMetaKeeper {
     return topicNameToTopicMetaMap.containsKey(topicName);
   }
 
+  public boolean containsTopicMeta(String topicName, boolean isTableModel) {
+    TopicMeta topicMeta = topicNameToTopicMetaMap.get(topicName);
+    if (Objects.isNull(topicMeta)) {
+      return false;
+    }
+    return topicMeta.visibleUnder(isTableModel);
+  }
+
   public void clear() {
     this.topicNameToTopicMetaMap.clear();
   }

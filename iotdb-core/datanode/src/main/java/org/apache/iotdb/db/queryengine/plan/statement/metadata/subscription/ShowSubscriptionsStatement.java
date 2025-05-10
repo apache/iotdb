@@ -36,6 +36,7 @@ import java.util.List;
 public class ShowSubscriptionsStatement extends Statement implements IConfigStatement {
 
   private String topicName;
+  private boolean isTableModel;
 
   public ShowSubscriptionsStatement() {
     super();
@@ -46,12 +47,20 @@ public class ShowSubscriptionsStatement extends Statement implements IConfigStat
     return topicName;
   }
 
-  public void setTopicName(String topicName) {
+  public boolean isTableModel() {
+    return isTableModel;
+  }
+
+  public void setTopicName(final String topicName) {
     this.topicName = topicName;
   }
 
+  public void setTableModel(final boolean tableModel) {
+    this.isTableModel = tableModel;
+  }
+
   @Override
-  public <R, C> R accept(StatementVisitor<R, C> visitor, C context) {
+  public <R, C> R accept(final StatementVisitor<R, C> visitor, final C context) {
     return visitor.visitShowSubscriptions(this, context);
   }
 
@@ -66,7 +75,7 @@ public class ShowSubscriptionsStatement extends Statement implements IConfigStat
   }
 
   @Override
-  public TSStatus checkPermissionBeforeProcess(String userName) {
+  public TSStatus checkPermissionBeforeProcess(final String userName) {
     if (AuthorityChecker.SUPER_USER.equals(userName)) {
       return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     }

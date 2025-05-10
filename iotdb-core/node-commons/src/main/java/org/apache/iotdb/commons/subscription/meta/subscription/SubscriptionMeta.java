@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.commons.subscription.meta.subscription;
 
+import org.apache.iotdb.commons.subscription.meta.topic.TopicMeta;
+
 import org.apache.tsfile.utils.PublicBAOS;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 
@@ -33,7 +35,7 @@ import java.util.Set;
 /** SubscriptionMeta is created for show subscription and is not stored in meta keeper. */
 public class SubscriptionMeta {
 
-  private String topicName;
+  private TopicMeta topicMeta;
   private String consumerGroupId;
   private Set<String> consumerIds;
 
@@ -41,14 +43,14 @@ public class SubscriptionMeta {
     // Empty constructor
   }
 
-  public SubscriptionMeta(String topicName, String consumerGroupId, Set<String> consumerIds) {
-    this.topicName = topicName;
+  public SubscriptionMeta(TopicMeta topicMeta, String consumerGroupId, Set<String> consumerIds) {
+    this.topicMeta = topicMeta;
     this.consumerGroupId = consumerGroupId;
     this.consumerIds = consumerIds;
   }
 
-  public String getTopicName() {
-    return topicName;
+  public TopicMeta getTopicMeta() {
+    return topicMeta;
   }
 
   public String getConsumerGroupId() {
@@ -67,7 +69,7 @@ public class SubscriptionMeta {
   }
 
   public void serialize(DataOutputStream outputStream) throws IOException {
-    ReadWriteIOUtils.write(topicName, outputStream);
+    topicMeta.serialize(outputStream);
     ReadWriteIOUtils.write(consumerGroupId, outputStream);
 
     ReadWriteIOUtils.write(consumerIds.size(), outputStream);
@@ -77,7 +79,7 @@ public class SubscriptionMeta {
   }
 
   public void serialize(FileOutputStream outputStream) throws IOException {
-    ReadWriteIOUtils.write(topicName, outputStream);
+    topicMeta.serialize(outputStream);
     ReadWriteIOUtils.write(consumerGroupId, outputStream);
 
     ReadWriteIOUtils.write(consumerIds.size(), outputStream);
@@ -89,7 +91,7 @@ public class SubscriptionMeta {
   public static SubscriptionMeta deserialize(InputStream inputStream) throws IOException {
     final SubscriptionMeta subscriptionMeta = new SubscriptionMeta();
 
-    subscriptionMeta.topicName = ReadWriteIOUtils.readString(inputStream);
+    subscriptionMeta.topicMeta = TopicMeta.deserialize(inputStream);
     subscriptionMeta.consumerGroupId = ReadWriteIOUtils.readString(inputStream);
     subscriptionMeta.consumerIds = new HashSet<>();
 
@@ -104,7 +106,7 @@ public class SubscriptionMeta {
   public static SubscriptionMeta deserialize(ByteBuffer byteBuffer) {
     final SubscriptionMeta subscriptionMeta = new SubscriptionMeta();
 
-    subscriptionMeta.topicName = ReadWriteIOUtils.readString(byteBuffer);
+    subscriptionMeta.topicMeta = TopicMeta.deserialize(byteBuffer);
     subscriptionMeta.consumerGroupId = ReadWriteIOUtils.readString(byteBuffer);
     subscriptionMeta.consumerIds = new HashSet<>();
 
