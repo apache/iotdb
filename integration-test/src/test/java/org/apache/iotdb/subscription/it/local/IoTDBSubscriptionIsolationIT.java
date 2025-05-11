@@ -37,6 +37,8 @@ import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 
+import static org.junit.Assert.fail;
+
 @RunWith(IoTDBTestRunner.class)
 @Category({LocalStandaloneIT.class})
 public class IoTDBSubscriptionIsolationIT extends AbstractSubscriptionLocalIT {
@@ -91,6 +93,7 @@ public class IoTDBSubscriptionIsolationIT extends AbstractSubscriptionLocalIT {
       session.open();
       try {
         session.dropTopic(tableTopicName);
+        fail();
       } catch (final Exception ignored) {
       }
     }
@@ -100,6 +103,7 @@ public class IoTDBSubscriptionIsolationIT extends AbstractSubscriptionLocalIT {
         new SubscriptionTableSessionBuilder().host(host).port(port).build()) {
       try {
         session.dropTopic(treeTopicName);
+        fail();
       } catch (final Exception ignored) {
       }
     }
@@ -145,6 +149,7 @@ public class IoTDBSubscriptionIsolationIT extends AbstractSubscriptionLocalIT {
       consumer.open();
       try {
         consumer.subscribe(tableTopicName);
+        fail();
       } catch (final Exception ignored) {
       }
     }
@@ -155,6 +160,7 @@ public class IoTDBSubscriptionIsolationIT extends AbstractSubscriptionLocalIT {
       consumer.open();
       try {
         consumer.subscribe(treeTopicName);
+        fail();
       } catch (final Exception ignored) {
       }
     }
@@ -191,6 +197,7 @@ public class IoTDBSubscriptionIsolationIT extends AbstractSubscriptionLocalIT {
     // unsubscribe table topic on tree consumer
     try {
       treeConsumer.unsubscribe(tableTopicName);
+      fail();
     } catch (final Exception ignored) {
 
     }
@@ -198,6 +205,7 @@ public class IoTDBSubscriptionIsolationIT extends AbstractSubscriptionLocalIT {
     // unsubscribe tree topic on table consumer
     try {
       tableConsumer.unsubscribe(treeTopicName);
+      fail();
     } catch (final Exception ignored) {
 
     }
