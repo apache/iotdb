@@ -20,14 +20,15 @@
 package org.apache.iotdb.subscription.it.local.tablemodel;
 
 import org.apache.iotdb.db.it.utils.TestUtils;
-import org.apache.iotdb.isession.SessionConfig;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.LocalStandaloneIT;
-import org.apache.iotdb.session.subscription.SubscriptionTreeSession;
+import org.apache.iotdb.session.subscription.ISubscriptionTableSession;
+import org.apache.iotdb.session.subscription.SubscriptionTableSessionBuilder;
 import org.apache.iotdb.session.subscription.consumer.AckStrategy;
 import org.apache.iotdb.session.subscription.consumer.ConsumeResult;
-import org.apache.iotdb.session.subscription.consumer.tree.SubscriptionTreePushConsumer;
+import org.apache.iotdb.session.subscription.consumer.ISubscriptionTablePushConsumer;
+import org.apache.iotdb.session.subscription.consumer.table.SubscriptionTablePushConsumerBuilder;
 import org.apache.iotdb.session.subscription.model.Subscription;
 import org.apache.iotdb.session.subscription.model.Topic;
 import org.apache.iotdb.session.subscription.payload.SubscriptionSessionDataSet;
@@ -71,8 +72,8 @@ public class IoTDBSubscriptionPermissionIT extends AbstractSubscriptionLocalIT {
     createUser(EnvFactory.getEnv(), username, password);
 
     // root user
-    try (final SubscriptionTreeSession session = new SubscriptionTreeSession(host, port)) {
-      session.open();
+    try (final ISubscriptionTableSession session =
+        new SubscriptionTableSessionBuilder().host(host).port(port).build()) {
       // create topic
       final String topicName = "topic_root";
       session.createTopic(topicName);
@@ -93,39 +94,48 @@ public class IoTDBSubscriptionPermissionIT extends AbstractSubscriptionLocalIT {
     }
 
     // normal user
-    try (final SubscriptionTreeSession session =
-        new SubscriptionTreeSession(
-            host, port, username, password, SessionConfig.DEFAULT_MAX_FRAME_SIZE)) {
-      session.open();
+    try (final ISubscriptionTableSession session =
+        new SubscriptionTableSessionBuilder()
+            .host(host)
+            .port(port)
+            .username(username)
+            .password(password)
+            .build()) {
       // create topic
-      String topicName = "topic_thulab";
+      final String topicName = "topic_thulab";
       session.createTopic(topicName);
       fail();
-    } catch (final Exception e) {
+    } catch (final Exception ignored) {
 
     }
 
     // normal user
-    try (final SubscriptionTreeSession session =
-        new SubscriptionTreeSession(
-            host, port, username, password, SessionConfig.DEFAULT_MAX_FRAME_SIZE)) {
-      session.open();
+    try (final ISubscriptionTableSession session =
+        new SubscriptionTableSessionBuilder()
+            .host(host)
+            .port(port)
+            .username(username)
+            .password(password)
+            .build()) {
       // show topics
       session.getTopics();
       fail();
-    } catch (final Exception e) {
+    } catch (final Exception ignored) {
 
     }
 
     // normal user
-    try (final SubscriptionTreeSession session =
-        new SubscriptionTreeSession(
-            host, port, username, password, SessionConfig.DEFAULT_MAX_FRAME_SIZE)) {
-      session.open();
+    try (final ISubscriptionTableSession session =
+        new SubscriptionTableSessionBuilder()
+            .host(host)
+            .port(port)
+            .username(username)
+            .password(password)
+            .build()) {
       // show subscriptions
       session.getSubscriptions();
       fail();
-    } catch (final Exception e) {
+    } catch (final Exception ignored) {
 
     }
   }
@@ -159,8 +169,8 @@ public class IoTDBSubscriptionPermissionIT extends AbstractSubscriptionLocalIT {
     }
 
     // root user
-    try (final SubscriptionTreeSession session = new SubscriptionTreeSession(host, port)) {
-      session.open();
+    try (final ISubscriptionTableSession session =
+        new SubscriptionTableSessionBuilder().host(host).port(port).build()) {
       // create topic
       session.createTopic(topicName);
       Assert.assertTrue(session.getTopic(topicName).isPresent());
@@ -171,8 +181,8 @@ public class IoTDBSubscriptionPermissionIT extends AbstractSubscriptionLocalIT {
     }
 
     final AtomicInteger rowCount = new AtomicInteger();
-    try (final SubscriptionTreePushConsumer consumer1 =
-            new SubscriptionTreePushConsumer.Builder()
+    try (final ISubscriptionTablePushConsumer consumer1 =
+            new SubscriptionTablePushConsumerBuilder()
                 .host(host)
                 .port(port)
                 .username("thulab")
@@ -191,9 +201,9 @@ public class IoTDBSubscriptionPermissionIT extends AbstractSubscriptionLocalIT {
                       }
                       return ConsumeResult.SUCCESS;
                     })
-                .buildPushConsumer();
-        final SubscriptionTreePushConsumer consumer2 =
-            new SubscriptionTreePushConsumer.Builder()
+                .build();
+        final ISubscriptionTablePushConsumer consumer2 =
+            new SubscriptionTablePushConsumerBuilder()
                 .host(host)
                 .port(port)
                 .username("thulab")
@@ -212,9 +222,9 @@ public class IoTDBSubscriptionPermissionIT extends AbstractSubscriptionLocalIT {
                       }
                       return ConsumeResult.SUCCESS;
                     })
-                .buildPushConsumer();
-        final SubscriptionTreePushConsumer consumer3 =
-            new SubscriptionTreePushConsumer.Builder()
+                .build();
+        final ISubscriptionTablePushConsumer consumer3 =
+            new SubscriptionTablePushConsumerBuilder()
                 .host(host)
                 .port(port)
                 .username("hacker")
@@ -233,7 +243,7 @@ public class IoTDBSubscriptionPermissionIT extends AbstractSubscriptionLocalIT {
                       }
                       return ConsumeResult.SUCCESS;
                     })
-                .buildPushConsumer()) {
+                .build()) {
 
       consumer1.open();
       consumer1.subscribe(topicName);
@@ -243,7 +253,7 @@ public class IoTDBSubscriptionPermissionIT extends AbstractSubscriptionLocalIT {
       consumer3.subscribe(topicName);
 
       fail();
-    } catch (final Exception e) {
+    } catch (final Exception ignored) {
     }
   }
 
@@ -267,8 +277,8 @@ public class IoTDBSubscriptionPermissionIT extends AbstractSubscriptionLocalIT {
     }
 
     final AtomicInteger rowCount = new AtomicInteger();
-    try (final SubscriptionTreePushConsumer consumer1 =
-            new SubscriptionTreePushConsumer.Builder()
+    try (final ISubscriptionTablePushConsumer consumer1 =
+            new SubscriptionTablePushConsumerBuilder()
                 .host(host)
                 .port(port)
                 .username("thulab")
@@ -287,9 +297,9 @@ public class IoTDBSubscriptionPermissionIT extends AbstractSubscriptionLocalIT {
                       }
                       return ConsumeResult.SUCCESS;
                     })
-                .buildPushConsumer();
-        final SubscriptionTreePushConsumer consumer2 =
-            new SubscriptionTreePushConsumer.Builder()
+                .build();
+        final ISubscriptionTablePushConsumer consumer2 =
+            new SubscriptionTablePushConsumerBuilder()
                 .host(host)
                 .port(port)
                 .username("thulab")
@@ -308,9 +318,9 @@ public class IoTDBSubscriptionPermissionIT extends AbstractSubscriptionLocalIT {
                       }
                       return ConsumeResult.SUCCESS;
                     })
-                .buildPushConsumer();
-        final SubscriptionTreePushConsumer consumer3 =
-            new SubscriptionTreePushConsumer.Builder()
+                .build();
+        final ISubscriptionTablePushConsumer consumer3 =
+            new SubscriptionTablePushConsumerBuilder()
                 .host(host)
                 .port(port)
                 .username("hacker")
@@ -329,14 +339,14 @@ public class IoTDBSubscriptionPermissionIT extends AbstractSubscriptionLocalIT {
                       }
                       return ConsumeResult.SUCCESS;
                     })
-                .buildPushConsumer()) {
+                .build()) {
 
       consumer1.open();
       consumer2.open();
       consumer3.open();
 
       fail();
-    } catch (final Exception e) {
+    } catch (final Exception ignored) {
     }
   }
 
