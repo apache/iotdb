@@ -44,6 +44,7 @@ import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.rpc.subscription.exception.SubscriptionException;
 
+import org.apache.tsfile.utils.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -54,6 +55,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
@@ -659,6 +661,17 @@ public class SubscriptionInfo implements SnapshotProcessor {
     return StreamSupport.stream(
             consumerGroupMetaKeeper.getAllConsumerGroupMeta().spliterator(), false)
         .collect(Collectors.toList());
+  }
+
+  public Optional<Pair<String, String>> parseSubscriptionId(
+      String subscriptionId, boolean isTableModel) {
+    acquireReadLock();
+    try {
+      // TODO
+      return Optional.empty();
+    } finally {
+      releaseReadLock();
+    }
   }
 
   /////////////////////////////////  Snapshot  /////////////////////////////////

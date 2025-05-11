@@ -21,8 +21,10 @@ package org.apache.iotdb.commons.subscription.meta.consumer;
 
 import org.apache.iotdb.rpc.subscription.exception.SubscriptionException;
 
+import org.apache.thrift.annotation.Nullable;
 import org.apache.tsfile.utils.PublicBAOS;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
+import org.checkerframework.checker.nullness.qual.NonNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -37,6 +39,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.stream.Collectors;
 
 public class ConsumerGroupMeta {
 
@@ -218,6 +221,7 @@ public class ConsumerGroupMeta {
 
     for (final String topic : topics) {
       topicNameToSubscribedConsumerIdSet
+          // TODO: record creation time
           .computeIfAbsent(topic, k -> new HashSet<>())
           .add(consumerId);
     }
@@ -225,8 +229,21 @@ public class ConsumerGroupMeta {
 
   /**
    * @return topics subscribed by no consumers in this group after this removal.
+   * @param consumerId if null, remove subscriptions of topics for all consumers
    */
-  public Set<String> removeSubscription(final String consumerId, final Set<String> topics) {
+  public Set<String> removeSubscription(
+      @Nullable final String consumerId, final Set<String> topics) {
+    if (Objects.isNull(consumerId)) {
+      return consumerIdToConsumerMeta.keySet().stream()
+          .map(id -> removeSubscriptionInternal(id, topics))
+          .flatMap(Set::stream)
+          .collect(Collectors.toSet());
+    }
+    return removeSubscriptionInternal(consumerId, topics);
+  }
+
+  private Set<String> removeSubscriptionInternal(
+      @NonNull final String consumerId, final Set<String> topics) {
     if (!consumerIdToConsumerMeta.containsKey(consumerId)) {
       throw new SubscriptionException(
           String.format(

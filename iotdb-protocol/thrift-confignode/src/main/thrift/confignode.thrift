@@ -956,6 +956,12 @@ struct TShowSubscriptionInfo {
     3: required set<string> consumerIds
 }
 
+struct TDropSubscriptionReq {
+    1: required string subsciptionId
+    2: optional bool ifExistsCondition
+    3: optional bool isTableModel
+}
+
 struct TGetAllSubscriptionInfoResp {
     1: required common.TSStatus status
     2: required list<binary> allSubscriptionInfo
@@ -1862,8 +1868,11 @@ service IConfigNodeRPCService {
   /** Create subscription */
   common.TSStatus createSubscription(TSubscribeReq req)
 
-  /** Close subscription */
+  /** Close subscription by consumer */
   common.TSStatus dropSubscription(TUnsubscribeReq req)
+
+  /** Close subscription by session */
+  common.TSStatus dropSubscriptionById(TDropSubscriptionReq req)
 
   /** Show Subscription on topic name, if name is empty, show all subscriptions */
   TShowSubscriptionResp showSubscription(TShowSubscriptionReq req)

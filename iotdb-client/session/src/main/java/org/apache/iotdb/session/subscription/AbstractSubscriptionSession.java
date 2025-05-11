@@ -177,6 +177,20 @@ abstract class AbstractSubscriptionSession {
     }
   }
 
+  protected void dropSubscription(final String subscriptionName)
+      throws IoTDBConnectionException, StatementExecutionException {
+    IdentifierUtils.checkAndParseIdentifier(subscriptionName); // ignore the parse result
+    final String sql = String.format("DROP SUBSCRIPTION %s", subscriptionName);
+    session.executeNonQueryStatement(sql);
+  }
+
+  protected void dropSubscriptionIfExists(final String subscriptionName)
+      throws IoTDBConnectionException, StatementExecutionException {
+    IdentifierUtils.checkAndParseIdentifier(subscriptionName); // ignore the parse result
+    final String sql = String.format("DROP SUBSCRIPTION IF EXISTS %s", subscriptionName);
+    session.executeNonQueryStatement(sql);
+  }
+
   /////////////////////////////// utility ///////////////////////////////
 
   private Set<Topic> convertDataSetToTopics(final SessionDataSet dataSet)
@@ -212,7 +226,8 @@ abstract class AbstractSubscriptionSession {
           new Subscription(
               fields.get(0).getStringValue(),
               fields.get(1).getStringValue(),
-              fields.get(2).getStringValue()));
+              fields.get(2).getStringValue(),
+              fields.get(3).getStringValue()));
     }
     return subscriptions;
   }

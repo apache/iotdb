@@ -69,15 +69,22 @@ public class ShowSubscriptionsTask implements IConfigTask {
 
     for (final TShowSubscriptionInfo tSubscriptionInfo : subscriptionInfoList) {
       builder.getTimeColumnBuilder().writeLong(0L);
+      // TODO: record creation time
       builder
           .getColumnBuilder(0)
-          .writeBinary(new Binary(tSubscriptionInfo.getTopicName(), TSFileConfig.STRING_CHARSET));
+          .writeBinary(
+              new Binary(
+                  tSubscriptionInfo.getTopicName() + "_" + tSubscriptionInfo.getConsumerGroupId(),
+                  TSFileConfig.STRING_CHARSET));
       builder
           .getColumnBuilder(1)
+          .writeBinary(new Binary(tSubscriptionInfo.getTopicName(), TSFileConfig.STRING_CHARSET));
+      builder
+          .getColumnBuilder(2)
           .writeBinary(
               new Binary(tSubscriptionInfo.getConsumerGroupId(), TSFileConfig.STRING_CHARSET));
       builder
-          .getColumnBuilder(2)
+          .getColumnBuilder(3)
           .writeBinary(
               new Binary(
                   tSubscriptionInfo.getConsumerIds().toString(), TSFileConfig.STRING_CHARSET));

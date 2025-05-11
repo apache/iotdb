@@ -134,6 +134,18 @@ public class SubscriptionTreeSession extends AbstractSubscriptionSession
     return super.getSubscriptions(topicName);
   }
 
+  @Override
+  public void dropSubscription(final String topicName)
+      throws IoTDBConnectionException, StatementExecutionException {
+    super.dropSubscription(topicName);
+  }
+
+  @Override
+  public void dropSubscriptionIfExists(final String topicName)
+      throws IoTDBConnectionException, StatementExecutionException {
+    super.dropSubscriptionIfExists(topicName);
+  }
+
   /////////////////////////////// builder ///////////////////////////////
 
   @Deprecated // keep for forward compatibility
