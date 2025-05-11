@@ -216,7 +216,7 @@ abstract class AbstractSubscriptionSession {
     while (dataSet.hasNext()) {
       final RowRecord record = dataSet.next();
       final List<Field> fields = record.getFields();
-      if (fields.size() != 3) {
+      if (fields.size() != 4) {
         throw new SubscriptionException(
             String.format(
                 "Unexpected fields %s was obtained during SHOW SUBSCRIPTION...",
