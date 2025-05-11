@@ -177,17 +177,17 @@ abstract class AbstractSubscriptionSession {
     }
   }
 
-  protected void dropSubscription(final String subscriptionName)
+  protected void dropSubscription(final String subscriptionId)
       throws IoTDBConnectionException, StatementExecutionException {
-    IdentifierUtils.checkAndParseIdentifier(subscriptionName); // ignore the parse result
-    final String sql = String.format("DROP SUBSCRIPTION %s", subscriptionName);
+    IdentifierUtils.checkAndParseIdentifier(subscriptionId); // ignore the parse result
+    final String sql = String.format("DROP SUBSCRIPTION %s", subscriptionId);
     session.executeNonQueryStatement(sql);
   }
 
-  protected void dropSubscriptionIfExists(final String subscriptionName)
+  protected void dropSubscriptionIfExists(final String subscriptionId)
       throws IoTDBConnectionException, StatementExecutionException {
-    IdentifierUtils.checkAndParseIdentifier(subscriptionName); // ignore the parse result
-    final String sql = String.format("DROP SUBSCRIPTION IF EXISTS %s", subscriptionName);
+    IdentifierUtils.checkAndParseIdentifier(subscriptionId); // ignore the parse result
+    final String sql = String.format("DROP SUBSCRIPTION IF EXISTS %s", subscriptionId);
     session.executeNonQueryStatement(sql);
   }
 

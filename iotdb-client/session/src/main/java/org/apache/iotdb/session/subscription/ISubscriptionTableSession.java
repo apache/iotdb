@@ -175,9 +175,9 @@ public interface ISubscriptionTableSession extends AutoCloseable {
   Set<Subscription> getSubscriptions(final String topicName)
       throws IoTDBConnectionException, StatementExecutionException;
 
-  void dropSubscription(final String subscriptionName)
+  void dropSubscription(final String subscriptionId)
       throws IoTDBConnectionException, StatementExecutionException;
 
-  void dropSubscriptionIfExists(final String subscriptionName)
+  void dropSubscriptionIfExists(final String subscriptionId)
       throws IoTDBConnectionException, StatementExecutionException;
 }
