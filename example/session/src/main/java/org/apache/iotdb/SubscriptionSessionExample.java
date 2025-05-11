@@ -63,7 +63,7 @@ public class SubscriptionSessionExample {
 
   private static final long SLEEP_NS = 1_000_000_000L;
   private static final long POLL_TIMEOUT_MS = 10_000L;
-  private static final int MAX_RETRY_TIMES = 300;
+  private static final int MAX_RETRY_TIMES = 3;
   private static final int PARALLELISM = 8;
   private static final long CURRENT_TIME = System.currentTimeMillis();
 
@@ -345,6 +345,6 @@ public class SubscriptionSessionExample {
     // dataSubscription1();
     // dataSubscription2();
     // dataSubscription3();
-    dataSubscription1();
+    dataSubscription4();
   }
 }
