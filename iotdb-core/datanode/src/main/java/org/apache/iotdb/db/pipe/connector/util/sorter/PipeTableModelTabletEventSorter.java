@@ -201,23 +201,23 @@ public class PipeTableModelTabletEventSorter extends PipeTabletEventSorter {
   }
 
   private void deduplicateTimestamps() {
-    deduplicateSize = 1;
+    deduplicateSize = 0;
     final long[] timestamps = tablet.getTimestamps();
-    long lastTime = timestamps[0];
     IDeviceID deviceID = tablet.getDeviceID(index[0]);
     final Set<IDeviceID> deviceIDSet = new HashSet<>();
     deviceIDSet.add(deviceID);
     for (int i = 1, size = tablet.getRowSize(); i < size; i++) {
       deviceID = tablet.getDeviceID(index[i]);
-      if ((lastTime == (lastTime = timestamps[i]))) {
+
+      if ((timestamps[i] != timestamps[i - 1])) {
         if (!deviceIDSet.contains(deviceID)) {
-          timestamps[deduplicateSize] = lastTime;
-          index[deduplicateSize++] = index[i];
+          timestamps[deduplicateSize] = timestamps[i-1];
+          deduplicateIndex[deduplicateSize++] = i - 1;
           deviceIDSet.add(deviceID);
         }
       } else {
-        timestamps[deduplicateSize] = lastTime;
-        index[deduplicateSize++] = index[i];
+        timestamps[deduplicateSize] = timestamps[i-1];
+        deduplicateIndex[deduplicateSize++] = i - 1;
         deviceIDSet.clear();
         deviceIDSet.add(deviceID);
       }
