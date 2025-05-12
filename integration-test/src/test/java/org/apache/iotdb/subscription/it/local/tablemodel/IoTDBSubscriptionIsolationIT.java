@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.subscription.it.local;
+package org.apache.iotdb.subscription.it.local.tablemodel;
 
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
@@ -30,6 +30,7 @@ import org.apache.iotdb.session.subscription.consumer.ISubscriptionTablePullCons
 import org.apache.iotdb.session.subscription.consumer.ISubscriptionTreePullConsumer;
 import org.apache.iotdb.session.subscription.consumer.table.SubscriptionTablePullConsumerBuilder;
 import org.apache.iotdb.session.subscription.consumer.tree.SubscriptionTreePullConsumerBuilder;
+import org.apache.iotdb.subscription.it.local.AbstractSubscriptionLocalIT;
 
 import org.junit.Assert;
 import org.junit.Before;
