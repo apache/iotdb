@@ -114,7 +114,7 @@ public class TreeAlignedDeviceViewScanNode extends TreeDeviceViewScanNode {
 
   public static TreeAlignedDeviceViewScanNode deserialize(ByteBuffer byteBuffer) {
     TreeAlignedDeviceViewScanNode node = new TreeAlignedDeviceViewScanNode();
-    TreeDeviceViewScanNode.deserializeMemberVariables(byteBuffer, node, true);
+    TreeDeviceViewScanNode.deserializeMemberVariables(byteBuffer, node);
 
     node.setPlanNodeId(PlanNodeId.deserialize(byteBuffer));
     return node;
