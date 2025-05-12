@@ -81,7 +81,7 @@ public class PipeTabletEventSorterTest {
 
     Assert.assertFalse(tablet.isSorted());
 
-    new PipeTreeModelTabletEventSorter(tablet).deduplicateAndSortTimestampsIfNecessary();
+    new PipeTreeModelTabletEventSorter(tablet).deDuplicateAndSortTimestampsIfNecessary();
 
     Assert.assertTrue(tablet.isSorted());
 
@@ -126,7 +126,7 @@ public class PipeTabletEventSorterTest {
 
     Assert.assertTrue(tablet.isSorted());
 
-    new PipeTreeModelTabletEventSorter(tablet).deduplicateAndSortTimestampsIfNecessary();
+    new PipeTreeModelTabletEventSorter(tablet).deDuplicateAndSortTimestampsIfNecessary();
 
     Assert.assertTrue(tablet.isSorted());
 
@@ -195,7 +195,7 @@ public class PipeTabletEventSorterTest {
       }
     }
 
-    new PipeTreeModelTabletEventSorter(tablet).deduplicateAndSortTimestampsIfNecessary();
+    new PipeTreeModelTabletEventSorter(tablet).deDuplicateAndSortTimestampsIfNecessary();
 
     Assert.assertTrue(tablet.isSorted());
 

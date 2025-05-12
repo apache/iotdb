@@ -31,7 +31,7 @@ public class PipeTreeModelTabletEventSorter extends PipeTabletEventSorter {
     deDuplicatedSize = tablet == null ? 0 : tablet.getRowSize();
   }
 
-  public void deDuplicatedAndSortTimestampsIfNecessary() {
+  public void deDuplicateAndSortTimestampsIfNecessary() {
     if (tablet == null || tablet.getRowSize() == 0) {
       return;
     }
