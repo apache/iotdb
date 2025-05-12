@@ -27,14 +27,22 @@ int32_t parseDateExpressionToInt(const boost::gregorian::date& date) {
 
     const int year = date.year();
     if(year < 1000 || year > 9999) {
-        throw IoTDBException("Year must be between 1000 and 9999.");
+        throw DateTimeParseException(
+            "Year must be between 1000 and 9999.",
+            boost::gregorian::to_iso_extended_string(date),
+            0
+        );
     }
 
     const int64_t result = static_cast<int64_t>(year) * 10000 +
                           date.month() * 100 +
                           date.day();
     if(result > INT32_MAX || result < INT32_MIN) {
-        throw IoTDBException("Date value overflow");
+        throw DateTimeParseException(
+            "Date value overflow. ",
+            boost::gregorian::to_iso_extended_string(date),
+            0
+        );
     }
     return static_cast<int32_t>(result);
 }

@@ -169,8 +169,7 @@ enum TSStatusCode {
 
 class IoTDBException : public std::exception {
 public:
-    IoTDBException() {
-    }
+    IoTDBException() = default;
 
     explicit IoTDBException(const std::string& m) : message(m) {
     }
@@ -184,6 +183,44 @@ public:
 
 private:
     std::string message;
+};
+
+class DateTimeParseException : public IoTDBException {
+private:
+    std::string parsedString;
+    int errorIndex;
+
+public:
+    explicit DateTimeParseException(const std::string& message,
+                                  std::string parsedData,
+                                  int errorIndex)
+        : IoTDBException(message),
+          parsedString(std::move(parsedData)),
+          errorIndex(errorIndex) {}
+
+    explicit DateTimeParseException(const std::string& message,
+                                  std::string  parsedData,
+                                  int errorIndex,
+                                  const std::exception& cause)
+        : IoTDBException(message + " [Caused by: " + cause.what() + "]"),
+          parsedString(std::move(parsedData)),
+          errorIndex(errorIndex) {}
+
+    const std::string& getParsedString() const noexcept {
+        return parsedString;
+    }
+
+    int getErrorIndex() const noexcept {
+        return errorIndex;
+    }
+
+    const char* what() const noexcept override {
+        static std::string fullMsg;
+        fullMsg = std::string(IoTDBException::what()) +
+                 "\nParsed data: " + parsedString +
+                 "\nError index: " + std::to_string(errorIndex);
+        return fullMsg.c_str();
+    }
 };
 
 class IoTDBConnectionException : public IoTDBException {

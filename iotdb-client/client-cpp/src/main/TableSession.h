@@ -33,8 +33,10 @@ public:
         this->session = session;
     }
     ~TableSession() {
-        delete session;
-        session = nullptr;
+        if (session) {
+            delete session;
+            session = nullptr;
+        }
     }
     void insert(Tablet& tablet, bool sorted = false);
     void executeNonQueryStatement(const std::string& sql);
