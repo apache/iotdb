@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.pipe.connector.util.sorter;
 
-import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.write.record.Tablet;
@@ -33,19 +32,12 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-public class PipeTableModelTabletEventSorter {
-
-  private final Tablet tablet;
-
-  private Integer[] index;
-  private boolean isUnSorted = false;
-  private boolean hasDuplicates = false;
-  private int deduplicatedSize;
+public class PipeTableModelTabletEventSorter extends PipeTabletEventSorter {
   private int initIndexSize;
 
   public PipeTableModelTabletEventSorter(final Tablet tablet) {
-    this.tablet = tablet;
-    deduplicatedSize = tablet == null ? 0 : tablet.getRowSize();
+    super(tablet);
+    deduplicateSize = tablet == null ? 0 : tablet.getRowSize();
   }
 
   /**
@@ -71,24 +63,24 @@ public class PipeTableModelTabletEventSorter {
       final int deviceComparison = deviceID.compareTo(lastDevice);
       if (deviceComparison == 0) {
         if (previousTimestamp == currentTimestamp) {
-          hasDuplicates = true;
+          isDeduplicate = false;
           continue;
         }
         if (previousTimestamp > currentTimestamp) {
-          isUnSorted = true;
+          isSorted = false;
         }
         previousTimestamp = currentTimestamp;
         continue;
       }
       if (deviceComparison < 0) {
-        isUnSorted = true;
+        isSorted = false;
       }
 
       final List<Pair<Integer, Integer>> list =
           deviceIDToIndexMap.computeIfAbsent(lastDevice, k -> new ArrayList<>());
 
       if (!list.isEmpty()) {
-        isUnSorted = true;
+        isSorted = false;
       }
       list.add(new Pair<>(lasIndex, i));
       lastDevice = deviceID;
@@ -99,66 +91,66 @@ public class PipeTableModelTabletEventSorter {
     final List<Pair<Integer, Integer>> list =
         deviceIDToIndexMap.computeIfAbsent(lastDevice, k -> new ArrayList<>());
     if (!list.isEmpty()) {
-      isUnSorted = true;
+      isSorted = false;
     }
     list.add(new Pair<>(lasIndex, tablet.getRowSize()));
 
-    if (!isUnSorted && !hasDuplicates) {
+    if (isSorted && isDeduplicate) {
       return;
     }
 
     initIndexSize = 0;
-    deduplicatedSize = 0;
+    deduplicateSize = 0;
     index = new Integer[tablet.getRowSize()];
     deviceIDToIndexMap.entrySet().stream()
         .sorted(Map.Entry.comparingByKey())
         .forEach(
             entry -> {
-              final int start = initIndexSize;
               int i = initIndexSize;
               for (Pair<Integer, Integer> pair : entry.getValue()) {
                 for (int j = pair.left; j < pair.right; j++) {
                   index[i++] = j;
                 }
               }
-              if (isUnSorted) {
-                sortTimestamps(start, i);
-                deduplicateTimestamps(start, i);
+              if (!isSorted) {
+                sortTimestamps(initIndexSize, i);
+                deduplicateTimestamps(initIndexSize, i);
                 initIndexSize = i;
                 return;
               }
 
-              if (hasDuplicates) {
-                deduplicateTimestamps(start, i);
+              if (!isDeduplicate) {
+                deduplicateTimestamps(initIndexSize, i);
               }
               initIndexSize = i;
             });
 
-    sortAndDeduplicateValuesAndBitMaps();
+    sortAndDeduplicateValuesAndBitMapsWithTimestamp();
   }
 
-  private void sortAndDeduplicateValuesAndBitMaps() {
-    tablet.setTimestamps(
-        (long[])
-            PipeTabletEventSorter.reorderValueListAndBitMap(
-                deduplicatedSize, tablet.getTimestamps(), TSDataType.TIMESTAMP, null, null, index));
-    PipeTabletEventSorter.sortAndDeduplicateValuesAndBitMaps(tablet, deduplicatedSize, index);
-    tablet.setRowSize(deduplicatedSize);
+  private void sortAndDeduplicateValuesAndBitMapsWithTimestamp() {
+    sortAndDeduplicateValuesAndBitMaps();
+    tablet.setRowSize(deduplicateSize);
   }
 
   private void sortTimestamps(final int startIndex, final int endIndex) {
     Arrays.sort(this.index, startIndex, endIndex, Comparator.comparingLong(tablet::getTimestamp));
+    Arrays.sort(tablet.getTimestamps(), startIndex, endIndex);
   }
 
   private void deduplicateTimestamps(final int startIndex, final int endIndex) {
-    final long[] timestamps = tablet.getTimestamps();
-    long lastTime = timestamps[index[startIndex]];
-    index[deduplicatedSize++] = index[startIndex];
-    for (int i = startIndex + 1; i < endIndex; i++) {
-      if (lastTime != (lastTime = timestamps[index[i]])) {
-        index[deduplicatedSize++] = index[i];
+    deduplicateSize = 0;
+    long[] timestamps = tablet.getTimestamps();
+    for (int i = startIndex; i < endIndex; i++) {
+      if (timestamps[i] != timestamps[i - 1]) {
+        deduplicateIndex[deduplicateSize] = i - 1;
+        timestamps[deduplicateSize] = timestamps[i - 1];
+
+        ++deduplicateSize;
       }
     }
+
+    deduplicateIndex[deduplicateSize] = endIndex - 1;
   }
 
   /** Sort by time only, and remove only rows with the same DeviceID and time. */
@@ -173,15 +165,15 @@ public class PipeTableModelTabletEventSorter {
       final long previousTimestamp = timestamps[i - 1];
 
       if (currentTimestamp < previousTimestamp) {
-        isUnSorted = true;
+        isSorted = false;
         break;
       }
       if (currentTimestamp == previousTimestamp) {
-        hasDuplicates = true;
+        isDeduplicate = false;
       }
     }
 
-    if (!isUnSorted && !hasDuplicates) {
+    if (isSorted && isDeduplicate) {
       return;
     }
 
@@ -190,16 +182,16 @@ public class PipeTableModelTabletEventSorter {
       index[i] = i;
     }
 
-    if (isUnSorted) {
+    if (!isSorted) {
       sortTimestamps();
 
       // Do deduplicate anyway.
       // isDeduplicated may be false positive when isUnSorted is true.
       deduplicateTimestamps();
-      hasDuplicates = false;
+      isDeduplicate = true;
     }
 
-    if (hasDuplicates) {
+    if (!isDeduplicate) {
       deduplicateTimestamps();
     }
 
@@ -212,7 +204,7 @@ public class PipeTableModelTabletEventSorter {
   }
 
   private void deduplicateTimestamps() {
-    deduplicatedSize = 1;
+    deduplicateSize = 1;
     final long[] timestamps = tablet.getTimestamps();
     long lastTime = timestamps[0];
     IDeviceID deviceID = tablet.getDeviceID(index[0]);
@@ -222,13 +214,13 @@ public class PipeTableModelTabletEventSorter {
       deviceID = tablet.getDeviceID(index[i]);
       if ((lastTime == (lastTime = timestamps[i]))) {
         if (!deviceIDSet.contains(deviceID)) {
-          timestamps[deduplicatedSize] = lastTime;
-          index[deduplicatedSize++] = index[i];
+          timestamps[deduplicateSize] = lastTime;
+          index[deduplicateSize++] = index[i];
           deviceIDSet.add(deviceID);
         }
       } else {
-        timestamps[deduplicatedSize] = lastTime;
-        index[deduplicatedSize++] = index[i];
+        timestamps[deduplicateSize] = lastTime;
+        index[deduplicateSize++] = index[i];
         deviceIDSet.clear();
         deviceIDSet.add(deviceID);
       }
@@ -236,7 +228,7 @@ public class PipeTableModelTabletEventSorter {
   }
 
   private void sortAndDeduplicateValuesAndBitMapsIgnoreTimestamp() {
-    PipeTabletEventSorter.sortAndDeduplicateValuesAndBitMaps(tablet, deduplicatedSize, index);
-    tablet.setRowSize(deduplicatedSize);
+    sortAndDeduplicateValuesAndBitMaps();
+    tablet.setRowSize(deduplicateSize);
   }
 }

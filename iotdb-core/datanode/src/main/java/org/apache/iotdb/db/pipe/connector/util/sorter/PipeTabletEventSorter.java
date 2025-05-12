@@ -30,8 +30,29 @@ import java.time.LocalDate;
 
 public class PipeTabletEventSorter {
 
-  public static void sortAndDeduplicateValuesAndBitMaps(
-      final Tablet tablet, final int deduplicatedSize, final Integer[] index) {
+  protected final Tablet tablet;
+
+  protected Integer[] index;
+  protected boolean isSorted = true;
+  protected boolean isDeduplicate = true;
+  protected int[] deduplicateIndex;
+  protected int deduplicateSize;
+
+  public PipeTabletEventSorter(Tablet tablet) {
+    this.tablet = tablet;
+  }
+
+  // Input:
+  // Col: [1, null, 3, 6, null]
+  // Timestamp: [2, 1, 1, 1, 1]
+  // Intermediate:
+  // Index: [1, 2, 3, 4, 0]
+  // SortedTimestamp: [1, 2]
+  // DeduplicateIndex: [3, 4]
+  // Output:
+  // (Used index: [2(3), 4(0)])
+  // Col: [6, 1]
+  protected void sortAndDeduplicateValuesAndBitMaps() {
     int columnIndex = 0;
     for (int i = 0, size = tablet.getSchemas().size(); i < size; i++) {
       final IMeasurementSchema schema = tablet.getSchemas().get(i);
@@ -44,13 +65,11 @@ public class PipeTabletEventSorter {
         }
 
         tablet.getValues()[columnIndex] =
-            PipeTabletEventSorter.reorderValueListAndBitMap(
-                deduplicatedSize,
+            reorderValueListAndBitMap(
                 tablet.getValues()[columnIndex],
                 schema.getType(),
                 originalBitMap,
-                deduplicatedBitMap,
-                index);
+                deduplicatedBitMap);
 
         if (tablet.getBitMaps() != null && tablet.getBitMaps()[columnIndex] != null) {
           tablet.getBitMaps()[columnIndex] = deduplicatedBitMap;
@@ -60,61 +79,71 @@ public class PipeTabletEventSorter {
     }
   }
 
-  public static Object reorderValueListAndBitMap(
-      final int deduplicatedSize,
+  protected Object reorderValueListAndBitMap(
       final Object valueList,
       final TSDataType dataType,
       final BitMap originalBitMap,
-      final BitMap deduplicatedBitMap,
-      final Integer[] index) {
+      final BitMap deduplicatedBitMap) {
     switch (dataType) {
       case BOOLEAN:
         final boolean[] boolValues = (boolean[]) valueList;
         final boolean[] deduplicatedBoolValues = new boolean[boolValues.length];
-        for (int i = 0; i < deduplicatedSize; i++) {
+        for (int i = 0; i < deduplicateSize; i++) {
           deduplicatedBoolValues[i] =
-              boolValues[getLastNonnullIndex(i, index, originalBitMap, deduplicatedBitMap)];
+              boolValues[
+                  getLastNonnullIndex(
+                      i, index, deduplicateIndex, originalBitMap, deduplicatedBitMap)];
         }
         return deduplicatedBoolValues;
       case INT32:
         final int[] intValues = (int[]) valueList;
         final int[] deduplicatedIntValues = new int[intValues.length];
-        for (int i = 0; i < deduplicatedSize; i++) {
+        for (int i = 0; i < deduplicateSize; i++) {
           deduplicatedIntValues[i] =
-              intValues[getLastNonnullIndex(i, index, originalBitMap, deduplicatedBitMap)];
+              intValues[
+                  getLastNonnullIndex(
+                      i, index, deduplicateIndex, originalBitMap, deduplicatedBitMap)];
         }
         return deduplicatedIntValues;
       case DATE:
         final LocalDate[] dateValues = (LocalDate[]) valueList;
         final LocalDate[] deduplicatedDateValues = new LocalDate[dateValues.length];
-        for (int i = 0; i < deduplicatedSize; i++) {
+        for (int i = 0; i < deduplicateSize; i++) {
           deduplicatedDateValues[i] =
-              dateValues[getLastNonnullIndex(i, index, originalBitMap, deduplicatedBitMap)];
+              dateValues[
+                  getLastNonnullIndex(
+                      i, index, deduplicateIndex, originalBitMap, deduplicatedBitMap)];
         }
         return deduplicatedDateValues;
       case INT64:
       case TIMESTAMP:
         final long[] longValues = (long[]) valueList;
         final long[] deduplicatedLongValues = new long[longValues.length];
-        for (int i = 0; i < deduplicatedSize; i++) {
+        for (int i = 0; i < deduplicateSize; i++) {
           deduplicatedLongValues[i] =
-              longValues[getLastNonnullIndex(i, index, originalBitMap, deduplicatedBitMap)];
+              longValues[
+                  getLastNonnullIndex(
+                      i, index, deduplicateIndex, originalBitMap, deduplicatedBitMap)];
         }
         return deduplicatedLongValues;
       case FLOAT:
         final float[] floatValues = (float[]) valueList;
         final float[] deduplicatedFloatValues = new float[floatValues.length];
-        for (int i = 0; i < deduplicatedSize; i++) {
+        for (int i = 0; i < deduplicateSize; i++) {
           deduplicatedFloatValues[i] =
-              floatValues[getLastNonnullIndex(i, index, originalBitMap, deduplicatedBitMap)];
+              floatValues[
+                  getLastNonnullIndex(
+                      i, index, deduplicateIndex, originalBitMap, deduplicatedBitMap)];
         }
         return deduplicatedFloatValues;
       case DOUBLE:
         final double[] doubleValues = (double[]) valueList;
         final double[] deduplicatedDoubleValues = new double[doubleValues.length];
-        for (int i = 0; i < deduplicatedSize; i++) {
+        for (int i = 0; i < deduplicateSize; i++) {
           deduplicatedDoubleValues[i] =
-              doubleValues[getLastNonnullIndex(i, index, originalBitMap, deduplicatedBitMap)];
+              doubleValues[
+                  getLastNonnullIndex(
+                      i, index, deduplicateIndex, originalBitMap, deduplicatedBitMap)];
         }
         return deduplicatedDoubleValues;
       case TEXT:
@@ -122,9 +151,11 @@ public class PipeTabletEventSorter {
       case STRING:
         final Binary[] binaryValues = (Binary[]) valueList;
         final Binary[] deduplicatedBinaryValues = new Binary[binaryValues.length];
-        for (int i = 0; i < deduplicatedSize; i++) {
+        for (int i = 0; i < deduplicateSize; i++) {
           deduplicatedBinaryValues[i] =
-              binaryValues[getLastNonnullIndex(i, index, originalBitMap, deduplicatedBitMap)];
+              binaryValues[
+                  getLastNonnullIndex(
+                      i, index, deduplicateIndex, originalBitMap, deduplicatedBitMap)];
         }
         return deduplicatedBinaryValues;
       default:
@@ -136,20 +167,21 @@ public class PipeTabletEventSorter {
   private static int getLastNonnullIndex(
       final int i,
       final Integer[] index,
+      final int[] deduplicateIndex,
       final BitMap originalBitMap,
       final BitMap deduplicatedBitMap) {
     if (originalBitMap == null) {
-      return index[i];
+      return index[deduplicateIndex[i]];
     }
-    int lastNonnullIndex = index[i];
-    int lastIndex = i > 0 ? index[i - 1] : -1;
+    int lastNonnullIndex = deduplicateIndex[i];
+    int lastIndex = i > 0 ? deduplicateIndex[i - 1] : -1;
     while (originalBitMap.isMarked(lastNonnullIndex)) {
       --lastNonnullIndex;
       if (lastNonnullIndex == lastIndex) {
         deduplicatedBitMap.mark(i);
-        break;
+        return index[lastNonnullIndex + 1];
       }
     }
-    return lastNonnullIndex;
+    return index[lastNonnullIndex];
   }
 }

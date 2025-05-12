@@ -24,19 +24,11 @@ import org.apache.tsfile.write.record.Tablet;
 import java.util.Arrays;
 import java.util.Comparator;
 
-public class PipeTreeModelTabletEventSorter {
-
-  private final Tablet tablet;
-
-  private boolean isSorted = true;
-  private boolean isDeduplicated = true;
-
-  private Integer[] index;
-  private int deduplicatedSize;
+public class PipeTreeModelTabletEventSorter extends PipeTabletEventSorter {
 
   public PipeTreeModelTabletEventSorter(final Tablet tablet) {
-    this.tablet = tablet;
-    deduplicatedSize = tablet == null ? 0 : tablet.getRowSize();
+    super(tablet);
+    deduplicateSize = tablet == null ? 0 : tablet.getRowSize();
   }
 
   public void deduplicateAndSortTimestampsIfNecessary() {
@@ -54,11 +46,11 @@ public class PipeTreeModelTabletEventSorter {
         break;
       }
       if (currentTimestamp == previousTimestamp) {
-        isDeduplicated = false;
+        isDeduplicate = false;
       }
     }
 
-    if (isSorted && isDeduplicated) {
+    if (isSorted && isDeduplicate) {
       return;
     }
 
@@ -73,14 +65,14 @@ public class PipeTreeModelTabletEventSorter {
       // Do deduplicate anyway.
       // isDeduplicated may be false positive when isSorted is false.
       deduplicateTimestamps();
-      isDeduplicated = true;
+      isDeduplicate = true;
     }
 
-    if (!isDeduplicated) {
+    if (!isDeduplicate) {
       deduplicateTimestamps();
     }
 
-    PipeTabletEventSorter.sortAndDeduplicateValuesAndBitMaps(tablet, deduplicatedSize, index);
+    sortAndDeduplicateValuesAndBitMaps();
   }
 
   private void sortTimestamps() {
@@ -89,16 +81,18 @@ public class PipeTreeModelTabletEventSorter {
   }
 
   private void deduplicateTimestamps() {
-    deduplicatedSize = 0;
+    deduplicateSize = 0;
     long[] timestamps = tablet.getTimestamps();
     for (int i = 1, size = tablet.getRowSize(); i < size; i++) {
       if (timestamps[i] != timestamps[i - 1]) {
-        index[deduplicatedSize] = index[i - 1];
-        timestamps[deduplicatedSize] = timestamps[i - 1];
+        deduplicateIndex[deduplicateSize] = i - 1;
+        timestamps[deduplicateSize] = timestamps[i - 1];
 
-        ++deduplicatedSize;
+        ++deduplicateSize;
       }
     }
-    tablet.setRowSize(deduplicatedSize + 1);
+
+    deduplicateIndex[deduplicateSize] = tablet.getRowSize() - 1;
+    tablet.setRowSize(deduplicateSize + 1);
   }
 }
