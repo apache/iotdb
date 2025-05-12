@@ -865,7 +865,7 @@ public class IoTDBTableIT {
       statement.execute(
           "create or replace table view tree_table (tag1 tag, tag2 tag, S1 int32 field, s3 from s2) as root.a.**");
       statement.execute("alter view tree_table rename to view_table");
-      statement.execute("alter view view_table rename column S1 to s11");
+      statement.execute("alter view view_table rename column s1 to s11");
       statement.execute("alter view view_table set properties ttl=100");
       statement.execute("comment on view view_table is 'comment'");
 
