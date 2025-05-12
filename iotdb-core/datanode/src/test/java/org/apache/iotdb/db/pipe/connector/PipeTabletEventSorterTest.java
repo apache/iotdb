@@ -103,23 +103,26 @@ public class PipeTabletEventSorterTest {
 
   @Test
   public void testTreeModelDeduplicate() {
-    List<IMeasurementSchema> schemaList = new ArrayList<>();
+    final List<IMeasurementSchema> schemaList = new ArrayList<>();
     schemaList.add(new MeasurementSchema("s1", TSDataType.INT64));
     schemaList.add(new MeasurementSchema("s2", TSDataType.INT64));
     schemaList.add(new MeasurementSchema("s3", TSDataType.INT64));
 
-    Tablet tablet = new Tablet("root.sg.device", schemaList, 10);
+    final Tablet tablet = new Tablet("root.sg.device", schemaList, 10);
 
-    long timestamp = 300;
+    final long timestamp = 300;
     for (long i = 0; i < 10; i++) {
-      int rowIndex = tablet.getRowSize();
+      final int rowIndex = tablet.getRowSize();
       tablet.addTimestamp(rowIndex, timestamp);
       for (int s = 0; s < 3; s++) {
-        tablet.addValue(schemaList.get(s).getMeasurementName(), rowIndex, timestamp);
+        tablet.addValue(
+            schemaList.get(s).getMeasurementName(),
+            rowIndex,
+            (i + s) % 3 != 0 ? timestamp + i : null);
       }
     }
 
-    Set<Integer> indices = new HashSet<>();
+    final Set<Integer> indices = new HashSet<>();
     for (int i = 0; i < 10; i++) {
       indices.add((int) tablet.getTimestamp(i));
     }
@@ -133,16 +136,9 @@ public class PipeTabletEventSorterTest {
     Assert.assertEquals(indices.size(), tablet.getRowSize());
 
     final long[] timestamps = Arrays.copyOfRange(tablet.getTimestamps(), 0, tablet.getRowSize());
-    for (int i = 0; i < 3; ++i) {
-      Assert.assertArrayEquals(
-          timestamps, Arrays.copyOfRange((long[]) tablet.getValues()[0], 0, tablet.getRowSize()));
-    }
-
-    for (int i = 1; i < tablet.getRowSize(); ++i) {
-      Assert.assertTrue(timestamps[i] > timestamps[i - 1]);
-      for (int j = 0; j < 3; ++j) {
-        Assert.assertTrue((long) tablet.getValue(i, j) > (long) tablet.getValue(i - 1, j));
-      }
+    Assert.assertEquals(timestamps[0] + 8, ((long[]) tablet.getValues()[0])[0]);
+    for (int i = 1; i < 3; ++i) {
+      Assert.assertEquals(timestamps[0] + 9, ((long[]) tablet.getValues()[i])[0]);
     }
   }
 
