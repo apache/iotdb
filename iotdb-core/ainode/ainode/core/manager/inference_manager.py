@@ -73,7 +73,7 @@ class RegisteredStrategy(InferenceStrategy):
         if window_interval <= 0 or window_step <= 0 or window_interval > length:
             raise InvalidWindowArgumentError(window_interval, window_step, length)
 
-        data = torch.tensor(dataset, dtype=torch.float32).unsqueeze(-1)
+        data = torch.tensor(dataset, dtype=torch.float32).unsqueeze(0)
 
         times = int((length - window_interval) // window_step + 1)
         results = []
