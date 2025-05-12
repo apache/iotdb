@@ -181,7 +181,7 @@ public class OpcDaServerHandle implements Closeable {
   }
 
   void transfer(final Tablet tablet) {
-    new PipeTreeModelTabletEventSorter(tablet).deduplicateAndSortTimestampsIfNecessary();
+    new PipeTreeModelTabletEventSorter(tablet).deDuplicateAndSortTimestampsIfNecessary();
     final List<IMeasurementSchema> schemas = tablet.getSchemas();
 
     for (int i = 0; i < schemas.size(); ++i) {
