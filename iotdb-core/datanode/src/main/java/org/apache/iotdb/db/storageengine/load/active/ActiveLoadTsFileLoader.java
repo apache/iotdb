@@ -219,17 +219,14 @@ public class ActiveLoadTsFileLoader {
     final List<File> files = statement.getTsFiles();
     final String dataBaseName;
 
-    File parentFile = null;
-    if (files.isEmpty() || (parentFile = files.get(0).getParentFile()) == null) {
-      // It should be noted here that the instructions in this code block do not need to use the
-      // DataBase, so the DataBase is assigned a value of null. If the DataBase is used later, an
-      // exception will be thrown.
-      dataBaseName = null;
-    } else {
-      dataBaseName = parentFile.getName();
-    }
-
-    statement.setDatabase(dataBaseName);
+    // It should be noted here that the instructions in this code block do not need to use the
+    // DataBase, so the DataBase is assigned a value of null. If the DataBase is used later, an
+    // exception will be thrown.
+    final File parentFile;
+    statement.setDatabase(
+        files.isEmpty() || (parentFile = files.get(0).getParentFile()) == null
+            ? null
+            : parentFile.getName());
     statement.setDeleteAfterLoad(true);
     statement.setConvertOnTypeMismatch(true);
     statement.setVerifySchema(isVerify);
