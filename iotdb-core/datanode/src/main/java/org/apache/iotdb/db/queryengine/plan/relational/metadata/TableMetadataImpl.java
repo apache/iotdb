@@ -699,7 +699,7 @@ public class TableMetadataImpl implements Metadata {
       case SqlConstant.TABLE_FIRST_VALUE:
       case SqlConstant.TABLE_LAST_VALUE:
         if (argumentTypes.size() != 1) {
-          throw  new SemanticException(
+          throw new SemanticException(
               String.format("Window function [%s] should only have one argument", functionName));
         }
       case SqlConstant.LEAD:

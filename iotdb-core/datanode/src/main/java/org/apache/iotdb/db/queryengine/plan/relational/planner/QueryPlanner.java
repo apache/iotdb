@@ -512,12 +512,15 @@ public class QueryPlanner {
                 }
               }
             });
-    GroupNode groupNode = new GroupNode(
-        idAllocator.genPlanNodeId(),
-        subPlan.getRoot(),
-        new OrderingScheme(sortSymbols, sortOrderings),
-        sortKeyOffset);
-    PlanBuilder planBuilder = new PlanBuilder(subPlan.getTranslations().withAdditionalMappings(mappings.buildOrThrow()), groupNode);
+    GroupNode groupNode =
+        new GroupNode(
+            idAllocator.genPlanNodeId(),
+            subPlan.getRoot(),
+            new OrderingScheme(sortSymbols, sortOrderings),
+            sortKeyOffset);
+    PlanBuilder planBuilder =
+        new PlanBuilder(
+            subPlan.getTranslations().withAdditionalMappings(mappings.buildOrThrow()), groupNode);
 
     // create window node
     return new PlanBuilder(
