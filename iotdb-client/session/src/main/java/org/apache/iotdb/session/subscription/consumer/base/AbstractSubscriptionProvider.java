@@ -163,6 +163,7 @@ public abstract class AbstractSubscriptionProvider {
     consumerAttributes.put(ConsumerConstant.CONSUMER_ID_KEY, consumerId);
     consumerAttributes.put(ConsumerConstant.USERNAME_KEY, username);
     consumerAttributes.put(ConsumerConstant.PASSWORD_KEY, password);
+    consumerAttributes.put(ConsumerConstant.SQL_DIALECT_KEY, session.getSqlDialect());
 
     final PipeSubscribeHandshakeResp resp =
         handshake(new ConsumerConfig(consumerAttributes)); // throw SubscriptionException
