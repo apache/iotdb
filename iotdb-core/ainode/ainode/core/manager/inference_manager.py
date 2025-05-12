@@ -23,7 +23,7 @@ from ainode.core.constant import TSStatusCode
 from ainode.core.exception import InvalidWindowArgumentError, InferenceModelInternalError, runtime_error_extractor
 from ainode.core.log import Logger
 from ainode.core.manager.model_manager import ModelManager
-from ainode.core.util.serde import convert_to_binary, convert_to_df
+from ainode.core.util.serde import convert_to_binary
 from ainode.core.util.status import get_status
 from ainode.thrift.ainode.ttypes import TInferenceReq, TInferenceResp, TForecastReq, TForecastResp
 
