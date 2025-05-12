@@ -60,7 +60,7 @@ public class PipeTransferTabletRawReq extends TPipeTransferReq {
   }
 
   public InsertTabletStatement constructStatement() {
-    new PipeTreeModelTabletEventSorter(tablet).deduplicateAndSortTimestampsIfNecessary();
+    new PipeTreeModelTabletEventSorter(tablet).deDuplicateAndSortTimestampsIfNecessary();
 
     try {
       if (isTabletEmpty(tablet)) {
