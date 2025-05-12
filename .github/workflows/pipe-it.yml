@@ -431,7 +431,7 @@ jobs:
           name: cluster-log-dual-tree-manual-java${{ matrix.java }}-${{ runner.os }}-${{ matrix.cluster1 }}-${{ matrix.cluster2 }}
           path: integration-test/target/cluster-logs
           retention-days: 30
-  subscription-arch-verification:
+  subscription-tree-arch-verification:
     strategy:
       fail-fast: false
       max-parallel: 15
@@ -476,7 +476,7 @@ jobs:
               -DintegrationTest.forkCount=1 -DConfigNodeMaxHeapSize=256 -DDataNodeMaxHeapSize=1024 -DDataNodeMaxDirectMemorySize=768 \
               -DClusterConfigurations=${{ matrix.cluster1 }},${{ matrix.cluster2 }} \
               -pl integration-test \
-              -am -PMultiClusterIT2SubscriptionArchVerification \
+              -am -PMultiClusterIT2SubscriptionTreeArchVerification \
               -ntp >> ~/run-tests-$attempt.log && return 0
               test_output=$(cat ~/run-tests-$attempt.log) 
 
@@ -515,7 +515,7 @@ jobs:
           name: cluster-log-subscription-java${{ matrix.java }}-${{ runner.os }}-${{ matrix.cluster1 }}-${{ matrix.cluster2 }}
           path: integration-test/target/cluster-logs
           retention-days: 30
-  subscription-regression-consumer:
+  subscription-tree-regression-consumer:
     strategy:
       fail-fast: false
       max-parallel: 15
@@ -560,7 +560,7 @@ jobs:
               -DintegrationTest.forkCount=1 -DConfigNodeMaxHeapSize=256 -DDataNodeMaxHeapSize=1024 -DDataNodeMaxDirectMemorySize=768 \
               -DClusterConfigurations=${{ matrix.cluster1 }},${{ matrix.cluster2 }} \
               -pl integration-test \
-              -am -PMultiClusterIT2SubscriptionRegressionConsumer \
+              -am -PMultiClusterIT2SubscriptionTreeRegressionConsumer \
               -ntp >> ~/run-tests-$attempt.log && return 0
               test_output=$(cat ~/run-tests-$attempt.log) 
 
@@ -599,7 +599,7 @@ jobs:
           name: cluster-log-subscription-regression-consumer-java${{ matrix.java }}-${{ runner.os }}-${{ matrix.cluster1 }}-${{ matrix.cluster2 }}
           path: integration-test/target/cluster-logs
           retention-days: 30
-  subscription-regression-misc:
+  subscription-tree-regression-misc:
     strategy:
       fail-fast: false
       max-parallel: 15
@@ -644,7 +644,7 @@ jobs:
               -DintegrationTest.forkCount=1 -DConfigNodeMaxHeapSize=256 -DDataNodeMaxHeapSize=1024 -DDataNodeMaxDirectMemorySize=768 \
               -DClusterConfigurations=${{ matrix.cluster1 }},${{ matrix.cluster2 }} \
               -pl integration-test \
-              -am -PMultiClusterIT2SubscriptionRegressionMisc \
+              -am -PMultiClusterIT2SubscriptionTreeRegressionMisc \
               -ntp >> ~/run-tests-$attempt.log && return 0
               test_output=$(cat ~/run-tests-$attempt.log) 
 
