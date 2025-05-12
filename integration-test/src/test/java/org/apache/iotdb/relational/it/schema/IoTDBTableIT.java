@@ -884,13 +884,13 @@ public class IoTDBTableIT {
                   "tag2,STRING,TAG,",
                   "s11,INT32,FIELD,",
                   "s3,STRING,FIELD,")));
-      // Currently we show the device even if all of its measurements does not match the type,
+      // Currently we show the device even if all of its measurements does not match,
       // the handling logic at query because validate it at fetching will potentially cause a
       // lot of time
       TestUtils.assertResultSetEqual(
           statement.executeQuery("show devices from view_table where tag1 = 'b'"),
           "tag1,tag2,",
-          new HashSet<>(Arrays.asList("b,c,", "b,null,", "b,d,")));
+          new HashSet<>(Arrays.asList("b,c,", "b,null,", "b,d,", "b,e,")));
       TestUtils.assertResultSetEqual(
           statement.executeQuery("show devices from view_table where tag1 = 'b' and tag2 is null"),
           "tag1,tag2,",
@@ -898,7 +898,7 @@ public class IoTDBTableIT {
       TestUtils.assertResultSetEqual(
           statement.executeQuery("count devices from view_table"),
           "count(devices),",
-          Collections.singleton("3,"));
+          Collections.singleton("4,"));
     }
 
     // Test tree session
