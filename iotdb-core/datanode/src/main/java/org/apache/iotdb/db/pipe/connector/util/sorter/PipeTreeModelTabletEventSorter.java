@@ -20,7 +20,6 @@
 package org.apache.iotdb.db.pipe.connector.util.sorter;
 
 import org.apache.tsfile.write.record.Tablet;
-import org.apache.tsfile.write.schema.IMeasurementSchema;
 
 import java.util.Arrays;
 import java.util.Comparator;
@@ -81,7 +80,7 @@ public class PipeTreeModelTabletEventSorter {
       deduplicateTimestamps();
     }
 
-    sortAndDeduplicateValuesAndBitMaps();
+    PipeTabletEventSorter.sortAndDeduplicateValuesAndBitMaps(tablet, deduplicatedSize, index);
   }
 
   private void sortTimestamps() {
@@ -90,34 +89,16 @@ public class PipeTreeModelTabletEventSorter {
   }
 
   private void deduplicateTimestamps() {
-    deduplicatedSize = 1;
+    deduplicatedSize = 0;
     long[] timestamps = tablet.getTimestamps();
     for (int i = 1, size = tablet.getRowSize(); i < size; i++) {
       if (timestamps[i] != timestamps[i - 1]) {
-        index[deduplicatedSize] = index[i];
-        timestamps[deduplicatedSize] = timestamps[i];
+        index[deduplicatedSize] = index[i - 1];
+        timestamps[deduplicatedSize] = timestamps[i - 1];
 
         ++deduplicatedSize;
       }
     }
-    tablet.setRowSize(deduplicatedSize);
-  }
-
-  private void sortAndDeduplicateValuesAndBitMaps() {
-    int columnIndex = 0;
-    for (int i = 0, size = tablet.getSchemas().size(); i < size; i++) {
-      final IMeasurementSchema schema = tablet.getSchemas().get(i);
-      if (schema != null) {
-        tablet.getValues()[columnIndex] =
-            PipeTabletEventSorter.reorderValueList(
-                deduplicatedSize, tablet.getValues()[columnIndex], schema.getType(), index);
-        if (tablet.getBitMaps() != null && tablet.getBitMaps()[columnIndex] != null) {
-          tablet.getBitMaps()[columnIndex] =
-              PipeTabletEventSorter.reorderBitMap(
-                  deduplicatedSize, tablet.getBitMaps()[columnIndex], index);
-        }
-        columnIndex++;
-      }
-    }
+    tablet.setRowSize(deduplicatedSize + 1);
   }
 }

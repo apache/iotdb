@@ -23,7 +23,6 @@ import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.write.record.Tablet;
-import org.apache.tsfile.write.schema.IMeasurementSchema;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -139,26 +138,11 @@ public class PipeTableModelTabletEventSorter {
   }
 
   private void sortAndDeduplicateValuesAndBitMaps() {
-    int columnIndex = 0;
     tablet.setTimestamps(
         (long[])
-            PipeTabletEventSorter.reorderValueList(
-                deduplicatedSize, tablet.getTimestamps(), TSDataType.TIMESTAMP, index));
-    for (int i = 0, size = tablet.getSchemas().size(); i < size; i++) {
-      final IMeasurementSchema schema = tablet.getSchemas().get(i);
-      if (schema != null) {
-        tablet.getValues()[columnIndex] =
-            PipeTabletEventSorter.reorderValueList(
-                deduplicatedSize, tablet.getValues()[columnIndex], schema.getType(), index);
-        if (tablet.getBitMaps() != null && tablet.getBitMaps()[columnIndex] != null) {
-          tablet.getBitMaps()[columnIndex] =
-              PipeTabletEventSorter.reorderBitMap(
-                  deduplicatedSize, tablet.getBitMaps()[columnIndex], index);
-        }
-        columnIndex++;
-      }
-    }
-
+            PipeTabletEventSorter.reorderValueListAndBitMap(
+                deduplicatedSize, tablet.getTimestamps(), TSDataType.TIMESTAMP, null, null, index));
+    PipeTabletEventSorter.sortAndDeduplicateValuesAndBitMaps(tablet, deduplicatedSize, index);
     tablet.setRowSize(deduplicatedSize);
   }
 
@@ -252,22 +236,7 @@ public class PipeTableModelTabletEventSorter {
   }
 
   private void sortAndDeduplicateValuesAndBitMapsIgnoreTimestamp() {
-    int columnIndex = 0;
-    for (int i = 0, size = tablet.getSchemas().size(); i < size; i++) {
-      final IMeasurementSchema schema = tablet.getSchemas().get(i);
-      if (schema != null) {
-        tablet.getValues()[columnIndex] =
-            PipeTabletEventSorter.reorderValueList(
-                deduplicatedSize, tablet.getValues()[columnIndex], schema.getType(), index);
-        if (tablet.getBitMaps() != null && tablet.getBitMaps()[columnIndex] != null) {
-          tablet.getBitMaps()[columnIndex] =
-              PipeTabletEventSorter.reorderBitMap(
-                  deduplicatedSize, tablet.getBitMaps()[columnIndex], index);
-        }
-        columnIndex++;
-      }
-    }
-
+    PipeTabletEventSorter.sortAndDeduplicateValuesAndBitMaps(tablet, deduplicatedSize, index);
     tablet.setRowSize(deduplicatedSize);
   }
 }
