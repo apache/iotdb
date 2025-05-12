@@ -22,7 +22,8 @@ package org.apache.iotdb.db.storageengine.dataregion.read.reader.chunk;
 import org.apache.iotdb.db.queryengine.execution.fragment.QueryContext;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.AlignedReadOnlyMemChunk;
 import org.apache.iotdb.db.utils.datastructure.AlignedTVList;
-import org.apache.iotdb.db.utils.datastructure.MergeSortAlignedTVListIterator;
+import org.apache.iotdb.db.utils.datastructure.MemPointIterator;
+import org.apache.iotdb.db.utils.datastructure.MemPointIteratorFactory;
 import org.apache.iotdb.db.utils.datastructure.TVList;
 
 import org.apache.tsfile.common.conf.TSFileConfig;
@@ -56,6 +57,7 @@ import static org.junit.Assert.fail;
 public class MemAlignedChunkLoaderTest {
 
   private static final String BINARY_STR = "ty love zm";
+  private static final int maxNumberOfPointsInPage = 1000;
 
   @Test
   public void testMemAlignedChunkLoader() throws IOException {
@@ -77,7 +79,6 @@ public class MemAlignedChunkLoaderTest {
     Mockito.when(timeStatistics.getCount()).thenReturn(2);
     timeStatitsticsList.add(timeStatistics);
     Mockito.when(chunk.getTimeStatisticsList()).thenReturn(timeStatitsticsList);
-    Mockito.when(chunk.getMaxNumberOfPointsInPage()).thenReturn(1000);
 
     List<Statistics<? extends Serializable>[]> valuesStatitsticsList = new ArrayList<>();
     Statistics<? extends Serializable>[] valuesStatistics = new Statistics[6];
@@ -103,8 +104,6 @@ public class MemAlignedChunkLoaderTest {
     Mockito.when(chunk.getValuesStatisticsList()).thenReturn(valuesStatitsticsList);
 
     // Mock AlignedReadOnlyMemChunk Getter
-    List<int[]> pageOffsets = Arrays.asList(new int[] {0, 0}, new int[] {2, 1});
-    Mockito.when(chunk.getPageOffsetsList()).thenReturn(pageOffsets);
     List<TSDataType> dataTypes = buildTsDataTypes();
     Mockito.when(chunk.getDataTypes()).thenReturn(dataTypes);
     Mockito.when(chunk.getTimeColumnDeletion()).thenReturn(null);
@@ -115,9 +114,11 @@ public class MemAlignedChunkLoaderTest {
     Mockito.when(chunk.getAligendTvListQueryMap()).thenReturn(alignedTvListMap);
     List<AlignedTVList> alignedTvLists =
         alignedTvListMap.keySet().stream().map(x -> (AlignedTVList) x).collect(Collectors.toList());
-    MergeSortAlignedTVListIterator timeValuePairIterator =
-        new MergeSortAlignedTVListIterator(alignedTvLists, dataTypes, null, null, null, false);
-    Mockito.when(chunk.getMergeSortAlignedTVListIterator()).thenReturn(timeValuePairIterator);
+    MemPointIterator timeValuePairIterator =
+        MemPointIteratorFactory.create(
+            dataTypes, null, alignedTvLists, false, maxNumberOfPointsInPage);
+    timeValuePairIterator.nextBatch();
+    Mockito.when(chunk.getMemPointIterator()).thenReturn(timeValuePairIterator);
 
     AlignedChunkMetadata chunkMetadata1 = Mockito.mock(AlignedChunkMetadata.class);
     Mockito.when(chunk.getChunkMetaData()).thenReturn(chunkMetadata1);

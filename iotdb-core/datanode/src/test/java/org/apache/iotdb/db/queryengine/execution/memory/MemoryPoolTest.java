@@ -19,10 +19,13 @@
 
 package org.apache.iotdb.db.queryengine.execution.memory;
 
+import org.apache.iotdb.commons.memory.MemoryManager;
+
 import com.google.common.util.concurrent.ListenableFuture;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
+import org.mockito.Mockito;
 
 public class MemoryPoolTest {
 
@@ -35,7 +38,8 @@ public class MemoryPoolTest {
 
   @Before
   public void before() {
-    pool = new MemoryPool("test", 1024L, 512L);
+    MemoryManager memoryManager = Mockito.spy(new MemoryManager(1024L));
+    pool = new MemoryPool("test", memoryManager, 512L);
     pool.registerPlanNodeIdToQueryMemoryMap(QUERY_ID, FRAGMENT_INSTANCE_ID, PLAN_NODE_ID);
   }
 

@@ -19,13 +19,16 @@
 
 package org.apache.iotdb.db.pipe.receiver.protocol.pipeconsensus;
 
+import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
+import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.commons.pipe.connector.payload.pipeconsensus.request.PipeConsensusRequestVersion;
 import org.apache.iotdb.consensus.IConsensus;
 import org.apache.iotdb.consensus.pipe.PipeConsensus;
 import org.apache.iotdb.consensus.pipe.consensuspipe.ConsensusPipeName;
 import org.apache.iotdb.consensus.pipe.consensuspipe.ConsensusPipeReceiver;
+import org.apache.iotdb.consensus.pipe.thrift.TCommitId;
 import org.apache.iotdb.consensus.pipe.thrift.TPipeConsensusTransferReq;
 import org.apache.iotdb.consensus.pipe.thrift.TPipeConsensusTransferResp;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -39,7 +42,9 @@ import org.slf4j.LoggerFactory;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CopyOnWriteArraySet;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -66,6 +71,8 @@ public class PipeConsensusReceiverAgent implements ConsensusPipeReceiver {
           ConsensusGroupId, Map<ConsensusPipeName, AtomicReference<PipeConsensusReceiver>>>
       replicaReceiverMap = new ConcurrentHashMap<>();
 
+  private final Set<ConsensusPipeName> aliveReceivers = new CopyOnWriteArraySet<>();
+
   private PipeConsensus pipeConsensus;
 
   public PipeConsensusReceiverAgent() {
@@ -85,13 +92,32 @@ public class PipeConsensusReceiverAgent implements ConsensusPipeReceiver {
     }
   }
 
+  public static TPipeConsensusTransferResp closedResp(String consensusInfo, TCommitId tCommitId) {
+    final TSStatus status =
+        new TSStatus(
+            RpcUtils.getStatus(
+                TSStatusCode.PIPE_CONSENSUS_CLOSE_ERROR,
+                "PipeConsensus receiver received a request after it was closed."));
+    LOGGER.info(
+        "PipeConsensus-{}: receive on-the-fly no.{} event after data region was deleted, discard it",
+        consensusInfo,
+        tCommitId);
+    return new TPipeConsensusTransferResp(status);
+  }
+
   @Override
   public TPipeConsensusTransferResp receive(TPipeConsensusTransferReq req) {
     final byte reqVersion = req.getVersion();
     if (RECEIVER_CONSTRUCTORS.containsKey(reqVersion)) {
       final ConsensusGroupId consensusGroupId =
           ConsensusGroupId.Factory.createFromTConsensusGroupId(req.getConsensusGroupId());
-      return getReceiver(consensusGroupId, req.getDataNodeId(), reqVersion).receive(req);
+      final PipeConsensusReceiver receiver =
+          getReceiver(consensusGroupId, req.getDataNodeId(), reqVersion);
+
+      if (receiver == null) {
+        return closedResp(consensusGroupId.toString(), req.getCommitId());
+      }
+      return receiver.receive(req);
     } else {
       final TSStatus status =
           RpcUtils.getStatus(
@@ -119,6 +145,11 @@ public class PipeConsensusReceiverAgent implements ConsensusPipeReceiver {
               isFirstGetReceiver.set(true);
               return new AtomicReference<>(null);
             });
+
+    // 3. If not first get receiver && receiver is not alive, return null.
+    if (!isFirstGetReceiver.get() && !aliveReceivers.contains(consensusPipeName)) {
+      return null;
+    }
 
     if (receiverReference.get() == null) {
       return internalSetAndGetReceiver(
@@ -153,10 +184,13 @@ public class PipeConsensusReceiverAgent implements ConsensusPipeReceiver {
 
     if (isFirstGetReceiver.get()) {
       if (RECEIVER_CONSTRUCTORS.containsKey(reqVersion)) {
+        // If is first get receiver, set this receiver as alive.
+        aliveReceivers.add(consensusPipeName);
         receiverReference.set(
             RECEIVER_CONSTRUCTORS
                 .get(reqVersion)
                 .apply(pipeConsensus, consensusGroupId, consensusPipeName));
+        LOGGER.info("Receiver-{} is ready", consensusPipeName);
       } else {
         throw new UnsupportedOperationException(
             String.format("Unsupported pipeConsensus request version %d", reqVersion));
@@ -181,20 +215,33 @@ public class PipeConsensusReceiverAgent implements ConsensusPipeReceiver {
     }
   }
 
-  /** Release receiver of given pipeConsensusTask */
+  /** Release all receivers of given data region */
   @Override
-  public final void handleDropPipeConsensusTask(ConsensusPipeName pipeName) {
+  public final void releaseReceiverResource(DataRegionId dataRegionId) {
     // 1. Route to given consensusGroup's receiver map
     Map<ConsensusPipeName, AtomicReference<PipeConsensusReceiver>> consensusPipe2ReciverMap =
-        replicaReceiverMap.getOrDefault(pipeName.getConsensusGroupId(), new ConcurrentHashMap<>());
-    // 2. Route to given consensusPipeTask's receiver
-    AtomicReference<PipeConsensusReceiver> receiverReference =
-        consensusPipe2ReciverMap.getOrDefault(pipeName, null);
-    // 3. Release receiver
-    if (receiverReference != null) {
-      receiverReference.get().handleExit();
-      receiverReference.set(null);
-    }
-    consensusPipe2ReciverMap.remove(pipeName);
+        this.replicaReceiverMap.getOrDefault(
+            ConsensusGroupId.Factory.create(
+                TConsensusGroupType.DataRegion.getValue(), dataRegionId.getId()),
+            new ConcurrentHashMap<>());
+    // 2. Release all related receivers
+    consensusPipe2ReciverMap.entrySet().stream()
+        .filter(entry -> entry.getKey().getReceiverDataNodeId() == thisNodeId)
+        .forEach(
+            receiverEntry -> {
+              ConsensusPipeName consensusPipeName = receiverEntry.getKey();
+              AtomicReference<PipeConsensusReceiver> receiverReference = receiverEntry.getValue();
+              if (receiverReference != null) {
+                // no longer receive new request
+                aliveReceivers.remove(consensusPipeName);
+                receiverReference.get().handleExit();
+                receiverReference.set(null);
+              }
+            });
+    // 3. Release replica map
+    this.replicaReceiverMap.remove(dataRegionId);
+    // 4. GC receiver map
+    consensusPipe2ReciverMap.clear();
+    LOGGER.info("All Receivers related to {} are released.", dataRegionId);
   }
 }

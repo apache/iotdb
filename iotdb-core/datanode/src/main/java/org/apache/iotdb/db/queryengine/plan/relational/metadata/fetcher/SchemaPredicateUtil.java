@@ -23,8 +23,8 @@ import org.apache.iotdb.commons.schema.filter.SchemaFilter;
 import org.apache.iotdb.commons.schema.filter.SchemaFilterType;
 import org.apache.iotdb.commons.schema.filter.impl.StringValueFilterVisitor;
 import org.apache.iotdb.commons.schema.filter.impl.singlechild.AbstractSingleChildFilter;
-import org.apache.iotdb.commons.schema.filter.impl.singlechild.IdFilter;
 import org.apache.iotdb.commons.schema.filter.impl.singlechild.NotFilter;
+import org.apache.iotdb.commons.schema.filter.impl.singlechild.TagFilter;
 import org.apache.iotdb.commons.schema.filter.impl.values.PreciseFilter;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
@@ -44,6 +44,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
 
 public class SchemaPredicateUtil {
@@ -52,7 +53,7 @@ public class SchemaPredicateUtil {
 
   // pair.left is Expressions only contain ID columns
   // pair.right is Expressions contain at least one ATTRIBUTE column
-  static Pair<List<Expression>, List<Expression>> separateIdDeterminedPredicate(
+  static Pair<List<Expression>, List<Expression>> separateTagDeterminedPredicate(
       final List<Expression> expressionList,
       final TsTable table,
       final MPPQueryContext queryContext,
@@ -114,7 +115,9 @@ public class SchemaPredicateUtil {
   // e.g. (a OR b) AND (c OR d) -> (a AND c) OR (a AND d) OR (b AND c) OR (b AND d)
   // if input is empty, then return [[]]
   static List<Map<Integer, List<SchemaFilter>>> convertDeviceIdPredicateToOrConcatList(
-      final List<Expression> schemaFilterList, final TsTable table) {
+      final List<Expression> schemaFilterList,
+      final TsTable table,
+      final AtomicBoolean mayContainDuplicateDevice) {
     final ConvertSchemaPredicateToFilterVisitor visitor =
         new ConvertSchemaPredicateToFilterVisitor();
     final ConvertSchemaPredicateToFilterVisitor.Context context =
@@ -122,7 +125,10 @@ public class SchemaPredicateUtil {
 
     final List<List<Expression>> orConcatList =
         schemaFilterList.stream()
-            .map(IrUtils::extractOrPredicatesWithInExpanded)
+            .map(
+                expression ->
+                    IrUtils.extractOrPredicatesWithInExpanded(
+                        expression, mayContainDuplicateDevice))
             .collect(Collectors.toList());
     final int orSize = orConcatList.size();
     int remainingCaseNum = orConcatList.stream().map(List::size).reduce(1, (a, b) -> a * b);
@@ -161,7 +167,7 @@ public class SchemaPredicateUtil {
   private static boolean handleFilter(
       final AbstractSingleChildFilter filter,
       final Map<Integer, List<SchemaFilter>> index2FilterMap) {
-    // We assume that only "not" and "IdFilter" is possible here to be the root filter
+    // We assume that only "not" and "TagFilter" is possible here to be the root filter
     // There won't be any attribute filters here currently
 
     // First refactor the not filters
@@ -172,7 +178,7 @@ public class SchemaPredicateUtil {
       isNotFilter = !isNotFilter;
     }
 
-    final int index = ((IdFilter) currentFilter).getIndex();
+    final int index = ((TagFilter) currentFilter).getIndex();
     final SchemaFilter childFilter = currentFilter.getChild();
 
     // Compress the not filters and put them after idFilter,
@@ -197,15 +203,15 @@ public class SchemaPredicateUtil {
       }
     } else {
       final SchemaFilter firstFilter = index2FilterMap.get(index).get(0);
-      if ((firstFilter.getSchemaFilterType().equals(SchemaFilterType.ID))
-          && ((IdFilter) firstFilter)
+      if ((firstFilter.getSchemaFilterType().equals(SchemaFilterType.TAG))
+          && ((TagFilter) firstFilter)
               .getChild()
               .getSchemaFilterType()
               .equals(SchemaFilterType.PRECISE)) {
         return Boolean.TRUE.equals(
             currentFilter.accept(
                 StringValueFilterVisitor.getInstance(),
-                ((PreciseFilter) ((IdFilter) firstFilter).getChild()).getValue()));
+                ((PreciseFilter) ((TagFilter) firstFilter).getChild()).getValue()));
       } else {
         index2FilterMap.get(index).add(currentFilter);
       }
@@ -213,7 +219,7 @@ public class SchemaPredicateUtil {
     return true;
   }
 
-  static List<Integer> extractIdSingleMatchExpressionCases(
+  static List<Integer> extractTagSingleMatchExpressionCases(
       final List<Map<Integer, List<SchemaFilter>>> index2FilterMapList,
       final TsTable tableInstance) {
     final List<Integer> selectedExpressionCases = new ArrayList<>();
@@ -224,8 +230,8 @@ public class SchemaPredicateUtil {
           && filterMap.values().stream()
               .allMatch(
                   filterList ->
-                      filterList.get(0).getSchemaFilterType().equals(SchemaFilterType.ID)
-                          && ((IdFilter) filterList.get(0))
+                      filterList.get(0).getSchemaFilterType().equals(SchemaFilterType.TAG)
+                          && ((TagFilter) filterList.get(0))
                               .getChild()
                               .getSchemaFilterType()
                               .equals(SchemaFilterType.PRECISE))) {

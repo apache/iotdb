@@ -43,15 +43,17 @@ import org.junit.Test;
 import java.time.ZoneId;
 
 import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.AnalyzerTest.analyzeSQL;
+import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.MockTableModelDataPartition.DEVICES_REGION_GROUP;
 import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.TestUtils.DEFAULT_WARNING;
 import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.TestUtils.QUERY_CONTEXT;
 import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.TestUtils.SESSION_INFO;
 import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.TestUtils.TEST_MATADATA;
+import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.TestUtils.assertTableScan;
+import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.TestUtils.assertTableScanWithoutEntryOrder;
 import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.TestUtils.getChildrenNode;
 import static org.apache.iotdb.db.queryengine.plan.statement.component.Ordering.ASC;
 import static org.apache.iotdb.db.queryengine.plan.statement.component.Ordering.DESC;
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
 public class LimitOffsetPushDownTest {
@@ -64,7 +66,7 @@ public class LimitOffsetPushDownTest {
           IoTDBConstant.ClientVersion.V_1_0,
           "db",
           IClientSession.SqlDialect.TABLE);
-  Metadata metadata = new TestMatadata();
+  Metadata metadata = new TestMetadata();
   String sql;
   Analysis analysis;
   LogicalQueryPlan logicalQueryPlan;
@@ -88,35 +90,25 @@ public class LimitOffsetPushDownTest {
     assertTrue(getChildrenNode(rootNode, 3) instanceof LimitNode);
     assertTrue(getChildrenNode(rootNode, 4) instanceof DeviceTableScanNode);
 
-    // DistributePlan: `Output - Project - Offset - Limit - Collect - TableScan`
+    // DistributePlan: `Output - Project - Offset - Limit - Collect - Exchange`
     distributionPlanner =
         new TableDistributedPlanner(
             this.analysis, symbolAllocator, logicalQueryPlan, TEST_MATADATA, null);
     distributedQueryPlan = distributionPlanner.plan();
-    assertEquals(3, distributedQueryPlan.getFragments().size());
+    assertEquals(4, distributedQueryPlan.getFragments().size());
     CollectNode collectNode =
         (CollectNode)
             getChildrenNode(distributedQueryPlan.getFragments().get(0).getPlanNodeTree(), 5);
     assertTrue(collectNode.getChildren().get(0) instanceof ExchangeNode);
-    assertTrue(collectNode.getChildren().get(1) instanceof DeviceTableScanNode);
+    assertTrue(collectNode.getChildren().get(1) instanceof ExchangeNode);
     assertTrue(collectNode.getChildren().get(2) instanceof ExchangeNode);
-    deviceTableScanNode = (DeviceTableScanNode) collectNode.getChildren().get(1);
-    assertEquals(4, deviceTableScanNode.getDeviceEntries().size());
-    assertEquals(ASC, deviceTableScanNode.getScanOrder());
-    assertTrue(
-        deviceTableScanNode.getPushDownLimit() == 15
-            && deviceTableScanNode.getPushDownOffset() == 0);
-    assertFalse(deviceTableScanNode.isPushLimitToEachDevice());
-
-    deviceTableScanNode =
-        (DeviceTableScanNode)
-            getChildrenNode(distributedQueryPlan.getFragments().get(1).getPlanNodeTree(), 1);
-    assertEquals(2, deviceTableScanNode.getDeviceEntries().size());
-    assertEquals(ASC, deviceTableScanNode.getScanOrder());
-    assertTrue(
-        deviceTableScanNode.getPushDownLimit() == 15
-            && deviceTableScanNode.getPushDownOffset() == 0);
-    assertFalse(deviceTableScanNode.isPushLimitToEachDevice());
+    for (int i = 1; i < 4; i++) {
+      DeviceTableScanNode deviceTableScanNode =
+          (DeviceTableScanNode)
+              getChildrenNode(distributedQueryPlan.getFragments().get(i).getPlanNodeTree(), 1);
+      assertTableScanWithoutEntryOrder(
+          deviceTableScanNode, DEVICES_REGION_GROUP.get(i - 1), ASC, 15, 0, false, "(\"s1\" > 1)");
+    }
   }
 
   // order by all IDs, limit can be pushed into TableScan, pushLimitToEachDevice==false
@@ -134,35 +126,24 @@ public class LimitOffsetPushDownTest {
     // LogicalPlan: `Output - Offset - Limit - Project - StreamSort -  Project - TableScan`
     assertTrue(getChildrenNode(rootNode, 6) instanceof DeviceTableScanNode);
 
-    // DistributePlan: `IdentitySink - Output - Offset - Project - TopK - Project - TableScan`
+    // DistributePlan: `IdentitySink - Output - Offset - Project - TopK - Project - Exchange`
     distributionPlanner =
         new TableDistributedPlanner(
             this.analysis, symbolAllocator, logicalQueryPlan, TEST_MATADATA, null);
     distributedQueryPlan = distributionPlanner.plan();
-    assertEquals(3, distributedQueryPlan.getFragments().size());
+    assertEquals(4, distributedQueryPlan.getFragments().size());
     TopKNode topKNode =
         (TopKNode) getChildrenNode(distributedQueryPlan.getFragments().get(0).getPlanNodeTree(), 4);
     assertTrue(topKNode.getChildren().get(0) instanceof ExchangeNode);
-    assertTrue(topKNode.getChildren().get(1) instanceof ProjectNode);
+    assertTrue(topKNode.getChildren().get(1) instanceof ExchangeNode);
     assertTrue(topKNode.getChildren().get(2) instanceof ExchangeNode);
-    deviceTableScanNode = (DeviceTableScanNode) getChildrenNode(topKNode.getChildren().get(1), 1);
-    assertEquals(4, deviceTableScanNode.getDeviceEntries().size());
-    assertEquals(DESC, deviceTableScanNode.getScanOrder());
-    assertTrue(
-        deviceTableScanNode.getPushDownLimit() == 15
-            && deviceTableScanNode.getPushDownOffset() == 0);
-    assertFalse(deviceTableScanNode.isPushLimitToEachDevice());
-
-    // `Identity - Project - TableScan`
-    deviceTableScanNode =
-        (DeviceTableScanNode)
-            getChildrenNode(distributedQueryPlan.getFragments().get(1).getPlanNodeTree(), 2);
-    assertEquals(2, deviceTableScanNode.getDeviceEntries().size());
-    assertEquals(DESC, deviceTableScanNode.getScanOrder());
-    assertTrue(
-        deviceTableScanNode.getPushDownLimit() == 15
-            && deviceTableScanNode.getPushDownOffset() == 0);
-    assertFalse(deviceTableScanNode.isPushLimitToEachDevice());
+    for (int i = 1; i < 4; i++) {
+      DeviceTableScanNode deviceTableScanNode =
+          (DeviceTableScanNode)
+              getChildrenNode(distributedQueryPlan.getFragments().get(i).getPlanNodeTree(), 2);
+      assertTableScan(
+          deviceTableScanNode, DEVICES_REGION_GROUP.get(i - 1), DESC, 15, 0, false, "(\"s1\" > 1)");
+    }
 
     sql = "SELECT * FROM table1 order by tag2 desc, tag1 asc, attr1 desc, tag3 desc limit 10";
     analysis = analyzeSQL(sql, TEST_MATADATA, QUERY_CONTEXT);
@@ -175,35 +156,23 @@ public class LimitOffsetPushDownTest {
     // LogicalPlan: `Output - Limit - StreamSort - TableScan`
     assertTrue(getChildrenNode(rootNode, 3) instanceof DeviceTableScanNode);
 
-    // DistributePlan: `IdentitySink - Output - TopK - TableScan`
+    // DistributePlan: `IdentitySink - Output - TopK - Exchange`
     distributionPlanner =
         new TableDistributedPlanner(
             this.analysis, symbolAllocator, logicalQueryPlan, TEST_MATADATA, null);
     distributedQueryPlan = distributionPlanner.plan();
-    assertEquals(3, distributedQueryPlan.getFragments().size());
+    assertEquals(4, distributedQueryPlan.getFragments().size());
     topKNode =
         (TopKNode) getChildrenNode(distributedQueryPlan.getFragments().get(0).getPlanNodeTree(), 2);
     assertTrue(topKNode.getChildren().get(0) instanceof ExchangeNode);
-    assertTrue(topKNode.getChildren().get(1) instanceof DeviceTableScanNode);
+    assertTrue(topKNode.getChildren().get(1) instanceof ExchangeNode);
     assertTrue(topKNode.getChildren().get(2) instanceof ExchangeNode);
-    deviceTableScanNode = (DeviceTableScanNode) topKNode.getChildren().get(1);
-    assertEquals(4, deviceTableScanNode.getDeviceEntries().size());
-    assertEquals(ASC, deviceTableScanNode.getScanOrder());
-    assertTrue(
-        deviceTableScanNode.getPushDownLimit() == 10
-            && deviceTableScanNode.getPushDownOffset() == 0);
-    assertFalse(deviceTableScanNode.isPushLimitToEachDevice());
-
-    // `Identity - TableScan`
-    deviceTableScanNode =
-        (DeviceTableScanNode)
-            distributedQueryPlan.getFragments().get(1).getPlanNodeTree().getChildren().get(0);
-    assertEquals(2, deviceTableScanNode.getDeviceEntries().size());
-    assertEquals(ASC, deviceTableScanNode.getScanOrder());
-    assertTrue(
-        deviceTableScanNode.getPushDownLimit() == 10
-            && deviceTableScanNode.getPushDownOffset() == 0);
-    assertFalse(deviceTableScanNode.isPushLimitToEachDevice());
+    for (int i = 1; i < 4; i++) {
+      DeviceTableScanNode deviceTableScanNode =
+          (DeviceTableScanNode)
+              getChildrenNode(distributedQueryPlan.getFragments().get(i).getPlanNodeTree(), 1);
+      assertTableScan(deviceTableScanNode, DEVICES_REGION_GROUP.get(i - 1), ASC, 10, 0, false, "");
+    }
   }
 
   // order by some tags, limit can be pushed into TableScan, pushLimitToEachDevice==true
@@ -222,36 +191,26 @@ public class LimitOffsetPushDownTest {
     assertTrue(getChildrenNode(rootNode, 4) instanceof StreamSortNode);
     assertTrue(getChildrenNode(rootNode, 6) instanceof DeviceTableScanNode);
 
-    // DistributePlan: `Identity - Output - Offset - Project - TopK - Limit - StreamSort - Project -
-    // TableScan`
+    // DistributePlan: `Identity - Output - Offset - Project - TopK - Exchange`
     distributionPlanner =
         new TableDistributedPlanner(
             analysis, symbolAllocator, logicalQueryPlan, TEST_MATADATA, null);
     distributedQueryPlan = distributionPlanner.plan();
-    assertEquals(3, distributedQueryPlan.getFragments().size());
+    assertEquals(4, distributedQueryPlan.getFragments().size());
     TopKNode topKNode =
         (TopKNode) getChildrenNode(distributedQueryPlan.getFragments().get(0).getPlanNodeTree(), 4);
     assertTrue(topKNode.getChildren().get(0) instanceof ExchangeNode);
-    assertTrue(topKNode.getChildren().get(1) instanceof LimitNode);
+    assertTrue(topKNode.getChildren().get(1) instanceof ExchangeNode);
     assertTrue(topKNode.getChildren().get(2) instanceof ExchangeNode);
-    deviceTableScanNode = (DeviceTableScanNode) getChildrenNode(topKNode.getChildren().get(1), 3);
-    assertEquals(4, deviceTableScanNode.getDeviceEntries().size());
-    assertEquals(DESC, deviceTableScanNode.getScanOrder());
-    assertTrue(
-        deviceTableScanNode.getPushDownLimit() == 15
-            && deviceTableScanNode.getPushDownOffset() == 0);
-    assertTrue(deviceTableScanNode.isPushLimitToEachDevice());
 
     // `IdentitySink - Limit - StreamSort - Project - TableScan`
-    deviceTableScanNode =
-        (DeviceTableScanNode)
-            getChildrenNode(distributedQueryPlan.getFragments().get(1).getPlanNodeTree(), 4);
-    assertEquals(2, deviceTableScanNode.getDeviceEntries().size());
-    assertEquals(DESC, deviceTableScanNode.getScanOrder());
-    assertTrue(
-        deviceTableScanNode.getPushDownLimit() == 15
-            && deviceTableScanNode.getPushDownOffset() == 0);
-    assertTrue(deviceTableScanNode.isPushLimitToEachDevice());
+    for (int i = 1; i < 4; i++) {
+      DeviceTableScanNode deviceTableScanNode =
+          (DeviceTableScanNode)
+              getChildrenNode(distributedQueryPlan.getFragments().get(i).getPlanNodeTree(), 4);
+      assertTableScan(
+          deviceTableScanNode, DEVICES_REGION_GROUP.get(i - 1), DESC, 15, 0, true, "(\"s1\" > 1)");
+    }
   }
 
   // order by time, limit can be pushed into TableScan, pushLimitToEachDevice==true
@@ -270,35 +229,25 @@ public class LimitOffsetPushDownTest {
     assertTrue(getChildrenNode(rootNode, 3) instanceof TopKNode);
     assertTrue(getChildrenNode(rootNode, 5) instanceof DeviceTableScanNode);
 
-    // DistributePlan-1 `Identity - Output - Offset - Project - TopK - {Exchange + TopK + Exchange}
+    // DistributePlan-1 `Identity - Output - Offset - Project - TopK - Exchange
     // DistributePlan-2 `Identity - TopK - Project - TableScan`
     distributionPlanner =
         new TableDistributedPlanner(
             analysis, symbolAllocator, logicalQueryPlan, TEST_MATADATA, null);
     distributedQueryPlan = distributionPlanner.plan();
-    assertEquals(3, distributedQueryPlan.getFragments().size());
+    assertEquals(4, distributedQueryPlan.getFragments().size());
     TopKNode topKNode =
         (TopKNode) getChildrenNode(distributedQueryPlan.getFragments().get(0).getPlanNodeTree(), 4);
     assertTrue(topKNode.getChildren().get(0) instanceof ExchangeNode);
-    assertTrue(topKNode.getChildren().get(1) instanceof TopKNode);
+    assertTrue(topKNode.getChildren().get(1) instanceof ExchangeNode);
     assertTrue(topKNode.getChildren().get(2) instanceof ExchangeNode);
-    deviceTableScanNode = (DeviceTableScanNode) getChildrenNode(topKNode.getChildren().get(1), 2);
-    assertEquals(4, deviceTableScanNode.getDeviceEntries().size());
-    assertEquals(DESC, deviceTableScanNode.getScanOrder());
-    assertTrue(
-        deviceTableScanNode.getPushDownLimit() == 15
-            && deviceTableScanNode.getPushDownOffset() == 0);
-    assertTrue(deviceTableScanNode.isPushLimitToEachDevice());
-
-    deviceTableScanNode =
-        (DeviceTableScanNode)
-            getChildrenNode(distributedQueryPlan.getFragments().get(1).getPlanNodeTree(), 3);
-    assertEquals(2, deviceTableScanNode.getDeviceEntries().size());
-    assertEquals(DESC, deviceTableScanNode.getScanOrder());
-    assertTrue(
-        deviceTableScanNode.getPushDownLimit() == 15
-            && deviceTableScanNode.getPushDownOffset() == 0);
-    assertTrue(deviceTableScanNode.isPushLimitToEachDevice());
+    for (int i = 1; i < 4; i++) {
+      DeviceTableScanNode deviceTableScanNode =
+          (DeviceTableScanNode)
+              getChildrenNode(distributedQueryPlan.getFragments().get(i).getPlanNodeTree(), 3);
+      assertTableScanWithoutEntryOrder(
+          deviceTableScanNode, DEVICES_REGION_GROUP.get(i - 1), DESC, 15, 0, true, "(\"s1\" > 1)");
+    }
   }
 
   // order by others, limit can not be pushed into TableScan
@@ -317,33 +266,25 @@ public class LimitOffsetPushDownTest {
     assertTrue(getChildrenNode(rootNode, 3) instanceof TopKNode);
     assertTrue(getChildrenNode(rootNode, 5) instanceof DeviceTableScanNode);
 
-    // DistributePlan-1 `Identity - Output - Offset - Project - TopK - {Exchange + TopK + Exchange}
+    // DistributePlan-1 `Identity - Output - Offset - Project - TopK - Exchange
     // DistributePlan-2 `Identity - TopK - Project - TableScan`
     distributionPlanner =
         new TableDistributedPlanner(
             analysis, symbolAllocator, logicalQueryPlan, TEST_MATADATA, null);
     distributedQueryPlan = distributionPlanner.plan();
-    assertEquals(3, distributedQueryPlan.getFragments().size());
+    assertEquals(4, distributedQueryPlan.getFragments().size());
     TopKNode topKNode =
         (TopKNode) getChildrenNode(distributedQueryPlan.getFragments().get(0).getPlanNodeTree(), 4);
     assertTrue(topKNode.getChildren().get(0) instanceof ExchangeNode);
-    assertTrue(topKNode.getChildren().get(1) instanceof TopKNode);
+    assertTrue(topKNode.getChildren().get(1) instanceof ExchangeNode);
     assertTrue(topKNode.getChildren().get(2) instanceof ExchangeNode);
-    deviceTableScanNode = (DeviceTableScanNode) getChildrenNode(topKNode.getChildren().get(1), 2);
-    assertEquals(4, deviceTableScanNode.getDeviceEntries().size());
-    assertEquals(ASC, deviceTableScanNode.getScanOrder());
-    assertTrue(
-        deviceTableScanNode.getPushDownLimit() == 0
-            && deviceTableScanNode.getPushDownOffset() == 0);
-
-    deviceTableScanNode =
-        (DeviceTableScanNode)
-            getChildrenNode(distributedQueryPlan.getFragments().get(1).getPlanNodeTree(), 3);
-    assertEquals(2, deviceTableScanNode.getDeviceEntries().size());
-    assertEquals(ASC, deviceTableScanNode.getScanOrder());
-    assertTrue(
-        deviceTableScanNode.getPushDownLimit() == 0
-            && deviceTableScanNode.getPushDownOffset() == 0);
+    for (int i = 1; i < 4; i++) {
+      DeviceTableScanNode deviceTableScanNode =
+          (DeviceTableScanNode)
+              getChildrenNode(distributedQueryPlan.getFragments().get(i).getPlanNodeTree(), 3);
+      assertTableScanWithoutEntryOrder(
+          deviceTableScanNode, DEVICES_REGION_GROUP.get(i - 1), ASC, 0, 0, false, "(\"s1\" > 1)");
+    }
   }
 
   /** Actually with diff function, LimitNode should be above of ProjectNode. */

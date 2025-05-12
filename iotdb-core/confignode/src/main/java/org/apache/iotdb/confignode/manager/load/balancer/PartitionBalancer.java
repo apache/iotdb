@@ -140,8 +140,8 @@ public class PartitionBalancer {
         throw new DatabaseNotExistsException(database);
       }
       DataPartitionPolicyTable allotTable = dataPartitionPolicyTableMap.get(database);
+      allotTable.acquireLock();
       try {
-        allotTable.acquireLock();
         // Enumerate SeriesPartitionSlot
         for (Map.Entry<TSeriesPartitionSlot, TTimeSlotList> seriesPartitionEntry :
             unassignedPartitionSlotsMap.entrySet()) {
@@ -226,8 +226,8 @@ public class PartitionBalancer {
           dataPartitionPolicyTableMap.computeIfAbsent(
               database, empty -> new DataPartitionPolicyTable());
 
+      dataPartitionPolicyTable.acquireLock();
       try {
-        dataPartitionPolicyTable.acquireLock();
         dataPartitionPolicyTable.reBalanceDataPartitionPolicy(
             getPartitionManager().getAllRegionGroupIds(database, TConsensusGroupType.DataRegion));
         dataPartitionPolicyTable.logDataAllotTable(database);
@@ -249,9 +249,9 @@ public class PartitionBalancer {
             database -> {
               DataPartitionPolicyTable dataPartitionPolicyTable = new DataPartitionPolicyTable();
               dataPartitionPolicyTableMap.put(database, dataPartitionPolicyTable);
-              try {
-                dataPartitionPolicyTable.acquireLock();
 
+              dataPartitionPolicyTable.acquireLock();
+              try {
                 // Put all DataRegionGroups into the DataPartitionPolicyTable
                 dataPartitionPolicyTable.reBalanceDataPartitionPolicy(
                     getPartitionManager()

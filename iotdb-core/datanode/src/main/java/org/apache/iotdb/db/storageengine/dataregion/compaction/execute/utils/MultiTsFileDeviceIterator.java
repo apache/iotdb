@@ -22,7 +22,6 @@ package org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.MeasurementPath;
-import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
 import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.DataNodeTTLCache;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.io.CompactionTsFileReader;
@@ -225,7 +224,10 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
     } else {
       ttlForCurrentDevice = DataNodeTTLCache.getInstance().getTTLForTree(deviceID);
     }
-    timeLowerBoundForCurrentDevice = CommonDateTimeUtils.currentTime() - ttlForCurrentDevice;
+    timeLowerBoundForCurrentDevice =
+        ttlForCurrentDevice == Long.MAX_VALUE
+            ? Long.MIN_VALUE
+            : CommonDateTimeUtils.currentTime() - ttlForCurrentDevice;
     return currentDevice;
   }
 
@@ -461,11 +463,9 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
         continue;
       }
       List<ModEntry> modificationList = new ArrayList<>();
-      PartialPath path =
-          CompactionPathUtils.getPath(
-              currentDevice.getLeft(), valueChunkMetadata.getMeasurementUid());
       for (ModEntry modification : modifications) {
-        if (modification.matches(path)) {
+        if (modification.affects(currentDevice.getLeft())
+            && modification.affects(valueChunkMetadata.getMeasurementUid())) {
           modificationList.add(modification);
         }
       }
@@ -660,7 +660,6 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
 
       LinkedList<Pair<TsFileSequenceReader, List<ChunkMetadata>>>
           readerAndChunkMetadataForThisSeries = new LinkedList<>();
-      PartialPath path = CompactionPathUtils.getPath(device, currentCompactingSeries);
 
       for (TsFileResource resource : tsFileResourcesSortedByAsc) {
         TsFileSequenceReader reader = readerMap.get(resource);
@@ -688,7 +687,7 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
           LinkedList<ModEntry> modificationForCurrentSeries = new LinkedList<>();
           // collect the modifications for current series
           for (ModEntry modification : modificationsInThisResource) {
-            if (modification.matches(path)) {
+            if (modification.affects(device) && modification.affects(currentCompactingSeries)) {
               modificationForCurrentSeries.add(modification);
             }
           }

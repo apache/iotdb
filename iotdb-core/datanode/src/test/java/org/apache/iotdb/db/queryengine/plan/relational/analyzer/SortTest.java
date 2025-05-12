@@ -43,10 +43,10 @@ import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
 
 import org.junit.Test;
 
-import java.util.Arrays;
 import java.util.List;
 
 import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.AnalyzerTest.analyzeSQL;
+import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.MockTableModelDataPartition.DEVICES_REGION_GROUP;
 import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.TestUtils.DEFAULT_WARNING;
 import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.TestUtils.QUERY_CONTEXT;
 import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.TestUtils.QUERY_ID;
@@ -64,7 +64,7 @@ import static org.junit.Assert.assertTrue;
 
 public class SortTest {
 
-  static Metadata metadata = new TestMatadata();
+  static Metadata metadata = new TestMetadata();
   String sql;
   Analysis analysis;
   MPPQueryContext context;
@@ -107,7 +107,6 @@ public class SortTest {
     assertEquals(8, deviceTableScanNode.getAssignments().size());
     assertEquals(6, deviceTableScanNode.getDeviceEntries().size());
     assertEquals(4, deviceTableScanNode.getIdAndAttributeIndexMap().size());
-    // TODO change scan order in logical plan
     assertEquals(ASC, deviceTableScanNode.getScanOrder());
     assertEquals(0, deviceTableScanNode.getPushDownLimit());
     assertEquals(0, deviceTableScanNode.getPushDownOffset());
@@ -115,12 +114,12 @@ public class SortTest {
 
     // DistributePlan: `Output-Offset-Limit-Project-MergeSort-StreamSort-Project-Filter-TableScan`
     // to
-    // `Output-Offset-Project-TopK-Limit-StreamSort-Project-Filter-TableScan`
+    // `Output-Offset-Project-TopK-Exchange-Limit-StreamSort-Project-Filter-TableScan`
     distributionPlanner =
         new TableDistributedPlanner(
             analysis, symbolAllocator, logicalQueryPlan, TEST_MATADATA, null);
     distributedQueryPlan = distributionPlanner.plan();
-    assertEquals(3, distributedQueryPlan.getFragments().size());
+    assertEquals(4, distributedQueryPlan.getFragments().size());
     IdentitySinkNode identitySinkNode =
         (IdentitySinkNode) distributedQueryPlan.getFragments().get(0).getPlanNodeTree();
     outputNode = (OutputNode) getChildrenNode(identitySinkNode, 1);
@@ -128,42 +127,19 @@ public class SortTest {
     assertTrue(getChildrenNode(outputNode, 2) instanceof ProjectNode);
     TopKNode topKNode = (TopKNode) getChildrenNode(outputNode, 3);
     assertTrue(topKNode.getChildren().get(0) instanceof ExchangeNode);
-    assertTrue(topKNode.getChildren().get(1) instanceof LimitNode);
+    assertTrue(topKNode.getChildren().get(1) instanceof ExchangeNode);
     assertTrue(topKNode.getChildren().get(2) instanceof ExchangeNode);
-    streamSortNode = (StreamSortNode) getChildrenNode(topKNode.getChildren().get(1), 1);
-    assertTrue(getChildrenNode(streamSortNode, 1) instanceof ProjectNode);
-    assertTrue(getChildrenNode(streamSortNode, 2) instanceof FilterNode);
-    deviceTableScanNode = (DeviceTableScanNode) getChildrenNode(streamSortNode, 3);
-    assertTableScan(
-        deviceTableScanNode,
-        Arrays.asList(
-            "table1.shanghai.B3.YY",
-            "table1.shenzhen.B2.ZZ",
-            "table1.shenzhen.B1.XX",
-            "table1.shanghai.A3.YY"),
-        DESC,
-        0,
-        0,
-        false,
-        "");
 
-    // DistributePlan: `IdentitySink - Limit - StreamSort - Project - Filter - TableScan`
-    LimitNode limitNode =
-        (LimitNode)
-            getChildrenNode(distributedQueryPlan.getFragments().get(1).getPlanNodeTree(), 1);
-    streamSortNode = (StreamSortNode) getChildrenNode(limitNode, 1);
-    assertTrue(getChildrenNode(streamSortNode, 1) instanceof ProjectNode);
-    assertTrue(getChildrenNode(streamSortNode, 2) instanceof FilterNode);
-    deviceTableScanNode = (DeviceTableScanNode) getChildrenNode(streamSortNode, 3);
-    assertEquals(2, deviceTableScanNode.getDeviceEntries().size());
-    assertTableScan(
-        deviceTableScanNode,
-        Arrays.asList("table1.shenzhen.B2.ZZ", "table1.shenzhen.B1.XX"),
-        DESC,
-        0,
-        0,
-        false,
-        "");
+    for (int i = 1; i <= 3; i++) {
+      PlanNode rootOfFI = distributedQueryPlan.getFragments().get(i).getPlanNodeTree();
+      assertTrue(rootOfFI instanceof IdentitySinkNode);
+      assertTrue(getChildrenNode(rootOfFI, 1) instanceof LimitNode);
+      assertTrue(getChildrenNode(rootOfFI, 2) instanceof StreamSortNode);
+      assertTrue(getChildrenNode(rootOfFI, 3) instanceof ProjectNode);
+      assertTrue(getChildrenNode(rootOfFI, 4) instanceof FilterNode);
+      deviceTableScanNode = (DeviceTableScanNode) getChildrenNode(rootOfFI, 5);
+      assertTableScan(deviceTableScanNode, DEVICES_REGION_GROUP.get(i - 1), DESC, 0, 0, false, "");
+    }
 
     sql = "SELECT * FROM table1 order by tag2 desc, tag3 asc offset 5 limit 10";
     context = new MPPQueryContext(sql, QUERY_ID, SESSION_INFO, null, null);
@@ -179,14 +155,24 @@ public class SortTest {
         new TableDistributedPlanner(
             analysis, symbolAllocator, logicalQueryPlan, TEST_MATADATA, null);
     distributedQueryPlan = distributionPlanner.plan();
-    assertEquals(3, distributedQueryPlan.getFragments().size());
-    // DistributedPlan: `Output-Offset-TopK-Limit-TableScan`
+    assertEquals(4, distributedQueryPlan.getFragments().size());
+    // DistributedPlan: `Output-Offset-TopK-Exchange-Limit-TableScan`
     identitySinkNode =
         (IdentitySinkNode) distributedQueryPlan.getFragments().get(0).getPlanNodeTree();
     assertTrue(getChildrenNode(identitySinkNode, 3) instanceof TopKNode);
     topKNode = (TopKNode) getChildrenNode(identitySinkNode, 3);
-    assertTrue(topKNode.getChildren().get(1) instanceof LimitNode);
-    assertTrue(getChildrenNode(topKNode.getChildren().get(1), 1) instanceof DeviceTableScanNode);
+
+    assertTrue(topKNode.getChildren().get(0) instanceof ExchangeNode);
+    assertTrue(topKNode.getChildren().get(1) instanceof ExchangeNode);
+    assertTrue(topKNode.getChildren().get(2) instanceof ExchangeNode);
+
+    for (int i = 1; i <= 3; i++) {
+      PlanNode rootOfFI = distributedQueryPlan.getFragments().get(i).getPlanNodeTree();
+      assertTrue(rootOfFI instanceof IdentitySinkNode);
+      assertTrue(getChildrenNode(rootOfFI, 1) instanceof LimitNode);
+      deviceTableScanNode = (DeviceTableScanNode) getChildrenNode(rootOfFI, 2);
+      assertTableScan(deviceTableScanNode, DEVICES_REGION_GROUP.get(i - 1), ASC, 15, 0, true, "");
+    }
   }
 
   // order by all_ids, time, others
@@ -221,12 +207,12 @@ public class SortTest {
 
     // DistributePlan: optimize
     // `Output-Offset-Limit-Project-MergeSort-StreamSort-Project-Filter-TableScan`
-    // to `Output-Offset-Project-TopK-Limit-Project-Filter-TableScan`
+    // to `Output-Offset-Project-TopK-Exchange-Limit-Project-Filter-TableScan`
     distributionPlanner =
         new TableDistributedPlanner(
             analysis, symbolAllocator, logicalQueryPlan, TEST_MATADATA, null);
     distributedQueryPlan = distributionPlanner.plan();
-    assertEquals(3, distributedQueryPlan.getFragments().size());
+    assertEquals(4, distributedQueryPlan.getFragments().size());
     outputNode =
         (OutputNode)
             distributedQueryPlan.getFragments().get(0).getPlanNodeTree().getChildren().get(0);
@@ -236,41 +222,20 @@ public class SortTest {
     TopKNode topKNode = (TopKNode) getChildrenNode(outputNode, 3);
     // childrenDataInOrder==true, and can eliminate the StreamSortNode
     assertTrue(topKNode.isChildrenDataInOrder());
-    assertTrue(topKNode.getChildren().get(0) instanceof ExchangeNode);
-    assertTrue(topKNode.getChildren().get(1) instanceof LimitNode);
-    assertTrue(topKNode.getChildren().get(2) instanceof ExchangeNode);
-    projectNode = (ProjectNode) getChildrenNode(topKNode.getChildren().get(1), 1);
-    assertTrue(getChildrenNode(projectNode, 1) instanceof FilterNode);
-    deviceTableScanNode = (DeviceTableScanNode) getChildrenNode(projectNode, 2);
-    assertTableScan(
-        deviceTableScanNode,
-        Arrays.asList(
-            "table1.shanghai.B3.YY",
-            "table1.shenzhen.B2.ZZ",
-            "table1.shenzhen.B1.XX",
-            "table1.shanghai.A3.YY"),
-        DESC,
-        0,
-        0,
-        false,
-        "");
 
-    // DistributePlan: `IdentitySink-Limit-Project-Filter-TableScan`
-    IdentitySinkNode identitySinkNode =
-        (IdentitySinkNode) distributedQueryPlan.getFragments().get(1).getPlanNodeTree();
-    assertTrue(getChildrenNode(identitySinkNode, 1) instanceof LimitNode);
-    assertTrue(getChildrenNode(identitySinkNode, 2) instanceof ProjectNode);
-    assertTrue(getChildrenNode(identitySinkNode, 3) instanceof FilterNode);
-    assertTrue(getChildrenNode(identitySinkNode, 4) instanceof DeviceTableScanNode);
-    deviceTableScanNode = (DeviceTableScanNode) getChildrenNode(identitySinkNode, 4);
-    assertTableScan(
-        deviceTableScanNode,
-        Arrays.asList("table1.shenzhen.B2.ZZ", "table1.shenzhen.B1.XX"),
-        DESC,
-        0,
-        0,
-        false,
-        "");
+    assertTrue(topKNode.getChildren().get(0) instanceof ExchangeNode);
+    assertTrue(topKNode.getChildren().get(1) instanceof ExchangeNode);
+    assertTrue(topKNode.getChildren().get(2) instanceof ExchangeNode);
+
+    for (int i = 1; i <= 3; i++) {
+      PlanNode rootOfFI = distributedQueryPlan.getFragments().get(i).getPlanNodeTree();
+      assertTrue(rootOfFI instanceof IdentitySinkNode);
+      assertTrue(getChildrenNode(rootOfFI, 1) instanceof LimitNode);
+      assertTrue(getChildrenNode(rootOfFI, 2) instanceof ProjectNode);
+      assertTrue(getChildrenNode(rootOfFI, 3) instanceof FilterNode);
+      deviceTableScanNode = (DeviceTableScanNode) getChildrenNode(rootOfFI, 4);
+      assertTableScan(deviceTableScanNode, DEVICES_REGION_GROUP.get(i - 1), DESC, 0, 0, false, "");
+    }
   }
 
   // order by all_ids, time, others
@@ -302,51 +267,30 @@ public class SortTest {
     assertEquals(8, deviceTableScanNode.getAssignments().size());
     assertEquals(6, deviceTableScanNode.getDeviceEntries().size());
 
-    // DistributePlan: optimize `Output-Project-MergeSort-Project-Filter-TableScan`
+    // DistributePlan: optimize `Output-Project-MergeSort-Exchange-Project-Filter-TableScan`
     distributionPlanner =
         new TableDistributedPlanner(
             analysis, symbolAllocator, logicalQueryPlan, TEST_MATADATA, null);
     distributedQueryPlan = distributionPlanner.plan();
-    assertEquals(3, distributedQueryPlan.getFragments().size());
+    assertEquals(4, distributedQueryPlan.getFragments().size());
     outputNode =
         (OutputNode)
             distributedQueryPlan.getFragments().get(0).getPlanNodeTree().getChildren().get(0);
     assertTrue(getChildrenNode(outputNode, 1) instanceof ProjectNode);
     MergeSortNode mergeSortNode = (MergeSortNode) getChildrenNode(outputNode, 2);
-    assertTrue(mergeSortNode.getChildren().get(0) instanceof ExchangeNode);
-    assertTrue(mergeSortNode.getChildren().get(1) instanceof ProjectNode);
-    assertTrue(mergeSortNode.getChildren().get(2) instanceof ExchangeNode);
-    projectNode = (ProjectNode) mergeSortNode.getChildren().get(1);
-    assertTrue(getChildrenNode(projectNode, 1) instanceof FilterNode);
-    deviceTableScanNode = (DeviceTableScanNode) getChildrenNode(projectNode, 2);
-    assertEquals(4, deviceTableScanNode.getDeviceEntries().size());
-    assertTableScan(
-        deviceTableScanNode,
-        Arrays.asList(
-            "table1.shanghai.B3.YY",
-            "table1.shenzhen.B2.ZZ",
-            "table1.shenzhen.B1.XX",
-            "table1.shanghai.A3.YY"),
-        DESC,
-        0,
-        0,
-        false,
-        "");
 
-    // DistributePlan: `IdentitySink-Project-Filter-TableScan`
-    projectNode =
-        (ProjectNode)
-            distributedQueryPlan.getFragments().get(1).getPlanNodeTree().getChildren().get(0);
-    assertTrue(getChildrenNode(projectNode, 1) instanceof FilterNode);
-    deviceTableScanNode = (DeviceTableScanNode) getChildrenNode(projectNode, 2);
-    assertTableScan(
-        deviceTableScanNode,
-        Arrays.asList("table1.shenzhen.B2.ZZ", "table1.shenzhen.B1.XX"),
-        DESC,
-        0,
-        0,
-        false,
-        "");
+    assertTrue(mergeSortNode.getChildren().get(0) instanceof ExchangeNode);
+    assertTrue(mergeSortNode.getChildren().get(1) instanceof ExchangeNode);
+    assertTrue(mergeSortNode.getChildren().get(2) instanceof ExchangeNode);
+
+    for (int i = 1; i <= 3; i++) {
+      PlanNode rootOfFI = distributedQueryPlan.getFragments().get(i).getPlanNodeTree();
+      assertTrue(rootOfFI instanceof IdentitySinkNode);
+      assertTrue(getChildrenNode(rootOfFI, 1) instanceof ProjectNode);
+      assertTrue(getChildrenNode(rootOfFI, 2) instanceof FilterNode);
+      deviceTableScanNode = (DeviceTableScanNode) getChildrenNode(rootOfFI, 3);
+      assertTableScan(deviceTableScanNode, DEVICES_REGION_GROUP.get(i - 1), DESC, 0, 0, false, "");
+    }
   }
 
   // order by some_ids, others, time
@@ -386,12 +330,12 @@ public class SortTest {
 
     // DistributePlan: optimize
     // `Output-Offset-Limit-Project-MergeSort-StreamSort-Project-Filter-TableScan` to
-    // `Output-Offset-Project-TopK-Limit-StreamSort-Project-Filter-TableScan`
+    // `Output-Offset-Project-TopK-Exchange-Limit-StreamSort-Project-Filter-TableScan`
     distributionPlanner =
         new TableDistributedPlanner(
             analysis, symbolAllocator, logicalQueryPlan, TEST_MATADATA, null);
     distributedQueryPlan = distributionPlanner.plan();
-    assertEquals(3, distributedQueryPlan.getFragments().size());
+    assertEquals(4, distributedQueryPlan.getFragments().size());
     outputNode =
         (OutputNode)
             distributedQueryPlan.getFragments().get(0).getPlanNodeTree().getChildren().get(0);
@@ -399,40 +343,19 @@ public class SortTest {
     assertTrue(getChildrenNode(outputNode, 2) instanceof ProjectNode);
     TopKNode topKNode = (TopKNode) getChildrenNode(outputNode, 3);
     assertTrue(topKNode.getChildren().get(0) instanceof ExchangeNode);
-    assertTrue(topKNode.getChildren().get(1) instanceof LimitNode);
+    assertTrue(topKNode.getChildren().get(1) instanceof ExchangeNode);
     assertTrue(topKNode.getChildren().get(2) instanceof ExchangeNode);
-    streamSortNode = (StreamSortNode) getChildrenNode(topKNode.getChildren().get(1), 1);
-    assertTrue(getChildrenNode(streamSortNode, 1) instanceof ProjectNode);
-    assertTrue(getChildrenNode(streamSortNode, 2) instanceof FilterNode);
-    deviceTableScanNode = (DeviceTableScanNode) getChildrenNode(streamSortNode, 3);
-    assertTableScan(
-        deviceTableScanNode,
-        Arrays.asList(
-            "table1.shanghai.B3.YY",
-            "table1.shenzhen.B2.ZZ",
-            "table1.shenzhen.B1.XX",
-            "table1.shanghai.A3.YY"),
-        ASC,
-        0,
-        0,
-        false,
-        "");
 
-    // DistributePlan: `IdentitySink - Limit - StreamSort - Project - Filter - TableScan`
-    streamSortNode =
-        (StreamSortNode)
-            getChildrenNode(distributedQueryPlan.getFragments().get(1).getPlanNodeTree(), 2);
-    assertTrue(getChildrenNode(streamSortNode, 1) instanceof ProjectNode);
-    assertTrue(getChildrenNode(streamSortNode, 2) instanceof FilterNode);
-    deviceTableScanNode = (DeviceTableScanNode) getChildrenNode(streamSortNode, 3);
-    assertTableScan(
-        deviceTableScanNode,
-        Arrays.asList("table1.shenzhen.B2.ZZ", "table1.shenzhen.B1.XX"),
-        ASC,
-        0,
-        0,
-        false,
-        "");
+    for (int i = 1; i <= 3; i++) {
+      PlanNode rootOfFI = distributedQueryPlan.getFragments().get(i).getPlanNodeTree();
+      assertTrue(rootOfFI instanceof IdentitySinkNode);
+      assertTrue(getChildrenNode(rootOfFI, 1) instanceof LimitNode);
+      assertTrue(getChildrenNode(rootOfFI, 2) instanceof StreamSortNode);
+      assertTrue(getChildrenNode(rootOfFI, 3) instanceof ProjectNode);
+      assertTrue(getChildrenNode(rootOfFI, 4) instanceof FilterNode);
+      deviceTableScanNode = (DeviceTableScanNode) getChildrenNode(rootOfFI, 5);
+      assertTableScan(deviceTableScanNode, DEVICES_REGION_GROUP.get(i - 1), ASC, 0, 0, false, "");
+    }
   }
 
   // order by all_ids, others, time
@@ -468,12 +391,12 @@ public class SortTest {
 
     // DistributePlan: optimize
     // `Output-Offset-Limit-Project-MergeSort-StreamSort-Project-Filter-TableScan`
-    // to `Output-Offset-Project-TopK-Limit-StreamSort-Project-Filter-TableScan`
+    // to `Output-Offset-Project-TopK-Exchange-Limit-StreamSort-Project-Filter-TableScan`
     distributionPlanner =
         new TableDistributedPlanner(
             analysis, symbolAllocator, logicalQueryPlan, TEST_MATADATA, null);
     distributedQueryPlan = distributionPlanner.plan();
-    assertEquals(3, distributedQueryPlan.getFragments().size());
+    assertEquals(4, distributedQueryPlan.getFragments().size());
     outputNode =
         (OutputNode)
             distributedQueryPlan.getFragments().get(0).getPlanNodeTree().getChildren().get(0);
@@ -482,42 +405,19 @@ public class SortTest {
     assertTrue(getChildrenNode(outputNode, 3) instanceof TopKNode);
     TopKNode topKNode = (TopKNode) getChildrenNode(outputNode, 3);
     assertTrue(topKNode.getChildren().get(0) instanceof ExchangeNode);
-    assertTrue(topKNode.getChildren().get(1) instanceof LimitNode);
+    assertTrue(topKNode.getChildren().get(1) instanceof ExchangeNode);
     assertTrue(topKNode.getChildren().get(2) instanceof ExchangeNode);
-    streamSortNode = (StreamSortNode) getChildrenNode(topKNode.getChildren().get(1), 1);
-    assertTrue(getChildrenNode(streamSortNode, 1) instanceof ProjectNode);
-    assertTrue(getChildrenNode(streamSortNode, 2) instanceof FilterNode);
-    deviceTableScanNode = (DeviceTableScanNode) getChildrenNode(streamSortNode, 3);
-    assertEquals(4, deviceTableScanNode.getDeviceEntries().size());
-    assertTableScan(
-        deviceTableScanNode,
-        Arrays.asList(
-            "table1.shanghai.B3.YY",
-            "table1.shenzhen.B2.ZZ",
-            "table1.shenzhen.B1.XX",
-            "table1.shanghai.A3.YY"),
-        ASC,
-        0,
-        0,
-        false,
-        "");
 
-    // DistributePlan: `IdentitySink - Limit - StreamSort - Project - Filter - TableScan`
-    IdentitySinkNode sinkNode =
-        (IdentitySinkNode) distributedQueryPlan.getFragments().get(1).getPlanNodeTree();
-    assertTrue(getChildrenNode(sinkNode, 1) instanceof LimitNode);
-    assertTrue(getChildrenNode(sinkNode, 2) instanceof StreamSortNode);
-    assertTrue(getChildrenNode(sinkNode, 5) instanceof DeviceTableScanNode);
-    deviceTableScanNode = (DeviceTableScanNode) getChildrenNode(sinkNode, 5);
-    assertEquals(2, deviceTableScanNode.getDeviceEntries().size());
-    assertTableScan(
-        deviceTableScanNode,
-        Arrays.asList("table1.shenzhen.B2.ZZ", "table1.shenzhen.B1.XX"),
-        ASC,
-        0,
-        0,
-        false,
-        "");
+    for (int i = 1; i <= 3; i++) {
+      PlanNode rootOfFI = distributedQueryPlan.getFragments().get(i).getPlanNodeTree();
+      assertTrue(rootOfFI instanceof IdentitySinkNode);
+      assertTrue(getChildrenNode(rootOfFI, 1) instanceof LimitNode);
+      assertTrue(getChildrenNode(rootOfFI, 2) instanceof StreamSortNode);
+      assertTrue(getChildrenNode(rootOfFI, 3) instanceof ProjectNode);
+      assertTrue(getChildrenNode(rootOfFI, 4) instanceof FilterNode);
+      deviceTableScanNode = (DeviceTableScanNode) getChildrenNode(rootOfFI, 5);
+      assertTableScan(deviceTableScanNode, DEVICES_REGION_GROUP.get(i - 1), ASC, 0, 0, false, "");
+    }
   }
 
   @Test
@@ -702,7 +602,7 @@ public class SortTest {
         new TableDistributedPlanner(
             analysis, symbolAllocator, logicalQueryPlan, TEST_MATADATA, null);
     distributedQueryPlan = distributionPlanner.plan();
-    assertEquals(3, distributedQueryPlan.getFragments().size());
+    assertEquals(4, distributedQueryPlan.getFragments().size());
     IdentitySinkNode sinkNode =
         (IdentitySinkNode) distributedQueryPlan.getFragments().get(0).getPlanNodeTree();
     assertTrue(getChildrenNode(sinkNode, 1) instanceof OutputNode);
@@ -742,7 +642,7 @@ public class SortTest {
         new TableDistributedPlanner(
             analysis, symbolAllocator, logicalQueryPlan, TEST_MATADATA, null);
     distributedQueryPlan = distributionPlanner.plan();
-    assertEquals(3, distributedQueryPlan.getFragments().size());
+    assertEquals(4, distributedQueryPlan.getFragments().size());
     IdentitySinkNode identitySinkNode =
         (IdentitySinkNode) distributedQueryPlan.getFragments().get(0).getPlanNodeTree();
     assertTrue(getChildrenNode(identitySinkNode, 1) instanceof OutputNode);
@@ -751,12 +651,15 @@ public class SortTest {
     assertTrue(getChildrenNode(outputNode, 3) instanceof TopKNode);
     TopKNode topKNode = (TopKNode) getChildrenNode(outputNode, 3);
     assertTrue(topKNode.getChildren().get(0) instanceof ExchangeNode);
-    assertTrue(topKNode.getChildren().get(1) instanceof TopKNode);
+    assertTrue(topKNode.getChildren().get(1) instanceof ExchangeNode);
     assertTrue(topKNode.getChildren().get(2) instanceof ExchangeNode);
-    TopKNode topKNode1 = (TopKNode) topKNode.getChildren().get(1);
-    assertTrue(getChildrenNode(topKNode1, 1) instanceof ProjectNode);
-    assertTrue(getChildrenNode(topKNode1, 2) instanceof FilterNode);
-    deviceTableScanNode = (DeviceTableScanNode) getChildrenNode(topKNode1, 3);
+
+    identitySinkNode =
+        (IdentitySinkNode) distributedQueryPlan.getFragments().get(2).getPlanNodeTree();
+    assertTrue(getChildrenNode(identitySinkNode, 1) instanceof TopKNode);
+    assertTrue(getChildrenNode(identitySinkNode, 2) instanceof ProjectNode);
+    assertTrue(getChildrenNode(identitySinkNode, 3) instanceof FilterNode);
+    deviceTableScanNode = (DeviceTableScanNode) getChildrenNode(identitySinkNode, 4);
     assertEquals(4, deviceTableScanNode.getDeviceEntries().size());
     assertTableScan(
         deviceTableScanNode,
@@ -815,7 +718,7 @@ public class SortTest {
         new TableDistributedPlanner(
             analysis, symbolAllocator, logicalQueryPlan, TEST_MATADATA, null);
     distributedQueryPlan = distributionPlanner.plan();
-    assertEquals(3, distributedQueryPlan.getFragments().size());
+    assertEquals(4, distributedQueryPlan.getFragments().size());
     IdentitySinkNode identitySinkNode =
         (IdentitySinkNode) distributedQueryPlan.getFragments().get(0).getPlanNodeTree();
     assertTrue(getChildrenNode(identitySinkNode, 1) instanceof OutputNode);
@@ -824,11 +727,14 @@ public class SortTest {
     assertTrue(getChildrenNode(outputNode, 3) instanceof TopKNode);
     TopKNode topKNode = (TopKNode) getChildrenNode(outputNode, 3);
     assertTrue(topKNode.getChildren().get(0) instanceof ExchangeNode);
-    assertTrue(topKNode.getChildren().get(1) instanceof TopKNode);
+    assertTrue(topKNode.getChildren().get(1) instanceof ExchangeNode);
     assertTrue(topKNode.getChildren().get(2) instanceof ExchangeNode);
-    TopKNode topKNode1 = (TopKNode) topKNode.getChildren().get(1);
-    assertTrue(getChildrenNode(topKNode1, 1) instanceof ProjectNode);
-    deviceTableScanNode = (DeviceTableScanNode) getChildrenNode(topKNode1, 2);
+
+    identitySinkNode =
+        (IdentitySinkNode) distributedQueryPlan.getFragments().get(2).getPlanNodeTree();
+    assertTrue(getChildrenNode(identitySinkNode, 1) instanceof TopKNode);
+    assertTrue(getChildrenNode(identitySinkNode, 2) instanceof ProjectNode);
+    deviceTableScanNode = (DeviceTableScanNode) getChildrenNode(identitySinkNode, 3);
     assertEquals(4, deviceTableScanNode.getDeviceEntries().size());
     assertTableScan(
         deviceTableScanNode,

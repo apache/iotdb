@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.queryengine.plan.relational.security;
 
 import org.apache.iotdb.commons.exception.auth.AccessDeniedException;
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.QualifiedObjectName;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.RelationalAuthorStatement;
 
@@ -107,6 +108,18 @@ public interface AccessControl {
   void checkCanSelectFromTable(String userName, QualifiedObjectName tableName);
 
   /**
+   * Check if user is allowed to extract certain data from pipe.
+   *
+   * @param userName name of user
+   * @param databaseName the databaseName
+   * @throws AccessDeniedException if not allowed
+   */
+  void checkCanSelectFromDatabase4Pipe(final String userName, final String databaseName);
+
+  // This does not throw exception for performance issues
+  boolean checkCanSelectFromTable4Pipe(final String userName, final QualifiedObjectName tableName);
+
+  /**
    * Check if user is allowed to delete from the specified table.
    *
    * @param userName name of user
@@ -125,12 +138,13 @@ public interface AccessControl {
   void checkCanShowOrDescTable(String userName, QualifiedObjectName tableName);
 
   /**
-   * Check if user has global maintain privilege
+   * Check if user is allowed to create view under the specific tree path.
    *
    * @param userName name of user
+   * @param path the tree path scope the view can select from
    * @throws AccessDeniedException if not allowed
    */
-  void checkUserHasMaintainPrivilege(String userName);
+  void checkCanCreateViewFromTreePath(final String userName, final PartialPath path);
 
   /**
    * Check if user can run relational author statement.

@@ -37,20 +37,23 @@ public class CreateTable extends Statement {
   private final boolean ifNotExists;
 
   @Nullable private final String charsetName;
+  @Nullable private final String comment;
   private final List<Property> properties;
 
   public CreateTable(
-      final NodeLocation location,
+      final @Nullable NodeLocation location,
       final QualifiedName name,
       final List<ColumnDefinition> elements,
       final boolean ifNotExists,
       final @Nullable String charsetName,
+      final @Nullable String comment,
       final List<Property> properties) {
-    super(requireNonNull(location, "location is null"));
+    super(location);
     this.name = requireNonNull(name, "name is null");
     this.elements = ImmutableList.copyOf(requireNonNull(elements, "elements is null"));
     this.ifNotExists = ifNotExists;
     this.charsetName = charsetName;
+    this.comment = comment;
     this.properties = requireNonNull(properties, "properties is null");
   }
 
@@ -72,6 +75,11 @@ public class CreateTable extends Statement {
 
   public Optional<String> getCharsetName() {
     return Optional.ofNullable(charsetName);
+  }
+
+  @Nullable
+  public String getComment() {
+    return comment;
   }
 
   @Override

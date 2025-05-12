@@ -117,7 +117,7 @@ public class SinkChannel implements ISinkChannel {
 
   /** max bytes this SinkChannel can reserve. */
   private long maxBytesCanReserve =
-      IoTDBDescriptor.getInstance().getConfig().getMaxBytesPerFragmentInstance();
+      IoTDBDescriptor.getInstance().getMemoryConfig().getMaxBytesPerFragmentInstance();
 
   private static final DataExchangeCostMetricSet DATA_EXCHANGE_COST_METRIC_SET =
       DataExchangeCostMetricSet.getInstance();
@@ -417,7 +417,8 @@ public class SinkChannel implements ISinkChannel {
         localFragmentInstanceId.instanceId);
   }
 
-  private void checkState() {
+  @Override
+  public void checkState() {
     if (aborted) {
       throw new IllegalStateException("SinkChannel is aborted.");
     }

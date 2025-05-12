@@ -180,12 +180,16 @@ public class TopicMeta {
 
   /////////////////////////////// utilities ///////////////////////////////
 
-  public Map<String, String> generateExtractorAttributes() {
+  public Map<String, String> generateExtractorAttributes(final String username) {
     final Map<String, String> extractorAttributes = new HashMap<>();
     // disable meta sync
     extractorAttributes.put("source", "iotdb-source");
     extractorAttributes.put("inclusion", "data.insert");
     extractorAttributes.put("inclusion.exclusion", "data.delete");
+    // user
+    extractorAttributes.put("username", username);
+    // TODO: currently set skipif to no-privileges
+    extractorAttributes.put("skipif", "no-privileges");
     // sql dialect
     extractorAttributes.putAll(config.getAttributeWithSqlDialect());
     if (config.isTableTopic()) {

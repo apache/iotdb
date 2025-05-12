@@ -104,17 +104,30 @@ public class ConfigRegionListeningFilter {
           Collections.unmodifiableList(
               Arrays.asList(
                   ConfigPhysicalPlanType.CommitCreateTable,
-                  ConfigPhysicalPlanType.PipeCreateTable,
-                  ConfigPhysicalPlanType.AddTableColumn)));
+                  ConfigPhysicalPlanType.PipeCreateTableOrView,
+                  ConfigPhysicalPlanType.AddTableColumn,
+                  ConfigPhysicalPlanType.AddViewColumn)));
       OPTION_PLAN_MAP.put(
           new PartialPath("schema.table.alter"),
-          Collections.singletonList(ConfigPhysicalPlanType.SetTableProperties));
+          Collections.unmodifiableList(
+              Arrays.asList(
+                  ConfigPhysicalPlanType.SetTableProperties,
+                  ConfigPhysicalPlanType.SetViewProperties,
+                  ConfigPhysicalPlanType.SetTableComment,
+                  ConfigPhysicalPlanType.SetViewComment,
+                  ConfigPhysicalPlanType.SetTableColumnComment,
+                  ConfigPhysicalPlanType.RenameTable,
+                  ConfigPhysicalPlanType.RenameView,
+                  ConfigPhysicalPlanType.RenameTableColumn,
+                  ConfigPhysicalPlanType.RenameViewColumn)));
       OPTION_PLAN_MAP.put(
           new PartialPath("schema.table.drop"),
           Collections.unmodifiableList(
               Arrays.asList(
                   ConfigPhysicalPlanType.CommitDeleteTable,
+                  ConfigPhysicalPlanType.CommitDeleteView,
                   ConfigPhysicalPlanType.CommitDeleteColumn,
+                  ConfigPhysicalPlanType.CommitDeleteViewColumn,
                   ConfigPhysicalPlanType.PipeDeleteDevices)));
 
       OPTION_PLAN_MAP.put(
@@ -167,6 +180,7 @@ public class ConfigRegionListeningFilter {
           Collections.unmodifiableList(
               Arrays.asList(
                   ConfigPhysicalPlanType.CreateUser,
+                  ConfigPhysicalPlanType.RCreateUser,
                   ConfigPhysicalPlanType.CreateUserWithRawPassword)));
       OPTION_PLAN_MAP.put(
           new PartialPath("auth.user.alter"),
@@ -176,7 +190,7 @@ public class ConfigRegionListeningFilter {
       OPTION_PLAN_MAP.put(
           new PartialPath("auth.user.drop"),
           Collections.unmodifiableList(
-              Arrays.asList(ConfigPhysicalPlanType.DropUser, ConfigPhysicalPlanType.RUpdateUser)));
+              Arrays.asList(ConfigPhysicalPlanType.DropUser, ConfigPhysicalPlanType.RDropUser)));
 
       // Both
       OPTION_PLAN_MAP.put(

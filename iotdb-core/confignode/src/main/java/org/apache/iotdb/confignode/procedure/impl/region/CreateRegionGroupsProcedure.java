@@ -26,6 +26,8 @@ import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.commons.cluster.RegionStatus;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.commons.utils.ThriftCommonsSerDeUtils;
+import org.apache.iotdb.confignode.conf.ConfigNodeConfig;
+import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.consensus.request.write.region.CreateRegionGroupsPlan;
 import org.apache.iotdb.confignode.consensus.request.write.region.OfferRegionMaintainTasksPlan;
 import org.apache.iotdb.confignode.manager.load.cache.region.RegionHeartbeatSample;
@@ -60,6 +62,7 @@ public class CreateRegionGroupsProcedure
 
   private CreateRegionGroupsPlan createRegionGroupsPlan = new CreateRegionGroupsPlan();
   private CreateRegionGroupsPlan persistPlan = new CreateRegionGroupsPlan();
+  private static final ConfigNodeConfig CONF = ConfigNodeDescriptor.getInstance().getConf();
 
   /** key: TConsensusGroupId value: Failed RegionReplicas */
   private Map<TConsensusGroupId, TRegionReplicaSet> failedRegionReplicaSets = new HashMap<>();
@@ -117,8 +120,13 @@ public class CreateRegionGroupsProcedure
                             final TRegionReplicaSet failedRegionReplicas =
                                 failedRegionReplicaSets.get(regionReplicaSet.getRegionId());
 
-                            if (failedRegionReplicas.getDataNodeLocationsSize()
-                                <= (regionReplicaSet.getDataNodeLocationsSize() - 1) / 2) {
+                            boolean canProvideService =
+                                canRegionGroupProvideService(
+                                    regionReplicaSet.getDataNodeLocationsSize(),
+                                    failedRegionReplicas.getDataNodeLocationsSize(),
+                                    failedRegionReplicas.getRegionId());
+
+                            if (canProvideService) {
                               // A RegionGroup can provide service as long as there are more than
                               // half of the RegionReplicas created successfully
                               persistPlan.addRegionGroup(database, regionReplicaSet);
@@ -181,9 +189,15 @@ public class CreateRegionGroupsProcedure
                         regionReplicaSet -> {
                           TRegionReplicaSet failedRegionReplicas =
                               failedRegionReplicaSets.get(regionReplicaSet.getRegionId());
-                          if (failedRegionReplicas == null
-                              || failedRegionReplicas.getDataNodeLocationsSize()
-                                  <= (regionReplicaSet.getDataNodeLocationsSize() - 1) / 2) {
+
+                          boolean canProvideService =
+                              failedRegionReplicas == null
+                                  || canRegionGroupProvideService(
+                                      regionReplicaSet.getDataNodeLocationsSize(),
+                                      failedRegionReplicas.getDataNodeLocationsSize(),
+                                      failedRegionReplicas.getRegionId());
+
+                          if (canProvideService) {
                             final Set<Integer> failedDataNodeIds =
                                 failedRegionReplicas == null
                                     ? new TreeSet<>()
@@ -312,5 +326,16 @@ public class CreateRegionGroupsProcedure
   public int hashCode() {
     return Objects.hash(
         consensusGroupType, createRegionGroupsPlan, persistPlan, failedRegionReplicaSets);
+  }
+
+  public boolean canRegionGroupProvideService(
+      int regionGroupNodeNumber, int failedNodeNumber, TConsensusGroupId regionId) {
+    boolean isStrongConsistency = CONF.isConsensusGroupStrongConsistency(regionId);
+    int successNodeNumber = regionGroupNodeNumber - failedNodeNumber;
+    if (isStrongConsistency) {
+      return successNodeNumber > (regionGroupNodeNumber / 2);
+    } else {
+      return successNodeNumber >= 1;
+    }
   }
 }

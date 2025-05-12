@@ -20,7 +20,6 @@
 package org.apache.iotdb.db.queryengine.execution.relational;
 
 import org.apache.iotdb.commons.udf.builtin.relational.TableBuiltinScalarFunction;
-import org.apache.iotdb.commons.udf.utils.TableUDFUtils;
 import org.apache.iotdb.commons.udf.utils.UDFDataTypeTransformer;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.sql.SemanticException;
@@ -71,6 +70,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Trim;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.WhenClause;
 import org.apache.iotdb.db.queryengine.plan.relational.type.InternalTypeManager;
 import org.apache.iotdb.db.queryengine.plan.relational.type.TypeNotFoundException;
+import org.apache.iotdb.db.queryengine.plan.udf.TableUDFUtils;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.ColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.FailFunctionColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.TableCaseWhenThenColumnTransformer;
@@ -208,7 +208,7 @@ public class ColumnTransformerBuilder
 
   @Override
   public ColumnTransformer visitExpression(Expression expression, Context context) {
-    throw new IllegalArgumentException(
+    throw new SemanticException(
         String.format(UNSUPPORTED_EXPRESSION, expression.getClass().getSimpleName()));
   }
 

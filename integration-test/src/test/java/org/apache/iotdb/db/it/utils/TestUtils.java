@@ -256,7 +256,6 @@ public class TestUtils {
               builder.append(resultSet.getString(i)).append(",");
             }
             assertEquals(expectedRetArray[cnt], builder.toString());
-            // System.out.println(String.format("\"%s\",", builder.toString()));
             cnt++;
           }
           assertEquals(expectedRetArray.length, cnt);
@@ -1437,6 +1436,27 @@ public class TestUtils {
                 }
               });
     } catch (Exception e) {
+      fail(e.getMessage());
+    }
+  }
+
+  // Note that this class will accept any exceptions
+  public static void assertAlwaysFail(final BaseEnv env, final String sql) {
+    assertAlwaysFail(env, sql, 10);
+  }
+
+  public static void assertAlwaysFail(
+      final BaseEnv env, final String sql, final long consistentSeconds) {
+    try (final Connection connection = env.getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        final Statement statement = connection.createStatement()) {
+      // Keep retrying if there are execution failures
+      await()
+          .pollInSameThread()
+          .pollDelay(1L, TimeUnit.SECONDS)
+          .pollInterval(1L, TimeUnit.SECONDS)
+          .atMost(consistentSeconds, TimeUnit.SECONDS)
+          .failFast(() -> Assert.assertThrows(Exception.class, () -> statement.executeQuery(sql)));
+    } catch (final Exception e) {
       fail(e.getMessage());
     }
   }

@@ -54,6 +54,7 @@ import java.util.Set;
 
 import static com.google.common.base.Preconditions.checkArgument;
 import static java.util.Objects.requireNonNull;
+import static org.apache.iotdb.db.queryengine.plan.relational.planner.SymbolAllocator.DATE_BIN_PREFIX;
 import static org.apache.iotdb.db.utils.constant.SqlConstant.COUNT;
 import static org.apache.iotdb.db.utils.constant.SqlConstant.TABLE_TIME_COLUMN_NAME;
 
@@ -126,10 +127,16 @@ public class AggregationTableScanNode extends DeviceTableScanNode {
 
     this.step = step;
 
+    List<Symbol> groupingKeys = groupingSets.getGroupingKeys();
+    for (int i = 0; i < groupingKeys.size(); i++) {
+      if (groupingKeys.get(i).getName().startsWith(DATE_BIN_PREFIX)) {
+        checkArgument(
+            i == groupingKeys.size() - 1, "date_bin function must be the last GroupingKey");
+      }
+    }
     requireNonNull(preGroupedSymbols, "preGroupedSymbols is null");
     checkArgument(
-        preGroupedSymbols.isEmpty()
-            || groupingSets.getGroupingKeys().containsAll(preGroupedSymbols),
+        preGroupedSymbols.isEmpty() || groupingKeys.containsAll(preGroupedSymbols),
         "Pre-grouped symbols must be a subset of the grouping keys");
     this.preGroupedSymbols = ImmutableList.copyOf(preGroupedSymbols);
 

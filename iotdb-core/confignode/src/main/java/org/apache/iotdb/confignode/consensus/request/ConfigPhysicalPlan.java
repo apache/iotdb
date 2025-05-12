@@ -62,7 +62,7 @@ import org.apache.iotdb.confignode.consensus.request.write.partition.CreateDataP
 import org.apache.iotdb.confignode.consensus.request.write.partition.CreateSchemaPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.write.partition.RemoveRegionLocationPlan;
 import org.apache.iotdb.confignode.consensus.request.write.partition.UpdateRegionLocationPlan;
-import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeCreateTablePlan;
+import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeCreateTableOrViewPlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeDeactivateTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeDeleteDevicesPlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeDeleteLogicalViewPlan;
@@ -108,8 +108,21 @@ import org.apache.iotdb.confignode.consensus.request.write.table.PreCreateTableP
 import org.apache.iotdb.confignode.consensus.request.write.table.PreDeleteColumnPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.PreDeleteTablePlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.RenameTableColumnPlan;
+import org.apache.iotdb.confignode.consensus.request.write.table.RenameTablePlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.RollbackCreateTablePlan;
+import org.apache.iotdb.confignode.consensus.request.write.table.SetTableColumnCommentPlan;
+import org.apache.iotdb.confignode.consensus.request.write.table.SetTableCommentPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.SetTablePropertiesPlan;
+import org.apache.iotdb.confignode.consensus.request.write.table.view.AddTableViewColumnPlan;
+import org.apache.iotdb.confignode.consensus.request.write.table.view.CommitDeleteViewColumnPlan;
+import org.apache.iotdb.confignode.consensus.request.write.table.view.CommitDeleteViewPlan;
+import org.apache.iotdb.confignode.consensus.request.write.table.view.PreCreateTableViewPlan;
+import org.apache.iotdb.confignode.consensus.request.write.table.view.PreDeleteViewColumnPlan;
+import org.apache.iotdb.confignode.consensus.request.write.table.view.PreDeleteViewPlan;
+import org.apache.iotdb.confignode.consensus.request.write.table.view.RenameViewColumnPlan;
+import org.apache.iotdb.confignode.consensus.request.write.table.view.RenameViewPlan;
+import org.apache.iotdb.confignode.consensus.request.write.table.view.SetViewCommentPlan;
+import org.apache.iotdb.confignode.consensus.request.write.table.view.SetViewPropertiesPlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.CommitSetSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.CreateSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.DropSchemaTemplatePlan;
@@ -201,10 +214,10 @@ public abstract class ConfigPhysicalPlan implements IConsensusRequest {
           plan = new UpdateAINodePlan();
           break;
         case CreateDatabase:
-          plan = new DatabaseSchemaPlan(ConfigPhysicalPlanType.CreateDatabase);
+          plan = new DatabaseSchemaPlan(configPhysicalPlanType);
           break;
         case AlterDatabase:
-          plan = new DatabaseSchemaPlan(ConfigPhysicalPlanType.AlterDatabase);
+          plan = new DatabaseSchemaPlan(configPhysicalPlanType);
           break;
         case SetTTL:
           plan = new SetTTLPlan();
@@ -380,6 +393,9 @@ public abstract class ConfigPhysicalPlan implements IConsensusRequest {
         case PreCreateTable:
           plan = new PreCreateTablePlan(configPhysicalPlanType);
           break;
+        case PreCreateTableView:
+          plan = new PreCreateTableViewPlan();
+          break;
         case RollbackCreateTable:
           plan = new RollbackCreateTablePlan();
           break;
@@ -387,25 +403,61 @@ public abstract class ConfigPhysicalPlan implements IConsensusRequest {
           plan = new CommitCreateTablePlan();
           break;
         case AddTableColumn:
-          plan = new AddTableColumnPlan();
+          plan = new AddTableColumnPlan(configPhysicalPlanType);
+          break;
+        case AddViewColumn:
+          plan = new AddTableViewColumnPlan();
           break;
         case SetTableProperties:
-          plan = new SetTablePropertiesPlan();
+          plan = new SetTablePropertiesPlan(configPhysicalPlanType);
+          break;
+        case SetViewProperties:
+          plan = new SetViewPropertiesPlan();
           break;
         case RenameTableColumn:
-          plan = new RenameTableColumnPlan();
+          plan = new RenameTableColumnPlan(configPhysicalPlanType);
+          break;
+        case RenameViewColumn:
+          plan = new RenameViewColumnPlan();
           break;
         case PreDeleteTable:
-          plan = new PreDeleteTablePlan();
+          plan = new PreDeleteTablePlan(configPhysicalPlanType);
+          break;
+        case PreDeleteView:
+          plan = new PreDeleteViewPlan();
           break;
         case CommitDeleteTable:
-          plan = new CommitDeleteTablePlan();
+          plan = new CommitDeleteTablePlan(configPhysicalPlanType);
+          break;
+        case CommitDeleteView:
+          plan = new CommitDeleteViewPlan();
           break;
         case PreDeleteColumn:
-          plan = new PreDeleteColumnPlan();
+          plan = new PreDeleteColumnPlan(configPhysicalPlanType);
+          break;
+        case PreDeleteViewColumn:
+          plan = new PreDeleteViewColumnPlan();
           break;
         case CommitDeleteColumn:
-          plan = new CommitDeleteColumnPlan();
+          plan = new CommitDeleteColumnPlan(configPhysicalPlanType);
+          break;
+        case CommitDeleteViewColumn:
+          plan = new CommitDeleteViewColumnPlan();
+          break;
+        case SetTableComment:
+          plan = new SetTableCommentPlan(configPhysicalPlanType);
+          break;
+        case SetViewComment:
+          plan = new SetViewCommentPlan();
+          break;
+        case SetTableColumnComment:
+          plan = new SetTableColumnCommentPlan();
+          break;
+        case RenameTable:
+          plan = new RenameTablePlan(configPhysicalPlanType);
+          break;
+        case RenameView:
+          plan = new RenameViewPlan();
           break;
         case CreatePipeSinkV1:
           plan = new CreatePipeSinkPlanV1();
@@ -488,8 +540,8 @@ public abstract class ConfigPhysicalPlan implements IConsensusRequest {
         case PipeDeactivateTemplate:
           plan = new PipeDeactivateTemplatePlan();
           break;
-        case PipeCreateTable:
-          plan = new PipeCreateTablePlan();
+        case PipeCreateTableOrView:
+          plan = new PipeCreateTableOrViewPlan();
           break;
         case PipeDeleteDevices:
           plan = new PipeDeleteDevicesPlan();

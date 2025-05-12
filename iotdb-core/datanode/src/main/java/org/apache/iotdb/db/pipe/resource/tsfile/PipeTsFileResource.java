@@ -49,7 +49,7 @@ public class PipeTsFileResource implements AutoCloseable {
   private static final Logger LOGGER = LoggerFactory.getLogger(PipeTsFileResource.class);
 
   public static final long TSFILE_MIN_TIME_TO_LIVE_IN_MS = 1000L * 20;
-  private static final float MEMORY_SUFFICIENT_THRESHOLD = 0.5f;
+  public static final float MEMORY_SUFFICIENT_THRESHOLD = 0.7f;
 
   private final File hardlinkOrCopiedFile;
   private final boolean isTsFile;
@@ -122,7 +122,7 @@ public class PipeTsFileResource implements AutoCloseable {
     return finalReferenceCount;
   }
 
-  public synchronized boolean closeIfOutOfTimeToLive() throws IOException {
+  public synchronized boolean closeIfOutOfTimeToLive() {
     if (referenceCount.get() <= 0
         && (deviceMeasurementsMap == null // Not cached yet.
             || System.currentTimeMillis() - lastUnpinToZeroTime.get()
@@ -135,7 +135,7 @@ public class PipeTsFileResource implements AutoCloseable {
   }
 
   @Override
-  public synchronized void close() throws IOException {
+  public synchronized void close() {
     if (deviceMeasurementsMap != null) {
       deviceMeasurementsMap = null;
     }
@@ -153,7 +153,15 @@ public class PipeTsFileResource implements AutoCloseable {
       allocatedMemoryBlock = null;
     }
 
-    Files.deleteIfExists(hardlinkOrCopiedFile.toPath());
+    try {
+      Files.deleteIfExists(hardlinkOrCopiedFile.toPath());
+    } catch (final Exception e) {
+      LOGGER.error(
+          "PipeTsFileResource: Failed to delete tsfile {} when closing, because {}. Please MANUALLY delete it.",
+          hardlinkOrCopiedFile,
+          e.getMessage(),
+          e);
+    }
 
     LOGGER.info("PipeTsFileResource: Closed tsfile {} and cleaned up.", hardlinkOrCopiedFile);
   }
@@ -207,7 +215,7 @@ public class PipeTsFileResource implements AutoCloseable {
                 MEMORY_SUFFICIENT_THRESHOLD);
     if (allocatedMemoryBlock == null) {
       LOGGER.info(
-          "PipeTsFileResource: Failed to create TsFileSequenceReader for tsfile {} in cache, because memory usage is high",
+          "Failed to cacheDeviceIsAlignedMapIfAbsent for tsfile {}, because memory usage is high",
           hardlinkOrCopiedFile.getPath());
       return false;
     }
@@ -271,7 +279,7 @@ public class PipeTsFileResource implements AutoCloseable {
                 MEMORY_SUFFICIENT_THRESHOLD);
     if (allocatedMemoryBlock == null) {
       LOGGER.info(
-          "PipeTsFileResource: Failed to create TsFileSequenceReader for tsfile {} in cache, because memory usage is high",
+          "Failed to cacheObjectsIfAbsent for tsfile {}, because memory usage is high",
           hardlinkOrCopiedFile.getPath());
       return false;
     }

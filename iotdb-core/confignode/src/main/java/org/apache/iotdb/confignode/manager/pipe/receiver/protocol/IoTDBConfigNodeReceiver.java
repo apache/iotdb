@@ -23,6 +23,7 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.commons.auth.entity.PrivilegeUnion;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
+import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.pipe.connector.payload.airgap.AirGapPseudoTPipeTransferRequest;
@@ -35,6 +36,9 @@ import org.apache.iotdb.commons.pipe.datastructure.pattern.TablePattern;
 import org.apache.iotdb.commons.pipe.receiver.IoTDBFileReceiver;
 import org.apache.iotdb.commons.pipe.receiver.PipeReceiverStatusHandler;
 import org.apache.iotdb.commons.schema.column.ColumnHeaderConstant;
+import org.apache.iotdb.commons.schema.table.TreeViewSchema;
+import org.apache.iotdb.commons.schema.table.TsTable;
+import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
 import org.apache.iotdb.commons.schema.ttl.TTLCache;
 import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.commons.utils.StatusUtils;
@@ -47,18 +51,29 @@ import org.apache.iotdb.confignode.consensus.request.write.auth.AuthorTreePlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.DatabaseSchemaPlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.DeleteDatabasePlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.SetTTLPlan;
-import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeCreateTablePlan;
+import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeCreateTableOrViewPlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeDeactivateTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeDeleteDevicesPlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeDeleteLogicalViewPlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeDeleteTimeSeriesPlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeEnrichedPlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeUnsetSchemaTemplatePlan;
+import org.apache.iotdb.confignode.consensus.request.write.table.AbstractTablePlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.AddTableColumnPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.CommitDeleteColumnPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.CommitDeleteTablePlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.RenameTableColumnPlan;
+import org.apache.iotdb.confignode.consensus.request.write.table.RenameTablePlan;
+import org.apache.iotdb.confignode.consensus.request.write.table.SetTableColumnCommentPlan;
+import org.apache.iotdb.confignode.consensus.request.write.table.SetTableCommentPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.SetTablePropertiesPlan;
+import org.apache.iotdb.confignode.consensus.request.write.table.view.AddTableViewColumnPlan;
+import org.apache.iotdb.confignode.consensus.request.write.table.view.CommitDeleteViewColumnPlan;
+import org.apache.iotdb.confignode.consensus.request.write.table.view.CommitDeleteViewPlan;
+import org.apache.iotdb.confignode.consensus.request.write.table.view.RenameViewColumnPlan;
+import org.apache.iotdb.confignode.consensus.request.write.table.view.RenameViewPlan;
+import org.apache.iotdb.confignode.consensus.request.write.table.view.SetViewCommentPlan;
+import org.apache.iotdb.confignode.consensus.request.write.table.view.SetViewPropertiesPlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.CommitSetSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.ExtendSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.trigger.DeleteTriggerInTablePlan;
@@ -70,7 +85,7 @@ import org.apache.iotdb.confignode.manager.pipe.connector.payload.PipeTransferCo
 import org.apache.iotdb.confignode.manager.pipe.connector.payload.PipeTransferConfigSnapshotSealReq;
 import org.apache.iotdb.confignode.manager.pipe.event.PipeConfigRegionSnapshotEvent;
 import org.apache.iotdb.confignode.manager.pipe.extractor.IoTDBConfigRegionExtractor;
-import org.apache.iotdb.confignode.manager.pipe.metric.PipeConfigNodeReceiverMetrics;
+import org.apache.iotdb.confignode.manager.pipe.metric.receiver.PipeConfigNodeReceiverMetrics;
 import org.apache.iotdb.confignode.manager.pipe.receiver.visitor.PipeConfigPhysicalPlanExceptionVisitor;
 import org.apache.iotdb.confignode.manager.pipe.receiver.visitor.PipeConfigPhysicalPlanTSStatusVisitor;
 import org.apache.iotdb.confignode.persistence.schema.CNPhysicalPlanGenerator;
@@ -81,7 +96,15 @@ import org.apache.iotdb.confignode.procedure.impl.schema.table.CreateTableProced
 import org.apache.iotdb.confignode.procedure.impl.schema.table.DropTableColumnProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.table.DropTableProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.table.RenameTableColumnProcedure;
+import org.apache.iotdb.confignode.procedure.impl.schema.table.RenameTableProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.table.SetTablePropertiesProcedure;
+import org.apache.iotdb.confignode.procedure.impl.schema.table.view.AddViewColumnProcedure;
+import org.apache.iotdb.confignode.procedure.impl.schema.table.view.CreateTableViewProcedure;
+import org.apache.iotdb.confignode.procedure.impl.schema.table.view.DropViewColumnProcedure;
+import org.apache.iotdb.confignode.procedure.impl.schema.table.view.DropViewProcedure;
+import org.apache.iotdb.confignode.procedure.impl.schema.table.view.RenameViewColumnProcedure;
+import org.apache.iotdb.confignode.procedure.impl.schema.table.view.RenameViewProcedure;
+import org.apache.iotdb.confignode.procedure.impl.schema.table.view.SetViewPropertiesProcedure;
 import org.apache.iotdb.confignode.procedure.store.ProcedureType;
 import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
 import org.apache.iotdb.confignode.rpc.thrift.TDeleteDatabasesReq;
@@ -111,6 +134,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -258,11 +282,37 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
   private TSStatus checkPermission(final ConfigPhysicalPlan plan) {
     switch (plan.getType()) {
       case CreateDatabase:
+        return PathUtils.isTableModelDatabase(((DatabaseSchemaPlan) plan).getSchema().getName())
+            ? configManager
+                .checkUserPrivileges(
+                    username,
+                    new PrivilegeUnion(
+                        ((DatabaseSchemaPlan) plan).getSchema().getName(), PrivilegeType.CREATE))
+                .getStatus()
+            : configManager
+                .checkUserPrivileges(username, new PrivilegeUnion(PrivilegeType.MANAGE_DATABASE))
+                .getStatus();
       case AlterDatabase:
+        return PathUtils.isTableModelDatabase(((DatabaseSchemaPlan) plan).getSchema().getName())
+            ? configManager
+                .checkUserPrivileges(
+                    username,
+                    new PrivilegeUnion(
+                        ((DatabaseSchemaPlan) plan).getSchema().getName(), PrivilegeType.ALTER))
+                .getStatus()
+            : configManager
+                .checkUserPrivileges(username, new PrivilegeUnion(PrivilegeType.MANAGE_DATABASE))
+                .getStatus();
       case DeleteDatabase:
-        return configManager
-            .checkUserPrivileges(username, new PrivilegeUnion(PrivilegeType.MANAGE_DATABASE))
-            .getStatus();
+        return PathUtils.isTableModelDatabase(((DeleteDatabasePlan) plan).getName())
+            ? configManager
+                .checkUserPrivileges(
+                    username,
+                    new PrivilegeUnion(((DeleteDatabasePlan) plan).getName(), PrivilegeType.DROP))
+                .getStatus()
+            : configManager
+                .checkUserPrivileges(username, new PrivilegeUnion(PrivilegeType.MANAGE_DATABASE))
+                .getStatus();
       case ExtendSchemaTemplate:
         return configManager
             .checkUserPrivileges(username, new PrivilegeUnion(PrivilegeType.EXTEND_TEMPLATE))
@@ -306,56 +356,63 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
                     PrivilegeType.WRITE_SCHEMA))
             .getStatus();
       case SetTTL:
-        return configManager
-            .checkUserPrivileges(
-                username,
-                new PrivilegeUnion(
-                    Collections.singletonList(
-                        new PartialPath(((SetTTLPlan) plan).getPathPattern())),
-                    PrivilegeType.WRITE_SCHEMA))
-            .getStatus();
+        return Objects.equals(
+                configManager
+                    .getTTLManager()
+                    .getAllTTL()
+                    .get(
+                        String.join(
+                            String.valueOf(IoTDBConstant.PATH_SEPARATOR),
+                            ((SetTTLPlan) plan).getPathPattern())),
+                ((SetTTLPlan) plan).getTTL())
+            ? StatusUtils.OK
+            : configManager
+                .checkUserPrivileges(
+                    username,
+                    ((SetTTLPlan) plan).isDataBase()
+                        ? new PrivilegeUnion(PrivilegeType.MANAGE_DATABASE)
+                        : new PrivilegeUnion(
+                            Collections.singletonList(
+                                new PartialPath(((SetTTLPlan) plan).getPathPattern())),
+                            PrivilegeType.WRITE_SCHEMA))
+                .getStatus();
       case UpdateTriggerStateInTable:
       case DeleteTriggerInTable:
         return configManager
             .checkUserPrivileges(username, new PrivilegeUnion(PrivilegeType.USE_TRIGGER))
             .getStatus();
-      case PipeCreateTable:
+      case PipeCreateTableOrView:
         return configManager
             .checkUserPrivileges(
                 username,
                 new PrivilegeUnion(
-                    ((PipeCreateTablePlan) plan).getDatabase(),
-                    ((PipeCreateTablePlan) plan).getTable().getTableName(),
+                    ((PipeCreateTableOrViewPlan) plan).getDatabase(),
+                    ((PipeCreateTableOrViewPlan) plan).getTable().getTableName(),
                     PrivilegeType.CREATE))
             .getStatus();
       case AddTableColumn:
-        return configManager
-            .checkUserPrivileges(
-                username,
-                new PrivilegeUnion(
-                    ((AddTableColumnPlan) plan).getDatabase(),
-                    ((AddTableColumnPlan) plan).getTableName(),
-                    PrivilegeType.ALTER))
-            .getStatus();
+      case AddViewColumn:
       case SetTableProperties:
-        return configManager
-            .checkUserPrivileges(
-                username,
-                new PrivilegeUnion(
-                    ((SetTablePropertiesPlan) plan).getDatabase(),
-                    ((SetTablePropertiesPlan) plan).getTableName(),
-                    PrivilegeType.ALTER))
-            .getStatus();
+      case SetViewProperties:
       case CommitDeleteColumn:
+      case CommitDeleteViewColumn:
+      case SetTableComment:
+      case SetViewComment:
+      case SetTableColumnComment:
+      case RenameTableColumn:
+      case RenameViewColumn:
+      case RenameTable:
+      case RenameView:
         return configManager
             .checkUserPrivileges(
                 username,
                 new PrivilegeUnion(
-                    ((CommitDeleteColumnPlan) plan).getDatabase(),
-                    ((CommitDeleteColumnPlan) plan).getTableName(),
+                    ((AbstractTablePlan) plan).getDatabase(),
+                    ((AbstractTablePlan) plan).getTableName(),
                     PrivilegeType.ALTER))
             .getStatus();
       case CommitDeleteTable:
+      case CommitDeleteView:
         return configManager
             .checkUserPrivileges(
                 username,
@@ -586,33 +643,8 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
         return ((SetTTLPlan) plan).getTTL() == TTLCache.NULL_TTL
             ? configManager.getTTLManager().unsetTTL((SetTTLPlan) plan, true)
             : configManager.getTTLManager().setTTL((SetTTLPlan) plan, true);
-      case PipeCreateTable:
-        TSStatus result =
-            configManager
-                .getProcedureManager()
-                .executeWithoutDuplicate(
-                    ((PipeCreateTablePlan) plan).getDatabase(),
-                    ((PipeCreateTablePlan) plan).getTable(),
-                    ((PipeCreateTablePlan) plan).getTable().getTableName(),
-                    queryId,
-                    ProcedureType.CREATE_TABLE_PROCEDURE,
-                    new CreateTableProcedure(
-                        ((PipeCreateTablePlan) plan).getDatabase(),
-                        ((PipeCreateTablePlan) plan).getTable(),
-                        true));
-        if (result.getCode() == TSStatusCode.TABLE_ALREADY_EXISTS.getStatusCode()) {
-          // If the table already exists, we shall add the sender table's columns to the
-          // receiver's table, inner procedure guaranteeing that the columns existing at the
-          // receiver table will be trimmed
-          result =
-              executePlan(
-                  new AddTableColumnPlan(
-                      ((PipeCreateTablePlan) plan).getDatabase(),
-                      ((PipeCreateTablePlan) plan).getTable().getTableName(),
-                      ((PipeCreateTablePlan) plan).getTable().getColumnList(),
-                      false));
-        }
-        return result;
+      case PipeCreateTableOrView:
+        return executeIdempotentCreateTableOrView((PipeCreateTableOrViewPlan) plan, queryId);
       case AddTableColumn:
         return configManager
             .getProcedureManager()
@@ -627,6 +659,21 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
                     ((AddTableColumnPlan) plan).getTableName(),
                     queryId,
                     ((AddTableColumnPlan) plan).getColumnSchemaList(),
+                    true));
+      case AddViewColumn:
+        return configManager
+            .getProcedureManager()
+            .executeWithoutDuplicate(
+                ((AddTableViewColumnPlan) plan).getDatabase(),
+                null,
+                ((AddTableViewColumnPlan) plan).getTableName(),
+                queryId,
+                ProcedureType.ADD_VIEW_COLUMN_PROCEDURE,
+                new AddViewColumnProcedure(
+                    ((AddTableViewColumnPlan) plan).getDatabase(),
+                    ((AddTableViewColumnPlan) plan).getTableName(),
+                    queryId,
+                    ((AddTableViewColumnPlan) plan).getColumnSchemaList(),
                     true));
       case SetTableProperties:
         return configManager
@@ -643,6 +690,21 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
                     queryId,
                     ((SetTablePropertiesPlan) plan).getProperties(),
                     true));
+      case SetViewProperties:
+        return configManager
+            .getProcedureManager()
+            .executeWithoutDuplicate(
+                ((SetViewPropertiesPlan) plan).getDatabase(),
+                null,
+                ((SetViewPropertiesPlan) plan).getTableName(),
+                queryId,
+                ProcedureType.SET_VIEW_PROPERTIES_PROCEDURE,
+                new SetViewPropertiesProcedure(
+                    ((SetViewPropertiesPlan) plan).getDatabase(),
+                    ((SetViewPropertiesPlan) plan).getTableName(),
+                    queryId,
+                    ((SetViewPropertiesPlan) plan).getProperties(),
+                    true));
       case CommitDeleteColumn:
         return configManager
             .getProcedureManager()
@@ -657,6 +719,21 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
                     ((CommitDeleteColumnPlan) plan).getTableName(),
                     queryId,
                     ((CommitDeleteColumnPlan) plan).getColumnName(),
+                    true));
+      case CommitDeleteViewColumn:
+        return configManager
+            .getProcedureManager()
+            .executeWithoutDuplicate(
+                ((CommitDeleteViewColumnPlan) plan).getDatabase(),
+                null,
+                ((CommitDeleteViewColumnPlan) plan).getTableName(),
+                queryId,
+                ProcedureType.DROP_VIEW_COLUMN_PROCEDURE,
+                new DropViewColumnProcedure(
+                    ((CommitDeleteViewColumnPlan) plan).getDatabase(),
+                    ((CommitDeleteViewColumnPlan) plan).getTableName(),
+                    queryId,
+                    ((CommitDeleteViewColumnPlan) plan).getColumnName(),
                     true));
       case RenameTableColumn:
         return configManager
@@ -674,6 +751,22 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
                     ((RenameTableColumnPlan) plan).getOldName(),
                     ((RenameTableColumnPlan) plan).getNewName(),
                     true));
+      case RenameViewColumn:
+        return configManager
+            .getProcedureManager()
+            .executeWithoutDuplicate(
+                ((RenameViewColumnPlan) plan).getDatabase(),
+                null,
+                ((RenameViewColumnPlan) plan).getTableName(),
+                queryId,
+                ProcedureType.RENAME_VIEW_COLUMN_PROCEDURE,
+                new RenameViewColumnProcedure(
+                    ((RenameViewColumnPlan) plan).getDatabase(),
+                    ((RenameViewColumnPlan) plan).getTableName(),
+                    queryId,
+                    ((RenameViewColumnPlan) plan).getOldName(),
+                    ((RenameViewColumnPlan) plan).getNewName(),
+                    true));
       case CommitDeleteTable:
         return configManager
             .getProcedureManager()
@@ -688,6 +781,47 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
                     ((CommitDeleteTablePlan) plan).getTableName(),
                     queryId,
                     true));
+      case CommitDeleteView:
+        return configManager
+            .getProcedureManager()
+            .executeWithoutDuplicate(
+                ((CommitDeleteViewPlan) plan).getDatabase(),
+                null,
+                ((CommitDeleteViewPlan) plan).getTableName(),
+                queryId,
+                ProcedureType.DROP_VIEW_PROCEDURE,
+                new DropViewProcedure(
+                    ((CommitDeleteViewPlan) plan).getDatabase(),
+                    ((CommitDeleteViewPlan) plan).getTableName(),
+                    queryId,
+                    true));
+      case SetTableComment:
+        return configManager
+            .getClusterSchemaManager()
+            .setTableComment(
+                ((SetTableCommentPlan) plan).getDatabase(),
+                ((SetTableCommentPlan) plan).getTableName(),
+                ((SetTableCommentPlan) plan).getComment(),
+                false,
+                true);
+      case SetViewComment:
+        return configManager
+            .getClusterSchemaManager()
+            .setTableComment(
+                ((SetViewCommentPlan) plan).getDatabase(),
+                ((SetViewCommentPlan) plan).getTableName(),
+                ((SetViewCommentPlan) plan).getComment(),
+                true,
+                true);
+      case SetTableColumnComment:
+        return configManager
+            .getClusterSchemaManager()
+            .setTableColumnComment(
+                ((SetTableColumnCommentPlan) plan).getDatabase(),
+                ((SetTableColumnCommentPlan) plan).getTableName(),
+                ((SetTableColumnCommentPlan) plan).getColumnName(),
+                ((SetTableColumnCommentPlan) plan).getComment(),
+                true);
       case PipeDeleteDevices:
         return configManager
             .getProcedureManager()
@@ -701,6 +835,36 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
                     ByteBuffer.wrap(((PipeDeleteDevicesPlan) plan).getModBytes())),
                 true)
             .getStatus();
+      case RenameTable:
+        configManager
+            .getProcedureManager()
+            .executeWithoutDuplicate(
+                ((RenameTablePlan) plan).getDatabase(),
+                null,
+                ((RenameTablePlan) plan).getTableName(),
+                queryId,
+                ProcedureType.RENAME_TABLE_PROCEDURE,
+                new RenameTableProcedure(
+                    ((RenameTablePlan) plan).getDatabase(),
+                    ((RenameTablePlan) plan).getTableName(),
+                    queryId,
+                    ((RenameTablePlan) plan).getNewName(),
+                    true));
+      case RenameView:
+        configManager
+            .getProcedureManager()
+            .executeWithoutDuplicate(
+                ((RenameViewPlan) plan).getDatabase(),
+                null,
+                ((RenameViewPlan) plan).getTableName(),
+                queryId,
+                ProcedureType.RENAME_VIEW_PROCEDURE,
+                new RenameViewProcedure(
+                    ((RenameViewPlan) plan).getDatabase(),
+                    ((RenameViewPlan) plan).getTableName(),
+                    queryId,
+                    ((RenameViewPlan) plan).getNewName(),
+                    true));
       case CreateUser:
       case CreateUserWithRawPassword:
       case CreateRole:
@@ -746,6 +910,64 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
     }
   }
 
+  private TSStatus executeIdempotentCreateTableOrView(
+      final PipeCreateTableOrViewPlan plan, final String queryId) throws ConsensusException {
+    final String database = plan.getDatabase();
+    final TsTable table = plan.getTable();
+    final boolean isView = TreeViewSchema.isTreeViewTable(table);
+    TSStatus result =
+        configManager
+            .getProcedureManager()
+            .executeWithoutDuplicate(
+                database,
+                table,
+                table.getTableName(),
+                queryId,
+                isView
+                    ? ProcedureType.CREATE_TABLE_VIEW_PROCEDURE
+                    : ProcedureType.CREATE_TABLE_PROCEDURE,
+                isView
+                    ? new CreateTableViewProcedure(database, table, true, true)
+                    : new CreateTableProcedure(database, table, true));
+    // Note that the view and its column won't be auto created
+    // Skip it to avoid affecting the existing base table
+    if (!isView && result.getCode() == TSStatusCode.TABLE_ALREADY_EXISTS.getStatusCode()) {
+      // If the table already exists, we shall add the sender table's columns to the
+      // receiver's table, inner procedure guaranteeing that the columns existing at the
+      // receiver table will be trimmed
+      result =
+          executePlan(
+              new AddTableColumnPlan(database, table.getTableName(), table.getColumnList(), false));
+      if (result.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()
+          && result.getCode() != TSStatusCode.COLUMN_ALREADY_EXISTS.getStatusCode()) {
+        return result;
+      }
+      // Add comments
+      final Optional<String> tableComment = table.getPropValue(TsTable.COMMENT_KEY);
+      if (tableComment.isPresent()) {
+        result =
+            executePlan(
+                new SetTableCommentPlan(database, table.getTableName(), tableComment.get()));
+      }
+      if (result.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        return result;
+      }
+      for (final TsTableColumnSchema schema : table.getColumnList()) {
+        final String columnComment = schema.getProps().get(TsTable.COMMENT_KEY);
+        if (Objects.nonNull(columnComment)) {
+          result =
+              executePlan(
+                  new SetTableColumnCommentPlan(
+                      database, table.getTableName(), schema.getColumnName(), columnComment));
+        }
+        if (result.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+          return result;
+        }
+      }
+    }
+    return result;
+  }
+
   /** Used to construct pipe related procedures */
   private String generatePseudoQueryId() {
     return "pipe_" + System.currentTimeMillis() + "_" + QUERY_ID_GENERATOR.getAndIncrement();
@@ -753,13 +975,17 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
 
   @Override
   protected String getClusterId() {
-    return ConfigNode.getInstance().getConfigManager().getClusterManager().getClusterId();
+    return configManager.getClusterManager().getClusterId();
   }
 
   @Override
-  protected TSStatus tryLogin() {
-    // Do nothing. Login check will be done in the data node receiver.
-    return StatusUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
+  protected boolean shouldLogin() {
+    return lastSuccessfulLoginTime == Long.MIN_VALUE || super.shouldLogin();
+  }
+
+  @Override
+  protected TSStatus login() {
+    return configManager.login(username, password).getStatus();
   }
 
   @Override

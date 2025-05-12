@@ -21,6 +21,7 @@ package org.apache.iotdb.db.storageengine.rescon.memory;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.db.conf.DataNodeMemoryConfig;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.StorageEngineException;
@@ -77,13 +78,16 @@ public class ResourceManagerTest {
   List<TsFileResource> unseqResources = new ArrayList<>();
 
   private static final IoTDBConfig CONFIG = IoTDBDescriptor.getInstance().getConfig();
+  private static final DataNodeMemoryConfig MEMORY_CONFIG =
+      IoTDBDescriptor.getInstance().getMemoryConfig();
   private final TsFileResourceManager tsFileResourceManager = TsFileResourceManager.getInstance();
   private long prevTimeIndexMemoryThreshold;
   private TimeIndexLevel timeIndexLevel;
 
   @Before
   public void setUp() throws IOException, WriteProcessException, MetadataException {
-    prevTimeIndexMemoryThreshold = CONFIG.getAllocateMemoryForTimeIndex();
+    prevTimeIndexMemoryThreshold =
+        MEMORY_CONFIG.getTimeIndexMemoryManager().getTotalMemorySizeInBytes();
     timeIndexLevel = CONFIG.getTimeIndexLevel();
     prepareSeries();
   }
@@ -214,7 +218,7 @@ public class ResourceManagerTest {
     assertEquals(
         TimeIndexLevel.ARRAY_DEVICE_TIME_INDEX,
         TimeIndexLevel.valueOf(tsFileResource.getTimeIndexType()));
-    long curTimeIndexMemoryThreshold = 322;
+    long curTimeIndexMemoryThreshold = 0;
     tsFileResourceManager.setTimeIndexMemoryThreshold(curTimeIndexMemoryThreshold);
     tsFileResourceManager.registerSealedTsFileResource(tsFileResource);
     assertEquals(
@@ -264,6 +268,12 @@ public class ResourceManagerTest {
                     + IoTDBConstant.FILE_NAME_SEPARATOR
                     + 0
                     + ".tsfile"));
+    TsFileResource degradedResource1 = new TsFileResource(file1);
+    degradedResource1.setStatusForTest(TsFileResourceStatus.NORMAL);
+    degradedResource1.updatePlanIndexes((long) 0);
+    prepareFile(degradedResource1, 0, ptNum, 0);
+    degradedResource1.degradeTimeIndex();
+
     TsFileResource tsFileResource1 = new TsFileResource(file1);
     tsFileResource1.setStatusForTest(TsFileResourceStatus.NORMAL);
     tsFileResource1.updatePlanIndexes((long) 0);
@@ -271,12 +281,7 @@ public class ResourceManagerTest {
     assertEquals(
         TimeIndexLevel.ARRAY_DEVICE_TIME_INDEX,
         TimeIndexLevel.valueOf(tsFileResource1.getTimeIndexType()));
-    long curTimeIndexMemoryThreshold = 4291;
-    tsFileResourceManager.setTimeIndexMemoryThreshold(curTimeIndexMemoryThreshold);
-    tsFileResourceManager.registerSealedTsFileResource(tsFileResource1);
-    assertEquals(
-        TimeIndexLevel.ARRAY_DEVICE_TIME_INDEX,
-        TimeIndexLevel.valueOf(tsFileResource1.getTimeIndexType()));
+
     File file2 =
         new File(
             TestConstant.BASE_OUTPUT_PATH.concat(
@@ -295,6 +300,15 @@ public class ResourceManagerTest {
     assertEquals(
         TimeIndexLevel.ARRAY_DEVICE_TIME_INDEX,
         TimeIndexLevel.valueOf(tsFileResource2.getTimeIndexType()));
+
+    long curTimeIndexMemoryThreshold =
+        degradedResource1.calculateRamSize() + tsFileResource2.calculateRamSize();
+    tsFileResourceManager.setTimeIndexMemoryThreshold(curTimeIndexMemoryThreshold);
+    tsFileResourceManager.registerSealedTsFileResource(tsFileResource1);
+    assertEquals(
+        TimeIndexLevel.ARRAY_DEVICE_TIME_INDEX,
+        TimeIndexLevel.valueOf(tsFileResource1.getTimeIndexType()));
+
     tsFileResourceManager.registerSealedTsFileResource(tsFileResource2);
     assertEquals(
         TimeIndexLevel.FILE_TIME_INDEX, TimeIndexLevel.valueOf(tsFileResource1.getTimeIndexType()));
@@ -305,8 +319,51 @@ public class ResourceManagerTest {
 
   @Test
   public void testMultiDeviceTimeIndexDegrade() throws IOException, WriteProcessException {
-    long curTimeIndexMemoryThreshold = 9663;
-    tsFileResourceManager.setTimeIndexMemoryThreshold(curTimeIndexMemoryThreshold);
+    long curTimeIndexMemoryThreshold = 0;
+    for (int i = 0; i < 8; i++) {
+      File file =
+          new File(
+              TestConstant.BASE_OUTPUT_PATH.concat(
+                  i
+                      + IoTDBConstant.FILE_NAME_SEPARATOR
+                      + i
+                      + IoTDBConstant.FILE_NAME_SEPARATOR
+                      + 0
+                      + IoTDBConstant.FILE_NAME_SEPARATOR
+                      + 0
+                      + ".tsfile"));
+      TsFileResource tsFileResource = new TsFileResource(file);
+      tsFileResource.setStatusForTest(TsFileResourceStatus.NORMAL);
+      tsFileResource.updatePlanIndexes((long) i);
+      assertEquals(
+          TimeIndexLevel.ARRAY_DEVICE_TIME_INDEX,
+          TimeIndexLevel.valueOf(tsFileResource.getTimeIndexType()));
+      prepareFile(tsFileResource, i * ptNum, ptNum, 0);
+      tsFileResource.degradeTimeIndex();
+      curTimeIndexMemoryThreshold += tsFileResource.calculateRamSize();
+    }
+    for (int i = 8; i < seqFileNum; i++) {
+      File file =
+          new File(
+              TestConstant.BASE_OUTPUT_PATH.concat(
+                  i
+                      + IoTDBConstant.FILE_NAME_SEPARATOR
+                      + i
+                      + IoTDBConstant.FILE_NAME_SEPARATOR
+                      + 0
+                      + IoTDBConstant.FILE_NAME_SEPARATOR
+                      + 0
+                      + ".tsfile"));
+      TsFileResource tsFileResource = new TsFileResource(file);
+      tsFileResource.setStatusForTest(TsFileResourceStatus.NORMAL);
+      tsFileResource.updatePlanIndexes((long) i);
+      assertEquals(
+          TimeIndexLevel.ARRAY_DEVICE_TIME_INDEX,
+          TimeIndexLevel.valueOf(tsFileResource.getTimeIndexType()));
+      prepareFile(tsFileResource, i * ptNum, ptNum, 0);
+      curTimeIndexMemoryThreshold += tsFileResource.calculateRamSize();
+    }
+
     for (int i = 0; i < seqFileNum; i++) {
       File file =
           new File(
@@ -327,8 +384,11 @@ public class ResourceManagerTest {
           TimeIndexLevel.valueOf(tsFileResource.getTimeIndexType()));
       seqResources.add(tsFileResource);
       prepareFile(tsFileResource, i * ptNum, ptNum, 0);
-      tsFileResourceManager.registerSealedTsFileResource(tsFileResource);
     }
+
+    tsFileResourceManager.setTimeIndexMemoryThreshold(curTimeIndexMemoryThreshold);
+    seqResources.forEach(tsFileResourceManager::registerSealedTsFileResource);
+
     assertEquals(10, tsFileResourceManager.getPriorityQueueSize());
     for (int i = 0; i < seqFileNum; i++) {
       // TODO: size of DeviceID may different with string device
@@ -346,8 +406,7 @@ public class ResourceManagerTest {
 
   @Test
   public void testAllFileTimeIndexDegrade() throws IOException, WriteProcessException {
-    long curTimeIndexMemoryThreshold = 322;
-    tsFileResourceManager.setTimeIndexMemoryThreshold(curTimeIndexMemoryThreshold);
+    tsFileResourceManager.setTimeIndexMemoryThreshold(0);
     for (int i = 0; i < seqFileNum; i++) {
       File file =
           new File(

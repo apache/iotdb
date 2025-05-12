@@ -171,7 +171,7 @@ public class TierManager {
   private void mkDataDirs(List<String> folders) {
     for (String folder : folders) {
       File file = FSFactoryProducer.getFSFactory().getFile(folder);
-      if (FSUtils.getFSType(file) == FSType.OBJECT_STORAGE) {
+      if (FSUtils.getFSType(folder) == FSType.OBJECT_STORAGE) {
         continue;
       }
       if (file.mkdirs()) {

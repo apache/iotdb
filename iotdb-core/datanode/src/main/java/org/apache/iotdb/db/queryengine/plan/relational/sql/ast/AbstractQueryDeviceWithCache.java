@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
 
 import org.apache.iotdb.commons.schema.column.ColumnHeader;
+import org.apache.iotdb.commons.schema.table.TreeViewSchema;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
@@ -32,9 +33,12 @@ import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
 import org.apache.tsfile.read.common.block.TsBlock;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 public abstract class AbstractQueryDeviceWithCache extends AbstractTraverseDevice {
 
@@ -57,34 +61,52 @@ public abstract class AbstractQueryDeviceWithCache extends AbstractTraverseDevic
     if (Objects.isNull(where)) {
       return true;
     }
-    final List<DeviceEntry> entries = new ArrayList<>();
+    final Map<String, List<DeviceEntry>> entries = new HashMap<>();
+    entries.put(database, new ArrayList<>());
+
     final boolean needFetch =
         super.parseRawExpression(entries, tableInstance, attributeColumns, context);
     if (!needFetch) {
       context.reserveMemoryForFrontEnd(
-          entries.stream().map(DeviceEntry::ramBytesUsed).reduce(0L, Long::sum));
+          entries.get(database).stream().map(DeviceEntry::ramBytesUsed).reduce(0L, Long::sum));
       results =
-          entries.stream()
+          entries.get(database).stream()
               .map(
                   deviceEntry ->
                       ShowDevicesResult.convertDeviceEntry2ShowDeviceResult(
-                          deviceEntry, attributeColumns))
+                          deviceEntry,
+                          attributeColumns,
+                          TreeViewSchema.isTreeViewTable(tableInstance)
+                              ? TreeViewSchema.getPrefixPattern(tableInstance).getNodeLength() - 1
+                              : 0))
               .collect(Collectors.toList());
     }
     return needFetch;
   }
 
   public static List<ColumnHeader> getDeviceColumnHeaderList(
-      final String database, final String tableName) {
-    return DataNodeTableCache.getInstance().getTable(database, tableName).getColumnList().stream()
-        .filter(
-            columnSchema ->
-                columnSchema.getColumnCategory().equals(TsTableColumnCategory.TAG)
-                    || columnSchema.getColumnCategory().equals(TsTableColumnCategory.ATTRIBUTE))
-        .map(
-            columnSchema ->
-                new ColumnHeader(columnSchema.getColumnName(), columnSchema.getDataType()))
-        .collect(Collectors.toList());
+      final String database, final String tableName, final List<String> attributeColumns) {
+    final TsTable table = DataNodeTableCache.getInstance().getTable(database, tableName);
+    return Objects.isNull(attributeColumns)
+        ? table.getColumnList().stream()
+            .filter(
+                columnSchema ->
+                    columnSchema.getColumnCategory().equals(TsTableColumnCategory.TAG)
+                        || columnSchema.getColumnCategory().equals(TsTableColumnCategory.ATTRIBUTE))
+            .map(
+                columnSchema ->
+                    new ColumnHeader(columnSchema.getColumnName(), columnSchema.getDataType()))
+            .collect(Collectors.toList())
+        : Stream.concat(
+                table.getColumnList().stream()
+                    .filter(
+                        columnSchema ->
+                            columnSchema.getColumnCategory().equals(TsTableColumnCategory.TAG)),
+                attributeColumns.stream().map(table::getColumnSchema))
+            .map(
+                columnSchema ->
+                    new ColumnHeader(columnSchema.getColumnName(), columnSchema.getDataType()))
+            .collect(Collectors.toList());
   }
 
   public abstract DatasetHeader getDataSetHeader();

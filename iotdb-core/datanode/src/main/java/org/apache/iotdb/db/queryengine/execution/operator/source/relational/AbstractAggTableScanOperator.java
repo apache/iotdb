@@ -56,7 +56,6 @@ import org.apache.tsfile.write.schema.IMeasurementSchema;
 
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
@@ -111,7 +110,7 @@ public abstract class AbstractAggTableScanOperator extends AbstractDataSourceOpe
 
   private boolean allAggregatorsHasFinalResult = false;
 
-  public AbstractAggTableScanOperator(AbstractAggTableScanOperatorParameter parameter) {
+  protected AbstractAggTableScanOperator(AbstractAggTableScanOperatorParameter parameter) {
 
     this.sourceId = parameter.sourceId;
     this.operatorContext = parameter.context;
@@ -175,7 +174,7 @@ public abstract class AbstractAggTableScanOperator extends AbstractDataSourceOpe
 
     if (this.deviceEntries.isEmpty() || this.deviceEntries.get(this.currentDeviceIndex) == null) {
       // for device which is not exist
-      deviceEntry = new AlignedDeviceEntry(new StringArrayDeviceID(""), Collections.emptyList());
+      deviceEntry = new AlignedDeviceEntry(new StringArrayDeviceID(""), new Binary[0]);
     } else {
       deviceEntry = this.deviceEntries.get(this.currentDeviceIndex);
     }
@@ -361,10 +360,8 @@ public abstract class AbstractAggTableScanOperator extends AbstractDataSourceOpe
             id == null ? null : new Binary(id, TSFileConfig.STRING_CHARSET));
       case ATTRIBUTE:
         Binary attr =
-            deviceEntries
-                .get(currentDeviceIndex)
-                .getAttributeColumnValues()
-                .get(aggColumnsIndexArray[columnIdx]);
+            deviceEntries.get(currentDeviceIndex)
+                .getAttributeColumnValues()[aggColumnsIndexArray[columnIdx]];
         return getIdOrAttrColumn(inputRegion.getTimeColumn().getPositionCount(), attr);
       case FIELD:
         return inputRegion.getColumn(aggColumnsIndexArray[columnIdx]);
@@ -428,10 +425,8 @@ public abstract class AbstractAggTableScanOperator extends AbstractDataSourceOpe
             timeStatistics, id == null ? null : new Binary(id, TSFileConfig.STRING_CHARSET));
       case ATTRIBUTE:
         Binary attr =
-            deviceEntries
-                .get(currentDeviceIndex)
-                .getAttributeColumnValues()
-                .get(aggColumnsIndexArray[columnIdx]);
+            deviceEntries.get(currentDeviceIndex)
+                .getAttributeColumnValues()[aggColumnsIndexArray[columnIdx]];
         return getStatistics(timeStatistics, attr);
       case FIELD:
         return valueStatistics[aggColumnsIndexArray[columnIdx]];
@@ -656,7 +651,7 @@ public abstract class AbstractAggTableScanOperator extends AbstractDataSourceOpe
         }
       } else {
         Binary attribute =
-            deviceEntries.get(deviceIndex).getAttributeColumnValues().get(groupingKeyIndex[i]);
+            deviceEntries.get(deviceIndex).getAttributeColumnValues()[groupingKeyIndex[i]];
         if (attribute == null) {
           columnBuilders[i].appendNull();
         } else {
@@ -672,11 +667,6 @@ public abstract class AbstractAggTableScanOperator extends AbstractDataSourceOpe
       return false;
     }
 
-    // no aggregation function, just output ids or attributes
-    if (aggregators.isEmpty()) {
-      return false;
-    }
-
     for (TableAggregator aggregator : aggregators) {
       if (!aggregator.hasFinalResult()) {
         return false;
@@ -689,8 +679,8 @@ public abstract class AbstractAggTableScanOperator extends AbstractDataSourceOpe
 
   private void checkIfAllAggregatorHasFinalResult() {
     if (allAggregatorsHasFinalResult
-        && timeIterator.getType()
-            == ITableTimeRangeIterator.TimeIteratorType.SINGLE_TIME_ITERATOR) {
+        && (timeIterator.getType() == ITableTimeRangeIterator.TimeIteratorType.SINGLE_TIME_ITERATOR
+            || tableAggregators.isEmpty())) {
       nextDevice();
       inputTsBlock = null;
 

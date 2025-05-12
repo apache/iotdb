@@ -20,10 +20,10 @@
 package org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation;
 
 import org.apache.iotdb.common.rpc.thrift.TAggregationType;
-import org.apache.iotdb.commons.udf.utils.TableUDFUtils;
 import org.apache.iotdb.commons.udf.utils.UDFDataTypeTransformer;
 import org.apache.iotdb.db.queryengine.execution.aggregation.VarianceAccumulator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.grouped.GroupedAccumulator;
+import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.grouped.GroupedApproxCountDistinctAccumulator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.grouped.GroupedAvgAccumulator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.grouped.GroupedCountAccumulator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.grouped.GroupedCountIfAccumulator;
@@ -44,6 +44,7 @@ import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggr
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.grouped.hash.MarkDistinctHash;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
 import org.apache.iotdb.db.queryengine.plan.relational.type.InternalTypeManager;
+import org.apache.iotdb.db.queryengine.plan.udf.TableUDFUtils;
 import org.apache.iotdb.udf.api.customizer.parameter.FunctionArguments;
 import org.apache.iotdb.udf.api.relational.AggregateFunction;
 
@@ -240,6 +241,8 @@ public class AccumulatorFactory {
       case VAR_POP:
         return new GroupedVarianceAccumulator(
             inputDataTypes.get(0), VarianceAccumulator.VarianceType.VAR_POP);
+      case APPROX_COUNT_DISTINCT:
+        return new GroupedApproxCountDistinctAccumulator(inputDataTypes.get(0));
       default:
         throw new IllegalArgumentException("Invalid Aggregation function: " + aggregationType);
     }
@@ -305,6 +308,8 @@ public class AccumulatorFactory {
       case VAR_POP:
         return new TableVarianceAccumulator(
             inputDataTypes.get(0), VarianceAccumulator.VarianceType.VAR_POP);
+      case APPROX_COUNT_DISTINCT:
+        return new ApproxCountDistinctAccumulator(inputDataTypes.get(0));
       default:
         throw new IllegalArgumentException("Invalid Aggregation function: " + aggregationType);
     }

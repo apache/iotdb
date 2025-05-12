@@ -43,6 +43,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.BinaryLiteral;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.BooleanLiteral;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Cast;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CoalesceExpression;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Columns;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ComparisonExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CurrentDatabase;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CurrentTime;
@@ -801,7 +802,7 @@ public class ExpressionAnalyzer {
       ResolvedFunction resolvedFunction =
           new ResolvedFunction(
               new BoundSignature(functionName.toLowerCase(Locale.ENGLISH), type, argumentTypes),
-              new FunctionId("noop"),
+              FunctionId.NOOP_FUNCTION_ID,
               isAggregation ? FunctionKind.AGGREGATE : FunctionKind.SCALAR,
               true,
               isAggregation
@@ -1148,6 +1149,11 @@ public class ExpressionAnalyzer {
     protected Type visitNode(Node node, StackableAstVisitorContext<Context> context) {
       throw new SemanticException(
           String.format("not yet implemented: %s", node.getClass().getName()));
+    }
+
+    @Override
+    protected Type visitColumns(Columns node, StackableAstVisitorContext<Context> context) {
+      throw new SemanticException("Columns only support to be used in SELECT and WHERE clause");
     }
 
     private Type getOperator(

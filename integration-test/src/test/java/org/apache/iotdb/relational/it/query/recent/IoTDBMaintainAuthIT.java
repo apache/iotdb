@@ -34,7 +34,6 @@ import org.junit.runner.RunWith;
 import static org.apache.iotdb.db.auth.AuthorityChecker.ONLY_ADMIN_ALLOWED;
 import static org.apache.iotdb.db.it.utils.TestUtils.prepareTableData;
 import static org.apache.iotdb.db.it.utils.TestUtils.tableAssertTestFail;
-import static org.apache.iotdb.db.it.utils.TestUtils.tableExecuteTest;
 import static org.apache.iotdb.db.it.utils.TestUtils.tableQueryNoVerifyResultTest;
 
 @RunWith(IoTDBTestRunner.class)
@@ -53,9 +52,7 @@ public class IoTDBMaintainAuthIT {
         "CREATE TABLE table1(device_id STRING TAG, s1 INT32 FIELD)",
         "INSERT INTO table1(time,device_id,s1) values(1, 'd1', 1)",
         String.format(CREATE_USER_FORMAT, USER_1, PASSWORD),
-        "GRANT MAINTAIN TO USER " + USER_1,
         "GRANT SELECT ON TABLE table1 TO USER " + USER_1,
-        "GRANT SELECT ON information_schema.queries TO USER " + USER_1,
         String.format(CREATE_USER_FORMAT, USER_2, PASSWORD)
       };
 
@@ -123,142 +120,119 @@ public class IoTDBMaintainAuthIT {
     tableQueryNoVerifyResultTest("SHOW CURRENT_TIMESTAMP", expectedHeader, USER_2, PASSWORD);
 
     // case 7: show variables
-    expectedHeader = new String[] {"Variable", "Value"};
-    // user1 with MAINTAIN
-    tableQueryNoVerifyResultTest("SHOW VARIABLES", expectedHeader, USER_1, PASSWORD);
-    // user2 without MAINTAIN
+    // user2
     tableAssertTestFail(
         "SHOW VARIABLES",
         TSStatusCode.NO_PERMISSION.getStatusCode()
-            + ": Access Denied: No permissions for this operation, please add privilege MAINTAIN",
+            + ": Access Denied: No permissions for this operation, only root user is allowed",
         USER_2,
         PASSWORD);
 
     // case 8: show cluster_id
-    expectedHeader = new String[] {"ClusterId"};
-    // user1 with MAINTAIN
-    tableQueryNoVerifyResultTest("SHOW CLUSTER_ID", expectedHeader, USER_1, PASSWORD);
-    // user2 without MAINTAIN
+    // user2
     tableAssertTestFail(
         "SHOW CLUSTER_ID",
         TSStatusCode.NO_PERMISSION.getStatusCode()
-            + ": Access Denied: No permissions for this operation, please add privilege MAINTAIN",
+            + ": Access Denied: No permissions for this operation, only root user is allowed",
         USER_2,
         PASSWORD);
 
     // case 9: flush
-    // user1 with MAINTAIN
-    tableExecuteTest("FLUSH", USER_1, PASSWORD);
-    // user2 without MAINTAIN
+    // user2
     tableAssertTestFail(
         "FLUSH",
         TSStatusCode.NO_PERMISSION.getStatusCode()
-            + ": Access Denied: No permissions for this operation, please add privilege MAINTAIN",
+            + ": Access Denied: No permissions for this operation, only root user is allowed",
         USER_2,
         PASSWORD);
 
     // case 10: clear cache
-    // user1 with MAINTAIN
-    tableExecuteTest("CLEAR CACHE", USER_1, PASSWORD);
-    // user2 without MAINTAIN
+    // user2
     tableAssertTestFail(
         "CLEAR CACHE",
         TSStatusCode.NO_PERMISSION.getStatusCode()
-            + ": Access Denied: No permissions for this operation, please add privilege MAINTAIN",
+            + ": Access Denied: No permissions for this operation, only root user is allowed",
         USER_2,
         PASSWORD);
 
     // case 11: set configuration
-    // user1 with MAINTAIN
-    tableExecuteTest("SET CONFIGURATION query_timeout_threshold='100000'", USER_1, PASSWORD);
-    // user2 without MAINTAIN
+    // user2
     tableAssertTestFail(
         "SET CONFIGURATION query_timeout_threshold='100000'",
         TSStatusCode.NO_PERMISSION.getStatusCode()
-            + ": Access Denied: No permissions for this operation, please add privilege MAINTAIN",
+            + ": Access Denied: No permissions for this operation, only root user is allowed",
         USER_2,
         PASSWORD);
 
     // case 12: show queries
     // user1 with select on information_schema.queries
-    expectedHeader =
-        new String[] {"query_id", "start_time", "datanode_id", "elapsed_time", "statement", "user"};
-    tableQueryNoVerifyResultTest("SHOW QUERIES", expectedHeader, USER_1, PASSWORD);
+    tableAssertTestFail(
+        "SHOW QUERIES",
+        TSStatusCode.NO_PERMISSION.getStatusCode()
+            + ": Access Denied: No permissions for this operation, only root user is allowed",
+        USER_1,
+        PASSWORD);
     // user2 without select on information_schema.queries
     tableAssertTestFail(
         "SHOW QUERIES",
         TSStatusCode.NO_PERMISSION.getStatusCode()
-            + ": Access Denied: No permissions for this operation, please add privilege SELECT ON information_schema.queries",
+            + ": Access Denied: No permissions for this operation, only root user is allowed",
         USER_2,
         PASSWORD);
 
     // case 13: kill query
-    // user1 with MAINTAIN
-    tableAssertTestFail(
-        "kill query '20250206_093300_00001_1'",
-        TSStatusCode.NO_SUCH_QUERY.getStatusCode() + ": No such query",
-        USER_1,
-        PASSWORD);
-    // user2 without MAINTAIN
+    // user2
     tableAssertTestFail(
         "kill query '20250206_093300_00001_1'",
         TSStatusCode.NO_PERMISSION.getStatusCode()
-            + ": Access Denied: No permissions for this operation, please add privilege MAINTAIN",
+            + ": Access Denied: No permissions for this operation, only root user is allowed",
         USER_2,
         PASSWORD);
 
     // case 14: load configuration
-    // user1 with MAINTAIN
-    tableExecuteTest("LOAD CONFIGURATION", USER_1, PASSWORD);
-    // user2 without MAINTAIN
+    // user2
     tableAssertTestFail(
         "LOAD CONFIGURATION",
         TSStatusCode.NO_PERMISSION.getStatusCode()
-            + ": Access Denied: No permissions for this operation, please add privilege MAINTAIN",
+            + ": Access Denied: No permissions for this operation, only root user is allowed",
         USER_2,
         PASSWORD);
 
     // case 15: set system status
-    // user1 with MAINTAIN
-    tableExecuteTest("SET SYSTEM TO RUNNING", USER_1, PASSWORD);
-    // user2 without MAINTAIN
+    // user2
     tableAssertTestFail(
         "SET SYSTEM TO RUNNING",
         TSStatusCode.NO_PERMISSION.getStatusCode()
-            + ": Access Denied: No permissions for this operation, please add privilege MAINTAIN",
+            + ": Access Denied: No permissions for this operation, only root user is allowed",
         USER_2,
         PASSWORD);
 
     // case 16: start repair data
-    // user1 with MAINTAIN
-    tableExecuteTest("START REPAIR DATA", USER_1, PASSWORD);
-    // user2 without MAINTAIN
+    // user2
     tableAssertTestFail(
         "START REPAIR DATA",
         TSStatusCode.NO_PERMISSION.getStatusCode()
-            + ": Access Denied: No permissions for this operation, please add privilege MAINTAIN",
+            + ": Access Denied: No permissions for this operation, only root user is allowed",
         USER_2,
         PASSWORD);
 
     // case 17: stop repair data
-    // user1 with MAINTAIN
-    tableExecuteTest("STOP REPAIR DATA", USER_1, PASSWORD);
-    // user2 without MAINTAIN
+    // user2
     tableAssertTestFail(
         "STOP REPAIR DATA",
         TSStatusCode.NO_PERMISSION.getStatusCode()
-            + ": Access Denied: No permissions for this operation, please add privilege MAINTAIN",
+            + ": Access Denied: No permissions for this operation, only root user is allowed",
         USER_2,
         PASSWORD);
 
     // case 18: create function
-    // user1 with MAINTAIN
+    // user1
     tableAssertTestFail(
         "create function udsf as 'org.apache.iotdb.db.query.udf.example.relational.ContainNull'",
         TSStatusCode.NO_PERMISSION.getStatusCode() + ": Access Denied: " + ONLY_ADMIN_ALLOWED,
         USER_1,
         PASSWORD);
-    // user2 without MAINTAIN
+    // user2
     tableAssertTestFail(
         "create function udsf as 'org.apache.iotdb.db.query.udf.example.relational.ContainNull'",
         TSStatusCode.NO_PERMISSION.getStatusCode() + ": Access Denied: " + ONLY_ADMIN_ALLOWED,
@@ -266,20 +240,20 @@ public class IoTDBMaintainAuthIT {
         PASSWORD);
 
     // case 19: show functions
-    // user1 with MAINTAIN
+    // user1
     expectedHeader = new String[] {"FunctionName", "FunctionType", "ClassName(UDF)", "State"};
     tableQueryNoVerifyResultTest("SHOW FUNCTIONS", expectedHeader, USER_1, PASSWORD);
-    // user2 without MAINTAIN
+    // user2
     tableQueryNoVerifyResultTest("SHOW FUNCTIONS", expectedHeader, USER_2, PASSWORD);
 
     // case 20: create function
-    // user1 with MAINTAIN
+    // user1
     tableAssertTestFail(
         "drop function udsf",
         TSStatusCode.NO_PERMISSION.getStatusCode() + ": Access Denied: " + ONLY_ADMIN_ALLOWED,
         USER_1,
         PASSWORD);
-    // user2 without MAINTAIN
+    // user2
     tableAssertTestFail(
         "drop function udsf",
         TSStatusCode.NO_PERMISSION.getStatusCode() + ": Access Denied: " + ONLY_ADMIN_ALLOWED,

@@ -138,11 +138,6 @@ public class AlignedWritableMemChunkGroup implements IWritableMemChunkGroup {
   }
 
   @Override
-  public long getMeasurementSize(String measurement) {
-    return memChunk.rowCount();
-  }
-
-  @Override
   public IWritableMemChunk getWritableMemChunk(String measurement) {
     return memChunk;
   }

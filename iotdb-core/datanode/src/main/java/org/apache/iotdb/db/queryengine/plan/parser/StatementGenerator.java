@@ -98,12 +98,12 @@ import org.antlr.v4.runtime.CommonTokenStream;
 import org.antlr.v4.runtime.atn.PredictionMode;
 import org.antlr.v4.runtime.tree.ParseTree;
 import org.apache.tsfile.common.constant.TsFileConstant;
+import org.apache.tsfile.enums.ColumnCategory;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.enums.CompressionType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 import org.apache.tsfile.utils.TimeDuration;
-import org.apache.tsfile.write.record.Tablet.ColumnCategory;
 
 import java.nio.ByteBuffer;
 import java.time.ZoneId;
@@ -297,7 +297,7 @@ public class StatementGenerator {
           new TsTableColumnCategory[insertRecordReq.getColumnCategoryies().size()];
       for (int i = 0; i < columnCategories.length; i++) {
         columnCategories[i] =
-            TsTableColumnCategory.fromTsFileColumnType(
+            TsTableColumnCategory.fromTsFileColumnCategory(
                 ColumnCategory.values()[insertRecordReq.getColumnCategoryies().get(i).intValue()]);
       }
       insertStatement.setColumnCategories(columnCategories);
@@ -366,7 +366,7 @@ public class StatementGenerator {
           new TsTableColumnCategory[insertTabletReq.columnCategories.size()];
       for (int i = 0; i < columnCategories.length; i++) {
         columnCategories[i] =
-            TsTableColumnCategory.fromTsFileColumnType(
+            TsTableColumnCategory.fromTsFileColumnCategory(
                 ColumnCategory.values()[insertTabletReq.columnCategories.get(i).intValue()]);
       }
       insertStatement.setColumnCategories(columnCategories);

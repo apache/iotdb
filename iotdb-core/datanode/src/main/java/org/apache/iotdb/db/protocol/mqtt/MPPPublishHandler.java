@@ -172,32 +172,27 @@ public class MPPPublishHandler extends AbstractInterceptHandler {
     try {
       TimestampPrecisionUtils.checkTimestampPrecision(message.getTimestamp());
       InsertTabletStatement insertTabletStatement = constructInsertTabletStatement(message);
-      tsStatus = AuthorityChecker.checkAuthority(insertTabletStatement, session);
-      if (tsStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-        LOG.warn(tsStatus.message);
-      } else {
-        session.setDatabaseName(message.getDatabase().toLowerCase());
-        session.setSqlDialect(IClientSession.SqlDialect.TABLE);
-        long queryId = sessionManager.requestQueryId();
-        SqlParser relationSqlParser = new SqlParser();
-        Metadata metadata = LocalExecutionPlanner.getInstance().metadata;
-        ExecutionResult result =
-            Coordinator.getInstance()
-                .executeForTableModel(
-                    insertTabletStatement,
-                    relationSqlParser,
-                    session,
-                    queryId,
-                    sessionManager.getSessionInfo(session),
-                    "",
-                    metadata,
-                    config.getQueryTimeoutThreshold());
+      session.setDatabaseName(message.getDatabase().toLowerCase());
+      session.setSqlDialect(IClientSession.SqlDialect.TABLE);
+      long queryId = sessionManager.requestQueryId();
+      SqlParser relationSqlParser = new SqlParser();
+      Metadata metadata = LocalExecutionPlanner.getInstance().metadata;
+      ExecutionResult result =
+          Coordinator.getInstance()
+              .executeForTableModel(
+                  insertTabletStatement,
+                  relationSqlParser,
+                  session,
+                  queryId,
+                  sessionManager.getSessionInfo(session),
+                  "",
+                  metadata,
+                  config.getQueryTimeoutThreshold());
 
-        tsStatus = result.status;
-        LOG.debug("process result: {}", tsStatus);
-        if (tsStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-          LOG.warn("mqtt line insert error , message = {}", tsStatus.message);
-        }
+      tsStatus = result.status;
+      LOG.debug("process result: {}", tsStatus);
+      if (tsStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        LOG.warn("mqtt line insert error , message = {}", tsStatus.message);
       }
     } catch (Exception e) {
       LOG.warn(

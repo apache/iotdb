@@ -33,45 +33,40 @@ import java.util.Optional;
 import static com.google.common.base.MoreObjects.toStringHelper;
 import static java.util.Objects.requireNonNull;
 
-public final class ColumnDefinition extends Node {
+public class ColumnDefinition extends Node {
 
   private final Identifier name;
   private final DataType type;
   private final TsTableColumnCategory columnCategory;
 
   @Nullable private final String charsetName;
+  @Nullable private final String comment;
 
   public ColumnDefinition(
+      final @Nullable NodeLocation location,
       final Identifier name,
       final DataType type,
       final TsTableColumnCategory columnCategory,
-      final @Nullable String charsetName) {
-    super(null);
+      final @Nullable String charsetName,
+      final @Nullable String comment) {
+    super(location);
     this.name = requireNonNull(name, "name is null");
-    this.type = requireNonNull(type, "type is null");
     this.columnCategory = requireNonNull(columnCategory, "columnCategory is null");
+    this.type = getDefaultType(type);
     this.charsetName = charsetName;
+    this.comment = comment;
   }
 
-  public ColumnDefinition(
-      final NodeLocation location,
-      final Identifier name,
-      DataType type,
-      final TsTableColumnCategory columnCategory,
-      final @Nullable String charsetName) {
-    super(requireNonNull(location, "location is null"));
-    this.name = requireNonNull(name, "name is null");
-    this.columnCategory = requireNonNull(columnCategory, "columnCategory is null");
+  protected DataType getDefaultType(final DataType type) {
     if (Objects.isNull(type)) {
       if ((columnCategory == TsTableColumnCategory.TAG
           || columnCategory == TsTableColumnCategory.ATTRIBUTE)) {
-        type = new GenericDataType(new Identifier("string"), new ArrayList<>());
+        return new GenericDataType(new Identifier("string"), new ArrayList<>());
       } else if (columnCategory == TsTableColumnCategory.TIME) {
-        type = new GenericDataType(new Identifier("timestamp"), new ArrayList<>());
+        return new GenericDataType(new Identifier("timestamp"), new ArrayList<>());
       }
     }
-    this.type = requireNonNull(type, "type is null");
-    this.charsetName = charsetName;
+    return type;
   }
 
   public Identifier getName() {
@@ -88,6 +83,10 @@ public final class ColumnDefinition extends Node {
 
   public Optional<String> getCharsetName() {
     return Optional.ofNullable(charsetName);
+  }
+
+  public @Nullable String getComment() {
+    return comment;
   }
 
   @Override
@@ -112,12 +111,13 @@ public final class ColumnDefinition extends Node {
     return Objects.equals(name, that.name)
         && Objects.equals(type, that.type)
         && columnCategory == that.columnCategory
-        && Objects.equals(charsetName, that.charsetName);
+        && Objects.equals(charsetName, that.charsetName)
+        && Objects.equals(comment, that.comment);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(name, type, columnCategory, charsetName);
+    return Objects.hash(name, type, columnCategory, charsetName, comment);
   }
 
   @Override
@@ -127,6 +127,7 @@ public final class ColumnDefinition extends Node {
         .add("type", type)
         .add("columnCategory", columnCategory)
         .add("charsetName", charsetName)
+        .add("comment", comment)
         .toString();
   }
 }

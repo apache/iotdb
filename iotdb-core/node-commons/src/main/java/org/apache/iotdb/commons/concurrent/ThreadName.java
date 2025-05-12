@@ -69,6 +69,7 @@ public enum ThreadName {
   PBTREE_FLUSH_MONITOR("PBTree-Flush-Monitor"),
   PBTREE_WORKER_POOL("PBTree-Worker-Pool"),
   GENERAL_REGION_ATTRIBUTE_SECURITY_SERVICE("General-Region-Attribute-Security-Service"),
+
   // -------------------------- ClientService --------------------------
   CLIENT_RPC_SERVICE("ClientRPC-Service"),
   CLIENT_RPC_PROCESSOR("ClientRPC-Processor"),
@@ -82,6 +83,7 @@ public enum ThreadName {
   CONFIG_NODE_SIMPLE_CONSENSUS_WAL_FLUSH("ConfigNode-Simple-Consensus-WAL-Flush-Thread"),
   // -------------------------- ConfigNode-Heartbeat --------------------------
   CONFIG_NODE_HEART_BEAT_SERVICE("Cluster-Heartbeat-Service"),
+  CONFIG_NODE_TOPOLOGY_SERVICE("Topology-Service"),
   ASYNC_CONFIGNODE_HEARTBEAT_CLIENT_POOL("AsyncConfigNodeHeartbeatServiceClientPool"),
   ASYNC_DATANODE_HEARTBEAT_CLIENT_POOL("AsyncDataNodeHeartbeatServiceClientPool"),
   // -------------------------- ConfigNode-LoadBalance --------------------------
@@ -102,8 +104,8 @@ public enum ThreadName {
   PIPE_CONSENSUS_RPC_SERVICE("PipeConsensusRPC-Service"),
   PIPE_CONSENSUS_RPC_PROCESSOR("PipeConsensusRPC-Processor"),
   ASYNC_DATANODE_PIPE_CONSENSUS_CLIENT_POOL("AsyncDataNodePipeConsensusServiceClientPool"),
-  PIPE_CONSENSUS_DELETION_SERIALIZE("WAL-Serialize"),
-  PIPE_CONSENSUS_DELETION_SYNC("WAL-Sync"),
+  PIPE_CONSENSUS_DELETION_SERIALIZE("DAL-Serialize"),
+  PIPE_CONSENSUS_TSFILE_WRITER_CHECKER("PipeConsensus-TsFileWriter-Checker"),
 
   // -------------------------- IoTConsensus --------------------------
   IOT_CONSENSUS_RPC_SERVICE("IoTConsensusRPC-Service"),
@@ -149,6 +151,7 @@ public enum ThreadName {
   SUBSCRIPTION_RUNTIME_META_SYNCER("Subscription-Runtime-Meta-Syncer"),
   WINDOW_EVALUATION_SERVICE("WindowEvaluationTaskPoolManager"),
   STATEFUL_TRIGGER_INFORMATION_UPDATER("Stateful-Trigger-Information-Updater"),
+  MEMORY_PERIODICAL_JOB_EXECUTOR("Memory-Periodical-Job-Executor"),
   // -------------------------- JVM --------------------------
   // NOTICE: The thread name of jvm cannot be edited here!
   // We list the thread name here just for distinguishing what module the thread belongs to.
@@ -184,17 +187,15 @@ public enum ThreadName {
   INFLUXDB_RPC_SERVICE("InfluxdbRPC-Service"),
   INFLUXDB_RPC_PROCESSOR("InfluxdbRPC-Processor"),
   STORAGE_ENGINE_CACHED_POOL("StorageEngine"),
-  AINODE_RPC_SERVICE("AINodeRpc-Service"),
   DATANODE_SHUTDOWN_HOOK("DataNode-Shutdown-Hook"),
   UPGRADE_TASK("UpgradeThread"),
   REGION_MIGRATE("Region-Migrate-Pool"),
   STORAGE_ENGINE_RECOVER_TRIGGER("StorageEngine-RecoverTrigger"),
-  REPAIR_DATA("RepairData"),
   FILE_TIME_INDEX_RECORD("FileTimeIndexRecord"),
   BINARY_ALLOCATOR_SAMPLE_EVICTOR("BinaryAllocator-SampleEvictor"),
 
   // the unknown thread name is used for metrics
-  UNKOWN("UNKNOWN");
+  UNKNOWN("UNKNOWN");
 
   private final String name;
   private static final Logger LOGGER = LoggerFactory.getLogger(ThreadName.class);
@@ -263,7 +264,9 @@ public enum ThreadName {
           Arrays.asList(
               PIPE_CONSENSUS_RPC_SERVICE,
               PIPE_CONSENSUS_RPC_PROCESSOR,
-              ASYNC_DATANODE_PIPE_CONSENSUS_CLIENT_POOL));
+              ASYNC_DATANODE_PIPE_CONSENSUS_CLIENT_POOL,
+              PIPE_CONSENSUS_DELETION_SERIALIZE,
+              PIPE_CONSENSUS_TSFILE_WRITER_CHECKER));
 
   private static final Set<ThreadName> ratisThreadNames =
       new HashSet<>(
@@ -339,6 +342,7 @@ public enum ThreadName {
       new HashSet<>(
           Arrays.asList(
               CONFIG_NODE_HEART_BEAT_SERVICE,
+              CONFIG_NODE_TOPOLOGY_SERVICE,
               ASYNC_CONFIGNODE_HEARTBEAT_CLIENT_POOL,
               ASYNC_DATANODE_HEARTBEAT_CLIENT_POOL));
 
@@ -378,7 +382,6 @@ public enum ThreadName {
               INFLUXDB_RPC_SERVICE,
               INFLUXDB_RPC_PROCESSOR,
               STORAGE_ENGINE_CACHED_POOL,
-              AINODE_RPC_SERVICE,
               DATANODE_SHUTDOWN_HOOK,
               UPGRADE_TASK,
               REGION_MIGRATE,
@@ -486,6 +489,6 @@ public enum ThreadName {
       }
     }
     LOGGER.debug("Unknown thread name: {}", givenThreadName);
-    return ThreadName.UNKOWN;
+    return ThreadName.UNKNOWN;
   }
 }

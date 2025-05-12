@@ -26,6 +26,7 @@ import org.apache.iotdb.db.storageengine.dataregion.wal.exception.MemTablePinExc
 import org.apache.iotdb.db.storageengine.dataregion.wal.exception.WALPipeException;
 import org.apache.iotdb.db.storageengine.dataregion.wal.node.WALNode;
 
+import org.apache.tsfile.utils.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -90,10 +91,13 @@ public class WALEntryHandler {
   public InsertNode getInsertNodeViaCacheIfPossible() {
     try {
       final WALEntryValue finalValue = value;
-      return finalValue instanceof InsertNode
-          ? (InsertNode) finalValue
-          : walEntryPosition.readByteBufferOrInsertNodeViaCacheDirectly().getRight();
-    } catch (Exception e) {
+      if (finalValue instanceof InsertNode) {
+        return (InsertNode) finalValue;
+      }
+      final Pair<ByteBuffer, InsertNode> byteBufferInsertNodePair =
+          walEntryPosition.getByteBufferOrInsertNodeIfPossible();
+      return byteBufferInsertNodePair == null ? null : byteBufferInsertNodePair.getRight();
+    } catch (final Exception e) {
       logger.warn("Fail to get insert node via cache. {}", this, e);
       throw e;
     }

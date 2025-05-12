@@ -85,7 +85,7 @@ public class GroupedFirstAccumulator implements GroupedAccumulator {
         return;
       default:
         throw new UnSupportedDataTypeException(
-            String.format("Unsupported data type : %s", seriesDataType));
+            String.format("Unsupported data type in FIRST Aggregation: %s", seriesDataType));
     }
   }
 
@@ -117,7 +117,7 @@ public class GroupedFirstAccumulator implements GroupedAccumulator {
         break;
       default:
         throw new UnSupportedDataTypeException(
-            String.format("Unsupported data type in : %s", seriesDataType));
+            String.format("Unsupported data type in FIRST Aggregation: %s", seriesDataType));
     }
 
     return INSTANCE_SIZE + valuesSize;
@@ -125,6 +125,7 @@ public class GroupedFirstAccumulator implements GroupedAccumulator {
 
   @Override
   public void setGroupCount(long groupCount) {
+    minTimes.ensureCapacity(groupCount);
     switch (seriesDataType) {
       case INT32:
       case DATE:
@@ -150,7 +151,7 @@ public class GroupedFirstAccumulator implements GroupedAccumulator {
         return;
       default:
         throw new UnSupportedDataTypeException(
-            String.format("Unsupported data type in : %s", seriesDataType));
+            String.format("Unsupported data type in FIRST Aggregation: %s", seriesDataType));
     }
   }
 
@@ -182,7 +183,7 @@ public class GroupedFirstAccumulator implements GroupedAccumulator {
         return;
       default:
         throw new UnSupportedDataTypeException(
-            String.format("Unsupported data type : %s", seriesDataType));
+            String.format("Unsupported data type in FIRST Aggregation: %s", seriesDataType));
     }
   }
 
@@ -192,7 +193,7 @@ public class GroupedFirstAccumulator implements GroupedAccumulator {
         argument instanceof BinaryColumn
             || (argument instanceof RunLengthEncodedColumn
                 && ((RunLengthEncodedColumn) argument).getValue() instanceof BinaryColumn),
-        "intermediate input and output of First should be BinaryColumn");
+        "intermediate input and output of FIRST should be BinaryColumn");
 
     for (int i = 0; i < groupIds.length; i++) {
       if (argument.isNull(i)) {
@@ -236,7 +237,7 @@ public class GroupedFirstAccumulator implements GroupedAccumulator {
           break;
         default:
           throw new UnSupportedDataTypeException(
-              String.format("Unsupported data type: %s", seriesDataType));
+              String.format("Unsupported data type in FIRST Aggregation: %s", seriesDataType));
       }
     }
   }
@@ -245,8 +246,8 @@ public class GroupedFirstAccumulator implements GroupedAccumulator {
   public void evaluateIntermediate(int groupId, ColumnBuilder columnBuilder) {
     checkArgument(
         columnBuilder instanceof BinaryColumnBuilder,
-        "intermediate input and output of First should be BinaryColumn");
-    if (minTimes.get(groupId) == Long.MIN_VALUE) {
+        "intermediate input and output of FIRST should be BinaryColumn");
+    if (minTimes.get(groupId) == Long.MAX_VALUE) {
       columnBuilder.appendNull();
     } else {
       columnBuilder.writeBinary(new Binary(serializeTimeWithValue(groupId)));
@@ -255,7 +256,7 @@ public class GroupedFirstAccumulator implements GroupedAccumulator {
 
   @Override
   public void evaluateFinal(int groupId, ColumnBuilder columnBuilder) {
-    if (minTimes.get(groupId) == Long.MIN_VALUE) {
+    if (minTimes.get(groupId) == Long.MAX_VALUE) {
       columnBuilder.appendNull();
     } else {
       switch (seriesDataType) {
@@ -283,7 +284,7 @@ public class GroupedFirstAccumulator implements GroupedAccumulator {
           break;
         default:
           throw new UnSupportedDataTypeException(
-              String.format("Unsupported data type: %s", seriesDataType));
+              String.format("Unsupported data type in FIRST Aggregation: %s", seriesDataType));
       }
     }
   }
@@ -319,7 +320,7 @@ public class GroupedFirstAccumulator implements GroupedAccumulator {
         return;
       default:
         throw new UnSupportedDataTypeException(
-            String.format("Unsupported data type : %s", seriesDataType));
+            String.format("Unsupported data type in FIRST Aggregation: %s", seriesDataType));
     }
   }
 
@@ -360,6 +361,7 @@ public class GroupedFirstAccumulator implements GroupedAccumulator {
         length += Integer.BYTES + values.length;
         bytes = new byte[length];
         longToBytes(minTimes.get(groupId), bytes, 0);
+        BytesUtils.intToBytes(values.length, bytes, Long.BYTES);
         System.arraycopy(values, 0, bytes, length - values.length, values.length);
         return bytes;
       case BOOLEAN:
@@ -370,7 +372,7 @@ public class GroupedFirstAccumulator implements GroupedAccumulator {
         return bytes;
       default:
         throw new UnSupportedDataTypeException(
-            String.format("Unsupported data type: %s", seriesDataType));
+            String.format("Unsupported data type in FIRST Aggregation: %s", seriesDataType));
     }
   }
 
@@ -474,7 +476,7 @@ public class GroupedFirstAccumulator implements GroupedAccumulator {
     if (mask.isSelectAll()) {
       for (int i = 0; i < positionCount; i++) {
         if (!valueColumn.isNull(i)) {
-          updateFloatValue(groupIds[i], valueColumn.getFloat(i), timeColumn.getLong(i));
+          updateDoubleValue(groupIds[i], valueColumn.getDouble(i), timeColumn.getLong(i));
         }
       }
     } else {
@@ -483,8 +485,8 @@ public class GroupedFirstAccumulator implements GroupedAccumulator {
       for (int i = 0; i < positionCount; i++) {
         position = selectedPositions[i];
         if (!valueColumn.isNull(position)) {
-          updateFloatValue(
-              groupIds[position], valueColumn.getFloat(position), timeColumn.getLong(position));
+          updateDoubleValue(
+              groupIds[position], valueColumn.getDouble(position), timeColumn.getLong(position));
         }
       }
     }

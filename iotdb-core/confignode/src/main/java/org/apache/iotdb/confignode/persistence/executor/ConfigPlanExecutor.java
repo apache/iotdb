@@ -126,8 +126,12 @@ import org.apache.iotdb.confignode.consensus.request.write.table.PreCreateTableP
 import org.apache.iotdb.confignode.consensus.request.write.table.PreDeleteColumnPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.PreDeleteTablePlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.RenameTableColumnPlan;
+import org.apache.iotdb.confignode.consensus.request.write.table.RenameTablePlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.RollbackCreateTablePlan;
+import org.apache.iotdb.confignode.consensus.request.write.table.SetTableColumnCommentPlan;
+import org.apache.iotdb.confignode.consensus.request.write.table.SetTableCommentPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.SetTablePropertiesPlan;
+import org.apache.iotdb.confignode.consensus.request.write.table.view.PreCreateTableViewPlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.CommitSetSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.CreateSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.DropSchemaTemplatePlan;
@@ -560,24 +564,41 @@ public class ConfigPlanExecutor {
         return clusterSchemaInfo.extendSchemaTemplate((ExtendSchemaTemplatePlan) physicalPlan);
       case PreCreateTable:
         return clusterSchemaInfo.preCreateTable((PreCreateTablePlan) physicalPlan);
+      case PreCreateTableView:
+        return clusterSchemaInfo.preCreateTableView((PreCreateTableViewPlan) physicalPlan);
       case RollbackCreateTable:
         return clusterSchemaInfo.rollbackCreateTable((RollbackCreateTablePlan) physicalPlan);
       case CommitCreateTable:
         return clusterSchemaInfo.commitCreateTable((CommitCreateTablePlan) physicalPlan);
       case AddTableColumn:
+      case AddViewColumn:
         return clusterSchemaInfo.addTableColumn((AddTableColumnPlan) physicalPlan);
       case RenameTableColumn:
+      case RenameViewColumn:
         return clusterSchemaInfo.renameTableColumn((RenameTableColumnPlan) physicalPlan);
       case SetTableProperties:
+      case SetViewProperties:
         return clusterSchemaInfo.setTableProperties((SetTablePropertiesPlan) physicalPlan);
       case PreDeleteColumn:
+      case PreDeleteViewColumn:
         return clusterSchemaInfo.preDeleteColumn((PreDeleteColumnPlan) physicalPlan);
       case CommitDeleteColumn:
+      case CommitDeleteViewColumn:
         return clusterSchemaInfo.commitDeleteColumn((CommitDeleteColumnPlan) physicalPlan);
       case PreDeleteTable:
+      case PreDeleteView:
         return clusterSchemaInfo.preDeleteTable((PreDeleteTablePlan) physicalPlan);
       case CommitDeleteTable:
+      case CommitDeleteView:
         return clusterSchemaInfo.dropTable((CommitDeleteTablePlan) physicalPlan);
+      case SetTableComment:
+      case SetViewComment:
+        return clusterSchemaInfo.setTableComment((SetTableCommentPlan) physicalPlan);
+      case SetTableColumnComment:
+        return clusterSchemaInfo.setTableColumnComment((SetTableColumnCommentPlan) physicalPlan);
+      case RenameTable:
+      case RenameView:
+        return clusterSchemaInfo.renameTable((RenameTablePlan) physicalPlan);
       case CreatePipeV2:
         return pipeInfo.createPipe((CreatePipePlanV2) physicalPlan);
       case SetPipeStatusV2:
@@ -807,9 +828,15 @@ public class ConfigPlanExecutor {
     final GetRegionInfoListPlan getRegionInfoListPlan = (GetRegionInfoListPlan) req;
     final TShowRegionReq showRegionReq = getRegionInfoListPlan.getShowRegionReq();
     if (showRegionReq != null && showRegionReq.isSetDatabases()) {
-      final List<String> storageGroups = showRegionReq.getDatabases();
+      final List<String> databases = showRegionReq.getDatabases();
       final List<String> matchedStorageGroups =
-          clusterSchemaInfo.getMatchedDatabaseSchemasByName(storageGroups, false).values().stream()
+          clusterSchemaInfo
+              .getMatchedDatabaseSchemasByName(
+                  databases,
+                  ((GetRegionInfoListPlan) req).getShowRegionReq().isSetIsTableModel()
+                      && ((GetRegionInfoListPlan) req).getShowRegionReq().isIsTableModel())
+              .values()
+              .stream()
               .map(TDatabaseSchema::getName)
               .collect(Collectors.toList());
       if (!matchedStorageGroups.isEmpty()) {

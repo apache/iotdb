@@ -23,9 +23,16 @@ import org.apache.iotdb.common.rpc.thrift.Model;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.auth.AccessDeniedException;
 import org.apache.iotdb.commons.executable.ExecutableManager;
+import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.pipe.agent.plugin.builtin.BuiltinPipePlugin;
+import org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant;
+import org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant;
 import org.apache.iotdb.commons.pipe.config.constant.SystemConstant;
+import org.apache.iotdb.commons.schema.table.TreeViewSchema;
 import org.apache.iotdb.commons.schema.table.TsTable;
+import org.apache.iotdb.commons.schema.table.column.TimeColumnSchema;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
+import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
 import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.exception.sql.SemanticException;
@@ -45,12 +52,16 @@ import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.ShowFuncti
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.ShowPipePluginsTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.ShowRegionTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.ShowVariablesTask;
+import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.ai.CreateTrainingTask;
+import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.ai.ShowModelsTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.region.ExtendRegionTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.region.MigrateRegionTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.region.ReconstructRegionTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.region.RemoveRegionTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.AlterDBTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.AlterTableAddColumnTask;
+import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.AlterTableCommentColumnTask;
+import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.AlterTableCommentTableTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.AlterTableDropColumnTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.AlterTableRenameColumnTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.AlterTableRenameTableTask;
@@ -58,6 +69,7 @@ import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.ClearCacheTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.CreateDBTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.CreateTableTask;
+import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.CreateTableViewTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.DeleteDeviceTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.DescribeTableDetailsTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.DescribeTableTask;
@@ -66,6 +78,8 @@ import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.RelationalAuthorizerTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.ShowAINodesTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.ShowConfigNodesTask;
+import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.ShowCreateTableTask;
+import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.ShowCreateViewTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.ShowDBTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.ShowDataNodesTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.ShowTablesDetailsTask;
@@ -111,7 +125,9 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateFunction;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreatePipe;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreatePipePlugin;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateTable;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateTableView;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateTopic;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateTraining;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DataType;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DatabaseStatement;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DeleteDevice;
@@ -141,10 +157,12 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.RemoveDataNode;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.RemoveRegion;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.RenameColumn;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.RenameTable;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SetColumnComment;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SetConfiguration;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SetProperties;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SetSqlDialect;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SetSystemStatus;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SetTableComment;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowAINodes;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowCluster;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowClusterId;
@@ -156,6 +174,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowCurrentUser;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowDB;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowDataNodes;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowFunctions;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowModels;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowPipePlugins;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowPipes;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowRegions;
@@ -169,6 +188,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.StartRepairData;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.StopPipe;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.StopRepairData;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Use;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ViewFieldDefinition;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.rewrite.StatementRewrite;
 import org.apache.iotdb.db.queryengine.plan.relational.type.TypeNotFoundException;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.DatabaseSchemaStatement;
@@ -182,13 +202,15 @@ import org.apache.iotdb.db.queryengine.plan.statement.sys.SetConfigurationStatem
 import org.apache.iotdb.db.queryengine.plan.statement.sys.SetSystemStatusStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.StartRepairDataStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.StopRepairDataStatement;
-import org.apache.iotdb.db.schemaengine.table.InformationSchemaUtils;
+import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 
 import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.Pair;
 
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
@@ -203,6 +225,7 @@ import static org.apache.iotdb.commons.conf.IoTDBConstant.TTL_INFINITE;
 import static org.apache.iotdb.commons.executable.ExecutableManager.getUnTrustedUriErrorMsg;
 import static org.apache.iotdb.commons.executable.ExecutableManager.isUriTrusted;
 import static org.apache.iotdb.commons.schema.table.TsTable.TABLE_ALLOWED_PROPERTIES;
+import static org.apache.iotdb.commons.schema.table.TsTable.TIME_COLUMN_NAME;
 import static org.apache.iotdb.commons.schema.table.TsTable.TTL_PROPERTY;
 import static org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.CreateDBTask.DATA_REGION_GROUP_NUM_KEY;
 import static org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.CreateDBTask.SCHEMA_REGION_GROUP_NUM_KEY;
@@ -327,7 +350,6 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
   @Override
   protected IConfigTask visitDropDB(final DropDB node, final MPPQueryContext context) {
     context.setQueryType(QueryType.WRITE);
-    InformationSchemaUtils.checkDBNameInWrite(node.getDbName().getValue());
     accessControl.checkCanDropDatabase(
         context.getSession().getUserName(), node.getDbName().getValue());
     return new DropDBTask(node);
@@ -353,7 +375,7 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
   protected IConfigTask visitShowCluster(
       final ShowCluster showCluster, final MPPQueryContext context) {
     context.setQueryType(QueryType.READ);
-    accessControl.checkUserHasMaintainPrivilege(context.getSession().getUserName());
+    accessControl.checkUserIsAdmin(context.getSession().getUserName());
     // As the implementation is identical, we'll simply translate to the
     // corresponding tree-model variant and execute that.
     ShowClusterStatement treeStatement = new ShowClusterStatement();
@@ -365,12 +387,15 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
   protected IConfigTask visitShowRegions(
       final ShowRegions showRegions, final MPPQueryContext context) {
     context.setQueryType(QueryType.READ);
-    accessControl.checkUserHasMaintainPrivilege(context.getSession().getUserName());
+    accessControl.checkUserIsAdmin(context.getSession().getUserName());
     // As the implementation is identical, we'll simply translate to the
     // corresponding tree-model variant and execute that.
     final ShowRegionStatement treeStatement = new ShowRegionStatement();
     treeStatement.setRegionType(showRegions.getRegionType());
-    treeStatement.setStorageGroups(showRegions.getDatabases());
+    treeStatement.setDatabases(
+        Objects.nonNull(showRegions.getDatabase())
+            ? Collections.singletonList(new PartialPath(new String[] {showRegions.getDatabase()}))
+            : null);
     treeStatement.setNodeIds(showRegions.getNodeIds());
     return new ShowRegionTask(treeStatement, true);
   }
@@ -379,7 +404,7 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
   protected IConfigTask visitRemoveDataNode(
       final RemoveDataNode removeDataNode, final MPPQueryContext context) {
     context.setQueryType(QueryType.WRITE);
-    accessControl.checkUserHasMaintainPrivilege(context.getSession().getUserName());
+    accessControl.checkUserIsAdmin(context.getSession().getUserName());
     // As the implementation is identical, we'll simply translate to the
     // corresponding tree-model variant and execute that.
     final RemoveDataNodeStatement treeStatement =
@@ -391,7 +416,7 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
   protected IConfigTask visitRemoveConfigNode(
       final RemoveConfigNode removeConfigNode, final MPPQueryContext context) {
     context.setQueryType(QueryType.WRITE);
-    accessControl.checkUserHasMaintainPrivilege(context.getSession().getUserName());
+    accessControl.checkUserIsAdmin(context.getSession().getUserName());
     // As the implementation is identical, we'll simply translate to the
     // corresponding tree-model variant and execute that.
     final RemoveConfigNodeStatement treeStatement =
@@ -403,7 +428,7 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
   protected IConfigTask visitShowDataNodes(
       final ShowDataNodes showDataNodesStatement, final MPPQueryContext context) {
     context.setQueryType(QueryType.READ);
-    accessControl.checkUserHasMaintainPrivilege(context.getSession().getUserName());
+    accessControl.checkUserIsAdmin(context.getSession().getUserName());
     return new ShowDataNodesTask();
   }
 
@@ -411,7 +436,7 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
   protected IConfigTask visitShowConfigNodes(
       final ShowConfigNodes showConfigNodesStatement, final MPPQueryContext context) {
     context.setQueryType(QueryType.READ);
-    accessControl.checkUserHasMaintainPrivilege(context.getSession().getUserName());
+    accessControl.checkUserIsAdmin(context.getSession().getUserName());
     return new ShowConfigNodesTask();
   }
 
@@ -419,7 +444,7 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
   protected IConfigTask visitShowAINodes(
       final ShowAINodes showAINodesStatement, final MPPQueryContext context) {
     context.setQueryType(QueryType.READ);
-    accessControl.checkUserHasMaintainPrivilege(context.getSession().getUserName());
+    accessControl.checkUserIsAdmin(context.getSession().getUserName());
     return new ShowAINodesTask();
   }
 
@@ -427,14 +452,39 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
   protected IConfigTask visitClearCache(
       final ClearCache clearCacheStatement, final MPPQueryContext context) {
     context.setQueryType(QueryType.WRITE);
-    accessControl.checkUserHasMaintainPrivilege(context.getSession().getUserName());
+    accessControl.checkUserIsAdmin(context.getSession().getUserName());
     return new ClearCacheTask(clearCacheStatement);
   }
 
   @Override
   protected IConfigTask visitCreateTable(final CreateTable node, final MPPQueryContext context) {
+    final Pair<String, TsTable> databaseTablePair = parseTable4CreateTableOrView(node, context);
+    return new CreateTableTask(
+        databaseTablePair.getRight(), databaseTablePair.getLeft(), node.isIfNotExists());
+  }
+
+  @Override
+  protected IConfigTask visitCreateTableView(
+      final CreateTableView node, final MPPQueryContext context) {
+    final Pair<String, TsTable> databaseTablePair = parseTable4CreateTableOrView(node, context);
+    final TsTable table = databaseTablePair.getRight();
+    accessControl.checkCanCreateViewFromTreePath(
+        context.getSession().getUserName(), node.getPrefixPath());
+    final String msg = TreeViewSchema.setPathPattern(table, node.getPrefixPath());
+    if (Objects.nonNull(msg)) {
+      throw new SemanticException(msg);
+    }
+    if (node.isRestrict()) {
+      TreeViewSchema.setRestrict(table);
+    }
+    return new CreateTableViewTask(
+        databaseTablePair.getRight(), databaseTablePair.getLeft(), node.isReplace());
+  }
+
+  private Pair<String, TsTable> parseTable4CreateTableOrView(
+      final CreateTable node, final MPPQueryContext context) {
     context.setQueryType(QueryType.WRITE);
-    final Pair<String, String> databaseTablePair = splitQualifiedName(node.getName(), true);
+    final Pair<String, String> databaseTablePair = splitQualifiedName(node.getName());
     final String database = databaseTablePair.getLeft();
     final String tableName = databaseTablePair.getRight();
 
@@ -444,6 +494,9 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
     final TsTable table = new TsTable(tableName);
 
     table.setProps(convertPropertiesToMap(node.getProperties(), false));
+    if (Objects.nonNull(node.getComment())) {
+      table.addProp(TsTable.COMMENT_KEY, node.getComment());
+    }
 
     // TODO: Place the check at statement analyzer
     boolean hasTimeColumn = false;
@@ -451,7 +504,9 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
       final TsTableColumnCategory category = columnDefinition.getColumnCategory();
       final String columnName = columnDefinition.getName().getValue();
       final TSDataType dataType = getDataType(columnDefinition.getType());
-      if (checkTimeColumnIdempotent(category, columnName, dataType) && !hasTimeColumn) {
+      final String comment = columnDefinition.getComment();
+      if (checkTimeColumnIdempotent(category, columnName, dataType, comment, table)
+          && !hasTimeColumn) {
         hasTimeColumn = true;
         continue;
       }
@@ -460,17 +515,35 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
             String.format("Columns in table shall not share the same name %s.", columnName));
       }
       table.addColumnSchema(
-          TableHeaderSchemaValidator.generateColumnSchema(category, columnName, dataType));
+          TableHeaderSchemaValidator.generateColumnSchema(
+              category,
+              columnName,
+              dataType,
+              comment,
+              columnDefinition instanceof ViewFieldDefinition
+                      && Objects.nonNull(((ViewFieldDefinition) columnDefinition).getFrom())
+                  ? ((ViewFieldDefinition) columnDefinition).getFrom().getValue()
+                  : null));
     }
-    return new CreateTableTask(table, database, node.isIfNotExists());
+    return new Pair<>(database, table);
   }
 
   private boolean checkTimeColumnIdempotent(
-      final TsTableColumnCategory category, final String columnName, final TSDataType dataType) {
-    if (category == TsTableColumnCategory.TIME || columnName.equals(TsTable.TIME_COLUMN_NAME)) {
+      final TsTableColumnCategory category,
+      final String columnName,
+      final TSDataType dataType,
+      final String comment,
+      final TsTable table) {
+    if (category == TsTableColumnCategory.TIME || columnName.equals(TIME_COLUMN_NAME)) {
       if (category == TsTableColumnCategory.TIME
-          && columnName.equals(TsTable.TIME_COLUMN_NAME)
+          && columnName.equals(TIME_COLUMN_NAME)
           && dataType == TSDataType.TIMESTAMP) {
+        if (Objects.nonNull(comment)) {
+          final TsTableColumnSchema columnSchema =
+              new TimeColumnSchema(TIME_COLUMN_NAME, TSDataType.TIMESTAMP);
+          columnSchema.getProps().put(TsTable.COMMENT_KEY, comment);
+          table.addColumnSchema(columnSchema);
+        }
         return true;
       } else if (dataType == TSDataType.TIMESTAMP) {
         throw new SemanticException(
@@ -486,7 +559,7 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
   @Override
   protected IConfigTask visitRenameTable(final RenameTable node, final MPPQueryContext context) {
     context.setQueryType(QueryType.WRITE);
-    final Pair<String, String> databaseTablePair = splitQualifiedName(node.getSource(), true);
+    final Pair<String, String> databaseTablePair = splitQualifiedName(node.getSource());
     final String database = databaseTablePair.getLeft();
     final String tableName = databaseTablePair.getRight();
 
@@ -501,15 +574,16 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
     return new AlterTableRenameTableTask(
         database,
         tableName,
-        node.getTarget().getValue(),
         context.getQueryId().getId(),
-        node.tableIfExists());
+        node.getTarget().getValue(),
+        node.tableIfExists(),
+        node.isView());
   }
 
   @Override
   protected IConfigTask visitAddColumn(final AddColumn node, final MPPQueryContext context) {
     context.setQueryType(QueryType.WRITE);
-    final Pair<String, String> databaseTablePair = splitQualifiedName(node.getTableName(), true);
+    final Pair<String, String> databaseTablePair = splitQualifiedName(node.getTableName());
     final String database = databaseTablePair.getLeft();
     final String tableName = databaseTablePair.getRight();
 
@@ -524,16 +598,22 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
             TableHeaderSchemaValidator.generateColumnSchema(
                 definition.getColumnCategory(),
                 definition.getName().getValue(),
-                getDataType(definition.getType()))),
+                getDataType(definition.getType()),
+                definition.getComment(),
+                definition instanceof ViewFieldDefinition
+                        && Objects.nonNull(((ViewFieldDefinition) definition).getFrom())
+                    ? ((ViewFieldDefinition) definition).getFrom().getValue()
+                    : null)),
         context.getQueryId().getId(),
         node.tableIfExists(),
-        node.columnIfNotExists());
+        node.columnIfNotExists(),
+        node.isView());
   }
 
   @Override
   protected IConfigTask visitRenameColumn(final RenameColumn node, final MPPQueryContext context) {
     context.setQueryType(QueryType.WRITE);
-    final Pair<String, String> databaseTablePair = splitQualifiedName(node.getTable(), true);
+    final Pair<String, String> databaseTablePair = splitQualifiedName(node.getTable());
     final String database = databaseTablePair.getLeft();
     final String tableName = databaseTablePair.getRight();
 
@@ -553,13 +633,14 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
         node.getTarget().getValue(),
         context.getQueryId().getId(),
         node.tableIfExists(),
-        node.columnIfExists());
+        node.columnIfExists(),
+        node.isView());
   }
 
   @Override
   protected IConfigTask visitDropColumn(final DropColumn node, final MPPQueryContext context) {
     context.setQueryType(QueryType.WRITE);
-    final Pair<String, String> databaseTablePair = splitQualifiedName(node.getTable(), true);
+    final Pair<String, String> databaseTablePair = splitQualifiedName(node.getTable());
     final String database = databaseTablePair.getLeft();
     final String tableName = databaseTablePair.getRight();
 
@@ -572,14 +653,15 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
         node.getField().getValue(),
         context.getQueryId().getId(),
         node.tableIfExists(),
-        node.columnIfExists());
+        node.columnIfExists(),
+        node.isView());
   }
 
   @Override
   protected IConfigTask visitSetProperties(
       final SetProperties node, final MPPQueryContext context) {
     context.setQueryType(QueryType.WRITE);
-    final Pair<String, String> databaseTablePair = splitQualifiedName(node.getName(), true);
+    final Pair<String, String> databaseTablePair = splitQualifiedName(node.getName());
     final String database = databaseTablePair.getLeft();
     final String tableName = databaseTablePair.getRight();
 
@@ -591,11 +673,52 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
         tableName,
         convertPropertiesToMap(node.getProperties(), true),
         context.getQueryId().getId(),
-        node.ifExists());
+        node.ifExists(),
+        node.getType() == SetProperties.Type.TREE_VIEW);
+  }
+
+  @Override
+  protected IConfigTask visitSetTableComment(
+      final SetTableComment node, final MPPQueryContext context) {
+    context.setQueryType(QueryType.WRITE);
+    final Pair<String, String> databaseTablePair = splitQualifiedName(node.getTableName());
+    final String database = databaseTablePair.getLeft();
+    final String tableName = databaseTablePair.getRight();
+
+    accessControl.checkCanAlterTable(
+        context.getSession().getUserName(), new QualifiedObjectName(database, tableName));
+
+    return new AlterTableCommentTableTask(
+        database,
+        tableName,
+        context.getQueryId().getId(),
+        node.ifExists(),
+        node.getComment(),
+        node.isView());
+  }
+
+  @Override
+  protected IConfigTask visitSetColumnComment(
+      final SetColumnComment node, final MPPQueryContext context) {
+    context.setQueryType(QueryType.WRITE);
+    final Pair<String, String> databaseTablePair = splitQualifiedName(node.getTable());
+    final String database = databaseTablePair.getLeft();
+    final String tableName = databaseTablePair.getRight();
+
+    accessControl.checkCanAlterTable(
+        context.getSession().getUserName(), new QualifiedObjectName(database, tableName));
+
+    return new AlterTableCommentColumnTask(
+        database,
+        tableName,
+        node.getField().getValue(),
+        context.getQueryId().getId(),
+        node.tableIfExists(),
+        node.columnIfExists(),
+        node.getComment());
   }
 
   public static void validateDatabaseName(final String dbName) throws SemanticException {
-    InformationSchemaUtils.checkDBNameInWrite(dbName);
     // Check database length here
     if (dbName.contains(PATH_SEPARATOR)
         || !IoTDBConfig.STORAGE_GROUP_PATTERN.matcher(dbName).matches()
@@ -609,16 +732,13 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
     }
   }
 
-  public Pair<String, String> splitQualifiedName(final QualifiedName name, final boolean isWrite) {
+  public Pair<String, String> splitQualifiedName(final QualifiedName name) {
     String database = clientSession.getDatabaseName();
     if (name.getPrefix().isPresent()) {
       database = name.getPrefix().get().toString();
     }
     if (database == null) {
       throw new SemanticException(DATABASE_NOT_SPECIFIED);
-    }
-    if (isWrite) {
-      InformationSchemaUtils.checkDBNameInWrite(database);
     }
     return new Pair<>(database, name.getSuffix());
   }
@@ -663,14 +783,15 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
   @Override
   protected IConfigTask visitDropTable(final DropTable node, final MPPQueryContext context) {
     context.setQueryType(QueryType.WRITE);
-    final Pair<String, String> databaseTablePair = splitQualifiedName(node.getTableName(), true);
+    final Pair<String, String> databaseTablePair = splitQualifiedName(node.getTableName());
     final String database = databaseTablePair.getLeft();
     final String tableName = databaseTablePair.getRight();
 
     accessControl.checkCanDropTable(
         context.getSession().getUserName(), new QualifiedObjectName(database, tableName));
 
-    return new DropTableTask(database, tableName, context.getQueryId().getId(), node.isExists());
+    return new DropTableTask(
+        database, tableName, context.getQueryId().getId(), node.isExists(), node.isView());
   }
 
   @Override
@@ -722,12 +843,18 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
   protected IConfigTask visitDescribeTable(
       final DescribeTable node, final MPPQueryContext context) {
     context.setQueryType(QueryType.READ);
-    final Pair<String, String> databaseTablePair = splitQualifiedName(node.getTable(), false);
+    final Pair<String, String> databaseTablePair = splitQualifiedName(node.getTable());
     final String database = databaseTablePair.getLeft();
     final String tableName = databaseTablePair.getRight();
 
     accessControl.checkCanShowOrDescTable(
         context.getSession().getUserName(), new QualifiedObjectName(database, tableName));
+
+    if (Boolean.TRUE.equals(node.getShowCreateView())) {
+      return new ShowCreateViewTask(database, tableName);
+    } else if (Boolean.FALSE.equals(node.getShowCreateView())) {
+      return new ShowCreateTableTask(database, tableName);
+    }
     return node.isDetails()
         ? new DescribeTableDetailsTask(database, tableName)
         : new DescribeTableTask(database, tableName);
@@ -736,42 +863,42 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
   @Override
   protected IConfigTask visitFlush(final Flush node, final MPPQueryContext context) {
     context.setQueryType(QueryType.WRITE);
-    accessControl.checkUserHasMaintainPrivilege(context.getSession().getUserName());
+    accessControl.checkUserIsAdmin(context.getSession().getUserName());
     return new FlushTask(((FlushStatement) node.getInnerTreeStatement()));
   }
 
   @Override
   protected IConfigTask visitSetConfiguration(SetConfiguration node, MPPQueryContext context) {
     context.setQueryType(QueryType.WRITE);
-    accessControl.checkUserHasMaintainPrivilege(context.getSession().getUserName());
+    accessControl.checkUserIsAdmin(context.getSession().getUserName());
     return new SetConfigurationTask(((SetConfigurationStatement) node.getInnerTreeStatement()));
   }
 
   @Override
   protected IConfigTask visitStartRepairData(StartRepairData node, MPPQueryContext context) {
     context.setQueryType(QueryType.WRITE);
-    accessControl.checkUserHasMaintainPrivilege(context.getSession().getUserName());
+    accessControl.checkUserIsAdmin(context.getSession().getUserName());
     return new StartRepairDataTask(((StartRepairDataStatement) node.getInnerTreeStatement()));
   }
 
   @Override
   protected IConfigTask visitStopRepairData(StopRepairData node, MPPQueryContext context) {
     context.setQueryType(QueryType.WRITE);
-    accessControl.checkUserHasMaintainPrivilege(context.getSession().getUserName());
+    accessControl.checkUserIsAdmin(context.getSession().getUserName());
     return new StopRepairDataTask(((StopRepairDataStatement) node.getInnerTreeStatement()));
   }
 
   @Override
   protected IConfigTask visitLoadConfiguration(LoadConfiguration node, MPPQueryContext context) {
     context.setQueryType(QueryType.WRITE);
-    accessControl.checkUserHasMaintainPrivilege(context.getSession().getUserName());
+    accessControl.checkUserIsAdmin(context.getSession().getUserName());
     return new LoadConfigurationTask(((LoadConfigurationStatement) node.getInnerTreeStatement()));
   }
 
   @Override
   protected IConfigTask visitSetSystemStatus(SetSystemStatus node, MPPQueryContext context) {
     context.setQueryType(QueryType.WRITE);
-    accessControl.checkUserHasMaintainPrivilege(context.getSession().getUserName());
+    accessControl.checkUserIsAdmin(context.getSession().getUserName());
     return new SetSystemStatusTask(((SetSystemStatusStatement) node.getInnerTreeStatement()));
   }
 
@@ -822,9 +949,12 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
   @Override
   protected IConfigTask visitCreatePipe(final CreatePipe node, final MPPQueryContext context) {
     context.setQueryType(QueryType.WRITE);
-    accessControl.checkUserHasMaintainPrivilege(context.getSession().getUserName());
+    final String userName = context.getSession().getUserName();
+    accessControl.checkUserIsAdmin(userName);
 
-    for (String ExtractorAttribute : node.getExtractorAttributes().keySet()) {
+    final Map<String, String> extractorAttributes = node.getExtractorAttributes();
+    final String pipeName = node.getPipeName();
+    for (final String ExtractorAttribute : extractorAttributes.keySet()) {
       if (ExtractorAttribute.startsWith(SystemConstant.SYSTEM_PREFIX_KEY)) {
         throw new SemanticException(
             String.format(
@@ -834,67 +964,181 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
     }
 
     // Inject table model into the extractor attributes
-    node.getExtractorAttributes()
-        .put(SystemConstant.SQL_DIALECT_KEY, SystemConstant.SQL_DIALECT_TABLE_VALUE);
+    extractorAttributes.put(SystemConstant.SQL_DIALECT_KEY, SystemConstant.SQL_DIALECT_TABLE_VALUE);
+    checkAndEnrichSourceUserName(pipeName, extractorAttributes, userName, false);
+    checkAndEnrichSinkUserName(pipeName, node.getConnectorAttributes(), userName, false);
+
+    mayChangeSourcePattern(extractorAttributes);
 
     return new CreatePipeTask(node);
   }
 
-  @Override
-  protected IConfigTask visitAlterPipe(AlterPipe node, MPPQueryContext context) {
-    context.setQueryType(QueryType.WRITE);
-    accessControl.checkUserHasMaintainPrivilege(context.getSession().getUserName());
+  public static void checkAndEnrichSourceUserName(
+      final String pipeName,
+      final Map<String, String> replacedExtractorAttributes,
+      final String userName,
+      final boolean isAlter) {
+    final PipeParameters extractorParameters = new PipeParameters(replacedExtractorAttributes);
+    final String pluginName =
+        extractorParameters
+            .getStringOrDefault(
+                Arrays.asList(
+                    PipeExtractorConstant.EXTRACTOR_KEY, PipeExtractorConstant.SOURCE_KEY),
+                BuiltinPipePlugin.IOTDB_EXTRACTOR.getPipePluginName())
+            .toLowerCase();
 
-    for (String ExtractorAttribute : node.getExtractorAttributes().keySet()) {
-      if (ExtractorAttribute.startsWith(SystemConstant.SYSTEM_PREFIX_KEY)) {
+    if (!pluginName.equals(BuiltinPipePlugin.IOTDB_EXTRACTOR.getPipePluginName())
+        && !pluginName.equals(BuiltinPipePlugin.IOTDB_SOURCE.getPipePluginName())) {
+      return;
+    }
+
+    if (!extractorParameters.hasAnyAttributes(
+        PipeExtractorConstant.EXTRACTOR_IOTDB_USER_KEY,
+        PipeExtractorConstant.SOURCE_IOTDB_USER_KEY,
+        PipeExtractorConstant.EXTRACTOR_IOTDB_USERNAME_KEY,
+        PipeExtractorConstant.SOURCE_IOTDB_USERNAME_KEY)) {
+      replacedExtractorAttributes.put(PipeExtractorConstant.SOURCE_IOTDB_USERNAME_KEY, userName);
+    } else if (!extractorParameters.hasAnyAttributes(
+        PipeExtractorConstant.EXTRACTOR_IOTDB_PASSWORD_KEY,
+        PipeExtractorConstant.SOURCE_IOTDB_PASSWORD_KEY)) {
+      throw new SemanticException(
+          String.format(
+              "Failed to %s pipe %s, in iotdb-source, password must be set when the username is specified.",
+              isAlter ? "alter" : "create", pipeName));
+    }
+  }
+
+  private static void mayChangeSourcePattern(final Map<String, String> extractorAttributes) {
+    final PipeParameters extractorParameters = new PipeParameters(extractorAttributes);
+
+    final String pluginName =
+        extractorParameters
+            .getStringOrDefault(
+                Arrays.asList(
+                    PipeExtractorConstant.EXTRACTOR_KEY, PipeExtractorConstant.SOURCE_KEY),
+                BuiltinPipePlugin.IOTDB_EXTRACTOR.getPipePluginName())
+            .toLowerCase();
+
+    if (!pluginName.equals(BuiltinPipePlugin.IOTDB_EXTRACTOR.getPipePluginName())
+        && !pluginName.equals(BuiltinPipePlugin.IOTDB_SOURCE.getPipePluginName())) {
+      return;
+    }
+
+    // Use lower case because database + table name are all in lower cases
+    extractorParameters.computeAttributeIfExists(
+        (k, v) -> v.toLowerCase(Locale.ENGLISH),
+        PipeExtractorConstant.EXTRACTOR_DATABASE_KEY,
+        PipeExtractorConstant.SOURCE_DATABASE_KEY,
+        PipeExtractorConstant.EXTRACTOR_DATABASE_NAME_KEY,
+        PipeExtractorConstant.SOURCE_DATABASE_NAME_KEY);
+
+    extractorParameters.computeAttributeIfExists(
+        (k, v) -> v.toLowerCase(Locale.ENGLISH),
+        PipeExtractorConstant.EXTRACTOR_TABLE_KEY,
+        PipeExtractorConstant.SOURCE_TABLE_KEY,
+        PipeExtractorConstant.EXTRACTOR_TABLE_NAME_KEY,
+        PipeExtractorConstant.SOURCE_TABLE_NAME_KEY);
+  }
+
+  public static void checkAndEnrichSinkUserName(
+      final String pipeName,
+      final Map<String, String> connectorAttributes,
+      final String userName,
+      final boolean isAlter) {
+    final PipeParameters connectorParameters = new PipeParameters(connectorAttributes);
+    final String pluginName =
+        connectorParameters
+            .getStringOrDefault(
+                Arrays.asList(PipeConnectorConstant.CONNECTOR_KEY, PipeConnectorConstant.SINK_KEY),
+                BuiltinPipePlugin.IOTDB_THRIFT_SINK.getPipePluginName())
+            .toLowerCase();
+
+    if (!pluginName.equals(BuiltinPipePlugin.WRITE_BACK_CONNECTOR.getPipePluginName())
+        && !pluginName.equals(BuiltinPipePlugin.WRITE_BACK_SINK.getPipePluginName())) {
+      return;
+    }
+
+    if (!connectorParameters.hasAnyAttributes(
+        PipeConnectorConstant.CONNECTOR_IOTDB_USER_KEY,
+        PipeConnectorConstant.SINK_IOTDB_USER_KEY,
+        PipeConnectorConstant.CONNECTOR_IOTDB_USERNAME_KEY,
+        PipeConnectorConstant.SINK_IOTDB_USERNAME_KEY)) {
+      connectorAttributes.put(PipeConnectorConstant.SINK_IOTDB_USERNAME_KEY, userName);
+    } else if (!connectorParameters.hasAnyAttributes(
+        PipeConnectorConstant.CONNECTOR_IOTDB_PASSWORD_KEY,
+        PipeConnectorConstant.SINK_IOTDB_PASSWORD_KEY)) {
+      throw new SemanticException(
+          String.format(
+              "Failed to %s pipe %s, in write-back-sink, password must be set when the username is specified.",
+              isAlter ? "alter" : "create", pipeName));
+    }
+  }
+
+  @Override
+  protected IConfigTask visitAlterPipe(final AlterPipe node, final MPPQueryContext context) {
+    context.setQueryType(QueryType.WRITE);
+
+    final String userName = context.getSession().getUserName();
+    accessControl.checkUserIsAdmin(userName);
+
+    final String pipeName = node.getPipeName();
+    final Map<String, String> extractorAttributes = node.getExtractorAttributes();
+    for (final String extractorAttributeKey : extractorAttributes.keySet()) {
+      if (extractorAttributeKey.startsWith(SystemConstant.SYSTEM_PREFIX_KEY)) {
         throw new SemanticException(
             String.format(
                 "Failed to alter pipe %s, modifying %s is not allowed.",
-                node.getPipeName(), ExtractorAttribute));
+                pipeName, extractorAttributeKey));
       }
     }
     // If the source is replaced, sql-dialect uses the current Alter Pipe sql-dialect. If it is
     // modified, the original sql-dialect is used.
     if (node.isReplaceAllExtractorAttributes()) {
-      node.getExtractorAttributes()
-          .put(SystemConstant.SQL_DIALECT_KEY, SystemConstant.SQL_DIALECT_TABLE_VALUE);
+      extractorAttributes.put(
+          SystemConstant.SQL_DIALECT_KEY, SystemConstant.SQL_DIALECT_TABLE_VALUE);
+      checkAndEnrichSourceUserName(pipeName, extractorAttributes, userName, true);
+    }
+    mayChangeSourcePattern(extractorAttributes);
+
+    if (node.isReplaceAllConnectorAttributes()) {
+      checkAndEnrichSinkUserName(pipeName, node.getConnectorAttributes(), userName, true);
     }
 
-    return new AlterPipeTask(node);
+    return new AlterPipeTask(node, userName);
   }
 
   @Override
   protected IConfigTask visitDropPipe(DropPipe node, MPPQueryContext context) {
     context.setQueryType(QueryType.WRITE);
-    accessControl.checkUserHasMaintainPrivilege(context.getSession().getUserName());
+    accessControl.checkUserIsAdmin(context.getSession().getUserName());
     return new DropPipeTask(node);
   }
 
   @Override
   protected IConfigTask visitStartPipe(StartPipe node, MPPQueryContext context) {
     context.setQueryType(QueryType.WRITE);
-    accessControl.checkUserHasMaintainPrivilege(context.getSession().getUserName());
+    accessControl.checkUserIsAdmin(context.getSession().getUserName());
     return new StartPipeTask(node);
   }
 
   @Override
   protected IConfigTask visitStopPipe(StopPipe node, MPPQueryContext context) {
     context.setQueryType(QueryType.WRITE);
-    accessControl.checkUserHasMaintainPrivilege(context.getSession().getUserName());
+    accessControl.checkUserIsAdmin(context.getSession().getUserName());
     return new StopPipeTask(node);
   }
 
   @Override
   protected IConfigTask visitShowPipes(ShowPipes node, MPPQueryContext context) {
     context.setQueryType(QueryType.READ);
-    accessControl.checkUserHasMaintainPrivilege(context.getSession().getUserName());
+    accessControl.checkUserIsAdmin(context.getSession().getUserName());
     return new ShowPipeTask(node);
   }
 
   @Override
   protected IConfigTask visitCreatePipePlugin(CreatePipePlugin node, MPPQueryContext context) {
     context.setQueryType(QueryType.WRITE);
-    accessControl.checkUserHasMaintainPrivilege(context.getSession().getUserName());
+    accessControl.checkUserIsAdmin(context.getSession().getUserName());
     if (node.getUriString() != null && isUriTrusted(node.getUriString())) {
       // 1. user specified uri and that uri is trusted
       // 2. user doesn't specify uri
@@ -908,21 +1152,21 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
   @Override
   protected IConfigTask visitDropPipePlugin(DropPipePlugin node, MPPQueryContext context) {
     context.setQueryType(QueryType.WRITE);
-    accessControl.checkUserHasMaintainPrivilege(context.getSession().getUserName());
+    accessControl.checkUserIsAdmin(context.getSession().getUserName());
     return new DropPipePluginTask(node);
   }
 
   @Override
   protected IConfigTask visitShowPipePlugins(ShowPipePlugins node, MPPQueryContext context) {
     context.setQueryType(QueryType.READ);
-    accessControl.checkUserHasMaintainPrivilege(context.getSession().getUserName());
+    accessControl.checkUserIsAdmin(context.getSession().getUserName());
     return new ShowPipePluginsTask(node);
   }
 
   @Override
   protected IConfigTask visitCreateTopic(CreateTopic node, MPPQueryContext context) {
     context.setQueryType(QueryType.WRITE);
-    accessControl.checkUserHasMaintainPrivilege(context.getSession().getUserName());
+    accessControl.checkUserIsAdmin(context.getSession().getUserName());
 
     // Inject table model into the topic attributes
     node.getTopicAttributes()
@@ -934,21 +1178,21 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
   @Override
   protected IConfigTask visitDropTopic(DropTopic node, MPPQueryContext context) {
     context.setQueryType(QueryType.WRITE);
-    accessControl.checkUserHasMaintainPrivilege(context.getSession().getUserName());
+    accessControl.checkUserIsAdmin(context.getSession().getUserName());
     return new DropTopicTask(node);
   }
 
   @Override
   protected IConfigTask visitShowTopics(ShowTopics node, MPPQueryContext context) {
     context.setQueryType(QueryType.READ);
-    accessControl.checkUserHasMaintainPrivilege(context.getSession().getUserName());
+    accessControl.checkUserIsAdmin(context.getSession().getUserName());
     return new ShowTopicsTask(node);
   }
 
   @Override
   protected IConfigTask visitShowSubscriptions(ShowSubscriptions node, MPPQueryContext context) {
     context.setQueryType(QueryType.READ);
-    accessControl.checkUserHasMaintainPrivilege(context.getSession().getUserName());
+    accessControl.checkUserIsAdmin(context.getSession().getUserName());
     return new ShowSubscriptionsTask(node);
   }
 
@@ -987,14 +1231,14 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
   @Override
   protected IConfigTask visitShowVariables(ShowVariables node, MPPQueryContext context) {
     context.setQueryType(QueryType.READ);
-    accessControl.checkUserHasMaintainPrivilege(context.getSession().getUserName());
+    accessControl.checkUserIsAdmin(context.getSession().getUserName());
     return new ShowVariablesTask();
   }
 
   @Override
   protected IConfigTask visitShowClusterId(ShowClusterId node, MPPQueryContext context) {
     context.setQueryType(QueryType.READ);
-    accessControl.checkUserHasMaintainPrivilege(context.getSession().getUserName());
+    accessControl.checkUserIsAdmin(context.getSession().getUserName());
     return new ShowClusterIdTask();
   }
 
@@ -1017,7 +1261,7 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
   @Override
   protected IConfigTask visitKillQuery(KillQuery node, MPPQueryContext context) {
     context.setQueryType(QueryType.WRITE);
-    accessControl.checkUserHasMaintainPrivilege(context.getSession().getUserName());
+    accessControl.checkUserIsAdmin(context.getSession().getUserName());
     return new KillQueryTask(node);
   }
 
@@ -1051,7 +1295,7 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
   @Override
   protected IConfigTask visitMigrateRegion(MigrateRegion migrateRegion, MPPQueryContext context) {
     context.setQueryType(QueryType.WRITE);
-    accessControl.checkUserHasMaintainPrivilege(context.getSession().getUserName());
+    accessControl.checkUserIsAdmin(context.getSession().getUserName());
     // As the implementation is identical, we'll simply translate to the
     // corresponding tree-model variant and execute that.
     return new MigrateRegionTask(migrateRegion);
@@ -1061,7 +1305,7 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
   protected IConfigTask visitReconstructRegion(
       ReconstructRegion reconstructRegion, MPPQueryContext context) {
     context.setQueryType(QueryType.WRITE);
-    accessControl.checkUserHasMaintainPrivilege(context.getSession().getUserName());
+    accessControl.checkUserIsAdmin(context.getSession().getUserName());
     // As the implementation is identical, we'll simply translate to the
     // corresponding tree-model variant and execute that.
     return new ReconstructRegionTask(reconstructRegion);
@@ -1070,7 +1314,7 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
   @Override
   protected IConfigTask visitExtendRegion(ExtendRegion extendRegion, MPPQueryContext context) {
     context.setQueryType(QueryType.WRITE);
-    accessControl.checkUserHasMaintainPrivilege(context.getSession().getUserName());
+    accessControl.checkUserIsAdmin(context.getSession().getUserName());
     // As the implementation is identical, we'll simply translate to the
     // corresponding tree-model variant and execute that.
     return new ExtendRegionTask(extendRegion);
@@ -1079,9 +1323,40 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
   @Override
   protected IConfigTask visitRemoveRegion(RemoveRegion removeRegion, MPPQueryContext context) {
     context.setQueryType(QueryType.WRITE);
-    accessControl.checkUserHasMaintainPrivilege(context.getSession().getUserName());
+    accessControl.checkUserIsAdmin(context.getSession().getUserName());
     // As the implementation is identical, we'll simply translate to the
     // corresponding tree-model variant and execute that.
     return new RemoveRegionTask(removeRegion);
+  }
+
+  @Override
+  protected IConfigTask visitCreateTraining(CreateTraining node, MPPQueryContext context) {
+    context.setQueryType(QueryType.WRITE);
+
+    String curDatabase = clientSession.getDatabaseName();
+    List<String> tableList = new ArrayList<>();
+    for (QualifiedName tableName : node.getTargetTables()) {
+      List<String> parts = tableName.getParts();
+      if (parts.size() == 1) {
+        tableList.add(curDatabase + "." + parts.get(0));
+      } else {
+        tableList.add(parts.get(1) + "." + parts.get(0));
+      }
+    }
+
+    return new CreateTrainingTask(
+        node.getModelId(),
+        node.getModelType(),
+        node.getParameters(),
+        node.isUseAllData(),
+        node.getTargetTimeRanges(),
+        node.getExistingModelId(),
+        node.getTargetDbs(),
+        tableList);
+  }
+
+  @Override
+  protected IConfigTask visitShowModels(ShowModels node, MPPQueryContext context) {
+    return new ShowModelsTask(node.getModelId());
   }
 }

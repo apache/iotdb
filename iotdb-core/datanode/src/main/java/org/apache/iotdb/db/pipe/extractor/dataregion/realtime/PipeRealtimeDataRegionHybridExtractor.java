@@ -30,7 +30,7 @@ import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
 import org.apache.iotdb.db.pipe.event.realtime.PipeRealtimeEvent;
 import org.apache.iotdb.db.pipe.extractor.dataregion.IoTDBDataRegionExtractor;
 import org.apache.iotdb.db.pipe.extractor.dataregion.realtime.epoch.TsFileEpoch;
-import org.apache.iotdb.db.pipe.metric.PipeDataRegionExtractorMetrics;
+import org.apache.iotdb.db.pipe.metric.source.PipeDataRegionExtractorMetrics;
 import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
 import org.apache.iotdb.db.storageengine.StorageEngine;
 import org.apache.iotdb.db.storageengine.dataregion.wal.WALManager;
@@ -79,13 +79,17 @@ public class PipeRealtimeDataRegionHybridExtractor extends PipeRealtimeDataRegio
   }
 
   private void extractTabletInsertion(final PipeRealtimeEvent event) {
-    if (canNotUseTabletAnyMore(event)) {
+    TsFileEpoch.State state = event.getTsFileEpoch().getState(this);
+
+    if (state != TsFileEpoch.State.USING_TSFILE
+        && state != TsFileEpoch.State.USING_BOTH
+        && canNotUseTabletAnyMore(event)) {
       event
           .getTsFileEpoch()
           .migrateState(
               this,
-              state -> {
-                switch (state) {
+              curState -> {
+                switch (curState) {
                   case EMPTY:
                   case USING_TSFILE:
                     return TsFileEpoch.State.USING_TSFILE;
@@ -97,7 +101,7 @@ public class PipeRealtimeDataRegionHybridExtractor extends PipeRealtimeDataRegio
               });
     }
 
-    final TsFileEpoch.State state = event.getTsFileEpoch().getState(this);
+    state = event.getTsFileEpoch().getState(this);
     switch (state) {
       case USING_TSFILE:
         // Ignore the tablet event.
@@ -223,6 +227,10 @@ public class PipeRealtimeDataRegionHybridExtractor extends PipeRealtimeDataRegio
   }
 
   private boolean isPipeTaskCurrentlyRestarted(final PipeRealtimeEvent event) {
+    if (!PipeConfig.getInstance().isPipeEpochKeepTsFileAfterStuckRestartEnabled()) {
+      return false;
+    }
+
     final boolean isPipeTaskCurrentlyRestarted =
         PipeDataNodeAgent.task().isPipeTaskCurrentlyRestarted(pipeName);
     if (isPipeTaskCurrentlyRestarted && event.mayExtractorUseTablets(this)) {
@@ -318,17 +326,17 @@ public class PipeRealtimeDataRegionHybridExtractor extends PipeRealtimeDataRegio
     final long floatingMemoryUsageInByte =
         PipeDataNodeAgent.task().getFloatingMemoryUsageInByte(pipeName);
     final long pipeCount = PipeDataNodeAgent.task().getPipeCount();
-    final long freeMemorySizeInBytes =
-        PipeDataNodeResourceManager.memory().getFreeMemorySizeInBytes();
+    final long totalFloatingMemorySizeInBytes =
+        PipeDataNodeResourceManager.memory().getTotalFloatingMemorySizeInBytes();
     final boolean mayInsertNodeMemoryReachDangerousThreshold =
-        3 * floatingMemoryUsageInByte * pipeCount >= 2 * freeMemorySizeInBytes;
+        3 * floatingMemoryUsageInByte * pipeCount >= 2 * totalFloatingMemorySizeInBytes;
     if (mayInsertNodeMemoryReachDangerousThreshold && event.mayExtractorUseTablets(this)) {
       LOGGER.info(
           "Pipe task {}@{} canNotUseTabletAnyMore7: The shallow memory usage of the insert node {} has reached the dangerous threshold {}",
           pipeName,
           dataRegionId,
           floatingMemoryUsageInByte * pipeCount,
-          2 * freeMemorySizeInBytes / 3.0d);
+          2 * totalFloatingMemorySizeInBytes / 3.0d);
     }
     return mayInsertNodeMemoryReachDangerousThreshold;
   }

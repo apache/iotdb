@@ -23,6 +23,8 @@ import org.apache.iotdb.rpc.subscription.exception.SubscriptionException;
 
 import org.apache.tsfile.utils.PublicBAOS;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
@@ -37,6 +39,8 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
 public class ConsumerGroupMeta {
+
+  protected static final Logger LOGGER = LoggerFactory.getLogger(ConsumerGroupMeta.class);
 
   private String consumerGroupId;
   private long creationTime;
@@ -102,6 +106,30 @@ public class ConsumerGroupMeta {
 
   /////////////////////////////// consumer ///////////////////////////////
 
+  public void checkAuthorityBeforeJoinConsumerGroup(final ConsumerMeta consumerMeta)
+      throws SubscriptionException {
+    if (isEmpty()) {
+      return;
+    }
+    final ConsumerMeta existedConsumerMeta = consumerIdToConsumerMeta.values().iterator().next();
+    final boolean match =
+        Objects.equals(existedConsumerMeta.getUsername(), consumerMeta.getUsername())
+            && Objects.equals(existedConsumerMeta.getPassword(), consumerMeta.getPassword());
+    if (!match) {
+      final String exceptionMessage =
+          String.format(
+              "Failed to create consumer %s because inconsistent username & password under the same consumer group, expected %s:%s, actual %s:%s",
+              consumerMeta.getConsumerId(),
+              existedConsumerMeta.getUsername(),
+              existedConsumerMeta.getPassword(),
+              consumerMeta.getUsername(),
+              consumerMeta.getPassword());
+      LOGGER.warn(exceptionMessage);
+      throw new SubscriptionException(exceptionMessage);
+    }
+    return;
+  }
+
   public void addConsumer(final ConsumerMeta consumerMeta) {
     consumerIdToConsumerMeta.put(consumerMeta.getConsumerId(), consumerMeta);
   }
@@ -125,6 +153,10 @@ public class ConsumerGroupMeta {
     // When there are no consumers in a consumer group, it means that the ConsumerGroupMeta is
     // empty, and at this time, the topicNameToSubscribedConsumerIdSet is also empty.
     return consumerIdToConsumerMeta.isEmpty();
+  }
+
+  public ConsumerMeta getConsumerMeta(final String consumerId) {
+    return consumerIdToConsumerMeta.get(consumerId);
   }
 
   ////////////////////////// subscription //////////////////////////
@@ -157,6 +189,23 @@ public class ConsumerGroupMeta {
       return false;
     }
     return !subscribedConsumerIdSet.isEmpty();
+  }
+
+  public boolean allowSubscribeTopicForConsumer(final String topic, final String consumerId) {
+    if (!consumerIdToConsumerMeta.containsKey(consumerId)) {
+      return false;
+    }
+    final Set<String> subscribedConsumerIdSet = topicNameToSubscribedConsumerIdSet.get(topic);
+    if (Objects.isNull(subscribedConsumerIdSet)) {
+      return true;
+    }
+    if (subscribedConsumerIdSet.isEmpty()) {
+      return true;
+    }
+    final String subscribedConsumerId = subscribedConsumerIdSet.iterator().next();
+    return Objects.equals(
+        Objects.requireNonNull(consumerIdToConsumerMeta.get(subscribedConsumerId)).getUsername(),
+        Objects.requireNonNull(consumerIdToConsumerMeta.get(consumerId)).getUsername());
   }
 
   public void addSubscription(final String consumerId, final Set<String> topics) {

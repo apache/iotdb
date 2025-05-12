@@ -40,6 +40,7 @@ import org.apache.iotdb.confignode.procedure.impl.pipe.task.StartPipeProcedureV2
 import org.apache.iotdb.confignode.procedure.impl.pipe.task.StopPipeProcedureV2;
 import org.apache.iotdb.confignode.procedure.impl.region.AddRegionPeerProcedure;
 import org.apache.iotdb.confignode.procedure.impl.region.CreateRegionGroupsProcedure;
+import org.apache.iotdb.confignode.procedure.impl.region.NotifyRegionMigrationProcedure;
 import org.apache.iotdb.confignode.procedure.impl.region.ReconstructRegionProcedure;
 import org.apache.iotdb.confignode.procedure.impl.region.RegionMigrateProcedure;
 import org.apache.iotdb.confignode.procedure.impl.region.RemoveRegionPeerProcedure;
@@ -57,7 +58,15 @@ import org.apache.iotdb.confignode.procedure.impl.schema.table.DeleteDevicesProc
 import org.apache.iotdb.confignode.procedure.impl.schema.table.DropTableColumnProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.table.DropTableProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.table.RenameTableColumnProcedure;
+import org.apache.iotdb.confignode.procedure.impl.schema.table.RenameTableProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.table.SetTablePropertiesProcedure;
+import org.apache.iotdb.confignode.procedure.impl.schema.table.view.AddViewColumnProcedure;
+import org.apache.iotdb.confignode.procedure.impl.schema.table.view.CreateTableViewProcedure;
+import org.apache.iotdb.confignode.procedure.impl.schema.table.view.DropViewColumnProcedure;
+import org.apache.iotdb.confignode.procedure.impl.schema.table.view.DropViewProcedure;
+import org.apache.iotdb.confignode.procedure.impl.schema.table.view.RenameViewColumnProcedure;
+import org.apache.iotdb.confignode.procedure.impl.schema.table.view.RenameViewProcedure;
+import org.apache.iotdb.confignode.procedure.impl.schema.table.view.SetViewPropertiesProcedure;
 import org.apache.iotdb.confignode.procedure.impl.subscription.consumer.AlterConsumerGroupProcedure;
 import org.apache.iotdb.confignode.procedure.impl.subscription.consumer.CreateConsumerProcedure;
 import org.apache.iotdb.confignode.procedure.impl.subscription.consumer.DropConsumerProcedure;
@@ -127,6 +136,10 @@ public class ProcedureFactory implements IProcedureFactory {
         break;
       case RECONSTRUCT_REGION_PROCEDURE:
         procedure = new ReconstructRegionProcedure();
+        break;
+      case NOTIFY_REGION_MIGRATION_PROCEDURE:
+        procedure = new NotifyRegionMigrationProcedure();
+        break;
       case DELETE_TIMESERIES_PROCEDURE:
         procedure = new DeleteTimeSeriesProcedure(false);
         break;
@@ -198,23 +211,47 @@ public class ProcedureFactory implements IProcedureFactory {
       case CREATE_TABLE_PROCEDURE:
         procedure = new CreateTableProcedure(false);
         break;
+      case CREATE_TABLE_VIEW_PROCEDURE:
+        procedure = new CreateTableViewProcedure(false);
+        break;
       case ADD_TABLE_COLUMN_PROCEDURE:
         procedure = new AddTableColumnProcedure(false);
+        break;
+      case ADD_VIEW_COLUMN_PROCEDURE:
+        procedure = new AddViewColumnProcedure(false);
         break;
       case SET_TABLE_PROPERTIES_PROCEDURE:
         procedure = new SetTablePropertiesProcedure(false);
         break;
+      case SET_VIEW_PROPERTIES_PROCEDURE:
+        procedure = new SetViewPropertiesProcedure(false);
+        break;
       case RENAME_TABLE_COLUMN_PROCEDURE:
         procedure = new RenameTableColumnProcedure(false);
+        break;
+      case RENAME_VIEW_COLUMN_PROCEDURE:
+        procedure = new RenameViewColumnProcedure(false);
         break;
       case DROP_TABLE_COLUMN_PROCEDURE:
         procedure = new DropTableColumnProcedure(false);
         break;
+      case DROP_VIEW_COLUMN_PROCEDURE:
+        procedure = new DropViewColumnProcedure(false);
+        break;
       case DROP_TABLE_PROCEDURE:
         procedure = new DropTableProcedure(false);
         break;
+      case DROP_VIEW_PROCEDURE:
+        procedure = new DropViewProcedure(false);
+        break;
       case DELETE_DEVICES_PROCEDURE:
         procedure = new DeleteDevicesProcedure(false);
+        break;
+      case RENAME_TABLE_PROCEDURE:
+        procedure = new RenameTableProcedure(false);
+        break;
+      case RENAME_VIEW_PROCEDURE:
+        procedure = new RenameViewProcedure(false);
         break;
       case CREATE_PIPE_PLUGIN_PROCEDURE:
         procedure = new CreatePipePluginProcedure();
@@ -282,6 +319,30 @@ public class ProcedureFactory implements IProcedureFactory {
       case PIPE_ENRICHED_DELETE_DEVICES_PROCEDURE:
         procedure = new DeleteDevicesProcedure(true);
         break;
+      case PIPE_ENRICHED_RENAME_TABLE_PROCEDURE:
+        procedure = new RenameTableProcedure(true);
+        break;
+      case PIPE_ENRICHED_CREATE_TABLE_VIEW_PROCEDURE:
+        procedure = new CreateTableViewProcedure(true);
+        break;
+      case PIPE_ENRICHED_ADD_VIEW_COLUMN_PROCEDURE:
+        procedure = new AddViewColumnProcedure(true);
+        break;
+      case PIPE_ENRICHED_DROP_VIEW_COLUMN_PROCEDURE:
+        procedure = new DropViewColumnProcedure(true);
+        break;
+      case PIPE_ENRICHED_SET_VIEW_PROPERTIES_PROCEDURE:
+        procedure = new SetViewPropertiesProcedure(true);
+        break;
+      case PIPE_ENRICHED_DROP_VIEW_PROCEDURE:
+        procedure = new DropViewProcedure(true);
+        break;
+      case PIPE_ENRICHED_RENAME_VIEW_COLUMN_PROCEDURE:
+        procedure = new RenameViewColumnProcedure(true);
+        break;
+      case PIPE_ENRICHED_RENAME_VIEW_PROCEDURE:
+        procedure = new RenameViewProcedure(true);
+        break;
       case REMOVE_AI_NODE_PROCEDURE:
         procedure = new RemoveAINodeProcedure();
         break;
@@ -344,6 +405,7 @@ public class ProcedureFactory implements IProcedureFactory {
     return procedure;
   }
 
+  // The "pipeEnriched" is not considered here
   public static ProcedureType getProcedureType(final Procedure<?> procedure) {
     if (procedure instanceof DeleteDatabaseProcedure) {
       return ProcedureType.DELETE_DATABASE_PROCEDURE;
@@ -367,6 +429,8 @@ public class ProcedureFactory implements IProcedureFactory {
       return ProcedureType.DELETE_TIMESERIES_PROCEDURE;
     } else if (procedure instanceof ReconstructRegionProcedure) {
       return ProcedureType.RECONSTRUCT_REGION_PROCEDURE;
+    } else if (procedure instanceof NotifyRegionMigrationProcedure) {
+      return ProcedureType.NOTIFY_REGION_MIGRATION_PROCEDURE;
     } else if (procedure instanceof CreateTriggerProcedure) {
       return ProcedureType.CREATE_TRIGGER_PROCEDURE;
     } else if (procedure instanceof DropTriggerProcedure) {
@@ -387,20 +451,36 @@ public class ProcedureFactory implements IProcedureFactory {
       return ProcedureType.DEACTIVATE_TEMPLATE_PROCEDURE;
     } else if (procedure instanceof UnsetTemplateProcedure) {
       return ProcedureType.UNSET_TEMPLATE_PROCEDURE;
+    } else if (procedure instanceof CreateTableViewProcedure) {
+      return ProcedureType.CREATE_TABLE_VIEW_PROCEDURE;
     } else if (procedure instanceof CreateTableProcedure) {
       return ProcedureType.CREATE_TABLE_PROCEDURE;
+    } else if (procedure instanceof AddViewColumnProcedure) {
+      return ProcedureType.ADD_VIEW_COLUMN_PROCEDURE;
     } else if (procedure instanceof AddTableColumnProcedure) {
       return ProcedureType.ADD_TABLE_COLUMN_PROCEDURE;
+    } else if (procedure instanceof SetViewPropertiesProcedure) {
+      return ProcedureType.SET_VIEW_PROPERTIES_PROCEDURE;
     } else if (procedure instanceof SetTablePropertiesProcedure) {
       return ProcedureType.SET_TABLE_PROPERTIES_PROCEDURE;
+    } else if (procedure instanceof RenameViewColumnProcedure) {
+      return ProcedureType.RENAME_VIEW_COLUMN_PROCEDURE;
     } else if (procedure instanceof RenameTableColumnProcedure) {
       return ProcedureType.RENAME_TABLE_COLUMN_PROCEDURE;
+    } else if (procedure instanceof DropViewColumnProcedure) {
+      return ProcedureType.DROP_VIEW_COLUMN_PROCEDURE;
     } else if (procedure instanceof DropTableColumnProcedure) {
       return ProcedureType.DROP_TABLE_COLUMN_PROCEDURE;
+    } else if (procedure instanceof DropViewProcedure) {
+      return ProcedureType.DROP_VIEW_PROCEDURE;
     } else if (procedure instanceof DropTableProcedure) {
       return ProcedureType.DROP_TABLE_PROCEDURE;
     } else if (procedure instanceof DeleteDevicesProcedure) {
       return ProcedureType.DELETE_DEVICES_PROCEDURE;
+    } else if (procedure instanceof RenameViewProcedure) {
+      return ProcedureType.RENAME_VIEW_PROCEDURE;
+    } else if (procedure instanceof RenameTableProcedure) {
+      return ProcedureType.RENAME_TABLE_PROCEDURE;
     } else if (procedure instanceof CreatePipePluginProcedure) {
       return ProcedureType.CREATE_PIPE_PLUGIN_PROCEDURE;
     } else if (procedure instanceof DropPipePluginProcedure) {

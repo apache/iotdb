@@ -31,6 +31,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateFunction;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreatePipe;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreatePipePlugin;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateTable;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateTableView;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateTopic;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Delete;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropColumn;
@@ -69,7 +70,9 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.RenameTable;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Row;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Select;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SelectItem;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SetColumnComment;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SetProperties;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SetTableComment;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowClusterId;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowCurrentDatabase;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowCurrentSqlDialect;
@@ -88,6 +91,9 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SingleColumn;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.StartPipe;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.StopPipe;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Table;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.TableFunctionArgument;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.TableFunctionInvocation;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.TableFunctionTableArgument;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.TableSubquery;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Union;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Update;
@@ -654,7 +660,51 @@ public final class SqlFormatter {
       builder.append(columnList);
       builder.append("\n").append(")");
 
+      node.getCharsetName().ifPresent(charset -> builder.append(" CHARSET ").append(charset));
+
+      if (Objects.nonNull(node.getComment())) {
+        builder.append(" COMMENT '").append(node.getComment()).append("'");
+      }
+
       builder.append(formatPropertiesMultiLine(node.getProperties()));
+
+      return null;
+    }
+
+    @Override
+    protected Void visitCreateTableView(final CreateTableView node, final Integer indent) {
+      builder.append("CREATE ");
+      if (node.isReplace()) {
+        builder.append("OR REPLACE ");
+      }
+      builder.append("TABLE VIEW ");
+      final String tableName = formatName(node.getName());
+      builder.append(tableName).append(" (\n");
+
+      final String elementIndent = indentString(indent + 1);
+      final String columnList =
+          node.getElements().stream()
+              .map(
+                  element -> {
+                    if (element != null) {
+                      return elementIndent + formatColumnDefinition(element);
+                    }
+
+                    throw new UnsupportedOperationException("unknown table element: " + element);
+                  })
+              .collect(joining(",\n"));
+      builder.append(columnList);
+      builder.append("\n").append(")");
+
+      if (Objects.nonNull(node.getComment())) {
+        builder.append(" COMMENT '").append(node.getComment()).append("'");
+      }
+
+      builder.append(formatPropertiesMultiLine(node.getProperties()));
+
+      if (node.isRestrict()) {
+        builder.append(" RESTRICT");
+      }
 
       return null;
     }
@@ -699,12 +749,17 @@ public final class SqlFormatter {
       column
           .getCharsetName()
           .ifPresent(charset -> stringBuilder.append(" CHARSET ").append(charset));
+
+      if (Objects.nonNull(column.getComment())) {
+        stringBuilder.append(" COMMENT '").append(column.getComment()).append("'");
+      }
       return stringBuilder.toString();
     }
 
     @Override
     protected Void visitDropTable(final DropTable node, final Integer indent) {
-      builder.append("DROP TABLE ");
+      builder.append("DROP");
+      builder.append(node.isView() ? " VIEW " : " TABLE ");
       if (node.isExists()) {
         builder.append("IF EXISTS ");
       }
@@ -715,7 +770,8 @@ public final class SqlFormatter {
 
     @Override
     protected Void visitRenameTable(final RenameTable node, final Integer indent) {
-      builder.append("ALTER TABLE ");
+      builder.append("ALTER");
+      builder.append(node.isView() ? " VIEW " : " TABLE ");
       if (node.tableIfExists()) {
         builder.append("IF EXISTS ");
       }
@@ -737,6 +793,8 @@ public final class SqlFormatter {
           builder.append("TABLE ");
         case MATERIALIZED_VIEW:
           builder.append("MATERIALIZED VIEW ");
+        case TREE_VIEW:
+          builder.append("VIEW ");
       }
       if (node.ifExists()) {
         builder.append("IF EXISTS ");
@@ -764,12 +822,13 @@ public final class SqlFormatter {
 
     @Override
     protected Void visitRenameColumn(RenameColumn node, Integer indent) {
-      builder.append("ALTER TABLE ");
+      builder.append("ALTER");
+      builder.append(node.isView() ? " VIEW " : " TABLE ");
       if (node.tableIfExists()) {
         builder.append("IF EXISTS ");
       }
 
-      builder.append(formatName(node.getTable())).append(" RENAME COLUMN ");
+      builder.append(formatName(node.getTable())).append("RENAME COLUMN ");
       if (node.columnIfExists()) {
         builder.append("IF EXISTS ");
       }
@@ -784,14 +843,15 @@ public final class SqlFormatter {
 
     @Override
     protected Void visitDropColumn(final DropColumn node, final Integer indent) {
-      builder.append("ALTER TABLE ");
+      builder.append("ALTER");
+      builder.append(node.isView() ? " VIEW " : " TABLE ");
       if (node.tableIfExists()) {
         builder.append("IF EXISTS ");
       }
 
-      builder.append(formatName(node.getTable())).append(" DROP COLUMN ");
+      builder.append(formatName(node.getTable())).append("DROP COLUMN ");
       if (node.columnIfExists()) {
-        builder.append("IF NOT EXISTS ");
+        builder.append("IF EXISTS ");
       }
 
       builder.append(formatName(node.getField()));
@@ -801,18 +861,42 @@ public final class SqlFormatter {
 
     @Override
     protected Void visitAddColumn(final AddColumn node, final Integer indent) {
-      builder.append("ALTER TABLE ");
+      builder.append("ALTER");
+      builder.append(node.isView() ? " VIEW " : " TABLE ");
       if (node.tableIfExists()) {
         builder.append("IF EXISTS ");
       }
 
-      builder.append(formatName(node.getTableName())).append(" ADD COLUMN ");
+      builder.append(formatName(node.getTableName())).append("ADD COLUMN ");
       if (node.columnIfNotExists()) {
         builder.append("IF NOT EXISTS ");
       }
 
       builder.append(formatColumnDefinition(node.getColumn()));
 
+      return null;
+    }
+
+    @Override
+    protected Void visitSetTableComment(final SetTableComment node, final Integer indent) {
+      builder
+          .append("COMMENT ON")
+          .append(node.isView() ? " VIEW " : " TABLE ")
+          .append(formatName(node.getTableName()))
+          .append(" IS ")
+          .append(node.getComment());
+      return null;
+    }
+
+    @Override
+    protected Void visitSetColumnComment(final SetColumnComment node, final Integer indent) {
+      builder
+          .append("COMMENT ON COLUMN ")
+          .append(formatName(node.getTable()))
+          .append(".")
+          .append(formatName(node.getField()))
+          .append(" IS ")
+          .append(node.getComment());
       return null;
     }
 
@@ -1443,6 +1527,78 @@ public final class SqlFormatter {
 
         builder.append(" (").append(formattedColumns).append(')');
       }
+    }
+
+    @Override
+    public Void visitTableFunctionInvocation(TableFunctionInvocation node, Integer indent) {
+      append(indent, "TABLE(");
+      appendTableFunctionInvocation(node, indent + 1);
+      builder.append(")");
+      return null;
+    }
+
+    private void appendTableFunctionInvocation(TableFunctionInvocation node, Integer indent) {
+      builder.append(formatName(node.getName())).append("(\n");
+      appendTableFunctionArguments(node.getArguments(), indent + 1);
+      builder.append(")");
+    }
+
+    private void appendTableFunctionArguments(List<TableFunctionArgument> arguments, int indent) {
+      for (int i = 0; i < arguments.size(); i++) {
+        TableFunctionArgument argument = arguments.get(i);
+        if (argument.getName().isPresent()) {
+          append(indent, formatName(argument.getName().get()));
+          builder.append(" => ");
+        } else {
+          append(indent, "");
+        }
+        Node value = argument.getValue();
+        if (value instanceof Expression) {
+          builder.append(formatExpression((Expression) value));
+        } else {
+          process(value, indent + 1);
+        }
+        if (i < arguments.size() - 1) {
+          builder.append(",\n");
+        }
+      }
+    }
+
+    @Override
+    public Void visitTableArgument(TableFunctionTableArgument node, Integer indent) {
+      Relation relation = node.getTable();
+      Node unaliased =
+          relation instanceof AliasedRelation
+              ? ((AliasedRelation) relation).getRelation()
+              : relation;
+      if (unaliased instanceof TableSubquery) {
+        // unpack the relation from TableSubquery to avoid adding another pair of parentheses
+        unaliased = ((TableSubquery) unaliased).getQuery();
+      }
+      builder.append("TABLE(");
+      process(unaliased, indent);
+      builder.append(")");
+      if (relation instanceof AliasedRelation) {
+        AliasedRelation aliasedRelation = (AliasedRelation) relation;
+        builder.append(" AS ").append(formatName(aliasedRelation.getAlias()));
+        appendAliasColumns(builder, aliasedRelation.getColumnNames());
+      }
+      if (node.getPartitionBy().isPresent()) {
+        builder.append("\n");
+        append(indent, "PARTITION BY ")
+            .append(
+                node.getPartitionBy().get().stream()
+                    .map(SqlFormatter::formatExpression)
+                    .collect(joining(", ")));
+      }
+      node.getOrderBy()
+          .ifPresent(
+              orderBy -> {
+                builder.append("\n");
+                append(indent, formatOrderBy(orderBy));
+              });
+
+      return null;
     }
   }
 }

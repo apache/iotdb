@@ -58,7 +58,6 @@ public class StatusUtils {
     NEED_RETRY.add(TSStatusCode.WAL_ERROR.getStatusCode());
     NEED_RETRY.add(TSStatusCode.DISK_SPACE_INSUFFICIENT.getStatusCode());
     NEED_RETRY.add(TSStatusCode.QUERY_PROCESS_ERROR.getStatusCode());
-    NEED_RETRY.add(TSStatusCode.INTERNAL_REQUEST_TIME_OUT.getStatusCode());
     NEED_RETRY.add(TSStatusCode.INTERNAL_REQUEST_RETRY_ERROR.getStatusCode());
     NEED_RETRY.add(TSStatusCode.CREATE_REGION_ERROR.getStatusCode());
     NEED_RETRY.add(TSStatusCode.CONSENSUS_NOT_INITIALIZED.getStatusCode());
@@ -66,6 +65,9 @@ public class StatusUtils {
     NEED_RETRY.add(TSStatusCode.LACK_PARTITION_ALLOCATION.getStatusCode());
     NEED_RETRY.add(TSStatusCode.NO_ENOUGH_DATANODE.getStatusCode());
     NEED_RETRY.add(TSStatusCode.TOO_MANY_CONCURRENT_QUERIES_ERROR.getStatusCode());
+    NEED_RETRY.add(TSStatusCode.SYNC_CONNECTION_ERROR.getStatusCode());
+    NEED_RETRY.add(TSStatusCode.QUERY_EXECUTION_MEMORY_NOT_ENOUGH.getStatusCode());
+    NEED_RETRY.add(TSStatusCode.PLAN_FAILED_NETWORK_PARTITION.getStatusCode());
   }
 
   /**
@@ -241,5 +243,9 @@ public class StatusUtils {
   private static boolean needRetryHelperForSingleStatus(int statusCode) {
     return NEED_RETRY.contains(statusCode)
         || (COMMON_CONFIG.isRetryForUnknownErrors() && UNKNOWN_ERRORS.contains(statusCode));
+  }
+
+  public static boolean isUnknownError(int statusCode) {
+    return UNKNOWN_ERRORS.contains(statusCode);
   }
 }

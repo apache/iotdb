@@ -32,11 +32,13 @@ import org.apache.iotdb.db.queryengine.plan.relational.security.AccessControl;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
 import org.apache.iotdb.db.queryengine.plan.relational.type.TypeNotFoundException;
 import org.apache.iotdb.db.queryengine.plan.relational.type.TypeSignature;
+import org.apache.iotdb.udf.api.relational.TableFunction;
 
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.read.common.type.Type;
 
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 // All the input databases shall not contain "root"
@@ -75,7 +77,7 @@ public interface Metadata {
    *     index scanning
    * @param attributeColumns attribute column names
    */
-  List<DeviceEntry> indexScan(
+  Map<String, List<DeviceEntry>> indexScan(
       final QualifiedObjectName tableName,
       final List<Expression> expressionList,
       final List<String> attributeColumns,
@@ -190,4 +192,6 @@ public interface Metadata {
    */
   DataPartition getDataPartitionWithUnclosedTimeRange(
       final String database, final List<DataPartitionQueryParam> sgNameToQueryParamsMap);
+
+  TableFunction getTableFunction(final String functionName);
 }

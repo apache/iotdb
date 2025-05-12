@@ -31,16 +31,8 @@ public class RequestValidationHandler {
 
   private RequestValidationHandler() {}
 
-  public static void validateQuerySQL(SQL sql) {
-    validateSQL(sql);
-    if (sql.getDatabase().isEmpty()) {
-      throw new IllegalArgumentException("database should not be an empty string");
-    }
-  }
-
   public static void validateSQL(SQL sql) {
     Objects.requireNonNull(sql.getSql(), "sql should not be null");
-    Objects.requireNonNull(sql.getDatabase(), "database should not be null");
     if (sql.getRowLimit() != null) {
       Validate.isTrue(sql.getRowLimit() > 0, "row_limit should be positive");
     }

@@ -19,7 +19,11 @@
 
 package org.apache.iotdb.db.queryengine.plan.planner;
 
+import org.apache.iotdb.commons.exception.IoTDBRuntimeException;
+import org.apache.iotdb.commons.memory.IMemoryBlock;
+import org.apache.iotdb.commons.memory.MemoryBlockType;
 import org.apache.iotdb.commons.path.IFullPath;
+import org.apache.iotdb.db.conf.DataNodeMemoryConfig;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.protocol.session.IClientSession;
@@ -39,6 +43,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.metadata.TableMetadataImp
 import org.apache.iotdb.db.schemaengine.schemaregion.ISchemaRegion;
 import org.apache.iotdb.db.storageengine.dataregion.read.QueryDataSourceType;
 import org.apache.iotdb.db.utils.SetThreadName;
+import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.slf4j.Logger;
@@ -47,6 +52,7 @@ import org.slf4j.LoggerFactory;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
 import static org.apache.iotdb.db.protocol.session.IClientSession.SqlDialect.TREE;
 
@@ -58,28 +64,31 @@ import static org.apache.iotdb.db.protocol.session.IClientSession.SqlDialect.TRE
 public class LocalExecutionPlanner {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(LocalExecutionPlanner.class);
-  private static final long ALLOCATE_MEMORY_FOR_OPERATORS;
+  private static final IMemoryBlock OPERATORS_MEMORY_BLOCK;
   private static final long MIN_REST_MEMORY_FOR_QUERY_AFTER_LOAD;
 
   public final Metadata metadata = new TableMetadataImpl();
 
   static {
     IoTDBConfig CONFIG = IoTDBDescriptor.getInstance().getConfig();
-    ALLOCATE_MEMORY_FOR_OPERATORS = CONFIG.getAllocateMemoryForOperators();
+    DataNodeMemoryConfig MEMORY_CONFIG = IoTDBDescriptor.getInstance().getMemoryConfig();
+
+    OPERATORS_MEMORY_BLOCK =
+        MEMORY_CONFIG
+            .getOperatorsMemoryManager()
+            .exactAllocate("Operators", MemoryBlockType.DYNAMIC);
     MIN_REST_MEMORY_FOR_QUERY_AFTER_LOAD =
         (long)
-            ((ALLOCATE_MEMORY_FOR_OPERATORS) * (1.0 - CONFIG.getMaxAllocateMemoryRatioForLoad()));
+            ((OPERATORS_MEMORY_BLOCK.getTotalMemorySizeInBytes())
+                * (1.0 - CONFIG.getMaxAllocateMemoryRatioForLoad()));
   }
 
-  /** allocated memory for operator execution */
-  private long freeMemoryForOperators = ALLOCATE_MEMORY_FOR_OPERATORS;
-
   public long getFreeMemoryForOperators() {
-    return freeMemoryForOperators;
+    return OPERATORS_MEMORY_BLOCK.getFreeMemoryInBytes();
   }
 
   public long getFreeMemoryForLoadTsFile() {
-    return freeMemoryForOperators - MIN_REST_MEMORY_FOR_QUERY_AFTER_LOAD;
+    return OPERATORS_MEMORY_BLOCK.getFreeMemoryInBytes() - MIN_REST_MEMORY_FOR_QUERY_AFTER_LOAD;
   }
 
   public static LocalExecutionPlanner getInstance() {
@@ -92,6 +101,11 @@ public class LocalExecutionPlanner {
       FragmentInstanceContext instanceContext,
       DataNodeQueryContext dataNodeQueryContext)
       throws MemoryNotEnoughException {
+    if (Objects.isNull(plan)) {
+      throw new IoTDBRuntimeException(
+          "The planNode is null during local execution, maybe caused by closing of the current dataNode",
+          TSStatusCode.CLOSE_OPERATION_ERROR.getStatusCode());
+    }
     LocalExecutionPlanContext context =
         new LocalExecutionPlanContext(types, instanceContext, dataNodeQueryContext);
 
@@ -126,6 +140,11 @@ public class LocalExecutionPlanner {
       FragmentInstanceContext instanceContext,
       ISchemaRegion schemaRegion)
       throws MemoryNotEnoughException {
+    if (Objects.isNull(plan)) {
+      throw new IoTDBRuntimeException(
+          "The planNode is null during local execution, maybe caused by closing of the current dataNode",
+          TSStatusCode.CLOSE_OPERATION_ERROR.getStatusCode());
+    }
     LocalExecutionPlanContext context =
         new LocalExecutionPlanContext(types, instanceContext, schemaRegion);
 
@@ -176,7 +195,7 @@ public class LocalExecutionPlanner {
       throws MemoryNotEnoughException {
 
     // if it is disabled, just return
-    if (!IoTDBDescriptor.getInstance().getConfig().isEnableQueryMemoryEstimation()
+    if (!IoTDBDescriptor.getInstance().getMemoryConfig().isEnableQueryMemoryEstimation()
         && !IoTDBDescriptor.getInstance().getConfig().isQuotaEnable()) {
       return 0;
     }
@@ -185,38 +204,32 @@ public class LocalExecutionPlanner {
 
     QueryRelatedResourceMetricSet.getInstance().updateEstimatedMemory(estimatedMemorySize);
 
-    synchronized (this) {
-      if (estimatedMemorySize > freeMemoryForOperators) {
-        throw new MemoryNotEnoughException(
-            String.format(
-                "There is not enough memory to execute current fragment instance, "
-                    + "current remaining free memory is %dB, "
-                    + "estimated memory usage for current fragment instance is %dB",
-                freeMemoryForOperators, estimatedMemorySize));
-      } else {
-        freeMemoryForOperators -= estimatedMemorySize;
-        if (LOGGER.isDebugEnabled()) {
-          LOGGER.debug(
-              "[ConsumeMemory] consume: {}, current remaining memory: {}",
-              estimatedMemorySize,
-              freeMemoryForOperators);
-        }
+    if (OPERATORS_MEMORY_BLOCK.allocate(estimatedMemorySize)) {
+      if (LOGGER.isDebugEnabled()) {
+        LOGGER.debug(
+            "[ConsumeMemory] consume: {}, current remaining memory: {}",
+            estimatedMemorySize,
+            OPERATORS_MEMORY_BLOCK.getFreeMemoryInBytes());
       }
+    } else {
+      throw new MemoryNotEnoughException(
+          String.format(
+              "There is not enough memory to execute current fragment instance, "
+                  + "current remaining free memory is %dB, "
+                  + "estimated memory usage for current fragment instance is %dB",
+              OPERATORS_MEMORY_BLOCK.getFreeMemoryInBytes(), estimatedMemorySize));
     }
-
     stateMachine.addStateChangeListener(
         newState -> {
           if (newState.isDone()) {
             try (SetThreadName fragmentInstanceName =
                 new SetThreadName(stateMachine.getFragmentInstanceId().getFullId())) {
-              synchronized (this) {
-                this.freeMemoryForOperators += estimatedMemorySize;
-                if (LOGGER.isDebugEnabled()) {
-                  LOGGER.debug(
-                      "[ReleaseMemory] release: {}, current remaining memory: {}",
-                      estimatedMemorySize,
-                      freeMemoryForOperators);
-                }
+              OPERATORS_MEMORY_BLOCK.release(estimatedMemorySize);
+              if (LOGGER.isDebugEnabled()) {
+                LOGGER.debug(
+                    "[ReleaseMemory] release: {}, current remaining memory: {}",
+                    estimatedMemorySize,
+                    OPERATORS_MEMORY_BLOCK.getFreeMemoryInBytes());
               }
             }
           }
@@ -250,64 +263,62 @@ public class LocalExecutionPlanner {
   }
 
   public synchronized boolean forceAllocateFreeMemoryForOperators(long memoryInBytes) {
-    if (freeMemoryForOperators - memoryInBytes <= MIN_REST_MEMORY_FOR_QUERY_AFTER_LOAD) {
+    // TODO @spricoder: consider a better way
+    if (OPERATORS_MEMORY_BLOCK.getFreeMemoryInBytes() - memoryInBytes
+        <= MIN_REST_MEMORY_FOR_QUERY_AFTER_LOAD) {
       return false;
     } else {
-      freeMemoryForOperators -= memoryInBytes;
+      OPERATORS_MEMORY_BLOCK.forceAllocateWithoutLimitation(memoryInBytes);
       return true;
     }
   }
 
   public synchronized long tryAllocateFreeMemoryForOperators(long memoryInBytes) {
-    if (freeMemoryForOperators - memoryInBytes <= MIN_REST_MEMORY_FOR_QUERY_AFTER_LOAD) {
-      long result = freeMemoryForOperators - MIN_REST_MEMORY_FOR_QUERY_AFTER_LOAD;
-      freeMemoryForOperators = MIN_REST_MEMORY_FOR_QUERY_AFTER_LOAD;
+    if (OPERATORS_MEMORY_BLOCK.getFreeMemoryInBytes() - memoryInBytes
+        <= MIN_REST_MEMORY_FOR_QUERY_AFTER_LOAD) {
+      long result =
+          OPERATORS_MEMORY_BLOCK.getFreeMemoryInBytes() - MIN_REST_MEMORY_FOR_QUERY_AFTER_LOAD;
+      OPERATORS_MEMORY_BLOCK.forceAllocateWithoutLimitation(result);
       return result;
     } else {
-      freeMemoryForOperators -= memoryInBytes;
+      OPERATORS_MEMORY_BLOCK.forceAllocateWithoutLimitation(memoryInBytes);
       return memoryInBytes;
     }
   }
 
-  public synchronized void reserveFromFreeMemoryForOperators(
+  public void reserveFromFreeMemoryForOperators(
       final long memoryInBytes,
       final long reservedBytes,
       final String queryId,
       final String contextHolder) {
-    if (memoryInBytes > freeMemoryForOperators) {
+    if (OPERATORS_MEMORY_BLOCK.allocate(memoryInBytes)) {
+      if (LOGGER.isDebugEnabled()) {
+        LOGGER.debug(
+            "[ConsumeMemory] consume: {}, current remaining memory: {}",
+            memoryInBytes,
+            OPERATORS_MEMORY_BLOCK.getFreeMemoryInBytes());
+      }
+    } else {
       throw new MemoryNotEnoughException(
           String.format(
               "There is not enough memory for Query %s, the contextHolder is %s,"
                   + "current remaining free memory is %dB, "
                   + "already reserved memory for this context in total is %dB, "
                   + "the memory requested this time is %dB",
-              queryId, contextHolder, freeMemoryForOperators, reservedBytes, memoryInBytes));
-    } else {
-      freeMemoryForOperators -= memoryInBytes;
-      if (LOGGER.isDebugEnabled()) {
-        LOGGER.debug(
-            "[ConsumeMemory] consume: {}, current remaining memory: {}",
-            memoryInBytes,
-            freeMemoryForOperators);
-      }
+              queryId,
+              contextHolder,
+              OPERATORS_MEMORY_BLOCK.getFreeMemoryInBytes(),
+              reservedBytes,
+              memoryInBytes));
     }
   }
 
-  public synchronized void releaseToFreeMemoryForOperators(final long memoryInBytes) {
-    freeMemoryForOperators += memoryInBytes;
-
-    if (freeMemoryForOperators > ALLOCATE_MEMORY_FOR_OPERATORS) {
-      LOGGER.error(
-          "The free memory {} is more than allocated memory {}, last released memory: {}",
-          freeMemoryForOperators,
-          ALLOCATE_MEMORY_FOR_OPERATORS,
-          memoryInBytes);
-      freeMemoryForOperators = ALLOCATE_MEMORY_FOR_OPERATORS;
-    }
+  public void releaseToFreeMemoryForOperators(final long memoryInBytes) {
+    OPERATORS_MEMORY_BLOCK.release(memoryInBytes);
   }
 
   public long getAllocateMemoryForOperators() {
-    return ALLOCATE_MEMORY_FOR_OPERATORS;
+    return OPERATORS_MEMORY_BLOCK.getTotalMemorySizeInBytes();
   }
 
   private static class InstanceHolder {

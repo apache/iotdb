@@ -51,11 +51,7 @@ public interface IoTDBDataNodeCacheLeaderClientManager {
 
     public LeaderCacheManager() {
       final long initMemorySizeInBytes =
-          PipeDataNodeResourceManager.memory().getTotalMemorySizeInBytes() / 10;
-      final long maxMemorySizeInBytes =
-          (long)
-              (PipeDataNodeResourceManager.memory().getTotalMemorySizeInBytes()
-                  * CONFIG.getPipeLeaderCacheMemoryUsagePercentage());
+          PipeDataNodeResourceManager.memory().getTotalNonFloatingMemorySizeInBytes() / 10;
 
       // properties required by pipe memory control framework
       final PipeMemoryBlock allocatedMemoryBlock =
@@ -72,7 +68,13 @@ public interface IoTDBDataNodeCacheLeaderClientManager {
                         newMemory);
                   })
               .setExpandMethod(
-                  oldMemory -> Math.min(Math.max(oldMemory, 1) * 2, maxMemorySizeInBytes))
+                  oldMemory ->
+                      Math.min(
+                          Math.max(oldMemory, 1) * 2,
+                          (long)
+                              (PipeDataNodeResourceManager.memory()
+                                      .getTotalNonFloatingMemorySizeInBytes()
+                                  * CONFIG.getPipeLeaderCacheMemoryUsagePercentage())))
               .setExpandCallback(
                   (oldMemory, newMemory) -> {
                     memoryUsageCheatFactor.updateAndGet(

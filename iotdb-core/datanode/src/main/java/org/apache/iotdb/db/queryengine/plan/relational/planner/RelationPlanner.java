@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.queryengine.plan.relational.planner;
 
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
+import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.QueryId;
 import org.apache.iotdb.db.queryengine.common.SessionInfo;
@@ -40,6 +41,8 @@ import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Field;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.NodeRef;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.RelationType;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Scope;
+import org.apache.iotdb.db.queryengine.plan.relational.analyzer.tablefunction.TableArgumentAnalysis;
+import org.apache.iotdb.db.queryengine.plan.relational.analyzer.tablefunction.TableFunctionInvocationAnalysis;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.ColumnSchema;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.QualifiedObjectName;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.TableMetadataImpl;
@@ -50,9 +53,11 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.node.FilterNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.InformationSchemaTableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.JoinNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ProjectNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TableFunctionNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TreeDeviceViewScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AliasedRelation;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AsofJoinOn;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AstVisitor;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CoalesceExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ComparisonExpression;
@@ -65,6 +70,8 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.InsertRows;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.InsertTablet;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Intersect;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Join;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.JoinCriteria;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.JoinOn;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.JoinUsing;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LoadTsFile;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LogicalExpression;
@@ -75,6 +82,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Query;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.QuerySpecification;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SubqueryExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Table;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.TableFunctionInvocation;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.TableSubquery;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Union;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Values;
@@ -85,6 +93,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertTabletStatement
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
+import com.google.common.collect.ImmutableSet;
 import org.apache.tsfile.read.common.type.Type;
 
 import java.util.ArrayList;
@@ -96,7 +105,11 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
+import static com.google.common.collect.ImmutableList.toImmutableList;
+import static com.google.gson.internal.$Gson$Preconditions.checkArgument;
+import static java.lang.String.format;
 import static java.util.Objects.requireNonNull;
 import static org.apache.iotdb.commons.schema.table.InformationSchema.INFORMATION_DATABASE;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.PlanBuilder.newPlanBuilder;
@@ -107,6 +120,8 @@ import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Join.Type.
 import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Join.Type.FULL;
 import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Join.Type.IMPLICIT;
 import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Join.Type.INNER;
+import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Join.Type.LEFT;
+import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Join.Type.RIGHT;
 
 public class RelationPlanner extends AstVisitor<RelationPlan, Void> {
 
@@ -215,8 +230,8 @@ public class RelationPlanner extends AstVisitor<RelationPlan, Void> {
               outputSymbols,
               tableColumnSchema,
               idAndAttributeIndexMap,
-              treeDeviceViewSchema.getTreeDBName(),
-              treeDeviceViewSchema.getMeasurementColumnNameMap()),
+              null,
+              treeDeviceViewSchema.getColumn2OriginalNameMap()),
           scope,
           outputSymbols,
           outerContext);
@@ -270,8 +285,17 @@ public class RelationPlanner extends AstVisitor<RelationPlan, Void> {
       return planJoinUsing(node, leftPlan, rightPlan);
     }
 
+    Expression asofCriteria = null;
+    if (node.getCriteria().isPresent()) {
+      JoinCriteria criteria = node.getCriteria().get();
+      checkArgument(criteria instanceof JoinOn);
+      if (criteria instanceof AsofJoinOn) {
+        asofCriteria = ((AsofJoinOn) criteria).getAsofExpression();
+      }
+    }
     return planJoin(
         analysis.getJoinCriteria(node),
+        asofCriteria,
         node.getType(),
         analysis.getScope(node),
         leftPlan,
@@ -357,10 +381,15 @@ public class RelationPlanner extends AstVisitor<RelationPlan, Void> {
             leftCoercion,
             rightCoercion,
             clauses.build(),
+            Optional.empty(),
             leftCoercion.getOutputSymbols(),
             rightCoercion.getOutputSymbols(),
             Optional.empty(),
             Optional.empty());
+    // Transform RIGHT JOIN to LEFT
+    if (join.getJoinType() == JoinNode.JoinType.RIGHT) {
+      join = join.flip();
+    }
 
     // Add a projection to produce the outputs of the columns in the USING clause,
     // which are defined as coalesce(l.k, r.k)
@@ -370,7 +399,7 @@ public class RelationPlanner extends AstVisitor<RelationPlan, Void> {
     for (Identifier column : joinColumns) {
       Symbol output = symbolAllocator.newSymbol(column, analysis.getType(column));
       outputs.add(output);
-      if (node.getType() == INNER) {
+      if (node.getType() == INNER || node.getType() == LEFT) {
         assignments.put(output, leftJoinColumns.get(column).toSymbolReference());
       } else if (node.getType() == FULL) {
         assignments.put(
@@ -378,6 +407,10 @@ public class RelationPlanner extends AstVisitor<RelationPlan, Void> {
             new CoalesceExpression(
                 leftJoinColumns.get(column).toSymbolReference(),
                 rightJoinColumns.get(column).toSymbolReference()));
+      } else if (node.getType() == RIGHT) {
+        assignments.put(output, rightJoinColumns.get(column).toSymbolReference());
+      } else {
+        throw new IllegalStateException("Unexpected Join Type: " + node.getType());
       }
     }
 
@@ -402,6 +435,7 @@ public class RelationPlanner extends AstVisitor<RelationPlan, Void> {
 
   public RelationPlan planJoin(
       Expression criteria,
+      Expression asofCriteria,
       Join.Type type,
       Scope scope,
       RelationPlan leftPlan,
@@ -420,6 +454,7 @@ public class RelationPlanner extends AstVisitor<RelationPlan, Void> {
         newPlanBuilder(rightPlan, analysis).withScope(scope, outputSymbols);
 
     ImmutableList.Builder<JoinNode.EquiJoinClause> equiClauses = ImmutableList.builder();
+    Optional<JoinNode.AsofJoinClause> asofJoinClause = Optional.empty();
     List<Expression> complexJoinExpressions = new ArrayList<>();
     List<Expression> postInnerJoinConditions = new ArrayList<>();
 
@@ -431,49 +466,79 @@ public class RelationPlanner extends AstVisitor<RelationPlan, Void> {
       List<Expression> rightComparisonExpressions = new ArrayList<>();
       List<ComparisonExpression.Operator> joinConditionComparisonOperators = new ArrayList<>();
 
-      for (Expression conjunct : extractPredicates(LogicalExpression.Operator.AND, criteria)) {
-        if (!isEqualComparisonExpression(conjunct) && type != INNER) {
-          complexJoinExpressions.add(conjunct);
-          continue;
+      if (asofCriteria != null) {
+        Expression firstExpression = ((ComparisonExpression) asofCriteria).getLeft();
+        Expression secondExpression = ((ComparisonExpression) asofCriteria).getRight();
+        ComparisonExpression.Operator comparisonOperator =
+            ((ComparisonExpression) asofCriteria).getOperator();
+        Set<QualifiedName> firstDependencies =
+            SymbolsExtractor.extractNames(firstExpression, analysis.getColumnReferences());
+        Set<QualifiedName> secondDependencies =
+            SymbolsExtractor.extractNames(secondExpression, analysis.getColumnReferences());
+
+        if (firstDependencies.stream().allMatch(left::canResolve)
+            && secondDependencies.stream().allMatch(right::canResolve)) {
+          leftComparisonExpressions.add(firstExpression);
+          rightComparisonExpressions.add(secondExpression);
+          joinConditionComparisonOperators.add(comparisonOperator);
+        } else if (firstDependencies.stream().allMatch(right::canResolve)
+            && secondDependencies.stream().allMatch(left::canResolve)) {
+          leftComparisonExpressions.add(secondExpression);
+          rightComparisonExpressions.add(firstExpression);
+          joinConditionComparisonOperators.add(comparisonOperator.flip());
+        } else {
+          // the case when we mix symbols from both left and right join side on either side of
+          // condition.
+          throw new SemanticException(
+              format("Complex ASOF main join expression [%s] is not supported", asofCriteria));
         }
+      }
 
-        Set<QualifiedName> dependencies =
-            SymbolsExtractor.extractNames(conjunct, analysis.getColumnReferences());
+      if (criteria != null) {
+        for (Expression conjunct : extractPredicates(LogicalExpression.Operator.AND, criteria)) {
+          if (!isEqualComparisonExpression(conjunct) && type != INNER) {
+            complexJoinExpressions.add(conjunct);
+            continue;
+          }
 
-        if (dependencies.stream().allMatch(left::canResolve)
-            || dependencies.stream().allMatch(right::canResolve)) {
-          // If the conjunct can be evaluated entirely with the inputs on either side of the join,
-          // add
-          // it to the list complex expressions and let the optimizers figure out how to push it
-          // down later.
-          complexJoinExpressions.add(conjunct);
-        } else if (conjunct instanceof ComparisonExpression) {
-          Expression firstExpression = ((ComparisonExpression) conjunct).getLeft();
-          Expression secondExpression = ((ComparisonExpression) conjunct).getRight();
-          ComparisonExpression.Operator comparisonOperator =
-              ((ComparisonExpression) conjunct).getOperator();
-          Set<QualifiedName> firstDependencies =
-              SymbolsExtractor.extractNames(firstExpression, analysis.getColumnReferences());
-          Set<QualifiedName> secondDependencies =
-              SymbolsExtractor.extractNames(secondExpression, analysis.getColumnReferences());
+          Set<QualifiedName> dependencies =
+              SymbolsExtractor.extractNames(conjunct, analysis.getColumnReferences());
 
-          if (firstDependencies.stream().allMatch(left::canResolve)
-              && secondDependencies.stream().allMatch(right::canResolve)) {
-            leftComparisonExpressions.add(firstExpression);
-            rightComparisonExpressions.add(secondExpression);
-            joinConditionComparisonOperators.add(comparisonOperator);
-          } else if (firstDependencies.stream().allMatch(right::canResolve)
-              && secondDependencies.stream().allMatch(left::canResolve)) {
-            leftComparisonExpressions.add(secondExpression);
-            rightComparisonExpressions.add(firstExpression);
-            joinConditionComparisonOperators.add(comparisonOperator.flip());
+          if (dependencies.stream().allMatch(left::canResolve)
+              || dependencies.stream().allMatch(right::canResolve)) {
+            // If the conjunct can be evaluated entirely with the inputs on either side of the join,
+            // add
+            // it to the list complex expressions and let the optimizers figure out how to push it
+            // down later.
+            complexJoinExpressions.add(conjunct);
+          } else if (conjunct instanceof ComparisonExpression) {
+            Expression firstExpression = ((ComparisonExpression) conjunct).getLeft();
+            Expression secondExpression = ((ComparisonExpression) conjunct).getRight();
+            ComparisonExpression.Operator comparisonOperator =
+                ((ComparisonExpression) conjunct).getOperator();
+            Set<QualifiedName> firstDependencies =
+                SymbolsExtractor.extractNames(firstExpression, analysis.getColumnReferences());
+            Set<QualifiedName> secondDependencies =
+                SymbolsExtractor.extractNames(secondExpression, analysis.getColumnReferences());
+
+            if (firstDependencies.stream().allMatch(left::canResolve)
+                && secondDependencies.stream().allMatch(right::canResolve)) {
+              leftComparisonExpressions.add(firstExpression);
+              rightComparisonExpressions.add(secondExpression);
+              joinConditionComparisonOperators.add(comparisonOperator);
+            } else if (firstDependencies.stream().allMatch(right::canResolve)
+                && secondDependencies.stream().allMatch(left::canResolve)) {
+              leftComparisonExpressions.add(secondExpression);
+              rightComparisonExpressions.add(firstExpression);
+              joinConditionComparisonOperators.add(comparisonOperator.flip());
+            } else {
+              // the case when we mix symbols from both left and right join side on either side of
+              // condition.
+              complexJoinExpressions.add(conjunct);
+            }
           } else {
-            // the case when we mix symbols from both left and right join side on either side of
-            // condition.
             complexJoinExpressions.add(conjunct);
           }
-        } else {
-          complexJoinExpressions.add(conjunct);
         }
       }
 
@@ -500,6 +565,17 @@ public class RelationPlanner extends AstVisitor<RelationPlan, Void> {
       rightPlanBuilder = rightCoercions.getSubPlan();
 
       for (int i = 0; i < leftComparisonExpressions.size(); i++) {
+        if (asofCriteria != null && i == 0) {
+          Symbol leftSymbol = leftCoercions.get(leftComparisonExpressions.get(i));
+          Symbol rightSymbol = rightCoercions.get(rightComparisonExpressions.get(i));
+
+          asofJoinClause =
+              Optional.of(
+                  new JoinNode.AsofJoinClause(
+                      joinConditionComparisonOperators.get(i), leftSymbol, rightSymbol));
+          continue;
+        }
+
         if (joinConditionComparisonOperators.get(i) == ComparisonExpression.Operator.EQUAL) {
           Symbol leftSymbol = leftCoercions.get(leftComparisonExpressions.get(i));
           Symbol rightSymbol = rightCoercions.get(rightComparisonExpressions.get(i));
@@ -522,10 +598,14 @@ public class RelationPlanner extends AstVisitor<RelationPlan, Void> {
             leftPlanBuilder.getRoot(),
             rightPlanBuilder.getRoot(),
             equiClauses.build(),
+            asofJoinClause,
             leftPlanBuilder.getRoot().getOutputSymbols(),
             rightPlanBuilder.getRoot().getOutputSymbols(),
             Optional.empty(),
             Optional.empty());
+    if (type == RIGHT && asofCriteria == null) {
+      root = ((JoinNode) root).flip();
+    }
 
     if (type != INNER) {
       for (Expression complexExpression : complexJoinExpressions) {
@@ -569,6 +649,7 @@ public class RelationPlanner extends AstVisitor<RelationPlan, Void> {
               leftPlanBuilder.getRoot(),
               rightPlanBuilder.getRoot(),
               equiClauses.build(),
+              asofJoinClause,
               leftPlanBuilder.getRoot().getOutputSymbols(),
               rightPlanBuilder.getRoot().getOutputSymbols(),
               Optional.of(
@@ -577,6 +658,9 @@ public class RelationPlanner extends AstVisitor<RelationPlan, Void> {
                           .map(e -> coerceIfNecessary(analysis, e, translationMap.rewrite(e)))
                           .collect(Collectors.toList()))),
               Optional.empty());
+      if (type == RIGHT && asofCriteria == null) {
+        root = ((JoinNode) root).flip();
+      }
     }
 
     if (type == INNER) {
@@ -786,5 +870,136 @@ public class RelationPlanner extends AstVisitor<RelationPlan, Void> {
         analysis.getRootScope(),
         Collections.emptyList(),
         outerContext);
+  }
+
+  @Override
+  public RelationPlan visitTableFunctionInvocation(TableFunctionInvocation node, Void context) {
+    TableFunctionInvocationAnalysis functionAnalysis = analysis.getTableFunctionAnalysis(node);
+
+    ImmutableList.Builder<PlanNode> sources = ImmutableList.builder();
+    ImmutableList.Builder<TableFunctionNode.TableArgumentProperties> sourceProperties =
+        ImmutableList.builder();
+    ImmutableList.Builder<Symbol> outputSymbols = ImmutableList.builder();
+
+    // create new symbols for table function's proper columns
+    RelationType relationType = analysis.getScope(node).getRelationType();
+    List<Symbol> properOutputs =
+        IntStream.range(0, functionAnalysis.getProperColumnsCount())
+            .mapToObj(relationType::getFieldByIndex)
+            .map(symbolAllocator::newSymbol)
+            .collect(toImmutableList());
+
+    outputSymbols.addAll(properOutputs);
+
+    // process sources in order of argument declarations
+    for (TableArgumentAnalysis tableArgument : functionAnalysis.getTableArgumentAnalyses()) {
+      RelationPlan sourcePlan = process(tableArgument.getRelation(), context);
+      PlanBuilder sourcePlanBuilder = newPlanBuilder(sourcePlan, analysis);
+
+      // required columns are a subset of visible columns of the source. remap required column
+      // indexes to field indexes in source relation type.
+      RelationType sourceRelationType = sourcePlan.getScope().getRelationType();
+      int[] fieldIndexForVisibleColumn = new int[sourceRelationType.getVisibleFieldCount()];
+      int visibleColumn = 0;
+      for (int i = 0; i < sourceRelationType.getAllFieldCount(); i++) {
+        if (!sourceRelationType.getFieldByIndex(i).isHidden()) {
+          fieldIndexForVisibleColumn[visibleColumn] = i;
+          visibleColumn++;
+        }
+      }
+      List<Symbol> requiredColumns =
+          functionAnalysis.getRequiredColumns().get(tableArgument.getArgumentName()).stream()
+              .map(column -> fieldIndexForVisibleColumn[column])
+              .map(sourcePlan::getSymbol)
+              .collect(toImmutableList());
+
+      Optional<DataOrganizationSpecification> specification = Optional.empty();
+
+      // if the table argument has set semantics, create Specification
+      if (!tableArgument.isRowSemantics()) {
+        // partition by
+        List<Symbol> partitionBy = ImmutableList.of();
+        // if there are partitioning columns, they might have to be coerced for copartitioning
+        if (tableArgument.getPartitionBy().isPresent()
+            && !tableArgument.getPartitionBy().get().isEmpty()) {
+          List<Expression> partitioningColumns = tableArgument.getPartitionBy().get();
+          QueryPlanner.PlanAndMappings copartitionCoercions =
+              coerce(
+                  sourcePlanBuilder, partitioningColumns, analysis, idAllocator, symbolAllocator);
+          sourcePlanBuilder = copartitionCoercions.getSubPlan();
+          partitionBy =
+              partitioningColumns.stream()
+                  .map(copartitionCoercions::get)
+                  .collect(toImmutableList());
+          analysis.setSortNode(true);
+        }
+
+        // order by
+        Optional<OrderingScheme> orderBy = Optional.empty();
+        if (tableArgument.getOrderBy().isPresent()) {
+          // the ordering symbols are not coerced
+          orderBy =
+              Optional.of(
+                  QueryPlanner.translateOrderingScheme(
+                      tableArgument.getOrderBy().get().getSortItems(),
+                      sourcePlanBuilder::translate));
+          analysis.setSortNode(true);
+        }
+
+        if (!partitionBy.isEmpty() || orderBy.isPresent()) {
+          specification = Optional.of(new DataOrganizationSpecification(partitionBy, orderBy));
+        }
+      }
+
+      // add output symbols passed from the table argument
+      ImmutableList.Builder<TableFunctionNode.PassThroughColumn> passThroughColumns =
+          ImmutableList.builder();
+      if (tableArgument.isPassThroughColumns()) {
+        // the original output symbols from the source node, not coerced
+        // note: hidden columns are included. They are present in sourcePlan.fieldMappings
+        outputSymbols.addAll(sourcePlan.getFieldMappings());
+        Set<Symbol> partitionBy =
+            specification
+                .map(DataOrganizationSpecification::getPartitionBy)
+                .map(ImmutableSet::copyOf)
+                .orElse(ImmutableSet.of());
+        sourcePlan.getFieldMappings().stream()
+            .map(
+                symbol ->
+                    new TableFunctionNode.PassThroughColumn(symbol, partitionBy.contains(symbol)))
+            .forEach(passThroughColumns::add);
+      } else if (tableArgument.getPartitionBy().isPresent()) {
+        tableArgument.getPartitionBy().get().stream()
+            // the original symbols for partitioning columns, not coerced
+            .map(sourcePlanBuilder::translate)
+            .forEach(
+                symbol -> {
+                  outputSymbols.add(symbol);
+                  passThroughColumns.add(new TableFunctionNode.PassThroughColumn(symbol, true));
+                });
+      }
+
+      sources.add(sourcePlanBuilder.getRoot());
+      sourceProperties.add(
+          new TableFunctionNode.TableArgumentProperties(
+              tableArgument.getArgumentName(),
+              tableArgument.isRowSemantics(),
+              new TableFunctionNode.PassThroughSpecification(
+                  tableArgument.isPassThroughColumns(), passThroughColumns.build()),
+              requiredColumns,
+              specification,
+              functionAnalysis.isRequiredRecordSnapshot()));
+    }
+
+    PlanNode root =
+        new TableFunctionNode(
+            idAllocator.genPlanNodeId(),
+            functionAnalysis.getFunctionName(),
+            functionAnalysis.getTableFunctionHandle(),
+            properOutputs,
+            sources.build(),
+            sourceProperties.build());
+
+    return new RelationPlan(root, analysis.getScope(node), outputSymbols.build(), outerContext);
   }
 }

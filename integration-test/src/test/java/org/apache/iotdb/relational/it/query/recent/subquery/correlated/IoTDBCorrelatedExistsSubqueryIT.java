@@ -23,6 +23,7 @@ import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.TableClusterIT;
 import org.apache.iotdb.itbase.category.TableLocalStandaloneIT;
+import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
@@ -33,6 +34,7 @@ import org.junit.runner.RunWith;
 import static org.apache.iotdb.db.it.utils.TestUtils.prepareTableData;
 import static org.apache.iotdb.db.it.utils.TestUtils.tableAssertTestFail;
 import static org.apache.iotdb.db.it.utils.TestUtils.tableResultSetEqualTest;
+import static org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.JoinUtils.ONLY_SUPPORT_EQUI_JOIN;
 import static org.apache.iotdb.relational.it.query.recent.subquery.SubqueryDataSetUtils.CREATE_SQLS;
 import static org.apache.iotdb.relational.it.query.recent.subquery.SubqueryDataSetUtils.DATABASE_NAME;
 import static org.apache.iotdb.relational.it.query.recent.subquery.SubqueryDataSetUtils.NUMERIC_MEASUREMENTS;
@@ -385,27 +387,29 @@ public class IoTDBCorrelatedExistsSubqueryIT {
     tableResultSetEqualTest(sql, expectedHeader, retArray, DATABASE_NAME);
   }
 
+  @Test
   public void testNonComparisonFilterInCorrelatedExistsSubquery() {
+    String errMsg = TSStatusCode.SEMANTIC_ERROR.getStatusCode() + ": " + ONLY_SUPPORT_EQUI_JOIN;
     // Legality check: Correlated subquery with Non-equality comparison is not support for now.
     tableAssertTestFail(
-        "select s1 from table1 t1 where exists(select s1 from table3 t3 where t1.s1 > t3.s1);",
-        "For now, FullOuterJoin and LeftJoin only support EquiJoinClauses",
+        "select s1 from table1 t1 where exists(select s1 from table3 t3 where t1.s1 > t3.s1)",
+        errMsg,
         DATABASE_NAME);
     tableAssertTestFail(
-        "select s1 from table1 t1 where exists(select s1 from table3 t3 where t1.s1 >= t3.s1);",
-        "For now, FullOuterJoin and LeftJoin only support EquiJoinClauses",
+        "select s1 from table1 t1 where exists(select s1 from table3 t3 where t1.s1 >= t3.s1)",
+        errMsg,
         DATABASE_NAME);
     tableAssertTestFail(
-        "select s1 from table1 t1 where exists(select s1 from table3 t3 where t1.s1 < t3.s1);",
-        "For now, FullOuterJoin and LeftJoin only support EquiJoinClauses",
+        "select s1 from table1 t1 where exists(select s1 from table3 t3 where t1.s1 < t3.s1)",
+        errMsg,
         DATABASE_NAME);
     tableAssertTestFail(
-        "select s1 from table1 t1 where exists(select s1 from table3 t3 where t1.s1 <= t3.s1);",
-        "For now, FullOuterJoin and LeftJoin only support EquiJoinClauses",
+        "select s1 from table1 t1 where exists(select s1 from table3 t3 where t1.s1 <= t3.s1)",
+        errMsg,
         DATABASE_NAME);
     tableAssertTestFail(
-        "select s1 from table1 t1 where exists(select s1 from table3 t3 where t1.s1 != t3.s1);",
-        "For now, FullOuterJoin and LeftJoin only support EquiJoinClauses",
+        "select s1 from table1 t1 where exists(select s1 from table3 t3 where t1.s1 != t3.s1)",
+        errMsg,
         DATABASE_NAME);
   }
 

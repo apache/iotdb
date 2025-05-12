@@ -147,7 +147,7 @@ public class PipeConsensusAsyncConnector extends IoTDBConnector implements Conse
             nodeUrls, consensusGroupId, thisDataNodeId, pipeConsensusConnectorMetrics);
     retryConnector.customize(parameters, configuration);
     asyncTransferClientManager =
-        PipeConsensusClientMgrContainer.getInstance().newAsyncClientManager();
+        PipeConsensusClientMgrContainer.getInstance().getGlobalAsyncClientManager();
 
     if (isTabletBatchModeEnabled) {
       tabletBatchBuilder =
@@ -276,6 +276,7 @@ public class PipeConsensusAsyncConnector extends IoTDBConnector implements Conse
       tCommitId =
           new TCommitId(
               pipeInsertNodeTabletInsertionEvent.getReplicateIndexForIoTV2(),
+              pipeInsertNodeTabletInsertionEvent.getCommitterKey().getRestartTimes(),
               pipeInsertNodeTabletInsertionEvent.getRebootTimes());
 
       // We increase the reference count for this event to determine if the event may be released.
@@ -354,6 +355,7 @@ public class PipeConsensusAsyncConnector extends IoTDBConnector implements Conse
     TCommitId tCommitId =
         new TCommitId(
             pipeTsFileInsertionEvent.getReplicateIndexForIoTV2(),
+            pipeTsFileInsertionEvent.getCommitterKey().getRestartTimes(),
             pipeTsFileInsertionEvent.getRebootTimes());
     TConsensusGroupId tConsensusGroupId =
         new TConsensusGroupId(TConsensusGroupType.DataRegion, consensusGroupId);
@@ -375,6 +377,7 @@ public class PipeConsensusAsyncConnector extends IoTDBConnector implements Conse
               this,
               tCommitId,
               tConsensusGroupId,
+              consensusPipeName,
               thisDataNodeId,
               pipeConsensusConnectorMetrics);
 

@@ -34,6 +34,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TPathPrivilege;
 import org.apache.iotdb.confignode.rpc.thrift.TRoleResp;
 import org.apache.iotdb.confignode.rpc.thrift.TTablePrivilege;
 import org.apache.iotdb.confignode.rpc.thrift.TUserResp;
+import org.apache.iotdb.db.pipe.extractor.dataregion.realtime.listener.PipeInsertionDataNodeListener;
 import org.apache.iotdb.db.protocol.session.IClientSession;
 import org.apache.iotdb.db.queryengine.common.header.DatasetHeader;
 import org.apache.iotdb.db.queryengine.plan.execution.config.ConfigTaskResult;
@@ -90,6 +91,7 @@ public class AuthorityChecker {
   }
 
   public static boolean invalidateCache(String username, String roleName) {
+    PipeInsertionDataNodeListener.getInstance().invalidateAllCache();
     return authorityFetcher.get().getAuthorCache().invalidateCache(username, roleName);
   }
 
@@ -222,7 +224,7 @@ public class AuthorityChecker {
     return new TSStatus(TSStatusCode.NO_PERMISSION.getStatusCode()).setMessage(prompt.toString());
   }
 
-  public static boolean checkFullPathPermission(
+  public static boolean checkFullPathOrPatternPermission(
       String userName, PartialPath fullPath, PrivilegeType permission) {
     return authorityFetcher
         .get()
@@ -230,12 +232,7 @@ public class AuthorityChecker {
         .isEmpty();
   }
 
-  public static List<Integer> checkFullPathListPermission(
-      String userName, List<? extends PartialPath> fullPaths, PrivilegeType permission) {
-    return authorityFetcher.get().checkUserPathPrivileges(userName, fullPaths, permission);
-  }
-
-  public static List<Integer> checkPatternPermission(
+  public static List<Integer> checkFullPathOrPatternListPermission(
       String userName, List<? extends PartialPath> pathPatterns, PrivilegeType permission) {
     return authorityFetcher.get().checkUserPathPrivileges(userName, pathPatterns, permission);
   }

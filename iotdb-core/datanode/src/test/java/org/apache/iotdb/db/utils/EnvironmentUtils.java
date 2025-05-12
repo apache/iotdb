@@ -22,12 +22,13 @@ import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.exception.StartupException;
-import org.apache.iotdb.commons.udf.service.UDFManagementService;
+import org.apache.iotdb.db.conf.DataNodeMemoryConfig;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceContext;
 import org.apache.iotdb.db.queryengine.execution.fragment.QueryContext;
+import org.apache.iotdb.db.queryengine.plan.udf.UDFManagementService;
 import org.apache.iotdb.db.schemaengine.SchemaEngine;
 import org.apache.iotdb.db.storageengine.StorageEngine;
 import org.apache.iotdb.db.storageengine.buffer.BloomFilterCache;
@@ -78,6 +79,8 @@ public class EnvironmentUtils {
 
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
   private static final CommonConfig commonConfig = CommonDescriptor.getInstance().getConfig();
+  private static final DataNodeMemoryConfig memoryConfig =
+      IoTDBDescriptor.getInstance().getMemoryConfig();
   private static final TierManager tierManager = TierManager.getInstance();
 
   public static long TEST_QUERY_JOB_ID = 1;
@@ -138,7 +141,7 @@ public class EnvironmentUtils {
     IoTDBDescriptor.getInstance().getConfig().setEnableMQTTService(false);
 
     // clean cache
-    if (config.isMetaDataCacheEnable()) {
+    if (memoryConfig.isMetaDataCacheEnable()) {
       ChunkCache.getInstance().clear();
       TimeSeriesMetadataCache.getInstance().clear();
       BloomFilterCache.getInstance().clear();

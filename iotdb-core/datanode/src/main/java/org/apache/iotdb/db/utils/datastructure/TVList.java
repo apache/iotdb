@@ -22,6 +22,7 @@ package org.apache.iotdb.db.utils.datastructure;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.queryengine.execution.fragment.QueryContext;
+import org.apache.iotdb.db.service.metrics.WritingMetrics;
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.WALEntryValue;
 import org.apache.iotdb.db.storageengine.rescon.memory.PrimitiveArrayManager;
 import org.apache.iotdb.db.utils.MathUtils;
@@ -35,17 +36,24 @@ import org.apache.tsfile.read.common.block.TsBlockBuilder;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.BitMap;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
+import org.apache.tsfile.write.UnSupportedDataTypeException;
+import org.apache.tsfile.write.chunk.ChunkWriterImpl;
+import org.apache.tsfile.write.chunk.IChunkWriter;
 
 import java.io.DataInputStream;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.ReentrantLock;
 
 import static org.apache.iotdb.db.storageengine.rescon.memory.PrimitiveArrayManager.ARRAY_SIZE;
+import static org.apache.iotdb.db.utils.MemUtils.getBinarySize;
+import static org.apache.iotdb.db.utils.ModificationUtils.isPointDeleted;
 import static org.apache.tsfile.utils.RamUsageEstimator.NUM_BYTES_ARRAY_HEADER;
 import static org.apache.tsfile.utils.RamUsageEstimator.NUM_BYTES_OBJECT_REF;
 
@@ -69,8 +77,8 @@ public abstract class TVList implements WALEntryValue {
 
   // lock to provide synchronization for query list
   private final ReentrantLock queryListLock = new ReentrantLock();
-  // list of query that this TVList is used
-  protected final List<QueryContext> queryContextList;
+  // set of query that this TVList is used
+  protected final Set<QueryContext> queryContextSet;
 
   // the owner query which is obligated to release the TVList.
   // When it is null, the TVList is owned by insert thread and released after flush.
@@ -84,13 +92,18 @@ public abstract class TVList implements WALEntryValue {
   protected AtomicInteger referenceCount;
   private long version;
 
+  private final TVList outer = this;
+
+  protected static int defaultArrayNum = 0;
+  protected static volatile long defaultArrayNumLastUpdatedTimeMs = 0;
+
   protected TVList() {
-    timestamps = new ArrayList<>();
+    timestamps = new ArrayList<>(getDefaultArrayNum());
     rowCount = 0;
     seqRowCount = 0;
     maxTime = Long.MIN_VALUE;
     minTime = Long.MAX_VALUE;
-    queryContextList = new ArrayList<>();
+    queryContextSet = new HashSet<>();
     referenceCount = new AtomicInteger();
   }
 
@@ -204,7 +217,7 @@ public abstract class TVList implements WALEntryValue {
     timestamps.get(arrayIndex)[elementIndex] = timestamp;
     // prepare indices for sorting
     if (indices == null) {
-      indices = new ArrayList<>();
+      indices = new ArrayList<>(getDefaultArrayNum());
       for (int i = 0; i < timestamps.size(); i++) {
         indices.add((int[]) getPrimitiveArraysByType(TSDataType.INT32));
         int offset = i * ARRAY_SIZE;
@@ -239,10 +252,11 @@ public abstract class TVList implements WALEntryValue {
   protected void markNullValue(int arrayIndex, int elementIndex) {
     // init bitMap if doesn't have
     if (bitMap == null) {
-      bitMap = new ArrayList<>();
+      List<BitMap> localBitMap = new ArrayList<>(getDefaultArrayNum());
       for (int i = 0; i < timestamps.size(); i++) {
-        bitMap.add(new BitMap(ARRAY_SIZE));
+        localBitMap.add(new BitMap(ARRAY_SIZE));
       }
+      bitMap = localBitMap;
     }
     // if the bitmap in arrayIndex is null, init the bitmap
     if (bitMap.get(arrayIndex) == null) {
@@ -273,7 +287,7 @@ public abstract class TVList implements WALEntryValue {
 
   protected void cloneBitMap(TVList cloneList) {
     if (bitMap != null) {
-      cloneList.bitMap = new ArrayList<>();
+      cloneList.bitMap = new ArrayList<>(bitMap.size());
       for (BitMap bm : bitMap) {
         cloneList.bitMap.add(bm == null ? null : bm.clone());
       }
@@ -422,7 +436,7 @@ public abstract class TVList implements WALEntryValue {
     }
     // clone indices
     if (indices != null) {
-      cloneList.indices = new ArrayList<>();
+      cloneList.indices = new ArrayList<>(indices.size());
       for (int[] indicesArray : indices) {
         cloneList.indices.add(cloneIndex(indicesArray));
       }
@@ -440,7 +454,7 @@ public abstract class TVList implements WALEntryValue {
     sorted = true;
     maxTime = Long.MIN_VALUE;
     minTime = Long.MAX_VALUE;
-    queryContextList.clear();
+    queryContextSet.clear();
     ownerQuery = null;
     clearTime();
     clearValue();
@@ -499,7 +513,6 @@ public abstract class TVList implements WALEntryValue {
     for (int i = start; i < end; i++) {
       inPutMinTime = Math.min(inPutMinTime, time[i]);
       maxTime = Math.max(maxTime, time[i]);
-      minTime = Math.min(minTime, time[i]);
       if (inputSorted) {
         if (i < length - 1 && time[i] > time[i + 1]) {
           inputSorted = false;
@@ -508,6 +521,7 @@ public abstract class TVList implements WALEntryValue {
         }
       }
     }
+    minTime = Math.min(minTime, inPutMinTime);
     if (sorted && (rowCount == 0 || time[start] >= getTime(rowCount - 1))) {
       seqRowCount += inputSeqRowCount;
     }
@@ -618,8 +632,8 @@ public abstract class TVList implements WALEntryValue {
     return ownerQuery;
   }
 
-  public List<QueryContext> getQueryContextList() {
-    return queryContextList;
+  public Set<QueryContext> getQueryContextSet() {
+    return queryContextSet;
   }
 
   public List<BitMap> getBitMap() {
@@ -634,83 +648,289 @@ public abstract class TVList implements WALEntryValue {
     queryListLock.unlock();
   }
 
-  public TVListIterator iterator(Integer floatPrecision, TSEncoding encoding) {
-    return new TVListIterator(floatPrecision, encoding);
+  public TVListIterator iterator(
+      List<TimeRange> deletionList,
+      Integer floatPrecision,
+      TSEncoding encoding,
+      int maxNumberOfPointsInPage) {
+    return new TVListIterator(deletionList, floatPrecision, encoding, maxNumberOfPointsInPage);
   }
 
   /* TVList Iterator */
-  public class TVListIterator {
+  public class TVListIterator implements MemPointIterator {
     protected int index;
     protected int rows;
-    protected long currentTime;
     protected boolean probeNext;
-    private Integer floatPrecision;
-    private TSEncoding encoding;
+    protected List<TsBlock> tsBlocks;
 
-    public TVListIterator() {}
+    private final List<TimeRange> deletionList;
+    private final int[] deleteCursor = {0};
+    private final int floatPrecision;
+    private final TSEncoding encoding;
 
-    public TVListIterator(Integer floatPrecision, TSEncoding encoding) {
+    // used by nextBatch during query
+    protected final int maxNumberOfPointsInPage;
+
+    public TVListIterator(
+        List<TimeRange> deletionList,
+        Integer floatPrecision,
+        TSEncoding encoding,
+        int maxNumberOfPointsInPage) {
+      this.deletionList = deletionList;
+      this.floatPrecision = floatPrecision != null ? floatPrecision : 0;
+      this.encoding = encoding;
       this.index = 0;
       this.rows = rowCount;
-      this.currentTime = index < rows ? getTime(index) : Long.MIN_VALUE;
-      this.floatPrecision = floatPrecision;
-      this.encoding = encoding;
+      this.probeNext = false;
+      this.tsBlocks = new ArrayList<>();
+      this.maxNumberOfPointsInPage = maxNumberOfPointsInPage;
     }
 
-    private void prepareNext() {
+    protected void prepareNext() {
       // skip deleted rows
-      int prevIndex = index;
-      while (index < rows && (bitMap != null && isNullValue(getValueIndex(index)))) {
+      while (index < rows
+          && (isNullValue(getValueIndex(index))
+              || isPointDeleted(getTime(index), deletionList, deleteCursor))) {
         index++;
-      }
-      // update current timestamp if needed
-      if (index > prevIndex) {
-        currentTime = index < rows ? getTime(index) : Long.MIN_VALUE;
       }
 
       // skip duplicated timestamp
-      while (index + 1 < rows && getTime(index + 1) == currentTime) {
+      while (index + 1 < rows && getTime(index + 1) == getTime(index)) {
         index++;
       }
       probeNext = true;
     }
 
-    public boolean hasNext() {
+    @Override
+    public boolean hasNextTimeValuePair() {
       if (!probeNext) {
         prepareNext();
       }
       return index < rows;
     }
 
-    public TimeValuePair next() {
-      if (!hasNext()) {
+    @Override
+    public TimeValuePair nextTimeValuePair() {
+      if (!hasNextTimeValuePair()) {
         return null;
       }
-      TimeValuePair ret = getTimeValuePair(index++, currentTime, floatPrecision, encoding);
-      currentTime = index < rows ? getTime(index) : Long.MIN_VALUE;
-      probeNext = false;
-      return ret;
+      TimeValuePair tvp = getTimeValuePair(index);
+      next();
+      return tvp;
     }
 
-    public TimeValuePair current() {
-      if (!hasCurrent()) {
+    @Override
+    public TimeValuePair currentTimeValuePair() {
+      if (!hasNextTimeValuePair()) {
         return null;
       }
-      return getTimeValuePair(index, currentTime, floatPrecision, encoding);
+      return getTimeValuePair(index);
+    }
+
+    @Override
+    public TsBlock getBatch(int tsBlockIndex) {
+      if (tsBlockIndex < 0 || tsBlockIndex >= tsBlocks.size()) {
+        return null;
+      }
+      return tsBlocks.get(tsBlockIndex);
+    }
+
+    @Override
+    public boolean hasNextBatch() {
+      return hasNextTimeValuePair();
+    }
+
+    @Override
+    public TsBlock nextBatch() {
+      TSDataType dataType = getDataType();
+      TsBlockBuilder builder = new TsBlockBuilder(Collections.singletonList(dataType));
+      switch (dataType) {
+        case BOOLEAN:
+          while (index < rows && builder.getPositionCount() < maxNumberOfPointsInPage) {
+            long time = getTime(index);
+            if (!isNullValue(getValueIndex(index))
+                && !isPointDeleted(time, deletionList, deleteCursor)
+                && (index == rows - 1 || time != getTime(index + 1))) {
+              builder.getTimeColumnBuilder().writeLong(time);
+              builder.getColumnBuilder(0).writeBoolean(getBoolean(index));
+              builder.declarePosition();
+            }
+            index++;
+          }
+          break;
+        case INT32:
+        case DATE:
+          while (index < rows && builder.getPositionCount() < maxNumberOfPointsInPage) {
+            long time = getTime(index);
+            if (!isNullValue(getValueIndex(index))
+                && !isPointDeleted(time, deletionList, deleteCursor)
+                && (index == rows - 1 || time != getTime(index + 1))) {
+              builder.getTimeColumnBuilder().writeLong(time);
+              builder.getColumnBuilder(0).writeInt(getInt(index));
+              builder.declarePosition();
+            }
+            index++;
+          }
+          break;
+        case INT64:
+        case TIMESTAMP:
+          while (index < rows && builder.getPositionCount() < maxNumberOfPointsInPage) {
+            long time = getTime(index);
+            if (!isNullValue(getValueIndex(index))
+                && !isPointDeleted(time, deletionList, deleteCursor)
+                && (index == rows - 1 || time != getTime(index + 1))) {
+              builder.getTimeColumnBuilder().writeLong(time);
+              builder.getColumnBuilder(0).writeLong(getLong(index));
+              builder.declarePosition();
+            }
+            index++;
+          }
+          break;
+        case FLOAT:
+          while (index < rows && builder.getPositionCount() < maxNumberOfPointsInPage) {
+            long time = getTime(index);
+            if (!isNullValue(getValueIndex(index))
+                && !isPointDeleted(time, deletionList, deleteCursor)
+                && (index == rows - 1 || time != getTime(index + 1))) {
+              builder.getTimeColumnBuilder().writeLong(time);
+              builder
+                  .getColumnBuilder(0)
+                  .writeFloat(
+                      roundValueWithGivenPrecision(getFloat(index), floatPrecision, encoding));
+              builder.declarePosition();
+            }
+            index++;
+          }
+          break;
+        case DOUBLE:
+          while (index < rows && builder.getPositionCount() < maxNumberOfPointsInPage) {
+            long time = getTime(index);
+            if (!isNullValue(getValueIndex(index))
+                && !isPointDeleted(time, deletionList, deleteCursor)
+                && (index == rows - 1 || time != getTime(index + 1))) {
+              builder.getTimeColumnBuilder().writeLong(time);
+              builder
+                  .getColumnBuilder(0)
+                  .writeDouble(
+                      roundValueWithGivenPrecision(getDouble(index), floatPrecision, encoding));
+              builder.declarePosition();
+            }
+            index++;
+          }
+          break;
+        case TEXT:
+        case BLOB:
+        case STRING:
+          while (index < rows && builder.getPositionCount() < maxNumberOfPointsInPage) {
+            long time = getTime(index);
+            if (!isNullValue(getValueIndex(index))
+                && !isPointDeleted(time, deletionList, deleteCursor)
+                && (index == rows - 1 || time != getTime(index + 1))) {
+              builder.getTimeColumnBuilder().writeLong(time);
+              builder.getColumnBuilder(0).writeBinary(getBinary(index));
+              builder.declarePosition();
+            }
+            index++;
+          }
+          break;
+        default:
+          throw new UnSupportedDataTypeException(
+              String.format("Data type %s is not supported.", dataType));
+      }
+      TsBlock tsBlock = builder.build();
+      tsBlocks.add(tsBlock);
+      return tsBlock;
+    }
+
+    @Override
+    public void encodeBatch(IChunkWriter chunkWriter, BatchEncodeInfo encodeInfo, long[] times) {
+      TSDataType dataType = getDataType();
+      ChunkWriterImpl chunkWriterImpl = (ChunkWriterImpl) chunkWriter;
+      for (; index < rows; index++) {
+        if (isNullValue(getValueIndex(index))) {
+          continue;
+        }
+        long time = getTime(index);
+        while (index + 1 < rows && time == getTime(index + 1)) {
+          index++;
+        }
+        // store last point for SDT
+        if (encodeInfo.lastIterator) {
+          // skip deleted rows
+          while (index < rows && isNullValue(getValueIndex(index))) {
+            index++;
+          }
+          if (index == rows || index == rows - 1) {
+            chunkWriterImpl.setLastPoint(true);
+          }
+        }
+
+        switch (dataType) {
+          case BOOLEAN:
+            chunkWriterImpl.write(time, getBoolean(index));
+            encodeInfo.dataSizeInChunk += 8L + 1L;
+            break;
+          case INT32:
+          case DATE:
+            chunkWriterImpl.write(time, getInt(index));
+            encodeInfo.dataSizeInChunk += 8L + 4L;
+            break;
+          case INT64:
+          case TIMESTAMP:
+            chunkWriterImpl.write(time, getLong(index));
+            encodeInfo.dataSizeInChunk += 8L + 8L;
+            break;
+          case FLOAT:
+            chunkWriterImpl.write(time, getFloat(index));
+            encodeInfo.dataSizeInChunk += 8L + 4L;
+            break;
+          case DOUBLE:
+            chunkWriterImpl.write(time, getDouble(index));
+            encodeInfo.dataSizeInChunk += 8L + 8L;
+            break;
+          case TEXT:
+          case BLOB:
+          case STRING:
+            Binary value = getBinary(index);
+            chunkWriterImpl.write(time, value);
+            encodeInfo.dataSizeInChunk += 8L + getBinarySize(value);
+            break;
+          default:
+            throw new UnSupportedDataTypeException(
+                String.format("Data type %s is not supported.", dataType));
+        }
+        encodeInfo.pointNumInChunk++;
+        if (encodeInfo.pointNumInChunk >= encodeInfo.maxNumberOfPointsInChunk
+            || encodeInfo.dataSizeInChunk >= encodeInfo.targetChunkSize) {
+          break;
+        }
+      }
+    }
+
+    @Override
+    public long getUsedMemorySize() {
+      return 0;
+    }
+
+    @Override
+    public void close() throws IOException {
+      tsBlocks.clear();
+    }
+
+    public void next() {
+      index++;
+      probeNext = false;
     }
 
     public boolean hasCurrent() {
-      if (bitMap == null) {
-        return index < rows;
-      }
-      return index < rows && !isNullValue(getValueIndex(index));
+      return index < rows;
     }
 
     public long currentTime() {
       if (!hasCurrent()) {
         return Long.MIN_VALUE;
       }
-      return currentTime;
+      return getTime(index);
     }
 
     public int getIndex() {
@@ -720,29 +940,25 @@ public abstract class TVList implements WALEntryValue {
     public void setIndex(int index) {
       this.index = index;
       this.probeNext = false;
-      this.currentTime = index < rows ? getTime(index) : Long.MIN_VALUE;
-    }
-
-    protected void step() {
-      index++;
-      probeNext = false;
-      currentTime = index < rows ? getTime(index) : Long.MIN_VALUE;
     }
 
     public void reset() {
       index = 0;
-      currentTime = index < rows ? getTime(index) : Long.MIN_VALUE;
       probeNext = false;
     }
 
-    @Override
-    public TVListIterator clone() {
-      TVListIterator iterator = new TVListIterator();
-      iterator.rows = rows;
-      iterator.floatPrecision = floatPrecision;
-      iterator.encoding = encoding;
-      iterator.reset();
-      return iterator;
+    public TVList getTVList() {
+      return outer;
     }
+  }
+
+  protected static int getDefaultArrayNum() {
+    if (System.currentTimeMillis() - defaultArrayNumLastUpdatedTimeMs > 10_000) {
+      defaultArrayNumLastUpdatedTimeMs = System.currentTimeMillis();
+      defaultArrayNum =
+          ((int) WritingMetrics.getInstance().getAvgPointHistogram().takeSnapshot().getMean()
+              / ARRAY_SIZE);
+    }
+    return defaultArrayNum;
   }
 }
