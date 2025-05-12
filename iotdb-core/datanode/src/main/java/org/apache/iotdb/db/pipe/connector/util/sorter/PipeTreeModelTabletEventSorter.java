@@ -77,6 +77,7 @@ public class PipeTreeModelTabletEventSorter extends PipeTabletEventSorter {
   }
 
   private void sortTimestamps() {
+    // Index is sorted stably because it is Integer[]
     Arrays.sort(index, Comparator.comparingLong(tablet::getTimestamp));
     Arrays.sort(tablet.getTimestamps(), 0, tablet.getRowSize());
   }
@@ -94,6 +95,7 @@ public class PipeTreeModelTabletEventSorter extends PipeTabletEventSorter {
     }
 
     deDuplicatedIndex[deDuplicatedSize] = tablet.getRowSize() - 1;
-    tablet.setRowSize(deDuplicatedSize + 1);
+    timestamps[deDuplicatedSize] = timestamps[tablet.getRowSize() - 1];
+    tablet.setRowSize(++deDuplicatedSize);
   }
 }

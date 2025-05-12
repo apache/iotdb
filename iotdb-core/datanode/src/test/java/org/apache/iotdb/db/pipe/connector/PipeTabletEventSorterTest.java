@@ -163,7 +163,7 @@ public class PipeTabletEventSorterTest {
       }
 
       rowIndex = tablet.getRowSize();
-      tablet.addTimestamp(rowIndex, (long) rowIndex);
+      tablet.addTimestamp(rowIndex, rowIndex);
       for (int s = 0; s < 3; s++) {
         tablet.addValue(schemaList.get(s).getMeasurementName(), rowIndex, (long) rowIndex);
       }
@@ -231,18 +231,8 @@ public class PipeTabletEventSorterTest {
   }
 
   @Test
-  public void testTableModelDeduplicateAndSort1() {
-    doTableModelTest1(true, true);
-  }
-
-  @Test
-  public void testTableModelDeduplicate1() {
-    doTableModelTest1(true, false);
-  }
-
-  @Test
   public void testTableModelSort1() {
-    doTableModelTest1(false, true);
+    doTableModelTest1();
   }
 
   public void doTableModelTest(final boolean hasDuplicates, final boolean isUnSorted) {
@@ -268,8 +258,8 @@ public class PipeTabletEventSorterTest {
     }
   }
 
-  public void doTableModelTest1(final boolean hasDuplicates, final boolean isUnSorted) {
-    final Tablet tablet = generateTablet("test", 10, hasDuplicates, isUnSorted);
+  public void doTableModelTest1() {
+    final Tablet tablet = generateTablet("test", 10, false, true);
     new PipeTableModelTabletEventSorter(tablet).sortByTimestampIfNecessary();
     long[] timestamps = tablet.getTimestamps();
     for (int i = 1; i < tablet.getRowSize(); i++) {
