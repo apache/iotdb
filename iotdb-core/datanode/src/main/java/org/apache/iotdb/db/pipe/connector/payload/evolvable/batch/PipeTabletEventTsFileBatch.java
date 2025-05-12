@@ -130,7 +130,7 @@ public class PipeTabletEventTsFileBatch extends PipeTabletEventBatch {
       final long creationTime,
       final Tablet tablet,
       final boolean isAligned) {
-    new PipeTreeModelTabletEventSorter(tablet).deduplicateAndSortTimestampsIfNecessary();
+    new PipeTreeModelTabletEventSorter(tablet).deDuplicateAndSortTimestampsIfNecessary();
 
     // TODO: Currently, PipeTreeModelTsFileBuilderV2 still uses PipeTreeModelTsFileBuilder as a
     // fallback builder, so memory table writing and storing temporary tablets require double the
