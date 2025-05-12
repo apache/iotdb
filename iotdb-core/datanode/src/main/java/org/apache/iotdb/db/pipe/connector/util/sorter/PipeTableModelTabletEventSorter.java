@@ -28,17 +28,15 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 
 public class PipeTableModelTabletEventSorter extends PipeTabletEventSorter {
   private int initIndexSize;
 
   public PipeTableModelTabletEventSorter(final Tablet tablet) {
     super(tablet);
-    deduplicateSize = tablet == null ? 0 : tablet.getRowSize();
+    deDuplicatedSize = tablet == null ? 0 : tablet.getRowSize();
   }
 
   /**
@@ -101,7 +99,7 @@ public class PipeTableModelTabletEventSorter extends PipeTabletEventSorter {
     }
 
     initIndexSize = 0;
-    deduplicateSize = 0;
+    deDuplicatedSize = 0;
     index = new Integer[tablet.getRowSize()];
     deviceIDToIndexMap.entrySet().stream()
         .sorted(Map.Entry.comparingByKey())
@@ -115,13 +113,13 @@ public class PipeTableModelTabletEventSorter extends PipeTabletEventSorter {
               }
               if (!isSorted) {
                 sortTimestamps(initIndexSize, i);
-                deduplicateTimestamps(initIndexSize, i);
+                deDuplicatedTimestamps(initIndexSize, i);
                 initIndexSize = i;
                 return;
               }
 
               if (!isDeduplicate) {
-                deduplicateTimestamps(initIndexSize, i);
+                deDuplicatedTimestamps(initIndexSize, i);
               }
               initIndexSize = i;
             });
@@ -134,22 +132,22 @@ public class PipeTableModelTabletEventSorter extends PipeTabletEventSorter {
         (long[])
             reorderValueListAndBitMap(tablet.getTimestamps(), TSDataType.TIMESTAMP, null, null));
     sortAndDeduplicateValuesAndBitMaps();
-    tablet.setRowSize(deduplicateSize);
+    tablet.setRowSize(deDuplicatedSize);
   }
 
   private void sortTimestamps(final int startIndex, final int endIndex) {
     Arrays.sort(this.index, startIndex, endIndex, Comparator.comparingLong(tablet::getTimestamp));
   }
 
-  private void deduplicateTimestamps(final int startIndex, final int endIndex) {
+  private void deDuplicatedTimestamps(final int startIndex, final int endIndex) {
     final long[] timestamps = tablet.getTimestamps();
     long lastTime = timestamps[index[startIndex]];
     for (int i = startIndex + 1; i < endIndex; i++) {
       if (lastTime != (lastTime = timestamps[index[i]])) {
-        deduplicateIndex[deduplicateSize++] = i - 1;
+        deDuplicatedIndex[deDuplicatedSize++] = i - 1;
       }
     }
-    deduplicateIndex[deduplicateSize++] = endIndex - 1;
+    deDuplicatedIndex[deDuplicatedSize++] = endIndex - 1;
   }
 
   /** Sort by time only, and remove only rows with the same DeviceID and time. */

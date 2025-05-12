@@ -28,10 +28,10 @@ public class PipeTreeModelTabletEventSorter extends PipeTabletEventSorter {
 
   public PipeTreeModelTabletEventSorter(final Tablet tablet) {
     super(tablet);
-    deduplicateSize = tablet == null ? 0 : tablet.getRowSize();
+    deDuplicatedSize = tablet == null ? 0 : tablet.getRowSize();
   }
 
-  public void deduplicateAndSortTimestampsIfNecessary() {
+  public void deDuplicatedAndSortTimestampsIfNecessary() {
     if (tablet == null || tablet.getRowSize() == 0) {
       return;
     }
@@ -62,14 +62,14 @@ public class PipeTreeModelTabletEventSorter extends PipeTabletEventSorter {
     if (!isSorted) {
       sortTimestamps();
 
-      // Do deduplicate anyway.
+      // Do deDuplicated anyway.
       // isDeduplicated may be false positive when isSorted is false.
-      deduplicateTimestamps();
+      deDuplicatedTimestamps();
       isDeduplicate = true;
     }
 
     if (!isDeduplicate) {
-      deduplicateTimestamps();
+      deDuplicatedTimestamps();
     }
 
     sortAndDeduplicateValuesAndBitMaps();
@@ -80,19 +80,19 @@ public class PipeTreeModelTabletEventSorter extends PipeTabletEventSorter {
     Arrays.sort(tablet.getTimestamps(), 0, tablet.getRowSize());
   }
 
-  private void deduplicateTimestamps() {
-    deduplicateSize = 0;
+  private void deDuplicatedTimestamps() {
+    deDuplicatedSize = 0;
     long[] timestamps = tablet.getTimestamps();
     for (int i = 1, size = tablet.getRowSize(); i < size; i++) {
       if (timestamps[i] != timestamps[i - 1]) {
-        deduplicateIndex[deduplicateSize] = i - 1;
-        timestamps[deduplicateSize] = timestamps[i - 1];
+        deDuplicatedIndex[deDuplicatedSize] = i - 1;
+        timestamps[deDuplicatedSize] = timestamps[i - 1];
 
-        ++deduplicateSize;
+        ++deDuplicatedSize;
       }
     }
 
-    deduplicateIndex[deduplicateSize] = tablet.getRowSize() - 1;
-    tablet.setRowSize(deduplicateSize + 1);
+    deDuplicatedIndex[deDuplicatedSize] = tablet.getRowSize() - 1;
+    tablet.setRowSize(deDuplicatedSize + 1);
   }
 }
