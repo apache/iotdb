@@ -125,10 +125,6 @@ public class PipeTableModelTabletEventSorter extends PipeTabletEventSorter {
               initIndexSize = i;
             });
 
-    sortAndDeduplicateValuesAndBitMapsWithTimestamp();
-  }
-
-  private void sortAndDeduplicateValuesAndBitMapsWithTimestamp() {
     sortAndDeduplicateValuesAndBitMaps();
     tablet.setRowSize(deduplicateSize);
   }
@@ -195,7 +191,8 @@ public class PipeTableModelTabletEventSorter extends PipeTabletEventSorter {
       deduplicateTimestamps();
     }
 
-    sortAndDeduplicateValuesAndBitMapsIgnoreTimestamp();
+    sortAndDeduplicateValuesAndBitMaps();
+    tablet.setRowSize(deduplicateSize);
   }
 
   private void sortTimestamps() {
@@ -225,10 +222,5 @@ public class PipeTableModelTabletEventSorter extends PipeTabletEventSorter {
         deviceIDSet.add(deviceID);
       }
     }
-  }
-
-  private void sortAndDeduplicateValuesAndBitMapsIgnoreTimestamp() {
-    sortAndDeduplicateValuesAndBitMaps();
-    tablet.setRowSize(deduplicateSize);
   }
 }
