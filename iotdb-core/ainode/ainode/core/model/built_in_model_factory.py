@@ -15,9 +15,9 @@
 # specific language governing permissions and limitations
 # under the License.
 #
+import os
 from abc import abstractmethod
 from typing import List, Dict
-import os
 
 import numpy as np
 from sklearn.preprocessing import MinMaxScaler
@@ -28,15 +28,14 @@ from sktime.forecasting.exp_smoothing import ExponentialSmoothing
 from sktime.forecasting.naive import NaiveForecaster
 from sktime.forecasting.trend import STLForecaster
 
+from ainode.TimerXL.models import timer_xl
+from ainode.TimerXL.models.configuration_timer import TimerxlConfig
+from ainode.core.config import AINodeDescriptor
 from ainode.core.constant import AttributeName, BuiltInModelType
-from ainode.core.exception import InferenceModelInternalError, AttributeNotSupportError
+from ainode.core.exception import InferenceModelInternalError
 from ainode.core.exception import WrongAttributeTypeError, NumericalRangeException, StringRangeException, \
     ListRangeException, BuiltInModelNotSupportError
 from ainode.core.log import Logger
-
-from ainode.TimerXL.models import timer_xl
-from ainode.TimerXL.models.configuration_timer import TimerxlConfig
-from config import AINodeDescriptor
 
 logger = Logger()
 
@@ -399,7 +398,8 @@ timerxl_attribute_map = {
     ),
     AttributeName.TIMERXL_CKPT_PATH.value: StringAttribute(
         name=AttributeName.TIMERXL_CKPT_PATH.value,
-        default_value=os.path.join(os.getcwd(), AINodeDescriptor().get_config().get_ain_models_dir(), 'weights', 'timerxl','model.safetensors'),
+        default_value=os.path.join(os.getcwd(), AINodeDescriptor().get_config().get_ain_models_dir(), 'weights',
+                                   'timerxl', 'model.safetensors'),
         value_choices=['']
     )
 }
