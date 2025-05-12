@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.pipe.connector.util.sorter;
 
+import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.write.record.Tablet;
@@ -125,28 +126,30 @@ public class PipeTableModelTabletEventSorter extends PipeTabletEventSorter {
               initIndexSize = i;
             });
 
+    sortAndDeduplicateValuesAndBitMapsWithTimestamp();
+  }
+
+  private void sortAndDeduplicateValuesAndBitMapsWithTimestamp() {
+    tablet.setTimestamps(
+        (long[])
+            reorderValueListAndBitMap(tablet.getTimestamps(), TSDataType.TIMESTAMP, null, null));
     sortAndDeduplicateValuesAndBitMaps();
     tablet.setRowSize(deduplicateSize);
   }
 
   private void sortTimestamps(final int startIndex, final int endIndex) {
     Arrays.sort(this.index, startIndex, endIndex, Comparator.comparingLong(tablet::getTimestamp));
-    Arrays.sort(tablet.getTimestamps(), startIndex, endIndex);
   }
 
   private void deduplicateTimestamps(final int startIndex, final int endIndex) {
-    deduplicateSize = 0;
-    long[] timestamps = tablet.getTimestamps();
-    for (int i = startIndex; i < endIndex; i++) {
-      if (timestamps[i] != timestamps[i - 1]) {
-        deduplicateIndex[deduplicateSize] = i - 1;
-        timestamps[deduplicateSize] = timestamps[i - 1];
-
-        ++deduplicateSize;
+    final long[] timestamps = tablet.getTimestamps();
+    long lastTime = timestamps[index[startIndex]];
+    for (int i = startIndex + 1; i < endIndex; i++) {
+      if (lastTime != (lastTime = timestamps[index[i]])) {
+        deduplicateIndex[deduplicateSize++] = i - 1;
       }
     }
-
-    deduplicateIndex[deduplicateSize] = endIndex - 1;
+    deduplicateIndex[deduplicateSize++] = endIndex - 1;
   }
 
   /** Sort by time only, and remove only rows with the same DeviceID and time. */
@@ -209,14 +212,14 @@ public class PipeTableModelTabletEventSorter extends PipeTabletEventSorter {
     for (int i = 1, size = tablet.getRowSize(); i < size; i++) {
       deviceID = tablet.getDeviceID(index[i]);
 
-      if ((timestamps[i] != timestamps[i - 1])) {
+      if ((timestamps[i] == timestamps[i - 1])) {
         if (!deviceIDSet.contains(deviceID)) {
-          timestamps[deduplicateSize] = timestamps[i-1];
+          timestamps[deduplicateSize] = timestamps[i - 1];
           deduplicateIndex[deduplicateSize++] = i - 1;
           deviceIDSet.add(deviceID);
         }
       } else {
-        timestamps[deduplicateSize] = timestamps[i-1];
+        timestamps[deduplicateSize] = timestamps[i - 1];
         deduplicateIndex[deduplicateSize++] = i - 1;
         deviceIDSet.clear();
         deviceIDSet.add(deviceID);
