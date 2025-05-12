@@ -888,10 +888,12 @@ struct TCreateTopicReq {
 struct TDropTopicReq {
     1: required string topicName
     2: optional bool ifExistsCondition
+    3: optional bool isTableModel
 }
 
 struct TShowTopicReq {
     1: optional string topicName
+    2: optional bool isTableModel
 }
 
 struct TShowTopicResp {
@@ -933,16 +935,19 @@ struct TSubscribeReq {
     1: required string consumerId
     2: required string consumerGroupId
     3: required set<string> topicNames
+    4: optional bool isTableModel
 }
 
 struct TUnsubscribeReq {
     1: required string consumerId
     2: required string consumerGroupId
     3: required set<string> topicNames
+    4: optional bool isTableModel
 }
 
 struct TShowSubscriptionReq {
     1: optional string topicName
+    2: optional bool isTableModel
 }
 
 struct TShowSubscriptionResp {
