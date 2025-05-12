@@ -34,6 +34,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationN
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationNode.Aggregation;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.FilterNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.GapFillNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.GroupNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.LimitNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.LinearFillNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.OffsetNode;
@@ -492,12 +493,38 @@ public class QueryPlanner {
       mappings.put(scopeAwareKey(windowFunction, analysis, subPlan.getScope()), newSymbol);
     }
 
+    // Create GroupNode
+    List<Symbol> sortSymbols = new ArrayList<>();
+    Map<Symbol, SortOrder> sortOrderings = new HashMap<>();
+    for (Symbol symbol : specification.getPartitionBy()) {
+      sortSymbols.add(symbol);
+      sortOrderings.put(symbol, ASC_NULLS_LAST);
+    }
+    int sortKeyOffset = sortSymbols.size();
+    specification
+        .getOrderingScheme()
+        .ifPresent(
+            orderingScheme -> {
+              for (Symbol symbol : orderingScheme.getOrderBy()) {
+                if (!sortOrderings.containsKey(symbol)) {
+                  sortSymbols.add(symbol);
+                  sortOrderings.put(symbol, orderingScheme.getOrdering(symbol));
+                }
+              }
+            });
+    GroupNode groupNode = new GroupNode(
+        idAllocator.genPlanNodeId(),
+        subPlan.getRoot(),
+        new OrderingScheme(sortSymbols, sortOrderings),
+        sortKeyOffset);
+    PlanBuilder planBuilder = new PlanBuilder(subPlan.getTranslations().withAdditionalMappings(mappings.buildOrThrow()), groupNode);
+
     // create window node
     return new PlanBuilder(
         subPlan.getTranslations().withAdditionalMappings(mappings.buildOrThrow()),
         new WindowNode(
             idAllocator.genPlanNodeId(),
-            subPlan.getRoot(),
+            planBuilder.getRoot(),
             specification,
             functions.buildOrThrow(),
             Optional.empty(),
