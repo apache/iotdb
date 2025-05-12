@@ -132,7 +132,7 @@ public class PipeTableModelTabletEventSorter extends PipeTabletEventSorter {
     tablet.setTimestamps(
         (long[])
             reorderValueListAndBitMap(tablet.getTimestamps(), TSDataType.TIMESTAMP, null, null));
-    sortAndDeduplicateValuesAndBitMaps();
+    sortAndMayDeduplicateValuesAndBitMaps();
     tablet.setRowSize(deDuplicatedSize);
   }
 
@@ -181,7 +181,7 @@ public class PipeTableModelTabletEventSorter extends PipeTabletEventSorter {
       sortTimestamps();
     }
 
-    sortAndDeduplicateValuesAndBitMaps();
+    sortAndMayDeduplicateValuesAndBitMaps();
   }
 
   private void sortTimestamps() {

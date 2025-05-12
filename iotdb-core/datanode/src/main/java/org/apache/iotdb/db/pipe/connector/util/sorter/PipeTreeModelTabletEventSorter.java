@@ -73,7 +73,7 @@ public class PipeTreeModelTabletEventSorter extends PipeTabletEventSorter {
       deDuplicateTimestamps();
     }
 
-    sortAndDeduplicateValuesAndBitMaps();
+    sortAndMayDeduplicateValuesAndBitMaps();
   }
 
   private void sortTimestamps() {

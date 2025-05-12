@@ -52,7 +52,7 @@ public class PipeTabletEventSorter {
   // Output:
   // (Used index: [2(3), 4(0)])
   // Col: [6, 1]
-  protected void sortAndDeduplicateValuesAndBitMaps() {
+  protected void sortAndMayDeduplicateValuesAndBitMaps() {
     int columnIndex = 0;
     for (int i = 0, size = tablet.getSchemas().size(); i < size; i++) {
       final IMeasurementSchema schema = tablet.getSchemas().get(i);
@@ -171,6 +171,9 @@ public class PipeTabletEventSorter {
       final BitMap originalBitMap,
       final BitMap deDuplicatedBitMap) {
     if (deDuplicatedIndex == null) {
+      if (originalBitMap.isMarked(index[i])) {
+        deDuplicatedBitMap.mark(i);
+      }
       return index[i];
     }
     if (originalBitMap == null) {
@@ -178,7 +181,7 @@ public class PipeTabletEventSorter {
     }
     int lastNonnullIndex = deDuplicatedIndex[i];
     int lastIndex = i > 0 ? deDuplicatedIndex[i - 1] : -1;
-    while (originalBitMap.isMarked(lastNonnullIndex)) {
+    while (originalBitMap.isMarked(index[lastNonnullIndex])) {
       --lastNonnullIndex;
       if (lastNonnullIndex == lastIndex) {
         deDuplicatedBitMap.mark(i);
