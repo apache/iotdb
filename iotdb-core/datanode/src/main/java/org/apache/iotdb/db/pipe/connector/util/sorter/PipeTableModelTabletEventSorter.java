@@ -101,6 +101,7 @@ public class PipeTableModelTabletEventSorter extends PipeTabletEventSorter {
     initIndexSize = 0;
     deDuplicatedSize = 0;
     index = new Integer[tablet.getRowSize()];
+    deDuplicatedIndex = new int[tablet.getRowSize()];
     deviceIDToIndexMap.entrySet().stream()
         .sorted(Map.Entry.comparingByKey())
         .forEach(
@@ -113,13 +114,13 @@ public class PipeTableModelTabletEventSorter extends PipeTabletEventSorter {
               }
               if (!isSorted) {
                 sortTimestamps(initIndexSize, i);
-                deDuplicatedTimestamps(initIndexSize, i);
+                deDuplicateTimestamps(initIndexSize, i);
                 initIndexSize = i;
                 return;
               }
 
               if (!isDeduplicate) {
-                deDuplicatedTimestamps(initIndexSize, i);
+                deDuplicateTimestamps(initIndexSize, i);
               }
               initIndexSize = i;
             });
@@ -139,7 +140,7 @@ public class PipeTableModelTabletEventSorter extends PipeTabletEventSorter {
     Arrays.sort(this.index, startIndex, endIndex, Comparator.comparingLong(tablet::getTimestamp));
   }
 
-  private void deDuplicatedTimestamps(final int startIndex, final int endIndex) {
+  private void deDuplicateTimestamps(final int startIndex, final int endIndex) {
     final long[] timestamps = tablet.getTimestamps();
     long lastTime = timestamps[index[startIndex]];
     for (int i = startIndex + 1; i < endIndex; i++) {

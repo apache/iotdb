@@ -170,6 +170,9 @@ public class PipeTabletEventSorter {
       final int[] deDuplicatedIndex,
       final BitMap originalBitMap,
       final BitMap deDuplicatedBitMap) {
+    if (deDuplicatedIndex == null) {
+      return index[i];
+    }
     if (originalBitMap == null) {
       return index[deDuplicatedIndex[i]];
     }

@@ -55,6 +55,7 @@ public class PipeTreeModelTabletEventSorter extends PipeTabletEventSorter {
     }
 
     index = new Integer[tablet.getRowSize()];
+    deDuplicatedIndex = new int[tablet.getRowSize()];
     for (int i = 0, size = tablet.getRowSize(); i < size; i++) {
       index[i] = i;
     }
@@ -63,13 +64,13 @@ public class PipeTreeModelTabletEventSorter extends PipeTabletEventSorter {
       sortTimestamps();
 
       // Do deDuplicated anyway.
-      // isDeduplicated may be false positive when isSorted is false.
-      deDuplicatedTimestamps();
+      // isDeDuplicated may be false positive when isSorted is false.
+      deDuplicateTimestamps();
       isDeduplicate = true;
     }
 
     if (!isDeduplicate) {
-      deDuplicatedTimestamps();
+      deDuplicateTimestamps();
     }
 
     sortAndDeduplicateValuesAndBitMaps();
@@ -80,7 +81,7 @@ public class PipeTreeModelTabletEventSorter extends PipeTabletEventSorter {
     Arrays.sort(tablet.getTimestamps(), 0, tablet.getRowSize());
   }
 
-  private void deDuplicatedTimestamps() {
+  private void deDuplicateTimestamps() {
     deDuplicatedSize = 0;
     long[] timestamps = tablet.getTimestamps();
     for (int i = 1, size = tablet.getRowSize(); i < size; i++) {
