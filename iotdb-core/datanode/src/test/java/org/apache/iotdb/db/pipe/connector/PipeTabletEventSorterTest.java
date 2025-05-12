@@ -270,7 +270,7 @@ public class PipeTabletEventSorterTest {
 
   public void doTableModelTest1(final boolean hasDuplicates, final boolean isUnSorted) {
     final Tablet tablet = generateTablet("test", 10, hasDuplicates, isUnSorted);
-    new PipeTableModelTabletEventSorter(tablet).sortAndDeduplicateByTimestampIfNecessary();
+    new PipeTableModelTabletEventSorter(tablet).sortByTimestampIfNecessary();
     long[] timestamps = tablet.getTimestamps();
     for (int i = 1; i < tablet.getRowSize(); i++) {
       long time = timestamps[i];

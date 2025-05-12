@@ -153,7 +153,7 @@ public class PipeTableModelTabletEventSorter extends PipeTabletEventSorter {
   }
 
   /** Sort by time only, and remove only rows with the same DeviceID and time. */
-  public void sortAndDeduplicateByTimestampIfNecessary() {
+  public void sortByTimestampIfNecessary() {
     if (tablet == null || tablet.getRowSize() == 0) {
       return;
     }
@@ -167,12 +167,9 @@ public class PipeTableModelTabletEventSorter extends PipeTabletEventSorter {
         isSorted = false;
         break;
       }
-      if (currentTimestamp == previousTimestamp) {
-        isDeduplicate = false;
-      }
     }
 
-    if (isSorted && isDeduplicate) {
+    if (isSorted) {
       return;
     }
 
@@ -183,47 +180,13 @@ public class PipeTableModelTabletEventSorter extends PipeTabletEventSorter {
 
     if (!isSorted) {
       sortTimestamps();
-
-      // Do deduplicate anyway.
-      // isDeduplicated may be false positive when isUnSorted is true.
-      deduplicateTimestamps();
-      isDeduplicate = true;
-    }
-
-    if (!isDeduplicate) {
-      deduplicateTimestamps();
     }
 
     sortAndDeduplicateValuesAndBitMaps();
-    tablet.setRowSize(deduplicateSize);
   }
 
   private void sortTimestamps() {
     Arrays.sort(this.index, Comparator.comparingLong(tablet::getTimestamp));
     Arrays.sort(tablet.getTimestamps(), 0, tablet.getRowSize());
-  }
-
-  private void deduplicateTimestamps() {
-    deduplicateSize = 0;
-    final long[] timestamps = tablet.getTimestamps();
-    IDeviceID deviceID = tablet.getDeviceID(index[0]);
-    final Set<IDeviceID> deviceIDSet = new HashSet<>();
-    deviceIDSet.add(deviceID);
-    for (int i = 1, size = tablet.getRowSize(); i < size; i++) {
-      deviceID = tablet.getDeviceID(index[i]);
-
-      if ((timestamps[i] == timestamps[i - 1])) {
-        if (!deviceIDSet.contains(deviceID)) {
-          timestamps[deduplicateSize] = timestamps[i - 1];
-          deduplicateIndex[deduplicateSize++] = i - 1;
-          deviceIDSet.add(deviceID);
-        }
-      } else {
-        timestamps[deduplicateSize] = timestamps[i - 1];
-        deduplicateIndex[deduplicateSize++] = i - 1;
-        deviceIDSet.clear();
-        deviceIDSet.add(deviceID);
-      }
-    }
   }
 }
