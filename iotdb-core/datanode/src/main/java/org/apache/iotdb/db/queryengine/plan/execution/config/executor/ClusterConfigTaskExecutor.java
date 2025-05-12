@@ -2354,6 +2354,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
       if (showSubscriptionsStatement.getTopicName() != null) {
         showSubscriptionReq.setTopicName(showSubscriptionsStatement.getTopicName());
       }
+      showSubscriptionReq.setIsTableModel(showSubscriptionsStatement.isTableModel());
 
       final TShowSubscriptionResp showSubscriptionResp =
           configNodeClient.showSubscription(showSubscriptionReq);
@@ -2453,7 +2454,8 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
           configNodeClient.dropTopicExtended(
               new TDropTopicReq()
                   .setIfExistsCondition(dropTopicStatement.hasIfExistsCondition())
-                  .setTopicName(dropTopicStatement.getTopicName()));
+                  .setTopicName(dropTopicStatement.getTopicName())
+                  .setIsTableModel(dropTopicStatement.isTableModel()));
       if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != tsStatus.getCode()) {
         future.setException(new IoTDBException(tsStatus.message, tsStatus.code));
       } else {
@@ -2475,6 +2477,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
       if (showTopicsStatement.getTopicName() != null) {
         showTopicReq.setTopicName(showTopicsStatement.getTopicName());
       }
+      showTopicReq.setIsTableModel(showTopicsStatement.isTableModel());
 
       final TShowTopicResp showTopicResp = configNodeClient.showTopic(showTopicReq);
       if (showTopicResp.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {

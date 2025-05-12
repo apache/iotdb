@@ -525,7 +525,11 @@ public class InformationSchemaContentSupplierFactory {
       super(dataTypes);
       try (final ConfigNodeClient client =
           ConfigNodeClientManager.getInstance().borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
-        iterator = client.showTopic(new TShowTopicReq()).getTopicInfoList().iterator();
+        iterator =
+            client
+                .showTopic(new TShowTopicReq().setIsTableModel(true))
+                .getTopicInfoList()
+                .iterator();
       } catch (final Exception e) {
         lastException = e;
       }
@@ -556,7 +560,7 @@ public class InformationSchemaContentSupplierFactory {
           ConfigNodeClientManager.getInstance().borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
         iterator =
             client
-                .showSubscription(new TShowSubscriptionReq())
+                .showSubscription(new TShowSubscriptionReq().setIsTableModel(true))
                 .getSubscriptionInfoList()
                 .iterator();
       } catch (final Exception e) {
