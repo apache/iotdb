@@ -179,14 +179,20 @@ public class AINodeBasicIT {
   @Test
   public void timerTest() {
     String sql = "CALL INFERENCE(_timerxl,  \"select s0 from root.AI.data\", predict_length=36)";
-    try (ResultSet resultSet = statement.executeQuery(sql)) {
-      ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
-      checkHeader(resultSetMetaData, "output0");
-      int count = 0;
-      while (resultSet.next()) {
-        count++;
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+
+      try (ResultSet resultSet = statement.executeQuery(sql)) {
+        ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
+        checkHeader(resultSetMetaData, "output0");
+        int count = 0;
+        while (resultSet.next()) {
+          count++;
+        }
+        assertEquals(36, count);
       }
-      assertEquals(36, count);
+    } catch (Exception e) {
+      fail(e.getMessage());
     }
   }
 
