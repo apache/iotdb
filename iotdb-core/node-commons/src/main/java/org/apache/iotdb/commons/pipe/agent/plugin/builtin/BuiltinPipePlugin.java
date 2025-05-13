@@ -56,11 +56,10 @@ public enum BuiltinPipePlugin {
   // extractors
   DO_NOTHING_EXTRACTOR("do-nothing-extractor", DoNothingExtractor.class),
   IOTDB_EXTRACTOR("iotdb-extractor", IoTDBExtractor.class),
+  MQTT_EXTRACTOR("mqtt-extractor", MQTTExtractor.class),
 
   DO_NOTHING_SOURCE("do-nothing-source", DoNothingExtractor.class),
   IOTDB_SOURCE("iotdb-source", IoTDBExtractor.class),
-
-  MQTT_EXTRACTOR("mqtt-extractor", MQTTExtractor.class),
   MQTT_SOURCE("mqtt-source", MQTTExtractor.class),
 
   // processors
