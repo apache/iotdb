@@ -1989,6 +1989,6 @@ service IConfigNodeRPCService {
 
   // Table view
 
-  common.TSStatus createView(TCreateTableViewReq req)
+  common.TSStatus createTableView(TCreateTableViewReq req)
 }
 
