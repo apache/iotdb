@@ -854,7 +854,7 @@ public class IoTDBTableIT {
       // Temporary
       try {
         statement.execute(
-            "create or replace table view tree_table (tag1 tag, tag2 tag, S1 int32 field, s3 boolean from S1) as root.a.**");
+            "create or replace view tree_table (tag1 tag, tag2 tag, S1 int32 field, s3 boolean from S1) as root.a.**");
         fail();
       } catch (final SQLException e) {
         assertEquals(
