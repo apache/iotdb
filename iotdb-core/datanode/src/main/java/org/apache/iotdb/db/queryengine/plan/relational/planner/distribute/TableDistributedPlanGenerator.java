@@ -54,7 +54,6 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AssignUnique
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.CollectNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.DeviceTableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.EnforceSingleRowNode;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ExchangeNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ExplainAnalyzeNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.FillNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.FilterNode;
@@ -1524,7 +1523,8 @@ public class TableDistributedPlanGenerator
       node.setChild(childrenNodes.get(0));
       return Collections.singletonList(node);
     } else if (!canSplitPushDown) {
-      CollectNode collectNode = new CollectNode(queryId.genPlanNodeId(), node.getChildren().get(0).getOutputSymbols());
+      CollectNode collectNode =
+          new CollectNode(queryId.genPlanNodeId(), node.getChildren().get(0).getOutputSymbols());
       childrenNodes.forEach(collectNode::addChild);
       node.setChild(collectNode);
       return Collections.singletonList(node);
