@@ -86,9 +86,7 @@ public class ShowCreateViewTask extends AbstractTableTask {
 
   public static String getShowCreateViewSQL(final TsTable table) {
     final StringBuilder builder =
-        new StringBuilder("CREATE TABLE VIEW ")
-            .append(getIdentifier(table.getTableName()))
-            .append(" (");
+        new StringBuilder("CREATE VIEW ").append(getIdentifier(table.getTableName())).append(" (");
 
     for (final TsTableColumnSchema schema : table.getColumnList()) {
       switch (schema.getColumnCategory()) {

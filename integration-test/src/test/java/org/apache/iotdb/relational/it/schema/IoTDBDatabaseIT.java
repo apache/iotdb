@@ -532,7 +532,7 @@ public class IoTDBDatabaseIT {
       statement.execute(
           "create table test.test (a tag, b attribute, c int32 comment 'turbine') comment 'test'");
       statement.execute(
-          "CREATE TABLE VIEW test.view_table (tag1 STRING TAG,tag2 STRING TAG,s11 INT32 FIELD,s3 INT32 FIELD FROM s2) AS root.a.** WITH (ttl=100) RESTRICT");
+          "CREATE VIEW test.view_table (tag1 STRING TAG,tag2 STRING TAG,s11 INT32 FIELD,s3 INT32 FIELD FROM s2) AS root.a.** WITH (ttl=100) RESTRICT");
 
       TestUtils.assertResultSetEqual(
           statement.executeQuery("select * from databases"),
@@ -561,7 +561,7 @@ public class IoTDBDatabaseIT {
                   "information_schema,configurations,INF,USING,null,SYSTEM VIEW,",
                   "information_schema,keywords,INF,USING,null,SYSTEM VIEW,",
                   "test,test,INF,USING,test,BASE TABLE,",
-                  "test,view_table,100,USING,null,TREE_TO_TABLE VIEW,")));
+                  "test,view_table,100,USING,null,VIEW FROM TREE,")));
       TestUtils.assertResultSetEqual(
           statement.executeQuery("count devices from tables where status = 'USING'"),
           "count(devices),",
@@ -612,7 +612,7 @@ public class IoTDBDatabaseIT {
           statement.executeQuery("select * from views"),
           "database,table_name,view_definition,",
           Collections.singleton(
-              "test,view_table,CREATE TABLE VIEW \"view_table\" (\"tag1\" STRING TAG,\"tag2\" STRING TAG,\"s11\" INT32 FIELD,\"s3\" INT32 FIELD FROM \"s2\") AS root.a.** WITH (ttl=100) RESTRICT,"));
+              "test,view_table,CREATE VIEW \"view_table\" (\"tag1\" STRING TAG,\"tag2\" STRING TAG,\"s11\" INT32 FIELD,\"s3\" INT32 FIELD FROM \"s2\") AS root.a.** WITH (ttl=100) RESTRICT,"));
 
       TestUtils.assertResultSetEqual(
           statement.executeQuery(

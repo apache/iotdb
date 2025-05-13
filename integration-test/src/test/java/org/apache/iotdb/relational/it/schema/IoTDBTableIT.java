@@ -796,7 +796,7 @@ public class IoTDBTableIT {
       TestUtils.assertResultSetEqual(
           statement.executeQuery("show tables details"),
           "TableName,TTL(ms),Status,Comment,TableType,",
-          Collections.singleton("view_table,100,USING,comment,TREE_TO_TABLE VIEW,"));
+          Collections.singleton("view_table,100,USING,comment,VIEW FROM TREE,"));
 
       TestUtils.assertResultSetEqual(
           statement.executeQuery("desc view_table"),
