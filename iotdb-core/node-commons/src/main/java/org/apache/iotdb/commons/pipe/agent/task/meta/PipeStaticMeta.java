@@ -27,8 +27,6 @@ import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 
 import org.apache.tsfile.utils.PublicBAOS;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
@@ -41,8 +39,6 @@ import java.util.Map;
 import java.util.Objects;
 
 public class PipeStaticMeta {
-
-  private static final Logger LOGGER = LoggerFactory.getLogger(PipeStaticMeta.class);
 
   private String pipeName;
   private long creationTime;

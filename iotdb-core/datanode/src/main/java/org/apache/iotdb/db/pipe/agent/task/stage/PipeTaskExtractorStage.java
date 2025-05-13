@@ -21,6 +21,7 @@ package org.apache.iotdb.db.pipe.agent.task.stage;
 
 import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.commons.pipe.agent.task.connection.EventSupplier;
+import org.apache.iotdb.commons.pipe.agent.task.meta.PipeRuntimeMeta;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
 import org.apache.iotdb.commons.pipe.agent.task.stage.PipeTaskStage;
 import org.apache.iotdb.commons.pipe.config.plugin.configuraion.PipeTaskRuntimeConfiguration;
@@ -49,9 +50,7 @@ public class PipeTaskExtractorStage extends PipeTaskStage {
       PipeTaskMeta pipeTaskMeta) {
     pipeExtractor =
         StorageEngine.getInstance().getAllDataRegionIds().contains(new DataRegionId(regionId))
-                // regionId that is less than 0 means an external pipe source, use
-                // dataRegionExtractor
-                || regionId < 0
+                || PipeRuntimeMeta.isSourceExternal(regionId)
             ? PipeDataNodeAgent.plugin().dataRegion().reflectExtractor(extractorParameters)
             : PipeDataNodeAgent.plugin().schemaRegion().reflectExtractor(extractorParameters);
 

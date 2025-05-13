@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.exception.pipe.PipeRuntimeException;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeOutOfMemoryCriticalException;
 import org.apache.iotdb.commons.pipe.agent.task.connection.EventSupplier;
 import org.apache.iotdb.commons.pipe.agent.task.execution.PipeSubtaskScheduler;
+import org.apache.iotdb.commons.pipe.agent.task.meta.PipeRuntimeMeta;
 import org.apache.iotdb.commons.pipe.agent.task.progress.PipeEventCommitManager;
 import org.apache.iotdb.commons.pipe.agent.task.subtask.PipeReportableSubtask;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
@@ -90,8 +91,7 @@ public class PipeProcessorSubtask extends PipeReportableSubtask {
 
     // Only register dataRegions
     if (StorageEngine.getInstance().getAllDataRegionIds().contains(new DataRegionId(regionId))
-        // regionId that is less than 0 means an external pipe source, should register it
-        || regionId < 0) {
+        || PipeRuntimeMeta.isSourceExternal(regionId)) {
       PipeProcessorMetrics.getInstance().register(this);
     }
   }
