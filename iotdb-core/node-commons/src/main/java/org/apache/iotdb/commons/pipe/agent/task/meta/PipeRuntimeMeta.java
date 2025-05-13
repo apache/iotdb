@@ -137,8 +137,9 @@ public class PipeRuntimeMeta {
   }
 
   /**
-   * We use negative regionId to store the pipe runtime meta of external pipe source, which is not
-   * managed by the IoTDB cluster. The regionId is used to identify the external pipe source.
+   * We use negative regionId to identify the external pipe source, which is not a consensus group
+   * id. Then we can reuse the regionId to schedule the external pipe source and store the progress
+   * information.
    */
   public static boolean isSourceExternal(int regionId) {
     // regionId that is less than 0 is a special value marking an external pipe source
