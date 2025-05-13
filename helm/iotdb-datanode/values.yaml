@@ -1,0 +1,80 @@
+replicaCount: 3
+
+image:
+  repository: apache/iotdb
+  tag: 1.1.2-datanode
+  pullPolicy: IfNotPresent
+
+service:
+  type: ClusterIP
+  ports:
+    - name: tcp-10710
+      protocol: TCP
+      port: 10710
+      targetPort: 10710
+    - name: tcp-10720
+      protocol: TCP
+      port: 10720
+      targetPort: 10720
+    - name: tcp-10730
+      protocol: TCP
+      port: 10730
+      targetPort: 10730
+    - name: tcp-10740
+      protocol: TCP
+      port: 10740
+      targetPort: 10740  
+    - name: tcp-6667
+      protocol: TCP
+      port: 6667
+      targetPort: 6667
+    - name: tcp-9091
+      protocol: TCP
+      port: 9091
+      targetPort: 9091
+
+resources:
+  limits:
+    cpu: "1"
+    memory: 2Gi
+  requests:
+    cpu: "1"
+    memory: 1Gi
+
+storage:
+  name: iotdb-datanode-data
+  size: 500Gi
+  storageClassName: "alicloud-disk-topology-alltype"
+
+env:
+  - name: dn_target_config_node_list
+    value: 'iotdb-confignode-0.iotdb-confignode.$(MY_NS_NAME).svc.cluster.local:10710'
+  - name: data_replication_factor
+    value: '3'
+  - name: schema_replication_factor
+    value: '2'    
+  - name: dn_rpc_port
+    value: '6667'
+  - name: dn_mpp_data_exchange_port
+    value: '10740'
+  - name: dn_schema_region_consensus_port
+    value: '10750'
+  - name: dn_data_region_consensus_port
+    value: '10760'
+  - name: schema_region_consensus_protocol_class
+    value: "org.apache.iotdb.consensus.ratis.RatisConsensus"
+  - name: config_node_consensus_protocol_class
+    value: "org.apache.iotdb.consensus.ratis.RatisConsensus"
+  - name: data_region_consensus_protocol_class
+    value: "org.apache.iotdb.consensus.iot.IoTConsensus"
+  - name: enable_auto_create_schema
+    value: "true"
+  - name: dn_metric_reporter_list
+    value: PROMETHEUS
+  - name: dn_metric_level
+    value: CORE
+  - name: dn_metric_prometheus_reporter_port
+    value: "9091"
+
+nameOverride: ""
+fullnameOverride: "iotdb-datanode"
