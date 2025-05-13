@@ -774,7 +774,7 @@ public class IoTDBTableIT {
         final Statement statement = connection.createStatement()) {
       statement.execute("create database tree_view_db");
       statement.execute("use tree_view_db");
-      statement.execute("create table view tree_table (tag1 tag, tag2 tag) as root.a.**");
+      statement.execute("create view tree_table (tag1 tag, tag2 tag) as root.a.**");
       statement.execute("drop view tree_table");
     }
 
@@ -791,7 +791,7 @@ public class IoTDBTableIT {
       statement.execute("use tree_view_db");
 
       try {
-        statement.execute("create table view tree_table (tag1 tag, tag2 tag) as root.a.**");
+        statement.execute("create view tree_table (tag1 tag, tag2 tag) as root.a.**");
         fail();
       } catch (final SQLException e) {
         final Set<String> result =
@@ -830,8 +830,7 @@ public class IoTDBTableIT {
       }
 
       try {
-        statement.execute(
-            "create table view tree_table (tag1 tag, tag2 tag, S1 field) as root.a.**");
+        statement.execute("create view tree_table (tag1 tag, tag2 tag, S1 field) as root.a.**");
         fail();
       } catch (final SQLException e) {
         assertEquals(
