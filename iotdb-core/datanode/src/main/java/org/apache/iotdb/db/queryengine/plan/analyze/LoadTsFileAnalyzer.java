@@ -455,11 +455,13 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
     while (timeseriesMetadataIterator.hasNext()) {
       final Map<IDeviceID, List<TimeseriesMetadata>> device2TimeseriesMetadata =
           timeseriesMetadataIterator.next();
-      if (isAutoCreateSchemaOrVerifySchemaEnabled) {
-        schemaAutoCreatorAndVerifier.autoCreateAndVerify(reader, device2TimeseriesMetadata);
-      }
       if (!tsFileResource.resourceFileExists()) {
         TsFileResourceUtils.updateTsFileResource(device2TimeseriesMetadata, tsFileResource);
+        schemaAutoCreatorAndVerifier.setCurrentTimeIndex(tsFileResource.getTimeIndex());
+      }
+
+      if (isAutoCreateSchemaOrVerifySchemaEnabled) {
+        schemaAutoCreatorAndVerifier.autoCreateAndVerify(reader, device2TimeseriesMetadata);
       }
       // TODO: how to get the correct write point count when
       //  !isAutoCreateSchemaOrVerifySchemaEnabled
@@ -569,6 +571,10 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
 
     public void setCurrentModificationsAndTimeIndex(TsFileResource resource) throws IOException {
       schemaCache.setCurrentModificationsAndTimeIndex(resource);
+    }
+
+    public void setCurrentTimeIndex(final ITimeIndex timeIndex) {
+      schemaCache.setCurrentTimeIndex(timeIndex);
     }
 
     public void autoCreateAndVerify(
@@ -1058,6 +1064,10 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
         currentTimeIndexMemoryUsageSizeInBytes = currentTimeIndex.calculateRamSize();
         block.addMemoryUsage(currentTimeIndexMemoryUsageSizeInBytes);
       }
+    }
+
+    public void setCurrentTimeIndex(final ITimeIndex timeIndex) {
+      currentTimeIndex = timeIndex;
     }
 
     public boolean isDeviceDeletedByMods(IDeviceID device) throws IllegalPathException {

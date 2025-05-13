@@ -36,15 +36,16 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.concurrent.ConcurrentHashMap;
 
 import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.CONNECTOR_FORMAT_HYBRID_VALUE;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.CONNECTOR_FORMAT_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.CONNECTOR_FORMAT_TS_FILE_VALUE;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.CONNECTOR_IOTDB_BATCH_DELAY_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.CONNECTOR_IOTDB_BATCH_DELAY_MS_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.CONNECTOR_IOTDB_BATCH_SIZE_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.CONNECTOR_IOTDB_PLAIN_BATCH_DELAY_DEFAULT_VALUE;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.CONNECTOR_IOTDB_PLAIN_BATCH_SIZE_DEFAULT_VALUE;
@@ -54,6 +55,7 @@ import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstan
 import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.CONNECTOR_LEADER_CACHE_ENABLE_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.SINK_FORMAT_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.SINK_IOTDB_BATCH_DELAY_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.SINK_IOTDB_BATCH_DELAY_MS_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.SINK_IOTDB_BATCH_SIZE_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.SINK_LEADER_CACHE_ENABLE_KEY;
 
@@ -72,7 +74,8 @@ public class PipeTransferBatchReqBuilder implements AutoCloseable {
   // If the leader cache is enabled, the batch will be divided by the leader endpoint,
   // each endpoint has a batch.
   // This is only used in plain batch since tsfile does not return redirection info.
-  private final Map<TEndPoint, PipeTabletEventPlainBatch> endPointToBatch = new HashMap<>();
+  private final Map<TEndPoint, PipeTabletEventPlainBatch> endPointToBatch =
+      new ConcurrentHashMap<>();
 
   public PipeTransferBatchReqBuilder(final PipeParameters parameters) {
     final boolean usingTsFileBatch =
@@ -87,34 +90,31 @@ public class PipeTransferBatchReqBuilder implements AutoCloseable {
                 Arrays.asList(SINK_LEADER_CACHE_ENABLE_KEY, CONNECTOR_LEADER_CACHE_ENABLE_KEY),
                 CONNECTOR_LEADER_CACHE_ENABLE_DEFAULT_VALUE);
 
-    final int requestMaxDelayInSeconds;
-    if (usingTsFileBatch) {
-      requestMaxDelayInSeconds =
+    final Integer requestMaxDelayInMillis =
+        parameters.getIntByKeys(CONNECTOR_IOTDB_BATCH_DELAY_MS_KEY, SINK_IOTDB_BATCH_DELAY_MS_KEY);
+    if (Objects.isNull(requestMaxDelayInMillis)) {
+      final int requestMaxDelayInSeconds =
           parameters.getIntOrDefault(
               Arrays.asList(CONNECTOR_IOTDB_BATCH_DELAY_KEY, SINK_IOTDB_BATCH_DELAY_KEY),
-              CONNECTOR_IOTDB_TS_FILE_BATCH_DELAY_DEFAULT_VALUE);
+              usingTsFileBatch
+                  ? CONNECTOR_IOTDB_TS_FILE_BATCH_DELAY_DEFAULT_VALUE
+                  : CONNECTOR_IOTDB_PLAIN_BATCH_DELAY_DEFAULT_VALUE);
       requestMaxDelayInMs =
           requestMaxDelayInSeconds < 0 ? Integer.MAX_VALUE : requestMaxDelayInSeconds * 1000;
-      requestMaxBatchSizeInBytes =
-          parameters.getLongOrDefault(
-              Arrays.asList(CONNECTOR_IOTDB_BATCH_SIZE_KEY, SINK_IOTDB_BATCH_SIZE_KEY),
-              CONNECTOR_IOTDB_TS_FILE_BATCH_SIZE_DEFAULT_VALUE);
-      this.defaultBatch =
-          new PipeTabletEventTsFileBatch(requestMaxDelayInMs, requestMaxBatchSizeInBytes);
     } else {
-      requestMaxDelayInSeconds =
-          parameters.getIntOrDefault(
-              Arrays.asList(CONNECTOR_IOTDB_BATCH_DELAY_KEY, SINK_IOTDB_BATCH_DELAY_KEY),
-              CONNECTOR_IOTDB_PLAIN_BATCH_DELAY_DEFAULT_VALUE);
       requestMaxDelayInMs =
-          requestMaxDelayInSeconds < 0 ? Integer.MAX_VALUE : requestMaxDelayInSeconds * 1000;
-      requestMaxBatchSizeInBytes =
-          parameters.getLongOrDefault(
-              Arrays.asList(CONNECTOR_IOTDB_BATCH_SIZE_KEY, SINK_IOTDB_BATCH_SIZE_KEY),
-              CONNECTOR_IOTDB_PLAIN_BATCH_SIZE_DEFAULT_VALUE);
-      this.defaultBatch =
-          new PipeTabletEventPlainBatch(requestMaxDelayInMs, requestMaxBatchSizeInBytes);
+          requestMaxDelayInMillis < 0 ? Integer.MAX_VALUE : requestMaxDelayInMillis;
     }
+    requestMaxBatchSizeInBytes =
+        parameters.getLongOrDefault(
+            Arrays.asList(CONNECTOR_IOTDB_BATCH_SIZE_KEY, SINK_IOTDB_BATCH_SIZE_KEY),
+            usingTsFileBatch
+                ? CONNECTOR_IOTDB_TS_FILE_BATCH_SIZE_DEFAULT_VALUE
+                : CONNECTOR_IOTDB_PLAIN_BATCH_SIZE_DEFAULT_VALUE);
+    this.defaultBatch =
+        usingTsFileBatch
+            ? new PipeTabletEventTsFileBatch(requestMaxDelayInMs, requestMaxBatchSizeInBytes)
+            : new PipeTabletEventPlainBatch(requestMaxDelayInMs, requestMaxBatchSizeInBytes);
   }
 
   /**
@@ -185,6 +185,21 @@ public class PipeTransferBatchReqBuilder implements AutoCloseable {
   public synchronized void discardEventsOfPipe(final String pipeNameToDrop, final int regionId) {
     defaultBatch.discardEventsOfPipe(pipeNameToDrop, regionId);
     endPointToBatch.values().forEach(batch -> batch.discardEventsOfPipe(pipeNameToDrop, regionId));
+  }
+
+  public int size() {
+    try {
+      return defaultBatch.events.size()
+          + endPointToBatch.values().stream()
+              .map(batch -> batch.events.size())
+              .reduce(0, Integer::sum);
+    } catch (final Exception e) {
+      LOGGER.warn(
+          "Failed to get the size of PipeTransferBatchReqBuilder, return 0. Exception: {}",
+          e.getMessage(),
+          e);
+      return 0;
+    }
   }
 
   @Override

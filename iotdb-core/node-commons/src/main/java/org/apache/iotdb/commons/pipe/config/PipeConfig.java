@@ -303,6 +303,14 @@ public class PipeConfig {
     return COMMON_CONFIG.isPipeEpochKeepTsFileAfterStuckRestartEnabled();
   }
 
+  public long getPipeFlushAfterTerminateCount() {
+    return COMMON_CONFIG.getPipeFlushAfterTerminateCount();
+  }
+
+  public long getPipeFlushAfterLastTerminateSeconds() {
+    return COMMON_CONFIG.getPipeFlushAfterLastTerminateSeconds();
+  }
+
   public long getPipeStorageEngineFlushTimeIntervalMs() {
     return COMMON_CONFIG.getPipeStorageEngineFlushTimeIntervalMs();
   }
@@ -531,6 +539,8 @@ public class PipeConfig {
     LOGGER.info(
         "PipeEpochKeepTsFileAfterStuckRestartEnabled: {}",
         isPipeEpochKeepTsFileAfterStuckRestartEnabled());
+    LOGGER.info("PipeFlushAfterTerminateCount: {}", getPipeFlushAfterTerminateCount());
+    LOGGER.info("PipeFlushAfterLastTerminateSeconds: {}", getPipeFlushAfterLastTerminateSeconds());
     LOGGER.info(
         "PipeStorageEngineFlushTimeIntervalMs: {}", getPipeStorageEngineFlushTimeIntervalMs());
 

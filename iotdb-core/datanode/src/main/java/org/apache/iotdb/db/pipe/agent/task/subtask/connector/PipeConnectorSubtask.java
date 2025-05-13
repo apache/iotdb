@@ -27,6 +27,7 @@ import org.apache.iotdb.commons.pipe.connector.protocol.IoTDBConnector;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
 import org.apache.iotdb.db.pipe.connector.protocol.thrift.async.IoTDBDataRegionAsyncConnector;
+import org.apache.iotdb.db.pipe.connector.protocol.thrift.sync.IoTDBDataRegionSyncConnector;
 import org.apache.iotdb.db.pipe.event.UserDefinedEnrichedEvent;
 import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
 import org.apache.iotdb.db.pipe.event.common.schema.PipeSchemaRegionWritePlanEvent;
@@ -43,6 +44,8 @@ import org.apache.iotdb.pipe.api.exception.PipeException;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.util.Objects;
 
 public class PipeConnectorSubtask extends PipeAbstractConnectorSubtask {
 
@@ -102,11 +105,12 @@ public class PipeConnectorSubtask extends PipeAbstractConnectorSubtask {
     }
 
     try {
-      if (event == null) {
-        if (System.currentTimeMillis() - lastHeartbeatEventInjectTime
-            > CRON_HEARTBEAT_EVENT_INJECT_INTERVAL_MILLISECONDS) {
-          transferHeartbeatEvent(CRON_HEARTBEAT_EVENT);
-        }
+      if (System.currentTimeMillis() - lastHeartbeatEventInjectTime
+          > CRON_HEARTBEAT_EVENT_INJECT_INTERVAL_MILLISECONDS) {
+        transferHeartbeatEvent(CRON_HEARTBEAT_EVENT);
+      }
+
+      if (Objects.isNull(event)) {
         return false;
       }
 
@@ -298,6 +302,34 @@ public class PipeConnectorSubtask extends PipeAbstractConnectorSubtask {
   public int getAsyncConnectorRetryEventQueueSize() {
     return outputPipeConnector instanceof IoTDBDataRegionAsyncConnector
         ? ((IoTDBDataRegionAsyncConnector) outputPipeConnector).getRetryEventQueueSize()
+        : 0;
+  }
+
+  public int getPendingHandlersSize() {
+    return outputPipeConnector instanceof IoTDBDataRegionAsyncConnector
+        ? ((IoTDBDataRegionAsyncConnector) outputPipeConnector).getPendingHandlersSize()
+        : 0;
+  }
+
+  public int getBatchSize() {
+    if (outputPipeConnector instanceof IoTDBDataRegionAsyncConnector) {
+      return ((IoTDBDataRegionAsyncConnector) outputPipeConnector).getBatchSize();
+    }
+    if (outputPipeConnector instanceof IoTDBDataRegionSyncConnector) {
+      return ((IoTDBDataRegionSyncConnector) outputPipeConnector).getBatchSize();
+    }
+    return 0;
+  }
+
+  public double getTotalUncompressedSize() {
+    return outputPipeConnector instanceof IoTDBConnector
+        ? ((IoTDBConnector) outputPipeConnector).getTotalUncompressedSize()
+        : 0;
+  }
+
+  public double getTotalCompressedSize() {
+    return outputPipeConnector instanceof IoTDBConnector
+        ? ((IoTDBConnector) outputPipeConnector).getTotalCompressedSize()
         : 0;
   }
 
