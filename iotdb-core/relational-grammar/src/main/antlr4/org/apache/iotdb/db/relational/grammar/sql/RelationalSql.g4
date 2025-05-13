@@ -59,7 +59,7 @@ statement
     | showCreateTableStatement
 
     // Table View Statement
-    | createTableViewStatement
+    | createViewStatement
     | alterViewStatement
     | dropViewStatement
     | showCreateViewStatement
@@ -247,13 +247,13 @@ showCreateTableStatement
     ;
 
 // ------------------------------------------- Table View Statement ---------------------------------------------------------
-createTableViewStatement
-    : CREATE (OR REPLACE)? TABLE VIEW qualifiedName
+createViewStatement
+    : CREATE (OR REPLACE)? VIEW qualifiedName
         '(' (viewColumnDefinition (',' viewColumnDefinition)*)? ')'
-        AS prefixPath
         comment?
-        (WITH properties)?
         (RESTRICT)?
+        (WITH properties)?
+        AS prefixPath
     ;
 
 viewColumnDefinition

@@ -838,10 +838,6 @@ SYSTEM
     : S Y S T E M
     ;
 
-TABLE
-    : T A B L E
-    ;
-
 TAG
     : T A G
     ;

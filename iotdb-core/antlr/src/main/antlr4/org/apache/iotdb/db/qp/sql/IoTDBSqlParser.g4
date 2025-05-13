@@ -780,12 +780,12 @@ viewSourcePaths
 
 // Table view
 createTableView
-    : CREATE (OR REPLACE)? TABLE VIEW qualifiedName
+    : CREATE (OR REPLACE)? VIEW qualifiedName
         LR_BRACKET (viewColumnDefinition (COMMA viewColumnDefinition)*) RR_BRACKET
-        AS prefixPath
         comment?
-        (WITH properties)?
         (RESTRICT)?
+        (WITH properties)?
+        AS prefixPath
     ;
 
 viewColumnDefinition

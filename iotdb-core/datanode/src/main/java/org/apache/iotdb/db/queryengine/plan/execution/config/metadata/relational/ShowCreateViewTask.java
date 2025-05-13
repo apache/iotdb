@@ -128,19 +128,23 @@ public class ShowCreateViewTask extends AbstractTableTask {
       builder.deleteCharAt(builder.length() - 1);
     }
 
-    builder.append(") AS ").append(table.getPropValue(TreeViewSchema.TREE_PATH_PATTERN).get());
+    builder.append(")");
 
     if (table.getPropValue(TsTable.COMMENT_KEY).isPresent()) {
       builder.append(" COMMENT ").append(getString(table.getPropValue(TsTable.COMMENT_KEY).get()));
     }
+
+    if (TreeViewSchema.isRestrict(table)) {
+      builder.append(" RESTRICT");
+    }
+
     builder
         .append(" WITH (ttl=")
         .append(table.getPropValue(TsTable.TTL_PROPERTY).orElse("'" + TTL_INFINITE + "'"))
         .append(")");
 
-    if (TreeViewSchema.isRestrict(table)) {
-      builder.append(" RESTRICT");
-    }
+    builder.append(" AS ").append(table.getPropValue(TreeViewSchema.TREE_PATH_PATTERN).get());
+
     return builder.toString();
   }
 }
