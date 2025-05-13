@@ -253,6 +253,18 @@ class Model(nn.Module):
         self.eval()
         self.device = next(self.model.parameters()).device
         
+        if len(x.shape) == 2:
+            batch_size, cur_len = x.shape
+            if cur_len < self.config.input_token_len:
+                raise ValueError(
+                    f"Input length must be at least {self.config.input_token_len}")
+            elif cur_len % self.config.input_token_len != 0:
+                new_len = (cur_len // self.config.input_token_len) * \
+                    self.config.input_token_len
+                x = x[:, -new_len:]
+        else:
+            raise ValueError('Input shape must be: [batch_size, seq_len]')
+        
         use_cache = self.config.use_cache
         all_input_ids = x
         
