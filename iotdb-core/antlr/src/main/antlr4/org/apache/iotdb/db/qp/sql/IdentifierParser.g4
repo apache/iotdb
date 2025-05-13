@@ -60,6 +60,7 @@ keyWords
     | CLEAR
     | CLUSTER
     | CLUSTERID
+    | COMMENT
     | CONCAT
     | CONDITION
     | CONFIGNODE
@@ -87,6 +88,7 @@ keyWords
     | DATASET
     | DEACTIVATE
     | DEBUG
+    | DEFAULT
     | DELETE
     | DESC
     | DESCRIBE
@@ -105,6 +107,7 @@ keyWords
     | EXPLAIN
     | EXTRACTOR
     | FALSE
+    | FIELD
     | FILL
     | FILE
     | FIRST
@@ -198,6 +201,7 @@ keyWords
     | RESOURCE
     | REPAIR
     | REPLACE
+    | RESTRICT
     | REVOKE
     | ROLE
     | ROUND
@@ -229,6 +233,7 @@ keyWords
     | SUBSTRING
     | SYSTEM
     | TABLE
+    | TAG
     | TAGS
     | TAIL
     | TASK

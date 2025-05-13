@@ -1248,7 +1248,7 @@ public class ConfigPhysicalPlanSerDeTest {
         preCreateTablePlan0.getTable().getColumnNum(),
         preCreateTablePlan1.getTable().getColumnNum());
     Assert.assertEquals(
-        preCreateTablePlan0.getTable().getIdNums(), preCreateTablePlan1.getTable().getIdNums());
+        preCreateTablePlan0.getTable().getTagNum(), preCreateTablePlan1.getTable().getTagNum());
   }
 
   @Test
@@ -1272,7 +1272,7 @@ public class ConfigPhysicalPlanSerDeTest {
         preCreateTableViewPlan0.getTable().getColumnNum(),
         preCreateTablePlan1.getTable().getColumnNum());
     Assert.assertEquals(
-        preCreateTableViewPlan0.getTable().getIdNums(), preCreateTablePlan1.getTable().getIdNums());
+        preCreateTableViewPlan0.getTable().getTagNum(), preCreateTablePlan1.getTable().getTagNum());
     Assert.assertEquals(preCreateTableViewPlan0.getStatus(), preCreateTablePlan1.getStatus());
   }
 
@@ -1929,8 +1929,8 @@ public class ConfigPhysicalPlanSerDeTest {
         pipeCreateTableOrViewPlan0.getTable().getColumnNum(),
         pipeCreateTableOrViewPlan1.getTable().getColumnNum());
     Assert.assertEquals(
-        pipeCreateTableOrViewPlan0.getTable().getIdNums(),
-        pipeCreateTableOrViewPlan1.getTable().getIdNums());
+        pipeCreateTableOrViewPlan0.getTable().getTagNum(),
+        pipeCreateTableOrViewPlan1.getTable().getTagNum());
   }
 
   @Test
