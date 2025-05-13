@@ -27,15 +27,21 @@
 class TableSession {
 private:
     Session* session;
+    string getDatabase();
 public:
     TableSession(Session* session) {
         this->session = session;
+    }
+    ~TableSession() {
+        if (session) {
+            delete session;
+            session = nullptr;
+        }
     }
     void insert(Tablet& tablet, bool sorted = false);
     void executeNonQueryStatement(const std::string& sql);
     unique_ptr<SessionDataSet> executeQueryStatement(const std::string& sql);
     unique_ptr<SessionDataSet> executeQueryStatement(const std::string& sql, int64_t timeoutInMs);
-    string getDatabase();
     void open(bool enableRPCCompression = false);
     void close();
 };
