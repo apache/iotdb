@@ -56,7 +56,6 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
@@ -161,21 +160,12 @@ public class AINodeClient implements AutoCloseable, ThriftClient {
 
   public TInferenceResp inference(
       String modelId,
-      List<String> inputColumnNames,
-      List<String> inputTypeList,
-      Map<String, Integer> columnIndexMap,
       TsBlock inputTsBlock,
       Map<String, String> inferenceAttributes,
       TWindowParams windowParams)
       throws TException {
     try {
-      TInferenceReq inferenceReq =
-          new TInferenceReq(
-              modelId,
-              tsBlockSerde.serialize(inputTsBlock),
-              inputTypeList,
-              inputColumnNames,
-              columnIndexMap);
+      TInferenceReq inferenceReq = new TInferenceReq(modelId, tsBlockSerde.serialize(inputTsBlock));
       if (windowParams != null) {
         inferenceReq.setWindowParams(windowParams);
       }
@@ -184,10 +174,10 @@ public class AINodeClient implements AutoCloseable, ThriftClient {
       }
       return client.inference(inferenceReq);
     } catch (IOException e) {
-      throw new TException("An exception occurred while serializing input tsblock", e);
+      throw new TException("An exception occurred while serializing input data", e);
     } catch (TException e) {
       logger.warn(
-          "Failed to connect to AINode from DataNode when executing {}: {}",
+          "Error happens in AINode when executing {}: {}",
           Thread.currentThread().getStackTrace()[1].getMethodName(),
           e.getMessage());
       throw new TException(MSG_CONNECTION_FAIL);
