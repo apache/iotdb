@@ -25,6 +25,7 @@ import org.apache.tsfile.block.column.ColumnBuilder;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.write.UnSupportedDataTypeException;
 
+import java.sql.Blob;
 import java.util.List;
 
 public class LagFunction extends ValueWindowFunction {
@@ -104,6 +105,7 @@ public class LagFunction extends ValueWindowFunction {
         return;
       case TEXT:
       case STRING:
+      case BLOB:
         builder.writeBinary(partition.getBinary(defaultValChannel, index));
         return;
       default:

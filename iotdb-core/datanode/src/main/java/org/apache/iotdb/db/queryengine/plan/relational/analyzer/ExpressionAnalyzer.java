@@ -150,8 +150,6 @@ public class ExpressionAnalyzer {
   private final Map<NodeRef<Node>, ResolvedFunction> resolvedFunctions = new LinkedHashMap<>();
   private final Set<NodeRef<SubqueryExpression>> subqueries = new LinkedHashSet<>();
   private final Set<NodeRef<ExistsPredicate>> existsSubqueries = new LinkedHashSet<>();
-  private final Map<NodeRef<Expression>, Type> expressionCoercions = new LinkedHashMap<>();
-  private final Set<NodeRef<Expression>> typeOnlyCoercions = new LinkedHashSet<>();
 
   private final Set<NodeRef<InPredicate>> subqueryInPredicates = new LinkedHashSet<>();
   private final Map<NodeRef<Expression>, Analysis.PredicateCoercions> predicateCoercions =
@@ -303,14 +301,6 @@ public class ExpressionAnalyzer {
 
   public Set<NodeRef<FunctionCall>> getWindowFunctions() {
     return unmodifiableSet(windowFunctions);
-  }
-
-  public Map<NodeRef<Expression>, Type> getExpressionCoercions() {
-    return unmodifiableMap(expressionCoercions);
-  }
-
-  public Set<NodeRef<Expression>> getTypeOnlyCoercions() {
-    return unmodifiableSet(typeOnlyCoercions);
   }
 
   private Type getExpressionType(Expression expression) {
@@ -910,8 +900,6 @@ public class ExpressionAnalyzer {
           functionNullability =
               FunctionNullability.getWindowFunctionNullability(argumentTypes.size());
           break;
-        default:
-          // ignore
       }
 
       // now we only support scalar or agg functions

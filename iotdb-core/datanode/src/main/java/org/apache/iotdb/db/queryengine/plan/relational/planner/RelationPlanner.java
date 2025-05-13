@@ -168,7 +168,6 @@ public class RelationPlanner extends AstVisitor<RelationPlan, Void> {
     return new QueryPlanner(
             analysis,
             symbolAllocator,
-            idAllocator,
             queryContext,
             outerContext,
             sessionInfo,
@@ -266,7 +265,6 @@ public class RelationPlanner extends AstVisitor<RelationPlan, Void> {
     return new QueryPlanner(
             analysis,
             symbolAllocator,
-            idAllocator,
             queryContext,
             outerContext,
             sessionInfo,

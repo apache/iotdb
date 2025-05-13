@@ -105,6 +105,7 @@ public class LeadFunction extends ValueWindowFunction {
         return;
       case TEXT:
       case STRING:
+      case BLOB:
         builder.writeBinary(partition.getBinary(defaultValChannel, index));
         return;
       default:

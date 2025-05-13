@@ -62,7 +62,6 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.QueryBody;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.QuerySpecification;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SortItem;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.WindowFrame;
-import org.apache.iotdb.db.queryengine.plan.relational.utils.DataOrganizationSpecification;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
@@ -116,7 +115,6 @@ import static org.apache.tsfile.read.common.type.BooleanType.BOOLEAN;
 public class QueryPlanner {
   private final Analysis analysis;
   private final SymbolAllocator symbolAllocator;
-  private final QueryId idAllocator;
   private final MPPQueryContext queryContext;
   private final QueryId queryIdAllocator;
   private final SessionInfo session;
@@ -130,7 +128,6 @@ public class QueryPlanner {
   public QueryPlanner(
       Analysis analysis,
       SymbolAllocator symbolAllocator,
-      QueryId idAllocator,
       MPPQueryContext queryContext,
       Optional<TranslationMap> outerContext,
       SessionInfo session,
@@ -144,7 +141,6 @@ public class QueryPlanner {
 
     this.analysis = analysis;
     this.symbolAllocator = symbolAllocator;
-    this.idAllocator = idAllocator;
     this.queryContext = queryContext;
     this.queryIdAllocator = queryContext.getQueryId();
     this.session = session;
@@ -360,7 +356,7 @@ public class QueryPlanner {
       //    avg(v) OVER (ORDER BY v)
       // Needs to be rewritten as
       //    avg(CAST(v AS double)) OVER (ORDER BY v)
-      PlanAndMappings coercions = coerce(subPlan, inputs, analysis, idAllocator, symbolAllocator);
+      PlanAndMappings coercions = coerce(subPlan, inputs, analysis, queryIdAllocator, symbolAllocator);
       subPlan = coercions.getSubPlan();
 
       // For frame of type RANGE, append casts and functions necessary for frame bound calculations
@@ -486,7 +482,6 @@ public class QueryPlanner {
                   .map(argument -> coercions.get(argument).toSymbolReference())
                   .collect(toImmutableList()),
               frame,
-              // TODO: remove ignore null
               nullTreatment == FunctionCall.NullTreatment.IGNORE);
 
       functions.put(newSymbol, function);
@@ -514,7 +509,7 @@ public class QueryPlanner {
             });
     GroupNode groupNode =
         new GroupNode(
-            idAllocator.genPlanNodeId(),
+            queryIdAllocator.genPlanNodeId(),
             subPlan.getRoot(),
             new OrderingScheme(sortSymbols, sortOrderings),
             sortKeyOffset);
@@ -526,7 +521,7 @@ public class QueryPlanner {
     return new PlanBuilder(
         subPlan.getTranslations().withAdditionalMappings(mappings.buildOrThrow()),
         new WindowNode(
-            idAllocator.genPlanNodeId(),
+            queryIdAllocator.genPlanNodeId(),
             planBuilder.getRoot(),
             specification,
             functions.buildOrThrow(),
@@ -594,7 +589,7 @@ public class QueryPlanner {
             new Cast(new NullLiteral(), toSqlType(BOOLEAN)));
     subPlan =
         subPlan.withNewRoot(
-            new FilterNode(idAllocator.genPlanNodeId(), subPlan.getRoot(), predicate));
+            new FilterNode(queryIdAllocator.genPlanNodeId(), subPlan.getRoot(), predicate));
 
     // Then, coerce the sortKey so that we can add / subtract the offset.
     // Note: for that we cannot rely on the usual mechanism of using the coerce() method. The
@@ -622,7 +617,7 @@ public class QueryPlanner {
         subPlan =
             subPlan.withNewRoot(
                 new ProjectNode(
-                    idAllocator.genPlanNodeId(),
+                    queryIdAllocator.genPlanNodeId(),
                     subPlan.getRoot(),
                     Assignments.builder()
                         .putIdentities(subPlan.getRoot().getOutputSymbols())
@@ -645,7 +640,7 @@ public class QueryPlanner {
     subPlan =
         subPlan.withNewRoot(
             new ProjectNode(
-                idAllocator.genPlanNodeId(),
+                queryIdAllocator.genPlanNodeId(),
                 subPlan.getRoot(),
                 Assignments.builder()
                     .putIdentities(subPlan.getRoot().getOutputSymbols())
@@ -674,7 +669,7 @@ public class QueryPlanner {
         subPlan =
             subPlan.withNewRoot(
                 new ProjectNode(
-                    idAllocator.genPlanNodeId(),
+                    queryIdAllocator.genPlanNodeId(),
                     subPlan.getRoot(),
                     Assignments.builder()
                         .putIdentities(subPlan.getRoot().getOutputSymbols())
@@ -707,7 +702,7 @@ public class QueryPlanner {
             new Cast(new NullLiteral(), toSqlType(BOOLEAN)));
     subPlan =
         subPlan.withNewRoot(
-            new FilterNode(idAllocator.genPlanNodeId(), subPlan.getRoot(), predicate));
+            new FilterNode(queryIdAllocator.genPlanNodeId(), subPlan.getRoot(), predicate));
 
     return new FrameOffsetPlanAndSymbol(subPlan, Optional.of(offsetSymbol));
   }
