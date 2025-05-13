@@ -136,6 +136,10 @@ public class PipeRuntimeMeta {
     this.isStoppedByRuntimeException.set(isStoppedByRuntimeException);
   }
 
+  /**
+   * We use negative regionId to store the pipe runtime meta of external pipe source, which is not
+   * managed by the IoTDB cluster. The regionId is used to identify the external pipe source.
+   */
   public static boolean isSourceExternal(int regionId) {
     // regionId that is less than 0 is a special value marking an external pipe source
     return regionId < 0;
