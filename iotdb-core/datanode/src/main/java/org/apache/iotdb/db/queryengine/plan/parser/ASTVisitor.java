@@ -4604,6 +4604,10 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
 
   @Override
   public Statement visitCreateTableView(final IoTDBSqlParser.CreateTableViewContext ctx) {
+    if (true) {
+      throw new UnsupportedOperationException(
+          "The 'createTableView' is unsupported in tree sql-dialect.");
+    }
     return new CreateTableViewStatement(
         new CreateTableView(
             null,
