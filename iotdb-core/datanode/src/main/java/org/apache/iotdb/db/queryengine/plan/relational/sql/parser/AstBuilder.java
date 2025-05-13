@@ -525,8 +525,8 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
   }
 
   @Override
-  public Node visitCreateTableViewStatement(
-      final RelationalSqlParser.CreateTableViewStatementContext ctx) {
+  public Node visitCreateViewStatement(
+      final RelationalSqlParser.CreateViewStatementContext ctx) {
     List<Property> properties = ImmutableList.of();
     if (ctx.properties() != null) {
       properties = visit(ctx.properties().propertyAssignments().property(), Property.class);
