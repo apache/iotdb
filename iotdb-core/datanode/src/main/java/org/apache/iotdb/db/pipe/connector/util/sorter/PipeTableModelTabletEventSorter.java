@@ -151,7 +151,7 @@ public class PipeTableModelTabletEventSorter extends PipeTabletEventSorter {
     deDuplicatedIndex[deDuplicatedSize++] = endIndex - 1;
   }
 
-  /** Sort by time only, and remove only rows with the same DeviceID and time. */
+  /** Sort by time only. */
   public void sortByTimestampIfNecessary() {
     if (tablet == null || tablet.getRowSize() == 0) {
       return;
