@@ -781,7 +781,7 @@ viewSourcePaths
 // Table view
 createTableView
     : CREATE (OR REPLACE)? VIEW qualifiedName
-        LR_BRACKET (viewColumnDefinition (COMMA viewColumnDefinition)*) RR_BRACKET
+        LR_BRACKET (viewColumnDefinition (COMMA viewColumnDefinition)*)? RR_BRACKET
         comment?
         (RESTRICT)?
         (WITH properties)?
