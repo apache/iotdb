@@ -232,6 +232,7 @@ keyWords
     | SUBSCRIPTIONS
     | SUBSTRING
     | SYSTEM
+    | TABLE
     | TAG
     | TAGS
     | TAIL
