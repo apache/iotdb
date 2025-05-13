@@ -29,12 +29,15 @@ import java.util.Collections;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
 public class BinaryAllocatorTest {
+
   @Test
   public void testAllocateBinary() {
     AllocatorConfig config = new AllocatorConfig();
@@ -154,7 +157,13 @@ public class BinaryAllocatorTest {
     // reference count is 0
     binary = null;
     System.gc();
-    Thread.sleep(100);
-    assertEquals(binaryAllocator.getTotalUsedMemory(), 4096);
+    long startTime = System.currentTimeMillis();
+    while (System.currentTimeMillis() - startTime <= TimeUnit.MINUTES.toMillis(1)) {
+      if (binaryAllocator.getTotalUsedMemory() == 4096) {
+        return;
+      }
+      Thread.sleep(100);
+    }
+    fail("Can not auto release PoolBinary in binary allocator");
   }
 }

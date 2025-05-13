@@ -21,6 +21,7 @@ package org.apache.iotdb.commons.binaryallocator;
 
 import org.apache.iotdb.commons.binaryallocator.arena.Arena;
 import org.apache.iotdb.commons.binaryallocator.arena.ArenaStrategy;
+import org.apache.iotdb.commons.binaryallocator.autoreleaser.Releaser;
 import org.apache.iotdb.commons.binaryallocator.config.AllocatorConfig;
 import org.apache.iotdb.commons.binaryallocator.evictor.Evictor;
 import org.apache.iotdb.commons.binaryallocator.metric.BinaryAllocatorMetrics;
@@ -53,7 +54,7 @@ public class BinaryAllocator {
 
   private final BinaryAllocatorMetrics metrics;
   private Evictor sampleEvictor;
-  // private TinyGC tinyGC;
+  private Releaser autoReleaser;
   private static final ThreadLocal<ThreadArenaRegistry> arenaRegistry =
       ThreadLocal.withInitial(ThreadArenaRegistry::new);
 
@@ -62,7 +63,6 @@ public class BinaryAllocator {
   private static final int SHUTDOWN_GC_TIME_PERCENTAGE = 30;
   private static final int RESTART_GC_TIME_PERCENTAGE = 5;
 
-  private final AutoReleaseThread autoReleaseThread = new AutoReleaseThread();
   public final ReferenceQueue<PooledBinary> referenceQueue = new ReferenceQueue<>();
 
   // JDK 9+ Cleaner uses double-linked list and synchronized to manage references, which has worse
@@ -100,9 +100,13 @@ public class BinaryAllocator {
     sampleEvictor =
         new SampleEvictor(
             ThreadName.BINARY_ALLOCATOR_SAMPLE_EVICTOR.getName(),
-            allocatorConfig.durationEvictorShutdownTimeout);
-    sampleEvictor.startEvictor(allocatorConfig.durationBetweenEvictorRuns);
-    autoReleaseThread.start();
+            allocatorConfig.durationShutdownTimeout);
+    sampleEvictor.start(allocatorConfig.durationBetweenEvictorRuns);
+    autoReleaser =
+        new AutoReleaser(
+            ThreadName.BINARY_ALLOCATOR_AUTO_RELEASER.getName(),
+            allocatorConfig.durationShutdownTimeout);
+    autoReleaser.start();
   }
 
   public synchronized void close(boolean forceClose) {
@@ -113,7 +117,8 @@ public class BinaryAllocator {
       state.set(BinaryAllocatorState.PENDING);
     }
 
-    sampleEvictor.stopEvictor();
+    sampleEvictor.stop();
+    autoReleaser.stop();
     for (Arena arena : heapArenas) {
       arena.close();
     }
@@ -182,11 +187,13 @@ public class BinaryAllocator {
   }
 
   private static class BinaryAllocatorHolder {
+
     private static final BinaryAllocator INSTANCE =
         new BinaryAllocator(AllocatorConfig.DEFAULT_CONFIG);
   }
 
   private static class ThreadArenaRegistry {
+
     private Arena threadArenaBinding = null;
 
     public Arena getArena() {
@@ -213,6 +220,7 @@ public class BinaryAllocator {
   }
 
   private static class LeastUsedArenaStrategy implements ArenaStrategy {
+
     @Override
     public Arena choose(Arena[] arenas) {
       Arena boundArena = arenaRegistry.get().getArena();
@@ -279,7 +287,12 @@ public class BinaryAllocator {
   }
 
   /** Process phantomly reachable objects and return their byte arrays to pool. */
-  public class AutoReleaseThread extends Thread {
+  public class AutoReleaser extends Releaser {
+
+    public AutoReleaser(String name, Duration shutdownTimeoutDuration) {
+      super(name, shutdownTimeoutDuration);
+    }
+
     @Override
     public void run() {
       PooledBinaryPhantomReference ref;
@@ -289,7 +302,8 @@ public class BinaryAllocator {
           ref.slabRegion.deallocate(ref.byteArray);
         }
       } catch (InterruptedException e) {
-        throw new RuntimeException(e);
+        LOGGER.info("{} exits due to interruptedException.", 1);
+        Thread.currentThread().interrupt();
       }
     }
   }
