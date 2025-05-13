@@ -33,7 +33,7 @@ public abstract class Releaser implements Runnable {
   private static final Logger LOGGER = LoggerFactory.getLogger(Releaser.class);
 
   private Future<?> future;
-  private final String name;
+  protected final String name;
   private final Duration shutdownTimeoutDuration;
 
   private ExecutorService executor;

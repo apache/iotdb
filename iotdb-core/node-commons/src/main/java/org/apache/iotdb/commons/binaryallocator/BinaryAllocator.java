@@ -304,7 +304,7 @@ public class BinaryAllocator {
           ref.slabRegion.deallocate(ref.byteArray);
         }
       } catch (InterruptedException e) {
-        LOGGER.info("{} exits due to interruptedException.", 1);
+        LOGGER.info("{} exits due to interruptedException.", name);
         Thread.currentThread().interrupt();
       }
     }
