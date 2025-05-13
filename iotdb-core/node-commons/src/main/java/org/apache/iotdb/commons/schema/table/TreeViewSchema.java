@@ -26,6 +26,8 @@ import org.apache.iotdb.commons.path.PathPatternUtil;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
 import org.apache.iotdb.rpc.TSStatusCode;
 
+import java.util.Objects;
+
 public class TreeViewSchema {
   public static final String ORIGINAL_NAME = "__original_name";
   public static final String TREE_PATH_PATTERN = "__tree_path_pattern";
@@ -59,6 +61,12 @@ public class TreeViewSchema {
           TSStatusCode.SEMANTIC_ERROR.getStatusCode());
     }
     return partialPath;
+  }
+
+  public static String getSourceName(final TsTableColumnSchema schema) {
+    return Objects.nonNull(TreeViewSchema.getOriginalName(schema))
+        ? TreeViewSchema.getOriginalName(schema)
+        : schema.getColumnName();
   }
 
   public static String getOriginalName(final TsTableColumnSchema schema) {

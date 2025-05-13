@@ -133,7 +133,7 @@ public class TableDeviceSchemaFetcher {
 
       final List<ColumnHeader> columnHeaderList =
           coordinator.getQueryExecution(queryId).getDatasetHeader().getColumnHeaders();
-      final int idLength = DataNodeTableCache.getInstance().getTable(database, table).getIdNums();
+      final int idLength = DataNodeTableCache.getInstance().getTable(database, table).getTagNum();
       final Map<IDeviceID, Map<String, Binary>> fetchedDeviceSchema = new HashMap<>();
 
       while (coordinator.getQueryExecution(queryId).hasNextResult()) {
@@ -347,7 +347,7 @@ public class TableDeviceSchemaFetcher {
       final List<IDeviceID> fetchPaths,
       final boolean isDirectDeviceQuery,
       final MPPQueryContext queryContext) {
-    final String[] idValues = new String[tableInstance.getIdNums()];
+    final String[] idValues = new String[tableInstance.getTagNum()];
     for (final List<SchemaFilter> schemaFilters : idFilters.values()) {
       final TagFilter tagFilter = (TagFilter) schemaFilters.get(0);
       final SchemaFilter childFilter = tagFilter.getChild();
@@ -534,7 +534,7 @@ public class TableDeviceSchemaFetcher {
       final List<DeviceEntry> deviceEntryList) {
     final Column[] columns = tsBlock.getValueColumns();
     for (int i = 0; i < tsBlock.getPositionCount(); i++) {
-      final String[] nodes = new String[tableInstance.getIdNums() + 1];
+      final String[] nodes = new String[tableInstance.getTagNum() + 1];
       final Map<String, Binary> attributeMap = new HashMap<>();
       constructNodsArrayAndAttributeMap(
           attributeMap,
@@ -566,7 +566,7 @@ public class TableDeviceSchemaFetcher {
       final Map<String, List<DeviceEntry>> deviceEntryMap) {
     final Column[] columns = tsBlock.getValueColumns();
     for (int i = 0; i < tsBlock.getPositionCount(); i++) {
-      final String[] nodes = new String[tableInstance.getIdNums()];
+      final String[] nodes = new String[tableInstance.getTagNum()];
       constructNodsArrayAndAttributeMap(
           Collections.emptyMap(), nodes, null, columnHeaderList, columns, tableInstance, i);
       final IDeviceID deviceID =

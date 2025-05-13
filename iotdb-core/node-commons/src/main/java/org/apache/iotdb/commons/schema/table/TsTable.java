@@ -218,7 +218,7 @@ public class TsTable {
     }
   }
 
-  public int getIdNums() {
+  public int getTagNum() {
     readWriteLock.readLock().lock();
     try {
       return idNums;
