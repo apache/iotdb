@@ -34,6 +34,7 @@ import org.apache.iotdb.commons.schema.cache.CacheClearOptions;
 import org.apache.iotdb.commons.schema.column.ColumnHeaderConstant;
 import org.apache.iotdb.commons.schema.filter.SchemaFilter;
 import org.apache.iotdb.commons.schema.filter.SchemaFilterFactory;
+import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
 import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.db.conf.IoTDBConfig;
@@ -94,6 +95,18 @@ import org.apache.iotdb.db.queryengine.plan.expression.unary.LikeExpression;
 import org.apache.iotdb.db.queryengine.plan.expression.unary.LogicNotExpression;
 import org.apache.iotdb.db.queryengine.plan.expression.unary.NegationExpression;
 import org.apache.iotdb.db.queryengine.plan.expression.unary.RegularExpression;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ColumnDefinition;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateTableView;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DataType;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DataTypeParameter;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.GenericDataType;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Identifier;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Node;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.NumericParameter;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Property;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.QualifiedName;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.TypeParameter;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ViewFieldDefinition;
 import org.apache.iotdb.db.queryengine.plan.statement.AuthorType;
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementType;
@@ -206,6 +219,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.metadata.template.ShowSche
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.template.UnsetSchemaTemplateStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.view.AlterLogicalViewStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.view.CreateLogicalViewStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.view.CreateTableViewStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.view.DeleteLogicalViewStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.view.ShowLogicalViewStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.AuthorStatement;
@@ -237,6 +251,7 @@ import org.apache.iotdb.db.utils.constant.SqlConstant;
 import org.apache.iotdb.trigger.api.enums.TriggerEvent;
 import org.apache.iotdb.trigger.api.enums.TriggerType;
 
+import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.io.BaseEncoding;
 import org.antlr.v4.runtime.Token;
@@ -271,10 +286,15 @@ import java.util.function.Consumer;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
+import static com.google.common.collect.ImmutableList.toImmutableList;
 import static org.apache.iotdb.commons.schema.SchemaConstant.ALL_RESULT_NODES;
+import static org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory.FIELD;
+import static org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory.TAG;
+import static org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory.TIME;
 import static org.apache.iotdb.db.queryengine.plan.expression.unary.LikeExpression.getEscapeCharacter;
 import static org.apache.iotdb.db.queryengine.plan.optimization.LimitOffsetPushDown.canPushDownLimitOffsetToGroupByTime;
 import static org.apache.iotdb.db.queryengine.plan.optimization.LimitOffsetPushDown.pushDownLimitOffsetToTimeParameter;
+import static org.apache.iotdb.db.queryengine.plan.relational.sql.parser.AstBuilder.lowerIdentifier;
 import static org.apache.iotdb.db.utils.TimestampPrecisionUtils.TIMESTAMP_PRECISION;
 import static org.apache.iotdb.db.utils.TimestampPrecisionUtils.currPrecision;
 import static org.apache.iotdb.db.utils.constant.SqlConstant.CAST_FUNCTION;
@@ -4580,6 +4600,133 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
               Integer.parseInt(windowContext.step.getText()));
     }
     statement.setInferenceWindow(inferenceWindow);
+  }
+
+  @Override
+  public Statement visitCreateTableView(final IoTDBSqlParser.CreateTableViewContext ctx) {
+    return new CreateTableViewStatement(
+        new CreateTableView(
+            null,
+            getQualifiedName(ctx.qualifiedName()),
+            ctx.viewColumnDefinition().stream()
+                .map(this::parseViewColumnDefinition)
+                .collect(Collectors.toList()),
+            null,
+            ctx.comment() == null
+                ? null
+                : parseStringLiteral(ctx.comment().STRING_LITERAL().getText()),
+            Objects.nonNull(ctx.properties())
+                ? ctx.properties().propertyAssignments().property().stream()
+                    .map(this::parseProperty)
+                    .collect(Collectors.toList())
+                : ImmutableList.of(),
+            parsePrefixPath(ctx.prefixPath()),
+            Objects.nonNull(ctx.REPLACE()),
+            Objects.nonNull(ctx.RESTRICT())));
+  }
+
+  public ColumnDefinition parseViewColumnDefinition(
+      final IoTDBSqlParser.ViewColumnDefinitionContext ctx) {
+    final Identifier rawColumnName =
+        new Identifier(parseIdentifier(ctx.identifier().get(0).getText()));
+    final Identifier columnName = lowerIdentifier(rawColumnName);
+    final TsTableColumnCategory columnCategory = getColumnCategory(ctx.columnCategory);
+    Identifier originalMeasurement = null;
+
+    if (Objects.nonNull(ctx.FROM())) {
+      originalMeasurement = new Identifier(parseIdentifier(ctx.original_measurement.getText()));
+    } else if (columnCategory == FIELD && !columnName.equals(rawColumnName)) {
+      originalMeasurement = rawColumnName;
+    }
+
+    return columnCategory == FIELD
+        ? new ViewFieldDefinition(
+            null,
+            columnName,
+            Objects.nonNull(ctx.type())
+                ? parseGenericType((IoTDBSqlParser.GenericTypeContext) ctx.type())
+                : null,
+            null,
+            ctx.comment() == null
+                ? null
+                : parseStringLiteral(ctx.comment().STRING_LITERAL().getText()),
+            originalMeasurement)
+        : new ColumnDefinition(
+            null,
+            columnName,
+            Objects.nonNull(ctx.type())
+                ? parseGenericType((IoTDBSqlParser.GenericTypeContext) ctx.type())
+                : null,
+            columnCategory,
+            null,
+            ctx.comment() == null
+                ? null
+                : parseStringLiteral(ctx.comment().STRING_LITERAL().getText()));
+  }
+
+  public DataType parseGenericType(final IoTDBSqlParser.GenericTypeContext ctx) {
+    return new GenericDataType(
+        new Identifier(parseIdentifier(ctx.identifier().getText())),
+        ctx.typeParameter().stream()
+            .map(this::parseTypeParameter)
+            .map(DataTypeParameter.class::cast)
+            .collect(toImmutableList()));
+  }
+
+  public Node parseTypeParameter(final IoTDBSqlParser.TypeParameterContext ctx) {
+    if (ctx.INTEGER_LITERAL() != null) {
+      return new NumericParameter(ctx.getText());
+    }
+
+    return new TypeParameter(parseGenericType((IoTDBSqlParser.GenericTypeContext) ctx.type()));
+  }
+
+  private Property parseProperty(final IoTDBSqlParser.PropertyContext ctx) {
+    final Identifier name = new Identifier(parseIdentifier(ctx.identifier().getText()));
+    final IoTDBSqlParser.PropertyValueContext valueContext = ctx.propertyValue();
+    return valueContext instanceof IoTDBSqlParser.DefaultPropertyValueContext
+        ? new Property(name)
+        : new Property(
+            name,
+            parseExpression(
+                ((IoTDBSqlParser.NonDefaultPropertyValueContext) valueContext)
+                    .literalExpression()));
+  }
+
+  private org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression parseExpression(
+      final IoTDBSqlParser.LiteralExpressionContext context) {
+    if (context.STRING_LITERAL() != null) {
+      return new org.apache.iotdb.db.queryengine.plan.relational.sql.ast.StringLiteral(
+          parseStringLiteral(context.getText()));
+    } else if (context.INTEGER_LITERAL() != null) {
+      return new org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LongLiteral(
+          context.getText());
+    }
+    throw new UnsupportedOperationException("Currently other expressions are not supported");
+  }
+
+  private QualifiedName getQualifiedName(final IoTDBSqlParser.QualifiedNameContext context) {
+    return QualifiedName.of(
+        context.identifier().stream()
+            .map(identifierContext -> new Identifier(parseIdentifier(identifierContext.getText())))
+            .collect(Collectors.toList()));
+  }
+
+  public static TsTableColumnCategory getColumnCategory(final Token category) {
+    if (category == null) {
+      return FIELD;
+    }
+    switch (category.getType()) {
+      case IoTDBSqlParser.TAG:
+        return TAG;
+      case IoTDBSqlParser.TIME:
+        return TIME;
+      case IoTDBSqlParser.FIELD:
+        return FIELD;
+      default:
+        throw new UnsupportedOperationException(
+            "Unsupported ColumnCategory: " + category.getText());
+    }
   }
 
   @Override

@@ -20,6 +20,7 @@
 package org.apache.iotdb.commons.pipe.connector.protocol;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
+import org.apache.iotdb.commons.pipe.config.plugin.env.PipeTaskConnectorRuntimeEnvironment;
 import org.apache.iotdb.commons.pipe.connector.compressor.PipeCompressor;
 import org.apache.iotdb.commons.pipe.connector.compressor.PipeCompressorConfig;
 import org.apache.iotdb.commons.pipe.connector.compressor.PipeCompressorFactory;
@@ -28,10 +29,12 @@ import org.apache.iotdb.commons.pipe.connector.limiter.PipeEndPointRateLimiter;
 import org.apache.iotdb.commons.pipe.connector.payload.thrift.request.PipeTransferCompressedReq;
 import org.apache.iotdb.commons.pipe.receiver.PipeReceiverStatusHandler;
 import org.apache.iotdb.commons.utils.NodeUrlUtils;
+import org.apache.iotdb.metrics.type.Timer;
 import org.apache.iotdb.pipe.api.PipeConnector;
 import org.apache.iotdb.pipe.api.annotation.TableModel;
 import org.apache.iotdb.pipe.api.annotation.TreeModel;
 import org.apache.iotdb.pipe.api.customizer.configuration.PipeConnectorRuntimeConfiguration;
+import org.apache.iotdb.pipe.api.customizer.configuration.PipeRuntimeEnvironment;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameterValidator;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 import org.apache.iotdb.pipe.api.exception.PipeParameterNotValidException;
@@ -50,6 +53,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicLong;
 
 import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.CONNECTOR_COMPRESSOR_DEFAULT_VALUE;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.CONNECTOR_COMPRESSOR_KEY;
@@ -163,6 +167,11 @@ public abstract class IoTDBConnector implements PipeConnector {
   protected PipeReceiverStatusHandler receiverStatusHandler;
   protected boolean shouldReceiverConvertOnTypeMismatch =
       CONNECTOR_EXCEPTION_DATA_CONVERT_ON_TYPE_MISMATCH_DEFAULT_VALUE;
+
+  private final AtomicLong totalUncompressedSize = new AtomicLong(0);
+  private final AtomicLong totalCompressedSize = new AtomicLong(0);
+  protected String attributeSortedString;
+  protected Timer compressionTimer;
 
   @Override
   public void validate(final PipeParameterValidator validator) throws Exception {
@@ -347,6 +356,12 @@ public abstract class IoTDBConnector implements PipeConnector {
   public void customize(
       final PipeParameters parameters, final PipeConnectorRuntimeConfiguration configuration)
       throws Exception {
+    final PipeRuntimeEnvironment environment = configuration.getRuntimeEnvironment();
+    if (environment instanceof PipeTaskConnectorRuntimeEnvironment) {
+      attributeSortedString =
+          ((PipeTaskConnectorRuntimeEnvironment) environment).getAttributeSortedString();
+    }
+
     nodeUrls.clear();
     nodeUrls.addAll(parseNodeUrls(parameters));
     LOGGER.info("IoTDBConnector nodeUrls: {}", nodeUrls);
@@ -496,24 +511,40 @@ public abstract class IoTDBConnector implements PipeConnector {
     PIPE_END_POINT_RATE_LIMITER_MAP.clear();
   }
 
-  protected TPipeTransferReq compressIfNeeded(final TPipeTransferReq req) throws IOException {
-    return isRpcCompressionEnabled
-        ? PipeTransferCompressedReq.toTPipeTransferReq(req, compressors)
-        : req;
+  public TPipeTransferReq compressIfNeeded(TPipeTransferReq req) throws IOException {
+    // Explanation for +3: version 1 byte, type 2 bytes
+    totalUncompressedSize.addAndGet(req.body.array().length + 3);
+    if (isRpcCompressionEnabled) {
+      final long time = System.nanoTime();
+      req = PipeTransferCompressedReq.toTPipeTransferReq(req, compressors);
+      if (Objects.nonNull(compressionTimer)) {
+        compressionTimer.updateNanos(System.nanoTime() - time);
+      }
+    }
+    // Explanation for +3: version 1 byte, type 2 bytes
+    totalCompressedSize.addAndGet(req.body.array().length + 3);
+    return req;
   }
 
-  protected byte[] compressIfNeeded(final byte[] reqInBytes) throws IOException {
-    return isRpcCompressionEnabled
-        ? PipeTransferCompressedReq.toTPipeTransferReqBytes(reqInBytes, compressors)
-        : reqInBytes;
+  protected byte[] compressIfNeeded(byte[] reqInBytes) throws IOException {
+    totalUncompressedSize.addAndGet(reqInBytes.length);
+    if (isRpcCompressionEnabled) {
+      final long time = System.nanoTime();
+      reqInBytes = PipeTransferCompressedReq.toTPipeTransferReqBytes(reqInBytes, compressors);
+      if (Objects.nonNull(compressionTimer)) {
+        compressionTimer.updateNanos(System.nanoTime() - time);
+      }
+    }
+    totalCompressedSize.addAndGet(reqInBytes.length);
+    return reqInBytes;
   }
 
-  public boolean isRpcCompressionEnabled() {
-    return isRpcCompressionEnabled;
+  public long getTotalCompressedSize() {
+    return totalCompressedSize.get();
   }
 
-  public List<PipeCompressor> getCompressors() {
-    return compressors;
+  public long getTotalUncompressedSize() {
+    return totalUncompressedSize.get();
   }
 
   public void rateLimitIfNeeded(

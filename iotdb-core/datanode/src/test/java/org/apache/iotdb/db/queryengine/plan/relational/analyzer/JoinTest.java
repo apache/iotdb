@@ -62,7 +62,6 @@ import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.TestUtils
 import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.TestUtils.SESSION_INFO;
 import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.TestUtils.SHENZHEN_DEVICE_ENTRIES;
 import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.TestUtils.TEST_MATADATA;
-import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.TestUtils.assertAnalyzeSemanticException;
 import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.TestUtils.assertJoinNodeEquals;
 import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.TestUtils.assertNodeMatches;
 import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.TestUtils.assertTableScan;
@@ -619,19 +618,5 @@ public class JoinTest {
             + "FROM (SELECT * FROM table1 t1 WHERE tag1='beijing' AND tag2='A1' AND s1>1 LIMIT 111) t1 JOIN (SELECT * FROM table1 WHERE tag1='shenzhen' AND s2>1 LIMIT 222) t2 "
             + "ON t1.time = t2.time ORDER BY t1.tag1 OFFSET 3 LIMIT 6",
         false);
-  }
-
-  // ========== unsupported test ===============
-  @Test
-  public void unsupportedJoinTest() {
-    // LEFT JOIN
-    assertAnalyzeSemanticException(
-        "SELECT * FROM table1 t1 LEFT JOIN table1 t2 ON t1.time=t2.time",
-        "LEFT JOIN is not supported, only support INNER JOIN in current version");
-
-    // RIGHT JOIN
-    assertAnalyzeSemanticException(
-        "SELECT * FROM table1 t1 RIGHT JOIN table1 t2 ON t1.time=t2.time",
-        "RIGHT JOIN is not supported, only support INNER JOIN in current version");
   }
 }

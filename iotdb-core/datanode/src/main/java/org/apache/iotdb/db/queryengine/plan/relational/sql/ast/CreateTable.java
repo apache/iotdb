@@ -41,14 +41,14 @@ public class CreateTable extends Statement {
   private final List<Property> properties;
 
   public CreateTable(
-      final NodeLocation location,
+      final @Nullable NodeLocation location,
       final QualifiedName name,
       final List<ColumnDefinition> elements,
       final boolean ifNotExists,
       final @Nullable String charsetName,
       final @Nullable String comment,
       final List<Property> properties) {
-    super(requireNonNull(location, "location is null"));
+    super(location);
     this.name = requireNonNull(name, "name is null");
     this.elements = ImmutableList.copyOf(requireNonNull(elements, "elements is null"));
     this.ifNotExists = ifNotExists;

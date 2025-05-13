@@ -25,11 +25,18 @@ import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
 import java.util.List;
 
 public class GetDatabasePlan extends CountDatabasePlan {
+  private final boolean isShowDatabasePlan;
 
   public GetDatabasePlan(
       final List<String> storageGroupPathPattern,
       final PathPatternTree scope,
-      final boolean isTableModel) {
+      final boolean isTableModel,
+      final boolean isShowDatabasePlan) {
     super(ConfigPhysicalPlanType.GetDatabase, storageGroupPathPattern, scope, isTableModel);
+    this.isShowDatabasePlan = isShowDatabasePlan;
+  }
+
+  public boolean isShowDatabasePlan() {
+    return isShowDatabasePlan;
   }
 }

@@ -273,6 +273,8 @@ public class CommonConfig {
   private long pipeStuckRestartIntervalSeconds = 120;
   private long pipeStuckRestartMinIntervalMs = 5 * 60 * 1000L; // 5 minutes
   private boolean pipeEpochKeepTsFileAfterStuckRestartEnabled = false;
+  private long pipeFlushAfterLastTerminateSeconds = 30;
+  private long pipeFlushAfterTerminateCount = 30;
   private long pipeStorageEngineFlushTimeIntervalMs = Long.MAX_VALUE;
 
   private int pipeMetaReportMaxLogNumPerRound = 10;
@@ -1476,6 +1478,31 @@ public class CommonConfig {
     this.pipeStorageEngineFlushTimeIntervalMs = pipeStorageEngineFlushTimeIntervalMs;
     logger.info(
         "pipeStorageEngineFlushTimeIntervalMs is set to {}", pipeStorageEngineFlushTimeIntervalMs);
+  }
+
+  public long getPipeFlushAfterLastTerminateSeconds() {
+    return pipeFlushAfterLastTerminateSeconds;
+  }
+
+  public void setPipeFlushAfterLastTerminateSeconds(long pipeFlushAfterLastTerminateSeconds) {
+    if (this.pipeFlushAfterLastTerminateSeconds == pipeFlushAfterLastTerminateSeconds) {
+      return;
+    }
+    this.pipeFlushAfterLastTerminateSeconds = pipeFlushAfterLastTerminateSeconds;
+    logger.info(
+        "pipeFlushAfterLastTerminateSeconds is set to {}", pipeFlushAfterLastTerminateSeconds);
+  }
+
+  public long getPipeFlushAfterTerminateCount() {
+    return pipeFlushAfterTerminateCount;
+  }
+
+  public void setPipeFlushAfterTerminateCount(long pipeFlushAfterTerminateCount) {
+    if (this.pipeFlushAfterTerminateCount == pipeFlushAfterTerminateCount) {
+      return;
+    }
+    this.pipeFlushAfterTerminateCount = pipeFlushAfterTerminateCount;
+    logger.info("pipeFlushAfterTerminateCount is set to {}", pipeFlushAfterTerminateCount);
   }
 
   public int getPipeMetaReportMaxLogNumPerRound() {

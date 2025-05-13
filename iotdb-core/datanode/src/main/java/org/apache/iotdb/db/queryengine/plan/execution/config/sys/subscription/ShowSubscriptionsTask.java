@@ -50,6 +50,7 @@ public class ShowSubscriptionsTask implements IConfigTask {
   public ShowSubscriptionsTask(final ShowSubscriptions showSubscriptions) {
     this.showSubscriptionsStatement = new ShowSubscriptionsStatement();
     this.showSubscriptionsStatement.setTopicName(showSubscriptions.getTopicName());
+    this.showSubscriptionsStatement.setTableModel(true);
   }
 
   @Override
