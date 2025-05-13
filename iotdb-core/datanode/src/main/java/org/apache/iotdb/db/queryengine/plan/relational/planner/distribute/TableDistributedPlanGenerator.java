@@ -1513,61 +1513,24 @@ public class TableDistributedPlanGenerator
 
   @Override
   public List<PlanNode> visitWindowFunction(WindowNode node, PlanContext context) {
-    List<PlanNode> childrenNodes = node.getChild().accept(this, context);
-    OrderingScheme childOrdering = nodeOrderingMap.get(childrenNodes.get(0).getPlanNodeId());
-    Optional<OrderingScheme> ordering = node.getSpecification().getOrderingScheme();
-    if (childOrdering != null) {
-      nodeOrderingMap.put(node.getPlanNodeId(), childOrdering);
+    context.clearExpectedOrderingScheme();
+    if (node.getChildren().isEmpty()) {
+      return Collections.singletonList(node);
     }
 
+    boolean canSplitPushDown = node.getChild() instanceof GroupNode;
+    List<PlanNode> childrenNodes = node.getChild().accept(this, context);
     if (childrenNodes.size() == 1) {
       node.setChild(childrenNodes.get(0));
+      return Collections.singletonList(node);
+    } else if (!canSplitPushDown) {
+      CollectNode collectNode = new CollectNode(queryId.genPlanNodeId(), node.getChildren().get(0).getOutputSymbols());
+      childrenNodes.forEach(collectNode::addChild);
+      node.setChild(collectNode);
+      return Collections.singletonList(node);
     } else {
-      final PlanNode firstChild = childrenNodes.get(0);
-      if (ordering.isPresent()) { // preSort order columns
-        for (int i = 0; i < childrenNodes.size(); i++) {
-          PlanNode child = childrenNodes.get(i);
-
-          if (child instanceof ExchangeNode) { // Insert SortNode under ExchangeNode
-            ExchangeNode exchangeNode = (ExchangeNode) child;
-            PlanNode exchangeChild = exchangeNode.getChild();
-
-            SortNode sortNode =
-                new SortNode(queryId.genPlanNodeId(), exchangeChild, ordering.get(), false, false);
-            exchangeNode.setChild(sortNode);
-
-            childrenNodes.set(i, exchangeNode);
-          } else { // Insert SortNode above other childNode
-            SortNode sortNode =
-                new SortNode(queryId.genPlanNodeId(), child, ordering.get(), false, false);
-
-            childrenNodes.set(i, sortNode);
-          }
-        }
-
-        final MergeSortNode mergeSortNode =
-            new MergeSortNode(
-                queryId.genPlanNodeId(), ordering.get(), firstChild.getOutputSymbols());
-        childrenNodes.forEach(mergeSortNode::addChild);
-        nodeOrderingMap.put(mergeSortNode.getPlanNodeId(), childOrdering);
-        node.setChild(mergeSortNode);
-      } else if (childOrdering != null) {
-        final MergeSortNode mergeSortNode =
-            new MergeSortNode(
-                queryId.genPlanNodeId(), childOrdering, firstChild.getOutputSymbols());
-        childrenNodes.forEach(mergeSortNode::addChild);
-        nodeOrderingMap.put(mergeSortNode.getPlanNodeId(), childOrdering);
-        node.setChild(mergeSortNode);
-      } else {
-        // children has no sort property, use CollectNode to merge children
-        final CollectNode collectNode =
-            new CollectNode(queryId.genPlanNodeId(), firstChild.getOutputSymbols());
-        childrenNodes.forEach(collectNode::addChild);
-        node.setChild(collectNode);
-      }
+      return splitForEachChild(node, childrenNodes);
     }
-
-    return Collections.singletonList(node);
   }
 
   public static class PlanContext {
