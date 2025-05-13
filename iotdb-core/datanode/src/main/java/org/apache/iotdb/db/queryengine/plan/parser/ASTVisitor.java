@@ -96,7 +96,7 @@ import org.apache.iotdb.db.queryengine.plan.expression.unary.LogicNotExpression;
 import org.apache.iotdb.db.queryengine.plan.expression.unary.NegationExpression;
 import org.apache.iotdb.db.queryengine.plan.expression.unary.RegularExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ColumnDefinition;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateTableView;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateView;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DataType;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DataTypeParameter;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.GenericDataType;
@@ -4606,10 +4606,10 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
   public Statement visitCreateTableView(final IoTDBSqlParser.CreateTableViewContext ctx) {
     if (true) {
       throw new UnsupportedOperationException(
-          "The 'createTableView' is unsupported in tree sql-dialect.");
+          "The 'CreateTableView' is unsupported in tree sql-dialect.");
     }
     return new CreateTableViewStatement(
-        new CreateTableView(
+        new CreateView(
             null,
             getQualifiedName(ctx.qualifiedName()),
             ctx.viewColumnDefinition().stream()

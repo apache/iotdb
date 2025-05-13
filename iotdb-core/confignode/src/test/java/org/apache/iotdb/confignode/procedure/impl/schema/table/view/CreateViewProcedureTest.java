@@ -37,7 +37,7 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 
-public class CreateTableViewProcedureTest {
+public class CreateViewProcedureTest {
   @Test
   public void serializeDeserializeTest() throws IllegalPathException, IOException {
     final TsTable table = new TsTable("table1");

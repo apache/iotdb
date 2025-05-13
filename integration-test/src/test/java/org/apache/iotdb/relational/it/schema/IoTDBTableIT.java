@@ -831,8 +831,11 @@ public class IoTDBTableIT {
       // Test create & replace + restrict
       statement.execute(
           "create or replace view tree_view_db.view_table (tag1 tag, tag2 tag, s11 int32 field, s3 from s2) restrict with (ttl=100) as root.a.**");
-    } catch (SQLException e) {
-      fail(e.getMessage());
+      fail();
+    } catch (final SQLException e) {
+      assertEquals(
+          "614: Multiple types encountered when auto detecting type of measurement 's1', please check",
+          e.getMessage());
     }
 
     // Test permission

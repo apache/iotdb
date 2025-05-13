@@ -72,7 +72,7 @@ ddlStatement
     // View
     | createLogicalView | dropLogicalView | showLogicalView | renameLogicalView | alterLogicalView
     // Table View
-    | createTableView
+    | createView
     ;
 
 dmlStatement
@@ -779,7 +779,7 @@ viewSourcePaths
     ;
 
 // Table view
-createTableView
+createView
     : CREATE (OR REPLACE)? VIEW qualifiedName
         LR_BRACKET (viewColumnDefinition (COMMA viewColumnDefinition)*) RR_BRACKET
         comment?
