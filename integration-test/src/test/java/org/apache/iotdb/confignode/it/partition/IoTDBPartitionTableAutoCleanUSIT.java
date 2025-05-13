@@ -42,21 +42,22 @@ import java.util.concurrent.TimeUnit;
 
 @RunWith(IoTDBTestRunner.class)
 @Category({ClusterIT.class})
-public class IoTDBPartitionTableAutoCleanIT {
+public class IoTDBPartitionTableAutoCleanUSIT {
 
   private static final String TREE_DATABASE_PREFIX = "root.db.g_";
 
   private static final int TEST_REPLICATION_FACTOR = 1;
-  private static final long TEST_TIME_PARTITION_INTERVAL = 604800000;
+  private static final long TEST_TIME_PARTITION_INTERVAL_IN_MS = 604800_000;
   private static final long TEST_TTL_CHECK_INTERVAL = 5_000;
 
   private static final TTimePartitionSlot TEST_CURRENT_TIME_SLOT =
       new TTimePartitionSlot()
           .setStartTime(
               System.currentTimeMillis()
-                  / TEST_TIME_PARTITION_INTERVAL
-                  * TEST_TIME_PARTITION_INTERVAL);
-  private static final long TEST_TTL = 7 * TEST_TIME_PARTITION_INTERVAL;
+                  * 1000L
+                  / TEST_TIME_PARTITION_INTERVAL_IN_MS
+                  * TEST_TIME_PARTITION_INTERVAL_IN_MS);
+  private static final long TEST_TTL_IN_MS = 7 * TEST_TIME_PARTITION_INTERVAL_IN_MS;
 
   @Before
   public void setUp() throws Exception {
@@ -65,8 +66,10 @@ public class IoTDBPartitionTableAutoCleanIT {
         .getCommonConfig()
         .setSchemaReplicationFactor(TEST_REPLICATION_FACTOR)
         .setDataReplicationFactor(TEST_REPLICATION_FACTOR)
-        .setTimePartitionInterval(TEST_TIME_PARTITION_INTERVAL)
-        .setTTLCheckInterval(TEST_TTL_CHECK_INTERVAL);
+        .setTimePartitionInterval(TEST_TIME_PARTITION_INTERVAL_IN_MS)
+        .setTTLCheckInterval(TEST_TTL_CHECK_INTERVAL)
+        // Note that the time precision of IoTDB is us in this IT
+        .setTimestampPrecision("us");
 
     // Init 1C1D environment
     EnvFactory.getEnv().initClusterEnvironment(1, 1);
@@ -92,7 +95,7 @@ public class IoTDBPartitionTableAutoCleanIT {
         statement.execute(
             String.format(
                 "INSERT INTO %s(timestamp, s) VALUES (%d, %d)",
-                databaseName, TEST_CURRENT_TIME_SLOT.getStartTime() - TEST_TTL * 2, -1));
+                databaseName, TEST_CURRENT_TIME_SLOT.getStartTime() - TEST_TTL_IN_MS * 2000, -1));
         // Insert existed data
         statement.execute(
             String.format(
@@ -100,15 +103,15 @@ public class IoTDBPartitionTableAutoCleanIT {
                 databaseName, TEST_CURRENT_TIME_SLOT.getStartTime(), 1));
       }
       // Let db0.TTL > device.TTL, the valid TTL should be the bigger one
-      statement.execute(String.format("SET TTL TO %s0 %d", TREE_DATABASE_PREFIX, TEST_TTL));
+      statement.execute(String.format("SET TTL TO %s0 %d", TREE_DATABASE_PREFIX, TEST_TTL_IN_MS));
       statement.execute(String.format("SET TTL TO %s0.s %d", TREE_DATABASE_PREFIX, 10));
       // Let db1.TTL < device.TTL, the valid TTL should be the bigger one
       statement.execute(String.format("SET TTL TO %s1 %d", TREE_DATABASE_PREFIX, 10));
-      statement.execute(String.format("SET TTL TO %s1.s %d", TREE_DATABASE_PREFIX, TEST_TTL));
+      statement.execute(String.format("SET TTL TO %s1.s %d", TREE_DATABASE_PREFIX, TEST_TTL_IN_MS));
       // Set TTL to path db2.**
-      statement.execute(String.format("SET TTL TO %s2.** %d", TREE_DATABASE_PREFIX, TEST_TTL));
+      statement.execute(
+          String.format("SET TTL TO %s2.** %d", TREE_DATABASE_PREFIX, TEST_TTL_IN_MS));
     }
-
     TDataPartitionReq req = new TDataPartitionReq();
     for (int i = 0; i < 3; i++) {
       req.putToPartitionSlotsMap(String.format("%s%d", TREE_DATABASE_PREFIX, i), new TreeMap<>());
