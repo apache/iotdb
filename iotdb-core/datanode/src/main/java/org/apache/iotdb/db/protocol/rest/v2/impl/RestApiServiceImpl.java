@@ -162,14 +162,12 @@ public class RestApiServiceImpl extends RestApiService {
       QueryDataSet targetDataSet = new QueryDataSet();
 
       FastLastHandler.setupTargetDataSet(targetDataSet);
-
+      List<Object> values = new ArrayList<>();
+      List<String> timeseries = new ArrayList<>();
+      List<String> valueList = new ArrayList<>();
+      List<String> dataTypeList = new ArrayList<>();
       for (Map.Entry<PartialPath, Map<String, Pair<Binary, TimeValuePair>>> entry :
           resultMap.entrySet()) {
-        List<Object> values = new ArrayList<>();
-        List<String> timeseries = new ArrayList<>();
-        List<String> valueList = new ArrayList<>();
-        List<String> dataTypeList = new ArrayList<>();
-
         for (Map.Entry<String, Pair<Binary, TimeValuePair>> measurementEntry :
             entry.getValue().entrySet()) {
           TimeValuePair tvPair = measurementEntry.getValue().getRight();
@@ -178,13 +176,11 @@ public class RestApiServiceImpl extends RestApiService {
           targetDataSet.addTimestampsItem(tvPair.getTimestamp());
           timeseries.add(measurementEntry.getValue().getLeft().toString());
         }
-
-        values.add(timeseries);
-        values.add(valueList);
-        values.add(dataTypeList);
-        targetDataSet.addValuesItem(values);
       }
-
+      values.add(timeseries);
+      values.add(valueList);
+      values.add(dataTypeList);
+      targetDataSet.addValuesItem(values);
       return Response.ok().entity(targetDataSet).build();
 
     } catch (Exception e) {
