@@ -1,3 +1,21 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
+ */
 package org.apache.iotdb.session.compress;
 
 import org.apache.tsfile.encoding.decoder.Decoder;
@@ -6,8 +24,6 @@ import org.apache.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.tsfile.utils.Binary;
 
 import java.nio.ByteBuffer;
-import java.util.ArrayList;
-import java.util.List;
 
 public class Ts2DiffColumnDecoder implements ColumnDecoder {
   private final Decoder decoder;
@@ -19,48 +35,47 @@ public class Ts2DiffColumnDecoder implements ColumnDecoder {
   }
 
   @Override
-  public List<?> decode(ByteBuffer buffer, ColumnEntry columnEntry) {
-    int count = columnEntry.getSize();
+  public Object decode(ByteBuffer buffer, ColumnEntry columnEntry, int rowCount) {
     switch (dataType) {
       case BOOLEAN:
         {
-          List<Boolean> result = new ArrayList<>(count);
-          for (int i = 0; i < count; i++) {
-            result.add(decoder.readBoolean(buffer));
+          boolean[] result = new boolean[rowCount];
+          for (int i = 0; i < rowCount; i++) {
+            result[i] = decoder.readBoolean(buffer);
           }
           return result;
         }
       case INT32:
       case DATE:
         {
-          List<Integer> result = new ArrayList<>(count);
-          for (int i = 0; i < count; i++) {
-            result.add(decoder.readInt(buffer));
+          int[] result = new int[rowCount];
+          for (int i = 0; i < rowCount; i++) {
+            result[i] = decoder.readInt(buffer);
           }
           return result;
         }
       case INT64:
       case TIMESTAMP:
         {
-          List<Long> result = new ArrayList<>(count);
-          for (int i = 0; i < count; i++) {
-            result.add(decoder.readLong(buffer));
+          long[] result = new long[rowCount];
+          for (int i = 0; i < rowCount; i++) {
+            result[i] = decoder.readLong(buffer);
           }
           return result;
         }
       case FLOAT:
         {
-          List<Float> result = new ArrayList<>(count);
-          for (int i = 0; i < count; i++) {
-            result.add(decoder.readFloat(buffer));
+          float[] result = new float[rowCount];
+          for (int i = 0; i < rowCount; i++) {
+            result[i] = decoder.readFloat(buffer);
           }
           return result;
         }
       case DOUBLE:
         {
-          List<Double> result = new ArrayList<>(count);
-          for (int i = 0; i < count; i++) {
-            result.add(decoder.readDouble(buffer));
+          double[] result = new double[rowCount];
+          for (int i = 0; i < rowCount; i++) {
+            result[i] = decoder.readDouble(buffer);
           }
           return result;
         }
@@ -68,10 +83,12 @@ public class Ts2DiffColumnDecoder implements ColumnDecoder {
       case STRING:
       case BLOB:
         {
-          List<Binary> result = new ArrayList<>(count);
-          for (int i = 0; i < count; i++) {
-            Binary binary = decoder.readBinary(buffer);
-            result.add(binary);
+          Binary[] result = new Binary[rowCount];
+          for (int i = 0; i < rowCount; i++) {
+            int binarySize = buffer.getInt();
+            byte[] binaryValue = new byte[binarySize];
+            buffer.get(binaryValue);
+            result[i] = decoder.readBinary(buffer);
           }
           return result;
         }

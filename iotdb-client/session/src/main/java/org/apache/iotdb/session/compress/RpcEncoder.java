@@ -1,3 +1,21 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
+ */
 package org.apache.iotdb.session.compress;
 
 import org.apache.tsfile.enums.TSDataType;
@@ -14,71 +32,77 @@ import java.util.Map;
 
 public class RpcEncoder {
   private final MetaHead metaHead;
+  private final MetaHead metaHeadForTimeStamp;
   private final Map<TSDataType, TSEncoding> columnEncodersMap;
   private final CompressionType compressionType;
-  private List<byte[]> encodedData;
 
   public RpcEncoder(
       Map<TSDataType, TSEncoding> columnEncodersMap, CompressionType compressionType) {
     this.columnEncodersMap = columnEncodersMap;
     this.compressionType = compressionType;
     this.metaHead = new MetaHead();
-    this.encodedData = new ArrayList<>();
+    this.metaHeadForTimeStamp = new MetaHead();
   }
 
   /**
-   * 获取 tablet 中的时间戳列，然后编码放入 encodedData1 中
+   * Get the timestamp column in tablet
    *
-   * @param tablet 数据
-   * @throws IOException 如果编码过程中发生IO错误
+   * @param tablet data
+   * @throws IOException An IO exception occurs
    */
   public ByteBuffer encodeTimestamps(Tablet tablet) {
-    TSEncoding encoding = columnEncodersMap.getOrDefault(TSDataType.INT64, TSEncoding.PLAIN);
-    ColumnEncoder encoder = createEncoder(TSDataType.INT64, encoding);
 
-    // 1.获取时间戳数据
+    // 1.Get timestamp data
     long[] timestamps = tablet.getTimestamps();
     List<Long> timestampsList = new ArrayList<>();
-    // 2.转 List
+    // 2.transform List
     for (int i = 0; i < timestamps.length; i++) {
       timestampsList.add(timestamps[i]);
     }
-    // 3.编码
-    byte[] encoded = encoder.encode(timestampsList);
-    ByteBuffer timeBuffer = ByteBuffer.wrap(encoded);
-    // 4.调整 ByteBuffer 的 limit 为实际写入的数据长度
+    // 3.encoder
+    byte[] encoded = encodeTimeStampColumn(TSDataType.INT64, timestampsList);
+    // 4. Serializing MetaHead
+    byte[] metaHeadEncoder = getMetaHeadForTimeStamp().toBytes();
+
+    ByteBuffer timeBuffer = ByteBuffer.allocate(encoded.length + metaHeadEncoder.length + 4);
+    timeBuffer.put(encoded);
+    timeBuffer.put(metaHeadEncoder);
+    // 5. metaHead size
+    timeBuffer.putInt(metaHeadEncoder.length);
+    System.out.println("metaHead size: " + metaHeadEncoder.length);
+    // 6.Adjust the ByteBuffer limit to the actual length of the data written
     timeBuffer.flip();
     return timeBuffer;
   }
 
-  /** 获取 tablet 中的值列，然后编码放入 encodedData2 中 TODO 还有很多考虑 */
+  /** Get the value columns from the tablet and encode them into encodedValues */
   public ByteBuffer encodeValues(Tablet tablet) {
-    // 1. 预估最大空间（假设每列最大为 rowSize * 16 字节）
+    // 1. Estimated maximum space (assuming each column is at most rowSize * 16 bytes)
     int estimatedSize = tablet.getRowSize() * 16 * tablet.getSchemas().size();
     ByteBuffer valueBuffer = ByteBuffer.allocate(estimatedSize);
 
-    // 2. 编码每一列
+    // 2. Encode each column
     for (int i = 0; i < tablet.getSchemas().size(); i++) {
       IMeasurementSchema schema = tablet.getSchemas().get(i);
       byte[] encoded = encodeColumn(schema.getType(), tablet, i);
       valueBuffer.put(encoded);
     }
 
-    // 3. 序列化
+    // 3. Serializing MetaHead
     byte[] metaHeadEncoder = getMetaHead().toBytes();
     valueBuffer.put(metaHeadEncoder);
-    // 4. metaHead 长度
+    // 4. metaHead size
     valueBuffer.putInt(metaHeadEncoder.length);
-    // 5. 调整 ByteBuffer 的 limit 为实际写入的数据长度
+    // 5. Adjust the ByteBuffer limit to the actual length of the data written
     valueBuffer.flip();
     return valueBuffer;
   }
 
   public byte[] encodeColumn(TSDataType dataType, Tablet tablet, int columnIndex) {
-    // 1.获取编码类型
+    // 1.Get the encoding type
     TSEncoding encoding = columnEncodersMap.getOrDefault(dataType, TSEncoding.PLAIN);
     ColumnEncoder encoder = createEncoder(dataType, encoding);
-    // 2.获取该列的数据并转换为 List
+    // 2.Get the data of the column and convert it into a Lis
     Object columnValues = tablet.getValues()[columnIndex];
     List<?> valueList;
     switch (dataType) {
@@ -112,6 +136,7 @@ public class RpcEncoder {
         for (boolean v : boolArray) boolList.add(v);
         valueList = boolList;
         break;
+      case STRING:
       case TEXT:
         Object[] textArray = (Object[]) columnValues;
         List<Object> textList = new ArrayList<>(textArray.length);
@@ -119,25 +144,35 @@ public class RpcEncoder {
         valueList = textList;
         break;
       default:
-        throw new UnsupportedOperationException("不支持的数据类型: " + dataType);
+        throw new UnsupportedOperationException("Unsupported data types: " + dataType);
     }
 
-    // 3.编码
+    // 3.encoder
     byte[] encoded = encoder.encode(valueList);
-    // 4.获取 ColumnEntry 内容并添加到 metaHead
+    // 4.Get ColumnEntry content and add to metaHead
     metaHead.addColumnEntry(encoder.getColumnEntry());
-    // 5.将编码后的数据添加到 encodedData
-    encodedData.add(encoded);
-    // 6.返回编码后的数据
+    // 5.Returns the encoded data
+    return encoded;
+  }
+
+  public byte[] encodeTimeStampColumn(TSDataType dataType, List<Long> timestamps) {
+    // 1.Get the encoding type
+    TSEncoding encoding = columnEncodersMap.getOrDefault(dataType, TSEncoding.PLAIN);
+    ColumnEncoder encoder = createEncoder(dataType, encoding);
+    // 2.encoder
+    byte[] encoded = encoder.encode(timestamps);
+    // 3.Get ColumnEntry content and add to metaHead
+    metaHeadForTimeStamp.addColumnEntry(encoder.getColumnEntry());
+    // 4.Returns the encoded data
     return encoded;
   }
 
   /**
-   * 根据数据类型和编码类型创建对应的编码器
+   * Create the corresponding encoder based on the data type and encoding type
    *
-   * @param dataType 数据类型
-   * @param encodingType 编码类型
-   * @return 列编码器
+   * @param dataType data type
+   * @param encodingType encoding Type
+   * @return columnEncoder
    */
   private ColumnEncoder createEncoder(TSDataType dataType, TSEncoding encodingType) {
     switch (encodingType) {
@@ -153,20 +188,15 @@ public class RpcEncoder {
   }
 
   /**
-   * 获取编码后的数据
+   * Get metadata header
    *
-   * @return 编码后的数据列表
-   */
-  public List<byte[]> getEncodedData() {
-    return encodedData;
-  }
-
-  /**
-   * 获取元数据头
-   *
-   * @return 元数据头
+   * @return metaHeader
    */
   public MetaHead getMetaHead() {
     return metaHead;
+  }
+
+  public MetaHead getMetaHeadForTimeStamp() {
+    return metaHeadForTimeStamp;
   }
 }

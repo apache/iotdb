@@ -269,9 +269,9 @@ public class TableSessionBuilder extends AbstractSessionBuilder {
   }
 
   /**
-   * 设置编码类型
+   * Setting the encoding type
    *
-   * @param compressionType 压缩类型
+   * @param compressionType Compression type
    * @return the current {@link TableSessionBuilder} instance.
    */
   public TableSessionBuilder withCompressionType(CompressionType compressionType) {
@@ -280,7 +280,7 @@ public class TableSessionBuilder extends AbstractSessionBuilder {
   }
 
   /**
-   * @param tsEncoding 编码类型
+   * @param tsEncoding Encoding type
    * @return the current {@link TableSessionBuilder} instance.
    */
   public TableSessionBuilder withTimeStampEncoding(TSEncoding tsEncoding) {
@@ -289,7 +289,7 @@ public class TableSessionBuilder extends AbstractSessionBuilder {
   }
 
   /**
-   * @param tsEncoding 编码类型
+   * @param tsEncoding Encoding type
    * @return the current {@link TableSessionBuilder} instance.
    */
   public TableSessionBuilder withBooleanEncoding(TSEncoding tsEncoding) {
@@ -298,7 +298,7 @@ public class TableSessionBuilder extends AbstractSessionBuilder {
   }
 
   /**
-   * @param tsEncoding 编码类型
+   * @param tsEncoding Encoding type
    * @return the current {@link TableSessionBuilder} instance.
    */
   public TableSessionBuilder withInt32Encoding(TSEncoding tsEncoding) {
@@ -307,7 +307,7 @@ public class TableSessionBuilder extends AbstractSessionBuilder {
   }
 
   /**
-   * @param tsEncoding 编码类型
+   * @param tsEncoding Encoding type
    * @return the current {@link TableSessionBuilder} instance.
    */
   public TableSessionBuilder withInt64Encoding(TSEncoding tsEncoding) {
@@ -316,7 +316,7 @@ public class TableSessionBuilder extends AbstractSessionBuilder {
   }
 
   /**
-   * @param tsEncoding 编码类型
+   * @param tsEncoding Encoding type
    * @return the current {@link TableSessionBuilder} instance.
    */
   public TableSessionBuilder withFloatEncoding(TSEncoding tsEncoding) {
@@ -325,7 +325,7 @@ public class TableSessionBuilder extends AbstractSessionBuilder {
   }
 
   /**
-   * @param tsEncoding 编码类型
+   * @param tsEncoding Encoding type
    * @return the current {@link TableSessionBuilder} instance.
    */
   public TableSessionBuilder withDoubleEncoding(TSEncoding tsEncoding) {
@@ -334,7 +334,7 @@ public class TableSessionBuilder extends AbstractSessionBuilder {
   }
 
   /**
-   * @param tsEncoding 编码类型
+   * @param tsEncoding Encoding type
    * @return the current {@link TableSessionBuilder} instance.
    */
   public TableSessionBuilder withStringEncoding(TSEncoding tsEncoding) {
@@ -343,7 +343,7 @@ public class TableSessionBuilder extends AbstractSessionBuilder {
   }
 
   /**
-   * @param tsEncoding 编码类型
+   * @param tsEncoding Encoding type
    * @return the current {@link TableSessionBuilder} instance.
    */
   public TableSessionBuilder withTextEncoding(TSEncoding tsEncoding) {
@@ -352,7 +352,7 @@ public class TableSessionBuilder extends AbstractSessionBuilder {
   }
 
   /**
-   * @param tsEncoding 编码类型
+   * @param tsEncoding Encoding type
    * @return the current {@link TableSessionBuilder} instance.
    */
   public TableSessionBuilder withBlobEncoding(TSEncoding tsEncoding) {
@@ -361,7 +361,7 @@ public class TableSessionBuilder extends AbstractSessionBuilder {
   }
 
   /**
-   * @param tsEncoding 编码类型
+   * @param tsEncoding Encoding type
    * @return the current {@link TableSessionBuilder} instance.
    */
   public TableSessionBuilder withDateEncoding(TSEncoding tsEncoding) {
@@ -382,7 +382,7 @@ public class TableSessionBuilder extends AbstractSessionBuilder {
     }
     this.sqlDialect = TABLE;
     Session newSession = new Session(this);
-    newSession.open(enableCompression, connectionTimeoutInMs);
+    newSession.open(isCompressed, connectionTimeoutInMs);
     return new TableSession(newSession);
   }
 }

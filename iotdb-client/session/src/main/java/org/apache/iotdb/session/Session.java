@@ -2983,8 +2983,15 @@ public class Session implements ISession {
 
     request.setPrefixPath(tablet.getDeviceId());
     request.setIsAligned(isAligned);
-    // 新增编码逻辑
     if (this.enableRPCCompression) {
+      request.setIsCompressed(true);
+      for (IMeasurementSchema measurementSchema : tablet.getSchemas()) {
+        if (measurementSchema.getMeasurementName() == null) {
+          throw new IllegalArgumentException("measurement should be non null value");
+        }
+        request.addToEncodingTypes(
+            this.columnEncodersMap.get(measurementSchema.getType()).ordinal());
+      }
       RpcEncoder rpcEncoder = new RpcEncoder(this.columnEncodersMap, this.compressionType);
       request.setTimestamps(rpcEncoder.encodeTimestamps(tablet));
       request.setValues(rpcEncoder.encodeValues(tablet));
