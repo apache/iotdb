@@ -27,6 +27,7 @@ services:
       - cn_internal_port=10710
       - cn_consensus_port=10720
       - cn_seed_config_node=iotdb-confignode:10710
+      - CONFIGNODE_JMX_OPTS=-Xms1G -Xmx1G -XX:MaxDirectMemorySize=256M
     volumes:
         - ./data/confignode:/iotdb/data
         - ./logs/confignode:/iotdb/logs
@@ -48,6 +49,7 @@ services:
       - dn_mpp_data_exchange_port=10740
       - dn_schema_region_consensus_port=10750
       - dn_data_region_consensus_port=10760
+      - IOTDB_JMX_OPTS=-Xms4G -Xmx4G -XX:MaxDirectMemorySize=1G
     volumes:
       - ./data/datanode1:/iotdb/data/
       - ./logs/datanode1:/iotdb/logs/
@@ -67,6 +69,7 @@ services:
       - dn_mpp_data_exchange_port=10740
       - dn_schema_region_consensus_port=10750
       - dn_data_region_consensus_port=10760
+      - IOTDB_JMX_OPTS=-Xms4G -Xmx4G -XX:MaxDirectMemorySize=1G
     volumes:
       - ./data/datanode2:/iotdb/data/
       - ./logs/datanode2:/iotdb/logs/
