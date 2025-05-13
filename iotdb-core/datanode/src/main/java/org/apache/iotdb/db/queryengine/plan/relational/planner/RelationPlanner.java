@@ -166,12 +166,7 @@ public class RelationPlanner extends AstVisitor<RelationPlan, Void> {
   @Override
   protected RelationPlan visitQuery(final Query node, final Void context) {
     return new QueryPlanner(
-            analysis,
-            symbolAllocator,
-            queryContext,
-            outerContext,
-            sessionInfo,
-            recursiveSubqueries)
+            analysis, symbolAllocator, queryContext, outerContext, sessionInfo, recursiveSubqueries)
         .plan(node);
   }
 
@@ -263,12 +258,7 @@ public class RelationPlanner extends AstVisitor<RelationPlan, Void> {
   protected RelationPlan visitQuerySpecification(
       final QuerySpecification node, final Void context) {
     return new QueryPlanner(
-            analysis,
-            symbolAllocator,
-            queryContext,
-            outerContext,
-            sessionInfo,
-            recursiveSubqueries)
+            analysis, symbolAllocator, queryContext, outerContext, sessionInfo, recursiveSubqueries)
         .plan(node);
   }
 

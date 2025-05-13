@@ -356,7 +356,8 @@ public class QueryPlanner {
       //    avg(v) OVER (ORDER BY v)
       // Needs to be rewritten as
       //    avg(CAST(v AS double)) OVER (ORDER BY v)
-      PlanAndMappings coercions = coerce(subPlan, inputs, analysis, queryIdAllocator, symbolAllocator);
+      PlanAndMappings coercions =
+          coerce(subPlan, inputs, analysis, queryIdAllocator, symbolAllocator);
       subPlan = coercions.getSubPlan();
 
       // For frame of type RANGE, append casts and functions necessary for frame bound calculations
