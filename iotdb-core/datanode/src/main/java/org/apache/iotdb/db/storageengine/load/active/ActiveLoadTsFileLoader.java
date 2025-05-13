@@ -217,7 +217,6 @@ public class ActiveLoadTsFileLoader {
       throws FileNotFoundException {
     final LoadTsFileStatement statement = new LoadTsFileStatement(filePair.getLeft());
     final List<File> files = statement.getTsFiles();
-    final String dataBaseName;
 
     // It should be noted here that the instructions in this code block do not need to use the
     // DataBase, so the DataBase is assigned a value of null. If the DataBase is used later, an
