@@ -329,16 +329,24 @@ public class PipeTabletEventSorterTest {
           tablet.addTimestamp(rowIndex, value);
           tablet.addValue(
               "s0", rowIndex, new Binary(String.valueOf(row).getBytes(StandardCharsets.UTF_8)));
-          tablet.addValue("s1", rowIndex, value);
-          tablet.addValue("s2", rowIndex, (value * 1.0f));
+          tablet.addValue("s1", rowIndex, hasDuplicates && j == 0 ? null : value);
+          tablet.addValue("s2", rowIndex, hasDuplicates && j == 0 ? null : (value * 1.0f));
           tablet.addValue(
-              "s3", rowIndex, new Binary(String.valueOf(value).getBytes(StandardCharsets.UTF_8)));
-          tablet.addValue("s4", rowIndex, value);
-          tablet.addValue("s5", rowIndex, (int) value);
-          tablet.addValue("s6", rowIndex, value * 0.1);
-          tablet.addValue("s7", rowIndex, getDate((int) value));
+              "s3",
+              rowIndex,
+              hasDuplicates && j == 0
+                  ? null
+                  : new Binary(String.valueOf(value).getBytes(StandardCharsets.UTF_8)));
+          tablet.addValue("s4", rowIndex, hasDuplicates && j == 0 ? null : value);
+          tablet.addValue("s5", rowIndex, hasDuplicates && j == 0 ? null : (int) value);
+          tablet.addValue("s6", rowIndex, hasDuplicates && j == 0 ? null : value * 0.1);
+          tablet.addValue("s7", rowIndex, hasDuplicates && j == 0 ? null : getDate((int) value));
           tablet.addValue(
-              "s8", rowIndex, new Binary(String.valueOf(value).getBytes(StandardCharsets.UTF_8)));
+              "s8",
+              rowIndex,
+              hasDuplicates && j == 0
+                  ? null
+                  : new Binary(String.valueOf(value).getBytes(StandardCharsets.UTF_8)));
           rowIndex++;
           tablet.setRowSize(rowIndex);
           if (!hasDuplicates) {
