@@ -79,11 +79,6 @@ def fetch_built_in_model(model_id, inference_attributes):
     """
     attribute_map = get_model_attributes(model_id)
 
-    # validate the inference attributes
-    for attribute_name in inference_attributes:
-        if attribute_name not in attribute_map:
-            logger.warning(f"{attribute_name} is not supported in {model_id}")
-
     # parse the inference attributes, attributes is a Dict[str, Any]
     attributes = parse_attribute(inference_attributes, attribute_map)
 

@@ -177,6 +177,20 @@ public class AINodeBasicIT {
   }
 
   @Test
+  public void timerTest() {
+    String sql = "CALL INFERENCE(_timerxl,  \"select s0 from root.AI.data\", predict_length=36)";
+    try (ResultSet resultSet = statement.executeQuery(sql)) {
+      ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
+      checkHeader(resultSetMetaData, "output0");
+      int count = 0;
+      while (resultSet.next()) {
+        count++;
+      }
+      assertEquals(36, count);
+    }
+  }
+
+  @Test
   public void callInferenceTest() {
     String sql =
         "CALL INFERENCE(identity, \"select s0,s1,s2 from root.AI.data\", generateTime=true)";
