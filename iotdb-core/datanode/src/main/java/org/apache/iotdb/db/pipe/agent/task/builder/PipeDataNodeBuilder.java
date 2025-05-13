@@ -49,7 +49,7 @@ public class PipeDataNodeBuilder {
     this.pipeMeta = pipeMeta;
   }
 
-  public Map<Integer, PipeTask> build() throws IllegalPathException {
+  public Map<Integer, PipeTask> buildTasksWithInternalSource() throws IllegalPathException {
     final PipeStaticMeta pipeStaticMeta = pipeMeta.getStaticMeta();
     final PipeRuntimeMeta pipeRuntimeMeta = pipeMeta.getRuntimeMeta();
 
@@ -85,7 +85,7 @@ public class PipeDataNodeBuilder {
     return consensusGroupIdToPipeTaskMap;
   }
 
-  public Map<Integer, PipeTask> buildExternalPipeTasks() {
+  public Map<Integer, PipeTask> buildTasksWithExternalSource() {
     final Map<Integer, PipeTask> taskIdToPipeTaskMap = new HashMap<>();
     final PipeStaticMeta pipeStaticMeta = pipeMeta.getStaticMeta();
     final PipeRuntimeMeta pipeRuntimeMeta = pipeMeta.getRuntimeMeta();
