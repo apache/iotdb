@@ -69,7 +69,7 @@ public class CreateViewProcedureTest {
         createTableViewProcedure.getTable().getColumnNum(),
         deserializedProcedure.getTable().getColumnNum());
     Assert.assertEquals(
-        createTableViewProcedure.getTable().getIdNums(),
-        deserializedProcedure.getTable().getIdNums());
+        createTableViewProcedure.getTable().getTagNum(),
+        deserializedProcedure.getTable().getTagNum());
   }
 }

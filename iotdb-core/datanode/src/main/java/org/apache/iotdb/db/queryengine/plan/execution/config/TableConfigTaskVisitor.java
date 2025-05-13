@@ -213,11 +213,13 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.Set;
 import java.util.function.Predicate;
 
 import static org.apache.iotdb.commons.conf.IoTDBConstant.MAX_DATABASE_NAME_LENGTH;
@@ -499,6 +501,7 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
 
     // TODO: Place the check at statement analyzer
     boolean hasTimeColumn = false;
+    final Set<String> sourceNameSet = new HashSet<>();
     for (final ColumnDefinition columnDefinition : node.getElements()) {
       final TsTableColumnCategory category = columnDefinition.getColumnCategory();
       final String columnName = columnDefinition.getName().getValue();
@@ -513,7 +516,7 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
         throw new SemanticException(
             String.format("Columns in table shall not share the same name %s.", columnName));
       }
-      table.addColumnSchema(
+      final TsTableColumnSchema schema =
           TableHeaderSchemaValidator.generateColumnSchema(
               category,
               columnName,
@@ -522,7 +525,14 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
               columnDefinition instanceof ViewFieldDefinition
                       && Objects.nonNull(((ViewFieldDefinition) columnDefinition).getFrom())
                   ? ((ViewFieldDefinition) columnDefinition).getFrom().getValue()
-                  : null));
+                  : null);
+      if (!sourceNameSet.add(TreeViewSchema.getSourceName(schema))) {
+        throw new SemanticException(
+            String.format(
+                "The duplicated source measurement %s is unsupported yet.",
+                TreeViewSchema.getSourceName(schema)));
+      }
+      table.addColumnSchema(schema);
     }
     return new Pair<>(database, table);
   }

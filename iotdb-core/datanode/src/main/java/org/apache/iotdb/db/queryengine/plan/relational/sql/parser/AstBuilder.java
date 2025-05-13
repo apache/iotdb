@@ -615,23 +615,32 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
 
   @Override
   public Node visitViewColumnDefinition(final RelationalSqlParser.ViewColumnDefinitionContext ctx) {
-    return Objects.nonNull(ctx.FROM()) || Objects.nonNull(ctx.FIELD())
+    final Identifier rawColumnName = (Identifier) visit(ctx.identifier().get(0));
+    final Identifier columnName = lowerIdentifier(rawColumnName);
+    final TsTableColumnCategory columnCategory = getColumnCategory(ctx.columnCategory);
+    Identifier originalMeasurement = null;
+
+    if (Objects.nonNull(ctx.FROM())) {
+      originalMeasurement = (Identifier) visit(ctx.original_measurement);
+    } else if (columnCategory == FIELD && !columnName.equals(rawColumnName)) {
+      originalMeasurement = rawColumnName;
+    }
+
+    return columnCategory == FIELD
         ? new ViewFieldDefinition(
             getLocation(ctx),
-            lowerIdentifier((Identifier) visit(ctx.identifier().get(0))),
+            columnName,
             Objects.nonNull(ctx.type()) ? (DataType) visit(ctx.type()) : null,
             null,
             ctx.comment() == null
                 ? null
                 : ((StringLiteral) visit(ctx.comment().string())).getValue(),
-            Objects.nonNull(ctx.FROM())
-                ? lowerIdentifier((Identifier) visit(ctx.original_measurement))
-                : null)
+            originalMeasurement)
         : new ColumnDefinition(
             getLocation(ctx),
-            lowerIdentifier((Identifier) visit(ctx.identifier().get(0))),
+            columnName,
             Objects.nonNull(ctx.type()) ? (DataType) visit(ctx.type()) : null,
-            getColumnCategory(ctx.columnCategory),
+            columnCategory,
             null,
             ctx.comment() == null
                 ? null
