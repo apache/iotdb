@@ -100,8 +100,9 @@ public class BinaryAllocator {
     sampleEvictor =
         new SampleEvictor(
             ThreadName.BINARY_ALLOCATOR_SAMPLE_EVICTOR.getName(),
-            allocatorConfig.durationShutdownTimeout);
-    sampleEvictor.start(allocatorConfig.durationBetweenEvictorRuns);
+            allocatorConfig.durationShutdownTimeout,
+            allocatorConfig.durationBetweenEvictorRuns);
+    sampleEvictor.start();
     autoReleaser =
         new AutoReleaser(
             ThreadName.BINARY_ALLOCATOR_AUTO_RELEASER.getName(),
@@ -272,8 +273,9 @@ public class BinaryAllocator {
 
   public class SampleEvictor extends Evictor {
 
-    public SampleEvictor(String name, Duration evictorShutdownTimeoutDuration) {
-      super(name, evictorShutdownTimeoutDuration);
+    public SampleEvictor(
+        String name, Duration evictorShutdownTimeoutDuration, Duration durationBetweenEvictorRuns) {
+      super(name, evictorShutdownTimeoutDuration, durationBetweenEvictorRuns);
     }
 
     @Override

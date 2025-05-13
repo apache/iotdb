@@ -36,12 +36,15 @@ public abstract class Evictor implements Runnable {
   private ScheduledFuture<?> scheduledFuture;
   private final String name;
   private final Duration shutdownTimeoutDuration;
+  private final Duration durationBetweenEvictorRuns;
 
   private ScheduledExecutorService executor;
 
-  public Evictor(String name, Duration shutdownTimeoutDuration) {
+  public Evictor(
+      String name, Duration shutdownTimeoutDuration, Duration durationBetweenEvictorRuns) {
     this.name = name;
     this.shutdownTimeoutDuration = shutdownTimeoutDuration;
+    this.durationBetweenEvictorRuns = durationBetweenEvictorRuns;
   }
 
   /** Cancels the scheduled future. */
@@ -61,13 +64,17 @@ public abstract class Evictor implements Runnable {
     return getClass().getName() + " [scheduledFuture=" + scheduledFuture + "]";
   }
 
-  public void start(final Duration delay) {
+  public void start() {
     if (null == executor) {
       executor = IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor(name);
     }
     final ScheduledFuture<?> scheduledFuture =
         ScheduledExecutorUtil.safelyScheduleAtFixedRate(
-            executor, this, delay.toMillis(), delay.toMillis(), TimeUnit.MILLISECONDS);
+            executor,
+            this,
+            durationBetweenEvictorRuns.toMillis(),
+            durationBetweenEvictorRuns.toMillis(),
+            TimeUnit.MILLISECONDS);
     this.setScheduledFuture(scheduledFuture);
   }
 
