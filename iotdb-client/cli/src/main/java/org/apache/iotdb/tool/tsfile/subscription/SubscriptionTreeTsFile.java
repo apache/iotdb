@@ -35,7 +35,6 @@ import org.apache.commons.lang3.StringUtils;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Paths;
-import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Properties;
@@ -140,32 +139,22 @@ public class SubscriptionTreeTsFile extends AbstractSubscriptionTsFile {
     List<SubscriptionTreePullConsumer> pullTreeConsumers = commonParam.getPullTreeConsumers();
     for (int i = commonParam.getStartIndex(); i < pullTreeConsumers.size(); i++) {
       SubscriptionTreePullConsumer consumer = commonParam.getPullTreeConsumers().get(i);
+      final String consumerGroupId = consumer.getConsumerGroupId();
       executor.submit(
           new Runnable() {
             @Override
             public void run() {
-              int retryCount = 0;
-              while (true) {
+              while (!consumer.allSnapshotTopicMessagesHaveBeenConsumed()) {
                 try {
-                  List<SubscriptionMessage> messages =
-                      consumer.poll(Duration.ofMillis(Constants.POLL_MESSAGE_TIMEOUT));
-                  consumer.commitSync(messages);
-                  if (messages.isEmpty()) {
-                    retryCount++;
-                    if (retryCount >= Constants.MAX_RETRY_TIMES) {
-                      break;
-                    }
-                  }
-                  for (final SubscriptionMessage message : messages) {
-                    SubscriptionTsFileHandler fp = message.getTsFileHandler();
-                    ioTPrinter.println(fp.getFile().getName());
+                  for (final SubscriptionMessage message :
+                      consumer.poll(Constants.POLL_MESSAGE_TIMEOUT)) {
+                    final SubscriptionTsFileHandler handler = message.getTsFileHandler();
+                    ioTPrinter.println(handler.getFile().getName());
                     try {
-                      fp.moveFile(
+                      handler.moveFile(
                           Paths.get(
-                              commonParam.getTargetDir()
-                                  + File.separator
-                                  + consumer.getConsumerGroupId(),
-                              fp.getPath().getFileName().toString()));
+                              commonParam.getTargetDir() + File.separator + consumerGroupId,
+                              handler.getPath().getFileName().toString()));
                     } catch (IOException e) {
                       throw new RuntimeException(e);
                     }

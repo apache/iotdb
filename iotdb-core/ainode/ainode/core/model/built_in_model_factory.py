@@ -17,6 +17,7 @@
 #
 from abc import abstractmethod
 from typing import List, Dict
+import os
 
 import numpy as np
 from sklearn.preprocessing import MinMaxScaler
@@ -32,6 +33,9 @@ from ainode.core.exception import InferenceModelInternalError, AttributeNotSuppo
 from ainode.core.exception import WrongAttributeTypeError, NumericalRangeException, StringRangeException, \
     ListRangeException, BuiltInModelNotSupportError
 from ainode.core.log import Logger
+
+from ainode.TimerXL.models import timer_xl
+from ainode.TimerXL.models.configuration_timer import TimerxlConfig
 
 logger = Logger()
 
@@ -51,6 +55,8 @@ def get_model_attributes(model_id: str):
         attribute_map = gaussian_hmm_attribute_map
     elif model_id == BuiltInModelType.STRAY.value:
         attribute_map = stray_attribute_map
+    elif model_id == BuiltInModelType.TIMER_XL.value:
+        attribute_map = timerxl_attribute_map
     else:
         raise BuiltInModelNotSupportError(model_id)
     return attribute_map
@@ -96,6 +102,8 @@ def fetch_built_in_model(model_id, inference_attributes):
         model = GaussianHmmModel(attributes)
     elif model_id == BuiltInModelType.STRAY.value:
         model = STRAYModel(attributes)
+    elif model_id == BuiltInModelType.TIMER_XL.value:
+        model = timer_xl.Model(TimerxlConfig.from_dict(attributes))
     else:
         raise BuiltInModelNotSupportError(model_id)
 
@@ -318,6 +326,82 @@ def parse_attribute(input_attributes: Dict[str, str], attribute_map: Dict[str, A
                 raise e
     return attributes
 
+
+timerxl_attribute_map = {
+    AttributeName.INPUT_TOKEN_LEN.value: IntAttribute(
+        name=AttributeName.INPUT_TOKEN_LEN.value,
+        default_value=96,
+        default_low=1,
+        default_high=5000
+    ),
+    AttributeName.HIDDEN_SIZE.value: IntAttribute(
+        name=AttributeName.HIDDEN_SIZE.value,
+        default_value=1024,
+        default_low=1,
+        default_high=5000
+    ),
+    AttributeName.INTERMEDIATE_SIZE.value: IntAttribute(
+        name=AttributeName.INTERMEDIATE_SIZE.value,
+        default_value=2048,
+        default_low=1,
+        default_high=5000
+    ),
+    AttributeName.OUTPUT_TOKEN_LENS.value: ListAttribute(
+        name=AttributeName.OUTPUT_TOKEN_LENS.value,
+        default_value=[96],
+        value_type=int
+    ),
+    AttributeName.NUM_HIDDEN_LAYERS.value: IntAttribute(
+        name=AttributeName.NUM_HIDDEN_LAYERS.value,
+        default_value=8,
+        default_low=1,
+        default_high=16
+    ),
+    AttributeName.NUM_ATTENTION_HEADS.value: IntAttribute(
+        name=AttributeName.NUM_ATTENTION_HEADS.value,
+        default_value=8,
+        default_low=1,
+        default_high=192
+    ),
+    AttributeName.HIDDEN_ACT.value: StringAttribute(
+        name=AttributeName.HIDDEN_ACT.value,
+        default_value="silu",
+        value_choices=["relu", "gelu", "silu", "tanh"],
+    ),
+    AttributeName.USE_CACHE.value: BooleanAttribute(
+        name=AttributeName.USE_CACHE.value,
+        default_value=True,
+    ),
+    AttributeName.ROPE_THETA.value: IntAttribute(
+        name=AttributeName.ROPE_THETA.value,
+        default_value=10000,
+        default_low=1000,
+        default_high=50000
+    ),
+    AttributeName.ATTENTION_DROPOUT.value: FloatAttribute(
+        name=AttributeName.ATTENTION_DROPOUT.value,
+        default_value=0.0,
+        default_low=0.0,
+        default_high=1.0
+    ),
+    AttributeName.INITIALIZER_RANGE.value: FloatAttribute(
+        name=AttributeName.INITIALIZER_RANGE.value,
+        default_value=0.02,
+        default_low=0.0,
+        default_high=1.0
+    ),
+    AttributeName.MAX_POSITION_EMBEDDINGS.value: IntAttribute(
+        name=AttributeName.MAX_POSITION_EMBEDDINGS.value,
+        default_value=10000,
+        default_low=1,
+        default_high=50000
+    ),
+    AttributeName.TIMERXL_CKPT_PATH.value: StringAttribute(
+        name=AttributeName.TIMERXL_CKPT_PATH.value,
+        default_value=os.path.join(os.path.dirname(os.path.abspath(__file__)), 'weights', 'timerxl', 'model.safetensors'),
+        value_choices=[os.path.join(os.path.dirname(os.path.abspath(__file__)), 'weights', 'timerxl', 'model.safetensors'), ""],
+    ),
+}
 
 # built-in sktime model attributes
 # NaiveForecaster

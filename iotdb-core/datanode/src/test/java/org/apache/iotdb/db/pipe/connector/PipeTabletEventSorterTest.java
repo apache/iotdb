@@ -22,6 +22,7 @@ package org.apache.iotdb.db.pipe.connector;
 import org.apache.iotdb.db.pipe.connector.util.sorter.PipeTableModelTabletEventSorter;
 import org.apache.iotdb.db.pipe.connector.util.sorter.PipeTreeModelTabletEventSorter;
 
+import org.apache.tsfile.enums.ColumnCategory;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.DateUtils;
@@ -306,17 +307,17 @@ public class PipeTabletEventSorterTest {
     schemaList.add(new MeasurementSchema("s7", TSDataType.DATE));
     schemaList.add(new MeasurementSchema("s8", TSDataType.TEXT));
 
-    final List<Tablet.ColumnCategory> columnTypes =
+    final List<ColumnCategory> columnTypes =
         Arrays.asList(
-            Tablet.ColumnCategory.TAG,
-            Tablet.ColumnCategory.FIELD,
-            Tablet.ColumnCategory.FIELD,
-            Tablet.ColumnCategory.FIELD,
-            Tablet.ColumnCategory.FIELD,
-            Tablet.ColumnCategory.FIELD,
-            Tablet.ColumnCategory.FIELD,
-            Tablet.ColumnCategory.FIELD,
-            Tablet.ColumnCategory.FIELD);
+            ColumnCategory.TAG,
+            ColumnCategory.FIELD,
+            ColumnCategory.FIELD,
+            ColumnCategory.FIELD,
+            ColumnCategory.FIELD,
+            ColumnCategory.FIELD,
+            ColumnCategory.FIELD,
+            ColumnCategory.FIELD,
+            ColumnCategory.FIELD);
     Tablet tablet =
         new Tablet(
             tableName,

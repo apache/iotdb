@@ -147,6 +147,9 @@ class BuiltInModelType(Enum):
     GAUSSIAN_HMM = "_gaussianhmm"
     GMM_HMM = "_gmmhmm"
     STRAY = "_stray"
+    
+    # timerxl
+    TIMER_XL = "_timerxl"
 
     @classmethod
     def values(cls) -> List[str]:
@@ -241,6 +244,21 @@ class AttributeName(Enum):
     P = "p"
     SIZE_THRESHOLD = "size_threshold"
     OUTLIER_TAIL = "outlier_tail"
+    
+    # timerxl
+    INPUT_TOKEN_LEN = "input_token_len"
+    HIDDEN_SIZE = "hidden_size"
+    INTERMEDIATE_SIZE = "intermediate_size"
+    OUTPUT_TOKEN_LENS = "output_token_lens"
+    NUM_HIDDEN_LAYERS = "num_hidden_layers"
+    NUM_ATTENTION_HEADS = "num_attention_heads"
+    HIDDEN_ACT = "hidden_act"
+    USE_CACHE = "use_cache"
+    ROPE_THETA = "rope_theta"
+    ATTENTION_DROPOUT = "attention_dropout"
+    INITIALIZER_RANGE = "initializer_range"
+    MAX_POSITION_EMBEDDINGS = "max_position_embeddings"
+    TIMERXL_CKPT_PATH = "ckpt_path"
 
     def name(self) -> str:
         return self.value

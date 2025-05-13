@@ -29,6 +29,7 @@ import org.apache.iotdb.commons.concurrent.ThreadName;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.consensus.SchemaRegionId;
 import org.apache.iotdb.commons.exception.StartupException;
+import org.apache.iotdb.commons.service.AbstractPeriodicalServiceWithAdvance;
 import org.apache.iotdb.commons.service.IService;
 import org.apache.iotdb.commons.service.ServiceType;
 import org.apache.iotdb.commons.utils.PathUtils;
@@ -65,33 +66,21 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.locks.Condition;
-import java.util.concurrent.locks.ReentrantLock;
 import java.util.stream.Collectors;
 
-public class GeneralRegionAttributeSecurityService implements IService {
+public class GeneralRegionAttributeSecurityService extends AbstractPeriodicalServiceWithAdvance
+    implements IService {
   private static final Logger LOGGER =
       LoggerFactory.getLogger(GeneralRegionAttributeSecurityService.class);
 
   private static final IoTDBConfig iotdbConfig = IoTDBDescriptor.getInstance().getConfig();
-
-  private final ExecutorService securityServiceExecutor =
-      IoTDBThreadPoolFactory.newSingleThreadExecutor(
-          ThreadName.GENERAL_REGION_ATTRIBUTE_SECURITY_SERVICE.getName());
-
   private final Map<Integer, Pair<Long, Integer>> dataNodeId2FailureDurationAndTimesMap =
       new HashMap<>();
   private final Set<ISchemaRegion> regionLeaders =
       Collections.newSetFromMap(new ConcurrentHashMap<>());
   private final Map<SchemaRegionId, String> regionId2DatabaseMap = new ConcurrentHashMap<>();
-  private final ReentrantLock lock = new ReentrantLock();
-  private final Condition condition = lock.newCondition();
-  private volatile boolean skipNextSleep = false;
-  private volatile boolean allowSubmitListen = false;
 
   public void startBroadcast(final ISchemaRegion schemaRegion) {
     if (schemaRegion instanceof SchemaRegionMemoryImpl
@@ -107,95 +96,63 @@ public class GeneralRegionAttributeSecurityService implements IService {
     // Reserve the database info for concurrency simplicity
   }
 
-  public void notifyBroadCast() {
-    if (lock.tryLock()) {
-      try {
-        condition.signalAll();
-      } finally {
-        lock.unlock();
+  @Override
+  protected void executeTask() {
+    // All the "detailContainer"'s size will add up to at most "limit"
+    // UpdateClearContainer and version / TEndPoint are not calculated
+    final AtomicInteger limit =
+        new AtomicInteger(
+            CommonDescriptor.getInstance()
+                .getConfig()
+                .getPipeConnectorRequestSliceThresholdBytes());
+
+    final AtomicBoolean hasRemaining = new AtomicBoolean(false);
+    final Map<SchemaRegionId, Pair<Long, Map<TDataNodeLocation, byte[]>>> attributeUpdateCommitMap =
+        new HashMap<>();
+    for (final ISchemaRegion regionLeader : regionLeaders) {
+      final Pair<Long, Map<TDataNodeLocation, byte[]>> currentResult =
+          regionLeader.getAttributeUpdateInfo(limit, hasRemaining);
+      if (currentResult.getRight().isEmpty()) {
+        break;
       }
-    } else {
+      attributeUpdateCommitMap.put(regionLeader.getSchemaRegionId(), currentResult);
+    }
+
+    if (hasRemaining.get()) {
       skipNextSleep = true;
     }
-  }
 
-  private void execute() {
-    lock.lock();
-    try {
-      // All the "detailContainer"'s size will add up to at most "limit"
-      // UpdateClearContainer and version / TEndPoint are not calculated
-      final AtomicInteger limit =
-          new AtomicInteger(
-              CommonDescriptor.getInstance()
-                  .getConfig()
-                  .getPipeConnectorRequestSliceThresholdBytes());
+    if (!attributeUpdateCommitMap.isEmpty()) {
+      // Send & may shrink
+      final Map<SchemaRegionId, Set<TDataNodeLocation>> shrinkMap =
+          sendUpdateRequestAndMayShrink(attributeUpdateCommitMap);
 
-      final AtomicBoolean hasRemaining = new AtomicBoolean(false);
-      final Map<SchemaRegionId, Pair<Long, Map<TDataNodeLocation, byte[]>>>
-          attributeUpdateCommitMap = new HashMap<>();
-      for (final ISchemaRegion regionLeader : regionLeaders) {
-        final Pair<Long, Map<TDataNodeLocation, byte[]>> currentResult =
-            regionLeader.getAttributeUpdateInfo(limit, hasRemaining);
-        if (currentResult.getRight().isEmpty()) {
-          break;
-        }
-        attributeUpdateCommitMap.put(regionLeader.getSchemaRegionId(), currentResult);
-      }
-
-      if (hasRemaining.get()) {
-        skipNextSleep = true;
-      }
-
-      if (!attributeUpdateCommitMap.isEmpty()) {
-        // Send & may shrink
-        final Map<SchemaRegionId, Set<TDataNodeLocation>> shrinkMap =
-            sendUpdateRequestAndMayShrink(attributeUpdateCommitMap);
-
-        // Commit
-        attributeUpdateCommitMap.forEach(
-            (schemaRegionId, pair) -> {
-              if (!new RegionWriteExecutor()
-                  .execute(
-                      schemaRegionId,
-                      new TableDeviceAttributeCommitUpdateNode(
-                          new PlanNodeId(""),
-                          pair.getLeft(),
-                          pair.getRight(),
-                          shrinkMap.getOrDefault(schemaRegionId, Collections.emptySet()),
-                          new TDataNodeLocation(
-                              iotdbConfig.getDataNodeId(),
-                              null,
-                              new TEndPoint(
-                                  iotdbConfig.getInternalAddress(), iotdbConfig.getInternalPort()),
-                              null,
-                              null,
-                              null)))
-                  .isAccepted()) {
-                // May fail due to region shutdown, migration or other reasons
-                // Just ignore
-                skipNextSleep = false;
-                LOGGER.warn(
-                    "Failed to write attribute commit message to region {}.", schemaRegionId);
-              }
-            });
-      }
-
-      if (!skipNextSleep) {
-        condition.await(
-            iotdbConfig.getGeneralRegionAttributeSecurityServiceIntervalSeconds(),
-            TimeUnit.SECONDS);
-      }
-      skipNextSleep = false;
-    } catch (final InterruptedException e) {
-      Thread.currentThread().interrupt();
-      LOGGER.warn(
-          "Interrupted when waiting for the next attribute broadcasting: {}", e.getMessage());
-    } finally {
-      lock.unlock();
-
-      if (allowSubmitListen) {
-        securityServiceExecutor.submit(this::execute);
-      }
+      // Commit
+      attributeUpdateCommitMap.forEach(
+          (schemaRegionId, pair) -> {
+            if (!new RegionWriteExecutor()
+                .execute(
+                    schemaRegionId,
+                    new TableDeviceAttributeCommitUpdateNode(
+                        new PlanNodeId(""),
+                        pair.getLeft(),
+                        pair.getRight(),
+                        shrinkMap.getOrDefault(schemaRegionId, Collections.emptySet()),
+                        new TDataNodeLocation(
+                            iotdbConfig.getDataNodeId(),
+                            null,
+                            new TEndPoint(
+                                iotdbConfig.getInternalAddress(), iotdbConfig.getInternalPort()),
+                            null,
+                            null,
+                            null)))
+                .isAccepted()) {
+              // May fail due to region shutdown, migration or other reasons
+              // Just ignore
+              skipNextSleep = false;
+              LOGGER.warn("Failed to write attribute commit message to region {}.", schemaRegionId);
+            }
+          });
     }
   }
 
@@ -325,18 +282,13 @@ public class GeneralRegionAttributeSecurityService implements IService {
 
   @Override
   public void start() throws StartupException {
-    allowSubmitListen = true;
-    securityServiceExecutor.submit(this::execute);
-
-    LOGGER.info("General region attribute security service is started successfully.");
+    startService();
   }
 
   @Override
   public void stop() {
-    allowSubmitListen = false;
+    stopService();
     securityServiceExecutor.shutdown();
-
-    LOGGER.info("General region attribute security service is stopped successfully.");
   }
 
   @Override
@@ -347,7 +299,10 @@ public class GeneralRegionAttributeSecurityService implements IService {
   /////////////////////////////// SingleTon ///////////////////////////////
 
   private GeneralRegionAttributeSecurityService() {
-    // Do nothing
+    super(
+        IoTDBThreadPoolFactory.newSingleThreadExecutor(
+            ThreadName.GENERAL_REGION_ATTRIBUTE_SECURITY_SERVICE.getName()),
+        iotdbConfig.getGeneralRegionAttributeSecurityServiceIntervalSeconds() * 1000L);
   }
 
   private static final class GeneralRegionAttributeSecurityServiceHolder {

@@ -16,7 +16,8 @@
 # under the License.
 #
 import pandas as pd
-from torch import tensor
+import torch
+from iotdb.tsfile.utils.tsblock_serde import deserialize
 
 from ainode.core.constant import TSStatusCode
 from ainode.core.exception import InvalidWindowArgumentError, InferenceModelInternalError, runtime_error_extractor
@@ -24,41 +25,9 @@ from ainode.core.log import Logger
 from ainode.core.manager.model_manager import ModelManager
 from ainode.core.util.serde import convert_to_binary, convert_to_df
 from ainode.core.util.status import get_status
-from ainode.thrift.ainode.ttypes import TInferenceReq, TInferenceResp
+from ainode.thrift.ainode.ttypes import TInferenceReq, TInferenceResp, TForecastReq, TForecastResp
 
 logger = Logger()
-
-
-class InferenceManager:
-    @staticmethod
-    def inference(req: TInferenceReq, model_manager: ModelManager):
-        logger.info(f"start inference registered model {req.modelId}")
-        try:
-            model_id, full_data, window_interval, window_step, inference_attributes = _parse_inference_request(req)
-
-            if model_id.startswith('_'):
-                # built-in models
-                logger.info(f"start inference built-in model {model_id}")
-                # parse the inference attributes and create the built-in model
-                model = _get_built_in_model(model_id, model_manager, inference_attributes)
-                inference_results = _inference_with_built_in_model(
-                    model, full_data)
-            else:
-                # user-registered models
-                model = _get_model(model_id, model_manager, inference_attributes)
-                inference_results = _inference_with_registered_model(
-                    model, full_data, window_interval, window_step)
-            for i in range(len(inference_results)):
-                inference_results[i] = convert_to_binary(inference_results[i])
-            return TInferenceResp(
-                get_status(
-                    TSStatusCode.SUCCESS_STATUS),
-                inference_results)
-        except Exception as e:
-            logger.warning(e)
-            inference_results = []
-            return TInferenceResp(get_status(TSStatusCode.AINODE_INTERNAL_ERROR, str(e)), inference_results)
-
 
 def _process_data(full_data):
     """
@@ -83,11 +52,79 @@ def _process_data(full_data):
             data[data.columns[i]] = 0
         elif type_list[i] == "BOOLEAN":
             data[data.columns[i]] = data[data.columns[i]].astype("int")
-    data = tensor(data.values).unsqueeze(0)
+    data = torch.tensor(data.values).unsqueeze(0)
     return data, data_length
 
 
-def _inference_with_registered_model(model, full_data, window_interval, window_step):
+class InferenceManager:
+
+    @staticmethod
+    def forecast(req: TForecastReq, model_manager:ModelManager):
+        model_id = req.modelId
+        logger.info(f"start to forcast by model {model_id}")
+        try:
+            data = deserialize(req.inputData)
+            if model_id.startswith('_'):
+                # built-in models
+                logger.info(f"start to forecast built-in model {model_id}")
+                # parse the inference attributes and create the built-in model
+                options = req.options
+                options['predict_length'] = req.outputLength
+                model = _get_built_in_model(model_id, model_manager, options)
+                inference_result = convert_to_binary(_inference_with_built_in_model(
+                    model, data))
+            else:
+                # user-registered models
+                model = _get_model(model_id, model_manager, req.options)
+                _, dataset, _, dataset_length = data
+                dataset = torch.tensor(dataset, dtype=torch.float).unsqueeze(2)
+                inference_results = _inference_with_registered_model(
+                    model, dataset, dataset_length, dataset_length, float('inf'))
+                inference_result = convert_to_binary(inference_results[0])
+            return TForecastResp(
+                get_status(TSStatusCode.SUCCESS_STATUS),
+                inference_result
+            )
+        except Exception as e:
+            logger.warning(e)
+            inference_results = []
+            return TInferenceResp(get_status(TSStatusCode.AINODE_INTERNAL_ERROR, str(e)), inference_results)
+
+    @staticmethod
+    def inference(req: TInferenceReq, model_manager: ModelManager):
+        logger.info(f"start inference registered model {req.modelId}")
+        try:
+            model_id, full_data, window_interval, window_step, inference_attributes = _parse_inference_request(req)
+
+            if model_id.startswith('_'):
+                # built-in models
+                logger.info(f"start inference built-in model {model_id}")
+                # parse the inference attributes and create the built-in model
+                model = _get_built_in_model(model_id, model_manager, inference_attributes)
+                if model_id == '_timerxl':
+                    inference_results = [_inference_with_timerxl(
+                        model, full_data, inference_attributes.get("predict_length", 96))]
+                else:
+                    inference_results = [_inference_with_built_in_model(
+                        model, full_data)]
+            else:
+                # user-registered models
+                model = _get_model(model_id, model_manager, inference_attributes)
+                dataset, dataset_length = _process_data(full_data)
+                inference_results = _inference_with_registered_model(
+                    model, dataset, dataset_length, window_interval, window_step)
+            for i in range(len(inference_results)):
+                inference_results[i] = convert_to_binary(inference_results[i])
+            return TInferenceResp(
+                get_status(
+                    TSStatusCode.SUCCESS_STATUS),
+                inference_results)
+        except Exception as e:
+            logger.warning(e)
+            inference_results = []
+            return TInferenceResp(get_status(TSStatusCode.AINODE_INTERNAL_ERROR, str(e)), inference_results)
+
+def _inference_with_registered_model(model, dataset, dataset_length, window_interval, window_step):
     """
     Args:
         model: the user-defined model
@@ -108,8 +145,6 @@ def _inference_with_registered_model(model, full_data, window_interval, window_s
         of variables in the output DataFrame. Then the inference module will concatenate all the output DataFrames into
         a list.
     """
-
-    dataset, dataset_length = _process_data(full_data)
 
     # check the validity of window_interval and window_step, the two arguments must be positive integers, and the
     # window_interval should not be larger than the dataset length
@@ -168,8 +203,32 @@ def _inference_with_built_in_model(model, full_data):
     output = model.inference(data)
     # output: DataFrame, shape: (H', C')
     output = pd.DataFrame(output)
-    outputs = [output]
-    return outputs
+    return output
+
+def _inference_with_timerxl(model, full_data, pred_len):
+    """
+    Args:
+        model: the built-in model
+        full_data: a tuple of (data, time_stamp, type_list, column_name_list), where the data is a DataFrame with shape
+            (L, C), time_stamp is a DataFrame with shape(L, 1), type_list is a list of data types with length C,
+            column_name_list is a list of column names with length C, where L is the number of data points, C is the
+            number of variables, the data and time_stamp are aligned by index
+    Returns:
+        outputs: a list of output DataFrames, where each DataFrame has shape (H', C'), where H' is the output window
+            interval, C' is the number of variables in the output DataFrame
+    Description:
+        the inference_with_built_in_model function will inference with built-in model, which does not
+        require user registration. This module will parse the inference attributes and create the built-in model, then
+        feed the input data into the model to get the output, the output is a DataFrame with shape (H', C'), where H'
+        is the output window interval, C' is the number of variables in the output DataFrame. Then the inference module
+        will concatenate all the output DataFrames into a list.
+    """
+
+    data, _, _, _ = full_data
+    output = model.inference(data, pred_len)
+    # output: DataFrame, shape: (H', C')
+    output = pd.DataFrame(output)
+    return output
 
 
 def _get_model(model_id: str, model_manager: ModelManager, inference_attributes: {}):

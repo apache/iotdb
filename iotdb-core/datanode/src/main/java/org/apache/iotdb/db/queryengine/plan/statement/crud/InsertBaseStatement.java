@@ -187,7 +187,7 @@ public abstract class InsertBaseStatement extends Statement implements Accountab
     }
     List<PartialPath> checkedPaths = getPaths().stream().distinct().collect(Collectors.toList());
     return AuthorityChecker.getTSStatus(
-        AuthorityChecker.checkFullPathListPermission(
+        AuthorityChecker.checkFullPathOrPatternListPermission(
             userName, checkedPaths, PrivilegeType.WRITE_DATA),
         checkedPaths,
         PrivilegeType.WRITE_DATA);

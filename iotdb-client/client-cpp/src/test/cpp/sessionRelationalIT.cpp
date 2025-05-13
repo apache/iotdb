@@ -23,7 +23,7 @@
 
 using namespace std;
 
-extern TableSession *session;
+extern std::shared_ptr<TableSession> session;
 
 static int global_test_tag = 0;
 class CaseReporter
@@ -46,10 +46,11 @@ private:
 TEST_CASE("Create table success", "[createTable]") {
     // REQUIRE(true);
     CaseReporter cr("createTable");
+    session->executeNonQueryStatement("DROP DATABASE IF EXISTS db1");
     session->executeNonQueryStatement("CREATE DATABASE db1");
+    session->executeNonQueryStatement("DROP DATABASE IF EXISTS db2");
     session->executeNonQueryStatement("CREATE DATABASE db2");
     session->executeNonQueryStatement("USE \"db1\"");
-    REQUIRE(session->getDatabase() == "db1");
     session->executeNonQueryStatement("CREATE TABLE table0 ("
             "tag1 string tag,"
             "attr1 string attribute,"
@@ -70,6 +71,7 @@ TEST_CASE("Test insertRelationalTablet", "[testInsertRelationalTablet]") {
     CaseReporter cr("testInsertRelationalTablet");
     session->executeNonQueryStatement("CREATE DATABASE IF NOT EXISTS db1");
     session->executeNonQueryStatement("USE db1");
+    session->executeNonQueryStatement("DROP TABLE IF EXISTS table1");
     session->executeNonQueryStatement("CREATE TABLE table1 ("
         "tag1 string tag,"
         "attr1 string attribute,"

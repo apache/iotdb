@@ -106,6 +106,7 @@ public class PipeConnectorSubtaskManager {
       connectorNum = 1;
       attributeSortedString = "schema_" + attributeSortedString;
     }
+    environment.setAttributeSortedString(attributeSortedString);
 
     if (!attributeSortedString2SubtaskLifeCycleMap.containsKey(attributeSortedString)) {
       final List<PipeConnectorSubtaskLifeCycle> pipeConnectorSubtaskLifeCycleList =

@@ -39,10 +39,10 @@ public final class ReservedIdentifiers {
         .collect(toImmutableSet());
   }
 
-  public static boolean reserved(String name) {
+  public static boolean reserved(final String name) {
     try {
       return !(PARSER.createExpression(name, ZoneId.systemDefault()) instanceof Identifier);
-    } catch (ParsingException ignored) {
+    } catch (final ParsingException ignored) {
       return true;
     }
   }

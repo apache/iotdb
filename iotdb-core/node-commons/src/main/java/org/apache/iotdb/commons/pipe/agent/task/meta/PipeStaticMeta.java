@@ -243,6 +243,10 @@ public class PipeStaticMeta {
     return SUBSCRIPTION_PIPE_PREFIX + topicName + "_" + consumerGroupId;
   }
 
+  public static boolean isSubscriptionPipe(final String pipeName) {
+    return Objects.nonNull(pipeName) && pipeName.startsWith(SUBSCRIPTION_PIPE_PREFIX);
+  }
+
   /////////////////////////////////  Tree & Table Isolation  /////////////////////////////////
 
   public boolean visibleUnder(final boolean isTableModel) {
