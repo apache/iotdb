@@ -34,7 +34,7 @@ public class PipeTabletEventSorter {
 
   protected Integer[] index;
   protected boolean isSorted = true;
-  protected boolean isDeduplicate = true;
+  protected boolean isDeDuplicated = true;
   protected int[] deDuplicatedIndex;
   protected int deDuplicatedSize;
 

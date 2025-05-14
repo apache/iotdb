@@ -46,11 +46,11 @@ public class PipeTreeModelTabletEventSorter extends PipeTabletEventSorter {
         break;
       }
       if (currentTimestamp == previousTimestamp) {
-        isDeduplicate = false;
+        isDeDuplicated = false;
       }
     }
 
-    if (isSorted && isDeduplicate) {
+    if (isSorted && isDeDuplicated) {
       return;
     }
 
@@ -66,10 +66,10 @@ public class PipeTreeModelTabletEventSorter extends PipeTabletEventSorter {
       // Do deDuplicated anyway.
       // isDeDuplicated may be false positive when isSorted is false.
       deDuplicateTimestamps();
-      isDeduplicate = true;
+      isDeDuplicated = true;
     }
 
-    if (!isDeduplicate) {
+    if (!isDeDuplicated) {
       deDuplicateTimestamps();
     }
 

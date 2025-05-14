@@ -62,7 +62,7 @@ public class PipeTableModelTabletEventSorter extends PipeTabletEventSorter {
       final int deviceComparison = deviceID.compareTo(lastDevice);
       if (deviceComparison == 0) {
         if (previousTimestamp == currentTimestamp) {
-          isDeduplicate = false;
+          isDeDuplicated = false;
           continue;
         }
         if (previousTimestamp > currentTimestamp) {
@@ -94,7 +94,7 @@ public class PipeTableModelTabletEventSorter extends PipeTabletEventSorter {
     }
     list.add(new Pair<>(lasIndex, tablet.getRowSize()));
 
-    if (isSorted && isDeduplicate) {
+    if (isSorted && isDeDuplicated) {
       return;
     }
 
@@ -119,7 +119,7 @@ public class PipeTableModelTabletEventSorter extends PipeTabletEventSorter {
                 return;
               }
 
-              if (!isDeduplicate) {
+              if (!isDeDuplicated) {
                 deDuplicateTimestamps(initIndexSize, i);
               }
               initIndexSize = i;
