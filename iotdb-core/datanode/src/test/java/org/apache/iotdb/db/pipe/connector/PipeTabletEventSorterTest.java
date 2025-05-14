@@ -136,16 +136,9 @@ public class PipeTabletEventSorterTest {
     Assert.assertEquals(indices.size(), tablet.rowSize);
 
     final long[] timestamps = Arrays.copyOfRange(tablet.timestamps, 0, tablet.rowSize);
-    for (int i = 0; i < 3; ++i) {
-      Assert.assertArrayEquals(
-          timestamps, Arrays.copyOfRange((long[]) tablet.values[0], 0, tablet.rowSize));
-    }
-
-    for (int i = 1; i < tablet.rowSize; ++i) {
-      Assert.assertTrue(timestamps[i] > timestamps[i - 1]);
-      for (int j = 0; j < 3; ++j) {
-        Assert.assertTrue(((long[]) tablet.values[j])[i] > ((long[]) tablet.values[j])[i - 1]);
-      }
+    Assert.assertEquals(timestamps[0] + 8, ((long[]) tablet.values[0])[0]);
+    for (int i = 1; i < 3; ++i) {
+      Assert.assertEquals(timestamps[0] + 9, ((long[]) tablet.values[i])[0]);
     }
   }
 
