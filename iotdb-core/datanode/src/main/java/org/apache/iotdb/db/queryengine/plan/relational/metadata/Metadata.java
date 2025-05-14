@@ -39,6 +39,7 @@ import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.read.common.type.Type;
 
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 // All the input databases shall not contain "root"
@@ -82,7 +83,7 @@ public interface Metadata {
    *     index scanning
    * @param attributeColumns attribute column names
    */
-  List<DeviceEntry> indexScan(
+  Map<String, List<DeviceEntry>> indexScan(
       final QualifiedObjectName tableName,
       final List<Expression> expressionList,
       final List<String> attributeColumns,

@@ -71,6 +71,8 @@ ddlStatement
     | setSpaceQuota | showSpaceQuota | setThrottleQuota | showThrottleQuota
     // View
     | createLogicalView | dropLogicalView | showLogicalView | renameLogicalView | alterLogicalView
+    // Table View
+    | createTableView
     ;
 
 dmlStatement
@@ -774,6 +776,61 @@ viewSourcePaths
     : fullPath (COMMA fullPath)*
     | prefixPath LR_BRACKET viewSuffixPaths (COMMA viewSuffixPaths)* RR_BRACKET
     | selectClause fromClause
+    ;
+
+// Table view
+createTableView
+    : CREATE (OR REPLACE)? TABLE VIEW qualifiedName
+        LR_BRACKET (viewColumnDefinition (COMMA viewColumnDefinition)*) RR_BRACKET
+        AS prefixPath
+        comment?
+        (WITH properties)?
+        (RESTRICT)?
+    ;
+
+viewColumnDefinition
+    : identifier columnCategory=(TAG | TIME | FIELD) comment?
+    | identifier type (columnCategory=(TAG | TIME | FIELD))? comment?
+    | identifier (type)? (columnCategory=FIELD)? FROM original_measurement=identifier comment?
+    ;
+
+type
+    : identifier (LR_BRACKET typeParameter (COMMA typeParameter)* RR_BRACKET)?                     #genericType
+    ;
+
+typeParameter
+    : INTEGER_LITERAL | type
+    ;
+
+qualifiedName
+    : identifier (DOT identifier)*
+    ;
+
+properties
+    : LR_BRACKET propertyAssignments RR_BRACKET
+    ;
+
+propertyAssignments
+    : property (COMMA property)*
+    ;
+
+property
+    : identifier OPERATOR_SEQ propertyValue
+    ;
+
+comment
+    : COMMENT STRING_LITERAL
+    ;
+
+propertyValue
+    : DEFAULT       #defaultPropertyValue
+    | literalExpression    #nonDefaultPropertyValue
+    ;
+
+// Currently only support this in table property values
+literalExpression
+    : INTEGER_LITERAL
+    | STRING_LITERAL
     ;
 
 /**

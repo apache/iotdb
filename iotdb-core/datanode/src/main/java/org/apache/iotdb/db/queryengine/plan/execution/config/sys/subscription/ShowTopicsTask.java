@@ -50,6 +50,7 @@ public class ShowTopicsTask implements IConfigTask {
   public ShowTopicsTask(final ShowTopics showTopics) {
     this.showTopicsStatement = new ShowTopicsStatement();
     this.showTopicsStatement.setTopicName(showTopics.getTopicName());
+    this.showTopicsStatement.setTableModel(true);
   }
 
   @Override

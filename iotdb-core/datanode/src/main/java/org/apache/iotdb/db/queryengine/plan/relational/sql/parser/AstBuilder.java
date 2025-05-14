@@ -60,6 +60,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateIndex;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreatePipe;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreatePipePlugin;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateTable;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateTableView;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateTopic;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateTraining;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CurrentDatabase;
@@ -197,6 +198,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Update;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.UpdateAssignment;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Use;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Values;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ViewFieldDefinition;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.WhenClause;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Window;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.WindowDefinition;
@@ -268,6 +270,7 @@ import static org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory
 import static org.apache.iotdb.commons.udf.builtin.relational.TableBuiltinScalarFunction.DATE_BIN;
 import static org.apache.iotdb.db.queryengine.plan.execution.config.TableConfigTaskVisitor.DATABASE_NOT_SPECIFIED;
 import static org.apache.iotdb.db.queryengine.plan.parser.ASTVisitor.parseDateTimeFormat;
+import static org.apache.iotdb.db.queryengine.plan.parser.ASTVisitor.parseNodeString;
 import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AsofJoinOn.constructAsofJoinOn;
 import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.GroupingSets.Type.CUBE;
 import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.GroupingSets.Type.EXPLICIT;
@@ -317,7 +320,7 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
     return new Use(getLocation(ctx), lowerIdentifier((Identifier) visit(ctx.database)));
   }
 
-  private static Identifier lowerIdentifier(Identifier identifier) {
+  public static Identifier lowerIdentifier(Identifier identifier) {
     if (identifier.getLocation().isPresent()) {
       return new Identifier(
           identifier.getLocation().get(), mapIdentifier(identifier), identifier.isDelimited());
@@ -400,7 +403,7 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
   @Override
   public Node visitDropTableStatement(final RelationalSqlParser.DropTableStatementContext ctx) {
     return new DropTable(
-        getLocation(ctx), getQualifiedName(ctx.qualifiedName()), ctx.EXISTS() != null);
+        getLocation(ctx), getQualifiedName(ctx.qualifiedName()), ctx.EXISTS() != null, false);
   }
 
   @Override
@@ -416,7 +419,7 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
   @Override
   public Node visitDescTableStatement(final RelationalSqlParser.DescTableStatementContext ctx) {
     return new DescribeTable(
-        getLocation(ctx), getQualifiedName(ctx.table), Objects.nonNull(ctx.DETAILS()));
+        getLocation(ctx), getQualifiedName(ctx.table), Objects.nonNull(ctx.DETAILS()), null);
   }
 
   @Override
@@ -425,7 +428,8 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
         getLocation(ctx),
         getQualifiedName(ctx.from),
         lowerIdentifier((Identifier) visit(ctx.to)),
-        Objects.nonNull(ctx.EXISTS()));
+        Objects.nonNull(ctx.EXISTS()),
+        false);
   }
 
   @Override
@@ -435,7 +439,8 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
         getQualifiedName(ctx.tableName),
         (ColumnDefinition) visit(ctx.column),
         ctx.EXISTS().size() == (Objects.nonNull(ctx.NOT()) ? 2 : 1),
-        Objects.nonNull(ctx.NOT()));
+        Objects.nonNull(ctx.NOT()),
+        false);
   }
 
   @Override
@@ -452,7 +457,8 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
         ctx.EXISTS().stream()
             .anyMatch(
                 node ->
-                    node.getSymbol().getTokenIndex() > ctx.COLUMN().getSymbol().getTokenIndex()));
+                    node.getSymbol().getTokenIndex() > ctx.COLUMN().getSymbol().getTokenIndex()),
+        false);
   }
 
   @Override
@@ -468,7 +474,8 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
         ctx.EXISTS().stream()
             .anyMatch(
                 node ->
-                    node.getSymbol().getTokenIndex() > ctx.COLUMN().getSymbol().getTokenIndex()));
+                    node.getSymbol().getTokenIndex() > ctx.COLUMN().getSymbol().getTokenIndex()),
+        false);
   }
 
   @Override
@@ -486,12 +493,30 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
   }
 
   @Override
+  public Node visitShowCreateTableStatement(
+      final RelationalSqlParser.ShowCreateTableStatementContext ctx) {
+    return new DescribeTable(
+        getLocation(ctx), getQualifiedName(ctx.qualifiedName()), false, Boolean.FALSE);
+  }
+
+  @Override
   public Node visitCommentTable(final RelationalSqlParser.CommentTableContext ctx) {
     return new SetTableComment(
         getLocation(ctx),
         getQualifiedName(ctx.qualifiedName()),
         false,
-        Objects.nonNull(ctx.string()) ? ((StringLiteral) visit(ctx.string())).getValue() : null);
+        Objects.nonNull(ctx.string()) ? ((StringLiteral) visit(ctx.string())).getValue() : null,
+        false);
+  }
+
+  @Override
+  public Node visitCommentView(final RelationalSqlParser.CommentViewContext ctx) {
+    return new SetTableComment(
+        getLocation(ctx),
+        getQualifiedName(ctx.qualifiedName()),
+        false,
+        Objects.nonNull(ctx.string()) ? ((StringLiteral) visit(ctx.string())).getValue() : null,
+        true);
   }
 
   @Override
@@ -503,6 +528,153 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
         false,
         false,
         Objects.nonNull(ctx.string()) ? ((StringLiteral) visit(ctx.string())).getValue() : null);
+  }
+
+  @Override
+  public Node visitCreateTableViewStatement(
+      final RelationalSqlParser.CreateTableViewStatementContext ctx) {
+    List<Property> properties = ImmutableList.of();
+    if (ctx.properties() != null) {
+      properties = visit(ctx.properties().propertyAssignments().property(), Property.class);
+    }
+    return new CreateTableView(
+        getLocation(ctx),
+        getQualifiedName(ctx.qualifiedName()),
+        visit(ctx.viewColumnDefinition(), ColumnDefinition.class),
+        null,
+        ctx.comment() == null ? null : ((StringLiteral) visit(ctx.comment().string())).getValue(),
+        properties,
+        parsePrefixPath(ctx.prefixPath()),
+        Objects.nonNull(ctx.REPLACE()),
+        Objects.nonNull(ctx.RESTRICT()));
+  }
+
+  @Override
+  public Node visitRenameTableView(final RelationalSqlParser.RenameTableViewContext ctx) {
+    return new RenameTable(
+        getLocation(ctx),
+        getQualifiedName(ctx.from),
+        lowerIdentifier((Identifier) visit(ctx.to)),
+        Objects.nonNull(ctx.EXISTS()),
+        true);
+  }
+
+  @Override
+  public Node visitAddViewColumn(final RelationalSqlParser.AddViewColumnContext ctx) {
+    return new AddColumn(
+        getLocation(ctx),
+        getQualifiedName(ctx.viewName),
+        (ColumnDefinition) visit(ctx.viewColumnDefinition()),
+        ctx.EXISTS().size() == (Objects.nonNull(ctx.NOT()) ? 2 : 1),
+        Objects.nonNull(ctx.NOT()),
+        true);
+  }
+
+  @Override
+  public Node visitRenameViewColumn(final RelationalSqlParser.RenameViewColumnContext ctx) {
+    return new RenameColumn(
+        getLocation(ctx),
+        getQualifiedName(ctx.viewName),
+        (Identifier) visit(ctx.from),
+        (Identifier) visit(ctx.to),
+        ctx.EXISTS().stream()
+            .anyMatch(
+                node ->
+                    node.getSymbol().getTokenIndex() < ctx.COLUMN().getSymbol().getTokenIndex()),
+        ctx.EXISTS().stream()
+            .anyMatch(
+                node ->
+                    node.getSymbol().getTokenIndex() > ctx.COLUMN().getSymbol().getTokenIndex()),
+        true);
+  }
+
+  @Override
+  public Node visitDropViewColumn(final RelationalSqlParser.DropViewColumnContext ctx) {
+    return new DropColumn(
+        getLocation(ctx),
+        getQualifiedName(ctx.viewName),
+        lowerIdentifier((Identifier) visit(ctx.column)),
+        ctx.EXISTS().stream()
+            .anyMatch(
+                node ->
+                    node.getSymbol().getTokenIndex() < ctx.COLUMN().getSymbol().getTokenIndex()),
+        ctx.EXISTS().stream()
+            .anyMatch(
+                node ->
+                    node.getSymbol().getTokenIndex() > ctx.COLUMN().getSymbol().getTokenIndex()),
+        true);
+  }
+
+  @Override
+  public Node visitSetTableViewProperties(
+      final RelationalSqlParser.SetTableViewPropertiesContext ctx) {
+    List<Property> properties = ImmutableList.of();
+    if (ctx.propertyAssignments() != null) {
+      properties = visit(ctx.propertyAssignments().property(), Property.class);
+    }
+    return new SetProperties(
+        getLocation(ctx),
+        SetProperties.Type.TREE_VIEW,
+        getQualifiedName(ctx.qualifiedName()),
+        properties,
+        Objects.nonNull(ctx.EXISTS()));
+  }
+
+  @Override
+  public Node visitViewColumnDefinition(final RelationalSqlParser.ViewColumnDefinitionContext ctx) {
+    final Identifier rawColumnName = (Identifier) visit(ctx.identifier().get(0));
+    final Identifier columnName = lowerIdentifier(rawColumnName);
+    final TsTableColumnCategory columnCategory = getColumnCategory(ctx.columnCategory);
+    Identifier originalMeasurement = null;
+
+    if (Objects.nonNull(ctx.FROM())) {
+      originalMeasurement = (Identifier) visit(ctx.original_measurement);
+    } else if (columnCategory == FIELD && !columnName.equals(rawColumnName)) {
+      originalMeasurement = rawColumnName;
+    }
+
+    return columnCategory == FIELD
+        ? new ViewFieldDefinition(
+            getLocation(ctx),
+            columnName,
+            Objects.nonNull(ctx.type()) ? (DataType) visit(ctx.type()) : null,
+            null,
+            ctx.comment() == null
+                ? null
+                : ((StringLiteral) visit(ctx.comment().string())).getValue(),
+            originalMeasurement)
+        : new ColumnDefinition(
+            getLocation(ctx),
+            columnName,
+            Objects.nonNull(ctx.type()) ? (DataType) visit(ctx.type()) : null,
+            columnCategory,
+            null,
+            ctx.comment() == null
+                ? null
+                : ((StringLiteral) visit(ctx.comment().string())).getValue());
+  }
+
+  private PartialPath parsePrefixPath(final RelationalSqlParser.PrefixPathContext ctx) {
+    final List<RelationalSqlParser.NodeNameContext> nodeNames = ctx.nodeName();
+    final String[] path = new String[nodeNames.size() + 1];
+    path[0] = ctx.ROOT().getText();
+    for (int i = 0; i < nodeNames.size(); i++) {
+      path[i + 1] = parseNodeString(nodeNames.get(i).getText());
+    }
+    return new PartialPath(path);
+  }
+
+  @Override
+  public Node visitDropViewStatement(final RelationalSqlParser.DropViewStatementContext ctx) {
+    return new DropTable(
+        getLocation(ctx), getQualifiedName(ctx.qualifiedName()), ctx.EXISTS() != null, true);
+  }
+
+  @Override
+  public Node visitShowCreateViewStatement(
+      final RelationalSqlParser.ShowCreateViewStatementContext ctx) {
+    return new DescribeTable(
+        getLocation(ctx), getQualifiedName(ctx.qualifiedName()), false, Boolean.TRUE);
   }
 
   @Override
