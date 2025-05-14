@@ -154,12 +154,14 @@ public abstract class IMemoryBlock implements AutoCloseable {
     return memoryManager;
   }
 
-  public void print(int indent) {
+  public String print(int indent) {
     StringBuilder sb = new StringBuilder();
     for (int i = 0; i < indent; i++) {
       sb.append("  ");
     }
     sb.append(this);
     LOGGER.info(sb.toString());
+    sb.append("\n");
+    return sb.toString();
   }
 }

@@ -751,11 +751,16 @@ public class MemoryManager {
             (double) (transferSize + beforeTotalMemorySizeInBytes) / beforeTotalMemorySizeInBytes;
         // we need to update all memory to each part
         highestMemoryManager.expand(ratio);
-        LOGGER.info(
-            "Transfer Memory Size {} from {} to {}",
+        LOGGER.error(
+            "Transfer Memory Size {} from {}(score={}) to {}(score={})",
             transferSize,
-            lowestMemoryManager,
-            highestMemoryManager);
+            lowestMemoryManager.getName(),
+            lowestMemoryManager.getScore(),
+            highestMemoryManager.getName(),
+            highestMemoryManager.getScore());
+        if (highestMemoryManager.getName().equals("SchemaEngine")) {
+          highestMemoryManager.print();
+        }
       }
     }
     for (MemoryManager memoryManager : children.values()) {
@@ -781,22 +786,24 @@ public class MemoryManager {
         + '}';
   }
 
-  public void print() {
-    print(0);
+  public String print() {
+    return print(0);
   }
 
-  private void print(int indent) {
+  private String print(int indent) {
     StringBuilder sb = new StringBuilder();
     for (int i = 0; i < indent; i++) {
       sb.append("  ");
     }
     sb.append(this);
     LOGGER.info(sb.toString());
+    sb.append("\n");
     for (IMemoryBlock block : allocatedMemoryBlocks.values()) {
-      block.print(indent + 2);
+      sb.append(block.print(indent + 2));
     }
     for (MemoryManager child : children.values()) {
-      child.print(indent + 1);
+      sb.append(child.print(indent + 1));
     }
+    return sb.toString();
   }
 }
