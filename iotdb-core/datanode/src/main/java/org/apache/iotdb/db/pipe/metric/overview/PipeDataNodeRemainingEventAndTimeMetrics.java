@@ -282,7 +282,7 @@ public class PipeDataNodeRemainingEventAndTimeMetrics implements IMetricSet {
                 .getTaskAgent()
                 .getPipeNameWithCreationTime(pipeName, creationTime),
             k -> new PipeDataNodeRemainingEventAndTimeOperator(pipeName, creationTime))
-        .getRemainingTimeSmoothingValue();
+        .getLatencySmoothingValue();
   }
 
   //////////////////////////// singleton ////////////////////////////

@@ -53,7 +53,7 @@ class PipeDataNodeRemainingEventAndTimeOperator extends PipeRemainingOperator {
   private final AtomicReference<Meter> tabletCommitMeter = new AtomicReference<>(null);
   private final AtomicReference<Meter> tsfileSizeCommitMeter = new AtomicReference<>(null);
   private final AtomicReference<Meter> schemaRegionCommitMeter = new AtomicReference<>(null);
-  private final Meter remainingTimeMeter =
+  private final Meter dataRegionLatencyMeter =
       new Meter(new ExponentialMovingAverages(), Clock.defaultClock());
 
   private double lastTabletCommitSmoothingValue = Double.MAX_VALUE;
@@ -136,6 +136,10 @@ class PipeDataNodeRemainingEventAndTimeOperator extends PipeRemainingOperator {
               : tabletEventCount.get() / lastTabletCommitSmoothingValue;
     }
 
+    if (tabletRemainingTime != Double.MAX_VALUE) {
+      dataRegionLatencyMeter.mark((long) tabletRemainingTime);
+    }
+
     tsfileSizeCommitMeter.updateAndGet(
         meter -> {
           if (Objects.nonNull(meter)) {
@@ -202,15 +206,14 @@ class PipeDataNodeRemainingEventAndTimeOperator extends PipeRemainingOperator {
       result = REMAINING_MAX_SECONDS;
     }
 
-    remainingTimeMeter.mark((long) result);
     return result;
   }
 
   // We use smoothed rate to in hybrid degrading algorithm to prevent outliers from triggering it
-  double getRemainingTimeSmoothingValue() {
+  double getLatencySmoothingValue() {
     return PipeConfig.getInstance()
         .getPipeRemainingTimeCommitRateAverageTime()
-        .getMeterRate(remainingTimeMeter);
+        .getMeterRate(dataRegionLatencyMeter);
   }
 
   //////////////////////////// Register & deregister (pipe integration) ////////////////////////////
