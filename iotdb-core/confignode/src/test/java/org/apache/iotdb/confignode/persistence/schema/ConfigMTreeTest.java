@@ -426,10 +426,5 @@ public class ConfigMTreeTest {
     } catch (MetadataException e) {
       fail();
     }
-
-    root.getNodeWithAutoCreate(new PartialPath("root.a.template0.after"));
-    System.out.println(root.getTemplateSetInfo(new PartialPath("root.a")));
-    System.out.println(root.getTemplateSetInfo(new PartialPath("root.a.template0")));
-    System.out.println(root.getTemplateSetInfo(new PartialPath("root.a.template0.after")));
   }
 }

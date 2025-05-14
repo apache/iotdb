@@ -573,7 +573,10 @@ public class ConfigMTree {
     return resSet;
   }
 
-  /** This method returns the templateId set on paths covered by input path pattern. */
+  /**
+   * This method returns the templateId set on paths if the path set matches or is a prefix of input
+   * path pattern.
+   */
   public Map<Integer, Set<PartialPath>> getTemplateSetInfo(final PartialPath pathPattern)
       throws MetadataException {
     final Map<Integer, Set<PartialPath>> result = new HashMap<>();
