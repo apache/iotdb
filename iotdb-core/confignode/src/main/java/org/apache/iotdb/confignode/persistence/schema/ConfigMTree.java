@@ -558,7 +558,6 @@ public class ConfigMTree {
           protected boolean shouldVisitSubtreeOfFullMatchedNode(final IConfigMNode node) {
             // descendants of the node cannot set another template, exit from this branch
             return node.getSchemaTemplateId() == NON_TEMPLATE
-                && !(node.isDatabase() && node.getDatabaseSchema().isIsTableModel())
                 && super.shouldVisitSubtreeOfFullMatchedNode(node);
           }
 
@@ -566,7 +565,6 @@ public class ConfigMTree {
           protected boolean shouldVisitSubtreeOfInternalMatchedNode(final IConfigMNode node) {
             // descendants of the node cannot set another template, exit from this branch
             return node.getSchemaTemplateId() == NON_TEMPLATE
-                && !(node.isDatabase() && node.getDatabaseSchema().isIsTableModel())
                 && super.shouldVisitSubtreeOfInternalMatchedNode(node);
           }
         }) {
@@ -606,7 +604,6 @@ public class ConfigMTree {
           protected boolean shouldVisitSubtreeOfFullMatchedNode(final IConfigMNode node) {
             // descendants of the node cannot set another template, exit from this branch
             return node.getSchemaTemplateId() == NON_TEMPLATE
-                && !(node.isDatabase() && node.getDatabaseSchema().isIsTableModel())
                 && super.shouldVisitSubtreeOfFullMatchedNode(node);
           }
 
@@ -614,7 +611,6 @@ public class ConfigMTree {
           protected boolean shouldVisitSubtreeOfInternalMatchedNode(final IConfigMNode node) {
             // descendants of the node cannot set another template, exit from this branch
             return node.getSchemaTemplateId() == NON_TEMPLATE
-                && !(node.isDatabase() && node.getDatabaseSchema().isIsTableModel())
                 && super.shouldVisitSubtreeOfInternalMatchedNode(node);
           }
         }) {
