@@ -35,6 +35,7 @@ import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.dualkeycache.im
 import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.lastcache.DataNodeLastCacheManager;
 import org.apache.iotdb.db.queryengine.plan.analyze.schema.ISchemaComputation;
 
+import org.apache.tsfile.common.constant.TsFileConstant;
 import org.apache.tsfile.read.TimeValuePair;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.Pair;
@@ -326,7 +327,7 @@ public class TimeSeriesSchemaCache {
                     measurementSchemas[index],
                     null,
                     isAligned,
-                    devicePath + measurements[index]);
+                    devicePath + TsFileConstant.PATH_SEPARATOR + measurements[index]);
             dualKeyCache.put(devicePath, measurements[index], entry);
           }
         }
