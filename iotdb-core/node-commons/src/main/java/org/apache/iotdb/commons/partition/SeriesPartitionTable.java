@@ -50,13 +50,15 @@ import java.util.stream.Collectors;
 
 public class SeriesPartitionTable {
 
-  // should only be used in CN scope, in DN scope should directly use TimePartitionUtils.getTimePartitionInterval()
-  private static final  long TIME_PARTITION_INTERVAL = CommonDateTimeUtils.convertMilliTimeWithPrecision(
-      TimePartitionUtils.getTimePartitionInterval(), CommonDescriptor.getInstance().getConfig().getTimestampPrecision());
+  // should only be used in CN scope, in DN scope should directly use
+  // TimePartitionUtils.getTimePartitionInterval()
+  private static final long TIME_PARTITION_INTERVAL =
+      CommonDateTimeUtils.convertMilliTimeWithPrecision(
+          TimePartitionUtils.getTimePartitionInterval(),
+          CommonDescriptor.getInstance().getConfig().getTimestampPrecision());
 
   private final ConcurrentSkipListMap<TTimePartitionSlot, List<TConsensusGroupId>>
       seriesPartitionMap;
-
 
   public SeriesPartitionTable() {
     this.seriesPartitionMap = new ConcurrentSkipListMap<>();
@@ -259,7 +261,8 @@ public class SeriesPartitionTable {
     while (iterator.hasNext()) {
       Map.Entry<TTimePartitionSlot, List<TConsensusGroupId>> entry = iterator.next();
       TTimePartitionSlot timePartitionSlot = entry.getKey();
-      if (timePartitionSlot.getStartTime() + TIME_PARTITION_INTERVAL + TTL <= currentTimeSlot.getStartTime()) {
+      if (timePartitionSlot.getStartTime() + TIME_PARTITION_INTERVAL + TTL
+          <= currentTimeSlot.getStartTime()) {
         removedTimePartitions.add(timePartitionSlot);
         iterator.remove();
       }
