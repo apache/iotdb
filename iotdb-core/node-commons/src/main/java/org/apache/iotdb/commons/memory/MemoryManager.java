@@ -758,6 +758,7 @@ public class MemoryManager {
             highestMemoryManager.getName(),
             highestMemoryManager.getScore());
         if (highestMemoryManager.getName().equals("SchemaEngine")) {
+          LOGGER.error(lowestMemoryManager.print());
           LOGGER.error(highestMemoryManager.print());
         }
       }
@@ -782,6 +783,12 @@ public class MemoryManager {
         + totalMemorySizeInBytes
         + ", allocatedMemorySizeInBytes="
         + allocatedMemorySizeInBytes
+        + ", cachedStaticAllocatedMemorySizeInBytes="
+        + cachedStaticAllocatedMemorySizeInBytes
+        + ", cachedStaticUsedMemorySizeInBytes="
+        + cachedStaticUsedMemorySizeInBytes
+        + ", cachedUsedMemorySizeInBytes="
+        + cachedUsedMemorySizeInBytes
         + '}';
   }
 
