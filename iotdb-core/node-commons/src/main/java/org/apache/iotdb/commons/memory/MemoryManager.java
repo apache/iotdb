@@ -759,7 +759,7 @@ public class MemoryManager {
             highestMemoryManager.getName(),
             highestMemoryManager.getScore());
         if (highestMemoryManager.getName().equals("SchemaEngine")) {
-          highestMemoryManager.print();
+          LOGGER.error(highestMemoryManager.print());
         }
       }
     }
