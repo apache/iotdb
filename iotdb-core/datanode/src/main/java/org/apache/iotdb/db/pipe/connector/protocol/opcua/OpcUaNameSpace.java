@@ -118,7 +118,7 @@ public class OpcUaNameSpace extends ManagedNamespaceWithLifecycle {
     final List<IMeasurementSchema> schemas = tablet.getSchemas();
     final List<IMeasurementSchema> newSchemas = new ArrayList<>();
     if (!isTableModel) {
-      new PipeTreeModelTabletEventSorter(tablet).deDuplicateAndSortTimestampsIfNecessary();
+      new PipeTreeModelTabletEventSorter(tablet).deduplicateAndSortTimestampsIfNecessary();
 
       final List<Long> timestamps = new ArrayList<>();
       final List<Object> values = new ArrayList<>();
