@@ -112,7 +112,7 @@ public class PipeTabletEventSorterTest {
 
     long timestamp = 300;
     for (long i = 0; i < 10; i++) {
-      final int rowIndex = tablet.rowSize;
+      final int rowIndex = tablet.rowSize++;
       tablet.addTimestamp(rowIndex, timestamp);
       for (int s = 0; s < 3; s++) {
         tablet.addValue(
