@@ -71,7 +71,7 @@ public class MemoryRuntimeController implements IService {
               this::adaptTotalMemory,
               MEMORY_CHECK_INTERVAL_IN_S);
     }
-
+    MemoryConfig.global().print();
     isShutdown.set(false);
   }
 
