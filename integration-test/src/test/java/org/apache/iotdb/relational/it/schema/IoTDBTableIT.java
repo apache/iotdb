@@ -1006,7 +1006,7 @@ public class IoTDBTableIT {
 
       // Can also use "show create table"
       TestUtils.assertResultSetEqual(
-          statement.executeQuery("show create view_table"),
+          statement.executeQuery("show create table view_table"),
           "View,Create View,",
           Collections.singleton(
               "view_table,CREATE VIEW \"view_table\" (\"tag1\" STRING TAG,\"tag2\" STRING TAG,\"s11\" INT32 FIELD,\"s3\" STRING FIELD FROM \"s2\") RESTRICT WITH (ttl=100) AS root.a.**,"));
