@@ -25,6 +25,7 @@ import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.partition.DataPartition;
 import org.apache.iotdb.commons.partition.SchemaPartition;
+import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.commons.utils.TimePartitionUtils;
 import org.apache.iotdb.db.exception.sql.SemanticException;
@@ -43,6 +44,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Analysis;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.AlignedDeviceEntry;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.ColumnSchema;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.DeviceEntry;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.QualifiedObjectName;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.OrderingScheme;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.SortOrder;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.Symbol;
@@ -83,6 +85,8 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.Table
 import org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.DataNodeLocationSupplierFactory;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.PushPredicateIntoTableScan;
 import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
+import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
+import org.apache.iotdb.db.schemaengine.table.DataNodeTreeViewSchemaUtils;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
@@ -1350,14 +1354,15 @@ public class TableDistributedPlanGenerator
 
   private Optional<IDeviceID.TreeDeviceIdColumnValueExtractor>
       createTreeDeviceIdColumnValueExtractor(DeviceTableScanNode node) {
-    if (node instanceof TreeDeviceViewScanNode) {
+    if (node instanceof TreeDeviceViewScanNode
+        || node instanceof AggregationTreeDeviceViewScanNode) {
+      QualifiedObjectName qualifiedObjectName = node.getQualifiedObjectName();
+      TsTable table =
+          DataNodeTableCache.getInstance()
+              .getTable(qualifiedObjectName.getDatabaseName(), qualifiedObjectName.getObjectName());
       return Optional.of(
           TableOperatorGenerator.createTreeDeviceIdColumnValueExtractor(
-              ((TreeDeviceViewScanNode) node).getTreeDBName()));
-    } else if (node instanceof AggregationTreeDeviceViewScanNode) {
-      return Optional.of(
-          TableOperatorGenerator.createTreeDeviceIdColumnValueExtractor(
-              ((AggregationTreeDeviceViewScanNode) node).getTreeDBName()));
+              DataNodeTreeViewSchemaUtils.getPrefixPath(table)));
     } else {
       return Optional.empty();
     }

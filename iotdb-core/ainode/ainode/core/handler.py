@@ -29,6 +29,7 @@ from ainode.thrift.common.ttypes import TSStatus
 class AINodeRPCServiceHandler(IAINodeRPCService.Iface):
     def __init__(self):
         self._model_manager = ModelManager()
+        self._inference_manager = InferenceManager(model_manager=self._model_manager)
 
     def registerModel(self, req: TRegisterModelReq) -> TRegisterModelResp:
         return self._model_manager.register_model(req)
@@ -37,10 +38,10 @@ class AINodeRPCServiceHandler(IAINodeRPCService.Iface):
         return self._model_manager.delete_model(req)
 
     def inference(self, req: TInferenceReq) -> TInferenceResp:
-        return InferenceManager.inference(req, self._model_manager)
+        return self._inference_manager.inference(req)
 
     def forecast(self, req: TForecastReq) -> TSStatus:
-        return InferenceManager.forecast(req, self._model_manager)
+        return self._inference_manager.forecast(req)
 
     def getAIHeartbeat(self, req: TAIHeartbeatReq) -> TAIHeartbeatResp:
         return ClusterManager.get_heart_beat(req)
