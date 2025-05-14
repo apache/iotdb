@@ -223,9 +223,7 @@ public class PipeTabletEventSorter {
         final Binary[] deDuplicatedBinaryValues = new Binary[binaryValues.length];
         for (int i = 0; i < deDuplicatedSize; i++) {
           deDuplicatedBinaryValues[i] =
-              binaryValues[
-                  getLastNonnullIndex(
-                      i, index, deDuplicatedIndex, originalBitMap, deDuplicatedBitMap)];
+              binaryValues[getLastNonnullIndex(i, originalBitMap, deDuplicatedBitMap)];
         }
         return deDuplicatedBinaryValues;
       default:
@@ -234,18 +232,8 @@ public class PipeTabletEventSorter {
     }
   }
 
-  private static int getLastNonnullIndex(
-      final int i,
-      final Integer[] index,
-      final int[] deDuplicatedIndex,
-      final BitMap originalBitMap,
-      final BitMap deDuplicatedBitMap) {
-    if (deDuplicatedIndex == null) {
-      if (originalBitMap.isMarked(index[i])) {
-        deDuplicatedBitMap.mark(i);
-      }
-      return index[i];
-    }
+  private int getLastNonnullIndex(
+      final int i, final BitMap originalBitMap, final BitMap deDuplicatedBitMap) {
     if (originalBitMap == null) {
       return index[deDuplicatedIndex[i]];
     }
