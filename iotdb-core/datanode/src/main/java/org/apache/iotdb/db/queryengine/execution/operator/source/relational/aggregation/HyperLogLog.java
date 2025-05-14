@@ -105,8 +105,8 @@ public class HyperLogLog {
   }
 
   private static int standardErrorToBuckets(double maxStandardError) {
-    if (maxStandardError <= LOWEST_MAX_STANDARD_ERROR
-        || maxStandardError >= HIGHEST_MAX_STANDARD_ERROR) {
+    if (maxStandardError < LOWEST_MAX_STANDARD_ERROR
+        || maxStandardError > HIGHEST_MAX_STANDARD_ERROR) {
       throw new IoTDBRuntimeException(
           String.format(
               "Max Standard Error must be in [%s, %s]: %s",

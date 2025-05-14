@@ -217,14 +217,20 @@ public class ActiveLoadTsFileLoader {
       throws FileNotFoundException {
     final LoadTsFileStatement statement = new LoadTsFileStatement(filePair.getLeft());
     final List<File> files = statement.getTsFiles();
-    if (!files.isEmpty()) {
-      final File parentFile = files.get(0).getParentFile();
-      statement.setDatabase(parentFile == null ? "null" : parentFile.getName());
-    }
+
+    // It should be noted here that the instructions in this code block do not need to use the
+    // DataBase, so the DataBase is assigned a value of null. If the DataBase is used later, an
+    // exception will be thrown.
+    final File parentFile;
+    statement.setDatabase(
+        files.isEmpty() || (parentFile = files.get(0).getParentFile()) == null
+            ? null
+            : parentFile.getName());
     statement.setDeleteAfterLoad(true);
     statement.setConvertOnTypeMismatch(true);
     statement.setVerifySchema(isVerify);
-    statement.setAutoCreateDatabase(false);
+    statement.setAutoCreateDatabase(
+        IoTDBDescriptor.getInstance().getConfig().isAutoCreateSchemaEnabled());
     return executeStatement(
         filePair.getRight() ? new PipeEnrichedStatement(statement) : statement, session);
   }

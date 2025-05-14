@@ -30,6 +30,8 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
+import java.util.stream.Collectors;
 
 public class TopicTableResp implements DataSet {
   private final TSStatus status;
@@ -40,19 +42,16 @@ public class TopicTableResp implements DataSet {
     this.allTopicMeta = allTopicMeta;
   }
 
-  public TopicTableResp filter(String topicName) {
-    if (topicName == null) {
-      return this;
-    } else {
-      final List<TopicMeta> filteredTopicMeta = new ArrayList<>();
-      for (TopicMeta topicMeta : allTopicMeta) {
-        if (topicMeta.getTopicName().equals(topicName)) {
-          filteredTopicMeta.add(topicMeta);
-          break;
-        }
-      }
-      return new TopicTableResp(status, filteredTopicMeta);
-    }
+  public TopicTableResp filter(String topicName, boolean isTableModel) {
+    return new TopicTableResp(
+        status,
+        allTopicMeta.stream()
+            .filter(
+                topicMeta ->
+                    (Objects.isNull(topicName)
+                            || Objects.equals(topicMeta.getTopicName(), topicName))
+                        && topicMeta.visibleUnder(isTableModel))
+            .collect(Collectors.toList()));
   }
 
   public TShowTopicResp convertToTShowTopicResp() {

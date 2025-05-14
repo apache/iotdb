@@ -21,7 +21,6 @@ package org.apache.iotdb.confignode.it.partition;
 
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.client.sync.SyncConfigNodeIServiceClient;
-import org.apache.iotdb.commons.utils.TimePartitionUtils;
 import org.apache.iotdb.confignode.rpc.thrift.TDataPartitionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDataPartitionTableResp;
 import org.apache.iotdb.it.env.EnvFactory;
@@ -54,7 +53,11 @@ public class IoTDBPartitionTableAutoCleanIT {
   private static final long TEST_TTL_CHECK_INTERVAL = 5_000;
 
   private static final TTimePartitionSlot TEST_CURRENT_TIME_SLOT =
-      TimePartitionUtils.getCurrentTimePartitionSlot();
+      new TTimePartitionSlot()
+          .setStartTime(
+              System.currentTimeMillis()
+                  / TEST_TIME_PARTITION_INTERVAL
+                  * TEST_TIME_PARTITION_INTERVAL);
   private static final long TEST_TTL = 7 * TEST_TIME_PARTITION_INTERVAL;
 
   @Before
