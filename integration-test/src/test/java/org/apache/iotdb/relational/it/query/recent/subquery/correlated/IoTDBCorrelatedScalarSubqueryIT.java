@@ -179,7 +179,7 @@ public class IoTDBCorrelatedScalarSubqueryIT {
     String[] expectedHeader;
     String[] retArray;
 
-    // Test case: with InPredicate
+    // Test case: with In Predicate
     sql =
         "SELECT distinct cast(%s AS INT32) as %s FROM table1 t1 WHERE %s = (SELECT max(%s) from table3 t3 WHERE device_id = 'd01' and t1.%s = t3.%s) and %s in (select %s from table3)";
     retArray = new String[] {"30,", "40,"};
