@@ -17,65 +17,55 @@
  * under the License.
  */
 
-package org.apache.iotdb.commons.binaryallocator.evictor;
+package org.apache.iotdb.commons.binaryallocator.autoreleaser;
 
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
-import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.time.Duration;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.ScheduledFuture;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 
-public abstract class Evictor implements Runnable {
-  private static final Logger LOGGER = LoggerFactory.getLogger(Evictor.class);
+public abstract class Releaser implements Runnable {
+  private static final Logger LOGGER = LoggerFactory.getLogger(Releaser.class);
 
-  private ScheduledFuture<?> scheduledFuture;
-  private final String name;
+  private Future<?> future;
+  protected final String name;
   private final Duration shutdownTimeoutDuration;
-  private final Duration durationBetweenEvictorRuns;
 
-  private ScheduledExecutorService executor;
+  private ExecutorService executor;
 
-  public Evictor(
-      String name, Duration shutdownTimeoutDuration, Duration durationBetweenEvictorRuns) {
+  public Releaser(String name, Duration shutdownTimeoutDuration) {
     this.name = name;
     this.shutdownTimeoutDuration = shutdownTimeoutDuration;
-    this.durationBetweenEvictorRuns = durationBetweenEvictorRuns;
   }
 
-  /** Cancels the scheduled future. */
+  /** Cancels the future. */
   void cancel() {
-    scheduledFuture.cancel(false);
+    future.cancel(false);
   }
 
   @Override
   public abstract void run();
 
-  void setScheduledFuture(final ScheduledFuture<?> scheduledFuture) {
-    this.scheduledFuture = scheduledFuture;
+  void setFuture(final Future<?> future) {
+    this.future = future;
   }
 
   @Override
   public String toString() {
-    return getClass().getName() + " [scheduledFuture=" + scheduledFuture + "]";
+    return getClass().getName() + " [future=" + future + "]";
   }
 
   public void start() {
     if (null == executor) {
-      executor = IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor(name);
+      executor = IoTDBThreadPoolFactory.newSingleThreadExecutor(name);
     }
-    final ScheduledFuture<?> scheduledFuture =
-        ScheduledExecutorUtil.safelyScheduleAtFixedRate(
-            executor,
-            this,
-            durationBetweenEvictorRuns.toMillis(),
-            durationBetweenEvictorRuns.toMillis(),
-            TimeUnit.MILLISECONDS);
-    this.setScheduledFuture(scheduledFuture);
+    final Future<?> future = executor.submit(this);
+    this.setFuture(future);
   }
 
   public void stop() {
@@ -91,7 +81,7 @@ public abstract class Evictor implements Runnable {
       boolean result =
           executor.awaitTermination(shutdownTimeoutDuration.toMillis(), TimeUnit.MILLISECONDS);
       if (!result) {
-        LOGGER.info("unable to stop evictor after {} ms", shutdownTimeoutDuration.toMillis());
+        LOGGER.info("unable to stop auto releaser after {} ms", shutdownTimeoutDuration.toMillis());
       }
     } catch (final InterruptedException ignored) {
       Thread.currentThread().interrupt();

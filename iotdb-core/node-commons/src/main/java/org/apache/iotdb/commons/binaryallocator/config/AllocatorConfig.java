@@ -37,8 +37,8 @@ public class AllocatorConfig {
   public boolean enableBinaryAllocator =
       CommonDescriptor.getInstance().getConfig().isEnableBinaryAllocator();
 
-  /** Maximum wait time in milliseconds when shutting down the evictor */
-  public Duration durationEvictorShutdownTimeout = Duration.ofMillis(1000L);
+  /** Maximum wait time in milliseconds when shutting down the evictor and autoReleaser */
+  public Duration durationShutdownTimeout = Duration.ofMillis(1000L);
 
   /** Time interval in milliseconds between two consecutive evictor runs */
   public Duration durationBetweenEvictorRuns = Duration.ofMillis(1000L);
