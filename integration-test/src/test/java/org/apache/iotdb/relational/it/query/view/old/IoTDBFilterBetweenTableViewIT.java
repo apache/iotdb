@@ -94,7 +94,7 @@ public class IoTDBFilterBetweenTableViewIT {
     SQLs.add("CREATE DATABASE " + DATABASE_NAME);
     SQLs.add("USE " + DATABASE_NAME);
     SQLs.add(
-        "CREATE TABLE VIEW table1 (device STRING TAG, s1 INT32 FIELD, s2 INT32 FIELD, s3 TEXT FIELD) as root.vehicle.**");
+        "CREATE VIEW table1 (device STRING TAG, s1 INT32 FIELD, s2 INT32 FIELD, s3 TEXT FIELD) as root.vehicle.**");
   }
 
   @Test

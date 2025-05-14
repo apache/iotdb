@@ -62,7 +62,7 @@ public class IoTDBGapFillTableViewIT {
       new String[] {
         "CREATE DATABASE " + DATABASE_NAME,
         "USE " + DATABASE_NAME,
-        "CREATE TABLE view table1(city STRING TAG, device_id STRING TAG, s1 DOUBLE FIELD, s2 INT64 FIELD) as root.table1.**",
+        "create view table1(city STRING TAG, device_id STRING TAG, s1 DOUBLE FIELD, s2 INT64 FIELD) as root.table1.**",
       };
 
   private static final String MULTI_GAFILL_ERROR_MSG =

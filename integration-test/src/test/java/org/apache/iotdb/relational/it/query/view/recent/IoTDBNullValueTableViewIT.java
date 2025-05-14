@@ -54,7 +54,7 @@ public class IoTDBNullValueTableViewIT {
       new String[] {
         "CREATE DATABASE " + DATABASE_NAME,
         "USE " + DATABASE_NAME,
-        "create table view table1(id1 tag, s1 string) as root.test.table1.**",
+        "create view table1(id1 tag, s1 string) as root.test.table1.**",
       };
 
   @BeforeClass
