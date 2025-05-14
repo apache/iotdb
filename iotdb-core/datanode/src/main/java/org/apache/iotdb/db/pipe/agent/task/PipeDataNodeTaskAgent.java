@@ -729,10 +729,11 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
   }
 
   private boolean mayMemTablePinnedCountReachDangerousThreshold() {
-    return PipeDataNodeResourceManager.wal().getPinnedWalCount()
-        >= 5
-            * PipeConfig.getInstance().getPipeMaxAllowedPinnedMemTableCount()
-            * StorageEngine.getInstance().getDataRegionNumber();
+    return PipeConfig.getInstance().getPipeMaxAllowedPinnedMemTableCount() != Integer.MAX_VALUE
+        && PipeDataNodeResourceManager.wal().getPinnedWalCount()
+            >= 5
+                * PipeConfig.getInstance().getPipeMaxAllowedPinnedMemTableCount()
+                * StorageEngine.getInstance().getDataRegionNumber();
   }
 
   private boolean mayWalSizeReachThrottleThreshold() {
