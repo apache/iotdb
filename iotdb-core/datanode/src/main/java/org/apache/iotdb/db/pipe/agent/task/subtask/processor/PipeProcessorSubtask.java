@@ -59,7 +59,6 @@ public class PipeProcessorSubtask extends PipeReportableSubtask {
 
   // Record these variables to provide corresponding value to tag key of monitoring metrics
   private final String pipeName;
-  private final String pipeNameWithCreationTime; // cache for better performance
   private final int regionId;
 
   private final EventSupplier inputEventSupplier;
@@ -80,7 +79,6 @@ public class PipeProcessorSubtask extends PipeReportableSubtask {
       final PipeEventCollector outputEventCollector) {
     super(taskID, creationTime);
     this.pipeName = pipeName;
-    this.pipeNameWithCreationTime = pipeName + "_" + creationTime;
     this.regionId = regionId;
     this.inputEventSupplier = inputEventSupplier;
     this.pipeProcessor = pipeProcessor;
