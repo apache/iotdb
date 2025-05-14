@@ -94,6 +94,7 @@ public class PipeTabletEventSorter {
   }
 
   private void sortTimestamps() {
+    // Index is sorted stably because it is Integer[]
     Arrays.sort(index, Comparator.comparingLong(i -> tablet.timestamps[i]));
     Arrays.sort(tablet.timestamps, 0, tablet.rowSize);
   }
@@ -226,7 +227,7 @@ public class PipeTabletEventSorter {
       return index[deDuplicatedIndex[i]];
     }
     int lastNonnullIndex = deDuplicatedIndex[i];
-    int lastIndex = i > 0 ? deDuplicatedIndex[i - 1] : -1;
+    final int lastIndex = i > 0 ? deDuplicatedIndex[i - 1] : -1;
     while (originalBitMap.isMarked(index[lastNonnullIndex])) {
       --lastNonnullIndex;
       if (lastNonnullIndex == lastIndex) {
