@@ -806,7 +806,8 @@ public class IoTDBTableIT {
     try (final Connection connection = EnvFactory.getEnv().getConnection();
         final Statement statement = connection.createStatement()) {
       statement.execute("drop timeSeries root.a.b.d.s1");
-      statement.execute("create timeSeries root.a.b.d.S1 boolean");
+      statement.execute("create device template t1 (S1 boolean, s9 int32)");
+      statement.execute("set schema template t1 to root.a.b.d");
       statement.execute("create timeSeries root.a.b.c.f.g.h.S1 int32");
 
       // Put schema cache
