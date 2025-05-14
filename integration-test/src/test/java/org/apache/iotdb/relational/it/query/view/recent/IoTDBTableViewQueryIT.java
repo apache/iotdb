@@ -106,7 +106,7 @@ public class IoTDBTableViewQueryIT {
     "USE " + DATABASE_NAME,
     "CREATE VIEW view1 (battery TAG, voltage INT32 FIELD, current FLOAT FIELD) as root.db.battery.**",
     "CREATE VIEW view2 (battery TAG, voltage INT32 FIELD FROM voltage, current_rename FLOAT FIELD FROM current) as root.db.battery.**",
-    "CREATE VIEW view3 (battery TAG, voltage INT32 FIELD FROM voltage, current_rename FLOAT FIELD FROM current) as root.db.battery.** with (ttl=1)",
+    "CREATE VIEW view3 (battery TAG, voltage INT32 FIELD FROM voltage, current_rename FLOAT FIELD FROM current) with (ttl=1) as root.db.battery.**",
     "CREATE TABLE table1 (battery TAG, voltage INT32 FIELD, current FLOAT FIELD)",
     "INSERT INTO table1 (time, battery, voltage, current) values (1, 'b1', 1, 1)",
     "INSERT INTO table1 (time, battery, voltage, current) values (2, 'b1', 1, 1)",
