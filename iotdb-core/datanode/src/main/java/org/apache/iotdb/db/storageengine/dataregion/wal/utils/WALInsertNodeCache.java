@@ -81,7 +81,9 @@ public class WALInsertNodeCache {
         (long)
             Math.min(
                 1.0
-                    * PIPE_CONFIG.getPipeMaxAllowedPinnedMemTableCount()
+                    * ((PIPE_CONFIG.getPipeMaxAllowedPinnedMemTableCount() == Integer.MAX_VALUE)
+                        ? 10
+                        : PIPE_CONFIG.getPipeMaxAllowedPinnedMemTableCount())
                     * CONFIG.getWalFileSizeThresholdInByte()
                     / CONFIG.getDataRegionNum(),
                 0.5

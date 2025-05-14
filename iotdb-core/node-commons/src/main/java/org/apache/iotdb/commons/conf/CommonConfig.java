@@ -265,7 +265,10 @@ public class CommonConfig {
   private long pipeReceiverLoginPeriodicVerificationIntervalMs = 300000;
   private double pipeReceiverActualToEstimatedMemoryRatio = 3;
 
-  private int pipeMaxAllowedPinnedMemTableCount = 10; // per data region
+  private int pipeMaxAllowedHistoricalTsFilePerDataRegion = Integer.MAX_VALUE; // Deprecated
+  private int pipeMaxAllowedPendingTsFileEpochPerDataRegion = Integer.MAX_VALUE; // Deprecated
+  private int pipeMaxAllowedPinnedMemTableCount = Integer.MAX_VALUE; // per data region
+  private long pipeMaxAllowedLinkedTsFileCount = Long.MAX_VALUE; // Deprecated
   private float pipeMaxAllowedLinkedDeletedTsFileDiskUsagePercentage = 0.1F;
   private double pipeMaxAllowedLatencySeconds = 5.0;
   private long pipeStuckRestartIntervalSeconds = 120;
@@ -1350,6 +1353,39 @@ public class CommonConfig {
     return pipeReceiverActualToEstimatedMemoryRatio;
   }
 
+  public int getPipeMaxAllowedHistoricalTsFilePerDataRegion() {
+    return pipeMaxAllowedHistoricalTsFilePerDataRegion;
+  }
+
+  public void setPipeMaxAllowedHistoricalTsFilePerDataRegion(
+      int pipeMaxAllowedPendingTsFileEpochPerDataRegion) {
+    if (this.pipeMaxAllowedHistoricalTsFilePerDataRegion
+        == pipeMaxAllowedPendingTsFileEpochPerDataRegion) {
+      return;
+    }
+    this.pipeMaxAllowedHistoricalTsFilePerDataRegion =
+        pipeMaxAllowedPendingTsFileEpochPerDataRegion;
+    logger.info(
+        "pipeMaxAllowedHistoricalTsFilePerDataRegion is set to {}",
+        pipeMaxAllowedPendingTsFileEpochPerDataRegion);
+  }
+
+  public int getPipeMaxAllowedPendingTsFileEpochPerDataRegion() {
+    return pipeMaxAllowedPendingTsFileEpochPerDataRegion;
+  }
+
+  public void setPipeMaxAllowedPendingTsFileEpochPerDataRegion(
+      int pipeExtractorPendingQueueTsfileLimit) {
+    if (this.pipeMaxAllowedPendingTsFileEpochPerDataRegion
+        == pipeExtractorPendingQueueTsfileLimit) {
+      return;
+    }
+    this.pipeMaxAllowedPendingTsFileEpochPerDataRegion = pipeExtractorPendingQueueTsfileLimit;
+    logger.info(
+        "pipeMaxAllowedPendingTsFileEpochPerDataRegion is set to {}.",
+        pipeMaxAllowedPendingTsFileEpochPerDataRegion);
+  }
+
   public int getPipeMaxAllowedPinnedMemTableCount() {
     return pipeMaxAllowedPinnedMemTableCount;
   }
@@ -1361,6 +1397,18 @@ public class CommonConfig {
     this.pipeMaxAllowedPinnedMemTableCount = pipeMaxAllowedPinnedMemTableCount;
     logger.info(
         "pipeMaxAllowedPinnedMemTableCount is set to {}", pipeMaxAllowedPinnedMemTableCount);
+  }
+
+  public long getPipeMaxAllowedLinkedTsFileCount() {
+    return pipeMaxAllowedLinkedTsFileCount;
+  }
+
+  public void setPipeMaxAllowedLinkedTsFileCount(long pipeMaxAllowedLinkedTsFileCount) {
+    if (this.pipeMaxAllowedLinkedTsFileCount == pipeMaxAllowedLinkedTsFileCount) {
+      return;
+    }
+    this.pipeMaxAllowedLinkedTsFileCount = pipeMaxAllowedLinkedTsFileCount;
+    logger.info("pipeMaxAllowedLinkedTsFileCount is set to {}", pipeMaxAllowedLinkedTsFileCount);
   }
 
   public float getPipeMaxAllowedLinkedDeletedTsFileDiskUsagePercentage() {

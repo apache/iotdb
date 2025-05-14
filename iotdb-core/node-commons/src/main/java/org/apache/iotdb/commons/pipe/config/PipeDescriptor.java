@@ -396,11 +396,26 @@ public class PipeDescriptor {
                 "pipe_receiver_actual_to_estimated_memory_ratio",
                 Double.toString(config.getPipeReceiverActualToEstimatedMemoryRatio()))));
 
+    config.setPipeMaxAllowedHistoricalTsFilePerDataRegion(
+        Integer.parseInt(
+            properties.getProperty(
+                "pipe_max_allowed_historical_tsfile_per_data_region",
+                String.valueOf(config.getPipeMaxAllowedHistoricalTsFilePerDataRegion()))));
+    config.setPipeMaxAllowedPendingTsFileEpochPerDataRegion(
+        Integer.parseInt(
+            properties.getProperty(
+                "pipe_max_allowed_pending_tsfile_epoch_per_data_region",
+                String.valueOf(config.getPipeMaxAllowedPendingTsFileEpochPerDataRegion()))));
     config.setPipeMaxAllowedPinnedMemTableCount(
         Integer.parseInt(
             properties.getProperty(
                 "pipe_max_allowed_pinned_memtable_count",
                 String.valueOf(config.getPipeMaxAllowedPinnedMemTableCount()))));
+    config.setPipeMaxAllowedLinkedTsFileCount(
+        Long.parseLong(
+            properties.getProperty(
+                "pipe_max_allowed_linked_tsfile_count",
+                String.valueOf(config.getPipeMaxAllowedLinkedTsFileCount()))));
     config.setPipeMaxAllowedLinkedDeletedTsFileDiskUsagePercentage(
         Float.parseFloat(
             properties.getProperty(
