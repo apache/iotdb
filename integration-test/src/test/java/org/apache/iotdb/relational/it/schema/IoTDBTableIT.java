@@ -861,6 +861,14 @@ public class IoTDBTableIT {
             "701: The duplicated source measurement S1 is unsupported yet.", e.getMessage());
       }
 
+      try {
+        statement.execute(
+            "create or replace view tree_table (tag1 tag, tag2 tag, S1 int32 field, s3 boolean from S1, s8 field) as root.a.**");
+        fail();
+      } catch (final SQLException e) {
+        assertEquals("528: Measurements not found for s8, cannot auto detect.", e.getMessage());
+      }
+
       statement.execute(
           "create or replace view tree_table (tag1 tag, tag2 tag, S1 int32 field, s3 from s2) as root.a.**");
       statement.execute("alter view tree_table rename to view_table");
