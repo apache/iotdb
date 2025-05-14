@@ -864,10 +864,10 @@ public class IoTDBTableIT {
 
       try {
         statement.execute(
-            "create or replace view tree_table (tag1 tag, tag2 tag, S1 int32 field, s3 boolean from S1, s8 field) as root.a.**");
+            "create or replace view tree_table (tag1 tag, tag2 tag, S1 int32 field, s3 from s2, s8 field) as root.a.**");
         fail();
       } catch (final SQLException e) {
-        assertEquals("528: Measurements not found for s8, cannot auto detect.", e.getMessage());
+        assertEquals("528: Measurements not found for s8, cannot auto detect", e.getMessage());
       }
 
       statement.execute(
@@ -898,7 +898,7 @@ public class IoTDBTableIT {
       TestUtils.assertResultSetEqual(
           statement.executeQuery("show devices from view_table where tag1 = 'b'"),
           "tag1,tag2,",
-          new HashSet<>(Arrays.asList("b,c,", "b,null,", "b,d,", "b,e,")));
+          new HashSet<>(Arrays.asList("b,c,", "b,null,", "b,e,")));
       TestUtils.assertResultSetEqual(
           statement.executeQuery("show devices from view_table where tag1 = 'b' and tag2 is null"),
           "tag1,tag2,",
@@ -906,7 +906,7 @@ public class IoTDBTableIT {
       TestUtils.assertResultSetEqual(
           statement.executeQuery("count devices from view_table"),
           "count(devices),",
-          Collections.singleton("4,"));
+          Collections.singleton("3,"));
     }
 
     // Test tree session
