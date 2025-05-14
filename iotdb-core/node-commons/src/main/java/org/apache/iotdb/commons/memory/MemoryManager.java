@@ -544,9 +544,8 @@ public class MemoryManager {
       if (block.getMemoryBlockType() == MemoryBlockType.STATIC) {
         cachedStaticAllocatedMemorySizeInBytes += block.getTotalMemorySizeInBytes();
         cachedStaticUsedMemorySizeInBytes += usedMemoryInBytes;
-      } else if (block.getMemoryBlockType() == MemoryBlockType.DYNAMIC) {
-        cachedUsedMemorySizeInBytes += usedMemoryInBytes;
       }
+      cachedUsedMemorySizeInBytes += usedMemoryInBytes;
     }
     for (MemoryManager memoryManager : children.values()) {
       memoryManager.updateCache();
