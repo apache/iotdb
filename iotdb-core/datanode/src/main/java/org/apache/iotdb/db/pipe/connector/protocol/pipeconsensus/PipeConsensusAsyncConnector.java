@@ -74,8 +74,6 @@ import java.util.concurrent.LinkedBlockingDeque;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.locks.Lock;
-import java.util.concurrent.locks.ReentrantLock;
 
 import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.CONNECTOR_CONSENSUS_GROUP_ID_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.CONNECTOR_CONSENSUS_PIPE_NAME;
@@ -110,7 +108,6 @@ public class PipeConsensusAsyncConnector extends IoTDBConnector implements Conse
   private IClientManager<TEndPoint, AsyncPipeConsensusServiceClient> asyncTransferClientManager;
   private PipeConsensusAsyncBatchReqBuilder tabletBatchBuilder;
   private volatile long currentReplicateProgress = 0;
-  private final Lock lock = new ReentrantLock();
 
   @Override
   public void validate(final PipeParameterValidator validator) throws Exception {
@@ -208,44 +205,33 @@ public class PipeConsensusAsyncConnector extends IoTDBConnector implements Conse
    * if one event is successfully processed by receiver in PipeConsensus, we will remove this event
    * from transferBuffer in order to transfer other event.
    */
-  public void removeEventFromBuffer(EnrichedEvent event) {
-    try {
-      lock.lockInterruptibly();
-    } catch (InterruptedException e) {
-      LOGGER.info("PipeConsensusAsyncConnector try to lock interrupted. Will exit directly", e);
-      Thread.currentThread().interrupt();
+  public synchronized void removeEventFromBuffer(EnrichedEvent event) {
+    if (LOGGER.isDebugEnabled()) {
+      LOGGER.debug(
+          "PipeConsensus-ConsensusGroup-{}: one event-{} successfully received by the follower, will be removed from queue, queue size = {}, limit size = {}",
+          consensusGroupId,
+          event,
+          transferBuffer.size(),
+          IOTDB_CONFIG.getIotConsensusV2PipelineSize());
+    }
+    if (transferBuffer.isEmpty()) {
+      LOGGER.info(
+          "PipeConsensus-ConsensusGroup-{}: try to remove event-{} after pipeConsensusAsyncConnector being closed. Ignore it.",
+          consensusGroupId,
+          event);
       return;
     }
-    try {
-      if (LOGGER.isDebugEnabled()) {
-        LOGGER.debug(
-            "PipeConsensus-ConsensusGroup-{}: one event-{} successfully received by the follower, will be removed from queue, queue size = {}, limit size = {}",
-            consensusGroupId,
-            event,
-            transferBuffer.size(),
-            IOTDB_CONFIG.getIotConsensusV2PipelineSize());
-      }
-      if (transferBuffer.isEmpty()) {
-        LOGGER.info(
-            "PipeConsensus-ConsensusGroup-{}: try to remove event-{} after pipeConsensusAsyncConnector being closed. Ignore it.",
-            consensusGroupId,
-            event);
-        return;
-      }
-      Iterator<EnrichedEvent> iterator = transferBuffer.iterator();
-      EnrichedEvent current = iterator.next();
-      while (!current.equalsInPipeConsensus(event) && iterator.hasNext()) {
-        current = iterator.next();
-      }
-      iterator.remove();
-      // update replicate progress
-      currentReplicateProgress =
-          Math.max(currentReplicateProgress, event.getReplicateIndexForIoTV2());
-      // decrease reference count
-      event.decreaseReferenceCount(PipeConsensusAsyncConnector.class.getName(), true);
-    } finally {
-      lock.unlock();
+    Iterator<EnrichedEvent> iterator = transferBuffer.iterator();
+    EnrichedEvent current = iterator.next();
+    while (!current.equalsInPipeConsensus(event) && iterator.hasNext()) {
+      current = iterator.next();
     }
+    iterator.remove();
+    // update replicate progress
+    currentReplicateProgress =
+        Math.max(currentReplicateProgress, event.getReplicateIndexForIoTV2());
+    // decrease reference count
+    event.decreaseReferenceCount(PipeConsensusAsyncConnector.class.getName(), true);
   }
 
   @Override
@@ -467,14 +453,7 @@ public class PipeConsensusAsyncConnector extends IoTDBConnector implements Conse
    */
   private void syncTransferQueuedEventsIfNecessary() throws Exception {
     while (!retryEventQueue.isEmpty()) {
-      try {
-        lock.lockInterruptibly();
-      } catch (InterruptedException e) {
-        LOGGER.info("PipeConsensusAsyncConnector try to lock interrupted. Will exit directly", e);
-        Thread.currentThread().interrupt();
-        return;
-      }
-      try {
+      synchronized (this) {
         if (isClosed.get() || retryEventQueue.isEmpty()) {
           return;
         }
@@ -517,8 +496,6 @@ public class PipeConsensusAsyncConnector extends IoTDBConnector implements Conse
           // poll it from transferBuffer
           removeEventFromBuffer((EnrichedEvent) polledEvent);
         }
-      } finally {
-        lock.unlock();
       }
     }
   }
@@ -563,47 +540,19 @@ public class PipeConsensusAsyncConnector extends IoTDBConnector implements Conse
     }
   }
 
-  public void clearRetryEventsReferenceCount() {
-    boolean needUnLock = true;
-    try {
-      lock.lockInterruptibly();
-    } catch (InterruptedException e) {
-      LOGGER.info("PipeConsensusAsyncConnector try to lock interrupted.", e);
-      Thread.currentThread().interrupt();
-      needUnLock = false;
-    }
-    try {
-      while (!retryEventQueue.isEmpty()) {
-        final Event event = retryEventQueue.poll();
-        if (event instanceof EnrichedEvent) {
-          ((EnrichedEvent) event).clearReferenceCount(PipeConsensusAsyncConnector.class.getName());
-        }
-      }
-    } finally {
-      if (needUnLock) {
-        lock.unlock();
+  public synchronized void clearRetryEventsReferenceCount() {
+    while (!retryEventQueue.isEmpty()) {
+      final Event event = retryEventQueue.poll();
+      if (event instanceof EnrichedEvent) {
+        ((EnrichedEvent) event).clearReferenceCount(PipeConsensusAsyncConnector.class.getName());
       }
     }
   }
 
-  public void clearTransferBufferReferenceCount() {
-    boolean needUnLock = true;
-    try {
-      lock.lockInterruptibly();
-    } catch (InterruptedException e) {
-      LOGGER.info("PipeConsensusAsyncConnector try to lock interrupted.", e);
-      Thread.currentThread().interrupt();
-      needUnLock = false;
-    }
-    try {
-      while (!transferBuffer.isEmpty()) {
-        final EnrichedEvent event = transferBuffer.poll();
-        event.clearReferenceCount(PipeConsensusAsyncConnector.class.getName());
-      }
-    } finally {
-      if (needUnLock) {
-        lock.unlock();
-      }
+  public synchronized void clearTransferBufferReferenceCount() {
+    while (!transferBuffer.isEmpty()) {
+      final EnrichedEvent event = transferBuffer.poll();
+      event.clearReferenceCount(PipeConsensusAsyncConnector.class.getName());
     }
   }
 
@@ -629,35 +578,21 @@ public class PipeConsensusAsyncConnector extends IoTDBConnector implements Conse
 
   // synchronized to avoid close connector when transfer event
   @Override
-  public void close() {
-    boolean needUnLock = true;
-    try {
-      lock.lockInterruptibly();
-    } catch (InterruptedException e) {
-      LOGGER.info("PipeConsensusAsyncConnector try to lock interrupted.", e);
-      Thread.currentThread().interrupt();
-      needUnLock = false;
+  public synchronized void close() {
+    super.close();
+    isClosed.set(true);
+
+    retryConnector.close();
+    clearRetryEventsReferenceCount();
+    clearTransferBufferReferenceCount();
+
+    if (tabletBatchBuilder != null) {
+      tabletBatchBuilder.close();
     }
-    try {
-      super.close();
-      isClosed.set(true);
 
-      retryConnector.close();
-      clearRetryEventsReferenceCount();
-      clearTransferBufferReferenceCount();
-
-      if (tabletBatchBuilder != null) {
-        tabletBatchBuilder.close();
-      }
-
-      PipeConsensusSyncLagManager.getInstance(getConsensusGroupIdStr())
-          .removeConsensusPipeConnector(new ConsensusPipeName(consensusPipeName));
-      MetricService.getInstance().removeMetricSet(this.pipeConsensusConnectorMetrics);
-    } finally {
-      if (needUnLock) {
-        lock.unlock();
-      }
-    }
+    PipeConsensusSyncLagManager.getInstance(getConsensusGroupIdStr())
+        .removeConsensusPipeConnector(new ConsensusPipeName(consensusPipeName));
+    MetricService.getInstance().removeMetricSet(this.pipeConsensusConnectorMetrics);
   }
 
   //////////////////////////// APIs provided for metric framework ////////////////////////////

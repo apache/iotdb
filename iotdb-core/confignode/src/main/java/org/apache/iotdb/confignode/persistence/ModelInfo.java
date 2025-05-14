@@ -75,6 +75,7 @@ public class ModelInfo implements SnapshotProcessor {
   private static final Set<String> builtInAnomalyDetectionModel = new HashSet<>();
 
   static {
+    builtInForecastModel.add("_timerxl");
     builtInForecastModel.add("_ARIMA");
     builtInForecastModel.add("_NaiveForecaster");
     builtInForecastModel.add("_STLForecaster");

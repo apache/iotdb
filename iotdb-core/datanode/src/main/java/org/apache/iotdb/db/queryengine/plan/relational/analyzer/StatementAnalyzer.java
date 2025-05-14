@@ -73,6 +73,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateOrUpdateDev
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreatePipe;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreatePipePlugin;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateTable;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateTableView;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateTopic;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Delete;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DeleteDevice;
@@ -403,6 +404,13 @@ public class StatementAnalyzer {
 
     @Override
     protected Scope visitCreateTable(final CreateTable node, final Optional<Scope> context) {
+      validateProperties(node.getProperties(), context);
+      return createAndAssignScope(node, context);
+    }
+
+    @Override
+    protected Scope visitCreateTableView(
+        final CreateTableView node, final Optional<Scope> context) {
       validateProperties(node.getProperties(), context);
       return createAndAssignScope(node, context);
     }
@@ -2978,12 +2986,7 @@ public class StatementAnalyzer {
           createAndAssignScope(
               node, scope, left.getRelationType().joinWith(right.getRelationType()));
 
-      if (node.getType() == LEFT || node.getType() == RIGHT) {
-        throw new SemanticException(
-            String.format(
-                "%s JOIN is not supported, only support INNER JOIN in current version.",
-                node.getType()));
-      } else if (node.getType() == Join.Type.CROSS || node.getType() == Join.Type.IMPLICIT) {
+      if (node.getType() == Join.Type.CROSS || node.getType() == Join.Type.IMPLICIT) {
         return output;
       }
       if (criteria instanceof JoinOn) {
@@ -3771,7 +3774,7 @@ public class StatementAnalyzer {
           final Expression value = property.getNonDefaultValue();
           if (!(value instanceof LongLiteral)) {
             throw new SemanticException(
-                "TTL' value must be a LongLiteral, but now is: " + value.toString());
+                "TTL' value must be a 'INF' or a LongLiteral, but now is: " + value.toString());
           }
         }
       }

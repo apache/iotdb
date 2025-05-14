@@ -63,7 +63,7 @@ public class ScalarParameterSpecification extends ParameterSpecification {
     private Type type;
     private boolean required = true;
     private Object defaultValue;
-    private List<Function<Object, String>> checkers = new ArrayList<>();
+    private final List<Function<Object, String>> checkers = new ArrayList<>();
 
     private Builder() {}
 

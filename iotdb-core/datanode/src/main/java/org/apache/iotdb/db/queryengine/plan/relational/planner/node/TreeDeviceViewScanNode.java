@@ -91,6 +91,10 @@ public class TreeDeviceViewScanNode extends DeviceTableScanNode {
 
   public TreeDeviceViewScanNode() {}
 
+  public void setTreeDBName(String treeDBName) {
+    this.treeDBName = treeDBName;
+  }
+
   public String getTreeDBName() {
     return treeDBName;
   }

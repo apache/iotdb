@@ -69,6 +69,7 @@ public enum ThreadName {
   PBTREE_FLUSH_MONITOR("PBTree-Flush-Monitor"),
   PBTREE_WORKER_POOL("PBTree-Worker-Pool"),
   GENERAL_REGION_ATTRIBUTE_SECURITY_SERVICE("General-Region-Attribute-Security-Service"),
+
   // -------------------------- ClientService --------------------------
   CLIENT_RPC_SERVICE("ClientRPC-Service"),
   CLIENT_RPC_PROCESSOR("ClientRPC-Processor"),
@@ -186,17 +187,16 @@ public enum ThreadName {
   INFLUXDB_RPC_SERVICE("InfluxdbRPC-Service"),
   INFLUXDB_RPC_PROCESSOR("InfluxdbRPC-Processor"),
   STORAGE_ENGINE_CACHED_POOL("StorageEngine"),
-  AINODE_RPC_SERVICE("AINodeRpc-Service"),
   DATANODE_SHUTDOWN_HOOK("DataNode-Shutdown-Hook"),
   UPGRADE_TASK("UpgradeThread"),
   REGION_MIGRATE("Region-Migrate-Pool"),
   STORAGE_ENGINE_RECOVER_TRIGGER("StorageEngine-RecoverTrigger"),
-  REPAIR_DATA("RepairData"),
   FILE_TIME_INDEX_RECORD("FileTimeIndexRecord"),
   BINARY_ALLOCATOR_SAMPLE_EVICTOR("BinaryAllocator-SampleEvictor"),
+  BINARY_ALLOCATOR_AUTO_RELEASER("BinaryAllocator-Auto-Releaser"),
 
   // the unknown thread name is used for metrics
-  UNKOWN("UNKNOWN");
+  UNKNOWN("UNKNOWN");
 
   private final String name;
   private static final Logger LOGGER = LoggerFactory.getLogger(ThreadName.class);
@@ -383,7 +383,6 @@ public enum ThreadName {
               INFLUXDB_RPC_SERVICE,
               INFLUXDB_RPC_PROCESSOR,
               STORAGE_ENGINE_CACHED_POOL,
-              AINODE_RPC_SERVICE,
               DATANODE_SHUTDOWN_HOOK,
               UPGRADE_TASK,
               REGION_MIGRATE,
@@ -491,6 +490,6 @@ public enum ThreadName {
       }
     }
     LOGGER.debug("Unknown thread name: {}", givenThreadName);
-    return ThreadName.UNKOWN;
+    return ThreadName.UNKNOWN;
   }
 }

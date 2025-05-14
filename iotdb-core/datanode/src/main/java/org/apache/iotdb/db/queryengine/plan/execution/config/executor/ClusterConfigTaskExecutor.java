@@ -85,6 +85,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TCreateFunctionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateModelReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreatePipePluginReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreatePipeReq;
+import org.apache.iotdb.confignode.rpc.thrift.TCreateTableViewReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateTopicReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateTrainingReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateTriggerReq;
@@ -203,6 +204,8 @@ import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.region.Rem
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.DeleteDeviceTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.DescribeTableDetailsTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.DescribeTableTask;
+import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.ShowCreateTableTask;
+import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.ShowCreateViewTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.ShowDBTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.ShowTablesDetailsTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.ShowTablesTask;
@@ -2354,6 +2357,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
       if (showSubscriptionsStatement.getTopicName() != null) {
         showSubscriptionReq.setTopicName(showSubscriptionsStatement.getTopicName());
       }
+      showSubscriptionReq.setIsTableModel(showSubscriptionsStatement.isTableModel());
 
       final TShowSubscriptionResp showSubscriptionResp =
           configNodeClient.showSubscription(showSubscriptionReq);
@@ -2453,7 +2457,8 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
           configNodeClient.dropTopicExtended(
               new TDropTopicReq()
                   .setIfExistsCondition(dropTopicStatement.hasIfExistsCondition())
-                  .setTopicName(dropTopicStatement.getTopicName()));
+                  .setTopicName(dropTopicStatement.getTopicName())
+                  .setIsTableModel(dropTopicStatement.isTableModel()));
       if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != tsStatus.getCode()) {
         future.setException(new IoTDBException(tsStatus.message, tsStatus.code));
       } else {
@@ -2475,6 +2480,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
       if (showTopicsStatement.getTopicName() != null) {
         showTopicReq.setTopicName(showTopicsStatement.getTopicName());
       }
+      showTopicReq.setIsTableModel(showTopicsStatement.isTableModel());
 
       final TShowTopicResp showTopicResp = configNodeClient.showTopic(showTopicReq);
       if (showTopicResp.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
@@ -3485,11 +3491,12 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
       final Use useDB, final IClientSession clientSession) {
     final SettableFuture<ConfigTaskResult> future = SettableFuture.create();
 
-    if (InformationSchemaUtils.mayUseDB(useDB.getDatabaseId().getValue(), clientSession, future)) {
+    final String database = useDB.getDatabaseId().getValue();
+    if (InformationSchemaUtils.mayUseDB(database, clientSession, future)) {
       return future;
     }
     // Construct request using statement
-    final List<String> databasePathPattern = Arrays.asList(ROOT, useDB.getDatabaseId().getValue());
+    final List<String> databasePathPattern = Arrays.asList(ROOT, database);
     try (final ConfigNodeClient client =
         CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
       // Send request to some API server
@@ -3497,13 +3504,13 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
           new TGetDatabaseReq(databasePathPattern, ALL_MATCH_SCOPE.serialize())
               .setIsTableModel(true);
       final TShowDatabaseResp resp = client.showDatabase(req);
-      if (!resp.getDatabaseInfoMap().isEmpty()) {
-        clientSession.setDatabaseName(useDB.getDatabaseId().getValue());
+      if (resp.getDatabaseInfoMap().containsKey(database)) {
+        clientSession.setDatabaseName(database);
         future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
       } else {
         future.setException(
             new IoTDBException(
-                String.format("Unknown database %s", useDB.getDatabaseId().getValue()),
+                String.format("Unknown database %s", database),
                 TSStatusCode.DATABASE_NOT_EXIST.getStatusCode()));
       }
     } catch (final IOException | ClientManagerException | TException e) {
@@ -3652,10 +3659,14 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
 
   @Override
   public SettableFuture<ConfigTaskResult> describeTable(
-      final String database, final String tableName, final boolean isDetails) {
+      final String database,
+      final String tableName,
+      final boolean isDetails,
+      final Boolean isShowCreateView) {
     final SettableFuture<ConfigTaskResult> future = SettableFuture.create();
 
-    if (InformationSchemaUtils.mayDescribeTable(database, tableName, isDetails, future)) {
+    if (InformationSchemaUtils.mayDescribeTable(
+        database, tableName, isDetails, isShowCreateView, future)) {
       return future;
     }
     try (final ConfigNodeClient configNodeClient =
@@ -3668,7 +3679,11 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
         return future;
       }
       final TsTable table = TsTableInternalRPCUtil.deserializeSingleTsTable(resp.getTableInfo());
-      if (isDetails) {
+      if (Boolean.TRUE.equals(isShowCreateView)) {
+        ShowCreateViewTask.buildTsBlock(table, future);
+      } else if (Boolean.FALSE.equals(isShowCreateView)) {
+        ShowCreateTableTask.buildTsBlock(table, future);
+      } else if (isDetails) {
         DescribeTableDetailsTask.buildTsBlock(table, resp.getPreDeletedColumns(), future);
       } else {
         DescribeTableTask.buildTsBlock(table, future);
@@ -3729,7 +3744,8 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
       final String sourceName,
       final String targetName,
       final String queryId,
-      final boolean tableIfExists) {
+      final boolean tableIfExists,
+      final boolean isView) {
     final SettableFuture<ConfigTaskResult> future = SettableFuture.create();
     try (final ConfigNodeClient client =
         CLUSTER_DELETION_CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
@@ -3748,6 +3764,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
               queryId,
               AlterOrDropTableOperationType.RENAME_TABLE,
               stream.toByteArray(),
+              isView,
               client);
 
       if (TSStatusCode.SUCCESS_STATUS.getStatusCode() == tsStatus.getCode()
@@ -3771,7 +3788,8 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
       final List<TsTableColumnSchema> columnSchemaList,
       final String queryId,
       final boolean tableIfExists,
-      final boolean columnIfExists) {
+      final boolean columnIfExists,
+      final boolean isView) {
     final SettableFuture<ConfigTaskResult> future = SettableFuture.create();
     try (final ConfigNodeClient client =
         CLUSTER_DELETION_CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
@@ -3783,6 +3801,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
               queryId,
               AlterOrDropTableOperationType.ADD_COLUMN,
               TsTableColumnSchemaUtil.serialize(columnSchemaList),
+              isView,
               client);
 
       if (TSStatusCode.SUCCESS_STATUS.getStatusCode() == tsStatus.getCode()
@@ -3808,7 +3827,8 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
       final String newName,
       final String queryId,
       final boolean tableIfExists,
-      final boolean columnIfExists) {
+      final boolean columnIfExists,
+      final boolean isView) {
     final SettableFuture<ConfigTaskResult> future = SettableFuture.create();
     try (final ConfigNodeClient client =
         CLUSTER_DELETION_CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
@@ -3828,6 +3848,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
               queryId,
               AlterOrDropTableOperationType.RENAME_COLUMN,
               stream.toByteArray(),
+              isView,
               client);
 
       if (TSStatusCode.SUCCESS_STATUS.getStatusCode() == tsStatus.getCode()
@@ -3852,7 +3873,8 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
       final String columnName,
       final String queryId,
       final boolean tableIfExists,
-      final boolean columnIfExists) {
+      final boolean columnIfExists,
+      final boolean isView) {
     final SettableFuture<ConfigTaskResult> future = SettableFuture.create();
     try (final ConfigNodeClient client =
         CLUSTER_DELETION_CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
@@ -3871,6 +3893,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
               queryId,
               AlterOrDropTableOperationType.DROP_COLUMN,
               stream.toByteArray(),
+              isView,
               client);
 
       if (TSStatusCode.SUCCESS_STATUS.getStatusCode() == tsStatus.getCode()
@@ -3894,7 +3917,8 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
       final String tableName,
       final Map<String, String> properties,
       final String queryId,
-      final boolean ifExists) {
+      final boolean ifExists,
+      final boolean isView) {
     final SettableFuture<ConfigTaskResult> future = SettableFuture.create();
     try (final ConfigNodeClient client =
         CLUSTER_DELETION_CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
@@ -3913,6 +3937,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
               queryId,
               AlterOrDropTableOperationType.SET_PROPERTIES,
               stream.toByteArray(),
+              isView,
               client);
 
       if (TSStatusCode.SUCCESS_STATUS.getStatusCode() == tsStatus.getCode()
@@ -3934,7 +3959,8 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
       final String tableName,
       final String queryId,
       final boolean ifExists,
-      final String comment) {
+      final String comment,
+      final boolean isView) {
     final SettableFuture<ConfigTaskResult> future = SettableFuture.create();
     try (final ConfigNodeClient client =
         CLUSTER_DELETION_CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
@@ -3953,6 +3979,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
               queryId,
               AlterOrDropTableOperationType.COMMENT_TABLE,
               stream.toByteArray(),
+              isView,
               client);
 
       if (TSStatusCode.SUCCESS_STATUS.getStatusCode() == tsStatus.getCode()
@@ -3976,7 +4003,8 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
       final String queryId,
       final boolean tableIfExists,
       final boolean columnIfExists,
-      final String comment) {
+      final String comment,
+      final boolean isView) {
     final SettableFuture<ConfigTaskResult> future = SettableFuture.create();
     try (final ConfigNodeClient client =
         CLUSTER_DELETION_CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
@@ -3996,6 +4024,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
               queryId,
               AlterOrDropTableOperationType.COMMENT_COLUMN,
               stream.toByteArray(),
+              isView,
               client);
 
       if (TSStatusCode.SUCCESS_STATUS.getStatusCode() == tsStatus.getCode()
@@ -4015,7 +4044,11 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
 
   @Override
   public SettableFuture<ConfigTaskResult> dropTable(
-      final String database, final String tableName, final String queryId, final boolean ifExists) {
+      final String database,
+      final String tableName,
+      final String queryId,
+      final boolean ifExists,
+      final boolean isView) {
     final SettableFuture<ConfigTaskResult> future = SettableFuture.create();
     try (final ConfigNodeClient client =
         CLUSTER_DELETION_CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
@@ -4027,6 +4060,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
               queryId,
               AlterOrDropTableOperationType.DROP_TABLE,
               new byte[0],
+              isView,
               client);
 
       if (TSStatusCode.SUCCESS_STATUS.getStatusCode() == tsStatus.getCode()
@@ -4112,12 +4146,54 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
     return future;
   }
 
+  @Override
+  public SettableFuture<ConfigTaskResult> createTableView(
+      final TsTable table, final String database, final boolean replace) {
+    final SettableFuture<ConfigTaskResult> future = SettableFuture.create();
+    try (final ConfigNodeClient configNodeClient =
+        CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
+
+      TSStatus tsStatus;
+      do {
+        try {
+          tsStatus =
+              configNodeClient.createTableView(
+                  new TCreateTableViewReq(
+                      ByteBuffer.wrap(
+                          TsTableInternalRPCUtil.serializeSingleTsTableWithDatabase(
+                              database, table)),
+                      replace));
+        } catch (final TTransportException e) {
+          if (e.getType() == TTransportException.TIMED_OUT
+              || e.getCause() instanceof SocketTimeoutException) {
+            // Time out mainly caused by slow execution, just wait
+            tsStatus = RpcUtils.getStatus(TSStatusCode.OVERLAP_WITH_EXISTING_TASK);
+          } else {
+            throw e;
+          }
+        }
+        // Keep waiting until task ends
+      } while (TSStatusCode.OVERLAP_WITH_EXISTING_TASK.getStatusCode() == tsStatus.getCode());
+
+      if (TSStatusCode.SUCCESS_STATUS.getStatusCode() == tsStatus.getCode()) {
+        future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
+      } else {
+        future.setException(
+            new IoTDBException(getTableErrorMessage(tsStatus, database), tsStatus.getCode()));
+      }
+    } catch (final ClientManagerException | TException e) {
+      future.setException(e);
+    }
+    return future;
+  }
+
   private TSStatus sendAlterReq2ConfigNode(
       final String database,
       final String tableName,
       final String queryId,
       final AlterOrDropTableOperationType type,
       final byte[] updateInfo,
+      final boolean isView,
       final ConfigNodeClient client)
       throws TException {
     TSStatus tsStatus;
@@ -4127,6 +4203,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
     req.setQueryId(queryId);
     req.setOperationType(type.getTypeValue());
     req.setUpdateInfo(updateInfo);
+    req.setIsView(isView);
 
     do {
       try {

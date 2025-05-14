@@ -50,6 +50,7 @@ import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.commons.consensus.index.ProgressIndexType;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.commons.path.ExtendedPartialPath;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathDeserializeUtil;
@@ -58,9 +59,11 @@ import org.apache.iotdb.commons.pipe.agent.plugin.meta.PipePluginMeta;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeMeta;
 import org.apache.iotdb.commons.schema.SchemaConstant;
 import org.apache.iotdb.commons.schema.cache.CacheClearOptions;
+import org.apache.iotdb.commons.schema.filter.SchemaFilterFactory;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.TsTableInternalRPCType;
 import org.apache.iotdb.commons.schema.table.TsTableInternalRPCUtil;
+import org.apache.iotdb.commons.schema.view.ViewType;
 import org.apache.iotdb.commons.schema.view.viewExpression.ViewExpression;
 import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.commons.service.metric.enums.Tag;
@@ -214,6 +217,8 @@ import org.apache.iotdb.mpp.rpc.thrift.TDeleteDataForDeleteSchemaReq;
 import org.apache.iotdb.mpp.rpc.thrift.TDeleteDataOrDevicesForDropTableReq;
 import org.apache.iotdb.mpp.rpc.thrift.TDeleteTimeSeriesReq;
 import org.apache.iotdb.mpp.rpc.thrift.TDeleteViewSchemaReq;
+import org.apache.iotdb.mpp.rpc.thrift.TDeviceViewReq;
+import org.apache.iotdb.mpp.rpc.thrift.TDeviceViewResp;
 import org.apache.iotdb.mpp.rpc.thrift.TDropFunctionInstanceReq;
 import org.apache.iotdb.mpp.rpc.thrift.TDropPipePluginInstanceReq;
 import org.apache.iotdb.mpp.rpc.thrift.TDropTriggerInstanceReq;
@@ -290,6 +295,7 @@ import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.utils.RamUsageEstimator;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 import org.apache.tsfile.write.record.Tablet;
+import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -309,6 +315,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -1706,6 +1713,62 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
                     new DeleteTableDevicesInBlackListNode(
                         new PlanNodeId(""), req.getTableName(), req.getPatternOrModInfo()))
                 .getStatus());
+  }
+
+  @Override
+  public TDeviceViewResp detectTreeDeviceViewFieldType(final TDeviceViewReq req) {
+    final TDeviceViewResp resp = new TDeviceViewResp();
+    resp.setDeviewViewFieldTypeMap(new ConcurrentHashMap<>());
+    final TSStatus status =
+        executeInternalSchemaTask(
+            req.getRegionIds(),
+            consensusGroupId -> {
+              final ISchemaRegion schemaRegion =
+                  schemaEngine.getSchemaRegion(new SchemaRegionId(consensusGroupId.getId()));
+              // Get pattern nodes, length is (prefix - 1) + tagNumber + 1(measurement)
+              final String[] nodes = new String[req.getTagNumber() + req.getPrefixPattern().size()];
+              Arrays.fill(nodes, "*");
+              for (int i = 0; i < req.getPrefixPattern().size() - 1; ++i) {
+                nodes[i] = req.getPrefixPattern().get(i);
+              }
+              final ISchemaSource<ITimeSeriesSchemaInfo> schemaSource =
+                  SchemaSourceFactory.getTimeSeriesSchemaCountSource(
+                      new ExtendedPartialPath(nodes, req.isRestrict()),
+                      false,
+                      // Does not support logical view currently
+                      SchemaFilterFactory.createViewTypeFilter(ViewType.BASE),
+                      null,
+                      SchemaConstant.ALL_MATCH_SCOPE);
+              try (final ISchemaReader<ITimeSeriesSchemaInfo> schemaReader =
+                  schemaSource.getSchemaReader(schemaRegion)) {
+                final Map<String, Byte> updateMap = resp.getDeviewViewFieldTypeMap();
+                while (schemaReader.hasNext()) {
+                  final IMeasurementSchema schema = schemaReader.next().getSchema();
+                  final String measurementName = schema.getMeasurementName();
+
+                  // For trimming
+                  if (req.isSetRequiredMeasurements()
+                      && !req.getRequiredMeasurements().contains(measurementName)) {
+                    continue;
+                  }
+                  if (!updateMap.containsKey(measurementName)) {
+                    updateMap.put(measurementName, schema.getTypeInByte());
+                  } else if (schema.getTypeInByte() != updateMap.get(measurementName)) {
+                    return RpcUtils.getStatus(
+                        TSStatusCode.DATA_TYPE_MISMATCH,
+                        String.format(
+                            "Multiple types encountered when auto detecting type of measurement '%s', please check",
+                            measurementName));
+                  }
+                }
+              } catch (final Exception e) {
+                LOGGER.warn(e.getMessage(), e);
+                return RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR, e.getMessage());
+              }
+              return RpcUtils.SUCCESS_STATUS;
+            });
+
+    return resp.setStatus(status);
   }
 
   @Override

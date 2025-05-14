@@ -29,7 +29,6 @@ import org.apache.iotdb.consensus.exception.ConsensusException;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.consensus.DataRegionConsensusImpl;
 import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
-import org.apache.iotdb.db.pipe.agent.task.execution.PipeSubtaskExecutorManager;
 import org.apache.iotdb.db.pipe.consensus.deletion.DeletionResourceManager;
 import org.apache.iotdb.db.protocol.client.ConfigNodeClient;
 import org.apache.iotdb.db.protocol.client.ConfigNodeClientManager;
@@ -90,9 +89,6 @@ public class DataNodeShutdownHook extends Thread {
         .equals(ConsensusFactory.RATIS_CONSENSUS)) {
       triggerSnapshotForAllDataRegion();
     }
-
-    // Shutdown all pipe connector executors
-    PipeSubtaskExecutorManager.getInstance().shutdownAll();
 
     // Shutdown all consensus pipe's receiver
     PipeDataNodeAgent.receiver().pipeConsensus().closeReceiverExecutor();

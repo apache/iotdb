@@ -1068,6 +1068,16 @@ public class PipeConsensusReceiver {
       tsFileWriterCheckerFuture.cancel(false);
       tsFileWriterCheckerFuture = null;
     }
+    // shutdown executor
+    scheduledTsFileWriterCheckerPool.shutdownNow();
+    try {
+      if (!scheduledTsFileWriterCheckerPool.awaitTermination(30, TimeUnit.SECONDS)) {
+        LOGGER.warn("TsFileChecker did not terminate within {}s", 30);
+      }
+    } catch (InterruptedException e) {
+      LOGGER.warn("TsFileChecker Thread {} still doesn't exit after 30s", consensusPipeName);
+      Thread.currentThread().interrupt();
+    }
     // Clear the tsFileWriters, receiverBuffer and receiver base dirs
     requestExecutor.clear(false, true);
     LOGGER.info("Receiver-{} exit successfully.", consensusPipeName.toString());
@@ -1143,7 +1153,7 @@ public class PipeConsensusReceiver {
         }
       }
 
-      return tsFileWriter.get();
+      return tsFileWriter.get().refreshLastUsedTs();
     }
 
     private void checkZombieTsFileWriter() {
@@ -1313,9 +1323,13 @@ public class PipeConsensusReceiver {
 
     public void setUsed(boolean used) {
       isUsed = used;
+    }
+
+    public PipeConsensusTsFileWriter refreshLastUsedTs() {
       if (isUsed) {
         lastUsedTs = System.currentTimeMillis();
       }
+      return this;
     }
 
     public void returnSelf(ConsensusPipeName consensusPipeName)

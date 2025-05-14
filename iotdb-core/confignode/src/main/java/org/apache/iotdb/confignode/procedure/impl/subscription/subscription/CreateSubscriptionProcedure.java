@@ -107,16 +107,6 @@ public class CreateSubscriptionProcedure extends AbstractOperateSubscriptionAndP
     for (final String topicName : subscribeReq.getTopicNames()) {
       final String pipeName =
           PipeStaticMeta.generateSubscriptionPipeName(topicName, consumerGroupId);
-      // check username
-      if (!consumerGroupMeta.allowSubscribeTopicForConsumer(topicName, consumerId)) {
-        final String exceptionMessage =
-            String.format(
-                "Failed to subscribe topic %s for consumer %s because inconsistent username under the same consumer group",
-                topicName, consumerId);
-        LOGGER.warn(exceptionMessage);
-        throw new SubscriptionException(exceptionMessage);
-      }
-
       if (!subscriptionInfo.get().isTopicSubscribedByConsumerGroup(topicName, consumerGroupId)
           // even if there existed subscription meta, if there is no corresponding pipe meta, it
           // will try to create the pipe

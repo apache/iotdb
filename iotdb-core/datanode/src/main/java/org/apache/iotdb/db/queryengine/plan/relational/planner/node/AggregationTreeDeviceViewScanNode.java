@@ -188,7 +188,7 @@ public class AggregationTreeDeviceViewScanNode extends AggregationTableScanNode 
 
   public static AggregationTreeDeviceViewScanNode deserialize(ByteBuffer byteBuffer) {
     AggregationTreeDeviceViewScanNode node = new AggregationTreeDeviceViewScanNode();
-    AggregationTableScanNode.deserializeMemberVariables(byteBuffer, node, false);
+    AggregationTableScanNode.deserializeMemberVariables(byteBuffer, node);
 
     node.treeDBName = ReadWriteIOUtils.readString(byteBuffer);
     int size = ReadWriteIOUtils.readInt(byteBuffer);
