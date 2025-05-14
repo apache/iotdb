@@ -252,7 +252,7 @@ public class PipeConsensusReceiverAgent implements ConsensusPipeReceiver {
               (consensusPipeName, receiverReference) -> {
                 if (receiverReference != null) {
                   receiverReference.get().closeExecutor();
-                  LOGGER.info("Receivers-{}' executor are closed.", consensusPipeName);
+                  LOGGER.info("Receivers-{}' executor is closed.", consensusPipeName);
                 }
               });
         });
