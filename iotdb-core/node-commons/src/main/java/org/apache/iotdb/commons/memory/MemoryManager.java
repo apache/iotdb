@@ -544,8 +544,9 @@ public class MemoryManager {
       if (block.getMemoryBlockType() == MemoryBlockType.STATIC) {
         cachedStaticAllocatedMemorySizeInBytes += block.getTotalMemorySizeInBytes();
         cachedStaticUsedMemorySizeInBytes += usedMemoryInBytes;
+      } else if (block.getMemoryBlockType() == MemoryBlockType.DYNAMIC) {
+        cachedUsedMemorySizeInBytes += usedMemoryInBytes;
       }
-      cachedUsedMemorySizeInBytes += usedMemoryInBytes;
     }
     for (MemoryManager memoryManager : children.values()) {
       memoryManager.updateCache();
@@ -599,17 +600,16 @@ public class MemoryManager {
         // try to find min used ratio memory block
         if (isAvailableToShrink()) {
           for (IMemoryBlock memoryBlock : allocatedMemoryBlocks.values()) {
-            if (memoryBlock.getMemoryBlockType() == MemoryBlockType.STATIC) {
-              continue;
-            }
-            if (targetMemoryBlock == null) {
-              targetMemoryBlock = memoryBlock;
-              minRatio = memoryBlock.getScore();
-            } else {
-              double ratio = memoryBlock.getScore();
-              if (ratio < minRatio) {
+            if (memoryBlock.getMemoryBlockType() == MemoryBlockType.DYNAMIC) {
+              if (targetMemoryBlock == null) {
                 targetMemoryBlock = memoryBlock;
-                minRatio = ratio;
+                minRatio = memoryBlock.getScore();
+              } else {
+                double ratio = memoryBlock.getScore();
+                if (ratio < minRatio) {
+                  targetMemoryBlock = memoryBlock;
+                  minRatio = ratio;
+                }
               }
             }
           }
@@ -677,11 +677,10 @@ public class MemoryManager {
             / (beforeTotalMemorySizeInBytes - cachedStaticAllocatedMemorySizeInBytes);
     // Re-allocate memory for dynamic memory blocks
     for (IMemoryBlock block : allocatedMemoryBlocks.values()) {
-      if (block.getMemoryBlockType() == MemoryBlockType.STATIC) {
-        continue;
+      if (block.getMemoryBlockType() == MemoryBlockType.DYNAMIC) {
+        long resizeSize = block.resizeByRatio(actualRatio);
+        this.allocatedMemorySizeInBytes += resizeSize;
       }
-      long resizeSize = block.resizeByRatio(actualRatio);
-      this.allocatedMemorySizeInBytes += resizeSize;
     }
     // Re-allocate memory for all child memory managers
     for (Map.Entry<String, MemoryManager> entry : children.entrySet()) {
