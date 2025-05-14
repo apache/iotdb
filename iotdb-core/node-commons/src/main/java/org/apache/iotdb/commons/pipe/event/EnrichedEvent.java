@@ -403,6 +403,10 @@ public abstract class EnrichedEvent implements Event {
 
   public abstract boolean isGeneratedByPipe();
 
+  public boolean isShouldReportOnCommit() {
+    return shouldReportOnCommit;
+  }
+
   /** Whether the {@link EnrichedEvent} need to be committed in order. */
   public boolean needToCommit() {
     return true;

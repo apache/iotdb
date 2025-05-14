@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.pipe.metric.PipeRemainingOperator;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeInsertNodeTabletInsertionEvent;
+import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
 import org.apache.iotdb.db.pipe.extractor.schemaregion.IoTDBSchemaRegionExtractor;
 import org.apache.iotdb.pipe.api.event.Event;
@@ -236,6 +237,9 @@ class PipeDataNodeRemainingEventAndTimeOperator extends PipeRemainingOperator {
       return;
     }
 
+    if (event instanceof PipeRawTabletInsertionEvent && !event.isShouldReportOnCommit()) {
+      return;
+    }
     final EnrichedEvent rootEvent = event.getRootEvent();
     if (rootEvent instanceof PipeInsertNodeTabletInsertionEvent) {
       tabletEventCount.decrementAndGet();
