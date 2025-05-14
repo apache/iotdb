@@ -160,9 +160,7 @@ public class PipeTabletEventSorter {
         final boolean[] deDuplicatedBoolValues = new boolean[boolValues.length];
         for (int i = 0; i < deDuplicatedSize; i++) {
           deDuplicatedBoolValues[i] =
-              boolValues[
-                  getLastNonnullIndex(
-                      i, index, deDuplicatedIndex, originalBitMap, deDuplicatedBitMap)];
+              boolValues[getLastNonnullIndex(i, originalBitMap, deDuplicatedBitMap)];
         }
         return deDuplicatedBoolValues;
       case INT32:
@@ -170,9 +168,7 @@ public class PipeTabletEventSorter {
         final int[] deDuplicatedIntValues = new int[intValues.length];
         for (int i = 0; i < deDuplicatedSize; i++) {
           deDuplicatedIntValues[i] =
-              intValues[
-                  getLastNonnullIndex(
-                      i, index, deDuplicatedIndex, originalBitMap, deDuplicatedBitMap)];
+              intValues[getLastNonnullIndex(i, originalBitMap, deDuplicatedBitMap)];
         }
         return deDuplicatedIntValues;
       case DATE:
@@ -180,9 +176,7 @@ public class PipeTabletEventSorter {
         final LocalDate[] deDuplicatedDateValues = new LocalDate[dateValues.length];
         for (int i = 0; i < deDuplicatedSize; i++) {
           deDuplicatedDateValues[i] =
-              dateValues[
-                  getLastNonnullIndex(
-                      i, index, deDuplicatedIndex, originalBitMap, deDuplicatedBitMap)];
+              dateValues[getLastNonnullIndex(i, originalBitMap, deDuplicatedBitMap)];
         }
         return deDuplicatedDateValues;
       case INT64:
@@ -191,9 +185,7 @@ public class PipeTabletEventSorter {
         final long[] deDuplicatedLongValues = new long[longValues.length];
         for (int i = 0; i < deDuplicatedSize; i++) {
           deDuplicatedLongValues[i] =
-              longValues[
-                  getLastNonnullIndex(
-                      i, index, deDuplicatedIndex, originalBitMap, deDuplicatedBitMap)];
+              longValues[getLastNonnullIndex(i, originalBitMap, deDuplicatedBitMap)];
         }
         return deDuplicatedLongValues;
       case FLOAT:
@@ -201,9 +193,7 @@ public class PipeTabletEventSorter {
         final float[] deDuplicatedFloatValues = new float[floatValues.length];
         for (int i = 0; i < deDuplicatedSize; i++) {
           deDuplicatedFloatValues[i] =
-              floatValues[
-                  getLastNonnullIndex(
-                      i, index, deDuplicatedIndex, originalBitMap, deDuplicatedBitMap)];
+              floatValues[getLastNonnullIndex(i, originalBitMap, deDuplicatedBitMap)];
         }
         return deDuplicatedFloatValues;
       case DOUBLE:
@@ -211,9 +201,7 @@ public class PipeTabletEventSorter {
         final double[] deDuplicatedDoubleValues = new double[doubleValues.length];
         for (int i = 0; i < deDuplicatedSize; i++) {
           deDuplicatedDoubleValues[i] =
-              doubleValues[
-                  getLastNonnullIndex(
-                      i, index, deDuplicatedIndex, originalBitMap, deDuplicatedBitMap)];
+              doubleValues[getLastNonnullIndex(i, originalBitMap, deDuplicatedBitMap)];
         }
         return deDuplicatedDoubleValues;
       case TEXT:
