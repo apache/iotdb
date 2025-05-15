@@ -74,7 +74,11 @@ public abstract class EnrichedEvent implements Event {
   protected boolean isPatternParsed;
   protected boolean isTimeParsed;
 
-  protected volatile boolean shouldReportOnCommit = true;
+  // TRUE -> This event may report itself directly.
+  // null -> This event may not report itself, but there are generated events to report its data.
+  //         Here we assume that the data is reported only once, and is always success.
+  // FALSE -> The data carried by this event will not be reported.
+  protected volatile Boolean shouldReportOnCommit = Boolean.TRUE;
   protected List<Supplier<Void>> onCommittedHooks = new ArrayList<>();
   protected String userName;
   protected boolean skipIfNoPrivileges;
@@ -110,7 +114,7 @@ public abstract class EnrichedEvent implements Event {
 
     addOnCommittedHook(
         () -> {
-          if (shouldReportOnCommit) {
+          if (Boolean.TRUE.equals(shouldReportOnCommit)) {
             reportProgress();
           }
           return null;
@@ -186,7 +190,7 @@ public abstract class EnrichedEvent implements Event {
    *     {@code false} otherwise
    */
   public synchronized boolean decreaseReferenceCount(
-      final String holderMessage, final boolean shouldReport) {
+      final String holderMessage, final Boolean shouldReport) {
     boolean isSuccessful = true;
 
     if (isReleased.get()) {
@@ -199,15 +203,13 @@ public abstract class EnrichedEvent implements Event {
     }
 
     if (referenceCount.get() == 1) {
+      shouldReportOnCommit = shouldReport;
       // We assume that this function will not throw any exceptions.
       if (!internallyDecreaseResourceReferenceCount(holderMessage)) {
         LOGGER.warn(
             "resource reference count is decreased to 0, but failed to release the resource, EnrichedEvent: {}, stack trace: {}",
             coreReportMessage(),
             Thread.currentThread().getStackTrace());
-      }
-      if (!shouldReport) {
-        shouldReportOnCommit = false;
       }
       PipeEventCommitManager.getInstance().commit(this, committerKey);
     }
@@ -252,7 +254,7 @@ public abstract class EnrichedEvent implements Event {
     }
 
     if (referenceCount.get() >= 1) {
-      shouldReportOnCommit = false;
+      shouldReportOnCommit = Boolean.FALSE;
       // We assume that this function will not throw any exceptions.
       if (!internallyDecreaseResourceReferenceCount(holderMessage)) {
         LOGGER.warn(
@@ -293,7 +295,7 @@ public abstract class EnrichedEvent implements Event {
    * EnrichedEvent} when committed. Report by generated events are still allowed.
    */
   public void skipReportOnCommit() {
-    shouldReportOnCommit = false;
+    shouldReportOnCommit = Boolean.FALSE;
   }
 
   public void bindProgressIndex(final ProgressIndex progressIndex) {
@@ -403,7 +405,7 @@ public abstract class EnrichedEvent implements Event {
 
   public abstract boolean isGeneratedByPipe();
 
-  public boolean isShouldReportOnCommit() {
+  public Boolean isShouldReportOnCommit() {
     return shouldReportOnCommit;
   }
 

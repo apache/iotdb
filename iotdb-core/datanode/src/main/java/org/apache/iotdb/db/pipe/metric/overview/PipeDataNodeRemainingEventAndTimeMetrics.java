@@ -200,13 +200,30 @@ public class PipeDataNodeRemainingEventAndTimeMetrics implements IMetricSet {
         .increaseTabletEventCount();
   }
 
-  public void increaseTsFileEventCount(
+  public void decreaseTabletEventCount(final String pipeName, final long creationTime) {
+    remainingEventAndTimeOperatorMap
+        .computeIfAbsent(
+            pipeName + "_" + creationTime,
+            k -> new PipeDataNodeRemainingEventAndTimeOperator(pipeName, creationTime))
+        .decreaseTabletEventCount();
+  }
+
+  public void increaseTsFileEventSize(
       final String pipeName, final long creationTime, final long size) {
     remainingEventAndTimeOperatorMap
         .computeIfAbsent(
             pipeName + "_" + creationTime,
             k -> new PipeDataNodeRemainingEventAndTimeOperator(pipeName, creationTime))
         .increaseTsFileEventSize(size);
+  }
+
+  public void decreaseTsFileEventCount(
+      final String pipeName, final long creationTime, final long size) {
+    remainingEventAndTimeOperatorMap
+        .computeIfAbsent(
+            pipeName + "_" + creationTime,
+            k -> new PipeDataNodeRemainingEventAndTimeOperator(pipeName, creationTime))
+        .decreaseTsFileEventSize(size);
   }
 
   public void thawRate(final String pipeID) {

@@ -71,9 +71,18 @@ class PipeDataNodeRemainingEventAndTimeOperator extends PipeRemainingOperator {
     tabletEventCount.incrementAndGet();
   }
 
+  void decreaseTabletEventCount() {
+    tabletEventCount.decrementAndGet();
+  }
+
   void increaseTsFileEventSize(final long size) {
     tsfileEventCount.incrementAndGet();
     tsFileEventSize.addAndGet(size);
+  }
+
+  void decreaseTsFileEventSize(final long size) {
+    tsfileEventCount.decrementAndGet();
+    tsFileEventSize.addAndGet(-size);
   }
 
   long getRemainingEvents() {
@@ -237,7 +246,8 @@ class PipeDataNodeRemainingEventAndTimeOperator extends PipeRemainingOperator {
       return;
     }
 
-    if (event instanceof PipeRawTabletInsertionEvent && !event.isShouldReportOnCommit()) {
+    if (event instanceof PipeRawTabletInsertionEvent
+        && !Boolean.TRUE.equals(event.isShouldReportOnCommit())) {
       return;
     }
     final EnrichedEvent rootEvent = event.getRootEvent();

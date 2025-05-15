@@ -305,7 +305,7 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
     } finally {
       if (Objects.nonNull(pipeName)) {
         PipeDataNodeRemainingEventAndTimeMetrics.getInstance()
-            .increaseTsFileEventCount(pipeName, creationTime, fileSize);
+            .increaseTsFileEventSize(pipeName, creationTime, fileSize);
       }
     }
   }
@@ -326,6 +326,11 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
               tsFile.getPath(), holderMessage),
           e);
       return false;
+    } finally {
+      if (Objects.nonNull(pipeName) && Boolean.FALSE.equals(shouldReportOnCommit)) {
+        PipeDataNodeRemainingEventAndTimeMetrics.getInstance()
+            .decreaseTsFileEventCount(pipeName, creationTime, fileSize);
+      }
     }
   }
 

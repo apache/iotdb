@@ -166,24 +166,28 @@ public class PipeProcessorSubtask extends PipeReportableSubtask {
         }
       }
 
-      final boolean shouldReport =
-          !isClosed.get()
-              // If an event does not generate any events except itself at this stage, it is divided
-              // into two categories:
-              // 1. If the event is collected and passed to the connector, the reference count of
-              // the event may eventually be zero in the processor (the connector reduces the
-              // reference count first, and then the processor reduces the reference count), at this
-              // time, the progress of the event needs to be reported.
-              // 2. If the event is not collected (not passed to the connector), the reference count
-              // of the event must be zero in the processor stage, at this time, the progress of the
-              // event needs to be reported.
-              && outputEventCollector.hasNoGeneratedEvent()
-              // If the event's reference count cannot be increased, it means that the event has
-              // been released, and the progress of the event can not be reported.
-              && !outputEventCollector.isFailedToIncreaseReferenceCount()
-              // Events generated from consensusPipe's transferred data should never be reported.
-              && !(pipeProcessor instanceof PipeConsensusProcessor);
-      if (shouldReport
+      // If an event does not generate any events except itself at this stage, it is
+      // divided into 4 categories:
+      // 1. If the event is collected and passed to the connector, the reference count of the event
+      // may eventually be zero in the processor (the connector reduces the reference count first,
+      // and then the processor reduces the reference count), at this time, the progress of the
+      // event needs to be reported.
+      // 2. If the event is not collected (not passed to the connector), the reference count of the
+      // event must be zero in the processor stage, at this time, the progress of the event needs to
+      // be reported.
+      // 3. If the event's reference count cannot be increased, it means that the event has been
+      // released, and the progress of the event can not be reported.
+      // 4. Events generated from consensusPipe's transferred data should never be reported.
+      // Specially, if there are generated events, the "shouldReport" shall be null to mark the
+      // progress index as eventually reported, to ease the judgement of the remaining count
+      // calculation.
+      final Boolean shouldReport =
+          !outputEventCollector.hasNoGeneratedEvent()
+              ? null
+              : !isClosed.get()
+                  && !outputEventCollector.isFailedToIncreaseReferenceCount()
+                  && !(pipeProcessor instanceof PipeConsensusProcessor);
+      if (Boolean.TRUE.equals(shouldReport)
           && event instanceof EnrichedEvent
           && outputEventCollector.hasNoCollectInvocationAfterReset()) {
         // An event should be reported here when it is not passed to the connector stage, and it

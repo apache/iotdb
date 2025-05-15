@@ -139,7 +139,7 @@ public class PipeRealtimeEvent extends EnrichedEvent {
   }
 
   @Override
-  public boolean decreaseReferenceCount(final String holderMessage, final boolean shouldReport) {
+  public boolean decreaseReferenceCount(final String holderMessage, final Boolean shouldReport) {
     // This method must be overridden, otherwise during the real-time data extraction stage, the
     // current PipeRealtimeEvent rather than the member variable EnrichedEvent will decrease
     // the reference count, resulting in errors in the reference count of the EnrichedEvent

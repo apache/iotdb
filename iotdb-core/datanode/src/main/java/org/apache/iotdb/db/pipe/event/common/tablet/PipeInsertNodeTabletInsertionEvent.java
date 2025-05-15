@@ -237,6 +237,10 @@ public class PipeInsertNodeTabletInsertionEvent extends PipeInsertionEvent
     } finally {
       if (Objects.nonNull(pipeName)) {
         PipeDataNodeAgent.task().decreaseFloatingMemoryUsageInByte(pipeName, ramBytesUsed());
+        if (Boolean.FALSE.equals(shouldReportOnCommit)) {
+          PipeDataNodeRemainingEventAndTimeMetrics.getInstance()
+              .decreaseTabletEventCount(pipeName, creationTime);
+        }
       }
     }
   }
