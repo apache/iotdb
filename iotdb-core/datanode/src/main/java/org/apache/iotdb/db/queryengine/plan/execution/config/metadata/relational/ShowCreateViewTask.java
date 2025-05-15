@@ -86,9 +86,7 @@ public class ShowCreateViewTask extends AbstractTableTask {
 
   public static String getShowCreateViewSQL(final TsTable table) {
     final StringBuilder builder =
-        new StringBuilder("CREATE TABLE VIEW ")
-            .append(getIdentifier(table.getTableName()))
-            .append(" (");
+        new StringBuilder("CREATE VIEW ").append(getIdentifier(table.getTableName())).append(" (");
 
     for (final TsTableColumnSchema schema : table.getColumnList()) {
       switch (schema.getColumnCategory()) {
@@ -128,19 +126,23 @@ public class ShowCreateViewTask extends AbstractTableTask {
       builder.deleteCharAt(builder.length() - 1);
     }
 
-    builder.append(") AS ").append(table.getPropValue(TreeViewSchema.TREE_PATH_PATTERN).get());
+    builder.append(")");
 
     if (table.getPropValue(TsTable.COMMENT_KEY).isPresent()) {
       builder.append(" COMMENT ").append(getString(table.getPropValue(TsTable.COMMENT_KEY).get()));
     }
+
+    if (TreeViewSchema.isRestrict(table)) {
+      builder.append(" RESTRICT");
+    }
+
     builder
         .append(" WITH (ttl=")
         .append(table.getPropValue(TsTable.TTL_PROPERTY).orElse("'" + TTL_INFINITE + "'"))
         .append(")");
 
-    if (TreeViewSchema.isRestrict(table)) {
-      builder.append(" RESTRICT");
-    }
+    builder.append(" AS ").append(table.getPropValue(TreeViewSchema.TREE_PATH_PATTERN).get());
+
     return builder.toString();
   }
 }

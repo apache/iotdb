@@ -60,9 +60,9 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateIndex;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreatePipe;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreatePipePlugin;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateTable;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateTableView;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateTopic;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateTraining;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateView;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CurrentDatabase;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CurrentTime;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CurrentUser;
@@ -525,13 +525,12 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
   }
 
   @Override
-  public Node visitCreateTableViewStatement(
-      final RelationalSqlParser.CreateTableViewStatementContext ctx) {
+  public Node visitCreateViewStatement(final RelationalSqlParser.CreateViewStatementContext ctx) {
     List<Property> properties = ImmutableList.of();
     if (ctx.properties() != null) {
       properties = visit(ctx.properties().propertyAssignments().property(), Property.class);
     }
-    return new CreateTableView(
+    return new CreateView(
         getLocation(ctx),
         getQualifiedName(ctx.qualifiedName()),
         visit(ctx.viewColumnDefinition(), ColumnDefinition.class),

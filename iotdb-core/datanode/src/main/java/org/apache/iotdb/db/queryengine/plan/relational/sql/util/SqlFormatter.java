@@ -31,8 +31,8 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateFunction;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreatePipe;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreatePipePlugin;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateTable;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateTableView;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateTopic;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateView;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Delete;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropColumn;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropDB;
@@ -672,12 +672,12 @@ public final class SqlFormatter {
     }
 
     @Override
-    protected Void visitCreateTableView(final CreateTableView node, final Integer indent) {
+    protected Void visitCreateView(final CreateView node, final Integer indent) {
       builder.append("CREATE ");
       if (node.isReplace()) {
         builder.append("OR REPLACE ");
       }
-      builder.append("TABLE VIEW ");
+      builder.append("VIEW ");
       final String tableName = formatName(node.getName());
       builder.append(tableName).append(" (\n");
 
@@ -700,11 +700,13 @@ public final class SqlFormatter {
         builder.append(" COMMENT '").append(node.getComment()).append("'");
       }
 
-      builder.append(formatPropertiesMultiLine(node.getProperties()));
-
       if (node.isRestrict()) {
         builder.append(" RESTRICT");
       }
+
+      builder.append(formatPropertiesMultiLine(node.getProperties()));
+
+      builder.append(" AS ").append(node.getPrefixPath().toString());
 
       return null;
     }

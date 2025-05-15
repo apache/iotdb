@@ -47,7 +47,7 @@ public class IoTDBAlignByDeviceTableViewIT {
       new String[] {
         "CREATE DATABASE " + DATABASE_NAME,
         "USE " + DATABASE_NAME,
-        "create table view vehicle(device_id STRING TAG, s0 INT32 FIELD, s1 INT64 FIELD, s2 FLOAT FIELD, s3 STRING FIELD, s4 BOOLEAN FIELD) as root.vehicle.**"
+        "create view vehicle(device_id STRING TAG, s0 INT32 FIELD, s1 INT64 FIELD, s2 FLOAT FIELD, s3 STRING FIELD, s4 BOOLEAN FIELD) as root.vehicle.**"
       };
 
   private static final String[] sqls =

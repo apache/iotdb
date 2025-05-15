@@ -17,13 +17,13 @@
  * under the License.
  */
 
-package org.apache.iotdb.confignode.procedure.impl.schema.table.view;
+package org.apache.iotdb.confignode.procedure.impl.schema.table;
 
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.schema.table.TsTable;
-import org.apache.iotdb.commons.schema.table.column.AttributeColumnSchema;
 import org.apache.iotdb.commons.schema.table.column.FieldColumnSchema;
 import org.apache.iotdb.commons.schema.table.column.TagColumnSchema;
+import org.apache.iotdb.confignode.procedure.impl.schema.table.view.CreateTableViewProcedure;
 import org.apache.iotdb.confignode.procedure.store.ProcedureType;
 
 import org.apache.tsfile.enums.TSDataType;
@@ -37,12 +37,11 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 
-public class CreateTableViewProcedureTest {
+public class CreateViewProcedureTest {
   @Test
   public void serializeDeserializeTest() throws IllegalPathException, IOException {
     final TsTable table = new TsTable("table1");
     table.addColumnSchema(new TagColumnSchema("Id", TSDataType.STRING));
-    table.addColumnSchema(new AttributeColumnSchema("Attr", TSDataType.STRING));
     table.addColumnSchema(
         new FieldColumnSchema(
             "Measurement", TSDataType.DOUBLE, TSEncoding.GORILLA, CompressionType.SNAPPY));

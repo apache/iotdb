@@ -74,9 +74,9 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
-public class TreeToTableViewAdaptorOperatorTest {
-  private static final String TREE_TO_TABLE_VIEW_ADAPTOR_OPERATOR_TEST =
-      "root.TreeToTableViewAdaptorOperatorTest";
+public class ViewFromTreeAdaptorOperatorTest {
+  private static final String VIEW_FROM_TREE_ADAPTOR_OPERATOR_TEST =
+      "root.ViewFromTreeAdaptorOperatorTest";
   private static final List<IMeasurementSchema> measurementSchemas = new ArrayList<>();
 
   private static final List<TsFileResource> seqResources = new ArrayList<>();
@@ -87,7 +87,7 @@ public class TreeToTableViewAdaptorOperatorTest {
   @BeforeClass
   public static void setUp() throws MetadataException, IOException, WriteProcessException {
     AlignedSeriesTestUtil.setUp(
-        measurementSchemas, seqResources, unSeqResources, TREE_TO_TABLE_VIEW_ADAPTOR_OPERATOR_TEST);
+        measurementSchemas, seqResources, unSeqResources, VIEW_FROM_TREE_ADAPTOR_OPERATOR_TEST);
   }
 
   @AfterClass
@@ -104,7 +104,7 @@ public class TreeToTableViewAdaptorOperatorTest {
       AlignedFullPath alignedPath =
           new AlignedFullPath(
               IDeviceID.Factory.DEFAULT_FACTORY.create(
-                  TREE_TO_TABLE_VIEW_ADAPTOR_OPERATOR_TEST + ".device0"),
+                  VIEW_FROM_TREE_ADAPTOR_OPERATOR_TEST + ".device0"),
               measurementSchemas.stream()
                   .map(IMeasurementSchema::getMeasurementName)
                   .collect(Collectors.toList()),
@@ -180,7 +180,7 @@ public class TreeToTableViewAdaptorOperatorTest {
               columnSchemas,
               seriesScanOperator,
               TableOperatorGenerator.createTreeDeviceIdColumnValueExtractor(
-                  TREE_TO_TABLE_VIEW_ADAPTOR_OPERATOR_TEST));
+                  VIEW_FROM_TREE_ADAPTOR_OPERATOR_TEST));
       int count = 0;
       while (operator.hasNext()) {
         TsBlock tsBlock = operator.next();

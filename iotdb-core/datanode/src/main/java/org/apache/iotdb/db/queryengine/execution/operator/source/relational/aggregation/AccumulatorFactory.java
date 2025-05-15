@@ -26,6 +26,7 @@ import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggr
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.grouped.GroupedApproxCountDistinctAccumulator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.grouped.GroupedAvgAccumulator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.grouped.GroupedCountAccumulator;
+import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.grouped.GroupedCountAllAccumulator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.grouped.GroupedCountIfAccumulator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.grouped.GroupedExtremeAccumulator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.grouped.GroupedFirstAccumulator;
@@ -201,6 +202,8 @@ public class AccumulatorFactory {
     switch (aggregationType) {
       case COUNT:
         return new GroupedCountAccumulator();
+      case COUNT_ALL:
+        return new GroupedCountAllAccumulator();
       case COUNT_IF:
         return new GroupedCountIfAccumulator();
       case AVG:
