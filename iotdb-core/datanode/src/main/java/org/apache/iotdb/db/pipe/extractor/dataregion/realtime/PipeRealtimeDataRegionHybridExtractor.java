@@ -112,6 +112,11 @@ public class PipeRealtimeDataRegionHybridExtractor extends PipeRealtimeDataRegio
       case EMPTY:
       case USING_TABLET:
       case USING_BOTH:
+        // USING_BOTH indicates that there are discarded events previously.
+        // In this case, we need to delay the progress report to tsFile event, to avoid losing data.
+        if (state == TsFileEpoch.State.USING_BOTH) {
+          event.skipReportOnCommit();
+        }
         if (!pendingQueue.waitedOffer(event)) {
           // This would not happen, but just in case.
           // pendingQueue is unbounded, so it should never reach capacity.
