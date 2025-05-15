@@ -29,7 +29,9 @@ import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALMode;
 import org.apache.iotdb.db.storageengine.rescon.disk.DirectoryChecker;
 
+import com.google.common.base.Objects;
 import org.apache.commons.io.FileUtils;
+import org.apache.tsfile.encrypt.EncryptUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -73,6 +75,10 @@ public class IoTDBStartCheck {
   private static final String MPP_DATA_EXCHANGE_PORT = "dn_mpp_data_exchange_port";
   private static final String SCHEMA_REGION_CONSENSUS_PORT = "dn_schema_region_consensus_port";
   private static final String DATA_REGION_CONSENSUS_PORT = "dn_data_region_consensus_port";
+  private static final String ENCRYPT_MAGIC_STRING = "encrypt_magic_string";
+
+  private static final String magicString = "thisisusedfortsfileencrypt";
+
   // Mutable system parameters
   private static final Map<String, Supplier<String>> variableParamValueTable = new HashMap<>();
 
@@ -300,6 +306,14 @@ public class IoTDBStartCheck {
     systemPropertiesHandler.put(CLUSTER_ID, clusterId);
   }
 
+  public void serializeEncryptMagicString() throws IOException {
+    String encryptMagicString =
+        EncryptUtils.byteArrayToHexString(
+            EncryptUtils.getEncrypt().getEncryptor().encrypt(magicString.getBytes()));
+    systemProperties.put(ENCRYPT_MAGIC_STRING, () -> encryptMagicString);
+    generateOrOverwriteSystemPropertiesFile();
+  }
+
   public boolean checkConsensusProtocolExists(TConsensusGroupType type) {
     if (type == TConsensusGroupType.DataRegion) {
       return properties.containsKey(DATA_REGION_CONSENSUS_PROTOCOL);
@@ -332,5 +346,24 @@ public class IoTDBStartCheck {
   public void generateOrOverwriteSystemPropertiesFile() throws IOException {
     systemProperties.forEach((k, v) -> properties.setProperty(k, v.get()));
     systemPropertiesHandler.overwrite(properties);
+  }
+
+  public void checkEncryptMagicString() throws IOException, ConfigurationException {
+    properties = systemPropertiesHandler.read();
+    String encryptMagicString = properties.getProperty("encrypt_magic_string");
+    if (encryptMagicString != null) {
+      byte[] magicBytes = EncryptUtils.hexStringToByteArray(encryptMagicString);
+      if (Objects.equal(magicString, new String(magicBytes))) {
+        serializeEncryptMagicString();
+        return;
+      }
+      String newMagicString =
+          new String(EncryptUtils.getEncrypt().getDecryptor().decrypt(magicBytes));
+      if (!Objects.equal(magicString, newMagicString)) {
+        logger.error("encrypt_magic_string is not match");
+        throw new ConfigurationException(
+            "Changing encrypt key for tsfile encryption is not permitted after the encrypt function is open");
+      }
+    }
   }
 }
