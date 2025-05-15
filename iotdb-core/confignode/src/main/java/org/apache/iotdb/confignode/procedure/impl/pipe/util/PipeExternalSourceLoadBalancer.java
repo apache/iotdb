@@ -25,6 +25,7 @@ import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeStaticMeta;
 import org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant;
 import org.apache.iotdb.confignode.manager.ConfigManager;
+import org.apache.iotdb.pipe.api.exception.PipeException;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -89,7 +90,11 @@ public class PipeExternalSourceLoadBalancer {
           configManager.getLoadManager().getRegionLeaderMap();
       final Map<Integer, Integer> parallelAssignment = new HashMap<>();
 
-      // Check if the external extractor is single instance per node
+      // Check for Single Instance Mode:
+      //
+      // 1. If the pipeStaticMeta indicates that only one instance per node is allowed, tasks are
+      // evenly distributed across running DataNodes.
+      // 2. If no DataNodes are available, a PipeException is thrown.
       if (pipeStaticMeta
           .getExtractorParameters()
           .getBooleanOrDefault(
@@ -102,7 +107,7 @@ public class PipeExternalSourceLoadBalancer {
                 .sorted()
                 .collect(Collectors.toList());
         if (runningDataNodes.isEmpty()) {
-          throw new RuntimeException("No available datanode to assign tasks");
+          throw new PipeException("No available datanode to assign tasks");
         }
         final int numNodes = runningDataNodes.size();
         for (int i = 1; i <= Math.min(numNodes, parallelCount); i++) {
@@ -112,25 +117,31 @@ public class PipeExternalSourceLoadBalancer {
         return parallelAssignment;
       }
 
-      // Count how many DataRegions each DataNode leads
+      // Count DataRegions Led by Each DataNode:
+      //
+      // The method iterates through the regionLeaderMap to count the number of DataRegions led by
+      // each DataNode.
       final Map<Integer, Integer> leaderRegionId2DataRegionCountMap = new HashMap<>();
       regionLeaderMap.entrySet().stream()
           .filter(e -> e.getKey().getType() == TConsensusGroupType.DataRegion && e.getValue() != -1)
           .forEach(
               e -> {
-                final int leaderId = e.getValue();
+                final int leaderRegionDataNodeId = e.getValue();
                 leaderRegionId2DataRegionCountMap.put(
-                    leaderId, leaderRegionId2DataRegionCountMap.getOrDefault(leaderId, 0) + 1);
+                    leaderRegionDataNodeId,
+                    leaderRegionId2DataRegionCountMap.getOrDefault(leaderRegionDataNodeId, 0) + 1);
               });
 
-      // distribute evenly if no dataRegion exists
+      // Handle No DataRegions:
+      //
+      // If no DataRegions exist, tasks are evenly distributed across running DataNodes.
       if (leaderRegionId2DataRegionCountMap.isEmpty()) {
         List<Integer> runningDataNodes =
             configManager.getLoadManager().filterDataNodeThroughStatus(NodeStatus.Running).stream()
                 .sorted()
                 .collect(Collectors.toList());
         if (runningDataNodes.isEmpty()) {
-          throw new RuntimeException("No available datanode to assign tasks");
+          throw new PipeException("No available datanode to assign tasks");
         }
         final int numNodes = runningDataNodes.size();
         final int quotient = parallelCount / numNodes;
@@ -147,6 +158,12 @@ public class PipeExternalSourceLoadBalancer {
         return parallelAssignment;
       }
 
+      // Proportional Task Distribution:
+      //
+      // Based on the number of DataRegions led by each DataNode, the method calculates the
+      // proportion of tasks each node should handle.
+      // Integer parts of the task count are assigned first, and remaining tasks are distributed
+      // based on the largest fractional parts.
       final int totalRegions =
           leaderRegionId2DataRegionCountMap.values().stream().mapToInt(Integer::intValue).sum();
 
@@ -182,6 +199,9 @@ public class PipeExternalSourceLoadBalancer {
             leaderId, leaderRegionId2AssignedCountMap.get(leaderId) + 1);
       }
 
+      // Generate Task Assignment Result:
+      //
+      // Finally, the method returns a mapping of task indices to DataNode IDs.
       final List<Integer> stableLeaders = new ArrayList<>(leaderRegionId2AssignedCountMap.keySet());
       Collections.sort(stableLeaders);
       int taskIndex = 1;
