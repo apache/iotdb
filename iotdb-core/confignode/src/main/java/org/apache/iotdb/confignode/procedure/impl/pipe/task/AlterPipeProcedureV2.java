@@ -198,8 +198,8 @@ public class AlterPipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
         // config region
         updatedConsensusGroupIdToTaskMetaMap.put(
             // 0 is the consensus group id of the config region, but data region id and schema
+            // region id also start from 0, so we use Integer.MIN_VALUE to represent the config
             // region
-            // id also start from 0, so we use Integer.MIN_VALUE to represent the config region
             Integer.MIN_VALUE,
             new PipeTaskMeta(
                 configRegionTaskMeta.getProgressIndex(),
