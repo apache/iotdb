@@ -251,7 +251,10 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
   }
 
   private boolean checkBeforeAnalyzeFileByFile(IAnalysis analysis) {
-    if (TSFileDescriptor.getInstance().getConfig().getEncryptFlag()) {
+    if (!Objects.equals(TSFileDescriptor.getInstance().getConfig().getEncryptType(), "UNENCRYPTED")
+        && !Objects.equals(
+            TSFileDescriptor.getInstance().getConfig().getEncryptType(),
+            "org.apache.tsfile.encrypt.UNENCRYPTED")) {
       analysis.setFinishQueryAfterAnalyze(true);
       analysis.setFailStatus(
           RpcUtils.getStatus(

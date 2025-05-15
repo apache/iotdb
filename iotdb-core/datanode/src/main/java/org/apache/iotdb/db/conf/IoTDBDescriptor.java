@@ -1789,9 +1789,6 @@ public class IoTDBDescriptor {
                         "max_tsblock_line_number"))));
     TSFileDescriptor.getInstance()
         .getConfig()
-        .setEncryptFlag(properties.getProperty("encrypt_flag", "false"));
-    TSFileDescriptor.getInstance()
-        .getConfig()
         .setEncryptType(properties.getProperty("encrypt_type", "UNENCRYPTED"));
     TSFileDescriptor.getInstance()
         .getConfig()
