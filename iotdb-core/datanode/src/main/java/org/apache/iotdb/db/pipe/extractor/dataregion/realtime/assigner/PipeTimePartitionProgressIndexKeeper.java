@@ -21,8 +21,6 @@ package org.apache.iotdb.db.pipe.extractor.dataregion.realtime.assigner;
 
 import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 
-import org.apache.tsfile.utils.Pair;
-
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Objects;
@@ -31,51 +29,36 @@ import java.util.concurrent.ConcurrentHashMap;
 public class PipeTimePartitionProgressIndexKeeper {
 
   // data region id -> (time partition id, <max progress index, is valid>)
-  private final Map<String, Map<Long, Pair<ProgressIndex, Boolean>>> progressIndexKeeper =
+  private final Map<String, Map<String, ProgressIndex>> progressIndexKeeper =
       new ConcurrentHashMap<>();
 
   public synchronized void updateProgressIndex(
-      final String dataRegionId, final long timePartitionId, final ProgressIndex progressIndex) {
+      final String dataRegionId, final String tsFileName, final ProgressIndex progressIndex) {
     progressIndexKeeper
         .computeIfAbsent(dataRegionId, k -> new ConcurrentHashMap<>())
         .compute(
-            timePartitionId,
-            (k, v) -> {
-              if (v == null) {
-                return new Pair<>(progressIndex, true);
-              }
-              return new Pair<>(
-                  v.getLeft().updateToMinimumEqualOrIsAfterProgressIndex(progressIndex), true);
-            });
+            tsFileName,
+            (k, v) ->
+                v == null
+                    ? progressIndex
+                    : v.updateToMinimumEqualOrIsAfterProgressIndex(progressIndex));
   }
 
   public synchronized void eliminateProgressIndex(
-      final String dataRegionId, final long timePartitionId, final ProgressIndex progressIndex) {
+      final String dataRegionId, final String filePath) {
     progressIndexKeeper
         .computeIfAbsent(dataRegionId, k -> new ConcurrentHashMap<>())
-        .compute(
-            timePartitionId,
-            (k, v) -> {
-              if (v == null) {
-                return null;
-              }
-              if (v.getRight() && !v.getLeft().isAfter(progressIndex)) {
-                return new Pair<>(v.getLeft(), false);
-              }
-              return v;
-            });
+        .remove(filePath);
   }
 
   public synchronized boolean isProgressIndexAfterOrEquals(
-      final String dataRegionId, final long timePartitionId, final ProgressIndex progressIndex) {
+      final String dataRegionId, final String tsFilePath, final ProgressIndex progressIndex) {
     return progressIndexKeeper
         .computeIfAbsent(dataRegionId, k -> new ConcurrentHashMap<>())
         .entrySet()
         .stream()
-        .filter(entry -> entry.getKey() != timePartitionId)
+        .filter(entry -> !Objects.equals(entry.getKey(), tsFilePath))
         .map(Entry::getValue)
-        .filter(pair -> pair.right)
-        .map(Pair::getLeft)
         .filter(Objects::nonNull)
         .anyMatch(index -> !index.isAfter(progressIndex));
   }

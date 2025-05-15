@@ -1390,7 +1390,7 @@ public class TsFileResource implements PersistentResource {
             : maxProgressIndex.updateToMinimumEqualOrIsAfterProgressIndex(progressIndex));
 
     PipeTimePartitionProgressIndexKeeper.getInstance()
-        .updateProgressIndex(getDataRegionId(), getTimePartition(), maxProgressIndex);
+        .updateProgressIndex(getDataRegionId(), getTsFilePath(), maxProgressIndex);
   }
 
   public void setProgressIndex(ProgressIndex progressIndex) {
@@ -1401,7 +1401,7 @@ public class TsFileResource implements PersistentResource {
     maxProgressIndex = progressIndex;
 
     PipeTimePartitionProgressIndexKeeper.getInstance()
-        .updateProgressIndex(getDataRegionId(), getTimePartition(), maxProgressIndex);
+        .updateProgressIndex(getDataRegionId(), getTsFilePath(), maxProgressIndex);
   }
 
   @Override

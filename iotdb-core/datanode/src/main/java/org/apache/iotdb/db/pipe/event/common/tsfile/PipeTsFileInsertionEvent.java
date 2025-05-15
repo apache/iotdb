@@ -383,10 +383,7 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
   public void eliminateProgressIndex() {
     if (Objects.isNull(overridingProgressIndex)) {
       PipeTimePartitionProgressIndexKeeper.getInstance()
-          .eliminateProgressIndex(
-              resource.getDataRegionId(),
-              resource.getTimePartition(),
-              resource.getMaxProgressIndexAfterClose());
+          .eliminateProgressIndex(resource.getDataRegionId(), resource.getTsFilePath());
     }
   }
 
