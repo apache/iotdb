@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.pipe.event.common.statement;
 
 import org.apache.iotdb.commons.consensus.index.ProgressIndex;
+import org.apache.iotdb.commons.consensus.index.impl.MinimumProgressIndex;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.TablePattern;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.TreePattern;
@@ -46,9 +47,11 @@ public class PipeStatementInsertionEvent extends PipeInsertionEvent
   private static final long INSTANCE_SIZE =
       RamUsageEstimator.shallowSizeOfInstance(PipeStatementInsertionEvent.class);
   private InsertBaseStatement statement;
-  private boolean needToReport;
-  private final PipeTabletMemoryBlock allocatedMemoryBlock;
+
   private volatile ProgressIndex progressIndex;
+  private boolean needToReport;
+
+  private final PipeTabletMemoryBlock allocatedMemoryBlock;
 
   public PipeStatementInsertionEvent(
       String pipeName,
@@ -117,7 +120,7 @@ public class PipeStatementInsertionEvent extends PipeInsertionEvent
 
   @Override
   public ProgressIndex getProgressIndex() {
-    return progressIndex == null ? null : progressIndex;
+    return progressIndex == null ? MinimumProgressIndex.INSTANCE : progressIndex;
   }
 
   @Override
@@ -131,7 +134,8 @@ public class PipeStatementInsertionEvent extends PipeInsertionEvent
       boolean skipIfNoPrivileges,
       long startTime,
       long endTime) {
-    return null;
+    throw new UnsupportedOperationException(
+        "shallowCopySelfAndBindPipeTaskMetaForProgressReport() is not supported!");
   }
 
   @Override
@@ -179,7 +183,8 @@ public class PipeStatementInsertionEvent extends PipeInsertionEvent
         + super.coreReportMessage();
   }
 
-  /////////////////////////// ReferenceTrackableEvent ///////////////////////////
+  /////////////////////////// ReferenceTrackableEvent //////////////////////////////
+
   @Override
   protected void trackResource() {
     PipeDataNodeResourceManager.ref().trackPipeEventResource(this, eventResourceBuilder());
