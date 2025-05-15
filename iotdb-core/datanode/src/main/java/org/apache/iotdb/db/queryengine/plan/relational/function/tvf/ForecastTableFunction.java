@@ -503,7 +503,7 @@ public class ForecastTableFunction implements TableFunction {
       long inputEndTime = inputRecords.getLast().getLong(0);
       long interval =
           outputInterval <= 0
-              ? (inputEndTime - inputStartTime) / inputRecords.size()
+              ? (inputEndTime - inputStartTime) / (inputRecords.size() - 1)
               : outputInterval;
       long outputTime =
           (outputStartTime == Long.MIN_VALUE) ? (inputEndTime + interval) : outputStartTime;
