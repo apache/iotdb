@@ -164,9 +164,9 @@ public class AlterPipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
         new ConcurrentHashMap<>();
     if (currentPipeStaticMeta.isSourceExternal()) {
       currentConsensusGroupId2PipeTaskMeta.forEach(
-          (regionGroupId, pipeTaskMeta) -> {
+          (taskId, pipeTaskMeta) -> {
             updatedConsensusGroupIdToTaskMetaMap.put(
-                regionGroupId,
+                taskId,
                 new PipeTaskMeta(pipeTaskMeta.getProgressIndex(), pipeTaskMeta.getLeaderNodeId()));
           });
     } else {
