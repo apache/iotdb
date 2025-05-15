@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.schema.column.ColumnHeader;
 import org.apache.iotdb.commons.schema.filter.SchemaFilter;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
+import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.SessionInfo;
 import org.apache.iotdb.db.queryengine.execution.operator.schema.source.DeviceBlackListConstructor;
 import org.apache.iotdb.db.queryengine.execution.operator.schema.source.TableDeviceQuerySource;
@@ -32,6 +33,7 @@ import org.apache.iotdb.db.queryengine.plan.analyze.AnalyzeUtils;
 import org.apache.iotdb.db.queryengine.plan.analyze.TypeProvider;
 import org.apache.iotdb.db.queryengine.plan.planner.LocalExecutionPlanner;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.InputLocation;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.DeviceEntry;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.Symbol;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.ColumnTransformer;
@@ -66,13 +68,28 @@ public class DeleteDevice extends AbstractTraverseDevice {
 
   // Used for data deletion
   private List<TableDeletionEntry> modEntries;
+  private boolean mayDeleteDevice;
 
   public DeleteDevice(final NodeLocation location, final Table table, final Expression where) {
     super(location, table, where);
   }
 
+  @Override
+  public boolean parseRawExpression(
+      final Map<String, List<DeviceEntry>> entries,
+      final TsTable tableInstance,
+      final List<String> attributeColumns,
+      final MPPQueryContext context) {
+    return mayDeleteDevice =
+        super.parseRawExpression(entries, tableInstance, attributeColumns, context);
+  }
+
+  public boolean isMayDeleteDevice() {
+    return mayDeleteDevice;
+  }
+
   public void parseModEntries(final TsTable table) {
-    // TODO: Fallback to precise devices if modEnries parsing failure encountered
+    // TODO: Fallback to precise devices if modEntries parsing failure encountered
     modEntries = AnalyzeUtils.parseExpressions2ModEntries(where, table);
   }
 
