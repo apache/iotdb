@@ -189,7 +189,7 @@ std::vector<int64_t> LongColumn::getLongs() const { return values_; }
 bool LongColumn::mayHaveNull() const { return !valueIsNull_.empty(); }
 
 bool LongColumn::isNull(int32_t position) const {
-    return !valueIsNull_.empty() and valueIsNull_[position + arrayOffset_];
+    return !valueIsNull_.empty() && valueIsNull_[position + arrayOffset_];
 }
 
 std::vector<bool> LongColumn::isNulls() const {
@@ -210,7 +210,7 @@ DoubleColumn::DoubleColumn(int32_t arrayOffset, int32_t positionCount,
     if (static_cast<int32_t>(values.size()) - arrayOffset < positionCount) {
         throw IoTDBException("values length is less than positionCount");
     }
-    if (!valueIsNull.empty() and static_cast<int32_t>(valueIsNull.size()) - arrayOffset < positionCount) {
+    if (!valueIsNull.empty() && static_cast<int32_t>(valueIsNull.size()) - arrayOffset < positionCount) {
         throw IoTDBException("isNull length is less than positionCount");
     }
 }
@@ -227,7 +227,7 @@ std::vector<double> DoubleColumn::getDoubles() const { return values_; }
 bool DoubleColumn::mayHaveNull() const { return !valueIsNull_.empty(); }
 
 bool DoubleColumn::isNull(int32_t position) const {
-    return !valueIsNull_.empty() and valueIsNull_[position + arrayOffset_];
+    return !valueIsNull_.empty() && valueIsNull_[position + arrayOffset_];
 }
 
 std::vector<bool> DoubleColumn::isNulls() const {
@@ -248,7 +248,7 @@ BooleanColumn::BooleanColumn(int32_t arrayOffset, int32_t positionCount,
     if (static_cast<int32_t>(values.size()) - arrayOffset < positionCount) {
         throw IoTDBException("values length is less than positionCount");
     }
-    if (!valueIsNull.empty() and static_cast<int32_t>(valueIsNull.size()) - arrayOffset < positionCount) {
+    if (!valueIsNull.empty() && static_cast<int32_t>(valueIsNull.size()) - arrayOffset < positionCount) {
         throw IoTDBException("isNull length is less than positionCount");
     }
 }
@@ -265,7 +265,7 @@ std::vector<bool> BooleanColumn::getBooleans() const { return values_; }
 bool BooleanColumn::mayHaveNull() const { return !valueIsNull_.empty(); }
 
 bool BooleanColumn::isNull(int32_t position) const {
-    return !valueIsNull_.empty() and valueIsNull_[position + arrayOffset_];
+    return !valueIsNull_.empty() && valueIsNull_[position + arrayOffset_];
 }
 
 std::vector<bool> BooleanColumn::isNulls() const {

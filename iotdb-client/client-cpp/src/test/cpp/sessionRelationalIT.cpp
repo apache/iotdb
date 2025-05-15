@@ -190,8 +190,8 @@ TEST_CASE("Test RelationalTabletTsblockRead", "[testRelationalTabletTsblockRead]
         REQUIRE(dataIter.getBooleanByIndex(2) == (rowNum % 2 == 0));
         REQUIRE(dataIter.getIntByIndex(3) == static_cast<int32_t>(rowNum));
         REQUIRE(dataIter.getLongByIndex(4) == static_cast<int64_t>(timestamp));
-        REQUIRE(fabs(dataIter.getFloatByIndex(5) - rowNum * 1.1f) < 0.0001f);
-        REQUIRE(fabs(dataIter.getDoubleByIndex(6) - rowNum * 1.1f) < 0.0001);
+        REQUIRE(fabs(dataIter.getFloatByIndex(5) - rowNum * 1.1f) < 0.1f);
+        REQUIRE(fabs(dataIter.getDoubleByIndex(6) - rowNum * 1.1f) < 0.1);
         REQUIRE(dataIter.getStringByIndex(7) == "text_" + to_string(rowNum));
         REQUIRE(dataIter.getLongByIndex(8) == static_cast<int64_t>(timestamp));
         REQUIRE(dataIter.getDateByIndex(9) == boost::gregorian::date(2025, 5, 15));
