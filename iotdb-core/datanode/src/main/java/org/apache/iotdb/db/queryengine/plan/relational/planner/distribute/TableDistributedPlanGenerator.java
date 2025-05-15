@@ -273,6 +273,20 @@ public class TableDistributedPlanGenerator
         node.getChildren().size() == 1, "Size of TopKNode can only be 1 in logical plan.");
     List<PlanNode> childrenNodes = node.getChildren().get(0).accept(this, context);
     if (childrenNodes.size() == 1) {
+      // if DeviceTableScanNode has limit <= K and with same order, we can directly return
+      // DeviceTableScanNode
+      if (childrenNodes.get(0) instanceof DeviceTableScanNode) {
+        DeviceTableScanNode tableScanNode = (DeviceTableScanNode) childrenNodes.get(0);
+        if (node.getCount() >= tableScanNode.getPushDownLimit()
+            && (!tableScanNode.isPushLimitToEachDevice()
+                || (tableScanNode.isPushLimitToEachDevice()
+                    && tableScanNode.getDeviceEntries().size() == 1))
+            && canSortEliminated(
+                node.getOrderingScheme(),
+                nodeOrderingMap.get(childrenNodes.get(0).getPlanNodeId()))) {
+          return childrenNodes;
+        }
+      }
       node.setChildren(Collections.singletonList(childrenNodes.get(0)));
       return Collections.singletonList(node);
     }

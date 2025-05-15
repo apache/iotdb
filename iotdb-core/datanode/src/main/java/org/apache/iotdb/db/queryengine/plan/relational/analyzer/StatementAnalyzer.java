@@ -4382,7 +4382,7 @@ public class StatementAnalyzer {
                 new OrderBy(
                     Collections.singletonList(
                         new SortItem(
-                            new Identifier(null, timeColumn),
+                            new Identifier(timeColumn),
                             SortItem.Ordering.ASCENDING,
                             SortItem.NullOrdering.FIRST))));
           }

@@ -53,6 +53,11 @@ import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.sort;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.tableFunctionProcessor;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.tableScan;
+import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.topK;
+import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SortItem.NullOrdering.FIRST;
+import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SortItem.NullOrdering.LAST;
+import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SortItem.Ordering.ASCENDING;
+import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SortItem.Ordering.DESCENDING;
 import static org.apache.iotdb.udf.api.type.Type.DOUBLE;
 
 public class TableFunctionTest {
@@ -347,19 +352,17 @@ public class TableFunctionTest {
     String sql =
         "SELECT * FROM FORECAST("
             + "input => (SELECT time,s3 FROM table1 WHERE tag1='shanghai' AND tag2='A3' AND tag3='YY' ORDER BY time DESC LIMIT 1440), "
-            + "model_id => 'timer_xl'";
+            + "model_id => 'timer_xl')";
     LogicalQueryPlan logicalQueryPlan = planTester.createPlan(sql);
+
     PlanMatchPattern tableScan =
-        tableScan(
-            "testdb.table1",
-            ImmutableList.of("time", "tag1", "tag2", "tag3", "s3"),
-            ImmutableSet.of("time", "tag1", "tag2", "tag3", "s3"));
+        tableScan("testdb.table1", ImmutableMap.of("time_0", "time", "s3_1", "s3"));
     Consumer<TableFunctionProcessorMatcher.Builder> tableFunctionMatcher =
         builder ->
             builder
                 .name("forecast")
                 .properOutputs("time", "s3")
-                .requiredSymbols("time", "s3")
+                .requiredSymbols("time_0", "s3_1")
                 .handle(
                     new ForecastTableFunction.ForecastTableFunctionHandle(
                         false,
@@ -373,28 +376,32 @@ public class TableFunctionTest {
                         Collections.singletonList(DOUBLE)));
     // Verify full LogicalPlan
     // Output - TableFunctionProcessor - TableScan
-    assertPlan(logicalQueryPlan, anyTree(tableFunctionProcessor(tableFunctionMatcher, tableScan)));
+    assertPlan(
+        logicalQueryPlan,
+        anyTree(
+            tableFunctionProcessor(
+                tableFunctionMatcher,
+                group(
+                    ImmutableList.of(sort("time_0", ASCENDING, FIRST)),
+                    0,
+                    topK(
+                        1440,
+                        ImmutableList.of(sort("time_0", DESCENDING, LAST)),
+                        false,
+                        tableScan)))));
     // Verify DistributionPlan
 
     /*
      *   └──OutputNode
-     *         └──CollectNode
-     *               ├──ExchangeNode
-     *               │    └──TableFunctionProcessor
-     *               │        └──TableScan
-     *               ├──ExchangeNode
-     *               │    └──TableFunctionProcessor
-     *               │        └──TableScan
-     *               └──ExchangeNode
-     *                    └──TableFunctionProcessor
-     *                        └──TableScan
+     *         └──TableFunctionProcessor
+     *               └──GroupNode
+     *                   └──TableScan
      */
-    assertPlan(planTester.getFragmentPlan(0), output(collect(exchange(), exchange(), exchange())));
     assertPlan(
-        planTester.getFragmentPlan(1), tableFunctionProcessor(tableFunctionMatcher, tableScan));
-    assertPlan(
-        planTester.getFragmentPlan(2), tableFunctionProcessor(tableFunctionMatcher, tableScan));
-    assertPlan(
-        planTester.getFragmentPlan(3), tableFunctionProcessor(tableFunctionMatcher, tableScan));
+        planTester.getFragmentPlan(0),
+        output(
+            tableFunctionProcessor(
+                tableFunctionMatcher,
+                group(ImmutableList.of(sort("time_0", ASCENDING, FIRST)), 0, tableScan))));
   }
 }

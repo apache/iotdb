@@ -7,7 +7,7 @@
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *     http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
@@ -22,27 +22,30 @@ package org.apache.iotdb.db.queryengine.plan.relational.planner.assertions;
 import org.apache.iotdb.db.queryengine.common.SessionInfo;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.Ordering;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.node.SortNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TopKNode;
 
 import java.util.List;
 
 import static com.google.common.base.MoreObjects.toStringHelper;
 import static com.google.common.base.Preconditions.checkState;
-import static java.util.Objects.requireNonNull;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.MatchResult.NO_MATCH;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.Util.orderingSchemeMatches;
 
-class SortMatcher implements Matcher {
-  protected final List<Ordering> orderBy;
+public class TopKMatcher implements Matcher {
+  private final List<PlanMatchPattern.Ordering> orderBy;
+  private final long count;
+  private final boolean childrenDataInOrder;
 
-  public SortMatcher(List<Ordering> orderBy) {
-    this.orderBy = requireNonNull(orderBy, "orderBy is null");
+  public TopKMatcher(
+      List<PlanMatchPattern.Ordering> orderBy, long count, boolean childrenDataInOrder) {
+    this.orderBy = orderBy;
+    this.count = count;
+    this.childrenDataInOrder = childrenDataInOrder;
   }
 
   @Override
   public boolean shapeMatches(PlanNode node) {
-    return node instanceof SortNode;
+    return node instanceof TopKNode;
   }
 
   @Override
@@ -52,9 +55,11 @@ class SortMatcher implements Matcher {
         shapeMatches(node),
         "Plan testing framework error: shapeMatches returned false in detailMatches in %s",
         this.getClass().getName());
-    SortNode sortNode = (SortNode) node;
+    TopKNode topKNode = (TopKNode) node;
 
-    if (!orderingSchemeMatches(orderBy, sortNode.getOrderingScheme(), symbolAliases)) {
+    if (!orderingSchemeMatches(orderBy, topKNode.getOrderingScheme(), symbolAliases)
+        || count != topKNode.getCount()
+        || childrenDataInOrder != topKNode.isChildrenDataInOrder()) {
       return NO_MATCH;
     }
 
@@ -63,6 +68,10 @@ class SortMatcher implements Matcher {
 
   @Override
   public String toString() {
-    return toStringHelper(this).add("orderBy", orderBy).toString();
+    return toStringHelper(this)
+        .add("orderBy", orderBy)
+        .add("count", count)
+        .add("childrenDataInOrder", childrenDataInOrder)
+        .toString();
   }
 }

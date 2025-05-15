@@ -49,6 +49,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.node.SemiJoinNode
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.SortNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.StreamSortNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TableFunctionProcessorNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TopKNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TreeAlignedDeviceViewScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TreeDeviceViewScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TreeNonAlignedDeviceViewScanNode;
@@ -545,6 +546,11 @@ public final class PlanMatchPattern {
     return node(GroupNode.class, source);
   }
 
+  public static PlanMatchPattern group(
+      List<Ordering> orderBy, int partitionKeyCount, PlanMatchPattern source) {
+    return node(GroupNode.class, source).with(new GroupMatcher(orderBy, partitionKeyCount));
+  }
+
   public static PlanMatchPattern sort(PlanMatchPattern source) {
     return node(SortNode.class, source);
   }
@@ -557,12 +563,12 @@ public final class PlanMatchPattern {
     return node(StreamSortNode.class, source).with(new SortMatcher(orderBy));
   }
 
-  /*public static PlanMatchPattern topN(long count, List<Ordering> orderBy, PlanMatchPattern source)
-  {
-      return topN(count, orderBy, TopNNode.Step.SINGLE, source);
+  public static PlanMatchPattern topK(
+      long count, List<Ordering> orderBy, boolean childrenDataInOrder, PlanMatchPattern source) {
+    return node(TopKNode.class, source).with(new TopKMatcher(orderBy, count, childrenDataInOrder));
   }
 
-  public static PlanMatchPattern topN(long count, List<Ordering> orderBy, TopNNode.Step step, PlanMatchPattern source)
+  /*public static PlanMatchPattern topN(long count, List<Ordering> orderBy, TopNNode.Step step, PlanMatchPattern source)
   {
       return node(TopNNode.class, source).with(new TopNMatcher(count, orderBy, step));
   }*/

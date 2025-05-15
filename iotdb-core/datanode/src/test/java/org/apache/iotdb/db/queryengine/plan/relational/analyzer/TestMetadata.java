@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.analyzer;
 
+import org.apache.iotdb.common.rpc.thrift.TEndPoint;
+import org.apache.iotdb.commons.model.ModelInformation;
 import org.apache.iotdb.commons.partition.DataPartition;
 import org.apache.iotdb.commons.partition.DataPartitionQueryParam;
 import org.apache.iotdb.commons.partition.SchemaNodeManagementPartition;
@@ -27,15 +29,14 @@ import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.commons.udf.builtin.BuiltinAggregationFunction;
-import org.apache.iotdb.commons.udf.builtin.relational.tvf.HOPTableFunction;
+import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.SessionInfo;
 import org.apache.iotdb.db.queryengine.plan.analyze.IModelFetcher;
 import org.apache.iotdb.db.queryengine.plan.analyze.IPartitionFetcher;
-import org.apache.iotdb.db.queryengine.plan.function.Exclude;
-import org.apache.iotdb.db.queryengine.plan.function.Repeat;
-import org.apache.iotdb.db.queryengine.plan.function.Split;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.model.ModelInferenceDescriptor;
 import org.apache.iotdb.db.queryengine.plan.relational.function.OperatorType;
+import org.apache.iotdb.db.queryengine.plan.relational.function.TableBuiltinTableFunction;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.AlignedDeviceEntry;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.ColumnMetadata;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.ColumnSchema;
@@ -56,6 +57,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.type.InternalTypeManager;
 import org.apache.iotdb.db.queryengine.plan.relational.type.TypeManager;
 import org.apache.iotdb.db.queryengine.plan.relational.type.TypeNotFoundException;
 import org.apache.iotdb.db.queryengine.plan.relational.type.TypeSignature;
+import org.apache.iotdb.db.queryengine.plan.udf.TableUDFUtils;
 import org.apache.iotdb.db.schemaengine.table.InformationSchemaUtils;
 import org.apache.iotdb.mpp.rpc.thrift.TRegionRouteReq;
 import org.apache.iotdb.udf.api.relational.TableFunction;
@@ -312,7 +314,17 @@ public class TestMetadata implements Metadata {
                   IDeviceID.Factory.DEFAULT_FACTORY.create(DEVICE_6), new Binary[0])));
     }
 
-    if (expressionList.size() == 2) {
+    if (expressionList.size() == 3) {
+      if (compareEqualsMatch(expressionList.get(0), "tag1", "shanghai")
+          && compareEqualsMatch(expressionList.get(1), "tag2", "A3")
+          && compareEqualsMatch(expressionList.get(2), "tag3", "YY")) {
+        return Collections.singletonMap(
+            DB1,
+            Collections.singletonList(
+                new AlignedDeviceEntry(
+                    new StringArrayDeviceID(DEVICE_3.split("\\.")), DEVICE_1_ATTRIBUTES)));
+      }
+    } else if (expressionList.size() == 2) {
       if (compareEqualsMatch(expressionList.get(0), "tag1", "beijing")
               && compareEqualsMatch(expressionList.get(1), "tag2", "A1")
           || compareEqualsMatch(expressionList.get(1), "tag1", "beijing")
@@ -479,22 +491,28 @@ public class TestMetadata implements Metadata {
 
   @Override
   public TableFunction getTableFunction(String functionName) {
-    if ("HOP".equalsIgnoreCase(functionName)) {
-      return new HOPTableFunction();
-    } else if ("EXCLUDE".equalsIgnoreCase(functionName)) {
-      return new Exclude();
-    } else if ("REPEAT".equalsIgnoreCase(functionName)) {
-      return new Repeat();
-    } else if ("SPLIT".equalsIgnoreCase(functionName)) {
-      return new Split();
+    if (TableBuiltinTableFunction.isBuiltInTableFunction(functionName)) {
+      return TableBuiltinTableFunction.getBuiltinTableFunction(functionName);
+    } else if (TableUDFUtils.isTableFunction(functionName)) {
+      return TableUDFUtils.getTableFunction(functionName);
     } else {
-      return null;
+      throw new SemanticException("Unknown function: " + functionName);
     }
   }
 
   @Override
   public IModelFetcher getModelFetcher() {
-    return null;
+    String modelId = "timer_xl";
+    IModelFetcher fetcher = Mockito.mock(IModelFetcher.class);
+    ModelInferenceDescriptor descriptor = Mockito.mock(ModelInferenceDescriptor.class);
+    Mockito.when(descriptor.getTargetAINode()).thenReturn(new TEndPoint("127.0.0.1", 10810));
+    ModelInformation modelInformation = Mockito.mock(ModelInformation.class);
+    Mockito.when(modelInformation.available()).thenReturn(true);
+    Mockito.when(modelInformation.getInputShape()).thenReturn(new int[] {1440, 96});
+    Mockito.when(descriptor.getModelInformation()).thenReturn(modelInformation);
+    Mockito.when(descriptor.getModelName()).thenReturn(modelId);
+    Mockito.when(fetcher.fetchModel(modelId)).thenReturn(descriptor);
+    return fetcher;
   }
 
   private static final DataPartition TABLE_DATA_PARTITION =
