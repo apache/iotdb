@@ -31,6 +31,7 @@ import org.apache.iotdb.db.storageengine.rescon.disk.DirectoryChecker;
 
 import com.google.common.base.Objects;
 import org.apache.commons.io.FileUtils;
+import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.encrypt.EncryptUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -309,7 +310,9 @@ public class IoTDBStartCheck {
   public void serializeEncryptMagicString() throws IOException {
     String encryptMagicString =
         EncryptUtils.byteArrayToHexString(
-            EncryptUtils.getEncrypt().getEncryptor().encrypt(magicString.getBytes()));
+            EncryptUtils.getEncrypt()
+                .getEncryptor()
+                .encrypt(magicString.getBytes(TSFileConfig.STRING_CHARSET)));
     systemProperties.put(ENCRYPT_MAGIC_STRING, () -> encryptMagicString);
     generateOrOverwriteSystemPropertiesFile();
   }
@@ -353,16 +356,14 @@ public class IoTDBStartCheck {
     String encryptMagicString = properties.getProperty("encrypt_magic_string");
     if (encryptMagicString != null) {
       byte[] magicBytes = EncryptUtils.hexStringToByteArray(encryptMagicString);
-      if (Objects.equal(magicString, new String(magicBytes))) {
-        serializeEncryptMagicString();
-        return;
-      }
       String newMagicString =
-          new String(EncryptUtils.getEncrypt().getDecryptor().decrypt(magicBytes));
+          new String(
+              EncryptUtils.getEncrypt().getDecryptor().decrypt(magicBytes),
+              TSFileConfig.STRING_CHARSET);
       if (!Objects.equal(magicString, newMagicString)) {
-        logger.error("encrypt_magic_string is not match");
+        logger.error("encrypt_magic_string is not matched");
         throw new ConfigurationException(
-            "Changing encrypt key for tsfile encryption is not permitted after the encrypt function is open");
+            "Changing encrypt key for tsfile encryption after first start is not permitted");
       }
     }
   }
