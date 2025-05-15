@@ -152,7 +152,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
 import static org.apache.iotdb.db.queryengine.plan.planner.TableOperatorGenerator.makeLayout;
-import static org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.TableDeviceSchemaFetcher.convertIdValuesToDeviceID;
+import static org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.TableDeviceSchemaFetcher.convertTagValuesToDeviceID;
 import static org.apache.tsfile.common.constant.TsFileConstant.PATH_SEPARATOR;
 
 /**
@@ -1449,7 +1449,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
     if (!isRecovering) {
       TableDeviceSchemaCache.getInstance()
           .updateAttributes(
-              databaseName, convertIdValuesToDeviceID(tableName, deviceId), resultMap);
+              databaseName, convertTagValuesToDeviceID(tableName, deviceId), resultMap);
     }
     deviceAttributeCacheUpdater.update(tableName, deviceId, resultMap);
   }

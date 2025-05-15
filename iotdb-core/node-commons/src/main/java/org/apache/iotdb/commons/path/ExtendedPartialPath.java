@@ -46,4 +46,16 @@ public class ExtendedPartialPath extends PartialPath {
   public boolean isNormalPath() {
     return matchFunctions.isEmpty();
   }
+
+  @Override
+  public String toString() {
+    return "ExtendedPartialPath{"
+        + "fullPath="
+        + getFullPath()
+        + ", matchFunctions="
+        + matchFunctions
+        + ", isRestrict="
+        + isRestrict
+        + '}';
+  }
 }

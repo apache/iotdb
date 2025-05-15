@@ -205,7 +205,7 @@ public class TableDeviceSchemaFetcher {
   }
 
   // Used by show/count device and update device.
-  // Update device will not access cache
+  // Update / Delete device will not access cache
   public boolean parseFilter4TraverseDevice(
       final String database,
       final TsTable tableInstance,
@@ -337,7 +337,7 @@ public class TableDeviceSchemaFetcher {
       idValues[idFilter.getIndex()] = ((PreciseFilter) childFilter).getValue();
     }
 
-    final IDeviceID deviceID = convertIdValuesToDeviceID(tableInstance.getTableName(), idValues);
+    final IDeviceID deviceID = convertTagValuesToDeviceID(tableInstance.getTableName(), idValues);
     final Map<String, Binary> attributeMap = cache.getDeviceAttribute(database, deviceID);
 
     // 1. AttributeMap == null means cache miss
@@ -370,7 +370,7 @@ public class TableDeviceSchemaFetcher {
     return true;
   }
 
-  public static IDeviceID convertIdValuesToDeviceID(
+  public static IDeviceID convertTagValuesToDeviceID(
       final String tableName, final String[] idValues) {
     // Convert to IDeviceID
     final String[] deviceIdNodes = new String[idValues.length + 1];
