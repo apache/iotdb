@@ -171,7 +171,7 @@ public class ForecastTableFunction implements TableFunction {
   private static final String KEEP_INPUT_PARAMETER_NAME = "KEEP_INPUT";
   private static final Boolean DEFAULT_KEEP_INPUT = Boolean.FALSE;
   private static final String IS_INPUT_COLUMN_NAME = "is_input";
-  private static final String OPTIONS_PARAMETER_NAME = "OPTIONS";
+  private static final String OPTIONS_PARAMETER_NAME = "MODEL_OPTIONS";
   private static final String DEFAULT_OPTIONS = "";
 
   private static final String INVALID_OPTIONS_FORMAT = "Invalid options: %s";
@@ -501,10 +501,19 @@ public class ForecastTableFunction implements TableFunction {
       // time column
       long inputStartTime = inputRecords.getFirst().getLong(0);
       long inputEndTime = inputRecords.getLast().getLong(0);
-      long interval =
-          outputInterval <= 0
-              ? (inputEndTime - inputStartTime) / inputRecords.size()
-              : outputInterval;
+      if (inputEndTime < inputStartTime) {
+        throw new SemanticException(
+            String.format(
+                "input end time should never less than start time, start time is %s, end time is %s",
+                inputStartTime, inputEndTime));
+      }
+      long interval = outputInterval;
+      if (outputInterval <= 0) {
+        interval =
+            inputRecords.size() == 1
+                ? 0
+                : (inputEndTime - inputStartTime) / (inputRecords.size() - 1);
+      }
       long outputTime =
           (outputStartTime == Long.MIN_VALUE) ? (inputEndTime + interval) : outputStartTime;
       for (int i = 0; i < outputLength; i++) {
