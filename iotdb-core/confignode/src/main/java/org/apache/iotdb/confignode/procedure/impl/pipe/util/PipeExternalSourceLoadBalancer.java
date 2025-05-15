@@ -35,13 +35,25 @@ import java.util.Map;
 import java.util.stream.Collectors;
 
 /**
- * The ExternalLoadBalancer is responsible for assigning parallel extraction tasks from an external
- * source to available DataNodes in the cluster.
+ * The PipeExternalSourceLoadBalancer is responsible for assigning parallel extraction tasks from an
+ * external source to available DataNodes in the cluster.
  */
-public class ExternalLoadBalancer {
+public class PipeExternalSourceLoadBalancer {
+
+  /**
+   * The BalanceStrategy interface defines the contract for different load balancing strategies.
+   * Implementations of this interface should provide a way to balance tasks across DataNodes.
+   */
+  private interface BalanceStrategy {
+    Map<Integer, Integer> balance(
+        final int parallelCount,
+        final PipeStaticMeta pipeStaticMeta,
+        final ConfigManager configManager);
+  }
+
   private final BalanceStrategy strategy;
 
-  public ExternalLoadBalancer(final String balanceStrategy) {
+  public PipeExternalSourceLoadBalancer(final String balanceStrategy) {
     switch (balanceStrategy) {
       case PipeExtractorConstant.EXTERNAL_EXTRACTOR_BALANCE_PROPORTION_STRATEGY:
         this.strategy = new ProportionalBalanceStrategy();
@@ -66,14 +78,8 @@ public class ExternalLoadBalancer {
     return strategy.balance(parallelCount, pipeStaticMeta, configManager);
   }
 
-  public interface BalanceStrategy {
-    Map<Integer, Integer> balance(
-        final int parallelCount,
-        final PipeStaticMeta pipeStaticMeta,
-        final ConfigManager configManager);
-  }
-
   public static class ProportionalBalanceStrategy implements BalanceStrategy {
+
     @Override
     public Map<Integer, Integer> balance(
         final int parallelCount,

@@ -30,7 +30,7 @@ import org.apache.iotdb.confignode.persistence.pipe.PipeTaskInfo;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.impl.pipe.AbstractOperatePipeProcedureV2;
 import org.apache.iotdb.confignode.procedure.impl.pipe.PipeTaskOperation;
-import org.apache.iotdb.confignode.procedure.impl.pipe.util.ExternalLoadBalancer;
+import org.apache.iotdb.confignode.procedure.impl.pipe.util.PipeExternalSourceLoadBalancer;
 import org.apache.iotdb.confignode.procedure.state.ProcedureLockState;
 import org.apache.iotdb.confignode.procedure.store.ProcedureType;
 import org.apache.iotdb.confignode.service.ConfigNode;
@@ -116,46 +116,46 @@ public class PipeMetaSyncProcedure extends AbstractOperatePipeProcedureV2 {
         .getPipeMetaList()
         .forEach(
             pipeMeta -> {
-              if (pipeMeta.getStaticMeta().isSourceExternal()) {
-                final ExternalLoadBalancer loadBalancer =
-                    new ExternalLoadBalancer(
-                        pipeMeta
-                            .getStaticMeta()
-                            .getExtractorParameters()
-                            .getStringOrDefault(
-                                Arrays.asList(
-                                    PipeExtractorConstant.EXTERNAL_EXTRACTOR_BALANCE_STRATEGY_KEY,
-                                    PipeExtractorConstant.EXTERNAL_SOURCE_BALANCE_STRATEGY_KEY),
-                                PipeExtractorConstant
-                                    .EXTERNAL_EXTRACTOR_BALANCE_PROPORTION_STRATEGY));
-
-                final int parallelism =
-                    pipeMeta
-                        .getStaticMeta()
-                        .getExtractorParameters()
-                        .getIntOrDefault(
-                            Arrays.asList(
-                                EXTERNAL_EXTRACTOR_PARALLELISM_KEY,
-                                EXTERNAL_SOURCE_PARALLELISM_KEY),
-                            EXTERNAL_EXTRACTOR_PARALLELISM_DEFAULT_VALUE);
-                final Map<Integer, PipeTaskMeta> consensusGroupIdToTaskMetaMap =
-                    pipeMeta.getRuntimeMeta().getConsensusGroupId2TaskMetaMap();
-                loadBalancer
-                    .balance(
-                        parallelism,
-                        pipeMeta.getStaticMeta(),
-                        ConfigNode.getInstance().getConfigManager())
-                    .forEach(
-                        (taskIndex, newLeader) -> {
-                          if (consensusGroupIdToTaskMetaMap.containsKey(taskIndex)) {
-                            consensusGroupIdToTaskMetaMap.get(taskIndex).setLeaderNodeId(newLeader);
-                          } else {
-                            consensusGroupIdToTaskMetaMap.put(
-                                taskIndex,
-                                new PipeTaskMeta(MinimumProgressIndex.INSTANCE, newLeader));
-                          }
-                        });
+              if (!pipeMeta.getStaticMeta().isSourceExternal()) {
+                return;
               }
+
+              final PipeExternalSourceLoadBalancer loadBalancer =
+                  new PipeExternalSourceLoadBalancer(
+                      pipeMeta
+                          .getStaticMeta()
+                          .getExtractorParameters()
+                          .getStringOrDefault(
+                              Arrays.asList(
+                                  PipeExtractorConstant.EXTERNAL_EXTRACTOR_BALANCE_STRATEGY_KEY,
+                                  PipeExtractorConstant.EXTERNAL_SOURCE_BALANCE_STRATEGY_KEY),
+                              PipeExtractorConstant
+                                  .EXTERNAL_EXTRACTOR_BALANCE_PROPORTION_STRATEGY));
+              final int parallelism =
+                  pipeMeta
+                      .getStaticMeta()
+                      .getExtractorParameters()
+                      .getIntOrDefault(
+                          Arrays.asList(
+                              EXTERNAL_EXTRACTOR_PARALLELISM_KEY, EXTERNAL_SOURCE_PARALLELISM_KEY),
+                          EXTERNAL_EXTRACTOR_PARALLELISM_DEFAULT_VALUE);
+              final Map<Integer, PipeTaskMeta> consensusGroupIdToTaskMetaMap =
+                  pipeMeta.getRuntimeMeta().getConsensusGroupId2TaskMetaMap();
+              loadBalancer
+                  .balance(
+                      parallelism,
+                      pipeMeta.getStaticMeta(),
+                      ConfigNode.getInstance().getConfigManager())
+                  .forEach(
+                      (taskIndex, newLeader) -> {
+                        if (consensusGroupIdToTaskMetaMap.containsKey(taskIndex)) {
+                          consensusGroupIdToTaskMetaMap.get(taskIndex).setLeaderNodeId(newLeader);
+                        } else {
+                          consensusGroupIdToTaskMetaMap.put(
+                              taskIndex,
+                              new PipeTaskMeta(MinimumProgressIndex.INSTANCE, newLeader));
+                        }
+                      });
             });
   }
 
