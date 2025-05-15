@@ -17,22 +17,26 @@
  * under the License.
  */
 
-package org.apache.iotdb.commons.schema.table;
+package org.apache.iotdb.commons.binaryallocator;
 
-public enum TableType {
-  BASE_TABLE("BASE TABLE"),
-  VIEW_FROM_TREE("VIEW FROM TREE"),
-  VIEW("VIEW"),
-  SYSTEM_VIEW("SYSTEM VIEW"),
-  ;
+import org.apache.iotdb.commons.binaryallocator.arena.Arena;
 
-  private final String name;
+import org.apache.tsfile.utils.PooledBinary;
 
-  TableType(final String name) {
-    this.name = name;
-  }
+import java.lang.ref.PhantomReference;
+import java.lang.ref.ReferenceQueue;
 
-  public String getName() {
-    return name;
+public class PooledBinaryPhantomReference extends PhantomReference<PooledBinary> {
+  public final byte[] byteArray;
+  public Arena.SlabRegion slabRegion;
+
+  public PooledBinaryPhantomReference(
+      PooledBinary referent,
+      ReferenceQueue<? super PooledBinary> q,
+      byte[] byteArray,
+      Arena.SlabRegion region) {
+    super(referent, q);
+    this.byteArray = byteArray;
+    this.slabRegion = region;
   }
 }

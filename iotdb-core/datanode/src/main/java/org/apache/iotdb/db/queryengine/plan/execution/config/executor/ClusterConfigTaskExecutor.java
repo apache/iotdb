@@ -4109,6 +4109,11 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
   public SettableFuture<ConfigTaskResult> deleteDevice(
       final DeleteDevice deleteDevice, final String queryId, final SessionInfo sessionInfo) {
     final SettableFuture<ConfigTaskResult> future = SettableFuture.create();
+    if (!deleteDevice.isMayDeleteDevice()) {
+      DeleteDeviceTask.buildTSBlock(0, future);
+      return future;
+    }
+
     try (final ConfigNodeClient client =
         CLUSTER_DELETION_CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
 

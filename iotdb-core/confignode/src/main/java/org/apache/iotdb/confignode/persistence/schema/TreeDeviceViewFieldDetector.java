@@ -42,8 +42,11 @@ import org.apache.tsfile.enums.TSDataType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import javax.annotation.Nonnull;
+
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -173,6 +176,17 @@ public class TreeDeviceViewFieldDetector {
           ((dataNodeLocation, consensusGroupIdList) ->
               new TDeviceViewReq(
                   consensusGroupIdList, Arrays.asList(path.getNodes()), tagNumber, restrict)));
+      configManager
+          .getClusterSchemaManager()
+          .getTemplateSetInfo(Collections.singletonList(path))
+          .getPatternTemplateMap()
+          .values()
+          .stream()
+          .flatMap(Collection::stream)
+          .flatMap(template -> template.getSchemaMap().values().stream())
+          .forEach(
+              schema ->
+                  mergeMeasurementAndType(schema.getMeasurementName(), schema.getTypeInByte()));
     }
 
     protected TreeDeviceViewFieldDetectionTaskExecutor(
@@ -180,7 +194,7 @@ public class TreeDeviceViewFieldDetector {
         final Map<TConsensusGroupId, TRegionReplicaSet> targetRegionGroup,
         final int tagNumber,
         final boolean restrict,
-        final Set<String> measurements) {
+        final @Nonnull Set<String> measurements) {
       super(
           configManager,
           targetRegionGroup,
@@ -190,6 +204,18 @@ public class TreeDeviceViewFieldDetector {
               new TDeviceViewReq(
                       consensusGroupIdList, Arrays.asList(path.getNodes()), tagNumber, restrict)
                   .setRequiredMeasurements(measurements)));
+      configManager
+          .getClusterSchemaManager()
+          .getTemplateSetInfo(Collections.singletonList(path))
+          .getPatternTemplateMap()
+          .values()
+          .stream()
+          .flatMap(Collection::stream)
+          .flatMap(template -> template.getSchemaMap().values().stream())
+          .filter(schema -> measurements.contains(schema.getMeasurementName()))
+          .forEach(
+              schema ->
+                  mergeMeasurementAndType(schema.getMeasurementName(), schema.getTypeInByte()));
     }
 
     @Override
@@ -235,36 +261,35 @@ public class TreeDeviceViewFieldDetector {
 
     private void mergeDeviceViewResp(final TDeviceViewResp resp) {
       // The map is always nonnull in the resp
-      resp.getDeviewViewFieldTypeMap()
-          .forEach(
-              (measurement, type) -> {
-                final String fieldName = measurement.toLowerCase(Locale.ENGLISH);
+      resp.getDeviewViewFieldTypeMap().forEach(this::mergeMeasurementAndType);
+    }
 
-                // Field type collection
-                if (!result.getDeviewViewFieldTypeMap().containsKey(fieldName)) {
-                  result.getDeviewViewFieldTypeMap().put(fieldName, type);
-                } else if (!Objects.equals(
-                    result.getDeviewViewFieldTypeMap().get(fieldName), type)) {
-                  result.setStatus(
-                      RpcUtils.getStatus(
-                          TSStatusCode.DATA_TYPE_MISMATCH,
-                          String.format(
-                              "Multiple types encountered when auto detecting type of measurement '%s', please check",
-                              measurement)));
-                }
+    private void mergeMeasurementAndType(final String measurement, final byte type) {
+      final String fieldName = measurement.toLowerCase(Locale.ENGLISH);
 
-                // Field name detection
-                if (!lowerCase2OriginalMap.containsKey(fieldName)) {
-                  lowerCase2OriginalMap.put(fieldName, measurement);
-                } else if (!Objects.equals(lowerCase2OriginalMap.get(fieldName), measurement)) {
-                  result.setStatus(
-                      RpcUtils.getStatus(
-                          TSStatusCode.MEASUREMENT_NAME_CONFLICT,
-                          String.format(
-                              "The measurements %s and %s share the same lower case when auto detecting type, please check",
-                              lowerCase2OriginalMap.get(fieldName), measurement)));
-                }
-              });
+      // Field type collection
+      if (!result.getDeviewViewFieldTypeMap().containsKey(fieldName)) {
+        result.getDeviewViewFieldTypeMap().put(fieldName, type);
+      } else if (!Objects.equals(result.getDeviewViewFieldTypeMap().get(fieldName), type)) {
+        result.setStatus(
+            RpcUtils.getStatus(
+                TSStatusCode.DATA_TYPE_MISMATCH,
+                String.format(
+                    "Multiple types encountered when auto detecting type of measurement '%s', please check",
+                    measurement)));
+      }
+
+      // Field name detection
+      if (!lowerCase2OriginalMap.containsKey(fieldName)) {
+        lowerCase2OriginalMap.put(fieldName, measurement);
+      } else if (!Objects.equals(lowerCase2OriginalMap.get(fieldName), measurement)) {
+        result.setStatus(
+            RpcUtils.getStatus(
+                TSStatusCode.MEASUREMENT_NAME_CONFLICT,
+                String.format(
+                    "The measurements %s and %s share the same lower case when auto detecting type, please check",
+                    lowerCase2OriginalMap.get(fieldName), measurement)));
+      }
     }
 
     @Override

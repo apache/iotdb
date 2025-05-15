@@ -358,7 +358,7 @@ public class IoTDBCorrelatedExistsSubqueryIT {
   }
 
   @Test
-  public void testUnCorrelatedExistsSubqueryInSelectClause() {
+  public void testCorrelatedExistsSubqueryInSelectClause() {
     String sql;
     String[] expectedHeader;
     String[] retArray;

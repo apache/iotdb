@@ -28,12 +28,12 @@ import java.util.Objects;
 
 import static com.google.common.base.MoreObjects.toStringHelper;
 
-public class CreateTableView extends CreateTable {
+public class CreateView extends CreateTable {
   private final PartialPath prefixPath;
   private final boolean replace;
   private final boolean restrict;
 
-  public CreateTableView(
+  public CreateView(
       final @Nullable NodeLocation location,
       final QualifiedName name,
       final List<ColumnDefinition> elements,
@@ -63,15 +63,15 @@ public class CreateTableView extends CreateTable {
 
   @Override
   public <R, C> R accept(final AstVisitor<R, C> visitor, final C context) {
-    return visitor.visitCreateTableView(this, context);
+    return visitor.visitCreateView(this, context);
   }
 
   @Override
   public boolean equals(final Object o) {
     return super.equals(o)
-        && Objects.equals(prefixPath, ((CreateTableView) o).prefixPath)
-        && replace == ((CreateTableView) o).replace
-        && restrict == ((CreateTableView) o).restrict;
+        && Objects.equals(prefixPath, ((CreateView) o).prefixPath)
+        && replace == ((CreateView) o).replace
+        && restrict == ((CreateView) o).restrict;
   }
 
   @Override

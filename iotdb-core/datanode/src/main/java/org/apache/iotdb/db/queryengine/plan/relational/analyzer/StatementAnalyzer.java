@@ -73,8 +73,8 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateOrUpdateDev
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreatePipe;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreatePipePlugin;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateTable;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateTableView;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateTopic;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateView;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Delete;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DeleteDevice;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DereferenceExpression;
@@ -409,8 +409,7 @@ public class StatementAnalyzer {
     }
 
     @Override
-    protected Scope visitCreateTableView(
-        final CreateTableView node, final Optional<Scope> context) {
+    protected Scope visitCreateView(final CreateView node, final Optional<Scope> context) {
       validateProperties(node.getProperties(), context);
       return createAndAssignScope(node, context);
     }
@@ -481,7 +480,7 @@ public class StatementAnalyzer {
       final TranslationMap translationMap = analyzeTraverseDevice(node, context, true);
       final TsTable table =
           DataNodeTableCache.getInstance().getTable(node.getDatabase(), node.getTableName());
-      node.parseRawExpression(
+      if (!node.parseRawExpression(
           null,
           table,
           table.getColumnList().stream()
@@ -490,7 +489,10 @@ public class StatementAnalyzer {
                       columnSchema.getColumnCategory().equals(TsTableColumnCategory.ATTRIBUTE))
               .map(TsTableColumnSchema::getColumnName)
               .collect(Collectors.toList()),
-          queryContext);
+          queryContext)) {
+        analysis.setFinishQueryAfterAnalyze();
+        return null;
+      }
 
       // If node.location is absent, this is a pipe-transferred update, namely the assignments are
       // already parsed at the sender

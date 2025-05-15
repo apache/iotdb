@@ -1068,9 +1068,23 @@ public class PipeConsensusReceiver {
       tsFileWriterCheckerFuture.cancel(false);
       tsFileWriterCheckerFuture = null;
     }
+    // shutdown executor
+    scheduledTsFileWriterCheckerPool.shutdownNow();
+    try {
+      if (!scheduledTsFileWriterCheckerPool.awaitTermination(30, TimeUnit.SECONDS)) {
+        LOGGER.warn("TsFileChecker did not terminate within {}s", 30);
+      }
+    } catch (InterruptedException e) {
+      LOGGER.warn("TsFileChecker Thread {} still doesn't exit after 30s", consensusPipeName);
+      Thread.currentThread().interrupt();
+    }
     // Clear the tsFileWriters, receiverBuffer and receiver base dirs
     requestExecutor.clear(false, true);
     LOGGER.info("Receiver-{} exit successfully.", consensusPipeName.toString());
+  }
+
+  public void closeExecutor() {
+    requestExecutor.tryClose();
   }
 
   private class PipeConsensusTsFileWriterPool {
@@ -1662,6 +1676,9 @@ public class PipeConsensusReceiver {
       try {
         isClosed.set(true);
       } finally {
+        // let all threads that may still await become active again to acquire lock instead of
+        // meaningless sleeping in the condition while lock is already released.
+        condition.signalAll();
         lock.unlock();
       }
     }
