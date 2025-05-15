@@ -2077,7 +2077,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
     final Map<String, String> connectorAttributes;
     try {
       if (!alterPipeStatement.getExtractorAttributes().isEmpty()) {
-        // We don't allow changing the extractor plugin name
+        // We don't allow changing the extractor plugin type
         if (alterPipeStatement
                 .getExtractorAttributes()
                 .containsKey(PipeExtractorConstant.EXTRACTOR_KEY)
