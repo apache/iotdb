@@ -2076,12 +2076,19 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
     final Map<String, String> processorAttributes;
     final Map<String, String> connectorAttributes;
     try {
-      // We don't allow changing the extractor plugin name
-      checkIfSourcePluginChanged(
-          pipeMetaFromCoordinator.getStaticMeta().getExtractorParameters(),
-          new PipeParameters(alterPipeStatement.getExtractorAttributes()));
-
       if (!alterPipeStatement.getExtractorAttributes().isEmpty()) {
+        // We don't allow changing the extractor plugin name
+        if (alterPipeStatement
+                .getExtractorAttributes()
+                .containsKey(PipeExtractorConstant.EXTRACTOR_KEY)
+            || alterPipeStatement
+                .getExtractorAttributes()
+                .containsKey(PipeExtractorConstant.SOURCE_KEY)
+            || alterPipeStatement.isReplaceAllExtractorAttributes()) {
+          checkIfSourcePluginChanged(
+              pipeMetaFromCoordinator.getStaticMeta().getExtractorParameters(),
+              new PipeParameters(alterPipeStatement.getExtractorAttributes()));
+        }
         if (alterPipeStatement.isReplaceAllExtractorAttributes()) {
           extractorAttributes = alterPipeStatement.getExtractorAttributes();
         } else {
