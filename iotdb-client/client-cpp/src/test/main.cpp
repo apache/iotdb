@@ -22,7 +22,7 @@
 #include <catch.hpp>
 #include "Session.h"
 
-Session *session = new Session("127.0.0.1", 6667, "root", "root");
+std::shared_ptr<Session> session = std::make_shared<Session>("127.0.0.1", 6667, "root", "root");
 
 struct SessionListener : Catch::TestEventListenerBase {
 

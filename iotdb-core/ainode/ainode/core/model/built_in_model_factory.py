@@ -15,9 +15,9 @@
 # specific language governing permissions and limitations
 # under the License.
 #
+import os
 from abc import abstractmethod
 from typing import List, Dict
-import os
 
 import numpy as np
 from sklearn.preprocessing import MinMaxScaler
@@ -28,14 +28,14 @@ from sktime.forecasting.exp_smoothing import ExponentialSmoothing
 from sktime.forecasting.naive import NaiveForecaster
 from sktime.forecasting.trend import STLForecaster
 
+from ainode.TimerXL.models import timer_xl
+from ainode.TimerXL.models.configuration_timer import TimerxlConfig
+from ainode.core.config import AINodeDescriptor
 from ainode.core.constant import AttributeName, BuiltInModelType
-from ainode.core.exception import InferenceModelInternalError, AttributeNotSupportError
+from ainode.core.exception import InferenceModelInternalError
 from ainode.core.exception import WrongAttributeTypeError, NumericalRangeException, StringRangeException, \
     ListRangeException, BuiltInModelNotSupportError
 from ainode.core.log import Logger
-
-from ainode.TimerXL.models import timer_xl
-from ainode.TimerXL.models.configuration_timer import TimerxlConfig
 
 logger = Logger()
 
@@ -78,11 +78,6 @@ def fetch_built_in_model(model_id, inference_attributes):
         registration. This module will parse the inference attributes and create the built-in model.
     """
     attribute_map = get_model_attributes(model_id)
-
-    # validate the inference attributes
-    for attribute_name in inference_attributes:
-        if attribute_name not in attribute_map:
-            raise AttributeNotSupportError(model_id, attribute_name)
 
     # parse the inference attributes, attributes is a Dict[str, Any]
     attributes = parse_attribute(inference_attributes, attribute_map)
@@ -398,9 +393,10 @@ timerxl_attribute_map = {
     ),
     AttributeName.TIMERXL_CKPT_PATH.value: StringAttribute(
         name=AttributeName.TIMERXL_CKPT_PATH.value,
-        default_value=os.path.join(os.path.dirname(os.path.abspath(__file__)), 'weights', 'timerxl', 'model.safetensors'),
-        value_choices=[os.path.join(os.path.dirname(os.path.abspath(__file__)), 'weights', 'timerxl', 'model.safetensors'), ""],
-    ),
+        default_value=os.path.join(os.getcwd(), AINodeDescriptor().get_config().get_ain_models_dir(), 'weights',
+                                   'timerxl', 'model.safetensors'),
+        value_choices=['']
+    )
 }
 
 # built-in sktime model attributes

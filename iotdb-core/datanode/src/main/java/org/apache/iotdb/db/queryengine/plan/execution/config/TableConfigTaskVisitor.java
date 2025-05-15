@@ -125,9 +125,9 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateFunction;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreatePipe;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreatePipePlugin;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateTable;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateTableView;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateTopic;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateTraining;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateView;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DataType;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DatabaseStatement;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DeleteDevice;
@@ -213,11 +213,13 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.Set;
 import java.util.function.Predicate;
 
 import static org.apache.iotdb.commons.conf.IoTDBConstant.MAX_DATABASE_NAME_LENGTH;
@@ -464,8 +466,7 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
   }
 
   @Override
-  protected IConfigTask visitCreateTableView(
-      final CreateTableView node, final MPPQueryContext context) {
+  protected IConfigTask visitCreateView(final CreateView node, final MPPQueryContext context) {
     final Pair<String, TsTable> databaseTablePair = parseTable4CreateTableOrView(node, context);
     final TsTable table = databaseTablePair.getRight();
     accessControl.checkCanCreateViewFromTreePath(
@@ -500,6 +501,7 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
 
     // TODO: Place the check at statement analyzer
     boolean hasTimeColumn = false;
+    final Set<String> sourceNameSet = new HashSet<>();
     for (final ColumnDefinition columnDefinition : node.getElements()) {
       final TsTableColumnCategory category = columnDefinition.getColumnCategory();
       final String columnName = columnDefinition.getName().getValue();
@@ -514,7 +516,7 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
         throw new SemanticException(
             String.format("Columns in table shall not share the same name %s.", columnName));
       }
-      table.addColumnSchema(
+      final TsTableColumnSchema schema =
           TableHeaderSchemaValidator.generateColumnSchema(
               category,
               columnName,
@@ -523,7 +525,14 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
               columnDefinition instanceof ViewFieldDefinition
                       && Objects.nonNull(((ViewFieldDefinition) columnDefinition).getFrom())
                   ? ((ViewFieldDefinition) columnDefinition).getFrom().getValue()
-                  : null));
+                  : null);
+      if (!sourceNameSet.add(TreeViewSchema.getSourceName(schema))) {
+        throw new SemanticException(
+            String.format(
+                "The duplicated source measurement %s is unsupported yet.",
+                TreeViewSchema.getSourceName(schema)));
+      }
+      table.addColumnSchema(schema);
     }
     return new Pair<>(database, table);
   }

@@ -60,9 +60,9 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateIndex;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreatePipe;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreatePipePlugin;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateTable;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateTableView;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateTopic;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateTraining;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateView;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CurrentDatabase;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CurrentTime;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CurrentUser;
@@ -525,13 +525,12 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
   }
 
   @Override
-  public Node visitCreateTableViewStatement(
-      final RelationalSqlParser.CreateTableViewStatementContext ctx) {
+  public Node visitCreateViewStatement(final RelationalSqlParser.CreateViewStatementContext ctx) {
     List<Property> properties = ImmutableList.of();
     if (ctx.properties() != null) {
       properties = visit(ctx.properties().propertyAssignments().property(), Property.class);
     }
-    return new CreateTableView(
+    return new CreateView(
         getLocation(ctx),
         getQualifiedName(ctx.qualifiedName()),
         visit(ctx.viewColumnDefinition(), ColumnDefinition.class),
@@ -616,23 +615,32 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
 
   @Override
   public Node visitViewColumnDefinition(final RelationalSqlParser.ViewColumnDefinitionContext ctx) {
-    return Objects.nonNull(ctx.FROM()) || Objects.nonNull(ctx.FIELD())
+    final Identifier rawColumnName = (Identifier) visit(ctx.identifier().get(0));
+    final Identifier columnName = lowerIdentifier(rawColumnName);
+    final TsTableColumnCategory columnCategory = getColumnCategory(ctx.columnCategory);
+    Identifier originalMeasurement = null;
+
+    if (Objects.nonNull(ctx.FROM())) {
+      originalMeasurement = (Identifier) visit(ctx.original_measurement);
+    } else if (columnCategory == FIELD && !columnName.equals(rawColumnName)) {
+      originalMeasurement = rawColumnName;
+    }
+
+    return columnCategory == FIELD
         ? new ViewFieldDefinition(
             getLocation(ctx),
-            lowerIdentifier((Identifier) visit(ctx.identifier().get(0))),
+            columnName,
             Objects.nonNull(ctx.type()) ? (DataType) visit(ctx.type()) : null,
             null,
             ctx.comment() == null
                 ? null
                 : ((StringLiteral) visit(ctx.comment().string())).getValue(),
-            Objects.nonNull(ctx.FROM())
-                ? lowerIdentifier((Identifier) visit(ctx.original_measurement))
-                : null)
+            originalMeasurement)
         : new ColumnDefinition(
             getLocation(ctx),
-            lowerIdentifier((Identifier) visit(ctx.identifier().get(0))),
+            columnName,
             Objects.nonNull(ctx.type()) ? (DataType) visit(ctx.type()) : null,
-            getColumnCategory(ctx.columnCategory),
+            columnCategory,
             null,
             ctx.comment() == null
                 ? null

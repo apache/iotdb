@@ -27,8 +27,11 @@ from ainode.TimerXL.models.configuration_timer import TimerxlConfig
 from ainode.core.util.masking import prepare_4d_causal_attention_mask
 from ainode.core.util.huggingface_cache import Cache, DynamicCache
 
-import safetensors
+from safetensors.torch import load_file as load_safetensors
 from huggingface_hub import hf_hub_download
+
+from ainode.core.log import Logger
+logger = Logger()
 
 @dataclass
 class Output:
@@ -211,12 +214,15 @@ class Model(nn.Module):
                 state_dict = torch.load(config.ckpt_path)
             elif config.ckpt_path.endswith('.safetensors'):
                 if not os.path.exists(config.ckpt_path):
-                    print(f"[INFO] Checkpoint not found at {config.ckpt_path}, downloading from HuggingFace...")
+                    logger.info(f"Checkpoint not found at {config.ckpt_path}, downloading from HuggingFace...")
                     repo_id = "thuml/timer-base-84m"
-                    filename = os.path.basename(config.ckpt_path)  # eg: model.safetensors
-                    config.ckpt_path = hf_hub_download(repo_id=repo_id, filename=filename)
-                    print(f"[INFO] Downloaded checkpoint to {config.ckpt_path}")
-                state_dict = safetensors.torch.load_file(config.ckpt_path)
+                    try:
+                        config.ckpt_path = hf_hub_download(repo_id=repo_id, filename=os.path.basename(config.ckpt_path), local_dir=os.path.dirname(config.ckpt_path))
+                        logger.info(f"Got checkpoint to {config.ckpt_path}")
+                    except Exception as e:
+                        logger.error(f"Failed to download checkpoint to {config.ckpt_path} due to {e}")
+                        raise e
+                state_dict = load_safetensors(config.ckpt_path)
             else:
                 raise ValueError('unsupported model weight type')
             # If there is no key beginning with 'model.model' in state_dict, add a 'model.' before all keys. (The model code here has an additional layer of encapsulation compared to the code on huggingface.)
@@ -234,7 +240,7 @@ class Model(nn.Module):
         # change [L, C=1] to [batchsize=1, L]
         self.device = next(self.model.parameters()).device
         
-        x = torch.tensor(x.values, dtype=next(self.model.parameters()).dtype, device=self.device)
+        x = torch.tensor(x, dtype=next(self.model.parameters()).dtype, device=self.device)
         x = x.view(1, -1)
 
         preds = self.forward(x, max_new_tokens)
@@ -246,6 +252,18 @@ class Model(nn.Module):
         # self.config.is_encoder_decoder = False
         self.eval()
         self.device = next(self.model.parameters()).device
+        
+        if len(x.shape) == 2:
+            batch_size, cur_len = x.shape
+            if cur_len < self.config.input_token_len:
+                raise ValueError(
+                    f"Input length must be at least {self.config.input_token_len}")
+            elif cur_len % self.config.input_token_len != 0:
+                new_len = (cur_len // self.config.input_token_len) * \
+                    self.config.input_token_len
+                x = x[:, -new_len:]
+        else:
+            raise ValueError('Input shape must be: [batch_size, seq_len]')
         
         use_cache = self.config.use_cache
         all_input_ids = x

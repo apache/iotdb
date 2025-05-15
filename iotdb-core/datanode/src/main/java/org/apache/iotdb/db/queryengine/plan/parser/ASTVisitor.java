@@ -96,7 +96,7 @@ import org.apache.iotdb.db.queryengine.plan.expression.unary.LogicNotExpression;
 import org.apache.iotdb.db.queryengine.plan.expression.unary.NegationExpression;
 import org.apache.iotdb.db.queryengine.plan.expression.unary.RegularExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ColumnDefinition;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateTableView;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateView;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DataType;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DataTypeParameter;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.GenericDataType;
@@ -4604,8 +4604,12 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
 
   @Override
   public Statement visitCreateTableView(final IoTDBSqlParser.CreateTableViewContext ctx) {
+    if (true) {
+      throw new UnsupportedOperationException(
+          "The 'CreateTableView' is unsupported in tree sql-dialect.");
+    }
     return new CreateTableViewStatement(
-        new CreateTableView(
+        new CreateView(
             null,
             getQualifiedName(ctx.qualifiedName()),
             ctx.viewColumnDefinition().stream()
@@ -4627,10 +4631,22 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
 
   public ColumnDefinition parseViewColumnDefinition(
       final IoTDBSqlParser.ViewColumnDefinitionContext ctx) {
-    return Objects.nonNull(ctx.FROM())
+    final Identifier rawColumnName =
+        new Identifier(parseIdentifier(ctx.identifier().get(0).getText()));
+    final Identifier columnName = lowerIdentifier(rawColumnName);
+    final TsTableColumnCategory columnCategory = getColumnCategory(ctx.columnCategory);
+    Identifier originalMeasurement = null;
+
+    if (Objects.nonNull(ctx.FROM())) {
+      originalMeasurement = new Identifier(parseIdentifier(ctx.original_measurement.getText()));
+    } else if (columnCategory == FIELD && !columnName.equals(rawColumnName)) {
+      originalMeasurement = rawColumnName;
+    }
+
+    return columnCategory == FIELD
         ? new ViewFieldDefinition(
             null,
-            lowerIdentifier(new Identifier(parseIdentifier(ctx.identifier().get(0).getText()))),
+            columnName,
             Objects.nonNull(ctx.type())
                 ? parseGenericType((IoTDBSqlParser.GenericTypeContext) ctx.type())
                 : null,
@@ -4638,14 +4654,14 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
             ctx.comment() == null
                 ? null
                 : parseStringLiteral(ctx.comment().STRING_LITERAL().getText()),
-            lowerIdentifier(new Identifier(parseIdentifier(ctx.original_measurement.getText()))))
+            originalMeasurement)
         : new ColumnDefinition(
             null,
-            lowerIdentifier(new Identifier(parseIdentifier(ctx.identifier().get(0).getText()))),
+            columnName,
             Objects.nonNull(ctx.type())
                 ? parseGenericType((IoTDBSqlParser.GenericTypeContext) ctx.type())
                 : null,
-            getColumnCategory(ctx.columnCategory),
+            columnCategory,
             null,
             ctx.comment() == null
                 ? null
