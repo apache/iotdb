@@ -217,15 +217,17 @@ public class PipeDataNodePluginAgent {
         pipeName, extractorAttributes, processorAttributes, connectorAttributes);
   }
 
-  public boolean checkIfPluginSameType(final String newPluginName, final String oldPluginName) {
-    PipePluginMeta newPipePluginMeta = pipePluginMetaKeeper.getPipePluginMeta(newPluginName);
+  public boolean checkIfPluginSameType(final String oldPluginName, final String newPluginName) {
     PipePluginMeta oldPipePluginMeta = pipePluginMetaKeeper.getPipePluginMeta(oldPluginName);
-    if (newPipePluginMeta == null) {
-      throw new PipeException(String.format("plugin %s is not registered.", newPluginName));
-    }
+    PipePluginMeta newPipePluginMeta = pipePluginMetaKeeper.getPipePluginMeta(newPluginName);
+
     if (oldPipePluginMeta == null) {
       throw new PipeException(String.format("plugin %s is not registered.", oldPluginName));
     }
-    return Objects.equals(newPipePluginMeta.getClassName(), (oldPipePluginMeta.getClassName()));
+    if (newPipePluginMeta == null) {
+      throw new PipeException(String.format("plugin %s is not registered.", newPluginName));
+    }
+
+    return Objects.equals(oldPipePluginMeta.getClassName(), (newPipePluginMeta.getClassName()));
   }
 }

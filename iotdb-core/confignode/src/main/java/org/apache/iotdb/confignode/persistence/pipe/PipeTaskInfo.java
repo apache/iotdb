@@ -598,6 +598,10 @@ public class PipeTaskInfo implements SnapshotProcessor {
                             // external source pipe tasks are not balanced here since non-leaders
                             // don't know about RegionLeader Map and will be balanced in the meta
                             // sync procedure
+                            LOGGER.info(
+                                "Pipe {} is using external source, skip region leader change. PipeHandleLeaderChangePlan: {}",
+                                pipeMeta.getStaticMeta().getPipeName(),
+                                plan.getConsensusGroupId2NewLeaderIdMap());
                             return;
                           }
 

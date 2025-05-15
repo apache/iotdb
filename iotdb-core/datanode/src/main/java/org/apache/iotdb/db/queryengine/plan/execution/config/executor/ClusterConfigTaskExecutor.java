@@ -2076,20 +2076,12 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
     final Map<String, String> processorAttributes;
     final Map<String, String> connectorAttributes;
     try {
+      // We don't allow changing the extractor plugin name
+      checkIfSourcePluginChanged(
+          pipeMetaFromCoordinator.getStaticMeta().getExtractorParameters(),
+          new PipeParameters(alterPipeStatement.getExtractorAttributes()));
 
       if (!alterPipeStatement.getExtractorAttributes().isEmpty()) {
-        // We don't allow to change the extractor type
-        if (alterPipeStatement
-                .getExtractorAttributes()
-                .containsKey(PipeExtractorConstant.EXTRACTOR_KEY)
-            || alterPipeStatement
-                .getExtractorAttributes()
-                .containsKey(PipeExtractorConstant.SOURCE_KEY)
-            || alterPipeStatement.isReplaceAllExtractorAttributes()) {
-          checkIfSameSourceType(
-              new PipeParameters(alterPipeStatement.getExtractorAttributes()),
-              pipeMetaFromCoordinator.getStaticMeta().getExtractorParameters());
-        }
         if (alterPipeStatement.isReplaceAllExtractorAttributes()) {
           extractorAttributes = alterPipeStatement.getExtractorAttributes();
         } else {
@@ -2183,6 +2175,30 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
     return future;
   }
 
+  private static void checkIfSourcePluginChanged(
+      final PipeParameters oldPipeParameters, final PipeParameters newPipeParameters) {
+    final String oldPluginName =
+        oldPipeParameters
+            .getStringOrDefault(
+                Arrays.asList(
+                    PipeExtractorConstant.EXTRACTOR_KEY, PipeExtractorConstant.SOURCE_KEY),
+                BuiltinPipePlugin.IOTDB_EXTRACTOR.getPipePluginName())
+            .toLowerCase();
+    final String newPluginName =
+        newPipeParameters
+            .getStringOrDefault(
+                Arrays.asList(
+                    PipeExtractorConstant.EXTRACTOR_KEY, PipeExtractorConstant.SOURCE_KEY),
+                BuiltinPipePlugin.IOTDB_EXTRACTOR.getPipePluginName())
+            .toLowerCase();
+    if (!PipeDataNodeAgent.plugin().checkIfPluginSameType(oldPluginName, newPluginName)) {
+      throw new SemanticException(
+          String.format(
+              "Failed to alter pipe, the source plugin of the pipe cannot be changed from %s to %s",
+              oldPluginName, newPluginName));
+    }
+  }
+
   private static void checkSourceType(
       final String pipeName, final Map<String, String> replacedExtractorAttributes) {
     final PipeParameters extractorParameters = new PipeParameters(replacedExtractorAttributes);
@@ -2233,30 +2249,6 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
           String.format(
               "Failed to alter pipe %s, in write-back-sink, password must be set when the username is specified.",
               pipeName));
-    }
-  }
-
-  private static void checkIfSameSourceType(
-      PipeParameters newPipeParameters, PipeParameters oldPipeParameters) {
-    final String newPluginName =
-        newPipeParameters
-            .getStringOrDefault(
-                Arrays.asList(
-                    PipeExtractorConstant.EXTRACTOR_KEY, PipeExtractorConstant.SOURCE_KEY),
-                BuiltinPipePlugin.IOTDB_EXTRACTOR.getPipePluginName())
-            .toLowerCase();
-    final String oldPluginName =
-        oldPipeParameters
-            .getStringOrDefault(
-                Arrays.asList(
-                    PipeExtractorConstant.EXTRACTOR_KEY, PipeExtractorConstant.SOURCE_KEY),
-                BuiltinPipePlugin.IOTDB_EXTRACTOR.getPipePluginName())
-            .toLowerCase();
-    if (!PipeDataNodeAgent.plugin().checkIfPluginSameType(newPluginName, oldPluginName)) {
-      throw new SemanticException(
-          String.format(
-              "Failed to alter pipe, the source type of the pipe cannot be changed from %s to %s",
-              oldPluginName, newPluginName));
     }
   }
 
