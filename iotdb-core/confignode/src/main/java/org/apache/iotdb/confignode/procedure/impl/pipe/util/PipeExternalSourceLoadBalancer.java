@@ -88,7 +88,7 @@ public class PipeExternalSourceLoadBalancer {
         final ConfigManager configManager) {
       final Map<TConsensusGroupId, Integer> regionLeaderMap =
           configManager.getLoadManager().getRegionLeaderMap();
-      final Map<Integer, Integer> parallelAssignment = new HashMap<>();
+      final Map<Integer, Integer> taskId2DataNodeId = new HashMap<>();
 
       // Check for Single Instance Mode:
       //
@@ -112,9 +112,9 @@ public class PipeExternalSourceLoadBalancer {
         final int numNodes = runningDataNodes.size();
         for (int i = 1; i <= Math.min(numNodes, parallelCount); i++) {
           final int datanodeId = runningDataNodes.get(i - 1);
-          parallelAssignment.put(-i, datanodeId);
+          taskId2DataNodeId.put(-i, datanodeId);
         }
-        return parallelAssignment;
+        return taskId2DataNodeId;
       }
 
       // Count DataRegions Led by Each DataNode:
@@ -151,11 +151,11 @@ public class PipeExternalSourceLoadBalancer {
           int tasksForNode = quotient + (i < remainder ? 1 : 0);
           int datanodeId = runningDataNodes.get(i);
           for (int j = 0; j < tasksForNode; j++) {
-            parallelAssignment.put(-taskIndex, datanodeId);
+            taskId2DataNodeId.put(-taskIndex, datanodeId);
             taskIndex++;
           }
         }
-        return parallelAssignment;
+        return taskId2DataNodeId;
       }
 
       // Proportional Task Distribution:
@@ -208,11 +208,11 @@ public class PipeExternalSourceLoadBalancer {
       for (final Integer leader : stableLeaders) {
         final int count = leaderRegionId2AssignedCountMap.get(leader);
         for (int i = 0; i < count; i++) {
-          parallelAssignment.put(-taskIndex, leader);
+          taskId2DataNodeId.put(-taskIndex, leader);
           taskIndex++;
         }
       }
-      return parallelAssignment;
+      return taskId2DataNodeId;
     }
   }
 }

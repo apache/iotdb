@@ -48,8 +48,10 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.stream.Collectors;
 
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTERNAL_EXTRACTOR_PARALLELISM_DEFAULT_VALUE;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTERNAL_EXTRACTOR_PARALLELISM_KEY;
@@ -110,6 +112,7 @@ public class PipeMetaSyncProcedure extends AbstractOperatePipeProcedureV2 {
   @Override
   public void executeFromCalculateInfoForTask(ConfigNodeProcedureEnv env) {
     LOGGER.info("PipeMetaSyncProcedure: executeFromCalculateInfoForTask");
+
     // Re-balance the external source tasks here in case of any changes in the dataRegion
     pipeTaskInfo
         .get()
@@ -141,21 +144,28 @@ public class PipeMetaSyncProcedure extends AbstractOperatePipeProcedureV2 {
                           EXTERNAL_EXTRACTOR_PARALLELISM_DEFAULT_VALUE);
               final Map<Integer, PipeTaskMeta> consensusGroupIdToTaskMetaMap =
                   pipeMeta.getRuntimeMeta().getConsensusGroupId2TaskMetaMap();
-              loadBalancer
-                  .balance(
+
+              // do balance here
+              final Map<Integer, Integer> taskId2LeaderDataNodeId =
+                  loadBalancer.balance(
                       parallelism,
                       pipeMeta.getStaticMeta(),
-                      ConfigNode.getInstance().getConfigManager())
-                  .forEach(
-                      (taskIndex, newLeader) -> {
-                        if (consensusGroupIdToTaskMetaMap.containsKey(taskIndex)) {
-                          consensusGroupIdToTaskMetaMap.get(taskIndex).setLeaderNodeId(newLeader);
-                        } else {
-                          consensusGroupIdToTaskMetaMap.put(
-                              taskIndex,
-                              new PipeTaskMeta(MinimumProgressIndex.INSTANCE, newLeader));
-                        }
-                      });
+                      ConfigNode.getInstance().getConfigManager());
+
+              taskId2LeaderDataNodeId.forEach(
+                  (taskIndex, newLeader) -> {
+                    if (consensusGroupIdToTaskMetaMap.containsKey(taskIndex)) {
+                      consensusGroupIdToTaskMetaMap.get(taskIndex).setLeaderNodeId(newLeader);
+                    } else {
+                      consensusGroupIdToTaskMetaMap.put(
+                          taskIndex, new PipeTaskMeta(MinimumProgressIndex.INSTANCE, newLeader));
+                    }
+                  });
+              final Set<Integer> taskIdToRemove =
+                  consensusGroupIdToTaskMetaMap.keySet().stream()
+                      .filter(taskId -> !taskId2LeaderDataNodeId.containsKey(taskId))
+                      .collect(Collectors.toSet());
+              taskIdToRemove.forEach(consensusGroupIdToTaskMetaMap::remove);
             });
   }
 
