@@ -162,7 +162,7 @@ public class MQTTExtractor implements PipeExtractor {
     }
 
     LOGGER.info(
-        "Start MQTT Extractor successfully,listening on ip {} port {}",
+        "Start MQTT Extractor successfully, listening on ip {}, port {}",
         config.getProperty(BrokerConstants.HOST_PROPERTY_NAME),
         config.getProperty(BrokerConstants.PORT_PROPERTY_NAME));
   }
