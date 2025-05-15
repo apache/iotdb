@@ -89,7 +89,6 @@ public class DeleteDevice extends AbstractTraverseDevice {
   }
 
   public void parseModEntries(final TsTable table) {
-    // TODO: Fallback to precise devices if modEntries parsing failure encountered
     modEntries = AnalyzeUtils.parseExpressions2ModEntries(where, table);
   }
 
