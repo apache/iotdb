@@ -166,7 +166,7 @@ public class ForecastTableFunction implements TableFunction {
   private static final long DEFAULT_OUTPUT_START_TIME = Long.MIN_VALUE;
   private static final String OUTPUT_INTERVAL = "OUTPUT_INTERVAL";
   private static final long DEFAULT_OUTPUT_INTERVAL = 0L;
-  private static final String TIMECOL_PARAMETER_NAME = "TIMECOL";
+  public static final String TIMECOL_PARAMETER_NAME = "TIMECOL";
   private static final String DEFAULT_TIME_COL = "time";
   private static final String KEEP_INPUT_PARAMETER_NAME = "KEEP_INPUT";
   private static final Boolean DEFAULT_KEEP_INPUT = Boolean.FALSE;
