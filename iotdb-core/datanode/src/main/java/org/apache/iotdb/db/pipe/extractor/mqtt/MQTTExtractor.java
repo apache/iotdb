@@ -103,46 +103,6 @@ public class MQTTExtractor implements PipeExtractor {
     authenticator = new BrokerAuthenticator();
   }
 
-  @Override
-  public void start() throws Exception {
-    try {
-      server.startServer(config, handlers, null, authenticator, null);
-    } catch (IOException e) {
-      throw new RuntimeException("Exception while starting server", e);
-    }
-
-    LOGGER.info(
-        "Start MQTT Extractor successfully,listening on ip {} port {}",
-        config.getProperty(BrokerConstants.HOST_PROPERTY_NAME),
-        config.getProperty(BrokerConstants.PORT_PROPERTY_NAME));
-
-    Runtime.getRuntime()
-        .addShutdownHook(
-            new Thread(
-                () -> {
-                  LOGGER.info("Stopping IoTDB MQTT Extractor...");
-                  shutdown();
-                  LOGGER.info("MQTT Extractor stopped.");
-                }));
-  }
-
-  @Override
-  public Event supply() throws Exception {
-    if (isClosed.get()) {
-      return null;
-    }
-    EnrichedEvent event = pendingQueue.directPoll();
-    return event;
-  }
-
-  @Override
-  public void close() throws Exception {
-    if (!isClosed.get()) {
-      shutdown();
-      isClosed.set(true);
-    }
-  }
-
   private IConfig createBrokerConfig(final PipeParameters pipeParameters) {
     final Properties properties = new Properties();
     properties.setProperty(
@@ -193,7 +153,30 @@ public class MQTTExtractor implements PipeExtractor {
     return new MemoryConfig(properties);
   }
 
-  public void shutdown() {
-    server.stopServer();
+  @Override
+  public void start() throws Exception {
+    try {
+      server.startServer(config, handlers, null, authenticator, null);
+    } catch (IOException e) {
+      throw new RuntimeException("Exception while starting server", e);
+    }
+
+    LOGGER.info(
+        "Start MQTT Extractor successfully,listening on ip {} port {}",
+        config.getProperty(BrokerConstants.HOST_PROPERTY_NAME),
+        config.getProperty(BrokerConstants.PORT_PROPERTY_NAME));
+  }
+
+  @Override
+  public Event supply() throws Exception {
+    return isClosed.get() ? null : pendingQueue.directPoll();
+  }
+
+  @Override
+  public void close() throws Exception {
+    if (!isClosed.get()) {
+      server.stopServer();
+      isClosed.set(true);
+    }
   }
 }

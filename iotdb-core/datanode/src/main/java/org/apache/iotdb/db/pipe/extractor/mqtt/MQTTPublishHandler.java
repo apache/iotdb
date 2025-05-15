@@ -138,13 +138,15 @@ public class MQTTPublishHandler extends AbstractInterceptHandler {
       final String username = msg.getUsername();
       final MqttQoS qos = msg.getQos();
 
-      LOGGER.debug(
-          "Receive publish message. clientId: {}, username: {}, qos: {}, topic: {}, payload: {}",
-          clientId,
-          username,
-          qos,
-          topic,
-          payload);
+      if (LOGGER.isDebugEnabled()) {
+        LOGGER.debug(
+            "Receive publish message. clientId: {}, username: {}, qos: {}, topic: {}, payload: {}",
+            clientId,
+            username,
+            qos,
+            topic,
+            payload);
+      }
 
       final List<Message> messages = payloadFormat.format(payload);
       if (messages == null) {
@@ -169,14 +171,13 @@ public class MQTTPublishHandler extends AbstractInterceptHandler {
         }
       }
     } catch (Throwable t) {
-      LOGGER.warn("onPublish execution exception, msg is [{}], error is ", msg, t);
+      LOGGER.warn("onPublish execution exception, msg is {}, error is ", msg, t);
     } finally {
       // release the payload of the message
       super.onPublish(msg);
     }
   }
 
-  /** Inserting table using tablet */
   private void extractTable(final TableMessage message, final MqttClientSession session) {
     try {
       TimestampPrecisionUtils.checkTimestampPrecision(message.getTimestamp());
@@ -201,13 +202,14 @@ public class MQTTPublishHandler extends AbstractInterceptHandler {
       pendingQueue.waitedOffer(event);
     } catch (Exception e) {
       LOGGER.warn(
-          "meet error when polling mqtt source message database {}, table {}, tags {}, attributes {}, fields {}, at time {}, because ",
+          "meet error when polling mqtt source message database {}, table {}, tags {}, attributes {}, fields {}, at time {}, because {}",
           message.getDatabase(),
           message.getTable(),
           message.getTagKeys(),
           message.getAttributeKeys(),
           message.getFields(),
           message.getTimestamp(),
+          e.getMessage(),
           e);
     }
   }
@@ -309,16 +311,20 @@ public class MQTTPublishHandler extends AbstractInterceptHandler {
       pendingQueue.waitedOffer(event);
     } catch (Exception e) {
       LOGGER.warn(
-          "meet error when polling mqtt source device {}, measurements {}, at time {}, because ",
+          "meet error when polling mqtt source device {}, measurements {}, at time {}, because {}",
           message.getDevice(),
           message.getMeasurements(),
           message.getTimestamp(),
+          e.getMessage(),
           e);
     }
   }
 
   @Override
   public void onSessionLoopError(Throwable throwable) {
-    // TODO: Implement something sensible here ...
+    LOGGER.warn(
+        "onSessionLoopError: {}",
+        throwable.getMessage() == null ? "null" : throwable.getMessage(),
+        throwable);
   }
 }
