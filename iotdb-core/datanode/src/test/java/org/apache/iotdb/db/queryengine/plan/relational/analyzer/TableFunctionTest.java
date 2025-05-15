@@ -19,7 +19,9 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.analyzer;
 
+import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.LogicalQueryPlan;
+import org.apache.iotdb.db.queryengine.plan.relational.function.tvf.ForecastTableFunction;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.PlanTester;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.TableFunctionProcessorMatcher;
@@ -32,8 +34,11 @@ import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
 import org.junit.Test;
 
+import java.util.Collections;
 import java.util.function.Consumer;
 
+import static org.apache.iotdb.db.queryengine.plan.relational.function.tvf.ForecastTableFunction.DEFAULT_OUTPUT_INTERVAL;
+import static org.apache.iotdb.db.queryengine.plan.relational.function.tvf.ForecastTableFunction.DEFAULT_OUTPUT_START_TIME;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanAssert.assertPlan;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.aggregation;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.aggregationFunction;
@@ -48,6 +53,7 @@ import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.sort;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.tableFunctionProcessor;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.tableScan;
+import static org.apache.iotdb.udf.api.type.Type.DOUBLE;
 
 public class TableFunctionTest {
 
@@ -331,5 +337,64 @@ public class TableFunctionTest {
     MapTableFunctionHandle deserialized = new MapTableFunctionHandle();
     deserialized.deserialize(serialized);
     assert mapTableFunctionHandle.equals(deserialized);
+  }
+
+  @Test
+  public void testForecastFunction() {
+    // default order by time asc
+    PlanTester planTester = new PlanTester();
+
+    String sql =
+        "SELECT * FROM FORECAST("
+            + "input => (SELECT time,s3 FROM table1 WHERE tag1='shanghai' AND tag2='A3' AND tag3='YY' ORDER BY time DESC LIMIT 1440), "
+            + "model_id => 'timer_xl'";
+    LogicalQueryPlan logicalQueryPlan = planTester.createPlan(sql);
+    PlanMatchPattern tableScan =
+        tableScan(
+            "testdb.table1",
+            ImmutableList.of("time", "tag1", "tag2", "tag3", "s3"),
+            ImmutableSet.of("time", "tag1", "tag2", "tag3", "s3"));
+    Consumer<TableFunctionProcessorMatcher.Builder> tableFunctionMatcher =
+        builder ->
+            builder
+                .name("forecast")
+                .properOutputs("time", "s3")
+                .requiredSymbols("time", "s3")
+                .handle(
+                    new ForecastTableFunction.ForecastTableFunctionHandle(
+                        false,
+                        1440,
+                        "timer_xl",
+                        Collections.emptyMap(),
+                        96,
+                        DEFAULT_OUTPUT_START_TIME,
+                        DEFAULT_OUTPUT_INTERVAL,
+                        new TEndPoint("127.0.0.1", 10810),
+                        Collections.singletonList(DOUBLE)));
+    // Verify full LogicalPlan
+    // Output - TableFunctionProcessor - TableScan
+    assertPlan(logicalQueryPlan, anyTree(tableFunctionProcessor(tableFunctionMatcher, tableScan)));
+    // Verify DistributionPlan
+
+    /*
+     *   └──OutputNode
+     *         └──CollectNode
+     *               ├──ExchangeNode
+     *               │    └──TableFunctionProcessor
+     *               │        └──TableScan
+     *               ├──ExchangeNode
+     *               │    └──TableFunctionProcessor
+     *               │        └──TableScan
+     *               └──ExchangeNode
+     *                    └──TableFunctionProcessor
+     *                        └──TableScan
+     */
+    assertPlan(planTester.getFragmentPlan(0), output(collect(exchange(), exchange(), exchange())));
+    assertPlan(
+        planTester.getFragmentPlan(1), tableFunctionProcessor(tableFunctionMatcher, tableScan));
+    assertPlan(
+        planTester.getFragmentPlan(2), tableFunctionProcessor(tableFunctionMatcher, tableScan));
+    assertPlan(
+        planTester.getFragmentPlan(3), tableFunctionProcessor(tableFunctionMatcher, tableScan));
   }
 }

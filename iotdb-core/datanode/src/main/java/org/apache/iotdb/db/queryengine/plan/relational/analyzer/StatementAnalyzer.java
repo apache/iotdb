@@ -4061,6 +4061,12 @@ public class StatementAnalyzer {
     public Scope visitTableFunctionInvocation(TableFunctionInvocation node, Optional<Scope> scope) {
       String functionName = node.getName().toString();
       TableFunction function = metadata.getTableFunction(functionName);
+
+      // set model fetcher for ForecastTableFunction
+      if (function instanceof ForecastTableFunction) {
+        ((ForecastTableFunction) function).setModelFetcher(metadata.getModelFetcher());
+      }
+
       Node errorLocation = node;
       if (!node.getArguments().isEmpty()) {
         errorLocation = node.getArguments().get(0);

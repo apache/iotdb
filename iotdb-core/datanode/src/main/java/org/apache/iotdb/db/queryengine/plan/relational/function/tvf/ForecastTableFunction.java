@@ -27,7 +27,6 @@ import org.apache.iotdb.commons.client.ainode.AINodeClientManager;
 import org.apache.iotdb.commons.exception.IoTDBRuntimeException;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.queryengine.plan.analyze.IModelFetcher;
-import org.apache.iotdb.db.queryengine.plan.analyze.ModelFetcher;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.model.ModelInferenceDescriptor;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.udf.api.relational.TableFunction;
@@ -65,6 +64,7 @@ import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 
@@ -73,7 +73,7 @@ import static org.apache.iotdb.rpc.TSStatusCode.CAN_NOT_CONNECT_AINODE;
 
 public class ForecastTableFunction implements TableFunction {
 
-  private static class ForecastTableFunctionHandle implements TableFunctionHandle {
+  public static class ForecastTableFunctionHandle implements TableFunctionHandle {
     TEndPoint targetAINode;
     String modelId;
     int maxInputLength;
@@ -152,9 +152,41 @@ public class ForecastTableFunction implements TableFunction {
         types.add(Type.valueOf(ReadWriteIOUtils.readByte(buffer)));
       }
     }
-  }
 
-  private static final IModelFetcher MODEL_FETCHER = ModelFetcher.getInstance();
+    @Override
+    public boolean equals(Object o) {
+      if (this == o) {
+        return true;
+      }
+      if (o == null || getClass() != o.getClass()) {
+        return false;
+      }
+      ForecastTableFunctionHandle that = (ForecastTableFunctionHandle) o;
+      return maxInputLength == that.maxInputLength
+          && outputLength == that.outputLength
+          && outputStartTime == that.outputStartTime
+          && outputInterval == that.outputInterval
+          && keepInput == that.keepInput
+          && Objects.equals(targetAINode, that.targetAINode)
+          && Objects.equals(modelId, that.modelId)
+          && Objects.equals(options, that.options)
+          && Objects.equals(types, that.types);
+    }
+
+    @Override
+    public int hashCode() {
+      return Objects.hash(
+          targetAINode,
+          modelId,
+          maxInputLength,
+          outputLength,
+          outputStartTime,
+          outputInterval,
+          keepInput,
+          options,
+          types);
+    }
+  }
 
   private static final String INPUT_PARAMETER_NAME = "INPUT";
   private static final String MODEL_ID_PARAMETER_NAME = "MODEL_ID";
@@ -163,9 +195,9 @@ public class ForecastTableFunction implements TableFunction {
   private static final String PREDICATED_COLUMNS_PARAMETER_NAME = "PREDICATED_COLUMNS";
   private static final String DEFAULT_PREDICATED_COLUMNS = "";
   private static final String OUTPUT_START_TIME = "OUTPUT_START_TIME";
-  private static final long DEFAULT_OUTPUT_START_TIME = Long.MIN_VALUE;
+  public static final long DEFAULT_OUTPUT_START_TIME = Long.MIN_VALUE;
   private static final String OUTPUT_INTERVAL = "OUTPUT_INTERVAL";
-  private static final long DEFAULT_OUTPUT_INTERVAL = 0L;
+  public static final long DEFAULT_OUTPUT_INTERVAL = 0L;
   public static final String TIMECOL_PARAMETER_NAME = "TIMECOL";
   private static final String DEFAULT_TIME_COL = "time";
   private static final String KEEP_INPUT_PARAMETER_NAME = "KEEP_INPUT";
@@ -183,6 +215,16 @@ public class ForecastTableFunction implements TableFunction {
     ALLOWED_INPUT_TYPES.add(Type.INT64);
     ALLOWED_INPUT_TYPES.add(Type.FLOAT);
     ALLOWED_INPUT_TYPES.add(Type.DOUBLE);
+  }
+
+  // need to set before analyze method is called
+  // should only be used in fe scope, never be used in TableFunctionProcessorProvider
+  // The reason we don't directly set modelFetcher=ModelFetcher.getInstance() is that we need to
+  // mock IModelFetcher in UT
+  private IModelFetcher modelFetcher = null;
+
+  public void setModelFetcher(IModelFetcher modelFetcher) {
+    this.modelFetcher = modelFetcher;
   }
 
   @Override
@@ -372,7 +414,7 @@ public class ForecastTableFunction implements TableFunction {
   }
 
   private ModelInferenceDescriptor getModelInfo(String modelId) {
-    return MODEL_FETCHER.fetchModel(modelId);
+    return modelFetcher.fetchModel(modelId);
   }
 
   // only allow for INT32, INT64, FLOAT, DOUBLE

@@ -30,6 +30,7 @@ import org.apache.iotdb.commons.udf.builtin.BuiltinAggregationFunction;
 import org.apache.iotdb.commons.udf.builtin.relational.tvf.HOPTableFunction;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.SessionInfo;
+import org.apache.iotdb.db.queryengine.plan.analyze.IModelFetcher;
 import org.apache.iotdb.db.queryengine.plan.analyze.IPartitionFetcher;
 import org.apache.iotdb.db.queryengine.plan.function.Exclude;
 import org.apache.iotdb.db.queryengine.plan.function.Repeat;
@@ -489,6 +490,11 @@ public class TestMetadata implements Metadata {
     } else {
       return null;
     }
+  }
+
+  @Override
+  public IModelFetcher getModelFetcher() {
+    return null;
   }
 
   private static final DataPartition TABLE_DATA_PARTITION =
