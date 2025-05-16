@@ -1139,8 +1139,8 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
 
   @Override
   public Operator visitInformationSchemaTableScan(
-      InformationSchemaTableScanNode node, LocalExecutionPlanContext context) {
-    OperatorContext operatorContext =
+      final InformationSchemaTableScanNode node, final LocalExecutionPlanContext context) {
+    final OperatorContext operatorContext =
         context
             .getDriverContext()
             .addOperatorContext(
@@ -1148,7 +1148,7 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
                 node.getPlanNodeId(),
                 InformationSchemaTableScanOperator.class.getSimpleName());
 
-    List<TSDataType> dataTypes =
+    final List<TSDataType> dataTypes =
         node.getOutputSymbols().stream()
             .map(symbol -> getTSDataType(context.getTypeProvider().getTableModelType(symbol)))
             .collect(Collectors.toList());
@@ -1156,7 +1156,14 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
     return new InformationSchemaTableScanOperator(
         operatorContext,
         node.getPlanNodeId(),
-        getSupplier(node.getQualifiedObjectName().getObjectName(), dataTypes));
+        getSupplier(
+            node.getQualifiedObjectName().getObjectName(),
+            dataTypes,
+            context
+                .getDriverContext()
+                .getFragmentInstanceContext()
+                .getSessionInfo()
+                .getUserName()));
   }
 
   @Override

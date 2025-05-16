@@ -636,11 +636,15 @@ public class IoTDBTableIT {
     try (final Connection userCon =
             EnvFactory.getEnv().getConnection("test", "password", BaseEnv.TABLE_SQL_DIALECT);
         final Statement userStmt = userCon.createStatement()) {
-      Assert.assertThrows(
-          SQLException.class,
-          () -> {
-            userStmt.execute("select * from db.test");
-          });
+      Assert.assertThrows(SQLException.class, () -> userStmt.execute("select * from db.test"));
+      TestUtils.assertResultSetEqual(
+          userStmt.executeQuery("select * from information_schema.tables where database = 'db'"),
+          "database,table_name,ttl(ms),status,comment,table_type,",
+          Collections.emptySet());
+      TestUtils.assertResultSetEqual(
+          userStmt.executeQuery("select * from information_schema.columns where database = 'db'"),
+          "database,table_name,column_name,datatype,category,status,comment,",
+          Collections.emptySet());
     }
 
     try (final Connection adminCon = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
