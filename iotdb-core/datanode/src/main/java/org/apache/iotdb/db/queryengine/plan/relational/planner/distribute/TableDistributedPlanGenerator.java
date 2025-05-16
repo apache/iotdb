@@ -273,19 +273,8 @@ public class TableDistributedPlanGenerator
         node.getChildren().size() == 1, "Size of TopKNode can only be 1 in logical plan.");
     List<PlanNode> childrenNodes = node.getChildren().get(0).accept(this, context);
     if (childrenNodes.size() == 1) {
-      // if DeviceTableScanNode has limit <= K and with same order, we can directly return
-      // DeviceTableScanNode
-      if (childrenNodes.get(0) instanceof DeviceTableScanNode) {
-        DeviceTableScanNode tableScanNode = (DeviceTableScanNode) childrenNodes.get(0);
-        if (node.getCount() >= tableScanNode.getPushDownLimit()
-            && (!tableScanNode.isPushLimitToEachDevice()
-                || (tableScanNode.isPushLimitToEachDevice()
-                    && tableScanNode.getDeviceEntries().size() == 1))
-            && canSortEliminated(
-                node.getOrderingScheme(),
-                nodeOrderingMap.get(childrenNodes.get(0).getPlanNodeId()))) {
-          return childrenNodes;
-        }
+      if (canTopKEliminated(node.getOrderingScheme(), node.getCount(), childrenNodes.get(0))) {
+        return childrenNodes;
       }
       node.setChildren(Collections.singletonList(childrenNodes.get(0)));
       return Collections.singletonList(node);
@@ -293,19 +282,39 @@ public class TableDistributedPlanGenerator
 
     TopKNode newTopKNode = (TopKNode) node.clone();
     for (PlanNode child : childrenNodes) {
-      TopKNode subTopKNode =
-          new TopKNode(
-              queryId.genPlanNodeId(),
-              Collections.singletonList(child),
-              node.getOrderingScheme(),
-              node.getCount(),
-              node.getOutputSymbols(),
-              node.isChildrenDataInOrder());
-      newTopKNode.addChild(subTopKNode);
+      PlanNode newChild;
+      if (canTopKEliminated(node.getOrderingScheme(), node.getCount(), child)) {
+        newChild = child;
+      } else {
+        newChild =
+            new TopKNode(
+                queryId.genPlanNodeId(),
+                Collections.singletonList(child),
+                node.getOrderingScheme(),
+                node.getCount(),
+                node.getOutputSymbols(),
+                node.isChildrenDataInOrder());
+      }
+      newTopKNode.addChild(newChild);
     }
     nodeOrderingMap.put(newTopKNode.getPlanNodeId(), newTopKNode.getOrderingScheme());
 
     return Collections.singletonList(newTopKNode);
+  }
+
+  // if DeviceTableScanNode has limit <= K and with same order, we can eliminate TopK
+  private boolean canTopKEliminated(OrderingScheme orderingScheme, long k, PlanNode child) {
+    // if DeviceTableScanNode has limit <= K and with same order, we can directly return
+    // DeviceTableScanNode
+    if (child instanceof DeviceTableScanNode) {
+      DeviceTableScanNode tableScanNode = (DeviceTableScanNode) child;
+      return k >= tableScanNode.getPushDownLimit()
+          && (!tableScanNode.isPushLimitToEachDevice()
+              || (tableScanNode.isPushLimitToEachDevice()
+                  && tableScanNode.getDeviceEntries().size() == 1))
+          && canSortEliminated(orderingScheme, nodeOrderingMap.get(child.getPlanNodeId()));
+    }
+    return false;
   }
 
   @Override
