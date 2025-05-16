@@ -228,7 +228,7 @@ public class TopologyService implements Runnable, IClusterStatusSubscriber {
           && !failureDetector.isAvailable(entry.getKey(), entry.getValue())) {
         LOGGER.debug("Connection from DataNode {} to DataNode {} is broken", fromId, toId);
       } else {
-        latestTopology.get(fromId).add(toId);
+        Optional.ofNullable(latestTopology.get(fromId)).ifPresent(s -> s.add(toId));
       }
     }
 
