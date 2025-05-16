@@ -5253,15 +5253,17 @@ public class IoTDBTableAggregationIT {
     String[] retArray = new String[] {};
 
     // the sub-query produces empty block
+
+    // test StreamingHashAggregationOperator
     tableResultSetEqualTest(
         "select count(1) from (select * from table1 where s1 + 1 < 1) group by device_id,s1",
         expectedHeader,
         retArray,
         DATABASE_NAME);
 
-    // test the result is empty
+    // test StreamingAggregationOperator
     tableResultSetEqualTest(
-        "select count(1) from (select * from table1 where s1 + 1 < 1) group by device_id,s1",
+        "select count(1) from (select * from table1 where s1 + 1 < 1) group by device_id",
         expectedHeader,
         retArray,
         DATABASE_NAME);
