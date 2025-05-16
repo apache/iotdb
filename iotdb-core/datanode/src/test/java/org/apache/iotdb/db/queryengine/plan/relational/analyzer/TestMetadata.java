@@ -34,6 +34,9 @@ import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.SessionInfo;
 import org.apache.iotdb.db.queryengine.plan.analyze.IModelFetcher;
 import org.apache.iotdb.db.queryengine.plan.analyze.IPartitionFetcher;
+import org.apache.iotdb.db.queryengine.plan.function.Exclude;
+import org.apache.iotdb.db.queryengine.plan.function.Repeat;
+import org.apache.iotdb.db.queryengine.plan.function.Split;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.model.ModelInferenceDescriptor;
 import org.apache.iotdb.db.queryengine.plan.relational.function.OperatorType;
 import org.apache.iotdb.db.queryengine.plan.relational.function.TableBuiltinTableFunction;
@@ -491,12 +494,20 @@ public class TestMetadata implements Metadata {
 
   @Override
   public TableFunction getTableFunction(String functionName) {
-    if (TableBuiltinTableFunction.isBuiltInTableFunction(functionName)) {
-      return TableBuiltinTableFunction.getBuiltinTableFunction(functionName);
-    } else if (TableUDFUtils.isTableFunction(functionName)) {
-      return TableUDFUtils.getTableFunction(functionName);
+    if ("EXCLUDE".equalsIgnoreCase(functionName)) {
+      return new Exclude();
+    } else if ("REPEAT".equalsIgnoreCase(functionName)) {
+      return new Repeat();
+    } else if ("SPLIT".equalsIgnoreCase(functionName)) {
+      return new Split();
     } else {
-      throw new SemanticException("Unknown function: " + functionName);
+      if (TableBuiltinTableFunction.isBuiltInTableFunction(functionName)) {
+        return TableBuiltinTableFunction.getBuiltinTableFunction(functionName);
+      } else if (TableUDFUtils.isTableFunction(functionName)) {
+        return TableUDFUtils.getTableFunction(functionName);
+      } else {
+        throw new SemanticException("Unknown function: " + functionName);
+      }
     }
   }
 
