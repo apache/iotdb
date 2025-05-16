@@ -200,7 +200,8 @@ public class ActiveLoadTsFileLoader {
     statement.setDeleteAfterLoad(true);
     statement.setConvertOnTypeMismatch(true);
     statement.setVerifySchema(isVerify);
-    statement.setAutoCreateDatabase(false);
+    statement.setAutoCreateDatabase(
+        IoTDBDescriptor.getInstance().getConfig().isAutoCreateSchemaEnabled());
     return executeStatement(filePair.getRight() ? new PipeEnrichedStatement(statement) : statement);
   }
 
