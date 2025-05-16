@@ -40,16 +40,17 @@ public interface PayloadFormatter {
    * @param payload
    * @return
    */
+  @Deprecated
   List<Message> format(ByteBuf payload);
 
   /**
-   * format a payload and a topic to a list of messages
+   * format a payload of a topic to a list of messages
    *
-   * @param payload
    * @param topic
+   * @param payload
    * @return
    */
-  List<Message> format(ByteBuf payload, String topic);
+  List<Message> format(String topic, ByteBuf payload);
 
   /**
    * get the formatter name

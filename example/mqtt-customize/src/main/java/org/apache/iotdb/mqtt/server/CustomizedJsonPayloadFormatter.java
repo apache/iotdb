@@ -33,6 +33,7 @@ import java.util.List;
 public class CustomizedJsonPayloadFormatter implements PayloadFormatter {
 
   @Override
+  @Deprecated
   public List<Message> format(ByteBuf payload) {
     // Suppose the payload is a json format
     if (payload == null) {
@@ -55,25 +56,8 @@ public class CustomizedJsonPayloadFormatter implements PayloadFormatter {
   }
 
   @Override
-  public List<Message> format(ByteBuf payload, String topic) {
-    // Suppose the payload is a json format
-    if (payload == null) {
-      return Collections.emptyList();
-    }
-
-    // parse data from the json and generate Messages and put them into List<Message> ret
-    List<Message> ret = new ArrayList<>();
-    // this is just an example, so we just generate some Messages directly
-    for (int i = 0; i < 2; i++) {
-      long ts = i;
-      TreeMessage message = new TreeMessage();
-      message.setDevice("d" + i);
-      message.setTimestamp(ts);
-      message.setMeasurements(Arrays.asList("s1", "s2"));
-      message.setValues(Arrays.asList("4.0" + i, "5.0" + i));
-      ret.add(message);
-    }
-    return ret;
+  public List<Message> format(String topic, ByteBuf payload) {
+    return format(payload);
   }
 
   @Override

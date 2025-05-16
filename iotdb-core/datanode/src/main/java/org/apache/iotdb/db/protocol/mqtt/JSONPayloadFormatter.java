@@ -50,6 +50,7 @@ public class JSONPayloadFormatter implements PayloadFormatter {
   private static final Gson GSON = new GsonBuilder().create();
 
   @Override
+  @Deprecated
   public List<Message> format(ByteBuf payload) {
     if (payload == null) {
       return new ArrayList<>();
@@ -82,35 +83,8 @@ public class JSONPayloadFormatter implements PayloadFormatter {
   }
 
   @Override
-  public List<Message> format(ByteBuf payload, String topic) {
-    if (payload == null) {
-      return new ArrayList<>();
-    }
-    String txt = payload.toString(StandardCharsets.UTF_8);
-    JsonElement jsonElement = GSON.fromJson(txt, JsonElement.class);
-    if (jsonElement.isJsonObject()) {
-      JsonObject jsonObject = jsonElement.getAsJsonObject();
-      if (jsonObject.get(JSON_KEY_TIMESTAMP) != null) {
-        return formatJson(jsonObject);
-      }
-      if (jsonObject.get(JSON_KEY_TIMESTAMPS) != null) {
-        return formatBatchJson(jsonObject);
-      }
-    } else if (jsonElement.isJsonArray()) {
-      JsonArray jsonArray = jsonElement.getAsJsonArray();
-      List<Message> messages = new ArrayList<>();
-      for (JsonElement element : jsonArray) {
-        JsonObject jsonObject = element.getAsJsonObject();
-        if (jsonObject.get(JSON_KEY_TIMESTAMP) != null) {
-          messages.addAll(formatJson(jsonObject));
-        }
-        if (jsonObject.get(JSON_KEY_TIMESTAMPS) != null) {
-          messages.addAll(formatBatchJson(jsonObject));
-        }
-      }
-      return messages;
-    }
-    throw new JsonParseException("payload is invalidate");
+  public List<Message> format(String topic, ByteBuf payload) {
+    return format(payload);
   }
 
   private List<Message> formatJson(JsonObject jsonObject) {

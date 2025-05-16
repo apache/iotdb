@@ -63,6 +63,7 @@ public class LinePayloadFormatter implements PayloadFormatter {
   }
 
   @Override
+  @Deprecated
   public List<Message> format(ByteBuf payload) {
     List<Message> messages = new ArrayList<>();
     if (payload == null) {
@@ -122,62 +123,8 @@ public class LinePayloadFormatter implements PayloadFormatter {
   }
 
   @Override
-  public List<Message> format(ByteBuf payload, String topic) {
-    List<Message> messages = new ArrayList<>();
-    if (payload == null) {
-      return messages;
-    }
-
-    String txt = payload.toString(StandardCharsets.UTF_8);
-    String[] lines = txt.split(LINE_BREAK);
-    for (String line : lines) {
-      if (line.trim().startsWith(WELL)) {
-        continue;
-      }
-      TableMessage message = new TableMessage();
-      try {
-        Matcher matcher = pattern.matcher(line.trim());
-        if (!matcher.matches()) {
-          log.warn("Invalid line protocol format ,line is {}", line);
-          continue;
-        }
-
-        // Parsing Table Names
-        message.setTable(matcher.group(TABLE));
-
-        // Parsing Tags
-        if (!setTags(matcher, message)) {
-          log.warn("The tags is error , line is {}", line);
-          continue;
-        }
-
-        // Parsing Attributes
-        if (!setAttributes(matcher, message)) {
-          log.warn("The attributes is error , line is {}", line);
-          continue;
-        }
-
-        // Parsing Fields
-        if (!setFields(matcher, message)) {
-          log.warn("The fields is error , line is {}", line);
-          continue;
-        }
-
-        // Parsing timestamp
-        if (!setTimestamp(matcher, message)) {
-          log.warn("The timestamp is error , line is {}", line);
-          continue;
-        }
-
-        messages.add(message);
-      } catch (Exception e) {
-        log.warn(
-            "The line pattern parsing fails, and the failed line message is {} ,exception is",
-            line,
-            e);
-      }
-    }
-    return messages;
+  public List<Message> format(String topic, ByteBuf payload) {
+    return format(payload);
   }
 
   private boolean setTags(Matcher matcher, TableMessage message) {
