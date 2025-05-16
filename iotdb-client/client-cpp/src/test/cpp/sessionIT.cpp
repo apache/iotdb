@@ -503,12 +503,11 @@ TEST_CASE("Test Huge query ", "[testHugeQuery]") {
 
     unique_ptr<SessionDataSet> sessionDataSet = session->executeQueryStatement("select s1,s2,s3 from root.test.d1");
     sessionDataSet->setFetchSize(1024);
-    RowRecord* rowRecord;
     int count = 0;
     print_count = 0;
     std::cout << "\n\niterating " << total_count << " rows:" << std::endl;
     while (sessionDataSet->hasNext()) {
-        rowRecord = sessionDataSet->next();
+        auto rowRecord = sessionDataSet->next();
         REQUIRE(rowRecord->timestamp == count);
         REQUIRE(rowRecord->fields[0].longV== 1);
         REQUIRE(rowRecord->fields[1].longV == 2);
@@ -580,7 +579,7 @@ TEST_CASE("Test executeRawDataQuery ", "[executeRawDataQuery]") {
 
     int ts = startTs;
     while (sessionDataSet->hasNext()) {
-        RowRecord *rowRecordPtr = sessionDataSet->next();
+        auto rowRecordPtr = sessionDataSet->next();
         //cout << rowRecordPtr->toString();
 
         vector<Field> fields = rowRecordPtr->fields;
@@ -612,14 +611,14 @@ TEST_CASE("Test executeRawDataQuery ", "[executeRawDataQuery]") {
     REQUIRE(columns[3] == paths[2]);
     ts = startTs;
     while (sessionDataSet->hasNext()) {
-        RowRecord *rowRecordPtr = sessionDataSet->next();
+        auto rowRecordPtr = sessionDataSet->next();
         cout << rowRecordPtr->toString();
 
         vector<Field> fields = rowRecordPtr->fields;
         REQUIRE(rowRecordPtr->timestamp == ts);
         REQUIRE(fields[0].dataType == TSDataType::INT64);
         REQUIRE(fields[0].longV == 9);
-        REQUIRE(fields[1].dataType == TSDataType::NULLTYPE);
+        REQUIRE(fields[1].dataType == TSDataType::UNKNOWN);
         REQUIRE(fields[2].dataType == TSDataType::INT64);
         REQUIRE(fields[2].longV == 999);
     }
@@ -682,7 +681,7 @@ TEST_CASE("Test executeLastDataQuery ", "[testExecuteLastDataQuery]") {
 
     int index = 0;
     while (sessionDataSet->hasNext()) {
-        RowRecord *rowRecordPtr = sessionDataSet->next();
+        auto rowRecordPtr = sessionDataSet->next();
         cout << rowRecordPtr->toString();
 
         vector<Field> fields = rowRecordPtr->fields;
@@ -704,7 +703,7 @@ TEST_CASE("Test executeLastDataQuery ", "[testExecuteLastDataQuery]") {
 
     index = 0;
     while (sessionDataSet->hasNext()) {
-        RowRecord *rowRecordPtr = sessionDataSet->next();
+        auto rowRecordPtr = sessionDataSet->next();
         cout << rowRecordPtr->toString();
 
         vector<Field> fields = rowRecordPtr->fields;

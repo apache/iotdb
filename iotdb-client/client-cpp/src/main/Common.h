@@ -52,6 +52,14 @@ constexpr int32_t EMPTY_DATE_INT = 10000101;
 int32_t parseDateExpressionToInt(const boost::gregorian::date& date);
 boost::gregorian::date parseIntToDate(int32_t dateInt);
 
+std::string getTimePrecision(int32_t timeFactor);
+
+std::string formatDatetime(const std::string& format, const std::string& precision,
+                           int64_t timestamp, const std::string& zoneId);
+
+std::tm convertToTimestamp(int64_t value, int32_t timeFactor);
+std::tm int32ToDate(int32_t value);
+
 namespace Version {
 enum Version {
     V_0_12, V_0_13, V_1_0
@@ -86,11 +94,11 @@ enum TSDataType {
     TIMESTAMP = (char)8,
     DATE = (char)9,
     BLOB = (char)10,
-    STRING = (char)11,
-    NULLTYPE = (char)254,
-    INVALID_DATATYPE = (char)255
+    STRING = (char)11
 };
 }
+
+TSDataType::TSDataType getDataTypeByStr(const std::string& typeStr);
 
 namespace TSEncoding {
 enum TSEncoding {
@@ -167,6 +175,90 @@ enum TSStatusCode {
 };
 }
 
+class Field {
+public:
+    TSDataType::TSDataType dataType = TSDataType::UNKNOWN;
+    bool boolV{};
+    int intV{};
+    boost::gregorian::date dateV;
+    int64_t longV{};
+    float floatV{};
+    double doubleV{};
+    std::string stringV;
+
+    explicit Field(TSDataType::TSDataType a) {
+        dataType = a;
+    }
+
+    Field() = default;
+};
+
+enum class ColumnCategory {
+    TAG,
+    FIELD,
+    ATTRIBUTE
+};
+
+class MyStringBuffer {
+public:
+    MyStringBuffer();
+    explicit MyStringBuffer(const std::string& str);
+
+    void reserve(size_t n);
+    void clear();
+    bool hasRemaining();
+    int getInt();
+    boost::gregorian::date getDate();
+    int64_t getInt64();
+    float getFloat();
+    double getDouble();
+    char getChar();
+    bool getBool();
+    std::string getString();
+
+    void putInt(int ins);
+    void putDate(boost::gregorian::date date);
+    void putInt64(int64_t ins);
+    void putFloat(float ins);
+    void putDouble(double ins);
+    void putChar(char ins);
+    void putBool(bool ins);
+    void putString(const std::string& ins);
+    void concat(const std::string& ins);
+
+public:
+    std::string str;
+    size_t pos;
+
+private:
+    void checkBigEndian();
+    const char* getOrderedByte(size_t len);
+    void putOrderedByte(char* buf, int len);
+
+private:
+    bool isBigEndian{};
+    char numericBuf[8]{}; //only be used by int, long, float, double etc.
+};
+
+class BitMap {
+public:
+    explicit BitMap(size_t size = 0);
+    void resize(size_t size);
+    bool mark(size_t position);
+    bool unmark(size_t position);
+    void markAll();
+    void reset();
+    bool isMarked(size_t position) const;
+    bool isAllUnmarked() const;
+    bool isAllMarked() const;
+    const std::vector<char>& getByteArray() const;
+    size_t getSize() const;
+
+private:
+    size_t size;
+    std::vector<char> bits;
+};
+
 class IoTDBException : public std::exception {
 public:
     IoTDBException() = default;
@@ -192,19 +284,21 @@ private:
 
 public:
     explicit DateTimeParseException(const std::string& message,
-                                  std::string parsedData,
-                                  int errorIndex)
+                                    std::string parsedData,
+                                    int errorIndex)
         : IoTDBException(message),
           parsedString(std::move(parsedData)),
-          errorIndex(errorIndex) {}
+          errorIndex(errorIndex) {
+    }
 
     explicit DateTimeParseException(const std::string& message,
-                                  std::string  parsedData,
-                                  int errorIndex,
-                                  const std::exception& cause)
+                                    std::string parsedData,
+                                    int errorIndex,
+                                    const std::exception& cause)
         : IoTDBException(message + " [Caused by: " + cause.what() + "]"),
           parsedString(std::move(parsedData)),
-          errorIndex(errorIndex) {}
+          errorIndex(errorIndex) {
+    }
 
     const std::string& getParsedString() const noexcept {
         return parsedString;
@@ -217,8 +311,8 @@ public:
     const char* what() const noexcept override {
         static std::string fullMsg;
         fullMsg = std::string(IoTDBException::what()) +
-                 "\nParsed data: " + parsedString +
-                 "\nError index: " + std::to_string(errorIndex);
+            "\nParsed data: " + parsedString +
+            "\nError index: " + std::to_string(errorIndex);
         return fullMsg.c_str();
     }
 };

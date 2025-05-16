@@ -28,7 +28,6 @@
 #include <algorithm>
 #include <map>
 #include <unordered_map>
-#include <unordered_set>
 #include <thread>
 #include <stdexcept>
 #include <cstdlib>
@@ -43,6 +42,7 @@
 #include "NodesSupplier.h"
 #include "AbstractSessionBuilder.h"
 #include "SessionConnection.h"
+#include "SessionDataSet.h"
 #include "DeviceID.h"
 #include "Common.h"
 
@@ -62,286 +62,6 @@ using ::apache::thrift::transport::TBufferedTransport;
 using ::apache::thrift::transport::TFramedTransport;
 using ::apache::thrift::TException;
 
-
-// Simulate the ByteBuffer class in Java
-class MyStringBuffer {
-public:
-    MyStringBuffer() : pos(0) {
-        checkBigEndian();
-    }
-
-    explicit MyStringBuffer(const std::string& str) : str(str), pos(0) {
-        checkBigEndian();
-    }
-
-    void reserve(size_t n) {
-        str.reserve(n);
-    }
-
-    void clear() {
-        str.clear();
-        pos = 0;
-    }
-
-    bool hasRemaining() {
-        return pos < str.size();
-    }
-
-    int getInt() {
-        return *(int*)getOrderedByte(4);
-    }
-
-    boost::gregorian::date getDate() {
-        return parseIntToDate(getInt());
-    }
-
-    int64_t getInt64() {
-#ifdef ARCH32
-        const char *buf_addr = getOrderedByte(8);
-        if (reinterpret_cast<uint32_t>(buf_addr) % 4 == 0) {
-            return *(int64_t *)buf_addr;
-        } else {
-            char tmp_buf[8];
-            memcpy(tmp_buf, buf_addr, 8);
-            return *(int64_t*)tmp_buf;
-        }
-#else
-        return *(int64_t*)getOrderedByte(8);
-#endif
-    }
-
-    float getFloat() {
-        return *(float*)getOrderedByte(4);
-    }
-
-    double getDouble() {
-#ifdef ARCH32
-        const char *buf_addr = getOrderedByte(8);
-        if (reinterpret_cast<uint32_t>(buf_addr) % 4 == 0) {
-            return  *(double*)buf_addr;
-        } else {
-            char tmp_buf[8];
-            memcpy(tmp_buf, buf_addr, 8);
-            return *(double*)tmp_buf;
-        }
-#else
-        return *(double*)getOrderedByte(8);
-#endif
-    }
-
-    char getChar() {
-        return str[pos++];
-    }
-
-    bool getBool() {
-        return getChar() == 1;
-    }
-
-    std::string getString() {
-        size_t len = getInt();
-        size_t tmpPos = pos;
-        pos += len;
-        return str.substr(tmpPos, len);
-    }
-
-    void putInt(int ins) {
-        putOrderedByte((char*)&ins, 4);
-    }
-
-    void putDate(boost::gregorian::date date) {
-        putInt(parseDateExpressionToInt(date));
-    }
-
-    void putInt64(int64_t ins) {
-        putOrderedByte((char*)&ins, 8);
-    }
-
-    void putFloat(float ins) {
-        putOrderedByte((char*)&ins, 4);
-    }
-
-    void putDouble(double ins) {
-        putOrderedByte((char*)&ins, 8);
-    }
-
-    void putChar(char ins) {
-        str += ins;
-    }
-
-    void putBool(bool ins) {
-        char tmp = ins ? 1 : 0;
-        str += tmp;
-    }
-
-    void putString(const std::string& ins) {
-        putInt((int)(ins.size()));
-        str += ins;
-    }
-
-    void concat(const std::string& ins) {
-        str.append(ins);
-    }
-
-public:
-    std::string str;
-    size_t pos;
-
-private:
-    void checkBigEndian() {
-        static int chk = 0x0201; //used to distinguish CPU's type (BigEndian or LittleEndian)
-        isBigEndian = (0x01 != *(char*)(&chk));
-    }
-
-    const char* getOrderedByte(size_t len) {
-        const char* p = nullptr;
-        if (isBigEndian) {
-            p = str.c_str() + pos;
-        }
-        else {
-            const char* tmp = str.c_str();
-            for (size_t i = pos; i < pos + len; i++) {
-                numericBuf[pos + len - 1 - i] = tmp[i];
-            }
-            p = numericBuf;
-        }
-        pos += len;
-        return p;
-    }
-
-    void putOrderedByte(char* buf, int len) {
-        if (isBigEndian) {
-            str.assign(buf, len);
-        }
-        else {
-            for (int i = len - 1; i > -1; i--) {
-                str += buf[i];
-            }
-        }
-    }
-
-private:
-    bool isBigEndian{};
-    char numericBuf[8]{}; //only be used by int, long, float, double etc.
-};
-
-class BitMap {
-public:
-    /** Initialize a BitMap with given size. */
-    explicit BitMap(size_t size = 0) {
-        resize(size);
-    }
-
-    /** change the size  */
-    void resize(size_t size) {
-        this->size = size;
-        this->bits.resize((size >> 3) + 1); // equal to "size/8 + 1"
-        reset();
-    }
-
-    /** mark as 1 at the given bit position. */
-    bool mark(size_t position) {
-        if (position >= size)
-            return false;
-
-        bits[position >> 3] |= (char)1 << (position % 8);
-        return true;
-    }
-
-    /** mark as 0 at the given bit position. */
-    bool unmark(size_t position) {
-        if (position >= size)
-            return false;
-
-        bits[position >> 3] &= ~((char)1 << (position % 8));
-        return true;
-    }
-
-    /** mark as 1 at all positions. */
-    void markAll() {
-        std::fill(bits.begin(), bits.end(), (char)0XFF);
-    }
-
-    /** mark as 0 at all positions. */
-    void reset() {
-        std::fill(bits.begin(), bits.end(), (char)0);
-    }
-
-    /** returns the value of the bit with the specified index. */
-    bool isMarked(size_t position) const {
-        if (position >= size)
-            return false;
-
-        return (bits[position >> 3] & ((char)1 << (position % 8))) != 0;
-    }
-
-    /** whether all bits are zero, i.e., no Null value */
-    bool isAllUnmarked() const {
-        size_t j;
-        for (j = 0; j < size >> 3; j++) {
-            if (bits[j] != (char)0) {
-                return false;
-            }
-        }
-        for (j = 0; j < size % 8; j++) {
-            if ((bits[size >> 3] & ((char)1 << j)) != 0) {
-                return false;
-            }
-        }
-        return true;
-    }
-
-    /** whether all bits are one, i.e., all are Null */
-    bool isAllMarked() const {
-        size_t j;
-        for (j = 0; j < size >> 3; j++) {
-            if (bits[j] != (char)0XFF) {
-                return false;
-            }
-        }
-        for (j = 0; j < size % 8; j++) {
-            if ((bits[size >> 3] & ((char)1 << j)) == 0) {
-                return false;
-            }
-        }
-        return true;
-    }
-
-    const std::vector<char>& getByteArray() const {
-        return this->bits;
-    }
-
-    size_t getSize() const {
-        return this->size;
-    }
-
-private:
-    size_t size;
-    std::vector<char> bits;
-};
-
-class Field {
-public:
-    TSDataType::TSDataType dataType;
-    bool boolV;
-    int intV;
-    boost::gregorian::date dateV;
-    int64_t longV;
-    float floatV;
-    double doubleV;
-    std::string stringV;
-
-    explicit Field(TSDataType::TSDataType a) {
-        dataType = a;
-    }
-
-    Field() = default;
-};
-
-enum class ColumnCategory {
-    TAG,
-    FIELD,
-    ATTRIBUTE
-};
 
 template <typename T, typename Target>
 void safe_cast(const T& value, Target& target) {
@@ -670,198 +390,6 @@ public:
     static bool isTabletContainsSingleDevice(Tablet tablet);
 };
 
-class RowRecord {
-public:
-    int64_t timestamp;
-    std::vector<Field> fields;
-
-    explicit RowRecord(int64_t timestamp) {
-        this->timestamp = timestamp;
-    }
-
-    RowRecord(int64_t timestamp, const std::vector<Field>& fields)
-        : timestamp(timestamp), fields(fields) {
-    }
-
-    explicit RowRecord(const std::vector<Field>& fields)
-        : timestamp(-1), fields(fields) {
-    }
-
-    RowRecord() {
-        this->timestamp = -1;
-    }
-
-    void addField(const Field& f) {
-        this->fields.push_back(f);
-    }
-
-    std::string toString() {
-        std::string ret;
-        if (this->timestamp != -1) {
-            ret.append(std::to_string(timestamp));
-            ret.append("\t");
-        }
-        for (size_t i = 0; i < fields.size(); i++) {
-            if (i != 0) {
-                ret.append("\t");
-            }
-            TSDataType::TSDataType dataType = fields[i].dataType;
-            switch (dataType) {
-            case TSDataType::BOOLEAN:
-                ret.append(fields[i].boolV ? "true" : "false");
-                break;
-            case TSDataType::INT32:
-                ret.append(std::to_string(fields[i].intV));
-                break;
-            case TSDataType::DATE:
-                ret.append(boost::gregorian::to_simple_string(fields[i].dateV));
-                break;
-            case TSDataType::TIMESTAMP:
-            case TSDataType::INT64:
-                ret.append(std::to_string(fields[i].longV));
-                break;
-            case TSDataType::FLOAT:
-                ret.append(std::to_string(fields[i].floatV));
-                break;
-            case TSDataType::DOUBLE:
-                ret.append(std::to_string(fields[i].doubleV));
-                break;
-            case TSDataType::BLOB:
-            case TSDataType::STRING:
-            case TSDataType::TEXT:
-                ret.append(fields[i].stringV);
-                break;
-            case TSDataType::NULLTYPE:
-                ret.append("NULL");
-                break;
-            default:
-                break;
-            }
-        }
-        ret.append("\n");
-        return ret;
-    }
-};
-
-class SessionDataSet {
-private:
-    const string TIMESTAMP_STR = "Time";
-    bool hasCachedRecord = false;
-    std::string sql;
-    int64_t queryId;
-    int64_t statementId;
-    int64_t sessionId;
-    std::shared_ptr<IClientRPCServiceIf> client;
-    int fetchSize = 1024;
-    std::vector<std::string> columnNameList;
-    std::vector<std::string> columnTypeList;
-    // duplicated column index -> origin index
-    std::unordered_map<int, int> duplicateLocation;
-    // column name -> column location
-    std::unordered_map<std::string, int> columnMap;
-    // column size
-    int columnSize = 0;
-    int columnFieldStartIndex = 0; //Except Timestamp column, 1st field's pos in columnNameList
-    bool isIgnoreTimeStamp = false;
-
-    int rowsIndex = 0; // used to record the row index in current TSQueryDataSet
-    std::shared_ptr<TSQueryDataSet> tsQueryDataSet;
-    MyStringBuffer tsQueryDataSetTimeBuffer;
-    std::vector<std::unique_ptr<MyStringBuffer>> valueBuffers;
-    std::vector<std::unique_ptr<MyStringBuffer>> bitmapBuffers;
-    RowRecord rowRecord;
-    char* currentBitmap = nullptr; // used to cache the current bitmap for every column
-    static const int flag = 0x80; // used to do `or` operation with bitmap to judge whether the value is null
-
-    bool operationIsOpen = false;
-
-public:
-    SessionDataSet(const std::string& sql,
-                   const std::vector<std::string>& columnNameList,
-                   const std::vector<std::string>& columnTypeList,
-                   std::map<std::string, int>& columnNameIndexMap,
-                   bool isIgnoreTimeStamp,
-                   int64_t queryId, int64_t statementId,
-                   std::shared_ptr<IClientRPCServiceIf> client, int64_t sessionId,
-                   const std::shared_ptr<TSQueryDataSet>& queryDataSet) : tsQueryDataSetTimeBuffer(queryDataSet->time) {
-        this->sessionId = sessionId;
-        this->sql = sql;
-        this->queryId = queryId;
-        this->statementId = statementId;
-        this->client = client;
-        this->currentBitmap = new char[columnNameList.size()];
-        this->isIgnoreTimeStamp = isIgnoreTimeStamp;
-        if (!isIgnoreTimeStamp) {
-            columnFieldStartIndex = 1;
-            this->columnNameList.push_back(TIMESTAMP_STR);
-            this->columnTypeList.push_back("INT64");
-        }
-        this->columnNameList.insert(this->columnNameList.end(), columnNameList.begin(), columnNameList.end());
-        this->columnTypeList.insert(this->columnTypeList.end(), columnTypeList.begin(), columnTypeList.end());
-
-        valueBuffers.reserve(queryDataSet->valueList.size());
-        bitmapBuffers.reserve(queryDataSet->bitmapList.size());
-        int deduplicateIdx = 0;
-        std::unordered_map<std::string, int> columnToFirstIndexMap;
-        for (size_t i = columnFieldStartIndex; i < this->columnNameList.size(); i++) {
-            std::string name = this->columnNameList[i];
-            if (this->columnMap.find(name) != this->columnMap.end()) {
-                duplicateLocation[i] = columnToFirstIndexMap[name];
-            }
-            else {
-                columnToFirstIndexMap[name] = i;
-                if (!columnNameIndexMap.empty()) {
-                    int valueIndex = columnNameIndexMap[name];
-                    this->columnMap[name] = valueIndex;
-                    this->valueBuffers.emplace_back(new MyStringBuffer(queryDataSet->valueList[valueIndex]));
-                    this->bitmapBuffers.emplace_back(new MyStringBuffer(queryDataSet->bitmapList[valueIndex]));
-                }
-                else {
-                    this->columnMap[name] = deduplicateIdx;
-                    this->valueBuffers.emplace_back(new MyStringBuffer(queryDataSet->valueList[deduplicateIdx]));
-                    this->bitmapBuffers.emplace_back(new MyStringBuffer(queryDataSet->bitmapList[deduplicateIdx]));
-                }
-                deduplicateIdx++;
-            }
-        }
-        this->tsQueryDataSet = queryDataSet;
-
-        operationIsOpen = true;
-    }
-
-    ~SessionDataSet() {
-        try {
-            closeOperationHandle();
-        }
-        catch (exception& e) {
-            log_debug(string("SessionDataSet::~SessionDataSet(), ") + e.what());
-        }
-
-        if (currentBitmap != nullptr) {
-            delete[] currentBitmap;
-            currentBitmap = nullptr;
-        }
-    }
-
-    int getFetchSize();
-
-    void setFetchSize(int fetchSize);
-
-    std::vector<std::string> getColumnNames();
-
-    std::vector<std::string> getColumnTypeList();
-
-    bool hasNext();
-
-    void constructOneRow();
-
-    bool isNull(int index, int rowNum);
-
-    RowRecord* next();
-
-    void closeOperationHandle(bool forceClose = false);
-};
-
 class TemplateNode {
 public:
     explicit TemplateNode(const std::string& name) : name_(name) {
@@ -1005,27 +533,27 @@ private:
 
 class Session {
 private:
-    std::string host;
-    int rpcPort;
-    std::string username;
-    std::string password;
-    const TSProtocolVersion::type protocolVersion = TSProtocolVersion::IOTDB_SERVICE_PROTOCOL_V3;
-    bool isClosed = true;
-    std::string zoneId;
-    int fetchSize;
+    std::string host_;
+    int rpcPort_;
+    std::string username_;
+    std::string password_;
+    const TSProtocolVersion::type protocolVersion_ = TSProtocolVersion::IOTDB_SERVICE_PROTOCOL_V3;
+    bool isClosed_ = true;
+    std::string zoneId_;
+    int fetchSize_;
     const static int DEFAULT_FETCH_SIZE = 10000;
     const static int DEFAULT_TIMEOUT_MS = 0;
     Version::Version version;
-    std::string sqlDialect = "tree"; // default sql dialect
-    std::string database;
-    bool enableAutoFetch = true;
-    bool enableRedirection = true;
-    std::shared_ptr<INodesSupplier> nodesSupplier;
+    std::string sqlDialect_ = "tree"; // default sql dialect
+    std::string database_;
+    bool enableAutoFetch_ = true;
+    bool enableRedirection_ = true;
+    std::shared_ptr<INodesSupplier> nodesSupplier_;
     friend class SessionConnection;
     friend class TableSession;
-    std::shared_ptr<SessionConnection> defaultSessionConnection;
+    std::shared_ptr<SessionConnection> defaultSessionConnection_;
 
-    TEndPoint defaultEndPoint;
+    TEndPoint defaultEndPoint_;
 
     struct TEndPointHash {
         size_t operator()(const TEndPoint& endpoint) const {
@@ -1113,35 +641,35 @@ private:
     void handleRedirection(const std::shared_ptr<storage::IDeviceID>& deviceId, TEndPoint endPoint);
 
     void setSqlDialect(const std::string& dialect) {
-        this->sqlDialect = dialect;
+        this->sqlDialect_ = dialect;
     }
 
     void setDatabase(const std::string& database) {
-        this->database = database;
+        this->database_ = database;
     }
 
     string getDatabase() {
-        return database;
+        return database_;
     }
 
     void changeDatabase(string database) {
-        this->database = database;
+        this->database_ = database;
     }
 
 public:
-    Session(const std::string& host, int rpcPort) : username("root"), password("root"), version(Version::V_1_0) {
-        this->host = host;
-        this->rpcPort = rpcPort;
+    Session(const std::string& host, int rpcPort) : username_("root"), password_("root"), version(Version::V_1_0) {
+        this->host_ = host;
+        this->rpcPort_ = rpcPort;
         initZoneId();
         initNodesSupplier();
     }
 
     Session(const std::string& host, int rpcPort, const std::string& username, const std::string& password)
-        : fetchSize(DEFAULT_FETCH_SIZE) {
-        this->host = host;
-        this->rpcPort = rpcPort;
-        this->username = username;
-        this->password = password;
+        : fetchSize_(DEFAULT_FETCH_SIZE) {
+        this->host_ = host;
+        this->rpcPort_ = rpcPort;
+        this->username_ = username;
+        this->password_ = password;
         this->version = Version::V_1_0;
         initZoneId();
         initNodesSupplier();
@@ -1149,12 +677,12 @@ public:
 
     Session(const std::string& host, int rpcPort, const std::string& username, const std::string& password,
             const std::string& zoneId, int fetchSize = DEFAULT_FETCH_SIZE) {
-        this->host = host;
-        this->rpcPort = rpcPort;
-        this->username = username;
-        this->password = password;
-        this->zoneId = zoneId;
-        this->fetchSize = fetchSize;
+        this->host_ = host;
+        this->rpcPort_ = rpcPort;
+        this->username_ = username;
+        this->password_ = password;
+        this->zoneId_ = zoneId;
+        this->fetchSize_ = fetchSize;
         this->version = Version::V_1_0;
         initZoneId();
         initNodesSupplier();
@@ -1163,29 +691,29 @@ public:
     Session(const std::string& host, const std::string& rpcPort, const std::string& username = "user",
             const std::string& password = "password", const std::string& zoneId = "",
             int fetchSize = DEFAULT_FETCH_SIZE) {
-        this->host = host;
-        this->rpcPort = stoi(rpcPort);
-        this->username = username;
-        this->password = password;
-        this->zoneId = zoneId;
-        this->fetchSize = fetchSize;
+        this->host_ = host;
+        this->rpcPort_ = stoi(rpcPort);
+        this->username_ = username;
+        this->password_ = password;
+        this->zoneId_ = zoneId;
+        this->fetchSize_ = fetchSize;
         this->version = Version::V_1_0;
         initZoneId();
         initNodesSupplier();
     }
 
     Session(AbstractSessionBuilder* builder) {
-        this->host = builder->host;
-        this->rpcPort = builder->rpcPort;
-        this->username = builder->username;
-        this->password = builder->password;
-        this->zoneId = builder->zoneId;
-        this->fetchSize = builder->fetchSize;
+        this->host_ = builder->host;
+        this->rpcPort_ = builder->rpcPort;
+        this->username_ = builder->username;
+        this->password_ = builder->password;
+        this->zoneId_ = builder->zoneId;
+        this->fetchSize_ = builder->fetchSize;
         this->version = Version::V_1_0;
-        this->sqlDialect = builder->sqlDialect;
-        this->database = builder->database;
-        this->enableAutoFetch = builder->enableAutoFetch;
-        this->enableRedirection = builder->enableRedirections;
+        this->sqlDialect_ = builder->sqlDialect;
+        this->database_ = builder->database;
+        this->enableAutoFetch_ = builder->enableAutoFetch;
+        this->enableRedirection_ = builder->enableRedirections;
         initZoneId();
         initNodesSupplier();
     }
@@ -1433,7 +961,7 @@ void Session::insertByGroup(std::unordered_map<std::shared_ptr<SessionConnection
                 if (endPointToSessionConnection.size() > 1) {
                     removeBrokenSessionConnection(connection);
                     try {
-                        insertConsumer(defaultSessionConnection, req);
+                        insertConsumer(defaultSessionConnection_, req);
                     }
                     catch (const RedirectException&) {
                     }
@@ -1484,7 +1012,7 @@ void Session::insertOnce(std::unordered_map<std::shared_ptr<SessionConnection>, 
         if (endPointToSessionConnection.size() > 1) {
             removeBrokenSessionConnection(connection);
             try {
-                insertConsumer(defaultSessionConnection, req);
+                insertConsumer(defaultSessionConnection_, req);
             }
             catch (RedirectException e) {
             }
