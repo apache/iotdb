@@ -81,6 +81,38 @@ public class JSONPayloadFormatter implements PayloadFormatter {
     throw new JsonParseException("payload is invalidate");
   }
 
+  @Override
+  public List<Message> format(ByteBuf payload, String topic) {
+    if (payload == null) {
+      return new ArrayList<>();
+    }
+    String txt = payload.toString(StandardCharsets.UTF_8);
+    JsonElement jsonElement = GSON.fromJson(txt, JsonElement.class);
+    if (jsonElement.isJsonObject()) {
+      JsonObject jsonObject = jsonElement.getAsJsonObject();
+      if (jsonObject.get(JSON_KEY_TIMESTAMP) != null) {
+        return formatJson(jsonObject);
+      }
+      if (jsonObject.get(JSON_KEY_TIMESTAMPS) != null) {
+        return formatBatchJson(jsonObject);
+      }
+    } else if (jsonElement.isJsonArray()) {
+      JsonArray jsonArray = jsonElement.getAsJsonArray();
+      List<Message> messages = new ArrayList<>();
+      for (JsonElement element : jsonArray) {
+        JsonObject jsonObject = element.getAsJsonObject();
+        if (jsonObject.get(JSON_KEY_TIMESTAMP) != null) {
+          messages.addAll(formatJson(jsonObject));
+        }
+        if (jsonObject.get(JSON_KEY_TIMESTAMPS) != null) {
+          messages.addAll(formatBatchJson(jsonObject));
+        }
+      }
+      return messages;
+    }
+    throw new JsonParseException("payload is invalidate");
+  }
+
   private List<Message> formatJson(JsonObject jsonObject) {
     TreeMessage message = new TreeMessage();
     message.setDevice(jsonObject.get(JSON_KEY_DEVICE).getAsString());

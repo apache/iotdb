@@ -55,6 +55,28 @@ public class CustomizedJsonPayloadFormatter implements PayloadFormatter {
   }
 
   @Override
+  public List<Message> format(ByteBuf payload, String topic) {
+    // Suppose the payload is a json format
+    if (payload == null) {
+      return Collections.emptyList();
+    }
+
+    // parse data from the json and generate Messages and put them into List<Message> ret
+    List<Message> ret = new ArrayList<>();
+    // this is just an example, so we just generate some Messages directly
+    for (int i = 0; i < 2; i++) {
+      long ts = i;
+      TreeMessage message = new TreeMessage();
+      message.setDevice("d" + i);
+      message.setTimestamp(ts);
+      message.setMeasurements(Arrays.asList("s1", "s2"));
+      message.setValues(Arrays.asList("4.0" + i, "5.0" + i));
+      ret.add(message);
+    }
+    return ret;
+  }
+
+  @Override
   public String getName() {
     // set the value of mqtt_payload_formatter in iotdb-common.properties as the following string:
     return "CustomizedJson";

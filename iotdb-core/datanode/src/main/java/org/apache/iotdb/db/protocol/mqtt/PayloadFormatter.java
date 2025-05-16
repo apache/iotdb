@@ -43,6 +43,15 @@ public interface PayloadFormatter {
   List<Message> format(ByteBuf payload);
 
   /**
+   * format a payload and a topic to a list of messages
+   *
+   * @param payload
+   * @param topic
+   * @return
+   */
+  List<Message> format(ByteBuf payload, String topic);
+
+  /**
    * get the formatter name
    *
    * @return
