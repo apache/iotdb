@@ -136,7 +136,7 @@ public class MPPPublishHandler extends AbstractInterceptHandler {
           topic,
           payload);
 
-      List<Message> messages = payloadFormat.format(payload);
+      List<Message> messages = payloadFormat.format(topic, payload);
       if (messages == null) {
         return;
       }
