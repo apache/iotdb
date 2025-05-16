@@ -220,13 +220,21 @@ public class DataNode extends ServerCommandLine implements DataNodeMBean {
 
       // Pull and check system configurations from ConfigNode-leader
       pullAndCheckSystemConfigurations();
+
       if (isFirstStart) {
         sendRegisterRequestToConfigNode(true);
         IoTDBStartCheck.getInstance().generateOrOverwriteSystemPropertiesFile();
+        IoTDBStartCheck.getInstance().serializeEncryptMagicString();
         ConfigNodeInfo.getInstance().storeConfigNodeList();
         // Register this DataNode to the cluster when first start
         sendRegisterRequestToConfigNode(false);
       } else {
+        /* Check encrypt magic string */
+        try {
+          IoTDBStartCheck.getInstance().checkEncryptMagicString();
+        } catch (Exception e) {
+          throw new StartupException(e.getMessage());
+        }
         // Send restart request of this DataNode
         sendRestartRequestToConfigNode();
       }
