@@ -76,13 +76,6 @@ public class MppSharedCommonConfig implements CommonConfig {
   }
 
   @Override
-  public CommonConfig setEncryptFlag(boolean encryptFlag) {
-    cnConfig.setProperty("encrypt_flag", String.valueOf(encryptFlag));
-    dnConfig.setProperty("encrypt_flag", String.valueOf(encryptFlag));
-    return this;
-  }
-
-  @Override
   public CommonConfig setEncryptType(String encryptType) {
     cnConfig.setProperty("encrypt_type", encryptType);
     dnConfig.setProperty("encrypt_type", encryptType);

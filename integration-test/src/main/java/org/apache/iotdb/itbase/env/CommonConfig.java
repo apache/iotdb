@@ -36,8 +36,6 @@ public interface CommonConfig {
 
   CommonConfig setCompressor(String compressor);
 
-  CommonConfig setEncryptFlag(boolean encryptFlag);
-
   CommonConfig setEncryptType(String encryptType);
 
   CommonConfig setEncryptKeyPath(String encryptKeyPath);
