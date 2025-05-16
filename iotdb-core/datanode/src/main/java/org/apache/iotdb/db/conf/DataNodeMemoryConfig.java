@@ -465,9 +465,7 @@ public class DataNodeMemoryConfig {
     // metadata cache is disabled, we need to move all their allocated memory to other parts
     if (!isMetaDataCacheEnable()) {
       long sum =
-          bloomFilterCacheMemoryManager.getTotalMemorySizeInBytes()
-              + chunkCacheMemoryManager.getTotalMemorySizeInBytes()
-              + timeSeriesMetaDataCacheMemoryManager.getTotalMemorySizeInBytes();
+          bloomFilterCacheMemorySize + chunkCacheMemorySize + timeSeriesMetaDataCacheMemorySize;
       bloomFilterCacheMemorySize = 0;
       chunkCacheMemorySize = 0;
       timeSeriesMetaDataCacheMemorySize = 0;
