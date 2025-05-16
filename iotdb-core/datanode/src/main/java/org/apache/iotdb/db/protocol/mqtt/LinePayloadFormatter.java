@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.protocol.mqtt;
 
 import io.netty.buffer.ByteBuf;
+import org.apache.commons.lang3.NotImplementedException;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.Pair;
@@ -63,8 +64,7 @@ public class LinePayloadFormatter implements PayloadFormatter {
   }
 
   @Override
-  @Deprecated
-  public List<Message> format(ByteBuf payload) {
+  public List<Message> format(String topic, ByteBuf payload) {
     List<Message> messages = new ArrayList<>();
     if (payload == null) {
       return messages;
@@ -123,8 +123,9 @@ public class LinePayloadFormatter implements PayloadFormatter {
   }
 
   @Override
-  public List<Message> format(String topic, ByteBuf payload) {
-    return format(payload);
+  @Deprecated
+  public List<Message> format(ByteBuf payload) {
+    throw new NotImplementedException();
   }
 
   private boolean setTags(Matcher matcher, TableMessage message) {

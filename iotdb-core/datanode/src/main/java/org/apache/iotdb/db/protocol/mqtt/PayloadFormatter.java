@@ -50,7 +50,9 @@ public interface PayloadFormatter {
    * @param payload
    * @return
    */
-  List<Message> format(String topic, ByteBuf payload);
+  default List<Message> format(String topic, ByteBuf payload) {
+    return format(payload);
+  }
 
   /**
    * get the formatter name
