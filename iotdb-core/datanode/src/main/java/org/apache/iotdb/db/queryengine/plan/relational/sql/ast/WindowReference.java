@@ -20,54 +20,36 @@
 package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
 
 import com.google.common.collect.ImmutableList;
-import org.apache.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 
 import static com.google.common.base.MoreObjects.toStringHelper;
-import static com.google.common.base.Preconditions.checkArgument;
 import static java.util.Objects.requireNonNull;
 
-public class OrderBy extends Node {
+public class WindowReference extends Node implements Window {
+  private final Identifier name;
 
-  private final List<SortItem> sortItems;
-
-  public OrderBy(List<SortItem> sortItems) {
-    super(null);
-    requireNonNull(sortItems, "sortItems is null");
-    checkArgument(!sortItems.isEmpty(), "sortItems should not be empty");
-    this.sortItems = ImmutableList.copyOf(sortItems);
+  public WindowReference(NodeLocation location, Identifier name) {
+    super(location);
+    this.name = requireNonNull(name, "name is null");
   }
 
-  public OrderBy(NodeLocation location, List<SortItem> sortItems) {
-    super(requireNonNull(location, "location is null"));
-    requireNonNull(sortItems, "sortItems is null");
-    checkArgument(!sortItems.isEmpty(), "sortItems should not be empty");
-    this.sortItems = ImmutableList.copyOf(sortItems);
-  }
-
-  public List<SortItem> getSortItems() {
-    return sortItems;
+  public Identifier getName() {
+    return name;
   }
 
   @Override
   public <R, C> R accept(AstVisitor<R, C> visitor, C context) {
-    return visitor.visitOrderBy(this, context);
+    return visitor.visitWindowReference(this, context);
   }
 
   @Override
-  public List<? extends Node> getChildren() {
-    return sortItems;
-  }
-
-  @Override
-  public String toString() {
-    return toStringHelper(this).add("sortItems", sortItems).toString();
+  public List<Node> getChildren() {
+    return ImmutableList.of(name);
   }
 
   @Override
@@ -78,13 +60,18 @@ public class OrderBy extends Node {
     if ((obj == null) || (getClass() != obj.getClass())) {
       return false;
     }
-    OrderBy o = (OrderBy) obj;
-    return Objects.equals(sortItems, o.sortItems);
+    WindowReference o = (WindowReference) obj;
+    return Objects.equals(name, o.name);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(sortItems);
+    return Objects.hash(name);
+  }
+
+  @Override
+  public String toString() {
+    return toStringHelper(this).add("name", name).toString();
   }
 
   @Override
@@ -92,20 +79,13 @@ public class OrderBy extends Node {
     return sameClass(this, other);
   }
 
+  @Override
   public void serialize(DataOutputStream stream) throws IOException {
-    ReadWriteIOUtils.write(sortItems.size(), stream);
-    for (SortItem sortItem : sortItems) {
-      sortItem.serialize(stream);
-    }
+    name.serialize(stream);
   }
 
-  public OrderBy(ByteBuffer byteBuffer) {
+  public WindowReference(ByteBuffer byteBuffer) {
     super(null);
-    int size = ReadWriteIOUtils.readInt(byteBuffer);
-    sortItems = new ArrayList<>(size);
-
-    for (int i = 0; i < size; i++) {
-      sortItems.add(new SortItem(byteBuffer));
-    }
+    this.name = new Identifier(byteBuffer);
   }
 }

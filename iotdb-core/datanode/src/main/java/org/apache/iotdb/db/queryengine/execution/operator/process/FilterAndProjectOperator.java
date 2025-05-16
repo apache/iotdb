@@ -171,6 +171,7 @@ public class FilterAndProjectOperator implements ProcessOperator {
     if (!hasNonMappableUDF) {
       // get result of calculated common sub expressions
       for (ColumnTransformer columnTransformer : commonTransformerList) {
+        columnTransformer.tryEvaluate();
         resultColumns.add(columnTransformer.getColumn());
       }
     }

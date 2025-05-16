@@ -21,6 +21,7 @@ package org.apache.iotdb.db.queryengine.plan.relational.analyzer;
 
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ExistsPredicate;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.FunctionCall;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.InPredicate;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.QuantifiedComparisonExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SubqueryExpression;
@@ -43,6 +44,7 @@ public class ExpressionAnalysis {
   private final Set<NodeRef<SubqueryExpression>> subqueries;
   private final Set<NodeRef<ExistsPredicate>> existsSubqueries;
   private final Set<NodeRef<QuantifiedComparisonExpression>> quantifiedComparisons;
+  private final Set<NodeRef<FunctionCall>> windowFunctions;
 
   public ExpressionAnalysis(
       Map<NodeRef<Expression>, Type> expressionTypes,
@@ -50,7 +52,8 @@ public class ExpressionAnalysis {
       Set<NodeRef<SubqueryExpression>> subqueries,
       Set<NodeRef<ExistsPredicate>> existsSubqueries,
       Map<NodeRef<Expression>, ResolvedField> columnReferences,
-      Set<NodeRef<QuantifiedComparisonExpression>> quantifiedComparisons) {
+      Set<NodeRef<QuantifiedComparisonExpression>> quantifiedComparisons,
+      Set<NodeRef<FunctionCall>> windowFunctions) {
     this.expressionTypes =
         ImmutableMap.copyOf(requireNonNull(expressionTypes, "expressionTypes is null"));
     //    this.expressionCoercions =
@@ -67,6 +70,8 @@ public class ExpressionAnalysis {
         ImmutableSet.copyOf(requireNonNull(existsSubqueries, "existsSubqueries is null"));
     this.quantifiedComparisons =
         ImmutableSet.copyOf(requireNonNull(quantifiedComparisons, "quantifiedComparisons is null"));
+    this.windowFunctions =
+        ImmutableSet.copyOf(requireNonNull(windowFunctions, "windowFunctions is null"));
   }
 
   public Type getType(Expression expression) {
@@ -95,5 +100,9 @@ public class ExpressionAnalysis {
 
   public Set<NodeRef<QuantifiedComparisonExpression>> getQuantifiedComparisons() {
     return quantifiedComparisons;
+  }
+
+  public Set<NodeRef<FunctionCall>> getWindowFunctions() {
+    return windowFunctions;
   }
 }

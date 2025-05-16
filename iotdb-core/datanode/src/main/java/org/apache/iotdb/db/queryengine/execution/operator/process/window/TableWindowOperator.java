@@ -148,6 +148,9 @@ public class TableWindowOperator implements ProcessOperator {
       // In this case, all partition executors are done
     }
 
+    if (!inputOperator.isBlocked().isDone()) {
+      return null;
+    }
     if (inputOperator.hasNextWithTimer()) {
       // This TsBlock is pre-sorted with PARTITION BY and ORDER BY channels
       TsBlock preSortedBlock = inputOperator.nextWithTimer();
