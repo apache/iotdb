@@ -483,7 +483,7 @@ public class StatementAnalyzer {
       final TranslationMap translationMap = analyzeTraverseDevice(node, context, true);
       final TsTable table =
           DataNodeTableCache.getInstance().getTable(node.getDatabase(), node.getTableName());
-      node.parseRawExpression(
+      if (!node.parseRawExpression(
           null,
           table,
           table.getColumnList().stream()
@@ -492,7 +492,10 @@ public class StatementAnalyzer {
                       columnSchema.getColumnCategory().equals(TsTableColumnCategory.ATTRIBUTE))
               .map(TsTableColumnSchema::getColumnName)
               .collect(Collectors.toList()),
-          queryContext);
+          queryContext)) {
+        analysis.setFinishQueryAfterAnalyze();
+        return null;
+      }
 
       // If node.location is absent, this is a pipe-transferred update, namely the assignments are
       // already parsed at the sender
