@@ -31,6 +31,7 @@ import org.apache.iotdb.db.pipe.consensus.deletion.DeletionResource;
 import org.apache.iotdb.db.pipe.consensus.deletion.DeletionResourceManager;
 import org.apache.iotdb.db.pipe.event.common.deletion.PipeDeleteDataNodeEvent;
 import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
+import org.apache.iotdb.db.pipe.event.common.tablet.PipeInsertNodeTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
 import org.apache.iotdb.db.pipe.event.realtime.PipeRealtimeEvent;
 import org.apache.iotdb.db.pipe.event.realtime.PipeRealtimeEventFactory;
@@ -198,7 +199,11 @@ public class PipeDataRegionAssigner implements Closeable {
                     (PipeTsFileInsertionEvent) innerEvent;
                 tsFileInsertionEvent.disableMod4NonTransferPipes(
                     extractor.isShouldTransferModFile());
-                bindOrUpdateProgressIndexForTsFileInsertionEvent(tsFileInsertionEvent);
+              }
+
+              if (innerEvent instanceof PipeTsFileInsertionEvent
+                  || innerEvent instanceof PipeInsertNodeTabletInsertionEvent) {
+                bindOrUpdateProgressIndexForRealtimeEvent(copiedEvent);
               }
 
               if (innerEvent instanceof PipeDeleteDataNodeEvent) {
@@ -226,11 +231,12 @@ public class PipeDataRegionAssigner implements Closeable {
             });
   }
 
-  private void bindOrUpdateProgressIndexForTsFileInsertionEvent(
-      final PipeTsFileInsertionEvent event) {
+  private void bindOrUpdateProgressIndexForRealtimeEvent(final PipeRealtimeEvent event) {
     if (PipeTimePartitionProgressIndexKeeper.getInstance()
         .isProgressIndexAfterOrEquals(
-            dataRegionId, event.getTimePartitionId(), event.forceGetProgressIndex())) {
+            dataRegionId,
+            event.getTsFileEpoch().getFilePath(),
+            getProgressIndex4RealtimeEvent(event))) {
       event.bindProgressIndex(maxProgressIndexForTsFileInsertionEvent.get());
       if (LOGGER.isDebugEnabled()) {
         LOGGER.debug(
@@ -241,8 +247,16 @@ public class PipeDataRegionAssigner implements Closeable {
       }
     } else {
       maxProgressIndexForTsFileInsertionEvent.updateAndGet(
-          index -> index.updateToMinimumEqualOrIsAfterProgressIndex(event.forceGetProgressIndex()));
+          index ->
+              index.updateToMinimumEqualOrIsAfterProgressIndex(
+                  getProgressIndex4RealtimeEvent(event)));
     }
+  }
+
+  private ProgressIndex getProgressIndex4RealtimeEvent(final PipeRealtimeEvent event) {
+    return event.getEvent() instanceof PipeTsFileInsertionEvent
+        ? ((PipeTsFileInsertionEvent) event.getEvent()).forceGetProgressIndex()
+        : event.getProgressIndex();
   }
 
   public void startAssignTo(final PipeRealtimeDataRegionExtractor extractor) {

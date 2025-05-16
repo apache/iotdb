@@ -34,20 +34,20 @@ public class TsFileEpoch {
       dataRegionExtractor2State;
   private final AtomicLong insertNodeMinTime;
 
-  public TsFileEpoch(String filePath) {
+  public TsFileEpoch(final String filePath) {
     this.filePath = filePath;
     this.dataRegionExtractor2State = new ConcurrentHashMap<>();
     this.insertNodeMinTime = new AtomicLong(Long.MAX_VALUE);
   }
 
-  public TsFileEpoch.State getState(PipeRealtimeDataRegionExtractor extractor) {
+  public TsFileEpoch.State getState(final PipeRealtimeDataRegionExtractor extractor) {
     return dataRegionExtractor2State
         .computeIfAbsent(extractor, o -> new AtomicReference<>(State.EMPTY))
         .get();
   }
 
   public void migrateState(
-      PipeRealtimeDataRegionExtractor extractor, TsFileEpochStateMigrator visitor) {
+      final PipeRealtimeDataRegionExtractor extractor, final TsFileEpochStateMigrator visitor) {
     dataRegionExtractor2State
         .computeIfAbsent(extractor, o -> new AtomicReference<>(State.EMPTY))
         .getAndUpdate(visitor::migrate);
@@ -60,12 +60,16 @@ public class TsFileEpoch {
                 .setRecentProcessedTsFileEpochState(extractor.getTaskID(), state.get()));
   }
 
-  public void updateInsertNodeMinTime(long newComingMinTime) {
+  public void updateInsertNodeMinTime(final long newComingMinTime) {
     insertNodeMinTime.updateAndGet(recordedMinTime -> Math.min(recordedMinTime, newComingMinTime));
   }
 
   public long getInsertNodeMinTime() {
     return insertNodeMinTime.get();
+  }
+
+  public String getFilePath() {
+    return filePath;
   }
 
   @Override
@@ -90,7 +94,7 @@ public class TsFileEpoch {
 
     private final int id;
 
-    State(int id) {
+    State(final int id) {
       this.id = id;
     }
 
