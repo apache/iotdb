@@ -5246,4 +5246,17 @@ public class IoTDBTableAggregationIT {
 
     tableAssertTestFail("select * from table1 where (s1,s2) is not null", errMsg, DATABASE_NAME);
   }
+
+  @Test
+  public void emptyBlockInStreamOperatorTest() {
+    String[] expectedHeader = new String[] {"_col0"};
+    String[] retArray = new String[] {};
+
+    // the inner query produces empty block
+    tableResultSetEqualTest(
+        "select count(1) from (select * from table1 where s1 + 1 < 1) group by device_id,s1",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+  }
 }
