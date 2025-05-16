@@ -12,7 +12,7 @@
  * limitations under the License.
  */
 
-package org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation;
+package org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.approximate;
 
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.grouped.array.HyperLogLogBigArray;
 

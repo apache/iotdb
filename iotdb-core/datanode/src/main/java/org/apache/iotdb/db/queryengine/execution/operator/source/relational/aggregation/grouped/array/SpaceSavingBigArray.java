@@ -14,10 +14,10 @@
 
 package org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.grouped.array;
 
-import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.ApproxMostFrequentBucketDeserializer;
-import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.ApproxMostFrequentBucketSerializer;
-import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.SpaceSaving;
-import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.SpaceSavingByteCalculator;
+import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.approximate.ApproxMostFrequentBucketDeserializer;
+import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.approximate.ApproxMostFrequentBucketSerializer;
+import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.approximate.SpaceSaving;
+import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.approximate.SpaceSavingByteCalculator;
 
 import static org.apache.tsfile.utils.RamUsageEstimator.shallowSizeOf;
 import static org.apache.tsfile.utils.RamUsageEstimator.shallowSizeOfInstance;

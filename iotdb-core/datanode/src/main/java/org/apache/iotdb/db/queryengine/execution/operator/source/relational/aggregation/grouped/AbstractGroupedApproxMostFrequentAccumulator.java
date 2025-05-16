@@ -14,7 +14,7 @@
 
 package org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.grouped;
 
-import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.SpaceSavingStateFactory;
+import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.approximate.SpaceSavingStateFactory;
 
 import com.google.gson.Gson;
 import org.apache.tsfile.block.column.ColumnBuilder;

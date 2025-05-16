@@ -16,8 +16,8 @@ package org.apache.iotdb.db.queryengine.execution.operator.source.relational.agg
 
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.AggregationMask;
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.LongApproxMostFrequentAccumulator;
-import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.SpaceSaving;
-import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.SpaceSavingStateFactory;
+import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.approximate.SpaceSaving;
+import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.approximate.SpaceSavingStateFactory;
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.grouped.array.SpaceSavingBigArray;
 
 import org.apache.tsfile.block.column.Column;
