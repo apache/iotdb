@@ -152,7 +152,7 @@ public abstract class PipeSubtask
   }
 
   protected synchronized void decreaseReferenceCountAndReleaseLastEvent(
-      final Event actualLastEvent, final boolean shouldReport) {
+      final Event actualLastEvent, final Boolean shouldReport) {
     // lastEvent may be set to null due to PipeConnectorSubtask#discardEventsOfPipe
     if (lastEvent != null) {
       if (lastEvent instanceof EnrichedEvent && !((EnrichedEvent) lastEvent).isReleased()) {

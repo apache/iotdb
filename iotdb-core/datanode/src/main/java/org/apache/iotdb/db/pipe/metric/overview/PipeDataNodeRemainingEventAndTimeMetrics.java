@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.pipe.metric.overview;
 
 import org.apache.iotdb.commons.pipe.agent.task.progress.PipeEventCommitManager;
+import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.service.metric.enums.Metric;
 import org.apache.iotdb.commons.service.metric.enums.Tag;
 import org.apache.iotdb.db.pipe.extractor.dataregion.IoTDBDataRegionExtractor;
@@ -68,11 +69,35 @@ public class PipeDataNodeRemainingEventAndTimeMetrics implements IMetricSet {
         Metric.PIPE_DATANODE_REMAINING_EVENT_COUNT.toString(),
         MetricLevel.IMPORTANT,
         operator,
-        PipeDataNodeRemainingEventAndTimeOperator::getRemainingEvents,
+        PipeDataNodeRemainingEventAndTimeOperator::getTsFileRemainingEvents,
         Tag.NAME.toString(),
         operator.getPipeName(),
         Tag.CREATION_TIME.toString(),
-        String.valueOf(operator.getCreationTime()));
+        String.valueOf(operator.getCreationTime()),
+        Tag.TYPE.toString(),
+        "TsFileEvent");
+    metricService.createAutoGauge(
+        Metric.PIPE_DATANODE_REMAINING_EVENT_COUNT.toString(),
+        MetricLevel.IMPORTANT,
+        operator,
+        PipeDataNodeRemainingEventAndTimeOperator::getTabletRemainingEvents,
+        Tag.NAME.toString(),
+        operator.getPipeName(),
+        Tag.CREATION_TIME.toString(),
+        String.valueOf(operator.getCreationTime()),
+        Tag.TYPE.toString(),
+        "TabletEvent");
+    metricService.createAutoGauge(
+        Metric.PIPE_DATANODE_REMAINING_EVENT_COUNT.toString(),
+        MetricLevel.IMPORTANT,
+        operator,
+        PipeDataNodeRemainingEventAndTimeOperator::getSchemaRemainingEvents,
+        Tag.NAME.toString(),
+        operator.getPipeName(),
+        Tag.CREATION_TIME.toString(),
+        String.valueOf(operator.getCreationTime()),
+        Tag.TYPE.toString(),
+        "SchemaEvent");
     metricService.createAutoGauge(
         Metric.PIPE_DATANODE_REMAINING_TIME.toString(),
         MetricLevel.IMPORTANT,
@@ -106,7 +131,27 @@ public class PipeDataNodeRemainingEventAndTimeMetrics implements IMetricSet {
         Tag.NAME.toString(),
         operator.getPipeName(),
         Tag.CREATION_TIME.toString(),
-        String.valueOf(operator.getCreationTime()));
+        String.valueOf(operator.getCreationTime()),
+        Tag.TYPE.toString(),
+        "TsFileEvent");
+    metricService.remove(
+        MetricType.AUTO_GAUGE,
+        Metric.PIPE_DATANODE_REMAINING_EVENT_COUNT.toString(),
+        Tag.NAME.toString(),
+        operator.getPipeName(),
+        Tag.CREATION_TIME.toString(),
+        String.valueOf(operator.getCreationTime()),
+        Tag.TYPE.toString(),
+        "TabletEvent");
+    metricService.remove(
+        MetricType.AUTO_GAUGE,
+        Metric.PIPE_DATANODE_REMAINING_EVENT_COUNT.toString(),
+        Tag.NAME.toString(),
+        operator.getPipeName(),
+        Tag.CREATION_TIME.toString(),
+        String.valueOf(operator.getCreationTime()),
+        Tag.TYPE.toString(),
+        "SchemaEvent");
     metricService.remove(
         MetricType.AUTO_GAUGE,
         Metric.PIPE_DATANODE_REMAINING_TIME.toString(),
@@ -163,36 +208,22 @@ public class PipeDataNodeRemainingEventAndTimeMetrics implements IMetricSet {
         .decreaseTabletEventCount();
   }
 
-  public void increaseTsFileEventCount(final String pipeName, final long creationTime) {
+  public void increaseTsFileEventSize(
+      final String pipeName, final long creationTime, final long size) {
     remainingEventAndTimeOperatorMap
         .computeIfAbsent(
             pipeName + "_" + creationTime,
             k -> new PipeDataNodeRemainingEventAndTimeOperator(pipeName, creationTime))
-        .increaseTsFileEventCount();
+        .increaseTsFileEventSize(size);
   }
 
-  public void decreaseTsFileEventCount(final String pipeName, final long creationTime) {
+  public void decreaseTsFileEventCount(
+      final String pipeName, final long creationTime, final long size) {
     remainingEventAndTimeOperatorMap
         .computeIfAbsent(
             pipeName + "_" + creationTime,
             k -> new PipeDataNodeRemainingEventAndTimeOperator(pipeName, creationTime))
-        .decreaseTsFileEventCount();
-  }
-
-  public void increaseHeartbeatEventCount(final String pipeName, final long creationTime) {
-    remainingEventAndTimeOperatorMap
-        .computeIfAbsent(
-            pipeName + "_" + creationTime,
-            k -> new PipeDataNodeRemainingEventAndTimeOperator(pipeName, creationTime))
-        .increaseHeartbeatEventCount();
-  }
-
-  public void decreaseHeartbeatEventCount(final String pipeName, final long creationTime) {
-    remainingEventAndTimeOperatorMap
-        .computeIfAbsent(
-            pipeName + "_" + creationTime,
-            k -> new PipeDataNodeRemainingEventAndTimeOperator(pipeName, creationTime))
-        .decreaseHeartbeatEventCount();
+        .decreaseTsFileEventSize(size);
   }
 
   public void thawRate(final String pipeID) {
@@ -227,10 +258,15 @@ public class PipeDataNodeRemainingEventAndTimeMetrics implements IMetricSet {
     }
   }
 
-  public void markRegionCommit(final String pipeID, final boolean isDataRegion) {
+  public void markRegionCommit(final EnrichedEvent event) {
     if (Objects.isNull(metricService)) {
       return;
     }
+    final String pipeID =
+        PipeEventCommitManager.getInstance()
+            .getTaskAgent()
+            .getPipeNameWithCreationTime(event.getPipeName(), event.getCreationTime());
+
     final PipeDataNodeRemainingEventAndTimeOperator operator =
         remainingEventAndTimeOperatorMap.get(pipeID);
     if (Objects.isNull(operator)) {
@@ -240,25 +276,7 @@ public class PipeDataNodeRemainingEventAndTimeMetrics implements IMetricSet {
       return;
     }
 
-    if (isDataRegion) {
-      operator.markDataRegionCommit();
-    } else {
-      operator.markSchemaRegionCommit();
-    }
-  }
-
-  public void markTsFileCollectInvocationCount(
-      final String pipeID, final long collectInvocationCount) {
-    if (Objects.isNull(metricService)) {
-      return;
-    }
-    final PipeDataNodeRemainingEventAndTimeOperator operator =
-        remainingEventAndTimeOperatorMap.get(pipeID);
-    if (Objects.isNull(operator)) {
-      return;
-    }
-
-    operator.markTsFileCollectInvocationCount(collectInvocationCount);
+    operator.markRegionCommit(event);
   }
 
   //////////////////////////// Show pipes ////////////////////////////
@@ -267,9 +285,21 @@ public class PipeDataNodeRemainingEventAndTimeMetrics implements IMetricSet {
       final String pipeName, final long creationTime) {
     final PipeDataNodeRemainingEventAndTimeOperator operator =
         remainingEventAndTimeOperatorMap.computeIfAbsent(
-            pipeName + "_" + creationTime,
+            PipeEventCommitManager.getInstance()
+                .getTaskAgent()
+                .getPipeNameWithCreationTime(pipeName, creationTime),
             k -> new PipeDataNodeRemainingEventAndTimeOperator(pipeName, creationTime));
     return new Pair<>(operator.getRemainingEvents(), operator.getRemainingTime());
+  }
+
+  public double getRemainingTimeSmoothingValue(final String pipeName, final long creationTime) {
+    return remainingEventAndTimeOperatorMap
+        .computeIfAbsent(
+            PipeEventCommitManager.getInstance()
+                .getTaskAgent()
+                .getPipeNameWithCreationTime(pipeName, creationTime),
+            k -> new PipeDataNodeRemainingEventAndTimeOperator(pipeName, creationTime))
+        .getLatencySmoothingValue();
   }
 
   //////////////////////////// singleton ////////////////////////////

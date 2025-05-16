@@ -279,6 +279,7 @@ public class PipeConfig {
     return COMMON_CONFIG.getPipeMaxAllowedPendingTsFileEpochPerDataRegion();
   }
 
+  // Only used to control the size of wal cache
   public int getPipeMaxAllowedPinnedMemTableCount() {
     return COMMON_CONFIG.getPipeMaxAllowedPinnedMemTableCount();
   }
@@ -289,6 +290,10 @@ public class PipeConfig {
 
   public float getPipeMaxAllowedLinkedDeletedTsFileDiskUsagePercentage() {
     return COMMON_CONFIG.getPipeMaxAllowedLinkedDeletedTsFileDiskUsagePercentage();
+  }
+
+  public double getPipeMaxAllowedLatencySeconds() {
+    return COMMON_CONFIG.getPipeMaxAllowedLatencySeconds();
   }
 
   public long getPipeStuckRestartIntervalSeconds() {
@@ -533,6 +538,7 @@ public class PipeConfig {
     LOGGER.info(
         "PipeMaxAllowedLinkedDeletedTsFileDiskUsagePercentage: {}",
         getPipeMaxAllowedLinkedDeletedTsFileDiskUsagePercentage());
+    LOGGER.info("PipeMaxAllowedLatencySeconds: {}", getPipeMaxAllowedLatencySeconds());
     LOGGER.info("PipeStuckRestartIntervalSeconds: {}", getPipeStuckRestartIntervalSeconds());
     LOGGER.info("PipeStuckRestartMinIntervalMs: {}", getPipeStuckRestartMinIntervalMs());
     LOGGER.info(
