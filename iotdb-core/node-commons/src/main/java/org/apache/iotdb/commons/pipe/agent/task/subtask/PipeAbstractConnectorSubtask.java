@@ -46,6 +46,9 @@ public abstract class PipeAbstractConnectorSubtask extends PipeReportableSubtask
   // For thread pool to execute callbacks
   protected ExecutorService subtaskCallbackListeningExecutor;
 
+  protected final Object deregisterLock = new Object();
+  protected boolean isDeregistering = false;
+
   // For controlling subtask submitting, making sure that
   // a subtask is submitted to only one thread at a time
   protected volatile boolean isSubmitted = false;
@@ -163,7 +166,12 @@ public abstract class PipeAbstractConnectorSubtask extends PipeReportableSubtask
             MAX_RETRY_TIMES,
             e);
         try {
-          Thread.sleep(retry * PipeConfig.getInstance().getPipeConnectorRetryIntervalMs());
+          if (isDeregistering) {
+            break;
+          }
+          synchronized (deregisterLock) {
+            deregisterLock.wait(retry * PipeConfig.getInstance().getPipeConnectorRetryIntervalMs());
+          }
         } catch (final InterruptedException interruptedException) {
           LOGGER.info(
               "Interrupted while sleeping, will retry to handshake with the target system.",
@@ -171,6 +179,12 @@ public abstract class PipeAbstractConnectorSubtask extends PipeReportableSubtask
           Thread.currentThread().interrupt();
         }
       }
+    }
+
+    if (isDeregistering) {
+      LOGGER.info(
+          "{} will skip retrying failed event because subtask is being deregistered.",
+          outputPipeConnector.getClass().getName());
     }
 
     // Stop current pipe task directly if failed to reconnect to
