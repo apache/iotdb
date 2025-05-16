@@ -198,4 +198,9 @@ public abstract class WALEntry implements SerializedSize {
   public abstract boolean isSignal();
 
   public abstract long getMemorySize();
+
+  @Override
+  public String toString() {
+    return "WALEntry{" + "type=" + type + ", memTableId=" + memTableId + ", value=" + value + '}';
+  }
 }
