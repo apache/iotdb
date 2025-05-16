@@ -162,40 +162,50 @@ public class AlterPipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
 
     final ConcurrentMap<Integer, PipeTaskMeta> updatedConsensusGroupIdToTaskMetaMap =
         new ConcurrentHashMap<>();
-    // data regions & schema regions
-    env.getConfigManager()
-        .getLoadManager()
-        .getRegionLeaderMap()
-        .forEach(
-            (regionGroupId, regionLeaderNodeId) -> {
-              final String databaseName =
-                  env.getConfigManager().getPartitionManager().getRegionDatabase(regionGroupId);
-              final PipeTaskMeta currentPipeTaskMeta =
-                  currentConsensusGroupId2PipeTaskMeta.get(regionGroupId.getId());
-              if (databaseName != null
-                  && !databaseName.equals(SchemaConstant.SYSTEM_DATABASE)
-                  && !databaseName.startsWith(SchemaConstant.SYSTEM_DATABASE + ".")
-                  && currentPipeTaskMeta != null
-                  && currentPipeTaskMeta.getLeaderNodeId() == regionLeaderNodeId) {
-                // Pipe only collect user's data, filter metric database here.
-                updatedConsensusGroupIdToTaskMetaMap.put(
-                    regionGroupId.getId(),
-                    new PipeTaskMeta(currentPipeTaskMeta.getProgressIndex(), regionLeaderNodeId));
-              }
-            });
+    if (currentPipeStaticMeta.isSourceExternal()) {
+      currentConsensusGroupId2PipeTaskMeta.forEach(
+          (taskId, pipeTaskMeta) -> {
+            updatedConsensusGroupIdToTaskMetaMap.put(
+                taskId,
+                new PipeTaskMeta(pipeTaskMeta.getProgressIndex(), pipeTaskMeta.getLeaderNodeId()));
+          });
+    } else {
+      // data regions & schema regions
+      env.getConfigManager()
+          .getLoadManager()
+          .getRegionLeaderMap()
+          .forEach(
+              (regionGroupId, regionLeaderNodeId) -> {
+                final String databaseName =
+                    env.getConfigManager().getPartitionManager().getRegionDatabase(regionGroupId);
+                final PipeTaskMeta currentPipeTaskMeta =
+                    currentConsensusGroupId2PipeTaskMeta.get(regionGroupId.getId());
+                if (databaseName != null
+                    && !databaseName.equals(SchemaConstant.SYSTEM_DATABASE)
+                    && !databaseName.startsWith(SchemaConstant.SYSTEM_DATABASE + ".")
+                    && currentPipeTaskMeta != null
+                    && currentPipeTaskMeta.getLeaderNodeId() == regionLeaderNodeId) {
+                  // Pipe only collect user's data, filter metric database here.
+                  updatedConsensusGroupIdToTaskMetaMap.put(
+                      regionGroupId.getId(),
+                      new PipeTaskMeta(currentPipeTaskMeta.getProgressIndex(), regionLeaderNodeId));
+                }
+              });
 
-    final PipeTaskMeta configRegionTaskMeta =
-        currentConsensusGroupId2PipeTaskMeta.get(Integer.MIN_VALUE);
-    if (Objects.nonNull(configRegionTaskMeta)) {
-      // config region
-      updatedConsensusGroupIdToTaskMetaMap.put(
-          // 0 is the consensus group id of the config region, but data region id and schema region
-          // id also start from 0, so we use Integer.MIN_VALUE to represent the config region
-          Integer.MIN_VALUE,
-          new PipeTaskMeta(
-              configRegionTaskMeta.getProgressIndex(),
-              // The leader of the config region is the config node itself
-              ConfigNodeDescriptor.getInstance().getConf().getConfigNodeId()));
+      final PipeTaskMeta configRegionTaskMeta =
+          currentConsensusGroupId2PipeTaskMeta.get(Integer.MIN_VALUE);
+      if (Objects.nonNull(configRegionTaskMeta)) {
+        // config region
+        updatedConsensusGroupIdToTaskMetaMap.put(
+            // 0 is the consensus group id of the config region, but data region id and schema
+            // region id also start from 0, so we use Integer.MIN_VALUE to represent the config
+            // region
+            Integer.MIN_VALUE,
+            new PipeTaskMeta(
+                configRegionTaskMeta.getProgressIndex(),
+                // The leader of the config region is the config node itself
+                ConfigNodeDescriptor.getInstance().getConf().getConfigNodeId()));
+      }
     }
 
     updatedPipeRuntimeMeta = new PipeRuntimeMeta(updatedConsensusGroupIdToTaskMetaMap);
