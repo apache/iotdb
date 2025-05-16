@@ -5252,7 +5252,14 @@ public class IoTDBTableAggregationIT {
     String[] expectedHeader = new String[] {"_col0"};
     String[] retArray = new String[] {};
 
-    // the inner query produces empty block
+    // the sub-query produces empty block
+    tableResultSetEqualTest(
+        "select count(1) from (select * from table1 where s1 + 1 < 1) group by device_id,s1",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+
+    // test the result is empty
     tableResultSetEqualTest(
         "select count(1) from (select * from table1 where s1 + 1 < 1) group by device_id,s1",
         expectedHeader,
