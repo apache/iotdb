@@ -25,6 +25,7 @@ import org.apache.iotdb.db.storageengine.dataregion.compaction.AbstractCompactio
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.exception.FileCannotTransitToCompactingException;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.AbstractCompactionTask;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.CrossSpaceCompactionTask;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.batch.utils.BatchCompactionPlan;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.CompactionScheduleContext;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.CompactionTaskQueue;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.comparator.DefaultCompactionTaskComparatorImpl;
@@ -37,6 +38,7 @@ import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceStatus;
 import org.apache.iotdb.db.storageengine.rescon.memory.SystemInfo;
 import org.apache.iotdb.db.utils.datastructure.FixedPriorityBlockingQueue;
 
+import org.apache.tsfile.common.conf.TSFileDescriptor;
 import org.apache.tsfile.exception.write.WriteProcessException;
 import org.junit.After;
 import org.junit.Assert;
@@ -117,6 +119,8 @@ public class CrossSpaceCompactionSelectorTest extends AbstractCompactionTest {
   @Test
   public void testSelectWithClosedSeqFileAndUncloseSeqFile()
       throws IOException, MetadataException, WriteProcessException {
+    BatchCompactionPlan.setMaxCachedTimeChunksSize(2 * 1024 * 1024 / 20);
+    TSFileDescriptor.getInstance().getConfig().setPageSizeInByte(1024);
     createFiles(2, 2, 3, 50, 0, 10000, 50, 50, false, true);
     createFiles(5, 2, 3, 50, 0, 10000, 50, 50, false, false);
     seqResources.get(1).setStatusForTest(TsFileResourceStatus.UNCLOSED);
@@ -149,6 +153,8 @@ public class CrossSpaceCompactionSelectorTest extends AbstractCompactionTest {
   @Test
   public void testSelectWithMultiUnseqFilesOverlapWithOneSeqFile()
       throws IOException, MetadataException, WriteProcessException {
+    BatchCompactionPlan.setMaxCachedTimeChunksSize(2 * 1024 * 1024 / 20);
+    TSFileDescriptor.getInstance().getConfig().setPageSizeInByte(1024);
     createFiles(3, 2, 3, 50, 0, 10000, 50, 50, false, true);
     createFiles(1, 2, 3, 50, 0, 10000, 50, 50, false, false);
     createFiles(1, 2, 3, 50, 0, 10000, 50, 50, false, false);
@@ -727,6 +733,7 @@ public class CrossSpaceCompactionSelectorTest extends AbstractCompactionTest {
   @Test
   public void testSeqFileWithFileIndexBeenDeletedDuringSelectionAndBeforeSettingCandidate()
       throws IOException, MetadataException, WriteProcessException, InterruptedException {
+    BatchCompactionPlan.setMaxCachedTimeChunksSize(2 * 1024 * 1024 / 10);
     createFiles(5, 2, 3, 50, 0, 10000, 50, 50, false, true);
     createFiles(5, 2, 3, 50, 0, 10000, 50, 50, false, false);
     tsFileManager.addAll(seqResources, true);

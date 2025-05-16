@@ -26,6 +26,8 @@ import org.slf4j.LoggerFactory;
 
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.BiConsumer;
 import java.util.function.LongUnaryOperator;
 
 public class MemoryManager {
@@ -46,10 +48,13 @@ public class MemoryManager {
   /** Whether memory management is enabled */
   private final boolean enabled;
 
-  /** The total memory size in byte of memory manager */
+  /** The memory size of this memory manager allocated by parent memory manager */
+  private volatile long initialAllocatedMemorySizeInBytes = 0L;
+
+  /** The max memory size of this memory manager */
   private volatile long totalMemorySizeInBytes;
 
-  /** The allocated memory size */
+  /** The allocated memory size of this memory manager */
   private volatile long allocatedMemorySizeInBytes = 0L;
 
   /** The parent memory manager */
@@ -61,10 +66,15 @@ public class MemoryManager {
   /** The allocated memory blocks of this memory manager */
   private final Map<String, IMemoryBlock> allocatedMemoryBlocks = new ConcurrentHashMap<>();
 
+  /** Update related parameters when totalMemorySizeInBytes update */
+  private final AtomicReference<BiConsumer<Long, Long>> memoryUpdateCallback =
+      new AtomicReference<>();
+
   @TestOnly
   public MemoryManager(long totalMemorySizeInBytes) {
     this.name = "Test";
     this.parentMemoryManager = null;
+    this.initialAllocatedMemorySizeInBytes = totalMemorySizeInBytes;
     this.totalMemorySizeInBytes = totalMemorySizeInBytes;
     this.enabled = false;
   }
@@ -72,6 +82,7 @@ public class MemoryManager {
   MemoryManager(String name, MemoryManager parentMemoryManager, long totalMemorySizeInBytes) {
     this.name = name;
     this.parentMemoryManager = parentMemoryManager;
+    this.initialAllocatedMemorySizeInBytes = totalMemorySizeInBytes;
     this.totalMemorySizeInBytes = totalMemorySizeInBytes;
     this.enabled = false;
   }
@@ -83,6 +94,7 @@ public class MemoryManager {
       boolean enabled) {
     this.name = name;
     this.parentMemoryManager = parentMemoryManager;
+    this.initialAllocatedMemorySizeInBytes = totalMemorySizeInBytes;
     this.totalMemorySizeInBytes = totalMemorySizeInBytes;
     this.enabled = enabled;
   }
@@ -357,24 +369,6 @@ public class MemoryManager {
   }
 
   /**
-   * Re-allocate memory according to ratio
-   *
-   * @param ratio the ratio of new total memory size to old total memory size
-   */
-  private void reAllocateMemoryAccordingToRatio(double ratio) {
-    // first increase the total memory size of this memory manager
-    this.totalMemorySizeInBytes *= ratio;
-    // then re-allocate memory for all memory blocks
-    for (IMemoryBlock block : allocatedMemoryBlocks.values()) {
-      block.setTotalMemorySizeInBytes((long) (block.getTotalMemorySizeInBytes() * ratio));
-    }
-    // finally re-allocate memory for all child memory managers
-    for (Map.Entry<String, MemoryManager> entry : children.entrySet()) {
-      entry.getValue().reAllocateMemoryAccordingToRatio(ratio);
-    }
-  }
-
-  /**
    * Get the memory manager with specified names in levels
    *
    * @param names the names of memory manager in levels
@@ -458,12 +452,13 @@ public class MemoryManager {
     return totalMemorySizeInBytes;
   }
 
+  @TestOnly
   public void setTotalMemorySizeInBytes(long totalMemorySizeInBytes) {
     this.totalMemorySizeInBytes = totalMemorySizeInBytes;
   }
 
-  public void setTotalMemorySizeInBytesWithReload(long totalMemorySizeInBytes) {
-    reAllocateMemoryAccordingToRatio((double) totalMemorySizeInBytes / this.totalMemorySizeInBytes);
+  public long getInitialAllocatedMemorySizeInBytes() {
+    return initialAllocatedMemorySizeInBytes;
   }
 
   /** Get available memory size in bytes of memory manager */
@@ -486,7 +481,44 @@ public class MemoryManager {
     return memorySize;
   }
 
+  public MemoryManager setMemoryUpdateCallback(BiConsumer<Long, Long> memoryUpdateCallback) {
+    this.memoryUpdateCallback.set(memoryUpdateCallback);
+    return this;
+  }
+
   // endregion
+
+  /**
+   * Resize memory by ratio
+   *
+   * @param ratio the ratio to resize memory, values [0.0, 1.0]
+   */
+  public synchronized void resizeByRatio(double ratio) {
+    // Update initial allocated memory size by ratio
+    long beforeInitialAllocatedMemorySizeInBytes = this.initialAllocatedMemorySizeInBytes;
+    this.initialAllocatedMemorySizeInBytes *= ratio;
+    // Update total memory size by actual size
+    long beforeTotalMemorySizeInBytes = this.totalMemorySizeInBytes;
+    this.totalMemorySizeInBytes +=
+        (this.initialAllocatedMemorySizeInBytes - beforeInitialAllocatedMemorySizeInBytes);
+    // Get actual ratio of re-allocate memory size
+    double actualRatio = (double) this.totalMemorySizeInBytes / beforeTotalMemorySizeInBytes;
+    // Re-allocate memory for all memory blocks
+    for (IMemoryBlock block : allocatedMemoryBlocks.values()) {
+      this.allocatedMemorySizeInBytes += block.resizeByRatio(actualRatio);
+    }
+    // Re-allocate memory for all child memory managers
+    for (Map.Entry<String, MemoryManager> entry : children.entrySet()) {
+      entry.getValue().resizeByRatio(ratio);
+    }
+    if (memoryUpdateCallback.get() != null) {
+      try {
+        memoryUpdateCallback.get().accept(beforeTotalMemorySizeInBytes, totalMemorySizeInBytes);
+      } catch (Exception e) {
+        LOGGER.warn("Failed to execute the update callback.", e);
+      }
+    }
+  }
 
   @Override
   public String toString() {
