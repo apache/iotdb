@@ -1294,6 +1294,11 @@ public class TsFileProcessor {
       IMemTable tmpMemTable = workMemTable == null ? new NotifyFlushMemTable() : workMemTable;
 
       try {
+        // When invoke closing TsFile after insert data to memTable, we shouldn't flush until invoke
+        // flushing memTable in System module.
+        Future<?> future = addAMemtableIntoFlushingList(tmpMemTable);
+        shouldClose = true;
+
         PipeInsertionDataNodeListener.getInstance()
             .listenToTsFile(
                 dataRegionInfo.getDataRegion().getDataRegionId(),
@@ -1301,11 +1306,6 @@ public class TsFileProcessor {
                 tsFileResource,
                 false,
                 tmpMemTable.isTotallyGeneratedByPipe());
-
-        // When invoke closing TsFile after insert data to memTable, we shouldn't flush until invoke
-        // flushing memTable in System module.
-        Future<?> future = addAMemtableIntoFlushingList(tmpMemTable);
-        shouldClose = true;
         return future;
       } catch (Exception e) {
         logger.error(
