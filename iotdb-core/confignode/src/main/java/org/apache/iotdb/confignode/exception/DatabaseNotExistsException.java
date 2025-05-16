@@ -21,7 +21,7 @@ package org.apache.iotdb.confignode.exception;
 
 public class DatabaseNotExistsException extends ConfigNodeException {
 
-  public DatabaseNotExistsException(String database) {
+  public DatabaseNotExistsException(final String database) {
     super(String.format("Database: %s doesn't exist.", database));
   }
 }

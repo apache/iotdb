@@ -53,7 +53,7 @@ public enum TSStatusCode {
   // Client,
   REDIRECTION_RECOMMEND(400),
 
-  USE_DB(401),
+  USE_OR_DROP_DB(401),
 
   // Schema Engine
   DATABASE_NOT_EXIST(500),
