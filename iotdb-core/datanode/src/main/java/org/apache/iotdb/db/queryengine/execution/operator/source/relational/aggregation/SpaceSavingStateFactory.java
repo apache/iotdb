@@ -21,32 +21,32 @@ import org.apache.tsfile.utils.RamUsageEstimator;
 import static java.util.Objects.requireNonNull;
 
 public class SpaceSavingStateFactory {
-  public static SingleSpaceSavingState createSingleState() {
-    return new SingleSpaceSavingState();
+  public static <T> SingleSpaceSavingState<T> createSingleState() {
+    return new SingleSpaceSavingState<T>();
   }
 
-  public static GroupedSpaceSavingState createGroupedState() {
-    return new GroupedSpaceSavingState();
+  public static <T> GroupedSpaceSavingState<T> createGroupedState() {
+    return new GroupedSpaceSavingState<T>();
   }
 
-  public static class SingleSpaceSavingState {
+  public static class SingleSpaceSavingState<T> {
     private static final long INSTANCE_SIZE =
         RamUsageEstimator.shallowSizeOfInstance(SingleSpaceSavingState.class);
-    private SpaceSaving spaceSaving;
+    private SpaceSaving<T> spaceSaving;
 
-    public SpaceSaving getSpaceSaving() {
+    public SpaceSaving<T> getSpaceSaving() {
       return spaceSaving;
     }
 
-    public void setSpaceSaving(SpaceSaving value) {
+    public void setSpaceSaving(SpaceSaving<T> value) {
       this.spaceSaving = value;
     }
 
     public long getEstimatedSize() {
-      return spaceSaving == null ? 0L : spaceSaving.getEstimatedSize();
+      return spaceSaving == null ? INSTANCE_SIZE : INSTANCE_SIZE + spaceSaving.getEstimatedSize();
     }
 
-    public void merge(SpaceSaving other) {
+    public void merge(SpaceSaving<T> other) {
       if (this.spaceSaving == null) {
         setSpaceSaving(other);
       } else {
@@ -55,16 +55,16 @@ public class SpaceSavingStateFactory {
     }
   }
 
-  public static class GroupedSpaceSavingState {
+  public static class GroupedSpaceSavingState<T> {
     private static final long INSTANCE_SIZE =
         RamUsageEstimator.shallowSizeOfInstance(GroupedSpaceSavingState.class);
-    private SpaceSavingBigArray spaceSavings;
+    private SpaceSavingBigArray<T> spaceSavings;
 
-    public SpaceSavingBigArray getSpaceSavings() {
+    public SpaceSavingBigArray<T> getSpaceSavings() {
       return spaceSavings;
     }
 
-    public void setSpaceSavings(SpaceSavingBigArray value) {
+    public void setSpaceSavings(SpaceSavingBigArray<T> value) {
       requireNonNull(value, "value is null");
       this.spaceSavings = value;
     }
@@ -73,8 +73,8 @@ public class SpaceSavingStateFactory {
       return INSTANCE_SIZE + spaceSavings.sizeOf();
     }
 
-    public void merge(int groupId, SpaceSaving spaceSaving) {
-      SpaceSaving existingSpaceSaving = spaceSavings.get(groupId, spaceSaving);
+    public void merge(int groupId, SpaceSaving<T> spaceSaving) {
+      SpaceSaving<T> existingSpaceSaving = spaceSavings.get(groupId, spaceSaving);
       if (!existingSpaceSaving.equals(spaceSaving)) {
         existingSpaceSaving.merge(spaceSaving);
       }

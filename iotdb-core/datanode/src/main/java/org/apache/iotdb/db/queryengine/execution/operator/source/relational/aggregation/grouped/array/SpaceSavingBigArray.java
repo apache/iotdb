@@ -14,14 +14,17 @@
 
 package org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.grouped.array;
 
+import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.ApproxMostFrequentBucketDeserializer;
+import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.ApproxMostFrequentBucketSerializer;
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.SpaceSaving;
+import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.SpaceSavingByteCalculator;
 
 import static org.apache.tsfile.utils.RamUsageEstimator.shallowSizeOf;
 import static org.apache.tsfile.utils.RamUsageEstimator.shallowSizeOfInstance;
 
-public class SpaceSavingBigArray {
+public class SpaceSavingBigArray<T> {
   private static final long INSTANCE_SIZE = shallowSizeOfInstance(SpaceSavingBigArray.class);
-  private final ObjectBigArray<SpaceSaving> array;
+  private final ObjectBigArray<SpaceSaving<T>> array;
   private long sizeOfSpaceSaving;
 
   public SpaceSavingBigArray() {
@@ -32,16 +35,23 @@ public class SpaceSavingBigArray {
     return INSTANCE_SIZE + shallowSizeOf(array) + sizeOfSpaceSaving;
   }
 
-  public SpaceSaving get(long index) {
+  public SpaceSaving<T> get(long index) {
     return array.get(index);
   }
 
-  public SpaceSaving get(long index, int maxBuckets, int capacity) {
-    return get(index, new SpaceSaving(maxBuckets, capacity));
+  public SpaceSaving<T> get(
+      long index,
+      int maxBuckets,
+      int capacity,
+      ApproxMostFrequentBucketSerializer<T> serializer,
+      ApproxMostFrequentBucketDeserializer<T> deserializer,
+      SpaceSavingByteCalculator calculator) {
+    return get(
+        index, new SpaceSaving<T>(maxBuckets, capacity, serializer, deserializer, calculator));
   }
 
-  public SpaceSaving get(long index, SpaceSaving spaceSaving) {
-    SpaceSaving result = array.get(index);
+  public SpaceSaving<T> get(long index, SpaceSaving<T> spaceSaving) {
+    SpaceSaving<T> result = array.get(index);
     if (result == null) {
       set(index, spaceSaving);
       return spaceSaving;
@@ -49,7 +59,7 @@ public class SpaceSavingBigArray {
     return result;
   }
 
-  public void set(long index, SpaceSaving spaceSaving) {
+  public void set(long index, SpaceSaving<T> spaceSaving) {
     updateRetainedSize(index, spaceSaving);
     array.set(index, spaceSaving);
   }
@@ -62,8 +72,8 @@ public class SpaceSavingBigArray {
     array.ensureCapacity(length);
   }
 
-  public void updateRetainedSize(long index, SpaceSaving value) {
-    SpaceSaving spaceSaving = array.get(index);
+  public void updateRetainedSize(long index, SpaceSaving<T> value) {
+    SpaceSaving<T> spaceSaving = array.get(index);
     if (spaceSaving != null) {
       sizeOfSpaceSaving -= spaceSaving.getEstimatedSize();
     }

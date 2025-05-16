@@ -4166,6 +4166,17 @@ public class IoTDBTableAggregationIT {
   }
 
   @Test
+  public void approxMostFrequentTest() {
+    String[] expectedHeader = buildHeaders(10);
+    String[] retArray = new String[] {",", ",", ",", ",", ",", ",", ",", ",", ",", ""};
+    tableResultSetEqualTest(
+        "select approx_most_frequent(s1, 1, 10), approx_most_frequent(s2, 1, 10), approx_most_frequent(s3, 1, 10), approx_most_frequent(s4, 1, 10), approx_most_frequent(s5, 1, 10), approx_most_frequent(s6, 1, 10), approx_most_frequent(s7, 1, 10), approx_most_frequent(s8, 1, 10), approx_most_frequent(s9, 1, 10), approx_most_frequent(s10, 1, 10) from table1",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+  }
+
+  @Test
   public void exceptionTest() {
     tableAssertTestFail(
         "select avg() from table1",
