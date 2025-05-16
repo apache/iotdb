@@ -7,7 +7,7 @@
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *     http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
@@ -22,47 +22,45 @@ package org.apache.iotdb.db.queryengine.plan.relational.planner.assertions;
 import org.apache.iotdb.db.queryengine.common.SessionInfo;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.Ordering;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.node.SortNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.GroupNode;
 
 import java.util.List;
 
 import static com.google.common.base.MoreObjects.toStringHelper;
-import static com.google.common.base.Preconditions.checkState;
-import static java.util.Objects.requireNonNull;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.MatchResult.NO_MATCH;
-import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.Util.orderingSchemeMatches;
 
-class SortMatcher implements Matcher {
-  protected final List<Ordering> orderBy;
+public class GroupMatcher extends SortMatcher {
+  private final int partitionKeyCount;
 
-  public SortMatcher(List<Ordering> orderBy) {
-    this.orderBy = requireNonNull(orderBy, "orderBy is null");
+  public GroupMatcher(List<PlanMatchPattern.Ordering> orderBy, int partitionKeyCount) {
+    super(orderBy);
+    this.partitionKeyCount = partitionKeyCount;
   }
 
   @Override
   public boolean shapeMatches(PlanNode node) {
-    return node instanceof SortNode;
+    return node instanceof GroupNode;
   }
 
   @Override
   public MatchResult detailMatches(
       PlanNode node, SessionInfo sessionInfo, Metadata metadata, SymbolAliases symbolAliases) {
-    checkState(
-        shapeMatches(node),
-        "Plan testing framework error: shapeMatches returned false in detailMatches in %s",
-        this.getClass().getName());
-    SortNode sortNode = (SortNode) node;
-
-    if (!orderingSchemeMatches(orderBy, sortNode.getOrderingScheme(), symbolAliases)) {
-      return NO_MATCH;
+    MatchResult result = super.detailMatches(node, sessionInfo, metadata, symbolAliases);
+    if (result != NO_MATCH) {
+      GroupNode sortNode = (GroupNode) node;
+      if (partitionKeyCount != ((GroupNode) node).getPartitionKeyCount()) {
+        return NO_MATCH;
+      }
+      return MatchResult.match();
     }
-
-    return MatchResult.match();
+    return NO_MATCH;
   }
 
   @Override
   public String toString() {
-    return toStringHelper(this).add("orderBy", orderBy).toString();
+    return toStringHelper(this)
+        .add("orderBy", orderBy)
+        .add("partitionKeyCount", partitionKeyCount)
+        .toString();
   }
 }

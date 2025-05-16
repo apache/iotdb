@@ -38,6 +38,8 @@ import org.apache.iotdb.db.queryengine.plan.relational.analyzer.tablefunction.Ar
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.tablefunction.ArgumentsAnalysis;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.tablefunction.TableArgumentAnalysis;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.tablefunction.TableFunctionInvocationAnalysis;
+import org.apache.iotdb.db.queryengine.plan.relational.function.TableBuiltinTableFunction;
+import org.apache.iotdb.db.queryengine.plan.relational.function.tvf.ForecastTableFunction;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.ColumnSchema;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.QualifiedObjectName;
@@ -157,6 +159,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SortItem;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.StartPipe;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Statement;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.StopPipe;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.StringLiteral;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SubqueryExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SymbolReference;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Table;
@@ -4059,7 +4062,14 @@ public class StatementAnalyzer {
 
     @Override
     public Scope visitTableFunctionInvocation(TableFunctionInvocation node, Optional<Scope> scope) {
-      TableFunction function = metadata.getTableFunction(node.getName().toString());
+      String functionName = node.getName().toString();
+      TableFunction function = metadata.getTableFunction(functionName);
+
+      // set model fetcher for ForecastTableFunction
+      if (function instanceof ForecastTableFunction) {
+        ((ForecastTableFunction) function).setModelFetcher(metadata.getModelFetcher());
+      }
+
       Node errorLocation = node;
       if (!node.getArguments().isEmpty()) {
         errorLocation = node.getArguments().get(0);
@@ -4067,7 +4077,11 @@ public class StatementAnalyzer {
 
       ArgumentsAnalysis argumentsAnalysis =
           analyzeArguments(
-              function.getArgumentsSpecifications(), node.getArguments(), scope, errorLocation);
+              function.getArgumentsSpecifications(),
+              node.getArguments(),
+              scope,
+              errorLocation,
+              functionName);
 
       TableFunctionAnalysis functionAnalysis;
       try {
@@ -4213,7 +4227,8 @@ public class StatementAnalyzer {
         List<ParameterSpecification> parameterSpecifications,
         List<TableFunctionArgument> arguments,
         Optional<Scope> scope,
-        Node errorLocation) {
+        Node errorLocation,
+        String functionName) {
       if (parameterSpecifications.size() < arguments.size()) {
         throw new SemanticException(
             String.format(
@@ -4249,6 +4264,11 @@ public class StatementAnalyzer {
                 "Duplicate argument specification for name: " + parameterSpecification.getName());
           }
         }
+
+        // append order by time asc for built-in forecast tvf if user doesn't specify order by
+        // clause
+        tryUpdateOrderByForForecastByName(functionName, arguments, argumentSpecificationsByName);
+
         Set<String> uniqueArgumentNames = new HashSet<>();
         Set<String> specifiedArgumentNames =
             ImmutableSet.copyOf(argumentSpecificationsByName.keySet());
@@ -4280,6 +4300,9 @@ public class StatementAnalyzer {
               analyzeDefault(parameterSpecification, errorLocation));
         }
       } else {
+        // append order by time asc for built-in forecast tvf if user doesn't specify order by
+        // clause
+        tryUpdateOrderByForForecastByPosition(functionName, arguments, parameterSpecifications);
         for (int i = 0; i < arguments.size(); i++) {
           TableFunctionArgument argument = arguments.get(i);
           ParameterSpecification parameterSpecification = parameterSpecifications.get(i);
@@ -4297,6 +4320,77 @@ public class StatementAnalyzer {
         }
       }
       return new ArgumentsAnalysis(passedArguments.buildOrThrow(), tableArgumentAnalyses.build());
+    }
+
+    // append order by time asc for built-in forecast tvf if user doesn't specify order by clause
+    private void tryUpdateOrderByForForecastByName(
+        String functionName,
+        List<TableFunctionArgument> arguments,
+        Map<String, ParameterSpecification> argumentSpecificationsByName) {
+      if (TableBuiltinTableFunction.FORECAST.getFunctionName().equalsIgnoreCase(functionName)) {
+        String timeColumn =
+            (String)
+                argumentSpecificationsByName
+                    .get(ForecastTableFunction.TIMECOL_PARAMETER_NAME)
+                    .getDefaultValue()
+                    .get();
+        for (TableFunctionArgument argument : arguments) {
+          if (ForecastTableFunction.TIMECOL_PARAMETER_NAME.equalsIgnoreCase(
+              argument.getName().get().getValue())) {
+            if (argument.getValue() instanceof StringLiteral) {
+              timeColumn = ((StringLiteral) argument.getValue()).getValue();
+            }
+          }
+        }
+        tryUpdateOrderByForForecast(arguments, timeColumn);
+      }
+    }
+
+    // append order by time asc for built-in forecast tvf if user doesn't specify order by clause
+    private void tryUpdateOrderByForForecastByPosition(
+        String functionName,
+        List<TableFunctionArgument> arguments,
+        List<ParameterSpecification> parameterSpecifications) {
+      if (TableBuiltinTableFunction.FORECAST.getFunctionName().equalsIgnoreCase(functionName)) {
+        int position = -1;
+        String timeColumn = null;
+        for (int i = 0, size = parameterSpecifications.size(); i < size; i++) {
+          if (ForecastTableFunction.TIMECOL_PARAMETER_NAME.equalsIgnoreCase(
+              parameterSpecifications.get(i).getName())) {
+            position = i;
+            timeColumn = (String) parameterSpecifications.get(i).getDefaultValue().get();
+            break;
+          }
+        }
+        if (position == -1) {
+          throw new IllegalStateException(
+              "ForecastTableFunction must contain ForecastTableFunction.TIMECOL_PARAMETER_NAME");
+        }
+        if (position < arguments.size()
+            && arguments.get(position).getValue() instanceof StringLiteral) {
+          timeColumn = ((StringLiteral) arguments.get(position).getValue()).getValue();
+        }
+        tryUpdateOrderByForForecast(arguments, timeColumn);
+      }
+    }
+
+    // append order by time asc for built-in forecast tvf if user doesn't specify order by clause
+    private void tryUpdateOrderByForForecast(
+        List<TableFunctionArgument> arguments, String timeColumn) {
+      for (TableFunctionArgument argument : arguments) {
+        if (argument.getValue() instanceof TableFunctionTableArgument) {
+          TableFunctionTableArgument input = (TableFunctionTableArgument) argument.getValue();
+          if (!input.getOrderBy().isPresent()) {
+            input.updateOrderBy(
+                new OrderBy(
+                    Collections.singletonList(
+                        new SortItem(
+                            new Identifier(timeColumn),
+                            SortItem.Ordering.ASCENDING,
+                            SortItem.NullOrdering.FIRST))));
+          }
+        }
+      }
     }
 
     private ArgumentAnalysis analyzeArgument(
