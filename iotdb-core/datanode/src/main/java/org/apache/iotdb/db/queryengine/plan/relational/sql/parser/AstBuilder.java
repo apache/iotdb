@@ -2337,7 +2337,7 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
     }
 
     JoinCriteria criteria;
-
+    TimeDuration timeDuration = null;
     if (ctx.NATURAL() != null) {
       right = (Relation) visit(ctx.right);
       criteria = new NaturalJoin();
@@ -2345,7 +2345,6 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
       right = (Relation) visit(ctx.rightRelation);
       if (ctx.joinCriteria().ON() != null) {
         if (ctx.ASOF() != null) {
-          TimeDuration timeDuration = null;
           if (ctx.timeDuration() != null) {
             timeDuration = DateTimeUtils.constructTimeDuration(ctx.timeDuration().getText());
 
@@ -2378,8 +2377,8 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
       joinType = Join.Type.INNER;
     }
 
-    if (criteria instanceof AsofJoinOn && joinType != Join.Type.INNER) {
-      throw new SemanticException("ASOF JOIN is only support INNER type now");
+    if (criteria instanceof AsofJoinOn && joinType != Join.Type.INNER && timeDuration != null) {
+      throw new SemanticException("Tolerance in ASOF JOIN is only support INNER type now");
     }
 
     return new Join(getLocation(ctx), joinType, left, right, criteria);

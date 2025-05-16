@@ -29,11 +29,11 @@ import org.apache.tsfile.utils.RamUsageEstimator;
 
 import java.util.List;
 
-public class AsofMergeSortInnerJoinOperator extends AbstractAsofMergeSortJoinOperator {
+public class AsofMergeSortLeftJoinOperator extends AbstractAsofMergeSortJoinOperator {
   private static final long INSTANCE_SIZE =
-      RamUsageEstimator.shallowSizeOfInstance(AsofMergeSortInnerJoinOperator.class);
+      RamUsageEstimator.shallowSizeOfInstance(AsofMergeSortLeftJoinOperator.class);
 
-  public AsofMergeSortInnerJoinOperator(
+  public AsofMergeSortLeftJoinOperator(
       OperatorContext operatorContext,
       Operator leftChild,
       int[] leftJoinKeyPositions,
@@ -61,17 +61,25 @@ public class AsofMergeSortInnerJoinOperator extends AbstractAsofMergeSortJoinOpe
       return true;
     }
 
-    return !leftFinished && !rightFinished;
+    return !leftFinished;
   }
 
   @Override
   protected boolean prepareInput() throws Exception {
     gotCandidateBlocks();
+    if (rightFinished) {
+      return leftBlockNotEmpty();
+    }
     return leftBlockNotEmpty() && rightBlockNotEmpty() && gotNextRightBlock();
   }
 
   @Override
   protected boolean processFinished() {
+    if (rightFinished) {
+      appendLeftWithEmptyRight();
+      return true;
+    }
+
     // all the join keys in rightTsBlock are less or equal than leftTsBlock, just skip right
     if (allRightLessOrEqualThanLeft()) {
       resetRightBlockList();
@@ -80,6 +88,7 @@ public class AsofMergeSortInnerJoinOperator extends AbstractAsofMergeSortJoinOpe
 
     // skip all NULL values in left, because NULL value can not appear in the inner join result
     while (currentLeftHasNullValue()) {
+      appendOneLeftRowWithEmptyRight();
       if (leftFinishedWithIncIndex()) {
         return true;
       }
@@ -109,7 +118,11 @@ public class AsofMergeSortInnerJoinOperator extends AbstractAsofMergeSortJoinOpe
     }
 
     // has right values meet condition, append to join result
-    hasMatchedRightValueToProbeLeft();
+    // else append left
+    if (!hasMatchedRightValueToProbeLeft()) {
+      appendLeftWithEmptyRight();
+    }
+
     // always inc leftIndex after current left result appended
     return leftFinishedWithIncIndex();
   }
