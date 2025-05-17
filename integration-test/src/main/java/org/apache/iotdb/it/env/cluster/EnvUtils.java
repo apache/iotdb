@@ -70,7 +70,7 @@ public class EnvUtils {
   public static int[] searchAvailablePorts() {
     int length = 10;
     while (true) {
-      int randomPortStart = 2000 + (int) (Math.random() * (2999 - 2000));
+      int randomPortStart = 1000 + (int) (Math.random() * (1999 - 1000));
       randomPortStart = randomPortStart * (length + 1) + 1;
       final String lockFilePath = getLockFilePath(randomPortStart);
       final File lockFile = new File(lockFilePath);
@@ -176,7 +176,7 @@ public class EnvUtils {
     }
     return new Pair<>(
         getIntFromSysVar(DEFAULT_CONFIG_NODE_NUM, 1, 0),
-        getIntFromSysVar(DEFAULT_DATA_NODE_NUM, 1, 0));
+        getIntFromSysVar(DEFAULT_DATA_NODE_NUM, 3, 0));
   }
 
   public static Pair<Integer, Integer> getNodeNum(final int index) {
@@ -186,7 +186,7 @@ public class EnvUtils {
     }
     return new Pair<>(
         getIntFromSysVar(DEFAULT_CONFIG_NODE_NUM, 1, index),
-        getIntFromSysVar(DEFAULT_DATA_NODE_NUM, 1, index));
+        getIntFromSysVar(DEFAULT_DATA_NODE_NUM, 3, index));
   }
 
   public static String getFilePathFromSysVar(final String key, final int index) {
