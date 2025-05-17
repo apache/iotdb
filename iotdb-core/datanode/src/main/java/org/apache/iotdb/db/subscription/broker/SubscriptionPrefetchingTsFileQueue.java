@@ -247,21 +247,21 @@ public class SubscriptionPrefetchingTsFileQueue extends SubscriptionPrefetchingQ
 
   @Override
   protected boolean onEvent(final TsFileInsertionEvent event) {
-    if (PipeEventCollector.canSkipParsing4TsFileEvent((PipeTsFileInsertionEvent) event)) {
-      final SubscriptionCommitContext commitContext = generateSubscriptionCommitContext();
-      final SubscriptionEvent ev =
-          new SubscriptionEvent(
-              new SubscriptionPipeTsFilePlainEvent((PipeTsFileInsertionEvent) event),
-              ((PipeTsFileInsertionEvent) event).getTsFile(),
-              ((PipeTsFileInsertionEvent) event).isTableModelEvent()
-                  ? ((PipeTsFileInsertionEvent) event).getTableModelDatabaseName()
-                  : null,
-              commitContext);
-      super.prefetchEvent(ev);
-      return true;
+    if (!PipeEventCollector.canSkipParsing4TsFileEvent((PipeTsFileInsertionEvent) event)) {
+      return batches.onEvent((EnrichedEvent) event, this::prefetchEvent);
     }
 
-    return batches.onEvent((EnrichedEvent) event, this::prefetchEvent);
+    final SubscriptionCommitContext commitContext = generateSubscriptionCommitContext();
+    final SubscriptionEvent ev =
+        new SubscriptionEvent(
+            new SubscriptionPipeTsFilePlainEvent((PipeTsFileInsertionEvent) event),
+            ((PipeTsFileInsertionEvent) event).getTsFile(),
+            ((PipeTsFileInsertionEvent) event).isTableModelEvent()
+                ? ((PipeTsFileInsertionEvent) event).getTableModelDatabaseName()
+                : null,
+            commitContext);
+    super.prefetchEvent(ev);
+    return true;
   }
 
   /////////////////////////////// stringify ///////////////////////////////
