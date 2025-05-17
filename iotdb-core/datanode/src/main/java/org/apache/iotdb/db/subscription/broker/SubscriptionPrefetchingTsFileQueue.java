@@ -19,7 +19,9 @@
 
 package org.apache.iotdb.db.subscription.broker;
 
+import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.subscription.config.SubscriptionConfig;
+import org.apache.iotdb.db.pipe.agent.task.connection.PipeEventCollector;
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
 import org.apache.iotdb.db.subscription.agent.SubscriptionAgent;
 import org.apache.iotdb.db.subscription.event.SubscriptionEvent;
@@ -245,17 +247,21 @@ public class SubscriptionPrefetchingTsFileQueue extends SubscriptionPrefetchingQ
 
   @Override
   protected boolean onEvent(final TsFileInsertionEvent event) {
-    final SubscriptionCommitContext commitContext = generateSubscriptionCommitContext();
-    final SubscriptionEvent ev =
-        new SubscriptionEvent(
-            new SubscriptionPipeTsFilePlainEvent((PipeTsFileInsertionEvent) event),
-            ((PipeTsFileInsertionEvent) event).getTsFile(),
-            ((PipeTsFileInsertionEvent) event).isTableModelEvent()
-                ? ((PipeTsFileInsertionEvent) event).getTableModelDatabaseName()
-                : null,
-            commitContext);
-    super.prefetchEvent(ev);
-    return true;
+    if (PipeEventCollector.canSkipParsing4TsFileEvent((PipeTsFileInsertionEvent) event)) {
+      final SubscriptionCommitContext commitContext = generateSubscriptionCommitContext();
+      final SubscriptionEvent ev =
+          new SubscriptionEvent(
+              new SubscriptionPipeTsFilePlainEvent((PipeTsFileInsertionEvent) event),
+              ((PipeTsFileInsertionEvent) event).getTsFile(),
+              ((PipeTsFileInsertionEvent) event).isTableModelEvent()
+                  ? ((PipeTsFileInsertionEvent) event).getTableModelDatabaseName()
+                  : null,
+              commitContext);
+      super.prefetchEvent(ev);
+      return true;
+    }
+
+    return batches.onEvent((EnrichedEvent) event, this::prefetchEvent);
   }
 
   /////////////////////////////// stringify ///////////////////////////////
