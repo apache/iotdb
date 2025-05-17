@@ -959,6 +959,7 @@ struct TShowSubscriptionInfo {
     1: required string topicName
     2: required string consumerGroupId
     3: required set<string> consumerIds
+    4: optional i64 creationTime
 }
 
 struct TDropSubscriptionReq {
