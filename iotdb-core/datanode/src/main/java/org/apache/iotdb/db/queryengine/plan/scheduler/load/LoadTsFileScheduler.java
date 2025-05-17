@@ -707,12 +707,8 @@ public class LoadTsFileScheduler implements IScheduler {
           if (pieceNode.getDataSize() == 0) { // total data size has been reduced to 0
             break;
           }
-          if (!scheduler.dispatchOnePieceNode(pieceNode, replicaSet)) {
-            return false;
-          }
+          final boolean isDispatchSuccess = scheduler.dispatchOnePieceNode(pieceNode, replicaSet);
 
-          dataSize -= pieceNode.getDataSize();
-          block.reduceMemoryUsage(pieceNode.getDataSize());
           regionId2ReplicaSetAndNode.replace(
               sortedRegionId,
               new Pair<>(
@@ -722,6 +718,14 @@ public class LoadTsFileScheduler implements IScheduler {
                       singleTsFileNode
                           .getTsFileResource()
                           .getTsFile()))); // can not just remove, because of deletion
+          dataSize -= pieceNode.getDataSize();
+          block.reduceMemoryUsage(pieceNode.getDataSize());
+
+          if (!isDispatchSuccess) {
+            // Currently there is no retry, so return directly
+            return false;
+          }
+
           if (isMemoryEnough()) {
             break;
           }
