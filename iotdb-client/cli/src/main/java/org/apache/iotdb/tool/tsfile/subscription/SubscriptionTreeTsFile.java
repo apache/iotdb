@@ -144,7 +144,7 @@ public class SubscriptionTreeTsFile extends AbstractSubscriptionTsFile {
           new Runnable() {
             @Override
             public void run() {
-              while (!consumer.allSnapshotTopicMessagesHaveBeenConsumed()) {
+              while (!consumer.allTopicMessagesHaveBeenConsumed()) {
                 try {
                   for (final SubscriptionMessage message :
                       consumer.poll(Constants.POLL_MESSAGE_TIMEOUT)) {

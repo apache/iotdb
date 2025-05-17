@@ -196,4 +196,16 @@ public interface ISubscriptionTablePullConsumer extends AutoCloseable {
    * @return the consumer group's identifier
    */
   String getConsumerGroupId();
+
+  /**
+   * Checks whether all topic messages have been consumed.
+   *
+   * <p>This method is used by the pull consumer in a loop that retrieves messages to determine if
+   * all messages for the subscription have been processed. It ensures that the consumer can
+   * correctly detect the termination signal for the subscription once all messages have been
+   * consumed.
+   *
+   * @return true if all topic messages have been consumed, false otherwise.
+   */
+  boolean allTopicMessagesHaveBeenConsumed();
 }

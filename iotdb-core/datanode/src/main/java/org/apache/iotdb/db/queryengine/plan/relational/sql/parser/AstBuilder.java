@@ -79,6 +79,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropFunction;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropIndex;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropPipe;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropPipePlugin;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropSubscription;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropTable;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropTopic;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Except;
@@ -1236,6 +1237,14 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
     final String topicName =
         getIdentifierIfPresent(ctx.identifier()).map(Identifier::getValue).orElse(null);
     return new ShowSubscriptions(topicName);
+  }
+
+  @Override
+  public Node visitDropSubscriptionStatement(
+      RelationalSqlParser.DropSubscriptionStatementContext ctx) {
+    final String subscriptionId = ((Identifier) visit(ctx.identifier())).getValue();
+    final boolean hasIfExistsCondition = ctx.IF() != null && ctx.EXISTS() != null;
+    return new DropSubscription(subscriptionId, hasIfExistsCondition);
   }
 
   @Override

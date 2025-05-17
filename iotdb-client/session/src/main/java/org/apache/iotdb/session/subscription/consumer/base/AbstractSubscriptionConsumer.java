@@ -123,7 +123,12 @@ abstract class AbstractSubscriptionConsumer implements AutoCloseable {
   @SuppressWarnings("java:S3077")
   protected volatile Map<String, TopicConfig> subscribedTopics = new HashMap<>();
 
+  @Deprecated
   public boolean allSnapshotTopicMessagesHaveBeenConsumed() {
+    return allTopicMessagesHaveBeenConsumed(subscribedTopics.keySet());
+  }
+
+  public boolean allTopicMessagesHaveBeenConsumed() {
     return allTopicMessagesHaveBeenConsumed(subscribedTopics.keySet());
   }
 

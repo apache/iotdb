@@ -95,6 +95,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TDropFunctionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropModelReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropPipePluginReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropPipeReq;
+import org.apache.iotdb.confignode.rpc.thrift.TDropSubscriptionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropTopicReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropTriggerReq;
 import org.apache.iotdb.confignode.rpc.thrift.TExtendRegionReq;
@@ -791,6 +792,8 @@ public interface IManager {
   TSStatus createSubscription(TSubscribeReq req);
 
   TSStatus dropSubscription(TUnsubscribeReq req);
+
+  TSStatus dropSubscriptionById(TDropSubscriptionReq req);
 
   TShowSubscriptionResp showSubscription(TShowSubscriptionReq req);
 

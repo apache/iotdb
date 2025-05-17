@@ -104,6 +104,7 @@ import org.apache.iotdb.db.queryengine.plan.execution.config.sys.quota.SetThrott
 import org.apache.iotdb.db.queryengine.plan.execution.config.sys.quota.ShowSpaceQuotaTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.sys.quota.ShowThrottleQuotaTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.sys.subscription.CreateTopicTask;
+import org.apache.iotdb.db.queryengine.plan.execution.config.sys.subscription.DropSubscriptionTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.sys.subscription.DropTopicTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.sys.subscription.ShowSubscriptionsTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.sys.subscription.ShowTopicsTask;
@@ -158,6 +159,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.metadata.region.MigrateReg
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.region.ReconstructRegionStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.region.RemoveRegionStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.subscription.CreateTopicStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.subscription.DropSubscriptionStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.subscription.DropTopicStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.subscription.ShowSubscriptionsStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.subscription.ShowTopicsStatement;
@@ -619,6 +621,12 @@ public class TreeConfigTaskVisitor extends StatementVisitor<IConfigTask, MPPQuer
   public IConfigTask visitShowSubscriptions(
       ShowSubscriptionsStatement showSubscriptionsStatement, MPPQueryContext context) {
     return new ShowSubscriptionsTask(showSubscriptionsStatement);
+  }
+
+  @Override
+  public IConfigTask visitDropSubscription(
+      DropSubscriptionStatement dropSubscriptionStatement, MPPQueryContext context) {
+    return new DropSubscriptionTask(dropSubscriptionStatement);
   }
 
   @Override

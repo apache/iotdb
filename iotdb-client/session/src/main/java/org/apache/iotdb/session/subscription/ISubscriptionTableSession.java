@@ -174,4 +174,26 @@ public interface ISubscriptionTableSession extends AutoCloseable {
    */
   Set<Subscription> getSubscriptions(final String topicName)
       throws IoTDBConnectionException, StatementExecutionException;
+
+  /**
+   * Removes the subscription identified by the given subscription ID.
+   *
+   * @param subscriptionId The unique identifier of the subscription to be removed.
+   * @throws IoTDBConnectionException If there is an issue with the connection to IoTDB.
+   * @throws StatementExecutionException If there is an issue executing the SQL statement.
+   */
+  void dropSubscription(final String subscriptionId)
+      throws IoTDBConnectionException, StatementExecutionException;
+
+  /**
+   * Removes the subscription identified by the given subscription ID if it exists.
+   *
+   * <p>If the subscription does not exist, this method will not throw an exception.
+   *
+   * @param subscriptionId The unique identifier of the subscription to be removed.
+   * @throws IoTDBConnectionException If there is an issue with the connection to IoTDB.
+   * @throws StatementExecutionException If there is an issue executing the SQL statement.
+   */
+  void dropSubscriptionIfExists(final String subscriptionId)
+      throws IoTDBConnectionException, StatementExecutionException;
 }

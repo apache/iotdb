@@ -57,7 +57,7 @@ ddlStatement
     // Pipe Plugin
     | createPipePlugin | dropPipePlugin | showPipePlugins
     // Subscription
-    | createTopic | dropTopic | showTopics | showSubscriptions
+    | createTopic | dropTopic | showTopics | showSubscriptions | dropSubscription
     // CQ
     | createContinuousQuery | dropContinuousQuery | showContinuousQueries
     // Cluster
@@ -691,6 +691,9 @@ showSubscriptions
     : SHOW SUBSCRIPTIONS (ON topicName=identifier)?
     ;
 
+dropSubscription
+    : DROP SUBSCRIPTION (IF EXISTS)? subscriptionId=identifier
+    ;
 
 // AI Model =========================================================================================
 // ---- Create Model

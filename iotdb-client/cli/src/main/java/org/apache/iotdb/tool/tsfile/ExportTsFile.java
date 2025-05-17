@@ -47,7 +47,7 @@ public class ExportTsFile {
   public static void main(String[] args) throws Exception {
     Logger logger =
         (Logger) LoggerFactory.getLogger("org.apache.iotdb.session.subscription.consumer.base");
-    logger.setLevel(Level.ERROR);
+    logger.setLevel(Level.WARN);
     Options options = OptionsUtil.createSubscriptionTsFileOptions();
     parseParams(args, options);
     if (StringUtils.isEmpty(commonParam.getPath())) {
