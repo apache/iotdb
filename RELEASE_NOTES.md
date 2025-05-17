@@ -18,6 +18,11 @@
     under the License.
 
 -->
+# Apache IoTDB 1.3.4-1
+
+This is a bug-fix version of 1.3.4
+
+- Fix the bug that will remove the data partition table by mistake in case of us/ns time precision and using ttl
 
 # Apache IoTDB 1.3.4
 
