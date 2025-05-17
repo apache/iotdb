@@ -18,6 +18,14 @@
     under the License.
 
 -->
+
+# Apache IoTDB 2.0.2-1
+
+This is a bug-fix version of 2.0.2
+
+- Fix the bug that will remove the data partition table by mistake in case of us/ns time precision and using ttl
+
+
 # Apache IoTDB 2.0.2
 
 ## Features & Improvements
