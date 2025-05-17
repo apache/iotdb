@@ -24,7 +24,7 @@
     <parent>
         <groupId>org.apache.iotdb</groupId>
         <artifactId>iotdb-core</artifactId>
-        <version>1.3.5-SNAPSHOT</version>
+        <version>1.3.4-1</version>
     </parent>
     <artifactId>iotdb-ainode</artifactId>
     <name>IoTDB: Core: AINode</name>
@@ -33,25 +33,25 @@
         <dependency>
             <groupId>org.apache.iotdb</groupId>
             <artifactId>iotdb-thrift-commons</artifactId>
-            <version>1.3.5-SNAPSHOT</version>
+            <version>1.3.4-1</version>
             <scope>provided</scope>
         </dependency>
         <dependency>
             <groupId>org.apache.iotdb</groupId>
             <artifactId>iotdb-thrift</artifactId>
-            <version>1.3.5-SNAPSHOT</version>
+            <version>1.3.4-1</version>
             <scope>provided</scope>
         </dependency>
         <dependency>
             <groupId>org.apache.iotdb</groupId>
             <artifactId>iotdb-thrift-confignode</artifactId>
-            <version>1.3.5-SNAPSHOT</version>
+            <version>1.3.4-1</version>
             <scope>provided</scope>
         </dependency>
         <dependency>
             <groupId>org.apache.iotdb</groupId>
             <artifactId>iotdb-thrift-ainode</artifactId>
-            <version>1.3.5-SNAPSHOT</version>
+            <version>1.3.4-1</version>
             <scope>provided</scope>
         </dependency>
     </dependencies>

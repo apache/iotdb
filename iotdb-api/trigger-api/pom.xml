@@ -24,7 +24,7 @@
     <parent>
         <groupId>org.apache.iotdb</groupId>
         <artifactId>iotdb-api</artifactId>
-        <version>1.3.5-SNAPSHOT</version>
+        <version>1.3.4-1</version>
     </parent>
     <artifactId>trigger-api</artifactId>
     <name>IoTDB: API: Trigger API</name>
