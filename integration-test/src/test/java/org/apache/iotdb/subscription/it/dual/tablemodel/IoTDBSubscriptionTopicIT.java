@@ -20,6 +20,8 @@
 package org.apache.iotdb.subscription.it.dual.tablemodel;
 
 import org.apache.iotdb.commons.client.sync.SyncConfigNodeIServiceClient;
+import org.apache.iotdb.confignode.rpc.thrift.TShowSubscriptionReq;
+import org.apache.iotdb.confignode.rpc.thrift.TShowSubscriptionResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowTopicInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TShowTopicReq;
 import org.apache.iotdb.db.it.utils.TestUtils;
@@ -27,6 +29,7 @@ import org.apache.iotdb.isession.ITableSession;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.MultiClusterIT2SubscriptionTableArchVerification;
 import org.apache.iotdb.pipe.it.dual.tablemodel.TableModelUtils;
+import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.subscription.config.TopicConstant;
 import org.apache.iotdb.session.subscription.ISubscriptionTableSession;
 import org.apache.iotdb.session.subscription.SubscriptionTableSessionBuilder;
@@ -94,10 +97,17 @@ public class IoTDBSubscriptionTopicIT extends AbstractSubscriptionDualIT {
 
   private void testTopicWithPathTemplate(final String topicFormat) throws Exception {
     TableModelUtils.createDataBaseAndTable(senderEnv, "test1", "test1");
+    TableModelUtils.createDataBaseAndTable(senderEnv, "test2", "test2");
+    TableModelUtils.createDataBaseAndTable(senderEnv, "foo", "foo");
+
     TableModelUtils.createDataBaseAndTable(receiverEnv, "test1", "test1");
+    TableModelUtils.createDataBaseAndTable(receiverEnv, "test2", "test2");
+    TableModelUtils.createDataBaseAndTable(receiverEnv, "foo", "foo");
 
     // Insert some historical data on sender
-    TableModelUtils.insertData("test1", "test1", 0, 100, senderEnv);
+    TableModelUtils.insertData("test1", "test1", 0, 10, senderEnv);
+    TableModelUtils.insertData("test2", "test2", 0, 10, senderEnv);
+    TableModelUtils.insertData("foo", "foo", 0, 10, senderEnv);
 
     // Create topic on sender
     final String topicName = "topic1";
@@ -107,8 +117,8 @@ public class IoTDBSubscriptionTopicIT extends AbstractSubscriptionDualIT {
         new SubscriptionTableSessionBuilder().host(host).port(port).build()) {
       final Properties config = new Properties();
       config.put(TopicConstant.FORMAT_KEY, topicFormat);
-      config.put(TopicConstant.DATABASE_KEY, "test1");
-      config.put(TopicConstant.TABLE_KEY, "test1");
+      config.put(TopicConstant.DATABASE_KEY, "test.*");
+      config.put(TopicConstant.TABLE_KEY, "test.*");
       session.createTopic(topicName, config);
     }
     assertTopicCount(1);
@@ -156,7 +166,195 @@ public class IoTDBSubscriptionTopicIT extends AbstractSubscriptionDualIT {
           };
       // Keep retrying if there are execution failures
       AWAIT.untilAsserted(
-          () -> TableModelUtils.assertData("test1", "test1", 0, 100, receiverEnv, handleFailure));
+          () -> {
+            TableModelUtils.assertData("test1", "test1", 0, 10, receiverEnv, handleFailure);
+            TableModelUtils.assertData("test2", "test2", 0, 10, receiverEnv, handleFailure);
+          });
+    } catch (final Exception e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    } finally {
+      isClosed.set(true);
+      thread.join();
+    }
+  }
+
+  @Test
+  public void testTabletTopicWithTime() throws Exception {
+    testTopicWithTimeTemplate(TopicConstant.FORMAT_SESSION_DATA_SETS_HANDLER_VALUE);
+  }
+
+  @Test
+  public void testTsFileTopicWithTime() throws Exception {
+    testTopicWithTimeTemplate(TopicConstant.FORMAT_TS_FILE_HANDLER_VALUE);
+  }
+
+  private void testTopicWithTimeTemplate(final String topicFormat) throws Exception {
+    TableModelUtils.createDataBaseAndTable(senderEnv, "test1", "test1");
+    TableModelUtils.createDataBaseAndTable(receiverEnv, "test1", "test1");
+
+    // Insert some historical data on sender
+    TableModelUtils.insertData("test1", "test1", 0, 100, senderEnv);
+
+    // Create topic on sender
+    final String topicName = "topic2";
+    final String host = senderEnv.getIP();
+    final int port = Integer.parseInt(senderEnv.getPort());
+    try (final ISubscriptionTableSession session =
+        new SubscriptionTableSessionBuilder().host(host).port(port).build()) {
+      final Properties config = new Properties();
+      config.put(TopicConstant.FORMAT_KEY, topicFormat);
+      config.put(TopicConstant.START_TIME_KEY, 25);
+      config.put(TopicConstant.END_TIME_KEY, 75);
+      session.createTopic(topicName, config);
+    }
+    assertTopicCount(1);
+
+    // Subscribe on sender and insert on receiver
+    final AtomicBoolean isClosed = new AtomicBoolean(false);
+    final Thread thread =
+        new Thread(
+            () -> {
+              try (final ISubscriptionTablePullConsumer consumer =
+                      new SubscriptionTablePullConsumerBuilder()
+                          .host(host)
+                          .port(port)
+                          .consumerId("c1")
+                          .consumerGroupId("cg1")
+                          .autoCommit(false)
+                          .build();
+                  final ITableSession session = receiverEnv.getTableSessionConnection()) {
+                consumer.open();
+                consumer.subscribe(topicName);
+                while (!isClosed.get()) {
+                  LockSupport.parkNanos(IoTDBSubscriptionITConstant.SLEEP_NS); // wait some time
+                  final List<SubscriptionMessage> messages =
+                      consumer.poll(IoTDBSubscriptionITConstant.POLL_TIMEOUT_MS);
+                  insertData(messages, session);
+                  consumer.commitSync(messages);
+                }
+                consumer.unsubscribe(topicName);
+              } catch (final Exception e) {
+                e.printStackTrace();
+                // Avoid fail
+              } finally {
+                LOGGER.info("consumer exiting...");
+              }
+            },
+            String.format("%s - consumer", testName.getDisplayName()));
+    thread.start();
+
+    // Check data on receiver
+    try {
+      final Consumer<String> handleFailure =
+          o -> {
+            TestUtils.executeNonQueryWithRetry(senderEnv, "flush");
+            TestUtils.executeNonQueryWithRetry(receiverEnv, "flush");
+          };
+      // Keep retrying if there are execution failures
+      AWAIT.untilAsserted(
+          () -> TableModelUtils.assertData("test1", "test1", 25, 76, receiverEnv, handleFailure));
+    } catch (final Exception e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    } finally {
+      isClosed.set(true);
+      thread.join();
+    }
+  }
+
+  @Test
+  public void testTabletTopicWithSnapshotMode() throws Exception {
+    testTopicWithSnapshotModeTemplate(TopicConstant.FORMAT_SESSION_DATA_SETS_HANDLER_VALUE);
+  }
+
+  @Test
+  public void testTsFileTopicWithSnapshotMode() throws Exception {
+    testTopicWithSnapshotModeTemplate(TopicConstant.FORMAT_TS_FILE_HANDLER_VALUE);
+  }
+
+  private void testTopicWithSnapshotModeTemplate(final String topicFormat) throws Exception {
+    TableModelUtils.createDataBaseAndTable(senderEnv, "test1", "test1");
+    TableModelUtils.createDataBaseAndTable(receiverEnv, "test1", "test1");
+
+    // Insert some historical data on sender
+    TableModelUtils.insertData("test1", "test1", 0, 100, senderEnv);
+
+    // Create topic
+    final String topicName = "topic3";
+    final String host = senderEnv.getIP();
+    final int port = Integer.parseInt(senderEnv.getPort());
+    try (final ISubscriptionTableSession session =
+        new SubscriptionTableSessionBuilder().host(host).port(port).build()) {
+      final Properties config = new Properties();
+      config.put(TopicConstant.FORMAT_KEY, topicFormat);
+      config.put(TopicConstant.MODE_KEY, TopicConstant.MODE_SNAPSHOT_VALUE);
+      session.createTopic(topicName, config);
+    }
+    assertTopicCount(1);
+
+    // Subscription
+    final AtomicBoolean isClosed = new AtomicBoolean(false);
+    final Thread thread =
+        new Thread(
+            () -> {
+              try (final ISubscriptionTablePullConsumer consumer =
+                      new SubscriptionTablePullConsumerBuilder()
+                          .host(host)
+                          .port(port)
+                          .consumerId("c1")
+                          .consumerGroupId("cg1")
+                          .autoCommit(false)
+                          .build();
+                  final ITableSession session = receiverEnv.getTableSessionConnection()) {
+                consumer.open();
+                consumer.subscribe(topicName);
+
+                // Insert some realtime data on sender
+                TableModelUtils.insertData("test1", "test1", 100, 200, senderEnv);
+
+                while (!isClosed.get()) {
+                  LockSupport.parkNanos(IoTDBSubscriptionITConstant.SLEEP_NS); // wait some time
+                  final List<SubscriptionMessage> messages =
+                      consumer.poll(IoTDBSubscriptionITConstant.POLL_TIMEOUT_MS);
+                  insertData(messages, session);
+                  consumer.commitSync(messages);
+                }
+
+                // Exiting the loop represents passing the awaitility test, at this point the result
+                // of 'show subscription' is empty, so there is no need to explicitly unsubscribe.
+              } catch (final Exception e) {
+                e.printStackTrace();
+                // Avoid failure
+              } finally {
+                LOGGER.info("consumer exiting...");
+              }
+            },
+            String.format("%s - consumer", testName.getDisplayName()));
+    thread.start();
+
+    try {
+      final Consumer<String> handleFailure =
+          o -> {
+            TestUtils.executeNonQueryWithRetry(senderEnv, "flush");
+            TestUtils.executeNonQueryWithRetry(receiverEnv, "flush");
+          };
+      // Keep retrying if there are execution failures
+      AWAIT.untilAsserted(
+          () -> {
+            // Check empty subscription
+            try (final SyncConfigNodeIServiceClient client =
+                (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
+              final TShowSubscriptionResp showSubscriptionResp =
+                  client.showSubscription(new TShowSubscriptionReq());
+              Assert.assertEquals(
+                  RpcUtils.SUCCESS_STATUS.getCode(), showSubscriptionResp.status.getCode());
+              Assert.assertNotNull(showSubscriptionResp.subscriptionInfoList);
+              Assert.assertEquals(0, showSubscriptionResp.subscriptionInfoList.size());
+            }
+            // Check data
+            TableModelUtils.assertData("test1", "test1", 0, 100, receiverEnv, handleFailure);
+          });
     } catch (final Exception e) {
       e.printStackTrace();
       fail(e.getMessage());
