@@ -315,6 +315,10 @@ public class PipeConfig {
     return COMMON_CONFIG.getPipeStorageEngineFlushTimeIntervalMs();
   }
 
+  public int getPipeMaxAllowedRemainingInsertEventCount() {
+    return COMMON_CONFIG.getPipeMaxAllowedRemainingInsertEventCount();
+  }
+
   /////////////////////////////// Logger ///////////////////////////////
 
   public int getPipeMetaReportMaxLogNumPerRound() {
@@ -542,6 +546,9 @@ public class PipeConfig {
     LOGGER.info("PipeFlushAfterLastTerminateSeconds: {}", getPipeFlushAfterLastTerminateSeconds());
     LOGGER.info(
         "PipeStorageEngineFlushTimeIntervalMs: {}", getPipeStorageEngineFlushTimeIntervalMs());
+    LOGGER.info(
+        "PipeMaxAllowedRemainingInsertEventCount: {}",
+        getPipeMaxAllowedRemainingInsertEventCount());
 
     LOGGER.info("PipeMetaReportMaxLogNumPerRound: {}", getPipeMetaReportMaxLogNumPerRound());
     LOGGER.info("PipeMetaReportMaxLogIntervalRounds: {}", getPipeMetaReportMaxLogIntervalRounds());

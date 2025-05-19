@@ -19,8 +19,8 @@
 
 package org.apache.iotdb.db.pipe.metric.overview;
 
-import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.pipe.agent.task.progress.PipeEventCommitManager;
+import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.service.metric.enums.Metric;
 import org.apache.iotdb.commons.service.metric.enums.Tag;
 import org.apache.iotdb.db.pipe.extractor.dataregion.IoTDBDataRegionExtractor;
@@ -85,16 +85,14 @@ public class PipeDataNodeRemainingEventAndTimeMetrics implements IMetricSet {
         String.valueOf(operator.getCreationTime()));
   }
 
-  public boolean mayRemainingInsertNodeExceedLimit() {
+  public boolean mayRemainingInsertEventExceedLimit() {
     try {
       return remainingEventAndTimeOperatorMap.entrySet().stream()
           .anyMatch(
               entry -> {
                 final PipeDataNodeRemainingEventAndTimeOperator operator = entry.getValue();
                 return operator.getRemainingEvents()
-                    > CommonDescriptor.getInstance()
-                        .getConfig()
-                        .getPipeMaxAllowedRemainingEventCount();
+                    > PipeConfig.getInstance().getPipeMaxAllowedRemainingInsertEventCount();
               });
     } catch (final Exception e) {
       return false;

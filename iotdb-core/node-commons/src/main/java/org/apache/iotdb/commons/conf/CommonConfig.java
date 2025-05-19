@@ -1444,16 +1444,16 @@ public class CommonConfig {
     return pipeStorageEngineFlushTimeIntervalMs;
   }
 
+  public int getPipeMaxAllowedRemainingInsertEventCount() {
+    return pipeMaxAllowedRemainingInsertEventCount;
+  }
+
   public void setPipeStuckRestartIntervalSeconds(long pipeStuckRestartIntervalSeconds) {
     if (this.pipeStuckRestartIntervalSeconds == pipeStuckRestartIntervalSeconds) {
       return;
     }
     this.pipeStuckRestartIntervalSeconds = pipeStuckRestartIntervalSeconds;
     logger.info("pipeStuckRestartIntervalSeconds is set to {}", pipeStuckRestartIntervalSeconds);
-  }
-
-  public int getPipeMaxAllowedRemainingInsertEventCount() {
-    return pipeMaxAllowedRemainingInsertEventCount;
   }
 
   public void setPipeMaxAllowedRemainingInsertEventCount(
