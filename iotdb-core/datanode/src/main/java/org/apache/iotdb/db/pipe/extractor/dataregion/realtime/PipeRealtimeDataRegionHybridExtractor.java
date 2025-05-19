@@ -29,6 +29,7 @@ import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
 import org.apache.iotdb.db.pipe.event.realtime.PipeRealtimeEvent;
 import org.apache.iotdb.db.pipe.extractor.dataregion.IoTDBDataRegionExtractor;
+import org.apache.iotdb.db.pipe.extractor.dataregion.realtime.assigner.PipeTsFileEpochProgressIndexKeeper;
 import org.apache.iotdb.db.pipe.extractor.dataregion.realtime.epoch.TsFileEpoch;
 import org.apache.iotdb.db.pipe.metric.source.PipeDataRegionExtractorMetrics;
 import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
@@ -398,7 +399,8 @@ public class PipeRealtimeDataRegionHybridExtractor extends PipeRealtimeDataRegio
     final TsFileEpoch.State state = event.getTsFileEpoch().getState(this);
     switch (state) {
       case USING_TSFILE:
-        // If the state is USING_TSFILE, discard the event and poll the next one.
+        PipeTsFileEpochProgressIndexKeeper.getInstance()
+            .eliminateProgressIndex(dataRegionId, event.getTsFileEpoch().getFilePath());
         return null;
       case EMPTY:
       case USING_TABLET:
