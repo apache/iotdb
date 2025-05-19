@@ -108,6 +108,7 @@ import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstan
 import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.CONNECTOR_RATE_LIMIT_DEFAULT_VALUE;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.CONNECTOR_RATE_LIMIT_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.CONNECTOR_SKIP_IF_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.IOTDB_CONNECTOR_SKIP_IF_DEFAULT_VALUE;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.SINK_COMPRESSOR_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.SINK_COMPRESSOR_ZSTD_LEVEL_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.SINK_EXCEPTION_CONFLICT_RECORD_IGNORED_DATA_KEY;
@@ -392,7 +393,7 @@ public abstract class IoTDBConnector implements PipeConnector {
         parameters
             .getStringOrDefault(
                 Arrays.asList(CONNECTOR_SKIP_IF_KEY, SINK_SKIP_IF_KEY),
-                CONNECTOR_IOTDB_SKIP_IF_NO_PRIVILEGES)
+                IOTDB_CONNECTOR_SKIP_IF_DEFAULT_VALUE)
             .trim();
     final Set<String> skipIfOptionSet =
         Arrays.stream(connectorSkipIfValue.split(","))
