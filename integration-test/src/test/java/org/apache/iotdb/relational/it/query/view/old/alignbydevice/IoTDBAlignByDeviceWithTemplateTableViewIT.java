@@ -71,7 +71,7 @@ public class IoTDBAlignByDeviceWithTemplateTableViewIT {
       new String[] {
         "CREATE database " + DATABASE_NAME,
         "use " + DATABASE_NAME,
-        "create table view table1(device_id STRING TAG, s1 FLOAT FIELD, s2 BOOLEAN FIELD, s3 INT32 FIELD) as root.sg2.**",
+        "create view table1(device_id STRING TAG, s1 FLOAT FIELD, s2 BOOLEAN FIELD, s3 INT32 FIELD) as root.sg2.**",
       };
 
   @BeforeClass

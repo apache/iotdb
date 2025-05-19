@@ -514,10 +514,10 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
       final Map<IDeviceID, List<TimeseriesMetadata>> device2TimeseriesMetadata =
           timeseriesMetadataIterator.next();
 
-      if (!tsFileResource.resourceFileExists()) {
-        TsFileResourceUtils.updateTsFileResource(device2TimeseriesMetadata, tsFileResource);
-        getOrCreateTreeSchemaVerifier().setCurrentTimeIndex(tsFileResource.getTimeIndex());
-      }
+      // Update time index no matter if resource file exists or not, because resource file may be
+      // untrusted
+      TsFileResourceUtils.updateTsFileResource(device2TimeseriesMetadata, tsFileResource);
+      getOrCreateTreeSchemaVerifier().setCurrentTimeIndex(tsFileResource.getTimeIndex());
 
       if (isAutoCreateSchemaOrVerifySchemaEnabled) {
         getOrCreateTreeSchemaVerifier().autoCreateAndVerify(reader, device2TimeseriesMetadata);
@@ -573,10 +573,10 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
       final Map<IDeviceID, List<TimeseriesMetadata>> device2TimeseriesMetadata =
           timeseriesMetadataIterator.next();
 
-      if (!tsFileResource.resourceFileExists()) {
-        TsFileResourceUtils.updateTsFileResource(device2TimeseriesMetadata, tsFileResource);
-        getOrCreateTableSchemaCache().setCurrentTimeIndex(tsFileResource.getTimeIndex());
-      }
+      // Update time index no matter if resource file exists or not, because resource file may be
+      // untrusted
+      TsFileResourceUtils.updateTsFileResource(device2TimeseriesMetadata, tsFileResource);
+      getOrCreateTableSchemaCache().setCurrentTimeIndex(tsFileResource.getTimeIndex());
 
       for (IDeviceID deviceId : device2TimeseriesMetadata.keySet()) {
         getOrCreateTableSchemaCache().autoCreateAndVerify(deviceId);

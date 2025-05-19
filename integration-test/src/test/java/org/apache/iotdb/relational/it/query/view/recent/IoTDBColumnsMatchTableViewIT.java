@@ -54,7 +54,7 @@ public class IoTDBColumnsMatchTableViewIT {
       new String[] {
         "CREATE DATABASE " + DATABASE_NAME,
         "USE " + DATABASE_NAME,
-        "CREATE TABLE VIEW table1(device_id STRING TAG, s1 INT32 FIELD, s2 INT64 FIELD) as root.test.**",
+        "CREATE VIEW table1(device_id STRING TAG, s1 INT32 FIELD, s2 INT64 FIELD) as root.test.**",
       };
 
   @BeforeClass

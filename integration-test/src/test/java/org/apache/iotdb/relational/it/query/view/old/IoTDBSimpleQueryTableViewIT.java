@@ -84,8 +84,7 @@ public class IoTDBSimpleQueryTableViewIT {
       statement.setFetchSize(5);
       statement.execute("CREATE DATABASE " + DATABASE_NAME);
       statement.execute("USE " + DATABASE_NAME);
-      statement.execute(
-          "CREATE TABLE VIEW table1(device STRING TAG, s1 INT32 FIELD) as root.sg1.**");
+      statement.execute("CREATE VIEW table1(device STRING TAG, s1 INT32 FIELD) as root.sg1.**");
 
       try (ResultSet resultSet = statement.executeQuery("describe table1")) {
         if (resultSet.next()
@@ -123,7 +122,7 @@ public class IoTDBSimpleQueryTableViewIT {
       statement.execute("CREATE DATABASE " + DATABASE_NAME);
       statement.execute("USE " + DATABASE_NAME);
       statement.execute(
-          "CREATE TABLE VIEW table1(device STRING TAG, s0 INT32 FIELD, s1 INT32 FIELD) as root.sg1.**");
+          "CREATE VIEW table1(device STRING TAG, s0 INT32 FIELD, s1 INT32 FIELD) as root.sg1.**");
       statement.execute("flush");
 
       String[] expectedHeader = new String[] {"time", "device", "s0", "s1"};
@@ -166,7 +165,7 @@ public class IoTDBSimpleQueryTableViewIT {
       statement.execute("CREATE DATABASE " + DATABASE_NAME);
       statement.execute("USE " + DATABASE_NAME);
       statement.execute(
-          "CREATE TABLE VIEW table1(device STRING TAG, s1 INT32 FIELD, s2 INT32 FIELD, s3 INT32 FIELD, s4 INT32 FIELD, s5 INT32 FIELD, s6 INT32 FIELD, s7 INT32 FIELD, s8 INT32 FIELD, s9 INT32 FIELD, s10 INT32 FIELD) as root.sg1.**");
+          "CREATE VIEW table1(device STRING TAG, s1 INT32 FIELD, s2 INT32 FIELD, s3 INT32 FIELD, s4 INT32 FIELD, s5 INT32 FIELD, s6 INT32 FIELD, s7 INT32 FIELD, s8 INT32 FIELD, s9 INT32 FIELD, s10 INT32 FIELD) as root.sg1.**");
 
       int count = 0;
       try (ResultSet resultSet = statement.executeQuery("describe table1")) {
@@ -208,7 +207,7 @@ public class IoTDBSimpleQueryTableViewIT {
       statement.execute("CREATE DATABASE " + DATABASE_NAME);
       statement.execute("USE " + DATABASE_NAME);
       statement.execute(
-          "CREATE TABLE VIEW table1(device STRING TAG, s1 INT32 FIELD, s2 INT32 FIELD, s3 INT32 FIELD, s4 INT32 FIELD, s5 INT32 FIELD, s6 INT32 FIELD, s7 INT32 FIELD, s8 INT32 FIELD, s9 INT32 FIELD, s10 INT32 FIELD) as root.sg1.**");
+          "CREATE VIEW table1(device STRING TAG, s1 INT32 FIELD, s2 INT32 FIELD, s3 INT32 FIELD, s4 INT32 FIELD, s5 INT32 FIELD, s6 INT32 FIELD, s7 INT32 FIELD, s8 INT32 FIELD, s9 INT32 FIELD, s10 INT32 FIELD) as root.sg1.**");
 
       statement.execute("flush");
 
@@ -252,7 +251,7 @@ public class IoTDBSimpleQueryTableViewIT {
       statement.execute("CREATE DATABASE " + DATABASE_NAME);
       statement.execute("USE " + DATABASE_NAME);
       statement.execute(
-          "CREATE TABLE VIEW table1(device STRING TAG, s1 INT32 FIELD, s2 INT32 FIELD, s3 INT32 FIELD, s4 INT32 FIELD, s5 INT32 FIELD, s6 INT32 FIELD, s7 INT32 FIELD, s8 INT32 FIELD, s9 INT32 FIELD, s10 INT32 FIELD) as root.sg1.**");
+          "CREATE VIEW table1(device STRING TAG, s1 INT32 FIELD, s2 INT32 FIELD, s3 INT32 FIELD, s4 INT32 FIELD, s5 INT32 FIELD, s6 INT32 FIELD, s7 INT32 FIELD, s8 INT32 FIELD, s9 INT32 FIELD, s10 INT32 FIELD) as root.sg1.**");
 
       statement.execute("flush");
 
@@ -301,8 +300,7 @@ public class IoTDBSimpleQueryTableViewIT {
         Statement statement = connection.createStatement()) {
       statement.execute("CREATE DATABASE " + DATABASE_NAME);
       statement.execute("USE " + DATABASE_NAME);
-      statement.execute(
-          "CREATE TABLE VIEW table1(device STRING TAG, s0 INT32 FIELD) as root.sg1.**");
+      statement.execute("CREATE VIEW table1(device STRING TAG, s0 INT32 FIELD) as root.sg1.**");
 
       long count = 0;
       try (ResultSet resultSet = statement.executeQuery("select s0 from table1 where s0 > 18")) {
@@ -335,7 +333,7 @@ public class IoTDBSimpleQueryTableViewIT {
       statement.execute("CREATE DATABASE " + DATABASE_NAME);
       statement.execute("USE " + DATABASE_NAME);
       statement.execute(
-          "CREATE TABLE VIEW table1(device STRING TAG, s0 INT32 FIELD, s1 INT32 FIELD) as root.sg1.**");
+          "CREATE VIEW table1(device STRING TAG, s0 INT32 FIELD, s1 INT32 FIELD) as root.sg1.**");
 
       try (ResultSet resultSet = statement.executeQuery("select s0, s1 from table1")) {
         while (resultSet.next()) {
@@ -380,8 +378,7 @@ public class IoTDBSimpleQueryTableViewIT {
         Statement statement = connection.createStatement()) {
       statement.execute("CREATE DATABASE " + DATABASE_NAME);
       statement.execute("USE " + DATABASE_NAME);
-      statement.execute(
-          "CREATE TABLE VIEW table1(device STRING TAG, s0 INT32 FIELD) as root.sg1.**");
+      statement.execute("CREATE VIEW table1(device STRING TAG, s0 INT32 FIELD) as root.sg1.**");
 
       long count = 0;
 
@@ -415,7 +412,7 @@ public class IoTDBSimpleQueryTableViewIT {
       statement.execute("CREATE DATABASE test");
       statement.execute("USE " + DATABASE_NAME);
       StringBuilder createTableBuilder = new StringBuilder();
-      createTableBuilder.append("CREATE TABLE VIEW table1(device STRING TAG,");
+      createTableBuilder.append("CREATE VIEW table1(device STRING TAG,");
       for (int i = 0; i < 1000; i++) {
         String columnName = "s" + i;
         createTableBuilder.append(columnName).append(" INT32 FIELD,");
@@ -454,7 +451,7 @@ public class IoTDBSimpleQueryTableViewIT {
       statement.execute("CREATE DATABASE test");
       statement.execute("USE " + DATABASE_NAME);
       statement.execute(
-          "CREATE TABLE VIEW table1(device STRING TAG, s0 INT64 FIELD, s1 INT64 FIELD) as root.sg1.**");
+          "CREATE VIEW table1(device STRING TAG, s0 INT64 FIELD, s1 INT64 FIELD) as root.sg1.**");
 
       List<ResultSet> resultSetList = new ArrayList<>();
 
@@ -496,7 +493,7 @@ public class IoTDBSimpleQueryTableViewIT {
       statement.execute("CREATE DATABASE test");
       statement.execute("USE " + DATABASE_NAME);
       statement.execute(
-          "CREATE TABLE VIEW table1(device STRING TAG, s1 INT32 FIELD, s2 BOOLEAN FIELD) as root.sg1.**");
+          "CREATE VIEW table1(device STRING TAG, s1 INT32 FIELD, s2 BOOLEAN FIELD) as root.sg1.**");
       ResultSet resultSet = statement.executeQuery("select time, s1, s2 from table1");
       ResultSetMetaData metaData = resultSet.getMetaData();
       int[] types = {Types.TIMESTAMP, Types.INTEGER, Types.BOOLEAN};
@@ -534,7 +531,7 @@ public class IoTDBSimpleQueryTableViewIT {
       statement.execute("CREATE DATABASE test");
       statement.execute("USE " + DATABASE_NAME);
       statement.execute(
-          "CREATE TABLE VIEW table1(device STRING TAG, s4 DATE FIELD, s5 TIMESTAMP FIELD, s6 BLOB FIELD, s7 STRING FIELD) as root.sg1.**");
+          "CREATE VIEW table1(device STRING TAG, s4 DATE FIELD, s5 TIMESTAMP FIELD, s6 BLOB FIELD, s7 STRING FIELD) as root.sg1.**");
 
       try (ResultSet resultSet = statement.executeQuery("select * from table1")) {
         final ResultSetMetaData metaData = resultSet.getMetaData();

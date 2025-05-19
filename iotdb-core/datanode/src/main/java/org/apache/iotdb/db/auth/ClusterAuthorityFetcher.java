@@ -74,7 +74,7 @@ public class ClusterAuthorityFetcher implements IAuthorityFetcher {
   private boolean cacheOutDate = false;
   private long heartBeatTimeStamp = 0;
 
-  private boolean acceptCache = false;
+  private boolean acceptCache = true;
 
   private static final IClientManager<ConfigRegionId, ConfigNodeClient> CONFIG_NODE_CLIENT_MANAGER =
       ConfigNodeClientManager.getInstance();

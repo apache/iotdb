@@ -104,8 +104,8 @@ public class IoTDBPaginationTableViewIT {
       new String[] {
         "CREATE DATABASE " + DATABASE_NAME,
         "USE " + DATABASE_NAME,
-        "CREATE TABLE VIEW vehicle(device STRING TAG, s0 INT32 FIELD, s1 INT64 FIELD, s2 FLOAT FIELD) as root.vehicle.**",
-        "CREATE TABLE VIEW db(device STRING TAG, s1 INT32 FIELD) as root.db.**",
+        "CREATE VIEW vehicle(device STRING TAG, s0 INT32 FIELD, s1 INT64 FIELD, s2 FLOAT FIELD) as root.vehicle.**",
+        "CREATE VIEW db(device STRING TAG, s1 INT32 FIELD) as root.db.**",
       };
 
   @BeforeClass

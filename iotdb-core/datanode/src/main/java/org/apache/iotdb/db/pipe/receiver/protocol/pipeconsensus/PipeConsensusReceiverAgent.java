@@ -244,4 +244,17 @@ public class PipeConsensusReceiverAgent implements ConsensusPipeReceiver {
     consensusPipe2ReciverMap.clear();
     LOGGER.info("All Receivers related to {} are released.", dataRegionId);
   }
+
+  public final void closeReceiverExecutor() {
+    this.replicaReceiverMap.forEach(
+        (consensusGroupId, receiverMap) -> {
+          receiverMap.forEach(
+              (consensusPipeName, receiverReference) -> {
+                if (receiverReference != null) {
+                  receiverReference.get().closeExecutor();
+                  LOGGER.info("Receivers-{}' executor is closed.", consensusPipeName);
+                }
+              });
+        });
+  }
 }

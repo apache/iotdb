@@ -80,8 +80,8 @@ public class IoTDBDistinctTagTableViewIT {
       new String[] {
         "CREATE DATABASE IF NOT EXISTS test",
         "USE test",
-        "CREATE TABLE VIEW t1(deviceId STRING TAG, s1 INT64 FIELD) as root.test.t1.**",
-        "CREATE TABLE VIEW t2(deviceId STRING TAG, s1 INT64 FIELD) as root.test.t2.**",
+        "CREATE VIEW t1(deviceId STRING TAG, s1 INT64 FIELD) as root.test.t1.**",
+        "CREATE VIEW t2(deviceId STRING TAG, s1 INT64 FIELD) as root.test.t2.**",
       };
 
   @BeforeClass

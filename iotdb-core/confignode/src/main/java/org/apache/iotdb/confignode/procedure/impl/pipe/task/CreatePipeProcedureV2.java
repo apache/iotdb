@@ -42,6 +42,7 @@ import org.apache.iotdb.confignode.persistence.pipe.PipeTaskInfo;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.impl.pipe.AbstractOperatePipeProcedureV2;
 import org.apache.iotdb.confignode.procedure.impl.pipe.PipeTaskOperation;
+import org.apache.iotdb.confignode.procedure.impl.pipe.util.PipeExternalSourceLoadBalancer;
 import org.apache.iotdb.confignode.procedure.store.ProcedureType;
 import org.apache.iotdb.confignode.rpc.thrift.TCreatePipeReq;
 import org.apache.iotdb.consensus.exception.ConsensusException;
@@ -66,6 +67,9 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.atomic.AtomicReference;
 
+import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTERNAL_EXTRACTOR_PARALLELISM_DEFAULT_VALUE;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTERNAL_EXTRACTOR_PARALLELISM_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTERNAL_SOURCE_PARALLELISM_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_CONSENSUS_GROUP_ID_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_CONSENSUS_SENDER_DATANODE_ID_KEY;
 
@@ -269,6 +273,31 @@ public class CreatePipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
           new PipeTaskMeta(
               new RecoverProgressIndex(senderDataNodeId, new SimpleProgressIndex(0, 0)),
               senderDataNodeId));
+    } else if (pipeStaticMeta.isSourceExternal()) {
+      // external source
+      final PipeExternalSourceLoadBalancer loadBalancer =
+          new PipeExternalSourceLoadBalancer(
+              pipeStaticMeta
+                  .getExtractorParameters()
+                  .getStringOrDefault(
+                      Arrays.asList(
+                          PipeExtractorConstant.EXTERNAL_EXTRACTOR_BALANCE_STRATEGY_KEY,
+                          PipeExtractorConstant.EXTERNAL_SOURCE_BALANCE_STRATEGY_KEY),
+                      PipeExtractorConstant.EXTERNAL_EXTRACTOR_BALANCE_PROPORTION_STRATEGY));
+      final int parallelism =
+          pipeStaticMeta
+              .getExtractorParameters()
+              .getIntOrDefault(
+                  Arrays.asList(
+                      EXTERNAL_EXTRACTOR_PARALLELISM_KEY, EXTERNAL_SOURCE_PARALLELISM_KEY),
+                  EXTERNAL_EXTRACTOR_PARALLELISM_DEFAULT_VALUE);
+      loadBalancer
+          .balance(parallelism, pipeStaticMeta, env.getConfigManager())
+          .forEach(
+              (taskIndex, leaderNodeId) -> {
+                consensusGroupIdToTaskMetaMap.put(
+                    taskIndex, new PipeTaskMeta(MinimumProgressIndex.INSTANCE, leaderNodeId));
+              });
     } else {
       // data regions & schema regions
       env.getConfigManager()

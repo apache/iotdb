@@ -106,6 +106,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TDropFunctionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropModelReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropPipePluginReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropPipeReq;
+import org.apache.iotdb.confignode.rpc.thrift.TDropSubscriptionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropTopicReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropTriggerReq;
 import org.apache.iotdb.confignode.rpc.thrift.TExtendRegionReq;
@@ -259,6 +260,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.ShowPipesSta
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.StartPipeStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.StopPipeStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.subscription.CreateTopicStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.subscription.DropSubscriptionStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.subscription.DropTopicStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.subscription.ShowSubscriptionsStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.subscription.ShowTopicsStatement;
@@ -2077,6 +2079,18 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
     final Map<String, String> connectorAttributes;
     try {
       if (!alterPipeStatement.getExtractorAttributes().isEmpty()) {
+        // We don't allow changing the extractor plugin type
+        if (alterPipeStatement
+                .getExtractorAttributes()
+                .containsKey(PipeExtractorConstant.EXTRACTOR_KEY)
+            || alterPipeStatement
+                .getExtractorAttributes()
+                .containsKey(PipeExtractorConstant.SOURCE_KEY)
+            || alterPipeStatement.isReplaceAllExtractorAttributes()) {
+          checkIfSourcePluginChanged(
+              pipeMetaFromCoordinator.getStaticMeta().getExtractorParameters(),
+              new PipeParameters(alterPipeStatement.getExtractorAttributes()));
+        }
         if (alterPipeStatement.isReplaceAllExtractorAttributes()) {
           extractorAttributes = alterPipeStatement.getExtractorAttributes();
         } else {
@@ -2168,6 +2182,30 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
       future.setException(e);
     }
     return future;
+  }
+
+  private static void checkIfSourcePluginChanged(
+      final PipeParameters oldPipeParameters, final PipeParameters newPipeParameters) {
+    final String oldPluginName =
+        oldPipeParameters
+            .getStringOrDefault(
+                Arrays.asList(
+                    PipeExtractorConstant.EXTRACTOR_KEY, PipeExtractorConstant.SOURCE_KEY),
+                BuiltinPipePlugin.IOTDB_EXTRACTOR.getPipePluginName())
+            .toLowerCase();
+    final String newPluginName =
+        newPipeParameters
+            .getStringOrDefault(
+                Arrays.asList(
+                    PipeExtractorConstant.EXTRACTOR_KEY, PipeExtractorConstant.SOURCE_KEY),
+                BuiltinPipePlugin.IOTDB_EXTRACTOR.getPipePluginName())
+            .toLowerCase();
+    if (!PipeDataNodeAgent.plugin().checkIfPluginSameType(oldPluginName, newPluginName)) {
+      throw new SemanticException(
+          String.format(
+              "Failed to alter pipe, the source plugin of the pipe cannot be changed from %s to %s",
+              oldPluginName, newPluginName));
+    }
   }
 
   private static void checkSourceType(
@@ -2376,6 +2414,29 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
               : Collections.emptyList(),
           future);
     } catch (final Exception e) {
+      future.setException(e);
+    }
+    return future;
+  }
+
+  @Override
+  public SettableFuture<ConfigTaskResult> dropSubscription(
+      final DropSubscriptionStatement dropSubscriptionStatement) {
+    final SettableFuture<ConfigTaskResult> future = SettableFuture.create();
+    try (ConfigNodeClient configNodeClient =
+        CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
+      final TSStatus tsStatus =
+          configNodeClient.dropSubscriptionById(
+              new TDropSubscriptionReq()
+                  .setSubsciptionId(dropSubscriptionStatement.getSubscriptionId())
+                  .setIfExistsCondition(dropSubscriptionStatement.hasIfExistsCondition())
+                  .setIsTableModel(dropSubscriptionStatement.isTableModel()));
+      if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != tsStatus.getCode()) {
+        future.setException(new IoTDBException(tsStatus.message, tsStatus.code));
+      } else {
+        future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
+      }
+    } catch (Exception e) {
       future.setException(e);
     }
     return future;
@@ -4080,6 +4141,11 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
   public SettableFuture<ConfigTaskResult> deleteDevice(
       final DeleteDevice deleteDevice, final String queryId, final SessionInfo sessionInfo) {
     final SettableFuture<ConfigTaskResult> future = SettableFuture.create();
+    if (!deleteDevice.isMayDeleteDevice()) {
+      DeleteDeviceTask.buildTSBlock(0, future);
+      return future;
+    }
+
     try (final ConfigNodeClient client =
         CLUSTER_DELETION_CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
 

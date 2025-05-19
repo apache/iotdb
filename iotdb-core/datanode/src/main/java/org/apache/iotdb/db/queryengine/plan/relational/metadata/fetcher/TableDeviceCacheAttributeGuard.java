@@ -39,7 +39,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.LinkedBlockingDeque;
 import java.util.stream.Collectors;
 
-import static org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.TableDeviceSchemaFetcher.convertIdValuesToDeviceID;
+import static org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.TableDeviceSchemaFetcher.convertTagValuesToDeviceID;
 
 public class TableDeviceCacheAttributeGuard {
 
@@ -147,7 +147,7 @@ public class TableDeviceCacheAttributeGuard {
                       (nodes, attributes) ->
                           cache.updateAttributes(
                               database,
-                              convertIdValuesToDeviceID(table, nodes.toArray(new String[0])),
+                              convertTagValuesToDeviceID(table, nodes.toArray(new String[0])),
                               attributes)));
     } else {
       ((UpdateClearContainer) container)

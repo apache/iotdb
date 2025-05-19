@@ -55,9 +55,7 @@ class TimerXLStrategy(InferenceStrategy):
 
 class BuiltInStrategy(InferenceStrategy):
     def infer(self, full_data, **_):
-        data = full_data[1][0]
-        if data.dtype.byteorder not in ('=', '|'):
-            data = data.byteswap().newbyteorder()
+        data = pd.DataFrame(full_data[1]).T
         output = self.model.inference(data)
         df = pd.DataFrame(output)
         return convert_to_binary(df)

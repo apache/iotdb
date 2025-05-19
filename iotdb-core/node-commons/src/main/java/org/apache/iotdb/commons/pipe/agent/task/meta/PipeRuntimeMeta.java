@@ -136,6 +136,16 @@ public class PipeRuntimeMeta {
     this.isStoppedByRuntimeException.set(isStoppedByRuntimeException);
   }
 
+  /**
+   * We use negative regionId to identify the external pipe source, which is not a consensus group
+   * id. Then we can reuse the regionId to schedule the external pipe source and store the progress
+   * information.
+   */
+  public static boolean isSourceExternal(int regionId) {
+    // regionId that is less than 0 is a special value marking an external pipe source
+    return regionId < 0;
+  }
+
   public ByteBuffer serialize() throws IOException {
     PublicBAOS byteArrayOutputStream = new PublicBAOS();
     DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream);
