@@ -89,11 +89,9 @@ public class PipeDataNodeRemainingEventAndTimeMetrics implements IMetricSet {
     try {
       return remainingEventAndTimeOperatorMap.entrySet().stream()
           .anyMatch(
-              entry -> {
-                final PipeDataNodeRemainingEventAndTimeOperator operator = entry.getValue();
-                return operator.getRemainingEvents()
-                    > PipeConfig.getInstance().getPipeMaxAllowedRemainingInsertEventCount();
-              });
+              entry ->
+                  entry.getValue().getRemainingInsertEvents()
+                      > PipeConfig.getInstance().getPipeMaxAllowedRemainingInsertEventCount());
     } catch (final Exception e) {
       return false;
     }
@@ -162,20 +160,36 @@ public class PipeDataNodeRemainingEventAndTimeMetrics implements IMetricSet {
     }
   }
 
-  public void increaseTabletEventCount(final String pipeName, final long creationTime) {
+  public void increaseInsertEventCount(final String pipeName, final long creationTime) {
     remainingEventAndTimeOperatorMap
         .computeIfAbsent(
             pipeName + "_" + creationTime,
             k -> new PipeDataNodeRemainingEventAndTimeOperator(pipeName, creationTime))
-        .increaseTabletEventCount();
+        .increaseInsertEventCount();
   }
 
-  public void decreaseTabletEventCount(final String pipeName, final long creationTime) {
+  public void decreaseInsertEventCount(final String pipeName, final long creationTime) {
     remainingEventAndTimeOperatorMap
         .computeIfAbsent(
             pipeName + "_" + creationTime,
             k -> new PipeDataNodeRemainingEventAndTimeOperator(pipeName, creationTime))
-        .decreaseTabletEventCount();
+        .decreaseInsertEventCount();
+  }
+
+  public void increaseRawTabletEventCount(final String pipeName, final long creationTime) {
+    remainingEventAndTimeOperatorMap
+        .computeIfAbsent(
+            pipeName + "_" + creationTime,
+            k -> new PipeDataNodeRemainingEventAndTimeOperator(pipeName, creationTime))
+        .increaseRawTabletEventCount();
+  }
+
+  public void decreaseRawTabletEventCount(final String pipeName, final long creationTime) {
+    remainingEventAndTimeOperatorMap
+        .computeIfAbsent(
+            pipeName + "_" + creationTime,
+            k -> new PipeDataNodeRemainingEventAndTimeOperator(pipeName, creationTime))
+        .decreaseRawTabletEventCount();
   }
 
   public void increaseTsFileEventCount(final String pipeName, final long creationTime) {
