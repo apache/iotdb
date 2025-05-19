@@ -146,14 +146,7 @@ public class MPPPublishHandler extends AbstractInterceptHandler {
           continue;
         }
         if (useTableInsert) {
-          TableMessage tableMessage = (TableMessage) message;
-          // '/' previously defined as a database name
-          String database =
-              !msg.getTopicName().contains("/")
-                  ? msg.getTopicName()
-                  : msg.getTopicName().substring(0, msg.getTopicName().indexOf("/"));
-          tableMessage.setDatabase(database);
-          insertTable(tableMessage, session);
+          insertTable((TableMessage) message, session);
         } else {
           insertTree((TreeMessage) message, session);
         }

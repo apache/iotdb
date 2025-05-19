@@ -72,6 +72,8 @@ public class LinePayloadFormatter implements PayloadFormatter {
 
     String txt = payload.toString(StandardCharsets.UTF_8);
     String[] lines = txt.split(LINE_BREAK);
+    // '/' previously defined as a database name
+    String database = !topic.contains("/") ? topic : topic.substring(0, topic.indexOf("/"));
     for (String line : lines) {
       if (line.trim().startsWith(WELL)) {
         continue;
@@ -83,6 +85,9 @@ public class LinePayloadFormatter implements PayloadFormatter {
           log.warn("Invalid line protocol format ,line is {}", line);
           continue;
         }
+
+        // Parsing Database Name
+        message.setDatabase((database));
 
         // Parsing Table Names
         message.setTable(matcher.group(TABLE));
