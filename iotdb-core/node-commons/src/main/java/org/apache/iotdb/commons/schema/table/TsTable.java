@@ -81,6 +81,8 @@ public class TsTable {
 
   // Cache, avoid string parsing
   private transient long ttlValue = Long.MIN_VALUE;
+  private transient Boolean needLastCache = null;
+
   private transient int idNums = 0;
   private transient int fieldNum = 0;
 
@@ -267,6 +269,14 @@ public class TsTable {
             Long.parseLong(ttl.get()),
             CommonDescriptor.getInstance().getConfig().getTimestampPrecision())
         : Long.MAX_VALUE;
+  }
+
+  public boolean getCachedNeedLastCache() {
+    if (needLastCache == null) {
+      needLastCache =
+          getPropValue(NEED_LAST_CACHE_PROPERTY).map(Boolean::parseBoolean).orElse(true);
+    }
+    return needLastCache;
   }
 
   public Map<String, String> getProps() {
