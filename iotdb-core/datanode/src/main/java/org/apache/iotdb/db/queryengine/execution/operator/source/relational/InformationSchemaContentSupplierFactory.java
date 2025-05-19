@@ -269,6 +269,7 @@ public class InformationSchemaContentSupplierFactory {
                               table.getTableName(),
                               table.getPropValue(TTL_PROPERTY).orElse(TTL_INFINITE));
                       info.setState(TableNodeStatus.USING.ordinal());
+                      info.setNeedLastCache(false);
                       return info;
                     })
                 .collect(Collectors.toList()));
