@@ -72,7 +72,7 @@ public class PipeDataRegionAssigner implements Closeable {
 
   private Boolean isTableModel;
 
-  private final AtomicReference<ProgressIndex> maxProgressIndexForTsFileInsertionEvent =
+  private final AtomicReference<ProgressIndex> maxProgressIndexForRealtimeEvent =
       new AtomicReference<>(MinimumProgressIndex.INSTANCE);
 
   private final PipeEventCounter eventCounter = new PipeDataRegionEventCounter();
@@ -237,16 +237,16 @@ public class PipeDataRegionAssigner implements Closeable {
             dataRegionId,
             event.getTsFileEpoch().getFilePath(),
             getProgressIndex4RealtimeEvent(event))) {
-      event.bindProgressIndex(maxProgressIndexForTsFileInsertionEvent.get());
+      event.bindProgressIndex(maxProgressIndexForRealtimeEvent.get());
       if (LOGGER.isDebugEnabled()) {
         LOGGER.debug(
             "Data region {} bind {} to event {} because it was flushed prematurely.",
             dataRegionId,
-            maxProgressIndexForTsFileInsertionEvent,
+            maxProgressIndexForRealtimeEvent,
             event.coreReportMessage());
       }
     } else {
-      maxProgressIndexForTsFileInsertionEvent.updateAndGet(
+      maxProgressIndexForRealtimeEvent.updateAndGet(
           index ->
               index.updateToMinimumEqualOrIsAfterProgressIndex(
                   getProgressIndex4RealtimeEvent(event)));
