@@ -233,6 +233,7 @@ import static org.apache.iotdb.commons.schema.table.TsTable.NEED_LAST_CACHE_PROP
 import static org.apache.iotdb.commons.schema.table.TsTable.TABLE_ALLOWED_PROPERTIES;
 import static org.apache.iotdb.commons.schema.table.TsTable.TIME_COLUMN_NAME;
 import static org.apache.iotdb.commons.schema.table.TsTable.TTL_PROPERTY;
+import static org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.AbstractDatabaseTask.NEED_LAST_CACHE_KEY;
 import static org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.CreateDBTask.DATA_REGION_GROUP_NUM_KEY;
 import static org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.CreateDBTask.SCHEMA_REGION_GROUP_NUM_KEY;
 import static org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.CreateDBTask.TIME_PARTITION_INTERVAL_KEY;
@@ -303,6 +304,11 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
               schema.setTTL(Long.MAX_VALUE);
             }
             break;
+          case NEED_LAST_CACHE_KEY:
+            if (node.getType() == DatabaseSchemaStatement.DatabaseSchemaStatementType.ALTER) {
+              schema.setNeedLastCache(true);
+            }
+            break;
           default:
             throw new SemanticException("Unsupported database property key: " + key);
         }
@@ -335,6 +341,9 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
           break;
         case DATA_REGION_GROUP_NUM_KEY:
           schema.setMinDataRegionGroupNum(parseIntFromLiteral(value, DATA_REGION_GROUP_NUM_KEY));
+          break;
+        case NEED_LAST_CACHE_KEY:
+          schema.setNeedLastCache(parseBooleanFromLiteral(value, NEED_LAST_CACHE_KEY));
           break;
         default:
           throw new SemanticException("Unsupported database property key: " + key);
