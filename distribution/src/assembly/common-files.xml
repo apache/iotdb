@@ -28,21 +28,12 @@
     </fileSets>
     <files>
         <file>
-            <source>${project.basedir}/../README.md</source>
-        </file>
-        <file>
-            <source>${project.basedir}/../README_ZH.md</source>
-        </file>
-        <file>
             <source>${project.basedir}/../LICENSE-binary</source>
             <destName>LICENSE</destName>
         </file>
         <file>
             <source>${project.basedir}/../NOTICE-binary</source>
             <destName>NOTICE</destName>
-        </file>
-        <file>
-            <source>${project.basedir}/../RELEASE_NOTES.md</source>
         </file>
     </files>
 </component>
