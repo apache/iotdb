@@ -346,7 +346,7 @@ public class PipeRealtimeDataRegionHybridExtractor extends PipeRealtimeDataRegio
   private boolean mayLatencyTooLarge(final PipeRealtimeEvent event) {
     final double expectedLatency =
         PipeDataNodeRemainingEventAndTimeMetrics.getInstance()
-            .getRemainingTimeSmoothingValue(pipeName, creationTime);
+            .getLatencySmoothingValue(pipeName, creationTime);
     final boolean mayLatencyTooLarge =
         expectedLatency > PipeConfig.getInstance().getPipeMaxAllowedLatencySeconds();
     if (mayLatencyTooLarge && event.mayExtractorUseTablets(this)) {

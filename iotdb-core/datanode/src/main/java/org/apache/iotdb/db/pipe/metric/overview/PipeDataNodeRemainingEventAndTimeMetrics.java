@@ -292,7 +292,7 @@ public class PipeDataNodeRemainingEventAndTimeMetrics implements IMetricSet {
     return new Pair<>(operator.getRemainingEvents(), operator.getRemainingTime());
   }
 
-  public double getRemainingTimeSmoothingValue(final String pipeName, final long creationTime) {
+  public double getLatencySmoothingValue(final String pipeName, final long creationTime) {
     return remainingEventAndTimeOperatorMap
         .computeIfAbsent(
             PipeEventCommitManager.getInstance()
