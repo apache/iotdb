@@ -90,7 +90,7 @@ public class PipeDataNodeRemainingEventAndTimeMetrics implements IMetricSet {
       return remainingEventAndTimeOperatorMap.entrySet().stream()
           .anyMatch(
               entry ->
-                  entry.getValue().getRemainingInsertEvents()
+                  entry.getValue().getRemainingInsertEventSmoothingCount()
                       > PipeConfig.getInstance().getPipeMaxAllowedRemainingInsertEventCount());
     } catch (final Exception e) {
       return false;
