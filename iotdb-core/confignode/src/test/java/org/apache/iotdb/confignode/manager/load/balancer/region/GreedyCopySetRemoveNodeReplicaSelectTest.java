@@ -54,7 +54,7 @@ public class GreedyCopySetRemoveNodeReplicaSelectTest {
 
   private static final int TEST_DATA_NODE_NUM = 5;
 
-  private static final int DATA_REGION_PER_DATA_NODE = 4;
+  private static final int DATA_REGION_PER_DATA_NODE = 20;
 
   private static final int DATA_REPLICATION_FACTOR = 2;
 
