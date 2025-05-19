@@ -16,7 +16,9 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.session.compress;
+package org.apache.iotdb.session.rpccompress.decoder;
+
+import org.apache.iotdb.session.rpccompress.ColumnEntry;
 
 import org.apache.tsfile.encoding.decoder.Decoder;
 import org.apache.tsfile.enums.TSDataType;
@@ -25,13 +27,13 @@ import org.apache.tsfile.utils.Binary;
 
 import java.nio.ByteBuffer;
 
-public class RleColumnDecoder implements ColumnDecoder {
+public class Ts2DiffColumnDecoder implements ColumnDecoder {
   private final Decoder decoder;
   private final TSDataType dataType;
 
-  public RleColumnDecoder(TSDataType dataType) {
+  public Ts2DiffColumnDecoder(TSDataType dataType) {
     this.dataType = dataType;
-    this.decoder = getDecoder(dataType, TSEncoding.RLE);
+    this.decoder = getDecoder(dataType, TSEncoding.TS_2DIFF);
   }
 
   @Override
@@ -85,6 +87,9 @@ public class RleColumnDecoder implements ColumnDecoder {
         {
           Binary[] result = new Binary[rowCount];
           for (int i = 0; i < rowCount; i++) {
+            int binarySize = buffer.getInt();
+            byte[] binaryValue = new byte[binarySize];
+            buffer.get(binaryValue);
             result[i] = decoder.readBinary(buffer);
           }
           return result;

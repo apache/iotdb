@@ -91,7 +91,8 @@ import org.apache.iotdb.service.rpc.thrift.TSQueryTemplateReq;
 import org.apache.iotdb.service.rpc.thrift.TSRawDataQueryReq;
 import org.apache.iotdb.service.rpc.thrift.TSSetSchemaTemplateReq;
 import org.apache.iotdb.service.rpc.thrift.TSUnsetSchemaTemplateReq;
-import org.apache.iotdb.session.compress.RpcDecoder;
+import org.apache.iotdb.session.rpccompress.RpcUncompressor;
+import org.apache.iotdb.session.rpccompress.decoder.RpcDecoder;
 
 import org.antlr.v4.runtime.CharStream;
 import org.antlr.v4.runtime.CharStreams;
@@ -336,7 +337,12 @@ public class StatementGenerator {
     long[] timestamps;
     if (insertTabletReq.isIsCompressed()) {
       RpcDecoder rpcDecoder = new RpcDecoder();
-      timestamps = rpcDecoder.readTimesFromBuffer(insertTabletReq.timestamps, insertTabletReq.size);
+      RpcUncompressor rpcUncompressor =
+          new RpcUncompressor(
+              CompressionType.deserialize((byte) insertTabletReq.getCompressType()));
+      timestamps =
+          rpcDecoder.readTimesFromBuffer(
+              rpcUncompressor.uncompress(insertTabletReq.timestamps), insertTabletReq.size);
     } else {
       timestamps =
           QueryDataSetUtils.readTimesFromBuffer(insertTabletReq.timestamps, insertTabletReq.size);
@@ -348,8 +354,12 @@ public class StatementGenerator {
     insertStatement.setTimes(timestamps);
     if (insertTabletReq.isIsCompressed()) {
       RpcDecoder rpcDecoder = new RpcDecoder();
+      RpcUncompressor rpcUncompressor =
+          new RpcUncompressor(
+              CompressionType.deserialize((byte) insertTabletReq.getCompressType()));
       insertStatement.setColumns(
-          rpcDecoder.decodeValues(insertTabletReq.values, insertTabletReq.size));
+          rpcDecoder.decodeValues(
+              rpcUncompressor.uncompress(insertTabletReq.values), insertTabletReq.size));
     } else {
       insertStatement.setColumns(
           QueryDataSetUtils.readTabletValuesFromBuffer(

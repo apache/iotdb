@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.session.compress;
+package org.apache.iotdb.session.rpccompress;
 
 import org.apache.tsfile.compress.IUnCompressor;
 import org.apache.tsfile.file.metadata.enums.CompressionType;
@@ -29,6 +29,27 @@ public class RpcUncompressor {
 
   public RpcUncompressor(CompressionType name) {
     unCompressor = IUnCompressor.getUnCompressor(name);
+  }
+
+  public ByteBuffer uncompress(ByteBuffer byteArray) {
+    byte[] bytes;
+    int length = byteArray.remaining();
+
+    if (byteArray.hasArray()) {
+      bytes = byteArray.array();
+      int offset = byteArray.arrayOffset() + byteArray.position();
+      bytes = java.util.Arrays.copyOfRange(bytes, offset, offset + length);
+    } else {
+      bytes = new byte[length];
+      byteArray.get(bytes);
+    }
+    byte[] decompressedBytes = null;
+    try {
+      decompressedBytes = unCompressor.uncompress(bytes);
+    } catch (IOException e) {
+      throw new RuntimeException(e);
+    }
+    return ByteBuffer.wrap(decompressedBytes);
   }
 
   public int getUncompressedLength(byte[] array, int offset, int length) throws IOException {

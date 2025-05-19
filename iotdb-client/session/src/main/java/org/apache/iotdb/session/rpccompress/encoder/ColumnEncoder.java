@@ -16,45 +16,39 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.session.compress;
+package org.apache.iotdb.session.rpccompress.encoder;
+
+import org.apache.iotdb.session.rpccompress.ColumnEntry;
 
 import org.apache.tsfile.encoding.encoder.Encoder;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
+import org.apache.tsfile.utils.Binary;
 
-import java.util.List;
+import java.io.ByteArrayOutputStream;
 
-public class Ts2DiffColumnEncoder implements ColumnEncoder {
-  private final Encoder encoder;
-  private final TSDataType dataType;
+/** Column encoder interface, which defines the encoding and decoding operations of column data */
+public interface ColumnEncoder {
 
-  public Ts2DiffColumnEncoder(TSDataType dataType) {
-    this.dataType = dataType;
-    this.encoder = getEncoder(dataType, TSEncoding.RLE);
-  }
+  void encode(boolean[] values, ByteArrayOutputStream out);
 
-  @Override
-  public byte[] encode(List<?> data) {
-    return new byte[0];
-  }
+  void encode(short[] values, ByteArrayOutputStream out);
 
-  @Override
-  public TSDataType getDataType() {
-    return null;
-  }
+  void encode(int[] values, ByteArrayOutputStream out);
 
-  @Override
-  public TSEncoding getEncodingType() {
-    return null;
-  }
+  void encode(long[] values, ByteArrayOutputStream out);
 
-  @Override
-  public Encoder getEncoder(TSDataType type, TSEncoding encodingType) {
-    return null;
-  }
+  void encode(float[] values, ByteArrayOutputStream out);
 
-  @Override
-  public ColumnEntry getColumnEntry() {
-    return null;
-  }
+  void encode(double[] values, ByteArrayOutputStream out);
+
+  void encode(Binary[] values, ByteArrayOutputStream out);
+
+  TSDataType getDataType();
+
+  TSEncoding getEncodingType();
+
+  Encoder getEncoder(TSDataType type, TSEncoding encodingType);
+
+  ColumnEntry getColumnEntry();
 }

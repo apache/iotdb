@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.session.compress;
+package org.apache.iotdb.session.rpccompress;
 
 import java.io.Serializable;
 import java.nio.ByteBuffer;
@@ -25,8 +25,13 @@ import java.util.List;
 
 public class MetaHead implements Serializable {
 
+  /** Number of columns in the compressed file. */
   private Integer numberOfColumns;
+
+  /** The size of the metadata header. */
   private Integer size;
+
+  /** ColumnEntry list */
   private List<ColumnEntry> columnEntries;
 
   public MetaHead() {
@@ -34,7 +39,6 @@ public class MetaHead implements Serializable {
     updateSize();
   }
 
-  // TODO-RPC 大小后续要更新，先初始化一次
   public MetaHead(Integer numberOfColumns, List<ColumnEntry> columnEntries) {
     this.numberOfColumns = numberOfColumns;
     this.columnEntries = columnEntries;
@@ -56,7 +60,7 @@ public class MetaHead implements Serializable {
   /**
    * Append ColumnEntry
    *
-   * @param entry
+   * @param entry ColumnEntry
    */
   public void addColumnEntry(ColumnEntry entry) {
     if (columnEntries == null) {
@@ -72,8 +76,8 @@ public class MetaHead implements Serializable {
    * size of all ColumnEntry. MetaHead header size = numberOfColumns (4 bytes) + size (4 bytes).
    */
   private void updateSize() {
-    // MetaHead header size
-    int totalSize = 8; // numberOfColumns(4字节) + size(4字节)
+    // MetaHead header size, numberOfColumns(4 byte) + size(4 byte)
+    int totalSize = 8;
 
     // Accumulate the size of all ColumnEntry
     if (columnEntries != null) {
@@ -83,7 +87,6 @@ public class MetaHead implements Serializable {
         }
       }
     }
-
     this.size = totalSize;
   }
 

@@ -56,7 +56,8 @@ import org.apache.iotdb.service.rpc.thrift.TSQueryTemplateReq;
 import org.apache.iotdb.service.rpc.thrift.TSQueryTemplateResp;
 import org.apache.iotdb.service.rpc.thrift.TSSetSchemaTemplateReq;
 import org.apache.iotdb.service.rpc.thrift.TSUnsetSchemaTemplateReq;
-import org.apache.iotdb.session.compress.RpcEncoder;
+import org.apache.iotdb.session.rpccompress.RpcCompressor;
+import org.apache.iotdb.session.rpccompress.encoder.RpcEncoder;
 import org.apache.iotdb.session.template.MeasurementNode;
 import org.apache.iotdb.session.template.TemplateQueryType;
 import org.apache.iotdb.session.util.SessionUtils;
@@ -2993,14 +2994,14 @@ public class Session implements ISession {
             this.columnEncodersMap.get(measurementSchema.getType()).ordinal());
       }
       RpcEncoder rpcEncoder = new RpcEncoder(this.columnEncodersMap, this.compressionType);
-      request.setTimestamps(rpcEncoder.encodeTimestamps(tablet));
-      request.setValues(rpcEncoder.encodeValues(tablet));
-      request.setSize(tablet.getRowSize());
+      RpcCompressor rpcCompressor = new RpcCompressor(this.compressionType);
+      request.setTimestamps(rpcCompressor.compress(rpcEncoder.encodeTimestamps(tablet)));
+      request.setValues(rpcCompressor.compress(rpcEncoder.encodeValues(tablet)));
     } else {
       request.setTimestamps(SessionUtils.getTimeBuffer(tablet));
       request.setValues(SessionUtils.getValueBuffer(tablet));
-      request.setSize(tablet.getRowSize());
     }
+    request.setSize(tablet.getRowSize());
     return request;
   }
 

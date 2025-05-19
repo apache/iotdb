@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.session.compress;
+package org.apache.iotdb.session.rpccompress;
 
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
@@ -26,12 +26,12 @@ import java.nio.ByteBuffer;
 
 public class ColumnEntry implements Serializable {
 
-  /** Used to specify the size when applying for memory */
   private Integer compressedSize;
-
   private Integer unCompressedSize;
   private TSDataType dataType;
   private TSEncoding encodingType;
+
+  /** The number of bytes occupied by ColumnEntry */
   private Integer size;
 
   public ColumnEntry() {
@@ -42,8 +42,7 @@ public class ColumnEntry implements Serializable {
       Integer compressedSize,
       Integer unCompressedSize,
       TSDataType dataType,
-      TSEncoding encodingType,
-      Integer offset) {
+      TSEncoding encodingType) {
     this.compressedSize = compressedSize;
     this.unCompressedSize = unCompressedSize;
     this.dataType = dataType;

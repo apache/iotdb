@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.session.compress;
+package org.apache.iotdb.session.rpccompress;
 
 import org.apache.tsfile.compress.ICompressor;
 import org.apache.tsfile.file.metadata.enums.CompressionType;
@@ -30,6 +30,34 @@ public class RpcCompressor {
 
   public RpcCompressor(CompressionType name) {
     compressor = ICompressor.getCompressor(name);
+  }
+
+  public ByteBuffer compress(ByteBuffer input) {
+    byte[] src;
+    int offset, length;
+
+    if (input.hasArray()) {
+      offset = input.arrayOffset() + input.position();
+      length = input.remaining();
+      if (offset == 0 && length == input.array().length) {
+        src = input.array();
+      } else {
+        src = new byte[length];
+        System.arraycopy(input.array(), offset, src, 0, length);
+      }
+    } else {
+      length = input.remaining();
+      src = new byte[length];
+      input.slice().get(src);
+    }
+
+    byte[] compressed = null;
+    try {
+      compressed = compress(src);
+    } catch (IOException e) {
+      throw new RuntimeException(e);
+    }
+    return ByteBuffer.wrap(compressed);
   }
 
   public byte[] compress(byte[] data) throws IOException {

@@ -16,7 +16,9 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.session.compress;
+package org.apache.iotdb.session.rpccompress.encoder;
+
+import org.apache.iotdb.session.rpccompress.ColumnEntry;
 
 import org.apache.tsfile.encoding.encoder.Encoder;
 import org.apache.tsfile.enums.TSDataType;
@@ -24,29 +26,37 @@ import org.apache.tsfile.file.metadata.enums.TSEncoding;
 
 import java.util.List;
 
-/** Column encoder interface, which defines the encoding and decoding operations of column data */
-public interface ColumnEncoder {
+public class Ts2DiffColumnEncoder implements ColumnEncoder {
+  private final Encoder encoder;
+  private final TSDataType dataType;
 
-  /**
-   * Encode a column of data
-   *
-   * @param data The data column to be encoded
-   * @return Encoded data
-   */
-  byte[] encode(List<?> data);
+  public Ts2DiffColumnEncoder(TSDataType dataType) {
+    this.dataType = dataType;
+    this.encoder = getEncoder(dataType, TSEncoding.RLE);
+  }
 
-  TSDataType getDataType();
+  @Override
+  public byte[] encode(List<?> data) {
+    return new byte[0];
+  }
 
-  TSEncoding getEncodingType();
+  @Override
+  public TSDataType getDataType() {
+    return null;
+  }
 
-  Encoder getEncoder(TSDataType type, TSEncoding encodingType);
+  @Override
+  public TSEncoding getEncodingType() {
+    return null;
+  }
 
-  ColumnEntry getColumnEntry();
-}
+  @Override
+  public Encoder getEncoder(TSDataType type, TSEncoding encodingType) {
+    return null;
+  }
 
-/** Encoding type not supported exception */
-class EncodingTypeNotSupportedException extends RuntimeException {
-  public EncodingTypeNotSupportedException(String message) {
-    super("Encoding type " + message + " is not supported.");
+  @Override
+  public ColumnEntry getColumnEntry() {
+    return null;
   }
 }
