@@ -942,8 +942,7 @@ public class ConfigMTree {
               && databaseNode.getDatabaseSchema().isSetTTL()
               && databaseNode.getDatabaseSchema().getTTL() != Long.MAX_VALUE) {
             table.addProp(k, String.valueOf(databaseNode.getDatabaseSchema().getTTL()));
-          }
-          if (k.equals(TsTable.NEED_LAST_CACHE_PROPERTY)
+          } else if (k.equals(TsTable.NEED_LAST_CACHE_PROPERTY)
               && databaseNode.getDatabaseSchema().isSetNeedLastCache()) {
             table.addProp(
                 TsTable.NEED_LAST_CACHE_PROPERTY,
