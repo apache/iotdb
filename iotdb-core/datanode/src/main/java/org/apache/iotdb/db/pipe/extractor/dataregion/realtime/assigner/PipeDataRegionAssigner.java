@@ -232,7 +232,7 @@ public class PipeDataRegionAssigner implements Closeable {
   }
 
   private void bindOrUpdateProgressIndexForRealtimeEvent(final PipeRealtimeEvent event) {
-    if (PipeTimePartitionProgressIndexKeeper.getInstance()
+    if (PipeTsFileEpochProgressIndexKeeper.getInstance()
         .isProgressIndexAfterOrEquals(
             dataRegionId,
             event.getTsFileEpoch().getFilePath(),

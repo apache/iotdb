@@ -34,7 +34,7 @@ import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tsfile.aggregator.TsFileInsertionPointCounter;
 import org.apache.iotdb.db.pipe.event.common.tsfile.parser.TsFileInsertionEventParser;
 import org.apache.iotdb.db.pipe.event.common.tsfile.parser.TsFileInsertionEventParserProvider;
-import org.apache.iotdb.db.pipe.extractor.dataregion.realtime.assigner.PipeTimePartitionProgressIndexKeeper;
+import org.apache.iotdb.db.pipe.extractor.dataregion.realtime.assigner.PipeTsFileEpochProgressIndexKeeper;
 import org.apache.iotdb.db.pipe.metric.overview.PipeDataNodeRemainingEventAndTimeMetrics;
 import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
 import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryManager;
@@ -382,7 +382,7 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
 
   public void eliminateProgressIndex() {
     if (Objects.isNull(overridingProgressIndex)) {
-      PipeTimePartitionProgressIndexKeeper.getInstance()
+      PipeTsFileEpochProgressIndexKeeper.getInstance()
           .eliminateProgressIndex(resource.getDataRegionId(), resource.getTsFilePath());
     }
   }

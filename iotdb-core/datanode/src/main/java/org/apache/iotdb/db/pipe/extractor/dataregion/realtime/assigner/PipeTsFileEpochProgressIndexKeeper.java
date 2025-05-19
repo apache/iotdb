@@ -26,9 +26,9 @@ import java.util.Map.Entry;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 
-public class PipeTimePartitionProgressIndexKeeper {
+public class PipeTsFileEpochProgressIndexKeeper {
 
-  // data region id -> (time partition id, <max progress index, is valid>)
+  // data region id -> (tsFile path, max progress index)
   private final Map<String, Map<String, ProgressIndex>> progressIndexKeeper =
       new ConcurrentHashMap<>();
 
@@ -67,19 +67,19 @@ public class PipeTimePartitionProgressIndexKeeper {
 
   private static class PipeTimePartitionProgressIndexKeeperHolder {
 
-    private static final PipeTimePartitionProgressIndexKeeper INSTANCE =
-        new PipeTimePartitionProgressIndexKeeper();
+    private static final PipeTsFileEpochProgressIndexKeeper INSTANCE =
+        new PipeTsFileEpochProgressIndexKeeper();
 
     private PipeTimePartitionProgressIndexKeeperHolder() {
       // empty constructor
     }
   }
 
-  public static PipeTimePartitionProgressIndexKeeper getInstance() {
-    return PipeTimePartitionProgressIndexKeeper.PipeTimePartitionProgressIndexKeeperHolder.INSTANCE;
+  public static PipeTsFileEpochProgressIndexKeeper getInstance() {
+    return PipeTsFileEpochProgressIndexKeeper.PipeTimePartitionProgressIndexKeeperHolder.INSTANCE;
   }
 
-  private PipeTimePartitionProgressIndexKeeper() {
+  private PipeTsFileEpochProgressIndexKeeper() {
     // empty constructor
   }
 }
