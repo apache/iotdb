@@ -1221,6 +1221,7 @@ struct TTableInfo {
    3: optional i32 state
    4: optional string comment
    5: optional i32 type
+   6: optional bool needLastCache
 }
 
 struct TCreateTableViewReq {
