@@ -266,6 +266,20 @@ public class SubscriptionSession extends Session {
     }
   }
 
+  public void dropSubscription(final String subscriptionId)
+      throws IoTDBConnectionException, StatementExecutionException {
+    IdentifierUtils.checkAndParseIdentifier(subscriptionId); // ignore the parse result
+    final String sql = String.format("DROP SUBSCRIPTION %s", subscriptionId);
+    executeNonQueryStatement(sql);
+  }
+
+  public void dropSubscriptionIfExists(final String subscriptionId)
+      throws IoTDBConnectionException, StatementExecutionException {
+    IdentifierUtils.checkAndParseIdentifier(subscriptionId); // ignore the parse result
+    final String sql = String.format("DROP SUBSCRIPTION IF EXISTS %s", subscriptionId);
+    executeNonQueryStatement(sql);
+  }
+
   /////////////////////////////// utility ///////////////////////////////
 
   public Set<Topic> convertDataSetToTopics(final SessionDataSet dataSet)
@@ -291,7 +305,7 @@ public class SubscriptionSession extends Session {
     while (dataSet.hasNext()) {
       final RowRecord record = dataSet.next();
       final List<Field> fields = record.getFields();
-      if (fields.size() != 3) {
+      if (fields.size() != 4) {
         throw new SubscriptionException(
             String.format(
                 "Unexpected fields %s was obtained during SHOW SUBSCRIPTION...",
@@ -301,7 +315,8 @@ public class SubscriptionSession extends Session {
           new Subscription(
               fields.get(0).getStringValue(),
               fields.get(1).getStringValue(),
-              fields.get(2).getStringValue()));
+              fields.get(2).getStringValue(),
+              fields.get(3).getStringValue()));
     }
     return subscriptions;
   }
