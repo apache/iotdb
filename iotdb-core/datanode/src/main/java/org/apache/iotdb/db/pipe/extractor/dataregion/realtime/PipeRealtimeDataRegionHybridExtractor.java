@@ -399,6 +399,7 @@ public class PipeRealtimeDataRegionHybridExtractor extends PipeRealtimeDataRegio
     final TsFileEpoch.State state = event.getTsFileEpoch().getState(this);
     switch (state) {
       case USING_TSFILE:
+        // If the state is USING_TSFILE, discard the event and poll the next one.
         PipeTsFileEpochProgressIndexKeeper.getInstance()
             .eliminateProgressIndex(dataRegionId, event.getTsFileEpoch().getFilePath());
         return null;
