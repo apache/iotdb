@@ -276,6 +276,7 @@ public class CommonConfig {
   private long pipeFlushAfterLastTerminateSeconds = 30;
   private long pipeFlushAfterTerminateCount = 30;
   private long pipeStorageEngineFlushTimeIntervalMs = Long.MAX_VALUE;
+  private int pipeMaxAllowedRemainingInsertEventCount = 10000;
 
   private int pipeMetaReportMaxLogNumPerRound = 10;
   private int pipeMetaReportMaxLogIntervalRounds = 36;
@@ -1449,6 +1450,15 @@ public class CommonConfig {
     }
     this.pipeStuckRestartIntervalSeconds = pipeStuckRestartIntervalSeconds;
     logger.info("pipeStuckRestartIntervalSeconds is set to {}", pipeStuckRestartIntervalSeconds);
+  }
+
+  public int getPipeMaxAllowedRemainingInsertEventCount() {
+    return pipeMaxAllowedRemainingInsertEventCount;
+  }
+
+  public void setPipeMaxAllowedRemainingInsertEventCount(
+      int pipeMaxAllowedRemainingInsertEventCount) {
+    this.pipeMaxAllowedRemainingInsertEventCount = pipeMaxAllowedRemainingInsertEventCount;
   }
 
   public void setPipeStuckRestartMinIntervalMs(long pipeStuckRestartMinIntervalMs) {
