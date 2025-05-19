@@ -24,9 +24,9 @@
     <parent>
         <groupId>org.apache.iotdb</groupId>
         <artifactId>iotdb-client</artifactId>
-        <version>2.0.3</version>
+        <version>0.1</version>
     </parent>
-    <artifactId>iotdb-jdbc</artifactId>
+    <artifactId>jdbc</artifactId>
     <name>IoTDB: Client: Jdbc</name>
     <description>A jdbc driver for a time series database, IoTDB, which uses TsFile as its storage format on disk.</description>
     <properties>
@@ -38,12 +38,12 @@
         <dependency>
             <groupId>org.apache.iotdb</groupId>
             <artifactId>service-rpc</artifactId>
-            <version>2.0.3</version>
+            <version>0.1</version>
         </dependency>
         <dependency>
             <groupId>org.apache.iotdb</groupId>
-            <artifactId>iotdb-thrift-commons</artifactId>
-            <version>2.0.3</version>
+            <artifactId>thrift-commons</artifactId>
+            <version>0.1</version>
         </dependency>
         <dependency>
             <groupId>org.apache.tsfile</groupId>
@@ -57,8 +57,8 @@
         </dependency>
         <dependency>
             <groupId>org.apache.iotdb</groupId>
-            <artifactId>iotdb-thrift</artifactId>
-            <version>2.0.3</version>
+            <artifactId>thrift</artifactId>
+            <version>0.1</version>
         </dependency>
         <dependency>
             <groupId>org.apache.thrift</groupId>

@@ -24,7 +24,7 @@
     <parent>
         <groupId>org.apache.iotdb</groupId>
         <artifactId>iotdb-parent</artifactId>
-        <version>2.0.3</version>
+        <version>0.1</version>
     </parent>
     <artifactId>iotdb-distribution</artifactId>
     <packaging>pom</packaging>
@@ -32,26 +32,26 @@
     <dependencies>
         <dependency>
             <groupId>org.apache.iotdb</groupId>
-            <artifactId>iotdb-server</artifactId>
-            <version>2.0.3</version>
+            <artifactId>server</artifactId>
+            <version>0.1</version>
             <type>zip</type>
         </dependency>
         <dependency>
             <groupId>org.apache.iotdb</groupId>
-            <artifactId>iotdb-cli</artifactId>
-            <version>2.0.3</version>
+            <artifactId>cli</artifactId>
+            <version>0.1</version>
             <type>zip</type>
         </dependency>
         <dependency>
             <groupId>org.apache.iotdb</groupId>
-            <artifactId>iotdb-confignode</artifactId>
-            <version>2.0.3</version>
+            <artifactId>confignode</artifactId>
+            <version>0.1</version>
             <type>zip</type>
         </dependency>
         <dependency>
             <groupId>org.apache.iotdb</groupId>
             <artifactId>library-udf</artifactId>
-            <version>2.0.3</version>
+            <version>0.1</version>
         </dependency>
     </dependencies>
     <build>
@@ -75,7 +75,7 @@
                                 <descriptor>src/assembly/cli.xml</descriptor>
                                 <descriptor>src/assembly/library-udf.xml</descriptor>
                             </descriptors>
-                            <finalName>apache-iotdb-${project.version}</finalName>
+                            <finalName>hera-${project.version}</finalName>
                         </configuration>
                     </execution>
                 </executions>
@@ -102,7 +102,7 @@
                                 <fileSet>
                                     <directory>${project.build.directory}</directory>
                                     <includes>
-                                        <include>apache-iotdb-${project.version}-all-bin.zip</include>
+                                        <include>hera-${project.version}-all-bin.zip</include>
                                         <include>apache-iotdb-${project.version}-datanode-bin.zip</include>
                                         <include>apache-iotdb-${project.version}-cli-bin.zip</include>
                                         <include>apache-iotdb-${project.version}-confignode-bin.zip</include>
@@ -173,8 +173,8 @@
             <dependencies>
                 <dependency>
                     <groupId>org.apache.iotdb</groupId>
-                    <artifactId>iotdb-ainode</artifactId>
-                    <version>2.0.3</version>
+                    <artifactId>ainode</artifactId>
+                    <version>0.1</version>
                 </dependency>
             </dependencies>
             <build>

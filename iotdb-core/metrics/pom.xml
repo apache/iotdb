@@ -24,9 +24,9 @@
     <parent>
         <groupId>org.apache.iotdb</groupId>
         <artifactId>iotdb-core</artifactId>
-        <version>2.0.3</version>
+        <version>0.1</version>
     </parent>
-    <artifactId>iotdb-metrics</artifactId>
+    <artifactId>metrics</artifactId>
     <packaging>pom</packaging>
     <name>IoTDB: Core: Metrics</name>
     <description>Metrics interfaces for IoTDB</description>

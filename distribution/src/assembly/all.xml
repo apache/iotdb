@@ -25,13 +25,13 @@
         <format>dir</format>
         <format>zip</format>
     </formats>
-    <baseDirectory>apache-iotdb-${project.version}-all-bin</baseDirectory>
+    <baseDirectory>hera-${project.version}-all-bin</baseDirectory>
     <dependencySets>
         <dependencySet>
             <includes>
-                <include>*:iotdb-server:zip:*</include>
-                <include>*:iotdb-cli:zip:*</include>
-                <include>*:iotdb-confignode:zip:*</include>
+                <include>*:server:zip:*</include>
+                <include>*:cli:zip:*</include>
+                <include>*:confignode:zip:*</include>
             </includes>
             <outputDirectory>${file.separator}</outputDirectory>
             <outputFileNameMapping>${artifact.artifactId}.${artifact.extension}</outputFileNameMapping>

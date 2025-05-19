@@ -24,7 +24,7 @@
     <parent>
         <groupId>org.apache.iotdb</groupId>
         <artifactId>iotdb-parent</artifactId>
-        <version>2.0.3</version>
+        <version>0.1</version>
     </parent>
     <artifactId>integration-test</artifactId>
     <name>IoTDB: Integration-Test</name>
@@ -86,48 +86,48 @@
     <dependencies>
         <dependency>
             <groupId>org.apache.iotdb</groupId>
-            <artifactId>iotdb-server</artifactId>
-            <version>2.0.3</version>
+            <artifactId>server</artifactId>
+            <version>0.1</version>
         </dependency>
         <dependency>
             <groupId>org.apache.iotdb</groupId>
-            <artifactId>iotdb-session</artifactId>
-            <version>2.0.3</version>
+            <artifactId>session</artifactId>
+            <version>0.1</version>
         </dependency>
         <dependency>
             <groupId>org.apache.iotdb</groupId>
-            <artifactId>iotdb-jdbc</artifactId>
-            <version>2.0.3</version>
+            <artifactId>jdbc</artifactId>
+            <version>0.1</version>
         </dependency>
         <dependency>
             <groupId>org.apache.iotdb</groupId>
             <artifactId>trigger-api</artifactId>
-            <version>2.0.3</version>
+            <version>0.1</version>
         </dependency>
         <dependency>
             <groupId>org.apache.iotdb</groupId>
             <artifactId>isession</artifactId>
-            <version>2.0.3</version>
+            <version>0.1</version>
         </dependency>
         <dependency>
             <groupId>org.apache.iotdb</groupId>
             <artifactId>service-rpc</artifactId>
-            <version>2.0.3</version>
+            <version>0.1</version>
         </dependency>
         <dependency>
             <groupId>org.apache.iotdb</groupId>
-            <artifactId>iotdb-thrift-confignode</artifactId>
-            <version>2.0.3</version>
+            <artifactId>thrift-confignode</artifactId>
+            <version>0.1</version>
         </dependency>
         <dependency>
             <groupId>org.apache.iotdb</groupId>
             <artifactId>node-commons</artifactId>
-            <version>2.0.3</version>
+            <version>0.1</version>
         </dependency>
         <dependency>
             <groupId>org.apache.iotdb</groupId>
-            <artifactId>iotdb-thrift-commons</artifactId>
-            <version>2.0.3</version>
+            <artifactId>thrift-commons</artifactId>
+            <version>0.1</version>
         </dependency>
         <dependency>
             <groupId>org.apache.tsfile</groupId>
@@ -137,7 +137,7 @@
         <dependency>
             <groupId>org.apache.iotdb</groupId>
             <artifactId>udf-api</artifactId>
-            <version>2.0.3</version>
+            <version>0.1</version>
         </dependency>
         <dependency>
             <groupId>org.apache.iotdb</groupId>
@@ -146,8 +146,8 @@
         </dependency>
         <dependency>
             <groupId>org.apache.iotdb</groupId>
-            <artifactId>iotdb-consensus</artifactId>
-            <version>2.0.3</version>
+            <artifactId>consensus</artifactId>
+            <version>0.1</version>
         </dependency>
         <dependency>
             <groupId>org.slf4j</groupId>
@@ -175,18 +175,18 @@
         </dependency>
         <dependency>
             <groupId>org.apache.iotdb</groupId>
-            <artifactId>iotdb-confignode</artifactId>
-            <version>2.0.3</version>
+            <artifactId>confignode</artifactId>
+            <version>0.1</version>
         </dependency>
         <dependency>
             <groupId>org.apache.iotdb</groupId>
-            <artifactId>iotdb-thrift</artifactId>
-            <version>2.0.3</version>
+            <artifactId>thrift</artifactId>
+            <version>0.1</version>
         </dependency>
         <dependency>
             <groupId>org.apache.iotdb</groupId>
-            <artifactId>iotdb-cli</artifactId>
-            <version>2.0.3</version>
+            <artifactId>cli</artifactId>
+            <version>0.1</version>
         </dependency>
         <dependency>
             <groupId>commons-codec</groupId>
@@ -215,8 +215,8 @@
         </dependency>
         <dependency>
             <groupId>org.apache.iotdb</groupId>
-            <artifactId>iotdb-server</artifactId>
-            <version>2.0.3</version>
+            <artifactId>server</artifactId>
+            <version>0.1</version>
             <type>test-jar</type>
             <scope>test</scope>
         </dependency>

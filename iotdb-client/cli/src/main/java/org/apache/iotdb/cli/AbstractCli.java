@@ -100,7 +100,7 @@ public abstract class AbstractCli {
   static final String SET_FETCH_SIZE = "set fetch_size";
   static final String SHOW_FETCH_SIZE = "show fetch_size";
   private static final String HELP = "help";
-  static final String IOTDB = "IoTDB";
+  static final String IOTDB = "HERA";
   static String cliPrefix = IOTDB;
   static final String SCRIPT_HINT = "./start-cli.sh(start-cli.bat if Windows)";
   static final String QUIT_COMMAND = "quit";
@@ -389,12 +389,11 @@ public abstract class AbstractCli {
         .println(
             (logo != null
                     ? logo
-                    : (" _____       _________  ______   ______    \n"
-                        + "|_   _|     |  _   _  ||_   _ `.|_   _ \\   \n"
-                        + "  | |   .--.|_/ | | \\_|  | | `. \\ | |_) |  \n"
-                        + "  | | / .'`\\ \\  | |      | |  | | |  __'.  \n"
-                        + " _| |_| \\__. | _| |_    _| |_.' /_| |__) | \n"
-                        + "|_____|'.__.' |_____|  |______.'|_______/  "))
+                    : (" _   _ _____ ____      _    \n"
+                        + "| | | | ____|  _ \\    / \\   \n"
+                        + "| |_| |  _| | |_) |  / _ \\  \n"
+                        + "|  _  | |___|  _ <  / ___ \\ \n"
+                        + "|_| |_|_____|_| \\_\\/_/   \\_\\"))
                 + "version "
                 + version
                 + " (Build: "
@@ -406,7 +405,7 @@ public abstract class AbstractCli {
 
   static void echoStarting(CliContext ctx) {
     ctx.getPrinter().println("---------------------");
-    ctx.getPrinter().println("Starting IoTDB Cli");
+    ctx.getPrinter().println("Starting HERA Cli");
     ctx.getPrinter().println("---------------------");
   }
 
