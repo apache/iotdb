@@ -285,6 +285,7 @@ public class ColumnHeaderConstant {
   public static final String PRIVILEGES = "Privileges";
   public static final String COMMENT = "Comment";
   public static final String TABLE_TYPE = "TableType";
+  public static final String NEED_LAST_CACHE = "NeedLastCache";
 
   public static final String VIEW = "View";
   public static final String CREATE_VIEW = "Create View";
@@ -665,7 +666,8 @@ public class ColumnHeaderConstant {
           new ColumnHeader(COLUMN_TTL, TSDataType.TEXT),
           new ColumnHeader(STATUS, TSDataType.TEXT),
           new ColumnHeader(COMMENT, TSDataType.TEXT),
-          new ColumnHeader(TABLE_TYPE, TSDataType.TEXT));
+          new ColumnHeader(TABLE_TYPE, TSDataType.TEXT),
+          new ColumnHeader(NEED_LAST_CACHE, TSDataType.TEXT));
 
   public static final List<ColumnHeader> LIST_USER_OR_ROLE_PRIVILEGES_COLUMN_HEADERS =
       ImmutableList.of(

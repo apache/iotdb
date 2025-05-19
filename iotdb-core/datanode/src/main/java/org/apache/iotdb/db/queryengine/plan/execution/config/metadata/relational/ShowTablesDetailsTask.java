@@ -102,6 +102,13 @@ public class ShowTablesDetailsTask implements IConfigTask {
                               ? TableType.values()[tableInfo.getType()].getName()
                               : TableType.BASE_TABLE.getName(),
                           TSFileConfig.STRING_CHARSET));
+              builder
+                  .getColumnBuilder(5)
+                  .writeBinary(
+                      new Binary(
+                          String.valueOf(
+                              !tableInfo.isSetNeedLastCache() || tableInfo.isNeedLastCache()),
+                          TSFileConfig.STRING_CHARSET));
 
               builder.declarePosition();
             });
