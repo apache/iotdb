@@ -21,10 +21,12 @@ package org.apache.iotdb.db.pipe.agent.task.builder;
 
 import org.apache.iotdb.commons.consensus.index.impl.MinimumProgressIndex;
 import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.pipe.agent.plugin.builtin.BuiltinPipePlugin;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeStaticMeta;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeType;
 import org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant;
+import org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant;
 import org.apache.iotdb.commons.pipe.config.constant.SystemConstant;
 import org.apache.iotdb.db.pipe.agent.task.PipeDataNodeTask;
 import org.apache.iotdb.db.pipe.agent.task.execution.PipeConnectorSubtaskExecutor;
@@ -101,6 +103,7 @@ public class PipeDataNodeTaskBuilder {
     final PipeParameters connectorParameters =
         blendUserAndSystemParameters(pipeStaticMeta.getConnectorParameters());
     checkConflict(extractorParameters, connectorParameters);
+    injectParameters(extractorParameters, connectorParameters);
 
     // We first build the extractor and connector, then build the processor.
     final PipeTaskExtractorStage extractorStage =
@@ -237,6 +240,33 @@ public class PipeDataNodeTaskBuilder {
         LOGGER.warn(
             "PipeDataNodeTaskBuilder: When extractor uses snapshot model, 'realtime-first' set to 'true' may cause prevent premature halt before transfer completion.");
       }
+    }
+  }
+
+  private void injectParameters(
+      final PipeParameters extractorParameters, final PipeParameters connectorParameters) {
+    final boolean isSourceExternal =
+        !BuiltinPipePlugin.BUILTIN_SOURCES.contains(
+            extractorParameters
+                .getStringOrDefault(
+                    Arrays.asList(
+                        PipeExtractorConstant.EXTRACTOR_KEY, PipeExtractorConstant.SOURCE_KEY),
+                    BuiltinPipePlugin.IOTDB_EXTRACTOR.getPipePluginName())
+                .toLowerCase());
+
+    final String connectorPluginName =
+        connectorParameters
+            .getStringOrDefault(
+                Arrays.asList(PipeConnectorConstant.CONNECTOR_KEY, PipeConnectorConstant.SINK_KEY),
+                BuiltinPipePlugin.IOTDB_THRIFT_SINK.getPipePluginName())
+            .toLowerCase();
+    final boolean isWriteBackSink =
+        BuiltinPipePlugin.WRITE_BACK_CONNECTOR.getPipePluginName().equals(connectorPluginName)
+            || BuiltinPipePlugin.WRITE_BACK_SINK.getPipePluginName().equals(connectorPluginName);
+
+    if (isSourceExternal && isWriteBackSink) {
+      connectorParameters.addAttribute(
+          PipeConnectorConstant.CONNECTOR_USE_EVENT_USER_NAME_KEY, Boolean.TRUE.toString());
     }
   }
 }
