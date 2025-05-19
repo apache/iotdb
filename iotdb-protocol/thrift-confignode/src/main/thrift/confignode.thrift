@@ -212,6 +212,7 @@ struct TDatabaseSchema {
     9: optional i32 maxDataRegionGroupNum
     10: optional i64 timePartitionOrigin
     11: optional bool isTableModel
+    12: optional bool needLastCache
 }
 
 // Schema
