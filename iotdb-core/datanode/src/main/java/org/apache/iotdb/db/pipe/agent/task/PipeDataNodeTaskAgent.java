@@ -27,6 +27,7 @@ import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.pipe.agent.task.PipeTask;
 import org.apache.iotdb.commons.pipe.agent.task.PipeTaskAgent;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeMeta;
+import org.apache.iotdb.commons.pipe.agent.task.meta.PipeRuntimeMeta;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeStaticMeta;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeStatus;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
@@ -120,7 +121,9 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
   @Override
   protected Map<Integer, PipeTask> buildPipeTasks(final PipeMeta pipeMetaFromConfigNode)
       throws IllegalPathException {
-    return new PipeDataNodeBuilder(pipeMetaFromConfigNode).build();
+    return pipeMetaFromConfigNode.getStaticMeta().isSourceExternal()
+        ? new PipeDataNodeBuilder(pipeMetaFromConfigNode).buildTasksWithExternalSource()
+        : new PipeDataNodeBuilder(pipeMetaFromConfigNode).buildTasksWithInternalSource();
   }
 
   ////////////////////////// Manage by Pipe Name //////////////////////////
@@ -194,7 +197,12 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
                   consensusGroupId, extractorParameters);
 
       // Advance the extractor parameters parsing logic to avoid creating un-relevant pipeTasks
-      if (needConstructDataRegionTask || needConstructSchemaRegionTask) {
+      if (
+      // For external source
+      PipeRuntimeMeta.isSourceExternal(consensusGroupId)
+          // For internal source
+          || needConstructDataRegionTask
+          || needConstructSchemaRegionTask) {
         final PipeDataNodeTask pipeTask =
             new PipeDataNodeTaskBuilder(pipeStaticMeta, consensusGroupId, pipeTaskMeta).build();
         pipeTask.create();

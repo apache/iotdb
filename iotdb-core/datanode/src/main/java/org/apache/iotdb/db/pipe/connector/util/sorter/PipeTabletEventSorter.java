@@ -23,83 +23,153 @@ import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.BitMap;
 import org.apache.tsfile.write.UnSupportedDataTypeException;
+import org.apache.tsfile.write.record.Tablet;
+import org.apache.tsfile.write.schema.IMeasurementSchema;
 
 import java.time.LocalDate;
 
 public class PipeTabletEventSorter {
 
-  public static Object reorderValueList(
-      final int deduplicatedSize,
+  protected final Tablet tablet;
+
+  protected Integer[] index;
+  protected boolean isSorted = true;
+  protected boolean isDeDuplicated = true;
+  protected int[] deDuplicatedIndex;
+  protected int deDuplicatedSize;
+
+  public PipeTabletEventSorter(final Tablet tablet) {
+    this.tablet = tablet;
+  }
+
+  // Input:
+  // Col: [1, null, 3, 6, null]
+  // Timestamp: [2, 1, 1, 1, 1]
+  // Intermediate:
+  // Index: [1, 2, 3, 4, 0]
+  // SortedTimestamp: [1, 2]
+  // DeduplicateIndex: [3, 4]
+  // Output:
+  // (Used index: [2(3), 4(0)])
+  // Col: [6, 1]
+  protected void sortAndMayDeduplicateValuesAndBitMaps() {
+    int columnIndex = 0;
+    for (int i = 0, size = tablet.getSchemas().size(); i < size; i++) {
+      final IMeasurementSchema schema = tablet.getSchemas().get(i);
+      if (schema != null) {
+        BitMap deDuplicatedBitMap = null;
+        BitMap originalBitMap = null;
+        if (tablet.getBitMaps() != null && tablet.getBitMaps()[columnIndex] != null) {
+          originalBitMap = tablet.getBitMaps()[columnIndex];
+          deDuplicatedBitMap = new BitMap(originalBitMap.getSize());
+        }
+
+        tablet.getValues()[columnIndex] =
+            reorderValueListAndBitMap(
+                tablet.getValues()[columnIndex],
+                schema.getType(),
+                originalBitMap,
+                deDuplicatedBitMap);
+
+        if (tablet.getBitMaps() != null && tablet.getBitMaps()[columnIndex] != null) {
+          tablet.getBitMaps()[columnIndex] = deDuplicatedBitMap;
+        }
+        columnIndex++;
+      }
+    }
+  }
+
+  protected Object reorderValueListAndBitMap(
       final Object valueList,
       final TSDataType dataType,
-      final Integer[] index) {
+      final BitMap originalBitMap,
+      final BitMap deDuplicatedBitMap) {
     switch (dataType) {
       case BOOLEAN:
         final boolean[] boolValues = (boolean[]) valueList;
-        final boolean[] deduplicatedBoolValues = new boolean[boolValues.length];
-        for (int i = 0; i < deduplicatedSize; i++) {
-          deduplicatedBoolValues[i] = boolValues[index[i]];
+        final boolean[] deDuplicatedBoolValues = new boolean[boolValues.length];
+        for (int i = 0; i < deDuplicatedSize; i++) {
+          deDuplicatedBoolValues[i] =
+              boolValues[getLastNonnullIndex(i, originalBitMap, deDuplicatedBitMap)];
         }
-        return deduplicatedBoolValues;
+        return deDuplicatedBoolValues;
       case INT32:
         final int[] intValues = (int[]) valueList;
-        final int[] deduplicatedIntValues = new int[intValues.length];
-        for (int i = 0; i < deduplicatedSize; i++) {
-          deduplicatedIntValues[i] = intValues[index[i]];
+        final int[] deDuplicatedIntValues = new int[intValues.length];
+        for (int i = 0; i < deDuplicatedSize; i++) {
+          deDuplicatedIntValues[i] =
+              intValues[getLastNonnullIndex(i, originalBitMap, deDuplicatedBitMap)];
         }
-        return deduplicatedIntValues;
+        return deDuplicatedIntValues;
       case DATE:
         final LocalDate[] dateValues = (LocalDate[]) valueList;
-        final LocalDate[] deduplicatedDateValues = new LocalDate[dateValues.length];
-        for (int i = 0; i < deduplicatedSize; i++) {
-          deduplicatedDateValues[i] = dateValues[index[i]];
+        final LocalDate[] deDuplicatedDateValues = new LocalDate[dateValues.length];
+        for (int i = 0; i < deDuplicatedSize; i++) {
+          deDuplicatedDateValues[i] =
+              dateValues[getLastNonnullIndex(i, originalBitMap, deDuplicatedBitMap)];
         }
-        return deduplicatedDateValues;
+        return deDuplicatedDateValues;
       case INT64:
       case TIMESTAMP:
         final long[] longValues = (long[]) valueList;
-        final long[] deduplicatedLongValues = new long[longValues.length];
-        for (int i = 0; i < deduplicatedSize; i++) {
-          deduplicatedLongValues[i] = longValues[index[i]];
+        final long[] deDuplicatedLongValues = new long[longValues.length];
+        for (int i = 0; i < deDuplicatedSize; i++) {
+          deDuplicatedLongValues[i] =
+              longValues[getLastNonnullIndex(i, originalBitMap, deDuplicatedBitMap)];
         }
-        return deduplicatedLongValues;
+        return deDuplicatedLongValues;
       case FLOAT:
         final float[] floatValues = (float[]) valueList;
-        final float[] deduplicatedFloatValues = new float[floatValues.length];
-        for (int i = 0; i < deduplicatedSize; i++) {
-          deduplicatedFloatValues[i] = floatValues[index[i]];
+        final float[] deDuplicatedFloatValues = new float[floatValues.length];
+        for (int i = 0; i < deDuplicatedSize; i++) {
+          deDuplicatedFloatValues[i] =
+              floatValues[getLastNonnullIndex(i, originalBitMap, deDuplicatedBitMap)];
         }
-        return deduplicatedFloatValues;
+        return deDuplicatedFloatValues;
       case DOUBLE:
         final double[] doubleValues = (double[]) valueList;
-        final double[] deduplicatedDoubleValues = new double[doubleValues.length];
-        for (int i = 0; i < deduplicatedSize; i++) {
-          deduplicatedDoubleValues[i] = doubleValues[index[i]];
+        final double[] deDuplicatedDoubleValues = new double[doubleValues.length];
+        for (int i = 0; i < deDuplicatedSize; i++) {
+          deDuplicatedDoubleValues[i] =
+              doubleValues[getLastNonnullIndex(i, originalBitMap, deDuplicatedBitMap)];
         }
-        return deduplicatedDoubleValues;
+        return deDuplicatedDoubleValues;
       case TEXT:
       case BLOB:
       case STRING:
         final Binary[] binaryValues = (Binary[]) valueList;
-        final Binary[] deduplicatedBinaryValues = new Binary[binaryValues.length];
-        for (int i = 0; i < deduplicatedSize; i++) {
-          deduplicatedBinaryValues[i] = binaryValues[index[i]];
+        final Binary[] deDuplicatedBinaryValues = new Binary[binaryValues.length];
+        for (int i = 0; i < deDuplicatedSize; i++) {
+          deDuplicatedBinaryValues[i] =
+              binaryValues[getLastNonnullIndex(i, originalBitMap, deDuplicatedBitMap)];
         }
-        return deduplicatedBinaryValues;
+        return deDuplicatedBinaryValues;
       default:
         throw new UnSupportedDataTypeException(
             String.format("Data type %s is not supported.", dataType));
     }
   }
 
-  public static BitMap reorderBitMap(
-      final int deduplicatedSize, final BitMap bitMap, final Integer[] index) {
-    final BitMap deduplicatedBitMap = new BitMap(bitMap.getSize());
-    for (int i = 0; i < deduplicatedSize; i++) {
-      if (bitMap.isMarked(index[i])) {
-        deduplicatedBitMap.mark(i);
+  private int getLastNonnullIndex(
+      final int i, final BitMap originalBitMap, final BitMap deDuplicatedBitMap) {
+    if (deDuplicatedIndex == null) {
+      if (originalBitMap.isMarked(index[i])) {
+        deDuplicatedBitMap.mark(i);
+      }
+      return index[i];
+    }
+    if (originalBitMap == null) {
+      return index[deDuplicatedIndex[i]];
+    }
+    int lastNonnullIndex = deDuplicatedIndex[i];
+    int lastIndex = i > 0 ? deDuplicatedIndex[i - 1] : -1;
+    while (originalBitMap.isMarked(index[lastNonnullIndex])) {
+      --lastNonnullIndex;
+      if (lastNonnullIndex == lastIndex) {
+        deDuplicatedBitMap.mark(i);
+        return index[lastNonnullIndex + 1];
       }
     }
-    return deduplicatedBitMap;
+    return index[lastNonnullIndex];
   }
 }
