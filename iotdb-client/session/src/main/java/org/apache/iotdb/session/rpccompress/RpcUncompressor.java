@@ -32,24 +32,15 @@ public class RpcUncompressor {
   }
 
   public ByteBuffer uncompress(ByteBuffer byteArray) {
-    byte[] bytes;
-    int length = byteArray.remaining();
-
-    if (byteArray.hasArray()) {
-      bytes = byteArray.array();
-      int offset = byteArray.arrayOffset() + byteArray.position();
-      bytes = java.util.Arrays.copyOfRange(bytes, offset, offset + length);
-    } else {
-      bytes = new byte[length];
-      byteArray.get(bytes);
-    }
-    byte[] decompressedBytes = null;
     try {
-      decompressedBytes = unCompressor.uncompress(bytes);
+      int uncompressedLength = unCompressor.getUncompressedLength(byteArray.duplicate());
+      ByteBuffer output = ByteBuffer.allocate(uncompressedLength);
+      unCompressor.uncompress(byteArray.duplicate(), output);
+      output.flip();
+      return output;
     } catch (IOException e) {
-      throw new RuntimeException(e);
+      throw new RuntimeException("Failed to decompress buffer", e);
     }
-    return ByteBuffer.wrap(decompressedBytes);
   }
 
   public int getUncompressedLength(byte[] array, int offset, int length) throws IOException {

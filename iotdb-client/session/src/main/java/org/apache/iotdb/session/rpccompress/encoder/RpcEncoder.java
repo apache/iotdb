@@ -22,7 +22,6 @@ import org.apache.iotdb.session.rpccompress.EncodingTypeNotSupportedException;
 import org.apache.iotdb.session.rpccompress.MetaHead;
 
 import org.apache.tsfile.enums.TSDataType;
-import org.apache.tsfile.file.metadata.enums.CompressionType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.PublicBAOS;
@@ -31,7 +30,6 @@ import org.apache.tsfile.write.schema.IMeasurementSchema;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
-import java.nio.ByteBuffer;
 import java.util.Map;
 
 public class RpcEncoder {
@@ -47,16 +45,11 @@ public class RpcEncoder {
    */
   private final Map<TSDataType, TSEncoding> columnEncodersMap;
 
-  /** Compression type */
-  private final CompressionType compressionType;
-
   /** Store the length of the MetaHead using a 4-byte integer. */
   private final int metaHeadLengthInBytes = 4;
 
-  public RpcEncoder(
-      Map<TSDataType, TSEncoding> columnEncodersMap, CompressionType compressionType) {
+  public RpcEncoder(Map<TSDataType, TSEncoding> columnEncodersMap) {
     this.columnEncodersMap = columnEncodersMap;
-    this.compressionType = compressionType;
     this.metaHeadForValues = new MetaHead();
     this.metaHeadForTimeStamp = new MetaHead();
   }
@@ -67,38 +60,25 @@ public class RpcEncoder {
    * @param tablet data
    * @throws IOException An IO exception occurs
    */
-  public ByteBuffer encodeTimestamps(Tablet tablet) {
-
-    // 1. Get timestamp data
-    long[] timestamps = tablet.getTimestamps();
-    // 2. encoder
+  public ByteArrayOutputStream encodeTimestamps(Tablet tablet) {
+    // 1.encoder
     PublicBAOS publicBAOS = new PublicBAOS();
-    encodeTimeStampColumn(TSDataType.INT64, timestamps, publicBAOS);
-    byte[] encoded = publicBAOS.getBuf();
-    int len = publicBAOS.size();
-    // 3. Serializing MetaHead
-    byte[] metaHeadEncoder = getMetaHeadForTimeStamp().toBytes();
+    ColumnEncoder encoder =
+        createEncoder(
+            TSDataType.INT64, columnEncodersMap.getOrDefault(TSDataType.INT64, TSEncoding.PLAIN));
+    long[] timestamps = tablet.getTimestamps();
+    encoder.encode(timestamps, publicBAOS);
 
-    ByteBuffer timeBuffer =
-        ByteBuffer.allocate(len + metaHeadEncoder.length + metaHeadLengthInBytes);
-    timeBuffer.put(encoded, 0, len);
-    timeBuffer.put(metaHeadEncoder);
-    // 4. metaHead size
-    timeBuffer.putInt(metaHeadEncoder.length);
-    // 5. Adjust the ByteBuffer limit to the actual length of the data written
-    timeBuffer.flip();
-    return timeBuffer;
-  }
-
-  public void encodeTimeStampColumn(
-      TSDataType dataType, long[] timestamps, ByteArrayOutputStream out) {
-    // 1.Get the encoding type
-    TSEncoding encoding = columnEncodersMap.getOrDefault(dataType, TSEncoding.PLAIN);
-    ColumnEncoder encoder = createEncoder(dataType, encoding);
-    // 2.encoder
-    encoder.encode(timestamps, out);
-    // 3.Get ColumnEntry content and add to metaHead
+    // 2.Get ColumnEntry content and add to metaHead
     metaHeadForTimeStamp.addColumnEntry(encoder.getColumnEntry());
+
+    // 3.Serialize metaHead and append it to the output stream
+    byte[] metaHeadEncoder = getMetaHeadForTimeStamp().toBytes();
+    publicBAOS.write(metaHeadEncoder, 0, metaHeadEncoder.length);
+    // 4.Write the length of the serialized metaHead as a 4-byte big-endian integer
+    publicBAOS.write(metaHeadEncoder.length);
+
+    return publicBAOS;
   }
 
   /**
@@ -122,26 +102,21 @@ public class RpcEncoder {
   }
 
   /** Get the value columns from the tablet and encode them into encodedValues */
-  public ByteBuffer encodeValues(Tablet tablet) {
-    // 1. Encode each column
+  public ByteArrayOutputStream encodeValues(Tablet tablet) {
+    // 1.Encode each column
     PublicBAOS out = new PublicBAOS();
     for (int i = 0; i < tablet.getSchemas().size(); i++) {
       IMeasurementSchema schema = tablet.getSchemas().get(i);
       encodeColumn(schema.getType(), tablet, i, out);
     }
 
-    // 2. Serializing MetaHead
+    // 2.Serializing MetaHead and  append it to the output stream
     byte[] metaHeadEncoder = getMetaHead().toBytes();
+    out.write(metaHeadEncoder, 0, metaHeadEncoder.length);
+    // 3.Write the length of the serialized metaHead as a 4-byte big-endian integer
+    out.write(metaHeadEncoder.length);
 
-    ByteBuffer valueBuffer =
-        ByteBuffer.allocate(out.size() + metaHeadEncoder.length + metaHeadLengthInBytes);
-    valueBuffer.put(out.getBuf(), 0, out.size());
-    valueBuffer.put(metaHeadEncoder);
-    // 3. metaHead size
-    valueBuffer.putInt(metaHeadEncoder.length);
-    // 4. Adjust the ByteBuffer limit to the actual length of the data written
-    valueBuffer.flip();
-    return valueBuffer;
+    return out;
   }
 
   public void encodeColumn(

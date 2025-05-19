@@ -2984,6 +2984,7 @@ public class Session implements ISession {
 
     request.setPrefixPath(tablet.getDeviceId());
     request.setIsAligned(isAligned);
+
     if (this.enableRPCCompression) {
       request.setIsCompressed(true);
       for (IMeasurementSchema measurementSchema : tablet.getSchemas()) {
@@ -2993,7 +2994,7 @@ public class Session implements ISession {
         request.addToEncodingTypes(
             this.columnEncodersMap.get(measurementSchema.getType()).ordinal());
       }
-      RpcEncoder rpcEncoder = new RpcEncoder(this.columnEncodersMap, this.compressionType);
+      RpcEncoder rpcEncoder = new RpcEncoder(this.columnEncodersMap);
       RpcCompressor rpcCompressor = new RpcCompressor(this.compressionType);
       request.setTimestamps(rpcCompressor.compress(rpcEncoder.encodeTimestamps(tablet)));
       request.setValues(rpcCompressor.compress(rpcEncoder.encodeValues(tablet)));

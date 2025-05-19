@@ -335,6 +335,7 @@ public class StatementGenerator {
         DEVICE_PATH_CACHE.getPartialPath(insertTabletReq.getPrefixPath()));
     insertStatement.setMeasurements(insertTabletReq.getMeasurements().toArray(new String[0]));
     long[] timestamps;
+    // decode timestamps
     if (insertTabletReq.isIsCompressed()) {
       RpcDecoder rpcDecoder = new RpcDecoder();
       RpcUncompressor rpcUncompressor =
@@ -352,6 +353,7 @@ public class StatementGenerator {
       TimestampPrecisionUtils.checkTimestampPrecision(timestamps[timestamps.length - 1]);
     }
     insertStatement.setTimes(timestamps);
+    // decode values
     if (insertTabletReq.isIsCompressed()) {
       RpcDecoder rpcDecoder = new RpcDecoder();
       RpcUncompressor rpcUncompressor =

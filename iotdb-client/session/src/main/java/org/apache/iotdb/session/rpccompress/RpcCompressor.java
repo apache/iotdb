@@ -21,6 +21,7 @@ package org.apache.iotdb.session.rpccompress;
 import org.apache.tsfile.compress.ICompressor;
 import org.apache.tsfile.file.metadata.enums.CompressionType;
 
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 
@@ -32,32 +33,14 @@ public class RpcCompressor {
     compressor = ICompressor.getCompressor(name);
   }
 
-  public ByteBuffer compress(ByteBuffer input) {
-    byte[] src;
-    int offset, length;
-
-    if (input.hasArray()) {
-      offset = input.arrayOffset() + input.position();
-      length = input.remaining();
-      if (offset == 0 && length == input.array().length) {
-        src = input.array();
-      } else {
-        src = new byte[length];
-        System.arraycopy(input.array(), offset, src, 0, length);
-      }
-    } else {
-      length = input.remaining();
-      src = new byte[length];
-      input.slice().get(src);
-    }
-
-    byte[] compressed = null;
+  public ByteBuffer compress(ByteArrayOutputStream input) {
     try {
-      compressed = compress(src);
+      byte[] data = input.toByteArray();
+      byte[] compressed = compress(data);
+      return ByteBuffer.wrap(compressed);
     } catch (IOException e) {
-      throw new RuntimeException(e);
+      throw new RuntimeException("Compression failed", e);
     }
-    return ByteBuffer.wrap(compressed);
   }
 
   public byte[] compress(byte[] data) throws IOException {
