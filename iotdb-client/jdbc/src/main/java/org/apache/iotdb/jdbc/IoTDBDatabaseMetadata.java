@@ -508,7 +508,9 @@ public class IoTDBDatabaseMetadata extends IoTDBAbstractDatabaseMetadata {
       String res = rs.getString(1);
       String[] splitRes = res.split("\\.");
       for (int i = 0; i < fields.length; i++) {
-        if (i <= 1) {
+        if (i == 0) {
+          valuesInRow.add("");
+        } else if (i == 1) {
           valuesInRow.add(schemaPattern);
         } else if (i == 2) {
           valuesInRow.add(
