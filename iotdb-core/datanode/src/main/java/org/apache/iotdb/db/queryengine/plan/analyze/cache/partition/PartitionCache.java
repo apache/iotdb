@@ -196,7 +196,7 @@ public class PartitionCache {
    * @return database name, return {@code null} if cache miss
    */
   private String getDatabaseName(final IDeviceID deviceID) {
-    for (final String database : database2NeedLastCacheCache) {
+    for (final String database : database2NeedLastCacheCache.keySet()) {
       if (PathUtils.isStartWith(deviceID, database)) {
         return database;
       }
@@ -241,7 +241,7 @@ public class PartitionCache {
         if (databaseSchemaResp.getStatus().getCode()
             == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
           // update all database into cache
-          updateDatabaseCache(databaseSchemaResp.getDatabaseSchemaMap().keySet());
+          updateDatabaseCache(databaseSchemaResp.getDatabaseSchemaMap());
           getDatabaseMap(result, deviceIDs, true);
         }
       }
@@ -261,7 +261,7 @@ public class PartitionCache {
       final TDatabaseSchemaResp databaseSchemaResp = client.getMatchedDatabaseSchemas(req);
       if (databaseSchemaResp.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         // update all database into cache
-        updateDatabaseCache(databaseSchemaResp.getDatabaseSchemaMap().keySet());
+        updateDatabaseCache(databaseSchemaResp.getDatabaseSchemaMap());
       }
     } finally {
       databaseCacheLock.writeLock().unlock();
@@ -510,12 +510,28 @@ public class PartitionCache {
   /**
    * update database cache
    *
-   * @param databaseMap the database names and need last cache that need to update
+   * @param databases the database names
    */
-  public void updateDatabaseCache(final Map<String, Boolean> databaseMap) {
+  public void updateDatabaseCache(final Set<String> databases) {
     databaseCacheLock.writeLock().lock();
     try {
-      database2NeedLastCacheCache.putAll(databaseMap);
+      databases.forEach(database -> database2NeedLastCacheCache.put(database, true));
+    } finally {
+      databaseCacheLock.writeLock().unlock();
+    }
+  }
+
+  /**
+   * update database cache
+   *
+   * @param databaseMap the database names and need last cache that need to update
+   */
+  public void updateDatabaseCache(final Map<String, TDatabaseSchema> databaseMap) {
+    databaseCacheLock.writeLock().lock();
+    try {
+      databaseMap.forEach(
+          (database, schema) ->
+              database2NeedLastCacheCache.put(database, schema.isNeedLastCache()));
     } finally {
       databaseCacheLock.writeLock().unlock();
     }

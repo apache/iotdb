@@ -44,8 +44,10 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
@@ -60,7 +62,7 @@ public class PartitionCacheTest {
       SeriesPartitionExecutor.getSeriesPartitionExecutor(
           config.getSeriesPartitionExecutorClass(), config.getSeriesPartitionSlotNum());
 
-  private static final Map<String, Boolean> database2NeedLastCache = new HashMap<>();
+  private static final Set<String> databases = new HashSet<>();
   private static final Map<String, Map<TSeriesPartitionSlot, TConsensusGroupId>>
       schemaPartitionTable = new HashMap<>();
   private static final Map<
@@ -83,7 +85,7 @@ public class PartitionCacheTest {
         storageGroupNumber++) {
       // init each database
       String storageGroupName = getDatabaseName(storageGroupNumber);
-      database2NeedLastCache.put(storageGroupName, true);
+      databases.add(storageGroupName);
       if (!schemaPartitionTable.containsKey(storageGroupName)) {
         schemaPartitionTable.put(storageGroupName, new HashMap<>());
       }
@@ -146,7 +148,7 @@ public class PartitionCacheTest {
   @Before
   public void setUp() throws Exception {
     partitionCache = new PartitionCache();
-    partitionCache.updateDatabaseCache(database2NeedLastCache);
+    partitionCache.updateDatabaseCache(databases);
     partitionCache.updateSchemaPartitionCache(schemaPartitionTable);
     partitionCache.updateDataPartitionCache(dataPartitionTable);
     partitionCache.updateGroupIdToReplicaSetMap(100, consensusGroupIdToRegionReplicaSet);
