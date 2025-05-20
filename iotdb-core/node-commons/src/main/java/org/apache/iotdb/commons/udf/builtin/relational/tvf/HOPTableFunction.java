@@ -140,13 +140,13 @@ public class HOPTableFunction implements TableFunction {
 
     private final long slide;
     private final long size;
-    private final long start;
+    private final long origin;
     private long curIndex = 0;
 
     public HOPDataProcessor(long startTime, long slide, long size) {
       this.slide = slide;
       this.size = size;
-      this.start = startTime;
+      this.origin = startTime;
     }
 
     @Override
@@ -157,12 +157,14 @@ public class HOPTableFunction implements TableFunction {
       // find the first windows that satisfy the condition: start + n*slide <= time < start +
       // n*slide + size
       long timeValue = input.getLong(0);
-      long window_start = (timeValue - start - size + slide) / slide * slide;
-      while (window_start <= timeValue && window_start + size > timeValue) {
-        properColumnBuilders.get(0).writeLong(window_start);
-        properColumnBuilders.get(1).writeLong(window_start + size);
-        passThroughIndexBuilder.writeLong(curIndex);
-        window_start += slide;
+      if (timeValue >= origin) {
+        long window_start = origin + (timeValue - origin - size + slide) / slide * slide;
+        while (window_start <= timeValue && window_start + size > timeValue) {
+          properColumnBuilders.get(0).writeLong(window_start);
+          properColumnBuilders.get(1).writeLong(window_start + size);
+          passThroughIndexBuilder.writeLong(curIndex);
+          window_start += slide;
+        }
       }
       curIndex++;
     }

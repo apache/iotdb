@@ -94,6 +94,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.metadata.region.MigrateReg
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.region.ReconstructRegionStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.region.RemoveRegionStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.subscription.CreateTopicStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.subscription.DropSubscriptionStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.subscription.DropTopicStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.subscription.ShowSubscriptionsStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.subscription.ShowTopicsStatement;
@@ -562,6 +563,10 @@ public abstract class StatementVisitor<R, C> {
   public R visitShowSubscriptions(
       ShowSubscriptionsStatement showSubscriptionsStatement, C context) {
     return visitStatement(showSubscriptionsStatement, context);
+  }
+
+  public R visitDropSubscription(DropSubscriptionStatement dropSubscriptionStatement, C context) {
+    return visitStatement(dropSubscriptionStatement, context);
   }
 
   public R visitGetRegionId(GetRegionIdStatement getRegionIdStatement, C context) {

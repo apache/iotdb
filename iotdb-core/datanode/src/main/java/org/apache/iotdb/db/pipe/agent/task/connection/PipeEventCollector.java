@@ -150,7 +150,7 @@ public class PipeEventCollector implements EventCollector {
     }
   }
 
-  private boolean canSkipParsing4TsFileEvent(final PipeTsFileInsertionEvent sourceEvent) {
+  public static boolean canSkipParsing4TsFileEvent(final PipeTsFileInsertionEvent sourceEvent) {
     return !sourceEvent.shouldParseTimeOrPattern()
         || (sourceEvent.isTableModelEvent()
             && (sourceEvent.getTablePattern() == null
