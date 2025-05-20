@@ -2949,6 +2949,9 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
             hitCachedResults);
 
     ((DataDriverContext) context.getDriverContext()).addSourceOperator(lastQueryOperator);
+    parameter
+        .getOperatorContext()
+        .setOperatorType(LastQueryAggTableScanOperator.class.getSimpleName());
     return lastQueryOperator;
   }
 
