@@ -130,6 +130,29 @@ public class IoTDBWindowTVFIT {
         expectedHeader,
         retArray,
         DATABASE_NAME);
+    expectedHeader = new String[] {"window_start", "window_end", "stock_id", "sum"};
+    retArray =
+        new String[] {
+          "2021-01-01T09:07:00.000Z,2021-01-01T09:08:00.000Z,AAPL,103.0,",
+          "2021-01-01T09:09:00.000Z,2021-01-01T09:10:00.000Z,AAPL,102.0,",
+          "2021-01-01T09:07:00.000Z,2021-01-01T09:08:00.000Z,TESL,202.0,",
+          "2021-01-01T09:15:00.000Z,2021-01-01T09:16:00.000Z,TESL,195.0,",
+        };
+    tableResultSetEqualTest(
+        "SELECT window_start, window_end, stock_id, sum(price) as sum FROM HOP(DATA => bid, TIMECOL => 'time', SLIDE => 1m, SIZE => 1m, ORIGIN => 2021-01-01T09:07:00) GROUP BY window_start, window_end, stock_id ORDER BY stock_id, window_start",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+    retArray =
+        new String[] {
+          "2021-01-01T09:07:00.000Z,2021-01-01T09:08:00.000Z,AAPL,103.0,",
+          "2021-01-01T09:07:00.000Z,2021-01-01T09:08:00.000Z,TESL,202.0,",
+        };
+    tableResultSetEqualTest(
+        "SELECT window_start, window_end, stock_id, sum(price) as sum FROM HOP(DATA => bid, TIMECOL => 'time', SLIDE => 1h, SIZE => 1m, ORIGIN => 2021-01-01T09:07:00) GROUP BY window_start, window_end, stock_id ORDER BY stock_id, window_start",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
     tableAssertTestFail(
         "SELECT * FROM HOP(DATA => bid, TIMECOL => 'time', SLIDE => -300000, SIZE => 600000) ORDER BY stock_id, time",
         "Invalid scalar argument SLIDE, should be a positive value",
@@ -166,7 +189,7 @@ public class IoTDBWindowTVFIT {
           "2021-01-01T09:15:00.000Z,2021-01-01T09:15:00.000Z,TESL,195.0,",
         };
     tableResultSetEqualTest(
-        "SELECT window_start, window_end, stock_id, sum(price) as sum FROM SESSION(DATA => bid PARTITION BY stock_id ORDER BY time, TIMECOL => 'time', GAP => 2m) GROUP BY window_start, window_end, stock_id ORDER BY stock_id, window_start",
+        "SELECT window_start, window_end, stock_id, sum(price) as sum FROM SESSION(DATA => bid PARTITION BY stock_id ORDER BY time, GAP => 2m) GROUP BY window_start, window_end, stock_id ORDER BY stock_id, window_start",
         expectedHeader,
         retArray,
         DATABASE_NAME);
@@ -256,6 +279,19 @@ public class IoTDBWindowTVFIT {
         retArray,
         DATABASE_NAME);
 
+    // TUMBLE (10m) + origin
+    expectedHeader = new String[] {"window_start", "window_end", "time", "stock_id", "price", "s1"};
+    retArray =
+        new String[] {
+          "2021-01-01T09:08:00.000Z,2021-01-01T09:18:00.000Z,2021-01-01T09:09:00.000Z,AAPL,102.0,101.0,",
+          "2021-01-01T09:08:00.000Z,2021-01-01T09:18:00.000Z,2021-01-01T09:15:00.000Z,TESL,195.0,332.0,",
+        };
+    tableResultSetEqualTest(
+        "SELECT * FROM TUMBLE(DATA => bid, TIMECOL => 'time', SIZE => 10m, ORIGIN => 2021-01-01T09:08:00) ORDER BY stock_id, time",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+
     // TUMBLE (10m) + GROUP BY
     expectedHeader = new String[] {"window_start", "window_end", "stock_id", "sum"};
     retArray =
@@ -305,6 +341,25 @@ public class IoTDBWindowTVFIT {
         };
     tableResultSetEqualTest(
         "SELECT * FROM CUMULATE(DATA => bid, TIMECOL => 'time', STEP => 6m, SIZE => 12m) ORDER BY stock_id, time",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+
+    expectedHeader = new String[] {"window_start", "window_end", "time", "stock_id", "price", "s1"};
+    retArray =
+        new String[] {
+          "2021-01-01T09:06:00.000Z,2021-01-01T09:12:00.000Z,2021-01-01T09:07:00.000Z,AAPL,103.0,101.0,",
+          "2021-01-01T09:06:00.000Z,2021-01-01T09:18:00.000Z,2021-01-01T09:07:00.000Z,AAPL,103.0,101.0,",
+          "2021-01-01T09:06:00.000Z,2021-01-01T09:12:00.000Z,2021-01-01T09:09:00.000Z,AAPL,102.0,101.0,",
+          "2021-01-01T09:06:00.000Z,2021-01-01T09:18:00.000Z,2021-01-01T09:09:00.000Z,AAPL,102.0,101.0,",
+          "2021-01-01T09:06:00.000Z,2021-01-01T09:12:00.000Z,2021-01-01T09:06:00.000Z,TESL,200.0,102.0,",
+          "2021-01-01T09:06:00.000Z,2021-01-01T09:18:00.000Z,2021-01-01T09:06:00.000Z,TESL,200.0,102.0,",
+          "2021-01-01T09:06:00.000Z,2021-01-01T09:12:00.000Z,2021-01-01T09:07:00.000Z,TESL,202.0,202.0,",
+          "2021-01-01T09:06:00.000Z,2021-01-01T09:18:00.000Z,2021-01-01T09:07:00.000Z,TESL,202.0,202.0,",
+          "2021-01-01T09:06:00.000Z,2021-01-01T09:18:00.000Z,2021-01-01T09:15:00.000Z,TESL,195.0,332.0,",
+        };
+    tableResultSetEqualTest(
+        "SELECT * FROM CUMULATE(DATA => bid, TIMECOL => 'time', STEP => 6m, SIZE => 12m, ORIGIN => 2021-01-01T09:06:00) ORDER BY stock_id, time",
         expectedHeader,
         retArray,
         DATABASE_NAME);

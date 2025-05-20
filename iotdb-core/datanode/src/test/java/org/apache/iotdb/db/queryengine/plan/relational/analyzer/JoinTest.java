@@ -596,6 +596,22 @@ public class JoinTest {
                     builder.left(sort(tableScan1)).right(sort(tableScan2)).ignoreEquiCriteria())));
   }
 
+  @Test
+  public void aggregationTableScanWithJoinTest() {
+    PlanTester planTester = new PlanTester();
+    sql =
+        "select * from ("
+            + "select date_bin(1ms,time) as date,count(*)from table1 where tag1='Beijing' and tag2='A1' group by date_bin(1ms,time)) t0 "
+            + "join ("
+            + "select date_bin(1ms,time) as date,count(*)from table1 where tag1='Beijing' and tag2='A1' group by date_bin(1ms,time)) t1 "
+            + "on t0.date = t1.date";
+    logicalQueryPlan = planTester.createPlan(sql);
+    // the sort node has been eliminated
+    assertPlan(planTester.getFragmentPlan(1), aggregationTableScan());
+    // the sort node has been eliminated
+    assertPlan(planTester.getFragmentPlan(2), aggregationTableScan());
+  }
+
   @Ignore
   @Test
   public void otherInnerJoinTests() {

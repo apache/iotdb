@@ -341,6 +341,7 @@ import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.TreeMap;
@@ -1956,7 +1957,10 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
     final SettableFuture<ConfigTaskResult> future = SettableFuture.create();
 
     // Verify that Pipe is disabled if TSFile encryption is enabled
-    if (TSFileDescriptor.getInstance().getConfig().getEncryptFlag()) {
+    if (!Objects.equals(TSFileDescriptor.getInstance().getConfig().getEncryptType(), "UNENCRYPTED")
+        && !Objects.equals(
+            TSFileDescriptor.getInstance().getConfig().getEncryptType(),
+            "org.apache.tsfile.encrypt.UNENCRYPTED")) {
       future.setException(
           new IoTDBException(
               String.format(

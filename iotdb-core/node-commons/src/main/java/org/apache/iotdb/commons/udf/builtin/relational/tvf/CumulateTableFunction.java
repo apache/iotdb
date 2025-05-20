@@ -146,13 +146,13 @@ public class CumulateTableFunction implements TableFunction {
 
     private final long step;
     private final long size;
-    private final long start;
+    private final long origin;
     private long curIndex = 0;
 
     public CumulateDataProcessor(long startTime, long step, long size) {
       this.step = step;
       this.size = size;
-      this.start = startTime;
+      this.origin = startTime;
     }
 
     @Override
@@ -162,13 +162,15 @@ public class CumulateTableFunction implements TableFunction {
         ColumnBuilder passThroughIndexBuilder) {
       // find the first windows
       long timeValue = input.getLong(0);
-      long window_start = (timeValue - start) / size * size;
-      for (long steps = (timeValue - window_start + step) / step * step;
-          steps <= size;
-          steps += step) {
-        properColumnBuilders.get(0).writeLong(window_start);
-        properColumnBuilders.get(1).writeLong(window_start + steps);
-        passThroughIndexBuilder.writeLong(curIndex);
+      if (timeValue >= origin) {
+        long windowStart = origin + (timeValue - origin) / size * size;
+        for (long steps = (timeValue - windowStart + step) / step * step;
+            steps <= size;
+            steps += step) {
+          properColumnBuilders.get(0).writeLong(windowStart);
+          properColumnBuilders.get(1).writeLong(windowStart + steps);
+          passThroughIndexBuilder.writeLong(curIndex);
+        }
       }
       curIndex++;
     }

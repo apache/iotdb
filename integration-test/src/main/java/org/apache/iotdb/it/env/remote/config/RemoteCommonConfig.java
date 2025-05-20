@@ -55,11 +55,6 @@ public class RemoteCommonConfig implements CommonConfig {
   }
 
   @Override
-  public CommonConfig setEncryptFlag(boolean encryptFlag) {
-    return this;
-  }
-
-  @Override
   public CommonConfig setEncryptType(String encryptType) {
     return this;
   }
