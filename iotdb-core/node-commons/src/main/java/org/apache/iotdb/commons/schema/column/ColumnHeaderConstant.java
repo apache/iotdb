@@ -214,6 +214,7 @@ public class ColumnHeaderConstant {
   public static final String TIME_PARTITION_INTERVAL_TABLE_MODEL = "time_partition_interval";
   public static final String SCHEMA_REGION_GROUP_NUM_TABLE_MODEL = "schema_region_group_num";
   public static final String DATA_REGION_GROUP_NUM_TABLE_MODEL = "data_region_group_num";
+  public static final String NEED_LAST_CACHE_TABLE_MODEL = "need_last_cache";
 
   public static final String REGION_ID_TABLE_MODEL = "region_id";
   public static final String DATANODE_ID_TABLE_MODEL = "datanode_id";
@@ -358,7 +359,8 @@ public class ColumnHeaderConstant {
           new ColumnHeader(MAX_SCHEMA_REGION_GROUP_NUM, TSDataType.INT32),
           new ColumnHeader(DATA_REGION_GROUP_NUM, TSDataType.INT32),
           new ColumnHeader(MIN_DATA_REGION_GROUP_NUM, TSDataType.INT32),
-          new ColumnHeader(MAX_DATA_REGION_GROUP_NUM, TSDataType.INT32));
+          new ColumnHeader(MAX_DATA_REGION_GROUP_NUM, TSDataType.INT32),
+          new ColumnHeader(NEED_LAST_CACHE, TSDataType.BOOLEAN));
 
   public static final List<ColumnHeader> showChildPathsColumnHeaders =
       ImmutableList.of(

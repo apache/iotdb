@@ -90,6 +90,9 @@ public class InformationSchema {
     databaseTable.addColumnSchema(
         new AttributeColumnSchema(
             ColumnHeaderConstant.DATA_REGION_GROUP_NUM_TABLE_MODEL, TSDataType.INT32));
+    databaseTable.addColumnSchema(
+        new AttributeColumnSchema(
+            ColumnHeaderConstant.NEED_LAST_CACHE_TABLE_MODEL, TSDataType.BOOLEAN));
     databaseTable.removeColumnSchema(TsTable.TIME_COLUMN_NAME);
     schemaTables.put(DATABASES, databaseTable);
 
@@ -110,6 +113,9 @@ public class InformationSchema {
             ColumnHeaderConstant.COMMENT.toLowerCase(Locale.ENGLISH), TSDataType.STRING));
     tableTable.addColumnSchema(
         new AttributeColumnSchema(ColumnHeaderConstant.TABLE_TYPE_TABLE_MODEL, TSDataType.STRING));
+    tableTable.addColumnSchema(
+        new AttributeColumnSchema(
+            ColumnHeaderConstant.NEED_LAST_CACHE_TABLE_MODEL, TSDataType.BOOLEAN));
     tableTable.removeColumnSchema(TsTable.TIME_COLUMN_NAME);
     schemaTables.put(TABLES, tableTable);
 

@@ -82,6 +82,7 @@ public class InformationSchemaUtils {
     if (details) {
       builder.getColumnBuilder(5).appendNull();
       builder.getColumnBuilder(6).appendNull();
+      builder.getColumnBuilder(7).writeBoolean(false);
     }
     builder.declarePosition();
   }
