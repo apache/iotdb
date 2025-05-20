@@ -2779,6 +2779,23 @@ public class IoTDBMultiTAGsWithAttributesTableIT {
         DATABASE_NAME);
   }
 
+  @Test
+  public void aggregationTableScanWithJoinTest() {
+    expectedHeader = new String[] {"date", "_col1", "date", "_col3"};
+    retArray = new String[] {"1970-01-01T00:00:00.000Z,2,1970-01-01T00:00:00.000Z,2,"};
+    // Join may rename the 'time' column, so we need to ensure the correctness of
+    // AggregationTableScan in this case
+    tableResultSetEqualTest(
+        "select * from ("
+            + "select date_bin(1ms,time) as date,count(*)from table0 group by date_bin(1ms,time)) t0 "
+            + "join ("
+            + "select date_bin(1ms,time) as date,count(*)from table1 where time=0 group by date_bin(1ms,time)) t1 "
+            + "on t0.date = t1.date",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+  }
+
   public static void repeatTest(
       String sql, String[] expectedHeader, String[] retArray, String dbName, int repeatTimes) {
     for (int i = 0; i < repeatTimes; i++) {
