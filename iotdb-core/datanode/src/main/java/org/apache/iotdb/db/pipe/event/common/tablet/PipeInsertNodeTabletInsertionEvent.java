@@ -202,7 +202,7 @@ public class PipeInsertNodeTabletInsertionEvent extends PipeInsertionEvent
       PipeDataNodeResourceManager.wal().pin(walEntryHandler);
       if (Objects.nonNull(pipeName)) {
         PipeDataNodeRemainingEventAndTimeMetrics.getInstance()
-            .increaseInsertEventCount(pipeName, creationTime);
+            .increaseInsertNodeEventCount(pipeName, creationTime);
         PipeDataNodeAgent.task().addFloatingMemoryUsageInByte(pipeName, ramBytesUsed());
       }
       return true;

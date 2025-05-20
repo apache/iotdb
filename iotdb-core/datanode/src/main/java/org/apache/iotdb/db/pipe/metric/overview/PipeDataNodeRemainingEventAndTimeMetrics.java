@@ -160,7 +160,7 @@ public class PipeDataNodeRemainingEventAndTimeMetrics implements IMetricSet {
     }
   }
 
-  public void increaseInsertEventCount(final String pipeName, final long creationTime) {
+  public void increaseInsertNodeEventCount(final String pipeName, final long creationTime) {
     remainingEventAndTimeOperatorMap
         .computeIfAbsent(
             pipeName + "_" + creationTime,
