@@ -142,6 +142,39 @@ public class PipeRawTabletInsertionEvent extends PipeInsertionEvent
         Long.MAX_VALUE);
   }
 
+  public PipeRawTabletInsertionEvent(
+      final Boolean isTableModelEvent,
+      final String databaseName,
+      final String tableModelDataBaseName,
+      final String treeModelDataBaseName,
+      final Tablet tablet,
+      final boolean isAligned,
+      final String pipeName,
+      final long creationTime,
+      final PipeTaskMeta pipeTaskMeta,
+      final EnrichedEvent sourceEvent,
+      final boolean needToReport,
+      final String userName) {
+    this(
+        isTableModelEvent,
+        databaseName,
+        tableModelDataBaseName,
+        treeModelDataBaseName,
+        tablet,
+        isAligned,
+        sourceEvent,
+        needToReport,
+        pipeName,
+        creationTime,
+        pipeTaskMeta,
+        null,
+        null,
+        userName,
+        true,
+        Long.MIN_VALUE,
+        Long.MAX_VALUE);
+  }
+
   @TestOnly
   public PipeRawTabletInsertionEvent(final Tablet tablet, final boolean isAligned) {
     this(
@@ -310,6 +343,11 @@ public class PipeRawTabletInsertionEvent extends PipeInsertionEvent
 
   public void markAsNeedToReport() {
     this.needToReport = true;
+  }
+
+  // This getter is reserved for user-defined plugins
+  public boolean isNeedToReport() {
+    return needToReport;
   }
 
   public String getDeviceId() {

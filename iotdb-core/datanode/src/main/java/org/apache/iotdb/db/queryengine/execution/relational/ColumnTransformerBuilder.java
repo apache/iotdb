@@ -20,7 +20,6 @@
 package org.apache.iotdb.db.queryengine.execution.relational;
 
 import org.apache.iotdb.commons.udf.builtin.relational.TableBuiltinScalarFunction;
-import org.apache.iotdb.commons.udf.utils.TableUDFUtils;
 import org.apache.iotdb.commons.udf.utils.UDFDataTypeTransformer;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.sql.SemanticException;
@@ -71,7 +70,9 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Trim;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.WhenClause;
 import org.apache.iotdb.db.queryengine.plan.relational.type.InternalTypeManager;
 import org.apache.iotdb.db.queryengine.plan.relational.type.TypeNotFoundException;
+import org.apache.iotdb.db.queryengine.plan.udf.TableUDFUtils;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.ColumnTransformer;
+import org.apache.iotdb.db.queryengine.transformation.dag.column.FailFunctionColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.TableCaseWhenThenColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.binary.ArithmeticColumnTransformerApi;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.binary.CompareEqualToColumnTransformer;
@@ -187,10 +188,12 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+import static com.google.common.base.Preconditions.checkArgument;
 import static org.apache.iotdb.db.queryengine.plan.expression.unary.LikeExpression.getEscapeCharacter;
 import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.predicate.PredicatePushIntoMetadataChecker.isStringLiteral;
 import static org.apache.iotdb.db.queryengine.plan.relational.type.InternalTypeManager.getTSDataType;
 import static org.apache.iotdb.db.queryengine.plan.relational.type.TypeSignatureTranslator.toTypeSignature;
+import static org.apache.iotdb.db.queryengine.transformation.dag.column.FailFunctionColumnTransformer.FAIL_FUNCTION_NAME;
 import static org.apache.tsfile.read.common.type.BlobType.BLOB;
 import static org.apache.tsfile.read.common.type.BooleanType.BOOLEAN;
 import static org.apache.tsfile.read.common.type.DoubleType.DOUBLE;
@@ -205,7 +208,7 @@ public class ColumnTransformerBuilder
 
   @Override
   public ColumnTransformer visitExpression(Expression expression, Context context) {
-    throw new IllegalArgumentException(
+    throw new SemanticException(
         String.format(UNSUPPORTED_EXPRESSION, expression.getClass().getSimpleName()));
   }
 
@@ -978,6 +981,10 @@ public class ColumnTransformerBuilder
       }
       return new FormatColumnTransformer(
           STRING, columnTransformers, context.sessionInfo.getZoneId());
+    } else if (FAIL_FUNCTION_NAME.equalsIgnoreCase(functionName)) {
+      checkArgument(children.size() == 1 && children.get(0) instanceof StringLiteral);
+      return new FailFunctionColumnTransformer(
+          STRING, ((StringLiteral) children.get(0)).getValue());
     } else if (TableBuiltinScalarFunction.GREATEST
         .getFunctionName()
         .equalsIgnoreCase(functionName)) {

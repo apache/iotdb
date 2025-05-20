@@ -114,6 +114,12 @@ public abstract class IoTDBAbstractDatabaseMetadata implements DatabaseMetaData 
   private static final String PSEUDO_COLUMN = "PSEUDO_COLUMN";
   private static final String RADIX = "RADIX";
   protected static final String REMARKS = "REMARKS";
+  protected static final String COLUMN_DEF = "COLUMN_DEF";
+  protected static final String SCOPE_CATALOG = "SCOPE_CATALOG";
+  protected static final String SCOPE_SCHEMA = "SCOPE_SCHEMA";
+  protected static final String SCOPE_TABLE = "SCOPE_TABLE";
+  protected static final String SOURCE_DATA_TYPE = "SOURCE_DATA_TYPE";
+  protected static final String IS_GENERATEDCOLUMN = "IS_GENERATEDCOLUMN";
   private static final String SCALE = "SCALE";
   private static final String SCOPE = "SCOPE";
   private static final String SPECIFIC_NAME = "SPECIFIC_NAME";
@@ -129,7 +135,7 @@ public abstract class IoTDBAbstractDatabaseMetadata implements DatabaseMetaData 
   private static final String UPDATE_RULE = "UPDATE_RULE";
 
   private static final String SHOW_FUNCTIONS = "show functions";
-  private static final String SHOW_DATABASES_SQL = "SHOW DATABASES ";
+  protected static final String SHOW_DATABASES_SQL = "SHOW DATABASES ";
 
   private static TsBlockSerde serde = new TsBlockSerde();
 
@@ -849,10 +855,7 @@ public abstract class IoTDBAbstractDatabaseMetadata implements DatabaseMetaData 
     return true;
   }
 
-  @Override
-  public String getSchemaTerm() throws SQLException {
-    return "database";
-  }
+  public abstract String getSchemaTerm() throws SQLException;
 
   @Override
   public String getProcedureTerm() throws SQLException {
@@ -1281,9 +1284,10 @@ public abstract class IoTDBAbstractDatabaseMetadata implements DatabaseMetaData 
     }
 
     while (rs.next()) {
+      String database = rs.getString(1);
       List<Object> valueInRow = new ArrayList<>();
       for (int i = 0; i < fields.length; i++) {
-        valueInRow.add(rs.getString(1));
+        valueInRow.add(database);
       }
       valuesList.add(valueInRow);
     }
@@ -2565,10 +2569,10 @@ public abstract class IoTDBAbstractDatabaseMetadata implements DatabaseMetaData 
       columnNameIndex.put(fields[i].getName(), i);
     }
     while (rs.next()) {
+      String database = rs.getString("database");
       List<Object> valueInRow = new ArrayList<>();
-      for (int i = 0; i < fields.length; i++) {
-        valueInRow.add(rs.getString(1));
-      }
+      valueInRow.add(database);
+      valueInRow.add("");
       valuesList.add(valueInRow);
     }
 

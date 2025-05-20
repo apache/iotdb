@@ -97,7 +97,7 @@ public class PipeConsensusSyncConnector extends IoTDBConnector {
     this.consensusGroupId = consensusGroupId;
     this.thisDataNodeId = thisDataNodeId;
     this.syncRetryClientManager =
-        PipeConsensusClientMgrContainer.getInstance().newSyncClientManager();
+        PipeConsensusClientMgrContainer.getInstance().getGlobalSyncClientManager();
     this.pipeConsensusConnectorMetrics = pipeConsensusConnectorMetrics;
   }
 
@@ -248,6 +248,7 @@ public class PipeConsensusSyncConnector extends IoTDBConnector {
     final TCommitId tCommitId =
         new TCommitId(
             pipeDeleteDataNodeEvent.getReplicateIndexForIoTV2(),
+            pipeDeleteDataNodeEvent.getCommitterKey().getRestartTimes(),
             pipeDeleteDataNodeEvent.getRebootTimes());
     final TConsensusGroupId tConsensusGroupId =
         new TConsensusGroupId(TConsensusGroupType.DataRegion, consensusGroupId);
@@ -317,6 +318,7 @@ public class PipeConsensusSyncConnector extends IoTDBConnector {
     final TCommitId tCommitId =
         new TCommitId(
             pipeInsertNodeTabletInsertionEvent.getReplicateIndexForIoTV2(),
+            pipeInsertNodeTabletInsertionEvent.getCommitterKey().getRestartTimes(),
             pipeInsertNodeTabletInsertionEvent.getRebootTimes());
     final TConsensusGroupId tConsensusGroupId =
         new TConsensusGroupId(TConsensusGroupType.DataRegion, consensusGroupId);
@@ -376,6 +378,7 @@ public class PipeConsensusSyncConnector extends IoTDBConnector {
       final TCommitId tCommitId =
           new TCommitId(
               pipeTsFileInsertionEvent.getReplicateIndexForIoTV2(),
+              pipeTsFileInsertionEvent.getCommitterKey().getRestartTimes(),
               pipeTsFileInsertionEvent.getRebootTimes());
       final TConsensusGroupId tConsensusGroupId =
           new TConsensusGroupId(TConsensusGroupType.DataRegion, consensusGroupId);
@@ -521,9 +524,6 @@ public class PipeConsensusSyncConnector extends IoTDBConnector {
   @Override
   public synchronized void close() {
     super.close();
-    if (syncRetryClientManager != null) {
-      syncRetryClientManager.close();
-    }
 
     if (tabletBatchBuilder != null) {
       tabletBatchBuilder.close();

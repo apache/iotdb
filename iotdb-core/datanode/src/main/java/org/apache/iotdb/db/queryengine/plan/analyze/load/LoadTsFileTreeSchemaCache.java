@@ -29,7 +29,7 @@ import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFil
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.FileTimeIndex;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.ITimeIndex;
-import org.apache.iotdb.db.storageengine.load.memory.LoadTsFileAnalyzeSchemaMemoryBlock;
+import org.apache.iotdb.db.storageengine.load.memory.LoadTsFileMemoryBlock;
 import org.apache.iotdb.db.storageengine.load.memory.LoadTsFileMemoryManager;
 import org.apache.iotdb.db.utils.ModificationUtils;
 
@@ -70,7 +70,7 @@ public class LoadTsFileTreeSchemaCache {
     FLUSH_ALIGNED_CACHE_MEMORY_SIZE_IN_BYTES = ANALYZE_SCHEMA_MEMORY_SIZE_IN_BYTES >> 1;
   }
 
-  private final LoadTsFileAnalyzeSchemaMemoryBlock block;
+  private final LoadTsFileMemoryBlock block;
 
   private Map<IDeviceID, Set<MeasurementSchema>> currentBatchDevice2TimeSeriesSchemas;
   private Map<IDeviceID, Boolean> tsFileDevice2IsAligned;
@@ -90,7 +90,7 @@ public class LoadTsFileTreeSchemaCache {
   public LoadTsFileTreeSchemaCache() throws LoadRuntimeOutOfMemoryException {
     this.block =
         LoadTsFileMemoryManager.getInstance()
-            .allocateAnalyzeSchemaMemoryBlock(ANALYZE_SCHEMA_MEMORY_SIZE_IN_BYTES);
+            .allocateMemoryBlock(ANALYZE_SCHEMA_MEMORY_SIZE_IN_BYTES);
     this.currentBatchDevice2TimeSeriesSchemas = new HashMap<>();
     this.tsFileDevice2IsAligned = new HashMap<>();
     this.alreadySetDatabases = new HashSet<>();
@@ -186,6 +186,10 @@ public class LoadTsFileTreeSchemaCache {
         block.addMemoryUsage(currentTimeIndexMemoryUsageSizeInBytes);
       }
     }
+  }
+
+  public void setCurrentTimeIndex(final ITimeIndex timeIndex) {
+    currentTimeIndex = timeIndex;
   }
 
   public boolean isDeviceDeletedByMods(IDeviceID device) throws IllegalPathException {

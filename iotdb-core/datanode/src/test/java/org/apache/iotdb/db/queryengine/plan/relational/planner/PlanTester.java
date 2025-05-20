@@ -33,7 +33,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Analysis;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Analyzer;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.StatementAnalyzerFactory;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.TSBSMetadata;
-import org.apache.iotdb.db.queryengine.plan.relational.analyzer.TestMatadata;
+import org.apache.iotdb.db.queryengine.plan.relational.analyzer.TestMetadata;
 import org.apache.iotdb.db.queryengine.plan.relational.execution.querystats.PlanOptimizersStatsCollector;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.distribute.TableDistributedPlanner;
@@ -92,7 +92,7 @@ public class PlanTester {
       };
 
   public PlanTester() {
-    this(new TestMatadata());
+    this(new TestMetadata());
   }
 
   public PlanTester(Metadata metadata) {
@@ -115,7 +115,7 @@ public class PlanTester {
     distributedQueryPlan = null;
     MPPQueryContext context = new MPPQueryContext(sql, queryId, sessionInfo, null, null);
 
-    Analysis analysis = analyze(sql, metadata);
+    Analysis analysis = analyze(sql, metadata, context);
     this.analysis = analysis;
     this.symbolAllocator = new SymbolAllocator();
 
@@ -137,7 +137,7 @@ public class PlanTester {
     distributedQueryPlan = null;
     MPPQueryContext context = new MPPQueryContext(sql, queryId, sessionInfo, null, null);
 
-    Analysis analysis = analyze(sql, metadata);
+    Analysis analysis = analyze(sql, metadata, context);
 
     TableLogicalPlanner logicalPlanner =
         new TableLogicalPlanner(
@@ -146,7 +146,7 @@ public class PlanTester {
     return logicalPlanner.plan(analysis);
   }
 
-  public static Analysis analyze(String sql, Metadata metadata) {
+  public static Analysis analyze(String sql, Metadata metadata, MPPQueryContext context) {
     SqlParser sqlParser = new SqlParser();
     String databaseName;
     if (metadata instanceof TSBSMetadata) {
@@ -160,8 +160,6 @@ public class PlanTester {
     SessionInfo session =
         new SessionInfo(
             0, "test", ZoneId.systemDefault(), databaseName, IClientSession.SqlDialect.TABLE);
-    final MPPQueryContext context =
-        new MPPQueryContext(sql, new QueryId("test_query"), session, null, null);
     return analyzeStatement(
         statement, metadata, context, sqlParser, session, new AllowAllAccessControl());
   }

@@ -54,6 +54,7 @@ import java.util.Set;
 
 import static com.google.common.base.Preconditions.checkArgument;
 import static java.util.Objects.requireNonNull;
+import static org.apache.iotdb.db.queryengine.plan.relational.planner.SymbolAllocator.DATE_BIN_PREFIX;
 import static org.apache.iotdb.db.utils.constant.SqlConstant.COUNT;
 import static org.apache.iotdb.db.utils.constant.SqlConstant.TABLE_TIME_COLUMN_NAME;
 
@@ -126,10 +127,16 @@ public class AggregationTableScanNode extends DeviceTableScanNode {
 
     this.step = step;
 
+    List<Symbol> groupingKeys = groupingSets.getGroupingKeys();
+    for (int i = 0; i < groupingKeys.size(); i++) {
+      if (groupingKeys.get(i).getName().startsWith(DATE_BIN_PREFIX)) {
+        checkArgument(
+            i == groupingKeys.size() - 1, "date_bin function must be the last GroupingKey");
+      }
+    }
     requireNonNull(preGroupedSymbols, "preGroupedSymbols is null");
     checkArgument(
-        preGroupedSymbols.isEmpty()
-            || groupingSets.getGroupingKeys().containsAll(preGroupedSymbols),
+        preGroupedSymbols.isEmpty() || groupingKeys.containsAll(preGroupedSymbols),
         "Pre-grouped symbols must be a subset of the grouping keys");
     this.preGroupedSymbols = ImmutableList.copyOf(preGroupedSymbols);
 
@@ -158,8 +165,9 @@ public class AggregationTableScanNode extends DeviceTableScanNode {
       Symbol symbol = entry.getKey();
       AggregationNode.Aggregation aggregation = entry.getValue();
       if (aggregation.getArguments().isEmpty()) {
-        AggregationNode.Aggregation countStarAggregation = getCountStarAggregation(aggregation);
-        if (!getTimeColumn(assignments).isPresent()) {
+        AggregationNode.Aggregation countStarAggregation;
+        Optional<Symbol> timeSymbol = getTimeColumn(assignments);
+        if (!timeSymbol.isPresent()) {
           assignments.put(
               Symbol.of(TABLE_TIME_COLUMN_NAME),
               new ColumnSchema(
@@ -167,6 +175,9 @@ public class AggregationTableScanNode extends DeviceTableScanNode {
                   TimestampType.TIMESTAMP,
                   false,
                   TsTableColumnCategory.TIME));
+          countStarAggregation = getCountStarAggregation(aggregation, TABLE_TIME_COLUMN_NAME);
+        } else {
+          countStarAggregation = getCountStarAggregation(aggregation, timeSymbol.get().getName());
         }
         resultBuilder.put(symbol, countStarAggregation);
       } else {
@@ -178,7 +189,7 @@ public class AggregationTableScanNode extends DeviceTableScanNode {
   }
 
   private static AggregationNode.Aggregation getCountStarAggregation(
-      AggregationNode.Aggregation aggregation) {
+      AggregationNode.Aggregation aggregation, String timeSymbolName) {
     ResolvedFunction resolvedFunction = aggregation.getResolvedFunction();
     ResolvedFunction countStarFunction =
         new ResolvedFunction(
@@ -190,7 +201,7 @@ public class AggregationTableScanNode extends DeviceTableScanNode {
             resolvedFunction.getFunctionNullability());
     return new AggregationNode.Aggregation(
         countStarFunction,
-        Collections.singletonList(new SymbolReference(TABLE_TIME_COLUMN_NAME)),
+        Collections.singletonList(new SymbolReference(timeSymbolName)),
         aggregation.isDistinct(),
         aggregation.getFilter(),
         aggregation.getOrderingScheme(),

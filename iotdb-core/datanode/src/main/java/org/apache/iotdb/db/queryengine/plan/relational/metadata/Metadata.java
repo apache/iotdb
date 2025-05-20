@@ -26,6 +26,7 @@ import org.apache.iotdb.db.exception.load.LoadAnalyzeTableColumnDisorderExceptio
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.SessionInfo;
+import org.apache.iotdb.db.queryengine.plan.analyze.IModelFetcher;
 import org.apache.iotdb.db.queryengine.plan.analyze.IPartitionFetcher;
 import org.apache.iotdb.db.queryengine.plan.relational.function.OperatorType;
 import org.apache.iotdb.db.queryengine.plan.relational.security.AccessControl;
@@ -38,6 +39,7 @@ import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.read.common.type.Type;
 
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 // All the input databases shall not contain "root"
@@ -76,7 +78,7 @@ public interface Metadata {
    *     index scanning
    * @param attributeColumns attribute column names
    */
-  List<DeviceEntry> indexScan(
+  Map<String, List<DeviceEntry>> indexScan(
       final QualifiedObjectName tableName,
       final List<Expression> expressionList,
       final List<String> attributeColumns,
@@ -193,4 +195,9 @@ public interface Metadata {
       final String database, final List<DataPartitionQueryParam> sgNameToQueryParamsMap);
 
   TableFunction getTableFunction(final String functionName);
+
+  /**
+   * @return ModelFetcher
+   */
+  IModelFetcher getModelFetcher();
 }

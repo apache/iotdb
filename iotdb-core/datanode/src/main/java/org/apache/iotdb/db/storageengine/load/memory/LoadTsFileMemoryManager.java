@@ -94,25 +94,24 @@ public class LoadTsFileMemoryManager {
     this.notifyAll();
   }
 
-  public synchronized LoadTsFileAnalyzeSchemaMemoryBlock allocateAnalyzeSchemaMemoryBlock(
-      long sizeInBytes) throws LoadRuntimeOutOfMemoryException {
+  public synchronized LoadTsFileMemoryBlock allocateMemoryBlock(long sizeInBytes)
+      throws LoadRuntimeOutOfMemoryException {
     try {
       forceAllocateFromQuery(sizeInBytes);
       if (LOGGER.isDebugEnabled()) {
-        LOGGER.debug(
-            "Load: Allocated AnalyzeSchemaMemoryBlock from query engine, size: {}", sizeInBytes);
+        LOGGER.debug("Load: Allocated MemoryBlock from query engine, size: {}", sizeInBytes);
       }
     } catch (LoadRuntimeOutOfMemoryException e) {
       if (dataCacheMemoryBlock != null && dataCacheMemoryBlock.doShrink(sizeInBytes)) {
         LOGGER.info(
-            "Load: Query engine's memory is not sufficient, allocated AnalyzeSchemaMemoryBlock from DataCacheMemoryBlock, size: {}",
+            "Load: Query engine's memory is not sufficient, allocated MemoryBlock from DataCacheMemoryBlock, size: {}",
             sizeInBytes);
         usedMemorySizeInBytes.addAndGet(sizeInBytes);
-        return new LoadTsFileAnalyzeSchemaMemoryBlock(sizeInBytes);
+        return new LoadTsFileMemoryBlock(sizeInBytes);
       }
       throw e;
     }
-    return new LoadTsFileAnalyzeSchemaMemoryBlock(sizeInBytes);
+    return new LoadTsFileMemoryBlock(sizeInBytes);
   }
 
   /**
@@ -120,7 +119,7 @@ public class LoadTsFileMemoryManager {
    *
    * @throws LoadRuntimeOutOfMemoryException if failed to allocate enough memory
    */
-  synchronized void forceResize(LoadTsFileAnalyzeSchemaMemoryBlock memoryBlock, long newSizeInBytes)
+  synchronized void forceResize(LoadTsFileMemoryBlock memoryBlock, long newSizeInBytes)
       throws LoadRuntimeOutOfMemoryException {
     if (memoryBlock.getTotalMemorySizeInBytes() >= newSizeInBytes) {
 
@@ -142,14 +141,14 @@ public class LoadTsFileMemoryManager {
       forceAllocateFromQuery(bytesNeeded);
       if (LOGGER.isDebugEnabled()) {
         LOGGER.info(
-            "Load: Force resized LoadTsFileAnalyzeSchemaMemoryBlock with memory from query engine, size added: {}, new size: {}",
+            "Load: Force resized LoadTsFileMemoryBlock with memory from query engine, size added: {}, new size: {}",
             bytesNeeded,
             newSizeInBytes);
       }
     } catch (LoadRuntimeOutOfMemoryException e) {
       if (dataCacheMemoryBlock != null && dataCacheMemoryBlock.doShrink(bytesNeeded)) {
         LOGGER.info(
-            "Load: Query engine's memory is not sufficient, force resized LoadTsFileAnalyzeSchemaMemoryBlock with memory from DataCacheMemoryBlock, size added: {}, new size: {}",
+            "Load: Query engine's memory is not sufficient, force resized LoadTsFileMemoryBlock with memory from DataCacheMemoryBlock, size added: {}, new size: {}",
             bytesNeeded,
             newSizeInBytes);
         usedMemorySizeInBytes.addAndGet(bytesNeeded);

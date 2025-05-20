@@ -114,14 +114,14 @@ public class ConfigNodeConfig {
   private int dataRegionPerDataNode = 0;
 
   /** each dataNode automatically has the number of CPU cores / 2 regions. */
-  private double dataRegionPerDataNodeProportion = 0.5;
+  private final double dataRegionPerDataNodeProportion = 0.5;
 
   /** RegionGroup allocate policy. */
   private RegionBalancer.RegionGroupAllocatePolicy regionGroupAllocatePolicy =
       RegionBalancer.RegionGroupAllocatePolicy.GCR;
 
   /** Max concurrent client number. */
-  private int rpcMaxConcurrentClientNum = 65535;
+  private int rpcMaxConcurrentClientNum = 3000;
 
   /** just for test wait for 60 second by default. */
   private int thriftServerAwaitTimeForStopService = 60;
@@ -192,9 +192,6 @@ public class ConfigNodeConfig {
 
   /** Acceptable pause duration for Phi accrual failure detector */
   private long failureDetectorPhiAcceptablePauseInMs = 10000;
-
-  /** The unknown DataNode detect interval in milliseconds. */
-  private long unknownDataNodeDetectInterval = heartbeatIntervalInMs;
 
   /** The policy of cluster RegionGroups' leader distribution. */
   private String leaderDistributionPolicy = AbstractLeaderBalancer.CFD_POLICY;
@@ -658,14 +655,6 @@ public class ConfigNodeConfig {
 
   public void setHeartbeatIntervalInMs(long heartbeatIntervalInMs) {
     this.heartbeatIntervalInMs = heartbeatIntervalInMs;
-  }
-
-  public long getUnknownDataNodeDetectInterval() {
-    return unknownDataNodeDetectInterval;
-  }
-
-  public void setUnknownDataNodeDetectInterval(long unknownDataNodeDetectInterval) {
-    this.unknownDataNodeDetectInterval = unknownDataNodeDetectInterval;
   }
 
   public String getLeaderDistributionPolicy() {

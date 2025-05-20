@@ -20,12 +20,20 @@
 package org.apache.iotdb.relational.it.schema;
 
 import org.apache.iotdb.db.it.utils.TestUtils;
+import org.apache.iotdb.isession.ITableSession;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.TableClusterIT;
 import org.apache.iotdb.itbase.category.TableLocalStandaloneIT;
 import org.apache.iotdb.itbase.env.BaseEnv;
+import org.apache.iotdb.rpc.IoTDBConnectionException;
+import org.apache.iotdb.rpc.StatementExecutionException;
 
+import org.apache.tsfile.enums.ColumnCategory;
+import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.write.record.Tablet;
+import org.apache.tsfile.write.schema.IMeasurementSchema;
+import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.BeforeClass;
@@ -38,7 +46,12 @@ import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
 
 import static org.apache.iotdb.commons.schema.column.ColumnHeaderConstant.describeTableColumnHeaders;
 import static org.apache.iotdb.commons.schema.column.ColumnHeaderConstant.describeTableDetailsColumnHeaders;
@@ -47,6 +60,7 @@ import static org.apache.iotdb.commons.schema.column.ColumnHeaderConstant.showTa
 import static org.apache.iotdb.commons.schema.column.ColumnHeaderConstant.showTablesDetailsColumnHeaders;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 @RunWith(IoTDBTestRunner.class)
@@ -97,7 +111,7 @@ public class IoTDBTableIT {
       // "FIELD" can be omitted when type is specified
       // "STRING" can be omitted when tag/attribute is specified
       statement.execute(
-          "create table test1.table1(region_id STRING TAG, plant_id STRING TAG, device_id TAG, model STRING ATTRIBUTE, temperature FLOAT FIELD, humidity DOUBLE) comment 'test' with (TTL='INF')");
+          "create table test1.table1(time TIMESTAMP TIME COMMENT 'column_comment', region_id STRING TAG, plant_id STRING TAG, device_id TAG, model STRING ATTRIBUTE, temperature FLOAT FIELD, humidity DOUBLE) comment 'test' with (TTL='INF')");
 
       try {
         statement.execute(
@@ -270,6 +284,12 @@ public class IoTDBTableIT {
 
       statement.execute("alter table table2 add column speed DOUBLE FIELD COMMENT 'fast'");
 
+      TestUtils.assertResultSetEqual(
+          statement.executeQuery("show create table table2"),
+          "Table,Create Table,",
+          Collections.singleton(
+              "table2,CREATE TABLE \"table2\" (\"region_id\" STRING TAG,\"plant_id\" STRING TAG,\"color\" STRING ATTRIBUTE,\"temperature\" FLOAT FIELD,\"speed\" DOUBLE FIELD COMMENT 'fast') WITH (ttl=6600000),"));
+
       try {
         statement.execute("alter table table2 add column speed DOUBLE FIELD");
       } catch (final SQLException e) {
@@ -404,15 +424,40 @@ public class IoTDBTableIT {
       statement.execute("alter table table2 drop column color");
 
       // Test comment
-      statement.execute("COMMENT ON COLUMN table2.region_id IS '重庆'");
-      statement.execute("COMMENT ON COLUMN table2.region_id IS NULL");
-      statement.execute("COMMENT ON COLUMN test2.table2.time IS 'recent'");
-
+      // Before
       columnNames = new String[] {"time", "region_id", "plant_id", "temperature", "speed"};
       dataTypes = new String[] {"TIMESTAMP", "STRING", "STRING", "FLOAT", "DOUBLE"};
       categories = new String[] {"TIME", "TAG", "TAG", "FIELD", "FIELD"};
       statuses = new String[] {"USING", "USING", "USING", "USING", "USING"};
-      comments = new String[] {"recent", "", "", "", "fast"};
+
+      comments = new String[] {null, null, null, null, "fast"};
+      try (final ResultSet resultSet = statement.executeQuery("describe table2 details")) {
+        int cnt = 0;
+        ResultSetMetaData metaData = resultSet.getMetaData();
+        assertEquals(describeTableDetailsColumnHeaders.size(), metaData.getColumnCount());
+        for (int i = 0; i < describeTableDetailsColumnHeaders.size(); i++) {
+          assertEquals(
+              describeTableDetailsColumnHeaders.get(i).getColumnName(),
+              metaData.getColumnName(i + 1));
+        }
+        while (resultSet.next()) {
+          assertEquals(columnNames[cnt], resultSet.getString(1));
+          assertEquals(dataTypes[cnt], resultSet.getString(2));
+          assertEquals(categories[cnt], resultSet.getString(3));
+          assertEquals(statuses[cnt], resultSet.getString(4));
+          assertEquals(comments[cnt], resultSet.getString(5));
+          cnt++;
+        }
+        assertEquals(columnNames.length, cnt);
+      }
+
+      // After
+      statement.execute("COMMENT ON COLUMN table2.region_id IS '重庆'");
+      statement.execute("COMMENT ON COLUMN table2.region_id IS NULL");
+      statement.execute("COMMENT ON COLUMN test2.table2.time IS 'recent'");
+      statement.execute("COMMENT ON COLUMN test2.table2.region_id IS ''");
+
+      comments = new String[] {"recent", "", null, null, "fast"};
       try (final ResultSet resultSet = statement.executeQuery("describe table2 details")) {
         int cnt = 0;
         ResultSetMetaData metaData = resultSet.getMetaData();
@@ -613,6 +658,9 @@ public class IoTDBTableIT {
           assertEquals(showDBColumnHeaders.get(i).getColumnName(), metaData.getColumnName(i + 1));
         }
         Assert.assertTrue(resultSet.next());
+        if (resultSet.getString(1).equals("information_schema")) {
+          assertTrue(resultSet.next());
+        }
         assertEquals("db", resultSet.getString(1));
         Assert.assertFalse(resultSet.next());
       }
@@ -630,6 +678,368 @@ public class IoTDBTableIT {
         final Statement userStmt = userCon.createStatement()) {
       userStmt.execute("use db");
       userStmt.execute("drop table test");
+    }
+  }
+
+  // Test deadlock
+  @Test(timeout = 60000)
+  public void testConcurrentAutoCreateAndDropColumn() throws Exception {
+    try (final ITableSession session = EnvFactory.getEnv().getTableSessionConnection();
+        final Connection adminCon = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        final Statement adminStmt = adminCon.createStatement()) {
+      adminStmt.execute("create database db1");
+      session.executeNonQueryStatement("USE \"db1\"");
+
+      final StringBuilder sb = new StringBuilder("CREATE TABLE table8 (tag1 string tag");
+      for (int i = 0; i < 100; ++i) {
+        sb.append(String.format(", m%s string", i));
+      }
+      sb.append(")");
+      session.executeNonQueryStatement(sb.toString());
+
+      final Thread insertThread =
+          new Thread(
+              () -> {
+                for (int i = 0; i < 100; ++i) {
+                  final List<IMeasurementSchema> schemaList = new ArrayList<>();
+                  schemaList.add(new MeasurementSchema("tag1", TSDataType.STRING));
+                  schemaList.add(new MeasurementSchema("attr1", TSDataType.STRING));
+                  schemaList.add(
+                      new MeasurementSchema(String.format("m%s", 100 + i), TSDataType.DOUBLE));
+                  final List<ColumnCategory> columnTypes =
+                      Arrays.asList(
+                          ColumnCategory.TAG, ColumnCategory.ATTRIBUTE, ColumnCategory.FIELD);
+
+                  long timestamp = 0;
+
+                  final Tablet tablet =
+                      new Tablet(
+                          "table8",
+                          IMeasurementSchema.getMeasurementNameList(schemaList),
+                          IMeasurementSchema.getDataTypeList(schemaList),
+                          columnTypes,
+                          15);
+
+                  for (int row = 0; row < 15; row++) {
+                    tablet.addTimestamp(row, timestamp);
+                    tablet.addValue("tag1", row, "tag:" + timestamp);
+                    tablet.addValue("attr1", row, "attr:" + timestamp);
+                    tablet.addValue(String.format("m%s", 100 + i), row, timestamp * 1.0);
+                    timestamp++;
+                  }
+
+                  try {
+                    session.insert(tablet);
+                  } catch (final StatementExecutionException | IoTDBConnectionException e) {
+                    throw new RuntimeException(e);
+                  }
+                  tablet.reset();
+                }
+              });
+
+      final Thread deletionThread =
+          new Thread(
+              () -> {
+                for (int i = 0; i < 100; ++i) {
+                  try {
+                    adminStmt.execute(String.format("alter table db1.table8 drop column m%s", i));
+                  } catch (final SQLException e) {
+                    throw new RuntimeException(e);
+                  }
+                }
+              });
+
+      insertThread.start();
+      deletionThread.start();
+
+      insertThread.join();
+      deletionThread.join();
+    }
+  }
+
+  @Test
+  public void testTreeViewTable() throws Exception {
+    try (final Connection connection = EnvFactory.getEnv().getConnection();
+        final Statement statement = connection.createStatement()) {
+      statement.execute("create database root.a.b");
+      statement.execute("create timeSeries root.a.b.c.S1 int32");
+      statement.execute("create timeSeries root.a.b.c.s2 string");
+      statement.execute("create timeSeries root.a.b.S1 int32");
+    } catch (SQLException e) {
+      fail(e.getMessage());
+    }
+
+    try (final Connection connection =
+            EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        final Statement statement = connection.createStatement()) {
+      statement.execute("create database tree_view_db");
+      statement.execute("use tree_view_db");
+      statement.execute("create view tree_table (tag1 tag, tag2 tag) as root.a.**");
+      statement.execute("drop view tree_table");
+    }
+
+    try (final Connection connection = EnvFactory.getEnv().getConnection();
+        final Statement statement = connection.createStatement()) {
+      statement.execute("create timeSeries root.a.b.d.s1 int32");
+    } catch (SQLException e) {
+      fail(e.getMessage());
+    }
+
+    try (final Connection connection =
+            EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        final Statement statement = connection.createStatement()) {
+      statement.execute("use tree_view_db");
+
+      try {
+        statement.execute("create view tree_table (tag1 tag, tag2 tag) as root.a.**");
+        fail();
+      } catch (final SQLException e) {
+        final Set<String> result =
+            new HashSet<>(
+                Arrays.asList(
+                    "617: The measurements s1 and S1 share the same lower case when auto detecting type, please check",
+                    "617: The measurements S1 and s1 share the same lower case when auto detecting type, please check"));
+        assertTrue(result.contains(e.getMessage()));
+      }
+    }
+
+    try (final Connection connection = EnvFactory.getEnv().getConnection();
+        final Statement statement = connection.createStatement()) {
+      statement.execute("drop timeSeries root.a.b.d.s1");
+      statement.execute("create device template t1 (S1 boolean, s9 int32)");
+      statement.execute("set schema template t1 to root.a.b.d");
+      statement.execute("create timeSeries root.a.b.c.f.g.h.S1 int32");
+
+      // Put schema cache
+      statement.execute("select S1, s2 from root.a.b.c");
+    } catch (SQLException e) {
+      fail(e.getMessage());
+    }
+
+    try (final Connection connection =
+            EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        final Statement statement = connection.createStatement()) {
+      statement.execute("use tree_view_db");
+
+      try {
+        statement.execute("create view tree_table (tag1 tag, tag2 tag) as root.a.**");
+        fail();
+      } catch (final SQLException e) {
+        assertEquals(
+            "614: Multiple types encountered when auto detecting type of measurement 'S1', please check",
+            e.getMessage());
+      }
+
+      try {
+        statement.execute("create view tree_table (tag1 tag, tag2 tag, S1 field) as root.a.**");
+        fail();
+      } catch (final SQLException e) {
+        assertEquals(
+            "614: Multiple types encountered when auto detecting type of measurement 'S1', please check",
+            e.getMessage());
+      }
+    }
+
+    try (final Connection connection = EnvFactory.getEnv().getConnection();
+        final Statement statement = connection.createStatement()) {
+      statement.execute("create timeSeries root.a.b.e.s1 int32");
+    } catch (SQLException e) {
+      fail(e.getMessage());
+    }
+
+    try (final Connection connection =
+            EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        final Statement statement = connection.createStatement()) {
+      statement.execute("use tree_view_db");
+
+      // Temporary
+      try {
+        statement.execute(
+            "create or replace view tree_table (tag1 tag, tag2 tag, S1 int32 field, s3 boolean from S1) as root.a.**");
+        fail();
+      } catch (final SQLException e) {
+        assertEquals(
+            "701: The duplicated source measurement S1 is unsupported yet.", e.getMessage());
+      }
+
+      try {
+        statement.execute(
+            "create or replace view tree_table (tag1 tag, tag2 tag, S1 int32 field, s3 from s2, s8 field) as root.a.**");
+        fail();
+      } catch (final SQLException e) {
+        assertEquals("528: Measurements not found for s8, cannot auto detect", e.getMessage());
+      }
+
+      statement.execute(
+          "create or replace view tree_table (tag1 tag, tag2 tag, S1 int32 field, s3 from s2) as root.a.**");
+      statement.execute("alter view tree_table rename to view_table");
+      statement.execute("alter view view_table rename column s1 to s11");
+      statement.execute("alter view view_table set properties ttl=100");
+      statement.execute("comment on view view_table is 'comment'");
+
+      TestUtils.assertResultSetEqual(
+          statement.executeQuery("show tables details"),
+          "TableName,TTL(ms),Status,Comment,TableType,",
+          Collections.singleton("view_table,100,USING,comment,VIEW FROM TREE,"));
+
+      TestUtils.assertResultSetEqual(
+          statement.executeQuery("desc view_table"),
+          "ColumnName,DataType,Category,",
+          new HashSet<>(
+              Arrays.asList(
+                  "time,TIMESTAMP,TIME,",
+                  "tag1,STRING,TAG,",
+                  "tag2,STRING,TAG,",
+                  "s11,INT32,FIELD,",
+                  "s3,STRING,FIELD,")));
+      // Currently we show the device even if all of its measurements does not match,
+      // the handling logic at query because validate it at fetching will potentially cause a
+      // lot of time
+      TestUtils.assertResultSetEqual(
+          statement.executeQuery("show devices from view_table where tag1 = 'b'"),
+          "tag1,tag2,",
+          new HashSet<>(Arrays.asList("b,c,", "b,null,", "b,e,")));
+      TestUtils.assertResultSetEqual(
+          statement.executeQuery("show devices from view_table where tag1 = 'b' and tag2 is null"),
+          "tag1,tag2,",
+          Collections.singleton("b,null,"));
+      TestUtils.assertResultSetEqual(
+          statement.executeQuery("count devices from view_table"),
+          "count(devices),",
+          Collections.singleton("3,"));
+    }
+
+    // Test tree session
+    try (final Connection connection = EnvFactory.getEnv().getConnection();
+        final Statement statement = connection.createStatement()) {
+      // Test create & replace + restrict
+      statement.execute(
+          "create or replace view tree_view_db.view_table (tag1 tag, tag2 tag, s11 int32 field, s3 from s2) restrict with (ttl=100) as root.a.**");
+      fail();
+    } catch (final SQLException e) {
+      assertTrue(
+          e.getMessage().contains("The 'CreateTableView' is unsupported in tree sql-dialect."));
+    }
+
+    // Test permission
+    try (final Connection connection = EnvFactory.getEnv().getConnection();
+        final Statement statement = connection.createStatement()) {
+      // Test create & replace + restrict
+      statement.execute("create user testUser 'testUser'");
+    } catch (final SQLException e) {
+      fail(e.getMessage());
+    }
+
+    try (final Connection connection =
+            EnvFactory.getEnv().getConnection("testUser", "testUser", BaseEnv.TABLE_SQL_DIALECT);
+        final Statement statement = connection.createStatement()) {
+      statement.execute(
+          "create or replace view tree_view_db.view_table (tag1 tag, tag2 tag, s11 int32 field, s3 from s2) restrict with (ttl=100) as root.a.**");
+      fail();
+    } catch (final SQLException e) {
+      assertEquals(
+          "803: Access Denied: No permissions for this operation, please add privilege CREATE ON tree_view_db.view_table",
+          e.getMessage());
+    }
+
+    try (final Connection connection =
+            EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        final Statement statement = connection.createStatement()) {
+      statement.execute("grant create on tree_view_db.view_table to user testUser");
+    } catch (final SQLException e) {
+      fail(e.getMessage());
+    }
+
+    try (final Connection connection =
+            EnvFactory.getEnv().getConnection("testUser", "testUser", BaseEnv.TABLE_SQL_DIALECT);
+        final Statement statement = connection.createStatement()) {
+      statement.execute(
+          "create or replace view tree_view_db.view_table (tag1 tag, tag2 tag, s11 int32 field, s3 from s2) restrict with (ttl=100) as root.a.**");
+      fail();
+    } catch (final SQLException e) {
+      assertEquals(
+          "803: Access Denied: No permissions for this operation, please add privilege READ_SCHEMA",
+          e.getMessage());
+    }
+
+    try (final Connection connection = EnvFactory.getEnv().getConnection();
+        final Statement statement = connection.createStatement()) {
+      statement.execute("grant read_schema on root.a.** to user testUser");
+    } catch (final SQLException e) {
+      fail(e.getMessage());
+    }
+
+    try (final Connection connection =
+            EnvFactory.getEnv().getConnection("testUser", "testUser", BaseEnv.TABLE_SQL_DIALECT);
+        final Statement statement = connection.createStatement()) {
+      statement.execute(
+          "create or replace view tree_view_db.view_table (tag1 tag, tag2 tag, s11 int32 field, s3 from s2) restrict with (ttl=100) as root.a.**");
+      fail();
+    } catch (final SQLException e) {
+      assertEquals(
+          "803: Access Denied: No permissions for this operation, please add privilege READ_DATA",
+          e.getMessage());
+    }
+
+    try (final Connection connection = EnvFactory.getEnv().getConnection();
+        final Statement statement = connection.createStatement()) {
+      statement.execute("grant read_data on root.a.** to user testUser");
+    } catch (final SQLException e) {
+      fail(e.getMessage());
+    }
+
+    try (final Connection connection =
+            EnvFactory.getEnv().getConnection("testUser", "testUser", BaseEnv.TABLE_SQL_DIALECT);
+        final Statement statement = connection.createStatement()) {
+      statement.execute(
+          "create or replace view tree_view_db.view_table (tag1 tag, tag2 tag, s11 int32 field, s3 from s2) restrict with (ttl=100) as root.a.**");
+    } catch (final SQLException e) {
+      fail();
+    }
+
+    try (final Connection connection =
+            EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        final Statement statement = connection.createStatement()) {
+      statement.execute("use tree_view_db");
+
+      TestUtils.assertResultSetEqual(
+          statement.executeQuery("show devices from view_table where tag1 = 'b' and tag2 is null"),
+          "tag1,tag2,",
+          Collections.emptySet());
+
+      TestUtils.assertResultSetEqual(
+          statement.executeQuery("show create view view_table"),
+          "View,Create View,",
+          Collections.singleton(
+              "view_table,CREATE VIEW \"view_table\" (\"tag1\" STRING TAG,\"tag2\" STRING TAG,\"s11\" INT32 FIELD,\"s3\" STRING FIELD FROM \"s2\") RESTRICT WITH (ttl=100) AS root.a.**,"));
+
+      // Can also use "show create table"
+      TestUtils.assertResultSetEqual(
+          statement.executeQuery("show create table view_table"),
+          "View,Create View,",
+          Collections.singleton(
+              "view_table,CREATE VIEW \"view_table\" (\"tag1\" STRING TAG,\"tag2\" STRING TAG,\"s11\" INT32 FIELD,\"s3\" STRING FIELD FROM \"s2\") RESTRICT WITH (ttl=100) AS root.a.**,"));
+
+      statement.execute("create table a ()");
+      try {
+        statement.execute("show create view a");
+        fail();
+      } catch (final SQLException e) {
+        assertEquals(
+            "701: The table a is a base table, does not support show create view.", e.getMessage());
+      }
+      try {
+        statement.execute("show create view information_schema.tables");
+        fail();
+      } catch (final SQLException e) {
+        assertEquals("701: The system view does not support show create.", e.getMessage());
+      }
+      try {
+        statement.execute("create or replace view a () as root.b.**");
+        fail();
+      } catch (final SQLException e) {
+        assertEquals("551: Table 'tree_view_db.a' already exists.", e.getMessage());
+      }
     }
   }
 }

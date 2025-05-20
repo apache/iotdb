@@ -103,7 +103,7 @@ public class PipeTsFileResourceManager {
                   entry.getValue().getReferenceCount(),
                   entry.getValue().getFileSize()));
         }
-      } catch (final IOException e) {
+      } catch (final Exception e) {
         LOGGER.warn("failed to close PipeTsFileResource when checking TTL: ", e);
       } finally {
         segmentLock.unlock(new File(hardlinkOrCopiedFile));
@@ -369,7 +369,7 @@ public class PipeTsFileResourceManager {
     }
   }
 
-  public long getTotalLinkedButDeletedTsfileResourceRamSize() {
+  public long getTotalLinkedButDeletedTsFileResourceRamSize() {
     long totalLinkedButDeletedTsfileResourceRamSize = 0;
     try {
       for (final Map.Entry<String, PipeTsFileResource> resourceEntry :

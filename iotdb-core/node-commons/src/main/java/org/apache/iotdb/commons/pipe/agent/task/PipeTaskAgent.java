@@ -54,6 +54,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 
@@ -452,7 +453,7 @@ public abstract class PipeTaskAgent {
    *     if the pipe already exists or is created but should not be started
    * @throws IllegalStateException if the status is illegal
    */
-  private boolean createPipe(final PipeMeta pipeMetaFromCoordinator) throws IllegalPathException {
+  protected boolean createPipe(final PipeMeta pipeMetaFromCoordinator) throws IllegalPathException {
     final String pipeName = pipeMetaFromCoordinator.getStaticMeta().getPipeName();
     final long creationTime = pipeMetaFromCoordinator.getStaticMeta().getCreationTime();
 
@@ -660,7 +661,10 @@ public abstract class PipeTaskAgent {
       final PipeMeta existedPipeMeta, final String pipeName, final long creationTime)
       throws IllegalStateException {
     // Verify that Pipe is disabled if TSFile encryption is enabled
-    if (TSFileDescriptor.getInstance().getConfig().getEncryptFlag()) {
+    if (!Objects.equals(TSFileDescriptor.getInstance().getConfig().getEncryptType(), "UNENCRYPTED")
+        && !Objects.equals(
+            TSFileDescriptor.getInstance().getConfig().getEncryptType(),
+            "org.apache.tsfile.encrypt.UNENCRYPTED")) {
       throw new PipeException(
           String.format(
               "Failed to create Pipe %s because TSFile is configured with encryption, which prohibits the use of Pipe",
@@ -1077,6 +1081,18 @@ public abstract class PipeTaskAgent {
         ? new CommitterKey(pipeName, creationTime, regionId, restartTime)
         : ((PipeTemporaryMetaInAgent) pipeMeta.getTemporaryMeta())
             .getCommitterKey(pipeName, creationTime, regionId, restartTime);
+  }
+
+  public long getAllFloatingMemoryUsageInByte() {
+    final AtomicLong bytes = new AtomicLong(0);
+    pipeMetaKeeper
+        .getPipeMetaList()
+        .forEach(
+            pipeMeta ->
+                bytes.addAndGet(
+                    ((PipeTemporaryMetaInAgent) pipeMeta.getTemporaryMeta())
+                        .getFloatingMemoryUsageInByte()));
+    return bytes.get();
   }
 
   public long getFloatingMemoryUsageInByte(final String pipeName) {

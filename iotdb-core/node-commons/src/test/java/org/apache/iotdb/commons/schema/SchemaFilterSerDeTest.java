@@ -22,14 +22,13 @@ package org.apache.iotdb.commons.schema;
 import org.apache.iotdb.commons.schema.filter.SchemaFilter;
 import org.apache.iotdb.commons.schema.filter.impl.DataTypeFilter;
 import org.apache.iotdb.commons.schema.filter.impl.PathContainsFilter;
-import org.apache.iotdb.commons.schema.filter.impl.TagFilter;
 import org.apache.iotdb.commons.schema.filter.impl.TemplateFilter;
 import org.apache.iotdb.commons.schema.filter.impl.ViewTypeFilter;
 import org.apache.iotdb.commons.schema.filter.impl.multichildren.AndFilter;
 import org.apache.iotdb.commons.schema.filter.impl.multichildren.OrFilter;
 import org.apache.iotdb.commons.schema.filter.impl.singlechild.AttributeFilter;
-import org.apache.iotdb.commons.schema.filter.impl.singlechild.IdFilter;
 import org.apache.iotdb.commons.schema.filter.impl.singlechild.NotFilter;
+import org.apache.iotdb.commons.schema.filter.impl.singlechild.TagFilter;
 import org.apache.iotdb.commons.schema.filter.impl.values.ComparisonFilter;
 import org.apache.iotdb.commons.schema.filter.impl.values.InFilter;
 import org.apache.iotdb.commons.schema.filter.impl.values.LikeFilter;
@@ -49,7 +48,8 @@ public class SchemaFilterSerDeTest {
 
   @Test
   public void testSchemaFilter() {
-    final TagFilter tagFilter = new TagFilter("1", "2", true);
+    final org.apache.iotdb.commons.schema.filter.impl.TagFilter tagFilter =
+        new org.apache.iotdb.commons.schema.filter.impl.TagFilter("1", "2", true);
     final PathContainsFilter pathContainsFilter = new PathContainsFilter("fakePath");
     final DataTypeFilter dataTypeFilter = new DataTypeFilter(TSDataType.BOOLEAN);
     final ViewTypeFilter viewTypeFilter = new ViewTypeFilter(ViewType.VIEW);
@@ -62,7 +62,7 @@ public class SchemaFilterSerDeTest {
     final PreciseFilter preciseFilter = new PreciseFilter("s1");
     final InFilter inFilter = new InFilter(Collections.singleton("d1"));
     final LikeFilter likeFilter = new LikeFilter("__1", Optional.empty());
-    final IdFilter idFilter = new IdFilter(preciseFilter, 1);
+    final TagFilter idFilter = new TagFilter(preciseFilter, 1);
     final AttributeFilter attributeFilter = new AttributeFilter(likeFilter, "attr");
     final ComparisonFilter comparisonFilter =
         new ComparisonFilter(ComparisonFilter.Operator.GREATER_THAN, "s1");

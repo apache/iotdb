@@ -34,13 +34,13 @@ import org.apache.iotdb.itbase.category.TableLocalStandaloneIT;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
 
+import org.apache.tsfile.enums.ColumnCategory;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.exception.write.WriteProcessException;
 import org.apache.tsfile.file.metadata.TableSchema;
 import org.apache.tsfile.read.common.RowRecord;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.write.record.Tablet;
-import org.apache.tsfile.write.record.Tablet.ColumnCategory;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.apache.tsfile.write.v4.ITsFileWriter;
@@ -229,6 +229,59 @@ public class IoTDBSessionRelationalIT {
         assertEquals("attr:" + timestamp, rowRecord.getFields().get(2).getBinaryV().toString());
         assertEquals(timestamp * 1.0, rowRecord.getFields().get(3).getDoubleV(), 0.0001);
       }
+    }
+  }
+
+  @Test
+  public void insertAllNullSqlTest() throws IoTDBConnectionException, StatementExecutionException {
+    try (ITableSession session = EnvFactory.getEnv().getTableSessionConnection()) {
+      session.executeNonQueryStatement("USE \"db1\"");
+      session.executeNonQueryStatement(
+          "create table all_null(color string tag, device_id string tag,city string attribute)");
+      try {
+        session.executeNonQueryStatement("insert into all_null values(null,null,null,null)");
+        fail("No exception thrown");
+      } catch (StatementExecutionException e) {
+        assertEquals("701: Timestamp cannot be null", e.getMessage());
+      }
+      session.executeNonQueryStatement("drop table all_null");
+    }
+  }
+
+  @Test
+  public void insertWrongTimeSqlTest()
+      throws IoTDBConnectionException, StatementExecutionException {
+    try (ITableSession session = EnvFactory.getEnv().getTableSessionConnection()) {
+      session.executeNonQueryStatement("USE \"db1\"");
+      session.executeNonQueryStatement(
+          "create table wrong_time(color string tag, device_id string tag,city string attribute)");
+      try {
+        session.executeNonQueryStatement("insert into wrong_time values('aa','bb','cc','dd')");
+        fail("No exception thrown");
+      } catch (StatementExecutionException e) {
+        assertEquals(
+            "701: Input time format aa error. Input like yyyy-MM-dd HH:mm:ss, yyyy-MM-ddTHH:mm:ss or refer to user document for more info.",
+            e.getMessage());
+      }
+      try {
+        session.executeNonQueryStatement("insert into wrong_time values(1+1,'bb','cc','dd')");
+        fail("No exception thrown");
+      } catch (StatementExecutionException e) {
+        assertEquals("701: Unsupported expression: (1 + 1)", e.getMessage());
+      }
+      try {
+        session.executeNonQueryStatement("insert into wrong_time values(1.0,'bb','cc','dd')");
+        fail("No exception thrown");
+      } catch (StatementExecutionException e) {
+        assertEquals("701: Unsupported expression: 1E0", e.getMessage());
+      }
+      try {
+        session.executeNonQueryStatement("insert into wrong_time values(true,'bb','cc','dd')");
+        fail("No exception thrown");
+      } catch (StatementExecutionException e) {
+        assertEquals("701: Unsupported expression: true", e.getMessage());
+      }
+      session.executeNonQueryStatement("drop table wrong_time");
     }
   }
 

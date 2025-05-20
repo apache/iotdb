@@ -68,6 +68,18 @@ public class ConsumerConfig extends PipeParameters {
     return getString(ConsumerConstant.CONSUMER_GROUP_ID_KEY);
   }
 
+  public String getUsername() {
+    return getString(ConsumerConstant.USERNAME_KEY);
+  }
+
+  public String getPassword() {
+    return getString(ConsumerConstant.PASSWORD_KEY);
+  }
+
+  public String getSqlDialect() {
+    return getString(ConsumerConstant.SQL_DIALECT_KEY);
+  }
+
   public void setConsumerId(final String consumerId) {
     attributes.put(ConsumerConstant.CONSUMER_ID_KEY, consumerId);
   }

@@ -76,6 +76,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowTriggersState
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowVariablesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.UnSetTTLStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.model.CreateModelStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.model.CreateTrainingStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.model.DropModelStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.model.ShowAINodesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.model.ShowModelsStatement;
@@ -93,6 +94,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.metadata.region.MigrateReg
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.region.ReconstructRegionStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.region.RemoveRegionStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.subscription.CreateTopicStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.subscription.DropSubscriptionStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.subscription.DropTopicStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.subscription.ShowSubscriptionsStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.subscription.ShowTopicsStatement;
@@ -563,6 +565,10 @@ public abstract class StatementVisitor<R, C> {
     return visitStatement(showSubscriptionsStatement, context);
   }
 
+  public R visitDropSubscription(DropSubscriptionStatement dropSubscriptionStatement, C context) {
+    return visitStatement(dropSubscriptionStatement, context);
+  }
+
   public R visitGetRegionId(GetRegionIdStatement getRegionIdStatement, C context) {
     return visitStatement(getRegionIdStatement, context);
   }
@@ -679,5 +685,9 @@ public abstract class StatementVisitor<R, C> {
 
   public R visitShowCurrentUser(ShowCurrentUserStatement showCurrentUserStatement, C context) {
     return visitStatement(showCurrentUserStatement, context);
+  }
+
+  public R visitCreateTraining(CreateTrainingStatement createTrainingStatement, C context) {
+    return visitStatement(createTrainingStatement, context);
   }
 }

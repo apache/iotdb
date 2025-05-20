@@ -23,7 +23,7 @@ import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 
 import java.util.List;
 
-public interface IUnseqCompactionPerformer extends ICompactionPerformer {
+public interface IUnseqCompactionPerformer extends IInnerCompactionPerformer {
   @Override
   void setSourceFiles(List<TsFileResource> unseqFiles);
 }

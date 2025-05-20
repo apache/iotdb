@@ -659,4 +659,49 @@ public class AggregationTest {
               ImmutableSet.of("tag1", "tag2", "tag3", "s1")));
     }
   }
+
+  @Test
+  public void countConstantTest() {
+    PlanTester planTester = new PlanTester();
+
+    LogicalQueryPlan ret =
+        planTester.createPlan("SELECT count(*) FROM table1 where tag1='beijing' and tag2='A1'");
+    assertPlan(
+        ret,
+        output(
+            aggregationTableScan(
+                singleGroupingSet(),
+                ImmutableList.of(), // UnStreamable
+                Optional.empty(),
+                SINGLE,
+                "testdb.table1",
+                ImmutableList.of("count"),
+                ImmutableSet.of("time"))));
+
+    ret = planTester.createPlan("SELECT count(1) FROM table1 where tag1='beijing' and tag2='A1'");
+    assertPlan(
+        ret,
+        output(
+            aggregationTableScan(
+                singleGroupingSet(),
+                ImmutableList.of(), // UnStreamable
+                Optional.empty(),
+                SINGLE,
+                "testdb.table1",
+                ImmutableList.of("count"),
+                ImmutableSet.of("time"))));
+
+    ret = planTester.createPlan("SELECT count('a') FROM table1 where tag1='beijing' and tag2='A1'");
+    assertPlan(
+        ret,
+        output(
+            aggregationTableScan(
+                singleGroupingSet(),
+                ImmutableList.of(), // UnStreamable
+                Optional.empty(),
+                SINGLE,
+                "testdb.table1",
+                ImmutableList.of("count"),
+                ImmutableSet.of("time"))));
+  }
 }

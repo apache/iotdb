@@ -38,47 +38,42 @@
         </dependencySet>
     </dependencySets>
     <fileSets>
-        <!--        <fileSet>-->
-        <!--            <outputDirectory>conf</outputDirectory>-->
-        <!--            <directory>${project.basedir}/../server/src/assembly/resources/conf</directory>-->
-        <!--        </fileSet>-->
         <fileSet>
             <outputDirectory>conf</outputDirectory>
             <directory>${project.basedir}/../iotdb-core/node-commons/src/assembly/resources/conf</directory>
         </fileSet>
         <fileSet>
-            <outputDirectory>sbin</outputDirectory>
-            <directory>${project.basedir}/../iotdb-core/datanode/src/assembly/resources/sbin</directory>
+            <directory>${project.basedir}/../scripts/conf</directory>
+            <outputDirectory>conf</outputDirectory>
+            <includes>
+                <include>datanode-env.*</include>
+                <include>**/datanode-env.*</include>
+            </includes>
             <fileMode>0755</fileMode>
         </fileSet>
         <fileSet>
+            <directory>${project.basedir}/../scripts/sbin</directory>
             <outputDirectory>sbin</outputDirectory>
-            <directory>${project.basedir}/../iotdb-core/node-commons/src/assembly/resources/sbin</directory>
+            <includes>
+                <include>*datanode.*</include>
+                <include>**/*datanode.*</include>
+                <include>*cli.*</include>
+                <include>**/*cli.*</include>
+                <include>**/*cli-table.*</include>
+            </includes>
             <fileMode>0755</fileMode>
         </fileSet>
         <fileSet>
+            <directory>${project.basedir}/../scripts/tools</directory>
             <outputDirectory>tools</outputDirectory>
-            <directory>${project.basedir}/../iotdb-core/datanode/src/assembly/resources/tools</directory>
-            <fileMode>0755</fileMode>
-        </fileSet>
-        <fileSet>
-            <outputDirectory>sbin</outputDirectory>
-            <directory>${project.basedir}/../iotdb-client/cli/src/assembly/resources/sbin</directory>
-            <fileMode>0755</fileMode>
-        </fileSet>
-        <fileSet>
-            <outputDirectory>tools</outputDirectory>
-            <directory>${project.basedir}/../iotdb-client/cli/src/assembly/resources/tools</directory>
+            <excludes>
+                <exclude>**/*confignode.*</exclude>
+                <exclude>**/*all.*</exclude>
+                <exclude>**/*ainode.*</exclude>
+            </excludes>
             <fileMode>0755</fileMode>
         </fileSet>
     </fileSets>
-    <files>
-        <file>
-            <source>${project.basedir}/../iotdb-core/datanode/src/assembly/resources/conf/datanode-env.sh</source>
-            <destName>conf/datanode-env.sh</destName>
-            <fileMode>0755</fileMode>
-        </file>
-    </files>
     <componentDescriptors>
         <componentDescriptor>common-files.xml</componentDescriptor>
     </componentDescriptors>

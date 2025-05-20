@@ -21,6 +21,7 @@ package org.apache.iotdb.db.subscription.event.batch;
 
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.batch.PipeTabletEventTsFileBatch;
+import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
 import org.apache.iotdb.db.subscription.broker.SubscriptionPrefetchingTsFileQueue;
 import org.apache.iotdb.db.subscription.event.SubscriptionEvent;
 import org.apache.iotdb.db.subscription.event.pipe.SubscriptionPipeTsFileBatchEvents;
@@ -82,10 +83,29 @@ public class SubscriptionPipeTsFileEventBatch extends SubscriptionPipeEventBatch
 
   @Override
   protected void onTsFileInsertionEvent(final TsFileInsertionEvent event) {
-    LOGGER.warn(
-        "SubscriptionPipeTsFileEventBatch {} ignore TsFileInsertionEvent {} when batching.",
-        this,
-        event);
+    // TODO: parse tsfile event on the fly like SubscriptionPipeTabletEventBatch
+    try {
+      for (final TabletInsertionEvent parsedEvent : event.toTabletInsertionEvents()) {
+        if (!((PipeRawTabletInsertionEvent) parsedEvent)
+            .increaseReferenceCount(this.getClass().getName())) {
+          LOGGER.warn(
+              "SubscriptionPipeTsFileEventBatch: Failed to increase the reference count of event {}, skipping it.",
+              ((PipeRawTabletInsertionEvent) parsedEvent).coreReportMessage());
+        } else {
+          try {
+            batch.onEvent(parsedEvent);
+          } catch (final Exception ignored) {
+            // no exceptions will be thrown
+          }
+        }
+      }
+    } finally {
+      try {
+        event.close();
+      } catch (final Exception ignored) {
+        // no exceptions will be thrown
+      }
+    }
   }
 
   @Override
@@ -96,14 +116,16 @@ public class SubscriptionPipeTsFileEventBatch extends SubscriptionPipeEventBatch
 
     final List<SubscriptionEvent> events = new ArrayList<>();
     final List<Pair<String, File>> dbTsFilePairs = batch.sealTsFiles();
-    final AtomicInteger referenceCount = new AtomicInteger(dbTsFilePairs.size());
-    for (final Pair<String, File> tsFile : dbTsFilePairs) {
+    final AtomicInteger ackReferenceCount = new AtomicInteger(dbTsFilePairs.size());
+    final AtomicInteger cleanReferenceCount = new AtomicInteger(dbTsFilePairs.size());
+    for (final Pair<String, File> pair : dbTsFilePairs) {
       final SubscriptionCommitContext commitContext =
           prefetchingQueue.generateSubscriptionCommitContext();
       events.add(
           new SubscriptionEvent(
-              new SubscriptionPipeTsFileBatchEvents(this, referenceCount),
-              tsFile.right,
+              new SubscriptionPipeTsFileBatchEvents(this, ackReferenceCount, cleanReferenceCount),
+              pair.right,
+              pair.left,
               commitContext));
     }
     return events;

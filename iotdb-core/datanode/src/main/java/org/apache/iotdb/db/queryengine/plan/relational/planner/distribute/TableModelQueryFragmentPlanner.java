@@ -20,17 +20,13 @@
 package org.apache.iotdb.db.queryengine.plan.relational.planner.distribute;
 
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
-import org.apache.iotdb.common.rpc.thrift.TEndPoint;
-import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
-import org.apache.iotdb.commons.partition.QueryExecutor;
-import org.apache.iotdb.commons.partition.StorageExecutor;
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.queryengine.common.DataNodeEndPoints;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.PlanFragmentId;
 import org.apache.iotdb.db.queryengine.execution.exchange.sink.DownStreamChannelLocation;
+import org.apache.iotdb.db.queryengine.plan.ClusterTopology;
 import org.apache.iotdb.db.queryengine.plan.analyze.QueryType;
 import org.apache.iotdb.db.queryengine.plan.planner.distribution.NodeDistribution;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.AbstractFragmentParallelPlanner;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.FragmentInstance;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.PlanFragment;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.SubPlan;
@@ -44,19 +40,13 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowDevice;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Statement;
 
 import org.apache.tsfile.utils.Pair;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 
-public class TableModelQueryFragmentPlanner {
-
-  private static final Logger LOGGER =
-      LoggerFactory.getLogger(TableModelQueryFragmentPlanner.class);
+public class TableModelQueryFragmentPlanner extends AbstractFragmentParallelPlanner {
 
   private final SubPlan subPlan;
 
@@ -74,6 +64,7 @@ public class TableModelQueryFragmentPlanner {
 
   // Record FragmentInstances dispatched to same DataNode
   private final Map<TDataNodeLocation, List<FragmentInstance>> dataNodeFIMap = new HashMap<>();
+  private final ClusterTopology topology = ClusterTopology.getInstance();
 
   private final Map<PlanNodeId, NodeDistribution> nodeDistributionMap;
 
@@ -82,13 +73,15 @@ public class TableModelQueryFragmentPlanner {
       Analysis analysis,
       MPPQueryContext queryContext,
       final Map<PlanNodeId, NodeDistribution> nodeDistributionMap) {
+    super(queryContext);
     this.subPlan = subPlan;
     this.analysis = analysis;
     this.queryContext = queryContext;
     this.nodeDistributionMap = nodeDistributionMap;
   }
 
-  public List<FragmentInstance> plan() {
+  @Override
+  public List<FragmentInstance> parallelPlan() {
     prepare();
     calculateNodeTopologyBetweenInstance();
     return fragmentInstanceList;
@@ -109,114 +102,6 @@ public class TableModelQueryFragmentPlanner {
     root.getChildren().forEach(child -> recordPlanNodeRelation(child, planFragmentId));
   }
 
-  private void produceFragmentInstance(
-      PlanFragment fragment, final Map<PlanNodeId, NodeDistribution> nodeDistributionMap) {
-    FragmentInstance fragmentInstance =
-        new FragmentInstance(
-            fragment,
-            fragment.getId().genFragmentInstanceId(),
-            QueryType.READ,
-            queryContext.getTimeOut() - (System.currentTimeMillis() - queryContext.getStartTime()),
-            queryContext.getSession(),
-            queryContext.isExplainAnalyze(),
-            fragment.isRoot());
-
-    // Get the target region for origin PlanFragment, then its instance will be distributed one
-    // of them.
-    TRegionReplicaSet regionReplicaSet = fragment.getTargetRegionForTableModel(nodeDistributionMap);
-
-    // Set ExecutorType and target host for the instance,
-    // We need to store all the replica host in case of the scenario that the instance need to be
-    // redirected
-    // to another host when scheduling
-    if (regionReplicaSet == null || regionReplicaSet.getRegionId() == null) {
-      TDataNodeLocation dataNodeLocation = fragment.getTargetLocation();
-      if (dataNodeLocation != null) {
-        // now only the case ShowStatement will enter here
-        fragmentInstance.setExecutorAndHost(new QueryExecutor(dataNodeLocation));
-      } else {
-        // no data region && no dataNodeLocation, we need to execute this FI on local
-        // now only the case AggregationQuery has schemaengine but no data region will enter here
-        fragmentInstance.setExecutorAndHost(
-            new QueryExecutor(DataNodeEndPoints.getLocalDataNodeLocation()));
-      }
-    } else {
-      fragmentInstance.setExecutorAndHost(new StorageExecutor(regionReplicaSet));
-      fragmentInstance.setHostDataNode(selectTargetDataNode(regionReplicaSet));
-    }
-
-    dataNodeFIMap.compute(
-        fragmentInstance.getHostDataNode(),
-        (k, v) -> {
-          if (v == null) {
-            v = new ArrayList<>();
-          }
-          v.add(fragmentInstance);
-          return v;
-        });
-
-    final Statement statement = analysis.getStatement();
-    if (analysis.isQuery() || statement instanceof ShowDevice || statement instanceof CountDevice) {
-      fragmentInstance.getFragment().generateTableModelTypeProvider(queryContext.getTypeProvider());
-    }
-    instanceMap.putIfAbsent(fragment.getId(), fragmentInstance);
-    fragmentInstanceList.add(fragmentInstance);
-  }
-
-  private TDataNodeLocation selectTargetDataNode(TRegionReplicaSet regionReplicaSet) {
-    if (regionReplicaSet == null
-        || regionReplicaSet.getDataNodeLocations() == null
-        || regionReplicaSet.getDataNodeLocations().isEmpty()) {
-      throw new IllegalArgumentException(
-          String.format("RegionReplicaSet is invalid: %s", regionReplicaSet));
-    }
-    String readConsistencyLevel =
-        IoTDBDescriptor.getInstance().getConfig().getReadConsistencyLevel();
-    boolean selectRandomDataNode = "weak".equals(readConsistencyLevel);
-
-    // When planning fragment onto specific DataNode, the DataNode whose endPoint is in
-    // black list won't be considered because it may have connection issue now.
-    List<TDataNodeLocation> availableDataNodes =
-        filterAvailableTDataNode(regionReplicaSet.getDataNodeLocations());
-    if (availableDataNodes.isEmpty()) {
-      String errorMsg =
-          String.format(
-              "All replicas for region[%s] are not available in these DataNodes[%s]",
-              regionReplicaSet.getRegionId(), regionReplicaSet.getDataNodeLocations());
-      throw new IllegalArgumentException(errorMsg);
-    }
-    if (regionReplicaSet.getDataNodeLocationsSize() != availableDataNodes.size()) {
-      LOGGER.info("Available replicas: {}", availableDataNodes);
-    }
-    int targetIndex;
-    if (!selectRandomDataNode || queryContext.getSession() == null) {
-      targetIndex = 0;
-    } else {
-      targetIndex = (int) (queryContext.getSession().getSessionId() % availableDataNodes.size());
-    }
-    return availableDataNodes.get(targetIndex);
-  }
-
-  private List<TDataNodeLocation> filterAvailableTDataNode(
-      List<TDataNodeLocation> originalDataNodeList) {
-    List<TDataNodeLocation> result = new LinkedList<>();
-    for (TDataNodeLocation dataNodeLocation : originalDataNodeList) {
-      if (isAvailableDataNode(dataNodeLocation)) {
-        result.add(dataNodeLocation);
-      }
-    }
-    return result;
-  }
-
-  private boolean isAvailableDataNode(TDataNodeLocation dataNodeLocation) {
-    for (TEndPoint endPoint : queryContext.getEndPointBlackList()) {
-      if (endPoint.equals(dataNodeLocation.internalEndPoint)) {
-        return false;
-      }
-    }
-    return true;
-  }
-
   private void calculateNodeTopologyBetweenInstance() {
     for (FragmentInstance instance : fragmentInstanceList) {
       PlanNode rootNode = instance.getFragment().getPlanNodeTree();
@@ -227,7 +112,8 @@ public class TableModelQueryFragmentPlanner {
           // Set target Endpoint for FragmentSinkNode
           PlanNodeId downStreamNodeId =
               new PlanNodeId(downStreamChannelLocation.getRemotePlanNodeId());
-          FragmentInstance downStreamInstance = findDownStreamInstance(downStreamNodeId);
+          FragmentInstance downStreamInstance =
+              findDownStreamInstance(planNodeMap, instanceMap, downStreamNodeId);
           downStreamChannelLocation.setRemoteEndpoint(
               downStreamInstance.getHostDataNode().getMPPDataExchangeEndPoint());
           downStreamChannelLocation.setRemoteFragmentInstanceId(
@@ -245,7 +131,30 @@ public class TableModelQueryFragmentPlanner {
     }
   }
 
-  private FragmentInstance findDownStreamInstance(PlanNodeId exchangeNodeId) {
-    return instanceMap.get(planNodeMap.get(exchangeNodeId).left);
+  private void produceFragmentInstance(
+      PlanFragment fragment, final Map<PlanNodeId, NodeDistribution> nodeDistributionMap) {
+    FragmentInstance fragmentInstance =
+        new FragmentInstance(
+            fragment,
+            fragment.getId().genFragmentInstanceId(),
+            QueryType.READ,
+            queryContext.getTimeOut() - (System.currentTimeMillis() - queryContext.getStartTime()),
+            queryContext.getSession(),
+            queryContext.isExplainAnalyze(),
+            fragment.isRoot());
+
+    selectExecutorAndHost(
+        fragment,
+        fragmentInstance,
+        () -> fragment.getTargetRegionForTableModel(nodeDistributionMap),
+        topology::getValidatedReplicaSet,
+        dataNodeFIMap);
+
+    final Statement statement = analysis.getStatement();
+    if (analysis.isQuery() || statement instanceof ShowDevice || statement instanceof CountDevice) {
+      fragmentInstance.getFragment().generateTableModelTypeProvider(queryContext.getTypeProvider());
+    }
+    instanceMap.putIfAbsent(fragment.getId(), fragmentInstance);
+    fragmentInstanceList.add(fragmentInstance);
   }
 }

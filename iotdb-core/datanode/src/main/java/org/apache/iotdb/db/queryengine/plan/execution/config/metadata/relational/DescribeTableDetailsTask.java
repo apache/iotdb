@@ -48,7 +48,7 @@ public class DescribeTableDetailsTask extends AbstractTableTask {
   @Override
   public ListenableFuture<ConfigTaskResult> execute(final IConfigTaskExecutor configTaskExecutor)
       throws InterruptedException {
-    return configTaskExecutor.describeTable(database, tableName, true);
+    return configTaskExecutor.describeTable(database, tableName, true, null);
   }
 
   public static void buildTsBlock(
@@ -79,12 +79,16 @@ public class DescribeTableDetailsTask extends AbstractTableTask {
               new Binary(
                   preDeletedColumns.contains(columnSchema.getColumnName()) ? "PRE_DELETE" : "USING",
                   TSFileConfig.STRING_CHARSET));
-      builder
-          .getColumnBuilder(4)
-          .writeBinary(
-              new Binary(
-                  columnSchema.getProps().getOrDefault(TsTable.COMMENT_KEY, ""),
-                  TSFileConfig.STRING_CHARSET));
+
+      if (columnSchema.getProps().containsKey(TsTable.COMMENT_KEY)) {
+        builder
+            .getColumnBuilder(4)
+            .writeBinary(
+                new Binary(
+                    columnSchema.getProps().get(TsTable.COMMENT_KEY), TSFileConfig.STRING_CHARSET));
+      } else {
+        builder.getColumnBuilder(4).appendNull();
+      }
       builder.declarePosition();
     }
 

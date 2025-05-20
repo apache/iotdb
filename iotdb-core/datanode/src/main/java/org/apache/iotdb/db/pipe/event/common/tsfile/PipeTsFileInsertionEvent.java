@@ -34,7 +34,7 @@ import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tsfile.aggregator.TsFileInsertionPointCounter;
 import org.apache.iotdb.db.pipe.event.common.tsfile.parser.TsFileInsertionEventParser;
 import org.apache.iotdb.db.pipe.event.common.tsfile.parser.TsFileInsertionEventParserProvider;
-import org.apache.iotdb.db.pipe.extractor.dataregion.realtime.assigner.PipeTimePartitionProgressIndexKeeper;
+import org.apache.iotdb.db.pipe.extractor.dataregion.realtime.assigner.PipeTsFileEpochProgressIndexKeeper;
 import org.apache.iotdb.db.pipe.metric.overview.PipeDataNodeRemainingEventAndTimeMetrics;
 import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
 import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryManager;
@@ -399,17 +399,13 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
 
   public void eliminateProgressIndex() {
     if (Objects.isNull(overridingProgressIndex)) {
-      PipeTimePartitionProgressIndexKeeper.getInstance()
-          .eliminateProgressIndex(
-              resource.getDataRegionId(),
-              resource.getTimePartition(),
-              resource.getMaxProgressIndexAfterClose());
+      PipeTsFileEpochProgressIndexKeeper.getInstance()
+          .eliminateProgressIndex(resource.getDataRegionId(), resource.getTsFilePath());
     }
   }
 
-  @Override
-  public boolean shouldParsePattern() {
-    return super.shouldParsePattern() || shouldParse4Privilege;
+  public boolean shouldParse4Privilege() {
+    return shouldParse4Privilege;
   }
 
   @Override
@@ -682,13 +678,17 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
       eventParser.compareAndSet(
           null,
           new TsFileInsertionEventParserProvider(
+                  pipeName,
+                  creationTime,
                   tsFile,
                   treePattern,
                   tablePattern,
                   startTime,
                   endTime,
                   pipeTaskMeta,
-                  userName,
+                  // Do not parse privilege if it should not be parsed
+                  // To avoid renaming of the tsFile database
+                  shouldParse4Privilege ? userName : null,
                   this)
               .provide());
       return eventParser.get();

@@ -27,11 +27,13 @@ import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.pipe.agent.task.PipeTask;
 import org.apache.iotdb.commons.pipe.agent.task.PipeTaskAgent;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeMeta;
+import org.apache.iotdb.commons.pipe.agent.task.meta.PipeRuntimeMeta;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeStaticMeta;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeStatus;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeType;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
+import org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant;
 import org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant;
 import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.commons.service.metric.enums.Tag;
@@ -48,6 +50,7 @@ import org.apache.iotdb.db.pipe.extractor.dataregion.IoTDBDataRegionExtractor;
 import org.apache.iotdb.db.pipe.extractor.dataregion.realtime.listener.PipeInsertionDataNodeListener;
 import org.apache.iotdb.db.pipe.extractor.schemaregion.SchemaRegionListeningFilter;
 import org.apache.iotdb.db.pipe.metric.overview.PipeDataNodeRemainingEventAndTimeMetrics;
+import org.apache.iotdb.db.pipe.metric.overview.PipeTsFileToTabletsMetrics;
 import org.apache.iotdb.db.pipe.metric.source.PipeDataRegionExtractorMetrics;
 import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
@@ -55,6 +58,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.pipe.PipeOperateSc
 import org.apache.iotdb.db.schemaengine.SchemaEngine;
 import org.apache.iotdb.db.storageengine.StorageEngine;
 import org.apache.iotdb.db.storageengine.dataregion.wal.WALManager;
+import org.apache.iotdb.db.subscription.agent.SubscriptionAgent;
 import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.metrics.utils.SystemMetric;
 import org.apache.iotdb.mpp.rpc.thrift.TDataNodeHeartbeatResp;
@@ -117,7 +121,9 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
   @Override
   protected Map<Integer, PipeTask> buildPipeTasks(final PipeMeta pipeMetaFromConfigNode)
       throws IllegalPathException {
-    return new PipeDataNodeBuilder(pipeMetaFromConfigNode).build();
+    return pipeMetaFromConfigNode.getStaticMeta().isSourceExternal()
+        ? new PipeDataNodeBuilder(pipeMetaFromConfigNode).buildTasksWithExternalSource()
+        : new PipeDataNodeBuilder(pipeMetaFromConfigNode).buildTasksWithInternalSource();
   }
 
   ////////////////////////// Manage by Pipe Name //////////////////////////
@@ -187,11 +193,16 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
           SchemaEngine.getInstance()
                   .getAllSchemaRegionIds()
                   .contains(new SchemaRegionId(consensusGroupId))
-              && !SchemaRegionListeningFilter.parseListeningPlanTypeSet(extractorParameters)
-                  .isEmpty();
+              && SchemaRegionListeningFilter.shouldSchemaRegionBeListened(
+                  consensusGroupId, extractorParameters);
 
       // Advance the extractor parameters parsing logic to avoid creating un-relevant pipeTasks
-      if (needConstructDataRegionTask || needConstructSchemaRegionTask) {
+      if (
+      // For external source
+      PipeRuntimeMeta.isSourceExternal(consensusGroupId)
+          // For internal source
+          || needConstructDataRegionTask
+          || needConstructSchemaRegionTask) {
         final PipeDataNodeTask pipeTask =
             new PipeDataNodeTaskBuilder(pipeStaticMeta, consensusGroupId, pipeTaskMeta).build();
         pipeTask.create();
@@ -326,8 +337,9 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
       return false;
     }
 
-    PipeDataNodeRemainingEventAndTimeMetrics.getInstance()
-        .deregister(pipeName + "_" + creationTime);
+    final String taskId = pipeName + "_" + creationTime;
+    PipeTsFileToTabletsMetrics.getInstance().deregister(taskId);
+    PipeDataNodeRemainingEventAndTimeMetrics.getInstance().deregister(taskId);
 
     return true;
   }
@@ -337,14 +349,40 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
     // Get the pipe meta first because it is removed after super#dropPipe(pipeName)
     final PipeMeta pipeMeta = pipeMetaKeeper.getPipeMeta(pipeName);
 
+    // Record whether there are pipe tasks before dropping the pipe
+    final boolean hasPipeTasks;
+    if (Objects.nonNull(pipeMeta)) {
+      final Map<Integer, PipeTask> pipeTaskMap =
+          pipeTaskManager.getPipeTasks(pipeMeta.getStaticMeta());
+      hasPipeTasks = Objects.nonNull(pipeTaskMap) && !pipeTaskMap.isEmpty();
+    } else {
+      hasPipeTasks = false;
+    }
+
     if (!super.dropPipe(pipeName)) {
       return false;
     }
 
     if (Objects.nonNull(pipeMeta)) {
       final long creationTime = pipeMeta.getStaticMeta().getCreationTime();
-      PipeDataNodeRemainingEventAndTimeMetrics.getInstance()
-          .deregister(pipeName + "_" + creationTime);
+      final String taskId = pipeName + "_" + creationTime;
+      PipeTsFileToTabletsMetrics.getInstance().deregister(taskId);
+      PipeDataNodeRemainingEventAndTimeMetrics.getInstance().deregister(taskId);
+      // When the pipe contains no pipe tasks, there is no corresponding prefetching queue for the
+      // subscribed pipe, so the subscription needs to be manually marked as completed.
+      if (!hasPipeTasks && PipeStaticMeta.isSubscriptionPipe(pipeName)) {
+        final String topicName =
+            pipeMeta
+                .getStaticMeta()
+                .getConnectorParameters()
+                .getString(PipeConnectorConstant.SINK_TOPIC_KEY);
+        final String consumerGroupId =
+            pipeMeta
+                .getStaticMeta()
+                .getConnectorParameters()
+                .getString(PipeConnectorConstant.SINK_CONSUMER_GROUP_KEY);
+        SubscriptionAgent.broker().updateCompletedTopicNames(consumerGroupId, topicName);
+      }
     }
 
     return true;
@@ -607,19 +645,22 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
     }
 
     final long totalLinkedButDeletedTsFileResourceRamSize =
-        PipeDataNodeResourceManager.tsfile().getTotalLinkedButDeletedTsfileResourceRamSize();
-    final long freeMemorySizeInBytes =
-        PipeDataNodeResourceManager.memory().getFreeMemorySizeInBytes();
-    if (3 * totalLinkedButDeletedTsFileResourceRamSize >= 2 * freeMemorySizeInBytes) {
+        PipeDataNodeResourceManager.tsfile().getTotalLinkedButDeletedTsFileResourceRamSize();
+    final long totalInsertNodeFloatingMemoryUsageInBytes = getAllFloatingMemoryUsageInByte();
+    final long totalFloatingMemorySizeInBytes =
+        PipeDataNodeResourceManager.memory().getTotalFloatingMemorySizeInBytes();
+    if (totalInsertNodeFloatingMemoryUsageInBytes + totalLinkedButDeletedTsFileResourceRamSize
+        >= totalFloatingMemorySizeInBytes) {
       for (final PipeMeta pipeMeta : pipeMetaKeeper.getPipeMetaList()) {
         stuckPipes.add(pipeMeta);
       }
       if (!stuckPipes.isEmpty()) {
         LOGGER.warn(
-            "All {} pipe(s) will be restarted because linked tsfiles' resource size {} exceeds limit {}.",
+            "All {} pipe(s) will be restarted because linked but deleted tsFiles' resource size {} and all insertNode's size {} exceeds limit {}.",
             stuckPipes.size(),
             totalLinkedButDeletedTsFileResourceRamSize,
-            freeMemorySizeInBytes * 2.0 / 3);
+            totalInsertNodeFloatingMemoryUsageInBytes,
+            totalFloatingMemorySizeInBytes);
       }
       return stuckPipes;
     }
@@ -662,19 +703,6 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
               pipeMeta.getStaticMeta(),
               mayMemTablePinnedCountReachDangerousThreshold(),
               mayWalSizeReachThrottleThreshold());
-          stuckPipes.add(pipeMeta);
-        } else if (getFloatingMemoryUsageInByte(pipeName)
-            >= PipeDataNodeResourceManager.memory().getFreeMemorySizeInBytes()
-                / pipeMetaKeeper.getPipeMetaCount()) {
-          // Extractors of this pipe may have too many insert nodes
-          LOGGER.warn(
-              "Pipe {} needs to restart because too many insertNodes are extracted. "
-                  + "Floating memory usage for this pipe: {}, free memory size: {}, allowed free memory size for floating memory usage: {}",
-              pipeMeta.getStaticMeta(),
-              getFloatingMemoryUsageInByte(pipeName),
-              PipeDataNodeResourceManager.memory().getFreeMemorySizeInBytes(),
-              PipeDataNodeResourceManager.memory().getFreeMemorySizeInBytes()
-                  / pipeMetaKeeper.getPipeMetaCount());
           stuckPipes.add(pipeMeta);
         }
       }

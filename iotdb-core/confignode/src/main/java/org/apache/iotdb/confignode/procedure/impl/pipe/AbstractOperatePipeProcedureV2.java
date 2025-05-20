@@ -520,6 +520,10 @@ public abstract class AbstractOperatePipeProcedureV2
         .entrySet()
         .removeIf(
             consensusGroupId2TaskMeta -> {
+              if (originalPipeMeta.getStaticMeta().isSourceExternal()) {
+                // should keep the external source tasks
+                return false;
+              }
               final String database;
               try {
                 database =

@@ -34,26 +34,24 @@ classifiers = [
     "Topic :: Software Development :: Libraries :: Python Modules",
 ]
 include = [
-    {path = "iotdb/thrift/*", format = "wheel"},
-    {path = "iotdb/thrift/common/*", format = "wheel"},
-    {path = "iotdb/thrift/confignode/*", format = "wheel"},
-    {path = "iotdb/thrift/datanode/*", format = "wheel"},
-    {path = "iotdb/thrift/ainode/*", format = "wheel"},
-    {path = "iotdb/conf/*", format = "wheel"},
+    {path = "ainode/thrift/*", format = "wheel"},
+    {path = "ainode/thrift/common/*", format = "wheel"},
+    {path = "ainode/thrift/confignode/*", format = "wheel"},
+    {path = "ainode/thrift/datanode/*", format = "wheel"},
+    {path = "ainode/thrift/ainode/*", format = "wheel"},
+    {path = "ainode/conf/*", format = "wheel"},
 ]
 packages = [
-    { include = "iotdb" }
+    { include = "ainode" }
 ]
 
 [tool.poetry.dependencies]
 python = ">=3.8, <3.13"
-
 numpy = "^1.21.4"
 pandas = "^1.3.5"
 torch = ">=2.2.0"
 pylru = "^1.2.1"
-
-thrift = "^0.13.0"
+thrift = ">=0.14.0"
 dynaconf = "^3.1.11"
 requests = "^2.31.0"
 optuna = "^3.2.0"
@@ -61,6 +59,10 @@ psutil = "^5.9.5"
 sktime = "^0.24.1"
 pmdarima = "^2.0.4"
 hmmlearn = "^0.3.0"
+apache-iotdb = "2.0.4.dev0"
+einops = "^0.8.1"
+safetensors = "^0.5.1"
+huggingface_hub = "^0.30.1"
 
 [tool.poetry.scripts]
-ainode = "iotdb.ainode.script:main"
+ainode = "ainode.core.script:main"

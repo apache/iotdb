@@ -26,12 +26,14 @@ import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.conf.TrimProperties;
 import org.apache.iotdb.commons.exception.BadNodeUrlException;
 import org.apache.iotdb.commons.memory.MemoryManager;
+import org.apache.iotdb.commons.pipe.config.PipeDescriptor;
 import org.apache.iotdb.commons.schema.SchemaConstant;
 import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.commons.utils.NodeUrlUtils;
 import org.apache.iotdb.confignode.rpc.thrift.TCQConfig;
 import org.apache.iotdb.confignode.rpc.thrift.TGlobalConfig;
 import org.apache.iotdb.confignode.rpc.thrift.TRatisConfig;
+import org.apache.iotdb.consensus.config.PipeConsensusConfig;
 import org.apache.iotdb.db.consensus.DataRegionConsensusImpl;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.service.metrics.IoTDBInternalLocalReporter;
@@ -47,6 +49,7 @@ import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.constant
 import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.constant.InnerUnsequenceCompactionSelector;
 import org.apache.iotdb.db.storageengine.dataregion.wal.WALManager;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALMode;
+import org.apache.iotdb.db.storageengine.load.disk.ILoadDiskSelector;
 import org.apache.iotdb.db.storageengine.rescon.disk.TierManager;
 import org.apache.iotdb.db.storageengine.rescon.memory.SystemInfo;
 import org.apache.iotdb.db.utils.DateTimeUtils;
@@ -87,6 +90,7 @@ import java.util.Optional;
 import java.util.Properties;
 import java.util.ServiceLoader;
 import java.util.Set;
+import java.util.concurrent.TimeUnit;
 import java.util.regex.Pattern;
 
 public class IoTDBDescriptor {
@@ -726,25 +730,13 @@ public class IoTDBDescriptor {
 
     conf.setRpcSelectorThreadCount(rpcSelectorThreadNum);
 
-    int minConcurrentClientNum =
-        Integer.parseInt(
-            properties.getProperty(
-                "dn_rpc_min_concurrent_client_num",
-                Integer.toString(conf.getRpcMinConcurrentClientNum())));
-
-    if (minConcurrentClientNum <= 0) {
-      minConcurrentClientNum = Runtime.getRuntime().availableProcessors();
-    }
-
-    conf.setRpcMinConcurrentClientNum(minConcurrentClientNum);
-
     int maxConcurrentClientNum =
         Integer.parseInt(
             properties.getProperty(
                 "dn_rpc_max_concurrent_client_num",
                 Integer.toString(conf.getRpcMaxConcurrentClientNum())));
     if (maxConcurrentClientNum <= 0) {
-      maxConcurrentClientNum = 65535;
+      maxConcurrentClientNum = 1000;
     }
 
     conf.setRpcMaxConcurrentClientNum(maxConcurrentClientNum);
@@ -970,15 +962,6 @@ public class IoTDBDescriptor {
         .setKerberosPrincipal(
             properties.getProperty("kerberos_principal", conf.getKerberosPrincipal()));
     TSFileDescriptor.getInstance().getConfig().setBatchSize(conf.getBatchSize());
-    TSFileDescriptor.getInstance()
-        .getConfig()
-        .setEncryptFlag(properties.getProperty("encrypt_flag", "false"));
-    TSFileDescriptor.getInstance()
-        .getConfig()
-        .setEncryptType(properties.getProperty("encrypt_type", "UNENCRYPTED"));
-    TSFileDescriptor.getInstance()
-        .getConfig()
-        .setEncryptKeyFromPath(properties.getProperty("encrypt_key_from_path", ""));
 
     conf.setCoordinatorReadExecutorSize(
         Integer.parseInt(
@@ -1152,8 +1135,7 @@ public class IoTDBDescriptor {
     }
     conf.setIotConsensusV2Mode(
         properties.getProperty(
-            "iot_consensus_v2_mode",
-            ConfigurationFileUtils.getConfigurationDefaultValue("iot_consensus_v2_mode")));
+            "iot_consensus_v2_mode", PipeConsensusConfig.ReplicateMode.BATCH.getValue()));
     int deletionAheadLogBufferQueueCapacity =
         Integer.parseInt(
             properties.getProperty(
@@ -1161,6 +1143,24 @@ public class IoTDBDescriptor {
                 Integer.toString(conf.getDeletionAheadLogBufferQueueCapacity())));
     if (deletionAheadLogBufferQueueCapacity > 0) {
       conf.setDeletionAheadLogBufferQueueCapacity(deletionAheadLogBufferQueueCapacity);
+    }
+    conf.setTsFileWriterCheckInterval(
+        Integer.parseInt(
+            properties.getProperty(
+                "zombie_tsfile_writer_check_interval",
+                ConfigurationFileUtils.getConfigurationDefaultValue(
+                    "zombie_tsfile_writer_check_interval"))));
+    if (conf.getTsFileWriterCheckInterval() <= 0) {
+      conf.setTsFileWriterCheckInterval(TimeUnit.MINUTES.toMillis(5));
+    }
+    conf.setTsFileWriterZombieThreshold(
+        Integer.parseInt(
+            properties.getProperty(
+                "zombie_tsfile_writer_threshold",
+                ConfigurationFileUtils.getConfigurationDefaultValue(
+                    "zombie_tsfile_writer_threshold"))));
+    if (conf.getTsFileWriterZombieThreshold() <= 0) {
+      conf.setTsFileWriterZombieThreshold(TimeUnit.MINUTES.toMillis(10));
     }
   }
 
@@ -1787,6 +1787,12 @@ public class IoTDBDescriptor {
                     "max_tsblock_line_number",
                     ConfigurationFileUtils.getConfigurationDefaultValue(
                         "max_tsblock_line_number"))));
+    TSFileDescriptor.getInstance()
+        .getConfig()
+        .setEncryptType(properties.getProperty("encrypt_type", "UNENCRYPTED"));
+    TSFileDescriptor.getInstance()
+        .getConfig()
+        .setEncryptKeyFromPath(properties.getProperty("encrypt_key_path", ""));
   }
 
   // Mqtt related
@@ -1893,6 +1899,9 @@ public class IoTDBDescriptor {
     String[][] tierDataDirs = new String[tiers.length][];
     for (int i = 0; i < tiers.length; ++i) {
       tierDataDirs[i] = tiers[i].split(",");
+      for (int j = 0; j < tierDataDirs[i].length; j++) {
+        tierDataDirs[i][j] = tierDataDirs[i][j].trim();
+      }
     }
     return tierDataDirs;
   }
@@ -1983,14 +1992,7 @@ public class IoTDBDescriptor {
       loadLoadTsFileHotModifiedProp(properties);
 
       // update pipe config
-      commonDescriptor
-          .getConfig()
-          .setPipeAllSinksRateLimitBytesPerSecond(
-              Double.parseDouble(
-                  properties.getProperty(
-                      "pipe_all_sinks_rate_limit_bytes_per_second",
-                      ConfigurationFileUtils.getConfigurationDefaultValue(
-                          "pipe_all_sinks_rate_limit_bytes_per_second"))));
+      loadPipeHotModifiedProp(properties);
 
       // update merge_threshold_of_explain_analyze
       conf.setMergeThresholdOfExplainAnalyze(
@@ -2141,7 +2143,7 @@ public class IoTDBDescriptor {
     }
   }
 
-  private void loadLoadTsFileProps(TrimProperties properties) {
+  private void loadLoadTsFileProps(TrimProperties properties) throws IOException {
     conf.setMaxAllocateMemoryRatioForLoad(
         Double.parseDouble(
             properties.getProperty(
@@ -2168,6 +2170,11 @@ public class IoTDBDescriptor {
             properties.getProperty(
                 "load_tsfile_analyze_schema_memory_size_in_bytes",
                 String.valueOf(conf.getLoadTsFileAnalyzeSchemaMemorySizeInBytes()))));
+    conf.setLoadTsFileTabletConversionBatchMemorySizeInBytes(
+        Long.parseLong(
+            properties.getProperty(
+                "load_tsfile_tablet_conversion_batch_memory_size_in_bytes",
+                String.valueOf(conf.getLoadTsFileTabletConversionBatchMemorySizeInBytes()))));
     conf.setLoadTsFileMaxDeviceCountToUseDeviceTimeIndex(
         Integer.parseInt(
             properties.getProperty(
@@ -2193,6 +2200,12 @@ public class IoTDBDescriptor {
             properties.getProperty(
                 "load_write_throughput_bytes_per_second",
                 String.valueOf(conf.getLoadWriteThroughputBytesPerSecond()))));
+
+    conf.setLoadTabletConversionThresholdBytes(
+        Long.parseLong(
+            properties.getProperty(
+                "load_tablet_conversion_threshold_bytes",
+                String.valueOf(conf.getLoadTabletConversionThresholdBytes()))));
 
     conf.setLoadActiveListeningEnable(
         Boolean.parseBoolean(
@@ -2238,6 +2251,16 @@ public class IoTDBDescriptor {
             properties.getProperty(
                 "load_active_listening_verify_enable",
                 Boolean.toString(conf.isLoadActiveListeningVerifyEnable()))));
+
+    conf.setLoadDiskSelectStrategy(
+        properties.getProperty(
+            "load_disk_select_strategy",
+            ILoadDiskSelector.LoadDiskSelectorType.MIN_IO_FIRST.getValue()));
+
+    conf.setLoadDiskSelectStrategyForIoTV2AndPipe(
+        properties.getProperty(
+            "load_disk_select_strategy_for_pipe_and_iotv2",
+            ILoadDiskSelector.LoadDiskSelectorType.INHERIT_LOAD.getValue()));
   }
 
   private void loadLoadTsFileHotModifiedProp(TrimProperties properties) throws IOException {
@@ -2278,6 +2301,10 @@ public class IoTDBDescriptor {
         properties.getProperty(
             "load_active_listening_fail_dir",
             ConfigurationFileUtils.getConfigurationDefaultValue("load_active_listening_fail_dir")));
+  }
+
+  private void loadPipeHotModifiedProp(TrimProperties properties) throws IOException {
+    PipeDescriptor.loadPipeProps(commonDescriptor.getConfig(), properties, true);
   }
 
   @SuppressWarnings("squid:S3518") // "proportionSum" can't be zero

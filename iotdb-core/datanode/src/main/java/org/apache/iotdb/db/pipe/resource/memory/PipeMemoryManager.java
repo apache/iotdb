@@ -40,19 +40,13 @@ public class PipeMemoryManager {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(PipeMemoryManager.class);
 
+  private static final PipeConfig PIPE_CONFIG = PipeConfig.getInstance();
+
   private static final boolean PIPE_MEMORY_MANAGEMENT_ENABLED =
       PipeConfig.getInstance().getPipeMemoryManagementEnabled();
 
-  private static final int MEMORY_ALLOCATE_MAX_RETRIES =
-      PipeConfig.getInstance().getPipeMemoryAllocateMaxRetries();
-  private static final long MEMORY_ALLOCATE_RETRY_INTERVAL_IN_MS =
-      PipeConfig.getInstance().getPipeMemoryAllocateRetryIntervalInMs();
-
-  private static final long MEMORY_ALLOCATE_MIN_SIZE_IN_BYTES =
-      PipeConfig.getInstance().getPipeMemoryAllocateMinSizeInBytes();
-
   // TODO @spricoder: consider combine memory block and used MemorySizeInBytes
-  private IMemoryBlock memoryBlock =
+  private final IMemoryBlock memoryBlock =
       IoTDBDescriptor.getInstance()
           .getMemoryConfig()
           .getPipeMemoryManager()
@@ -60,16 +54,12 @@ public class PipeMemoryManager {
 
   private static final double EXCEED_PROTECT_THRESHOLD = 0.95;
 
-  // To avoid too much parsed events causing OOM. If total tablet memory size exceeds this
-  // threshold, allocations of memory block for tablets will be rejected.
-  private static final double TABLET_MEMORY_REJECT_THRESHOLD =
-      PipeConfig.getInstance().getPipeDataStructureTabletMemoryBlockAllocationRejectThreshold();
   private volatile long usedMemorySizeInBytesOfTablets;
 
-  // Used to control the memory allocated for managing slice tsfile.
-  private static final double TS_FILE_MEMORY_REJECT_THRESHOLD =
-      PipeConfig.getInstance().getPipeDataStructureTsFileMemoryBlockAllocationRejectThreshold();
   private volatile long usedMemorySizeInBytesOfTsFiles;
+
+  private static final double FLOATING_MEMORY_RATIO =
+      PipeConfig.getInstance().getPipeTotalFloatingMemoryProportion();
 
   // Only non-zero memory blocks will be added to this set.
   private final Set<PipeMemoryBlock> allocatedBlocks = new HashSet<>();
@@ -93,18 +83,21 @@ public class PipeMemoryManager {
   // block does not exceed TABLET_MEMORY_REJECT_THRESHOLD + TS_FILE_MEMORY_REJECT_THRESHOLD
 
   private double allowedMaxMemorySizeInBytesOfTabletsAndTsFiles() {
-    return (TABLET_MEMORY_REJECT_THRESHOLD + TS_FILE_MEMORY_REJECT_THRESHOLD)
-        * memoryBlock.getTotalMemorySizeInBytes();
+    return (PIPE_CONFIG.getPipeDataStructureTabletMemoryBlockAllocationRejectThreshold()
+            + PIPE_CONFIG.getPipeDataStructureTsFileMemoryBlockAllocationRejectThreshold())
+        * getTotalNonFloatingMemorySizeInBytes();
   }
 
   private double allowedMaxMemorySizeInBytesOfTablets() {
-    return (TABLET_MEMORY_REJECT_THRESHOLD + TS_FILE_MEMORY_REJECT_THRESHOLD / 2)
-        * memoryBlock.getTotalMemorySizeInBytes();
+    return (PIPE_CONFIG.getPipeDataStructureTabletMemoryBlockAllocationRejectThreshold()
+            + PIPE_CONFIG.getPipeDataStructureTsFileMemoryBlockAllocationRejectThreshold() / 2)
+        * getTotalNonFloatingMemorySizeInBytes();
   }
 
   private double allowedMaxMemorySizeInBytesOfTsTiles() {
-    return (TS_FILE_MEMORY_REJECT_THRESHOLD + TABLET_MEMORY_REJECT_THRESHOLD / 2)
-        * memoryBlock.getTotalMemorySizeInBytes();
+    return (PIPE_CONFIG.getPipeDataStructureTsFileMemoryBlockAllocationRejectThreshold()
+            + PIPE_CONFIG.getPipeDataStructureTabletMemoryBlockAllocationRejectThreshold() / 2)
+        * getTotalNonFloatingMemorySizeInBytes();
   }
 
   public boolean isEnough4TabletParsing() {
@@ -158,13 +151,13 @@ public class PipeMemoryManager {
       return (PipeTabletMemoryBlock) registerMemoryBlock(0, PipeMemoryBlockType.TABLET);
     }
 
-    for (int i = 1; i <= MEMORY_ALLOCATE_MAX_RETRIES; i++) {
+    for (int i = 1, size = PIPE_CONFIG.getPipeMemoryAllocateMaxRetries(); i <= size; i++) {
       if (isHardEnough4TabletParsing()) {
         break;
       }
 
       try {
-        Thread.sleep(MEMORY_ALLOCATE_RETRY_INTERVAL_IN_MS);
+        Thread.sleep(PIPE_CONFIG.getPipeMemoryAllocateRetryIntervalInMs());
       } catch (InterruptedException ex) {
         Thread.currentThread().interrupt();
         LOGGER.warn("forceAllocateWithRetry: interrupted while waiting for available memory", ex);
@@ -176,7 +169,7 @@ public class PipeMemoryManager {
           String.format(
               "forceAllocateForTablet: failed to allocate because there's too much memory for tablets, "
                   + "total memory size %d bytes, used memory for tablet size %d bytes, requested memory size %d bytes",
-              memoryBlock.getTotalMemorySizeInBytes(),
+              getTotalNonFloatingMemorySizeInBytes(),
               usedMemorySizeInBytesOfTablets,
               tabletSizeInBytes));
     }
@@ -200,13 +193,13 @@ public class PipeMemoryManager {
       return (PipeTsFileMemoryBlock) registerMemoryBlock(0, PipeMemoryBlockType.TS_FILE);
     }
 
-    for (int i = 1; i <= MEMORY_ALLOCATE_MAX_RETRIES; i++) {
+    for (int i = 1, size = PIPE_CONFIG.getPipeMemoryAllocateMaxRetries(); i <= size; i++) {
       if (isHardEnough4TsFileSlicing()) {
         break;
       }
 
       try {
-        Thread.sleep(MEMORY_ALLOCATE_RETRY_INTERVAL_IN_MS);
+        Thread.sleep(PIPE_CONFIG.getPipeMemoryAllocateRetryIntervalInMs());
       } catch (InterruptedException ex) {
         Thread.currentThread().interrupt();
         LOGGER.warn("forceAllocateWithRetry: interrupted while waiting for available memory", ex);
@@ -218,7 +211,7 @@ public class PipeMemoryManager {
           String.format(
               "forceAllocateForTsFile: failed to allocate because there's too much memory for tsfiles, "
                   + "total memory size %d bytes, used memory for tsfile size %d bytes, requested memory size %d bytes",
-              memoryBlock.getTotalMemorySizeInBytes(),
+              getTotalNonFloatingMemorySizeInBytes(),
               usedMemorySizeInBytesOfTsFiles,
               tsFileSizeInBytes));
     }
@@ -245,15 +238,16 @@ public class PipeMemoryManager {
       }
     }
 
-    for (int i = 1; i <= MEMORY_ALLOCATE_MAX_RETRIES; i++) {
-      if (memoryBlock.getTotalMemorySizeInBytes() - memoryBlock.getUsedMemoryInBytes()
+    final int memoryAllocateMaxRetries = PIPE_CONFIG.getPipeMemoryAllocateMaxRetries();
+    for (int i = 1; i <= memoryAllocateMaxRetries; i++) {
+      if (getTotalNonFloatingMemorySizeInBytes() - memoryBlock.getUsedMemoryInBytes()
           >= sizeInBytes) {
         return registerMemoryBlock(sizeInBytes, type);
       }
 
       try {
         tryShrinkUntilFreeMemorySatisfy(sizeInBytes);
-        this.wait(MEMORY_ALLOCATE_RETRY_INTERVAL_IN_MS);
+        this.wait(PIPE_CONFIG.getPipeMemoryAllocateRetryIntervalInMs());
       } catch (InterruptedException e) {
         Thread.currentThread().interrupt();
         LOGGER.warn("forceAllocate: interrupted while waiting for available memory", e);
@@ -265,8 +259,8 @@ public class PipeMemoryManager {
             "forceAllocate: failed to allocate memory after %d retries, "
                 + "total memory size %d bytes, used memory size %d bytes, "
                 + "requested memory size %d bytes",
-            MEMORY_ALLOCATE_MAX_RETRIES,
-            memoryBlock.getTotalMemorySizeInBytes(),
+            memoryAllocateMaxRetries,
+            getTotalNonFloatingMemorySizeInBytes(),
             memoryBlock.getUsedMemoryInBytes(),
             sizeInBytes));
   }
@@ -308,8 +302,9 @@ public class PipeMemoryManager {
     }
 
     long sizeInBytes = targetSize - oldSize;
-    for (int i = 1; i <= MEMORY_ALLOCATE_MAX_RETRIES; i++) {
-      if (memoryBlock.getTotalMemorySizeInBytes() - memoryBlock.getUsedMemoryInBytes()
+    final int memoryAllocateMaxRetries = PIPE_CONFIG.getPipeMemoryAllocateMaxRetries();
+    for (int i = 1; i <= memoryAllocateMaxRetries; i++) {
+      if (getTotalNonFloatingMemorySizeInBytes() - memoryBlock.getUsedMemoryInBytes()
           >= sizeInBytes) {
         memoryBlock.forceAllocateWithoutLimitation(sizeInBytes);
         if (block instanceof PipeTabletMemoryBlock) {
@@ -324,7 +319,7 @@ public class PipeMemoryManager {
 
       try {
         tryShrinkUntilFreeMemorySatisfy(sizeInBytes);
-        this.wait(MEMORY_ALLOCATE_RETRY_INTERVAL_IN_MS);
+        this.wait(PIPE_CONFIG.getPipeMemoryAllocateRetryIntervalInMs());
       } catch (InterruptedException e) {
         Thread.currentThread().interrupt();
         LOGGER.warn("forceResize: interrupted while waiting for available memory", e);
@@ -336,8 +331,8 @@ public class PipeMemoryManager {
             "forceResize: failed to allocate memory after %d retries, "
                 + "total memory size %d bytes, used memory size %d bytes, "
                 + "requested memory size %d bytes",
-            MEMORY_ALLOCATE_MAX_RETRIES,
-            memoryBlock.getTotalMemorySizeInBytes(),
+            memoryAllocateMaxRetries,
+            getTotalNonFloatingMemorySizeInBytes(),
             memoryBlock.getUsedMemoryInBytes(),
             sizeInBytes));
   }
@@ -366,7 +361,7 @@ public class PipeMemoryManager {
     }
 
     if ((float) (memoryBlock.getUsedMemoryInBytes() + sizeInBytes)
-        <= memoryBlock.getTotalMemorySizeInBytes() * usedThreshold) {
+        <= getTotalNonFloatingMemorySizeInBytes() * usedThreshold) {
       return forceAllocate(sizeInBytes);
     }
 
@@ -384,21 +379,23 @@ public class PipeMemoryManager {
     }
 
     if (sizeInBytes == 0
-        || memoryBlock.getTotalMemorySizeInBytes() - memoryBlock.getUsedMemoryInBytes()
+        || getTotalNonFloatingMemorySizeInBytes() - memoryBlock.getUsedMemoryInBytes()
             >= sizeInBytes) {
       return registerMemoryBlock(sizeInBytes);
     }
 
     long sizeToAllocateInBytes = sizeInBytes;
-    while (sizeToAllocateInBytes > MEMORY_ALLOCATE_MIN_SIZE_IN_BYTES) {
-      if (memoryBlock.getTotalMemorySizeInBytes() - memoryBlock.getUsedMemoryInBytes()
+    final long memoryAllocateMinSizeInBytes = PIPE_CONFIG.getPipeMemoryAllocateMinSizeInBytes();
+
+    while (sizeToAllocateInBytes > memoryAllocateMinSizeInBytes) {
+      if (getTotalNonFloatingMemorySizeInBytes() - memoryBlock.getUsedMemoryInBytes()
           >= sizeToAllocateInBytes) {
         LOGGER.info(
             "tryAllocate: allocated memory, "
                 + "total memory size {} bytes, used memory size {} bytes, "
                 + "original requested memory size {} bytes, "
                 + "actual requested memory size {} bytes",
-            memoryBlock.getTotalMemorySizeInBytes(),
+            getTotalNonFloatingMemorySizeInBytes(),
             memoryBlock.getUsedMemoryInBytes(),
             sizeInBytes,
             sizeToAllocateInBytes);
@@ -408,7 +405,7 @@ public class PipeMemoryManager {
       sizeToAllocateInBytes =
           Math.max(
               customAllocateStrategy.applyAsLong(sizeToAllocateInBytes),
-              MEMORY_ALLOCATE_MIN_SIZE_IN_BYTES);
+              memoryAllocateMinSizeInBytes);
     }
 
     if (tryShrinkUntilFreeMemorySatisfy(sizeToAllocateInBytes)) {
@@ -417,7 +414,7 @@ public class PipeMemoryManager {
               + "total memory size {} bytes, used memory size {} bytes, "
               + "original requested memory size {} bytes, "
               + "actual requested memory size {} bytes",
-          memoryBlock.getTotalMemorySizeInBytes(),
+          getTotalNonFloatingMemorySizeInBytes(),
           memoryBlock.getUsedMemoryInBytes(),
           sizeInBytes,
           sizeToAllocateInBytes);
@@ -427,7 +424,7 @@ public class PipeMemoryManager {
           "tryAllocate: failed to allocate memory, "
               + "total memory size {} bytes, used memory size {} bytes, "
               + "requested memory size {} bytes",
-          memoryBlock.getTotalMemorySizeInBytes(),
+          getTotalNonFloatingMemorySizeInBytes(),
           memoryBlock.getUsedMemoryInBytes(),
           sizeInBytes);
       return registerMemoryBlock(0);
@@ -440,7 +437,7 @@ public class PipeMemoryManager {
       return false;
     }
 
-    if (memoryBlock.getTotalMemorySizeInBytes() - memoryBlock.getUsedMemoryInBytes()
+    if (getTotalNonFloatingMemorySizeInBytes() - memoryBlock.getUsedMemoryInBytes()
         >= memoryInBytesNeededToBeAllocated) {
       memoryBlock.forceAllocateWithoutLimitation(memoryInBytesNeededToBeAllocated);
       if (block instanceof PipeTabletMemoryBlock) {
@@ -494,7 +491,7 @@ public class PipeMemoryManager {
       for (final PipeMemoryBlock block : shuffledBlocks) {
         if (block.shrink()) {
           hasAtLeastOneBlockShrinkable = true;
-          if (memoryBlock.getTotalMemorySizeInBytes() - memoryBlock.getUsedMemoryInBytes()
+          if (getTotalNonFloatingMemorySizeInBytes() - memoryBlock.getUsedMemoryInBytes()
               >= sizeInBytes) {
             return true;
           }
@@ -599,7 +596,11 @@ public class PipeMemoryManager {
     return memoryBlock.getFreeMemoryInBytes();
   }
 
-  public long getTotalMemorySizeInBytes() {
-    return memoryBlock.getTotalMemorySizeInBytes();
+  public long getTotalNonFloatingMemorySizeInBytes() {
+    return (long) (memoryBlock.getTotalMemorySizeInBytes() * (1 - FLOATING_MEMORY_RATIO));
+  }
+
+  public long getTotalFloatingMemorySizeInBytes() {
+    return (long) (memoryBlock.getTotalMemorySizeInBytes() * FLOATING_MEMORY_RATIO);
   }
 }

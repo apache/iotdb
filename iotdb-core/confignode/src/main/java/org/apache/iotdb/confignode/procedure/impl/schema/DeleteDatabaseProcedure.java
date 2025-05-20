@@ -197,7 +197,9 @@ public class DeleteDatabaseProcedure
           env.getConfigManager()
               .getLoadManager()
               .clearDataPartitionPolicyTable(deleteDatabaseSchema.getName());
-          LOG.info("data partition policy table cleared.");
+          LOG.info(
+              "[DeleteDatabaseProcedure] The data partition policy table of database: {} is cleared.",
+              deleteDatabaseSchema.getName());
 
           // Delete Database metrics
           PartitionMetrics.unbindDatabaseRelatedMetricsWhenUpdate(

@@ -25,6 +25,8 @@ import org.apache.iotdb.db.pipe.processor.aggregate.operator.aggregatedresult.st
 import org.apache.iotdb.db.pipe.processor.aggregate.operator.aggregatedresult.standardstatistics.CrestFactorOperator;
 import org.apache.iotdb.db.pipe.processor.aggregate.operator.aggregatedresult.standardstatistics.FormFactorOperator;
 import org.apache.iotdb.db.pipe.processor.aggregate.operator.aggregatedresult.standardstatistics.KurtosisOperator;
+import org.apache.iotdb.db.pipe.processor.aggregate.operator.aggregatedresult.standardstatistics.MaxValueOperator;
+import org.apache.iotdb.db.pipe.processor.aggregate.operator.aggregatedresult.standardstatistics.MinValueOperator;
 import org.apache.iotdb.db.pipe.processor.aggregate.operator.aggregatedresult.standardstatistics.PeakOperator;
 import org.apache.iotdb.db.pipe.processor.aggregate.operator.aggregatedresult.standardstatistics.PulseFactorOperator;
 import org.apache.iotdb.db.pipe.processor.aggregate.operator.aggregatedresult.standardstatistics.RootMeanSquareOperator;
@@ -33,6 +35,8 @@ import org.apache.iotdb.db.pipe.processor.aggregate.operator.aggregatedresult.st
 import org.apache.iotdb.db.pipe.processor.aggregate.operator.intermediateresult.IntermediateResultOperator;
 import org.apache.iotdb.db.pipe.processor.aggregate.operator.intermediateresult.sametype.numeric.AbsoluteMaxOperator;
 import org.apache.iotdb.db.pipe.processor.aggregate.operator.intermediateresult.sametype.numeric.IntegralPoweredSumOperator;
+import org.apache.iotdb.db.pipe.processor.aggregate.operator.intermediateresult.sametype.numeric.MaxOperator;
+import org.apache.iotdb.db.pipe.processor.aggregate.operator.intermediateresult.sametype.numeric.MinOperator;
 import org.apache.iotdb.db.pipe.processor.aggregate.operator.intermediateresult.specifictype.doubletype.FractionPoweredSumOperator;
 import org.apache.iotdb.db.pipe.processor.aggregate.operator.intermediateresult.specifictype.integertype.CountOperator;
 import org.apache.iotdb.pipe.api.annotation.TreeModel;
@@ -56,6 +60,8 @@ public class StandardStatisticsOperatorProcessor extends AbstractOperatorProcess
                 new FormFactorOperator(),
                 new KurtosisOperator(),
                 new PeakOperator(),
+                new MaxValueOperator(),
+                new MinValueOperator(),
                 new PulseFactorOperator(),
                 new RootMeanSquareOperator(),
                 new SkewnessOperator(),
@@ -73,6 +79,8 @@ public class StandardStatisticsOperatorProcessor extends AbstractOperatorProcess
                 () -> new IntegralPoweredSumOperator(1),
                 () -> new IntegralPoweredSumOperator(2),
                 () -> new IntegralPoweredSumOperator(3),
-                () -> new IntegralPoweredSumOperator(4))));
+                () -> new IntegralPoweredSumOperator(4),
+                MaxOperator::new,
+                MinOperator::new)));
   }
 }

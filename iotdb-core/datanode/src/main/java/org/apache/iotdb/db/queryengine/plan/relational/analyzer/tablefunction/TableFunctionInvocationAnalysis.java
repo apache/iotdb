@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.analyzer.tablefunction;
 
+import org.apache.iotdb.udf.api.relational.table.TableFunctionHandle;
 import org.apache.iotdb.udf.api.relational.table.argument.Argument;
 
 import com.google.common.collect.ImmutableList;
@@ -29,21 +30,27 @@ import java.util.Map;
 public class TableFunctionInvocationAnalysis {
   private final String functionName;
   private final Map<String, Argument> passedArguments;
+  private final TableFunctionHandle tableFunctionHandle;
   private final List<TableArgumentAnalysis> tableArgumentAnalyses;
   private final Map<String, List<Integer>> requiredColumns;
   private final int properColumnsCount;
+  private final boolean requiredRecordSnapshot;
 
   public TableFunctionInvocationAnalysis(
       String name,
       Map<String, Argument> passedArguments,
+      TableFunctionHandle tableFunctionHandle,
       ImmutableList<TableArgumentAnalysis> tableArgumentAnalyses,
       Map<String, List<Integer>> requiredColumns,
-      int properColumnsCount) {
+      int properColumnsCount,
+      boolean requiredRecordSnapshot) {
     this.functionName = name;
     this.passedArguments = passedArguments;
+    this.tableFunctionHandle = tableFunctionHandle;
     this.tableArgumentAnalyses = tableArgumentAnalyses;
     this.requiredColumns = requiredColumns;
     this.properColumnsCount = properColumnsCount;
+    this.requiredRecordSnapshot = requiredRecordSnapshot;
   }
 
   public Map<String, List<Integer>> getRequiredColumns() {
@@ -62,7 +69,15 @@ public class TableFunctionInvocationAnalysis {
     return passedArguments;
   }
 
+  public TableFunctionHandle getTableFunctionHandle() {
+    return tableFunctionHandle;
+  }
+
   public int getProperColumnsCount() {
     return properColumnsCount;
+  }
+
+  public boolean isRequiredRecordSnapshot() {
+    return requiredRecordSnapshot;
   }
 }

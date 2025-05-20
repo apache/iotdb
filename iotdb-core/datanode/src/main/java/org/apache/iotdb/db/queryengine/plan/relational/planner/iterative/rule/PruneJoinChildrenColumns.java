@@ -58,6 +58,11 @@ public class PruneJoinChildrenColumns implements Rule<JoinNode> {
             .addAll(globallyUsableInputs)
             .addAll(
                 joinNode.getCriteria().stream().map(JoinNode.EquiJoinClause::getLeft).iterator())
+            .addAll(
+                joinNode
+                    .getAsofCriteria()
+                    .map(criteria -> ImmutableSet.of(criteria.getLeft()))
+                    .orElse(ImmutableSet.of()))
             // .addAll(joinNode.getLeftHashSymbol().map(ImmutableSet::of).orElse(ImmutableSet.of()))
             .build();
 
@@ -66,6 +71,11 @@ public class PruneJoinChildrenColumns implements Rule<JoinNode> {
             .addAll(globallyUsableInputs)
             .addAll(
                 joinNode.getCriteria().stream().map(JoinNode.EquiJoinClause::getRight).iterator())
+            .addAll(
+                joinNode
+                    .getAsofCriteria()
+                    .map(criteria -> ImmutableSet.of(criteria.getRight()))
+                    .orElse(ImmutableSet.of()))
             // .addAll(joinNode.getRightHashSymbol().map(ImmutableSet::of).orElse(ImmutableSet.of()))
             .build();
 

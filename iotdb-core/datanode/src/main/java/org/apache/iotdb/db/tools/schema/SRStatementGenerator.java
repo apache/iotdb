@@ -183,7 +183,9 @@ public class SRStatementGenerator implements Iterator<Object>, Iterable<Object> 
               genAlignedTimeseriesStatement(
                   // skip common database
                   node, databaseFullPath.concatPath(node.getPartialPath(), 1));
-          statements.push(stmt);
+          if (Objects.nonNull(stmt)) {
+            statements.push(stmt);
+          }
         }
         cleanMTreeNode(node);
         if (ancestors.isEmpty()) {
@@ -308,6 +310,10 @@ public class SRStatementGenerator implements Iterator<Object>, Iterable<Object> 
       case TABLE_MNODE_TYPE:
         childrenNum = ReadWriteIOUtils.readInt(inputStream);
         node = deserializer.deserializeTableDeviceMNode(inputStream);
+        if (ancestors.size() == 1) {
+          emitDevice();
+          this.tableName = node.getName();
+        }
         break;
       default:
         throw new IOException("Unrecognized MNode type" + type);

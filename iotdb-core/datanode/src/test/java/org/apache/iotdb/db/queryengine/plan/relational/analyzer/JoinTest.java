@@ -62,7 +62,6 @@ import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.TestUtils
 import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.TestUtils.SESSION_INFO;
 import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.TestUtils.SHENZHEN_DEVICE_ENTRIES;
 import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.TestUtils.TEST_MATADATA;
-import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.TestUtils.assertAnalyzeSemanticException;
 import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.TestUtils.assertJoinNodeEquals;
 import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.TestUtils.assertNodeMatches;
 import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.TestUtils.assertTableScan;
@@ -597,6 +596,22 @@ public class JoinTest {
                     builder.left(sort(tableScan1)).right(sort(tableScan2)).ignoreEquiCriteria())));
   }
 
+  @Test
+  public void aggregationTableScanWithJoinTest() {
+    PlanTester planTester = new PlanTester();
+    sql =
+        "select * from ("
+            + "select date_bin(1ms,time) as date,count(*)from table1 where tag1='Beijing' and tag2='A1' group by date_bin(1ms,time)) t0 "
+            + "join ("
+            + "select date_bin(1ms,time) as date,count(*)from table1 where tag1='Beijing' and tag2='A1' group by date_bin(1ms,time)) t1 "
+            + "on t0.date = t1.date";
+    logicalQueryPlan = planTester.createPlan(sql);
+    // the sort node has been eliminated
+    assertPlan(planTester.getFragmentPlan(1), aggregationTableScan());
+    // the sort node has been eliminated
+    assertPlan(planTester.getFragmentPlan(2), aggregationTableScan());
+  }
+
   @Ignore
   @Test
   public void otherInnerJoinTests() {
@@ -619,19 +634,5 @@ public class JoinTest {
             + "FROM (SELECT * FROM table1 t1 WHERE tag1='beijing' AND tag2='A1' AND s1>1 LIMIT 111) t1 JOIN (SELECT * FROM table1 WHERE tag1='shenzhen' AND s2>1 LIMIT 222) t2 "
             + "ON t1.time = t2.time ORDER BY t1.tag1 OFFSET 3 LIMIT 6",
         false);
-  }
-
-  // ========== unsupported test ===============
-  @Test
-  public void unsupportedJoinTest() {
-    // LEFT JOIN
-    assertAnalyzeSemanticException(
-        "SELECT * FROM table1 t1 LEFT JOIN table1 t2 ON t1.time=t2.time",
-        "LEFT JOIN is not supported, only support INNER JOIN in current version");
-
-    // RIGHT JOIN
-    assertAnalyzeSemanticException(
-        "SELECT * FROM table1 t1 RIGHT JOIN table1 t2 ON t1.time=t2.time",
-        "RIGHT JOIN is not supported, only support INNER JOIN in current version");
   }
 }

@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.exception.pipe.PipeRuntimeException;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeOutOfMemoryCriticalException;
 import org.apache.iotdb.commons.pipe.agent.task.connection.EventSupplier;
 import org.apache.iotdb.commons.pipe.agent.task.execution.PipeSubtaskScheduler;
+import org.apache.iotdb.commons.pipe.agent.task.meta.PipeRuntimeMeta;
 import org.apache.iotdb.commons.pipe.agent.task.progress.PipeEventCommitManager;
 import org.apache.iotdb.commons.pipe.agent.task.subtask.PipeReportableSubtask;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
@@ -31,6 +32,7 @@ import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
 import org.apache.iotdb.db.pipe.agent.task.connection.PipeEventCollector;
 import org.apache.iotdb.db.pipe.event.UserDefinedEnrichedEvent;
 import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
+import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
 import org.apache.iotdb.db.pipe.metric.overview.PipeDataNodeRemainingEventAndTimeMetrics;
 import org.apache.iotdb.db.pipe.metric.processor.PipeProcessorMetrics;
 import org.apache.iotdb.db.pipe.processor.pipeconsensus.PipeConsensusProcessor;
@@ -88,7 +90,8 @@ public class PipeProcessorSubtask extends PipeReportableSubtask {
     this.subtaskCreationTime = System.currentTimeMillis();
 
     // Only register dataRegions
-    if (StorageEngine.getInstance().getAllDataRegionIds().contains(new DataRegionId(regionId))) {
+    if (StorageEngine.getInstance().getAllDataRegionIds().contains(new DataRegionId(regionId))
+        || PipeRuntimeMeta.isSourceExternal(regionId)) {
       PipeProcessorMetrics.getInstance().register(this);
     }
   }
@@ -141,7 +144,19 @@ public class PipeProcessorSubtask extends PipeReportableSubtask {
           pipeProcessor.process((TabletInsertionEvent) event, outputEventCollector);
           PipeProcessorMetrics.getInstance().markTabletEvent(taskID);
         } else if (event instanceof TsFileInsertionEvent) {
-          pipeProcessor.process((TsFileInsertionEvent) event, outputEventCollector);
+          // We have to parse the privilege first, to avoid passing no-privilege data to processor
+          if (event instanceof PipeTsFileInsertionEvent
+              && ((PipeTsFileInsertionEvent) event).shouldParse4Privilege()) {
+            try (final PipeTsFileInsertionEvent tsFileInsertionEvent =
+                (PipeTsFileInsertionEvent) event) {
+              for (final TabletInsertionEvent tabletInsertionEvent :
+                  tsFileInsertionEvent.toTabletInsertionEvents()) {
+                pipeProcessor.process(tabletInsertionEvent, outputEventCollector);
+              }
+            }
+          } else {
+            pipeProcessor.process((TsFileInsertionEvent) event, outputEventCollector);
+          }
           PipeProcessorMetrics.getInstance().markTsFileEvent(taskID);
           PipeDataNodeRemainingEventAndTimeMetrics.getInstance()
               .markTsFileCollectInvocationCount(

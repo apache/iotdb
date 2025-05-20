@@ -110,7 +110,7 @@ public abstract class AbstractAggTableScanOperator extends AbstractDataSourceOpe
 
   private boolean allAggregatorsHasFinalResult = false;
 
-  public AbstractAggTableScanOperator(AbstractAggTableScanOperatorParameter parameter) {
+  protected AbstractAggTableScanOperator(AbstractAggTableScanOperatorParameter parameter) {
 
     this.sourceId = parameter.sourceId;
     this.operatorContext = parameter.context;
@@ -667,11 +667,6 @@ public abstract class AbstractAggTableScanOperator extends AbstractDataSourceOpe
       return false;
     }
 
-    // no aggregation function, just output ids or attributes
-    if (aggregators.isEmpty()) {
-      return false;
-    }
-
     for (TableAggregator aggregator : aggregators) {
       if (!aggregator.hasFinalResult()) {
         return false;
@@ -684,8 +679,8 @@ public abstract class AbstractAggTableScanOperator extends AbstractDataSourceOpe
 
   private void checkIfAllAggregatorHasFinalResult() {
     if (allAggregatorsHasFinalResult
-        && timeIterator.getType()
-            == ITableTimeRangeIterator.TimeIteratorType.SINGLE_TIME_ITERATOR) {
+        && (timeIterator.getType() == ITableTimeRangeIterator.TimeIteratorType.SINGLE_TIME_ITERATOR
+            || tableAggregators.isEmpty())) {
       nextDevice();
       inputTsBlock = null;
 
@@ -825,6 +820,10 @@ public abstract class AbstractAggTableScanOperator extends AbstractDataSourceOpe
       this.canUseStatistics = canUseStatistics;
       this.aggregatorInputChannels = aggregatorInputChannels;
       this.timeColumnName = timeColumnName;
+    }
+
+    public OperatorContext getOperatorContext() {
+      return context;
     }
 
     public List<TableAggregator> getTableAggregators() {

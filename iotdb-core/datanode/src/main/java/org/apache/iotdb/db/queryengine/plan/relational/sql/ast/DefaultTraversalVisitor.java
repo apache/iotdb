@@ -366,7 +366,13 @@ public abstract class DefaultTraversalVisitor<C> extends AstVisitor<Void, C> {
 
     node.getCriteria()
         .filter(JoinOn.class::isInstance)
-        .ifPresent(criteria -> process(((JoinOn) criteria).getExpression(), context));
+        .ifPresent(
+            criteria -> {
+              Expression expression = ((JoinOn) criteria).getExpression();
+              if (expression != null) {
+                process(expression, context);
+              }
+            });
 
     return null;
   }
@@ -404,6 +410,15 @@ public abstract class DefaultTraversalVisitor<C> extends AstVisitor<Void, C> {
 
   @Override
   protected Void visitCreateTable(final CreateTable node, final C context) {
+    for (final Property property : node.getProperties()) {
+      process(property, context);
+    }
+
+    return null;
+  }
+
+  @Override
+  protected Void visitCreateView(final CreateView node, final C context) {
     for (final Property property : node.getProperties()) {
       process(property, context);
     }

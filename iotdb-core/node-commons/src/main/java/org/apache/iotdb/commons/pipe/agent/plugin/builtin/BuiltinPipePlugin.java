@@ -33,6 +33,7 @@ import org.apache.iotdb.commons.pipe.agent.plugin.builtin.connector.websocket.We
 import org.apache.iotdb.commons.pipe.agent.plugin.builtin.connector.writeback.WriteBackConnector;
 import org.apache.iotdb.commons.pipe.agent.plugin.builtin.extractor.donothing.DoNothingExtractor;
 import org.apache.iotdb.commons.pipe.agent.plugin.builtin.extractor.iotdb.IoTDBExtractor;
+import org.apache.iotdb.commons.pipe.agent.plugin.builtin.extractor.mqtt.MQTTExtractor;
 import org.apache.iotdb.commons.pipe.agent.plugin.builtin.processor.aggregate.AggregateProcessor;
 import org.apache.iotdb.commons.pipe.agent.plugin.builtin.processor.aggregate.StandardStatisticsProcessor;
 import org.apache.iotdb.commons.pipe.agent.plugin.builtin.processor.aggregate.TumblingWindowingProcessor;
@@ -55,9 +56,11 @@ public enum BuiltinPipePlugin {
   // extractors
   DO_NOTHING_EXTRACTOR("do-nothing-extractor", DoNothingExtractor.class),
   IOTDB_EXTRACTOR("iotdb-extractor", IoTDBExtractor.class),
+  MQTT_EXTRACTOR("mqtt-extractor", MQTTExtractor.class),
 
   DO_NOTHING_SOURCE("do-nothing-source", DoNothingExtractor.class),
   IOTDB_SOURCE("iotdb-source", IoTDBExtractor.class),
+  MQTT_SOURCE("mqtt-source", MQTTExtractor.class),
 
   // processors
   DO_NOTHING_PROCESSOR("do-nothing-processor", DoNothingProcessor.class),
@@ -129,6 +132,16 @@ public enum BuiltinPipePlugin {
     return className;
   }
 
+  // used to distinguish between builtin and external sources
+  public static final Set<String> BUILTIN_SOURCES =
+      Collections.unmodifiableSet(
+          new HashSet<>(
+              Arrays.asList(
+                  DO_NOTHING_EXTRACTOR.getPipePluginName().toLowerCase(),
+                  IOTDB_EXTRACTOR.getPipePluginName().toLowerCase(),
+                  DO_NOTHING_SOURCE.getPipePluginName().toLowerCase(),
+                  IOTDB_SOURCE.getPipePluginName().toLowerCase())));
+
   public static final Set<String> SHOW_PIPE_PLUGINS_BLACKLIST =
       Collections.unmodifiableSet(
           new HashSet<>(
@@ -169,7 +182,6 @@ public enum BuiltinPipePlugin {
                   WEBSOCKET_SINK.getPipePluginName().toUpperCase(),
                   OPC_UA_SINK.getPipePluginName().toUpperCase(),
                   OPC_DA_SINK.getPipePluginName().toUpperCase(),
-                  WRITE_BACK_SINK.getPipePluginName().toUpperCase(),
                   SUBSCRIPTION_SINK.getPipePluginName().toUpperCase(),
                   PIPE_CONSENSUS_ASYNC_SINK.getPipePluginName().toUpperCase())));
 }

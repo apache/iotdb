@@ -152,7 +152,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
 import static org.apache.iotdb.db.queryengine.plan.planner.TableOperatorGenerator.makeLayout;
-import static org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.TableDeviceSchemaFetcher.convertIdValuesToDeviceID;
+import static org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.TableDeviceSchemaFetcher.convertTagValuesToDeviceID;
 import static org.apache.tsfile.common.constant.TsFileConstant.PATH_SEPARATOR;
 
 /**
@@ -891,7 +891,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
         (long)
                 DataNodeTableCache.getInstance()
                     .getTable(storageGroupFullPath, tableName)
-                    .getMeasurementNum()
+                    .getFieldNum()
             * notExistNum,
         notExistNum);
   }
@@ -1449,7 +1449,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
     if (!isRecovering) {
       TableDeviceSchemaCache.getInstance()
           .updateAttributes(
-              databaseName, convertIdValuesToDeviceID(tableName, deviceId), resultMap);
+              databaseName, convertTagValuesToDeviceID(tableName, deviceId), resultMap);
     }
     deviceAttributeCacheUpdater.update(tableName, deviceId, resultMap);
   }
@@ -1461,8 +1461,9 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
       for (final PartialPath pattern :
           TableDeviceQuerySource.getDevicePatternList(
               updateNode.getDatabase(),
-              updateNode.getTableName(),
-              updateNode.getIdDeterminedFilterList())) {
+              DataNodeTableCache.getInstance()
+                  .getTable(updateNode.getDatabase(), updateNode.getTableName()),
+              updateNode.getTagDeterminedFilterList())) {
         mTree.updateTableDevice(pattern, batchUpdater);
       }
     }
@@ -1475,7 +1476,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
     final String database = updateNode.getDatabase();
     final String tableName = updateNode.getTableName();
     final TsTable table = DataNodeTableCache.getInstance().getTable(database, tableName);
-    final Expression predicate = updateNode.getIdFuzzyPredicate();
+    final Expression predicate = updateNode.getTagFuzzyPredicate();
     final List<TsTableColumnSchema> columnSchemaList =
         updateNode.getColumnHeaderList().stream()
             .map(columnHeader -> table.getColumnSchema(columnHeader.getColumnName()))
@@ -1564,7 +1565,9 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
         (pointer, name) -> deviceAttributeStore.getAttributes(pointer, name),
         (deviceId, pointer, values) ->
             updateAttribute(database, tableName, deviceId, pointer, attributeNames, values),
-        attributeNames);
+        attributeNames,
+        database,
+        table);
   }
 
   @Override
@@ -1600,15 +1603,14 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
       throws MetadataException {
     final List<PartialPath> paths =
         DeleteDevice.constructPaths(
-            PathUtils.unQualifyDatabaseName(storageGroupFullPath),
+            storageGroupFullPath,
             constructTableDevicesBlackListNode.getTableName(),
             constructTableDevicesBlackListNode.getPatternInfo());
     final DeviceBlackListConstructor constructor =
         DeleteDevice.constructDevicePredicateUpdater(
+            storageGroupFullPath,
             DataNodeTableCache.getInstance()
-                .getTable(
-                    PathUtils.unQualifyDatabaseName(storageGroupFullPath),
-                    constructTableDevicesBlackListNode.getTableName()),
+                .getTable(storageGroupFullPath, constructTableDevicesBlackListNode.getTableName()),
             constructTableDevicesBlackListNode.getFilterInfo(),
             (pointer, name) -> deviceAttributeStore.getAttributes(pointer, name),
             regionStatistics);
@@ -1678,7 +1680,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
           offset -> {
             try {
               return tagManager.readTagFile(offset);
-            } catch (IOException e) {
+            } catch (final IOException e) {
               logger.error("Failed to read tag and attribute info because {}", e.getMessage(), e);
               return new Pair<>(Collections.emptyMap(), Collections.emptyMap());
             }
