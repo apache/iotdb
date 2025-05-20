@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.conf.ConfigurationFileUtils;
 import org.apache.iotdb.commons.conf.TrimProperties;
 import org.apache.iotdb.commons.memory.MemoryConfig;
 import org.apache.iotdb.commons.memory.MemoryManager;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.estimator.AbstractCompactionEstimator;
 import org.apache.iotdb.db.utils.MemUtils;
 
 import org.slf4j.Logger;
@@ -367,8 +368,7 @@ public class DataNodeMemoryConfig {
     }
     writeMemoryManager =
         storageEngineMemoryManager.getOrCreateMemoryManager("Write", writeMemorySize);
-    compactionMemoryManager =
-        storageEngineMemoryManager.getOrCreateMemoryManager("Compaction", compactionMemorySize);
+    initCompactionMemoryManager(compactionMemorySize);
     memtableMemoryManager =
         writeMemoryManager.getOrCreateMemoryManager("Memtable", memtableMemorySize);
     timePartitionInfoMemoryManager =
@@ -385,6 +385,14 @@ public class DataNodeMemoryConfig {
     long walBufferQueueMemorySize = (long) (memtableMemorySize * getWalBufferQueueProportion());
     walBufferQueueMemoryManager =
         memtableMemoryManager.getOrCreateMemoryManager("WalBufferQueue", walBufferQueueMemorySize);
+  }
+
+  private void initCompactionMemoryManager(long compactionMemorySize) {
+    long fixedMemoryCost =
+        AbstractCompactionEstimator.allocateMemoryCostForFileInfoCache(compactionMemorySize);
+    compactionMemoryManager =
+        storageEngineMemoryManager.getOrCreateMemoryManager(
+            "Compaction", compactionMemorySize - fixedMemoryCost);
   }
 
   @SuppressWarnings("squid:S3518")
@@ -465,9 +473,7 @@ public class DataNodeMemoryConfig {
     // metadata cache is disabled, we need to move all their allocated memory to other parts
     if (!isMetaDataCacheEnable()) {
       long sum =
-          bloomFilterCacheMemoryManager.getTotalMemorySizeInBytes()
-              + chunkCacheMemoryManager.getTotalMemorySizeInBytes()
-              + timeSeriesMetaDataCacheMemoryManager.getTotalMemorySizeInBytes();
+          bloomFilterCacheMemorySize + chunkCacheMemorySize + timeSeriesMetaDataCacheMemorySize;
       bloomFilterCacheMemorySize = 0;
       chunkCacheMemorySize = 0;
       timeSeriesMetaDataCacheMemorySize = 0;

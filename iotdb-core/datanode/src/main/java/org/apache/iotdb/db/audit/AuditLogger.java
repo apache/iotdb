@@ -210,6 +210,7 @@ public class AuditLogger {
       case RENAME_LOGICAL_VIEW:
       case CREATE_TOPIC:
       case DROP_TOPIC:
+      case DROP_SUBSCRIPTION:
         return AuditLogOperation.DDL;
       case LOAD_DATA:
       case INSERT:

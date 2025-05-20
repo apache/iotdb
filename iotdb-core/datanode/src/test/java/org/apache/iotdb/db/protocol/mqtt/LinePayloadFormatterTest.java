@@ -37,9 +37,10 @@ public class LinePayloadFormatterTest {
         "test1,tag1=t1,tag2=t2 attr1=a1,attr2=a2 field1=\"value1\",field2=1i,field3=2u,field4=3i32,field5=t,field6=false,field7=4,field8=5f 1";
 
     ByteBuf buf = Unpooled.copiedBuffer(payload, StandardCharsets.UTF_8);
+    String topic = "";
 
     LinePayloadFormatter formatter = new LinePayloadFormatter();
-    TableMessage message = (TableMessage) formatter.format(buf).get(0);
+    TableMessage message = (TableMessage) formatter.format(topic, buf).get(0);
 
     assertEquals("test1", message.getTable());
     assertEquals(Long.valueOf(1L), message.getTimestamp());
@@ -64,9 +65,10 @@ public class LinePayloadFormatterTest {
             + "test2,tag3=t3,tag4=t4 attr3=a3,attr4=a4 field4=\"value4\",field5=10i,field6=10i32 2 ";
 
     ByteBuf buf = Unpooled.copiedBuffer(payload, StandardCharsets.UTF_8);
+    String topic = "";
 
     LinePayloadFormatter formatter = new LinePayloadFormatter();
-    TableMessage message = (TableMessage) formatter.format(buf).get(1);
+    TableMessage message = (TableMessage) formatter.format(topic, buf).get(1);
 
     assertEquals("test2", message.getTable());
     assertEquals(Long.valueOf(2L), message.getTimestamp());
@@ -82,9 +84,10 @@ public class LinePayloadFormatterTest {
             + " # test2,tag3=t3,tag4=t4 attr3=a3,attr4=a4 field4=\"value4\",field5=10i,field6=10i32 2 ";
 
     ByteBuf buf = Unpooled.copiedBuffer(payload, StandardCharsets.UTF_8);
+    String topic = "";
 
     LinePayloadFormatter formatter = new LinePayloadFormatter();
-    List<Message> message = formatter.format(buf);
+    List<Message> message = formatter.format(topic, buf);
 
     assertEquals(1, message.size());
   }

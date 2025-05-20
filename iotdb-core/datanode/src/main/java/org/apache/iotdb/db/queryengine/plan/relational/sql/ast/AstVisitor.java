@@ -309,6 +309,10 @@ public abstract class AstVisitor<R, C> {
     return visitNode(node, context);
   }
 
+  protected R visitViewFieldDefinition(ViewFieldDefinition node, C context) {
+    return visitNode(node, context);
+  }
+
   protected R visitCreateDB(final CreateDB node, final C context) {
     return visitStatement(node, context);
   }
@@ -326,6 +330,10 @@ public abstract class AstVisitor<R, C> {
   }
 
   protected R visitCreateTable(final CreateTable node, final C context) {
+    return visitStatement(node, context);
+  }
+
+  protected R visitCreateView(final CreateView node, final C context) {
     return visitStatement(node, context);
   }
 
@@ -610,6 +618,10 @@ public abstract class AstVisitor<R, C> {
   }
 
   protected R visitShowSubscriptions(ShowSubscriptions node, C context) {
+    return visitStatement(node, context);
+  }
+
+  protected R visitDropSubscription(DropSubscription node, C context) {
     return visitStatement(node, context);
   }
 

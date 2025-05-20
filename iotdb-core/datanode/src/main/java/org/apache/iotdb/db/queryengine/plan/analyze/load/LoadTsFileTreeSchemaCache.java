@@ -188,6 +188,10 @@ public class LoadTsFileTreeSchemaCache {
     }
   }
 
+  public void setCurrentTimeIndex(final ITimeIndex timeIndex) {
+    currentTimeIndex = timeIndex;
+  }
+
   public boolean isDeviceDeletedByMods(IDeviceID device) throws IllegalPathException {
     return ModificationUtils.isDeviceDeletedByMods(currentModifications, currentTimeIndex, device);
   }

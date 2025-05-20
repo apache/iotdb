@@ -20,10 +20,6 @@
 
 # You can set ConfigNode memory size, example '2G' or '2048M'
 MEMORY_SIZE=
-# on heap memory size
-#ON_HEAP_MEMORY="2G"
-# off heap memory size
-#OFF_HEAP_MEMORY="512M"
 
 # You can put your env variable here
 # export JAVA_HOME=$JAVA_HOME
@@ -254,7 +250,15 @@ else
 fi
 
 
-if [[ "$CONFIGNODE_JMX_OPTS" =~ -Xms ]];then
+calculate_memory_sizes
+
+# on heap memory size
+#ON_HEAP_MEMORY="2G"
+# off heap memory size
+#OFF_HEAP_MEMORY="512M"
+
+# configure JVM memory with setting environment variable of CONFIGNODE_JMX_OPTS
+if [[ "$CONFIGNODE_JMX_OPTS" =~ -Xmx ]];then
     item_arr=(${CONFIGNODE_JMX_OPTS})
     for item in ${item_arr[@]};do
         if [[ -n "$item" ]]; then
@@ -265,10 +269,6 @@ if [[ "$CONFIGNODE_JMX_OPTS" =~ -Xms ]];then
             fi
         fi
     done
-elif [[ -n "$ON_HEAP_MEMORY" ]]; then
-    echo "ON_HEAP_MEMORY=$ON_HEAP_MEMORY"
-else
-    calculate_memory_sizes
 fi
 
 

@@ -36,10 +36,10 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.concurrent.ConcurrentHashMap;
 
 import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.CONNECTOR_FORMAT_HYBRID_VALUE;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.CONNECTOR_FORMAT_KEY;
@@ -74,7 +74,8 @@ public class PipeTransferBatchReqBuilder implements AutoCloseable {
   // If the leader cache is enabled, the batch will be divided by the leader endpoint,
   // each endpoint has a batch.
   // This is only used in plain batch since tsfile does not return redirection info.
-  private final Map<TEndPoint, PipeTabletEventPlainBatch> endPointToBatch = new HashMap<>();
+  private final Map<TEndPoint, PipeTabletEventPlainBatch> endPointToBatch =
+      new ConcurrentHashMap<>();
 
   public PipeTransferBatchReqBuilder(final PipeParameters parameters) {
     final boolean usingTsFileBatch =
@@ -184,6 +185,21 @@ public class PipeTransferBatchReqBuilder implements AutoCloseable {
   public synchronized void discardEventsOfPipe(final String pipeNameToDrop, final int regionId) {
     defaultBatch.discardEventsOfPipe(pipeNameToDrop, regionId);
     endPointToBatch.values().forEach(batch -> batch.discardEventsOfPipe(pipeNameToDrop, regionId));
+  }
+
+  public int size() {
+    try {
+      return defaultBatch.events.size()
+          + endPointToBatch.values().stream()
+              .map(batch -> batch.events.size())
+              .reduce(0, Integer::sum);
+    } catch (final Exception e) {
+      LOGGER.warn(
+          "Failed to get the size of PipeTransferBatchReqBuilder, return 0. Exception: {}",
+          e.getMessage(),
+          e);
+      return 0;
+    }
   }
 
   @Override
