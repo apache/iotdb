@@ -85,16 +85,21 @@ public class PipeDataNodeRemainingEventAndTimeMetrics implements IMetricSet {
         String.valueOf(operator.getCreationTime()));
   }
 
-  public boolean mayRemainingInsertEventExceedLimit() {
-    try {
-      return remainingEventAndTimeOperatorMap.entrySet().stream()
-          .anyMatch(
-              entry ->
-                  entry.getValue().getRemainingInsertEventSmoothingCount()
-                      > PipeConfig.getInstance().getPipeMaxAllowedRemainingInsertEventCount());
-    } catch (final Exception e) {
+  public boolean mayRemainingInsertEventExceedLimit(final String pipeID) {
+    if (Objects.isNull(metricService)) {
       return false;
     }
+    final PipeDataNodeRemainingEventAndTimeOperator operator =
+        remainingEventAndTimeOperatorMap.get(pipeID);
+    if (Objects.isNull(operator)) {
+      LOGGER.warn(
+          "Failed to mark pipe region commit, RemainingEventAndTimeOperator({}) does not exist",
+          pipeID);
+      return false;
+    }
+
+    return operator.getRemainingInsertEventSmoothingCount()
+        > PipeConfig.getInstance().getPipeMaxAllowedRemainingInsertEventCount();
   }
 
   @Override

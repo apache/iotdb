@@ -50,6 +50,8 @@ public class PipeRealtimeDataRegionHybridExtractor extends PipeRealtimeDataRegio
   private static final Logger LOGGER =
       LoggerFactory.getLogger(PipeRealtimeDataRegionHybridExtractor.class);
 
+  private String pipeId;
+
   @Override
   protected void doExtract(final PipeRealtimeEvent event) {
     final Event eventToExtract = event.getEvent();
@@ -232,7 +234,8 @@ public class PipeRealtimeDataRegionHybridExtractor extends PipeRealtimeDataRegio
 
   private boolean mayRemainingInsertNodeEventExceedLimit(final PipeRealtimeEvent event) {
     final boolean mayRemainingInsertEventExceedLimit =
-        PipeDataNodeRemainingEventAndTimeMetrics.getInstance().mayRemainingInsertEventExceedLimit();
+        PipeDataNodeRemainingEventAndTimeMetrics.getInstance()
+            .mayRemainingInsertEventExceedLimit(pipeId);
     if (mayRemainingInsertEventExceedLimit && event.mayExtractorUseTablets(this)) {
       logByLogManager(
           l ->
