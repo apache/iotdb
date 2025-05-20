@@ -250,14 +250,24 @@ public class PartitionCache {
     }
   }
 
+  public boolean isNeedLastCache(final String database) throws TException, ClientManagerException {
+    Boolean needLastCache = database2NeedLastCacheCache.get(database);
+    if (Objects.nonNull(needLastCache)) {
+      return needLastCache;
+    }
+    fetchDatabaseAndUpdateCache(false);
+    needLastCache = database2NeedLastCacheCache.get(database);
+    return !Objects.isNull(needLastCache) && needLastCache;
+  }
+
   /** get all database from configNode and update database cache. */
-  private void fetchDatabaseAndUpdateCache() throws ClientManagerException, TException {
+  private void fetchDatabaseAndUpdateCache(final boolean isTableModel) throws ClientManagerException, TException {
     databaseCacheLock.writeLock().lock();
     try (final ConfigNodeClient client =
         configNodeClientManager.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
       final TGetDatabaseReq req =
           new TGetDatabaseReq(ROOT_PATH, SchemaConstant.ALL_MATCH_SCOPE_BINARY)
-              .setIsTableModel(true);
+              .setIsTableModel(isTableModel);
       final TDatabaseSchemaResp databaseSchemaResp = client.getMatchedDatabaseSchemas(req);
       if (databaseSchemaResp.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         // update all database into cache
@@ -494,7 +504,7 @@ public class PartitionCache {
     if (!isExisted) {
       try {
         // try to fetch database from config node when miss
-        fetchDatabaseAndUpdateCache();
+        fetchDatabaseAndUpdateCache(true);
         isExisted = containsDatabase(database);
         if (!isExisted && isAutoCreate) {
           // try to auto create database of failed device
