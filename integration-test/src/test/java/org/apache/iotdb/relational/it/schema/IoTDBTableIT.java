@@ -125,6 +125,7 @@ public class IoTDBTableIT {
       String[] ttls = new String[] {"INF"};
       String[] statuses = new String[] {"USING"};
       String[] comments = new String[] {"test"};
+      String[] needLastCaches = new String[] {"true"};
 
       statement.execute("use test2");
 
@@ -144,6 +145,7 @@ public class IoTDBTableIT {
           assertEquals(ttls[cnt], resultSet.getString(2));
           assertEquals(statuses[cnt], resultSet.getString(3));
           assertEquals(comments[cnt], resultSet.getString(4));
+          assertEquals(needLastCaches[cnt], resultSet.getString(5));
           cnt++;
         }
         assertEquals(tableNames.length, cnt);
@@ -172,6 +174,9 @@ public class IoTDBTableIT {
 
       statement.execute("comment on table test1.table1 is 'new_test'");
       comments = new String[] {"new_test"};
+
+      statement.execute("alter table test1.table1 set properties need_last_cache=false");
+      needLastCaches = new String[] {"false"};
       // using SHOW tables from
       try (final ResultSet resultSet = statement.executeQuery("SHOW tables details from test1")) {
         int cnt = 0;
@@ -185,6 +190,7 @@ public class IoTDBTableIT {
           assertEquals(tableNames[cnt], resultSet.getString(1));
           assertEquals(ttls[cnt], resultSet.getString(2));
           assertEquals(comments[cnt], resultSet.getString(4));
+          assertEquals(needLastCaches[cnt], resultSet.getString(5));
           cnt++;
         }
         assertEquals(tableNames.length, cnt);
@@ -879,8 +885,8 @@ public class IoTDBTableIT {
 
       TestUtils.assertResultSetEqual(
           statement.executeQuery("show tables details"),
-          "TableName,TTL(ms),Status,Comment,TableType,",
-          Collections.singleton("view_table,100,USING,comment,VIEW FROM TREE,"));
+          "TableName,TTL(ms),Status,Comment,TableType,NeedLastCache,",
+          Collections.singleton("view_table,100,USING,comment,VIEW FROM TREE,true,"));
 
       TestUtils.assertResultSetEqual(
           statement.executeQuery("desc view_table"),
