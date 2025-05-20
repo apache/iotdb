@@ -137,6 +137,7 @@ public class PatternVariableRecognizer {
           this.compute(
               currentRow,
               matchedLabels,
+              partitionStart,
               searchStart,
               searchEnd,
               patternStart,

@@ -33,7 +33,6 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.node.RowsPerMatch
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.SkipToPosition;
 
 import com.google.common.collect.ImmutableList;
-import com.google.common.util.concurrent.ListenableFuture;
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.common.conf.TSFileDescriptor;
 import org.apache.tsfile.enums.TSDataType;
@@ -155,11 +154,6 @@ public class PatternRecognitionOperator implements ProcessOperator {
   }
 
   @Override
-  public ListenableFuture<?> isBlocked() {
-    return child.isBlocked();
-  }
-
-  @Override
   public TsBlock next() throws Exception {
     long startTime = System.nanoTime();
 
@@ -175,7 +169,7 @@ public class PatternRecognitionOperator implements ProcessOperator {
 
     if (child.hasNextWithTimer()) {
       // This TsBlock is pre-sorted with PARTITION BY and ORDER BY channels
-      TsBlock preSortedBlock = child.next();
+      TsBlock preSortedBlock = child.nextWithTimer();
       // StreamSort Operator sometimes returns null
       if (preSortedBlock == null || preSortedBlock.isEmpty()) {
         return null;
@@ -238,48 +232,6 @@ public class PatternRecognitionOperator implements ProcessOperator {
   private LinkedList<PatternPartitionExecutor> partition(TsBlock tsBlock) {
     LinkedList<PatternPartitionExecutor> partitionExecutors = new LinkedList<>();
 
-    // TODO: 暂时增加的特判
-    // 特判：当无分区字段时，所有数据属于同一分区
-    if (partitionChannels.isEmpty()) {
-      // 如果没有缓存的 TsBlock，设置起始行索引为 0
-      if (startIndexInFirstBlock == -1) {
-        startIndexInFirstBlock = 0;
-      }
-      // 缓存当前 TsBlock（这里也可能已经有之前的 TsBlock）
-      reserveOneTsBlockMemory(tsBlock);
-      cachedTsBlocks.add(tsBlock);
-
-      // 计算缓存的所有 TsBlock 中的总行数
-      int totalRows = 0;
-      for (TsBlock block : cachedTsBlocks) {
-        totalRows += block.getPositionCount();
-      }
-
-      // 直接将所有数据构造成一个 PatternPartitionExecutor
-      PatternPartitionExecutor partitionExecutor =
-          new PatternPartitionExecutor(
-              cachedTsBlocks,
-              inputDataTypes,
-              startIndexInFirstBlock,
-              totalRows,
-              outputChannels,
-              sortChannels,
-              rowsPerMatch,
-              skipToPosition,
-              skipToNavigation,
-              matcher,
-              labelPatternVariableComputations,
-              measureComputations,
-              labelNames);
-      partitionExecutors.add(partitionExecutor);
-
-      // 清空缓存
-      cachedTsBlocks.clear();
-      releaseAllCachedTsBlockMemory();
-      return partitionExecutors;
-    }
-    // ------- END --------
-
     int partitionStartInCurrentBlock = 0;
     int partitionEndInCurrentBlock = partitionStartInCurrentBlock + 1;
 
@@ -296,6 +248,7 @@ public class PatternRecognitionOperator implements ProcessOperator {
       List<Column> lastPartitionColumns = extractPartitionColumns(lastTsBlock);
       if (!partitionComparator.equal(
           partitionColumns, 0, lastPartitionColumns, endIndexOfLastTsBlock - 1)) {
+
         PatternPartitionExecutor partitionExecutor =
             new PatternPartitionExecutor(
                 cachedTsBlocks,
@@ -396,13 +349,9 @@ public class PatternRecognitionOperator implements ProcessOperator {
     while (!cachedPartitionExecutors.isEmpty()) {
       PatternPartitionExecutor partitionExecutor = cachedPartitionExecutors.getFirst();
 
-      // TODO: 暂时修改一下
-      //      while (System.nanoTime() - startTime < maxRuntime
-      //          && !tsBlockBuilder.isFull()
-      //          && partitionExecutor.hasNext()) {
-      //        partitionExecutor.processNextRow(tsBlockBuilder);
-      //      }
-      while (!tsBlockBuilder.isFull() && partitionExecutor.hasNext()) {
+      while (System.nanoTime() - startTime < maxRuntime
+          && !tsBlockBuilder.isFull()
+          && partitionExecutor.hasNext()) {
         partitionExecutor.processNextRow(tsBlockBuilder);
       }
 
@@ -410,11 +359,9 @@ public class PatternRecognitionOperator implements ProcessOperator {
         cachedPartitionExecutors.removeFirst();
       }
 
-      // TODO: 暂时修改一下
-      //      if (System.nanoTime() - startTime >= maxRuntime || tsBlockBuilder.isFull()) {
-      //        return getTsBlockFromTsBlockBuilder();
-      //      }
-      return getTsBlockFromTsBlockBuilder();
+      if (System.nanoTime() - startTime >= maxRuntime || tsBlockBuilder.isFull()) {
+        return getTsBlockFromTsBlockBuilder();
+      }
     }
 
     // Reach partition end, but builder is not full yet
@@ -440,18 +387,23 @@ public class PatternRecognitionOperator implements ProcessOperator {
 
   @Override
   public boolean hasNext() throws Exception {
-    // 如果子节点有数据，则本操作符也有数据
-    return child.hasNextWithTimer();
+    return !cachedPartitionExecutors.isEmpty()
+        || child.hasNext()
+        || !cachedTsBlocks.isEmpty()
+        || !tsBlockBuilder.isEmpty();
   }
 
   @Override
   public void close() throws Exception {
     child.close();
+    if (totalMemorySize != 0) {
+      memoryReservationManager.releaseMemoryCumulatively(totalMemorySize);
+    }
   }
 
   @Override
   public boolean isFinished() throws Exception {
-    return child.isFinished();
+    return !this.hasNextWithTimer();
   }
 
   private void reserveOneTsBlockMemory(TsBlock tsBlock) {

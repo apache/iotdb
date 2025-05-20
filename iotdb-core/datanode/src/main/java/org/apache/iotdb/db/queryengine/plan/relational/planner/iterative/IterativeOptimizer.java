@@ -52,8 +52,8 @@ import static com.google.common.base.Preconditions.checkArgument;
 import static java.lang.String.format;
 import static java.lang.System.nanoTime;
 import static java.util.Objects.requireNonNull;
-import static java.util.concurrent.TimeUnit.MINUTES;
 import static java.util.concurrent.TimeUnit.NANOSECONDS;
+import static java.util.concurrent.TimeUnit.SECONDS;
 import static java.util.stream.Collectors.joining;
 import static org.apache.iotdb.db.queryengine.plan.relational.execution.querystats.PlanOptimizersStatsCollector.createPlanOptimizersStatsCollector;
 import static org.apache.iotdb.db.queryengine.plan.relational.utils.matching.Capture.newCapture;
@@ -106,7 +106,9 @@ public class IterativeOptimizer implements AdaptivePlanOptimizer {
     Lookup lookup = Lookup.from(planNode -> Stream.of(memo.resolve(planNode)));
 
     // TODO Use properties in session to specify, use default as Trino now
-    Duration timeout = new Duration(3, MINUTES);
+    // Duration timeout = new Duration(3, MINUTES);
+    // TODO: modify temporary to 10 seconds
+    Duration timeout = new Duration(10, SECONDS);
     Context optimizerContext =
         new Context(
             memo,
