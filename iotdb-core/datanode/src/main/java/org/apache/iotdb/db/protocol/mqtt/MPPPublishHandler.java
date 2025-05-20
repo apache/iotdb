@@ -61,7 +61,7 @@ public class MPPPublishHandler extends AbstractInterceptHandler {
   private final SessionManager sessionManager = SessionManager.getInstance();
 
   private final ConcurrentHashMap<String, MqttClientSession> clientIdToSessionMap =
-      new ConcurrentHashMap<>();
+          new ConcurrentHashMap<>();
   private final PayloadFormatter payloadFormat;
   private final IPartitionFetcher partitionFetcher;
   private final ISchemaFetcher schemaFetcher;
@@ -82,12 +82,12 @@ public class MPPPublishHandler extends AbstractInterceptHandler {
     if (!clientIdToSessionMap.containsKey(msg.getClientID())) {
       MqttClientSession session = new MqttClientSession(msg.getClientID());
       sessionManager.login(
-          session,
-          msg.getUsername(),
-          new String(msg.getPassword()),
-          ZoneId.systemDefault().toString(),
-          TSProtocolVersion.IOTDB_SERVICE_PROTOCOL_V3,
-          ClientVersion.V_1_0);
+              session,
+              msg.getUsername(),
+              new String(msg.getPassword()),
+              ZoneId.systemDefault().toString(),
+              TSProtocolVersion.IOTDB_SERVICE_PROTOCOL_V3,
+              ClientVersion.V_1_0);
       sessionManager.registerSessionForMqtt(session);
       clientIdToSessionMap.put(msg.getClientID(), session);
     }
@@ -116,14 +116,14 @@ public class MPPPublishHandler extends AbstractInterceptHandler {
       MqttQoS qos = msg.getQos();
 
       LOG.debug(
-          "Receive publish message. clientId: {}, username: {}, qos: {}, topic: {}, payload: {}",
-          clientId,
-          username,
-          qos,
-          topic,
-          payload);
+              "Receive publish message. clientId: {}, username: {}, qos: {}, topic: {}, payload: {}",
+              clientId,
+              username,
+              qos,
+              topic,
+              payload);
 
-      List<Message> events = payloadFormat.format(payload);
+      List<Message> events = payloadFormat.format(topic, payload);
       if (events == null) {
         return;
       }
@@ -137,7 +137,7 @@ public class MPPPublishHandler extends AbstractInterceptHandler {
         try {
           InsertRowStatement statement = new InsertRowStatement();
           statement.setDevicePath(
-              DataNodeDevicePathCache.getInstance().getPartialPath(event.getDevice()));
+                  DataNodeDevicePathCache.getInstance().getPartialPath(event.getDevice()));
           TimestampPrecisionUtils.checkTimestampPrecision(event.getTimestamp());
           statement.setTime(event.getTimestamp());
           statement.setMeasurements(event.getMeasurements().toArray(new String[0]));
@@ -163,36 +163,39 @@ public class MPPPublishHandler extends AbstractInterceptHandler {
           } else {
             long queryId = sessionManager.requestQueryId();
             ExecutionResult result =
-                Coordinator.getInstance()
-                    .executeForTreeModel(
-                        statement,
-                        queryId,
-                        sessionManager.getSessionInfo(session),
-                        "",
-                        partitionFetcher,
-                        schemaFetcher,
-                        config.getQueryTimeoutThreshold(),
-                        false);
+                    Coordinator.getInstance()
+                            .executeForTreeModel(
+                                    statement,
+                                    queryId,
+                                    sessionManager.getSessionInfo(session),
+                                    "",
+                                    partitionFetcher,
+                                    schemaFetcher,
+                                    config.getQueryTimeoutThreshold(),
+                                    false);
             tsStatus = result.status;
           }
         } catch (Exception e) {
           LOG.warn(
-              "meet error when inserting device {}, measurements {}, at time {}, because ",
-              event.getDevice(),
-              event.getMeasurements(),
-              event.getTimestamp(),
-              e);
+                  "meet error when inserting device {}, measurements {}, at time {}, because ",
+                  event.getDevice(),
+                  event.getMeasurements(),
+                  event.getTimestamp(),
+                  e);
         }
-        LOG.debug("event process result: {}", tsStatus);
+          LOG.debug("event process result: {}", tsStatus);
+        }
+      } finally{
+        // release the payload of the message
+        super.onPublish(msg);
       }
-    } finally {
-      // release the payload of the message
-      super.onPublish(msg);
+    }
+
+
+    @Override
+    public void onSessionLoopError (Throwable throwable){
+      // TODO: Implement something sensible here ...
     }
   }
 
-  @Override
-  public void onSessionLoopError(Throwable throwable) {
-    // TODO: Implement something sensible here ...
-  }
-}
+
