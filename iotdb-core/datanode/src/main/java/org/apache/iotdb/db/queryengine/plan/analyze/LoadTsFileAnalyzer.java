@@ -455,10 +455,10 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
     while (timeseriesMetadataIterator.hasNext()) {
       final Map<IDeviceID, List<TimeseriesMetadata>> device2TimeseriesMetadata =
           timeseriesMetadataIterator.next();
-      if (!tsFileResource.resourceFileExists()) {
-        TsFileResourceUtils.updateTsFileResource(device2TimeseriesMetadata, tsFileResource);
-        schemaAutoCreatorAndVerifier.setCurrentTimeIndex(tsFileResource.getTimeIndex());
-      }
+      // Update time index no matter if resource file exists or not, because resource file may be
+      // untrusted
+      TsFileResourceUtils.updateTsFileResource(device2TimeseriesMetadata, tsFileResource);
+      schemaAutoCreatorAndVerifier.setCurrentTimeIndex(tsFileResource.getTimeIndex());
 
       if (isAutoCreateSchemaOrVerifySchemaEnabled) {
         schemaAutoCreatorAndVerifier.autoCreateAndVerify(reader, device2TimeseriesMetadata);
