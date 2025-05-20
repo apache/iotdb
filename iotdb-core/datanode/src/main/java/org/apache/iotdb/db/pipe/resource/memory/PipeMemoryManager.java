@@ -25,6 +25,7 @@ import org.apache.iotdb.commons.memory.MemoryBlockType;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
+import org.apache.iotdb.db.pipe.resource.memory.strategy.ThresholdAllocationStrategy;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -233,6 +234,9 @@ public class PipeMemoryManager {
           return new PipeTabletMemoryBlock(sizeInBytes);
         case TS_FILE:
           return new PipeTsFileMemoryBlock(sizeInBytes);
+        case BATCH:
+        case WAL:
+          return new PipeModelFixedMemoryBlock(sizeInBytes, new ThresholdAllocationStrategy());
         default:
           return new PipeMemoryBlock(sizeInBytes);
       }

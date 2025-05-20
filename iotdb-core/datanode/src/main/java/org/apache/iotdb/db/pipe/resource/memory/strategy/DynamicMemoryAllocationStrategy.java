@@ -17,12 +17,11 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.pipe.resource.memory;
+package org.apache.iotdb.db.pipe.resource.memory.strategy;
 
-public enum PipeMemoryBlockType {
-  NORMAL,
-  TABLET,
-  TS_FILE,
-  BATCH,
-  WAL
+import org.apache.iotdb.db.pipe.resource.memory.PipeDynamicMemoryBlock;
+
+public interface DynamicMemoryAllocationStrategy {
+
+  void dynamicallyAdjustMemory(PipeDynamicMemoryBlock dynamicMemoryBlock);
 }
