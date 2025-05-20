@@ -270,6 +270,14 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
             currentSchema.getTTL());
       }
 
+      if (alterSchema.isSetNeedLastCache()) {
+        currentSchema.setNeedLastCache(alterSchema.isNeedLastCache());
+        LOGGER.info(
+            "[SetNeedLastCache] The need last cache flag of Database: {} is adjusted to: {}",
+            currentSchema.getName(),
+            currentSchema.isNeedLastCache());
+      }
+
       mTree
           .getDatabaseNodeByDatabasePath(partialPathName)
           .getAsMNode()
