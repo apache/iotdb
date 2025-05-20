@@ -356,7 +356,7 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
     context.setQueryType(QueryType.WRITE);
     accessControl.checkCanDropDatabase(
         context.getSession().getUserName(), node.getDbName().getValue());
-    return new DropDBTask(node);
+    return new DropDBTask(node, clientSession);
   }
 
   @Override
