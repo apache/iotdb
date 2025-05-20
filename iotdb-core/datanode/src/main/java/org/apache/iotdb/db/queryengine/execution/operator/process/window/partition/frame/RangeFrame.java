@@ -75,8 +75,8 @@ public class RangeFrame implements Frame {
   public Range getRange(
       int currentPosition, int currentGroup, int peerGroupStart, int peerGroupEnd) {
     // Full partition
-    if (frameInfo.getStartType() == UNBOUNDED_PRECEDING
-            && frameInfo.getEndType() == UNBOUNDED_FOLLOWING
+    if ((frameInfo.getStartType() == UNBOUNDED_PRECEDING
+            && frameInfo.getEndType() == UNBOUNDED_FOLLOWING)
         || noOrderBy) {
       return new Range(0, partitionSize - 1);
     }
