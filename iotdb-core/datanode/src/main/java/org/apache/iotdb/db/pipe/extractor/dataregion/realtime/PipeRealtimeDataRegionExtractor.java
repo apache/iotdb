@@ -125,6 +125,7 @@ public abstract class PipeRealtimeDataRegionExtractor implements PipeExtractor {
 
   protected final AtomicBoolean isClosed = new AtomicBoolean(false);
 
+  protected String pipeID;
   private String taskID;
   protected String userName;
   protected boolean skipIfNoPrivileges = true;
@@ -214,6 +215,7 @@ public abstract class PipeRealtimeDataRegionExtractor implements PipeExtractor {
     // holding a reference to IoTDBDataRegionExtractor, the taskID should be constructed to
     // match that of IoTDBDataRegionExtractor.
     creationTime = environment.getCreationTime();
+    pipeID = pipeName + "_" + creationTime;
     taskID = pipeName + "_" + dataRegionId + "_" + creationTime;
 
     treePattern = TreePattern.parsePipePatternFromSourceParameters(parameters);

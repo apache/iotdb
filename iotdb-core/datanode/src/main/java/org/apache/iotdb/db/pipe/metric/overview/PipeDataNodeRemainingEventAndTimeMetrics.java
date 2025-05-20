@@ -93,7 +93,7 @@ public class PipeDataNodeRemainingEventAndTimeMetrics implements IMetricSet {
         remainingEventAndTimeOperatorMap.get(pipeID);
     if (Objects.isNull(operator)) {
       LOGGER.warn(
-          "Failed to mark pipe region commit, RemainingEventAndTimeOperator({}) does not exist",
+          "Failed to get remaining insert event, RemainingEventAndTimeOperator({}) does not exist, will not degrade",
           pipeID);
       return false;
     }
