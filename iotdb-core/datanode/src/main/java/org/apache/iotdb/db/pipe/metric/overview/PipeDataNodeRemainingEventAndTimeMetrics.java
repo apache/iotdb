@@ -89,6 +89,14 @@ public class PipeDataNodeRemainingEventAndTimeMetrics implements IMetricSet {
     if (Objects.isNull(metricService)) {
       return false;
     }
+
+    if (remainingEventAndTimeOperatorMap.values().stream()
+            .map(PipeDataNodeRemainingEventAndTimeOperator::getRemainingInsertEventSmoothingCount)
+            .reduce(0d, Double::sum)
+        > PipeConfig.getInstance().getPipeMaxAllowedTotalRemainingInsertEventCount()) {
+      return true;
+    }
+
     final PipeDataNodeRemainingEventAndTimeOperator operator =
         remainingEventAndTimeOperatorMap.get(pipeID);
     if (Objects.isNull(operator)) {
