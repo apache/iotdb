@@ -53,8 +53,9 @@ class PipeDataNodeRemainingEventAndTimeOperator extends PipeRemainingOperator {
   private final AtomicReference<Meter> schemaRegionCommitMeter = new AtomicReference<>(null);
   private final IoTDBHistogram collectInvocationHistogram =
       (IoTDBHistogram) IoTDBMetricManager.getInstance().createHistogram();
-  private volatile long lastInsertEventCountSmoothingTime = Long.MIN_VALUE;
-  private final Meter insertEventCountMeter =
+
+  private volatile long lastInsertNodeEventCountSmoothingTime = Long.MIN_VALUE;
+  private final Meter insertNodeEventCountMeter =
       new Meter(new ExponentialMovingAverages(), Clock.defaultClock());
 
   private double lastDataRegionCommitSmoothingValue = Long.MAX_VALUE;
@@ -99,14 +100,14 @@ class PipeDataNodeRemainingEventAndTimeOperator extends PipeRemainingOperator {
   }
 
   double getRemainingInsertEventSmoothingCount() {
-    if (System.currentTimeMillis() - lastInsertEventCountSmoothingTime
+    if (System.currentTimeMillis() - lastInsertNodeEventCountSmoothingTime
         >= PipeConfig.getInstance().getPipeRemainingInsertEventCountSmoothingIntervalSeconds()) {
-      insertEventCountMeter.mark(insertNodeEventCount.get());
-      lastInsertEventCountSmoothingTime = System.currentTimeMillis();
+      insertNodeEventCountMeter.mark(insertNodeEventCount.get());
+      lastInsertNodeEventCountSmoothingTime = System.currentTimeMillis();
     }
     return PipeConfig.getInstance()
         .getPipeRemainingTimeCommitRateAverageTime()
-        .getMeterRate(insertEventCountMeter);
+        .getMeterRate(insertNodeEventCountMeter);
   }
 
   long getRemainingEvents() {
