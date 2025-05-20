@@ -19,14 +19,12 @@
 
 package org.apache.iotdb.db.pipe.resource.memory.strategy;
 
+import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.db.pipe.resource.memory.PipeDynamicMemoryBlock;
 
 import org.apache.tsfile.utils.Pair;
 
 public class ThresholdAllocationStrategy implements DynamicMemoryAllocationStrategy {
-
-  private static final double DEFICIT_RATIO_WEIGHT = 0.5;
-  private static final double DEFICIT_RATIO_THRESHOLD = 0.2;
 
   @Override
   public void dynamicallyAdjustMemory(final PipeDynamicMemoryBlock dynamicMemoryBlock) {
@@ -38,7 +36,7 @@ public class ThresholdAllocationStrategy implements DynamicMemoryAllocationStrat
             .orElse(1.0);
 
     double deficitRatio = calculateDeficitRatio(dynamicMemoryBlock);
-    if (Math.abs(averageDeficitRatio - deficitRatio) > DEFICIT_RATIO_THRESHOLD) {
+    if (Math.abs(averageDeficitRatio - deficitRatio) > PipeConfig.getInstance().getPipeDynamicMemoryAdjustmentThreshold()) {
       double diff = averageDeficitRatio - deficitRatio;
       long mem = (long) ((dynamicMemoryBlock.getMemoryUsageInBytes() / deficitRatio) * diff);
       dynamicMemoryBlock.applyForDynamicMemory(mem);
@@ -48,7 +46,9 @@ public class ThresholdAllocationStrategy implements DynamicMemoryAllocationStrat
 
   private double calculateDeficitRatio(final PipeDynamicMemoryBlock block) {
     final Pair<Double, Double> memoryEfficiency = block.getMemoryEfficiency();
-    return DEFICIT_RATIO_WEIGHT * memoryEfficiency.getRight()
-        + (1 - DEFICIT_RATIO_WEIGHT) * memoryEfficiency.getLeft();
+    double pipeDynamicMemoryHistoryWeight =
+        PipeConfig.getInstance().getPipeDynamicMemoryHistoryWeight();
+    return (1 - pipeDynamicMemoryHistoryWeight) * memoryEfficiency.getRight()
+        + pipeDynamicMemoryHistoryWeight * memoryEfficiency.getLeft();
   }
 }

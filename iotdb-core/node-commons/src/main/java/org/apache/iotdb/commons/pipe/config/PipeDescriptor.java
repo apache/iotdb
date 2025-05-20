@@ -504,6 +504,19 @@ public class PipeDescriptor {
             properties.getProperty(
                 "pipe_tsfile_scan_parsing_threshold",
                 String.valueOf(config.getPipeTsFileScanParsingThreshold()))));
+
+    config.setPipeDynamicMemoryHistoryWeight(
+        Double.parseDouble(
+            properties.getProperty(
+                "pipe_dynamic_memory_history_weight",
+                String.valueOf(config.getPipeDynamicMemoryHistoryWeight()))));
+
+    config.setPipeDynamicMemoryAdjustmentThreshold(
+            Double.parseDouble(
+            properties.getProperty(
+                "pipe_dynamic_memory_adjustment_threshold",
+                String.valueOf(config.getPipeDynamicMemoryAdjustmentThreshold()))));
+    );
   }
 
   public static void loadPipeExternalConfig(
