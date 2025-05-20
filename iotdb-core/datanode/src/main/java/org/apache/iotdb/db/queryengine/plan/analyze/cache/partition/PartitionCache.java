@@ -261,7 +261,8 @@ public class PartitionCache {
   }
 
   /** get all database from configNode and update database cache. */
-  private void fetchDatabaseAndUpdateCache(final boolean isTableModel) throws ClientManagerException, TException {
+  private void fetchDatabaseAndUpdateCache(final boolean isTableModel)
+      throws ClientManagerException, TException {
     databaseCacheLock.writeLock().lock();
     try (final ConfigNodeClient client =
         configNodeClientManager.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
