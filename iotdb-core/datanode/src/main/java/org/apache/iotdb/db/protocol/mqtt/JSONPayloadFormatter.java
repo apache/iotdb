@@ -27,6 +27,7 @@ import com.google.gson.JsonObject;
 import com.google.gson.JsonParseException;
 import com.google.gson.reflect.TypeToken;
 import io.netty.buffer.ByteBuf;
+import org.apache.commons.lang3.NotImplementedException;
 import org.apache.tsfile.enums.TSDataType;
 
 import java.nio.charset.StandardCharsets;
@@ -50,7 +51,7 @@ public class JSONPayloadFormatter implements PayloadFormatter {
   private static final Gson GSON = new GsonBuilder().create();
 
   @Override
-  public List<Message> format(ByteBuf payload) {
+  public List<Message> format(String topic, ByteBuf payload) {
     if (payload == null) {
       return new ArrayList<>();
     }
@@ -79,6 +80,12 @@ public class JSONPayloadFormatter implements PayloadFormatter {
       return messages;
     }
     throw new JsonParseException("payload is invalidate");
+  }
+
+  @Override
+  @Deprecated
+  public List<Message> format(ByteBuf payload) {
+    throw new NotImplementedException();
   }
 
   private List<Message> formatJson(JsonObject jsonObject) {
