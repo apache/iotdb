@@ -73,20 +73,20 @@ public class ShowDatabaseStatement extends ShowStatement implements IConfigState
   }
 
   public void buildTSBlock(
-      final Map<String, TDatabaseInfo> storageGroupInfoMap,
+      final Map<String, TDatabaseInfo> databaseInfoMap,
       final SettableFuture<ConfigTaskResult> future) {
 
     final List<TSDataType> outputDataTypes =
         isDetailed
-            ? ColumnHeaderConstant.showStorageGroupsDetailColumnHeaders.stream()
+            ? ColumnHeaderConstant.showDatabasesDetailColumnHeaders.stream()
                 .map(ColumnHeader::getColumnType)
                 .collect(Collectors.toList())
-            : ColumnHeaderConstant.showStorageGroupsColumnHeaders.stream()
+            : ColumnHeaderConstant.showDatabasesColumnHeaders.stream()
                 .map(ColumnHeader::getColumnType)
                 .collect(Collectors.toList());
 
     final TsBlockBuilder builder = new TsBlockBuilder(outputDataTypes);
-    for (final Map.Entry<String, TDatabaseInfo> entry : storageGroupInfoMap.entrySet()) {
+    for (final Map.Entry<String, TDatabaseInfo> entry : databaseInfoMap.entrySet()) {
       final String storageGroup = entry.getKey();
       final TDatabaseInfo storageGroupInfo = entry.getValue();
 
@@ -105,6 +105,7 @@ public class ShowDatabaseStatement extends ShowStatement implements IConfigState
         builder.getColumnBuilder(8).writeInt(storageGroupInfo.getDataRegionNum());
         builder.getColumnBuilder(9).writeInt(storageGroupInfo.getMinDataRegionNum());
         builder.getColumnBuilder(10).writeInt(storageGroupInfo.getMaxDataRegionNum());
+        builder.getColumnBuilder(11).writeBoolean(true);
       }
       builder.declarePosition();
     }
