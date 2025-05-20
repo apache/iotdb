@@ -190,7 +190,7 @@ public class IoTDBTableIT {
           assertEquals(tableNames[cnt], resultSet.getString(1));
           assertEquals(ttls[cnt], resultSet.getString(2));
           assertEquals(comments[cnt], resultSet.getString(4));
-          assertEquals(needLastCaches[cnt], resultSet.getString(5));
+          assertEquals(needLastCaches[cnt], resultSet.getString(6));
           cnt++;
         }
         assertEquals(tableNames.length, cnt);
