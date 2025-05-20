@@ -24,6 +24,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.Iterati
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.RuleStatsRecorder;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.EliminateLimitProjectWithTableScan;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.EliminateLimitWithTableScan;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.EliminateOffsetWithTableScan;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.MergeLimitOverProjectWithMergeSort;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.MergeLimitWithMergeSort;
 
@@ -53,7 +54,9 @@ public class DistributedOptimizeFactory {
                 plannerContext,
                 ruleStats,
                 ImmutableSet.of(
-                    new EliminateLimitWithTableScan(), new EliminateLimitProjectWithTableScan())));
+                    new EliminateLimitWithTableScan(),
+                    new EliminateLimitProjectWithTableScan(),
+                    new EliminateOffsetWithTableScan())));
   }
 
   public List<PlanOptimizer> getPlanOptimizers() {

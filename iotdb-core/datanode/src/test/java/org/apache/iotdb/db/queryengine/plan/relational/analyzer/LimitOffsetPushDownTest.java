@@ -27,6 +27,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.DistributedQueryPlan;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.LogicalQueryPlan;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.PlanTester;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.SymbolAllocator;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.TableLogicalPlanner;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.distribute.TableDistributedPlanner;
@@ -51,6 +52,9 @@ import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.TestUtils
 import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.TestUtils.assertTableScan;
 import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.TestUtils.assertTableScanWithoutEntryOrder;
 import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.TestUtils.getChildrenNode;
+import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanAssert.assertPlan;
+import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.output;
+import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.tableScan;
 import static org.apache.iotdb.db.queryengine.plan.statement.component.Ordering.ASC;
 import static org.apache.iotdb.db.queryengine.plan.statement.component.Ordering.DESC;
 import static org.junit.Assert.assertEquals;
@@ -302,5 +306,14 @@ public class LimitOffsetPushDownTest {
     assertTrue(getChildrenNode(rootNode, 1) instanceof ProjectNode);
     assertTrue(getChildrenNode(rootNode, 2) instanceof LimitNode);
     assertTrue(getChildrenNode(rootNode, 3) instanceof DeviceTableScanNode);
+  }
+
+  @Test
+  public void limitEliminatedTest() {
+    PlanTester planTester = new PlanTester();
+    sql = "select * from table1 where tag1='Beijing' and tag2='A1' limit 1 offset 1";
+    logicalQueryPlan = planTester.createPlan(sql);
+    // the sort node has been eliminated
+    assertPlan(planTester.getFragmentPlan(0), output(tableScan("testdb.table1")));
   }
 }
