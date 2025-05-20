@@ -95,7 +95,7 @@ public class PartitionCache {
   private final SeriesPartitionExecutor partitionExecutor;
 
   /** the cache of database */
-  private final Set<String> databaseCache = new HashSet<>();
+  private final Map<String, Boolean> database2NeedLastCacheCache = new HashMap<>();
 
   /** database -> schemaPartitionTable */
   private final Cache<String, SchemaPartitionTable> schemaPartitionCache;
@@ -196,7 +196,7 @@ public class PartitionCache {
    * @return database name, return {@code null} if cache miss
    */
   private String getDatabaseName(final IDeviceID deviceID) {
-    for (final String database : databaseCache) {
+    for (final String database : database2NeedLastCacheCache) {
       if (PathUtils.isStartWith(deviceID, database)) {
         return database;
       }
@@ -213,7 +213,7 @@ public class PartitionCache {
   private boolean containsDatabase(final String database) {
     databaseCacheLock.readLock().lock();
     try {
-      return databaseCache.contains(database);
+      return database2NeedLastCacheCache.containsKey(database);
     } finally {
       databaseCacheLock.readLock().unlock();
     }
@@ -510,12 +510,12 @@ public class PartitionCache {
   /**
    * update database cache
    *
-   * @param databaseNames the database names that need to update
+   * @param databaseMap the database names and need last cache that need to update
    */
-  public void updateDatabaseCache(final Set<String> databaseNames) {
+  public void updateDatabaseCache(final Map<String, Boolean> databaseMap) {
     databaseCacheLock.writeLock().lock();
     try {
-      databaseCache.addAll(databaseNames);
+      database2NeedLastCacheCache.putAll(databaseMap);
     } finally {
       databaseCacheLock.writeLock().unlock();
     }
@@ -525,7 +525,7 @@ public class PartitionCache {
   public void removeFromDatabaseCache() {
     databaseCacheLock.writeLock().lock();
     try {
-      databaseCache.clear();
+      database2NeedLastCacheCache.clear();
     } finally {
       databaseCacheLock.writeLock().unlock();
     }
@@ -1030,7 +1030,7 @@ public class PartitionCache {
   public String toString() {
     return "PartitionCache{"
         + ", databaseCache="
-        + databaseCache
+        + database2NeedLastCacheCache
         + ", replicaSetCache="
         + groupIdToReplicaSetMap
         + ", schemaPartitionCache="
