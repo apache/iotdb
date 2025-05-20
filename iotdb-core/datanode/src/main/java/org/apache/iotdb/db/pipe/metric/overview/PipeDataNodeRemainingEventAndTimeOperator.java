@@ -44,7 +44,7 @@ class PipeDataNodeRemainingEventAndTimeOperator extends PipeRemainingOperator {
   private final Set<IoTDBSchemaRegionExtractor> schemaRegionExtractors =
       Collections.newSetFromMap(new ConcurrentHashMap<>());
 
-  private final AtomicInteger insertEventCount = new AtomicInteger(0);
+  private final AtomicInteger insertNodeEventCount = new AtomicInteger(0);
   private final AtomicInteger rawTabletEventCount = new AtomicInteger(0);
   private final AtomicInteger tsfileEventCount = new AtomicInteger(0);
   private final AtomicInteger heartbeatEventCount = new AtomicInteger(0);
@@ -66,12 +66,12 @@ class PipeDataNodeRemainingEventAndTimeOperator extends PipeRemainingOperator {
 
   //////////////////////////// Remaining event & time calculation ////////////////////////////
 
-  void increaseInsertEventCount() {
-    insertEventCount.incrementAndGet();
+  void increaseInsertNodeEventCount() {
+    insertNodeEventCount.incrementAndGet();
   }
 
-  void decreaseInsertEventCount() {
-    insertEventCount.decrementAndGet();
+  void decreaseInsertNodeEventCount() {
+    insertNodeEventCount.decrementAndGet();
   }
 
   void increaseRawTabletEventCount() {
@@ -101,7 +101,7 @@ class PipeDataNodeRemainingEventAndTimeOperator extends PipeRemainingOperator {
   double getRemainingInsertEventSmoothingCount() {
     if (System.currentTimeMillis() - lastInsertEventCountSmoothingTime
         >= PipeConfig.getInstance().getPipeRemainingInsertEventCountSmoothingIntervalSeconds()) {
-      insertEventCountMeter.mark(insertEventCount.get());
+      insertEventCountMeter.mark(insertNodeEventCount.get());
       lastInsertEventCountSmoothingTime = System.currentTimeMillis();
     }
     return PipeConfig.getInstance()
@@ -113,7 +113,7 @@ class PipeDataNodeRemainingEventAndTimeOperator extends PipeRemainingOperator {
     final long remainingEvents =
         tsfileEventCount.get()
             + rawTabletEventCount.get()
-            + insertEventCount.get()
+            + insertNodeEventCount.get()
             + heartbeatEventCount.get()
             + schemaRegionExtractors.stream()
                 .map(IoTDBSchemaRegionExtractor::getUnTransferredEventCount)
@@ -142,7 +142,7 @@ class PipeDataNodeRemainingEventAndTimeOperator extends PipeRemainingOperator {
     final double totalDataRegionWriteEventCount =
         tsfileEventCount.get() * Math.max(invocationValue, 1)
             + rawTabletEventCount.get()
-            + insertEventCount.get();
+            + insertNodeEventCount.get();
 
     dataRegionCommitMeter.updateAndGet(
         meter -> {

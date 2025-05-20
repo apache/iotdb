@@ -165,7 +165,7 @@ public class PipeDataNodeRemainingEventAndTimeMetrics implements IMetricSet {
         .computeIfAbsent(
             pipeName + "_" + creationTime,
             k -> new PipeDataNodeRemainingEventAndTimeOperator(pipeName, creationTime))
-        .increaseInsertEventCount();
+        .increaseInsertNodeEventCount();
   }
 
   public void decreaseInsertNodeEventCount(final String pipeName, final long creationTime) {
@@ -173,7 +173,7 @@ public class PipeDataNodeRemainingEventAndTimeMetrics implements IMetricSet {
         .computeIfAbsent(
             pipeName + "_" + creationTime,
             k -> new PipeDataNodeRemainingEventAndTimeOperator(pipeName, creationTime))
-        .decreaseInsertEventCount();
+        .decreaseInsertNodeEventCount();
   }
 
   public void increaseRawTabletEventCount(final String pipeName, final long creationTime) {
