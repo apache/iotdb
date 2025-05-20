@@ -21,7 +21,6 @@ package org.apache.iotdb.confignode.it.partition;
 
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.client.sync.SyncConfigNodeIServiceClient;
-import org.apache.iotdb.commons.utils.TimePartitionUtils;
 import org.apache.iotdb.confignode.rpc.thrift.TDataPartitionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDataPartitionTableResp;
 import org.apache.iotdb.it.env.EnvFactory;
@@ -45,12 +44,18 @@ import java.util.concurrent.TimeUnit;
 @Category({ClusterIT.class})
 public class IoTDBPartitionTableAutoCleanIT {
 
+  private static final String TREE_DATABASE_PREFIX = "root.db.g_";
+
   private static final int TEST_REPLICATION_FACTOR = 1;
   private static final long TEST_TIME_PARTITION_INTERVAL = 604800000;
   private static final long TEST_TTL_CHECK_INTERVAL = 5_000;
 
   private static final TTimePartitionSlot TEST_CURRENT_TIME_SLOT =
-      TimePartitionUtils.getCurrentTimePartitionSlot();
+      new TTimePartitionSlot()
+          .setStartTime(
+              System.currentTimeMillis()
+                  / TEST_TIME_PARTITION_INTERVAL
+                  * TEST_TIME_PARTITION_INTERVAL);
   private static final long TEST_TTL = 7 * TEST_TIME_PARTITION_INTERVAL;
 
   @Before
@@ -73,46 +78,41 @@ public class IoTDBPartitionTableAutoCleanIT {
   }
 
   @Test
-  public void testAutoCleanPartitionTable() throws Exception {
+  public void testAutoCleanPartitionTableForTreeModel() throws Exception {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      // Create db1
-      statement.execute("CREATE DATABASE root.db1");
-      statement.execute("CREATE TIMESERIES root.db1.s WITH DATATYPE=INT64,ENCODING=PLAIN");
-      // Insert expired data
-      statement.execute(
-          String.format(
-              "INSERT INTO root.db1(timestamp, s) VALUES (%d, %d)",
-              TEST_CURRENT_TIME_SLOT.getStartTime() - TEST_TTL * 2, -1));
-      // Insert existed data
-      statement.execute(
-          String.format(
-              "INSERT INTO root.db1(timestamp, s) VALUES (%d, %d)",
-              TEST_CURRENT_TIME_SLOT.getStartTime(), 1));
-      // Let db.TTL > device.TTL, the valid TTL should be the bigger one
-      statement.execute("SET TTL TO root.db1 " + TEST_TTL);
-      statement.execute("SET TTL TO root.db1.s " + 10);
-      // Create db2
-      statement.execute("CREATE DATABASE root.db2");
-      statement.execute("CREATE TIMESERIES root.db2.s WITH DATATYPE=INT64,ENCODING=PLAIN");
-      // Insert expired data
-      statement.execute(
-          String.format(
-              "INSERT INTO root.db2(timestamp, s) VALUES (%d, %d)",
-              TEST_CURRENT_TIME_SLOT.getStartTime() - TEST_TTL * 2, -1));
-      // Insert existed data
-      statement.execute(
-          String.format(
-              "INSERT INTO root.db2(timestamp, s) VALUES (%d, %d)",
-              TEST_CURRENT_TIME_SLOT.getStartTime(), 1));
-      // Let db.TTL < device.TTL, the valid TTL should be the bigger one
-      statement.execute("SET TTL TO root.db2 " + 10);
-      statement.execute("SET TTL TO root.db2.s " + TEST_TTL);
+      // Create databases and insert test data
+      for (int i = 0; i < 3; i++) {
+        String databaseName = String.format("%s%d", TREE_DATABASE_PREFIX, i);
+        statement.execute(String.format("CREATE DATABASE %s", databaseName));
+        statement.execute(
+            String.format(
+                "CREATE TIMESERIES %s.s WITH DATATYPE=INT64,ENCODING=PLAIN", databaseName));
+        // Insert expired data
+        statement.execute(
+            String.format(
+                "INSERT INTO %s(timestamp, s) VALUES (%d, %d)",
+                databaseName, TEST_CURRENT_TIME_SLOT.getStartTime() - TEST_TTL * 2, -1));
+        // Insert existed data
+        statement.execute(
+            String.format(
+                "INSERT INTO %s(timestamp, s) VALUES (%d, %d)",
+                databaseName, TEST_CURRENT_TIME_SLOT.getStartTime(), 1));
+      }
+      // Let db0.TTL > device.TTL, the valid TTL should be the bigger one
+      statement.execute(String.format("SET TTL TO %s0 %d", TREE_DATABASE_PREFIX, TEST_TTL));
+      statement.execute(String.format("SET TTL TO %s0.s %d", TREE_DATABASE_PREFIX, 10));
+      // Let db1.TTL < device.TTL, the valid TTL should be the bigger one
+      statement.execute(String.format("SET TTL TO %s1 %d", TREE_DATABASE_PREFIX, 10));
+      statement.execute(String.format("SET TTL TO %s1.s %d", TREE_DATABASE_PREFIX, TEST_TTL));
+      // Set TTL to path db2.**
+      statement.execute(String.format("SET TTL TO %s2.** %d", TREE_DATABASE_PREFIX, TEST_TTL));
     }
 
     TDataPartitionReq req = new TDataPartitionReq();
-    req.putToPartitionSlotsMap("root.db1", new TreeMap<>());
-    req.putToPartitionSlotsMap("root.db2", new TreeMap<>());
+    for (int i = 0; i < 3; i++) {
+      req.putToPartitionSlotsMap(String.format("%s%d", TREE_DATABASE_PREFIX, i), new TreeMap<>());
+    }
     try (SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) EnvFactory.getEnv().getLeaderConfigNodeConnection()) {
       for (int retry = 0; retry < 120; retry++) {

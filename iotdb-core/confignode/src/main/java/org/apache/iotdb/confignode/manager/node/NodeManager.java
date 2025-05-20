@@ -110,6 +110,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.stream.Collectors;
@@ -789,11 +790,31 @@ public class NodeManager {
   public TSStatus checkConfigNodeBeforeRemove(RemoveConfigNodePlan removeConfigNodePlan) {
     removeConfigNodeLock.lock();
     try {
-      // Check OnlineConfigNodes number
-      if (filterConfigNodeThroughStatus(NodeStatus.Running).size() <= 1) {
+      // Check ConfigNodes number
+      if (getRegisteredConfigNodes().size() <= 1) {
         return new TSStatus(TSStatusCode.REMOVE_CONFIGNODE_ERROR.getStatusCode())
             .setMessage(
                 "Remove ConfigNode failed because there is only one ConfigNode in current Cluster.");
+      }
+
+      // Check OnlineConfigNodes number
+      final long deadline =
+          System.nanoTime()
+              + TimeUnit.MILLISECONDS.toNanos(
+                  CommonDescriptor.getInstance().getConfig().getDnConnectionTimeoutInMS() / 2);
+      while (filterConfigNodeThroughStatus(NodeStatus.Running).size() <= 1) {
+        if (System.nanoTime() > deadline) {
+          return new TSStatus(TSStatusCode.REMOVE_CONFIGNODE_ERROR.getStatusCode())
+              .setMessage(
+                  "Remove ConfigNode failed because there is no other ConfigNode in Running status in current Cluster.");
+        }
+        try {
+          Thread.sleep(1000);
+        } catch (InterruptedException e) {
+          Thread.currentThread().interrupt();
+          return new TSStatus(TSStatusCode.REMOVE_CONFIGNODE_ERROR.getStatusCode())
+              .setMessage("Remove ConfigNode failed due to thread interruption.");
+        }
       }
 
       // Check whether the registeredConfigNodes contain the ConfigNode to be removed.

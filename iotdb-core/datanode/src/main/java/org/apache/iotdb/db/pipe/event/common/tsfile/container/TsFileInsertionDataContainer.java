@@ -22,6 +22,7 @@ package org.apache.iotdb.db.pipe.event.common.tsfile.container;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.PipePattern;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
+import org.apache.iotdb.db.pipe.metric.overview.PipeTsFileToTabletsMetrics;
 import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
 import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryBlock;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
@@ -38,22 +39,33 @@ public abstract class TsFileInsertionDataContainer implements AutoCloseable {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(TsFileInsertionDataContainer.class);
 
+  protected final String pipeName;
+  protected final long creationTime;
+
   protected final PipePattern pattern; // used to filter data
   protected final GlobalTimeExpression timeFilterExpression; // used to filter data
 
   protected final PipeTaskMeta pipeTaskMeta; // used to report progress
   protected final EnrichedEvent sourceEvent; // used to report progress
 
+  protected final long initialTimeNano = System.nanoTime();
+  protected boolean timeUsageReported = false;
+
   protected final PipeMemoryBlock allocatedMemoryBlockForTablet;
 
   protected TsFileSequenceReader tsFileSequenceReader;
 
   protected TsFileInsertionDataContainer(
+      final String pipeName,
+      final long creationTime,
       final PipePattern pattern,
       final long startTime,
       final long endTime,
       final PipeTaskMeta pipeTaskMeta,
       final EnrichedEvent sourceEvent) {
+    this.pipeName = pipeName;
+    this.creationTime = creationTime;
+
     this.pattern = pattern;
     timeFilterExpression =
         (startTime == Long.MIN_VALUE && endTime == Long.MAX_VALUE)
@@ -75,6 +87,17 @@ public abstract class TsFileInsertionDataContainer implements AutoCloseable {
 
   @Override
   public void close() {
+    try {
+      if (pipeName != null && !timeUsageReported) {
+        PipeTsFileToTabletsMetrics.getInstance()
+            .recordTsFileToTabletTime(
+                pipeName + "_" + creationTime, System.nanoTime() - initialTimeNano);
+        timeUsageReported = true;
+      }
+    } catch (final Exception e) {
+      LOGGER.warn("Failed to report time usage for parsing tsfile for pipe {}", pipeName, e);
+    }
+
     try {
       if (tsFileSequenceReader != null) {
         tsFileSequenceReader.close();

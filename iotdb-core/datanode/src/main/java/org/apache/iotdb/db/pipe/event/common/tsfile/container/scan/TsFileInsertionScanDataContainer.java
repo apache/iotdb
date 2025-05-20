@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.pipe.event.common.tsfile.container.scan;
 
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
+import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.PipePattern;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
@@ -66,6 +67,9 @@ public class TsFileInsertionScanDataContainer extends TsFileInsertionDataContain
 
   private static final LocalDate EMPTY_DATE = LocalDate.of(1000, 1, 1);
 
+  private final int pipeMaxAlignedSeriesNumInOneBatch =
+      PipeConfig.getInstance().getPipeMaxAlignedSeriesNumInOneBatch();
+
   private final long startTime;
   private final long endTime;
   private final Filter filter;
@@ -90,6 +94,8 @@ public class TsFileInsertionScanDataContainer extends TsFileInsertionDataContain
   private byte lastMarker = Byte.MIN_VALUE;
 
   public TsFileInsertionScanDataContainer(
+      final String pipeName,
+      final long creationTime,
       final File tsFile,
       final PipePattern pattern,
       final long startTime,
@@ -97,7 +103,7 @@ public class TsFileInsertionScanDataContainer extends TsFileInsertionDataContain
       final PipeTaskMeta pipeTaskMeta,
       final EnrichedEvent sourceEvent)
       throws IOException {
-    super(pattern, startTime, endTime, pipeTaskMeta, sourceEvent);
+    super(pipeName, creationTime, pattern, startTime, endTime, pipeTaskMeta, sourceEvent);
 
     this.startTime = startTime;
     this.endTime = endTime;
@@ -116,6 +122,17 @@ public class TsFileInsertionScanDataContainer extends TsFileInsertionDataContain
       close();
       throw e;
     }
+  }
+
+  public TsFileInsertionScanDataContainer(
+      final File tsFile,
+      final PipePattern pattern,
+      final long startTime,
+      final long endTime,
+      final PipeTaskMeta pipeTaskMeta,
+      final EnrichedEvent sourceEvent)
+      throws IOException {
+    this(null, 0, tsFile, pattern, startTime, endTime, pipeTaskMeta, sourceEvent);
   }
 
   @Override
@@ -436,13 +453,16 @@ public class TsFileInsertionScanDataContainer extends TsFileInsertionDataContain
                     chunkHeader.getMeasurementID(),
                     (measurement, index) -> Objects.nonNull(index) ? index + 1 : 0);
 
-            // Emit when encountered non-sequential value chunk
+            // Emit when encountered non-sequential value chunk, or the chunk list size exceeds
+            // certain value to avoid OOM
             // Do not record or end current value chunks when there are empty chunks
             if (chunkHeader.getDataSize() == 0) {
               break;
             }
             boolean needReturn = false;
-            if (lastIndex >= 0 && valueIndex != lastIndex) {
+            if (lastIndex >= 0
+                && (valueIndex != lastIndex
+                    || valueChunkList.size() >= pipeMaxAlignedSeriesNumInOneBatch)) {
               needReturn = recordAlignedChunk(valueChunkList, marker);
             }
             lastIndex = valueIndex;

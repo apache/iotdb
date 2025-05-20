@@ -177,11 +177,12 @@ public class WALBuffer extends AbstractWALBuffer {
     buffersLock.lock();
     try {
       MmapUtil.clean(workingBuffer);
-      MmapUtil.clean(workingBuffer);
+      MmapUtil.clean(idleBuffer);
       MmapUtil.clean(syncingBuffer);
       MmapUtil.clean(compressedByteBuffer);
       workingBuffer = ByteBuffer.allocateDirect(capacity);
       idleBuffer = ByteBuffer.allocateDirect(capacity);
+      syncingBuffer = null;
       compressedByteBuffer = ByteBuffer.allocateDirect(getCompressedByteBufferSize(capacity));
       currentWALFileWriter.setCompressedByteBuffer(compressedByteBuffer);
     } catch (OutOfMemoryError e) {
@@ -706,9 +707,13 @@ public class WALBuffer extends AbstractWALBuffer {
     checkpointManager.close();
 
     MmapUtil.clean(workingBuffer);
-    MmapUtil.clean(workingBuffer);
+    MmapUtil.clean(idleBuffer);
     MmapUtil.clean(syncingBuffer);
     MmapUtil.clean(compressedByteBuffer);
+    workingBuffer = null;
+    idleBuffer = null;
+    syncingBuffer = null;
+    compressedByteBuffer = null;
   }
 
   private void shutdownThread(ExecutorService thread, ThreadName threadName) {

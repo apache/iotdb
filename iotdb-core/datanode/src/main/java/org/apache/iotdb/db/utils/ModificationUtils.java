@@ -39,7 +39,7 @@ import org.apache.tsfile.utils.Pair;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
-import java.util.Optional;
+import java.util.Objects;
 
 public class ModificationUtils {
 
@@ -300,14 +300,14 @@ public class ModificationUtils {
   public static boolean isDeviceDeletedByMods(
       Collection<Modification> currentModifications, ITimeIndex currentTimeIndex, IDeviceID device)
       throws IllegalPathException {
-    if (currentTimeIndex == null) {
-      return false;
-    }
-    Optional<Long> startTime = currentTimeIndex.getStartTime(device);
-    Optional<Long> endTime = currentTimeIndex.getEndTime(device);
-    if (startTime.isPresent() && endTime.isPresent()) {
-      return isDeviceDeletedByMods(currentModifications, device, startTime.get(), endTime.get());
-    }
-    return false;
+    return isDeviceDeletedByMods(
+        currentModifications,
+        device,
+        Objects.isNull(currentTimeIndex)
+            ? Long.MIN_VALUE
+            : currentTimeIndex.getStartTime(device).orElse(Long.MIN_VALUE),
+        Objects.isNull(currentTimeIndex)
+            ? Long.MAX_VALUE
+            : currentTimeIndex.getEndTime(device).orElse(Long.MAX_VALUE));
   }
 }

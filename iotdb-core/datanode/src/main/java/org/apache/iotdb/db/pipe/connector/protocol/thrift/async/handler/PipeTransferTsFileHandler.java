@@ -22,7 +22,6 @@ package org.apache.iotdb.db.pipe.connector.protocol.thrift.async.handler;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.client.async.AsyncPipeDataTransferServiceClient;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
-import org.apache.iotdb.commons.pipe.connector.payload.thrift.request.PipeTransferCompressedReq;
 import org.apache.iotdb.commons.pipe.connector.payload.thrift.response.PipeTransferFilePieceResp;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.utils.RetryUtils;
@@ -88,7 +87,7 @@ public class PipeTransferTsFileHandler extends PipeTransferTrackableHandler {
   private final AtomicBoolean isSealSignalSent;
 
   private IoTDBDataNodeAsyncClientManager clientManager;
-  private AsyncPipeDataTransferServiceClient client;
+  private volatile AsyncPipeDataTransferServiceClient client;
 
   public PipeTransferTsFileHandler(
       final IoTDBDataRegionAsyncConnector connector,
@@ -149,6 +148,14 @@ public class PipeTransferTsFileHandler extends PipeTransferTrackableHandler {
     this.clientManager = clientManager;
     this.client = client;
 
+    if (client == null) {
+      LOGGER.warn(
+          "Client has been returned to the pool. Current handler status is {}. Will not transfer {}.",
+          connector.isClosed() ? "CLOSED" : "NOT CLOSED",
+          tsFile);
+      return;
+    }
+
     client.setShouldReturnSelf(false);
     client.setTimeoutDynamically(clientManager.getConnectionTimeout());
 
@@ -173,11 +180,7 @@ public class PipeTransferTsFileHandler extends PipeTransferTrackableHandler {
                 ? PipeTransferTsFileSealWithModReq.toTPipeTransferReq(
                     modFile.getName(), modFile.length(), tsFile.getName(), tsFile.length())
                 : PipeTransferTsFileSealReq.toTPipeTransferReq(tsFile.getName(), tsFile.length());
-        final TPipeTransferReq req =
-            connector.isRpcCompressionEnabled()
-                ? PipeTransferCompressedReq.toTPipeTransferReq(
-                    uncompressedReq, connector.getCompressors())
-                : uncompressedReq;
+        final TPipeTransferReq req = connector.compressIfNeeded(uncompressedReq);
 
         pipeName2WeightMap.forEach(
             (pipePair, weight) ->
@@ -204,11 +207,7 @@ public class PipeTransferTsFileHandler extends PipeTransferTrackableHandler {
                 currentFile.getName(), position, payload)
             : PipeTransferTsFilePieceReq.toTPipeTransferReq(
                 currentFile.getName(), position, payload);
-    final TPipeTransferReq req =
-        connector.isRpcCompressionEnabled()
-            ? PipeTransferCompressedReq.toTPipeTransferReq(
-                uncompressedReq, connector.getCompressors())
-            : uncompressedReq;
+    final TPipeTransferReq req = connector.compressIfNeeded(uncompressedReq);
 
     pipeName2WeightMap.forEach(
         (pipePair, weight) ->
@@ -223,6 +222,17 @@ public class PipeTransferTsFileHandler extends PipeTransferTrackableHandler {
     }
 
     position += readLength;
+  }
+
+  @Override
+  public void onComplete(final TPipeTransferResp response) {
+    try {
+      super.onComplete(response);
+    } finally {
+      if (connector.isClosed()) {
+        returnClientIfNecessary();
+      }
+    }
   }
 
   @Override
@@ -284,10 +294,7 @@ public class PipeTransferTsFileHandler extends PipeTransferTrackableHandler {
               referenceCount);
         }
 
-        if (client != null) {
-          client.setShouldReturnSelf(true);
-          client.returnSelf();
-        }
+        returnClientIfNecessary();
       }
 
       return true;
@@ -324,6 +331,15 @@ public class PipeTransferTsFileHandler extends PipeTransferTrackableHandler {
     }
 
     return false; // due to seal transfer not yet completed
+  }
+
+  @Override
+  public void onError(final Exception exception) {
+    try {
+      super.onError(exception);
+    } finally {
+      returnClientIfNecessary();
+    }
   }
 
   @Override
@@ -371,10 +387,7 @@ public class PipeTransferTsFileHandler extends PipeTransferTrackableHandler {
       LOGGER.warn("Failed to close file reader or delete tsFile when failed to transfer file.", e);
     } finally {
       try {
-        if (client != null) {
-          client.setShouldReturnSelf(true);
-          client.returnSelf();
-        }
+        returnClientIfNecessary();
       } finally {
         if (eventsHadBeenAddedToRetryQueue.compareAndSet(false, true)) {
           connector.addFailureEventsToRetryQueue(events);
@@ -383,10 +396,26 @@ public class PipeTransferTsFileHandler extends PipeTransferTrackableHandler {
     }
   }
 
+  private void returnClientIfNecessary() {
+    if (client != null) {
+      client.setShouldReturnSelf(true);
+      client.returnSelf();
+      client = null;
+    }
+  }
+
   @Override
   protected void doTransfer(
       final AsyncPipeDataTransferServiceClient client, final TPipeTransferReq req)
       throws TException {
+    if (client == null) {
+      LOGGER.warn(
+          "Client has been returned to the pool. Current handler status is {}. Will not transfer {}.",
+          connector.isClosed() ? "CLOSED" : "NOT CLOSED",
+          tsFile);
+      return;
+    }
+
     client.pipeTransfer(req, this);
   }
 

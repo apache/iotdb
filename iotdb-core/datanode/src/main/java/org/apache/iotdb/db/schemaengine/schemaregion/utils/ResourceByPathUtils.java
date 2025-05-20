@@ -135,7 +135,7 @@ public abstract class ResourceByPathUtils {
       try {
         LOGGER.debug(
             "Flushing/Working MemTable - add current query context to immutable TVList's query list");
-        tvList.getQueryContextList().add(context);
+        tvList.getQueryContextSet().add(context);
         tvListQueryMap.put(tvList, tvList.rowCount());
       } finally {
         tvList.unlockQueryList();
@@ -155,13 +155,13 @@ public abstract class ResourceByPathUtils {
       if (!isWorkMemTable) {
         LOGGER.debug(
             "Flushing MemTable - add current query context to mutable TVList's query list");
-        list.getQueryContextList().add(context);
+        list.getQueryContextSet().add(context);
         tvListQueryMap.put(list, list.rowCount());
       } else {
-        if (list.isSorted() || list.getQueryContextList().isEmpty()) {
+        if (list.isSorted() || list.getQueryContextSet().isEmpty()) {
           LOGGER.debug(
               "Working MemTable - add current query context to mutable TVList's query list when it's sorted or no other query on it");
-          list.getQueryContextList().add(context);
+          list.getQueryContextSet().add(context);
           tvListQueryMap.put(list, list.rowCount());
         } else {
           /*
@@ -180,7 +180,7 @@ public abstract class ResourceByPathUtils {
            */
           LOGGER.debug(
               "Working MemTable - clone mutable TVList and replace old TVList in working MemTable");
-          QueryContext firstQuery = list.getQueryContextList().get(0);
+          QueryContext firstQuery = list.getQueryContextSet().iterator().next();
           // reserve query memory
           if (firstQuery instanceof FragmentInstanceContext) {
             MemoryReservationManager memoryReservationManager =
@@ -191,7 +191,7 @@ public abstract class ResourceByPathUtils {
 
           // clone TVList
           cloneList = list.clone();
-          cloneList.getQueryContextList().add(context);
+          cloneList.getQueryContextSet().add(context);
           tvListQueryMap.put(cloneList, cloneList.rowCount());
         }
       }

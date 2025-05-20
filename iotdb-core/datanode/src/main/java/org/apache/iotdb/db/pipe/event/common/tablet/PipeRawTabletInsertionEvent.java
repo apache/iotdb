@@ -231,6 +231,11 @@ public class PipeRawTabletInsertionEvent extends EnrichedEvent
     this.needToReport = true;
   }
 
+  // This getter is reserved for user-defined plugins
+  public boolean isNeedToReport() {
+    return needToReport;
+  }
+
   public String getDeviceId() {
     // NonNull indicates that the internallyDecreaseResourceReferenceCount has not been called.
     return Objects.nonNull(tablet) ? tablet.deviceId : deviceId;
@@ -282,8 +287,8 @@ public class PipeRawTabletInsertionEvent extends EnrichedEvent
   }
 
   public long count() {
-    final Tablet covertedTablet = shouldParseTimeOrPattern() ? convertToTablet() : tablet;
-    return (long) covertedTablet.rowSize * covertedTablet.getSchemas().size();
+    final Tablet convertedTablet = shouldParseTimeOrPattern() ? convertToTablet() : tablet;
+    return (long) convertedTablet.rowSize * convertedTablet.getSchemas().size();
   }
 
   /////////////////////////// parsePatternOrTime ///////////////////////////

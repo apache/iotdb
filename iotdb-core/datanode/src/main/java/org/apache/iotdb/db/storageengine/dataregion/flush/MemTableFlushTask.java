@@ -27,12 +27,15 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.service.metrics.WritingMetrics;
 import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
 import org.apache.iotdb.db.storageengine.dataregion.flush.pool.FlushSubTaskPoolManager;
+import org.apache.iotdb.db.storageengine.dataregion.memtable.AlignedWritableMemChunk;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.IMemTable;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.IWritableMemChunk;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.IWritableMemChunkGroup;
 import org.apache.iotdb.db.storageengine.rescon.memory.SystemInfo;
+import org.apache.iotdb.db.utils.datastructure.BatchEncodeInfo;
 import org.apache.iotdb.metrics.utils.MetricLevel;
 
+import org.apache.tsfile.common.conf.TSFileDescriptor;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.write.chunk.IChunkWriter;
 import org.apache.tsfile.write.writer.RestorableTsFileIOWriter;
@@ -62,6 +65,11 @@ public class MemTableFlushTask {
       FlushSubTaskPoolManager.getInstance();
   private static final WritingMetrics WRITING_METRICS = WritingMetrics.getInstance();
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
+  private final int MAX_NUMBER_OF_POINTS_IN_PAGE =
+      TSFileDescriptor.getInstance().getConfig().getMaxNumberOfPointsInPage();
+  private final long MAX_NUMBER_OF_POINTS_IN_CHUNK = config.getTargetChunkPointNum();
+  private final long TARGET_CHUNK_SIZE = config.getTargetChunkSize();
+
   /* storage group name -> last time */
   private static final Map<String, Long> flushPointsCache = new ConcurrentHashMap<>();
   private final Future<?> encodingTaskFuture;
@@ -82,6 +90,9 @@ public class MemTableFlushTask {
   private volatile long memSerializeTime = 0L;
   private volatile long ioTime = 0L;
 
+  private final BatchEncodeInfo encodeInfo;
+  private long[] times;
+
   /**
    * @param memTable the memTable to flush
    * @param writer the writer where memTable will be flushed to (current tsfile writer or vm writer)
@@ -98,6 +109,15 @@ public class MemTableFlushTask {
     this.dataRegionId = dataRegionId;
     this.encodingTaskFuture = SUB_TASK_POOL_MANAGER.submit(encodingTask);
     this.ioTaskFuture = SUB_TASK_POOL_MANAGER.submit(ioTask);
+
+    this.encodeInfo =
+        new BatchEncodeInfo(
+            0,
+            0,
+            0,
+            MAX_NUMBER_OF_POINTS_IN_PAGE,
+            MAX_NUMBER_OF_POINTS_IN_CHUNK,
+            TARGET_CHUNK_SIZE);
     LOGGER.debug(
         "flush task of database {} memtable is created, flushing to file {}.",
         storageGroup,
@@ -248,7 +268,16 @@ public class MemTableFlushTask {
             } else {
               long starTime = System.currentTimeMillis();
               IWritableMemChunk writableMemChunk = (IWritableMemChunk) task;
-              writableMemChunk.encode(ioTaskQueue);
+              if (writableMemChunk instanceof AlignedWritableMemChunk && times == null) {
+                encodeInfo.maxNumberOfPointsInChunk =
+                    Math.min(
+                        MAX_NUMBER_OF_POINTS_IN_CHUNK,
+                        (TARGET_CHUNK_SIZE
+                            / ((AlignedWritableMemChunk) writableMemChunk)
+                                .getAvgPointSizeOfLargestColumn()));
+                times = new long[MAX_NUMBER_OF_POINTS_IN_PAGE];
+              }
+              writableMemChunk.encode(ioTaskQueue, encodeInfo, times);
               long subTaskTime = System.currentTimeMillis() - starTime;
               WRITING_METRICS.recordFlushSubTaskCost(WritingMetrics.ENCODING_TASK, subTaskTime);
               memSerializeTime += subTaskTime;

@@ -74,8 +74,6 @@ public abstract class IoTDBFileReceiver implements IoTDBReceiver {
   protected String username = CONNECTOR_IOTDB_USER_DEFAULT_VALUE;
   protected String password = CONNECTOR_IOTDB_PASSWORD_DEFAULT_VALUE;
 
-  private static final boolean IS_FSYNC_ENABLED =
-      PipeConfig.getInstance().getPipeFileReceiverFsyncEnabled();
   private File writingFile;
   private RandomAccessFile writingFileWriter;
 
@@ -111,6 +109,10 @@ public abstract class IoTDBFileReceiver implements IoTDBReceiver {
     }
 
     receiverId.set(RECEIVER_ID_GENERATOR.incrementAndGet());
+    Thread.currentThread()
+        .setName(
+            String.format(
+                "Pipe-Receiver-%s-%s:%s", receiverId.get(), getSenderHost(), getSenderPort()));
 
     // Clear the original receiver file dir if exists
     if (receiverFileDirWithIdSuffix.get() != null) {
@@ -418,7 +420,7 @@ public abstract class IoTDBFileReceiver implements IoTDBReceiver {
   private void closeCurrentWritingFileWriter(final boolean fsyncAfterClose) {
     if (writingFileWriter != null) {
       try {
-        if (IS_FSYNC_ENABLED && fsyncAfterClose) {
+        if (PipeConfig.getInstance().getPipeFileReceiverFsyncEnabled() && fsyncAfterClose) {
           writingFileWriter.getFD().sync();
         }
         writingFileWriter.close();
@@ -517,7 +519,7 @@ public abstract class IoTDBFileReceiver implements IoTDBReceiver {
       // Sync here is necessary to ensure that the data is written to the disk. Or data region may
       // load the file before the data is written to the disk and cause unexpected behavior after
       // system restart. (e.g., empty file in data region's data directory)
-      if (IS_FSYNC_ENABLED) {
+      if (PipeConfig.getInstance().getPipeFileReceiverFsyncEnabled()) {
         writingFileWriter.getFD().sync();
       }
       // 1. The writing file writer must be closed, otherwise it may cause concurrent errors during
@@ -599,7 +601,7 @@ public abstract class IoTDBFileReceiver implements IoTDBReceiver {
       // Sync here is necessary to ensure that the data is written to the disk. Or data region may
       // load the file before the data is written to the disk and cause unexpected behavior after
       // system restart. (e.g., empty file in data region's data directory)
-      if (IS_FSYNC_ENABLED) {
+      if (PipeConfig.getInstance().getPipeFileReceiverFsyncEnabled()) {
         writingFileWriter.getFD().sync();
       }
       // 1. The writing file writer must be closed, otherwise it may cause concurrent errors during

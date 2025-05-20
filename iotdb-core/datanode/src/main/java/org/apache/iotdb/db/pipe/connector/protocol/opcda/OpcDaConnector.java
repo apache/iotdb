@@ -26,6 +26,7 @@ import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameterValidator;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
+import org.apache.iotdb.pipe.api.exception.PipeParameterNotValidException;
 
 import org.apache.tsfile.utils.Pair;
 import org.slf4j.Logger;
@@ -56,8 +57,7 @@ public class OpcDaConnector implements PipeConnector {
   public void validate(final PipeParameterValidator validator) throws Exception {
     // TODO: upgrade this logic after "1 in 2" logic is supported
     validator.validate(
-        args ->
-            (((boolean) args[1] || (boolean) args[2] || (boolean) args[3] || (boolean) args[4])),
+        args -> (boolean) args[0] || (boolean) args[1] || (boolean) args[2] || (boolean) args[3],
         String.format(
             "One of '%s', '%s', '%s' and '%s' must be specified",
             SINK_OPC_DA_CLSID_KEY,
@@ -68,6 +68,10 @@ public class OpcDaConnector implements PipeConnector {
         validator.getParameters().hasAttribute(CONNECTOR_OPC_DA_CLSID_KEY),
         validator.getParameters().hasAttribute(SINK_OPC_DA_PROGID_KEY),
         validator.getParameters().hasAttribute(CONNECTOR_OPC_DA_PROGID_KEY));
+
+    if (!System.getProperty("os.name").toLowerCase().startsWith("windows")) {
+      throw new PipeParameterNotValidException("opc-da-sink must run on windows system.");
+    }
   }
 
   @Override

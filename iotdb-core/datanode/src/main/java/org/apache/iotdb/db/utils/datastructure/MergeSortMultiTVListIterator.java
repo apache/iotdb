@@ -22,12 +22,18 @@ package org.apache.iotdb.db.utils.datastructure;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.tsfile.read.common.TimeRange;
+import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.Pair;
+import org.apache.tsfile.write.UnSupportedDataTypeException;
+import org.apache.tsfile.write.chunk.ChunkWriterImpl;
+import org.apache.tsfile.write.chunk.IChunkWriter;
 
 import java.util.List;
 import java.util.PriorityQueue;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
+
+import static org.apache.iotdb.db.utils.MemUtils.getBinarySize;
 
 public class MergeSortMultiTVListIterator extends MultiTVListIterator {
   private final List<Integer> probeIterators;
@@ -40,8 +46,9 @@ public class MergeSortMultiTVListIterator extends MultiTVListIterator {
       List<TVList> tvLists,
       List<TimeRange> deletionList,
       Integer floatPrecision,
-      TSEncoding encoding) {
-    super(tsDataType, tvLists, deletionList, floatPrecision, encoding);
+      TSEncoding encoding,
+      int maxNumberOfPointsInPage) {
+    super(tsDataType, tvLists, deletionList, floatPrecision, encoding, maxNumberOfPointsInPage);
     this.probeIterators =
         IntStream.range(0, tvListIterators.size()).boxed().collect(Collectors.toList());
   }
@@ -59,13 +66,15 @@ public class MergeSortMultiTVListIterator extends MultiTVListIterator {
 
     if (!minHeap.isEmpty()) {
       Pair<Long, Integer> top = minHeap.poll();
+      currentTime = top.left;
+      probeIterators.add(top.right);
+
       iteratorIndex = top.right;
-      probeIterators.add(iteratorIndex);
       rowIndex = tvListIterators.get(iteratorIndex).getIndex();
       hasNext = true;
 
       // duplicated timestamps
-      while (!minHeap.isEmpty() && minHeap.peek().left.longValue() == top.left.longValue()) {
+      while (!minHeap.isEmpty() && minHeap.peek().left == currentTime) {
         Pair<Long, Integer> element = minHeap.poll();
         probeIterators.add(element.right);
       }
@@ -79,5 +88,63 @@ public class MergeSortMultiTVListIterator extends MultiTVListIterator {
       tvListIterators.get(index).next();
     }
     probeNext = false;
+  }
+
+  @Override
+  public void encodeBatch(IChunkWriter chunkWriter, BatchEncodeInfo encodeInfo, long[] times) {
+    ChunkWriterImpl chunkWriterImpl = (ChunkWriterImpl) chunkWriter;
+    while (hasNextTimeValuePair()) {
+      // remember current iterator and row index
+      TVList.TVListIterator currIterator = tvListIterators.get(iteratorIndex);
+      int row = rowIndex;
+      long time = currentTime;
+
+      // check if it is last point
+      next();
+      if (!hasNextTimeValuePair()) {
+        chunkWriterImpl.setLastPoint(true);
+      }
+
+      switch (tsDataType) {
+        case BOOLEAN:
+          chunkWriterImpl.write(time, currIterator.getTVList().getBoolean(row));
+          encodeInfo.dataSizeInChunk += 8L + 1L;
+          break;
+        case INT32:
+        case DATE:
+          chunkWriterImpl.write(time, currIterator.getTVList().getInt(row));
+          encodeInfo.dataSizeInChunk += 8L + 4L;
+          break;
+        case INT64:
+        case TIMESTAMP:
+          chunkWriterImpl.write(time, currIterator.getTVList().getLong(row));
+          encodeInfo.dataSizeInChunk += 8L + 8L;
+          break;
+        case FLOAT:
+          chunkWriterImpl.write(time, currIterator.getTVList().getFloat(row));
+          encodeInfo.dataSizeInChunk += 8L + 4L;
+          break;
+        case DOUBLE:
+          chunkWriterImpl.write(time, currIterator.getTVList().getDouble(row));
+          encodeInfo.dataSizeInChunk += 8L + 8L;
+          break;
+        case TEXT:
+        case BLOB:
+        case STRING:
+          Binary value = currIterator.getTVList().getBinary(row);
+          chunkWriterImpl.write(time, value);
+          encodeInfo.dataSizeInChunk += 8L + getBinarySize(value);
+          break;
+        default:
+          throw new UnSupportedDataTypeException(
+              String.format("Data type %s is not supported.", tsDataType));
+      }
+      encodeInfo.pointNumInChunk++;
+
+      if (encodeInfo.pointNumInChunk >= encodeInfo.maxNumberOfPointsInChunk
+          || encodeInfo.dataSizeInChunk >= encodeInfo.targetChunkSize) {
+        break;
+      }
+    }
   }
 }

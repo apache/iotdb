@@ -681,6 +681,8 @@ public abstract class AbstractDataTool {
     }
     if (isBoolean(strValue)) {
       return TYPE_INFER_KEY_DICT.get(DATATYPE_BOOLEAN);
+    } else if (isTimeStamp(strValue)) {
+      return TYPE_INFER_KEY_DICT.get(DATATYPE_TIMESTAMP);
     } else if (isNumber(strValue)) {
       if (!strValue.contains(TsFileConstant.PATH_SEPARATOR)) {
         if (isConvertFloatPrecisionLack(StringUtils.trim(strValue))) {
@@ -695,6 +697,8 @@ public abstract class AbstractDataTool {
       // "NaN" is returned if the NaN Literal is given in Parser
     } else if (DATATYPE_NAN.equals(strValue)) {
       return TYPE_INFER_KEY_DICT.get(DATATYPE_NAN);
+    } else if (isDate(strValue)) {
+      return TYPE_INFER_KEY_DICT.get(DATATYPE_DATE);
     } else if (isBlob(strValue)) {
       return TYPE_INFER_KEY_DICT.get(DATATYPE_BLOB);
     } else if (strValue.length() <= 512) {
@@ -702,6 +706,14 @@ public abstract class AbstractDataTool {
     } else {
       return TEXT;
     }
+  }
+
+  private static boolean isDate(String s) {
+    return s.equalsIgnoreCase(DATATYPE_DATE);
+  }
+
+  private static boolean isTimeStamp(String s) {
+    return s.equalsIgnoreCase(DATATYPE_TIMESTAMP);
   }
 
   static boolean isNumber(String s) {
@@ -999,14 +1011,17 @@ public abstract class AbstractDataTool {
               if (!"".equals(value)) {
                 TSDataType type;
                 if (!headerTypeMap.containsKey(header)) {
-                  type = typeInfer(value);
-                  if (type != null) {
-                    headerTypeMap.put(header, type);
-                  } else {
-                    ioTPrinter.printf(
-                        "Line '%s', column '%s': '%s' unknown type%n",
-                        recordObj.getRecordNumber(), header, value);
-                    isFail = true;
+                  queryType(sessionPool, header, headerTypeMap);
+                  if (!headerTypeMap.containsKey(header)) {
+                    type = typeInfer(value);
+                    if (type != null) {
+                      headerTypeMap.put(header, type);
+                    } else {
+                      ioTPrinter.printf(
+                          "Line '%s', column '%s': '%s' unknown type%n",
+                          recordObj.getRecordNumber(), header, value);
+                      isFail = true;
+                    }
                   }
                 }
                 type = headerTypeMap.get(header);
@@ -1052,6 +1067,27 @@ public abstract class AbstractDataTool {
     //    } else {
     //      ioTPrinter.println("No records!");
     //    }
+  }
+
+  private static void queryType(
+      SessionPool sessionPool, String series, HashMap<String, TSDataType> headerTypeMap) {
+    String sql = "show timeseries " + series;
+    try (SessionDataSetWrapper sessionDataSetWrapper = sessionPool.executeQueryStatement(sql)) {
+      int tsIndex = sessionDataSetWrapper.getColumnNames().indexOf(ColumnHeaderConstant.TIMESERIES);
+      int dtIndex = sessionDataSetWrapper.getColumnNames().indexOf(ColumnHeaderConstant.DATATYPE);
+      while (sessionDataSetWrapper.hasNext()) {
+        RowRecord rowRecord = sessionDataSetWrapper.next();
+        List<Field> fields = rowRecord.getFields();
+        String timeseries = fields.get(tsIndex).getStringValue();
+        String dataType = fields.get(dtIndex).getStringValue();
+        if (Objects.equals(series, timeseries)) {
+          headerTypeMap.put(timeseries, getType(dataType));
+        }
+      }
+    } catch (StatementExecutionException | IoTDBConnectionException e) {
+      ioTPrinter.println("Meet error when query the type of timeseries because " + e.getMessage());
+      System.exit(1);
+    }
   }
 
   /**
@@ -1118,7 +1154,6 @@ public abstract class AbstractDataTool {
               TSDataType type;
               // Get the data type directly if the CSV column have data type.
               if (!headerTypeMap.containsKey(headerNameWithoutType)) {
-                boolean hasResult = false;
                 // query the data type in iotdb
                 if (!typeQueriedDevice.contains(deviceName.get())) {
                   if (headerTypeMap.isEmpty()) {
@@ -1128,14 +1163,16 @@ public abstract class AbstractDataTool {
                   }
                   typeQueriedDevice.add(deviceName.get());
                 }
-                type = typeInfer(value);
-                if (type != null) {
-                  headerTypeMap.put(headerNameWithoutType, type);
-                } else {
-                  ioTPrinter.printf(
-                      "Line '%s', column '%s': '%s' unknown type%n",
-                      recordObj.getRecordNumber(), headerNameWithoutType, value);
-                  isFail.set(true);
+                if (!headerTypeMap.containsKey(headerNameWithoutType)) {
+                  type = typeInfer(value);
+                  if (type != null) {
+                    headerTypeMap.put(headerNameWithoutType, type);
+                  } else {
+                    ioTPrinter.printf(
+                        "Line '%s', column '%s': '%s' unknown type%n",
+                        recordObj.getRecordNumber(), headerNameWithoutType, value);
+                    isFail.set(true);
+                  }
                 }
               }
               type = headerTypeMap.get(headerNameWithoutType);

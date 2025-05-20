@@ -188,12 +188,8 @@ abstract class SubscriptionConsumer implements AutoCloseable {
   protected SubscriptionConsumer(final Builder builder, final Properties properties) {
     this(
         builder
-            .host(
-                (String)
-                    properties.getOrDefault(ConsumerConstant.HOST_KEY, SessionConfig.DEFAULT_HOST))
-            .port(
-                (Integer)
-                    properties.getOrDefault(ConsumerConstant.PORT_KEY, SessionConfig.DEFAULT_PORT))
+            .host((String) properties.get(ConsumerConstant.HOST_KEY))
+            .port((Integer) properties.get(ConsumerConstant.PORT_KEY))
             .nodeUrls((List<String>) properties.get(ConsumerConstant.NODE_URLS_KEY))
             .username(
                 (String)
@@ -715,7 +711,7 @@ abstract class SubscriptionConsumer implements AutoCloseable {
     final Path filePath = getFilePath(commitContext, topicName, fileName, true, true);
     final File file = filePath.toFile();
     try (final RandomAccessFile fileWriter = new RandomAccessFile(file, "rw")) {
-      return Optional.of(pollFileInternal(commitContext, fileName, file, fileWriter, timer));
+      return pollFileInternal(commitContext, fileName, file, fileWriter, timer);
     } catch (final Exception e) {
       if (!(e instanceof SubscriptionPollTimeoutException)) {
         inFlightFilesCommitContextSet.remove(commitContext);
@@ -728,7 +724,7 @@ abstract class SubscriptionConsumer implements AutoCloseable {
     }
   }
 
-  private SubscriptionMessage pollFileInternal(
+  private Optional<SubscriptionMessage> pollFileInternal(
       final SubscriptionCommitContext commitContext,
       final String rawFileName,
       final File file,
@@ -761,13 +757,10 @@ abstract class SubscriptionConsumer implements AutoCloseable {
       final List<SubscriptionPollResponse> responses =
           pollFileInternal(commitContext, writingOffset, timer.remainingMs());
 
-      // It's agreed that the server will always return at least one response, even in case of
-      // failure.
+      // If responses is empty, it means that some outdated subscription events may be being polled,
+      // so just return.
       if (responses.isEmpty()) {
-        final String errorMessage =
-            String.format("SubscriptionConsumer %s poll empty response", this);
-        LOGGER.warn(errorMessage);
-        throw new SubscriptionRuntimeNonCriticalException(errorMessage);
+        return Optional.empty();
       }
 
       // only one SubscriptionEvent polled currently
@@ -876,7 +869,7 @@ abstract class SubscriptionConsumer implements AutoCloseable {
 
             // generate subscription message
             inFlightFilesCommitContextSet.remove(commitContext);
-            return new SubscriptionMessage(commitContext, file.getAbsolutePath());
+            return Optional.of(new SubscriptionMessage(commitContext, file.getAbsolutePath()));
           }
         case ERROR:
           {
@@ -963,13 +956,10 @@ abstract class SubscriptionConsumer implements AutoCloseable {
       final List<SubscriptionPollResponse> responses =
           pollTabletsInternal(commitContext, nextOffset, timer.remainingMs());
 
-      // It's agreed that the server will always return at least one response, even in case of
-      // failure.
+      // If responses is empty, it means that some outdated subscription events may be being polled,
+      // so just return.
       if (responses.isEmpty()) {
-        final String errorMessage =
-            String.format("SubscriptionConsumer %s poll empty response", this);
-        LOGGER.warn(errorMessage);
-        throw new SubscriptionRuntimeNonCriticalException(errorMessage);
+        return Optional.empty();
       }
 
       // only one SubscriptionEvent polled currently
@@ -1010,6 +1000,10 @@ abstract class SubscriptionConsumer implements AutoCloseable {
 
             final String errorMessage = ((ErrorPayload) payload).getErrorMessage();
             final boolean critical = ((ErrorPayload) payload).isCritical();
+            if (Objects.equals(payload, ErrorPayload.OUTDATED_ERROR_PAYLOAD)) {
+              // suppress warn log when poll outdated subscription event
+              return Optional.empty();
+            }
             LOGGER.warn(
                 "Error occurred when SubscriptionConsumer {} polling tablets with commit context {}: {}, critical: {}",
                 this,
@@ -1406,7 +1400,7 @@ abstract class SubscriptionConsumer implements AutoCloseable {
       return this;
     }
 
-    public Builder port(final int port) {
+    public Builder port(final Integer port) {
       this.port = port;
       return this;
     }

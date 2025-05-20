@@ -229,9 +229,10 @@ public class LoadTsFileScheduler implements IScheduler {
             }
           }
 
-          if (RegionMigrateService.getInstance().getLastNotifyTime() > startTimeMs) {
+          if (RegionMigrateService.getInstance().getLastNotifyMigratingTime() > startTimeMs
+              || RegionMigrateService.getInstance().mayHaveMigratingRegions()) {
             LOGGER.warn(
-                "LoadTsFileScheduler: Region migration started or ended during loading TsFile {}, will convert to insertion to avoid data loss",
+                "LoadTsFileScheduler: Region migration was detected during loading TsFile {}, will convert to insertion to avoid data loss",
                 filePath);
             isLoadSingleTsFileSuccess = false;
           }
@@ -289,7 +290,7 @@ public class LoadTsFileScheduler implements IScheduler {
           convertFailedTsFilesToTabletsAndRetry();
         } finally {
           LOAD_TSFILE_COST_METRICS_SET.recordPhaseTimeCost(
-              LoadTsFileCostMetricsSet.CAST_TABLETS, System.nanoTime() - startTime);
+              LoadTsFileCostMetricsSet.SCHEDULER_CAST_TABLETS, System.nanoTime() - startTime);
         }
       }
     } finally {
@@ -413,7 +414,9 @@ public class LoadTsFileScheduler implements IScheduler {
             result.getFailureStatus().getMessage());
         TSStatus status = result.getFailureStatus();
         status.setMessage(
-            String.format("Load %s error in 2nd phase. Because ", tsFile) + status.getMessage());
+            String.format(
+                "Load %s error in second phase. Because %s, first phase is %s",
+                tsFile, status.getMessage(), isFirstPhaseSuccess ? "success" : "failed"));
         stateMachine.transitionToFailed(status);
         return false;
       }
@@ -543,7 +546,10 @@ public class LoadTsFileScheduler implements IScheduler {
       try {
         final TSStatus status =
             loadTsFileDataTypeConverter
-                .convertForTreeModel(new LoadTsFileStatement(filePath))
+                .convertForTreeModel(
+                    new LoadTsFileStatement(filePath)
+                        .setDeleteAfterLoad(failedNode.isDeleteAfterLoad())
+                        .setConvertOnTypeMismatch(true))
                 .orElse(null);
 
         if (loadTsFileDataTypeConverter.isSuccessful(status)) {
@@ -657,12 +663,8 @@ public class LoadTsFileScheduler implements IScheduler {
           if (pieceNode.getDataSize() == 0) { // total data size has been reduced to 0
             break;
           }
-          if (!scheduler.dispatchOnePieceNode(pieceNode, replicaSet)) {
-            return false;
-          }
+          final boolean isDispatchSuccess = scheduler.dispatchOnePieceNode(pieceNode, replicaSet);
 
-          dataSize -= pieceNode.getDataSize();
-          block.reduceMemoryUsage(pieceNode.getDataSize());
           regionId2ReplicaSetAndNode.replace(
               sortedRegionId,
               new Pair<>(
@@ -672,6 +674,14 @@ public class LoadTsFileScheduler implements IScheduler {
                       singleTsFileNode
                           .getTsFileResource()
                           .getTsFile()))); // can not just remove, because of deletion
+          dataSize -= pieceNode.getDataSize();
+          block.reduceMemoryUsage(pieceNode.getDataSize());
+
+          if (!isDispatchSuccess) {
+            // Currently there is no retry, so return directly
+            return false;
+          }
+
           if (isMemoryEnough()) {
             break;
           }
@@ -736,19 +746,21 @@ public class LoadTsFileScheduler implements IScheduler {
     private boolean sendAllTsFileData() throws LoadFileException {
       routeChunkData();
 
+      boolean isAllSuccess = true;
       for (Map.Entry<TConsensusGroupId, Pair<TRegionReplicaSet, LoadTsFilePieceNode>> entry :
           regionId2ReplicaSetAndNode.entrySet()) {
         block.reduceMemoryUsage(entry.getValue().getRight().getDataSize());
-        if (!scheduler.dispatchOnePieceNode(
-            entry.getValue().getRight(), entry.getValue().getLeft())) {
+        if (isAllSuccess
+            && !scheduler.dispatchOnePieceNode(
+                entry.getValue().getRight(), entry.getValue().getLeft())) {
           LOGGER.warn(
               "Dispatch piece node {} of TsFile {} error.",
               entry.getValue(),
               singleTsFileNode.getTsFileResource().getTsFile());
-          return false;
+          isAllSuccess = false;
         }
       }
-      return true;
+      return isAllSuccess;
     }
 
     private void clear() {

@@ -34,6 +34,7 @@ import org.apache.iotdb.db.queryengine.metric.SeriesScanCostMetricSet;
 import org.apache.iotdb.db.queryengine.plan.planner.memory.MemoryReservationManager;
 import org.apache.iotdb.db.queryengine.plan.planner.memory.ThreadSafeMemoryReservationManager;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.TimePredicate;
+import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
 import org.apache.iotdb.db.storageengine.dataregion.IDataRegionForQuery;
 import org.apache.iotdb.db.storageengine.dataregion.read.IQueryDataSource;
 import org.apache.iotdb.db.storageengine.dataregion.read.QueryDataSource;
@@ -72,16 +73,16 @@ public class FragmentInstanceContext extends QueryContext {
 
   private final MemoryReservationManager memoryReservationManager;
 
-  private IDataRegionForQuery dataRegion;
+  protected IDataRegionForQuery dataRegion;
   private Filter globalTimeFilter;
 
   // it will only be used once, after sharedQueryDataSource being inited, it will be set to null
-  private List<PartialPath> sourcePaths;
+  protected List<PartialPath> sourcePaths;
   // Used for region scan.
   private Map<IDeviceID, DeviceContext> devicePathsToContext;
 
   // Shared by all scan operators in this fragment instance to avoid memory problem
-  private IQueryDataSource sharedQueryDataSource;
+  protected IQueryDataSource sharedQueryDataSource;
 
   /** closed tsfile used in this fragment instance. */
   private Set<TsFileResource> closedFilePaths;
@@ -168,7 +169,7 @@ public class FragmentInstanceContext extends QueryContext {
   }
 
   public static FragmentInstanceContext createFragmentInstanceContextForCompaction(long queryId) {
-    return new FragmentInstanceContext(queryId);
+    return new FragmentInstanceContext(queryId, null, null, null);
   }
 
   public void setQueryDataSourceType(QueryDataSourceType queryDataSourceType) {
@@ -181,6 +182,22 @@ public class FragmentInstanceContext extends QueryContext {
     FragmentInstanceContext instanceContext =
         new FragmentInstanceContext(
             id, stateMachine, new SessionInfo(1, "test", ZoneId.systemDefault()));
+    instanceContext.initialize();
+    instanceContext.start();
+    return instanceContext;
+  }
+
+  @TestOnly
+  public static FragmentInstanceContext createFragmentInstanceContext(
+      FragmentInstanceId id,
+      FragmentInstanceStateMachine stateMachine,
+      MemoryReservationManager memoryReservationManager) {
+    FragmentInstanceContext instanceContext =
+        new FragmentInstanceContext(
+            id,
+            stateMachine,
+            new SessionInfo(1, "test", ZoneId.systemDefault()),
+            memoryReservationManager);
     instanceContext.initialize();
     instanceContext.start();
     return instanceContext;
@@ -222,6 +239,20 @@ public class FragmentInstanceContext extends QueryContext {
       FragmentInstanceId id,
       FragmentInstanceStateMachine stateMachine,
       SessionInfo sessionInfo,
+      MemoryReservationManager memoryReservationManager) {
+    this.id = id;
+    this.stateMachine = stateMachine;
+    this.executionEndTime.set(END_TIME_INITIAL_VALUE);
+    this.sessionInfo = sessionInfo;
+    this.dataNodeQueryContextMap = null;
+    this.dataNodeQueryContext = null;
+    this.memoryReservationManager = memoryReservationManager;
+  }
+
+  private FragmentInstanceContext(
+      FragmentInstanceId id,
+      FragmentInstanceStateMachine stateMachine,
+      SessionInfo sessionInfo,
       IDataRegionForQuery dataRegion,
       Filter globalTimeFilter) {
     this.id = id;
@@ -241,13 +272,19 @@ public class FragmentInstanceContext extends QueryContext {
   }
 
   // used for compaction
-  private FragmentInstanceContext(long queryId) {
+  protected FragmentInstanceContext(
+      long queryId,
+      MemoryReservationManager memoryReservationManager,
+      Filter timeFilter,
+      DataRegion dataRegion) {
     this.queryId = queryId;
     this.id = null;
     this.stateMachine = null;
     this.dataNodeQueryContextMap = null;
     this.dataNodeQueryContext = null;
-    this.memoryReservationManager = null;
+    this.dataRegion = dataRegion;
+    this.globalTimeFilter = timeFilter;
+    this.memoryReservationManager = memoryReservationManager;
   }
 
   public void start() {
@@ -651,11 +688,11 @@ public class FragmentInstanceContext extends QueryContext {
   private void releaseTVListOwnedByQuery() {
     for (TVList tvList : tvListSet) {
       tvList.lockQueryList();
-      List<QueryContext> queryContextList = tvList.getQueryContextList();
+      Set<QueryContext> queryContextSet = tvList.getQueryContextSet();
       try {
-        queryContextList.remove(this);
+        queryContextSet.remove(this);
         if (tvList.getOwnerQuery() == this) {
-          if (queryContextList.isEmpty()) {
+          if (queryContextSet.isEmpty()) {
             LOGGER.debug(
                 "TVList {} is released by the query, FragmentInstance Id is {}",
                 tvList,
@@ -663,11 +700,13 @@ public class FragmentInstanceContext extends QueryContext {
             memoryReservationManager.releaseMemoryCumulatively(tvList.calculateRamSize());
             tvList.clear();
           } else {
+            FragmentInstanceContext queryContext =
+                (FragmentInstanceContext) queryContextSet.iterator().next();
             LOGGER.debug(
                 "TVList {} is now owned by another query, FragmentInstance Id is {}",
                 tvList,
-                ((FragmentInstanceContext) queryContextList.get(0)).getId());
-            tvList.setOwnerQuery(queryContextList.get(0));
+                queryContext.getId());
+            tvList.setOwnerQuery(queryContext);
           }
         }
       } finally {

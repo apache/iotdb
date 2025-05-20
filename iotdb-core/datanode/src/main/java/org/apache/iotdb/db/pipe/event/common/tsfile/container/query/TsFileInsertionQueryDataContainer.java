@@ -72,10 +72,12 @@ public class TsFileInsertionQueryDataContainer extends TsFileInsertionDataContai
   public TsFileInsertionQueryDataContainer(
       final File tsFile, final PipePattern pattern, final long startTime, final long endTime)
       throws IOException {
-    this(tsFile, pattern, startTime, endTime, null, null);
+    this(null, 0, tsFile, pattern, startTime, endTime, null, null);
   }
 
   public TsFileInsertionQueryDataContainer(
+      final String pipeName,
+      final long creationTime,
       final File tsFile,
       final PipePattern pattern,
       final long startTime,
@@ -83,10 +85,21 @@ public class TsFileInsertionQueryDataContainer extends TsFileInsertionDataContai
       final PipeTaskMeta pipeTaskMeta,
       final EnrichedEvent sourceEvent)
       throws IOException {
-    this(tsFile, pattern, startTime, endTime, pipeTaskMeta, sourceEvent, null);
+    this(
+        pipeName,
+        creationTime,
+        tsFile,
+        pattern,
+        startTime,
+        endTime,
+        pipeTaskMeta,
+        sourceEvent,
+        null);
   }
 
   public TsFileInsertionQueryDataContainer(
+      final String pipeName,
+      final long creationTime,
       final File tsFile,
       final PipePattern pattern,
       final long startTime,
@@ -95,7 +108,7 @@ public class TsFileInsertionQueryDataContainer extends TsFileInsertionDataContai
       final EnrichedEvent sourceEvent,
       final Map<IDeviceID, Boolean> deviceIsAlignedMap)
       throws IOException {
-    super(pattern, startTime, endTime, pipeTaskMeta, sourceEvent);
+    super(pipeName, creationTime, pattern, startTime, endTime, pipeTaskMeta, sourceEvent);
 
     try {
       final PipeTsFileResourceManager tsFileResourceManager = PipeDataNodeResourceManager.tsfile();
