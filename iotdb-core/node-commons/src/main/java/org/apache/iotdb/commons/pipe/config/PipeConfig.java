@@ -319,6 +319,10 @@ public class PipeConfig {
     return COMMON_CONFIG.getPipeMaxAllowedRemainingInsertEventCount();
   }
 
+  public int getPipeMaxAllowedTotalRemainingInsertEventCount() {
+    return COMMON_CONFIG.getPipeMaxAllowedTotalRemainingInsertEventCount();
+  }
+
   public int getPipeRemainingInsertEventCountSmoothingIntervalSeconds() {
     return COMMON_CONFIG.getPipeRemainingInsertEventCountSmoothingIntervalSeconds();
   }
@@ -553,6 +557,9 @@ public class PipeConfig {
     LOGGER.info(
         "PipeMaxAllowedRemainingInsertEventCount: {}",
         getPipeMaxAllowedRemainingInsertEventCount());
+    LOGGER.info(
+        "PipeMaxAllowedTotalRemainingInsertEventCount: {}",
+        getPipeMaxAllowedTotalRemainingInsertEventCount());
     LOGGER.info(
         "PipeRemainingInsertEventCountSmoothingIntervalSeconds: {}",
         getPipeRemainingInsertEventCountSmoothingIntervalSeconds());

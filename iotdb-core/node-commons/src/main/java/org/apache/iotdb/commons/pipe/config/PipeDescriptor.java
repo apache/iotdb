@@ -431,6 +431,11 @@ public class PipeDescriptor {
             properties.getProperty(
                 "pipe_max_allowed_remaining_insert_event_count",
                 String.valueOf(config.getPipeMaxAllowedRemainingInsertEventCount()))));
+    config.setPipeMaxAllowedTotalRemainingInsertEventCount(
+        Integer.parseInt(
+            properties.getProperty(
+                "pipe_max_allowed_total_remaining_insert_event_count",
+                String.valueOf(config.getPipeMaxAllowedTotalRemainingInsertEventCount()))));
     config.setPipeRemainingInsertEventCountSmoothingIntervalSeconds(
         Integer.parseInt(
             properties.getProperty(

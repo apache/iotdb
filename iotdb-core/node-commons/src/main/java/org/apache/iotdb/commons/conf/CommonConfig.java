@@ -277,6 +277,7 @@ public class CommonConfig {
   private long pipeFlushAfterTerminateCount = 30;
   private long pipeStorageEngineFlushTimeIntervalMs = Long.MAX_VALUE;
   private int pipeMaxAllowedRemainingInsertEventCount = 10000;
+  private int pipeMaxAllowedTotalRemainingInsertEventCount = 10000;
   private int pipeRemainingEventCountSmoothingIntervalSeconds = 15;
 
   private int pipeMetaReportMaxLogNumPerRound = 10;
@@ -1458,6 +1459,23 @@ public class CommonConfig {
     logger.info(
         "pipeMaxAllowedRemainingInsertEventCount is set to {}",
         pipeMaxAllowedRemainingInsertEventCount);
+  }
+
+  public int getPipeMaxAllowedTotalRemainingInsertEventCount() {
+    return pipeMaxAllowedTotalRemainingInsertEventCount;
+  }
+
+  public void setPipeMaxAllowedTotalRemainingInsertEventCount(
+      int pipeMaxAllowedTotalRemainingInsertEventCount) {
+    if (this.pipeMaxAllowedTotalRemainingInsertEventCount
+        == pipeMaxAllowedTotalRemainingInsertEventCount) {
+      return;
+    }
+    this.pipeMaxAllowedTotalRemainingInsertEventCount =
+        pipeMaxAllowedTotalRemainingInsertEventCount;
+    logger.info(
+        "pipeMaxAllowedTotalRemainingInsertEventCount is set to {}",
+        pipeMaxAllowedTotalRemainingInsertEventCount);
   }
 
   public int getPipeRemainingInsertEventCountSmoothingIntervalSeconds() {
