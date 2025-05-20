@@ -632,7 +632,8 @@ public class ColumnHeaderConstant {
           new ColumnHeader(DATA_REPLICATION_FACTOR, TSDataType.INT32),
           new ColumnHeader(TIME_PARTITION_INTERVAL, TSDataType.INT64),
           new ColumnHeader(SCHEMA_REGION_GROUP_NUM, TSDataType.INT32),
-          new ColumnHeader(DATA_REGION_GROUP_NUM, TSDataType.INT32));
+          new ColumnHeader(DATA_REGION_GROUP_NUM, TSDataType.INT32),
+          new ColumnHeader(NEED_LAST_CACHE, TSDataType.BOOLEAN));
 
   public static final List<ColumnHeader> describeTableColumnHeaders =
       ImmutableList.of(
