@@ -129,18 +129,13 @@ public class RpcCompressedTest {
     values[2] = new float[] {1.1f, 1.2f};
     values[3] = new double[] {0.707, 0.708};
     values[4] =
-        new Binary[] {new Binary(new byte[] {(byte) 8}), new Binary(new byte[] {(byte) 16})};
+        new Binary[] {new Binary(new byte[] {(byte) 32}), new Binary(new byte[] {(byte) 16})};
     values[5] = new boolean[] {true, false};
     BitMap[] partBitMap = new BitMap[6];
-    Tablet tablet = new Tablet("device1", schemas, timestamp, values, partBitMap, 2);
+    Tablet tablet = new Tablet("Table_0", schemas, timestamp, values, partBitMap, 2);
 
-    long[] temp = tablet.getTimestamps();
-    for (int i = 0; i < temp.length; i++) {
-      System.out.print(temp[i] + " ");
-    }
-    System.out.println();
-
-    session.executeNonQueryStatement("use table_0");
+    session.executeNonQueryStatement("create database IF NOT EXISTS db_0");
+    session.executeNonQueryStatement("use db_0");
     session.insert(tablet);
   }
 }

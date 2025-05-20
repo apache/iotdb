@@ -100,6 +100,36 @@ public class Ts2DiffColumnDecoder implements ColumnDecoder {
   }
 
   @Override
+  public boolean[] decodeBooleanColumn(ByteBuffer buffer, ColumnEntry columnEntry, int rowCount) {
+    return new boolean[0];
+  }
+
+  @Override
+  public int[] decodeIntColumn(ByteBuffer buffer, ColumnEntry columnEntry, int rowCount) {
+    return new int[0];
+  }
+
+  @Override
+  public long[] decodeLongColumn(ByteBuffer buffer, ColumnEntry columnEntry, int rowCount) {
+    return new long[0];
+  }
+
+  @Override
+  public float[] decodeFloatColumn(ByteBuffer buffer, ColumnEntry columnEntry, int rowCount) {
+    return new float[0];
+  }
+
+  @Override
+  public double[] decodeDoubleColumn(ByteBuffer buffer, ColumnEntry columnEntry, int rowCount) {
+    return new double[0];
+  }
+
+  @Override
+  public Binary[] decodeBinaryColumn(ByteBuffer buffer, ColumnEntry columnEntry, int rowCount) {
+    return new Binary[0];
+  }
+
+  @Override
   public Decoder getDecoder(TSDataType type, TSEncoding encodingType) {
     return null;
   }

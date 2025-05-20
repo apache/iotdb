@@ -2820,6 +2820,7 @@ public class Session implements ISession {
     SessionConnection connection = entry.getKey();
     Tablet tablet = entry.getValue();
     TSInsertTabletReq request = genTSInsertTabletReq(tablet, false, false);
+    request.setCompressType(this.compressionType.ordinal());
     request.setWriteToTable(true);
     request.setColumnCategories(
         tablet.getColumnTypes().stream().map(t -> (byte) t.ordinal()).collect(Collectors.toList()));

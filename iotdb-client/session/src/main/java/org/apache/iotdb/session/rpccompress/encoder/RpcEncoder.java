@@ -66,18 +66,24 @@ public class RpcEncoder {
     ColumnEncoder encoder =
         createEncoder(
             TSDataType.INT64, columnEncodersMap.getOrDefault(TSDataType.INT64, TSEncoding.PLAIN));
-    long[] timestamps = tablet.getTimestamps();
-    encoder.encode(timestamps, publicBAOS);
+    try {
+      long[] timestamps = tablet.getTimestamps();
+      encoder.encode(timestamps, publicBAOS);
 
-    // 2.Get ColumnEntry content and add to metaHead
-    metaHeadForTimeStamp.addColumnEntry(encoder.getColumnEntry());
+      // 2.Get ColumnEntry content and add to metaHead
+      metaHeadForTimeStamp.addColumnEntry(encoder.getColumnEntry());
 
-    // 3.Serialize metaHead and append it to the output stream
-    byte[] metaHeadEncoder = getMetaHeadForTimeStamp().toBytes();
-    publicBAOS.write(metaHeadEncoder, 0, metaHeadEncoder.length);
-    // 4.Write the length of the serialized metaHead as a 4-byte big-endian integer
-    publicBAOS.write(metaHeadEncoder.length);
+      // 3.Serialize metaHead and append it to the output stream
+      byte[] metaHeadEncoder = getMetaHeadForTimeStamp().toBytes();
 
+      publicBAOS.write(metaHeadEncoder);
+
+      // 4.Write the length of the serialized metaHead as a 4-byte big-endian integer
+      publicBAOS.write(intToBytes(metaHeadEncoder.length));
+
+    } catch (IOException e) {
+      throw new RuntimeException(e);
+    }
     return publicBAOS;
   }
 
@@ -110,12 +116,15 @@ public class RpcEncoder {
       encodeColumn(schema.getType(), tablet, i, out);
     }
 
-    // 2.Serializing MetaHead and  append it to the output stream
-    byte[] metaHeadEncoder = getMetaHead().toBytes();
-    out.write(metaHeadEncoder, 0, metaHeadEncoder.length);
-    // 3.Write the length of the serialized metaHead as a 4-byte big-endian integer
-    out.write(metaHeadEncoder.length);
-
+    try {
+      // 2.Serializing MetaHead and  append it to the output stream
+      byte[] metaHeadEncoder = getMetaHead().toBytes();
+      out.write(metaHeadEncoder);
+      // 3.Write the length of the serialized metaHead as a 4-byte big-endian integer
+      out.write(intToBytes(metaHeadEncoder.length));
+    } catch (IOException e) {
+      throw new RuntimeException(e);
+    }
     return out;
   }
 
@@ -156,6 +165,15 @@ public class RpcEncoder {
 
     // 4.Get ColumnEntry content and add to metaHead
     metaHeadForValues.addColumnEntry(encoder.getColumnEntry());
+  }
+
+  public static byte[] intToBytes(int value) {
+    return new byte[] {
+      (byte) ((value >>> 24) & 0xFF),
+      (byte) ((value >>> 16) & 0xFF),
+      (byte) ((value >>> 8) & 0xFF),
+      (byte) (value & 0xFF)
+    };
   }
 
   /**

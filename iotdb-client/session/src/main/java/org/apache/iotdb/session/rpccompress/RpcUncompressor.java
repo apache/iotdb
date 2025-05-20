@@ -33,9 +33,12 @@ public class RpcUncompressor {
 
   public ByteBuffer uncompress(ByteBuffer byteArray) {
     try {
-      int uncompressedLength = unCompressor.getUncompressedLength(byteArray.duplicate());
+      int uncompressedLength = byteArray.getInt(byteArray.limit() - 4);
       ByteBuffer output = ByteBuffer.allocate(uncompressedLength);
-      unCompressor.uncompress(byteArray.duplicate(), output);
+      byte[] compressedData = new byte[byteArray.remaining() - 4];
+      byteArray.slice().get(compressedData);
+      byte[] uncompressedData = unCompressor.uncompress(compressedData);
+      output.put(uncompressedData);
       output.flip();
       return output;
     } catch (IOException e) {

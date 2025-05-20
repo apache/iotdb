@@ -36,8 +36,13 @@ public class RpcCompressor {
   public ByteBuffer compress(ByteArrayOutputStream input) {
     try {
       byte[] data = input.toByteArray();
+      int length = data.length;
+
       byte[] compressed = compress(data);
-      return ByteBuffer.wrap(compressed);
+      ByteBuffer buffer = ByteBuffer.allocate(compressed.length + Integer.BYTES);
+      buffer.put(compressed).putInt(length);
+      buffer.flip();
+      return buffer;
     } catch (IOException e) {
       throw new RuntimeException("Compression failed", e);
     }

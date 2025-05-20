@@ -23,8 +23,9 @@ import org.apache.iotdb.session.rpccompress.ColumnEntry;
 import org.apache.tsfile.encoding.encoder.Encoder;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
+import org.apache.tsfile.utils.Binary;
 
-import java.util.List;
+import java.io.ByteArrayOutputStream;
 
 public class Ts2DiffColumnEncoder implements ColumnEncoder {
   private final Encoder encoder;
@@ -36,9 +37,25 @@ public class Ts2DiffColumnEncoder implements ColumnEncoder {
   }
 
   @Override
-  public byte[] encode(List<?> data) {
-    return new byte[0];
-  }
+  public void encode(boolean[] values, ByteArrayOutputStream out) {}
+
+  @Override
+  public void encode(short[] values, ByteArrayOutputStream out) {}
+
+  @Override
+  public void encode(int[] values, ByteArrayOutputStream out) {}
+
+  @Override
+  public void encode(long[] values, ByteArrayOutputStream out) {}
+
+  @Override
+  public void encode(float[] values, ByteArrayOutputStream out) {}
+
+  @Override
+  public void encode(double[] values, ByteArrayOutputStream out) {}
+
+  @Override
+  public void encode(Binary[] values, ByteArrayOutputStream out) {}
 
   @Override
   public TSDataType getDataType() {
