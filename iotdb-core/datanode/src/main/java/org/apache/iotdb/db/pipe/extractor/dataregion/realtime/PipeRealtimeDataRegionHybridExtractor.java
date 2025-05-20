@@ -224,10 +224,70 @@ public class PipeRealtimeDataRegionHybridExtractor extends PipeRealtimeDataRegio
     //  the write operation will be throttled, so we should not extract any more tablet events.
     //  2. The shallow memory usage of the insert node has reached the dangerous threshold.
     //  3. Deprecated logics (unused by default)
-    return mayRemainingInsertEventExceedLimit(event)
+    return mayRemainingInsertNodeEventExceedLimit(event)
         || mayWalSizeReachThrottleThreshold(event)
         || mayInsertNodeMemoryReachDangerousThreshold(event)
         || canNotUseTabletAnymoreDeprecated(event);
+  }
+
+  private boolean mayRemainingInsertNodeEventExceedLimit(final PipeRealtimeEvent event) {
+    final boolean mayRemainingInsertEventExceedLimit =
+        PipeDataNodeRemainingEventAndTimeMetrics.getInstance().mayRemainingInsertEventExceedLimit();
+    if (mayRemainingInsertEventExceedLimit && event.mayExtractorUseTablets(this)) {
+      logByLogManager(
+          l ->
+              l.info(
+                  "Pipe task {}@{} canNotUseTabletAnyMore0: remaining insert event has reached max allowed insert event count {}",
+                  pipeName,
+                  dataRegionId,
+                  PipeConfig.getInstance().getPipeMaxAllowedRemainingInsertEventCount()));
+    }
+    return mayRemainingInsertEventExceedLimit;
+  }
+
+  private boolean mayWalSizeReachThrottleThreshold(final PipeRealtimeEvent event) {
+    final boolean mayWalSizeReachThrottleThreshold =
+        3 * WALManager.getInstance().getTotalDiskUsage()
+            > IoTDBDescriptor.getInstance().getConfig().getThrottleThreshold();
+    if (mayWalSizeReachThrottleThreshold && event.mayExtractorUseTablets(this)) {
+      logByLogManager(
+          l ->
+              l.info(
+                  "Pipe task {}@{} canNotUseTabletAnyMore1: Wal size {} has reached throttle threshold {}",
+                  pipeName,
+                  dataRegionId,
+                  WALManager.getInstance().getTotalDiskUsage(),
+                  IoTDBDescriptor.getInstance().getConfig().getThrottleThreshold() / 3.0d));
+    }
+    return mayWalSizeReachThrottleThreshold;
+  }
+
+  private boolean mayInsertNodeMemoryReachDangerousThreshold(final PipeRealtimeEvent event) {
+    final long floatingMemoryUsageInByte =
+        PipeDataNodeAgent.task().getFloatingMemoryUsageInByte(pipeName);
+    final long pipeCount = PipeDataNodeAgent.task().getPipeCount();
+    final long totalFloatingMemorySizeInBytes =
+        PipeDataNodeResourceManager.memory().getTotalFloatingMemorySizeInBytes();
+    final boolean mayInsertNodeMemoryReachDangerousThreshold =
+        3 * floatingMemoryUsageInByte * pipeCount >= 2 * totalFloatingMemorySizeInBytes;
+    if (mayInsertNodeMemoryReachDangerousThreshold && event.mayExtractorUseTablets(this)) {
+      logByLogManager(
+          l ->
+              l.info(
+                  "Pipe task {}@{} canNotUseTabletAnyMore3: The shallow memory usage of the insert node {} has reached the dangerous threshold {}",
+                  pipeName,
+                  dataRegionId,
+                  floatingMemoryUsageInByte * pipeCount,
+                  2 * totalFloatingMemorySizeInBytes / 3.0d));
+    }
+    return mayInsertNodeMemoryReachDangerousThreshold;
+  }
+
+  private void logByLogManager(final Consumer<Logger> infoFunction) {
+    PipeDataNodeResourceManager.log()
+        .schedule(
+            PipeRealtimeDataRegionHybridExtractor.class, getTaskID(), Integer.MAX_VALUE, 100, 1)
+        .ifPresent(infoFunction);
   }
 
   /**
@@ -342,66 +402,6 @@ public class PipeRealtimeDataRegionHybridExtractor extends PipeRealtimeDataRegio
           PipeConfig.getInstance().getPipeMaxAllowedLinkedTsFileCount());
     }
     return mayTsFileLinkedCountReachDangerousThreshold;
-  }
-
-  private boolean mayRemainingInsertEventExceedLimit(final PipeRealtimeEvent event) {
-    final boolean mayRemainingInsertEventExceedLimit =
-        PipeDataNodeRemainingEventAndTimeMetrics.getInstance().mayRemainingInsertEventExceedLimit();
-    if (mayRemainingInsertEventExceedLimit && event.mayExtractorUseTablets(this)) {
-      logByLogManager(
-          l ->
-              l.info(
-                  "Pipe task {}@{} canNotUseTabletAnyMore0: remaining insert event has reached max allowed insert event count {}",
-                  pipeName,
-                  dataRegionId,
-                  PipeConfig.getInstance().getPipeMaxAllowedRemainingInsertEventCount()));
-    }
-    return mayRemainingInsertEventExceedLimit;
-  }
-
-  private boolean mayWalSizeReachThrottleThreshold(final PipeRealtimeEvent event) {
-    final boolean mayWalSizeReachThrottleThreshold =
-        3 * WALManager.getInstance().getTotalDiskUsage()
-            > IoTDBDescriptor.getInstance().getConfig().getThrottleThreshold();
-    if (mayWalSizeReachThrottleThreshold && event.mayExtractorUseTablets(this)) {
-      logByLogManager(
-          l ->
-              l.info(
-                  "Pipe task {}@{} canNotUseTabletAnyMore1: Wal size {} has reached throttle threshold {}",
-                  pipeName,
-                  dataRegionId,
-                  WALManager.getInstance().getTotalDiskUsage(),
-                  IoTDBDescriptor.getInstance().getConfig().getThrottleThreshold() / 3.0d));
-    }
-    return mayWalSizeReachThrottleThreshold;
-  }
-
-  private boolean mayInsertNodeMemoryReachDangerousThreshold(final PipeRealtimeEvent event) {
-    final long floatingMemoryUsageInByte =
-        PipeDataNodeAgent.task().getFloatingMemoryUsageInByte(pipeName);
-    final long pipeCount = PipeDataNodeAgent.task().getPipeCount();
-    final long totalFloatingMemorySizeInBytes =
-        PipeDataNodeResourceManager.memory().getTotalFloatingMemorySizeInBytes();
-    final boolean mayInsertNodeMemoryReachDangerousThreshold =
-        3 * floatingMemoryUsageInByte * pipeCount >= 2 * totalFloatingMemorySizeInBytes;
-    if (mayInsertNodeMemoryReachDangerousThreshold && event.mayExtractorUseTablets(this)) {
-      logByLogManager(
-          l ->
-              l.info(
-                  "Pipe task {}@{} canNotUseTabletAnyMore3: The shallow memory usage of the insert node {} has reached the dangerous threshold {}",
-                  pipeName,
-                  dataRegionId,
-                  floatingMemoryUsageInByte * pipeCount,
-                  2 * totalFloatingMemorySizeInBytes / 3.0d));
-    }
-    return mayInsertNodeMemoryReachDangerousThreshold;
-  }
-
-  private void logByLogManager(final Consumer<Logger> infoFunction) {
-    PipeDataNodeResourceManager.log()
-        .schedule(
-            PipeRealtimeDataRegionHybridExtractor.class, getTaskID(), Integer.MAX_VALUE, 100, 1)
-        .ifPresent(infoFunction);
   }
 
   @Override
