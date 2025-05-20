@@ -94,6 +94,7 @@ public class IoTDBDatabaseIT {
 
       statement.execute("alter database if exists test1 set properties ttl='INF'");
       statement.execute("alter database test set properties ttl=default");
+      statement.execute("alter database test set properties need_last_cache=false");
 
       String[] databaseNames = new String[] {"test"};
       String[] TTLs = new String[] {"INF"};
@@ -145,6 +146,7 @@ public class IoTDBDatabaseIT {
           assertEquals(timePartitionInterval[cnt], resultSet.getLong(5));
           assertEquals(schemaRegionGroupNum[cnt], resultSet.getInt(6));
           assertEquals(dataRegionGroupNum[cnt], resultSet.getInt(7));
+          assertFalse(resultSet.getBoolean(8));
           cnt++;
         }
         assertEquals(databaseNames.length, cnt);
