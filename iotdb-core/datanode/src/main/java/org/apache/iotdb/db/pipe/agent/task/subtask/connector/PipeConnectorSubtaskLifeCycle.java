@@ -95,7 +95,7 @@ public class PipeConnectorSubtaskLifeCycle implements AutoCloseable {
       throw new IllegalStateException("registeredTaskCount <= 0");
     }
 
-    subtask.discardEventsOfPipe(pipeNameToDeregister, regionId);
+    subtask.deregister(pipeNameToDeregister, regionId);
 
     try {
       if (registeredTaskCount > 1) {
