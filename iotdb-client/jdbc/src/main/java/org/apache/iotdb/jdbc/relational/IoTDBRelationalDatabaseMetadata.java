@@ -435,10 +435,8 @@ public class IoTDBRelationalDatabaseMetadata extends IoTDBAbstractDatabaseMetada
       String type = legacyMode ? rs.getString("datatype") : rs.getString("DataType"); // 4
       List<Object> valueInRow = new ArrayList<>();
       for (int i = 0; i < fields.length; i++) {
-        if (i == 0) {
+        if (i <= 1) {
           valueInRow.add(schemaPattern);
-        } else if (i == 1) {
-          valueInRow.add("");
         } else if (i == 2) {
           valueInRow.add(tableNamePattern);
         } else if (i == 3) {
