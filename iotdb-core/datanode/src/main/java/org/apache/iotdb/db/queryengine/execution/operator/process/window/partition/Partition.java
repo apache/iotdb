@@ -21,7 +21,6 @@ package org.apache.iotdb.db.queryengine.execution.operator.process.window.partit
 
 import org.apache.iotdb.db.queryengine.execution.operator.process.window.utils.ColumnList;
 
-import com.google.common.collect.ImmutableList;
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.block.column.ColumnBuilder;
 import org.apache.tsfile.read.common.block.TsBlock;
@@ -36,10 +35,7 @@ public class Partition {
   private int cachedPositionCount = -1;
 
   public Partition(List<TsBlock> tsBlocks, int startIndexInFirstBlock, int endIndexInLastBlock) {
-    if (tsBlocks.isEmpty()) {
-      this.tsBlocks = ImmutableList.of();
-      return;
-    } else if (tsBlocks.size() == 1) {
+    if (tsBlocks.size() == 1) {
       int length = endIndexInLastBlock - startIndexInFirstBlock;
       this.tsBlocks =
           Collections.singletonList(tsBlocks.get(0).getRegion(startIndexInFirstBlock, length));

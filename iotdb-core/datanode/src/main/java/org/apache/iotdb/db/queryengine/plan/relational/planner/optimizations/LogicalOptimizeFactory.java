@@ -26,6 +26,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.Iterati
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.Rule;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.RuleStatsRecorder;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.CanonicalizeExpressions;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.ImplementPatternRecognition;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.ImplementTableFunctionSource;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.InlineProjections;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.MergeFilters;
@@ -182,6 +183,7 @@ public class LogicalOptimizeFactory {
             ImmutableSet.<Rule<?>>builder()
                 .addAll(new CanonicalizeExpressions(plannerContext, typeAnalyzer).rules())
                 .add(new OptimizeRowPattern())
+                .add(new ImplementPatternRecognition())
                 .build()),
         new IterativeOptimizer(
             plannerContext,

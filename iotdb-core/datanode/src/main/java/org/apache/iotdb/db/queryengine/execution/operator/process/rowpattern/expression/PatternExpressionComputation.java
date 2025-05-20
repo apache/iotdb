@@ -30,6 +30,8 @@ import org.apache.tsfile.read.common.type.DoubleType;
 import org.apache.tsfile.read.common.type.FloatType;
 import org.apache.tsfile.read.common.type.IntType;
 import org.apache.tsfile.read.common.type.LongType;
+import org.apache.tsfile.read.common.type.StringType;
+import org.apache.tsfile.read.common.type.TimestampType;
 import org.apache.tsfile.read.common.type.Type;
 
 import java.util.ArrayList;
@@ -57,6 +59,7 @@ public class PatternExpressionComputation {
   public Object compute(
       int currentRow,
       ArrayView matchedLabels, // If the value is i, the currentRow matches labelNames[i]
+      int partitionStart,
       int searchStart,
       int searchEnd,
       int patternStart,
@@ -92,7 +95,7 @@ public class PatternExpressionComputation {
               }
             } else {
               // need to get the data from the partition according to the position
-              values.add(getValueFromPartition(partition, pointer, position));
+              values.add(getValueFromPartition(partition, pointer, position - partitionStart));
             }
 
           } else {
@@ -114,12 +117,14 @@ public class PatternExpressionComputation {
       return partition.getBoolean(channel, position);
     } else if (type instanceof IntType) {
       return partition.getInt(channel, position);
-    } else if (type instanceof LongType) {
+    } else if (type instanceof LongType || type instanceof TimestampType) {
       return partition.getLong(channel, position);
     } else if (type instanceof FloatType) {
       return partition.getFloat(channel, position);
     } else if (type instanceof DoubleType) {
       return partition.getDouble(channel, position);
+    } else if (type instanceof StringType) {
+      return partition.getBinary(channel, position);
     } else {
       throw new IllegalArgumentException("Unsupported type: " + type.getClass().getSimpleName());
     }

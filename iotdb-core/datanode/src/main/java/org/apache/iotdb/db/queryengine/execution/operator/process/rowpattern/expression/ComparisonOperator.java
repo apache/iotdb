@@ -27,11 +27,27 @@ public enum ComparisonOperator implements BinaryOperator {
       return ((Comparable<Object>) left).compareTo(right) < 0;
     }
   },
+  //  GREATER_THAN {
+  //    @Override
+  //    public Object apply(Object left, Object right) {
+  //      if (left == null || right == null) return false;
+  //      System.out.println("left: " + left + ", right: " + right);
+  //      return ((Comparable<Object>) left).compareTo(right) > 0;
+  //    }
+  //  },
   GREATER_THAN {
     @Override
     public Object apply(Object left, Object right) {
-      if (left == null || right == null) return false;
-      return ((Comparable<Object>) left).compareTo(right) > 0;
+      if (left == null || right == null) {
+        return false;
+      }
+      Comparable<?> leftComparable = castComparable(left);
+      Comparable<?> rightComparable = castComparable(right);
+
+      System.out.println("left: " + leftComparable + ", right: " + rightComparable);
+
+      //noinspection unchecked
+      return ((Comparable<Object>) leftComparable).compareTo(rightComparable) > 0;
     }
   },
   EQUAL {
@@ -50,11 +66,30 @@ public enum ComparisonOperator implements BinaryOperator {
       return !eq;
     }
   },
+  //  LESS_THAN_OR_EQUAL {
+  //    @Override
+  //    public Object apply(Object left, Object right) {
+  //      if (left == null || right == null) return false;
+  //      return ((Comparable<Object>) left).compareTo(right) <= 0;
+  //    }
+  //  },
   LESS_THAN_OR_EQUAL {
     @Override
     public Object apply(Object left, Object right) {
-      if (left == null || right == null) return false;
-      return ((Comparable<Object>) left).compareTo(right) <= 0;
+      // 1. null 安全检查
+      if (left == null || right == null) {
+        return false;
+      }
+      // 2. 统一类型转换
+      Comparable<?> leftComparable = castComparable(left);
+      Comparable<?> rightComparable = castComparable(right);
+
+      // 3. 打印调试（可选）
+      System.out.println("left: " + leftComparable + ", right: " + rightComparable);
+
+      // 4. 比较并返回结果
+      //noinspection unchecked
+      return ((Comparable<Object>) leftComparable).compareTo(rightComparable) <= 0;
     }
   },
   GREATER_THAN_OR_EQUAL {
@@ -71,4 +106,27 @@ public enum ComparisonOperator implements BinaryOperator {
       return NOT_EQUAL.apply(left, right);
     }
   };
+
+  /** 如果 obj 是 String，就尝试 parse 成 Double，否则原样返回。 */
+  @SuppressWarnings("unchecked")
+  private static Comparable<?> castComparable(Object obj) {
+    if (obj instanceof String) {
+      String s = (String) obj;
+      try {
+        return Double.valueOf(s);
+      } catch (NumberFormatException e) {
+        return s; // 不是数字，就保留字符串
+      }
+    }
+    if (obj instanceof Double) {
+      return (Double) obj; // 已经是 Double，直接用
+    }
+    if (obj instanceof Number) {
+      return ((Number) obj).doubleValue(); // 其他数字类型，转成 double
+    }
+    if (obj instanceof Comparable) {
+      return (Comparable<?>) obj;
+    }
+    throw new IllegalArgumentException("Cannot compare object: " + obj);
+  }
 }

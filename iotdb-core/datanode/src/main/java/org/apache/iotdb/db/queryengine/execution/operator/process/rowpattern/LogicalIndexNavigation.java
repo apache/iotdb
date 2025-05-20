@@ -58,17 +58,17 @@ public class LogicalIndexNavigation {
     return labels;
   }
 
-  public boolean isLast() {
-    return last;
-  }
-
-  public int getLogicalOffset() {
-    return logicalOffset;
-  }
-
-  public int getPhysicalOffset() {
-    return physicalOffset;
-  }
+  //  public boolean isLast() {
+  //    return last;
+  //  }
+  //
+  //  public int getLogicalOffset() {
+  //    return logicalOffset;
+  //  }
+  //
+  //  public int getPhysicalOffset() {
+  //    return physicalOffset;
+  //  }
 
   /**
    * This method is used when evaluating labels during pattern matching, computing row pattern
@@ -83,6 +83,7 @@ public class LogicalIndexNavigation {
         currentRow >= patternStart && currentRow < patternStart + matchedLabels.length(),
         "current row is out of bounds of the match");
 
+    // used to handle `logical offset`
     int relativePosition;
     if (last) {
       int start;
@@ -95,6 +96,7 @@ public class LogicalIndexNavigation {
     } else {
       relativePosition = findFirstAndForward(matchedLabels);
     }
+    // used to handle `physical offset`
     return adjustPosition(relativePosition, patternStart, searchStart, searchEnd);
   }
 
@@ -148,21 +150,21 @@ public class LogicalIndexNavigation {
   }
 
   // for thread equivalence
-  public LogicalIndexNavigation withoutLogicalOffset() {
-    return withLogicalOffset(0);
-  }
-
-  public LogicalIndexNavigation withLogicalOffset(int logicalOffset) {
-    return new LogicalIndexNavigation(labels, last, running, logicalOffset, physicalOffset);
-  }
-
-  public LogicalIndexNavigation withoutPhysicalOffset() {
-    return withPhysicalOffset(0);
-  }
-
-  public LogicalIndexNavigation withPhysicalOffset(int physicalOffset) {
-    return new LogicalIndexNavigation(labels, last, running, logicalOffset, physicalOffset);
-  }
+  //  public LogicalIndexNavigation withoutLogicalOffset() {
+  //    return withLogicalOffset(0);
+  //  }
+  //
+  //  public LogicalIndexNavigation withLogicalOffset(int logicalOffset) {
+  //    return new LogicalIndexNavigation(labels, last, running, logicalOffset, physicalOffset);
+  //  }
+  //
+  //  public LogicalIndexNavigation withoutPhysicalOffset() {
+  //    return withPhysicalOffset(0);
+  //  }
+  //
+  //  public LogicalIndexNavigation withPhysicalOffset(int physicalOffset) {
+  //    return new LogicalIndexNavigation(labels, last, running, logicalOffset, physicalOffset);
+  //  }
 
   @Override
   public boolean equals(Object o) {

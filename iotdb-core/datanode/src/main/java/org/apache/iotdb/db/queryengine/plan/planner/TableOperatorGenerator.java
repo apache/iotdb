@@ -3172,7 +3172,6 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
       sortOrder = orderingScheme.getOrderingList();
     }
 
-    // TODO: 不需要遵守这个
     // The output order for pattern recognition operation is defined as follows:
     // - for ONE ROW PER MATCH: partition by symbols, then measures,
     // - for ALL ROWS PER MATCH: partition by symbols, order by symbols, measures, remaining input
