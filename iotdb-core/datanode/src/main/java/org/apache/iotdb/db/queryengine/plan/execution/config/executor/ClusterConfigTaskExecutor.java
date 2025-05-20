@@ -3577,6 +3577,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
             new IoTDBException(
                 String.format("Unknown database %s", database),
                 TSStatusCode.DATABASE_NOT_EXIST.getStatusCode()));
+        unsetDatabaseIfNotExist(useDB.getDatabaseId().getValue(), clientSession);
       }
     } catch (final IOException | ClientManagerException | TException e) {
       future.setException(e);
@@ -3585,7 +3586,8 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
   }
 
   @Override
-  public SettableFuture<ConfigTaskResult> dropDatabase(final DropDB dropDB) {
+  public SettableFuture<ConfigTaskResult> dropDatabase(
+      final DropDB dropDB, final IClientSession session) {
     final SettableFuture<ConfigTaskResult> future = SettableFuture.create();
     final TDeleteDatabasesReq req =
         new TDeleteDatabasesReq(Collections.singletonList(dropDB.getDbName().getValue()))
@@ -3595,6 +3597,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
       final TSStatus tsStatus = client.deleteDatabases(req);
       if (TSStatusCode.SUCCESS_STATUS.getStatusCode() == tsStatus.getCode()) {
         future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
+        unsetDatabaseIfNotExist(dropDB.getDbName().getValue(), session);
       } else if (TSStatusCode.PATH_NOT_EXIST.getStatusCode() == tsStatus.getCode()) {
         if (dropDB.isExists()) {
           future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
@@ -3607,6 +3610,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
                   String.format("Database %s doesn't exist", dropDB.getDbName().getValue()),
                   TSStatusCode.DATABASE_NOT_EXIST.getStatusCode()));
         }
+        unsetDatabaseIfNotExist(dropDB.getDbName().getValue(), session);
       } else {
         LOGGER.warn(
             "Failed to execute delete database {} in config node, status is {}.",
@@ -3618,6 +3622,12 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
       future.setException(e);
     }
     return future;
+  }
+
+  public static void unsetDatabaseIfNotExist(final String database, final IClientSession session) {
+    if (database.equals(session.getDatabaseName())) {
+      session.setDatabaseName(null);
+    }
   }
 
   @Override
@@ -3673,6 +3683,8 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
                   String.format("Database %s doesn't exist", databaseSchema.getName()),
                   TSStatusCode.DATABASE_NOT_EXIST.getStatusCode()));
         }
+        unsetDatabaseIfNotExist(
+            databaseSchema.getName(), SessionManager.getInstance().getCurrSession());
       } else {
         future.setException(new IoTDBException(tsStatus.message, tsStatus.code));
       }
@@ -4293,9 +4305,11 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
   }
 
   private String getTableErrorMessage(final TSStatus status, final String database) {
-    return status.code == TSStatusCode.DATABASE_NOT_EXIST.getStatusCode()
-        ? String.format("Unknown database %s", PathUtils.unQualifyDatabaseName(database))
-        : status.getMessage();
+    if (status.code == TSStatusCode.DATABASE_NOT_EXIST.getStatusCode()) {
+      unsetDatabaseIfNotExist(database, SessionManager.getInstance().getCurrSession());
+      return String.format("Unknown database %s", PathUtils.unQualifyDatabaseName(database));
+    }
+    return status.getMessage();
   }
 
   public void handlePipeConfigClientExit(final String clientId) {
