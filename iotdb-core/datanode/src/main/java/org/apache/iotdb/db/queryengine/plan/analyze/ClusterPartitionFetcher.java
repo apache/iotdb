@@ -308,6 +308,10 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
     return getOrCreateSchemaPartition(database, deviceIDs, false, null);
   }
 
+  public boolean needLastCache(final String database) {
+    return partitionCache.isNeedLastCache(database);
+  }
+
   private SchemaPartition getOrCreateSchemaPartition(
       final String database,
       final @Nullable List<IDeviceID> deviceIDs,

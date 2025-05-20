@@ -250,14 +250,22 @@ public class PartitionCache {
     }
   }
 
-  public boolean isNeedLastCache(final String database) throws TException, ClientManagerException {
+  public boolean isNeedLastCache(final String database) {
     Boolean needLastCache = database2NeedLastCacheCache.get(database);
     if (Objects.nonNull(needLastCache)) {
       return needLastCache;
     }
-    fetchDatabaseAndUpdateCache(false);
+    try {
+      fetchDatabaseAndUpdateCache(false);
+    } catch (final TException | ClientManagerException e) {
+      logger.warn(
+          "Failed to get need_last_cache info for database {}, will put cache anyway, exception: {}",
+          database,
+          e.getMessage());
+      return true;
+    }
     needLastCache = database2NeedLastCacheCache.get(database);
-    return !Objects.isNull(needLastCache) && needLastCache;
+    return Objects.isNull(needLastCache) || needLastCache;
   }
 
   /** get all database from configNode and update database cache. */
