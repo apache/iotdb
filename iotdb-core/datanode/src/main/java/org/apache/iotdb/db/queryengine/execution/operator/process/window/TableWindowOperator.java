@@ -30,6 +30,7 @@ import org.apache.iotdb.db.queryengine.execution.operator.process.window.utils.R
 import org.apache.iotdb.db.queryengine.plan.planner.memory.MemoryReservationManager;
 
 import com.google.common.collect.ImmutableList;
+import com.google.common.util.concurrent.ListenableFuture;
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.common.conf.TSFileDescriptor;
 import org.apache.tsfile.enums.TSDataType;
@@ -135,6 +136,11 @@ public class TableWindowOperator implements ProcessOperator {
   }
 
   @Override
+  public ListenableFuture<?> isBlocked() {
+    return inputOperator.isBlocked();
+  }
+
+  @Override
   public TsBlock next() throws Exception {
     long startTime = System.nanoTime();
 
@@ -148,9 +154,6 @@ public class TableWindowOperator implements ProcessOperator {
       // In this case, all partition executors are done
     }
 
-    if (!inputOperator.isBlocked().isDone()) {
-      return null;
-    }
     if (inputOperator.hasNextWithTimer()) {
       // This TsBlock is pre-sorted with PARTITION BY and ORDER BY channels
       TsBlock preSortedBlock = inputOperator.nextWithTimer();
