@@ -49,7 +49,7 @@ public class PipeDataNodeBuilder {
     this.pipeMeta = pipeMeta;
   }
 
-  public Map<Integer, PipeTask> build() throws IllegalPathException {
+  public Map<Integer, PipeTask> buildTasksWithInternalSource() throws IllegalPathException {
     final PipeStaticMeta pipeStaticMeta = pipeMeta.getStaticMeta();
     final PipeRuntimeMeta pipeRuntimeMeta = pipeMeta.getRuntimeMeta();
 
@@ -83,5 +83,23 @@ public class PipeDataNodeBuilder {
       }
     }
     return consensusGroupIdToPipeTaskMap;
+  }
+
+  public Map<Integer, PipeTask> buildTasksWithExternalSource() {
+    final Map<Integer, PipeTask> taskIdToPipeTaskMap = new HashMap<>();
+    final PipeStaticMeta pipeStaticMeta = pipeMeta.getStaticMeta();
+    final PipeRuntimeMeta pipeRuntimeMeta = pipeMeta.getRuntimeMeta();
+
+    for (Map.Entry<Integer, PipeTaskMeta> taskIdToPipeTaskMeta :
+        pipeRuntimeMeta.getConsensusGroupId2TaskMetaMap().entrySet()) {
+      final int taskId = taskIdToPipeTaskMeta.getKey();
+      final PipeTaskMeta pipeTaskMeta = taskIdToPipeTaskMeta.getValue();
+      if (pipeTaskMeta.getLeaderNodeId() == CONFIG.getDataNodeId()) {
+        taskIdToPipeTaskMap.put(
+            taskId, new PipeDataNodeTaskBuilder(pipeStaticMeta, taskId, pipeTaskMeta).build());
+      }
+    }
+
+    return taskIdToPipeTaskMap;
   }
 }

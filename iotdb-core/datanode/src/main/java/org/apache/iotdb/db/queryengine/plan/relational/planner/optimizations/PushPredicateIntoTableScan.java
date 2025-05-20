@@ -753,6 +753,9 @@ public class PushPredicateIntoTableScan implements PlanOptimizer {
 
           equiJoinClauses.add(new JoinNode.EquiJoinClause(leftSymbol, rightSymbol));
         } else {
+          if (conjunct.equals(TRUE_LITERAL)) {
+            continue;
+          }
           if (node.getJoinType() != INNER) {
             throw new SemanticException(ONLY_SUPPORT_EQUI_JOIN);
           }

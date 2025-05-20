@@ -129,12 +129,12 @@ public class TumbleTableFunction implements TableFunction {
 
   private static class TumbleDataProcessor implements TableFunctionDataProcessor {
     private final long size;
-    private final long start;
+    private final long origin;
     private long curIndex = 0;
 
     public TumbleDataProcessor(long startTime, long size) {
       this.size = size;
-      this.start = startTime;
+      this.origin = startTime;
     }
 
     @Override
@@ -144,10 +144,12 @@ public class TumbleTableFunction implements TableFunction {
         ColumnBuilder passThroughIndexBuilder) {
       // find the proper window
       long timeValue = input.getLong(0);
-      long window_start = (timeValue - start) / size * size;
-      properColumnBuilders.get(0).writeLong(window_start);
-      properColumnBuilders.get(1).writeLong(window_start + size);
-      passThroughIndexBuilder.writeLong(curIndex);
+      if (timeValue >= origin) {
+        long windowStart = origin + (timeValue - origin) / size * size;
+        properColumnBuilders.get(0).writeLong(windowStart);
+        properColumnBuilders.get(1).writeLong(windowStart + size);
+        passThroughIndexBuilder.writeLong(curIndex);
+      }
       curIndex++;
     }
   }

@@ -79,6 +79,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropFunction;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropIndex;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropPipe;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropPipePlugin;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropSubscription;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropTable;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropTopic;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Except;
@@ -1239,6 +1240,14 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
   }
 
   @Override
+  public Node visitDropSubscriptionStatement(
+      RelationalSqlParser.DropSubscriptionStatementContext ctx) {
+    final String subscriptionId = ((Identifier) visit(ctx.identifier())).getValue();
+    final boolean hasIfExistsCondition = ctx.IF() != null && ctx.EXISTS() != null;
+    return new DropSubscription(subscriptionId, hasIfExistsCondition);
+  }
+
+  @Override
   public Node visitShowDevicesStatement(final RelationalSqlParser.ShowDevicesStatementContext ctx) {
     final QualifiedName name = getQualifiedName(ctx.tableName);
     return InformationSchema.INFORMATION_DATABASE.equals(
@@ -2336,7 +2345,7 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
     }
 
     JoinCriteria criteria;
-
+    TimeDuration timeDuration = null;
     if (ctx.NATURAL() != null) {
       right = (Relation) visit(ctx.right);
       criteria = new NaturalJoin();
@@ -2344,7 +2353,6 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
       right = (Relation) visit(ctx.rightRelation);
       if (ctx.joinCriteria().ON() != null) {
         if (ctx.ASOF() != null) {
-          TimeDuration timeDuration = null;
           if (ctx.timeDuration() != null) {
             timeDuration = DateTimeUtils.constructTimeDuration(ctx.timeDuration().getText());
 
@@ -2377,8 +2385,8 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
       joinType = Join.Type.INNER;
     }
 
-    if (criteria instanceof AsofJoinOn && joinType != Join.Type.INNER) {
-      throw new SemanticException("ASOF JOIN is only support INNER type now");
+    if (criteria instanceof AsofJoinOn && joinType != Join.Type.INNER && timeDuration != null) {
+      throw new SemanticException("Tolerance in ASOF JOIN is only support INNER type now");
     }
 
     return new Join(getLocation(ctx), joinType, left, right, criteria);
