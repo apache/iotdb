@@ -491,10 +491,12 @@ public class IoTDBRelationalDatabaseMetadata extends IoTDBAbstractDatabaseMetada
         } else if (i == 20) {
           valueInRow.add("");
         } else if (i == 21) {
-          valueInRow.add("");
+          valueInRow.add(0);
         } else if (i == 22) {
           valueInRow.add("");
         } else if (i == 23) {
+          valueInRow.add("");
+        } else {
           valueInRow.add("");
         }
       }
