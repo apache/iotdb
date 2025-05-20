@@ -313,7 +313,7 @@ public class IoTDBPipePermissionIT extends AbstractPipeTableModelDualManualIT {
       // Alter pipe, skip if no privileges
       try (final Connection connection = senderEnv.getConnection(BaseEnv.TABLE_SQL_DIALECT);
           final Statement statement = connection.createStatement()) {
-        statement.execute("alter pipe a2b modify sink ('skipif'='no-privileges')");
+        statement.execute("alter pipe testPipe modify sink ('skipif'='no-privileges')");
       } catch (final SQLException e) {
         e.printStackTrace();
         fail(e.getMessage());
