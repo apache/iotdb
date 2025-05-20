@@ -128,7 +128,7 @@ public class InformationSchemaUtils {
         builder
             .getColumnBuilder(4)
             .writeBinary(new Binary(TableType.SYSTEM_VIEW.getName(), TSFileConfig.STRING_CHARSET));
-        builder.getColumnBuilder(5).writeBinary(new Binary("false", TSFileConfig.STRING_CHARSET));
+        builder.getColumnBuilder(5).writeBoolean(false);
       }
       builder.declarePosition();
     }

@@ -670,7 +670,7 @@ public class ColumnHeaderConstant {
           new ColumnHeader(STATUS, TSDataType.TEXT),
           new ColumnHeader(COMMENT, TSDataType.TEXT),
           new ColumnHeader(TABLE_TYPE, TSDataType.TEXT),
-          new ColumnHeader(NEED_LAST_CACHE, TSDataType.TEXT));
+          new ColumnHeader(NEED_LAST_CACHE, TSDataType.BOOLEAN));
 
   public static final List<ColumnHeader> LIST_USER_OR_ROLE_PRIVILEGES_COLUMN_HEADERS =
       ImmutableList.of(

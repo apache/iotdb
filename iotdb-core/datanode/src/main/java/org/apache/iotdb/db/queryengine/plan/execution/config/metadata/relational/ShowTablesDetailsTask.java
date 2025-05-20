@@ -104,11 +104,7 @@ public class ShowTablesDetailsTask implements IConfigTask {
                           TSFileConfig.STRING_CHARSET));
               builder
                   .getColumnBuilder(5)
-                  .writeBinary(
-                      new Binary(
-                          String.valueOf(
-                              !tableInfo.isSetNeedLastCache() || tableInfo.isNeedLastCache()),
-                          TSFileConfig.STRING_CHARSET));
+                  .writeBoolean(!tableInfo.isSetNeedLastCache() || tableInfo.isNeedLastCache());
 
               builder.declarePosition();
             });
