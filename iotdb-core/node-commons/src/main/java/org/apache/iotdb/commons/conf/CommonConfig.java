@@ -1449,14 +1449,32 @@ public class CommonConfig {
     return pipeMaxAllowedRemainingInsertEventCount;
   }
 
+  public void setPipeMaxAllowedRemainingInsertEventCount(
+      int pipeMaxAllowedRemainingInsertEventCount) {
+    if (this.pipeMaxAllowedRemainingInsertEventCount == pipeMaxAllowedRemainingInsertEventCount) {
+      return;
+    }
+    this.pipeMaxAllowedRemainingInsertEventCount = pipeMaxAllowedRemainingInsertEventCount;
+    logger.info(
+        "pipeMaxAllowedRemainingInsertEventCount is set to {}",
+        pipeMaxAllowedRemainingInsertEventCount);
+  }
+
   public int getPipeRemainingInsertEventCountSmoothingIntervalSeconds() {
     return pipeRemainingEventCountSmoothingIntervalSeconds;
   }
 
   public void setPipeRemainingInsertEventCountSmoothingIntervalSeconds(
       int pipeRemainingEventCountSmoothingIntervalSeconds) {
+    if (this.pipeRemainingEventCountSmoothingIntervalSeconds
+        == pipeRemainingEventCountSmoothingIntervalSeconds) {
+      return;
+    }
     this.pipeRemainingEventCountSmoothingIntervalSeconds =
         pipeRemainingEventCountSmoothingIntervalSeconds;
+    logger.info(
+        "pipeRemainingEventCountSmoothingIntervalSeconds is set to {}",
+        pipeRemainingEventCountSmoothingIntervalSeconds);
   }
 
   public void setPipeStuckRestartIntervalSeconds(long pipeStuckRestartIntervalSeconds) {
@@ -1465,11 +1483,6 @@ public class CommonConfig {
     }
     this.pipeStuckRestartIntervalSeconds = pipeStuckRestartIntervalSeconds;
     logger.info("pipeStuckRestartIntervalSeconds is set to {}", pipeStuckRestartIntervalSeconds);
-  }
-
-  public void setPipeMaxAllowedRemainingInsertEventCount(
-      int pipeMaxAllowedRemainingInsertEventCount) {
-    this.pipeMaxAllowedRemainingInsertEventCount = pipeMaxAllowedRemainingInsertEventCount;
   }
 
   public void setPipeStuckRestartMinIntervalMs(long pipeStuckRestartMinIntervalMs) {
