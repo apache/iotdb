@@ -39,7 +39,7 @@ import static org.apache.iotdb.db.queryengine.plan.relational.utils.matching.Cap
  * <li>Its child is DeviceTableScan, which means there OFFSET is effect on only one region
  * <li>The query expressions are all scalar expression.
  */
-public class EliminateOffsetWithTableScan implements Rule<OffsetNode> {
+public class PushDownOffsetIntoTableScan implements Rule<OffsetNode> {
   private static final Capture<TableScanNode> CHILD = newCapture();
 
   private static final Pattern<OffsetNode> PATTERN =
