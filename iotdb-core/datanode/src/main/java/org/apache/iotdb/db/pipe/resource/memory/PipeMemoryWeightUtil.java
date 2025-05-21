@@ -98,9 +98,10 @@ public class PipeMemoryWeightUtil {
 
         if (tsDataType.isBinary()) {
           final Binary binary = field.getBinaryV();
-          totalSizeInBytes += binary == null ? 0 : binary.getLength();
+          totalSizeInBytes += binary == null ? 8 : binary.ramBytesUsed();
         } else {
-          totalSizeInBytes += tsDataType.getDataTypeSize();
+          totalSizeInBytes +=
+              roundUpToMultiple(TsPrimitiveType.getByType(tsDataType).getSize() + 8, 8);
         }
       }
     }
@@ -134,18 +135,18 @@ public class PipeMemoryWeightUtil {
 
           if (primitiveType.getDataType().isBinary()) {
             final Binary binary = primitiveType.getBinary();
-            totalSizeInBytes += binary == null ? 0 : binary.getLength();
+            totalSizeInBytes += binary == null ? 8 : binary.ramBytesUsed();
           } else {
-            totalSizeInBytes += primitiveType.getDataType().getDataTypeSize();
+            totalSizeInBytes += roundUpToMultiple(primitiveType.getSize() + 8, 8);
           }
         }
       } else {
         schemaCount = 1;
         if (type.isBinary()) {
           final Binary binary = batchData.getBinary();
-          totalSizeInBytes += binary == null ? 0 : binary.getLength();
+          totalSizeInBytes += binary == null ? 8 : binary.ramBytesUsed();
         } else {
-          totalSizeInBytes += type.getDataTypeSize();
+          totalSizeInBytes += roundUpToMultiple(TsPrimitiveType.getByType(type).getSize() + 8, 8);
         }
       }
     }
@@ -225,11 +226,10 @@ public class PipeMemoryWeightUtil {
             continue;
           }
           for (Binary value : values) {
-            totalSizeInBytes +=
-                value == null ? 0 : (value.getLength() == -1 ? 0 : value.getLength());
+            totalSizeInBytes += value == null ? 8 : value.ramBytesUsed();
           }
         } else {
-          totalSizeInBytes += (long) tablet.timestamps.length * tsDataType.getDataTypeSize();
+          totalSizeInBytes += (long) tablet.getMaxRowNumber() * tsDataType.getDataTypeSize();
         }
       }
     }
