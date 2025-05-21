@@ -40,9 +40,11 @@ import java.util.Objects;
 public abstract class PipeTabletEventBatch implements AutoCloseable {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(PipeTabletEventBatch.class);
-  private static final PipeModelFixedMemoryBlock MAX_BATCH_SIZE_IN_BYTES =
+  private static final PipeModelFixedMemoryBlock PIPE_MODEL_FIXED_MEMORY_BLOCK =
       PipeDataNodeResourceManager.memory()
-          .forceAllocateForModelFixedMemoryBlock(20, PipeMemoryBlockType.BATCH);
+          .forceAllocateForModelFixedMemoryBlock(
+              PipeDataNodeResourceManager.memory().getAllocatedMemorySizeInBytesOfBatch(),
+              PipeMemoryBlockType.BATCH);
 
   protected final List<EnrichedEvent> events = new ArrayList<>();
 
@@ -59,7 +61,7 @@ public abstract class PipeTabletEventBatch implements AutoCloseable {
 
     // limit in buffer size
     this.allocatedMemoryBlock =
-        MAX_BATCH_SIZE_IN_BYTES.registerPipeBatchMemoryBlock(requestMaxBatchSizeInBytes);
+        PIPE_MODEL_FIXED_MEMORY_BLOCK.registerPipeBatchMemoryBlock(requestMaxBatchSizeInBytes);
     allocatedMemoryBlock.setExpandable(false);
 
     if (getMaxBatchSizeInBytes() != requestMaxBatchSizeInBytes) {

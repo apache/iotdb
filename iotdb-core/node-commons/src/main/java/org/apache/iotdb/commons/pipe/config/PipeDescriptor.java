@@ -228,6 +228,16 @@ public class PipeDescriptor {
                 "pipe_data_structure_ts_file_memory_block_allocation_reject_threshold",
                 String.valueOf(
                     config.getPipeDataStructureTsFileMemoryBlockAllocationRejectThreshold()))));
+    config.setPipeDataStructureWalMemoryProportion(
+        Double.parseDouble(
+            properties.getProperty(
+                "pipe_data_structure_wal_memory_proportion",
+                String.valueOf(config.getPipeDataStructureWalMemoryProportion()))));
+    config.setPipeDataStructureBatchMemoryProportion(
+        Double.parseDouble(
+            properties.getProperty(
+                "pipe_data_structure_batch_memory_proportion",
+                String.valueOf(config.getPipeDataStructureBatchMemoryProportion()))));
     config.setPipeTotalFloatingMemoryProportion(
         Double.parseDouble(
             properties.getProperty(

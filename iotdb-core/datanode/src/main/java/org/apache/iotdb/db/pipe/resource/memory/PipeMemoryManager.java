@@ -101,6 +101,18 @@ public class PipeMemoryManager {
         * getTotalNonFloatingMemorySizeInBytes();
   }
 
+  public long getAllocatedMemorySizeInBytesOfWAL() {
+    return (long)
+        (PipeConfig.getInstance().getPipeDataStructureWalMemoryProportion()
+            * getTotalNonFloatingMemorySizeInBytes());
+  }
+
+  public long getAllocatedMemorySizeInBytesOfBatch() {
+    return (long)
+        (PipeConfig.getInstance().getPipeDataStructureBatchMemoryProportion()
+            * getTotalNonFloatingMemorySizeInBytes());
+  }
+
   public boolean isEnough4TabletParsing() {
     return (double) usedMemorySizeInBytesOfTablets + (double) usedMemorySizeInBytesOfTsFiles
             < EXCEED_PROTECT_THRESHOLD * allowedMaxMemorySizeInBytesOfTabletsAndTsFiles()

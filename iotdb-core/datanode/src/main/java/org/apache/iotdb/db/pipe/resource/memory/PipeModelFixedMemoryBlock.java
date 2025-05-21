@@ -52,8 +52,17 @@ public class PipeModelFixedMemoryBlock extends PipeFixedMemoryBlock {
 
   @Override
   public synchronized boolean expand() {
-    memoryBlocks.forEach(PipeDynamicMemoryBlock::doExpand);
+    // Ensure that the memory block that gets most of the memory is released first, which can reduce
+    // the jitter of memory allocationIf the memory block is not expanded, it will not be expanded
+    // again
+    memoryBlocks.stream()
+        .sorted((a, b) -> Long.compare(b.getMemoryUsageInBytes(), a.getMemoryUsageInBytes()))
+        .forEach(PipeDynamicMemoryBlock::doExpand);
     return false;
+  }
+
+  public long getMemoryAllocatedInBytes() {
+    return memoryAllocatedInBytes;
   }
 
   synchronized void releaseMemory(final PipeDynamicMemoryBlock memoryBlock) {

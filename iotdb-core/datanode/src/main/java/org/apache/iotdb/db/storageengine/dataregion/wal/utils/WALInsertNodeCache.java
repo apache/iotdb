@@ -68,7 +68,9 @@ public class WALInsertNodeCache {
 
   private static final PipeModelFixedMemoryBlock WAL_MODEL_FIXED_MEMORY =
       PipeDataNodeResourceManager.memory()
-          .forceAllocateForModelFixedMemoryBlock(20, PipeMemoryBlockType.WAL);
+          .forceAllocateForModelFixedMemoryBlock(
+              PipeDataNodeResourceManager.memory().getAllocatedMemorySizeInBytesOfWAL(),
+              PipeMemoryBlockType.WAL);
 
   private final PipeDynamicMemoryBlock memoryBlock;
 
