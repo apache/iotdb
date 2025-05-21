@@ -29,6 +29,7 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTabletBinaryReqV2;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTabletInsertNodeReqV2;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTabletRawReqV2;
+import org.apache.iotdb.db.pipe.event.common.statement.PipeStatementInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeInsertNodeTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
 import org.apache.iotdb.db.protocol.session.IClientSession;
@@ -79,9 +80,13 @@ import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstan
 import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.CONNECTOR_IOTDB_USERNAME_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.CONNECTOR_IOTDB_USER_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.CONNECTOR_SKIP_IF_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.CONNECTOR_USE_EVENT_USER_NAME_DEFAULT_VALUE;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.CONNECTOR_USE_EVENT_USER_NAME_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.SINK_IOTDB_USERNAME_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.SINK_IOTDB_USER_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.SINK_SKIP_IF_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.SINK_USE_EVENT_USER_NAME_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.WRITE_BACK_CONNECTOR_SKIP_IF_DEFAULT_VALUE;
 import static org.apache.iotdb.db.exception.metadata.DatabaseNotSetException.DATABASE_NOT_SET;
 import static org.apache.iotdb.db.utils.ErrorHandlingUtils.getRootCause;
 
@@ -100,6 +105,7 @@ public class WriteBackConnector implements PipeConnector {
   // Temporary, used to separate
   private IClientSession treeSession;
   private boolean skipIfNoPrivileges;
+  private boolean useEventUserName;
 
   private static final String TREE_MODEL_DATABASE_NAME_IDENTIFIER = null;
 
@@ -155,7 +161,7 @@ public class WriteBackConnector implements PipeConnector {
         parameters
             .getStringOrDefault(
                 Arrays.asList(CONNECTOR_SKIP_IF_KEY, SINK_SKIP_IF_KEY),
-                CONNECTOR_IOTDB_SKIP_IF_NO_PRIVILEGES)
+                WRITE_BACK_CONNECTOR_SKIP_IF_DEFAULT_VALUE)
             .trim();
     final Set<String> skipIfOptionSet =
         Arrays.stream(connectorSkipIfValue.split(","))
@@ -168,6 +174,11 @@ public class WriteBackConnector implements PipeConnector {
       throw new PipeParameterNotValidException(
           String.format("Parameters in set %s are not allowed in 'skipif'", skipIfOptionSet));
     }
+
+    useEventUserName =
+        parameters.getBooleanOrDefault(
+            Arrays.asList(CONNECTOR_USE_EVENT_USER_NAME_KEY, SINK_USE_EVENT_USER_NAME_KEY),
+            CONNECTOR_USE_EVENT_USER_NAME_DEFAULT_VALUE);
   }
 
   @Override
@@ -240,8 +251,10 @@ public class WriteBackConnector implements PipeConnector {
 
     final TSStatus status =
         insertBaseStatement.isWriteToTable()
-            ? executeStatementForTableModel(insertBaseStatement, dataBaseName)
-            : executeStatementForTreeModel(insertBaseStatement);
+            ? executeStatementForTableModel(
+                insertBaseStatement, dataBaseName, pipeInsertNodeTabletInsertionEvent.getUserName())
+            : executeStatementForTreeModel(
+                insertBaseStatement, pipeInsertNodeTabletInsertionEvent.getUserName());
 
     if (status.getCode() != TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode()
         && status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
@@ -281,9 +294,10 @@ public class WriteBackConnector implements PipeConnector {
 
     final TSStatus status =
         insertTabletStatement.isWriteToTable()
-            ? executeStatementForTableModel(insertTabletStatement, dataBaseName)
-            : executeStatementForTreeModel(insertTabletStatement);
-
+            ? executeStatementForTableModel(
+                insertTabletStatement, dataBaseName, pipeRawTabletInsertionEvent.getUserName())
+            : executeStatementForTreeModel(
+                insertTabletStatement, pipeRawTabletInsertionEvent.getUserName());
     if (status.getCode() != TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode()
         && status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()
         && !(skipIfNoPrivileges
@@ -297,7 +311,45 @@ public class WriteBackConnector implements PipeConnector {
 
   @Override
   public void transfer(final Event event) throws Exception {
-    // Ignore the event except TabletInsertionEvent
+    // only transfer PipeStatementInsertionEvent
+    if (event instanceof PipeStatementInsertionEvent) {
+      doTransferWrapper((PipeStatementInsertionEvent) event);
+    }
+  }
+
+  private void doTransferWrapper(final PipeStatementInsertionEvent pipeStatementInsertionEvent)
+      throws PipeException {
+    // We increase the reference count for this event to determine if the event may be released.
+    if (!pipeStatementInsertionEvent.increaseReferenceCount(WriteBackConnector.class.getName())) {
+      return;
+    }
+    try {
+      doTransfer(pipeStatementInsertionEvent);
+    } finally {
+      pipeStatementInsertionEvent.decreaseReferenceCount(WriteBackConnector.class.getName(), false);
+    }
+  }
+
+  private void doTransfer(final PipeStatementInsertionEvent pipeStatementInsertionEvent)
+      throws PipeException {
+
+    final TSStatus status =
+        pipeStatementInsertionEvent.isTableModelEvent()
+            ? executeStatementForTableModel(
+                pipeStatementInsertionEvent.getStatement(),
+                pipeStatementInsertionEvent.getTableModelDatabaseName(),
+                pipeStatementInsertionEvent.getUserName())
+            : executeStatementForTreeModel(
+                pipeStatementInsertionEvent.getStatement(),
+                pipeStatementInsertionEvent.getUserName());
+
+    if (status.getCode() != TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode()
+        && status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      throw new PipeException(
+          String.format(
+              "Write back PipeStatementInsertionEvent %s error, result status %s",
+              pipeStatementInsertionEvent, status));
+    }
   }
 
   @Override
@@ -310,9 +362,14 @@ public class WriteBackConnector implements PipeConnector {
     }
   }
 
-  private TSStatus executeStatementForTableModel(Statement statement, String dataBaseName) {
+  private TSStatus executeStatementForTableModel(
+      Statement statement, String dataBaseName, final String userName) {
     session.setDatabaseName(dataBaseName);
     session.setSqlDialect(IClientSession.SqlDialect.TABLE);
+    final String originalUserName = session.getUsername();
+    if (useEventUserName && userName != null) {
+      session.setUsername(userName);
+    }
     SESSION_MANAGER.registerSession(session);
     try {
       autoCreateDatabaseIfNecessary(dataBaseName);
@@ -366,6 +423,9 @@ public class WriteBackConnector implements PipeConnector {
       throw e;
     } finally {
       SESSION_MANAGER.removeCurrSession();
+      if (useEventUserName) {
+        session.setUsername(originalUserName);
+      }
     }
   }
 
@@ -410,9 +470,13 @@ public class WriteBackConnector implements PipeConnector {
     ALREADY_CREATED_DATABASES.add(database);
   }
 
-  private TSStatus executeStatementForTreeModel(final Statement statement) {
+  private TSStatus executeStatementForTreeModel(final Statement statement, final String userName) {
     treeSession.setDatabaseName(null);
     treeSession.setSqlDialect(IClientSession.SqlDialect.TREE);
+    final String originalUserName = treeSession.getUsername();
+    if (useEventUserName && userName != null) {
+      treeSession.setUsername(userName);
+    }
     SESSION_MANAGER.registerSession(treeSession);
     try {
       return Coordinator.getInstance()
@@ -428,6 +492,9 @@ public class WriteBackConnector implements PipeConnector {
           .status;
     } finally {
       SESSION_MANAGER.removeCurrSession();
+      if (useEventUserName) {
+        treeSession.setUsername(originalUserName);
+      }
     }
   }
 }

@@ -257,12 +257,19 @@ public class PipeConnectorConstant {
   public static final String CONNECTOR_SKIP_IF_KEY = "connector.skipif";
   public static final String SINK_SKIP_IF_KEY = "sink.skipif";
   public static final String CONNECTOR_IOTDB_SKIP_IF_NO_PRIVILEGES = "no-privileges";
+  public static final String WRITE_BACK_CONNECTOR_SKIP_IF_DEFAULT_VALUE =
+      CONNECTOR_IOTDB_SKIP_IF_NO_PRIVILEGES;
+  public static final String IOTDB_CONNECTOR_SKIP_IF_DEFAULT_VALUE = "";
 
   public static final String CONNECTOR_OPC_DA_CLSID_KEY = "connector.opcda.clsid";
   public static final String SINK_OPC_DA_CLSID_KEY = "sink.opcda.clsid";
 
   public static final String CONNECTOR_OPC_DA_PROGID_KEY = "connector.opcda.progid";
   public static final String SINK_OPC_DA_PROGID_KEY = "sink.opcda.progid";
+
+  public static final String CONNECTOR_USE_EVENT_USER_NAME_KEY = "connector.use-event-user-name";
+  public static final String SINK_USE_EVENT_USER_NAME_KEY = "sink.use-event-user-name";
+  public static final boolean CONNECTOR_USE_EVENT_USER_NAME_DEFAULT_VALUE = false;
 
   private PipeConnectorConstant() {
     throw new IllegalStateException("Utility class");

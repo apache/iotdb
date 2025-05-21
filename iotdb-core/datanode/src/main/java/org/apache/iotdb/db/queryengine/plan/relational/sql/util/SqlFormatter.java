@@ -39,6 +39,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropDB;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropFunction;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropPipe;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropPipePlugin;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropSubscription;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropTable;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropTopic;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Except;
@@ -1257,6 +1258,28 @@ public final class SqlFormatter {
     }
 
     @Override
+    protected Void visitShowSubscriptions(ShowSubscriptions node, Integer context) {
+      if (Objects.isNull(node.getTopicName())) {
+        builder.append("SHOW SUBSCRIPTIONS");
+      } else {
+        builder.append("SHOW SUBSCRIPTIONS ON ").append(node.getTopicName());
+      }
+
+      return null;
+    }
+
+    @Override
+    protected Void visitDropSubscription(DropSubscription node, Integer context) {
+      builder.append("DROP SUBSCRIPTION ");
+      if (node.hasIfExistsCondition()) {
+        builder.append("IF EXISTS ");
+      }
+      builder.append(node.getSubscriptionId());
+
+      return null;
+    }
+
+    @Override
     protected Void visitRelationalAuthorPlan(RelationalAuthorStatement node, Integer context) {
       switch (node.getAuthorType()) {
         case GRANT_USER_ANY:
@@ -1475,17 +1498,6 @@ public final class SqlFormatter {
         default:
           break;
       }
-      return null;
-    }
-
-    @Override
-    protected Void visitShowSubscriptions(ShowSubscriptions node, Integer context) {
-      if (Objects.isNull(node.getTopicName())) {
-        builder.append("SHOW SUBSCRIPTIONS");
-      } else {
-        builder.append("SHOW SUBSCRIPTIONS ON ").append(node.getTopicName());
-      }
-
       return null;
     }
 

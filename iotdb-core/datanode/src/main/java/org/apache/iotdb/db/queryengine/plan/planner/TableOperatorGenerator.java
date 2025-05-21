@@ -93,6 +93,7 @@ import org.apache.iotdb.db.queryengine.execution.operator.source.SeriesScanOpera
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.AbstractAggTableScanOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.AbstractTableScanOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.AsofMergeSortInnerJoinOperator;
+import org.apache.iotdb.db.queryengine.execution.operator.source.relational.AsofMergeSortLeftJoinOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.DefaultAggTableScanOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.DeviceIteratorScanOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.InformationSchemaTableScanOperator;
@@ -2008,6 +2009,28 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
                     || asofOperator == ComparisonExpression.Operator.GREATER_THAN_OR_EQUAL,
                 !asofJoinClause.isOperatorContainsGreater()),
             dataTypes);
+      } else if (requireNonNull(node.getJoinType()) == JoinNode.JoinType.LEFT) {
+        OperatorContext operatorContext =
+            context
+                .getDriverContext()
+                .addOperatorContext(
+                    context.getNextOperatorId(),
+                    node.getPlanNodeId(),
+                    AsofMergeSortLeftJoinOperator.class.getSimpleName());
+        return new AsofMergeSortLeftJoinOperator(
+            operatorContext,
+            leftChild,
+            leftJoinKeyPositions,
+            leftOutputSymbolIdx,
+            rightChild,
+            rightJoinKeyPositions,
+            rightOutputSymbolIdx,
+            JoinKeyComparatorFactory.getAsofComparators(
+                joinKeyTypes,
+                asofOperator == ComparisonExpression.Operator.LESS_THAN_OR_EQUAL
+                    || asofOperator == ComparisonExpression.Operator.GREATER_THAN_OR_EQUAL,
+                !asofJoinClause.isOperatorContainsGreater()),
+            dataTypes);
       } else {
         throw new IllegalStateException("Unsupported ASOF join type: " + node.getJoinType());
       }
@@ -2949,6 +2972,9 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
             hitCachedResults);
 
     ((DataDriverContext) context.getDriverContext()).addSourceOperator(lastQueryOperator);
+    parameter
+        .getOperatorContext()
+        .setOperatorType(LastQueryAggTableScanOperator.class.getSimpleName());
     return lastQueryOperator;
   }
 

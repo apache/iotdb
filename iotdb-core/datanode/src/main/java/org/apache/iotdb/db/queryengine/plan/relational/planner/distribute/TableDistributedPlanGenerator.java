@@ -84,6 +84,8 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.Table
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.TableDeviceQueryScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.DataNodeLocationSupplierFactory;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.PushPredicateIntoTableScan;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.FunctionCall;
 import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
 import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
 import org.apache.iotdb.db.schemaengine.table.DataNodeTreeViewSchemaUtils;
@@ -113,9 +115,6 @@ import java.util.stream.IntStream;
 
 import static com.google.common.collect.ImmutableList.toImmutableList;
 import static org.apache.iotdb.commons.partition.DataPartition.NOT_ASSIGNED;
-import static org.apache.iotdb.commons.udf.builtin.relational.TableBuiltinScalarFunction.DATE_BIN;
-import static org.apache.iotdb.db.queryengine.plan.relational.planner.SymbolAllocator.GROUP_KEY_SUFFIX;
-import static org.apache.iotdb.db.queryengine.plan.relational.planner.SymbolAllocator.SEPARATOR;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationNode.Step.SINGLE;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.PushPredicateIntoTableScan.containsDiffFunction;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.TransformSortToStreamSort.isOrderByAllIdsAndTime;
@@ -125,8 +124,6 @@ import static org.apache.tsfile.utils.Preconditions.checkArgument;
 /** This class is used to generate distributed plan for table model. */
 public class TableDistributedPlanGenerator
     extends PlanVisitor<List<PlanNode>, TableDistributedPlanGenerator.PlanContext> {
-  private static final String PUSH_DOWN_DATE_BIN_SYMBOL_NAME =
-      DATE_BIN.getFunctionName() + SEPARATOR + GROUP_KEY_SUFFIX;
   private final QueryId queryId;
   private final Analysis analysis;
   private final SymbolAllocator symbolAllocator;
@@ -273,25 +270,48 @@ public class TableDistributedPlanGenerator
         node.getChildren().size() == 1, "Size of TopKNode can only be 1 in logical plan.");
     List<PlanNode> childrenNodes = node.getChildren().get(0).accept(this, context);
     if (childrenNodes.size() == 1) {
+      if (canTopKEliminated(node.getOrderingScheme(), node.getCount(), childrenNodes.get(0))) {
+        return childrenNodes;
+      }
       node.setChildren(Collections.singletonList(childrenNodes.get(0)));
       return Collections.singletonList(node);
     }
 
     TopKNode newTopKNode = (TopKNode) node.clone();
     for (PlanNode child : childrenNodes) {
-      TopKNode subTopKNode =
-          new TopKNode(
-              queryId.genPlanNodeId(),
-              Collections.singletonList(child),
-              node.getOrderingScheme(),
-              node.getCount(),
-              node.getOutputSymbols(),
-              node.isChildrenDataInOrder());
-      newTopKNode.addChild(subTopKNode);
+      PlanNode newChild;
+      if (canTopKEliminated(node.getOrderingScheme(), node.getCount(), child)) {
+        newChild = child;
+      } else {
+        newChild =
+            new TopKNode(
+                queryId.genPlanNodeId(),
+                Collections.singletonList(child),
+                node.getOrderingScheme(),
+                node.getCount(),
+                node.getOutputSymbols(),
+                node.isChildrenDataInOrder());
+      }
+      newTopKNode.addChild(newChild);
     }
     nodeOrderingMap.put(newTopKNode.getPlanNodeId(), newTopKNode.getOrderingScheme());
 
     return Collections.singletonList(newTopKNode);
+  }
+
+  // if DeviceTableScanNode has limit <= K and with same order, we can eliminate TopK
+  private boolean canTopKEliminated(OrderingScheme orderingScheme, long k, PlanNode child) {
+    // if DeviceTableScanNode has limit <= K and with same order, we can directly return
+    // DeviceTableScanNode
+    if (child instanceof DeviceTableScanNode) {
+      DeviceTableScanNode tableScanNode = (DeviceTableScanNode) child;
+      return k >= tableScanNode.getPushDownLimit()
+          && (!tableScanNode.isPushLimitToEachDevice()
+              || (tableScanNode.isPushLimitToEachDevice()
+                  && tableScanNode.getDeviceEntries().size() == 1))
+          && canSortEliminated(orderingScheme, nodeOrderingMap.get(child.getPlanNodeId()));
+    }
+    return false;
   }
 
   @Override
@@ -1409,8 +1429,23 @@ public class TableDistributedPlanGenerator
 
   // time column or push down date_bin function call in agg which should only have one such column
   private boolean timeRelatedSymbol(Symbol symbol, DeviceTableScanNode deviceTableScanNode) {
-    return deviceTableScanNode.isTimeColumn(symbol)
-        || PUSH_DOWN_DATE_BIN_SYMBOL_NAME.equals(symbol.getName());
+    if (deviceTableScanNode.isTimeColumn(symbol)) {
+      return true;
+    }
+
+    if (deviceTableScanNode instanceof AggregationTableScanNode) {
+      AggregationTableScanNode aggregationTableScanNode =
+          (AggregationTableScanNode) deviceTableScanNode;
+      if (aggregationTableScanNode.getProjection() != null
+          && !aggregationTableScanNode.getProjection().getMap().isEmpty()) {
+        Expression expression = aggregationTableScanNode.getProjection().get(symbol);
+        // For now, if there is FunctionCall in AggregationTableScanNode, it must be date_bin
+        // function of time. See PushAggregationIntoTableScan#isDateBinFunctionOfTime
+        return expression instanceof FunctionCall;
+      }
+    }
+
+    return false;
   }
 
   // ------------------- schema related interface ---------------------------------------------
