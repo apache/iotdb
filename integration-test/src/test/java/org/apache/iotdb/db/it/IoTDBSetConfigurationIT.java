@@ -263,8 +263,8 @@ public class IoTDBSetConfigurationIT {
         statement.execute("CREATE TIMESERIES root.db1.s3 WITH datatype=INT32");
       } catch (SQLException e) {
         assertEquals(
-                "509: An error occurred when executing getDeviceToDatabase():root.db1 is not a legal path, because it is no longer than default sg level: 3",
-                e.getMessage());
+            "509: An error occurred when executing getDeviceToDatabase():root.db1 is not a legal path, because it is no longer than default sg level: 3",
+            e.getMessage());
       }
     }
   }
