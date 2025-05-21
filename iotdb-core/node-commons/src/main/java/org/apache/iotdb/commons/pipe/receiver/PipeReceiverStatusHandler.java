@@ -52,6 +52,7 @@ public class PipeReceiverStatusHandler {
 
   private final long retryMaxMillisWhenOtherExceptionsOccur;
   private final boolean shouldRecordIgnoredDataWhenOtherExceptionsOccur;
+  private final boolean skipIfNoPrivileges;
 
   private final AtomicLong exceptionFirstEncounteredTime = new AtomicLong(0);
   private final AtomicBoolean exceptionEventHasBeenRetried = new AtomicBoolean(false);
@@ -62,7 +63,8 @@ public class PipeReceiverStatusHandler {
       final long retryMaxSecondsWhenConflictOccurs,
       final boolean shouldRecordIgnoredDataWhenConflictOccurs,
       final long retryMaxSecondsWhenOtherExceptionsOccur,
-      final boolean shouldRecordIgnoredDataWhenOtherExceptionsOccur) {
+      final boolean shouldRecordIgnoredDataWhenOtherExceptionsOccur,
+      final boolean skipIfNoPrivileges) {
     this.isRetryAllowedWhenConflictOccurs = isRetryAllowedWhenConflictOccurs;
     this.retryMaxMillisWhenConflictOccurs =
         retryMaxSecondsWhenConflictOccurs < 0
@@ -76,6 +78,7 @@ public class PipeReceiverStatusHandler {
             : retryMaxSecondsWhenOtherExceptionsOccur * 1000;
     this.shouldRecordIgnoredDataWhenOtherExceptionsOccur =
         shouldRecordIgnoredDataWhenOtherExceptionsOccur;
+    this.skipIfNoPrivileges = skipIfNoPrivileges;
   }
 
   /**
@@ -158,6 +161,46 @@ public class PipeReceiverStatusHandler {
                   Math.max(
                       PipeSubtask.MAX_RETRY_TIMES,
                       Math.min(CONFLICT_RETRY_MAX_TIMES, retryMaxMillisWhenConflictOccurs * 1.1)));
+        }
+
+      case 803: // NO_PERMISSION
+        if (skipIfNoPrivileges) {
+          return;
+        }
+
+        synchronized (this) {
+          recordExceptionStatusIfNecessary(recordMessage);
+
+          if (exceptionEventHasBeenRetried.get()
+              && System.currentTimeMillis() - exceptionFirstEncounteredTime.get()
+                  > retryMaxMillisWhenOtherExceptionsOccur) {
+            LOGGER.warn(
+                "No permission: retry timeout. will be ignored. event: {}. status: {}",
+                shouldRecordIgnoredDataWhenOtherExceptionsOccur ? recordMessage : "not recorded",
+                status);
+            resetExceptionStatus();
+            return;
+          }
+
+          LOGGER.warn(
+              "No permission: will retry {}. status: {}",
+              retryMaxMillisWhenOtherExceptionsOccur == Long.MAX_VALUE
+                  ? "forever"
+                  : "for at least "
+                      + (retryMaxMillisWhenOtherExceptionsOccur
+                              + exceptionFirstEncounteredTime.get()
+                              - System.currentTimeMillis())
+                          / 1000.0
+                      + " seconds",
+              status);
+          exceptionEventHasBeenRetried.set(true);
+          throw new PipeRuntimeConnectorRetryTimesConfigurableException(
+              exceptionMessage,
+              (int)
+                  Math.max(
+                      PipeSubtask.MAX_RETRY_TIMES,
+                      Math.min(
+                          CONFLICT_RETRY_MAX_TIMES, retryMaxMillisWhenOtherExceptionsOccur * 1.1)));
         }
 
       default: // Other exceptions
