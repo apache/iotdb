@@ -304,7 +304,7 @@ public class InformationSchema {
 
     final TsTable nodesTable = new TsTable(NODES);
     nodesTable.addColumnSchema(
-        new TagColumnSchema(ColumnHeaderConstant.NODE_ID_TABLE_MODEL, TSDataType.STRING));
+        new TagColumnSchema(ColumnHeaderConstant.NODE_ID_TABLE_MODEL, TSDataType.INT32));
     nodesTable.addColumnSchema(
         new AttributeColumnSchema(ColumnHeaderConstant.NODE_TYPE_TABLE_MODEL, TSDataType.INT32));
     nodesTable.addColumnSchema(
@@ -326,7 +326,7 @@ public class InformationSchema {
 
     final TsTable configNodesTable = new TsTable(CONFIG_NODES);
     configNodesTable.addColumnSchema(
-        new TagColumnSchema(ColumnHeaderConstant.NODE_ID_TABLE_MODEL, TSDataType.STRING));
+        new TagColumnSchema(ColumnHeaderConstant.NODE_ID_TABLE_MODEL, TSDataType.INT32));
     configNodesTable.addColumnSchema(
         new AttributeColumnSchema(ColumnHeaderConstant.CONFIG_CONSENSUS_PORT, TSDataType.INT32));
     configNodesTable.addColumnSchema(
@@ -337,7 +337,7 @@ public class InformationSchema {
 
     final TsTable dataNodesTable = new TsTable(DATA_NODES);
     dataNodesTable.addColumnSchema(
-        new TagColumnSchema(ColumnHeaderConstant.NODE_ID_TABLE_MODEL, TSDataType.STRING));
+        new TagColumnSchema(ColumnHeaderConstant.NODE_ID_TABLE_MODEL, TSDataType.INT32));
     dataNodesTable.addColumnSchema(
         new AttributeColumnSchema(
             ColumnHeaderConstant.DATA_REGION_NUM_TABLE_MODEL, TSDataType.INT32));
