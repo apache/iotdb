@@ -23,11 +23,16 @@ import org.apache.tsfile.utils.Pair;
 
 import javax.validation.constraints.NotNull;
 
+import java.util.function.Consumer;
 import java.util.stream.Stream;
 
 public class PipeDynamicMemoryBlock {
 
   private final PipeModelFixedMemoryBlock fixedMemoryBlock;
+
+  private boolean isExpandable = true;
+
+  private Consumer<PipeDynamicMemoryBlock> expand = null;
 
   private volatile boolean released = false;
 
@@ -70,6 +75,14 @@ public class PipeDynamicMemoryBlock {
     }
   }
 
+  public void setExpandable(boolean expandable) {
+    isExpandable = expandable;
+  }
+
+  public void setExpand(Consumer<PipeDynamicMemoryBlock> expand) {
+    this.expand = expand;
+  }
+
   public void updateCurrentMemoryEfficiencyAdjustMem(final double currentMemoryEfficiency) {
     synchronized (fixedMemoryBlock) {
       this.historyMemoryEfficiency = this.currentMemoryEfficiency;
@@ -99,7 +112,15 @@ public class PipeDynamicMemoryBlock {
   }
 
   public void close() {
-    fixedMemoryBlock.releaseMemory(this);
-    released = true;
+    synchronized (fixedMemoryBlock) {
+      fixedMemoryBlock.releaseMemory(this);
+      released = true;
+    }
+  }
+
+  void doExpand() {
+    if (isExpandable && expand != null) {
+      expand.accept(this);
+    }
   }
 }

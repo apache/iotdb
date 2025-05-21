@@ -60,6 +60,7 @@ public abstract class PipeTabletEventBatch implements AutoCloseable {
     // limit in buffer size
     this.allocatedMemoryBlock =
         MAX_BATCH_SIZE_IN_BYTES.registerPipeBatchMemoryBlock(requestMaxBatchSizeInBytes);
+    allocatedMemoryBlock.setExpandable(false);
 
     if (getMaxBatchSizeInBytes() != requestMaxBatchSizeInBytes) {
       LOGGER.info(

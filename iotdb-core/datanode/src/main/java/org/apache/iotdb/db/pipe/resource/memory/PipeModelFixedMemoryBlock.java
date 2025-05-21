@@ -50,6 +50,12 @@ public class PipeModelFixedMemoryBlock extends PipeFixedMemoryBlock {
     return memoryBlock;
   }
 
+  @Override
+  public synchronized boolean expand() {
+    memoryBlocks.forEach(PipeDynamicMemoryBlock::doExpand);
+    return false;
+  }
+
   synchronized void releaseMemory(final PipeDynamicMemoryBlock memoryBlock) {
     resetMemoryBlockSize(memoryBlock, 0);
     memoryBlocks.remove(memoryBlock);
