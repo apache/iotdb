@@ -638,6 +638,9 @@ public class IoTDBDatabaseIT {
                   "information_schema,functions,INF,USING,null,SYSTEM VIEW,",
                   "information_schema,configurations,INF,USING,null,SYSTEM VIEW,",
                   "information_schema,keywords,INF,USING,null,SYSTEM VIEW,",
+                  "information_schema,nodes,INF,USING,null,SYSTEM VIEW,",
+                  "information_schema,config_nodes,INF,USING,null,SYSTEM VIEW,",
+                  "information_schema,data_nodes,INF,USING,null,SYSTEM VIEW,",
                   "test,test,INF,USING,test,BASE TABLE,",
                   "test,view_table,100,USING,null,VIEW FROM TREE,")));
       TestUtils.assertResultSetEqual(
