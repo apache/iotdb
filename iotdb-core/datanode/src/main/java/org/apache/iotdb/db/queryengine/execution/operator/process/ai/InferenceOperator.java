@@ -38,7 +38,6 @@ import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.block.column.ColumnBuilder;
-import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.block.TsBlock;
 import org.apache.tsfile.read.common.block.TsBlockBuilder;
 import org.apache.tsfile.read.common.block.column.TimeColumnBuilder;
@@ -47,12 +46,9 @@ import org.apache.tsfile.utils.RamUsageEstimator;
 
 import java.nio.ByteBuffer;
 import java.util.Arrays;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
-import java.util.stream.Collectors;
 
 import static com.google.common.util.concurrent.Futures.successfulAsList;
 
@@ -74,8 +70,7 @@ public class InferenceOperator implements ProcessOperator {
 
   private final long maxRetainedSize;
   private final long maxReturnSize;
-  private final List<String> inputColumnNames;
-  private final List<String> targetColumnNames;
+  private final int[] columnIndexes;
   private long totalRow;
   private int resultIndex = 0;
   private List<ByteBuffer> results;
@@ -105,8 +100,11 @@ public class InferenceOperator implements ProcessOperator {
         new TsBlockBuilder(
             Arrays.asList(modelInferenceDescriptor.getModelInformation().getInputDataType()));
     this.modelInferenceExecutor = modelInferenceExecutor;
-    this.targetColumnNames = targetColumnNames;
-    this.inputColumnNames = inputColumnNames;
+    this.columnIndexes = new int[inputColumnNames.size()];
+    for (int i = 0; i < inputColumnNames.size(); i++) {
+      columnIndexes[i] = targetColumnNames.indexOf(inputColumnNames.get(i));
+    }
+
     this.maxRetainedSize = maxRetainedSize;
     this.maxReturnSize = maxReturnSize;
     this.totalRow = 0;
@@ -232,7 +230,7 @@ public class InferenceOperator implements ProcessOperator {
       }
       timeColumnBuilder.writeLong(timestamp);
       for (int columnIndex = 0; columnIndex < inputTsBlock.getValueColumnCount(); columnIndex++) {
-        columnBuilders[columnIndex].write(inputTsBlock.getColumn(columnIndex), i);
+        columnBuilders[columnIndexes[columnIndex]].write(inputTsBlock.getColumn(columnIndex), i);
       }
       inputTsBlockBuilder.declarePosition();
     }
@@ -304,12 +302,6 @@ public class InferenceOperator implements ProcessOperator {
     TsBlock finalInputTsBlock = preProcess(inputTsBlock);
     TWindowParams windowParams = getWindowParams();
 
-    Map<String, Integer> columnNameIndexMap = new HashMap<>();
-
-    for (int i = 0; i < inputColumnNames.size(); i++) {
-      columnNameIndexMap.put(inputColumnNames.get(i), i);
-    }
-
     inferenceExecutionFuture =
         Futures.submit(
             () -> {
@@ -318,11 +310,6 @@ public class InferenceOperator implements ProcessOperator {
                       .borrowClient(modelInferenceDescriptor.getTargetAINode())) {
                 return client.inference(
                     modelInferenceDescriptor.getModelName(),
-                    targetColumnNames,
-                    Arrays.stream(modelInferenceDescriptor.getModelInformation().getInputDataType())
-                        .map(TSDataType::toString)
-                        .collect(Collectors.toList()),
-                    columnNameIndexMap,
                     finalInputTsBlock,
                     modelInferenceDescriptor.getInferenceAttributes(),
                     windowParams);
@@ -367,11 +354,6 @@ public class InferenceOperator implements ProcessOperator {
         + MemoryEstimationHelper.getEstimatedSizeOfAccountableObject(child)
         + MemoryEstimationHelper.getEstimatedSizeOfAccountableObject(operatorContext)
         + inputTsBlockBuilder.getRetainedSizeInBytes()
-        + (inputColumnNames == null
-            ? 0
-            : inputColumnNames.stream().mapToLong(RamUsageEstimator::sizeOf).sum())
-        + (targetColumnNames == null
-            ? 0
-            : targetColumnNames.stream().mapToLong(RamUsageEstimator::sizeOf).sum());
+        + (long) columnIndexes.length * Integer.BYTES;
   }
 }

@@ -133,7 +133,7 @@ public class TableDeviceSchemaFetcher {
 
       final List<ColumnHeader> columnHeaderList =
           coordinator.getQueryExecution(queryId).getDatasetHeader().getColumnHeaders();
-      final int idLength = DataNodeTableCache.getInstance().getTable(database, table).getIdNums();
+      final int idLength = DataNodeTableCache.getInstance().getTable(database, table).getTagNum();
       final Map<IDeviceID, Map<String, Binary>> fetchedDeviceSchema = new HashMap<>();
 
       while (coordinator.getQueryExecution(queryId).hasNextResult()) {
@@ -218,7 +218,7 @@ public class TableDeviceSchemaFetcher {
   }
 
   // Used by show/count device and update device.
-  // Update device will not access cache
+  // Update / Delete device will not access cache
   public boolean parseFilter4TraverseDevice(
       final TsTable tableInstance,
       final List<Expression> expressionList,
@@ -347,7 +347,7 @@ public class TableDeviceSchemaFetcher {
       final List<IDeviceID> fetchPaths,
       final boolean isDirectDeviceQuery,
       final MPPQueryContext queryContext) {
-    final String[] idValues = new String[tableInstance.getIdNums()];
+    final String[] idValues = new String[tableInstance.getTagNum()];
     for (final List<SchemaFilter> schemaFilters : idFilters.values()) {
       final TagFilter tagFilter = (TagFilter) schemaFilters.get(0);
       final SchemaFilter childFilter = tagFilter.getChild();
@@ -376,9 +376,9 @@ public class TableDeviceSchemaFetcher {
       final List<String> attributeColumns,
       final List<IDeviceID> fetchPaths,
       final boolean isDirectDeviceQuery,
-      final String[] idValues,
+      final String[] tagValues,
       final MPPQueryContext queryContext) {
-    final IDeviceID deviceID = convertIdValuesToDeviceID(tableInstance.getTableName(), idValues);
+    final IDeviceID deviceID = convertTagValuesToDeviceID(tableInstance.getTableName(), tagValues);
     final Map<String, Binary> attributeMap = cache.getDeviceAttribute(database, deviceID);
 
     // 1. AttributeMap == null means cache miss
@@ -414,9 +414,9 @@ public class TableDeviceSchemaFetcher {
       final TsTable tableInstance,
       final Predicate<AlignedDeviceEntry> check,
       final List<IDeviceID> fetchPaths,
-      final String[] idValues) {
+      final String[] tagValues) {
     final IDeviceID deviceID =
-        DataNodeTreeViewSchemaUtils.convertToIDeviceID(tableInstance, idValues);
+        DataNodeTreeViewSchemaUtils.convertToIDeviceID(tableInstance, tagValues);
     final IDeviceSchema schema = TableDeviceSchemaCache.getInstance().getDeviceSchema(deviceID);
     final String database;
     if (!(schema instanceof TreeDeviceNormalSchema) || Objects.isNull(check)) {
@@ -435,7 +435,7 @@ public class TableDeviceSchemaFetcher {
     return true;
   }
 
-  public static IDeviceID convertIdValuesToDeviceID(
+  public static IDeviceID convertTagValuesToDeviceID(
       final String tableName, final String[] idValues) {
     // Convert to IDeviceID
     final String[] deviceIdNodes = new String[idValues.length + 1];
@@ -534,7 +534,7 @@ public class TableDeviceSchemaFetcher {
       final List<DeviceEntry> deviceEntryList) {
     final Column[] columns = tsBlock.getValueColumns();
     for (int i = 0; i < tsBlock.getPositionCount(); i++) {
-      final String[] nodes = new String[tableInstance.getIdNums() + 1];
+      final String[] nodes = new String[tableInstance.getTagNum() + 1];
       final Map<String, Binary> attributeMap = new HashMap<>();
       constructNodsArrayAndAttributeMap(
           attributeMap,
@@ -566,7 +566,7 @@ public class TableDeviceSchemaFetcher {
       final Map<String, List<DeviceEntry>> deviceEntryMap) {
     final Column[] columns = tsBlock.getValueColumns();
     for (int i = 0; i < tsBlock.getPositionCount(); i++) {
-      final String[] nodes = new String[tableInstance.getIdNums()];
+      final String[] nodes = new String[tableInstance.getTagNum()];
       constructNodsArrayAndAttributeMap(
           Collections.emptyMap(), nodes, null, columnHeaderList, columns, tableInstance, i);
       final IDeviceID deviceID =

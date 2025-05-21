@@ -51,6 +51,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 import static org.apache.iotdb.commons.schema.column.ColumnHeaderConstant.describeTableColumnHeaders;
 import static org.apache.iotdb.commons.schema.column.ColumnHeaderConstant.describeTableDetailsColumnHeaders;
@@ -765,14 +766,9 @@ public class IoTDBTableIT {
     try (final Connection connection = EnvFactory.getEnv().getConnection();
         final Statement statement = connection.createStatement()) {
       statement.execute("create database root.a.b");
-      statement.execute("create timeSeries root.a.b.c.s1 int32");
+      statement.execute("create timeSeries root.a.b.c.S1 int32");
       statement.execute("create timeSeries root.a.b.c.s2 string");
-      statement.execute("create timeSeries root.a.b.s1 int32");
-      statement.execute("create timeSeries root.a.b.d.s1 boolean");
-      statement.execute("create timeSeries root.a.b.c.f.g.h.s1 int32");
-
-      // Put schema cache
-      statement.execute("select s1, s2 from root.a.b.c");
+      statement.execute("create timeSeries root.a.b.S1 int32");
     } catch (SQLException e) {
       fail(e.getMessage());
     }
@@ -782,16 +778,104 @@ public class IoTDBTableIT {
         final Statement statement = connection.createStatement()) {
       statement.execute("create database tree_view_db");
       statement.execute("use tree_view_db");
+      statement.execute("create view tree_table (tag1 tag, tag2 tag) as root.a.**");
+      statement.execute("drop view tree_table");
+    }
+
+    try (final Connection connection = EnvFactory.getEnv().getConnection();
+        final Statement statement = connection.createStatement()) {
+      statement.execute("create timeSeries root.a.b.d.s1 int32");
+    } catch (SQLException e) {
+      fail(e.getMessage());
+    }
+
+    try (final Connection connection =
+            EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        final Statement statement = connection.createStatement()) {
+      statement.execute("use tree_view_db");
+
       try {
-        statement.execute("create table view tree_table (tag1 tag, tag2 tag) as root.a.**");
+        statement.execute("create view tree_table (tag1 tag, tag2 tag) as root.a.**");
+        fail();
+      } catch (final SQLException e) {
+        final Set<String> result =
+            new HashSet<>(
+                Arrays.asList(
+                    "617: The measurements s1 and S1 share the same lower case when auto detecting type, please check",
+                    "617: The measurements S1 and s1 share the same lower case when auto detecting type, please check"));
+        assertTrue(result.contains(e.getMessage()));
+      }
+    }
+
+    try (final Connection connection = EnvFactory.getEnv().getConnection();
+        final Statement statement = connection.createStatement()) {
+      statement.execute("drop timeSeries root.a.b.d.s1");
+      statement.execute("create device template t1 (S1 boolean, s9 int32)");
+      statement.execute("set schema template t1 to root.a.b.d");
+      statement.execute("create timeSeries root.a.b.c.f.g.h.S1 int32");
+
+      // Put schema cache
+      statement.execute("select S1, s2 from root.a.b.c");
+    } catch (SQLException e) {
+      fail(e.getMessage());
+    }
+
+    try (final Connection connection =
+            EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        final Statement statement = connection.createStatement()) {
+      statement.execute("use tree_view_db");
+
+      try {
+        statement.execute("create view tree_table (tag1 tag, tag2 tag) as root.a.**");
         fail();
       } catch (final SQLException e) {
         assertEquals(
-            "614: Multiple types encountered when auto detecting type of measurement 's1', please check",
+            "614: Multiple types encountered when auto detecting type of measurement 'S1', please check",
             e.getMessage());
       }
+
+      try {
+        statement.execute("create view tree_table (tag1 tag, tag2 tag, S1 field) as root.a.**");
+        fail();
+      } catch (final SQLException e) {
+        assertEquals(
+            "614: Multiple types encountered when auto detecting type of measurement 'S1', please check",
+            e.getMessage());
+      }
+    }
+
+    try (final Connection connection = EnvFactory.getEnv().getConnection();
+        final Statement statement = connection.createStatement()) {
+      statement.execute("create timeSeries root.a.b.e.s1 int32");
+    } catch (SQLException e) {
+      fail(e.getMessage());
+    }
+
+    try (final Connection connection =
+            EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        final Statement statement = connection.createStatement()) {
+      statement.execute("use tree_view_db");
+
+      // Temporary
+      try {
+        statement.execute(
+            "create or replace view tree_table (tag1 tag, tag2 tag, S1 int32 field, s3 boolean from S1) as root.a.**");
+        fail();
+      } catch (final SQLException e) {
+        assertEquals(
+            "701: The duplicated source measurement S1 is unsupported yet.", e.getMessage());
+      }
+
+      try {
+        statement.execute(
+            "create or replace view tree_table (tag1 tag, tag2 tag, S1 int32 field, s3 from s2, s8 field) as root.a.**");
+        fail();
+      } catch (final SQLException e) {
+        assertEquals("528: Measurements not found for s8, cannot auto detect", e.getMessage());
+      }
+
       statement.execute(
-          "create or replace table view tree_table (tag1 tag, tag2 tag, s1 int32 field, s3 from s2) as root.a.**");
+          "create or replace view tree_table (tag1 tag, tag2 tag, S1 int32 field, s3 from s2) as root.a.**");
       statement.execute("alter view tree_table rename to view_table");
       statement.execute("alter view view_table rename column s1 to s11");
       statement.execute("alter view view_table set properties ttl=100");
@@ -800,7 +884,7 @@ public class IoTDBTableIT {
       TestUtils.assertResultSetEqual(
           statement.executeQuery("show tables details"),
           "TableName,TTL(ms),Status,Comment,TableType,",
-          Collections.singleton("view_table,100,USING,comment,TREE_TO_TABLE VIEW,"));
+          Collections.singleton("view_table,100,USING,comment,VIEW FROM TREE,"));
 
       TestUtils.assertResultSetEqual(
           statement.executeQuery("desc view_table"),
@@ -812,13 +896,13 @@ public class IoTDBTableIT {
                   "tag2,STRING,TAG,",
                   "s11,INT32,FIELD,",
                   "s3,STRING,FIELD,")));
-      // Currently we show the device even if all of its measurements does not match the type,
+      // Currently we show the device even if all of its measurements does not match,
       // the handling logic at query because validate it at fetching will potentially cause a
       // lot of time
       TestUtils.assertResultSetEqual(
           statement.executeQuery("show devices from view_table where tag1 = 'b'"),
           "tag1,tag2,",
-          new HashSet<>(Arrays.asList("b,c,", "b,null,", "b,d,")));
+          new HashSet<>(Arrays.asList("b,c,", "b,null,", "b,e,")));
       TestUtils.assertResultSetEqual(
           statement.executeQuery("show devices from view_table where tag1 = 'b' and tag2 is null"),
           "tag1,tag2,",
@@ -834,9 +918,11 @@ public class IoTDBTableIT {
         final Statement statement = connection.createStatement()) {
       // Test create & replace + restrict
       statement.execute(
-          "create or replace table view tree_view_db.view_table (tag1 tag, tag2 tag, s11 int32 field, s3 from s2) as root.a.** with (ttl=100) restrict");
-    } catch (SQLException e) {
-      fail(e.getMessage());
+          "create or replace view tree_view_db.view_table (tag1 tag, tag2 tag, s11 int32 field, s3 from s2) restrict with (ttl=100) as root.a.**");
+      fail();
+    } catch (final SQLException e) {
+      assertTrue(
+          e.getMessage().contains("The 'CreateTableView' is unsupported in tree sql-dialect."));
     }
 
     // Test permission
@@ -852,7 +938,7 @@ public class IoTDBTableIT {
             EnvFactory.getEnv().getConnection("testUser", "testUser", BaseEnv.TABLE_SQL_DIALECT);
         final Statement statement = connection.createStatement()) {
       statement.execute(
-          "create or replace table view tree_view_db.view_table (tag1 tag, tag2 tag, s11 int32 field, s3 from s2) as root.a.** with (ttl=100) restrict");
+          "create or replace view tree_view_db.view_table (tag1 tag, tag2 tag, s11 int32 field, s3 from s2) restrict with (ttl=100) as root.a.**");
       fail();
     } catch (final SQLException e) {
       assertEquals(
@@ -872,7 +958,7 @@ public class IoTDBTableIT {
             EnvFactory.getEnv().getConnection("testUser", "testUser", BaseEnv.TABLE_SQL_DIALECT);
         final Statement statement = connection.createStatement()) {
       statement.execute(
-          "create or replace table view tree_view_db.view_table (tag1 tag, tag2 tag, s11 int32 field, s3 from s2) as root.a.** with (ttl=100) restrict");
+          "create or replace view tree_view_db.view_table (tag1 tag, tag2 tag, s11 int32 field, s3 from s2) restrict with (ttl=100) as root.a.**");
       fail();
     } catch (final SQLException e) {
       assertEquals(
@@ -891,7 +977,7 @@ public class IoTDBTableIT {
             EnvFactory.getEnv().getConnection("testUser", "testUser", BaseEnv.TABLE_SQL_DIALECT);
         final Statement statement = connection.createStatement()) {
       statement.execute(
-          "create or replace table view tree_view_db.view_table (tag1 tag, tag2 tag, s11 int32 field, s3 from s2) as root.a.** with (ttl=100) restrict");
+          "create or replace view tree_view_db.view_table (tag1 tag, tag2 tag, s11 int32 field, s3 from s2) restrict with (ttl=100) as root.a.**");
       fail();
     } catch (final SQLException e) {
       assertEquals(
@@ -910,7 +996,7 @@ public class IoTDBTableIT {
             EnvFactory.getEnv().getConnection("testUser", "testUser", BaseEnv.TABLE_SQL_DIALECT);
         final Statement statement = connection.createStatement()) {
       statement.execute(
-          "create or replace table view tree_view_db.view_table (tag1 tag, tag2 tag, s11 int32 field, s3 from s2) as root.a.** with (ttl=100) restrict");
+          "create or replace view tree_view_db.view_table (tag1 tag, tag2 tag, s11 int32 field, s3 from s2) restrict with (ttl=100) as root.a.**");
     } catch (final SQLException e) {
       fail();
     }
@@ -929,14 +1015,14 @@ public class IoTDBTableIT {
           statement.executeQuery("show create view view_table"),
           "View,Create View,",
           Collections.singleton(
-              "view_table,CREATE TABLE VIEW \"view_table\" (\"tag1\" STRING TAG,\"tag2\" STRING TAG,\"s11\" INT32 FIELD,\"s3\" STRING FIELD FROM \"s2\") AS root.a.** WITH (ttl=100) RESTRICT,"));
+              "view_table,CREATE VIEW \"view_table\" (\"tag1\" STRING TAG,\"tag2\" STRING TAG,\"s11\" INT32 FIELD,\"s3\" STRING FIELD FROM \"s2\") RESTRICT WITH (ttl=100) AS root.a.**,"));
 
       // Can also use "show create table"
       TestUtils.assertResultSetEqual(
           statement.executeQuery("show create table view_table"),
           "View,Create View,",
           Collections.singleton(
-              "view_table,CREATE TABLE VIEW \"view_table\" (\"tag1\" STRING TAG,\"tag2\" STRING TAG,\"s11\" INT32 FIELD,\"s3\" STRING FIELD FROM \"s2\") AS root.a.** WITH (ttl=100) RESTRICT,"));
+              "view_table,CREATE VIEW \"view_table\" (\"tag1\" STRING TAG,\"tag2\" STRING TAG,\"s11\" INT32 FIELD,\"s3\" STRING FIELD FROM \"s2\") RESTRICT WITH (ttl=100) AS root.a.**,"));
 
       statement.execute("create table a ()");
       try {
@@ -953,7 +1039,7 @@ public class IoTDBTableIT {
         assertEquals("701: The system view does not support show create.", e.getMessage());
       }
       try {
-        statement.execute("create or replace table view a () as root.b.**");
+        statement.execute("create or replace view a () as root.b.**");
         fail();
       } catch (final SQLException e) {
         assertEquals("551: Table 'tree_view_db.a' already exists.", e.getMessage());

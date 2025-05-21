@@ -4157,6 +4157,12 @@ public class IoTDBTableAggregationIT {
         new String[] {"time", "province", "_col2", "_col3"},
         retArray,
         DATABASE_NAME);
+
+    tableResultSetEqualTest(
+        "select approx_count_distinct(time,0.0040625),approx_count_distinct(time,0.26) from table1",
+        new String[] {"_col0", "_col1"},
+        new String[] {"10,11,"},
+        DATABASE_NAME);
   }
 
   @Test
@@ -5239,5 +5245,27 @@ public class IoTDBTableAggregationIT {
     tableAssertTestFail("select (s1,s2) from table1", errMsg, DATABASE_NAME);
 
     tableAssertTestFail("select * from table1 where (s1,s2) is not null", errMsg, DATABASE_NAME);
+  }
+
+  @Test
+  public void emptyBlockInStreamOperatorTest() {
+    String[] expectedHeader = new String[] {"_col0"};
+    String[] retArray = new String[] {};
+
+    // the sub-query produces empty block
+
+    // test StreamingHashAggregationOperator
+    tableResultSetEqualTest(
+        "select count(1) from (select * from table1 where s1 + 1 < 1) group by device_id,s1",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+
+    // test StreamingAggregationOperator
+    tableResultSetEqualTest(
+        "select count(1) from (select * from table1 where s1 + 1 < 1) group by device_id",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
   }
 }

@@ -96,7 +96,7 @@ import org.apache.iotdb.db.queryengine.plan.expression.unary.LogicNotExpression;
 import org.apache.iotdb.db.queryengine.plan.expression.unary.NegationExpression;
 import org.apache.iotdb.db.queryengine.plan.expression.unary.RegularExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ColumnDefinition;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateTableView;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateView;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DataType;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DataTypeParameter;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.GenericDataType;
@@ -203,6 +203,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.metadata.region.MigrateReg
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.region.ReconstructRegionStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.region.RemoveRegionStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.subscription.CreateTopicStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.subscription.DropSubscriptionStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.subscription.DropTopicStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.subscription.ShowSubscriptionsStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.subscription.ShowTopicsStatement;
@@ -4129,6 +4130,22 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
   }
 
   @Override
+  public Statement visitDropSubscription(IoTDBSqlParser.DropSubscriptionContext ctx) {
+    final DropSubscriptionStatement dropSubscriptionStatement = new DropSubscriptionStatement();
+
+    if (ctx.subscriptionId != null) {
+      dropSubscriptionStatement.setSubscriptionId(parseIdentifier(ctx.subscriptionId.getText()));
+    } else {
+      throw new SemanticException(
+          "Not support for this sql in DROP SUBSCRIPTION, please enter subscriptionId.");
+    }
+
+    dropSubscriptionStatement.setIfExists(ctx.IF() != null && ctx.EXISTS() != null);
+
+    return dropSubscriptionStatement;
+  }
+
+  @Override
   public Statement visitGetRegionId(IoTDBSqlParser.GetRegionIdContext ctx) {
     TConsensusGroupType type =
         ctx.DATA() == null ? TConsensusGroupType.SchemaRegion : TConsensusGroupType.DataRegion;
@@ -4604,8 +4621,12 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
 
   @Override
   public Statement visitCreateTableView(final IoTDBSqlParser.CreateTableViewContext ctx) {
+    if (true) {
+      throw new UnsupportedOperationException(
+          "The 'CreateTableView' is unsupported in tree sql-dialect.");
+    }
     return new CreateTableViewStatement(
-        new CreateTableView(
+        new CreateView(
             null,
             getQualifiedName(ctx.qualifiedName()),
             ctx.viewColumnDefinition().stream()
@@ -4627,10 +4648,22 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
 
   public ColumnDefinition parseViewColumnDefinition(
       final IoTDBSqlParser.ViewColumnDefinitionContext ctx) {
-    return Objects.nonNull(ctx.FROM())
+    final Identifier rawColumnName =
+        new Identifier(parseIdentifier(ctx.identifier().get(0).getText()));
+    final Identifier columnName = lowerIdentifier(rawColumnName);
+    final TsTableColumnCategory columnCategory = getColumnCategory(ctx.columnCategory);
+    Identifier originalMeasurement = null;
+
+    if (Objects.nonNull(ctx.FROM())) {
+      originalMeasurement = new Identifier(parseIdentifier(ctx.original_measurement.getText()));
+    } else if (columnCategory == FIELD && !columnName.equals(rawColumnName)) {
+      originalMeasurement = rawColumnName;
+    }
+
+    return columnCategory == FIELD
         ? new ViewFieldDefinition(
             null,
-            lowerIdentifier(new Identifier(parseIdentifier(ctx.identifier().get(0).getText()))),
+            columnName,
             Objects.nonNull(ctx.type())
                 ? parseGenericType((IoTDBSqlParser.GenericTypeContext) ctx.type())
                 : null,
@@ -4638,14 +4671,14 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
             ctx.comment() == null
                 ? null
                 : parseStringLiteral(ctx.comment().STRING_LITERAL().getText()),
-            lowerIdentifier(new Identifier(parseIdentifier(ctx.original_measurement.getText()))))
+            originalMeasurement)
         : new ColumnDefinition(
             null,
-            lowerIdentifier(new Identifier(parseIdentifier(ctx.identifier().get(0).getText()))),
+            columnName,
             Objects.nonNull(ctx.type())
                 ? parseGenericType((IoTDBSqlParser.GenericTypeContext) ctx.type())
                 : null,
-            getColumnCategory(ctx.columnCategory),
+            columnCategory,
             null,
             ctx.comment() == null
                 ? null

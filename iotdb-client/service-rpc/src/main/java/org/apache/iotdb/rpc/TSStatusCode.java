@@ -53,7 +53,7 @@ public enum TSStatusCode {
   // Client,
   REDIRECTION_RECOMMEND(400),
 
-  USE_DB(401),
+  USE_OR_DROP_DB(401),
 
   // Schema Engine
   DATABASE_NOT_EXIST(500),
@@ -111,6 +111,8 @@ public enum TSStatusCode {
   DATA_TYPE_MISMATCH(614),
   COLUMN_CATEGORY_MISMATCH(615),
   COLUMN_NOT_EXISTS(616),
+  MEASUREMENT_NAME_CONFLICT(617),
+
   WAL_ENTRY_TOO_LARGE(620),
 
   // Query Engine

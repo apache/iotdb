@@ -59,7 +59,7 @@ statement
     | showCreateTableStatement
 
     // Table View Statement
-    | createTableViewStatement
+    | createViewStatement
     | alterViewStatement
     | dropViewStatement
     | showCreateViewStatement
@@ -99,6 +99,7 @@ statement
     | dropTopicStatement
     | showTopicsStatement
     | showSubscriptionsStatement
+    | dropSubscriptionStatement
 
     // Show Statement
     | showDevicesStatement
@@ -247,13 +248,13 @@ showCreateTableStatement
     ;
 
 // ------------------------------------------- Table View Statement ---------------------------------------------------------
-createTableViewStatement
-    : CREATE (OR REPLACE)? TABLE VIEW qualifiedName
+createViewStatement
+    : CREATE (OR REPLACE)? VIEW qualifiedName
         '(' (viewColumnDefinition (',' viewColumnDefinition)*)? ')'
-        AS prefixPath
         comment?
-        (WITH properties)?
         (RESTRICT)?
+        (WITH properties)?
+        AS prefixPath
     ;
 
 viewColumnDefinition
@@ -497,6 +498,10 @@ showTopicsStatement
 
 showSubscriptionsStatement
     : SHOW SUBSCRIPTIONS (ON topicName=identifier)?
+    ;
+
+dropSubscriptionStatement
+    : DROP SUBSCRIPTION (IF EXISTS)? subscriptionId=identifier
     ;
 
 
@@ -1245,7 +1250,7 @@ nonReserved
     | QUERIES | QUERY | QUOTES
     | RANGE | READ | READONLY | RECONSTRUCT | REFRESH | REGION | REGIONID | REGIONS | REMOVE | RENAME | REPAIR | REPEAT | REPEATABLE | REPLACE | RESET | RESPECT | RESTRICT | RETURN | RETURNING | RETURNS | REVOKE | ROLE | ROLES | ROLLBACK | ROOT | ROW | ROWS | RUNNING
     | SERIESSLOTID | SCALAR | SCHEMA | SCHEMAS | SECOND | SECURITY | SEEK | SERIALIZABLE | SESSION | SET | SETS
-    | SHOW | SINK | SOME | SOURCE | START | STATS | STOP | SUBSCRIPTIONS | SUBSET | SUBSTRING | SYSTEM
+    | SHOW | SINK | SOME | SOURCE | START | STATS | STOP | SUBSCRIPTION | SUBSCRIPTIONS | SUBSET | SUBSTRING | SYSTEM
     | TABLES | TABLESAMPLE | TAG | TEXT | TEXT_STRING | TIES | TIME | TIMEPARTITION | TIMER | TIMER_XL | TIMESERIES | TIMESLOTID | TIMESTAMP | TO | TOPIC | TOPICS | TRAILING | TRANSACTION | TRUNCATE | TRY_CAST | TYPE
     | UNBOUNDED | UNCOMMITTED | UNCONDITIONAL | UNIQUE | UNKNOWN | UNMATCHED | UNTIL | UPDATE | URI | USE | USED | USER | UTF16 | UTF32 | UTF8
     | VALIDATE | VALUE | VARIABLES | VARIATION | VERBOSE | VERSION | VIEW
@@ -1571,6 +1576,7 @@ SQL_DIALECT: 'SQL_DIALECT';
 START: 'START';
 STATS: 'STATS';
 STOP: 'STOP';
+SUBSCRIPTION: 'SUBSCRIPTION';
 SUBSCRIPTIONS: 'SUBSCRIPTIONS';
 SUBSET: 'SUBSET';
 SUBSTRING: 'SUBSTRING';

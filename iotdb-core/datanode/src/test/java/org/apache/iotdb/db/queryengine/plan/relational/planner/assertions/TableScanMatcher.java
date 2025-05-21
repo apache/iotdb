@@ -64,7 +64,6 @@ public abstract class TableScanMatcher implements Matcher {
     TableScanNode tableScanNode = (TableScanNode) node;
     String actualTableName = tableScanNode.getQualifiedObjectName().toString();
 
-    // TODO (https://github.com/trinodb/trino/issues/17) change to equals()
     if (!expectedTableName.equalsIgnoreCase(actualTableName)) {
       return NO_MATCH;
     }

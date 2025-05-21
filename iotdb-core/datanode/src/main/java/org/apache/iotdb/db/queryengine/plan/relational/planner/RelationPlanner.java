@@ -95,6 +95,7 @@ import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
 import org.apache.tsfile.read.common.type.Type;
+import org.apache.tsfile.write.schema.MeasurementSchema;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -120,6 +121,8 @@ import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Join.Type.
 import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Join.Type.FULL;
 import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Join.Type.IMPLICIT;
 import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Join.Type.INNER;
+import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Join.Type.LEFT;
+import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Join.Type.RIGHT;
 
 public class RelationPlanner extends AstVisitor<RelationPlan, Void> {
 
@@ -384,6 +387,10 @@ public class RelationPlanner extends AstVisitor<RelationPlan, Void> {
             rightCoercion.getOutputSymbols(),
             Optional.empty(),
             Optional.empty());
+    // Transform RIGHT JOIN to LEFT
+    if (join.getJoinType() == JoinNode.JoinType.RIGHT) {
+      join = join.flip();
+    }
 
     // Add a projection to produce the outputs of the columns in the USING clause,
     // which are defined as coalesce(l.k, r.k)
@@ -393,7 +400,7 @@ public class RelationPlanner extends AstVisitor<RelationPlan, Void> {
     for (Identifier column : joinColumns) {
       Symbol output = symbolAllocator.newSymbol(column, analysis.getType(column));
       outputs.add(output);
-      if (node.getType() == INNER) {
+      if (node.getType() == INNER || node.getType() == LEFT) {
         assignments.put(output, leftJoinColumns.get(column).toSymbolReference());
       } else if (node.getType() == FULL) {
         assignments.put(
@@ -401,6 +408,10 @@ public class RelationPlanner extends AstVisitor<RelationPlan, Void> {
             new CoalesceExpression(
                 leftJoinColumns.get(column).toSymbolReference(),
                 rightJoinColumns.get(column).toSymbolReference()));
+      } else if (node.getType() == RIGHT) {
+        assignments.put(output, rightJoinColumns.get(column).toSymbolReference());
+      } else {
+        throw new IllegalStateException("Unexpected Join Type: " + node.getType());
       }
     }
 
@@ -593,6 +604,9 @@ public class RelationPlanner extends AstVisitor<RelationPlan, Void> {
             rightPlanBuilder.getRoot().getOutputSymbols(),
             Optional.empty(),
             Optional.empty());
+    if (type == RIGHT && asofCriteria == null) {
+      root = ((JoinNode) root).flip();
+    }
 
     if (type != INNER) {
       for (Expression complexExpression : complexJoinExpressions) {
@@ -645,6 +659,9 @@ public class RelationPlanner extends AstVisitor<RelationPlan, Void> {
                           .map(e -> coerceIfNecessary(analysis, e, translationMap.rewrite(e)))
                           .collect(Collectors.toList()))),
               Optional.empty());
+      if (type == RIGHT && asofCriteria == null) {
+        root = ((JoinNode) root).flip();
+      }
     }
 
     if (type == INNER) {
@@ -743,14 +760,19 @@ public class RelationPlanner extends AstVisitor<RelationPlan, Void> {
   @Override
   protected RelationPlan visitInsertTablet(InsertTablet node, Void context) {
     final InsertTabletStatement insertTabletStatement = node.getInnerTreeStatement();
+
+    String[] measurements = insertTabletStatement.getMeasurements();
+    MeasurementSchema[] measurementSchemas = insertTabletStatement.getMeasurementSchemas();
+    stayConsistent(measurements, measurementSchemas);
+
     RelationalInsertTabletNode insertNode =
         new RelationalInsertTabletNode(
             idAllocator.genPlanNodeId(),
             insertTabletStatement.getDevicePath(),
             insertTabletStatement.isAligned(),
-            insertTabletStatement.getMeasurements(),
+            measurements,
             insertTabletStatement.getDataTypes(),
-            insertTabletStatement.getMeasurementSchemas(),
+            measurementSchemas,
             insertTabletStatement.getTimes(),
             insertTabletStatement.getBitMaps(),
             insertTabletStatement.getColumns(),
@@ -774,19 +796,24 @@ public class RelationPlanner extends AstVisitor<RelationPlan, Void> {
 
   protected RelationalInsertRowNode fromInsertRowStatement(
       final InsertRowStatement insertRowStatement) {
+
+    String[] measurements = insertRowStatement.getMeasurements();
+    MeasurementSchema[] measurementSchemas = insertRowStatement.getMeasurementSchemas();
+    stayConsistent(measurements, measurementSchemas);
+
     final RelationalInsertRowNode insertNode =
         new RelationalInsertRowNode(
             idAllocator.genPlanNodeId(),
             insertRowStatement.getDevicePath(),
             insertRowStatement.isAligned(),
-            insertRowStatement.getMeasurements(),
+            measurements,
             insertRowStatement.getDataTypes(),
+            measurementSchemas,
             insertRowStatement.getTime(),
             insertRowStatement.getValues(),
             insertRowStatement.isNeedInferType(),
             insertRowStatement.getColumnCategories());
     insertNode.setFailedMeasurementNumber(insertRowStatement.getFailedMeasurementNumber());
-    insertNode.setMeasurementSchemas(insertRowStatement.getMeasurementSchemas());
     return insertNode;
   }
 
@@ -985,5 +1012,16 @@ public class RelationPlanner extends AstVisitor<RelationPlan, Void> {
             sourceProperties.build());
 
     return new RelationPlan(root, analysis.getScope(node), outputSymbols.build(), outerContext);
+  }
+
+  private static void stayConsistent(
+      String[] measurements, MeasurementSchema[] measurementSchemas) {
+    int minLength = Math.min(measurements.length, measurementSchemas.length);
+    for (int j = 0; j < minLength; j++) {
+      if (measurements[j] == null || measurementSchemas[j] == null) {
+        measurements[j] = null;
+        measurementSchemas[j] = null;
+      }
+    }
   }
 }

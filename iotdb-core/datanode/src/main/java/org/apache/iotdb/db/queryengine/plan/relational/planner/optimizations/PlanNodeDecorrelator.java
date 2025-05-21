@@ -210,7 +210,7 @@ public class PlanNodeDecorrelator {
 
     // Limit (1) could be decorrelated by the method rewriteLimitWithRowCountGreaterThanOne()
     // as well.
-    // The current decorrelation method for Limit (1) cannot deal with subqueries outputting other
+    // The current decorrelation method for Limit (1) can not deal with subqueries outputting other
     // symbols
     // than constants.
     //
