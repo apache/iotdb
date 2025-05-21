@@ -306,21 +306,21 @@ public class InformationSchema {
     nodesTable.addColumnSchema(
         new TagColumnSchema(ColumnHeaderConstant.NODE_ID_TABLE_MODEL, TSDataType.INT32));
     nodesTable.addColumnSchema(
-        new AttributeColumnSchema(ColumnHeaderConstant.NODE_TYPE_TABLE_MODEL, TSDataType.INT32));
+        new AttributeColumnSchema(ColumnHeaderConstant.NODE_TYPE_TABLE_MODEL, TSDataType.STRING));
     nodesTable.addColumnSchema(
         new AttributeColumnSchema(
-            ColumnHeaderConstant.STATUS.toLowerCase(Locale.ENGLISH), TSDataType.INT32));
+            ColumnHeaderConstant.STATUS.toLowerCase(Locale.ENGLISH), TSDataType.STRING));
     nodesTable.addColumnSchema(
         new AttributeColumnSchema(
-            ColumnHeaderConstant.INTERNAL_ADDRESS_TABLE_MODEL, TSDataType.INT32));
+            ColumnHeaderConstant.INTERNAL_ADDRESS_TABLE_MODEL, TSDataType.STRING));
     nodesTable.addColumnSchema(
         new AttributeColumnSchema(
             ColumnHeaderConstant.INTERNAL_PORT_TABLE_MODEL, TSDataType.INT32));
     nodesTable.addColumnSchema(
         new AttributeColumnSchema(
-            ColumnHeaderConstant.VERSION.toLowerCase(Locale.ENGLISH), TSDataType.INT32));
+            ColumnHeaderConstant.VERSION.toLowerCase(Locale.ENGLISH), TSDataType.STRING));
     nodesTable.addColumnSchema(
-        new AttributeColumnSchema(ColumnHeaderConstant.BUILD_INFO_TABLE_MODEL, TSDataType.INT32));
+        new AttributeColumnSchema(ColumnHeaderConstant.BUILD_INFO_TABLE_MODEL, TSDataType.STRING));
     nodesTable.removeColumnSchema(TsTable.TIME_COLUMN_NAME);
     schemaTables.put(NODES, nodesTable);
 
