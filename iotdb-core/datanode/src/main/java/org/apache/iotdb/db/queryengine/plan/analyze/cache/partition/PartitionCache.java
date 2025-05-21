@@ -29,6 +29,7 @@ import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.exception.ClientManagerException;
 import org.apache.iotdb.commons.consensus.ConfigRegionId;
 import org.apache.iotdb.commons.exception.IoTDBException;
+import org.apache.iotdb.commons.exception.IoTDBRuntimeException;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.partition.DataPartition;
 import org.apache.iotdb.commons.partition.DataPartitionQueryParam;
@@ -382,7 +383,11 @@ public class PartitionCache {
             throw new StatementAnalyzeException("Failed to get database Map");
           }
         }
-      } catch (TException | MetadataException | ClientManagerException e) {
+      } catch (MetadataException e) {
+        throw new IoTDBRuntimeException(
+            "An error occurred when executing getDeviceToDatabase():" + e.getMessage(),
+            e.getErrorCode());
+      } catch (TException | ClientManagerException e) {
         throw new StatementAnalyzeException(
             "An error occurred when executing getDeviceToDatabase():" + e.getMessage(), e);
       }
