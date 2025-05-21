@@ -533,7 +533,7 @@ public class IoTDBDatabaseIT {
           "ColumnName,DataType,Category,",
           new HashSet<>(
               Arrays.asList(
-                  "node_id,STRING,TAG,",
+                  "node_id,INT32,TAG,",
                   "config_consensus_port,INT32,ATTRIBUTE,",
                   "role,STRING,ATTRIBUTE,")));
       TestUtils.assertResultSetEqual(
@@ -541,7 +541,7 @@ public class IoTDBDatabaseIT {
           "ColumnName,DataType,Category,",
           new HashSet<>(
               Arrays.asList(
-                  "node_id,STRING,TAG,",
+                  "node_id,INT32,TAG,",
                   "data_region_num,INT32,ATTRIBUTE,",
                   "schema_region_num,INT32,ATTRIBUTE,",
                   "rpc_address,STRING,ATTRIBUTE,",
