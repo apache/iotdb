@@ -159,9 +159,9 @@ public class InformationSchemaContentSupplierFactory {
       case InformationSchema.KEYWORDS:
         return new KeywordsSupplier(dataTypes);
       case InformationSchema.NODES:
-        return new NodesSupplier(dataTypes);
+        return new NodesSupplier(dataTypes, userName);
       case InformationSchema.CONFIG_NODES:
-        return new ConfigNodesSupplier(dataTypes);
+        return new ConfigNodesSupplier(dataTypes, userName);
       default:
         throw new UnsupportedOperationException("Unknown table: " + tableName);
     }
@@ -1003,8 +1003,9 @@ public class InformationSchemaContentSupplierFactory {
     private Iterator<TDataNodeLocation> dataNodeIterator;
     private Iterator<TAINodeLocation> aiNodeIterator;
 
-    private NodesSupplier(final List<TSDataType> dataTypes) {
+    private NodesSupplier(final List<TSDataType> dataTypes, final String userName) {
       super(dataTypes);
+      accessControl.checkUserIsAdmin(userName);
       try (final ConfigNodeClient client =
           ConfigNodeClientManager.getInstance().borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
         showClusterResp = client.showCluster();
@@ -1097,8 +1098,9 @@ public class InformationSchemaContentSupplierFactory {
   private static class ConfigNodesSupplier extends TsBlockSupplier {
     private Iterator<TConfigNodeInfo4InformationSchema> configNodeIterator;
 
-    private ConfigNodesSupplier(final List<TSDataType> dataTypes) {
+    private ConfigNodesSupplier(final List<TSDataType> dataTypes, final String userName) {
       super(dataTypes);
+      accessControl.checkUserIsAdmin(userName);
       try (final ConfigNodeClient client =
           ConfigNodeClientManager.getInstance().borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
         configNodeIterator =
