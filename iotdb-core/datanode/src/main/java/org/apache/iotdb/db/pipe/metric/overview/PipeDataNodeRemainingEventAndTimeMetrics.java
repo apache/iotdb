@@ -107,7 +107,7 @@ public class PipeDataNodeRemainingEventAndTimeMetrics implements IMetricSet {
     }
 
     return operator.getRemainingInsertEventSmoothingCount()
-        > PipeConfig.getInstance().getPipeMaxAllowedRemainingInsertEventCount();
+        > PipeConfig.getInstance().getPipeMaxAllowedRemainingInsertEventCountPerPipe();
   }
 
   @Override

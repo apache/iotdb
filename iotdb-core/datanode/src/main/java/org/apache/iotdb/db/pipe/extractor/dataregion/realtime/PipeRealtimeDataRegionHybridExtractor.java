@@ -242,7 +242,7 @@ public class PipeRealtimeDataRegionHybridExtractor extends PipeRealtimeDataRegio
                   "Pipe task {}@{} canNotUseTabletAnyMore(0): remaining insert event has reached max allowed insert event count {}",
                   pipeName,
                   dataRegionId,
-                  PipeConfig.getInstance().getPipeMaxAllowedRemainingInsertEventCount()));
+                  PipeConfig.getInstance().getPipeMaxAllowedRemainingInsertEventCountPerPipe()));
     }
     return mayRemainingInsertEventExceedLimit;
   }

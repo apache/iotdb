@@ -276,8 +276,8 @@ public class CommonConfig {
   private long pipeFlushAfterLastTerminateSeconds = 30;
   private long pipeFlushAfterTerminateCount = 30;
   private long pipeStorageEngineFlushTimeIntervalMs = Long.MAX_VALUE;
-  private int pipeMaxAllowedRemainingInsertEventCount = 10000;
-  private int pipeMaxAllowedTotalRemainingInsertEventCount = 10000;
+  private int pipeMaxAllowedRemainingInsertEventCountPerPipe = 10000;
+  private int pipeMaxAllowedTotalRemainingInsertEventCount = 50000;
   private int pipeRemainingEventCountSmoothingIntervalSeconds = 15;
 
   private int pipeMetaReportMaxLogNumPerRound = 10;
@@ -1446,19 +1446,21 @@ public class CommonConfig {
     return pipeStorageEngineFlushTimeIntervalMs;
   }
 
-  public int getPipeMaxAllowedRemainingInsertEventCount() {
-    return pipeMaxAllowedRemainingInsertEventCount;
+  public int getPipeMaxAllowedRemainingInsertEventCountPerPipe() {
+    return pipeMaxAllowedRemainingInsertEventCountPerPipe;
   }
 
-  public void setPipeMaxAllowedRemainingInsertEventCount(
-      int pipeMaxAllowedRemainingInsertEventCount) {
-    if (this.pipeMaxAllowedRemainingInsertEventCount == pipeMaxAllowedRemainingInsertEventCount) {
+  public void setPipeMaxAllowedRemainingInsertEventCountPerPipe(
+      int pipeMaxAllowedRemainingInsertEventCountPerPipe) {
+    if (this.pipeMaxAllowedRemainingInsertEventCountPerPipe
+        == pipeMaxAllowedRemainingInsertEventCountPerPipe) {
       return;
     }
-    this.pipeMaxAllowedRemainingInsertEventCount = pipeMaxAllowedRemainingInsertEventCount;
+    this.pipeMaxAllowedRemainingInsertEventCountPerPipe =
+        pipeMaxAllowedRemainingInsertEventCountPerPipe;
     logger.info(
         "pipeMaxAllowedRemainingInsertEventCount is set to {}",
-        pipeMaxAllowedRemainingInsertEventCount);
+        pipeMaxAllowedRemainingInsertEventCountPerPipe);
   }
 
   public int getPipeMaxAllowedTotalRemainingInsertEventCount() {
