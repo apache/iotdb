@@ -87,7 +87,7 @@ public class PipeDataNodeRemainingEventAndTimeMetrics implements IMetricSet {
 
   public boolean mayRemainingInsertEventExceedLimit(final String pipeID) {
     if (Objects.isNull(metricService)) {
-      return false;
+      return true;
     }
 
     if (remainingEventAndTimeOperatorMap.values().stream()
@@ -101,9 +101,9 @@ public class PipeDataNodeRemainingEventAndTimeMetrics implements IMetricSet {
         remainingEventAndTimeOperatorMap.get(pipeID);
     if (Objects.isNull(operator)) {
       LOGGER.warn(
-          "Failed to get remaining insert event, RemainingEventAndTimeOperator({}) does not exist, will not degrade",
+          "Failed to get remaining insert event, RemainingEventAndTimeOperator({}) does not exist, will degrade anyway",
           pipeID);
-      return false;
+      return true;
     }
 
     return operator.getRemainingInsertEventSmoothingCount()
