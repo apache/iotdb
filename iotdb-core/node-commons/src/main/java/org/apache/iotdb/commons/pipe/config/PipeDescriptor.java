@@ -426,6 +426,22 @@ public class PipeDescriptor {
             properties.getProperty(
                 "pipe_stuck_restart_interval_seconds",
                 String.valueOf(config.getPipeStuckRestartIntervalSeconds()))));
+    config.setPipeMaxAllowedRemainingInsertEventCountPerPipe(
+        Integer.parseInt(
+            properties.getProperty(
+                "pipe_max_allowed_remaining_insert_event_count_per_pipe",
+                String.valueOf(config.getPipeMaxAllowedRemainingInsertEventCountPerPipe()))));
+    config.setPipeMaxAllowedTotalRemainingInsertEventCount(
+        Integer.parseInt(
+            properties.getProperty(
+                "pipe_max_allowed_total_remaining_insert_event_count",
+                String.valueOf(config.getPipeMaxAllowedTotalRemainingInsertEventCount()))));
+    config.setPipeRemainingInsertEventCountSmoothingIntervalSeconds(
+        Integer.parseInt(
+            properties.getProperty(
+                "pipe_remaining_insert_event_count_smoothing_interval_seconds",
+                String.valueOf(
+                    config.getPipeRemainingInsertEventCountSmoothingIntervalSeconds()))));
     config.setPipeStuckRestartMinIntervalMs(
         Long.parseLong(
             properties.getProperty(
