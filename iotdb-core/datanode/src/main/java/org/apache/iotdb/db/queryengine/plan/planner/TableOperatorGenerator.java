@@ -3191,7 +3191,9 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
       // add all partition columns
       outputChannels.addAll(partitionChannels);
       for (int i = 0; i < partitionBySymbols.size(); i++) {
-        outputDataTypes.add(inputDataTypes.get(i));
+        Symbol symbol = partitionBySymbols.get(i);
+        // obtain the absolute index of the symbol in the base table through `childLayout`
+        outputDataTypes.add(inputDataTypes.get(childLayout.get(symbol)));
       }
     } else {
       // ALL ROWS PER MATCH: all input columns, MEASURES
