@@ -36,7 +36,8 @@ public class ThresholdAllocationStrategy implements DynamicMemoryAllocationStrat
             .orElse(1.0);
 
     double deficitRatio = calculateDeficitRatio(dynamicMemoryBlock);
-    if (Math.abs(averageDeficitRatio - deficitRatio) > PipeConfig.getInstance().getPipeDynamicMemoryAdjustmentThreshold()) {
+    if (Math.abs(averageDeficitRatio - deficitRatio)
+        > PipeConfig.getInstance().getPipeDynamicMemoryAdjustmentThreshold()) {
       double diff = averageDeficitRatio - deficitRatio;
       long mem = (long) ((dynamicMemoryBlock.getMemoryUsageInBytes() / deficitRatio) * diff);
       dynamicMemoryBlock.applyForDynamicMemory(mem);

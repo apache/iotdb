@@ -512,11 +512,10 @@ public class PipeDescriptor {
                 String.valueOf(config.getPipeDynamicMemoryHistoryWeight()))));
 
     config.setPipeDynamicMemoryAdjustmentThreshold(
-            Double.parseDouble(
+        Double.parseDouble(
             properties.getProperty(
                 "pipe_dynamic_memory_adjustment_threshold",
                 String.valueOf(config.getPipeDynamicMemoryAdjustmentThreshold()))));
-    );
   }
 
   public static void loadPipeExternalConfig(
