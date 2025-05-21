@@ -1655,6 +1655,8 @@ public class PipeConsensusReceiver {
       try {
         this.reqExecutionOrderBuffer.clear();
         this.tsFileWriterPool.releaseAllWriters(consensusPipeName);
+        this.tsFileEventCount.set(0);
+        this.WALEventCount.set(0);
         if (resetSyncIndex) {
           this.onSyncedReplicateIndex = 0;
         }
