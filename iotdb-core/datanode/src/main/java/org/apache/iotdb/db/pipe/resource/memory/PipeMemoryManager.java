@@ -226,6 +226,37 @@ public class PipeMemoryManager {
     }
   }
 
+  public PipeModelFixedMemoryBlock forceAllocateForModelFixedMemoryBlock(
+      long fixedSizeInBytes, PipeMemoryBlockType type)
+      throws PipeRuntimeOutOfMemoryCriticalException {
+    if (!PIPE_MEMORY_MANAGEMENT_ENABLED) {
+      return new PipeModelFixedMemoryBlock(Long.MAX_VALUE, new ThresholdAllocationStrategy());
+    }
+
+    if (fixedSizeInBytes == 0) {
+      return (PipeModelFixedMemoryBlock) registerMemoryBlock(0, type);
+    }
+
+    for (int i = 1, size = PIPE_CONFIG.getPipeMemoryAllocateMaxRetries(); i <= size; i++) {
+      if (getFreeMemorySizeInBytes() >= fixedSizeInBytes) {
+        break;
+      }
+
+      try {
+        Thread.sleep(PIPE_CONFIG.getPipeMemoryAllocateRetryIntervalInMs());
+      } catch (InterruptedException ex) {
+        Thread.currentThread().interrupt();
+        LOGGER.warn("forceAllocateWithRetry: interrupted while waiting for available memory", ex);
+      }
+    }
+
+    if (getFreeMemorySizeInBytes() < fixedSizeInBytes) {
+      return (PipeModelFixedMemoryBlock) forceAllocateWithRetry(getFreeMemorySizeInBytes(), type);
+    }
+
+    return (PipeModelFixedMemoryBlock) forceAllocateWithRetry(fixedSizeInBytes, type);
+  }
+
   private PipeMemoryBlock forceAllocateWithRetry(long sizeInBytes, PipeMemoryBlockType type)
       throws PipeRuntimeOutOfMemoryCriticalException {
     if (!PIPE_MEMORY_MANAGEMENT_ENABLED) {
@@ -469,6 +500,11 @@ public class PipeMemoryManager {
         break;
       case TS_FILE:
         returnedMemoryBlock = new PipeTsFileMemoryBlock(sizeInBytes);
+        break;
+      case BATCH:
+      case WAL:
+        returnedMemoryBlock =
+            new PipeModelFixedMemoryBlock(sizeInBytes, new ThresholdAllocationStrategy());
         break;
       default:
         returnedMemoryBlock = new PipeMemoryBlock(sizeInBytes);

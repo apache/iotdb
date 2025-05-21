@@ -41,6 +41,8 @@ public class PipeDynamicMemoryBlock {
       final @NotNull PipeModelFixedMemoryBlock fixedMemoryBlock, final long memoryUsageInBytes) {
     this.memoryUsageInBytes = Math.max(memoryUsageInBytes, 0);
     this.fixedMemoryBlock = fixedMemoryBlock;
+    historyMemoryEfficiency = 1.0;
+    currentMemoryEfficiency = 1.0;
   }
 
   public PipeDynamicMemoryBlock(

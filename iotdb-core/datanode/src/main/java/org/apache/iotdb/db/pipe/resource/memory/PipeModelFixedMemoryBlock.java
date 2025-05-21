@@ -31,14 +31,14 @@ public class PipeModelFixedMemoryBlock extends PipeFixedMemoryBlock {
   private final Set<PipeDynamicMemoryBlock> memoryBlocks =
       Collections.newSetFromMap(new ConcurrentHashMap<>());
 
-  private final long memoryAllocatedInBytes;
-
   private final DynamicMemoryAllocationStrategy allocationStrategy;
+
+  private volatile long memoryAllocatedInBytes;
 
   public PipeModelFixedMemoryBlock(
       long memoryUsageInBytes, DynamicMemoryAllocationStrategy allocationStrategy) {
-    super(0);
-    this.memoryAllocatedInBytes = memoryUsageInBytes;
+    super(memoryUsageInBytes);
+    this.memoryAllocatedInBytes = 0;
     this.allocationStrategy = allocationStrategy;
   }
 
@@ -72,15 +72,15 @@ public class PipeModelFixedMemoryBlock extends PipeFixedMemoryBlock {
 
     // If the capacity is expanded, determine whether it will exceed the maximum value of the fixed
     // module
-    if (memoryAllocatedInBytes - getMemoryUsageInBytes() < diff) {
+    if (getMemoryUsageInBytes() - memoryAllocatedInBytes < diff) {
       // Pay attention to the order of calls, otherwise it will cause resource leakage
       block.setMemoryUsageInBytes(
-          block.getMemoryUsageInBytes() + memoryAllocatedInBytes - getMemoryUsageInBytes());
-      setMemoryUsageInBytes(memoryAllocatedInBytes);
+          block.getMemoryUsageInBytes() + getMemoryUsageInBytes() - memoryAllocatedInBytes);
+      memoryAllocatedInBytes = getMemoryUsageInBytes();
       return;
     }
 
-    setMemoryUsageInBytes(getMemoryUsageInBytes() + diff);
+    memoryAllocatedInBytes = memoryAllocatedInBytes + diff;
     block.setMemoryUsageInBytes(memorySizeInBytes);
   }
 
