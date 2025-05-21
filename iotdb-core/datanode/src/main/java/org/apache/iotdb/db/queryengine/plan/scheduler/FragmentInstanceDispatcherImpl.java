@@ -38,9 +38,11 @@ import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.execution.executor.RegionExecutionResult;
 import org.apache.iotdb.db.queryengine.execution.executor.RegionReadExecutor;
 import org.apache.iotdb.db.queryengine.execution.executor.RegionWriteExecutor;
+import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceManager;
 import org.apache.iotdb.db.queryengine.metric.QueryExecutionMetricSet;
 import org.apache.iotdb.db.queryengine.plan.analyze.QueryType;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.FragmentInstance;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.SubPlan;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.TableSchemaQuerySuccessfulCallbackVisitor;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.TableSchemaQueryWriteVisitor;
@@ -67,6 +69,7 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.concurrent.Future;
+import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
@@ -118,13 +121,174 @@ public class FragmentInstanceDispatcherImpl implements IFragInstanceDispatcher {
   }
 
   @Override
-  public Future<FragInstanceDispatchResult> dispatch(List<FragmentInstance> instances) {
+  public Future<FragInstanceDispatchResult> dispatch(
+      SubPlan root, List<FragmentInstance> instances) {
     if (type == QueryType.READ) {
-      return dispatchRead(instances);
+      return instances.size() == 1 || root == null
+          ? dispatchRead(instances)
+          : topologicalParallelDispatchRead(root, instances);
     } else {
       return dispatchWrite(instances);
     }
   }
+
+  private Future<FragInstanceDispatchResult> topologicalParallelDispatchRead(
+      SubPlan root, List<FragmentInstance> instances) {
+    long startTime = System.nanoTime();
+    LinkedBlockingQueue<SubPlan> queue = new LinkedBlockingQueue<>(instances.size());
+    List<Future<FragInstanceDispatchResult>> futures = new ArrayList<>(instances.size());
+    queue.add(root);
+    try {
+      while (futures.size() < instances.size()) {
+        SubPlan next = queue.take();
+        FragmentInstance fragmentInstance =
+            instances.get(next.getPlanFragment().getIndexInFragmentInstanceList());
+        futures.add(asyncDispatchOneInstance(next, fragmentInstance, queue));
+      }
+      for (Future<FragInstanceDispatchResult> future : futures) {
+        FragInstanceDispatchResult result = future.get();
+        if (!result.isSuccessful()) {
+          return immediateFuture(result);
+        }
+      }
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
+      LOGGER.error("Interrupted when dispatching read async", e);
+      return immediateFuture(
+          new FragInstanceDispatchResult(
+              RpcUtils.getStatus(
+                  TSStatusCode.INTERNAL_SERVER_ERROR, "Interrupted errors: " + e.getMessage())));
+    } catch (Throwable t) {
+      LOGGER.warn(DISPATCH_FAILED, t);
+      return immediateFuture(
+          new FragInstanceDispatchResult(
+              RpcUtils.getStatus(
+                  TSStatusCode.INTERNAL_SERVER_ERROR, UNEXPECTED_ERRORS + t.getMessage())));
+    } finally {
+      long queryDispatchReadTime = System.nanoTime() - startTime;
+      QUERY_EXECUTION_METRIC_SET.recordExecutionCost(DISPATCH_READ, queryDispatchReadTime);
+      queryContext.recordDispatchCost(queryDispatchReadTime);
+    }
+    return immediateFuture(new FragInstanceDispatchResult(true));
+  }
+
+  private Future<FragInstanceDispatchResult> asyncDispatchOneInstance(
+      SubPlan plan, FragmentInstance instance, LinkedBlockingQueue<SubPlan> queue) {
+    return FragmentInstanceManager.getInstance()
+        .getDispatchExecutor()
+        .submit(
+            () -> {
+              try (SetThreadName threadName = new SetThreadName(instance.getId().getFullId())) {
+                dispatchOneInstance(instance);
+                queue.addAll(plan.getChildren());
+              } catch (FragmentInstanceDispatchException e) {
+                return new FragInstanceDispatchResult(e.getFailureStatus());
+              } catch (Throwable t) {
+                LOGGER.warn(DISPATCH_FAILED, t);
+                return new FragInstanceDispatchResult(
+                    RpcUtils.getStatus(
+                        TSStatusCode.INTERNAL_SERVER_ERROR, UNEXPECTED_ERRORS + t.getMessage()));
+              } finally {
+                // friendly for gc, clear the plan node tree, for some queries select all devices,
+                // it
+                // will
+                // release lots of memory
+                if (!queryContext.isExplainAnalyze()) {
+                  // EXPLAIN ANALYZE will use these instances, so we can't clear them
+                  instance.getFragment().clearUselessField();
+                } else {
+                  // TypeProvider is not used in EXPLAIN ANALYZE, so we can clear it
+                  instance.getFragment().clearTypeProvider();
+                }
+              }
+              return new FragInstanceDispatchResult(true);
+            });
+  }
+
+  //  public Future<FragInstanceDispatchResult> parallelDispatchRead(
+  //      SubPlan root, List<FragmentInstance> instances) {
+  //    long startTime = System.nanoTime();
+  //    Queue<SubPlan> queue = new LinkedList<>();
+  //    queue.add(root);
+  //    List<List<FragmentInstance>> dispatchOrder = new ArrayList<>();
+  //    calculateFragmentInstancesDispatchOrder(dispatchOrder, instances, root, 0);
+  //    try {
+  //      for (List<FragmentInstance> currentLevel : dispatchOrder) {
+  //        List<Future<FragInstanceDispatchResult>> futures = new ArrayList<>(currentLevel.size());
+  //        for (FragmentInstance fragmentInstance : currentLevel) {
+  //          futures.add(asyncDispatchOneInstance(fragmentInstance));
+  //        }
+  //        for (Future<FragInstanceDispatchResult> future : futures) {
+  //          try {
+  //            FragInstanceDispatchResult result = future.get();
+  //            if (!result.isSuccessful()) {
+  //              return immediateFuture(result);
+  //            }
+  //          } catch (Exception e) {
+  //            return immediateFuture(
+  //                new FragInstanceDispatchResult(
+  //                    RpcUtils.getStatus(TSStatusCode.INTERNAL_SERVER_ERROR, e.getMessage())));
+  //          }
+  //        }
+  //      }
+  //      return immediateFuture(new FragInstanceDispatchResult(true));
+  //    } finally {
+  //      long queryDispatchReadTime = System.nanoTime() - startTime;
+  //      QUERY_EXECUTION_METRIC_SET.recordExecutionCost(DISPATCH_READ, queryDispatchReadTime);
+  //      queryContext.recordDispatchCost(queryDispatchReadTime);
+  //    }
+  //  }
+  //
+  //  private void calculateFragmentInstancesDispatchOrder(
+  //      List<List<FragmentInstance>> result,
+  //      List<FragmentInstance> fragmentInstances,
+  //      SubPlan current,
+  //      int level) {
+  //    List<FragmentInstance> currentLevelFragmentInstances;
+  //    if (level == result.size()) {
+  //      currentLevelFragmentInstances = new ArrayList<>();
+  //      result.add(currentLevelFragmentInstances);
+  //    } else {
+  //      currentLevelFragmentInstances = result.get(level);
+  //    }
+  //    int indexInFragmentInstanceList =
+  // current.getPlanFragment().getIndexInFragmentInstanceList();
+  //    currentLevelFragmentInstances.add(fragmentInstances.get(indexInFragmentInstanceList));
+  //    for (SubPlan child : current.getChildren()) {
+  //      calculateFragmentInstancesDispatchOrder(result, fragmentInstances, child, level + 1);
+  //    }
+  //  }
+  //
+
+  //  private Future<FragInstanceDispatchResult> asyncDispatchOneInstance(FragmentInstance instance)
+  // {
+  //    return readDispatchThreadPool.submit(
+  //        () -> {
+  //          try (SetThreadName threadName = new SetThreadName(instance.getId().getFullId())) {
+  //            dispatchOneInstance(instance);
+  //          } catch (FragmentInstanceDispatchException e) {
+  //            return new FragInstanceDispatchResult(e.getFailureStatus());
+  //          } catch (Throwable t) {
+  //            LOGGER.warn(DISPATCH_FAILED, t);
+  //            new FragInstanceDispatchResult(
+  //                RpcUtils.getStatus(
+  //                    TSStatusCode.INTERNAL_SERVER_ERROR, UNEXPECTED_ERRORS + t.getMessage()));
+  //          } finally {
+  //            // friendly for gc, clear the plan node tree, for some queries select all devices,
+  // it
+  //            // will
+  //            // release lots of memory
+  //            if (!queryContext.isExplainAnalyze()) {
+  //              // EXPLAIN ANALYZE will use these instances, so we can't clear them
+  //              instance.getFragment().clearUselessField();
+  //            } else {
+  //              // TypeProvider is not used in EXPLAIN ANALYZE, so we can clear it
+  //              instance.getFragment().clearTypeProvider();
+  //            }
+  //          }
+  //          return new FragInstanceDispatchResult(true);
+  //        });
+  //  }
 
   // TODO: (xingtanzjr) currently we use a sequential dispatch policy for READ, which is
   //  unsafe for current FragmentInstance scheduler framework. We need to implement the

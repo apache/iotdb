@@ -28,7 +28,9 @@ import org.apache.iotdb.db.queryengine.execution.QueryStateMachine;
 import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInfo;
 import org.apache.iotdb.db.queryengine.metric.QueryExecutionMetricSet;
 import org.apache.iotdb.db.queryengine.plan.analyze.QueryType;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.DistributedQueryPlan;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.FragmentInstance;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.SubPlan;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import io.airlift.units.Duration;
@@ -55,6 +57,7 @@ public class ClusterScheduler implements IScheduler {
   // The stateMachine of the QueryExecution owned by this QueryScheduler
   private final QueryStateMachine stateMachine;
   private final QueryType queryType;
+  private final SubPlan rootSubPlan;
   // The fragment instances which should be sent to corresponding Nodes.
   private final List<FragmentInstance> instances;
 
@@ -68,14 +71,15 @@ public class ClusterScheduler implements IScheduler {
   public ClusterScheduler(
       MPPQueryContext queryContext,
       QueryStateMachine stateMachine,
-      List<FragmentInstance> instances,
+      DistributedQueryPlan distributedQueryPlan,
       QueryType queryType,
       ScheduledExecutorService scheduledExecutor,
       IClientManager<TEndPoint, SyncDataNodeInternalServiceClient> syncInternalServiceClientManager,
       IClientManager<TEndPoint, AsyncDataNodeInternalServiceClient>
           asyncInternalServiceClientManager) {
     this.stateMachine = stateMachine;
-    this.instances = instances;
+    this.rootSubPlan = distributedQueryPlan.getRootSubPlan();
+    this.instances = distributedQueryPlan.getInstances();
     this.queryType = queryType;
     this.dispatcher =
         new FragmentInstanceDispatcherImpl(
@@ -109,7 +113,8 @@ public class ClusterScheduler implements IScheduler {
   public void start() {
     stateMachine.transitionToDispatching();
     long startTime = System.nanoTime();
-    Future<FragInstanceDispatchResult> dispatchResultFuture = dispatcher.dispatch(instances);
+    Future<FragInstanceDispatchResult> dispatchResultFuture =
+        dispatcher.dispatch(rootSubPlan, instances);
 
     // NOTICE: the FragmentInstance may be dispatched to another Host due to consensus redirect.
     // So we need to start the state fetcher after the dispatching stage.

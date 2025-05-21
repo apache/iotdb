@@ -188,7 +188,7 @@ public class TableModelPlanner implements IPlanner {
           new ClusterScheduler(
               context,
               stateMachine,
-              distributedPlan.getInstances(),
+              distributedPlan,
               context.getQueryType(),
               scheduledExecutor,
               syncInternalServiceClientManager,

@@ -155,6 +155,7 @@ public class TableModelQueryFragmentPlanner extends AbstractFragmentParallelPlan
       fragmentInstance.getFragment().generateTableModelTypeProvider(queryContext.getTypeProvider());
     }
     instanceMap.putIfAbsent(fragment.getId(), fragmentInstance);
+    fragment.setIndexInFragmentInstanceList(fragmentInstanceList.size());
     fragmentInstanceList.add(fragmentInstance);
   }
 }
