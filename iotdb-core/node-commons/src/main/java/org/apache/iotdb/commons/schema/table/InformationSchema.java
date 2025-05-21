@@ -352,10 +352,10 @@ public class InformationSchema {
         new AttributeColumnSchema(ColumnHeaderConstant.MPP_PORT_TABLE_MODEL, TSDataType.INT32));
     dataNodesTable.addColumnSchema(
         new AttributeColumnSchema(
-            ColumnHeaderConstant.SCHEMA_CONSENSUS_PORT_TABLE_MODEL, TSDataType.INT32));
+            ColumnHeaderConstant.DATA_CONSENSUS_PORT_TABLE_MODEL, TSDataType.INT32));
     dataNodesTable.addColumnSchema(
         new AttributeColumnSchema(
-            ColumnHeaderConstant.DATA_CONSENSUS_PORT_TABLE_MODEL, TSDataType.INT32));
+            ColumnHeaderConstant.SCHEMA_CONSENSUS_PORT_TABLE_MODEL, TSDataType.INT32));
     dataNodesTable.removeColumnSchema(TsTable.TIME_COLUMN_NAME);
     schemaTables.put(DATA_NODES, dataNodesTable);
   }

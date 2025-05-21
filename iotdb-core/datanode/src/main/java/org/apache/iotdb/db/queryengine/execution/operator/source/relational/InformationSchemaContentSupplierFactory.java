@@ -42,6 +42,7 @@ import org.apache.iotdb.commons.udf.builtin.relational.TableBuiltinAggregationFu
 import org.apache.iotdb.commons.udf.builtin.relational.TableBuiltinScalarFunction;
 import org.apache.iotdb.confignode.rpc.thrift.TClusterParameters;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeInfo4InformationSchema;
+import org.apache.iotdb.confignode.rpc.thrift.TDataNodeInfo4InformationSchema;
 import org.apache.iotdb.confignode.rpc.thrift.TDatabaseInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TDescTable4InformationSchemaResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetDatabaseReq;
@@ -83,8 +84,6 @@ import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.BytesUtils;
 import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
-
-import javax.swing.*;
 
 import java.nio.ByteBuffer;
 import java.util.Arrays;
@@ -162,6 +161,8 @@ public class InformationSchemaContentSupplierFactory {
         return new NodesSupplier(dataTypes, userName);
       case InformationSchema.CONFIG_NODES:
         return new ConfigNodesSupplier(dataTypes, userName);
+      case InformationSchema.DATA_NODES:
+        return new DataNodesSupplier(dataTypes, userName);
       default:
         throw new UnsupportedOperationException("Unknown table: " + tableName);
     }
@@ -1124,6 +1125,42 @@ public class InformationSchemaContentSupplierFactory {
     @Override
     public boolean hasNext() {
       return configNodeIterator.hasNext();
+    }
+  }
+
+  private static class DataNodesSupplier extends TsBlockSupplier {
+    private Iterator<TDataNodeInfo4InformationSchema> dataNodeIterator;
+
+    private DataNodesSupplier(final List<TSDataType> dataTypes, final String userName) {
+      super(dataTypes);
+      accessControl.checkUserIsAdmin(userName);
+      try (final ConfigNodeClient client =
+          ConfigNodeClientManager.getInstance().borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
+        dataNodeIterator = client.showDataNodes4InformationSchema().getDataNodesInfoListIterator();
+      } catch (final Exception e) {
+        lastException = e;
+      }
+    }
+
+    @Override
+    protected void constructLine() {
+      final TDataNodeInfo4InformationSchema dataNodeInfo4InformationSchema =
+          dataNodeIterator.next();
+      columnBuilders[0].writeInt(dataNodeInfo4InformationSchema.getDataNodeId());
+      columnBuilders[1].writeInt(dataNodeInfo4InformationSchema.getDataRegionNum());
+      columnBuilders[2].writeInt(dataNodeInfo4InformationSchema.getSchemaRegionNum());
+      columnBuilders[3].writeBinary(
+          new Binary(dataNodeInfo4InformationSchema.getRpcAddress(), TSFileConfig.STRING_CHARSET));
+      columnBuilders[4].writeInt(dataNodeInfo4InformationSchema.getRpcPort());
+      columnBuilders[5].writeInt(dataNodeInfo4InformationSchema.getMppPort());
+      columnBuilders[6].writeInt(dataNodeInfo4InformationSchema.getDataConsensusPort());
+      columnBuilders[7].writeInt(dataNodeInfo4InformationSchema.getSchemaConsensusPort());
+      resultBuilder.declarePosition();
+    }
+
+    @Override
+    public boolean hasNext() {
+      return dataNodeIterator.hasNext();
     }
   }
 

@@ -85,6 +85,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeInfo4InformationSchema;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterReq;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterResp;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeInfo;
+import org.apache.iotdb.confignode.rpc.thrift.TDataNodeInfo4InformationSchema;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRegisterReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRestartReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRestartResp;
@@ -734,6 +735,70 @@ public class NodeManager {
         }));
 
     dataNodeInfoList.sort(Comparator.comparingInt(TDataNodeInfo::getDataNodeId));
+    return dataNodeInfoList;
+  }
+
+  public List<TDataNodeInfo4InformationSchema> getRegisteredDataNodeInfoList4InformationSchema() {
+    final List<TDataNodeInfo4InformationSchema> dataNodeInfoList = new ArrayList<>();
+    final List<TDataNodeConfiguration> registeredDataNodes = this.getRegisteredDataNodes();
+    if (registeredDataNodes != null) {
+      registeredDataNodes.forEach(
+          registeredDataNode -> {
+            TDataNodeInfo4InformationSchema dataNodeInfo = new TDataNodeInfo4InformationSchema();
+            int dataNodeId = registeredDataNode.getLocation().getDataNodeId();
+            dataNodeInfo.setDataNodeId(dataNodeId);
+            dataNodeInfo.setRpcAddress(
+                registeredDataNode.getLocation().getClientRpcEndPoint().getIp());
+            dataNodeInfo.setRpcPort(
+                registeredDataNode.getLocation().getClientRpcEndPoint().getPort());
+            dataNodeInfo.setDataRegionNum(0);
+            dataNodeInfo.setSchemaRegionNum(0);
+            dataNodeInfo.setMppPort(
+                registeredDataNode.getLocation().getMPPDataExchangeEndPoint().getPort());
+            dataNodeInfo.setDataConsensusPort(
+                registeredDataNode.getLocation().getDataRegionConsensusEndPoint().getPort());
+            dataNodeInfo.setSchemaConsensusPort(
+                registeredDataNode.getLocation().getSchemaRegionConsensusEndPoint().getPort());
+            dataNodeInfoList.add(dataNodeInfo);
+          });
+    }
+
+    // Map<DataNodeId, DataRegionNum>
+    final Map<Integer, AtomicInteger> dataRegionNumMap = new HashMap<>();
+    // Map<DataNodeId, SchemaRegionNum>
+    final Map<Integer, AtomicInteger> schemaRegionNumMap = new HashMap<>();
+    final List<TRegionReplicaSet> regionReplicaSets = getPartitionManager().getAllReplicaSets();
+    regionReplicaSets.forEach(
+        regionReplicaSet ->
+            regionReplicaSet
+                .getDataNodeLocations()
+                .forEach(
+                    dataNodeLocation -> {
+                      switch (regionReplicaSet.getRegionId().getType()) {
+                        case SchemaRegion:
+                          schemaRegionNumMap
+                              .computeIfAbsent(
+                                  dataNodeLocation.getDataNodeId(), key -> new AtomicInteger())
+                              .getAndIncrement();
+                          break;
+                        case DataRegion:
+                        default:
+                          dataRegionNumMap
+                              .computeIfAbsent(
+                                  dataNodeLocation.getDataNodeId(), key -> new AtomicInteger())
+                              .getAndIncrement();
+                      }
+                    }));
+    final AtomicInteger zero = new AtomicInteger(0);
+    dataNodeInfoList.forEach(
+        (dataNodesInfo -> {
+          dataNodesInfo.setSchemaRegionNum(
+              schemaRegionNumMap.getOrDefault(dataNodesInfo.getDataNodeId(), zero).get());
+          dataNodesInfo.setDataRegionNum(
+              dataRegionNumMap.getOrDefault(dataNodesInfo.getDataNodeId(), zero).get());
+        }));
+
+    dataNodeInfoList.sort(Comparator.comparingInt(TDataNodeInfo4InformationSchema::getDataNodeId));
     return dataNodeInfoList;
   }
 
