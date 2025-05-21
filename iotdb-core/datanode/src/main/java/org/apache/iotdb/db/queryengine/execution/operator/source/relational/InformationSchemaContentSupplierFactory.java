@@ -141,6 +141,8 @@ public class InformationSchemaContentSupplierFactory {
         return new ConfigurationsSupplier(dataTypes);
       case InformationSchema.KEYWORDS:
         return new KeywordsSupplier(dataTypes);
+      case InformationSchema.NODES:
+        return new NodesSupplier(dataTypes);
       default:
         throw new UnsupportedOperationException("Unknown table: " + tableName);
     }
@@ -908,6 +910,29 @@ public class InformationSchemaContentSupplierFactory {
     private final Set<String> reserved = ReservedIdentifiers.reservedIdentifiers();
 
     private KeywordsSupplier(final List<TSDataType> dataTypes) {
+      super(dataTypes);
+      keywordIterator = RelationalSqlKeywords.sqlKeywords().iterator();
+    }
+
+    @Override
+    protected void constructLine() {
+      final String keyword = keywordIterator.next();
+      columnBuilders[0].writeBinary(BytesUtils.valueOf(keyword));
+      columnBuilders[1].writeInt(reserved.contains(keyword) ? 1 : 0);
+      resultBuilder.declarePosition();
+    }
+
+    @Override
+    public boolean hasNext() {
+      return keywordIterator.hasNext();
+    }
+  }
+
+  private static class NodesSupplier extends TsBlockSupplier {
+    private final Iterator<String> keywordIterator;
+    private final Set<String> reserved = ReservedIdentifiers.reservedIdentifiers();
+
+    private NodesSupplier(final List<TSDataType> dataTypes) {
       super(dataTypes);
       keywordIterator = RelationalSqlKeywords.sqlKeywords().iterator();
     }

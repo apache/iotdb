@@ -254,6 +254,19 @@ public class ColumnHeaderConstant {
   public static final String FUNCTION_TYPE_TABLE_MODEL = "function_type";
   public static final String CLASS_NAME_UDF_TABLE_MODEL = "class_name(udf)";
 
+  public static final String NODE_ID_TABLE_MODEL = "node_id";
+  public static final String NODE_TYPE_TABLE_MODEL = "node_type";
+  public static final String INTERNAL_PORT_TABLE_MODEL = "internal_port";
+  public static final String BUILD_INFO_TABLE_MODEL = "build_info";
+
+  public static final String CONFIG_CONSENSUS_PORT_TABLE_MODEL = "config_consensus_port";
+
+  public static final String DATA_REGION_NUM_TABLE_MODEL = "data_region_num";
+  public static final String SCHEMA_REGION_NUM_TABLE_MODEL = "schema_region_num";
+  public static final String MPP_PORT_TABLE_MODEL = "mpp_port";
+  public static final String SCHEMA_CONSENSUS_PORT_TABLE_MODEL = "schema_consensus_port";
+  public static final String DATA_CONSENSUS_PORT_TABLE_MODEL = "data_consensus_port";
+
   // column names for show space quota
   public static final String QUOTA_TYPE = "QuotaType";
   public static final String LIMIT = "Limit";
