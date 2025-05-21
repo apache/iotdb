@@ -160,9 +160,8 @@ public class VariationTableFunction implements TableFunction {
     private double baseValue = 0;
     private long curIndex = 0;
     private long windowIndex = 0;
-    private final double minValue = Double.MIN_VALUE;
 
-    public VariationDataProcessor(double delta, boolean ignoreNull) {
+      public VariationDataProcessor(double delta, boolean ignoreNull) {
       this.gap = delta;
       this.ignoreNull = ignoreNull;
     }
@@ -172,7 +171,8 @@ public class VariationTableFunction implements TableFunction {
         Record input,
         List<ColumnBuilder> properColumnBuilders,
         ColumnBuilder passThroughIndexBuilder) {
-      if (input.isNull(0)) {
+        double minValue = Double.MIN_VALUE;
+        if (input.isNull(0)) {
         if (baseValue != minValue) {
           outputWindow(properColumnBuilders, passThroughIndexBuilder);
           currentStartIndex = curIndex;
