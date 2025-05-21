@@ -44,6 +44,8 @@ import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.rpc.subscription.exception.SubscriptionException;
 
+import org.apache.thrift.annotation.Nullable;
+import org.apache.tsfile.utils.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -54,9 +56,11 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
+import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 
@@ -628,15 +632,18 @@ public class SubscriptionInfo implements SnapshotProcessor {
   private void checkBeforeUnsubscribeInternal(TUnsubscribeReq unsubscribeReq)
       throws SubscriptionException {
     // 1. Check if the consumer exists
-    if (!isConsumerExisted(unsubscribeReq.getConsumerGroupId(), unsubscribeReq.getConsumerId())) {
-      // There is no consumer with the same consumerId and consumerGroupId,
-      // we should end the procedure
-      final String exceptionMessage =
-          String.format(
-              "Failed to unsubscribe because the consumer %s in consumer group %s does not exist",
-              unsubscribeReq.getConsumerId(), unsubscribeReq.getConsumerGroupId());
-      LOGGER.warn(exceptionMessage);
-      throw new SubscriptionException(exceptionMessage);
+    // NOTE: consumer id may be null if drop subscription by session
+    if (Objects.nonNull(unsubscribeReq.getConsumerId())) {
+      if (!isConsumerExisted(unsubscribeReq.getConsumerGroupId(), unsubscribeReq.getConsumerId())) {
+        // There is no consumer with the same consumerId and consumerGroupId,
+        // we should end the procedure
+        final String exceptionMessage =
+            String.format(
+                "Failed to unsubscribe because the consumer %s in consumer group %s does not exist",
+                unsubscribeReq.getConsumerId(), unsubscribeReq.getConsumerGroupId());
+        LOGGER.warn(exceptionMessage);
+        throw new SubscriptionException(exceptionMessage);
+      }
     }
 
     // 2. Check if all topics exist. No need to check if already subscribed.
@@ -663,16 +670,28 @@ public class SubscriptionInfo implements SnapshotProcessor {
   }
 
   private List<SubscriptionMeta> getAllSubscriptionMeta() {
+    return getAllSubscriptionMetaInternal(null);
+  }
+
+  private List<SubscriptionMeta> getAllSubscriptionMetaInternal(
+      @Nullable Predicate<TopicMeta> predicate) {
     List<SubscriptionMeta> allSubscriptions = new ArrayList<>();
     for (TopicMeta topicMeta : topicMetaKeeper.getAllTopicMeta()) {
+      if (Objects.nonNull(predicate) && !predicate.test(topicMeta)) {
+        continue;
+      }
       for (String consumerGroupId :
           consumerGroupMetaKeeper.getSubscribedConsumerGroupIds(topicMeta.getTopicName())) {
         Set<String> subscribedConsumerIDs =
             consumerGroupMetaKeeper.getConsumersSubscribingTopic(
                 consumerGroupId, topicMeta.getTopicName());
+        Optional<Long> creationTime =
+            consumerGroupMetaKeeper.getSubscriptionCreationTime(
+                consumerGroupId, topicMeta.getTopicName());
         if (!subscribedConsumerIDs.isEmpty()) {
           allSubscriptions.add(
-              new SubscriptionMeta(topicMeta, consumerGroupId, subscribedConsumerIDs));
+              new SubscriptionMeta(
+                  topicMeta, consumerGroupId, subscribedConsumerIDs, creationTime.orElse(null)));
         }
       }
     }
@@ -683,6 +702,26 @@ public class SubscriptionInfo implements SnapshotProcessor {
     return StreamSupport.stream(
             consumerGroupMetaKeeper.getAllConsumerGroupMeta().spliterator(), false)
         .collect(Collectors.toList());
+  }
+
+  public Optional<Pair<String, String>> parseSubscriptionId(
+      String subscriptionId, boolean isTableModel) {
+    acquireReadLock();
+    try {
+      List<SubscriptionMeta> allSubscriptions =
+          getAllSubscriptionMetaInternal(topicMeta -> topicMeta.visibleUnder(isTableModel));
+      for (SubscriptionMeta subscriptionMeta : allSubscriptions) {
+        if (Objects.equals(subscriptionId, subscriptionMeta.getSubscriptionId())) {
+          return Optional.of(
+              new Pair<>(
+                  subscriptionMeta.getTopicMeta().getTopicName(),
+                  subscriptionMeta.getConsumerGroupId()));
+        }
+      }
+      return Optional.empty();
+    } finally {
+      releaseReadLock();
+    }
   }
 
   /////////////////////////////////  Snapshot  /////////////////////////////////

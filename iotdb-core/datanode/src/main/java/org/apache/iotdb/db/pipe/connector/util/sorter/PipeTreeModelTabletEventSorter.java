@@ -20,24 +20,15 @@
 package org.apache.iotdb.db.pipe.connector.util.sorter;
 
 import org.apache.tsfile.write.record.Tablet;
-import org.apache.tsfile.write.schema.IMeasurementSchema;
 
 import java.util.Arrays;
 import java.util.Comparator;
 
-public class PipeTreeModelTabletEventSorter {
-
-  private final Tablet tablet;
-
-  private boolean isSorted = true;
-  private boolean isDeduplicated = true;
-
-  private Integer[] index;
-  private int deduplicatedSize;
+public class PipeTreeModelTabletEventSorter extends PipeTabletEventSorter {
 
   public PipeTreeModelTabletEventSorter(final Tablet tablet) {
-    this.tablet = tablet;
-    deduplicatedSize = tablet == null ? 0 : tablet.getRowSize();
+    super(tablet);
+    deDuplicatedSize = tablet == null ? 0 : tablet.getRowSize();
   }
 
   public void deduplicateAndSortTimestampsIfNecessary() {
@@ -55,15 +46,16 @@ public class PipeTreeModelTabletEventSorter {
         break;
       }
       if (currentTimestamp == previousTimestamp) {
-        isDeduplicated = false;
+        isDeDuplicated = false;
       }
     }
 
-    if (isSorted && isDeduplicated) {
+    if (isSorted && isDeDuplicated) {
       return;
     }
 
     index = new Integer[tablet.getRowSize()];
+    deDuplicatedIndex = new int[tablet.getRowSize()];
     for (int i = 0, size = tablet.getRowSize(); i < size; i++) {
       index[i] = i;
     }
@@ -71,53 +63,39 @@ public class PipeTreeModelTabletEventSorter {
     if (!isSorted) {
       sortTimestamps();
 
-      // Do deduplicate anyway.
-      // isDeduplicated may be false positive when isSorted is false.
+      // Do deDuplicated anyway.
+      // isDeDuplicated may be false positive when isSorted is false.
       deduplicateTimestamps();
-      isDeduplicated = true;
+      isDeDuplicated = true;
     }
 
-    if (!isDeduplicated) {
+    if (!isDeDuplicated) {
       deduplicateTimestamps();
     }
 
-    sortAndDeduplicateValuesAndBitMaps();
+    sortAndMayDeduplicateValuesAndBitMaps();
   }
 
   private void sortTimestamps() {
+    // Index is sorted stably because it is Integer[]
     Arrays.sort(index, Comparator.comparingLong(tablet::getTimestamp));
     Arrays.sort(tablet.getTimestamps(), 0, tablet.getRowSize());
   }
 
   private void deduplicateTimestamps() {
-    deduplicatedSize = 1;
+    deDuplicatedSize = 0;
     long[] timestamps = tablet.getTimestamps();
     for (int i = 1, size = tablet.getRowSize(); i < size; i++) {
       if (timestamps[i] != timestamps[i - 1]) {
-        index[deduplicatedSize] = index[i];
-        timestamps[deduplicatedSize] = timestamps[i];
+        deDuplicatedIndex[deDuplicatedSize] = i - 1;
+        timestamps[deDuplicatedSize] = timestamps[i - 1];
 
-        ++deduplicatedSize;
+        ++deDuplicatedSize;
       }
     }
-    tablet.setRowSize(deduplicatedSize);
-  }
 
-  private void sortAndDeduplicateValuesAndBitMaps() {
-    int columnIndex = 0;
-    for (int i = 0, size = tablet.getSchemas().size(); i < size; i++) {
-      final IMeasurementSchema schema = tablet.getSchemas().get(i);
-      if (schema != null) {
-        tablet.getValues()[columnIndex] =
-            PipeTabletEventSorter.reorderValueList(
-                deduplicatedSize, tablet.getValues()[columnIndex], schema.getType(), index);
-        if (tablet.getBitMaps() != null && tablet.getBitMaps()[columnIndex] != null) {
-          tablet.getBitMaps()[columnIndex] =
-              PipeTabletEventSorter.reorderBitMap(
-                  deduplicatedSize, tablet.getBitMaps()[columnIndex], index);
-        }
-        columnIndex++;
-      }
-    }
+    deDuplicatedIndex[deDuplicatedSize] = tablet.getRowSize() - 1;
+    timestamps[deDuplicatedSize] = timestamps[tablet.getRowSize() - 1];
+    tablet.setRowSize(++deDuplicatedSize);
   }
 }

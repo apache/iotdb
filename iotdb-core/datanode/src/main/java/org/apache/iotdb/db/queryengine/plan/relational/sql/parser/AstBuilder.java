@@ -60,9 +60,9 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateIndex;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreatePipe;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreatePipePlugin;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateTable;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateTableView;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateTopic;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateTraining;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateView;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CurrentDatabase;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CurrentTime;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CurrentUser;
@@ -79,6 +79,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropFunction;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropIndex;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropPipe;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropPipePlugin;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropSubscription;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropTable;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropTopic;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Except;
@@ -525,13 +526,12 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
   }
 
   @Override
-  public Node visitCreateTableViewStatement(
-      final RelationalSqlParser.CreateTableViewStatementContext ctx) {
+  public Node visitCreateViewStatement(final RelationalSqlParser.CreateViewStatementContext ctx) {
     List<Property> properties = ImmutableList.of();
     if (ctx.properties() != null) {
       properties = visit(ctx.properties().propertyAssignments().property(), Property.class);
     }
-    return new CreateTableView(
+    return new CreateView(
         getLocation(ctx),
         getQualifiedName(ctx.qualifiedName()),
         visit(ctx.viewColumnDefinition(), ColumnDefinition.class),
@@ -1240,6 +1240,14 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
   }
 
   @Override
+  public Node visitDropSubscriptionStatement(
+      RelationalSqlParser.DropSubscriptionStatementContext ctx) {
+    final String subscriptionId = ((Identifier) visit(ctx.identifier())).getValue();
+    final boolean hasIfExistsCondition = ctx.IF() != null && ctx.EXISTS() != null;
+    return new DropSubscription(subscriptionId, hasIfExistsCondition);
+  }
+
+  @Override
   public Node visitShowDevicesStatement(final RelationalSqlParser.ShowDevicesStatementContext ctx) {
     final QualifiedName name = getQualifiedName(ctx.tableName);
     return InformationSchema.INFORMATION_DATABASE.equals(
@@ -1548,8 +1556,10 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
       String key = property.getName().getValue();
       Expression propertyValue = property.getNonDefaultValue();
       if (!propertyValue.getExpressionType().equals(TableExpressionType.STRING_LITERAL)) {
-        throw new IllegalArgumentException(
-            propertyValue.getExpressionType() + " is not supported for 'set configuration'");
+        throw new SemanticException(
+            propertyValue.getExpressionType()
+                + " is not supported for property value of 'set configuration'. "
+                + "Note that the syntax for 'set configuration' in the tree model is not exactly the same as that in the table model.");
       }
       String value = ((StringLiteral) propertyValue).getValue();
       configItems.put(key.trim(), value.trim());
@@ -2337,7 +2347,7 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
     }
 
     JoinCriteria criteria;
-
+    TimeDuration timeDuration = null;
     if (ctx.NATURAL() != null) {
       right = (Relation) visit(ctx.right);
       criteria = new NaturalJoin();
@@ -2345,7 +2355,6 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
       right = (Relation) visit(ctx.rightRelation);
       if (ctx.joinCriteria().ON() != null) {
         if (ctx.ASOF() != null) {
-          TimeDuration timeDuration = null;
           if (ctx.timeDuration() != null) {
             timeDuration = DateTimeUtils.constructTimeDuration(ctx.timeDuration().getText());
 
@@ -2378,8 +2387,8 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
       joinType = Join.Type.INNER;
     }
 
-    if (criteria instanceof AsofJoinOn && joinType != Join.Type.INNER) {
-      throw new SemanticException("ASOF JOIN is only support INNER type now");
+    if (criteria instanceof AsofJoinOn && joinType != Join.Type.INNER && timeDuration != null) {
+      throw new SemanticException("Tolerance in ASOF JOIN is only support INNER type now");
     }
 
     return new Join(getLocation(ctx), joinType, left, right, criteria);

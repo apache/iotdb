@@ -1083,6 +1083,10 @@ public class PipeConsensusReceiver {
     LOGGER.info("Receiver-{} exit successfully.", consensusPipeName.toString());
   }
 
+  public void closeExecutor() {
+    requestExecutor.tryClose();
+  }
+
   private class PipeConsensusTsFileWriterPool {
     private final Lock lock = new ReentrantLock();
     private final List<PipeConsensusTsFileWriter> pipeConsensusTsFileWriterPool = new ArrayList<>();
@@ -1672,6 +1676,9 @@ public class PipeConsensusReceiver {
       try {
         isClosed.set(true);
       } finally {
+        // let all threads that may still await become active again to acquire lock instead of
+        // meaningless sleeping in the condition while lock is already released.
+        condition.signalAll();
         lock.unlock();
       }
     }

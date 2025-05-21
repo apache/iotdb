@@ -78,8 +78,8 @@ public class IoTDBNullIdQueryTableViewIT {
       new String[] {
         "CREATE DATABASE " + DATABASE_NAME,
         "USE " + DATABASE_NAME,
-        "CREATE TABLE VIEW testNullId(id1 STRING TAG, id2 STRING TAG, s1 INT32 FIELD, s2 BOOLEAN FIELD, s3 DOUBLE FIELD) as root.test.testNullId.**",
-        "CREATE TABLE VIEW table1(device_id STRING TAG, s1 INT32 FIELD, s2 BOOLEAN FIELD, s3 INT64 FIELD) as root.test.table1.**",
+        "CREATE VIEW testNullId(id1 STRING TAG, id2 STRING TAG, s1 INT32 FIELD, s2 BOOLEAN FIELD, s3 DOUBLE FIELD) as root.test.testNullId.**",
+        "CREATE VIEW table1(device_id STRING TAG, s1 INT32 FIELD, s2 BOOLEAN FIELD, s3 INT64 FIELD) as root.test.table1.**",
       };
 
   @BeforeClass

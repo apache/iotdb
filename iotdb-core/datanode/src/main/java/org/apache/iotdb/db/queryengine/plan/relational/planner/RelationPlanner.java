@@ -95,6 +95,7 @@ import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
 import org.apache.tsfile.read.common.type.Type;
+import org.apache.tsfile.write.schema.MeasurementSchema;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -759,14 +760,19 @@ public class RelationPlanner extends AstVisitor<RelationPlan, Void> {
   @Override
   protected RelationPlan visitInsertTablet(InsertTablet node, Void context) {
     final InsertTabletStatement insertTabletStatement = node.getInnerTreeStatement();
+
+    String[] measurements = insertTabletStatement.getMeasurements();
+    MeasurementSchema[] measurementSchemas = insertTabletStatement.getMeasurementSchemas();
+    stayConsistent(measurements, measurementSchemas);
+
     RelationalInsertTabletNode insertNode =
         new RelationalInsertTabletNode(
             idAllocator.genPlanNodeId(),
             insertTabletStatement.getDevicePath(),
             insertTabletStatement.isAligned(),
-            insertTabletStatement.getMeasurements(),
+            measurements,
             insertTabletStatement.getDataTypes(),
-            insertTabletStatement.getMeasurementSchemas(),
+            measurementSchemas,
             insertTabletStatement.getTimes(),
             insertTabletStatement.getBitMaps(),
             insertTabletStatement.getColumns(),
@@ -790,19 +796,24 @@ public class RelationPlanner extends AstVisitor<RelationPlan, Void> {
 
   protected RelationalInsertRowNode fromInsertRowStatement(
       final InsertRowStatement insertRowStatement) {
+
+    String[] measurements = insertRowStatement.getMeasurements();
+    MeasurementSchema[] measurementSchemas = insertRowStatement.getMeasurementSchemas();
+    stayConsistent(measurements, measurementSchemas);
+
     final RelationalInsertRowNode insertNode =
         new RelationalInsertRowNode(
             idAllocator.genPlanNodeId(),
             insertRowStatement.getDevicePath(),
             insertRowStatement.isAligned(),
-            insertRowStatement.getMeasurements(),
+            measurements,
             insertRowStatement.getDataTypes(),
+            measurementSchemas,
             insertRowStatement.getTime(),
             insertRowStatement.getValues(),
             insertRowStatement.isNeedInferType(),
             insertRowStatement.getColumnCategories());
     insertNode.setFailedMeasurementNumber(insertRowStatement.getFailedMeasurementNumber());
-    insertNode.setMeasurementSchemas(insertRowStatement.getMeasurementSchemas());
     return insertNode;
   }
 
@@ -1001,5 +1012,16 @@ public class RelationPlanner extends AstVisitor<RelationPlan, Void> {
             sourceProperties.build());
 
     return new RelationPlan(root, analysis.getScope(node), outputSymbols.build(), outerContext);
+  }
+
+  private static void stayConsistent(
+      String[] measurements, MeasurementSchema[] measurementSchemas) {
+    int minLength = Math.min(measurements.length, measurementSchemas.length);
+    for (int j = 0; j < minLength; j++) {
+      if (measurements[j] == null || measurementSchemas[j] == null) {
+        measurements[j] = null;
+        measurementSchemas[j] = null;
+      }
+    }
   }
 }

@@ -93,6 +93,7 @@ import org.apache.iotdb.db.queryengine.execution.operator.source.SeriesScanOpera
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.AbstractAggTableScanOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.AbstractTableScanOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.AsofMergeSortInnerJoinOperator;
+import org.apache.iotdb.db.queryengine.execution.operator.source.relational.AsofMergeSortLeftJoinOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.DefaultAggTableScanOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.DeviceIteratorScanOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.InformationSchemaTableScanOperator;
@@ -546,13 +547,13 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
             boolean canPushDownLimitToAllSeriesScanOptions =
                 canPushDownLimit && pushDownConjunctsForEachMeasurement.isEmpty();
             // the left child of LeftOuterTimeJoinOperator is SeriesScanOperator
-            boolean pushDownLimitToLeftChildSeriesScanOperator =
+            boolean pushDownOffsetAndLimitToLeftChildSeriesScanOperator =
                 canPushDownLimit && pushDownConjunctsForEachMeasurement.size() == 1;
             // the left child of LeftOuterTimeJoinOperator is InnerTimeJoinOperator
             boolean pushDownOffsetAndLimitAfterInnerJoinOperator =
                 canPushDownLimit && pushDownConjunctsForEachMeasurement.size() > 1;
             removeUpperOffsetAndLimitOperator =
-                pushDownLimitToLeftChildSeriesScanOperator
+                pushDownOffsetAndLimitToLeftChildSeriesScanOperator
                     || pushDownOffsetAndLimitAfterInnerJoinOperator
                     || isSingleColumn;
             for (int i = 0; i < measurementSchemas.size(); i++) {
@@ -579,16 +580,19 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
                         commonParameter.timeColumnName));
               }
               if (isSingleColumn
-                  || (pushDownLimitToLeftChildSeriesScanOperator
+                  || (pushDownOffsetAndLimitToLeftChildSeriesScanOperator
                       && pushDownPredicateForCurrentMeasurement != null)) {
                 builder.withPushDownLimit(node.getPushDownLimit());
                 builder.withPushLimitToEachDevice(node.isPushLimitToEachDevice());
               }
-              if (canPushDownLimitToAllSeriesScanOptions) {
+
+              // In the case of single column, both offset and limit are pushed down to the
+              // SeriesScanOperator
+              if (!isSingleColumn && canPushDownLimitToAllSeriesScanOptions) {
                 builder.withPushDownLimit(node.getPushDownLimit() + node.getPushDownOffset());
               }
               if (isSingleColumn
-                  || (pushDownLimitToLeftChildSeriesScanOperator
+                  || (pushDownOffsetAndLimitToLeftChildSeriesScanOperator
                       && pushDownPredicateForCurrentMeasurement != null)) {
                 builder.withPushDownOffset(
                     node.isPushLimitToEachDevice() ? 0 : node.getPushDownOffset());
@@ -2008,6 +2012,28 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
                     || asofOperator == ComparisonExpression.Operator.GREATER_THAN_OR_EQUAL,
                 !asofJoinClause.isOperatorContainsGreater()),
             dataTypes);
+      } else if (requireNonNull(node.getJoinType()) == JoinNode.JoinType.LEFT) {
+        OperatorContext operatorContext =
+            context
+                .getDriverContext()
+                .addOperatorContext(
+                    context.getNextOperatorId(),
+                    node.getPlanNodeId(),
+                    AsofMergeSortLeftJoinOperator.class.getSimpleName());
+        return new AsofMergeSortLeftJoinOperator(
+            operatorContext,
+            leftChild,
+            leftJoinKeyPositions,
+            leftOutputSymbolIdx,
+            rightChild,
+            rightJoinKeyPositions,
+            rightOutputSymbolIdx,
+            JoinKeyComparatorFactory.getAsofComparators(
+                joinKeyTypes,
+                asofOperator == ComparisonExpression.Operator.LESS_THAN_OR_EQUAL
+                    || asofOperator == ComparisonExpression.Operator.GREATER_THAN_OR_EQUAL,
+                !asofJoinClause.isOperatorContainsGreater()),
+            dataTypes);
       } else {
         throw new IllegalStateException("Unsupported ASOF join type: " + node.getJoinType());
       }
@@ -2949,6 +2975,9 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
             hitCachedResults);
 
     ((DataDriverContext) context.getDriverContext()).addSourceOperator(lastQueryOperator);
+    parameter
+        .getOperatorContext()
+        .setOperatorType(LastQueryAggTableScanOperator.class.getSimpleName());
     return lastQueryOperator;
   }
 

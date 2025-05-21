@@ -21,7 +21,7 @@ package org.apache.iotdb.commons.schema.table;
 
 public enum TableType {
   BASE_TABLE("BASE TABLE"),
-  TREE_TO_TABLE_VIEW("TREE_TO_TABLE VIEW"),
+  VIEW_FROM_TREE("VIEW FROM TREE"),
   VIEW("VIEW"),
   SYSTEM_VIEW("SYSTEM VIEW"),
   ;
