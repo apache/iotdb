@@ -328,7 +328,8 @@ public class InformationSchema {
     configNodesTable.addColumnSchema(
         new TagColumnSchema(ColumnHeaderConstant.NODE_ID_TABLE_MODEL, TSDataType.INT32));
     configNodesTable.addColumnSchema(
-        new AttributeColumnSchema(ColumnHeaderConstant.CONFIG_CONSENSUS_PORT, TSDataType.INT32));
+        new AttributeColumnSchema(
+            ColumnHeaderConstant.CONFIG_CONSENSUS_PORT_TABLE_MODEL, TSDataType.INT32));
     configNodesTable.addColumnSchema(
         new AttributeColumnSchema(
             ColumnHeaderConstant.ROLE.toLowerCase(Locale.ENGLISH), TSDataType.STRING));
