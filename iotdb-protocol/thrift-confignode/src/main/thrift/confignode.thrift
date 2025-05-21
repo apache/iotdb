@@ -644,6 +644,18 @@ struct TShowConfigNodesResp {
   2: optional list<TConfigNodeInfo> configNodesInfoList
 }
 
+// Show confignodes
+struct TConfigNodeInfo4InformationSchema {
+  1: required i32 configNodeId
+  2: required i32 consensusPort
+  5: required string roleType
+}
+
+struct TShowConfigNodes4InformationSchemaResp {
+  1: required common.TSStatus status
+  2: optional list<TConfigNodeInfo4InformationSchema> configNodesInfoList
+}
+
 // Show Database
 struct TDatabaseInfo {
   1: required string name
@@ -1717,6 +1729,9 @@ service IConfigNodeRPCService {
 
   /** Show cluster ConfigNodes' information */
   TShowConfigNodesResp showConfigNodes()
+
+  /** Show cluster ConfigNodes' information for information schema */
+  TShowConfigNodes4InformationSchemaResp showConfigNodes4InformationSchema()
 
   /** Show cluster Databases' information */
   TShowDatabaseResp showDatabase(TGetDatabaseReq req)

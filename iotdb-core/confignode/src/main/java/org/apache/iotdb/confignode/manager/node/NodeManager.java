@@ -81,6 +81,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TAINodeRestartReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAINodeRestartResp;
 import org.apache.iotdb.confignode.rpc.thrift.TCQConfig;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeInfo;
+import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeInfo4InformationSchema;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterReq;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterResp;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeInfo;
@@ -768,6 +769,28 @@ public class NodeManager {
           });
     }
     configNodeInfoList.sort(Comparator.comparingInt(TConfigNodeInfo::getConfigNodeId));
+    return configNodeInfoList;
+  }
+
+  public List<TConfigNodeInfo4InformationSchema> getRegisteredConfigNodeInfo4InformationSchema() {
+    final List<TConfigNodeInfo4InformationSchema> configNodeInfoList = new ArrayList<>();
+    final List<TConfigNodeLocation> registeredConfigNodes = this.getRegisteredConfigNodes();
+    if (registeredConfigNodes != null) {
+      registeredConfigNodes.forEach(
+          configNodeLocation -> {
+            final TConfigNodeInfo4InformationSchema info = new TConfigNodeInfo4InformationSchema();
+            final int configNodeId = configNodeLocation.getConfigNodeId();
+            info.setConfigNodeId(configNodeId);
+            info.setConsensusPort(configNodeLocation.getConsensusEndPoint().getPort());
+            info.setRoleType(
+                configNodeLocation.getConfigNodeId() == ConfigNodeHeartbeatCache.CURRENT_NODE_ID
+                    ? RegionRoleType.Leader.name()
+                    : RegionRoleType.Follower.name());
+            configNodeInfoList.add(info);
+          });
+    }
+    configNodeInfoList.sort(
+        Comparator.comparingInt(TConfigNodeInfo4InformationSchema::getConfigNodeId));
     return configNodeInfoList;
   }
 
