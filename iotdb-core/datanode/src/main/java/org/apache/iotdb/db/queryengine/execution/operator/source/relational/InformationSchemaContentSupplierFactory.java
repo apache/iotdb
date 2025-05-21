@@ -20,7 +20,10 @@
 package org.apache.iotdb.db.queryengine.execution.operator.source.relational;
 
 import org.apache.iotdb.common.rpc.thrift.Model;
+import org.apache.iotdb.common.rpc.thrift.TAINodeLocation;
+import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
+import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.model.ModelType;
 import org.apache.iotdb.commons.pipe.agent.plugin.builtin.BuiltinPipePlugin;
@@ -41,7 +44,9 @@ import org.apache.iotdb.confignode.rpc.thrift.TDatabaseInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TDescTable4InformationSchemaResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetDatabaseReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetUdfTableReq;
+import org.apache.iotdb.confignode.rpc.thrift.TNodeVersionInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TRegionInfo;
+import org.apache.iotdb.confignode.rpc.thrift.TShowClusterResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowModelReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipeInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipeReq;
@@ -76,6 +81,8 @@ import org.apache.tsfile.utils.BytesUtils;
 import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 
+import javax.swing.*;
+
 import java.nio.ByteBuffer;
 import java.util.Arrays;
 import java.util.Collections;
@@ -96,6 +103,9 @@ import static org.apache.iotdb.commons.conf.IoTDBConstant.FUNCTION_TYPE_BUILTIN_
 import static org.apache.iotdb.commons.conf.IoTDBConstant.TTL_INFINITE;
 import static org.apache.iotdb.commons.schema.SchemaConstant.ALL_MATCH_SCOPE;
 import static org.apache.iotdb.commons.schema.SchemaConstant.ALL_RESULT_NODES;
+import static org.apache.iotdb.commons.schema.column.ColumnHeaderConstant.NODE_TYPE_AI_NODE;
+import static org.apache.iotdb.commons.schema.column.ColumnHeaderConstant.NODE_TYPE_CONFIG_NODE;
+import static org.apache.iotdb.commons.schema.column.ColumnHeaderConstant.NODE_TYPE_DATA_NODE;
 import static org.apache.iotdb.commons.schema.table.TsTable.TTL_PROPERTY;
 import static org.apache.iotdb.db.queryengine.plan.execution.config.metadata.ShowFunctionsTask.BINARY_MAP;
 import static org.apache.iotdb.db.queryengine.plan.execution.config.metadata.ShowFunctionsTask.getFunctionState;
@@ -929,25 +939,99 @@ public class InformationSchemaContentSupplierFactory {
   }
 
   private static class NodesSupplier extends TsBlockSupplier {
-    private final Iterator<String> keywordIterator;
-    private final Set<String> reserved = ReservedIdentifiers.reservedIdentifiers();
+    private TShowClusterResp showClusterResp;
+    private Iterator<TConfigNodeLocation> configNodeIterator;
+    private Iterator<TDataNodeLocation> dataNodeIterator;
+    private Iterator<TAINodeLocation> aiNodeIterator;
 
     private NodesSupplier(final List<TSDataType> dataTypes) {
       super(dataTypes);
-      keywordIterator = RelationalSqlKeywords.sqlKeywords().iterator();
+      try (final ConfigNodeClient client =
+          ConfigNodeClientManager.getInstance().borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
+        showClusterResp = client.showCluster();
+        configNodeIterator = showClusterResp.getConfigNodeListIterator();
+        dataNodeIterator = showClusterResp.getDataNodeListIterator();
+        aiNodeIterator = showClusterResp.getAiNodeListIterator();
+      } catch (final Exception e) {
+        lastException = e;
+      }
     }
 
     @Override
     protected void constructLine() {
-      final String keyword = keywordIterator.next();
-      columnBuilders[0].writeBinary(BytesUtils.valueOf(keyword));
-      columnBuilders[1].writeInt(reserved.contains(keyword) ? 1 : 0);
+      if (configNodeIterator.hasNext()) {
+        final TConfigNodeLocation location = configNodeIterator.next();
+        buildNodeTsBlock(
+            location.getConfigNodeId(),
+            NODE_TYPE_CONFIG_NODE,
+            showClusterResp.getNodeStatus().get(location.getConfigNodeId()),
+            location.getInternalEndPoint().getIp(),
+            location.getInternalEndPoint().getPort(),
+            showClusterResp.getNodeVersionInfo().get(location.getConfigNodeId()));
+        return;
+      }
+      if (dataNodeIterator.hasNext()) {
+        final TDataNodeLocation location = dataNodeIterator.next();
+        buildNodeTsBlock(
+            location.getDataNodeId(),
+            NODE_TYPE_DATA_NODE,
+            showClusterResp.getNodeStatus().get(location.getDataNodeId()),
+            location.getInternalEndPoint().getIp(),
+            location.getInternalEndPoint().getPort(),
+            showClusterResp.getNodeVersionInfo().get(location.getDataNodeId()));
+        return;
+      }
+      if (aiNodeIterator.hasNext()) {
+        final TAINodeLocation location = aiNodeIterator.next();
+        buildNodeTsBlock(
+            location.getAiNodeId(),
+            NODE_TYPE_AI_NODE,
+            showClusterResp.getNodeStatus().get(location.getAiNodeId()),
+            location.getInternalEndPoint().getIp(),
+            location.getInternalEndPoint().getPort(),
+            showClusterResp.getNodeVersionInfo().get(location.getAiNodeId()));
+      }
+    }
+
+    private void buildNodeTsBlock(
+        int nodeId,
+        String nodeType,
+        String nodeStatus,
+        String internalAddress,
+        int internalPort,
+        TNodeVersionInfo versionInfo) {
+      columnBuilders[0].writeInt(nodeId);
+      columnBuilders[1].writeBinary(new Binary(nodeType, TSFileConfig.STRING_CHARSET));
+      if (nodeStatus == null) {
+        columnBuilders[2].appendNull();
+      } else {
+        columnBuilders[2].writeBinary(new Binary(nodeStatus, TSFileConfig.STRING_CHARSET));
+      }
+
+      if (internalAddress == null) {
+        columnBuilders[3].appendNull();
+      } else {
+        columnBuilders[3].writeBinary(new Binary(internalAddress, TSFileConfig.STRING_CHARSET));
+      }
+      columnBuilders[4].writeInt(internalPort);
+      if (versionInfo == null || versionInfo.getVersion() == null) {
+        columnBuilders[5].appendNull();
+      } else {
+        columnBuilders[5].writeBinary(
+            new Binary(versionInfo.getVersion(), TSFileConfig.STRING_CHARSET));
+      }
+      if (versionInfo == null || versionInfo.getBuildInfo() == null) {
+        columnBuilders[6].appendNull();
+      } else {
+        columnBuilders[6].writeBinary(
+            new Binary(versionInfo.getBuildInfo(), TSFileConfig.STRING_CHARSET));
+      }
       resultBuilder.declarePosition();
     }
 
     @Override
     public boolean hasNext() {
-      return keywordIterator.hasNext();
+      return configNodeIterator.hasNext() || dataNodeIterator.hasNext() || aiNodeIterator.hasNext();
     }
   }
 
