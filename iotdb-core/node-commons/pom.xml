@@ -187,7 +187,7 @@
             <scope>test</scope>
         </dependency>
         <dependency>
-            <groupId>org.apache.ratis</groupId>
+            <groupId>com.timecho.ratis</groupId>
             <artifactId>ratis-common</artifactId>
         </dependency>
         <dependency>
