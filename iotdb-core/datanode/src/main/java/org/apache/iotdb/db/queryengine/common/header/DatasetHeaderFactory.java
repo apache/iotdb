@@ -61,8 +61,8 @@ public class DatasetHeaderFactory {
 
   public static DatasetHeader getShowStorageGroupHeader(final boolean isDetailed) {
     return isDetailed
-        ? new DatasetHeader(ColumnHeaderConstant.showStorageGroupsDetailColumnHeaders, true)
-        : new DatasetHeader(ColumnHeaderConstant.showStorageGroupsColumnHeaders, true);
+        ? new DatasetHeader(ColumnHeaderConstant.showDatabasesDetailColumnHeaders, true)
+        : new DatasetHeader(ColumnHeaderConstant.showDatabasesColumnHeaders, true);
   }
 
   public static DatasetHeader getShowTTLHeader() {
