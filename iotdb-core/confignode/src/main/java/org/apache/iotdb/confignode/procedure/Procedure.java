@@ -176,9 +176,10 @@ public abstract class Procedure<Env> implements Comparable<Procedure<Env>> {
       }
       this.setStackIndexes(indexList);
     }
+
     // exception
     if (byteBuffer.get() == 1) {
-      Class<?> exceptionClass = deserializeTypeInfo(byteBuffer);
+      deserializeTypeInfoForCompatibility(byteBuffer);
       int messageBytesLength = byteBuffer.getInt();
       String errMsg = null;
       if (messageBytesLength > 0) {
@@ -186,19 +187,7 @@ public abstract class Procedure<Env> implements Comparable<Procedure<Env>> {
         byteBuffer.get(messageBytes);
         errMsg = new String(messageBytes, StandardCharsets.UTF_8);
       }
-      ProcedureException exception;
-      try {
-        exception =
-            (ProcedureException) exceptionClass.getConstructor(String.class).newInstance(errMsg);
-      } catch (InstantiationException
-          | IllegalAccessException
-          | InvocationTargetException
-          | NoSuchMethodException e) {
-        LOG.warn("Instantiation exception class failed", e);
-        exception = new ProcedureException(errMsg);
-      }
-
-      setFailure(exception);
+      setFailure(new ProcedureException(errMsg));
     }
 
     // result
@@ -216,21 +205,15 @@ public abstract class Procedure<Env> implements Comparable<Procedure<Env>> {
   /**
    * Deserialize class Name and load class
    *
+   *
    * @param byteBuffer bytebuffer
    * @return Procedure
    */
-  public static Class<?> deserializeTypeInfo(ByteBuffer byteBuffer) {
+  @Deprecated
+  public static void deserializeTypeInfoForCompatibility(ByteBuffer byteBuffer) {
     int classNameBytesLen = byteBuffer.getInt();
     byte[] classNameBytes = new byte[classNameBytesLen];
     byteBuffer.get(classNameBytes);
-    String className = new String(classNameBytes, StandardCharsets.UTF_8);
-    Class<?> clazz;
-    try {
-      clazz = Class.forName(className);
-    } catch (ClassNotFoundException e) {
-      throw new RuntimeException("Invalid procedure class", e);
-    }
-    return clazz;
   }
 
   /**
