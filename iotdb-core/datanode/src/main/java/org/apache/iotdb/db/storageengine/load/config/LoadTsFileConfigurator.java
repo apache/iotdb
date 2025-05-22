@@ -45,6 +45,7 @@ public class LoadTsFileConfigurator {
         validateOnSuccessParam(value);
         break;
       case DATABASE_NAME_KEY:
+      case DATABASE_KEY:
       case TABLET_CONVERSION_THRESHOLD_KEY:
         break;
       case CONVERT_ON_TYPE_MISMATCH_KEY:
@@ -59,6 +60,10 @@ public class LoadTsFileConfigurator {
       default:
         throw new SemanticException("Invalid parameter '" + key + "' for LOAD TSFILE command.");
     }
+  }
+
+  public static void validateSynonymParameters(final String key, final String value) {
+
   }
 
   public static final String DATABASE_LEVEL_KEY = "database-level";
@@ -90,9 +95,13 @@ public class LoadTsFileConfigurator {
   }
 
   public static final String DATABASE_NAME_KEY = "database-name";
+  public static final String DATABASE_KEY = "database";
 
   public static @Nullable String parseDatabaseName(final Map<String, String> loadAttributes) {
-    final String databaseName = loadAttributes.get(DATABASE_NAME_KEY);
+    String databaseName = loadAttributes.get(DATABASE_NAME_KEY);
+    if (Objects.isNull(databaseName)) {
+      databaseName = loadAttributes.get(DATABASE_KEY);
+    }
     return Objects.nonNull(databaseName) ? databaseName.toLowerCase(Locale.ENGLISH) : null;
   }
 
