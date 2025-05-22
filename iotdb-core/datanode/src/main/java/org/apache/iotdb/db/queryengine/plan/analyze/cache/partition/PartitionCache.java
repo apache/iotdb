@@ -483,8 +483,8 @@ public class PartitionCache {
         }
       } catch (MetadataException e) {
         throw new IoTDBRuntimeException(
-                "An error occurred when executing getDeviceToDatabase():" + e.getMessage(),
-                e.getErrorCode());
+            "An error occurred when executing getDeviceToDatabase():" + e.getMessage(),
+            e.getErrorCode());
       } catch (TException | ClientManagerException e) {
         throw new StatementAnalyzeException(
             "An error occurred when executing getDeviceToDatabase():" + e.getMessage(), e);
