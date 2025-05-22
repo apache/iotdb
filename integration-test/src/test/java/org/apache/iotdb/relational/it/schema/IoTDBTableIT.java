@@ -662,10 +662,9 @@ public class IoTDBTableIT {
           assertEquals(showDBColumnHeaders.get(i).getColumnName(), metaData.getColumnName(i + 1));
         }
         Assert.assertTrue(resultSet.next());
-        if (resultSet.getString(1).equals("information_schema")) {
-          assertTrue(resultSet.next());
-        }
         assertEquals("db", resultSet.getString(1));
+        Assert.assertTrue(resultSet.next());
+        assertEquals("information_schema", resultSet.getString(1));
         Assert.assertFalse(resultSet.next());
       }
 
