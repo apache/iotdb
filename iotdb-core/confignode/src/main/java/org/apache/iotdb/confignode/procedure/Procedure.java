@@ -20,10 +20,8 @@
 package org.apache.iotdb.confignode.procedure;
 
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
-import org.apache.iotdb.confignode.procedure.exception.ProcedureAbortedException;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureSuspendedException;
-import org.apache.iotdb.confignode.procedure.exception.ProcedureTimeoutException;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureYieldException;
 import org.apache.iotdb.confignode.procedure.state.ProcedureLockState;
 import org.apache.iotdb.confignode.procedure.state.ProcedureState;
@@ -130,11 +128,14 @@ public abstract class Procedure<Env> implements Comparable<Procedure<Env>> {
 
     // exceptions
     if (hasException()) {
+      // symbol of exception
       stream.write((byte) 1);
+      // exception's name
       String exceptionClassName = exception.getClass().getName();
       byte[] exceptionClassNameBytes = exceptionClassName.getBytes(StandardCharsets.UTF_8);
       stream.writeInt(exceptionClassNameBytes.length);
       stream.write(exceptionClassNameBytes);
+      // exception's message
       String message = this.exception.getMessage();
       if (message != null) {
         byte[] messageBytes = message.getBytes(StandardCharsets.UTF_8);
@@ -144,6 +145,7 @@ public abstract class Procedure<Env> implements Comparable<Procedure<Env>> {
         stream.writeInt(-1);
       }
     } else {
+      // symbol of no exception
       stream.write((byte) 0);
     }
 
@@ -181,7 +183,7 @@ public abstract class Procedure<Env> implements Comparable<Procedure<Env>> {
       }
       this.setStackIndexes(indexList);
     }
-    // exceptions
+    // exception
     if (byteBuffer.get() == 1) {
       Class<?> exceptionClass = deserializeTypeInfo(byteBuffer);
       int messageBytesLength = byteBuffer.getInt();
@@ -676,10 +678,6 @@ public abstract class Procedure<Env> implements Comparable<Procedure<Env>> {
     }
   }
 
-  protected void setAbortFailure(final String source, final String msg) {
-    setFailure(source, new ProcedureAbortedException(msg));
-  }
-
   /**
    * Called by the ProcedureExecutor when the timeout set by setTimeout() is expired.
    *
@@ -698,7 +696,7 @@ public abstract class Procedure<Env> implements Comparable<Procedure<Env>> {
       long timeDiff = System.currentTimeMillis() - lastUpdate;
       setFailure(
           "ProcedureExecutor",
-          new ProcedureTimeoutException("Operation timed out after " + timeDiff + " ms."));
+          new ProcedureException("Operation timed out after " + timeDiff + " ms."));
       return true;
     }
     return false;
