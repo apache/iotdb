@@ -313,7 +313,7 @@ public class LimitOffsetPushDownTest {
     PlanTester planTester = new PlanTester();
     sql = "select * from table1 where tag1='Beijing' and tag2='A1' limit 1 offset 1";
     logicalQueryPlan = planTester.createPlan(sql);
-    // the sort node has been eliminated
+    // the offset node has been push down into TableScanNode
     assertPlan(planTester.getFragmentPlan(0), output(tableScan("testdb.table1")));
   }
 }
