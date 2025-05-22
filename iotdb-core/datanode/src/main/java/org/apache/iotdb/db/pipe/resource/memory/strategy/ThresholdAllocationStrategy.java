@@ -24,8 +24,11 @@ import org.apache.iotdb.db.pipe.resource.memory.PipeDynamicMemoryBlock;
 
 import org.apache.tsfile.utils.Pair;
 
+import java.util.concurrent.atomic.AtomicBoolean;
+
 public class ThresholdAllocationStrategy implements DynamicMemoryAllocationStrategy {
 
+  // todo : make this configurable
   private long maximumMemoryIncrease = 10 * 1024 * 1024;
 
   @Override
@@ -34,6 +37,7 @@ public class ThresholdAllocationStrategy implements DynamicMemoryAllocationStrat
     final long oldMemoryUsageInBytes = dynamicMemoryBlock.getMemoryUsageInBytes();
     final long expectedMemory = (long) (oldMemoryUsageInBytes / deficitRatio);
 
+    // Avoid overflow and infinite values
     if (deficitRatio <= 0.0 || oldMemoryUsageInBytes == 0 || expectedMemory == 0) {
       dynamicMemoryBlock.applyForDynamicMemory(maximumMemoryIncrease);
       final double efficiencyRatio =
@@ -47,10 +51,10 @@ public class ThresholdAllocationStrategy implements DynamicMemoryAllocationStrat
     if (dynamicMemoryBlock.getFixedMemoryBlockUsageRatio() < 0.9) {
       final long maxAvailableMemory =
           Math.min(expectedMemory, dynamicMemoryBlock.canAllocateMemorySize());
-      final long newMemoryRequest;
+      long newMemoryRequest;
 
       // Need to ensure that you get memory in smaller chunks and get more memory faster
-      if (dynamicMemoryBlock.getMemoryBlockUsageRatio() > 0.2) {
+      if (dynamicMemoryBlock.getMemoryBlockUsageRatio() > 0.1) {
         newMemoryRequest =
             Math.min(oldMemoryUsageInBytes + oldMemoryUsageInBytes / 2, maxAvailableMemory);
       } else {
@@ -64,16 +68,31 @@ public class ThresholdAllocationStrategy implements DynamicMemoryAllocationStrat
       return;
     }
 
+    final AtomicBoolean isMemoryNotEnough = new AtomicBoolean(false);
     // Entering this logic means that the memory is insufficient and the memory allocation needs to
     // be adjusted
     final double averageDeficitRatio =
         dynamicMemoryBlock
             .getMemoryBlocks()
-            .mapToDouble(this::calculateDeficitRatio)
+            .mapToDouble(
+                block -> {
+                  double ratio = calculateDeficitRatio(block);
+                  if (block.getMemoryUsageInBytes() == 0 || ratio == 0.0) {
+                    isMemoryNotEnough.set(true);
+                  }
+                  return ratio;
+                })
             .average()
             .orElse(1.0);
 
-    final double diff = averageDeficitRatio - deficitRatio;
+    final double adjustmentThreshold =
+        PipeConfig.getInstance().getPipeDynamicMemoryAdjustmentThreshold();
+    // When memory is insufficient, try to ensure that smaller memory blocks apply for less memory,
+    // and larger memory blocks release more memory.
+    final double diff =
+        isMemoryNotEnough.get()
+            ? averageDeficitRatio - deficitRatio + adjustmentThreshold
+            : averageDeficitRatio - deficitRatio;
 
     if (Math.abs(diff) > PipeConfig.getInstance().getPipeDynamicMemoryAdjustmentThreshold()) {
       final long mem = (long) ((dynamicMemoryBlock.getMemoryUsageInBytes() / deficitRatio) * diff);
