@@ -28,7 +28,6 @@ import org.apache.iotdb.confignode.consensus.request.write.cq.DropCQPlan;
 import org.apache.iotdb.confignode.manager.cq.CQScheduleTask;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
-import org.apache.iotdb.confignode.procedure.exception.ProcedureYieldException;
 import org.apache.iotdb.confignode.procedure.impl.node.AbstractNodeProcedure;
 import org.apache.iotdb.confignode.procedure.state.cq.CreateCQState;
 import org.apache.iotdb.confignode.procedure.store.ProcedureType;
@@ -83,7 +82,7 @@ public class CreateCQProcedure extends AbstractNodeProcedure<CreateCQState> {
 
   @Override
   protected Flow executeFromState(ConfigNodeProcedureEnv env, CreateCQState state)
-      throws ProcedureYieldException, InterruptedException {
+      throws InterruptedException {
 
     try {
       switch (state) {

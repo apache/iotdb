@@ -27,7 +27,6 @@ import org.apache.iotdb.confignode.persistence.pipe.PipeTaskInfo;
 import org.apache.iotdb.confignode.persistence.subscription.SubscriptionInfo;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
-import org.apache.iotdb.confignode.procedure.exception.ProcedureYieldException;
 import org.apache.iotdb.confignode.procedure.impl.node.AbstractNodeProcedure;
 import org.apache.iotdb.confignode.procedure.impl.node.AddConfigNodeProcedure;
 import org.apache.iotdb.confignode.procedure.impl.node.RemoveConfigNodeProcedure;
@@ -81,7 +80,7 @@ public class DropPipePluginProcedure extends AbstractNodeProcedure<DropPipePlugi
 
   @Override
   protected Flow executeFromState(ConfigNodeProcedureEnv env, DropPipePluginState state)
-      throws ProcedureYieldException, InterruptedException {
+      throws InterruptedException {
     if (pluginName == null) {
       return Flow.NO_MORE_STATE;
     }

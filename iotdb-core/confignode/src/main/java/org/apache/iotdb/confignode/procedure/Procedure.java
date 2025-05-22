@@ -21,7 +21,6 @@ package org.apache.iotdb.confignode.procedure;
 
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
-import org.apache.iotdb.confignode.procedure.exception.ProcedureYieldException;
 import org.apache.iotdb.confignode.procedure.state.ProcedureLockState;
 import org.apache.iotdb.confignode.procedure.state.ProcedureState;
 import org.apache.iotdb.confignode.procedure.store.IProcedureStore;
@@ -80,12 +79,9 @@ public abstract class Procedure<Env> implements Comparable<Procedure<Env>> {
    * @param env the environment passed to the ProcedureExecutor
    * @return a set of sub-procedures to run or ourselves if there is more work to do or null if the
    *     procedure is done.
-   * @throws ProcedureYieldException the procedure will be added back to the queue and retried
-   *     later.
    * @throws InterruptedException the procedure will be added back to the queue and retried later.
    */
-  protected abstract Procedure<Env>[] execute(Env env)
-      throws ProcedureYieldException, InterruptedException;
+  protected abstract Procedure<Env>[] execute(Env env) throws InterruptedException;
 
   /**
    * The code to undo what was done by the execute() code. It is called when the procedure or one of
@@ -283,8 +279,7 @@ public abstract class Procedure<Env> implements Comparable<Procedure<Env>> {
    * @param env execute environment
    * @return sub procedures
    */
-  protected Procedure<Env>[] doExecute(Env env)
-      throws ProcedureYieldException, InterruptedException {
+  protected Procedure<Env>[] doExecute(Env env) throws InterruptedException {
     try {
       updateTimestamp();
       return execute(env);

@@ -21,7 +21,6 @@ package org.apache.iotdb.confignode.procedure.impl;
 
 import org.apache.iotdb.confignode.procedure.Procedure;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
-import org.apache.iotdb.confignode.procedure.exception.ProcedureYieldException;
 
 import org.apache.thrift.annotation.Nullable;
 import org.slf4j.Logger;
@@ -89,8 +88,7 @@ public abstract class StateMachineProcedure<Env, TState> extends Procedure<Env> 
    * @return Flow.NO_MORE_STATE if the procedure is completed, Flow.HAS_MORE_STATE if there is
    *     another step.
    */
-  protected abstract Flow executeFromState(Env env, TState state)
-      throws ProcedureYieldException, InterruptedException;
+  protected abstract Flow executeFromState(Env env, TState state) throws InterruptedException;
 
   /**
    * Called to perform the rollback of the specified state.
@@ -143,8 +141,7 @@ public abstract class StateMachineProcedure<Env, TState> extends Procedure<Env> 
   }
 
   @Override
-  protected Procedure<Env>[] execute(final Env env)
-      throws ProcedureYieldException, InterruptedException {
+  protected Procedure<Env>[] execute(final Env env) throws InterruptedException {
     updateTimestamp();
     try {
       if (noMoreState() || isFailed()) {

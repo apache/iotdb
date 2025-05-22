@@ -27,7 +27,6 @@ import org.apache.iotdb.confignode.consensus.request.write.table.RenameTableColu
 import org.apache.iotdb.confignode.consensus.request.write.table.view.RenameViewColumnPlan;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
-import org.apache.iotdb.confignode.procedure.exception.ProcedureYieldException;
 import org.apache.iotdb.confignode.procedure.impl.schema.table.view.RenameViewColumnProcedure;
 import org.apache.iotdb.confignode.procedure.state.schema.RenameTableColumnState;
 import org.apache.iotdb.confignode.procedure.store.ProcedureType;
@@ -69,7 +68,7 @@ public class RenameTableColumnProcedure
   @Override
   protected Flow executeFromState(
       final ConfigNodeProcedureEnv env, final RenameTableColumnState state)
-      throws ProcedureYieldException, InterruptedException {
+      throws InterruptedException {
     final long startTime = System.currentTimeMillis();
     try {
       switch (state) {

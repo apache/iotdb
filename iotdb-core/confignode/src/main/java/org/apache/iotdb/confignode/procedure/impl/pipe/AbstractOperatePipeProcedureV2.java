@@ -26,7 +26,6 @@ import org.apache.iotdb.confignode.manager.pipe.metric.overview.PipeProcedureMet
 import org.apache.iotdb.confignode.persistence.pipe.PipeTaskInfo;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
-import org.apache.iotdb.confignode.procedure.exception.ProcedureYieldException;
 import org.apache.iotdb.confignode.procedure.impl.node.AbstractNodeProcedure;
 import org.apache.iotdb.confignode.procedure.impl.pipe.runtime.PipeMetaSyncProcedure;
 import org.apache.iotdb.confignode.procedure.state.ProcedureLockState;
@@ -222,7 +221,7 @@ public abstract class AbstractOperatePipeProcedureV2
 
   @Override
   protected Flow executeFromState(ConfigNodeProcedureEnv env, OperatePipeTaskState state)
-      throws ProcedureYieldException, InterruptedException {
+      throws InterruptedException {
     if (pipeTaskInfo == null) {
       LOGGER.warn(
           "ProcedureId {}: Pipe lock is not acquired, executeFromState's execution will be skipped.",

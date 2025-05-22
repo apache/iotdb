@@ -31,7 +31,6 @@ import org.apache.iotdb.confignode.client.async.CnToDnInternalServiceAsyncReques
 import org.apache.iotdb.confignode.client.async.handlers.DataNodeAsyncRequestContext;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
-import org.apache.iotdb.confignode.procedure.exception.ProcedureYieldException;
 import org.apache.iotdb.confignode.procedure.impl.StateMachineProcedure;
 import org.apache.iotdb.confignode.procedure.state.schema.UnsetTemplateState;
 import org.apache.iotdb.confignode.procedure.store.ProcedureType;
@@ -85,7 +84,7 @@ public class UnsetTemplateProcedure
 
   @Override
   protected Flow executeFromState(final ConfigNodeProcedureEnv env, final UnsetTemplateState state)
-      throws ProcedureYieldException, InterruptedException {
+      throws InterruptedException {
     final long startTime = System.currentTimeMillis();
     try {
       switch (state) {

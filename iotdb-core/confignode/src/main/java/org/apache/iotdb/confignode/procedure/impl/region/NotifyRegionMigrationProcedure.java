@@ -24,7 +24,6 @@ import org.apache.iotdb.commons.exception.runtime.ThriftSerDeException;
 import org.apache.iotdb.commons.utils.ThriftCommonsSerDeUtils;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
-import org.apache.iotdb.confignode.procedure.exception.ProcedureYieldException;
 import org.apache.iotdb.confignode.procedure.state.NotifyRegionMigrationState;
 import org.apache.iotdb.confignode.procedure.store.ProcedureType;
 
@@ -55,7 +54,7 @@ public class NotifyRegionMigrationProcedure
 
   @Override
   protected Flow executeFromState(ConfigNodeProcedureEnv env, NotifyRegionMigrationState state)
-      throws ProcedureYieldException, InterruptedException {
+      throws InterruptedException {
     if (regionId == null) {
       return Flow.NO_MORE_STATE;
     }

@@ -33,7 +33,6 @@ import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeEnri
 import org.apache.iotdb.confignode.manager.ClusterManager;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
-import org.apache.iotdb.confignode.procedure.exception.ProcedureYieldException;
 import org.apache.iotdb.confignode.procedure.impl.schema.DataNodeRegionTaskExecutor;
 import org.apache.iotdb.confignode.procedure.state.schema.DeleteDevicesState;
 import org.apache.iotdb.confignode.procedure.store.ProcedureType;
@@ -96,7 +95,7 @@ public class DeleteDevicesProcedure extends AbstractAlterOrDropTableProcedure<De
 
   @Override
   protected Flow executeFromState(final ConfigNodeProcedureEnv env, final DeleteDevicesState state)
-      throws ProcedureYieldException, InterruptedException {
+      throws InterruptedException {
     final long startTime = System.currentTimeMillis();
     try {
       switch (state) {
