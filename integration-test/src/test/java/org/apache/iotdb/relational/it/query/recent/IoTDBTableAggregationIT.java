@@ -4167,10 +4167,44 @@ public class IoTDBTableAggregationIT {
 
   @Test
   public void approxMostFrequentTest() {
-    String[] expectedHeader = buildHeaders(10);
-    String[] retArray = new String[] {",", ",", ",", ",", ",", ",", ",", ",", ",", ""};
+    String[] expectedHeader = buildHeaders(7);
+    String[] retArray =
+        new String[] {
+          "{\"50000\":8},{\"30.0\":8},{\"55.0\":8},{\"true\":12},{\"0xcafebabe55\":8},{\"1727158540000\":12},{\"20240924\":20},"
+        };
     tableResultSetEqualTest(
-        "select approx_most_frequent(s1, 1, 10), approx_most_frequent(s2, 1, 10), approx_most_frequent(s3, 1, 10), approx_most_frequent(s4, 1, 10), approx_most_frequent(s5, 1, 10), approx_most_frequent(s6, 1, 10), approx_most_frequent(s7, 1, 10), approx_most_frequent(s8, 1, 10), approx_most_frequent(s9, 1, 10), approx_most_frequent(s10, 1, 10) from table1",
+        "select approx_most_frequent(s2, 1, 10), approx_most_frequent(s3, 1, 10), approx_most_frequent(s4, 1, 10), approx_most_frequent(s5, 1, 10), approx_most_frequent(s8, 1, 10), approx_most_frequent(s9, 1, 10), approx_most_frequent(s10, 1, 10) from table1",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+
+    expectedHeader = new String[] {"time", "province", "_col2"};
+    retArray =
+        new String[] {
+          "2024-09-24T06:15:30.000Z,beijing,{},",
+          "2024-09-24T06:15:31.000Z,beijing,{\"31000\":2},",
+          "2024-09-24T06:15:35.000Z,beijing,{\"35000\":2},",
+          "2024-09-24T06:15:36.000Z,beijing,{},",
+          "2024-09-24T06:15:40.000Z,beijing,{\"40000\":2},",
+          "2024-09-24T06:15:41.000Z,beijing,{},",
+          "2024-09-24T06:15:46.000Z,beijing,{\"46000\":2},",
+          "2024-09-24T06:15:50.000Z,beijing,{\"50000\":4},",
+          "2024-09-24T06:15:51.000Z,beijing,{},",
+          "2024-09-24T06:15:55.000Z,beijing,{},",
+          "2024-09-24T06:15:30.000Z,shanghai,{},",
+          "2024-09-24T06:15:31.000Z,shanghai,{\"31000\":2},",
+          "2024-09-24T06:15:35.000Z,shanghai,{\"35000\":2},",
+          "2024-09-24T06:15:36.000Z,shanghai,{},",
+          "2024-09-24T06:15:40.000Z,shanghai,{\"40000\":2},",
+          "2024-09-24T06:15:41.000Z,shanghai,{},",
+          "2024-09-24T06:15:46.000Z,shanghai,{\"46000\":2},",
+          "2024-09-24T06:15:50.000Z,shanghai,{\"50000\":4},",
+          "2024-09-24T06:15:51.000Z,shanghai,{},",
+          "2024-09-24T06:15:55.000Z,shanghai,{},",
+        };
+
+    tableResultSetEqualTest(
+        "SELECT time,province,approx_most_frequent(s2, 1, 10) from table1 group by 1,2 order by 2,1",
         expectedHeader,
         retArray,
         DATABASE_NAME);

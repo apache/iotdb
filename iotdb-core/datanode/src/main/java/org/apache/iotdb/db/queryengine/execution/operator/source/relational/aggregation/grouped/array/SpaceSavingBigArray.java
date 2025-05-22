@@ -45,7 +45,7 @@ public class SpaceSavingBigArray<T> {
       int capacity,
       ApproxMostFrequentBucketSerializer<T> serializer,
       ApproxMostFrequentBucketDeserializer<T> deserializer,
-      SpaceSavingByteCalculator calculator) {
+      SpaceSavingByteCalculator<T> calculator) {
     return get(
         index, new SpaceSaving<T>(maxBuckets, capacity, serializer, deserializer, calculator));
   }

@@ -34,7 +34,7 @@ public class SpaceSaving<K> {
   private static final long LIST_NODE2_SIZE = shallowSizeOfInstance(ListNode2.class);
   private static final long COUNTER_SIZE = shallowSizeOfInstance(Counter.class);
 
-  private StreamSummary<K> stremSummary;
+  private StreamSummary<K> streamSummary;
   private final int maxBuckets;
   private final int capacity;
 
@@ -48,7 +48,7 @@ public class SpaceSaving<K> {
       ApproxMostFrequentBucketSerializer<K> serializer,
       ApproxMostFrequentBucketDeserializer<K> deserializer,
       SpaceSavingByteCalculator<K> calculator) {
-    this.stremSummary = new StreamSummary<>(capacity);
+    this.streamSummary = new StreamSummary<>(capacity);
     this.maxBuckets = maxBuckets;
     this.capacity = capacity;
     this.serializer = serializer;
@@ -65,7 +65,7 @@ public class SpaceSaving<K> {
     this.maxBuckets = ReadWriteIOUtils.readInt(byteBuffer);
     this.capacity = ReadWriteIOUtils.readInt(byteBuffer);
     int counterSize = ReadWriteIOUtils.readInt(byteBuffer);
-    this.stremSummary = new StreamSummary<>(capacity);
+    this.streamSummary = new StreamSummary<>(capacity);
     this.serializer = serializer;
     this.deserializer = deserializer;
     this.calculator = calculator;
@@ -77,7 +77,7 @@ public class SpaceSaving<K> {
   public long getEstimatedSize() {
     return INSTANCE_SIZE
         + STREAM_SUMMARY_SIZE
-        + stremSummary.size() * (LIST_NODE2_SIZE + +COUNTER_SIZE + Long.BYTES);
+        + streamSummary.size() * (LIST_NODE2_SIZE + +COUNTER_SIZE + Long.BYTES);
   }
 
   public interface BucketConsumer<K> {
@@ -85,22 +85,22 @@ public class SpaceSaving<K> {
   }
 
   public void add(K key) {
-    stremSummary.offer(key);
+    streamSummary.offer(key);
   }
 
   public void add(K key, long incrementCount) {
-    stremSummary.offer(key, toIntExact(incrementCount));
+    streamSummary.offer(key, toIntExact(incrementCount));
   }
 
   public void merge(SpaceSaving<K> other) {
-    List<Counter<K>> counters = other.stremSummary.topK(capacity);
+    List<Counter<K>> counters = other.streamSummary.topK(capacity);
     for (Counter<K> counter : counters) {
-      stremSummary.offer(counter.getItem(), toIntExact(counter.getCount()));
+      streamSummary.offer(counter.getItem(), toIntExact(counter.getCount()));
     }
   }
 
   public void forEachBucket(BucketConsumer<K> consumer) {
-    List<Counter<K>> counters = stremSummary.topK(maxBuckets);
+    List<Counter<K>> counters = streamSummary.topK(maxBuckets);
     for (Counter<K> counter : counters) {
       consumer.process(counter.getItem(), counter.getCount());
     }
@@ -113,7 +113,7 @@ public class SpaceSaving<K> {
   }
 
   public byte[] serialize() {
-    List<Counter<K>> counters = stremSummary.topK(capacity);
+    List<Counter<K>> counters = streamSummary.topK(capacity);
     // Calculate the size of the keys
     int keyBytesSize = calculator.calculateBytes(counters);
     // maxBucket + capacity + counterSize +  keySize + countSize
@@ -136,6 +136,6 @@ public class SpaceSaving<K> {
   }
 
   public void reset() {
-    this.stremSummary = null;
+    this.streamSummary = new StreamSummary<>(capacity);
   }
 }

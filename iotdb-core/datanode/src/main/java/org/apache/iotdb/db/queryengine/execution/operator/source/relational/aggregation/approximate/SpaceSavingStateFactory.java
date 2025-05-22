@@ -58,7 +58,7 @@ public class SpaceSavingStateFactory {
   public static class GroupedSpaceSavingState<T> {
     private static final long INSTANCE_SIZE =
         RamUsageEstimator.shallowSizeOfInstance(GroupedSpaceSavingState.class);
-    private SpaceSavingBigArray<T> spaceSavings;
+    private SpaceSavingBigArray<T> spaceSavings = new SpaceSavingBigArray<>();
 
     public SpaceSavingBigArray<T> getSpaceSavings() {
       return spaceSavings;
