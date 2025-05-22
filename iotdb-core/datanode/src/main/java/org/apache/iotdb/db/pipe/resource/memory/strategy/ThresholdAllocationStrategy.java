@@ -28,12 +28,30 @@ public class ThresholdAllocationStrategy implements DynamicMemoryAllocationStrat
 
   @Override
   public void dynamicallyAdjustMemory(final PipeDynamicMemoryBlock dynamicMemoryBlock) {
+    double deficitRatio = calculateDeficitRatio(dynamicMemoryBlock);
+    final long oldMemoryUsageInBytes = dynamicMemoryBlock.getMemoryUsageInBytes();
+    final long expectedMemory = (long) (oldMemoryUsageInBytes / deficitRatio);
+
     // No matter what, give priority to applying for memory use, and adjust the memory size when the
     // memory is insufficient
-    double deficitRatio = calculateDeficitRatio(dynamicMemoryBlock);
-    if (deficitRatio < 1.0 && dynamicMemoryBlock.canAllocateMemorySize() > 0) {
-      dynamicMemoryBlock.applyForDynamicMemory(dynamicMemoryBlock.canAllocateMemorySize());
-      dynamicMemoryBlock.updateMemoryEfficiency(deficitRatio, deficitRatio);
+    if (dynamicMemoryBlock.getFixedMemoryBlockUsageRatio() < 0.9) {
+      final long maxAvailableMemory =
+          Math.min(expectedMemory, dynamicMemoryBlock.canAllocateMemorySize());
+      final long newMemoryRequest;
+
+      // Need to ensure that you get memory in smaller chunks and get more memory faster
+      if (dynamicMemoryBlock.getMemoryBlockUsageRatio() > 0.2) {
+        newMemoryRequest =
+            Math.min(oldMemoryUsageInBytes + oldMemoryUsageInBytes / 2, maxAvailableMemory);
+      } else {
+        newMemoryRequest = Math.min(oldMemoryUsageInBytes * 2, maxAvailableMemory);
+      }
+
+      dynamicMemoryBlock.applyForDynamicMemory(newMemoryRequest);
+      final double efficiencyRatio =
+          dynamicMemoryBlock.getMemoryUsageInBytes() / (double) expectedMemory;
+      dynamicMemoryBlock.updateMemoryEfficiency(efficiencyRatio, efficiencyRatio);
+      return;
     }
 
     double averageDeficitRatio =
@@ -42,16 +60,14 @@ public class ThresholdAllocationStrategy implements DynamicMemoryAllocationStrat
             .mapToDouble(this::calculateDeficitRatio)
             .average()
             .orElse(1.0);
+    double diff = averageDeficitRatio - deficitRatio;
 
-    if (Math.abs(averageDeficitRatio - deficitRatio)
-        > PipeConfig.getInstance().getPipeDynamicMemoryAdjustmentThreshold()) {
-      double diff = averageDeficitRatio - deficitRatio;
+    if (Math.abs(diff) > PipeConfig.getInstance().getPipeDynamicMemoryAdjustmentThreshold()) {
       long mem = (long) ((dynamicMemoryBlock.getMemoryUsageInBytes() / deficitRatio) * diff);
-      dynamicMemoryBlock.applyForDynamicMemory(mem);
-      dynamicMemoryBlock.updateMemoryEfficiency(averageDeficitRatio, averageDeficitRatio);
-    } else if (averageDeficitRatio < 0.4 && dynamicMemoryBlock.getMemoryUsageRatio() > 0.5) { //
-      dynamicMemoryBlock.applyForDynamicMemory(dynamicMemoryBlock.getMemoryUsageInBytes() / 2);
-      dynamicMemoryBlock.updateMemoryEfficiency(deficitRatio / 2, deficitRatio / 2);
+      dynamicMemoryBlock.applyForDynamicMemory(dynamicMemoryBlock.getMemoryUsageInBytes() + mem);
+      final double efficiencyRatio =
+          dynamicMemoryBlock.getMemoryUsageInBytes() / (double) expectedMemory;
+      dynamicMemoryBlock.updateMemoryEfficiency(efficiencyRatio, efficiencyRatio);
     }
   }
 

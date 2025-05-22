@@ -47,6 +47,8 @@ public class PipeModelFixedMemoryBlock extends PipeFixedMemoryBlock {
     final PipeDynamicMemoryBlock memoryBlock = new PipeDynamicMemoryBlock(this, 0);
     memoryBlocks.add(memoryBlock);
     resetMemoryBlockSize(memoryBlock, memorySizeInBytes);
+    final double e = (double) (getMemoryUsageInBytes() / memorySizeInBytes);
+    memoryBlock.updateMemoryEfficiency(e, e);
     return memoryBlock;
   }
 

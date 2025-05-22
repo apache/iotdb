@@ -83,8 +83,13 @@ public class PipeDynamicMemoryBlock {
     this.expand = expand;
   }
 
-  public double getMemoryUsageRatio() {
+  public double getMemoryBlockUsageRatio() {
     return (double) memoryUsageInBytes / fixedMemoryBlock.getMemoryAllocatedInBytes();
+  }
+
+  public double getFixedMemoryBlockUsageRatio() {
+    return (double)
+        (fixedMemoryBlock.getMemoryUsageInBytes() / fixedMemoryBlock.getMemoryAllocatedInBytes());
   }
 
   public long canAllocateMemorySize() {
