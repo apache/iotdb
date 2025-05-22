@@ -298,10 +298,9 @@ public class IoTDBDatabaseIT {
 
       try (final ResultSet resultSet = statement.executeQuery("SHOW DATABASES")) {
         assertTrue(resultSet.next());
-        if (resultSet.getString(1).equals("information_schema")) {
-          assertTrue(resultSet.next());
-        }
         assertEquals("````x", resultSet.getString(1));
+        assertTrue(resultSet.next());
+        assertEquals("information_schema", resultSet.getString(1));
         assertFalse(resultSet.next());
       }
 
