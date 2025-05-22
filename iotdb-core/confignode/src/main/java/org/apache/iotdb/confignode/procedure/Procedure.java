@@ -30,7 +30,6 @@ import org.slf4j.LoggerFactory;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
-import java.lang.reflect.InvocationTargetException;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
@@ -204,7 +203,6 @@ public abstract class Procedure<Env> implements Comparable<Procedure<Env>> {
 
   /**
    * Deserialize class Name and load class
-   *
    *
    * @param byteBuffer bytebuffer
    * @return Procedure
