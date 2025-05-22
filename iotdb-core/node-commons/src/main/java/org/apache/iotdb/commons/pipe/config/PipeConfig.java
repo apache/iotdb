@@ -503,6 +503,19 @@ public class PipeConfig {
         "PipeRemainingTimeCommitRateAverageTime: {}", getPipeRemainingTimeCommitRateAverageTime());
     LOGGER.info("PipeTsFileScanParsingThreshold(): {}", getPipeTsFileScanParsingThreshold());
 
+    LOGGER.info("PipeDynamicMemoryHistoryWeight: {}", getPipeDynamicMemoryHistoryWeight());
+    LOGGER.info(
+        "PipeDynamicMemoryAdjustmentThreshold: {}", getPipeDynamicMemoryAdjustmentThreshold());
+    LOGGER.info(
+        "PipeThresholdAllocationStrategyMaximumMemoryIncrementRatio: {}",
+        getPipeThresholdAllocationStrategyMaximumMemoryIncrementRatio());
+    LOGGER.info(
+        "PipeThresholdAllocationStrategyLowUsageThreshold: {}",
+        getPipeThresholdAllocationStrategyLowUsageThreshold());
+    LOGGER.info(
+        "PipeThresholdAllocationStrategyFixedMemoryHighUsageThreshold: {}",
+        getPipeThresholdAllocationStrategyFixedMemoryHighUsageThreshold());
+
     LOGGER.info(
         "PipeAsyncConnectorForcedRetryTsFileEventQueueSizeThreshold: {}",
         getPipeAsyncConnectorForcedRetryTsFileEventQueueSizeThreshold());
