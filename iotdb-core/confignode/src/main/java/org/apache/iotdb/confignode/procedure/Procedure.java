@@ -21,7 +21,6 @@ package org.apache.iotdb.confignode.procedure;
 
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
-import org.apache.iotdb.confignode.procedure.exception.ProcedureSuspendedException;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureYieldException;
 import org.apache.iotdb.confignode.procedure.state.ProcedureLockState;
 import org.apache.iotdb.confignode.procedure.state.ProcedureState;
@@ -84,11 +83,9 @@ public abstract class Procedure<Env> implements Comparable<Procedure<Env>> {
    * @throws ProcedureYieldException the procedure will be added back to the queue and retried
    *     later.
    * @throws InterruptedException the procedure will be added back to the queue and retried later.
-   * @throws ProcedureSuspendedException Signal to the executor that Procedure has suspended itself
-   *     and has set itself up waiting for an external event to wake it back up again.
    */
   protected abstract Procedure<Env>[] execute(Env env)
-      throws ProcedureYieldException, ProcedureSuspendedException, InterruptedException;
+      throws ProcedureYieldException, InterruptedException;
 
   /**
    * The code to undo what was done by the execute() code. It is called when the procedure or one of
@@ -287,7 +284,7 @@ public abstract class Procedure<Env> implements Comparable<Procedure<Env>> {
    * @return sub procedures
    */
   protected Procedure<Env>[] doExecute(Env env)
-      throws ProcedureYieldException, ProcedureSuspendedException, InterruptedException {
+      throws ProcedureYieldException, InterruptedException {
     try {
       updateTimestamp();
       return execute(env);
@@ -680,13 +677,6 @@ public abstract class Procedure<Env> implements Comparable<Procedure<Env>> {
 
   /**
    * Called by the ProcedureExecutor when the timeout set by setTimeout() is expired.
-   *
-   * <p>Another usage for this method is to implement retrying. A procedure can set the state to
-   * {@code WAITING_TIMEOUT} by calling {@code setState} method, and throw a {@link
-   * ProcedureSuspendedException} to halt the execution of the procedure, and do not forget a call
-   * {@link #setTimeout(long)} method to set the timeout. And you should also override this method
-   * to wake up the procedure, and also return false to tell the ProcedureExecutor that the timeout
-   * event has been handled.
    *
    * @return true to let the framework handle the timeout as abort, false in case the procedure
    *     handled the timeout itself.

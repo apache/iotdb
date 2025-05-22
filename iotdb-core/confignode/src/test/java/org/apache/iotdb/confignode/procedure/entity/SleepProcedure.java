@@ -21,7 +21,6 @@ package org.apache.iotdb.confignode.procedure.entity;
 
 import org.apache.iotdb.confignode.procedure.Procedure;
 import org.apache.iotdb.confignode.procedure.env.TestProcEnv;
-import org.apache.iotdb.confignode.procedure.exception.ProcedureSuspendedException;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureYieldException;
 import org.apache.iotdb.confignode.procedure.util.ProcedureTestUtil;
 
@@ -31,7 +30,7 @@ import java.io.IOException;
 public class SleepProcedure extends Procedure<TestProcEnv> {
   @Override
   protected Procedure<TestProcEnv>[] execute(TestProcEnv testProcEnv)
-      throws ProcedureYieldException, ProcedureSuspendedException, InterruptedException {
+      throws ProcedureYieldException, InterruptedException {
     System.out.println("Procedure is sleeping.");
     ProcedureTestUtil.sleepWithoutInterrupt(2000);
     return null;

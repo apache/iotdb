@@ -35,7 +35,6 @@ import org.apache.iotdb.confignode.client.async.CnToDnInternalServiceAsyncReques
 import org.apache.iotdb.confignode.client.async.handlers.DataNodeAsyncRequestContext;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
-import org.apache.iotdb.confignode.procedure.exception.ProcedureSuspendedException;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureYieldException;
 import org.apache.iotdb.confignode.procedure.impl.StateMachineProcedure;
 import org.apache.iotdb.confignode.procedure.state.schema.AlterLogicalViewState;
@@ -91,7 +90,7 @@ public class AlterLogicalViewProcedure
   @Override
   protected Flow executeFromState(
       final ConfigNodeProcedureEnv env, final AlterLogicalViewState state)
-      throws ProcedureSuspendedException, ProcedureYieldException, InterruptedException {
+      throws ProcedureYieldException, InterruptedException {
     final long startTime = System.currentTimeMillis();
     try {
       switch (state) {

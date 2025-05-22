@@ -24,7 +24,6 @@ import org.apache.iotdb.commons.subscription.meta.topic.TopicMeta;
 import org.apache.iotdb.confignode.persistence.subscription.SubscriptionInfo;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
-import org.apache.iotdb.confignode.procedure.exception.ProcedureSuspendedException;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureYieldException;
 import org.apache.iotdb.confignode.procedure.impl.node.AbstractNodeProcedure;
 import org.apache.iotdb.confignode.procedure.impl.subscription.consumer.runtime.ConsumerGroupMetaSyncProcedure;
@@ -181,7 +180,7 @@ public abstract class AbstractOperateSubscriptionProcedure
 
   @Override
   protected Flow executeFromState(ConfigNodeProcedureEnv env, OperateSubscriptionState state)
-      throws ProcedureSuspendedException, ProcedureYieldException, InterruptedException {
+      throws ProcedureYieldException, InterruptedException {
     if (subscriptionInfo == null) {
       LOGGER.warn(
           "ProcedureId {}: Subscription lock is not acquired, executeFromState({})'s execution will be skipped.",

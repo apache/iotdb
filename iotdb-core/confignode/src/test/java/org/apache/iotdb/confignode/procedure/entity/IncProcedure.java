@@ -21,7 +21,6 @@ package org.apache.iotdb.confignode.procedure.entity;
 
 import org.apache.iotdb.confignode.procedure.Procedure;
 import org.apache.iotdb.confignode.procedure.env.TestProcEnv;
-import org.apache.iotdb.confignode.procedure.exception.ProcedureSuspendedException;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureYieldException;
 
 import java.io.DataOutputStream;
@@ -34,7 +33,7 @@ public class IncProcedure extends Procedure<TestProcEnv> {
 
   @Override
   protected Procedure<TestProcEnv>[] execute(TestProcEnv testProcEnv)
-      throws ProcedureYieldException, ProcedureSuspendedException, InterruptedException {
+      throws ProcedureYieldException, InterruptedException {
     AtomicInteger acc = testProcEnv.getAcc();
     if (throwEx) {
       throw new RuntimeException("throw a EXCEPTION");

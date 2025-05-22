@@ -29,7 +29,6 @@ import org.apache.iotdb.confignode.consensus.request.write.table.AddTableColumnP
 import org.apache.iotdb.confignode.consensus.request.write.table.view.AddTableViewColumnPlan;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
-import org.apache.iotdb.confignode.procedure.exception.ProcedureSuspendedException;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureYieldException;
 import org.apache.iotdb.confignode.procedure.impl.schema.table.view.AddViewColumnProcedure;
 import org.apache.iotdb.confignode.procedure.state.schema.AddTableColumnState;
@@ -68,7 +67,7 @@ public class AddTableColumnProcedure
 
   @Override
   protected Flow executeFromState(final ConfigNodeProcedureEnv env, final AddTableColumnState state)
-      throws ProcedureSuspendedException, ProcedureYieldException, InterruptedException {
+      throws ProcedureYieldException, InterruptedException {
     final long startTime = System.currentTimeMillis();
     try {
       switch (state) {

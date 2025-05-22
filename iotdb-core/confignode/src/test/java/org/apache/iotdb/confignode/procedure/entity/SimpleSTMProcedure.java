@@ -21,7 +21,6 @@ package org.apache.iotdb.confignode.procedure.entity;
 
 import org.apache.iotdb.confignode.procedure.env.TestProcEnv;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
-import org.apache.iotdb.confignode.procedure.exception.ProcedureSuspendedException;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureYieldException;
 import org.apache.iotdb.confignode.procedure.impl.StateMachineProcedure;
 
@@ -41,7 +40,7 @@ public class SimpleSTMProcedure
 
   @Override
   protected Flow executeFromState(TestProcEnv testProcEnv, TestState testState)
-      throws ProcedureSuspendedException, ProcedureYieldException, InterruptedException {
+      throws ProcedureYieldException, InterruptedException {
     AtomicInteger acc = testProcEnv.getAcc();
     try {
       switch (testState) {

@@ -32,7 +32,6 @@ import org.apache.iotdb.confignode.consensus.request.write.database.SetTTLPlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeEnrichedPlan;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
-import org.apache.iotdb.confignode.procedure.exception.ProcedureSuspendedException;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureYieldException;
 import org.apache.iotdb.confignode.procedure.impl.StateMachineProcedure;
 import org.apache.iotdb.confignode.procedure.state.schema.SetTTLState;
@@ -67,7 +66,7 @@ public class SetTTLProcedure extends StateMachineProcedure<ConfigNodeProcedureEn
 
   @Override
   protected Flow executeFromState(ConfigNodeProcedureEnv env, SetTTLState state)
-      throws ProcedureSuspendedException, ProcedureYieldException, InterruptedException {
+      throws ProcedureYieldException, InterruptedException {
     long startTime = System.currentTimeMillis();
     try {
       switch (state) {

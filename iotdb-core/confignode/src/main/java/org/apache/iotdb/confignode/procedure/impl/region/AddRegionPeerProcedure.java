@@ -29,7 +29,6 @@ import org.apache.iotdb.commons.utils.ThriftCommonsSerDeUtils;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.env.RegionMaintainHandler;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
-import org.apache.iotdb.confignode.procedure.exception.ProcedureSuspendedException;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureYieldException;
 import org.apache.iotdb.confignode.procedure.state.AddRegionPeerState;
 import org.apache.iotdb.confignode.procedure.store.ProcedureType;
@@ -75,7 +74,7 @@ public class AddRegionPeerProcedure extends RegionOperationProcedure<AddRegionPe
 
   @Override
   protected Flow executeFromState(ConfigNodeProcedureEnv env, AddRegionPeerState state)
-      throws ProcedureSuspendedException, ProcedureYieldException, InterruptedException {
+      throws ProcedureYieldException, InterruptedException {
     if (regionId == null) {
       return Flow.NO_MORE_STATE;
     }

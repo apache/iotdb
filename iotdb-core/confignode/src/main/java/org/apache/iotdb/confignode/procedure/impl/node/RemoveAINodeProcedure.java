@@ -26,7 +26,6 @@ import org.apache.iotdb.confignode.consensus.request.write.ainode.RemoveAINodePl
 import org.apache.iotdb.confignode.consensus.request.write.model.DropModelInNodePlan;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
-import org.apache.iotdb.confignode.procedure.exception.ProcedureSuspendedException;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureYieldException;
 import org.apache.iotdb.confignode.procedure.state.RemoveAINodeState;
 import org.apache.iotdb.confignode.procedure.store.ProcedureType;
@@ -58,7 +57,7 @@ public class RemoveAINodeProcedure extends AbstractNodeProcedure<RemoveAINodeSta
 
   @Override
   protected Flow executeFromState(ConfigNodeProcedureEnv env, RemoveAINodeState state)
-      throws ProcedureSuspendedException, ProcedureYieldException, InterruptedException {
+      throws ProcedureYieldException, InterruptedException {
     if (removedAINode == null) {
       return Flow.NO_MORE_STATE;
     }

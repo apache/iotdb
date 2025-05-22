@@ -27,7 +27,6 @@ import org.apache.iotdb.confignode.consensus.request.write.table.RenameTablePlan
 import org.apache.iotdb.confignode.consensus.request.write.table.view.RenameViewPlan;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
-import org.apache.iotdb.confignode.procedure.exception.ProcedureSuspendedException;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureYieldException;
 import org.apache.iotdb.confignode.procedure.impl.schema.table.view.RenameViewProcedure;
 import org.apache.iotdb.confignode.procedure.state.schema.RenameTableState;
@@ -63,7 +62,7 @@ public class RenameTableProcedure extends AbstractAlterOrDropTableProcedure<Rena
 
   @Override
   protected Flow executeFromState(final ConfigNodeProcedureEnv env, final RenameTableState state)
-      throws ProcedureSuspendedException, ProcedureYieldException, InterruptedException {
+      throws ProcedureYieldException, InterruptedException {
     final long startTime = System.currentTimeMillis();
     try {
       switch (state) {
