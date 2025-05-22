@@ -158,7 +158,7 @@ public class PipeInsertNodeTabletInsertionEvent extends EnrichedEvent
       PipeDataNodeResourceManager.wal().pin(walEntryHandler);
       if (Objects.nonNull(pipeName)) {
         PipeDataNodeRemainingEventAndTimeMetrics.getInstance()
-            .increaseTabletEventCount(pipeName, creationTime);
+            .increaseInsertNodeEventCount(pipeName, creationTime);
         PipeDataNodeAgent.task().addFloatingMemoryUsageInByte(pipeName, ramBytesUsed());
       }
       return true;
@@ -194,7 +194,7 @@ public class PipeInsertNodeTabletInsertionEvent extends EnrichedEvent
       if (Objects.nonNull(pipeName)) {
         PipeDataNodeAgent.task().decreaseFloatingMemoryUsageInByte(pipeName, ramBytesUsed());
         PipeDataNodeRemainingEventAndTimeMetrics.getInstance()
-            .decreaseTabletEventCount(pipeName, creationTime);
+            .decreaseInsertNodeEventCount(pipeName, creationTime);
       }
     }
   }
