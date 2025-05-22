@@ -62,8 +62,15 @@ public class LoadTsFileConfigurator {
     }
   }
 
-  public static void validateSynonymParameters(final String key, final String value) {
-
+  public static void validateSynonymParameters(final Map<String, String> parameters) {
+    if (parameters.containsKey(DATABASE_KEY) && parameters.containsKey(DATABASE_NAME_KEY)) {
+      throw new SemanticException(
+          "The parameter key '"
+              + DATABASE_KEY
+              + "' and '"
+              + DATABASE_NAME_KEY
+              + "' cannot co-exist.");
+    }
   }
 
   public static final String DATABASE_LEVEL_KEY = "database-level";
