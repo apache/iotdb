@@ -22,6 +22,7 @@ package org.apache.iotdb.db.subscription.event.batch;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.batch.PipeTabletEventTsFileBatch;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
+import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
 import org.apache.iotdb.db.subscription.broker.SubscriptionPrefetchingTsFileQueue;
 import org.apache.iotdb.db.subscription.event.SubscriptionEvent;
 import org.apache.iotdb.db.subscription.event.pipe.SubscriptionPipeTsFileBatchEvents;
@@ -102,6 +103,7 @@ public class SubscriptionPipeTsFileEventBatch extends SubscriptionPipeEventBatch
     } finally {
       try {
         event.close();
+        ((PipeTsFileInsertionEvent) event).decreaseReferenceCount(this.getClass().getName(), false);
       } catch (final Exception ignored) {
         // no exceptions will be thrown
       }
