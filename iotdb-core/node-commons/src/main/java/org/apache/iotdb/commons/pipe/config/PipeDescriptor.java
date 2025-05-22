@@ -526,6 +526,26 @@ public class PipeDescriptor {
             properties.getProperty(
                 "pipe_dynamic_memory_adjustment_threshold",
                 String.valueOf(config.getPipeDynamicMemoryAdjustmentThreshold()))));
+
+    config.setPipeThresholdAllocationStrategyMaximumMemoryIncrementRatio(
+        Double.parseDouble(
+            properties.getProperty(
+                "pipe_threshold_allocation_strategy_maximum_memory_increment_ratio",
+                String.valueOf(
+                    config.getPipeThresholdAllocationStrategyMaximumMemoryIncrementRatio()))));
+
+    config.setPipeThresholdAllocationStrategyLowUsageThreshold(
+        Double.parseDouble(
+            properties.getProperty(
+                "pipe_threshold_allocation_strategy_low_usage_threshold",
+                String.valueOf(config.getPipeThresholdAllocationStrategyLowUsageThreshold()))));
+
+    config.setPipeThresholdAllocationStrategyFixedMemoryHighUsageThreshold(
+        Double.parseDouble(
+            properties.getProperty(
+                "pipe_threshold_allocation_strategy_high_usage_threshold",
+                String.valueOf(
+                    config.getPipeThresholdAllocationStrategyFixedMemoryHighUsageThreshold()))));
   }
 
   public static void loadPipeExternalConfig(

@@ -96,6 +96,10 @@ public class PipeDynamicMemoryBlock {
     }
   }
 
+  public long getFixedMemoryCapacity() {
+    return fixedMemoryBlock.getMemoryAllocatedInBytes();
+  }
+
   public void updateMemoryEfficiency(
       double currentMemoryEfficiency, double historyMemoryEfficiency) {
     synchronized (fixedMemoryBlock) {

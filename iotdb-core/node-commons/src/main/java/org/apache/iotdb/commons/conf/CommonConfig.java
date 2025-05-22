@@ -303,6 +303,9 @@ public class CommonConfig {
   private double pipeTsFileScanParsingThreshold = 0.05;
   private double pipeDynamicMemoryHistoryWeight = 0.5;
   private double pipeDynamicMemoryAdjustmentThreshold = 0.05;
+  private double pipeThresholdAllocationStrategyMaximumMemoryIncrementRatio = 0.1d;
+  private double pipeThresholdAllocationStrategyLowUsageThreshold = 0.2d;
+  private double pipeThresholdAllocationStrategyFixedMemoryHighUsageThreshold = 0.8d;
 
   private long twoStageAggregateMaxCombinerLiveTimeInMs = 8 * 60 * 1000L; // 8 minutes
   private long twoStageAggregateDataRegionInfoCacheTimeInMs = 3 * 60 * 1000L; // 3 minutes
@@ -1825,6 +1828,57 @@ public class CommonConfig {
     this.pipeDynamicMemoryAdjustmentThreshold = pipeDynamicMemoryAdjustmentThreshold;
     logger.info(
         "pipeDynamicMemoryAdjustmentThreshold is set to {}", pipeDynamicMemoryAdjustmentThreshold);
+  }
+
+  public double getPipeThresholdAllocationStrategyMaximumMemoryIncrementRatio() {
+    return pipeThresholdAllocationStrategyMaximumMemoryIncrementRatio;
+  }
+
+  public void setPipeThresholdAllocationStrategyMaximumMemoryIncrementRatio(
+      double pipeThresholdAllocationStrategyMaximumMemoryIncrementRatio) {
+    if (this.pipeThresholdAllocationStrategyMaximumMemoryIncrementRatio
+        == pipeThresholdAllocationStrategyMaximumMemoryIncrementRatio) {
+      return;
+    }
+    this.pipeThresholdAllocationStrategyMaximumMemoryIncrementRatio =
+        pipeThresholdAllocationStrategyMaximumMemoryIncrementRatio;
+    logger.info(
+        "pipeThresholdAllocationStrategyMaximumMemoryIncrementRatio is set to {}",
+        pipeThresholdAllocationStrategyMaximumMemoryIncrementRatio);
+  }
+
+  public double getPipeThresholdAllocationStrategyLowUsageThreshold() {
+    return pipeThresholdAllocationStrategyLowUsageThreshold;
+  }
+
+  public void setPipeThresholdAllocationStrategyLowUsageThreshold(
+      double pipeThresholdAllocationStrategyLowUsageThreshold) {
+    if (this.pipeThresholdAllocationStrategyLowUsageThreshold
+        == pipeThresholdAllocationStrategyLowUsageThreshold) {
+      return;
+    }
+    this.pipeThresholdAllocationStrategyLowUsageThreshold =
+        pipeThresholdAllocationStrategyLowUsageThreshold;
+    logger.info(
+        "pipeMemoryBlockLowUsageThreshold is set to {}",
+        pipeThresholdAllocationStrategyLowUsageThreshold);
+  }
+
+  public double getPipeThresholdAllocationStrategyFixedMemoryHighUsageThreshold() {
+    return pipeThresholdAllocationStrategyFixedMemoryHighUsageThreshold;
+  }
+
+  public void setPipeThresholdAllocationStrategyFixedMemoryHighUsageThreshold(
+      double pipeThresholdAllocationStrategyFixedMemoryHighUsageThreshold) {
+    if (this.pipeThresholdAllocationStrategyFixedMemoryHighUsageThreshold
+        == pipeThresholdAllocationStrategyFixedMemoryHighUsageThreshold) {
+      return;
+    }
+    this.pipeThresholdAllocationStrategyFixedMemoryHighUsageThreshold =
+        pipeThresholdAllocationStrategyFixedMemoryHighUsageThreshold;
+    logger.info(
+        "pipeThresholdAllocationStrategyFixedMemoryHighUsageThreshold is set to {}",
+        pipeThresholdAllocationStrategyFixedMemoryHighUsageThreshold);
   }
 
   public double getPipeAllSinksRateLimitBytesPerSecond() {

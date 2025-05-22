@@ -239,6 +239,18 @@ public class PipeConfig {
     return COMMON_CONFIG.getPipeDynamicMemoryAdjustmentThreshold();
   }
 
+  public double getPipeThresholdAllocationStrategyMaximumMemoryIncrementRatio() {
+    return COMMON_CONFIG.getPipeThresholdAllocationStrategyMaximumMemoryIncrementRatio();
+  }
+
+  public double getPipeThresholdAllocationStrategyLowUsageThreshold() {
+    return COMMON_CONFIG.getPipeThresholdAllocationStrategyLowUsageThreshold();
+  }
+
+  public double getPipeThresholdAllocationStrategyFixedMemoryHighUsageThreshold() {
+    return COMMON_CONFIG.getPipeThresholdAllocationStrategyFixedMemoryHighUsageThreshold();
+  }
+
   /////////////////////////////// Meta Consistency ///////////////////////////////
 
   public boolean isSeperatedPipeHeartbeatEnabled() {
