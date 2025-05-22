@@ -67,12 +67,8 @@ import org.slf4j.LoggerFactory;
 
 import java.io.FileNotFoundException;
 import java.io.IOException;
-import java.util.Iterator;
-import java.util.Objects;
-import java.util.concurrent.BlockingQueue;
-import java.util.concurrent.LinkedBlockingDeque;
-import java.util.concurrent.LinkedBlockingQueue;
-import java.util.concurrent.TimeUnit;
+import java.util.*;
+import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.CONNECTOR_CONSENSUS_GROUP_ID_KEY;
@@ -95,7 +91,10 @@ public class PipeConsensusAsyncConnector extends IoTDBConnector implements Conse
   private static final IoTDBConfig IOTDB_CONFIG = IoTDBDescriptor.getInstance().getConfig();
   private static final long PIPE_CONSENSUS_EVENT_ENQUEUE_TIMEOUT_IN_MS =
       IOTDB_CONFIG.getConnectionTimeoutInMS() / 6;
-  private final BlockingQueue<Event> retryEventQueue = new LinkedBlockingQueue<>();
+  private final Queue<EnrichedEvent> retryEventQueue =
+      new PriorityQueue<>(
+          IOTDB_CONFIG.getIotConsensusV2PipelineSize(),
+          Comparator.comparingLong(EnrichedEvent::getReplicateIndexForIoTV2));
   // We use enrichedEvent here to make use of EnrichedEvent.equalsInPipeConsensus
   private final BlockingQueue<EnrichedEvent> transferBuffer =
       new LinkedBlockingDeque<>(IOTDB_CONFIG.getIotConsensusV2PipelineSize());
@@ -458,7 +457,7 @@ public class PipeConsensusAsyncConnector extends IoTDBConnector implements Conse
           return;
         }
 
-        final Event peekedEvent = retryEventQueue.peek();
+        final EnrichedEvent peekedEvent = retryEventQueue.peek();
         // do transfer
         if (peekedEvent instanceof PipeInsertNodeTabletInsertionEvent) {
           retryConnector.transfer((PipeInsertNodeTabletInsertionEvent) peekedEvent);
@@ -474,12 +473,9 @@ public class PipeConsensusAsyncConnector extends IoTDBConnector implements Conse
           }
         }
         // release resource
-        if (peekedEvent instanceof EnrichedEvent) {
-          ((EnrichedEvent) peekedEvent)
-              .decreaseReferenceCount(PipeConsensusAsyncConnector.class.getName(), true);
-        }
+        peekedEvent.decreaseReferenceCount(PipeConsensusAsyncConnector.class.getName(), true);
 
-        final Event polledEvent = retryEventQueue.poll();
+        final EnrichedEvent polledEvent = retryEventQueue.poll();
         if (polledEvent != peekedEvent) {
           if (LOGGER.isErrorEnabled()) {
             LOGGER.error(
@@ -494,7 +490,7 @@ public class PipeConsensusAsyncConnector extends IoTDBConnector implements Conse
             LOGGER.debug("Polled event {} from retry queue.", polledEvent);
           }
           // poll it from transferBuffer
-          removeEventFromBuffer((EnrichedEvent) polledEvent);
+          removeEventFromBuffer(polledEvent);
         }
       }
     }
@@ -506,11 +502,9 @@ public class PipeConsensusAsyncConnector extends IoTDBConnector implements Conse
    * @param event event to retry
    */
   @SuppressWarnings("java:S899")
-  public void addFailureEventToRetryQueue(final Event event) {
+  public void addFailureEventToRetryQueue(final EnrichedEvent event) {
     if (isClosed.get()) {
-      if (event instanceof EnrichedEvent) {
-        ((EnrichedEvent) event).clearReferenceCount(PipeConsensusAsyncConnector.class.getName());
-      }
+      event.clearReferenceCount(PipeConsensusAsyncConnector.class.getName());
       return;
     }
 
@@ -523,9 +517,7 @@ public class PipeConsensusAsyncConnector extends IoTDBConnector implements Conse
     }
 
     if (isClosed.get()) {
-      if (event instanceof EnrichedEvent) {
-        ((EnrichedEvent) event).clearReferenceCount(PipeConsensusAsyncConnector.class.getName());
-      }
+      event.clearReferenceCount(PipeConsensusAsyncConnector.class.getName());
     }
   }
 
@@ -534,18 +526,16 @@ public class PipeConsensusAsyncConnector extends IoTDBConnector implements Conse
    *
    * @param events events to retry
    */
-  public void addFailureEventsToRetryQueue(final Iterable<Event> events) {
-    for (final Event event : events) {
+  public void addFailureEventsToRetryQueue(final Iterable<EnrichedEvent> events) {
+    for (final EnrichedEvent event : events) {
       addFailureEventToRetryQueue(event);
     }
   }
 
   public synchronized void clearRetryEventsReferenceCount() {
     while (!retryEventQueue.isEmpty()) {
-      final Event event = retryEventQueue.poll();
-      if (event instanceof EnrichedEvent) {
-        ((EnrichedEvent) event).clearReferenceCount(PipeConsensusAsyncConnector.class.getName());
-      }
+      final EnrichedEvent event = retryEventQueue.poll();
+      event.clearReferenceCount(PipeConsensusAsyncConnector.class.getName());
     }
   }
 
