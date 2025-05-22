@@ -26,11 +26,21 @@ import org.apache.tsfile.utils.Pair;
 
 public class ThresholdAllocationStrategy implements DynamicMemoryAllocationStrategy {
 
+  private long maximumMemoryIncrease = 10 * 1024 * 1024;
+
   @Override
   public void dynamicallyAdjustMemory(final PipeDynamicMemoryBlock dynamicMemoryBlock) {
-    double deficitRatio = calculateDeficitRatio(dynamicMemoryBlock);
+    final double deficitRatio = calculateDeficitRatio(dynamicMemoryBlock);
     final long oldMemoryUsageInBytes = dynamicMemoryBlock.getMemoryUsageInBytes();
     final long expectedMemory = (long) (oldMemoryUsageInBytes / deficitRatio);
+
+    if (deficitRatio <= 0.0 || oldMemoryUsageInBytes == 0 || expectedMemory == 0) {
+      dynamicMemoryBlock.applyForDynamicMemory(maximumMemoryIncrease);
+      final double efficiencyRatio =
+          (double) dynamicMemoryBlock.getMemoryUsageInBytes() / maximumMemoryIncrease;
+      dynamicMemoryBlock.updateMemoryEfficiency(efficiencyRatio, efficiencyRatio);
+      return;
+    }
 
     // No matter what, give priority to applying for memory use, and adjust the memory size when the
     // memory is insufficient
@@ -54,16 +64,19 @@ public class ThresholdAllocationStrategy implements DynamicMemoryAllocationStrat
       return;
     }
 
-    double averageDeficitRatio =
+    // Entering this logic means that the memory is insufficient and the memory allocation needs to
+    // be adjusted
+    final double averageDeficitRatio =
         dynamicMemoryBlock
             .getMemoryBlocks()
             .mapToDouble(this::calculateDeficitRatio)
             .average()
             .orElse(1.0);
-    double diff = averageDeficitRatio - deficitRatio;
+
+    final double diff = averageDeficitRatio - deficitRatio;
 
     if (Math.abs(diff) > PipeConfig.getInstance().getPipeDynamicMemoryAdjustmentThreshold()) {
-      long mem = (long) ((dynamicMemoryBlock.getMemoryUsageInBytes() / deficitRatio) * diff);
+      final long mem = (long) ((dynamicMemoryBlock.getMemoryUsageInBytes() / deficitRatio) * diff);
       dynamicMemoryBlock.applyForDynamicMemory(dynamicMemoryBlock.getMemoryUsageInBytes() + mem);
       final double efficiencyRatio =
           dynamicMemoryBlock.getMemoryUsageInBytes() / (double) expectedMemory;

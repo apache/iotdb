@@ -42,23 +42,10 @@ public class PipeDynamicMemoryBlock {
 
   private volatile double currentMemoryEfficiency;
 
-  public PipeDynamicMemoryBlock(
+  PipeDynamicMemoryBlock(
       final @NotNull PipeModelFixedMemoryBlock fixedMemoryBlock, final long memoryUsageInBytes) {
-    this.memoryUsageInBytes = Math.max(memoryUsageInBytes, 0);
+    this.memoryUsageInBytes = Math.min(memoryUsageInBytes, 0);
     this.fixedMemoryBlock = fixedMemoryBlock;
-    historyMemoryEfficiency = 1.0;
-    currentMemoryEfficiency = 1.0;
-  }
-
-  public PipeDynamicMemoryBlock(
-      final @NotNull PipeModelFixedMemoryBlock fixedMemoryBlock,
-      final long memoryUsageInBytes,
-      final double historyMemoryEfficiency,
-      final double currentMemoryEfficiency) {
-    this.memoryUsageInBytes = Math.max(memoryUsageInBytes, 0);
-    this.fixedMemoryBlock = fixedMemoryBlock;
-    this.historyMemoryEfficiency = historyMemoryEfficiency;
-    this.currentMemoryEfficiency = currentMemoryEfficiency;
   }
 
   public long getMemoryUsageInBytes() {
@@ -88,27 +75,44 @@ public class PipeDynamicMemoryBlock {
   }
 
   public double getFixedMemoryBlockUsageRatio() {
-    return (double)
-        (fixedMemoryBlock.getMemoryUsageInBytes() / fixedMemoryBlock.getMemoryAllocatedInBytes());
+    return (double) fixedMemoryBlock.getMemoryUsageInBytes()
+        / fixedMemoryBlock.getMemoryAllocatedInBytes();
   }
 
   public long canAllocateMemorySize() {
     return fixedMemoryBlock.getMemoryAllocatedInBytes() - fixedMemoryBlock.getMemoryUsageInBytes();
   }
 
-  public void updateCurrentMemoryEfficiencyAdjustMem(final double currentMemoryEfficiency) {
+  public void updateCurrentMemoryEfficiencyAdjustMem(double currentMemoryEfficiency) {
     synchronized (fixedMemoryBlock) {
       this.historyMemoryEfficiency = this.currentMemoryEfficiency;
-      this.currentMemoryEfficiency = currentMemoryEfficiency;
+      if (Double.isNaN(currentMemoryEfficiency)
+          || Double.isInfinite(currentMemoryEfficiency)
+          || currentMemoryEfficiency < 0.0) {
+        currentMemoryEfficiency = 0.0;
+      }
+      this.currentMemoryEfficiency = Math.min(currentMemoryEfficiency, 1.0);
       fixedMemoryBlock.dynamicallyAdjustMemory(this);
     }
   }
 
   public void updateMemoryEfficiency(
-      final double currentMemoryEfficiency, final double historyMemoryEfficiency) {
+      double currentMemoryEfficiency, double historyMemoryEfficiency) {
     synchronized (fixedMemoryBlock) {
-      this.historyMemoryEfficiency = historyMemoryEfficiency;
-      this.currentMemoryEfficiency = currentMemoryEfficiency;
+      if (Double.isNaN(currentMemoryEfficiency)
+          || Double.isInfinite(currentMemoryEfficiency)
+          || currentMemoryEfficiency < 0.0) {
+        currentMemoryEfficiency = 0.0;
+      }
+
+      if (Double.isNaN(historyMemoryEfficiency)
+          || Double.isInfinite(historyMemoryEfficiency)
+          || historyMemoryEfficiency < 0.0) {
+        currentMemoryEfficiency = 0.0;
+      }
+
+      this.historyMemoryEfficiency = Math.min(historyMemoryEfficiency, 1.0);
+      this.currentMemoryEfficiency = Math.min(currentMemoryEfficiency, 1.0);
     }
   }
 

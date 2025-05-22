@@ -36,7 +36,7 @@ public class PipeModelFixedMemoryBlock extends PipeFixedMemoryBlock {
   private volatile long memoryAllocatedInBytes;
 
   public PipeModelFixedMemoryBlock(
-      long memoryUsageInBytes, DynamicMemoryAllocationStrategy allocationStrategy) {
+      final long memoryUsageInBytes, final DynamicMemoryAllocationStrategy allocationStrategy) {
     super(memoryUsageInBytes);
     this.memoryAllocatedInBytes = 0;
     this.allocationStrategy = allocationStrategy;
@@ -46,9 +46,14 @@ public class PipeModelFixedMemoryBlock extends PipeFixedMemoryBlock {
       final long memorySizeInBytes) {
     final PipeDynamicMemoryBlock memoryBlock = new PipeDynamicMemoryBlock(this, 0);
     memoryBlocks.add(memoryBlock);
-    resetMemoryBlockSize(memoryBlock, memorySizeInBytes);
-    final double e = (double) (getMemoryUsageInBytes() / memorySizeInBytes);
-    memoryBlock.updateMemoryEfficiency(e, e);
+    if (memorySizeInBytes != 0) {
+      resetMemoryBlockSize(memoryBlock, memorySizeInBytes);
+      double e = (double) getMemoryUsageInBytes() / memorySizeInBytes;
+      memoryBlock.updateMemoryEfficiency(e, e);
+      return memoryBlock;
+    }
+
+    memoryBlock.updateMemoryEfficiency(0.0, 0.0);
     return memoryBlock;
   }
 
@@ -72,7 +77,7 @@ public class PipeModelFixedMemoryBlock extends PipeFixedMemoryBlock {
     memoryBlocks.remove(memoryBlock);
   }
 
-  synchronized void dynamicallyAdjustMemory(PipeDynamicMemoryBlock block) {
+  synchronized void dynamicallyAdjustMemory(final PipeDynamicMemoryBlock block) {
     if (this.isReleased() || block.isReleased() || !memoryBlocks.contains(block)) {
       throw new IllegalStateException("The memory block has been released");
     }

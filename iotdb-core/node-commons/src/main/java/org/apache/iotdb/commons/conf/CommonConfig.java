@@ -302,7 +302,7 @@ public class CommonConfig {
       PipeRemainingTimeRateAverageTime.MEAN;
   private double pipeTsFileScanParsingThreshold = 0.05;
   private double pipeDynamicMemoryHistoryWeight = 0.5;
-  private double pipeDynamicMemoryAdjustmentThreshold = 0.5;
+  private double pipeDynamicMemoryAdjustmentThreshold = 0.05;
 
   private long twoStageAggregateMaxCombinerLiveTimeInMs = 8 * 60 * 1000L; // 8 minutes
   private long twoStageAggregateDataRegionInfoCacheTimeInMs = 3 * 60 * 1000L; // 3 minutes
