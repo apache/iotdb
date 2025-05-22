@@ -144,7 +144,7 @@
       is for ensuring the SNAPSHOT will stay available. We should however have the Ratis folks do a
       new release soon, as releasing with this version is more than sub-ideal.
     -->
-        <ratis.version>3.2.0-3247c7f-SNAPSHOT</ratis.version>
+        <ratis.version>3.2.0</ratis.version>
         <reactive-streams.version>1.0.4</reactive-streams.version>
         <reactor-netty.version>1.1.20</reactor-netty.version>
         <reactor.version>3.5.18</reactor.version>
@@ -319,37 +319,37 @@
                 <version>${commons-io.version}</version>
             </dependency>
             <dependency>
-                <groupId>org.apache.ratis</groupId>
+                <groupId>com.timecho.ratis</groupId>
                 <artifactId>ratis-server</artifactId>
                 <version>${ratis.version}</version>
             </dependency>
             <dependency>
-                <groupId>org.apache.ratis</groupId>
+                <groupId>com.timecho.ratis</groupId>
                 <artifactId>ratis-server-api</artifactId>
                 <version>${ratis.version}</version>
             </dependency>
             <dependency>
-                <groupId>org.apache.ratis</groupId>
+                <groupId>com.timecho.ratis</groupId>
                 <artifactId>ratis-common</artifactId>
                 <version>${ratis.version}</version>
             </dependency>
             <dependency>
-                <groupId>org.apache.ratis</groupId>
+                <groupId>com.timecho.ratis</groupId>
                 <artifactId>ratis-client</artifactId>
                 <version>${ratis.version}</version>
             </dependency>
             <dependency>
-                <groupId>org.apache.ratis</groupId>
+                <groupId>com.timecho.ratis</groupId>
                 <artifactId>ratis-grpc</artifactId>
                 <version>${ratis.version}</version>
             </dependency>
             <dependency>
-                <groupId>org.apache.ratis</groupId>
+                <groupId>com.timecho.ratis</groupId>
                 <artifactId>ratis-proto</artifactId>
                 <version>${ratis.version}</version>
             </dependency>
             <dependency>
-                <groupId>org.apache.ratis</groupId>
+                <groupId>com.timecho.ratis</groupId>
                 <artifactId>ratis-metrics-api</artifactId>
                 <version>${ratis.version}</version>
             </dependency>
