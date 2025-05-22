@@ -287,32 +287,6 @@ public class IoTDBDataRegionExtractor extends IoTDBExtractor {
                     Arrays.asList(EXTRACTOR_REALTIME_ENABLE_KEY, SOURCE_REALTIME_ENABLE_KEY),
                     EXTRACTOR_REALTIME_ENABLE_DEFAULT_VALUE));
 
-    // Validate extractor.realtime.mode
-    if (validator
-            .getParameters()
-            .getBooleanOrDefault(
-                Arrays.asList(EXTRACTOR_REALTIME_ENABLE_KEY, SOURCE_REALTIME_ENABLE_KEY),
-                EXTRACTOR_REALTIME_ENABLE_DEFAULT_VALUE)
-        || validator
-            .getParameters()
-            .hasAnyAttributes(
-                SOURCE_START_TIME_KEY,
-                EXTRACTOR_START_TIME_KEY,
-                SOURCE_END_TIME_KEY,
-                EXTRACTOR_END_TIME_KEY)) {
-      validator.validateAttributeValueRange(
-          validator.getParameters().hasAttribute(EXTRACTOR_REALTIME_MODE_KEY)
-              ? EXTRACTOR_REALTIME_MODE_KEY
-              : SOURCE_REALTIME_MODE_KEY,
-          true,
-          EXTRACTOR_REALTIME_MODE_FILE_VALUE,
-          EXTRACTOR_REALTIME_MODE_HYBRID_VALUE,
-          EXTRACTOR_REALTIME_MODE_LOG_VALUE,
-          EXTRACTOR_REALTIME_MODE_FORCED_LOG_VALUE,
-          EXTRACTOR_REALTIME_MODE_STREAM_MODE_VALUE,
-          EXTRACTOR_REALTIME_MODE_BATCH_MODE_VALUE);
-    }
-
     checkInvalidParameters(validator);
 
     constructHistoricalExtractor();
@@ -481,7 +455,9 @@ public class IoTDBDataRegionExtractor extends IoTDBExtractor {
       return;
     }
 
-    if (pipeName == null || !pipeName.startsWith(PipeStaticMeta.CONSENSUS_PIPE_PREFIX)) {
+    if (!(pipeName != null
+        && (pipeName.startsWith(PipeStaticMeta.SUBSCRIPTION_PIPE_PREFIX)
+            || pipeName.startsWith(PipeStaticMeta.CONSENSUS_PIPE_PREFIX)))) {
       realtimeExtractor = new PipeRealtimeDataRegionTsFileExtractor();
       return;
     }
