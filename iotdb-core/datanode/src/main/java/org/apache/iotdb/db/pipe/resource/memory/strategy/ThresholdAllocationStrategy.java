@@ -91,7 +91,7 @@ public class ThresholdAllocationStrategy implements DynamicMemoryAllocationStrat
     // and larger memory blocks release more memory.
     final double diff =
         isMemoryNotEnough.get()
-            ? averageDeficitRatio - deficitRatio + adjustmentThreshold
+            ? averageDeficitRatio - deficitRatio - adjustmentThreshold
             : averageDeficitRatio - deficitRatio;
 
     if (Math.abs(diff) > PipeConfig.getInstance().getPipeDynamicMemoryAdjustmentThreshold()) {
