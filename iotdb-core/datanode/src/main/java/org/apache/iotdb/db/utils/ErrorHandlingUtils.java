@@ -162,6 +162,8 @@ public class ErrorHandlingUtils {
       return RpcUtils.getStatus(TSStatusCode.PLAN_FAILED_NETWORK_PARTITION, rootCause.getMessage());
     } else if (t instanceof IoTDBException) {
       return RpcUtils.getStatus(((IoTDBException) t).getErrorCode(), rootCause.getMessage());
+    } else if (t instanceof IoTDBRuntimeException) {
+      return RpcUtils.getStatus(((IoTDBRuntimeException) t).getErrorCode(), rootCause.getMessage());
     } else if (t instanceof TsFileRuntimeException) {
       return RpcUtils.getStatus(TSStatusCode.TSFILE_PROCESSOR_ERROR, rootCause.getMessage());
     } else if (t instanceof SemanticException) {
