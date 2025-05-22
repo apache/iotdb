@@ -379,22 +379,21 @@ public class IoTDBDatabaseIT {
       TestUtils.assertResultSetEqual(
           statement.executeQuery("show tables"),
           "TableName,TTL(ms),",
-          new HashSet<>(
-              Arrays.asList(
-                  "databases,INF,",
-                  "tables,INF,",
-                  "columns,INF,",
-                  "queries,INF,",
-                  "regions,INF,",
-                  "topics,INF,",
-                  "pipe_plugins,INF,",
-                  "pipes,INF,",
-                  "subscriptions,INF,",
-                  "views,INF,",
-                  "models,INF,",
-                  "functions,INF,",
-                  "configurations,INF,",
-                  "keywords,INF,")));
+          Arrays.asList(
+              "columns,INF,",
+              "configurations,INF,",
+              "databases,INF,",
+              "functions,INF,",
+              "keywords,INF,",
+              "models,INF,",
+              "pipe_plugins,INF,",
+              "pipes,INF,",
+              "queries,INF,",
+              "regions,INF,",
+              "subscriptions,INF,",
+              "tables,INF,",
+              "topics,INF,",
+              "views,INF,"));
 
       TestUtils.assertResultSetEqual(
           statement.executeQuery("desc databases"),
@@ -713,9 +712,8 @@ public class IoTDBDatabaseIT {
         final Statement statement = connection.createStatement()) {
       try (final ResultSet resultSet = statement.executeQuery("SHOW DATABASES DETAILS")) {
         assertTrue(resultSet.next());
-        if (resultSet.getString(1).equals("information_schema")) {
-          assertTrue(resultSet.next());
-        }
+        assertEquals("information_schema", resultSet.getString(1));
+        assertTrue(resultSet.next());
         assertEquals("test", resultSet.getString(1));
         assertFalse(resultSet.next());
       }
