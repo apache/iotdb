@@ -98,6 +98,11 @@ public class PipeReceiverStatusHandler {
       throw new PipeConsensusRetryWithIncreasingIntervalException(exceptionMessage);
     }
 
+    if (RetryUtils.notNeedRetryForConsensus(status.getCode())) {
+      LOGGER.info("IoTConsensusV2: will not retry. status: {}", status);
+      return;
+    }
+
     switch (status.getCode()) {
       case 200: // SUCCESS_STATUS
       case 400: // REDIRECTION_RECOMMEND

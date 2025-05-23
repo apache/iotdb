@@ -33,6 +33,10 @@ public class RetryUtils {
         || statusCode == TSStatusCode.WRITE_PROCESS_REJECT.getStatusCode();
   }
 
+  public static boolean notNeedRetryForConsensus(int statusCode) {
+    return statusCode == TSStatusCode.PIPE_CONSENSUS_DEPRECATED_REQUEST.getStatusCode();
+  }
+
   public static final int MAX_RETRIES = 3;
 
   public static <T, E extends Exception> T retryOnException(
