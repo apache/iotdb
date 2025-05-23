@@ -826,7 +826,7 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
     List<ColumnSchema> columnSchemas;
     int[] columnsIndexArray;
     Map<Symbol, ColumnSchema> columnSchemaMap;
-    Map<Symbol, Integer> idAndAttributeColumnsIndexMap;
+    Map<Symbol, Integer> tagAndAttributeColumnsIndexMap;
     List<String> measurementColumnNames;
     Map<String, Integer> measurementColumnsIndexMap;
     String timeColumnName;
@@ -844,7 +844,7 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
       columnSchemas = new ArrayList<>(outputColumnCount);
       columnsIndexArray = new int[outputColumnCount];
       columnSchemaMap = node.getAssignments();
-      idAndAttributeColumnsIndexMap = node.getIdAndAttributeIndexMap();
+      tagAndAttributeColumnsIndexMap = node.getTagAndAttributeIndexMap();
       measurementColumnNames = new ArrayList<>();
       measurementColumnsIndexMap = new HashMap<>();
       measurementSchemas = new ArrayList<>();
@@ -861,7 +861,7 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
           case ATTRIBUTE:
             columnsIndexArray[idx++] =
                 requireNonNull(
-                    idAndAttributeColumnsIndexMap.get(columnName), columnName + " is null");
+                    tagAndAttributeColumnsIndexMap.get(columnName), columnName + " is null");
             columnSchemas.add(schema);
             break;
           case FIELD:
@@ -2707,7 +2707,8 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
             case TAG:
             case ATTRIBUTE:
               aggColumnsIndexArray[channel] =
-                  requireNonNull(node.getIdAndAttributeIndexMap().get(symbol), symbol + " is null");
+                  requireNonNull(
+                      node.getTagAndAttributeIndexMap().get(symbol), symbol + " is null");
               break;
             case FIELD:
               aggColumnsIndexArray[channel] = measurementColumnCount;
@@ -2778,9 +2779,9 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
       for (int i = 0; i < node.getGroupingKeys().size(); i++) {
         Symbol groupingKey = node.getGroupingKeys().get(i);
 
-        if (node.getIdAndAttributeIndexMap().containsKey(groupingKey)) {
+        if (node.getTagAndAttributeIndexMap().containsKey(groupingKey)) {
           groupingKeySchemas.add(node.getAssignments().get(groupingKey));
-          groupingKeyIndex[i] = node.getIdAndAttributeIndexMap().get(groupingKey);
+          groupingKeyIndex[i] = node.getTagAndAttributeIndexMap().get(groupingKey);
         } else {
           if (node.getProjection() != null
               && !node.getProjection().getMap().isEmpty()

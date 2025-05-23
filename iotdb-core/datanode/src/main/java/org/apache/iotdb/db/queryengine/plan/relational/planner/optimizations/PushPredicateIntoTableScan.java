@@ -566,7 +566,7 @@ public class PushPredicateIntoTableScan implements PlanOptimizer {
         final ColumnSchema columnSchema = entry.getValue();
         if (ATTRIBUTE.equals(columnSchema.getColumnCategory())) {
           attributeColumns.add(columnSchema.getName());
-          tableScanNode.getIdAndAttributeIndexMap().put(columnSymbol, attributeIndex++);
+          tableScanNode.getTagAndAttributeIndexMap().put(columnSymbol, attributeIndex++);
         }
       }
 

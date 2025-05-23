@@ -201,7 +201,7 @@ public class RelationPlanner extends AstVisitor<RelationPlan, Void> {
 
     // on the basis of that the order of fields is same with the column category order of segments
     // in DeviceEntry
-    final Map<Symbol, Integer> idAndAttributeIndexMap = new HashMap<>();
+    final Map<Symbol, Integer> tagAndAttributeIndexMap = new HashMap<>();
     int idIndex = 0;
     for (final Field field : fields) {
       final TsTableColumnCategory category = field.getColumnCategory();
@@ -212,7 +212,7 @@ public class RelationPlanner extends AstVisitor<RelationPlan, Void> {
           new ColumnSchema(
               field.getName().orElse(null), field.getType(), field.isHidden(), category));
       if (category == TsTableColumnCategory.TAG) {
-        idAndAttributeIndexMap.put(symbol, idIndex++);
+        tagAndAttributeIndexMap.put(symbol, idIndex++);
       }
     }
 
@@ -230,7 +230,7 @@ public class RelationPlanner extends AstVisitor<RelationPlan, Void> {
               qualifiedObjectName,
               outputSymbols,
               tableColumnSchema,
-              idAndAttributeIndexMap,
+              tagAndAttributeIndexMap,
               null,
               treeDeviceViewSchema.getColumn2OriginalNameMap()),
           scope,
@@ -247,7 +247,7 @@ public class RelationPlanner extends AstVisitor<RelationPlan, Void> {
                 qualifiedObjectName,
                 outputSymbols,
                 tableColumnSchema,
-                idAndAttributeIndexMap);
+                tagAndAttributeIndexMap);
     return new RelationPlan(tableScanNode, scope, outputSymbols, outerContext);
 
     // Collection<Field> fields = analysis.getMaterializedViewStorageTableFields(node);
