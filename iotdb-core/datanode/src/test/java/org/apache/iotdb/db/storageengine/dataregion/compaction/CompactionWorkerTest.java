@@ -81,7 +81,7 @@ public class CompactionWorkerTest {
               TsFileResourceStatus.COMPACTION_CANDIDATE));
     }
     TsFileManager tsFileManager = Mockito.mock(TsFileManager.class);
-    Mockito.when(tsFileManager.getStorageGroupName()).thenReturn("root.sg");
+    Mockito.when(tsFileManager.getDatabaseName()).thenReturn("root.sg");
     Mockito.when(tsFileManager.getDataRegionId()).thenReturn("1");
     Mockito.when(tsFileManager.isAllowCompaction()).thenReturn(true);
     CrossSpaceCompactionTask task =

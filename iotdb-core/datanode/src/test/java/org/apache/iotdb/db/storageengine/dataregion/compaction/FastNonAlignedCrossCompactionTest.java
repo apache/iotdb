@@ -59,7 +59,7 @@ import static org.apache.iotdb.db.storageengine.dataregion.compaction.utils.TsFi
 import static org.apache.iotdb.db.storageengine.dataregion.compaction.utils.TsFileGeneratorUtils.createDataType;
 import static org.apache.iotdb.db.storageengine.dataregion.compaction.utils.TsFileGeneratorUtils.createEncodingType;
 import static org.apache.iotdb.db.storageengine.dataregion.compaction.utils.TsFileGeneratorUtils.createTimeseries;
-import static org.apache.iotdb.db.storageengine.dataregion.compaction.utils.TsFileGeneratorUtils.testStorageGroup;
+import static org.apache.iotdb.db.storageengine.dataregion.compaction.utils.TsFileGeneratorUtils.testDatabase;
 import static org.apache.iotdb.db.storageengine.dataregion.compaction.utils.TsFileGeneratorUtils.writeNonAlignedChunk;
 import static org.apache.iotdb.db.storageengine.dataregion.compaction.utils.TsFileGeneratorUtils.writeOneNonAlignedPage;
 import static org.apache.tsfile.common.constant.TsFileConstant.PATH_SEPARATOR;
@@ -6621,7 +6621,7 @@ public class FastNonAlignedCrossCompactionTest extends AbstractCompactionTest {
       for (int deviceIndex = 0; deviceIndex < deviceNum; deviceIndex++) {
         tsFileIOWriter.startChunkGroup(
             IDeviceID.Factory.DEFAULT_FACTORY.create(
-                testStorageGroup + PATH_SEPARATOR + "d" + deviceIndex));
+                testDatabase + PATH_SEPARATOR + "d" + deviceIndex));
 
         List<TSDataType> dataTypes = createDataType(measurementNum);
         List<TSEncoding> encodings = createEncodingType(measurementNum);
@@ -6655,11 +6655,11 @@ public class FastNonAlignedCrossCompactionTest extends AbstractCompactionTest {
         tsFileIOWriter.endChunkGroup();
         resource.updateStartTime(
             IDeviceID.Factory.DEFAULT_FACTORY.create(
-                testStorageGroup + PATH_SEPARATOR + "d" + deviceIndex),
+                testDatabase + PATH_SEPARATOR + "d" + deviceIndex),
             0);
         resource.updateEndTime(
             IDeviceID.Factory.DEFAULT_FACTORY.create(
-                testStorageGroup + PATH_SEPARATOR + "d" + deviceIndex),
+                testDatabase + PATH_SEPARATOR + "d" + deviceIndex),
             600);
         timeserisPathList.addAll(timeseriesPath);
         tsDataTypes.addAll(dataTypes);
@@ -6678,7 +6678,7 @@ public class FastNonAlignedCrossCompactionTest extends AbstractCompactionTest {
       for (int deviceIndex = 0; deviceIndex < deviceNum; deviceIndex++) {
         tsFileIOWriter.startChunkGroup(
             IDeviceID.Factory.DEFAULT_FACTORY.create(
-                testStorageGroup + PATH_SEPARATOR + "d" + deviceIndex));
+                testDatabase + PATH_SEPARATOR + "d" + deviceIndex));
 
         List<TSDataType> dataTypes = createDataType(measurementNum);
         List<TSEncoding> encodings = createEncodingType(measurementNum);
@@ -6714,11 +6714,11 @@ public class FastNonAlignedCrossCompactionTest extends AbstractCompactionTest {
         tsFileIOWriter.endChunkGroup();
         resource.updateStartTime(
             IDeviceID.Factory.DEFAULT_FACTORY.create(
-                testStorageGroup + PATH_SEPARATOR + "d" + deviceIndex),
+                testDatabase + PATH_SEPARATOR + "d" + deviceIndex),
             900);
         resource.updateEndTime(
             IDeviceID.Factory.DEFAULT_FACTORY.create(
-                testStorageGroup + PATH_SEPARATOR + "d" + deviceIndex),
+                testDatabase + PATH_SEPARATOR + "d" + deviceIndex),
             2000);
         timeserisPathList.addAll(timeseriesPath);
         tsDataTypes.addAll(dataTypes);
@@ -6737,7 +6737,7 @@ public class FastNonAlignedCrossCompactionTest extends AbstractCompactionTest {
       for (int deviceIndex = 0; deviceIndex < deviceNum; deviceIndex++) {
         tsFileIOWriter.startChunkGroup(
             IDeviceID.Factory.DEFAULT_FACTORY.create(
-                testStorageGroup + PATH_SEPARATOR + "d" + deviceIndex));
+                testDatabase + PATH_SEPARATOR + "d" + deviceIndex));
 
         List<TSDataType> dataTypes = createDataType(measurementNum);
         List<TSEncoding> encodings = createEncodingType(measurementNum);
@@ -6761,11 +6761,11 @@ public class FastNonAlignedCrossCompactionTest extends AbstractCompactionTest {
         tsFileIOWriter.endChunkGroup();
         resource.updateStartTime(
             IDeviceID.Factory.DEFAULT_FACTORY.create(
-                testStorageGroup + PATH_SEPARATOR + "d" + deviceIndex),
+                testDatabase + PATH_SEPARATOR + "d" + deviceIndex),
             200);
         resource.updateEndTime(
             IDeviceID.Factory.DEFAULT_FACTORY.create(
-                testStorageGroup + PATH_SEPARATOR + "d" + deviceIndex),
+                testDatabase + PATH_SEPARATOR + "d" + deviceIndex),
             2200);
         timeserisPathList.addAll(timeseriesPath);
         tsDataTypes.addAll(dataTypes);
@@ -6784,7 +6784,7 @@ public class FastNonAlignedCrossCompactionTest extends AbstractCompactionTest {
       for (int deviceIndex = 0; deviceIndex < deviceNum; deviceIndex++) {
         tsFileIOWriter.startChunkGroup(
             IDeviceID.Factory.DEFAULT_FACTORY.create(
-                testStorageGroup + PATH_SEPARATOR + "d" + deviceIndex));
+                testDatabase + PATH_SEPARATOR + "d" + deviceIndex));
 
         List<TSDataType> dataTypes = createDataType(measurementNum);
         List<TSEncoding> encodings = createEncodingType(measurementNum);
@@ -6821,11 +6821,11 @@ public class FastNonAlignedCrossCompactionTest extends AbstractCompactionTest {
         tsFileIOWriter.endChunkGroup();
         resource.updateStartTime(
             IDeviceID.Factory.DEFAULT_FACTORY.create(
-                testStorageGroup + PATH_SEPARATOR + "d" + deviceIndex),
+                testDatabase + PATH_SEPARATOR + "d" + deviceIndex),
             550);
         resource.updateEndTime(
             IDeviceID.Factory.DEFAULT_FACTORY.create(
-                testStorageGroup + PATH_SEPARATOR + "d" + deviceIndex),
+                testDatabase + PATH_SEPARATOR + "d" + deviceIndex),
             1600);
         timeserisPathList.addAll(timeseriesPath);
         tsDataTypes.addAll(dataTypes);
@@ -6888,7 +6888,7 @@ public class FastNonAlignedCrossCompactionTest extends AbstractCompactionTest {
       for (int deviceIndex = 0; deviceIndex < deviceNum; deviceIndex++) {
         tsFileIOWriter.startChunkGroup(
             IDeviceID.Factory.DEFAULT_FACTORY.create(
-                testStorageGroup + PATH_SEPARATOR + "d" + deviceIndex));
+                testDatabase + PATH_SEPARATOR + "d" + deviceIndex));
 
         List<TSDataType> dataTypes = createDataType(measurementNum);
         List<TSEncoding> encodings = createEncodingType(measurementNum);
@@ -6918,11 +6918,11 @@ public class FastNonAlignedCrossCompactionTest extends AbstractCompactionTest {
         tsFileIOWriter.endChunkGroup();
         resource.updateStartTime(
             IDeviceID.Factory.DEFAULT_FACTORY.create(
-                testStorageGroup + PATH_SEPARATOR + "d" + deviceIndex),
+                testDatabase + PATH_SEPARATOR + "d" + deviceIndex),
             100);
         resource.updateEndTime(
             IDeviceID.Factory.DEFAULT_FACTORY.create(
-                testStorageGroup + PATH_SEPARATOR + "d" + deviceIndex),
+                testDatabase + PATH_SEPARATOR + "d" + deviceIndex),
             600);
         timeserisPathList.addAll(timeseriesPath);
         tsDataTypes.addAll(dataTypes);
@@ -6941,7 +6941,7 @@ public class FastNonAlignedCrossCompactionTest extends AbstractCompactionTest {
       for (int deviceIndex = 0; deviceIndex < deviceNum; deviceIndex++) {
         tsFileIOWriter.startChunkGroup(
             IDeviceID.Factory.DEFAULT_FACTORY.create(
-                testStorageGroup + PATH_SEPARATOR + "d" + deviceIndex));
+                testDatabase + PATH_SEPARATOR + "d" + deviceIndex));
 
         List<TSDataType> dataTypes = createDataType(measurementNum);
         List<TSEncoding> encodings = createEncodingType(measurementNum);
@@ -6984,11 +6984,11 @@ public class FastNonAlignedCrossCompactionTest extends AbstractCompactionTest {
         tsFileIOWriter.endChunkGroup();
         resource.updateStartTime(
             IDeviceID.Factory.DEFAULT_FACTORY.create(
-                testStorageGroup + PATH_SEPARATOR + "d" + deviceIndex),
+                testDatabase + PATH_SEPARATOR + "d" + deviceIndex),
             900);
         resource.updateEndTime(
             IDeviceID.Factory.DEFAULT_FACTORY.create(
-                testStorageGroup + PATH_SEPARATOR + "d" + deviceIndex),
+                testDatabase + PATH_SEPARATOR + "d" + deviceIndex),
             2500);
         timeserisPathList.addAll(timeseriesPath);
         tsDataTypes.addAll(dataTypes);
@@ -7007,7 +7007,7 @@ public class FastNonAlignedCrossCompactionTest extends AbstractCompactionTest {
       for (int deviceIndex = 0; deviceIndex < deviceNum; deviceIndex++) {
         tsFileIOWriter.startChunkGroup(
             IDeviceID.Factory.DEFAULT_FACTORY.create(
-                testStorageGroup + PATH_SEPARATOR + "d" + deviceIndex));
+                testDatabase + PATH_SEPARATOR + "d" + deviceIndex));
 
         List<TSDataType> dataTypes = createDataType(measurementNum);
         List<TSEncoding> encodings = createEncodingType(measurementNum);
@@ -7038,11 +7038,11 @@ public class FastNonAlignedCrossCompactionTest extends AbstractCompactionTest {
         tsFileIOWriter.endChunkGroup();
         resource.updateStartTime(
             IDeviceID.Factory.DEFAULT_FACTORY.create(
-                testStorageGroup + PATH_SEPARATOR + "d" + deviceIndex),
+                testDatabase + PATH_SEPARATOR + "d" + deviceIndex),
             0);
         resource.updateEndTime(
             IDeviceID.Factory.DEFAULT_FACTORY.create(
-                testStorageGroup + PATH_SEPARATOR + "d" + deviceIndex),
+                testDatabase + PATH_SEPARATOR + "d" + deviceIndex),
             2200);
         timeserisPathList.addAll(timeseriesPath);
         tsDataTypes.addAll(dataTypes);
@@ -7061,7 +7061,7 @@ public class FastNonAlignedCrossCompactionTest extends AbstractCompactionTest {
       for (int deviceIndex = 0; deviceIndex < deviceNum; deviceIndex++) {
         tsFileIOWriter.startChunkGroup(
             IDeviceID.Factory.DEFAULT_FACTORY.create(
-                testStorageGroup + PATH_SEPARATOR + "d" + deviceIndex));
+                testDatabase + PATH_SEPARATOR + "d" + deviceIndex));
 
         List<TSDataType> dataTypes = createDataType(measurementNum);
         List<TSEncoding> encodings = createEncodingType(measurementNum);
@@ -7098,11 +7098,11 @@ public class FastNonAlignedCrossCompactionTest extends AbstractCompactionTest {
         tsFileIOWriter.endChunkGroup();
         resource.updateStartTime(
             IDeviceID.Factory.DEFAULT_FACTORY.create(
-                testStorageGroup + PATH_SEPARATOR + "d" + deviceIndex),
+                testDatabase + PATH_SEPARATOR + "d" + deviceIndex),
             550);
         resource.updateEndTime(
             IDeviceID.Factory.DEFAULT_FACTORY.create(
-                testStorageGroup + PATH_SEPARATOR + "d" + deviceIndex),
+                testDatabase + PATH_SEPARATOR + "d" + deviceIndex),
             2200);
         timeserisPathList.addAll(timeseriesPath);
         tsDataTypes.addAll(dataTypes);
@@ -7121,7 +7121,7 @@ public class FastNonAlignedCrossCompactionTest extends AbstractCompactionTest {
       for (int deviceIndex = 0; deviceIndex < deviceNum; deviceIndex++) {
         tsFileIOWriter.startChunkGroup(
             IDeviceID.Factory.DEFAULT_FACTORY.create(
-                testStorageGroup + PATH_SEPARATOR + "d" + deviceIndex));
+                testDatabase + PATH_SEPARATOR + "d" + deviceIndex));
 
         List<TSDataType> dataTypes = createDataType(measurementNum);
         List<TSEncoding> encodings = createEncodingType(measurementNum);
@@ -7158,11 +7158,11 @@ public class FastNonAlignedCrossCompactionTest extends AbstractCompactionTest {
         tsFileIOWriter.endChunkGroup();
         resource.updateStartTime(
             IDeviceID.Factory.DEFAULT_FACTORY.create(
-                testStorageGroup + PATH_SEPARATOR + "d" + deviceIndex),
+                testDatabase + PATH_SEPARATOR + "d" + deviceIndex),
             350);
         resource.updateEndTime(
             IDeviceID.Factory.DEFAULT_FACTORY.create(
-                testStorageGroup + PATH_SEPARATOR + "d" + deviceIndex),
+                testDatabase + PATH_SEPARATOR + "d" + deviceIndex),
             1150);
         timeserisPathList.addAll(timeseriesPath);
         tsDataTypes.addAll(dataTypes);
@@ -7225,7 +7225,7 @@ public class FastNonAlignedCrossCompactionTest extends AbstractCompactionTest {
       for (int deviceIndex = 0; deviceIndex < deviceNum; deviceIndex++) {
         tsFileIOWriter.startChunkGroup(
             IDeviceID.Factory.DEFAULT_FACTORY.create(
-                testStorageGroup + PATH_SEPARATOR + "d" + deviceIndex));
+                testDatabase + PATH_SEPARATOR + "d" + deviceIndex));
 
         List<TSDataType> dataTypes = createDataType(measurementNum);
         List<TSEncoding> encodings = createEncodingType(measurementNum);
@@ -7255,11 +7255,11 @@ public class FastNonAlignedCrossCompactionTest extends AbstractCompactionTest {
         tsFileIOWriter.endChunkGroup();
         resource.updateStartTime(
             IDeviceID.Factory.DEFAULT_FACTORY.create(
-                testStorageGroup + PATH_SEPARATOR + "d" + deviceIndex),
+                testDatabase + PATH_SEPARATOR + "d" + deviceIndex),
             0);
         resource.updateEndTime(
             IDeviceID.Factory.DEFAULT_FACTORY.create(
-                testStorageGroup + PATH_SEPARATOR + "d" + deviceIndex),
+                testDatabase + PATH_SEPARATOR + "d" + deviceIndex),
             600);
         timeserisPathList.addAll(timeseriesPath);
         tsDataTypes.addAll(dataTypes);
@@ -7278,7 +7278,7 @@ public class FastNonAlignedCrossCompactionTest extends AbstractCompactionTest {
       for (int deviceIndex = 0; deviceIndex < deviceNum; deviceIndex++) {
         tsFileIOWriter.startChunkGroup(
             IDeviceID.Factory.DEFAULT_FACTORY.create(
-                testStorageGroup + PATH_SEPARATOR + "d" + deviceIndex));
+                testDatabase + PATH_SEPARATOR + "d" + deviceIndex));
 
         List<TSDataType> dataTypes = createDataType(measurementNum);
         List<TSEncoding> encodings = createEncodingType(measurementNum);
@@ -7302,11 +7302,11 @@ public class FastNonAlignedCrossCompactionTest extends AbstractCompactionTest {
         tsFileIOWriter.endChunkGroup();
         resource.updateStartTime(
             IDeviceID.Factory.DEFAULT_FACTORY.create(
-                testStorageGroup + PATH_SEPARATOR + "d" + deviceIndex),
+                testDatabase + PATH_SEPARATOR + "d" + deviceIndex),
             900);
         resource.updateEndTime(
             IDeviceID.Factory.DEFAULT_FACTORY.create(
-                testStorageGroup + PATH_SEPARATOR + "d" + deviceIndex),
+                testDatabase + PATH_SEPARATOR + "d" + deviceIndex),
             1400);
         timeserisPathList.addAll(timeseriesPath);
         tsDataTypes.addAll(dataTypes);
@@ -7325,7 +7325,7 @@ public class FastNonAlignedCrossCompactionTest extends AbstractCompactionTest {
       for (int deviceIndex = 0; deviceIndex < deviceNum; deviceIndex++) {
         tsFileIOWriter.startChunkGroup(
             IDeviceID.Factory.DEFAULT_FACTORY.create(
-                testStorageGroup + PATH_SEPARATOR + "d" + deviceIndex));
+                testDatabase + PATH_SEPARATOR + "d" + deviceIndex));
 
         List<TSDataType> dataTypes = createDataType(measurementNum);
         List<TSEncoding> encodings = createEncodingType(measurementNum);
@@ -7361,11 +7361,11 @@ public class FastNonAlignedCrossCompactionTest extends AbstractCompactionTest {
         tsFileIOWriter.endChunkGroup();
         resource.updateStartTime(
             IDeviceID.Factory.DEFAULT_FACTORY.create(
-                testStorageGroup + PATH_SEPARATOR + "d" + deviceIndex),
+                testDatabase + PATH_SEPARATOR + "d" + deviceIndex),
             1800);
         resource.updateEndTime(
             IDeviceID.Factory.DEFAULT_FACTORY.create(
-                testStorageGroup + PATH_SEPARATOR + "d" + deviceIndex),
+                testDatabase + PATH_SEPARATOR + "d" + deviceIndex),
             2500);
         timeserisPathList.addAll(timeseriesPath);
         tsDataTypes.addAll(dataTypes);
@@ -7384,7 +7384,7 @@ public class FastNonAlignedCrossCompactionTest extends AbstractCompactionTest {
       for (int deviceIndex = 0; deviceIndex < deviceNum; deviceIndex++) {
         tsFileIOWriter.startChunkGroup(
             IDeviceID.Factory.DEFAULT_FACTORY.create(
-                testStorageGroup + PATH_SEPARATOR + "d" + deviceIndex));
+                testDatabase + PATH_SEPARATOR + "d" + deviceIndex));
 
         List<TSDataType> dataTypes = createDataType(measurementNum);
         List<TSEncoding> encodings = createEncodingType(measurementNum);
@@ -7415,11 +7415,11 @@ public class FastNonAlignedCrossCompactionTest extends AbstractCompactionTest {
         tsFileIOWriter.endChunkGroup();
         resource.updateStartTime(
             IDeviceID.Factory.DEFAULT_FACTORY.create(
-                testStorageGroup + PATH_SEPARATOR + "d" + deviceIndex),
+                testDatabase + PATH_SEPARATOR + "d" + deviceIndex),
             100);
         resource.updateEndTime(
             IDeviceID.Factory.DEFAULT_FACTORY.create(
-                testStorageGroup + PATH_SEPARATOR + "d" + deviceIndex),
+                testDatabase + PATH_SEPARATOR + "d" + deviceIndex),
             2000);
         timeserisPathList.addAll(timeseriesPath);
         tsDataTypes.addAll(dataTypes);
@@ -7438,7 +7438,7 @@ public class FastNonAlignedCrossCompactionTest extends AbstractCompactionTest {
       for (int deviceIndex = 0; deviceIndex < deviceNum; deviceIndex++) {
         tsFileIOWriter.startChunkGroup(
             IDeviceID.Factory.DEFAULT_FACTORY.create(
-                testStorageGroup + PATH_SEPARATOR + "d" + deviceIndex));
+                testDatabase + PATH_SEPARATOR + "d" + deviceIndex));
 
         List<TSDataType> dataTypes = createDataType(measurementNum);
         List<TSEncoding> encodings = createEncodingType(measurementNum);
@@ -7469,11 +7469,11 @@ public class FastNonAlignedCrossCompactionTest extends AbstractCompactionTest {
         tsFileIOWriter.endChunkGroup();
         resource.updateStartTime(
             IDeviceID.Factory.DEFAULT_FACTORY.create(
-                testStorageGroup + PATH_SEPARATOR + "d" + deviceIndex),
+                testDatabase + PATH_SEPARATOR + "d" + deviceIndex),
             2200);
         resource.updateEndTime(
             IDeviceID.Factory.DEFAULT_FACTORY.create(
-                testStorageGroup + PATH_SEPARATOR + "d" + deviceIndex),
+                testDatabase + PATH_SEPARATOR + "d" + deviceIndex),
             2600);
         timeserisPathList.addAll(timeseriesPath);
         tsDataTypes.addAll(dataTypes);
@@ -7492,7 +7492,7 @@ public class FastNonAlignedCrossCompactionTest extends AbstractCompactionTest {
       for (int deviceIndex = 0; deviceIndex < deviceNum; deviceIndex++) {
         tsFileIOWriter.startChunkGroup(
             IDeviceID.Factory.DEFAULT_FACTORY.create(
-                testStorageGroup + PATH_SEPARATOR + "d" + deviceIndex));
+                testDatabase + PATH_SEPARATOR + "d" + deviceIndex));
 
         List<TSDataType> dataTypes = createDataType(measurementNum);
         List<TSEncoding> encodings = createEncodingType(measurementNum);
@@ -7534,11 +7534,11 @@ public class FastNonAlignedCrossCompactionTest extends AbstractCompactionTest {
         tsFileIOWriter.endChunkGroup();
         resource.updateStartTime(
             IDeviceID.Factory.DEFAULT_FACTORY.create(
-                testStorageGroup + PATH_SEPARATOR + "d" + deviceIndex),
+                testDatabase + PATH_SEPARATOR + "d" + deviceIndex),
             550);
         resource.updateEndTime(
             IDeviceID.Factory.DEFAULT_FACTORY.create(
-                testStorageGroup + PATH_SEPARATOR + "d" + deviceIndex),
+                testDatabase + PATH_SEPARATOR + "d" + deviceIndex),
             2200);
         timeserisPathList.addAll(timeseriesPath);
         tsDataTypes.addAll(dataTypes);
@@ -7557,7 +7557,7 @@ public class FastNonAlignedCrossCompactionTest extends AbstractCompactionTest {
       for (int deviceIndex = 0; deviceIndex < deviceNum; deviceIndex++) {
         tsFileIOWriter.startChunkGroup(
             IDeviceID.Factory.DEFAULT_FACTORY.create(
-                testStorageGroup + PATH_SEPARATOR + "d" + deviceIndex));
+                testDatabase + PATH_SEPARATOR + "d" + deviceIndex));
 
         List<TSDataType> dataTypes = createDataType(measurementNum);
         List<TSEncoding> encodings = createEncodingType(measurementNum);
@@ -7593,11 +7593,11 @@ public class FastNonAlignedCrossCompactionTest extends AbstractCompactionTest {
         tsFileIOWriter.endChunkGroup();
         resource.updateStartTime(
             IDeviceID.Factory.DEFAULT_FACTORY.create(
-                testStorageGroup + PATH_SEPARATOR + "d" + deviceIndex),
+                testDatabase + PATH_SEPARATOR + "d" + deviceIndex),
             350);
         resource.updateEndTime(
             IDeviceID.Factory.DEFAULT_FACTORY.create(
-                testStorageGroup + PATH_SEPARATOR + "d" + deviceIndex),
+                testDatabase + PATH_SEPARATOR + "d" + deviceIndex),
             1250);
         timeserisPathList.addAll(timeseriesPath);
         tsDataTypes.addAll(dataTypes);
@@ -7616,7 +7616,7 @@ public class FastNonAlignedCrossCompactionTest extends AbstractCompactionTest {
       for (int deviceIndex = 0; deviceIndex < deviceNum; deviceIndex++) {
         tsFileIOWriter.startChunkGroup(
             IDeviceID.Factory.DEFAULT_FACTORY.create(
-                testStorageGroup + PATH_SEPARATOR + "d" + deviceIndex));
+                testDatabase + PATH_SEPARATOR + "d" + deviceIndex));
 
         List<TSDataType> dataTypes = createDataType(measurementNum);
         List<TSEncoding> encodings = createEncodingType(measurementNum);
@@ -7646,11 +7646,11 @@ public class FastNonAlignedCrossCompactionTest extends AbstractCompactionTest {
         tsFileIOWriter.endChunkGroup();
         resource.updateStartTime(
             IDeviceID.Factory.DEFAULT_FACTORY.create(
-                testStorageGroup + PATH_SEPARATOR + "d" + deviceIndex),
+                testDatabase + PATH_SEPARATOR + "d" + deviceIndex),
             2700);
         resource.updateEndTime(
             IDeviceID.Factory.DEFAULT_FACTORY.create(
-                testStorageGroup + PATH_SEPARATOR + "d" + deviceIndex),
+                testDatabase + PATH_SEPARATOR + "d" + deviceIndex),
             3000);
         timeserisPathList.addAll(timeseriesPath);
         tsDataTypes.addAll(dataTypes);
@@ -8155,7 +8155,7 @@ public class FastNonAlignedCrossCompactionTest extends AbstractCompactionTest {
       for (int deviceIndex = 0; deviceIndex < deviceNum; deviceIndex++) {
         tsFileIOWriter.startChunkGroup(
             IDeviceID.Factory.DEFAULT_FACTORY.create(
-                testStorageGroup + PATH_SEPARATOR + "d" + deviceIndex));
+                testDatabase + PATH_SEPARATOR + "d" + deviceIndex));
 
         List<TSDataType> dataTypes = createDataType(measurementNum);
         List<TSEncoding> encodings = createEncodingType(measurementNum);
@@ -8191,11 +8191,11 @@ public class FastNonAlignedCrossCompactionTest extends AbstractCompactionTest {
         tsFileIOWriter.endChunkGroup();
         resource.updateStartTime(
             IDeviceID.Factory.DEFAULT_FACTORY.create(
-                testStorageGroup + PATH_SEPARATOR + "d" + deviceIndex),
+                testDatabase + PATH_SEPARATOR + "d" + deviceIndex),
             300);
         resource.updateEndTime(
             IDeviceID.Factory.DEFAULT_FACTORY.create(
-                testStorageGroup + PATH_SEPARATOR + "d" + deviceIndex),
+                testDatabase + PATH_SEPARATOR + "d" + deviceIndex),
             1400);
         timeserisPathList.addAll(timeseriesPath);
         tsDataTypes.addAll(dataTypes);
@@ -8214,7 +8214,7 @@ public class FastNonAlignedCrossCompactionTest extends AbstractCompactionTest {
       for (int deviceIndex = 0; deviceIndex < deviceNum; deviceIndex++) {
         tsFileIOWriter.startChunkGroup(
             IDeviceID.Factory.DEFAULT_FACTORY.create(
-                testStorageGroup + PATH_SEPARATOR + "d" + deviceIndex));
+                testDatabase + PATH_SEPARATOR + "d" + deviceIndex));
 
         List<TSDataType> dataTypes = createDataType(measurementNum);
         List<TSEncoding> encodings = createEncodingType(measurementNum);
@@ -8244,11 +8244,11 @@ public class FastNonAlignedCrossCompactionTest extends AbstractCompactionTest {
         tsFileIOWriter.endChunkGroup();
         resource.updateStartTime(
             IDeviceID.Factory.DEFAULT_FACTORY.create(
-                testStorageGroup + PATH_SEPARATOR + "d" + deviceIndex),
+                testDatabase + PATH_SEPARATOR + "d" + deviceIndex),
             1600);
         resource.updateEndTime(
             IDeviceID.Factory.DEFAULT_FACTORY.create(
-                testStorageGroup + PATH_SEPARATOR + "d" + deviceIndex),
+                testDatabase + PATH_SEPARATOR + "d" + deviceIndex),
             2250);
         timeserisPathList.addAll(timeseriesPath);
         tsDataTypes.addAll(dataTypes);
@@ -8267,7 +8267,7 @@ public class FastNonAlignedCrossCompactionTest extends AbstractCompactionTest {
       for (int deviceIndex = 0; deviceIndex < deviceNum; deviceIndex++) {
         tsFileIOWriter.startChunkGroup(
             IDeviceID.Factory.DEFAULT_FACTORY.create(
-                testStorageGroup + PATH_SEPARATOR + "d" + deviceIndex));
+                testDatabase + PATH_SEPARATOR + "d" + deviceIndex));
 
         List<TSDataType> dataTypes = createDataType(measurementNum);
         List<TSEncoding> encodings = createEncodingType(measurementNum);
@@ -8291,11 +8291,11 @@ public class FastNonAlignedCrossCompactionTest extends AbstractCompactionTest {
         tsFileIOWriter.endChunkGroup();
         resource.updateStartTime(
             IDeviceID.Factory.DEFAULT_FACTORY.create(
-                testStorageGroup + PATH_SEPARATOR + "d" + deviceIndex),
+                testDatabase + PATH_SEPARATOR + "d" + deviceIndex),
             0);
         resource.updateEndTime(
             IDeviceID.Factory.DEFAULT_FACTORY.create(
-                testStorageGroup + PATH_SEPARATOR + "d" + deviceIndex),
+                testDatabase + PATH_SEPARATOR + "d" + deviceIndex),
             2000);
         timeserisPathList.addAll(timeseriesPath);
         tsDataTypes.addAll(dataTypes);
@@ -8314,7 +8314,7 @@ public class FastNonAlignedCrossCompactionTest extends AbstractCompactionTest {
       for (int deviceIndex = 0; deviceIndex < deviceNum; deviceIndex++) {
         tsFileIOWriter.startChunkGroup(
             IDeviceID.Factory.DEFAULT_FACTORY.create(
-                testStorageGroup + PATH_SEPARATOR + "d" + deviceIndex));
+                testDatabase + PATH_SEPARATOR + "d" + deviceIndex));
 
         List<TSDataType> dataTypes = createDataType(measurementNum);
         List<TSEncoding> encodings = createEncodingType(measurementNum);
@@ -8345,11 +8345,11 @@ public class FastNonAlignedCrossCompactionTest extends AbstractCompactionTest {
         tsFileIOWriter.endChunkGroup();
         resource.updateStartTime(
             IDeviceID.Factory.DEFAULT_FACTORY.create(
-                testStorageGroup + PATH_SEPARATOR + "d" + deviceIndex),
+                testDatabase + PATH_SEPARATOR + "d" + deviceIndex),
             100);
         resource.updateEndTime(
             IDeviceID.Factory.DEFAULT_FACTORY.create(
-                testStorageGroup + PATH_SEPARATOR + "d" + deviceIndex),
+                testDatabase + PATH_SEPARATOR + "d" + deviceIndex),
             800);
         timeserisPathList.addAll(timeseriesPath);
         tsDataTypes.addAll(dataTypes);
@@ -8368,7 +8368,7 @@ public class FastNonAlignedCrossCompactionTest extends AbstractCompactionTest {
       for (int deviceIndex = 0; deviceIndex < deviceNum; deviceIndex++) {
         tsFileIOWriter.startChunkGroup(
             IDeviceID.Factory.DEFAULT_FACTORY.create(
-                testStorageGroup + PATH_SEPARATOR + "d" + deviceIndex));
+                testDatabase + PATH_SEPARATOR + "d" + deviceIndex));
 
         List<TSDataType> dataTypes = createDataType(measurementNum);
         List<TSEncoding> encodings = createEncodingType(measurementNum);
@@ -8399,11 +8399,11 @@ public class FastNonAlignedCrossCompactionTest extends AbstractCompactionTest {
         tsFileIOWriter.endChunkGroup();
         resource.updateStartTime(
             IDeviceID.Factory.DEFAULT_FACTORY.create(
-                testStorageGroup + PATH_SEPARATOR + "d" + deviceIndex),
+                testDatabase + PATH_SEPARATOR + "d" + deviceIndex),
             450);
         resource.updateEndTime(
             IDeviceID.Factory.DEFAULT_FACTORY.create(
-                testStorageGroup + PATH_SEPARATOR + "d" + deviceIndex),
+                testDatabase + PATH_SEPARATOR + "d" + deviceIndex),
             1920);
         timeserisPathList.addAll(timeseriesPath);
         tsDataTypes.addAll(dataTypes);
@@ -8466,7 +8466,7 @@ public class FastNonAlignedCrossCompactionTest extends AbstractCompactionTest {
       for (int deviceIndex = 0; deviceIndex < deviceNum; deviceIndex++) {
         tsFileIOWriter.startChunkGroup(
             IDeviceID.Factory.DEFAULT_FACTORY.create(
-                testStorageGroup + PATH_SEPARATOR + "d" + deviceIndex));
+                testDatabase + PATH_SEPARATOR + "d" + deviceIndex));
 
         List<TSDataType> dataTypes = createDataType(measurementNum);
         List<TSEncoding> encodings = createEncodingType(measurementNum);
@@ -8495,11 +8495,11 @@ public class FastNonAlignedCrossCompactionTest extends AbstractCompactionTest {
         tsFileIOWriter.endChunkGroup();
         resource.updateStartTime(
             IDeviceID.Factory.DEFAULT_FACTORY.create(
-                testStorageGroup + PATH_SEPARATOR + "d" + deviceIndex),
+                testDatabase + PATH_SEPARATOR + "d" + deviceIndex),
             0);
         resource.updateEndTime(
             IDeviceID.Factory.DEFAULT_FACTORY.create(
-                testStorageGroup + PATH_SEPARATOR + "d" + deviceIndex),
+                testDatabase + PATH_SEPARATOR + "d" + deviceIndex),
             1600);
         timeserisPathList.addAll(timeseriesPath);
         tsDataTypes.addAll(dataTypes);
@@ -8518,7 +8518,7 @@ public class FastNonAlignedCrossCompactionTest extends AbstractCompactionTest {
       for (int deviceIndex = 0; deviceIndex < deviceNum; deviceIndex++) {
         tsFileIOWriter.startChunkGroup(
             IDeviceID.Factory.DEFAULT_FACTORY.create(
-                testStorageGroup + PATH_SEPARATOR + "d" + deviceIndex));
+                testDatabase + PATH_SEPARATOR + "d" + deviceIndex));
 
         List<TSDataType> dataTypes = createDataType(measurementNum);
         List<TSEncoding> encodings = createEncodingType(measurementNum);
@@ -8572,11 +8572,11 @@ public class FastNonAlignedCrossCompactionTest extends AbstractCompactionTest {
         tsFileIOWriter.endChunkGroup();
         resource.updateStartTime(
             IDeviceID.Factory.DEFAULT_FACTORY.create(
-                testStorageGroup + PATH_SEPARATOR + "d" + deviceIndex),
+                testDatabase + PATH_SEPARATOR + "d" + deviceIndex),
             0);
         resource.updateEndTime(
             IDeviceID.Factory.DEFAULT_FACTORY.create(
-                testStorageGroup + PATH_SEPARATOR + "d" + deviceIndex),
+                testDatabase + PATH_SEPARATOR + "d" + deviceIndex),
             1500);
         timeserisPathList.addAll(timeseriesPath);
         tsDataTypes.addAll(dataTypes);
@@ -8639,7 +8639,7 @@ public class FastNonAlignedCrossCompactionTest extends AbstractCompactionTest {
       for (int deviceIndex = 0; deviceIndex < deviceNum; deviceIndex++) {
         tsFileIOWriter.startChunkGroup(
             IDeviceID.Factory.DEFAULT_FACTORY.create(
-                testStorageGroup + PATH_SEPARATOR + "d" + deviceIndex));
+                testDatabase + PATH_SEPARATOR + "d" + deviceIndex));
 
         List<TSDataType> dataTypes = createDataType(measurementNum);
         List<TSEncoding> encodings = createEncodingType(measurementNum);
@@ -8675,11 +8675,11 @@ public class FastNonAlignedCrossCompactionTest extends AbstractCompactionTest {
         tsFileIOWriter.endChunkGroup();
         resource.updateStartTime(
             IDeviceID.Factory.DEFAULT_FACTORY.create(
-                testStorageGroup + PATH_SEPARATOR + "d" + deviceIndex),
+                testDatabase + PATH_SEPARATOR + "d" + deviceIndex),
             0);
         resource.updateEndTime(
             IDeviceID.Factory.DEFAULT_FACTORY.create(
-                testStorageGroup + PATH_SEPARATOR + "d" + deviceIndex),
+                testDatabase + PATH_SEPARATOR + "d" + deviceIndex),
             1400);
         timeserisPathList.addAll(timeseriesPath);
         tsDataTypes.addAll(dataTypes);
@@ -8698,7 +8698,7 @@ public class FastNonAlignedCrossCompactionTest extends AbstractCompactionTest {
       for (int deviceIndex = 0; deviceIndex < deviceNum; deviceIndex++) {
         tsFileIOWriter.startChunkGroup(
             IDeviceID.Factory.DEFAULT_FACTORY.create(
-                testStorageGroup + PATH_SEPARATOR + "d" + deviceIndex));
+                testDatabase + PATH_SEPARATOR + "d" + deviceIndex));
 
         List<TSDataType> dataTypes = createDataType(measurementNum);
         List<TSEncoding> encodings = createEncodingType(measurementNum);
@@ -8743,11 +8743,11 @@ public class FastNonAlignedCrossCompactionTest extends AbstractCompactionTest {
         tsFileIOWriter.endChunkGroup();
         resource.updateStartTime(
             IDeviceID.Factory.DEFAULT_FACTORY.create(
-                testStorageGroup + PATH_SEPARATOR + "d" + deviceIndex),
+                testDatabase + PATH_SEPARATOR + "d" + deviceIndex),
             50);
         resource.updateEndTime(
             IDeviceID.Factory.DEFAULT_FACTORY.create(
-                testStorageGroup + PATH_SEPARATOR + "d" + deviceIndex),
+                testDatabase + PATH_SEPARATOR + "d" + deviceIndex),
             1450);
         timeserisPathList.addAll(timeseriesPath);
         tsDataTypes.addAll(dataTypes);
@@ -8766,7 +8766,7 @@ public class FastNonAlignedCrossCompactionTest extends AbstractCompactionTest {
       for (int deviceIndex = 0; deviceIndex < deviceNum; deviceIndex++) {
         tsFileIOWriter.startChunkGroup(
             IDeviceID.Factory.DEFAULT_FACTORY.create(
-                testStorageGroup + PATH_SEPARATOR + "d" + deviceIndex));
+                testDatabase + PATH_SEPARATOR + "d" + deviceIndex));
 
         List<TSDataType> dataTypes = createDataType(measurementNum);
         List<TSEncoding> encodings = createEncodingType(measurementNum);
@@ -8804,11 +8804,11 @@ public class FastNonAlignedCrossCompactionTest extends AbstractCompactionTest {
         tsFileIOWriter.endChunkGroup();
         resource.updateStartTime(
             IDeviceID.Factory.DEFAULT_FACTORY.create(
-                testStorageGroup + PATH_SEPARATOR + "d" + deviceIndex),
+                testDatabase + PATH_SEPARATOR + "d" + deviceIndex),
             700);
         resource.updateEndTime(
             IDeviceID.Factory.DEFAULT_FACTORY.create(
-                testStorageGroup + PATH_SEPARATOR + "d" + deviceIndex),
+                testDatabase + PATH_SEPARATOR + "d" + deviceIndex),
             1600);
         timeserisPathList.addAll(timeseriesPath);
         tsDataTypes.addAll(dataTypes);

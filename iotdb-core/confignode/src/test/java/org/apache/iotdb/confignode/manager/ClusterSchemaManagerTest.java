@@ -34,7 +34,7 @@ public class ClusterSchemaManagerTest {
     // The maxRegionGroupNum should be great or equal to the allocatedRegionGroupCount
     Assert.assertEquals(100, ClusterSchemaManager.calcMaxRegionGroupNum(3, 1.0, 6, 2, 3, 100));
 
-    // (resourceWeight * resource) / (createdStorageGroupNum * replicationFactor)
+    // (resourceWeight * resource) / (createdDatabaseNum * replicationFactor)
     Assert.assertEquals(20, ClusterSchemaManager.calcMaxRegionGroupNum(3, 1.0, 120, 2, 3, 5));
   }
 }

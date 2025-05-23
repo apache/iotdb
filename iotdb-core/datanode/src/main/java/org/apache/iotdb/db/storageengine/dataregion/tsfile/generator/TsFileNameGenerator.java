@@ -58,8 +58,8 @@ public class TsFileNameGenerator {
 
   public static String generateNewTsFilePathWithMkdir(
       boolean sequence,
-      String logicalStorageGroup,
-      String virtualStorageGroup,
+      String logicalDatabase,
+      String virtualDatabase,
       long timePartitionId,
       long time,
       long version,
@@ -68,8 +68,8 @@ public class TsFileNameGenerator {
       throws DiskSpaceInsufficientException {
     return generateNewTsFilePathWithMkdir(
         sequence,
-        logicalStorageGroup,
-        virtualStorageGroup,
+        logicalDatabase,
+        virtualDatabase,
         timePartitionId,
         time,
         version,
@@ -81,8 +81,8 @@ public class TsFileNameGenerator {
 
   public static String generateNewTsFilePathWithMkdir(
       boolean sequence,
-      String logicalStorageGroup,
-      String virtualStorageGroup,
+      String logicalDatabase,
+      String virtualDatabase,
       long timePartitionId,
       long time,
       long version,
@@ -92,8 +92,7 @@ public class TsFileNameGenerator {
       String customSuffix)
       throws DiskSpaceInsufficientException {
     String tsFileDir =
-        generateTsFileDir(
-            sequence, logicalStorageGroup, virtualStorageGroup, timePartitionId, tierLevel);
+        generateTsFileDir(sequence, logicalDatabase, virtualDatabase, timePartitionId, tierLevel);
     fsFactory.getFile(tsFileDir).mkdirs();
     return tsFileDir
         + File.separator
@@ -103,8 +102,8 @@ public class TsFileNameGenerator {
 
   public static String generateTsFileDir(
       boolean sequence,
-      String logicalStorageGroup,
-      String virtualStorageGroup,
+      String logicalDatabase,
+      String virtualDatabase,
       long timePartitionId,
       int tierLevel)
       throws DiskSpaceInsufficientException {
@@ -112,9 +111,9 @@ public class TsFileNameGenerator {
     String baseDir = tierManager.getNextFolderForTsFile(tierLevel, sequence);
     return baseDir
         + File.separator
-        + logicalStorageGroup
+        + logicalDatabase
         + File.separator
-        + virtualStorageGroup
+        + virtualDatabase
         + File.separator
         + timePartitionId;
   }

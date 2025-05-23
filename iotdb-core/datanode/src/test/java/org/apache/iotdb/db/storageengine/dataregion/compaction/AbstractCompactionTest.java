@@ -97,7 +97,7 @@ public class AbstractCompactionTest {
   protected List<TsFileResource> unseqResources = new ArrayList<>();
   private int chunkGroupSize = 0;
   private int pageSize = 0;
-  protected static String COMPACTION_TEST_SG = TsFileGeneratorUtils.testStorageGroup;
+  protected static String COMPACTION_TEST_SG = TsFileGeneratorUtils.testDatabase;
   private TSDataType dataType;
 
   protected int maxDeviceNum = 25;

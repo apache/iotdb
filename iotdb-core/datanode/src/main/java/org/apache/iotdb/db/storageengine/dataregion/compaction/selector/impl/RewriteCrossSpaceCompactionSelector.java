@@ -63,7 +63,7 @@ public class RewriteCrossSpaceCompactionSelector implements ICrossSpaceSelector 
       LoggerFactory.getLogger(IoTDBConstant.COMPACTION_LOGGER_NAME);
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
-  protected String logicalStorageGroupName;
+  protected String logicalDatabaseName;
   protected String dataRegionId;
   protected long timePartition;
   protected TsFileManager tsFileManager;
@@ -80,12 +80,12 @@ public class RewriteCrossSpaceCompactionSelector implements ICrossSpaceSelector 
   private final CompactionScheduleContext context;
 
   public RewriteCrossSpaceCompactionSelector(
-      String logicalStorageGroupName,
+      String logicalDatabaseName,
       String dataRegionId,
       long timePartition,
       TsFileManager tsFileManager,
       CompactionScheduleContext context) {
-    this.logicalStorageGroupName = logicalStorageGroupName;
+    this.logicalDatabaseName = logicalDatabaseName;
     this.dataRegionId = dataRegionId;
     this.timePartition = timePartition;
     this.tsFileManager = tsFileManager;
@@ -373,7 +373,7 @@ public class RewriteCrossSpaceCompactionSelector implements ICrossSpaceSelector 
       } else {
         taskResources = selectOneTaskResources(candidate);
       }
-      String sgDataRegionId = logicalStorageGroupName + "-" + dataRegionId;
+      String sgDataRegionId = logicalDatabaseName + "-" + dataRegionId;
       if (!taskResources.isValid()) {
         if (!hasPrintedLog) {
           LOGGER.info(
@@ -425,7 +425,7 @@ public class RewriteCrossSpaceCompactionSelector implements ICrossSpaceSelector 
       if (!tsFileManager.isAllowCompaction()) {
         return Collections.emptyList();
       }
-      LOGGER.error("{} cannot select file for cross space compaction", logicalStorageGroupName, e);
+      LOGGER.error("{} cannot select file for cross space compaction", logicalDatabaseName, e);
     }
     return Collections.emptyList();
   }

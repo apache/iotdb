@@ -304,7 +304,7 @@ public class IoTDBDeleteTimeSeriesIT extends AbstractSchemaIT {
   }
 
   @Test
-  public void deleteTimeSeriesCrossStorageGroupTest() throws Exception {
+  public void deleteTimeSeriesCrossDatabaseTest() throws Exception {
     String[] retArray1 = new String[] {"4,4,4,4"};
 
     String insertSql = "insert into root.sg%d.d1(time, s1, s2) values(%d, %d, %d)";

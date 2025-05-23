@@ -102,7 +102,7 @@ public class PartitionInfoTest {
 
     partitionInfo.generateNextRegionGroupId();
 
-    // Set StorageGroup
+    // Set Database
     partitionInfo.createDatabase(
         new DatabaseSchemaPlan(
             ConfigPhysicalPlanType.CreateDatabase, new TDatabaseSchema("root.test")));
@@ -157,7 +157,7 @@ public class PartitionInfoTest {
 
     partitionInfo.generateNextRegionGroupId();
 
-    // Set StorageGroup
+    // Set Database
     partitionInfo.createDatabase(
         new DatabaseSchemaPlan(
             ConfigPhysicalPlanType.CreateDatabase, new TDatabaseSchema("root.test")));
@@ -196,7 +196,7 @@ public class PartitionInfoTest {
     for (int i = 0; i < 2; i++) {
       partitionInfo.generateNextRegionGroupId();
 
-      // Set StorageGroup
+      // Set Database
       partitionInfo.createDatabase(
           new DatabaseSchemaPlan(
               ConfigPhysicalPlanType.CreateDatabase, new TDatabaseSchema("root.test" + i)));
@@ -315,7 +315,7 @@ public class PartitionInfoTest {
   private CreateSchemaPartitionPlan generateCreateSchemaPartitionReq(
       int startFlag, TConsensusGroupId tConsensusGroupId) {
     CreateSchemaPartitionPlan createSchemaPartitionPlan = new CreateSchemaPartitionPlan();
-    // Map<StorageGroup, Map<TSeriesPartitionSlot, TSchemaRegionPlaceInfo>>
+    // Map<Database, Map<TSeriesPartitionSlot, TSchemaRegionPlaceInfo>>
     Map<String, SchemaPartitionTable> assignedSchemaPartition = new HashMap<>();
     Map<TSeriesPartitionSlot, TConsensusGroupId> relationInfo = new HashMap<>();
     relationInfo.put(new TSeriesPartitionSlot(startFlag), tConsensusGroupId);
@@ -328,7 +328,7 @@ public class PartitionInfoTest {
       int startFlag, TConsensusGroupId tConsensusGroupId) {
     startFlag = startFlag / 10;
     CreateDataPartitionPlan createSchemaPartitionReq = new CreateDataPartitionPlan();
-    // Map<StorageGroup, Map<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TRegionMessage>>>>
+    // Map<Database, Map<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TRegionMessage>>>>
     Map<String, DataPartitionTable> dataPartitionMap = new HashMap<>();
 
     Map<TTimePartitionSlot, List<TConsensusGroupId>> relationInfo = new HashMap<>();

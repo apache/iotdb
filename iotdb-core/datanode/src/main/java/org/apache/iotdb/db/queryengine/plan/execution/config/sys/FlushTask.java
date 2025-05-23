@@ -40,7 +40,7 @@ public class FlushTask implements IConfigTask {
       throws InterruptedException {
     final TFlushReq tFlushReq = new TFlushReq();
     if (flushStatement.getDatabases() != null) {
-      tFlushReq.setStorageGroups(flushStatement.getDatabases());
+      tFlushReq.setDatabases(flushStatement.getDatabases());
     }
     if (flushStatement.isSeq() != null) {
       tFlushReq.setIsSeq(flushStatement.isSeq().toString());

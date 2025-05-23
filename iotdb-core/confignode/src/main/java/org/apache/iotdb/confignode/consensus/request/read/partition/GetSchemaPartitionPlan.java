@@ -30,9 +30,9 @@ import java.util.Objects;
 /** Get or create SchemaPartition by the specific partitionSlotsMap. */
 public class GetSchemaPartitionPlan extends ConfigPhysicalReadPlan {
 
-  // Map<StorageGroup, List<SeriesPartitionSlot>>
+  // Map<Database, List<SeriesPartitionSlot>>
   // Get all SchemaPartitions when the partitionSlotsMap is empty
-  // Get all exists SchemaPartitions in one StorageGroup when the SeriesPartitionSlot is empty
+  // Get all exists SchemaPartitions in one Database when the SeriesPartitionSlot is empty
   protected Map<String, List<TSeriesPartitionSlot>> partitionSlotsMap;
 
   public GetSchemaPartitionPlan(final ConfigPhysicalPlanType configPhysicalPlanType) {

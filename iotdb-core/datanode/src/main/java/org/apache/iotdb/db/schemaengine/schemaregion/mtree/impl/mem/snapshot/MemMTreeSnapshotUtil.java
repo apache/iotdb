@@ -63,7 +63,7 @@ import static org.apache.iotdb.commons.schema.SchemaConstant.MEASUREMENT_MNODE_T
 import static org.apache.iotdb.commons.schema.SchemaConstant.STORAGE_GROUP_ENTITY_MNODE_TYPE;
 import static org.apache.iotdb.commons.schema.SchemaConstant.STORAGE_GROUP_MNODE_TYPE;
 import static org.apache.iotdb.commons.schema.SchemaConstant.TABLE_MNODE_TYPE;
-import static org.apache.iotdb.commons.schema.SchemaConstant.isStorageGroupType;
+import static org.apache.iotdb.commons.schema.SchemaConstant.isDatabaseType;
 
 public class MemMTreeSnapshotUtil {
 
@@ -251,7 +251,7 @@ public class MemMTreeSnapshotUtil {
         break;
       case STORAGE_GROUP_MNODE_TYPE:
         childrenNum = ReadWriteIOUtils.readInt(inputStream);
-        node = deserializer.deserializeStorageGroupMNode(inputStream);
+        node = deserializer.deserializeDatabaseMNode(inputStream);
         break;
       case ENTITY_MNODE_TYPE:
         childrenNum = ReadWriteIOUtils.readInt(inputStream);
@@ -260,7 +260,7 @@ public class MemMTreeSnapshotUtil {
         break;
       case STORAGE_GROUP_ENTITY_MNODE_TYPE:
         childrenNum = ReadWriteIOUtils.readInt(inputStream);
-        node = deserializer.deserializeStorageGroupEntityMNode(inputStream);
+        node = deserializer.deserializeDatabaseEntityMNode(inputStream);
         deviceProcess.accept(node.getAsDeviceMNode());
         break;
       case MEASUREMENT_MNODE_TYPE:
@@ -300,7 +300,7 @@ public class MemMTreeSnapshotUtil {
     }
 
     // Storage type means current node is root node, so it must be returned.
-    if (childrenNum > 0 || isStorageGroupType(type)) {
+    if (childrenNum > 0 || isDatabaseType(type)) {
       ancestors.push(node);
       restChildrenNum.push(childrenNum);
     }
@@ -407,7 +407,7 @@ public class MemMTreeSnapshotUtil {
       return node;
     }
 
-    public IMemMNode deserializeStorageGroupMNode(InputStream inputStream) throws IOException {
+    public IMemMNode deserializeDatabaseMNode(InputStream inputStream) throws IOException {
       String name = ReadWriteIOUtils.readString(inputStream);
       IMemMNode node = nodeFactory.createDatabaseMNode(null, name).getAsMNode();
       int templateId = ReadWriteIOUtils.readInt(inputStream);
@@ -415,7 +415,7 @@ public class MemMTreeSnapshotUtil {
       return node;
     }
 
-    public IMemMNode deserializeStorageGroupEntityMNode(final InputStream inputStream)
+    public IMemMNode deserializeDatabaseEntityMNode(final InputStream inputStream)
         throws IOException {
       final String name = ReadWriteIOUtils.readString(inputStream);
       final IMemMNode node = nodeFactory.createDatabaseDeviceMNode(null, name);

@@ -3131,12 +3131,12 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
   }
 
   @Override
-  public Analysis visitShowStorageGroup(
+  public Analysis visitShowDatabase(
       ShowDatabaseStatement showDatabaseStatement, MPPQueryContext context) {
     Analysis analysis = new Analysis();
     analysis.setRealStatement(showDatabaseStatement);
     analysis.setRespDatasetHeader(
-        DatasetHeaderFactory.getShowStorageGroupHeader(showDatabaseStatement.isDetailed()));
+        DatasetHeaderFactory.getShowDatabaseHeader(showDatabaseStatement.isDetailed()));
     return analysis;
   }
 
@@ -3248,11 +3248,11 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
   }
 
   @Override
-  public Analysis visitCountStorageGroup(
+  public Analysis visitCountDatabase(
       CountDatabaseStatement countDatabaseStatement, MPPQueryContext context) {
     Analysis analysis = new Analysis();
     analysis.setRealStatement(countDatabaseStatement);
-    analysis.setRespDatasetHeader(DatasetHeaderFactory.getCountStorageGroupHeader());
+    analysis.setRespDatasetHeader(DatasetHeaderFactory.getCountDatabaseHeader());
     return analysis;
   }
 

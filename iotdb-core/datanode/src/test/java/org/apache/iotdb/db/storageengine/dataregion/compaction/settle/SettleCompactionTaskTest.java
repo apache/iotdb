@@ -66,7 +66,7 @@ import java.util.List;
 import java.util.Map;
 
 import static org.apache.iotdb.db.storageengine.dataregion.compaction.utils.TsFileGeneratorUtils.createTimeseries;
-import static org.apache.iotdb.db.storageengine.dataregion.compaction.utils.TsFileGeneratorUtils.testStorageGroup;
+import static org.apache.iotdb.db.storageengine.dataregion.compaction.utils.TsFileGeneratorUtils.testDatabase;
 import static org.apache.tsfile.common.constant.TsFileConstant.PATH_SEPARATOR;
 import static org.apache.tsfile.utils.TsFileGeneratorUtils.getDataType;
 
@@ -491,14 +491,13 @@ public class SettleCompactionTaskTest extends AbstractCompactionTest {
         if (!isAligned) {
           timeseriesPath.add(
               new NonAlignedFullPath(
-                  IDeviceID.Factory.DEFAULT_FACTORY.create(
-                      testStorageGroup + PATH_SEPARATOR + "d" + d),
+                  IDeviceID.Factory.DEFAULT_FACTORY.create(testDatabase + PATH_SEPARATOR + "d" + d),
                   new MeasurementSchema("s" + i, dataType)));
         } else {
           timeseriesPath.add(
               new AlignedFullPath(
                   IDeviceID.Factory.DEFAULT_FACTORY.create(
-                      testStorageGroup + PATH_SEPARATOR + "d" + (10000 + d)),
+                      testDatabase + PATH_SEPARATOR + "d" + (10000 + d)),
                   Collections.singletonList("s" + i),
                   Collections.singletonList(new MeasurementSchema("s" + i, dataType))));
         }

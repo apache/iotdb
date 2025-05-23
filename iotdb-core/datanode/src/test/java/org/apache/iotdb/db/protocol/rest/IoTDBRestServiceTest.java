@@ -188,7 +188,7 @@ public class IoTDBRestServiceTest {
     queryShowChildPaths(httpClient);
     queryShowNodes(httpClient);
     showAllTTL(httpClient);
-    showStorageGroup(httpClient);
+    showDatabase(httpClient);
     showFunctions(httpClient);
     showTimeseries(httpClient);
 
@@ -537,7 +537,7 @@ public class IoTDBRestServiceTest {
     Assert.assertEquals(values2, valuesResult.get(1));
   }
 
-  public void showStorageGroup(CloseableHttpClient httpClient) {
+  public void showDatabase(CloseableHttpClient httpClient) {
     String sql = "{\"sql\":\"SHOW DATABASES root.*\"}";
     Map map = queryMetaData(httpClient, sql);
     List<String> columnNamesResult = (List<String>) map.get("columnNames");

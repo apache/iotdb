@@ -61,7 +61,7 @@ public class LoadTsFile extends Statement {
     super(location);
     this.filePath = requireNonNull(filePath, "filePath is null");
 
-    this.databaseLevel = IoTDBDescriptor.getInstance().getConfig().getDefaultStorageGroupLevel();
+    this.databaseLevel = IoTDBDescriptor.getInstance().getConfig().getDefaultDatabaseLevel();
     this.deleteAfterLoad = false;
     this.convertOnTypeMismatch = true;
     this.tabletConversionThresholdBytes =

@@ -387,7 +387,7 @@ public class IoTDBSyntaxConventionIdentifierIT {
   }
 
   @Test
-  public void testCreateIllegalStorageGroup() {
+  public void testCreateIllegalDatabase() {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
 

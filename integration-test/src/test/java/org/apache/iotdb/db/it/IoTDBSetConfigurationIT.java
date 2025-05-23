@@ -173,7 +173,7 @@ public class IoTDBSetConfigurationIT {
       try {
         statement.execute("set configuration \"default_storage_group_level\"=\"-1\"");
       } catch (SQLException e) {
-        assertTrue(e.getMessage().contains("Illegal defaultStorageGroupLevel: -1, should >= 1"));
+        assertTrue(e.getMessage().contains("Illegal defaultDatabaseLevel: -1, should >= 1"));
       }
 
       // Failed updates will not change the files.
@@ -187,7 +187,7 @@ public class IoTDBSetConfigurationIT {
 
     // can start with an illegal value
     EnvFactory.getEnv().cleanClusterEnvironment();
-    EnvFactory.getEnv().getConfig().getCommonConfig().setDefaultStorageGroupLevel(-1);
+    EnvFactory.getEnv().getConfig().getCommonConfig().setDefaultDatabaseLevel(-1);
     EnvFactory.getEnv().initClusterEnvironment();
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {

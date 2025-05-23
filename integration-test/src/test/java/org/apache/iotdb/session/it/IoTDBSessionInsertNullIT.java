@@ -72,7 +72,7 @@ public class IoTDBSessionInsertNullIT {
 
   private void prepareData(ISession session)
       throws IoTDBConnectionException, StatementExecutionException {
-    session.setStorageGroup("root.sg1");
+    session.setDatabase("root.sg1");
     session.createTimeseries(
         "root.sg1.clsu.d1.s1", TSDataType.BOOLEAN, TSEncoding.PLAIN, CompressionType.SNAPPY);
     session.createTimeseries(

@@ -59,7 +59,7 @@ public class SchemaPartitionTable {
   }
 
   /**
-   * Thread-safely get SchemaPartition within the specific StorageGroup
+   * Thread-safely get SchemaPartition within the specific Database
    *
    * @param partitionSlots SeriesPartitionSlots
    * @param schemaPartitionTable Store the matched SchemaPartitions
@@ -70,7 +70,7 @@ public class SchemaPartitionTable {
     AtomicBoolean result = new AtomicBoolean(true);
 
     if (partitionSlots.isEmpty()) {
-      // Return all SchemaPartitions in one StorageGroup when the queried PartitionSlots are empty
+      // Return all SchemaPartitions in one Database when the queried PartitionSlots are empty
       schemaPartitionTable.getSchemaPartitionMap().putAll(schemaPartitionMap);
     } else {
       // Return the SchemaPartition for each SeriesPartitionSlot
@@ -90,7 +90,7 @@ public class SchemaPartitionTable {
   }
 
   /**
-   * Create SchemaPartition within the specific StorageGroup
+   * Create SchemaPartition within the specific Database
    *
    * @param assignedSchemaPartition assigned result
    * @return Map<TConsensusGroupId, Map<TSeriesPartitionSlot, Delta TTimePartitionSlot Count(always
@@ -116,7 +116,7 @@ public class SchemaPartitionTable {
 
   /**
    * Only Leader use this interface. Filter unassigned SchemaPartitionSlots within the specific
-   * StorageGroup.
+   * Database.
    *
    * @param partitionSlots List<TSeriesPartitionSlot>
    * @return Unassigned PartitionSlots

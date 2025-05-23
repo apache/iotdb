@@ -26,11 +26,11 @@ import org.apache.iotdb.db.queryengine.plan.statement.metadata.DeleteDatabaseSta
 
 import com.google.common.util.concurrent.ListenableFuture;
 
-public class DeleteStorageGroupTask implements IConfigTask {
+public class DeleteDatabaseTask implements IConfigTask {
 
   private final DeleteDatabaseStatement deleteDatabaseStatement;
 
-  public DeleteStorageGroupTask(DeleteDatabaseStatement deleteDatabaseStatement) {
+  public DeleteDatabaseTask(DeleteDatabaseStatement deleteDatabaseStatement) {
     this.deleteDatabaseStatement = deleteDatabaseStatement;
   }
 

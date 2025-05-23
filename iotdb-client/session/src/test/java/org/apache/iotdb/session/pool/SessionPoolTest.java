@@ -808,27 +808,25 @@ public class SessionPoolTest {
   }
 
   @Test
-  public void testSetStorageGroup() throws IoTDBConnectionException, StatementExecutionException {
-    sessionPool.setStorageGroup("root.device1");
+  public void testSetDatabase() throws IoTDBConnectionException, StatementExecutionException {
+    sessionPool.setDatabase("root.device1");
     assertEquals(
         1,
         ((ConcurrentLinkedDeque<ISession>) Whitebox.getInternalState(sessionPool, "queue")).size());
   }
 
   @Test
-  public void testDeleteStorageGroup()
-      throws IoTDBConnectionException, StatementExecutionException {
-    sessionPool.deleteStorageGroup("root.device1");
+  public void testDeleteDatabase() throws IoTDBConnectionException, StatementExecutionException {
+    sessionPool.deleteDatabase("root.device1");
     assertEquals(
         1,
         ((ConcurrentLinkedDeque<ISession>) Whitebox.getInternalState(sessionPool, "queue")).size());
   }
 
   @Test
-  public void testDeleteStorageGroups()
-      throws IoTDBConnectionException, StatementExecutionException {
+  public void testDeleteDatabases() throws IoTDBConnectionException, StatementExecutionException {
     List<String> sgs = Arrays.asList("root.device2", "root.device3");
-    sessionPool.deleteStorageGroups(sgs);
+    sessionPool.deleteDatabases(sgs);
     assertEquals(
         1,
         ((ConcurrentLinkedDeque<ISession>) Whitebox.getInternalState(sessionPool, "queue")).size());

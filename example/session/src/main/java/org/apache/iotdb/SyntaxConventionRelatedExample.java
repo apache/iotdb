@@ -93,7 +93,7 @@ public class SyntaxConventionRelatedExample {
     session.setFetchSize(10000);
 
     try {
-      session.setStorageGroup("root.sg1");
+      session.setDatabase("root.sg1");
     } catch (StatementExecutionException e) {
       if (e.getStatusCode() != TSStatusCode.PATH_ALREADY_EXIST.getStatusCode()) {
         throw e;

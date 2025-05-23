@@ -103,7 +103,7 @@ public class LoadManager {
    * @param consensusGroupType TConsensusGroupType of RegionGroup to be allocated
    * @return CreateRegionGroupsPlan
    * @throws NotEnoughDataNodeException If there are not enough DataNodes
-   * @throws DatabaseNotExistsException If some specific StorageGroups don't exist
+   * @throws DatabaseNotExistsException If some specific Databases don't exist
    */
   public CreateRegionGroupsPlan allocateRegionGroups(
       final Map<String, Integer> allotmentMap, final TConsensusGroupType consensusGroupType)

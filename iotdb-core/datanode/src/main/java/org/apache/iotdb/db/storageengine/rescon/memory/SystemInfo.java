@@ -53,11 +53,11 @@ public class SystemInfo {
   private static final DataNodeMemoryConfig memoryConfig =
       IoTDBDescriptor.getInstance().getMemoryConfig();
 
-  private long totalStorageGroupMemCost = 0L;
+  private long totalDatabaseMemCost = 0L;
   private volatile boolean rejected = false;
 
   private long memorySizeForMemtable;
-  private final Map<DataRegionInfo, Long> reportedStorageGroupMemCostMap = new HashMap<>();
+  private final Map<DataRegionInfo, Long> reportedDatabaseMemCostMap = new HashMap<>();
 
   private long flushingMemTablesCost = 0L;
   private IMemoryBlock walBufferQueueMemoryBlock;
@@ -97,33 +97,33 @@ public class SystemInfo {
 
   /**
    * Report current mem cost of database to system. Called when the memory of database newly
-   * accumulates to IoTDBConfig.getStorageGroupSizeReportThreshold()
+   * accumulates to IoTDBConfig.getDatabaseSizeReportThreshold()
    *
    * @param dataRegionInfo database
    * @throws WriteProcessRejectException
    */
-  public synchronized boolean reportStorageGroupStatus(
+  public synchronized boolean reportDatabaseStatus(
       DataRegionInfo dataRegionInfo, TsFileProcessor tsFileProcessor)
       throws WriteProcessRejectException {
     long currentDataRegionMemCost = dataRegionInfo.getMemCost();
     long delta =
-        currentDataRegionMemCost - reportedStorageGroupMemCostMap.getOrDefault(dataRegionInfo, 0L);
-    totalStorageGroupMemCost += delta;
+        currentDataRegionMemCost - reportedDatabaseMemCostMap.getOrDefault(dataRegionInfo, 0L);
+    totalDatabaseMemCost += delta;
     if (logger.isDebugEnabled()) {
       logger.debug(
           "Report database Status to the system. " + "After adding {}, current sg mem cost is {}.",
           delta,
-          totalStorageGroupMemCost);
+          totalDatabaseMemCost);
     }
-    reportedStorageGroupMemCostMap.put(dataRegionInfo, currentDataRegionMemCost);
+    reportedDatabaseMemCostMap.put(dataRegionInfo, currentDataRegionMemCost);
     dataRegionInfo.setLastReportedSize(currentDataRegionMemCost);
-    if (totalStorageGroupMemCost < FLUSH_THRESHOLD) {
+    if (totalDatabaseMemCost < FLUSH_THRESHOLD) {
       return true;
-    } else if (totalStorageGroupMemCost < REJECT_THRESHOLD) {
+    } else if (totalDatabaseMemCost < REJECT_THRESHOLD) {
       logger.debug(
           "The total database mem costs are too large, call for flushing. "
               + "Current sg cost is {}",
-          totalStorageGroupMemCost);
+          totalDatabaseMemCost);
       chooseMemTablesToMarkFlush(tsFileProcessor);
       return true;
     } else {
@@ -131,16 +131,16 @@ public class SystemInfo {
           "Change system to reject status. Triggered by: logical SG ({}), mem cost delta ({}), totalSgMemCost ({}), REJECT_THRESHOLD ({})",
           dataRegionInfo.getDataRegion().getDatabaseName(),
           delta,
-          totalStorageGroupMemCost,
+          totalDatabaseMemCost,
           REJECT_THRESHOLD);
       rejected = true;
       if (chooseMemTablesToMarkFlush(tsFileProcessor)) {
-        if (totalStorageGroupMemCost < memorySizeForMemtable) {
+        if (totalDatabaseMemCost < memorySizeForMemtable) {
           return true;
         } else {
           throw new WriteProcessRejectException(
               "Total database MemCost "
-                  + totalStorageGroupMemCost
+                  + totalDatabaseMemCost
                   + " is over than memorySizeForWriting "
                   + memorySizeForMemtable);
         }
@@ -156,40 +156,39 @@ public class SystemInfo {
    *
    * @param dataRegionInfo database
    */
-  public synchronized void resetStorageGroupStatus(DataRegionInfo dataRegionInfo) {
+  public synchronized void resetDatabaseStatus(DataRegionInfo dataRegionInfo) {
     long currentDataRegionMemCost = dataRegionInfo.getMemCost();
     long delta = 0;
-    if (reportedStorageGroupMemCostMap.containsKey(dataRegionInfo)) {
-      delta = reportedStorageGroupMemCostMap.get(dataRegionInfo) - currentDataRegionMemCost;
-      this.totalStorageGroupMemCost -= delta;
+    if (reportedDatabaseMemCostMap.containsKey(dataRegionInfo)) {
+      delta = reportedDatabaseMemCostMap.get(dataRegionInfo) - currentDataRegionMemCost;
+      this.totalDatabaseMemCost -= delta;
       dataRegionInfo.setLastReportedSize(currentDataRegionMemCost);
       // report after reset sg status, because slow write may not reach the report threshold
       dataRegionInfo.setNeedToReportToSystem(true);
-      reportedStorageGroupMemCostMap.put(dataRegionInfo, currentDataRegionMemCost);
+      reportedDatabaseMemCostMap.put(dataRegionInfo, currentDataRegionMemCost);
     }
 
-    if (totalStorageGroupMemCost >= FLUSH_THRESHOLD
-        && totalStorageGroupMemCost < REJECT_THRESHOLD) {
+    if (totalDatabaseMemCost >= FLUSH_THRESHOLD && totalDatabaseMemCost < REJECT_THRESHOLD) {
       logger.debug(
           "SG ({}) released memory (delta: {}) but still exceeding flush proportion (totalSgMemCost: {}), call flush.",
           dataRegionInfo.getDataRegion().getDatabaseName(),
           delta,
-          totalStorageGroupMemCost);
+          totalDatabaseMemCost);
       if (rejected) {
         logger.info(
             "SG ({}) released memory (delta: {}), set system to normal status (totalSgMemCost: {}).",
             dataRegionInfo.getDataRegion().getDatabaseName(),
             delta,
-            totalStorageGroupMemCost);
+            totalDatabaseMemCost);
       }
       logCurrentTotalSGMemory();
       rejected = false;
-    } else if (totalStorageGroupMemCost >= REJECT_THRESHOLD) {
+    } else if (totalDatabaseMemCost >= REJECT_THRESHOLD) {
       logger.warn(
           "SG ({}) released memory (delta: {}), but system is still in reject status (totalSgMemCost: {}).",
           dataRegionInfo.getDataRegion().getDatabaseName(),
           delta,
-          totalStorageGroupMemCost);
+          totalDatabaseMemCost);
       logCurrentTotalSGMemory();
       rejected = true;
     } else {
@@ -197,7 +196,7 @@ public class SystemInfo {
           "SG ({}) released memory (delta: {}), system is in normal status (totalSgMemCost: {}).",
           dataRegionInfo.getDataRegion().getDatabaseName(),
           delta,
-          totalStorageGroupMemCost);
+          totalDatabaseMemCost);
       logCurrentTotalSGMemory();
       rejected = false;
     }
@@ -399,7 +398,7 @@ public class SystemInfo {
   }
 
   private void logCurrentTotalSGMemory() {
-    logger.debug("Current Sg cost is {}", totalStorageGroupMemCost);
+    logger.debug("Current Sg cost is {}", totalDatabaseMemCost);
   }
 
   /**
@@ -409,18 +408,18 @@ public class SystemInfo {
    */
   private boolean chooseMemTablesToMarkFlush(TsFileProcessor currentTsFileProcessor) {
     // If invoke flush by replaying logs, do not flush now!
-    if (reportedStorageGroupMemCostMap.isEmpty()) {
+    if (reportedDatabaseMemCostMap.isEmpty()) {
       return false;
     }
     PriorityQueue<TsFileProcessor> allTsFileProcessors =
         new PriorityQueue<>(
             (o1, o2) -> Long.compare(o2.getWorkMemTableRamCost(), o1.getWorkMemTableRamCost()));
-    for (DataRegionInfo dataRegionInfo : reportedStorageGroupMemCostMap.keySet()) {
+    for (DataRegionInfo dataRegionInfo : reportedDatabaseMemCostMap.keySet()) {
       allTsFileProcessors.addAll(dataRegionInfo.getAllReportedTsp());
     }
     boolean isCurrentTsFileProcessorSelected = false;
     long memCost = 0;
-    long activeMemSize = totalStorageGroupMemCost - flushingMemTablesCost;
+    long activeMemSize = totalDatabaseMemCost - flushingMemTablesCost;
     while (activeMemSize - memCost > FLUSH_THRESHOLD) {
       if (allTsFileProcessors.isEmpty()
           || allTsFileProcessors.peek().getWorkMemTableRamCost() == 0) {
@@ -451,8 +450,8 @@ public class SystemInfo {
   }
 
   public void close() {
-    reportedStorageGroupMemCostMap.clear();
-    totalStorageGroupMemCost = 0;
+    reportedDatabaseMemCostMap.clear();
+    totalDatabaseMemCost = 0;
     rejected = false;
   }
 
@@ -488,7 +487,7 @@ public class SystemInfo {
   }
 
   public long getTotalMemTableSize() {
-    return totalStorageGroupMemCost;
+    return totalDatabaseMemCost;
   }
 
   public double getFlushThreshold() {

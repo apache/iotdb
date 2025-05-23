@@ -162,8 +162,8 @@ public class TsFileProcessor {
   private final ReadWriteLock flushQueryLock = new ReentrantReadWriteLock();
 
   /**
-   * It is set by the StorageGroupProcessor and checked by flush threads. (If shouldClose == true
-   * and its flushingMemTables are all flushed, then the flush thread will close this file.)
+   * It is set by the DatabaseProcessor and checked by flush threads. (If shouldClose == true and
+   * its flushingMemTables are all flushed, then the flush thread will close this file.)
    */
   private volatile boolean shouldClose;
 
@@ -1125,11 +1125,11 @@ public class TsFileProcessor {
       long memTableIncrement, long chunkMetadataIncrement, long textDataIncrement)
       throws WriteProcessRejectException {
     memTableIncrement += textDataIncrement;
-    dataRegionInfo.addStorageGroupMemCost(memTableIncrement);
+    dataRegionInfo.addDatabaseMemCost(memTableIncrement);
     tsFileProcessorInfo.addTSPMemCost(chunkMetadataIncrement);
     if (dataRegionInfo.needToReportToSystem()) {
       try {
-        if (!SystemInfo.getInstance().reportStorageGroupStatus(dataRegionInfo, this)) {
+        if (!SystemInfo.getInstance().reportDatabaseStatus(dataRegionInfo, this)) {
           long startTime = System.currentTimeMillis();
           while (SystemInfo.getInstance().isRejected()) {
             if (workMemTable.shouldFlush()) {
@@ -1148,9 +1148,9 @@ public class TsFileProcessor {
           }
         }
       } catch (WriteProcessRejectException e) {
-        dataRegionInfo.releaseStorageGroupMemCost(memTableIncrement);
+        dataRegionInfo.releaseDatabaseMemCost(memTableIncrement);
         tsFileProcessorInfo.releaseTSPMemCost(chunkMetadataIncrement);
-        SystemInfo.getInstance().resetStorageGroupStatus(dataRegionInfo);
+        SystemInfo.getInstance().resetDatabaseStatus(dataRegionInfo);
         throw e;
       }
     }
@@ -1164,9 +1164,9 @@ public class TsFileProcessor {
     long chunkMetadataIncrement = memIncrements[2];
 
     memTableIncrement += textDataIncrement;
-    dataRegionInfo.releaseStorageGroupMemCost(memTableIncrement);
+    dataRegionInfo.releaseDatabaseMemCost(memTableIncrement);
     tsFileProcessorInfo.releaseTSPMemCost(chunkMetadataIncrement);
-    SystemInfo.getInstance().resetStorageGroupStatus(dataRegionInfo);
+    SystemInfo.getInstance().resetDatabaseStatus(dataRegionInfo);
     workMemTable.releaseTVListRamCost(memTableIncrement);
     workMemTable.releaseTextDataSize(textDataIncrement);
   }
@@ -1462,8 +1462,8 @@ public class TsFileProcessor {
       }
       memTable.release();
       MemTableManager.getInstance().decreaseMemtableNumber();
-      // Reset the mem cost in StorageGroupProcessorInfo
-      dataRegionInfo.releaseStorageGroupMemCost(memTable.getTVListsRamCost());
+      // Reset the mem cost in DatabaseProcessorInfo
+      dataRegionInfo.releaseDatabaseMemCost(memTable.getTVListsRamCost());
       if (logger.isDebugEnabled()) {
         logger.debug(
             "[mem control] {}: {} flush finished, try to reset system mem cost, "
@@ -1473,7 +1473,7 @@ public class TsFileProcessor {
             flushingMemTables.size());
       }
       // Report to System
-      SystemInfo.getInstance().resetStorageGroupStatus(dataRegionInfo);
+      SystemInfo.getInstance().resetDatabaseStatus(dataRegionInfo);
       SystemInfo.getInstance().resetFlushingMemTableCost(memTable.getTVListsRamCost());
       if (logger.isDebugEnabled()) {
         logger.debug(
@@ -1736,7 +1736,7 @@ public class TsFileProcessor {
     if (logger.isDebugEnabled()) {
       logger.debug("Ended file {}", tsFileResource);
     }
-    // Remove this processor from Closing list in StorageGroupProcessor,
+    // Remove this processor from Closing list in DatabaseProcessor,
     // Mark the TsFileResource closed, no need writer anymore
     for (CloseFileListener closeFileListener : closeFileListeners) {
       closeFileListener.onClosed(this);
@@ -2220,7 +2220,7 @@ public class TsFileProcessor {
   public void putMemTableBackAndClose() throws TsFileProcessorException {
     if (workMemTable != null) {
       workMemTable.release();
-      dataRegionInfo.releaseStorageGroupMemCost(workMemTable.getTVListsRamCost());
+      dataRegionInfo.releaseDatabaseMemCost(workMemTable.getTVListsRamCost());
       workMemTable = null;
     }
     try {

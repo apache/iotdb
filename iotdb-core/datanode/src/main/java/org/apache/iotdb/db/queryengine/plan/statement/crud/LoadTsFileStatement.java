@@ -74,7 +74,7 @@ public class LoadTsFileStatement extends Statement {
 
   public LoadTsFileStatement(String filePath) throws FileNotFoundException {
     this.file = new File(filePath);
-    this.databaseLevel = IoTDBDescriptor.getInstance().getConfig().getDefaultStorageGroupLevel();
+    this.databaseLevel = IoTDBDescriptor.getInstance().getConfig().getDefaultDatabaseLevel();
     this.verifySchema = true;
     this.deleteAfterLoad = false;
     this.convertOnTypeMismatch = true;
@@ -108,7 +108,7 @@ public class LoadTsFileStatement extends Statement {
 
   protected LoadTsFileStatement() {
     this.file = null;
-    this.databaseLevel = IoTDBDescriptor.getInstance().getConfig().getDefaultStorageGroupLevel();
+    this.databaseLevel = IoTDBDescriptor.getInstance().getConfig().getDefaultDatabaseLevel();
     this.verifySchema = true;
     this.deleteAfterLoad = false;
     this.convertOnTypeMismatch = true;

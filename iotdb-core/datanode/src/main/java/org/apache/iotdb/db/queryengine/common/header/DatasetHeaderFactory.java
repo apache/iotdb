@@ -27,8 +27,8 @@ public class DatasetHeaderFactory {
     // forbidding instantiation
   }
 
-  public static DatasetHeader getCountStorageGroupHeader() {
-    return new DatasetHeader(ColumnHeaderConstant.countStorageGroupColumnHeaders, true);
+  public static DatasetHeader getCountDatabaseHeader() {
+    return new DatasetHeader(ColumnHeaderConstant.countDatabaseColumnHeaders, true);
   }
 
   public static DatasetHeader getCountNodesHeader() {
@@ -59,10 +59,10 @@ public class DatasetHeaderFactory {
     return new DatasetHeader(ColumnHeaderConstant.showDevicesWithSgColumnHeaders, true);
   }
 
-  public static DatasetHeader getShowStorageGroupHeader(final boolean isDetailed) {
+  public static DatasetHeader getShowDatabaseHeader(final boolean isDetailed) {
     return isDetailed
-        ? new DatasetHeader(ColumnHeaderConstant.showStorageGroupsDetailColumnHeaders, true)
-        : new DatasetHeader(ColumnHeaderConstant.showStorageGroupsColumnHeaders, true);
+        ? new DatasetHeader(ColumnHeaderConstant.showDatabasesDetailColumnHeaders, true)
+        : new DatasetHeader(ColumnHeaderConstant.showDatabasesColumnHeaders, true);
   }
 
   public static DatasetHeader getShowTTLHeader() {

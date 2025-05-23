@@ -50,7 +50,7 @@ public class TsFileIdentifierUT {
             + "1-1-0-0.tsfile";
     TsFileIdentifier firstInfo = TsFileIdentifier.getFileIdentifierFromFilePath(firstPath);
     Assert.assertEquals(firstInfo.getFilename(), "1-1-0-0.tsfile");
-    Assert.assertEquals(firstInfo.getLogicalStorageGroupName(), "root.test.sg");
+    Assert.assertEquals(firstInfo.getLogicalDatabaseName(), "root.test.sg");
     Assert.assertEquals(firstInfo.getTimePartitionId(), "0");
     Assert.assertEquals(firstInfo.getDataRegionId(), "0");
     Assert.assertTrue(firstInfo.isSequence());
@@ -68,7 +68,7 @@ public class TsFileIdentifierUT {
 
     TsFileIdentifier secondInfo = TsFileIdentifier.getFileIdentifierFromFilePath(secondPath);
     Assert.assertEquals(secondInfo.getFilename(), "999-3-24-12.tsfile");
-    Assert.assertEquals(secondInfo.getLogicalStorageGroupName(), "root.test.sg");
+    Assert.assertEquals(secondInfo.getLogicalDatabaseName(), "root.test.sg");
     Assert.assertEquals(secondInfo.getTimePartitionId(), "426");
     Assert.assertEquals(secondInfo.getDataRegionId(), "0");
     Assert.assertFalse(secondInfo.isSequence());
@@ -97,7 +97,7 @@ public class TsFileIdentifierUT {
     Assert.assertEquals(firstInfo.getFilename(), "1-1-0-0.tsfile");
     Assert.assertEquals(firstInfo.getTimePartitionId(), "0");
     Assert.assertEquals(firstInfo.getDataRegionId(), "0");
-    Assert.assertEquals(firstInfo.getLogicalStorageGroupName(), "root.test.sg");
+    Assert.assertEquals(firstInfo.getLogicalDatabaseName(), "root.test.sg");
     Assert.assertTrue(firstInfo.isSequence());
 
     String[] secondInfoArray =
@@ -108,7 +108,7 @@ public class TsFileIdentifierUT {
     Assert.assertEquals(secondInfo.getFilename(), "666-888-222-131.tsfile");
     Assert.assertEquals(secondInfo.getTimePartitionId(), "425");
     Assert.assertEquals(secondInfo.getDataRegionId(), "0");
-    Assert.assertEquals(secondInfo.getLogicalStorageGroupName(), "root.test.sg");
+    Assert.assertEquals(secondInfo.getLogicalDatabaseName(), "root.test.sg");
     Assert.assertFalse(secondInfo.isSequence());
 
     String[] illegalInfoArray = new String[] {"unsequence", "0", "425", "666-888-222-131.tsfile"};

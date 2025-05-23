@@ -50,7 +50,7 @@ public class DatabaseSchemaResp implements DataSet {
     this.schemaMap = schemaMap;
   }
 
-  public TDatabaseSchemaResp convertToRPCStorageGroupSchemaResp() {
+  public TDatabaseSchemaResp convertToRPCDatabaseSchemaResp() {
     TDatabaseSchemaResp resp = new TDatabaseSchemaResp();
     resp.setStatus(status);
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {

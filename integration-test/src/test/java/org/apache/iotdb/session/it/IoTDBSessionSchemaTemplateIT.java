@@ -90,7 +90,7 @@ public class IoTDBSessionSchemaTemplateIT extends AbstractSchemaIT {
     List<CompressionType> compressors =
         Arrays.asList(CompressionType.SNAPPY, CompressionType.SNAPPY, CompressionType.LZ4);
 
-    session.setStorageGroup("root.sg");
+    session.setDatabase("root.sg");
 
     session.createSchemaTemplate(tempName, measurements, dataTypes, encodings, compressors, true);
     session.setSchemaTemplate("flatTemplate", "root.sg.d0");
@@ -107,7 +107,7 @@ public class IoTDBSessionSchemaTemplateIT extends AbstractSchemaIT {
   @Test
   public void testShowTemplates()
       throws StatementExecutionException, IoTDBConnectionException, IOException {
-    session.setStorageGroup("root.sg");
+    session.setDatabase("root.sg");
 
     Template temp1 = getTemplate("template1");
     Template temp2 = getTemplate("template2");
@@ -182,7 +182,7 @@ public class IoTDBSessionSchemaTemplateIT extends AbstractSchemaIT {
   @Test
   public void testDropTemplate()
       throws StatementExecutionException, IoTDBConnectionException, IOException {
-    session.setStorageGroup("root.sg");
+    session.setDatabase("root.sg");
 
     Template temp1 = getTemplate("template1");
 

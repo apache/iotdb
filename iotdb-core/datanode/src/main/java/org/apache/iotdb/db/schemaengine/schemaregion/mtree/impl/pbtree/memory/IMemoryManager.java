@@ -61,7 +61,7 @@ public interface IMemoryManager {
 
   void updateCacheStatusAfterUpdate(ICachedMNode node);
 
-  IDatabaseMNode<ICachedMNode> collectUpdatedStorageGroupMNodes();
+  IDatabaseMNode<ICachedMNode> collectUpdatedDatabaseMNodes();
 
   /**
    * The returned node by iterator will automatically take the write lock. Please unlock the node

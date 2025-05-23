@@ -293,13 +293,13 @@ class Session(object):
         """
         try:
             return rpc_utils.verify_success(
-                self.__client.setStorageGroup(self.__session_id, group_name)
+                self.__client.setDatabase(self.__session_id, group_name)
             )
         except TTransport.TException as e:
             if self.reconnect():
                 try:
                     return rpc_utils.verify_success(
-                        self.__client.setStorageGroup(self.__session_id, group_name)
+                        self.__client.setDatabase(self.__session_id, group_name)
                     )
                 except TTransport.TException as e1:
                     raise IoTDBConnectionException(e1) from None
@@ -321,13 +321,13 @@ class Session(object):
         """
         try:
             return rpc_utils.verify_success(
-                self.__client.deleteStorageGroups(self.__session_id, storage_group_lst)
+                self.__client.deleteDatabases(self.__session_id, storage_group_lst)
             )
         except TTransport.TException as e:
             if self.reconnect():
                 try:
                     return rpc_utils.verify_success(
-                        self.__client.deleteStorageGroups(
+                        self.__client.deleteDatabases(
                             self.__session_id, storage_group_lst
                         )
                     )

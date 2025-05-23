@@ -100,10 +100,10 @@ public class SchemaConstant {
   public static final byte TABLE_MNODE_TYPE = 6;
 
   public static final String INTERNAL_MNODE_TYPE_NAME = "InternalMNode";
-  public static final String STORAGE_GROUP_MNODE_TYPE_NAME = "StorageGroupMNode";
+  public static final String STORAGE_GROUP_MNODE_TYPE_NAME = "DatabaseMNode";
   public static final String MEASUREMENT_MNODE_TYPE_NAME = "MeasurementMNode";
   public static final String ENTITY_MNODE_TYPE_NAME = "EntityMNode";
-  public static final String STORAGE_GROUP_ENTITY_MNODE_TYPE_NAME = "StorageGroupEntityMNode";
+  public static final String STORAGE_GROUP_ENTITY_MNODE_TYPE_NAME = "DatabaseEntityMNode";
 
   public static final String LOGICAL_VIEW_MNODE_TYPE_NAME = "LogicalViewMNode";
 
@@ -136,7 +136,7 @@ public class SchemaConstant {
     }
   }
 
-  public static boolean isStorageGroupType(byte type) {
+  public static boolean isDatabaseType(byte type) {
     return type == STORAGE_GROUP_MNODE_TYPE || type == STORAGE_GROUP_ENTITY_MNODE_TYPE;
   }
 }

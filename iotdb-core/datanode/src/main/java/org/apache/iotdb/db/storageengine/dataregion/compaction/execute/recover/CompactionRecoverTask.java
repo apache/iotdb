@@ -48,18 +48,18 @@ public class CompactionRecoverTask {
       LoggerFactory.getLogger(IoTDBConstant.COMPACTION_LOGGER_NAME);
   private final File compactionLogFile;
   private final boolean isInnerSpace;
-  private final String fullStorageGroupName;
+  private final String fullDatabaseName;
   private final TsFileManager tsFileManager;
 
   public CompactionRecoverTask(
-      String logicalStorageGroupName,
-      String virtualStorageGroupName,
+      String logicalDatabaseName,
+      String virtualDatabaseName,
       TsFileManager tsFileManager,
       File logFile,
       boolean isInnerSpace) {
     this.compactionLogFile = logFile;
     this.isInnerSpace = isInnerSpace;
-    this.fullStorageGroupName = logicalStorageGroupName + "-" + virtualStorageGroupName;
+    this.fullDatabaseName = logicalDatabaseName + "-" + virtualDatabaseName;
     this.tsFileManager = tsFileManager;
   }
 
@@ -67,12 +67,12 @@ public class CompactionRecoverTask {
   public void doCompaction() {
     boolean recoverSuccess = true;
     LOGGER.info(
-        "{} [Compaction][Recover] compaction log is {}", fullStorageGroupName, compactionLogFile);
+        "{} [Compaction][Recover] compaction log is {}", fullDatabaseName, compactionLogFile);
     try {
       if (compactionLogFile.exists()) {
         LOGGER.info(
             "{} [Compaction][Recover] compaction log file {} exists, start to recover it",
-            fullStorageGroupName,
+            fullDatabaseName,
             compactionLogFile);
         CompactionLogAnalyzer logAnalyzer = new CompactionLogAnalyzer(compactionLogFile);
         logAnalyzer.analyze();
@@ -84,7 +84,7 @@ public class CompactionRecoverTask {
         // compaction log file is incomplete
         if (targetFileIdentifiers.isEmpty() || sourceFileIdentifiers.isEmpty()) {
           LOGGER.info(
-              "{} [Compaction][Recover] incomplete log file, abort recover", fullStorageGroupName);
+              "{} [Compaction][Recover] incomplete log file, abort recover", fullDatabaseName);
           return;
         }
 
@@ -112,19 +112,19 @@ public class CompactionRecoverTask {
       LOGGER.error("Recover compaction error", e);
     } finally {
       if (!recoverSuccess) {
-        LOGGER.error("{} [Compaction][Recover] Failed to recover compaction", fullStorageGroupName);
+        LOGGER.error("{} [Compaction][Recover] Failed to recover compaction", fullDatabaseName);
       } else {
         if (compactionLogFile.exists()) {
           try {
             LOGGER.info(
                 "{} [Compaction][Recover] Recover compaction successfully, delete log file {}",
-                fullStorageGroupName,
+                fullDatabaseName,
                 compactionLogFile);
             FileUtils.delete(compactionLogFile);
           } catch (IOException e) {
             LOGGER.error(
                 "{} [Compaction][Recover] Exception occurs while deleting log file {}",
-                fullStorageGroupName,
+                fullDatabaseName,
                 compactionLogFile,
                 e);
           }
@@ -141,7 +141,7 @@ public class CompactionRecoverTask {
       List<TsFileIdentifier> targetFileIdentifiers, List<TsFileIdentifier> sourceFileIdentifiers) {
     LOGGER.info(
         "{} [Compaction][Recover] all source files exists, delete all target files.",
-        fullStorageGroupName);
+        fullDatabaseName);
 
     // remove tmp target files and target files
     for (TsFileIdentifier targetFileIdentifier : targetFileIdentifiers) {
@@ -169,7 +169,7 @@ public class CompactionRecoverTask {
         // system should not carry out the subsequent compaction in case of data redundant
         LOGGER.error(
             "{} [Compaction][Recover] failed to remove target file {}",
-            fullStorageGroupName,
+            fullDatabaseName,
             targetResource);
         return false;
       }
@@ -185,7 +185,7 @@ public class CompactionRecoverTask {
     } catch (IOException e) {
       LOGGER.error(
           "{} [Compaction][Recover] Exception occurs while deleting compaction mods file",
-          fullStorageGroupName,
+          fullDatabaseName,
           e);
       return false;
     }
@@ -259,7 +259,7 @@ public class CompactionRecoverTask {
         LOGGER.error(
             "{} [Compaction][ExceptionHandler] target file {} is not complete, "
                 + "and some source files is lost, do nothing.",
-            fullStorageGroupName,
+            fullDatabaseName,
             targetFileIdentifier.getFilePath());
         return false;
       }
@@ -334,7 +334,7 @@ public class CompactionRecoverTask {
     } catch (IOException e) {
       LOGGER.error(
           "{} [Compaction][Recover] failed to remove file {}, exception: {}",
-          fullStorageGroupName,
+          fullDatabaseName,
           file,
           e);
       return false;

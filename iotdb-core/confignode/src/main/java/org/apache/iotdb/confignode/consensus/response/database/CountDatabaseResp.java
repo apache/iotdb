@@ -46,7 +46,7 @@ public class CountDatabaseResp implements DataSet {
     this.count = count;
   }
 
-  public void convertToRPCCountStorageGroupResp(TCountDatabaseResp resp) {
+  public void convertToRPCCountDatabaseResp(TCountDatabaseResp resp) {
     resp.setStatus(status);
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       resp.setCount(count);

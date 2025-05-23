@@ -168,7 +168,7 @@ public interface CommonConfig {
 
   CommonConfig setQueryMemoryProportion(String queryMemoryProportion);
 
-  default CommonConfig setDefaultStorageGroupLevel(int defaultStorageGroupLevel) {
+  default CommonConfig setDefaultDatabaseLevel(int defaultDatabaseLevel) {
     return this;
   }
 }
