@@ -42,6 +42,7 @@ import org.apache.iotdb.db.pipe.resource.tsfile.PipeTsFileResourceManager;
 import org.apache.iotdb.db.queryengine.plan.Coordinator;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.QualifiedObjectName;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.TsFileProcessor;
+import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFile;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TsFileInsertionEvent;
@@ -152,8 +153,13 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
     this.resource = resource;
     tsFile = resource.getTsFile();
 
-    this.isWithMod = isWithMod && resource.anyModFileExists();
-    this.modFile = this.isWithMod ? resource.getExclusiveModFile().getFile() : null;
+    final ModificationFile resourceModFile = resource.getExclusiveModFile();
+    this.isWithMod =
+        isWithMod
+            && (resourceModFile.exists()
+                || isGeneratedByHistoricalExtractor
+                    && isHardLinkFileExists(resourceModFile.getFile()));
+    this.modFile = this.isWithMod ? resourceModFile.getFile() : null;
     // TODO: process the shared mod file
     this.sharedModFile =
         resource.getSharedModFile() != null ? resource.getSharedModFile().getFile() : null;
@@ -199,6 +205,17 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
     isClosed.set(resource.isClosed());
 
     this.eventParser = new AtomicReference<>(null);
+  }
+
+  private static boolean isHardLinkFileExists(final File modFile) {
+    try {
+      return PipeDataNodeResourceManager.tsfile()
+              .getFileReferenceCountWithoutLock(
+                  PipeTsFileResourceManager.getHardlinkOrCopiedFileInPipeDir(modFile))
+          > 0;
+    } catch (final Exception e) {
+      return false;
+    }
   }
 
   /**
