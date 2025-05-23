@@ -187,6 +187,8 @@ public class RegionWriteExecutor {
     public RegionExecutionResult visitPlan(
         final PlanNode node, final WritePlanNodeExecutionContext context) {
 
+      // All the plans are rejected here when readOnly except for insertion, which is rejected in
+      // the stateMachine's "write" interface
       if (CommonDescriptor.getInstance().getConfig().isReadOnly() && !isForceExecutedPlan(node)) {
         return RegionExecutionResult.create(
             false,

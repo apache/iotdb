@@ -20,11 +20,7 @@
 package org.apache.iotdb.confignode.procedure;
 
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
-import org.apache.iotdb.confignode.procedure.exception.ProcedureAbortedException;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
-import org.apache.iotdb.confignode.procedure.exception.ProcedureSuspendedException;
-import org.apache.iotdb.confignode.procedure.exception.ProcedureTimeoutException;
-import org.apache.iotdb.confignode.procedure.exception.ProcedureYieldException;
 import org.apache.iotdb.confignode.procedure.state.ProcedureLockState;
 import org.apache.iotdb.confignode.procedure.state.ProcedureState;
 import org.apache.iotdb.confignode.procedure.store.IProcedureStore;
@@ -34,7 +30,6 @@ import org.slf4j.LoggerFactory;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
-import java.lang.reflect.InvocationTargetException;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
@@ -83,14 +78,9 @@ public abstract class Procedure<Env> implements Comparable<Procedure<Env>> {
    * @param env the environment passed to the ProcedureExecutor
    * @return a set of sub-procedures to run or ourselves if there is more work to do or null if the
    *     procedure is done.
-   * @throws ProcedureYieldException the procedure will be added back to the queue and retried
-   *     later.
    * @throws InterruptedException the procedure will be added back to the queue and retried later.
-   * @throws ProcedureSuspendedException Signal to the executor that Procedure has suspended itself
-   *     and has set itself up waiting for an external event to wake it back up again.
    */
-  protected abstract Procedure<Env>[] execute(Env env)
-      throws ProcedureYieldException, ProcedureSuspendedException, InterruptedException;
+  protected abstract Procedure<Env>[] execute(Env env) throws InterruptedException;
 
   /**
    * The code to undo what was done by the execute() code. It is called when the procedure or one of
@@ -130,11 +120,14 @@ public abstract class Procedure<Env> implements Comparable<Procedure<Env>> {
 
     // exceptions
     if (hasException()) {
+      // symbol of exception
       stream.write((byte) 1);
+      // exception's name
       String exceptionClassName = exception.getClass().getName();
       byte[] exceptionClassNameBytes = exceptionClassName.getBytes(StandardCharsets.UTF_8);
       stream.writeInt(exceptionClassNameBytes.length);
       stream.write(exceptionClassNameBytes);
+      // exception's message
       String message = this.exception.getMessage();
       if (message != null) {
         byte[] messageBytes = message.getBytes(StandardCharsets.UTF_8);
@@ -144,6 +137,7 @@ public abstract class Procedure<Env> implements Comparable<Procedure<Env>> {
         stream.writeInt(-1);
       }
     } else {
+      // symbol of no exception
       stream.write((byte) 0);
     }
 
@@ -181,9 +175,10 @@ public abstract class Procedure<Env> implements Comparable<Procedure<Env>> {
       }
       this.setStackIndexes(indexList);
     }
-    // exceptions
+
+    // exception
     if (byteBuffer.get() == 1) {
-      Class<?> exceptionClass = deserializeTypeInfo(byteBuffer);
+      deserializeTypeInfoForCompatibility(byteBuffer);
       int messageBytesLength = byteBuffer.getInt();
       String errMsg = null;
       if (messageBytesLength > 0) {
@@ -191,19 +186,7 @@ public abstract class Procedure<Env> implements Comparable<Procedure<Env>> {
         byteBuffer.get(messageBytes);
         errMsg = new String(messageBytes, StandardCharsets.UTF_8);
       }
-      ProcedureException exception;
-      try {
-        exception =
-            (ProcedureException) exceptionClass.getConstructor(String.class).newInstance(errMsg);
-      } catch (InstantiationException
-          | IllegalAccessException
-          | InvocationTargetException
-          | NoSuchMethodException e) {
-        LOG.warn("Instantiation exception class failed", e);
-        exception = new ProcedureException(errMsg);
-      }
-
-      setFailure(exception);
+      setFailure(new ProcedureException(errMsg));
     }
 
     // result
@@ -224,18 +207,11 @@ public abstract class Procedure<Env> implements Comparable<Procedure<Env>> {
    * @param byteBuffer bytebuffer
    * @return Procedure
    */
-  public static Class<?> deserializeTypeInfo(ByteBuffer byteBuffer) {
+  @Deprecated
+  public static void deserializeTypeInfoForCompatibility(ByteBuffer byteBuffer) {
     int classNameBytesLen = byteBuffer.getInt();
     byte[] classNameBytes = new byte[classNameBytesLen];
     byteBuffer.get(classNameBytes);
-    String className = new String(classNameBytes, StandardCharsets.UTF_8);
-    Class<?> clazz;
-    try {
-      clazz = Class.forName(className);
-    } catch (ClassNotFoundException e) {
-      throw new RuntimeException("Invalid procedure class", e);
-    }
-    return clazz;
   }
 
   /**
@@ -284,8 +260,7 @@ public abstract class Procedure<Env> implements Comparable<Procedure<Env>> {
    * @param env execute environment
    * @return sub procedures
    */
-  protected Procedure<Env>[] doExecute(Env env)
-      throws ProcedureYieldException, ProcedureSuspendedException, InterruptedException {
+  protected Procedure<Env>[] doExecute(Env env) throws InterruptedException {
     try {
       updateTimestamp();
       return execute(env);
@@ -676,19 +651,8 @@ public abstract class Procedure<Env> implements Comparable<Procedure<Env>> {
     }
   }
 
-  protected void setAbortFailure(final String source, final String msg) {
-    setFailure(source, new ProcedureAbortedException(msg));
-  }
-
   /**
    * Called by the ProcedureExecutor when the timeout set by setTimeout() is expired.
-   *
-   * <p>Another usage for this method is to implement retrying. A procedure can set the state to
-   * {@code WAITING_TIMEOUT} by calling {@code setState} method, and throw a {@link
-   * ProcedureSuspendedException} to halt the execution of the procedure, and do not forget a call
-   * {@link #setTimeout(long)} method to set the timeout. And you should also override this method
-   * to wake up the procedure, and also return false to tell the ProcedureExecutor that the timeout
-   * event has been handled.
    *
    * @return true to let the framework handle the timeout as abort, false in case the procedure
    *     handled the timeout itself.
@@ -698,7 +662,7 @@ public abstract class Procedure<Env> implements Comparable<Procedure<Env>> {
       long timeDiff = System.currentTimeMillis() - lastUpdate;
       setFailure(
           "ProcedureExecutor",
-          new ProcedureTimeoutException("Operation timed out after " + timeDiff + " ms."));
+          new ProcedureException("Operation timed out after " + timeDiff + " ms."));
       return true;
     }
     return false;
