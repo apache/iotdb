@@ -84,6 +84,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TDropFunctionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropModelReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropPipePluginReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropPipeReq;
+import org.apache.iotdb.confignode.rpc.thrift.TDropSubscriptionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropTopicReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropTriggerReq;
 import org.apache.iotdb.confignode.rpc.thrift.TExtendRegionReq;
@@ -173,7 +174,7 @@ import org.apache.iotdb.db.queryengine.plan.execution.config.sys.TestConnectionT
 import org.apache.iotdb.db.queryengine.plan.execution.config.sys.pipe.ShowPipeTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.sys.quota.ShowSpaceQuotaTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.sys.quota.ShowThrottleQuotaTask;
-import org.apache.iotdb.db.queryengine.plan.execution.config.sys.subscription.ShowSubscriptionTask;
+import org.apache.iotdb.db.queryengine.plan.execution.config.sys.subscription.ShowSubscriptionsTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.sys.subscription.ShowTopicsTask;
 import org.apache.iotdb.db.queryengine.plan.expression.Expression;
 import org.apache.iotdb.db.queryengine.plan.expression.visitor.TransformToViewExpressionVisitor;
@@ -212,6 +213,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.metadata.region.MigrateReg
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.region.ReconstructRegionStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.region.RemoveRegionStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.subscription.CreateTopicStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.subscription.DropSubscriptionStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.subscription.DropTopicStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.subscription.ShowSubscriptionsStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.subscription.ShowTopicsStatement;
@@ -2098,11 +2100,32 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
         return future;
       }
 
-      ShowSubscriptionTask.buildTSBlock(
+      ShowSubscriptionsTask.buildTSBlock(
           showSubscriptionResp.isSetSubscriptionInfoList()
               ? showSubscriptionResp.getSubscriptionInfoList()
               : Collections.emptyList(),
           future);
+    } catch (Exception e) {
+      future.setException(e);
+    }
+    return future;
+  }
+
+  public SettableFuture<ConfigTaskResult> dropSubscription(
+      final DropSubscriptionStatement dropSubscriptionStatement) {
+    final SettableFuture<ConfigTaskResult> future = SettableFuture.create();
+    try (ConfigNodeClient configNodeClient =
+        CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
+      final TSStatus tsStatus =
+          configNodeClient.dropSubscriptionById(
+              new TDropSubscriptionReq()
+                  .setSubsciptionId(dropSubscriptionStatement.getSubscriptionId())
+                  .setIfExistsCondition(dropSubscriptionStatement.hasIfExistsCondition()));
+      if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != tsStatus.getCode()) {
+        future.setException(new IoTDBException(tsStatus.message, tsStatus.code));
+      } else {
+        future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
+      }
     } catch (Exception e) {
       future.setException(e);
     }

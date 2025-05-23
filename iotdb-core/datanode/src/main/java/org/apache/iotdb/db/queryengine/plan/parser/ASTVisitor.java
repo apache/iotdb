@@ -186,6 +186,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.metadata.region.MigrateReg
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.region.ReconstructRegionStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.region.RemoveRegionStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.subscription.CreateTopicStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.subscription.DropSubscriptionStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.subscription.DropTopicStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.subscription.ShowSubscriptionsStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.subscription.ShowTopicsStatement;
@@ -4035,6 +4036,22 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     }
 
     return showSubscriptionsStatement;
+  }
+
+  @Override
+  public Statement visitDropSubscription(IoTDBSqlParser.DropSubscriptionContext ctx) {
+    final DropSubscriptionStatement dropSubscriptionStatement = new DropSubscriptionStatement();
+
+    if (ctx.subscriptionId != null) {
+      dropSubscriptionStatement.setSubscriptionId(parseIdentifier(ctx.subscriptionId.getText()));
+    } else {
+      throw new SemanticException(
+          "Not support for this sql in DROP SUBSCRIPTION, please enter subscriptionId.");
+    }
+
+    dropSubscriptionStatement.setIfExists(ctx.IF() != null && ctx.EXISTS() != null);
+
+    return dropSubscriptionStatement;
   }
 
   @Override

@@ -790,6 +790,10 @@ STOP
     : S T O P
     ;
 
+SUBSCRIPTION
+    : S U B S C R I P T I O N
+    ;
+
 SUBSCRIPTIONS
     : S U B S C R I P T I O N S
     ;
