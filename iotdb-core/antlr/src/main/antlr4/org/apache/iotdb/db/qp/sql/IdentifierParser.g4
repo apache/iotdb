@@ -221,6 +221,7 @@ keyWords
     | STATELESS
     | STATEMENT
     | STOP
+    | SUBSCRIPTION
     | SUBSCRIPTIONS
     | SUBSTRING
     | SYSTEM

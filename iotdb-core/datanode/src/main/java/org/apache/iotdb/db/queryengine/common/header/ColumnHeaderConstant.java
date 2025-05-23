@@ -127,6 +127,7 @@ public class ColumnHeaderConstant {
   // column names for show subscriptions statement
   public static final String CONSUMER_GROUP_NAME = "ConsumerGroupName";
   public static final String SUBSCRIBED_CONSUMERS = "SubscribedConsumers";
+  public static final String SUBSCRIPTION_ID = "SubscriptionID";
 
   // show cluster status
   public static final String NODE_TYPE_CONFIG_NODE = "ConfigNode";
@@ -455,6 +456,7 @@ public class ColumnHeaderConstant {
 
   public static final List<ColumnHeader> showSubscriptionColumnHeaders =
       ImmutableList.of(
+          new ColumnHeader(SUBSCRIPTION_ID, TSDataType.TEXT),
           new ColumnHeader(TOPIC_NAME, TSDataType.TEXT),
           new ColumnHeader(CONSUMER_GROUP_NAME, TSDataType.TEXT),
           new ColumnHeader(SUBSCRIBED_CONSUMERS, TSDataType.TEXT));

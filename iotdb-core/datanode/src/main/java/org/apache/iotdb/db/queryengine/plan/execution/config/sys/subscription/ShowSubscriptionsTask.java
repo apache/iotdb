@@ -38,11 +38,11 @@ import org.apache.tsfile.utils.Binary;
 import java.util.List;
 import java.util.stream.Collectors;
 
-public class ShowSubscriptionTask implements IConfigTask {
+public class ShowSubscriptionsTask implements IConfigTask {
 
   private final ShowSubscriptionsStatement showSubscriptionsStatement;
 
-  public ShowSubscriptionTask(ShowSubscriptionsStatement showSubscriptionsStatement) {
+  public ShowSubscriptionsTask(ShowSubscriptionsStatement showSubscriptionsStatement) {
     this.showSubscriptionsStatement = showSubscriptionsStatement;
   }
 
@@ -62,15 +62,24 @@ public class ShowSubscriptionTask implements IConfigTask {
 
     for (TShowSubscriptionInfo tSubscriptionInfo : subscriptionInfoList) {
       builder.getTimeColumnBuilder().writeLong(0L);
+      final StringBuilder subscriptionId =
+          new StringBuilder(
+              tSubscriptionInfo.getTopicName() + "_" + tSubscriptionInfo.getConsumerGroupId());
+      if (tSubscriptionInfo.getCreationTime() != 0) {
+        subscriptionId.append("_").append(tSubscriptionInfo.getCreationTime());
+      }
       builder
           .getColumnBuilder(0)
-          .writeBinary(new Binary(tSubscriptionInfo.getTopicName(), TSFileConfig.STRING_CHARSET));
+          .writeBinary(new Binary(subscriptionId.toString(), TSFileConfig.STRING_CHARSET));
       builder
           .getColumnBuilder(1)
+          .writeBinary(new Binary(tSubscriptionInfo.getTopicName(), TSFileConfig.STRING_CHARSET));
+      builder
+          .getColumnBuilder(2)
           .writeBinary(
               new Binary(tSubscriptionInfo.getConsumerGroupId(), TSFileConfig.STRING_CHARSET));
       builder
-          .getColumnBuilder(2)
+          .getColumnBuilder(3)
           .writeBinary(
               new Binary(
                   tSubscriptionInfo.getConsumerIds().toString(), TSFileConfig.STRING_CHARSET));

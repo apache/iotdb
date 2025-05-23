@@ -96,8 +96,9 @@ import org.apache.iotdb.db.queryengine.plan.execution.config.sys.quota.SetThrott
 import org.apache.iotdb.db.queryengine.plan.execution.config.sys.quota.ShowSpaceQuotaTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.sys.quota.ShowThrottleQuotaTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.sys.subscription.CreateTopicTask;
+import org.apache.iotdb.db.queryengine.plan.execution.config.sys.subscription.DropSubscriptionTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.sys.subscription.DropTopicTask;
-import org.apache.iotdb.db.queryengine.plan.execution.config.sys.subscription.ShowSubscriptionTask;
+import org.apache.iotdb.db.queryengine.plan.execution.config.sys.subscription.ShowSubscriptionsTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.sys.subscription.ShowTopicsTask;
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementNode;
@@ -149,6 +150,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.metadata.region.MigrateReg
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.region.ReconstructRegionStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.region.RemoveRegionStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.subscription.CreateTopicStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.subscription.DropSubscriptionStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.subscription.DropTopicStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.subscription.ShowSubscriptionsStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.subscription.ShowTopicsStatement;
@@ -516,12 +518,6 @@ public class ConfigTaskVisitor extends StatementVisitor<IConfigTask, MPPQueryCon
     return new StopPipeTask(stopPipeStatement);
   }
 
-  @Override
-  public IConfigTask visitShowSubscriptions(
-      ShowSubscriptionsStatement showSubscriptionsStatement, MPPQueryContext context) {
-    return new ShowSubscriptionTask(showSubscriptionsStatement);
-  }
-
   public IConfigTask visitCreateTopic(
       CreateTopicStatement createTopicStatement, MPPQueryContext context) {
     return new CreateTopicTask(createTopicStatement);
@@ -537,6 +533,18 @@ public class ConfigTaskVisitor extends StatementVisitor<IConfigTask, MPPQueryCon
   public IConfigTask visitShowTopics(
       ShowTopicsStatement showTopicsStatement, MPPQueryContext context) {
     return new ShowTopicsTask(showTopicsStatement);
+  }
+
+  @Override
+  public IConfigTask visitShowSubscriptions(
+      ShowSubscriptionsStatement showSubscriptionsStatement, MPPQueryContext context) {
+    return new ShowSubscriptionsTask(showSubscriptionsStatement);
+  }
+
+  @Override
+  public IConfigTask visitDropSubscription(
+      DropSubscriptionStatement dropSubscriptionStatement, MPPQueryContext context) {
+    return new DropSubscriptionTask(dropSubscriptionStatement);
   }
 
   @Override
