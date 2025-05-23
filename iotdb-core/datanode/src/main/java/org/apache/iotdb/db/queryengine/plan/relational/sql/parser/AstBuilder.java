@@ -1556,8 +1556,10 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
       String key = property.getName().getValue();
       Expression propertyValue = property.getNonDefaultValue();
       if (!propertyValue.getExpressionType().equals(TableExpressionType.STRING_LITERAL)) {
-        throw new IllegalArgumentException(
-            propertyValue.getExpressionType() + " is not supported for 'set configuration'");
+        throw new SemanticException(
+            propertyValue.getExpressionType()
+                + " is not supported for property value of 'set configuration'. "
+                + "Note that the syntax for 'set configuration' in the tree model is not exactly the same as that in the table model.");
       }
       String value = ((StringLiteral) propertyValue).getValue();
       configItems.put(key.trim(), value.trim());

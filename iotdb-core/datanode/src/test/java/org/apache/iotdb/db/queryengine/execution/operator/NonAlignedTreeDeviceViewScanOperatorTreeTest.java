@@ -274,6 +274,29 @@ public class NonAlignedTreeDeviceViewScanOperatorTreeTest {
   }
 
   @Test
+  public void testScanSingleFieldColumnWithPushLimitToEachDevice1() throws Exception {
+    List<String> outputColumnList = Arrays.asList("sensor0");
+    TreeNonAlignedDeviceViewScanNode node =
+        getTreeNonAlignedDeviceViewScanNode(outputColumnList, Arrays.asList("sensor0"));
+    node.setPushLimitToEachDevice(false);
+    node.setPushDownLimit(1);
+    node.setPushDownOffset(1);
+    ExecutorService instanceNotificationExecutor =
+        IoTDBThreadPoolFactory.newFixedThreadPool(1, "test-instance-notification");
+    Operator operator = getOperator(node, instanceNotificationExecutor);
+    assertTrue(operator instanceof DeviceIteratorScanOperator);
+    try {
+      checkResult(operator, outputColumnList, 1);
+    } catch (Exception e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    } finally {
+      operator.close();
+      instanceNotificationExecutor.shutdown();
+    }
+  }
+
+  @Test
   public void testScanWithPushDownPredicateAndPushLimitToEachDevice1() throws Exception {
     List<String> outputColumnList = Arrays.asList("sensor0", "sensor1", "sensor2", "time", "tag1");
     TreeNonAlignedDeviceViewScanNode node =

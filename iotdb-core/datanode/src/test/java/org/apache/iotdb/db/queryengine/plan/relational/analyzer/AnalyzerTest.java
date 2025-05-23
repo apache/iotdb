@@ -1241,7 +1241,7 @@ public class AnalyzerTest {
               statementAnalyzerFactory,
               Collections.emptyList(),
               Collections.emptyMap(),
-              new StatementRewriteFactory(metadata, nopAccessControl).getStatementRewrite(),
+              new StatementRewriteFactory().getStatementRewrite(),
               NOOP);
       return analyzer.analyze(statement);
     } catch (final Exception e) {
@@ -1266,7 +1266,7 @@ public class AnalyzerTest {
             statementAnalyzerFactory,
             Collections.emptyList(),
             Collections.emptyMap(),
-            new StatementRewriteFactory(metadata, nopAccessControl).getStatementRewrite(),
+            new StatementRewriteFactory().getStatementRewrite(),
             NOOP);
     return analyzer.analyze(statement);
   }

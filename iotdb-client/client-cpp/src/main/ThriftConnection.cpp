@@ -22,24 +22,29 @@
 #include <thrift/transport/TSocket.h>
 
 #include "Session.h"
+#include "SessionDataSet.h"
 
 const int ThriftConnection::THRIFT_DEFAULT_BUFFER_SIZE = 4096;
 const int ThriftConnection::THRIFT_MAX_FRAME_SIZE = 1048576;
 const int ThriftConnection::CONNECTION_TIMEOUT_IN_MS = 1000;
+const int ThriftConnection::DEFAULT_FETCH_SIZE = 10000;
 
 ThriftConnection::ThriftConnection(const TEndPoint& endPoint,
                                    int thriftDefaultBufferSize,
                                    int thriftMaxFrameSize,
-                                   int connectionTimeoutInMs)
-    : endPoint(endPoint),
-      thriftDefaultBufferSize(thriftDefaultBufferSize),
-      thriftMaxFrameSize(thriftMaxFrameSize),
-      connectionTimeoutInMs(connectionTimeoutInMs) {}
+                                   int connectionTimeoutInMs,
+                                   int fetchSize)
+    : endPoint_(endPoint),
+      thriftDefaultBufferSize_(thriftDefaultBufferSize),
+      thriftMaxFrameSize_(thriftMaxFrameSize),
+      connectionTimeoutInMs_(connectionTimeoutInMs),
+      fetchSize_(fetchSize){
+}
 
 ThriftConnection::~ThriftConnection() = default;
 
 void ThriftConnection::initZoneId() {
-    if (!zoneId.empty()) {
+    if (!zoneId_.empty()) {
         return;
     }
 
@@ -53,7 +58,7 @@ void ThriftConnection::initZoneId() {
 
     char zoneStr[32];
     strftime(zoneStr, sizeof(zoneStr), "%z", &tmv);
-    zoneId = zoneStr;
+    zoneId_ = zoneStr;
 }
 
 void ThriftConnection::init(const std::string& username,
@@ -61,29 +66,31 @@ void ThriftConnection::init(const std::string& username,
                             bool enableRPCCompression,
                             const std::string& zoneId,
                             const std::string& version) {
-    std::shared_ptr<TSocket> socket(new TSocket(endPoint.ip, endPoint.port));
-    socket->setConnTimeout(connectionTimeoutInMs);
-    transport = std::make_shared<TFramedTransport>(socket);
-    if (!transport->isOpen()) {
+    std::shared_ptr<TSocket> socket(new TSocket(endPoint_.ip, endPoint_.port));
+    socket->setConnTimeout(connectionTimeoutInMs_);
+    transport_ = std::make_shared<TFramedTransport>(socket);
+    if (!transport_->isOpen()) {
         try {
-            transport->open();
+            transport_->open();
         }
-        catch (TTransportException &e) {
+        catch (TTransportException& e) {
             throw IoTDBConnectionException(e.what());
         }
     }
     if (zoneId.empty()) {
         initZoneId();
-    } else {
-        this->zoneId = zoneId;
+    }
+    else {
+        this->zoneId_ = zoneId;
     }
 
     if (enableRPCCompression) {
-        std::shared_ptr<TCompactProtocol> protocol(new TCompactProtocol(transport));
-        client = std::make_shared<IClientRPCServiceClient>(protocol);
-    } else {
-        std::shared_ptr<TBinaryProtocol> protocol(new TBinaryProtocol(transport));
-        client = std::make_shared<IClientRPCServiceClient>(protocol);
+        std::shared_ptr<TCompactProtocol> protocol(new TCompactProtocol(transport_));
+        client_ = std::make_shared<IClientRPCServiceClient>(protocol);
+    }
+    else {
+        std::shared_ptr<TBinaryProtocol> protocol(new TBinaryProtocol(transport_));
+        client_ = std::make_shared<IClientRPCServiceClient>(protocol);
     }
 
     std::map<std::string, std::string> configuration;
@@ -91,68 +98,74 @@ void ThriftConnection::init(const std::string& username,
     TSOpenSessionReq openReq;
     openReq.__set_username(username);
     openReq.__set_password(password);
-    openReq.__set_zoneId(this->zoneId);
+    openReq.__set_zoneId(this->zoneId_);
     openReq.__set_configuration(configuration);
     try {
         TSOpenSessionResp openResp;
-        client->openSession(openResp, openReq);
+        client_->openSession(openResp, openReq);
         RpcUtils::verifySuccess(openResp.status);
-        sessionId = openResp.sessionId;
-        statementId = client->requestStatementId(sessionId);
-    } catch (const TTransportException &e) {
-        transport->close();
+        sessionId_ = openResp.sessionId;
+        statementId_ = client_->requestStatementId(sessionId_);
+    }
+    catch (const TTransportException& e) {
+        transport_->close();
         throw IoTDBConnectionException(e.what());
-    } catch (const IoTDBException &e) {
-        transport->close();
+    } catch (const IoTDBException& e) {
+        transport_->close();
         throw IoTDBException(e.what());
-    } catch (const std::exception &e) {
-        transport->close();
+    } catch (const std::exception& e) {
+        transport_->close();
         throw IoTDBException(e.what());
     }
 }
 
 std::unique_ptr<SessionDataSet> ThriftConnection::executeQueryStatement(const std::string& sql, int64_t timeoutInMs) {
     TSExecuteStatementReq req;
-    req.__set_sessionId(sessionId);
-    req.__set_statementId(statementId);
+    req.__set_sessionId(sessionId_);
+    req.__set_statementId(statementId_);
     req.__set_statement(sql);
     req.__set_timeout(timeoutInMs);
     TSExecuteStatementResp resp;
     try {
-        client->executeStatement(resp, req);
+        client_->executeQueryStatementV2(resp, req);
         RpcUtils::verifySuccess(resp.status);
-    } catch (const TTransportException &e) {
+    }
+    catch (const TTransportException& e) {
         throw IoTDBConnectionException(e.what());
-    } catch (const IoTDBException &e) {
+    } catch (const IoTDBException& e) {
         throw IoTDBConnectionException(e.what());
-    } catch (const std::exception &e) {
+    } catch (const std::exception& e) {
         throw IoTDBException(e.what());
     }
     std::shared_ptr<TSQueryDataSet> queryDataSet(new TSQueryDataSet(resp.queryDataSet));
-    return std::unique_ptr<SessionDataSet>(new SessionDataSet(
-            sql, resp.columns, resp.dataTypeList, resp.columnNameIndexMap, resp.ignoreTimeStamp, resp.queryId,
-            statementId, client, sessionId, queryDataSet));
+    return std::unique_ptr<SessionDataSet>(new SessionDataSet("", resp.columns, resp.dataTypeList,
+                                                              resp.columnNameIndexMap, resp.queryId, statementId_,
+                                                              client_, sessionId_, resp.queryResult, resp.ignoreTimeStamp,
+                                                              connectionTimeoutInMs_, resp.moreData, fetchSize_, zoneId_,
+                                                              timeFactor_, resp.columnIndex2TsBlockColumnIndexList));
 }
 
 void ThriftConnection::close() {
     try {
-        if (client) {
+        if (client_) {
             TSCloseSessionReq req;
-            req.__set_sessionId(sessionId);
+            req.__set_sessionId(sessionId_);
             TSStatus tsStatus;
-            client->closeSession(tsStatus, req);
+            client_->closeSession(tsStatus, req);
         }
-    } catch (const TTransportException &e) {
+    }
+    catch (const TTransportException& e) {
         throw IoTDBConnectionException(e.what());
-    } catch (const std::exception &e) {
+    } catch (const std::exception& e) {
         throw IoTDBConnectionException(e.what());
     }
 
     try {
-        if (transport->isOpen()) {
-            transport->close();
+        if (transport_->isOpen()) {
+            transport_->close();
         }
-    } catch (const std::exception &e) {
+    }
+    catch (const std::exception& e) {
         throw IoTDBConnectionException(e.what());
     }
 }

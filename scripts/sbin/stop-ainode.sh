@@ -19,7 +19,16 @@
 #
 
 AINODE_CONF="`dirname "$0"`/../conf"
-ain_inference_rpc_port=`sed '/^ain_inference_rpc_port=/!d;s/.*=//' ${AINODE_CONF}/iotdb-ainode.properties`
+if [ -f "${AINODE_CONF}/iotdb-ainode.properties" ]; then
+    ain_inference_rpc_port=$(sed '/^ain_inference_rpc_port=/!d;s/.*=//' "${AINODE_CONF}"/iotdb-ainode.properties)
+    # trim the port
+    ain_inference_rpc_port=$(echo "$ain_inference_rpc_port" | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//')
+fi
+
+if [ -z "$ain_inference_rpc_port" ]; then
+    echo "WARNING: ain_inference_rpc_port not found in the configuration file. Using default value ain_inference_rpc_port=10810"
+    ain_inference_rpc_port=10810
+fi
 
 # fetch parameters with names
 while getopts "i:t:r" opt; do

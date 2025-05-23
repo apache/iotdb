@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.pipe.metric.overview;
 
 import org.apache.iotdb.commons.pipe.agent.task.progress.PipeEventCommitManager;
+import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.service.metric.enums.Metric;
 import org.apache.iotdb.commons.service.metric.enums.Tag;
 import org.apache.iotdb.db.pipe.extractor.dataregion.IoTDBDataRegionExtractor;
@@ -82,6 +83,31 @@ public class PipeDataNodeRemainingEventAndTimeMetrics implements IMetricSet {
         operator.getPipeName(),
         Tag.CREATION_TIME.toString(),
         String.valueOf(operator.getCreationTime()));
+  }
+
+  public boolean mayRemainingInsertEventExceedLimit(final String pipeID) {
+    if (Objects.isNull(metricService)) {
+      return true;
+    }
+
+    if (remainingEventAndTimeOperatorMap.values().stream()
+            .map(PipeDataNodeRemainingEventAndTimeOperator::getRemainingInsertEventSmoothingCount)
+            .reduce(0d, Double::sum)
+        > PipeConfig.getInstance().getPipeMaxAllowedTotalRemainingInsertEventCount()) {
+      return true;
+    }
+
+    final PipeDataNodeRemainingEventAndTimeOperator operator =
+        remainingEventAndTimeOperatorMap.get(pipeID);
+    if (Objects.isNull(operator)) {
+      LOGGER.warn(
+          "Failed to get remaining insert event, RemainingEventAndTimeOperator({}) does not exist, will degrade anyway",
+          pipeID);
+      return true;
+    }
+
+    return operator.getRemainingInsertEventSmoothingCount()
+        > PipeConfig.getInstance().getPipeMaxAllowedRemainingInsertEventCountPerPipe();
   }
 
   @Override
@@ -147,20 +173,36 @@ public class PipeDataNodeRemainingEventAndTimeMetrics implements IMetricSet {
     }
   }
 
-  public void increaseTabletEventCount(final String pipeName, final long creationTime) {
+  public void increaseInsertNodeEventCount(final String pipeName, final long creationTime) {
     remainingEventAndTimeOperatorMap
         .computeIfAbsent(
             pipeName + "_" + creationTime,
             k -> new PipeDataNodeRemainingEventAndTimeOperator(pipeName, creationTime))
-        .increaseTabletEventCount();
+        .increaseInsertNodeEventCount();
   }
 
-  public void decreaseTabletEventCount(final String pipeName, final long creationTime) {
+  public void decreaseInsertNodeEventCount(final String pipeName, final long creationTime) {
     remainingEventAndTimeOperatorMap
         .computeIfAbsent(
             pipeName + "_" + creationTime,
             k -> new PipeDataNodeRemainingEventAndTimeOperator(pipeName, creationTime))
-        .decreaseTabletEventCount();
+        .decreaseInsertNodeEventCount();
+  }
+
+  public void increaseRawTabletEventCount(final String pipeName, final long creationTime) {
+    remainingEventAndTimeOperatorMap
+        .computeIfAbsent(
+            pipeName + "_" + creationTime,
+            k -> new PipeDataNodeRemainingEventAndTimeOperator(pipeName, creationTime))
+        .increaseRawTabletEventCount();
+  }
+
+  public void decreaseRawTabletEventCount(final String pipeName, final long creationTime) {
+    remainingEventAndTimeOperatorMap
+        .computeIfAbsent(
+            pipeName + "_" + creationTime,
+            k -> new PipeDataNodeRemainingEventAndTimeOperator(pipeName, creationTime))
+        .decreaseRawTabletEventCount();
   }
 
   public void increaseTsFileEventCount(final String pipeName, final long creationTime) {
