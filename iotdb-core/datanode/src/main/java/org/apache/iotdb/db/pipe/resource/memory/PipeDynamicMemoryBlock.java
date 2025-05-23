@@ -71,16 +71,16 @@ public class PipeDynamicMemoryBlock {
   }
 
   public double getMemoryBlockUsageRatio() {
-    return (double) memoryUsageInBytes / fixedMemoryBlock.getMemoryAllocatedInBytes();
+    return (double) memoryUsageInBytes / fixedMemoryBlock.getMemoryUsageInBytes();
   }
 
   public double getFixedMemoryBlockUsageRatio() {
-    return (double) fixedMemoryBlock.getMemoryUsageInBytes()
-        / fixedMemoryBlock.getMemoryAllocatedInBytes();
+    return (double) fixedMemoryBlock.getMemoryAllocatedInBytes()
+        / fixedMemoryBlock.getMemoryUsageInBytes();
   }
 
   public long canAllocateMemorySize() {
-    return fixedMemoryBlock.getMemoryAllocatedInBytes() - fixedMemoryBlock.getMemoryUsageInBytes();
+    return fixedMemoryBlock.getMemoryUsageInBytes() - fixedMemoryBlock.getMemoryAllocatedInBytes();
   }
 
   public void updateCurrentMemoryEfficiencyAdjustMem(double currentMemoryEfficiency) {
@@ -97,7 +97,7 @@ public class PipeDynamicMemoryBlock {
   }
 
   public long getFixedMemoryCapacity() {
-    return fixedMemoryBlock.getMemoryAllocatedInBytes();
+    return fixedMemoryBlock.getMemoryUsageInBytes();
   }
 
   public void updateMemoryEfficiency(
@@ -121,7 +121,7 @@ public class PipeDynamicMemoryBlock {
   }
 
   public Stream<PipeDynamicMemoryBlock> getMemoryBlocks() {
-    return fixedMemoryBlock.getMemoryBlocks();
+    return fixedMemoryBlock.getMemoryBlocksStream();
   }
 
   public void applyForDynamicMemory(final long memoryUsageInBytes) {

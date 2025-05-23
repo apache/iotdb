@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.pipe.resource.memory;
 
+import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.pipe.resource.memory.strategy.DynamicMemoryAllocationStrategy;
 
 import java.util.Collections;
@@ -72,6 +73,11 @@ public class PipeModelFixedMemoryBlock extends PipeFixedMemoryBlock {
     return memoryAllocatedInBytes;
   }
 
+  @TestOnly
+  public synchronized Set<PipeDynamicMemoryBlock> getMemoryBlocks() {
+    return memoryBlocks;
+  }
+
   synchronized void releaseMemory(final PipeDynamicMemoryBlock memoryBlock) {
     resetMemoryBlockSize(memoryBlock, 0);
     memoryBlocks.remove(memoryBlock);
@@ -106,10 +112,16 @@ public class PipeModelFixedMemoryBlock extends PipeFixedMemoryBlock {
     block.setMemoryUsageInBytes(memorySizeInBytes);
   }
 
-  Stream<PipeDynamicMemoryBlock> getMemoryBlocks() {
+  Stream<PipeDynamicMemoryBlock> getMemoryBlocksStream() {
     if (isReleased()) {
       throw new IllegalStateException("The memory block has been released");
     }
     return memoryBlocks.stream();
+  }
+
+  @Override
+  public synchronized void close() {
+    memoryBlocks.forEach(PipeDynamicMemoryBlock::close);
+    super.close();
   }
 }
